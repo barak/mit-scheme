@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -431,32 +431,6 @@ do_printing (outf_channel stream, SCHEME_OBJECT Expr, bool Detailed)
 	}
       return;
 
-    case TC_COMBINATION_1:
-      outf (stream, "[COMBINATION_1 0x%lx]", ((long) Temp_Address));
-      if (Detailed)
-	{
-	  outf (stream, " (");
-	  do_printing (stream, (MEMORY_REF (Expr, COMB_1_FN)), false);
-	  outf (stream, ", ");
-	  do_printing (stream, (MEMORY_REF (Expr, COMB_1_ARG_1)), false);
-	  outf (stream, ")");
-	}
-      return;
-
-    case TC_COMBINATION_2:
-      outf (stream, "[COMBINATION_2 0x%lx]", ((long) Temp_Address));
-      if (Detailed)
-	{
-	  outf (stream, " (");
-	  do_printing (stream, (MEMORY_REF (Expr, COMB_2_FN)), false);
-	  outf (stream, ", ");
-	  do_printing (stream, (MEMORY_REF (Expr, COMB_2_ARG_1)), false);
-	  outf (stream, ", ");
-	  do_printing (stream, (MEMORY_REF (Expr, COMB_2_ARG_2)), false);
-	  outf (stream, ")");
-	}
-      return;
-
     case TC_ENVIRONMENT:
       {
 	SCHEME_OBJECT procedure;
@@ -685,8 +659,8 @@ Back_Trace (outf_channel stream)
 	  break;
 	}
 #endif
-      Temp = (STACK_POP ());
       outf (stream, "{%#lx}", ((unsigned long) stack_pointer));
+      Temp = (STACK_POP ());
       if (RETURN_CODE_P (Temp))
 	{
 	  if (print_one_continuation_frame (stream, Temp))
@@ -758,6 +732,246 @@ Print_Primitive (SCHEME_OBJECT primitive)
     print_expression (ERROR_OUTPUT, (STACK_REF (i)), buffer);
     outf_error ("\n");
   }
+}
+
+#ifdef ENABLE_DEBUGGING_TOOLS
+
+static void
+dump_word (SCHEME_OBJECT *addr)
+{
+  int i = 0;
+  unsigned char * bytes = (unsigned char *)addr;
+  outf_error ("%#lx: ", (unsigned long)addr);
+  while (i < sizeof(SCHEME_OBJECT))
+    {
+      if (isgraph (bytes[i]))
+	outf_error (" %2c", bytes[i]);
+      else
+	outf_error (" %02x", bytes[i]);
+      i += 1;
+    }
+  outf_error ("\n");
+}
+
+static SCHEME_OBJECT *
+next_addr (SCHEME_OBJECT * addr)
+{
+  SCHEME_OBJECT object = *addr;
+  unsigned int type = OBJECT_TYPE (object);
+  switch (type)
+   {
+    case TC_LINKAGE_SECTION:
+      {
+	linkage_section_type_t section_type
+	  = ((linkage_section_type_t)((OBJECT_DATUM (object)) >> 16));
+	switch (section_type)
+	  {
+	  case LINKAGE_SECTION_TYPE_GLOBAL_OPERATOR:
+	  case LINKAGE_SECTION_TYPE_OPERATOR:
+	    {
+	      unsigned long n_words = ((OBJECT_DATUM (object)) & 0xFFFFUL);
+	      return (addr + (1 + n_words));
+	    }
+	  case LINKAGE_SECTION_TYPE_REFERENCE:
+	  case LINKAGE_SECTION_TYPE_ASSIGNMENT:
+	    return (addr + 1);
+	  default:
+	    outf_error ("Invalid linkage section type: %d\n", section_type);
+	    return (addr + 1);
+	  }
+      }
+    case TC_MANIFEST_CLOSURE:
+      return (compiled_closure_objects (addr + 1));
+    case TC_MANIFEST_NM_VECTOR:
+      {
+	unsigned long n_words = (OBJECT_DATUM (object));
+	return (addr + (1 + n_words));
+      }
+    default:
+      return (addr + 1);
+    }
+}
+
+static void
+dump_object (SCHEME_OBJECT * addr)
+{
+  SCHEME_OBJECT object = *addr;
+  outf_error ("%#lx: ", (unsigned long)addr);
+  print_object (object);
+  {
+    SCHEME_OBJECT * end = next_addr (addr);
+    while (++addr < end)
+      dump_word (addr);
+  }
+}
+
+#define SAVE_COUNT 16
+static SCHEME_OBJECT *saved_addrs[SAVE_COUNT];
+static int saved_index;
+
+static void
+dump_heap_area_at (SCHEME_OBJECT * addr,
+		   SCHEME_OBJECT * area, SCHEME_OBJECT * end)
+{
+  SCHEME_OBJECT * scan = area;
+  assert (area <= addr && addr < end);
+  saved_index = 0;
+  while (scan < addr)
+    {
+      saved_addrs[saved_index++] = scan;
+      if (saved_index == SAVE_COUNT) saved_index = 0;
+      scan = next_addr (scan);
+    }
+  {
+    int i = saved_index;
+    do
+      {
+	SCHEME_OBJECT * saved = saved_addrs[i++];
+	if (i == SAVE_COUNT) i = 0;
+	dump_object (saved);
+      }
+    while (i != saved_index);
+  }
+  outf_error ("=> ");
+  {
+    int i = 0;
+    while (i < SAVE_COUNT && scan < end)
+      {
+	dump_object (scan);
+	i += 1;
+	scan = next_addr (scan);
+      }
+  }
+}
+
+void
+dump_heap_at (SCHEME_OBJECT *addr)
+{
+  if (constant_start <= addr && addr < constant_alloc_next)
+    {
+      outf_error ("Scanning constant area (%#lx - %#lx):\n",
+		  (unsigned long)constant_start,
+		  (unsigned long)constant_alloc_next);
+      dump_heap_area_at (addr, constant_start, constant_alloc_next);
+    }
+  else if (heap_start <= addr && addr < Free)
+    {
+      outf_error ("Scanning heap area (%#lx - %#lx):\n",
+		  (unsigned long)heap_start,
+		  (unsigned long)Free);
+      dump_heap_area_at (addr, heap_start, Free);
+    }
+  else
+    {
+      outf_error ("%#lx: not a heap address\n", (unsigned long)addr);
+    }
+  outf_flush_error ();
+}
+
+static bool
+verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
+{
+  int complaints = 0;
+
+  while (area < end)
+    {
+      SCHEME_OBJECT object = *area;
+      unsigned int type = OBJECT_TYPE (object);
+      switch (type)
+	{
+	case TC_LINKAGE_SECTION:
+	  {
+	    linkage_section_type_t section_type
+	      = ((linkage_section_type_t)((OBJECT_DATUM (object)) >> 16));
+	    switch (section_type)
+	      {
+	      case LINKAGE_SECTION_TYPE_GLOBAL_OPERATOR:
+	      case LINKAGE_SECTION_TYPE_OPERATOR:
+		{
+		  unsigned long n_words = ((OBJECT_DATUM (object)) & 0xFFFFUL);
+		  SCHEME_OBJECT * next = area + (1 + n_words);
+		  if (next > end)
+		    {
+		      outf_error ("; %#lx: Invalid linkage section size: %ld\n",
+				  (unsigned long)area, n_words);
+		      return (false);
+		    }
+		  area = next;
+		}
+		break;
+	      case LINKAGE_SECTION_TYPE_REFERENCE:
+	      case LINKAGE_SECTION_TYPE_ASSIGNMENT:
+		area += 1;
+		break;
+	      default:
+		outf_error ("; %#lx: Invalid linkage section type: %d\n",
+			    (unsigned long)area, section_type);
+		complaints += 1;
+		area += 1;
+		break;
+	      }
+	  }
+	  break;
+	case TC_MANIFEST_CLOSURE:
+	  area = compiled_closure_objects (area + 1);
+	  break;
+	case TC_MANIFEST_NM_VECTOR:
+	  {
+	    unsigned long n_words = (OBJECT_DATUM (object));
+	    SCHEME_OBJECT * next = area + (1 + n_words);
+	    if (next > end)
+	      {
+		outf_error ("; %#lx: Invalid nm-vector size: %ld\n",
+			    (unsigned long)area, n_words);
+		return (false);
+	      }
+	    area = next;
+	  }
+	  break;
+	default:
+	  if (gc_type_code (type) == GC_UNDEFINED)
+	    {
+	      outf_error ("; %#lx: Invalid type code: %d (0x%x)\n",
+			  (unsigned long)area, type, type);
+	      complaints += 1;
+	    }
+	  area += 1;
+	  break;
+	}
+    }
+  if (area != end)
+    {
+      outf_error ("; %#lx: Invalid address\n", (unsigned long)area);
+      return (false);
+    }
+  return (complaints == 0);
+}
+
+bool
+verify_heap (void)
+{
+  bool c = verify_heap_area ("constants", constant_start, constant_alloc_next);
+  bool h = verify_heap_area ("heap", heap_start, Free);
+  return (c && h);
+}
+
+#else  /* !ENABLE_DEBUGGING_TOOLS */
+
+bool
+verify_heap (void)
+{
+  return true;
+}
+
+#endif
+
+DEFINE_PRIMITIVE ("VERIFY-HEAP", Prim_verify_heap, 0, 0,
+		  "Validate the heap.\n\
+Complains if a scan of the heap encounters anything unexpected.\n\
+Returns #T if the scan was successful and #F if there were any complaints.")
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (verify_heap () ? SHARP_T : SHARP_F);
 }
 
 /* Code for interactively setting and clearing the interpreter

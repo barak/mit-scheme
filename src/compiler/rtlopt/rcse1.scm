@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -92,10 +92,10 @@ USA.
     (let ((rtl (rinst-rtl rinst)))
       ((if (eq? (rtl:expression-type rtl) 'ASSIGN)
 	   cse/assign
-	   (let ((entry (assq (rtl:expression-type rtl) cse-methods)))
-	     (if (not entry)
+	   (let ((method (hash-table/get cse-methods (rtl:expression-type rtl) #f)))
+	     (if (not method)
 		 (error "Missing CSE method" (rtl:expression-type rtl)))
-	     (cdr entry)))
+	     method))
        rtl))
     (if (rinst-next rinst)
 	(loop (rinst-next rinst))))
@@ -131,14 +131,11 @@ USA.
   (walk-bblock bblock))
 
 (define (define-cse-method type method)
-  (let ((entry (assq type cse-methods)))
-    (if entry
-	(set-cdr! entry method)
-	(set! cse-methods (cons (cons type method) cse-methods))))
+  (hash-table/put! cse-methods type method)
   type)
 
-(define cse-methods
-  '())
+(define cse-methods (make-strong-eq-hash-table))
+
 
 (define (cse/assign statement)
   (expression-replace! rtl:assign-expression rtl:set-assign-expression!

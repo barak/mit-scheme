@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,14 +31,14 @@ USA.
 
 typedef int fexcept_t;
 
-typedef struct
+struct sse_fenv
 {
   int sse_mxcsr;
-} sse_fenv_t;
+};
 
 /* FIXME: This structure needs to be packed.  */
 
-struct x87_environment
+struct x87_fenv
 {
   unsigned short x87_control_word;
   unsigned short x87_unused1;
@@ -55,16 +55,10 @@ struct x87_environment
   unsigned short x87_unused5;
 };
 
-typedef union
-{
-  struct x87_environment environment;
-  unsigned char environment_bytes [sizeof (struct x87_environment)];
-} x87_fenv_t;
-
 typedef struct
 {
-  sse_fenv_t fenv_sse;
-  x87_fenv_t fenv_x87;
+  struct sse_fenv fenv_sse;
+  struct x87_fenv fenv_x87;
 } fenv_t;
 
 #define FE_TONEAREST 0

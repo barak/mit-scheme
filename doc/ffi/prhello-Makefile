@@ -1,0 +1,32 @@
+install: build
+	echo '(install-shim "$(DESTDIR)" "prhello")' \
+	| mit-scheme --batch-mode
+
+clean:
+	rm prhello-const* prhello-types* prhello-shim* 
+
+build: prhello-shim.so prhello-types.bin prhello-const.bin
+
+prhello-shim.so: prhello-shim.o
+	echo "(link-shim)" \
+	| mit-scheme --batch-mode -- -o $@ $^ `pkg-config --libs gtk+-2.0`
+
+prhello-shim.o: prhello-shim.c
+	echo '(compile-shim)' \
+	| mit-scheme --batch-mode -- `pkg-config --cflags gtk+-2.0` -c $<
+
+prhello-shim.c prhello-const.c prhello-types.bin: prhello.cdecl
+	echo '(generate-shim "prhello" "#include <gtk/gtk.h>")' \
+	| mit-scheme --batch-mode
+
+prhello-const.bin: prhello-const.scm
+	echo '(sf "prhello-const")' | mit-scheme --batch-mode
+
+prhello-const.scm: prhello-const
+	./prhello-const
+
+prhello-const: prhello-const.o
+	$(CC) -o $@ $^ $(LDFLAGS) `pkg-config --libs gtk+-2.0`
+
+prhello-const.o: prhello-const.c
+	$(CC) `pkg-config --cflags gtk+-2.0` $(CFLAGS) -o $@ -c $<

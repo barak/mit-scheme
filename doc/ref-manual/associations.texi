@@ -372,13 +372,33 @@ entries for @var{y-key} exist.
 @cindex hash table
 Hash tables are a fast, powerful mechanism for storing large numbers of
 associations.  MIT/GNU Scheme's hash tables feature automatic resizing,
-customizable growth parameters, and customizable hash procedures.
+customizable growth parameters, customizable hash procedures, and
+many options for weak references to keys or data.
 
 The average times for the insertion, deletion, and lookup operations on
 a hash table are bounded by a constant.  The space required by the table
 is proportional to the number of associations in the table; the
 constant of proportionality is described below (@pxref{Resizing of Hash
 Tables}).
+
+In addition to the hash table interface described in the following,
+MIT Scheme implements SRFI 69: ``Basic hash tables''.  The reason for
+supporting two interfaces is partly historical---MIT Scheme supported
+hash tables prior to the existence of SRFI 69---and partly
+technical---SFRI 69 fails to specify certain optimization-enabling
+exceptions to its semantics, forcing a correct implementation to pay
+the non-negligible performance cost of completely safe behavior.
+@footnote{SRFI 69 does not give hash functions the flexibility to
+return new hash values after a garbage collection, which prevents a
+system whose garbage collector may relocate objects from hashing based
+on the addresses of objects in memory (@pxref{Address Hashing}).  SRFI
+69 also does not specify circumstances when procedures passed as
+arguments to hash table operations may not themselves modify the hash
+table, which requires defensive copying and defensive repetitions of
+lookups.}  The MIT Scheme native hash table interface, in contrast,
+specifies the minor exceptions it needs, and is therefore implemented
+more efficiently.  We do not describe the SRFI-69-compliant interface
+here, as that would be redundant with the SRFI document.
 
 (Previously, the hash-table implementation was a run-time-loadable
 option, but as of release 7.7.0 it is loaded by default.  It's no longer
@@ -405,65 +425,72 @@ constructors are procedures that accept one optional argument,
 @cindex equivalence predicate, of hash table
 @cindex strongly held keys, of hash table
 @cindex weakly held keys, of hash table
+@cindex ephemerally held keys, of hash table
+@cindex strongly held data, of hash table
+@cindex weakly held data, of hash table
+@cindex ephemerally held data, of hash table
 Hash tables are normally characterized by two things: the equivalence
-predicate that is used to compare keys, and whether or not the table
-allows its keys to be reclaimed by the garbage collector.  If a table
-prevents its keys from being reclaimed by the garbage collector, it is
-said to hold its keys @dfn{strongly}; otherwise it holds its keys
-@dfn{weakly} (@pxref{Weak Pairs}).
+predicate that is used to compare keys, and how the table allows its
+keys and data to be reclaimed by the garbage collector.  If a table
+prevents its keys and data from being reclaimed by the garbage
+collector, it is said to hold its keys and data @dfn{strongly}; other
+arrangements are possible, where a table may hold keys or data
+@dfn{weakly} or @dfn{ephemerally} (@pxref{Weak References}).
 
 @deffn procedure make-strong-eq-hash-table [initial-size]
 @findex eq?
 Returns a newly allocated hash table that accepts arbitrary objects as
-keys, and compares those keys with @code{eq?}.  The keys are held
+keys, and compares those keys with @code{eq?}.  The keys and data are held
 strongly.  These are the fastest of the standard hash tables.
 @end deffn
 
-@deffn procedure make-weak-eq-hash-table [initial-size]
+@deffn procedure make-key-weak-eq-hash-table [initial-size]
 @findex eq?
 Returns a newly allocated hash table that accepts arbitrary objects as
 keys, and compares those keys with @code{eq?}.  The keys are held
-weakly.
+weakly, but the data are held strongly.  Note that if a datum holds a
+key strongly, the table will effectively hold that key strongly.
 @end deffn
 
-@deffn procedure make-eq-hash-table [initial-size]
+@deffn procedure make-key-ephemeral-eq-hash-table [initial-size]
 @findex eq?
-This is an alias for @code{make-weak-eq-hash-table}.
-
-@strong{Warning}:  This become an alias
-@code{make-strong-eq-hash-table} instead.  We recommend that you use
-@code{make-weak-eq-hash-table} explicitly for weak hash tables.
+Returns a newly allocated hash table that accepts arbitrary objects as
+keys, and compares those keys with @code{eq?}.  The keys are held
+weakly, even if some of the data should hold some of the keys
+strongly.
 @end deffn
 
 @deffn procedure make-strong-eqv-hash-table [initial-size]
 @findex eqv?
 Returns a newly allocated hash table that accepts arbitrary objects as
-keys, and compares those keys with @code{eqv?}.  The keys are held
+keys, and compares those keys with @code{eqv?}.  The keys and data are held
 strongly.  These hash tables are a little slower than those made by
 @code{make-strong-eq-hash-table}.
 @end deffn
 
-@deffn procedure make-weak-eqv-hash-table [initial-size]
+@deffn procedure make-key-weak-eqv-hash-table [initial-size]
 @findex eqv?
 Returns a newly allocated hash table that accepts arbitrary objects as
 keys, and compares those keys with @code{eqv?}.  The keys are held
-weakly, except that booleans, characters, numbers, and interned symbols
-are held strongly.
+weakly, except that booleans, characters, numbers, and interned
+symbols are held strongly.  The data are held strongly.  Note that if
+a datum holds a key strongly, the table will effectively hold that key
+strongly.
 @end deffn
 
-@deffn procedure make-eqv-hash-table [initial-size]
+@deffn procedure make-key-ephemeral-eqv-hash-table [initial-size]
 @findex eqv?
-This is an alias for @code{make-weak-eqv-hash-table}.
-
-@strong{Warning}:  This become an alias for
-@code{make-strong-eqv-hash-table} instead.  We recommend that you use
-@code{make-weak-eqv-hash-table} explicitly for weak hash tables.
+Returns a newly allocated hash table that accepts arbitrary objects as
+keys, and compares those keys with @code{eqv?}.  The keys are held
+weakly, except that booleans, characters, numbers, and interned
+symbols are held strongly.  The keys are effectively held weakly even
+if some of the data should hold some of the keys strongly.
 @end deffn
 
 @deffn procedure make-equal-hash-table [initial-size]
 @findex equal?
 Returns a newly allocated hash table that accepts arbitrary objects as
-keys, and compares those keys with @code{equal?}.  The keys are held
+keys, and compares those keys with @code{equal?}.  The keys and data are held
 strongly.  These hash tables are quite a bit slower than those made by
 @code{make-strong-eq-hash-table}.
 @end deffn
@@ -471,39 +498,104 @@ strongly.  These hash tables are quite a bit slower than those made by
 @deffn procedure make-string-hash-table [initial-size]
 @findex string=?
 Returns a newly allocated hash table that accepts character strings as
-keys, and compares them with @code{string=?}.  The keys are held
+keys, and compares them with @code{string=?}.  The keys and data are held
 strongly.
 @end deffn
 
-The next two procedures are used to create new hash-table constructors.
-All of the above hash table constructors, with the exception of
-@code{make-eqv-hash-table}, could have been created by calls to these
-``constructor-constructors''; see the examples below.
+The next procedure is used to create new hash-table constructors.  All
+of the above hash table constructors could have been created by calls
+to this ``constructor-constructor''; see the examples below.
 
-@deffn procedure strong-hash-table/constructor key-hash key=? [rehash-after-gc?]
-@deffnx procedure weak-hash-table/constructor key-hash key=? [rehash-after-gc?]
+@deffn procedure hash-table/constructor key-hash key=? rehash-after-gc? entry-type
 @cindex hashing, of key in hash table
 @cindex modulus, of hashing procedure
-Each of these procedures accepts two arguments and returns a hash-table
+This procedure accepts four arguments and returns a hash-table
 constructor.  The @var{key=?} argument is an equivalence predicate for
 the keys of the hash table.  The @var{key-hash} argument is a procedure
 that computes a hash number.  Specifically, @var{key-hash} accepts two
 arguments, a key and an exact positive integer (the @dfn{modulus}), and
 returns an exact non-negative integer that is less than the modulus.
 
-The optional argument @var{rehash-after-gc?}, if true, says that the
+The argument @var{rehash-after-gc?}, if true, says that the
 values returned by @var{key-hash} might change after a garbage
 collection.  If so, the hash-table implementation arranges for the table
 to be rehashed when necessary.  (@xref{Address Hashing}, for
 information about hash procedures that have this property.)  Otherwise,
 it is assumed that @var{key-hash} always returns the same value for the
-same arguments.  The default value of this argument is @code{#f}.
+same arguments.
 
-The constructors returned by @code{strong-hash-table/constructor} make
-hash tables that hold their keys strongly.  The constructors returned by
-@code{weak-hash-table/constructor} make hash tables that hold their keys
-weakly.
+The argument @var{entry-type} determines the strength with which the
+hash table will hold its keys and values.  It must be one of
+@code{hash-table-entry-type:strong},
+@code{hash-table-entry-type:key-weak},
+@code{hash-table-entry-type:datum-weak},
+@code{hash-table-entry-type:key/datum-weak},
+@code{hash-table-entry-type:key-ephemeral},
+@code{hash-table-entry-type:datum-ephemeral}, or
+@code{hash-table-entry-type:key&datum-ephemeral}.
 @end deffn
+
+@defvr variable hash-table-entry-type:strong
+The entry type for hash tables that hold both keys and data strongly.
+@end defvr
+
+@defvr variable hash-table-entry-type:key-weak
+An entry type for hash tables that hold keys weakly and data strongly.
+An entry of this type is a weak pair (@pxref{Weak Pairs}) whose weak
+(car) slot holds the key of the entry and whose strong (cdr) slot
+holds the datum of the entry.  If a key of such a hash table is
+garbage collected, the corresponding entry will be removed.  Note that
+if some datum holds some key strongly, the table will effectively hold
+that key strongly.
+@end defvr
+
+@defvr variable hash-table-entry-type:datum-weak
+An entry type for hash tables that hold keys strongly and data weakly.
+An entry of this type is a weak pair (@pxref{Weak Pairs}) whose weak
+(car) slot holds the datum of the entry and whose strong (cdr) slot
+holds the key of the entry.  If a datum of such a hash table is
+garbage collected, all corresponding entries will be removed.  Note that
+if some key holds some datum strongly, the table will effectively hold
+that datum strongly.
+@end defvr
+
+@defvr variable hash-table-entry-type:key/datum-weak
+The entry type for hash tables that hold both keys and data weakly.
+An entry of this type is a weak list, holding both the key and the
+datum in the weak (car) slot of weak pairs (@pxref{Weak Pairs}).  If
+either a key or datum of such a hash table is garbage collected, all
+corresponding entries will be removed.
+@end defvr
+
+@defvr variable hash-table-entry-type:key-ephemeral
+An entry type for hash tables that hold data ephemerally, keyed by the keys.
+An entry of this type is an ephemeron (@pxref{Ephemerons}) whose key
+is the key of the entry and whose datum is the datum of the entry.  If
+a key of such a hash table is garbage collected, the corresponding
+entry will be removed.  Note that the table holds all its keys weakly
+even if some data should hold some keys strongly.
+@end defvr
+
+@defvr variable hash-table-entry-type:datum-ephemeral
+An entry type for hash tables that hold keys ephemerally, keyed by the data.
+An entry of this type is an ephemeron (@pxref{Ephemerons}) whose key
+is the datum of the entry and whose datum is the key of the entry.  If
+a datum of such a hash table is garbage collected, all corresponding
+entries will be removed.  Note that the table holds all its data weakly
+even if some keys should hold some data strongly.
+@end defvr
+
+@defvr variable hash-table-entry-type:key&datum-ephemeral
+The entry type for hash tables that hold both keys and data
+ephemerally keyed on each other.  An entry of this type is a pair of
+ephemerons (@pxref{Ephemerons}), one holding the datum keyed by the
+key and the other holding the key keyed by the datum.  If both the key
+and the datum of any entry of such a hash table are garbage collected,
+the entry will be removed.  The table holds all its keys and data
+weakly itself, but will prevent any key or datum from being garbage
+collected if there are strong references to its datum or key,
+respectively.
+@end defvr
 
 Some examples showing how some standard hash-table constructors could have
 been defined:
@@ -517,27 +609,59 @@ been defined:
 @example
 @group
 (define make-weak-eq-hash-table
-  (weak-hash-table/constructor eq-hash-mod eq? #t))
+  (hash-table/constructor eq-hash-mod eq? #t
+    hash-table-entry-type:key-weak))
 
 (define make-equal-hash-table
-  (strong-hash-table/constructor equal-hash-mod equal? #t))
+  (hash-table/constructor equal-hash-mod equal? #t
+    hash-table-entry-type:strong))
 
 (define make-string-hash-table
-  (strong-hash-table/constructor string-hash-mod string=? #f))
+  (hash-table/constructor string-hash-mod string=? #f
+    hash-table-entry-type:strong))
 @end group
 @end example
 
 The following procedure is sometimes useful in conjunction with weak
-hash tables.  Normally it is not needed, because such hash tables clean
-themselves automatically as they are used.
+and ephemeral hash tables.  Normally it is not needed, because such
+hash tables clean themselves automatically as they are used.
 
 @deffn procedure hash-table/clean! hash-table
-If @var{hash-table} is a type of hash table that holds its @var{key}s
-weakly, this procedure recovers any space that was being used to record
-associations for objects that have been reclaimed by the garbage
-collector.  Otherwise, this procedure does nothing.  In either case, it
-returns an unspecified result.
+If @var{hash-table} is a type of hash table that holds its keys or
+data weakly or ephemerally, this procedure recovers any space that was
+being used to record associations for objects that have been reclaimed
+by the garbage collector.  Otherwise, this procedure does nothing.  In
+either case, it returns an unspecified result.
 @end deffn
+
+The following procedures are provided only for backward compatibility.
+They should be considered @strong{deprecated} and should not be used
+in new programs.
+
+@deffn procedure make-weak-eq-hash-table [initial-size]
+@deffnx procedure make-eq-hash-table [initial-size]
+@findex eq?
+These are aliases of @code{make-key-weak-eq-hash-table}.
+@end deffn
+
+@deffn procedure make-weak-eqv-hash-table [initial-size]
+@deffnx procedure make-eqv-hash-table [initial-size]
+@findex eq?
+These are aliases of @code{make-key-weak-eqv-hash-table}.
+@end deffn
+
+@deffn procedure strong-hash-table/constructor key-hash key=? [rehash-after-gc?]
+Like @code{hash-table/constructor} but always uses
+@code{hash-table-entry-type:strong}.  If @var{rehash-after-gc?}  is
+omitted, it defaults to @code{#f}.
+@end deffn
+
+@deffn procedure weak-hash-table/constructor key-hash key=? [rehash-after-gc?]
+Like @code{hash-table/constructor} but always uses
+@code{hash-table-entry-type:key-weak}.  If @var{rehash-after-gc?}  is
+omitted, it defaults to @code{#f}.
+@end deffn
+
 
 @node Basic Hash Table Operations, Resizing of Hash Tables, Construction of Hash Tables, Hash Tables
 @subsection Basic Hash Table Operations
@@ -579,9 +703,10 @@ bounded by a constant.
 
 @deffn procedure hash-table/count hash-table
 Returns the number of associations in @var{hash-table} as an exact
-non-negative integer.  If @var{hash-table} holds its keys weakly, this
+non-negative integer.  If @var{hash-table}
+does not hold its keys and data strongly, this
 is a conservative upper bound that may count some associations whose
-keys have recently been reclaimed by the garbage collector.  The average
+keys or data have recently been reclaimed by the garbage collector.  The average
 and worst-case times required by this operation are bounded by a
 constant.
 @end deffn
@@ -619,9 +744,10 @@ Returns an unspecified result.  @var{Procedure} must not modify
 @code{hash-table/remove!} to remove the association being processed.
 @end deffn
 
-The following procedure is an alternate form of @code{hash-table/get}
-that is useful in some situations.  Usually, @code{hash-table/get} is
-preferable because it is faster.
+The following procedure is useful when there is no sensible default
+value for @code{hash-table/get} and the caller must choose between
+different actions depending on whether there is a datum associated
+with the key.
 
 @deffn procedure hash-table/lookup hash-table key if-found if-not-found
 @var{If-found} must be a procedure of one argument, and
@@ -633,6 +759,43 @@ result yielded by the invoked procedure is returned as the result of
 @code{hash-table/lookup} (@code{hash-table/lookup} @emph{reduces} into
 the invoked procedure, i.e.@: calls it tail-recursively).  The average
 time required by this operation is bounded by a constant.
+@end deffn
+
+@deffn procedure hash-table/modify! hash-table key default procedure
+@var{Procedure} must be a procedure of one argument.  Applies
+@var{procedure} to the datum associated with @var{key} in
+@var{hash-table} or to @var{default} if there is no association for
+@var{key}, associates the result with @var{key}, and returns that
+same result.  @var{Procedure} must not use @var{hash-table}.  The average
+time required by this operation is bounded by a constant.
+@end deffn
+
+@c The reason that the procedure passed to hash-table/modify!  may not
+@c even use the hash table is that, e.g., hash-table/get may actually
+@c mutate the underlying table, because it may perform some deferred
+@c cleanup.  Specifically, if the table needs to be rehashed on GC, it
+@c is not actually rehashed when the garbage collector runs, but on
+@c the next access thereafter.  If the procedure given to
+@c hash-table/modify! accesses the hash table, and a garbage
+@c collection occurs after this procedure is invoked but before the
+@c (last) access it makes, the table may be rehashed, which may cause
+@c hash-table/modify! to insert the returned datum into the wrong
+@c bucket or into a dead hash table entry.  An analagous problem
+@c plagues weak and ephemeral tables; in this case, even if the table
+@c is not rehashed, accessing it after a GC may trigger a cleanup of
+@c entries whose keys or data have been garbage collected, which may
+@c trigger a resizing of the table and cause hash-table/modify!  to
+@c put its datum into the wrong place.  The same considerations apply
+@c to hash-table/intern!.
+
+@deffn procedure hash-table/intern! hash-table key get-default
+@var{Get-default} must be a procedure of no arguments.  Ensures that
+@var{hash-table} has an association for @var{key} and returns the
+associated datum.  If @var{hash-table} did not have a datum associated
+with @var{key}, @code{hash-table/intern!} applies @var{get-default} to
+zero arguments to generate one.  As with @code{hash-table/modify!},
+@var{get-default} must not use @var{hash-table}.  The average time
+required by this operation is bounded by a constant.
 @end deffn
 
 @node Resizing of Hash Tables, Address Hashing, Basic Hash Table Operations, Hash Tables

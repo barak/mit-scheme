@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -75,22 +75,13 @@ OS_initialize (void)
 {
   initialize_interruptable_extent ();
   {
-    if (option_force_interactive)
-      interactive = true;
-    else if (option_batch_mode)
+    interactive =
+      (option_force_interactive
+       || (isatty (STDIN_FILENO))
+       || (isatty (STDOUT_FILENO))
+       || (isatty (STDERR_FILENO)));
+    if (option_batch_mode)
       interactive = false;
-    else
-      interactive
-	= ((isatty (STDIN_FILENO))
-	   || (isatty (STDOUT_FILENO))
-	   || (isatty (STDERR_FILENO)));
-    /* If none of the stdio streams is a terminal, disassociate us
-       from the controlling terminal so that we're not affected by
-       keyboard interrupts or hangup signals.  However, if we're
-       running under Emacs we don't want to do this, because we want
-       to receive a hangup signal if Emacs dies. */
-    if ((!interactive) && (!option_emacs_subprocess))
-      UX_setsid ();
     /* The argument passed to `UX_ctty_initialize' says whether to
        permit interrupt control, i.e. whether to attempt to setup the
        keyboard interrupt characters. */

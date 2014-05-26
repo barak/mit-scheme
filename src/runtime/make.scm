@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -330,15 +330,13 @@ USA.
   (export 'NAME->PACKAGE)
   (export 'PACKAGE-SET-PATHNAME)
   (export 'PACKAGE/ADD-CHILD!)
-  (export 'PACKAGE/CHILD)
   (export 'PACKAGE/CHILDREN)
   (export 'PACKAGE/ENVIRONMENT)
   (export 'PACKAGE/NAME)
   (export 'PACKAGE/PARENT)
   (export 'PACKAGE/REFERENCE)
-  (export 'PACKAGE?)
-  (export 'SYSTEM-GLOBAL-PACKAGE))
-(package/add-child! system-global-package 'PACKAGE environment-for-package)
+  (export 'PACKAGE?))
+(package/add-child! (find-package '()) 'PACKAGE environment-for-package)
 
 (define packages-file
   (let ((name
@@ -584,7 +582,7 @@ USA.
 
 )
 
-(package/add-child! system-global-package 'USER user-initial-environment)
+(package/add-child! (find-package '()) 'USER user-initial-environment)
 ;; Might be better to do this sooner, to trap on floating-point
 ;; mistakes earlier in the cold load.
 (flo:set-environment! (flo:default-environment))

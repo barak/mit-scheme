@@ -1,0 +1,84 @@
+#| -*-Scheme-*-
+
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
+USA.
+
+|#
+
+;;;; C declarations for mhash-shim.so.
+
+(typedef MHASH (* MHASH_INSTANCE))
+(typedef hashid int)
+(typedef keygenid int)
+
+(extern int mhash_count)
+(extern (* char) mhash_get_hash_name (id hashid))
+(extern int mhash_get_block_size (id hashid))
+(extern int mhash_get_hash_pblock (id hashid))
+
+(extern int mhash_keygen_count)
+(extern (* uchar) mhash_get_keygen_name (id keygenid))
+(extern int mhash_get_keygen_salt_size (id keygenid))
+(extern int mhash_get_keygen_max_key_size (id keygenid))
+(extern int mhash_keygen_uses_salt (id keygenid))
+(extern int mhash_keygen_uses_count (id keygenid))
+(extern int mhash_keygen_uses_hash_algorithm (id keygenid))
+
+(extern MHASH mhash_init (type hashid))
+
+(extern void mhash_deinit (context MHASH) (digest (* void)))
+
+(extern void do_mhash
+	(thread MHASH)
+	(string (* (const char)))
+	(start int)
+	(end int))
+
+(extern void do_mhash_end
+	(context MHASH)
+	(string (* char))
+	(size int))
+
+(extern MHASH mhash_hmac_init
+	(type hashid)
+	(key (* void))
+	(keysize int)
+	(blocksize int))
+
+(extern int mhash_hmac_deinit (context MHASH) (digest (* void)))
+
+(extern void do_mhash_hmac_end
+	(context MHASH)
+	(string (* char))
+	(size int))
+
+(extern int do_mhash_keygen
+	(id keygenid)
+	(hashid1 hashid)
+	(hashid2 hashid)
+	(count uint)
+	(salt (* void))
+	(salt_size int)
+	(keyword (* char))
+	(keysize int)
+	(password (* uchar))
+	(passwordlen int))

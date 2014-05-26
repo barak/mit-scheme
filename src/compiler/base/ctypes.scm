@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -283,14 +283,9 @@ USA.
 
 ;;; Node Properties
 
-(define-integrable (node/subgraph-color node)
-  (cfg-node-get node node/subgraph-color-tag))
+(define-integrable node/subgraph-color node-subgraph-color)
 
-(define-integrable (set-node/subgraph-color! node color)
-  (cfg-node-put! node node/subgraph-color-tag color))
-
-(define node/subgraph-color-tag
-  "subgraph-color-tag")
+(define-integrable set-node/subgraph-color! set-node-subgraph-color!)
 
 (define-structure (subgraph-color
 		   (conc-name subgraph-color/)

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,7 +31,11 @@ USA.
 
 #define ASM_RESET_HOOK initialize_svm1
 
-#define COMPILER_REGBLOCK_N_FIXED 512
+#define COMPILER_REGBLOCK_N_TEMPS 256
+#define COMPILER_REGBLOCK_N_FIXED 14
+#define COMPILER_TEMP_SIZE 2
+/* COMPILER_TEMP_SIZE is NOT ((sizeof (double)) / (sizeof (SCHEME_OBJECT))).
+   It must not vary e.g. from 1 on x86-64 to 2 on i386. */
 
 typedef byte_t insn_t;
 

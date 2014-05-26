@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -25,16 +25,17 @@ USA.
 |#
 
 ;;;; Code to install syntax keywords in global environment
+;;; package: (runtime syntax definitions)
 
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (create-bindings system-global-environment))
+  (create-bindings (->syntactic-environment system-global-environment)))
 
-(define (create-bindings environment)
+(define (create-bindings senv)
 
   (define (def name item)
-    (syntactic-environment/define environment name item))
+    (syntactic-environment/define senv name item))
 
   (define (define-classifier name classifier)
     (def name (make-classifier-item classifier)))
@@ -44,9 +45,7 @@ USA.
   (define-classifier 'DEFINE-SYNTAX classifier:define-syntax)
   (define-classifier 'ER-MACRO-TRANSFORMER classifier:er-macro-transformer)
   (define-classifier 'LET-SYNTAX classifier:let-syntax)
-  (define-classifier 'LETREC classifier:letrec)
   (define-classifier 'LETREC-SYNTAX classifier:letrec-syntax)
-  (define-classifier 'LOCAL-DECLARE classifier:local-declare)
   (define-classifier 'NON-HYGIENIC-MACRO-TRANSFORMER
     classifier:non-hygienic-macro-transformer)
   (define-classifier 'RSC-MACRO-TRANSFORMER classifier:rsc-macro-transformer)

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -23,6 +23,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
+
+;; XXX Temporary kludge until we get 9.2 out.
+(if (not (microcode-type/name->code 'SEQUENCE))
+    (let ((environment (->environment '(RUNTIME MICROCODE-TABLES))))
+      (set! (access TYPE-ALIASES environment)
+            (cons '(SEQUENCE-2 SEQUENCE) (access TYPE-ALIASES environment)))))
 
 (load-option '*PARSER)			;for url.scm
 (fluid-let ((sf/default-syntax-table (->environment '(RUNTIME))))

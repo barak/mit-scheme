@@ -2,8 +2,8 @@
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute
-#     of Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014
+#     Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -80,15 +80,22 @@ OTHER_SUBDIRS="6001 compiler rcs runtime win32 xdoc microcode"
 
 # lib
 maybe_mkdir lib
-maybe_link lib/edwin ../edwin
 maybe_link lib/include ../microcode
-maybe_link lib/optiondb.scm ../etc/optiondb.scm
-maybe_link lib/runtime ../runtime
 maybe_link lib/mit-scheme.h ../microcode/pruxffi.h
+maybe_link lib/shim-config.scm ../microcode/shim-config.scm
+maybe_link lib/optiondb.scm ../etc/optiondb.scm
+
+maybe_link lib/compiler ../compiler
+maybe_link lib/cref ../cref
+maybe_link lib/edwin ../edwin
 maybe_link lib/ffi ../ffi
-maybe_link lib/ffi-test-shim.so ../ffi/ffi-test-shim.so
-maybe_link lib/ffi-test-types.bin ../ffi/ffi-test-types.bin
-maybe_link lib/ffi-test-const.bin ../ffi/ffi-test-const.bin
+maybe_link lib/imail ../imail
+maybe_link lib/runtime ../runtime
+maybe_link lib/sf ../sf
+maybe_link lib/sos ../sos
+maybe_link lib/ssp ../ssp
+maybe_link lib/star-parser ../star-parser
+maybe_link lib/xml ../xml
 
 maybe_link config.sub microcode/config.sub
 maybe_link config.guess microcode/config.guess

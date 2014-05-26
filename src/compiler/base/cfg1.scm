@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,20 +32,24 @@ USA.
 
 (define cfg-node-tag (make-vector-tag #f 'CFG-NODE #f))
 (define cfg-node? (tagged-vector/subclass-predicate cfg-node-tag))
-(define-vector-slots node 1 generation alist previous-edges)
+(define-vector-slots node 1 generation
+  subgraph-color potential-control-merge
+  alist previous-edges)
 
 (set-vector-tag-description!
  cfg-node-tag
  (lambda (node)
-   (descriptor-list node node generation alist previous-edges)))
+   (descriptor-list node node generation
+		    subgraph-color potential-control-merge
+		    alist previous-edges)))
 
 (define snode-tag (make-vector-tag cfg-node-tag 'SNODE #f))
 (define snode? (tagged-vector/subclass-predicate snode-tag))
-(define-vector-slots snode 4 next-edge)
+(define-vector-slots snode 6 next-edge)
 
 ;;; converted to a macro.
 ;;; (define (make-snode tag . extra)
-;;;   (list->vector (cons* tag #f '() '() #f extra)))
+;;;   (list->vector (cons* tag #f #f #f '() '() #f extra)))
 
 (set-vector-tag-description!
  snode-tag
@@ -55,11 +59,11 @@ USA.
 
 (define pnode-tag (make-vector-tag cfg-node-tag 'PNODE #f))
 (define pnode? (tagged-vector/subclass-predicate pnode-tag))
-(define-vector-slots pnode 4 consequent-edge alternative-edge)
+(define-vector-slots pnode 6 consequent-edge alternative-edge)
 
 ;;; converted to a macro.
 ;;; (define (make-pnode tag . extra)
-;;;   (list->vector (cons* tag #f '() '() #f #f extra)))
+;;;   (list->vector (cons* tag #f #f #f '() '() #f #f extra)))
 
 (set-vector-tag-description!
  pnode-tag

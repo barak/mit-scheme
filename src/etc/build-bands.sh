@@ -2,8 +2,8 @@
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute
-#     of Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014
+#     Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -26,13 +26,17 @@ set -e
 
 . etc/functions.sh
 
-FASL=`get_fasl_file`
+if [ ! -e lib/runtime.com ]; then
+  get_fasl_file
+  run_cmd_in_dir runtime \
+	../microcode/scheme --batch-mode --library ../lib --fasl "${FASL}" <<EOF
+(disk-save "../lib/runtime.com")
+EOF
+fi
 
-run_cmd_in_dir runtime ../microcode/scheme --library ../lib --heap 6000 \
-    --fasl "${FASL}" --batch-mode <<EOF
+run_cmd ./microcode/scheme --batch-mode --library lib --band runtime.com <<EOF
 (begin
-  (disk-save "../lib/runtime.com")
   (load-option (quote compiler))
   (load-option (quote edwin))
-  (disk-save "../lib/all.com"))
+  (disk-save "lib/all.com"))
 EOF

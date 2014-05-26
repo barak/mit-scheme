@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -350,6 +350,99 @@ USA.
 
 ;; Foldable operators primitives that are members of
 ;; combination/constant-folding-operators
+(define combination/constant-folding-operators
+  (map (lambda (name)
+	 (make-primitive-procedure name #t))
+       '(
+	 &*
+	 &+
+	 &-
+	 &/
+	 -1+
+	 1+
+	 ASCII->CHAR
+	 CELL?
+	 CHAR->ASCII
+	 CHAR->INTEGER
+	 CHAR-ASCII?
+	 CHAR-BITS
+	 CHAR-CODE
+	 CHAR-DOWNCASE
+	 CHAR-UPCASE
+	 COMPILED-CODE-ADDRESS->BLOCK
+	 COMPILED-CODE-ADDRESS->OFFSET
+	 DIVIDE-FIXNUM
+	 EQ?
+	 EQUAL-FIXNUM?
+	 FIXNUM-AND
+	 FIXNUM-ANDC
+	 FIXNUM-LSH
+	 FIXNUM-NOT
+	 FIXNUM-OR
+	 FIXNUM-QUOTIENT
+	 FIXNUM-REMAINDER
+	 FIXNUM-XOR
+	 FLONUM-ABS
+	 FLONUM-ACOS
+	 FLONUM-ADD
+	 FLONUM-ASIN
+	 FLONUM-ATAN
+	 FLONUM-ATAN2
+	 FLONUM-CEILING
+	 FLONUM-CEILING->EXACT
+	 FLONUM-COS
+	 FLONUM-DIVIDE
+	 FLONUM-EQUAL?
+	 FLONUM-EXP
+	 FLONUM-EXPT
+	 FLONUM-FLOOR
+	 FLONUM-FLOOR->EXACT
+	 FLONUM-GREATER?
+	 FLONUM-LESS?
+	 FLONUM-LOG
+	 FLONUM-MULTIPLY
+	 FLONUM-NEGATE
+	 FLONUM-NEGATIVE?
+	 FLONUM-POSITIVE?
+	 FLONUM-ROUND
+	 FLONUM-ROUND->EXACT
+	 FLONUM-SIN
+	 FLONUM-SQRT
+	 FLONUM-SUBTRACT
+	 FLONUM-TAN
+	 FLONUM-TRUNCATE
+	 FLONUM-TRUNCATE->EXACT
+	 FLONUM-ZERO?
+	 GCD-FIXNUM
+	 GREATER-THAN-FIXNUM?
+	 INDEX-FIXNUM?
+	 INTEGER->CHAR
+	 LESS-THAN-FIXNUM?
+	 MAKE-CHAR
+	 MAKE-NON-POINTER-OBJECT
+	 MINUS-FIXNUM
+	 MINUS-ONE-PLUS-FIXNUM
+	 MULTIPLY-FIXNUM
+	 NEGATIVE-FIXNUM?
+	 NEGATIVE?
+	 NOT
+	 NULL?
+	 OBJECT-TYPE
+	 OBJECT-TYPE?
+	 ONE-PLUS-FIXNUM
+	 PAIR?
+	 PLUS-FIXNUM
+	 POSITIVE-FIXNUM?
+	 POSITIVE?
+	 PRIMITIVE-PROCEDURE-ARITY
+	 ;; STRING->SYMBOL is a special case.  Strings can
+	 ;; be side-effected, but it is useful to be able to
+	 ;; constant fold this primitive anyway.
+	 STRING->SYMBOL
+	 STRING-LENGTH
+	 ZERO-FIXNUM?
+	 ZERO?
+	 )))
 
 (define (foldable-combination? operator operands)
   (and (constant? operator)
@@ -360,8 +453,8 @@ USA.
           ;; Check that the arguments are constant.
        (for-all? operands constant?)))
 
-;; An operator is reducable if we can safely rewrite its argument list.
-(define (reducable-operator? operator)
+;; An operator is reducible if we can safely rewrite its argument list.
+(define (reducible-operator? operator)
   (and (procedure? operator)
        ;; if the block is not safe, then random code can be
        ;; injected and it will expect to see all the arguments.
@@ -384,7 +477,7 @@ USA.
                                     (constant/value operator)
                                     (map constant/value operands)))
 
-        ((and (reducable-operator? operator)
+        ((and (reducible-operator? operator)
               (noisy-test sf:enable-argument-deletion? "Delete argument"))
          (call-with-values (lambda () (partition-operands operator operands))
            (lambda (new-argument-list new-operand-list other-operands)

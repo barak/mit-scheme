@@ -1,0 +1,17 @@
+The blowfish wrapper.
+
+This is a drop-in replacement for the bfish microcode module and
+runtime/blowfish.scm.  It is not part of the core build and can be
+built outside the core build tree in the customary way:
+
+    ./configure [--with-openssl=directory]...
+    make all check install
+
+The install target copies a shared library shim and compiled Scheme
+files into the system library path, and re-writes the optiondb.scm
+found there.  You can override the default command name "mit-scheme"
+(and thus the system library path) by setting MIT_SCHEME_EXE.
+
+To use: (load-option 'BLOWFISH) and import the bindings you want.
+They are not exported to the global environment because they would
+conflict with the exports from (runtime blowfish).

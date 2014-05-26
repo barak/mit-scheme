@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -44,7 +44,7 @@ USA.
 #endif
 
 #ifdef __APPLE__
-#  define SYSTEM_VARIANT "MacOSX"
+#  define SYSTEM_VARIANT "OS X"
 #endif
 
 #ifdef __bsdi__			/* works on bsdi 3.0 */
@@ -128,6 +128,13 @@ USA.
 
 #ifdef HAVE_SYS_MMAN_H
 #  include <sys/mman.h>
+#endif
+
+/* On Mac OS X/i386, we instruct the linker to reserve all the usable
+   low virtual address space for us, so we can safely use
+   mmap(MAP_FIXED) to map the heap.  */
+#if ((defined (__APPLE__)) && (defined (__IA32__)))
+#  define USE_MAP_FIXED 1
 #endif
 
 /* GNU C library defines environ if __USE_GNU is defined.  */
@@ -267,8 +274,8 @@ USA.
 #  endif
 #endif
 
-#ifdef HAVE_SYS_POLL_H
-#  include <sys/poll.h>
+#ifdef HAVE_POLL_H
+#  include <poll.h>
 #endif
 
 #if defined(HAVE_SOCKET) && defined(HAVE_GETHOSTBYNAME) && defined(HAVE_GETHOSTNAME)
@@ -294,6 +301,10 @@ USA.
 
 #ifdef HAVE_STROPTS_H
 #include <stropts.h>
+#endif
+
+#ifdef HAVE_UTIL_H
+#  include <util.h>
 #endif
 
 #include "intext.h"
@@ -480,7 +491,7 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #  endif
    extern char * getenv (const char *);
 #endif
-
+
 #define UX_abort abort
 #define UX_accept accept
 #define UX_access access
@@ -529,6 +540,8 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #define UX_open open
 #define UX_pause pause
 #define UX_pipe pipe
+#define UX_poll poll
+#define UX_pselect pselect
 #define UX_read read
 #define UX_readlink readlink
 #define UX_realloc realloc
@@ -649,6 +662,17 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #    define FD_CLR(n, p) ((*(p)) &= ~(1 << (n)))
 #    define FD_ISSET(n, p) (((*(p)) & (1 << (n))) != 0)
 #    define FD_ZERO(p) ((*(p)) = 0)
+#  endif
+#endif
+
+/* ppoll is Linux's newer name for what was called pollts on BSD.  */
+
+#ifdef HAVE_PPOLL
+#  define UX_ppoll ppoll
+#else
+#  ifdef HAVE_POLLTS
+#    define HAVE_PPOLL
+#    define UX_ppoll pollts
 #  endif
 #endif
 
@@ -777,11 +801,16 @@ extern int UX_terminal_set_state (int, Ttty_state *);
 #  define EMULATE_TCSETPGRP
 #endif
 
-/* In Darwin, setsid doesn't work in vforked processes,
-   so force the use of fork instead. */
 #ifdef __APPLE__
+   /* In Darwin, setsid doesn't work in vforked processes, so force
+      the use of fork instead. */
 #  undef UX_vfork
 #  define UX_vfork fork
+   /* Also, although OS X binds the symbol fdatasync in the C library,
+      there's no header file or man page, and the system call appears
+      to have a different argument structure.  */
+#  undef HAVE_FDATASYNC
+#  undef UX_fdatasync
 #endif
 
 #ifdef HAVE_SIGACTION

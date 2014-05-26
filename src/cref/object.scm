@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -59,8 +59,8 @@ USA.
   (files '())
   parent
   (children '())
-  (bindings (make-rb-tree eq? symbol<?) read-only #t)
-  (references (make-rb-tree eq? symbol<?) read-only #t)
+  (bindings '())
+  (references '())
   (links '()))
 
 (define-integrable (package/n-files package)
@@ -69,14 +69,21 @@ USA.
 (define-integrable (package/root? package)
   (null? (package/name package)))
 
+(define-integrable (package/find-reference package name)
+  (find-matching-item (package/references package)
+		      (lambda (ref) (eq? (reference/name ref) name))))
+
+(define-integrable (package/put-reference! package reference)
+  (set-package/references! package
+			   (cons reference (package/references package))))
+
 (define-integrable (package/find-binding package name)
-  (rb-tree/lookup (package/bindings package) name #f))
+  (find-matching-item (package/bindings package)
+		      (lambda (ref) (eq? (binding/name ref) name))))
 
-(define-integrable (package/sorted-bindings package)
-  (rb-tree/datum-list (package/bindings package)))
-
-(define-integrable (package/sorted-references package)
-  (rb-tree/datum-list (package/references package)))
+(define-integrable (package/put-binding! package binding)
+  (set-package/bindings! package
+			 (cons binding (package/bindings package))))
 
 (define-integrable (file-case/type file-case)
   (car file-case))
@@ -195,8 +202,17 @@ USA.
 (define (package<? x y)
   (symbol-list<? (package/name x) (package/name y)))
 
-(define (binding<? x y)
-  (symbol<? (binding/name x) (binding/name y)))
+(declare (integrate-operator name->string))
+(define (name->string name)
+  (if (interned-symbol? name)
+      (symbol-name name)
+      (write-to-string name)))
 
-(define (reference<? x y)
-  (symbol<? (reference/name x) (reference/name y)))
+(define-integrable (name<? x y)
+  (string<? (name->string x) (name->string y)))
+
+(define-integrable (binding<? x y)
+  (name<? (binding/name x) (binding/name y)))
+
+(define-integrable (reference<? x y)
+  (name<? (reference/name x) (reference/name y)))

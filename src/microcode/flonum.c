@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,6 +27,7 @@ USA.
 /* Floating Point Arithmetic */
 
 #include "scheme.h"
+#include "osscheme.h"		/* error_unimplemented_primitive -- foo */
 #include "prims.h"
 #include <errno.h>
 
@@ -79,6 +80,24 @@ DEFINE_PRIMITIVE ("FLONUM-DIVIDE", Prim_flonum_divide, 2, 2, 0)
     FLONUM_RESULT ((arg_flonum (1)) / denominator);
   }
 }
+
+DEFINE_PRIMITIVE ("FLONUM-MODULO", Prim_flonum_modulo, 2, 2, 0)
+#ifdef HAVE_FMOD
+{
+  PRIMITIVE_HEADER (2);
+  {
+    double denominator = (arg_flonum (2));
+    if (denominator == 0)
+      error_bad_range_arg (2);
+    FLONUM_RESULT (fmod ((arg_flonum (1)), denominator));
+  }
+}
+#else
+{
+  error_unimplemented_primitive ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+#endif
 
 DEFINE_PRIMITIVE ("FLONUM-NEGATE", Prim_flonum_negate, 1, 1, 0)
 {
@@ -169,10 +188,23 @@ DEFINE_PRIMITIVE ("FLONUM-LOG1P", Prim_flonum_log1p, 1, 1, 0)
 }
 #endif
 
+DEFINE_PRIMITIVE ("FLONUM-LOG", Prim_flonum_log, 1, 1, 0)
+{
+  double x;
+  double result;
+  PRIMITIVE_HEADER (1);
+  x = (arg_flonum (1));
+  if (! (x >= 0))
+    error_bad_range_arg (1);
+  errno = 0;
+  result = (log (x));
+  if ((errno != 0) && ((x != 0) || (errno != ERANGE)))
+    error_bad_range_arg (1);
+  FLONUM_RESULT (result);
+}
+
 DEFINE_PRIMITIVE ("FLONUM-EXP", Prim_flonum_exp, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (exp)
-DEFINE_PRIMITIVE ("FLONUM-LOG", Prim_flonum_log, 1, 1, 0)
-     RESTRICTED_TRANSCENDENTAL_FUNCTION (log, (x > 0))
 DEFINE_PRIMITIVE ("FLONUM-SIN", Prim_flonum_sin, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (sin)
 DEFINE_PRIMITIVE ("FLONUM-COS", Prim_flonum_cos, 1, 1, 0)

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -75,15 +75,18 @@ USA.
   (let ((table (make-unparser-table unparse/default)))
     (for-each (lambda (entry)
 		(unparser-table/set-entry! table (car entry) (cadr entry)))
-	      `((BIGNUM ,unparse/number)
+	      `((ASSIGNMENT ,unparse/assignment)
+		(BIGNUM ,unparse/number)
 		(CHARACTER ,unparse/character)
 		(COMPILED-ENTRY ,unparse/compiled-entry)
 		(COMPLEX ,unparse/number)
 		(CONSTANT ,unparse/constant)
+		(DEFINITION ,unparse/definition)
 		(ENTITY ,unparse/entity)
 		(EXTENDED-PROCEDURE ,unparse/compound-procedure)
 		(FLONUM ,unparse/flonum)
 		(INTERNED-SYMBOL ,unparse/interned-symbol)
+		(LAMBDA ,unparse/lambda)
 		(LIST ,unparse/pair)
 		(NEGATIVE-FIXNUM ,unparse/number)
 		(FALSE ,unparse/false)
@@ -180,7 +183,7 @@ USA.
 	      (*dispatch-table*
 	       (unparser-table/dispatch-vector
 		(let ((table
-		       (environment-lookup environment '*UNPARSER-TABLE*)))
+		       (repl-environment-value environment '*UNPARSER-TABLE*)))
 		  (guarantee-unparser-table table #f)
 		  table))))
     (*unparse-object object)))
@@ -292,15 +295,7 @@ USA.
     (EXTENDED-PROCEDURE . PROCEDURE)
     (PRIMITIVE . PRIMITIVE-PROCEDURE)
     (LEXPR . LAMBDA)
-    (EXTENDED-LAMBDA . LAMBDA)
-    (COMBINATION-1 . COMBINATION)
-    (COMBINATION-2 . COMBINATION)
-    (PRIMITIVE-COMBINATION-0 . COMBINATION)
-    (PRIMITIVE-COMBINATION-1 . COMBINATION)
-    (PRIMITIVE-COMBINATION-2 . COMBINATION)
-    (PRIMITIVE-COMBINATION-3 . COMBINATION)
-    (SEQUENCE-2 . SEQUENCE)
-    (SEQUENCE-3 . SEQUENCE)))
+    (EXTENDED-LAMBDA . LAMBDA)))
 
 (define (unparse/false object)
   (if (eq? object #f)
@@ -342,7 +337,7 @@ USA.
       (unparse-symbol-name (symbol-name symbol))))
 
 (define (unparse-keyword-name s)
-  (case (environment-lookup *environment* '*PARSER-KEYWORD-STYLE*)
+  (case (repl-environment-value *environment* '*PARSER-KEYWORD-STYLE*)
     ((PREFIX)
      (*unparse-char #\:)
      (unparse-symbol-name s))
@@ -357,15 +352,17 @@ USA.
 (define (unparse-symbol-name s)
   (if (or (string-find-next-char-in-set
 	   s
-	   (if (environment-lookup *environment*
-				   '*PARSER-CANONICALIZE-SYMBOLS?*)
+	   (if (repl-environment-value *environment*
+				       '*PARSER-CANONICALIZE-SYMBOLS?*)
 	       canon-symbol-quoted
 	       non-canon-symbol-quoted))
 	  (fix:= (string-length s) 0)
 	  (and (char-set-member? char-set/number-leaders (string-ref s 0))
 	       (string->number s))
 	  (and (fix:> (string-length s) 1)
-	       (looks-like-keyword? s)))
+	       (or (looks-special? s)
+		   (looks-like-keyword? s)))
+	  (string=? s "."))
       (begin
 	(*unparse-char #\|)
 	(let ((end (string-length s)))
@@ -385,8 +382,11 @@ USA.
 	(*unparse-char #\|))
       (*unparse-string s)))
 
+(define (looks-special? string)
+  (char=? (string-ref string 0) #\#))
+
 (define (looks-like-keyword? string)
-  (case (environment-lookup *environment* '*PARSER-KEYWORD-STYLE*)
+  (case (repl-environment-value *environment* '*PARSER-KEYWORD-STYLE*)
     ((PREFIX)
      (char=? (string-ref string 0) #\:))
     ((SUFFIX)
@@ -671,6 +671,21 @@ USA.
 	(usual-method))))
 
 ;;;; Miscellaneous
+
+(define (unparse/assignment assignment)
+  (*unparse-with-brackets 'ASSIGNMENT assignment
+    (lambda ()
+      (*unparse-object (assignment-name assignment)))))
+
+(define (unparse/definition definition)
+  (*unparse-with-brackets 'DEFINITION definition
+    (lambda ()
+      (*unparse-object (definition-name definition)))))
+
+(define (unparse/lambda lambda-object)
+  (*unparse-with-brackets 'LAMBDA lambda-object
+    (lambda ()
+      (*unparse-object (lambda-name lambda-object)))))
 
 (define (unparse/variable variable)
   (*unparse-with-brackets 'VARIABLE variable

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -125,19 +125,17 @@ USA.
 ;;(define-import instructions (compiler lap-syntaxer))
 
 (define (add-instruction! keyword assemblers)
-  (let ((entry (assq keyword instructions)))
-    (if (pair? entry)
-	(set-cdr! entry assemblers)
-	(set! instructions (cons (cons keyword assemblers) instructions)))))
+  (hash-table/put! instructions keyword assemblers)
+  keyword)
 
 (define (add-instruction-assembler! keyword assembler)
-  (let ((entry (assq keyword instructions)))
-    (if entry
-	(set-cdr! entry (cons assembler (cdr entry)))
-	(set! instructions (cons (list keyword assembler) instructions)))))
+  (let ((assemblers (hash-table/get instructions keyword #f)))
+    (if assemblers
+	(hash-table/put! instructions keyword (cons assembler assemblers))
+	(hash-table/put! instructions keyword (list assembler)))))
 
 (define (clear-instructions!)
-  (set! instructions '()))
+  (hash-table/clear! instructions))
 
 (define (init-assembler-instructions!)
   ;; Initialize the assembler's instruction database using the
@@ -264,9 +262,7 @@ USA.
 	  (and (= nbits 32)
 	       (let ((low #x-8000) (high #x7FFF))
 		 (and (<= low offset) (<= offset high)))))
-      (begin
-	(warn "Bit tensioner widened encoding" nbits offset)
-	(signed-integer->bit-string nbits offset))
+      (signed-integer->bit-string nbits offset)
       ;; Does not fit into a smaller number of bytes; no fixing necessary.
       offset))
 
@@ -423,6 +419,7 @@ USA.
 					'(INVALID-CODE CODING-TYPE)
 					standard-error-handler)))
     (named-lambda (coding-error code type)
+      (flush-output)
       (call-with-current-continuation
        (lambda (continuation)
 	 (with-restart 'CONTINUE "Continue with the next byte."

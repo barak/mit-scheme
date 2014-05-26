@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -353,12 +353,14 @@ USA.
     (else
      (error "flonum-branch!: Unknown predicate" predicate)))
   (LAP (UCOMIF S D ,source1 ,source2)))
-                                   
+
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (CONSTANT (? fp-value))))
   (cond ((not (flo:flonum? fp-value))
          (error "OBJECT->FLOAT: Not a floating-point value" fp-value))
-        ((flo:= fp-value 0.0)
+        ((and (flo:= fp-value 0.0)
+              ;; XXX Kludgey but expedient test for zero sign.
+              (not (flo:negative? (flo:atan2 fp-value -1.))))
          (let ((target (flonum-target-reference! target)))
            (LAP (XORF P D ,target ,target))))
         (else

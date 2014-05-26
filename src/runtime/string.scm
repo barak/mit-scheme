@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -153,6 +153,17 @@ USA.
     (let ((result (string-allocate size)))
       (%substring-move! string 0 size result 0)
       result)))
+
+(define (ascii-string-copy string)
+  (guarantee-string string 'ASCII-STRING-COPY)
+  (%ascii-string-copy string))
+
+(define (%ascii-string-copy string)
+  (let ((size (string-length string)))
+    (let ((result (string-allocate size)))
+      (and (%ascii-substring-move! string 0 size result 0)
+	   result))))
+
 
 (define (string-head! string end)
   (declare (no-type-checks) (no-range-checks))
@@ -162,19 +173,29 @@ USA.
 
 (define %string-head!
   (let ((reuse
-	 (lambda (string end)
+	 (named-lambda (%string-head! string end)
 	   (declare (no-type-checks) (no-range-checks))
 	   (let ((mask (set-interrupt-enables! interrupt-mask/none)))
 	     (if (fix:< end (string-length string))
 		 (begin
 		   (string-set! string end #\nul)
 		   (set-string-length! string end)))
-	     ((ucode-primitive primitive-object-set! 3)
-	      string
-	      0
-	      ((ucode-primitive primitive-object-set-type 2)
-	       (ucode-type manifest-nm-vector)
-	       (fix:+ 2 (fix:lsh end %octets->words-shift))))
+	     (let ((new-gc-length (fix:+ 2 (fix:lsh end %octets->words-shift)))
+		   (old-gc-length (system-vector-length string)))
+	       (let ((delta (fix:- old-gc-length new-gc-length)))
+		 (cond ((fix:= delta 1)
+			(system-vector-set! string new-gc-length #f))
+		       ((fix:> delta 1)
+			(system-vector-set!
+			 string new-gc-length
+			 ((ucode-primitive primitive-object-set-type 2)
+			  (ucode-type manifest-nm-vector) (fix:-1+ delta)))))
+		 (if (fix:> delta 0)
+		     ((ucode-primitive primitive-object-set! 3)
+		      string
+		      0
+		      ((ucode-primitive primitive-object-set-type 2)
+		       (ucode-type manifest-nm-vector) new-gc-length)))))
 	     (set-interrupt-enables! mask)
 	     string))))
     (if (compiled-procedure? reuse)
@@ -330,6 +351,79 @@ USA.
 		((fix:= n 2) (unrolled-move-right 2))
 		((fix:= n 1) (unrolled-move-right 1))))
       (fix:+ start2 n))))
+
+;;; Almost all symbols are ascii, so it is worthwhile to handle them
+;;; specially.  In this procedure, we `optimistically' move the
+;;; characters, but if we find any non-ascii characters, we
+;;; immediately return #F.  Success is signalled by returning the
+;;; second string.  NOTE that the second string will likely be mutated
+;;; in either case.
+(define (%ascii-substring-move! string1 start1 end1 string2 start2)
+  (let-syntax
+      ((unrolled-move-left
+	(sc-macro-transformer
+	 (lambda (form environment)
+	   environment
+	   (let ((n (cadr form)))
+	     `(LET ((CODE (VECTOR-8B-REF STRING1 START1)))
+		(AND (FIX:< CODE #x80)
+                     (BEGIN
+                       (VECTOR-8B-SET! STRING2 START2 CODE)
+                       ,(let loop ((i 1))
+                          (if (< i n)
+                              `(LET ((CODE (VECTOR-8B-REF STRING1 (FIX:+ START1 ,i))))
+                                 (AND (FIX:< CODE #x80)
+                                      (BEGIN
+                                        (VECTOR-8B-SET! STRING2 (FIX:+ START2 ,i) CODE)
+                                        ,(loop (+ i 1)))))
+                              'STRING2)))))))))
+       (unrolled-move-right
+	(sc-macro-transformer
+	 (lambda (form environment)
+	   environment
+	   (let ((n (cadr form)))
+	     `(LET ((CODE (VECTOR-8B-REF STRING1 (FIX:+ START1 ,(- n 1)))))
+		(AND (FIX:< CODE #x80)
+                     (BEGIN
+                       (VECTOR-8B-SET! STRING2 (FIX:+ START2 ,(- n 1)) CODE)
+                       ,(let loop ((i (- n 1)))
+                          (if (> i 0)
+                              `(LET ((CODE (VECTOR-8B-REF STRING1 (FIX:+ START1 ,(- i 1)))))
+                                 (AND (FIX:< CODE #x80)
+                                      (BEGIN
+                                        (VECTOR-8B-SET! STRING2 (FIX:+ START2 ,(- i 1)) CODE)
+                                        ,(loop (- i 1)))))
+                              'STRING2))))))))))
+    (let ((n (fix:- end1 start1)))
+      (if (or (not (eq? string2 string1)) (fix:< start2 start1))
+	  (cond ((fix:> n 4)
+		 (let loop ((i1 start1) (i2 start2))
+		   (if (fix:< i1 end1)
+		       (let ((code (vector-8b-ref string1 i1)))
+			 (and (fix:< code #x80)
+			      (begin
+				(vector-8b-set! string2 i2 code)
+				(loop (fix:+ i1 1) (fix:+ i2 1)))))
+		       string2)))
+		((fix:= n 4) (unrolled-move-left 4))
+		((fix:= n 3) (unrolled-move-left 3))
+		((fix:= n 2) (unrolled-move-left 2))
+		((fix:= n 1) (unrolled-move-left 1)))
+	  (cond ((fix:> n 4)
+		 (let loop ((i1 end1) (i2 (fix:+ start2 n)))
+		   (if (fix:> i1 start1)
+		       (let ((i1 (fix:- i1 1))
+			     (i2 (fix:- i2 1)))
+			 (let ((code (vector-8b-ref string1 i1)))
+			   (and (fix:< code #x80)
+				(begin
+				  (vector-8b-set! string2 i2 code)
+				  (loop i1 i2)))))
+		       string2)))
+		((fix:= n 4) (unrolled-move-right 4))
+		((fix:= n 3) (unrolled-move-right 3))
+		((fix:= n 2) (unrolled-move-right 2))
+		((fix:= n 1) (unrolled-move-right 1)))))))
 
 (define (string-append . strings)
   (%string-append strings))
@@ -1523,14 +1617,20 @@ USA.
        ((ucode-primitive allocate-external-string) n-bytes)
        n-bytes)))))
 
-(define (external-string-ref string index)
+(define-integrable (external-string-ref string index)
   (ascii->char
-   ((ucode-primitive read-byte-from-memory)
-    (+ (external-string-descriptor string) index))))
+   (external-string-byte-ref string index)))
 
-(define (external-string-set! string index char)
+(define-integrable (external-string-byte-ref string index)
+  ((ucode-primitive read-byte-from-memory)
+   (+ (external-string-descriptor string) index)))
+
+(define-integrable (external-string-set! string index char)
+  (external-string-byte-set! string index (char->ascii char)))
+
+(define-integrable (external-string-byte-set! string index byte)
   ((ucode-primitive write-byte-to-memory)
-   (char->ascii char)
+   byte
    (+ (external-string-descriptor string) index)))
 
 (define-integrable (external-substring-fill! string start end char)
@@ -1556,11 +1656,24 @@ USA.
 	((external-string? string) (external-string-ref string index))
 	(else (error:not-xstring string 'XSTRING-REF))))
 
+(define (xstring-byte-ref string index)
+  (cond ((string? string) (vector-8b-ref string index))
+	((wide-string? string) (wide-string-ref string index))
+	((external-string? string) (external-string-byte-ref string index))
+	(else (error:not-xstring string 'XSTRING-BYTE-REF))))
+
 (define (xstring-set! string index char)
   (cond ((string? string) (string-set! string index char))
 	((wide-string? string) (wide-string-set! string index char))
 	((external-string? string) (external-string-set! string index char))
 	(else (error:not-xstring string 'XSTRING-SET!))))
+
+(define (xstring-byte-set! string index byte)
+  (cond ((string? string) (vector-8b-set! string index byte))
+	((wide-string? string) (wide-string-set! string index byte))
+	((external-string? string)
+	 (external-string-byte-set! string index byte))
+	(else (error:not-xstring string 'XSTRING-BYTE-SET!))))
 
 (define (xstring-move! xstring1 xstring2 start2)
   (xsubstring-move! xstring1 0 (xstring-length xstring1) xstring2 start2))

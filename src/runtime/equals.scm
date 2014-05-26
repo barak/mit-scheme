@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,15 +37,13 @@ USA.
       (if (object-type? (object-type x) y)
 	  (and (not (fix:fixnum? x))
 	       (if (number? y)
-		   (and (= x y)
-			(boolean=? (exact? x) (exact? y)))
+		   (number:eqv? x y)
 		   (and (object-type? (ucode-type vector) y)
 			(fix:zero? (vector-length x))
 			(fix:zero? (vector-length y)))))
 	  (and (number? x)
 	       (number? y)
-	       (= x y)
-	       (boolean=? (exact? x) (exact? y))))))
+	       (number:eqv? x y)))))
 
 (define (equal? x y)
   (or (eq? x y)
@@ -64,8 +62,7 @@ USA.
 		((string? y)
 		 (string=? x y))
 		((number? y)
-		 (and (= x y)
-		      (boolean=? (exact? x) (exact? y))))
+		 (number:eqv? x y))
 		((cell? y)
 		 (equal? (cell-contents x) (cell-contents y)))
 		((bit-string? y)
@@ -79,5 +76,4 @@ USA.
 		(else #f))
 	  (and (number? x)
 	       (number? y)
-	       (= x y)
-	       (boolean=? (exact? x) (exact? y))))))
+	       (number:eqv? x y)))))

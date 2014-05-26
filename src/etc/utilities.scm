@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -64,8 +64,8 @@ USA.
 		    (write-rule port ".c.o")
 		    (write-command port
 				   (string-append "@" script-dir "/liarc-cc")
-				   "$*.o"
-				   "$*.c"
+				   "$@"
+				   "$<"
 				   (string-append "-I" include-dir))
 		    (newline port)
 		    (let ((init-root (string-append bundle "-init")))
@@ -108,31 +108,35 @@ USA.
 
 (define (bundle-files bundle)
   (let ((pkg-name (if (string=? bundle "star-parser") "parser" bundle)))
-    (cons (string-append pkg-name "-unx")
-	  (sort (let ((names
-		       (map ->namestring
-			    (cref/package-files
-			     (string-append bundle
-					    "/"
-					    pkg-name
-					    ".pkg")
-			     'unix))))
-		  (cond ((or (string=? bundle "6001")
-			     (string=? bundle "cref")
-			     (string=? bundle "runtime")
-			     (string=? bundle "sf"))
-			 (cons "make" names))
-			((string=? bundle "compiler")
-			 (cons* (compiler-make-file)
-				"base/make"
-				names))
-			((string=? bundle "edwin")
-			 (cons* "make"
-				"edwin"
-				"rename"
-				names))
-			(else names)))
-		string<?))))
+    (append
+     (map (lambda (os-suffix)
+	    (string-append pkg-name "-" os-suffix))
+	  ;; XXX Need them all to process other package descriptions.
+	  '("os2" "unx" "w32"))
+     (sort (let ((names
+		  (map ->namestring
+		       (cref/package-files
+			(string-append bundle
+				       "/"
+				       pkg-name
+				       ".pkg")
+			'unix))))
+	     (cond ((or (string=? bundle "6001")
+			(string=? bundle "cref")
+			(string=? bundle "runtime")
+			(string=? bundle "sf"))
+		    (cons "make" names))
+		   ((string=? bundle "compiler")
+		    (cons* (compiler-make-file)
+			   "base/make"
+			   names))
+		   ((string=? bundle "edwin")
+		    (cons* "make"
+			   "edwin"
+			   "rename"
+			   names))
+		   (else names)))
+	   string<?))))
 
 (define (compiler-make-file)
   (string-append

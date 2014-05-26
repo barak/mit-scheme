@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -492,14 +492,8 @@ USA.
 		    (do-expr name (definition-value expr)))))
 	   (LAMBDA
 	    ,(lambda (name expr)
-	       (lambda-components expr
-		 (lambda (lname required optional rest auxiliary decls body)
-		   lname decls
-		   (and (not (or (memq name required)
-				 (memq name optional)
-				 (eq? name rest)
-				 (memq name auxiliary)))
-			(do-expr name body))))))
+	       (and (not (memq name (lambda-bound expr)))
+		    (do-expr name (lambda-body expr)))))
 	   (SEQUENCE
 	    ,(lambda (name expr)
 	       (do-exprs name (sequence-actions expr))))
@@ -508,6 +502,7 @@ USA.
 	       (eq? name (variable-name expr)))))))
        (illegal (lambda (expr) (error "Illegal expression:" expr))))
     do-expr))
+
 
 (define (parse-specialized-lambda-list bvl)
   (letrec

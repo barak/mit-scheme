@@ -77,9 +77,9 @@ fasload.o: fasload.c bignum.h bkpt.h cmpgc.h cmpint.h cmpintmd-config.h \
 findprim.o: findprim.c cmpintmd-config.h config.h confshared.h
 fixnum.o: fixnum.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
-	  fixobj.h gc.h interp.h intrpt.h memmag.h mul.c object.h obstack.h \
-	  outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h \
-	  types.h
+	  fixnum.h fixobj.h gc.h interp.h intrpt.h memmag.h mul.c object.h \
+	  obstack.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
+	  stack.h types.h
 floenv.o: floenv.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
 	  fixobj.h floenv.h gc.h interp.h intrpt.h memmag.h object.h \
@@ -87,8 +87,9 @@ floenv.o: floenv.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  scode.h sdata.h stack.h types.h
 flonum.o: flonum.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
-	  fixobj.h gc.h interp.h intrpt.h memmag.h object.h obstack.h outf.h \
-	  prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h types.h
+	  fixobj.h gc.h interp.h intrpt.h memmag.h object.h obstack.h os.h \
+	  osscheme.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
+	  stack.h types.h
 gcloop.o: gcloop.c cmpgc.h cmpint.h cmpintmd-config.h cmpintmd.h config.h \
 	  confshared.h fasl.h gc.h gccode.h object.h os.h ostop.h outf.h \
 	  sdata.h types.h
@@ -304,9 +305,9 @@ string.o: string.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h types.h
 svm1-interp.o: svm1-interp.c bignum.h bkpt.h cmpint.h cmpintmd-config.h \
 	  cmpintmd.h cmpintmd/svm1.h config.h confshared.h const.h critsec.h \
-	  dstack.h errors.h extern.h fixobj.h gc.h interp.h intrpt.h memmag.h \
-	  object.h obstack.h outf.h prim.h returns.h scheme.h scode.h sdata.h \
-	  stack.h svm1-defns.h types.h
+	  dstack.h errors.h extern.h fixnum.h fixobj.h gc.h interp.h intrpt.h \
+	  memmag.h object.h obstack.h outf.h prim.h returns.h scheme.h \
+	  scode.h sdata.h stack.h svm1-defns.h types.h
 syntax.o: syntax.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h edwin.h errors.h \
 	  extern.h fixobj.h gc.h interp.h intrpt.h memmag.h object.h \

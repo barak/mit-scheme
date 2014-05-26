@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -336,7 +336,6 @@ fasdump_table (void)
       (GCT_TRANSPORT_WORDS ((&table))) = fasdump_transport_words;
 
       (GCT_ENTRY ((&table), TC_PRIMITIVE)) = handle_primitive;
-      (GCT_ENTRY ((&table), TC_PCOMB0)) = handle_primitive;
       (GCT_ENTRY ((&table), TC_MANIFEST_CLOSURE)) = handle_manifest_closure;
       (GCT_ENTRY ((&table), TC_LINKAGE_SECTION)) = handle_linkage_section;
       (GCT_ENTRY ((&table), TC_INTERNED_SYMBOL)) = handle_symbol;
@@ -548,10 +547,11 @@ When the file is reloaded, PROCEDURE is called with an argument of #F.")
     SCHEME_OBJECT comb;
     SCHEME_OBJECT root;
 
-    comb = (MAKE_POINTER_OBJECT (TC_COMBINATION_1, to));
-    (to[COMB_1_FN]) = (ARG_REF (1));
-    (to[COMB_1_ARG_1]) = SHARP_F;
-    to += 2;
+    comb = (MAKE_POINTER_OBJECT (TC_COMBINATION, to));
+    (to[COMB_VECTOR_HEADER]) = MAKE_OBJECT(TC_MANIFEST_VECTOR, 2);
+    (to[COMB_FN_SLOT]) = (ARG_REF (1));
+    (to[COMB_ARG_1_SLOT]) = SHARP_F;
+    to += 3;
 
     root = (MAKE_POINTER_OBJECT (TC_LIST, to));
     (*to++) = comb;

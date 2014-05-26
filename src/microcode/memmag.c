@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -266,6 +266,10 @@ the primitive GC daemons before returning.")
 
   ENTER_CRITICAL_SECTION ("garbage collector");
 
+#ifdef ENABLE_DEBUGGING_TOOLS
+  if (GC_Debug == true) verify_heap ();
+#endif
+
   open_tospace (heap_start);
   initialize_weak_chain ();
   ephemeron_count = 0;
@@ -326,7 +330,6 @@ void
 std_gc_pt2 (void)
 {
   SCHEME_OBJECT * p = (get_newspace_ptr ());
-  OS_free_pages (heap_start, heap_end);
   (void) save_tospace (save_tospace_copy, 0);
   Free = p;
 

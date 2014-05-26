@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -279,7 +279,20 @@ USA.
    (let ((value (get-environment-variable "MITSCHEME_INF_DIRECTORY")))
      (if value
 	 (pathname-as-directory value)
-	 (system-library-directory-pathname)))))
+	 (or (%find-library-directory pathname)
+	     (system-library-directory-pathname))))))
+
+(define (%find-library-directory pathname)
+  (let ((dir (pathname-directory pathname)))
+    (or (and (pair? dir)
+	     (eq? 'RELATIVE (car dir))
+	     (pair? (cdr dir))
+	     (string? (cadr dir))
+	     (let ((libdir (system-library-directory-pathname (cadr dir))))
+	       (and libdir
+		    (pathname-new-directory libdir
+					    (except-last-pair
+					     (pathname-directory libdir)))))))))
 
 (define-integrable (dbg-block/layout-first-offset block)
   (let ((layout (dbg-block/layout block)))

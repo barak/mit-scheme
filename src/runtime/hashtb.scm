@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1168,6 +1168,7 @@ USA.
 (define equal-hash-table-type)
 (define key-ephemeral-eq-hash-table-type)
 (define key-weak-eq-hash-table-type)
+(define key-ephemeral-eqv-hash-table-type)
 (define key-weak-eqv-hash-table-type)
 (define string-hash-table-type)
 (define strong-eq-hash-table-type)
@@ -1200,6 +1201,8 @@ USA.
 	  (open-type! eq-hash-mod eq? #t hash-table-entry-type:key-weak))
     (set! key-weak-eqv-hash-table-type
 	  (make eqv-hash-mod eqv? #t hash-table-entry-type:key-weak))
+    (set! key-ephemeral-eqv-hash-table-type
+	  (make eqv-hash-mod eqv? #t hash-table-entry-type:key-ephemeral))
     (set! string-hash-table-type
 	  (make string-hash-mod string=? #t hash-table-entry-type:strong))
     (set! strong-eq-hash-table-type	;Open-coded
@@ -1211,6 +1214,7 @@ USA.
 (define make-equal-hash-table)
 (define make-key-ephemeral-eq-hash-table)
 (define make-key-weak-eq-hash-table)
+(define make-key-ephemeral-eqv-hash-table)
 (define make-key-weak-eqv-hash-table)
 (define make-string-hash-table)
 (define make-strong-eq-hash-table)
@@ -1225,6 +1229,7 @@ USA.
     ;; This is done above.
     ;; (init make-key-ephemeral-eq-hash-table key-ephemeral-eq-hash-table-type)
     (init make-key-weak-eq-hash-table key-weak-eq-hash-table-type)
+    (init make-key-ephemeral-eqv-hash-table key-ephemeral-eqv-hash-table-type)
     (init make-key-weak-eqv-hash-table key-weak-eqv-hash-table-type)
     (init make-string-hash-table string-hash-table-type)
     (init make-strong-eq-hash-table strong-eq-hash-table-type)

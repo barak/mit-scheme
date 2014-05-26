@@ -1,0 +1,304 @@
+# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014
+#     Massachusetts Institute of Technology
+#
+# This file is part of MIT/GNU Scheme.
+#
+# MIT/GNU Scheme is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# MIT/GNU Scheme is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with MIT/GNU Scheme; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
+
+# **** BEGIN BOILERPLATE ****
+
+SHELL = @SHELL@
+
+@SET_MAKE@
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+VPATH = @srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datarootdir = @datarootdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
+oldincludedir = /usr/include
+
+DESTDIR =
+top_builddir = @top_builddir@
+
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+
+LN_S = @LN_S@
+ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+mkinstalldirs = $(SHELL) $(top_srcdir)/microcode/mkinstalldirs
+
+# **** END BOILERPLATE ****
+
+MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
+
+HOST_COMPILER = $(HOST_TOOLCHAIN)
+HOST_RUNTIME = '$(MIT_SCHEME_EXE)' --batch-mode --band runtime.com
+HOST_SYNTAXER = '$(MIT_SCHEME_EXE)' --batch-mode --band runtime.com \
+	--eval '(load-option (quote CREF))' \
+	--eval '(load-option (quote SF))'
+HOST_TOOLCHAIN = '$(MIT_SCHEME_EXE)' --batch-mode \
+	--eval '(load-option (quote CREF))'
+
+# XXX Temporary kludge until we get 9.2 out.  Replace by HOST_RUNTIME.
+KLUDGEROUS_RUNTIME = ((echo '(cd "..")' && cat) | (cd runtime && \
+	'$(MIT_SCHEME_EXE)' --batch-mode --fasl make.com --library "../lib"))
+
+SUBDIRS = compiler cref runtime sf star-parser
+
+.PHONY: all
+all: tools/compiler.com
+all: tools/syntaxer.com
+
+.PHONY: allclean
+allclean: all
+	@for d in $(SUBDIRS); do (cd $$d && sh Clean.sh clean); done
+
+# XXX This clean target is a cop-out.
+.PHONY: clean
+clean:
+	@for d in $(SUBDIRS); do (cd $$d && sh Clean.sh clean); done
+	-rm -rf tools/saved-objects
+	-rm -f tools/compiler.com
+	-rm -f tools/syntaxer.com
+
+.PHONY: save
+save:
+	@echo 'Saving tools objects...'
+	@rm -rf tools/saved-objects && \
+	mkdir tools/saved-objects && \
+	( \
+	  find $(SUBDIRS) -type f \
+	    \( \
+	      -name '*.bci' -o \
+	      -name '*.bin' -o \
+	      -name '*.c' -o \
+	      -name '*.com' -o \
+	      -name '*.crf' -o \
+	      -name '*.ext' -o \
+	      -name '*.fre' -o \
+	      -name '*.o' -o \
+	      -name '*.pkd' -o \
+	      -name '*.so' -o \
+	      -false \
+	    \) \
+	    -print0 \
+	  | pax -rw -pe -l -v -d -0 tools/saved-objects/. \
+	) || { rm -rf tools/saved-objects; exit 1; }
+
+.PHONY: restore
+restore:
+	@echo 'Restoring tools saved-objectsects...'
+	@if ! test -d tools/saved-objects; then exit 1; fi && \
+	(cd tools/saved-objects && pax -rw -pe -v . ../../.)
+
+tools/compiler.com: tools/syntaxer.com
+tools/compiler.com: compile-cross-compiler
+tools/compiler.com: compile-cross-cref
+tools/compiler.com: compile-cross-sf
+tools/compiler.com: compile-kludgerous-star-parser
+tools/compiler.com: compile-kludgerous-runtime
+	(echo '(begin' && \
+	 echo '  (with-working-directory-pathname "cref"' && \
+	 echo '    (lambda () (load "make")))' && \
+	 echo '  (with-working-directory-pathname "sf"' && \
+	 echo '    (lambda () (load "make")))' && \
+	 echo '  (with-working-directory-pathname "star-parser"' && \
+	 echo '    (lambda () (load "load")))' && \
+	 echo '  (with-working-directory-pathname "compiler"' && \
+	 echo '    (lambda () (load "make")))' && \
+	 echo '  (disk-save "$@"))') \
+	| $(KLUDGEROUS_RUNTIME)
+
+tools/syntaxer.com: compile-cross-cref
+tools/syntaxer.com: compile-cross-sf
+tools/syntaxer.com: compile-kludgerous-star-parser
+tools/syntaxer.com: compile-kludgerous-runtime
+	(echo '(begin' && \
+	 echo '  (with-working-directory-pathname "cref"' && \
+	 echo '    (lambda () (load "make")))' && \
+	 echo '  (with-working-directory-pathname "sf"' && \
+	 echo '    (lambda () (load "make")))' && \
+	 echo '  (with-working-directory-pathname "star-parser"' && \
+	 echo '    (lambda () (load "load")))' && \
+	 echo '  (disk-save "$@"))') \
+	| $(KLUDGEROUS_RUNTIME)
+
+# Compiler (LIAR)
+
+.PHONY: compile-cross-compiler
+compile-cross-compiler: compile-cross-compiler-back
+compile-cross-compiler: compile-cross-compiler-base
+compile-cross-compiler: compile-cross-compiler-fggen
+compile-cross-compiler: compile-cross-compiler-fgopt
+compile-cross-compiler: compile-cross-compiler-machine
+compile-cross-compiler: compile-cross-compiler-rtlbase
+compile-cross-compiler: compile-cross-compiler-rtlgen
+compile-cross-compiler: compile-cross-compiler-rtlopt
+
+.PHONY: compile-cross-compiler-back
+compile-cross-compiler-back: syntax-cross-compiler
+	echo '(compile-directory "compiler/back")' | $(HOST_COMPILER)
+
+.PHONY: compile-cross-compiler-base
+compile-cross-compiler-base: syntax-cross-compiler
+	echo '(compile-directory "compiler/base")' | $(HOST_COMPILER)
+
+.PHONY: compile-cross-compiler-fggen
+compile-cross-compiler-fggen: syntax-cross-compiler
+	echo '(compile-directory "compiler/fggen")' | $(HOST_COMPILER)
+
+.PHONY: compile-cross-compiler-fgopt
+compile-cross-compiler-fgopt: syntax-cross-compiler
+	echo '(compile-directory "compiler/fgopt")' | $(HOST_COMPILER)
+
+.PHONY: compile-cross-compiler-machine
+compile-cross-compiler-machine: syntax-cross-compiler
+	echo '(compile-directory "compiler/machine")' | $(HOST_COMPILER)
+
+.PHONY: compile-cross-compiler-rtlbase
+compile-cross-compiler-rtlbase: syntax-cross-compiler
+	echo '(compile-directory "compiler/rtlbase")' | $(HOST_COMPILER)
+
+.PHONY: compile-cross-compiler-rtlgen
+compile-cross-compiler-rtlgen: syntax-cross-compiler
+	echo '(compile-directory "compiler/rtlgen")' | $(HOST_COMPILER)
+
+.PHONY: compile-cross-compiler-rtlopt
+compile-cross-compiler-rtlopt: syntax-cross-compiler
+	echo '(compile-directory "compiler/rtlopt")' | $(HOST_COMPILER)
+
+# Must use HOST_SYNTAXER here because compiler.sf's (and, more
+# generally, CREF's) host/target distinction is bollocksed up, and will
+# do the wrong thing if there is already a compiler loaded into the
+# image.
+.PHONY: syntax-cross-compiler
+@IF_SVM@syntax-cross-compiler: compiler/machines/svm/assembler-db.scm
+syntax-cross-compiler: cref-cross-compiler
+	(echo '(with-working-directory-pathname "compiler"' && \
+	 echo '  (lambda () (load "compiler.sf")))') \
+	| $(HOST_SYNTAXER)
+
+compiler/machines/svm/assembler-db.scm:
+	(cd compiler/machines/svm && \
+	 '$(MIT_SCHEME_EXE)' --batch-mode --load compile-assembler </dev/null)
+
+.PHONY: cref-cross-compiler
+cref-cross-compiler: cref-cross-cref
+cref-cross-compiler: cref-cross-sf
+cref-cross-compiler: cref-kludgerous-runtime
+	(echo '(with-working-directory-pathname "compiler"' && \
+	 echo '  (lambda ()' && \
+	 echo '    (cref/generate-trivial-constructor "compiler")))') \
+	| $(HOST_SYNTAXER)
+
+# CREF
+
+.PHONY: compile-cross-cref
+compile-cross-cref: syntax-cross-cref
+	(echo '(with-working-directory-pathname "cref"' && \
+	 echo '  (lambda () (load "cref.cbf")))') \
+	| $(HOST_COMPILER)
+
+.PHONY: syntax-cross-cref
+syntax-cross-cref: cref-cross-cref
+	(echo '(with-working-directory-pathname "cref"' && \
+	 echo '  (lambda () (load "cref.sf")))') \
+	| $(HOST_SYNTAXER)
+
+.PHONY: cref-cross-cref
+cref-cross-cref: cref-kludgerous-runtime
+	(echo '(with-working-directory-pathname "cref"' && \
+	 echo '  (lambda ()' && \
+	 echo '    (cref/generate-trivial-constructor "cref")))') \
+	| $(HOST_SYNTAXER)
+
+# SF
+
+.PHONY: compile-cross-sf
+compile-cross-sf: syntax-cross-sf
+	(echo '(with-working-directory-pathname "sf"' && \
+	 echo '  (lambda () (load "sf.cbf")))') \
+	| $(HOST_COMPILER)
+
+.PHONY: syntax-cross-sf
+syntax-cross-sf: cref-cross-sf
+	(echo '(with-working-directory-pathname "sf"' && \
+	 echo '  (lambda () (load "sf.sf")))') \
+	| $(HOST_SYNTAXER)
+
+.PHONY: cref-cross-sf
+cref-cross-sf: cref-kludgerous-runtime
+	(echo '(with-working-directory-pathname "sf"' && \
+	 echo '  (lambda ()' && \
+	 echo '    (cref/generate-trivial-constructor "sf")))') \
+	| $(HOST_SYNTAXER)
+
+# Kludges
+
+# XXX This is a kludge that should be abolished.  The compiler should
+# be able to load and run macros for the target even if we are cross-
+# compiling, but currently that's not doable.
+.PHONY: compile-kludgerous-star-parser
+compile-kludgerous-star-parser: cref-kludgerous-runtime
+	(echo '(with-working-directory-pathname "star-parser"' && \
+	 echo '  (lambda () (load "compile")))') \
+	| $(HOST_TOOLCHAIN)
+
+# XXX This is a mega-kludge that should be abolished.  Parser.pkg has
+# (global-definitions "../../runtime"), which should refer to the
+# host's runtime packaging -- but that doesn't get installed anywhere!
+# So instead we pretend it refers to the target's runtime packaging
+# (which may be completely wrong for something we want to load into the
+# host).
+.PHONY: cref-kludgerous-runtime
+cref-kludgerous-runtime:
+	(echo '(with-working-directory-pathname "runtime"' && \
+	 echo '  (lambda ()' && \
+	 echo '    (cref/generate-trivial-constructor "runtime")))') \
+	| $(HOST_TOOLCHAIN)
+
+# XXX Temporary kludge until we get 9.2 out.  Get rid of
+# compile-kludgerous-runtime and syntax-kludgerous-runtime when that
+# happens.
+.PHONY: compile-kludgerous-runtime
+compile-kludgerous-runtime: syntax-kludgerous-runtime
+	(echo '(with-working-directory-pathname "runtime"' && \
+	 echo '  (lambda () (load "runtime.cbf")))') \
+	| $(HOST_TOOLCHAIN)
+
+.PHONY: syntax-kludgerous-runtime
+syntax-kludgerous-runtime: cref-kludgerous-runtime
+	(echo '(with-working-directory-pathname "runtime"' && \
+	 echo '  (lambda () (load "runtime.sf")))') \
+	| $(HOST_TOOLCHAIN)

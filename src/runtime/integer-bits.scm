@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -183,3 +183,36 @@ USA.
   (do ((bits bits (cdr bits))
        (integer 0 (bitwise-ior (shift-left integer 1) (if (car bits) 1 0))))
       ((not (pair? bits)) integer)))
+
+;;; NetBSD-style bit field operations.  We desperately need some
+;;; constant folding for these...
+;;;
+;;;   (define frotz-field:fidgets (bits 0 4))
+;;;   (define frotz-field:widgets (bits 5 7))
+;;;
+;;;   (define (frotz-fidgets frotz)
+;;;     (shiftout frotz frotz-field:fidgets))
+;;;
+;;;   (define (frotz-widgets frotz)
+;;;     (shiftout frotz frotz-field:widgets))
+;;;
+;;;   (define (make-frotz fidgets widgets)
+;;;     (bitwise-ior (shiftin fidgets frotz-field:fidgets)
+;;;                  (shiftin widgets frotz-field:widgets)))
+
+(define (bit n)
+  (shift-left 1 n))
+
+(define (bits n m)
+  (define (%bits n m)
+    (bit-mask (- (+ m 1) n) n))
+  (if (<= n m)
+      (%bits n m)
+      (%bits m n)))
+
+(define (shiftout x mask)
+  (shift-right (bitwise-and x mask) (first-set-bit mask)))
+
+(define (shiftin x mask)
+  ;; (bitwise-and ... mask)?
+  (shift-left x (first-set-bit mask)))

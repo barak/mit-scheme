@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -227,30 +227,14 @@ USA.
     typed))
 
 (define (copy-SEQUENCE-object obj)
-  (cond ((object-type? (ucode-type SEQUENCE-2) obj)
-	 (%%copy-pair (ucode-type SEQUENCE-2) obj))
-	((object-type? (ucode-type SEQUENCE-3) obj)
-	 (%%copy-triple (ucode-type SEQUENCE-3) obj))
-	(else
-	 (error "copy-SEQUENCE-object: Unknown type" obj))))
+  (if (object-type? (ucode-type SEQUENCE) obj)
+      (%%copy-pair (ucode-type SEQUENCE) obj)
+      (error "copy-SEQUENCE-object: Unknown type" obj)))
 
 (define (copy-COMBINATION-object obj)
-  (cond ((object-type? (ucode-type combination) obj)
-	 (%%copy-vector (ucode-type combination) obj))
-	((object-type? (ucode-type combination-1) obj)
-	 (%%copy-pair (ucode-type combination-1) obj))
-	((object-type? (ucode-type combination-2) obj)
-	 (%%copy-triple (ucode-type combination-2) obj))
-	((object-type? (ucode-type primitive-combination-0) obj)
-	 obj)					; Non-pointer
-	((object-type? (ucode-type primitive-combination-1) obj)
-	 (%%copy-pair (ucode-type primitive-combination-1) obj))
-	((object-type? (ucode-type primitive-combination-2) obj)
-	 (%%copy-triple (ucode-type primitive-combination-2) obj))
-	((object-type? (ucode-type primitive-combination-3) obj)
-	 (%%copy-vector (ucode-type primitive-combination-3) obj))
-	(else
-	 (error "copy-COMBINATION-object: Unknown type" obj))))
+  (make-combination
+   (copy-object (combination-operator obj))
+   (map copy-object (combination-operands obj))))
 
 (define (copy-LAMBDA-object obj)
   (cond ((object-type? (ucode-type lambda) obj)

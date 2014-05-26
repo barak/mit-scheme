@@ -8,8 +8,7 @@
 * Records::                     
 * Promises::                    
 * Streams::                     
-* Weak Pairs::                  
-* Ephemerons::
+* Weak References::                  
 @end menu
 
 @node Booleans, Symbols, Miscellaneous Datatypes, Miscellaneous Datatypes
@@ -740,7 +739,7 @@ value of a promise is forced by primitive procedures like @code{car} and
 @end example
 @end itemize
 
-@node Streams, Weak Pairs, Promises, Miscellaneous Datatypes
+@node Streams, Weak References, Promises, Miscellaneous Datatypes
 @section Streams
 
 @cindex stream (defn)
@@ -858,16 +857,70 @@ invoking @var{procedure} with the corresponding elements of the
 @var{stream}s as its arguments.
 @end deffn
 
-@node Weak Pairs, Ephemerons, Streams, Miscellaneous Datatypes
-@section Weak Pairs
+@node Weak References,  , Streams, Miscellaneous Datatypes
+@section Weak References
+
+Weak references are a mechanism for building data structures that
+point at objects without protecting them from garbage collection.  An
+example of such a data structure might be an entry in a lookup table
+that should be removed if the rest of the program does not reference
+its key.  Such an entry must still point at its key to carry out
+comparisons, but should not in itself prevent its key from being
+garbage collected.
+
+@cindex weak reference (defn)
+@cindex strong reference (defn)
+@cindex reference, weak (defn)
+@cindex reference, strong (defn)
+A @dfn{weak reference} is a reference that points at an object without
+preventing it from being garbage collected.  The term @dfn{strong
+reference} is used to distinguish normal references from weak ones.
+If there is no path of strong references to some object, the garbage
+collector will reclaim that object and mark any weak references to it
+to indicate that it has been reclaimed.
+
+If there is a path of strong references from an object @var{A} to an
+object @var{B}, @var{A} is said to hold @var{B} @dfn{strongly}.  If
+there is a path of references from an object @var{A} to an object
+@var{B}, but every such path traverses at least one weak reference,
+@var{A} is said to hold @var{B} @dfn{weakly}.
+
+MIT Scheme provides two mechanisms for using weak references.
+@dfn{Weak pairs} are like normal pairs, except that their car slot is
+a weak reference (but the cdr is still strong).  The heavier-weight
+@dfn{ephemerons} additionally arrange that the ephemeron does not
+count as holding the object in its key field strongly even if the
+object in its datum field does.
+
+@strong{Warning}: Working with weak references is subtle and requires
+careful analysis; most programs should avoid working with them
+directly.  The most common use cases for weak references ought to be
+served by hash tables (@pxref{Hash Tables}), which can employ various
+flavors of weak entry types, 1d tables (@pxref{1D Tables}), which hold
+their keys weakly, and the association table (@pxref{The Association
+Table}), which also holds its keys weakly.
+
+@menu
+* Weak Pairs::                  
+* Ephemerons::
+@end menu
+
+@node Weak Pairs, Ephemerons, Weak References, Weak References
+@subsection Weak Pairs
 
 @cindex weak pair (defn)
 @cindex pair, weak (defn)
-@dfn{Weak pairs} are a mechanism for building data structures that point
-at objects without protecting them from garbage collection.  The car of
-a weak pair holds its pointer weakly, while the cdr holds its pointer in
-the normal way.  If the object in the car of a weak pair is not held
-normally by any other data structure, it will be garbage-collected.
+The car of a @dfn{weak pair} holds its pointer weakly, while the cdr
+holds its pointer strongly.  If the object in the car of a weak pair
+is not held strongly by any other data structure, it will be
+garbage-collected.
+
+Note: weak pairs can be defeated by cross references among their
+slots.  Consider a weak pair @var{P} holding an object @var{A} in its
+car and an object @var{D} in its cdr.  @var{P} points to @var{A}
+weakly and to @var{D} strongly.  If @var{D} holds @var{A} strongly,
+however, then @var{P} ends up holding @var{A} strongly after all.  If
+avoiding this is worth a heavier-weight structure, @xref{Ephemerons}.
 
 @findex pair?
 Note: weak pairs are @emph{not} pairs; that is, they do not satisfy the
@@ -937,7 +990,7 @@ unspecified result.
 @end deffn
 
 @deffn procedure weak-cdr weak-pair
-Returns the cdr component of @var{weak-cdr}.
+Returns the cdr component of @var{weak-pair}.
 @end deffn
 
 @deffn procedure weak-set-cdr! weak-pair object
@@ -945,23 +998,27 @@ Sets the cdr component of @var{weak-pair} to @var{object} and returns an
 unspecified result.
 @end deffn
 
-@node Ephemerons,  , Weak Pairs, Miscellaneous Datatypes
-@section Ephemerons
+@node Ephemerons,  , Weak Pairs, Weak References
+@subsection Ephemerons
 
 @cindex ephemeron (defn)
 @cindex ephemeron, broken
 @cindex broken ephemeron
-An @dfn{ephemeron} is an object with two weakly referenced components
-called its @dfn{key} and @dfn{datum}.  The garbage collector drops an
+An
+@dfn{ephemeron} is an object with two weakly referenced components called
+its @dfn{key} and @dfn{datum}.  The garbage collector drops an
 ephemeron's references to both key and datum, rendering the ephemeron
 @dfn{broken}, if and only if the garbage collector can prove that
 there are no strong references to the key.  In other words, an
-ephemeron is broken when nobody else cares about its key.  Note that
-an ephemeron's reference to its datum may be dropped even if the datum
-is still reachable; all that matters is whether the key is reachable.
-Once broken, ephemerons never cease to be broken; setting the key or
-datum of a broken ephemeron with @code{set-ephemeron-key!} or
-@code{set-ephemeron-datum!} has no effect.
+ephemeron is broken when nobody else cares about its key.  In
+particular, the datum holding a reference to the key will not in
+itself prevent the ephemeron from becoming broken; in contrast,
+@xref{Weak Pairs}.  Once broken, ephemerons never cease to be broken;
+setting the key or datum of a broken ephemeron with
+@code{set-ephemeron-key!} or @code{set-ephemeron-datum!} has no
+effect.  Note that an ephemeron's reference to its datum may be
+dropped even if the datum is still reachable; all that matters is
+whether the key is reachable.
 
 Ephemerons are considerably heavier-weight than weak pairs, because
 garbage-collecting ephemerons is more complicated than
@@ -1008,13 +1065,15 @@ is broken, neither of these operations has any effect.
 @end deffn
 
 Like @code{weak-pair/car?}, @code{ephemeron-broken?} must be used with
-care.  @code{Ephemeron-broken?} on an ephemeron guarantees that any
-prior call to @code{ephemeron-key} or @code{ephemeron-datum} on the
-same ephemeron yielded the key or datum that was stored in the
-ephemeron, but it makes no guarantees about subsequent calls to
-@code{ephemeron-key} or @code{ephemeron-datum}.  Thus, the correct
-idiom to fetch an ephemeron's key and datum and use them if the
-ephemeron is not broken is
+care.  If @code{(ephemeron-broken? @var{ephemeron})} yields false, it
+guarantees only that prior evaluations of @code{(ephemeron-key
+@var{ephemeron})} or @code{(ephemeron-datum @var{ephemeron})} yielded the key
+or datum that was stored in the ephemeron, but it makes no guarantees
+about subsequent calls to @code{ephemeron-key} or
+@code{ephemeron-datum}: the garbage collector may run and break the
+ephemeron immediately after @code{ephemeron-broken?} returns.  Thus,
+the correct idiom to fetch an ephemeron's key and datum and use them
+if the ephemeron is not broken is
 
 @example
 @group

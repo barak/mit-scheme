@@ -2,8 +2,8 @@
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute
-#     of Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014
+#     Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -120,7 +120,7 @@ MODULE_LIBS = -lc
 
 aux_PROGRAMS = @AUX_PROGRAMS@
 aux_LIBS = $(MODULE_TARGETS)
-aux_DATA = @AUX_DATA@
+aux_DATA = shim-config.scm @AUX_DATA@
 EXTRA_PROGRAMS = findprim
 
 scheme_SOURCES = $(STD_SOURCES) usrdef.c $(LIARC_SOURCES)
@@ -161,7 +161,8 @@ MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps liarc-vars liarc-rules \
 	$(COMPILE) -o $@ -c $<
 
 .m4.s:
-	$(EXPAND) $< > $@
+	-rm -f $@.tmp
+	$(EXPAND) $< > $@.tmp && mv -f $@.tmp $@
 
 .s.o:
 	$(ASSEMBLE) -o $@ $<
@@ -175,8 +176,8 @@ scheme: $(scheme_OBJECTS) $(scheme_DEPENDENCIES)
 	$(LINK) $(scheme_LDFLAGS) $(scheme_OBJECTS) $(scheme_LIBS)
 
 usrdef.c: $(STD_SOURCES) findprim Makefile
-	-rm -f $@
-	./findprim $(STD_SOURCES) > usrdef.c
+	-rm -f $@.tmp
+	./findprim $(STD_SOURCES) > $@.tmp && mv -f $@.tmp $@
 
 findprim: $(findprim_OBJECTS) $(findprim_DEPENDENCIES)
 	-rm -f $@
@@ -278,6 +279,15 @@ install-auxDATA: $(aux_DATA)
 	    fi; \
 	done
 	$(INSTALL_DATA) pruxffi.h $(DESTDIR)$(AUXDIR)/mit-scheme.h
+
+shim-config.scm:
+	@echo "Saving shim compile/link/install configuration."
+	@ ( echo "(QUOTE"; \
+	    echo " ((COMPILE-SHIM \"@CC@ @DEFS@ @SCHEME_DEFS@ @CPPFLAGS@\""; \
+	    echo "                \"@CFLAGS@ @MODULE_CFLAGS@\")"; \
+	    echo "  (LINK-SHIM \"@CCLD@ @LDFLAGS@\" \"@MODULE_LDFLAGS@\")"; \
+	    echo "  (INSTALL \"@INSTALL_DATA@\")"; \
+	    echo "  (INFODIR \"$(infodir)/\")))" ) >shim-config.scm
 
 install-include:
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)

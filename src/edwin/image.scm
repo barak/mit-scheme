@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -94,14 +94,22 @@ USA.
       (vector-set! strings i (string-append "\\" (number->string i 8))))
     strings))
 
-(define default-char-image-strings/ansi
+(define default-char-image-strings/iso-8859-1
   (let ((strings (vector-copy default-char-image-strings/original-emacs)))
-    (do ((i #x91 (+ i 1)))
-	((= #x93 i))
-      (vector-set! strings i (string (integer->char i))))
     (do ((i #xA0 (+ i 1)))
 	((= #x100 i))
       (vector-set! strings i (string (integer->char i))))
+    strings))
+
+(define default-char-image-strings/windows-1252
+  (let ((strings (vector-copy default-char-image-strings/iso-8859-1)))
+    (define (fixup i) (vector-set! strings i (string (integer->char i))))
+    (fixup #x80)                        ;Euro
+    (do ((i #x82 (+ i 1))) ((= i #x8d)) (fixup i))
+    (fixup #x8e)                        ;Z with hacek
+    (do ((i #x91 (+ i 1))) ((= i #x9d)) (fixup i))
+    (fixup #x9e)                        ;z with hacek
+    (fixup #x9f)                        ;Y with diaeresis
     strings))
 
 (define default-char-image-strings/ascii
@@ -114,7 +122,7 @@ USA.
      0 #x20 strings 0)
     strings))
 
-(define default-char-image-strings default-char-image-strings/ansi)
+(define default-char-image-strings default-char-image-strings/iso-8859-1)
 
 (define (group-line-columns group start end column
 			    tab-width char-image-strings)

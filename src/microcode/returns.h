@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,23 +38,23 @@ USA.
 #define RC_EXECUTE_ASSIGNMENT_FINISH	0x08
 #define RC_EXECUTE_DEFINITION_FINISH	0x09
 #define RC_EXECUTE_ACCESS_FINISH	0x0A
-#define RC_EXECUTE_IN_PACKAGE_CONTINUE  0x0B
-#define RC_SEQ_2_DO_2			0x0C
-#define RC_SEQ_3_DO_2			0x0D
-#define RC_SEQ_3_DO_3			0x0E
+/* unused				0x0B */
+#define RC_EXECUTE_SEQUENCE_FINISH	0x0C
+/* unused				0x0D */
+/* unused				0x0E */
 #define RC_CONDITIONAL_DECIDE		0x0F
 #define RC_DISJUNCTION_DECIDE		0x10
-#define RC_COMB_1_PROCEDURE		0x11
+/* #define RC_COMB_1_PROCEDURE		0x11 */
 #define RC_COMB_APPLY_FUNCTION		0x12
-#define RC_COMB_2_FIRST_OPERAND		0x13
-#define RC_COMB_2_PROCEDURE		0x14
+/* #define RC_COMB_2_FIRST_OPERAND	0x13 */
+/*#define RC_COMB_2_PROCEDURE		0x14 */
 #define RC_COMB_SAVE_VALUE		0x15
-#define RC_PCOMB1_APPLY			0x16
-#define RC_PCOMB2_DO_1			0x17
-#define RC_PCOMB2_APPLY			0x18
-#define RC_PCOMB3_DO_2			0x19
-#define RC_PCOMB3_DO_1			0x1A
-#define RC_PCOMB3_APPLY			0x1B
+/* #define RC_PCOMB1_APPLY		0x16 */
+/* #define RC_PCOMB2_DO_1		0x17 */
+/* #define RC_PCOMB2_APPLY		0x18 */
+/* #define RC_PCOMB3_DO_2		0x19 */
+/* #define RC_PCOMB3_DO_1		0x1A */
+/* #define RC_PCOMB3_APPLY		0x1B */
 #define RC_SNAP_NEED_THUNK		0x1C
 #define RC_REENTER_COMPILED_CODE 	0x1D
 /* unused				0x1E */
@@ -107,23 +107,23 @@ USA.
 /* 0x08 */		"assignment-continue",				\
 /* 0x09 */		"definition-continue",				\
 /* 0x0a */		"access-continue",				\
-/* 0x0b */		"in-package-continue",				\
-/* 0x0c */		"sequence-2-second",				\
-/* 0x0d */		"sequence-3-second",				\
-/* 0x0e */		"sequence-3-third",				\
+/* 0x0b */		0,						\
+/* 0x0c */		"sequence-continue",				\
+/* 0x0d */		0,						\
+/* 0x0e */		0,						\
 /* 0x0f */		"conditional-decide",				\
 /* 0x10 */		"disjunction-decide",				\
-/* 0x11 */		"combination-1-procedure",			\
+/* 0x11 */		0,						\
 /* 0x12 */		"combination-apply",				\
-/* 0x13 */		"combination-2-first-operand",			\
-/* 0x14 */		"combination-2-procedure",			\
+/* 0x13 */		0,						\
+/* 0x14 */		0,						\
 /* 0x15 */		"combination-save-value",			\
-/* 0x16 */		"primitive-combination-1-apply",		\
-/* 0x17 */		"primitive-combination-2-first-operand",	\
-/* 0x18 */		"primitive-combination-2-apply",		\
-/* 0x19 */		"primitive-combination-3-second-operand",	\
-/* 0x1a */		"primitive-combination-3-first-operand",	\
-/* 0x1b */		"primitive-combination-3-apply",		\
+/* 0x16 */		0,						\
+/* 0x17 */		0,						\
+/* 0x18 */		0,						\
+/* 0x19 */		0,						\
+/* 0x1a */		0,						\
+/* 0x1b */		0,						\
 /* 0x1c */		"force-snap-thunk",				\
 /* 0x1d */		"reenter-compiled-code",			\
 /* 0x1e */		0,						\

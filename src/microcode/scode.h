@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -47,20 +47,10 @@ USA.
 #define ASSIGN_NAME		0
 #define ASSIGN_VALUE		1
 
-/* COMBINATIONS come in several formats */
-
-/* General combinations are vector-like: */
+/* COMBINATIONS are vector-like: */
 #define COMB_VECTOR_HEADER	0
 #define COMB_FN_SLOT		1
 #define COMB_ARG_1_SLOT		2
-
-/* Short non-primitive combinations: */
-#define COMB_1_FN		0
-#define COMB_1_ARG_1		1
-
-#define COMB_2_FN		0
-#define COMB_2_ARG_1		1
-#define COMB_2_ARG_2		2
 
 /* COMMENT operation: */
 #define COMMENT_EXPRESSION	0
@@ -122,10 +112,6 @@ USA.
 #define Elambda_Rest_Flag(Addr) \
      ((((long) Addr) & EL_REST_MASK) >> EL_REST_SHIFT)
 
-/* IN-PACKAGE operation: */
-#define IN_PACKAGE_ENVIRONMENT	0
-#define IN_PACKAGE_EXPRESSION	1
-
 /* LAMBDA operation:
  * Object representing a LAMBDA expression with a fixed number of
  * arguments.  It consists of a list of the names of the arguments
@@ -150,31 +136,13 @@ USA.
  * beyond those indicated in the LAMBDA_FORMALS list.
  */
 
-/* Primitive combinations with 0 arguments are not pointers */
-
-/* Primitive combinations, 1 argument: */
-#define PCOMB1_FN_SLOT		0
-#define PCOMB1_ARG_SLOT		1
-
-/* Primitive combinations, 2 arguments: */
-#define PCOMB2_FN_SLOT		0
-#define PCOMB2_ARG_1_SLOT	1
-#define PCOMB2_ARG_2_SLOT	2
-
-/* Primitive combinations, 3 arguments are vector-like: */
-#define PCOMB3_FN_SLOT		1
-#define PCOMB3_ARG_1_SLOT	2
-#define PCOMB3_ARG_2_SLOT	3
-#define PCOMB3_ARG_3_SLOT	4
-
 /* SCODE_QUOTE returns itself */
 #define SCODE_QUOTE_OBJECT	0
 #define SCODE_QUOTE_IGNORED	1
 
-/* SEQUENCE operations (two forms: SEQUENCE_2 and SEQUENCE_3) */
+/* SEQUENCE operations */
 #define SEQUENCE_1		0
 #define SEQUENCE_2		1
-#define SEQUENCE_3		2
 
 /* VARIABLE operation.
  * Corresponds to a variable lookup or variable reference. Contains the

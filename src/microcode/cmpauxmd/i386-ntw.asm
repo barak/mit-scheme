@@ -2,8 +2,8 @@
 ;;;
 ;;; Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ;;;     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
-;;;     2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts
-;;;     Institute of Technology
+;;;     2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013,
+;;;     2014 Massachusetts Institute of Technology
 ;;;
 ;;; This file is part of MIT/GNU Scheme.
 ;;;
@@ -797,7 +797,8 @@ asm_generic_divide_flo_flo:
 	mov	ecx,ebx
 	and	ecx,ebp
 	fld	qword ptr 4[ecx]			; fldd
-	ftst
+	fldz
+	fucomp	st(1)
 	fstsw	ax
 	sahf
 	je	asm_generic_divide_by_zero
@@ -869,7 +870,8 @@ asm_generic_negative_:
 	jne	asm_generic_negative_fail
 	and	edx,ebp
 	fld	qword ptr 4[edx]
-	ftst
+	fldz
+	fucomp	st(1)
 	fstsw	ax
 	fstp	st(0)
 	sahf
@@ -897,7 +899,8 @@ asm_generic_positive_:
 	jne	asm_generic_positive_fail
 	and	edx,ebp
 	fld	qword ptr 4[edx]
-	ftst
+	fldz
+	fucomp	st(1)
 	fstsw	ax
 	fstp	st(0)
 	sahf
@@ -925,7 +928,8 @@ asm_generic_zero_:
 	jne	asm_generic_zero_fail
 	and	edx,ebp
 	fld	qword ptr 4[edx]
-	ftst
+	fldz
+	fucomp	st(1)
 	fstsw	ax
 	fstp	st(0)
 	sahf

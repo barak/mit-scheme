@@ -1,23 +1,27 @@
 \input texinfo @c -*-Texinfo-*-
 @comment %**start of header
 @setfilename mit-scheme-ffi
-@set VERSION 0.1
+@set VERSION 0.2
+@set UPDATED 2011-09-19
 @settitle FFI @value{VERSION}
 @comment %**end of header
 
-@macro myresult{}
 @ifhtml
+@macro myresult{}
  =>
+@end macro
 @end ifhtml
 @ifnothtml
- @result{}
+@alias myresult = result
 @end ifnothtml
-@end macro
 
 @copying
 This manual documents @acronym{FFI} @value{VERSION}.
 
-Copyright @copyright{} 2006, 2007, 2008, 2009, 2010 Matthew Birkholz
+Copyright @copyright{} 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
+    1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+    2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014
+    Massachusetts Institute of Technology
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
@@ -31,13 +35,15 @@ Documentation License.''
 
 @dircategory Programming Languages
 @direntry
-* FFI: (mit-scheme-ffi).		MIT/GNU Scheme Foreign Functions
+* MIT/GNU Scheme FFI: (mit-scheme-ffi).
+                                Foreign Function Interface
 @end direntry
 
 @titlepage
 @title The FFI Reference Manual
-@subtitle a Foreign Function Interface (@value{VERSION})
-@subtitle for MIT/GNU Scheme version 7.7.90+
+@subtitle a Foreign Function Interface (version @value{VERSION})
+@subtitle for MIT/GNU Scheme version 9.0.1
+@subtitle @value{UPDATED}
 @author by Matt Birkholz
 @page
 @vskip 0pt plus 1filll
@@ -85,21 +91,21 @@ Examples of the new syntax:
 @myresult{} #[alien 42 0x081afc60]
 @end group
 
+(C->= @verb{"#@42"} "GdkEvent any type" 14)
+
 @group
 (C-> @verb{"#@42"} "GdkEvent any type")
-@myresult{} 14
-@end group
-
-(C->= @verb{"#@42"} "GdkEvent any type" 13)
-
-@group
-(C-enum "GDK_MAP")
 @myresult{} 14
 @end group
 
 @group
 (C-enum "GdkEventType" 14)
 @myresult{} |GDK_MAP|
+@end group
+
+@group
+(C-enum "GDK_MAP")
+@myresult{} 14
 @end group
 
 @group
@@ -148,11 +154,11 @@ data types is given in a case sensitive @file{.cdecl} file.  The C
 declarations look like this:
 
 @smallexample
-(extern (* GtkWidget)              @r{; gtk+-2.4.0/gtk/gtkwindow.h}
+(extern (* GtkWidget)
         gtk_window_new
         (type GtkWindowType))
 
-(typedef GtkWindowType             @r{; gtk+-2.4.0/gtk/gtkenums.h}
+(typedef GtkWindowType
          (enum
           (GTK_WINDOW_TOPLEVEL)
           (GTK_WINDOW_POPUP)))
@@ -300,8 +306,7 @@ returned value is @code{#f}.
 @smallexample
 @group
 (C-enum "GdkEventType" (C-> @verb{"#@42"} "GdkEvent any type"))
-@myresult{}
-|GDK_MAP|
+@myresult{} |GDK_MAP|
 @end group
 @end smallexample
 
@@ -316,18 +321,16 @@ examples in the synopsis might expand as shown here.
 (alien-byte-increment @verb{"#@43"} (* (C-sizeof "GdkColor")
                               (C-enum "GTK_STATE_NORMAL")))
 @expansion{}
-(alien-byte-increment @verb{"#@43"} 0)
-@myresult{}
-@verb{"#@44"}
+(alien-byte-increment @verb{"#@43"} (* 12 0))
+@myresult{} @verb{"#@44"}
 
 (C-array-loc! @verb{"#@43"} "GdkColor" (C-enum "GTK_STATE_PRELIGHT"))
 @expansion{}
 (alien-byte-increment! @verb{"#@43"} (* (C-sizeof "GdkColor")
                                (C-enum "GTK_STATE_PRELIGHT")))
 @expansion{}
-(alien-byte-increment! @verb{"#@43"} 24)
-@myresult{}
-@verb{"#@43"}
+(alien-byte-increment! @verb{"#@43"} (* 12 2))
+@myresult{} @verb{"#@43"}
 @end smallexample
 
 A simple scan of characters in the wide string @code{alien} might
@@ -358,13 +361,6 @@ A shim between Scheme and a C toolkit is specified by a case sensitive
 toolkit types, constants, and functions.  Callback functions to be
 passed to the toolkit are also specified here.
 
-There are some limitations on the C types that can be declared.
-Basic, struct, union, enum and pointer types are allowed, but
-bit-field members are not supported.  C function parameters can be
-basic, enum or pointer types.  The return type of a C function is the
-same plus @code{void}.  Basically, no struct or union argument or
-return types, at the moment.
-
 Each top-level form in the C declaration file must look like one of
 these:
 
@@ -374,14 +370,27 @@ these:
 (struct Name (Member @var{type}) @dots{})
 (union Name (Member @var{type}) @dots{})
 (enum @i{Name} (Member) @dots{})
-(extern @var{return-type} Name (param1 @var{arg-type}) @dots{})
-(callback @var{return-type} Name (param1 @var{arg-type}) @dots{})
+(extern @var{function-type} Name (param1 @var{arg-type}) @dots{})
+(callback @var{callback-type} Name (param1 @var{callback-arg-type}) @dots{})
 @end smallexample
 
-An enum's @i{@var{Name}} is optional.
+The @code{include} expression includes another @file{.cdecl} file in
+the current @file{.cdecl} file.  The string argument is interpreted
+relative to the current file's directory.
 
-@var{arg-type} is currently restricted to the following forms.  It is
-assumed that a lone @var{Name} is defined as a type on this list:
+@var{any} can be a @var{type} or the word @code{void}.
+
+@var{arg-type} can be any @var{type} @emph{except} anonymous structs
+and unions.
+
+@var{function-type} can be any @var{arg-type} or @code{void}.
+
+@var{callback-arg-type} can be any @var{type} @emph{except} struct and
+union types.
+
+@var{callback-type} can be any @var{callback-arg-type} or @code{void}.
+
+@var{type} can look like any of these:
 
 @smallexample
 Name
@@ -389,36 +398,26 @@ Name
 (* @var{any})
 (enum Name)
 (enum @i{Name} (Member) @dots{})
-@end smallexample
-
-@var{return-type} can be either @var{arg-type} or the word @code{void}.
-
-@var{basics} can be any of the words: @code{char}, @code{uchar},
-@code{short}, @code{ushort}, @code{int}, @code{uint}, @code{long},
-@code{ulong}, @code{float}, or @code{double} (all lowercase).
-
-@var{type} includes structs and unions:
-
-@smallexample
-@var{arg-type}
 (struct Name)
 (struct @i{Name} (Member @var{type}) @dots{})
 (union Name)
 (union @i{Name} (Member @var{type}) @dots{})
 @end smallexample
 
-@var{any} is any @var{type} @emph{or} @code{void}.
+@var{Name} should be defined via a @code{typedef} form somewhere in
+the (included) file(s).  It does not have to be defined before it is
+referenced.  It does not have to be defined @emph{at all} if it is
+only the target of a pointer type.
 
-The @code{include} expression includes another @file{.cdecl} file in
-the current @file{.cdecl} file.  The string argument is interpreted
-relative to the current file's directory.
+@var{basics} can be any of the words: @code{char}, @code{uchar},
+@code{short}, @code{ushort}, @code{int}, @code{uint}, @code{long},
+@code{ulong}, @code{float}, or @code{double} (all lowercase).
 
-While the informal grammar above allows anonymous structs to be
-specified for argument or member types, they are of little use outside
-top-level, @i{named} struct or union declarations.  The peek and poke
-(@code{C->} and @code{C->=}) syntax expects a type name (e.g.
-@code{"GdkEventAny"} or @code{"struct _GdkEventAny"}) before any
-member names.
+While the informal grammar above allows anonymous structs to be member
+types, they are useless outside a named type declaration.  The peek
+and poke (@code{C->} and @code{C->=}) syntaxes require a type name
+(e.g.  @code{"GdkEventAny"} or @code{"struct _GdkEventAny"}) before
+any member names.
 
 @smallexample
 (C-include "prhello")
@@ -429,7 +428,7 @@ the corresponding @file{-types} and @file{-const} files at syntax
 time.  This makes the C types and constants available to the other
 @code{C-...} syntax expanders.  The form binds @code{c-includes} in
 the syntax environment @i{unless} it is already defined there.  Thus a
-@code{(C-includes "library")} form can be placed at the top of every
+@code{(C-include "library")} form can be placed at the top of every
 file with @code{C-...} syntax, @emph{or} loaded into the syntax-time
 environment of those files.
 
@@ -465,8 +464,7 @@ at syntax time.
 (C-> alien "struct _GdkEvent any window" window-alien)
 @expansion{}
 (#[primitive c-peek-pointer] alien 0 window-alien)
-@myresult{}
-#[alien 44 (* GdkWindow) 0x081afc60]
+@myresult{} #[alien 44 (* GdkWindow) 0x081afc60]
 @end group
 @end smallexample
 
@@ -509,12 +507,28 @@ alien function has cached the entry address, @code{call-alien} can
 invoke the trampoline (via @code{#[primitive c-call]}).  The
 trampoline gets its arguments off the Scheme stack, converts them to C
 values, calls the C function, conses a result, and returns it to
-Scheme.  As a special case a function returning a pointer type
-expects an extra first argument.  If this argument is @code{#f}, the
-return value is discarded.  If the argument is an alien, the
-function's return value clobbers the alien's address.  This makes it
-easy to grab pointers to toolkit resources without dropping them, or
-avoid unnecessary consing of aliens.
+Scheme.
+
+A function returning a pointer type is treated specially.
+Its trampoline expects an extra (first) argument.
+If the argument is @code{#f}, the return value is ignored.
+If the argument is an alien, the function's return value clobbers the
+alien's address.  This makes it easy to grab pointers to toolkit
+resources without dropping them, and to avoid unnecessary consing of
+aliens.
+
+A function returning a struct or union type is treated similarly.
+Its trampoline expects an extra (first) argument.
+If the argument is @code{#f}, the return value is ignored.
+If the argument is an alien, the returned struct or union is copied to
+that address.
+
+Struct and union type parameters of a function are treated similarly.
+The function's trampoline expects an alien argument for each such
+parameter and copies the struct or union from the argument address
+into a local variable.  Callbacks currently cannot receive struct or
+union type arguments, though they @emph{can} receive pointer type
+arguments (consing an alien for each).
 
 The @code{alien-function} structures are fasdumpable.  The caching
 mechanism invalidates the cache when a band is restored, or a
@@ -584,11 +598,11 @@ balk at a callback procedure that calls @code{yield-thread}, waits for
 I/O, sleeps, or otherwise causes a thread switch.  Presumably such a
 procedure has some other way of enforcing the LIFO ordering.
 
-The @code{outf-console} procedure is provided for debugging purposes.
+The @code{outf-error} procedure is provided for debugging purposes.
 It writes one or more argument strings (and @code{write}s any
-non-strings) to the console and flushes, atomically, via a machine
+non-strings) to the Unix ``stderr'' channel, atomically, via a machine
 primitive, bypassing the runtime's I/O buffering and thread switching.
-Thus multiple debugging trace messages arrive on the console intact
+Thus trace messages from multiple threads will appear on stderr intact
 and uninterrupted.
 
 
@@ -636,38 +650,7 @@ The following Makefile rules describe the process of building and
 installing a shim for the example ``Hello, World!'' program.
 
 @example
-@verbatim
-install-example: build-example
-	$(INSTALL_DATA) prhello-types.bin ../lib/.
-	$(INSTALL_DATA) prhello-const.bin ../lib/.
-	$(INSTALL_DATA) prhello-shim.so ../lib/.
-
-build-example: prhello-shim.so prhello-types.bin prhello-const.bin
-
-prhello-shim.so: prhello-shim.o
-	$(CC) -shared -fPIC -o $@ $^ `pkg-config --libs gtk+-2.0`
-
-prhello-shim.o: prhello-shim.c
-	$(CC) -I../lib -Wall -fPIC `pkg-config --cflags gtk+-2.0` -o $@ -c $<
-
-prhello-shim.c prhello-const.c prhello-types.bin: prhello.cdecl
-	(echo "(load-option 'FFI)"; \
-	 echo '(C-generate "prhello" "#include <gtk/gtk.h>")') \
-	| ../microcode/scheme --library ../lib --batch-mode
-
-prhello-const.bin: prhello-const.scm
-	echo '(sf "prhello-const")' | mit-scheme --compiler --batch-mode
-
-prhello-const.scm: prhello-const
-	./prhello-const
-
-prhello-const: prhello-const.o
-	@rm -f $@
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ `pkg-config --libs gtk+-2.0`
-
-prhello-const.o: prhello-const.c
-	$(CC) `pkg-config --cflags gtk+-2.0` $(CFLAGS) -o $@ -c $<
-@end verbatim
+@verbatiminclude prhello-Makefile
 @end example
 
 
