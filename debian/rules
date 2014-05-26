@@ -7,7 +7,9 @@
 	dh $@ --with autoreconf --parallel
 
 override_dh_autoreconf:
-	dh_autoreconf sh -- -e -x -c 'for d in src doc; do (cd $$d && autoreconf -f -i) done'
+	dh_autoreconf sh -- -e -x -c \
+	  'for d in src doc; \
+	    do (cd $$d && autoreconf -f -i) done'
 
 CONF_FLAGS += --docdir=/usr/share/doc/mit-scheme-doc
 CONF_FLAGS += --enable-html=/usr/share/doc/mit-scheme-doc/html
@@ -40,11 +42,13 @@ override_dh_auto_install:
 # See http://dedup.debian.net/.
 override_dh_installchangelog:
 	dh_installchangelog
-	-rm --verbose debian/mit-scheme/usr/share/doc/mit-scheme/changelog
-	-rm --verbose debian/mit-scheme-dbg/usr/share/doc/mit-scheme-dbg/changelog
+	-rm --verbose \
+	   debian/mit-scheme/usr/share/doc/mit-scheme/changelog \
+	   debian/mit-scheme-dbg/usr/share/doc/mit-scheme-dbg/changelog
 
 override_dh_link:
-	dh_link /usr/share/man/man1/mit-scheme.1.gz /usr/share/man/man1/mit-scheme-$(BIN_ARCH).1.gz
+	dh_link /usr/share/man/man1/mit-scheme.1.gz \
+		/usr/share/man/man1/mit-scheme-$(BIN_ARCH).1.gz
 
 override_dh_auto_clean:
 	-dh_auto_clean
