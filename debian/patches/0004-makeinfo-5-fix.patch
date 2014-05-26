@@ -1,0 +1,23 @@
+From: "Barak A. Pearlmutter" <barak+git@cs.nuim.ie>
+Date: Thu, 29 Aug 2013 22:46:52 +0100
+Subject: makeinfo 5 fix
+
+---
+ doc/ffi/ffi.texinfo | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/doc/ffi/ffi.texinfo b/doc/ffi/ffi.texinfo
+index a770571..6c91a00 100644
+--- a/doc/ffi/ffi.texinfo
++++ b/doc/ffi/ffi.texinfo
+@@ -12,7 +12,9 @@
+ @end macro
+ @end ifhtml
+ @ifnothtml
+-@alias myresult = result
++@macro myresult{}
++ @result{}
++@end macro
+ @end ifnothtml
+ 
+ @copying

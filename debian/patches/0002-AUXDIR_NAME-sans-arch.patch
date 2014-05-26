@@ -3,15 +3,14 @@ Date: Wed, 3 Jul 2013 21:00:45 +0100
 Subject: AUXDIR_NAME sans arch
 
 ---
- src/configure.ac        | 2 +-
- src/microcode/achost.ac | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ src/configure.ac | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/configure.ac b/src/configure.ac
-index 6326d2a..b05877b 100644
+index 09237da..f07ce71 100644
 --- a/src/configure.ac
 +++ b/src/configure.ac
-@@ -88,7 +88,7 @@ svm1)
+@@ -102,7 +102,7 @@ svm1)
      INSTALL_LIARC_BUNDLES=
      ;;
  esac
@@ -20,16 +19,3 @@ index 6326d2a..b05877b 100644
  AUXDIR='$(libdir)'/${AUXDIR_NAME}
  
  # Please keep the following messages synchronized with the messages in
-diff --git a/src/microcode/achost.ac b/src/microcode/achost.ac
-index 3e82b52..c4e81dc 100644
---- a/src/microcode/achost.ac
-+++ b/src/microcode/achost.ac
-@@ -101,7 +101,7 @@ if test x${mit_scheme_native_code} = xhppa; then
-    GC_HEAD_FILES="${GC_HEAD_FILES} hppacach.h"
- fi
- 
--AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
-+AUXDIR_NAME=mit-scheme
- EXE_NAME=mit-scheme-${mit_scheme_native_code}
- 
- dnl Add OS-dependent customizations.  This must happen before checking
