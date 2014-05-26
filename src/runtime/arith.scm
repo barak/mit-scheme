@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1045,44 +1045,65 @@ USA.
 (define (real:* x y)
   (cond ((flonum? x)
 	 (cond ((flonum? y) (flo:* x y))
-	       ((rat:zero? y) y)
+	       ((rat:zero? y) (if (flo:nan? x) x y))
 	       (else (flo:* x (rat:->inexact y)))))
-	((rat:zero? x) x)
+	((rat:zero? x) (if (and (flonum? y) (flo:nan? y)) y x))
 	((flonum? y) (flo:* (rat:->inexact x) y))
 	(else ((copy rat:*) x y))))
 
 (define (real:/ x y)
   (cond ((flonum? x) (flo:/ x (if (flonum? y) y (rat:->inexact y))))
-	((flonum? y) (if (rat:zero? x) x (flo:/ (rat:->inexact x) y)))
+	((flonum? y)
+	 (if (and (rat:zero? x) (not (flo:nan? y)))
+	     x
+	     (flo:/ (rat:->inexact x) y)))
 	(else ((copy rat:/) x y))))
+
+(define (real:eqv? x y)
+  (if (flonum? x)
+      (and (flonum? y)
+	   (flo:eqv? x y))
+      (and (not (flonum? y))
+	   ;; Both are exact, so RAT:= will DTRT.
+	   ((copy rat:=) x y))))
 
 (define (real:= x y)
   (if (flonum? x)
       (if (flonum? y)
 	  (flo:= x y)
-	  (compare-flo/rat rat:= x y))
+	  (flo=rat? x y))
       (if (flonum? y)
-	  (compare-rat/flo rat:= x y)
+	  (rat=flo? x y)
 	  ((copy rat:=) x y))))
+
+(define-integrable (flo=rat? x y)
+  (and (flo:finite? x)
+       (rat:= (flo:->rational x) y)))
+
+(define-integrable (rat=flo? x y)
+  (flo=rat? y x))
 
 (define (real:< x y)
   (if (flonum? x)
       (if (flonum? y)
 	  (flo:< x y)
-	  (compare-flo/rat rat:< x y))
+	  (flo<rat? x y #f))
       (if (flonum? y)
-	  (compare-rat/flo rat:< x y)
+	  (rat<flo? x y #f)
 	  ((copy rat:<) x y))))
 
 (define (real:max x y)
   (if (flonum? x)
       (if (flonum? y)
-	  (if (flo:< x y) y x)
-	  (if (compare-flo/rat rat:< x y)
+	  (cond ((flo:<= x y) y)
+		((flo:<= y x) x)
+		((flo:nan? x) y)
+		(else x))
+	  (if (flo<rat? x y #t)
 	      (rat:->inexact y)
 	      x))
       (if (flonum? y)
-	  (if (compare-rat/flo rat:< x y)
+	  (if (rat<flo? x y #f)
 	      y
 	      (rat:->inexact x))
 	  (if (rat:< x y) y x))))
@@ -1090,25 +1111,28 @@ USA.
 (define (real:min x y)
   (if (flonum? x)
       (if (flonum? y)
-	  (if (flo:< x y) x y)
-	  (if (compare-flo/rat rat:< x y)
+	  (cond ((flo:<= x y) x)
+		((flo:<= y x) y)
+		((flo:nan? y) x)
+		(else y))
+	  (if (flo<rat? x y #f)
 	      x
 	      (rat:->inexact y)))
       (if (flonum? y)
-	  (if (compare-rat/flo rat:< x y)
+	  (if (rat<flo? x y #t)
 	      (rat:->inexact x)
 	      y)
 	  (if (rat:< x y) x y))))
 
-(define-integrable (compare-flo/rat predicate x y)
-  (if (flo:nan? x)
-      #f
-      (predicate (flo:->rational x) y)))
+(define-integrable (flo<rat? x y if-nan)
+  (cond ((flo:finite? x) (rat:< (flo:->rational x) y))
+	((flo:nan? x) if-nan)
+	(else (flo:< x 0.))))
 
-(define-integrable (compare-rat/flo predicate x y)
-  (if (flo:nan? y)
-      #f
-      (predicate x (flo:->rational y))))
+(define-integrable (rat<flo? x y if-nan)
+  (cond ((flo:finite? y) (rat:< x (flo:->rational y)))
+	((flo:nan? y) if-nan)
+	(else (flo:< 0. y))))
 
 (define (real:even? n)
   ((copy int:even?)
@@ -1319,6 +1343,18 @@ USA.
       (error:wrong-type-argument x #f name))
   (rec:real-part x))
 
+(define (complex:eqv? z1 z2)
+  (if (recnum? z1)
+      (if (recnum? z2)
+	  (and (real:eqv? (rec:real-part z1) (rec:real-part z2))
+	       (real:eqv? (rec:imag-part z1) (rec:imag-part z2)))
+	  (and (real:exact0= (rec:imag-part z1))
+	       (real:eqv? (rec:real-part z1) z2)))
+      (if (recnum? z2)
+	  (and (real:exact0= (rec:imag-part z2))
+	       (real:eqv? z1 (rec:imag-part z2)))
+	  ((copy real:eqv?) z1 z2))))
+
 (define (complex:= z1 z2)
   (if (recnum? z1)
       (if (recnum? z2)

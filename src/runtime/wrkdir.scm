@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -49,6 +49,20 @@ USA.
 
 (define (set-working-directory-pathname! name)
   (let ((pathname (new-pathname name)))
+    ;; XXX Checking FILE-DIRECTORY? is a stop-gap kludge until we fix
+    ;; the concept of `working directory' by (a) making it be the
+    ;; directory, not the pathname; (b) making it thread-local, and (c)
+    ;; opening it in SET-WORKING-DIRECTORY! and hanging onto it for
+    ;; relative lookups, either by changing directory just before each
+    ;; lookup or using relative lookup system calls.
+    (if (not (file-directory? pathname))
+	(error:file-operation name "enter" "directory"
+			      (if (file-exists?
+				   (directory-pathname-as-file pathname))
+				  "not a directory"
+				  "no such directory")
+			      'SET-WORKING-DIRECTORY-PATHNAME!
+			      (list name)))
     (set! *working-directory-pathname* pathname)
     (set! *default-pathname-defaults* pathname)
     (cmdl/set-default-directory (nearest-cmdl) pathname)

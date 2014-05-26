@@ -2,8 +2,8 @@
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute
-#     of Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014
+#     Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -26,8 +26,49 @@ set -e
 
 . etc/functions.sh
 
-run_cmd "${@}" --heap 6000 --stack 200 --batch-mode <<EOF
+run_cmd "${@}" <<EOF
 (begin
   (load "etc/compile.scm")
-  (compile-everything))
+  (show-time
+    (lambda ()
+      (compile-cref compile-dir)
+      (for-each compile-dir (quote ("runtime" "star-parser" "sf")))))
+  (newline))
+EOF
+
+get_fasl_file
+run_cmd_in_dir runtime ../microcode/scheme --batch-mode		\
+	--library ../lib --fasl "${FASL}" <<EOF
+(begin
+  (disk-save "../lib/runtime.com")
+  (newline))
+EOF
+
+# Syntax the new compiler in fresh (compiler) packages.  Use the new sf too.
+run_cmd ./microcode/scheme --batch-mode --library lib --band runtime.com <<EOF
+(begin
+  (load-option (quote SF))
+  (with-working-directory-pathname "compiler/"
+    (lambda ()
+      (show-time
+        (lambda () (load "compiler.sf")))
+      (newline))))
+EOF
+
+run_cmd "${@}" <<EOF
+(with-working-directory-pathname "compiler/"
+  (lambda ()
+    (show-time
+      (lambda () (load "compiler.cbf")))
+    (newline)))
+EOF
+
+run_cmd ./microcode/scheme --batch-mode --library lib --band runtime.com <<EOF
+(begin
+  (load-option (quote COMPILER))
+  (load "etc/compile.scm")
+  (show-time
+    (lambda ()
+      (compile-remaining-dirs compile-dir)))
+  (newline))
 EOF

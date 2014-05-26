@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -164,7 +164,7 @@ USA.
 	(else
 	 (ill-formed-syntax form))))
 
-(define named-let-strategy 'letrec)
+(define named-let-strategy 'internal-definition)
 
 (define-syntax :let
   (er-macro-transformer
@@ -175,39 +175,48 @@ USA.
 	    (let ((name (cadr form))
 		  (bindings (caddr form))
 		  (body (cdddr form)))
-	      (case named-let-strategy
-		((letrec)
-		 `((,(rename 'LETREC)
-		    ((,name (,(rename 'NAMED-LAMBDA) (,name ,@(map car bindings))
-			     ,@body)))
-		    ,name)
-		   ,@(map (lambda (binding)
-			    (if (pair? (cdr binding))
-				(cadr binding)
-				(unassigned-expression)))
-			  bindings)))
-		((fixed-point)
-		 (let ((iter (make-synthetic-identifier 'ITER))
-		       (kernel (make-synthetic-identifier 'KERNEL))
-		       (temps (map (lambda (b)
-				     (declare (ignore b))
-				     (make-synthetic-identifier 'TEMP)) bindings))
-		       (r-lambda (rename 'LAMBDA))
-		       (r-declare (rename 'DECLARE)))
-		   `((,r-lambda (,kernel)
-		      (,kernel ,kernel ,@(map (lambda (binding)
-						(if (pair? (cdr binding))
-						    (cadr binding)
-						    (unassigned-expression)))
-					      bindings)))
-		     (,r-lambda (,iter ,@(map car bindings))
-		      ((,r-lambda (,name)
-			(,r-declare (INTEGRATE-OPERATOR ,name))
-			,@body)
-		       (,r-lambda ,temps
-			(,r-declare (INTEGRATE ,@temps))
-			(,iter ,iter ,@temps)))))))
-		(else (error "Unrecognized named-let-strategy: " named-let-strategy)))))
+	      (let ((vars (map car bindings))
+		    (vals (map (lambda (binding)
+				 (if (pair? (cdr binding))
+				     (cadr binding)
+				     (unassigned-expression)))
+			       bindings)))
+		(case named-let-strategy
+		  ((fixed-point)
+		   (let ((iter (make-synthetic-identifier 'ITER))
+			 (kernel (make-synthetic-identifier 'KERNEL))
+			 (temps (map (lambda (b)
+				       (declare (ignore b))
+				       (make-synthetic-identifier 'TEMP)) bindings))
+			 (r-lambda (rename 'LAMBDA))
+			 (r-declare (rename 'DECLARE)))
+		     `((,r-lambda (,kernel)
+			  (,kernel ,kernel ,@vals))
+		       (,r-lambda (,iter ,@vars)
+			  ((,r-lambda (,name)
+			      (,r-declare (INTEGRATE-OPERATOR ,name))
+			      ,@body)
+			   (,r-lambda ,temps
+			      (,r-declare (INTEGRATE ,@temps))
+			      (,iter ,iter ,@temps)))))))
+		  ((internal-definition)
+		   `((,(rename 'LET) ()
+		      (,(rename 'DEFINE) (,name ,@vars) ,@body)
+		      ,name)
+		     ,@vals))
+		  ((letrec)
+		   `((,(rename 'LETREC)
+		      ((,name (,(rename 'NAMED-LAMBDA) (,name ,@vars)
+			       ,@body)))
+		      ,name)
+		     ,@vals))
+		  ((letrec*)
+		   `((,(rename 'LETREC*)
+		      ((,name (,(rename 'NAMED-LAMBDA) (,name ,@vars)
+			       ,@body)))
+		      ,name)
+		     ,@vals))
+		  (else (error "Unrecognized named-let-strategy: " named-let-strategy))))))
 	   ((syntax-match? '((* (IDENTIFIER ? EXPRESSION)) + FORM) (cdr form))
 	    `(,keyword:let ,@(cdr (normalize-let-bindings form))))
 	   (else
@@ -244,6 +253,45 @@ USA.
 	      `(,let-keyword ,bindings ,@body)))
 	`(,let-keyword ,bindings ,@body))))
 
+(define-syntax :letrec
+  (er-macro-transformer
+   (lambda (form rename compare)
+     (declare (ignore compare))
+     (syntax-check '(KEYWORD (* (IDENTIFIER ? EXPRESSION)) + FORM) form)
+     (let ((bindings (cadr form))
+	   (r-lambda (rename 'LAMBDA))
+	   (r-named-lambda (rename 'NAMED-LAMBDA))
+	   (r-set!   (rename 'SET!)))
+       (let ((temps (map (lambda (binding)
+			   (make-synthetic-identifier
+			    (identifier->symbol (car binding)))) bindings)))
+	 `((,r-named-lambda (,lambda-tag:unnamed ,@(map car bindings))
+			    ((,r-lambda ,temps
+					,@(map (lambda (binding temp)
+						 `(,r-set! ,(car binding) ,temp)) bindings temps))
+			     ,@(map cadr bindings))
+			    ((,r-lambda () ,@(cddr form))))
+	   ,@(map (lambda (binding)
+		    (declare (ignore binding))
+		    (unassigned-expression)) bindings)))))))
+
+(define-syntax :letrec*
+  (er-macro-transformer
+   (lambda (form rename compare)
+     (declare (ignore compare))
+     (syntax-check '(KEYWORD (* (IDENTIFIER ? EXPRESSION)) + FORM) form)
+     (let ((bindings (cadr form))
+	   (r-lambda (rename 'LAMBDA))
+	   (r-named-lambda (rename 'NAMED-LAMBDA))
+	   (r-set!   (rename 'SET!)))
+       `((,r-named-lambda (,lambda-tag:unnamed ,@(map car bindings))
+			  ,@(map (lambda (binding)
+				   `(,r-set! ,@binding)) bindings)
+			  ((,r-lambda () ,@(cddr form))))
+	 ,@(map (lambda (binding)
+		  (declare (ignore binding))
+		  (unassigned-expression)) bindings))))))
+
 (define-syntax :and
   (er-macro-transformer
    (lambda (form rename compare)
@@ -546,7 +594,10 @@ USA.
 	      `(,r-begin
 		(,r-declare (INTEGRATE-OPERATOR ,(caadr form)))
 		(,r-define ,(cadr form)
-			   (,r-declare (INTEGRATE ,@(cdadr form)))
+			   ,@(let ((arguments (cdadr form)))
+			       (if (null? arguments)
+				   '()
+				   `((,r-declare (INTEGRATE ,@arguments)))))
 			   ,@(cddr form))))
 	     (else
 	      (ill-formed-syntax form)))))))
@@ -580,6 +631,17 @@ USA.
 	      ,r-unspecific)
 	    (,r-shallow-fluid-bind ,swap! ,body ,swap!)))))))
 
+(define-syntax :local-declare
+  (er-macro-transformer
+   (lambda (form rename compare)
+     compare
+     (syntax-check '(KEYWORD (* (IDENTIFIER * DATUM)) + FORM) form)
+     (let ((r-let (rename 'LET))
+	   (r-declare (rename 'DECLARE)))
+       `(,r-let ()
+		(,r-declare ,@(cadr form))
+		,@(cddr form))))))
+
 (define (unspecific-expression)
   `(,keyword:unspecific))
 
@@ -592,3 +654,9 @@ USA.
      (LET ((RESULT form0))
        form1+ ...
        RESULT))))
+
+(define-syntax :assert
+  (syntax-rules ()
+    ((ASSERT condition . extra)
+     (IF (NOT condition)
+         (ERROR "Assertion failed:" 'condition . extra)))))

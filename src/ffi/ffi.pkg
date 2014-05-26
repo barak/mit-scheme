@@ -36,3 +36,15 @@ FFI System Packaging |#
 	  alien-function/return-type)
   (export ()
 	  c-generate))
+
+(define-package (ffi build)
+  (parent ())
+  (files "build")
+  (import (runtime pathname)
+	  library-directory-path)
+  (export (ffi)
+	  compile-shim
+	  link-shim
+	  install-shim
+	  install-load-option
+	  install-html))

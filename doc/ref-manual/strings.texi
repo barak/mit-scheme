@@ -834,19 +834,20 @@ once before calling any of the procedures defined here.
 @cindex regular expression, searching string for
 
 Procedures that perform regular-expression match and search accept
-standardized arguments.  @var{Regexp} is the regular expression; it is a
-string.  @var{String} is the string being matched or searched.
-Procedures that operate on substrings also accept @var{start} and
-@var{end} index arguments with the usual meaning.  The optional argument
-@var{case-fold?} says whether the match/search is case-sensitive; if
-@var{case-fold?} is @code{#f}, it is case-sensitive, otherwise it is
-case-insensitive.  The optional argument @var{syntax-table} is a
-character syntax table that defines the character syntax, such as which
-characters are legal word constituents.  This feature is primarily for
-Edwin, so character syntax tables will not be documented here.
-Supplying @code{#f} for (or omitting) @var{syntax-table} will select the
-default character syntax, equivalent to Edwin's @code{fundamental}
-mode.
+standardized arguments.  @var{Regexp} is the regular expression; it is
+either a string representation of a regular expression, or a compiled
+regular expression object.  @var{String} is the string being matched
+or searched.  Procedures that operate on substrings also accept
+@var{start} and @var{end} index arguments with the usual meaning.  The
+optional argument @var{case-fold?} says whether the match/search is
+case-sensitive; if @var{case-fold?} is @code{#f}, it is
+case-sensitive, otherwise it is case-insensitive.  The optional
+argument @var{syntax-table} is a character syntax table that defines
+the character syntax, such as which characters are legal word
+constituents.  This feature is primarily for Edwin, so character
+syntax tables will not be documented here.  Supplying @code{#f} for
+(or omitting) @var{syntax-table} will select the default character
+syntax, equivalent to Edwin's @code{fundamental} mode.
 
 @deffn procedure re-string-match regexp string [case-fold? [syntax-table]]
 @deffnx procedure re-substring-match regexp string start end [case-fold? [syntax-table]]
@@ -929,9 +930,10 @@ to the following expression:
 @end deffn
 
 @deffn procedure regexp-group alternative @dots{}
-Each @var{alternative} must be a regular expression.  The returned value
-is a new regular expression that consists of the @var{alternative}s
-combined by a grouping operator.  For example:
+Each @var{alternative} must be a string representation of a regular
+expression.  The returned value is a new string representation of a
+regular expression that consists of the @var{alternative}s combined by
+a grouping operator.  For example:
 
 @example
 @group
@@ -939,6 +941,23 @@ combined by a grouping operator.  For example:
   @result{} "\\(foo\\|bar\\|baz\\)"
 @end group
 @end example
+@end deffn
+
+@deffn procedure re-compile-pattern regexp-string
+@var{Regexp-string} must be the string representation of a regular
+expression.  Returns a compiled regular expression object of the
+represented regular expression.
+
+Procedures that apply regular expressions, such as
+@code{re-string-search-forward}, are sometimes faster when used with
+compiled regular expression objects than when used with the string
+representations of regular expressions, so applications that reuse
+regular expressions may speed up matching and searching by caching the
+compiled regular expression objects.  However, the regular expression
+procedures have some internal caches as well, so this is likely to
+improve performance only for applications that use a large number of
+different regular expressions before cycling through the same ones
+again.
 @end deffn
 
 @node REXP abstraction,  , Regular-expression procedures, Regular Expressions

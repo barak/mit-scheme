@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -466,7 +466,11 @@ USA.
 
 (define hook/repl-eval)
 (define (default/repl-eval s-expression environment repl)
-  (%repl-scode-eval (syntax s-expression environment) environment repl))
+  (if (and (pair? s-expression)
+	   (eq? 'UNQUOTE (car s-expression)))
+      (let ((env (->environment '(user))))
+	(%repl-scode-eval (syntax (cadr s-expression) env) env repl))
+      (%repl-scode-eval (syntax s-expression environment) environment repl)))
 
 (define (repl-scode-eval scode #!optional environment repl)
   (receive (environment repl) (optional-er environment repl 'REPL-SCODE-EVAL)

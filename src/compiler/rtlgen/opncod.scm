@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -67,10 +67,11 @@ USA.
 	 (let ((value (constant-value callee)))
 	   (and (scode/primitive-procedure? value)
 		(let ((entry
-		       (assq (primitive-procedure-name value)
-			     name->open-coders)))
+		       (hash-table/get name->open-coders
+				       (primitive-procedure-name value)
+				       #f)))
 		  (and entry
-		       (try-handler combination value (cdr entry)))))))))
+		       (try-handler combination value entry))))))))
 
 (define (try-handler combination primitive entry)
   (let ((operands (combination/operands combination)))
@@ -209,12 +210,8 @@ USA.
   (let ((per-name
 	 (lambda (name handler)
 	   (if (available-primitive? name)
-	       (let ((entry (assq name name->open-coders))
-		     (item (vector handler ->effect ->predicate ->value)))
-		 (if entry
-		     (set-cdr! entry item)
-		     (set! name->open-coders
-			   (cons (cons name item) name->open-coders))))))))
+	       (let ((item (vector handler ->effect ->predicate ->value)))
+		 (hash-table/put! name->open-coders name item))))))
     (lambda (name handler)
       (if (list? name)
 	  (for-each (lambda (name)
@@ -223,8 +220,7 @@ USA.
 	  (per-name name handler))
       name)))
 
-(define name->open-coders
-  '())
+(define name->open-coders (make-strong-eq-hash-table))
 
 (define define-open-coder/effect
   (open-coder-definer invoke/effect->effect
@@ -518,7 +514,7 @@ USA.
 	      (make-constant-locative
 	       (make-variable-locative base
 				       (rtl:make-object->datum index))
-	       header-length-in-units)))))	       
+	       header-length-in-units)))))
       (if (rtl:constant? index)
 	  (let ((value (rtl:constant-value index)))
 	    (if (and (object-type? (ucode-type fixnum) value)
@@ -634,7 +630,7 @@ USA.
   (lambda (locative value finish)
     (let ((assignment (make-assignment locative value)))
       (if finish
-#|	  
+#|
 	  (load-temporary-register scfg*scfg->scfg! (make-fetch locative)
 	    (lambda (temporary)
 	      (scfg*scfg->scfg! assignment (finish temporary))))

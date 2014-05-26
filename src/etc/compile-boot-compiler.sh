@@ -2,8 +2,8 @@
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute
-#     of Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014
+#     Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -33,14 +33,42 @@ else
     exit 1
 fi
 
-run_cmd "${EXE}" --band runtime.com --heap 6000 <<EOF
+run_cmd "${EXE}" --batch-mode <<EOF
 (begin
   (load "etc/compile.scm")
-  (compile-bootstrap-1))
+  (compile-cref compile-dir)
+  (for-each compile-dir '("runtime" "star-parser" "sf")))
 EOF
 
-run_cmd "${EXE}" --band all.com --heap 6000 <<EOF
-(begin
-  (load "etc/compile.scm")
-  (compile-bootstrap-2))
+get_fasl_file
+run_cmd_in_dir runtime "${EXE}" --batch-mode --library ../lib \
+    --fasl "${FASL}" <<EOF
+(disk-save "../lib/x-runtime.com")
 EOF
+echo ""
+
+run_cmd "${EXE}" --batch-mode --library lib --band x-runtime.com <<EOF
+(begin
+  (load-option 'SF)
+  (with-working-directory-pathname "compiler"
+    (lambda ()
+      (load "compiler.sf"))))
+EOF
+
+run_cmd "${EXE}" --batch-mode <<EOF
+(with-working-directory-pathname "compiler"
+  (lambda ()
+    (load "compiler.cbf")))
+EOF
+
+run_cmd "${EXE}" --batch-mode --library lib --band x-runtime.com <<EOF
+(begin
+  (load-option 'SF)
+  (load-option 'CREF)
+  (load-option '*PARSER)
+  (load-option 'COMPILER)
+  (disk-save "lib/x-compiler.com"))
+EOF
+
+# Remove host (native) code to STAGEX/ subdirs.
+run_cmd ./Stage.sh make X

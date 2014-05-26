@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -25,6 +25,7 @@ USA.
 |#
 
 ;;;; MIT/GNU Scheme Syntax
+;;; package: (runtime syntax mit)
 
 (declare (usual-integrations))
 
@@ -192,25 +193,6 @@ USA.
 			  variable-binding-theory
 			  output/let)))))
 
-(define (classifier:letrec form environment definition-environment)
-  definition-environment
-  (syntax-check '(KEYWORD (* (IDENTIFIER ? EXPRESSION)) + FORM) form)
-  (let* ((binding-environment
-	  (make-internal-syntactic-environment environment))
-	 (body-environment
-	  (make-internal-syntactic-environment binding-environment)))
-    (for-each (let ((item (make-reserved-name-item)))
-		(lambda (binding)
-		  (syntactic-environment/define binding-environment
-						(car binding)
-						item)))
-	      (cadr form))
-    (classify/let-like form
-		       binding-environment
-		       binding-environment
-		       body-environment
-		       variable-binding-theory
-		       output/letrec)))
 
 (define (classifier:let-syntax form environment definition-environment)
   definition-environment
@@ -349,17 +331,6 @@ USA.
   (make-declaration-item
    (lambda ()
      (classify/declarations (cdr form) environment))))
-
-(define (classifier:local-declare form environment definition-environment)
-  (syntax-check '(KEYWORD (* (IDENTIFIER * DATUM)) + FORM) form)
-  (let ((body
-	 (classify/body (cddr form)
-			environment
-			definition-environment)))
-    (make-expression-item
-     (lambda ()
-       (output/local-declare (classify/declarations (cadr form) environment)
-			     (compile-body-item body))))))
 
 (define (classify/declarations declarations environment)
   (map (lambda (declaration)

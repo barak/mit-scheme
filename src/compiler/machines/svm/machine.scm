@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,10 +36,9 @@ USA.
 (define-integrable addressing-granularity 8)
 (define-integrable scheme-type-width 6)
 (define-integrable scheme-type-limit #x40)
-(define-integrable scheme-object-width 32) ;could be 64 too
+(define-integrable scheme-object-width (if (fix:fixnum? #x100000000) 64 32))
 
 (define-integrable scheme-datum-width
-  ;; See "***" below.
   (- scheme-object-width scheme-type-width))
 
 (define-integrable float-width 64)
@@ -51,11 +50,12 @@ USA.
 (define-integrable address-units-per-object
   (quotient scheme-object-width addressing-granularity))
 
-(define-integrable signed-fixnum/upper-limit
-  ;; *** This is (expt 2 (-1+ scheme-datum-width)), manually constant-folded.
-  #x02000000)
+;; No 64-bit constants in the instruction stream.
+(define-integrable min-long-width 32)
 
-(define-integrable signed-fixnum/lower-limit
+(define signed-fixnum/upper-limit
+  (expt 2 (- min-long-width scheme-type-width 1)))
+(define signed-fixnum/lower-limit
   (- signed-fixnum/upper-limit))
 
 (define-integrable unsigned-fixnum/upper-limit
@@ -115,7 +115,7 @@ USA.
 
 (define (load-immediate-operand? n)
   (or (and (exact-integer? n)
-	   (<= #x-80000000 n) (<= n #x7FFFFFFF))
+	   (<= signed-fixnum/lower-limit n) (< n signed-fixnum/upper-limit))
       (flo:flonum? n)))
 
 ;; TYPE and DATUM can be constants or registers; address is a register.
@@ -161,7 +161,7 @@ USA.
 
 (define-binary-operations
   + - *
-  quotient remainder
+  product quotient remainder
   lsh and andc or xor
   max-unsigned min-unsigned
   / atan2)
@@ -207,10 +207,13 @@ USA.
 (define (ea:address label)
   (ea:pc-relative `(- ,label *PC*)))
 
-(define (ea:uuo-entry-address label)
-  ;; LABEL is the uuo-link-label, but the PC to jump to is AFTER the u16
-  ;; frame-size.
-  (ea:pc-relative `(- (+ ,label 2) *PC*)))
+(define ea:uuo-entry-address
+  (let ((offset
+	 ;; LABEL is the uuo-link-label, but the PC to jump to is two
+	 ;; opcode bytes before the following word (the link address).
+	 (- address-units-per-object 2)))
+    (named-lambda (ea:uuo-entry-address label)
+      (ea:pc-relative `(- (+ ,label ,offset) *PC*)))))
 
 (define (ea:stack-pop)
   (ea:post-increment rref:stack-pointer 'WORD))
@@ -219,7 +222,10 @@ USA.
   (ea:pre-decrement rref:stack-pointer 'WORD))
 
 (define (ea:stack-ref index)
-  (ea:offset rref:stack-pointer index 'WORD))
+  (guarantee-non-negative-fixnum index 'ea:stack-ref)
+  (if (zero? index)
+      (ea:indirect rref:stack-pointer)
+      (ea:offset rref:stack-pointer index 'WORD)))
 
 (define (ea:alloc-word)
   (ea:post-increment rref:free-pointer 'WORD))
@@ -280,7 +286,9 @@ USA.
 ;;;; Machine registers, register references.
 
 (define-integrable number-of-machine-registers 512)
-(define-integrable number-of-temporary-registers 512)
+(define-integrable number-of-temporary-registers 256)
+(define-integrable number-of-fixed-interpreter-registers 14)
+(define-integrable words-per-compiler-temporary 2)
 
 (define register-reference
   (let ((references (make-vector number-of-machine-registers)))
@@ -375,22 +383,22 @@ USA.
 ;;;; RTL Generator Interface
 
 (define (interpreter-register:access)
-  (rtl:make-machine-register regnum:word-0))
+  (rtl:make-machine-register regnum:value))
 
 (define (interpreter-register:cache-reference)
-  (rtl:make-machine-register regnum:word-0))
+  (rtl:make-machine-register regnum:value))
 
 (define (interpreter-register:cache-unassigned?)
-  (rtl:make-machine-register regnum:word-0))
+  (rtl:make-machine-register regnum:value))
 
 (define (interpreter-register:lookup)
-  (rtl:make-machine-register regnum:word-0))
+  (rtl:make-machine-register regnum:value))
 
 (define (interpreter-register:unassigned?)
-  (rtl:make-machine-register regnum:word-0))
+  (rtl:make-machine-register regnum:value))
 
 (define (interpreter-register:unbound?)
-  (rtl:make-machine-register regnum:word-0))
+  (rtl:make-machine-register regnum:value))
   
 (define-syntax define-machine-register
   (sc-macro-transformer

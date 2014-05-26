@@ -1,0 +1,105 @@
+#| -*-Scheme-*-
+
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
+USA.
+
+|#
+
+;;;; C declarations for gdbm-shim.so.
+
+;; Parameters to gdbm_open for READERS, WRITERS, and WRITERS who
+;; can create the database.
+(enum (GDBM_READER)		;; A reader.
+      (GDBM_WRITER)		;; A writer.
+      (GDBM_WRCREAT)		;; A writer.  Create the db if needed.
+      (GDBM_NEWDB)		;; A writer.  Always create a new db.
+      (GDBM_FAST)		;; Write fast! => No fsyncs.  OBSOLETE.
+      (GDBM_SYNC)		;; Sync operations to the disk.
+      (GDBM_NOLOCK))		;; Don't do file locking operations.
+
+;; Parameters to gdbm_store for simple insertion or replacement in the
+;; case that the key is already in the database.
+(enum (GDBM_INSERT)		;; Never replace old data with new.
+      (GDBM_REPLACE))		;; Always replace old data with new.
+
+;; Parameters to gdbm_setopt, specifing the type of operation to perform.
+(enum (GDBM_CACHESIZE)		;; Set the cache size.
+      (GDBM_FASTMODE)		;; Toggle fast mode.  OBSOLETE.
+      (GDBM_SYNCMODE)		;; Turn on or off sync operations.
+      (GDBM_CENTFREE)		;; Keep all free blocks in the header.
+      (GDBM_COALESCEBLKS))	;; Attempt to coalesce free blocks.
+
+(typedef datum
+	 (struct
+	  (dptr (* char))
+	  (dsize int)))
+
+(typedef gdbm_args
+	 (struct
+	  (dbf GDBM_FILE)
+	  (gdbm_errno int)
+	  (sys_errno int)
+	  (key datum)
+	  (content datum)))
+
+(typedef GDBM_FILE (* dummy))
+
+(extern (* char) alloc_gdbm_key (args (* gdbm_args)) (size int))
+(extern (* char) alloc_gdbm_content (args (* gdbm_args)) (size int))
+
+(extern (* gdbm_args) do_gdbm_open
+	(name (* char)) (block_size int) (read_write int) (mode int))
+(extern void do_gdbm_close (args (* gdbm_args)))
+(extern int do_gdbm_store (args (* gdbm_args)) (flag int))
+(extern void do_gdbm_fetch (args (* gdbm_args)))
+(extern int do_gdbm_exists (args (* gdbm_args)))
+(extern int do_gdbm_delete (args (* gdbm_args)))
+(extern void do_gdbm_firstkey (args (* gdbm_args)))
+(extern int do_gdbm_nextkey (args (* gdbm_args)))
+(extern int do_gdbm_reorganize (args (* gdbm_args)))
+(extern void do_gdbm_sync (args (* gdbm_args)))
+(extern (* char) gdbm_strerror (errnum int))
+(extern (* char) strerror (errnum int))
+(extern int do_gdbm_setopt (args (* gdbm_args)) (option int) (value int))
+(extern (* char) get_gdbm_version)
+
+(enum (GDBM_NO_ERROR)
+      (GDBM_MALLOC_ERROR)
+      (GDBM_BLOCK_SIZE_ERROR)
+      (GDBM_FILE_OPEN_ERROR)
+      (GDBM_FILE_WRITE_ERROR)
+      (GDBM_FILE_SEEK_ERROR)
+      (GDBM_FILE_READ_ERROR)
+      (GDBM_BAD_MAGIC_NUMBER)
+      (GDBM_EMPTY_DATABASE)
+      (GDBM_CANT_BE_READER)
+      (GDBM_CANT_BE_WRITER)
+      (GDBM_READER_CANT_DELETE)
+      (GDBM_READER_CANT_STORE)
+      (GDBM_READER_CANT_REORGANIZE)
+      (GDBM_UNKNOWN_UPDATE)
+      (GDBM_ITEM_NOT_FOUND)
+      (GDBM_REORGANIZE_FAILED)
+      (GDBM_CANNOT_REPLACE)
+      (GDBM_ILLEGAL_DATA)
+      (GDBM_OPT_ALREADY_SET)
+      (GDBM_OPT_ILLEGAL))

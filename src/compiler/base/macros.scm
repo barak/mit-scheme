@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -171,8 +171,8 @@ USA.
 						   ,@slots))))))))
 		     (ill-formed-syntax form)))))))))))
 
-(define-type-definition snode 5 #f)
-(define-type-definition pnode 6 #f)
+(define-type-definition snode 7 #f)
+(define-type-definition pnode 8 #f)
 (define-type-definition rvalue 2 rvalue-types)
 (define-type-definition lvalue 14 #f)
 
@@ -214,7 +214,7 @@ USA.
 		(map (lambda (form) (close-syntax form environment))
 		     (cddr form))))
 	   `((ACCESS VECTOR ,system-global-environment)
-	     ,tag #F '() '() #F ,@extra))
+	     ,tag #F #F #F '() '() #F ,@extra))
 	 (ill-formed-syntax form)))))
 
 (define-syntax make-pnode
@@ -226,7 +226,7 @@ USA.
 		(map (lambda (form) (close-syntax form environment))
 		     (cddr form))))
 	   `((ACCESS VECTOR ,system-global-environment)
-	     ,tag #F '() '() #F #F ,@extra))
+	     ,tag #F #F #F '() '() #F #F ,@extra))
 	 (ill-formed-syntax form)))))
 
 (define-syntax make-rvalue

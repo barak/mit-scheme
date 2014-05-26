@@ -1,0 +1,18 @@
+The GDBM wrapper.
+
+This is a drop-in replacement for the gdbm microcode module and
+runtime/gdbm.scm.  It is not part of the core build and can be built
+outside the core build tree.  There is no ./configure script yet.  If
+you know you have libgdbm installed, you should win with this command:
+
+    make all check install
+
+The install target copies a shared library shim and compiled Scheme
+files into the system library path, and re-writes the optiondb.scm
+found there.  You can override the default command name "mit-scheme"
+(and thus the system library path) by setting MIT_SCHEME_EXE.
+
+The option is currently called GDBM2 until GDBM no longer refers to
+the original microcode module.  You will need to import the bindings
+you want to use.  They are not exported to the global environment
+because they would conflict with the exports from (runtime gdbm).

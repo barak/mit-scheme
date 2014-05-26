@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -95,7 +95,9 @@ USA.
   (without-interrupts
    (lambda ()
      (if (channel-open? channel)
-	 (remove-from-gc-finalizer! open-channels channel)))))
+	 (begin
+	   (%deregister-io-descriptor (channel-descriptor-for-select channel))
+	   (remove-from-gc-finalizer! open-channels channel))))))
 
 (define-integrable (channel-open? channel)
   (if (channel-descriptor channel) #t #f))
@@ -169,6 +171,24 @@ USA.
 	(ucode-primitive terminal-set-state 2)))
 
 (define (channel-read channel buffer start end)
+  (let loop ()
+    (let ((n (without-interrupts
+	      (lambda ()
+		(if (channel-closed? channel)
+		    0
+		    (%channel-read channel buffer start end))))))
+      (if (eq? n #t)
+	  (begin
+	    (handle-subprocess-status-change)
+	    (without-interrupts
+	     (lambda ()
+	       (if (and (channel-open? channel)
+			(channel-blocking? channel))
+		   (loop)
+		   #f))))
+	  n))))
+
+(define (%channel-read channel buffer start end)
   (let ((do-read
 	 (lambda ()
 	   ((ucode-primitive channel-read 4)
@@ -180,23 +200,33 @@ USA.
 	    end))))
     (declare (integrate-operator do-read))
     (if (and have-select? (not (channel-type=file? channel)))
-	(with-thread-events-blocked
-	  (lambda ()
-	    (let ((do-test
-		   (lambda (k)
-		     (let ((result (test-for-io-on-channel channel 'READ)))
-		       (case result
-			 ((READ HANGUP ERROR) (do-read))
-			 ((PROCESS-STATUS-CHANGE)
-			  (handle-subprocess-status-change)
-			  (if (channel-closed? channel) 0 (k)))
-			 (else (k)))))))
-	      (if (channel-blocking? channel)
-		  (let loop () (do-test loop))
-		  (do-test (lambda () #f))))))
+	(let ((result (test-for-io-on-channel channel 'READ)))
+	  (case result
+	    ((READ HANGUP ERROR) (do-read))
+	    ((#F) #f)
+	    ((PROCESS-STATUS-CHANGE INTERRUPT) #t)
+	    (else (error "Unexpected test-for-io-on-channel value:" result))))
 	(do-read))))
 
 (define (channel-write channel buffer start end)
+  (let loop ()
+    (let ((n (without-interrupts
+	      (lambda ()
+		(if (channel-closed? channel)
+		    0
+		    (%channel-write channel buffer start end))))))
+      (if (eq? n #t)
+	  (begin
+	    (handle-subprocess-status-change)
+	    (without-interrupts
+	     (lambda ()
+	       (if (and (channel-open? channel)
+			(channel-blocking? channel))
+		   (loop)
+		   #f))))
+	  n))))
+
+(define (%channel-write channel buffer start end)
   (let ((do-write
 	 (lambda ()
 	   ((ucode-primitive channel-write 4)
@@ -208,20 +238,12 @@ USA.
 	    end))))
     (declare (integrate-operator do-write))
     (if (and have-select? (not (channel-type=file? channel)))
-	(with-thread-events-blocked
-	  (lambda ()
-	    (let ((do-test
-		   (lambda (k)
-		     (let ((result (test-for-io-on-channel channel 'WRITE)))
-		       (case result
-			 ((WRITE HANGUP ERROR) (do-write))
-			 ((PROCESS-STATUS-CHANGE)
-			  (handle-subprocess-status-change)
-			  (if (channel-closed? channel) 0 (k)))
-			 (else (k)))))))
-	      (if (channel-blocking? channel)
-		  (let loop () (do-test loop))
-		  (do-test (lambda () #f))))))
+	(let ((result (test-for-io-on-channel channel 'WRITE)))
+	  (case result
+	    ((WRITE HANGUP ERROR) (do-write))
+	    ((#F) 0)
+	    ((PROCESS-STATUS-CHANGE INTERRUPT) #t)
+	    (else (error "Unexpected test-for-io-on-channel value:" result))))
 	(do-write))))
 
 (define (channel-read-block channel buffer start end)

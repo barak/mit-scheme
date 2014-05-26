@@ -1238,7 +1238,7 @@ In the latter case, @code{every} returns the true value produced by
 its final application of @var{predicate}.  The application of
 @var{predicate} to the last element of the @var{list}s is a tail call.
 
-If one of the clisti has no elements, @code{every} simply returns @code{#t}.
+If one of the @var{list}s has no elements, @code{every} simply returns @code{#t}.
 
 Like @code{any}, @code{every}'s name does not end with a question
 mark---this is to indicate that it does not return a simple boolean

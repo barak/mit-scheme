@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,20 +34,19 @@ USA.
 ;;;; Decoder
 
 (define (decode-www-form-urlencoded octets start end)
-  (call-with-input-octets octets start end
-    (lambda (input)
-      (port/set-coding input 'us-ascii)
-      (port/set-line-ending input 'crlf)
-      (let loop ((data '()))
-	(let ((char (read-char input)))
-	  (if (eof-object? char)
-	      (reverse! data)
-	      (begin
-		(unread-char char input)
-		(let ((name (decode-segment input #t)))
-		  (loop
-		   (cons (cons name (decode-segment input #f))
-			 data))))))))))
+  (let ((input (open-input-octets octets start end)))
+    (port/set-coding input 'us-ascii)
+    (port/set-line-ending input 'crlf)
+    (let loop ((data '()))
+      (let ((char (read-char input)))
+	(if (eof-object? char)
+	    (reverse! data)
+	    (begin
+	      (unread-char char input)
+	      (let ((name (decode-segment input #t)))
+		(loop
+		 (cons (cons name (decode-segment input #f))
+		       data)))))))))
 
 (define (decode-segment input name?)
   (call-with-output-string

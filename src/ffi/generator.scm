@@ -1,6 +1,9 @@
 #| -*-Scheme-*-
 
-Copyright (C) 2006, 2007, 2008, 2009, 2010 Matthew Birkholz
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -126,7 +129,7 @@ Scm_continue_"name" (void)
       (let ((name (symbol-name name)))
 	(write-string
 	 (string-append "
-void
+SCM
 Scm_"name" (void)
 \{
   /* Declare. */" declares "
@@ -139,8 +142,7 @@ Scm_"name" (void)
   /* Save. */
   callout_unseal (&Scm_continue_"name");" saves "
 
-  callout_continue (&Scm_continue_"name");
-  /* NOTREACHED */
+  return callout_continue (&Scm_continue_"name");
 }
 "))))))
 
@@ -182,11 +184,21 @@ Scm_"name" (void)
 (define (callout-return tos-var ret-var ret-ctype includes)
   (let ((ctype (definite-ctype ret-ctype includes)))
     (string-append
-     (if (ctype/void? ctype)
-	 (string-append "
-  "ret-var"s = unspecific();")
-	 (string-append "
-  "ret-var"s = "(callout-return-converter ctype)" ("ret-var");")) "
+     (cond ((ctype/void? ctype)
+	    (string-append "
+  "ret-var"s = unspecific();"))
+	   ((or (ctype/struct? ctype) (ctype/union? ctype))
+	    (let ((decl (decl-string ret-ctype)))
+	      (string-append "
+  "ret-var"s = struct_to_scm (&"ret-var", sizeof("decl"));")))
+	   ((ctype/pointer? ctype)
+	    (string-append "
+  "ret-var"s = pointer_to_scm ("ret-var");"))
+	   ((or (ctype/basic? ctype) (ctype/enum? ctype))
+	    (let ((func (basic-scm-converter ctype)))
+	      (string-append "
+  "ret-var"s = "func" ("ret-var");")))
+	   (else (error "Unexpected callout return type:" ctype ret-ctype))) "
   callout_pop ("tos-var");
   return ("ret-var"s);")))
 
@@ -271,23 +283,22 @@ Scm_"name" (void)
 	     ((UCHAR USHORT UINT ULONG) "arg_ulong")
 	     ((FLOAT DOUBLE) "arg_double")
 	     (else (error "Unexpected parameter type:" arg-ctype))))
+	  ((or (ctype/struct? ctype) (ctype/union? ctype))
+	   (string-append "*("decl"*) arg_pointer"))
 	  (else (error "Unexpected parameter type:" arg-ctype)))))
 
-(define (callout-return-converter ctype)
+(define (basic-scm-converter ctype)
   ;; Returns the name of a C function that converts from the definite
-  ;; C type CTYPE to the analogous Scheme object.  Note that the
-  ;; pointer converter, pointer_to_scm, returns pointers via c-call's
-  ;; second argument.
-  (cond ((ctype/pointer? ctype) "pointer_to_scm")
-	((ctype/enum? ctype) "ulong_to_scm")
+  ;; C type CTYPE to the analogous Scheme object.
+  (cond ((ctype/enum? ctype) "ulong_to_scm")
 	((ctype/basic? ctype)
 	 (case ctype
 	   ((CHAR SHORT INT LONG) "long_to_scm")
 	   ((UCHAR USHORT UINT ULONG) "ulong_to_scm")
 	   ((FLOAT DOUBLE) "double_to_scm")
 	   ((VOID) #f)
-	   (else (error "Unexpected return type:" ctype))))
-	(else (error "Unexpected return type:" ctype))))
+	   (else (error "Unexpected C type:" ctype))))
+	(else (error "Unexpected C type:" ctype))))
 
 (define (callout-return-variable params)
   ;; Returns a name (string) for a variable that will hold the return
@@ -317,8 +328,8 @@ Scm_"name" (void)
 	 (string-append (decl-string (ctype-pointer/target-type ctype))
 			" *"))
 	((ctype/const? ctype)
-	 (string-append "const "
-			(decl-string (ctype-const/qualified-type ctype))))
+	 (string-append (decl-string (ctype-const/qualified-type ctype))
+			" const"))
 	((ctype/struct-name? ctype)
 	 (string-append "struct " (symbol-name (ctype-struct/name ctype))))
 	((ctype/union-name? ctype)
@@ -461,10 +472,15 @@ Scm_"name" ("arglist")
   ;; Returns a function call that applies the appropriate Scheme
   ;; constructor to the ARG-CTYPE variable ARG-NAME.
   (let ((ctype (definite-ctype arg-ctype includes)))
-    (if (ctype/pointer? ctype)
-	(string-append "cons_alien((void*)"arg-name")")
-	(let ((func (callout-return-converter ctype)))
-	  (string-append func"("arg-name")")))))
+    (cond ((ctype/pointer? ctype)
+	   (string-append "cons_alien((void*)"arg-name")"))
+	  ((or (ctype/struct? ctype) (ctype/union? ctype))
+	   (error "Unsupported callback argument type:" arg-ctype arg-name))
+	  ((or (ctype/basic? ctype) (ctype/enum? ctype))
+	   (let ((func (basic-scm-converter ctype)))
+	     (string-append func"("arg-name")")))
+	  (else
+	   (error "Unexpected callback argument type:" arg-ctype arg-name)))))
 
 (define (callback-return-converter ret-type includes)
   ;; Returns the name of the C function that takes no arguments and
@@ -479,8 +495,8 @@ Scm_"name" ("arglist")
 	     ((CHAR SHORT INT LONG) "long_value")
 	     ((UCHAR USHORT UINT ULONG) "ulong_value")
 	     ((FLOAT DOUBLE) "double_value")
-	     (else (error "Unexpected return type:" ctype))))
-	  (else (error "Unexpected return type:" ctype)))))
+	     (else (error "Unexpected callback return type:" ctype))))
+	  (else (error "Unexpected callback return type:" ctype)))))
 
 
 ;;; Groveler

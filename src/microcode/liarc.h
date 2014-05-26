@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,6 +37,7 @@ USA.
 #include "const.h"
 #include "object.h"
 #include "sdata.h"
+#include "fixnum.h"
 #include "errors.h"
 #include "stack.h"
 #include "interp.h"
@@ -48,12 +49,7 @@ USA.
 
 extern SCHEME_OBJECT * sp_register;
 
-#ifdef __GNUC__
-/* Add attributes to avoid warnings from -Wall for unreferenced labels */
-#  define DEFLABEL(name) name : __attribute__((unused))
-#else
-#  define DEFLABEL(name) name :
-#endif
+#define DEFLABEL(name) name : ATTRIBUTE((unused))
 
 union machine_word_u
 {
@@ -249,46 +245,6 @@ typedef unsigned long entry_count_t;
   CACHE_VARIABLES ();							\
   JUMP (IICdest);							\
 } while (false)
-
-#define MAX_BIT_SHIFT DATUM_LENGTH
-
-#define RIGHT_SHIFT_UNSIGNED(source, number)				\
-  (((number) > MAX_BIT_SHIFT)						\
-   ? 0									\
-   : ((((unsigned long) (source)) & DATUM_MASK) >> (number)))
-
-#define RIGHT_SHIFT(source, number)					\
-  (((number) > MAX_BIT_SHIFT)						\
-   ? 0									\
-   : ((source) >> (number)))
-
-#define LEFT_SHIFT(source, number)					\
-  (((number) > MAX_BIT_SHIFT)						\
-   ? 0									\
-   : ((source) << (number)))
-
-#define FIXNUM_LSH(source, number)					\
-  (((number) >= 0)							\
-   ? (LEFT_SHIFT (source, number))					\
-   : (RIGHT_SHIFT_UNSIGNED (source, (- (number)))))
-
-#define FIXNUM_REMAINDER(source1, source2)				\
-  (((source2) > 0)							\
-   ? (((source1) >= 0)							\
-      ? ((source1) % (source2))						\
-      : (- ((- (source1)) % (source2))))				\
-   : (((source1) >= 0)							\
-      ? ((source1) % (- (source2)))					\
-      : (- ((- (source1)) % (- (source2))))))
-
-#define FIXNUM_QUOTIENT(source1, source2)				\
-  (((source2) > 0)							\
-   ? (((source1) >= 0)							\
-      ? ((source1) / (source2))						\
-      : (- ((- (source1)) / (source2))))				\
-   : (((source1) >= 0)							\
-      ? (- ((source1) / (- (source2))))					\
-      : ((- (source1)) / (- (source2)))))
 
 #define INTERRUPT_CHECK(code, entry_point) do				\
 {									\

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1055,6 +1055,14 @@ If this is an error, the debugger examines the error condition."
 (define (operation/prompt-for-confirmation port prompt)
   (unsolicited-prompt port prompt-for-confirmation? prompt))
 
+(define (operation/prompt-for-string port prompt)
+  (unsolicited-prompt port (lambda (prompt)
+			     (prompt-for-string prompt "")) prompt))
+
+(define (operation/call-with-pass-phrase port prompt receiver)
+  (unsolicited-prompt port (lambda (prompt)
+			     (call-with-pass-phrase prompt receiver)) prompt))
+
 (define unsolicited-prompt
   (let ((wait-value (list #f))
 	(abort-value (list #f)))
@@ -1162,6 +1170,8 @@ If this is an error, the debugger examines the error condition."
      (PROMPT-FOR-CONFIRMATION ,operation/prompt-for-confirmation)
      (PROMPT-FOR-COMMAND-EXPRESSION ,operation/prompt-for-command-expression)
      (PROMPT-FOR-COMMAND-CHAR ,operation/prompt-for-command-char)
+     (PROMPT-FOR-STRING ,operation/prompt-for-string)
+     (CALL-WITH-PASS-PHRASE ,operation/call-with-pass-phrase)
      (SET-DEFAULT-DIRECTORY ,operation/set-default-directory)
      (SET-DEFAULT-ENVIRONMENT ,operation/set-default-environment)
      (READ-CHAR ,operation/read-char)

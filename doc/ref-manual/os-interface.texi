@@ -2395,7 +2395,7 @@ integer.  Port strings are decoded by the operating system using a
 table; for example, on unix the table is in @file{/etc/services}.
 Usually you will use a port string rather than a number.
 
-@deffn procedure open-tcp-stream-socket host-name service [buffer-size [line-translation]]
+@deffn procedure open-tcp-stream-socket host-name service
 @code{open-tcp-stream-socket} opens a connection to the host specified
 by @var{host-name}.  @var{Host-name} is looked up using the ordinary
 lookup rules for your computer.  The connection is established to the
@@ -2403,16 +2403,6 @@ service specified by @var{service}.  The returned value is an
 @acronym{I/O} port, to which you can read and write characters using
 ordinary Scheme @acronym{I/O} procedures such as @code{read-char} and
 @code{write-char}.
-
-@var{Buffer-size} specifies the size of the read and write buffers used
-by the port; if this is unspecified or @code{#f}, the buffers will hold
-@code{4096} bytes.
-
-@var{Line-translation} specifies how end-of-line characters will be
-translated when reading or writing to the socket.  If this is
-unspecified or @code{#f}, then lines will be terminated by @sc{cr-lf},
-which is the standard for most internet protocols.  Otherwise, it must
-be a string, which specifies the line-ending character sequence to use.
 
 When you wish to close the connection, just use @code{close-port}.
 

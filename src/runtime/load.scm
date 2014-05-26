@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -142,8 +142,8 @@ USA.
   (let* ((pathname (merge-pathnames pathname))
 	 (thunk
 	  (if (pathname-type pathname)
-	      (or (try-fasl-file pathname)
-		  (try-object-file pathname))
+	      (or (try-object-file pathname)
+		  (try-fasl-file pathname))
 	      (or (try-fasl-file pathname)
 		  (try-fasl-file (pathname-new-type pathname "com"))
 		  (try-object-file (pathname-new-type pathname "so"))
@@ -456,6 +456,11 @@ USA.
 (define *command-line-parsers*)
 (define *load-init-file?*)
 
+(define (command-line)
+  *command-line*)
+
+(define *command-line* '())
+
 (define hook/process-command-line)
 (define (default/process-command-line unused-command-line)
   (let ((after-parsing-actions '()))
@@ -512,10 +517,7 @@ USA.
 
 (define (option-keyword? argument)
   (and (fix:> (string-length argument) 1)
-       (char=? #\- (string-ref argument 0))
-       (or (not (char=? #\- (string-ref argument 1)))
-	   (and (fix:> (string-length argument) 2)
-		(not (char=? #\- (string-ref argument 2)))))))
+       (char=? #\- (string-ref argument 0))))
 
 (define (load-init-file)
   (let ((pathname (init-file-pathname)))
@@ -523,24 +525,6 @@ USA.
 	(load pathname user-initial-environment)))
   unspecific)
 
-;; KEYWORD must be a string with at least one character.  For
-;; backwards compatibility, the string may have a leading hyphen,
-;; which is stripped.
-;;
-;; PROC is a procedure of one argument.  It will be invoked on the
-;; list of command line elements extending to the right of the keyword
-;; (and including it).
-;;
-;; PROC returns two values: the sublist starting with the first
-;; non-handled command-line element (typically the next keyword), and
-;; either #F or a procedure to invoke after the whole command line has
-;; been parsed (and the init file loaded).  Thus PROC has the option
-;; of executing the appropriate action at parsing time, or delaying it
-;; until after the parsing is complete.  The execution of the PROCs
-;; (or their associated delayed actions) is strictly left-to-right,
-;; with the init file loaded between the end of parsing and the
-;; delayed actions.
-
 (define (set-command-line-parser! keyword proc #!optional description)
   (guarantee-string keyword 'SET-COMMAND-LINE-PARSER!)
   (let ((keyword (strip-leading-hyphens keyword))
@@ -549,8 +533,7 @@ USA.
 		  (begin
 		    (guarantee-string description 'SET-COMMAND-LINE-PARSER!)
 		    description))))
-    (if (string-null? keyword)
-	(error:bad-range-argument keyword 'SET-COMMAND-LINE-PARSER!))
+
     (let ((place (assoc keyword *command-line-parsers*)))
       (if place
 	  (begin
@@ -634,6 +617,24 @@ USA.
 		(loop (cdr command-line) (cons next accum))))
 	  (end '() accum)))))
 
+(define (collect-args command-line)
+
+  (define-integrable (end unused args)
+    (set! *command-line* (append! *command-line* (reverse! args)))
+    (values unused #f))
+
+  (let loop ((unused (cdr command-line)) (args '()))
+    (if (pair? unused)
+	(let ((next (car unused)))
+	  (if (option-keyword? next)
+	      (end unused args)
+	      (loop (cdr unused) (cons next args))))
+	(end unused args))))
+
+(define (collect-remaining-args command-line)
+  (set! *command-line* (append! *command-line* (cdr command-line)))
+  (values '() #f))
+
 (define (show-command-line-options)
   (write-string "
 
@@ -690,4 +691,17 @@ ADDITIONAL OPTIONS supported by this band:\n")
 			    repl)))))
     "Evaluates the argument expressions as if in the REPL.")
   (simple-command-line-parser "help" show-command-line-options #f)
-  (simple-command-line-parser "version" (lambda () (%exit 0)) #f))
+  (simple-command-line-parser "version" (lambda () (%exit 0)) #f)
+  (set-command-line-parser!
+   "args" collect-args
+   (command-line-option-description
+    "--args ARG ..."
+    '("Appends ARGs (up to the next keyword) to the list (command-line).")
+    'initialize-command-line-parsers))
+  (set-command-line-parser!
+   "" collect-remaining-args
+   (command-line-option-description
+    "-- ARG ..."
+    '("Appends all ARGs (to the end of the command-line) to the list"
+      "(command-line).")
+    'initialize-command-line-parsers)))

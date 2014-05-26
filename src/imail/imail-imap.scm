@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -795,8 +795,6 @@ USA.
 (define-class <imap-folder> (<folder>)
   (connection define standard
 	      initial-value #f)
-  (cache-lock-state define standard
-		    initial-value 'UNKNOWN)
   (read-only? define standard)
   (allowed-flags define standard)
   (permanent-flags define standard)
@@ -1014,7 +1012,7 @@ USA.
 ;;; operation atomically.
 
 (define (update-imap-folder-length! folder count)
-  (with-interrupt-mask interrupt-mask/gc-ok
+  (with-limited-interrupts interrupt-mask/gc-ok
     (lambda (interrupt-mask)
       (cond ((or (imap-folder-messages-synchronized? folder 'FLAGS)
 		 (zero? (folder-length folder)))
@@ -1336,10 +1334,20 @@ USA.
 	       (lambda (keywords messages)
 		 (imap:command:fetch-set/for-each
 		  (lambda (response)
-		    (if (zero? (remainder count 10))
-			(imail-ui:progress-meter count total-count))
-		    (set! count (+ count 1))
-		    (cache-preload-response folder keywords response))
+                    ;; Some IMAP servers (I'm looking at you, Dovecot)
+                    ;; return untagged non-FETCH responses here, namely
+                    ;; untagged OK messages, perhaps to indicate some
+                    ;; kind of progress.
+		    (cond ((imap:response:fetch? response)
+                           (if (zero? (remainder count 10))
+                               (imail-ui:progress-meter count total-count))
+                           (set! count (+ count 1))
+                           (cache-preload-response folder keywords response))
+                          ((imap:response:status-response? response)
+                           (imail-ui:message
+                            (string-append
+                             "Server message: "
+                             (imap:response:response-text-string response))))))
 		  connection
 		  (message-list->set (reverse! messages))
 		  keywords)))))))))
@@ -2025,44 +2033,12 @@ USA.
       (delete-file-recursively (imap-message-cache-pathname message)))))
 
 (define (with-folder-locked folder if-locked #!optional if-not-locked)
-  (if (eq? 'LOCKED (imap-folder-cache-lock-state folder))
-      (if-locked)
-      (let ((if-not-locked
-	     (if (default-object? if-not-locked) #f if-not-locked))
-	    (pathname
-	     (imap-folder-lock-pathname folder)))
-	(guarantee-init-file-directory pathname)
-	(dynamic-wind
-	  (lambda () unspecific)
-	  (lambda ()
-	    (let loop ((i 0))
-	      (without-interrupts
-	       (lambda ()
-		 (if (allocate-temporary-file pathname)
-		     (set-imap-folder-cache-lock-state! folder 'LOCKED))
-		 unspecific))
-	      (cond ((eq? 'LOCKED (imap-folder-cache-lock-state folder))
-		     (if (> i 0)
-			 (imail-ui:clear-message))
-		     (if-locked))
-		    ((eq? 'FAILED (imap-folder-cache-lock-state folder))
-		     (if if-not-locked (if-not-locked)))
-		    ((= i 2)
-		     (imail-ui:clear-message)
-		     (set-imap-folder-cache-lock-state! folder 'FAILED)
-		     (if if-not-locked (if-not-locked)))
-		    (else
-		     (imail-ui:message "Waiting for folder lock..." i)
-		     (imail-ui:sit-for 1000)
-		     (loop (+ i 1))))))
-	  (lambda ()
-	    (if (eq? 'LOCKED (imap-folder-cache-lock-state folder))
-		(begin
-		  (deallocate-temporary-file pathname)
-		  (set-imap-folder-cache-lock-state! folder 'UNLOCKED))))))))
+  folder if-not-locked
+  (if-locked))
 
 (define (clear-lock-state-on-folder-close folder)
-  (set-imap-folder-cache-lock-state! folder 'UNKNOWN))
+  folder
+  unspecific)
 
 (define (message-item-pathname message keyword)
   (init-file-specifier->pathname

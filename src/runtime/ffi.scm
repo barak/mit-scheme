@@ -1,6 +1,9 @@
 #| -*-Scheme-*-
 
-Copyright (C) 2006, 2007, 2008, 2009, 2010 Matthew Birkholz
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,23 +43,6 @@ USA.
 
 ;; Breaking a word in two produces high and low fixnums.  If they are
 ;; two digits representing a larger number, then RADIX is their base.
-;; For a 32 bit word, (radix) is #x10000.
-;;
-;; This substitutes a constant when there is a compiler, per its
-;; target.  Else this is a reference to %radix.
-(define-syntax radix
-  (er-macro-transformer
-   (lambda (form rename compare)
-     (declare (ignore rename compare))
-     (if (not (null? (cdr form)))
-	 (syntax-error "No sub-forms allowed:" form))
-     (cond ((get-subsystem-version "LIAR/i386") #x10000)
-	   ((get-subsystem-version "LIAR/x86-64") #x100000000)
-	   (else
-	    '%RADIX)))))
-
-;; This is only needed when the target machine's word size is unknown
-;; (e.g. when compiling to C, or when there is no compiler).
 (define %radix)
 
 (set-record-type-unparser-method! rtd:alien
@@ -83,7 +69,7 @@ USA.
 	(low (%alien/low-bits alien))
 	(hex (lambda (n)
 	       (string-pad-left (number->string n 16)
-				(if (fix:= (radix) #x10000) 4 8)
+				(if (fix:= %radix #x10000) 4 8)
 				#\0))))
     (string-append (hex high) (hex low))))
 
@@ -93,8 +79,13 @@ USA.
 
 (declare (integrate-operator alien/address))
 (define (alien/address alien)
-  (+ (* (%alien/high-bits alien) (radix))
+  (+ (* (%alien/high-bits alien) %radix)
      (%alien/low-bits alien)))
+
+(define (%set-alien/address! alien address)
+  (let ((qr (integer-divide address %radix)))
+    (set-%alien/high-bits! alien (integer-divide-quotient qr))
+    (set-%alien/low-bits! alien (integer-divide-remainder qr))))
 
 (declare (integrate-operator copy-alien-address!))
 (define (copy-alien-address! alien source)
@@ -139,7 +130,7 @@ USA.
   ;; This procedure returns ALIEN after modifying it to have an
   ;; address INCREMENT bytes away from its previous address.  If CTYPE
   ;; is specified, the type slot of ALIEN is set.
-  (let ((quotient.remainder (fix:divide increment (radix))))
+  (let ((quotient.remainder (fix:divide increment %radix)))
     (let ((new-high (fix:+ (%alien/high-bits alien)
 			   (integer-divide-quotient quotient.remainder)))
 	  (new-low (fix:+ (%alien/low-bits alien)
@@ -150,10 +141,10 @@ USA.
 	     (if (fix:zero? new-high)
 		 (error:bad-range-argument increment 'alien-byte-increment!)
 		 (begin
-		   (set-%alien/low-bits! alien (fix:+ new-low (radix)))
+		   (set-%alien/low-bits! alien (fix:+ new-low %radix))
 		   (set-%alien/high-bits! alien (fix:-1+ new-high)))))
-	    ((fix:>= new-low (radix))
-	     (set-%alien/low-bits! alien (fix:- new-low (radix)))
+	    ((fix:>= new-low %radix)
+	     (set-%alien/low-bits! alien (fix:- new-low %radix))
 	     (set-%alien/high-bits! alien (fix:1+ new-high)))
 	    (else
 	     (set-%alien/low-bits! alien new-low)
@@ -240,7 +231,7 @@ USA.
   (string-tail (%alien-function/name alienf) 4)) 
 
 (define (%set-alien-function/address! alienf address)
-  (let ((qr (integer-divide address (radix))))
+  (let ((qr (integer-divide address %radix)))
     (set-%alien-function/high-bits! alienf (integer-divide-quotient qr))
     (set-%alien-function/low-bits! alienf (integer-divide-remainder qr))))
 
@@ -254,9 +245,9 @@ USA.
       unspecific
       (let* ((library (%alien-function/library afunc))
 	     (name (%alien-function/name afunc))
-	     (pathname (merge-pathnames
-			(pathname-new-type (string-append library "-shim") "so")
-			(system-library-directory-pathname)))
+	     (pathname (system-library-pathname
+			(pathname-new-type (string-append library"-shim")
+					   "so")))
 	     (handle (or (find-dld-handle
 			  (lambda (h)
 			    (pathname=? pathname (dld-handle-pathname h))))
@@ -267,19 +258,22 @@ USA.
 	    (error:bad-range-argument afunc 'alien-function-cache!))
 	(set-%alien-function/band-id! afunc band-id))))
 
-(define (c-peek-cstring alien)
+(define-integrable (c-peek-cstring alien)
   ((ucode-primitive c-peek-cstring 2) alien 0))
 
-(define (c-peek-cstring! alien)
+(define-integrable (c-peek-cstring! alien)
   ((ucode-primitive c-peek-cstring! 2) alien 0))
 
-(define (c-peek-cstringp alien)
+(define-integrable (c-peek-cstringp alien)
   ((ucode-primitive c-peek-cstringp 2) alien 0))
 
-(define (c-peek-cstringp! alien)
+(define-integrable (c-peek-cstringp! alien)
   ((ucode-primitive c-peek-cstringp! 2) alien 0))
 
-(define (c-poke-pointer dest alien)
+(define-integrable (c-peek-bytes alien offset count buffer start)
+  ((ucode-primitive c-peek-bytes 5) alien offset count buffer start))
+
+(define-integrable (c-poke-pointer dest alien)
   ;; Sets the pointer at the alien DEST to point to the ALIEN.
   ((ucode-primitive c-poke-pointer 3) dest 0 alien))
 
@@ -297,6 +291,9 @@ USA.
   ;; STRING length.
   (guarantee-string string 'C-POKE-STRING)
   ((ucode-primitive c-poke-string! 3) alien 0 string))
+
+(define-integrable (c-poke-bytes alien offset count buffer start)
+  ((ucode-primitive c-poke-bytes 5) alien offset count buffer start))
 
 (define (c-enum-name value enum-name constants)
   enum-name
@@ -322,15 +319,15 @@ USA.
 
 (define (call-alien* alien-function args)
   (let ((old-top calloutback-stack))
-    (if-tracing
-     (outf-console ";"(tindent)"=> "alien-function" "args"\n")
+    (%if-tracing
+     (outf-error ";"(tindent)"=> "alien-function" "args"\n")
      (set! calloutback-stack (cons (cons* alien-function args) old-top)))
     (let ((value (apply (ucode-primitive c-call -1) alien-function args)))
-      (if-tracing
-       (assert (eq? old-top (cdr calloutback-stack))
-	       "call-alien: freak stack "calloutback-stack"\n")
+      (%if-tracing
+       (%assert (eq? old-top (cdr calloutback-stack))
+		"call-alien: freak stack "calloutback-stack"\n")
        (set! calloutback-stack old-top)
-       (outf-console ";"(tindent)"<= "value"\n"))
+       (outf-error ";"(tindent)"<= "value"\n"))
       value)))
 
 
@@ -397,7 +394,9 @@ USA.
 		     (begin
 		       (alien-null! alien)
 		       ((ucode-primitive c-free 1) copy)
-		       (alien-null! copy))))))))))
+		       (alien-null! copy)
+		       (set! malloced-aliens
+			     (delq! weak malloced-aliens)))))))))))
 
 (define (weak-assq obj alist)
   (let loop ((alist alist))
@@ -469,16 +468,16 @@ USA.
 	(error:bad-range-argument id 'apply-callback))
     (normalize-aliens! args)
     (let ((old-top calloutback-stack))
-      (if-tracing
-       (outf-console ";"(tindent)"=>> "procedure" "args"\n")
+      (%if-tracing
+       (outf-error ";"(tindent)"=>> "procedure" "args"\n")
        (set! calloutback-stack (cons (cons procedure args) old-top)))
       (let ((value (apply-callback-proc procedure args)))
-	(if-tracing
-	 (assert (and (pair? calloutback-stack)
-		      (eq? old-top (cdr calloutback-stack)))
-		 "callback-handler: freak stack "calloutback-stack"\n")
+	(%if-tracing
+	 (%assert (and (pair? calloutback-stack)
+		       (eq? old-top (cdr calloutback-stack)))
+		  "callback-handler: freak stack "calloutback-stack"\n")
 	 (set! calloutback-stack old-top)
-	 (outf-console ";"(tindent)"<<= "value"\n"))
+	 (outf-error ";"(tindent)"<<= "value"\n"))
 	value))))
 
 (define (apply-callback-proc procedure args)
@@ -501,27 +500,78 @@ USA.
 		(error "Cannot return from a callback more than once.")
 		(loop)))))))))
 
-;; For callback debugging...
-(define (outf-console . objects)
-  ((ucode-primitive outf-console 1)
+;;; For callback debugging:
+
+(define (outf-error . objects)
+  ((ucode-primitive outf-error 1)
    (apply string-append
 	  (map (lambda (o) (if (string? o) o (write-to-string o)))
 	       objects))))
+
+(define (registered-callback-count)
+  (let* ((vector registered-callbacks)
+	 (end (vector-length vector)))
+    (let loop ((i 0)(count 0))
+      (if (fix:< i end)
+	  (loop (fix:1+ i)
+		(if (vector-ref vector i)
+		    (fix:1+ count)
+		    count))
+	  (cons count end)))))
 
 (define (initialize-callbacks!)
   (vector-set! (get-fixed-objects-vector) #x41 callback-handler))
 
 
+;;; Build support, autoloaded
+
+(define (generate-shim library #!optional prefix)
+  (load-ffi-quietly)
+  ((environment-lookup (->environment '(ffi)) 'c-generate) library prefix))
+
+(define (compile-shim)
+  (load-ffi-quietly)
+  ((environment-lookup (->environment '(ffi)) 'compile-shim)))
+
+(define (link-shim)
+  (load-ffi-quietly)
+  ((environment-lookup (->environment '(ffi)) 'link-shim)))
+
+(define (install-shim destdir library)
+  (load-ffi-quietly)
+  ((environment-lookup (->environment '(ffi)) 'install-shim) destdir library))
+
+(define (install-load-option destdir name #!optional directory)
+  (load-ffi-quietly)
+  ((environment-lookup (->environment '(ffi)) 'install-load-option)
+   destdir name directory))
+
+(define (install-html destdir title)
+  (load-ffi-quietly)
+  ((environment-lookup (->environment '(ffi)) 'install-html) destdir title))
+
+(define (load-ffi-quietly)
+  (if (not (name->package '(FFI)))
+      (let ((kernel (lambda ()
+		      (fluid-let ((load/suppress-loading-message? #t))
+			(load-option 'FFI)))))
+	(if (nearest-cmdl/batch-mode?)
+	    (kernel)
+	    (with-notification (lambda (port)
+				 (write-string "Loading FFI option" port))
+			       kernel)))))
+
+
 (define calloutback-stack '())
 
-(define trace? #f)
+(define %trace? #f)
 
 (define (reset-package!)
   (reset-alien-functions!)
   (reset-malloced-aliens!)
   (reset-callbacks!)
   (set! %radix (if (fix:fixnum? #x100000000) #x100000000 #x10000))
-  (set! trace? #f)
+  (set! %trace? #f)
   (set! calloutback-stack '()))
 
 (define (initialize-package!)
@@ -531,20 +581,23 @@ USA.
   (add-gc-daemon! free-malloced-aliens)
   unspecific)
 
-(define-syntax if-tracing
+(define-syntax %if-tracing
   (syntax-rules ()
-    ((_ . BODY)
-     (if trace? ((lambda () . BODY))))))
+    ((_ BODY ...)
+     (if %trace?
+	 (begin BODY ...)))))
 
-(define-syntax assert
+(define-syntax %assert
   (syntax-rules ()
-    ((_ TEST . MSG)
-     (if (not TEST) (error "Failed assert:" . MSG)))))
+    ((_ TEST MSG ...)
+     (if (not TEST)
+	 (error "Failed assert:" MSG ...)))))
 
-(define-syntax trace
+(define-syntax %trace
   (syntax-rules ()
-    ((_ . MSG)
-     (if trace? ((lambda () (outf-console . MSG)))))))
+    ((_ MSG ...)
+     (if %trace?
+	 (outf-error MSG ...)))))
 
 (define (tindent)
   (make-string (* 2 (length calloutback-stack)) #\space))

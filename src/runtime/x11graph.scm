@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -294,11 +294,13 @@ USA.
 		      (deregister-io-thread-event registration)
 		      (continuation unspecific))
 		  (lambda ()
-		    (let ((event
-			   (x-display-process-events (x-display/xd display)
-						     2)))
-		      (if event
-			  (process-event display event))))))))))
+		    (let loop ()
+		      (let ((event
+			     (x-display-process-events (x-display/xd display)
+						       2)))
+			(if event
+			    (begin (process-event display event)
+				   (loop))))))))))))
     registration))
 
 (define (read-event display)
@@ -314,12 +316,13 @@ USA.
 
 (define (%read-and-process-event display)
   (let ((event
-	 (and (eq? 'READ
-		   (test-for-io-on-descriptor
-		    (x-display-descriptor (x-display/xd display))
-		    #t
-		    'READ))
-	      (x-display-process-events (x-display/xd display) 1))))
+	 (or (x-display-process-events (x-display/xd display) 2)
+	     (and (eq? 'READ
+		       (test-for-io-on-descriptor
+			(x-display-descriptor (x-display/xd display))
+			#t
+			'READ))
+		  (x-display-process-events (x-display/xd display) 1)))))
     (if event
 	(process-event display event))))
 

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -2128,22 +2128,26 @@ This unmarks the article indicated by point and any other articles in
 		(update-buffer-news-thread-status buffer thread)))))))
 
 (define-command news-select-article
-  "Select a buffer containing the News article indicated by point."
-  ()
-  (lambda ()
-    (select-buffer
-     (let ((buffer (selected-buffer)))
-       (cond ((news-article-buffer? buffer)
-	      buffer)
-	     ((news-group-buffer? buffer)
-	      (call-with-values
-		  (lambda ()
-		    (get-article-buffer buffer (current-news-header) #t))
-		(lambda (buffer new?)
-		  new?
-		  buffer)))
-	     (else
-	      (editor-error "No article selected.")))))))
+  "Select a buffer in the other window containing the News article at point.
+With prefix arg, select the buffer in the same window."
+  "P"
+  (lambda (same-window?)
+    (let ((proc (if same-window?
+                    select-buffer
+                    select-buffer-other-window)))
+      (proc
+       (let ((buffer (selected-buffer)))
+         (cond ((news-article-buffer? buffer)
+                buffer)
+               ((news-group-buffer? buffer)
+                (call-with-values
+                    (lambda ()
+                      (get-article-buffer buffer (current-news-header) #t))
+                  (lambda (buffer new?)
+                    new?
+                    buffer)))
+               (else
+                (editor-error "No article selected."))))))))
 
 (define-command news-toggle-thread
   "Expand or collapse the current thread."

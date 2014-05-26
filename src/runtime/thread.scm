@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -70,7 +70,10 @@ USA.
   ;; unwind the thread's state space when it is exited.
 
   (floating-point-environment #f)
-  ;; Thread-local floating-point environment.
+  ;; A floating-point environment descriptor, or #T if the thread is
+  ;; running and has modified its floating-point environment since it
+  ;; was last cached.  While a thread is running, this is a cache of
+  ;; the machine's floating-point environment.
 
   (mutexes '())
   ;; List of mutexes that this thread owns or is waiting to own.  Used
@@ -110,7 +113,6 @@ USA.
 (define (make-thread continuation)
   (let ((thread (%make-thread)))
     (set-thread/continuation! thread continuation)
-    (set-thread/floating-point-environment! thread (flo:default-environment))
     (set-thread/root-state-point! thread
 				  (current-state-point state-space:local))
     (add-to-population!/unsafe thread-population thread)
@@ -226,10 +228,9 @@ USA.
   (let ((continuation (thread/continuation thread))
 	(fp-env (thread/floating-point-environment thread)))
     (set-thread/continuation! thread #f)
-    (set-thread/floating-point-environment! thread #f)
     (%within-continuation continuation #t
       (lambda ()
-	(flo:set-environment! fp-env)
+	(enter-float-environment fp-env)
 	(%resume-current-thread thread)))))
 
 (define (%resume-current-thread thread)
@@ -245,8 +246,7 @@ USA.
 (define (%suspend-current-thread)
   (call-with-current-thread #f
     (lambda (thread)
-      (let ((fp-env (flo:environment))
-	    (block-events? (thread/block-events? thread)))
+      (let ((block-events? (thread/block-events? thread)))
 	(set-thread/block-events?! thread #f)
 	(maybe-signal-io-thread-events)
 	(let ((any-events? (handle-thread-events thread)))
@@ -256,7 +256,7 @@ USA.
 	      (call-with-current-continuation
 	       (lambda (continuation)
 		 (set-thread/continuation! thread continuation)
-		 (set-thread/floating-point-environment! thread fp-env)
+		 (maybe-save-thread-float-environment! thread)
 		 (set-thread/block-events?! thread #f)
 		 (thread-not-running thread 'WAITING)))))))))
 
@@ -268,7 +268,7 @@ USA.
 	 (call-with-current-continuation
 	  (lambda (continuation)
 	    (set-thread/continuation! thread continuation)
-	    (set-thread/floating-point-environment! thread (flo:environment))
+	    (maybe-save-thread-float-environment! thread)
 	    (thread-not-running thread 'STOPPED))))))))
 
 (define (restart-thread thread discard-events? event)
@@ -296,8 +296,7 @@ USA.
   ;; Preserve the floating-point environment here to guarantee that the
   ;; thread timer won't raise or clear exceptions (particularly the
   ;; inexact result exception) that the interrupted thread cares about.
-  (let ((fp-env (flo:environment)))
-    (flo:set-environment! (flo:default-environment))
+  (let ((fp-env (enter-default-float-environment first-running-thread)))
     (set! next-scheduled-timeout #f)
     (set-interrupt-enables! interrupt-mask/gc-ok)
     (deliver-timer-events)
@@ -311,7 +310,7 @@ USA.
 		       (thread/execution-state thread)))
 	     (yield-thread thread fp-env))
 	    (else
-	     (flo:set-environment! fp-env)
+	     (restore-float-environment-from-default fp-env)
 	     (%resume-current-thread thread))))))
 
 (define (yield-current-thread)
@@ -329,20 +328,23 @@ USA.
     (if (not next)
 	(begin
 	  (if (not (default-object? fp-env))
-	      (flo:set-environment! fp-env))
+	      (restore-float-environment-from-default fp-env))
 	  (%resume-current-thread thread))
 	(call-with-current-continuation
 	 (lambda (continuation)
 	   (set-thread/continuation! thread continuation)
-	   (set-thread/floating-point-environment! thread
-						   (if (default-object? fp-env)
-						       (flo:environment)
-						       fp-env))
+	   (maybe-save-thread-float-environment! thread fp-env)
 	   (set-thread/next! thread #f)
 	   (set-thread/next! last-running-thread thread)
 	   (set! last-running-thread thread)
 	   (set! first-running-thread next)
 	   (run-thread next))))))
+
+(define (thread-float-environment thread)
+  (thread/floating-point-environment thread))
+
+(define (set-thread-float-environment! thread fp-env)
+  (set-thread/floating-point-environment! thread fp-env))
 
 (define (exit-current-thread value)
   (let ((thread (current-thread)))
@@ -454,28 +456,19 @@ USA.
 			  condition
 			  (within-continuation k thunk))
 		      thunk))))))))
-    (if (not io-registrations)
-	(begin
-	  ;; Busy-waiting here is a bad idea -- should implement a
-	  ;; primitive to block the Scheme process while waiting for a
-	  ;; signal.
-	  (catch-errors
-	   (lambda ()
-	     (set-interrupt-enables! interrupt-mask/all)
-	     (do () (#f)))))
-	(let ((result
-	       (catch-errors
-		(lambda ()
-		  (set-interrupt-enables! interrupt-mask/all)
-		  (test-select-registry io-registry #t)))))
-	  (set-interrupt-enables! interrupt-mask/gc-ok)
-	  (signal-select-result result)
-	  (let ((thread first-running-thread))
-	    (if thread
-		(if (thread/continuation thread)
-		    (run-thread thread)
-		    (%maybe-toggle-thread-timer))
-		(wait-for-io)))))))
+    (let ((result
+	   (catch-errors
+	    (lambda ()
+	      (set-interrupt-enables! interrupt-mask/all)
+	      (test-select-registry io-registry #t)))))
+      (set-interrupt-enables! interrupt-mask/gc-ok)
+      (signal-select-result result)
+      (let ((thread first-running-thread))
+	(if thread
+	    (if (thread/continuation thread)
+		(run-thread thread)
+		(%maybe-toggle-thread-timer))
+	    (wait-for-io))))))
 
 (define (signal-select-result result)
   (cond ((vector? result)
@@ -524,9 +517,14 @@ USA.
 	  (%suspend-current-thread)
 	  result)
 	(lambda ()
-	  (%deregister-io-thread-event registration-2)
-	  (%deregister-io-thread-event registration-1)
+	  (%maybe-deregister-io-thread-event registration-2)
+	  (%maybe-deregister-io-thread-event registration-1)
 	  (%maybe-toggle-thread-timer)))))))
+
+(define (%maybe-deregister-io-thread-event tentry)
+  ;; Ensure that another thread does not unwind our registration.
+  (if (eq? (current-thread) (tentry/thread tentry))
+      (delete-tentry! tentry)))
 
 (define (permanently-register-io-thread-event descriptor mode thread event)
   (register-io-thread-event-1 descriptor mode thread event
@@ -578,6 +576,34 @@ USA.
 	     (else
 	      (loop (dentry/next dentry)))))
      (%maybe-toggle-thread-timer))))
+
+(define (%deregister-io-descriptor descriptor)
+  (let dloop ((dentry io-registrations))
+    (cond ((not dentry)
+	   unspecific)
+	  ((eqv? descriptor (dentry/descriptor dentry))
+	   (let tloop ((tentry (dentry/first-tentry dentry)))
+	     (if tentry
+		 (let ((thread (tentry/thread tentry))
+		       (event (tentry/event tentry)))
+		   (%signal-thread-event thread
+					 (and event
+					      (lambda () (event #f))))
+		   (tloop (tentry/next tentry)))))
+	   (remove-from-select-registry! io-registry
+					 (dentry/descriptor dentry)
+					 (dentry/mode dentry))
+	   (let ((prev (dentry/prev dentry))
+		 (next (dentry/next dentry)))
+	     (if prev
+		 (set-dentry/next! prev next)
+		 (set! io-registrations next))
+	     (if next
+		 (set-dentry/prev! next prev)))
+	   (dloop (dentry/next dentry)))
+	  (else
+	   (dloop (dentry/next dentry)))))
+  (%maybe-toggle-thread-timer))
 
 (define (%register-io-thread-event descriptor mode thread event permanent?
 				   front?)

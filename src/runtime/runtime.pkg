@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -44,14 +44,14 @@ USA.
 	  name->package
 	  package-set-pathname
 	  package/add-child!
-	  package/child
+	  package/create
 	  package/children
 	  package/environment
 	  package/name
 	  package/parent
 	  package/reference
 	  package?
-	  system-global-package)
+	  all-packages)
   (export (runtime environment)
 	  package-name-tag)
   (initialization (initialize-package!)))
@@ -227,6 +227,7 @@ USA.
 	  flo:ceiling
 	  flo:ceiling->exact
 	  flo:cos
+	  flo:eqv?
 	  flo:exp
 	  flo:expm1
 	  flo:expt
@@ -238,6 +239,7 @@ USA.
 	  flo:log1p
 	  flo:max
 	  flo:min
+	  flo:modulo
 	  flo:negate
 	  flo:negative?
 	  flo:positive?
@@ -326,6 +328,11 @@ USA.
 	  flo:with-exceptions-untrapped
 	  flo:with-rounding-mode
 	  flo:with-trapped-exceptions)
+  (export (runtime thread)
+	  enter-default-float-environment
+	  enter-float-environment
+	  maybe-save-thread-float-environment!
+	  restore-float-environment-from-default)
   (initialization (initialize-package!)))
 
 (define-package (runtime integer-bits)
@@ -335,11 +342,13 @@ USA.
 	  all-bits-set?
 	  any-bits-set?
 	  arithmetic-shift
+	  bit
 	  bit-antimask
 	  bit-clear?
 	  bit-count
 	  bit-mask
 	  bit-set?
+	  bits
 	  bitwise-merge
 	  bitwise-not
 	  clear-bit
@@ -353,6 +362,8 @@ USA.
 	  set-bit
 	  shift-left
 	  shift-right
+	  shiftin
+	  shiftout
 	  splice-bit-field
 	  test-bit-field
 	  test-bit-field?
@@ -560,6 +571,21 @@ USA.
 	  dequeue!
 	  queue-map!
 	  queue->list))
+
+(define-package (runtime thread-queue)
+  (files "thread-queue")
+  (parent (runtime))
+  (export ()
+	  make-thread-queue
+	  thread-queue/empty?
+	  thread-queue/empty!
+	  thread-queue/queue!
+	  thread-queue/queue-no-hang!
+	  thread-queue/push!
+	  thread-queue/dequeue!
+	  thread-queue/dequeue-no-hang!
+	  thread-queue/peek
+	  thread-queue/peek-no-hang))
 
 (define-package (runtime simple-file-ops)
   (files "sfile")
@@ -910,6 +936,7 @@ USA.
 	  (vector-8b-maximum-length string-maximum-length)
 	  (vector-8b? string?)
 	  allocate-external-string
+	  ascii-string-copy
 	  burst-string
 	  camel-case-string->lisp
 	  char->string
@@ -1048,7 +1075,9 @@ USA.
 	  xstring-length
 	  xstring-move!
 	  xstring-ref
+	  xstring-byte-ref
 	  xstring-set!
+	  xstring-byte-set!
 	  xstring?
 	  xsubstring
 	  xsubstring-fill!
@@ -1677,6 +1706,7 @@ USA.
 	  environment-has-parent?
 	  environment-lambda
 	  environment-lookup
+	  environment-lookup-or
 	  environment-lookup-macro
 	  environment-macro-names
 	  environment-parent
@@ -1801,6 +1831,7 @@ USA.
 	  format-error-message
 	  hook/invoke-condition-handler
 	  ignore-errors
+	  warn-errors?
 	  invoke-restart
 	  invoke-restart-interactively
 	  make-condition
@@ -2130,10 +2161,18 @@ USA.
 	  hash-table/size
 	  hash-table/type
 	  hash-table?
+	  key-ephemeral-eq-hash-table-type
+	  key-ephemeral-eqv-hash-table-type
+	  key-weak-eq-hash-table-type
+	  key-weak-eqv-hash-table-type
 	  make-equal-hash-table
 	  make-hash-table
 	  make-hash-table*
 	  make-hash-table-type
+	  make-key-ephemeral-eq-hash-table
+	  make-key-ephemeral-eqv-hash-table
+	  make-key-weak-eq-hash-table
+	  make-key-weak-eqv-hash-table
 	  make-string-hash-table
 	  make-strong-eq-hash-table
 	  make-strong-eqv-hash-table
@@ -2404,7 +2443,9 @@ USA.
 	  lambda?
 	  lambda-body
 	  lambda-bound
+	  lambda-bound?
 	  lambda-components
+	  lambda-interface
 	  lambda-name
 	  make-block-declaration
 	  make-lambda
@@ -2423,6 +2464,8 @@ USA.
   (export (runtime lambda-list)
 	  lambda-tag:internal-lambda
 	  lambda-tag:internal-lexpr)
+  (export (runtime unsyntaxer)
+	  lambda-immediate-body)
   (initialization (initialize-package!)))
 
 (define-package (runtime list)
@@ -2629,6 +2672,7 @@ USA.
 	  lambda-tag:optional
 	  lambda-tag:rest
 	  lambda-tag?
+	  make-lambda-list
 	  map-mit-lambda-list
 	  map-r4rs-lambda-list
 	  mit-lambda-list?
@@ -2710,6 +2754,7 @@ USA.
 	  (load-noisily load)
 	  argument-command-line-parser
 	  built-in-object-file
+	  command-line
 	  condition-type:not-loading
 	  current-eval-unit
 	  current-load-environment
@@ -2844,6 +2889,7 @@ USA.
 	  (make-polar complex:make-polar)
 	  (make-rectangular complex:make-rectangular)
 	  (negative? complex:negative?)
+	  (number:eqv? complex:eqv?)
 	  (number? complex:complex?)
 	  (numerator complex:numerator)
 	  (numerator->exact complex:numerator->exact)
@@ -2967,7 +3013,8 @@ USA.
 	  load-option
 	  local-load-options
 	  standard-load-options
-	  standard-option-loader))
+	  standard-option-loader
+	  standard-system-loader))
 
 (define-package (runtime parser)
   (files "parse")
@@ -3000,7 +3047,8 @@ USA.
   (export (runtime unparser)
 	  char-set/atom-delimiters
 	  char-set/number-leaders
-	  char-set/symbol-quotes)
+	  char-set/symbol-quotes
+	  repl-environment-value)
   (initialization (initialize-package!)))
 
 (define-package (runtime parser file-attributes)
@@ -3079,6 +3127,7 @@ USA.
 	  pathname?
 	  system-library-directory-pathname
 	  system-library-pathname
+	  with-system-library-directories
 	  uri->pathname
 	  user-homedir-pathname)
   (initialization (initialize-package!)))
@@ -3238,6 +3287,8 @@ USA.
 	  make-select-registry
 	  remove-from-select-registry!
 	  test-select-registry)
+  (import (runtime thread)
+	  %deregister-io-descriptor)
   (export (runtime directory)
 	  directory-channel/descriptor)
   (initialization (initialize-package!)))
@@ -3271,10 +3322,12 @@ USA.
 	  c-peek-cstring!
 	  c-peek-cstringp
 	  c-peek-cstringp!
+	  c-peek-bytes
 	  c-poke-pointer
 	  c-poke-pointer!
 	  c-poke-string
 	  c-poke-string!
+	  c-poke-bytes
 	  c-enum-name
 	  call-alien
 	  make-alien-to-free
@@ -3282,7 +3335,13 @@ USA.
 	  free
 	  register-c-callback
 	  de-register-c-callback
-	  outf-console)
+	  outf-error
+	  generate-shim
+	  compile-shim
+	  link-shim
+	  install-shim
+	  install-load-option
+	  install-html)
   (initialization (initialize-package!)))
 
 (define-package (runtime program-copier)
@@ -3616,13 +3675,15 @@ USA.
 	  sequence-actions
 	  sequence-components
 	  sequence-immediate-actions
+	  sequence-immediate-first
+	  sequence-immediate-second
+	  sequence-first
+	  sequence-second
 	  sequence?
 	  unassigned?-components
 	  unassigned?-name
 	  unassigned??
 	  undefined-conditional-branch)
-  (export (runtime debugging-info)
-	  %make-combination)
   (initialization (initialize-package!)))
 
 (define-package (runtime scode-data)
@@ -3692,7 +3753,11 @@ USA.
   (parent (runtime))
   (export ()
 	  make-open-block
+	  open-block-actions
 	  open-block-components
+	  open-block-declarations
+	  open-block-definitions
+	  open-block-names
 	  open-block?
 	  scan-defines
 	  unscan-defines))
@@ -4600,6 +4665,7 @@ USA.
 	  guarantee-syntactic-environment
 	  syntactic-environment?)
   (export (runtime syntax)
+	  ->syntactic-environment
 	  bind-variable!
 	  make-internal-syntactic-environment
 	  make-partial-syntactic-environment
@@ -4664,7 +4730,6 @@ USA.
 	  output/lambda
 	  output/let
 	  output/letrec
-	  output/local-declare
 	  output/named-lambda
 	  output/post-process-expression
 	  output/runtime-reference
@@ -4706,9 +4771,7 @@ USA.
 	  classifier:define-syntax
 	  classifier:er-macro-transformer
 	  classifier:let-syntax
-	  classifier:letrec
 	  classifier:letrec-syntax
-	  classifier:local-declare
 	  classifier:non-hygienic-macro-transformer
 	  classifier:rsc-macro-transformer
 	  classifier:sc-macro-transformer
@@ -4735,6 +4798,7 @@ USA.
 	  (access :access)
 	  (and :and)
 	  (and-let* :and-let*)
+	  (assert :assert)
 	  (begin0 :begin0)
 	  (case :case)
 	  (cond :cond)
@@ -4748,6 +4812,9 @@ USA.
 	  (let :let)
 	  (let* :let*)
 	  (let*-syntax :let*-syntax)
+	  (letrec :letrec)
+	  (letrec* :letrec*)
+	  (local-declare :local-declare)
 	  (quasiquote :quasiquote)
 	  (receive :receive)
 	  supported-srfi-features)
@@ -4883,6 +4950,8 @@ USA.
 	  prompt-for-confirmation
 	  prompt-for-evaluated-expression
 	  prompt-for-expression
+	  prompt-for-string
+	  call-with-pass-phrase
 	  with-notification)
   (export (runtime rep)
 	  port/set-default-environment
@@ -4961,6 +5030,9 @@ USA.
   (export (runtime continuation)
 	  get-thread-event-block
 	  set-thread-event-block!)
+  (export (runtime floating-point-environment)
+	  set-thread-float-environment!
+	  thread-float-environment)
   (initialization (initialize-package!)))
 
 (define-package (runtime rb-tree)

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -115,12 +115,6 @@ USA.
 	    undefined-environment
 	    (validate-subexpression frame (select-subexpression expression)))))
 
-(define (method/primitive-combination-3-first-operand frame)
-  (let ((expression (stack-frame/ref frame 1)))
-    (values expression
-	    (stack-frame/ref frame 3)
-	    (validate-subexpression frame (&vector-ref expression 2)))))
-
 (define (method/combination-save-value frame)
   (let ((expression (stack-frame/ref frame 1)))
     (values expression
@@ -136,9 +130,8 @@ USA.
 
 (define (method/force-snap-thunk frame)
   (let ((promise (stack-frame/ref frame 1)))
-    (values (%make-combination
-	     (ucode-primitive force 1)
-	     (list (make-evaluated-object promise)))
+    (values (make-combination (ucode-primitive force 1)
+			      (list (make-evaluated-object promise)))
 	    undefined-environment
 	    (cond ((promise-forced? promise) undefined-expression)
 		  ((promise-non-expression? promise) unknown-expression)
@@ -147,7 +140,7 @@ USA.
 					   (promise-expression promise)))))))
 
 (define ((method/application-frame index) frame)
-  (values (%make-combination
+  (values (make-combination
 	   (make-evaluated-object (stack-frame/ref frame index))
 	   (stack-frame-list frame (1+ index)))
 	  undefined-environment
@@ -165,17 +158,17 @@ USA.
 	  undefined-expression))
 
 (define (method/compiler-lookup-apply-trap-restart frame)
-  (values (%make-combination (make-variable (stack-frame/ref frame 2))
-			     (stack-frame-list frame 6))
+  (values (make-combination (make-variable (stack-frame/ref frame 2))
+			    (stack-frame-list frame 6))
 	  (stack-frame/ref frame 3)
 	  undefined-expression))
 
 (define (method/compiler-error-restart frame)
   (let ((primitive (stack-frame/ref frame 2)))
     (if (primitive-procedure? primitive)
-	(values (%make-combination (make-variable 'apply)
-				   (list primitive
-					 unknown-expression))
+	(values (make-combination (make-variable 'apply)
+				  (list primitive
+					unknown-expression))
 		undefined-environment
 		undefined-expression)
 	(stack-frame/debugging-info/default frame))))
@@ -225,16 +218,13 @@ USA.
 			       frame
 			       (select-subexp expression))))))
 		     (case (vector-ref source-code 0)
-		       ((SEQUENCE-2-SECOND)
+		       ((SEQUENCE-CONTINUE)
 			(win &pair-car))
 		       ((ASSIGNMENT-CONTINUE
 			 DEFINITION-CONTINUE)
 			(win &pair-cdr))
-		       ((SEQUENCE-3-SECOND
-			 CONDITIONAL-DECIDE)
+		       ((CONDITIONAL-DECIDE)
 			(win &triple-first))
-		       ((SEQUENCE-3-THIRD)
-			(win &triple-second))
 		       ((COMBINATION-OPERAND)
 			(values
 			 expression
@@ -277,34 +267,15 @@ USA.
   (record-method 'REENTER-COMPILED-CODE method/null)
   (let ((method (method/standard &pair-car)))
     (record-method 'DISJUNCTION-DECIDE method)
-    (record-method 'SEQUENCE-2-SECOND method))
+    (record-method 'SEQUENCE-CONTINUE method))
   (let ((method (method/standard &pair-cdr)))
     (record-method 'ASSIGNMENT-CONTINUE method)
-    (record-method 'COMBINATION-1-PROCEDURE method)
     (record-method 'DEFINITION-CONTINUE method))
   (let ((method (method/standard &triple-first)))
-    (record-method 'CONDITIONAL-DECIDE method)
-    (record-method 'SEQUENCE-3-SECOND method))
-  (let ((method (method/standard &triple-second)))
-    (record-method 'COMBINATION-2-PROCEDURE method)
-    (record-method 'SEQUENCE-3-THIRD method))
-  (let ((method (method/standard &triple-third)))
-    (record-method 'COMBINATION-2-FIRST-OPERAND method)
-    (record-method 'PRIMITIVE-COMBINATION-2-FIRST-OPERAND method))
-  (record-method 'PRIMITIVE-COMBINATION-3-SECOND-OPERAND
-		 (method/standard &vector-fourth))
+    (record-method 'CONDITIONAL-DECIDE method))
   (let ((method (method/expression-only &pair-car)))
-    (record-method 'ACCESS-CONTINUE method)
-    (record-method 'IN-PACKAGE-CONTINUE method))
-  (record-method 'PRIMITIVE-COMBINATION-1-APPLY
-		 (method/expression-only &pair-cdr))
-  (record-method 'PRIMITIVE-COMBINATION-2-APPLY
-		 (method/expression-only &triple-second))
-  (record-method 'PRIMITIVE-COMBINATION-3-APPLY
-		 (method/expression-only &vector-second))
+    (record-method 'ACCESS-CONTINUE method))
   (record-method 'COMBINATION-SAVE-VALUE method/combination-save-value)
-  (record-method 'PRIMITIVE-COMBINATION-3-FIRST-OPERAND
-		 method/primitive-combination-3-first-operand)
   (record-method 'EVAL-ERROR method/eval-error)
   (record-method 'FORCE-SNAP-THUNK method/force-snap-thunk)
   (let ((method (method/application-frame 3)))

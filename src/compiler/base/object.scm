@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,16 +29,21 @@ USA.
 (declare (usual-integrations))
 
 (define-structure (vector-tag
-		   (constructor %make-vector-tag (parent name index)))
+		   (constructor %make-vector-tag (parent name index noop)))
   (parent false read-only true)
   (name false read-only true)
   (index false read-only true)
   (%unparser false)
   (description false)
-  (method-alist '()))
+  (method-alist '())
+
+  ;; This property was stored in the method alist, but it is used so
+  ;; frequently that it deserves its own slot.
+  (noop false)
+  )
 
 (define make-vector-tag
-  (let ((root-tag (%make-vector-tag false 'OBJECT false)))
+  (let ((root-tag (%make-vector-tag false 'OBJECT false false)))
     (set-vector-tag-%unparser!
      root-tag
      (lambda (state object)
@@ -52,7 +57,10 @@ USA.
 			       name
 			       (and enumeration
 				    (enumeration/name->index enumeration
-							     name)))))
+							     name))
+			       ;; Propagate this downward at construction time
+			       ;; to avoid having to crawl upward at use time.
+			       (and parent (vector-tag-noop parent)))))
 	(unparser/set-tagged-vector-method! tag tagged-vector/unparse)
 	tag))))
 

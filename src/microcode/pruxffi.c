@@ -1,6 +1,9 @@
 /* -*-C-*-
 
-Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Matthew Birkholz
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -173,22 +176,63 @@ DEFINE_PRIMITIVE ("C-PEEK-CSTRING!", Prim_peek_cstring_bang, 2, 2, 0)
 }
 
 DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP", Prim_peek_cstringp, 2, 2, 0)
-  C_PEEKER (char_pointer_to_string, char *)
+{
+  /* Follow the pointer at the address ALIEN+OFFSET to a C string.
+     Copy the C string into the heap and return the new Scheme
+     string.  If the pointer is null, return (). */
+
+  PRIMITIVE_HEADER (2);
+  {
+    char ** ptr = (ALIEN_ADDRESS_LOC (char *));
+    if (*ptr == NULL)
+      {
+	PRIMITIVE_RETURN (EMPTY_LIST);
+      }
+    else
+      {
+	PRIMITIVE_RETURN (char_pointer_to_string (*ptr));
+      }
+  }
+}
 
 DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP!", Prim_peek_cstringp_bang, 2, 2, 0)
 {
   /* Follow the pointer at the address ALIEN+OFFSET to a C string.
      Set ALIEN to the address of the char pointer after ALIEN+OFFSET.
      Copy the C string into the heap and return the new Scheme
-     string. */
+     string.  If the pointer is null, return (). */
 
   PRIMITIVE_HEADER (2);
   {
     char ** ptr = (ALIEN_ADDRESS_LOC (char *));
-    SCM string = char_pointer_to_string (*ptr);
-    set_alien_address ((ARG_REF (1)), (ptr + 1)); /* No more aborts! */
-    PRIMITIVE_RETURN (string);
+    if (*ptr == NULL)
+      {
+	PRIMITIVE_RETURN (EMPTY_LIST);
+      }
+    else
+      {
+	SCM string = char_pointer_to_string (*ptr);
+	set_alien_address ((ARG_REF (1)), (ptr + 1)); /* No more aborts! */
+	PRIMITIVE_RETURN (string);
+      }
   }
+}
+
+DEFINE_PRIMITIVE ("C-PEEK-BYTES", Prim_peek_bytes, 5, 5, 0)
+{
+  /* Copy, from ALIEN+OFFSET, COUNT bytes to STRING[START..]. */
+
+  PRIMITIVE_HEADER (5);
+  CHECK_ARG (4, STRING_P);
+  {
+    const void * src = (ALIEN_ADDRESS_LOC (void *));
+    int count = (UNSIGNED_FIXNUM_ARG (3));
+    SCM string = (ARG_REF (4));
+    int index = arg_index_integer (5, (STRING_LENGTH (string)));
+    void * dest = STRING_LOC (string, index);
+    memcpy (dest, src, count);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 #define C_POKER(type, value_arg_ref)					\
@@ -281,6 +325,23 @@ DEFINE_PRIMITIVE ("C-POKE-STRING!", Prim_poke_string_bang, 3, 3, 0)
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
+
+DEFINE_PRIMITIVE ("C-POKE-BYTES", Prim_poke_bytes, 5, 5, 0)
+{
+  /* Copy to ALIEN+OFFSET COUNT bytes from STRING[START]. */
+
+  PRIMITIVE_HEADER (5);
+  CHECK_ARG (4, STRING_P);
+  {
+    void * dest = (ALIEN_ADDRESS_LOC (void *));
+    int count = (UNSIGNED_FIXNUM_ARG (3));
+    SCM string = (ARG_REF (4));
+    int index = arg_index_integer (5, (STRING_LENGTH (string)));
+    const void * src = STRING_LOC (string, index);
+    memcpy (dest, src, count);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
 
 /* Malloc/Free. */
 
@@ -357,13 +418,7 @@ DEFINE_PRIMITIVE ("C-CALL", Prim_c_call, 1, LEXPR, 0)
     CalloutTrampOut tramp;
 
     tramp = (CalloutTrampOut) arg_alien_entry (1);
-    tramp ();
-    /* NOTREACHED */
-    outf_error ("\ninternal error: Callout part1 trampoline returned.\n");
-    outf_flush_error ();
-    signal_error_from_primitive (ERR_EXTERNAL_RETURN);
-    /* really NOTREACHED */
-    PRIMITIVE_RETURN (UNSPECIFIC);
+    PRIMITIVE_RETURN (tramp ());
   }
 }
 
@@ -463,18 +518,33 @@ callout_unseal (CalloutTrampIn expected)
   cstack_pop (tos);
 }
 
-void
+SCM
 callout_continue (CalloutTrampIn tramp)
 {
   /* Re-seal the CStack frame over the C results (again, pushing the
      cstack_depth and callout-part2) and abort.  Restart as
      C-CALL-CONTINUE and run callout-part2. */
+  SCM val;
 
   CSTACK_PUSH (int, cstack_depth);
   CSTACK_PUSH (CalloutTrampIn, tramp);
 
-  PRIMITIVE_ABORT (PRIM_POP_RETURN);
-  /* NOTREACHED */
+  /* Just call; do not actually abort. */
+  /* PRIMITIVE_ABORT (PRIM_POP_RETURN); */
+
+  /* Remove stack sealant created by callout_seal (which used
+     back_out_of_primitive), as if removed by pop_return in Interp()
+     after the abort. */
+  SET_PRIMITIVE (SHARP_F); /* PROCEED_AFTER_PRIMITIVE (); */
+  RESTORE_CONT ();
+  assert (RC_INTERNAL_APPLY == (OBJECT_DATUM(GET_RET)));
+  SET_LEXPR_ACTUALS (APPLY_FRAME_N_ARGS ());
+  stack_pointer = (APPLY_FRAME_ARGS ());
+  SET_EXP (APPLY_FRAME_PROCEDURE ());
+  /* APPLY_PRIMITIVE_FROM_INTERPRETER (Function); */
+  /* Prim_c_call_continue(); */
+  val = tramp ();
+  return (val);
 }
 
 DEFINE_PRIMITIVE ("C-CALL-CONTINUE", Prim_c_call_continue, 1, LEXPR, 0)
@@ -636,6 +706,15 @@ DEFINE_PRIMITIVE ("RETURN-TO-C", Prim_return_to_c, 0, 0, 0)
   }
 }
 
+/* This is mainly for src/gtk/gtkio.c, so it does not need to include
+   prim.h, scheme.h and everything. */
+void
+abort_to_c (void)
+{
+  PRIMITIVE_ABORT (PRIM_RETURN_TO_C);
+  /* NOTREACHED */
+}
+
 char *
 callback_lunseal (CallbackKernel expected)
 {
@@ -763,11 +842,11 @@ arg_alien_entry (int argn)
 void *
 arg_pointer (int argn)
 {
-  /* Accept an alien, string, xstring handle (positive integer),
-     or zero (for a NULL pointer). */
+  /* Accept an alien, string, flovec, xstring handle (positive
+     integer), or zero (for a NULL pointer). */
 
   SCM arg = ARG_REF (argn);
-  if (integer_zero_p (arg))
+  if ((INTEGER_P (arg)) && (integer_zero_p (arg)))
     return ((void *)0);
   if (STRING_P (arg))
     return ((void *) (STRING_POINTER (arg)));
@@ -780,6 +859,8 @@ arg_pointer (int argn)
     }
   if (is_alien (arg))
     return (alien_address (arg));
+  if (FLONUM_P (arg))
+    return ((void *) (OBJECT_ADDRESS (arg)));
 
   error_wrong_type_arg (argn);
   /*NOTREACHED*/
@@ -816,6 +897,27 @@ pointer_to_scm (const void * p)
   if (is_alien (arg))
     {
       set_alien_address (arg, p);
+      return (arg);
+    }
+
+  error_wrong_type_arg (2);
+  /* NOTREACHED */
+  return (SHARP_F);
+}
+
+SCM
+struct_to_scm (const void *p, int size)
+{
+  /* Return a struct or union from a callout.  Expect the first real
+     argument (the 2nd) to be either #F or the alien address to
+     which the struct or union should be copied. */
+
+  SCM arg = ARG_REF (2);
+  if (arg == SHARP_F)
+    return (UNSPECIFIC);
+  if (is_alien (arg))
+    {
+      memcpy(alien_address (arg), p, size);
       return (arg);
     }
 
@@ -974,7 +1076,28 @@ empty_list (void)
   return (EMPTY_LIST);
 }
 
-DEFINE_PRIMITIVE ("OUTF-CONSOLE", Prim_outf_console, 1, 1, 0)
+int
+flovec_length (SCM vector)
+{
+  return (FLOATING_VECTOR_LENGTH (vector));
+}
+
+double*
+flovec_loc (SCM vector)
+{
+  return (FLOATING_VECTOR_LOC (vector, 0));
+}
+
+double
+flovec_ref (SCM vector, int index)
+{
+  int len = FLOATING_VECTOR_LENGTH (vector);
+  if (0 <= index && index < len)
+    return (FLOATING_VECTOR_REF (vector, index));
+  error_external_return ();
+}
+
+DEFINE_PRIMITIVE ("OUTF-ERROR", Prim_outf_error, 1, 1, 0)
 {
   /* To avoid the normal i/o system when debugging a callback. */
 
@@ -984,8 +1107,8 @@ DEFINE_PRIMITIVE ("OUTF-CONSOLE", Prim_outf_console, 1, 1, 0)
     if (STRING_P (arg))
       {
 	char * string = ((char *) STRING_LOC (arg, 0));
-	outf_console ("%s", string);
-	outf_flush_console ();
+	outf_error ("%s", string);
+	outf_flush_error ();
       }
     else
       {

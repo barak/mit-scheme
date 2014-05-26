@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -203,3 +203,24 @@ USA.
 	(if (identifier? bvl)
 	    (procedure bvl)
 	    '()))))
+
+;;; Aux is almost always the empty list.
+(define (make-lambda-list required optional rest aux)
+  (guarantee-list-of-unique-symbols required)
+  (guarantee-list-of-unique-symbols optional)
+  (if rest
+      (guarantee-symbol rest))
+  (guarantee-list-of-unique-symbols aux)
+  (let ((rest-aux-tail (if (not rest)
+			   (if (null? aux)
+			       '()
+			       (cons lambda-tag:aux aux))
+			   (if (null? aux)
+			       rest
+			       (cons* lambda-tag:rest rest
+				      lambda-tag:aux aux)))))
+    (append required
+	    (if (null? optional)
+		rest-aux-tail
+		(cons lambda-tag:optional
+		      (append optional rest-aux-tail))))))

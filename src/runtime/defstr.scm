@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -25,7 +25,7 @@ USA.
 |#
 
 ;;;; Structure Definition Macro
-;;; package: (runtime defstruct)
+;;; package: (runtime syntax defstruct)
 
 (declare (usual-integrations))
 
@@ -790,6 +790,9 @@ differences:
 		   (DECLARE
 		    (IGNORE-REFERENCE-TRAPS (SET ,(close tag-name context))))
 		   (AND (,(absolute '%RECORD? context) OBJECT)
+			(,(absolute 'NOT context)
+			 (,(absolute 'ZERO? context)
+			  (,(absolute '%RECORD-LENGTH context) OBJECT)))
 			(,(absolute 'EQ? context)
 			 (,(absolute '%RECORD-REF context) OBJECT 0)
 			 ;++ Work around a bug in the expander.
@@ -822,7 +825,10 @@ differences:
 	  (field-names (map slot/name slots))
 	  (inits
 	   (map (lambda (slot)
-		  `(LAMBDA () ,(close (slot/default slot) context)))
+		  (let ((default (slot/default slot)))
+		    (if (false-marker? default)
+			#f
+			`(LAMBDA () ,(close default context)))))
 		slots)))
       `((DEFINE ,type-name
 	  ,(if (structure/record-type? structure)

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -197,9 +197,9 @@ USA.
   (QUALIFIER
    (and (memq operator '(FIXNUM-QUOTIENT FIXNUM-REMAINDER))
 	(rtl:register? operand-1)
-	(rtl:constant-fixnum-test operand-2
-	  (lambda (n)
-	    (integer-power-of-2? (abs n))))))
+        (rtl:constant-fixnum-test operand-2
+          (lambda (value)
+            (not (zero? value))))))
   (rtl:make-fixnum-2-args operator operand-1 operand-2 overflow?))
 
 (define-rule rewriting
@@ -236,14 +236,6 @@ USA.
   ;; avoid memory access.
   (QUALIFIER (rtl:constant-flonum-test operand flo:nonzero?))
   (rtl:make-object->float operand))
-
-(define-rule rewriting
-  (FLONUM-2-ARGS FLONUM-SUBTRACT
-                 (REGISTER (? operand1 register-known-value))
-                 (? operand2)
-                 (? overflow?))
-  (QUALIFIER (rtl:constant-flonum-test operand1 flo:zero?))
-  (rtl:make-flonum-1-arg 'FLONUM-NEGATE operand2 overflow?))
 
 (define (rtl:constant-flonum-test expression predicate)
   (and (rtl:object->float? expression)

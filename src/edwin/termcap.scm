@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -101,10 +101,12 @@ USA.
   (ts-enter-insert-mode false read-only true)
   (ts-enter-standout-mode false read-only true)
   (ts-enter-termcap-mode false read-only true)
+  (ts-enter-keypad-mode false read-only true)
   (ts-exit-delete-mode false read-only true)
   (ts-exit-insert-mode false read-only true)
   (ts-exit-standout-mode false read-only true)
   (ts-exit-termcap-mode false read-only true)
+  (ts-exit-keypad-mode false read-only true)
   (ts-forward-scroll false read-only true)
   (ts-forward-scroll-multi false read-only true)
   (ts-insert-char false read-only true)
@@ -249,10 +251,12 @@ USA.
 	      ts-enter-insert-mode
 	      ts-enter-standout-mode
 	      (termcap-get-string "ti")	;ts-enter-termcap-mode
+	      (termcap-get-string "ks")	;ts-enter-keypad-mode
 	      (termcap-get-string "ed")	;ts-exit-delete-mode
 	      (termcap-get-string "ei")	;ts-exit-insert-mode
 	      ts-exit-standout-mode
 	      (termcap-get-string "te")	;ts-exit-termcap-mode
+	      (termcap-get-string "ke")	;ts-exit-keypad-mode
 	      ts-forward-scroll
 	      ts-forward-scroll-multi
 	      ts-insert-char

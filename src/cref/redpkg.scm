@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,26 +37,40 @@ USA.
        packages
        extensions
        loads
-       (map (lambda (pathname)
-	      (cons
-	       (->namestring pathname)
-	       (let ((pathname
-		      (package-set-pathname
-		       (merge-pathnames pathname model-pathname)
-		       os-type)))
-		 (if (file-exists? pathname)
-		     (let ((contents (fasload pathname #t)))
-		       (if (package-file? contents)
-			   contents
-			   (begin
-			     (warn "Malformed package-description file:"
-				   pathname)
-			     #f)))
-		     (begin
-		       (warn "Can't find package-description file:" pathname)
-		       #f)))))
+       (map (lambda (name)
+	      (let ((pathname (find-global-definitions name model-pathname
+						       os-type)))
+		(and pathname
+		     (cons (->namestring pathname)
+			   (let ((contents (fasload pathname #t)))
+			     (if (package-file? contents)
+				 contents
+				 (begin
+				   (warn "Malformed package-description file:"
+					 pathname)
+				   #f)))))))
 	    globals)
        model-pathname))))
+
+(define (find-global-definitions name model-pathname os-type)
+  (let* ((filename (->pathname
+		    (cond ((symbol? name) (symbol-name name))
+			  ((string? name) name)
+			  (else (error "Not a globals name:" name)))))
+	 (pkd (package-set-pathname filename os-type)))
+    (or
+     (if (symbol? name)
+	 (let ((pathname (ignore-errors
+			  (lambda ()
+			    (system-library-pathname pkd)))))
+	   (and (not (condition? pathname))
+		pathname))
+	 (let ((pathname (merge-pathnames pkd model-pathname)))
+	   (and (file-exists? pathname)
+		pathname)))
+     (begin
+       (warn "Could not find global definitions:" pkd)
+       #f))))
 
 (define (sort-descriptions descriptions)
   (letrec
@@ -219,7 +233,7 @@ USA.
 (define (resolve-references! pmodel)
   (for-each (lambda (package)
 	      (for-each resolve-reference!
-			(package/sorted-references package)))
+			(package/references package)))
 	    (pmodel/packages pmodel)))
 
 (define (resolve-reference! reference)
@@ -265,9 +279,10 @@ USA.
 				      (cddr expression))))
       ((GLOBAL-DEFINITIONS)
        (let ((filenames (cdr expression)))
-	 (if (not (for-all? filenames string?))
+	 (if (not (for-all? filenames
+			    (lambda (f) (or (string? f) (symbol? f)))))
 	     (lose))
-	 (cons 'GLOBAL-DEFINITIONS (map parse-filename filenames))))
+	 (cons 'GLOBAL-DEFINITIONS filenames)))
       ((OS-TYPE-CASE)
        (if (not (and (list? (cdr expression))
 		     (for-all? (cdr expression)
@@ -313,7 +328,9 @@ USA.
 		  (error "Ill-formed PARENT option:" option))
 	      (if (assq 'PARENT options)
 		  (error "Multiple PARENT options."))
-	      (values (parse-name (cadr option)) options))
+	      (values (and (cadr option)
+			   (parse-name (cadr option)))
+		      options))
 	    (values 'NONE options)))
     (let ((package (make-package-description name parent)))
       (process-package-options package options)
@@ -463,7 +480,7 @@ USA.
 			   package)))))))
 	;; GLOBALS is a list of the bindings supplied externally.
 	(for-each (lambda (global)
-		    (if (cdr global)
+		    (if (and global (cdr global))
 			(process-globals-info (cdr global)
 					      (->namestring (car global))
 					      get-package)))
@@ -472,7 +489,8 @@ USA.
 	 (lambda (package description)
 	   (let ((parent
 		  (let ((parent-name (package-description/parent description)))
-		    (and (not (eq? parent-name 'NONE))
+		    (and parent-name
+			 (not (eq? parent-name 'NONE))
 			 (get-package parent-name #t)))))
 	     (set-package/parent! package parent)
 	     (if parent
@@ -640,9 +658,7 @@ USA.
 					  destination-name
 					  (binding/value-cell source-binding)
 					  new?)))
-		       (rb-tree/insert! (package/bindings destination-package)
-					destination-name
-					binding)
+		       (package/put-binding! destination-package binding)
 		       binding)))
 	       owner-package
 	       new?)))
@@ -658,12 +674,11 @@ USA.
 		 (let ((binding (make-binding package name value-cell new?)))
 		   (set-value-cell/source-binding! value-cell binding)
 		   binding))))
-	  (rb-tree/insert! (package/bindings package) name binding)
+	  (package/put-binding! package binding)
 	  binding))))
 
 (define (make-reference package name expression)
-  (let ((references (package/references package))
-	(add-reference!
+  (let ((add-reference!
 	 (lambda (reference)
 	   (set-reference/expressions!
 	    reference
@@ -671,13 +686,13 @@ USA.
 	   (set-expression/references!
 	    expression
 	    (cons reference (expression/references expression))))))
-    (let ((reference (rb-tree/lookup references name #f)))
+    (let ((reference (package/find-reference package name)))
       (if reference
 	  (begin
 	    (if (not (memq expression (reference/expressions reference)))
 		(add-reference! reference))
 	    reference)
 	  (let ((reference (%make-reference package name)))
-	    (rb-tree/insert! references name reference)
+	    (package/put-reference! package reference)
 	    (add-reference! reference)
 	    reference)))))

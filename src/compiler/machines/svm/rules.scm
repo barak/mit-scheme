@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -131,6 +131,8 @@ USA.
   (ASSIGN (REGISTER (? target))
 	  (CONS-NON-POINTER (MACHINE-CONSTANT (? type))
 			    (MACHINE-CONSTANT (? datum))))
+  (if (>= datum signed-fixnum/upper-limit)
+      (error "Can't encode non-pointer datum:" datum))
   (inst:load-non-pointer (word-target target)
 			 type
 			 datum))
@@ -376,7 +378,6 @@ USA.
 	     (inst target source1 source2))))))
   (standard 'PLUS-FIXNUM inst:+)
   (standard 'MINUS-FIXNUM inst:-)
-  (standard 'MULTIPLY-FIXNUM inst:*)
   (standard 'FIXNUM-QUOTIENT inst:quotient)
   (standard 'FIXNUM-REMAINDER inst:remainder)
   (standard 'FIXNUM-LSH inst:lsh)
@@ -384,6 +385,12 @@ USA.
   (standard 'FIXNUM-ANDC inst:andc)
   (standard 'FIXNUM-OR inst:or)
   (standard 'FIXNUM-XOR inst:xor))
+
+(define-fixnum-2-args-method 'MULTIPLY-FIXNUM
+  (lambda (target source1 source2 overflow?)
+    (if overflow? (simple-branches! 'NFIX target))
+    ((if overflow? inst:product inst:*)
+     target source1 source2)))
 
 ;;;; Flonums
 
@@ -452,6 +459,20 @@ USA.
 			((FLONUM-GREATER?) 'GT)
 			(else (error "Unknown flonum predicate:" predicate)))
 		      (float-source source1) temp)
+    (inst:load-immediate temp constant)))
+
+(define-rule predicate
+  (FLONUM-PRED-2-ARGS (? predicate)
+		      (OBJECT->FLOAT (CONSTANT (? constant)))
+		      (REGISTER (? source)))
+  (QUALIFIER (flo:flonum? constant))
+  (let ((temp (float-temporary)))
+    (simple-branches! (case predicate
+			((FLONUM-EQUAL?) 'EQ)
+			((FLONUM-LESS?) 'LT)
+			((FLONUM-GREATER?) 'GT)
+			(else (error "Unknown flonum predicate:" predicate)))
+		      temp (float-source source))
     (inst:load-immediate temp constant)))
 
 (define-rule statement
@@ -537,8 +558,8 @@ USA.
 	 ,@((or (1d-table/get flonum-2-args-methods operation #f)
 		(error "Unknown flonum operation:" operation))
 	    (float-target target)
-	    source2
 	    temp
+	    source2
 	    overflow?))))
 
 (define flonum-2-args-methods
@@ -565,21 +586,12 @@ USA.
   (POP-RETURN)
   ;; The continuation is on the stack.
   ;; The type code needs to be cleared first.
-  (current-bblock-continue!
-   (let ((pop-return
-	  (lambda ()
-	    (let ((temp (word-temporary)))
-	      (LAP ,@(inst:load 'WORD temp (ea:stack-pop))
-		   ,@(inst:object-address temp temp)
-		   ,@(inst:jump (ea:indirect temp)))))))
-     (let ((checks (get-exit-interrupt-checks)))
-       (if (null? checks)
-	   (make-new-sblock
-	    (pop-return))
-	   (make-new-sblock
-	    (LAP ,@(inst:interrupt-test-continuation)
-		 ,@(pop-return)))))))
-  (LAP))
+  (let ((checks (get-exit-interrupt-checks)))
+    (LAP ,@(clear-map!)
+	 ,@(if (null? checks) '() (inst:interrupt-test-continuation))
+	 ,@(inst:load 'WORD rref:word-0 (ea:stack-pop))
+	 ,@(inst:object-address rref:word-0 rref:word-0)
+	 ,@(inst:jump (ea:indirect rref:word-0)))))
 
 (define-rule statement
   (INVOCATION:APPLY (? frame-size) (? continuation))
@@ -642,12 +654,11 @@ USA.
 		     (global-uuo-link-label name frame-size)))))
 
 (define-rule statement
-  (INVOCATION:CACHE-REFERENCE (? frame-size)
-			      (? continuation)
-			      (REGISTER (? extension)))
+  (INVOCATION:CACHE-REFERENCE (? frame-size) (? continuation) (? extension))
+  (QUALIFIER (interpreter-call-argument? extension))
   continuation
   (expect-no-exit-interrupt-checks)
-  (let ((rref:cache-addr (word-source extension))
+  (let ((rref:cache-addr (interpreter-call-temporary extension))
 	(rref:block-addr (word-temporary))
 	(rref:frame-size (word-temporary)))
     (LAP ,@(clear-map!)
@@ -658,13 +669,11 @@ USA.
 
 #| There is no comutil_lookup_apply, no (trap:lookup-apply ...) instruction.
  (define-rule statement
-  (INVOCATION:LOOKUP (? frame-size)
-		     (? continuation)
-		     (REGISTER (? environment))
-		     (? name))
+  (INVOCATION:LOOKUP (? frame-size) (? continuation) (? environment) (? name))
+  (QUALIFIER (interpreter-call-argument? environment))
   continuation
   (expect-no-entry-interrupt-checks)
-  (let ((rref:environment (word-source environment))
+  (let ((rref:environment (interpreter-call-temporary environment))
 	(rref:frame-size (word-temporary))
 	(rref:name (word-temporary)))
     (LAP ,@(clear-map!)
@@ -704,7 +713,12 @@ USA.
 					,(make-primitive-procedure name #t))
 	  frame-size continuation
 	  (expect-no-exit-interrupt-checks)
-	  (,(close-syntax (symbol-append 'TRAP: name) environment)))))))
+	  (%primitive-invocation
+	   ,(close-syntax (symbol-append 'TRAP: name) environment)))))))
+
+(define (%primitive-invocation make-trap)
+  (LAP ,@(clear-map!)
+       ,@(make-trap)))
 
 (define-primitive-invocation &+)
 (define-primitive-invocation &-)
@@ -1167,7 +1181,7 @@ USA.
 	 ,@(inst:load-address rref:constant-addr (ea:address free-ref-label))
 	 ,@(inst:load-immediate rref:n-sections n-sections)
 	 ,@(trap:link rref:block-addr rref:constant-addr rref:n-sections)
-	 ,@(make-internal-continuation-label (generate-label)))))
+	 ,@(make-continuation-label false (generate-label)))))
 
 (define (generate/remote-link code-block-label
 			      environment-offset
@@ -1176,21 +1190,17 @@ USA.
   (let ((rref:block-addr rref:word-0)
 	(rref:constant-addr rref:word-1)
 	(rref:n-sections rref:word-2)
-	(rref:block.environment-addr rref:word-3)
-	(rref:environment rref:word-4))
-    (LAP ,@(inst:load-address rref:block-addr (ea:address code-block-label))
-	 ,@(inst:load-address rref:block.environment-addr
-			      (ea:offset rref:block-addr
-					 environment-offset 'WORD))
+	(rref:environment rref:word-3))
+    (LAP ,@(inst:load 'WORD rref:block-addr (ea:address code-block-label))
+	 ,@(inst:object-address rref:block-addr rref:block-addr)
 	 ,@(inst:load 'WORD rref:environment (ea:environment))
 	 ,@(inst:store 'WORD rref:environment
-		       (ea:indirect rref:block.environment-addr))
+		       (ea:offset rref:block-addr environment-offset 'BYTE))
 	 ,@(inst:load-address rref:constant-addr
-			      (ea:offset rref:block-addr
-					 free-ref-offset 'WORD))
+			      (ea:offset rref:block-addr free-ref-offset 'BYTE))
 	 ,@(inst:load-immediate rref:n-sections n-sections)
 	 ,@(trap:link rref:block-addr rref:constant-addr rref:n-sections)
-	 ,@(make-internal-continuation-label (generate-label)))))
+	 ,@(make-continuation-label false (generate-label)))))
 
 (define (generate/remote-links n-blocks vector-label n-sections)
   (if (> n-blocks 0)
@@ -1207,16 +1217,16 @@ USA.
 	    (rref:length rref:word-6)
 	    (rref:environment rref:word-7))
 	(LAP
-	 ;; Init index, bytes and vector.
+	 ;; Init index.
 	 ,@(inst:load-immediate rref:index 0)
-	 ,@(inst:load-address rref:bytes (ea:address bytes-label))
-	 ,@(inst:load-address rref:vector (ea:address vector-label))
-	 ,@(inst:load 'WORD rref:environment (ea:environment))
 
 	 ,@(inst:label loop-label)
-
+	 ;; Re-init bytes, vector, environment.
+	 ,@(inst:load-address rref:bytes (ea:address bytes-label))
+	 ,@(inst:load 'WORD rref:vector (ea:address vector-label))
+	 ,@(inst:object-address rref:vector rref:vector)
+	 ,@(inst:load 'WORD rref:environment (ea:environment))
 	 ;; Get n-sections for this cc-block.
-	 ,@(inst:load-immediate rref:n-sections 0)
 	 ,@(inst:load 'BYTE rref:n-sections
 		      (ea:indexed rref:bytes 0 'BYTE rref:index 'BYTE))
 	 ;; Get cc-block.
@@ -1235,11 +1245,14 @@ USA.
 	 ;; Address of first section.
 	 ,@(inst:load-address rref:sections
 			      (ea:indexed rref:block 2 'WORD rref:length 'WORD))
+	 ;; Push index.
+	 ,@(inst:store 'WORD rref:index (ea:stack-push))
 	 ;; Invoke linker
 	 ,@(trap:link rref:block rref:sections rref:n-sections)
 	 ,@(make-internal-continuation-label (generate-label))
-
-	 ;; Increment counter and loop
+	 ;; Pop index.
+	 ,@(inst:load 'WORD rref:index (ea:stack-pop))
+	 ;; Increment index and loop.
 	 ,@(inst:increment rref:index rref:index)
 	 ,@(inst:load-immediate rref:length n-blocks)
 	 ,@(inst:conditional-jump 'LT rref:index rref:length
@@ -1352,10 +1365,10 @@ USA.
   (QUALIFIER (and (interpreter-call-argument? extension)
 		  (interpreter-call-argument? value)))
   cont					; ignored
-  (let* ((cache (interpreter-call-temporary extension))
-	 (value (interpreter-call-temporary value)))
-   (LAP ,@(clear-map!)
-	,@(trap:assignment cache value))))
+  (let ((cache (interpreter-call-temporary extension))
+	(value (interpreter-call-temporary value)))
+    (LAP ,@(clear-map!)
+	 ,@(trap:assignment cache value))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? cont) (? extension))

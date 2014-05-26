@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -962,6 +962,8 @@ scan_newspace_addr (SCHEME_OBJECT * addr)
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
   if (scan != (addr + 1))
     std_gc_death ("scan_newspace_addr overflowed");
+#else
+  (void) scan;			/* ignore */
 #endif
 }
 
@@ -969,7 +971,7 @@ static void
 scan_ephemerons (void)
 {
   SCHEME_OBJECT ephemeron = ephemeron_list;
-  SCHEME_OBJECT * saved_newspace_next = newspace_next;
+  SCHEME_OBJECT * saved_newspace_next;
   scanning_ephemerons_p = true;
   while (EPHEMERON_P (ephemeron))
     {
@@ -1153,14 +1155,9 @@ check_newspace_sync (void)
 {
   if ((newspace_next - newspace_start)
       != (tospace_next - tospace_start))
-    std_gc_death (
-#ifdef HAVE_STDC_99
-		  "mismatch between newspace and tospace ptrs: %td/%td",
-#else
-		  "mismatch between newspace and tospace ptrs: %ld/%ld",
-#endif
-		  (newspace_next - newspace_start),
-		  (tospace_next - tospace_start));
+    std_gc_death ("mismatch between newspace and tospace ptrs: %ld/%ld",
+		  ((long) (newspace_next - newspace_start)),
+		  ((long) (tospace_next - tospace_start)));
 }
 
 void
@@ -1272,7 +1269,7 @@ gc_type_t gc_type_map [N_TYPE_CODES] =
   GC_VECTOR,			/* TC_NON_MARKED_VECTOR */
   GC_PAIR,			/* TC_LAMBDA */
   GC_NON_POINTER,		/* TC_PRIMITIVE */
-  GC_PAIR,			/* TC_SEQUENCE_2 */
+  GC_PAIR,			/* TC_SEQUENCE */
   GC_NON_POINTER,		/* TC_FIXNUM */
   GC_PAIR,			/* TC_PCOMB1 */
   GC_VECTOR,			/* TC_CONTROL_POINT */
@@ -1284,7 +1281,7 @@ gc_type_t gc_type_map [N_TYPE_CODES] =
   GC_SPECIAL,			/* TC_BROKEN_HEART */
   GC_PAIR,			/* TC_ASSIGNMENT */
   GC_TRIPLE,			/* TC_HUNK3_B */
-  GC_PAIR,			/* TC_IN_PACKAGE */
+  GC_UNDEFINED,			/* unused */
   GC_VECTOR,			/* TC_COMBINATION */
   GC_SPECIAL,			/* TC_MANIFEST_NM_VECTOR */
   GC_COMPILED,			/* TC_COMPILED_ENTRY */
@@ -1293,12 +1290,12 @@ gc_type_t gc_type_map [N_TYPE_CODES] =
   GC_VECTOR,			/* TC_EPHEMERON */
   GC_TRIPLE,			/* TC_VARIABLE */
   GC_NON_POINTER,		/* TC_THE_ENVIRONMENT */
-  GC_UNDEFINED,			/* 0x2E */
+  GC_PAIR,			/* TC_SYNTAX_ERROR */
   GC_VECTOR,			/* TC_VECTOR_1B,TC_BIT_STRING */
   GC_NON_POINTER,		/* TC_PCOMB0 */
   GC_VECTOR,			/* TC_VECTOR_16B */
   GC_SPECIAL,			/* TC_REFERENCE_TRAP */
-  GC_TRIPLE,			/* TC_SEQUENCE_3 */
+  GC_UNDEFINED,			/* 0x33 */
   GC_TRIPLE,			/* TC_CONDITIONAL */
   GC_PAIR,			/* TC_DISJUNCTION */
   GC_CELL,			/* TC_CELL */

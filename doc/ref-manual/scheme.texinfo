@@ -2,8 +2,8 @@
 @comment %**start of header
 @setfilename mit-scheme-ref
 @set EDITION 1.105
-@set VERSION 9.1
-@set UPDATED 2011-10-14
+@set VERSION 9.2
+@set UPDATED 2014-05-05
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
@@ -18,8 +18,8 @@ This manual documents MIT/GNU Scheme @value{VERSION}.
 
 Copyright @copyright{} 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-    2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute
-    of Technology
+    2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014
+    Massachusetts Institute of Technology
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
@@ -40,11 +40,12 @@ Documentation License.''
 
 @dircategory Programming Languages
 @direntry
-* MIT/GNU Scheme Ref: (mit-scheme-ref).	MIT/GNU Scheme Reference Manual
+* MIT/GNU Scheme Reference: (mit-scheme-ref).
+                                Reference Manual
 @end direntry
 
 @titlepage
-@title{MIT/GNU Scheme Reference Manual}
+@title MIT/GNU Scheme Reference Manual
 @subtitle Edition @value{EDITION} for release @value{VERSION}
 @subtitle @value{UPDATED}
 @author by Chris Hanson

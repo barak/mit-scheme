@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -61,17 +61,27 @@ USA.
 	 (error:bad-range-argument source #f))))
 
 (define (home->register-transfer source target)
-  (inst:load 'WORD (register-reference target) (pseudo-register-home source)))
+  (LAP ,@(inst:load (register-type source)
+		    (register-reference target)
+		    (home source))))
 
 (define (register->home-transfer source target)
-  (inst:store 'WORD (register-reference source) (pseudo-register-home target)))
+  (LAP ,@(inst:store (register-type target)
+		     (register-reference source)
+		     (home target))))
 
 (define (pseudo-register-home register)
-  (error "Attempt to access temporary register:" register))
+  (home register))
+
+(define-integrable (home register)
+  (ea:offset rref:interpreter-register-block
+	     (+ number-of-fixed-interpreter-registers
+		 (* words-per-compiler-temporary (register-renumber register)))
+	     'WORD))
 
 ;;;; Linearizer interface
 
-(define lap:make-label-statement
+(define-integrable lap:make-label-statement
   inst:label)
 
 (define (lap:make-unconditional-branch label)
@@ -104,8 +114,7 @@ USA.
   (make-external-label label #xFFFD))
 
 (define (make-continuation-label entry-label label)
-  entry-label
-  (make-external-label label (encode-continuation-offset label #xFFFC)))
+  (make-external-label label (encode-continuation-offset entry-label #xFFFC)))
 
 (define (encode-procedure-type min-frame max-frame)
   (let ((n-required (-1+ min-frame))
@@ -124,7 +133,9 @@ USA.
 
 (define (encode-continuation-offset label default)
   (let ((offset
-	 (rtl-continuation/next-continuation-offset (label->object label))))
+	 (if label
+	     (rtl-continuation/next-continuation-offset (label->object label))
+	     0)))
     (if offset
 	(begin
 	  (guarantee-exact-nonnegative-integer offset)
@@ -137,9 +148,12 @@ USA.
 
 (define (load-constant target object)
   (if (non-pointer-object? object)
-      (inst:load-non-pointer target
-			     (object-type object)
-			     (careful-object-datum object))
+      (let ((datum (if (fix:fixnum? object)
+		       object 		;Need a signed integer here.
+		       (object-datum object))))
+	(if (>= datum signed-fixnum/upper-limit)
+	    (error "Can't encode non-pointer datum:" datum))
+	(inst:load-non-pointer target (object-type object) datum))
       (inst:load 'WORD target (ea:address (constant->label object)))))
 
 (define (simple-branches! condition source1 #!optional source2)
@@ -217,6 +231,8 @@ USA.
 		  (rtl:cons-pointer-type expression)))
 	   (datum (rtl:machine-constant-value
 		   (rtl:cons-pointer-datum expression))))
+       (if (>= datum signed-fixnum/upper-limit)
+	   (error "Can't encode pointer datum:" datum))
        (prefix-instructions!
 	(LAP ,@(inst:load-non-pointer temp type datum)))
        temp))

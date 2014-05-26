@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -819,7 +819,7 @@ ARBITRARY:	The expression may be executed more than once.  It
 	((dispatch-entry
 	  (sc-macro-transformer
 	   (lambda (form environment)
-	     `(VECTOR-SET! DISPATCH-VECTOR ,(microcode-type (cadr form))
+	     `(VECTOR-SET! DISPATCH-VECTOR (MICROCODE-TYPE ',(cadr form))
 			   ,(close-syntax (caddr form) environment)))))
 
 	 (dispatch-entries
@@ -867,14 +867,9 @@ ARBITRARY:	The expression may be executed more than once.  It
       (binary-entry disjunction)
       (standard-entry variable)
       (standard-entry the-environment)
-      (dispatch-entries (combination-1 combination-2 combination
-				       primitive-combination-0
-				       primitive-combination-1
-				       primitive-combination-2
-				       primitive-combination-3)
-			canonicalize/combination)
+      (dispatch-entry combination canonicalize/combination)
       (dispatch-entries (lambda lexpr extended-lambda) canonicalize/lambda)
-      (dispatch-entries (sequence-2 sequence-3) canonicalize/sequence))
+      (dispatch-entry sequence canonicalize/sequence))
     (named-lambda (canonicalize/expression expression bound context)
       ((vector-ref dispatch-vector (object-type expression))
        expression bound context))))

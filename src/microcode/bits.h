@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,20 +34,19 @@ static inline unsigned int						\
 NAME (TYPE x)								\
 {									\
   /* #b01010101... */							\
-  static const uintmax_t two_bit_mask = ((~ ((TYPE) 0)) / (1 + (1 << 1))); \
+  const TYPE two_bit_mask = ((~ ((TYPE) 0)) / (1 + (1 << 1)));		\
 									\
   /* #b00110011... */							\
-  static const uintmax_t four_bit_mask = ((~ ((TYPE) 0)) / (1 + (1 << 2))); \
+  const TYPE four_bit_mask = ((~ ((TYPE) 0)) / (1 + (1 << 2)));		\
 									\
   /* #b00001111... */							\
-  static const uintmax_t eight_bit_mask = ((~ ((TYPE) 0)) / (1 + (1 << 4))); \
+  const TYPE eight_bit_mask = ((~ ((TYPE) 0)) / (1 + (1 << 4)));	\
 									\
   /* Assumption: The number of bits in a uintmax_t fits in eight bits	\
      (unsigned); that is, the number of bits is less than 256.  */	\
 									\
   /* This is a bit mask covering the total number of bits we need.  */	\
-  static const uintmax_t final_mask					\
-    = (((CHAR_BIT * (sizeof (TYPE))) << 1) - 1);			\
+  const TYPE final_mask = (((CHAR_BIT * (sizeof (TYPE))) << 1) - 1);	\
 									\
   int i;								\
 									\

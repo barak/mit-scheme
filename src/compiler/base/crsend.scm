@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,6 +32,8 @@ USA.
 ;;; compiler.
 
 (declare (usual-integrations))
+
+(load-option 'COMPRESS)			; XXX ugh
 
 (define (finish-cross-compilation:directory directory #!optional force?)
   (let ((force? (if (default-object? force?) #f force?)))
@@ -44,9 +46,35 @@ USA.
 			     (loop pathname)))
 			((let ((t (pathname-type pathname)))
 			   (and (string? t)
+				(string=? t "fni")))
+			 (finish-cross-compilation:info-file pathname force?))
+			((let ((t (pathname-type pathname)))
+			   (and (string? t)
 				(string=? t "moc")))
 			 (finish-cross-compilation:file pathname force?))))
 		(directory-read (pathname-as-directory directory))))))
+
+(define (finish-cross-compilation:info-file pathname #!optional force?)
+  (let* ((input-file (pathname-default-type pathname "fni"))
+	 (output-file (pathname-new-type input-file "bci")))
+    (if (or (if (default-object? force?) #t force?)
+	    (file-modification-time<? output-file input-file))
+	(with-notification
+	    (lambda (port)
+	      (write-string "Compressing info: " port)
+	      (write (enough-namestring input-file) port)
+	      (write-string " => " port)
+	      (write (enough-namestring output-file) port))
+	    (lambda ()
+	      (let ((inf (fasload input-file #t)))
+		((access SPLIT-INF-STRUCTURE! ; XXX ugh
+			 (->environment '(RUNTIME COMPILER-INFO)))
+		 inf
+		 #f)
+		(call-with-temporary-filename
+		  (lambda (temp)
+		    (fasdump inf temp #t)
+		    (compress temp output-file)))))))))
 
 (define (finish-cross-compilation:file input-file #!optional force?)
   (let* ((input-file (pathname-default-type input-file "moc"))

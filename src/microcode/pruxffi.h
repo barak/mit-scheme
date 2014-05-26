@@ -1,6 +1,9 @@
 /* -*-C-*-
 
-Copyright (C) 2006, 2007, 2008, 2009, 2010 Matthew Birkholz
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -47,11 +50,11 @@ extern void cstack_pop (char* tos);
   TOS = cstack_lpop (TOS, sizeof (TYPE));				\
   VAR = *(TYPE *)TOS;
 
-typedef void (*CalloutTrampOut)(void);
+typedef SCM (*CalloutTrampOut)(void);
 typedef SCM (*CalloutTrampIn)(void);
 extern void callout_seal (CalloutTrampIn tramp);
 extern void callout_unseal (CalloutTrampIn expected);
-extern void callout_continue (CalloutTrampIn tramp);
+extern SCM callout_continue (CalloutTrampIn tramp);
 extern char* callout_lunseal (CalloutTrampIn expected);
 extern void callout_pop (char* tos);
 
@@ -73,6 +76,7 @@ extern SCM long_to_scm (const long i);
 extern SCM ulong_to_scm (const unsigned long i);
 extern SCM double_to_scm (const double d);
 extern SCM pointer_to_scm (const void* p);
+extern SCM struct_to_scm (const void* p, int size);
 
 extern SCM cons_alien (const void* p);
 
@@ -86,10 +90,14 @@ extern void* pointer_value (void);
 extern void check_number_of_args (int num);
 extern SCM unspecific (void);
 extern SCM empty_list (void);
+extern int flovec_length (SCM vector);
+extern double* flovec_loc (SCM vector);
+extern double flovec_ref (SCM vector, int index);
 
 #ifndef MIT_SCHEME /* Do not include in the microcode, just shims. */
 extern SCM cons (SCM car, SCM cdr);
 /* For debugging messages from shim code. */
 extern void outf_error (const char *, ...);
 extern void outf_flush_error (void);
+extern void error_external_return (void);
 #endif

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -122,35 +122,45 @@ USA.
 (define (sf/internal input-pathname bin-pathname spec-pathname
 		     environment declarations)
   spec-pathname				;ignored
-  (with-simple-restart
-   'CONTINUE (string-append "Skip processing file " (->namestring input-pathname))
-   (lambda ()
-     (let ((do-it
-	    (let ((start-date (get-decoded-time)))
-	      (lambda ()
-		(fasdump (make-comment
-			  `((SOURCE-FILE . ,(->namestring input-pathname))
-			    (DATE ,(decoded-time/year start-date)
-				  ,(decoded-time/month start-date)
-				  ,(decoded-time/day start-date))
-			    (TIME ,(decoded-time/hour start-date)
-				  ,(decoded-time/minute start-date)
-				  ,(decoded-time/second start-date)))
-			  (sf/file->scode input-pathname bin-pathname
-					  environment declarations))
-			 bin-pathname
-			 #t)))))
-       (if sf:noisy?
-	   (let ((message
-		  (lambda (port)
-		    (write-string "Generating SCode for file: " port)
-		    (write (enough-namestring input-pathname) port)
-		    (write-string " => " port)
-		    (write (enough-namestring bin-pathname) port))))
-	     (if (eq? sf:noisy? 'old-style)
-		 (timed message do-it)
-		 (with-notification message do-it)))
-	   (do-it))))))
+  (with-simple-restart 'CONTINUE
+      (string-append "Skip processing file " (->namestring input-pathname))
+    (lambda ()
+      (let ((do-it
+	     (let ((start-date (get-decoded-time)))
+	       (lambda ()
+		 (fasdump (make-comment
+			   `((SOURCE-FILE . ,(->namestring input-pathname))
+			     (DATE ,(decoded-time/year start-date)
+				   ,(decoded-time/month start-date)
+				   ,(decoded-time/day start-date))
+			     (TIME ,(decoded-time/hour start-date)
+				   ,(decoded-time/minute start-date)
+				   ,(decoded-time/second start-date)))
+			   (sf/file->scode input-pathname bin-pathname
+					   environment declarations))
+			  bin-pathname
+			  #t)))))
+	(if sf:noisy?
+	    (let ((message
+		   (lambda (port)
+		     (write-string "Generating SCode for file: " port)
+		     (write (enough-namestring input-pathname) port)
+		     (write-string " => " port)
+		     (write (enough-namestring bin-pathname) port))))
+	      (if (eq? sf:noisy? 'old-style)
+		  (timed message do-it)
+		  (with-notification message do-it)))
+	    (do-it))))))
+
+;; If not #F, should be a string file type.  SF will pretty print
+;; the macro-expanded, but unoptimized file content to the output
+;; directory in a file with this extension.
+(define macroexpanded-pathname-type #f)
+
+;; If not #F, should be a string file type.  SF will pretty print
+;; the optimized file content to the output directory in a file
+;; with this extension.
+(define optimized-pathname-type #f)
 
 (define (sf/file->scode input-pathname output-pathname
 			environment declarations)
@@ -162,12 +172,23 @@ USA.
 			      externs-pathname-type
 			      'NEWEST)))
     (receive (expression externs-block externs)
-	(integrate/file input-pathname environment declarations)
+	(integrate/file input-pathname
+			(and output-pathname
+			     macroexpanded-pathname-type
+			     (pathname-new-type output-pathname
+						macroexpanded-pathname-type))
+			environment declarations)
       (if output-pathname
 	  (write-externs-file (pathname-new-type output-pathname
 						 externs-pathname-type)
 			      externs-block
 			      externs))
+      (if (and output-pathname
+	       optimized-pathname-type)
+	  (call-with-output-file
+	      (pathname-new-type output-pathname optimized-pathname-type)
+	    (lambda (port)
+	      (pp expression port))))
       expression)))
 
 (define externs-pathname-type
@@ -228,12 +249,17 @@ USA.
 
 ;;;; Optimizer Top Level
 
-(define (integrate/file file-name environment declarations)
+(define (integrate/file file-name macroexpanded-file-name environment declarations)
   (integrate/kernel
    (lambda ()
-     (phase:syntax (phase:read file-name)
-		   environment
-		   declarations))))
+     (let ((scode (phase:syntax (phase:read file-name)
+				environment
+				declarations)))
+       (if macroexpanded-file-name
+	   (call-with-output-file macroexpanded-file-name
+	     (lambda (port)
+	       (pp scode port))))
+       scode))))
 
 (define (integrate/simple preprocessor input receiver)
   (call-with-values

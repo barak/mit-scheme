@@ -1,6 +1,9 @@
 #| -*-Scheme-*-
 
-Copyright (C) 2006, 2007, 2008, 2009, 2010 Matthew Birkholz
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -22,7 +25,7 @@ USA.
 |#
 
 ;;;; Syntax Expanders
-;;; package: (ffi syntax)
+;;; package: (ffi)
 
 
 ;;; C-include Syntax
@@ -53,28 +56,32 @@ USA.
 
 (define (call-with-destructured-c-include-form form receiver)
   ;; Calls RECEIVER with the library.
-  (if (null? (cdr form)) (serror form "a library name is required"))
-  (let ((library (cadr form)))
-    (if (not (string? library))
-	(serror form "the 1st arg must be a string"))
-    (if (not (null? (cddr form)))
-	(serror form "too many args"))
-    (receiver library)))
+  (cond ((null? (cdr form))
+	 (serror form "A library name is required"))
+	((not (string? (cadr form)))
+	 (serror form "The 1st arg must be a string"))
+	(else
+	 (if (not (null? (cddr form)))
+	     (swarn form "Too many args"))
+	 (receiver (cadr form)))))
 
 (define (load-c-includes library)
-  (let* ((lib (merge-pathnames library (system-library-directory-pathname)))
-	 (name (pathname-name lib))
-	 (const (pathname-new-name lib (string-append name "-const")))
-	 (types (pathname-new-name lib (string-append name "-types")))
-	 (includes (fasload types (not c-include-noisily?)))
-	 (comment (fasload const (not c-include-noisily?)))
-	 (enums.struct-values
-	  (if (comment? comment) (comment-expression comment)
-	      (error:wrong-type-datum comment "a fasl comment"))))
-    (warn-new-cdecls includes)
-    (set-c-includes/enum-values! includes (car enums.struct-values))
-    (set-c-includes/struct-values! includes (cadr enums.struct-values))
-    includes))
+  (let ((lib (system-library-pathname (string-append library "-shim.so"))))
+    (let ((includes (fasload
+		     (pathname-new-name (pathname-new-type lib "bin")
+					(string-append library "-types"))
+		     (not c-include-noisily?)))
+	  (comment (fasload
+		    (pathname-new-name (pathname-new-type lib "bin")
+				       (string-append library "-const"))
+		    (not c-include-noisily?))))
+      (let ((enums.struct-values
+	     (if (comment? comment) (comment-expression comment)
+		 (error:wrong-type-datum comment "a fasl comment"))))
+	(warn-new-cdecls includes)
+	(set-c-includes/enum-values! includes (car enums.struct-values))
+	(set-c-includes/struct-values! includes (cadr enums.struct-values))
+	includes))))
 
 (define (warn-new-cdecls includes)
   (for-each
@@ -82,7 +89,7 @@ USA.
      (let ((read-modtime (cdr file.modtime))
 	   (this-modtime (file-modification-time (car file.modtime))))
        (if (and this-modtime (< read-modtime this-modtime))
-	   (warn "new source file:" (car file.modtime)))))
+	   (warn "New source file:" (car file.modtime)))))
    (c-includes/files includes)))
 
 
@@ -126,54 +133,60 @@ USA.
 		  (if poke?
 		      (expand-poke type alien-form 0 value-form whole-form)
 		      (expand-peek type alien-form 0 value-form whole-form))
-		  (let ((meta-type (cond ((ctype/basic? type) "basic")
-					 ((ctype/pointer? type) "pointer")
-					 ((ctype/array? type) "array")
-					 ((ctype/enum-defn? type) "enum")
-					 (else ""))))
-		    (serror whole-form meta-type " types have no members"))))
+		  (let ((meta-type (cond ((ctype/basic? type) "Basic")
+					 ((ctype/pointer? type) "Pointer")
+					 ((ctype/array? type) "Array")
+					 ((ctype/enum-defn? type) "Enum")
+					 (else "?"))))
+		    (swarn whole-form
+			   (string-append
+			    meta-type" types have no members")))))
 	     ((or (ctype/struct-defn? type)
 		  (ctype/union-defn? type))
 	      (if (null? member-spec)
-		  (serror whole-form "cannot peek a whole struct")
+		  (swarn whole-form "Cannot peek a whole struct")
 		  (let ((entry (assoc (cons* 'OFFSET ctype member-spec)
 				      (c-includes/struct-values includes))))
-		    (if (not entry) (serror whole-form "no such member"))
-		    (let ((offset (cadr entry))
-			  (type (cddr entry)))
-		      (let ((ctype (ctype-definition type includes)))
-			(if poke?
-			    (expand-poke ctype alien-form offset
-					 value-form whole-form)
-			    (expand-peek ctype alien-form offset
-					 value-form whole-form)))))))
+		    (if (not entry)
+			(swarn whole-form "No such member")
+			(let ((offset (cadr entry))
+			      (type (cddr entry)))
+			  (let ((ctype (ctype-definition type includes)))
+			    (if poke?
+				(expand-poke ctype alien-form offset
+					     value-form whole-form)
+				(expand-peek ctype alien-form offset
+					     value-form whole-form))))))))
 	     (poke?
-	      (serror whole-form "cannot poke C type " ctype))
+	      (swarn whole-form "Cannot poke C type" ctype))
 	     (else
-	      (serror whole-form "cannot peek C type " ctype))))))))))
+	      (swarn whole-form "Cannot peek C type" ctype))))))))))
 
 (define (expand-poke ctype alien-form offset value-form whole-form)
-  (if (not value-form) (serror whole-form "missing value (3rd) arg"))
-  (cond ((ctype/basic? ctype)
-	 (let ((prim (or (ctype/primitive-modifier ctype)
-			 (serror whole-form "cannot poke basic type " ctype))))
-	   `(,prim ,alien-form ,offset ,value-form)))
+  (cond ((not value-form)
+	 (swarn whole-form "Missing value (3rd) arg"))
+	((ctype/basic? ctype)
+	 (let ((prim (ctype/primitive-modifier ctype)))
+	   (if prim
+	       `(,prim ,alien-form ,offset ,value-form)
+	       (swarn whole-form "Cannot poke basic type" ctype))))
 	((ctype/pointer? ctype)
 	 (let ((prim (ucode-primitive c-poke-pointer 3)))
 	   `(,prim ,alien-form ,offset ,value-form)))
 	((ctype/array? ctype)
-	 (serror whole-form "cannot poke a whole array"))
+	 (swarn whole-form "Cannot poke a whole array"))
 	((or (ctype/enum? ctype) (eq? ctype 'ENUM))
 	 (let ((prim (ucode-primitive c-poke-uint 3)))
 	   `(,prim ,alien-form ,offset ,value-form)))
-	(else (error "unexpected C type for poking" ctype))))
+	(else (swarn whole-form "Unexpected C type for poking" ctype))))
 
 (define (expand-peek ctype alien-form offset value-form whole-form)
   (cond ((ctype/basic? ctype)
-	 (if value-form (serror whole-form "ignoring extra (3rd) arg"))
-	 (let ((prim (or (ctype/primitive-accessor ctype)
-			 (serror whole-form "cannot peek basic type " ctype))))
-	   `(,prim ,alien-form ,offset)))
+	 (if value-form (swarn whole-form "Ignoring extra (3rd) arg"))
+	 (let ((prim (ctype/primitive-accessor ctype)))
+	   (if prim
+	       `(,prim ,alien-form ,offset)
+	       (swarn whole-form "Cannot peek basic type" ctype))))
 	((ctype/pointer? ctype)
 	 `(,(ucode-primitive c-peek-pointer 3)
 	   ,alien-form ,offset ,(or value-form '(MAKE-ALIEN))))
@@ -186,7 +199,7 @@ USA.
 	     `(ALIEN-BYTE-INCREMENT ,alien-form ,offset)))
 	((or (ctype/enum? ctype) (eq? ctype 'ENUM))
 	 `(,(ucode-primitive c-peek-uint 2) ,alien-form ,offset))
-	(else (error "unexpected C type for peeking" ctype))))
+	(else (swarn whole-form "Unexpected C type for peeking" ctype))))
 
 (define (call-with-destructured-c->-form form receiver)
   ;; Calls RECEIVER with ALIEN, SPEC and VALUE (or #f) as in these forms:
@@ -196,18 +209,20 @@ USA.
   ;;   (C->= ALIEN SPEC VALUE)
   ;;
   (let ((len (length form)))
-    (if (< len 3) (serror form "too few args"))
-    (if (> len 4) (serror form "too many args"))
-    (let ((alien-form (cadr form))
-	  (type-member-spec (caddr form))
-	  (value-form (and (= 4 len) (cadddr form))))
-      (if (not (string? type-member-spec))
-	  (serror form "2nd arg must be a string"))
-      (let ((type-member-spec (map string->symbol
-				   (burst-string type-member-spec #\space #t))))
-	(if (null? type-member-spec)
-	    (serror form "2nd arg is an empty string"))
-	(receiver alien-form type-member-spec value-form)))))
+    (if (< len 3)
+	(swarn form "Too few args")
+	(let ((alien-form (cadr form))
+	      (type-member-spec (caddr form))
+	      (value-form (and (= 4 len) (cadddr form))))
+	  (if (< 4 len) (swarn form "Too many args"))
+	  (if (not (string? type-member-spec))
+	      (swarn form "2nd arg must be a string")
+	      (let ((type-member-spec
+		     (map string->symbol
+			  (burst-string type-member-spec #\space #t))))
+		(if (null? type-member-spec)
+		    (swarn form "2nd arg is an empty string")
+		    (receiver alien-form type-member-spec value-form))))))))
 
 
 ;;; C-enum Syntax
@@ -227,7 +242,7 @@ USA.
       (lambda (name value-form)
 	(let* ((includes (find-c-includes usage-env)))
 	  (if (not value-form)
-	      (lookup-enum-value name form includes)
+	      (lookup-enum-value name includes)
 	      (if (integer? value-form)
 		  (c-enum-name value-form name
 				(c-enum-constant-values name form includes))
@@ -235,10 +250,10 @@ USA.
 			(constants (c-enum-constant-values name form includes)))
 		    `(C-ENUM-NAME ,value ',name ',constants))))))))))
 
-(define (lookup-enum-value name whole-form includes)
+(define (lookup-enum-value name includes)
   (let ((entry (assq name (c-includes/enum-values includes))))
     (if (not entry)
-	(serror whole-form "constant not declared")
+	(swarn name "No declaration of constant")
 	(cdr entry))))
 
 (define (c-enum-constant-values name form includes)
@@ -249,32 +264,36 @@ USA.
 	  (if (pair? consts)
 	      (let* ((name (caar consts))
 		     (entry (or (assq name vals)
-				(error "no value for enum constant" name))))
+				(begin
+				  (swarn form "No value for enum constant")
+				  (cons name #f)))))
 		(cons entry (loop (cdr consts))))
 	      '()))
-	(serror form "not an enum type"))))
+	(swarn form "Not an enum type"))))
 
 (define (call-with-destructured-c-enum-form form receiver)
   (let ((len (length form)))
-    (if (< len 2) (serror form "too few args"))
-    (if (> len 3) (serror form "too many args"))
-    (let ((type-str (cadr form))
-	  (value-form (and (pair? (cddr form)) (caddr form))))
-      (if (not (string? type-str))
-	  (serror form "1st arg must be a string"))
-      (let ((words (burst-string type-str #\space #t)))
-	(if (null? words)
-	    (serror form "1st arg is an empty string"))
-	(let ((name (cond ((and (string=? "enum" (car words))
-				(not (null? (cdr words)))
-				(null? (cddr words)))
-			   `(ENUM ,(string->symbol (cadr words))))
-			  ((null? (cdr words))
-			   (string->symbol (car words)))
-			  (else (serror form "not an enum type name")))))
-	  (if (and value-form (string? value-form))
-	      (serror form "2nd arg cannot be a string"))
-	  (receiver name value-form))))))
+    (if (< len 2)
+	(swarn form "Too few args")
+	(let ((type-str (cadr form))
+	      (value-form (and (pair? (cddr form)) (caddr form))))
+	  (if (< 3 len) (swarn form "Too many args"))
+	  (if (not (string? type-str))
+	      (swarn form "1st arg must be a string")
+	      (let ((words (burst-string type-str #\space #t)))
+		(if (null? words)
+		    (swarn form "1st arg is an empty string")
+		    (let ((name (cond ((and (string=? "enum" (car words))
+					    (not (null? (cdr words)))
+					    (null? (cddr words)))
+				       `(ENUM ,(string->symbol (cadr words))))
+				      ((null? (cdr words))
+				       (string->symbol (car words)))
+				      (else (swarn form
+						   "Not an enum type name")))))
+		      (if (and value-form (string? value-form))
+			  (swarn form "2nd arg cannot be a string")
+			  (receiver name value-form))))))))))
 
 
 ;;; C-sizeof and C-offset Syntaxes
@@ -294,13 +313,16 @@ USA.
 (define (expand-c-info-syntax which form usage-env)
   ;; WHICH can be SIZEOF or OFFSET.
   (let ((len (length form)))
-    (if (< len 2) (serror form "too few args"))
-    (if (> len 2) (serror form "too many args"))
-    (let ((str (cadr form)))
-      (if (not (string? str)) (serror form "arg must be a string"))
-      (let ((spec (map string->symbol (burst-string str #\space #t))))
-	(if (null? spec) (serror form "arg is an empty string"))
-	(c-info which spec form usage-env)))))
+    (if (< len 2)
+	(swarn form "Too few args")
+	(let ((str (cadr form)))
+	  (if (< 2 len) (swarn form "Too many args"))
+	  (if (not (string? str))
+	      (swarn form "Arg must be a string")
+	      (let ((spec (map string->symbol (burst-string str #\space #t))))
+		(if (null? spec)
+		    (swarn form "arg is an empty string")
+		    (c-info which spec form usage-env))))))))
 
 (define (c-info which spec form usage-env)
   ;; Returns the offset or sizeof for SPEC.
@@ -310,17 +332,17 @@ USA.
 	   spec form
 	   (lambda (ctype member-spec)
 	     (let ((defn (ctype-definition ctype includes)))
-	       (if (and (eq? which 'OFFSET) (null? member-spec))
-		   (serror form "no member specified"))
-	       (if (and (eq? which 'OFFSET)
-			(not (or (ctype/struct-defn? defn)
-				 (ctype/union-defn? defn))))
-		   (serror form "not a struct or union type"))
-	       (if (and (not (eq? which 'OFFSET)) (not (null? member-spec)))
-		   (if (null? (cdr member-spec))
-		       (serror form "no member name allowed")
-		       (serror form "no member names allowed")))
-	       (cond ((ctype/basic? defn)
+	       (cond ((and (eq? which 'OFFSET) (null? member-spec))
+		      (swarn form "no member specified"))
+		     ((and (eq? which 'OFFSET)
+			   (not (or (ctype/struct-defn? defn)
+				    (ctype/union-defn? defn))))
+		      (swarn form "not a struct or union type"))
+		     ((and (not (eq? which 'OFFSET)) (not (null? member-spec)))
+		      (if (null? (cdr member-spec))
+			  (swarn form "no member name allowed")
+			  (swarn form "no member names allowed")))
+		     ((ctype/basic? defn)
 		      (cons defn '()))
 		     ((ctype/pointer? defn)
 		      (cons '* '()))
@@ -329,13 +351,17 @@ USA.
 		      (cons ctype member-spec))
 		     (else
 		      (serror form "unimplemented")))))))
-	 (entry (assoc (cons which btype.members)
-		       (c-includes/struct-values includes))))
-    (if entry
-	(if (eq? 'OFFSET which) (cadr entry) (cdr entry))
-	(if (eq? 'OFFSET which)
-	    (serror form "unknown member")
-	    (serror form "unknown C type " btype.members)))))
+	 (entry (and btype.members
+		     (assoc (cons which btype.members)
+			    (c-includes/struct-values includes)))))
+    (cond ((not btype.members)
+	   form)
+	  (entry
+	   (if (eq? 'OFFSET which) (cadr entry) (cdr entry)))
+	  (else
+	   (if (eq? 'OFFSET which)
+	       (swarn form "Unknown member")
+	       (swarn form "Unknown C type" btype.members))))))
 
 (define (call-with-initial-ctype spec form receiver)
   ;; Given SPEC, a list of symbols, calls RECEIVER with a ctype and
@@ -350,7 +376,7 @@ USA.
 	(member-spec (cdr spec)))
     (cond ((memq type-name '(STRUCT UNION ENUM))
 	   (if (null? member-spec)
-	       (serror form "incomplete C type specification")
+	       (swarn form "Incomplete C type specification")
 	       (receiver (list type-name (car member-spec))
 			 (cdr member-spec))))
 	  ((eq? type-name '*)
@@ -389,23 +415,25 @@ USA.
    form
    (lambda (alien-form str index-form)
      (let ((spec (map string->symbol (burst-string str #\space #t))))
-       (if (null? spec) (serror form "2nd arg is an empty string"))
-       (let ((alien-form (close-syntax alien-form usage-env))
-	     (sizeof (c-info `SIZEOF spec form usage-env))
-	     (index-form (close-syntax index-form usage-env))
-	     (proc (if bang? 'ALIEN-BYTE-INCREMENT! 'ALIEN-BYTE-INCREMENT)))
-	 `(,proc ,alien-form (* ,sizeof ,index-form)))))))
+       (if (null? spec)
+	   (swarn form "2nd arg is an empty string")
+	   (let ((alien-form (close-syntax alien-form usage-env))
+		 (sizeof (c-info `SIZEOF spec form usage-env))
+		 (index-form (close-syntax index-form usage-env))
+		 (proc (if bang? 'ALIEN-BYTE-INCREMENT! 'ALIEN-BYTE-INCREMENT)))
+	     `(,proc ,alien-form (* ,sizeof ,index-form))))))))
 
 (define (call-with-destructured-C-array-loc-form form receiver)
   (let ((len (length form)))
-    (if (< len 4) (serror form "too few args"))
-    (if (> len 4) (serror form "too many args"))
-    (let ((alien-form (cadr form))
-	  (type (if (string? (caddr form))
-		    (caddr form)
-		    (serror form "the 2nd arg must be a string")))
-	  (index-form (cadddr form)))
-      (receiver alien-form type index-form))))
+    (if (< len 4)
+	(swarn form "Too few args")
+	(let ((alien-form (cadr form))
+	      (type (caddr form))
+	      (index-form (cadddr form)))
+	  (if (> len 4) (swarn form "Too many args"))
+	  (if (not (string? type))
+	      (swarn form "The 2nd arg must be a string")
+	      (receiver alien-form type index-form))))))
 
 
 ;;; C-call Syntax
@@ -424,9 +452,8 @@ USA.
 	       (alien (let ((entry (assq func-name callouts)))
 			(if (pair? entry)
 			    (cdr entry)
-			    (begin
-			      (warn "no declaration of C function:" func-name)
-			      func-name)))))
+			    (swarn form "No declaration of callout"
+				   func-name)))))
 	  `(CALL-ALIEN ,alien
 		       . ,(map (lambda (form) (close-syntax form usage-env))
 			       arg-forms))))))))
@@ -434,11 +461,13 @@ USA.
 (define (call-with-destructured-C-call-form form receiver)
   ;; Calls RECEIVER with the optional return-alien-form, func-name
   ;; (as a symbol), and the arg-forms.
-  (if (not (pair? (cdr form))) (serror form "no function name"))
-  (let ((name (cadr form))
-	(args (cddr form)))
-    (if (not (string? name)) (serror form "first arg is not a string"))
-    (receiver (string->symbol name) args)))
+  (if (not (pair? (cdr form)))
+      (swarn form "No function name")
+      (let ((name (cadr form))
+	    (args (cddr form)))
+	(if (not (string? name))
+	    (swarn form "First arg must be a string")
+	    (receiver (string->symbol name) args)))))
 
 
 ;;; C-callback Syntax
@@ -457,16 +486,19 @@ USA.
 		   (name (string->symbol obj)))
 	      (let ((entry (assq name callbacks)))
 		(if (pair? entry) (cdr entry)
-		    (serror form "C function not declared"))))
+		    (swarn form "No declaration of callback"))))
 	    (let ((value-form (close-syntax obj usage-env)))
 	      `(REGISTER-C-CALLBACK ,value-form))))))))
 
 (define (call-with-destructured-c-callback-form form receiver)
   ;; Calls RECEIVER with the only subform.
   (let ((len (length form)))
-    (if (< len 2) (serror form "too few args"))
-    (if (> len 2) (serror form "too many args"))
-    (receiver (cadr form))))
+    (if (< len 2)
+	(swarn form "Too few args")
+	(begin
+	  (if (< 2 len)
+	      (swarn form "Too many args")
+	      (receiver (cadr form)))))))
 
 
 ;;; Utilities
@@ -505,3 +537,7 @@ USA.
 			(map (lambda (obj)
 			       (if (string? obj) obj (write-to-string obj)))
 			     (cons message args)))))))
+
+(define (swarn form message . args)
+  (apply warn message (append args (list 'IN form)))
+  `(error "Invalid syntax" ',form))

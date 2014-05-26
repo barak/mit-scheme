@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -121,6 +121,13 @@ USA.
     offset
     oscale)
 
+  (define-code-sequence (offset (_ base word-register)
+				(_ offset signed-32)
+				(_ oscale scale-factor))
+    base
+    offset
+    oscale)
+
   (define-code-sequence (indexed (_ base word-register)
 				 (_ offset unsigned-8)
 				 (_ oscale scale-factor)
@@ -212,12 +219,6 @@ USA.
   value)
 
 (define-code-sequence instruction
-  (load-immediate (_ target word-register)
-		  (_ value unsigned-integer))
-  target
-  value)
-
-(define-code-sequence instruction
   (load-immediate (_ target float-register)
 		  (_ value float))
   target
@@ -250,7 +251,7 @@ USA.
 (define-code-sequence instruction
   (load-non-pointer (_ target word-register)
 		    (_ type type-operand)
-		    (_ datum unsigned-integer))
+		    (_ datum signed-integer))
   target
   type
   datum)
@@ -574,6 +575,7 @@ USA.
 	SOURCE1
 	SOURCE2))))
 
+(define-word-binary-instruction product)
 (define-word-binary-instruction quotient)
 (define-word-binary-instruction remainder)
 (define-word-binary-instruction lsh)

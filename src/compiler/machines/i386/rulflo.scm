@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -657,14 +657,14 @@ USA.
 	 (st2 (flonum-source! source2)))
     (cond ((zero? st1)
 	   (flonum-branch! predicate
-			   (LAP (FCOM (ST 0) (ST ,st2)))))
+			   (LAP (FUCOM (ST 0) (ST ,st2)))))
 	  ((zero? st2)
 	   (flonum-branch! (commute-flonum-predicate predicate)
-			   (LAP (FCOM (ST 0) (ST ,st1)))))
+			   (LAP (FUCOM (ST 0) (ST ,st1)))))
 	  (else
 	   (flonum-branch! predicate
 			   (LAP (FLD (ST ,st1))
-				(FCOMP (ST 0) (ST ,(1+ st2)))))))))
+				(FUCOMP (ST 0) (ST ,(1+ st2)))))))))
 
 (define-rule predicate
   (FLONUM-PRED-2-ARGS (? predicate)
@@ -692,18 +692,15 @@ USA.
 
 (define (flonum-compare-zero predicate source)
   (let ((sti (flonum-source! source)))
-    (if (zero? sti)
-	(flonum-branch! predicate
-			(LAP (FTST)))
-	(flonum-branch! (commute-flonum-predicate predicate)
-			(LAP (FLDZ)
-			     (FCOMP (ST 0) (ST ,(1+ sti))))))))
+    (flonum-branch! (commute-flonum-predicate predicate)
+		    (LAP (FLDZ)
+			 (FUCOMP (ST 0) (ST ,(1+ sti)))))))
 
 (define (flonum-compare-one predicate source)
   (let ((sti (flonum-source! source)))
     (flonum-branch! (commute-flonum-predicate predicate)
 		    (LAP (FLD1)
-			 (FCOMP (ST 0) (ST ,(1+ sti)))))))
+			 (FUCOMP (ST 0) (ST ,(1+ sti)))))))
 
 (define (commute-flonum-predicate pred)
   (case pred
@@ -809,12 +806,14 @@ USA.
   (flonum->label fp-value 'SINGLE-FLOATS 4 0
 		 (LAP ,@(lap:comment `(SINGLE-FLOAT ,fp-value))
 		      (LONG U ,(flo:32-bit-representation-exact? fp-value)))))
-				     
+
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (CONSTANT (? fp-value))))
   (cond ((not (flo:flonum? fp-value))
 	 (error "OBJECT->FLOAT: Not a floating-point value" fp-value))
-	((flo:= fp-value 0.0)
+	((and (flo:= fp-value 0.0)
+              ;; XXX Kludgey but expedient test for zero sign.
+              (not (flo:negative? (flo:atan2 fp-value -1.))))
 	 (let ((target (flonum-target! target)))
 	   (LAP (FLDZ)
 		(FSTP (ST ,(1+ target))))))

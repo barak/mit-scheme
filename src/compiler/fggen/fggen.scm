@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -501,30 +501,21 @@ USA.
 ;;;; Combinators
 
 (define (generate/sequence block continuation context expression)
-  (let ((join (scfg*ctype->ctype! continuation)))
-    (let ((do-action
-	   (lambda (action continuation-type)
-	     (generate/subproblem/effect block continuation context
-					 action continuation-type expression)))
-	  (do-result
-	   (lambda (expression)
-	     (generate/expression block continuation context expression))))
-      ;; These are done in a funny way to enforce processing in sequence order.
+  (if (scode/sequence? expression)
+      ;; This is done in a funny way to enforce processing in sequence order.
       ;; In this way, compile-by-procedures compiles in a predictable order.
-      (cond ((object-type? (ucode-type sequence-2) expression)
-	     (let ((first (do-action (&pair-car expression) 'SEQUENCE-2-SECOND)))
-	       (join first
-		     (do-result (&pair-cdr expression)))))
-	    ((object-type? (ucode-type sequence-3) expression)
-	     (let ((first (do-action (&triple-first expression) 'SEQUENCE-3-SECOND)))
-	       (join
-		first
-		(let ((second (do-action (&triple-second expression) 'SEQUENCE-3-THIRD)))
-		  (join
-		   second
-		   (do-result (&triple-third expression)))))))
-	    (else
-	     (error "Not a sequence" expression))))))
+      (let ((first-action
+	     (generate/subproblem/effect
+	      block continuation context
+	      (car (scode/sequence-actions expression))
+              'SEQUENCE-CONTINUE
+	      expression)))
+	((scfg*ctype->ctype! continuation)
+	 first-action
+	 (generate/expression
+	  block continuation context
+	  (make-sequence (cdr (scode/sequence-actions expression))))))
+      (error "Not a sequence" expression)))
 
 (define (generate/conditional block continuation context expression)
   (scode/conditional-components expression
@@ -973,7 +964,7 @@ USA.
 	  (sc-macro-transformer
 	   (lambda (form environment)
 	     `(VECTOR-SET! DISPATCH-VECTOR
-			   ,(microcode-type (cadr form))
+			   (MICROCODE-TYPE ',(cadr form))
 			   ,(close-syntax (caddr form) environment)))))
 	 (dispatch-entries
 	  (sc-macro-transformer
@@ -1001,13 +992,8 @@ USA.
       (standard-entry the-environment)
       (standard-entry variable)
       (dispatch-entries (lambda lexpr extended-lambda) generate/lambda)
-      (dispatch-entries (sequence-2 sequence-3) generate/sequence)
-      (dispatch-entries (combination-1 combination-2 combination
-				       primitive-combination-0
-				       primitive-combination-1
-				       primitive-combination-2
-				       primitive-combination-3)
-			generate/combination)
+      (dispatch-entry sequence generate/sequence)
+      (dispatch-entry combination generate/combination)
       (dispatch-entry comment generate/comment))
     (named-lambda (generate/expression block continuation context expression)
       ((vector-ref dispatch-vector (object-type expression))

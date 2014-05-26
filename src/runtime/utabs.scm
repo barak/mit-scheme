@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -68,6 +68,13 @@ USA.
 	(microcode-identification-item 'CONSOLE-WIDTH))
   (set! microcode-id/tty-y-size
 	(microcode-identification-item 'CONSOLE-HEIGHT))
+
+  ;; XXX Temporary kludge until we get 9.2 out.
+  (if (not (microcode-type/name->code 'SEQUENCE))
+      (set! type-aliases (cons '(SEQUENCE-2 SEQUENCE) type-aliases)))
+  (if (not (microcode-return/name->code 'SEQUENCE-CONTINUE))
+      (set! returns-aliases
+	    (cons '(SEQUENCE-2-SECOND SEQUENCE-CONTINUE) returns-aliases)))
   unspecific)
 
 (define (intern string)
@@ -146,13 +153,29 @@ USA.
 (define returns-slot)
 
 (define (microcode-return/name->code name)
-  (microcode-table-search returns-slot name))
+  (microcode-table-search returns-slot
+			  (let ((p
+				 (find (lambda (p)
+					 (memq name (cdr p)))
+				       returns-aliases)))
+			    (if p
+				(car p)
+				name))))
 
 (define (microcode-return/code->name code)
   (microcode-table-ref returns-slot code))
 
+(define (microcode-return/code->names code)
+  (let ((name (microcode-table-entry types-slot code)))
+    (if name
+	(or (assq name returns-aliases)
+	    (list name))
+	'())))
+
 (define (microcode-return/code-limit)
   (vector-length (vector-ref (get-fixed-objects-vector) returns-slot)))
+
+(define returns-aliases '())
 
 (define errors-slot)
 

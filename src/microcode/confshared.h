@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -219,7 +219,8 @@ typedef enum
   FASL_PPC32,
   FASL_X86_64,
   FASL_PPC64,
-  FASL_IA64
+  FASL_IA64,
+  FASL_ARM,
 } fasl_arch_t;
 
 /* Possible values for COMPILER_PROCESSOR_TYPE.  This identifies the
@@ -634,6 +635,11 @@ extern void win32_stack_reset (void);
 #ifdef __ia64__
 #  define MACHINE_TYPE		"ia64"
 #  define CURRENT_FASL_ARCH	FASL_IA64
+#endif
+
+#ifdef __arm__
+#  define MACHINE_TYPE		"arm"
+#  define CURRENT_FASL_ARCH	FASL_ARM
 #endif
 
 #ifdef sonyrisc

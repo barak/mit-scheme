@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -325,10 +325,13 @@ USA.
 ;; not actually use.
 (define-declaration 'IGNORABLE
   (lambda (block names)
-    (for-each (lambda (variable)
-		(if variable
-		    (variable/may-ignore! variable)))
-	      (block/lookup-names block names #f))
+    (for-each (lambda (name)
+		(let ((variable (block/lookup-name block name #f)))
+		  (if variable
+		      (variable/may-ignore! variable)
+		      (warn "ignoring IGNORABLE declaration of free variable"
+			    name))))
+	      names)
     '()))
 
 ;; IGNORE causes warnings if an ignored variable actually ends
@@ -336,11 +339,22 @@ USA.
 ;; have the effect of marking it IGNORED.
 (define-declaration 'IGNORE
   (lambda (block names)
-    (let ((variables (block/lookup-names block names #f)))
-      (for-each (lambda (variable)
-		  (if variable
-		      (variable/must-ignore! variable)))
-		variables)
+    (let ((variables
+	   (let loop
+	       ((names names)
+		(variables '()))
+	     (if (pair? names)
+		 (let* ((name (car names))
+			(variable (block/lookup-name block name #f)))
+		   (if variable
+		       (begin
+			 (variable/must-ignore! variable)
+			 (loop (cdr names) (cons variable variables)))
+		       (begin
+			 (warn "ignoring IGNORE declaration of free variable"
+			       name)
+			 (loop (cdr names) variables))))
+		 variables))))
       (make-declarations 'IGNORE
 			 variables
 			 'NO-VALUES
@@ -405,9 +419,9 @@ USA.
 	 replacements)))
 
 (define (make-dumpable-expander expander declaration)
-  (make-entity (lambda (self expr operands if-expanded if-not-expanded block)
+  (make-entity (lambda (self expr operands block)
 		 self			; ignored
-		 (expander expr operands if-expanded if-not-expanded block))
+		 (expander expr operands block))
 	       (cons '*DUMPABLE-EXPANDER* declaration)))
 
 (define (dumpable-expander? object)

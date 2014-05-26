@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -675,7 +675,7 @@ integer_shift_left (SCHEME_OBJECT n, unsigned long m)
       long n1 = (FIXNUM_TO_LONG (n));
       if (n1 < 0)
 	{
-	  if ((m + (ulong_length_in_bits (~n1))) < FIXNUM_LENGTH)
+	  if ((m + (ulong_length_in_bits (~n1))) <= FIXNUM_LENGTH)
 	    /* The behaviour of shifting a negative integer is
 	       undefined in C.  */
 	    return (LONG_TO_FIXNUM (- ((-n1) << m)));
@@ -685,7 +685,7 @@ integer_shift_left (SCHEME_OBJECT n, unsigned long m)
 	}
       else if (0 < n1)
 	{
-	  if ((m + (ulong_length_in_bits (n1))) < FIXNUM_LENGTH)
+	  if ((m + (ulong_length_in_bits (n1))) <= FIXNUM_LENGTH)
 	    return (LONG_TO_FIXNUM (n1 << m));
 	  else
 	    return (unsigned_long_to_shifted_bignum (n1, m, 0));

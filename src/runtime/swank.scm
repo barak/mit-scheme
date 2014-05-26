@@ -7,8 +7,8 @@ License as distributed with Emacs (press C-h C-c for details).
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,7 +34,7 @@ USA.
 
 ;;; Suggested for .emacs:
 #|
-(when (require 'slime nil t)
+\(when (require 'slime nil t)
 
   (defun mit-scheme-start-swank (file encoding)
     (format "%S\n\n" `(start-swank ,file)))
@@ -144,8 +144,15 @@ USA.
   (dispatch (decode-message socket (read-packet socket)) socket level))
 
 (define (read-packet in)
-  (if (eof-object? (peek-char in))
-      (disconnect))
+  (define (read-string! buffer in)
+    (let loop ((i 0))
+      (if (< i (string-length buffer))
+	  (let ((n (read-substring! buffer i (string-length buffer) in)))
+	    ;; (assert (exact-nonnegative-integer? n))
+	    ;; (assert (<= n (- (string-length buffer) i)))
+	    (if (zero? n)		;EOF
+		(disconnect))
+	    (loop (+ i n))))))
   (let ((buffer
 	 (make-string
 	  (let ((buffer (make-string 6)))
@@ -201,17 +208,24 @@ USA.
      (lambda (k)
        (bind-condition-handler (list condition-type:serious-condition)
 	   (lambda (condition)
-	     (invoke-sldb socket (+ level 1) condition)
-	     (write-message `(:return (:abort) ,id) socket)
-	     (k unspecific))
+	     (dynamic-wind
+	      (lambda () #f)
+	      (lambda () (invoke-sldb socket (+ level 1) condition))
+	      (lambda ()
+		(write-message
+		 `(:return (:abort ,(condition/report-string condition)) ,id)
+		 socket))
+	      (k unspecific)))
 	 (lambda ()
-	   (write-message `(:return (:ok ,(emacs-rex socket sexp pstring))
+	   (write-message `(:return (:ok ,(emacs-rex socket sexp pstring id))
 				    ,id)
 			  socket)))))))
+(define *index*)
 
-(define (emacs-rex socket sexp pstring)
-  (fluid-let ((*buffer-pstring* pstring))
-    (eval (cons* (car sexp) socket (cdr sexp))
+(define (emacs-rex socket sexp pstring id)
+  (fluid-let ((*buffer-pstring* pstring)
+	      (*index* id))
+    (eval (cons* (car sexp) socket (map quote-special (cdr sexp)))
 	  swank-env)))
 
 (define *buffer-pstring*)
@@ -224,6 +238,7 @@ USA.
 
 (define (pstring->env pstring)
   (cond ((or (not (string? pstring))
+	     (not (string? *buffer-pstring*))
 	     (string-ci=? *buffer-pstring* "COMMON-LISP-USER"))
 	 (get-current-environment))
 	((string-prefix? anonymous-package-prefix pstring)
@@ -369,6 +384,75 @@ USA.
       (compiler:disassemble
        (eval (read-from-string string)
 	     (buffer-env))))))
+
+;;;; Directory Functions
+(define (swank:default-directory socket)
+  socket
+  (->namestring (working-directory-pathname)))
+
+(define (swank:set-default-directory socket directory)
+  socket
+  (->namestring (set-working-directory-pathname! directory)))
+
+;;;; Describe
+(define (swank:describe-symbol socket symbol)
+  socket
+  (let* ((env (buffer-env))
+	 (package (env->pstring env))
+	 (symbol (string->symbol symbol))
+	 (type (environment-reference-type env symbol))
+	 (binding (if (eq? type 'normal) (environment-lookup env symbol) #f))
+	 (binding-type (if binding (get-object-type-name binding) #f))
+	 (params (if (and binding (procedure? binding)) (procedure-parameters symbol env) #f)))
+    (string-append
+     (format #f "~a in package ~a~a of type ~a.~%~%" (string-upcase (symbol->string symbol))
+	     package
+	     (if (and binding
+		      (procedure? binding))
+		 (format #f " [originally defined in package ~a]" (env->pstring (procedure-environment binding)))
+		 "")
+	     (if binding-type binding-type type))
+     (if binding
+	 (format #f "Bound to ~a.~%" binding)
+	 "")
+     (if params
+	 (format #f "~%Signature: ~a.~%~%" params)
+	 "")
+     (if binding
+	 (format #f "It is:~%~%~a~%" (with-output-to-string (lambda () (pp binding))))
+	 ""))))
+
+(define (swank:describe-function socket function)
+  (swank:describe-symbol socket function))
+
+(define (swank:describe-definition-for-emacs socket name type)
+  type
+  (swank:describe-symbol socket name))
+
+(define (get-object-type-name obj)
+  (cond ((boolean? obj) "boolean")
+	((string? obj) "string")
+	((char? obj) "char")
+	((fixnum? obj) "fixnum")
+	((integer? obj) "integer")
+	((rational? obj) "rational")
+	((real? obj) "real")
+	((complex? obj) "complex")
+	((vector? obj) "vector")
+	((pair? obj) "pair")
+	((null? obj) "empty list")
+	((bit-string? obj) "bit-string")
+	((cell? obj) "cell")
+	((condition? obj) "condition")
+	((environment? obj) "environment")
+	((port? obj) "port")
+	((procedure? obj) "procedure")
+	((promise? obj) "promise")
+	((symbol? obj) "symbol")
+	((weak-pair? obj) "weak-pair")
+	((record-type? obj) "record-type")
+	((wide-string? obj) "wide-string")
+	(else (user-object-type obj))))
 
 ;;;; Miscellaneous
 
@@ -419,7 +503,64 @@ USA.
       :lisp-implementation
       (:type "MIT/GNU Scheme"
        :version ,(get-subsystem-version-string "release"))
-      :version "20100404")))
+      :version "2012-05-02"
+      :encoding
+      (:coding-systems
+       ("utf-8-unix" "iso-latin-1-unix")))))
+
+(define (swank:swank-require socket packages)
+  socket
+  packages
+  '())
+
+(define swank-extra-documentation
+  '((let bindings . body)
+    (let* bindings . body)
+    (letrec bindings . body)
+    (receive bindings expression . body)
+    (define name . body)
+    (quote expression)
+    (quasiquote expression)
+    (unquote expression)
+    (unquote-splicing expression)
+    (if test then else)
+    (set! name value)))
+
+(define (procedure-parameters symbol env)
+  (let ((type (environment-reference-type env symbol)))
+    (let ((ans (if (eq? type 'normal)
+		   (let ((binding (environment-lookup env symbol)))
+		     (if (and binding
+			      (procedure? binding))
+			 (cons symbol (read-from-string (string-trim (with-output-to-string
+								       (lambda () (pa binding))))))
+			 #f))
+		   (let ((extra (assq symbol swank-extra-documentation)))
+		     (if extra
+			 extra
+			 #f)))))
+      ans)))
+
+(define (find-string-before-swank-cursor-marker expr)
+  (if (list? expr)
+      (if (member 'swank::%cursor-marker% expr)
+	  (if (string? (car expr))
+	      (car expr)
+	      #f)
+	  (any (lambda (ex)
+		 (find-string-before-swank-cursor-marker ex))
+	       expr))
+      #f))
+
+(define (swank:autodoc socket expr . params)
+  socket params
+  (let ((op-string (find-string-before-swank-cursor-marker expr)))
+    (if op-string
+	(let* ((op (string->symbol op-string))
+	       (ans (procedure-parameters op (buffer-env)))
+	       (answer (if ans (write-to-string ans) ':not-available)))
+	  (list answer 't))
+	(list ':not-available 't))))
 
 (define (swank:quit-lisp socket)
   socket
@@ -516,7 +657,7 @@ swank:xref
 			 socket)
 	  (sldb-loop level socket))
 	(lambda ()
-	  (write-message `(:debug-return 0 ,level 'NIL) socket)))))
+	  (write-message `(:debug-return 0 ,(- level 1) 'NIL) socket)))))
 
 (define (sldb-loop level socket)
   (write-message `(:debug-activate 0 ,level) socket)
@@ -534,7 +675,7 @@ swank:xref
 	  (sldb-restarts rs)
 	  (sldb-backtrace c start end)
 	  ;;'((0 "dummy frame"))
-	  '())))
+	  (list *index*))))
 
 (define (sldb-restarts restarts)
   (map (lambda (r)
@@ -556,7 +697,8 @@ swank:xref
   (continue (sldb-state.restarts *sldb-state*)))
 
 (define (swank:invoke-nth-restart-for-emacs socket sldb-level n)
-  socket sldb-level
+  sldb-level
+  (write-message `(:return (:abort "NIL") ,*index*) socket)
   (invoke-restart (list-ref (sldb-state.restarts *sldb-state*) n)))
 
 (define (swank:debugger-info-for-emacs socket from to)
@@ -727,11 +869,6 @@ swank:xref
   socket args
   (map (lambda (package) (env->pstring (package/environment package)))
        (all-packages)))
-
-(define (all-packages)
-  (let loop ((package system-global-package))
-    (cons package
-	  (append-map loop (package/children package)))))
 
 ;;;; Inspector
 
@@ -951,8 +1088,6 @@ swank:xref
 (define (elisp-false? o) (or (null? o) (eq? o 'NIL)))
 (define (elisp-true? o) (not (elisp-false? o)))
 
-(define nil '())
-
 (define (->line o)
   (let ((r (write-to-string o 100)))
     (if (car r)
@@ -969,3 +1104,19 @@ swank:xref
 		  (*unparser-list-depth-limit* 4)
 		  (*unparser-string-length-limit* 100))
 	(pp o p)))))
+
+;; quote keywords, t and nil
+(define (quote-special x)
+  (cond ((and (symbol? x)
+	      (or
+	       (and (> (string-length (symbol->string x)) 0)
+		    (char=? #\: (string-ref (symbol->string x) 0)))
+	       (eq? x 't)))
+	 `(quote ,x))
+	((and (symbol? x)
+	      (eq? x 'nil))
+	 '())
+	(else
+	 x)))
+
+(define swank:completions swank:simple-completions)

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,6 +31,7 @@ USA.
 
 #include "scheme.h"
 #include "prims.h"
+#include "fixnum.h"
 
 static long
 arg_fixnum (int n)
@@ -208,16 +209,9 @@ DEFINE_PRIMITIVE ("FIXNUM-QUOTIENT", Prim_fixnum_quotient, 2, 2, 0)
   {
     long numerator = (arg_fixnum (1));
     long denominator = (arg_fixnum (2));
-    FIXNUM_RESULT
-      ((denominator > 0)
-       ? ((numerator < 0)
-	  ? (- ((- numerator) / denominator))
-	  : (numerator / denominator))
-       : (denominator < 0)
-       ? ((numerator < 0)
-	  ? ((- numerator) / (- denominator))
-	  : (- (numerator / (- denominator))))
-       : (error_bad_range_arg (2), 0));
+    if (denominator == 0)
+      error_bad_range_arg (2);
+    FIXNUM_RESULT (FIXNUM_QUOTIENT (numerator, denominator));
   }
 }
 
@@ -227,16 +221,9 @@ DEFINE_PRIMITIVE ("FIXNUM-REMAINDER", Prim_fixnum_remainder, 2, 2, 0)
   {
     long numerator = (arg_fixnum (1));
     long denominator = (arg_fixnum (2));
-    FIXNUM_RESULT
-      ((denominator > 0)
-       ? ((numerator < 0)
-	  ? (- ((- numerator) % denominator))
-	  : (numerator % denominator))
-       : (denominator < 0)
-       ? ((numerator < 0)
-	  ? (- ((- numerator) % (- denominator)))
-	  : (numerator % (- denominator)))
-       : (error_bad_range_arg (2), 0));
+    if (denominator == 0)
+      error_bad_range_arg (2);
+    FIXNUM_RESULT (FIXNUM_REMAINDER (numerator, denominator));
   }
 }
 
@@ -294,13 +281,8 @@ DEFINE_PRIMITIVE ("FIXNUM-LSH", Prim_fixnum_lsh, 2, 2, 0)
   {
     unsigned long x = (arg_unsigned_fixnum (1));
     long y = (arg_fixnum (2));
-    unsigned long z;
 
-    if (y < 0)
-      z = (((-y) > ((long) DATUM_LENGTH)) ? 0 : (x >> (-y)));
-    else
-      z = ((y > ((long) DATUM_LENGTH)) ? 0 : (x << y));
-    LOGICAL_RESULT (z);
+    LOGICAL_RESULT (FIXNUM_LSH (x, y));
   }
 }
 

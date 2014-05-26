@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -69,20 +69,17 @@ USA.
 	(match-result))))
 
 (define (instruction-lookup instruction)
-  (pattern-lookup
-   (cdr (or (assq (car instruction) instructions)
-	    (error "INSTRUCTION-LOOKUP: Unknown keyword" (car instruction))))
-   (cdr instruction)))
+  (let ((pattern (hash-table/get instructions (car instruction) #f)))
+    (if pattern
+	(pattern-lookup pattern (cdr instruction))
+	(error "INSTRUCTION-LOOKUP: Unknown keyword" (car instruction)))))
 
 (define (add-instruction! keyword lookup)
-  (let ((entry (assq keyword instructions)))
-    (if entry
-	(set-cdr! entry lookup)
-	(set! instructions (cons (cons keyword lookup) instructions))))
+  (hash-table/put! instructions keyword lookup)
   keyword)
 
 (define instructions
-  '())
+  (make-strong-eq-hash-table))
 
 (define (integer-syntaxer expression environment coercion-type size)
   (let ((name (make-coercion-name coercion-type size)))

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -68,7 +68,7 @@ If the file exists, it is rewritten.")
 DEFINE_PRIMITIVE ("NEW-FILE-OPEN-EXCLUSIVE-OUTPUT-CHANNEL",
                   Prim_new_file_open_exclusive_output_channel, 2, 2,
   "Open an output file called FILENAME.\n\
-The channel number is saved in the cdr of WEAK-PAPIR.\n\
+The channel number is saved in the cdr of WEAK-PAIR.\n\
 If the file exists, an error is signalled.")
   NEW_OPEN_FILE_PRIMITIVE (OS_open_exclusive_output_file)
 

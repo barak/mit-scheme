@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -496,7 +496,6 @@ relocate_block_table (void)
       (GCT_ENTRY ((&table), TC_WEAK_CONS)) = gc_handle_pair;
       (GCT_ENTRY ((&table), TC_EPHEMERON)) = gc_handle_unaligned_vector;
       (GCT_ENTRY ((&table), TC_PRIMITIVE)) = handle_primitive;
-      (GCT_ENTRY ((&table), TC_PCOMB0)) = handle_primitive;
       (GCT_ENTRY ((&table), TC_BROKEN_HEART)) = gc_handle_non_pointer;
 
       initialized_p = true;
@@ -604,7 +603,7 @@ relocate_address (void * vaddr)
 		  ((unsigned long) (FASLHDR_CONSTANT_END (fh))),
 		  ((unsigned long) (FASLHDR_STACK_START (fh))),
 		  ((unsigned long) (FASLHDR_STACK_END (fh))));
-      termination_init_error ();
+      signal_error_from_primitive (ERR_FASL_FILE_BAD_DATA);
     }
   return (result);
 }

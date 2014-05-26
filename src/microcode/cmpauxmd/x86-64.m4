@@ -2,8 +2,8 @@
 ###
 ### Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ###     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
-###     2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts
-###     Institute of Technology
+###     2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013,
+###     2014 Massachusetts Institute of Technology
 ###
 ### This file is part of MIT/GNU Scheme.
 ###
@@ -783,6 +783,10 @@ asm_generic_$1_flo:
 	OP(and,q)	TW(rmask,REG(rbx))
 	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rdx)),REG(xmm0))
 	ucomisd		TW(QOF(FLONUM_DATA_OFFSET,REG(rbx)),REG(xmm0))
+	# ucomisd sets the parity bit if the operands are incomparable,
+	# i.e. either one is NaN; in that case, return #F.  Otherwise,
+	# return #T if $4 is met, or #F otherwise.
+	jp	asm_generic_return_sharp_f
 	$4	asm_generic_return_sharp_t
 	jmp	asm_generic_return_sharp_f
 
@@ -852,9 +856,11 @@ asm_generic_divide_fix_by_flo:
 
 asm_generic_divide_zero_by_flo:
 	# rcx contains zero, representing a numerator exactly zero.
-	# Defer division of 0 by 0.0; otherwise, yield exactly zero.
+	# Defer division of 0 by 0.0 or NaN; otherwise, yield exactly
+	# zero.
 	OP(cvtsi2sd,q)	TW(REG(rcx),REG(xmm0))
 	ucomisd		TW(REG(xmm1),REG(xmm0))
+	jp	asm_generic_divide_fail
 	je	asm_generic_divide_fail
 	OP(and,q)	TW(rmask,IND(REG(rsp)))
 	OP(mov,q)	TW(IMM_FIXNUM_0,REG(rax))
@@ -870,6 +876,7 @@ asm_generic_divide_flo_by_flo:
 	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rax)),REG(xmm0))
 	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rcx)),REG(xmm1))
 	ucomisd		TW(ABS(EVR(flonum_zero)),REG(xmm1))
+	jp	asm_generic_divide_fail
 	je	asm_generic_divide_fail
 	divsd		TW(REG(xmm1),REG(xmm0))
 	jmp	asm_generic_flonum_result
@@ -924,9 +931,9 @@ define_jump_indirection(generic_modulo,39)
 
 # Input and output in rax, shift count in rcx, all detagged fixnums.
 # Return address is at the top of the stack, untagged.  This hook must
-# not use any registers other than rax and rcx; if it does, the code
-# to generate calls to it, in compiler/machines/x86-64/rulfix.scm,
-# must clear the register map first.
+# not write to any register other than rax; if it does, the code to
+# generate calls to it, in compiler/machines/x86-64/rulfix.scm, must
+# clear the register map first.
 
 define_hook_label(fixnum_shift)
 	OP(sar,q)	TW(IMM(TC_LENGTH),REG(rcx))
@@ -950,13 +957,13 @@ asm_fixnum_rsh:
 	jge	asm_fixnum_rsh_overflow
 	OP(sar,q)	TW(REG(cl),REG(rax))
 
-	# Turn rax back into a detagged fixnum by masking off the low
-	# six bits.  -1 has all bits set, but its detagged format has
-	# the low six bits clear.  Use rcx as a temporary register
-	# because AND can't take a 64-bit immediate operand; only MOV
-	# can.
-	OP(mov,q)	TW(IMM_DETAGGED_FIXNUM_MINUS_ONE,REG(rcx))
-	OP(and,q)	TW(REG(rcx),REG(rax))
+	# Turn rax back into a detagged fixnum by zeroing the low six
+	# bits.  We shift right/left rather than ANDing with
+	# IMM_DETAGGED_FIXNUM_MINUS_ONE because the latter is too large
+	# for an immediate operand of AND and there are no scratch
+	# registers available to us right now.
+	OP(sar,q)	TW(IMM(TC_LENGTH),REG(rax))
+	OP(sal,q)	TW(IMM(TC_LENGTH),REG(rax))
 	ret
 
 asm_fixnum_rsh_overflow:

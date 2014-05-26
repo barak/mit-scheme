@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,9 +43,11 @@ USA.
   (primitive-object-set-type 2)
   (vector-cons 2))
 
-(define-integrable (%make-record length object)
-  ((ucode-primitive object-set-type) (ucode-type record)
-				     (vector-cons length object)))
+(define-integrable (%make-record tag length)
+  (let ((record ((ucode-primitive object-set-type)
+		 (ucode-type record) (vector-cons length #f))))
+    (%record-set! record 0 tag)
+    record))
 
 (define-integrable (%record-tag record)
   (%record-ref record 0))
@@ -56,8 +58,8 @@ USA.
 
 (define (%copy-record record)
   (let ((length (%record-length record)))
-    (let ((result (%make-record length #f)))
-      (do ((index 0 (fix:+ index 1)))
+    (let ((result (%make-record (%record-tag record) length)))
+      (do ((index 1 (fix:+ index 1)))
 	  ((fix:= index length))
 	(%record-set! result index (%record-ref record index)))
       result)))
@@ -73,7 +75,7 @@ USA.
 		   #f
 		   "record-type"
 		   '#(DISPATCH-TAG NAME FIELD-NAMES DEFAULT-INITS EXTENSION)
-		   (vector-cons 5 (lambda () #f))
+		   (vector-cons 5 #f)
 		   #f)))
     (set! record-type-type-tag (make-dispatch-tag type))
     (%record-set! type 0 record-type-type-tag)
@@ -153,7 +155,7 @@ USA.
 		     #f
 		     (->type-name type-name)
 		     names
-		     (vector-cons n (lambda () #f))
+		     (vector-cons n #f)
 		     #f))
 	   (tag (make-dispatch-tag record-type)))
       (%record-set! record-type 1 tag)
@@ -233,7 +235,9 @@ USA.
 						 caller)
     (let ((v (%record-type-default-inits record-type)))
       (if (not (fix:= (guarantee-list-of-type->length
-		       default-inits thunk? "default initializers" caller)
+		       default-inits
+		       (lambda (init) (or (not init) (thunk? init)))
+		       "default initializer" caller)
 		      (vector-length v)))
 	  (error:bad-range-argument default-inits caller))
       (do ((values default-inits (cdr values))
@@ -247,8 +251,9 @@ USA.
    (record-type-field-index record-type field-name #t)))
 
 (define (record-type-default-value-by-index record-type field-name-index)
-  ((vector-ref (%record-type-default-inits record-type)
-	       (fix:- field-name-index 1))))
+  (let ((init (vector-ref (%record-type-default-inits record-type)
+			  (fix:- field-name-index 1))))
+    (and init (init))))
 
 (define (record-type-extension record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-EXTENSION)
@@ -351,13 +356,12 @@ USA.
 	    (letrec
 		((constructor
 		  (lambda field-values
-		    (let ((record (%make-record reclen #f))
+		    (let ((record (%make-record tag reclen))
 			  (lose
 			   (lambda ()
 			     (error:wrong-number-of-arguments constructor
 							      n-fields
 							      field-values))))
-		      (%record-set! record 0 tag)
 		      (do ((i 1 (fix:+ i 1))
 			   (vals field-values (cdr vals)))
 			  ((not (fix:< i reclen))
@@ -374,7 +378,7 @@ USA.
 	       field-names))
 	 (defaults
 	   (let* ((n (%record-type-length record-type))
-		 (seen? (vector-cons n #f)))
+		  (seen? (vector-cons n #f)))
 	     (do ((indexes indexes (cdr indexes)))
 		 ((not (pair? indexes)))
 	       (vector-set! seen? (car indexes) #t))
@@ -400,8 +404,8 @@ USA.
 						      (length indexes)
 						      field-values))))
 	      (let ((record
-		     (%make-record (%record-type-length record-type) #f)))
-		(%record-set! record 0 (%record-type-dispatch-tag record-type))
+		     (%make-record (%record-type-dispatch-tag record-type)
+				   (%record-type-length record-type))))
 		(do ((indexes indexes (cdr indexes))
 		     (values field-values (cdr values)))
 		    ((not (pair? indexes))
@@ -412,10 +416,9 @@ USA.
 		      (n (vector-length defaults)))
 		  (do ((i 0 (fix:+ i 1)))
 		      ((not (fix:< i n)))
-		    (%record-set!
-		     record
-		     (vector-ref defaults i)
-		     ((vector-ref v (fix:- (vector-ref defaults i) 1))))))
+		    (let* ((index (vector-ref defaults i))
+			   (init (vector-ref v (fix:- index 1))))
+		      (and init (%record-set! record index (init))))))
 		record)))))
       constructor)))
 
@@ -424,9 +427,8 @@ USA.
       ((constructor
 	(lambda keyword-list
 	  (let ((n (%record-type-length record-type)))
-	    (let ((record (%make-record n #f))
+	    (let ((record (%make-record (%record-type-dispatch-tag record-type) n))
 		  (seen? (vector-cons n #f)))
-	      (%record-set! record 0 (%record-type-dispatch-tag record-type))
 	      (do ((kl keyword-list (cddr kl)))
 		  ((not (and (pair? kl)
 			     (symbol? (car kl))
@@ -442,7 +444,8 @@ USA.
 		(do ((i 1 (fix:+ i 1)))
 		    ((not (fix:< i n)))
 		  (if (not (vector-ref seen? i))
-		      (%record-set! record i ((vector-ref v (fix:- i 1)))))))
+		      (let ((init (vector-ref v (fix:- i 1))))
+			(and init (%record-set! record i (init)))))))
 	      record)))))
     constructor))
 
@@ -698,9 +701,8 @@ USA.
 	    (do ((i 0 (fix:+ i 1)))
 		((not (fix:< i n)))
 	      (if (not (vector-ref seen? i))
-		  (vector-set! v
-			       (vector-ref indexes i)
-			       ((vector-ref inits i))))))
+		  (let ((init (vector-ref inits i)))
+		    (and init (vector-set! v (vector-ref indexes i) (init)))))))
 	  (if (eq? (structure-type/physical-type type) 'LIST)
 	      (do ((i (fix:- len 1) (fix:- i 1))
 		   (list '() (cons (vector-ref v i) list)))

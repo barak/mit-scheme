@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -160,11 +160,13 @@ start_scheme (void)
       SCHEME_OBJECT fn_object = (char_pointer_to_string (option_fasl_file));
       SCHEME_OBJECT prim2 = (make_primitive ("SCODE-EVAL", 2));
       SCHEME_OBJECT * inner_arg = Free;
+      (*Free++) = MAKE_OBJECT (TC_MANIFEST_VECTOR, 2);
       (*Free++) = prim1;
       (*Free++) = fn_object;
-      expr = (MAKE_POINTER_OBJECT (TC_PCOMB2, Free));
+      expr = (MAKE_POINTER_OBJECT (TC_COMBINATION, Free));
+      (*Free++) = MAKE_OBJECT (TC_MANIFEST_VECTOR, 3);
       (*Free++) = prim2;
-      (*Free++) = (MAKE_POINTER_OBJECT (TC_PCOMB1, inner_arg));
+      (*Free++) = (MAKE_POINTER_OBJECT (TC_COMBINATION, inner_arg));
       (*Free++) = THE_GLOBAL_ENV;
     }
   else
@@ -172,7 +174,8 @@ start_scheme (void)
       /* (LOAD-BAND <file>) */
       SCHEME_OBJECT prim = (make_primitive ("LOAD-BAND", 1));
       SCHEME_OBJECT fn_object = (char_pointer_to_string (option_band_file));
-      expr = (MAKE_POINTER_OBJECT (TC_PCOMB1, Free));
+      expr = (MAKE_POINTER_OBJECT (TC_COMBINATION, Free));
+      (*Free++) = MAKE_OBJECT (TC_MANIFEST_VECTOR, 2);
       (*Free++) = prim;
       (*Free++) = fn_object;
     }

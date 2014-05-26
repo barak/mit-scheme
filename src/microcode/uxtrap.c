@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -329,7 +329,6 @@ trap_handler (const char * message,
       display more information. */
 
 #define SCHEME_ALIGNMENT_MASK ((sizeof (SCHEME_OBJECT)) - 1)
-#define FREE_PARANOIA_MARGIN 0x100
 
 #define ALIGNED_P(addr)							\
   ((((unsigned long) (addr)) & SCHEME_ALIGNMENT_MASK) == 0)
@@ -405,19 +404,16 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
     new_sp = 0;
 
   /* Sanity-check Free.  */
-  if ((new_sp != 0)
-      && (ADDRESS_IN_HEAP_P (Free))
-      && (ALIGNED_P (Free)))
+  if (!((new_sp != 0)
+	&& (ADDRESS_IN_HEAP_P (Free))
+	&& (ALIGNED_P (Free))))
     {
-      if (FREE_OK_P (Free))
-	{
-	  Free += FREE_PARANOIA_MARGIN;
-	  if (!FREE_OK_P (Free))
-	    Free = heap_alloc_limit;
-	}
+#ifdef ENABLE_DEBUGGING_TOOLS
+      outf_error ("Resetting bogus Free in continue_from_trap.\n");
+      outf_flush_error ();
+#endif
+      Free = heap_alloc_limit;
     }
-  else
-    Free = heap_alloc_limit;
 
   /* Encode the registers.  */
   (recovery_info . extra_trap_info) =

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -115,9 +115,9 @@ USA.
        (delete-matching-items components string-null?)))
 
 (define (parse-directory-component component)
-  (if (string=? ".." component)
-      'UP
-      component))
+  (cond ((string=? ".." component) 'UP)
+	((string=? "." component) 'HERE)
+	(else component)))
 
 (define (string-components string delimiter)
   (substring-components string 0 (string-length string) delimiter))
@@ -172,6 +172,7 @@ USA.
 
 (define (unparse-directory-component component)
   (cond ((eq? component 'UP) "..")
+	((eq? component 'HERE) ".")
 	((string? component) component)
 	(else
 	 (error:illegal-pathname-component component "directory component"))))
@@ -204,7 +205,7 @@ USA.
 		 (lambda (element)
 		   (if (string? element)
 		       (not (string-null? element))
-		       (eq? element 'UP)))))
+		       (memq element '(UP HERE))))))
 	  (simplify-directory directory))
 	 (else
 	  (error:illegal-pathname-component directory "directory")))
@@ -314,17 +315,23 @@ USA.
 	(let ((directory (pathname-directory pathname)))
 	  (let scan ((p (list-tail directory np)) (np np))
 	    (if (pair? p)
-		(if (and (not (eq? (car p) 'UP))
-			 (pair? (cdr p))
-			 (eq? (cadr p) 'UP))
-		    (let ((pathname*
-			   (pathname-new-directory pathname
-						   (delete-up directory p))))
-		      (if (file-eq? (directory-pathname pathname)
-				    (directory-pathname pathname*))
-			  (loop pathname* np)
-			  (scan (cddr p) (+ np 2))))
-		    (scan (cdr p) (+ np 1)))
+		(cond ((and (not (eq? (car p) 'UP))
+			    (pair? (cdr p))
+			    (eq? (cadr p) 'UP))
+		       (let ((pathname*
+			      (pathname-new-directory pathname
+						      (delete-up directory p))))
+			 (if (file-eq? (directory-pathname pathname)
+				       (directory-pathname pathname*))
+			     (loop pathname* np)
+			     (scan (cddr p) (+ np 2)))))
+		      ((eq? (car p) 'HERE)
+		       (let ((pathname*
+			      (pathname-new-directory pathname
+						      (delete-here directory p))))
+			 (loop pathname* np)))
+		      (else
+		       (scan (cdr p) (+ np 1))))
 		pathname))))
       pathname))
 
@@ -332,6 +339,12 @@ USA.
   (let loop ((p* directory))
     (if (eq? p* p)
 	(cddr p*)
+	(cons (car p*) (loop (cdr p*))))))
+
+(define (delete-here directory p)
+  (let loop ((p* directory))
+    (if (eq? p* p)
+	(cdr p)
 	(cons (car p*) (loop (cdr p*))))))
 
 (define (file-eq? p1 p2)

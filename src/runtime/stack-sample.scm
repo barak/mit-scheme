@@ -115,9 +115,8 @@
 
 ;;;; Running with Stack Sampling
 
-(define (run-with-stack-sampling sample-interval thunk)
-  (let ((profile (make-profile))
-        (timer-registration #t))
+(define (run-with-stack-sampling profile sample-interval thunk)
+  (let ((timer-registration #t))
     (define (register-event)
       (if timer-registration
           (set! timer-registration
@@ -279,7 +278,7 @@
       (with-notification (lambda (output-port)
                            (write-string "Stack-sampling" output-port))
         (lambda ()
-          (run-with-stack-sampling sample-interval thunk)))
+          (run-with-stack-sampling (make-profile) sample-interval thunk)))
     (write-notification-line
      (lambda (output-port)
        (display-profile profile output-port)))
@@ -366,7 +365,7 @@
        output-port)))
 
 (define (show-expression expression subexpression output-port)
-  (write-string " evaluating " output-port)
+  (write-string " evaluating" output-port)
   (cond ((invalid-expression-description expression)
          => (lambda (description)
               (write-string description output-port)
@@ -389,9 +388,9 @@
 (define (invalid-expression-description expression)
   (cond ((debugging-info/compiled-code? expression)
          ;++ Should this display the compiled entry itself?
-         "compiled code")
+         " compiled code")
         ((debugging-info/undefined-expression? expression)
-         "undefined expression")
+         " undefined expression")
         (else #f)))
 
 (define (profile-pp expression output-port)

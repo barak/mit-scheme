@@ -2,8 +2,8 @@
 ###
 ### Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ###     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
-###     2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts
-###     Institute of Technology
+###     2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013,
+###     2014 Massachusetts Institute of Technology
 ###
 ### This file is part of MIT/GNU Scheme.
 ###
@@ -984,7 +984,8 @@ define_hook_label(generic_$1)
 	jne	asm_generic_$1_fail
 	OP(and,l)	TW(rmask,REG(edx))
 	OP(fld,l)	DOF(4,REG(edx))
-	ftst
+	fldz
+	fucomp	ST(1)
 	fstsw	REG(ax)
 	fstp	ST(0)
 	sahf
@@ -1088,7 +1089,8 @@ asm_generic_divide_flo_flo:
 	OP(mov,l)	TW(REG(ebx),REG(ecx))
 	OP(and,l)	TW(rmask,REG(ecx))
 	OP(fld,l)	DOF(4,REG(ecx))			# fldd
-	ftst
+	fldz
+	fucomp	ST(1)
 	fstsw	REG(ax)
 	sahf
 	je	asm_generic_divide_by_zero

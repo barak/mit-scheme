@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,7 +31,7 @@ USA.
 (define-snode sblock)
 (define-pnode pblock)
 
-(define-vector-slots bblock 6
+(define-vector-slots bblock 8
   instructions
   live-at-entry
   live-at-exit
@@ -39,13 +39,13 @@ USA.
   label
   continuations)
 
-(define-vector-slots sblock 12
+(define-vector-slots sblock 14
   continuation)
 
 (define (make-sblock instructions)
   (make-pnode sblock-tag instructions false false false false '() false))
 
-(define-vector-slots pblock 12
+(define-vector-slots pblock 14
   consequent-lap-generator
   alternative-lap-generator)
 
