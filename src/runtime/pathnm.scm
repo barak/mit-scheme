@@ -348,6 +348,7 @@ these rules:
 	   (map (lambda (x)
 		  (cond ((string=? x "*") 'WILD)
 			((string=? x "..") 'UP)
+			((string=? x ".") 'HERE)
 			(else (utf8-string->string x))))
 		(uri-path uri)))
 	  (lose
