@@ -305,6 +305,7 @@ these rules:
 	      (map (lambda (x)
 		     (cond ((eq? x 'WILD) "*")
 			   ((eq? x 'UP) "..")
+			   ((eq? x 'HERE) ".")
 			   (else (string->utf8-string x))))
 		   (append (if (pathname-absolute? pathname)
 			       (list "")
