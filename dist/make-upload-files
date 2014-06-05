@@ -16,6 +16,11 @@ if ! [[ ${VERSION} =~ ^[0-9.]+$ ]]; then
 fi
 
 for FILE in "${@}"; do
+    # Ignore files written by this script.
+    [[ ${FILE} == *.directive ]] && continue
+    [[ ${FILE} == *.asc ]] && continue
+    [[ ${FILE} == *.sig ]] && continue
+
     rm -f "${FILE}".directive
     cat > "${FILE}".directive <<EOF
 version: 1.1
