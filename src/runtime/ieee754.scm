@@ -22,6 +22,8 @@ USA.
 |#
 
 ;;;; IEEE 754 Format
+
+(declare (usual-integrations))
 
 (define (decompose-ieee754-double x)
   (decompose-ieee754-binary x 11 53))
@@ -165,6 +167,7 @@ USA.
 (define (ieee754-binary-hex-string x exponent-bits precision)
   (receive (base emin emax bias exp-subnormal exp-inf/nan)
            (ieee754-binary-parameters exponent-bits precision)
+    bias exp-subnormal exp-inf/nan
     (define (symbolic sign name extra)
       (assert (or (= sign 0) (= sign 1)))
       (assert (<= 0 extra))
