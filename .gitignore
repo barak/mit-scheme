@@ -4,6 +4,7 @@
 *.bin
 *.com
 *.crf
+*.diff
 *.dll
 *.err
 *.exe
