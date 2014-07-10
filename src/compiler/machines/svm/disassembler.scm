@@ -71,9 +71,7 @@ USA.
 
 (define (compiler:disassemble entry)
   (let ((block (compiled-entry/block entry)))
-    (fluid-let ((disassembler/write-offsets? #t)
-		(disassembler/write-addresses? #t)
-		(disassembler/base-address (object-datum block)))
+    (fluid-let ((disassembler/base-address (object-datum block)))
       (newline)
       (newline)
       (write-compiled-code-block block #t))))
@@ -122,8 +120,7 @@ USA.
 
 (define (write-instruction cursor)
   (write-offset cursor)
-  (let* ((start (cursor-offset cursor))
-	 (entry (cursor-external-entry cursor)))
+  (let ((entry (cursor-external-entry cursor)))
     (if entry
 	(begin
 	  (write entry)
@@ -158,11 +155,14 @@ USA.
 	  (write-string ":\n"))))
   (let ((offset (cursor-offset cursor)))
     (if disassembler/write-addresses?
-	(write-string
-	 (number->string (+ offset disassembler/base-address) 16)))
+	(begin
+	  (write-string
+	   (number->string (+ offset disassembler/base-address) 16))
+	  (write-char #\Tab)))
     (if disassembler/write-offsets?
-	(write-string (number->string offset 16)))
-    (write-char #\Tab)))
+	(begin
+	  (write-string (number->string offset 16))
+	  (write-char #\Tab)))))
 
 (define (cursor-label cursor)
   (and disassembler/symbolize-output?
@@ -220,14 +220,17 @@ USA.
 (define (write-constants cursor)
   (fluid-let ((*unparser-radix* 16))
     (let* ((block (cursor-block cursor))
-	   (end (* address-units-per-object (system-vector-length block))))
+	   (end (compiled-code-block/index->offset
+		 (system-vector-length block))))
 
-      (set-cursor-offset! cursor (* address-units-per-object
-				    (compiled-code-block/marked-start block)))
+      (assert (= (cursor-offset cursor)
+		 (* (1+ (compiled-code-block/marked-start block))
+		    address-units-per-object)))
       (let loop ()
 	(let ((offset (cursor-offset cursor)))
 	  (if (< offset end)
-	      (let ((object (system-vector-ref block (offset->index offset))))
+	      (let ((object (system-vector-ref
+			     block (compiled-code-block/offset->index offset))))
 		(if (object-type? (ucode-type linkage-section) object)
 		    (write-linkage-section object cursor)
 		    (begin
@@ -236,9 +239,6 @@ USA.
 		      (set-cursor-offset! cursor
 					  (+ offset address-units-per-object))))
 		(loop))))))))
-
-(define-integrable (offset->index offset)
-  (fix:quotient offset address-units-per-object))
 
 (define (write-constant constant cursor)
   (write-string (cdr (write-to-string constant 60)))
@@ -277,7 +277,8 @@ USA.
 	      (begin
 		(write-offset cursor)
 		(writer (cursor-block cursor)
-			(offset->index (cursor-offset cursor)))
+			(compiled-code-block/offset->index
+			 (cursor-offset cursor)))
 		(newline)
 		(cursor-increment! cursor (* size address-units-per-object))
 		(loop (-1+ count))))))
@@ -350,12 +351,13 @@ USA.
 	;; Unlinked.
 	(vector 'INTERPRETED (system-vector-ref block (1+ index)) word)
 	;; Linked.
-	(let ((offset (compiled-code-block/index->offset index)))
+	(let ((offset (compiled-code-block/index->offset index))
+	      (bytes address-units-per-object))
 	  (let ((arity (read-unsigned-integer block offset 16))
-		(opcode (read-unsigned-integer block (+ offset 2) 8))
-		(operand (read-unsigned-integer block (+ offset 3) 8)))
+		(opcode (read-unsigned-integer block (+ offset bytes -2) 8))
+		(operand (read-unsigned-integer block (+ offset bytes -1) 8)))
 	    (if (and (= opcode svm1-inst:ijump-u8) (= operand 0))
-		(vector 'COMPILED (read-procedure block (+ offset 4)) arity)
+		(vector 'COMPILED (read-procedure block (+ offset bytes)) arity)
 		(error (string-append "disassembler/read-procedure-cache:"
 				      " Unexpected instruction")
 		       opcode operand)))))))
