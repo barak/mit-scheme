@@ -93,8 +93,6 @@ USA.
 	  (write-string "Compressed-B1-1.00" output)
 	  (compress-ports input output))))))
 
-(begin
-(declare (no-range-checks) (no-type-checks))
 (define-structure (compression-state
 		   (conc-name #f)
 		   (constructor make-compression-state
@@ -117,7 +115,7 @@ USA.
 
   output-buffer
   input-port
-  output-port))
+  output-port)
 
 (define (compress-ports input output)
   (let ((state (make-compression-state
