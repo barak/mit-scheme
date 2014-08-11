@@ -121,6 +121,7 @@ USA.
 	      *notification-output-port* #f
 	      *trace-output-port* #f
 	      *interaction-i/o-port* #f
+	      *working-directory-pathname* (fluid *working-directory-pathname*)
 	      (lambda ()
 		(fluid-let ((*nearest-cmdl* cmdl)
 			    (dynamic-handler-frames '())
@@ -129,8 +130,6 @@ USA.
 			    (standard-error-hook #f)
 			    (standard-warning-hook #f)
 			    (standard-breakpoint-hook #f)
-			    (*working-directory-pathname*
-			     *working-directory-pathname*)
 			    (*default-pathname-defaults*
 			     *default-pathname-defaults*))
 		  (let loop ((message message))

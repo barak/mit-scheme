@@ -38,14 +38,14 @@ USA.
 	 (pathname-simplify
 	  (pathname-as-directory
 	   ((ucode-primitive working-directory-pathname))))))
-    (set! *working-directory-pathname* pathname)
+    (set-fluid! *working-directory-pathname* pathname)
     (set! *default-pathname-defaults* pathname))
   unspecific)
 
-(define *working-directory-pathname*)
+(define *working-directory-pathname* (make-fluid #f))
 
 (define (working-directory-pathname)
-  *working-directory-pathname*)
+  (fluid *working-directory-pathname*))
 
 (define (set-working-directory-pathname! name)
   (let ((pathname (new-pathname name)))
@@ -63,18 +63,17 @@ USA.
 				  "no such directory")
 			      'SET-WORKING-DIRECTORY-PATHNAME!
 			      (list name)))
-    (set! *working-directory-pathname* pathname)
+    (set-fluid! *working-directory-pathname* pathname)
     (set! *default-pathname-defaults* pathname)
     (cmdl/set-default-directory (nearest-cmdl) pathname)
     pathname))
 
 (define (with-working-directory-pathname name thunk)
   (let ((pathname (new-pathname name)))
-    (fluid-let ((*working-directory-pathname* pathname)
-		(*default-pathname-defaults* pathname))
-      (thunk))))
+    (fluid-let ((*default-pathname-defaults* pathname))
+      (let-fluid *working-directory-pathname* pathname thunk))))
 
 (define (new-pathname name)
   (pathname-simplify
    (pathname-as-directory
-    (merge-pathnames name *working-directory-pathname*))))
+    (merge-pathnames name (fluid *working-directory-pathname*)))))
