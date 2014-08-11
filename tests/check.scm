@@ -43,6 +43,7 @@ USA.
     "microcode/test-lookup"
     "runtime/test-arith"
     ("runtime/test-char-set" (runtime character-set))
+    "runtime/test-dynamic-env"
     "runtime/test-division"
     "runtime/test-ephemeron"
     "runtime/test-floenv"

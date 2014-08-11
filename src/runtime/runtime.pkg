@@ -4504,6 +4504,25 @@ USA.
 	  translate-to-state-point)
   (initialization (initialize-package!)))
 
+(define-package (runtime dynamic)
+  (files "dynamic")
+  (parent (runtime))
+  (export ()
+	  fluid?
+	  guarantee-fluid
+	  make-fluid
+	  fluid
+	  set-fluid!
+	  let-fluid
+	  let-fluids
+	  parameter?
+	  guarantee-parameter
+	  make-parameter
+	  set-parameter!
+	  parameterize
+	  parameter-converter
+	  parameterize*))
+
 (define-package (runtime stream)
   (files "stream")
   (parent (runtime))

@@ -258,7 +258,7 @@ Miscellaneous Datatypes
 
 * Booleans::                    
 * Symbols::                     
-* Cells::                       
+* Parameters::                  
 * Records::                     
 * Promises::                    
 * Streams::                     

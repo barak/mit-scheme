@@ -332,10 +332,157 @@ the restriction is satisfied automatically.
 @node Dynamic Binding, Definitions, Lexical Binding, Special Forms
 @section Dynamic Binding
 
-@deffn {special form} fluid-let ((@var{variable} @var{init}) @dots{}) expression expression @dots{}
+@anchor{parameterize}
+@deffn {special form} parameterize ((@var{parameter} @var{value}) @dots{}) expression expression @dots{}
+Note that both @var{parameter} and @var{value} are expressions.
+It is an error if the value of any @var{parameter} expression is not a
+parameter object.
+
+A @code{parameterize} expression is used to change the values of
+specified parameter objects during the evaluation of the body
+@var{expression}s.
+
+The @var{parameter} and @var{value} expressions are evaluated in an
+unspecified order. The body is evaluated in a dynamic
+environment in which each @var{parameter} is bound to the converted
+@var{value}---the result of passing @var{value} to the conversion
+procedure specified when the @var{parameter} was created.
+Then the previous value of @var{parameter} is restored
+without passing it to the conversion procedure.
+The value of the parameterize expression is the value of the last
+body @var{expression}.
+@end deffn
+
+Parameter objects can be used to specify configurable settings for a
+computation without the need to pass the value to every procedure in
+the call chain explicitly.
+
+@example
+@group
+(define radix
+  (make-parameter
+   10
+   (lambda (x)
+     (if (and (exact-integer?  x) (<= 2 x 16))
+         x
+         (error "invalid radix")))))
+@end group
+
+(define (f n) (number->string n (radix)))
+
+@group
+(f 12)                                  @result{} "12"
+(parameterize ((radix 2))
+  (f 12))                               @result{} "1100"
+(f 12)                                  @result{} "12"
+(radix 16)                              @error{} Wrong number of arguments
+(parameterize ((radix 0))
+  (f 12))                               @error{} invalid radix
+@end group
+@end example
+
 @cindex binding expression, dynamic (or fluid)
 @cindex fluid binding
 @cindex dynamic binding
+A @dfn{dynamic binding} or @dfn{fluid binding} changes the value of a
+parameter (@pxref{Parameters}) or fluid (@pxref{Fluids}) object
+temporarily, for a @dfn{dynamic extent}.  The set of all fluid
+bindings at a given time is called the @dfn{dynamic environment}.  The
+new values are only accessible to the thread that constructed the
+dynamic environment, and any threads created within that environment.
+
+@cindex extent, of dynamic binding (defn)
+The @dfn{extent} of a dynamic binding is defined to be the time period
+during which calling the parameter returns the new value.  Normally
+this time period begins when the body is entered and ends when it is
+exited, a contiguous time period.  However Scheme has first-class
+continuations by which it is possible to leave the body and reenter it
+many times.  In this situation, the extent is non-contiguous.
+
+@cindex dynamic binding, and continuations
+@cindex continuation, and dynamic binding
+When the body is exited by invoking a continuation, the current
+dynamic environment is unwound until it can be re-wound to the
+environment captured by the continuation.  When the continuation
+returns, the process is reversed, restoring the original dynamic
+environment.
+
+The following example shows the interaction between dynamic
+binding and continuations.  Side effects to the binding that occur
+both inside and outside of the body are preserved, even if
+continuations are used to jump in and out of the body repeatedly.
+A fluid object is used rather than a parameter only for variety.  A
+mutator similar to @code{set-fluid!} is available for parameter
+bindings (@code{set-parameter!}).  Both will modify the initial or
+top-level value when the parameter or fluid is not bound in the
+current dynamic environment.
+
+@example
+@group
+(define (complicated-dynamic-binding)
+  (let ((variable (make-fluid 1))
+        (inside-continuation))
+    (write-line (fluid variable))
+    (call-with-current-continuation
+     (lambda (outside-continuation)
+       (let-fluid variable 2
+         (lambda ()
+           (write-line (fluid variable))
+           (set-fluid! variable 3)
+           (call-with-current-continuation
+            (lambda (k)
+              (set! inside-continuation k)
+              (outside-continuation #t)))
+           (write-line (fluid variable))
+           (set! inside-continuation #f)))))
+    (write-line (fluid variable))
+    (if inside-continuation
+        (begin
+          (set-fluid! variable 4)
+          (inside-continuation #f)))))
+@end group
+@end example
+
+@noindent
+Evaluating @samp{(complicated-dynamic-binding)} writes the following on
+the console:
+
+@example
+@group
+1
+2
+1
+3
+4
+@end group
+@end example
+
+@noindent
+Commentary: the first two values written are the initial binding of
+@code{variable} and its new binding after @code{let-fluid}'s thunk is
+entered.  Immediately after they are written, the binding visible in
+the thunk is set to @samp{3}, and @code{outside-continuation} is
+invoked, exiting the thunk.  At this point, @samp{1} is written,
+demonstrating that the original binding of @code{variable} is still
+visible outside the thunk.  Then we set @code{variable} to @samp{4}
+and reenter the body by invoking @code{inside-continuation}.  At this
+point, @samp{3} is written, indicating that the binding modified in
+the thunk is still the binding visible in the thunk.  Finally, we exit
+the thunk normally, and write @samp{4}, demonstrating that the binding
+modified outside of the thunk was also preserved.
+
+@subsection Fluid-Let
+
+The @code{fluid-let} special form can change the value of @emph{any}
+variable for a dynamic extent, but it is difficult to implement in a
+multi-processing (SMP) world.  It and the cell object type
+(@pxref{Cells}) are now @strong{deprecated}.  They are still available
+and functional in a uni-processing (non-SMP) world, but will signal an
+error when used in an SMP world.  The @code{parameterize} special form
+(@pxref{parameterize}) or @code{let-fluids} procedure
+(@pxref{let-fluids}) should be used instead.
+
+@deffn {special form} fluid-let ((@var{variable} @var{init}) @dots{}) expression expression @dots{}
 @cindex variable binding, fluid-let
 The @var{init}s are evaluated in the current environment (in some
 unspecified order), the current values of the @var{variable}s are saved,
@@ -360,109 +507,7 @@ any of the @var{variable}s are unbound.  However, because
 @code{fluid-let} operates by means of side effects, it is valid for any
 @var{variable} to be unassigned when the form is entered.
 @findex condition-type:unbound-variable
-
-Here is an example showing the difference between @code{fluid-let} and
-@code{let}.  First see how @code{let} affects the binding of a variable:
-
-@example
-@group
-(define variable #t)
-(define (access-variable) variable)
-variable                                @result{}  #t
-(let ((variable #f))
-  (access-variable))                    @result{}  #t
-variable                                @result{}  #t
-@end group
-@end example
-
-@code{access-variable} returns @code{#t} in this case because it
-is defined in an environment with @code{variable} bound to
-@code{#t}.  @code{fluid-let}, on the other hand, temporarily reuses an
-existing variable:
-
-@example
-@group
-variable                                @result{}  #t
-(fluid-let ((variable #f))              @r{;reuses old binding}
-  (access-variable))                    @result{}  #f
-variable                                @result{}  #t
-@end group
-@end example
-
-@cindex extent, of dynamic binding (defn)
-The @dfn{extent} of a dynamic binding is defined to be the time period
-during which the variable contains the new value.  Normally this time
-period begins when the body is entered and ends when it is exited; on a
-sequential machine it is normally a contiguous time period.  However,
-because Scheme has first-class continuations, it is possible to leave
-the body and then reenter it, as many times as desired.  In this
-situation, the extent becomes non-contiguous.
-
-@cindex dynamic binding, and continuations
-@cindex continuation, and dynamic binding
-When the body is exited by invoking a continuation, the new value is
-saved, and the variable is set to the old value.  Then, if the body is
-reentered by invoking a continuation, the old value is saved, and the
-variable is set to the new value.  In addition, side effects to the
-variable that occur both inside and outside of body are preserved, even
-if continuations are used to jump in and out of body repeatedly.
 @end deffn
-
-Here is a complicated example that shows the interaction between dynamic
-binding and continuations:
-
-@example
-@group
-(define (complicated-dynamic-binding)
-  (let ((variable 1)
-        (inside-continuation))
-    (write-line variable)
-    (call-with-current-continuation
-     (lambda (outside-continuation)
-       (fluid-let ((variable 2))
-         (write-line variable)
-         (set! variable 3)
-         (call-with-current-continuation
-          (lambda (k)
-            (set! inside-continuation k)
-            (outside-continuation #t)))
-         (write-line variable)
-         (set! inside-continuation #f))))
-    (write-line variable)
-    (if inside-continuation
-        (begin
-          (set! variable 4)
-          (inside-continuation #f)))))
-@end group
-@end example
-
-@noindent
-Evaluating @samp{(complicated-dynamic-binding)} writes the following on
-the console:
-
-@example
-@group
-1
-2
-1
-3
-4
-@end group
-@end example
-
-@noindent
-Commentary: the first two values written are the initial binding of
-@code{variable} and its new binding after the @code{fluid-let}'s body is
-entered.  Immediately after they are written, @code{variable} is set to
-@samp{3}, and then @code{outside-continuation} is invoked, causing us to
-exit the body.  At this point, @samp{1} is written, demonstrating that
-the original value of @code{variable} has been restored, because we have
-left the body.  Then we set @code{variable} to @samp{4} and reenter the
-body by invoking @code{inside-continuation}.  At this point, @samp{3} is
-written, indicating that the side effect that previously occurred within
-the body has been preserved.  Finally, we exit body normally, and write
-@samp{4}, demonstrating that the side effect that occurred outside of
-the body was also preserved.
 
 @node Definitions, Assignments, Dynamic Binding, Special Forms
 @section Definitions

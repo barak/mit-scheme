@@ -4,7 +4,7 @@
 @menu
 * Booleans::                    
 * Symbols::                     
-* Cells::                       
+* Parameters::                       
 * Records::                     
 * Promises::                    
 * Streams::                     
@@ -116,7 +116,7 @@ This procedure returns @code{#f} if all of its arguments are @code{#f}.
 Otherwise it returns @code{#t}.
 @end deffn
 
-@node Symbols, Cells, Booleans, Miscellaneous Datatypes
+@node Symbols, Parameters, Booleans, Miscellaneous Datatypes
 @section Symbols
 
 @cindex symbol (defn)
@@ -404,12 +404,68 @@ This procedure computes a total order on symbols.  It is equivalent to
 @end example
 @end deffn
 
-@node Cells, Records, Symbols, Miscellaneous Datatypes
-@section Cells
+@node Parameters, Records, Symbols, Miscellaneous Datatypes
+@section Parameters
+@cindex parameter, dynamic (defn)
+@cindex dynamic parameter (defn)
+
+@dfn{Parameters} are objects that can be bound to new values for the
+duration of a dynamic extent.  @xref{Dynamic Binding}.
+
+@deffn procedure make-parameter init [converter]
+Returns a newly allocated parameter object, which is a procedure that
+accepts zero arguments and returns the value associated with the
+parameter object.  Initially this value is the value of
+@code{(converter init)}, or of @var{init} if the conversion procedure
+@var{converter} is not specified.  The associated value can be
+temporarily changed using the @code{parameterize} special form
+(@pxref{parameterize}).
+@end deffn
+
+@deffn procedure parameterize* bindings thunk
+@var{Bindings} should be an alist associating parameter objects with
+new values.  Returns the value of @var{thunk} while the parameters are
+dynamically bound to the values.
+@end deffn
+
+@anchor{Fluids}
+@subsection Fluids
+
+@cindex fluid (defn)
+A @dfn{fluid} object is very similar to a parameter.  Its value can be
+dynamically bound like a parameter, and it has a top-level value that
+is used when it is unbound in the current dynamic environment.
+
+@deffn procedure make-fluid value
+Returns a new fluid object with @var{value} as its initial, top-level
+value.
+@end deffn
+
+@deffn procedure fluid fluid
+Returns @var{fluid}'s current value.
+@end deffn
+
+@deffn procedure set-fluid! fluid value
+Changes @var{fluid}'s current value.  If @var{fluid} is not bound in
+the current dynamic environment, its top-level value is changed.
+@end deffn
+
+@anchor{let-fluids}
+@deffn procedure let-fluid fluid value thunk
+@deffnx procedure let-fluids fluid value [ fluid value ] @dots{} thunk
+Returns the value of @var{thunk} while @var{fluid} is dynamically
+bound to @var{value.  @code{Let-fluids} is identical to
+@code{let-fluid} except that it binds an arbitrary number of fluids to
+new values.
+@end deffn
+
+@anchor{Cells}
+@subsection Cells
 
 @cindex cell (defn)
-@dfn{Cells} are data structures similar to pairs except that they have
-only one element.  They are useful for managing state.
+A @dfn{cell} object is very similar to a parameter but is not
+implemented in multi-processing worlds and thus is
+@strong{deprecated}.  Parameters should be used instead.
 
 @deffn procedure cell? object
 @cindex type predicate, for cell
@@ -441,7 +497,7 @@ equivalent to dynamic binding of a variable, including the behavior when
 continuations are used (@pxref{Dynamic Binding}).
 @end deffn
 
-@node Records, Promises, Cells, Miscellaneous Datatypes
+@node Records, Promises, Parameters, Miscellaneous Datatypes
 @section Records
 
 MIT/GNU Scheme provides a @dfn{record} abstraction, which is a simple and
