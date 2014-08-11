@@ -454,7 +454,7 @@ the current dynamic environment, its top-level value is changed.
 @deffn procedure let-fluid fluid value thunk
 @deffnx procedure let-fluids fluid value [ fluid value ] @dots{} thunk
 Returns the value of @var{thunk} while @var{fluid} is dynamically
-bound to @var{value.  @code{Let-fluids} is identical to
+bound to @var{value}.  @code{Let-fluids} is identical to
 @code{let-fluid} except that it binds an arbitrary number of fluids to
 new values.
 @end deffn
