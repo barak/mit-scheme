@@ -115,39 +115,41 @@ USA.
   (let ((port (cmdl/port cmdl)))
     (let ((thunk
 	   (lambda ()
-	     (fluid-let ((*nearest-cmdl* cmdl)
-			 (dynamic-handler-frames '())
-			 (*bound-restarts*
-			  (if (cmdl/parent cmdl) *bound-restarts* '()))
-			 (standard-error-hook #f)
-			 (standard-warning-hook #f)
-			 (standard-breakpoint-hook #f)
-			 (*working-directory-pathname*
-			  *working-directory-pathname*)
-			 (*default-pathname-defaults*
-			  *default-pathname-defaults*)
-			 (*current-input-port* #f)
-			 (*current-output-port* #f)
-			 (*notification-output-port* #f)
-			 (*trace-output-port* #f)
-			 (*interaction-i/o-port* #f))
-	       (let loop ((message message))
-		 (loop
-		  (bind-abort-restart cmdl
-		    (lambda ()
-		      (deregister-all-events)
-		      (with-interrupt-mask interrupt-mask/all
-			(lambda (interrupt-mask)
-			  interrupt-mask
-			  (unblock-thread-events)
-			  (ignore-errors
-			   (lambda ()
-			     ((->cmdl-message message) cmdl)))
-			  (call-with-current-continuation
-			   (lambda (continuation)
-			     (with-create-thread-continuation continuation
-			       (lambda ()
-				 ((cmdl/driver cmdl) cmdl))))))))))))))
+	     (let-fluids
+	      *current-input-port* #f
+	      *current-output-port* #f
+	      *notification-output-port* #f
+	      *trace-output-port* #f
+	      *interaction-i/o-port* #f
+	      (lambda ()
+		(fluid-let ((*nearest-cmdl* cmdl)
+			    (dynamic-handler-frames '())
+			    (*bound-restarts*
+			     (if (cmdl/parent cmdl) *bound-restarts* '()))
+			    (standard-error-hook #f)
+			    (standard-warning-hook #f)
+			    (standard-breakpoint-hook #f)
+			    (*working-directory-pathname*
+			     *working-directory-pathname*)
+			    (*default-pathname-defaults*
+			     *default-pathname-defaults*))
+		  (let loop ((message message))
+		    (loop
+		     (bind-abort-restart cmdl
+		       (lambda ()
+			 (deregister-all-events)
+			 (with-interrupt-mask interrupt-mask/all
+			   (lambda (interrupt-mask)
+			     interrupt-mask
+			     (unblock-thread-events)
+			     (ignore-errors
+			      (lambda ()
+				((->cmdl-message message) cmdl)))
+			     (call-with-current-continuation
+			      (lambda (continuation)
+				(with-create-thread-continuation continuation
+				  (lambda ()
+				    ((cmdl/driver cmdl) cmdl))))))))))))))))
 	  (mutex (port/thread-mutex port)))
       (let ((thread (current-thread))
 	    (owner (thread-mutex-owner mutex)))

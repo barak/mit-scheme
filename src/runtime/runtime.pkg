@@ -2345,7 +2345,8 @@ USA.
   (export (runtime emacs-interface)
 	  set-port/thread-mutex!
 	  set-port/type!
-	  standard-port-accessors))
+	  standard-port-accessors)
+  (initialization (initialize-package!)))
 
 (define-package (runtime input-port)
   (files "input")

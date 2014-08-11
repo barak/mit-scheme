@@ -787,74 +787,82 @@ USA.
 
 (define *current-input-port*)
 (define *current-output-port*)
-(define *notification-output-port* #f)
-(define *trace-output-port* #f)
-(define *interaction-i/o-port* #f)
+(define *notification-output-port*)
+(define *trace-output-port*)
+(define *interaction-i/o-port*)
+
+(define (initialize-package!)
+  (set! *current-input-port* (make-fluid #f))
+  (set! *current-output-port* (make-fluid #f))
+  (set! *notification-output-port* (make-fluid #f))
+  (set! *trace-output-port* (make-fluid #f))
+  (set! *interaction-i/o-port* (make-fluid #f)))
 
 (define (current-input-port)
-  (or *current-input-port* (nearest-cmdl/port)))
+  (or (fluid *current-input-port*) (nearest-cmdl/port)))
 
 (define (set-current-input-port! port)
-  (set! *current-input-port*
-	(guarantee-input-port port 'SET-CURRENT-INPUT-PORT!))
+  (set-fluid! *current-input-port*
+	      (guarantee-input-port port 'SET-CURRENT-INPUT-PORT!))
   unspecific)
 
 (define (with-input-from-port port thunk)
-  (fluid-let ((*current-input-port*
-	       (guarantee-input-port port 'WITH-INPUT-FROM-PORT)))
-    (thunk)))
+  (let-fluid
+   *current-input-port* (guarantee-input-port port 'WITH-INPUT-FROM-PORT)
+   thunk))
 
 (define (current-output-port)
-  (or *current-output-port* (nearest-cmdl/port)))
+  (or (fluid *current-output-port*) (nearest-cmdl/port)))
 
 (define (set-current-output-port! port)
-  (set! *current-output-port*
-	(guarantee-output-port port 'SET-CURRENT-OUTPUT-PORT!))
+  (set-fluid! *current-output-port*
+	      (guarantee-output-port port 'SET-CURRENT-OUTPUT-PORT!))
   unspecific)
 
 (define (with-output-to-port port thunk)
-  (fluid-let ((*current-output-port*
-	       (guarantee-output-port port 'WITH-OUTPUT-TO-PORT)))
-    (thunk)))
+  (let-fluid
+   *current-output-port* (guarantee-output-port port 'WITH-OUTPUT-TO-PORT)
+   thunk))
 
 (define (notification-output-port)
-  (or *notification-output-port* (nearest-cmdl/port)))
+  (or (fluid *notification-output-port*) (nearest-cmdl/port)))
 
 (define (set-notification-output-port! port)
-  (set! *notification-output-port*
-	(guarantee-output-port port 'SET-NOTIFICATION-OUTPUT-PORT!))
+  (set-fluid! *notification-output-port*
+	      (guarantee-output-port port 'SET-NOTIFICATION-OUTPUT-PORT!))
   unspecific)
 
 (define (with-notification-output-port port thunk)
-  (fluid-let ((*notification-output-port*
-	       (guarantee-output-port port 'WITH-NOTIFICATION-OUTPUT-PORT)))
-    (thunk)))
+  (let-fluid
+   *notification-output-port*
+   (guarantee-output-port port 'WITH-NOTIFICATION-OUTPUT-PORT)
+   thunk))
 
 (define (trace-output-port)
-  (or *trace-output-port* (nearest-cmdl/port)))
+  (or (fluid *trace-output-port*) (nearest-cmdl/port)))
 
 (define (set-trace-output-port! port)
-  (set! *trace-output-port*
-	(guarantee-output-port port 'SET-TRACE-OUTPUT-PORT!))
+  (set-fluid! *trace-output-port*
+	      (guarantee-output-port port 'SET-TRACE-OUTPUT-PORT!))
   unspecific)
 
 (define (with-trace-output-port port thunk)
-  (fluid-let ((*trace-output-port*
-	       (guarantee-output-port port 'WITH-TRACE-OUTPUT-PORT)))
-    (thunk)))
+  (let-fluid
+   *trace-output-port* (guarantee-output-port port 'WITH-TRACE-OUTPUT-PORT)
+   thunk))
 
 (define (interaction-i/o-port)
-  (or *interaction-i/o-port* (nearest-cmdl/port)))
+  (or (fluid *interaction-i/o-port*) (nearest-cmdl/port)))
 
 (define (set-interaction-i/o-port! port)
-  (set! *interaction-i/o-port*
-	(guarantee-i/o-port port 'SET-INTERACTION-I/O-PORT!))
+  (set-fluid! *interaction-i/o-port*
+	      (guarantee-i/o-port port 'SET-INTERACTION-I/O-PORT!))
   unspecific)
 
 (define (with-interaction-i/o-port port thunk)
-  (fluid-let ((*interaction-i/o-port*
-	       (guarantee-i/o-port port 'WITH-INTERACTION-I/O-PORT)))
-    (thunk)))
+  (let-fluid
+   *interaction-i/o-port* (guarantee-i/o-port port 'WITH-INTERACTION-I/O-PORT)
+   thunk))
 
 (define standard-port-accessors
   (list (cons current-input-port set-current-input-port!)
