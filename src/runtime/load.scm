@@ -34,16 +34,21 @@ USA.
   (set! condition-type:not-loading
 	(make-condition-type 'NOT-LOADING condition-type:error '()
 	  "No file being loaded."))
+  (set! load/after-load-hooks (make-fluid '()))
+  (set! *eval-unit* (make-fluid #f))
+  (set! *current-load-environment* (make-fluid 'NONE))
+  (set! *write-notifications?* (make-fluid #t))
+  (set! *load-init-file?* (make-fluid #t))
   (initialize-command-line-parsers)
   (set! hook/process-command-line default/process-command-line)
   (add-event-receiver! event:after-restart process-command-line))
 
-(define load/loading? #f)
+(define load/loading?)
 (define load/after-load-hooks)
 (define load/suppress-loading-message? #f)
-(define *eval-unit* #f)
-(define *current-load-environment* 'NONE)
-(define *write-notifications?* #t)
+(define *eval-unit*)
+(define *current-load-environment*)
+(define *write-notifications?*)
 
 (define *purification-root-marker*)
 (define condition-type:not-loading)
@@ -227,11 +232,12 @@ USA.
 		 load/suppress-loading-message?
 		 suppress-notifications?)
 	     #f
-	     *write-notifications?*)))
-    (fluid-let ((*write-notifications?* notify?))
-      (if notify?
-	  (notifier loader)
-	  (loader)))))
+	     (fluid *write-notifications?*))))
+    (let-fluid *write-notifications?* notify?
+      (lambda ()
+	(if notify?
+	    (notifier loader)
+	    (loader))))))
 
 (define (loading-notifier pathname)
   (lambda (thunk)
@@ -249,11 +255,11 @@ USA.
     (thunk)))
 
 (define (with-eval-unit uri thunk)
-  (fluid-let ((*eval-unit* (->absolute-uri uri 'WITH-EVAL-UNIT)))
-    (thunk)))
+  (let-fluid *eval-unit* (->absolute-uri uri 'WITH-EVAL-UNIT)
+    thunk))
 
 (define (current-eval-unit #!optional error?)
-  (let ((unit *eval-unit*))
+  (let ((unit (fluid *eval-unit*)))
     (if (and (not unit)
 	     (if (default-object? error?) #t error?))
 	(error condition-type:not-loading))
@@ -264,34 +270,35 @@ USA.
       (error condition-type:not-loading)))
 
 (define (current-load-environment)
-  (let ((env *current-load-environment*))
+  (let ((env (fluid *current-load-environment*)))
     (if (eq? env 'NONE)
 	(nearest-repl/environment)
 	env)))
 
 (define (set-load-environment! environment)
   (guarantee-environment environment 'SET-LOAD-ENVIRONMENT!)
-  (if (not (eq? *current-load-environment* 'NONE))
+  (if (not (eq? (fluid *current-load-environment*) 'NONE))
       (begin
-	(set! *current-load-environment* environment)
+	(set-fluid! *current-load-environment* environment)
 	unspecific)))
 
 (define (with-load-environment environment thunk)
   (guarantee-environment environment 'WITH-LOAD-ENVIRONMENT)
-  (fluid-let ((*current-load-environment* environment))
-    (thunk)))
+  (let-fluid *current-load-environment* environment
+    thunk))
 
 (define (load/push-hook! hook)
   (if (not load/loading?) (error condition-type:not-loading))
-  (set! load/after-load-hooks (cons hook load/after-load-hooks))
+  (set-fluid! load/after-load-hooks (cons hook (fluid load/after-load-hooks)))
   unspecific)
 
 (define (handle-load-hooks thunk)
   (receive (result hooks)
-      (fluid-let ((load/loading? #t)
-		  (load/after-load-hooks '()))
-	(let ((result (thunk)))
-	  (values result (reverse load/after-load-hooks))))
+      (fluid-let ((load/loading? #t))
+	(let-fluid load/after-load-hooks '()
+	  (lambda ()
+	    (let ((result (thunk)))
+	      (values result (reverse (fluid load/after-load-hooks)))))))
     (for-each (lambda (hook) (hook)) hooks)
     result))
 
@@ -500,12 +507,13 @@ USA.
     (if unused-command-line
 	(begin
 	  (set! *unused-command-line*)
-	  (fluid-let ((*load-init-file?* #t))
-	    (set! *unused-command-line*
-		  (process-keyword (vector->list unused-command-line) '()))
-	    (for-each (lambda (act) (act))
-		      (reverse after-parsing-actions))
-	    (if *load-init-file?* (load-init-file))))
+	  (let-fluid *load-init-file?* #t
+	    (lambda ()
+	      (set! *unused-command-line*
+		    (process-keyword (vector->list unused-command-line) '()))
+	      (for-each (lambda (act) (act))
+			(reverse after-parsing-actions))
+	      (if (fluid *load-init-file?*) (load-init-file)))))
 	(begin
 	  (set! *unused-command-line* #f)
 	  (load-init-file)))))
@@ -655,7 +663,7 @@ ADDITIONAL OPTIONS supported by this band:\n")
   (set! *command-line-parsers* '())
   (simple-command-line-parser "no-init-file"
     (lambda ()
-      (set! *load-init-file?* #f)
+      (set-fluid! *load-init-file?* #f)
       unspecific)
     "Inhibits automatic loading of the ~/.scheme.init file.")
   (set! generate-suspend-file? #f)
