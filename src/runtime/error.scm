@@ -225,7 +225,7 @@ USA.
 
 (define-integrable (%restarts-argument restarts operator)
   (cond ((eq? 'BOUND-RESTARTS restarts)
-	 *bound-restarts*)
+	 (fluid *bound-restarts*))
 	((condition? restarts)
 	 (%condition/restarts restarts))
 	(else
@@ -301,7 +301,7 @@ USA.
 
 ;;;; Restarts
 
-(define *bound-restarts* '())
+(define *bound-restarts*)
 
 (define-structure (restart
 		   (conc-name %restart/)
@@ -334,10 +334,10 @@ USA.
       (error:wrong-type-argument effector "effector" 'WITH-RESTART))
   (if (not (or (not interactor) (procedure? interactor)))
       (error:wrong-type-argument interactor "interactor" 'WITH-RESTART))
-  (fluid-let ((*bound-restarts*
-	       (cons (%make-restart name reporter effector interactor)
-		     *bound-restarts*)))
-    (thunk)))
+  (let-fluid *bound-restarts*
+	     (cons (%make-restart name reporter effector interactor)
+		   (fluid *bound-restarts*))
+	     thunk))
 
 (define (with-simple-restart name reporter thunk)
   (call-with-current-continuation
@@ -382,7 +382,7 @@ USA.
 (define (bind-restart name reporter effector receiver)
   (with-restart name reporter effector #f
     (lambda ()
-      (receiver (car *bound-restarts*)))))
+      (receiver (car (fluid *bound-restarts*))))))
 
 (define (invoke-restart restart . arguments)
   (guarantee-restart restart 'INVOKE-RESTART)
@@ -424,13 +424,13 @@ USA.
 (define hook/invoke-restart)
 
 (define (bound-restarts)
-  (let loop ((restarts *bound-restarts*))
+  (let loop ((restarts (fluid *bound-restarts*)))
     (if (pair? restarts)
 	(cons (car restarts) (loop (cdr restarts)))
 	'())))
 
 (define (first-bound-restart)
-  (let ((restarts *bound-restarts*))
+  (let ((restarts (fluid *bound-restarts*)))
     (if (not (pair? restarts))
 	(error:no-such-restart #f))
     (car restarts)))
@@ -489,7 +489,7 @@ USA.
 (define (restarts-default restarts name)
   (cond ((or (default-object? restarts)
 	     (eq? 'BOUND-RESTARTS restarts))
-	 *bound-restarts*)
+	 (fluid *bound-restarts*))
 	((condition? restarts)
 	 (%condition/restarts restarts))
 	(else
@@ -499,7 +499,7 @@ USA.
 ;;;; Condition Signalling and Handling
 
 (define static-handler-frames)
-(define dynamic-handler-frames '())
+(define dynamic-handler-frames)
 (define break-on-signals-types)
 
 (define (bind-default-condition-handler types handler)
@@ -513,9 +513,9 @@ USA.
 (define (bind-condition-handler types handler thunk)
   (guarantee-condition-types types 'BIND-CONDITION-HANDLER)
   (guarantee-condition-handler handler 'BIND-CONDITION-HANDLER)
-  (fluid-let ((dynamic-handler-frames
-	       (cons (cons types handler) dynamic-handler-frames)))
-    (thunk)))
+  (let-fluid dynamic-handler-frames
+	     (cons (cons types handler) (fluid dynamic-handler-frames))
+	     thunk))
 
 (define-integrable (guarantee-condition-handler object caller)
   (guarantee-procedure-of-arity object 1 caller))
@@ -551,22 +551,23 @@ USA.
 	      (breakpoint-procedure 'INHERIT
 				    "BKPT entered because of BREAK-ON-SIGNALS:"
 				    condition))))
-      (do ((frames dynamic-handler-frames (cdr frames)))
+      (do ((frames (fluid dynamic-handler-frames) (cdr frames)))
 	  ((not (pair? frames)))
 	(if (let ((types (caar frames)))
 	      (or (not (pair? types))
 		  (intersect-generalizations? types)))
-	    (fluid-let ((dynamic-handler-frames (cdr frames)))
-	      (hook/invoke-condition-handler (cdar frames) condition))))
+	    (let-fluid dynamic-handler-frames (cdr frames)
+	      (lambda ()
+		(hook/invoke-condition-handler (cdar frames) condition)))))
       (do ((frames (fluid static-handler-frames) (cdr frames)))
 	  ((not (pair? frames)))
 	(if (let ((types (caar frames)))
 	      (or (not (pair? types))
 		  (intersect-generalizations? types)))
-	    (fluid-let ((dynamic-handler-frames '()))
-	      (let-fluid static-handler-frames (cdr frames)
-		(lambda ()
-		  (hook/invoke-condition-handler (cdar frames) condition))))))
+	    (let-fluids dynamic-handler-frames '()
+			static-handler-frames (cdr frames)
+	      (lambda ()
+		(hook/invoke-condition-handler (cdar frames) condition)))))
       unspecific)))
 
 ;;;; Standard Condition Signallers
@@ -765,7 +766,9 @@ USA.
   (memq condition-type:error (%condition-type/generalizations type)))
 
 (define (initialize-package!)
+  (set! *bound-restarts* (make-fluid '()))
   (set! static-handler-frames (make-fluid '()))
+  (set! dynamic-handler-frames (make-fluid '()))
   (set! break-on-signals-types (make-fluid '()))
   (set! standard-error-hook (make-fluid #f))
   (set! standard-warning-hook (make-fluid #f))

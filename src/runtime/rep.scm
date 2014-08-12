@@ -128,27 +128,28 @@ USA.
 	      standard-warning-hook #f
 	      standard-breakpoint-hook #f
 	      *default-pathname-defaults* (fluid *default-pathname-defaults*)
+	      dynamic-handler-frames '()
+	      *bound-restarts* (if (cmdl/parent cmdl)
+				   (fluid *bound-restarts*)
+				   '())
 	      (lambda ()
-		(fluid-let ((dynamic-handler-frames '())
-			    (*bound-restarts*
-			     (if (cmdl/parent cmdl) *bound-restarts* '())))
-		  (let loop ((message message))
-		    (loop
-		     (bind-abort-restart cmdl
-		       (lambda ()
-			 (deregister-all-events)
-			 (with-interrupt-mask interrupt-mask/all
-			   (lambda (interrupt-mask)
-			     interrupt-mask
-			     (unblock-thread-events)
-			     (ignore-errors
-			      (lambda ()
-				((->cmdl-message message) cmdl)))
-			     (call-with-current-continuation
-			      (lambda (continuation)
-				(with-create-thread-continuation continuation
-				  (lambda ()
-				    ((cmdl/driver cmdl) cmdl))))))))))))))))
+		(let loop ((message message))
+		  (loop
+		   (bind-abort-restart cmdl
+		     (lambda ()
+		       (deregister-all-events)
+		       (with-interrupt-mask interrupt-mask/all
+			 (lambda (interrupt-mask)
+			   interrupt-mask
+			   (unblock-thread-events)
+			   (ignore-errors
+			    (lambda ()
+			      ((->cmdl-message message) cmdl)))
+			   (call-with-current-continuation
+			    (lambda (continuation)
+			      (with-create-thread-continuation continuation
+				(lambda ()
+				  ((cmdl/driver cmdl) cmdl)))))))))))))))
 	  (mutex (port/thread-mutex port)))
       (let ((thread (current-thread))
 	    (owner (thread-mutex-owner mutex)))
