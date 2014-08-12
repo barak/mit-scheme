@@ -2766,7 +2766,6 @@ USA.
 	  file-loadable?
 	  load
 	  load-library-object-file
-	  load-noisily?
 	  load/loading?
 	  load/purification-root
 	  load/push-hook!

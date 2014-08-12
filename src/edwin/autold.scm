@@ -206,10 +206,11 @@ Second arg is prefix arg when called interactively."
 			 (bind-condition-handler (list condition-type:error)
 			     evaluation-error-handler
 			   (lambda ()
-			     (fluid-let ((load/suppress-loading-message? #t))
-			       ((message-wrapper #f "Loading " (car library))
-				(lambda ()
-				  (load-library library))))))))
+			     (let-fluid load/suppress-loading-message? #t
+			       (lambda ()
+				 ((message-wrapper #f "Loading " (car library))
+				  (lambda ()
+				    (load-library library)))))))))
 		   (load-library library))))))
       (cond ((not (library-loaded? name))
 	     (do-it))
@@ -234,5 +235,6 @@ Second arg PURIFY? means purify the file's contents after loading;
      (bind-condition-handler (list condition-type:error)
 	 evaluation-error-handler
        (lambda ()
-	 (fluid-let ((load/suppress-loading-message? #t))
-	   (load filename environment 'DEFAULT purify?)))))))
+	 (let-fluid load/suppress-loading-message? #t
+	   (lambda ()
+	     (load filename environment 'DEFAULT purify?))))))))

@@ -39,8 +39,9 @@ USA.
 			  (notification-output-port))
 	    (error "Test FFI build failed:" status))
 	  (begin
-	    (fluid-let ((load/suppress-loading-message? #t))
-	      (load-option 'FFI))
+	    (let-fluid load/suppress-loading-message? #t
+	      (lambda ()
+		(load-option 'FFI)))
 	    (with-system-library-directories '("./")
 	      (lambda ()
 		(compile-file "test-ffi-wrapper")))

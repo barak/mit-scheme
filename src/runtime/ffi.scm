@@ -553,8 +553,9 @@ USA.
 (define (load-ffi-quietly)
   (if (not (name->package '(FFI)))
       (let ((kernel (lambda ()
-		      (fluid-let ((load/suppress-loading-message? #t))
-			(load-option 'FFI)))))
+		      (let-fluid load/suppress-loading-message? #t
+			(lambda ()
+			  (load-option 'FFI))))))
 	(if (nearest-cmdl/batch-mode?)
 	    (kernel)
 	    (with-notification (lambda (port)

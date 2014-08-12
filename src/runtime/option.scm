@@ -48,8 +48,9 @@ USA.
 	  (lambda ()
 	    (fluid-let ((*options* '())
 			(*parent* #f))
-	      (fluid-let ((load/suppress-loading-message? #t))
-		(load pathname (make-load-environment)))
+	      (let-fluid load/suppress-loading-message? #t
+		(lambda ()
+		  (load pathname (make-load-environment))))
 	      (values *options* *parent*)))
 	find-option))
 

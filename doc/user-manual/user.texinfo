@@ -1478,14 +1478,6 @@ pathname type @code{"com"}.  (See the description of
 Components of Pathnames, scheme, MIT/GNU Scheme Reference Manual}.)
 @end deffn
 
-@defvr variable load-noisily?
-If @code{load-noisily?} is set to @code{#t}, @code{load} will print the
-value of each expression in the file as it is evaluated.  Otherwise,
-nothing is printed except for the value of the last expression in the
-file.  (Note: the noisy loading feature is implemented for source-code
-files only.)
-@end defvr
-
 @cindex working directory
 @findex pwd
 @findex cd

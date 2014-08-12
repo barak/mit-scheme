@@ -63,6 +63,7 @@ USA.
       (environment-define environment 'define-xmlrpc-method
 	(lambda (name handler)
 	  (hash-table/put! methods name handler)))
-      (fluid-let ((load/suppress-loading-message? #t))
-	(load pathname environment)))
+      (let-fluid load/suppress-loading-message? #t
+	(lambda ()
+	  (load pathname environment))))
     (hash-table/get methods name #f)))

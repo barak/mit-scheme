@@ -34,6 +34,8 @@ USA.
   (set! condition-type:not-loading
 	(make-condition-type 'NOT-LOADING condition-type:error '()
 	  "No file being loaded."))
+  (set! load/loading? (make-fluid #f))
+  (set! load/suppress-loading-message? (make-fluid #f))
   (set! load/after-load-hooks (make-fluid '()))
   (set! *eval-unit* (make-fluid #f))
   (set! *current-load-environment* (make-fluid 'NONE))
@@ -45,16 +47,13 @@ USA.
 
 (define load/loading?)
 (define load/after-load-hooks)
-(define load/suppress-loading-message? #f)
+(define load/suppress-loading-message?)
 (define *eval-unit*)
 (define *current-load-environment*)
 (define *write-notifications?*)
 
 (define *purification-root-marker*)
 (define condition-type:not-loading)
-
-;; Obsolete and ignored:
-(define load-noisily? #f)
 
 (define (load pathname #!optional environment syntax-table purify?)
   syntax-table				;ignored
@@ -77,7 +76,7 @@ USA.
 (define (load-1 pathname environment purify?)
   (receive (pathname* loader notifier) (choose-load-method pathname)
     (if pathname*
-	(maybe-notify load/suppress-loading-message?
+	(maybe-notify (fluid load/suppress-loading-message?)
 		      (loader environment purify?)
 		      notifier)
 	(load-failure load-1 pathname environment purify?))))
@@ -229,7 +228,7 @@ USA.
 (define (maybe-notify suppress-notifications? loader notifier)
   (let ((notify?
 	 (if (if (default-object? suppress-notifications?)
-		 load/suppress-loading-message?
+		 (fluid load/suppress-loading-message?)
 		 suppress-notifications?)
 	     #f
 	     (fluid *write-notifications?*))))
@@ -288,17 +287,17 @@ USA.
     thunk))
 
 (define (load/push-hook! hook)
-  (if (not load/loading?) (error condition-type:not-loading))
+  (if (not (fluid load/loading?)) (error condition-type:not-loading))
   (set-fluid! load/after-load-hooks (cons hook (fluid load/after-load-hooks)))
   unspecific)
 
 (define (handle-load-hooks thunk)
   (receive (result hooks)
-      (fluid-let ((load/loading? #t))
-	(let-fluid load/after-load-hooks '()
-	  (lambda ()
-	    (let ((result (thunk)))
-	      (values result (reverse (fluid load/after-load-hooks)))))))
+      (let-fluids load/loading? #t
+		  load/after-load-hooks '()
+	(lambda ()
+	  (let ((result (thunk)))
+	    (values result (reverse (fluid load/after-load-hooks))))))
     (for-each (lambda (hook) (hook)) hooks)
     result))
 
@@ -684,8 +683,9 @@ ADDITIONAL OPTIONS supported by this band:\n")
     (lambda (arg)
       (run-in-nearest-repl
        (lambda (repl)
-	 (fluid-let ((load/suppress-loading-message? (cmdl/batch-mode? repl)))
-	   (load arg (repl/environment repl))))))
+	 (let-fluid load/suppress-loading-message? (cmdl/batch-mode? repl)
+	   (lambda ()
+	     (load arg (repl/environment repl)))))))
     "Loads the argument files as if in the REPL."
     "In batch mode, loading messages are suppressed.")
   (argument-command-line-parser "eval" #t

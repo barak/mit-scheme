@@ -180,13 +180,15 @@ USA.
   (->namestring (system-library-directory-pathname)))
 
 (define (shim-conf)
-  (fluid-let ((load/suppress-loading-message? #t))
-    (load (system-library-pathname "shim-config.scm"))))
+  (let-fluid load/suppress-loading-message? #t
+    (lambda ()
+      (load (system-library-pathname "shim-config.scm")))))
 
 (define (doc-conf)
-  (fluid-let ((load/suppress-loading-message? #t))
-    (load (string-append (conf-value (shim-conf) 'INFODIR)
-				     "mit-scheme-doc-config.scm"))))
+  (let-fluid load/suppress-loading-message? #t
+    (lambda ()
+      (load (string-append (conf-value (shim-conf) 'INFODIR)
+			   "mit-scheme-doc-config.scm")))))
 
 (define (conf-values conf name)
   (let ((entry (assq name conf)))

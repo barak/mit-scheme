@@ -59,7 +59,7 @@ USA.
   ;; Toplevel entry point for the generator.
   ;; Returns a new C-INCLUDES structure.
   (let ((includes (make-c-includes library))
-	(cwd (if load/loading?
+	(cwd (if (fluid load/loading?)
 		 (directory-pathname (current-load-pathname))
 		 (working-directory-pathname))))
     (fluid-let ((c-include-noisily? #t))
