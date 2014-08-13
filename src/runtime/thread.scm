@@ -98,6 +98,7 @@ USA.
 (define root-continuation-default)
 
 (define (initialize-package!)
+  (set! root-continuation-default (make-fluid #f))
   (initialize-error-conditions!)
   (set! thread-population (make-population))
   (set! first-running-thread #f)
@@ -139,7 +140,8 @@ USA.
 				 create-thread))
   (call-with-current-continuation
    (lambda (return)
-     (%within-continuation (or root-continuation root-continuation-default)
+     (%within-continuation (or root-continuation
+			       (fluid root-continuation-default))
 			   #t
        (lambda ()
 	 (fluid-let ((state-space:local (make-state-space)))
@@ -153,15 +155,15 @@ USA.
 	   (exit-current-thread (thunk))))))))
 
 (define (create-thread-continuation)
-  root-continuation-default)
+  (fluid root-continuation-default))
 
 (define (with-create-thread-continuation continuation thunk)
   (if (not (continuation? continuation))
       (error:wrong-type-argument continuation
 				 "continuation"
 				 with-create-thread-continuation))
-  (fluid-let ((root-continuation-default continuation))
-    (thunk)))
+  (let-fluid root-continuation-default continuation
+    thunk))
 
 (define (current-thread)
   (or first-running-thread
