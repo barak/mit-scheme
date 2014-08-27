@@ -391,6 +391,23 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
 #endif
 
     case pcl_unknown:
+      if (((OBJECT_TYPE (primitive)) == TC_PRIMITIVE)
+	  && (ADDRESS_IN_STACK_P (stack_pointer)) && (ALIGNED_P (stack_pointer))
+	  && (ADDRESS_IN_HEAP_P (Free)) && (ALIGNED_P (Free)))
+	{
+#ifdef ENABLE_DEBUGGING_TOOLS
+	  if (GC_Debug == true)
+	    {
+	      /* Note where this presumption is employed. */
+	      outf_error (";Warning: trap at 0x%lx assumed a primitive\n", pc);
+	      outf_flush_error ();
+	    }
+#endif
+	  new_sp = stack_pointer;
+	  SET_RECOVERY_INFO
+	    (STATE_PRIMITIVE, primitive, (ULONG_TO_FIXNUM (GET_LEXPR_ACTUALS)));
+	  break;
+	}
       new_sp = 0;
       SET_RECOVERY_INFO
 	(STATE_UNKNOWN,
@@ -409,8 +426,13 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
 	&& (ALIGNED_P (Free))))
     {
 #ifdef ENABLE_DEBUGGING_TOOLS
-      outf_error ("Resetting bogus Free in continue_from_trap.\n");
-      outf_flush_error ();
+      if (GC_Debug == true)
+	{
+	  outf_error ((new_sp == 0)
+		      ? ";Warning: bogus stack_pointer in continue_from_trap\n"
+		      : ";Warning: bogus Free in continue_from_trap\n");
+	  outf_flush_error ();
+	}
 #endif
       Free = heap_alloc_limit;
     }
