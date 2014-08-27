@@ -419,12 +419,6 @@ ifdef(`VALGRIND_MODE',`',`
 i386_initialize_no_fp:
 ')
 	OP(mov,l)	TW(REG(eax),ABS(EVR(i387_presence)))
-
-# FIXME: Some IA-32 systems have SSE support, and since the microcode
-# might use SSE instructions, we need to determine, using CPUID,
-# whether the CPU supports SSE instructions, so that we can save and
-# restore the SSE MXCSR in the floating-point environment.
-
 	OP(mov,l)	TW(IMM(0),ABS(EVR(sse_presence)))
 
 # Do a bunch of hair to determine if we need to do cache synchronization.
@@ -485,28 +479,39 @@ i386_initialize_no_fp:
 
 # Detect "GenuineIntel".
 
-#	OP(cmp,l)	TW(IMM(HEX(756e6547)),REG(ebx))
-#	jne		not_intel_cpu
-#	OP(cmp,l)	TW(IMM(HEX(49656e69)),REG(edx))
-#	jne		not_intel_cpu
-#	OP(cmp,l)	TW(IMM(HEX(6c65746e)),REG(ecx))
-#	jne		not_intel_cpu
+	OP(cmp,l)	TW(IMM(HEX(756e6547)),REG(ebx))
+	jne		not_intel_cpu
+	OP(cmp,l)	TW(IMM(HEX(49656e69)),REG(edx))
+	jne		not_intel_cpu
+	OP(cmp,l)	TW(IMM(HEX(6c65746e)),REG(ecx))
+	jne		not_intel_cpu
+
+# Some IA-32 systems have SSE support, and since the microcode might
+# use SSE instructions, we need to determine, using CPUID, whether the
+# CPU supports SSE instructions, so that we can save and restore the
+# SSE MXCSR in the floating-point environment.
+
+	OP(mov,l)	TW(IMM(HEX(01)),REG(eax))
+	cpuid
+	OP(and,l)	TW(IMM(HEX(02000000)),REG(edx))
+	OP(cmp,l)	TW(IMM(HEX(0)),REG(edx))
+	je		no_sse
+	OP(mov,l)	TW(IMM(HEX(00000001)),ABS(EVR(sse_presence)))
+no_sse:
 
 # For CPU families 4 (486), 5 (Pentium), or 6 (Pentium Pro, Pentium
 # II, Pentium III), don't use CPUID synchronization.
 
-#	OP(mov,l)	TW(IMM(HEX(01)),REG(eax))
-#	cpuid
 #	OP(shr,l)	TW(IMM(HEX(08)),REG(eax))
 #	OP(and,l)	TW(IMM(HEX(0000000F)),REG(eax))
 #	OP(cmp,l)	TW(IMM(HEX(4)),REG(eax))
 #	jl		done_setting_up_cpuid
 #	OP(cmp,l)	TW(IMM(HEX(6)),REG(eax))
 #	jg		done_setting_up_cpuid
-#
-#	jmp		cpuid_not_needed
-#
-#not_intel_cpu:
+
+	jmp		done_setting_up_cpuid
+
+not_intel_cpu:
 
 # Detect "AuthenticAMD".
 
