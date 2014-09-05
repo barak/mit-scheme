@@ -100,7 +100,7 @@ LIARC_OUT=${OUTPUT_DIR}/liarc
 NATIVE_OUT=${OUTPUT_DIR}/native
 MACOSX_OUT=${OUTPUT_DIR}/macosx
 
-PLUGINS="blowfish gdbm md5 mhash"
+PLUGINS="blowfish gdbm mcrypt md5 mhash"
 
 notify ()
 {
