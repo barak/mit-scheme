@@ -1141,8 +1141,8 @@ asm_generic_$1_fail:
 IF387(`define_unary_operation(decrement,22,sub,fsubr)
 define_unary_operation(increment,26,add,fadd)
 
-define_unary_predicate(negative,2a,jl,jb)
-define_unary_predicate(positive,2c,jg,ja)
+define_unary_predicate(negative,2a,jl,ja)
+define_unary_predicate(positive,2c,jg,jb)
 define_unary_predicate(zero,2d,je,je)
 
 # define_binary_operation(name,index,fix*fix,flo*flo)
