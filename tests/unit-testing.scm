@@ -400,3 +400,11 @@ USA.
 		  (k #f))
 	      thunk)
 	    properties))))
+
+(define-for-tests keep-it-fast!?
+  (let ((v (get-environment-variable "FAST")))
+    (if (or (eq? v #f) (string-null? v))
+	(begin
+	  (warn "To avoid long run times, export FAST=y.")
+	  #f)
+	#t)))

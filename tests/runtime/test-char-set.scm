@@ -93,7 +93,9 @@ USA.
 
 (define (enumerate-test-values)
   (append (iota (+ %low-limit 8))
-	  (iota 8 (- char-code-limit 8))))
+	  (if keep-it-fast!?
+	      '()
+	      (iota 8 (- char-code-limit 8)))))
 
 (define (svl-member? svl value)
   (let loop ((svl svl))
@@ -375,6 +377,8 @@ USA.
 
 (define interesting-svls
   (cons (list)
-	(append! (1-generator interesting-points)
-		 (2-generator interesting-points)
-		 (3-generator interesting-points))))
+	(if keep-it-fast!?
+	    (1-generator interesting-points)
+	    (append! (1-generator interesting-points)
+		     (2-generator interesting-points)
+		     (3-generator interesting-points)))))

@@ -177,8 +177,8 @@ USA.
 ;;;; Correctness Tests
 
 (define (check implementation)
-  (let ((n #x1000))
-    (do ((i 0 (+ i 1))) ((= i #x100))
+  (let ((n (if keep-it-fast? #x100 #x1000)))
+    (do ((i 0 (+ i 1))) ((= i (if keep-it-fast? #x10 #x100)))
       (let* ((key-radix (+ 1 (random-integer n)))
 	     (insert-fraction (random-real))
 	     (delete-fraction (- 1 insert-fraction)))
