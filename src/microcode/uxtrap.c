@@ -353,6 +353,9 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
 #ifdef PC_VALUE_MASK
   pc &= PC_VALUE_MASK;
 #endif
+#ifdef CC_IS_SVM
+  pc = svm_export_instruction_pointer (pc);
+#endif
 
   /* Choose new SP and encode location data.  */
   switch (classify_pc (pc, (&block_addr), (&index)))
@@ -366,8 +369,15 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
     case pcl_heap:
     case pcl_constant:
 #ifdef CC_SUPPORT_P
+
+#  ifdef CC_IS_SVM
+      new_sp = stack_pointer;
+      /* Free already set by svm_export_instruction_pointer. */
+#  else
       new_sp = ((SCHEME_OBJECT *) (SIGCONTEXT_SCHSP (scp)));
       Free = ((SCHEME_OBJECT *) (SIGCONTEXT_RFREE (scp)));
+#  endif
+
       SET_RECOVERY_INFO
 	(STATE_COMPILED_CODE,
 	 (MAKE_CC_BLOCK (block_addr)),

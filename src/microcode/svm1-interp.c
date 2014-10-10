@@ -212,18 +212,41 @@ initialize_svm1 (void)
   SET_VAL ((SCHEME_OBJECT) (WREG_REF (SVM1_REG_VALUE)));		\
 } while (0)
 
+/* Only true when the virtual machine is running, e.g. while Free is
+   cached in word_registers[].  In a signal handler, the virtual
+   instruction that trapped is at instruction_pointer. */
+static bool running_p = false;
+static insn_t * instruction_pointer;
+
 long
 C_to_interface (void * address)
 {
-  insn_t * PC = (insn_t *)address;
+  instruction_pointer = (insn_t *)address;
   IMPORT_REGS ();
-  while (predict_true (PC))
+  running_p = true;
+  while (predict_true (instruction_pointer))
     {
-      byte_t opcode = *PC++;
-      PC = (* (inst_defns[opcode])) (PC);
+      byte_t opcode = *instruction_pointer;
+      instruction_pointer = (* (inst_defns[opcode])) (instruction_pointer+1);
     }
   EXPORT_REGS ();
+  running_p = false;
   return (svm1_result);
+}
+
+/* For signal/trap handlers. */
+unsigned long
+svm_export_instruction_pointer (unsigned long pc)
+{
+  if (running_p)
+    {
+      EXPORT_REGS ();
+      return ((unsigned long)instruction_pointer);
+    }
+  else
+    {
+      return (pc);
+    }
 }
 
 static byte_t *
@@ -848,10 +871,12 @@ illegal_trap_3 (byte_t * PC, wreg_t r1, wreg_t r2, wreg_t r3)
 
 #define TRAP_PREFIX(result)						\
   utility_result_t result;						\
-  EXPORT_REGS ()
+  EXPORT_REGS ();							\
+  running_p = false
 
 #define TRAP_SUFFIX(result)						\
   IMPORT_REGS ();							\
+  running_p = true;							\
   if ((result).scheme_p)						\
     {									\
       NEW_PC ((result).arg.new_pc);					\
