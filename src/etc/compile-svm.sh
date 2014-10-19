@@ -30,29 +30,35 @@ set -e
 
 . etc/functions.sh
 
-echo "# `date`: Remove the cross-compiler's bands and stash its products."
+# To avoid miscuing GNU Emacs's compilation-mode.
+mydate ()
+{
+  date "+%Y-%m-%d %H-%M-%S"
+}
+
+echo "# `mydate`: Remove the cross-compiler's bands and stash its products."
 run_cmd rm -f lib/x-runtime.com
 run_cmd rm -f lib/x-compiler.com
 run_cmd ./Stage.sh remove 0
 run_cmd ./Stage.sh make-cross 0
 
-echo "# `date`: Restore the cross-compiler's host-compiled .coms."
+echo "# `mydate`: Restore the cross-compiler's host-compiled .coms."
 run_cmd ./Stage.sh unmake X
 
-echo "# `date`: Re-compile the cross-compiler."
+echo "# `mydate`: Re-compile the cross-compiler."
 
-echo "# `date`:    Re-syntax prerequisites."
+echo "# `mydate`:    Re-syntax prerequisites."
 for DIR in runtime sf cref; do
     run_cmd_in_dir ${DIR} "${@}" --batch-mode --load ${DIR}.sf </dev/null
 done
 
-echo "# `date`:    Re-compile prerequisites."
+echo "# `mydate`:    Re-compile prerequisites."
 for DIR in runtime sf cref; do
     run_cmd_in_dir ${DIR} "${@}" --batch-mode --load ${DIR}.cbf </dev/null
 done
 run_cmd_in_dir star-parser "${@}" --batch-mode --load compile.scm </dev/null
 
-echo "# `date`:    Dump new runtime into x-runtime.com."
+echo "# `mydate`:    Dump new runtime into x-runtime.com."
 get_fasl_file
 run_cmd_in_dir runtime \
     "${@}" --batch-mode --library ../lib --fasl "${FASL}" <<EOF
@@ -60,7 +66,7 @@ run_cmd_in_dir runtime \
 EOF
 echo ""
 
-echo "# `date`:    Re-syntax cross-compiler using x-runtime.com."
+echo "# `mydate`:    Re-syntax cross-compiler using x-runtime.com."
 run_cmd_in_dir compiler \
     "${@}" --batch-mode --library ../lib --band x-runtime.com <<EOF
 (begin
@@ -73,10 +79,10 @@ if [ -s compiler/compiler-unx.crf ]; then
     exit 1
 fi
 
-echo "# `date`:     Re-compile cross-compiler."
+echo "# `mydate`:     Re-compile cross-compiler."
 run_cmd_in_dir compiler "${@}" --batch-mode --load compiler.cbf </dev/null
 
-echo "# `date`: Dump cross-compiler into x-compiler.com."
+echo "# `mydate`: Dump cross-compiler into x-compiler.com."
 run_cmd "${@}" --batch-mode --library lib --band x-runtime.com <<EOF
 (begin
   (load-option 'SF)
@@ -86,10 +92,10 @@ run_cmd "${@}" --batch-mode --library lib --band x-runtime.com <<EOF
   (disk-save "lib/x-compiler.com"))
 EOF
 
-echo "# `date`: Remove host code to STAGEX/ subdirs."
+echo "# `mydate`: Remove host code to STAGEX/ subdirs."
 run_cmd ./Stage.sh make X
 
-echo "# `date`: Restore previously cross-compiled code."
+echo "# `mydate`: Restore previously cross-compiled code."
 # (Replace "unmake" with "remove" to start from scratch with each
 # rebuilt cross-compiler.)
 run_cmd ./Stage.sh unmake 0
@@ -106,7 +112,7 @@ if [ "${FAST}" ]; then
     # megaword smaller.
     HEAP=10000
 
-    echo "# `date`: Re-cross-compile everything."
+    echo "# `mydate`: Re-cross-compile everything."
     run_cmd "${@}" --batch-mode --library lib \
 		   --band x-compiler.com --heap ${HEAP} <<EOF
 (begin
@@ -117,7 +123,7 @@ if [ "${FAST}" ]; then
     (compile-everything)))
 EOF
 
-    echo "# `date`: Finish-cross-compilation of everything."
+    echo "# `mydate`: Finish-cross-compilation of everything."
     run_cmd_in_dir runtime \
 	../microcode/scheme --batch-mode --library ../lib \
 			    --fasl make.bin <<EOF
@@ -126,7 +132,7 @@ EOF
   (finish-cross-compilation:directory ".."))
 EOF
 
-    echo "# `date`: Ready to build-bands.sh with the new machine."
+    echo "# `mydate`: Ready to build-bands.sh with the new machine."
     exit 0
 
 fi
@@ -139,7 +145,7 @@ fi
 # memory" with --heap 8000 on i386 and x86-64.
 HEAP=9000
 
-echo "# `date`: Re-cross-compile boot-dirs."
+echo "# `mydate`: Re-cross-compile boot-dirs."
 run_cmd "${@}" --batch-mode --library lib \
     --band x-compiler.com --heap ${HEAP} <<EOF
 (begin
@@ -150,7 +156,7 @@ run_cmd "${@}" --batch-mode --library lib \
     (compile-boot-dirs compile-dir)))
 EOF
 
-echo "# `date`: Finish-cross-compilation of boot-dirs."
+echo "# `mydate`: Finish-cross-compilation of boot-dirs."
 run_cmd_in_dir runtime \
     ../microcode/scheme --batch-mode --library ../lib --fasl make.bin <<EOF
 (begin
@@ -158,7 +164,7 @@ run_cmd_in_dir runtime \
   (finish-cross-compilation:directory ".."))
 EOF
 
-echo "# `date`: Dump new compiler into boot-compiler.com."
+echo "# `mydate`: Dump new compiler into boot-compiler.com."
 run_cmd_in_dir runtime \
     ../microcode/scheme --batch-mode --library ../lib --fasl "${FASL}" <<EOF
 (begin
@@ -172,7 +178,7 @@ EOF
 
 run_cmd ./Stage.sh make-cross 0
 
-echo "# `date`: Use the new machine and compiler to re-compile everything."
+echo "# `mydate`: Use the new machine and compiler to re-compile everything."
 run_cmd ./microcode/scheme --batch-mode --library lib \
     --band boot-compiler.com --heap ${HEAP} <<EOF
 (begin
@@ -183,4 +189,4 @@ run_cmd ./microcode/scheme --batch-mode --library lib \
     (compile-everything)))
 EOF
 
-echo "# `date`: Ready to build-bands.sh with the new machine."
+echo "# `mydate`: Ready to build-bands.sh with the new machine."

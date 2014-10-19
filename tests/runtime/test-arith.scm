@@ -57,7 +57,7 @@ USA.
 (define (define-enumerated-test prefix elements procedure)
   (let ((n (vector-length elements)))
     (do ((i 0 (+ i 1))) ((>= i n))
-      (define-test (symbol prefix ': (vector-ref elements i))
+      (define-test (symbol prefix '/ (vector-ref elements i))
         (lambda ()
           (procedure (vector-ref elements i)))))))
 
@@ -67,8 +67,8 @@ USA.
       (do ((j 0 (+ j 1))) ((>= j n))
         (define-test
             (symbol prefix
-                    ': (vector-ref elements i)
-                    ': (vector-ref elements j))
+                    '/ (vector-ref elements i)
+                    '/ (vector-ref elements j))
           (lambda ()
             (procedure i (vector-ref elements i)
                        j (vector-ref elements j))))))))

@@ -151,7 +151,7 @@ USA.
     (fresh-line port)
     (write-char #\; port)
     (write test-name port)
-    (write-string ": " port)
+    (write-char #\space port)
     (if (> n-failed 0)
 	(begin
 	  (write-string "failed " port)
@@ -185,7 +185,7 @@ USA.
 (define (report-test-failure prefix name failure port)
   (write-string prefix port)
   (write-string name port)
-  (write-string ": " port)
+  (write-char #\space port)
   (cond ((not failure) (write-string "passed" port))
 	((failure? failure) (report-failure failure port))
 	(else (error "Ill-formed failure:" failure)))
