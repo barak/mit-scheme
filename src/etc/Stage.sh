@@ -52,6 +52,17 @@ make-cross)
     maybe_mv *.lap "${DIRNAME}/."
     maybe_mv *.rtl "${DIRNAME}/."
     ;;
+make-clean)
+    mkdir "${DIRNAME}"
+    maybe_mv *.bin "${DIRNAME}/."
+    maybe_mv *.ext "${DIRNAME}/."
+    maybe_mv *.com "${DIRNAME}/."
+    maybe_mv *.bci "${DIRNAME}/."
+    maybe_mv *.moc "${DIRNAME}/."
+    maybe_mv *.fni "${DIRNAME}/."
+    maybe_mv *.lap "${DIRNAME}/."
+    maybe_mv *.rtl "${DIRNAME}/."
+    ;;
 unmake)
     if [ -d "${DIRNAME}" ]; then
 	maybe_mv "${DIRNAME}"/* .

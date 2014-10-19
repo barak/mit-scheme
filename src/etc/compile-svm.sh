@@ -89,6 +89,7 @@ run_cmd "${@}" --batch-mode --library lib --band x-runtime.com <<EOF
   (load-option 'CREF)
   (load-option '*PARSER)
   (load-option 'COMPILER)
+  (load "compiler/base/crsend.com" user-initial-environment)
   (disk-save "lib/x-compiler.com"))
 EOF
 
@@ -123,7 +124,12 @@ if [ "${FAST}" ]; then
     (compile-everything)))
 EOF
 
-    echo "# `mydate`: Finish-cross-compilation of everything."
+    echo "# `mydate`:     Finish-cross-compilation of fni files."
+    run_cmd "${@}" --batch-mode --library lib --band x-compiler.com <<EOF
+(finish-cross-compilation:info-files ".")
+EOF
+
+    echo "# `mydate`:     Finish-cross-compilation of everything."
     run_cmd_in_dir runtime \
 	../microcode/scheme --batch-mode --library ../lib \
 			    --fasl make.bin <<EOF
@@ -156,7 +162,12 @@ run_cmd "${@}" --batch-mode --library lib \
     (compile-boot-dirs compile-dir)))
 EOF
 
-echo "# `mydate`: Finish-cross-compilation of boot-dirs."
+echo "# `mydate`:     Finish-cross-compilation of boot-dirs fni files."
+run_cmd "${@}" --batch-mode --library lib --band x-compiler.com <<EOF
+(finish-cross-compilation:info-files ".")
+EOF
+
+echo "# `mydate`:     Finish-cross-compilation of boot-dirs."
 run_cmd_in_dir runtime \
     ../microcode/scheme --batch-mode --library ../lib --fasl make.bin <<EOF
 (begin
@@ -176,7 +187,7 @@ run_cmd_in_dir runtime \
   (disk-save "../lib/boot-compiler.com"))
 EOF
 
-run_cmd ./Stage.sh make-cross 0
+run_cmd ./Stage.sh make-clean 0
 
 echo "# `mydate`: Use the new machine and compiler to re-compile everything."
 run_cmd ./microcode/scheme --batch-mode --library lib \
