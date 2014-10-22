@@ -295,7 +295,7 @@ compile-compiler-rtlopt: syntax-compiler
 .PHONY: syntax-compiler
 syntax-compiler: toolchain
 @IF_SVM@syntax-compiler: compiler/machines/svm/svm1-defns.h
-syntax-compiler: cref-compiler
+syntax-compiler: syntax-sf cref-compiler
 	(echo '(with-working-directory-pathname "compiler"' && \
 	 echo '  (lambda () (load "compiler.sf")))') \
 	| $(TOOL_SYNTAXER)
