@@ -349,7 +349,9 @@ USA.
     (call-compiler
      (lambda ()
        (let ((env (buffer-env)))
-	 (scode-eval (compile-scode (syntax `(begin ,@sexps) env) #t)
+	 (scode-eval ((environment-lookup #f 'compile-scode)
+		      (syntax `(begin ,@sexps) env)
+		      #t)
 		     env))))))
 
 (define (snarf-string string)
@@ -374,7 +376,7 @@ USA.
    (lambda ()
      (with-output-to-repl socket
        (lambda ()
-	 (compile-file file)))))
+	 ((environment-lookup #f 'compile-file) file)))))
   (if (elisp-true? load?)
       (swank:load-file socket
 		       (pathname-new-type file "com"))))
@@ -388,7 +390,7 @@ USA.
   socket
   (with-output-to-string
     (lambda ()
-      (compiler:disassemble
+      ((environment-lookup #f 'compiler:disassemble)
        (eval (read-from-string string)
 	     (buffer-env))))))
 
@@ -1064,7 +1066,7 @@ swank:xref
 	 (stream (iline "block" (compiled-entry/block o))
 		 (with-output-to-string
 		   (lambda ()
-		     (compiler:disassemble o)))))))
+		     ((environment-lookup #f 'compiler:disassemble) o)))))))
 
 (define (inspect-code-block block)
   (let loop ((i (compiled-code-block/constants-start block)))
@@ -1075,7 +1077,7 @@ swank:xref
 		(iline "env" (compiled-code-block/environment block))
 		(with-output-to-string
 		  (lambda ()
-		    (compiler:disassemble block)))))))
+		    ((environment-lookup #f 'compiler:disassemble) block)))))))
 
 (define (inspect-scode o)
   (stream (pprint-to-string o)))
