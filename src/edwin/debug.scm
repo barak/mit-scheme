@@ -870,6 +870,15 @@ to get more information in a short window, for example, when using
 a fixed size terminal."
   #F
   boolean?)
+
+;;; These bindings are included only because they are exported by the
+;;; alternate debugger, artdebug, which also lives in this package.
+;;; They appear to CREF to be needed yet not bound.
+
+(define edwin-variable$debugger-expand-reductions?)
+(define edwin-variable$debugger-open-markers?)
+(define edwin-variable$debugger-split-window?)
+(define edwin-variable$debugger-verbose-mode?)
 
 ;;;; Predicates
 

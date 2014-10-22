@@ -809,10 +809,6 @@ USA.
 	  edwin-variable$list-matching-lines-default-context-lines
 	  pop-up-occur-buffer))
 
-;; This package is set up to handle two versions of the debugger.
-;; Therefore, please don't remove variables just because they aren't
-;; referenced by the standard debugger. -- Arthur
-
 (define-package (edwin debugger)
   (files "debug")
   (parent (edwin))
@@ -820,7 +816,6 @@ USA.
 	  debug-scheme-error
 	  edwin-command$browse-continuation
 	  edwin-command$browse-environment
-	  edwin-command$browser-evaluator
 	  edwin-command$browser-next-line
 	  edwin-command$browser-previous-line
 	  edwin-command$browser-quit
@@ -983,7 +978,7 @@ USA.
 (os-type-case
  ((unix dos nt)
   (define-package (edwin screen console-screen)
-    (files "termcap" "tterm")
+    (files "ansi" "termcap" "tterm")
     (parent (edwin screen))
     (export (edwin)
 	    resize-screen)
@@ -1135,7 +1130,7 @@ USA.
 	    edwin-command$dired-hidden-toggle))
 
   (extend-package (edwin screen console-screen)
-    (files "ansi" "bios"))
+    (files "bios"))
 
   (extend-package (edwin process)
     (files "process"))
