@@ -247,6 +247,7 @@ USA.
   (export ()
 	  cbf
 	  cf
+	  compile-directory
 	  compile-bin-file
 	  compile-file
 	  compile-file:force?
@@ -279,7 +280,9 @@ USA.
 	  make-dbg-info-vector
 	  split-inf-structure!)
   (import (runtime unparser)
-	  *unparse-uninterned-symbols-by-name?*))
+	  *unparse-uninterned-symbols-by-name?*)
+  (import (scode-optimizer build-utilities)
+	  directory-processor))
 
 (define-package (compiler debug)
   (files "base/debug")

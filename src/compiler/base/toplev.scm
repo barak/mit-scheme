@@ -238,6 +238,14 @@ USA.
 
 ;;;; Alternate Entry Points
 
+(define compile-directory
+  (directory-processor
+   "bin"
+   (lambda ()
+     (compiler:compiled-code-pathname-type))
+   (lambda (pathname output-directory)
+     (compile-bin-file pathname output-directory))))
+
 (define (compile-scode scode #!optional keep-debugging-info?)
   (compiler-output->compiled-expression
    (compile-scode/no-file

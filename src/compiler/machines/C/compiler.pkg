@@ -239,6 +239,7 @@ USA.
   (export ()
 	  cbf
 	  cf
+	  compile-directory
 	  compile-bin-file
 	  compile-file
 	  compile-file:force?
@@ -285,7 +286,9 @@ USA.
   (import (runtime unparser)
 	  *unparse-uninterned-symbols-by-name?*)
   (import (runtime load)
-	  fasload-object-file))
+	  fasload-object-file)
+  (import (scode-optimizer build-utilities)
+	  directory-processor))
 
 (define-package (compiler debug)
   (files "base/debug")

@@ -158,8 +158,5 @@ USA.
   (files "butils")
   (parent ())
   (export ()
-          compile-directory
-          compile-directory?
           sf-conditionally
-          sf-directory
-          sf-directory?))
+          sf-directory))

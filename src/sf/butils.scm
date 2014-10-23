@@ -66,25 +66,6 @@ USA.
    (lambda (pathname output-directory)
      (sf pathname output-directory))))
 
-(define compile-directory
-  (directory-processor
-   "bin"
-   (lambda ()
-     (compiler:compiled-code-pathname-type))
-   (lambda (pathname output-directory)
-     (compile-bin-file pathname output-directory))))
-
-(define sf-directory?)
-(define compile-directory?)
-(let ((show-pathname
-       (lambda (pathname output-directory)
-	 output-directory
-	 (newline)
-	 (write-string "Process file: ")
-	 (write-string (enough-namestring pathname)))))
-  (set! sf-directory? (directory-processor "scm" "bin" show-pathname))
-  (set! compile-directory? (directory-processor "bin" "com" show-pathname)))
-
 (define (sf-conditionally filename #!optional echo-up-to-date?)
   (let ((kernel
 	 (lambda (filename)
