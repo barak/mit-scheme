@@ -149,7 +149,7 @@ dld_load (const char * path)
 static void
 dld_finalize (void * handle)
 {
-  void * address = (dlsym (handle, "dld_finalize_file"));
+  void * address = (dlsym (handle, "dload_finalize_file"));
   if (address != 0)
     {
       void (*finalize) (void) = address;
