@@ -1310,7 +1310,7 @@ Otherwise, it is copied from the primary selection."
 
 (define x-selection-timeout 5000)
 
-;;;; Initialization
+;;;; Interrupts
 
 (define reading-event?)
 (define signal-interrupts?)
@@ -1352,25 +1352,32 @@ Otherwise, it is copied from the primary selection."
   (editor-beep)
   (temporary-message "Quit")
   (^G-signal))
+
+;;;; Initialization
 
 (define x-display-type)
 (define x-display-data)
 (define x-display-events)
 (define x-display-name #f)
 
+(define (reset-x-display!)
+  (set! x-display-data #f)
+  (set! x-display-events)
+  unspecific)
+
 (define (get-x-display)
   ;; X-OPEN-DISPLAY hangs, uninterruptibly, when the X server is
   ;; running the login loop of xdm.  Can this be fixed?
   (or x-display-data
       (and (begin
-	     (load-library-object-file "prx11" #f)
-	     (implemented-primitive-procedure?
-	      (ucode-primitive x-open-display 1)))
-	   (or x-display-name (get-environment-variable "DISPLAY"))
-	   (let ((display (x-open-display x-display-name)))
-	     (set! x-display-data display)
-	     (set! x-display-events (make-queue))
-	     display))))
+             (load-library-object-file "prx11" #f)
+             (implemented-primitive-procedure?
+              (ucode-primitive x-open-display 1)))
+           (or x-display-name (get-environment-variable "DISPLAY"))
+             (let ((display (x-open-display x-display-name)))
+               (set! x-display-data display)
+               (set! x-display-events (make-queue))
+               display))))
 
 (define (initialize-package!)
   (set! screen-list '())
@@ -1385,6 +1392,6 @@ Otherwise, it is copied from the primary selection."
 			   with-editor-interrupts-from-x
 			   with-x-interrupts-enabled
 			   with-x-interrupts-disabled))
-  (set! x-display-data #f)
-  (set! x-display-events)
+  (reset-x-display!)
+  (add-event-receiver! event:after-restore reset-x-display!)
   unspecific)
