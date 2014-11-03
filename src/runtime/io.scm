@@ -44,7 +44,8 @@ USA.
 			   directory-channel/descriptor
 			   set-directory-channel/descriptor!))
   (initialize-select-registry!)
-  (set! dld-handles '())
+  (reset-dld-handles!)
+  (add-event-receiver! event:after-restore reset-dld-handles!)
   unspecific)
 
 (define-structure (channel (constructor %make-channel))
@@ -736,6 +737,10 @@ USA.
 
 (define dld-handles)
 
+(define (reset-dld-handles!)
+  (set! dld-handles '())
+  unspecific)
+
 (define (dld-unload-file handle)
   (guarantee-dld-handle handle 'DLD-UNLOAD-FILE)
   (without-interrupts
@@ -768,13 +773,3 @@ USA.
 
 (define (all-dld-handles)
   (list-copy dld-handles))
-
-(define (unload-all-dld-object-files)
-  (without-interrupts
-   (lambda ()
-     (let loop ()
-       (if (pair? dld-handles)
-	   (let ((handle (car dld-handles)))
-	     (set! dld-handles (cdr dld-handles))
-	     (%dld-unload-file handle)
-	     (loop)))))))
