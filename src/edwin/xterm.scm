@@ -1370,14 +1370,14 @@ Otherwise, it is copied from the primary selection."
   ;; running the login loop of xdm.  Can this be fixed?
   (or x-display-data
       (and (begin
-             (load-library-object-file "prx11" #f)
-             (implemented-primitive-procedure?
-              (ucode-primitive x-open-display 1)))
-           (or x-display-name (get-environment-variable "DISPLAY"))
-             (let ((display (x-open-display x-display-name)))
-               (set! x-display-data display)
-               (set! x-display-events (make-queue))
-               display))))
+	     (load-library-object-file "prx11" #f)
+	     (implemented-primitive-procedure?
+	      (ucode-primitive x-open-display 1)))
+	   (or x-display-name (get-environment-variable "DISPLAY"))
+	   (let ((display (x-open-display x-display-name)))
+	     (set! x-display-data display)
+	     (set! x-display-events (make-queue))
+	     display))))
 
 (define (initialize-package!)
   (set! screen-list '())
