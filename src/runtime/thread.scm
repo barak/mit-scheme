@@ -138,21 +138,22 @@ USA.
       (error:wrong-type-argument root-continuation
 				 "continuation or #f"
 				 create-thread))
-  (call-with-current-continuation
-   (lambda (return)
-     (%within-continuation (or root-continuation
-			       (fluid root-continuation-default))
-			   #t
-       (lambda ()
-	 (fluid-let ((state-space:local (make-state-space)))
-	   (call-with-current-continuation
-	    (lambda (continuation)
-	      (let ((thread (make-thread continuation)))
-		(%within-continuation (let ((k return)) (set! return #f) k)
-				      #t
-				      (lambda () thread)))))
-	   (set-interrupt-enables! interrupt-mask/all)
-	   (exit-current-thread (thunk))))))))
+  (let ((root-continuation
+	 (or root-continuation (fluid root-continuation-default))))
+    (call-with-current-continuation
+     (lambda (return)
+       (%within-continuation root-continuation #t
+	 (lambda ()
+	   (fluid-let ((state-space:local (make-state-space)))
+	     (call-with-current-continuation
+	       (lambda (continuation)
+		 (let ((thread (make-thread continuation)))
+		   (%within-continuation (let ((k return)) (set! return #f) k)
+					 #t
+					 (lambda () thread)))))
+	     (set-interrupt-enables! interrupt-mask/all)
+	     (exit-current-thread
+	      (with-create-thread-continuation root-continuation thunk)))))))))
 
 (define (create-thread-continuation)
   (fluid root-continuation-default))
