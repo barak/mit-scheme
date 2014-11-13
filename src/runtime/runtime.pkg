@@ -446,6 +446,7 @@ USA.
 	  hook-in-list?
 	  hook-list?
 	  hook/exit
+	  hook/%exit
 	  hook/quit
 	  hook/scode-eval
 	  host-big-endian?

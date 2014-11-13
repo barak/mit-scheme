@@ -45,8 +45,11 @@ USA.
 (set! (access write-result:undefined-value-is-special?
 	      (->environment '(RUNTIME USER-INTERFACE)))
       #f)
-(set! hook/exit (lambda (integer) integer (warn "EXIT has been disabled.")))
-(set! hook/quit (lambda () (warn "QUIT has been disabled.")))
+(set-fluid! hook/exit (lambda (integer) integer
+			      (warn "EXIT has been disabled.")))
+(set-fluid! hook/%exit (lambda (integer) integer
+			       (warn "%EXIT has been disabled.")))
+(set-fluid! hook/quit (lambda () (warn "QUIT has been disabled.")))
 
 (let ((edwin-env (->environment '(EDWIN)))
       (student-env (->environment '(STUDENT))))

@@ -94,6 +94,9 @@ USA.
 	  ((#x00020100 #x0004030000020100) #f)
 	  (else (error "Unable to determine endianness of host."))))
   (add-secondary-gc-daemon! clean-obarray)
+  (set! hook/exit (make-fluid default/exit))
+  (set! hook/%exit (make-fluid default/%exit))
+  (set! hook/quit (make-fluid default/quit))
   ;; Kludge until the next released version, to avoid a bootstrapping
   ;; failure.
   (set! ephemeron-type (microcode-type 'EPHEMERON))
@@ -205,15 +208,19 @@ USA.
 	  (wait-loop)))))
 
 (define (exit #!optional integer)
-  (hook/exit (if (default-object? integer) #f integer)))
+  ((fluid hook/exit) (if (default-object? integer) #f integer)))
 
 (define (default/exit integer)
   (if (prompt-for-confirmation "Kill Scheme")
       (%exit integer)))
 
-(define hook/exit default/exit)
+(define hook/exit)
+(define hook/%exit)
 
 (define (%exit #!optional integer)
+  ((fluid hook/%exit) integer))
+
+(define (default/%exit #!optional integer)
   (event-distributor/invoke! event:before-exit)
   (if (or (default-object? integer)
 	  (not integer))
@@ -221,14 +228,14 @@ USA.
       ((ucode-primitive exit-with-value 1) integer)))
 
 (define (quit)
-  (hook/quit))
+  ((fluid hook/quit)))
 
 (define (%quit)
   (with-absolutely-no-interrupts (ucode-primitive halt))
   unspecific)
 
 (define default/quit %quit)
-(define hook/quit default/quit)
+(define hook/quit)
 
 (define user-initial-environment
   (*make-environment system-global-environment

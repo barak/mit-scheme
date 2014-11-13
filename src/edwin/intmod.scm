@@ -122,8 +122,9 @@ evaluated in the specified inferior REPL buffer."
 				    (detach-thread thread)
 				    thread))))
 	(attach-buffer-interface-port! buffer port)
-	(fluid-let ((%exit inferior-repl/%exit)
-		    (quit inferior-repl/quit))
+	(let-fluids hook/%exit inferior-repl/%exit
+		    hook/quit inferior-repl/quit
+	 (lambda ()
 	  (dynamic-wind
 	   (lambda () unspecific)
 	   (lambda ()
@@ -137,7 +138,7 @@ evaluated in the specified inferior REPL buffer."
 	   (lambda ()
 	     (signal-thread-event editor-thread
 	       (lambda ()
-		 (unwind-inferior-repl-buffer buffer))))))))))
+		 (unwind-inferior-repl-buffer buffer)))))))))))
 
 (define (make-init-message message)
   (if message
