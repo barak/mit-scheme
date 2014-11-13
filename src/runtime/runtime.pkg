@@ -5058,6 +5058,14 @@ USA.
 	  thread-float-environment)
   (initialization (initialize-package!)))
 
+(define-package (runtime thread barrier)
+  (files "thread-barrier")
+  (parent (runtime thread))
+  (export ()
+	  make-thread-barrier
+	  thread-barrier-wait
+	  thread-barrier?))
+
 (define-package (runtime thread condition-variable)
   (files "condvar")
   (parent (runtime thread))
