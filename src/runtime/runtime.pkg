@@ -5058,6 +5058,20 @@ USA.
 	  thread-float-environment)
   (initialization (initialize-package!)))
 
+(define-package (runtime thread condition-variable)
+  (files "condvar")
+  (parent (runtime thread))
+  (export ()
+	  condition-variable-broadcast!
+	  condition-variable-name
+	  condition-variable-signal!
+	  condition-variable-specific
+	  condition-variable-specific-set!
+	  condition-variable-wait!
+	  condition-variable?
+	  make-condition-variable
+	  unlock-thread-mutex-and-wait))
+
 (define-package (runtime rb-tree)
   (file-case options
     ((load) "rbtree")
