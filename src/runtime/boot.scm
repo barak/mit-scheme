@@ -145,9 +145,16 @@ USA.
 
 (define (load-with-boot-inits! . arguments)
   (receive (value inits)
-      (fluid-let ((boot-inits '()))
-	(let ((value (apply load arguments)))
-	  (values value (reverse! boot-inits))))
+      (let ((inner '()))
+	(define (swap!)
+	  (set! boot-inits (set! inner (set! boot-inits)))
+	  unspecific)
+	(dynamic-wind
+	    swap!
+	    (lambda ()
+	      (let ((value (apply load arguments)))
+		(values value (reverse! boot-inits))))
+	    swap!))
     (for-each (lambda (init) (init))
 	      inits)
     value))
