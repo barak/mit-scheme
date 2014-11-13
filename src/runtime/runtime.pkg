@@ -5044,6 +5044,7 @@ USA.
 	  with-create-thread-continuation
 	  with-thread-events-blocked
 	  with-thread-mutex-locked
+	  with-thread-mutex-unlocked
 	  with-thread-timer-stopped
 	  yield-current-thread)
   (export (runtime interrupt-handler)
