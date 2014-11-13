@@ -885,7 +885,7 @@ illegal_trap_3 (byte_t * PC, wreg_t r1, wreg_t r2, wreg_t r3)
     EXIT_VM ((result).arg.interpreter_code)
 
 #define DEFINE_TRAP_0(nl, util_name)					\
-byte_t *								\
+static byte_t *								\
 trap_##nl (byte_t * PC)							\
 {									\
   TRAP_PREFIX (result);							\
@@ -898,7 +898,7 @@ trap_##nl (byte_t * PC)							\
 }
 
 #define DEFINE_TRAP_1(nl, util_name)					\
-byte_t *								\
+static byte_t *								\
 trap_##nl (byte_t * PC, wreg_t source1)					\
 {									\
   TRAP_PREFIX (result);							\
@@ -911,7 +911,7 @@ trap_##nl (byte_t * PC, wreg_t source1)					\
 }
 
 #define DEFINE_TRAP_2(nl, util_name)					\
-byte_t *								\
+static byte_t *								\
 trap_##nl (byte_t * PC, wreg_t source1, wreg_t source2)			\
 {									\
   TRAP_PREFIX (result);							\
@@ -924,7 +924,7 @@ trap_##nl (byte_t * PC, wreg_t source1, wreg_t source2)			\
 }
 
 #define DEFINE_TRAP_3(nl, util_name)					\
-byte_t *								\
+static byte_t *								\
 trap_##nl (byte_t * PC, wreg_t source1, wreg_t source2, wreg_t source3)	\
 {									\
   TRAP_PREFIX (result);							\
@@ -937,7 +937,7 @@ trap_##nl (byte_t * PC, wreg_t source1, wreg_t source2, wreg_t source3)	\
 }
 
 #define DEFINE_TRAP_R0(nl, util_name)					\
-byte_t *								\
+static byte_t *								\
 trap_##nl (byte_t * PC)							\
 {									\
   TRAP_PREFIX (result);							\
@@ -950,7 +950,7 @@ trap_##nl (byte_t * PC)							\
 }
 
 #define DEFINE_TRAP_R1(nl, util_name)					\
-byte_t *								\
+static byte_t *								\
 trap_##nl (byte_t * PC, wreg_t source1)					\
 {									\
   TRAP_PREFIX (result);							\
@@ -963,7 +963,7 @@ trap_##nl (byte_t * PC, wreg_t source1)					\
 }
 
 #define DEFINE_TRAP_R2(nl, util_name)					\
-byte_t *								\
+static byte_t *								\
 trap_##nl (byte_t * PC, wreg_t source1, wreg_t source2)			\
 {									\
   TRAP_PREFIX (result);							\
@@ -976,7 +976,7 @@ trap_##nl (byte_t * PC, wreg_t source1, wreg_t source2)			\
 }
 
 #define DEFINE_TRAP_R3(nl, util_name)					\
-byte_t *								\
+static byte_t *								\
 trap_##nl (byte_t * PC, wreg_t source1, wreg_t source2, wreg_t source3)	\
 {									\
   TRAP_PREFIX (result);							\
@@ -989,7 +989,7 @@ trap_##nl (byte_t * PC, wreg_t source1, wreg_t source2, wreg_t source3)	\
 }
 
 #define DEFINE_TRAMPOLINE(nl, util_name)				\
-byte_t *								\
+static byte_t *								\
 trap_##nl (byte_t * PC)							\
 {									\
   TRAP_PREFIX (result);							\
