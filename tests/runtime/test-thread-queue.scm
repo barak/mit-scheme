@@ -56,14 +56,15 @@ USA.
     (thread-join consumer)))
 
 (define (thread-join thread)
-  (let ((value))
+  (let ((done? #f) (value))
     (with-thread-events-blocked
      (lambda ()
        (join-thread thread (lambda (thread v)
 			     (declare (ignore thread))
 			     (set! value v)
+			     (set! done? #t)
 			     #f))
-       (suspend-current-thread)
+       (do () (done?) (suspend-current-thread))
        value))))
 
 (define-test 'thread-queue
