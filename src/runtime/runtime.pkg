@@ -5002,10 +5002,10 @@ USA.
 	  assert-thread-mutex-owned
 	  block-thread-events
 	  condition-type:no-current-thread
+	  condition-type:thread-control-error
 	  condition-type:thread-dead
 	  condition-type:thread-deadlock
 	  condition-type:thread-detached
-	  condition-type:thread-control-error
 	  console-thread
 	  create-thread
 	  create-thread-continuation
