@@ -4999,6 +4999,7 @@ USA.
   (files "thread")
   (parent (runtime))
   (export ()
+	  assert-thread-mutex-owned
 	  block-thread-events
 	  condition-type:no-current-thread
 	  condition-type:thread-dead
@@ -5015,7 +5016,6 @@ USA.
 	  deregister-timer-event
 	  detach-thread
 	  exit-current-thread
-	  guarantee-thread-mutex-owned
 	  join-thread
 	  lock-thread-mutex
 	  make-thread-mutex

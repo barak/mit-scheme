@@ -1041,8 +1041,8 @@ USA.
   (if (not (thread-mutex? mutex))
       (error:wrong-type-argument mutex "thread-mutex" procedure)))
 
-(define (guarantee-thread-mutex-owned mutex #!optional caller)
-  (guarantee-thread-mutex mutex 'GUARANTEE-THREAD-MUTEX-OWNED)
+(define (assert-thread-mutex-owned mutex #!optional caller)
+  (guarantee-thread-mutex mutex 'ASSERT-THREAD-MUTEX-OWNED)
   (if (not (eq? (current-thread) (thread-mutex/owner mutex)))
       (if (default-object? caller)
 	  (error "Don't own mutex:" mutex)
