@@ -30,19 +30,23 @@ USA.
 (declare (usual-integrations))
 
 (define-structure (thread-barrier
-		   (constructor %make-thread-barrier (count current))
+		   (constructor %make-thread-barrier (count current condvar))
 		   (conc-name thread-barrier.))
   (lock (make-thread-mutex) read-only #t)
-  (condvar (make-condition-variable) read-only #t)
+  (condvar #f read-only #t)
   (count #f read-only #t)
   current
   (generation 0))
 
 (define-guarantee thread-barrier "thread barrier")
 
-(define (make-thread-barrier count)
+(define (make-thread-barrier count #!optional name)
   (guarantee-exact-positive-integer count 'MAKE-THREAD-BARRIER)
-  (%make-thread-barrier count count))
+  (let ((current count)
+        (condvar
+         (make-condition-variable
+          (if (default-object? name) "thread barrier" name))))
+    (%make-thread-barrier count current condvar)))
 
 (define (thread-barrier-wait barrier)
   (guarantee-thread-barrier barrier 'THREAD-BARRIER-WAIT)
