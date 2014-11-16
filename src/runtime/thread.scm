@@ -1048,6 +1048,12 @@ USA.
 	  (error "Don't own mutex:" mutex)
 	  (error "Don't own mutex:" mutex caller))))
 
+;;; Never use THREAD-MUTEX-OWNER except as a debugging feature.  If you
+;;; are tempted to make locking decisions on the basis of who owns a
+;;; mutex, fix your design so you're no longer tempted.  Mutexes are
+;;; non-recursive.  Use ASSERT-THREAD-MUTEX-OWNED to assert that you
+;;; own a mutex so you're less tempted to call THREAD-MUTEX-OWNER ever.
+
 (define (thread-mutex-owner mutex)
   (guarantee-thread-mutex mutex 'THREAD-MUTEX-OWNER)
   (thread-mutex/owner mutex))
