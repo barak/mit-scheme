@@ -82,7 +82,7 @@ USA.
 (define (condition-variable-specific-set! condvar specific)
   (guarantee-condition-variable condvar 'SET-CONDITION-VARIABLE-SPECIFIC!)
   (set-condition-variable.specific! condvar specific))
-
+
 (define (unlock-thread-mutex-and-wait thread-mutex condvar #!optional timeout)
   (guarantee-condition-variable condvar 'CONDITION-VARIABLE-WAIT!/UNLOCK)
   (guarantee-thread-mutex thread-mutex 'CONDITION-VARIABLE-WAIT!/UNLOCK)
@@ -100,18 +100,31 @@ USA.
     (let ((blocked? (block-thread-events)))
       (with-lock (lambda () (enqueue-waiter! condvar waiter)))
       (unlock-thread-mutex thread-mutex)
-      (begin0
-	  (let loop ()
-	    (cond ((and (real? timeout) (<= (real-time-clock) timeout)) #f)
-		  ((waiter.done? waiter) #t)
-		  (else (suspend-current-thread) (loop))))
-	(with-lock
-	  (lambda ()
-	    ;; Signaller got interrupted or we timed out.  Clean up.
-	    (if (not (waiter-detached? condvar waiter))
-		(remove-waiter! condvar waiter))))
-	(if (not blocked?)
-	    (unblock-thread-events))))))
+      (let ((registration
+             (if (default-object? timeout)
+		 0
+                 (begin
+		   (guarantee-real timeout)
+		   (register-timer-event (- timeout (real-time-clock)) #f)))))
+	(begin0
+	    (let loop ()
+	      (cond ((and (not (default-object? timeout))
+			  (<= (real-time-clock) timeout))
+		     #f)
+		    ((waiter.done? waiter)
+		     #t)
+		    (else
+		     (suspend-current-thread)
+		     (loop))))
+	  (if (not (default-object? timeout))
+	      (deregister-timer-event registration))
+	  (with-lock
+	    (lambda ()
+	      ;; Signaller got interrupted or we timed out.  Clean up.
+	      (if (not (waiter-detached? condvar waiter))
+		  (remove-waiter! condvar waiter))))
+	  (if (not blocked?)
+	      (unblock-thread-events)))))))
 
 (define (condition-variable-signal! condvar)
   (guarantee-condition-variable condvar 'CONDITION-VARIABLE-SIGNAL!)
