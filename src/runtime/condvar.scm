@@ -42,7 +42,7 @@ USA.
   (waiter-head #f read-only #t)
   (waiter-tail #f read-only #t)
   (specific unspecific)
-  (thread-mutex (make-thread-mutex) read-only #t))
+  (lock (make-thread-mutex) read-only #t))
 
 (define-guarantee condition-variable "condition variable")
 
@@ -53,23 +53,6 @@ USA.
     (set-waiter.next! waiter-head waiter-tail)
     (set-waiter.previous! waiter-tail waiter-head)
     (%make-condition-variable name waiter-head waiter-tail)))
-
-(define (with-condition-variable-locked condvar procedure)
-  (assert (condition-variable? condvar))
-  (guarantee-procedure-of-arity procedure 0 'WITH-CONDITION-VARIABLE-LOCKED)
-  (assert (not (condition-variable-locked? condvar)))
-  (let ((thread-mutex (condition-variable.thread-mutex condvar)))
-    (dynamic-wind (let ((done? #f))
-		    (lambda ()
-		      (if done? (error "Re-entry prohibited!"))
-		      (set! done? #t)
-		      (lock-thread-mutex thread-mutex)))
-		  procedure
-		  (lambda () (unlock-thread-mutex thread-mutex)))))
-
-(define (condition-variable-locked? condvar)
-  (eq? (current-thread)
-       (thread-mutex-owner (condition-variable.thread-mutex condvar))))
 
 (define (condition-variable-name condvar)
   (guarantee-condition-variable condvar 'CONDITION-VARIABLE-NAME)
@@ -96,9 +79,10 @@ USA.
 
 (define (%condition-variable-wait!/unlock condvar thread-mutex timeout)
   (let ((waiter (make-waiter (current-thread))))
-    (define (with-lock body) (with-condition-variable-locked condvar body))
     (let ((blocked? (block-thread-events)))
-      (with-lock (lambda () (enqueue-waiter! condvar waiter)))
+      (with-thread-mutex-locked (condition-variable.lock condvar)
+        (lambda ()
+          (enqueue-waiter! condvar waiter)))
       (unlock-thread-mutex thread-mutex)
       (let ((registration
              (if (default-object? timeout)
@@ -118,7 +102,7 @@ USA.
 		     (loop))))
 	  (if (not (default-object? timeout))
 	      (deregister-timer-event registration))
-	  (with-lock
+	  (with-thread-mutex-locked (condition-variable.lock condvar)
 	    (lambda ()
 	      ;; Signaller got interrupted or we timed out.  Clean up.
 	      (if (not (waiter-detached? condvar waiter))
@@ -128,7 +112,7 @@ USA.
 
 (define (condition-variable-signal! condvar)
   (guarantee-condition-variable condvar 'CONDITION-VARIABLE-SIGNAL!)
-  (with-condition-variable-locked condvar
+  (with-thread-mutex-locked (condition-variable.lock condvar)
     (lambda ()
       (let ((head (condition-variable.waiter-head condvar))
 	    (tail (condition-variable.waiter-tail condvar)))
@@ -159,7 +143,7 @@ USA.
 
 (define (condition-variable-broadcast! condvar)
   (guarantee-condition-variable condvar 'CONDITION-VARIABLE-BROADCAST!)
-  (with-condition-variable-locked condvar
+  (with-thread-mutex-locked (condition-variable.lock condvar)
     (lambda ()
       (let ((head (condition-variable.waiter-head condvar))
 	    (tail (condition-variable.waiter-tail condvar)))
@@ -187,13 +171,13 @@ USA.
 
 (define (waiter-detached? condvar waiter)
   (assert (condition-variable? condvar))
-  (assert (condition-variable-locked? condvar))
+  (assert-thread-mutex-owned (condition-variable.lock condvar))
   (not (or (waiter.previous waiter)
 	   (waiter.next waiter))))
 
 (define (enqueue-waiter! condvar waiter)
   (assert (condition-variable? condvar))
-  (assert (condition-variable-locked? condvar))
+  (assert-thread-mutex-owned (condition-variable.lock condvar))
   (assert (waiter? waiter))
   (assert (not (waiter.previous waiter)))
   (assert (not (waiter.next waiter)))
@@ -214,7 +198,7 @@ USA.
 
 (define (remove-waiter! condvar waiter)
   (assert (condition-variable? condvar))
-  (assert (condition-variable-locked? condvar))
+  (assert-thread-mutex-owned (condition-variable.lock condvar))
   (assert (waiter? waiter))
   (let ((previous (waiter.previous waiter))
 	(next (waiter.next waiter)))
