@@ -60,6 +60,7 @@ htmldir = @htmldir@
 pdfdir = @pdfdir@
 psdir = @psdir@
 
+TARGETS = @TARGETS@
 INST_TARGETS = @INST_TARGETS@
 
 INFO_TARGET = $(TARGET_ROOT).info
@@ -70,7 +71,7 @@ PS_TARGET = $(TARGET_ROOT).ps
 
 TEX_OPTIONS = --quiet $(EXTRA_TEX_OPTIONS)
 
-all: $(INFO_TARGET) $(HTML_TARGET)/index.html $(PDF_TARGET) $(PS_TARGET)
+all: $(INFO_TARGET) $(TARGETS)
 
 $(INFO_TARGET): $(SOURCES)
 	rm -f $(INFO_TARGET)*

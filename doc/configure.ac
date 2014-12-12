@@ -38,6 +38,7 @@ then
     INSTALL="${INSTALL} --preserve-timestamps"
 fi
 
+TARGETS=
 INST_TARGETS=
 
 AC_ARG_ENABLE([html],
@@ -49,6 +50,7 @@ elif test "${enable_html}" = "no"; then
 else
     htmldir="${enable_html}"
 fi
+test "${htmldir}" = "" || TARGETS="${TARGETS} \$(TARGET_ROOT)/index.html"
 test "${htmldir}" = "" || INST_TARGETS="${INST_TARGETS} install-html"
 AC_SUBST([htmldir])
 
@@ -61,6 +63,7 @@ elif test "${enable_pdf}" = "no"; then
 else
     pdfdir="${enable_pdf}"
 fi
+test "${pdfdir}" = "" || TARGETS="${TARGETS} \$(TARGET_ROOT).pdf"
 test "${pdfdir}" = "" || INST_TARGETS="${INST_TARGETS} install-pdf"
 AC_SUBST([pdfdir])
 
@@ -73,9 +76,11 @@ elif test "${enable_ps}" = "no"; then
 else
     psdir="${enable_ps}"
 fi
+test "${psdir}" = "" || TARGETS="${TARGETS} \$(TARGET_ROOT).ps"
 test "${psdir}" = "" || INST_TARGETS="${INST_TARGETS} install-ps"
 AC_SUBST([psdir])
 
+AC_SUBST([TARGETS])
 AC_SUBST([INST_TARGETS])
 
 AC_CONFIG_FILES([
