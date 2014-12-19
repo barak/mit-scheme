@@ -533,10 +533,7 @@ DEFINE_GC_TRANSPORT_WORDS (gc_transport_words)
   if (n_words == 0)
     std_gc_death ("gc_transport_words: attempt to transfer zero words.");
   if (n_words > 0x10000)
-    {
-      outf_error ("\nWarning: copying large block: %lu\n", n_words);
-      outf_flush_error ();
-    }
+      outf_error_line ("\nWarning: copying large block: %lu", n_words);
 #endif
   new_address = newspace_next;
   while (from < from_end)

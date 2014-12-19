@@ -105,6 +105,15 @@ outf_error (const char * format, ...)
 }
 
 void
+outf_error_line (const char * format, ...)
+{
+  va_list args;
+  va_start (args, format);
+  voutf_error_line (format, args);
+  va_end (args);
+}
+
+void
 outf_fatal (const char * format, ...)
 {
   va_list args;
@@ -257,6 +266,14 @@ voutf_error (const char * format, va_list args)
 void
 outf_flush_error (void)
 {
+  fflush (stderr);
+}
+
+void
+voutf_error_line (const char * format, va_list args)
+{
+  vfprintf (stderr, format, args);
+  fputc ('\n', stderr);
   fflush (stderr);
 }
 

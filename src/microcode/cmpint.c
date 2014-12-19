@@ -2886,10 +2886,7 @@ win32_allocate_registers (void)
   win32_catatonia_block = (regmem.catatonia_block);
   Registers = (regmem.Registers);
   if (!win32_system_utilities.lock_memory_area ((&regmem), (sizeof (regmem))))
-    {
-      outf_error ("Unable to lock registers\n");
-      outf_flush_error ();
-    }
+    outf_error_line ("Unable to lock registers");
 }
 
 void

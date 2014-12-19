@@ -43,10 +43,14 @@ extern void outf_error (const char *, ...)
 extern void outf_fatal (const char *, ...)
   ATTRIBUTE ((__format__ (__printf__, 1, 2)));
 
+extern void outf_error_line (const char *, ...)
+  ATTRIBUTE ((__format__ (__printf__, 1, 2)));
+
 extern void voutf (outf_channel, const char *, va_list);
 extern void voutf_console (const char *, va_list);
 extern void voutf_error (const char *, va_list);
 extern void voutf_fatal (const char *, va_list);
+extern void voutf_error_line (const char *, va_list);
 
 extern void outf_flush (outf_channel chan);
 extern void outf_flush_console (void);

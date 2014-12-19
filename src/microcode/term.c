@@ -296,8 +296,7 @@ edwin_auto_save (void)
 	      if ((setjmp (interpreter_catch_env)) == 0)
 		{
 		  Tchannel channel;
-		  outf_error ("Auto-saving file \"%s\"\n", namestring);
-		  outf_flush_error ();
+		  outf_error_line ("Auto-saving file \"%s\"", namestring);
 		  channel = (OS_open_output_file (namestring));
 		  if (start < gap_start)
 		    OS_channel_write (channel, start, (gap_start - start));

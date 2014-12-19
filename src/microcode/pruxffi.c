@@ -383,9 +383,8 @@ cstack_lpop (char * tos, int bytes)
   tos = tos - bytes;
   if (tos < ffi_obstack.object_base)
     {
-      outf_error ("\ninternal error: C stack exhausted\n");
-      outf_error ("\tCould not pop %d bytes.\n", bytes);
-      outf_flush_error ();
+      outf_error_line ("\ninternal error: C stack exhausted."
+		       "\tCould not pop %d bytes.", bytes);
       signal_error_from_primitive (ERR_EXTERNAL_RETURN);
     }
   return (tos);
@@ -396,8 +395,7 @@ cstack_pop (char * tos)
 {
   if (tos < ffi_obstack.object_base)
     {
-      outf_error ("\ninternal error: C stack over-popped.\n");
-      outf_flush_error ();
+      outf_error_line ("\ninternal error: C stack over-popped.");
       signal_error_from_primitive (ERR_EXTERNAL_RETURN);
     }
   (&ffi_obstack)->next_free = tos;
@@ -430,32 +428,20 @@ alienate_float_environment (void)
 #ifdef FE_DFL_ENV
   s = fesetenv (FE_DFL_ENV);
   if (s != 0)
-    {
-      outf_error ("Error status from fesetenv: %d\n", s);
-      outf_flush_error ();
-    }
+    outf_error_line ("\nError status from fesetenv: %d", s);
 #else
 # ifdef HAVE_FECLEAREXCEPT
 #  ifdef HAVE_FEDISABLEEXCEPT
 #   ifdef HAVE_FESETROUND
   s = feclearexcept (FE_ALL_EXCEPT);
   if (s == -1)
-    {
-      outf_error ("Error status from feclearexcept: %d\n", s);
-      outf_flush_error ();
-    }
+    outf_error_line ("\nError status from feclearexcept: %d", s);
   s = fedisableexcept (FE_ALL_EXCEPT);
   if (s == -1)
-    {
-      outf_error ("Error status from fedisableexcept: %d\n", s);
-      outf_flush_error ();
-    }
+    outf_error_line ("\nError status from fedisableexcept: %d", s);
   s = fesetround (FE_TONEAREST);
   if (s != 0)
-    {
-      outf_error ("Error status from fesetround: %d\n", s);
-      outf_flush_error ();
-    }
+    outf_error_line ("\nError status from fesetround: %d", s);
 #   endif
 #  endif
 # endif
@@ -481,8 +467,7 @@ callout_seal (CalloutTrampIn tramp)
 				false, false, LEXPR_PRIMITIVE_ARITY);
       if (c_call_continue == SHARP_F)
 	{
-	  outf_error ("\nNo C-CALL-CONTINUE primitive!\n");
-	  outf_flush_error ();
+	  outf_error_line ("\nNo C-CALL-CONTINUE primitive!");
 	  signal_error_from_primitive (ERR_EXTERNAL_RETURN);
 	}
     }
@@ -511,8 +496,7 @@ callout_unseal (CalloutTrampIn expected)
   CSTACK_LPOP (int, depth, tos);
   if (found != expected || depth != cstack_depth)
     {
-      outf_error ("\ninternal error: slipped in 1st part of callout\n");
-      outf_flush_error ();
+      outf_error_line ("\ninternal error: slipped in 1st part of callout");
       signal_error_from_primitive (ERR_EXTERNAL_RETURN);
     }
   cstack_pop (tos);
@@ -563,8 +547,7 @@ DEFINE_PRIMITIVE ("C-CALL-CONTINUE", Prim_c_call_continue, 1, LEXPR, 0)
     CSTACK_LPOP (int, depth, tos);
     if (depth != cstack_depth)
       {
-	outf_error ("\ninternal error: slipped in 2nd part of callout\n");
-	outf_flush_error ();
+	outf_error_line ("\ninternal error: slipped in 2nd part of callout");
 	signal_error_from_primitive (ERR_EXTERNAL_RETURN);
       }
     val = tramp ();
@@ -587,8 +570,7 @@ callout_lunseal (CalloutTrampIn expected)
   CSTACK_LPOP (int, depth, tos);
   if (depth != cstack_depth || found != expected)
     {
-      outf_error ("\ninternal error: slipped in 1st part of callout\n");
-      outf_flush_error ();
+      outf_error_line ("\ninternal error: slipped in 1st part of callout");
       signal_error_from_primitive (ERR_EXTERNAL_RETURN);
     }
   return (tos);
@@ -623,10 +605,9 @@ callback_run_kernel (long callback_id, CallbackKernel kernel)
       return_to_c = find_primitive_cname ("RETURN-TO-C", false, false, 0);
       if (run_callback == SHARP_F || return_to_c == SHARP_F)
 	{
-	  outf_error
-	    ("\nWarning: punted callback #%ld.  Missing primitives!\n",
+	  outf_error_line
+	    ("\nWarning: punted callback #%ld.  Missing primitives!",
 	     callback_id);
-	  outf_flush_error ();
 	  SET_VAL (FIXNUM_ZERO);
 	  return;
 	}
@@ -635,9 +616,8 @@ callback_run_kernel (long callback_id, CallbackKernel kernel)
   /* Need to push 2 each of prim+header+continuation. */
   if (! CAN_PUSH_P (2 * (1 + 1 + CONTINUATION_SIZE)))
     {
-      outf_error
-	("\nWarning: punted callback #%ld.  No room on stack!\n", callback_id);
-      outf_flush_error ();
+      outf_error_line
+	("\nWarning: punted callback #%ld.  No room on stack!", callback_id);
       SET_VAL (FIXNUM_ZERO);
       return;
     }
@@ -673,8 +653,7 @@ DEFINE_PRIMITIVE ("RUN-CALLBACK", Prim_run_callback, 0, 0, 0)
     CSTACK_LPOP (int, depth, tos);
     if (depth != cstack_depth)
       {
-	outf_error ("\nWarning: C data stack slipped in run-callback!\n");
-	outf_flush_error ();
+	outf_error_line ("\nWarning: C data stack slipped in run-callback!");
 	signal_error_from_primitive (ERR_EXTERNAL_RETURN);
       }
 
@@ -730,8 +709,7 @@ callback_lunseal (CallbackKernel expected)
   CSTACK_LPOP (int, depth, tos);
   if (depth != cstack_depth || found != expected)
     {
-      outf_error ("\ninternal error: slipped in callback kernel\n");
-      outf_flush_error ();
+      outf_error_line ("\ninternal error: slipped in callback kernel");
       signal_error_from_primitive (ERR_EXTERNAL_RETURN);
     }
   return (tos);
@@ -776,9 +754,8 @@ valid_callback_handler (void)
   handler = (VECTOR_REF (fixed_objects, CALLBACK_HANDLER));
   if (! interpreter_applicable_p (handler))
     {
-      outf_error ("\nWarning: bogus callback handler: 0x%x.\n",
-		  ((unsigned int) handler));
-      outf_flush_error ();
+      outf_error_line ("\nWarning: bogus callback handler: 0x%x.",
+		       ((unsigned int) handler));
       Do_Micro_Error (ERR_INAPPLICABLE_OBJECT, true);
       abort_to_interpreter (PRIM_APPLY);
       /* NOTREACHED */
@@ -958,16 +935,14 @@ long_value (void)
   if (! (INTEGER_P (value)))
     {
       /* error_wrong_type_arg (1); Not inside the interpreter here. */
-      outf_error ("\nWarning: Callback did not return an integer!\n");
-      outf_flush_error ();
+      outf_error_line ("\nWarning: Callback did not return an integer!");
       return (0);
     }
   if (! (integer_to_long_p (value)))
     {
       /* error_bad_range_arg (1); */
-      outf_error
-	("\nWarning: Callback returned an integer larger than a C long!\n");
-      outf_flush_error ();
+      outf_error_line
+	("\nWarning: Callback returned an integer larger than a C long!");
       return (0);
     }
   return (integer_to_long (value));
@@ -985,17 +960,15 @@ ulong_value (void)
   if (! (INTEGER_P (value)))
     {
       /* error_wrong_type_arg (1); Not inside the interpreter here. */
-      outf_error ("\nWarning: Callback did not return an integer!\n");
-      outf_flush_error ();
+      outf_error_line ("\nWarning: Callback did not return an integer!");
       return (0);
     }
   if (! (integer_to_ulong_p (value)))
     {
       /* error_bad_range_arg (1); */
-      outf_error
+      outf_error_line
 	("\nWarning: "
-	 "Callback returned an integer larger than a C unsigned long!\n");
-      outf_flush_error ();
+	 "Callback returned an integer larger than a C unsigned long!");
       return (0);
     }
   return (integer_to_ulong (value));
@@ -1011,16 +984,14 @@ double_value (void)
   if (! REAL_P (value))
     {
       /* error_wrong_type_arg (1); Not inside the interpreter here. */
-      outf_error ("\nWarning: Callback did not return a real.\n");
-      outf_flush_error ();
+      outf_error_line ("\nWarning: Callback did not return a real.");
       return (0.0);
     }
   if (! (real_number_to_double_p (value)))
     {
       /* error_bad_range_arg (1); */
-      outf_error
-	("\nWarning: Callback returned a real larger than a C double!\n");
-      outf_flush_error ();
+      outf_error_line
+	("\nWarning: Callback returned a real larger than a C double!");
       return (0.0);
     }
   return (real_number_to_double (value));
@@ -1039,8 +1010,7 @@ pointer_value (void)
       unsigned char * result = lookup_external_string (value, NULL);
       if (result == 0)
 	{
-	  outf_error ("\nWarning: Callback returned a bogus xstring.\n");
-	  outf_flush_error ();
+	  outf_error_line ("\nWarning: Callback returned a bogus xstring.");
 	  return (NULL);
 	}
       return ((void *) result);
@@ -1048,8 +1018,7 @@ pointer_value (void)
   if (is_alien (value))
     return (alien_address (value));
 
-  outf_error ("\nWarning: Callback did not return a pointer.\n");
-  outf_flush_error ();
+  outf_error_line ("\nWarning: Callback did not return a pointer.");
   return (NULL);
 }
 

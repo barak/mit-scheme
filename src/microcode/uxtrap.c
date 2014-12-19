@@ -407,11 +407,8 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
 	{
 #ifdef ENABLE_DEBUGGING_TOOLS
 	  if (GC_Debug == true)
-	    {
-	      /* Note where this presumption is employed. */
-	      outf_error (";Warning: trap at 0x%lx assumed a primitive\n", pc);
-	      outf_flush_error ();
-	    }
+	    /* Note where this presumption is employed. */
+	    outf_error_line (";Warning: trap at 0x%lx assumed a primitive", pc);
 #endif
 	  new_sp = stack_pointer;
 	  SET_RECOVERY_INFO
@@ -437,12 +434,9 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
     {
 #ifdef ENABLE_DEBUGGING_TOOLS
       if (GC_Debug == true)
-	{
-	  outf_error ((new_sp == 0)
-		      ? ";Warning: bogus stack_pointer in continue_from_trap\n"
-		      : ";Warning: bogus Free in continue_from_trap\n");
-	  outf_flush_error ();
-	}
+	outf_error_line ((new_sp == 0)
+			 ? ";Warning: bogus stack_pointer in continue_from_trap"
+			 : ";Warning: bogus Free in continue_from_trap");
 #endif
       Free = heap_alloc_limit;
     }
