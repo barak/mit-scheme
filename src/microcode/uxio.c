@@ -874,12 +874,16 @@ OS_pause (void)
 	n = SELECT_INTERRUPT;
     }
   UX_sigprocmask (SIG_SETMASK, &old, NULL);
-  return (n);
-#else
-  /* Wait-for-io must spin. */
-  return
-    ((OS_process_any_status_change ())
-     ? SELECT_PROCESS_STATUS_CHANGE
-     : SELECT_INTERRUPT);
+#else /* not HAVE_SIGSUSPEND */
+  INTERRUPTABLE_EXTENT
+    (n, (((OS_process_any_status_change ())
+	  || (pending_interrupts_p ()))
+	 ? ((errno = EINTR), (-1))
+	 : ((UX_pause ()), (0))));
+  if (OS_process_any_status_change())
+    n = SELECT_PROCESS_STATUS_CHANGE;
+  else
+    n = SELECT_INTERRUPT;
 #endif
+  return (n);
 }
