@@ -552,17 +552,26 @@ Do_Micro_Error (long error_code, bool from_pop_return_p)
   if ((GET_RC == RC_INTERNAL_APPLY)
       || (GET_RC == RC_INTERNAL_APPLY_VAL))
     {
-      SCHEME_OBJECT * sp = (STACK_LOC (CONTINUATION_SIZE));
-      Print_Expression ((sp[STACK_ENV_FUNCTION]), "Procedure was");
+      Print_Expression (STACK_REF(CONTINUATION_SIZE + STACK_ENV_FUNCTION),
+			"Procedure");
       outf_error ("\n");
-      outf_error ("# of arguments: %lu\n",
-		  (APPLY_FRAME_HEADER_N_ARGS (sp[STACK_ENV_HEADER])));
+      {
+	int i, nargs = (APPLY_FRAME_HEADER_N_ARGS
+			(STACK_REF(CONTINUATION_SIZE + STACK_ENV_HEADER)));
+	for (i = 0; i < nargs; i += 1)
+	  {
+	    outf_error ("Argument %d: ", i+1);
+	    Print_Expression ((STACK_REF(CONTINUATION_SIZE
+					 + STACK_ENV_FIRST_ARG + i)), "");
+	    outf_error ("\n");
+	  }
+      }
     }
   else
     {
-      Print_Expression (GET_EXP, "Expression was");
+      Print_Expression (GET_EXP, "Expression");
       outf_error ("\n");
-      Print_Expression (GET_ENV, "Environment was");
+      Print_Expression (GET_ENV, "Environment");
       outf_error ("\n");
     }
   Print_Return ("Return code");
