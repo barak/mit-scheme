@@ -1080,7 +1080,7 @@ show_flags (int all)
   outf_flush_error();
 }
 
-static int
+static void
 set_flag (int flag_number, int value)
 {
   bool * flag = (find_flag (flag_number));
@@ -1091,7 +1091,6 @@ set_flag (int flag_number, int value)
       (*flag) = value;
       SET_FLAG_HOOK (flag);
     }
-  return (0);
 }
 
 static int
@@ -1148,12 +1147,11 @@ debug_edit_flags (void)
   outf_flush_error();
 }
 
-static int
+static void
 set_flag (int flag_number, int value)
 {
-  signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);
-  /*NOTREACHED*/
-  return (0);
+  outf_error ("Not a debugging version.  No flags to set.\n");
+  outf_flush_error();
 }
 
 #endif /* not ENABLE_DEBUGGING_TOOLS */
