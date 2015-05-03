@@ -31,6 +31,7 @@ reference:
   Stephen Adams, Implemeting Sets Efficiently in a Functional
      Language, CSTR 92-10, Department of Electronics and Computer
      Science, University of Southampton, 1992.
+  <http://groups.csail.mit.edu/mac/users/adams/BB/>
 
 The data structure was originally introduced in
 
@@ -38,19 +39,25 @@ The data structure was originally introduced in
      balance', Proceedings of the fourth ACM Symposium on Theory of
      Computing, pp. 137--142, 1972.
 
-The balance parameters, Delta and Gamma, proposed by Nievergelt and
-Reingold were irrational, making the balance condition complicated to
-express exactly.  In his paper, Adams used a different definition of a
-node's weight, which introduced more complicated edge cases, and used
-Delta = 4 and Gamma = 1, which do not preserve balance for deletion.
-This implementation formerly used Delta = 5 and Gamma = 1, which was
-also buggy.
+The algorithm proposed by Nievergelt & Reingold requires the ratio of
+sizes of the two subtrees of each node to be bounded by an irrational
+factor, which is slow to evaluate in integer arithmetic.  Adams
+proposed a simpler balance condition involvig only a single integer
+multiplication, but it turns out to be wrong, as explained in
 
-Yoichi Hirai and Kazuhiko Yamamoto proposed, in `Balance Conditions on
-Weight-Balanced Trees' (to appear in the Journal of Functional
-Programming), Nievergelt and Reingold's definition of a node's weight,
-with Delta = 3 and Gamma = 2, based on analysis of the algorithms and
-parameters assisted by Coq.  This is what we use here now.
+   Yoichi Hirai and Kazuhiko Yamamoto, `Balancing weight-balanced
+     trees', Journal of Functional Programming 21(3), pp. 287--307,
+     2011.
+   <https://yoichihirai.com/bst.pdf>
+
+We previously used Hirai & Yamamoto's proposed parameters, but there is
+a much simpler balancing condition, with much simpler analysis, which
+we adopt here, described in
+
+  Salvador Roura, `A new method for balancing binary search trees',
+     Automata, Languages, and Programming, Orejas, F., Spirakis, P.,
+     & van Leeuwen, J. (eds), Lecture Notes in Computer Science 2076,
+     pp. 469--480, Springer, 2001.
 
 |#
 
@@ -115,16 +122,16 @@ parameters assisted by Coq.  This is what we use here now.
   (if (empty? node) 0  (node/w node)))
 
 (define-integrable (node/weight node)
-  (+ 1 (node/size node)))
+  (node/size node))
 
-(define-integrable wt-tree-delta 3)
-(define-integrable wt-tree-gamma 2)
+(define-integrable (log2< a b)
+  (and (fix:< a b) (fix:< (fix:lsh (fix:and a b) 1) b)))
 
 (define-integrable (overweight? a b)
-  (< (* wt-tree-delta a) b))
+  (log2< a (fix:lsh b -11)))
 
 (define-integrable (single? a b)
-  (< a (* wt-tree-gamma b)))
+  (not (log2< b a)))
 
 (define-integrable (node/singleton k v) (make-node k v empty empty 1))
 
