@@ -53,6 +53,7 @@ USA.
     "runtime/test-process"
     "runtime/test-readwrite"
     "runtime/test-regsexp"
+    "runtime/test-string"
     "runtime/test-url"
     ("runtime/test-wttree" (runtime wt-tree))
     ;;"ffi/test-ffi"
