@@ -117,6 +117,15 @@ parameters assisted by Coq.  This is what we use here now.
 (define-integrable (node/weight node)
   (+ 1 (node/size node)))
 
+(define-integrable wt-tree-delta 3)
+(define-integrable wt-tree-gamma 2)
+
+(define-integrable (overweight? a b)
+  (< (* wt-tree-delta a) b))
+
+(define-integrable (single? a b)
+  (< a (* wt-tree-gamma b)))
+
 (define-integrable (node/singleton k v) (make-node k v empty empty 1))
 
 (define-integrable (with-n-node node receiver)
@@ -157,24 +166,21 @@ parameters assisted by Coq.  This is what we use here now.
 		  (n-join a.k a.v x y1)
 		  (n-join c.k c.v y2 z)))))))
 
-(define-integrable wt-tree-delta 3)
-(define-integrable wt-tree-gamma 2)
-
 (define (t-join k v l r)
   (let ((l.w (node/weight l))
 	(r.w (node/weight r)))
-    (cond ((> r.w (* wt-tree-delta l.w))
+    (cond ((overweight? l.w r.w)
 	   ;; right is too big
 	   (let ((r.l.w (node/weight (node/l r)))
 		 (r.r.w (node/weight (node/r r))))
-	     (if (< r.l.w (* wt-tree-gamma r.r.w))
+	     (if (single? r.l.w r.r.w)
 		 (single-l k v l r)
 		 (double-l k v l r))))
-	  ((> l.w (* wt-tree-delta r.w))
+	  ((overweight? r.w l.w)
 	   ;; left is too big
 	   (let ((l.l.w (node/weight (node/l l)))
 		 (l.r.w (node/weight (node/r l))))
-	     (if (< l.r.w (* wt-tree-gamma l.l.w))
+	     (if (single? l.r.w l.l.w)
 		 (single-r k v l r)
 		 (double-r k v l r))))
 	  (else (n-join k v l r)))))
@@ -299,11 +305,11 @@ parameters assisted by Coq.  This is what we use here now.
 	  (else
 	   (let ((w1  (node/weight l))
 		 (w2  (node/weight r)))
-	     (cond ((< (* wt-tree-delta w1) w2)
+	     (cond ((overweight? w1 w2)
 		    (with-n-node r
 				 (lambda (k2 v2 l2 r2)
 				   (t-join k2 v2 (node/concat3 k v l l2) r2))))
-		   ((< (* wt-tree-delta w2) w1)
+		   ((overweight? w2 w1)
 		    (with-n-node l
 				 (lambda (k1 v1 l1 r1)
 				   (t-join k1 v1 l1 (node/concat3 k v r1 r)))))
@@ -656,8 +662,8 @@ parameters assisted by Coq.  This is what we use here now.
       (or (empty? node)
 	  (let ((l (node/l node)) (r (node/r node)))
 	    (let ((lw (node/weight l)) (rw (node/weight r)))
-	      (and (<= lw (* wt-tree-delta rw))
-		   (<= rw (* wt-tree-delta lw))
+	      (and (not (overweight? lw rw))
+		   (not (overweight? rw lw))
 		   (balanced? l)
 		   (balanced? r))))))
     (define (ordered? node not-too-low? not-too-high?)
