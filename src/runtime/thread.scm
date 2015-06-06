@@ -785,7 +785,7 @@ USA.
 		      (let ((value (thunk)))
 			(set-interrupt-enables! interrupt-mask/gc-ok)
 			value))
-		    with-thread-events-blocked
+		    'WITH-THREAD-EVENTS-BLOCKED
 		    block-events?)))
 	      (let ((thread first-running-thread))
 		(if thread

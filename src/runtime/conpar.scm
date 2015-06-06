@@ -448,7 +448,7 @@ USA.
 	       (continue (parser-state/dynamic-state state)
 			 (parser-state/block-thread-events? state)
 			 marker-instance))
-	      ((eq? marker-type with-thread-events-blocked)
+	      ((eq? marker-type 'WITH-THREAD-EVENTS-BLOCKED)
 	       (continue (parser-state/dynamic-state state)
 			 marker-instance
 			 (parser-state/interrupt-mask state)))
