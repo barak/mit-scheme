@@ -37,29 +37,34 @@ USA.
 (define mhash-hmac-contexts '())
 (define mhash-contexts-mutex)
 
+;;; Lock order:
+;;;
+;;;     {mhash-context-mutex, mhash-hmac-context-mutex}
+;;;     -> mhash-contexts-mutex
+
 (define (add-context-cleanup context)
-  (with-thread-mutex-locked mhash-contexts-mutex
+  (with-thread-mutex-lock mhash-contexts-mutex
     (lambda ()
       (set! mhash-contexts
 	    (cons (weak-cons context (mhash-context-alien context))
 		  mhash-contexts)))))
 
 (define (add-hmac-context-cleanup context)
-  (with-thread-mutex-locked mhash-contexts-mutex
+  (with-thread-mutex-lock mhash-contexts-mutex
     (lambda ()
       (set! mhash-hmac-contexts
 	    (cons (weak-cons context (mhash-hmac-context-alien context))
 		  mhash-contexts)))))
 
 (define (remove-context-cleanup context)
-  (with-thread-mutex-locked mhash-contexts-mutex
+  (with-thread-mutex-lock mhash-contexts-mutex
     (lambda ()
       (let ((entry (weak-assq context mhash-contexts)))
 	(if entry
 	    (set! mhash-contexts (delq! context mhash-contexts)))))))
 
 (define (remove-hmac-context-cleanup context)
-  (with-thread-mutex-locked mhash-contexts-mutex
+  (with-thread-mutex-lock mhash-contexts-mutex
     (lambda ()
       (let ((entry (weak-assq context mhash-hmac-contexts)))
 	(if entry
@@ -138,13 +143,13 @@ USA.
       (error:bad-range-argument object procedure)))
 
 (define (with-context-locked context thunk)
-  (with-thread-mutex-locked (mhash-context-mutex context) thunk))
+  (with-thread-mutex-lock (mhash-context-mutex context) thunk))
 
 (define (with-hmac-context-locked context thunk)
-  (with-thread-mutex-locked (mhash-hmac-context-mutex context) thunk))
+  (with-thread-mutex-lock (mhash-hmac-context-mutex context) thunk))
 
 (define (with-context-locked-open context operator receiver)
-  (with-thread-mutex-locked (mhash-context-mutex context)
+  (with-thread-mutex-lock (mhash-context-mutex context)
     (lambda ()
       (let ((alien (mhash-context-alien context)))
 	(if (alien-null? alien)
@@ -152,7 +157,7 @@ USA.
 	(receiver alien)))))
 
 (define (with-hmac-context-locked-open context operator receiver)
-  (with-thread-mutex-locked (mhash-hmac-context-mutex context)
+  (with-thread-mutex-lock (mhash-hmac-context-mutex context)
     (lambda ()
       (let ((alien (mhash-hmac-context-alien context)))
 	(if (alien-null? alien)
