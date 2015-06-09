@@ -80,7 +80,7 @@ USA.
 (define (%condition-variable-wait!/unlock condvar thread-mutex timeout)
   (let ((waiter (make-waiter (current-thread))))
     (let ((blocked? (block-thread-events)))
-      (with-thread-mutex-locked (condition-variable.lock condvar)
+      (with-thread-mutex-lock (condition-variable.lock condvar)
         (lambda ()
           (enqueue-waiter! condvar waiter)))
       (unlock-thread-mutex thread-mutex)
@@ -102,7 +102,7 @@ USA.
 		     (loop))))
 	  (if (not (default-object? timeout))
 	      (deregister-timer-event registration))
-	  (with-thread-mutex-locked (condition-variable.lock condvar)
+	  (with-thread-mutex-lock (condition-variable.lock condvar)
 	    (lambda ()
 	      ;; Signaller got interrupted or we timed out.  Clean up.
 	      (if (not (waiter-detached? condvar waiter))
@@ -112,7 +112,7 @@ USA.
 
 (define (condition-variable-signal! condvar)
   (guarantee-condition-variable condvar 'CONDITION-VARIABLE-SIGNAL!)
-  (with-thread-mutex-locked (condition-variable.lock condvar)
+  (with-thread-mutex-lock (condition-variable.lock condvar)
     (lambda ()
       (let ((head (condition-variable.waiter-head condvar))
 	    (tail (condition-variable.waiter-tail condvar)))
@@ -143,7 +143,7 @@ USA.
 
 (define (condition-variable-broadcast! condvar)
   (guarantee-condition-variable condvar 'CONDITION-VARIABLE-BROADCAST!)
-  (with-thread-mutex-locked (condition-variable.lock condvar)
+  (with-thread-mutex-lock (condition-variable.lock condvar)
     (lambda ()
       (let ((head (condition-variable.waiter-head condvar))
 	    (tail (condition-variable.waiter-tail condvar)))
