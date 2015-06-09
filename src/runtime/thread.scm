@@ -1097,7 +1097,7 @@ USA.
     (set-thread-mutex/owner! mutex thread)
     (if thread (%signal-thread-event thread #f))
     thread))
-
+
 (define (try-lock-thread-mutex mutex)
   (guarantee-thread-mutex mutex 'TRY-LOCK-THREAD-MUTEX)
   (without-interrupts
@@ -1107,6 +1107,24 @@ USA.
 	    (set-thread-mutex/owner! mutex thread)
 	    (add-thread-mutex! thread mutex)
 	    #t)))))
+
+(define (with-thread-mutex-lock mutex thunk)
+  (guarantee-thread-mutex mutex 'WITH-THREAD-MUTEX-LOCK)
+  (dynamic-wind (lambda () (lock-thread-mutex mutex))
+		thunk
+		(lambda () (unlock-thread-mutex mutex))))
+
+(define (without-thread-mutex-lock mutex thunk)
+  (guarantee-thread-mutex mutex 'WITH-THREAD-MUTEX-LOCK)
+  (dynamic-wind (lambda () (unlock-thread-mutex mutex))
+		thunk
+		(lambda () (lock-thread-mutex mutex))))
+
+;;; WITH-THREAD-MUTEX-LOCKED is retained for compatibility for old
+;;; programs that require recursion.  For new programs, better to
+;;; refactor into clearer invariants that do not require recursion if
+;;; possible and use WITH-THREAD-MUTEX-LOCK to help detect lock order
+;;; mistakes.
 
 (define (with-thread-mutex-locked mutex thunk)
   (guarantee-thread-mutex mutex 'WITH-THREAD-MUTEX-LOCKED)
