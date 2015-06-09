@@ -74,12 +74,12 @@ USA.
   (thread-mutex-owner (%thread-queue/mutex queue)))
 
 (define (with-queue-locked queue thunk)
-  (with-thread-mutex-locked (%thread-queue/mutex queue)
+  (with-thread-mutex-lock (%thread-queue/mutex queue)
     (lambda ()
       (with-thread-events-blocked thunk))))
 
 (define (with-queue-unlocked queue thunk)
-  (with-thread-mutex-unlocked (%thread-queue/mutex queue)
+  (without-thread-mutex-lock (%thread-queue/mutex queue)
    ;; suspend-current-thread will unblock (and re-block) thread-events
    thunk))
 
