@@ -263,10 +263,10 @@ USA.
       (error:wrong-type-argument gdbf "gdbm handle" procedure)))
 
 (define-integrable (with-gdbf-locked gdbf thunk)
-  (with-thread-mutex-locked (gdbf-mutex gdbf) thunk))
+  (with-thread-mutex-lock (gdbf-mutex gdbf) thunk))
 
 (define (with-gdbf-locked-open gdbf operator receiver)
-  (with-thread-mutex-locked
+  (with-thread-mutex-lock
    (gdbf-mutex gdbf)
    (lambda ()
      (let ((args (gdbf-args gdbf)))
@@ -322,14 +322,14 @@ USA.
 (define open-gdbfs-mutex)
 
 (define (add-open-gdbf-cleanup gdbf)
-  (with-thread-mutex-locked
+  (with-thread-mutex-lock
    open-gdbfs-mutex
    (lambda ()
      (set! open-gdbfs (cons (weak-cons gdbf (gdbf-args gdbf))
 			    open-gdbfs)))))
 
 (define (remove-open-gdbf-cleanup gdbf)
-  (with-thread-mutex-locked
+  (with-thread-mutex-lock
    open-gdbfs-mutex
    (lambda ()
      (let ((entry (weak-assq gdbf open-gdbfs)))
