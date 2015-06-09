@@ -1110,15 +1110,41 @@ USA.
 
 (define (with-thread-mutex-locked mutex thunk)
   (guarantee-thread-mutex mutex 'WITH-THREAD-MUTEX-LOCKED)
-  (dynamic-wind (lambda () (lock-thread-mutex mutex))
-		thunk
-		(lambda () (unlock-thread-mutex mutex))))
+  (let ((thread (current-thread))
+	(grabbed-lock?))
+    (dynamic-wind
+     (lambda ()
+       (let ((owner (thread-mutex/owner mutex)))
+	 (if (eq? owner thread)
+	     (begin
+	       (set! grabbed-lock? #f)
+	       unspecific)
+	     (begin
+	       (set! grabbed-lock? #t)
+	       (%lock-thread-mutex mutex thread owner)))))
+     thunk
+     (lambda ()
+       (if (and grabbed-lock? (eq? (thread-mutex/owner mutex) thread))
+	   (%unlock-thread-mutex mutex thread))))))
 
 (define (with-thread-mutex-unlocked mutex thunk)
   (guarantee-thread-mutex mutex 'WITH-THREAD-MUTEX-UNLOCKED)
-  (dynamic-wind (lambda () (unlock-thread-mutex mutex))
-		thunk
-		(lambda () (lock-thread-mutex mutex))))
+  (let ((thread (current-thread))
+	(released-lock?))
+    (dynamic-wind
+     (lambda ()
+       (let ((owner (thread-mutex/owner mutex)))
+	 (if (not (eq? owner thread))
+	     (set! released-lock? #f)
+	     (begin
+	       (set! released-lock? #t)
+	       (%unlock-thread-mutex mutex owner)))))
+     thunk
+     (lambda ()
+       (if released-lock?
+	   (let ((owner (thread-mutex/owner mutex)))
+	     (if (not (eq? owner thread))
+		 (%lock-thread-mutex mutex thread owner))))))))
 
 (define (%disassociate-thread-mutexes thread)
   (do ((mutexes (thread/mutexes thread) (cdr mutexes)))
