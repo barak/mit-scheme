@@ -52,7 +52,7 @@ USA.
   (guarantee-thread-barrier barrier 'THREAD-BARRIER-WAIT)
   (let ((lock (thread-barrier.lock barrier))
 	(condvar (thread-barrier.condvar barrier)))
-    (with-thread-mutex-locked lock
+    (with-thread-mutex-lock lock
       (lambda ()
 	(let ((count (thread-barrier.count barrier))
 	      (current (thread-barrier.current barrier))
