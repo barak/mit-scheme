@@ -128,7 +128,7 @@ USA.
     (let loop ((x (tree-root tree)) (y #f) (d #f))
       (cond ((not x)
 	     (let ((z (make-node key datum)))
-	       (without-interrupts
+	       (without-interruption
 		(lambda ()
 		  (set-node-up! z y)
 		  (cond ((not y) (set-tree-root! tree z))
@@ -176,12 +176,6 @@ USA.
 	((null? alist))
       (rb-tree/insert! tree (caar alist) (cdar alist)))
     tree))
-
-(define-integrable (without-interrupts thunk)
-  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (thunk)
-    (set-interrupt-enables! interrupt-mask)
-    unspecific))
 
 (define (rb-tree/delete! tree key)
   (guarantee-rb-tree tree 'RB-TREE/DELETE!)
@@ -194,7 +188,7 @@ USA.
 	    (else (loop (node-right x)))))))
 
 (define (delete-node! tree z)
-  (without-interrupts
+  (without-interruption
    (lambda ()
      (let ((z
 	    (if (and (node-left z) (node-right z))
