@@ -5024,7 +5024,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime thread)
-  (files "thread")
+  (files "thread-low" "thread")
   (parent (runtime))
   (export ()
 	  assert-thread-mutex-owned

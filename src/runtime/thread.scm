@@ -110,7 +110,25 @@ USA.
   (initialize-io-blocking)
   (add-event-receiver! event:after-restore initialize-io-blocking)
   (detach-thread (make-thread #f))
-  (add-event-receiver! event:before-exit stop-thread-timer))
+  (add-event-receiver! event:before-exit stop-thread-timer)
+  (named-structure/set-tag-description! thread-mutex-tag
+    (make-define-structure-type 'VECTOR
+				"thread-mutex"
+				'#(WAITING-THREADS OWNER)
+				'#(1 2)
+				(vector 2 (lambda () #f))
+				(standard-unparser-method 'THREAD-MUTEX #f)
+				thread-mutex-tag
+				3))
+  (named-structure/set-tag-description! link-tag
+    (make-define-structure-type 'VECTOR
+				"link"
+				'#(PREV NEXT ITEM)
+				'#(1 2 3)
+				(vector 3 (lambda () #f))
+				(standard-unparser-method 'LINK #f)
+				link-tag
+				4)))
 
 (define (make-thread continuation)
   (let ((thread (%make-thread)))
@@ -1041,7 +1059,12 @@ USA.
 
 ;;;; Mutexes
 
-(define-structure (thread-mutex
+;;; A record type cannot be created very early in the cold load, but
+;;; creating thread mutexes early is convenient for users of serial
+;;; populations, queues, etc.  The following define-structure is
+;;; hand-expanded as a tagged vector (not record) in thread-low.scm.
+
+#;(define-structure (thread-mutex
 		   (constructor make-thread-mutex ())
 		   (conc-name thread-mutex/))
   (waiting-threads (make-ring) read-only #t)
@@ -1199,64 +1222,6 @@ USA.
 
 (define-integrable (remove-thread-mutex! thread mutex)
   (set-thread/mutexes! thread (delq! mutex (thread/mutexes thread))))
-
-;;;; Circular Rings
-
-(define-structure (link (conc-name link/))
-  prev
-  next
-  item)
-
-(define (make-ring)
-  (let ((link (make-link #f #f #f)))
-    (set-link/prev! link link)
-    (set-link/next! link link)
-    link))
-
-(define-integrable (ring/empty? ring)
-  (eq? (link/next ring) ring))
-
-(define (ring/enqueue ring item)
-  (let ((prev (link/prev ring)))
-    (let ((link (make-link prev ring item)))
-      (set-link/next! prev link)
-      (set-link/prev! ring link))))
-
-(define (ring/dequeue ring default)
-  (let ((link (link/next ring)))
-    (if (eq? link ring)
-	default
-	(begin
-	  (let ((next (link/next link)))
-	    (set-link/next! ring next)
-	    (set-link/prev! next ring))
-	  (link/item link)))))
-
-(define (ring/discard-all ring)
-  (set-link/prev! ring ring)
-  (set-link/next! ring ring))
-
-(define (ring/remove-item ring item)
-  (let loop ((link (link/next ring)))
-    (if (not (eq? link ring))
-	(if (eq? (link/item link) item)
-	    (let ((prev (link/prev link))
-		  (next (link/next link)))
-	      (set-link/next! prev next)
-	      (set-link/prev! next prev))
-	    (loop (link/next link))))))
-
-(define (ring/count-max-2 ring)
-  (let ((link (link/next ring)))
-    (cond ((eq? link ring) 0)
-	  ((eq? (link/next link) ring) 1)
-	  (else 2))))
-
-(define (ring/first-item ring)
-  (link/item (link/next ring)))
-
-(define (ring/set-first-item! ring item)
-  (set-link/item! (link/next ring) item))
 
 ;;;; Error Conditions
 

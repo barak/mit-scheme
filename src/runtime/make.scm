@@ -366,6 +366,7 @@ USA.
 	 ("fixart" . (RUNTIME FIXNUM-ARITHMETIC))
 	 ("random" . (RUNTIME RANDOM-NUMBER))
 	 ("gentag" . (RUNTIME GENERIC-PROCEDURE))
+	 ("thread-low" . (RUNTIME THREAD))
 	 ("poplat" . (RUNTIME POPULATION))
 	 ("record" . (RUNTIME RECORD))))
       (files2
