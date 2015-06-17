@@ -189,7 +189,7 @@ USA.
       (assert (not (eq? tail previous)))
       (assert (eq? tail (waiter.next previous)))
       ;; Commit the changes all together or not at all.
-      (without-interrupts
+      (without-interruption
        (lambda ()
 	 (set-waiter.previous! tail waiter)
 	 (set-waiter.next! previous waiter)
@@ -209,7 +209,7 @@ USA.
     (assert (eq? waiter (waiter.next previous)))
     (assert (eq? waiter (waiter.previous next)))
     ;; Commit the changes all together or not at all.
-    (without-interrupts
+    (without-interruption
      (lambda ()
        (set-waiter.next! previous next)
        (set-waiter.previous! next previous)
