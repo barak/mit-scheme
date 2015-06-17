@@ -380,7 +380,7 @@ USA.
 			       (fix:<= end* (fix:quotient n 4)))
 			  (make-wide-string (fix:quotient n 2))
 			  string))))
-	      (without-interrupts
+	      (without-interruption
 	       (lambda ()
 		 (do ((i index (fix:+ i 1))
 		      (j 0 (fix:+ j 1)))
