@@ -67,7 +67,7 @@ USA.
 
 (define (mhash-init name)
   (let ((id (mhash-name->id name 'MHASH-INIT)))
-    (without-interrupts
+    (without-interruption
      (lambda ()
        (let ((index ((ucode-primitive mhash_init 1) id)))
 	 (if (not index)
@@ -84,7 +84,7 @@ USA.
 (define (mhash-hmac-init name key)
   (let* ((id (mhash-name->id name 'MHASH-INIT))
 	 (pblock ((ucode-primitive mhash_get_hash_pblock 1) id)))
-    (without-interrupts
+    (without-interruption
      (lambda ()
        (let ((index ((ucode-primitive mhash_hmac_init 3) id key pblock)))
 	 (if (not index)
@@ -385,7 +385,7 @@ USA.
   (names-vector->list mcrypt-mode-names-vector))
 
 (define (mcrypt-open-module algorithm mode)
-  (without-interrupts
+  (without-interruption
    (lambda ()
      (add-to-gc-finalizer! mcrypt-contexts
 			   (make-mcrypt-context
