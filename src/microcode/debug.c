@@ -189,15 +189,16 @@ Print_Return (const char * String)
 static void
 print_string (outf_channel stream, SCHEME_OBJECT string)
 {
-  long length;
+  long length, long_enough;
   long i;
   char * next;
   char this;
 
   outf (stream, "\"");
   length = (STRING_LENGTH (string));
+  long_enough = (length < 100 ? length : 90);
   next = (STRING_POINTER (string));
-  for (i = 0; (i < length); i += 1)
+  for (i = 0; (i < long_enough); i += 1)
     {
       this = (*next++);
       switch (this)
@@ -225,6 +226,8 @@ print_string (outf_channel stream, SCHEME_OBJECT string)
 	  break;
 	}
     }
+  if (length != long_enough)
+    outf (stream, "...[%ld total chars]", length);
   outf (stream, "\"");
 }
 
