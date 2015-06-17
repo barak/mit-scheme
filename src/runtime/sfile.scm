@@ -194,12 +194,18 @@ USA.
      (lambda () (receiver pathname))
      (lambda () (deallocate-temporary-file pathname)))))
 
+(define files-to-delete-mutex)
+
+(define (with-files-to-delete-locked thunk)
+  (with-thread-mutex-lock files-to-delete-mutex
+    (lambda () (without-interruption thunk))))
+
 (define (allocate-temporary-file pathname)
   (and (not (file-exists? pathname))
        (let ((objects (get-fixed-objects-vector))
 	     (slot (fixed-objects-vector-slot 'FILES-TO-DELETE))
 	     (filename (->namestring pathname)))
-	 (without-interrupts
+	 (with-files-to-delete-locked
 	  (lambda ()
 	    (and (file-touch pathname)
 		 (begin
@@ -213,7 +219,7 @@ USA.
   (let ((objects (get-fixed-objects-vector))
 	(slot (fixed-objects-vector-slot 'FILES-TO-DELETE))
 	(filename (->namestring pathname)))
-    (without-interrupts
+    (with-files-to-delete-locked
      (lambda ()
        (vector-set! objects slot
 		    (delete! filename (vector-ref objects slot)))
@@ -315,6 +321,7 @@ USA.
 (define local-type-map)
 
 (define (initialize-package!)
+  (set! files-to-delete-mutex (make-thread-mutex))
   (set! interned-mime-types
 	;; We really want each of these hash tables to be a
 	;; datum-weak hash table, but the hash table abstraction
