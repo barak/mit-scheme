@@ -459,7 +459,7 @@ USA.
 		   ;; Found a free line.  First perform all of the
 		   ;; entry displacements, then return the subsequent
 		   ;; free line.
-		   (without-interrupts
+		   (without-interruption
 		    (lambda ()
 		      (let loop ((free-line line) (lines lines))
 			(if (null? lines)
