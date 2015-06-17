@@ -135,7 +135,7 @@ USA.
 (define (%copy-compiled-code-address obj)
   (let ((new-block (copy-compiled-code-block
 		    (compiled-code-address->block obj))))
-    (atomically
+    (with-absolutely-no-interrupts
      (lambda ()
        (object-new-type
 	(object-type obj)
@@ -158,9 +158,6 @@ USA.
 	((not (fix:< i len)))
       (vector-set! new i (copy-object (vector-ref new i))))
     typed))
-
-(define-integrable (atomically thunk)
-  (with-absolutely-no-interrupts thunk))
 
 (define ((%copy-pair type) obj)
   (%%copy-pair type obj))
