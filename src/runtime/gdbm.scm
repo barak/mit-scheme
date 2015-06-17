@@ -58,7 +58,7 @@ USA.
   (if (not (gdbm-available?))
       (error "This Scheme system was built without gdbm support."))
   (let ((filename (->namestring (merge-pathnames filename))))
-    (without-interrupts
+    (without-interruption
      (lambda ()
        (add-to-gc-finalizer!
 	gdbf-finalizer
