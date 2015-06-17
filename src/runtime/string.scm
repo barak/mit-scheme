@@ -1612,7 +1612,7 @@ USA.
   (length #f read-only #t))
 
 (define (allocate-external-string n-bytes)
-  (without-interrupts
+  (without-interruption
    (lambda ()
      (add-to-gc-finalizer!
       external-strings
