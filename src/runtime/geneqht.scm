@@ -50,7 +50,7 @@ USA.
 	(hash (compute-key-hash table key)))
     (let loop ((entries (vector-ref buckets hash)))
       (cond ((null? entries)
-	     (without-interrupts
+	     (without-interruption
 	      (lambda ()
 		(vector-set! buckets
 			     hash
@@ -83,7 +83,7 @@ USA.
       (if (not (table-needs-rehash? table))
 	  hash
 	  (begin
-	    (without-interrupts (lambda () (rehash-table! table)))
+	    (without-interruption (lambda () (rehash-table! table)))
 	    (loop))))))
 
 (define-integrable (eq-hash-mod key modulus)
@@ -97,26 +97,17 @@ USA.
 		 modulus))
 
 (define (record-address-hash-table! table)
-  (set! address-hash-tables (weak-cons table address-hash-tables))
-  unspecific)
+  (add-to-population! address-hash-tables table))
 
 (define (mark-address-hash-tables!)
-  (let loop ((previous #f) (tables address-hash-tables))
-    (cond ((null? tables)
-	   unspecific)
-	  ((system-pair-car tables)
-	   (set-table-needs-rehash?! (system-pair-car tables) #t)
-	   (loop tables (system-pair-cdr tables)))
-	  (else
-	   (if previous
-	       (system-pair-set-cdr! previous (system-pair-cdr tables))
-	       (set! address-hash-tables (system-pair-cdr tables)))
-	   (loop previous (system-pair-cdr tables))))))
+  (for-each-inhabitant address-hash-tables
+		       (lambda (table)
+			 (set-table-needs-rehash?! table #t))))
 
 (define address-hash-tables)
 
 (define (initialize-address-hashing!)
-  (set! address-hash-tables '())
+  (set! address-hash-tables (make-serial-population))
   (add-primitive-gc-daemon! mark-address-hash-tables!))
 
 ;;;; Resizing
@@ -239,12 +230,6 @@ USA.
   (needs-rehash? #f))
 
 (define-integrable minimum-size 4)
-
-(define-integrable (without-interrupts thunk)
-  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (thunk)
-    (set-interrupt-enables! interrupt-mask)
-    unspecific))
 
 (define-integrable (weak-cons car cdr)
   (system-pair-cons (ucode-type weak-cons) car cdr))
