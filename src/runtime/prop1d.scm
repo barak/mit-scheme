@@ -30,7 +30,7 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! population-of-1d-tables (make-population))
+  (set! population-of-1d-tables (make-population/unsafe))
   (add-secondary-gc-daemon! gc-1d-tables!))
 
 (define (initialize-unparser!)

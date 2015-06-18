@@ -1125,6 +1125,9 @@ USA.
 	  1d-table/remove!
 	  1d-table?
 	  make-1d-table)
+  (import (runtime population)
+	  make-population/unsafe
+	  add-to-population!/unsafe)
   (initialization (initialize-package!)))
 
 (define-package (runtime 2d-property)
@@ -3175,15 +3178,16 @@ USA.
   (parent (runtime))
   (export ()
 	  add-to-population!
+	  empty-population!
 	  exists-an-inhabitant?
 	  for-all-inhabitants?
+	  (for-each-inhabitant map-over-population!)
 	  make-population
+	  make-serial-population
 	  map-over-population
 	  map-over-population!
 	  population?
 	  remove-from-population!)
-  (export (runtime)
-	  add-to-population!/unsafe)
   (initialization (initialize-package!)))
 
 (define-package (runtime pretty-printer)
@@ -5081,6 +5085,9 @@ USA.
 	  without-preemption
 	  without-thread-mutex-lock
 	  yield-current-thread)
+  (import (runtime population)
+	  add-to-population!/unsafe
+	  make-population/unsafe)
   (export (runtime interrupt-handler)
 	  thread-timer-interrupt-handler)
   (export (runtime primitive-io)

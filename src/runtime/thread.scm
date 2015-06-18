@@ -103,7 +103,7 @@ USA.
 
 (define (initialize-low!)
   ;; Called early in the cold load to create the first thread.
-  (set! thread-population (make-population))
+  (set! thread-population (make-population/unsafe))
   (set! first-running-thread #f)
   (set! last-running-thread #f)
   (set! next-scheduled-timeout #f)
@@ -162,7 +162,7 @@ USA.
     (set-thread/continuation! thread continuation)
     (set-thread/root-state-point! thread
 				  (current-state-point state-space:local))
-    (add-to-population!/unsafe thread-population thread)
+    (add-to-population! thread-population thread)
     (thread-running thread)
     thread))
 
