@@ -107,7 +107,7 @@ USA.
 	    (set-table-initial-size-in-effect?! table #t)))
       (reset-table! table)
       (if (table-type-rehash-after-gc? type)
-	  (set! address-hash-tables (weak-cons table address-hash-tables)))
+	  (record-address-hash-table! table))
       table)))
 
 (define (hash-table/type table)
@@ -151,7 +151,7 @@ USA.
 
 (define (hash-table/clean! table)
   (guarantee-hash-table table 'HASH-TABLE/CLEAN!)
-  (with-table-locked! table
+  (without-interruption
     (lambda ()
       ((table-type-method:clean! (table-type table)) table)
       (maybe-shrink-table! table))))
@@ -199,7 +199,7 @@ USA.
 			   (<= x 1)))
 		    "real number between 0 (exclusive) and 1 (inclusive)"
 		    'SET-HASH-TABLE/REHASH-THRESHOLD!)))
-    (with-table-locked! table
+    (without-interruption
       (lambda ()
 	(set-table-rehash-threshold! table threshold)
 	(new-size! table (table-grow-size table))))))
@@ -219,7 +219,7 @@ USA.
 			    (else #f)))
 		    "real number > 1 or exact integer >= 1"
 		    'SET-HASH-TABLE/REHASH-SIZE!)))
-    (with-table-locked! table
+    (without-interruption
       (lambda ()
 	(set-table-rehash-size! table size)
 	(reset-shrink-size! table)
@@ -241,7 +241,7 @@ USA.
 
 (define (hash-table/clear! table)
   (guarantee-hash-table table 'HASH-TABLE/CLEAR!)
-  (with-table-locked! table
+  (without-interruption
     (lambda ()
       (if (not (table-initial-size-in-effect? table))
 	  (set-table-grow-size! table minimum-size))
@@ -623,13 +623,13 @@ USA.
 		(declare (integrate key* barrier))
 		(if (key=? key* key)
 		    (begin
-		      (with-table-locked! table
+		      (without-interruption
 			(lambda ()
 			  (set-entry-datum! entry-type (car p) datum)))
 		      (barrier))
 		    (loop (cdr p) p)))
 	      (lambda () (loop (cdr p) p)))
-	    (with-table-locked! table
+	    (without-interruption
 	      (lambda ()
 		(let ((r (cons (make-entry entry-type key datum) '())))
 		  (if q
@@ -650,7 +650,7 @@ USA.
 		(declare (integrate key* datum barrier))
 		(if (key=? key* key)
 		    (let ((datum* (procedure datum)))
-		      (with-table-locked! table
+		      (without-interruption
 			(lambda ()
 			  (set-entry-datum! entry-type (car p) datum*)))
 		      (barrier)
@@ -658,7 +658,7 @@ USA.
 		    (loop (cdr p) p)))
 	      (lambda () (loop (cdr p) p)))
 	    (let ((datum (procedure default)))
-	      (with-table-locked! table
+	      (without-interruption
 		(lambda ()
 		  (let ((r (cons (make-entry entry-type key datum) '())))
 		    (if q
@@ -679,7 +679,7 @@ USA.
 	      (lambda (key* barrier)
 		(declare (integrate key*) (ignore barrier))
 		(if (key=? key* key)
-		    (with-table-locked! table
+		    (without-interruption
 		      (lambda ()
 			(if q
 			    (set-cdr! q (cdr p))
@@ -948,7 +948,7 @@ USA.
       (error:datum-out-of-range object)))
 
 (define (rehash-table! table)
-  (with-table-locked! table
+  (without-interruption
     (lambda ()
       (let ((entries (extract-table-entries! table)))
 	(set-table-needs-rehash?! table #f)
@@ -1322,7 +1322,7 @@ USA.
 
 (define (hash-table-copy table)
   (guarantee-hash-table table 'HASH-TABLE-COPY)
-  (with-table-locked! table
+  (without-interruption
     (lambda ()
       (let ((table* (copy-table table))
 	    (type (table-type table)))
@@ -1330,7 +1330,7 @@ USA.
 			    (vector-map (table-type-method:copy-bucket type)
 					(table-buckets table)))
 	(if (table-type-rehash-after-gc? type)
-	    (set! address-hash-tables (weak-cons table* address-hash-tables)))
+	    (record-address-hash-table! table*))
 	table*))))
 
 (define (hash-table-merge! table1 table2)
@@ -1354,34 +1354,24 @@ USA.
 (define address-hash-tables)
 
 (define (initialize-address-hash-tables!)
-  (set! address-hash-tables '())
+  (set! address-hash-tables (make-serial-population))
   (add-primitive-gc-daemon! mark-address-hash-tables!)
   unspecific)
 
+(define (record-address-hash-table! table)
+  (add-to-population! address-hash-tables table))
+
 (define (mark-address-hash-tables!)
-  (let loop ((previous #f) (tables address-hash-tables))
-    (if (system-pair? tables)
-	(if (system-pair-car tables)
-	    (begin
-	      (set-table-needs-rehash?! (system-pair-car tables) #t)
-	      (loop tables (system-pair-cdr tables)))
-	    (begin
-	      (if previous
-		  (system-pair-set-cdr! previous (system-pair-cdr tables))
-		  (set! address-hash-tables (system-pair-cdr tables)))
-	      (loop previous (system-pair-cdr tables)))))))
+  (for-each-inhabitant address-hash-tables
+		       (lambda (table)
+			 (set-table-needs-rehash?! table #t))))
 
 (define (check-arg object default predicate description procedure)
   (cond ((predicate object) object)
 	((not object) default)
 	(else (error:wrong-type-argument object description procedure))))
 
-(define-integrable (with-table-locked! table thunk)
-  (declare (ignore table))
-  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (let ((value (thunk)))
-      (set-interrupt-enables! interrupt-mask)
-      value)))
+(define-integrable without-interruption with-thread-events-blocked)
 
 (define default-marker
   (list 'DEFAULT-MARKER))
