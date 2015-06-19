@@ -52,8 +52,16 @@ USA.
 (define-integrable b 4294967291 #|(- (expt 2 32) 5)|#)
 (define-integrable b. 4294967291. #|(exact->inexact b)|#)
 
+(define-integrable (with-random-state-lock state thunk)
+  (if (eq? state default-random-source)
+      (with-thread-mutex-lock default-random-source-mutex
+	(lambda ()
+	  (without-interruption thunk)))
+      (thunk)))
+
 (define (flo:random-element state)
-  (let ((mask ((ucode-primitive set-interrupt-enables!) interrupt-mask/gc-ok)))
+  (with-random-state-lock state
+   (lambda ()
     (let ((index (random-state-index state))
 	  (vector (random-state-vector state)))
       (let ((element (flo:vector-ref vector index)))
@@ -75,8 +83,7 @@ USA.
 				   (if (fix:= (fix:+ index 1) r)
 				       0
 				       (fix:+ index 1))))
-	((ucode-primitive set-interrupt-enables!) mask)
-	element))))
+	element)))))
 
 (define-integrable (int:random-element state)
   (flo:truncate->exact (flo:random-element state)))
@@ -357,7 +364,7 @@ USA.
       result)))
 
 (define (copy-random-state! source target)
-  (without-interrupts
+  (with-random-state-lock source
    (lambda ()
      (set-random-state-index! target (random-state-index source))
      (set-random-state-borrow! target (random-state-borrow source))
@@ -387,6 +394,7 @@ USA.
 (define flimit.)
 (define flimit)
 (define default-random-source)
+(define default-random-source-mutex)
 (define random-integer)
 (define random-real)
 
@@ -398,6 +406,7 @@ USA.
 	      (loop (flo:/ x 2.)))))
   (set! flimit (flo:truncate->exact flimit.))
   (set! default-random-source (simple-random-state))
+  (set! default-random-source-mutex (make-thread-mutex))
   (set! random-integer (random-source-make-integers default-random-source))
   (set! random-real (random-source-make-reals default-random-source))
   unspecific)
