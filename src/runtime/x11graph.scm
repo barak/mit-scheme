@@ -261,7 +261,7 @@ USA.
 	    display)))))
 
 (define (x-graphics/close-display display)
-  (without-interrupts
+  (without-interruption
    (lambda ()
      (if (x-display/xd display)
 	 (begin
@@ -341,7 +341,7 @@ USA.
     (with-thread-events-blocked loop)))
 
 (define (process-event display event)
-  (without-interrupts
+  (without-interruption
    (lambda ()
      (let ((window
 	    (search-gc-finalizer (x-display/window-finalizer display)
@@ -446,7 +446,7 @@ USA.
   (if (x-graphics-device/xw device) #t #f))
 
 (define (x-graphics/close-window device)
-  (without-interrupts
+  (without-interruption
    (lambda ()
      (close-x-window (graphics-device/descriptor device)))))
 
