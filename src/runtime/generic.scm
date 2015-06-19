@@ -52,7 +52,9 @@ USA.
 				(new-cache (procedure-arity-min arity)))))
       (let ((generic (compute-apply-generic record)))
 	(set-generic-record/procedure! record generic)
-	(eqht/put! generic-procedure-records generic record)
+	(with-thread-mutex-lock generic-procedure-records-mutex
+	  (lambda ()
+	    (eqht/put! generic-procedure-records generic record)))
 	generic))))
 
 (define-structure (generic-record
@@ -69,7 +71,9 @@ USA.
   procedure)
 
 (define (generic-procedure? object)
-  (if (eqht/get generic-procedure-records object #f) #t #f))
+  (with-thread-mutex-lock generic-procedure-records-mutex
+    (lambda ()
+      (if (eqht/get generic-procedure-records object #f) #t #f))))
 
 (define (generic-record/arity record)
   (make-procedure-arity (generic-record/arity-min record)
@@ -101,7 +105,7 @@ USA.
 	 (guarantee-generic-procedure generic
 				      'SET-GENERIC-PROCEDURE-GENERATOR!)))
     (guarantee-generator generator 'SET-GENERIC-PROCEDURE-GENERATOR!)
-    (without-interrupts
+    (without-interruption
      (lambda ()
        (set-generic-record/generator! record generator)
        (%reset-generic-procedure-cache! record)))))
@@ -116,7 +120,9 @@ USA.
 	     (lambda (generic record)
 	       (%purge-generic-procedure-cache! generic record filter)))))
     (if (eq? 'ALL-PROCEDURES generic)
-	(eqht/for-each generic-procedure-records operator)
+	(with-thread-mutex-lock generic-procedure-records-mutex
+	  (lambda ()
+	    (eqht/for-each generic-procedure-records operator)))
 	(operator
 	 generic
 	 (guarantee-generic-procedure generic
@@ -127,9 +133,9 @@ USA.
 			     (new-cache (generic-record/arity-min record))))
 
 (define (%purge-generic-procedure-cache! generic record filter)
-  ;; This might have interrupts locked for a long time, and thus is an
-  ;; argument for using something like a semaphore to control access.
-  (without-interrupts
+  ;; This might have events blocked for a long time, and thus might
+  ;; benefit by using something like a semaphore to control access.
+  (without-interruption
    (lambda ()
      (set-generic-record/cache!
       record
@@ -137,7 +143,9 @@ USA.
 			   (lambda (tags) (filter generic tags)))))))
 
 (define (guarantee-generic-procedure generic caller)
-  (or (eqht/get generic-procedure-records generic #f)
+  (or (with-thread-mutex-lock generic-procedure-records-mutex
+	(lambda ()
+	  (eqht/get generic-procedure-records generic #f)))
       (error:wrong-type-argument generic "generic procedure" caller)))
 
 (define (guarantee-generator generator caller)
@@ -274,7 +282,7 @@ USA.
 		 (generic (generic-record/procedure record)))
 	     (or (and generator (generator generic tags))
 		 (error:no-applicable-methods generic args)))))
-      (without-interrupts
+      (without-interruption
        (lambda ()
 	 (set-generic-record/cache!
 	  record
@@ -351,6 +359,7 @@ USA.
 
 (define standard-generic-procedure-tag)
 (define generic-procedure-records)
+(define generic-procedure-records-mutex)
 (define built-in-tags)
 (define microcode-type-tag-table)
 (define microcode-type-method-table)
@@ -359,6 +368,7 @@ USA.
   (set! standard-generic-procedure-tag
 	(make-dispatch-tag 'STANDARD-GENERIC-PROCEDURE))
   (set! generic-procedure-records (make-eqht))
+  (set! generic-procedure-records-mutex (make-thread-mutex))
 
   ;; Initialize the built-in tag tables.
   (set! built-in-tags '())
@@ -380,7 +390,9 @@ USA.
 			   (vector-ref microcode-type-tag-table code)))
 	     (vector-set! microcode-type-tag-table code #f)))))
     (define-integrable (maybe-generic object default-tag)
-      (let ((record (eqht/get generic-procedure-records object #f)))
+      (let ((record (with-thread-mutex-lock generic-procedure-records-mutex
+		      (lambda ()
+			(eqht/get generic-procedure-records object #f)))))
 	(if record
 	    (generic-record/tag record)
 	    default-tag)))
