@@ -31,7 +31,7 @@ USA.
 
 (define (initialize-package!)
   (set! population-of-1d-tables (make-serial-population/unsafe))
-  (add-secondary-gc-daemon! clean-1d-tables!))
+  (add-secondary-gc-daemon!/unsafe clean-1d-tables!))
 
 (define (initialize-unparser!)
   (unparser/set-tagged-pair-method! 1d-table-tag

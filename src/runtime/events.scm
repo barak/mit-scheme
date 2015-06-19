@@ -37,7 +37,7 @@ USA.
 (define-structure (event-distributor
 		   (constructor make-event-distributor ())
 		   (conc-name event-distributor/))
-  (events (make-queue))
+  (events (make-serial-queue))
   (lock false)
   (receivers '()))
 

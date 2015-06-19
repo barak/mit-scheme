@@ -677,7 +677,7 @@ USA.
   (condition #f read-only #t)
   (reader-history (make-repl-history repl-reader-history-size))
   (printer-history (make-repl-history repl-printer-history-size))
-  (input-queue (make-queue) read-only #t))
+  (input-queue (make-serial-queue) read-only #t))
 
 (define (repl? object)
   (and (cmdl? object)

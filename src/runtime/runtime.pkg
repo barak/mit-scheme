@@ -583,6 +583,7 @@ USA.
   (parent (runtime))
   (export ()
 	  make-queue
+	  make-serial-queue
 	  queue-empty?
 	  queued?/unsafe
 	  enqueue!/unsafe
@@ -1133,6 +1134,8 @@ USA.
   (import (runtime population)
 	  make-serial-population/unsafe
 	  add-to-population!/unsafe)
+  (import (runtime gc-daemons)
+	  add-secondary-gc-daemon!/unsafe)
   (initialization (initialize-package!)))
 
 (define-package (runtime 2d-property)
@@ -3182,6 +3185,8 @@ USA.
 (define-package (runtime population)
   (files "poplat")
   (parent (runtime))
+  (import (runtime gc-daemons)
+	  add-secondary-gc-daemon!/unsafe)
   (export ()
 	  add-to-population!
 	  empty-population!

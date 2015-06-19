@@ -34,7 +34,7 @@ USA.
 
 (define (initialize-package!)
   (set! population-of-populations (list population-tag (make-thread-mutex)))
-  (add-secondary-gc-daemon! clean-all-populations!))
+  (add-secondary-gc-daemon!/unsafe clean-all-populations!))
 
 (define (initialize-unparser!)
   (unparser/set-tagged-pair-method! population-tag

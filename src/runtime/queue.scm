@@ -30,31 +30,34 @@ USA.
 (declare (usual-integrations))
 
 (define-integrable (make-queue)
-  (cons '() '()))
+  (cons* #f '() '()))
+
+(define-integrable (make-serial-queue)
+  (cons* (make-thread-mutex) '() '()))
 
 (define-integrable (queue-empty? queue)
-  (not (pair? (car queue))))
+  (not (pair? (cadr queue))))
 
 (define-integrable (queued?/unsafe queue item)
-  (memq item (car queue)))
+  (memq item (cadr queue)))
 
 (define (enqueue!/unsafe queue object)
   (let ((next (cons object '())))
-    (if (pair? (cdr queue))
-	(set-cdr! (cdr queue) next)
-	(set-car! queue next))
-    (set-cdr! queue next)
+    (if (pair? (cddr queue))
+	(set-cdr! (cddr queue) next)
+	(set-car! (cdr queue) next))
+    (set-cdr! (cdr queue) next)
     unspecific))
 
 (define (dequeue!/unsafe queue)
-  (let ((next (car queue)))
+  (let ((next (cadr queue)))
     (if (not (pair? next))
 	(error "Attempt to dequeue from empty queue"))
     (if (pair? (cdr next))
-	(set-car! queue (cdr next))
+	(set-car! (cdr queue) (cdr next))
 	(begin
-	  (set-car! queue '())
-	  (set-cdr! queue '())))
+	  (set-car! (cdr queue) '())
+	  (set-cdr! (cdr queue) '())))
     (car next)))
 
 (define (queue-map!/unsafe queue procedure)
@@ -65,24 +68,33 @@ USA.
 	  (loop)))))
 
 (define-integrable (queue->list/unsafe queue)
-  (car queue))
+  (cadr queue))
 
-;;; Safe (interrupt locked) versions of the above operations.
+;;; Safe versions of the above operations (when used on a serializing
+;;; queue).
+
+(define-integrable (with-queue-lock queue thunk)
+  (let ((mutex (car queue)))
+    (if mutex
+	(with-thread-mutex-lock mutex
+	  (lambda ()
+	    (without-interruption thunk)))
+	(without-interruption thunk))))
 
 (define-integrable (queued? queue item)
-  (without-interrupts (lambda () (queued?/unsafe queue item))))
+  (with-queue-lock queue (lambda () (queued?/unsafe queue item))))
 
 (define-integrable (enqueue! queue object)
-  (without-interrupts (lambda () (enqueue!/unsafe queue object))))
+  (with-queue-lock queue (lambda () (enqueue!/unsafe queue object))))
 
 (define-integrable (dequeue! queue)
-  (without-interrupts (lambda () (dequeue!/unsafe queue))))
+  (with-queue-lock queue (lambda () (dequeue!/unsafe queue))))
 
 (define (queue-map! queue procedure)
   (let ((empty (list 'EMPTY)))
     (let loop ()
       (let ((item
-	     (without-interrupts
+	     (with-queue-lock queue
 	      (lambda ()
 		(if (queue-empty? queue)
 		    empty
@@ -93,6 +105,6 @@ USA.
 	      (loop)))))))
 
 (define (queue->list queue)
-  (without-interrupts
+  (with-queue-lock queue
     (lambda ()
       (list-copy (queue->list/unsafe queue)))))
