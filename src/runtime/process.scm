@@ -82,7 +82,7 @@ USA.
   (1d-table/remove! (subprocess-properties process) key))
 
 (define (subprocess-i/o-port process)
-  (without-interrupts
+  (without-interruption
    (lambda ()
      (or (subprocess-%i/o-port process)
 	 (let ((port
@@ -104,28 +104,24 @@ USA.
 	 port)))
 
 (define (close-subprocess-i/o process)
-  (without-interrupts (lambda () (%close-subprocess-i/o process))))
-
-(define (%close-subprocess-i/o process)
-  ;; Assumes that interrupts are locked.
   (cond ((subprocess-%i/o-port process)
 	 => (lambda (port)
+	      (close-port port)
 	      (set-subprocess-%i/o-port! process #f)
 	      (set-subprocess-input-channel! process #f)
-	      (set-subprocess-output-channel! process #f)
-	      (close-port port))))
+	      (set-subprocess-output-channel! process #f))))
   (cond ((subprocess-input-channel process)
 	 => (lambda (input-channel)
-	      (set-subprocess-input-channel! process #f)
-	      (channel-close input-channel))))
+	      (channel-close input-channel)
+	      (set-subprocess-input-channel! process #f))))
   (cond ((subprocess-output-channel process)
 	 => (lambda (output-channel)
-	      (set-subprocess-output-channel! process #f)
-	      (channel-close output-channel))))
+	      (channel-close output-channel)
+	      (set-subprocess-output-channel! process #f))))
   (cond ((subprocess-pty-master process)
 	 => (lambda (pty-master)
-	      (set-subprocess-pty-master! process #f)
-	      (channel-close pty-master)))))
+	      (channel-close pty-master)
+	      (set-subprocess-pty-master! process #f)))))
 
 (define (make-subprocess filename arguments environment
 			 ctty stdin stdout stderr
@@ -159,7 +155,7 @@ USA.
 			 (and (cdr environment)
 			      (->namestring (cdr environment))))
 		   (set! environment (car environment))))
-	     (without-interrupts
+	     (without-interruption
 	      (lambda ()
 		(let ((index
 		       (os/make-subprocess filename arguments environment
@@ -183,12 +179,10 @@ USA.
     process))
 
 (define (subprocess-delete process)
-  (without-interrupts
-   (lambda ()
-     (if (subprocess-index process)
-	 (begin
-	   (remove-from-gc-finalizer! subprocess-finalizer process)
-	   (%close-subprocess-i/o process))))))
+  (if (subprocess-index process)
+      (begin
+	(close-subprocess-i/o process)
+	(remove-from-gc-finalizer! subprocess-finalizer process))))
 
 (define (subprocess-status process)
   (convert-subprocess-status (%subprocess-status process)))
@@ -211,7 +205,7 @@ USA.
 	  (convert-subprocess-status status)))))
 
 (define (%subprocess-status process)
-  (without-interrupts
+  (without-interruption
    (lambda ()
      (let ((index (subprocess-index process)))
        (if (and index ((ucode-primitive process-status-sync 1) index))
@@ -232,7 +226,7 @@ USA.
 	tick)))
 
 (define (subprocess-global-status-tick)
-  (without-interrupts
+  (without-interruption
    (lambda ()
      (if ((ucode-primitive process-status-sync-all 0))
 	 (let ((tick (cons #f #f)))
