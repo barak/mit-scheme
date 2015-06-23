@@ -1786,60 +1786,6 @@ compiled code from that file, it attempts to find the @file{.bci} file
 in the same directory from which the @file{.com} file was loaded.  Thus
 it is a good idea to leave these files together.
 
-@file{.bci} files are stored in a compressed format.  The debugger has
-to uncompress the files when it looks at them, and on a slow machine
-this can take a noticeable time.  The system takes steps to reduce the
-impact of this behavior: debugging information is cached in memory, and
-uncompressed versions of @file{.bci} files are kept around.  The default
-behavior is that a temporary file is created and the @file{.bci} file is
-uncompressed into it.  The temporary file is kept around for a while
-afterwards, and during that time if the uncompressed @file{.bci} file is
-needed the temporary file is used.  Each such reference updates an
-`access time' that is associated with the temporary file.  The garbage
-collector checks the access times of all such temporary files, and
-deletes any that have not been accessed in five minutes or more.  All of
-the temporaries are deleted automatically when the Scheme process is
-killed.
-
-Two other behaviors are available.  One of them uncompresses the
-@file{.bci} file each time it is referenced, and the other uncompresses
-the @file{.bci} file and writes it back out as a @file{.bif} file.  The
-@file{.bif} file remains after Scheme exits.  The time interval and the
-behavior are controlled by the following variables.
-
-@defvr variable *save-uncompressed-files?*
-This variable affects what happens when @file{.bci} files are
-uncompressed.  It allows a trade-off between performance and disk space.
-There are three possible values:
-
-@table @code
-@item #f
-The uncompressed versions of @file{.bci} files are never saved.  Each
-time the information is needed the @file{.bci} file is uncompressed.
-This option requires the minimum amount of disk space and is the
-slowest.
-
-@item automatic
-Uncompressed versions of @file{.bci} files are kept as temporary files.
-The temporary files are deleted when Scheme exits, or if they have not
-been used for a while.  This is the default.
-
-@item #t
-The @file{.bci} files are uncompressed to permanent @file{.bif} files.
-These files remain on disk after Scheme exits, and are rather
-large---about twice the size of the corresponding @file{.bci} files.  If
-you choose this option and you are running out of disk space you may
-delete the @file{.bif} files.  They will be regenerated as needed.
-@end table
-@end defvr
-
-@defvr variable *uncompressed-file-lifetime*
-The minimum length of time that a temporary uncompressed version of
-a @file{.bci} file will stay on disk after it is last used.
-The time is in milliseconds; the default is @samp{300000} (five
-minutes).
-@end defvr
-
 @defvr variable load-debugging-info-on-demand?
 If this variable is @code{#f}, then printing a compiled procedure
 will print the procedure's name only if the debugging information for

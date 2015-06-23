@@ -1336,8 +1336,6 @@ USA.
   (files "infstr" "infutl")
   (parent (runtime))
   (export ()
-	  *save-uncompressed-files?*
-	  *uncompressed-file-lifetime*
 	  compiled-code-block/filename-and-index
 	  compiled-entry/filename-and-index
 	  compiled-entry/block

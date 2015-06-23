@@ -38,11 +38,8 @@ USA.
 	  (,lambda-tag:let . LET)
 	  (,lambda-tag:fluid-let . FLUID-LET)))
   (set! directory-rewriting-rules (make-fluid '()))
-  (add-secondary-gc-daemon! discard-debugging-info!)
-  (initialize-uncompressed-files!)
-  (add-event-receiver! event:after-restore initialize-uncompressed-files!)
-  (add-event-receiver! event:before-exit delete-uncompressed-files!)
-  (add-gc-daemon! clean-uncompressed-files!))
+  (set! wrappers-with-memoized-debugging-info (make-serial-population))
+  (add-secondary-gc-daemon! discard-debugging-info!))
 
 (define (compiled-code-block/dbg-info block demand-load?)
   (let ((wrapper (compiled-code-block/debugging-wrapper block)))
@@ -71,7 +68,7 @@ USA.
 	(find-alternate-file-type pathname
 				  `(("inf" . ,fasload-loader)
 				    ("bif" . ,fasload-loader)
-				    ("bci" . ,(compressed-loader "bif")))))))
+				    ("bci" . ,compressed-loader))))))
 
 (define (find-alternate-file-type base-pathname alist)
   (let loop ((left alist) (time 0) (file #f) (receiver (lambda (x) x)))
@@ -87,25 +84,18 @@ USA.
 		    (loop (cdr left) time file receiver))))))))
 
 (define (memoize-debugging-info! wrapper info)
-  (without-interrupts
+  (without-interruption
    (lambda ()
      (set-debugging-wrapper/info! wrapper info)
-     (if (not wrappers-with-memoized-debugging-info)
-	 (set! wrappers-with-memoized-debugging-info (make-population)))
      (add-to-population! wrappers-with-memoized-debugging-info wrapper))))
 
 (define (discard-debugging-info!)
-  (without-interrupts
-   (lambda ()
-     (if wrappers-with-memoized-debugging-info
-	 (begin
-	   (map-over-population! wrappers-with-memoized-debugging-info
-	     (lambda (wrapper)
-	       (set-debugging-wrapper/info! wrapper #f)))
-	   (set! wrappers-with-memoized-debugging-info #f)))
-     unspecific)))
+  (for-each-inhabitant wrappers-with-memoized-debugging-info
+		       (lambda (wrapper)
+			 (set-debugging-wrapper/info! wrapper #f)))
+  (empty-population! wrappers-with-memoized-debugging-info))
 
-(define wrappers-with-memoized-debugging-info #f)
+(define wrappers-with-memoized-debugging-info)
 
 (define (compiled-entry/dbg-object entry #!optional demand-load?)
   (let ((block (compiled-entry/block entry))
@@ -404,7 +394,7 @@ USA.
 			    (loop (cdr types))))))))))
     (and pathname
 	 (if (equal? "bcs" (pathname-type pathname))
-	     ((compressed-loader "bsm") pathname)
+	     (compressed-loader pathname)
 	     (fasload-loader pathname)))))
 
 ;;;; Splitting of info structures
@@ -462,84 +452,6 @@ USA.
 	      (begin
 		(string-set! buffer i char)
 		(loop (fix:1+ i))))))))
-
-;;  General version.
-;;
-;; . This version will uncompress any input that can be read a character at
-;;   a time by applying parameter READ-CHAR to INPUT-PORT.  These do not
-;;   necesarily have to be a port and a port operation, but that is
-;;   the expected use.
-;; . The EOF indicator returned by READ-CHAR must not be a character, which
-;;   implies that EOF-OBJECT? and CHAR? are disjoint.
-
-#|
-(define (uncompress-kernel-by-chars input-port output-port buffer-size
-				    read-char)
-  (let ((buffer (make-string buffer-size))
-	(cp-table (make-vector window-size)))
-
-    (define (displacement->cp-index displacement cp)
-      (let ((index (fix:- cp displacement)))
-	(if (fix:< index 0) (fix:+ window-size index) index)))
-
-    (define-integrable (cp:+ cp n)
-      (fix:remainder (fix:+ cp n) window-size))
-
-    (define-integrable (read-substring! start end)
-      (let loop ((i start))
-	(if (fix:>= i end)
-	    (fix:- i start)
-	    (begin
-	      (string-set! buffer i (read-char input-port))
-	      (loop (fix:1+ i))))))
-
-    (define (grow-buffer!)
-      (let* ((new-size (fix:+ buffer-size (fix:quotient buffer-size 4)))
-	     (nbuffer (make-string new-size)))
-	(substring-move! buffer 0 buffer-size nbuffer 0)
-	(set! buffer-size new-size)
-	(set! buffer nbuffer)
-	unspecific))
-
-    (define-integrable (guarantee-buffer nbp)
-      (if (fix:> nbp buffer-size)
-	  (grow-buffer!)))
-
-    (let loop ((bp 0) (cp 0))
-      (let ((char (read-char input-port)))
-	(if (not (char? char))		; Assume EOF
-	    (begin
-	      (output-port/write-substring output-port buffer 0 bp)
-	      bp)
-	    (let ((byte (char->integer char)))
-	      (if (fix:< byte 16)
-		  (let ((length (fix:+ byte 1)))
-		    (let ((nbp (fix:+ bp length))
-			  (ncp (cp:+ cp length)))
-		      (guarantee-buffer nbp)
-		      (read-substring! bp nbp)
-		      (do ((bp bp (fix:+ bp 1)) (cp cp (cp:+ cp 1)))
-			  ((fix:= bp nbp))
-			(vector-set! cp-table cp bp))
-		      (loop nbp ncp)))
-		  (let ((cpi (displacement->cp-index
-			      (fix:+ (fix:* (fix:remainder byte 16) 256)
-				     (char->integer (read-char input-port)))
-			      cp))
-			(length (fix:+ (fix:quotient byte 16) 1)))
-		    (let ((bp* (vector-ref cp-table cpi))
-			  (nbp (fix:+ bp length))
-			  (ncp (cp:+ cp 1)))
-		      (guarantee-buffer nbp)
-		      (let ((end-bp* (fix:+ bp* length)))
-			(do ((bp* bp* (fix:+ bp* 1))
-			     (bp bp (fix:+ bp 1)))
-			    ((not (fix:< bp* end-bp*)))
-			  (vector-8b-set! buffer bp
-					  (vector-8b-ref buffer bp*))))
-		      (vector-set! cp-table cp bp)
-		      (loop nbp ncp))))))))))
-|#
 
 ;; This version will uncompress any input that can be read in chunks by
 ;; applying parameter READ-SUBSTRING to INPUT-PORT and a substring
@@ -678,51 +590,17 @@ USA.
 	  (lambda (condition) condition (if-fail #f))
 	(lambda () (fasload filename #t))))))
 
-(define (compressed-loader uncompressed-type)
-  (lambda (compressed-file)
-    (lookup-uncompressed-file compressed-file fasload-loader
-      (lambda ()
-	(let ((load-compressed
-	       (lambda (temporary-file)
-		 (call-with-current-continuation
-		  (lambda (k)
-		    (uncompress-internal compressed-file
-					 temporary-file
-					 (lambda (message . irritants)
-					   message irritants
-					   (k #f)))
-		    (fasload-loader temporary-file))))))
-	  (case *save-uncompressed-files?*
-	    ((#F)
-	     (call-with-temporary-file-pathname load-compressed))
-	    ((AUTOMATIC)
-	     (call-with-uncompressed-file-pathname compressed-file
-						   load-compressed))
-	    (else
-	     (call-with-temporary-file-pathname
-	      (lambda (temporary-file)
-		(let ((result (load-compressed temporary-file))
-		      (uncompressed-file
-		       (pathname-new-type compressed-file uncompressed-type)))
-		  (delete-file-no-errors uncompressed-file)
-		  (if (call-with-current-continuation
-		       (lambda (k)
-			 (bind-condition-handler
-			     (list condition-type:file-error
-				   condition-type:port-error)
-			     (lambda (condition) condition (k #t))
-			   (lambda ()
-			     (rename-file temporary-file uncompressed-file)
-			     #f))))
-		      (call-with-current-continuation
-		       (lambda (k)
-			 (bind-condition-handler
-			     (list condition-type:file-error
-				   condition-type:port-error)
-			     (lambda (condition) condition (k unspecific))
-			   (lambda ()
-			     (copy-file temporary-file uncompressed-file))))))
-		  result))))))))))
+(define (compressed-loader compressed-file)
+  (call-with-temporary-file-pathname
+   (lambda (temporary-file)
+     (call-with-current-continuation
+      (lambda (k)
+	(uncompress-internal compressed-file
+			     temporary-file
+			     (lambda (message . irritants)
+			       message irritants
+			       (k #f)))
+	(fasload-loader temporary-file))))))
 
 (define (uncompress-internal ifile ofile if-fail)
   (call-with-binary-input-file (merge-pathnames ifile)
@@ -739,80 +617,3 @@ USA.
    	      (lambda (output)
 		(uncompress-ports input output (fix:* (file-length ifile) 2))))
 	    (if-fail "Not a recognized compressed file:" ifile))))))
-
-(define (lookup-uncompressed-file compressed-file if-found if-not-found)
-  (dynamic-wind
-   (lambda ()
-     (set-car! uncompressed-files (+ (car uncompressed-files) 1)))
-   (lambda ()
-     (let loop ((entries (cdr uncompressed-files)))
-       (cond ((null? entries)
-	      (if-not-found))
-	     ((and (pathname=? (caar entries) compressed-file)
-		   (cddar entries)
-		   (or (file-modification-time<? compressed-file
-						 (cadar entries))
-		       (begin
-			 (set-cdr! (cdar entries) #f)
-			 #f)))
-	      (dynamic-wind
-	       (lambda () unspecific)
-	       (lambda ()
-		 (or (if-found (cadar entries))
-		     (begin
-		       (set-cdr! (cdar entries) #f)
-		       (loop (cdr entries)))))
-	       (lambda ()
-		 (if (cddar entries)
-		     (set-cdr! (cdar entries) (real-time-clock))))))
-	     (else
-	      (loop (cdr entries))))))
-   (lambda ()
-     (set-car! uncompressed-files (- (car uncompressed-files) 1)))))
-
-(define (call-with-uncompressed-file-pathname compressed-file receiver)
-  (let ((temporary-file (temporary-file-pathname)))
-    (let ((entry
-	   (cons compressed-file
-		 (cons temporary-file (real-time-clock)))))
-      (dynamic-wind
-       (lambda () unspecific)
-       (lambda ()
-	 (let ((value (receiver temporary-file)))
-	   (without-interrupts
-	    (lambda ()
-	      (set-cdr! uncompressed-files
-			(cons entry (cdr uncompressed-files)))))
-	   value))
-       (lambda ()
-	 (set-cdr! (cdr entry) (real-time-clock)))))))
-
-(define (delete-uncompressed-files!)
-  (do ((entries (cdr uncompressed-files) (cdr entries)))
-      ((null? entries) unspecific)
-    (deallocate-temporary-file (cadar entries))))
-
-(define (clean-uncompressed-files!)
-  (if (= 0 (car uncompressed-files))
-      (let ((time (real-time-clock)))
-	(let loop
-	    ((entries (cdr uncompressed-files))
-	     (prev uncompressed-files))
-	  (if (not (null? entries))
-	      (if (or (not (cddar entries))
-		      (< (- time (cddar entries))
-			 *uncompressed-file-lifetime*))
-		  (loop (cdr entries) entries)
-		  (begin
-		    (set-cdr! prev (cdr entries))
-		    (set-cdr! (cdar entries) #f)
-		    (deallocate-temporary-file (cadar entries))
-		    (loop (cdr entries) prev))))))))
-
-(define (initialize-uncompressed-files!)
-  (set! uncompressed-files (list 0))
-  unspecific)
-
-(define *save-uncompressed-files?* 'AUTOMATIC)
-(define *uncompressed-file-lifetime* 300000)
-(define uncompressed-files)
