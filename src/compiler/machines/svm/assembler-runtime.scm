@@ -781,7 +781,7 @@ USA.
 		(lambda (x e)
 		  (let ((n (inexact->exact x)))
 		    (if (not (exact-nonnegative-integer? n))
-			(error "Flonum decode failed:" x))
+			(error "Flonum encode failed:" x))
 		    (values n e)))))
 	   (lambda (x)
 	     (if (and (> x 1)
