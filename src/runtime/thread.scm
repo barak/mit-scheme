@@ -427,7 +427,7 @@ USA.
     (set-thread/block-events?! thread #t)
     (ring/discard-all (thread/pending-events thread))
     (translate-to-state-point (thread/root-state-point thread))
-    (%deregister-io-thread-events thread #t)
+    (%deregister-io-thread-events thread)
     (%discard-thread-timer-records thread)
     (%disassociate-joined-threads thread)
     (%disassociate-thread-mutexes thread)
@@ -487,7 +487,7 @@ USA.
      (del-assq! thread (thread/joined-threads (car threads)))))
   (set-thread/joined-to! thread '()))
 
-;;;; I/O Thread Events
+;;;; IO Thread Events
 
 (define io-registry)
 (define io-registrations)
@@ -501,11 +501,10 @@ USA.
   next)
 
 (define-structure (tentry (conc-name tentry/)
-			  (constructor make-tentry (thread event permanent?)))
+			  (constructor make-tentry (thread event)))
   dentry
   thread
   event
-  (permanent? #f read-only #t)
   prev
   next)
 
@@ -570,8 +569,7 @@ USA.
 		   thread
 		   (lambda (mode)
 		     (set! result mode)
-		     unspecific)
-		   #f #t))
+		     unspecific)))
 	    (set! registration-2
 		  (%register-io-thread-event
 		   'PROCESS-STATUS-CHANGE
@@ -580,8 +578,7 @@ USA.
 		   (lambda (mode)
 		     mode
 		     (set! result 'PROCESS-STATUS-CHANGE)
-		     unspecific)
-		   #f #t)))
+		     unspecific))))
 	  (%maybe-toggle-thread-timer))
 	(lambda ()
 	  (%suspend-current-thread)
@@ -597,28 +594,52 @@ USA.
       (delete-tentry! tentry)))
 
 (define (permanently-register-io-thread-event descriptor mode thread event)
-  (register-io-thread-event-1 descriptor mode thread event
-			      #t 'PERMANENTLY-REGISTER-IO-THREAD-EVENT))
+  (let ((stop? #f)
+	(registration #f))
+    (letrec ((handler
+	      (named-lambda (permanent-io-event mode*)
+		(if (not stop?)
+		    (event mode*))
+		(if (not (or stop? (memq mode* '(ERROR HANGUP #F))))
+		    (register))))
+	     (register
+	      (lambda ()
+		(deregister)
+		(if (not stop?)
+		    (set! registration
+			  (register-io-thread-event descriptor mode
+						    thread handler)))))
+	     (deregister
+	      (lambda ()
+		(if registration
+		    (begin
+		      (deregister-io-thread-event registration)
+		      (set! registration #f))))))
+      (register)
+      (cons 'DEREGISTER-PERMANENT-IO-EVENT
+	    (lambda ()
+	      (set! stop? #t)
+	      (deregister))))))
 
 (define (register-io-thread-event descriptor mode thread event)
-  (register-io-thread-event-1 descriptor mode thread event
-			      #f 'REGISTER-IO-THREAD-EVENT))
-
-(define (register-io-thread-event-1 descriptor mode thread event
-				    permanent? caller)
-  (guarantee-select-mode mode caller)
-  (guarantee-thread thread caller)
+  (guarantee-select-mode mode 'REGISTER-IO-THREAD-EVENT)
+  (guarantee-thread thread 'REGISTER-IO-THREAD-EVENT)
   (without-interrupts
    (lambda ()
      (let ((registration
-	    (%register-io-thread-event descriptor mode thread event
-				       permanent? #f)))
+	    (%register-io-thread-event descriptor mode thread event)))
        (%maybe-toggle-thread-timer)
        registration))))
 
-(define (deregister-io-thread-event tentry)
+(define (deregister-io-thread-event registration)
+  (if (and (pair? registration)
+	   (eq? (car registration) 'DEREGISTER-PERMANENT-IO-EVENT))
+      ((cdr registration))
+      (deregister-io-thread-event* registration)))
+
+(define (deregister-io-thread-event* tentry)
   (if (not (tentry? tentry))
-      (error:wrong-type-argument tentry "I/O thread event registration"
+      (error:wrong-type-argument tentry "IO thread event registration"
 				 'DEREGISTER-IO-THREAD-EVENT))
   (without-interrupts
    (lambda ()
@@ -675,9 +696,8 @@ USA.
 	   (dloop (dentry/next dentry)))))
   (%maybe-toggle-thread-timer))
 
-(define (%register-io-thread-event descriptor mode thread event permanent?
-				   front?)
-  (let ((tentry (make-tentry thread event permanent?)))
+(define (%register-io-thread-event descriptor mode thread event)
+  (let ((tentry (make-tentry thread event)))
     (let loop ((dentry io-registrations))
       (cond ((not dentry)
 	     (let ((dentry
@@ -698,17 +718,11 @@ USA.
 	    ((and (eqv? descriptor (dentry/descriptor dentry))
 		  (eq? mode (dentry/mode dentry)))
 	     (set-tentry/dentry! tentry dentry)
-	     (if front?
-		 (let ((next (dentry/first-tentry dentry)))
-		   (set-tentry/prev! tentry #f)
-		   (set-tentry/next! tentry next)
-		   (set-dentry/first-tentry! dentry tentry)
-		   (set-tentry/prev! next tentry))
-		 (let ((prev (dentry/last-tentry dentry)))
-		   (set-tentry/prev! tentry prev)
-		   (set-tentry/next! tentry #f)
-		   (set-dentry/last-tentry! dentry tentry)
-		   (set-tentry/next! prev tentry))))
+	     (let ((prev (dentry/last-tentry dentry)))
+	       (set-tentry/prev! tentry prev)
+	       (set-tentry/next! tentry #f)
+	       (set-dentry/last-tentry! dentry tentry)
+	       (set-tentry/next! prev tentry)))
 	    (else
 	     (loop (dentry/next dentry)))))
     tentry))
@@ -717,7 +731,7 @@ USA.
   (if (tentry/dentry tentry)
       (delete-tentry! tentry)))
 
-(define (%deregister-io-thread-events thread permanent?)
+(define (%deregister-io-thread-events thread)
   (let loop ((dentry io-registrations) (tentries '()))
     (if (not dentry)
 	(do ((tentries tentries (cdr tentries)))
@@ -729,9 +743,7 @@ USA.
 		(if (not tentry)
 		    tentries
 		    (loop (tentry/next tentry)
-			  (if (and (eq? thread (tentry/thread tentry))
-				   (or permanent?
-				       (not (tentry/permanent? tentry))))
+			  (if (eq? thread (tentry/thread tentry))
 			      (cons tentry tentries)
 			      tentries))))))))
 
@@ -770,24 +782,11 @@ USA.
 					 (and e
 					      (lambda () (e mode)))))
 				 events)))
-		      (if (tentry/permanent? tentry)
-			  (move-tentry-to-back! tentry)
-			  (delete-tentry! tentry))
+		      (delete-tentry! tentry)
 		      (loop (fix:+ i 1) events))))))
 	  (do ((events events (cdr events)))
 	      ((not (pair? events)))
 	    (%signal-thread-event (caar events) (cdar events)))))))
-
-(define (move-tentry-to-back! tentry)
-  (let ((next (tentry/next tentry)))
-    (if next
-	(let ((dentry (tentry/dentry tentry))
-	      (prev (tentry/prev tentry)))
-	  (set-tentry/prev! tentry (dentry/last-tentry dentry))
-	  (set-tentry/next! tentry #f)
-	  (set-dentry/last-tentry! dentry tentry)
-	  (set-tentry/prev! next prev)
-	  (if (not prev) (set-dentry/first-tentry! dentry next))))))
 
 (define (delete-tentry! tentry)
   (let ((dentry (tentry/dentry tentry))
@@ -1022,7 +1021,7 @@ USA.
     (let ((block-events? (thread/block-events? thread)))
       (set-thread/block-events?! thread #t)
       (ring/discard-all (thread/pending-events thread))
-      (%deregister-io-thread-events thread #f)
+      (%deregister-io-thread-events thread)
       (%discard-thread-timer-records thread)
       (set-thread/block-events?! thread block-events?))
     (%maybe-toggle-thread-timer)

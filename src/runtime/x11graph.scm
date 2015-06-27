@@ -232,6 +232,7 @@ USA.
 				       x-window/xw
 				       set-x-window/xw!)
 		    read-only #t)
+  (previewer-registration #f)
   (event-queue (make-queue))
   (properties (make-1d-table) read-only #t))
 
@@ -257,7 +258,7 @@ USA.
 	      (error "Unable to open display:" name))
 	  (let ((display (make-x-display name xd)))
 	    (add-to-gc-finalizer! display-finalizer display)
-	    (make-event-previewer display)
+	    (register-event-previewer! display)
 	    display)))))
 
 (define (x-graphics/close-display display)
@@ -266,12 +267,17 @@ USA.
      (if (x-display/xd display)
 	 (begin
 	   (remove-all-from-gc-finalizer! (x-display/window-finalizer display))
+	   (let ((registration (x-display/previewer-registration display)))
+	     (if registration
+		 (begin
+		   (deregister-io-thread-event registration)
+		   (set-x-display/previewer-registration! display #f))))
 	   (remove-from-gc-finalizer! display-finalizer display))))))
 
 (define (x-graphics/open-display? display)
   (if (x-display/xd display) #t #f))
 
-(define (make-event-previewer display)
+(define (register-event-previewer! display)
   (let ((registration))
     (set! registration
 	  (permanently-register-io-thread-event
@@ -301,7 +307,7 @@ USA.
 			(if event
 			    (begin (process-event display event)
 				   (loop))))))))))))
-    registration))
+    (set-x-display/previewer-registration! display registration)))
 
 (define (read-event display)
   (letrec ((loop
