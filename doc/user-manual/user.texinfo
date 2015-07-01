@@ -513,9 +513,13 @@ collection}.
 @cindex constant space
 A @dfn{constant space} that is used for allocated objects, like the
 heap.  Unlike the heap, storage used for objects in constant space is
-not reclaimed by garbage collection.  Constant space is used for
+not reclaimed by garbage collection; any unreachable objects in constant
+space remain there until the Scheme process is terminated.
+Constant space is used for
 objects that are essentially permanent, like procedures in the runtime
 system.
+Doing this reduces the expense of garbage collection because these
+objects are no longer copied.
 
 @item
 Some extra storage that is used by the microcode (the part of the system
@@ -1630,19 +1634,7 @@ Moves @var{object} from the heap into constant space.  Has no effect if
 @var{object} is already stored in constant space.  @var{Object} is moved
 in its entirety; if it is a compound object such as a list, a vector, or
 a record, then all of the objects that @var{object} points to are also
-moved to constant space.
-
-There are three important effects associated with moving an object to
-constant space.  The first and most important effect is that the object
-takes up half as much space, because when in the heap, the system must
-reserve space for the object in both the active heap and the inactive
-heap; if the object is in constant space it is not copied and therefore
-no extra space is required.  The second effect is that garbage
-collection will take less time, because @var{object} will no longer be
-copied.  The third effect is that the space allocated to @var{object} is
-permanently allocated, because constant space is never cleaned; any
-unreachable objects in constant space remain there until the Scheme
-process is terminated.
+moved to constant space.  @xref{Memory Usage}.
 
 The optional argument @var{pure-space?} is obsolete; it defaults to
 @code{#t} and when explicitly specified should always be @code{#t}.
