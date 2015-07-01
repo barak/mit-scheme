@@ -146,17 +146,9 @@ USA.
 
 /* VARIABLE operation.
  * Corresponds to a variable lookup or variable reference. Contains the
- * symbol referenced, and (if it has been compiled) the frame and
- * offset in the frame in which it was found.  One of these cells is
- * multiplexed by having its type code indicate one of several modes
- * of reference: not yet compiled, local reference, formal reference,
- * auxiliary reference, or global value reference.
- * There are extra definitions in lookup.h.
+ * symbol referenced
  */
 #define VARIABLE_SYMBOL		0
-#define VARIABLE_FRAME_NO	1
-#define VARIABLE_OFFSET		2
-#define VARIABLE_COMPILED_TYPE	1
 
 #define GET_VARIABLE_SYMBOL(variable)					\
   (MEMORY_REF ((variable), VARIABLE_SYMBOL))

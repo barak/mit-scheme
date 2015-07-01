@@ -124,12 +124,9 @@ USA.
  * call) or a incremental (run-time) DEFINE (known as an 'auxilliary'
  * binding).
  * When an environment frame is created, it only contains lambda
- * bindings.  If incremental defines are performed in it or its
- * children, it acquires an extension which contains a list of the
- * auxiliary bindings.  Some of these bindings are fictitious in that
- * their only purpose is to make the real bindings (if and when they
- * occur) become automatically dangerous.  Bindings become dangerous
- * when they are shadowed by incremental bindings in children frames.
+ * bindings.  If incremental defines are performed in it, it acquires
+ * an extension which contains a list of the auxiliary bindings.
+ *
  * Besides the lambda bindings, an environment frame contains a
  * pointer to the procedure which created it.  It is through this
  * procedure that the parent frame is found.
