@@ -33,7 +33,7 @@ USA.
 (define enable-smp? #f)
 
 (define-structure (thread
-		   (constructor %make-thread ())
+		   (constructor %make-thread (properties))
 		   (conc-name thread/))
   (execution-state 'RUNNING)
   ;; One of:
@@ -82,7 +82,7 @@ USA.
   ;; List of mutexes that this thread owns or is waiting to own.  Used
   ;; to disassociate the thread from those mutexes when it is exited.
 
-  (properties (make-1d-table) read-only #t))
+  (properties #f read-only #t))
 
 (define-integrable (guarantee-thread thread procedure)
   (if (not (thread? thread))
@@ -110,7 +110,7 @@ USA.
   (set! timer-records #f)
   (set! timer-interval 100)
   (reset-threads-low!)
-  (let ((first (%make-thread)))
+  (let ((first (%make-thread (make-1d-table/unsafe))))
     (set-thread/exit-value! first detached-thread-marker)
     (set-thread/root-state-point! first
 				  (current-state-point state-space:local))
@@ -158,7 +158,7 @@ USA.
   unspecific)
 
 (define (make-thread continuation)
-  (let ((thread (%make-thread)))
+  (let ((thread (%make-thread (make-1d-table))))
     (set-thread/continuation! thread continuation)
     (set-thread/root-state-point! thread
 				  (current-state-point state-space:local))

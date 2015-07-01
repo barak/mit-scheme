@@ -30,8 +30,8 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! population-of-1d-tables (make-population/unsafe))
-  (add-secondary-gc-daemon! gc-1d-tables!))
+  (set! population-of-1d-tables (make-serial-population/unsafe))
+  (add-secondary-gc-daemon! clean-1d-tables!))
 
 (define (initialize-unparser!)
   (unparser/set-tagged-pair-method! 1d-table-tag
@@ -39,10 +39,15 @@ USA.
 
 (define population-of-1d-tables)
 
-(define (gc-1d-tables!)
-  (map-over-population! population-of-1d-tables 1d-table/clean!))
+(define (clean-1d-tables!)
+  (for-each-inhabitant population-of-1d-tables 1d-table/clean!))
 
 (define (make-1d-table)
+  (let ((table (list 1d-table-tag)))
+    (add-to-population! population-of-1d-tables table)
+    table))
+
+(define (make-1d-table/unsafe)
   (let ((table (list 1d-table-tag)))
     (add-to-population!/unsafe population-of-1d-tables table)
     table))

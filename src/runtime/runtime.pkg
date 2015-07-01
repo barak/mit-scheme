@@ -1131,7 +1131,7 @@ USA.
 	  1d-table?
 	  make-1d-table)
   (import (runtime population)
-	  make-population/unsafe
+	  make-serial-population/unsafe
 	  add-to-population!/unsafe)
   (initialization (initialize-package!)))
 
@@ -5094,6 +5094,8 @@ USA.
   (import (runtime population)
 	  add-to-population!/unsafe
 	  make-population/unsafe)
+  (import (runtime 1d-property)
+	  make-1d-table/unsafe)
   (export (runtime interrupt-handler)
 	  thread-timer-interrupt-handler)
   (export (runtime primitive-io)
