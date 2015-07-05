@@ -93,7 +93,7 @@ USA.
 
 (define-test 'VECTOR-8B->HEXADECIMAL/UPPERCASE
   (lambda ()
-    (assert-equal (allbytes:lower)
+    (assert-equal (allbytes:upper)
                   (string-upcase (vector-8b->hexadecimal (allbytes))))))
 
 (define-test 'VECTOR-8B->HEXADECIMAL->VECTOR-8B
