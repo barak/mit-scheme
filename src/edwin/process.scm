@@ -34,7 +34,6 @@ USA.
 (add-event-receiver! editor-initializations
   (lambda ()
     (set! edwin-processes '())
-    (set! process-input-queue (cons '() '()))
     (set-variable! exec-path (os/exec-path))
     (set-variable! shell-file-name (os/shell-file-name))))
 
@@ -79,8 +78,7 @@ Initialized from the SHELL environment variable."
   (filter #f)
   (sentinel #f)
   (kill-without-query #f)
-  (notification-tick (cons #f #f))
-  (input-registration #f))
+  (notification-tick (cons #f #f)))
 
 (define-integrable (process-arguments process)
   (subprocess-arguments (process-subprocess process)))
@@ -127,13 +125,6 @@ Initialized from the SHELL environment variable."
    (let ((buffer (process-buffer process)))
      (and buffer
 	  (mark-right-inserting-copy (buffer-end buffer))))))
-
-(define (deregister-process-input process)
-  (let ((registration (process-input-registration process)))
-    (if registration
-	(begin
-	  (set-process-input-registration! process #f)
-	  (deregister-io-thread-event registration)))))
 
 (define (start-process name buffer environment program . arguments)
   (let ((make-subprocess
@@ -161,9 +152,7 @@ Initialized from the SHELL environment variable."
 		 buffer)))
 	   (let ((channel (subprocess-input-channel subprocess)))
 	     (if channel
-		 (begin
-		   (channel-nonblocking channel)
-		   (register-process-input process channel))))
+		 (channel-nonblocking channel)))
 	   (update-process-mark! process)
 	   (subprocess-put! subprocess 'EDWIN-PROCESS process)
 	   (set! edwin-processes (cons process edwin-processes))
@@ -185,7 +174,6 @@ Initialized from the SHELL environment variable."
 	   (begin
 	     (subprocess-kill subprocess)
 	     (%perform-status-notification process 'SIGNALLED #f)))
-       (deregister-process-input process)
        (let ((buffer (process-buffer process)))
 	 (if (buffer-alive? buffer)
 	     (buffer-modeline-event! buffer 'PROCESS-STATUS)))
@@ -214,75 +202,49 @@ Initialized from the SHELL environment variable."
 
 ;;;; Input and Output
 
-(define process-input-queue)
-
-(define (register-process-input process channel)
-  (set-process-input-registration!
-   process
-   (permanently-register-io-thread-event
-    (channel-descriptor-for-select channel)
-    'READ
-    (current-thread)
-    (lambda (mode)
-      mode
-      (let ((queue process-input-queue))
-	(if (not (memq process (car queue)))
-	    (let ((tail (list process)))
-	      (if (null? (cdr queue))
-		  (set-car! queue tail)
-		  (set-cdr! (cdr queue) tail))
-	      (set-cdr! queue tail))))))))
-
 (define (process-output-available?)
-  (not (null? (car process-input-queue))))
-
-(define (accept-process-output)
-  (let ((queue process-input-queue))
-    (let loop ((output? #f))
-      (if (null? (car queue))
-	  output?
-	  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-	    (let ((process (caar queue)))
-	      (set-car! queue (cdar queue))
-	      (if (null? (car queue))
-		  (set-cdr! queue '()))
-	      (let ((output?
-		     (if (poll-process-for-output process #t) #t output?)))
-		(set-interrupt-enables! interrupt-mask)
-		(loop output?))))))))
-
-(define (poll-process-for-output process do-status?)
-  (and (let ((channel (subprocess-input-channel (process-subprocess process))))
-	 (and channel
-	      (channel-open? channel)))
-       (let ((port (subprocess-input-port (process-subprocess process)))
-	     (buffer (make-string 512))
-	     (output? #f))
-	 (let ((close-input
-		(lambda ()
-		  (deregister-process-input process)
-		  (close-port port)
-		  (if do-status?
-		      (begin
-			(%update-global-notification-tick)
-			(if (poll-process-for-status-change process)
-			    (set! output? #t)))))))
-	   (let loop ()
-	     (let ((n
+  (let loop ((processes edwin-processes))
+    (and (pair? processes)
+	 (or (let ((port (subprocess-input-port
+			  (process-subprocess (car processes)))))
+	       (and port
+		    (port/open? port)
 		    (call-with-current-continuation
 		     (lambda (k)
-		       (bind-condition-handler (list condition-type:port-error)
-			   (lambda (condition) condition (k 0))
+		       (bind-condition-handler
+			   (list condition-type:port-error)
+			   (lambda (condition) condition (k #f))
 			 (lambda ()
-			   (input-port/read-string! port buffer)))))))
-	       (if n
-		   (if (fix:= n 0)
-		       (close-input)
-		       (begin
-			 (if (output-substring process buffer n)
-			     (set! output? #t))
-			 (loop)))))))
-	 output?)))
+			   (input-port/peek-char port)))))))
+	     (loop (cdr processes))))))
+
+(define (accept-process-output)
+  (let loop ((processes edwin-processes)
+	     (output? #f))
+    (if (pair? processes)
+	(loop (or (poll-process-for-output (car processes))
+		  output?)
+	      (cdr processes))
+	output?)))
+
+(define input-buffer (make-string 512))
+
+(define (poll-process-for-output process)
+  (let ((port (subprocess-input-port (process-subprocess process))))
+    (and (port/open? port)
+	 (let ((n
+		(call-with-current-continuation
+		 (lambda (k)
+		   (bind-condition-handler (list condition-type:port-error)
+		       (lambda (condition) condition (k #t))
+		     (lambda ()
+		       (input-port/read-string! port input-buffer)))))))
+	   (if (or (not (fixnum? n))
+		   (fix:= n 0))
+	       (close-port port)
+	       (output-substring process input-buffer n))
+	   (and (fixnum? n)
+		(fix:> n 0))))))
 
 (define (process-send-eof process)
   (process-send-char process #\EOT))
@@ -337,8 +299,24 @@ Initialized from the SHELL environment variable."
 				      status
 				      (process-exit-reason process)))))
 
+(define (register-process-output-events thread event)
+  (append-map!
+   (lambda (process)
+     (let* ((subprocess (process-subprocess process))
+	    (channel (subprocess-output-channel subprocess)))
+       (if (channel-open? channel)
+	   (list (register-io-thread-event
+		  (channel-descriptor-for-select channel) 'READ
+		  thread event))
+	   '())))
+   edwin-processes))
+
 (define (perform-status-notification process status reason)
-  (poll-process-for-output process #f)
+  (if (or (eq? 'EXITED status)
+	  (eq? 'SIGNALLED status))
+      (let drain ()
+	(if (poll-process-for-output process)
+	    (drain))))
   (let ((value (%perform-status-notification process status reason)))
     (if (and (or (eq? 'EXITED status)
 		 (eq? 'SIGNALLED status))

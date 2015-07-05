@@ -984,7 +984,10 @@ USA.
     (parent (edwin screen))
     (export (edwin)
 	    resize-screen)
+    (import (edwin process)
+	    register-process-output-events)
     (import (runtime primitive-io)
+	    channel-descriptor-for-select
 	    %channel-read
 	    channel-type=terminal?
 	    have-select?
@@ -1038,6 +1041,8 @@ USA.
 	    screen-xterm
 	    xterm-screen/set-icon-name
 	    xterm-screen/set-name)
+    (import (edwin process)
+	    register-process-output-events)
     (initialization (initialize-package!)))
 
   (define-package (edwin x-keys)

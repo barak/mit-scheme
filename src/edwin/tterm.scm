@@ -222,10 +222,7 @@ USA.
 				  (find (cdr key-pairs)
 					possible-pending?))))))))))
 	 (read-more?			; -> #F or #T if some octets were read
-	  (named-lambda (read-more? block?)
-	    (if block?
-		(channel-blocking channel)
-		(channel-nonblocking channel))
+	  (named-lambda (read-more?)
 	    (let ((n (%channel-read channel buffer end input-buffer-size)))
 	      (cond ((not n)  #F)
 		    ((eq? n #T) #F)
@@ -239,35 +236,28 @@ USA.
 	  (named-lambda (match-event block?)
 	    (let loop ()
 	      (or (begin
-		    (read-more? #f)
+		    (read-more?)
 		    (match-key))
-		  ;; Atomically poll async event sources and block.
-		  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+		  ;; Poll event sources and block.
+		  (begin
 		    (cond (inferior-thread-changes?
-			   (set-interrupt-enables! mask)
 			   (or (->update-event (accept-thread-output))
 			       (loop)))
 			  ((process-output-available?)
-			   (set-interrupt-enables! mask)
 			   (or (->update-event (accept-process-output))
 			       (loop)))
 			  ((process-status-changes?)
-			   (set-interrupt-enables! mask)
 			   (or (->update-event (handle-process-status-changes))
 			       (loop)))
 			  ((not have-select?)
-			   (set-interrupt-enables! mask)
 			   (and block? (loop)))
 			  (incomplete-pending
 			   ;; Must busy-wait.
-			   (set-interrupt-enables! mask)
 			   (loop))
 			  (block?
-			   (read-more? #t)
-			   (set-interrupt-enables! mask)
+			   (block-for-event)
 			   (loop))
 			  (else
-			   (set-interrupt-enables! mask)
 			   #f)))))))
 	 (->update-event
 	  (named-lambda (->update-event redisplay?)
@@ -309,11 +299,41 @@ USA.
 		   match)
 		  ((pair? match)
 		   (cdr match))
-		  (else (error "Bogus input match:" match))))))
+		  (else (error "Bogus input match:" match)))))
+	 (block-for-event
+	  (named-lambda (block-for-event)
+	    (let ((input-available? #f)
+		  (output-available? #f)
+		  (registrations))
+	      (dynamic-wind
+	       (lambda ()
+		 (let ((thread (current-thread)))
+		   (set! registrations
+			 (cons
+			  (register-io-thread-event
+			   (channel-descriptor-for-select channel) 'READ
+			   thread (lambda (mode)
+				    mode
+				    (set! input-available? #t)))
+			  (register-process-output-events
+			   thread (lambda (mode)
+				    mode
+				    (set! output-available? #t)))))))
+	       (lambda ()
+		 (with-thread-events-blocked
+		  (lambda ()
+		    (if (and (not input-available?)
+			     (not output-available?)
+			     (not (process-status-changes?))
+			     (not inferior-thread-changes?))
+			(suspend-current-thread))))
+		 unspecific)
+	       (lambda ()
+		 (for-each deregister-io-thread-event registrations)))))))
       (values
        (named-lambda (halt-update?)
 	 (or (fix:< start end)
-	     (read-more? #f)))
+	     (read-more?)))
        (named-lambda (peek-no-hang)
 	 (let ((event (->event (match-event #f))))
 	   (if (input-event? event)
@@ -376,6 +396,7 @@ USA.
     (lambda (get-outside-state)
       (terminal-operation terminal-raw-input
 			  (port/input-channel console-i/o-port))
+      (channel-nonblocking (port/input-channel console-i/o-port))
       (terminal-operation terminal-raw-output
 			  (port/output-channel console-i/o-port))
       (tty-set-interrupt-enables 2)

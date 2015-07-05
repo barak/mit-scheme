@@ -496,24 +496,23 @@ USA.
 		      (guarantee-result)))))))))))
 
 (define (read-event queue display block?)
+  (preview-events display queue)
+  (let ((event
+	 (if (queue-empty? queue)
+	     (if (eq? 'IN-UPDATE block?)
+		 #f
+		 (read-event-1 display block?))
+	     (dequeue!/unsafe queue))))
+    (if (and event trace-port)
+	(write-line event trace-port))
+    event))
+
+(define (preview-events display queue)
   (let loop ()
-    (set! reading-event? #t)
-    (let ((event
-	   (if (queue-empty? queue)
-	       (if (eq? 'IN-UPDATE block?)
-		   (x-display-process-events display 2)
-		   (read-event-1 display block?))
-	       (dequeue!/unsafe queue))))
-      (set! reading-event? #f)
-      (if (and (vector? event)
-	       (fix:= (vector-ref event 0) event-type:expose))
-	  (begin
-	    (process-expose-event event)
-	    (loop))
-	  (begin
-	    (if (and event trace-port)
-		(write-line event trace-port))
-	    event)))))
+    (let ((event (x-display-process-events display 2)))
+      (if event
+	  (begin (preview-event event queue)
+		 (loop))))))
 
 (define trace-port #f)
 
@@ -542,60 +541,78 @@ USA.
 			  (vector-ref event 5))))
 
 (define (read-event-1 display block?)
-  (or (x-display-process-events display 2)
+  ;; Now consider other (non-X) events.
+  (if (eq? '#T block?)
       (let loop ()
-	(let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-	  (cond (inferior-thread-changes?
-		 (set-interrupt-enables! interrupt-mask)
-		 event:inferior-thread-output)
-		((process-output-available?)
-		 (set-interrupt-enables! interrupt-mask)
-		 event:process-output)
-		((process-status-changes?)
-		 (set-interrupt-enables! interrupt-mask)
-		 event:process-status)
-		(else
-		 (let ((flag
-			(test-for-io-on-descriptor
-			 (x-display-descriptor display)
-			 block?
-			 'READ)))
-		   (set-interrupt-enables! interrupt-mask)
-		   (case flag
-		     ((#F) #f)
-		     ((PROCESS-STATUS-CHANGE) event:process-status)
-		     ((INTERRUPT) (loop))
-		     (else (read-event-1 display block?))))))))))
-
-(define (preview-event-stream)
-  (set! previewer-registration
-	(permanently-register-io-thread-event
-	 (x-display-descriptor x-display-data)
-	 'READ
-	 (current-thread)
-	 (lambda (mode)
-	   mode
-	   (if (not reading-event?)
-	       (let loop ()
-		 (let ((event (x-display-process-events x-display-data 2)))
-		   (if event
-		       (begin (preview-event event)
-			      (loop)))))))))
-  unspecific)
+	(let ((event (block-for-event display)))
+	  (or event
+	      (loop))))
+      (cond (inferior-thread-changes?
+	     event:inferior-thread-output)
+	    ((process-output-available?)
+	     event:process-output)
+	    ((process-status-changes?)
+	     event:process-status)
+	    (else #f))))
+
+(define (block-for-event display)
+  (let ((x-events-available? #f)
+	(output-available? #f)
+	(registrations))
+    (dynamic-wind
+     (lambda ()
+       (let ((thread (current-thread)))
+	 (set! registrations
+	       (cons
+		(register-io-thread-event
+		 (x-display-descriptor display) 'READ
+		 thread (lambda (mode)
+			  mode
+			  (set! x-events-available? #t)))
+		(register-process-output-events
+		 thread (lambda (mode)
+			  mode
+			  (set! output-available? #t)))))))
+     (lambda ()
+       (let loop ()
+	 (with-thread-events-blocked
+	  (lambda ()
+	    (if (and (not x-events-available?)
+		     (not output-available?)
+		     (not (process-status-changes?))
+		     (not inferior-thread-changes?))
+		(suspend-current-thread))))
+	 (cond (x-events-available?
+		(let ((queue x-display-events))
+		  (preview-events display queue)
+		  (if (queue-empty? queue)
+		      #f
+		      (dequeue!/unsafe queue))))
+	       ((process-status-changes?)
+		event:process-status)
+	       (output-available?
+		event:process-output)
+	       (inferior-thread-changes?
+		event:inferior-thread-output)
+	       (else
+		(loop)))))
+     (lambda ()
+       (for-each deregister-io-thread-event registrations)
+       (set! registrations)))))
 
 (define (wait-for-event interval predicate process-event)
   (let ((timeout (+ (real-time-clock) interval)))
-    (fluid-let ((reading-event? #t))
-      (let loop ()
-	(let ((event (x-display-process-events x-display-data 2)))
-	  (if event
-	      (if (and (vector? event) (predicate event))
-		  (or (process-event event) (loop))
-		  (begin (preview-event event) (loop)))
-	      (and (< (real-time-clock) timeout)
-		   (loop))))))))
-
-(define (preview-event event)
+    (let loop ()
+      (let ((event (x-display-process-events x-display-data 2)))
+	(if event
+	    (if (and (vector? event) (predicate event))
+		(or (process-event event) (loop))
+		(begin (preview-event event x-display-events) (loop)))
+	    ;; Busy loop!
+	    (and (< (real-time-clock) timeout)
+		 (loop)))))))
+
+(define (preview-event event queue)
   (cond ((and signal-interrupts?
 	      (vector? event)
 	      (fix:= event-type:key-press (vector-ref event 0))
@@ -605,7 +622,7 @@ USA.
 			    (merge-bucky-bits (string-ref string 0)
 					      (vector-ref event 3)))
 		    (string-find-next-char string #\BEL))))
-	 (clean-event-queue x-display-events)
+	 (clean-event-queue queue)
 	 (signal-interrupt!))
 	((and (vector? event)
 	      (fix:= event-type:expose (vector-ref event 0)))
@@ -616,9 +633,9 @@ USA.
 		  (fix:= event-type:visibility (vector-ref event 0))))
 	 (let ((result (process-special-event event)))
 	   (if result
-	       (enqueue!/unsafe x-display-events result))))
+	       (enqueue!/unsafe queue result))))
 	(else
-	 (enqueue!/unsafe x-display-events event))))
+	 (enqueue!/unsafe queue event))))
 
 (define (clean-event-queue queue)
   ;; Flush keyboard and mouse events from the input queue.  Other
@@ -640,8 +657,8 @@ USA.
     (enqueue!/unsafe queue (car events))))
 
 (define (process-change-event event)
-  (cond ((fix:= event event:process-output) (accept-process-output))
-	((fix:= event event:process-status) (handle-process-status-changes))
+  (cond ((fix:= event event:process-status) (handle-process-status-changes))
+	((fix:= event event:process-output) (accept-process-output))
 	((fix:= event event:inferior-thread-output) (accept-thread-output))
 	(else (error "Illegal change event:" event))))
 
@@ -1312,23 +1329,15 @@ Otherwise, it is copied from the primary selection."
 
 ;;;; Interrupts
 
-(define reading-event?)
 (define signal-interrupts?)
 (define last-focus-time)
-(define previewer-registration)
 (define ignore-button-state)
 
 (define (with-editor-interrupts-from-x receiver)
-  (fluid-let ((reading-event? #f)
-	      (signal-interrupts? #t)
+  (fluid-let ((signal-interrupts? #t)
 	      (last-focus-time #f)
-	      (previewer-registration)
 	      (ignore-button-state #f))
-    (dynamic-wind
-     preview-event-stream
-     (lambda () (receiver (lambda (thunk) (thunk)) '()))
-     (lambda ()
-       (deregister-io-thread-event previewer-registration)))))
+    (receiver (lambda (thunk) (thunk)) '())))
 
 (define (with-x-interrupts-enabled thunk)
   (with-signal-interrupts #t thunk))
