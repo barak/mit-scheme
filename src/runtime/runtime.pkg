@@ -1638,6 +1638,10 @@ USA.
   (files "uproc")
   (parent (runtime))
   (export ()
+	  %entity-extra
+	  %entity-procedure
+	  %set-entity-extra!
+	  %set-entity-procedure!
 	  apply-hook-extra
 	  apply-hook-procedure
 	  apply-hook?

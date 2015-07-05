@@ -332,41 +332,64 @@ USA.
 
 ;;;; Entities and Apply Hooks
 
-(define-integrable (make-entity procedure extra)
+(define-integrable (%make-entity procedure extra)
   (system-pair-cons (ucode-type entity) procedure extra))
 
 (define-integrable (%entity? object)
   (object-type? (ucode-type entity) object))
 
+(define-integrable (%entity-procedure entity)
+  (system-pair-car entity))
+
+(define-integrable (%set-entity-procedure! entity procedure)
+  (system-pair-set-cdr! entity procedure))
+
+(define-integrable (%entity-extra entity)
+  (system-pair-cdr entity))
+
+(define-integrable (%set-entity-extra! entity procdure)
+  (system-pair-set-cdr! entity extra))
+
 (define (entity? object)
   (and (%entity? object)
        (not (%entity-is-apply-hook? object))))
 
-(define-integrable (entity-procedure entity)
-  (system-pair-car entity))
+(define-guarantee entity "entity")
 
-(define-integrable (entity-extra entity)
-  (system-pair-cdr entity))
+(define (make-entity procedure extra)
+  (%make-entity procedure extra))
+
+(define (entity-procedure entity)
+  (guarantee-entity entity 'ENTITY-PROCEDURE)
+  (%entity-procedure entity))
+
+(define (entity-extra entity)
+  (guarantee-entity entity 'ENTITY-EXTRA)
+  (%entity-extra entity))
 
 (define (set-entity-procedure! entity procedure)
+  (guarantee-entity entity 'SET-ENTITY-PROCEDURE!)
   (if (procedure-chains-to procedure entity)
       (error:bad-range-argument procedure 'SET-ENTITY-PROCEDURE!))
-  (system-pair-set-car! entity procedure))
+  (%set-entity-procedure! entity procedure))
 
-(define-integrable (set-entity-extra! entity extra)
-  (system-pair-set-cdr! entity extra))
-
+(define (set-entity-extra! entity extra)
+  (guarantee-entity entity 'SET-ENTITY-EXTRA!)
+  (%set-entity-extra! entity extra))
+
 (define (make-apply-hook procedure extra)
-  (make-entity (lambda (entity . args)
-		 (apply (apply-hook-procedure entity) args))
-	       (hunk3-cons apply-hook-tag procedure extra)))
+  (%make-entity (lambda (entity . args)
+		  (apply (apply-hook-procedure entity) args))
+		(hunk3-cons apply-hook-tag procedure extra)))
 
 (define (apply-hook? object)
   (and (%entity? object)
        (%entity-is-apply-hook? object)))
 
+(define-guarantee apply-hook "apply-hook")
+
 (define-integrable (%entity-is-apply-hook? object)
-  (%entity-extra/apply-hook? (entity-extra object)))
+  (%entity-extra/apply-hook? (%entity-extra object)))
 
 (define (%entity-extra/apply-hook? extra)
   ;; The wabbit cares about this one.
@@ -376,19 +399,23 @@ USA.
 (define apply-hook-tag
   "apply-hook-tag")
 
-(define-integrable (apply-hook-procedure apply-hook)
-  (system-hunk3-cxr1 (entity-extra apply-hook)))
+(define (apply-hook-procedure apply-hook)
+  (guarantee-apply-hook apply-hook 'APPLY-HOOK-PROCEDURE)
+  (system-hunk3-cxr1 (%entity-extra apply-hook)))
 
-(define-integrable (apply-hook-extra apply-hook)
-  (system-hunk3-cxr2 (entity-extra apply-hook)))
+(define (apply-hook-extra apply-hook)
+  (guarantee-apply-hook apply-hook 'APPLY-HOOK-EXTRA)
+  (system-hunk3-cxr2 (%entity-extra apply-hook)))
 
 (define (set-apply-hook-procedure! apply-hook procedure)
+  (guarantee-apply-hook apply-hook 'SET-APPLY-HOOK-PROCEDURE!)
   (if (procedure-chains-to procedure apply-hook)
       (error:bad-range-argument procedure 'SET-APPLY-HOOK-PROCEDURE!))
-  (system-hunk3-set-cxr1! (entity-extra apply-hook) procedure))
+  (system-hunk3-set-cxr1! (%entity-extra apply-hook) procedure))
 
-(define-integrable (set-apply-hook-extra! apply-hook procedure)
-  (system-hunk3-set-cxr2! (entity-extra apply-hook) procedure))
+(define (set-apply-hook-extra! apply-hook procedure)
+  (guarantee-apply-hook apply-hook 'SET-APPLY-HOOK-EXTRA!)
+  (system-hunk3-set-cxr2! (%entity-extra apply-hook) procedure))
 
 ;;;; Arity dispatched entities
 
@@ -402,7 +429,7 @@ USA.
 		      dispatched-cases))))
 
 (define (arity-dispatched-procedure? object)
-  (and (%entity? object)
+  (and (entity? object)
        (vector? (entity-extra object))
        (fix:< 0 (vector-length (entity-extra object)))
        (eq? (vector-ref (entity-extra object) 0)
