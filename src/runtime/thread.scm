@@ -28,6 +28,9 @@ USA.
 ;;; package: (runtime thread)
 
 (declare (usual-integrations))
+
+;;; This allows a host without the SMP primitives to avoid calling them.
+(define enable-smp? #f)
 
 (define-structure (thread
 		   (constructor %make-thread ())
@@ -98,18 +101,28 @@ USA.
 (define next-scheduled-timeout)
 (define root-continuation-default)
 
-(define (initialize-package!)
-  (set! root-continuation-default (make-fluid #f))
-  (initialize-error-conditions!)
+(define (initialize-low!)
+  ;; Called early in the cold load to create the first thread.
   (set! thread-population (make-population))
   (set! first-running-thread #f)
   (set! last-running-thread #f)
   (set! next-scheduled-timeout #f)
   (set! timer-records #f)
   (set! timer-interval 100)
-  (initialize-io-blocking)
-  (add-event-receiver! event:after-restore initialize-io-blocking)
-  (detach-thread (make-thread #f))
+  (reset-threads-low!)
+  (let ((first (%make-thread)))
+    (set-thread/exit-value! first detached-thread-marker)
+    (set-thread/root-state-point! first
+				  (current-state-point state-space:local))
+    (add-to-population!/unsafe thread-population first)
+    (%thread-running first)))
+
+(define (initialize-high!)
+  ;; Called later in the cold load, when more of the runtime is initialized.
+  (set! root-continuation-default (make-fluid #f))
+  (initialize-error-conditions!)
+  (reset-threads-high!)
+  (add-event-receiver! event:after-restore reset-threads!)
   (add-event-receiver! event:before-exit stop-thread-timer)
   (named-structure/set-tag-description! thread-mutex-tag
     (make-define-structure-type 'VECTOR
@@ -129,6 +142,20 @@ USA.
 				(standard-unparser-method 'LINK #f)
 				link-tag
 				4)))
+
+(define (reset-threads!)
+  (reset-threads-low!)
+  (reset-threads-high!))
+
+(define (reset-threads-low!)
+  (set! enable-smp?
+	(and ((ucode-primitive get-primitive-address 2) 'SMP-COUNT #f)
+	     ((ucode-primitive smp-count 0)))))
+
+(define (reset-threads-high!)
+  (set! io-registry (and have-select? (make-select-registry)))
+  (set! io-registrations #f)
+  unspecific)
 
 (define (make-thread continuation)
   (let ((thread (%make-thread)))
@@ -464,11 +491,6 @@ USA.
   (permanent? #f read-only #t)
   prev
   next)
-
-(define (initialize-io-blocking)
-  (set! io-registry (and have-select? (make-select-registry)))
-  (set! io-registrations #f)
-  unspecific)
 
 (define (wait-for-io)
   (%maybe-toggle-thread-timer #f)

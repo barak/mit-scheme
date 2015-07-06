@@ -444,7 +444,7 @@ USA.
 			  marker-instance)
 			 (parser-state/block-thread-events? state)
 			 (parser-state/interrupt-mask state)))
-	      ((eq? marker-type set-interrupt-enables!)
+	      ((eq? marker-type 'SET-INTERRUPT-ENABLES!)
 	       (continue (parser-state/dynamic-state state)
 			 (parser-state/block-thread-events? state)
 			 marker-instance))

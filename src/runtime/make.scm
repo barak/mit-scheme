@@ -372,6 +372,8 @@ USA.
       (files2
        '(("syntax-items" . (RUNTIME SYNTAX ITEMS))
 	 ("syntax-transforms" . (RUNTIME SYNTAX TRANSFORMS))
+	 ("thread" . (RUNTIME THREAD))
+	 ("wind" . (RUNTIME STATE-SPACE))
 	 ("prop1d" . (RUNTIME 1D-PROPERTY))
 	 ("events" . (RUNTIME EVENT-DISTRIBUTOR))
 	 ("gdatab" . (RUNTIME GLOBAL-DATABASE))
@@ -392,13 +394,15 @@ USA.
   (package-initialize '(RUNTIME POPULATION) #f #t)
   (package-initialize '(RUNTIME RECORD) 'INITIALIZE-RECORD-TYPE-TYPE! #t)
   (load-files files2)
-  (package-initialize '(RUNTIME 1D-PROPERTY) #f #t)
+  (package-initialize '(RUNTIME 1D-PROPERTY) #f #t)	     ;First population.
+  (package-initialize '(RUNTIME STATE-SPACE) #f #t)
+  (package-initialize '(RUNTIME THREAD) 'INITIALIZE-LOW! #t) ;First 1d-table.
   (package-initialize '(RUNTIME EVENT-DISTRIBUTOR) #f #t)
   (package-initialize '(RUNTIME GLOBAL-DATABASE) #f #t)
   (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-UNPARSER! #t)
   (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-UNPARSER! #t)
   (package-initialize '(RUNTIME GC-FINALIZER) #f #t)
-  (package-initialize '(RUNTIME STRING) #f #t)
+  (package-initialize '(RUNTIME STRING) #f #t)		     ;First GC-finalizer
 
   (set! boot-defs
 	(package/environment (name->package '(RUNTIME BOOT-DEFINITIONS))))
@@ -432,7 +436,6 @@ USA.
  '(
    ;; Microcode interface
    ((RUNTIME MICROCODE-TABLES) READ-MICROCODE-TABLES!)
-   (RUNTIME STATE-SPACE)
    (RUNTIME APPLY)
    (RUNTIME HASH)			; First GC daemon!
    (RUNTIME PRIMITIVE-IO)
@@ -478,8 +481,7 @@ USA.
    ((RUNTIME OS-PRIMITIVES) INITIALIZE-SYSTEM-PRIMITIVES!)
    ;; Floating-point environment -- needed by threads.
    (RUNTIME FLOATING-POINT-ENVIRONMENT)
-   ;; Threads
-   (RUNTIME THREAD)
+   ((RUNTIME THREAD) INITIALIZE-HIGH!)
    ;; I/O
    (RUNTIME PORT)
    (RUNTIME OUTPUT-PORT)

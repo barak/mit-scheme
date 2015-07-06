@@ -113,10 +113,10 @@ USA.
 		      (set-state-point/from-nearer! new-root #f)
 		      (set-state-space/nearest-point! space new-root)
 		      (with-stack-marker from-nearer
-			set-interrupt-enables! interrupt-mask))
+			'SET-INTERRUPT-ENABLES! interrupt-mask))
 		    ;; Disable interrupts again in case FROM-NEARER
 		    ;; re-enabled them.
-		    (set-interrupt-enables! interrupt-mask)
+		    ((ucode-primitive set-interrupt-enables! 1) interrupt-mask)
 		    ;; Make sure that NEW-ROOT is still the root,
 		    ;; because FROM-NEARER might have moved it.  If
 		    ;; it has been moved, find the new root, and
