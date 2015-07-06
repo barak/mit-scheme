@@ -632,6 +632,12 @@ USA.
       (make-ratnum (let ((n (ratnum-numerator q))) (int:* n n))
 		   (let ((d (ratnum-denominator q))) (int:* d d)))
       (int:* q q)))
+
+(define (rat:cube q)
+  (if (ratnum? q)
+      (make-ratnum (let ((n (ratnum-numerator q))) (int:* n (int:* n n)))
+		   (let ((d (ratnum-denominator q))) (int:* d (int:* d d))))
+      (int:* q (int:* q q))))
 
 (define (rat:/ u/u* v/v*)
   (declare (integrate-operator rat:sign-correction))
@@ -998,6 +1004,7 @@ USA.
 (define-standard-unary real:invert (lambda (x) (flo:/ flo:1 x)) rat:invert)
 (define-standard-unary real:abs flo:abs rat:abs)
 (define-standard-unary real:square (lambda (x) (flo:* x x)) rat:square)
+(define-standard-unary real:cube (lambda (x) (flo:* x (flo:* x x))) rat:cube)
 (define-standard-unary real:floor flo:floor rat:floor)
 (define-standard-unary real:ceiling flo:ceiling rat:ceiling)
 (define-standard-unary real:truncate flo:truncate rat:truncate)
@@ -1947,6 +1954,9 @@ USA.
 
 (define (square z)
   (complex:* z z))
+
+(define (cube z)
+  (complex:* z (complex:* z z)))
 
 ;;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!.
 

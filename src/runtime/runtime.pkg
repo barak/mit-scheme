@@ -2925,6 +2925,7 @@ USA.
 	  >
 	  >=
 	  atan
+	  cube
 	  error:not-complex
 	  error:not-exact
 	  error:not-exact-integer
