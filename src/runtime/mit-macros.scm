@@ -571,6 +571,17 @@ USA.
 	   (else
 	    (ill-formed-syntax form))))))
 
+(define-syntax :circular-stream
+  (er-macro-transformer
+   (lambda (form rename compare)
+     compare				;ignore
+     (syntax-check '(KEYWORD EXPRESSION * EXPRESSION) form)
+     (let ((self (make-synthetic-identifier 'SELF)))
+       `(,(rename 'LETREC) ((,self (,(rename 'CONS-STREAM*)
+				    ,@(cdr form)
+				    ,self)))
+	 ,self)))))
+
 (define-syntax :cons-stream
   (er-macro-transformer
    (lambda (form rename compare)
@@ -578,6 +589,18 @@ USA.
      (syntax-check '(KEYWORD EXPRESSION EXPRESSION) form)
      `(,(rename 'CONS) ,(cadr form)
 		       (,(rename 'DELAY) ,(caddr form))))))
+
+(define-syntax :cons-stream*
+  (er-macro-transformer
+   (lambda (form rename compare)
+     compare				;ignore
+     (cond ((syntax-match? '(EXPRESSION EXPRESSION) (cdr form))
+	    `(,(rename 'CONS-STREAM) ,(cadr form) ,(caddr form)))
+	   ((syntax-match? '(EXPRESSION * EXPRESSION) (cdr form))
+	    `(,(rename 'CONS-STREAM) ,(cadr form)
+	      (,(rename 'CONS-STREAM*) ,@(cddr form))))
+	   (else
+	    (ill-formed-syntax form))))))
 
 (define-syntax :define-integrable
   (er-macro-transformer
