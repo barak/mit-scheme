@@ -44,6 +44,7 @@ USA.
   (set! *unparse-compound-procedure-names?* (make-fluid #t))
   (set! *unparse-with-datum?* (make-fluid #f))
   (set! *unparse-abbreviate-quotations?* (make-fluid #f))
+  (set! *unparse-streams?* (make-fluid #t))
   (set! system-global-unparser-table (make-system-global-unparser-table))
   (set! *unparser-table* (make-fluid system-global-unparser-table))
   (set! *default-unparser-state* (make-fluid #f))
@@ -71,6 +72,7 @@ USA.
 (define *unparse-compound-procedure-names?*)
 (define *unparse-with-datum?*)
 (define *unparse-abbreviate-quotations?*)
+(define *unparse-streams?*)
 (define system-global-unparser-table)
 (define *unparser-table*)
 (define *default-unparser-state*)
@@ -550,6 +552,8 @@ USA.
          => (lambda (prefix) (unparse-list/prefix-pair prefix pair)))
         ((unparse-list/unparser pair)
          => (lambda (method) (invoke-user-method method pair)))
+        ((and (fluid *unparse-streams?*) (stream-pair? pair))
+         (unparse-list/stream-pair pair))
         (else
          (unparse-list pair))))
 
@@ -615,6 +619,34 @@ USA.
          ((UNQUOTE) ",")
          ((UNQUOTE-SPLICING) ",@")
          (else #f))))
+
+(define (unparse-list/stream-pair stream-pair)
+  (limit-unparse-depth
+   (lambda ()
+     (*unparse-char #\{)
+     (*unparse-object (safe-car stream-pair))
+     (unparse-stream-tail (safe-cdr stream-pair) 2)
+     (*unparse-char #\}))))
+
+(define (unparse-stream-tail tail n)
+  (cond ((not (promise? tail))
+         (*unparse-string " . ")
+         (*unparse-object tail))
+        ((not (promise-forced? tail))
+         (*unparse-string " ..."))
+        (else (let ((value (promise-value tail)))
+                (cond ((empty-stream? value))
+                      ((stream-pair? value)
+                       (*unparse-char #\space)
+                       (*unparse-object (safe-car value))
+                       (if (let ((limit (fluid *unparser-list-breadth-limit*)))
+                             (and limit
+                                  (>= n limit)))
+                           (*unparse-string " ...")
+                           (unparse-stream-tail (safe-cdr value) (+ n 1))))
+                      (else
+                       (*unparse-string " . ")
+                       (*unparse-object value)))))))
 
 (define (safe-car pair)
   (map-reference-trap (lambda () (car pair))))

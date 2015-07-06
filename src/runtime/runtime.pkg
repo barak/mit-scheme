@@ -4911,6 +4911,7 @@ USA.
 	  *unparse-abbreviate-quotations?*
 	  *unparse-compound-procedure-names?*
 	  *unparse-primitives-by-name?*
+	  *unparse-streams?*
 	  *unparse-uninterned-symbols-by-name?*
 	  *unparse-with-datum?*
 	  *unparse-with-maximum-readability?*
