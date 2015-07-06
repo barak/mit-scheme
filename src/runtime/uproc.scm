@@ -347,7 +347,7 @@ USA.
 (define-integrable (%entity-extra entity)
   (system-pair-cdr entity))
 
-(define-integrable (%set-entity-extra! entity procdure)
+(define-integrable (%set-entity-extra! entity extra)
   (system-pair-set-cdr! entity extra))
 
 (define (entity? object)
