@@ -342,7 +342,7 @@ USA.
   (system-pair-car entity))
 
 (define-integrable (%set-entity-procedure! entity procedure)
-  (system-pair-set-cdr! entity procedure))
+  (system-pair-set-car! entity procedure))
 
 (define-integrable (%entity-extra entity)
   (system-pair-cdr entity))
