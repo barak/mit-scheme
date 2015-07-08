@@ -240,7 +240,7 @@ USA.
 
 #define TERM_MESSAGE_TABLE						\
 {									\
-/* 0x00 */		"Moriturus te saluto",				\
+/* 0x00 */		0,						\
 /* 0x01 */		"Unrecoverable error while loading a band",	\
 /* 0x02 */		"Broken heart encountered",			\
 /* 0x03 */		"Non pointer relocation",			\
@@ -268,5 +268,14 @@ USA.
 /* 0x19 */		"User requested termination after trap",	\
 /* 0x1A */		"Backing out of non-primitive"			\
 }
+
+#define MAX_HALT_MESSAGE	4
 
+#define TERM_HALT_MESSAGE_TABLE						\
+{									\
+    "Moriturus te saluto.",						\
+    "Happy happy joy joy!",						\
+    "Ceterum censeo Carthaginem esse delendam.",			\
+    "..#]^@^@^@ NO CARRIER"						\
+}
 #endif /* SCM_ERRORS_H */

@@ -113,7 +113,9 @@ termination_prefix (int code)
     {
       if (!option_batch_mode)
 	{
-	  outf_console ("\n%s.\n", (term_messages[code]));
+	  /* Pick a message "randomly" */
+	  unsigned long i = (((unsigned long) Free) >> 3) % MAX_HALT_MESSAGE;
+	  outf_console ("\n%s\n", (term_halt_messages[i]));
 	  outf_flush_console ();
 	}
     }
