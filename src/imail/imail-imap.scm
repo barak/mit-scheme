@@ -1803,7 +1803,7 @@ USA.
 (define (clean-temporary-directory directory)
   (if (file-directory? directory)
       (for-each
-       (let* ((now (get-universal-time))
+       (let* ((now (- (get-universal-time) epoch))
 	      (then (- now temporary-file-expiration-time)))
 	 (lambda (pathname)
 	   (catch-file-errors (lambda (condition) condition #f)
