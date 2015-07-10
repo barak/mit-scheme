@@ -141,6 +141,7 @@ target-toolchain: all-sf
 target-toolchain: cross-target
 target-toolchain: lib/runtime.com
 
+.PHONY: microcode/scheme
 @IF_LIARC@microcode/scheme: all-runtime
 @IF_SVM@microcode/scheme: microcode/svm1-defns.h
 microcode/scheme:
