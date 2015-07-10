@@ -248,13 +248,13 @@ USA.
 
 (define (os2-graphics/close device)
   (let ((window (graphics-device/descriptor device)))
-    (without-interrupts
+    (without-interruption
      (lambda ()
        (close-window window)))))
 
 (define (os2-graphics/clear device)
   (let ((window (graphics-device/descriptor device)))
-    (without-interrupts
+    (without-interruption
      (lambda ()
        (let ((width (window/pel-width window))
 	     (height (window/pel-height window)))
@@ -263,7 +263,7 @@ USA.
 
 (define (os2-graphics/coordinate-limits device)
   (let ((window (graphics-device/descriptor device)))
-    (without-interrupts
+    (without-interruption
      (lambda ()
        (values (window/x-left window)
 	       (window/y-bottom window)
@@ -272,7 +272,7 @@ USA.
 
 (define (os2-graphics/device-coordinate-limits device)
   (let ((window (graphics-device/descriptor device)))
-    (without-interrupts
+    (without-interruption
      (lambda ()
        (values 0
 	       0
@@ -281,7 +281,7 @@ USA.
 
 (define (os2-graphics/drag-cursor device x y)
   (let ((window (graphics-device/descriptor device)))
-    (without-interrupts
+    (without-interruption
      (lambda ()
        (let ((xs (window/x-gcursor window))
 	     (ys (window/y-gcursor window))
@@ -302,7 +302,7 @@ USA.
 
 (define (os2-graphics/draw-lines device xv yv)
   (let ((window (graphics-device/descriptor device)))
-    (without-interrupts
+    (without-interruption
      (lambda ()
        (let ((xv (vector-map (lambda (x) (window/x->device window x)) xv))
 	     (yv (vector-map (lambda (y) (window/y->device window y)) yv)))
@@ -316,7 +316,7 @@ USA.
 (define (os2-graphics/draw-point device x y)
   ;; This sucks.  Implement a real point-drawing primitive.
   (let ((window (graphics-device/descriptor device)))
-    (without-interrupts
+    (without-interruption
      (lambda ()
        (let ((x (window/x->device window x))
 	     (y (window/y->device window y)))
@@ -326,7 +326,7 @@ USA.
 (define (os2-graphics/draw-text device x y string)
   (let ((window (graphics-device/descriptor device))
 	(length (string-length string)))
-    (without-interrupts
+    (without-interruption
      (lambda ()
        (let ((psid (window/backing-store window))
 	     (metrics (window/font-metrics window))
@@ -347,7 +347,7 @@ USA.
 
 (define (os2-graphics/flush device)
   (let ((window (graphics-device/descriptor device)))
-    (without-interrupts
+    (without-interruption
      (lambda ()
        (let ((changes (window/changes window)))
 	 (if changes
@@ -391,7 +391,7 @@ USA.
 
 (define (os2-graphics/move-cursor device x y)
   (let ((window (graphics-device/descriptor device)))
-    (without-interrupts
+    (without-interruption
      (lambda ()
        (let ((x (window/x->device window x))
 	     (y (window/y->device window y)))
@@ -404,7 +404,7 @@ USA.
 
 (define (os2-graphics/set-clip-rectangle device x-left y-bottom x-right y-top)
   (let ((window (graphics-device/descriptor device)))
-    (without-interrupts
+    (without-interruption
      (lambda ()
        (os2ps-set-clip-rectangle (window/backing-store window)
 				 (window/x->device window x-left)
@@ -415,7 +415,7 @@ USA.
 (define (os2-graphics/set-coordinate-limits device
 					    x-left y-bottom x-right y-top)
   (let ((window (graphics-device/descriptor device)))
-    (without-interrupts
+    (without-interruption
      (lambda ()
        (set-window/x-left! window x-left)
        (set-window/y-bottom! window y-bottom)
@@ -448,7 +448,7 @@ USA.
 (define (os2-graphics/set-background-color device color)
   (let ((window (graphics-device/descriptor device))
 	(color (->color color 'SET-BACKGROUND-COLOR)))
-    (without-interrupts
+    (without-interruption
       (lambda ()
 	(set-window/background-color! window color)
 	(update-colors window)))))
@@ -456,7 +456,7 @@ USA.
 (define (os2-graphics/set-foreground-color device color)
   (let ((window (graphics-device/descriptor device))
 	(color (->color color 'SET-FOREGROUND-COLOR)))
-    (without-interrupts
+    (without-interruption
       (lambda ()
 	(set-window/foreground-color! window color)
 	(update-colors window)))))
@@ -760,7 +760,7 @@ USA.
 
 (define (pm-synchronize)
   (os2pm-synchronize)
-  (with-thread-events-blocked
+  (without-interruption
     (lambda () (do () ((not (read-and-process-event)))))))
 
 (define (read-and-process-event)
@@ -769,19 +769,17 @@ USA.
 	 (begin (process-event event) #t))))
 
 (define (process-event event)
-  (without-interrupts
-   (lambda ()
-     (let ((window
-	    (search-gc-finalizer window-finalizer
-	      (let ((wid (event-wid event)))
-		(lambda (window)
-		  (eq? (window/wid window) wid))))))
-       (if window
-	   (begin
-	     (let ((handler (vector-ref event-handlers (event-type event))))
-	       (if handler
-		   (handler window event)))
-	     (maybe-queue-user-event window event)))))))
+  (let ((window
+	 (search-gc-finalizer window-finalizer
+			      (let ((wid (event-wid event)))
+				(lambda (window)
+				  (eq? (window/wid window) wid))))))
+    (if window
+	(begin
+	  (let ((handler (vector-ref event-handlers (event-type event))))
+	    (if handler
+		(handler window event)))
+	  (maybe-queue-user-event window event)))))
 
 (define event-handlers (make-vector number-of-event-types #f))
 
@@ -854,7 +852,7 @@ USA.
 
 (define (os2-graphics/read-user-event device)
   device
-  (with-thread-events-blocked
+  (without-interruption
    (lambda ()
      (let loop ()
        (if (queue-empty? user-event-queue)
@@ -881,7 +879,7 @@ USA.
 
 (define (os2-graphics/discard-events device)
   device
-  (with-thread-events-blocked
+  (without-interruption
    (lambda ()
      (let loop ()
        (flush-queue! user-event-queue)
@@ -889,7 +887,7 @@ USA.
 	   (loop))))))
 
 (define (flush-queue! queue)
-  (without-interrupts
+  (without-interruption
    (lambda ()
      (let loop ()
        (if (not (queue-empty? queue))
@@ -1051,7 +1049,7 @@ USA.
 
 (define bitmaps-initialized? #f)
 (define (maybe-initialize-bitmaps!)
-  (without-interrupts
+  (without-interruption
    (lambda ()
      (if (not bitmaps-initialized?)
 	 (begin
