@@ -66,8 +66,8 @@ cache_float_environment (void)
   if (0 != (fegetenv (&scheme_fenv)))
     error_external_return ();
   scheme_fenv_p = true;
-  /* Work around glibc lossage: fesetenv has the side effect of masking
-     all exception traps on amd64.  */
+  /* Work around pre-2014-04 glibc lossage: fegetenv has the side
+     effect of masking all exception traps on amd64.  */
 #  ifdef HAVE_FESETENV
   if (0 != (fesetenv (&scheme_fenv)))
     error_external_return ();
