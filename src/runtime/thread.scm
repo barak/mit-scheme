@@ -127,6 +127,14 @@ USA.
       (set-interrupt-enables! interrupt-mask)
       value)))
 
+(define (without-preemption thunk)
+  (let* ((thread (current-thread))
+	 (state (thread/execution-state thread)))
+    (set-thread/execution-state! thread 'RUNNING-WITHOUT-PREEMPTION)
+    (let ((value (thunk)))
+      (set-thread/execution-state! thread state)
+      value)))
+
 (define (threads-list)
   (map-over-population thread-population (lambda (thread) thread)))
 
