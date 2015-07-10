@@ -672,7 +672,7 @@ USA.
 		    length
 		    (length stream offset))))
 	     (ltail (stream-tail* stream length)))
-	(and ltail
+	(and (stream-pair? ltail)
 	     (return-address? (stream-car ltail))
 	     (verify (- paranoia-index 1)
 		     ltail
