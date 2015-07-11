@@ -325,6 +325,7 @@ USA.
 	 ;; Allow preemption now, since the current thread has
 	 ;; volunteered to yield control.
 	 (set-thread/execution-state! thread 'RUNNING)
+	 (maybe-signal-io-thread-events)
 	 (yield-thread thread))))))
 
 (define (yield-thread thread #!optional fp-env)
