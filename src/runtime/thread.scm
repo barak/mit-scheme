@@ -88,7 +88,8 @@ USA.
 (define no-exit-value-marker
   (list 'NO-EXIT-VALUE-MARKER))
 
-(define-integrable (thread-dead? thread)
+(define (thread-dead? thread)
+  (guarantee-thread thread 'THREAD-DEAD?)
   (eq? 'DEAD (thread/execution-state thread)))
 
 (define thread-population)
