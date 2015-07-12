@@ -1,6 +1,6 @@
 @c -*- TeXInfo -*-
 
-This is file: /scheme/documentation/README.wabbit
+This is file: src/wabbit/README
 
 @node Top
 
@@ -17,14 +17,14 @@ To enable wabbit hunting, evaluate: (load-option 'wabbit)  [@xref{Wabbit Hunt}]
 collect all other references to that same object. For instance, several data
 structures may share (alias) the same sub-datum. Wabbit hunting allows you to
 collect all such sharers, presumably to update them all in an interesting way
-or just to collect sharing statitistics or a sharing histogram.
+or just to collect sharing statistics or a sharing histogram.
 
 
 To enable headhunting, evaluate: (load-option 'headhunt)  [@xref{Headhunt}]
 
 ``Headhunting'' is when you wish to reify all ``headed'' objects in storage
 (heap *and* constant space) into one moby vector. Note that base objects such
-qas fixnums, Booleans, and characters, etc are not ``headed'': they are not
+as fixnums, booleans, characters, etc are not ``headed'': they are not
 referenced by an object pointer. Presumably, it is interesting to go
 headhunting to gather usage statistics and histograms and to do delicate memory
 surgery. For this reason, great care must be taken in groveling over a
@@ -40,7 +40,7 @@ surgery. For this reason, great care must be taken in groveling over a
 
 * Wabbit Hole::			The format of wabbit sighting records
 
-* Fudd Thunk::		        A thunk to invoke after targets are gathered
+* Fudd Thunk::		        A thunk to invoke after rabbit holes are gathered
 
 * Headhunt Collection::		The format of headhunt results
 
@@ -190,8 +190,10 @@ three kinds of wascally wabbit holes:
                 something painfully obscure (and dangerous!).
  ---------------------------------------------------------------------------
 
-If you ever encounter Null or Stack wabbit holes, you may want to send a
-friendly bug report (?) to bug-cscheme@zurich.ai.mit.edu with a reproducable
+If you ever encounter Null or Stack wabbit holes, you may want to file a
+friendly bug report (?) at
+@url{http://savannah.gnu.org/mit-scheme/bugs/?group=mit-scheme}
+with a reproducable
 test script. (If we cannot reproduce it, we cannot fix it.)
 
 
@@ -220,17 +222,17 @@ many object head references as actually did fit.
 Swabbing Wabbit Descwiptors
 ---------------------------
 
-  Upon exit from WABBIT-HUNT or HEADHUNT, the wabbit descwiptor with repsect to
+  Upon exit from WABBIT-HUNT or HEADHUNT, the wabbit descwiptor with respect to
 which the hunt was performed will be ``swabbed'' so as to release the wabbit
-holes and the headhunt collection. Specifically, the first two slots of the
-WABBIT-BUFFER (indicating all-found? and index-of-first-null) are left
-unmolested. The remainder of the WABBIT-BUFFER is cleared back to all be #F.
+holes and the headhunt collection. Specifically, the all-found? and
+index-of-first-null slots of the WABBIT-BUFFER are left
+unmolested. The remainder of the WABBIT-BUFFER is cleared back to all #Fs.
 This way no dangerous wabbit holes (e.g., stack refs) will be left dangling in
 the wabbit descwiptor after the hunt. In addition, the HEADHUNT-COLLECTION slot
 of the wabbit descwiptor is set to the number of heads collected, which is then
 negated if not all heads were accomodated by the heap. That is, if say
 314159264 were found but more heads existed but could not fit in the
-headhhunt-collection, then the headhunt-collection slot of the wabbit
+headhunt-collection, then the headhunt-collection slot of the wabbit
 descwiptor will be set to -314159264.
 
   Note that the HEADHUNT-COLLECTION vector itself is not cleared: this could
