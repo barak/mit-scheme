@@ -193,83 +193,73 @@ USA.
 		(interrupt)))))))
 
 (define (install)
-  (without-interrupts
-   (lambda ()
-     (let ((system-interrupt-vector
-	    (vector-ref (get-fixed-objects-vector) index:interrupt-vector))
-	   (old-interrupt-mask-vector
-	    (vector-ref (get-fixed-objects-vector)
-			index:interrupt-mask-vector))
-	   (old-termination-vector
-	    (vector-ref (get-fixed-objects-vector) index:termination-vector)))
-       (let ((interrupt-mask-vector
-	      (let ((length (vector-length system-interrupt-vector)))
-		(if (and (vector? old-interrupt-mask-vector)
-			 (= (vector-length old-interrupt-mask-vector) length))
-		    old-interrupt-mask-vector
-		    (make-vector length))))
-	     (termination-vector
-	      (let ((length (microcode-termination/code-limit)))
-		(if old-termination-vector
-		    (if (> length (vector-length old-termination-vector))
-			(vector-grow old-termination-vector length)
-			old-termination-vector)
-		    (make-vector length #f)))))
+  (let ((fov (get-fixed-objects-vector)))
+    (let ((system-interrupt-vector (vector-ref fov index:interrupt-vector))
+	  (old-interrupt-mask-vector (vector-ref fov
+						 index:interrupt-mask-vector))
+	  (old-termination-vector (vector-ref fov index:termination-vector)))
+      (let ((interrupt-mask-vector
+	     (let ((length (vector-length system-interrupt-vector)))
+	       (if (and (vector? old-interrupt-mask-vector)
+			(= (vector-length old-interrupt-mask-vector) length))
+		   old-interrupt-mask-vector
+		   (make-vector length))))
+	    (termination-vector
+	     (let ((length (microcode-termination/code-limit)))
+	       (if old-termination-vector
+		   (if (> length (vector-length old-termination-vector))
+		       (vector-grow old-termination-vector length)
+		       old-termination-vector)
+		   (make-vector length #f)))))
 
-	 (let ((length (vector-length system-interrupt-vector)))
-	   (do ((i 0 (fix:+ i 1)))
-	       ((fix:= i length))
-	     (if (not (vector-ref system-interrupt-vector i))
-		 (let ((interrupt-bit (fix:lsh 1 i)))
-		   (vector-set! interrupt-mask-vector i
-				(fix:- interrupt-bit 1)) ; higher priority only
-		   (vector-set! system-interrupt-vector i
-				(illegal-interrupt-handler interrupt-bit))))))
+	(let ((length (vector-length system-interrupt-vector)))
+	  (do ((i 0 (fix:+ i 1)))
+	      ((fix:= i length))
+	    (if (not (vector-ref system-interrupt-vector i))
+		(let ((interrupt-bit (fix:lsh 1 i)))
+		  (vector-set! interrupt-mask-vector i
+			       (fix:- interrupt-bit 1)) ; higher priority only
+		  (vector-set! system-interrupt-vector i
+			       (illegal-interrupt-handler interrupt-bit))))))
 
-	 (vector-set! interrupt-mask-vector stack-overflow-slot
-		      interrupt-mask/none)
+	(vector-set! interrupt-mask-vector stack-overflow-slot
+		     interrupt-mask/none)
 
-	 (vector-set! interrupt-mask-vector gc-slot
-		      ;; interrupt-mask/none
-		      (fix:lsh 1 global-gc-slot))
+	(vector-set! interrupt-mask-vector gc-slot
+		     ;; interrupt-mask/none
+		     (fix:lsh 1 global-gc-slot))
 
-	 (vector-set! system-interrupt-vector timer-slot
-		      timer-interrupt-handler)
-	 (vector-set! interrupt-mask-vector timer-slot
-		      interrupt-mask/gc-ok)
+	(vector-set! system-interrupt-vector timer-slot
+		     timer-interrupt-handler)
+	(vector-set! interrupt-mask-vector timer-slot
+		     interrupt-mask/gc-ok)
 
-	 (vector-set! system-interrupt-vector character-slot
-		      external-interrupt-handler)
-	 (vector-set! interrupt-mask-vector character-slot
-		      interrupt-mask/timer-ok)
+	(vector-set! system-interrupt-vector character-slot
+		     external-interrupt-handler)
+	(vector-set! interrupt-mask-vector character-slot
+		     interrupt-mask/timer-ok)
 
-	 (vector-set! system-interrupt-vector after-gc-slot
-		      after-gc-interrupt-handler)
-	 (vector-set! interrupt-mask-vector after-gc-slot
-		      interrupt-mask/timer-ok)
+	(vector-set! system-interrupt-vector after-gc-slot
+		     after-gc-interrupt-handler)
+	(vector-set! interrupt-mask-vector after-gc-slot
+		     interrupt-mask/timer-ok)
 
-	 (vector-set! system-interrupt-vector suspend-slot
-		      suspend-interrupt-handler)
-	 (vector-set! interrupt-mask-vector suspend-slot
-		      interrupt-mask/timer-ok)
+	(vector-set! system-interrupt-vector suspend-slot
+		     suspend-interrupt-handler)
+	(vector-set! interrupt-mask-vector suspend-slot
+		     interrupt-mask/timer-ok)
 
-         (vector-set! system-interrupt-vector console-resize-slot
-                      console-resize-handler)
-         (vector-set! interrupt-mask-vector console-resize-slot
-                      interrupt-mask/all)
+	(vector-set! system-interrupt-vector console-resize-slot
+		     console-resize-handler)
+	(vector-set! interrupt-mask-vector console-resize-slot
+		     interrupt-mask/all)
 
-	 (vector-set! termination-vector
-		      (microcode-termination 'GC-OUT-OF-SPACE)
-		      gc-out-of-space-handler)
+	(vector-set! termination-vector
+		     (microcode-termination 'GC-OUT-OF-SPACE)
+		     gc-out-of-space-handler)
 
-	 ;; Install the new tables atomically:
+	(vector-set! fov index:interrupt-mask-vector interrupt-mask-vector)
 
-	 (vector-set! (get-fixed-objects-vector)
-		      index:interrupt-mask-vector
-		      interrupt-mask-vector)
+	(vector-set! fov index:termination-vector termination-vector)
 
-	 (vector-set! (get-fixed-objects-vector)
-		      index:termination-vector
-		      termination-vector)
-
-	 (set-fixed-objects-vector! (get-fixed-objects-vector)))))))
+	(set-fixed-objects-vector! fov)))))
