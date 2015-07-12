@@ -115,10 +115,13 @@ USA.
 		(loop next prev)))))))
 
 (define (cleanup-mhash-contexts)
-  (if (not (thread-mutex-owner mhash-contexts-mutex))
-      (begin
-	(cleanup-contexts)
-	(cleanup-hmac-contexts))))
+  (with-thread-mutex-try-lock
+   mhash-contexts-mutex
+   (lambda ()
+     (cleanup-contexts)
+     (cleanup-hmac-contexts))
+   (lambda ()
+     unspecific)))
 
 (define (mhash-name->id name procedure)
   (let ((n (vector-length mhash-algorithm-names)))
