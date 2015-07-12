@@ -1122,6 +1122,17 @@ USA.
 		thunk
 		(lambda () (lock-thread-mutex mutex))))
 
+(define (with-thread-mutex-try-lock mutex locked not-locked)
+  (guarantee-thread-mutex mutex 'WITH-THREAD-MUTEX-TRY-LOCK)
+  (let ((locked?))
+    (dynamic-wind (lambda ()
+		    (set! locked? (try-lock-thread-mutex mutex)))
+		  (lambda ()
+		    (if locked? (locked) (not-locked)))
+		  (lambda ()
+		    (if locked? (unlock-thread-mutex mutex))
+		    (set! locked?)))))
+
 ;;; WITH-THREAD-MUTEX-LOCKED is retained for compatibility for old
 ;;; programs that require recursion.  For new programs, better to
 ;;; refactor into clearer invariants that do not require recursion if

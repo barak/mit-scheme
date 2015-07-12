@@ -5074,6 +5074,7 @@ USA.
 	  with-thread-events-blocked
 	  with-thread-mutex-lock
 	  with-thread-mutex-locked
+	  with-thread-mutex-try-lock
 	  with-thread-mutex-unlocked
 	  with-thread-timer-stopped
 	  without-thread-mutex-lock
