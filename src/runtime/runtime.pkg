@@ -5077,6 +5077,7 @@ USA.
 	  with-thread-mutex-try-lock
 	  with-thread-mutex-unlocked
 	  with-thread-timer-stopped
+	  (without-interruption with-thread-events-blocked)
 	  without-thread-mutex-lock
 	  yield-current-thread)
   (export (runtime interrupt-handler)
