@@ -365,7 +365,7 @@ Returns @code{#t} if @var{object} is a continuation; otherwise returns
 @cindex escape procedure, alternate invocation
 @var{Thunk} must be a procedure of no arguments.  Conceptually,@*
 @code{within-continuation} invokes @var{continuation} on the result of
-invoking @var{thunk}, but @var{thunk} is executed in the dynamic context
+invoking @var{thunk}, but @var{thunk} is executed in the dynamic state
 of @var{continuation}.  In other words, the ``current'' continuation is
 abandoned before @var{thunk} is invoked.
 @end deffn
@@ -373,9 +373,9 @@ abandoned before @var{thunk} is invoked.
 @deffn procedure dynamic-wind before thunk after
 Calls @var{thunk} without arguments, returning the result(s) of this
 call.  @var{Before} and @var{after} are called, also without arguments,
-as required by the following rules (note that in the absence of calls to
+as required by the following rules.  Note that in the absence of calls to
 continuations captured using @code{call-with-current-continuation} the
-three arguments are called once each, in order).  @var{Before} is called
+three arguments are called once each, in order.  @var{Before} is called
 whenever execution enters the dynamic extent of the call to @var{thunk}
 and @var{after} is called whenever it exits that dynamic extent.  The
 dynamic extent of a procedure call is the period between when the call
