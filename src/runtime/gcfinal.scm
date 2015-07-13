@@ -37,7 +37,8 @@ USA.
   (object? #f read-only #t)
   (object-context #f read-only #t)
   (set-object-context! #f read-only #t)
-  (items '()))
+  (mutex #f read-only #t)
+  items)
 
 (define (guarantee-gc-finalizer object procedure)
   (if (not (gc-finalizer? object))
@@ -56,8 +57,11 @@ USA.
 			     object?
 			     object-context
 			     set-object-context!
+			     (make-thread-mutex)
 			     '())))
-    (set! gc-finalizers (weak-cons finalizer gc-finalizers))
+    (with-thread-mutex-lock gc-finalizers-mutex
+      (lambda ()
+	(set! gc-finalizers (weak-cons finalizer gc-finalizers))))
     finalizer))
 
 (define (add-to-gc-finalizer! finalizer object)
@@ -66,14 +70,14 @@ USA.
       (error:wrong-type-argument object
 				 "finalized object"
 				 'ADD-TO-GC-FINALIZER!))
-  (without-interrupts
-   (lambda ()
-     (let ((context ((gc-finalizer-object-context finalizer) object)))
-       (if (not context)
-	   (error:bad-range-argument object 'ADD-TO-GC-FINALIZER!))
-       (set-gc-finalizer-items! finalizer
-				(cons (weak-cons object context)
-				      (gc-finalizer-items finalizer))))))
+  (with-thread-mutex-lock (gc-finalizer-mutex finalizer)
+    (lambda ()
+      (let ((context ((gc-finalizer-object-context finalizer) object)))
+	(if (not context)
+	    (error:bad-range-argument object 'ADD-TO-GC-FINALIZER!))
+	(set-gc-finalizer-items! finalizer
+				 (cons (weak-cons object context)
+				       (gc-finalizer-items finalizer))))))
   object)
 
 (define (remove-from-gc-finalizer! finalizer object)
@@ -86,67 +90,67 @@ USA.
 	(error:wrong-type-argument object
 				   "finalized object"
 				   'REMOVE-FROM-GC-FINALIZER!))
-    (without-interrupts
-     (lambda ()
-       (let ((context (object-context object)))
-	 (if (not context)
-	     (error:bad-range-argument object 'REMOVE-FROM-GC-FINALIZER!))
-	 (let loop ((items (gc-finalizer-items finalizer)) (prev #f))
-	   (if (not (pair? items))
-	       (error:bad-range-argument object 'REMOVE-FROM-GC-FINALIZER!))
-	   (if (eq? object (weak-car (car items)))
-	       (let ((next (cdr items)))
-		 (if prev
-		     (set-cdr! prev next)
-		     (set-gc-finalizer-items! finalizer next))
-		 (set-object-context! object #f)
-		 (procedure context))
-	       (loop (cdr items) items))))))))
+    (with-thread-mutex-lock (gc-finalizer-mutex finalizer)
+      (lambda ()
+	(let ((context (object-context object)))
+	  (if (not context)
+	      (error:bad-range-argument object 'REMOVE-FROM-GC-FINALIZER!))
+	  (let loop ((items (gc-finalizer-items finalizer)) (prev #f))
+	    (if (not (pair? items))
+		(error:bad-range-argument object 'REMOVE-FROM-GC-FINALIZER!))
+	    (if (eq? object (weak-car (car items)))
+		(let ((next (cdr items)))
+		  (if prev
+		      (set-cdr! prev next)
+		      (set-gc-finalizer-items! finalizer next))
+		  (set-object-context! object #f)
+		  (procedure context))
+		(loop (cdr items) items))))))))
 
 (define (remove-all-from-gc-finalizer! finalizer)
   (guarantee-gc-finalizer finalizer 'REMOVE-ALL-FROM-GC-FINALIZER!)
   (let ((procedure (gc-finalizer-procedure finalizer))
 	(object-context (gc-finalizer-object-context finalizer))
 	(set-object-context! (gc-finalizer-set-object-context! finalizer)))
-    (without-interrupts
-     (lambda ()
-       (let loop ()
-	 (let ((items (gc-finalizer-items finalizer)))
-	   (if (pair? items)
-	       (let ((item (car items)))
-		 (set-gc-finalizer-items! finalizer (cdr items))
-		 (let ((object (weak-car item)))
-		   (let ((context (object-context object)))
-		     (if context
-			 (begin
-			   (if object
-			       (set-object-context! object #f))
-			   (procedure context)))))
-		 (loop)))))))))
+    (with-thread-mutex-lock (gc-finalizer-mutex finalizer)
+      (lambda ()
+	(let loop ()
+	  (let ((items (gc-finalizer-items finalizer)))
+	    (if (pair? items)
+		(let ((item (car items)))
+		  (set-gc-finalizer-items! finalizer (cdr items))
+		  (let ((object (weak-car item)))
+		    (let ((context (object-context object)))
+		      (if context
+			  (begin
+			    (if object
+				(set-object-context! object #f))
+			    (procedure context)))))
+		  (loop)))))))))
 
 (define (search-gc-finalizer finalizer predicate)
   (guarantee-gc-finalizer finalizer 'SEARCH-GC-FINALIZER)
-  (without-interrupts
-   (lambda ()
-     (let loop ((items (gc-finalizer-items finalizer)))
-       (and (pair? items)
-	    (let ((object (weak-car (car items))))
-	      (if (and object (predicate object))
-		  object
-		  (loop (cdr items)))))))))
+  (with-thread-mutex-lock (gc-finalizer-mutex finalizer)
+    (lambda ()
+      (let loop ((items (gc-finalizer-items finalizer)))
+	(and (pair? items)
+	     (let ((object (weak-car (car items))))
+	       (if (and object (predicate object))
+		   object
+		   (loop (cdr items)))))))))
 
 (define (gc-finalizer-elements finalizer)
   (guarantee-gc-finalizer finalizer 'GC-FINALIZER-ELEMENTS)
-  (without-interrupts
-   (lambda ()
-     (let loop ((items (gc-finalizer-items finalizer)) (objects '()))
-       (if (pair? items)
-	   (loop (cdr items)
-		 (let ((object (weak-car (car items))))
-		   (if object
-		       (cons object objects)
-		       objects)))
-	   (reverse! objects))))))
+  (with-thread-mutex-lock (gc-finalizer-mutex finalizer)
+    (lambda ()
+      (let loop ((items (gc-finalizer-items finalizer)) (objects '()))
+	(if (pair? items)
+	    (loop (cdr items)
+		  (let ((object (weak-car (car items))))
+		    (if object
+			(cons object objects)
+			objects)))
+	    (reverse! objects))))))
 
 (define (make-gc-finalized-object finalizer get-context context->object)
   ;; A bunch of hair to permit microcode descriptors be opened with
@@ -161,12 +165,12 @@ USA.
        (get-context p)
        (let ((context (weak-cdr p)))
 	 (let ((object (context->object context)))
-	   (without-interrupts
-	    (lambda ()
-	      (weak-set-car! p object)
-	      (set-gc-finalizer-items!
-	       finalizer
-	       (cons p (gc-finalizer-items finalizer)))))
+	   (with-thread-mutex-lock (gc-finalizer-mutex finalizer)
+	     (lambda ()
+	       (weak-set-car! p object)
+	       (set-gc-finalizer-items!
+		finalizer
+		(cons p (gc-finalizer-items finalizer)))))
 	   object)))
      (lambda ()
        (if (and (not (weak-pair/car? p)) (weak-cdr p))
@@ -175,31 +179,35 @@ USA.
 	     (weak-set-cdr! p #f)))))))
 
 (define gc-finalizers)
+(define gc-finalizers-mutex)
 
 (define (reset-gc-finalizers)
-  (without-interrupts
-   (lambda ()
-     (walk-gc-finalizers-list
-      (lambda (finalizer)
-	(set-gc-finalizer-items! finalizer '()))))))
+  (walk-gc-finalizers-list/unsafe
+   (lambda (finalizer)
+     (set-gc-finalizer-items! finalizer '()))))
 
 (define (run-gc-finalizers)
-  (walk-gc-finalizers-list
-   (lambda (finalizer)
-     (let ((procedure (gc-finalizer-procedure finalizer)))
-       (let loop ((items (gc-finalizer-items finalizer)) (prev #f))
-	 (if (pair? items)
-	     (if (weak-pair/car? (car items))
-		 (loop (cdr items) items)
-		 (let ((context (weak-cdr (car items)))
-		       (next (cdr items)))
-		   (if prev
-		       (set-cdr! prev next)
-		       (set-gc-finalizer-items! finalizer next))
-		   (procedure context)
-		   (loop next prev)))))))))
+  (with-thread-mutex-try-lock
+   gc-finalizers-mutex
+   (lambda ()
+     (walk-gc-finalizers-list/unsafe
+      (lambda (finalizer)
+	(let ((procedure (gc-finalizer-procedure finalizer)))
+	  (let loop ((items (gc-finalizer-items finalizer)) (prev #f))
+	    (if (pair? items)
+		(if (weak-pair/car? (car items))
+		    (loop (cdr items) items)
+		    (let ((context (weak-cdr (car items)))
+			  (next (cdr items)))
+		      (if prev
+			  (set-cdr! prev next)
+			  (set-gc-finalizer-items! finalizer next))
+		      (procedure context)
+		      (loop next prev)))))))))
+   (lambda ()
+     unspecific)))
 
-(define (walk-gc-finalizers-list procedure)
+(define (walk-gc-finalizers-list/unsafe procedure)
   (let loop ((finalizers gc-finalizers) (prev #f))
     (if (weak-pair? finalizers)
 	(let ((finalizer (weak-car finalizers)))
@@ -215,6 +223,7 @@ USA.
 
 (define (initialize-package!)
   (set! gc-finalizers '())
+  (set! gc-finalizers-mutex (make-thread-mutex))
   (add-gc-daemon! run-gc-finalizers))
 
 (define (initialize-events!)
