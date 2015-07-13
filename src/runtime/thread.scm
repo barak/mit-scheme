@@ -180,6 +180,23 @@ USA.
       (set-thread/execution-state! thread state)
       value)))
 
+(define (with-obarray-lock thunk)
+  ;; Serialize with myriad parts of the microcode that hack the
+  ;; obarray element of the fixed-objects vector.
+  (if enable-smp?
+      (without-preemption
+       (lambda ()
+	 (if (not (eq? #t ((ucode-primitive smp-lock-obarray 1) #t)))
+	     (outf-error "\nwith-obarray-lock: lock failed\n"))
+	 (let ((value (thunk)))
+	   (if (not (eq? #t ((ucode-primitive smp-lock-obarray 1) #f)))
+	       (outf-error "\nwith-obarray-lock: unlock failed\n"))
+	   value)))
+      (let* ((mask (set-interrupt-enables! interrupt-mask/gc-ok))
+	     (value (thunk)))
+	(set-interrupt-enables! mask)
+	value)))
+
 (define (threads-list)
   (map-over-population thread-population (lambda (thread) thread)))
 

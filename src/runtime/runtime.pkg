@@ -543,6 +543,8 @@ USA.
 	  with-interrupt-mask
 	  with-values
 	  write-to-string)
+  (import (runtime thread)
+	  with-obarray-lock)
   (initialization (initialize-package!)))
 
 (define-package (runtime alternative-lambda)

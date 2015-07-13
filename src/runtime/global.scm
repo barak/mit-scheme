@@ -314,7 +314,9 @@ USA.
   (object-new-type (ucode-type constant) 1))
 
 (define (for-each-interned-symbol procedure)
-  (for-each-symbol-in-obarray (fixed-objects-item 'OBARRAY) procedure))
+  (with-obarray-lock
+    (lambda ()
+      (for-each-symbol-in-obarray (fixed-objects-item 'OBARRAY) procedure))))
 
 (define (for-each-symbol-in-obarray obarray procedure)
   (let per-bucket ((index (vector-length obarray)))
@@ -343,7 +345,7 @@ USA.
     list))
 
 (define (clean-obarray)
-  (without-interrupts
+  (with-obarray-lock
    (lambda ()
      (let ((obarray (fixed-objects-item 'OBARRAY)))
        (let loop ((index (vector-length obarray)))
