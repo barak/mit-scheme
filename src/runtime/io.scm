@@ -93,12 +93,12 @@ USA.
 	(eq? 'OS/2-CONSOLE type))))
 
 (define (channel-close channel)
-  (without-interrupts
-   (lambda ()
-     (if (channel-open? channel)
-	 (begin
-	   (%deregister-io-descriptor (channel-descriptor-for-select channel))
-	   (remove-from-gc-finalizer! open-channels channel))))))
+  (with-gc-finalizer-lock open-channels
+    (lambda ()
+      (if (channel-open? channel)
+	  (begin
+	    (%deregister-io-descriptor (channel-descriptor-for-select channel))
+	    (remove-from-locked-gc-finalizer! open-channels channel))))))
 
 (define-integrable (channel-open? channel)
   (if (channel-descriptor channel) #t #f))
@@ -173,20 +173,13 @@ USA.
 
 (define (channel-read channel buffer start end)
   (let loop ()
-    (let ((n (without-interrupts
-	      (lambda ()
-		(if (channel-closed? channel)
-		    0
-		    (%channel-read channel buffer start end))))))
+    (let ((n (%channel-read channel buffer start end)))
       (if (eq? n #t)
 	  (begin
 	    (handle-subprocess-status-change)
-	    (without-interrupts
-	     (lambda ()
-	       (if (and (channel-open? channel)
-			(channel-blocking? channel))
-		   (loop)
-		   #f))))
+	    (if (channel-blocking? channel)
+		(loop)
+		#f))
 	  n))))
 
 (define (%channel-read channel buffer start end)
@@ -211,20 +204,13 @@ USA.
 
 (define (channel-write channel buffer start end)
   (let loop ()
-    (let ((n (without-interrupts
-	      (lambda ()
-		(if (channel-closed? channel)
-		    0
-		    (%channel-write channel buffer start end))))))
+    (let ((n (%channel-write channel buffer start end)))
       (if (eq? n #t)
 	  (begin
 	    (handle-subprocess-status-change)
-	    (without-interrupts
-	     (lambda ()
-	       (if (and (channel-open? channel)
-			(channel-blocking? channel))
-		   (loop)
-		   #f))))
+	    (if (channel-blocking? channel)
+		(loop)
+		#f))
 	  n))))
 
 (define (%channel-write channel buffer start end)
@@ -294,14 +280,11 @@ USA.
       (thunk)))
 
 (define (channel-table)
-  (without-interrupts
-   (lambda ()
-     (let ((descriptors ((ucode-primitive channel-table 0))))
-       (and descriptors
-	    (vector-map (lambda (descriptor)
-			  (or (descriptor->channel descriptor)
-			      (make-channel descriptor)))
-			descriptors))))))
+  (with-gc-finalizer-lock open-channels
+    (lambda ()
+      (let ((descriptors ((ucode-primitive channel-table 0))))
+	(and descriptors
+	     (vector-map descriptor->channel descriptors))))))
 
 (define (channel-synchronize channel)
   ((ucode-primitive channel-synchronize 1) (channel-descriptor channel)))
@@ -377,14 +360,10 @@ USA.
 ;;;; Terminal Primitives
 
 (define (tty-input-channel)
-  (without-interrupts
-   (lambda ()
-     (make-channel ((ucode-primitive tty-input-channel 0))))))
+  (make-channel ((ucode-primitive tty-input-channel 0))))
 
 (define (tty-output-channel)
-  (without-interrupts
-   (lambda ()
-     (make-channel ((ucode-primitive tty-output-channel 0))))))
+  (make-channel ((ucode-primitive tty-output-channel 0))))
 
 (define (terminal-get-state channel)
   ((ucode-primitive terminal-get-state 1) (channel-descriptor channel)))
@@ -440,7 +419,7 @@ USA.
 ;;;; PTY Master Primitives
 
 (define (open-pty-master)
-  (without-interrupts
+  (without-interruption
    (lambda ()
      (let ((result ((ucode-primitive open-pty-master 0))))
        (values (make-channel (vector-ref result 0))
@@ -477,7 +456,7 @@ USA.
 (define-guarantee directory-channel "directory channel")
 
 (define (directory-channel-open name)
-  (without-interrupts
+  (without-interruption
    (lambda ()
      (add-to-gc-finalizer! open-directories
 			   (make-directory-channel
@@ -525,7 +504,7 @@ USA.
   (length #f))
 
 (define (make-select-registry)
-  (without-interrupts
+  (without-interruption
    (lambda ()
      (add-to-gc-finalizer! select-registry-finalizer
 			   (%make-select-registry
@@ -723,7 +702,7 @@ USA.
 	(and pathname (->namestring pathname))
 	p)
        (let ((handle (make-dld-handle pathname (weak-cdr p))))
-	 (without-interrupts
+	 (with-thread-mutex-lock dld-handles-mutex
 	  (lambda ()
 	    (set! dld-handles (cons handle dld-handles))
 	    (weak-set-car! p #t)
@@ -736,14 +715,16 @@ USA.
 	     (weak-set-cdr! p #f)))))))
 
 (define dld-handles)
+(define dld-handles-mutex)
 
 (define (reset-dld-handles!)
   (set! dld-handles '())
+  (set! dld-handles-mutex (make-thread-mutex))
   unspecific)
 
 (define (dld-unload-file handle)
   (guarantee-dld-handle handle 'DLD-UNLOAD-FILE)
-  (without-interrupts
+  (with-thread-mutex-lock dld-handles-mutex
    (lambda ()
      (%dld-unload-file handle)
      (set! dld-handles (delq! handle dld-handles))
@@ -769,7 +750,11 @@ USA.
 	    (pathname=? pathname* pathname))))))
 
 (define (find-dld-handle predicate)
-  (find-matching-item dld-handles predicate))
+  (with-thread-mutex-lock dld-handles-mutex
+    (lambda ()
+      (find-matching-item dld-handles predicate))))
 
 (define (all-dld-handles)
-  (list-copy dld-handles))
+  (with-thread-mutex-lock dld-handles-mutex
+    (lambda ()
+      (list-copy dld-handles))))

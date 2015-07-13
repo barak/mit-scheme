@@ -916,6 +916,8 @@ USA.
 
 (define-package (edwin process)
   (parent (edwin))
+  (import (runtime primitive-io)
+	  channel-descriptor-for-select)
   (export (edwin)
 	  accept-process-output
 	  add-process-filter

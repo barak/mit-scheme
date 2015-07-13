@@ -896,6 +896,9 @@ USA.
  ((nt)
   (extend-package (runtime os-primitives)
     (files "ntprm")
+    (import (runtime primitive-io)
+	    channel-descriptor-for-select
+	    tty-input-channel)
     (export ()
 	    console-channel-descriptor
 	    delete-environment-variable!
@@ -1402,6 +1405,9 @@ USA.
 (define-package (runtime console-i/o-port)
   (files "ttyio")
   (parent (runtime))
+  (import (runtime primitive-io)
+	  tty-input-channel
+	  tty-output-channel)
   (export ()
 	  console-i/o-port
 	  console-i/o-port?
@@ -3221,7 +3227,6 @@ USA.
 	  channel-blocking?
 	  channel-close
 	  channel-closed?
-	  channel-descriptor-for-select
 	  channel-file-length
 	  channel-file-position
 	  channel-file-set-position
@@ -3297,8 +3302,6 @@ USA.
 	  terminal-set-state
 	  test-for-io-on-channel
 	  test-for-io-on-descriptor
-	  tty-input-channel
-	  tty-output-channel
 	  with-channel-blocking)
   (export (runtime emacs-interface)
 	  channel-descriptor)
@@ -3321,6 +3324,9 @@ USA.
 	  test-select-registry)
   (import (runtime thread)
 	  %deregister-io-descriptor)
+  (import (runtime gc-finalizer)
+	  with-gc-finalizer-lock
+	  remove-from-locked-gc-finalizer!)
   (export (runtime directory)
 	  directory-channel/descriptor)
   (initialization (initialize-package!)))
