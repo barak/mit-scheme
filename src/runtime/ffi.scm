@@ -200,7 +200,7 @@ USA.
   ;; Caseful symbol or list, e.g. (* |GtkWidget|).
   return-type
 
-  ;; Alist of parameter names * types, e.g. ((widget (* |GtkWidget|))...)
+  ;; Alist of parameter names * types, e.g. ((widget . (* |GtkWidget|))...)
   parameters
 
   ;; Filename from which the EXTERN declaration was read.
@@ -313,21 +313,23 @@ USA.
      (if (alien-function? arg)
 	 (alien-function-cache! arg)))
    args)
-  (without-interrupts
+  (without-preemption
    (lambda ()
      (call-alien* alien-function args))))
 
+#;(define-integrable (call-alien* alien-function args)
+  (apply (ucode-primitive c-call -1) alien-function args))
+
+;; Use this definition to maintain a callout/back stack.
 (define (call-alien* alien-function args)
   (let ((old-top calloutback-stack))
-    (%if-tracing
-     (outf-error ";"(tindent)"=> "alien-function" "args"\n")
-     (set! calloutback-stack (cons (cons* alien-function args) old-top)))
+    (%trace (tindent)"=> "alien-function" "args)
+    (set! calloutback-stack (cons (cons alien-function args) old-top))
     (let ((value (apply (ucode-primitive c-call -1) alien-function args)))
-      (%if-tracing
-       (%assert (eq? old-top (cdr calloutback-stack))
-		"call-alien: freak stack "calloutback-stack"\n")
-       (set! calloutback-stack old-top)
-       (outf-error ";"(tindent)"<= "value"\n"))
+      (%assert (eq? old-top (cdr calloutback-stack))
+	       "call-alien: freak stack" calloutback-stack)
+      (set! calloutback-stack old-top)
+      (%trace (tindent)"<= "value)
       value)))
 
 
@@ -335,25 +337,32 @@ USA.
 
 ;; Weak alist of: ( malloc alien X copy for c-free )...
 (define malloced-aliens '())
+(define malloced-aliens-mutex)
 
 (define (free-malloced-aliens)
-  (let loop ((aliens malloced-aliens)
-	     (prev #f))
-    (if (pair? aliens)
-	(if (weak-pair/car? (car aliens))
-	    (loop (cdr aliens) aliens)
-	    (let ((copy (weak-cdr (car aliens)))
-		  (next (cdr aliens)))
-	      (if prev
-		  (set-cdr! prev next)
-		  (set! malloced-aliens next))
-	      (if (not (alien-null? copy))
-		  (begin
-		    ((ucode-primitive c-free 1) copy)
-		    (alien-null! copy)))
-	      (loop next prev))))))
+  (with-thread-mutex-try-lock
+   malloced-aliens-mutex
+   (lambda ()
+     (let loop ((aliens malloced-aliens)
+		(prev #f))
+       (if (pair? aliens)
+	   (if (weak-pair/car? (car aliens))
+	       (loop (cdr aliens) aliens)
+	       (let ((copy (weak-cdr (car aliens)))
+		     (next (cdr aliens)))
+		 (if prev
+		     (set-cdr! prev next)
+		     (set! malloced-aliens next))
+		 (if (not (alien-null? copy))
+		     (begin
+		       ((ucode-primitive c-free 1) copy)
+		       (alien-null! copy)))
+		 (loop next prev))))))
+   (lambda ()
+     unspecific)))
 
 (define (reset-malloced-aliens!)
+  (set! malloced-aliens-mutex (make-thread-mutex))
   (let loop ((aliens malloced-aliens))
     (if (pair? aliens)
 	(let ((alien (weak-car (car aliens)))
@@ -368,7 +377,7 @@ USA.
   (let ((alien (make-alien ctype)))
     (let ((copy (make-alien ctype)))
       (let ((entry (weak-cons alien copy)))
-	(without-interrupts
+	(with-thread-mutex-lock malloced-aliens-mutex
 	 (lambda ()
 	   (set! malloced-aliens (cons entry malloced-aliens)))))
       (init copy)
@@ -388,7 +397,7 @@ USA.
 	(if (not weak)
 	    (warn "Cannot free an alien that was not malloced:" alien)
 	    (let ((copy (weak-cdr weak)))
-	      (without-interrupts
+	      (with-thread-mutex-lock malloced-aliens-mutex
 	       (lambda ()
 		 (if (not (alien-null? alien))
 		     (begin
@@ -410,16 +419,18 @@ USA.
 ;;; Callback support
 
 (define registered-callbacks)
+(define registered-callbacks-mutex)
 (define first-free-id)
 
 (define (reset-callbacks!)
   (set! registered-callbacks (make-vector 100 #f))
+  (set! registered-callbacks-mutex (make-thread-mutex))
   (set! first-free-id 1))
 
 (define (register-c-callback procedure)
   (if (not (procedure? procedure))
       (error:wrong-type-argument procedure "a procedure" 'register-c-callback))
-  (without-interrupts
+  (with-thread-mutex-lock registered-callbacks-mutex
    (lambda ()
      (let ((id first-free-id))
        (set! first-free-id (next-free-id (1+ id)))
@@ -439,11 +450,11 @@ USA.
 	    (else (next-id (1+ id)))))))
 
 (define (de-register-c-callback id)
-  (vector-set! registered-callbacks id #f)
-  ;; Uncomment to recycle ids.
-  ;;(if (< id first-free-id)
-  ;;    (set! first-free-id id))
-  )
+  (with-thread-mutex-lock registered-callbacks-mutex
+   (lambda ()
+     (vector-set! registered-callbacks id #f)
+     (if (< id first-free-id)
+	 (set! first-free-id id)))))
 
 (define (normalize-aliens! args)
   ;; Any vectors among ARGS are assumed to be freshly-consed aliens
@@ -467,18 +478,23 @@ USA.
     (if (not procedure)
 	(error:bad-range-argument id 'apply-callback))
     (normalize-aliens! args)
-    (let ((old-top calloutback-stack))
-      (%if-tracing
-       (outf-error ";"(tindent)"=>> "procedure" "args"\n")
-       (set! calloutback-stack (cons (cons procedure args) old-top)))
-      (let ((value (apply-callback-proc procedure args)))
-	(%if-tracing
-	 (%assert (and (pair? calloutback-stack)
-		       (eq? old-top (cdr calloutback-stack)))
-		  "callback-handler: freak stack "calloutback-stack"\n")
-	 (set! calloutback-stack old-top)
-	 (outf-error ";"(tindent)"<<= "value"\n"))
-	value))))
+    (callback-handler* procedure args)))
+
+#;(define-integrable (callback-handler* procedure args)
+  (apply-callback-proc procedure args))
+
+;; Use this definition to maintain a callout/back stack.
+(define (callback-handler* procedure args)
+  (let ((old-top calloutback-stack))
+    (%trace (tindent)"=>> "procedure" "args)
+    (set! calloutback-stack (cons (cons procedure args) old-top))
+    (let ((value (apply-callback-proc procedure args)))
+      (%assert (and (pair? calloutback-stack)
+		    (eq? old-top (cdr calloutback-stack)))
+	       "callback-handler: freak stack" calloutback-stack)
+      (set! calloutback-stack old-top)
+      (%trace (tindent)"<<= "value)
+      value)))
 
 (define (apply-callback-proc procedure args)
   (call-with-current-continuation
@@ -562,17 +578,13 @@ USA.
 				 (write-string "Loading FFI option" port))
 			       kernel)))))
 
-
 (define calloutback-stack '())
-
-(define %trace? #f)
 
 (define (reset-package!)
   (reset-alien-functions!)
   (reset-malloced-aliens!)
   (reset-callbacks!)
   (set! %radix (if (fix:fixnum? #x100000000) #x100000000 #x10000))
-  (set! %trace? #f)
   (set! calloutback-stack '()))
 
 (define (initialize-package!)
@@ -582,23 +594,32 @@ USA.
   (add-gc-daemon! free-malloced-aliens)
   unspecific)
 
-(define-syntax %if-tracing
+#;(define-syntax %assert
   (syntax-rules ()
-    ((_ BODY ...)
-     (if %trace?
-	 (begin BODY ...)))))
+    ((_ TEST . MSG)
+     #f)))
 
 (define-syntax %assert
   (syntax-rules ()
-    ((_ TEST MSG ...)
+    ((_ TEST . MSG)
      (if (not TEST)
-	 (error "Failed assert:" MSG ...)))))
+	 (error . MSG)))))
+
+;; Use this definition to avoid frequently checking %trace?.
+#;(define-syntax %trace
+  (syntax-rules ()
+    ((_ . MSG)
+     #f)))
+
+(define %trace? #f)
 
 (define-syntax %trace
   (syntax-rules ()
-    ((_ MSG ...)
-     (if %trace?
-	 (outf-error MSG ...)))))
+    ((_ . MSG)
+     (if %trace? (%outf-error . MSG)))))
 
 (define (tindent)
   (make-string (* 2 (length calloutback-stack)) #\space))
+
+(define (%outf-error . msg)
+  (apply outf-error `("; ",@msg"\n")))
