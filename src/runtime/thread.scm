@@ -155,7 +155,7 @@ USA.
 (define (reset-threads-high!)
   (set! io-registry (and have-select? (make-select-registry)))
   (set! io-registrations #f)
-  unspecific)
+  (set! subprocess-registrations '()))
 
 (define (make-thread continuation)
   (let ((thread (%make-thread (make-1d-table))))
@@ -429,6 +429,7 @@ USA.
     (translate-to-state-point (thread/root-state-point thread))
     (%deregister-io-thread-events thread)
     (%discard-thread-timer-records thread)
+    (%deregister-subprocess-events thread)
     (%disassociate-joined-threads thread)
     (%disassociate-thread-mutexes thread)
     (if (eq? no-exit-value-marker (thread/exit-value thread))
@@ -545,53 +546,36 @@ USA.
 				  (vector-ref result 1)
 				  (vector-ref result 2)))
 	((eq? 'PROCESS-STATUS-CHANGE result)
-	 (signal-io-thread-events 1
-				  '#(PROCESS-STATUS-CHANGE)
-				  '#(READ)))))
+	 (%handle-subprocess-status-change))))
 
 (define (maybe-signal-io-thread-events)
-  (if io-registrations
+  (if (or io-registrations
+	  (not (null? subprocess-registrations)))
       (signal-select-result (test-select-registry io-registry #f))))
 
 (define (block-on-io-descriptor descriptor mode)
-  (without-interrupts
-   (lambda ()
-     (let ((result 'INTERRUPT)
-	   (registration-1)
-	   (registration-2))
-       (dynamic-wind
+  (let ((result 'INTERRUPT)
+	(registration #f))
+    (dynamic-wind
+     (lambda ()
+       (if registration (error "Re-entered block-on-io-descrptor."))
+       (set! registration
+	     (register-io-thread-event descriptor mode (current-thread)
+				       (named-lambda (block-on-io-event mode)
+					 (set! result mode)))))
+     (lambda ()
+       (with-thread-events-blocked
 	(lambda ()
-	  (let ((thread (current-thread)))
-	    (set! registration-1
-		  (%register-io-thread-event
-		   descriptor
-		   mode
-		   thread
-		   (lambda (mode)
-		     (set! result mode)
-		     unspecific)))
-	    (set! registration-2
-		  (%register-io-thread-event
-		   'PROCESS-STATUS-CHANGE
-		   'READ
-		   thread
-		   (lambda (mode)
-		     mode
-		     (set! result 'PROCESS-STATUS-CHANGE)
-		     unspecific))))
-	  (%maybe-toggle-thread-timer))
-	(lambda ()
-	  (%suspend-current-thread)
-	  result)
-	(lambda ()
-	  (%maybe-deregister-io-thread-event registration-2)
-	  (%maybe-deregister-io-thread-event registration-1)
-	  (%maybe-toggle-thread-timer)))))))
-
-(define (%maybe-deregister-io-thread-event tentry)
-  ;; Ensure that another thread does not unwind our registration.
-  (if (eq? (current-thread) (tentry/thread tentry))
-      (delete-tentry! tentry)))
+	  (if (eq? result 'INTERRUPT)
+	      (suspend-current-thread)))))
+     (lambda ()
+       (if (and registration
+		;; Ensure another thread does not de-register our IO event.
+		(eq? (current-thread) (tentry/thread registration)))
+	   (begin
+	     (deregister-io-thread-event registration)
+	     (set! registration #f)))))
+    result))
 
 (define (permanently-register-io-thread-event descriptor mode thread event)
   (let ((stop? #f)
@@ -655,8 +639,7 @@ USA.
 	      unspecific)
 	     ((and (eqv? descriptor (dentry/descriptor dentry))
 		   (eq? mode (dentry/mode dentry)))
-	      (if (not (eq? 'PROCESS-STATUS-CHANGE descriptor))
-		  (remove-from-select-registry! io-registry descriptor mode))
+	      (remove-from-select-registry! io-registry descriptor mode)
 	      (let ((prev (dentry/prev dentry))
 		    (next (dentry/next dentry)))
 		(if prev
@@ -713,8 +696,7 @@ USA.
 	       (if io-registrations
 		   (set-dentry/prev! io-registrations dentry))
 	       (set! io-registrations dentry)
-	       (if (not (eq? 'PROCESS-STATUS-CHANGE descriptor))
-		   (add-to-select-registry! io-registry descriptor mode))))
+	       (add-to-select-registry! io-registry descriptor mode)))
 	    ((and (eqv? descriptor (dentry/descriptor dentry))
 		  (eq? mode (dentry/mode dentry)))
 	     (set-tentry/dentry! tentry dentry)
@@ -805,11 +787,9 @@ USA.
 	(set-dentry/last-tentry! dentry prev))
     (if (not (or prev next))
 	(begin
-	  (let ((descriptor (dentry/descriptor dentry)))
-	    (if (not (eq? 'PROCESS-STATUS-CHANGE descriptor))
-		(remove-from-select-registry! io-registry
-					      descriptor
-					      (dentry/mode dentry))))
+	  (remove-from-select-registry! io-registry
+					(dentry/descriptor dentry)
+					(dentry/mode dentry))
 	  (let ((prev (dentry/prev dentry))
 		(next (dentry/next dentry)))
 	    (if prev
@@ -946,6 +926,15 @@ USA.
 	     (maybe-signal-io-thread-events))))
      (%maybe-toggle-thread-timer))))
 
+;;;; Subprocess Events
+
+(define subprocess-registrations)
+(define subprocess-support-loaded? #f)
+
+(define (%deregister-subprocess-events thread)
+  (if subprocess-support-loaded?
+      (deregister-subprocess-events thread)))
+
 ;;;; Timer Events
 
 (define timer-records)
@@ -1023,6 +1012,7 @@ USA.
       (ring/discard-all (thread/pending-events thread))
       (%deregister-io-thread-events thread)
       (%discard-thread-timer-records thread)
+      (%deregister-subprocess-events thread)
       (set-thread/block-events?! thread block-events?))
     (%maybe-toggle-thread-timer)
     (set-interrupt-enables! interrupt-mask/all)))
@@ -1081,6 +1071,7 @@ USA.
 	    ((and consider-non-timers?
 		  timer-interval
 		  (or io-registrations
+		      (not (null? subprocess-registrations))
 		      (let ((current-thread first-running-thread))
 			(and current-thread
 			     (thread/next current-thread)))))

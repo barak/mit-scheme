@@ -78,16 +78,15 @@ Initialized from the SHELL environment variable."
   (filter #f)
   (sentinel #f)
   (kill-without-query #f)
-  (notification-tick (cons #f #f)))
+  (status-registration #f)
+  (current-status #f)
+  (pending-status #f))
 
 (define-integrable (process-arguments process)
   (subprocess-arguments (process-subprocess process)))
 
 (define-integrable (process-output-port process)
   (subprocess-output-port (process-subprocess process)))
-
-(define-integrable (process-status-tick process)
-  (subprocess-status-tick (process-subprocess process)))
 
 (define-integrable (process-exit-reason process)
   (subprocess-exit-reason (process-subprocess process)))
@@ -125,6 +124,13 @@ Initialized from the SHELL environment variable."
    (let ((buffer (process-buffer process)))
      (and buffer
 	  (mark-right-inserting-copy (buffer-end buffer))))))
+
+(define (deregister-process-status process)
+  (let ((registration (process-status-registration process)))
+    (if registration
+	(begin
+	  (deregister-subprocess-event registration)
+	  (set-process-status-registration! process #f)))))
 
 (define (start-process name buffer environment program . arguments)
   (let ((make-subprocess
@@ -153,6 +159,12 @@ Initialized from the SHELL environment variable."
 	   (let ((channel (subprocess-input-channel subprocess)))
 	     (if channel
 		 (channel-nonblocking channel)))
+	   (set-process-status-registration!
+	    process
+	    (register-subprocess-event
+	     subprocess 'RUNNING (current-thread)
+	     (named-lambda (edwin-process-status-event status)
+	       (set-process-pending-status! process status))))
 	   (update-process-mark! process)
 	   (subprocess-put! subprocess 'EDWIN-PROCESS process)
 	   (set! edwin-processes (cons process edwin-processes))
@@ -174,6 +186,7 @@ Initialized from the SHELL environment variable."
 	   (begin
 	     (subprocess-kill subprocess)
 	     (%perform-status-notification process 'SIGNALLED #f)))
+       (deregister-process-status process)
        (let ((buffer (process-buffer process)))
 	 (if (buffer-alive? buffer)
 	     (buffer-modeline-event! buffer 'PROCESS-STATUS)))
@@ -265,39 +278,24 @@ Initialized from the SHELL environment variable."
     (output-port/flush-output port)))
 
 (define (process-status-changes?)
-  (without-interrupts
-   (lambda ()
-     (not (eq? (subprocess-global-status-tick) global-notification-tick)))))
+  (any (lambda (process)
+	 (not (eq? (process-current-status process)
+		   (process-pending-status process))))
+       edwin-processes))
 
 (define (handle-process-status-changes)
-  (without-interrupts
-   (lambda ()
-     (and (%update-global-notification-tick)
-	  (let loop ((processes edwin-processes) (output? #f))
-	    (if (null? processes)
-		output?
-		(loop (cdr processes)
-		      (if (poll-process-for-status-change (car processes))
-			  #t
-			  output?))))))))
-
-(define (%update-global-notification-tick)
-  (let ((tick (subprocess-global-status-tick)))
-    (and (not (eq? tick global-notification-tick))
-	 (begin
-	   (set! global-notification-tick tick)
-	   #t))))
-
-(define global-notification-tick
-  (cons #f #f))
-
-(define (poll-process-for-status-change process)
-  (let ((status (subprocess-status (process-subprocess process))))
-    (and (not (eq? (process-notification-tick process)
-		   (process-status-tick process)))
-	 (perform-status-notification process
-				      status
-				      (process-exit-reason process)))))
+  (let loop ((processes edwin-processes) (output? #f))
+    (if (pair? processes)
+	(loop (cdr processes)
+	      (or (let* ((process (car processes))
+			 (pending (process-pending-status process)))
+		    (and (not (eq? pending (process-current-status process)))
+			 (begin
+			   (perform-status-notification
+			    process pending (process-exit-reason process))
+			   #t)))
+		  output?))
+	output?)))
 
 (define (register-process-output-events thread event)
   (append-map!
@@ -325,7 +323,7 @@ Initialized from the SHELL environment variable."
     value))
 
 (define (%perform-status-notification process status reason)
-  (set-process-notification-tick! process (process-status-tick process))
+  (set-process-current-status! process status)
   (cond ((process-sentinel process)
 	 =>
 	 (lambda (sentinel)

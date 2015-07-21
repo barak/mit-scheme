@@ -3844,8 +3844,10 @@ USA.
     (else))
   (parent (runtime))
   (export ()
+	  deregister-subprocess-event
 	  make-subprocess
 	  process-environment-bind
+	  register-subprocess-event
 	  run-subprocess-in-foreground
 	  scheme-subprocess-environment
 	  start-batch-subprocess
@@ -3859,7 +3861,6 @@ USA.
 	  subprocess-exit-reason
 	  subprocess-filename
 	  subprocess-get
-	  subprocess-global-status-tick
 	  subprocess-hangup
 	  subprocess-i/o-port
 	  subprocess-id
@@ -3879,7 +3880,6 @@ USA.
 	  subprocess-remove!
 	  subprocess-signal
 	  subprocess-status
-	  subprocess-status-tick
 	  subprocess-stop
 	  subprocess-wait
 	  subprocess?)
@@ -3887,6 +3887,15 @@ USA.
 	  handle-subprocess-status-change)
   (export (runtime socket)
 	  handle-subprocess-status-change)
+  (export (runtime thread)
+	  deregister-subprocess-events
+	  %handle-subprocess-status-change)
+  (import (runtime thread)
+	  %signal-thread-event
+	  subprocess-registrations
+	  subprocess-support-loaded?)
+  (import (runtime gc-finalizer)
+	  gc-finalizer-items)
   (initialization (initialize-package!)))
 
 (define-package (runtime synchronous-subprocess)
@@ -5059,6 +5068,7 @@ USA.
 	  deregister-timer-event
 	  detach-thread
 	  exit-current-thread
+	  guarantee-thread
 	  join-thread
 	  lock-thread-mutex
 	  make-thread-mutex

@@ -175,11 +175,9 @@ USA.
   (let loop ()
     (let ((n (%channel-read channel buffer start end)))
       (if (eq? n #t)
-	  (begin
-	    (handle-subprocess-status-change)
-	    (if (channel-blocking? channel)
-		(loop)
-		#f))
+	  (if (channel-blocking? channel)
+	      (loop)
+	      #f)
 	  n))))
 
 (define (%channel-read channel buffer start end)
@@ -194,7 +192,8 @@ USA.
 	    end))))
     (declare (integrate-operator do-read))
     (if (and have-select? (not (channel-type=file? channel)))
-	(let ((result (test-for-io-on-channel channel 'READ)))
+	(let ((result (test-for-io-on-channel channel 'READ
+					      (channel-blocking? channel))))
 	  (case result
 	    ((READ HANGUP ERROR) (do-read))
 	    ((#F) #f)
@@ -206,11 +205,9 @@ USA.
   (let loop ()
     (let ((n (%channel-write channel buffer start end)))
       (if (eq? n #t)
-	  (begin
-	    (handle-subprocess-status-change)
-	    (if (channel-blocking? channel)
-		(loop)
-		#f))
+	  (if (channel-blocking? channel)
+	      (loop)
+	      #f)
 	  n))))
 
 (define (%channel-write channel buffer start end)
@@ -225,7 +222,8 @@ USA.
 	    end))))
     (declare (integrate-operator do-write))
     (if (and have-select? (not (channel-type=file? channel)))
-	(let ((result (test-for-io-on-channel channel 'WRITE)))
+	(let ((result (test-for-io-on-channel channel 'WRITE
+					      (channel-blocking? channel))))
 	  (case result
 	    ((WRITE HANGUP ERROR) (do-write))
 	    ((#F) 0)
@@ -532,38 +530,35 @@ USA.
 			     mode))
 
 (define (channel-has-input? channel)
-  (let ((descriptor (channel-descriptor-for-select channel)))
-    (let loop ()
-      (let ((mode (test-select-descriptor descriptor #f 'READ)))
-	(if (pair? mode)
-	    (or (eq? (car mode) 'READ)
-		(eq? (car mode) 'READ/WRITE))
-	    (begin
-	      (if (eq? mode 'PROCESS-STATUS-CHANGE)
-		  (handle-subprocess-status-change))
-	      (loop)))))))
+  (let loop ()
+    (let ((mode (test-select-descriptor (channel-descriptor-for-select channel)
+					'READ)))
+      (if (pair? mode)
+	  (or (eq? (car mode) 'READ)
+	      (eq? (car mode) 'READ/WRITE))
+	  (loop)))))
 
 (define-integrable (channel-descriptor-for-select channel)
   ((ucode-primitive channel-descriptor 1) (channel-descriptor channel)))
 
 (define (test-for-io-on-descriptor descriptor block? mode)
-  (or (let ((rmode (test-select-descriptor descriptor #f mode)))
+  (or (let ((rmode (test-select-descriptor descriptor mode)))
 	(if (pair? rmode)
 	    (simplify-select-registry-mode rmode)
 	    rmode))
       (and block?
 	   (block-on-io-descriptor descriptor mode))))
 
-(define (test-select-descriptor descriptor block? mode)
+(define (test-select-descriptor descriptor mode)
   (let ((result
 	 ((ucode-primitive test-select-descriptor 3)
 	  descriptor
-	  block?
+	  #f
 	  (encode-select-registry-mode mode))))
     (cond ((>= result 0) (decode-select-registry-mode result))
 	  ((= result -1) 'INTERRUPT)
 	  ((= result -2)
-	   (subprocess-global-status-tick)
+	   (handle-subprocess-status-change)
 	   'PROCESS-STATUS-CHANGE)
 	  (else
 	   (error "Illegal result from TEST-SELECT-DESCRIPTOR:" result)))))
@@ -625,9 +620,7 @@ USA.
 	    (deallocate-select-registry-result-vectors vfd vmode)
 	    (cond ((= 0 result) #f)
 		  ((= -1 result) 'INTERRUPT)
-		  ((= -2 result)
-		   (subprocess-global-status-tick)
-		   'PROCESS-STATUS-CHANGE)
+		  ((= -2 result) 'PROCESS-STATUS-CHANGE)
 		  (else
 		   (error "Illegal result from TEST-SELECT-REGISTRY:"
 			  result))))))))

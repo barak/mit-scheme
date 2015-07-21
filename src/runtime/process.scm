@@ -31,7 +31,6 @@ USA.
 
 (define subprocess-finalizer)
 (define scheme-subprocess-environment)
-(define global-status-tick)
 
 (define (initialize-package!)
   (set! subprocess-finalizer
@@ -39,13 +38,13 @@ USA.
 			   subprocess?
 			   subprocess-index
 			   set-subprocess-index!))
+  (set! subprocess-support-loaded? #t)
   (reset-package!)
   (add-event-receiver! event:after-restore reset-package!)
   (add-event-receiver! event:before-exit delete-all-processes))
 
 (define (reset-package!)
   (set! scheme-subprocess-environment ((ucode-primitive scheme-environment 0)))
-  (set! global-status-tick (cons #f #f))
   unspecific)
 
 (define (delete-all-processes)
@@ -67,9 +66,8 @@ USA.
   output-channel
   (id #f read-only #t)
   (%i/o-port #f)
-  (%status #f)
+  (status #f)
   (exit-reason #f)
-  (%status-tick #f)
   (properties (make-1d-table) read-only #t))
 
 (define (subprocess-get process key)
@@ -166,73 +164,73 @@ USA.
 			  filename arguments index pty-master
 			  input-channel output-channel
 			  ((ucode-primitive process-id 1) index))))
-		    (set-subprocess-%status!
+		    (set-subprocess-status!
 		     process
-		     ((ucode-primitive process-status 1) index))
+		     (convert-subprocess-status
+		      ((ucode-primitive process-status 1) index)))
 		    (set-subprocess-exit-reason!
 		     process
 		     ((ucode-primitive process-reason 1) index))
-		    (add-to-gc-finalizer! subprocess-finalizer process)))))))))
+		    (add-to-gc-finalizer! subprocess-finalizer process)
+		    (poll-subprocess-status process)
+		    process))))))))
     (if (and (eq? ctty 'FOREGROUND)
-	     (eqv? (%subprocess-status process) 0))
+	     (eq? (subprocess-status process) 'RUNNING))
 	(subprocess-continue-foreground process))
     process))
 
 (define (subprocess-delete process)
   (if (subprocess-index process)
       (begin
+	(poll-subprocess-status process)
 	(close-subprocess-i/o process)
+	(deregister-subprocess process)
 	(remove-from-gc-finalizer! subprocess-finalizer process))))
 
-(define (subprocess-status process)
-  (convert-subprocess-status (%subprocess-status process)))
-
 (define (subprocess-wait process)
-  (let loop ()
-    ((ucode-primitive process-wait 1) (subprocess-index process))
-    (let ((status (%subprocess-status process)))
-      (if (eqv? status 0)
-	  (loop)
-	  (convert-subprocess-status status)))))
+  (let ((result #f)
+	(registration))
+    (dynamic-wind
+     (lambda ()
+       (set! registration
+	     (register-subprocess-event
+	      process 'RUNNING (current-thread)
+	      (named-lambda (subprocess-wait-event status)
+		(set! result status)))))
+     (lambda ()
+       (let loop ()
+	 (with-thread-events-blocked
+	  (lambda ()
+	    (if (eq? result '#f)
+		(suspend-current-thread))
+	    (if (eq? result 'RUNNING)
+		(set! result #f))))
+	 (if (not result)
+	     (loop)
+	     result)))
+     (lambda ()
+       (deregister-subprocess-event registration)))))
 
 (define (subprocess-continue-foreground process)
   (let loop ()
     ((ucode-primitive process-continue-foreground 1)
      (subprocess-index process))
-    (let ((status (%subprocess-status process)))
-      (if (eqv? status 0)
+    (let ((status (subprocess-status process)))
+      (if (eq? status 'RUNNING)
 	  (loop)
-	  (convert-subprocess-status status)))))
+	  status))))
 
-(define (%subprocess-status process)
-  (without-interruption
-   (lambda ()
-     (let ((index (subprocess-index process)))
-       (if (and index ((ucode-primitive process-status-sync 1) index))
-	   (begin
-	     (set-subprocess-%status!
-	      process
-	      ((ucode-primitive process-status 1) index))
-	     (set-subprocess-exit-reason!
-	      process
-	      ((ucode-primitive process-reason 1) index))
-	     (set-subprocess-%status-tick! process #f))))))
-  (subprocess-%status process))
-
-(define (subprocess-status-tick process)
-  (or (subprocess-%status-tick process)
-      (let ((tick (cons #f #f)))
-	(set-subprocess-%status-tick! process tick)
-	tick)))
-
-(define (subprocess-global-status-tick)
-  (without-interruption
-   (lambda ()
-     (if ((ucode-primitive process-status-sync-all 0))
-	 (let ((tick (cons #f #f)))
-	   (set! global-status-tick tick)
-	   tick)
-	 global-status-tick))))
+(define (poll-subprocess-status process)
+  (let ((index (subprocess-index process)))
+    (if (and index ((ucode-primitive process-status-sync 1) index))
+	(begin
+	  (set-subprocess-status!
+	   process
+	   (convert-subprocess-status
+	    ((ucode-primitive process-status 1) index)))
+	  (set-subprocess-exit-reason!
+	   process
+	   ((ucode-primitive process-reason 1) index))))))
 
 (define (convert-subprocess-status status)
   (case status
@@ -253,12 +251,102 @@ USA.
       ((3) 'JOB-CONTROL)
       (else (error "Illegal process job-control status:" n)))))
 
+;;;; Subprocess Events
+
+(define-structure (subprocess-registration
+		   (conc-name subprocess-registration/))
+  (subprocess #f read-only #t)
+  (status #f)
+  (thread () read-only #t)
+  (event () read-only #t))
+
+(define (guarantee-subprocess-registration object procedure)
+  (if (not (subprocess-registration? object))
+      (error:wrong-type-argument object "subprocess-registration" procedure)))
+
+(define (guarantee-subprocess object procedure)
+  (if (not (subprocess? object))
+      (error:wrong-type-argument object "subprocess" procedure)))
+
+(define (register-subprocess-event subprocess status thread event)
+  (guarantee-subprocess subprocess 'register-subprocess-event)
+  (guarantee-thread thread 'register-subprocess-event)
+  (guarantee-procedure-of-arity event 1 'register-subprocess-event)
+  (let ((registration (make-subprocess-registration
+		       subprocess status thread event)))
+    (without-interrupts
+     (lambda ()
+       (set! subprocess-registrations
+	     (cons registration subprocess-registrations))
+       (let ((current (subprocess-status subprocess)))
+	 (if (not (eq? status current))
+	     (begin
+	       (%signal-thread-event
+		thread (and event (lambda () (event current))))
+	       (set-subprocess-registration/status! registration current))))))
+    registration))
+
+(define (deregister-subprocess-event registration)
+  (guarantee-subprocess-registration registration
+				     'DEREGISTER-SUBPROCESS-EVENT)
+  (without-interrupts
+   (lambda ()
+     (set! subprocess-registrations
+	   (delq! registration subprocess-registrations)))))
+
+(define (deregister-subprocess subprocess)
+  (without-interrupts
+   (lambda ()
+     (set! subprocess-registrations
+	   (filter!
+	    (lambda (registration)
+	      (not (eq? subprocess
+			(subprocess-registration/subprocess registration))))
+		    subprocess-registrations)))))
+
+(define (deregister-subprocess-events thread)
+  (set! subprocess-registrations
+	(filter!
+	 (lambda (registration)
+	   (not (eq? thread (subprocess-registration/thread registration))))
+	 subprocess-registrations)))
+
 (define (handle-subprocess-status-change)
+  (without-interrupts %handle-subprocess-status-change)
   (if (eq? 'NT microcode-id/operating-system)
       (for-each (lambda (process)
 		  (if (memq (subprocess-status process) '(EXITED SIGNALLED))
 		      (close-subprocess-i/o process)))
 		(subprocess-list))))
+
+(define (%handle-subprocess-status-change)
+  (if ((ucode-primitive process-status-sync-all 0))
+      (begin
+	(for-each (lambda (weak)
+		    (let ((subprocess (weak-car weak)))
+		      (if subprocess
+			  (poll-subprocess-status subprocess))))
+		  (gc-finalizer-items subprocess-finalizer))
+	(for-each
+	  (lambda (registration)
+	    (let ((status (subprocess-status
+			   (subprocess-registration/subprocess registration)))
+		  (old (subprocess-registration/status registration)))
+	      (if (not (eq? status old))
+		  (let ((event (subprocess-registration/event registration)))
+		    (%signal-thread-event
+		     (subprocess-registration/thread registration)
+		     (and event (lambda () (event status))))
+		    (set-subprocess-registration/status! registration
+							 status)))))
+	  subprocess-registrations)
+	(set! subprocess-registrations
+	      (filter! (lambda (registration)
+			 (let ((status
+				(subprocess-registration/status registration)))
+			   (not (or (eq? status 'EXITED)
+				    (eq? status 'SIGNALLED)))))
+		       subprocess-registrations)))))
 
 (define-integrable subprocess-job-control-available?
   (ucode-primitive os-job-control? 0))

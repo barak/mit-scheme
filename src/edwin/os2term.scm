@@ -731,6 +731,8 @@ USA.
 		 event:process-status)
 		(else
 		 (let ((flag
+			;; Note that this procedure no longer unblocks
+			;; for subprocess status changes!!!
 			(test-for-io-on-descriptor event-descriptor
 						   block?
 						   'READ)))

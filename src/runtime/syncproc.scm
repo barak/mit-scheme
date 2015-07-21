@@ -110,18 +110,6 @@ USA.
      (if directory
 	 (cons environment (->namestring directory))
 	 environment))))
-
-;++ Oops...
-
-(define (subprocess-wait* process)
-  (subprocess-wait process)
-  (let tick-loop ((tick (subprocess-status-tick process)))
-    (let ((status (subprocess-status process))
-	  (exit-reason (subprocess-exit-reason process)))
-      (let ((tick* (subprocess-status-tick process)))
-	(if (eq? tick* tick)
-	    (values status exit-reason)
-	    (tick-loop tick*))))))
 
 (define condition-type:subprocess-abnormal-termination
   (make-condition-type 'SUBPROCESS-ABNORMAL-TERMINATION condition-type:error
@@ -197,7 +185,10 @@ USA.
 		      (do ()
 			  ((= (or (copy-output) 0) 0))
 			(if redisplay-hook (redisplay-hook)))))))))))
-  (subprocess-wait* process))
+  (subprocess-wait process)
+  (subprocess-delete process)
+  (values (subprocess-status process)
+	  (subprocess-exit-reason process)))
 
 (define (call-with-input-copier process process-input nonblock? bsize receiver)
   (let ((port (subprocess-output-port process)))
