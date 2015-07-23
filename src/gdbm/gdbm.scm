@@ -345,23 +345,27 @@ USA.
 	      (loop (cdr alist)))))))
 
 (define (cleanup-open-gdbfs)
-  (if (not (thread-mutex-owner open-gdbfs-mutex))
-      (let loop ((entries open-gdbfs)
-		 (prev #f))
-	(if (pair? entries)
-	    (let ((entry (car entries))
-		  (next (cdr entries)))
-	      (if (weak-pair/car? entry)
-		  (loop next entries)
-		  (let ((args (weak-cdr entry)))
-		    (if prev
-			(set-cdr! prev next)
-			(set! open-gdbfs next))
-		    (if (not (alien-null? args))
-			(begin
-			  (C-call "do_gdbm_close" args)
-			  (alien-null! args)))
-		    (loop next prev))))))))
+  (with-thread-mutex-try-lock
+   open-gdbfs-mutex
+   (lambda ()
+     (let loop ((entries open-gdbfs)
+		(prev #f))
+       (if (pair? entries)
+	   (let ((entry (car entries))
+		 (next (cdr entries)))
+	     (if (weak-pair/car? entry)
+		 (loop next entries)
+		 (let ((args (weak-cdr entry)))
+		   (if prev
+		       (set-cdr! prev next)
+		       (set! open-gdbfs next))
+		   (if (not (alien-null? args))
+		       (begin
+			 (C-call "do_gdbm_close" args)
+			 (alien-null! args)))
+		   (loop next prev)))))))
+   (lambda ()
+     unspecific)))
 
 (define (reset-open-gdbfs)
   (for-each (lambda (weak) (alien-null! (weak-cdr weak))) open-gdbfs)
