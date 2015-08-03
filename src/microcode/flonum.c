@@ -205,6 +205,20 @@ DEFINE_PRIMITIVE ("FLONUM-LOG", Prim_flonum_log, 1, 1, 0)
 
 DEFINE_PRIMITIVE ("FLONUM-EXP", Prim_flonum_exp, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (exp)
+
+DEFINE_PRIMITIVE ("FLONUM-SINH", Prim_flonum_sinh, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (sinh)
+DEFINE_PRIMITIVE ("FLONUM-COSH", Prim_flonum_cosh, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (cosh)
+DEFINE_PRIMITIVE ("FLONUM-TANH", Prim_flonum_tanh, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (tanh)
+DEFINE_PRIMITIVE ("FLONUM-ASINH", Prim_flonum_asinh, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (asinh)
+DEFINE_PRIMITIVE ("FLONUM-ACOSH", Prim_flonum_acosh, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (acosh)
+DEFINE_PRIMITIVE ("FLONUM-ATANH", Prim_flonum_atanh, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (atanh)
+
 DEFINE_PRIMITIVE ("FLONUM-SIN", Prim_flonum_sin, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (sin)
 DEFINE_PRIMITIVE ("FLONUM-COS", Prim_flonum_cos, 1, 1, 0)
@@ -232,11 +246,80 @@ DEFINE_PRIMITIVE ("FLONUM-ATAN2", Prim_flonum_atan2, 2, 2, 0)
 
 DEFINE_PRIMITIVE ("FLONUM-SQRT", Prim_flonum_sqrt, 1, 1, 0)
      RESTRICTED_TRANSCENDENTAL_FUNCTION (sqrt, (x >= 0))
+DEFINE_PRIMITIVE ("FLONUM-CBRT", Prim_flonum_cbrt, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (cbrt)
+
+DEFINE_PRIMITIVE ("FLONUM-HYPOT", Prim_flonum_hypot, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  FLONUM_RESULT (hypot ((arg_flonum (1)), (arg_flonum (2))));
+}
 
 DEFINE_PRIMITIVE ("FLONUM-EXPT", Prim_flonum_expt, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   FLONUM_RESULT (pow ((arg_flonum (1)), (arg_flonum (2))));
+}
+
+/* (Complete) Gamma and error functions */
+
+DEFINE_PRIMITIVE ("FLONUM-LGAMMA", Prim_flonum_lgamma, 1, 1, 0)
+{
+  double x;
+  double result;
+  PRIMITIVE_HEADER (1);
+
+  x = (arg_flonum (1));
+  errno = 0;
+#ifdef HAVE_LGAMMA_R
+  {
+    int sign;
+    result = (lgamma_r (x, (&sign)));
+  }
+#else
+  result = (lgamma (x));
+#endif
+  if (errno != 0)
+    error_bad_range_arg (1);
+  FLONUM_RESULT (result);
+}
+
+DEFINE_PRIMITIVE ("FLONUM-GAMMA", Prim_flonum_gamma, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (tgamma)
+DEFINE_PRIMITIVE ("FLONUM-ERF", Prim_flonum_erf, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (erf)
+DEFINE_PRIMITIVE ("FLONUM-ERFC", Prim_flonum_erfc, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (erfc)
+
+/* Bessel functions of the first (j*) and second (y*) kind */
+
+DEFINE_PRIMITIVE ("FLONUM-J0", Prim_flonum_j0, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (j0)
+DEFINE_PRIMITIVE ("FLONUM-J1", Prim_flonum_j1, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (j1)
+DEFINE_PRIMITIVE ("FLONUM-Y0", Prim_flonum_y0, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (y0)
+DEFINE_PRIMITIVE ("FLONUM-Y1", Prim_flonum_y1, 1, 1, 0)
+     SIMPLE_TRANSCENDENTAL_FUNCTION (y1)
+
+DEFINE_PRIMITIVE ("FLONUM-JN", Prim_flonum_jn, 2, 2, 0)
+{
+  int n;
+  double x;
+  PRIMITIVE_HEADER (2);
+  n = (arg_integer_in_range (1, INT_MIN, INT_MAX));
+  x = (arg_flonum (2));
+  FLONUM_RESULT (jn (n, x));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-YN", Prim_flonum_yn, 2, 2, 0)
+{
+  int n;
+  double x;
+  PRIMITIVE_HEADER (2);
+  n = (arg_integer_in_range (1, INT_MIN, INT_MAX));
+  x = (arg_flonum (2));
+  FLONUM_RESULT (yn (n, x));
 }
 
 DEFINE_PRIMITIVE ("FLONUM?", Prim_flonum_p, 1, 1, 0)
@@ -390,5 +473,27 @@ DEFINE_PRIMITIVE ("CAST-INTEGER-TO-IEEE754-SINGLE", Prim_cast_integer_to_ieee754
     cast.u32 = integer_to_uintmax (ARG_REF (1));
 
     PRIMITIVE_RETURN (double_to_flonum ((double) cast.f));
+  }
+}
+
+/* Miscellaneous floating-point operations */
+
+DEFINE_PRIMITIVE ("FLONUM-COPYSIGN", Prim_flonum_copysign, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    double magnitude = (arg_flonum (1));
+    double sign = (arg_flonum (2));
+    FLONUM_RESULT (copysign (magnitude, sign));
+  }
+}
+
+DEFINE_PRIMITIVE ("FLONUM-NEXTAFTER", Prim_flonum_nextafter, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    double x = (arg_flonum (1));
+    double direction = (arg_flonum (2));
+    FLONUM_RESULT (nextafter (x, direction));
   }
 }

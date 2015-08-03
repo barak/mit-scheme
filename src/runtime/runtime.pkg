@@ -221,13 +221,21 @@ USA.
 	  flo:>=
 	  flo:abs
 	  flo:acos
+	  flo:acosh
 	  flo:asin
+	  flo:asinh
 	  flo:atan
 	  flo:atan2
+	  flo:atanh
+	  flo:cbrt
 	  flo:ceiling
 	  flo:ceiling->exact
+	  flo:copysign
 	  flo:cos
+	  flo:cosh
 	  flo:eqv?
+	  flo:erf
+	  flo:erfc
 	  flo:exp
 	  flo:expm1
 	  flo:expt
@@ -235,6 +243,12 @@ USA.
 	  flo:flonum?
 	  flo:floor
 	  flo:floor->exact
+	  flo:gamma
+	  flo:hypot
+	  flo:j0
+	  flo:j1
+	  flo:jn
+	  flo:lgamma
 	  flo:log
 	  flo:log1p
 	  flo:max
@@ -242,18 +256,24 @@ USA.
 	  flo:modulo
 	  flo:negate
 	  flo:negative?
+	  flo:nextafter
 	  flo:positive?
 	  flo:round
 	  flo:round->exact
 	  flo:sin
+	  flo:sinh
 	  flo:sqrt
 	  flo:tan
+	  flo:tanh
 	  flo:truncate
 	  flo:truncate->exact
 	  flo:vector-cons
 	  flo:vector-length
 	  flo:vector-ref
 	  flo:vector-set!
+	  flo:y0
+	  flo:y1
+	  flo:yn
 	  flo:zero?
 	  guarantee-fixnum
 	  guarantee-index-fixnum
