@@ -858,9 +858,11 @@ USA.
 	   (set-thread/block-events?! thread block?)))
      unspecific)))
 
-(define (signal-thread-event thread event)
+(define (signal-thread-event thread event #!optional no-error?)
   (guarantee-thread thread 'SIGNAL-THREAD-EVENT)
-  (let ((self first-running-thread))
+  (let ((self first-running-thread)
+	(noerr? (and (not (default-object? no-error?))
+		     no-error?)))
     (if (eq? thread self)
 	(let ((block-events? (block-thread-events)))
 	  (%add-pending-event thread event)
@@ -869,12 +871,14 @@ USA.
 	(without-interrupts
 	 (lambda ()
 	   (if (eq? 'DEAD (thread/execution-state thread))
-	       (signal-thread-dead thread "signal event to"
-				   signal-thread-event thread event))
-	   (%signal-thread-event thread event)
-	   (if (and (not self) first-running-thread)
-	       (run-thread first-running-thread)
-	       (%maybe-toggle-thread-timer)))))))
+	       (if (not noerr?)
+		   (signal-thread-dead thread "signal event to"
+				       signal-thread-event thread event))
+	       (begin
+		 (%signal-thread-event thread event)
+		 (if (and (not self) first-running-thread)
+		     (run-thread first-running-thread)
+		     (%maybe-toggle-thread-timer)))))))))
 
 (define (%signal-thread-event thread event)
   (%add-pending-event thread event)

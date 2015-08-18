@@ -29,30 +29,109 @@ USA.
 
 (declare (usual-integrations))
 
+(define (initialize-package!)
+  (add-gc-daemon! signal-gc-events))
+
 (define (toggle-gc-notification!)
-  (set-fluid! hook/record-statistic!
-	      (let ((current (fluid hook/record-statistic!)))
-		(cond ((eq? current gc-notification) default/record-statistic!)
-		      ((eq? current default/record-statistic!) gc-notification)
-		      (else (error "Can't grab GC statistics hook")))))
+  (if (registered-gc-event)
+      (deregister-gc-event)
+      (register-gc-event gc-notification))
   unspecific)
 
 (define (set-gc-notification! #!optional on?)
   (let ((on? (if (default-object? on?) #T on?)))
-    (set-fluid! hook/record-statistic!
-		(let ((current (fluid hook/record-statistic!)))
-		  (if (or (eq? current gc-notification)
-			  (eq? current default/record-statistic!))
-		      (if on?
-			  gc-notification
-			  default/record-statistic!)
-		      (error "Can't grab GC statistics hook"))))
+    (if on?
+	(register-gc-event gc-notification)
+	(deregister-gc-event))
     unspecific))
 
 (define (with-gc-notification! notify? thunk)
-  (let-fluid hook/record-statistic!
-	     (if notify? gc-notification default/record-statistic!)
-    thunk))
+  (let ((outside))
+    (dynamic-wind
+     (lambda ()
+       (set! outside (registered-gc-event))
+       (if notify?
+	   (register-gc-event gc-notification)
+	   (deregister-gc-event)))
+     thunk
+     (lambda ()
+       (if outside
+	   (register-gc-event outside)
+	   (deregister-gc-event))
+       (set! outside)))))
+
+;;;; GC Events
+
+(define gc-events '())			;Weak alist of threads X events.
+(define gc-events-mutex (make-thread-mutex))
+
+(define (register-gc-event event)
+  (guarantee-procedure-of-arity event 1 'register-gc-event)
+  (with-thread-mutex-lock gc-events-mutex
+    (lambda ()
+      (clean-gc-events)
+      (let* ((thread (current-thread))
+	     (entry (weak-assq thread gc-events)))
+	(if entry
+	    (weak-set-cdr! entry event)
+	    (set! gc-events (cons (weak-cons thread event) gc-events)))))))
+
+(define (deregister-gc-event)
+  (with-thread-mutex-lock gc-events-mutex
+    (lambda ()
+      (clean-gc-events)
+      (let* ((thread (current-thread))
+	     (entry (weak-assq thread gc-events)))
+	(if entry
+	    (set! gc-events (delq! entry gc-events)))))))
+
+(define (%deregister-gc-event thread)
+  ;; This procedure is called by the thread system when a thread exits
+  ;; or calls deregister-all-events.  It may interrupt the procedures
+  ;; above, but it does not modify the gc-events list.  Fortunately a
+  ;; thread cannot race itself to both set and clear its entry.
+  (let ((entry (weak-assq thread gc-events)))
+    (if entry
+	(weak-set-cdr! entry #f))))
+
+(define (clean-gc-events)
+  (set! gc-events
+	(filter! (lambda (weak)
+		   (let ((thread (weak-car weak)))
+		     (and thread
+			  (weak-cdr weak) ;not cleared by %deregister...
+			  (not (eq? 'DEAD (thread-execution-state thread))))))
+		 gc-events)))
+
+(define (registered-gc-event)
+  (let ((entry (weak-assq (current-thread) gc-events)))
+    (and entry (weak-cdr entry))))
+
+(define (signal-gc-events)
+  (for-each
+    (lambda (entry)
+      (let ((thread (weak-car entry))
+	    (event (weak-cdr entry)))
+	(if (and thread event)
+	    (signal-thread-event
+		thread
+	      (named-lambda (gc-event)
+		(abort-if-heap-low (gc-statistic/heap-left last-statistic))
+		(event last-statistic))
+	      #t))))
+    gc-events))
+
+(define (weak-assq obj alist)
+  (let loop ((alist alist))
+    (if (pair? alist)
+	(let* ((entry (car alist))
+	       (key (weak-car entry)))
+	  (if (eq? key obj)
+	      entry
+	      (loop (cdr alist))))
+	#f)))
+
+;;;; Output
 
 (define (gc-notification statistic)
   (print-statistic statistic (notification-output-port)))

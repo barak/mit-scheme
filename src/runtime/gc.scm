@@ -117,6 +117,10 @@ USA.
   #f)
 
 (define (gc-finish start-value space-remaining)
+  (hook/gc-finish start-value space-remaining)
+  ((ucode-primitive request-interrupts! 1) interrupt-bit/after-gc))
+
+(define (abort-if-heap-low space-remaining)
   (if (< space-remaining 4096)
       (if gc-boot-loading?
 	  (let ((console ((ucode-primitive tty-output-channel 0))))
@@ -133,9 +137,7 @@ USA.
 	    (cmdl-message/active
 	     (lambda (port)
 	       port
-	       (with-gc-notification! #t gc-clean)))))))
-  ((ucode-primitive request-interrupts! 1) interrupt-bit/after-gc)
-  (hook/gc-finish start-value space-remaining))
+	       (with-gc-notification! #t gc-clean))))))))
 
 (define gc-boot-loading?)
 

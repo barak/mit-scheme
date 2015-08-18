@@ -30,7 +30,6 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! hook/record-statistic! (make-fluid default/record-statistic!))
   (set! history-modes
 	`((NONE . ,none:install-history!)
 	  (BOUNDED . ,bounded:install-history!)
@@ -44,7 +43,7 @@ USA.
   unspecific)
 
 (define (recorder/gc-start)
-  (port/gc-start (nearest-cmdl/port))
+  (port/gc-start console-i/o-port)
   (set! this-gc-start-clock (real-time-clock))
   (set! this-gc-start (process-time-clock))
   unspecific)
@@ -57,7 +56,7 @@ USA.
     (statistics-flip this-gc-start end-time
 		     space-remaining
 		     this-gc-start-clock end-time-clock))
-  (port/gc-finish (nearest-cmdl/port)))
+  (port/gc-finish console-i/o-port))
 
 (define timestamp)
 (define total-gc-time)
@@ -105,17 +104,10 @@ USA.
     (set! last-gc-end end-time)
     (set! last-gc-start-clock start-clock)
     (set! last-gc-end-clock end-clock)
-    (record-statistic! statistic)
-    ((fluid hook/record-statistic!) statistic)))
+    (record-statistic! statistic)))
 
 (define (gc-statistic/meter stat)
   (car (gc-statistic/timestamp stat)))
-
-(define hook/record-statistic!)
-
-(define (default/record-statistic! statistic)
-  statistic
-  false)
 
 (define (gctime)
   (internal-time/ticks->seconds total-gc-time))

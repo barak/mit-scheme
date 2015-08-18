@@ -1990,6 +1990,8 @@ USA.
 	  hook/gc-start)
   (export (runtime error-handler)
 	  hook/hardware-trap)
+  (export (runtime gc-notification)
+	  abort-if-heap-low)
   (initialization (initialize-package!)))
 
 (define-package (runtime gc-daemons)
@@ -2024,11 +2026,17 @@ USA.
   (files "gcnote")
   (parent (runtime))
   (export ()
+	  deregister-gc-event
 	  gc-statistic->string
 	  print-gc-statistics
+	  register-gc-event
+	  registered-gc-event
 	  set-gc-notification!
 	  toggle-gc-notification!
-	  with-gc-notification!))
+	  with-gc-notification!)
+  (export (runtime thread)
+	  %deregister-gc-event)
+  (initialization (initialize-package!)))
 
 (define-package (runtime gc-statistics)
   (files "gcstat")
@@ -2049,8 +2057,7 @@ USA.
 	  gc-timestamp
 	  gctime)
   (export (runtime gc-notification)
-	  default/record-statistic!
-	  hook/record-statistic!)
+	  last-statistic)
   (initialization (initialize-package!)))
 
 (define-package (runtime generic-i/o-port)
