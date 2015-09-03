@@ -223,7 +223,10 @@ Scm_"name" (void)
 
 (define (callout-inits ret-ctype params includes)
   ;; Returns a multi-line string in C syntax for the Init section.
-  (let* ((alien-ret-arg? (ctype/pointer? (definite-ctype ret-ctype includes)))
+  (let* ((alien-ret-arg? (let ((definite (definite-ctype ret-ctype includes)))
+			   (or (ctype/pointer? definite)
+			       (ctype/struct? definite)
+			       (ctype/union? definite))))
 	 (nargs
 	  ;; (c-call 1:alien-function 2:ret-alien 3:arg1)
 	  ;; (c-call 1:alien-function 2:arg1)
