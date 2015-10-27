@@ -959,6 +959,7 @@ Table}), which also holds its keys weakly.
 @menu
 * Weak Pairs::                  
 * Ephemerons::
+* Reference barriers::
 @end menu
 
 @node Weak Pairs, Ephemerons, Weak References, Weak References
@@ -1054,7 +1055,7 @@ Sets the cdr component of @var{weak-pair} to @var{object} and returns an
 unspecified result.
 @end deffn
 
-@node Ephemerons,  , Weak Pairs, Weak References
+@node Ephemerons, Reference barriers, Weak Pairs, Weak References
 @subsection Ephemerons
 
 @cindex ephemeron (defn)
@@ -1140,3 +1141,21 @@ if the ephemeron is not broken is
       @dots{} @r{code using @var{key} and @var{datum}} @dots{}))
 @end group
 @end example
+
+@node Reference barriers,  , Ephemerons, Weak References
+@subsection Reference barriers
+
+@cindex reference barrier
+@cindex barrier, reference
+The garbage collector may break an ephemeron if it can prove that the
+key is not strongly reachable.
+To ensure that it does not do so before a certain point in a program,
+the program can invoke a @dfn{reference barrier} on the key by
+calling the @code{reference-barrier} procedure, which guarantees that
+even if the program does not use the key, it will be considered
+strongly reachable until after @code{reference-barrier} returns.
+
+@deffn procedure reference-barrier object
+Guarantee that @var{object} is strongly reachable until after
+ @code{reference-barrier} returns.
+@end deffn
