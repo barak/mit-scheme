@@ -130,9 +130,10 @@ EOF
 EOF
 
     echo "# `mydate`:     Finish-cross-compilation of everything."
+    # Use a large heap for all that s-code!
     run_cmd_in_dir runtime \
 	../microcode/scheme --batch-mode --library ../lib \
-			    --fasl make.bin <<EOF
+			    --fasl make.bin --heap ${HEAP} <<EOF
 (begin
   (load "../compiler/base/crsend")
   (finish-cross-compilation:directory ".."))
