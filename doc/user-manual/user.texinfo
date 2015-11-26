@@ -179,7 +179,7 @@ tar xzf mit-scheme-@var{VERSION}-i386.tar.gz
 will create a new directory @file{mit-scheme-@var{VERSION}}.
 
 @item
-Move into the new directory:
+Move into the @file{src} subdirectory of the new directory:
 
 @example
 cd mit-scheme-@var{VERSION}/src
@@ -227,7 +227,7 @@ installed in the customary way.  To install the @code{GDBM2} and
 @code{MHASH} options:
 
 @smallexample
-(cd gdbm && ./configure && make && make install)
+(cd gdbm && make && make install)
 (cd mhash && ./configure && make && make install)
 @end smallexample
 
