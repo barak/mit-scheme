@@ -44,6 +44,7 @@ USA.
 
 (define (recorder/gc-start)
   (port/gc-start console-i/o-port)
+  (set! this-gc-start-uctime (get-universal-time))
   (set! this-gc-start-clock (real-time-clock))
   (set! this-gc-start (process-time-clock))
   unspecific)
@@ -55,6 +56,7 @@ USA.
     (increment-non-runtime! (- end-time this-gc-start))
     (statistics-flip this-gc-start end-time
 		     space-remaining
+		     this-gc-start-uctime
 		     this-gc-start-clock end-time-clock))
   (port/gc-finish console-i/o-port))
 
@@ -63,6 +65,7 @@ USA.
 (define last-gc-start)
 (define last-gc-end)
 (define this-gc-start)
+(define this-gc-start-uctime)
 (define this-gc-start-clock)
 (define last-gc-start-clock)
 (define last-gc-end-clock)
@@ -86,17 +89,19 @@ USA.
   (this-gc-end false read-only true)
   (last-gc-start false read-only true)
   (last-gc-end false read-only true)
+  (this-gc-start-uctime false read-only true)
   (this-gc-start-clock false read-only true)
   (this-gc-end-clock false read-only true)
   (last-gc-start-clock false read-only true)
   (last-gc-end-clock false read-only true))
 
-(define (statistics-flip start-time end-time heap-left start-clock end-clock)
+(define (statistics-flip start-time end-time heap-left
+			 start-uctime start-clock end-clock)
   (let ((statistic
 	 (make-gc-statistic timestamp heap-left
 			    start-time end-time
 			    last-gc-start last-gc-end
-			    start-clock end-clock
+			    start-uctime start-clock end-clock
 			    last-gc-start-clock last-gc-end-clock)))
     (set! timestamp (cons (1+ (car timestamp)) (cdr timestamp)))
     (set! total-gc-time (+ (- end-time start-time) total-gc-time))

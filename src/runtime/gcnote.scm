@@ -205,10 +205,22 @@ USA.
 		     (round->exact (* (/ gc-length period) 100))
 		     #d10))
 		"%)")
-	       7))))))
-
+	       7)))))
+	 (uctime-string	    ;; E.g. "13:15" for 1:15pm local time
+	  (lambda (uctime)
+	    (let* ((decoded-time
+		    (universal-time->local-decoded-time uctime))
+		   (hour (decoded-time/hour decoded-time))
+		   (minute (decoded-time/minute decoded-time))
+		   (second (decoded-time/second decoded-time)))
+	      (string-append
+	       (if (< hour 10) "0" "") (number->string hour)
+	       (if (< minute 10) ":0" ":") (number->string minute)
+	       (if (< second 10) ":0" ":") (number->string second))))))
     (string-append ";GC #"
 		   (number->string (gc-statistic/meter statistic))
+		   " "
+		   (uctime-string (gc-statistic/this-gc-start-uctime statistic))
 		   ": took: "
 		   (intervals->string
 		    (gc-statistic/this-gc-start statistic)
