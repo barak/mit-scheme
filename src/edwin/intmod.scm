@@ -225,10 +225,10 @@ evaluated in the specified inferior REPL buffer."
 		   ""
 		   (string-append " [level: " (number->string level) "]")))
 	 buffer)
-	(set-run-light! buffer #f))))
-  ;; This doesn't do any output, but prods the editor to notice that
-  ;; the modeline has changed and a redisplay is needed.
-  (inferior-thread-output! (port/output-registration port))
+	(set-run-light! buffer #f)
+	;; This doesn't do any output, but prods the editor to notice
+	;; that the modeline has changed and a redisplay is needed.
+	(inferior-thread-output! (port/output-registration port)))))
   (do () ((ready? port))
     (suspend-current-thread)))
 
