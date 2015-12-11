@@ -115,13 +115,20 @@ USA.
   args
   (abort->nearest "Aborting! Out of memory"))
 
-(define (after-gc-interrupt-handler interrupt-code interrupt-enables)
-  interrupt-code interrupt-enables
-  (trigger-gc-daemons!)
-  ;; By clearing the interrupt after running the daemons we ignore an
-  ;; GC that occurs while we are running the daemons.  This helps
-  ;; prevent us from getting into a loop just running the daemons.
-  (clear-interrupts! interrupt-bit/after-gc))
+(define after-gc-interrupt-handler
+  (let ((running? #f))
+    (named-lambda (after-gc-interrupt-handler interrupt-code interrupt-enables)
+      (declare (ignore interrupt-code interrupt-enables))
+      (clear-interrupts! interrupt-bit/after-gc)
+      (set-interrupt-enables! interrupt-mask/timer-ok)
+      ;; By checking that this handler is not still running we ignore
+      ;; GCs that occur while we are running the daemons.  This helps
+      ;; prevent us from getting into a loop just running the daemons.
+      (if (not running?)
+	  (begin
+	    (set! running? #t)
+	    (trigger-gc-daemons!)
+	    (set! running? #f))))))
 
 (define event:console-resize)
 (define (console-resize-handler interrupt-code interrupt-enables)
@@ -242,7 +249,7 @@ USA.
 	(vector-set! system-interrupt-vector after-gc-slot
 		     after-gc-interrupt-handler)
 	(vector-set! interrupt-mask-vector after-gc-slot
-		     interrupt-mask/timer-ok)
+		     interrupt-mask/gc-ok)
 
 	(vector-set! system-interrupt-vector suspend-slot
 		     suspend-interrupt-handler)
