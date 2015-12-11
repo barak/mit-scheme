@@ -108,18 +108,19 @@ USA.
     (and entry (weak-cdr entry))))
 
 (define (signal-gc-events)
-  (for-each
-    (lambda (entry)
-      (let ((thread (weak-car entry))
-	    (event (weak-cdr entry)))
-	(if (and thread event)
-	    (signal-thread-event
-		thread
-	      (named-lambda (gc-event)
-		(abort-if-heap-low (gc-statistic/heap-left last-statistic))
-		(event last-statistic))
-	      #t))))
-    gc-events))
+  (let ((statistic last-statistic))
+    (for-each
+      (lambda (entry)
+	(let ((thread (weak-car entry))
+	      (event (weak-cdr entry)))
+	  (if (and thread event)
+	      (signal-thread-event
+		  thread
+		(named-lambda (gc-event)
+		  (abort-if-heap-low (gc-statistic/heap-left statistic))
+		  (event statistic))
+		#t))))
+      gc-events)))
 
 (define (weak-assq obj alist)
   (let loop ((alist alist))
