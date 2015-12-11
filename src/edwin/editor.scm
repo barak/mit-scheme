@@ -607,6 +607,11 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 	(set! inferior-thread-changes? #t)
 	(signal-thread-event editor-thread #f))))
 
+(define (inferior-thread-run-light! flags)
+  (set-car! flags #t)
+  (if (not inferior-thread-changes?)
+      (set! inferior-thread-changes? #t)))
+
 (define (accept-thread-output)
   (with-interrupt-mask interrupt-mask/gc-ok
     (lambda (interrupt-mask)
