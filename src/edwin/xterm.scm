@@ -472,10 +472,14 @@ USA.
 	       (or pending-result
 		   (fix:< start end)
 		   (probe 'IN-UPDATE)))
-	     (lambda ()			;peek-no-hang
-	       (or pending-result
-		   (fix:< start end)
-		   (probe #f)))
+	     (lambda (timeout)		;peek-no-hang
+	       (keyboard-peek-busy-no-hang
+		(lambda ()
+		  (or pending-result
+		      (and (fix:< start end)
+			   (string-ref string start))
+		      (probe #f)))
+		timeout))
 	     (lambda ()			;peek
 	       (or pending-result
 		   (if (fix:< start end)

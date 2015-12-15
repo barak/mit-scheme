@@ -226,12 +226,9 @@ USA.
 	      (else (extract-string start end))))))))
 
 (define (sit-for interval)
-  (let ((time-limit (+ (real-time-clock) interval)))
-    (let loop ()
-      (if (and (not (keyboard-peek-no-hang))
-	       (< (real-time-clock) time-limit)
-	       (update-screens! false))
-	  (loop)))))
+  (guarantee-fixnum interval 'sit-for)
+  (update-screens! 'ignore-input)
+  (keyboard-peek-no-hang interval))
 
 (define sleep-for
   sleep-current-thread)

@@ -197,35 +197,69 @@ B 3BAB8C
 		(apply-input-event key))
 	    (loop))))))
 
-(define (keyboard-peek-no-hang)
-  (handle-simple-events (editor-peek-no-hang current-editor) #t))
+(define (keyboard-peek-no-hang #!optional timeout)
+  (let ((milliseconds (if (default-object? timeout) 0 timeout)))
+    (guarantee-fixnum milliseconds 'keyboard-peek-no-hang)
+    (handle-simple-events-until
+     (+ (real-time-clock) milliseconds)
+     (editor-peek-no-hang current-editor)
+     #t)))
 
 (define (handle-simple-events thunk discard?)
   (let loop ()
     (let ((input (thunk)))
-      (if (and (input-event? input)
-	       (let ((type (input-event/type input)))
-		 (or (eq? type 'UPDATE)
-		     (eq? type 'SET-SCREEN-SIZE)
-		     (and (eq? type 'DELETE-SCREEN)
-			  (eq? (input-event/operator input) delete-screen!)
-			  (not (selected-screen?
-				(car (input-event/operands input))))))))
-	  (begin
-	    (apply-input-event input)
-	    (if discard? ((editor-read current-editor)))
-	    (loop))
+      (if (simple-event-handled? input discard?)
+	  (loop)
 	  input))))
+
+(define (simple-event-handled? input discard?)
+  (if (and (input-event? input)
+	   (let ((type (input-event/type input)))
+	     (or (eq? type 'UPDATE)
+		 (eq? type 'SET-SCREEN-SIZE)
+		 (and (eq? type 'DELETE-SCREEN)
+		      (eq? (input-event/operator input) delete-screen!)
+		      (not (selected-screen?
+			    (car (input-event/operands input))))))))
+      (begin
+	(apply-input-event input)
+	(if discard? ((editor-read current-editor)))
+	#t)
+      #f))
+
+(define (handle-simple-events-until end-time peek-no-hang discard?)
+  (let loop ()
+    (let* ((now (real-time-clock))
+	   (timeout (- end-time now)))
+      (if (not (positive? timeout))
+	  #f
+	  (let ((input (peek-no-hang timeout)))
+	    (if (simple-event-handled? input discard?)
+		(loop)
+		input))))))
 
 (define read-key-timeout/fast 500)
 (define read-key-timeout/slow 2000)
+
+(define (keyboard-peek-busy-no-hang peek timeout)
+  ;; This busy-loop applies the PEEK thunk repeatedly for TIMEOUT
+  ;; msec.  Old display types that only PEEK-no-hang for 0 seconds
+  ;; must use this.
+  (let* ((start (real-time-clock))
+	 (end (+ start timeout)))
+    (let loop ()
+      (or (peek)
+	  (let ((now (real-time-clock)))
+	    (if (< now end)
+		(loop)
+		#f))))))
 
 (define (keyboard-read-1 reader discard?)
   (remap-alias-key
    (handle-simple-events
     (lambda ()
       (let ((peek-no-hang (editor-peek-no-hang current-editor)))
-	(if (not (peek-no-hang))
+	(if (not (peek-no-hang 0))
 	    (begin
 	      (if (let ((interval (ref-variable auto-save-interval))
 			(count auto-save-keystroke-count))
@@ -236,31 +270,24 @@ B 3BAB8C
 		    (do-auto-save)
 		    (set! auto-save-keystroke-count 0)))
 	      (update-screens! #f)))
-	(let ((wait
-	       (lambda (timeout)
-		 (let ((t (+ (real-time-clock) timeout)))
-		   (let loop ()
-		     (cond ((peek-no-hang) #f)
-			   ((>= (real-time-clock) t) #t)
-			   (else (loop))))))))
-	  ;; Perform the appropriate juggling of the minibuffer message.
-	  (cond ((within-typein-edit?)
-		 (if message-string
-		     (begin
-		       (wait read-key-timeout/slow)
-		       (set! message-string #f)
-		       (set! message-should-be-erased? #f)
-		       (clear-current-message!))))
-		((and (or message-should-be-erased?
-			  (and command-prompt-string
-			       (not command-prompt-displayed?)))
-		      (wait read-key-timeout/fast))
-		 (set! message-string #f)
-		 (set! message-should-be-erased? #f)
-		 (if command-prompt-string
-		     (begin
-		       (set! command-prompt-displayed? #t)
-		       (set-current-message! command-prompt-string))
-		     (clear-current-message!)))))
+	;; Perform the appropriate juggling of the minibuffer message.
+	(cond ((within-typein-edit?)
+	       (if message-string
+		   (begin
+		     (peek-no-hang read-key-timeout/slow)
+		     (set! message-string #f)
+		     (set! message-should-be-erased? #f)
+		     (clear-current-message!))))
+	      ((and (or message-should-be-erased?
+			(and command-prompt-string
+			     (not command-prompt-displayed?)))
+		    (not (peek-no-hang read-key-timeout/fast)))
+	       (set! message-string #f)
+	       (set! message-should-be-erased? #f)
+	       (if command-prompt-string
+		   (begin
+		     (set! command-prompt-displayed? #t)
+		     (set-current-message! command-prompt-string))
+		   (clear-current-message!))))
 	(reader)))
     discard?)))

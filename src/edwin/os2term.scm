@@ -641,9 +641,12 @@ USA.
       (setup-pending 'IN-UPDATE)
       pending)
 
-    (define (peek-no-hang)
-      (setup-pending #f)
-      pending)
+    (define (peek-no-hang timeout)
+      (keyboard-peek-busy-no-hang
+       (lambda ()
+	 (setup-pending #f)
+	 pending)
+       timeout))
 
     (define (peek)
       (setup-pending #t)

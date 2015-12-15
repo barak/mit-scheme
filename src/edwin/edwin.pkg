@@ -984,6 +984,8 @@ USA.
     (parent (edwin screen))
     (export (edwin)
 	    resize-screen)
+    (import (edwin keyboard)
+	    keyboard-peek-busy-no-hang)
     (import (edwin process)
 	    register-process-output-events)
     (import (runtime primitive-io)
@@ -1041,6 +1043,8 @@ USA.
 	    screen-xterm
 	    xterm-screen/set-icon-name
 	    xterm-screen/set-name)
+    (import (edwin keyboard)
+	    keyboard-peek-busy-no-hang)
     (import (edwin process)
 	    register-process-output-events)
     (initialization (initialize-package!)))
@@ -1178,6 +1182,8 @@ USA.
 	    swp_nozorder
 	    update-window
 	    ws_overlappedwindow)
+    (import (edwin keyboard)
+	    keyboard-peek-busy-no-hang)
     (export (edwin win-commands)
 	    win32-screen/get-client-size
 	    win32-screen/get-position
@@ -1269,6 +1275,8 @@ USA.
 	    screen-char-height
 	    screen-pel-width
 	    screen-pel-height)
+    (import (edwin keyboard)
+	    keyboard-peek-busy-no-hang)
     (import (runtime os2-window-primitives)
 	    button-event-type:down
 	    button-event/flags

@@ -334,13 +334,16 @@ USA.
        (named-lambda (halt-update?)
 	 (or (fix:< start end)
 	     (read-more?)))
-       (named-lambda (peek-no-hang)
-	 (let ((event (->event (match-event #f))))
-	   (if (input-event? event)
-	       (begin
-		 (apply-input-event event)
-		 #f)
-	       event)))
+       (named-lambda (peek-no-hang timeout)
+	 (keyboard-peek-busy-no-hang
+	  (lambda ()
+	    (let ((event (->event (match-event #f))))
+	      (if (input-event? event)
+		  (begin
+		    (apply-input-event event)
+		    #f)
+		  event)))
+	  timeout))
        (named-lambda (peek)
 	 (->event (match-event #t)))
        (named-lambda (read)

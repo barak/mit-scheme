@@ -386,9 +386,12 @@ USA.
       (values (lambda ()		;halt-update?
 		(or pending-result
 		    (probe 'IN-UPDATE)))
-	      (lambda ()		;peek-no-hang
-		(or pending-result
-		    (probe #f)))
+	      (lambda (timeout)		;peek-no-hang
+		(keyboard-peek-busy-no-hang
+		 (lambda ()
+		   (or pending-result
+		       (probe #f)))
+		 timeout))
 	      (lambda ()		;peek
 		(or pending-result
 		    (let ((result (get-next-event #t)))
