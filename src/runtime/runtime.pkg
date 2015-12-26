@@ -5540,6 +5540,9 @@ USA.
 	  call-with-decode-quoted-printable-output-port
 	  call-with-decode-uue-output-port
 	  condition-type:decode-base64
+	  condition-type:decode-binhex40
+	  condition-type:decode-mime
+	  condition-type:decode-uue
 	  decode-base64:finalize
 	  decode-base64:initialize
 	  decode-base64:update

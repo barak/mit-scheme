@@ -46,6 +46,9 @@ USA.
       ,(lambda (port)
 	 (finalize (port/state port)))))
    #f))
+
+(define condition-type:decode-mime
+  (make-condition-type 'DECODE-MIME condition-type:simple-error '() #f))
 
 ;;;; Encode quoted-printable
 
@@ -609,7 +612,7 @@ USA.
   unspecific)
 
 (define condition-type:decode-base64
-  (make-condition-type 'DECODE-BASE64 condition-type:simple-error '() #f))
+  (make-condition-type 'DECODE-BASE64 condition-type:decode-mime '() #f))
 
 (define error:decode-base64
   (let ((signal
@@ -653,9 +656,9 @@ USA.
   (let ((state (binhex40-decoding-context/state context)))
     (case (binhex40-decoding-context/state context)
       ((SEEKING-COMMENT)
-       (error "Missing BinHex 4.0 initial comment line."))
+       (error:decode-binhex40 "Missing BinHex 4.0 initial comment line."))
       ((DECODING)
-       (error "Missing BinHex 4.0 terminating character."))
+       (error:decode-binhex40 "Missing BinHex 4.0 terminating character."))
       ((IGNORING)
        (close-output-port (binhex40-decoding-context/port context)))
       (else
@@ -673,6 +676,17 @@ USA.
 
 (define decode-binhex40-port-type
   (make-decoding-port-type decode-binhex40:update decode-binhex40:finalize))
+
+(define condition-type:decode-binhex40
+  (make-condition-type 'DECODE-BINHEX40 condition-type:decode-mime '() #f))
+
+(define error:decode-binhex40
+  (let ((signal
+	 (condition-signaller condition-type:decode-binhex40
+			      '(MESSAGE IRRITANTS)
+			      standard-error-handler)))
+    (lambda (message . irritants)
+      (signal message irritants))))
 
 (define (decode-binhex40-seeking-comment context string start end)
   (let loop
@@ -755,8 +769,8 @@ USA.
   (let ((digit
 	 (vector-8b-ref binhex40-char-table (vector-8b-ref input index))))
     (if (fix:> digit #x40)
-	(error "Illegal character in BinHex 4.0 input stream:"
-	       (string-ref input index)))
+	(error:decode-binhex40 "Illegal character in BinHex 4.0 input stream:"
+			       (string-ref input index)))
     digit))
 
 (define binhex40-digit-table
@@ -850,7 +864,7 @@ USA.
      (CLOSE-OUTPUT
       ,(lambda (port)
 	 (if (not (eq? (binhex40-decon/state (port/state port)) 'FINISHED))
-	     (error "Premature EOF in BinHex 4.0 stream.")))))
+	     (error:decode-binhex40 "Premature EOF in BinHex 4.0 stream.")))))
    #f))
 
 (define (binhex40-decon-reading-header port char)
@@ -930,7 +944,7 @@ USA.
 
     (define (process-line line)
       (if (not (fix:> (string-length line) 0))
-	  (error "Empty line not allowed."))
+	  (error:decode-uue "Empty line not allowed."))
       (case state
 	((BEGIN) (process-begin-line line))
 	((NORMAL) (process-normal-line line))
@@ -940,7 +954,7 @@ USA.
 
     (define (process-begin-line line)
       (if (not (re-string-match "^begin +[0-7]+ +.+$" line))
-	  (error "Malformed \"begin\" line:" line))
+	  (error:decode-uue "Malformed \"begin\" line:" line))
       (set! state 'NORMAL))
 
     (define (process-normal-line line)
@@ -949,7 +963,7 @@ USA.
 		      (fix:<= n 45)
 		      (fix:>= (fix:- (string-length line) 1)
 			      (fix:* (fix:quotient (fix:+ n 2) 3) 4))))
-	    (error "Malformed line length:" n))
+	    (error:decode-uue "Malformed line length:" n))
 	(let per-quantum ((i 0) (start 1))
 	  (if (fix:< i n)
 	      (let ((i* (fix:+ i 3)))
@@ -965,17 +979,17 @@ USA.
     (define (process-zero-line line)
       (let ((n (uudecode-char (string-ref line 0))))
 	(if (not (fix:= n 0))
-	    (error "Expected zero-length line:" n)))
+	    (error:decode-uue "Expected zero-length line:" n)))
       (set! state 'END))
 
     (define (process-end-line line)
       (if (not (string=? line "end"))
-	  (error "Malformed \"end\" line:" line))
+	  (error:decode-uue "Malformed \"end\" line:" line))
       (set! state 'FINISHED))
 
     (define (finalize)
       (if (not (eq? state 'FINISHED))
-	  (error "Can't finalize unfinished decoding.")))
+	  (error:decode-uue "Can't finalize unfinished decoding.")))
 
     (make-uudecode-ctx update finalize)))
 
@@ -1051,3 +1065,14 @@ USA.
 
 (define decode-uue-port-type
   (make-decoding-port-type decode-uue:update decode-uue:finalize))
+
+(define condition-type:decode-uue
+  (make-condition-type 'DECODE-UUE condition-type:decode-mime '() #f))
+
+(define error:decode-uue
+  (let ((signal
+	 (condition-signaller condition-type:decode-uue
+			      '(MESSAGE IRRITANTS)
+			      standard-error-handler)))
+    (lambda (message . irritants)
+      (signal message irritants))))
