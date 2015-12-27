@@ -37,16 +37,16 @@ USA.
 	(do ((i 0 (+ i 1)))
 	    ((= i n-packets))
 	  (let ((packet-length (random packet-length)))
-	    (write i)
-	    (write-char #\space)
-	    (write packet-length)
-	    (write-char #\space)
-	    (let ((packet 
+	    (write i port)
+	    (write-char #\space port)
+	    (write packet-length port)
+	    (write-char #\space port)
+	    (let ((packet
 		   (if text?
 		       (random-text-string packet-length)
 		       (random-byte-vector packet-length))))
-	      (write packet)
-	      (newline)
+	      (write packet port)
+	      (newline port)
 	      (update context packet 0 packet-length))))
 	(finalize context)))))
 
@@ -147,3 +147,68 @@ USA.
 			(if (char=? c1 c3)
 			    (loop)
 			    (error "Files don't match."))))))))))))
+
+(define (for-each-setting procedure)
+  (procedure 20 1024 #t)
+  (procedure 20 1024 #f))
+
+(define (define-mime-codec-tests name
+	  encode:initialize encode:finalize encode:update
+	  decode:initialize decode:finalize decode:update)
+  (for-each-setting
+   (lambda (n-packets packet-length text?)
+     (define-test (symbol 'ENCODE '- name
+			  '/ (if text? 'TEXT 'BINARY)
+			  '/ n-packets
+			  '/ packet-length)
+       (lambda ()
+	 (call-with-temporary-file-pathname
+	   (lambda (pathname)
+	     (test-encoder
+	      n-packets packet-length text? pathname
+	      encode:initialize encode:finalize encode:update)))))
+     (define-test (symbol 'CODEC '- name
+			  '/ (if text? 'TEXT 'BINARY)
+			  '/ n-packets
+			  '/ packet-length)
+       (lambda ()
+	 (call-with-temporary-file-pathname
+	   (lambda (pathname)
+	     (test-codec
+	      n-packets packet-length text? pathname
+	      encode:initialize encode:finalize encode:update
+	      decode:initialize decode:finalize decode:update))))))))
+
+(define-mime-codec-tests 'BASE64
+  encode-base64:initialize
+  encode-base64:finalize
+  encode-base64:update
+  decode-base64:initialize
+  decode-base64:finalize
+  decode-base64:update)
+
+#;
+(define-mime-codec-tests 'BINHEX40
+  encode-binhex40:initialize
+  encode-binhex40:finalize
+  encode-binhex40:update
+  decode-binhex40:initialize
+  decode-binhex40:finalize
+  decode-binhex40:update)
+
+(define-mime-codec-tests 'QUOTED-PRINTABLE
+  encode-quoted-printable:initialize
+  encode-quoted-printable:finalize
+  encode-quoted-printable:update
+  decode-quoted-printable:initialize
+  decode-quoted-printable:finalize
+  decode-quoted-printable:update)
+
+#;
+(define-mime-codec-tests 'UUE
+  encode-uue:initialize
+  encode-uue:finalize
+  encode-uue:update
+  decode-uue:initialize
+  decode-uue:finalize
+  decode-uue:update)

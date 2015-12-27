@@ -50,6 +50,7 @@ USA.
     "runtime/test-floenv"
     "runtime/test-hash-table"
     "runtime/test-integer-bits"
+    "runtime/test-mime-codec"
     "runtime/test-thread-queue"
     "runtime/test-process"
     "runtime/test-readwrite"
