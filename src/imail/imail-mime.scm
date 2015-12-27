@@ -563,7 +563,9 @@ USA.
            (lambda (output-port)
              (call-with-mime-decoding-output-port encoding output-port #t
                (lambda (output-port)
-                 (write-substring string start end output-port)))))))))
+                 (with-mime-best-effort
+                  (lambda ()
+                    (write-substring string start end output-port)))))))))))
 
 (define (mime:get-boundary parameters)
   (let ((parameter (assq 'BOUNDARY parameters)))
@@ -783,7 +785,7 @@ USA.
                         decode:initialize decode:finalize decode:update
                         make-port call-with-port))
   name)
-
+
 (define (define-identity-mime-encoding name)
   (hash-table/put! mime-encodings
                    name
@@ -822,6 +824,15 @@ USA.
                                    'CALL-WITH-MIME-DECODING-OUTPUT-PORT)
           encoding)))
    port text? generator))
+
+(define (with-mime-best-effort thunk)
+  (call-with-current-continuation
+   (lambda (exit)
+     (bind-condition-handler (list condition-type:decode-mime)
+         (lambda (condition)
+           condition
+           (exit unspecific))
+       thunk))))
 
 (define-identity-mime-encoding '7BIT)
 (define-identity-mime-encoding '8BIT)

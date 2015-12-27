@@ -1109,7 +1109,9 @@ With prefix argument, prompt even when point is on an attachment."
 	      port
 	      text?
 	      (lambda (port)
-		(write-mime-body body port)))))))))
+		(with-mime-best-effort
+		 (lambda ()
+		   (write-mime-body body port)))))))))))
 
 (define (filter-mime-attachment-filename filename)
   (let ((filename
@@ -2563,7 +2565,9 @@ WARNING: With a prefix argument, this command may take a very long
       port
       #t
       (lambda (port)
-	(write-mime-body body port))))))
+	(with-mime-best-effort
+	 (lambda ()
+	   (write-mime-body body port))))))))
 
 (define-method insert-mime-body-inline*
     (entity (body <mime-body-message>) selector context mark)
