@@ -29,31 +29,27 @@ USA.
 (declare (usual-integrations))
 
 (define (translate-standard-dirs root-dir translation)
-  (let* ((root-dir (merge-pathnames (pathname-as-directory root-dir)))
-	 (target (merge-pathnames "translated-files" root-dir))
-	 (target-dir (pathname-as-directory target)))
-    (make-directory target)
+  (let ((root-dir (merge-pathnames (pathname-as-directory root-dir)))
+	(suffix (string-append "-"
+			       (string-pad-left (number->string
+						 (random-integer 10000))
+						4 #\0))))
     (for-each (lambda (dir)
 		(translate-directory (merge-pathnames dir root-dir)
-				     (merge-pathnames dir target-dir)
+				     suffix
 				     root-dir
 				     translation))
 	      '("dist" "doc" "etc" "html" "src" "tests"))))
 
-(define (translate-directory source target root-dir translation)
-  (let ((source (pathname-as-directory source))
-	(target (pathname-as-directory target)))
+(define (translate-directory source suffix root-dir translation)
+  (let ((source (pathname-as-directory source)))
     (let loop ((pathnames (list source)))
       (if (pair? pathnames)
-	  (let* ((input (car pathnames))
-		 (output
-		  (merge-pathnames (enough-pathname input source) target)))
+	  (let ((input (car pathnames)))
 	    (if (file-directory? input)
 		(loop (if (match-path input root-dir dirs-to-skip)
 			  (cdr pathnames)
 			  (begin
-			    (if (not (file-directory? output))
-				(make-directory output))
 			    (append (directory-read
 				     (pathname-as-directory input))
 				    (cdr pathnames)))))
@@ -62,7 +58,7 @@ USA.
 			   (not (match-path input root-dir files-to-skip)))
 		      (let ((results (translation (read-file-leader input))))
 			(if (pair? results)
-			    (translate-file-1 input output results)
+			    (translate-file input suffix results)
 			    (if (not
 				 (match-path input root-dir
 					     suppress-warnings-for))
@@ -114,6 +110,13 @@ USA.
     (lambda (port)
       (let ((leader (make-string 4096)))
 	(string-head leader (read-substring! leader 0 4096 port))))))
+
+(define (translate-file input suffix results)
+  (let ((output (pathname-new-name input
+				   (string-append (pathname-name input)
+						  suffix))))
+    (translate-file-1 input output results)
+    (rename-file output input)))
 
 (define (translate-file-1 input output results)
   (call-with-input-file input
