@@ -196,8 +196,25 @@ USA.
 				"Massachusetts" "Institute" "of" "Technology"))
 			     #f)
 		       results))))
-	    (and (pair? results)
-		 (reverse results)))))))
+	    (translate-suffix leader start end results))))))
+
+(define (translate-suffix leader start end results)
+  (let ((regs (re-substring-search-forward
+	       "^[(]define last-copyright-year [0-9]+ *[)].*$\n"
+	       leader start end)))
+    (if regs
+	(reverse
+	 (cons
+	  (list (re-match-start-index 0 regs)
+		(re-match-end-index 0 regs)
+		"" "" (list
+		       (list
+			"(define" "last-copyright-year"
+			(number->string (this-year)) ")"))
+		#f)
+	  results))
+	(and (pair? results)
+	     (reverse results)))))
 
 (define (match-copyright leader start end)
   (let ((regs

@@ -31,10 +31,12 @@ USA.
 
 (define copyright-years)
 
+(define last-copyright-year 2014 )
+
 (add-boot-init!
  (lambda ()
    (set! copyright-years
-	 (let ((now 2014)
+	 (let ((now last-copyright-year)
 	       (then 1986))
 	   (iota (+ (- now then) 1) then)))
    (add-subsystem-identification! "Release" '(9 2 1))
