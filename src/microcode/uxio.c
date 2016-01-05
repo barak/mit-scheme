@@ -607,14 +607,16 @@ OS_test_select_registry (select_registry_t registry, int blockp)
   while (1)
     {
       int nfds = (safe_poll ((SR_ENTRIES (r)), (SR_N_FDS (r)), blockp));
-      if (nfds >= 0)
+      if (nfds > 0)
 	return (nfds);
-      if (errno != EINTR)
+      if (nfds < 0 && errno != EINTR)
 	error_system_call (errno, syscall_select);
       if (OS_process_any_status_change ())
 	return (SELECT_PROCESS_STATUS_CHANGE);
       if (pending_interrupts_p ())
 	return (SELECT_INTERRUPT);
+      if (nfds == 0) /* and no status-change nor interrupts pending */
+	return (0);
     }
 }
 
@@ -629,14 +631,14 @@ OS_test_select_descriptor (int fd, int blockp, unsigned int mode)
       int nfds = (safe_poll (pfds, 1, blockp));
       if (nfds > 0)
 	return (ENCODE_MODE ((pfds [0]) . revents));
-      if (nfds == 0)
-	return (0);
-      if (errno != EINTR)
+      if (nfds < 0 && errno != EINTR)
 	error_system_call (errno, syscall_select);
       if (OS_process_any_status_change ())
 	return (SELECT_PROCESS_STATUS_CHANGE);
       if (pending_interrupts_p ())
 	return (SELECT_INTERRUPT);
+      if (nfds == 0) /* and no status-change nor interrupts pending */
+	return (0);
     }
 }
 
@@ -809,14 +811,16 @@ OS_test_select_registry (select_registry_t registry, int blockp)
 			       (SR_RREADERS (r)),
 			       (SR_RWRITERS (r)),
 			       blockp));
-      if (nfds >= 0)
+      if (nfds > 0)
 	return (nfds);
-      if (errno != EINTR)
+      if (nfds < 0 && errno != EINTR)
 	error_system_call (errno, syscall_select);
       if (OS_process_any_status_change ())
 	return (SELECT_PROCESS_STATUS_CHANGE);
       if (pending_interrupts_p ())
 	return (SELECT_INTERRUPT);
+      if (nfds == 0) /* and no status-change nor interrupts pending */
+	return (0);
     }
 #else
   error_system_call (ENOSYS, syscall_select);
@@ -846,14 +850,14 @@ OS_test_select_descriptor (int fd, int blockp, unsigned int mode)
 	return
 	  (((FD_ISSET (fd, (&readable))) ? SELECT_MODE_READ : 0)
 	   | ((FD_ISSET (fd, (&writeable))) ? SELECT_MODE_WRITE : 0));
-      if (nfds == 0)
-	return (0);
-      if (errno != EINTR)
+      if (nfds < 0 && errno != EINTR)
 	error_system_call (errno, syscall_select);
       if (OS_process_any_status_change ())
 	return (SELECT_PROCESS_STATUS_CHANGE);
       if (pending_interrupts_p ())
 	return (SELECT_INTERRUPT);
+      if (nfds == 0) /* and no status-change nor interrupts pending */
+	return (0);
     }
 #else
   error_system_call (ENOSYS, syscall_select);
