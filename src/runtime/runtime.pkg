@@ -5111,7 +5111,6 @@ USA.
 	  with-thread-mutex-unlocked
 	  with-thread-timer-stopped
 	  (without-interruption with-thread-events-blocked)
-	  without-preemption
 	  without-thread-mutex-lock
 	  yield-current-thread)
   (import (runtime population)

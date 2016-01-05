@@ -313,7 +313,7 @@ USA.
      (if (alien-function? arg)
 	 (alien-function-cache! arg)))
    args)
-  (without-preemption
+  (without-interrupts
    (lambda ()
      (call-alien* alien-function args))))
 
