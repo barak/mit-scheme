@@ -999,7 +999,7 @@ define_c_label(x87_read_environment)
 	fnstenv		IND(REG(rdi))
 	# fnstenv masks all exceptions (go figure), so we must load
 	# the control word back in order to undo that.
-	fldcw		IND(REG(eax))
+	fldcw		IND(REG(rdi))
 	ret
 
 define_c_label(x87_write_environment)
