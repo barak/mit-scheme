@@ -247,6 +247,7 @@ struct signal_descriptor
 #define NOBLOCK 2
 #define NOCATCH 4
 #define CORE_DUMP 8
+#define ASYNC 16		/* Not a trap; thread-indeterminate. */
 
 static struct signal_descriptor * signal_descriptors;
 static unsigned int signal_descriptors_length;
@@ -302,6 +303,16 @@ find_signal_name (int signo)
   sprintf (buffer, "unknown signal %d", signo);
   return ((const char *) buffer);
 }
+
+void
+foreach_async_signal (void(*func)(int signo))
+{
+  struct signal_descriptor * scan = signal_descriptors;
+  struct signal_descriptor * end = (scan + signal_descriptors_length);
+  for (; (scan < end); scan += 1)
+    if ((scan -> flags) && ASYNC)
+      func (scan -> signo);
+}
 
 #if (SIGABRT == SIGIOT)
 #  undef SIGABRT
@@ -322,9 +333,9 @@ initialize_signal_descriptors (void)
       fflush (stderr);
       termination_init_error ();
     }
-  defsignal (SIGHUP, "SIGHUP",		dfl_terminate,	0);
-  defsignal (SIGINT, "SIGINT",		dfl_terminate,	0);
-  defsignal (SIGQUIT, "SIGQUIT",	dfl_terminate,	CORE_DUMP);
+  defsignal (SIGHUP, "SIGHUP",		dfl_terminate,	ASYNC);
+  defsignal (SIGINT, "SIGINT",		dfl_terminate,	ASYNC);
+  defsignal (SIGQUIT, "SIGQUIT",	dfl_terminate,	(ASYNC | CORE_DUMP));
   defsignal (SIGILL, "SIGILL",		dfl_terminate,	CORE_DUMP);
   defsignal (SIGTRAP, "SIGTRAP",	dfl_terminate,	CORE_DUMP);
   defsignal (SIGIOT, "SIGIOT",		dfl_terminate,	CORE_DUMP);
@@ -337,27 +348,27 @@ initialize_signal_descriptors (void)
   defsignal (SIGSEGV, "SIGSEGV",	dfl_terminate,	CORE_DUMP);
   defsignal (SIGSYS, "SIGSYS",		dfl_terminate,	CORE_DUMP);
   defsignal (SIGPIPE, "SIGPIPE",	dfl_terminate,	0);
-  defsignal (SIGALRM, "SIGALRM",	dfl_terminate,	0);
-  defsignal (SIGTERM, "SIGTERM",	dfl_terminate,	0);
-  defsignal (SIGUSR1, "SIGUSR1",	dfl_terminate,	0);
-  defsignal (SIGUSR2, "SIGUSR2",	dfl_terminate,	0);
-  defsignal (SIGABRT, "SIGABRT",	dfl_terminate,	CORE_DUMP);
-  defsignal (SIGIO, "SIGIO",		dfl_ignore,	0);
-  defsignal (SIGURG, "SIGURG",		dfl_ignore,	0);
-  defsignal (SIGVTALRM, "SIGVTALRM",	dfl_terminate,	0);
+  defsignal (SIGALRM, "SIGALRM",	dfl_terminate,	ASYNC);
+  defsignal (SIGTERM, "SIGTERM",	dfl_terminate,	ASYNC);
+  defsignal (SIGUSR1, "SIGUSR1",	dfl_terminate,	ASYNC);
+  defsignal (SIGUSR2, "SIGUSR2",	dfl_terminate,	ASYNC);
+  defsignal (SIGABRT, "SIGABRT",	dfl_terminate,	(ASYNC | CORE_DUMP));
+  defsignal (SIGIO, "SIGIO",		dfl_ignore,	ASYNC);
+  defsignal (SIGURG, "SIGURG",		dfl_ignore,	ASYNC);
+  defsignal (SIGVTALRM, "SIGVTALRM",	dfl_terminate,	ASYNC);
   defsignal (SIGPROF, "SIGPROF",	dfl_terminate,	0);
   defsignal (SIGSTOP, "SIGSTOP",	dfl_stop,	(NOIGNORE | NOBLOCK | NOCATCH));
-  defsignal (SIGTSTP, "SIGTSTP",	dfl_stop,	0);
+  defsignal (SIGTSTP, "SIGTSTP",	dfl_stop,	ASYNC);
   defsignal (SIGCONT, "SIGCONT",	dfl_ignore,	(NOIGNORE | NOBLOCK));
-  defsignal (SIGCHLD, "SIGCHLD",	dfl_ignore,	0);
-  defsignal (SIGTTIN, "SIGTTIN",	dfl_stop,	0);
-  defsignal (SIGTTOU, "SIGTTOU",	dfl_stop,	0);
-  defsignal (SIGLOST, "SIGLOST",	dfl_terminate,	0);
-  defsignal (SIGXCPU, "SIGXCPU",	dfl_terminate,	0);
-  defsignal (SIGXFSZ, "SIGXFSZ",	dfl_terminate,	0);
-  defsignal (SIGPWR, "SIGPWR",		dfl_ignore,	0);
-  defsignal (SIGWINDOW, "SIGWINDOW",	dfl_ignore,	0);
-  defsignal (SIGWINCH, "SIGWINCH",	dfl_ignore,	0);
+  defsignal (SIGCHLD, "SIGCHLD",	dfl_ignore,	ASYNC);
+  defsignal (SIGTTIN, "SIGTTIN",	dfl_stop,	ASYNC);
+  defsignal (SIGTTOU, "SIGTTOU",	dfl_stop,	ASYNC);
+  defsignal (SIGLOST, "SIGLOST",	dfl_terminate,	ASYNC);
+  defsignal (SIGXCPU, "SIGXCPU",	dfl_terminate,	ASYNC);
+  defsignal (SIGXFSZ, "SIGXFSZ",	dfl_terminate,	ASYNC);
+  defsignal (SIGPWR, "SIGPWR",		dfl_ignore,	ASYNC);
+  defsignal (SIGWINDOW, "SIGWINDOW",	dfl_ignore,	ASYNC);
+  defsignal (SIGWINCH, "SIGWINCH",	dfl_ignore,	ASYNC);
 }
 
 #define CONTROL_B_INTERRUPT_CHAR 'B'
