@@ -335,14 +335,6 @@ define(REGBLOCK_SIZE_IN_OBJECTS,
 	    +(COMPILER_REGBLOCK_N_HOOKS*COMPILER_HOOK_SIZE)
 	    +(COMPILER_REGBLOCK_N_TEMPS*COMPILER_TEMP_SIZE)))
 
-# Define the floating-point processor control word.  Always set
-# round-to-even and double precision.  Under Win32, mask all
-# exceptions.  Under unix and OS/2, mask only the inexact result
-# exception.
-ifdef(`WIN32',
-      `define(FP_CONTROL_WORD,HEX(023f))',
-      `define(FP_CONTROL_WORD,HEX(0220))')
-
 define(regs,REG(esi))
 define(rfree,REG(edi))
 define(rmask,REG(ebp))
@@ -410,12 +402,6 @@ ifdef(`VALGRIND_MODE',`',`
 	jne	i386_initialize_no_fp
 ')
 	OP(inc,l)	REG(eax)			# 387 available
-	OP(sub,l)	TW(IMM(4),REG(esp))
-	fclex
-	fnstcw		WOF(-2,REG(ebp))
-	OP(and,w)	TW(IMM(HEX(f0e0)),WOF(-2,REG(ebp)))
-	OP(or,w)	TW(IMM(FP_CONTROL_WORD),WOF(-2,REG(ebp)))
-	fldcw		WOF(-2,REG(ebp))
 i386_initialize_no_fp:
 ')
 	OP(mov,l)	TW(REG(eax),ABS(EVR(i387_presence)))
