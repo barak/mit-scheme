@@ -539,6 +539,17 @@ OS_select_registry_length (select_registry_t registry)
 }
 
 void
+OS_select_registry_entry (select_registry_t registry,
+			  unsigned int index,
+			  int * fd_r,
+			  unsigned int * mode_r)
+{
+  struct select_registry_s * r = registry;
+  (*fd_r) = ((SR_ENTRY (r, index)) -> fd);
+  (*mode_r) = (ENCODE_MODE ((SR_ENTRY (r, index)) -> events));
+}
+
+void
 OS_select_registry_result (select_registry_t registry,
 			   unsigned int index,
 			   int * fd_r,

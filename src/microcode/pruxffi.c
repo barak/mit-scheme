@@ -685,7 +685,7 @@ DEFINE_PRIMITIVE ("RETURN-TO-C", Prim_return_to_c, 0, 0, 0)
   }
 }
 
-/* This is mainly for src/gtk/gtkio.c, so it does not need to include
+/* This is mainly for src/glib/glibio.c, so it does not need to include
    prim.h, scheme.h and everything. */
 void
 abort_to_c (void)
@@ -1085,4 +1085,14 @@ DEFINE_PRIMITIVE ("OUTF-ERROR", Prim_outf_error, 1, 1, 0)
       }
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
+}
+
+int
+interrupts_p (void)
+{
+  /* Just the pending interrupts bitmap, ignoring the INT_MASK. */
+  /* This is mainly for src/glib/glibio.c, which finds pending_
+     interrupts_p() useless; it is always /gc-ok. */
+
+  return (GET_INT_CODE);
 }
