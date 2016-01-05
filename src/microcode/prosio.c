@@ -332,7 +332,7 @@ DEFINE_PRIMITIVE ("TEST-SELECT-REGISTRY", Prim_test_selreg, 4, 4, 0)
     if ((VECTOR_LENGTH (vmode)) < rl)
       error_bad_range_arg (4);
     result = ((rl == 0)
-	      ? (blockp ? (OS_pause ()) : SELECT_INTERRUPT)
+	      ? (blockp ? (OS_pause (0)) : SELECT_INTERRUPT)
 	      : (OS_test_select_registry (r, blockp)));
     if (result > 0)
       {

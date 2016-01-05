@@ -853,7 +853,7 @@ OS_test_select_descriptor (int fd, int blockp, unsigned int mode)
 #endif /* not HAVE_POLL */
 
 int
-OS_pause (void)
+OS_pause (bool ignore_status_change)
 {
 #ifdef HAVE_SIGSUSPEND
   sigset_t old, new;
@@ -861,9 +861,9 @@ OS_pause (void)
 
   UX_sigfillset (&new);
   UX_sigprocmask (SIG_SETMASK, &new, &old);
-  if (OS_process_any_status_change ())
+  if (!ignore_status_change && OS_process_any_status_change ())
     n = SELECT_PROCESS_STATUS_CHANGE;
-  else if (pending_interrupts_p ())
+  else if ((GET_INT_CODE) != 0)
     n = SELECT_INTERRUPT;
   else
     {
@@ -876,8 +876,8 @@ OS_pause (void)
   UX_sigprocmask (SIG_SETMASK, &old, NULL);
 #else /* not HAVE_SIGSUSPEND */
   INTERRUPTABLE_EXTENT
-    (n, (((OS_process_any_status_change ())
-	  || (pending_interrupts_p ()))
+    (n, (((!ignore_status_change && (OS_process_any_status_change ()))
+	  || ((GET_INT_CODE) != 0))
 	 ? ((errno = EINTR), (-1))
 	 : ((UX_pause ()), (0))));
   if (OS_process_any_status_change())

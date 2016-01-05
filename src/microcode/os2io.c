@@ -566,7 +566,7 @@ OS_test_select_registry (select_registry_t registry, int blockp)
 }
 
 int
-OS_pause (void)
+OS_pause (bool ignore_status_change)
 {
   /* Wait-for-io must spin. */
   return
