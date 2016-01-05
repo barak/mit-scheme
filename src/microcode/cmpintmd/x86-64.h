@@ -174,7 +174,6 @@ typedef byte_t insn_t;
 #  define ASM_ENTRY_POINT(name) name
 #endif
 
-extern void ASM_ENTRY_POINT (x86_64_interface_initialize) (void);
 extern void ASM_ENTRY_POINT (within_c_stack) (void (*) (void *), void *);
 
 extern void asm_assignment_trap (void);

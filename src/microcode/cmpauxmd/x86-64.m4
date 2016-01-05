@@ -315,14 +315,6 @@ define(REGBLOCK_VAL,16)
 define(REGBLOCK_COMPILER_TEMP,32)
 define(REGBLOCK_DLINK,REGBLOCK_COMPILER_TEMP)
 
-# Define the floating-point processor control word.  Always set
-# round-to-even and double precision.  Under Win32, mask all
-# exceptions.  Under unix and OS/2, mask only the inexact result
-# exception.
-ifdef(`WIN32',
-      `define(FP_CONTROL_WORD,HEX(023f))',
-      `define(FP_CONTROL_WORD,HEX(0220))')
-
 define(regs,REG(rsi))
 define(rfree,REG(rdi))
 define(rmask,REG(rbp))
@@ -355,24 +347,6 @@ define_double(flonum_one,1.0)
 
 DECLARE_CODE_SEGMENT()
 declare_alignment(2)
-
-define_c_label(x86_64_interface_initialize)
-	OP(push,q)	REG(rbp)
-	OP(mov,q)	TW(REG(rsp),REG(rbp))
-	OP(sub,q)	TW(IMM(8),REG(rsp))
-	stmxcsr		IND(REG(rsp))
-	# Clear 7 (invalid operation mask)
-	#       8 (denormalized operand mask)
-	#       9 (zero-divide exception mask)
-	#       10 (overflow exception mask)
-	#       11 (underflow exception mask)
-	#       15 (flush-to-zero (if set, gives non-IEEE semantics))
-	OP(and,l)	TW(IMM(HEX(ffff707f)),IND(REG(rsp)))
-	# Set   12 (precision exception mask)
-	OP(or,l)	TW(IMM(HEX(1000)),IND(REG(rsp)))
-	ldmxcsr		IND(REG(rsp))
-	leave
-	ret
 
 # Call a function (rdi) with an argument (rsi) and a stack pointer and
 # frame pointer from inside C.  When it returns, restore the original
@@ -1002,22 +976,22 @@ define_c_label(x87_trap_exceptions)
 
 define_c_label(x87_read_control_word)
 	enter		IMM(4),IMM(0)
-	fnstcw		IND(REG(esp))
-	OP(mov,w)	TW(IND(REG(esp)),REG(ax))
+	fnstcw		IND(REG(rsp))
+	OP(mov,w)	TW(IND(REG(rsp)),REG(ax))
 	leave
 	ret
 
 define_c_label(x87_write_control_word)
 	enter		IMM(4),IMM(0)
 	OP(mov,w)	TW(REG(di),IND(REG(rsp)))
-	fldcw		IND(REG(esp))
+	fldcw		IND(REG(rsp))
 	leave
 	ret
 
 define_c_label(x87_read_status_word)
 	enter		IMM(4),IMM(0)
-	fnstsw		IND(REG(esp))
-	OP(mov,w)	TW(IND(REG(esp)),REG(ax))
+	fnstsw		IND(REG(rsp))
+	OP(mov,w)	TW(IND(REG(rsp)),REG(ax))
 	leave
 	ret
 
