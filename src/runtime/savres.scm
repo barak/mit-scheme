@@ -41,6 +41,7 @@ USA.
 
 (define world-id "Image")
 (define time-world-saved #f)
+(define time-world-restored #f)
 (define *within-restore-window?*)
 
 (define (initialize-package!)
@@ -79,6 +80,7 @@ USA.
 	   (read-microcode-tables!)
 	   (lambda ()
 	     (set! time-world-saved time)
+	     (set! time-world-restored (get-universal-time))
 	     (let-fluid *within-restore-window?* #t
 	       (lambda ()
 		 (event-distributor/invoke! event:after-restore)))
