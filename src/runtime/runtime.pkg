@@ -2464,6 +2464,7 @@ USA.
 	  write-line
 	  write-string
 	  write-strings-in-columns
+	  write-strings-in-paragraph
 	  write-substring)
   (initialization (initialize-package!)))
 

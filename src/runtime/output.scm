@@ -268,7 +268,7 @@ USA.
 		  (let ((strings (car cols)))
 		    (if (pair? strings)
 			(begin
-			  (write-spaces pending-spaces)
+			  (write-spaces pending-spaces port)
 			  (write-string prefix port)
 			  (write-string (car strings) port)
 			  (set-car! cols (cdr strings))
@@ -282,13 +282,47 @@ USA.
 		    (newline port)
 		    (per-row)))))))
 
-    (define (write-spaces n)
-      (if (> n 0)
-	  (begin
-	    (write-char #\space port)
-	    (write-spaces (- n 1)))))
-
     (if row-major? (do-row-major) (do-col-major))))
+
+(define (write-spaces n port)
+  (if (> n 0)
+      (begin
+	(write-char #\space port)
+	(write-spaces (- n 1) port))))
+
+(define (write-strings-in-paragraph strings port width indent first)
+  (if (and (not (list-of-type? strings string?))
+	   (pair? strings))
+      (error:wrong-type-argument strings "non-empty list of strings"
+				 'WRITE-STRINGS-IN-PARAGRAPH))
+  (guarantee-output-port port 'WRITE-STRINGS-IN-PARAGRAPH)
+  (guarantee-exact-positive-integer width 'WRITE-STRINGS-IN-PARAGRAPH)
+  (guarantee-exact-nonnegative-integer indent 'WRITE-STRINGS-IN-PARAGRAPH)
+  (guarantee-exact-nonnegative-integer first 'WRITE-STRINGS-IN-PARAGRAPH)
+  (if (< width (+ indent first (string-length (car strings))))
+      (error:bad-range-argument width 'WRITE-STRINGS-IN-PARAGRAPH))
+
+  (fresh-line port)
+  (write-spaces indent port)
+  (write-spaces first port)
+  (write-string (car strings) port)
+  (let loop ((column (+ indent first (string-length (car strings))))
+	     (strings (cdr strings)))
+    (if (pair? strings)
+	(let* ((string (car strings))
+	       (length (string-length string))
+	       (new (+ column 1 length)))
+	  (if (<= new width)
+	      (begin
+		(write-char #\space port)
+		(write-string string port)
+		(loop new (cdr strings)))
+	      (begin
+		(newline port)
+		(write-spaces indent port)
+		(write-string string port)
+		(loop (+ indent (string-length string)) (cdr strings)))))
+	(newline port))))
 
 ;;;; Output truncation
 
