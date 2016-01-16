@@ -4606,6 +4606,7 @@ USA.
 	  stream-first
 	  stream-for-each
 	  stream-head
+	  stream-last
 	  stream-last-pair
 	  stream-length
 	  stream-map
@@ -4614,6 +4615,7 @@ USA.
 	  stream-ref
 	  stream-rest
 	  stream-tail
+	  stream-truncate
 	  stream-write
 	  tail
 	  the-empty-stream)

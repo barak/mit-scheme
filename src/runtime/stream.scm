@@ -90,6 +90,9 @@ USA.
 	  (loop (force (cdr stream)) (- index 1)))
 	stream)))
 
+(define (stream-last stream)
+  (stream-car (stream-last-pair stream)))
+
 (define (stream-last-pair stream)
   (if (not (stream-pair? stream))
       (if (null? stream)
@@ -100,7 +103,7 @@ USA.
       (if (stream-pair? next)
 	  (loop next)
 	  (begin
-	    (if (not (null? stream))
+	    (if (not (null? next))
 		(error:illegal-stream-element stream 'STREAM-LAST-PAIR 0))
 	    stream)))))
 
@@ -221,6 +224,17 @@ USA.
       (begin
 	(if (not (null? stream))
 	    (error:illegal-stream-element stream 'STREAM-FILTER 1))
+	'())))
+
+(define (stream-truncate stream predicate)
+  (if (stream-pair? stream)
+      (if (predicate (head stream))
+	  the-empty-stream
+	  (cons-stream (head stream)
+		       (stream-truncate (tail stream) predicate)))
+      (begin
+	(if (not (null? stream))
+	    (error:illegal-stream-element stream 'STREAM-TRUNCATE 1))
 	'())))
 
 (define (stream-write stream #!optional port)
