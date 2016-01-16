@@ -82,6 +82,13 @@ USA.
   ;; List of mutexes that this thread owns or is waiting to own.  Used
   ;; to disassociate the thread from those mutexes when it is exited.
 
+  (start-times #f)
+  ;; The system times when this thread last started running.
+
+  (process-time 0)
+  (real-time 0)
+  ;; The total system and real times during which this thread has run.
+
   (properties #f read-only #t))
 
 (define-integrable (guarantee-thread thread procedure)
@@ -122,6 +129,7 @@ USA.
   (set! root-continuation-default (make-fluid #f))
   (initialize-error-conditions!)
   (reset-threads-high!)
+  (record-start-times! first-running-thread)
   (add-event-receiver! event:after-restore reset-threads!)
   (add-event-receiver! event:before-exit stop-thread-timer)
   (named-structure/set-tag-description! thread-mutex-tag
@@ -294,6 +302,7 @@ USA.
     (%within-continuation continuation #t
       (lambda ()
 	(enter-float-environment fp-env)
+	(record-start-times! thread)
 	(%resume-current-thread thread)))))
 
 (define (%resume-current-thread thread)
@@ -320,6 +329,7 @@ USA.
 	       (lambda (continuation)
 		 (set-thread/continuation! thread continuation)
 		 (maybe-save-thread-float-environment! thread)
+		 (account-for-times thread (get-system-times))
 		 (set-thread/block-events?! thread #f)
 		 (thread-not-running thread 'WAITING)))))))))
 
@@ -332,6 +342,7 @@ USA.
 	  (lambda (continuation)
 	    (set-thread/continuation! thread continuation)
 	    (maybe-save-thread-float-environment! thread)
+	    (account-for-times thread (get-system-times))
 	    (thread-not-running thread 'STOPPED))))))))
 
 (define (restart-thread thread discard-events? event)
@@ -359,10 +370,12 @@ USA.
   ;; Preserve the floating-point environment here to guarantee that the
   ;; thread timer won't raise or clear exceptions (particularly the
   ;; inexact result exception) that the interrupted thread cares about.
-  (let ((fp-env (enter-default-float-environment first-running-thread)))
+  (let* ((times (get-system-times))
+	 (fp-env (enter-default-float-environment first-running-thread)))
     (set! next-scheduled-timeout #f)
     (set-interrupt-enables! interrupt-mask/gc-ok)
-    (deliver-timer-events)
+    (account-for-times first-running-thread times)
+    (deliver-timer-events times)
     (maybe-signal-io-thread-events)
     (let ((thread first-running-thread))
       (cond ((not thread)
@@ -374,13 +387,43 @@ USA.
 	     (yield-thread thread fp-env))
 	    (else
 	     (restore-float-environment-from-default fp-env)
+	     (record-start-times! thread)
 	     (%resume-current-thread thread))))))
+
+(define (get-system-times)
+  (cons (real-time-clock) (process-time-clock)))
+
+(define-integrable system-times/real car)
+  
+(define-integrable system-times/process cdr)
+
+(define (record-start-times! thread)
+  (if (not (eq? #f (thread/start-times thread)))
+      (outf-error "\n;record-start-times!: already recorded!\n"))
+  (set-thread/start-times! thread (get-system-times)))
+
+(define (account-for-times thread end)
+  (if thread
+      (let ((start (thread/start-times thread)))
+	(if (eq? #f start)
+	    (outf-error "\n;account-for-times: start time not recorded\n")
+	    (begin
+	      (set-thread/process-time! thread
+					(+ (thread/process-time thread)
+					   (- (system-times/process end)
+					      (system-times/process start))))
+	      (set-thread/real-time! thread
+				     (+ (thread/real-time thread)
+					(- (system-times/real end)
+					   (system-times/real start))))
+	      (set-thread/start-times! thread #f))))))
 
 (define (yield-current-thread)
   (without-interrupts
    (lambda ()
      (call-with-current-thread #t
        (lambda (thread)
+	 (account-for-times thread (get-system-times))
 	 ;; Allow preemption now, since the current thread has
 	 ;; volunteered to yield control.
 	 (set-thread/execution-state! thread 'RUNNING)
@@ -393,6 +436,7 @@ USA.
 	(begin
 	  (if (not (default-object? fp-env))
 	      (restore-float-environment-from-default fp-env))
+	  (record-start-times! thread)
 	  (%resume-current-thread thread))
 	(call-with-current-continuation
 	 (lambda (continuation)
@@ -910,12 +954,12 @@ USA.
        (if thread
 	   (let ((block-events? (thread/block-events? thread)))
 	     (set-thread/block-events?! thread #f)
-	     (deliver-timer-events)
+	     (deliver-timer-events (get-system-times))
 	     (maybe-signal-io-thread-events)
 	     (handle-thread-events thread)
 	     (set-thread/block-events?! thread block-events?))
 	   (begin
-	     (deliver-timer-events)
+	     (deliver-timer-events (get-system-times))
 	     (maybe-signal-io-thread-events))))
      (%maybe-toggle-thread-timer))))
 
@@ -966,8 +1010,8 @@ USA.
       (if (not block-events?)
 	  (unblock-thread-events)))))
 
-(define (deliver-timer-events)
-  (let ((time (real-time-clock)))
+(define (deliver-timer-events times)
+  (let ((time (system-times/real times)))
     (do ((record timer-records (timer-record/next record)))
 	((or (not record) (< time (timer-record/time record)))
 	 (set! timer-records record)
