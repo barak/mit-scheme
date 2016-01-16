@@ -250,7 +250,7 @@ OS_listen_tcp_server_socket (Tchannel channel)
 }
 
 Tchannel
-OS_server_connection_accept (Tchannel channel,
+OS_tcp_server_connection_accept (Tchannel channel,
 			     void * peer_host, unsigned int * peer_port)
 {
   static struct sockaddr_in address;

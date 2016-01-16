@@ -38,6 +38,7 @@ enum channel_type
   channel_type_unix_fifo,
   channel_type_terminal,
   channel_type_unix_pty_master,
+  channel_type_unix_server_socket,
   channel_type_unix_stream_socket,
   channel_type_tcp_stream_socket,
   channel_type_tcp_server_socket,

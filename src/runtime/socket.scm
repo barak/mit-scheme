@@ -60,10 +60,31 @@ USA.
       ((ucode-primitive get-service-by-number 1) service)
       ((ucode-primitive get-service-by-name 2) service "tcp")))
 
+(define (open-unix-server-socket pathname)
+  (open-channel
+   (lambda (p)
+     ((ucode-primitive create-unix-server-socket 2) (->namestring pathname) p)
+     #t)))
+
 (define (close-tcp-server-socket server-socket)
   (channel-close server-socket))
 
+(define (close-unix-server-socket server-socket)
+  (channel-close server-socket))
+
 (define (tcp-server-connection-accept server-socket block? peer-address)
+  (connection-accept (ucode-primitive new-tcp-server-connection-accept 3)
+		     server-socket block? peer-address))
+
+(define (unix-server-connection-accept server-socket block?)
+  (connection-accept (named-lambda (new-unix-server-connection-accept
+				    socket peer pair)
+		       (declare (ignore peer))
+		       ((ucode-primitive new-unix-server-connection-accept 2)
+			socket pair))
+		     server-socket block? #f))
+
+(define (connection-accept accept! server-socket block? peer-address)
   (let ((channel
 	 (with-thread-events-blocked
 	   (lambda ()
@@ -79,9 +100,7 @@ USA.
 			    (lambda (p)
 			      (with-thread-timer-stopped
 				(lambda ()
-				  ((ucode-primitive
-				    new-tcp-server-connection-accept
-				    3)
+				  (accept!
 				   (channel-descriptor server-socket)
 				   peer-address
 				   p))))))

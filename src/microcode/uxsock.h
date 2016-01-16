@@ -42,12 +42,14 @@ extern void OS_host_address_any (void *);
 extern void OS_host_address_loopback (void *);
 
 #ifdef HAVE_UNIX_SOCKETS
-   extern Tchannel OS_open_unix_stream_socket (const char *);
+  extern Tchannel OS_open_unix_stream_socket (const char *);
+  extern Tchannel OS_create_unix_server_socket (const char *);
+  extern Tchannel OS_unix_server_connection_accept (Tchannel);
 #endif
 
 extern Tchannel OS_create_tcp_server_socket (void);
 extern void OS_bind_tcp_server_socket (Tchannel, void *, unsigned int);
 extern void OS_listen_tcp_server_socket (Tchannel);
-extern Tchannel OS_server_connection_accept (Tchannel, void *, unsigned int *);
+extern Tchannel OS_tcp_server_connection_accept (Tchannel, void *, unsigned int *);
 
 #endif /* SCM_UXSOCK_H */

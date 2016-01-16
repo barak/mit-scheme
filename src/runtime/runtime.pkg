@@ -3831,6 +3831,7 @@ USA.
 	  bind-tcp-server-socket
 	  canonical-host-name
 	  close-tcp-server-socket
+	  close-unix-server-socket
 	  create-tcp-server-socket
 	  get-host-by-address
 	  get-host-by-name
@@ -3841,10 +3842,12 @@ USA.
 	  open-tcp-server-socket
 	  open-tcp-stream-socket
 	  open-tcp-stream-socket-channel
+	  open-unix-server-socket
 	  open-unix-stream-socket
 	  open-unix-stream-socket-channel
 	  os/hostname
-	  tcp-server-connection-accept)
+	  tcp-server-connection-accept
+	  unix-server-connection-accept)
   (initialization (initialize-package!)))
 
 (define-package (runtime subprocess)
