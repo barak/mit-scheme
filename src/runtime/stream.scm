@@ -265,13 +265,11 @@ USA.
 	'())))
 
 (define (stream->list stream)
-  (if (stream-pair? stream)
-      (cons (car stream)
-	    (stream->list (force (cdr stream))))
-      (begin
-	(if (not (null? stream))
-	    (error:illegal-stream-element stream 'STREAM->LIST 0))
-	'())))
+  (let loop ((s stream)
+	     (elements '()))
+    (cond ((stream-pair? tail) (loop (tail s) (cons (head s) elements)))
+	  ((null? s) (reverse elements))
+	  (else (error:illegal-stream-element stream 'STREAM->LIST 0)))))
 
 (define prime-numbers-stream)
 
