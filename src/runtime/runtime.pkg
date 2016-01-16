@@ -6169,3 +6169,17 @@ USA.
 	  stack-sampler:show-expressions?
 	  with-stack-sampling)
   (initialization (initialize-package!)))
+
+(define-package (runtime world-report)
+  (files "world-report")
+  (parent (runtime))
+  (import (runtime options)
+	  loaded-options)
+  (import (runtime thread)
+	  enable-smp?
+	  thread/process-time
+	  thread/real-time)
+  (import (runtime save/restore)
+	  time-world-restored)
+  (export ()
+	  world-report))
