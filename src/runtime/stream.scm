@@ -267,9 +267,9 @@ USA.
 (define (stream->list stream)
   (let loop ((s stream)
 	     (elements '()))
-    (cond ((stream-pair? tail) (loop (tail s) (cons (head s) elements)))
+    (cond ((stream-pair? s) (loop (tail s) (cons (head s) elements)))
 	  ((null? s) (reverse elements))
-	  (else (error:illegal-stream-element stream 'STREAM->LIST 0)))))
+	  (else (error:illegal-stream-element s 'STREAM->LIST 0)))))
 
 (define prime-numbers-stream)
 
