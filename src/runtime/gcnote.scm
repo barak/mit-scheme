@@ -227,10 +227,10 @@ USA.
 		    (gc-statistic/this-gc-start statistic)
 		    (gc-statistic/this-gc-end statistic)
 		    (gc-statistic/last-gc-end statistic))
-		   " CPU time, "
+		   " CPU, "
 		   (intervals->string
 		    (gc-statistic/this-gc-start-clock statistic)
 		    (gc-statistic/this-gc-end-clock statistic)
 		    (gc-statistic/last-gc-end-clock statistic))
-		   " real time; free: "
+		   " real; free: "
 		   (number->string (gc-statistic/heap-left statistic)))))
