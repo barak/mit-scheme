@@ -236,6 +236,7 @@ USA.
 		"winout"
 		"xcom"
 		"win32com"
+		"world-monitor"
 		"xmodef")))
   (for-each sf-class
 	    '("comwin"

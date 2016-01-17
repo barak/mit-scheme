@@ -268,6 +268,7 @@ USA.
 				  (->environment '(EDWIN BOCHSER)))
 	|#
 	(load "notify" environment)
+	(load "world-monitor" environment)
 	(if (access *external-doc-strings?* environment)
 	    (begin
 	      (set! (access *external-doc-strings?* environment) false)

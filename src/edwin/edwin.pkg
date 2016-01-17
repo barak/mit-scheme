@@ -99,6 +99,7 @@ USA.
 	 "outline"			; outline minor mode
 	 "sort"				; sorting commands
 	 "webster"			; access a Webster server
+	 "world-monitor"
 	 )
 
   (parent ())
