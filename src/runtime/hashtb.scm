@@ -67,16 +67,9 @@ USA.
   buckets
   (primes prime-numbers-stream)
   (needs-rehash? #f)
-  (initial-size-in-effect? #f)
-  (record-address-hash-table? #f))
+  (initial-size-in-effect? #f))
 
 (define-guarantee hash-table "hash table")
-
-(define-integrable (check-address-hash-table table)
-  (if (table-record-address-hash-table? table)
-      (begin
-	(record-address-hash-table! table)
-	(set-table-record-address-hash-table?! table #f))))
 
 (define-integrable (increment-table-count! table)
   (set-table-count! table (fix:+ (table-count table) 1)))
@@ -114,7 +107,7 @@ USA.
 	    (set-table-initial-size-in-effect?! table #t)))
       (reset-table! table)
       (if (table-type-rehash-after-gc? type)
-	  (set-table-record-address-hash-table?! table #t))
+	  (record-address-hash-table! table))
       table)))
 
 (define (hash-table/type table)
@@ -642,7 +635,6 @@ USA.
 		  (if q
 		      (set-cdr! q r)
 		      (vector-set! (table-buckets table) hash r)))
-		(check-address-hash-table table)
 		(increment-table-count! table)
 		(maybe-grow-table! table)))))))
   method:put!)
@@ -672,7 +664,6 @@ USA.
 		    (if q
 			(set-cdr! q r)
 			(vector-set! (table-buckets table) hash r)))
-		  (check-address-hash-table table)
 		  (increment-table-count! table)
 		  (maybe-grow-table! table)))
 	      datum)))))
@@ -1368,7 +1359,10 @@ USA.
   unspecific)
 
 (define (record-address-hash-table! table)
-  (add-to-population! address-hash-tables table))
+  (if (cadr address-hash-tables)
+      (with-thread-mutex-lock (cadr address-hash-tables)
+        (lambda () (add-to-population!/unsafe address-hash-tables table)))
+      (add-to-population! address-hash-tables table)))
 
 (define (mark-address-hash-tables!)
   (for-each-inhabitant address-hash-tables

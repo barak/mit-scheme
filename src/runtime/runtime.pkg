@@ -2140,6 +2140,8 @@ USA.
 (define-package (runtime hash-table)
   (files "hashtb")
   (parent (runtime))
+  (import (runtime population)
+	  add-to-population!/unsafe)
   (export ()
 	  (eq-hash-table-type key-weak-eq-hash-table-type)
 	  (eqv-hash-table-type key-weak-eqv-hash-table-type)
