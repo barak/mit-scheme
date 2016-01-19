@@ -792,17 +792,83 @@ USA.
   (mapper append-map! () append! '())
   (mapper append-map*! (initial-value) append! initial-value))
 
-(define (reduce procedure initial list)
+(declare (integrate-operator %fold-left))
+
+(define (%fold-left caller procedure initial list)
+  (declare (integrate caller procedure initial))
+  (let %fold-left-step ((state initial)
+			(remaining list))
+
+    (if (pair? remaining)
+	(%fold-left-step (procedure state (car remaining)) (cdr remaining))
+	(begin
+	  (if (not (null? remaining))
+	      (error:not-list list caller))
+	  state))))
+
+;; N-ary version
+;; Invokes (PROCEDURE state arg1 arg2 ...) on the all the lists in parallel.
+;; State is returned as soon as any list is exhausted.
+(define (%fold-left-lists caller procedure initial arglists)
+  (let fold-left-step ((state initial)
+		       (lists arglists))
+    (let collect-arguments ((arglists (reverse lists))
+			    (cars '())
+			    (cdrs '()))
+      (if (pair? arglists)
+	  (let ((first-list (car arglists)))
+	    (if (pair? first-list)
+		(collect-arguments (cdr arglists)
+				   (cons (car first-list) cars)
+				   (cons (cdr first-list) cdrs))
+		(begin
+		  (if (not (null? first-list))
+		      (mapper-error arglists caller))
+		  state)))
+	  (begin
+	    (if (not (null? arglists))
+		(mapper-error arglists caller))
+	    (fold-left-step
+	     (apply procedure state cars)
+	     cdrs))))))
+
+(define (fold-left procedure initial first . rest)
+  (if (pair? rest)
+      (%fold-left-lists 'FOLD-LEFT procedure initial (cons first rest))
+      (%fold-left 'FOLD-LEFT procedure initial first)))
+
+;;; Variants of FOLD-LEFT that should probably be avoided.
+
+;; Like FOLD-LEFT, but
+;;    PROCEDURE takes the arguments with the state at the right-hand end.
+(define (fold procedure initial first . rest)
+  (if (pair? rest)
+      (%fold-left-lists 'FOLD
+			(lambda (state . arguments)
+			  (apply procedure (append arguments (list state))))
+			initial
+			(cons first rest))
+      (%fold-left 'FOLD (lambda (state item)
+			  (declare (integrate state item))
+			  (procedure item state))
+		  initial first)))
+
+;; Like FOLD-LEFT, with four differences.
+;;    1. Not n-ary
+;;    2. INITIAL is first element in list.
+;;    3. DEFAULT is only used if the list is empty
+;;    4. PROCEDURE takes arguments in the wrong order.
+(define (reduce procedure default list)
   (if (pair? list)
-      (%fold-1 procedure (car list) (cdr list) 'REDUCE)
+      (%fold-left 'REDUCE (lambda (state item)
+			    (declare (integrate state item))
+			    (procedure item state)) 
+		  (car list) (cdr list))
       (begin
 	(if (not (null? list))
 	    (error:not-list list 'REDUCE))
-	initial)))
-
-(define (reduce-left procedure initial list)
-  (reduce (lambda (a b) (procedure b a)) initial list))
-
+	default)))
+
 (define (reduce-right procedure initial list)
   (if (pair? list)
       (let loop ((first (car list)) (rest (cdr list)))
@@ -816,36 +882,6 @@ USA.
 	(if (not (null? list))
 	    (error:not-list list 'REDUCE-RIGHT))
 	initial)))
-
-(define (fold procedure initial first . rest)
-  (if (pair? rest)
-      (let loop ((lists (cons first rest)) (value initial))
-	(let split ((lists lists) (cars '()) (cdrs '()))
-	  (if (pair? lists)
-	      (if (pair? (car lists))
-		  (split (cdr lists)
-			 (cons (car (car lists)) cars)
-			 (cons (cdr (car lists)) cdrs))
-		  (begin
-		    (if (not (null? (car lists)))
-			(mapper-error (cons first rest) 'FOLD))
-		    value))
-	      (loop (reverse! cdrs)
-		    (apply procedure (reverse! (cons value cars)))))))
-      (%fold-1 procedure initial first 'FOLD)))
-
-(define (%fold-1 procedure initial list caller)
-  (let loop ((value initial) (list* list))
-    (if (pair? list*)
-	(loop (procedure (car list*) value)
-	      (cdr list*))
-	(begin
-	  (if (not (null? list*))
-	      (error:not-list list caller))
-	  value))))
-
-(define (fold-left procedure initial list)
-  (%fold-1 (lambda (a b) (procedure b a)) initial list 'FOLD-LEFT))
 
 (define (fold-right procedure initial first . rest)
   (if (pair? rest)
