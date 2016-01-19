@@ -211,14 +211,14 @@ USA.
 
 (define (fixed-instruction-width lap)
   (if (and (pair? lap) (pair? (car lap)) (null? (cdr lap)))
-      (reduce-left + 0 (map bit-string-length
-			    (lap:syntax-instruction (car lap))))
+      (fold-left + 0 (map bit-string-length
+			  (lap:syntax-instruction (car lap))))
       (error "FIXED-INSTRUCTION-WIDTH: Multiple instructions in LAP" lap)))
 
 (define (assemble-fixed-instruction width lap)
   (if (and (pair? lap) (pair? (car lap)) (null? (cdr lap)))
       (let* ((bits (lap:syntax-instruction (car lap)))
-	     (len (reduce-left + 0 (map bit-string-length bits))))
+	     (len (fold-left + 0 (map bit-string-length bits))))
 	(if (not (= len width))
 	    (error "Mis-sized fixed instruction" lap))
 	bits)
