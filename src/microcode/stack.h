@@ -73,7 +73,7 @@ USA.
 #define STACK_LOCATIVE_OFFSET(locative, offset) ((locative) + (offset))
 #define STACK_LOCATIVE_REFERENCE(locative, offset) ((locative) [(offset)])
 #define STACK_LOCATIVE_DIFFERENCE(newer, older) ((older) - (newer))
-#define STACK_LOCATIVE_LESS_P(loc1, loc2) ((loc1) < (loc2))
+#define STACK_LOCATIVE_ABOVE_P(loc1, loc2) ((loc1) < (loc2))
 
 #define ADDRESS_IN_STACK_REGION_P(address, lower_limit, upper_limit)	\
   (((address) >= (lower_limit)) && ((address) < (upper_limit)))

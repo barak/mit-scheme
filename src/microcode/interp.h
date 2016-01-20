@@ -85,7 +85,7 @@ USA.
   Will_Push_Limit = (STACK_LOC (- (N)))
 
 #define Pushed()							\
-  if (STACK_LOCATIVE_LESS_P (stack_pointer, Will_Push_Limit))		\
+  if (STACK_LOCATIVE_ABOVE_P (stack_pointer, Will_Push_Limit))		\
     {									\
       Stack_Death ();							\
     }									\
