@@ -178,6 +178,7 @@ USA.
 		  ((RUNNING)	"running")
 		  ((DEAD)	"  dead ")
 		  ((WAITING)	"waiting")
+		  ((STOPPED)	"stopped")
 		  ((RUNNING-WITHOUT-PREEMPTION) "RUNNING")
 		  (else "   ????"))
 		port))

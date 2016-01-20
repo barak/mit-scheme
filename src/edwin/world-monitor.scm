@@ -51,7 +51,7 @@ it, and spawn a thread to update it after every
   (set-buffer-major-mode! buffer (ref-mode-object read-only))
   (let ((registration #f)
 	(report #f)
-	(thread-flags (list (cons (current-thread) "Edwin"))))
+	(thread-flags (list (cons (current-thread) "edwin"))))
 
     (define (new-report)
       (with-output-to-string
@@ -81,7 +81,9 @@ it, and spawn a thread to update it after every
 		       (exit-current-thread #t))))))))
 
       (buffer-put! buffer 'WORLD-MONITOR monitor)
+      (set! thread-flags (cons (cons monitor "monitor") thread-flags))
       (update-world-monitor! buffer (new-report))
+      (set-buffer-point! buffer (buffer-start buffer))
       (set! registration
 	    (register-inferior-thread!
 	     monitor (named-lambda (world-monitor-output!)
