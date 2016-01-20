@@ -800,7 +800,8 @@ dump_object (SCHEME_OBJECT * addr)
 {
   SCHEME_OBJECT object = *addr;
   outf_error ("%#lx: ", (unsigned long)addr);
-  print_object (object);
+  do_printing (ERROR_OUTPUT, object, true);
+  outf_error ("\n");
   {
     SCHEME_OBJECT * end = next_addr (addr);
     while (++addr < end)
@@ -895,9 +896,15 @@ verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
 		  SCHEME_OBJECT * next = area + (1 + n_words);
 		  if (next > end)
 		    {
-		      outf_error ("; %#lx: Invalid linkage section size: %ld\n",
+		      outf_error ("%#lx: Invalid linkage section size: %ld\n",
 				  (unsigned long)area, n_words);
 		      return (false);
+		    }
+		  else if (n_words > 1000)
+		    {
+		      outf_error
+			("%#lx: Extraordinary linkage section size: %ld\n",
+			 (unsigned long)area, n_words);
 		    }
 		  area = next;
 		}
@@ -907,7 +914,7 @@ verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
 		area += 1;
 		break;
 	      default:
-		outf_error ("; %#lx: Invalid linkage section type: %d\n",
+		outf_error ("%#lx: Invalid linkage section type: %#x\n",
 			    (unsigned long)area, section_type);
 		complaints += 1;
 		area += 1;
@@ -924,9 +931,14 @@ verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
 	    SCHEME_OBJECT * next = area + (1 + n_words);
 	    if (next > end)
 	      {
-		outf_error ("; %#lx: Invalid nm-vector size: %ld\n",
+		outf_error ("%#lx: Invalid nm-vector size: %ld\n",
 			    (unsigned long)area, n_words);
 		return (false);
+	      }
+	    else if (n_words > 1000000)
+	      {
+		outf_error ("%#lx: Extraordinary nm-vector size: %ld\n",
+			    (unsigned long)area, n_words);
 	      }
 	    area = next;
 	  }
@@ -934,8 +946,8 @@ verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
 	default:
 	  if (gc_type_code (type) == GC_UNDEFINED)
 	    {
-	      outf_error ("; %#lx: Invalid type code: %d (0x%x)\n",
-			  (unsigned long)area, type, type);
+	      outf_error ("%#lx: Invalid object type: %#x\n",
+			  (unsigned long)area, type);
 	      complaints += 1;
 	    }
 	  area += 1;
@@ -944,8 +956,51 @@ verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
     }
   if (area != end)
     {
-      outf_error ("; %#lx: Invalid address\n", (unsigned long)area);
+      outf_error ("%#lx: Invalid end address\n", (unsigned long)area);
       return (false);
+    }
+  return (complaints == 0);
+}
+
+bool
+verify_stack (SCHEME_OBJECT * sp, SCHEME_OBJECT * bottom)
+{
+  /* Check that the stack is "sealed" -- the top is an interpreter
+     return code or a compiled entry point (return address). */
+
+  int complaints = 0;
+  unsigned long addr = (unsigned long)sp;
+  SCHEME_OBJECT object = STACK_LOCATIVE_POP (sp);
+  unsigned int type = OBJECT_TYPE (object);
+  if (! (type == TC_RETURN_CODE || type == TC_COMPILED_ENTRY))
+    {
+      outf_error ("%#lx: Invalid stack top: ", addr);
+      do_printing (ERROR_OUTPUT, object, true);
+      outf_error ("\n");
+      complaints += 1;
+    }
+  while (STACK_LOCATIVE_ABOVE_P (sp, bottom))
+    {
+      addr = (unsigned long)sp;
+      object = STACK_LOCATIVE_POP (sp);
+      type = OBJECT_TYPE (object);
+      if (type == TC_MANIFEST_NM_VECTOR)
+	{
+	  unsigned long n_words = (OBJECT_DATUM (object));
+	  if (n_words > 1000)
+	    outf_error ("%#lx: Extraordinary finger size: %ld\n",
+			addr, n_words);
+	  sp = STACK_LOCATIVE_OFFSET (sp, n_words);
+	}
+      else if (type == TC_MANIFEST_CLOSURE
+	       || type == TC_BROKEN_HEART
+	       || gc_type_code (type) == GC_UNDEFINED)
+	{
+	  outf_error ("%#lx: Invalid stack slot: ", addr);
+	  do_printing (ERROR_OUTPUT, object, true);
+	  outf_error ("\n");
+	  complaints += 1;
+	}
     }
   return (complaints == 0);
 }
@@ -955,7 +1010,9 @@ verify_heap (void)
 {
   bool c = verify_heap_area ("constants", constant_start, constant_alloc_next);
   bool h = verify_heap_area ("heap", heap_start, Free);
-  return (c && h);
+  bool s = verify_stack (stack_pointer, STACK_BOTTOM);
+  outf_flush_error ();
+  return (c && h && s);
 }
 
 #else  /* !ENABLE_DEBUGGING_TOOLS */
