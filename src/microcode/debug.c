@@ -763,6 +763,7 @@ next_addr (SCHEME_OBJECT * addr)
   unsigned int type = OBJECT_TYPE (object);
   switch (type)
    {
+#ifdef CC_SUPPORT_P
     case TC_LINKAGE_SECTION:
       {
 	linkage_section_type_t section_type
@@ -785,6 +786,7 @@ next_addr (SCHEME_OBJECT * addr)
       }
     case TC_MANIFEST_CLOSURE:
       return (compiled_closure_objects (addr + 1));
+#endif /* CC_SUPPORT_P */
     case TC_MANIFEST_NM_VECTOR:
       {
 	unsigned long n_words = (OBJECT_DATUM (object));
@@ -873,6 +875,89 @@ dump_heap_at (SCHEME_OBJECT *addr)
 }
 
 static bool
+verify_object (SCHEME_OBJECT object)
+{
+  return (gc_type_code (OBJECT_TYPE (object)) != GC_UNDEFINED);    
+}
+
+#define VALID_ADDRESS_P(address)					\
+  ((ADDRESS_IN_CONSTANT_P (address))					\
+   || ((heap_start <= (address)) && ((address) < Free)))
+
+static bool
+verify_tuple (SCHEME_OBJECT object, int size, SCHEME_OBJECT * address)
+{
+  int i = 0;
+  while (i < size)
+    {
+      SCHEME_OBJECT * slot = MEMORY_LOC (object, i);
+      if (! ((VALID_ADDRESS_P (slot)) && verify_object (*slot)))
+	{
+	  outf_error ("%#lx: Invalid %s\n",
+		      (unsigned long)address,
+		      (size == 1 ? "cell"
+		       : size == 2 ? "pair"
+		       : size == 3 ? "triple"
+		       : size == 4 ? "quadruple"
+		       : "tuple"));
+	  return (false);
+	}
+      i += 1;
+    }
+  return (true);
+}
+
+static bool
+verify_vector (SCHEME_OBJECT object, SCHEME_OBJECT * address)
+{
+  unsigned long header = MEMORY_REF(object, 0);
+  unsigned long length = OBJECT_DATUM(header);
+  unsigned int header_type = OBJECT_TYPE (header);
+  if (header_type != TC_MANIFEST_VECTOR
+      && header_type != TC_MANIFEST_NM_VECTOR)
+    {
+      outf_error ("%#lx: Invalid vector\n", (unsigned long)address);
+      return (false);
+    }
+  if (length > 1000000)
+    {
+      outf_error ("%#lx: Extraordinary vector size %ld\n",
+		  (unsigned long)address, length);
+    }
+  return (true);
+}
+
+#ifdef CC_SUPPORT_P
+static bool
+verify_compiled (SCHEME_OBJECT object, SCHEME_OBJECT * address)
+{
+  SCHEME_OBJECT * block;
+  SCHEME_OBJECT header;
+  unsigned int header_type;
+  if (! (VALID_ADDRESS_P (OBJECT_ADDRESS (object))))
+    {
+      outf_error ("%#lx: Invalid entry\n", (unsigned long)address);
+      return (false);
+    }
+  block = cc_entry_to_block_address (object);
+  if (! (VALID_ADDRESS_P (block)))
+    {
+      outf_error ("%#lx: Invalid entry block\n", (unsigned long)address);
+      return (false);
+    }
+  header = *block;
+  header_type = OBJECT_TYPE(header);
+  if (! (header_type == TC_MANIFEST_VECTOR
+	 || header_type == TC_MANIFEST_CLOSURE))
+    {
+      outf_error ("%#lx: Invalid entry block header\n", (unsigned long)address);
+      return (false);
+    }
+  return (true);
+}
+#endif /* CC_SUPPORT_P */
+
+static bool
 verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
 {
   int complaints = 0;
@@ -881,79 +966,163 @@ verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
     {
       SCHEME_OBJECT object = *area;
       unsigned int type = OBJECT_TYPE (object);
-      switch (type)
+      unsigned int code = gc_type_code (type);
+      switch (code)
 	{
-	case TC_LINKAGE_SECTION:
-	  {
-	    linkage_section_type_t section_type
-	      = ((linkage_section_type_t)((OBJECT_DATUM (object)) >> 16));
-	    switch (section_type)
-	      {
-	      case LINKAGE_SECTION_TYPE_GLOBAL_OPERATOR:
-	      case LINKAGE_SECTION_TYPE_OPERATOR:
-		{
-		  unsigned long n_words = ((OBJECT_DATUM (object)) & 0xFFFFUL);
-		  SCHEME_OBJECT * next = area + (1 + n_words);
-		  if (next > end)
-		    {
-		      outf_error ("%#lx: Invalid linkage section size: %ld\n",
-				  (unsigned long)area, n_words);
-		      return (false);
-		    }
-		  else if (n_words > 1000)
-		    {
-		      outf_error
-			("%#lx: Extraordinary linkage section size: %ld\n",
-			 (unsigned long)area, n_words);
-		    }
-		  area = next;
-		}
-		break;
-	      case LINKAGE_SECTION_TYPE_REFERENCE:
-	      case LINKAGE_SECTION_TYPE_ASSIGNMENT:
-		area += 1;
-		break;
-	      default:
-		outf_error ("%#lx: Invalid linkage section type: %#x\n",
-			    (unsigned long)area, section_type);
-		complaints += 1;
-		area += 1;
-		break;
-	      }
-	  }
-	  break;
-	case TC_MANIFEST_CLOSURE:
-	  area = compiled_closure_objects (area + 1);
-	  break;
-	case TC_MANIFEST_NM_VECTOR:
-	  {
-	    unsigned long n_words = (OBJECT_DATUM (object));
-	    SCHEME_OBJECT * next = area + (1 + n_words);
-	    if (next > end)
-	      {
-		outf_error ("%#lx: Invalid nm-vector size: %ld\n",
-			    (unsigned long)area, n_words);
-		return (false);
-	      }
-	    else if (n_words > 1000000)
-	      {
-		outf_error ("%#lx: Extraordinary nm-vector size: %ld\n",
-			    (unsigned long)area, n_words);
-	      }
-	    area = next;
-	  }
-	  break;
-	default:
-	  if (gc_type_code (type) == GC_UNDEFINED)
-	    {
-	      outf_error ("%#lx: Invalid object type: %#x\n",
-			  (unsigned long)area, type);
-	      complaints += 1;
-	    }
+	case GC_UNDEFINED:
+	  outf_error ("%#lx: Invalid object type: %#x\n",
+		      (unsigned long)area, type);
+	  complaints += 1;
+	  area += 1;
+	  return (false);
+
+	case GC_NON_POINTER:
 	  area += 1;
 	  break;
+
+	case GC_CELL:
+	  if (! verify_tuple (object, 1, area))
+	    complaints += 1;
+	  area += 1;
+	  break;
+
+	case GC_PAIR:
+	  if (! verify_tuple (object, 2, area))
+	    complaints += 1;
+	  area += 1;
+	  break;
+
+	case GC_TRIPLE:
+	  if (! verify_tuple (object, 3, area))
+	    complaints += 1;
+	  area += 1;
+	  break;
+
+	case GC_QUADRUPLE:
+	  if (! verify_tuple (object, 4, area))
+	    complaints += 1;
+	  area += 1;
+	  break;
+
+	case GC_VECTOR:
+	  if (! verify_vector (object, area))
+	    complaints += 1;
+	  area += 1;
+	  break;
+
+	case GC_SPECIAL:
+	  switch (type)
+	    {
+	    case TC_BROKEN_HEART:
+	      /* These are not a problem??? */
+#if 0
+	      outf_error ("%#lx: Invalid broken-heart\n", (unsigned long)area);
+	      complaints += 1;
+#endif
+	      area += 1;
+	      break;
+
+	    case TC_REFERENCE_TRAP:
+	      if ((OBJECT_DATUM (object)) > TRAP_MAX_IMMEDIATE)
+		{
+		  if (! (verify_object (MEMORY_REF (object, 0))
+			 && verify_object (MEMORY_REF (object, 1))))
+		    {
+		      outf_error ("%#lx: Invalid reference trap\n",
+				  (unsigned long)area);
+		      complaints += 1;
+		    }
+		}
+	      area += 1;
+	      break;
+
+	    case TC_LINKAGE_SECTION:
+	      {
+		linkage_section_type_t section_type
+		  = ((linkage_section_type_t)((OBJECT_DATUM (object)) >> 16));
+		switch (section_type)
+		  {
+		  case LINKAGE_SECTION_TYPE_GLOBAL_OPERATOR:
+		  case LINKAGE_SECTION_TYPE_OPERATOR:
+		    {
+		      unsigned long n_words
+			= ((OBJECT_DATUM (object)) & 0xFFFFUL);
+		      SCHEME_OBJECT * next = area + (1 + n_words);
+		      if (next > end)
+			{
+			  outf_error ("%#lx: Invalid linkage section size %ld\n",
+				      (unsigned long)area, n_words);
+			  return (false);
+			}
+		      else if (n_words > 1000)
+			{
+			  outf_error
+			    ("%#lx: Extraordinary linkage section size %ld\n",
+			     (unsigned long)area, n_words);
+			}
+		      area = next;
+		    }
+		    break;
+		  case LINKAGE_SECTION_TYPE_REFERENCE:
+		  case LINKAGE_SECTION_TYPE_ASSIGNMENT:
+		    area += 1;
+		    break;
+		  default:
+		    outf_error ("%#lx: Invalid linkage section type %#x\n",
+				(unsigned long)area, section_type);
+		    complaints += 1;
+		    area += 1;
+		    break;
+		  }
+	      }
+	      break;
+
+	    case TC_MANIFEST_CLOSURE:
+	      area = compiled_closure_objects (area + 1);
+	      break;
+
+	    case TC_MANIFEST_NM_VECTOR:
+	      {
+		unsigned long n_words = (OBJECT_DATUM (object));
+		SCHEME_OBJECT * next = area + (1 + n_words);
+		if (next > end)
+		  {
+		    outf_error ("%#lx: Invalid nm-vector size %ld\n",
+				(unsigned long)area, n_words);
+		    return (false);
+		  }
+		else if (n_words > 1000000)
+		  {
+		    outf_error ("%#lx: Extraordinary nm-vector size %ld\n",
+				(unsigned long)area, n_words);
+		  }
+		area = next;
+	      }
+	      break;
+	      
+	    default:
+	      outf_error ("%#lx: Invalid special\n", (unsigned long)area);
+	      complaints += 1;
+	      area += 1;
+	      break;
+	    }
+	  break;
+
+#ifdef CC_SUPPORT_P
+	case GC_COMPILED:
+	  if (! verify_compiled (object, area))
+	    complaints += 1;
+	  area += 1;
+	  break;
+#endif
+
+	default:
+	  outf_error ("%#lx: unknown gc type code %#x\n",
+		      (unsigned long)area, gc_type_code (type));
+	  complaints += 1;
 	}
     }
+
   if (area != end)
     {
       outf_error ("%#lx: Invalid end address\n", (unsigned long)area);
