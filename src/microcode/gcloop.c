@@ -442,12 +442,22 @@ DEFINE_GC_TUPLE_HANDLER (gc_tuple)
 {
   SCHEME_OBJECT * from = (OBJECT_ADDRESS (tuple));
   SCHEME_OBJECT * new_address = (GC_PRECHECK_FROM (from));
+  if (new_address == 0) {
+    new_address = GC_TRANSPORT_WORDS (from, n_words, false);
+    /* A little hack to localize lists.  Transport CDRs eagerly. */
+    if (n_words == 2) {
+      SCHEME_OBJECT cdr = READ_TOSPACE(new_address + CONS_CDR);
+      while (OBJECT_TYPE(cdr) == TC_LIST &&
+             (GC_PRECHECK_FROM(OBJECT_ADDRESS(cdr)) == 0)) {
+        cdr = READ_TOSPACE(GC_TRANSPORT_WORDS(OBJECT_ADDRESS(cdr), 2, false) +
+                           CONS_CDR);
+      }
+    }
+  }
   return
-    (OBJECT_NEW_ADDRESS (tuple,
-			 ((new_address != 0)
-			  ? new_address
-			  : (GC_TRANSPORT_WORDS (from, n_words, false)))));
+      (OBJECT_NEW_ADDRESS(tuple, new_address));
 }
+
 
 DEFINE_GC_VECTOR_HANDLER (gc_vector)
 {
