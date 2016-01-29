@@ -49,6 +49,7 @@ it, and spawn a thread to update it after every
 
 (define (start-world-monitor buffer)
   (set-buffer-major-mode! buffer (ref-mode-object read-only))
+  (local-set-variable! truncate-lines #t buffer)
   (let ((registration #f)
 	(report #f)
 	(thread-flags (list (cons (current-thread) "edwin"))))
