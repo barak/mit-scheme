@@ -34,7 +34,7 @@ make_read_only "${CHANGELOG}"
 notify "Creating the distribution directory"
 new_temp_dir "${DIST_DIR}"
 my_cp "${CHANGELOG}" "${DIST_DIR}"/.
-for FILE in src doc dist/Makefile; do
+for FILE in src tests doc dist/Makefile; do
     my_cp "${SOURCE_TREE}"/"${FILE}" "${DIST_DIR}"/.
 done
 my_mkdir "${DIST_DIR}"/etc
