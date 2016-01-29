@@ -107,8 +107,8 @@ initialize_interrupt_mask_vector (void)
   return (v);
 }
 
-/* setup_interrupt is called from the Interrupt macro to do all of the
-   setup for calling the user's interrupt routines. */
+/* setup_interrupt is called from the SIGNAL_INTERRUPT macro to do all
+   of the setup for calling the user's interrupt routines. */
 
 void
 setup_interrupt (unsigned long masked_interrupts)
@@ -788,7 +788,7 @@ copy_history (SCHEME_OBJECT hist_obj)
 {
   unsigned long space_left, vert_type, rib_type;
   SCHEME_OBJECT new_hunk, * last_hunk, * hist_ptr, * orig_hist, temp;
-  SCHEME_OBJECT * orig_rib, * source_rib, * rib_slot;
+  SCHEME_OBJECT * orig_rib, * source_rib, * rib_slot, * free;
 
   assert (HUNK3_P (hist_obj));
 
@@ -801,6 +801,7 @@ copy_history (SCHEME_OBJECT hist_obj)
   orig_hist = (OBJECT_ADDRESS (hist_obj));
   hist_ptr = orig_hist;
   last_hunk = (heap_end - 3);
+  free = Free;
 
   do
     {
@@ -809,14 +810,14 @@ copy_history (SCHEME_OBJECT hist_obj)
 	return (SHARP_F);
       space_left -= 3;
 
-      new_hunk = (MAKE_POINTER_OBJECT (vert_type, Free));
+      new_hunk = (MAKE_POINTER_OBJECT (vert_type, free));
       (last_hunk[HIST_NEXT_SUBPROBLEM]) = new_hunk;
 
-      (Free[HIST_PREV_SUBPROBLEM])
+      (free[HIST_PREV_SUBPROBLEM])
 	= (MAKE_POINTER_OBJECT ((OBJECT_TYPE (hist_ptr[HIST_PREV_SUBPROBLEM])),
 				last_hunk));
-      last_hunk = Free;
-      Free += 3;
+      last_hunk = free;
+      free += 3;
 
       /* Copy the rib. */
       temp = (hist_ptr[HIST_RIB]);
@@ -832,11 +833,11 @@ copy_history (SCHEME_OBJECT hist_obj)
 	    return (SHARP_F);
 	  space_left -= 3;
 
-	  (*rib_slot) = (MAKE_POINTER_OBJECT (rib_type, Free));
-	  (Free[RIB_EXP]) = (source_rib[RIB_EXP]);
-	  (Free[RIB_ENV]) = (source_rib[RIB_ENV]);
-	  rib_slot = (Free + RIB_NEXT_REDUCTION);
-	  Free += 3;
+	  (*rib_slot) = (MAKE_POINTER_OBJECT (rib_type, free));
+	  (free[RIB_EXP]) = (source_rib[RIB_EXP]);
+	  (free[RIB_ENV]) = (source_rib[RIB_ENV]);
+	  rib_slot = (free + RIB_NEXT_REDUCTION);
+	  free += 3;
 	  temp = (source_rib[RIB_NEXT_REDUCTION]);
 	  rib_type = (OBJECT_TYPE (temp));
 	  source_rib = (OBJECT_ADDRESS (temp));
@@ -857,6 +858,7 @@ copy_history (SCHEME_OBJECT hist_obj)
 	      (MAKE_POINTER_OBJECT
 	       ((OBJECT_TYPE (hist_ptr[HIST_PREV_SUBPROBLEM])),
 		last_hunk)));
+  Free = free;
   return (new_hunk);
 }
 
