@@ -806,9 +806,13 @@ dump_object (SCHEME_OBJECT * addr)
   outf_error ("\n");
   {
     SCHEME_OBJECT * end = next_addr (addr);
+    if (end > Free)
+      end = Free;
     while (++addr < end)
       dump_word (addr);
   }
+  if (addr == Free)
+    outf_error ("%#lx: Free\n", (unsigned long)addr);
 }
 
 #define SAVE_COUNT 16
@@ -885,21 +889,25 @@ verify_object (SCHEME_OBJECT object)
    || ((heap_start <= (address)) && ((address) < Free)))
 
 static bool
-verify_tuple (SCHEME_OBJECT object, int size, SCHEME_OBJECT * address)
+verify_tuple (SCHEME_OBJECT object, int size, const char * name,
+	      unsigned long address)
 {
-  int i = 0;
+  SCHEME_OBJECT * location;
+  int i;
+
+  location = OBJECT_ADDRESS (object);
+  if (! (VALID_ADDRESS_P (location)))
+    {
+      outf_error ("%#lx: Invalid %s\n", address, name);
+      return (false);
+    }
+  i = 0;
   while (i < size)
     {
       SCHEME_OBJECT * slot = MEMORY_LOC (object, i);
       if (! ((VALID_ADDRESS_P (slot)) && verify_object (*slot)))
 	{
-	  outf_error ("%#lx: Invalid %s\n",
-		      (unsigned long)address,
-		      (size == 1 ? "cell"
-		       : size == 2 ? "pair"
-		       : size == 3 ? "triple"
-		       : size == 4 ? "quadruple"
-		       : "tuple"));
+	  outf_error ("%#lx: Invalid %s (word %d)\n", address, name, i);
 	  return (false);
 	}
       i += 1;
@@ -908,50 +916,92 @@ verify_tuple (SCHEME_OBJECT object, int size, SCHEME_OBJECT * address)
 }
 
 static bool
-verify_vector (SCHEME_OBJECT object, SCHEME_OBJECT * address)
+verify_vector (SCHEME_OBJECT object, unsigned long address)
 {
-  unsigned long header = MEMORY_REF(object, 0);
-  unsigned long length = OBJECT_DATUM(header);
-  unsigned int header_type = OBJECT_TYPE (header);
+  unsigned long header, length;
+  unsigned int header_type;
+  SCHEME_OBJECT * location;
+
+  location = OBJECT_ADDRESS (object);
+  if (! (VALID_ADDRESS_P (location)))
+    {
+      outf_error ("%#lx: Invalid vector\n", address);
+      return (false);
+    }
+  header = MEMORY_REF (object, 0);
+  length = OBJECT_DATUM (header);
+  header_type = OBJECT_TYPE (header);
   if (header_type != TC_MANIFEST_VECTOR
       && header_type != TC_MANIFEST_NM_VECTOR)
     {
-      outf_error ("%#lx: Invalid vector\n", (unsigned long)address);
+      outf_error ("%#lx: Invalid vector header\n", address);
       return (false);
     }
+  if (! (VALID_ADDRESS_P (location + length)))
+    {
+      outf_error ("%#lx: Invalid vector length\n", address);
+      return (false);
+    }
+  /* Double-check each element? */
   if (length > 1000000)
     {
-      outf_error ("%#lx: Extraordinary vector size %ld\n",
-		  (unsigned long)address, length);
+      outf_error ("%#lx: Extraordinary vector size: %ld\n", address, length);
     }
   return (true);
 }
 
 #ifdef CC_SUPPORT_P
 static bool
-verify_compiled (SCHEME_OBJECT object, SCHEME_OBJECT * address)
+verify_compiled (SCHEME_OBJECT object, unsigned long address)
 {
-  SCHEME_OBJECT * block;
-  SCHEME_OBJECT header;
-  unsigned int header_type;
+  insn_t * block;
+
   if (! (VALID_ADDRESS_P (OBJECT_ADDRESS (object))))
     {
-      outf_error ("%#lx: Invalid entry\n", (unsigned long)address);
+      outf_error ("%#lx: Invalid entry\n", address);
       return (false);
     }
-  block = cc_entry_to_block_address (object);
-  if (! (VALID_ADDRESS_P (block)))
+  /* block = cc_entry_to_block_address (object);  too many SIGSEGVs! */
+  block = CC_ENTRY_ADDRESS (object);
+  while (1)
     {
-      outf_error ("%#lx: Invalid entry block\n", (unsigned long)address);
-      return (false);
-    }
-  header = *block;
-  header_type = OBJECT_TYPE(header);
-  if (! (header_type == TC_MANIFEST_VECTOR
-	 || header_type == TC_MANIFEST_CLOSURE))
-    {
-      outf_error ("%#lx: Invalid entry block header\n", (unsigned long)address);
-      return (false);
+      cc_entry_offset_t ceo;
+      if (read_cc_entry_offset ((&ceo), block))
+	{
+	  outf_error ("%#lx: Invalid entry format\n", address);
+	  return (false);
+	}
+      assert (ceo.offset > 0);
+      block -= (ceo.offset);
+      if (! (VALID_ADDRESS_P ((SCHEME_OBJECT *)block)))
+	{
+	  outf_error ("%#lx: Invalid entry offset\n", address);
+	  return (false);
+	}
+      if (! (ceo.continued_p))
+	{
+	  unsigned int header_type;
+
+	  if ((unsigned long)block % sizeof (SCHEME_OBJECT) != 0)
+	    {
+	      outf_error ("%#lx: Invalid block alignment\n", address);
+	      return (false);
+	    }
+	  if ((CC_BLOCK_ADDR_END ((SCHEME_OBJECT *) block))
+	      < ((SCHEME_OBJECT *) (CC_ENTRY_ADDRESS (object))))
+	    {
+	      outf_error ("%#lx: Invalid block size\n", address);
+	      return (false);
+	    }
+	  header_type = OBJECT_TYPE(*block);
+	  if (! (header_type == TC_MANIFEST_VECTOR
+		 || header_type == TC_MANIFEST_CLOSURE))
+	    {
+	      outf_error ("%#lx: Invalid block header\n", address);
+	      return (false);
+	    }
+	  break;
+	}
     }
   return (true);
 }
@@ -981,31 +1031,31 @@ verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
 	  break;
 
 	case GC_CELL:
-	  if (! verify_tuple (object, 1, area))
+	  if (! verify_tuple (object, 1, "cell", (unsigned long)area))
 	    complaints += 1;
 	  area += 1;
 	  break;
 
 	case GC_PAIR:
-	  if (! verify_tuple (object, 2, area))
+	  if (! verify_tuple (object, 2, "pair", (unsigned long)area))
 	    complaints += 1;
 	  area += 1;
 	  break;
 
 	case GC_TRIPLE:
-	  if (! verify_tuple (object, 3, area))
+	  if (! verify_tuple (object, 3, "triple", (unsigned long)area))
 	    complaints += 1;
 	  area += 1;
 	  break;
 
 	case GC_QUADRUPLE:
-	  if (! verify_tuple (object, 4, area))
+	  if (! verify_tuple (object, 4, "quadruple", (unsigned long)area))
 	    complaints += 1;
 	  area += 1;
 	  break;
 
 	case GC_VECTOR:
-	  if (! verify_vector (object, area))
+	  if (! verify_vector (object, (unsigned long)area))
 	    complaints += 1;
 	  area += 1;
 	  break;
@@ -1050,14 +1100,14 @@ verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
 		      SCHEME_OBJECT * next = area + (1 + n_words);
 		      if (next > end)
 			{
-			  outf_error ("%#lx: Invalid linkage section size %ld\n",
+			  outf_error ("%#lx: Invalid linkage section size: %ld\n",
 				      (unsigned long)area, n_words);
 			  return (false);
 			}
 		      else if (n_words > 1000)
 			{
 			  outf_error
-			    ("%#lx: Extraordinary linkage section size %ld\n",
+			    ("%#lx: Extraordinary linkage section size: %ld\n",
 			     (unsigned long)area, n_words);
 			}
 		      area = next;
@@ -1068,7 +1118,7 @@ verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
 		    area += 1;
 		    break;
 		  default:
-		    outf_error ("%#lx: Invalid linkage section type %#x\n",
+		    outf_error ("%#lx: Invalid linkage section type: %#x\n",
 				(unsigned long)area, section_type);
 		    complaints += 1;
 		    area += 1;
@@ -1087,13 +1137,13 @@ verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
 		SCHEME_OBJECT * next = area + (1 + n_words);
 		if (next > end)
 		  {
-		    outf_error ("%#lx: Invalid nm-vector size %ld\n",
+		    outf_error ("%#lx: Invalid nm-vector size: %ld\n",
 				(unsigned long)area, n_words);
 		    return (false);
 		  }
 		else if (n_words > 1000000)
 		  {
-		    outf_error ("%#lx: Extraordinary nm-vector size %ld\n",
+		    outf_error ("%#lx: Extraordinary nm-vector size: %ld\n",
 				(unsigned long)area, n_words);
 		  }
 		area = next;
@@ -1110,14 +1160,14 @@ verify_heap_area (const char * name, SCHEME_OBJECT * area, SCHEME_OBJECT * end)
 
 #ifdef CC_SUPPORT_P
 	case GC_COMPILED:
-	  if (! verify_compiled (object, area))
+	  if (! verify_compiled (object, (unsigned long)area))
 	    complaints += 1;
 	  area += 1;
 	  break;
 #endif
 
 	default:
-	  outf_error ("%#lx: unknown gc type code %#x\n",
+	  outf_error ("%#lx: unknown gc type code: %#x\n",
 		      (unsigned long)area, gc_type_code (type));
 	  complaints += 1;
 	}
