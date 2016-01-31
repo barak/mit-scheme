@@ -31,15 +31,6 @@ USA.
 #include "osfile.h"
 #include "osfs.h"
 #include "osio.h"
-
-#define STRING_RESULT(expression) do					\
-{									\
-  const char * result = (expression);					\
-  PRIMITIVE_RETURN							\
-    ((result == 0)							\
-     ? SHARP_F								\
-     : (char_pointer_to_string (result)));				\
-} while (0)
 
 DEFINE_PRIMITIVE ("FILE-EXISTS?", Prim_file_exists_p, 1, 1,
   "Return #T iff FILENAME refers to an existing file.\n\
@@ -134,7 +125,12 @@ Otherwise #F is returned, meaning either that FILENAME doesn't exist\n\
  or that it isn't a soft link.")
 {
   PRIMITIVE_HEADER (1);
-  STRING_RESULT (OS_file_soft_link_p (STRING_ARG (1)));
+  {
+    const char * result = (OS_file_soft_link_p (STRING_ARG (1)));
+    PRIMITIVE_RETURN ((result == 0)
+		      ? SHARP_F
+		      : (char_pointer_to_string (result)));
+  }
 }
 
 DEFINE_PRIMITIVE ("FILE-REMOVE", Prim_file_remove, 1, 1,
@@ -299,15 +295,30 @@ DEFINE_PRIMITIVE ("NEW-DIRECTORY-READ", Prim_new_directory_read, 1, 1,
   "Read and return a filename from DIRECTORY, or #F if no more files.")
 {
   PRIMITIVE_HEADER (1);
-  STRING_RESULT (OS_directory_read (arg_directory_index (1)));
+  {
+    const char * result = (OS_directory_read (arg_directory_index (1)));
+    PRIMITIVE_RETURN ((result == 0)
+		      ? SHARP_F
+		      /* NAME_MAX is a fraction of the reserve, and a
+			 retry after aborting for GC will skip this entry. */
+		      : (char_pointer_to_string_no_gc (result)));
+  }
 }
 
-DEFINE_PRIMITIVE ("NEW-DIRECTORY-READ-MATCHING", Prim_new_directory_read_match, 2, 2,
+DEFINE_PRIMITIVE ("NEW-DIRECTORY-READ-MATCHING",
+		  Prim_new_directory_read_match, 2, 2,
   "Read and return a filename from DIRECTORY.\n\
 The filename must begin with the STRING.\n\
 Return #F if there are no more matching files in the directory.")
 {
   PRIMITIVE_HEADER (2);
-  STRING_RESULT
-    (OS_directory_read_matching ((arg_directory_index (1)), (STRING_ARG (2))));
+  {
+    const char * result = (OS_directory_read_matching
+			   ((arg_directory_index (1)), (STRING_ARG (2))));
+    PRIMITIVE_RETURN
+      ((result == 0) ? SHARP_F
+       /* NAME_MAX is a fraction of the reserve, and a retry after
+	  aborting for GC will skip this match. */
+       : (char_pointer_to_string_no_gc (result)));
+  }
 }
