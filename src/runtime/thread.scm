@@ -1202,10 +1202,13 @@ USA.
   (without-interrupts
    (lambda ()
      (and (not (thread-mutex/owner mutex))
-	  (let ((thread (current-thread)))
-	    (set-thread-mutex/owner! mutex thread)
-	    (add-thread-mutex! thread mutex)
-	    #t)))))
+	  (let ((thread first-running-thread))
+	    ;; GC daemons may use this when there is no current thread.
+	    (and thread
+		 (begin
+		   (set-thread-mutex/owner! mutex thread)
+		   (add-thread-mutex! thread mutex)
+		   #t)))))))
 
 (define (with-thread-mutex-lock mutex thunk)
   (guarantee-thread-mutex mutex 'WITH-THREAD-MUTEX-LOCK)
