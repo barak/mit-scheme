@@ -114,12 +114,14 @@ USA.
 	(let ((thread (weak-car entry))
 	      (event (weak-cdr entry)))
 	  (if (and thread event)
-	      (signal-thread-event
-		  thread
-		(named-lambda (gc-event)
-		  (abort-if-heap-low (gc-statistic/heap-left statistic))
-		  (event statistic))
-		#t))))
+	      (without-interrupts
+	       (lambda ()
+		 (if (not (eq? 'DEAD (thread-execution-state thread)))
+		     (%signal-thread-event
+		         thread
+		       (named-lambda (gc-event)
+			 (abort-if-heap-low (gc-statistic/heap-left statistic))
+			 (event statistic)))))))))
       gc-events)))
 
 (define (weak-assq obj alist)

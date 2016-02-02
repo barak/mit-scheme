@@ -2036,6 +2036,8 @@ USA.
 	  with-gc-notification!)
   (export (runtime thread)
 	  %deregister-gc-event)
+  (import (runtime thread)
+	  %signal-thread-event)
   (initialization (initialize-package!)))
 
 (define-package (runtime gc-statistics)
@@ -2482,6 +2484,8 @@ USA.
 	  generate-suspend-file?)
   (export (runtime swank)
 	  keyboard-interrupt-vector)
+  (import (runtime thread)
+	  %signal-thread-event)
   (initialization (initialize-package!)))
 
 (define-package (runtime lambda-abstraction)

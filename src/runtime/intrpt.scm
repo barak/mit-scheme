@@ -136,9 +136,11 @@ USA.
   (clear-interrupts! interrupt-bit/global-3)
   (cond ((console-thread)
          => (lambda (thread)
-              (signal-thread-event thread
-                (lambda ()
-                  (event-distributor/invoke! event:console-resize)))))))
+	      (without-interrupts
+	       (lambda ()
+		 (%signal-thread-event thread
+		   (lambda ()
+		     (event-distributor/invoke! event:console-resize)))))))))
 
 (define ((illegal-interrupt-handler interrupt-bit)
 	 interrupt-code interrupt-enables)
@@ -191,7 +193,7 @@ USA.
 (define (signal-interrupt hook/interrupt hook/clean-input char interrupt)
   (let ((thread (thread-mutex-owner (port/thread-mutex console-i/o-port))))
     (if thread
-	(signal-thread-event thread
+	(%signal-thread-event thread
 	  (lambda ()
 	    (if hook/interrupt
 		(hook/interrupt))
@@ -244,7 +246,7 @@ USA.
 	(vector-set! system-interrupt-vector character-slot
 		     external-interrupt-handler)
 	(vector-set! interrupt-mask-vector character-slot
-		     interrupt-mask/timer-ok)
+		     interrupt-mask/gc-ok)
 
 	(vector-set! system-interrupt-vector after-gc-slot
 		     after-gc-interrupt-handler)
