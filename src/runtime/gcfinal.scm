@@ -205,20 +205,25 @@ USA.
    (lambda ()
      (walk-gc-finalizers-list/unsafe
       (lambda (finalizer)
-	(with-finalizer-lock finalizer
+	(with-thread-mutex-try-lock
+	    (gc-finalizer-mutex finalizer)
 	  (lambda ()
-	    (let ((procedure (gc-finalizer-procedure finalizer)))
-	      (let loop ((items (gc-finalizer-items finalizer)) (prev #f))
-		(if (pair? items)
-		    (if (weak-pair/car? (car items))
-			(loop (cdr items) items)
-			(let ((context (weak-cdr (car items)))
-			      (next (cdr items)))
-			  (if prev
-			      (set-cdr! prev next)
-			      (set-gc-finalizer-items! finalizer next))
-			  (procedure context)
-			  (loop next prev)))))))))))
+	    (without-interruption
+	     (lambda ()
+	       (let ((procedure (gc-finalizer-procedure finalizer)))
+		 (let loop ((items (gc-finalizer-items finalizer)) (prev #f))
+		   (if (pair? items)
+		       (if (weak-pair/car? (car items))
+			   (loop (cdr items) items)
+			   (let ((context (weak-cdr (car items)))
+				 (next (cdr items)))
+			     (if prev
+				 (set-cdr! prev next)
+				 (set-gc-finalizer-items! finalizer next))
+			     (procedure context)
+			     (loop next prev)))))))))
+	  (lambda ()
+	    unspecific)))))
    (lambda ()
      unspecific)))
 
