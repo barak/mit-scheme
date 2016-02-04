@@ -62,7 +62,9 @@ USA.
 	    (load (pathname-new-type name "sf"))
 	    (echo-cref-output name)
 	    (load (pathname-new-type name "cbf")))
-	  (load "compile")))))
+	  (load "compile"))))
+  ;; Run secondary GC daemons and whatnot.
+  (gc-clean))
 
 (define (echo-cref-output name)
   (let ((cref-output-file (pathname-new-type (package-set-pathname name) "crf")))

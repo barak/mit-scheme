@@ -30,10 +30,13 @@ set -e
 
 . etc/functions.sh
 
+HOST_ARCH=`echo "(display microcode-id/compiled-code-type)" \
+		 | ${@} --batch-mode`
+
 # To avoid miscuing GNU Emacs's compilation-mode.
 mydate ()
 {
-  date "+%Y-%m-%d %H-%M-%S"
+  date "+%Y-%m-%d %H.%M.%S"
 }
 
 echo "# `mydate`: Remove the cross-compiler's bands and stash its products."
@@ -107,15 +110,15 @@ if [ "${FAST}" ]; then
     # the host system is native, this will be much faster than using the
     # svm but will not compile by-procedures.
 
-    # Compilation of edwin/snr.bin aborted "out of memory" with --heap
-    # 9000 on i386.  That is as large a heap as can be allocated with
-    # all.com onboard, but HEAP is for x-compiler.com which is a
-    # megaword smaller.
-    HEAP=10000
+    if [ "$HOST_ARCH" = "i386" ]; then
+	HEAP="--heap 12000"
+    else
+	HEAP=""
+    fi
 
     echo "# `mydate`: Re-cross-compile everything."
     run_cmd "${@}" --batch-mode --library lib \
-		   --band x-compiler.com --heap ${HEAP} <<EOF
+		   --band x-compiler.com ${HEAP} <<EOF
 (begin
   (load "etc/compile")
   (fluid-let ((compiler:generate-lap-files? #t)
@@ -133,7 +136,7 @@ EOF
     # Use a large heap for all that s-code!
     run_cmd_in_dir runtime \
 	../microcode/scheme --batch-mode --library ../lib \
-			    --fasl make.bin --heap ${HEAP} <<EOF
+			    --fasl make.bin ${HEAP} <<EOF
 (begin
   (load "../compiler/base/crsend")
   (finish-cross-compilation:directory ".."))
@@ -150,11 +153,15 @@ fi
 
 # Compilation of machines/svm/assembler-db.bin aborted "out of
 # memory" with --heap 8000 on i386 and x86-64.
-HEAP=9000
+if [ "$HOST_ARCH" = "i386" ]; then
+    HEAP="--heap 9000"
+else
+    HEAP=""
+fi
 
 echo "# `mydate`: Re-cross-compile boot-dirs."
 run_cmd "${@}" --batch-mode --library lib \
-    --band x-compiler.com --heap ${HEAP} <<EOF
+    --band x-compiler.com ${HEAP} <<EOF
 (begin
   (load "etc/compile")
   (fluid-let ((compiler:generate-lap-files? #f)
@@ -192,7 +199,7 @@ run_cmd ./Stage.sh make-clean 0
 
 echo "# `mydate`: Use the new machine and compiler to re-compile everything."
 run_cmd ./microcode/scheme --batch-mode --library lib \
-    --band boot-compiler.com --heap ${HEAP} <<EOF
+    --band boot-compiler.com ${HEAP} <<EOF
 (begin
   (load "etc/compile")
   (fluid-let ((compiler:generate-lap-files? #f)
