@@ -1991,7 +1991,7 @@ USA.
   (export (runtime error-handler)
 	  hook/hardware-trap)
   (export (runtime gc-notification)
-	  abort-if-heap-low)
+	  abort-heap-low)
   (initialization (initialize-package!)))
 
 (define-package (runtime gc-daemons)

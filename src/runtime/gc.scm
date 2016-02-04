@@ -120,24 +120,23 @@ USA.
   (hook/gc-finish start-value space-remaining)
   ((ucode-primitive request-interrupts! 1) interrupt-bit/after-gc))
 
-(define (abort-if-heap-low space-remaining)
-  (if (< space-remaining 4096)
-      (if gc-boot-loading?
-	  (let ((console ((ucode-primitive tty-output-channel 0))))
-	    ((ucode-primitive channel-write 4)
-	     console
-	     gc-boot-death-message
-	     0
-	     ((ucode-primitive string-length 1) gc-boot-death-message))
-	    ((ucode-primitive exit-with-value 1) #x14))
-	  (abort->nearest
-	   (cmdl-message/append
-	    (cmdl-message/strings "Aborting!: out of memory")
-	    ;; Clean up whatever possible to avoid a reoccurrence.
-	    (cmdl-message/active
-	     (lambda (port)
-	       port
-	       (with-gc-notification! #t gc-clean))))))))
+(define (abort-heap-low)
+  (if gc-boot-loading?
+      (let ((console ((ucode-primitive tty-output-channel 0))))
+	((ucode-primitive channel-write 4)
+	 console
+	 gc-boot-death-message
+	 0
+	 ((ucode-primitive string-length 1) gc-boot-death-message))
+	((ucode-primitive exit-with-value 1) #x14))
+      (abort->nearest
+       (cmdl-message/append
+	(cmdl-message/strings "Aborting!: out of memory")
+	;; Clean up whatever possible to avoid a reoccurrence.
+	(cmdl-message/active
+	 (lambda (port)
+	   port
+	   (with-gc-notification! #t gc-clean)))))))
 
 (define gc-boot-loading?)
 
