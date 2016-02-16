@@ -2037,6 +2037,7 @@ USA.
   (export (runtime thread)
 	  %deregister-gc-event)
   (import (runtime thread)
+	  %maybe-toggle-thread-timer
 	  %signal-thread-event)
   (initialization (initialize-package!)))
 
@@ -2484,8 +2485,6 @@ USA.
 	  generate-suspend-file?)
   (export (runtime swank)
 	  keyboard-interrupt-vector)
-  (import (runtime thread)
-	  %signal-thread-event)
   (initialization (initialize-package!)))
 
 (define-package (runtime lambda-abstraction)
@@ -3908,6 +3907,7 @@ USA.
 	  deregister-subprocess-events
 	  %handle-subprocess-status-change)
   (import (runtime thread)
+	  %maybe-toggle-thread-timer
 	  %signal-thread-event
 	  subprocess-registrations
 	  subprocess-support-loaded?)

@@ -282,7 +282,10 @@ USA.
 	 (if (not (eq? status current))
 	     (begin
 	       (%signal-thread-event
-		thread (and event (lambda () (event current))))
+		thread (and event
+			    (named-lambda (immediate-subprocess-status-event)
+			      (event current))))
+	       (%maybe-toggle-thread-timer)
 	       (set-subprocess-registration/status! registration current))))))
     registration))
 
@@ -321,7 +324,7 @@ USA.
 
 (define (%handle-subprocess-status-change)
   (if ((ucode-primitive process-status-sync-all 0))
-      (begin
+      (let ((signaled? #f))
 	(for-each (lambda (weak)
 		    (let ((subprocess (weak-car weak)))
 		      (if subprocess
@@ -336,7 +339,10 @@ USA.
 		  (let ((event (subprocess-registration/event registration)))
 		    (%signal-thread-event
 		     (subprocess-registration/thread registration)
-		     (and event (lambda () (event status))))
+		     (and event
+			  (named-lambda (subprocess-status-event)
+			    (event status))))
+		    (set! signaled? #t)
 		    (set-subprocess-registration/status! registration
 							 status)))))
 	  subprocess-registrations)
@@ -346,7 +352,8 @@ USA.
 				(subprocess-registration/status registration)))
 			   (not (or (eq? status 'EXITED)
 				    (eq? status 'SIGNALLED)))))
-		       subprocess-registrations)))))
+		       subprocess-registrations))
+	(if signaled? (%maybe-toggle-thread-timer)))))
 
 (define-integrable subprocess-job-control-available?
   (ucode-primitive os-job-control? 0))
