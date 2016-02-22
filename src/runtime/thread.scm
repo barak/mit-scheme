@@ -173,7 +173,7 @@ USA.
     (add-to-population! thread-population thread)
     (thread-running thread)
     thread))
-
+
 (define-integrable (without-interrupts thunk)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (let ((value (thunk)))
@@ -212,16 +212,26 @@ USA.
      (lambda (return)
        (%within-continuation root-continuation #t
 	 (lambda ()
-	   (fluid-let ((state-space:local (make-state-space)))
-	     (call-with-current-continuation
-	       (lambda (continuation)
-		 (let ((thread (make-thread continuation)))
-		   (%within-continuation (let ((k return)) (set! return #f) k)
-					 #t
-					 (lambda () thread)))))
-	     (set-interrupt-enables! interrupt-mask/all)
-	     (exit-current-thread
-	      (with-create-thread-continuation root-continuation thunk)))))))))
+	   (call-with-new-local-state-space
+	    (lambda ()
+	      (call-with-current-continuation
+		(lambda (continuation)
+		  (let ((thread (make-thread continuation)))
+		    (%within-continuation (let ((k return)) (set! return #f) k)
+					  #t
+					  (lambda () thread)))))
+	      (set-interrupt-enables! interrupt-mask/all)
+	      (exit-current-thread
+	       (with-create-thread-continuation root-continuation
+						thunk))))))))))
+
+(define (call-with-new-local-state-space thunk)
+  (let ((temp (make-state-space)))
+    (let ((swap!
+	   (lambda ()
+	     (set! state-space:local (set! temp (set! state-space:local)))
+	     unspecific)))
+      (shallow-fluid-bind swap! thunk swap!))))
 
 (define (create-thread-continuation)
   (fluid root-continuation-default))
@@ -294,7 +304,7 @@ USA.
       (begin
 	(set! last-running-thread #f)
 	(wait-for-io))))
-
+
 (define (run-thread thread)
   (let ((continuation (thread/continuation thread))
 	(fp-env (thread/floating-point-environment thread)))
@@ -311,7 +321,7 @@ USA.
 	(handle-thread-events thread)
 	(set-thread/block-events?! thread #f)))
   (%maybe-toggle-thread-timer))
-
+
 (define (suspend-current-thread)
   (without-interrupts %suspend-current-thread))
 
@@ -417,7 +427,7 @@ USA.
 					(- (system-times/real end)
 					   (system-times/real start))))
 	      (set-thread/start-times! thread #f))))))
-
+
 (define (yield-current-thread)
   (without-interrupts
    (lambda ()
@@ -542,6 +552,34 @@ USA.
   prev
   next)
 
+(define (delete-tentry! tentry)
+  (let ((dentry (tentry/dentry tentry))
+	(prev (tentry/prev tentry))
+	(next (tentry/next tentry)))
+    (set-tentry/dentry! tentry #f)
+    (set-tentry/thread! tentry #f)
+    (set-tentry/event! tentry #f)
+    (set-tentry/prev! tentry #f)
+    (set-tentry/next! tentry #f)
+    (if prev
+	(set-tentry/next! prev next)
+	(set-dentry/first-tentry! dentry next))
+    (if next
+	(set-tentry/prev! next prev)
+	(set-dentry/last-tentry! dentry prev))
+    (if (not (or prev next))
+	(begin
+	  (remove-from-select-registry! io-registry
+					(dentry/descriptor dentry)
+					(dentry/mode dentry))
+	  (let ((prev (dentry/prev dentry))
+		(next (dentry/next dentry)))
+	    (if prev
+		(set-dentry/next! prev next)
+		(set! io-registrations next))
+	    (if next
+		(set-dentry/prev! next prev)))))))
+
 (define (wait-for-io)
   (%maybe-toggle-thread-timer #f)
   (let ((catch-errors
@@ -572,7 +610,7 @@ USA.
 		(run-thread thread)
 		(%maybe-toggle-thread-timer))
 	    (wait-for-io))))))
-
+
 (define (signal-select-result result)
   (cond ((vector? result)
 	 (signal-io-thread-events (vector-ref result 0)
@@ -648,6 +686,36 @@ USA.
        (%maybe-toggle-thread-timer)
        registration))))
 
+(define (%register-io-thread-event descriptor mode thread event)
+  (let ((tentry (make-tentry thread event)))
+    (let loop ((dentry io-registrations))
+      (cond ((not dentry)
+	     (let ((dentry
+		    (make-dentry descriptor
+				 mode
+				 tentry
+				 tentry
+				 #f
+				 io-registrations)))
+	       (set-tentry/dentry! tentry dentry)
+	       (set-tentry/prev! tentry #f)
+	       (set-tentry/next! tentry #f)
+	       (if io-registrations
+		   (set-dentry/prev! io-registrations dentry))
+	       (set! io-registrations dentry)
+	       (add-to-select-registry! io-registry descriptor mode)))
+	    ((and (eqv? descriptor (dentry/descriptor dentry))
+		  (eq? mode (dentry/mode dentry)))
+	     (set-tentry/dentry! tentry dentry)
+	     (let ((prev (dentry/last-tentry dentry)))
+	       (set-tentry/prev! tentry prev)
+	       (set-tentry/next! tentry #f)
+	       (set-dentry/last-tentry! dentry tentry)
+	       (set-tentry/next! prev tentry)))
+	    (else
+	     (loop (dentry/next dentry)))))
+    tentry))
+
 (define (deregister-io-thread-event registration)
   (if (and (pair? registration)
 	   (eq? (car registration) 'DEREGISTER-PERMANENT-IO-EVENT))
@@ -711,41 +779,11 @@ USA.
 	  (else
 	   (dloop (dentry/next dentry)))))
   (%maybe-toggle-thread-timer))
-
-(define (%register-io-thread-event descriptor mode thread event)
-  (let ((tentry (make-tentry thread event)))
-    (let loop ((dentry io-registrations))
-      (cond ((not dentry)
-	     (let ((dentry
-		    (make-dentry descriptor
-				 mode
-				 tentry
-				 tentry
-				 #f
-				 io-registrations)))
-	       (set-tentry/dentry! tentry dentry)
-	       (set-tentry/prev! tentry #f)
-	       (set-tentry/next! tentry #f)
-	       (if io-registrations
-		   (set-dentry/prev! io-registrations dentry))
-	       (set! io-registrations dentry)
-	       (add-to-select-registry! io-registry descriptor mode)))
-	    ((and (eqv? descriptor (dentry/descriptor dentry))
-		  (eq? mode (dentry/mode dentry)))
-	     (set-tentry/dentry! tentry dentry)
-	     (let ((prev (dentry/last-tentry dentry)))
-	       (set-tentry/prev! tentry prev)
-	       (set-tentry/next! tentry #f)
-	       (set-dentry/last-tentry! dentry tentry)
-	       (set-tentry/next! prev tentry)))
-	    (else
-	     (loop (dentry/next dentry)))))
-    tentry))
 
 (define (%deregister-io-thread-event tentry)
   (if (tentry/dentry tentry)
       (delete-tentry! tentry)))
-
+
 (define (%deregister-io-thread-events thread)
   (let loop ((dentry io-registrations) (tentries '()))
     (if (not dentry)
@@ -765,7 +803,7 @@ USA.
 (define (guarantee-select-mode mode procedure)
   (if (not (memq mode '(READ WRITE READ-WRITE)))
       (error:wrong-type-argument mode "select mode" procedure)))
-
+
 (define (signal-io-thread-events n vfd vmode)
   (let ((search
 	 (lambda (descriptor predicate)
@@ -802,34 +840,6 @@ USA.
 	  (do ((events events (cdr events)))
 	      ((not (pair? events)))
 	    (%signal-thread-event (caar events) (cdar events)))))))
-
-(define (delete-tentry! tentry)
-  (let ((dentry (tentry/dentry tentry))
-	(prev (tentry/prev tentry))
-	(next (tentry/next tentry)))
-    (set-tentry/dentry! tentry #f)
-    (set-tentry/thread! tentry #f)
-    (set-tentry/event! tentry #f)
-    (set-tentry/prev! tentry #f)
-    (set-tentry/next! tentry #f)
-    (if prev
-	(set-tentry/next! prev next)
-	(set-dentry/first-tentry! dentry next))
-    (if next
-	(set-tentry/prev! next prev)
-	(set-dentry/last-tentry! dentry prev))
-    (if (not (or prev next))
-	(begin
-	  (remove-from-select-registry! io-registry
-					(dentry/descriptor dentry)
-					(dentry/mode dentry))
-	  (let ((prev (dentry/prev dentry))
-		(next (dentry/next dentry)))
-	    (if prev
-		(set-dentry/next! prev next)
-		(set! io-registrations next))
-	    (if next
-		(set-dentry/prev! next prev)))))))
 
 ;;;; Events
 
@@ -1156,7 +1166,7 @@ USA.
 (define (thread-mutex-owner mutex)
   (guarantee-thread-mutex mutex 'THREAD-MUTEX-OWNER)
   (thread-mutex/owner mutex))
-
+
 (define (lock-thread-mutex mutex)
   (guarantee-thread-mutex mutex 'LOCK-THREAD-MUTEX)
   (without-interrupts
@@ -1247,9 +1257,7 @@ USA.
      (lambda ()
        (let ((owner (thread-mutex/owner mutex)))
 	 (if (eq? owner thread)
-	     (begin
-	       (set! grabbed-lock? #f)
-	       unspecific)
+	     (set! grabbed-lock? #f)
 	     (begin
 	       (set! grabbed-lock? #t)
 	       (%lock-thread-mutex mutex thread owner)))))
@@ -1339,7 +1347,7 @@ USA.
 	(condition-accessor condition-type:thread-deadlock 'OPERATOR))
   (set! thread-deadlock/operand
 	(condition-accessor condition-type:thread-deadlock 'OPERAND))
-
+
   (set! condition-type:thread-detached
 	(make-condition-type 'THREAD-DETACHED
 	    condition-type:thread-control-error
