@@ -993,7 +993,7 @@ verify_compiled (SCHEME_OBJECT object, unsigned long address)
 	      outf_error ("%#lx: Invalid block size\n", address);
 	      return (false);
 	    }
-	  header_type = OBJECT_TYPE(*block);
+	  header_type = OBJECT_TYPE(*((SCHEME_OBJECT *) block));
 	  if (! (header_type == TC_MANIFEST_VECTOR
 		 || header_type == TC_MANIFEST_CLOSURE))
 	    {

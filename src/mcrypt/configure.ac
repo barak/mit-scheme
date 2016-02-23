@@ -1,11 +1,13 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme mcrypt interface],
+AC_PREREQ([2.69])
+AC_INIT([MIT/GNU Scheme mcrypt plugin],
         [0.1],
         [bug-mit-scheme@gnu.org],
         [mit-scheme-mcrypt])
 AC_CONFIG_SRCDIR([mcrypt.pkg])
 AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_MACRO_DIR([m4])
 
 AC_COPYRIGHT(
 [Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
@@ -57,30 +59,31 @@ USA.
 
 */])
 
-AC_ARG_ENABLE([smp],
-    AS_HELP_STRING([---enable-smp],
-	[Support multi-processing if available [[yes]]]))
-: ${with_smp='no'}
+AM_INIT_AUTOMAKE
+
+AC_PROG_LIBTOOL
+AC_PROG_CC
+AC_PROG_CPP
+AC_PROG_INSTALL
 
 AC_CHECK_HEADER([mcrypt.h],[],[
     AC_MSG_ERROR([Header file <mcrypt.h> not found.])])
-
-dnl Check for SMP support (pthreads... ?).
-if test "${enable_smp}" != no; then
-    AC_CHECK_HEADER([pthread.h],
-	[
-	AC_DEFINE([ENABLE_SMP], [1],
-	    [Define to 1 for Symmetric MultiProcessing support.])
-	],
-	[AC_MSG_ERROR([Header file <pthread.h> not found.])])
-fi
 
 MCRYPT_CFLAGS=`libmcrypt-config --cflags`
 MCRYPT_LIBS=`libmcrypt-config --libs`
 CFLAGS="${MCRYPT_CFLAGS} ${CFLAGS}"
 LIBS="${LIBS} ${MCRYPT_LIBS}"
 
+: ${MIT_SCHEME_EXE=mit-scheme}
+MIT_SCHEME_ARCH=`echo "(display microcode-id/compiled-code-type)" \
+		 | ${MIT_SCHEME_EXE} --batch-mode`
+MIT_SCHEME_OS_SUFFIX=`echo "(display (microcode-id/operating-system-suffix))" \
+		 | ${MIT_SCHEME_EXE} --batch-mode`
+
 AC_SUBST([CFLAGS])
 AC_SUBST([LIBS])
+AC_SUBST([MIT_SCHEME_EXE])
+AC_SUBST([MIT_SCHEME_ARCH])
+AC_SUBST([MIT_SCHEME_OS_SUFFIX])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

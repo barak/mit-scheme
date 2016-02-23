@@ -104,6 +104,15 @@ USA.
 (define microcode-id/stack-type)
 (define microcode-id/machine-type)
 (define microcode-id/compiled-code-type)
+
+(define (microcode-id/operating-system-suffix #!optional os-type)
+  (case (if (default-object? os-type)
+	    microcode-id/operating-system
+	    os-type)
+    ((NT) "w32")
+    ((OS/2) "os2")
+    ((UNIX) "unx")
+    (else (error "Unknown operating system:" os-type))))
 
 (define-integrable fixed-objects-slot 15)
 (define non-object-slot)

@@ -1,11 +1,11 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([MIT/GNU Scheme blowfish plugin],
+AC_INIT([MIT/GNU Scheme test-ffi plugin],
         [0.1],
         [bug-mit-scheme@gnu.org],
-        [mit-scheme-blowfish])
-AC_CONFIG_SRCDIR([blowfish.pkg])
+        [mit-scheme-test-ffi])
+AC_CONFIG_SRCDIR([ffi-test.cdecl])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -64,46 +64,16 @@ AM_INIT_AUTOMAKE
 AC_PROG_LIBTOOL
 AC_PROG_CC
 AC_PROG_CPP
-AC_PROG_INSTALL
-
-AC_ARG_WITH([openssl],
-    AS_HELP_STRING([--with-openssl],
-	[Use OpenSSL crypto library if available [[yes]]]))
-: ${with_openssl='yes'}
 
 dnl Initialize libtool
 LT_PREREQ([2.2.6])
 LT_INIT([dlopen win32-dll])
 
-dnl The OpenSSL crypto library provides support for blowfish.
-if test "${with_openssl}" != no; then
-    if test "${with_openssl}" != yes; then
-	CPPFLAGS="${CPPFLAGS} -I${with_openssl}/include"
-	LDFLAGS="${LDFLAGS} -L${with_openssl}/lib"
-    fi
-    FOUND=
-    AC_CHECK_HEADERS([openssl/blowfish.h blowfish.h],[FOUND=yes])
-    if test -n "${FOUND}"; then
-	AC_CHECK_LIB([crypto], [BF_set_key],
-	    [
-	    AC_DEFINE([HAVE_LIBCRYPTO], [1],
-		[Define to 1 if you have the `crypto' library (-lcrypto).])
-	    LIBS="-lcrypto"
-	    ])
-    fi
-fi
-
-: ${MIT_SCHEME_EXE=mit-scheme}
+MIT_SCHEME_EXE="../../src/microcode/scheme --library ../../src/lib"
 MIT_SCHEME_ARCH=`echo "(display microcode-id/compiled-code-type)" \
 		 | ${MIT_SCHEME_EXE} --batch-mode`
-MIT_SCHEME_OS_SUFFIX=`echo "(display (microcode-id/operating-system-suffix))" \
-		 | ${MIT_SCHEME_EXE} --batch-mode`
 
-AC_SUBST([LIBS])
-AC_SUBST([CPPFLAGS])
-AC_SUBST([LDFLAGS])
 AC_SUBST([MIT_SCHEME_EXE])
 AC_SUBST([MIT_SCHEME_ARCH])
-AC_SUBST([MIT_SCHEME_OS_SUFFIX])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

@@ -120,7 +120,7 @@ MODULE_LIBS = -lc
 
 aux_PROGRAMS = @AUX_PROGRAMS@
 aux_LIBS = $(MODULE_TARGETS)
-aux_DATA = shim-config.scm @AUX_DATA@
+aux_DATA = @AUX_DATA@
 EXTRA_PROGRAMS = findprim
 
 scheme_SOURCES = $(STD_SOURCES) usrdef.c $(LIARC_SOURCES)
@@ -279,15 +279,6 @@ install-auxDATA: $(aux_DATA)
 	    fi; \
 	done
 	$(INSTALL_DATA) pruxffi.h $(DESTDIR)$(AUXDIR)/mit-scheme.h
-
-shim-config.scm:
-	@echo "Saving shim compile/link/install configuration."
-	@ ( echo "(QUOTE"; \
-	    echo " ((COMPILE-SHIM \"@CC@ @DEFS@ @SCHEME_DEFS@ @CPPFLAGS@\""; \
-	    echo "                \"@CFLAGS@ @MODULE_CFLAGS@\")"; \
-	    echo "  (LINK-SHIM \"@CCLD@ @LDFLAGS@\" \"@MODULE_LDFLAGS@\")"; \
-	    echo "  (INSTALL \"@INSTALL_DATA@\")"; \
-	    echo "  (INFODIR \"$(infodir)/\")))" ) >shim-config.scm
 
 install-include:
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)

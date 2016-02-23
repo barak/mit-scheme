@@ -32,7 +32,7 @@ USA.
       (fresh-line port)
       (write-string "make all in tests/ffi/" port)
       (newline port))
-    (let ((status (run-synchronous-subprocess "make" (list "all"))))
+    (let ((status (run-synchronous-subprocess "sh" '("./autobuild.sh"))))
       (if (not (zero? status))
 	  (begin
 	    (write-string "../tests/ffi/test-ffi.scm:0: Test FFI build failed."

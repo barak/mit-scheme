@@ -2878,6 +2878,7 @@ USA.
 	  microcode-id/machine-type
 	  microcode-id/operating-system
 	  microcode-id/operating-system-name
+  	  microcode-id/operating-system-suffix
 	  microcode-id/operating-system-variant
 	  microcode-id/stack-type
 	  microcode-id/tty-x-size
@@ -3394,11 +3395,8 @@ USA.
 	  de-register-c-callback
 	  outf-error
 	  generate-shim
-	  compile-shim
-	  link-shim
-	  install-shim
-	  install-load-option
-	  install-html)
+	  update-optiondb
+	  update-html-index)
   (initialization (initialize-package!)))
 
 (define-package (runtime program-copier)

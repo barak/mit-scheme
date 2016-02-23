@@ -1,0 +1,6 @@
+-*-Text-*-
+
+Please see the git commit log:
+
+$ git clone git://git.savannah.gnu.org/mit-scheme.git
+$ git log origin/master -- src/mcrypt/ | more

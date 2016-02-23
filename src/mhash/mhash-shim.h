@@ -28,12 +28,7 @@ USA.
 
 #include "config.h"
 
-/* If mhash.h unavailable, ignore it.  This helps
-   "makegen/makegen.scm" work properly on systems lacking this
-   library.  */
-#ifdef HAVE_MHASH_H
-#  include <mhash.h>
-#endif
+#include <mhash.h>
 
 extern void do_mhash (MHASH thread, const char *string, int start, int end);
 extern void do_mhash_end (MHASH context, char *string, size_t size);

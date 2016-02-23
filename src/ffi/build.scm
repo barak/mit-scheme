@@ -27,205 +27,128 @@ USA.
 ;;;; Build Utilities
 ;;; package: (ffi build)
 
-(define (compile-shim)
-  (let ((vals (conf-values (shim-conf) 'COMPILE-SHIM)))
-    (let ((prefix (append
-		   (filter (lambda (i) (not (string=? "-DMIT_SCHEME" i)))
-			   (parse-words (car vals)))
-		   (list (string-append "-I" (auxdir)))
-		   (parse-words (cadr vals)))))
-      (run-command (append prefix (command-line))))))
-
-(define (link-shim)
-  (let ((vals (conf-values (shim-conf) 'LINK-SHIM)))
-    (let ((prefix (parse-words (car vals)))
-	  (suffix (parse-words (cadr vals))))
-      (run-command (append prefix (command-line) suffix)))))
-
-(define (install-shim destdir libname)
-  (guarantee-string destdir 'INSTALL-SHIM)
-  (guarantee-string libname 'INSTALL-SHIM)
-  (if (string-find-next-char libname #\/)
-      (error "Directory separator, #\/, in library name:" libname))
-  (run-command (append (conf-words (shim-conf) 'INSTALL)
-		       (list (string-append libname "-shim.so")
-			     (string-append libname "-types.bin")
-			     (string-append libname "-const.bin")
-			     (string-append destdir (auxdir))))))
-
-(define (install-load-option destdir name #!optional directory)
-  (guarantee-string destdir 'INSTALL-LOAD-OPTION)
-  (guarantee-string name 'INSTALL-LOAD-OPTION)
-  (let ((dir (if (default-object? directory)
-		 name
-		 directory)))
-    (guarantee-string dir 'INSTALL-LOAD-OPTION)
-    (let ((install (conf-words (shim-conf) 'INSTALL))
-	  (auxdir (auxdir)))
-      (let ((library-dir (string-append destdir auxdir dir)))
-	(run-command (list "rm" "-rf" library-dir))
-	(run-command (list "mkdir" library-dir))
-	(run-command (list "chmod" "755" library-dir))
-	(run-command (append install (files) (list library-dir)))
-	(rewrite-file (string-append destdir auxdir "optiondb.scm")
-		      (lambda (in out)
-			(rewrite-optiondb name dir in out)))))))
-
-(define (files)
-  (append-map!
-   (lambda (arg)
-     (let ((p (->pathname arg)))
-       (if (pathname-type p)
-	   (if (file-exists? p)
-	       (list arg)
-	       (error "Could not find file:" p))
-	   (let ((files
-		  (let ((com (pathname-new-type p "com")))
-		    (if (file-exists? com)
-			(list (->namestring com)
-			      (->namestring (pathname-new-type p "bci")))
-			(let ((bin (pathname-new-type p "bin")))
-			  (if (file-exists? bin)
-			      (list (->namestring bin))
-			      (error "Could not find .com nor .bin:" p))))))
-		 (ext (pathname-new-type p "ext")))
-	     (if (file-exists? ext)
-		 (cons (->namestring ext) files)
-		 files)))))
-   (command-line)))
-
-(define (rewrite-optiondb name dirname in out)
-  (do ((line (read-line in) (read-line in)))
-      ((eof-object? line))
-    (write-string line out)
-    (newline out))
-  (fresh-line out)
-  (newline out)
-  (write-string "(define-load-option '" out)
-  (write-string name out)
-  (newline out)
-  (write-string "  (standard-system-loader \"" out)
-  (write-string dirname out)
-  (write-string "\"))" out))
-
-(define (install-html destdir title)
-  (guarantee-string destdir 'INSTALL-HTML)
-  (guarantee-string title 'INSTALL-HTML)
-  (let ((conf (doc-conf)))
-    (let ((install (conf-words conf 'INSTALL))
-	  (htmldir (string-append destdir (conf-value conf 'HTMLDIR)))
-	  (files (files)))
-      (run-command (append install files (list htmldir)))
-      (rewrite-file (merge-pathnames "index.html"
-				     (pathname-as-directory htmldir))
-		    (lambda (in out)
-		      (rewrite-html-index (car files) title in out))))))
-
-(define (rewrite-html-index file title in out)
-
-  (define (match line)
-    (if (eof-object? line)
-	(error "Premature end of HTML documentation index." in))
-    (let ((regs (re-string-match "^<li><a href=\"\\(.*\\)\">\\(.*\\)</a></li>$"
-				 line)))
-      (if (not regs)
-	  #f
-	  (cons (re-match-extract line regs 1)
-		(re-match-extract line regs 2)))))
-
-  (define (write-item file.title)
-    (let ((file (car file.title))
-	  (title (cdr file.title)))
-      (write-string (string-append "<li><a href=\""file"\">"title"</a></li>")
-		    out)
-      (newline out)))
-
-  (define (copy-prefix)
-    (let* ((line (read-line in))
-	   (f.t (match line)))
-      (if (not f.t)
-	  (begin
-	    (write-string line out)
-	    (newline out)
-	    (copy-prefix))
-	  f.t)))
-
-  (define (copy-items)
-    (let loop ((items (list (copy-prefix))))
-      (let* ((line (read-line in))
-	     (f.t (match line)))
-	(if f.t
-	    (loop (cons f.t items))
-	    (let ((items (let ((entry (assoc file items)))
-			   (if entry
-			       (delq! entry items)
-			       items))))
-	      (for-each write-item
-			(sort (cons (cons file title) items)
-			      (lambda (f.title1 f.title2)
-				(string<? (cdr f.title1)
-					  (cdr f.title2)))))
-	      line)))))
-
-  (define (copy-suffix line)
-    (if (not (eof-object? line))
-	(begin
-	  (write-string line out)
-	  (newline out)
-	  (copy-suffix (read-line in)))))
-
-  (copy-suffix (copy-items)))
-
-(define (auxdir)
-  (->namestring (system-library-directory-pathname)))
-
-(define (shim-conf)
-  (let-fluid load/suppress-loading-message? #t
-    (lambda ()
-      (load (system-library-pathname "shim-config.scm")))))
-
-(define (doc-conf)
-  (let-fluid load/suppress-loading-message? #t
-    (lambda ()
-      (load (string-append (conf-value (shim-conf) 'INFODIR)
-			   "mit-scheme-doc-config.scm")))))
-
-(define (conf-values conf name)
-  (let ((entry (assq name conf)))
-    (if (pair? entry)
-	(if (list-of-type? (cdr entry) string?)
-	    (cdr entry)
-	    (error "Configuration value not a list:" name))
-	(error "Configuration value not found:" name))))
-
-(define (conf-value conf name)
-  (let ((vals (conf-values conf name)))
-    (if (= 1 (length vals))
-	(car vals)
-	(error "Configuration value not a single string:" name))))
-
-(define (conf-words conf name)
-  (let ((val (conf-value conf name)))
-    (parse-words val)))
-
-(define (rewrite-file name rewriter)
+(define (write-file name writer)
   (let ((tmp (pathname-new-type name "tmp")))
-    (call-with-exclusive-output-file tmp
-      (lambda (out)
-	(call-with-input-file name
-	  (lambda (in)
-	    (rewriter in out)))))
+    (call-with-exclusive-output-file tmp writer)
     (rename-file tmp name)))
 
-(define (parse-words string)
-  (burst-string string char-set:whitespace #t))
+(define (rewrite-file name rewriter)
+  (write-file
+   name
+   (lambda (out)
+     (call-with-input-file name
+       (lambda (in)
+	 (rewriter in out))))))
+
+(define (update-optiondb directory)
+  (rewrite-file
+   (merge-pathnames "optiondb.scm" directory)
+   (lambda (in out)
+     (do ((line (read-line in) (read-line in)))
+	 ((or (eof-object? line)
+	      (string-prefix? "(further-load-options" line))
+	  (if (not (eof-object? line))
+	      (begin
+		(write-string line out)
+		(newline out))))
+       (write-string line out)
+       (newline out))
+     (write-string
+      (string-append ";;; DO NOT EDIT the remainder of this file."
+		     "  Any edits will be clobbered."
+		     "\n") out)
+     (for-each
+       (lambda (name)
+	 (write-string "\n(define-load-option '" out)
+	 (write-string name out)
+	 (write-string "\n  (standard-system-loader \"" out)
+	 (write-string name out)
+	 (write-string "\"))\n" out))
+       ;; plugin-names
+       (sort
+	(let loop ((files (directory-read directory))
+		   (names '()))
+	  (if (pair? files)
+	      (loop (cdr files)
+		    (if (and (file-directory? (car files))
+			     ;; The only core subsystem with a make.scm:
+			     (not (string=? "ffi" (pathname-name (car files))))
+			     (file-exists?
+			      (merge-pathnames "make.scm"
+					       (pathname-as-directory
+						(car files)))))
+			(cons (pathname-name (car files)) names)
+			names))
+	      names))
+	string<?)))))
 
-(define (run-command command)
-  (fresh-line)
-  (write-string (decorated-string-append "" " " "" command))
-  (newline)
-  (let ((code (run-synchronous-subprocess
-	       (car command) (cdr command)
-	       'working-directory (working-directory-pathname))))
-    (if (not (zero? code))
-	(error "Process exited with error code:" code command))))
+(define (update-html-index directory)
+  ;;(let-fluid load/suppress-loading-message? #t (lambda () (load-option 'XML)))
+  (rewrite-file
+   (merge-pathnames "index.html" directory)
+   (lambda (in out)
+     (do ((line (read-line in) (read-line in)))
+	 ((or (eof-object? line)
+	      (string-prefix? "<ul id=\"plugins\"" line))
+	  (if (not (eof-object? line))
+	      (begin
+		(write-string line out)
+		(newline out))))
+       (write-string line out)
+       (newline out))
+     (write-string (string-append "<!-- DO NOT EDIT this list."
+				  "  Any edits will be clobbered. -->\n") out)
+     (for-each
+       (lambda (name.title)
+	 (write-string "<li><a href=\"" out)
+	 (write-string (car name.title) out)
+	 (write-string "\">" out)
+	 (write-string (cdr name.title) out)
+	 (write-string "</a></li>\n" out))
+       (sort
+	(let loop ((files (directory-read directory))
+		   (names.titles '()))
+	  (if (pair? files)
+	      (loop (cdr files)
+		    (if (and (pathname-type (car files))
+			     (string=? "html" (pathname-type (car files)))
+			     (string-prefix? "mit-scheme-"
+					     (pathname-name (car files))))
+			(let ((name (string-tail (pathname-name (car files))
+						 (string-length "mit-scheme-")))
+			      (title (read-html-title (car files))))
+			  (cons (cons name title) names.titles))
+			names.titles))
+	      (if (pair? names.titles)
+		  names.titles
+		  (begin
+		    (write-string "<li><i>None currently installed.</i></li>\n"
+				  out)
+		    '()))))
+	(lambda (a b) (string<? (car a) (car b)))))
+     ;; Skip old list.
+     (do ((line (read-line in) (read-line in)))
+	 ((or (eof-object? line)
+	      (string-prefix? "</ul>" line))
+	  (if (eof-object? line)
+	      (error "Premature end of HTML index.")
+	      (begin
+		(write-string line out)
+		(newline out)))))
+     ;; Copy the rest.
+     (do ((line (read-line in) (read-line in)))
+	 ((eof-object? line))
+       (write-string line out)
+       (newline out)))))
+
+(define (read-html-title pathname)
+  (call-with-input-file pathname
+    (lambda (in)
+      (let loop ()
+	(let ((line (read-line in)))
+	  (if (eof-object? line)
+	      (error "Could not find HTML title:" pathname)
+	      (let ((regs (re-string-match "<title>\\(.*\\)</title>" line)))
+		(if (not regs)
+		    (loop)
+		    (re-match-extract line regs 1)))))))))

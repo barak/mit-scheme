@@ -82,7 +82,6 @@ OTHER_SUBDIRS="6001 compiler rcs runtime win32 xdoc microcode"
 maybe_mkdir lib
 maybe_link lib/include ../microcode
 maybe_link lib/mit-scheme.h ../microcode/pruxffi.h
-maybe_link lib/shim-config.scm ../microcode/shim-config.scm
 maybe_link lib/optiondb.scm ../etc/optiondb.scm
 
 maybe_link lib/compiler ../compiler
