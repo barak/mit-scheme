@@ -245,9 +245,7 @@ USA.
       unspecific
       (let* ((library (%alien-function/library afunc))
 	     (name (%alien-function/name afunc))
-	     (pathname (system-library-pathname
-			(pathname-new-type (string-append library"-shim")
-					   "so")))
+	     (pathname (dlopen-pathname library))
 	     (handle (or (find-dld-handle
 			  (lambda (h)
 			    (pathname=? pathname (dld-handle-pathname h))))
@@ -257,6 +255,45 @@ USA.
 	    (%set-alien-function/address! afunc address)
 	    (error:bad-range-argument afunc 'alien-function-cache!))
 	(set-%alien-function/band-id! afunc band-id))))
+
+(define (dlopen-pathname library)
+  (or (libtool-pathname library)
+      (system-library-pathname
+       (pathname-new-type (string-append library"-shim")
+			  "so"))
+      (error "Could not find module:" library)))
+
+(define (libtool-pathname library)
+  (let ((la-pathname (system-library-pathname
+		      (pathname-new-type (string-append library"-shim")
+					 "la"))))
+    (let ((dlname (libtool-dlname la-pathname))
+	  (dirname (directory-pathname la-pathname)))
+
+      (define (existing-file name)
+	(let ((p (merge-pathnames name dirname)))
+	  (and (file-exists? p)
+	       p)))
+
+      (or (existing-file dlname)
+	  (existing-file (string-append ".libs/"dlname))))))
+
+(define (libtool-dlname la-pathname)
+  (call-with-input-file la-pathname
+    (lambda (in)
+      (let loop ()
+	(let ((line (read-line in)))
+	  (cond ((eof-object? line)
+		 (error "Could not find dlname setting:" la-pathname))
+		((string-prefix? "dlname='" line)
+		 (let* ((start 8)
+			(end (string-length line))
+			(close (substring-find-next-char line start end #\')))
+		   (if close
+		       (substring line start close)
+		       (error "No closing delimiter in dlname setting:"
+			      line la-pathname))))
+		(else (loop))))))))
 
 (define-integrable (c-peek-cstring alien)
   ((ucode-primitive c-peek-cstring 2) alien 0))
@@ -543,28 +580,15 @@ USA.
 
 (define (generate-shim library #!optional prefix)
   (load-ffi-quietly)
-  ((environment-lookup (->environment '(ffi)) 'c-generate) library prefix))
+  (c-generate library prefix))
 
-(define (compile-shim)
+(define (update-optiondb directory)
   (load-ffi-quietly)
-  ((environment-lookup (->environment '(ffi)) 'compile-shim)))
+  ((environment-lookup (->environment '(ffi)) 'update-optiondb) directory))
 
-(define (link-shim)
+(define (update-html-index directory)
   (load-ffi-quietly)
-  ((environment-lookup (->environment '(ffi)) 'link-shim)))
-
-(define (install-shim destdir library)
-  (load-ffi-quietly)
-  ((environment-lookup (->environment '(ffi)) 'install-shim) destdir library))
-
-(define (install-load-option destdir name #!optional directory)
-  (load-ffi-quietly)
-  ((environment-lookup (->environment '(ffi)) 'install-load-option)
-   destdir name directory))
-
-(define (install-html destdir title)
-  (load-ffi-quietly)
-  ((environment-lookup (->environment '(ffi)) 'install-html) destdir title))
+  ((environment-lookup (->environment '(ffi)) 'update-html-index) directory))
 
 (define (load-ffi-quietly)
   (if (not (name->package '(FFI)))

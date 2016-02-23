@@ -1,0 +1,3 @@
+#!/bin/sh
+echo '(load "test-ffi.scm")' \
+| ../../src/microcode/scheme --library ../../src/lib --batch-mode

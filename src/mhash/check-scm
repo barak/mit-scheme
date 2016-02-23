@@ -1,0 +1,2 @@
+#!/bin/sh
+echo '(load "check.scm")' | ${MIT_SCHEME_EXE}

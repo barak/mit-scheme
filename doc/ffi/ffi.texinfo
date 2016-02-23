@@ -630,7 +630,7 @@ This script will produce three files:
 This file contains the trampoline functions --- one for each declared
 C extern or callback.  It includes the @file{mit-scheme.h} header
 file, found in the @code{AUXDIR} directory ---
-e.g. @file{/usr/local/lib/mit-scheme/}.
+e.g. @file{/usr/local/lib/mit-scheme-i386/}.
 
 @item prhello-const.c
 This file contains a C program that creates
@@ -653,6 +653,9 @@ installing a shim for the example ``Hello, World!'' program.
 @verbatiminclude prhello-Makefile
 @end example
 
+The FFI also supports libraries created by GNU automake (libtool).
+The source distribution includes several simple plugins.  Each uses a
+portable Makefile.am to build and install its shared object.
 
 @node Hello World, GNU Free Documentation License, Compiling and Linking, Top
 @chapter Hello World

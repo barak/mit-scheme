@@ -1,11 +1,13 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme mhash interface],
+AC_PREREQ([2.69])
+AC_INIT([MIT/GNU Scheme mhash plugin],
         [0.1],
         [bug-mit-scheme@gnu.org],
         [mit-scheme-mhash])
 AC_CONFIG_SRCDIR([mhash.pkg])
 AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_MACRO_DIR([m4])
 
 AC_COPYRIGHT(
 [Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
@@ -57,18 +59,33 @@ USA.
 
 */])
 
-AC_CHECK_HEADER([mhash.h],[
-    AC_DEFINE([HAVE_MHASH_H], [1],
-	[Define to 1 if you have the <mhash.h> header file.])
-    AC_CHECK_LIB([mhash], [mhash_count],[
-	AC_DEFINE([HAVE_LIBMHASH], [1],
-	    [Define to 1 if you have the `mhash' library (-lmhash).])
-	LIBS="-lmhash"
-	])
-],[AC_MSG_ERROR([Header file <mhash.h> not found.])])
+AM_INIT_AUTOMAKE
+
+AC_PROG_LIBTOOL
+AC_PROG_CC
+AC_PROG_CPP
+AC_PROG_INSTALL
+
+dnl Initialize libtool
+LT_PREREQ([2.2.6])
+LT_INIT([dlopen win32-dll])
+
+AC_CHECK_HEADER([mhash.h],[],[
+    AC_MSG_ERROR([Header file <mhash.h> not found.])])
+
+LIBS="-lmhash"
+
+: ${MIT_SCHEME_EXE=mit-scheme}
+MIT_SCHEME_ARCH=`echo "(display microcode-id/compiled-code-type)" \
+		 | ${MIT_SCHEME_EXE} --batch-mode`
+MIT_SCHEME_OS_SUFFIX=`echo "(display (microcode-id/operating-system-suffix))" \
+		 | ${MIT_SCHEME_EXE} --batch-mode`
 
 AC_SUBST([LIBS])
 AC_SUBST([CPPFLAGS])
 AC_SUBST([LDFLAGS])
+AC_SUBST([MIT_SCHEME_EXE])
+AC_SUBST([MIT_SCHEME_ARCH])
+AC_SUBST([MIT_SCHEME_OS_SUFFIX])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

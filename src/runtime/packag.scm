@@ -195,13 +195,7 @@ USA.
 					 ""))
 				   "")))
 			 "-"
-			 (case (if (default-object? os-type)
-				   microcode-id/operating-system
-				   os-type)
-			   ((NT) "w32")
-			   ((OS/2) "os2")
-			   ((UNIX) "unx")
-			   (else "unk"))))
+			 (microcode-id/operating-system-suffix os-type)))
      "pkd")))
 
 (define-integrable (make-package-file tag version descriptions loads)

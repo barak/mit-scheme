@@ -57,19 +57,11 @@ notify "Configuring the distribution directory"
 run_command "${SRC_OUT}"-config "${DIST_DIR}"/src ./Setup.sh
 run_command "${DOC_OUT}"-config "${DIST_DIR}"/doc reconf
 
-plugin ()
-{
-    if [[ -f Makefile ]]; then
-	my_make distclean
-    else
-	[[ -f config.h.in ]] || cmd autoheader
-	cmd autoconf
-    fi
-}
-
 for plugin in $PLUGINS; do
     D="${DIST_DIR}"/src/$plugin
-    run_command "${OUTPUT_DIR}"/$plugin-config "${DIST_DIR}"/src/$plugin plugin
+    run_command "${OUTPUT_DIR}"/$plugin-config \
+		"${DIST_DIR}"/src/$plugin \
+		./autogen.sh
 done
 
 # Clean up after autoconf

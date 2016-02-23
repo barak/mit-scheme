@@ -50,12 +50,12 @@ C declarations for prhello.scm. |#
 
 (extern void
 	g_signal_connect
-	(object (* GtkObject))
+	(instance gpointer)
 	(name (* gchar))
-	(CALLBACK GtkSignalFunc)
+	(CALLBACK GCallback)
 	(ID gpointer))
 
-(typedef GtkSignalFunc (* mumble))
+(typedef GCallback (* mumble))
 
 (callback gboolean
 	  delete_event

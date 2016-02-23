@@ -41,8 +41,5 @@ FFI System Packaging |#
   (parent ())
   (files "build")
   (export (ffi)
-	  compile-shim
-	  link-shim
-	  install-shim
-	  install-load-option
-	  install-html))
+	  update-optiondb
+	  update-html-index))
