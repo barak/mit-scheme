@@ -2682,6 +2682,7 @@ USA.
 	  null?
 	  pair?
 	  reduce
+	  reduce-left
 	  reduce-right
 	  restricted-keyword-list?
 	  reverse

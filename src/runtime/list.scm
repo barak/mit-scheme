@@ -796,11 +796,10 @@ USA.
 
 (define (%fold-left caller procedure initial list)
   (declare (integrate caller procedure initial))
-  (let %fold-left-step ((state initial)
-			(remaining list))
-
+  (let %fold-left-step ((state initial) (remaining list))
     (if (pair? remaining)
-	(%fold-left-step (procedure state (car remaining)) (cdr remaining))
+	(%fold-left-step (procedure state (car remaining))
+			 (cdr remaining))
 	(begin
 	  (if (not (null? remaining))
 	      (error:not-list list caller))
@@ -810,11 +809,8 @@ USA.
 ;; Invokes (PROCEDURE state arg1 arg2 ...) on the all the lists in parallel.
 ;; State is returned as soon as any list is exhausted.
 (define (%fold-left-lists caller procedure initial arglists)
-  (let fold-left-step ((state initial)
-		       (lists arglists))
-    (let collect-arguments ((arglists (reverse lists))
-			    (cars '())
-			    (cdrs '()))
+  (let fold-left-step ((state initial) (lists arglists))
+    (let collect-arguments ((arglists (reverse lists)) (cars '()) (cdrs '()))
       (if (pair? arglists)
 	  (let ((first-list (car arglists)))
 	    (if (pair? first-list)
@@ -828,9 +824,8 @@ USA.
 	  (begin
 	    (if (not (null? arglists))
 		(mapper-error arglists caller))
-	    (fold-left-step
-	     (apply procedure state cars)
-	     cdrs))))))
+	    (fold-left-step (apply procedure state cars)
+			    cdrs))))))
 
 (define (fold-left procedure initial first . rest)
   (if (pair? rest)
@@ -848,10 +843,12 @@ USA.
 			  (apply procedure (append arguments (list state))))
 			initial
 			(cons first rest))
-      (%fold-left 'FOLD (lambda (state item)
-			  (declare (integrate state item))
-			  (procedure item state))
-		  initial first)))
+      (%fold-left 'FOLD
+		  (lambda (state item)
+		    (declare (integrate state item))
+		    (procedure item state))
+		  initial
+		  first)))
 
 ;; Like FOLD-LEFT, with four differences.
 ;;    1. Not n-ary
@@ -860,15 +857,20 @@ USA.
 ;;    4. PROCEDURE takes arguments in the wrong order.
 (define (reduce procedure default list)
   (if (pair? list)
-      (%fold-left 'REDUCE (lambda (state item)
-			    (declare (integrate state item))
-			    (procedure item state)) 
-		  (car list) (cdr list))
+      (%fold-left 'REDUCE
+		  (lambda (state item)
+		    (declare (integrate state item))
+		    (procedure item state))
+		  (car list)
+		  (cdr list))
       (begin
 	(if (not (null? list))
 	    (error:not-list list 'REDUCE))
 	default)))
-
+
+(define (reduce-left procedure initial list)
+  (reduce (lambda (a b) (procedure b a)) initial list))
+
 (define (reduce-right procedure initial list)
   (if (pair? list)
       (let loop ((first (car list)) (rest (cdr list)))
