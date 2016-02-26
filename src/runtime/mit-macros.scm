@@ -52,11 +52,13 @@ USA.
 			       (if-error)
 			       (loop (cdr clauses))))))
 		     (cond ((identifier? req)
-			    (if (any (lambda (feature)
-				       (compare (rename feature) req))
-				     supported-srfi-features)
-				(if-true)
-				(if-false)))
+			    (let ((p
+				   (find (lambda (p)
+					   (compare (rename (car p)) req))
+					 supported-features)))
+			      (if (and p ((cdr p)))
+				  (if-true)
+				  (if-false))))
 			   ((and (syntax-match? '(IDENTIFIER DATUM) req)
 				 (compare (rename 'NOT) (car req)))
 			    (req-loop (cadr req)
@@ -82,22 +84,58 @@ USA.
 			    (if-error)))))))
 	   (if-error))))))
 
-(define supported-srfi-features
-  '(MIT
-    MIT/GNU
-    SWANK		       ;Provides SWANK module for SLIME
-    SRFI-0		       ;COND-EXPAND
-    SRFI-1		       ;List Library
-    SRFI-2		       ;AND-LET*
-    SRFI-6		       ;Basic String Ports
-    SRFI-8		       ;RECEIVE
-    SRFI-9		       ;DEFINE-RECORD-TYPE
-    SRFI-23		       ;ERROR
-    SRFI-27		       ;Sources of Random Bits
-    SRFI-30		       ;Nested Multi-Line Comments (#| ... |#)
-    SRFI-62		       ;S-expression comments
-    SRFI-69		       ;Basic Hash Tables
-    ))
+(define supported-features '())
+
+(define (define-feature name procedure)
+  (set! supported-features (cons (cons name procedure) supported-features))
+  name)
+
+(define (always) #t)
+
+(define-feature 'mit always)
+(define-feature 'mit/gnu always)
+
+;; r7rs features
+(define-feature 'exact-closed always)
+(define-feature 'exact-complex always)
+(define-feature 'ieee-float always)
+(define-feature 'ratio always)
+
+(define-feature 'swank always)   ;Provides SWANK module for SLIME
+(define-feature 'srfi-0 always)  ;COND-EXPAND
+(define-feature 'srfi-1 always)  ;List Library
+(define-feature 'srfi-2 always)  ;AND-LET*
+(define-feature 'srfi-6 always)  ;Basic String Ports
+(define-feature 'srfi-8 always)  ;RECEIVE
+(define-feature 'srfi-9 always)  ;DEFINE-RECORD-TYPE
+(define-feature 'srfi-23 always) ;ERROR
+(define-feature 'srfi-27 always) ;Sources of Random Bits
+(define-feature 'srfi-30 always) ;Nested Multi-Line Comments (#| ... |#)
+(define-feature 'srfi-39 always) ;Parameter objects
+(define-feature 'srfi-62 always) ;S-expression comments
+(define-feature 'srfi-69 always) ;Basic Hash Tables
+
+(define ((os? value))
+  (eq? value microcode-id/operating-system))
+
+(define-feature 'windows (os? 'nt))
+(define-feature 'unix (os? 'unix))
+(define-feature 'posix (os? 'unix))
+
+(define ((os-variant? value))
+  (string=? value microcode-id/operating-system-variant))
+
+(define-feature 'darwin (os-variant? "OS X"))
+(define-feature 'gnu-linux (os-variant? "GNU/Linux"))
+
+(define-feature 'big-endian (lambda () (host-big-endian?)))
+(define-feature 'little-endian (lambda () (not (host-big-endian?))))
+
+(define ((machine? value))
+  (string=? value microcode-id/machine-type))
+
+(define-feature 'i386 (machine? "IA-32"))
+(define-feature 'x86-64 (machine? "x86-64"))
 
 (define-syntax :receive
   (er-macro-transformer
