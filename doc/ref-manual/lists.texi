@@ -1088,39 +1088,43 @@ is unspecified.
 @section Reduction of Lists
 @cindex reduction, of list
 
-@deffn procedure fold-left procedure initial list
+@deffn procedure reduce-left procedure initial list
 Combines all the elements of @var{list} using the binary operation
-@var{procedure}.  Elements are combined starting with @var{initial} and
-then the elements of @var{list} from left to right.  Whereas
-@code{fold-right} is recursive in nature, capturing the essence of
-@code{cdr}-ing down a list and then computing a result, @var{fold-left}
-is iterative in nature, combining the elements as the list is traversed.
+@var{procedure}.  For example, using @code{+} one can add up all the
+elements:
 
 @example
-@group
-(fold-left list '() '(1 2 3 4))         @result{} ((((() 1) 2) 3) 4)
-
-@end group
+(reduce-left + 0 list-of-numbers)
 @end example
 
-Many of the classical list-processing
-procedures can be expressed in terms of @code{fold-left}, at least for
-the simple versions that take a fixed number of arguments:
+The argument @var{initial} is used only if @var{list} is empty; in this
+case @var{initial} is the result of the call to @code{reduce-left}.  If
+@var{list} has a single argument, it is returned.  Otherwise, the arguments
+are reduced in a left-associative fashion.  For example:
 
 @example
 @group
-(define (length list)
-  (fold-left (lambda (sum element) (+ sum 1)) 0 list))
-
-(define (reverse items)
-  (fold-left (lambda (answer item) (cons item answer)) () items))
+(reduce-left + 0 '(1 2 3 4))            @result{} 10
+(reduce-left + 0 '(1 2))                @result{} 3
+(reduce-left + 0 '(1))                  @result{} 1
+(reduce-left + 0 '())                   @result{} 0
+(reduce-left + 0 '(foo))                @result{} foo
+(reduce-left list '() '(1 2 3 4))       @result{} (((1 2) 3) 4)
 @end group
+@end example
+@end deffn
+
+@deffn procedure reduce-right procedure initial list
+Like @code{reduce-left} except that it is right-associative.
+
+@example
+(reduce-right list '() '(1 2 3 4))      @result{} (1 (2 (3 4)))
 @end example
 @end deffn
 
 @deffn procedure fold-right procedure initial list
 Combines all of the elements of @var{list} using the binary operation
-@var{procedure}.  Unlike @code{reduce} and @code{reduce-right},
+@var{procedure}.  Unlike @code{reduce-left} and @code{reduce-right},
 @var{initial} is always used:
 
 @example
@@ -1156,10 +1160,24 @@ the simple versions that take a fixed number of arguments:
 @end example
 @end deffn
 
-@deffn procedure reduce-right procedure initial list
+@deffn procedure fold-left procedure initial list
+Combines all the elements of @var{list} using the binary operation
+@var{procedure}.  Elements are combined starting with @var{initial} and
+then the elements of @var{list} from left to right.  Whereas
+@code{fold-right} is recursive in nature, capturing the essence of
+@code{cdr}-ing down a list and then computing a result, @var{fold-left}
+is iterative in nature, combining the elements as the list is traversed.
 
 @example
-(reduce-right list '() '(1 2 3 4))      @result{} (1 (2 (3 4)))
+@group
+(fold-left list '() '(1 2 3 4))         @result{} ((((() 1) 2) 3) 4)
+
+(define (length list)
+  (fold-left (lambda (sum element) (+ sum 1)) 0 list))
+
+(define (reverse items)
+  (fold-left (lambda (x y) (cons y x)) () items))
+@end group
 @end example
 @end deffn
 
