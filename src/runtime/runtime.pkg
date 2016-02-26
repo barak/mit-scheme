@@ -481,8 +481,10 @@ USA.
 	  limit-interrupts!
 	  link-variables
 	  local-assignment
+	  make-alist-metadata-table
 	  make-cell
 	  make-ephemeron
+	  make-hashed-metadata-table
 	  make-hook-list
 	  make-non-pointer-object
 	  non-pointer-type-code?
@@ -4908,8 +4910,7 @@ USA.
 	  (letrec* :letrec*)
 	  (local-declare :local-declare)
 	  (quasiquote :quasiquote)
-	  (receive :receive)
-	  supported-srfi-features)
+	  (receive :receive))
   (export (runtime)
 	  parse-define-form))
 

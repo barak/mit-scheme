@@ -460,6 +460,74 @@ USA.
 	      (apply (cdr p) arguments))
 	    (hook-list-hooks hook-list)))
 
+;;;; Metadata tables
+
+(define (make-alist-metadata-table)
+  (let ((alist '()))
+
+    (define (has? key)
+      (if (assv key alist) #t #f))
+
+    (define (get key)
+      (let ((p (assv key alist)))
+	(if (not p)
+	    (error "Unregistered key:" key))
+	(cdr p)))
+
+    (define (put! key metadata)
+      (let ((p (assv key alist)))
+	(if p
+	    (set-cdr! p metadata)
+	    (begin
+	      (set! alist (cons (cons key metadata) alist))
+	      unspecific))))
+
+    (define (get-alist)
+      alist)
+
+    (define (put-alist! alist*)
+      (for-each (lambda (p)
+		  (put! (car p) (cdr p)))
+		alist*))
+
+    (lambda (operator)
+      (case operator
+	((has?) has?)
+	((get) get)
+	((put!) put!)
+	((get-alist) get-alist)
+	((put-alist!) put-alist!)
+	(else (error "Unknown operator:" operator))))))
+
+(define (make-hashed-metadata-table)
+  (let ((table (make-key-weak-eqv-hash-table)))
+
+    (define (has? key)
+      (hash-table-exists? table key))
+
+    (define (get key)
+      (hash-table-ref table key))
+
+    (define (put! key metadata)
+      (hash-table-set! table key metadata))
+
+    (define (get-alist)
+      (hash-table->alist table))
+
+    (define (put-alist! alist*)
+      (for-each (lambda (p)
+		  (put! (car p) (cdr p)))
+		alist*))
+
+    (lambda (operator)
+      (case operator
+	((has?) has?)
+	((get) get)
+	((put!) put!)
+	((get-alist) get-alist)
+	((put-alist!) put-alist!)
+	(else (error "Unknown operator:" operator))))))
+
 ;;;; Ephemerons
 
 ;;; The layout of an ephemeron is as follows:
