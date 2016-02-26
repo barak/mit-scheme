@@ -24,47 +24,97 @@ USA.
 
 |#
 
-;;;; Fluids and Parameters
+;;;; Parameters
 ;;; package: (runtime dynamic)
 
 (declare (usual-integrations))
 
-;; The current thread's fluid and parameter bindings.
-(define bindings '())
+(define bindings '())	    ; The current thread's parameter bindings.
+(define parameter?)
+(define parameter-metadata)
+(define set-parameter-metadata!)
+(define get-metadata-alist)
 
-(define (apply-bindings new-bindings thunk)
-  (let ((swap!
-	 (lambda ()
-	   (set! bindings (set! new-bindings (set! bindings)))
-	   unspecific)))
-    (shallow-fluid-bind swap! thunk swap!)))
+(define (use-metadata-implementation! implementation)
+  (set! parameter? (implementation 'has?))
+  (set! parameter-metadata (implementation 'get))
+  (set! set-parameter-metadata! (implementation 'put!))
+  (set! get-metadata-alist (implementation 'get-alist))
+  unspecific)
 
-;;;; Fluids
+;; Use alist for cold-load.
+(use-metadata-implementation! (make-alist-metadata-table))
 
-(define-structure fluid
-  value)
+;; Later move metadata to hash table.
+(define (initialize-package!)
+  (let ((implementation (make-hashed-metadata-table)))
+    ((implementation 'put-alist!) (get-metadata-alist))
+    (use-metadata-implementation! implementation)))
 
-(define-guarantee fluid "fluid")
+(define-guarantee parameter "parameter")
+
+(define (make-parameter init #!optional converter)
+  (let ((converter
+	 (if (default-object? converter)
+	     (lambda (x) x)
+	     converter)))
+    (let ((metadata (cons converter (converter init))))
+
+      (define (get-binding)
+	(or (assq metadata bindings)
+	    metadata))
+
+      (define (get)
+	(cdr (get-binding)))
+
+      (define (set new-value)
+	(let ((binding (get-binding))
+	      (converted (converter new-value)))
+	  (let ((old-value (cdr binding)))
+	    (set-cdr! binding converted)
+	    old-value)))
+
+      (let ((parameter
+	     (lambda (#!optional new-value)
+	       (if (default-object? new-value)
+		   (get)
+		   (set new-value)))))
+	(set-parameter-metadata! parameter metadata)
+	parameter))))
+
+(define (parameterize* new-bindings thunk)
+  (guarantee-alist new-bindings 'parameterize*)
+  (let ((temp
+	 (map* bindings
+	       (lambda (p)
+		 (let ((metadata (parameter-metadata (car p))))
+		   (cons metadata
+			 ((car metadata) (cdr p)))))
+	       new-bindings)))
+    (let ((swap!
+	   (lambda ()
+	     (set! bindings (set! temp (set! bindings)))
+	     unspecific)))
+      (shallow-fluid-bind swap! thunk swap!))))
+
+;;;; Fluids (to be eliminated)
+
+(define (fluid? object)
+  (parameter? object))
+
+(define (make-fluid value)
+  (make-parameter value))
 
 (define (fluid f)
-  (guarantee-fluid f 'fluid)
-  (let ((entry (assq f bindings)))
-    (if entry
-	(cdr entry)
-	(fluid-value f))))
+  (guarantee-parameter f 'fluid)
+  (f))
 
 (define (set-fluid! f val)
-  (guarantee-fluid f 'set-fluid!)
-  (let ((entry (assq f bindings)))
-    (if entry
-	(set-cdr! entry val)
-	(set-fluid-value! f val))))
+  (guarantee-parameter f 'set-fluid!)
+  (f val))
 
 (define (let-fluid fluid value thunk)
-  (guarantee-fluid fluid 'let-fluid)
-  (guarantee-thunk thunk 'let-fluid)
-  (apply-bindings (cons (cons fluid value) bindings)
-		  thunk))
+  (parameterize* (list (cons fluid value)) thunk))
 
 (define (let-fluids . args)
   (let loop
@@ -73,77 +123,7 @@ USA.
     (if (not (pair? args))
 	(error "Ill-formed let-fluids arguments:" args))
     (if (pair? (cdr args))
-	(begin
-	  (guarantee-fluid (car args) 'let-fluids)
-	  (loop (cddr args)
-		(cons (cons (car args) (cadr args))
-		      new-bindings)))
-	(begin
-	  (guarantee-thunk (car args) 'let-fluids)
-	  (apply-bindings (append! new-bindings bindings)
-			  (car args))))))
-
-;;;; Parameters
-
-(define-structure parameter-metadata
-  value
-  converter)
-
-(define (parameter? p)
-  (and (entity? p)
-       (parameter-metadata? (entity-extra p))))
-
-(define-guarantee parameter "parameter")
-
-(define (make-parameter init #!optional converter)
-  (let ((converter
-	 (if (default-object? converter)
-	     identity-procedure
-	     (begin
-	       (guarantee-procedure-of-arity converter 1 'make-parameter)
-	       converter))))
-    (make-entity (lambda (self)
-		   (let ((entry (assq self bindings)))
-		     (if entry
-			 (cdr entry)
-			 (parameter-metadata-value (entity-extra self)))))
-		 (make-parameter-metadata (converter init)
-					  converter))))
-
-(define (set-parameter! p v)
-  (let ((metadata (entity-extra p)))
-    (let ((entry (assq p bindings))
-	  (converted ((parameter-metadata-converter metadata) v)))
-      (if entry
-	  (set-cdr! entry converted)
-	  (set-parameter-metadata-value! metadata converted)))))
-
-(define (parameter-converter p)
-  (parameter-metadata-converter (entity-extra p)))
-
-(define-syntax parameterize
-  (syntax-rules ()
-    ((_ ((param value) binding ...) body ...)
-     (parameterize-helper ((param value) binding ...) () body ...))))
-
-(define-syntax parameterize-helper
-  (syntax-rules ()
-    ((_ ((param value) binding ...) (extension ...) body ...)
-     (parameterize-helper (binding ...)
-			  ((cons param value) extension ...)
-			  body ...))
-    ((_ () (extension ...) body ...)
-     (parameterize* (list extension ...)
-		    (lambda () body ...)))))
-
-(define (parameterize* new-bindings thunk)
-  (guarantee-alist new-bindings 'parameterize*)
-  (apply-bindings
-   (append! (map (lambda (p)
-		   (let ((parameter (car p))
-			 (value (cdr p)))
-		     (cons parameter
-			   ((parameter-converter parameter) value))))
-		 new-bindings)
-	    bindings)
-   thunk))
+	(loop (cddr args)
+	      (cons (cons (car args) (cadr args))
+		    new-bindings))
+	(parameterize* new-bindings (car args)))))

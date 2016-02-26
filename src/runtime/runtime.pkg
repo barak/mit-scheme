@@ -4579,19 +4579,15 @@ USA.
   (parent (runtime))
   (export ()
 	  fluid?
-	  guarantee-fluid
 	  make-fluid
 	  fluid
 	  set-fluid!
 	  let-fluid
 	  let-fluids
 	  parameter?
-	  guarantee-parameter
 	  make-parameter
-	  set-parameter!
-	  parameterize
-	  parameter-converter
-	  parameterize*))
+	  parameterize*)
+  (initialization (initialize-package!)))
 
 (define-package (runtime stream)
   (files "stream")
@@ -4909,6 +4905,7 @@ USA.
 	  (letrec :letrec)
 	  (letrec* :letrec*)
 	  (local-declare :local-declare)
+	  (parameterize :parameterize)
 	  (quasiquote :quasiquote)
 	  (receive :receive))
   (export (runtime)

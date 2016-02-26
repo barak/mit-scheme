@@ -692,6 +692,22 @@ USA.
 	      ,r-unspecific)
 	    (,r-shallow-fluid-bind ,swap! ,body ,swap!)))))))
 
+(define-syntax :parameterize
+  (er-macro-transformer
+   (lambda (form rename compare)
+     compare
+     (syntax-check '(KEYWORD (* (EXPRESSION EXPRESSION)) + FORM) form)
+     (let ((r-parameterize* (rename 'parameterize*))
+	   (r-list (rename 'list))
+	   (r-cons (rename 'cons))
+	   (r-lambda (rename 'lambda)))
+       `(,r-parameterize*
+	 (,r-list
+	  ,@(map (lambda (binding)
+		   `(,r-cons ,(car binding) ,(cadr binding)))
+		 (cadr form)))
+	 (,r-lambda () ,@(cddr form)))))))
+
 (define-syntax :local-declare
   (er-macro-transformer
    (lambda (form rename compare)
