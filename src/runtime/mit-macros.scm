@@ -737,3 +737,15 @@ USA.
     ((ASSERT condition . extra)
      (IF (NOT condition)
          (ERROR "Assertion failed:" 'condition . extra)))))
+
+(define-syntax :when
+  (syntax-rules ()
+    ((when condition form ...)
+     (if condition
+	 (begin form ...)))))
+
+(define-syntax :unless
+  (syntax-rules ()
+    ((unless condition form ...)
+     (if (not condition)
+	 (begin form ...)))))

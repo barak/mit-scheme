@@ -4907,7 +4907,9 @@ USA.
 	  (local-declare :local-declare)
 	  (parameterize :parameterize)
 	  (quasiquote :quasiquote)
-	  (receive :receive))
+	  (receive :receive)
+	  (unless :unless)
+	  (when :when))
   (export (runtime)
 	  parse-define-form))
 
