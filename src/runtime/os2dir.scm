@@ -32,7 +32,7 @@ USA.
 (define *expand-directory-prefixes?*)
 
 (define (initialize-package!)
-  (set! *expand-directory-prefixes?* (make-fluid #t)))
+  (set! *expand-directory-prefixes?* (make-parameter #t)))
 
 (define (directory-read pattern #!optional sort?)
   (if (if (default-object? sort?) #t sort?)
@@ -45,7 +45,7 @@ USA.
 	   (lambda (pathname)
 	     (merge-pathnames pathname directory-path)))
 	 (let ((fnames (generate-directory-pathnames pattern)))
-	   (let-fluid *expand-directory-prefixes?* #f
+	   (parameterize* (list (cons *expand-directory-prefixes?* #f))
 	     (lambda ()
 	       (map ->pathname fnames)))))))
 

@@ -68,7 +68,7 @@ USA.
 (define (add-gc-daemon!/no-restore daemon)
   (add-gc-daemon!
    (lambda ()
-     (if (not (fluid *within-restore-window?*))
+     (if (not (*within-restore-window?*))
 	 (daemon)))))
 
 ;;; SECONDARY-GC-DAEMONS are executed rarely.  Their purpose is to

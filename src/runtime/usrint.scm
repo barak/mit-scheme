@@ -382,12 +382,12 @@ USA.
 
 (define (port/gc-start port)
   (let ((operation (port/operation port 'GC-START)))
-    (if (and operation (not (fluid *within-restore-window?*)))
+    (if (and operation (not (*within-restore-window?*)))
 	(operation port))))
 
 (define (port/gc-finish port)
   (let ((operation (port/operation port 'GC-FINISH)))
-    (if (and operation (not (fluid *within-restore-window?*)))
+    (if (and operation (not (*within-restore-window?*)))
 	(operation port))))
 
 (define (port/read-start port)
@@ -421,8 +421,8 @@ USA.
 	     unspecific))
 	 (lambda ()
 	   (let ((v
-		  (let-fluid *notification-depth*
-			     (1+ (fluid *notification-depth*))
+		  (parameterize* (list (cons *notification-depth*
+					     (1+ (*notification-depth*))))
 		    thunk)))
 	     (set! done? #t)
 	     v))
@@ -484,7 +484,7 @@ USA.
 
 (define (write-notification-prefix port)
   (write-string ";" port)
-  (let ((depth (fluid *notification-depth*)))
+  (let ((depth (*notification-depth*)))
     (do ((i 0 (+ i 1)))
 	((not (< i depth)))
       (write-string indentation-atom port))))
@@ -492,14 +492,14 @@ USA.
 (define (notification-prefix-length)
   (+ 1
      (* (string-length indentation-atom)
-	(fluid *notification-depth*))))
+	(*notification-depth*))))
 
 (define *notification-depth*)
 (define indentation-atom)
 (define wrapped-notification-port-type)
 
 (define (initialize-package!)
-  (set! *notification-depth* (make-fluid 0))
+  (set! *notification-depth* (make-parameter 0))
   (set! indentation-atom "  ")
   (set! wrapped-notification-port-type (make-wrapped-notification-port-type))
   unspecific)

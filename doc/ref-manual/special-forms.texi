@@ -381,15 +381,14 @@ the call chain explicitly.
 @end group
 @end example
 
-@cindex binding expression, dynamic (or fluid)
-@cindex fluid binding
+@cindex binding expression, dynamic
 @cindex dynamic binding
-A @dfn{dynamic binding} or @dfn{fluid binding} changes the value of a
-parameter (@pxref{Parameters}) or fluid (@pxref{Fluids}) object
-temporarily, for a @dfn{dynamic extent}.  The set of all fluid
-bindings at a given time is called the @dfn{dynamic environment}.  The
-new values are only accessible to the thread that constructed the
-dynamic environment, and any threads created within that environment.
+A @dfn{dynamic binding} changes the value of a parameter
+(@pxref{Parameters}) object temporarily, for a @dfn{dynamic extent}.
+The set of all dynamic bindings at a given time is called the
+@dfn{dynamic environment}.  The new values are only accessible to the
+thread that constructed the dynamic environment, and any threads
+created within that environment.
 
 @cindex extent, of dynamic binding (defn)
 The @dfn{extent} of a dynamic binding is defined to be the time period
@@ -407,38 +406,32 @@ environment captured by the continuation.  When the continuation
 returns, the process is reversed, restoring the original dynamic
 environment.
 
-The following example shows the interaction between dynamic
-binding and continuations.  Side effects to the binding that occur
-both inside and outside of the body are preserved, even if
-continuations are used to jump in and out of the body repeatedly.
-A fluid object is used rather than a parameter only for variety.  A
-mutator similar to @code{set-fluid!} is available for parameter
-bindings (@code{set-parameter!}).  Both will modify the initial or
-top-level value when the parameter or fluid is not bound in the
-current dynamic environment.
+The following example shows the interaction between dynamic binding
+and continuations.  Side effects to the binding that occur both inside
+and outside of the body are preserved, even if continuations are used
+to jump in and out of the body repeatedly.
 
 @example
 @group
-(define (complicated-dynamic-binding)
-  (let ((variable (make-fluid 1))
+(define (complicated-dynamic-parameter)
+  (let ((variable (make-parameter 1))
         (inside-continuation))
-    (write-line (fluid variable))
+    (write-line (variable))
     (call-with-current-continuation
      (lambda (outside-continuation)
-       (let-fluid variable 2
-         (lambda ()
-           (write-line (fluid variable))
-           (set-fluid! variable 3)
-           (call-with-current-continuation
-            (lambda (k)
-              (set! inside-continuation k)
-              (outside-continuation #t)))
-           (write-line (fluid variable))
-           (set! inside-continuation #f)))))
-    (write-line (fluid variable))
+       (parameterize ((variable 2))
+         (write-line (variable))
+         (variable 3)
+         (call-with-current-continuation
+          (lambda (k)
+            (set! inside-continuation k)
+            (outside-continuation #t)))
+         (write-line (variable))
+         (set! inside-continuation #f))))
+    (write-line (variable))
     (if inside-continuation
         (begin
-          (set-fluid! variable 4)
+          (variable 4)
           (inside-continuation #f)))))
 @end group
 @end example
@@ -459,17 +452,17 @@ the console:
 
 @noindent
 Commentary: the first two values written are the initial binding of
-@code{variable} and its new binding after @code{let-fluid}'s thunk is
-entered.  Immediately after they are written, the binding visible in
-the thunk is set to @samp{3}, and @code{outside-continuation} is
-invoked, exiting the thunk.  At this point, @samp{1} is written,
-demonstrating that the original binding of @code{variable} is still
-visible outside the thunk.  Then we set @code{variable} to @samp{4}
-and reenter the body by invoking @code{inside-continuation}.  At this
-point, @samp{3} is written, indicating that the binding modified in
-the thunk is still the binding visible in the thunk.  Finally, we exit
-the thunk normally, and write @samp{4}, demonstrating that the binding
-modified outside of the thunk was also preserved.
+@code{variable} and its new binding inside @code{parameterize}'s body.
+Immediately after they are written, the binding visible in the body
+is set to @samp{3}, and @code{outside-continuation} is invoked,
+exiting the body.  At this point, @samp{1} is written, demonstrating
+that the original binding of @code{variable} is still visible outside
+the body.  Then we set @code{variable} to @samp{4} and reenter the
+body by invoking @code{inside-continuation}.  At this point, @samp{3}
+is written, indicating that the binding modified in the body is still
+the binding visible in the body.  Finally, we exit the body
+normally, and write @samp{4}, demonstrating that the binding modified
+outside of the body was also preserved.
 
 @subsection Fluid-Let
 
@@ -479,8 +472,7 @@ multi-processing (SMP) world.  It and the cell object type
 (@pxref{Cells}) are now @strong{deprecated}.  They are still available
 and functional in a uni-processing (non-SMP) world, but will signal an
 error when used in an SMP world.  The @code{parameterize} special form
-(@pxref{parameterize}) or @code{let-fluids} procedure
-(@pxref{let-fluids}) should be used instead.
+(@pxref{parameterize}) should be used instead.
 
 @deffn {special form} fluid-let ((@var{variable} @var{init}) @dots{}) expression expression @dots{}
 @cindex variable binding, fluid-let

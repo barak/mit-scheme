@@ -232,8 +232,7 @@ The following commands evaluate Scheme expressions:
 		 (let ((environment (evaluation-environment #f)))
 		   (obarray-completions
 		    (if (and bound-only?
-			     (fluid
-			      (environment-lookup
+			     ((environment-lookup
 			       environment
 			       '*PARSER-CANONICALIZE-SYMBOLS?*)))
 			(string-downcase prefix)
@@ -328,9 +327,10 @@ Otherwise, it is shown in the echo area."
 			      ((symbol? argl)
 			       (insert-string " . " point)
 			       (insert-string (symbol-name argl) point)))))
-		    (let-fluid *unparse-uninterned-symbols-by-name?* #t
-		      (lambda ()
-			(message procedure-name ": " argl)))))
+		    (parameterize*
+		     (list (cons *unparse-uninterned-symbols-by-name?* #t))
+		     (lambda ()
+		       (message procedure-name ": " argl)))))
 	      (editor-error "Expression does not evaluate to a procedure: "
 			    (extract-string start end))))))))
 

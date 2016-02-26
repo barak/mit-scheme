@@ -2,8 +2,8 @@
 
 ;; to make this possible to debug
 
-; (set-fluid! *unparser-list-breadth-limit* 10)
-; (set-fluid! *unparser-list-depth-limit* 10)
+; (*unparser-list-breadth-limit* 10)
+; (*unparser-list-depth-limit* 10)
 
 
 ;; GC stress test
@@ -52,31 +52,31 @@
   (define v1 (make-self-painting-rectangle 50 30 "yellow"))
   (define v2 (make-self-painting-rectangle 100 10 "blue"))
   (define v3 (make-self-painting-rectangle 10 100 "orange"))
-  
+
   (define topframe (make-vbox v1 v2 v3))
-  
+
   (define h1 (make-self-painting-rectangle 10 10 "white"))
   (define h2 (make-self-painting-rectangle 20 20 "gold"))
   (define h3 (make-self-painting-rectangle 30 30 "green"))
-  
+
   (define bottomframe (make-hbox h1 h2 h3))
-  
+
   (make-hbox topframe bottomframe))
 
 (define (make-bad-picture)
   (define v1 (make-rect 50 30 "yellow"))
   (define v2 (make-rect 100 10 "blue"))
   (define v3 (make-rect 10 100 "orange"))
-  
+
   (define topframe (make-vbox v1 v2 v3))
-  
+
   (define h1 (make-rect 10 10 "white"))
   (define h2 (make-rect 20 20 "gold"))
   (define h3 (make-rect 30 30 "green"))
   (set! green h3)
-  
+
   (define bottomframe (make-hbox h1 h2 h3))
-  
+
   (make-hbox topframe bottomframe))
 
 (define (simple-picture)
@@ -169,7 +169,3 @@
 				    button2 button3 button4))))
       (swat-open me '-title "Featureless Drawing Program")
       me)))
-
-
-
-

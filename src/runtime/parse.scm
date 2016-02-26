@@ -133,22 +133,22 @@ USA.
 (define char-set/number-leaders)
 
 (define (initialize-package!)
-  (set! *parser-associate-positions?* (make-fluid #f))
-  (set! *parser-atom-delimiters* (make-fluid 'UNBOUND))
-  (set! *parser-canonicalize-symbols?* (make-fluid #t))
-  (set! *parser-constituents* (make-fluid 'UNBOUND))
-  (set! *parser-enable-file-attributes-parsing?* (make-fluid #t))
-  (set! *parser-keyword-style* (make-fluid #f))
-  (set! *parser-radix* (make-fluid 10))
-  (set! *parser-table* (make-fluid 'UNBOUND))
-  (set! runtime-parser-associate-positions? (make-fluid #f))
-  (set! runtime-parser-atom-delimiters (make-fluid 'UNBOUND))
-  (set! runtime-parser-canonicalize-symbols? (make-fluid #t))
-  (set! runtime-parser-constituents (make-fluid 'UNBOUND))
-  (set! runtime-parser-enable-file-attributes-parsing? (make-fluid #t))
-  (set! runtime-parser-keyword-style (make-fluid #f))
-  (set! runtime-parser-radix (make-fluid 10))
-  (set! runtime-parser-table (make-fluid 'UNBOUND))
+  (set! *parser-associate-positions?* (make-parameter #f))
+  (set! *parser-atom-delimiters* (make-parameter 'UNBOUND))
+  (set! *parser-canonicalize-symbols?* (make-parameter #t))
+  (set! *parser-constituents* (make-parameter 'UNBOUND))
+  (set! *parser-enable-file-attributes-parsing?* (make-parameter #t))
+  (set! *parser-keyword-style* (make-parameter #f))
+  (set! *parser-radix* (make-parameter 10))
+  (set! *parser-table* (make-parameter 'UNBOUND))
+  (set! runtime-parser-associate-positions? (make-parameter #f))
+  (set! runtime-parser-atom-delimiters (make-parameter 'UNBOUND))
+  (set! runtime-parser-canonicalize-symbols? (make-parameter #t))
+  (set! runtime-parser-constituents (make-parameter 'UNBOUND))
+  (set! runtime-parser-enable-file-attributes-parsing? (make-parameter #t))
+  (set! runtime-parser-keyword-style (make-parameter #f))
+  (set! runtime-parser-radix (make-parameter 10))
+  (set! runtime-parser-table (make-parameter 'UNBOUND))
   (let* ((constituents
 	  (char-set-difference char-set:graphic
 			       char-set:whitespace))
@@ -207,12 +207,12 @@ USA.
     (set! char-set/atom-delimiters atom-delimiters)
     (set! char-set/symbol-quotes symbol-quotes)
     (set! char-set/number-leaders number-leaders)
-    (set-fluid! *parser-atom-delimiters* atom-delimiters)
-    (set-fluid! *parser-constituents* constituents)
-    (set-fluid! runtime-parser-atom-delimiters atom-delimiters)
-    (set-fluid! runtime-parser-constituents constituents))
-  (set-fluid! *parser-table* system-global-parser-table)
-  (set-fluid! runtime-parser-table system-global-parser-table)
+    (*parser-atom-delimiters* atom-delimiters)
+    (*parser-constituents* constituents)
+    (runtime-parser-atom-delimiters atom-delimiters)
+    (runtime-parser-constituents constituents))
+  (*parser-table* system-global-parser-table)
+  (runtime-parser-table system-global-parser-table)
   (set! hashed-object-interns (make-strong-eq-hash-table))
   (initialize-condition-types!))
 
@@ -812,14 +812,14 @@ USA.
 	      (begin
 		(guarantee-environment environment #f)
 		environment)))
-	 (atom-delimiters (fluid (repl-environment-value
-				  environment '*PARSER-ATOM-DELIMITERS*)))
-	 (constituents (fluid (repl-environment-value environment
-						      '*PARSER-CONSTITUENTS*))))
+	 (atom-delimiters
+	  ((repl-environment-value environment '*PARSER-ATOM-DELIMITERS*)))
+	 (constituents
+	  ((repl-environment-value environment '*PARSER-CONSTITUENTS*))))
     (guarantee-char-set atom-delimiters #f)
     (guarantee-char-set constituents #f)
-    (make-db (fluid (repl-environment-value environment
-					    '*PARSER-ASSOCIATE-POSITIONS?*))
+    (make-db ((repl-environment-value environment
+				      '*PARSER-ASSOCIATE-POSITIONS?*))
 	     atom-delimiters
 	     (overridable-value
 	      port environment '*PARSER-CANONICALIZE-SYMBOLS?*)
@@ -827,8 +827,8 @@ USA.
 	     (overridable-value
 	      port environment '*PARSER-ENABLE-FILE-ATTRIBUTES-PARSING?*)
 	     (overridable-value port environment '*PARSER-KEYWORD-STYLE*)
-	     (fluid (repl-environment-value environment '*PARSER-RADIX*))
-	     (fluid (repl-environment-value environment '*PARSER-TABLE*))
+	     ((repl-environment-value environment '*PARSER-RADIX*))
+	     ((repl-environment-value environment '*PARSER-TABLE*))
 	     (make-shared-objects)
 	     (port/operation port 'DISCRETIONARY-WRITE-CHAR)
 	     (position-operation port environment)
@@ -852,13 +852,12 @@ USA.
   (let* ((nope "no-overridden-value")
 	 (v (port/get-property port name nope)))
     (if (eq? v nope)
-	(fluid (repl-environment-value environment name))
+	((repl-environment-value environment name))
 	v)))
 
 (define (position-operation port environment)
   (let ((default (lambda (port) port #f)))
-    (if (fluid (repl-environment-value environment
-				       '*PARSER-ASSOCIATE-POSITIONS?*))
+    (if ((repl-environment-value environment '*PARSER-ASSOCIATE-POSITIONS?*))
 	(or (port/operation port 'POSITION)
 	    default)
 	default)))

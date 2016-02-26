@@ -1063,8 +1063,8 @@ USA.
 (define (phase/lap-file-output scode port)
   (compiler-phase "LAP File Output"
     (lambda ()
-      (let-fluids *unparser-radix* 16
-		  *unparse-uninterned-symbols-by-name?* #t
+      (parameterize* (list (cons *unparser-radix* 16)
+			   (cons *unparse-uninterned-symbols-by-name?* #t))
         (lambda ()
 	  (with-output-to-port port
 	    (lambda ()

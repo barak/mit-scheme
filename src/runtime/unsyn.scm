@@ -30,7 +30,7 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! substitutions (make-fluid '()))
+  (set! substitutions (make-parameter '()))
   (set! unsyntaxer/scode-walker
 	(make-scode-walker unsyntax-constant
 			   `((ACCESS ,unsyntax-ACCESS-object)
@@ -69,7 +69,7 @@ USA.
 (define (unsyntax-with-substitutions scode alist)
   (if (not (alist? alist))
       (error:wrong-type-argument alist "alist" 'UNSYNTAX-WITH-SUBSTITUTIONS))
-  (let-fluid substitutions alist
+  (parameterize* (list (cons substitutions alist))
     (lambda ()
       (unsyntax scode))))
 
@@ -80,7 +80,7 @@ USA.
 	(thunk))))
 
 (define-integrable (has-substitution? object)
-  (let ((substs (fluid substitutions)))
+  (let ((substs (substitutions)))
     (and (pair? substs) (assq object substs))))
 
 (define (with-bindings environment lambda receiver)

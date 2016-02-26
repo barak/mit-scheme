@@ -57,7 +57,7 @@ USA.
 (define pc-sample/code-block/status/display)
 (define pc-sample/interp-proc/status/display)
 (define pc-sample/prob-comp/status/display)
-(define pc-sample/UFO/status/display) 
+(define pc-sample/UFO/status/display)
 
 (define (generate:pc-sample/status/displayer header-string display-proc)
   (lambda (#!optional subheader?)
@@ -83,7 +83,7 @@ USA.
   (display (string-append "\n; " title-prefix-string))
   (pc-sample/status/display/title-root-string)
   (pc-sample/status/display/header/delimiter))
-  
+
 (define-integrable (pc-sample/status/display/subheader subheader-title-string)
   (display (string-append "\n; " subheader-title-string "..."))
   (pc-sample/status/display/subheader/delimiter))
@@ -141,8 +141,9 @@ USA.
 	     (display-sample-list displayee))))))
 
 (define (display-sample-list sample-list) ; not integrated so can play w/ it
-  (let-fluid *pp-default-as-code?* #T	  ; for now: just pp as code, but
-    (lambda ()				  ; maybe opt for wizzy graphics later
+  ;; for now: just pp as code, but maybe opt for wizzy graphics later
+  (parameterize* (list (cons *pp-default-as-code?* #t)
+    (lambda ()				  ;
       (pp sample-list))))
 
 (define (install-displayers)
@@ -179,7 +180,7 @@ USA.
     (thunk)))
 
 (define (pc-sample/builtin/display-acate)
-  (pc-sample/indexed-vector-table/display-acate 
+  (pc-sample/indexed-vector-table/display-acate
    pc-sample/status/builtin-table
    pc-sample/builtin-table
    "Built-Ins"
@@ -222,7 +223,7 @@ USA.
 	     (do ((index (-1+ (vector-length mumble-tbl)) (-1+ index)))
 		 ((negative? index)
 		  (if (null? disp-stack)
-		      (string-append 
+		      (string-append
 		       "; ++++ No " mumble-string "s Sampled Yet ++++")
 		      `(,mumble-ID-fnord!
 			,count-acc
@@ -238,7 +239,7 @@ USA.
 	 (string-append "; **** [" mumble-string " Table Uninitialized]."))))
 
 (define (pc-sample/code-block/display-acate)
-  (let ((BTW-string 
+  (let ((BTW-string
 	 (string-append
 	  "\n"
 	  ";..............................................................\n"
@@ -262,7 +263,7 @@ USA.
 			(vector-map (lambda (elt)
 				      (let* ((coblx (profile-hash-table-car elt))
 					     (datum (profile-hash-table-cdr elt))
-					     (count 
+					     (count
 					      (code-block-profile-datum/count datum))
 					     (name-list
 					      (code-block/name/display-acate  coblx)))
@@ -291,7 +292,7 @@ USA.
 			,heathen-count-cell  ,heathen-count-cell
 			)
 		     ))
-	       (display-acated-purified-list 
+	       (display-acated-purified-list
 		`(,@(first  display-acated-p&h-lists)
 		  ,@(second display-acated-p&h-lists)
 		  ,@(third  display-acated-p&h-lists)
@@ -312,7 +313,7 @@ USA.
 		     ,@(sort-sample-list display-acated-purified-list))
 		    ,(no-code-blocks-of-sort "Heathen"  BTW-string 'BTW)))
 		((null? display-acated-purified-list)
-		 `#((HEATHEN-FNORD! 
+		 `#((HEATHEN-FNORD!
 		     ,(cell-contents heathen-count-cell)
 		     ,@(sort-sample-list display-acated-heathen-list))
 		    ,(no-code-blocks-of-sort "Purified" BTW-string 'BTW)))
@@ -320,7 +321,7 @@ USA.
 		 `#(#((PURIFIED-FNORD!
 		       ,(cell-contents purified-count-cell)
 		       ,@(sort-sample-list display-acated-purified-list))
-		      (HEATHEN-FNORD! 
+		      (HEATHEN-FNORD!
 		       ,(cell-contents heathen-count-cell)
 		       ,@(sort-sample-list display-acated-heathen-list)))
 		    ,BTW-string)))))))
@@ -365,7 +366,7 @@ USA.
 		(unsyntax/truthfully/sublist 5 (if (compiled-expression?      coblx)
 						   (compiled-expression/scode coblx)
 						   coblx))))
-	,(if (null? filename) 
+	,(if (null? filename)
 	     "[Not file-defined (i.e., interactively defined?)]"
 	     filename)
 	,(if (and (null? filename) (null? offset))
@@ -433,26 +434,26 @@ USA.
    ";~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
    "; +++ No " ID-string " Trampolines Sampled Yet +++\n"
    ))
-  
+
 
 (define (pc-sample/interp-proc/display-acate)
-  (let ((BTW-string 
+  (let ((BTW-string
 	 (string-append
 	  "\n"
 	  ";..............................................................\n"
 	  "; BTW:  Interp-Proc Buffer Status (length . slack) = "
-	  (write-to-string 
+	  (write-to-string
 	   (if *display-acation-status*
 	       (pc-sample/status/interp-proc-buffer/status
 		                                      *display-acation-status*)
 	       (pc-sample/interp-proc-buffer/status))))))
     (if (interp-proc-profiling-disabled?)
 	(string-append "; **** [Interp-Proc Profile Buffers Uninitialized]."
-			BTW-string) 
+			BTW-string)
 	(let* ((tally 0.)
 	       (display-acated-list
 		(vector->list
-		 (vector-map 
+		 (vector-map
 		  (lambda (elt)
 		    (let* ((lambx (profile-hash-table-car elt))
 			   (datum (profile-hash-table-cdr elt))
@@ -597,7 +598,7 @@ USA.
 			       (else        raw-display-acatee   ))))
 		   ;; Cook half-baked display-acatee
 		   (cond ((pair?   half-baked-display-acatee)
-			  (set! tally 
+			  (set! tally
 				(+ (second half-baked-display-acatee) tally))
 			  (cddr    half-baked-display-acatee)) ; de-fnord-ize
 			 ((vector? half-baked-display-acatee)
@@ -646,7 +647,7 @@ USA.
 		denom)))
     (flo:/ (flo:round pumped-percentage)
 	   *pc-sample/status/table/decimal-pump*)))
-					     
+
 (define-integrable (relevanticate numer denom interval)
   `#(,numer ,denom ,(make-rectangular (/ (flo:round->exact numer)
 					 (flo:round->exact denom))

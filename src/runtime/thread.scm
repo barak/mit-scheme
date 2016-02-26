@@ -126,7 +126,7 @@ USA.
 
 (define (initialize-high!)
   ;; Called later in the cold load, when more of the runtime is initialized.
-  (set! root-continuation-default (make-fluid #f))
+  (set! root-continuation-default (make-parameter #f))
   (initialize-error-conditions!)
   (reset-threads-high!)
   (record-start-times! first-running-thread)
@@ -207,7 +207,7 @@ USA.
 				 "continuation or #f"
 				 create-thread))
   (let ((root-continuation
-	 (or root-continuation (fluid root-continuation-default))))
+	 (or root-continuation (root-continuation-default))))
     (call-with-current-continuation
      (lambda (return)
        (%within-continuation root-continuation #t
@@ -234,14 +234,14 @@ USA.
       (shallow-fluid-bind swap! thunk swap!))))
 
 (define (create-thread-continuation)
-  (fluid root-continuation-default))
+  (root-continuation-default))
 
 (define (with-create-thread-continuation continuation thunk)
   (if (not (continuation? continuation))
       (error:wrong-type-argument continuation
 				 "continuation"
 				 with-create-thread-continuation))
-  (let-fluid root-continuation-default continuation
+  (parameterize* (list (cons root-continuation-default continuation))
     thunk))
 
 (define (current-thread)

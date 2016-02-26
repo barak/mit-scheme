@@ -381,7 +381,7 @@ USA.
 	    (error:wrong-type-argument state "random state" procedure))
 	state)
       (let ((state (if *random-state*
-		       (fluid *random-state*)
+		       (*random-state*)
 		       ;; For early in the cold-load...
 		       default-random-source)))
 	(if (not (random-state? state))
@@ -412,10 +412,10 @@ USA.
   unspecific)
 
 (define (finalize-random-state-type!)
-  (set! *random-state* (make-fluid default-random-source))
+  (set! *random-state* (make-parameter default-random-source))
   (add-event-receiver! event:after-restart
     (lambda ()
-      (let ((state (fluid *random-state*)))
+      (let ((state (*random-state*)))
 	(random-source-randomize! state)
 	(if (not (eq? default-random-source state))
 	    (random-source-randomize! default-random-source)))))

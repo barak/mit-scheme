@@ -45,7 +45,7 @@ USA.
 (define *within-restore-window?*)
 
 (define (initialize-package!)
-  (set! *within-restore-window?* (make-fluid #f)))
+  (set! *within-restore-window?* (make-parameter #f)))
 
 (define (disk-save filename #!optional id)
   (let ((filename (->namestring (merge-pathnames filename)))
@@ -81,7 +81,7 @@ USA.
 	   (lambda ()
 	     (set! time-world-saved time)
 	     (set! time-world-restored (get-universal-time))
-	     (let-fluid *within-restore-window?* #t
+	     (parameterize* (list (cons *within-restore-window?* #t))
 	       (lambda ()
 		 (event-distributor/invoke! event:after-restore)))
 	     (start-thread-timer)

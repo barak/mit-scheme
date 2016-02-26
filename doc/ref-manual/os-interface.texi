@@ -543,11 +543,11 @@ from @var{defaults} together.
 
 @defvr variable *default-pathname-defaults*
 @cindex defaulting, of pathname
-The value of this fluid (@pxref{Fluids}) is the default
+The value of this parameter (@pxref{Parameters}) is the default
 pathname-defaults pathname; if any pathname primitive that needs a set
 of defaults is not given one, it uses this one.
-@code{set-working-directory-pathname!} sets this fluid to a new value,
-computed by merging the new working directory with the fluid's old
+@code{set-working-directory-pathname!} sets this parameter to a new value,
+computed by merging the new working directory with the parameter's old
 value.
 @end defvr
 
@@ -846,7 +846,7 @@ working directory to @var{filename} and returns the value of
 @var{thunk} (a procedure of no arguments).  @var{Filename} is coerced
 to a pathname using @code{pathname-as-directory}.  In addition to
 binding the working directory, @code{with-working-directory-pathname}
-also dynamically binds the @code{*default-pathname-defaults*} fluid,
+also dynamically binds the @code{*default-pathname-defaults*} parameter,
 merging the old value with the new working directory pathname.
 @end deffn
 

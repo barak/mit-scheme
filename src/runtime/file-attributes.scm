@@ -120,28 +120,33 @@ This file is part of MIT/GNU Scheme.
 
 (define (parse-file-attributes-item parse port)
   ;; Prepare the parser for first mode.
-  (let-fluids *parser-associate-positions?* #f
-	      *parser-atom-delimiters* char-set/file-attributes-atom-delimiters
-	      *parser-canonicalize-symbols?* #f
-	      *parser-constituents* char-set/file-attributes-constituents
-	      *parser-enable-file-attributes-parsing?* #f ; no recursion!
-	      *parser-keyword-style* #f
-	      *parser-radix* 10
-	      *parser-table* file-attributes-parser-table
+  (parameterize* (list (cons *parser-associate-positions?* #f)
+		       (cons *parser-atom-delimiters*
+			     char-set/file-attributes-atom-delimiters)
+		       (cons *parser-canonicalize-symbols?* #f)
+		       (cons *parser-constituents*
+			     char-set/file-attributes-constituents)
+		       ;; no recursion!
+		       (cons *parser-enable-file-attributes-parsing?*
+			     #f)
+		       (cons *parser-keyword-style* #f)
+		       (cons *parser-radix* 10)
+		       (cons *parser-table* file-attributes-parser-table))
     (lambda ()
       (parse port system-global-environment))))
 
 (define (parse-file-attributes-value parse port)
   ;; Prepare the parser for second mode.
-  (let-fluids *parser-associate-positions?* #f
-	      *parser-atom-delimiters* char-set/atom-delimiters
-	      *parser-canonicalize-symbols?* #f
-	      *parser-constituents* char-set/constituents
-	      *parser-enable-file-attributes-parsing?* #f ; no recursion!
-	      ;; enable prefix keywords
-	      *parser-keyword-style* 'prefix
-	      *parser-radix* 10
-	      *parser-table* system-global-parser-table
+  (parameterize* (list (cons *parser-associate-positions?* #f)
+		       (cons *parser-atom-delimiters* char-set/atom-delimiters)
+		       (cons *parser-canonicalize-symbols?* #f)
+		       (cons *parser-constituents* char-set/constituents)
+		       ;; no recursion!
+		       (cons *parser-enable-file-attributes-parsing?* #f)
+		       ;; enable prefix keywords
+		       (cons *parser-keyword-style* 'prefix)
+		       (cons *parser-radix* 10)
+		       (cons *parser-table* system-global-parser-table))
     (lambda ()
       (parse port system-global-environment))))
 

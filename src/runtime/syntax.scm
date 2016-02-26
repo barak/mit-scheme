@@ -49,7 +49,7 @@ USA.
 (define (syntax* forms environment)
   (guarantee-list forms 'SYNTAX*)
   (let ((senv (->syntactic-environment environment 'SYNTAX*)))
-    (let-fluid *rename-database* (initial-rename-database)
+    (parameterize* (list (cons *rename-database* (initial-rename-database)))
       (lambda ()
 	(output/post-process-expression
 	 (if (syntactic-environment/top-level? senv)

@@ -662,7 +662,7 @@ Move to the last subproblem if the subproblem number is too high."
 	       (pp (lambda (obj)
 		     (fresh-line port)
 		     (pp obj port #t))))
-		     
+
 	   (if (dstate/reduction-number dstate)
 	       (pp (reduction-expression (dstate/reduction dstate)))
 	       (let ((exp (dstate/expression dstate))
@@ -681,7 +681,7 @@ Move to the last subproblem if the subproblem number is too high."
 			(if (or argument
 				(invalid-subexpression? sub))
 			    (pp exp)
-			    (let-fluid *pp-no-highlights?* #f
+			    (parameterize* (list (cons *pp-no-highlights?* #f))
 			      do-hairy)))
 		       ((debugging-info/noise? exp)
 			(message ((debugging-info/noise exp) #t)))
@@ -1013,7 +1013,7 @@ Prefix argument means do not kill the debugger buffer."
        port))))
 
 (define (print-with-subexpression expression subexpression)
-  (let-fluid *unparse-primitives-by-name?* #t
+  (parameterize* (list (cons *unparse-primitives-by-name?* #t))
     (lambda ()
       (if (invalid-subexpression? subexpression)
 	  (write (unsyntax expression))
@@ -1043,7 +1043,7 @@ Prefix argument means do not kill the debugger buffer."
    port))
 
 (define (print-reduction-as-subexpression expression)
-  (let-fluid *unparse-primitives-by-name?* #t
+  (parameterize* (list (cons *unparse-primitives-by-name?* #t))
     (lambda ()
       (write-string (ref-variable subexpression-start-marker))
       (write (unsyntax expression))

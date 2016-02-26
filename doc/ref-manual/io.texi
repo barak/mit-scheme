@@ -704,17 +704,16 @@ amounts of data.
 
 The following names control the behavior of the @code{read} procedure.
 They are looked up in the environment that is passed to @code{read},
-and so may have different fluids in different environments.  The
-global fluids (fluids assigned to the global bindings) may be
-dynamically bound by the @code{let-fluid} procedure, but should not be
-mutated by @code{fluid-set!}.  Make persistent, local changes by
-shadowing the global bindings in the local environment and assigning
-new fluids to them.
+and so may have different values in different environments.  The
+global parameters may be dynamically bound by @code{parameterize}, but
+should not be mutated.  Make persistent, local changes by shadowing
+the global bindings in the local environment and assigning new
+parameters to them.
 
 @defvr variable *parser-radix*
-This fluid defines the radix used by the reader when it parses
+This parameter defines the radix used by the reader when it parses
 numbers.  This is similar to passing a radix argument to
-@code{string->number}.  The value of the fluid must be one of
+@code{string->number}.  The value of the parameter must be one of
 @code{2}, @code{8}, @code{10}, or @code{16}; any other value is ignored,
 and the reader uses radix @code{10}.
 
@@ -723,14 +722,14 @@ Note that much of the number syntax is invalid for radixes other than
 and signals an error.  However, problems can still occur when
 @code{*parser-radix*} is set to @code{16}, because syntax that normally
 denotes symbols can now denote numbers (e.g.@: @code{abc}).  Because of
-this, it is usually undesirable to set this fluid to anything other
+this, it is usually undesirable to set this parameter to anything other
 than the default.
 
-The default value of this fluid is @code{10}.
+The default value of this parameter is @code{10}.
 @end defvr
 
 @defvr variable *parser-canonicalize-symbols?*
-This fluid controls how the parser handles case-sensitivity of
+This parameter controls how the parser handles case-sensitivity of
 symbols.  If it is bound to its default value of @code{#t}, symbols read
 by the parser are converted to lower case before being interned.
 Otherwise, symbols are interned without case conversion.
@@ -887,27 +886,27 @@ The following variables may be dynamically bound to change the behavior
 of the @code{write} and @code{display} procedures.
 
 @defvr variable *unparser-radix*
-This fluid specifies the default radix used to print numbers.  Its
+This parameter specifies the default radix used to print numbers.  Its
 value must be one of the exact integers @code{2}, @code{8}, @code{10},
 or @code{16}; the default is @code{10}.  If @code{*unparser-radix*} is
 not @code{10}, numbers are prefixed to indicate their radix.
 @end defvr
 
 @defvr variable *unparser-list-breadth-limit*
-This fluid specifies a limit on the length of the printed
+This parameter specifies a limit on the length of the printed
 representation of a list or vector; for example, if the limit is
 @code{4}, only the first four elements of any list are printed, followed
 by ellipses to indicate any additional elements.  The value of this
-fluid must be an exact non-negative integer, or @code{#f} meaning no
+parameter must be an exact non-negative integer, or @code{#f} meaning no
 limit; the default is @code{#f}.
 
 @example
 @group
-(let-fluid *unparser-list-breadth-limit* 4
+(parameterize ((*unparser-list-breadth-limit* 4))
   (lambda ()
     (write-to-string '(a b c d))))
                                 @result{} "(a b c d)"
-(let-fluid *unparser-list-breadth-limit* 4
+(parameterize ((*unparser-list-breadth-limit* 4))
   (lambda ()
     (write-to-string '(a b c d e))))
                                 @result{} "(a b c d ...)"
@@ -916,20 +915,20 @@ limit; the default is @code{#f}.
 @end defvr
 
 @defvr variable *unparser-list-depth-limit*
-This fluid specifies a limit on the nesting of lists and vectors in
+This parameter specifies a limit on the nesting of lists and vectors in
 the printed representation.  If lists (or vectors) are more deeply
 nested than the limit, the part of the representation that exceeds the
-limit is replaced by ellipses.  The value of this fluid must be an
+limit is replaced by ellipses.  The value of this parameter must be an
 exact non-negative integer, or @code{#f} meaning no limit; the default
 is @code{#f}.
 
 @example
 @group
-(let-fluid *unparser-list-depth-limit* 4
+(parameterize((*unparser-list-depth-limit* 4))
   (lambda ()
     (write-to-string '((((a))) b c d))))
                                 @result{} "((((a))) b c d)"
-(let-fluid *unparser-list-depth-limit* 4
+(parameterize ((*unparser-list-depth-limit* 4))
   (lambda ()
     (write-to-string '(((((a)))) b c d))))
                                 @result{} "((((...))) b c d)"
@@ -938,20 +937,20 @@ is @code{#f}.
 @end defvr
 
 @defvr variable *unparser-string-length-limit*
-This fluid specifies a limit on the length of the printed
+This parameter specifies a limit on the length of the printed
 representation of strings.  If a string's length exceeds this limit, the
 part of the printed representation for the characters exceeding the
-limit is replaced by ellipses.  The value of this fluid must be an
+limit is replaced by ellipses.  The value of this parameter must be an
 exact non-negative integer, or @code{#f} meaning no limit; the default
 is @code{#f}.
 
 @example
 @group
-(let-fluid *unparser-string-length-limit* 4
+(parameterize ((*unparser-string-length-limit* 4))
   (lambda ()
     (write-to-string "abcd")))
                                 @result{} "\"abcd\""
-(let-fluid *unparser-string-length-limit* 4
+(parameterize ((*unparser-string-length-limit* 4))
   (lambda ()
     (write-to-string "abcde")))
                                 @result{} "\"abcd...\""
@@ -960,7 +959,7 @@ is @code{#f}.
 @end defvr
 
 @defvr variable *unparse-with-maximum-readability?*
-This fluid, which takes a boolean value, tells the printer to use a
+This parameter, which takes a boolean value, tells the printer to use a
 special printed representation for objects that normally print in a form
 that cannot be recognized by @code{read}.  These objects are printed
 using the representation @code{#@@@var{n}}, where @var{n} is the result

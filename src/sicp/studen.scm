@@ -99,12 +99,12 @@ USA.
   (access set-atom-delimiters! (->environment '(runtime parser))))
 
 (define (enable-system-syntax)
-  (set-fluid! *parser-table* system-global-parser-table)
+  (*parser-table* system-global-parser-table)
   (set-atom-delimiters! 'mit-scheme)
   (set-repl/syntax-table! (nearest-repl) system-global-syntax-table))
 
 (define (disable-system-syntax)
-  (set-fluid! *parser-table* *student-parser-table*)
+  (*parser-table* *student-parser-table*)
   (set-atom-delimiters! 'sicp)
   (set-repl/syntax-table! (nearest-repl) *student-syntax-table*))
 

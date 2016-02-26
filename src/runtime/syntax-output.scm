@@ -404,7 +404,7 @@ USA.
 (define *rename-database*)
 
 (define (initialize-package!)
-  (set! *rename-database* (make-fluid 'UNBOUND)))
+  (set! *rename-database* (make-parameter 'UNBOUND)))
 
 (define-structure (rename-database (constructor initial-rename-database ())
 				   (conc-name rename-database/))
@@ -415,14 +415,14 @@ USA.
 
 (define (make-rename-id)
   (delay
-    (let* ((renames (fluid *rename-database*))
+    (let* ((renames (*rename-database*))
 	   (n (+ (rename-database/frame-number renames) 1)))
       (set-rename-database/frame-number! renames n)
       n)))
 
 (define (rename-identifier identifier rename-id)
   (let ((key (cons identifier rename-id))
-	(renames (fluid *rename-database*)))
+	(renames (*rename-database*)))
     (let ((mapping-table (rename-database/mapping-table renames)))
       (or (hash-table/get mapping-table key #f)
 	  (let ((mapped-identifier
@@ -459,7 +459,7 @@ USA.
 (define (unmap-identifier identifier)
   (let ((entry
 	 (hash-table/get (rename-database/unmapping-table
-			  (fluid *rename-database*))
+			  (*rename-database*))
 			 identifier
 			 #f)))
     (if entry
@@ -472,7 +472,7 @@ USA.
 (define (finalize-mapped-identifier identifier)
   (let ((entry
 	 (hash-table/get (rename-database/unmapping-table
-			  (fluid *rename-database*))
+			  (*rename-database*))
 			 identifier
 			 #f)))
     (if entry
@@ -491,7 +491,7 @@ USA.
   (symbol "." symbol-to-map "." frame-number))
 
 (define (map-uninterned-identifier identifier frame-number)
-  (let ((table (rename-database/id-table (fluid *rename-database*)))
+  (let ((table (rename-database/id-table (*rename-database*)))
 	(symbol (identifier->symbol identifier)))
     (let ((alist (hash-table/get table symbol '())))
       (let ((entry (assv frame-number alist)))

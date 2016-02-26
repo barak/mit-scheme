@@ -34,13 +34,13 @@ USA.
   (set! condition-type:not-loading
 	(make-condition-type 'NOT-LOADING condition-type:error '()
 	  "No file being loaded."))
-  (set! load/loading? (make-fluid #f))
-  (set! load/suppress-loading-message? (make-fluid #f))
-  (set! load/after-load-hooks (make-fluid '()))
-  (set! *eval-unit* (make-fluid #f))
-  (set! *current-load-environment* (make-fluid 'NONE))
-  (set! *write-notifications?* (make-fluid #t))
-  (set! *load-init-file?* (make-fluid #t))
+  (set! load/loading? (make-parameter #f))
+  (set! load/suppress-loading-message? (make-parameter #f))
+  (set! load/after-load-hooks (make-parameter '()))
+  (set! *eval-unit* (make-parameter #f))
+  (set! *current-load-environment* (make-parameter 'NONE))
+  (set! *write-notifications?* (make-parameter #t))
+  (set! *load-init-file?* (make-parameter #t))
   (initialize-command-line-parsers)
   (set! hook/process-command-line default/process-command-line)
   (add-event-receiver! event:after-restart process-command-line))
@@ -76,7 +76,7 @@ USA.
 (define (load-1 pathname environment purify?)
   (receive (pathname* loader notifier) (choose-load-method pathname)
     (if pathname*
-	(maybe-notify (fluid load/suppress-loading-message?)
+	(maybe-notify (load/suppress-loading-message?)
 		      (loader environment purify?)
 		      notifier)
 	(load-failure load-1 pathname environment purify?))))
@@ -228,11 +228,11 @@ USA.
 (define (maybe-notify suppress-notifications? loader notifier)
   (let ((notify?
 	 (if (if (default-object? suppress-notifications?)
-		 (fluid load/suppress-loading-message?)
+		 (load/suppress-loading-message?)
 		 suppress-notifications?)
 	     #f
-	     (fluid *write-notifications?*))))
-    (let-fluid *write-notifications?* notify?
+	     (*write-notifications?*))))
+    (parameterize* (list (cons *write-notifications?* notify?))
       (lambda ()
 	(if notify?
 	    (notifier loader)
@@ -254,11 +254,11 @@ USA.
     (thunk)))
 
 (define (with-eval-unit uri thunk)
-  (let-fluid *eval-unit* (->absolute-uri uri 'WITH-EVAL-UNIT)
+  (parameterize* (list (cons *eval-unit* (->absolute-uri uri 'WITH-EVAL-UNIT)))
     thunk))
 
 (define (current-eval-unit #!optional error?)
-  (let ((unit (fluid *eval-unit*)))
+  (let ((unit (*eval-unit*)))
     (if (and (not unit)
 	     (if (default-object? error?) #t error?))
 	(error condition-type:not-loading))
@@ -269,35 +269,35 @@ USA.
       (error condition-type:not-loading)))
 
 (define (current-load-environment)
-  (let ((env (fluid *current-load-environment*)))
+  (let ((env (*current-load-environment*)))
     (if (eq? env 'NONE)
 	(nearest-repl/environment)
 	env)))
 
 (define (set-load-environment! environment)
   (guarantee-environment environment 'SET-LOAD-ENVIRONMENT!)
-  (if (not (eq? (fluid *current-load-environment*) 'NONE))
+  (if (not (eq? (*current-load-environment*) 'NONE))
       (begin
-	(set-fluid! *current-load-environment* environment)
+	(*current-load-environment* environment)
 	unspecific)))
 
 (define (with-load-environment environment thunk)
   (guarantee-environment environment 'WITH-LOAD-ENVIRONMENT)
-  (let-fluid *current-load-environment* environment
+  (parameterize* (list (cons *current-load-environment* environment))
     thunk))
 
 (define (load/push-hook! hook)
-  (if (not (fluid load/loading?)) (error condition-type:not-loading))
-  (set-fluid! load/after-load-hooks (cons hook (fluid load/after-load-hooks)))
+  (if (not (load/loading?)) (error condition-type:not-loading))
+  (load/after-load-hooks (cons hook (load/after-load-hooks)))
   unspecific)
 
 (define (handle-load-hooks thunk)
   (receive (result hooks)
-      (let-fluids load/loading? #t
-		  load/after-load-hooks '()
+      (parameterize* (list (cons load/loading? #t)
+			   (cons load/after-load-hooks '()))
 	(lambda ()
 	  (let ((result (thunk)))
-	    (values result (reverse (fluid load/after-load-hooks))))))
+	    (values result (reverse (load/after-load-hooks))))))
     (for-each (lambda (hook) (hook)) hooks)
     result))
 
@@ -506,13 +506,13 @@ USA.
     (if unused-command-line
 	(begin
 	  (set! *unused-command-line*)
-	  (let-fluid *load-init-file?* #t
+	  (parameterize* (list (cons *load-init-file?* #t))
 	    (lambda ()
 	      (set! *unused-command-line*
 		    (process-keyword (vector->list unused-command-line) '()))
 	      (for-each (lambda (act) (act))
 			(reverse after-parsing-actions))
-	      (if (fluid *load-init-file?*) (load-init-file)))))
+	      (if (*load-init-file?*) (load-init-file)))))
 	(begin
 	  (set! *unused-command-line* #f)
 	  (load-init-file)))))
@@ -662,7 +662,7 @@ ADDITIONAL OPTIONS supported by this band:\n")
   (set! *command-line-parsers* '())
   (simple-command-line-parser "no-init-file"
     (lambda ()
-      (set-fluid! *load-init-file?* #f)
+      (*load-init-file?* #f)
       unspecific)
     "Inhibits automatic loading of the ~/.scheme.init file.")
   (set! generate-suspend-file? #f)
@@ -683,7 +683,8 @@ ADDITIONAL OPTIONS supported by this band:\n")
     (lambda (arg)
       (run-in-nearest-repl
        (lambda (repl)
-	 (let-fluid load/suppress-loading-message? (cmdl/batch-mode? repl)
+	 (parameterize* (list (cons load/suppress-loading-message?
+				    (cmdl/batch-mode? repl)))
 	   (lambda ()
 	     (load arg (repl/environment repl)))))))
     "Loads the argument files as if in the REPL."

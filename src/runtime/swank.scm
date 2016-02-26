@@ -117,7 +117,7 @@ USA.
   (do () (#f)
     (with-simple-restart 'ABORT "Return to SLIME top-level."
       (lambda ()
-	(let-fluid *top-level-restart* (find-restart 'ABORT)
+	(parameterize* (list (cons *top-level-restart* (find-restart 'ABORT)))
 	  (lambda ()
 	    (process-one-message socket 0)))))))
 
@@ -130,13 +130,13 @@ USA.
   (set-repl/environment! (nearest-repl) environment))
 
 (define (top-level-abort)
-  (invoke-restart (fluid *top-level-restart*)))
+  (invoke-restart (*top-level-restart*)))
 
 (define (bound-restarts-for-emacs)
   (let loop ((restarts (bound-restarts)))
     (if (pair? restarts)
 	(cons (car restarts)
-	      (if (eq? (car restarts) (fluid *top-level-restart*))
+	      (if (eq? (car restarts) (*top-level-restart*))
 		  '()
 		  (loop (cdr restarts))))
 	'())))
@@ -224,8 +224,8 @@ USA.
 (define *index*)
 
 (define (emacs-rex socket sexp pstring id)
-  (let-fluids *buffer-pstring* pstring
-	      *index* id
+  (parameterize* (list (cons *buffer-pstring* pstring)
+		       (cons *index* id))
     (lambda ()
       (eval (cons* (car sexp) socket (map quote-special (cdr sexp)))
 	    swank-env))))
@@ -236,11 +236,11 @@ USA.
   (the-environment))
 
 (define (buffer-env)
-  (pstring->env (fluid *buffer-pstring*)))
+  (pstring->env (*buffer-pstring*)))
 
 (define (pstring->env pstring)
   (cond ((or (not (string? pstring))
-	     (let ((buffer-pstring (fluid *buffer-pstring*)))
+	     (let ((buffer-pstring (*buffer-pstring*)))
 	       (or (not (string? buffer-pstring))
 		   (string-ci=? buffer-pstring "COMMON-LISP-USER"))))
 	 (get-current-environment))
@@ -316,10 +316,10 @@ USA.
 
 (define repl-port-type)
 (define (initialize-package!)
-  (set! *top-level-restart* (make-fluid unspecific))
-  (set! *sldb-state* (make-fluid #f))
-  (set! *index* (make-fluid unspecific))
-  (set! *buffer-pstring* (make-fluid unspecific))
+  (set! *top-level-restart* (make-parameter unspecific))
+  (set! *sldb-state* (make-parameter #f))
+  (set! *index* (make-parameter unspecific))
+  (set! *buffer-pstring* (make-parameter unspecific))
   (set! repl-port-type
 	(make-port-type
 	 `((WRITE-CHAR
@@ -657,17 +657,18 @@ swank:xref
 (define *sldb-state*)
 
 (define (invoke-sldb socket level condition)
-  (let-fluid *sldb-state*
-	     (make-sldb-state condition (bound-restarts-for-emacs))
-    (lambda ()
-      (dynamic-wind
-	(lambda () #f)
-	(lambda ()
-	  (write-message `(:debug 0 ,level ,@(sldb-info (fluid *sldb-state*) 0 20))
-			 socket)
-	  (sldb-loop level socket))
-	(lambda ()
-	  (write-message `(:debug-return 0 ,(- level 1) 'NIL) socket))))))
+  (parameterize*
+   (list (cons *sldb-state*
+	       (make-sldb-state condition (bound-restarts-for-emacs))))
+   (lambda ()
+     (dynamic-wind
+      (lambda () #f)
+      (lambda ()
+	(write-message `(:debug 0 ,level ,@(sldb-info (*sldb-state*) 0 20))
+		       socket)
+	(sldb-loop level socket))
+      (lambda ()
+	(write-message `(:debug-return 0 ,(- level 1) 'NIL) socket))))))
 
 (define (sldb-loop level socket)
   (write-message `(:debug-activate 0 ,level) socket)
@@ -685,7 +686,7 @@ swank:xref
 	  (sldb-restarts rs)
 	  (sldb-backtrace c start end)
 	  ;;'((0 "dummy frame"))
-	  (list (fluid *index*)))))
+	  (list (*index*)))))
 
 (define (sldb-restarts restarts)
   (map (lambda (r)
@@ -700,24 +701,24 @@ swank:xref
 
 (define (swank:sldb-abort socket . args)
   socket args
-  (abort (sldb-state.restarts (fluid *sldb-state*))))
+  (abort (sldb-state.restarts (*sldb-state*))))
 
 (define (swank:sldb-continue socket . args)
   socket args
-  (continue (sldb-state.restarts (fluid *sldb-state*))))
+  (continue (sldb-state.restarts (*sldb-state*))))
 
 (define (swank:invoke-nth-restart-for-emacs socket sldb-level n)
   sldb-level
-  (write-message `(:return (:abort "NIL") ,(fluid *index*)) socket)
-  (invoke-restart (list-ref (sldb-state.restarts (fluid *sldb-state*)) n)))
+  (write-message `(:return (:abort "NIL") ,(*index*)) socket)
+  (invoke-restart (list-ref (sldb-state.restarts (*sldb-state*)) n)))
 
 (define (swank:debugger-info-for-emacs socket from to)
   socket
-  (sldb-info (fluid *sldb-state*) from to))
+  (sldb-info (*sldb-state*) from to))
 
 (define (swank:backtrace socket from to)
   socket
-  (sldb-backtrace (sldb-state.condition (fluid *sldb-state*)) from to))
+  (sldb-backtrace (sldb-state.condition (*sldb-state*)) from to))
 
 (define (sldb-backtrace condition from to)
   (sldb-backtrace-aux (condition/continuation condition) from to))
@@ -759,7 +760,7 @@ swank:xref
     (cond ((debugging-info/compiled-code? expression)
 	   (write-string ";unknown compiled code" port))
 	  ((not (debugging-info/undefined-expression? expression))
-	   (let-fluid *unparse-primitives-by-name?* #t
+	   (parameterize* (list (cons *unparse-primitives-by-name?* #t))
 	     (lambda ()
 	       (write
 		(unsyntax
@@ -812,7 +813,7 @@ swank:xref
 (define (sldb-get-frame index)
   (stream-ref (continuation->frames
 	       (condition/continuation
-		(sldb-state.condition (fluid *sldb-state*))))
+		(sldb-state.condition (*sldb-state*))))
 	      index))
 
 (define (frame-var-value frame var)
@@ -835,8 +836,7 @@ swank:xref
 
 (define (all-completions prefix environment)
   (let ((prefix
-	 (if (fluid (environment-lookup environment
-					'*PARSER-CANONICALIZE-SYMBOLS?*))
+	 (if ((environment-lookup environment '*PARSER-CANONICALIZE-SYMBOLS?*))
 	     (string-downcase prefix)
 	     prefix))
 	(completions '()))
@@ -1112,9 +1112,9 @@ swank:xref
 (define (pprint-to-string o)
   (call-with-output-string
     (lambda (p)
-      (let-fluids *unparser-list-breadth-limit* 10
-		  *unparser-list-depth-limit* 4
-		  *unparser-string-length-limit* 100
+      (parameterize* (list (cons *unparser-list-breadth-limit* 10)
+			   (cons *unparser-list-depth-limit* 4)
+			   (cons *unparser-string-length-limit* 100))
 	(lambda ()
 	  (pp o p))))))
 

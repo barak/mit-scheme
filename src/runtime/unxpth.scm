@@ -82,7 +82,7 @@ USA.
 		   (cdr components)))))
     (let ((end (string-length string)))
       (if (or (= 0 end)
-	      (not (fluid *expand-directory-prefixes?*)))
+	      (not (*expand-directory-prefixes?*)))
 	  components
 	  (case (string-ref string 0)
 	    ((#\$)

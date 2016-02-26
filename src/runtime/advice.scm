@@ -35,23 +35,23 @@ USA.
 (define (initialize-package!)
   (set! entry-advice-population (make-population))
   (set! exit-advice-population (make-population))
-  (set! advice-continuation (make-fluid #f))
-  (set! the-arguments (make-fluid #f))
-  (set! the-procedure (make-fluid #f))
-  (set! the-result (make-fluid #f)))
+  (set! advice-continuation (make-parameter #f))
+  (set! the-arguments (make-parameter #f))
+  (set! the-procedure (make-parameter #f))
+  (set! the-result (make-parameter #f)))
 
 (define the-arguments)
 (define the-procedure)
 (define the-result)
 
 (define (*args*)
-  (list-copy (fluid the-arguments)))
+  (list-copy (the-arguments)))
 
 (define (*proc*)
-  (fluid the-procedure))
+  (the-procedure))
 
 (define (*result*)
-  (fluid the-result))
+  (the-result))
 
 (define (get-advice procedure)
   (lambda-advice (procedure-lambda procedure)))
@@ -83,7 +83,7 @@ USA.
       (lambda (original-body state)
 	(call-with-current-continuation
 	 (lambda (continuation)
-	   (let-fluid advice-continuation continuation
+	   (parameterize* (list (cons advice-continuation continuation))
 	     (lambda ()
 	       (with-restart 'USE-VALUE
 		   "Return a value from the advised procedure."
@@ -315,15 +315,15 @@ USA.
 ;;;; Break
 
 (define (break-entry-advice procedure arguments environment)
-  (let-fluids the-procedure procedure
-	      the-arguments arguments
+  (parameterize* (list (cons the-procedure procedure)
+		       (cons the-arguments arguments))
     (lambda ()
       (break-rep environment "Breakpoint on entry" procedure arguments))))
 
 (define (break-exit-advice procedure arguments result environment)
-  (let-fluids the-procedure procedure
-	      the-arguments arguments
-	      the-result result
+  (parameterize* (list (cons the-procedure procedure)
+		       (cons the-arguments arguments)
+		       (cons the-result result))
     (lambda ()
       (break-rep environment "Breakpoint on exit" procedure arguments result)))
   result)
@@ -334,7 +334,7 @@ USA.
 				      (apply trace-display port info)))
 				   message)
 	      environment
-	      (fluid advice-continuation)))
+	      (advice-continuation)))
 
 (define (break-entry procedure)
   (advise-entry procedure break-entry-advice))

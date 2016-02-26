@@ -156,6 +156,6 @@ USA.
 	(unparser/standard-method name))))
 
 (define (tagged-vector/unparse state vector)
-  (let-fluid *unparser-radix* 16
+  (parameterize* (list (cons *unparser-radix* 16))
     (lambda ()
       ((tagged-vector/unparser vector) state vector))))

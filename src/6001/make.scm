@@ -39,17 +39,23 @@ USA.
 ;;; Customize the runtime system:
 (set! repl:allow-restart-notifications? #f)
 (set! repl:write-result-hash-numbers? #f)
-(set-fluid! *pp-default-as-code?* #t)
-(set-fluid! *pp-named-lambda->define?* 'LAMBDA)
+(*pp-default-as-code?* #t)
+(*pp-named-lambda->define?* 'LAMBDA)
 (set! x-graphics:auto-raise? #t)
 (set! (access write-result:undefined-value-is-special?
 	      (->environment '(RUNTIME USER-INTERFACE)))
       #f)
-(set-fluid! hook/exit (lambda (integer) integer
-			      (warn "EXIT has been disabled.")))
-(set-fluid! hook/%exit (lambda (integer) integer
-			       (warn "%EXIT has been disabled.")))
-(set-fluid! hook/quit (lambda () (warn "QUIT has been disabled.")))
+(hook/exit
+ (lambda (integer)
+   integer
+   (warn "EXIT has been disabled.")))
+(hook/%exit
+ (lambda (integer)
+   integer
+   (warn "%EXIT has been disabled.")))
+(hook/quit
+ (lambda ()
+   (warn "QUIT has been disabled.")))
 
 (let ((edwin-env (->environment '(EDWIN)))
       (student-env (->environment '(STUDENT))))

@@ -249,7 +249,8 @@ USA.
   (if (< n (expt 10 (- k 1)))
       (string-append (string-pad-left (number->string n) (- k 1)) " ")
       (let ((s
-	     (let-fluid flonum-unparser-cutoff `(RELATIVE ,k ENGINEERING)
+	     (parameterize* (list (cons flonum-unparser-cutoff
+					`(RELATIVE ,k ENGINEERING)))
 	       (lambda ()
 		 (number->string (exact->inexact n))))))
 	(let ((regs (re-string-match "\\([0-9.]+\\)e\\([0-9]+\\)" s)))

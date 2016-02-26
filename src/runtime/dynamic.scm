@@ -54,33 +54,19 @@ USA.
 (define-guarantee parameter "parameter")
 
 (define (make-parameter init #!optional converter)
-  (let ((converter
-	 (if (default-object? converter)
-	     (lambda (x) x)
-	     converter)))
-    (let ((metadata (cons converter (converter init))))
-
-      (define (get-binding)
-	(or (assq metadata bindings)
-	    metadata))
-
-      (define (get)
-	(cdr (get-binding)))
-
-      (define (set new-value)
-	(let ((binding (get-binding))
-	      (converted (converter new-value)))
-	  (let ((old-value (cdr binding)))
-	    (set-cdr! binding converted)
-	    old-value)))
-
-      (let ((parameter
-	     (lambda (#!optional new-value)
-	       (if (default-object? new-value)
-		   (get)
-		   (set new-value)))))
-	(set-parameter-metadata! parameter metadata)
-	parameter))))
+  (let* ((converter
+	  (if (default-object? converter)
+	      (lambda (x) x)
+	      converter))
+	 (metadata (cons converter (converter init)))
+	 (parameter
+	  (lambda (#!optional new-value)
+	    (let ((p (or (assq metadata bindings) metadata)))
+	      (if (default-object? new-value)
+		  (cdr p)
+		  (set-cdr! p (converter new-value)))))))
+    (set-parameter-metadata! parameter metadata)
+    parameter))
 
 (define (parameterize* new-bindings thunk)
   (guarantee-alist new-bindings 'parameterize*)
@@ -96,34 +82,3 @@ USA.
 	     (set! bindings (set! temp (set! bindings)))
 	     unspecific)))
       (shallow-fluid-bind swap! thunk swap!))))
-
-;;;; Fluids (to be eliminated)
-
-(define (fluid? object)
-  (parameter? object))
-
-(define (make-fluid value)
-  (make-parameter value))
-
-(define (fluid f)
-  (guarantee-parameter f 'fluid)
-  (f))
-
-(define (set-fluid! f val)
-  (guarantee-parameter f 'set-fluid!)
-  (f val))
-
-(define (let-fluid fluid value thunk)
-  (parameterize* (list (cons fluid value)) thunk))
-
-(define (let-fluids . args)
-  (let loop
-      ((args args)
-       (new-bindings '()))
-    (if (not (pair? args))
-	(error "Ill-formed let-fluids arguments:" args))
-    (if (pair? (cdr args))
-	(loop (cddr args)
-	      (cons (cons (car args) (cadr args))
-		    new-bindings))
-	(parameterize* new-bindings (car args)))))

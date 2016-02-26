@@ -296,7 +296,7 @@ Now, there is formatting stuff to be considered here, in print-pgm.sh.
 		(groups/files-to-copy groups)))))
 
 (define (load-quietly pathname environment)
-  (let-fluid load/suppress-loading-message? #t
+  (parameterize* (list (cons load/suppress-loading-message? #t))
     (lambda ()
       (load pathname environment))))
 

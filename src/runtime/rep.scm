@@ -33,8 +33,8 @@ USA.
 (define repl:write-result-hash-numbers? #t)
 
 (define (initialize-package!)
-  (set! *nearest-cmdl* (make-fluid #f))
-  (set! standard-breakpoint-hook (make-fluid #f))
+  (set! *nearest-cmdl* (make-parameter #f))
+  (set! standard-breakpoint-hook (make-parameter #f))
   (set! hook/repl-read default/repl-read)
   (set! hook/repl-eval default/repl-eval)
   (set! hook/repl-write default/repl-write)
@@ -116,22 +116,23 @@ USA.
   (let ((port (cmdl/port cmdl)))
     (let ((thunk
 	   (lambda ()
-	     (let-fluids
-	      *current-input-port* #f
-	      *current-output-port* #f
-	      *notification-output-port* #f
-	      *trace-output-port* #f
-	      *interaction-i/o-port* #f
-	      *working-directory-pathname* (fluid *working-directory-pathname*)
-	      *nearest-cmdl* cmdl
-	      standard-error-hook #f
-	      standard-warning-hook #f
-	      standard-breakpoint-hook #f
-	      *default-pathname-defaults* (fluid *default-pathname-defaults*)
-	      dynamic-handler-frames '()
-	      *bound-restarts* (if (cmdl/parent cmdl)
-				   (fluid *bound-restarts*)
-				   '())
+	     (parameterize*
+	      (list (cons *current-input-port* #f)
+		    (cons *current-output-port* #f)
+		    (cons *notification-output-port* #f)
+		    (cons *trace-output-port* #f)
+		    (cons *interaction-i/o-port* #f)
+		    (cons *working-directory-pathname*
+			  (*working-directory-pathname*))
+		    (cons *nearest-cmdl* cmdl)
+		    (cons standard-error-hook #f)
+		    (cons standard-warning-hook #f)
+		    (cons standard-breakpoint-hook #f)
+		    (cons *default-pathname-defaults*
+			  (*default-pathname-defaults*))
+		    (cons dynamic-handler-frames '())
+		    (cons *bound-restarts*
+			  (if (cmdl/parent cmdl) (*bound-restarts*) '())))
 	      (lambda ()
 		(let loop ((message message))
 		  (loop
@@ -203,24 +204,24 @@ USA.
 (define *nearest-cmdl*)
 
 (define (nearest-cmdl)
-  (let ((cmdl (fluid *nearest-cmdl*)))
+  (let ((cmdl (*nearest-cmdl*)))
     (if (not cmdl) (error "NEAREST-CMDL: no cmdl"))
     cmdl))
 
 (define (nearest-cmdl/port)
-  (let ((cmdl (fluid *nearest-cmdl*)))
+  (let ((cmdl (*nearest-cmdl*)))
     (if cmdl
 	(cmdl/port cmdl)
 	console-i/o-port)))
 
 (define (nearest-cmdl/level)
-  (let ((cmdl (fluid *nearest-cmdl*)))
+  (let ((cmdl (*nearest-cmdl*)))
     (if cmdl
 	(cmdl/level cmdl)
 	0)))
 
 (define (nearest-cmdl/batch-mode?)
-  (let ((cmdl (fluid *nearest-cmdl*)))
+  (let ((cmdl (*nearest-cmdl*)))
     (if cmdl
 	(cmdl/batch-mode? cmdl)
 	#f)))
@@ -543,9 +544,9 @@ USA.
      (or message
 	 (and condition
 	      (cmdl-message/strings
-	       (let-fluids *unparser-list-depth-limit* 25
-			   *unparser-list-breadth-limit* 100
-			   *unparser-string-length-limit* 500
+	       (parameterize* (list (cons *unparser-list-depth-limit* 25)
+				    (cons *unparser-list-breadth-limit* 100)
+				    (cons *unparser-string-length-limit* 500))
 		 (lambda ()
 		   (condition/report-string condition))))))
      (and condition
@@ -946,9 +947,9 @@ USA.
   unspecific)
 
 (define (standard-breakpoint-handler condition)
-  (let ((hook (fluid standard-breakpoint-hook)))
+  (let ((hook (standard-breakpoint-hook)))
     (if hook
-	(let-fluid standard-breakpoint-hook #f
+	(parameterize* (list (cons standard-breakpoint-hook #f))
 	  (lambda ()
 	    (hook condition)))))
   (repl/start (push-repl (breakpoint/environment condition)

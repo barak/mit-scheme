@@ -83,7 +83,8 @@ USA.
 	string<?)))))
 
 (define (update-html-index directory)
-  ;;(let-fluid load/suppress-loading-message? #t (lambda () (load-option 'XML)))
+  ;;(parameterize* (list (cons load/suppress-loading-message? #t)
+  ;;  (lambda () (load-option 'XML)))
   (rewrite-file
    (merge-pathnames "index.html" directory)
    (lambda (in out)

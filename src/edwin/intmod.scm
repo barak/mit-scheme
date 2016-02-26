@@ -122,23 +122,23 @@ evaluated in the specified inferior REPL buffer."
 				    (detach-thread thread)
 				    thread))))
 	(attach-buffer-interface-port! buffer port)
-	(let-fluids hook/%exit inferior-repl/%exit
-		    hook/quit inferior-repl/quit
-	 (lambda ()
-	  (dynamic-wind
-	   (lambda () unspecific)
-	   (lambda ()
-	     (repl/start (make-repl #f
-				    port
-				    environment
-				    #f
-				    `((ERROR-DECISION ,error-decision))
-				    user-initial-prompt)
-			 (make-init-message message)))
-	   (lambda ()
-	     (signal-thread-event editor-thread
-	       (lambda ()
-		 (unwind-inferior-repl-buffer buffer)))))))))))
+	(parameterize* (list (cons hook/%exit inferior-repl/%exit)
+			     (cons hook/quit inferior-repl/quit))
+	  (lambda ()
+	    (dynamic-wind
+	     (lambda () unspecific)
+	     (lambda ()
+	       (repl/start (make-repl #f
+				      port
+				      environment
+				      #f
+				      `((ERROR-DECISION ,error-decision))
+				      user-initial-prompt)
+			   (make-init-message message)))
+	     (lambda ()
+	       (signal-thread-event editor-thread
+		 (lambda ()
+		   (unwind-inferior-repl-buffer buffer)))))))))))
 
 (define (make-init-message message)
   (if message
@@ -727,7 +727,7 @@ If this is an error, the debugger examines the error condition."
     (lambda (mark)
       (if mark
 	  (insert-string
-	   (let-fluid *unparse-with-maximum-readability?* #t
+	   (parameterize* (list (cons *unparse-with-maximum-readability?* #t))
 	     (lambda ()
 	       (write-to-string expression)))
 	   mark))))

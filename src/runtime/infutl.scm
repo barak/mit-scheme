@@ -37,7 +37,7 @@ USA.
 	  (,lambda-tag:internal-lexpr . LAMBDA)
 	  (,lambda-tag:let . LET)
 	  (,lambda-tag:fluid-let . FLUID-LET)))
-  (set! directory-rewriting-rules (make-fluid '()))
+  (set! directory-rewriting-rules (make-parameter '()))
   (set! wrappers-with-memoized-debugging-info (make-serial-population))
   (add-secondary-gc-daemon! discard-debugging-info!))
 
@@ -213,29 +213,30 @@ USA.
 (define directory-rewriting-rules)
 
 (define (with-directory-rewriting-rule match replace thunk)
-  (let-fluid directory-rewriting-rules
-	     (cons (cons (pathname-as-directory (merge-pathnames match))
-			 replace)
-		   (fluid directory-rewriting-rules))
-    thunk))
+  (parameterize*
+   (list (cons directory-rewriting-rules
+	       (cons (cons (pathname-as-directory (merge-pathnames match))
+			   replace)
+		     (directory-rewriting-rules))))
+   thunk))
 
 (define (add-directory-rewriting-rule! match replace)
   (let ((match (pathname-as-directory (merge-pathnames match))))
     (let ((rule
-	   (list-search-positive (fluid directory-rewriting-rules)
+	   (list-search-positive (directory-rewriting-rules)
 	     (lambda (rule)
 	       (equal? (pathname-directory (car rule))
 		       (pathname-directory match))))))
       (if rule
 	  (set-cdr! rule replace)
-	  (set-fluid! directory-rewriting-rules
-		      (cons (cons match replace)
-			    (fluid directory-rewriting-rules))))))
+	  (directory-rewriting-rules
+	   (cons (cons match replace)
+		 (directory-rewriting-rules))))))
   unspecific)
 
 (define (rewrite-directory pathname)
   (let ((rule
-	 (list-search-positive (fluid directory-rewriting-rules)
+	 (list-search-positive (directory-rewriting-rules)
 	   (lambda (rule)
 	     (directory-prefix? (pathname-directory pathname)
 				(pathname-directory (car rule)))))))

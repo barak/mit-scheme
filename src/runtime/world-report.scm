@@ -37,7 +37,7 @@ USA.
 	(flags (cons (cons (console-thread) "console")
 		     (if (default-object? thread-flags)
 			 '()
-			 thread-flags)))		   
+			 thread-flags)))
 	(now (get-universal-time))
 	(cpu (process-time-clock)))
     (write-string "-*-Outline-*-" port)
@@ -57,7 +57,7 @@ USA.
     (thread-report flags port)))
 
 (define (ticks->string ticks)
-  (let-fluid flonum-unparser-cutoff '(absolute 3)
+  (parameterize* (list (cons flonum-unparser-cutoff '(absolute 3)))
     (lambda ()
       (number->string (internal-time/ticks->seconds ticks) 10))))
 

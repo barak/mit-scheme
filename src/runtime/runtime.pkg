@@ -4578,12 +4578,6 @@ USA.
   (files "dynamic")
   (parent (runtime))
   (export ()
-	  fluid?
-	  make-fluid
-	  fluid
-	  set-fluid!
-	  let-fluid
-	  let-fluids
 	  parameter?
 	  make-parameter
 	  parameterize*)

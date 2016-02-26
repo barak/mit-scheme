@@ -110,7 +110,7 @@ USA.
     (make-cursor block start symbol-table)))
 
 (define (write-instructions cursor)
-  (let-fluid *unparser-radix* 16
+  (parameterize* (list (cons *unparser-radix* 16))
     (lambda ()
       (let ((end (compiled-code-block/code-end (cursor-block cursor))))
 	(let loop ()
@@ -219,7 +219,7 @@ USA.
 	       #t)))))
 
 (define (write-constants cursor)
-  (let-fluid *unparser-radix* 16
+  (parameterize* (list (cons *unparser-radix* 16))
     (lambda ()
       (let* ((block (cursor-block cursor))
 	     (end (compiled-code-block/index->offset

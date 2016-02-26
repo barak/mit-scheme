@@ -84,7 +84,7 @@
 (define event-return-address 'UNINITIALIZED)
 
 (define (initialize-package!)
-  (set! stack-sampling-return-address (make-fluid #f))
+  (set! stack-sampling-return-address (make-parameter #f))
   (let ((blocked? (block-thread-events)))
     (signal-thread-event (current-thread)
       (lambda ()
@@ -164,7 +164,7 @@
 (define stack-sampling-return-address)
 
 (define (stack-sampling-stack-frame? stack-frame)
-  (let ((return-address (fluid stack-sampling-return-address)))
+  (let ((return-address (stack-sampling-return-address)))
     (and (compiled-return-address? return-address)
          (eq? stack-frame-type/compiled-return-address
               (stack-frame/type stack-frame))
@@ -180,9 +180,10 @@
        (let ((stack-frame (continuation/first-subproblem continuation)))
          (if (eq? stack-frame-type/compiled-return-address
                   (stack-frame/type stack-frame))
-             (let-fluid stack-sampling-return-address
-			(stack-frame/return-address stack-frame)
-               thunk)
+             (parameterize*
+	      (list (cons stack-sampling-return-address
+			  (stack-frame/return-address stack-frame)))
+	      thunk)
              (thunk)))))))
 
 ;;;; Profile Data
@@ -396,11 +397,11 @@
 
 (define (profile-pp expression output-port)
   ;; Random parametrization.
-  (let-fluids *unparser-list-breadth-limit* 5
-              *unparser-list-depth-limit* 3
-              *unparser-string-length-limit* 40
-              *unparse-primitives-by-name?* #t
-	      *pp-save-vertical-space?* #t
-	      *pp-default-as-code?* #t
+  (parameterize* (list (cons *unparser-list-breadth-limit* 5)
+		       (cons *unparser-list-depth-limit* 3)
+		       (cons *unparser-string-length-limit* 40)
+		       (cons *unparse-primitives-by-name?* #t)
+		       (cons *pp-save-vertical-space?* #t)
+		       (cons *pp-default-as-code?* #t))
     (lambda ()
       (pp expression output-port))))

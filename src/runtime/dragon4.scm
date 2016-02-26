@@ -127,7 +127,7 @@ not much different to numbers within a few orders of magnitude of 1.
 			  exponent)))))
 
 (define (flonum-unparser-cutoff-args)
-  (let ((cutoff (fluid flonum-unparser-cutoff)))
+  (let ((cutoff (flonum-unparser-cutoff)))
     (cond ((eq? 'NORMAL cutoff)
 	   (values 'NORMAL 0 flonum-unparser:normal-output))
 	  ((and (pair? cutoff)
@@ -279,7 +279,7 @@ not much different to numbers within a few orders of magnitude of 1.
 (define expt-radix)
 
 (define (initialize-dragon4!)
-  (set! flonum-unparser-cutoff (make-fluid 'NORMAL))
+  (set! flonum-unparser-cutoff (make-parameter 'NORMAL))
   (set! expt-radix
 	(let ((v (make-initialized-vector 310 (lambda (i) (expt 10 i)))))
 	  (lambda (base exponent)
@@ -294,7 +294,7 @@ not much different to numbers within a few orders of magnitude of 1.
 
 (define (test)
   (define (try n settings . expecteds)
-    (let ((got (let-fluid flonum-unparser-cutoff settings
+    (let ((got (parameterize* (list (cons flonum-unparser-cutoff settings))
 		 (lambda ()
 		   (number->string (exact->inexact n))))))
       (if (member got expecteds)

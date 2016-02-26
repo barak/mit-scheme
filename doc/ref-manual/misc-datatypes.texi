@@ -428,37 +428,6 @@ new values.  Returns the value of @var{thunk} while the parameters are
 dynamically bound to the values.
 @end deffn
 
-@anchor{Fluids}
-@subsection Fluids
-
-@cindex fluid (defn)
-A @dfn{fluid} object is very similar to a parameter.  Its value can be
-dynamically bound like a parameter, and it has a top-level value that
-is used when it is unbound in the current dynamic environment.
-
-@deffn procedure make-fluid value
-Returns a new fluid object with @var{value} as its initial, top-level
-value.
-@end deffn
-
-@deffn procedure fluid fluid
-Returns @var{fluid}'s current value.
-@end deffn
-
-@deffn procedure set-fluid! fluid value
-Changes @var{fluid}'s current value.  If @var{fluid} is not bound in
-the current dynamic environment, its top-level value is changed.
-@end deffn
-
-@anchor{let-fluids}
-@deffn procedure let-fluid fluid value thunk
-@deffnx procedure let-fluids fluid value [ fluid value ] @dots{} thunk
-Returns the value of @var{thunk} while @var{fluid} is dynamically
-bound to @var{value}.  @code{Let-fluids} is identical to
-@code{let-fluid} except that it binds an arbitrary number of fluids to
-new values.
-@end deffn
-
 @anchor{Cells}
 @subsection Cells
 

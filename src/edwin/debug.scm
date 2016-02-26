@@ -49,7 +49,7 @@ USA.
  					     indentation port)
   (let ((start-mark #f)
  	(end-mark #f))
-    (let-fluid *pp-no-highlights?* #f
+    (parameterize* (list (cons *pp-no-highlights?* #f))
       (lambda ()
 	(debugger-pp
 	 (unsyntax-with-substitutions
@@ -1291,7 +1291,7 @@ it has been renamed, it will not be deleted automatically.")
 	    (cond ((debugging-info/compiled-code? expression)
 		   (write-string ";unknown compiled code" port))
 		  ((not (debugging-info/undefined-expression? expression))
-		   (let-fluid *unparse-primitives-by-name?* #t
+		   (parameterize* (list (cons *unparse-primitives-by-name?* #t))
 		     (lambda ()
 		       (write
 			(unsyntax (if (invalid-subexpression? subexpression)
@@ -1382,7 +1382,7 @@ it has been renamed, it will not be deleted automatically.")
 	    (subproblem/number (reduction/subproblem reduction)))
 	   port)))
     (write-string " " port)
-    (let-fluid *unparse-primitives-by-name?* #t
+    (parameterize* (list (cons *unparse-primitives-by-name?* #t))
       (lambda ()
 	(write (unsyntax (reduction/expression reduction)) port)))))
 

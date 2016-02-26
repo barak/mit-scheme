@@ -262,7 +262,7 @@ USA.
   (let ((f1-time (run-test f1-test)))
     (let ((report
 	   (lambda (name time scale)
-	     (let-fluid flonum-unparser-cutoff '(ABSOLUTE 2)
+	     (parameterize* (list (cons flonum-unparser-cutoff '(ABSOLUTE 2)))
 	       (lambda ()
 		 (newline)
 		 (write name)

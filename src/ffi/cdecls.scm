@@ -59,7 +59,7 @@ USA.
   ;; Toplevel entry point for the generator.
   ;; Returns a new C-INCLUDES structure.
   (let ((includes (make-c-includes library))
-	(cwd (if (fluid load/loading?)
+	(cwd (if (load/loading?)
 		 (directory-pathname (current-load-pathname))
 		 (working-directory-pathname))))
     (fluid-let ((c-include-noisily? #t))
@@ -71,7 +71,7 @@ USA.
 
 (define read-environment
   (make-top-level-environment '(*PARSER-CANONICALIZE-SYMBOLS?*)
-			      (list (make-fluid #f))))
+			      (list (make-parameter #f))))
 
 (define (include-cdecl-file filename cwd twd includes)
   ;; Adds the C declarations in FILENAME to INCLUDES.  Interprets

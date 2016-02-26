@@ -225,7 +225,7 @@ USA.
 
 (define-integrable (%restarts-argument restarts operator)
   (cond ((eq? 'BOUND-RESTARTS restarts)
-	 (fluid *bound-restarts*))
+	 (*bound-restarts*))
 	((condition? restarts)
 	 (%condition/restarts restarts))
 	(else
@@ -334,10 +334,11 @@ USA.
       (error:wrong-type-argument effector "effector" 'WITH-RESTART))
   (if (not (or (not interactor) (procedure? interactor)))
       (error:wrong-type-argument interactor "interactor" 'WITH-RESTART))
-  (let-fluid *bound-restarts*
-	     (cons (%make-restart name reporter effector interactor)
-		   (fluid *bound-restarts*))
-	     thunk))
+  (parameterize*
+   (list (cons *bound-restarts*
+	       (cons (%make-restart name reporter effector interactor)
+		     (*bound-restarts*))))
+   thunk))
 
 (define (with-simple-restart name reporter thunk)
   (call-with-current-continuation
@@ -382,7 +383,7 @@ USA.
 (define (bind-restart name reporter effector receiver)
   (with-restart name reporter effector #f
     (lambda ()
-      (receiver (car (fluid *bound-restarts*))))))
+      (receiver (car (*bound-restarts*))))))
 
 (define (invoke-restart restart . arguments)
   (guarantee-restart restart 'INVOKE-RESTART)
@@ -424,13 +425,13 @@ USA.
 (define hook/invoke-restart)
 
 (define (bound-restarts)
-  (let loop ((restarts (fluid *bound-restarts*)))
+  (let loop ((restarts (*bound-restarts*)))
     (if (pair? restarts)
 	(cons (car restarts) (loop (cdr restarts)))
 	'())))
 
 (define (first-bound-restart)
-  (let ((restarts (fluid *bound-restarts*)))
+  (let ((restarts (*bound-restarts*)))
     (if (not (pair? restarts))
 	(error:no-such-restart #f))
     (car restarts)))
@@ -489,7 +490,7 @@ USA.
 (define (restarts-default restarts name)
   (cond ((or (default-object? restarts)
 	     (eq? 'BOUND-RESTARTS restarts))
-	 (fluid *bound-restarts*))
+	 (*bound-restarts*))
 	((condition? restarts)
 	 (%condition/restarts restarts))
 	(else
@@ -505,24 +506,25 @@ USA.
 (define (bind-default-condition-handler types handler)
   (guarantee-condition-types types 'BIND-DEFAULT-CONDITION-HANDLER)
   (guarantee-condition-handler handler 'BIND-DEFAULT-CONDITION-HANDLER)
-  (set-fluid! static-handler-frames
-	      (cons (cons types handler)
-		    (fluid static-handler-frames)))
+  (static-handler-frames
+   (cons (cons types handler)
+	 (static-handler-frames)))
   unspecific)
 
 (define (bind-condition-handler types handler thunk)
   (guarantee-condition-types types 'BIND-CONDITION-HANDLER)
   (guarantee-condition-handler handler 'BIND-CONDITION-HANDLER)
-  (let-fluid dynamic-handler-frames
-	     (cons (cons types handler) (fluid dynamic-handler-frames))
-	     thunk))
+  (parameterize*
+   (list (cons dynamic-handler-frames
+	       (cons (cons types handler) (dynamic-handler-frames))))
+   thunk))
 
 (define-integrable (guarantee-condition-handler object caller)
   (guarantee-procedure-of-arity object 1 caller))
 
 (define (break-on-signals types)
   (guarantee-condition-types types 'BREAK-ON-SIGNALS)
-  (set-fluid! break-on-signals-types types)
+  (break-on-signals-types types)
   unspecific)
 
 (define hook/invoke-condition-handler)
@@ -543,29 +545,29 @@ USA.
 			 (inner (cdr generalizations)))
 		     (and (pair? types)
 			  (outer (car types) (cdr types)))))))))
-      (if (let ((types (fluid break-on-signals-types)))
+      (if (let ((types (break-on-signals-types)))
 	    (and (pair? types)
 		 (intersect-generalizations? types)))
-	  (let-fluid break-on-signals-types '()
+	  (parameterize* (list (cons break-on-signals-types '()))
 	    (lambda ()
 	      (breakpoint-procedure 'INHERIT
 				    "BKPT entered because of BREAK-ON-SIGNALS:"
 				    condition))))
-      (do ((frames (fluid dynamic-handler-frames) (cdr frames)))
+      (do ((frames (dynamic-handler-frames) (cdr frames)))
 	  ((not (pair? frames)))
 	(if (let ((types (caar frames)))
 	      (or (not (pair? types))
 		  (intersect-generalizations? types)))
-	    (let-fluid dynamic-handler-frames (cdr frames)
+	    (parameterize* (list (cons dynamic-handler-frames (cdr frames)))
 	      (lambda ()
 		(hook/invoke-condition-handler (cdar frames) condition)))))
-      (do ((frames (fluid static-handler-frames) (cdr frames)))
+      (do ((frames (static-handler-frames) (cdr frames)))
 	  ((not (pair? frames)))
 	(if (let ((types (caar frames)))
 	      (or (not (pair? types))
 		  (intersect-generalizations? types)))
-	    (let-fluids dynamic-handler-frames '()
-			static-handler-frames (cdr frames)
+	    (parameterize* (list (cons dynamic-handler-frames '())
+				 (cons static-handler-frames (cdr frames)))
 	      (lambda ()
 		(hook/invoke-condition-handler (cdar frames) condition)))))
       unspecific)))
@@ -603,17 +605,17 @@ USA.
 	     (default-handler condition)))))))
 
 (define (standard-error-handler condition)
-  (let ((hook (fluid standard-error-hook)))
+  (let ((hook (standard-error-hook)))
     (if hook
-	(let-fluid standard-error-hook #f
+	(parameterize* (list (cons standard-error-hook #f))
 	  (lambda ()
 	    (hook condition)))))
   (repl/start (push-repl 'INHERIT condition '() "error>")))
 
 (define (standard-warning-handler condition)
-  (let ((hook (fluid standard-warning-hook)))
+  (let ((hook (standard-warning-hook)))
     (if hook
-	(let-fluid standard-warning-hook #f
+	(parameterize* (list (cons standard-warning-hook #f))
 	  (lambda ()
 	    (hook condition)))
 	(let ((port (notification-output-port)))
@@ -766,12 +768,12 @@ USA.
   (memq condition-type:error (%condition-type/generalizations type)))
 
 (define (initialize-package!)
-  (set! *bound-restarts* (make-fluid '()))
-  (set! static-handler-frames (make-fluid '()))
-  (set! dynamic-handler-frames (make-fluid '()))
-  (set! break-on-signals-types (make-fluid '()))
-  (set! standard-error-hook (make-fluid #f))
-  (set! standard-warning-hook (make-fluid #f))
+  (set! *bound-restarts* (make-parameter '()))
+  (set! static-handler-frames (make-parameter '()))
+  (set! dynamic-handler-frames (make-parameter '()))
+  (set! break-on-signals-types (make-parameter '()))
+  (set! standard-error-hook (make-parameter #f))
+  (set! standard-warning-hook (make-parameter #f))
   (set! hook/invoke-condition-handler default/invoke-condition-handler)
   ;; No eta conversion for bootstrapping and efficiency reasons.
   (set! hook/invoke-restart
@@ -1256,8 +1258,8 @@ USA.
 	      (else (error "Unexpected value:" v)))))))
 
 (define (format-error-message message irritants port)
-  (let-fluids *unparser-list-depth-limit* 2
-	      *unparser-list-breadth-limit* 5
+  (parameterize* (list (cons *unparser-list-depth-limit* 2)
+		       (cons *unparser-list-breadth-limit* 5))
     (lambda ()
       (for-each (lambda (irritant)
 		  (if (and (pair? irritant)

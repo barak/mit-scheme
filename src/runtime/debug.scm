@@ -162,8 +162,8 @@ USA.
   (stack-frame/reductions (dstate/subproblem dstate)))
 
 (define (initialize-package!)
-  (set! *dstate* (make-fluid 'UNBOUND))
-  (set! *port* (make-fluid 'UNBOUND))
+  (set! *dstate* (make-parameter 'UNBOUND))
+  (set! *port* (make-parameter 'UNBOUND))
   (set!
    command-set
    (make-command-set
@@ -235,9 +235,9 @@ USA.
 	       (port (caddr (cadr form))))
 	   `(DEFINE (,(car (cadr form)) #!OPTIONAL ,dstate ,port)
 	      (LET ((,dstate (IF (DEFAULT-OBJECT? ,dstate)
-				 (FLUID *DSTATE*)
+				 (*DSTATE*)
 				 ,dstate))
-		    (,port (IF (DEFAULT-OBJECT? ,port) (FLUID *PORT*) ,port)))
+		    (,port (IF (DEFAULT-OBJECT? ,port) (*PORT*) ,port)))
 		,@(map (let ((free (list dstate port)))
 			 (lambda (expression)
 			   (make-syntactic-closure environment free
@@ -474,7 +474,7 @@ USA.
 	  (output-to-string
 	   50
 	   (lambda ()
-	     (let-fluid *unparse-primitives-by-name?* true
+	     (parameterize* (list (cons *unparse-primitives-by-name?* true))
 	       (lambda ()
 		 (write (unsyntax expression)))))))
 	 ((debugging-info/noise? expression)
@@ -810,8 +810,8 @@ USA.
 (define *port*)
 
 (define (command/internal dstate port)
-  (let-fluids *dstate* dstate
-	      *port* port
+  (parameterize* (list (cons *dstate* dstate)
+		       (cons *port* port))
     (lambda ()
       (debug/read-eval-print (->environment '(RUNTIME DEBUGGER))
 			     "the debugger"
@@ -956,9 +956,12 @@ using the read-eval-print environment instead.")
   (string-capitalize (if reason (string-append reason "; " message) message)))
 
 (define (debugger-pp expression indentation port)
-  (let-fluids *unparser-list-depth-limit* debugger:list-depth-limit
-	      *unparser-list-breadth-limit* debugger:list-breadth-limit
-	      *unparser-string-length-limit* debugger:string-length-limit
+  (parameterize* (list (cons *unparser-list-depth-limit*
+			     debugger:list-depth-limit)
+		       (cons *unparser-list-breadth-limit*
+			     debugger:list-breadth-limit)
+		       (cons *unparser-string-length-limit*
+			     debugger:string-length-limit))
     (lambda ()
       (pretty-print expression port true indentation))))
 

@@ -46,29 +46,29 @@ USA.
     (define (search-parent pathname)
       (call-with-values
 	  (lambda ()
-	    (let-fluids *options* '()
-			*parent* #f
-			load/suppress-loading-message? #t
+	    (parameterize* (list (cons *options* '())
+				 (cons *parent* #f)
+				 (cons load/suppress-loading-message? #t))
 	      (lambda ()
 		(load pathname (make-load-environment))
-		(values (fluid *options*) (fluid *parent*)))))
+		(values (*options*) (*parent*)))))
 	find-option))
 
     (define (make-load-environment)
       (let ((e (extend-top-level-environment system-global-environment)))
-	(environment-define e '*PARSER-CANONICALIZE-SYMBOLS?* (make-fluid #t))
+	(environment-define e '*PARSER-CANONICALIZE-SYMBOLS?* (make-parameter #t))
 	e))
 
     (if (memq name loaded-options)
 	name
-	(find-option (fluid *options*) (fluid *parent*)))))
+	(find-option (*options*) (*parent*)))))
 
 (define (define-load-option name . loaders)
-  (set-fluid! *options* (cons (cons name loaders) (fluid *options*)))
+  (*options* (cons (cons name loaders) (*options*)))
   unspecific)
 
 (define (further-load-options place)
-  (set-fluid! *parent* place)
+  (*parent* place)
   unspecific)
 
 (define (initial-load-options)
@@ -99,8 +99,8 @@ USA.
 (define *initial-options-file* #f)
 
 (define (initialize-package!)
-  (set! *options* (make-fluid '()))
-  (set! *parent* (make-fluid initial-load-options)))
+  (set! *options* (make-parameter '()))
+  (set! *parent* (make-parameter initial-load-options)))
 
 (define (dummy-option-loader)
   unspecific)

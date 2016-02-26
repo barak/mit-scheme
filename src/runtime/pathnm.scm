@@ -328,7 +328,7 @@ these rules:
 
 (define (uri->pathname uri #!optional error?)
   (let ((uri (->uri uri (and error? 'URI->PATHNAME)))
-	(defaults (fluid *default-pathname-defaults*))
+	(defaults (*default-pathname-defaults*))
 	(finish
 	 (lambda (device path keyword)
 	   (receive (directory name type)
@@ -389,7 +389,7 @@ these rules:
 	     (pathname-host
 	      (if (and (not (default-object? defaults)) defaults)
 		  defaults
-		  (fluid *default-pathname-defaults*))))))
+		  (*default-pathname-defaults*))))))
     (cond ((string? namestring)
 	   ((host-type/operation/parse-namestring (host/type host))
 	    namestring host))
@@ -422,7 +422,7 @@ these rules:
   (let ((defaults
 	  (if (and (not (default-object? defaults)) defaults)
 	      (->pathname defaults)
-	      (fluid *default-pathname-defaults*))))
+	      (*default-pathname-defaults*))))
     (let ((pathname (enough-pathname pathname defaults)))
       (let ((namestring (pathname->namestring pathname)))
 	(if (host=? (%pathname-host pathname) (%pathname-host defaults))
@@ -442,7 +442,7 @@ these rules:
   (let* ((defaults
 	   (if (and (not (default-object? defaults)) defaults)
 	       (->pathname defaults)
-	       (fluid *default-pathname-defaults*)))
+	       (*default-pathname-defaults*)))
 	 (pathname (pathname-arg pathname defaults 'MERGE-PATHNAMES)))
     (make-pathname
      (or (%pathname-host pathname) (%pathname-host defaults))
@@ -472,7 +472,7 @@ these rules:
   (let* ((defaults
 	   (if (and (not (default-object? defaults)) defaults)
 	       (->pathname defaults)
-	       (fluid *default-pathname-defaults*)))
+	       (*default-pathname-defaults*)))
 	 (pathname (pathname-arg pathname defaults 'ENOUGH-PATHNAME)))
     (let ((usual
 	   (lambda (component default)
@@ -634,18 +634,18 @@ these rules:
 				'with-system-library-directories
 				directories))))
 
-  (let-fluid library-directory-path
-	     (append (map existing-directory directories)
-		     (fluid library-directory-path))
+  (parameterize* (list (cons library-directory-path
+			     (append (map existing-directory directories)
+				     (library-directory-path))))
     thunk))
 
 (define (%find-library-directory)
   (pathname-simplify
-   (or (find-matching-item (fluid library-directory-path) file-directory?)
+   (or (find-matching-item (library-directory-path) file-directory?)
        (error "Can't find library directory."))))
 
 (define (%find-library-file pathname)
-  (let loop ((path (fluid library-directory-path)))
+  (let loop ((path (library-directory-path)))
     (and (pair? path)
 	 (let ((p (merge-pathnames pathname (car path))))
 	   (if (file-exists? p)
@@ -717,9 +717,9 @@ these rules:
       (set! host-types types)
       (set! local-host (make-host host-type #f))))
   (set! *default-pathname-defaults*
-	(make-fluid (make-pathname local-host #f #f #f #f #f)))
+	(make-parameter (make-pathname local-host #f #f #f #f #f)))
   (set! library-directory-path
-	(make-fluid
+	(make-parameter
 	 (map pathname-as-directory
 	      (vector->list ((ucode-primitive microcode-library-path 0))))))
   unspecific)
