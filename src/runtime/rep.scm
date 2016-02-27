@@ -122,8 +122,8 @@ USA.
 		    (cons *notification-output-port* #f)
 		    (cons *trace-output-port* #f)
 		    (cons *interaction-i/o-port* #f)
-		    (cons *working-directory-pathname*
-			  (*working-directory-pathname*))
+		    (cons working-directory-pathname
+			  (working-directory-pathname))
 		    (cons *nearest-cmdl* cmdl)
 		    (cons standard-error-hook #f)
 		    (cons standard-warning-hook #f)

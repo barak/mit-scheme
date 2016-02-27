@@ -5025,8 +5025,6 @@ USA.
 	  set-working-directory-pathname!
 	  with-working-directory-pathname
 	  working-directory-pathname)
-  (export (runtime rep)
-	  *working-directory-pathname*)
   (initialization (initialize-package!)))
 
 (define-package (runtime user-interface)

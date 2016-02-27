@@ -30,6 +30,7 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
+  (set! working-directory-pathname (make-parameter #f))
   (reset!)
   (add-event-receiver! event:after-restore reset!))
 
@@ -38,14 +39,11 @@ USA.
 	 (pathname-simplify
 	  (pathname-as-directory
 	   ((ucode-primitive working-directory-pathname))))))
-    (*working-directory-pathname* pathname)
+    (working-directory-pathname pathname)
     (default-pathname-defaults pathname))
   unspecific)
 
-(define *working-directory-pathname* (make-parameter #f))
-
-(define (working-directory-pathname)
-  (*working-directory-pathname*))
+(define working-directory-pathname)
 
 (define (set-working-directory-pathname! name)
   (let ((pathname (new-pathname name)))
@@ -63,7 +61,7 @@ USA.
 				  "no such directory")
 			      'SET-WORKING-DIRECTORY-PATHNAME!
 			      (list name)))
-    (*working-directory-pathname* pathname)
+    (working-directory-pathname pathname)
     (default-pathname-defaults pathname)
     (cmdl/set-default-directory (nearest-cmdl) pathname)
     pathname))
@@ -71,10 +69,10 @@ USA.
 (define (with-working-directory-pathname name thunk)
   (let ((pathname (new-pathname name)))
     (parameterize* (list (cons default-pathname-defaults pathname)
-			 (cons *working-directory-pathname* pathname))
+			 (cons working-directory-pathname pathname))
       thunk)))
 
 (define (new-pathname name)
   (pathname-simplify
    (pathname-as-directory
-    (merge-pathnames name (*working-directory-pathname*)))))
+    (merge-pathnames name (working-directory-pathname)))))
