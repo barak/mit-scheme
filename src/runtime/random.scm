@@ -138,7 +138,7 @@ USA.
 ;;;; Operations producing random values
 
 (define (random modulus #!optional state)
-  (let ((state (guarantee-random-state state 'RANDOM)))
+  (let ((state (get-random-state state 'RANDOM)))
     ;; Kludge: an exact integer modulus means that result is an exact
     ;; integer.  Otherwise, the result is a real number.
     (cond ((int:integer? modulus)
@@ -167,7 +167,7 @@ USA.
 	 flimit.))
 
 (define (random-byte-vector n #!optional state)
-  (let ((state (guarantee-random-state state 'RANDOM-BYTE-VECTOR))
+  (let ((state (get-random-state state 'RANDOM-BYTE-VECTOR))
 	(s (make-string n)))
     (do ((i 0 (fix:+ i 1)))
 	((fix:= i n))
@@ -175,14 +175,14 @@ USA.
     s))
 
 (define (random-source-make-integers source)
-  (guarantee-random-state source 'RANDOM-SOURCE-MAKE-INTEGERS)
+  (get-random-state source 'RANDOM-SOURCE-MAKE-INTEGERS)
   (lambda (modulus)
     (if (int:> modulus 0)
 	(%random-integer modulus source)
 	(error:bad-range-argument modulus #f))))
 
 (define (random-source-make-reals source #!optional unit)
-  (guarantee-random-state source 'RANDOM-SOURCE-MAKE-REALS)
+  (get-random-state source 'RANDOM-SOURCE-MAKE-REALS)
   (let ((unit
 	 (if (default-object? unit)
 	     .5
@@ -222,7 +222,7 @@ USA.
 			   (else (outer)))))))))
 	  (simple-random-state))
       (copy-random-state
-       (guarantee-random-state state 'MAKE-RANDOM-STATE))))
+       (get-random-state state 'MAKE-RANDOM-STATE))))
 
 (define (simple-random-state)
   (initial-random-state
@@ -284,8 +284,7 @@ USA.
 (define-integrable ers:length (fix:+ r 3))
 
 (define (export-random-state state)
-  (if (not (random-state? state))
-      (error:wrong-type-argument state "random state" 'EXPORT-RANDOM-STATE))
+  (guarantee-random-state state 'EXPORT-RANDOM-STATE)
   (let ((v (make-vector ers:length)))
     (vector-set! v 0 ers:tag)
     (vector-set! v 1 (random-state-index state))
@@ -350,6 +349,8 @@ USA.
 
 (define-integrable (random-state-vector s) (vector-ref s 3))
 
+(define-guarantee random-state "random state")
+
 (define (copy-random-state state)
   (%make-random-state (random-state-index state)
 		      (random-state-borrow state)
@@ -374,19 +375,13 @@ USA.
 	   ((fix:= i r))
 	 (flo:vector-set! vt i (flo:vector-ref vs i)))))))
 
-(define (guarantee-random-state state procedure)
-  (if (if (default-object? state) #f state)
-      (begin
-	(if (not (random-state? state))
-	    (error:wrong-type-argument state "random state" procedure))
-	state)
-      (let ((state (if *random-state*
-		       (*random-state*)
-		       ;; For early in the cold-load...
-		       default-random-source)))
-	(if (not (random-state? state))
-	    (error "Invalid *random-state*:" state))
-	state)))
+(define (get-random-state state procedure)
+  (let ((state
+	 (if (or (default-object? state) (not state))
+	     (or *random-state* default-random-source)
+	     state)))
+    (guarantee-random-state state procedure)
+    state))
 
 ;;;; Initialization
 
@@ -412,13 +407,9 @@ USA.
   unspecific)
 
 (define (finalize-random-state-type!)
-  (set! *random-state* (make-parameter default-random-source))
   (add-event-receiver! event:after-restart
     (lambda ()
-      (let ((state (*random-state*)))
-	(random-source-randomize! state)
-	(if (not (eq? default-random-source state))
-	    (random-source-randomize! default-random-source)))))
+      (random-source-randomize! default-random-source)))
   (named-structure/set-tag-description! random-state-tag
     (make-define-structure-type 'VECTOR
 				'RANDOM-STATE
