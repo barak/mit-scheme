@@ -44,6 +44,27 @@ not much different to numbers within a few orders of magnitude of 1.
 
 (declare (usual-integrations))
 
+(define flonum-unparser-hook #f)
+(define flonum-unparser-cutoff #!default)
+(define param:flonum-unparser-cutoff)
+(define expt-radix)
+
+(define (initialize-dragon4!)
+  (set! param:flonum-unparser-cutoff
+	(make-parameter 'NORMAL
+			(lambda (cutoff)
+			  (guarantee-cutoff-spec cutoff)
+			  cutoff)))
+  (set! expt-radix
+	(let ((v (make-initialized-vector 310 (lambda (i) (expt 10 i)))))
+	  (lambda (base exponent)
+	    (if (and (= base 10)
+		     (>= exponent 0)
+		     (< exponent (vector-length v)))
+		(vector-ref v exponent)
+		(rat:expt base exponent)))))
+  unspecific)
+
 (define (flo:->string x radix)
   (let ((inf?
 	 (lambda (x)
@@ -127,24 +148,13 @@ not much different to numbers within a few orders of magnitude of 1.
 			  exponent)))))
 
 (define (flonum-unparser-cutoff-args)
-  (let ((cutoff (flonum-unparser-cutoff)))
+  (let ((cutoff
+	 (if (default-object? flonum-unparser-cutoff)
+	     (param:flonum-unparser-cutoff)
+	     flonum-unparser-cutoff)))
     (cond ((eq? 'NORMAL cutoff)
 	   (values 'NORMAL 0 flonum-unparser:normal-output))
-	  ((and (pair? cutoff)
-		(pair? (cdr cutoff))
-		(let ((mode (car cutoff))
-		      (place (cadr cutoff)))
-		  (and (memq mode '(ABSOLUTE RELATIVE NORMAL))
-		       (exact-integer? place)
-		       (or (not (eq? 'RELATIVE mode))
-			   (positive? place))))
-		(or (null? (cddr cutoff))
-		    (and (pair? (cddr cutoff))
-			 (null? (cdddr cutoff))
-			 (let ((mode (caddr cutoff)))
-			   (or (memq mode '(NORMAL SCIENTIFIC ENGINEERING))
-			       (and (procedure? mode)
-				    (procedure-arity-valid? mode 3)))))))
+	  ((compound-cutoff-spec? cutoff)
 	   (values (car cutoff)
 		   (- (cadr cutoff))
 		   (if (null? (cddr cutoff))
@@ -156,15 +166,35 @@ not much different to numbers within a few orders of magnitude of 1.
 		 cutoff)
 	   (values 'NORMAL 0 flonum-unparser:normal-output)))))
 
+(define (cutoff-spec? cutoff)
+  (or (eq? 'NORMAL cutoff)
+      (compound-cutoff-spec? cutoff)))
+
+(define (compound-cutoff-spec? cutoff)
+  (and (pair? cutoff)
+       (pair? (cdr cutoff))
+       (let ((mode (car cutoff))
+	     (place (cadr cutoff)))
+	 (and (memq mode '(ABSOLUTE RELATIVE NORMAL))
+	      (exact-integer? place)
+	      (or (not (eq? 'RELATIVE mode))
+		  (positive? place))))
+       (or (null? (cddr cutoff))
+	   (and (pair? (cddr cutoff))
+		(null? (cdddr cutoff))
+		(let ((mode (caddr cutoff)))
+		  (or (memq mode '(NORMAL SCIENTIFIC ENGINEERING))
+		      (and (procedure? mode)
+			   (procedure-arity-valid? mode 3))))))))
+
+(define-guarantee cutoff-spec "flonum unparser cutoff spec")
+
 (define (lookup-symbolic-display-mode mode)
   (case mode
     ((ENGINEERING) flonum-unparser:engineering-output)
     ((SCIENTIFIC) flonum-unparser:scientific-output)
     ((NORMAL) flonum-unparser:normal-output)
     (else mode)))
-
-(define flonum-unparser-hook #f)
-(define flonum-unparser-cutoff)
 
 (define (dragon4-normalize x precision)
   (call-with-values (lambda () (flo:normalize x))
@@ -275,87 +305,3 @@ not much different to numbers within a few orders of magnitude of 1.
   (if (int:= f (int:expt 2 (- p 1)))
       (scale (int:* 2 r) (int:* 2 s) (int:* 2 m-))
       (scale r s m-)))
-
-(define expt-radix)
-
-(define (initialize-dragon4!)
-  (set! flonum-unparser-cutoff (make-parameter 'NORMAL))
-  (set! expt-radix
-	(let ((v (make-initialized-vector 310 (lambda (i) (expt 10 i)))))
-	  (lambda (base exponent)
-	    (if (and (= base 10)
-		     (>= exponent 0)
-		     (< exponent (vector-length v)))
-		(vector-ref v exponent)
-		(rat:expt base exponent)))))
-  unspecific)
-
-#|  Test code.  Re-run after changing anything.
-
-(define (test)
-  (define (try n settings . expecteds)
-    (let ((got (parameterize* (list (cons flonum-unparser-cutoff settings))
-		 (lambda ()
-		   (number->string (exact->inexact n))))))
-      (if (member got expecteds)
-	  (set! successes (+ successes 1))
-	  (begin
-	    (set! failures (+ failures 1))
-	    (display "\nTest failed ") (write n) (display " ") (write settings)
-	    (display "\n  expected:")
-	    (for-each (lambda (s) (display " ") (write s))
-	      expecteds)
-	    (display "\n       got: ")  (write got)))))
-
-  (define failures 0)
-  (define successes 0)
-
-  ;; From the MIT/GNU Scheme Reference Manual:
-  (try (* 4 (atan 1 1))     '(relative 5)              "3.1416")
-  (try (* 4000 (atan 1 1))  '(relative 5)              "3141.6")
-  (try (* 4000 (atan 1 1))  '(relative 5 scientific)   "3.1416e3")
-  (try (* 40000 (atan 1 1)) '(relative 5 scientific)   "3.1416e4")
-  (try (* 40000 (atan 1 1)) '(relative 5 engineering)  "31.416e3")
-  (try (* 4 (atan 1 1))     '(absolute 5)              "3.14159")
-  (try (* 4000 (atan 1 1))  '(absolute 5)              "3141.59265")
-  (try (* 4e10 (atan 1 1))  '(absolute -4)             "31415930000.")
-  (try (* 4e10 (atan 1 1))  '(absolute -4 scientific)  "3.141593e10")
-  (try (* 4e10 (atan 1 1))  '(absolute -4 engineering) "31.41593e9")
-  (try (* 4e10 (atan 1 1))  '(absolute -5)             "31415900000.")
-
-  ;; Harder tests:
-  (try 0.          'normal  "0.")
-  (try 0.0123456   'normal  ".0123456")
-  (try 0.000123456 'normal  ".000123456")
-
-  (try 1/3       '(relative 4) ".3333")
-  (try 2/3       '(relative 4) ".6667")
-
-  (try 12345.67   '(absolute  1 normal) "12345.7")
-  (try 12345.67   '(absolute -4 normal) "10000.")
-  (try 4999.      '(absolute -4 normal) "0.")
-  (try 5001.      '(absolute -4 normal) "10000.")
-
-  (try 12345.67   '(absolute  1 scientific) "1.23457e4")
-  (try 12345.67   '(absolute -4 scientific) "1e4")
-  (try 4999.      '(absolute -4 scientific) "0." "0e4" "0e3")
-  (try 5001.      '(absolute -4 scientific) "1e4")
-
-  (try 12345.67   '(absolute  1 engineering) "12.3457e3")
-  (try 12345.67   '(absolute -4 engineering) "10e3")
-  (try 4999.      '(absolute -4 engineering) "0." "0e3")
-  (try 5001.      '(absolute -4 engineering) "10e3")
-  (try 5001.      '(absolute -5 engineering) "0." "0e3")
-  (try 5001.      '(absolute -6 engineering) "0." "0e3")
-  (try -5001.     '(absolute -6 engineering) "0." "-0e3")
-
-  (try 0.00499   '(absolute  2 normal) "0." ".00")  ; "0." would be prefereable
-
-  (try 0.00500   '(absolute  2 normal) ".01") ; (rounds up in binary)
-  (try 0.00501   '(absolute  2 normal) ".01")
-  (try 0.00499   '(absolute -3 normal) "0.")
-
-
-  (display "\n\nSuccesses: ") (display successes)
-  (display "    Failures: ") (display failures))
-|#
