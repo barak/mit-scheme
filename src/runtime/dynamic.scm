@@ -53,18 +53,22 @@ USA.
 
 (define-guarantee parameter "parameter")
 
-(define (make-parameter init #!optional converter)
-  (let* ((converter
-	  (if (default-object? converter)
-	      (lambda (x) x)
-	      converter))
-	 (metadata (cons converter (converter init)))
+(define (make-parameter initial-value #!optional write-converter)
+  (let ((noop (lambda (x) x)))
+    (make-parameter* initial-value
+		     noop
+		     (if (default-object? write-converter)
+			 noop
+			 write-converter))))
+
+(define (make-parameter* initial-value read-converter write-converter)
+  (let* ((metadata (cons write-converter (write-converter initial-value)))
 	 (parameter
 	  (lambda (#!optional new-value)
 	    (let ((p (or (assq metadata bindings) metadata)))
 	      (if (default-object? new-value)
-		  (cdr p)
-		  (set-cdr! p (converter new-value)))))))
+		  (read-converter (cdr p))
+		  (set-cdr! p (write-converter new-value)))))))
     (set-parameter-metadata! parameter metadata)
     parameter))
 

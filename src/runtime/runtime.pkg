@@ -4581,6 +4581,7 @@ USA.
   (export ()
 	  parameter?
 	  make-parameter
+	  make-parameter*
 	  parameterize*)
   (initialization (initialize-package!)))
 
