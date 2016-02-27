@@ -437,12 +437,12 @@ these rules:
 ;;;; Pathname Merging
 
 (define *default-pathname-defaults*)
-(define default-pathname-defaults)
+(define param:default-pathname-defaults)
 
 ;;; Kludge to support FLUID-LET:
 (define (get-default-pathname-defaults)
   (if (default-object? *default-pathname-defaults*)
-      (default-pathname-defaults)
+      (param:default-pathname-defaults)
       *default-pathname-defaults*))
 
 (define (merge-pathnames pathname #!optional defaults default-version)
@@ -724,7 +724,7 @@ these rules:
       (set! host-types types)
       (set! local-host (make-host host-type #f))))
   (set! *default-pathname-defaults* #!default)
-  (set! default-pathname-defaults
+  (set! param:default-pathname-defaults
 	(make-parameter (make-pathname local-host #f #f #f #f #f)))
   (set! library-directory-path
 	(make-parameter

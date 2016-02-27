@@ -3139,7 +3139,6 @@ USA.
 	  ->namestring
 	  ->pathname
 	  ->truename
-	  default-pathname-defaults
 	  directory-namestring
 	  directory-pathname
 	  directory-pathname-as-file
@@ -3158,6 +3157,7 @@ USA.
 	  local-host
 	  make-pathname
 	  merge-pathnames
+	  param:default-pathname-defaults
 	  parse-namestring
 	  pathname->uri
 	  pathname-absolute?

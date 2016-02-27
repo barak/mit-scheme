@@ -128,7 +128,8 @@ USA.
 		    (cons standard-error-hook #f)
 		    (cons standard-warning-hook #f)
 		    (cons standard-breakpoint-hook #f)
-		    (cons default-pathname-defaults (default-pathname-defaults))
+		    (cons param:default-pathname-defaults
+			  (param:default-pathname-defaults))
 		    (cons dynamic-handler-frames '())
 		    (cons *bound-restarts*
 			  (if (cmdl/parent cmdl) (*bound-restarts*) '())))
