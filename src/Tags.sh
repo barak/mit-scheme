@@ -41,6 +41,7 @@ DEFAULT_SUBDIRS=( \
     mhash \
     microcode \
     rcs \
+    runtime \
     sf \
     sos \
     ssp \
