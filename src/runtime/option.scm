@@ -56,7 +56,9 @@ USA.
 
     (define (make-load-environment)
       (let ((e (extend-top-level-environment system-global-environment)))
-	(environment-define e '*PARSER-CANONICALIZE-SYMBOLS?* (make-parameter #t))
+	(environment-define e
+			    '*PARSER-CANONICALIZE-SYMBOLS?*
+			    (make-parameter #t))
 	e))
 
     (if (memq name loaded-options)
