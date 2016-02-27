@@ -3138,6 +3138,7 @@ USA.
 	  ->namestring
 	  ->pathname
 	  ->truename
+	  default-pathname-defaults
 	  directory-namestring
 	  directory-pathname
 	  directory-pathname-as-file
