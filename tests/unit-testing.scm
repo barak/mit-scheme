@@ -389,6 +389,10 @@ USA.
   (binary-assertion (lambda (actual-value expected-list)
 		      (and (memv actual-value expected-list) #t))))
 
+(define-for-tests assert-member
+  (binary-assertion (lambda (actual-value expected-list)
+		      (and (member actual-value expected-list) #t))))
+
 (define-for-tests (assert-error thunk condition-types . properties)
   (call-with-current-continuation
    (lambda (k)
