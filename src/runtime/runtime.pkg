@@ -3589,6 +3589,7 @@ USA.
 	  nearest-repl/condition
 	  nearest-repl/environment
 	  out
+	  param:standard-breakpoint-hook
 	  pe
 	  proceed
 	  push-cmdl

@@ -33,15 +33,13 @@ USA.
 (define repl:write-result-hash-numbers? #t)
 
 (define (initialize-package!)
-  (set! *nearest-cmdl* (make-parameter #f))
-  (set! standard-breakpoint-hook (make-parameter #f))
+  (set! param:nearest-cmdl (make-unsettable-parameter #f))
   (set! hook/repl-read default/repl-read)
   (set! hook/repl-eval default/repl-eval)
   (set! hook/repl-write default/repl-write)
   (set! hook/set-default-environment default/set-default-environment)
   (set! hook/error-decision #f)
-  (initialize-breakpoint-condition!)
-  unspecific)
+  (initialize-breakpoint-condition!))
 
 (define (initial-top-level-repl)
   (call-with-current-continuation
@@ -124,10 +122,10 @@ USA.
 		    (cons *interaction-i/o-port* #f)
 		    (cons working-directory-pathname
 			  (working-directory-pathname))
-		    (cons *nearest-cmdl* cmdl)
+		    (cons param:nearest-cmdl cmdl)
 		    (cons standard-error-hook #f)
 		    (cons standard-warning-hook #f)
-		    (cons standard-breakpoint-hook #f)
+		    (cons param:standard-breakpoint-hook #f)
 		    (cons param:default-pathname-defaults
 			  (param:default-pathname-defaults))
 		    (cons dynamic-handler-frames '())
@@ -201,27 +199,27 @@ USA.
 (define (cmdl-abort-restart? restart)
   (restart/get restart cmdl-abort-restart-tag))
 
-(define *nearest-cmdl*)
+(define param:nearest-cmdl)
 
 (define (nearest-cmdl)
-  (let ((cmdl (*nearest-cmdl*)))
+  (let ((cmdl (param:nearest-cmdl)))
     (if (not cmdl) (error "NEAREST-CMDL: no cmdl"))
     cmdl))
 
 (define (nearest-cmdl/port)
-  (let ((cmdl (*nearest-cmdl*)))
+  (let ((cmdl (param:nearest-cmdl)))
     (if cmdl
 	(cmdl/port cmdl)
 	console-i/o-port)))
 
 (define (nearest-cmdl/level)
-  (let ((cmdl (*nearest-cmdl*)))
+  (let ((cmdl (param:nearest-cmdl)))
     (if cmdl
 	(cmdl/level cmdl)
 	0)))
 
 (define (nearest-cmdl/batch-mode?)
-  (let ((cmdl (*nearest-cmdl*)))
+  (let ((cmdl (param:nearest-cmdl)))
     (if cmdl
 	(cmdl/batch-mode? cmdl)
 	#f)))
@@ -916,6 +914,8 @@ USA.
 (define breakpoint/message)
 (define breakpoint/prompt)
 (define %signal-breakpoint)
+(define param:standard-breakpoint-hook)
+(define standard-breakpoint-hook #!default)
 
 (define (initialize-breakpoint-condition!)
   (set! condition-type:breakpoint
@@ -944,18 +944,21 @@ USA.
 				   prompt)))
 	      (signal-condition condition)
 	      (standard-breakpoint-handler condition)))))
+  (set! param:standard-breakpoint-hook (make-settable-parameter #f))
   unspecific)
 
 (define (standard-breakpoint-handler condition)
-  (let ((hook (standard-breakpoint-hook)))
+  (let ((hook
+	 (if (default-object? standard-breakpoint-hook)
+	     (param:standard-breakpoint-hook)
+	     standard-breakpoint-hook)))
     (if hook
-	(parameterize* (list (cons standard-breakpoint-hook #f))
-	  (lambda ()
-	    (hook condition)))))
+	(fluid-let ((standard-breakpoint-hook #!default))
+	  (parameterize* (list (cons param:standard-breakpoint-hook #f))
+	    (lambda ()
+	      (hook condition))))))
   (repl/start (push-repl (breakpoint/environment condition)
 			 condition
 			 '()
 			 (breakpoint/prompt condition))
 	      (breakpoint/message condition)))
-
-(define standard-breakpoint-hook)
