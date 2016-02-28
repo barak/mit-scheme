@@ -90,11 +90,7 @@ USA.
 		      (,(close-syntax e-name environment) OBJECT CALLER))
 		  OBJECT)
 		(DEFINE (,e-name OBJECT #!OPTIONAL CALLER)
-		  (ERROR:WRONG-TYPE-ARGUMENT OBJECT
-					     ,desc
-					     (IF (DEFAULT-OBJECT? CALLER)
-						 #F
-						 CALLER))))))
+		  (ERROR:WRONG-TYPE-ARGUMENT OBJECT ,desc CALLER)))))
 	 (ill-formed-syntax form)))))
 
 (define-syntax define-deferred
