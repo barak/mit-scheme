@@ -95,7 +95,7 @@ USA.
 
 (define ((pi-expander environment) text)
   (fluid-let ((*outputs* (cons '() '())))
-    (parameterize* (list (cons load/suppress-loading-message? #t))
+    (parameterize* (list (cons param:suppress-loading-message? #t))
       (lambda ()
 	(let ((port (open-input-string text)))
 	  (let loop ()

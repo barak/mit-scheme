@@ -219,7 +219,7 @@ procedures are called."
 		      (catch-file-errors (lambda (condition) condition #f)
 			(lambda ()
 			  (parameterize*
-			   (list (cons load/suppress-loading-message? #t))
+			   (list (cons param:suppress-loading-message? #t))
 			   (lambda ()
 			     (load pathname '(EDWIN))))))))))))
 	  (if (and (procedure? database)

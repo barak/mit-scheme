@@ -48,7 +48,7 @@ USA.
 	  (lambda ()
 	    (parameterize* (list (cons *options* '())
 				 (cons *parent* #f)
-				 (cons load/suppress-loading-message? #t))
+				 (cons param:suppress-loading-message? #t))
 	      (lambda ()
 		(load pathname (make-load-environment))
 		(values (*options*) (*parent*)))))

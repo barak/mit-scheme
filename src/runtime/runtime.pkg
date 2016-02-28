@@ -2824,6 +2824,8 @@ USA.
 	  load/purification-root
 	  load/push-hook!
 	  load/suppress-loading-message?
+	  param:loading?
+	  param:suppress-loading-message?
 	  set-command-line-parser!
 	  set-load-environment!
 	  simple-command-line-parser
@@ -3626,7 +3628,6 @@ USA.
 	  standard-breakpoint-hook
 	  ve
 	  with-repl-eval-boundary)
-  (export (runtime load))
   (export (runtime emacs-interface)
 	  hook/error-decision
 	  set-cmdl/port!)

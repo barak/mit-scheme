@@ -594,7 +594,7 @@ USA.
   (if (not (name->package '(FFI)))
       (let ((kernel
 	     (lambda ()
-	       (parameterize* (list (cons load/suppress-loading-message? #t))
+	       (parameterize* (list (cons param:suppress-loading-message? #t))
 		 (lambda ()
 		   (load-option 'FFI))))))
 	(if (nearest-cmdl/batch-mode?)

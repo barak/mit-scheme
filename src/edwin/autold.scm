@@ -207,7 +207,7 @@ Second arg is prefix arg when called interactively."
 			     evaluation-error-handler
 			   (lambda ()
 			     (parameterize*
-			      (list (cons load/suppress-loading-message? #t))
+			      (list (cons param:suppress-loading-message? #t))
 			      (lambda ()
 				((message-wrapper #f "Loading " (car library))
 				 (lambda ()
@@ -236,6 +236,6 @@ Second arg PURIFY? means purify the file's contents after loading;
      (bind-condition-handler (list condition-type:error)
 	 evaluation-error-handler
        (lambda ()
-	 (parameterize* (list (cons load/suppress-loading-message? #t))
+	 (parameterize* (list (cons param:suppress-loading-message? #t))
 	   (lambda ()
 	     (load filename environment 'DEFAULT purify?))))))))
