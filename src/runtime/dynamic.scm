@@ -66,21 +66,26 @@ USA.
 				noop
 				converter)
 			    noop
-			    settable?)))
+			    (and settable?
+				 (lambda (set-param value)
+				   (set-param value))))))
 
-(define (make-general-parameter initial-value converter reader settable?)
+(define (make-general-parameter initial-value converter getter setter)
   (guarantee-procedure converter 'make-general-parameter)
-  (guarantee-procedure reader 'make-general-parameter)
+  (guarantee-procedure getter 'make-general-parameter)
+  (if setter (guarantee-procedure setter 'make-general-parameter))
   (let* ((metadata (cons converter (converter initial-value)))
 	 (get-binding (lambda () (or (assq metadata bindings) metadata)))
 	 (parameter
-	  (if settable?
+	  (if setter
 	      (lambda (#!optional new-value)
 		(if (default-object? new-value)
-		    (reader (cdr (get-binding)))
-		    (set-cdr! (get-binding) (converter new-value))))
+		    (getter (cdr (get-binding)))
+		    (setter (lambda (value)
+			      (set-cdr! (get-binding) value))
+			    (converter new-value))))
 	      (lambda ()
-		(reader (cdr (get-binding)))))))
+		(getter (cdr (get-binding)))))))
     (set-parameter-metadata! parameter metadata)
     parameter))
 
