@@ -45,15 +45,15 @@ USA.
 (set! (access write-result:undefined-value-is-special?
 	      (->environment '(RUNTIME USER-INTERFACE)))
       #f)
-(hook/exit
+(param:exit-hook
  (lambda (integer)
    integer
    (warn "EXIT has been disabled.")))
-(hook/%exit
+(param:%exit-hook
  (lambda (integer)
    integer
    (warn "%EXIT has been disabled.")))
-(hook/quit
+(param:quit-hook
  (lambda ()
    (warn "QUIT has been disabled.")))
 

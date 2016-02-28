@@ -122,8 +122,8 @@ evaluated in the specified inferior REPL buffer."
 				    (detach-thread thread)
 				    thread))))
 	(attach-buffer-interface-port! buffer port)
-	(parameterize* (list (cons hook/%exit inferior-repl/%exit)
-			     (cons hook/quit inferior-repl/quit))
+	(parameterize* (list (cons param:%exit-hook inferior-repl/%exit)
+			     (cons param:quit-hook inferior-repl/quit))
 	  (lambda ()
 	    (dynamic-wind
 	     (lambda () unspecific)

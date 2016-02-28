@@ -499,6 +499,9 @@ USA.
 	  object-type
 	  object-type?
 	  pa
+	  param:%exit-hook
+	  param:exit-hook
+	  param:quit-hook
 	  pointer-type-code?
 	  primitive-procedure-arity
 	  primitive-procedure-documentation
