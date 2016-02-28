@@ -4581,9 +4581,11 @@ USA.
   (files "dynamic")
   (parent (runtime))
   (export ()
+	  (make-parameter make-settable-parameter)
 	  parameter?
-	  make-parameter
-	  make-parameter*
+	  make-general-parameter
+	  make-settable-parameter
+	  make-unsettable-parameter
 	  parameterize*)
   (initialization (initialize-package!)))
 

@@ -53,22 +53,34 @@ USA.
 
 (define-guarantee parameter "parameter")
 
-(define (make-parameter initial-value #!optional write-converter)
-  (let ((noop (lambda (x) x)))
-    (make-parameter* initial-value
-		     noop
-		     (if (default-object? write-converter)
-			 noop
-			 write-converter))))
+(define (make-unsettable-parameter initial-value #!optional converter)
+  (make-parameter-internal initial-value converter #f))
 
-(define (make-parameter* initial-value read-converter write-converter)
-  (let* ((metadata (cons write-converter (write-converter initial-value)))
+(define (make-settable-parameter initial-value #!optional converter)
+  (make-parameter-internal initial-value converter #t))
+
+(define (make-parameter-internal initial-value converter settable?)
+  (let ((noop (lambda (x) x)))
+    (make-general-parameter initial-value
+			    (if (default-object? converter)
+				noop
+				converter)
+			    noop
+			    settable?)))
+
+(define (make-general-parameter initial-value converter reader settable?)
+  (guarantee-procedure converter 'make-general-parameter)
+  (guarantee-procedure reader 'make-general-parameter)
+  (let* ((metadata (cons converter (converter initial-value)))
+	 (get-binding (lambda () (or (assq metadata bindings) metadata)))
 	 (parameter
-	  (lambda (#!optional new-value)
-	    (let ((p (or (assq metadata bindings) metadata)))
-	      (if (default-object? new-value)
-		  (read-converter (cdr p))
-		  (set-cdr! p (write-converter new-value)))))))
+	  (if settable?
+	      (lambda (#!optional new-value)
+		(if (default-object? new-value)
+		    (reader (cdr (get-binding)))
+		    (set-cdr! (get-binding) (converter new-value))))
+	      (lambda ()
+		(reader (cdr (get-binding)))))))
     (set-parameter-metadata! parameter metadata)
     parameter))
 
