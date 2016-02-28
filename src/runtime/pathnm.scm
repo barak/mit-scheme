@@ -328,7 +328,7 @@ these rules:
 
 (define (uri->pathname uri #!optional error?)
   (let ((uri (->uri uri (and error? 'URI->PATHNAME)))
-	(defaults (get-default-pathname-defaults))
+	(defaults (param:default-pathname-defaults))
 	(finish
 	 (lambda (device path keyword)
 	   (receive (directory name type)
@@ -389,7 +389,7 @@ these rules:
 	     (pathname-host
 	      (if (and (not (default-object? defaults)) defaults)
 		  defaults
-		  (get-default-pathname-defaults))))))
+		  (param:default-pathname-defaults))))))
     (cond ((string? namestring)
 	   ((host-type/operation/parse-namestring (host/type host))
 	    namestring host))
@@ -422,7 +422,7 @@ these rules:
   (let ((defaults
 	  (if (and (not (default-object? defaults)) defaults)
 	      (->pathname defaults)
-	      (get-default-pathname-defaults))))
+	      (param:default-pathname-defaults))))
     (let ((pathname (enough-pathname pathname defaults)))
       (let ((namestring (pathname->namestring pathname)))
 	(if (host=? (%pathname-host pathname) (%pathname-host defaults))
@@ -439,17 +439,27 @@ these rules:
 (define *default-pathname-defaults*)
 (define param:default-pathname-defaults)
 
-;;; Kludge to support FLUID-LET:
-(define (get-default-pathname-defaults)
-  (if (default-object? *default-pathname-defaults*)
-      (param:default-pathname-defaults)
+(define (make-param:default-pathname-defaults)
+  (make-general-parameter #f
+			  identity-procedure
+			  defaults-getter
+			  defaults-setter))
+
+(define (defaults-getter defaults)
+  (if (eq? defaults *default-pathname-defaults*)
+      defaults
       *default-pathname-defaults*))
+
+(define (defaults-setter set-param defaults)
+  (set-param defaults)
+  (set! *default-pathname-defaults* defaults)
+  unspecific)
 
 (define (merge-pathnames pathname #!optional defaults default-version)
   (let* ((defaults
 	   (if (and (not (default-object? defaults)) defaults)
 	       (->pathname defaults)
-	       (get-default-pathname-defaults)))
+	       (param:default-pathname-defaults)))
 	 (pathname (pathname-arg pathname defaults 'MERGE-PATHNAMES)))
     (make-pathname
      (or (%pathname-host pathname) (%pathname-host defaults))
@@ -479,7 +489,7 @@ these rules:
   (let* ((defaults
 	   (if (and (not (default-object? defaults)) defaults)
 	       (->pathname defaults)
-	       (get-default-pathname-defaults)))
+	       (param:default-pathname-defaults)))
 	 (pathname (pathname-arg pathname defaults 'ENOUGH-PATHNAME)))
     (let ((usual
 	   (lambda (component default)
@@ -723,9 +733,8 @@ these rules:
 	    (vector-set! types index (make-unimplemented-host-type index))))
       (set! host-types types)
       (set! local-host (make-host host-type #f))))
-  (set! *default-pathname-defaults* #!default)
-  (set! param:default-pathname-defaults
-	(make-parameter (make-pathname local-host #f #f #f #f #f)))
+  (set! param:default-pathname-defaults (make-param:default-pathname-defaults))
+  (param:default-pathname-defaults (make-pathname local-host #f #f #f #f #f))
   (set! library-directory-path
 	(make-parameter
 	 (map pathname-as-directory

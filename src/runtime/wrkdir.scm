@@ -44,8 +44,7 @@ USA.
 	  (pathname-as-directory
 	   ((ucode-primitive working-directory-pathname))))))
     (working-directory-pathname pathname)
-    (param:default-pathname-defaults pathname))
-  unspecific)
+    (param:default-pathname-defaults pathname)))
 
 (define working-directory-pathname)
 
@@ -76,9 +75,10 @@ USA.
 
 (define (with-working-directory-pathname name thunk)
   (let ((pathname (new-pathname name)))
-    (parameterize* (list (cons param:default-pathname-defaults pathname)
-			 (cons working-directory-pathname pathname))
-      thunk)))
+    (fluid-let ((*default-pathname-defaults* pathname))
+      (parameterize* (list (cons param:default-pathname-defaults pathname)
+			   (cons working-directory-pathname pathname))
+	thunk))))
 
 (define (new-pathname name)
   (pathname-simplify

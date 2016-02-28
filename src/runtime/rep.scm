@@ -111,7 +111,8 @@ USA.
   (port/set-default-directory (cmdl/port cmdl) pathname))
 
 (define (cmdl/start cmdl message)
-  (let ((port (cmdl/port cmdl)))
+  (let ((port (cmdl/port cmdl))
+	(pathname-defaults (param:default-pathname-defaults)))
     (let ((thunk
 	   (lambda ()
 	     (parameterize*
@@ -126,29 +127,29 @@ USA.
 		    (cons param:standard-error-hook #f)
 		    (cons param:standard-warning-hook #f)
 		    (cons param:standard-breakpoint-hook #f)
-		    (cons param:default-pathname-defaults
-			  (param:default-pathname-defaults))
+		    (cons param:default-pathname-defaults pathname-defaults)
 		    (cons dynamic-handler-frames '())
 		    (cons param:bound-restarts
 			  (if (cmdl/parent cmdl) (param:bound-restarts) '())))
 	      (lambda ()
-		(let loop ((message message))
-		  (loop
-		   (bind-abort-restart cmdl
-		     (lambda ()
-		       (deregister-all-events)
-		       (with-interrupt-mask interrupt-mask/all
-			 (lambda (interrupt-mask)
-			   interrupt-mask
-			   (unblock-thread-events)
-			   (ignore-errors
-			    (lambda ()
-			      ((->cmdl-message message) cmdl)))
-			   (call-with-current-continuation
-			    (lambda (continuation)
-			      (with-create-thread-continuation continuation
-				(lambda ()
-				  ((cmdl/driver cmdl) cmdl)))))))))))))))
+		(fluid-let ((*default-pathname-defaults* pathname-defaults))
+		  (let loop ((message message))
+		    (loop
+		     (bind-abort-restart cmdl
+		       (lambda ()
+			 (deregister-all-events)
+			 (with-interrupt-mask interrupt-mask/all
+			   (lambda (interrupt-mask)
+			     interrupt-mask
+			     (unblock-thread-events)
+			     (ignore-errors
+			      (lambda ()
+				((->cmdl-message message) cmdl)))
+			     (call-with-current-continuation
+			      (lambda (continuation)
+				(with-create-thread-continuation continuation
+				  (lambda ()
+				    ((cmdl/driver cmdl) cmdl))))))))))))))))
 	  (mutex (port/thread-mutex port)))
       (let ((thread (current-thread))
 	    (owner (thread-mutex-owner mutex)))
