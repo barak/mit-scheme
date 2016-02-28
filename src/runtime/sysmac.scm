@@ -87,7 +87,8 @@ USA.
 		(DEFINE (,g-name OBJECT #!OPTIONAL CALLER)
 		  (DECLARE (INTEGRATE CALLER))
 		  (IF (NOT (,(close-syntax p-name environment) OBJECT))
-		      (,(close-syntax e-name environment) OBJECT CALLER)))
+		      (,(close-syntax e-name environment) OBJECT CALLER))
+		  OBJECT)
 		(DEFINE (,e-name OBJECT #!OPTIONAL CALLER)
 		  (ERROR:WRONG-TYPE-ARGUMENT OBJECT
 					     ,desc
