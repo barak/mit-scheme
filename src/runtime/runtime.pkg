@@ -1877,6 +1877,8 @@ USA.
 	  make-condition
 	  make-condition-type
 	  muffle-warning
+	  param:standard-error-hook
+	  param:standard-warning-hook
 	  restart/effector
 	  restart/get
 	  restart/interactor
@@ -1900,7 +1902,7 @@ USA.
   (export (runtime microcode-errors)
 	  write-operator)
   (export (runtime rep)
-	  *bound-restarts*
+	  param:bound-restarts
 	  dynamic-handler-frames)
   (export (runtime debugger)
 	  continue-from-derived-thread-error)

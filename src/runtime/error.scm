@@ -225,7 +225,7 @@ USA.
 
 (define-integrable (%restarts-argument restarts operator)
   (cond ((eq? 'BOUND-RESTARTS restarts)
-	 (*bound-restarts*))
+	 (param:bound-restarts))
 	((condition? restarts)
 	 (%condition/restarts restarts))
 	(else
@@ -301,7 +301,7 @@ USA.
 
 ;;;; Restarts
 
-(define *bound-restarts*)
+(define param:bound-restarts)
 
 (define-structure (restart
 		   (conc-name %restart/)
@@ -335,9 +335,9 @@ USA.
   (if (not (or (not interactor) (procedure? interactor)))
       (error:wrong-type-argument interactor "interactor" 'WITH-RESTART))
   (parameterize*
-   (list (cons *bound-restarts*
+   (list (cons param:bound-restarts
 	       (cons (%make-restart name reporter effector interactor)
-		     (*bound-restarts*))))
+		     (param:bound-restarts))))
    thunk))
 
 (define (with-simple-restart name reporter thunk)
@@ -383,7 +383,7 @@ USA.
 (define (bind-restart name reporter effector receiver)
   (with-restart name reporter effector #f
     (lambda ()
-      (receiver (car (*bound-restarts*))))))
+      (receiver (car (param:bound-restarts))))))
 
 (define (invoke-restart restart . arguments)
   (guarantee-restart restart 'INVOKE-RESTART)
@@ -425,13 +425,13 @@ USA.
 (define hook/invoke-restart)
 
 (define (bound-restarts)
-  (let loop ((restarts (*bound-restarts*)))
+  (let loop ((restarts (param:bound-restarts)))
     (if (pair? restarts)
 	(cons (car restarts) (loop (cdr restarts)))
 	'())))
 
 (define (first-bound-restart)
-  (let ((restarts (*bound-restarts*)))
+  (let ((restarts (param:bound-restarts)))
     (if (not (pair? restarts))
 	(error:no-such-restart #f))
     (car restarts)))
@@ -490,7 +490,7 @@ USA.
 (define (restarts-default restarts name)
   (cond ((or (default-object? restarts)
 	     (eq? 'BOUND-RESTARTS restarts))
-	 (*bound-restarts*))
+	 (param:bound-restarts))
 	((condition? restarts)
 	 (%condition/restarts restarts))
 	(else
@@ -605,27 +605,37 @@ USA.
 	     (default-handler condition)))))))
 
 (define (standard-error-handler condition)
-  (let ((hook (standard-error-hook)))
+  (let ((hook
+	 (if (default-object? standard-error-hook)
+	     (param:standard-error-hook)
+	     standard-error-hook)))
     (if hook
-	(parameterize* (list (cons standard-error-hook #f))
-	  (lambda ()
-	    (hook condition)))))
+	(fluid-let ((standard-error-hook #!default))
+	  (parameterize* (list (cons param:standard-error-hook #f))
+	    (lambda ()
+	      (hook condition))))))
   (repl/start (push-repl 'INHERIT condition '() "error>")))
 
 (define (standard-warning-handler condition)
-  (let ((hook (standard-warning-hook)))
+  (let ((hook
+	 (if (default-object? standard-warning-hook)
+	     (param:standard-warning-hook)
+	     standard-warning-hook)))
     (if hook
-	(parameterize* (list (cons standard-warning-hook #f))
-	  (lambda ()
-	    (hook condition)))
+	(fluid-let ((standard-warning-hook #!default))
+	  (parameterize* (list (cons param:standard-warning-hook #f))
+	    (lambda ()
+	      (hook condition))))
 	(let ((port (notification-output-port)))
 	  (fresh-line port)
 	  (write-string ";Warning: " port)
 	  (write-condition-report condition port)
 	  (newline port)))))
 
-(define standard-error-hook)
-(define standard-warning-hook)
+(define standard-error-hook #!default)
+(define standard-warning-hook #!default)
+(define param:standard-error-hook)
+(define param:standard-warning-hook)
 
 (define (condition-signaller type field-names default-handler)
   (guarantee-condition-handler default-handler 'CONDITION-SIGNALLER)
@@ -768,12 +778,12 @@ USA.
   (memq condition-type:error (%condition-type/generalizations type)))
 
 (define (initialize-package!)
-  (set! *bound-restarts* (make-parameter '()))
+  (set! param:bound-restarts (make-parameter '()))
   (set! static-handler-frames (make-parameter '()))
   (set! dynamic-handler-frames (make-parameter '()))
   (set! break-on-signals-types (make-parameter '()))
-  (set! standard-error-hook (make-parameter #f))
-  (set! standard-warning-hook (make-parameter #f))
+  (set! param:standard-error-hook (make-settable-parameter #f))
+  (set! param:standard-warning-hook (make-settable-parameter #f))
   (set! hook/invoke-condition-handler default/invoke-condition-handler)
   ;; No eta conversion for bootstrapping and efficiency reasons.
   (set! hook/invoke-restart

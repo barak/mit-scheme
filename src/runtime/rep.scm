@@ -123,14 +123,14 @@ USA.
 		    (cons working-directory-pathname
 			  (working-directory-pathname))
 		    (cons param:nearest-cmdl cmdl)
-		    (cons standard-error-hook #f)
-		    (cons standard-warning-hook #f)
+		    (cons param:standard-error-hook #f)
+		    (cons param:standard-warning-hook #f)
 		    (cons param:standard-breakpoint-hook #f)
 		    (cons param:default-pathname-defaults
 			  (param:default-pathname-defaults))
 		    (cons dynamic-handler-frames '())
-		    (cons *bound-restarts*
-			  (if (cmdl/parent cmdl) (*bound-restarts*) '())))
+		    (cons param:bound-restarts
+			  (if (cmdl/parent cmdl) (param:bound-restarts) '())))
 	      (lambda ()
 		(let loop ((message message))
 		  (loop
