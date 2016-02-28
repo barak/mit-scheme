@@ -2397,16 +2397,9 @@ USA.
   (export (runtime transcript)
 	  port/transcript
 	  set-port/transcript!)
-  (export (runtime rep)
-	  *current-input-port*
-	  *current-output-port*
-	  *interaction-i/o-port*
-	  *notification-output-port*
-	  *trace-output-port*)
   (export (runtime emacs-interface)
 	  set-port/thread-mutex!
-	  set-port/type!
-	  standard-port-accessors)
+	  set-port/type!)
   (initialization (initialize-package!)))
 
 (define-package (runtime input-port)

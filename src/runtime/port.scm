@@ -65,10 +65,13 @@ USA.
      state
      type)))
 
-(define (guarantee-port-type object procedure)
+(define (guarantee-port-type object #!optional caller)
   (if (not (port-type? object))
-      (error:wrong-type-argument object "port type" procedure))
+      (error:not-port-type object caller))
   object)
+
+(define (error:not-port-type object #!optional caller)
+  (error:wrong-type-argument object "port type" caller))
 
 (define-integrable (port-type/supports-input? type)
   (port-type/read-char type))
@@ -629,36 +632,36 @@ USA.
 	      (port-type/supports-output? type)
 	      #t))))
 
-(define-integrable (guarantee-port port caller)
+(define (guarantee-port port #!optional caller)
   (if (not (port? port))
       (error:not-port port caller))
   port)
 
-(define (error:not-port port caller)
+(define (error:not-port port #!optional caller)
   (error:wrong-type-argument port "port" caller))
 
-(define-integrable (guarantee-input-port port caller)
+(define (guarantee-input-port port #!optional caller)
   (if (not (input-port? port))
       (error:not-input-port port caller))
   port)
 
-(define (error:not-input-port port caller)
+(define (error:not-input-port port #!optional caller)
   (error:wrong-type-argument port "input port" caller))
 
-(define-integrable (guarantee-output-port port caller)
+(define (guarantee-output-port port #!optional caller)
   (if (not (output-port? port))
       (error:not-output-port port caller))
   port)
 
-(define (error:not-output-port port caller)
+(define (error:not-output-port port #!optional caller)
   (error:wrong-type-argument port "output port" caller))
 
-(define-integrable (guarantee-i/o-port port caller)
+(define (guarantee-i/o-port port #!optional caller)
   (if (not (i/o-port? port))
       (error:not-i/o-port port caller))
   port)
 
-(define (error:not-i/o-port port caller)
+(define (error:not-i/o-port port #!optional caller)
   (error:wrong-type-argument port "I/O port" caller))
 
 (define (port/supports-coding? port)
@@ -785,86 +788,60 @@ USA.
 
 ;;;; Standard Ports
 
-(define *current-input-port*)
-(define *current-output-port*)
-(define *notification-output-port*)
-(define *trace-output-port*)
-(define *interaction-i/o-port*)
+(define current-input-port)
+(define current-output-port)
+(define notification-output-port)
+(define trace-output-port)
+(define interaction-i/o-port)
 
 (define (initialize-package!)
-  (set! *current-input-port* (make-parameter #f))
-  (set! *current-output-port* (make-parameter #f))
-  (set! *notification-output-port* (make-parameter #f))
-  (set! *trace-output-port* (make-parameter #f))
-  (set! *interaction-i/o-port* (make-parameter #f)))
+  (set! current-input-port (make-port-parameter guarantee-input-port))
+  (set! current-output-port (make-port-parameter guarantee-output-port))
+  (set! notification-output-port (make-port-parameter guarantee-output-port))
+  (set! trace-output-port (make-port-parameter guarantee-output-port))
+  (set! interaction-i/o-port (make-port-parameter guarantee-i/o-port))
+  unspecific)
 
-(define (current-input-port)
-  (or (*current-input-port*) (nearest-cmdl/port)))
+(define (make-port-parameter guarantee)
+  (make-general-parameter #f
+			  (lambda (port)
+			    (if port (guarantee port))
+			    port)
+			  (lambda (port)
+			    (or port (nearest-cmdl/port)))
+			  default-parameter-setter))
 
 (define (set-current-input-port! port)
-  (*current-input-port* (guarantee-input-port port 'SET-CURRENT-INPUT-PORT!))
-  unspecific)
+  (current-input-port port))
 
 (define (with-input-from-port port thunk)
-  (parameterize* (list (cons *current-input-port*
-			     (guarantee-input-port port 'WITH-INPUT-FROM-PORT)))
+  (parameterize* (list (cons current-input-port port))
 		 thunk))
-
-(define (current-output-port)
-  (or (*current-output-port*) (nearest-cmdl/port)))
 
 (define (set-current-output-port! port)
-  (*current-output-port* (guarantee-output-port port 'SET-CURRENT-OUTPUT-PORT!))
-  unspecific)
+  (current-output-port port))
 
 (define (with-output-to-port port thunk)
-  (parameterize* (list (cons *current-output-port*
-			     (guarantee-output-port port 'WITH-OUTPUT-TO-PORT)))
+  (parameterize* (list (cons current-output-port port))
 		 thunk))
 
-(define (notification-output-port)
-  (or (*notification-output-port*) (nearest-cmdl/port)))
-
 (define (set-notification-output-port! port)
-  (*notification-output-port*
-   (guarantee-output-port port 'SET-NOTIFICATION-OUTPUT-PORT!))
-  unspecific)
+  (notification-output-port port))
 
 (define (with-notification-output-port port thunk)
-  (parameterize*
-   (list (cons *notification-output-port*
-	       (guarantee-output-port port 'WITH-NOTIFICATION-OUTPUT-PORT)))
-   thunk))
-
-(define (trace-output-port)
-  (or (*trace-output-port*) (nearest-cmdl/port)))
+  (parameterize* (list (cons notification-output-port port))
+		 thunk))
 
 (define (set-trace-output-port! port)
-  (*trace-output-port* (guarantee-output-port port 'SET-TRACE-OUTPUT-PORT!))
-  unspecific)
+  (trace-output-port port))
 
 (define (with-trace-output-port port thunk)
-  (parameterize*
-   (list (cons *trace-output-port*
-	       (guarantee-output-port port 'WITH-TRACE-OUTPUT-PORT)))
-   thunk))
-
-(define (interaction-i/o-port)
-  (or (*interaction-i/o-port*) (nearest-cmdl/port)))
+  (parameterize* (list (cons trace-output-port port))
+		 thunk))
 
 (define (set-interaction-i/o-port! port)
-  (*interaction-i/o-port* (guarantee-i/o-port port 'SET-INTERACTION-I/O-PORT!))
-  unspecific)
+  (interaction-i/o-port port))
 
 (define (with-interaction-i/o-port port thunk)
-  (parameterize*
-   (list (cons *interaction-i/o-port*
-	       (guarantee-i/o-port port 'WITH-INTERACTION-I/O-PORT)))
-   thunk))
-
-(define standard-port-accessors
-  (list (cons current-input-port set-current-input-port!)
-	(cons current-output-port set-current-output-port!)
-	(cons notification-output-port set-notification-output-port!)
-	(cons trace-output-port set-trace-output-port!)
-	(cons interaction-i/o-port set-interaction-i/o-port!)))
+  (parameterize* (list (cons interaction-i/o-port port))
+		 thunk))

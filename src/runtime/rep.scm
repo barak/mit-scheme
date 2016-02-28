@@ -116,11 +116,11 @@ USA.
     (let ((thunk
 	   (lambda ()
 	     (parameterize*
-	      (list (cons *current-input-port* #f)
-		    (cons *current-output-port* #f)
-		    (cons *notification-output-port* #f)
-		    (cons *trace-output-port* #f)
-		    (cons *interaction-i/o-port* #f)
+	      (list (cons current-input-port #f)
+		    (cons current-output-port #f)
+		    (cons notification-output-port #f)
+		    (cons trace-output-port #f)
+		    (cons interaction-i/o-port #f)
 		    (cons working-directory-pathname
 			  (working-directory-pathname))
 		    (cons param:nearest-cmdl cmdl)
