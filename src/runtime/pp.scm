@@ -29,18 +29,37 @@ USA.
 
 (declare (usual-integrations))
 
+(define param:pp-arity-dispatched-procedure-style)
+(define param:pp-auto-highlighter)
+(define param:pp-avoid-circularity?)
+(define param:pp-default-as-code?)
+(define param:pp-forced-x-size)
+(define param:pp-lists-as-tables?)
+(define param:pp-named-lambda->define?)
+(define param:pp-no-highlights?)
+(define param:pp-primitives-by-name?)
+(define param:pp-save-vertical-space?)
+(define param:pp-uninterned-symbols-by-name?)
+
 (define (initialize-package!)
-  (set! *pp-named-lambda->define?* (make-parameter #f))
-  (set! *pp-primitives-by-name* (make-parameter #t))
-  (set! *pp-uninterned-symbols-by-name* (make-parameter #t))
-  (set! *pp-no-highlights?* (make-parameter #t))
-  (set! *pp-save-vertical-space?* (make-parameter #f))
-  (set! *pp-lists-as-tables?* (make-parameter #t))
-  (set! *pp-forced-x-size* (make-parameter #f))
-  (set! *pp-avoid-circularity?* (make-parameter #f))
-  (set! *pp-default-as-code?* (make-parameter #t))
-  (set! *pp-auto-highlighter* (make-parameter #f))
-  (set! *pp-arity-dispatched-procedure-style* (make-parameter 'FULL))
+  ;; Controls the appearance of procedures in the CASE statement used
+  ;; to describe an arity dispatched procedure:
+  ;;  FULL:  full bodies of procedures
+  ;;  NAMED: just name if the procedure is a named lambda, like FULL if unnamed
+  ;;  SHORT: procedures appear in #[...] unparser syntax
+  (set! param:pp-arity-dispatched-procedure-style
+	(make-settable-parameter 'FULL))
+  (set! param:pp-auto-highlighter (make-settable-parameter #f))
+  (set! param:pp-avoid-circularity? (make-settable-parameter #f))
+  (set! param:pp-default-as-code? (make-settable-parameter #t))
+  (set! param:pp-forced-x-size (make-settable-parameter #f))
+  (set! param:pp-lists-as-tables? (make-settable-parameter #t))
+  (set! param:pp-named-lambda->define? (make-settable-parameter #f))
+  (set! param:pp-no-highlights? (make-settable-parameter #t))
+  (set! param:pp-primitives-by-name? (make-settable-parameter #t))
+  (set! param:pp-save-vertical-space? (make-settable-parameter #f))
+  (set! param:pp-uninterned-symbols-by-name? (make-settable-parameter #t))
+
   (set! x-size (make-parameter #f))
   (set! output-port (make-parameter #f))
   (set! pp-description (make-generic-procedure 1 'PP-DESCRIPTION))
@@ -72,18 +91,74 @@ USA.
   (set! dispatch-default (make-parameter print-combination))
   (set! cocked-object (generate-uninterned-symbol))
   unspecific)
+
+(define *pp-arity-dispatched-procedure-style* #!default)
+(define *pp-auto-highlighter* #!default)
+(define *pp-avoid-circularity?* #!default)
+(define *pp-default-as-code?* #!default)
+(define *pp-forced-x-size* #!default)
+(define *pp-lists-as-tables?* #!default)
+(define *pp-named-lambda->define?* #!default)
+(define *pp-no-highlights?* #!default)
+(define *pp-primitives-by-name* #!default)
+(define *pp-save-vertical-space?* #!default)
+(define *pp-uninterned-symbols-by-name* #!default)
 
-(define *pp-named-lambda->define?*)
-(define *pp-primitives-by-name*)
-(define *pp-uninterned-symbols-by-name*)
-(define *pp-no-highlights?*)
-(define *pp-save-vertical-space?*)
-(define *pp-lists-as-tables?*)
-(define *pp-forced-x-size*)
-(define *pp-avoid-circularity?*)
-(define *pp-default-as-code?*)
-(define *pp-auto-highlighter*)
+(define (get-param:pp-arity-dispatched-procedure-style)
+  (if (default-object? *pp-arity-dispatched-procedure-style*)
+      (param:pp-arity-dispatched-procedure-style)
+      *pp-arity-dispatched-procedure-style*))
 
+(define (get-param:pp-named-lambda->define?)
+  (if (default-object? *pp-named-lambda->define?*)
+      (param:pp-named-lambda->define?)
+      *pp-named-lambda->define?*))
+
+(define (get-param:pp-primitives-by-name?)
+  (if (default-object? *pp-primitives-by-name*)
+      (param:pp-primitives-by-name?)
+      *pp-primitives-by-name*))
+
+(define (get-param:pp-uninterned-symbols-by-name?)
+  (if (default-object? *pp-uninterned-symbols-by-name*)
+      (param:pp-uninterned-symbols-by-name?)
+      *pp-uninterned-symbols-by-name*))
+
+(define (get-param:pp-no-highlights?)
+  (if (default-object? *pp-no-highlights?*)
+      (param:pp-no-highlights?)
+      *pp-no-highlights?*))
+
+(define (get-param:pp-save-vertical-space?)
+  (if (default-object? *pp-save-vertical-space?*)
+      (param:pp-save-vertical-space?)
+      *pp-save-vertical-space?*))
+
+(define (get-param:pp-lists-as-tables?)
+  (if (default-object? *pp-lists-as-tables?*)
+      (param:pp-lists-as-tables?)
+      *pp-lists-as-tables?*))
+
+(define (get-param:pp-forced-x-size)
+  (if (default-object? *pp-forced-x-size*)
+      (param:pp-forced-x-size)
+      *pp-forced-x-size*))
+
+(define (get-param:pp-avoid-circularity?)
+  (if (default-object? *pp-avoid-circularity?*)
+      (param:pp-avoid-circularity?)
+      *pp-avoid-circularity?*))
+
+(define (get-param:pp-default-as-code?)
+  (if (default-object? *pp-default-as-code?*)
+      (param:pp-default-as-code?)
+      *pp-default-as-code?*))
+
+(define (get-param:pp-auto-highlighter)
+  (if (default-object? *pp-auto-highlighter*)
+      (param:pp-auto-highlighter)
+      *pp-auto-highlighter*))
+
 (define (pp object #!optional port . rest)
   (let ((port (if (default-object? port) (current-output-port) port)))
     (let ((pretty-print
@@ -120,16 +195,9 @@ USA.
 	(else
 	 #f)))
 
-;;; Controls the appearance of procedures in the CASE statement used
-;;; to describe an arity dispatched procedure:
-;;;  FULL:  full bodies of procedures
-;;;  NAMED: just name if the procedure is a named lambda, like FULL if unnamed
-;;;  SHORT: procedures appear in #[...] unparser syntax
-(define *pp-arity-dispatched-procedure-style*)
-
 (define (unsyntax-entity object)
   (define (unsyntax-entry procedure)
-    (case (*pp-arity-dispatched-procedure-style*)
+    (case (get-param:pp-arity-dispatched-procedure-style)
       ((FULL)  (unsyntax-entity procedure))
       ((NAMED)
        (let ((text (unsyntax-entity procedure)))
@@ -166,7 +234,7 @@ USA.
 (define (pretty-print object #!optional port as-code? indentation)
   (let ((as-code?
 	 (if (default-object? as-code?)
-	     (let ((default (*pp-default-as-code?*)))
+	     (let ((default (get-param:pp-default-as-code?)))
 	       (if (boolean? default)
 		   default
 		   (not (scode-constant? object))))
@@ -178,9 +246,9 @@ USA.
 		    (if (and as-code?
 			     (pair? sexp)
 			     (eq? (car sexp) 'NAMED-LAMBDA)
-			     (*pp-named-lambda->define?*))
+			     (get-param:pp-named-lambda->define?))
 			(if (and (eq? 'LAMBDA
-				      (*pp-named-lambda->define?*))
+				      (get-param:pp-named-lambda->define?))
 				 (pair? (cdr sexp))
 				 (pair? (cadr sexp)))
 			    `(LAMBDA ,(cdadr sexp) ,@(cddr sexp))
@@ -231,17 +299,18 @@ USA.
 
 (define (pp-top-level expression port as-code? indentation list-depth)
   (parameterize* (list (cons x-size
-			     (- (or (*pp-forced-x-size*)
-				    (output-port/x-size port)) 1))
+			     (- (or (get-param:pp-forced-x-size)
+				    (output-port/x-size port))
+				1))
 		       (cons output-port port)
 		       (cons param:unparse-uninterned-symbols-by-name?
-			     (*pp-uninterned-symbols-by-name*))
+			     (get-param:pp-uninterned-symbols-by-name?))
 		       (cons param:unparse-abbreviate-quotations?
 			     (or as-code?
 				 (param:unparse-abbreviate-quotations?))))
     (lambda ()
       (let* ((numerical-walk
-	      (if (*pp-avoid-circularity?*)
+	      (if (get-param:pp-avoid-circularity?)
 		  numerical-walk-avoid-circularities
 		  numerical-walk))
 	     (node (numerical-walk expression list-depth)))
@@ -276,7 +345,7 @@ USA.
 (define (print-non-code-node node column depth)
   (parameterize* (list (cons dispatch-list '())
 		       (cons dispatch-default
-			     (if (*pp-lists-as-tables?*)
+			     (if (get-param:pp-lists-as-tables?)
 				 print-data-table
 				 print-data-column)))
     (lambda ()
@@ -332,7 +401,7 @@ USA.
 	 (*unparse-string node))))
 
 (define (print-list-node node column depth)
-  (if (and (*pp-save-vertical-space?*)
+  (if (and (get-param:pp-save-vertical-space?)
 	   (fits-within? node column depth))
       (print-guaranteed-list-node node)
       (let* ((subnodes (node-subnodes node))
@@ -662,7 +731,7 @@ USA.
 		       (walk-custom unparser object list-depth)
 		       (walk-pair object list-depth))))))
 	  ((symbol? object)
-	   (if (or (*pp-uninterned-symbols-by-name*)
+	   (if (or (get-param:pp-uninterned-symbols-by-name?)
 		   (interned-symbol? object))
 	       object
 	       (walk-custom unparse-object object list-depth)))
@@ -686,7 +755,7 @@ USA.
 				       (walk-pair (vector->list object)
 						  list-depth))))))
 	  ((primitive-procedure? object)
-	   (if (*pp-primitives-by-name*)
+	   (if (get-param:pp-primitives-by-name?)
 	       (primitive-procedure-name object)
 	       (walk-custom unparse-object object list-depth)))
 	  (else
@@ -699,7 +768,7 @@ USA.
   ;; otherwise we would get infinite recursion when the `unwrapped'
   ;; object REST is re-auto-highlighted by the test below.
 
-  (cond ((let ((highlighter (*pp-auto-highlighter*)))
+  (cond ((let ((highlighter (get-param:pp-auto-highlighter)))
 	   (and highlighter
 		(not (pretty-printer-highlight? object))
 		(highlighter object)))
@@ -753,7 +822,7 @@ USA.
 					      list-depth)))))))))))))
 
 (define-integrable (no-highlights? object)
-  (or (*pp-no-highlights?*)
+  (or (get-param:pp-no-highlights?)
       (not (partially-highlighted? object))))
 
 (define (partially-highlighted? object)
@@ -828,7 +897,7 @@ USA.
 		     (walk-pair-terminating object half-pointer/queue
 					    list-depth))))))
 	((symbol? object)
-	 (if (or (*pp-uninterned-symbols-by-name*)
+	 (if (or (get-param:pp-uninterned-symbols-by-name?)
 		 (interned-symbol? object))
 	     object
 	     (walk-custom unparse-object object list-depth)))
@@ -851,7 +920,7 @@ USA.
 		     (vector->list object)
 		     half-pointer/queue list-depth))))))
 	((primitive-procedure? object)
-	 (if (*pp-primitives-by-name*)
+	 (if (get-param:pp-primitives-by-name?)
 	     (primitive-procedure-name object)
 	     (walk-custom unparse-object object list-depth)))
 	(else

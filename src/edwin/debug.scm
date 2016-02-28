@@ -46,10 +46,10 @@ USA.
   (highlight-region (make-region start end) (default-face)))
 
 (define (debugger-pp-highlight-subexpression expression subexpression
- 					     indentation port)
+					     indentation port)
   (let ((start-mark #f)
- 	(end-mark #f))
-    (parameterize* (list (cons *pp-no-highlights?* #f))
+	(end-mark #f))
+    (parameterize* (list (cons param:pp-no-highlights? #f))
       (lambda ()
 	(debugger-pp
 	 (unsyntax-with-substitutions
@@ -70,7 +70,7 @@ USA.
 	 indentation
 	 port)))
     (if (and start-mark end-mark)
- 	(highlight-region-excluding-indentation
+	(highlight-region-excluding-indentation
 	 (make-region start-mark end-mark)
 	 (highlight-face)))
     (if start-mark (mark-temporary! start-mark))
@@ -1586,7 +1586,7 @@ once it has been renamed, it will not be deleted automatically.")
 	    (else
 	     (let ((separator " = "))
 	       (write-string separator port)
-	       (let ((indentation 
+	       (let ((indentation
 		      (+ (string-length name1)
 			 (string-length separator))))
 		 (write-string (string-tail

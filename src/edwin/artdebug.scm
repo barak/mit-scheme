@@ -681,7 +681,8 @@ Move to the last subproblem if the subproblem number is too high."
 			(if (or argument
 				(invalid-subexpression? sub))
 			    (pp exp)
-			    (parameterize* (list (cons *pp-no-highlights?* #f))
+			    (parameterize* (list (cons param:pp-no-highlights?
+						       #f))
 			      do-hairy)))
 		       ((debugging-info/noise? exp)
 			(message ((debugging-info/noise exp) #t)))

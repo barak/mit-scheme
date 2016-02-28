@@ -142,7 +142,7 @@ USA.
 
 (define (display-sample-list sample-list) ; not integrated so can play w/ it
   ;; for now: just pp as code, but maybe opt for wizzy graphics later
-  (parameterize* (list (cons *pp-default-as-code?* #t)
+  (parameterize* (list (cons param:pp-default-as-code? #t)
     (lambda ()				  ;
       (pp sample-list))))
 

@@ -291,8 +291,6 @@ USA.
 	  show-fg-node
 	  show-rtl
 	  write-rtl-instructions)
-  (import (runtime pretty-printer)
-	  *pp-primitives-by-name*)
   (import (runtime unparser)
 	  param:unparse-uninterned-symbols-by-name?))
 
