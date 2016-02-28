@@ -50,16 +50,9 @@ USA.
 				 (cons *parent* #f)
 				 (cons param:suppress-loading-message? #t))
 	      (lambda ()
-		(load pathname (make-load-environment))
+		(load pathname (simple-top-level-environment #t))
 		(values (*options*) (*parent*)))))
 	find-option))
-
-    (define (make-load-environment)
-      (let ((e (extend-top-level-environment system-global-environment)))
-	(environment-define e
-			    '*PARSER-CANONICALIZE-SYMBOLS?*
-			    (make-parameter #t))
-	e))
 
     (if (memq name loaded-options)
 	name

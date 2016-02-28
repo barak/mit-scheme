@@ -120,35 +120,52 @@ This file is part of MIT/GNU Scheme.
 
 (define (parse-file-attributes-item parse port)
   ;; Prepare the parser for first mode.
-  (parameterize* (list (cons *parser-associate-positions?* #f)
-		       (cons *parser-atom-delimiters*
+  (parameterize* (list (cons param:parser-associate-positions? #f)
+		       (cons param:parser-atom-delimiters
 			     char-set/file-attributes-atom-delimiters)
-		       (cons *parser-canonicalize-symbols?* #f)
-		       (cons *parser-constituents*
+		       (cons param:parser-canonicalize-symbols? #f)
+		       (cons param:parser-constituents
 			     char-set/file-attributes-constituents)
 		       ;; no recursion!
-		       (cons *parser-enable-file-attributes-parsing?*
+		       (cons param:parser-enable-file-attributes-parsing?
 			     #f)
-		       (cons *parser-keyword-style* #f)
-		       (cons *parser-radix* 10)
-		       (cons *parser-table* file-attributes-parser-table))
+		       (cons param:parser-keyword-style #f)
+		       (cons param:parser-radix 10)
+		       (cons param:parser-table file-attributes-parser-table))
     (lambda ()
-      (parse port system-global-environment))))
+      (fluid-let ((*parser-associate-positions?* #!default)
+		  (*parser-atom-delimiters* #!default)
+		  (*parser-canonicalize-symbols?* #!default)
+		  (*parser-constituents* #!default)
+		  (*parser-enable-file-attributes-parsing?* #!default)
+		  (*parser-keyword-style* #!default)
+		  (*parser-radix* #!default)
+		  (*parser-table* #!default))
+	(parse port system-global-environment)))))
 
 (define (parse-file-attributes-value parse port)
   ;; Prepare the parser for second mode.
-  (parameterize* (list (cons *parser-associate-positions?* #f)
-		       (cons *parser-atom-delimiters* char-set/atom-delimiters)
-		       (cons *parser-canonicalize-symbols?* #f)
-		       (cons *parser-constituents* char-set/constituents)
+  (parameterize* (list (cons param:parser-associate-positions? #f)
+		       (cons param:parser-atom-delimiters
+			     char-set/atom-delimiters)
+		       (cons param:parser-canonicalize-symbols? #f)
+		       (cons param:parser-constituents char-set/constituents)
 		       ;; no recursion!
-		       (cons *parser-enable-file-attributes-parsing?* #f)
+		       (cons param:parser-enable-file-attributes-parsing? #f)
 		       ;; enable prefix keywords
-		       (cons *parser-keyword-style* 'prefix)
-		       (cons *parser-radix* 10)
-		       (cons *parser-table* system-global-parser-table))
+		       (cons param:parser-keyword-style 'prefix)
+		       (cons param:parser-radix 10)
+		       (cons param:parser-table system-global-parser-table))
     (lambda ()
-      (parse port system-global-environment))))
+      (fluid-let ((*parser-associate-positions?* #!default)
+		  (*parser-atom-delimiters* #!default)
+		  (*parser-canonicalize-symbols?* #!default)
+		  (*parser-constituents* #!default)
+		  (*parser-enable-file-attributes-parsing?* #!default)
+		  (*parser-keyword-style* #!default)
+		  (*parser-radix* #!default)
+		  (*parser-table* #!default))
+	(parse port system-global-environment)))))
 
 (define (parse-file-attributes-line port db multiline)
   (declare (ignore db))

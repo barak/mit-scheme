@@ -368,7 +368,7 @@ USA.
       (unparse-symbol-name (symbol-name symbol))))
 
 (define (unparse-keyword-name s)
-  (case ((repl-environment-value (*environment*) '*PARSER-KEYWORD-STYLE*))
+  (case (get-param:parser-keyword-style (*environment*))
     ((PREFIX)
      (*unparse-char #\:)
      (unparse-symbol-name s))
@@ -383,8 +383,7 @@ USA.
 (define (unparse-symbol-name s)
   (if (or (string-find-next-char-in-set
            s
-           (if ((repl-environment-value (*environment*)
-					'*PARSER-CANONICALIZE-SYMBOLS?*))
+           (if (get-param:parser-canonicalize-symbols? (*environment*))
                canon-symbol-quoted
                non-canon-symbol-quoted))
           (fix:= (string-length s) 0)
@@ -417,7 +416,7 @@ USA.
   (char=? (string-ref string 0) #\#))
 
 (define (looks-like-keyword? string)
-  (case ((repl-environment-value (*environment*) '*PARSER-KEYWORD-STYLE*))
+  (case (get-param:parser-keyword-style (*environment*))
     ((PREFIX)
      (char=? (string-ref string 0) #\:))
     ((SUFFIX)

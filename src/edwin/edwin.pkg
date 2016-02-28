@@ -104,10 +104,13 @@ USA.
 
   (parent ())
   (import (runtime parser)
-	  (*parser-associate-positions?* runtime-parser-associate-positions?)
-	  (*parser-canonicalize-symbols?* runtime-parser-canonicalize-symbols?)
-	  (*parser-radix* runtime-parser-radix)
-	  (*parser-table* runtime-parser-table))
+	  (param:parser-associate-positions?
+	   runtime-param:parser-associate-positions?)
+	  (param:parser-canonicalize-symbols?
+	   runtime-param:parser-canonicalize-symbols?)
+	  (param:parser-radix runtime-param:parser-radix)
+	  (param:parser-table runtime-param:parser-table)
+	  get-param:parser-canonicalize-symbols?)
   (import (runtime character)
 	  bucky-bits->prefix)
   (import (runtime char-syntax)

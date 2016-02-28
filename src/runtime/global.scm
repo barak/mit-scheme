@@ -176,7 +176,7 @@ USA.
   (set-working-directory-pathname!
     (if (default-object? pathname)
         (user-homedir-pathname)
- 	pathname)))
+	pathname)))
 
 (define (show-time thunk)
   (let ((process-start (process-time-clock))
@@ -200,13 +200,13 @@ USA.
 	   (write-string " GC); real time: " port)
 	   (write (- real-end real-start) port))))
       value)))
-
+
 (define (wait-interval ticks)
   (let ((end (+ (real-time-clock) ticks)))
     (let wait-loop ()
       (if (< (real-time-clock) end)
 	  (wait-loop)))))
-
+
 (define hook/exit #!default)
 (define hook/%exit #!default)
 (define hook/quit #!default)
@@ -255,7 +255,7 @@ USA.
   unspecific)
 
 (define default/quit %quit)
-
+
 (define user-initial-environment
   (*make-environment system-global-environment
 		     (vector lambda-tag:unnamed)))
@@ -276,6 +276,12 @@ USA.
 
 (define (unbind-variable environment name)
   ((ucode-primitive unbind-variable 2) (->environment environment) name))
+
+(define (simple-top-level-environment fold-case?)
+  (make-top-level-environment '(param:parser-canonicalize-symbols?
+				*parser-canonicalize-symbols?*)
+			      (list (make-settable-parameter fold-case?)
+				    #!default)))
 
 (define (object-gc-type object)
   (%encode-gc-type ((ucode-primitive object-gc-type 1) object)))

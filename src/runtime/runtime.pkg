@@ -516,6 +516,7 @@ USA.
 	  set-ephemeron-key!
 	  set-interrupt-enables!
 	  show-time
+	  simple-top-level-environment
 	  system-hunk3-cons
 	  system-hunk3-cxr0
 	  system-hunk3-cxr1
@@ -1513,8 +1514,10 @@ USA.
 	  (file-time->string file-time->local-rfc2822-string)
 	  (get-decoded-time local-decoded-time)
 	  (string->decoded-time rfc2822-string->decoded-time)
-	  (universal-time->global-time-string universal-time->global-rfc2822-string)
-	  (universal-time->local-time-string universal-time->local-rfc2822-string)
+	  (universal-time->global-time-string
+	   universal-time->global-rfc2822-string)
+	  (universal-time->local-time-string
+	   universal-time->local-rfc2822-string)
 	  (universal-time->string universal-time->local-rfc2822-string)
 	  ctime-string->decoded-time
 	  ctime-string->file-time
@@ -3094,25 +3097,39 @@ USA.
 	  *parser-radix*
 	  *parser-table*
 	  define-bracketed-object-parser-method
+	  param:parser-associate-positions?
+	  param:parser-atom-delimiters
+	  param:parser-canonicalize-symbols?
+	  param:parser-constituents
+	  param:parser-enable-file-attributes-parsing?
+	  param:parser-keyword-style
+	  param:parser-radix
+	  param:parser-table
 	  parse-object
 	  parse-objects
 	  system-global-parser-table)
   (export (runtime)
-	  (*parser-associate-positions?* runtime-parser-associate-positions?)
-	  (*parser-atom-delimiters* runtime-parser-atom-delimiters)
-	  (*parser-canonicalize-symbols?* runtime-parser-canonicalize-symbols?)
-	  (*parser-constituents* runtime-parser-constituents)
-	  (*parser-enable-file-attributes-parsing?*
-	   runtime-parser-enable-file-attributes-parsing?)
-	  (*parser-keyword-style* runtime-parser-keyword-style)
-	  (*parser-radix* runtime-parser-radix)
-	  (*parser-table* runtime-parser-table))
+	  (param:parser-associate-positions?
+	   runtime-param:parser-associate-positions?)
+	  (param:parser-atom-delimiters runtime-param:parser-atom-delimiters)
+	  (param:parser-canonicalize-symbols?
+	   runtime-param:parser-canonicalize-symbols?)
+	  (param:parser-constituents runtime-param:parser-constituents)
+	  (param:parser-enable-file-attributes-parsing?
+	   runtime-param:parser-enable-file-attributes-parsing?)
+	  (param:parser-keyword-style runtime-param:parser-keyword-style)
+	  (param:parser-radix runtime-param:parser-radix)
+	  (param:parser-table runtime-param:parser-table))
   (export (runtime character)
 	  char-set/atom-delimiters)
+  (export (runtime swank)
+	  get-param:parser-canonicalize-symbols?)
   (export (runtime unparser)
 	  char-set/atom-delimiters
 	  char-set/number-leaders
 	  char-set/symbol-quotes
+	  get-param:parser-canonicalize-symbols?
+	  get-param:parser-keyword-style
 	  repl-environment-value)
   (initialization (initialize-package!)))
 

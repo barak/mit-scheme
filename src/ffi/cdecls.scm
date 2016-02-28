@@ -70,8 +70,7 @@ USA.
 (define current-filename)
 
 (define read-environment
-  (make-top-level-environment '(*PARSER-CANONICALIZE-SYMBOLS?*)
-			      (list (make-parameter #f))))
+  (simple-top-level-environment #f))
 
 (define (include-cdecl-file filename cwd twd includes)
   ;; Adds the C declarations in FILENAME to INCLUDES.  Interprets

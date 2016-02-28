@@ -50,7 +50,7 @@ USA.
 			(begin (discard-char)
 			       (string-append string "-" (loop)))
 			string))))))))
-  
+
   (define char-set/mit-scheme-atom-delimiters
     char-set/atom-delimiters)
 
@@ -99,12 +99,12 @@ USA.
   (access set-atom-delimiters! (->environment '(runtime parser))))
 
 (define (enable-system-syntax)
-  (*parser-table* system-global-parser-table)
+  (param:parser-table system-global-parser-table)
   (set-atom-delimiters! 'mit-scheme)
   (set-repl/syntax-table! (nearest-repl) system-global-syntax-table))
 
 (define (disable-system-syntax)
-  (*parser-table* *student-parser-table*)
+  (param:parser-table *student-parser-table*)
   (set-atom-delimiters! 'sicp)
   (set-repl/syntax-table! (nearest-repl) *student-syntax-table*))
 
@@ -366,7 +366,7 @@ USA.
     (ODD?)
     (OPEN-READER-CHANNEL . OPEN-INPUT-FILE)
     (OPEN-PRINTER-CHANNEL . OPEN-OUTPUT-FILE)
-    (OR . OR*) 
+    (OR . OR*)
     (OUT)
     (PAIR?)
     (POSITION-PEN)
@@ -495,7 +495,7 @@ USA.
    (if (default-object? filename)
        student-band-pathname
        (merge-pathnames (->pathname filename)
-			student-band-pathname))))   
+			student-band-pathname))))
 
 (define (student-band #!optional filename)
   (if (not (default-object? filename))
