@@ -28,9 +28,13 @@ USA.
 ;;; package: (runtime working-directory)
 
 (declare (usual-integrations))
-
+
 (define (initialize-package!)
-  (set! working-directory-pathname (make-parameter #f))
+  (set! working-directory-pathname
+	(make-general-parameter #f
+				identity-procedure
+				identity-procedure
+				wd-setter))
   (reset!)
   (add-event-receiver! event:after-restore reset!))
 
@@ -44,6 +48,11 @@ USA.
   unspecific)
 
 (define working-directory-pathname)
+
+(define (wd-setter set-param pathname)
+  (set-param pathname)
+  (param:default-pathname-defaults pathname)
+  pathname)
 
 (define (set-working-directory-pathname! name)
   (let ((pathname (new-pathname name)))
@@ -62,7 +71,6 @@ USA.
 			      'SET-WORKING-DIRECTORY-PATHNAME!
 			      (list name)))
     (working-directory-pathname pathname)
-    (param:default-pathname-defaults pathname)
     (cmdl/set-default-directory (nearest-cmdl) pathname)
     pathname))
 
