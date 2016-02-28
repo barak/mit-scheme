@@ -441,7 +441,7 @@ these rules:
 
 (define (make-param:default-pathname-defaults)
   (make-general-parameter #f
-			  identity-procedure
+			  default-parameter-converter
 			  defaults-getter
 			  defaults-setter))
 

@@ -32,8 +32,8 @@ USA.
 (define (initialize-package!)
   (set! working-directory-pathname
 	(make-general-parameter #f
-				identity-procedure
-				identity-procedure
+				default-parameter-converter
+				default-parameter-getter
 				wd-setter))
   (reset!)
   (add-event-receiver! event:after-restore reset!))
