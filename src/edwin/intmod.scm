@@ -727,7 +727,8 @@ If this is an error, the debugger examines the error condition."
     (lambda (mark)
       (if mark
 	  (insert-string
-	   (parameterize* (list (cons *unparse-with-maximum-readability?* #t))
+	   (parameterize* (list (cons param:unparse-with-maximum-readability?
+				      #t))
 	     (lambda ()
 	       (write-to-string expression)))
 	   mark))))

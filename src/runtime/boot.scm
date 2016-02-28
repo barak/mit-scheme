@@ -63,7 +63,7 @@ USA.
   (lambda (state object)
     (let ((port (unparser-state/port state))
 	  (hash-string (number->string (hash object))))
-      (if (*unparse-with-maximum-readability?*)
+      (if (get-param:unparse-with-maximum-readability?)
 	  (begin
 	    (write-string "#@" port)
 	    (write-string hash-string port))

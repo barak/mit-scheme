@@ -131,7 +131,7 @@ USA.
   (disassembler/instructions false start-address end-address false))
 
 (define (disassembler/write-instruction-stream symbol-table instruction-stream)
-  (parameterize* (list (cons *unparser-radix* 16))
+  (parameterize* (list (cons param:unparser-radix 16))
     (lambda ()
       (disassembler/for-each-instruction instruction-stream
 	(lambda (offset instruction)
@@ -148,7 +148,7 @@ USA.
 	    (loop (instruction-stream)))))))
 
 (define (disassembler/write-constants-block block symbol-table)
-  (parameterize* (list (cons *unparser-radix* 16))
+  (parameterize* (list (cons param:unparser-radix 16))
     (lambda ()
       (let ((end (system-vector-length block)))
 	(let loop ((index (compiled-code-block/constants-start block)))

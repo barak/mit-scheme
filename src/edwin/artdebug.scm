@@ -1013,7 +1013,7 @@ Prefix argument means do not kill the debugger buffer."
        port))))
 
 (define (print-with-subexpression expression subexpression)
-  (parameterize* (list (cons *unparse-primitives-by-name?* #t))
+  (parameterize* (list (cons param:unparse-primitives-by-name? #t))
     (lambda ()
       (if (invalid-subexpression? subexpression)
 	  (write (unsyntax expression))
@@ -1043,7 +1043,7 @@ Prefix argument means do not kill the debugger buffer."
    port))
 
 (define (print-reduction-as-subexpression expression)
-  (parameterize* (list (cons *unparse-primitives-by-name?* #t))
+  (parameterize* (list (cons param:unparse-primitives-by-name? #t))
     (lambda ()
       (write-string (ref-variable subexpression-start-marker))
       (write (unsyntax expression))

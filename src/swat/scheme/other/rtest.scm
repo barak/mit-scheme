@@ -2,8 +2,8 @@
 
 ;; to make this possible to debug
 
-; (*unparser-list-breadth-limit* 10)
-; (*unparser-list-depth-limit* 10)
+; (param:unparser-list-breadth-limit 10)
+; (param:unparser-list-depth-limit 10)
 
 
 ;; GC stress test

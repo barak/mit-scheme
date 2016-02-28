@@ -474,7 +474,7 @@ USA.
 	  (output-to-string
 	   50
 	   (lambda ()
-	     (parameterize* (list (cons *unparse-primitives-by-name?* true))
+	     (parameterize* (list (cons param:unparse-primitives-by-name? #t))
 	       (lambda ()
 		 (write (unsyntax expression)))))))
 	 ((debugging-info/noise? expression)
@@ -956,11 +956,11 @@ using the read-eval-print environment instead.")
   (string-capitalize (if reason (string-append reason "; " message) message)))
 
 (define (debugger-pp expression indentation port)
-  (parameterize* (list (cons *unparser-list-depth-limit*
+  (parameterize* (list (cons param:unparser-list-depth-limit
 			     debugger:list-depth-limit)
-		       (cons *unparser-list-breadth-limit*
+		       (cons param:unparser-list-breadth-limit
 			     debugger:list-breadth-limit)
-		       (cons *unparser-string-length-limit*
+		       (cons param:unparser-string-length-limit
 			     debugger:string-length-limit))
     (lambda ()
       (pretty-print expression port true indentation))))

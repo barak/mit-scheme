@@ -234,7 +234,7 @@ The values are printed in the typein window."
 		  (lambda (buffer)
 		    (insert-string
 		     (parameterize*
-		      (list (cons *unparse-with-maximum-readability?* #t))
+		      (list (cons param: #t))
 		      (lambda ()
 			(write-to-string expression)))
 		     (buffer-end buffer)))))
@@ -528,9 +528,9 @@ Set by Scheme evaluation code to update the mode line."
 (define (transcript-value-string value)
   (if (undefined-value? value)
       ""
-      (parameterize* (list (cons *unparser-list-depth-limit*
+      (parameterize* (list (cons param:unparser-list-depth-limit
 				 (ref-variable transcript-list-depth-limit))
-			   (cons *unparser-list-breadth-limit*
+			   (cons param:unparser-list-breadth-limit
 				 (ref-variable transcript-list-breadth-limit)))
 	(lambda ()
 	  (write-to-string value)))))

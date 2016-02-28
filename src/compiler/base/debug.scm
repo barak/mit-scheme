@@ -105,15 +105,15 @@ USA.
 
 (define (write-instructions thunk)
   (fluid-let ((*show-instruction* write))
-    (parameterize* (list (cons *unparser-radix* 16)
-			 (cons *unparse-uninterned-symbols-by-name?* #t))
+    (parameterize* (list (cons param:unparser-radix 16)
+			 (cons param:unparse-uninterned-symbols-by-name? #t))
       thunk)))
 
 (define (pp-instructions thunk)
   (fluid-let ((*show-instruction* pretty-print))
     (parameterize* (list (cons *pp-primitives-by-name* #f)
-			 (cons *unparser-radix* 16)
-			 (cons *unparse-uninterned-symbols-by-name?* #t))
+			 (cons param:unparser-radix 16)
+			 (cons param:unparse-uninterned-symbols-by-name? #t))
       thunk)))
 
 (define *show-instruction*)

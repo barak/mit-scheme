@@ -760,7 +760,7 @@ swank:xref
     (cond ((debugging-info/compiled-code? expression)
 	   (write-string ";unknown compiled code" port))
 	  ((not (debugging-info/undefined-expression? expression))
-	   (parameterize* (list (cons *unparse-primitives-by-name?* #t))
+	   (parameterize* (list (cons param:unparse-primitives-by-name? #t))
 	     (lambda ()
 	       (write
 		(unsyntax
@@ -1112,9 +1112,9 @@ swank:xref
 (define (pprint-to-string o)
   (call-with-output-string
     (lambda (p)
-      (parameterize* (list (cons *unparser-list-breadth-limit* 10)
-			   (cons *unparser-list-depth-limit* 4)
-			   (cons *unparser-string-length-limit* 100))
+      (parameterize* (list (cons param:unparser-list-breadth-limit 10)
+			   (cons param:unparser-list-depth-limit 4)
+			   (cons param:unparser-string-length-limit 100))
 	(lambda ()
 	  (pp o p))))))
 

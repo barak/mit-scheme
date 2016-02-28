@@ -543,11 +543,12 @@ USA.
      (or message
 	 (and condition
 	      (cmdl-message/strings
-	       (parameterize* (list (cons *unparser-list-depth-limit* 25)
-				    (cons *unparser-list-breadth-limit* 100)
-				    (cons *unparser-string-length-limit* 500))
-		 (lambda ()
-		   (condition/report-string condition))))))
+	       (parameterize*
+		(list (cons param:unparser-list-depth-limit 25)
+		      (cons param:unparser-list-breadth-limit 100)
+		      (cons param:unparser-string-length-limit 500))
+		(lambda ()
+		  (condition/report-string condition))))))
      (and condition
 	  repl:allow-restart-notifications?
 	  (condition-restarts-message condition))

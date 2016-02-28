@@ -243,7 +243,7 @@ USA.
 	  make-dbg-info-vector
 	  split-inf-structure!)
   (import (runtime unparser)
-	  *unparse-uninterned-symbols-by-name?*)
+	  param:unparse-uninterned-symbols-by-name?)
   (import (scode-optimizer build-utilities)
 	  directory-processor))
 
@@ -265,7 +265,7 @@ USA.
   (import (runtime pretty-printer)
 	  *pp-primitives-by-name*)
   (import (runtime unparser)
-	  *unparse-uninterned-symbols-by-name?*))
+	  param:unparse-uninterned-symbols-by-name?))
 
 (define-package (compiler pattern-matcher/lookup)
   (files "base/pmlook")

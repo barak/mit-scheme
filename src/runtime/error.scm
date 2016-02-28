@@ -1268,8 +1268,8 @@ USA.
 	      (else (error "Unexpected value:" v)))))))
 
 (define (format-error-message message irritants port)
-  (parameterize* (list (cons *unparser-list-depth-limit* 2)
-		       (cons *unparser-list-breadth-limit* 5))
+  (parameterize* (list (cons param:unparser-list-depth-limit 2)
+		       (cons param:unparser-list-breadth-limit 5))
     (lambda ()
       (for-each (lambda (irritant)
 		  (if (and (pair? irritant)

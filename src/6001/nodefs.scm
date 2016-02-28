@@ -77,8 +77,8 @@ USA.
      (if (not (default-object? value))
 	 (begin
 	   (write-string " --> " port)
-	   (parameterize* (list (cons *unparser-list-depth-limit* 2)
-				(cons *unparser-list-breadth-limit* 10)
-				(cons *unparser-string-length-limit* 30))
+	   (parameterize* (list (cons param:unparser-list-depth-limit 2)
+				(cons param:unparser-list-breadth-limit 10)
+				(cons param:unparser-string-length-limit 30))
 	     (lambda ()
 	       (write value port))))))))

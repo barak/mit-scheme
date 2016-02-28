@@ -3735,9 +3735,7 @@ Here is an example package declaration, drawn from the compiler:
 	    *rtl-procedures*
 	    *rtl-graphs*)
     (import (runtime compiler-info)
-	    make-dbg-info-vector)
-    (import (runtime unparser)
-	    *unparse-uninterned-symbols-by-name?*))
+	    make-dbg-info-vector))
 
 The read-eval-print loop of Scheme evaluates all expressions in the
 same environment.  It is possible to change this environment using the

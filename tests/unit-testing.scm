@@ -229,7 +229,7 @@ USA.
 
 (define (write-expr-property tag p port)
   (write-tag tag port)
-  (let-fluid *unparse-abbreviate-quotations?* #t
+  (parameterize* (list (cons param:unparse-abbreviate-quotations? #t))
     (lambda ()
       (write (cdr p) port))))
 

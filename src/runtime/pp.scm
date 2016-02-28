@@ -234,11 +234,11 @@ USA.
 			     (- (or (*pp-forced-x-size*)
 				    (output-port/x-size port)) 1))
 		       (cons output-port port)
-		       (cons *unparse-uninterned-symbols-by-name?*
+		       (cons param:unparse-uninterned-symbols-by-name?
 			     (*pp-uninterned-symbols-by-name*))
-		       (cons *unparse-abbreviate-quotations?*
+		       (cons param:unparse-abbreviate-quotations?
 			     (or as-code?
-				 (*unparse-abbreviate-quotations?*))))
+				 (param:unparse-abbreviate-quotations?))))
     (lambda ()
       (let* ((numerical-walk
 	      (if (*pp-avoid-circularity?*)
@@ -718,14 +718,14 @@ USA.
 	       object))))
 
 (define (walk-pair pair list-depth)
-  (if (let ((limit (*unparser-list-depth-limit*)))
+  (if (let ((limit (get-param:unparser-list-depth-limit)))
 	(and limit
 	     (>= list-depth limit)
 	     (no-highlights? pair)))
       "..."
       (let ((list-depth (+ list-depth 1)))
 	(let loop ((pair pair) (list-breadth 0))
-	  (cond ((let ((limit (*unparser-list-breadth-limit*)))
+	  (cond ((let ((limit (get-param:unparser-list-breadth-limit)))
 		   (and limit
 			(>= list-breadth limit)
 			(no-highlights? pair)))
@@ -743,7 +743,8 @@ USA.
 			(make-list-node
 			 "."
 			 (make-singleton-list-node
-			  (if (let ((limit (*unparser-list-breadth-limit*)))
+			  (if (let ((limit
+				     (get-param:unparser-list-breadth-limit)))
 				(and limit
 				     (>= list-breadth limit)
 				     (no-highlights? pair)))
@@ -768,14 +769,14 @@ USA.
 
 (define (walk-highlighted-object object list-depth numerical-walk)
   (let ((dl (pph/depth-limit object)))
-    (parameterize* (list (cons *unparser-list-breadth-limit*
+    (parameterize* (list (cons param:unparser-list-breadth-limit
 			       (let ((bl (pph/breadth-limit object)))
 				 (if (eq? bl 'DEFAULT)
-				     (*unparser-list-breadth-limit*)
+				     (param:unparser-list-breadth-limit)
 				     bl)))
-			 (cons *unparser-list-depth-limit*
+			 (cons param:unparser-list-depth-limit
 			       (if (eq? dl 'DEFAULT)
-				   (*unparser-list-depth-limit*)
+				   (param:unparser-list-depth-limit)
 				   dl)))
       (lambda ()
 	(numerical-walk (pph/object object)
@@ -859,7 +860,7 @@ USA.
 ;;; The following two procedures walk lists and vectors, respectively.
 
 (define (walk-pair-terminating pair half-pointer/queue list-depth)
-  (if (let ((limit (*unparser-list-depth-limit*)))
+  (if (let ((limit (get-param:unparser-list-depth-limit)))
 	(and limit
 	     (>= list-depth limit)
 	     (no-highlights? pair)))
@@ -867,7 +868,7 @@ USA.
       (let ((list-depth (+ list-depth 1)))
 	(let loop ((pair pair) (list-breadth 0)
 			       (half-pointer/queue half-pointer/queue))
-	  (cond ((let ((limit (*unparser-list-breadth-limit*)))
+	  (cond ((let ((limit (get-param:unparser-list-breadth-limit)))
 		   (and limit
 			(>= list-breadth limit)
 			(no-highlights? pair)))
@@ -910,7 +911,7 @@ USA.
 		      "."
 		      (make-singleton-list-node
 		       (if
-			(let ((limit (*unparser-list-breadth-limit*)))
+			(let ((limit (get-param:unparser-list-breadth-limit)))
 			  (and limit
 			       (>= list-breadth limit)
 			       (no-highlights? pair)))
@@ -927,14 +928,14 @@ USA.
 			       half-pointer/queue list-depth)))))))))))))))
 
 (define (walk-vector-terminating pair half-pointer/queue list-depth)
-  (if (let ((limit (*unparser-list-depth-limit*)))
+  (if (let ((limit (get-param:unparser-list-depth-limit)))
 	(and limit
 	     (>= list-depth limit)
 	     (no-highlights? pair)))
       "..."
       (let ((list-depth (+ list-depth 1)))
 	(let loop ((pair pair) (list-breadth 0))
-	  (cond ((let ((limit (*unparser-list-breadth-limit*)))
+	  (cond ((let ((limit (get-param:unparser-list-breadth-limit)))
 		   (and limit
 			(>= list-breadth limit)
 			(no-highlights? pair)))
@@ -967,7 +968,7 @@ USA.
 			 "."
 			 (make-singleton-list-node
 			  (if (let ((limit
-				     (*unparser-list-breadth-limit*)))
+				     (get-param:unparser-list-breadth-limit)))
 				(and limit
 				     (>= list-breadth limit)
 				     (no-highlights? pair)))

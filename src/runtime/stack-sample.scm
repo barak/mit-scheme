@@ -397,10 +397,10 @@
 
 (define (profile-pp expression output-port)
   ;; Random parametrization.
-  (parameterize* (list (cons *unparser-list-breadth-limit* 5)
-		       (cons *unparser-list-depth-limit* 3)
-		       (cons *unparser-string-length-limit* 40)
-		       (cons *unparse-primitives-by-name?* #t)
+  (parameterize* (list (cons param:unparser-list-breadth-limit 5)
+		       (cons param:unparser-list-depth-limit 3)
+		       (cons param:unparser-string-length-limit 40)
+		       (cons param:unparse-primitives-by-name? #t)
 		       (cons *pp-save-vertical-space?* #t)
 		       (cons *pp-default-as-code?* #t))
     (lambda ()

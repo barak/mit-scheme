@@ -29,56 +29,143 @@ USA.
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (set! string-delimiters
-        (char-set-union char-set:not-graphic (char-set #\" #\\)))
-  (set! hook/interned-symbol unparse-symbol)
-  (set! hook/procedure-unparser #f)
-  (set! *unparser-radix* (make-parameter 10))
-  (set! *unparser-list-breadth-limit* (make-parameter #f))
-  (set! *unparser-list-depth-limit* (make-parameter #f))
-  (set! *unparser-string-length-limit* (make-parameter #f))
-  (set! *unparse-primitives-by-name?* (make-parameter #f))
-  (set! *unparse-uninterned-symbols-by-name?* (make-parameter #f))
-  (set! *unparse-with-maximum-readability?* (make-parameter #f))
-  (set! *unparse-compound-procedure-names?* (make-parameter #t))
-  (set! *unparse-with-datum?* (make-parameter #f))
-  (set! *unparse-abbreviate-quotations?* (make-parameter #f))
-  (set! *unparse-streams?* (make-parameter #t))
-  (set! system-global-unparser-table (make-system-global-unparser-table))
-  (set! *unparser-table* (make-parameter system-global-unparser-table))
-  (set! *default-unparser-state* (make-parameter #f))
-  (set! non-canon-symbol-quoted
-        (char-set-union char-set/atom-delimiters
-                        char-set/symbol-quotes))
-  (set! canon-symbol-quoted
-        (char-set-union non-canon-symbol-quoted
-                        char-set:upper-case))
-  (set! *unparsing-within-brackets* (make-parameter #f))
-  (set! *list-depth* (make-parameter #f))
-  (set! *output-port* (make-parameter #f))
-  (set! *slashify?* (make-parameter #f))
-  (set! *environment* (make-parameter #f))
-  (set! *dispatch-table* (make-parameter #f))
-  unspecific)
-
-(define *unparser-radix*)
-(define *unparser-list-breadth-limit*)
-(define *unparser-list-depth-limit*)
-(define *unparser-string-length-limit*)
-(define *unparse-primitives-by-name?*)
-(define *unparse-uninterned-symbols-by-name?*)
-(define *unparse-with-maximum-readability?*)
-(define *unparse-compound-procedure-names?*)
-(define *unparse-with-datum?*)
-(define *unparse-abbreviate-quotations?*)
-(define *unparse-streams?*)
-(define system-global-unparser-table)
-(define *unparser-table*)
-(define *default-unparser-state*)
+(define hook/interned-symbol)
+(define hook/procedure-unparser)
+(define string-delimiters)
 (define non-canon-symbol-quoted)
 (define canon-symbol-quoted)
+(define system-global-unparser-table)
 
+(define *unparse-abbreviate-quotations?* #!default)
+(define *unparse-compound-procedure-names?* #!default)
+(define *unparse-primitives-by-name?* #!default)
+(define *unparse-streams?* #!default)
+(define *unparse-uninterned-symbols-by-name?* #!default)
+(define *unparse-with-datum?* #!default)
+(define *unparse-with-maximum-readability?* #!default)
+(define *unparser-list-breadth-limit* #!default)
+(define *unparser-list-depth-limit* #!default)
+(define *unparser-radix* #!default)
+(define *unparser-string-length-limit* #!default)
+(define *unparser-table* #!default)
+
+(define param:unparse-abbreviate-quotations?)
+(define param:unparse-compound-procedure-names?)
+(define param:unparse-primitives-by-name?)
+(define param:unparse-streams?)
+(define param:unparse-uninterned-symbols-by-name?)
+(define param:unparse-with-datum?)
+(define param:unparse-with-maximum-readability?)
+(define param:unparser-list-breadth-limit)
+(define param:unparser-list-depth-limit)
+(define param:unparser-radix)
+(define param:unparser-string-length-limit)
+(define param:unparser-table)
+
+(define param:default-unparser-state)
+(define param:dispatch-table)
+(define param:environment)
+(define param:list-depth)
+(define param:output-port)
+(define param:slashify?)
+;; Dynamically bound to #t if we are already unparsing a bracketed
+;; object so we can avoid nested brackets.
+(define param:unparsing-within-brackets?)
+
+(define (initialize-package!)
+  (set! hook/interned-symbol unparse-symbol)
+  (set! hook/procedure-unparser #f)
+  (set! string-delimiters
+        (char-set-union char-set:not-graphic (char-set #\" #\\)))
+  (set! non-canon-symbol-quoted
+        (char-set-union char-set/atom-delimiters char-set/symbol-quotes))
+  (set! canon-symbol-quoted
+        (char-set-union non-canon-symbol-quoted char-set:upper-case))
+  (set! system-global-unparser-table (make-system-global-unparser-table))
+
+  (set! param:unparse-abbreviate-quotations? (make-settable-parameter #f))
+  (set! param:unparse-compound-procedure-names? (make-settable-parameter #t))
+  (set! param:unparse-primitives-by-name? (make-settable-parameter #f))
+  (set! param:unparse-streams? (make-settable-parameter #t))
+  (set! param:unparse-uninterned-symbols-by-name? (make-settable-parameter #f))
+  (set! param:unparse-with-datum? (make-settable-parameter #f))
+  (set! param:unparse-with-maximum-readability? (make-settable-parameter #f))
+  (set! param:unparser-list-breadth-limit (make-settable-parameter #f))
+  (set! param:unparser-list-depth-limit (make-settable-parameter #f))
+  (set! param:unparser-radix (make-settable-parameter 10))
+  (set! param:unparser-string-length-limit (make-settable-parameter #f))
+  (set! param:unparser-table
+	(make-settable-parameter system-global-unparser-table))
+
+  (set! param:default-unparser-state (make-unsettable-parameter #f))
+  (set! param:dispatch-table (make-unsettable-parameter #f))
+  (set! param:environment (make-unsettable-parameter #f))
+  (set! param:list-depth (make-unsettable-parameter #f))
+  (set! param:output-port (make-unsettable-parameter #f))
+  (set! param:slashify? (make-unsettable-parameter #f))
+  (set! param:unparsing-within-brackets? (make-unsettable-parameter #f))
+  unspecific)
+
+(define (get-param:unparse-abbreviate-quotations?)
+  (if (default-object? *unparse-abbreviate-quotations?*)
+      (param:unparse-abbreviate-quotations?)
+      *unparse-abbreviate-quotations?*))
+
+(define (get-param:unparse-compound-procedure-names?)
+  (if (default-object? *unparse-compound-procedure-names?*)
+      (param:unparse-compound-procedure-names?)
+      *unparse-compound-procedure-names?*))
+
+(define (get-param:unparse-primitives-by-name?)
+  (if (default-object? *unparse-primitives-by-name?*)
+      (param:unparse-primitives-by-name?)
+      *unparse-primitives-by-name?*))
+
+(define (get-param:unparse-streams?)
+  (if (default-object? *unparse-streams?*)
+      (param:unparse-streams?)
+      *unparse-streams?*))
+
+(define (get-param:unparse-uninterned-symbols-by-name?)
+  (if (default-object? *unparse-uninterned-symbols-by-name?*)
+      (param:unparse-uninterned-symbols-by-name?)
+      *unparse-uninterned-symbols-by-name?*))
+
+(define (get-param:unparse-with-datum?)
+  (if (default-object? *unparse-with-datum?*)
+      (param:unparse-with-datum?)
+      *unparse-with-datum?*))
+
+(define (get-param:unparse-with-maximum-readability?)
+  (if (default-object? *unparse-with-maximum-readability?*)
+      (param:unparse-with-maximum-readability?)
+      *unparse-with-maximum-readability?*))
+
+(define (get-param:unparser-list-breadth-limit)
+  (if (default-object? *unparser-list-breadth-limit*)
+      (param:unparser-list-breadth-limit)
+      *unparser-list-breadth-limit*))
+
+(define (get-param:unparser-list-depth-limit)
+  (if (default-object? *unparser-list-depth-limit*)
+      (param:unparser-list-depth-limit)
+      *unparser-list-depth-limit*))
+
+(define (get-param:unparser-radix)
+  (if (default-object? *unparser-radix*)
+      (param:unparser-radix)
+      *unparser-radix*))
+
+(define (get-param:unparser-string-length-limit)
+  (if (default-object? *unparser-string-length-limit*)
+      (param:unparser-string-length-limit)
+      *unparser-string-length-limit*))
+
+(define (get-param:unparser-table)
+  (if (default-object? *unparser-table*)
+      (param:unparser-table)
+      *unparser-table*))
+
 (define (make-system-global-unparser-table)
   (let ((table (make-unparser-table unparse/default)))
     (for-each (lambda (entry)
@@ -146,7 +233,7 @@ USA.
 
 (define (with-current-unparser-state state procedure)
   (guarantee-unparser-state state 'WITH-CURRENT-UNPARSER-STATE)
-  (parameterize* (list (cons *default-unparser-state* state))
+  (parameterize* (list (cons param:default-unparser-state state))
     (lambda ()
       (procedure (unparser-state/port state)))))
 
@@ -169,7 +256,7 @@ USA.
                            (unparser-state/environment state)))
 
 (define (unparse-object/top-level object port slashify? environment)
-  (let ((state (*default-unparser-state*)))
+  (let ((state (param:default-unparser-state)))
     (unparse-object/internal
      object
      port
@@ -187,47 +274,40 @@ USA.
            environment)))))
 
 (define (unparse-object/internal object port list-depth slashify? environment)
-  (parameterize* (list (cons *list-depth* list-depth)
-		       (cons *output-port* port)
-		       (cons *slashify?* slashify?)
-		       (cons *environment* environment)
-		       (cons *dispatch-table*
+  (parameterize* (list (cons param:list-depth list-depth)
+		       (cons param:output-port port)
+		       (cons param:slashify? slashify?)
+		       (cons param:environment environment)
+		       (cons param:dispatch-table
 			     (unparser-table/dispatch-vector
-			      (let ((table (*unparser-table*)))
+			      (let ((table (get-param:unparser-table)))
 				(guarantee-unparser-table table #f)
 				table))))
     (lambda ()
       (*unparse-object object))))
 
 (define-integrable (invoke-user-method method object)
-  (method (make-unparser-state (*output-port*)
-                               (*list-depth*)
-                               (*slashify?*)
-                               (*environment*))
+  (method (make-unparser-state (param:output-port)
+                               (param:list-depth)
+                               (param:slashify?)
+                               (param:environment))
           object))
 
-(define *list-depth*)
-(define *slashify?*)
-(define *environment*)
-(define *dispatch-table*)
-
 (define (*unparse-object object)
-  ((vector-ref (*dispatch-table*)
+  ((vector-ref (param:dispatch-table)
                ((ucode-primitive primitive-object-type 1) object))
    object))
 
 ;;;; Low Level Operations
 
-(define *output-port*)
-
 (define-integrable (*unparse-char char)
-  (output-port/write-char (*output-port*) char))
+  (output-port/write-char (param:output-port) char))
 
 (define-integrable (*unparse-string string)
-  (output-port/write-string (*output-port*) string))
+  (output-port/write-string (param:output-port) string))
 
 (define-integrable (*unparse-substring string start end)
-  (output-port/write-substring (*output-port*) string start end))
+  (output-port/write-substring (param:output-port) string start end))
 
 (define-integrable (*unparse-datum object)
   (*unparse-hex (object-datum object)))
@@ -243,27 +323,23 @@ USA.
   (*unparse-string "#@")
   (*unparse-hash object))
 
-;; Dynamically bound to #T if we are already unparsing a bracketed
-;; object so we can avoid nested brackets.
-(define *unparsing-within-brackets*)
-
 ;; Values to use while unparsing within brackets.
 (define within-brackets-list-breadth-limit 5)
 (define within-brackets-list-depth-limit 3)
 
 (define (*unparse-with-brackets name object thunk)
-  (if (or (and (*unparse-with-maximum-readability?*) object)
-          (*unparsing-within-brackets*))
+  (if (or (and (get-param:unparse-with-maximum-readability?) object)
+          (param:unparsing-within-brackets?))
       (*unparse-readable-hash object)
-      (parameterize* (list (cons *unparsing-within-brackets* #t)
-			   (cons *unparser-list-breadth-limit*
-				 (if (*unparser-list-breadth-limit*)
-				     (min (*unparser-list-breadth-limit*)
+      (parameterize* (list (cons param:unparsing-within-brackets? #t)
+			   (cons param:unparser-list-breadth-limit
+				 (if (get-param:unparser-list-breadth-limit)
+				     (min (get-param:unparser-list-breadth-limit)
 					  within-brackets-list-breadth-limit)
 				     within-brackets-list-breadth-limit))
-			   (cons *unparser-list-depth-limit*
-				 (if (*unparser-list-depth-limit*)
-				     (min (*unparser-list-depth-limit*)
+			   (cons param:unparser-list-depth-limit
+				 (if (get-param:unparser-list-depth-limit)
+				     (min (get-param:unparser-list-depth-limit)
 					  within-brackets-list-depth-limit)
 				     within-brackets-list-depth-limit)))
 	(lambda ()
@@ -279,7 +355,7 @@ USA.
 	      (begin
 		(*unparse-char #\space)
 		(limit-unparse-depth thunk))
-	      (if (*unparse-with-datum?*)
+	      (if (get-param:unparse-with-datum?)
 		  (begin
 		    (*unparse-char #\space)
 		    (*unparse-datum object))))
@@ -353,10 +429,8 @@ USA.
 (define (unparse/interned-symbol symbol)
   (hook/interned-symbol symbol))
 
-(define hook/interned-symbol)
-
 (define (unparse/uninterned-symbol symbol)
-  (if (*unparse-uninterned-symbols-by-name?*)
+  (if (get-param:unparse-uninterned-symbols-by-name?)
       (unparse-symbol symbol)
       (*unparse-with-brackets 'UNINTERNED-SYMBOL symbol
         (lambda ()
@@ -368,7 +442,7 @@ USA.
       (unparse-symbol-name (symbol-name symbol))))
 
 (define (unparse-keyword-name s)
-  (case (get-param:parser-keyword-style (*environment*))
+  (case (get-param:parser-keyword-style (param:environment))
     ((PREFIX)
      (*unparse-char #\:)
      (unparse-symbol-name s))
@@ -383,7 +457,7 @@ USA.
 (define (unparse-symbol-name s)
   (if (or (string-find-next-char-in-set
            s
-           (if (get-param:parser-canonicalize-symbols? (*environment*))
+           (if (get-param:parser-canonicalize-symbols? (param:environment))
                canon-symbol-quoted
                non-canon-symbol-quoted))
           (fix:= (string-length s) 0)
@@ -416,7 +490,7 @@ USA.
   (char=? (string-ref string 0) #\#))
 
 (define (looks-like-keyword? string)
-  (case (get-param:parser-keyword-style (*environment*))
+  (case (get-param:parser-keyword-style (param:environment))
     ((PREFIX)
      (char=? (string-ref string 0) #\:))
     ((SUFFIX)
@@ -424,7 +498,7 @@ USA.
     (else #f)))
 
 (define (unparse/character character)
-  (if (or (*slashify?*)
+  (if (or (param:slashify?)
           (not (char-ascii? character)))
       (begin
         (*unparse-string "#\\")
@@ -432,10 +506,10 @@ USA.
       (*unparse-char character)))
 
 (define (unparse/string string)
-  (if (*slashify?*)
+  (if (param:slashify?)
       (let ((end (string-length string)))
         (let ((end*
-               (let ((limit (*unparser-string-length-limit*)))
+               (let ((limit (get-param:unparser-string-length-limit)))
                  (if limit
                      (min limit end)
                      end))))
@@ -485,8 +559,6 @@ USA.
               (digit->char (integer-divide-remainder qr2) 8)
               (digit->char (integer-divide-remainder qr1) 8)))))
 
-(define string-delimiters)
-
 (define (unparse/bit-string bit-string)
   (*unparse-string "#*")
   (let loop ((index (fix:- (bit-string-length bit-string) 1)))
@@ -524,7 +596,7 @@ USA.
              (let loop ((index 1))
                (cond ((fix:= index length)
                       (*unparse-char #\)))
-                     ((let ((limit (*unparser-list-breadth-limit*)))
+                     ((let ((limit (get-param:unparser-list-breadth-limit)))
                         (and limit (>= index limit)))
                       (*unparse-string " ...)"))
                      (else
@@ -542,7 +614,7 @@ USA.
   (map-reference-trap (lambda () (vector-ref vector index))))
 
 (define (unparse/record record)
-  (if (*unparse-with-maximum-readability?*)
+  (if (get-param:unparse-with-maximum-readability?)
       (*unparse-readable-hash record)
       (invoke-user-method unparse-record record)))
 
@@ -551,7 +623,7 @@ USA.
          => (lambda (prefix) (unparse-list/prefix-pair prefix pair)))
         ((unparse-list/unparser pair)
          => (lambda (method) (invoke-user-method method pair)))
-        ((and (*unparse-streams?*) (stream-pair? pair))
+        ((and (get-param:unparse-streams?) (stream-pair? pair))
          (unparse-list/stream-pair pair))
         (else
          (unparse-list pair))))
@@ -565,10 +637,10 @@ USA.
      (*unparse-char #\)))))
 
 (define (limit-unparse-depth kernel)
-  (let ((limit (*unparser-list-depth-limit*)))
+  (let ((limit (get-param:unparser-list-depth-limit)))
     (if limit
-        (let ((depth (*list-depth*)))
-          (parameterize* (list (cons *list-depth* (1+ depth)))
+        (let ((depth (param:list-depth)))
+          (parameterize* (list (cons param:list-depth (1+ depth)))
             (lambda ()
               (if (> (1+ depth) limit)
                   (*unparse-string "...")
@@ -585,7 +657,7 @@ USA.
                (begin
                  (*unparse-char #\space)
                  (*unparse-object (safe-car l))
-                 (if (let ((limit (*unparser-list-breadth-limit*)))
+                 (if (let ((limit (get-param:unparser-list-breadth-limit)))
                        (and limit
                             (>= n limit)
                             (pair? (safe-cdr l))))
@@ -609,7 +681,7 @@ USA.
   (*unparse-object (safe-car (safe-cdr pair))))
 
 (define (unparse-list/prefix-pair? object)
-  (and (*unparse-abbreviate-quotations?*)
+  (and (get-param:unparse-abbreviate-quotations?)
        (pair? (safe-cdr object))
        (null? (safe-cdr (safe-cdr object)))
        (case (safe-car object)
@@ -638,7 +710,7 @@ USA.
                       ((stream-pair? value)
                        (*unparse-char #\space)
                        (*unparse-object (safe-car value))
-                       (if (let ((limit (*unparser-list-breadth-limit*)))
+                       (if (let ((limit (get-param:unparser-list-breadth-limit)))
                              (and limit
                                   (>= n limit)))
                            (*unparse-string " ...")
@@ -654,8 +726,6 @@ USA.
   (map-reference-trap (lambda () (cdr pair))))
 
 ;;;; Procedures
-
-(define hook/procedure-unparser)
 
 (define (unparse-procedure procedure usual-method)
   (let ((method
@@ -673,7 +743,7 @@ USA.
   (unparse-procedure procedure
     (lambda ()
       (*unparse-with-brackets 'COMPOUND-PROCEDURE procedure
-        (and (*unparse-compound-procedure-names?*)
+        (and (get-param:unparse-compound-procedure-names?)
              (lambda-components* (procedure-lambda procedure)
                (lambda (name required optional rest body)
                  required optional rest body
@@ -686,9 +756,9 @@ USA.
       (let ((unparse-name
              (lambda ()
                (*unparse-object (primitive-procedure-name procedure)))))
-        (cond ((*unparse-primitives-by-name?*)
+        (cond ((get-param:unparse-primitives-by-name?)
                (unparse-name))
-              ((*unparse-with-maximum-readability?*)
+              ((get-param:unparse-with-maximum-readability?)
                (*unparse-readable-hash procedure))
               (else
                (*unparse-with-brackets 'PRIMITIVE-PROCEDURE #f
@@ -770,7 +840,7 @@ USA.
                        (*unparse-string prefix))
                    radix)
                  10))))
-      (case (*unparser-radix*)
+      (case (get-param:unparser-radix)
         ((2) (prefix "#b" 2 2))
         ((8) (prefix "#o" 8 8))
         ((16) (prefix "#x" 10 16))
@@ -786,7 +856,7 @@ USA.
     (*unparse-with-brackets "floating-vector" v
       (and (not (zero? length))
            (lambda ()
-             (let ((limit (let ((limit (*unparser-list-breadth-limit*)))
+             (let ((limit (let ((limit (get-param:unparser-list-breadth-limit)))
                             (if (not limit)
                                 length
                                 (min length limit)))))
@@ -819,7 +889,7 @@ USA.
                        (compiled-procedure/name proc))
                   => named-arity-dispatched-procedure)
                  (else (plain 'ARITY-DISPATCHED-PROCEDURE)))))
-        ((*unparse-with-maximum-readability?*)
+        ((get-param:unparse-with-maximum-readability?)
          (*unparse-readable-hash entity))
         ((record? (%entity-extra entity))
          ;; Kludge to make the generic dispatch mechanism work.
@@ -844,7 +914,7 @@ USA.
          (*unparse-object (promise-value promise)))
        (lambda ()
          (*unparse-string "(unevaluated)")
-         (if (*unparse-with-datum?*)
+         (if (get-param:unparse-with-datum?)
              (begin
                (*unparse-char #\space)
                (*unparse-datum promise)))))))

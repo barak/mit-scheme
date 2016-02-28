@@ -327,7 +327,7 @@ Otherwise, it is shown in the echo area."
 			       (insert-string " . " point)
 			       (insert-string (symbol-name argl) point)))))
 		    (parameterize*
-		     (list (cons *unparse-uninterned-symbols-by-name?* #t))
+		     (list (cons param:unparse-uninterned-symbols-by-name? #t))
 		     (lambda ()
 		       (message procedure-name ": " argl)))))
 	      (editor-error "Expression does not evaluate to a procedure: "

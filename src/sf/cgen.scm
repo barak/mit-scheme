@@ -245,6 +245,6 @@ USA.
 (define (pp-expression form #!optional port)
   (parameterize* (list (cons *pp-primitives-by-name* #f)
 		       (cons *pp-uninterned-symbols-by-name* #f)
-		       (cons *unparse-abbreviate-quotations?* #t))
+		       (cons param:unparse-abbreviate-quotations? #t))
     (lambda ()
       (pp (cgen/external-with-declarations form) port))))

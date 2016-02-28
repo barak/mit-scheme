@@ -5013,6 +5013,18 @@ USA.
 	  guarantee-unparser-state
 	  guarantee-unparser-table
 	  make-unparser-table
+	  param:unparse-abbreviate-quotations?
+	  param:unparse-compound-procedure-names?
+	  param:unparse-primitives-by-name?
+	  param:unparse-streams?
+	  param:unparse-uninterned-symbols-by-name?
+	  param:unparse-with-datum?
+	  param:unparse-with-maximum-readability?
+	  param:unparser-list-breadth-limit
+	  param:unparser-list-depth-limit
+	  param:unparser-radix
+	  param:unparser-string-length-limit
+	  param:unparser-table
 	  system-global-unparser-table
 	  unparse-char
 	  unparse-object
@@ -5025,11 +5037,15 @@ USA.
 	  unparser-table?
 	  user-object-type
 	  with-current-unparser-state)
+  (export (runtime boot-definitions)
+	  get-param:unparse-with-maximum-readability?)
   (export (runtime record)
 	  rtd:unparser-state)
   (export (runtime output-port)
 	  unparse-object/top-level)
   (export (runtime pretty-printer)
+	  get-param:unparser-list-breadth-limit
+	  get-param:unparser-list-depth-limit
 	  make-unparser-state
 	  unparse-list/prefix-pair?
 	  unparse-list/unparser
