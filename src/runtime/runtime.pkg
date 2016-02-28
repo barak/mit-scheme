@@ -4615,6 +4615,9 @@ USA.
   (parent (runtime))
   (export ()
 	  (make-parameter make-settable-parameter)
+	  default-parameter-converter
+	  default-parameter-getter
+	  default-parameter-setter
 	  parameter?
 	  make-general-parameter
 	  make-settable-parameter

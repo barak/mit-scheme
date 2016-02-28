@@ -60,15 +60,19 @@ USA.
   (make-parameter-internal initial-value converter #t))
 
 (define (make-parameter-internal initial-value converter settable?)
-  (let ((noop (lambda (x) x)))
-    (make-general-parameter initial-value
-			    (if (default-object? converter)
-				noop
-				converter)
-			    noop
-			    (and settable?
-				 (lambda (set-param value)
-				   (set-param value))))))
+  (make-general-parameter initial-value
+			  (if (default-object? converter)
+			      default-parameter-converter
+			      converter)
+			  default-parameter-getter
+			  (and settable?
+			       default-parameter-setter)))
+
+(define (default-parameter-converter value) value)
+(define (default-parameter-getter value) value)
+
+(define (default-parameter-setter set-param value)
+  (set-param value))
 
 (define (make-general-parameter initial-value converter getter setter)
   (guarantee-procedure converter 'make-general-parameter)
