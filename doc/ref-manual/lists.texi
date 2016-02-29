@@ -603,7 +603,7 @@ less than the length of the list.  The first element of a list has index
 @group
 (list-ref '(a b c d) 2)                 @result{} c
 (list-ref '(a b c d)
-          (inexact->exact (round 1.8)))
+          (exact (round 1.8)))
      @result{} c
 @end group
 @end example

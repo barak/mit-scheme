@@ -104,8 +104,8 @@ exact result, then it may either report the violation of an
 implementation restriction or it may silently coerce its result to an
 inexact value.  @xref{Implementation restrictions}.
 
-@findex inexact->exact
-With the exception of @code{inexact->exact}, the operations described in
+@findex exact
+With the exception of @code{exact}, the operations described in
 this section must generally return inexact results when given any
 inexact arguments.  An operation may, however, return an exact result if
 it can prove that the value of the result is unaffected by the
@@ -161,7 +161,7 @@ within the implementation:
 @group
 *                gcd                modulo
 +                imag-part          numerator
--                inexact->exact     quotient
+-                exact              quotient
 abs              lcm                rationalize
 angle            magnitude          real-part
 ceiling          make-polar         remainder
@@ -640,7 +640,7 @@ of 0 is defined to be 1.
 @group
 (numerator (/ 6 4))  @result{}  3
 (denominator (/ 6 4))  @result{}  2
-(denominator (exact->inexact (/ 6 4))) @result{} 2.0
+(denominator (inexact (/ 6 4))) @result{} 2.0
 @end group
 @end example
 @end deffn
@@ -661,8 +661,8 @@ modes required by the @sc{ieee} floating point standard.
 
 Note: If the argument to one of these procedures is inexact, then the
 result will also be inexact.  If an exact value is needed, the result
-should be passed to the @code{inexact->exact} procedure (or use one of
-the procedures below).
+should be passed to the @code{exact} procedure (or use one of the
+procedures below).
 
 @example
 @group
@@ -693,7 +693,7 @@ equivalent
 @example
 @group
 (floor->exact x)
-(inexact->exact (floor x))
+(exact (floor x))
 @end group
 @end example
 
@@ -719,8 +719,8 @@ simplest rational of all.
 
 @example
 @group
-(rationalize (inexact->exact .3) 1/10)  @result{} 1/3    @r{; exact}
-(rationalize .3 1/10)                   @result{} #i1/3  @r{; inexact}
+(rationalize (exact .3) 1/10)  @result{} 1/3    @r{; exact}
+(rationalize .3 1/10)          @result{} #i1/3  @r{; inexact}
 @end group
 @end example
 
@@ -854,9 +854,13 @@ minus @var{pi} (exclusive) to @var{pi} (inclusive).
 @code{conjugate} returns the complex conjugate of @var{z}.
 @end deffn
 
-@deffn procedure exact->inexact z
-@deffnx procedure inexact->exact z
-@code{exact->inexact} returns an inexact representation of @var{z}.  The
+The procedures @code{exact} and @code{inexact} implement the natural
+one-to-one correspondence between exact and inexact integers
+throughout an implementation-dependent range.
+
+@deffn procedure inexact z
+@deffnx procedure exact->inexact z
+@code{inexact} returns an inexact representation of @var{z}.  The
 value returned is the inexact number that is numerically closest to the
 argument.  If an exact argument has no reasonably close inexact
 equivalent, then a violation of an implementation restriction may be
@@ -864,16 +868,27 @@ reported; MIT/GNU Scheme signals an error of type
 @code{condition-type:bad-range-argument} in this case.
 @findex condition-type:bad-range-argument
 
-@code{inexact->exact} returns an exact representation of @var{z}.  The
-value returned is the exact number that is numerically closest to the
+The procedure @code{exact->inexact} has been deprecated by @urseven{}.
+@end deffn
+
+@deffn procedure inexact z
+@deffnx procedure exact->inexact z
+@code{inexact} returns an inexact representation of @var{z}.  The
+value returned is the inexact number that is numerically closest to the
+argument.  If an exact argument has no reasonably close inexact
+equivalent, then a violation of an implementation restriction may be
+reported; MIT/GNU Scheme signals an error of type
+@code{condition-type:bad-range-argument} in this case.
+@findex condition-type:bad-range-argument
+
+@code{exact} returns an exact representation of @var{z}.  The value
+returned is the exact number that is numerically closest to the
 argument.  If an inexact argument has no reasonably close exact
 equivalent, then a violation of an implementation restriction may be
-reported; in MIT/GNU Scheme this case does not occur because all inexact
-numbers are representable as exact numbers.
+reported; in MIT/GNU Scheme this case does not occur because all
+inexact numbers are representable as exact numbers.
 
-These procedures implement the natural one-to-one correspondence between
-exact and inexact integers throughout an implementation-dependent range.
-@xref{Implementation restrictions}.
+The procedure @code{inexact->exact} has been deprecated by @urseven{}.
 @end deffn
 
 @node Numerical input and output, Fixnum and Flonum Operations, Numerical operations, Numbers
