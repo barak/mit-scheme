@@ -39,6 +39,8 @@ USA.
   (or (eq? object #f)
       (eq? object #t)))
 
+(define-guarantee boolean "boolean")
+
 (define (boolean=? x y)
   (if x y (not y)))
 

@@ -70,9 +70,7 @@ USA.
 
 (define (default-parameter-converter value) value)
 (define (default-parameter-getter value) value)
-
-(define (default-parameter-setter set-param value)
-  (set-param value))
+(define (default-parameter-setter set-param value) (set-param value))
 
 (define (make-general-parameter initial-value converter getter setter)
   (guarantee-procedure converter 'make-general-parameter)
@@ -107,3 +105,6 @@ USA.
 	     (set! bindings (set! temp (set! bindings)))
 	     unspecific)))
       (shallow-fluid-bind swap! thunk swap!))))
+
+(define (parameter-converter parameter)
+  (car (parameter-metadata parameter)))

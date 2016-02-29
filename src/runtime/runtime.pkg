@@ -129,6 +129,7 @@ USA.
 	  boolean?
 	  false
 	  for-all?
+	  guarantee-boolean
 	  not
 	  there-exists?
 	  true))
@@ -4611,6 +4612,7 @@ USA.
 	  default-parameter-converter
 	  default-parameter-getter
 	  default-parameter-setter
+	  parameter-converter
 	  parameter?
 	  make-general-parameter
 	  make-settable-parameter
