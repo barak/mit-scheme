@@ -24,14 +24,14 @@ as fixed point and floating point are referred to by names such as
 @emph{fixnum} and @emph{flonum}.
 
 @menu
-* Numerical types::             
-* Exactness::                   
-* Implementation restrictions::  
-* Syntax of numerical constants::  
-* Numerical operations::        
-* Numerical input and output::  
-* Fixnum and Flonum Operations::  
-* Random Numbers::              
+* Numerical types::
+* Exactness::
+* Implementation restrictions::
+* Syntax of numerical constants::
+* Numerical operations::
+* Numerical input and output::
+* Fixnum and Flonum Operations::
+* Random Numbers::
 @end menu
 
 @node Numerical types, Exactness, Numbers, Numbers
@@ -522,7 +522,7 @@ For integers @var{n1} and @var{n2} with @var{n2} not equal to 0,
 
 @example
 @group
-(= @var{n1} 
+(= @var{n1}
    (+ (* @var{n2} (quotient @var{n1} @var{n2}))
       (remainder @var{n1} @var{n2})))
                                     @result{}  #t
@@ -934,9 +934,17 @@ the result, and consequently can be tolerated by many applications.
 @end defvr
 
 @defvr variable flonum-unparser-cutoff
+This variable is @strong{deprecated}; use
+@code{param:flonum-unparser-cutoff} instead.
+@end defvr
+
+@defvr parameter param:flonum-unparser-cutoff
 This parameter controls the action of @code{number->string} when
 @var{number} is a flonum (and consequently controls all printing of
-flonums).  The value of this parameter is normally a list of three items:
+flonums).  This parameter may be called with an argument to set its
+value.
+
+The value of this parameter is normally a list of three items:
 
 @table @var
 @item rounding-type
@@ -1074,8 +1082,8 @@ used improperly, these operations can return incorrect answers, or even
 malformed objects that confuse the garbage collector.
 
 @menu
-* Fixnum Operations::           
-* Flonum Operations::           
+* Fixnum Operations::
+* Flonum Operations::
 @end menu
 
 @node Fixnum Operations, Flonum Operations, Fixnum and Flonum Operations, Fixnum and Flonum Operations

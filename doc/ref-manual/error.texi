@@ -439,7 +439,6 @@ signalled it is best to actually put a breakpoint on entry to
 @deffn procedure standard-error-handler condition
 @findex error
 @findex ignore-error
-@vindex standard-error-hook
 @cindex REP loop
 Called internally by @code{error} after it calls
 @code{signal-condition}.  Normally creates a new @sc{repl} with
@@ -449,7 +448,7 @@ order to simulate the effect of calling @code{error}, code may call
 @code{standard-error-handler} if @code{signal-condition} returns.
 @end deffn
 
-@defvr variable standard-error-hook
+@defvr parameter standard-error-hook
 @findex standard-error-handler
 @cindex dynamic binding
 @cindex REP loop
@@ -463,7 +462,6 @@ changed to a procedure of one argument and will then be invoked (with
 @end defvr
 
 @deffn procedure standard-warning-handler condition
-@vindex standard-warning-hook
 @findex signal-condition
 @findex notification-output-port
 @findex write-condition-report
@@ -483,7 +481,7 @@ In order to simulate the effect of calling @code{warn}, code may call
 however.  For that purpose an explicit restart must be provided.)
 @end deffn
 
-@defvr variable standard-warning-hook
+@defvr parameter standard-warning-hook
 @findex standard-warning-handler
 @cindex dynamic binding
 This parameter controls the behavior of the procedure
