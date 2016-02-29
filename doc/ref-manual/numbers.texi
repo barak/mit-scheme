@@ -1372,10 +1372,10 @@ either an exact integer or an inexact real; the current implementation
 has been tuned to make these two cases fast.
 
 If @var{state} is given and not @code{#f}, it must be a random-state
-object; otherwise, it defaults to the value of the parameter
-@code{*random-state*}.  This object is used to maintain the state of the
-pseudo-random-number generator and is altered as a side effect of the
-@code{random} procedure.
+object; otherwise, it defaults to the @code{default-random-source}.
+This object is used to maintain the state of the pseudo-random-number
+generator and is altered as a side effect of the @code{random}
+procedure.
 
 @example
 @group
@@ -1407,23 +1407,18 @@ procedure.  This allows a particular random-state object to be saved in
 order to replay a particular pseudo-random sequence.
 
 @defvr variable *random-state*
-The value of this parameter is a data structure, a random-state
-object, that encodes the internal state of the random-number generator
-that @code{random} uses by default.  A call to @code{random} will
-perform a side effect on this data structure.  The parameter may be
-changed to hold a new random-state object.
+This variable is @strong{deprecated}; pass an explicit state instead.
 @end defvr
 
 @deffn procedure make-random-state [state]
 This procedure returns a new random-state object, suitable for use as
-the value of the parameter @code{*random-state*}, or as the @var{state}
-argument to @code{random}.  If @var{state} is not given or @code{#f},
-@code{make-random-state} returns a @emph{copy} of the current
-random-number state object (the value of the @code{*random-state*}
-parameter object).  If @var{state} is a random-state object, a copy
-of that object is returned.  If @var{state} is @code{#t}, then a new
-random-state object is returned that has been ``randomly'' initialized
-by some means (such as by a time-of-day clock).
+as the @var{state} argument to @code{random}.  If @var{state} is not
+given or @code{#f}, @code{make-random-state} returns a @emph{copy} of
+@code{default-random-source}.  If @var{state} is a random-state
+object, a copy of that object is returned.  If @var{state} is
+@code{#t}, then a new random-state object is returned that has been
+``randomly'' initialized by some means (such as by a time-of-day
+clock).
 @end deffn
 
 @deffn procedure random-state? object
