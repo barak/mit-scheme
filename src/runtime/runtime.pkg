@@ -4608,7 +4608,7 @@ USA.
   (files "dynamic")
   (parent (runtime))
   (export ()
-	  (make-parameter make-settable-parameter)
+	  (make-parameter make-unsettable-parameter)
 	  default-parameter-converter
 	  default-parameter-getter
 	  default-parameter-setter
