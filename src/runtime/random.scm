@@ -175,14 +175,14 @@ USA.
     s))
 
 (define (random-source-make-integers source)
-  (get-random-state source 'RANDOM-SOURCE-MAKE-INTEGERS)
+  (guarantee-random-state source 'RANDOM-SOURCE-MAKE-INTEGERS)
   (lambda (modulus)
     (if (int:> modulus 0)
 	(%random-integer modulus source)
 	(error:bad-range-argument modulus #f))))
 
 (define (random-source-make-reals source #!optional unit)
-  (get-random-state source 'RANDOM-SOURCE-MAKE-REALS)
+  (guarantee-random-state source 'RANDOM-SOURCE-MAKE-REALS)
   (let ((unit
 	 (if (default-object? unit)
 	     .5
