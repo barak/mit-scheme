@@ -60,6 +60,7 @@ htmldir = @htmldir@
 pdfdir = @pdfdir@
 psdir = @psdir@
 
+INSTALL_INFO_PROG = @INSTALL_INFO_PROG@
 TARGETS = @TARGETS@
 INST_TARGETS = @INST_TARGETS@
 
@@ -113,6 +114,7 @@ install: install-info-gz $(INST_TARGETS)
 install-info: $(INFO_TARGET)
 	-rm -f $(DESTDIR)$(infodir)/$(INFO_TARGET)*
 	$(INSTALL_DATA) $(INFO_TARGET)* $(DESTDIR)$(infodir)/.
+	$(INSTALL_INFO_PROG) --info-dir $(DESTDIR)$(infodir)/ $(INFO_TARGET)
 
 install-info-gz: install-info
 	gzip -v $(DESTDIR)$(infodir)/$(INFO_TARGET)*

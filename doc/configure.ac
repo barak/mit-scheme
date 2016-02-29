@@ -31,12 +31,13 @@ USA.
 ])
 
 AC_PROG_INSTALL
-AC_PROG_LN_S
-AC_PROG_MAKE_SET
 if test "$(${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps)"
 then
     INSTALL="${INSTALL} --preserve-timestamps"
 fi
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
+AC_CHECK_PROG([INSTALL_INFO_PROG], [install-info], [install-info], [true])
 
 TARGETS=
 INST_TARGETS=
@@ -69,10 +70,10 @@ AC_SUBST([pdfdir])
 
 AC_ARG_ENABLE([ps],
 	[AC_HELP_STRING([--enable-ps], [generate Postscript documentation])])
-if test "${enable_ps:-yes}" = "yes"; then
-    psdir="${libdir}/mit-scheme/doc"
-elif test "${enable_ps}" = "no"; then
+if test "${enable_ps:-no}" = "no"; then
     psdir=
+elif test "${enable_ps}" = "yes"; then
+    psdir="${libdir}/mit-scheme/doc"
 else
     psdir="${enable_ps}"
 fi
