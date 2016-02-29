@@ -45,7 +45,7 @@ USA.
 (define *within-restore-window?*)
 
 (define (initialize-package!)
-  (set! *within-restore-window?* (make-parameter #f)))
+  (set! *within-restore-window?* (make-unsettable-parameter #f)))
 
 (define (disk-save filename #!optional id)
   (let ((filename (->namestring (merge-pathnames filename)))

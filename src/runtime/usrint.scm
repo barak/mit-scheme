@@ -499,7 +499,7 @@ USA.
 (define wrapped-notification-port-type)
 
 (define (initialize-package!)
-  (set! *notification-depth* (make-parameter 0))
+  (set! *notification-depth* (make-unsettable-parameter 0))
   (set! indentation-atom "  ")
   (set! wrapped-notification-port-type (make-wrapped-notification-port-type))
   unspecific)

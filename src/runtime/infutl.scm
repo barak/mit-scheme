@@ -37,7 +37,7 @@ USA.
 	  (,lambda-tag:internal-lexpr . LAMBDA)
 	  (,lambda-tag:let . LET)
 	  (,lambda-tag:fluid-let . FLUID-LET)))
-  (set! directory-rewriting-rules (make-parameter '()))
+  (set! directory-rewriting-rules (make-settable-parameter '()))
   (set! wrappers-with-memoized-debugging-info (make-serial-population))
   (add-secondary-gc-daemon! discard-debugging-info!))
 

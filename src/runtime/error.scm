@@ -778,10 +778,10 @@ USA.
   (memq condition-type:error (%condition-type/generalizations type)))
 
 (define (initialize-package!)
-  (set! param:bound-restarts (make-parameter '()))
-  (set! static-handler-frames (make-parameter '()))
-  (set! dynamic-handler-frames (make-parameter '()))
-  (set! break-on-signals-types (make-parameter '()))
+  (set! param:bound-restarts (make-unsettable-parameter '()))
+  (set! static-handler-frames (make-settable-parameter '()))
+  (set! dynamic-handler-frames (make-unsettable-parameter '()))
+  (set! break-on-signals-types (make-settable-parameter '()))
   (set! param:standard-error-hook (make-settable-parameter #f))
   (set! param:standard-warning-hook (make-settable-parameter #f))
   (set! hook/invoke-condition-handler default/invoke-condition-handler)

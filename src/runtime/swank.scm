@@ -316,10 +316,10 @@ USA.
 
 (define repl-port-type)
 (define (initialize-package!)
-  (set! *top-level-restart* (make-parameter unspecific))
-  (set! *sldb-state* (make-parameter #f))
-  (set! *index* (make-parameter unspecific))
-  (set! *buffer-pstring* (make-parameter unspecific))
+  (set! *top-level-restart* (make-unsettable-parameter unspecific))
+  (set! *sldb-state* (make-unsettable-parameter #f))
+  (set! *index* (make-unsettable-parameter unspecific))
+  (set! *buffer-pstring* (make-unsettable-parameter unspecific))
   (set! repl-port-type
 	(make-port-type
 	 `((WRITE-CHAR

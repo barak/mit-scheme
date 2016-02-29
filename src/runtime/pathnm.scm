@@ -736,7 +736,7 @@ these rules:
   (set! param:default-pathname-defaults (make-param:default-pathname-defaults))
   (param:default-pathname-defaults (make-pathname local-host #f #f #f #f #f))
   (set! library-directory-path
-	(make-parameter
+	(make-unsettable-parameter
 	 (map pathname-as-directory
 	      (vector->list ((ucode-primitive microcode-library-path 0))))))
   unspecific)

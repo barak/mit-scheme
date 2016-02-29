@@ -84,7 +84,7 @@
 (define event-return-address 'UNINITIALIZED)
 
 (define (initialize-package!)
-  (set! stack-sampling-return-address (make-parameter #f))
+  (set! stack-sampling-return-address (make-unsettable-parameter #f))
   (let ((blocked? (block-thread-events)))
     (signal-thread-event (current-thread)
       (lambda ()

@@ -30,7 +30,7 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! substitutions (make-parameter '()))
+  (set! substitutions (make-unsettable-parameter '()))
   (set! unsyntaxer/scode-walker
 	(make-scode-walker unsyntax-constant
 			   `((ACCESS ,unsyntax-ACCESS-object)

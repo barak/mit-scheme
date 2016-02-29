@@ -94,8 +94,8 @@ USA.
 (define *initial-options-file* #f)
 
 (define (initialize-package!)
-  (set! *options* (make-parameter '()))
-  (set! *parent* (make-parameter initial-load-options)))
+  (set! *options* (make-settable-parameter '()))
+  (set! *parent* (make-settable-parameter initial-load-options)))
 
 (define (dummy-option-loader)
   unspecific)

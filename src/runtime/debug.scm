@@ -162,8 +162,8 @@ USA.
   (stack-frame/reductions (dstate/subproblem dstate)))
 
 (define (initialize-package!)
-  (set! *dstate* (make-parameter 'UNBOUND))
-  (set! *port* (make-parameter 'UNBOUND))
+  (set! *dstate* (make-unsettable-parameter 'UNBOUND))
+  (set! *port* (make-unsettable-parameter 'UNBOUND))
   (set!
    command-set
    (make-command-set

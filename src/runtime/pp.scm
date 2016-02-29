@@ -60,8 +60,8 @@ USA.
   (set! param:pp-save-vertical-space? (make-settable-parameter #f))
   (set! param:pp-uninterned-symbols-by-name? (make-settable-parameter #t))
 
-  (set! x-size (make-parameter #f))
-  (set! output-port (make-parameter #f))
+  (set! x-size (make-unsettable-parameter #f))
+  (set! output-port (make-unsettable-parameter #f))
   (set! pp-description (make-generic-procedure 1 'PP-DESCRIPTION))
   (set-generic-procedure-default-generator! pp-description
     (lambda (generic tags)
@@ -73,7 +73,7 @@ USA.
   (set! print-let-expression (special-printer kernel/print-let-expression))
   (set! print-case-expression (special-printer kernel/print-case-expression))
   (set! code-dispatch-list
-	(make-parameter
+	(make-unsettable-parameter
 	 `((COND . ,forced-indentation)
 	   (CASE . ,print-case-expression)
 	   (IF . ,forced-indentation)
@@ -87,8 +87,8 @@ USA.
 	   (DEFINE-INTEGRABLE . ,print-procedure)
 	   (LAMBDA . ,print-procedure)
 	   (NAMED-LAMBDA . ,print-procedure))))
-  (set! dispatch-list (make-parameter (code-dispatch-list)))
-  (set! dispatch-default (make-parameter print-combination))
+  (set! dispatch-list (make-unsettable-parameter (code-dispatch-list)))
+  (set! dispatch-default (make-unsettable-parameter print-combination))
   (set! cocked-object (generate-uninterned-symbol))
   unspecific)
 
@@ -352,7 +352,7 @@ USA.
       (print-node node column depth))))
 
 (define (print-code-node node column depth)
-  (parameterize* (list (cons dispatch-list code-dispatch-list)
+  (parameterize* (list (cons dispatch-list (code-dispatch-list))
 		       (cons dispatch-default print-combination))
     (lambda ()
       (print-node node column depth))))

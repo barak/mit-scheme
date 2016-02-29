@@ -404,7 +404,7 @@ USA.
 (define *rename-database*)
 
 (define (initialize-package!)
-  (set! *rename-database* (make-parameter 'UNBOUND)))
+  (set! *rename-database* (make-unsettable-parameter 'UNBOUND)))
 
 (define-structure (rename-database (constructor initial-rename-database ())
 				   (conc-name rename-database/))

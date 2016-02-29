@@ -786,7 +786,8 @@ USA.
 (define name-counters)
 
 (define (initialize-package!)
-  (set! name-counters (make-parameter unspecific)))
+  (set! name-counters (make-unsettable-parameter unspecific))
+  unspecific)
 
 ;;;; Optimizer
 

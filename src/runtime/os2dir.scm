@@ -32,7 +32,8 @@ USA.
 (define *expand-directory-prefixes?*)
 
 (define (initialize-package!)
-  (set! *expand-directory-prefixes?* (make-parameter #t)))
+  (set! *expand-directory-prefixes?* (make-unsettable-parameter #t))
+  unspecific)
 
 (define (directory-read pattern #!optional sort?)
   (if (if (default-object? sort?) #t sort?)

@@ -126,7 +126,7 @@ USA.
 
 (define (initialize-high!)
   ;; Called later in the cold load, when more of the runtime is initialized.
-  (set! root-continuation-default (make-parameter #f))
+  (set! root-continuation-default (make-unsettable-parameter #f))
   (initialize-error-conditions!)
   (reset-threads-high!)
   (record-start-times! first-running-thread)

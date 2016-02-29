@@ -33,8 +33,8 @@ USA.
   (object-new-type primitive-object-new-type 2))
 
 (define (initialize-package!)
-  (set! *copy-constants?* (make-parameter 'UNBOUND))
-  (set! *object-copies* (make-parameter 'UNBOUND))
+  (set! *copy-constants?* (make-unsettable-parameter 'UNBOUND))
+  (set! *object-copies* (make-unsettable-parameter 'UNBOUND))
   (set! copier/scode-walker
 	(make-scode-walker
 	 copy-constant

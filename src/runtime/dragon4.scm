@@ -51,10 +51,10 @@ not much different to numbers within a few orders of magnitude of 1.
 
 (define (initialize-dragon4!)
   (set! param:flonum-unparser-cutoff
-	(make-parameter 'NORMAL
-			(lambda (cutoff)
-			  (guarantee-cutoff-spec cutoff)
-			  cutoff)))
+	(make-settable-parameter 'NORMAL
+				 (lambda (cutoff)
+				   (guarantee-cutoff-spec cutoff)
+				   cutoff)))
   (set! expt-radix
 	(let ((v (make-initialized-vector 310 (lambda (i) (expt 10 i)))))
 	  (lambda (base exponent)
