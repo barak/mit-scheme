@@ -66,7 +66,7 @@ USA.
 	  (param (repl-environment-value environment param-name)))
       (if (default-object? fluid)
 	  (param)
-	  fluid))))
+	  ((parameter-converter param) fluid)))))
 
 (define (repl-environment-value environment name)
   (environment-lookup-or environment name
@@ -189,91 +189,141 @@ USA.
 (define char-set/number-leaders)
 
 (define (initialize-package!)
-  (set! param:parser-associate-positions? (make-settable-parameter #f))
-  (set! param:parser-atom-delimiters (make-settable-parameter 'UNBOUND))
-  (set! param:parser-canonicalize-symbols? (make-settable-parameter #t))
-  (set! param:parser-constituents (make-settable-parameter 'UNBOUND))
+  (set! char-set/constituents
+	(char-set-difference char-set:graphic
+			     char-set:whitespace))
+  (set! char-set/atom-delimiters
+	(char-set-union char-set:whitespace
+			;; Note that #\, may break older code.
+			(string->char-set "()[]{}\";'`,")
+			(char-set #\U+00AB #\U+00BB)))
+  (set! char-set/symbol-quotes
+	(string->char-set "\\|"))
+  (set! char-set/number-leaders
+	(char-set-union char-set:numeric
+			(string->char-set "+-.")))
+
+  (set! system-global-parser-table
+	(make-initial-parser-table))
+
+  (set! param:parser-associate-positions?
+	(make-unsettable-parameter #f
+				   boolean-converter))
+  (set! param:parser-atom-delimiters
+	(make-unsettable-parameter char-set/atom-delimiters
+				   char-set-converter))
+  (set! param:parser-canonicalize-symbols?
+	(make-unsettable-parameter #t
+				   boolean-converter))
+  (set! param:parser-constituents
+	(make-unsettable-parameter char-set/constituents
+				   char-set-converter))
   (set! param:parser-enable-file-attributes-parsing?
-	(make-settable-parameter #t))
-  (set! param:parser-keyword-style (make-settable-parameter #f))
-  (set! param:parser-radix (make-settable-parameter 10))
-  (set! param:parser-table (make-settable-parameter 'UNBOUND))
-  (set! runtime-param:parser-associate-positions? (make-settable-parameter #f))
-  (set! runtime-param:parser-atom-delimiters (make-settable-parameter 'UNBOUND))
-  (set! runtime-param:parser-canonicalize-symbols? (make-settable-parameter #t))
-  (set! runtime-param:parser-constituents (make-settable-parameter 'UNBOUND))
+	(make-unsettable-parameter #t
+				   boolean-converter))
+  (set! param:parser-keyword-style
+	(make-unsettable-parameter #f
+				   keyword-style-converter))
+  (set! param:parser-radix
+	(make-unsettable-parameter 10
+				   radix-converter))
+  (set! param:parser-table
+	(make-unsettable-parameter system-global-parser-table
+				   parser-table-converter))
+
+  (set! runtime-param:parser-associate-positions?
+	(copy-param param:parser-associate-positions?))
+  (set! runtime-param:parser-atom-delimiters
+	(copy-param param:parser-atom-delimiters))
+  (set! runtime-param:parser-canonicalize-symbols?
+	(copy-param param:parser-canonicalize-symbols?))
+  (set! runtime-param:parser-constituents
+	(copy-param param:parser-constituents))
   (set! runtime-param:parser-enable-file-attributes-parsing?
-	(make-settable-parameter #t))
-  (set! runtime-param:parser-keyword-style (make-settable-parameter #f))
-  (set! runtime-param:parser-radix (make-settable-parameter 10))
-  (set! runtime-param:parser-table (make-settable-parameter 'UNBOUND))
-  (let* ((constituents
-	  (char-set-difference char-set:graphic
-			       char-set:whitespace))
-	 (atom-delimiters
-	  (char-set-union char-set:whitespace
-			  ;; Note that #\, may break older code.
-			  (string->char-set "()[]{}\";'`,")
-			  (char-set #\U+00AB #\U+00BB)))
-	 (symbol-quotes
-	  (string->char-set "\\|"))
-	 (number-leaders
-	  (char-set-union char-set:numeric
-			  (string->char-set "+-.")))
-	 (symbol-leaders
-	  (char-set-difference constituents
-			       (char-set-union atom-delimiters
-					       number-leaders)))
-	 (special-number-leaders
-	  (string->char-set "bBoOdDxXiIeEsSlL"))
-	 (store-char (lambda (v c h) (vector-set! v (char->integer c) h)))
-	 (store-char-set
-	  (lambda (v c h)
-	    (for-each (lambda (c) (store-char v c h))
-		      (char-set-members c)))))
-    (let ((initial (make-vector #x100 #f))
-	  (special (make-vector #x100 #f)))
-      (store-char-set initial char-set:whitespace handler:whitespace)
-      (store-char-set initial number-leaders handler:atom)
-      (store-char-set initial symbol-leaders handler:symbol)
-      (store-char-set special special-number-leaders handler:number)
-      (store-char initial #\( handler:list)
-      (store-char special #\( handler:vector)
-      (store-char special #\[ handler:hashed-object)
-      (store-char initial #\) handler:close-parenthesis)
-      (store-char initial #\] handler:close-bracket)
-      (store-char initial #\: handler:prefix-keyword)
-      (store-char initial #\; handler:comment)
-      (store-char special #\| handler:multi-line-comment)
-      (store-char special #\; handler:expression-comment)
-      (store-char initial #\' handler:quote)
-      (store-char initial #\` handler:quasiquote)
-      (store-char initial #\, handler:unquote)
-      (store-char initial #\" handler:string)
-      (store-char initial #\# handler:special)
-      (store-char special #\f handler:false)
-      (store-char special #\F handler:false)
-      (store-char special #\t handler:true)
-      (store-char special #\T handler:true)
-      (store-char special #\* handler:bit-string)
-      (store-char special #\\ handler:char)
-      (store-char special #\! handler:named-constant)
-      (store-char special #\@ handler:unhash)
-      (store-char-set special char-set:numeric handler:special-arg)
-      (set! system-global-parser-table (make-parser-table initial special)))
-    (set! char-set/constituents constituents)
-    (set! char-set/atom-delimiters atom-delimiters)
-    (set! char-set/symbol-quotes symbol-quotes)
-    (set! char-set/number-leaders number-leaders)
-    (param:parser-atom-delimiters atom-delimiters)
-    (param:parser-constituents constituents)
-    (runtime-param:parser-atom-delimiters atom-delimiters)
-    (runtime-param:parser-constituents constituents))
-  (param:parser-table system-global-parser-table)
-  (runtime-param:parser-table system-global-parser-table)
+	(copy-param param:parser-enable-file-attributes-parsing?))
+  (set! runtime-param:parser-keyword-style
+	(copy-param param:parser-keyword-style))
+  (set! runtime-param:parser-radix
+	(copy-param param:parser-radix))
+  (set! runtime-param:parser-table
+	(copy-param param:parser-table))
+
   (set! hashed-object-interns (make-strong-eq-hash-table))
   (initialize-condition-types!))
+
+(define (make-initial-parser-table)
 
+  (define (store-char v c h)
+    (vector-set! v (char->integer c) h))
+
+  (define (store-char-set v c h)
+    (for-each (lambda (c) (store-char v c h))
+	      (char-set-members c)))
+
+  (let ((initial (make-vector #x100 #f))
+	(special (make-vector #x100 #f))
+	(symbol-leaders
+	 (char-set-difference char-set/constituents
+			      (char-set-union char-set/atom-delimiters
+					      char-set/number-leaders)))
+	(special-number-leaders
+	 (string->char-set "bBoOdDxXiIeEsSlL")))
+
+    (store-char-set initial char-set:whitespace handler:whitespace)
+    (store-char-set initial char-set/number-leaders handler:atom)
+    (store-char-set initial symbol-leaders handler:symbol)
+    (store-char-set special special-number-leaders handler:number)
+    (store-char initial #\( handler:list)
+    (store-char special #\( handler:vector)
+    (store-char special #\[ handler:hashed-object)
+    (store-char initial #\) handler:close-parenthesis)
+    (store-char initial #\] handler:close-bracket)
+    (store-char initial #\: handler:prefix-keyword)
+    (store-char initial #\; handler:comment)
+    (store-char special #\| handler:multi-line-comment)
+    (store-char special #\; handler:expression-comment)
+    (store-char initial #\' handler:quote)
+    (store-char initial #\` handler:quasiquote)
+    (store-char initial #\, handler:unquote)
+    (store-char initial #\" handler:string)
+    (store-char initial #\# handler:special)
+    (store-char special #\f handler:false)
+    (store-char special #\F handler:false)
+    (store-char special #\t handler:true)
+    (store-char special #\T handler:true)
+    (store-char special #\* handler:bit-string)
+    (store-char special #\\ handler:char)
+    (store-char special #\! handler:named-constant)
+    (store-char special #\@ handler:unhash)
+    (store-char-set special char-set:numeric handler:special-arg)
+
+    (make-parser-table initial special)))
+
+(define (boolean-converter value)
+  (guarantee-boolean value)
+  value)
+
+(define (char-set-converter value)
+  (guarantee-char-set value)
+  value)
+
+(define (keyword-style-converter value)
+  (if (not (memq value '(#f prefix suffix)))
+      (error "Invalid keyword style:" value))
+  value)
+
+(define (parser-table-converter value)
+  (guarantee-parser-table value)
+  value)
+
+(define (radix-converter value)
+  (if (not (memv value '(2 8 10 16)))
+      (error "Invalid parser radix:" value))
+  value)
+
+(define (copy-param param)
+  (make-unsettable-parameter (param)
+			     (parameter-converter param)))
 
 (define (handler:whitespace port db ctx char)
   port db ctx char

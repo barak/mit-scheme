@@ -71,7 +71,7 @@ USA.
 ;; Dynamically bound to #t if we are already unparsing a bracketed
 ;; object so we can avoid nested brackets.
 (define param:unparsing-within-brackets?)
-
+
 (define (initialize-package!)
   (set! hook/interned-symbol unparse-symbol)
   (set! hook/procedure-unparser #f)
@@ -83,19 +83,42 @@ USA.
         (char-set-union non-canon-symbol-quoted char-set:upper-case))
   (set! system-global-unparser-table (make-system-global-unparser-table))
 
-  (set! param:unparse-abbreviate-quotations? (make-settable-parameter #f))
-  (set! param:unparse-compound-procedure-names? (make-settable-parameter #t))
-  (set! param:unparse-primitives-by-name? (make-settable-parameter #f))
-  (set! param:unparse-streams? (make-settable-parameter #t))
-  (set! param:unparse-uninterned-symbols-by-name? (make-settable-parameter #f))
-  (set! param:unparse-with-datum? (make-settable-parameter #f))
-  (set! param:unparse-with-maximum-readability? (make-settable-parameter #f))
-  (set! param:unparser-list-breadth-limit (make-settable-parameter #f))
-  (set! param:unparser-list-depth-limit (make-settable-parameter #f))
-  (set! param:unparser-radix (make-settable-parameter 10))
-  (set! param:unparser-string-length-limit (make-settable-parameter #f))
+  (set! param:unparse-abbreviate-quotations?
+	(make-unsettable-parameter #f
+				   boolean-converter))
+  (set! param:unparse-compound-procedure-names?
+	(make-unsettable-parameter #t
+				   boolean-converter))
+  (set! param:unparse-primitives-by-name?
+	(make-unsettable-parameter #f
+				   boolean-converter))
+  (set! param:unparse-streams?
+	(make-unsettable-parameter #t
+				   boolean-converter))
+  (set! param:unparse-uninterned-symbols-by-name?
+	(make-unsettable-parameter #f
+				   boolean-converter))
+  (set! param:unparse-with-datum?
+	(make-unsettable-parameter #f
+				   boolean-converter))
+  (set! param:unparse-with-maximum-readability?
+	(make-unsettable-parameter #f
+				   boolean-converter))
+  (set! param:unparser-list-breadth-limit
+	(make-unsettable-parameter #f
+				   limit-converter))
+  (set! param:unparser-list-depth-limit
+	(make-unsettable-parameter #f
+				   limit-converter))
+  (set! param:unparser-radix
+	(make-unsettable-parameter 10
+				   radix-converter))
+  (set! param:unparser-string-length-limit
+	(make-unsettable-parameter #f
+				   limit-converter))
   (set! param:unparser-table
-	(make-settable-parameter system-global-unparser-table))
+	(make-unsettable-parameter system-global-unparser-table
+				   unparser-table-converter))
 
   (set! param:default-unparser-state (make-unsettable-parameter #f))
   (set! param:dispatch-table (make-unsettable-parameter #f))
@@ -106,65 +129,75 @@ USA.
   (set! param:unparsing-within-brackets? (make-unsettable-parameter #f))
   unspecific)
 
+(define (boolean-converter value)
+  (guarantee-boolean value)
+  value)
+
+(define (limit-converter value)
+  (if value (guarantee-exact-positive-integer value))
+  value)
+
+(define (radix-converter value)
+  (if (not (memv value '(2 8 10 16)))
+      (error "Invalid unparser radix:" value))
+  value)
+
+(define (unparser-table-converter value)
+  (guarantee-unparser-table value)
+  value)
+
+(define (resolve-fluids param fluid)
+  (if (default-object? fluid)
+      (param)
+      ((parameter-converter param) fluid)))
+
 (define (get-param:unparse-abbreviate-quotations?)
-  (if (default-object? *unparse-abbreviate-quotations?*)
-      (param:unparse-abbreviate-quotations?)
-      *unparse-abbreviate-quotations?*))
+  (resolve-fluids param:unparse-abbreviate-quotations?
+		  *unparse-abbreviate-quotations?*))
 
 (define (get-param:unparse-compound-procedure-names?)
-  (if (default-object? *unparse-compound-procedure-names?*)
-      (param:unparse-compound-procedure-names?)
-      *unparse-compound-procedure-names?*))
+  (resolve-fluids param:unparse-compound-procedure-names?
+		  *unparse-compound-procedure-names?*))
 
 (define (get-param:unparse-primitives-by-name?)
-  (if (default-object? *unparse-primitives-by-name?*)
-      (param:unparse-primitives-by-name?)
-      *unparse-primitives-by-name?*))
+  (resolve-fluids param:unparse-primitives-by-name?
+		  *unparse-primitives-by-name?*))
 
 (define (get-param:unparse-streams?)
-  (if (default-object? *unparse-streams?*)
-      (param:unparse-streams?)
-      *unparse-streams?*))
+  (resolve-fluids param:unparse-streams?
+		  *unparse-streams?*))
 
 (define (get-param:unparse-uninterned-symbols-by-name?)
-  (if (default-object? *unparse-uninterned-symbols-by-name?*)
-      (param:unparse-uninterned-symbols-by-name?)
-      *unparse-uninterned-symbols-by-name?*))
+  (resolve-fluids param:unparse-uninterned-symbols-by-name?
+		  *unparse-uninterned-symbols-by-name?*))
 
 (define (get-param:unparse-with-datum?)
-  (if (default-object? *unparse-with-datum?*)
-      (param:unparse-with-datum?)
-      *unparse-with-datum?*))
+  (resolve-fluids param:unparse-with-datum?
+		  *unparse-with-datum?*))
 
 (define (get-param:unparse-with-maximum-readability?)
-  (if (default-object? *unparse-with-maximum-readability?*)
-      (param:unparse-with-maximum-readability?)
-      *unparse-with-maximum-readability?*))
+  (resolve-fluids param:unparse-with-maximum-readability?
+		  *unparse-with-maximum-readability?*))
 
 (define (get-param:unparser-list-breadth-limit)
-  (if (default-object? *unparser-list-breadth-limit*)
-      (param:unparser-list-breadth-limit)
-      *unparser-list-breadth-limit*))
+  (resolve-fluids param:unparser-list-breadth-limit
+		  *unparser-list-breadth-limit*))
 
 (define (get-param:unparser-list-depth-limit)
-  (if (default-object? *unparser-list-depth-limit*)
-      (param:unparser-list-depth-limit)
-      *unparser-list-depth-limit*))
+  (resolve-fluids param:unparser-list-depth-limit
+		  *unparser-list-depth-limit*))
 
 (define (get-param:unparser-radix)
-  (if (default-object? *unparser-radix*)
-      (param:unparser-radix)
-      *unparser-radix*))
+  (resolve-fluids param:unparser-radix
+		  *unparser-radix*))
 
 (define (get-param:unparser-string-length-limit)
-  (if (default-object? *unparser-string-length-limit*)
-      (param:unparser-string-length-limit)
-      *unparser-string-length-limit*))
+  (resolve-fluids param:unparser-string-length-limit
+		  *unparser-string-length-limit*))
 
 (define (get-param:unparser-table)
-  (if (default-object? *unparser-table*)
-      (param:unparser-table)
-      *unparser-table*))
+  (resolve-fluids param:unparser-table
+		  *unparser-table*))
 
 (define (make-system-global-unparser-table)
   (let ((table (make-unparser-table unparse/default)))
