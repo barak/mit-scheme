@@ -212,6 +212,11 @@ interpreted depending on @var{category}.
 @var{Template} consists of the variable's name.
 @cindex variable, entry category
 
+@item Parameter
+@var{Template} consists of the parameter's name.  See @ref{Dynamic
+Binding} and @ref{Parameters} for more information.
+@cindex parameter, entry category
+
 @item Special Form
 @var{Template} starts with the syntactic keyword of the special form,
 followed by a description of the special form's syntax.  The description

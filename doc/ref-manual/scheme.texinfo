@@ -2,8 +2,8 @@
 @comment %**start of header
 @setfilename mit-scheme-ref
 @set EDITION 1.105
-@set VERSION 9.2.1
-@set UPDATED 2015-11-25
+@set VERSION 9.2.50
+@set UPDATED 2016-02-28
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
@@ -67,6 +67,22 @@ Documentation License.''
 
 @insertcopying
 @end ifnottex
+
+@macro asrfi {n}
+@acronym{SRFI} \n\
+@end macro
+
+@macro usrfi {n}
+@uref{http://srfi.schemers.org/srfi-\n\/srfi-\n\.html,@asrfi{\n\}}
+@end macro
+
+@macro rseven {}
+@acronym{R7RS}
+@end macro
+
+@macro urseven {}
+@uref{http://r7rs.org/,@rseven{}}
+@end macro
 
 @menu
 * Acknowledgements::            

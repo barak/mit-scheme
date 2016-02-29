@@ -183,7 +183,7 @@ Returns a newly allocated pair whose car is @var{obj1} and whose cdr is
 @end deffn
 
 @deffn procedure xcons obj1 obj2
-(@acronym{SRFI} 1) Returns a newly allocated pair whose car is
+(@asrfi{1}) Returns a newly allocated pair whose car is
 @var{obj2} and whose cdr is @var{obj1}.
 
 @example
@@ -221,7 +221,7 @@ error to take the @code{cdr} of the empty list.
 @end deffn
 
 @deffn procedure car+cdr pair
-(@acronym{SRFI} 1) The fundamental pair deconstructor:
+(@asrfi{1}) The fundamental pair deconstructor:
 
 @example
 (lambda (p) (values (car p) (cdr p)))
@@ -333,7 +333,7 @@ Here is a partial table of path/operation equivalents:
 @deffn procedure tree-copy tree
 @cindex copying, of tree
 @cindex tree, copying
-(@acronym{SRFI} 1) This copies an arbitrary @var{tree} constructed
+(@asrfi{1}) This copies an arbitrary @var{tree} constructed
 from pairs, copying both the car and cdr elements of every pair.  This
 could have been defined by
 
@@ -373,7 +373,7 @@ These expressions are equivalent:
 @end deffn
 
 @deffn procedure make-list k [element]
-(@acronym{SRFI} 1) This procedure returns a newly allocated list of
+(@asrfi{1}) This procedure returns a newly allocated list of
 length @var{k}, whose elements are all @var{element}.  If
 @var{element} is not supplied, it defaults to the empty list.
 
@@ -384,7 +384,7 @@ length @var{k}, whose elements are all @var{element}.  If
 
 @deffn procedure cons* object object @dots{}
 @findex list
-(@acronym{SRFI} 1) @code{cons*} is similar to @code{list}, except that
+(@asrfi{1}) @code{cons*} is similar to @code{list}, except that
 @code{cons*} conses together the last two arguments rather than
 consing the last argument with the empty list.  If the last argument
 is not a list the result is an improper list.  If the last argument is
@@ -421,11 +421,11 @@ applied to these indices.
 (list-tabulate 4 values) => (0 1 2 3)
 @end example
 
-@code{list-tabulate} is defined by @acronym{SRFI} 1.
+@code{list-tabulate} is defined by @usrfi{1}.
 @end deffn
 
 @deffn procedure list-copy list
-(@acronym{SRFI} 1) Returns a newly allocated copy of @var{list}.  This
+(@asrfi{1}) Returns a newly allocated copy of @var{list}.  This
 copies each of the pairs comprising @var{list}.  This could have been
 defined by
 
@@ -441,7 +441,7 @@ defined by
 @end deffn
 
 @deffn procedure iota count [start [step]]
-(@acronym{SRFI} 1) Returns a list containing the elements
+(@asrfi{1}) Returns a list containing the elements
 
 @example
 (@var{start} @var{start}+@var{step} @dots{} @var{start}+(@var{count}-1)*@var{step})
@@ -522,7 +522,7 @@ of @code{pair?} or @code{null?}.
 @end deffn
 
 @deffn procedure circular-list? object
-(@acronym{SRFI} 1) Returns @code{#t} if @var{object} is a circular
+(@asrfi{1}) Returns @code{#t} if @var{object} is a circular
 list, otherwise returns @code{#f}.
 
 @example
@@ -535,7 +535,7 @@ list, otherwise returns @code{#f}.
 @end deffn
 
 @deffn procedure dotted-list? object
-(@acronym{SRFI} 1) Returns @code{#t} if @var{object} is an improper
+(@asrfi{1}) Returns @code{#t} if @var{object} is an improper
 list, otherwise returns @code{#f}.
 
 @example
@@ -562,7 +562,7 @@ a proper list.
 @end deffn
 
 @deffn procedure length+ clist
-(@acronym{SRFI} 1) Returns the length of @var{clist}, if it is a proper
+(@asrfi{1}) Returns the length of @var{clist}, if it is a proper
 list.  Returns @code{#f} if @var{clist} is a circular list.  Otherwise
 signals an error.
 
@@ -746,7 +746,7 @@ procedure.
 @cindex deletion, of list element
 
 @deffn procedure filter predicate list
-(@acronym{SRFI} 1) Returns a newly allocated copy of @var{list}
+(@asrfi{1}) Returns a newly allocated copy of @var{list}
 containing only the elements satisfying @var{predicate}.
 @var{Predicate} must be a procedure of one argument.
 
@@ -762,7 +762,7 @@ are reversed.
 @end deffn
 
 @deffn procedure remove predicate list
-(@acronym{SRFI} 1) Like @code{filter}, except that the returned list
+(@asrfi{1}) Like @code{filter}, except that the returned list
 contains only those elements @emph{not} satisfying @var{predicate}.
 
 @example
@@ -777,7 +777,7 @@ are reversed.
 @end deffn
 
 @deffn procedure partition predicate list
-(@acronym{SRFI} 1) Partitions the elements of @var{list} with
+(@asrfi{1}) Partitions the elements of @var{list} with
 @var{predicate}, and returns two values: the list of in-elements and
 the list of out-elements.  The @var{list} is not disordered---elements
 occur in the result lists in the same order as they occur in the
@@ -798,7 +798,7 @@ the returned lists may share a common tail with the argument
 @deffn procedure filter! predicate list
 @deffnx procedure remove! predicate list
 @deffnx procedure partition! predicate list
-(@acronym{SRFI} 1) Linear-update variants of @code{filter},
+(@asrfi{1}) Linear-update variants of @code{filter},
 @code{remove} and @code{partition}. These procedures are allowed, but
 not required, to alter the cons cells in the argument @code{list} to
 construct the result lists.
@@ -908,7 +908,7 @@ with the appropriate elements removed.  The procedure returned by
 @cindex searching, of list
 
 @deffn procedure find predicate list
-(@acronym{SRFI} 1) Returns the first element in @var{list} for which
+(@asrfi{1}) Returns the first element in @var{list} for which
 @var{predicate} is true; returns @code{#f} if it doesn't find such an
 element.  @var{Predicate} must be a procedure of one argument.
 
@@ -945,7 +945,7 @@ reversed.
 @end deffn
 
 @deffn procedure find-tail predicate list
-(@acronym{SRFI} 1) Returns the first pair of @var{list} whose car
+(@asrfi{1}) Returns the first pair of @var{list} whose car
 satisfies @var{predicate}; returns @code{#f} if there's no such pair.
 @code{find-tail} can be viewed as a general-predicate variant of
 @var{memv}.
@@ -1182,7 +1182,7 @@ is iterative in nature, combining the elements as the list is traversed.
 @end deffn
 
 @deffn procedure any predicate list list @dots{}
-(@acronym{SRFI} 1) Applies @var{predicate} across the @var{list}s,
+(@asrfi{1}) Applies @var{predicate} across the @var{list}s,
 returning true if @var{predicate} returns true on any application.
 
 If there are @math{n} list arguments @var{list1} @dots{}  @var{listn},
@@ -1221,7 +1221,7 @@ that it takes a single list and a predicate argument, in that order.
 @end deffn
 
 @deffn procedure every predicate list list @dots{}
-(@acronym{SRFI} 1) Applies @var{predicate} across the @var{list}s,
+(@asrfi{1}) Applies @var{predicate} across the @var{list}s,
 returning true if @var{predicate} returns true on every application.
 
 If there are @math{n} list arguments @var{list1} @dots{}  @var{listn},
@@ -1270,7 +1270,7 @@ respectively, except that the returned lists are circular.
 @end group
 @end example
 
-@code{circular-list} is compatible with @acronym{SRFI} 1, but extended
+@code{circular-list} is compatible with @usrfi{1}, but extended
 so that it can be called with no arguments.
 @end deffn
 

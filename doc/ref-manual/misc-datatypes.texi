@@ -413,6 +413,7 @@ This procedure computes a total order on symbols.  It is equivalent to
 duration of a dynamic extent.  @xref{Dynamic Binding}.
 
 @deffn procedure make-parameter init [converter]
+@deffnx procedure make-unsettable-parameter init [converter]
 Returns a newly allocated parameter object, which is a procedure that
 accepts zero arguments and returns the value associated with the
 parameter object.  Initially this value is the value of
@@ -420,12 +421,26 @@ parameter object.  Initially this value is the value of
 @var{converter} is not specified.  The associated value can be
 temporarily changed using the @code{parameterize} special form
 (@pxref{parameterize}).
+
+The @code{make-parameter} procedure is standardized by @usrfi{39} and
+by @urseven{}, while @code{make-unsettable-parameter} is an MIT/GNU
+Scheme extension.
+@end deffn
+
+@deffn procedure make-settable-parameter init [converter]
+This procedure is like @code{make-parameter}, except that the returned
+parameter object may also be assigned by passing it an argument.  Note
+that an assignment to a settable parameter affects only the extent of
+its current binding.
 @end deffn
 
 @deffn procedure parameterize* bindings thunk
 @var{Bindings} should be an alist associating parameter objects with
 new values.  Returns the value of @var{thunk} while the parameters are
 dynamically bound to the values.
+
+Note that the @code{parameterize} special form expands into a call to
+this procedure.
 @end deffn
 
 @anchor{Cells}
