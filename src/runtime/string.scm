@@ -99,10 +99,11 @@ USA.
 (define (make-vector-8b length #!optional ascii)
   (make-string length (if (default-object? ascii) ascii (ascii->char ascii))))
 
-(define (string-fill! string char)
-  (guarantee-string string 'STRING-FILL!)
-  (guarantee-char char 'STRING-FILL!)
-  (%substring-fill! string 0 (string-length string) char))
+(define (string-fill! string char #!optional start end)
+  (substring-fill! string
+		   (if (default-object? start) 0 start)
+		   (if (default-object? end) (string-length string) end)
+		   char))
 
 (define (substring-fill! string start end char)
   (guarantee-substring string start end 'SUBSTRING-FILL)
@@ -144,15 +145,10 @@ USA.
   (guarantee-substring-start-index start (string-length string) 'STRING-TAIL)
   (%substring string start (string-length string)))
 
-(define (string-copy string)
-  (guarantee-string string 'STRING-COPY)
-  (%string-copy string))
-
-(define (%string-copy string)
-  (let ((size (string-length string)))
-    (let ((result (string-allocate size)))
-      (%substring-move! string 0 size result 0)
-      result)))
+(define (string-copy string #!optional start end)
+  (substring string
+	     (if (default-object? start) 0 start)
+	     (if (default-object? end) (string-length string) end)))
 
 (define (ascii-string-copy string)
   (guarantee-string string 'ASCII-STRING-COPY)
@@ -163,7 +159,6 @@ USA.
     (let ((result (string-allocate size)))
       (and (%ascii-substring-move! string 0 size result 0)
 	   result))))
-
 
 (define (string-head! string end)
   (declare (no-type-checks) (no-range-checks))
@@ -218,6 +213,60 @@ USA.
 (define %words->octets-shift
   (- %octets->words-shift))
 
+(define (%string-copy string)
+  (let ((size (string-length string)))
+    (let ((result (string-allocate size)))
+      (%substring-move! string 0 size result 0)
+      result)))
+
+(define (string-copy! to at from #!optional start end)
+  (substring-move! from
+		   (if (default-object? start) 0 start)
+		   (if (default-object? end) (string-length from) end)
+		   to
+		   at))
+
+(define (string-map procedure string . strings)
+  (if (pair? strings)
+      (let ((n
+	     (apply min
+		    (string-length string)
+		    (map string-length strings))))
+	(let ((result (make-string n)))
+	  (do ((i 0 (fix:+ i 1)))
+	      ((not (fix:< i n)))
+	    (string-set! result i
+			 (apply procedure
+				(string-ref string i)
+				(map (lambda (string)
+				       (string-ref string i))
+				     strings))))
+	  result))
+      (let ((n (string-length string)))
+	(let ((result (make-string n)))
+	  (do ((i 0 (fix:+ i 1)))
+	      ((not (fix:< i n)))
+	    (string-set! result i (procedure (string-ref string i))))
+	  result))))
+
+(define (string-for-each procedure string . strings)
+  (if (pair? strings)
+      (let ((n
+	     (apply min
+		    (string-length string)
+		    (map string-length strings))))
+	(do ((i 0 (fix:+ i 1)))
+	    ((not (fix:< i n)) unspecific)
+	  (apply procedure
+		 (string-ref string i)
+		 (map (lambda (string)
+			(string-ref string i))
+		      strings))))
+      (let ((n (string-length string)))
+	(do ((i 0 (fix:+ i 1)))
+	    ((not (fix:< i n)) unspecific)
+	  (procedure (string-ref string i))))))
+
 (define (string . objects)
   (%string-append (map ->string objects)))
 
@@ -261,9 +310,10 @@ USA.
 	    (loop (cdr chars) (fix:+ index 1)))
 	  result))))
 
-(define (string->list string)
-  (guarantee-string string 'STRING->LIST)
-  (%substring->list string 0 (string-length string)))
+(define (string->list string #!optional start end)
+  (substring->list string
+		   (if (default-object? start) 0 start)
+		   (if (default-object? end) (string-length string) end)))
 
 (define (substring->list string start end)
   (guarantee-substring string start end 'SUBSTRING->LIST)

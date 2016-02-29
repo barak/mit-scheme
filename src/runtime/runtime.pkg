@@ -1012,6 +1012,7 @@ USA.
 	  string-compare
 	  string-compare-ci
 	  string-copy
+	  string-copy!
 	  string-downcase
 	  string-downcase!
 	  string-fill!
@@ -1021,12 +1022,14 @@ USA.
 	  string-find-previous-char
 	  string-find-previous-char-ci
 	  string-find-previous-char-in-set
+	  string-for-each
 	  string-hash
 	  string-hash-mod
 	  string-head
 	  string-head!
 	  string-length
 	  string-lower-case?
+	  string-map
 	  string-match-backward
 	  string-match-backward-ci
 	  string-match-forward
