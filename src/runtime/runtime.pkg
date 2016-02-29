@@ -805,9 +805,11 @@ USA.
 	  subvector-uniform?
 	  vector
 	  vector->list
+	  vector->string
 	  vector-append
 	  vector-binary-search
 	  vector-copy
+	  vector-copy!
 	  vector-eighth
 	  vector-fifth
 	  vector-fill!
@@ -998,6 +1000,7 @@ USA.
 	  set-string-length!
 	  string
 	  string->list
+	  string->vector
 	  string-allocate
 	  string-append
 	  string-capitalize

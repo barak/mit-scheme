@@ -63,13 +63,16 @@ USA.
       (error:wrong-type-argument size "vector index" 'MAKE-VECTOR))
   ((ucode-primitive vector-cons) size (if (default-object? fill) #f fill)))
 
-(define (vector->list vector)
-  (guarantee-vector vector 'VECTOR->LIST)
-  (subvector->list vector 0 (vector-length vector)))
+(define (vector->list vector #!optional start end)
+  (subvector->list vector
+		   (if (default-object? start) 0 start)
+		   (if (default-object? end) (vector-length vector) end)))
 
-(define (vector-fill! vector value)
-  (guarantee-vector vector 'VECTOR-FILL!)
-  (subvector-fill! vector 0 (vector-length vector) value))
+(define (vector-fill! vector value #!optional start)
+  (subvector-fill! vector
+		   (if (default-object? start) 0 start)
+		   (if (default-object? end) (vector-length vector) end)
+		   value))
 
 (define (subvector vector start end)
   (guarantee-subvector vector start end 'SUBVECTOR)
@@ -92,12 +95,13 @@ USA.
   (guarantee-vector vector 'VECTOR-TAIL)
   (subvector vector start (vector-length vector)))
 
-(define (vector-copy vector)
-  (guarantee-vector vector 'VECTOR-COPY)
-  (let ((length (vector-length vector)))
-    (let ((new-vector (make-vector length)))
-      (subvector-move-right! vector 0 length new-vector 0)
-      new-vector)))
+(define (vector-copy vector #!optional start end)
+  (let ((start (if (default-object? start) 0 start))
+	(end (if (default-object? end) (vector-length vector) end)))
+    (guarantee-subvector vector start end 'VECTOR-COPY)
+    (let ((result (make-vector (fix:- end start))))
+      (subvector-move-right! vector start end result 0)
+      result)))
 
 (define (vector-append . vectors)
   (let ((result
@@ -239,8 +243,27 @@ USA.
   (iref vector-eighth 7))
 
 (define (vector-move! v1 v2)
-  (guarantee-vector v1 'VECTOR-MOVE!)
-  (subvector-move-left! v1 0 (vector-length v1) v2 0))
+  (vector-copy! v2 0 v1))
+
+(define (vector-copy! to at from #!optional start end)
+  (let ((start (if (default-object? start) 0 start))
+	(end (if (default-object? end) (vector-length from) end)))
+    (cond ((or (not (eq? to from)) (fix:< to start))
+	   (subvector-move-left! from start end to at))
+	  ((fix:> to start)
+	   (subvector-move-right! from start end to at)))))
+
+(define (vector->string vector #!optional start end)
+  (let ((start (if (default-object? start) 0 start))
+	(end (if (default-object? end) (vector-length vector) end)))
+    (guarantee-subvector vector start end 'vector->string)
+    (let ((result (make-string (fix:- end start))))
+      (do ((i start (fix:+ i 1)))
+	  ((not (fix:< i end)))
+	(string-set! result
+		     (fix:- i start)
+		     (vector-ref vector i)))
+      result)))
 
 (define (subvector-filled? vector start end element)
   (guarantee-subvector vector start end 'SUBVECTOR-FILLED?)

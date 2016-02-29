@@ -226,6 +226,18 @@ USA.
 		   to
 		   at))
 
+(define (string->vector string #!optional start end)
+  (let ((start (if (default-object? start) 0 start))
+	(end (if (default-object? end) (string-length string) end)))
+    (guarantee-substring string start end 'SUBSTRING)
+    (let ((result (make-vector (fix:- end start))))
+      (do ((i start (fix:+ i 1)))
+	  ((not (fix:< i end)))
+	(vector-set! result
+		     (fix:- i start)
+		     (string-ref string i)))
+      result)))
+
 (define (string-map procedure string . strings)
   (if (pair? strings)
       (let ((n
