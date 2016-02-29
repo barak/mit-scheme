@@ -767,14 +767,16 @@ USA.
 (define (handler:false port db ctx char1 char2)
   ctx
   (let ((string (parse-atom/no-quoting port db (list char1 char2))))
-    (if (not (string-ci=? string "#f"))
+    (if (not (or (string-ci=? string "#f")
+		 (string-ci=? string "#false")))
 	(error:illegal-boolean string)))
   #f)
 
 (define (handler:true port db ctx char1 char2)
   ctx
   (let ((string (parse-atom/no-quoting port db (list char1 char2))))
-    (if (not (string-ci=? string "#t"))
+    (if (not (or (string-ci=? string "#t")
+		 (string-ci=? string "#true")))
 	(error:illegal-boolean string)))
   #t)
 
