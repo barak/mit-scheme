@@ -34,12 +34,6 @@ The core subsystem consists of these directories:
 * "runtime" contains the bulk of the run-time library, including
   almost everything documented in the reference manual.
 
-* "runtime-check" is a build directory used to make alternate run-time
-  library binaries that are safer than the standard binaries.  The
-  standard binaries are compiled with type-checking disabled for many
-  common operations; the alternate binaries have type-checking
-  enabled.
-
 * "sos" contains the SOS object-oriented programming extension.
 
 * "star-parser" contains the pattern-matching parser language
