@@ -73,7 +73,7 @@ USA.
                              (values entry #!default))
                   (with-notification
                       (lambda (output-port)
-                        (write-string "Run tests " output-port)
+                        (write-string "Running tests in " output-port)
                         (write pathname output-port)
                         (if (not (default-object? environment))
                             (begin
