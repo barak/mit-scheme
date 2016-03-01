@@ -68,7 +68,7 @@ USA.
 		   (if (default-object? start) 0 start)
 		   (if (default-object? end) (vector-length vector) end)))
 
-(define (vector-fill! vector value #!optional start)
+(define (vector-fill! vector value #!optional start end)
   (subvector-fill! vector
 		   (if (default-object? start) 0 start)
 		   (if (default-object? end) (vector-length vector) end)

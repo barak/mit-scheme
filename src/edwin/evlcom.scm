@@ -234,7 +234,7 @@ The values are printed in the typein window."
 		  (lambda (buffer)
 		    (insert-string
 		     (parameterize*
-		      (list (cons param: #t))
+		      (list (cons param:unparse-with-maximum-readability? #t))
 		      (lambda ()
 			(write-to-string expression)))
 		     (buffer-end buffer)))))
