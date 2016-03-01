@@ -47,16 +47,17 @@ USA.
 
 (define (load-unit-tests filename/s #!optional environment)
   (let ((test-environment (make-test-environment! environment)))
-    (fluid-let ((*registered-tests* '()))
+    (parameterize ((registered-tests '()))
       (load filename/s test-environment)
-      (reverse! *registered-tests*))))
+      (reverse! (registered-tests)))))
 
 (define (register-test name test)
   (guarantee-test test 'REGISTER-TEST)
-  (set! *registered-tests* (cons (cons name test) *registered-tests*))
+  (registered-tests (cons (cons name test) (registered-tests)))
   unspecific)
 
-(define *registered-tests*)
+(define registered-tests
+  (make-settable-parameter '()))
 
 (define (test? object)
   (or (thunk? object)
@@ -145,36 +146,41 @@ USA.
 
 ;;;; Reporting
 
+(define show-passing-results? #f)
+
 (define (report-result test-name elapsed-time sub-test-results port)
   (let ((n-sub-test-results (length sub-test-results))
 	(n-failed (count failing-sub-test? sub-test-results)))
-    (fresh-line port)
-    (write-char #\; port)
-    (write test-name port)
-    (write-char #\space port)
-    (if (> n-failed 0)
-	(begin
-	  (write-string "failed " port)
-	  (write n-failed port)
-	  (write-string " sub-tests out of " port)
-	  (write n-sub-test-results port)
-	  (report-test-time elapsed-time port)
-	  (write-string ":" port)
-	  (newline port)
-	  (for-each
-	   (lambda (sub-test-result)
-	     (if (failing-sub-test? sub-test-result)
-		 (report-test-failure "    "
-				      (car sub-test-result)
-				      (cdr sub-test-result)
-				      port)))
-	   sub-test-results))
-	(begin
-	  (write-string "passed " port)
-	  (write n-sub-test-results port)
-	  (write-string " sub-tests" port)
-	  (report-test-time elapsed-time port)
-	  (newline port))))
+    (cond ((> n-failed 0)
+	   (fresh-line port)
+	   (write-char #\; port)
+	   (write test-name port)
+	   (write-char #\space port)
+	   (write-string "failed " port)
+	   (write n-failed port)
+	   (write-string " sub-tests out of " port)
+	   (write n-sub-test-results port)
+	   (report-test-time elapsed-time port)
+	   (write-string ":" port)
+	   (newline port)
+	   (for-each
+	    (lambda (sub-test-result)
+	      (if (failing-sub-test? sub-test-result)
+		  (report-test-failure "    "
+				       (car sub-test-result)
+				       (cdr sub-test-result)
+				       port)))
+	    sub-test-results))
+	  (show-passing-results?
+	   (fresh-line port)
+	   (write-char #\; port)
+	   (write test-name port)
+	   (write-char #\space port)
+	   (write-string "passed " port)
+	   (write n-sub-test-results port)
+	   (write-string " sub-tests" port)
+	   (report-test-time elapsed-time port)
+	   (newline port))))
   (every passing-sub-test? sub-test-results))
 
 (define (report-test-time elapsed-time port)
