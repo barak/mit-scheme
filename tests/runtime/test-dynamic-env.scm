@@ -30,23 +30,26 @@ USA.
 
 (define-test 'PARAMETERS
   (lambda ()
+    (assert-eqv make-unsettable-parameter make-parameter)
     (let ((p (make-parameter 1))
-	  (q (make-parameter 2 (lambda (v)
-				 (if (not (integer? v))
-				     (error:wrong-type-argument v "an integer"
-								'PARAMETER-Q)
-				     v)))))
+	  (q (make-parameter 2
+			     (lambda (v)
+			       (guarantee-exact-nonnegative-integer v)
+			       v))))
       (assert-eqv (p) 1)
-      (assert-equal (parameterize ((p "7") (q 9)) (cons (p) (q)))
+      (assert-equal (parameterize ((p "7") (q 9))
+		      (cons (p) (q)))
 		    '("7" . 9))
       (assert-equal (cons (p) (q))
 		    '(1 . 2))
-      (assert-error (lambda () (parameterize ((q "7")) (q)))
+      (assert-error (lambda ()
+		      (parameterize ((q "7"))
+			(q)))
 		    (list condition-type:wrong-type-argument)))))
 
 ;; From node "Dynamic Binding" in doc/ref-manual/special-forms.texi:
 (define (complicated-dynamic-parameter)
-  (let ((variable (make-parameter 1))
+  (let ((variable (make-settable-parameter 1))
         (inside-continuation))
     (write-line (variable))
     (call-with-current-continuation

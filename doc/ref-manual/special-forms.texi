@@ -419,7 +419,7 @@ to jump in and out of the body repeatedly.
 @example
 @group
 (define (complicated-dynamic-parameter)
-  (let ((variable (make-parameter 1))
+  (let ((variable (make-settable-parameter 1))
         (inside-continuation))
     (write-line (variable))
     (call-with-current-continuation

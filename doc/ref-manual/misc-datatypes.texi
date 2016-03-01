@@ -432,6 +432,8 @@ This procedure is like @code{make-parameter}, except that the returned
 parameter object may also be assigned by passing it an argument.  Note
 that an assignment to a settable parameter affects only the extent of
 its current binding.
+
+@code{make-settable-parameter} is an MIT/GNU Scheme extension.
 @end deffn
 
 @deffn procedure parameterize* bindings thunk
@@ -440,7 +442,7 @@ new values.  Returns the value of @var{thunk} while the parameters are
 dynamically bound to the values.
 
 Note that the @code{parameterize} special form expands into a call to
-this procedure.
+this procedure.  @code{parameterize*} is an MIT/GNU Scheme extension.
 @end deffn
 
 @anchor{Cells}
