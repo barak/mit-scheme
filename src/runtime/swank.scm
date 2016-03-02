@@ -145,22 +145,17 @@ USA.
   (dispatch (decode-message socket (read-packet socket)) socket level))
 
 (define (read-packet in)
-  (define (read-string! buffer in)
-    (let loop ((i 0))
-      (if (< i (string-length buffer))
-	  (let ((n (read-substring! buffer i (string-length buffer) in)))
-	    ;; (assert (exact-nonnegative-integer? n))
-	    ;; (assert (<= n (- (string-length buffer) i)))
-	    (if (zero? n)		;EOF
-		(disconnect))
-	    (loop (+ i n))))))
-  (let ((buffer
-	 (make-string
+  (if (eof-object? (peek-char in))
+      (disconnect))
+  (let* ((end
 	  (let ((buffer (make-string 6)))
 	    (read-string! buffer in)
-	    (string->number buffer 16 #t)))))
-    (read-string! buffer in)
-    buffer))
+	    (string->number buffer 16 #t)))
+	 (buffer (make-string end)))
+    (let loop ((start 0))
+      (if (< start end)
+	  (loop (+ start (read-substring! buffer start end in)))
+	  buffer))))
 
 (define (decode-message socket packet)
   (bind-condition-handler (list condition-type:serious-condition)
