@@ -837,7 +837,7 @@ arg_pointer (int argn)
   if (is_alien (arg))
     return (alien_address (arg));
   if (FLONUM_P (arg))
-    return ((void *) (OBJECT_ADDRESS (arg)));
+    return ((void *) (MEMORY_LOC ((arg), 1)));
 
   error_wrong_type_arg (argn);
   /*NOTREACHED*/
@@ -1046,24 +1046,12 @@ empty_list (void)
 }
 
 int
-flovec_length (SCM vector)
+flovec_length (double *first)
 {
+  /* FIRST must be the first double in a flonum/flovec. */
+
+  SCM vector = MAKE_POINTER_OBJECT (TC_BIG_FLONUM, (((SCM *)first) - 1));
   return (FLOATING_VECTOR_LENGTH (vector));
-}
-
-double*
-flovec_loc (SCM vector)
-{
-  return (FLOATING_VECTOR_LOC (vector, 0));
-}
-
-double
-flovec_ref (SCM vector, int index)
-{
-  int len = FLOATING_VECTOR_LENGTH (vector);
-  if (0 <= index && index < len)
-    return (FLOATING_VECTOR_REF (vector, index));
-  error_external_return ();
 }
 
 DEFINE_PRIMITIVE ("OUTF-ERROR", Prim_outf_error, 1, 1, 0)
