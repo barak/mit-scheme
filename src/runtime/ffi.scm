@@ -245,7 +245,7 @@ USA.
       unspecific
       (let* ((library (%alien-function/library afunc))
 	     (name (%alien-function/name afunc))
-	     (pathname (dlopen-pathname library))
+	     (pathname (plugin-pathname library))
 	     (handle (or (find-dld-handle
 			  (lambda (h)
 			    (pathname=? pathname (dld-handle-pathname h))))
@@ -256,16 +256,20 @@ USA.
 	    (error:bad-range-argument afunc 'alien-function-cache!))
 	(set-%alien-function/band-id! afunc band-id))))
 
-(define (dlopen-pathname library)
-  (or (libtool-pathname library)
-      (system-library-pathname
-       (pathname-new-type (string-append library"-shim")
-			  "so"))
-      (error "Could not find module:" library)))
+(define (plugin-available? name)
+  (let ((path (ignore-errors (lambda () (plugin-pathname name)))))
+    (and (pathname? path)
+	 (file-loadable? path))))
 
-(define (libtool-pathname library)
+(define (plugin-pathname name)
+  (or (libtool-pathname name)
+      (system-library-pathname
+       (pathname-new-type (string-append name"-shim") "so"))
+      (error "Could not find plugin:" name)))
+
+(define (libtool-pathname name)
   (let ((la-pathname (system-library-pathname
-		      (pathname-new-type (string-append library"-shim")
+		      (pathname-new-type (string-append name"-shim")
 					 "la"))))
     (let ((dlname (libtool-dlname la-pathname))
 	  (dirname (directory-pathname la-pathname)))
@@ -580,7 +584,7 @@ USA.
 
 (define (generate-shim library #!optional prefix)
   (load-ffi-quietly)
-  (c-generate library prefix))
+  ((environment-lookup (->environment '(ffi)) 'c-generate) library prefix))
 
 (define (update-optiondb directory)
   (load-ffi-quietly)
