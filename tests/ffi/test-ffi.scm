@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; Build and test the test library wrapper.
+;;;; Build and test the test plugin.
 
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
@@ -39,9 +39,8 @@ USA.
 			  (notification-output-port))
 	    (error "Test FFI build failed:" status))
 	  (begin
-	    (let-fluid load/suppress-loading-message? #t
-	      (lambda ()
-		(load-option 'FFI)))
+	    (parameterize ((param:suppress-loading-message? #t))
+	      (load-option 'FFI))
 	    (with-system-library-directories '("./")
 	      (lambda ()
 		(compile-file "test-ffi-wrapper")))
