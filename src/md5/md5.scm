@@ -24,14 +24,15 @@ USA.
 
 |#
 
-;;;; MD5 wrapper
+;;;; The MD5 option.
 ;;; package: (md5)
 
 (declare (usual-integrations))
 
 (C-include "md5")
 
-(define-integrable (mhash-available?) #f)
+(define (mhash-available?)
+  (plugin-available? "mhash"))
 
 (define (%md5-init)
   ;; Create and return an MD5 digest context.
@@ -74,10 +75,7 @@ USA.
       (%md5-available?)))
 
 (define (%md5-available?)
-  (let ((path (ignore-errors (lambda ()
-			       (system-library-pathname "md5-shim.so")))))
-    (and (pathname? path)
-	 (file-loadable? path))))
+  (plugin-available? "md5"))
 
 (define (md5-file filename)
   (cond ((mhash-available?)

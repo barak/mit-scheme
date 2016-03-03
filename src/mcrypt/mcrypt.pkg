@@ -26,10 +26,6 @@ USA.
 
 (global-definitions runtime/)
 
-(define-package (mcrypt global)
-  ;; Just to get cref to analyze whether all exports are defined.
-  )
-
 (define-package (mcrypt)
   (files "mcrypt")
   (parent ())
@@ -56,3 +52,7 @@ USA.
 	  mcrypt-open-module
 	  mcrypt-self-test
 	  mcrypt-supported-key-sizes))
+
+(define-package (mcrypt global)
+  ;; Just to get cref to analyze whether all exports are defined.
+  )

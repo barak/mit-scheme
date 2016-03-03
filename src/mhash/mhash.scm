@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; mhash wrapper
+;;;; The MHASH option.
 ;;; package: (mhash)
 
 (declare (usual-integrations))
@@ -360,39 +360,39 @@ USA.
 	 v)))))
 
 (define (mhash-available?)
-  (let ((path (ignore-errors (lambda ()
-			       (system-library-pathname "mhash-shim.so")))))
-    (and (pathname? path)
-	 (file-loadable? path)
-	 (begin
-	   (if (not mhash-initialized?)
-	       (begin
-		 (set! mhash-algorithm-names
-		       (make-names-vector
-			(lambda () (C-call "mhash_count"))
-			(lambda (hashid)
-			  (let* ((alien (make-alien-to-free
-					 '(* char)
-					 (lambda (alien)
-					   (C-call "mhash_get_hash_name"
-						   alien hashid))))
-				 (str (c-peek-cstring alien)))
-			    (free alien)
-			    str))))
-		 (set! mhash-keygen-names
-		       (make-names-vector
-			(lambda () (C-call "mhash_keygen_count"))
-			(lambda (keygenid)
-			  (let* ((alien (make-alien-to-free
-					 '(* char)
-					 (lambda (alien)
-					   (C-call "mhash_get_keygen_name"
-						   alien keygenid))))
-				 (str (c-peek-cstring alien)))
-			    (free alien)
-			    str))))
-		 (set! mhash-initialized? #t)))
-	   #t))))
+  (and (plugin-available? "mhash")
+       (begin
+	 (initialize-mhash-variables!)
+	 #t)))
+
+(define (initialize-mhash-variables!)
+  (if (not mhash-initialized?)
+      (begin
+	(set! mhash-algorithm-names
+	      (make-names-vector
+	       (lambda () (C-call "mhash_count"))
+	       (lambda (hashid)
+		 (let* ((alien (make-alien-to-free
+				'(* char)
+				(lambda (alien)
+				  (C-call "mhash_get_hash_name"
+					  alien hashid))))
+			(str (c-peek-cstring alien)))
+		   (free alien)
+		   str))))
+	(set! mhash-keygen-names
+	      (make-names-vector
+	       (lambda () (C-call "mhash_keygen_count"))
+	       (lambda (keygenid)
+		 (let* ((alien (make-alien-to-free
+				'(* char)
+				(lambda (alien)
+				  (C-call "mhash_get_keygen_name"
+					  alien keygenid))))
+			(str (c-peek-cstring alien)))
+		   (free alien)
+		   str))))
+	(set! mhash-initialized? #t))))
 
 (define (reset-mhash-variables!)
   (set! mhash-initialized? #f)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-;;;; Compile the MD5 wrapper.
+;;;; Compile the MD5 option.
 
 (load-option 'CREF)
 (load-option 'FFI)

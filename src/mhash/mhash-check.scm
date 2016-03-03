@@ -24,10 +24,10 @@ USA.
 
 |#
 
-;;;; Test the mhash wrapper.
+;;;; Test the MHASH option.
 
 (if (not (mhash-available?))
-    (warn "mhash wrapper not found")
+    (error "MHASH plugin not found")
     (let ((sample "Some text to hash."))
       (let ((hash (mhash-sum->hexadecimal (mhash-string 'MD5 sample))))
 	(if (not (string=? hash "c8e89c4cbf3abf9aa758d691cbe4b784"))

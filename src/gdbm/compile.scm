@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-;;;; Compile the GDBM wrapper.
+;;;; Compile the GDBM option.
 
 (load-option 'CREF)
 (load-option 'FFI)

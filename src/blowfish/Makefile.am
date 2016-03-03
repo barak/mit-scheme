@@ -66,6 +66,10 @@ CLEANFILES += test
 
 TESTS = check-scm
 
-install-data-hook uninstall-data-hook:
+install-data-hook:
+	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
+	| $(MIT_SCHEME_EXE) --batch-mode
+
+uninstall-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
 	| $(MIT_SCHEME_EXE) --batch-mode

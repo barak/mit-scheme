@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-;;;; Test the mhash wrapper.
+;;;; Test the MHASH option.
 
 (load "make")
 (with-system-library-directories

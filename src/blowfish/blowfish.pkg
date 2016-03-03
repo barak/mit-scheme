@@ -31,7 +31,7 @@ USA.
   (parent ())
   ;; You'll have to import these from (global-definitions blowfish/).
   ;; They are currently bound in () by exports from (runtime blowfish).
-  #;(export #f
+  (export (blowfish global)
 	  blowfish-available?
 	  blowfish-cbc
 	  blowfish-cfb64
@@ -43,3 +43,7 @@ USA.
 	  compute-blowfish-init-vector
 	  read-blowfish-file-header
 	  write-blowfish-file-header))
+
+(define-package (blowfish global)
+  ;; Just to get cref to analyze whether all exports are defined.
+  )

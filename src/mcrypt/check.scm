@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-;;;; Test the mcrypt wrapper.
+;;;; Test the MCRYPT option.
 
 (load "make")
 (with-system-library-directories

@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-;;;; Compile the mcrypt wrapper.
+;;;; Compile the MCRYPT option.
 
 (load-option 'CREF)
 (load-option 'FFI)

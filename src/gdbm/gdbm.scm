@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; GDBM wrapper
+;;;; The GDBM option.
 ;;; package: (gdbm)
 
 (declare (usual-integrations))
@@ -32,10 +32,7 @@ USA.
 (C-include "gdbm")
 
 (define (gdbm-available?)
-  (let ((path (ignore-errors (lambda ()
-			       (system-library-pathname "gdbm-shim.so")))))
-    (and (pathname? path)
-	 (file-loadable? path))))
+  (plugin-available? "gdbm"))
 
 ;; Parameters to gdbm_open for READERS, WRITERS, and WRITERS who can
 ;; create the database.

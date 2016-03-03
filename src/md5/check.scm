@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-;;;; Test the MD5 wrapper.
+;;;; Test the MD5 option.
 
 (load "make")
 (with-system-library-directories

@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; Test the mcrypt wrapper.
+;;;; Test the MCRYPT option.
 
 (define (random-string length)
   (list->string (make-initialized-list length
@@ -33,7 +33,7 @@ USA.
 					 (ascii->char (random 256))))))
 
 (if (not (mcrypt-available?))
-    (warn "mcrypt plugin not found")
+    (error "MCRYPT plugin not found")
     (begin
       (if (not (member "tripledes" (mcrypt-algorithm-names)))
 	  (error "No tripledes."))

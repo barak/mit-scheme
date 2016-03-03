@@ -24,10 +24,10 @@ USA.
 
 |#
 
-;;;; Test the Blowfish wrapper.
+;;;; Test the BLOWFISH option.
 
 (if (not (blowfish-available?))
-    (warn "blowfish wrapper not found")
+    (error "BLOWFISH plugin not found")
     (let ((sample "Some text to encrypt and decrypt."))
       (call-with-binary-output-file "test"
 	(lambda (output)

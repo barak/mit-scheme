@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-;;;; Test the Blowfish wrapper.
+;;;; Test the BLOWFISH option.
 
 (load "make")
 (with-system-library-directories

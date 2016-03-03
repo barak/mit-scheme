@@ -1,4 +1,4 @@
-The GDBM wrapper.
+The GDBM option.
 
 This is a drop-in replacement for the gdbm microcode module and
 runtime/gdbm.scm.  It is not part of the core build and can be built

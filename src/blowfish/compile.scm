@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-;;;; Compile the Blowfish wrapper.
+;;;; Compile the BLOWFISH option.
 
 (load-option 'CREF)
 (load-option 'FFI)

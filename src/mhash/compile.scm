@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-;;;; Compile the mhash wrapper.
+;;;; Compile the MHASH option.
 
 (load-option 'CREF)
 (load-option 'FFI)

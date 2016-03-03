@@ -24,10 +24,10 @@ USA.
 
 |#
 
-;;;; Test the MD5 wrapper.
+;;;; Test the MD5 option.
 
 (if (not (md5-available?))
-    (warn "md5 wrapper not found")
+    (error "MD5 plugin not found")
     (let ((sample "Some text to hash."))
       (let ((hash (md5-sum->hexadecimal (md5-string sample))))
 	(if (not (string=? hash "c8e89c4cbf3abf9aa758d691cbe4b784"))
