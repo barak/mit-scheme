@@ -119,6 +119,26 @@ unsigned long option_heap_size;
 unsigned long option_constant_size;
 unsigned long option_stack_size;
 
+#ifndef LIBRARY_PATH_VARIABLE
+#  define LIBRARY_PATH_VARIABLE "MITSCHEME_LIBRARY_PATH"
+#endif
+
+#ifndef DEFAULT_LIBRARY_PATH
+#  ifdef DOS_LIKE_FILENAMES
+#    define DEFAULT_LIBRARY_PATH "c:\\local\\mit-scheme"
+#  else
+#    define DEFAULT_LIBRARY_PATH "/usr/local/lib/mit-scheme"
+#  endif
+#endif
+
+#ifndef BAND_VARIABLE
+#  define BAND_VARIABLE "MITSCHEME_BAND"
+#endif
+
+#ifndef DEFAULT_STD_BAND
+#  define DEFAULT_STD_BAND "all.com"
+#endif
+
 void
 print_help (void)
 {
@@ -133,14 +153,14 @@ for the band.\n\
   list of directories that is searched to find various library files,\n\
   such as bands.  If this option is not given, the value of the\n\
   environment variable MITSCHEME_LIBRARY_PATH is used; if that isn't\n\
-  defined, \"/usr/local/lib/mit-scheme\" is used.\n\
+  defined, \"%s\" is used.\n\
 \n\
 --band FILENAME\n\
   Specifies the initial band to be loaded.  Searches for FILENAME in\n\
   the working directory and the library directories, returning the\n\
   full pathname of the first readable file of that name.  If this\n\
   option isn't given, the filename is the value of the environment\n\
-  variable MITSCHEME_BAND, or if that isn't defined, \"runtime.com\"; in\n\
+  variable MITSCHEME_BAND, or if that isn't defined, \"%s\"; in\n\
   these cases the library directories are searched, but not the\n\
   working directory.\n\
 \n\
@@ -204,29 +224,9 @@ for the band.\n\
 Please report bugs to %s.\n\
 \n\
 Additional options may be supported by the band (and described below).\n\
-\n", PACKAGE_BUGREPORT);
+\n", DEFAULT_LIBRARY_PATH, DEFAULT_STD_BAND, PACKAGE_BUGREPORT);
 }
 
-#ifndef LIBRARY_PATH_VARIABLE
-#  define LIBRARY_PATH_VARIABLE "MITSCHEME_LIBRARY_PATH"
-#endif
-
-#ifndef DEFAULT_LIBRARY_PATH
-#  ifdef DOS_LIKE_FILENAMES
-#    define DEFAULT_LIBRARY_PATH "c:\\local\\mit-scheme"
-#  else
-#    define DEFAULT_LIBRARY_PATH "/usr/local/lib/mit-scheme"
-#  endif
-#endif
-
-#ifndef BAND_VARIABLE
-#  define BAND_VARIABLE "MITSCHEME_BAND"
-#endif
-
-#ifndef DEFAULT_STD_BAND
-#  define DEFAULT_STD_BAND "all.com"
-#endif
-
 #ifndef DEFAULT_HEAP_SIZE
 #  if SIZEOF_UNSIGNED_LONG == 8
 #    define DEFAULT_HEAP_SIZE 16384
