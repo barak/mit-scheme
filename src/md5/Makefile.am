@@ -57,13 +57,14 @@ md5-const.scm: md5-const
 	./md5-const
 
 md5.bin md5.bci md5.com md5-unx.pkd: md5.scm md5-const.bin md5-types.bin
-	echo '(load "compile.scm")' | $(MIT_SCHEME_EXE) --batch-mode
+	echo '(load "compile.scm")' \
+	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode
 
 CLEANFILES = md5-const* md5-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
-CLEANFILES += test
 
-TESTS = check-scm
+TESTS = md5-check.sh
+CLEANFILES += sample
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

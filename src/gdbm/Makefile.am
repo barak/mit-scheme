@@ -56,13 +56,14 @@ gdbm-const.scm: gdbm-const
 	./gdbm-const
 
 gdbm.bin gdbm.bci gdbm.com gdbm-unx.pkd: gdbm.scm gdbm-const.bin gdbm-types.bin
-	echo '(load "compile.scm")' | $(MIT_SCHEME_EXE) --batch-mode
+	echo '(load "compile.scm")' \
+	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode
 
 CLEANFILES = gdbm-const* gdbm-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
-CLEANFILES += test
 
-TESTS = check-scm
+TESTS = gdbm-check.sh
+CLEANFILES += gdbm-check.db
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

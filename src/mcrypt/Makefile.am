@@ -57,13 +57,14 @@ mcrypt-const.scm: mcrypt-const
 
 mcrypt.bin mcrypt.bci mcrypt.com mcrypt-unx.pkd: \
     mcrypt.scm mcrypt-const.bin mcrypt-types.bin
-	echo '(load "compile.scm")' | $(MIT_SCHEME_EXE) --batch-mode
+	echo '(load "compile.scm")' \
+	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode
 
 CLEANFILES = mcrypt-const* mcrypt-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
-CLEANFILES += test
 
-TESTS = check-scm
+TESTS = mcrypt-check.sh
+CLEANFILES += encrypted decrypted
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

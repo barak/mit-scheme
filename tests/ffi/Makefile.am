@@ -54,5 +54,3 @@ ffi-test.bin ffi-test.bci ffi-test.com ffi-test-unx.pkd: \
 
 CLEANFILES = ffi-test-const* ffi-test-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
-
-TESTS = test-ffi

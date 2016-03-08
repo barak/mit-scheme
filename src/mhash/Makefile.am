@@ -57,13 +57,14 @@ mhash-const.scm: mhash-const
 
 mhash.bin mhash.bci mhash.com mhash-unx.pkd: \
     mhash.scm mhash-const.bin mhash-types.bin
-	echo '(load "compile.scm")' | $(MIT_SCHEME_EXE) --batch-mode
+	echo '(load "compile.scm")' \
+	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode
 
 CLEANFILES = mhash-const* mhash-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
-CLEANFILES += test
 
-TESTS = check-scm
+TESTS = mhash-check.sh
+CLEANFILES += sample
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

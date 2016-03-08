@@ -58,13 +58,14 @@ blowfish-const.scm: blowfish-const
 
 blowfish.bin blowfish.bci blowfish.com blowfish-@MIT_SCHEME_OS_SUFFIX@.pkd: \
   blowfish.scm blowfish-const.bin blowfish-types.bin
-	echo '(load "compile.scm")' | $(MIT_SCHEME_EXE) --batch-mode
+	echo '(load "compile.scm")' \
+	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode
 
 CLEANFILES = blowfish-const* blowfish-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
-CLEANFILES += test
 
-TESTS = check-scm
+TESTS = blowfish-check.sh
+CLEANFILES += test
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
