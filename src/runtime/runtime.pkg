@@ -3212,7 +3212,6 @@ USA.
 	  pathname?
 	  system-library-directory-pathname
 	  system-library-pathname
-	  with-system-library-directories
 	  uri->pathname
 	  user-homedir-pathname)
   (initialization (initialize-package!)))
