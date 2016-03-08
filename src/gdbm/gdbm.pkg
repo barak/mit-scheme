@@ -33,7 +33,6 @@ USA.
   ;; You'll have to import these from (global-definitions gdbm/).
   ;; They are currently bound in () by exports from (runtime gdbm).
   (export (gdbm global)
-	  gdbm-available?
 	  gdbm-close
 	  gdbm-delete
 	  gdbm-exists?

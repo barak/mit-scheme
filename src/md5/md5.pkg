@@ -32,7 +32,6 @@ USA.
   ;; You'll have to import these from (global-definitions md5/).  They
   ;; are currently bound in () by exports from (runtime crypto).
   (export (md5 global)
-	  md5-available?
 	  md5-file
 	  md5-string
 	  md5-substring

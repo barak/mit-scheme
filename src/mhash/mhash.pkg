@@ -34,7 +34,6 @@ USA.
   ;; They are currently bound in () by exports from (runtime crypto).
   (export (mhash global)
 	  make-mhash-keygen-type
-	  mhash-available?
 	  mhash-context?
 	  mhash-end
 	  mhash-file

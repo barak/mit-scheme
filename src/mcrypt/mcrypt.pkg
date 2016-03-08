@@ -36,7 +36,6 @@ USA.
   (export (mcrypt global)
 	  mcrypt-algorithm-name
 	  mcrypt-algorithm-names
-	  mcrypt-available?
 	  mcrypt-block-algorithm-mode?
 	  mcrypt-block-algorithm?
 	  mcrypt-block-mode?

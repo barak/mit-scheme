@@ -32,7 +32,6 @@ USA.
   ;; You'll have to import these from (global-definitions blowfish/).
   ;; They are currently bound in () by exports from (runtime blowfish).
   (export (blowfish global)
-	  blowfish-available?
 	  blowfish-cbc
 	  blowfish-cfb64
 	  blowfish-ecb

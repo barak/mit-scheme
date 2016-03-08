@@ -31,7 +31,6 @@ USA.
 
 (C-include "mhash")
 
-(define mhash-initialized? #f)
 (define mhash-algorithm-names)
 (define mhash-contexts '())
 (define mhash-hmac-contexts '())
@@ -359,47 +358,38 @@ USA.
 			(mhash-name->id (car names) 'MAKE-MHASH-KEYGEN-TYPE)))
 	 v)))))
 
-(define (mhash-available?)
-  (and (plugin-available? "mhash")
-       (begin
-	 (initialize-mhash-variables!)
-	 #t)))
-
 (define (initialize-mhash-variables!)
-  (if (not mhash-initialized?)
-      (begin
-	(set! mhash-algorithm-names
-	      (make-names-vector
-	       (lambda () (C-call "mhash_count"))
-	       (lambda (hashid)
-		 (let* ((alien (make-alien-to-free
-				'(* char)
-				(lambda (alien)
-				  (C-call "mhash_get_hash_name"
-					  alien hashid))))
-			(str (c-peek-cstring alien)))
-		   (free alien)
-		   str))))
-	(set! mhash-keygen-names
-	      (make-names-vector
-	       (lambda () (C-call "mhash_keygen_count"))
-	       (lambda (keygenid)
-		 (let* ((alien (make-alien-to-free
-				'(* char)
-				(lambda (alien)
-				  (C-call "mhash_get_keygen_name"
-					  alien keygenid))))
-			(str (c-peek-cstring alien)))
-		   (free alien)
-		   str))))
-	(set! mhash-initialized? #t))))
+  (set! mhash-algorithm-names
+	(make-names-vector
+	 (lambda () (C-call "mhash_count"))
+	 (lambda (hashid)
+	   (let* ((alien (make-alien-to-free
+			  '(* char)
+			  (lambda (alien)
+			    (C-call "mhash_get_hash_name"
+				    alien hashid))))
+		  (str (c-peek-cstring alien)))
+	     (free alien)
+	     str))))
+  (set! mhash-keygen-names
+	(make-names-vector
+	 (lambda () (C-call "mhash_keygen_count"))
+	 (lambda (keygenid)
+	   (let* ((alien (make-alien-to-free
+			  '(* char)
+			  (lambda (alien)
+			    (C-call "mhash_get_keygen_name"
+				    alien keygenid))))
+		  (str (c-peek-cstring alien)))
+	     (free alien)
+	     str)))))
 
 (define (reset-mhash-variables!)
-  (set! mhash-initialized? #f)
   (for-each (lambda (weak) (alien-null! (weak-cdr weak))) mhash-contexts)
   (set! mhash-contexts '())
   (for-each (lambda (weak) (alien-null! (weak-cdr weak))) mhash-hmac-contexts)
   (set! mhash-hmac-contexts '())
+  (initialize-mhash-variables!)
   unspecific)
 
 (define (mhash-file hash-type filename)

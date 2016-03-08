@@ -26,14 +26,12 @@ USA.
 
 ;;;; Test the MD5 option.
 
-(if (not (md5-available?))
-    (error "MD5 plugin not found")
-    (let ((sample "Some text to hash."))
-      (let ((hash (md5-sum->hexadecimal (md5-string sample))))
-	(if (not (string=? hash "c8e89c4cbf3abf9aa758d691cbe4b784"))
-	    (error "Bad hash for sample text:" hash)))
-      (call-with-output-file "sample"
-	(lambda (port) (write-string sample port) (newline port)))
-      (let ((hash (md5-sum->hexadecimal (md5-file "sample"))))
-	(if (not (string=? hash "43eb9eccb88c329721925efc04843af1"))
-	    (error "Bad hash for sample file:" hash)))))
+(let ((sample "Some text to hash."))
+  (let ((hash (md5-sum->hexadecimal (md5-string sample))))
+    (if (not (string=? hash "c8e89c4cbf3abf9aa758d691cbe4b784"))
+	(error "Bad hash for sample text:" hash)))
+  (call-with-output-file "sample"
+    (lambda (port) (write-string sample port) (newline port)))
+  (let ((hash (md5-sum->hexadecimal (md5-file "sample"))))
+    (if (not (string=? hash "43eb9eccb88c329721925efc04843af1"))
+	(error "Bad hash for sample file:" hash))))

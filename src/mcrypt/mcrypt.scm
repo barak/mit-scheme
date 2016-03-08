@@ -91,9 +91,6 @@ USA.
 (define mcrypt-algorithm-names-vector)
 (define mcrypt-mode-names-vector)
 
-(define (mcrypt-available?)
-  (plugin-available? "mcrypt"))
-
 (define (init!)
   (if (not mcrypt-initialized?)
       (begin

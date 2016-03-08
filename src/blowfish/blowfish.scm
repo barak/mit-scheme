@@ -171,9 +171,6 @@ USA.
 				"a blowfish init-vector index"
 				operator)))
 
-(define (blowfish-available?)
-  (plugin-available? "blowfish"))
-
 (define (blowfish-encrypt-port input output key init-vector encrypt?)
   ;; Assumes that INPUT is in blocking mode.
   (let ((key (blowfish-set-key key))

@@ -31,9 +31,6 @@ USA.
 
 (C-include "md5")
 
-(define (mhash-available?)
-  (plugin-available? "mhash"))
-
 (define (%md5-init)
   ;; Create and return an MD5 digest context.
   (let ((context (make-string (C-sizeof "MD5_CTX"))))
@@ -70,22 +67,7 @@ USA.
     (C-call "do_MD5" string length result)
     result))
 
-(define (md5-available?)
-  (or (mhash-available?)
-      (%md5-available?)))
-
-(define (%md5-available?)
-  (plugin-available? "md5"))
-
 (define (md5-file filename)
-  (cond ((mhash-available?)
-	 (mhash-file 'MD5 filename))
-	((%md5-available?)
-	 (%md5-file filename))
-	(else
-	 (error "This Scheme system was built without MD5 support."))))
-
-(define (%md5-file filename)
   (call-with-binary-input-file filename
     (lambda (port)
       (let ((buffer (make-string 4096))
@@ -107,14 +89,6 @@ USA.
   (md5-substring string 0 (string-length string)))
 
 (define (md5-substring string start end)
-  (cond ((mhash-available?)
-	 (mhash-substring 'MD5 string start end))
-	((%md5-available?)
-	 (%md5-substring string start end))
-	(else
-	 (error "This Scheme system was built without MD5 support."))))
-
-(define (%md5-substring string start end)
   (let ((context (%md5-init)))
     (%md5-update context string start end)
     (%md5-final context)))

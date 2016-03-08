@@ -31,9 +31,6 @@ USA.
 
 (C-include "gdbm")
 
-(define (gdbm-available?)
-  (plugin-available? "gdbm"))
-
 ;; Parameters to gdbm_open for READERS, WRITERS, and WRITERS who can
 ;; create the database.
 (define GDBM_READER (C-enum "GDBM_READER"))	;A reader.
@@ -48,8 +45,6 @@ USA.
   (let ((args (make-alien '|gdbm_args|))
 	(flagsnum (guarantee-gdbm-open-flags flags)))
     (let ((gdbf (make-gdbf args (make-thread-mutex) filename)))
-      (if (not (gdbm-available?))
-	  (error "GDBM support is not installed."))
       (add-open-gdbf-cleanup gdbf)
       (with-gdbf-locked
        gdbf
