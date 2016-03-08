@@ -302,6 +302,7 @@ string_copy_limited (const char * s, const char * e)
   unsigned int n_chars = (e - s);
   char * result = (OS_malloc (n_chars + 1));
   strncpy (result, s, n_chars);
+  result[n_chars] = '\0';
   return (result);
 }
 
