@@ -91,6 +91,7 @@ static const char * option_raw_band;
 static const char * option_raw_heap;
 static const char * option_raw_constant;
 static const char * option_raw_stack;
+static const char * option_raw_prepend;
 
 /* Command-line arguments */
 int option_saved_argc;
@@ -221,6 +222,10 @@ for the band.\n\
 "
 #endif /* __APPLE__ */
 "\n\
+--prepend-library DIRNAME\n\
+  Adds DIRNAME to the front of the library search path.  This option\n\
+  takes one value and can be specified once.\n\
+\n\
 Please report bugs to %s.\n\
 \n\
 Additional options may be supported by the band (and described below).\n\
@@ -306,8 +311,6 @@ string_copy_limited (const char * s, const char * e)
   return (result);
 }
 
-#ifdef __APPLE__
-
 static bool
 must_quote_char_p (int c)
 {
@@ -348,8 +351,6 @@ quote_string (const char * s)
   (*scan_out) = '\0';
   return result;
 }
-
-#endif /* __APPLE__ */
 
 static unsigned int
 strlen_after_unquoting (const char * s)
@@ -499,6 +500,7 @@ parse_standard_options (int argc, const char ** argv)
 #endif
   option_argument ("nocore", false, (&option_disable_core_dump));
   option_argument ("option-summary", false, (&option_summary));
+  option_argument ("prepend-library", true, (&option_raw_prepend));
   option_argument ("quiet", false, (&option_batch_mode));
   option_argument ("silent", false, (&option_batch_mode));
   option_argument ("stack", true, (&option_raw_stack));
@@ -680,8 +682,6 @@ free_parsed_path (const char ** path)
   xfree (path);
 }
 
-#ifdef __APPLE__
-
 static char *
 add_to_library_path (const char * new_dir, const char * library_path)
 {
@@ -695,8 +695,6 @@ add_to_library_path (const char * new_dir, const char * library_path)
   xfree (quoted_dir);
   return (result);
 }
-
-#endif /* __APPLE__ */
 
 const char *
 search_for_library_file (const char * filename)
@@ -913,9 +911,11 @@ read_command_line_options (int argc, const char ** argv)
   bool band_sizes_valid = false;
   unsigned long band_constant_size = 0;
   unsigned long band_heap_size = 0;
+  const char * library_path;
   const char * default_library_path = DEFAULT_LIBRARY_PATH;
 
   parse_standard_options (argc, argv);
+
   if (option_library_path != 0)
     free_parsed_path (option_library_path);
 #ifdef __APPLE__
@@ -927,11 +927,16 @@ read_command_line_options (int argc, const char ** argv)
       xfree (main_bundle_path);
     }
 #endif
-  option_library_path
-    = (parse_path_string
-       (standard_string_option (option_raw_library,
-				LIBRARY_PATH_VARIABLE,
-				default_library_path)));
+  library_path = standard_string_option (option_raw_library,
+					 LIBRARY_PATH_VARIABLE,
+					 default_library_path);
+  if (option_raw_prepend != NULL)
+    {
+      const char * new_path;
+      new_path = add_to_library_path (option_raw_prepend, library_path);
+      library_path = new_path;
+    }
+  option_library_path = parse_path_string (library_path);
 
   if (option_band_file != 0)
     {
