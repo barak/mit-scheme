@@ -38,7 +38,8 @@ scmlib_md5_DATA += md5-@MIT_SCHEME_OS_SUFFIX@.pkd
 #info_TEXINFOS = mit-scheme-md5.texi
 AM_MAKEINFOHTMLFLAGS = --no-split
 
-# Set this to the default used by Scheme.
+# Set these to the defaults used by Scheme.
+infodir = $(datarootdir)/info
 htmldir = $(libdir)/mit-scheme/doc
 
 AM_CPPFLAGS = -I$(scmlibdir)
