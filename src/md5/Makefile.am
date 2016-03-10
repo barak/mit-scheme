@@ -45,8 +45,7 @@ md5_shim_la_LDFLAGS = -module -avoid-version -shared
 noinst_PROGRAMS = md5-const
 md5_const_SOURCES = md5-const.c md5-shim.h
 
-md5-shim.c md5-const.c md5-types.bin: \
-  md5.cdecl md5-shim.h
+md5-shim.c md5-const.c md5-types.bin: md5.cdecl md5-shim.h
 	echo '(generate-shim "md5" "#include \"md5-shim.h\"")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 
@@ -56,7 +55,8 @@ md5-const.bin: md5-const.scm
 md5-const.scm: md5-const
 	./md5-const
 
-md5.bin md5.bci md5.com md5-unx.pkd: md5.scm md5-const.bin md5-types.bin
+md5.bin md5.bci md5.com md5-@MIT_SCHEME_OS_SUFFIX@.pkd: \
+  md5.scm md5-const.bin md5-types.bin
 	echo '(load "compile.scm")' \
 	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode
 

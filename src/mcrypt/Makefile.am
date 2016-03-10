@@ -55,8 +55,8 @@ mcrypt-const.bin: mcrypt-const.scm
 mcrypt-const.scm: mcrypt-const
 	./mcrypt-const
 
-mcrypt.bin mcrypt.bci mcrypt.com mcrypt-unx.pkd: \
-    mcrypt.scm mcrypt-const.bin mcrypt-types.bin
+mcrypt.bin mcrypt.bci mcrypt.com mcrypt-@MIT_SCHEME_OS_SUFFIX@.pkd: \
+  mcrypt.scm mcrypt-const.bin mcrypt-types.bin
 	echo '(load "compile.scm")' \
 	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode
 

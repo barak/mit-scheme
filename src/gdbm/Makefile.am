@@ -55,7 +55,8 @@ gdbm-const.bin: gdbm-const.scm
 gdbm-const.scm: gdbm-const
 	./gdbm-const
 
-gdbm.bin gdbm.bci gdbm.com gdbm-unx.pkd: gdbm.scm gdbm-const.bin gdbm-types.bin
+gdbm.bin gdbm.bci gdbm.com gdbm-@MIT_SCHEME_OS_SUFFIX@.pkd: \
+  gdbm.scm gdbm-const.bin gdbm-types.bin
 	echo '(load "compile.scm")' \
 	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode
 

@@ -55,8 +55,8 @@ mhash-const.bin: mhash-const.scm
 mhash-const.scm: mhash-const
 	./mhash-const
 
-mhash.bin mhash.bci mhash.com mhash-unx.pkd: \
-    mhash.scm mhash-const.bin mhash-types.bin
+mhash.bin mhash.bci mhash.com mhash-@MIT_SCHEME_OS_SUFFIX@.pkd: \
+  mhash.scm mhash-const.bin mhash-types.bin
 	echo '(load "compile.scm")' \
 	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode
 
