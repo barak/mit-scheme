@@ -5,4 +5,4 @@
 (load-option 'CREF)
 (load-option 'FFI)
 (compile-file "gdbm" '() (->environment '(RUNTIME)))
-(cref/generate-constructors "gdbm" 'ALL)
+(cref/generate-constructors "gdbm")

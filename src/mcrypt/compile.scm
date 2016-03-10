@@ -5,4 +5,4 @@
 (load-option 'CREF)
 (load-option 'FFI)
 (compile-file "mcrypt" '() (->environment '(RUNTIME)))
-(cref/generate-constructors "mcrypt" 'ALL)
+(cref/generate-constructors "mcrypt")

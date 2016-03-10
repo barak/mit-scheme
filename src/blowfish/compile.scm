@@ -5,4 +5,4 @@
 (load-option 'CREF)
 (load-option 'FFI)
 (compile-file "blowfish" '() (->environment '(RUNTIME)))
-(cref/generate-constructors "blowfish" 'ALL)
+(cref/generate-constructors "blowfish")
