@@ -73,3 +73,5 @@ install-data-hook:
 uninstall-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
+	[ -d "$(DESTDIR)$(scmlib_mhashdir)" ] \
+	&& rmdir "$(DESTDIR)$(scmlib_mhashdir)"
