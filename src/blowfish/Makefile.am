@@ -35,7 +35,11 @@ scmlib_blowfish_DATA = make.scm
 scmlib_blowfish_DATA += blowfish.scm blowfish.bin blowfish.bci blowfish.com
 scmlib_blowfish_DATA += blowfish-@MIT_SCHEME_OS_SUFFIX@.pkd
 
-##info_TEXINFOS = blowfish.texi
+#info_TEXINFOS = mit-scheme-blowfish.texi
+AM_MAKEINFOHTMLFLAGS = --no-split
+
+# Set this to the default used by Scheme.
+htmldir = $(libdir)/mit-scheme/doc
 
 AM_CPPFLAGS = -I$(scmlibdir)
 
@@ -71,8 +75,15 @@ install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 
+install-html: install-html-am
+	echo '(update-html-index "$(DESTDIR)$(htmldir)/")' \
+	| $(MIT_SCHEME_EXE) --batch-mode
+
 uninstall-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 	[ -d "$(DESTDIR)$(scmlib_blowfishdir)" ] \
 	&& rmdir "$(DESTDIR)$(scmlib_blowfishdir)"
+	[ -d "$(DESTDIR)$(htmldir)" ]					\
+	&& ( echo  '(update-html-index "$(DESTDIR)$(htmldir)/")'	\
+	     | $(MIT_SCHEME_EXE) --batch-mode )

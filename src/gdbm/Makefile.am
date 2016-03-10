@@ -35,7 +35,11 @@ scmlib_gdbm_DATA = make.scm
 scmlib_gdbm_DATA += gdbm.scm gdbm.bin gdbm.bci gdbm.com
 scmlib_gdbm_DATA += gdbm-@MIT_SCHEME_OS_SUFFIX@.pkd
 
-##info_TEXINFOS = gdbm.texi
+#info_TEXINFOS = mit-scheme-gdbm.texi
+AM_MAKEINFOHTMLFLAGS = --no-split
+
+# Set this to the default used by Scheme.
+htmldir = $(libdir)/mit-scheme/doc
 
 AM_CPPFLAGS = -I$(scmlibdir)
 
@@ -70,8 +74,15 @@ install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 
+install-html: install-html-am
+	echo '(update-html-index "$(DESTDIR)$(htmldir)/")' \
+	| $(MIT_SCHEME_EXE) --batch-mode
+
 uninstall-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 	[ -d "$(DESTDIR)$(scmlib_gdbmdir)" ] \
 	&& rmdir "$(DESTDIR)$(scmlib_gdbmdir)"
+	[ -d "$(DESTDIR)$(htmldir)" ]					\
+	&& ( echo  '(update-html-index "$(DESTDIR)$(htmldir)/")'	\
+	     | $(MIT_SCHEME_EXE) --batch-mode )
