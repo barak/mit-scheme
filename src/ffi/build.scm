@@ -113,8 +113,7 @@ USA.
 			     (string=? "html" (pathname-type (car files)))
 			     (string-prefix? "mit-scheme-"
 					     (pathname-name (car files))))
-			(let ((name (string-tail (pathname-name (car files))
-						 (string-length "mit-scheme-")))
+			(let ((name (pathname-name (car files)))
 			      (title (read-html-title (car files))))
 			  (cons (cons name title) names.titles))
 			names.titles))
