@@ -101,7 +101,7 @@ USA.
        (lambda (name.title)
 	 (write-string "<li><a href=\"" out)
 	 (write-string (car name.title) out)
-	 (write-string "\">" out)
+	 (write-string ".html\">" out)
 	 (write-string (cdr name.title) out)
 	 (write-string "</a></li>\n" out))
        (sort
@@ -120,8 +120,7 @@ USA.
 	      (if (pair? names.titles)
 		  names.titles
 		  (begin
-		    (write-string "<li><i>None currently installed.</i></li>\n"
-				  out)
+		    (write-string "<i>None currently installed.</i>\n" out)
 		    '()))))
 	(lambda (a b) (string<? (car a) (car b)))))
      ;; Skip old list.
