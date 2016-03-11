@@ -66,7 +66,7 @@ psdir = @psdir@
 INST_TARGETS = @INST_TARGETS@
 
 SUBDIRS = ffi imail ref-manual sos user-manual
-DISTCLEAN_FILES = Makefile make-common config.log config.status doc-config.scm
+DISTCLEAN_FILES = Makefile make-common config.log config.status
 
 all:
 	@for D in $(SUBDIRS); do \
@@ -103,19 +103,7 @@ maintainer-clean:
 
 tags TAGS:
 
-install: install-config install-info-gz install-man $(INST_TARGETS)
-
-install-config: doc-config.scm
-	$(mkinstalldirs) $(DESTDIR)$(infodir)
-	$(INSTALL_DATA) $< $(DESTDIR)$(infodir)/mit-scheme-doc-config.scm
-
-doc-config.scm:
-	@echo "Saving documentation configuration."
-	@ ( echo "(QUOTE"; \
-	    echo " ((INSTALL \"$(INSTALL_DATA)\")"; \
-	    echo "  (HTMLDIR \"${htmldir}\")"; \
-	    echo "  (PDFDIR \"${pdfdir}\")"; \
-	    echo "  (PSDIR \"${psdir}\")))" ) >doc-config.scm
+install: install-info-gz install-man $(INST_TARGETS)
 
 install-info-gz install-info:
 	$(mkinstalldirs) $(DESTDIR)$(infodir)
