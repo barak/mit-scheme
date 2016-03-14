@@ -24,26 +24,23 @@ USA.
 
 |#
 
-;;;; Build and test the test library wrapper.
+;;;; Build and test the test plugin.
 
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (let ((port (notification-output-port)))
       (fresh-line port)
-      (write-string "make all in tests/ffi/" port)
+      (write-string "./autobuild.sh in tests/ffi/" port)
       (newline port))
     (let ((status (run-synchronous-subprocess "sh" '("./autobuild.sh"))))
       (if (not (zero? status))
-	  (begin
-	    (write-string "../tests/ffi/test-ffi.scm:0: Test FFI build failed."
-			  (notification-output-port))
-	    (error "Test FFI build failed:" status))
-	  (begin
-	    (let-fluid load/suppress-loading-message? #t
-	      (lambda ()
-		(load-option 'FFI)))
-	    (with-system-library-directories '("./")
-	      (lambda ()
-		(compile-file "test-ffi-wrapper")))
-	    (load "test-ffi-wrapper")
-	    (define-test 'ffi test-ffi))))))
+	  (error "Test FFI build failed:" status)))
+    (define-test 'ffi
+      (let ((cwd (working-directory-pathname)))
+	(named-lambda (test-ffi)
+	  (with-working-directory-pathname cwd
+	    (lambda ()
+	      (let ((status
+		     (run-synchronous-subprocess "sh" '("./test-ffi.sh"))))
+		(if (not (zero? status))
+		    (error "Test FFI check failed:" status))))))))))

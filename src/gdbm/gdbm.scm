@@ -24,18 +24,12 @@ USA.
 
 |#
 
-;;;; GDBM wrapper
+;;;; The GDBM option.
 ;;; package: (gdbm)
 
 (declare (usual-integrations))
 
 (C-include "gdbm")
-
-(define (gdbm-available?)
-  (let ((path (ignore-errors (lambda ()
-			       (system-library-pathname "gdbm-shim.so")))))
-    (and (pathname? path)
-	 (file-loadable? path))))
 
 ;; Parameters to gdbm_open for READERS, WRITERS, and WRITERS who can
 ;; create the database.
@@ -51,8 +45,6 @@ USA.
   (let ((args (make-alien '|gdbm_args|))
 	(flagsnum (guarantee-gdbm-open-flags flags)))
     (let ((gdbf (make-gdbf args (make-thread-mutex) filename)))
-      (if (not (gdbm-available?))
-	  (error "GDBM support is not installed."))
       (add-open-gdbf-cleanup gdbf)
       (with-gdbf-locked
        gdbf

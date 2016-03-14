@@ -68,11 +68,24 @@ The editor subsystem consists of two directories:
 
 * "imail" contains an email-reading program for Edwin.
 
-There is one C/Unix FFI wrapper thus far:
+There are a few C/Unix FFI plugins:
 
 * "gdbm" wraps libgdbm, the GNU dbm database routines, and provides a
   drop-in replacement for the microcode module based package (runtime
   gdbm).
+
+* "blowfish" wraps libssl or libcrypto blowfish functions, and
+  provides a drop-in replacement for the microcode module based
+  package (runtime blowfish).
+
+* "mcrypt" wraps libmcrypt and provides replacements for the mcrypt-*
+  procedures implemented in (runtime crypto).
+
+* "md5" wraps libssl or libcrypto md5 functions, and provides
+  replacements for the md5-* procedures in (runtime crypto).
+
+* "mhash" wraps libmhash and provides replacements for the mhash-*
+  procedures in (runtime crypto).
 
 These are miscellaneous extras:
 

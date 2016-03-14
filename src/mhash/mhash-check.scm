@@ -24,16 +24,14 @@ USA.
 
 |#
 
-;;;; Test the mhash wrapper.
+;;;; Test the MHASH option.
 
-(if (not (mhash-available?))
-    (warn "mhash wrapper not found")
-    (let ((sample "Some text to hash."))
-      (let ((hash (mhash-sum->hexadecimal (mhash-string 'MD5 sample))))
-	(if (not (string=? hash "c8e89c4cbf3abf9aa758d691cbe4b784"))
-	    (error "Bad hash for sample text:" hash)))
-      (call-with-output-file "sample"
-	(lambda (port) (write-string sample port) (newline port)))
-      (let ((hash (mhash-sum->hexadecimal (mhash-file 'MD5 "sample"))))
-	(if (not (string=? hash "43eb9eccb88c329721925efc04843af1"))
-	    (error "Bad hash for sample file:" hash)))))
+(let ((sample "Some text to hash."))
+  (let ((hash (mhash-sum->hexadecimal (mhash-string 'MD5 sample))))
+    (if (not (string=? hash "c8e89c4cbf3abf9aa758d691cbe4b784"))
+	(error "Bad hash for sample text:" hash)))
+  (call-with-output-file "sample"
+    (lambda (port) (write-string sample port) (newline port)))
+  (let ((hash (mhash-sum->hexadecimal (mhash-file 'MD5 "sample"))))
+    (if (not (string=? hash "43eb9eccb88c329721925efc04843af1"))
+	(error "Bad hash for sample file:" hash))))

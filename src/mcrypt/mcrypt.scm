@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; mcrypt wrapper
+;;;; The MCRYPT option.
 ;;; package: (mcrypt)
 
 (declare (usual-integrations))
@@ -41,7 +41,7 @@ USA.
 ;;; multithreaded application... with dynamic module loading support".
 ;;; It is assumed this is the case for MIT Scheme.
 ;;; 
-;;; This wrapper uses an OS mutex to implement lock and unlock
+;;; This plugin uses an OS mutex to implement lock and unlock
 ;;; functions passed to mcrypt_mutex_register, and locks and unlocks
 ;;; it during mcrypt_module_open.  The Scheme mcrypt-context object,
 ;;; representing an MCRYPT "thread", should be used by one Scheme
@@ -80,7 +80,7 @@ USA.
 ;;;       mcrypt_list_algorithms and
 ;;;       mcrypt_list_modes.
 ;;; 
-;;; This wrapper ensures that MCRYPTs and size/name lists returned by
+;;; This plugin ensures that MCRYPTs and size/name lists returned by
 ;;; the library do not "leak" by putting cleanup thunks on a weak
 ;;; alist that is periodically scanned for objects that were GCed and
 ;;; not freed.
@@ -90,12 +90,6 @@ USA.
 (define mcrypt-initialized? #f)
 (define mcrypt-algorithm-names-vector)
 (define mcrypt-mode-names-vector)
-
-(define (mcrypt-available?)
-  (let ((path (ignore-errors (lambda ()
-			       (system-library-pathname "mcrypt-shim.so")))))
-    (and (pathname? path)
-	 (file-loadable? path))))
 
 (define (init!)
   (if (not mcrypt-initialized?)

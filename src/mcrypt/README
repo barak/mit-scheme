@@ -1,4 +1,4 @@
-The mcrypt wrapper.
+The MCRYPT option.
 
 This is a drop-in replacement for the mcrypt microcode module and the
 mcrypt-* procedures in runtime/crypto.scm.  It is not part of the core

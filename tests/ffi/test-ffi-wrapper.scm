@@ -2,14 +2,15 @@
 
 (C-include "ffi-test")
 
-(define test-ffi
-  (let ((libdir (merge-pathnames "./")))
-    (named-lambda (test-ffi)
-      (with-system-library-directories (list libdir)
-	(lambda ()
-	  (test-ffi*))))))
+(define (assert-equal value expected . properties)
+  (if (not (equal? value expected))
+      (error "Assert-equal failed:" value expected properties)))
 
-(define (test-ffi*)
+(define (assert-= value expected . properties)
+  (if (not (equal? value expected))
+      (error "Assert-= failed:" value expected properties)))
+
+(define (test-ffi)
   (let* ((struct (malloc (c-sizeof "TestStruct") '|TestStruct|))
 	 (string "input string")
 	 (pi (* 4 (atan 1 1)))

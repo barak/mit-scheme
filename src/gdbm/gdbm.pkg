@@ -32,8 +32,7 @@ USA.
   (initialization (initialize-package!))
   ;; You'll have to import these from (global-definitions gdbm/).
   ;; They are currently bound in () by exports from (runtime gdbm).
-  #;(export #f
-	  gdbm-available?
+  (export (gdbm global)
 	  gdbm-close
 	  gdbm-delete
 	  gdbm-exists?
@@ -48,10 +47,14 @@ USA.
 	  gdbm-version
 	  gdbm_cachesize
 	  gdbm_fast
-	  gdbm_fastmode
+	  ;;gdbm_fastmode obsolete
 	  gdbm_insert
 	  gdbm_newdb
 	  gdbm_reader
 	  gdbm_replace
 	  gdbm_wrcreat
 	  gdbm_writer))
+
+(define-package (gdbm global)
+  ;; Just to get cref to analyze whether all exports are defined.
+  )

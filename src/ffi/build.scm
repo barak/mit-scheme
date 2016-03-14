@@ -83,8 +83,6 @@ USA.
 	string<?)))))
 
 (define (update-html-index directory)
-  ;;(parameterize* (list (cons param:suppress-loading-message? #t)
-  ;;  (lambda () (load-option 'XML)))
   (rewrite-file
    (merge-pathnames "index.html" directory)
    (lambda (in out)
@@ -103,7 +101,7 @@ USA.
        (lambda (name.title)
 	 (write-string "<li><a href=\"" out)
 	 (write-string (car name.title) out)
-	 (write-string "\">" out)
+	 (write-string ".html\">" out)
 	 (write-string (cdr name.title) out)
 	 (write-string "</a></li>\n" out))
        (sort
@@ -115,16 +113,14 @@ USA.
 			     (string=? "html" (pathname-type (car files)))
 			     (string-prefix? "mit-scheme-"
 					     (pathname-name (car files))))
-			(let ((name (string-tail (pathname-name (car files))
-						 (string-length "mit-scheme-")))
+			(let ((name (pathname-name (car files)))
 			      (title (read-html-title (car files))))
 			  (cons (cons name title) names.titles))
 			names.titles))
 	      (if (pair? names.titles)
 		  names.titles
 		  (begin
-		    (write-string "<li><i>None currently installed.</i></li>\n"
-				  out)
+		    (write-string "<i>None currently installed.</i>\n" out)
 		    '()))))
 	(lambda (a b) (string<? (car a) (car b)))))
      ;; Skip old list.

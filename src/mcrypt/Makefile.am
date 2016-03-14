@@ -35,7 +35,12 @@ scmlib_mcrypt_DATA = make.scm
 scmlib_mcrypt_DATA += mcrypt.scm mcrypt.bin mcrypt.bci mcrypt.com
 scmlib_mcrypt_DATA += mcrypt-@MIT_SCHEME_OS_SUFFIX@.pkd
 
-##info_TEXINFOS = mcrypt.texi
+#info_TEXINFOS = mit-scheme-mcrypt.texi
+AM_MAKEINFOHTMLFLAGS = --no-split
+
+# Set these to the defaults used by Scheme.
+infodir = $(datarootdir)/info
+htmldir = $(libdir)/mit-scheme/doc
 
 AM_CPPFLAGS = -I$(scmlibdir)
 
@@ -55,16 +60,30 @@ mcrypt-const.bin: mcrypt-const.scm
 mcrypt-const.scm: mcrypt-const
 	./mcrypt-const
 
-mcrypt.bin mcrypt.bci mcrypt.com mcrypt-unx.pkd: \
-    mcrypt.scm mcrypt-const.bin mcrypt-types.bin
-	echo '(load "compile.scm")' | $(MIT_SCHEME_EXE) --batch-mode
+mcrypt.bin mcrypt.bci mcrypt.com mcrypt-@MIT_SCHEME_OS_SUFFIX@.pkd: \
+  mcrypt.scm mcrypt-const.bin mcrypt-types.bin
+	echo '(load "compile.scm")' \
+	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode
 
 CLEANFILES = mcrypt-const* mcrypt-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
-CLEANFILES += test
 
-TESTS = check-scm
+TESTS = mcrypt-check.sh
+CLEANFILES += encrypted decrypted
 
-install-data-hook uninstall-data-hook:
+install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
+
+install-html: install-html-am
+	echo '(update-html-index "$(DESTDIR)$(htmldir)/")' \
+	| $(MIT_SCHEME_EXE) --batch-mode
+
+uninstall-hook:
+	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
+	| $(MIT_SCHEME_EXE) --batch-mode
+	[ -d "$(DESTDIR)$(scmlib_mcryptdir)" ] \
+	&& rmdir "$(DESTDIR)$(scmlib_mcryptdir)"
+	[ -d "$(DESTDIR)$(htmldir)" ]					\
+	&& ( echo  '(update-html-index "$(DESTDIR)$(htmldir)/")'	\
+	     | $(MIT_SCHEME_EXE) --batch-mode )

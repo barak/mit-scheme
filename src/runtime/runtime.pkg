@@ -3212,7 +3212,6 @@ USA.
 	  pathname?
 	  system-library-directory-pathname
 	  system-library-pathname
-	  with-system-library-directories
 	  uri->pathname
 	  user-homedir-pathname)
   (initialization (initialize-package!)))
@@ -3395,48 +3394,49 @@ USA.
   (parent (runtime))
   (files "ffi")
   (export ()
-	  make-alien
-	  copy-alien
-	  alien/ctype
-	  set-alien/ctype!
-	  c-cast
-	  alien?
-	  alien-null?
-	  alien-null!
-	  alien/address-string
-	  null-alien
-	  alien=?
-	  alien-hash
-	  copy-alien-address!
-	  alien-function?
-	  alien-function/name
 	  alien-byte-increment
 	  alien-byte-increment!
-	  error:not-alien
-	  guarantee-alien-function
-	  error:not-alien-function
-	  guarantee-alien
+	  alien-function/name
+	  alien-function?
+	  alien-hash
+	  alien-null!
+	  alien-null?
+	  alien/address-string
+	  alien/ctype
+	  alien=?
+	  alien?
+	  c-cast
+	  c-enum-name
+	  c-peek-bytes
 	  c-peek-cstring
 	  c-peek-cstring!
 	  c-peek-cstringp
 	  c-peek-cstringp!
-	  c-peek-bytes
+	  c-poke-bytes
 	  c-poke-pointer
 	  c-poke-pointer!
 	  c-poke-string
 	  c-poke-string!
-	  c-poke-bytes
-	  c-enum-name
 	  call-alien
+	  copy-alien
+	  copy-alien-address!
+	  de-register-c-callback
+	  error:not-alien
+	  error:not-alien-function
+	  free
+	  generate-shim
+	  guarantee-alien
+	  guarantee-alien-function
+	  make-alien
 	  make-alien-to-free
 	  malloc
-	  free
-	  register-c-callback
-	  de-register-c-callback
+	  null-alien
 	  outf-error
-	  generate-shim
-	  update-optiondb
-	  update-html-index)
+	  plugin-available?
+	  register-c-callback
+	  set-alien/ctype!
+	  update-html-index
+	  update-optiondb)	  
   (initialization (initialize-package!)))
 
 (define-package (runtime program-copier)

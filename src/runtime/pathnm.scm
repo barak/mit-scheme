@@ -640,29 +640,13 @@ these rules:
 	      (else #f)))
       (%find-library-directory)))
 
-(define (with-system-library-directories directories thunk)
-
-  (define (existing-directory directory)
-    (let ((dirpath (pathname-as-directory (merge-pathnames directory))))
-      (if (file-directory? dirpath)
-	  dirpath
-	  (error:file-operation dirpath
-				"find" "directory" "no such directory"
-				'with-system-library-directories
-				directories))))
-
-  (parameterize* (list (cons library-directory-path
-			     (append (map existing-directory directories)
-				     (library-directory-path))))
-    thunk))
-
 (define (%find-library-directory)
   (pathname-simplify
-   (or (find-matching-item (library-directory-path) file-directory?)
+   (or (find-matching-item library-directory-path file-directory?)
        (error "Can't find library directory."))))
 
 (define (%find-library-file pathname)
-  (let loop ((path (library-directory-path)))
+  (let loop ((path library-directory-path))
     (and (pair? path)
 	 (let ((p (merge-pathnames pathname (car path))))
 	   (if (file-exists? p)
@@ -736,9 +720,8 @@ these rules:
   (set! param:default-pathname-defaults (make-param:default-pathname-defaults))
   (param:default-pathname-defaults (make-pathname local-host #f #f #f #f #f))
   (set! library-directory-path
-	(make-unsettable-parameter
-	 (map pathname-as-directory
-	      (vector->list ((ucode-primitive microcode-library-path 0))))))
+	(map pathname-as-directory
+	     (vector->list ((ucode-primitive microcode-library-path 0)))))
   unspecific)
 
 (define (initialize-package!)

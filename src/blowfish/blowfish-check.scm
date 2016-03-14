@@ -24,25 +24,23 @@ USA.
 
 |#
 
-;;;; Test the Blowfish wrapper.
+;;;; Test the BLOWFISH option.
 
-(if (not (blowfish-available?))
-    (warn "blowfish wrapper not found")
-    (let ((sample "Some text to encrypt and decrypt."))
-      (call-with-binary-output-file "test"
-	(lambda (output)
-	  (call-with-input-string sample
-	    (lambda (input)
-	      (blowfish-encrypt-port input output "secret"
-				     (write-blowfish-file-header output)
-				     #t)))))
-      (let ((read-back
-	     (call-with-binary-input-file "test"
-	       (lambda (input)
-		 (call-with-output-string
-		  (lambda (output)
-		    (blowfish-encrypt-port input output "secret"
-					   (read-blowfish-file-header input)
-					   #f)))))))
-	(if (not (string=? sample read-back))
-	    (error "sample did not decrypt correctly")))))
+(let ((sample "Some text to encrypt and decrypt."))
+  (call-with-binary-output-file "test"
+    (lambda (output)
+      (call-with-input-string sample
+	(lambda (input)
+	  (blowfish-encrypt-port input output "secret"
+				 (write-blowfish-file-header output)
+				 #t)))))
+  (let ((read-back
+	 (call-with-binary-input-file "test"
+	   (lambda (input)
+	     (call-with-output-string
+	      (lambda (output)
+		(blowfish-encrypt-port input output "secret"
+				       (read-blowfish-file-header input)
+				       #f)))))))
+    (if (not (string=? sample read-back))
+	(error "sample did not decrypt correctly"))))

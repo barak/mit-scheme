@@ -35,7 +35,12 @@ scmlib_gdbm_DATA = make.scm
 scmlib_gdbm_DATA += gdbm.scm gdbm.bin gdbm.bci gdbm.com
 scmlib_gdbm_DATA += gdbm-@MIT_SCHEME_OS_SUFFIX@.pkd
 
-##info_TEXINFOS = gdbm.texi
+#info_TEXINFOS = mit-scheme-gdbm.texi
+AM_MAKEINFOHTMLFLAGS = --no-split
+
+# Set these to the defaults used by Scheme.
+infodir = $(datarootdir)/info
+htmldir = $(libdir)/mit-scheme/doc
 
 AM_CPPFLAGS = -I$(scmlibdir)
 
@@ -55,15 +60,30 @@ gdbm-const.bin: gdbm-const.scm
 gdbm-const.scm: gdbm-const
 	./gdbm-const
 
-gdbm.bin gdbm.bci gdbm.com gdbm-unx.pkd: gdbm.scm gdbm-const.bin gdbm-types.bin
-	echo '(load "compile.scm")' | $(MIT_SCHEME_EXE) --batch-mode
+gdbm.bin gdbm.bci gdbm.com gdbm-@MIT_SCHEME_OS_SUFFIX@.pkd: \
+  gdbm.scm gdbm-const.bin gdbm-types.bin
+	echo '(load "compile.scm")' \
+	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode
 
 CLEANFILES = gdbm-const* gdbm-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
-CLEANFILES += test
 
-TESTS = check-scm
+TESTS = gdbm-check.sh
+CLEANFILES += gdbm-check.db
 
-install-data-hook uninstall-data-hook:
+install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
+
+install-html: install-html-am
+	echo '(update-html-index "$(DESTDIR)$(htmldir)/")' \
+	| $(MIT_SCHEME_EXE) --batch-mode
+
+uninstall-hook:
+	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
+	| $(MIT_SCHEME_EXE) --batch-mode
+	[ -d "$(DESTDIR)$(scmlib_gdbmdir)" ] \
+	&& rmdir "$(DESTDIR)$(scmlib_gdbmdir)"
+	[ -d "$(DESTDIR)$(htmldir)" ]					\
+	&& ( echo  '(update-html-index "$(DESTDIR)$(htmldir)/")'	\
+	     | $(MIT_SCHEME_EXE) --batch-mode )

@@ -35,7 +35,12 @@ scmlib_md5_DATA = make.scm
 scmlib_md5_DATA += md5.scm md5.bin md5.bci md5.com
 scmlib_md5_DATA += md5-@MIT_SCHEME_OS_SUFFIX@.pkd
 
-##info_TEXINFOS = md5.texi
+#info_TEXINFOS = mit-scheme-md5.texi
+AM_MAKEINFOHTMLFLAGS = --no-split
+
+# Set these to the defaults used by Scheme.
+infodir = $(datarootdir)/info
+htmldir = $(libdir)/mit-scheme/doc
 
 AM_CPPFLAGS = -I$(scmlibdir)
 
@@ -45,8 +50,7 @@ md5_shim_la_LDFLAGS = -module -avoid-version -shared
 noinst_PROGRAMS = md5-const
 md5_const_SOURCES = md5-const.c md5-shim.h
 
-md5-shim.c md5-const.c md5-types.bin: \
-  md5.cdecl md5-shim.h
+md5-shim.c md5-const.c md5-types.bin: md5.cdecl md5-shim.h
 	echo '(generate-shim "md5" "#include \"md5-shim.h\"")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 
@@ -56,15 +60,30 @@ md5-const.bin: md5-const.scm
 md5-const.scm: md5-const
 	./md5-const
 
-md5.bin md5.bci md5.com md5-unx.pkd: md5.scm md5-const.bin md5-types.bin
-	echo '(load "compile.scm")' | $(MIT_SCHEME_EXE) --batch-mode
+md5.bin md5.bci md5.com md5-@MIT_SCHEME_OS_SUFFIX@.pkd: \
+  md5.scm md5-const.bin md5-types.bin
+	echo '(load "compile.scm")' \
+	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode
 
 CLEANFILES = md5-const* md5-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
-CLEANFILES += test
 
-TESTS = check-scm
+TESTS = md5-check.sh
+CLEANFILES += sample
 
-install-data-hook uninstall-data-hook:
+install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
+
+install-html: install-html-am
+	echo '(update-html-index "$(DESTDIR)$(htmldir)/")' \
+	| $(MIT_SCHEME_EXE) --batch-mode
+
+uninstall-hook:
+	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
+	| $(MIT_SCHEME_EXE) --batch-mode
+	[ -d "$(DESTDIR)$(scmlib_md5dir)" ] \
+	&& rmdir "$(DESTDIR)$(scmlib_md5dir)"
+	[ -d "$(DESTDIR)$(htmldir)" ]					\
+	&& ( echo  '(update-html-index "$(DESTDIR)$(htmldir)/")'	\
+	     | $(MIT_SCHEME_EXE) --batch-mode )

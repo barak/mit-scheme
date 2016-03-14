@@ -26,10 +26,6 @@ USA.
 
 (global-definitions runtime/)
 
-(define-package (mcrypt global)
-  ;; Just to get cref to analyze whether all exports are defined.
-  )
-
 (define-package (mcrypt)
   (files "mcrypt")
   (parent ())
@@ -40,7 +36,6 @@ USA.
   (export (mcrypt global)
 	  mcrypt-algorithm-name
 	  mcrypt-algorithm-names
-	  mcrypt-available?
 	  mcrypt-block-algorithm-mode?
 	  mcrypt-block-algorithm?
 	  mcrypt-block-mode?
@@ -56,3 +51,7 @@ USA.
 	  mcrypt-open-module
 	  mcrypt-self-test
 	  mcrypt-supported-key-sizes))
+
+(define-package (mcrypt global)
+  ;; Just to get cref to analyze whether all exports are defined.
+  )

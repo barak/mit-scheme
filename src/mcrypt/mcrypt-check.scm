@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; Test the mcrypt wrapper.
+;;;; Test the MCRYPT option.
 
 (define (random-string length)
   (list->string (make-initialized-list length
@@ -32,44 +32,41 @@ USA.
 					 (declare (ignore i))
 					 (ascii->char (random 256))))))
 
-(if (not (mcrypt-available?))
-    (warn "mcrypt plugin not found")
-    (begin
-      (if (not (member "tripledes" (mcrypt-algorithm-names)))
-	  (error "No tripledes."))
+(if (not (member "tripledes" (mcrypt-algorithm-names)))
+    (error "No tripledes."))
 
-      (if (not (member "cfb" (mcrypt-mode-names)))
-	  (error "No cipher-feedback mode."))
+(if (not (member "cfb" (mcrypt-mode-names)))
+    (error "No cipher-feedback mode."))
 
-      (let ((key (let ((sizes (mcrypt-supported-key-sizes "tripledes")))
-		   (if (not (vector? sizes))
-		       (error "Bogus key sizes for tripledes."))
-		   (random-string (vector-ref sizes
-					      (-1+ (vector-length sizes))))))
-	    (init-vector (let* ((context
-				 ;; Unfortunately the size is
-				 ;; available only from the MCRYPT(?)!
-				 (mcrypt-open-module "tripledes" "cfb"))
-				(size (mcrypt-init-vector-size context)))
-			   (mcrypt-end context)
-			   (random-string size))))
+(let ((key (let ((sizes (mcrypt-supported-key-sizes "tripledes")))
+	     (if (not (vector? sizes))
+		 (error "Bogus key sizes for tripledes."))
+	     (random-string (vector-ref sizes
+					(-1+ (vector-length sizes))))))
+      (init-vector (let* ((context
+			   ;; Unfortunately the size is
+			   ;; available only from the MCRYPT(?)!
+			   (mcrypt-open-module "tripledes" "cfb"))
+			  (size (mcrypt-init-vector-size context)))
+		     (mcrypt-end context)
+		     (random-string size))))
 
-	(call-with-input-file "mcrypt.scm"
-	  (lambda (input)
-	    (call-with-output-file "encrypted"
-	      (lambda (output)
-		(let ((copy (string-copy init-vector)))
-		  (mcrypt-encrypt-port "tripledes" "cfb"
-				       input output key init-vector #t)
-		  (if (not (string=? copy init-vector))
-		      (error "Init vector modified.")))))))
+  (call-with-input-file "mcrypt.scm"
+    (lambda (input)
+      (call-with-output-file "encrypted"
+	(lambda (output)
+	  (let ((copy (string-copy init-vector)))
+	    (mcrypt-encrypt-port "tripledes" "cfb"
+				 input output key init-vector #t)
+	    (if (not (string=? copy init-vector))
+		(error "Init vector modified.")))))))
 
-	(call-with-input-file "encrypted"
-	  (lambda (input)
-	    (call-with-output-file "decrypted"
-	      (lambda (output)
-		(mcrypt-encrypt-port "tripledes" "cfb"
-				     input output key init-vector #f))))))
+  (call-with-input-file "encrypted"
+    (lambda (input)
+      (call-with-output-file "decrypted"
+	(lambda (output)
+	  (mcrypt-encrypt-port "tripledes" "cfb"
+			       input output key init-vector #f))))))
 
-      (if (not (= 0 (run-shell-command "cmp mcrypt.scm decrypted")))
-	  (error "En/Decryption failed."))))
+(if (not (= 0 (run-shell-command "cmp mcrypt.scm decrypted")))
+    (error "En/Decryption failed."))

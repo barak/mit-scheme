@@ -31,10 +31,13 @@ USA.
   (parent ())
   ;; You'll have to import these from (global-definitions md5/).  They
   ;; are currently bound in () by exports from (runtime crypto).
-  #;(export #f
-	  md5-available?
+  (export (md5 global)
 	  md5-file
 	  md5-string
 	  md5-substring
 	  md5-sum->hexadecimal
 	  md5-sum->number))
+
+(define-package (md5 global)
+  ;; Just to get cref to analyze whether all exports are defined.
+  )

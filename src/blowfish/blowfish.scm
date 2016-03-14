@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; Blowfish wrapper
+;;;; The BLOWFISH option.
 ;;; package: (blowfish)
 
 (declare (usual-integrations))
@@ -170,12 +170,6 @@ USA.
       (error:bad-range-argument object
 				"a blowfish init-vector index"
 				operator)))
-
-(define (blowfish-available?)
-  (let ((path (ignore-errors (lambda ()
-			       (system-library-pathname "blowfish-shim.so")))))
-    (and (pathname? path)
-	 (file-loadable? path))))
 
 (define (blowfish-encrypt-port input output key init-vector encrypt?)
   ;; Assumes that INPUT is in blocking mode.
