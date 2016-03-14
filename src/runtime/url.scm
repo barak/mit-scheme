@@ -31,20 +31,20 @@ USA.
 
 (declare (usual-integrations))
 
-(define-structure (uri
-		   (type-descriptor <uri>)
-		   (constructor %%make-uri)
-		   (conc-name %uri-)
-		   (print-procedure
-		    (simple-unparser-method 'URI
-		      (lambda (uri)
-			(list (uri->string uri))))))
-  (scheme #f read-only #t)
-  (authority #f read-only #t)
-  (path #f read-only #t)
-  (query #f read-only #t)
-  (fragment #f read-only #t)
-  (string #f read-only #t))
+(define-record-type <uri>
+    (%make-uri scheme authority path query fragment string)
+    uri?
+  (scheme uri-scheme)
+  (authority uri-authority)
+  (path uri-path)
+  (query uri-query)
+  (fragment uri-fragment)
+  (string uri->string))
+
+(set-record-type-unparser-method! <uri>
+  (simple-unparser-method 'uri
+    (lambda (uri)
+      (list (uri->string uri)))))
 
 (define uri-parser-method
   (simple-parser-method
@@ -61,34 +61,16 @@ USA.
     (if fragment (guarantee-utf8-string fragment 'MAKE-URI))
     (if (and authority (pair? path) (path-relative? path))
 	(error:bad-range-argument path 'MAKE-URI))
-    (%make-uri scheme authority path query fragment)))
-
-(define (%make-uri scheme authority path query fragment)
-  (let* ((path (remove-dot-segments path))
-	 (string
-	  (call-with-output-string
-	    (lambda (port)
-	      (%write-uri scheme authority path query fragment port)))))
-    (hash-table/intern! interned-uris string
-      (lambda ()
-	(%%make-uri scheme authority path query fragment string)))))
+    (let* ((path (remove-dot-segments path))
+	   (string
+	    (call-with-output-string
+	      (lambda (port)
+		(%write-uri scheme authority path query fragment port)))))
+      (hash-table/intern! interned-uris string
+	(lambda ()
+	  (%make-uri scheme authority path query fragment string))))))
 
 (define interned-uris)
-
-(define (uri-scheme uri)
-  (%uri-scheme (->uri uri 'URI-SCHEME)))
-
-(define (uri-authority uri)
-  (%uri-authority (->uri uri 'URI-AUTHORITY)))
-
-(define (uri-path uri)
-  (%uri-path (->uri uri 'URI-PATH)))
-
-(define (uri-query uri)
-  (%uri-query (->uri uri 'URI-QUERY)))
-
-(define (uri-fragment uri)
-  (%uri-fragment (->uri uri 'URI-FRAGMENT)))
 
 (define (uri-absolute? uri)
   (if (uri-scheme uri) #t #f))
@@ -136,47 +118,32 @@ USA.
 (define-integrable (path-relative? path)
   (not (path-absolute? path)))
 
-(define-structure (uri-authority
-		   (type-descriptor <uri-authority>)
-		   (constructor %%make-uri-authority)
-		   (conc-name %uri-authority-)
-		   (print-procedure
-		    (simple-unparser-method 'URI-AUTHORITY
-		      (lambda (authority)
-			(list (call-with-output-string
-				(lambda (port)
-				  (write-uri-authority authority port))))))))
-  (userinfo #f read-only #t)
-  (host #f read-only #t)
-  (port #f read-only #t))
+(define-record-type <uri-authority>
+    (%make-uri-authority userinfo host port)
+    uri-authority?
+  (userinfo uri-authority-userinfo)
+  (host uri-authority-host)
+  (port uri-authority-port))
+
+(set-record-type-unparser-method! <uri-authority>
+  (simple-unparser-method 'URI-AUTHORITY
+    (lambda (authority)
+      (list (call-with-output-string
+	      (lambda (port)
+		(write-uri-authority authority port)))))))
 
 (define (make-uri-authority userinfo host port)
   (if userinfo (guarantee-uri-userinfo userinfo 'MAKE-URI-AUTHORITY))
   (guarantee-uri-host host 'MAKE-URI-AUTHORITY)
   (if port (guarantee-uri-port port 'MAKE-URI-AUTHORITY))
-  (%make-uri-authority userinfo host port))
-
-(define (%make-uri-authority userinfo host port)
   (hash-table/intern! interned-uri-authorities
       (call-with-output-string
 	(lambda (output)
 	  (%write-authority userinfo host port output)))
     (lambda ()
-      (%%make-uri-authority userinfo host port))))
+      (%make-uri-authority userinfo host port))))
 
 (define interned-uri-authorities)
-
-(define (uri-authority-userinfo authority)
-  (guarantee-uri-authority authority 'URI-AUTHORITY-USERINFO)
-  (%uri-authority-userinfo authority))
-
-(define (uri-authority-host authority)
-  (guarantee-uri-authority authority 'URI-AUTHORITY-HOST)
-  (%uri-authority-host authority))
-
-(define (uri-authority-port authority)
-  (guarantee-uri-authority authority 'URI-AUTHORITY-PORT)
-  (%uri-authority-port authority))
 
 (define (uri-userinfo? object)
   (utf8-string? object))
@@ -205,25 +172,25 @@ USA.
 
 (define (uri->alist uri)
   (let ((uri (->uri uri 'URI->ALIST)))
-    `(,@(if (%uri-scheme uri)
-	    `((scheme ,(%uri-scheme uri)))
+    `(,@(if (uri-scheme uri)
+	    `((scheme ,(uri-scheme uri)))
 	    '())
-      ,@(if (%uri-authority uri)
-	    (let ((a (%uri-authority uri)))
-	      `(,@(if (%uri-authority-userinfo a)
-		      `((userinfo ,(%uri-authority-userinfo a)))
+      ,@(if (uri-authority uri)
+	    (let ((a (uri-authority uri)))
+	      `(,@(if (uri-authority-userinfo a)
+		      `((userinfo ,(uri-authority-userinfo a)))
 		      '())
-		(host ,(%uri-authority-host a))
-		,@(if (%uri-authority-port a)
-		      `((port ,(%uri-authority-port a)))
+		(host ,(uri-authority-host a))
+		,@(if (uri-authority-port a)
+		      `((port ,(uri-authority-port a)))
 		      '())))
 	    '())
-      (path ,(%uri-path uri))
-      ,@(if (%uri-query uri)
-	    `((query ,(%uri-query uri)))
+      (path ,(uri-path uri))
+      ,@(if (uri-query uri)
+	    `((query ,(uri-query uri)))
 	    '())
-      ,@(if (%uri-fragment uri)
-	    `((fragment ,(%uri-fragment uri)))
+      ,@(if (uri-fragment uri)
+	    `((fragment ,(uri-fragment uri)))
 	    '()))))
 
 (define (uri-prefix prefix)
@@ -237,35 +204,35 @@ USA.
 (define (merge-uris uri base-uri)
   (let ((uri (->uri uri 'MERGE-URIS))
 	(base-uri (->absolute-uri base-uri 'MERGE-URIS)))
-    (cond ((%uri-scheme uri)
+    (cond ((uri-scheme uri)
 	   uri)
-	  ((%uri-authority uri)
-	   (%make-uri (%uri-scheme base-uri)
-		      (%uri-authority uri)
-		      (%uri-path uri)
-		      (%uri-query uri)
-		      (%uri-fragment uri)))
-	  ((null? (%uri-path uri))
-	   (%make-uri (%uri-scheme base-uri)
-		      (%uri-authority base-uri)
-		      (%uri-path base-uri)
-		      (or (%uri-query uri) (%uri-query base-uri))
-		      (%uri-fragment uri)))
+	  ((uri-authority uri)
+	   (make-uri (uri-scheme base-uri)
+		     (uri-authority uri)
+		     (uri-path uri)
+		     (uri-query uri)
+		     (uri-fragment uri)))
+	  ((null? (uri-path uri))
+	   (make-uri (uri-scheme base-uri)
+		     (uri-authority base-uri)
+		     (uri-path base-uri)
+		     (or (uri-query uri) (uri-query base-uri))
+		     (uri-fragment uri)))
 	  (else
-	   (%make-uri (%uri-scheme base-uri)
-		      (%uri-authority base-uri)
-		      (merge-paths (%uri-path uri) base-uri)
-		      (%uri-query uri)
-		      (%uri-fragment uri))))))
+	   (make-uri (uri-scheme base-uri)
+		     (uri-authority base-uri)
+		     (merge-paths (uri-path uri) base-uri)
+		     (uri-query uri)
+		     (uri-fragment uri))))))
 
 (define (merge-paths ref-path base-uri)
   (cond ((path-absolute? ref-path)
 	 ref-path)
-	((and (%uri-authority base-uri)
-	      (null? (%uri-path base-uri)))
+	((and (uri-authority base-uri)
+	      (null? (uri-path base-uri)))
 	 (cons "" ref-path))
 	(else
-	 (let ((path (%uri-path base-uri)))
+	 (let ((path (uri-path base-uri)))
 	   (if (and (pair? path)
 		    (pair? (cdr path)))
 	       (append (except-last-pair path) ref-path)
@@ -387,11 +354,11 @@ USA.
   (*parser (encapsulate encapsulate-uri parser:relative-ref)))
 
 (define (encapsulate-uri v)
-  (%make-uri (vector-ref v 0)
-	     (vector-ref v 1)
-	     (vector-ref v 2)
-	     (vector-ref v 3)
-	     (vector-ref v 4)))
+  (make-uri (vector-ref v 0)
+	    (vector-ref v 1)
+	    (vector-ref v 2)
+	    (vector-ref v 3)
+	    (vector-ref v 4)))
 
 (define parse-uri-path-absolute
   (*parser
@@ -451,9 +418,9 @@ USA.
 (define parse-uri-authority
   (*parser
    (encapsulate (lambda (v)
-		  (%make-uri-authority (vector-ref v 0)
-				       (vector-ref v 1)
-				       (vector-ref v 2)))
+		  (make-uri-authority (vector-ref v 0)
+				      (vector-ref v 1)
+				      (vector-ref v 2)))
      (seq (alt (seq parser:userinfo "@")
 	       (values #f))
 	  parser:hostport))))
@@ -581,9 +548,6 @@ USA.
 
 ;;;; Output
 
-(define (uri->string uri)
-  (%uri-string (->uri uri 'URI->STRING)))
-
 (define (uri->symbol uri)
   (utf8-string->symbol (uri->string uri)))
 
@@ -616,9 +580,9 @@ USA.
 	(write-encoded fragment char-set:uri-fragment port))))
 
 (define (write-uri-authority authority port)
-  (%write-authority (%uri-authority-userinfo authority)
-		    (%uri-authority-host authority)
-		    (%uri-authority-port authority)
+  (%write-authority (uri-authority-userinfo authority)
+		    (uri-authority-host authority)
+		    (uri-authority-port authority)
 		    port))
 
 (define (%write-authority userinfo host port output)
