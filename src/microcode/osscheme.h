@@ -44,11 +44,6 @@ extern void error_out_of_processes (void) NORETURN;
 extern void error_floating_point_exception (void) NORETURN;
 extern void error_process_terminated (void) NORETURN;
 
-#ifdef __OS2__
-   extern void request_attention_interrupt (void);
-   extern int test_and_clear_attention_interrupt (void);
-#endif
-
 extern void request_console_resize_interrupt (void);
 extern void request_character_interrupt (void);
 extern void request_timer_interrupt (void);

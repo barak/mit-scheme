@@ -106,9 +106,6 @@ insert it into the floppy drive.")
 	      ((DOS NT)
 	       "
 Again, use the File Manager to format the floppy.")
-	      ((OS/2)
-	       "
-Again, use the Drive object to format the floppy.")
 	      (else "")))
 	   (append-string
 	    "

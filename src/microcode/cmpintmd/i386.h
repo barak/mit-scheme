@@ -254,7 +254,7 @@ typedef struct
     ia32_cache_synchronize ();						\
 } while (false)
 
-#if defined(__OS2__) && (defined(__IBMC__) || defined(__WATCOMC__))
+#if defined(__IBMC__) || defined(__WATCOMC__)
 #  define ASM_ENTRY_POINT(name) (_System name)
 #elif defined(__WIN32__) && defined(__WATCOMC__)
 #  define ASM_ENTRY_POINT(name) (__cdecl name)

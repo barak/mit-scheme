@@ -20,7 +20,6 @@ for directory in edwin imail runtime sos
 do
   (cd $directory; ln -s ed-ffi.scm .edwin-ffi)
 done
-(cd microcode; scheme -load os2pm.scm < /dev/null)
 (cd microcode; etags -r '/^DEF[A-Za-z_ \t(]+"\([^"]+\)"/' *.[ch])
 (cd microcode/cmpauxmd; make all)
 (cd pcsample; etags *.scm *.c)

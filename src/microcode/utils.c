@@ -31,10 +31,6 @@ USA.
 #include "history.h"
 #include "syscall.h"
 
-#ifdef __OS2__
-  extern void OS2_handle_attention_interrupt (void);
-#endif
-
 SCHEME_OBJECT * history_register;
 unsigned long prev_restore_history_offset;
 
@@ -120,13 +116,6 @@ setup_interrupt (unsigned long masked_interrupts)
   unsigned long interrupt_mask;
   SCHEME_OBJECT interrupt_handler;
 
-#ifdef __OS2__
-  if ((1UL << interrupt_number) == INT_Global_1)
-    {
-      OS2_handle_attention_interrupt ();
-      abort_to_interpreter (PRIM_POP_RETURN);
-    }
-#endif
   if (!VECTOR_P (fixed_objects))
     {
       outf_fatal ("\nInvalid fixed-objects vector");

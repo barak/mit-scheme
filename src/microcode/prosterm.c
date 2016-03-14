@@ -38,8 +38,7 @@ arg_terminal (int argument_number)
   Tchannel channel = (arg_channel (argument_number));
   enum channel_type type = (OS_channel_type (channel));
   if (! ((type == channel_type_terminal)
-	 || (type == channel_type_unix_pty_master)
-	 || (type == channel_type_os2_console)))
+	 || (type == channel_type_unix_pty_master)))
     error_bad_range_arg (argument_number);
   return (channel);
 }

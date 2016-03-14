@@ -48,12 +48,6 @@ USA.
 #  include "ntscreen.h"
    extern HANDLE master_tty_window;
 #endif
-
-#ifdef __OS2__
-   extern char * OS2_thread_fatal_error_buffer (void);
-   extern void OS2_message_box (const char *, const char *, int);
-   extern void OS2_console_write (const char *, size_t);
-#endif
 
 void
 outf (outf_channel chan, const char * format, ...)
@@ -196,52 +190,6 @@ outf_flush_fatal (void)
 }
 
 #endif /* __WIN32__ */
-
-#ifdef __OS2__
-
-#define OUTF_VARIANTS_DEFINED 1
-
-void
-voutf_console (const char * format, va_list args)
-{
-  char buffer [4096];
-  vsprintf (buffer, format, args);
-  OS2_console_write (buffer, (strlen (buffer)));
-}
-
-void
-outf_flush_console (void)
-{
-}
-
-void
-voutf_error (const char * format, va_list args)
-{
-  voutf_console (format, args);
-}
-
-void
-outf_flush_error (void)
-{
-}
-
-void
-voutf_fatal (const char * format, va_list args)
-{
-  char * buffer = (OS2_thread_fatal_error_buffer ());
-  unsigned int end = (strlen (buffer));
-  vsprintf ((& (buffer [end])), format, args);
-}
-
-void
-outf_flush_fatal (void)
-{
-  char * buffer = (OS2_thread_fatal_error_buffer ());
-  OS2_message_box ("MIT/GNU Scheme terminating", buffer, 1);
-  (buffer[0]) = '\0';
-}
-
-#endif /* __OS2__ */
 
 #ifndef OUTF_VARIANTS_DEFINED
 

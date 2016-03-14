@@ -110,7 +110,6 @@ USA.
 	    microcode-id/operating-system
 	    os-type)
     ((NT) "w32")
-    ((OS/2) "os2")
     ((UNIX) "unx")
     (else (error "Unknown operating system:" os-type))))
 

@@ -490,7 +490,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
    ;; operating system are actually loaded and initialized.
    (RUNTIME STARBASE-GRAPHICS)
    (RUNTIME X-GRAPHICS)
-   (RUNTIME OS2-GRAPHICS)
    ;; Emacs -- last because it installs hooks everywhere which must be initted.
    (RUNTIME EMACS-INTERFACE)
    ;; More debugging

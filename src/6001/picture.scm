@@ -80,7 +80,6 @@ USA.
 	   (case name
 	     ((X) (make-window/X11 width height x y))
 	     ((WIN32) (make-window/win32 width height x y))
-	     ((OS/2) (make-window/OS2 width height x y))
 	     (else (error "Unsupported graphics type:" name))))))
     (graphics-set-coordinate-limits window 0 (- (- height 1)) (- width 1) 0)
     (restore-focus-to-editor)
@@ -107,38 +106,10 @@ USA.
     (graphics-operation window 'MOVE-WINDOW x y)
     window))
 
-(define (make-window/OS2 width height x y)
-  (let ((window (make-graphics-device 'OS/2 width height)))
-    ;; X, Y specify the position of the upper-left corner of the
-    ;; window, in coordinates relative to the upper-left corner of the
-    ;; display with Y growing down; the OS/2 SET-WINDOW-POSITION
-    ;; operation specifies the position of the lower-left corner of
-    ;; the window, in coordinates relative to the lower left corner of
-    ;; the display, with Y growing up.
-    (call-with-values (lambda () (graphics-operation window 'DESKTOP-SIZE))
-      (lambda (dx dy)
-	dx
-	(call-with-values
-	    (lambda () (graphics-operation window 'WINDOW-FRAME-SIZE))
-	  (lambda (fx fy)
-	    fx
-	    (graphics-operation window 'SET-WINDOW-POSITION
-				x
-				(- dy (+ y fy)))))))
-    window))
-
-(define os2-image-colormap:gray-256
-  (make-initialized-vector 256
-    (lambda (index)
-      (+ (* index #x10000)
-	 (* index #x100)
-	 index))))
-
 (define (resize-window window width height)
   (let ((name (graphics-type-name (graphics-type window))))
     (case name
       ((X WIN32) (graphics-operation window 'RESIZE-WINDOW width height))
-      ((OS/2) (graphics-operation window 'SET-WINDOW-SIZE width height))
       (else (error "Unsupported graphics type:" name)))))
 
 (define (show-window-size window)
@@ -152,20 +123,12 @@ USA.
     (case name
       ((X) (n-gray-map/X11 window))
       ((WIN32) (n-gray-map/win32 window))
-      ((OS/2) (n-gray-map/os2 window))
       (else (error "Unsupported graphics type:" name)))))
 
 (define n-gray-map/win32
   (let ((map (make-vector 128)))
     (do ((i 0 (fix:+ i 1)))
 	((fix:= i 128))
-      (vector-set! map i i))
-    (lambda (window) window map)))
-
-(define n-gray-map/os2
-  (let ((map (make-vector 256)))
-    (do ((i 0 (fix:+ i 1)))
-	((fix:= i 256))
       (vector-set! map i i))
     (lambda (window) window map)))
 

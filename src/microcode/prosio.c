@@ -130,9 +130,9 @@ static const char * channel_type_names [] =
   "directory",
   "unix-character-device",
   "unix-block-device",
-  "os/2-console",
-  "os/2-unnamed-pipe",
-  "os/2-named-pipe",
+  "unknown",
+  "unknown",
+  "unknown",
   "win32-anonymous-pipe",
   "win32-named-pipe"
 };

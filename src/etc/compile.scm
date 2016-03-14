@@ -147,8 +147,7 @@ USA.
 	       (lambda (os)
 		 (cbf-conditionally (string-append root "-" os ".pkd")))))
 	  (compile-pkg "unx")
-	  (compile-pkg "w32")
-	  (compile-pkg "os2"))))))
+	  (compile-pkg "w32"))))))
 
 (define (cbf-conditionally pathname)
   (let ((input (pathname-default-type pathname "bin")))

@@ -44,12 +44,6 @@ extern SCHEME_OBJECT make_microcode_identification_vector (void);
 #  define HOOK_ENTER_INTERPRETER win32_enter_interpreter
 #endif
 
-#ifdef __OS2__
-   extern void OS2_initialize_early (void);
-   extern void OS2_enter_interpreter (void (*) (void));
-#  define HOOK_ENTER_INTERPRETER OS2_enter_interpreter
-#endif
-
 #ifndef HOOK_ENTER_INTERPRETER
 #  define HOOK_ENTER_INTERPRETER(func) func ()
 #endif
@@ -104,9 +98,6 @@ main_name (int argc, const char ** argv)
 #endif
 #ifdef PREALLOCATE_HEAP_MEMORY
   PREALLOCATE_HEAP_MEMORY ();
-#endif
-#ifdef __OS2__
-  OS2_initialize_early ();
 #endif
   obstack_init (&scratch_obstack);
   obstack_init (&ffi_obstack);

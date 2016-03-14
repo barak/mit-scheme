@@ -657,8 +657,7 @@ these rules:
 
 (define known-host-types
   '((0 UNIX)
-    (1 DOS NT OS/2)
-    (2 VMS)))
+    (1 DOS NT)))
 
 (define (host-name->index name)
   (let loop ((entries known-host-types))

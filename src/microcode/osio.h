@@ -45,9 +45,9 @@ enum channel_type
   channel_type_directory,
   channel_type_unix_character_device,
   channel_type_unix_block_device,
-  channel_type_os2_console,
-  channel_type_os2_unnamed_pipe,
-  channel_type_os2_named_pipe,
+  channel_type_unused_1,
+  channel_type_unused_2,
+  channel_type_unused_3,
   channel_type_win32_anonymous_pipe,
   channel_type_win32_named_pipe
 };

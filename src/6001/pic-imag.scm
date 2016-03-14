@@ -84,7 +84,7 @@ USA.
 			   (write-pixel pixels n-is-1 v)
 			   (write-pixel pixels (fix:+ n-is-1 1) v)
 			   (x-loop (fix:+ px 1) (fix:+ ix h-sf)))
-			 (y-loop (fix:- py 1) 
+			 (y-loop (fix:- py 1)
 				 (fix:+ iy-index rect-index-height))))))))
 
 	  ((and (fix:= 3 h-sf) (fix:= 3 v-sf))
@@ -107,7 +107,7 @@ USA.
 			   (write-pixel pixels (fix:+ row2 1) v)
 			   (write-pixel pixels (fix:+ row2 2) v)
 			   (x-loop (fix:+ px 1) (fix:+ ix h-sf)))
-			 (y-loop (fix:- py 1) 
+			 (y-loop (fix:- py 1)
 				 (fix:+ iy-index rect-index-height))))))))
 
 	  ((and (fix:= 4 h-sf) (fix:= 4 v-sf))
@@ -138,10 +138,10 @@ USA.
 			   (write-pixel pixels (fix:+ row3 2) v)
 			   (write-pixel pixels (fix:+ row3 3) v)
 			   (x-loop (fix:+ px 1) (fix:+ ix h-sf)))
-			 (y-loop (fix:- py 1) 
+			 (y-loop (fix:- py 1)
 				 (fix:+ iy-index rect-index-height))))))))
 
-	  (else 
+	  (else
 	   (let y-loop ((py py-max) (iy-index 0))
 	     (if (fix:<= 0 py)
 		 (let ((pic-row (vector-ref pic-data py)))
@@ -160,13 +160,10 @@ USA.
 					   (m-loop (fix:+ m 1)))
 					 (n-loop (fix:+ n image-width)))))
 				 (x-loop (fix:+ px 1) (fix:+ ix h-sf)))))
-			 (y-loop (fix:- py 1) 
+			 (y-loop (fix:- py 1)
 				 (fix:+ iy-index rect-index-height)))))))))
     ;; Kludge: IMAGE/FILL-FROM-BYTE-VECTOR should take an argument
     ;; that specifies what color a given byte in PIXELS maps to.
-    ;; OS/2 requires this information, so we supply it here.
-    (if (eq? 'OS/2 microcode-id/operating-system)
-	(os2-image/set-colormap image (os2-image-colormap)))
     (image/fill-from-byte-vector image pixels)
     (1d-table/put! (graphics-device/properties window) image (cons h-sf v-sf))
     image))

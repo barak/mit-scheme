@@ -96,7 +96,6 @@ for KEYWORD in ${KEYWORDS}; do
     rm-pkg)
 	maybe_rm *-unx.crf *-unx.fre *-unx.pkd
 	maybe_rm *-w32.crf *-w32.fre *-w32.pkd
-	maybe_rm *-os2.crf *-os2.fre *-os2.pkd
 	;;
     rm-c)
 	maybe_rm *.c

@@ -106,8 +106,6 @@ USA.
       ((WIN32)
        ((access set-focus (->environment '(win32)))
 	((access get-handle (->environment '(win32))) 1)))
-      ((OS/2)
-       (os2-screen/activate! (selected-screen)))
       (else
        (error "Unsupported graphics type:" name)))))
 

@@ -56,27 +56,9 @@ DEFUN (gc_death, (code, message, scan, free),
 
 static SCHEME_OBJECT * memory_base;
 
-#ifdef OS2
-
-#include <fcntl.h>
-#include <io.h>
-#include <sys\types.h>
-
-#define fread OS2_fread
-extern off_t EXFUN (OS2_fread, (char *, unsigned int, off_t, FILE *));
-
-#define fwrite OS2_fwrite
-extern off_t EXFUN (OS2_fwrite, (char *, unsigned int, off_t, FILE *));
-
-#endif /* OS2 */
-
 long
 DEFUN (Load_Data, (Count, To_Where), long Count AND SCHEME_OBJECT *To_Where)
 {
-#ifdef OS2
-  setmode ((fileno (stdin)), O_BINARY);
-#endif /* OS2 */
-
   return (fread (((char *) To_Where),
 		 (sizeof (SCHEME_OBJECT)),
 		 Count,

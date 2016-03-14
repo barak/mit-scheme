@@ -127,7 +127,7 @@ encryption.  This provides connection security without the need to
 integrate the encryption into the client or the server.}
 
 To use @acronym{IMAIL}, you must create an Edwin init file, called
-@file{~/.edwin} on unix machines or @file{edwin.ini} on Windows or OS/2
+@file{~/.edwin} on unix machines or @file{edwin.ini} on Windows
 machines.  This file contains arbitrary Scheme expressions that are
 evaluated in the Edwin environment when Edwin is started.  In addition
 to any other customizations you put in this file, you must include the
@@ -407,8 +407,8 @@ any pathname without encoding.  @acronym{IMAIL} always displays
 
 In practice, this means that most unix filenames are written verbatim,
 with exceptions for special characters, and with the leading slash
-omitted.  However, @acronym{DOS}-style filenames, as used by Windows and
-OS/2, must be specially rewritten to conform to this style.
+omitted.  However, @acronym{DOS}-style filenames, as used by Windows,
+must be specially rewritten to conform to this style.
 
 The rewriting rules for @acronym{DOS} file @acronym{URL}s are not
 specified by the standard, so consequently @acronym{IMAIL} defines its
@@ -1392,7 +1392,7 @@ the message text.  This command saves the entity that point is on; if
 point is not on any entity, an error is signalled.  If the entity is
 encoded, e.g. with quoted-printable or base64 encoding, it is decoded
 before it is saved.  If the entity is text, it is written to the file in
-text mode (relevant only under Windows and OS/2); otherwise it is
+text mode (relevant only under Windows); otherwise it is
 written in binary mode.
 
 @findex imail-mouse-save-mime-entity

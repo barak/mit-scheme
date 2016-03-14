@@ -41,7 +41,7 @@ enum file_type
   file_type_unix_block_device,
   file_type_unix_fifo,
   file_type_unix_stream_socket,
-  file_type_os2_named_pipe,
+  file_type_unused_1,
   file_type_win32_named_pipe,
   file_type_unknown = 0xFFFF
 };

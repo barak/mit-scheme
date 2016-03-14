@@ -25,7 +25,7 @@ USA.
 |#
 
 ;;;; Student graphics Interface
-;;;; implemented for X Windows/ Win32 / OS2
+;;;; implemented for X Windows/ Win32
 
 (declare (usual-integrations))
 
@@ -71,8 +71,7 @@ USA.
     (set! graphics-available?
 	  (lambda ()
 	    (or (graphics-type-available? 'X)
-		(graphics-type-available? 'WIN32)
-		(graphics-type-available? 'OS/2))))
+		(graphics-type-available? 'WIN32))))
 
     (set! graphics-text
 	  (lambda (text x y)
@@ -87,8 +86,6 @@ USA.
 			 (make-graphics-device 'X #F "512x388"))
 			((graphics-type-available? 'WIN32)
 			 (make-graphics-device 'WIN32 512 388))
-			((graphics-type-available? 'OS/2)
-			 (make-graphics-device 'OS/2 512 388))
 			(else
 			 (error "Graphics is not available"))))
 	    (graphics-set-coordinate-limits graphics-device -256 -195 255 194)

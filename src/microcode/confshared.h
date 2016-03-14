@@ -486,31 +486,6 @@ extern void * alpha_heap_malloc (unsigned long);
 
 #endif /* __alpha */
 
-#ifdef __OS2__
-
-#define PREALLOCATE_HEAP_MEMORY()					\
-{									\
-  extern void OS2_alloc_heap (void);					\
-  OS2_alloc_heap ();							\
-}
-
-extern void * OS2_commit_heap (unsigned long);
-#define HEAP_MALLOC OS2_commit_heap
-#define HEAP_FREE(address)
-
-#define EXIT_SCHEME_DECLARATIONS extern void OS2_exit_scheme (int)
-#define EXIT_SCHEME OS2_exit_scheme
-
-extern void OS2_stack_reset (void);
-#define STACK_RESET OS2_stack_reset
-
-extern int OS2_stack_overflowed_p (void);
-#define STACK_OVERFLOWED_P OS2_stack_overflowed_p
-
-#define CC_ARCH_INITIALIZE i386_interface_initialize
-
-#endif /* __OS2__ */
-
 #ifdef __WIN32__
 
 extern void win32_stack_reset (void);

@@ -46,7 +46,7 @@ USA.
 #  include "ntio.h"
 #endif
 
-#if defined(__WIN32__) || defined(__OS2__)
+#if defined(__WIN32__)
 #  define DOS_LIKE_FILENAMES
 #endif
 

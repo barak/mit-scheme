@@ -118,7 +118,7 @@ USA.
   RELEASE_INTERRUPT_REGISTERS ();					\
 } while (0)
 
-#if defined(__OS2__) || defined(__WIN32__)
+#if defined(__WIN32__)
    extern void OS_grab_interrupt_registers (void);
    extern void OS_release_interrupt_registers (void);
 #  define GRAB_INTERRUPT_REGISTERS() OS_grab_interrupt_registers ()

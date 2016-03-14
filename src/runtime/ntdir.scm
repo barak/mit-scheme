@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; Directory Operations -- OS/2
+;;;; Directory Operations -- Win32
 ;;; package: (runtime directory)
 
 (declare (usual-integrations))

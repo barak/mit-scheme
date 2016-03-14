@@ -63,7 +63,7 @@ USA.
 		   (read-package-model filename os-type))))))
 
 (define os-types
-  '(NT OS/2 UNIX))
+  '(NT UNIX))
 
 (define cref/generate-cref
   (generate/common

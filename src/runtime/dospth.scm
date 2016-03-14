@@ -396,10 +396,8 @@ USA.
 	       (and (not (equal? directory directory*))
 		    (let ((pathname*
 			   (pathname-new-directory pathname directory*)))
-		      (if (eq? 'OS/2 microcode-id/operating-system)
-			  pathname*
-			  (and ((ucode-primitive file-eq? 2)
-				(->namestring pathname)
-				(->namestring pathname*))
-			       pathname*))))))
+		      (and ((ucode-primitive file-eq? 2)
+			    (->namestring pathname)
+			    (->namestring pathname*))
+			   pathname*)))))
 	pathname)))

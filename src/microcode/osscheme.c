@@ -64,27 +64,6 @@ executing_scheme_primitive_p (void)
   return (PRIMITIVE_P (GET_PRIMITIVE));
 }
 
-#ifdef __OS2__
-
-void
-request_attention_interrupt (void)
-{
-  REQUEST_INTERRUPT (INT_Global_1);
-}
-
-int
-test_and_clear_attention_interrupt (void)
-{
-  unsigned long code;
-  GRAB_INTERRUPT_REGISTERS ();
-  code = GET_INT_CODE;
-  CLEAR_INTERRUPT_NOLOCK (INT_Global_1);
-  RELEASE_INTERRUPT_REGISTERS ();
-  return ((code & INT_Global_1) != 0);
-}
-
-#endif /* __OS2__ */
-
 void
 request_console_resize_interrupt (void)
 {

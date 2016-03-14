@@ -130,7 +130,7 @@ USA.
 			     '()))))
 		   specs)))
 
-(define os-pkd-suffixes '("unx" "w32" "os2"))
+(define os-pkd-suffixes '("unx" "w32"))
 
 (define (package-description-files descriptor)
   (receive (filename suffixes)

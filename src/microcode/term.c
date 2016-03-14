@@ -39,10 +39,6 @@ extern void get_band_parameters (unsigned long *, unsigned long *);
 #  define USING_MESSAGE_BOX_FOR_FATAL_OUTPUT
 #endif
 
-#ifdef __OS2__
-#  define USING_MESSAGE_BOX_FOR_FATAL_OUTPUT
-#endif
-
 static void edwin_auto_save (void);
 static void delete_temp_files (void);
 

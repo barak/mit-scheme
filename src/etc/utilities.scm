@@ -112,7 +112,7 @@ USA.
      (map (lambda (os-suffix)
 	    (string-append pkg-name "-" os-suffix))
 	  ;; XXX Need them all to process other package descriptions.
-	  '("os2" "unx" "w32"))
+	  '("unx" "w32"))
      (sort (let ((names
 		  (map ->namestring
 		       (cref/package-files

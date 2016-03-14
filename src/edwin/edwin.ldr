@@ -70,7 +70,7 @@ USA.
       (define string-member? (member-procedure string=?))
       (define (boolean-and a b) (and a b))
 
-      (if (memq (lookup 'OS-TYPE) '(UNIX OS/2 NT))
+      (if (memq (lookup 'OS-TYPE) '(UNIX NT))
 	  (begin
 	    (load-option 'SUBPROCESS)
 	    (load-option 'SYNCHRONOUS-SUBPROCESS)))
@@ -152,21 +152,17 @@ USA.
 	   (load "unix" environment))
 	  ((DOS NT)
 	   (load "dos" environment)
-	   (load "dosfile" environment))
-	  ((OS/2)
-	   (load "os2" environment)
 	   (load "dosfile" environment)))
 
 	(load "fileio" environment)
 
-	(if (not (eq? 'OS/2 (lookup 'OS-TYPE)))
-	    (let ((env (->environment '(EDWIN SCREEN CONSOLE-SCREEN))))
-	      (load-set-and-initialize! '("termcap" "tterm") env)
-	      (if (memq (lookup 'OS-TYPE) '(DOS NT))
-		  (begin
-		    (load "ansi" env)
-		    (if (load "bios" env)
-			((access bios-initialize-package! env)))))))
+	(let ((env (->environment '(EDWIN SCREEN CONSOLE-SCREEN))))
+	  (load-set-and-initialize! '("termcap" "tterm") env)
+	  (if (memq (lookup 'OS-TYPE) '(DOS NT))
+	      (begin
+		(load "ansi" env)
+		(if (load "bios" env)
+		    ((access bios-initialize-package! env))))))
 
         (case (lookup 'OS-TYPE)
 	  ((NT)
@@ -177,15 +173,10 @@ USA.
 	  ((UNIX)
 	   (load-set-and-initialize! '("xterm")
 				     (->environment '(EDWIN SCREEN X-SCREEN)))
-	   (load "key-x11" (->environment '(EDWIN X-KEYS))))
-	  ((OS/2)
-	   (load-set-and-initialize! '("os2term")
-				     (->environment
-				      '(EDWIN SCREEN OS2-SCREEN)))))
+	   (load "key-x11" (->environment '(EDWIN X-KEYS)))))
 
 	(load-case 'OS-TYPE
 		   '((UNIX . "process")
-		     (OS/2 . "process")
 		     (DOS . "dosproc")
 		     (NT . "process"))
 		   (->environment '(EDWIN PROCESS)))
@@ -193,8 +184,7 @@ USA.
 	(load "mousecom" environment)
         (case (lookup 'OS-TYPE)
 	  ((UNIX) (load "xcom" (->environment '(EDWIN X-COMMANDS))))
-	  ((NT) (load "win32com" (->environment '(EDWIN WIN-COMMANDS))))
-	  ((OS/2) (load "os2com" (->environment '(EDWIN OS2-COMMANDS)))))
+	  ((NT) (load "win32com" (->environment '(EDWIN WIN-COMMANDS)))))
 	;; debug depends on button1-down defined in mousecom
 	(load "debug" (->environment '(EDWIN DEBUGGER)))
 
@@ -202,7 +192,6 @@ USA.
 	  (load "dired" env)
 	  (case (lookup 'OS-TYPE)
 	    ((UNIX) (load "dirunx" env))
-	    ((OS/2) (load "diros2" env))
 	    ((NT) (load "dirw32" env))))
 
 	(load "abbrev" environment)

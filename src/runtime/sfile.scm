@@ -62,7 +62,7 @@ USA.
 			    UNIX-BLOCK-DEVICE
 			    UNIX-NAMED-PIPE
 			    UNIX-SOCKET
-			    OS2-NAMED-PIPE
+			    UNKNOWN
 			    WIN32-NAMED-PIPE)))
 		    (if (fix:< n (vector-length types))
 			(vector-ref types n)

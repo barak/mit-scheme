@@ -89,8 +89,7 @@ USA.
 (define (channel-type=terminal? channel)
   (let ((type (channel-type channel)))
     (or (eq? 'TERMINAL type)
-	(eq? 'UNIX-PTY-MASTER type)
-	(eq? 'OS/2-CONSOLE type))))
+	(eq? 'UNIX-PTY-MASTER type))))
 
 (define (channel-close channel)
   (with-gc-finalizer-lock open-channels

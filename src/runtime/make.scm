@@ -342,7 +342,6 @@ USA.
   (let ((name
 	 (string-append "runtime-"
 			(cond ((eq? os-name 'NT) "w32")
-			      ((eq? os-name 'OS/2) "os2")
 			      ((eq? os-name 'UNIX) "unx")
 			      (else "unk"))
 			".pkd")))
@@ -537,7 +536,6 @@ USA.
    ;; operating system are actually loaded and initialized.
    (OPTIONAL (RUNTIME STARBASE-GRAPHICS))
    (OPTIONAL (RUNTIME X-GRAPHICS))
-   (OPTIONAL (RUNTIME OS2-GRAPHICS))
    ;; Emacs -- last because it installs hooks everywhere which must be initted.
    (RUNTIME EMACS-INTERFACE)
    ;; More debugging

@@ -34,14 +34,6 @@ USA.
 #  include "ux.h"
 #endif
 
-/* Under OS/2, socket support is the default but can be disabled.  */
-#ifdef __OS2__
-#  ifndef DISABLE_SOCKET_SUPPORT
-#    define HAVE_SOCKETS 1
-#    define HAVE_UNIX_SOCKETS 1
-#  endif
-#endif
-
 /* Under Win32, socket support is the default but can be disabled.  */
 #ifdef __WIN32__
 #  ifndef DISABLE_SOCKET_SUPPORT

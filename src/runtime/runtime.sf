@@ -37,7 +37,6 @@ USA.
   (sf-conditionally "gentag")
   (sf-conditionally "graphics")
   (sf-conditionally "infstr")
-  (sf-conditionally "os2winp")
 
   (sf-conditionally "port")
   (sf-conditionally "input")
