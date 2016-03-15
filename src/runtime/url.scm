@@ -41,17 +41,6 @@ USA.
   (fragment uri-fragment)
   (string uri->string))
 
-(set-record-type-unparser-method! <uri>
-  (simple-unparser-method 'uri
-    (lambda (uri)
-      (list (uri->string uri)))))
-
-(define uri-parser-method
-  (simple-parser-method
-   (lambda (objects)
-     (and (pair? objects)
-	  (string->uri (car objects))))))
-
 (define (make-uri scheme authority path query fragment)
   (let ((path (if (equal? path '("")) '() path)))
     (if scheme (guarantee-uri-scheme scheme 'MAKE-URI))
@@ -916,7 +905,7 @@ USA.
   (set! url:char-set:unescaped
 	(char-set-union url:char-set:unreserved
 			(string->char-set ";/?:@&=")))
-  (define-bracketed-object-parser-method 'URI uri-parser-method))
+  unspecific)
 
 ;;;; Partial URIs
 

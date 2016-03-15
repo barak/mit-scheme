@@ -647,9 +647,17 @@ USA.
   (map-reference-trap (lambda () (vector-ref vector index))))
 
 (define (unparse/record record)
-  (if (get-param:unparse-with-maximum-readability?)
-      (*unparse-readable-hash record)
-      (invoke-user-method unparse-record record)))
+  (cond ((uri? record)
+	 (unparse/uri record))
+	((get-param:unparse-with-maximum-readability?)
+	 (*unparse-readable-hash record))
+	(else
+	 (invoke-user-method unparse-record record))))
+
+(define (unparse/uri uri)
+  (*unparse-string "#<")
+  (*unparse-string (uri->string uri))
+  (*unparse-string ">"))
 
 (define (unparse/pair pair)
   (cond ((unparse-list/prefix-pair? pair)

@@ -275,6 +275,7 @@ USA.
     (store-char-set special special-number-leaders handler:number)
     (store-char initial #\( handler:list)
     (store-char special #\( handler:vector)
+    (store-char special #\< handler:uri)
     (store-char special #\[ handler:hashed-object)
     (store-char initial #\) handler:close-parenthesis)
     (store-char initial #\] handler:close-bracket)
@@ -834,6 +835,18 @@ USA.
 	  ((string-ci=? name "default") (default-object))
 	  ((string-ci=? name "unspecific") unspecific)
 	  (else (error:illegal-named-constant name)))))
+
+(define (handler:uri port db ctx char1 char2)
+  ctx char1 char2
+  (string->uri
+   (call-with-output-string
+     (lambda (port*)
+       (let loop ()
+	 (let ((char (%read-char/no-eof port db)))
+	   (if (not (char=? char #\>))
+	       (begin
+		 (%write-char char port*)
+		 (loop)))))))))
 
 (define (handler:special-arg port db ctx char1 char2)
   ctx char1
