@@ -75,8 +75,9 @@ USA.
   (and (uri? object)
        (uri-relative? object)))
 
-(define (error:not-uri object caller)
-  (error:wrong-type-argument object "URI" caller))
+(define-guarantee uri "URI")
+(define-guarantee absolute-uri "absolute URI")
+(define-guarantee relative-uri "relative URI")
 
 (define (uri-scheme? object)
   (and (interned-symbol? object)

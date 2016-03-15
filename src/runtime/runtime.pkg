@@ -5371,9 +5371,6 @@ USA.
   (files "url")
   (parent (runtime))
   (export ()
-	  (guarantee-absolute-uri ->absolute-uri)
-	  (guarantee-relative-uri ->relative-uri)
-	  (guarantee-uri ->uri)
 	  (url:decode-string decode-component)
 	  (url:match:escape matcher:pct-encoded)
 	  (url:parse:hostport parser:hostport)
@@ -5397,14 +5394,16 @@ USA.
 	  char-set:uri-userinfo
 	  encode-uri-path-segment
 	  error:not-partial-uri
-	  error:not-uri
 	  error:not-uri-authority
 	  error:not-uri-host
 	  error:not-uri-path
 	  error:not-uri-port
 	  error:not-uri-scheme
 	  error:not-uri-userinfo
+	  guarantee-absolute-uri
 	  guarantee-partial-uri
+	  guarantee-relative-uri
+	  guarantee-uri
 	  guarantee-uri-authority
 	  guarantee-uri-host
 	  guarantee-uri-path
