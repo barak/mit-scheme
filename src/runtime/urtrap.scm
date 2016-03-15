@@ -33,13 +33,11 @@ USA.
 		   (type vector)
 		   (named '|#[(runtime reference-trap)reference-trap]|)
 		   (print-procedure
-		    (standard-unparser-method 'REFERENCE-TRAP
-		      (lambda (trap port)
-			(write-char #\space port)
-			(write (let ((kind (reference-trap-kind trap)))
+		    (simple-unparser-method 'REFERENCE-TRAP
+		      (lambda (trap)
+			(list (let ((kind (reference-trap-kind trap)))
 				 (or (reference-trap-kind-name kind)
-				     kind))
-			       port)))))
+				     kind)))))))
   (kind #f read-only #t)
   (extra #f read-only #t))
 

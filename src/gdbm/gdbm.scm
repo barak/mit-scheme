@@ -234,11 +234,9 @@ USA.
 
 (define-structure (gdbf (constructor make-gdbf)
 			(print-procedure
-			 (standard-unparser-method
-			  'GDBF
-			  (lambda (gdbf port)
-			    (write-char #\space port)
-			    (write (gdbf-filename gdbf) port)))))
+			 (simple-unparser-method 'GDBF
+			   (lambda (gdbf)
+			     (list (gdbf-filename gdbf))))))
   ;; Note that communicating through this malloced-per-GDBM_FILE
   ;; helper struct assumes there are no callbacks possible during gdbm
   ;; operations (via which this procedure could be called multiple

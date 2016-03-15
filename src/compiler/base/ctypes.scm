@@ -59,19 +59,17 @@ USA.
     (make-scfg application '())))
 
 (define-vector-tag-unparser application-tag
-  (lambda (state application)
-    ((case (application-type application)
-       ((COMBINATION)
-	(standard-unparser (symbol->string 'COMBINATION) false))
-       ((RETURN)
-	(standard-unparser (symbol->string 'RETURN)
-	  (lambda (state return)
-	    (unparse-object state (return/operand return)))))
-       (else
-	(standard-unparser (symbol->string 'APPLICATION)
-	  (lambda (state application)
-	    (unparse-object state (application-type application))))))
-     state application)))
+  (simple-unparser-method
+   (lambda (application)
+     (case (application-type application)
+       ((COMBINATION) "LIAR:combination")
+       ((RETURN) "LIAR:return")
+       (else "LIAR:application")))
+   (lambda (application)
+     (case (application-type application)
+       ((COMBINATION) '())
+       ((RETURN) (list (return/operand return)))
+       (else (list (application-type application)))))))
 
 (define-integrable (application-block application)
   (reference-context/block (application-context application)))

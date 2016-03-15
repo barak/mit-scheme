@@ -104,19 +104,20 @@ USA.
     procedure))
 
 (define-vector-tag-unparser procedure-tag
-  (lambda (state procedure)
-    ((let ((type
-	    (enumeration/index->name continuation-types
-				     (procedure-type procedure))))
-       (if (eq? type 'PROCEDURE)
-	   (standard-unparser (symbol->string 'PROCEDURE)
-	     (lambda (state procedure)
-	       (unparse-label state (procedure-label procedure))))
-	   (standard-unparser (symbol->string (procedure-label procedure))
-	     (lambda (state procedure)
-	       procedure
-	       (unparse-object state type)))))
-     state procedure)))
+  (let ((get-type
+	 (lambda (procedure)
+	   (enumeration/index->name continuation-types
+				    (procedure-type procedure)))))
+    (simple-unparser-method
+     (lambda (procedure)
+       (if (eq? (get-type procedure) 'PROCEDURE)
+	   "LIAR:procedure"
+	   (string "LIAR:" (procedure-label procedure))))
+     (lambda (procedure)
+       (let ((type (get-type procedure)))
+	 (if (eq? type 'PROCEDURE)
+	     (list (procedure-label procedure))
+	     (list type)))))))
 
 (define-integrable (unparse-label state label)
   (unparse-string state (symbol->string label)))

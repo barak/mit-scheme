@@ -72,9 +72,9 @@ USA.
 		   (conc-name rnode/)
 		   (constructor make-rnode (register))
 		   (print-procedure
-		    (unparser/standard-method 'RNODE
-		      (lambda (state rnode)
-			(unparse-object state (rnode/register rnode))))))
+		    (simple-unparser-method 'RNODE
+		      (lambda (rnode)
+			(list (rnode/register rnode))))))
   (register false read-only true)
   (forward-links '())
   (backward-links '())

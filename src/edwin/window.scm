@@ -364,16 +364,16 @@ USA.
   (vector-set! inferior 4 redisplay-flags))
 
 (unparser/set-tagged-vector-method! %inferior-tag
-  (unparser/standard-method 'INFERIOR
-    (lambda (state inferior)
-      (unparse-object state (inferior-window inferior))
-      (unparse-string state " x,y=(")
-      (unparse-object state (inferior-x-start inferior))
-      (unparse-string state ",")
-      (unparse-object state (inferior-y-start inferior))
-      (unparse-string state ")")
+  (standard-unparser-method 'INFERIOR
+    (lambda (inferior port)
+      (write (inferior-window inferior) port)
+      (write-string " x,y=(" port)
+      (write (inferior-x-start inferior) port)
+      (write-string "," port)
+      (write (inferior-y-start inferior) port)
+      (write-string ")" port)
       (if (inferior-needs-redisplay? inferior)
-	  (unparse-string state " needs-redisplay")))))
+	  (write-string " needs-redisplay" port)))))
 
 (define (inferior-copy inferior)
   (%make-inferior (inferior-window inferior)

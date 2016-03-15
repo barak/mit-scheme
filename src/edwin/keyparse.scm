@@ -120,10 +120,9 @@ USA.
 		   (keyword-constructor make-keyparser-fragment)
 		   (conc-name keyparser-fragment/)
 		   (print-procedure
-		    (standard-unparser-method 'KEYPARSER-FRAGMENT
-		      (lambda (fragment port)
-			(write-char #\space port)
-			(write (keyparser-fragment/keyword fragment) port)))))
+		    (simple-unparser-method 'KEYPARSER-FRAGMENT
+		      (lambda (fragment)
+			(list (keyparser-fragment/keyword fragment))))))
   ;; Keyword that introduces the structure.
   (keyword #f read-only #t)
 
@@ -326,10 +325,9 @@ See \\[complete-keyword]."
 (define-structure (keyparser-stack-entry
 		   (conc-name keyparser-stack-entry/)
 		   (print-procedure
-		    (standard-unparser-method 'KEYPARSER-STACK-ENTRY
-		      (lambda (entry port)
-			(write-char #\space port)
-			(write (keyparser-stack-entry/keyword entry) port)))))
+		    (simple-unparser-method 'KEYPARSER-STACK-ENTRY
+		      (lambda (entry)
+			(list (keyparser-stack-entry/keyword entry))))))
   (pattern #f read-only #t)
   (index #f read-only #t)
   (start #f read-only #t))

@@ -52,18 +52,16 @@ USA.
   (discretionary-flush-output #f read-only #t))
 
 (set-record-type-unparser-method! <port-type>
-  (lambda (state type)
-    ((standard-unparser-method
-      (if (port-type/supports-input? type)
-	  (if (port-type/supports-output? type)
-	      'I/O-PORT-TYPE
-	      'INPUT-PORT-TYPE)
-	  (if (port-type/supports-output? type)
-	      'OUTPUT-PORT-TYPE
-	      'PORT-TYPE))
-      #f)
-     state
-     type)))
+  (standard-unparser-method
+   (lambda (type)
+     (if (port-type/supports-input? type)
+	(if (port-type/supports-output? type)
+	    'I/O-PORT-TYPE
+	    'INPUT-PORT-TYPE)
+	(if (port-type/supports-output? type)
+	    'OUTPUT-PORT-TYPE
+	    'PORT-TYPE)))
+   #f))
 
 (define (guarantee-port-type object #!optional caller)
   (if (not (port-type? object))
@@ -497,9 +495,6 @@ USA.
        (cond ((port/operation port 'WRITE-SELF)
 	      => (lambda (operation)
 		   (standard-unparser-method name operation)))
-	     ((port/operation port 'PRINT-SELF)
-	      => (lambda (operation)
-		   (unparser/standard-method name operation)))
 	     (else
 	      (standard-unparser-method name #f))))
      state

@@ -114,14 +114,13 @@ known that the continuation need not be used.
 		   (constructor virtual-continuation/%make)
 		   (conc-name virtual-continuation/)
 		   (print-procedure
-		    (standard-unparser (symbol->string 'VIRTUAL-CONTINUATION)
-		      (lambda (state continuation)
+		    (simple-unparser-method "LIAR:virtual-continuation"
+		      (lambda (continuation)
 			(let ((type (virtual-continuation/type continuation)))
 			  (if type
-			      (unparse-object
-			       state
-			       (enumeration/index->name continuation-types
-							type))))))))
+			      (list (enumeration/index->name continuation-types
+							     type))
+			      '()))))))
   context
   parent
   type

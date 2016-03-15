@@ -461,11 +461,9 @@ USA.
 	   (let ((root (symbol-append 'XML- name)))
 	     `(SET-RECORD-TYPE-UNPARSER-METHOD!
 	       ,(close-syntax (symbol-append '< root '>) environment)
-	       (STANDARD-UNPARSER-METHOD ',root
-		 (LAMBDA (,name PORT)
-		   (WRITE-CHAR #\SPACE PORT)
-		   (WRITE (,(close-syntax accessor environment) ,name)
-			  PORT))))))
+	       (SIMPLE-UNPARSER-METHOD ',root
+		 (LAMBDA (,name)
+		   (LIST (,(close-syntax accessor environment) ,name)))))))
 	 (ill-formed-syntax form)))))
 
 (define-xml-printer processing-instructions xml-processing-instructions-name)

@@ -752,10 +752,9 @@ USA.
 (define-structure (mime-encoding
                    (conc-name mime-encoding/)
                    (print-procedure
-                    (standard-unparser-method 'MIME-ENCODING
-                      (lambda (encoding output-port)
-                        (write-char #\space output-port)
-                        (write (mime-encoding/name encoding) output-port))))
+                    (simple-unparser-method 'MIME-ENCODING
+                      (lambda (encoding)
+                        (list (mime-encoding/name encoding)))))
                    (constructor %make-mime-encoding))
   (name                          #f read-only #t)
   (identity?                     #f read-only #t)

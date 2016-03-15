@@ -30,20 +30,16 @@ USA.
 (declare (usual-integrations))
 
 (define (standard-unparser-method name unparser)
-  (make-method name
-	       (and unparser
-		    (lambda (state object)
-		      (with-current-unparser-state state
-			(lambda (port)
-			  (unparser object port)))))))
+  (make-method name unparser))
 
 (define (simple-unparser-method name method)
   (standard-unparser-method name
-    (lambda (object port)
-      (for-each (lambda (object)
-		  (write-char #\space port)
-		  (write object port))
-		(method object)))))
+    (and method
+	 (lambda (object port)
+	   (for-each (lambda (object)
+		       (write-char #\space port)
+		       (write object port))
+		     (method object))))))
 
 (define (simple-parser-method procedure)
   (lambda (objects lose)
@@ -51,33 +47,37 @@ USA.
 	     (procedure (cddr objects)))
 	(lose))))
 
-(define (unparser/standard-method name #!optional unparser)
-  (make-method name
-	       (and (not (default-object? unparser))
-		    unparser
-		    (lambda (state object)
-		      (unparse-char state #\space)
-		      (unparser state object)))))
-
 (define (make-method name unparser)
+  (general-unparser-method
+   (lambda (object port)
+     (let ((hash-string (number->string (hash object))))
+       (if (get-param:unparse-with-maximum-readability?)
+	   (begin
+	     (write-string "#@" port)
+	     (write-string hash-string port))
+	   (begin
+	     (write-string "#[" port)
+	     (let loop ((name name))
+	       (cond ((string? name) (write-string name port))
+		     ((procedure? name) (loop (name object)))
+		     (else (write name port))))
+	     (write-char #\space port)
+	     (write-string hash-string port)
+	     (if unparser (unparser object port))
+	     (write-char #\] port)))))))
+
+(define (general-unparser-method unparser)
   (lambda (state object)
-    (let ((port (unparser-state/port state))
-	  (hash-string (number->string (hash object))))
-      (if (get-param:unparse-with-maximum-readability?)
-	  (begin
-	    (write-string "#@" port)
-	    (write-string hash-string port))
-	  (begin
-	    (write-string "#[" port)
-	    (if (string? name)
-		(write-string name port)
-		(with-current-unparser-state state
-		  (lambda (port)
-		    (write name port))))
-	    (write-char #\space port)
-	    (write-string hash-string port)
-	    (if unparser (unparser state object))
-	    (write-char #\] port))))))
+    (with-current-unparser-state state
+      (lambda (port)
+	(unparser object port)))))
+
+(define (bracketed-unparser-method unparser)
+  (general-unparser-method
+   (lambda (object port)
+     (write-string "#[" port)
+     (unparser object port)
+     (write-char #\] port))))
 
 (define (unparser-method? object)
   (and (procedure? object)

@@ -41,7 +41,7 @@ USA.
 
 (unparser/set-tagged-pair-method!
  pathname-map/tag
- (unparser/standard-method "PATHNAME-MAP"))
+ (standard-unparser-method "PATHNAME-MAP" #f))
 
 (declare (integrate-operator node/make))
 

@@ -53,10 +53,9 @@ USA.
 		     operation/set-line-style
 		     custom-operations))
 		   (print-procedure
-		    (standard-unparser-method 'GRAPHICS-TYPE
-		      (lambda (type port)
-			(write-char #\space port)
-			(write (graphics-device-type/name type) port)))))
+		    (simple-unparser-method 'GRAPHICS-TYPE
+		      (lambda (type)
+			(list (graphics-device-type/name type))))))
   (name false read-only true)
   (operation/available? false read-only true)
   (operation/clear false read-only true)

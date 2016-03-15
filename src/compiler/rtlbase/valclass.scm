@@ -32,9 +32,9 @@ USA.
 		   (conc-name value-class/)
 		   (constructor %make-value-class (name parent))
 		   (print-procedure
-		    (unparser/standard-method 'VALUE-CLASS
-		      (lambda (state class)
-			(unparse-object state (value-class/name class))))))
+		    (simple-unparser-method 'VALUE-CLASS
+		      (lambda (class)
+			(list (value-class/name class))))))
   (name false read-only true)
   (parent false read-only true)
   (children '())

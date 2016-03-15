@@ -46,11 +46,10 @@ USA.
   (let ((root-tag (%make-vector-tag false 'OBJECT false false)))
     (set-vector-tag-%unparser!
      root-tag
-     (lambda (state object)
-       ((standard-unparser
-	 (symbol->string (vector-tag-name (tagged-vector/tag object)))
-	 false)
-	state object)))
+     (simple-unparser-method
+      (lambda (object)
+	(string "LIAR:" (vector-tag-name (tagged-vector/tag object))))
+      #f))
     (named-lambda (make-vector-tag parent name enumeration)
       (let ((tag
 	     (%make-vector-tag (or parent root-tag)
@@ -148,12 +147,6 @@ USA.
 	 (vector-tag-description (tagged-vector/tag object)))
 	(else
 	 (error "Not a tagged vector" object))))
-
-(define (standard-unparser name unparser)
-  (let ((name (string-append (symbol->string 'LIAR) ":" name)))
-    (if unparser
-	(unparser/standard-method name unparser)
-	(unparser/standard-method name))))
 
 (define (tagged-vector/unparse state vector)
   (parameterize* (list (cons param:unparser-radix 16))

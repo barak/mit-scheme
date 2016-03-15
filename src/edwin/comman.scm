@@ -31,9 +31,9 @@ USA.
 (define-structure (command
 		   (constructor %make-command ())
 		   (print-procedure
-		    (unparser/standard-method 'COMMAND
-		      (lambda (state command)
-			(unparse-object state (command-name command))))))
+		    (simple-unparser-method 'COMMAND
+		      (lambda (command)
+			(list (command-name command))))))
   name
   %description
   interactive-specification
@@ -103,9 +103,9 @@ USA.
 (define-structure (variable
 		   (constructor %make-variable ())
 		   (print-procedure
-		    (unparser/standard-method 'VARIABLE
-		      (lambda (state variable)
-			(unparse-object state (variable-name variable))))))
+		    (simple-unparser-method 'VARIABLE
+		      (lambda (variable)
+			(list (variable-name variable))))))
   name
   %description
   %value

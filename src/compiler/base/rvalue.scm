@@ -96,9 +96,9 @@ USA.
 	  constant))))
 
 (define-vector-tag-unparser constant-tag
-  (standard-unparser (symbol->string 'CONSTANT)
-    (lambda (state constant)
-      (unparse-object state (constant-value constant)))))
+  (simple-unparser-method "LIAR:constant"
+    (lambda (constant)
+      (list (constant-value constant)))))
 
 (define-integrable (rvalue/constant? rvalue)
   (eq? (tagged-vector/tag rvalue) constant-tag))
@@ -114,9 +114,9 @@ USA.
   (make-rvalue reference-tag block lvalue safe?))
 
 (define-vector-tag-unparser reference-tag
-  (standard-unparser (symbol->string 'REFERENCE)
-    (lambda (state reference)
-      (unparse-object state (variable-name (reference-lvalue reference))))))
+  (simple-unparser-method "LIAR:reference"
+    (lambda (reference)
+      (list (variable-name (reference-lvalue reference))))))
 
 (define-integrable (rvalue/reference? rvalue)
   (eq? (tagged-vector/tag rvalue) reference-tag))
@@ -150,9 +150,9 @@ USA.
   (make-rvalue unassigned-test-tag block lvalue))
 
 (define-vector-tag-unparser unassigned-test-tag
-  (standard-unparser (symbol->string 'UNASSIGNED-TEST)
-    (lambda (state unassigned-test)
-      (unparse-object state (unassigned-test-lvalue unassigned-test)))))
+  (simple-unparser-method "LIAR:unassigned-test"
+    (lambda (unassigned-test)
+      (list (unassigned-test-lvalue unassigned-test)))))
 
 (define-integrable (rvalue/unassigned-test? rvalue)
   (eq? (tagged-vector/tag rvalue) unassigned-test-tag))

@@ -118,10 +118,9 @@ USA.
 				    opt val)))
 
 (define-structure (gdbf
-		   (print-procedure (standard-unparser-method 'GDBF
-				      (lambda (gdbf port)
-					(write-char #\space port)
-					(write (gdbf-filename gdbf) port)))))
+		   (print-procedure (simple-unparser-method 'GDBF
+				      (lambda (gdbf)
+					(list (gdbf-filename gdbf))))))
   descriptor
   (filename #f read-only #t))
 

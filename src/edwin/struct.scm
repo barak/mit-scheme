@@ -306,17 +306,14 @@ USA.
 (define-structure (mark
 		   (constructor make-temporary-mark)
 		   (print-procedure
-		    (unparser/standard-method 'MARK
-		      (lambda (state mark)
-			(unparse-object state
-					(or (mark-buffer mark)
-					    (mark-group mark)))
-			(unparse-string state " ")
-			(unparse-object state (mark-index mark))
-			(unparse-string state
-					(if (mark-left-inserting? mark)
-					    " left"
-					    " right"))))))
+		    (simple-unparser-method 'MARK
+		      (lambda (mark)
+			(list (or (mark-buffer mark)
+				  (mark-group mark))
+			      (mark-index mark)
+			      (if (mark-left-inserting? mark)
+				  'left
+				  'right))))))
   ;; The microcode file "edwin.h" depends on the definition of this
   ;; structure.
   (group #f read-only #t)

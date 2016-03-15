@@ -92,10 +92,9 @@ USA.
   (expanded combo-name-expanded))
 
 (set-record-type-unparser-method! <combo-name>
-  (standard-unparser-method 'XML-NAME
-    (lambda (name port)
-      (write-char #\space port)
-      (write (combo-name-qname name) port))))
+  (simple-unparser-method 'XML-NAME
+    (lambda (name)
+      (list (combo-name-qname name)))))
 
 (define-record-type <expanded-name>
     (make-expanded-name uri local combos)

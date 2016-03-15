@@ -98,9 +98,9 @@ USA.
       (variable-normal-offset variable)))
 
 (define-vector-tag-unparser variable-tag
-  (standard-unparser (symbol->string 'VARIABLE)
-    (lambda (state variable)
-      (unparse-object state (variable-name variable)))))
+  (simple-unparser-method "LIAR:variable"
+    (lambda (variable)
+      (list (variable-name variable)))))
 
 (define-integrable (lvalue/variable? lvalue)
   (eq? (tagged-vector/tag lvalue) variable-tag))

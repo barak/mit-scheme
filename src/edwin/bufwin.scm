@@ -501,12 +501,12 @@ USA.
 (define-structure (outline
 		   (constructor %make-outline)
 		   (print-procedure
-		    (unparser/standard-method 'OUTLINE
-		      (lambda (state outline)
-			(unparse-string state "index: ")
-			(unparse-object state (outline-index-length outline))
-			(unparse-string state " y: ")
-			(unparse-object state (outline-y-size outline))))))
+		    (standard-unparser-method 'OUTLINE
+		      (lambda (outline port)
+			(write-string "index: " port)
+			(write (outline-index-length outline) port)
+			(write-string " y: " port)
+			(write (outline-y-size outline) port)))))
   ;; The number of characters in the text line.  This is exclusive of
   ;; the newlines at the line's beginning and end, if any.
   index-length
@@ -569,16 +569,16 @@ USA.
 (define-structure (o3
 		   (constructor %make-o3)
 		   (print-procedure
-		    (unparser/standard-method 'O3
-		      (lambda (state o3)
-			(unparse-string state "index: ")
-			(unparse-object state (o3-index o3))
-			(unparse-string state " y: ")
-			(unparse-object state (o3-y o3))
+		    (standard-unparser-method 'O3
+		      (lambda (o3 port)
+			(write-string "index: " port)
+			(write (o3-index o3) port)
+			(write-string " y: " port)
+			(write (o3-y o3) port)
 			(if (outline? (o3-outline o3))
 			    (begin
-			      (unparse-string state " ")
-			      (unparse-object state (o3-outline o3))))))))
+			      (write-string " " port)
+			      (write (o3-outline o3) port)))))))
   outline
   index
   y)

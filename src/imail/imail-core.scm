@@ -967,10 +967,9 @@ USA.
 		   (safe-accessors #t)
 		   (constructor #f)
 		   (print-procedure
-		    (standard-unparser-method 'HEADER-FIELD
-		      (lambda (header port)
-			(write-char #\space port)
-			(write (header-field-name header) port)))))
+		    (simple-unparser-method 'HEADER-FIELD
+		      (lambda (header)
+			(list (header-field-name header))))))
   (name #f read-only #t)
   (value #f read-only #t))
 

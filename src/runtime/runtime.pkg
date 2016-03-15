@@ -138,10 +138,12 @@ USA.
   (files "boot")
   (parent (runtime))
   (export ()
+	  bracketed-unparser-method
 	  default-object
 	  default-object?
 	  error:not-unparser-method
 	  gc-space-status
+	  general-unparser-method
 	  guarantee-unparser-method
 	  interrupt-bit/after-gc
 	  interrupt-bit/gc
@@ -162,7 +164,6 @@ USA.
 	  simple-unparser-method
 	  standard-unparser-method
 	  unparser-method?
-	  unparser/standard-method
 	  with-absolutely-no-interrupts
 	  with-limited-interrupts
 	  without-interrupts)
@@ -2147,9 +2148,11 @@ USA.
   (export ()
 	  (eq-hash-table-type key-weak-eq-hash-table-type)
 	  (eqv-hash-table-type key-weak-eqv-hash-table-type)
+	  (hash-table-clear! hash-table/clear!)
 	  (hash-table-delete! hash-table/remove!)
 	  (hash-table-equivalence-function hash-table/key=?)
 	  (hash-table-hash-function hash-table/key-hash)
+	  (hash-table-intern! hash-table/intern!)
 	  (hash-table-keys hash-table/key-list)
 	  (hash-table-ref/default hash-table/get)
 	  (hash-table-set! hash-table/put!)

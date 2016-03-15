@@ -221,10 +221,9 @@ USA.
 		   (conc-name x-display/)
 		   (constructor make-x-display (name xd))
 		   (print-procedure
-		    (standard-unparser-method 'X-DISPLAY
-		      (lambda (display port)
-			(write-char #\space port)
-			(write (x-display/name display) port)))))
+		    (simple-unparser-method 'X-DISPLAY
+		      (lambda (display)
+			(list (x-display/name display))))))
   (name #f read-only #t)
   xd
   (window-finalizer (make-gc-finalizer (ucode-primitive x-close-window 1)

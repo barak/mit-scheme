@@ -107,10 +107,7 @@ USA.
     (and (let ((class (dispatch-tag-contents (cadr tags))))
 	   (and (class? class)
 		(subclass? class <instance>)))
-	 (lambda (state instance)
-	   (with-current-unparser-state state
-	     (lambda (port)
-	       (write-instance instance port)))))))
+	 (general-unparser-method write-instance))))
 
 (add-generic-procedure-generator pp-description
   (lambda (generic tags)

@@ -113,19 +113,13 @@ from the continuation, and then "glued" into place afterwards.
     block))
 
 (define-vector-tag-unparser block-tag
-  (lambda (state block)
-    ((standard-unparser
-      (symbol->string 'BLOCK)
-      (lambda (state block)
-	(unparse-object state
-			(enumeration/index->name block-types
-						 (block-type block)))
-	(let ((procedure (block-procedure block)))
-	  (if (and procedure (rvalue/procedure? procedure))
-	      (begin
-		(unparse-string state " ")
-		(unparse-label state (procedure-label procedure)))))))
-     state block)))
+  (simple-unparser-method "LIAR:block"
+    (lambda (block)
+      (cons (enumeration/index->name block-types (block-type block))
+	    (let ((procedure (block-procedure block)))
+	      (if (and procedure (rvalue/procedure? procedure))
+		  (list (procedure-label procedure))
+			'()))))))
 
 (define-integrable (rvalue/block? rvalue)
   (eq? (tagged-vector/tag rvalue) block-tag))

@@ -33,13 +33,12 @@ USA.
 			 (constructor %make-class
 				      (name direct-superclasses direct-slots))
 			 (print-procedure
-			  (standard-unparser-method 'CLASS
-			    (lambda (class port)
+			  (simple-unparser-method 'CLASS
+			    (lambda (class)
 			      (let ((name (class-name class)))
 				(if name
-				    (begin
-				      (write-char #\space port)
-				      (write name port))))))))
+				    (list name)
+				    '()))))))
   (name #f read-only #t)
   (direct-superclasses #f read-only #t)
   (direct-slots #f read-only #t)

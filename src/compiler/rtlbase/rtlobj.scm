@@ -33,9 +33,9 @@ USA.
 		   (constructor make-rtl-expr
 				(rgraph label entry-edge debugging-info))
 		   (print-procedure
-		    (standard-unparser (symbol->string 'RTL-EXPR)
-		      (lambda (state expression)
-			(unparse-object state (rtl-expr/label expression))))))
+		    (simple-unparser-method "LIAR:rtl-expr"
+		      (lambda (expression)
+			(list (rtl-expr/label expression))))))
   (rgraph false read-only true)
   (label false read-only true)
   (entry-edge false read-only true)
@@ -53,10 +53,9 @@ USA.
 					debugging-info
 					next-continuation-offset stack-leaf?))
 		   (print-procedure
-		    (standard-unparser (symbol->string 'RTL-PROCEDURE)
-		      (lambda (state procedure)
-			(unparse-object state
-					(rtl-procedure/label procedure))))))
+		    (simple-unparser-method "LIAR:rtl-procedure"
+		      (lambda (procedure)
+			(list (rtl-procedure/label procedure))))))
   (rgraph false read-only true)
   (label false read-only true)
   (entry-edge false read-only true)
@@ -88,11 +87,9 @@ USA.
 					next-continuation-offset
 					debugging-info))
 		   (print-procedure
-		    (standard-unparser (symbol->string 'RTL-CONTINUATION)
-		      (lambda (state continuation)
-			(unparse-object
-			 state
-			 (rtl-continuation/label continuation))))))
+		    (simple-unparser-method "LIAR:rtl-continuation"
+		      (lambda (continuation)
+			(list (rtl-continuation/label continuation))))))
   (rgraph false read-only true)
   (label false read-only true)
   (entry-edge false read-only true)

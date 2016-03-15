@@ -51,10 +51,9 @@ USA.
 		   (constructor make-package (name parent))
 		   (conc-name package/)
 		   (print-procedure
-		    (standard-unparser-method 'PACKAGE
-		      (lambda (package port)
-			(write-char #\space port)
-			(write (package/name package) port)))))
+		    (simple-unparser-method 'PACKAGE
+		      (lambda (package)
+			(list (package/name package))))))
   (name #f read-only #t)
   (files '())
   parent
@@ -108,13 +107,10 @@ USA.
 		   (constructor %make-binding (package name value-cell new?))
 		   (conc-name binding/)
 		   (print-procedure
-		    (standard-unparser-method 'BINDING
-		      (lambda (binding port)
-			(write-char #\space port)
-			(write (binding/name binding) port)
-			(write-char #\space port)
-			(write (package/name (binding/package binding))
-			       port)))))
+		    (simple-unparser-method 'BINDING
+		      (lambda (binding)
+			(list (binding/name binding)
+			      (package/name (binding/package binding)))))))
   (package #f read-only #t)
   (name #f read-only #t)
   (value-cell #f read-only #t)
@@ -173,13 +169,10 @@ USA.
 		   (constructor %make-reference (package name))
 		   (conc-name reference/)
 		   (print-procedure
-		    (standard-unparser-method 'REFERENCE
-		      (lambda (reference port)
-			(write-char #\space port)
-			(write (reference/name reference) port)
-			(write-char #\space port)
-			(write (package/name (reference/package reference))
-			       port)))))
+		    (simple-unparser-method 'REFERENCE
+		      (lambda (reference)
+			(list (reference/name reference)
+			      (package/name (reference/package reference)))))))
   (package #f read-only #t)
   (name #f read-only #t)
   (expressions '())

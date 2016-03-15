@@ -190,11 +190,9 @@ USA.
                    (conc-name variable/)
                    (constructor variable/make (block name flags))
                    (print-procedure
-                    (standard-unparser-method
-                     'variable
-                     (lambda (var port)
-                       (write-string " " port)
-                       (write (variable/name var) port)))))
+                    (simple-unparser-method 'variable
+		      (lambda (var)
+			(list (variable/name var))))))
   block
   name
   flags)
@@ -601,11 +599,9 @@ USA.
                    (conc-name reference/)
                    (constructor reference/make)
                    (print-procedure
-                    (standard-unparser-method
-                     'reference
-                     (lambda (ref port)
-                       (write-string " to " port)
-                       (write (variable/name (reference/variable ref)) port)))))
+                    (simple-unparser-method 'reference
+		      (lambda (ref)
+			(list (variable/name (reference/variable ref)))))))
   (scode #f read-only #t)
   block
   variable)

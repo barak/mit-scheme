@@ -103,10 +103,9 @@ USA.
 		     (write-char #\space port)
 		     (display (%record-type-name type) port))))
 		((eq? tag (built-in-dispatch-tag 'DISPATCH-TAG))
-		 (standard-unparser-method 'DISPATCH-TAG
-		   (lambda (tag port)
-		     (write-char #\space port)
-		     (write (dispatch-tag-contents tag) port))))
+		 (simple-unparser-method 'DISPATCH-TAG
+		   (lambda (tag)
+		     (list (dispatch-tag-contents tag)))))
 		(else record-method))))))
   (set! record-entity-unparser
 	(make-generic-procedure 1 'RECORD-ENTITY-UNPARSER))

@@ -33,10 +33,9 @@ USA.
 		   (conc-name display-type/)
 		   (constructor %make-display-type)
 		   (print-procedure
-		    (unparser/standard-method 'DISPLAY-TYPE
-		      (lambda (state display-type)
-			(unparse-object state
-					(display-type/name display-type))))))
+		    (simple-unparser-method 'DISPLAY-TYPE
+		      (lambda (display-type)
+			(list (display-type/name display-type))))))
   (name false read-only true)
   (multiple-screens? false read-only true)
   (operation/available? false read-only true)

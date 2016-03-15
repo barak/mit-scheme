@@ -75,10 +75,9 @@ USA.
       (set! package-tag tag)
       (for-each (lambda (p) (%record-set! p 0 tag)) *packages*))
     (set-record-type-unparser-method! rtd
-      (standard-unparser-method 'PACKAGE
-	(lambda (package port)
-	  (write-char #\space port)
-	  (write (package/name package) port))))))
+      (simple-unparser-method 'PACKAGE
+	(lambda (package)
+	  (list (package/name package)))))))
 
 (define (name->package name)
   (find-package name #f))

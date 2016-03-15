@@ -138,10 +138,9 @@ USA.
 		   (constructor %make-registry-key (parent name handle))
 		   (predicate win32-registry/key?)
 		   (print-procedure
-		    (standard-unparser-method 'REGISTRY-KEY
-		      (lambda (key port)
-			(write-char #\space port)
-			(write (registry-key-name key) port)))))
+		    (simple-unparser-method 'REGISTRY-KEY
+		      (lambda (key)
+			(list (registry-key-name key))))))
   (name #f read-only #t)
   (parent #f read-only #t)
   (handle #f)
@@ -163,10 +162,9 @@ USA.
 
 (define-structure (registry-value
 		   (print-procedure
-		    (standard-unparser-method 'REGISTRY-VALUE
-		      (lambda (key port)
-			(write-char #\space port)
-			(write (registry-value-name key) port)))))
+		    (simple-unparser-method 'REGISTRY-VALUE
+		      (lambda (key)
+			(list (registry-value-name key))))))
   (name #f read-only #t)
   (type #f))
 

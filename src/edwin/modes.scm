@@ -33,11 +33,12 @@ USA.
 				(name major? display-name super-mode
 				      %description initialization comtabs))
 		   (print-procedure
-		    (unparser/standard-method 'MODE
-		      (lambda (state mode)
-			(unparse-object state (mode-name mode))
-			(if (not (mode-major? mode))
-			    (unparse-string state " (minor)"))))))
+		    (simple-unparser-method 'MODE
+		      (lambda (mode)
+			(cons (mode-name mode)
+			      (if (mode-major? mode)
+				  '()
+				  (list '(minor))))))))
   (name #f read-only #t)
   major?
   display-name

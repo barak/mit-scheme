@@ -44,9 +44,9 @@ USA.
     (conc-name module/)
     (constructor %make-module)
     (print-procedure
-     (unparser/standard-method 'MODULE
-       (lambda (state module)
-	 (unparse-object state (module/load-name module))))))
+     (simple-unparser-method 'MODULE
+       (lambda (module)
+	 (list (module/load-name module))))))
   load-name
   handle
   entries	;; a protection list of all the functions from this module
