@@ -507,6 +507,13 @@ USA.
 	      (set! alist (cons (cons key metadata) alist))
 	      unspecific))))
 
+    (define (delete! key)
+      (set! alist
+	    (remove! (lambda (p)
+		       (eqv? (car p) key))
+		     alist))
+      unspecific)
+
     (define (get-alist)
       alist)
 
@@ -520,6 +527,7 @@ USA.
 	((has?) has?)
 	((get) get)
 	((put!) put!)
+	((delete!) delete!)
 	((get-alist) get-alist)
 	((put-alist!) put-alist!)
 	(else (error "Unknown operator:" operator))))))
@@ -536,6 +544,9 @@ USA.
     (define (put! key metadata)
       (hash-table-set! table key metadata))
 
+    (define (delete! key)
+      (hash-table-delete! table key))
+
     (define (get-alist)
       (hash-table->alist table))
 
@@ -549,6 +560,7 @@ USA.
 	((has?) has?)
 	((get) get)
 	((put!) put!)
+	((delete!) delete!)
 	((get-alist) get-alist)
 	((put-alist!) put-alist!)
 	(else (error "Unknown operator:" operator))))))
