@@ -42,15 +42,23 @@ USA.
 	    ((memq os-type os-types) (do-type os-type))
 	    (else (error:bad-range-argument os-type #f))))))
 
-(define (cref/generate-trivial-constructor filename)
-  (let ((pathname (merge-pathnames filename)))
-    (for-each (lambda (os-type)
-		(write-external-descriptions
-		 pathname
-		 (read-package-model pathname os-type)
-		 #f
-		 os-type))
-	      os-types)))
+(define (cref/generate-trivial-constructor filename #!optional os-type)
+  (let* ((pathname (merge-pathnames filename))
+	 (do-type
+	  (lambda (os-type)
+	    (write-external-descriptions
+	     pathname
+	     (read-package-model pathname os-type)
+	     #f
+	     os-type))))
+    (cond ((or (default-object? os-type)
+	       (eq? os-type 'ALL))
+	   (for-each do-type os-types))
+	  ((eq? os-type #f)
+	   (do-type microcode-id/operating-system))
+	  ((memq os-type os-types)
+	   (do-type os-type))
+	  (else (error:bad-range-argument os-type #f)))))
 
 (define (cref/package-files filename os-type)
   (append-map package/files
