@@ -99,9 +99,6 @@ MIT_SCHEME_ARCH=`echo "(display microcode-id/compiled-code-type)" \
 MIT_SCHEME_OS_SUFFIX=`echo "(display (microcode-id/operating-system-suffix))" \
 		 | ${MIT_SCHEME_EXE} --batch-mode`
 
-AC_SUBST([LIBS])
-AC_SUBST([CPPFLAGS])
-AC_SUBST([LDFLAGS])
 AC_SUBST([MIT_SCHEME_EXE])
 AC_SUBST([MIT_SCHEME_ARCH])
 AC_SUBST([MIT_SCHEME_OS_SUFFIX])
