@@ -33,6 +33,7 @@ USA.
   (set! working-directory-pathname
 	(make-general-parameter #f
 				default-parameter-converter
+				default-parameter-merger
 				default-parameter-getter
 				wd-setter))
   (reset!)

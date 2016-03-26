@@ -442,6 +442,7 @@ these rules:
 (define (make-param:default-pathname-defaults)
   (make-general-parameter #f
 			  default-parameter-converter
+			  default-parameter-merger
 			  defaults-getter
 			  defaults-setter))
 

@@ -232,21 +232,21 @@ USA.
 				   parser-table-converter))
 
   (set! runtime-param:parser-associate-positions?
-	(copy-param param:parser-associate-positions?))
+	(copy-parameter param:parser-associate-positions?))
   (set! runtime-param:parser-atom-delimiters
-	(copy-param param:parser-atom-delimiters))
+	(copy-parameter param:parser-atom-delimiters))
   (set! runtime-param:parser-canonicalize-symbols?
-	(copy-param param:parser-canonicalize-symbols?))
+	(copy-parameter param:parser-canonicalize-symbols?))
   (set! runtime-param:parser-constituents
-	(copy-param param:parser-constituents))
+	(copy-parameter param:parser-constituents))
   (set! runtime-param:parser-enable-file-attributes-parsing?
-	(copy-param param:parser-enable-file-attributes-parsing?))
+	(copy-parameter param:parser-enable-file-attributes-parsing?))
   (set! runtime-param:parser-keyword-style
-	(copy-param param:parser-keyword-style))
+	(copy-parameter param:parser-keyword-style))
   (set! runtime-param:parser-radix
-	(copy-param param:parser-radix))
+	(copy-parameter param:parser-radix))
   (set! runtime-param:parser-table
-	(copy-param param:parser-table))
+	(copy-parameter param:parser-table))
 
   (set! hashed-object-interns (make-strong-eq-hash-table))
   (initialize-condition-types!))
@@ -321,10 +321,6 @@ USA.
   (if (not (memv value '(2 8 10 16)))
       (error "Invalid parser radix:" value))
   value)
-
-(define (copy-param param)
-  (make-unsettable-parameter (param)
-			     (parameter-converter param)))
 
 (define (handler:whitespace port db ctx char)
   port db ctx char

@@ -802,6 +802,7 @@ USA.
 			  (lambda (port)
 			    (if port (guarantee port))
 			    port)
+			  default-parameter-merger
 			  (lambda (port)
 			    (or port (nearest-cmdl/port)))
 			  default-parameter-setter))

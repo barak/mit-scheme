@@ -64,30 +64,46 @@ USA.
 			  (if (default-object? converter)
 			      default-parameter-converter
 			      converter)
+			  default-parameter-merger
 			  default-parameter-getter
 			  (and settable?
 			       default-parameter-setter)))
 
 (define (default-parameter-converter value) value)
+(define (default-parameter-merger old-value new-value) old-value new-value)
 (define (default-parameter-getter value) value)
 (define (default-parameter-setter set-param value) (set-param value))
 
-(define (make-general-parameter initial-value converter getter setter)
+(define (make-general-parameter initial-value converter merger getter setter)
   (guarantee-procedure converter 'make-general-parameter)
   (guarantee-procedure getter 'make-general-parameter)
   (if setter (guarantee-procedure setter 'make-general-parameter))
-  (let* ((metadata (cons converter (converter initial-value)))
-	 (get-binding (lambda () (or (assq metadata bindings) metadata)))
+  (make-general-parameter-1 (converter initial-value)
+			    converter
+			    merger
+			    getter
+			    setter))
+
+(define (copy-parameter parameter)
+  (let ((metadata (parameter-metadata parameter)))
+    (make-general-parameter-1 (metadata-value metadata)
+			      (metadata-converter metadata)
+			      (metadata-merger metadata)
+			      (metadata-getter metadata)
+			      (metadata-setter metadata))))
+
+(define (make-general-parameter-1 initial-value converter merger getter setter)
+  (let* ((metadata (make-metadata initial-value converter merger getter setter))
 	 (parameter
 	  (if setter
 	      (lambda (#!optional new-value)
 		(if (default-object? new-value)
-		    (getter (cdr (get-binding)))
+		    (getter (get-value metadata))
 		    (setter (lambda (value)
-			      (set-cdr! (get-binding) value))
-			    (converter new-value))))
+			      (set-value! metadata value))
+			    (convert metadata new-value))))
 	      (lambda ()
-		(getter (cdr (get-binding)))))))
+		(getter (get-value metadata))))))
     (set-parameter-metadata! parameter metadata)
     parameter))
 
@@ -98,7 +114,7 @@ USA.
 	       (lambda (p)
 		 (let ((metadata (parameter-metadata (car p))))
 		   (cons metadata
-			 ((car metadata) (cdr p)))))
+			 (convert metadata (cdr p)))))
 	       new-bindings)))
     (let ((swap!
 	   (lambda ()
@@ -107,4 +123,30 @@ USA.
       (shallow-fluid-bind swap! thunk swap!))))
 
 (define (parameter-converter parameter)
-  (car (parameter-metadata parameter)))
+  (metadata-converter (parameter-metadata parameter)))
+
+(define-record-type <metadata>
+    (make-metadata value converter merger getter setter)
+    metadata?
+  (value metadata-value set-metadata-value!)
+  (converter metadata-converter)
+  (merger metadata-merger)
+  (getter metadata-getter)
+  (setter metadata-setter))
+
+(define (get-value metadata)
+  (let ((p (assq metadata bindings)))
+    (if p
+	(cdr p)
+	(metadata-value metadata))))
+
+(define (set-value! metadata value)
+  (let ((p (assq metadata bindings)))
+    (if p
+	(set-cdr! p value)
+	(set-metadata-value! metadata value))))
+
+(define (convert metadata value)
+  ((metadata-merger metadata)
+   (get-value metadata)
+   ((metadata-converter metadata) value)))

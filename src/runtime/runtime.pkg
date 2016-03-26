@@ -4158,7 +4158,9 @@ USA.
   (parent (runtime))
   (export ()
 	  (make-parameter make-unsettable-parameter)
+	  copy-parameter
 	  default-parameter-converter
+	  default-parameter-merger
 	  default-parameter-getter
 	  default-parameter-setter
 	  parameter-converter
