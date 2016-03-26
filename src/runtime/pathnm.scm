@@ -127,7 +127,7 @@ these rules:
 (define (pathname-arg object defaults operator)
   (cond ((pathname? object) object)
 	((string? object) (parse-namestring object #f defaults))
-	(else (error:wrong-type-argument object "pathname" operator))))
+	(else (error:not-pathname object operator))))
 
 (define (make-pathname host device directory name type version)
   (let ((host (if host (guarantee-host host 'MAKE-PATHNAME) local-host)))
@@ -382,10 +382,7 @@ these rules:
 (define (parse-namestring namestring #!optional host defaults)
   (let ((host
 	 (if (and (not (default-object? host)) host)
-	     (begin
-	       (if (not (host? host))
-		   (error:wrong-type-argument host "host" 'PARSE-NAMESTRING))
-	       host)
+	     (guarantee-host host 'PARSE-NAMESTRING)
 	     (pathname-host
 	      (if (and (not (default-object? defaults)) defaults)
 		  defaults
@@ -440,16 +437,17 @@ these rules:
 (define param:default-pathname-defaults)
 
 (define (make-param:default-pathname-defaults)
-  (make-general-parameter #f
-			  default-parameter-converter
-			  default-parameter-merger
-			  defaults-getter
+  (make-general-parameter (make-pathname local-host #f #f #f #f #f)
+			  defaults-converter
+			  defaults-merger
+			  default-parameter-getter
 			  defaults-setter))
 
-(define (defaults-getter defaults)
-  (if (eq? defaults *default-pathname-defaults*)
-      defaults
-      *default-pathname-defaults*))
+(define (defaults-converter object)
+  (parse-namestring object local-host))
+
+(define (defaults-merger old new)
+  (pathname-simplify (merge-pathnames new old)))
 
 (define (defaults-setter set-param defaults)
   (set-param defaults)
@@ -718,7 +716,7 @@ these rules:
       (set! host-types types)
       (set! local-host (make-host host-type #f))))
   (set! param:default-pathname-defaults (make-param:default-pathname-defaults))
-  (param:default-pathname-defaults (make-pathname local-host #f #f #f #f #f))
+  (set! *default-pathname-defaults* (param:default-pathname-defaults))
   (set! library-directory-path
 	(map pathname-as-directory
 	     (vector->list ((ucode-primitive microcode-library-path 0)))))
