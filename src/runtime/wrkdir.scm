@@ -39,20 +39,18 @@ USA.
   (reset!)
   (add-event-receiver! event:after-restore reset!))
 
-(define (reset!)
-  (let ((pathname
-	 (pathname-simplify
-	  (pathname-as-directory
-	   ((ucode-primitive working-directory-pathname))))))
-    (working-directory-pathname pathname)
-    (param:default-pathname-defaults pathname)))
-
 (define working-directory-pathname)
 
 (define (wd-setter set-param pathname)
   (set-param pathname)
   (param:default-pathname-defaults pathname)
   pathname)
+
+(define (reset!)
+  (working-directory-pathname
+   (pathname-simplify
+    (pathname-as-directory
+     ((ucode-primitive working-directory-pathname))))))
 
 (define (set-working-directory-pathname! name)
   (let ((pathname (new-pathname name)))
