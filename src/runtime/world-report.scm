@@ -57,7 +57,7 @@ USA.
     (thread-report flags port)))
 
 (define (ticks->string ticks)
-  (parameterize* (list (cons flonum-unparser-cutoff '(absolute 3)))
+  (parameterize* (list (cons param:flonum-unparser-cutoff '(absolute 3)))
     (lambda ()
       (number->string (internal-time/ticks->seconds ticks) 10))))
 
