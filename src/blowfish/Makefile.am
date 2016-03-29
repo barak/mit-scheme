@@ -50,10 +50,14 @@ blowfish_shim_la_LDFLAGS = -module -avoid-version -shared
 noinst_PROGRAMS = blowfish-const
 blowfish_const_SOURCES = blowfish-const.c blowfish-shim.h
 
-blowfish-shim.c blowfish-const.c blowfish-types.bin: \
-  blowfish.cdecl blowfish-shim.h
+blowfish-shim.c: stamp-shim
+blowfish-const.c: stamp-shim
+blowfish-types.bin: stamp-shim
+stamp-shim: blowfish.cdecl blowfish-shim.h
+	touch stamp-shim
 	echo '(generate-shim "blowfish" "#include \"blowfish-shim.h\"")' \
-	| $(MIT_SCHEME_EXE) --batch-mode
+	| $(MIT_SCHEME_EXE) --batch-mode \
+	|| rm stamp-shim
 
 blowfish-const.bin: blowfish-const.scm
 	echo '(sf "blowfish-const")' | $(MIT_SCHEME_EXE) --batch-mode
@@ -61,10 +65,15 @@ blowfish-const.bin: blowfish-const.scm
 blowfish-const.scm: blowfish-const
 	./blowfish-const
 
-blowfish.bin blowfish.bci blowfish.com blowfish-@MIT_SCHEME_OS_SUFFIX@.pkd: \
-  blowfish.scm blowfish-const.bin blowfish-types.bin
+blowfish.bin: stamp-scheme
+blowfish.bci: stamp-scheme
+blowfish.com: stamp-scheme
+blowfish-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
+stamp-scheme: stamp-shim blowfish.scm
+	touch stamp-scheme
 	echo '(load "compile.scm")' \
-	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode
+	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode \
+	|| rm stamp-scheme
 
 CLEANFILES = blowfish-const* blowfish-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
@@ -76,15 +85,15 @@ install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 
-install-html: install-html-am
-	echo '(update-html-index "$(DESTDIR)$(htmldir)/")' \
-	| $(MIT_SCHEME_EXE) --batch-mode
+#install-html: install-html-am
+#	echo '(update-html-index "$(DESTDIR)$(htmldir)/")' \
+#	| $(MIT_SCHEME_EXE) --batch-mode
 
 uninstall-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 	[ -d "$(DESTDIR)$(scmlib_blowfishdir)" ] \
 	&& rmdir "$(DESTDIR)$(scmlib_blowfishdir)"
-	[ -d "$(DESTDIR)$(htmldir)" ]					\
-	&& ( echo  '(update-html-index "$(DESTDIR)$(htmldir)/")'	\
-	     | $(MIT_SCHEME_EXE) --batch-mode )
+#	[ -d "$(DESTDIR)$(htmldir)" ]					\
+#	&& ( echo  '(update-html-index "$(DESTDIR)$(htmldir)/")'	\
+#	     | $(MIT_SCHEME_EXE) --batch-mode )

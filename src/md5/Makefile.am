@@ -50,9 +50,14 @@ md5_shim_la_LDFLAGS = -module -avoid-version -shared
 noinst_PROGRAMS = md5-const
 md5_const_SOURCES = md5-const.c md5-shim.h
 
-md5-shim.c md5-const.c md5-types.bin: md5.cdecl md5-shim.h
+md5-shim.c: stamp-shim
+md5-const.c: stamp-shim
+md5-types.bin: stamp-shim
+stamp-shim: md5.cdecl md5-shim.h
+	touch stamp-shim
 	echo '(generate-shim "md5" "#include \"md5-shim.h\"")' \
-	| $(MIT_SCHEME_EXE) --batch-mode
+	| $(MIT_SCHEME_EXE) --batch-mode \
+	|| rm stamp-shim
 
 md5-const.bin: md5-const.scm
 	echo '(sf "md5-const")' | $(MIT_SCHEME_EXE) --batch-mode
@@ -60,10 +65,15 @@ md5-const.bin: md5-const.scm
 md5-const.scm: md5-const
 	./md5-const
 
-md5.bin md5.bci md5.com md5-@MIT_SCHEME_OS_SUFFIX@.pkd: \
-  md5.scm md5-const.bin md5-types.bin
+md5.bin: stamp-scheme
+md5.bci: stamp-scheme
+md5.com: stamp-scheme
+md5-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
+stamp-scheme: stamp-shim md5.scm
+	touch stamp-scheme
 	echo '(load "compile.scm")' \
-	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode
+	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode \
+	|| rm stamp-scheme
 
 CLEANFILES = md5-const* md5-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
@@ -75,15 +85,15 @@ install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 
-install-html: install-html-am
-	echo '(update-html-index "$(DESTDIR)$(htmldir)/")' \
-	| $(MIT_SCHEME_EXE) --batch-mode
+#install-html: install-html-am
+#	echo '(update-html-index "$(DESTDIR)$(htmldir)/")' \
+#	| $(MIT_SCHEME_EXE) --batch-mode
 
 uninstall-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 	[ -d "$(DESTDIR)$(scmlib_md5dir)" ] \
 	&& rmdir "$(DESTDIR)$(scmlib_md5dir)"
-	[ -d "$(DESTDIR)$(htmldir)" ]					\
-	&& ( echo  '(update-html-index "$(DESTDIR)$(htmldir)/")'	\
-	     | $(MIT_SCHEME_EXE) --batch-mode )
+#	[ -d "$(DESTDIR)$(htmldir)" ]					\
+#	&& ( echo  '(update-html-index "$(DESTDIR)$(htmldir)/")'	\
+#	     | $(MIT_SCHEME_EXE) --batch-mode )

@@ -50,9 +50,14 @@ gdbm_shim_la_LDFLAGS = -module -avoid-version -shared
 noinst_PROGRAMS = gdbm-const
 gdbm_const_SOURCES = gdbm-const.c gdbm-shim.h
 
-gdbm-shim.c gdbm-const.c gdbm-types.bin: gdbm.cdecl gdbm-shim.h
+gdbm-shim.c: stamp-shim
+gdbm-const.c: stamp-shim
+gdbm-types.bin: stamp-shim
+stamp-shim: gdbm.cdecl gdbm-shim.h
+	touch stamp-shim
 	echo '(generate-shim "gdbm" "#include \"gdbm-shim.h\"")' \
-	| $(MIT_SCHEME_EXE) --batch-mode
+	| $(MIT_SCHEME_EXE) --batch-mode \
+	|| rm stamp-shim
 
 gdbm-const.bin: gdbm-const.scm
 	echo '(sf "gdbm-const")' | $(MIT_SCHEME_EXE) --batch-mode
@@ -60,10 +65,15 @@ gdbm-const.bin: gdbm-const.scm
 gdbm-const.scm: gdbm-const
 	./gdbm-const
 
-gdbm.bin gdbm.bci gdbm.com gdbm-@MIT_SCHEME_OS_SUFFIX@.pkd: \
-  gdbm.scm gdbm-const.bin gdbm-types.bin
+gdbm.bin: stamp-scheme
+gdbm.bci: stamp-scheme
+gdbm.com: stamp-scheme
+gdbm-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
+stamp-scheme: stamp-shim gdbm.scm
+	touch stamp-scheme
 	echo '(load "compile.scm")' \
-	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode
+	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode \
+	|| rm stamp-scheme
 
 CLEANFILES = gdbm-const* gdbm-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
@@ -75,15 +85,15 @@ install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 
-install-html: install-html-am
-	echo '(update-html-index "$(DESTDIR)$(htmldir)/")' \
-	| $(MIT_SCHEME_EXE) --batch-mode
+#install-html: install-html-am
+#	echo '(update-html-index "$(DESTDIR)$(htmldir)/")' \
+#	| $(MIT_SCHEME_EXE) --batch-mode
 
 uninstall-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 	[ -d "$(DESTDIR)$(scmlib_gdbmdir)" ] \
 	&& rmdir "$(DESTDIR)$(scmlib_gdbmdir)"
-	[ -d "$(DESTDIR)$(htmldir)" ]					\
-	&& ( echo  '(update-html-index "$(DESTDIR)$(htmldir)/")'	\
-	     | $(MIT_SCHEME_EXE) --batch-mode )
+#	[ -d "$(DESTDIR)$(htmldir)" ]					\
+#	&& ( echo  '(update-html-index "$(DESTDIR)$(htmldir)/")'	\
+#	     | $(MIT_SCHEME_EXE) --batch-mode )
