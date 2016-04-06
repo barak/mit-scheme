@@ -1378,7 +1378,7 @@ USA.
 
 (define-guarantee unique-keyword-list "unique keyword list")
 
-(define (get-keyword-value klist key)
+(define (get-keyword-value klist key #!optional default-value)
   (let ((lose (lambda () (error:not-keyword-list klist 'GET-KEYWORD-VALUE))))
     (let loop ((klist klist))
       (if (pair? klist)
@@ -1391,7 +1391,7 @@ USA.
 	  (begin
 	    (if (not (null? klist))
 		(lose))
-	    #!default)))))
+	    default-value)))))
 
 (define (keyword-list->alist klist)
   (let loop ((klist klist))
