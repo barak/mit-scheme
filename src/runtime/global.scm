@@ -494,10 +494,16 @@ USA.
       (if (assv key alist) #t #f))
 
     (define (get key)
+      (let ((metadata (get-if-available key (default-object))))
+	(if (default-object? metadata)
+	    (error "Object has no associated metadata:" key))
+	metadata))
+
+    (define (get-if-available key default-value)
       (let ((p (assv key alist)))
-	(if (not p)
-	    (error "Unregistered key:" key))
-	(cdr p)))
+	(if p
+	    (cdr p)
+	    default-value)))
 
     (define (put! key metadata)
       (let ((p (assv key alist)))
@@ -526,12 +532,13 @@ USA.
       (case operator
 	((has?) has?)
 	((get) get)
+	((get-if-available) get-if-available)
 	((put!) put!)
 	((delete!) delete!)
 	((get-alist) get-alist)
 	((put-alist!) put-alist!)
 	(else (error "Unknown operator:" operator))))))
-
+
 (define (make-hashed-metadata-table)
   (let ((table (make-key-weak-eqv-hash-table)))
 
@@ -539,7 +546,13 @@ USA.
       (hash-table-exists? table key))
 
     (define (get key)
-      (hash-table-ref table key))
+      (let ((metadata (get-if-available key (default-object))))
+	(if (default-object? metadata)
+	    (error "Object has no associated metadata:" key))
+	metadata))
+
+    (define (get-if-available key default-value)
+      (hash-table-ref/default table key default-value))
 
     (define (put! key metadata)
       (hash-table-set! table key metadata))
@@ -559,6 +572,7 @@ USA.
       (case operator
 	((has?) has?)
 	((get) get)
+	((get-if-available) get-if-available)
 	((put!) put!)
 	((delete!) delete!)
 	((get-alist) get-alist)
