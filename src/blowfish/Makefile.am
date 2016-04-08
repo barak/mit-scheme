@@ -31,9 +31,13 @@ scmlib_blowfishdir = $(scmlibdir)/blowfish
 
 scmlib_LTLIBRARIES = blowfish-shim.la
 scmlib_DATA = blowfish-types.bin blowfish-const.bin
-scmlib_blowfish_DATA = make.scm
-scmlib_blowfish_DATA += blowfish.scm blowfish.bin blowfish.bci blowfish.com
-scmlib_blowfish_DATA += blowfish-@MIT_SCHEME_OS_SUFFIX@.pkd
+
+sources = blowfish.scm
+cdecls = blowfish.cdecl
+
+scmlib_blowfish_DATA = $(sources)
+scmlib_blowfish_DATA += blowfish.bin blowfish.bci blowfish.com
+scmlib_blowfish_DATA += make.scm blowfish-@MIT_SCHEME_OS_SUFFIX@.pkd
 
 #info_TEXINFOS = mit-scheme-blowfish.texi
 AM_MAKEINFOHTMLFLAGS = --no-split
@@ -53,7 +57,7 @@ blowfish_const_SOURCES = blowfish-const.c blowfish-shim.h
 blowfish-shim.c: stamp-shim
 blowfish-const.c: stamp-shim
 blowfish-types.bin: stamp-shim
-stamp-shim: blowfish.cdecl blowfish-shim.h
+stamp-shim: blowfish-shim.h $(cdecls)
 	touch stamp-shim
 	echo '(generate-shim "blowfish" "#include \"blowfish-shim.h\"")' \
 	| $(MIT_SCHEME_EXE) --batch-mode \
@@ -69,7 +73,7 @@ blowfish.bin: stamp-scheme
 blowfish.bci: stamp-scheme
 blowfish.com: stamp-scheme
 blowfish-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
-stamp-scheme: stamp-shim blowfish.scm
+stamp-scheme: stamp-shim $(sources)
 	touch stamp-scheme
 	echo '(load "compile.scm")' \
 	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode \
@@ -80,6 +84,12 @@ CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 
 TESTS = blowfish-check.sh
 CLEANFILES += test
+
+all_sources = $(sources)
+all_sources += blowfish.pkg blowfish-check.scm
+all_sources += blowfish-adapter.c blowfish-shim.h
+ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
+TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

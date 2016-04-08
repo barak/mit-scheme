@@ -31,9 +31,13 @@ scmlib_mhashdir = $(scmlibdir)/mhash
 
 scmlib_LTLIBRARIES = mhash-shim.la
 scmlib_DATA = mhash-types.bin mhash-const.bin
-scmlib_mhash_DATA = make.scm
-scmlib_mhash_DATA += mhash.scm mhash.bin mhash.bci mhash.com
-scmlib_mhash_DATA += mhash-@MIT_SCHEME_OS_SUFFIX@.pkd
+
+sources = mhash.scm
+cdecls = mhash.cdecl
+
+scmlib_mhash_DATA = $(sources)
+scmlib_mhash_DATA += mhash.bin mhash.bci mhash.com
+scmlib_mhash_DATA += make.scm mhash-@MIT_SCHEME_OS_SUFFIX@.pkd
 
 #info_TEXINFOS = mit-scheme-mhash.texi
 AM_MAKEINFOHTMLFLAGS = --no-split
@@ -53,7 +57,7 @@ mhash_const_SOURCES = mhash-const.c mhash-shim.h
 mhash-shim.c: stamp-shim
 mhash-const.c: stamp-shim
 mhash-types.bin: stamp-shim
-stamp-shim: mhash.cdecl mhash-shim.h
+stamp-shim: mhash-shim.h $(cdecls)
 	touch stamp-shim
 	echo '(generate-shim "mhash" "#include \"mhash-shim.h\"")' \
 	| $(MIT_SCHEME_EXE) --batch-mode \
@@ -69,7 +73,7 @@ mhash.bin: stamp-scheme
 mhash.bci: stamp-scheme
 mhash.com: stamp-scheme
 mhash-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
-stamp-scheme: stamp-shim mhash.scm
+stamp-scheme: stamp-shim $(sources)
 	touch stamp-scheme
 	echo '(load "compile.scm")' \
 	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode \
@@ -80,6 +84,12 @@ CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 
 TESTS = mhash-check.sh
 CLEANFILES += sample
+
+all_sources = $(sources)
+all_sources += mhash.pkg mhash-check.scm
+all_sources += mhash-adapter.c mhash-shim.h
+ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
+TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

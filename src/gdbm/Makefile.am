@@ -31,9 +31,13 @@ scmlib_gdbmdir = $(scmlibdir)/gdbm
 
 scmlib_LTLIBRARIES = gdbm-shim.la
 scmlib_DATA = gdbm-types.bin gdbm-const.bin
-scmlib_gdbm_DATA = make.scm
-scmlib_gdbm_DATA += gdbm.scm gdbm.bin gdbm.bci gdbm.com
-scmlib_gdbm_DATA += gdbm-@MIT_SCHEME_OS_SUFFIX@.pkd
+
+sources = gdbm.scm
+cdecls = gdbm.cdecl
+
+scmlib_gdbm_DATA = $(sources)
+scmlib_gdbm_DATA += gdbm.bin gdbm.bci gdbm.com
+scmlib_gdbm_DATA += make.scm gdbm-@MIT_SCHEME_OS_SUFFIX@.pkd
 
 #info_TEXINFOS = mit-scheme-gdbm.texi
 AM_MAKEINFOHTMLFLAGS = --no-split
@@ -53,7 +57,7 @@ gdbm_const_SOURCES = gdbm-const.c gdbm-shim.h
 gdbm-shim.c: stamp-shim
 gdbm-const.c: stamp-shim
 gdbm-types.bin: stamp-shim
-stamp-shim: gdbm.cdecl gdbm-shim.h
+stamp-shim: gdbm-shim.h $(cdecls)
 	touch stamp-shim
 	echo '(generate-shim "gdbm" "#include \"gdbm-shim.h\"")' \
 	| $(MIT_SCHEME_EXE) --batch-mode \
@@ -69,7 +73,7 @@ gdbm.bin: stamp-scheme
 gdbm.bci: stamp-scheme
 gdbm.com: stamp-scheme
 gdbm-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
-stamp-scheme: stamp-shim gdbm.scm
+stamp-scheme: stamp-shim $(sources)
 	touch stamp-scheme
 	echo '(load "compile.scm")' \
 	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode \
@@ -80,6 +84,12 @@ CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 
 TESTS = gdbm-check.sh
 CLEANFILES += gdbm-check.db
+
+all_sources = $(sources)
+all_sources += gdbm.pkg gdbm-check.scm
+all_sources += gdbm-adapter.c gdbm-shim.h
+ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
+TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

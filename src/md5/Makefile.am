@@ -31,9 +31,13 @@ scmlib_md5dir = $(scmlibdir)/md5
 
 scmlib_LTLIBRARIES = md5-shim.la
 scmlib_DATA = md5-types.bin md5-const.bin
-scmlib_md5_DATA = make.scm
-scmlib_md5_DATA += md5.scm md5.bin md5.bci md5.com
-scmlib_md5_DATA += md5-@MIT_SCHEME_OS_SUFFIX@.pkd
+
+sources = md5.scm
+cdecls = md5.cdecl
+
+scmlib_md5_DATA = $(sources)
+scmlib_md5_DATA += md5.bin md5.bci md5.com
+scmlib_md5_DATA += make.scm md5-@MIT_SCHEME_OS_SUFFIX@.pkd
 
 #info_TEXINFOS = mit-scheme-md5.texi
 AM_MAKEINFOHTMLFLAGS = --no-split
@@ -53,7 +57,7 @@ md5_const_SOURCES = md5-const.c md5-shim.h
 md5-shim.c: stamp-shim
 md5-const.c: stamp-shim
 md5-types.bin: stamp-shim
-stamp-shim: md5.cdecl md5-shim.h
+stamp-shim: md5-shim.h $(cdecls)
 	touch stamp-shim
 	echo '(generate-shim "md5" "#include \"md5-shim.h\"")' \
 	| $(MIT_SCHEME_EXE) --batch-mode \
@@ -69,7 +73,7 @@ md5.bin: stamp-scheme
 md5.bci: stamp-scheme
 md5.com: stamp-scheme
 md5-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
-stamp-scheme: stamp-shim md5.scm
+stamp-scheme: stamp-shim $(sources)
 	touch stamp-scheme
 	echo '(load "compile.scm")' \
 	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode \
@@ -80,6 +84,12 @@ CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 
 TESTS = md5-check.sh
 CLEANFILES += sample
+
+all_sources = $(sources)
+all_sources += md5.pkg md5-check.scm
+all_sources += md5-adapter.c md5-shim.h
+ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
+TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

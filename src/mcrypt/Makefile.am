@@ -31,9 +31,13 @@ scmlib_mcryptdir = $(scmlibdir)/mcrypt
 
 scmlib_LTLIBRARIES = mcrypt-shim.la
 scmlib_DATA = mcrypt-types.bin mcrypt-const.bin
-scmlib_mcrypt_DATA = make.scm
-scmlib_mcrypt_DATA += mcrypt.scm mcrypt.bin mcrypt.bci mcrypt.com
-scmlib_mcrypt_DATA += mcrypt-@MIT_SCHEME_OS_SUFFIX@.pkd
+
+sources = mcrypt.scm
+cdecls = mcrypt.cdecl
+
+scmlib_mcrypt_DATA = $(sources)
+scmlib_mcrypt_DATA += mcrypt.bin mcrypt.bci mcrypt.com
+scmlib_mcrypt_DATA += make.scm mcrypt-@MIT_SCHEME_OS_SUFFIX@.pkd
 
 #info_TEXINFOS = mit-scheme-mcrypt.texi
 AM_MAKEINFOHTMLFLAGS = --no-split
@@ -53,7 +57,7 @@ mcrypt_const_SOURCES = mcrypt-const.c mcrypt-shim.h
 mcrypt-shim.c: stamp-shim
 mcrypt-const.c: stamp-shim
 mcrypt-types.bin: stamp-shim
-stamp-shim: mcrypt.cdecl mcrypt-shim.h
+stamp-shim: mcrypt-shim.h $(cdecls)
 	touch stamp-shim
 	echo '(generate-shim "mcrypt" "#include \"mcrypt-shim.h\"")' \
 	| $(MIT_SCHEME_EXE) --batch-mode \
@@ -69,7 +73,7 @@ mcrypt.bin: stamp-scheme
 mcrypt.bci: stamp-scheme
 mcrypt.com: stamp-scheme
 mcrypt-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
-stamp-scheme: stamp-shim mcrypt.scm
+stamp-scheme: stamp-shim $(sources)
 	touch stamp-scheme
 	echo '(load "compile.scm")' \
 	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode \
@@ -80,6 +84,12 @@ CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 
 TESTS = mcrypt-check.sh
 CLEANFILES += encrypted decrypted
+
+all_sources = $(sources)
+all_sources += mcrypt.pkg mcrypt-check.scm
+all_sources += mcrypt-adapter.c mcrypt-shim.h
+ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
+TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
