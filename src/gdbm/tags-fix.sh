@@ -6,18 +6,14 @@
 set -e
 : ${MIT_SCHEME_EXE=mit-scheme}
 ${MIT_SCHEME_EXE} --batch-mode <<\EOF
-(let ((name "blowfish"))
+(let ((name (pathname-name
+	     (directory-pathname-as-file (working-directory-pathname)))))
   (let ((shim.c-prefix (string-append name "-shim.c,"))
 	(const.c-prefix (string-append name "-const.c,")))
 
     (define (rewriter in out)
       (let loop ((skipping? #f))
 	(let ((line (read-line in)))
-	  #;(if (eof-object? line)
-	      (begin (write-string ": <eof>") (newline))
-	      (if (string=? line "\f")
-		  (begin (write-string ": <formfeed>") (newline))
-		  (begin (write-string ": ") (write-string line) (newline))))
 	  (cond ((eof-object? line)
 		 unspecific)
 		((string=? line "\f")
