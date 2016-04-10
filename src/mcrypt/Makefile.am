@@ -85,11 +85,13 @@ CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 TESTS = mcrypt-check.sh
 CLEANFILES += encrypted decrypted
 
+tags: tags-am
+	./tags-fix.sh
+
 all_sources = $(sources)
-all_sources += mcrypt.pkg mcrypt-check.scm
-all_sources += mcrypt-adapter.c mcrypt-shim.h
-ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
-TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
+all_sources += mcrypt-check.scm mcrypt-adapter.c mcrypt-shim.h
+ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls) mcrypt.pkg
+TAGS_DEPENDENCIES = $(all_sources) $(cdecls) mcrypt.pkg
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

@@ -85,11 +85,13 @@ CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 TESTS = md5-check.sh
 CLEANFILES += sample
 
+tags: tags-am
+	./tags-fix.sh
+
 all_sources = $(sources)
-all_sources += md5.pkg md5-check.scm
-all_sources += md5-adapter.c md5-shim.h
-ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
-TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
+all_sources += md5-check.scm md5-adapter.c md5-shim.h
+ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls) md5.pkg
+TAGS_DEPENDENCIES = $(all_sources) $(cdecls) md5.pkg
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

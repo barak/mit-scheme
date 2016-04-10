@@ -85,11 +85,13 @@ CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 TESTS = gdbm-check.sh
 CLEANFILES += gdbm-check.db
 
+tags: tags-am
+	./tags-fix.sh
+
 all_sources = $(sources)
-all_sources += gdbm.pkg gdbm-check.scm
-all_sources += gdbm-adapter.c gdbm-shim.h
-ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
-TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
+all_sources += gdbm-check.scm gdbm-adapter.c gdbm-shim.h
+ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls) gdbm.pkg
+TAGS_DEPENDENCIES = $(all_sources) $(cdecls) gdbm.pkg
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

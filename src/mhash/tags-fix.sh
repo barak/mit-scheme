@@ -1,0 +1,47 @@
+#!/bin/sh
+# -*-Scheme-*-
+#
+# Chop the generated -shim.c and -const.c files out of TAGS.
+
+set -e
+: ${MIT_SCHEME_EXE=mit-scheme}
+${MIT_SCHEME_EXE} --batch-mode <<\EOF
+(let ((name "blowfish"))
+  (let ((shim.c-prefix (string-append name "-shim.c,"))
+	(const.c-prefix (string-append name "-const.c,")))
+
+    (define (rewriter in out)
+      (let loop ((skipping? #f))
+	(let ((line (read-line in)))
+	  #;(if (eof-object? line)
+	      (begin (write-string ": <eof>") (newline))
+	      (if (string=? line "\f")
+		  (begin (write-string ": <formfeed>") (newline))
+		  (begin (write-string ": ") (write-string line) (newline))))
+	  (cond ((eof-object? line)
+		 unspecific)
+		((string=? line "\f")
+		 (let ((next (read-line in)))
+		   (cond ((eof-object? next) (error "Bogus TAGS format:" next))
+			 ((or (string-prefix? shim.c-prefix next)
+			      (string-prefix? const.c-prefix next))
+			  (loop #t))
+			 (else
+			  (write-string line out)
+			  (newline out)
+			  (write-string next out)
+			  (newline out)
+			  (loop #f)))))
+		(skipping?
+		 (loop skipping?))
+		(else
+		 (write-string line out)
+		 (newline out)
+		 (loop skipping?))))))
+
+    (parameterize ((param:suppress-loading-message? #t))
+      (load-option 'FFI))
+    ((access rewrite-file (->environment '(ffi build)))
+     (merge-pathnames "TAGS")
+     rewriter)))
+EOF

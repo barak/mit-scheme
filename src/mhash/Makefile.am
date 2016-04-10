@@ -85,11 +85,13 @@ CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 TESTS = mhash-check.sh
 CLEANFILES += sample
 
+tags: tags-am
+	./tags-fix.sh
+
 all_sources = $(sources)
-all_sources += mhash.pkg mhash-check.scm
-all_sources += mhash-adapter.c mhash-shim.h
-ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
-TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
+all_sources += mhash-check.scm mhash-adapter.c mhash-shim.h
+ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls) mhash.pkg
+TAGS_DEPENDENCIES = $(all_sources) $(cdecls) mhash.pkg
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
