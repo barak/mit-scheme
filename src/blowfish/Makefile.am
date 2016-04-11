@@ -73,7 +73,7 @@ blowfish.bin: stamp-scheme
 blowfish.bci: stamp-scheme
 blowfish.com: stamp-scheme
 blowfish-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
-stamp-scheme: stamp-shim $(sources)
+stamp-scheme: stamp-shim $(sources) blowfish.pkg
 	touch stamp-scheme
 	echo '(load "compile.scm")' \
 	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode \
@@ -86,12 +86,15 @@ TESTS = blowfish-check.sh
 CLEANFILES += test
 
 tags: tags-am
-	./tags-fix.sh
+	./tags-fix.sh blowfish
 
-all_sources = $(sources)
-all_sources += blowfish-check.scm blowfish-adapter.c blowfish-shim.h
+all_sources = $(sources) compile.scm make.scm
+all_sources += blowfish-check.scm blowfish-adapter.c blowfish-check.sh
 ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls) blowfish.pkg
 TAGS_DEPENDENCIES = $(all_sources) $(cdecls) blowfish.pkg
+
+EXTRA_DIST += $(all_sources) $(cdecls) blowfish.pkg
+EXTRA_DIST += optiondb.scm tags-fix.sh
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

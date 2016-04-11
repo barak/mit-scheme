@@ -1,13 +1,12 @@
 #!/bin/sh
 # -*-Scheme-*-
 #
-# Chop the generated -shim.c and -const.c files out of TAGS.
+# Chop the generated $1-shim.c and $1-const.c files out of TAGS.
 
 set -e
 : ${MIT_SCHEME_EXE=mit-scheme}
-${MIT_SCHEME_EXE} --batch-mode <<\EOF
-(let ((name (pathname-name
-	     (directory-pathname-as-file (working-directory-pathname)))))
+${MIT_SCHEME_EXE} --batch-mode -- "${@}" <<\EOF
+(let ((name (car (command-line))))
   (let ((shim.c-prefix (string-append name "-shim.c,"))
 	(const.c-prefix (string-append name "-const.c,")))
 

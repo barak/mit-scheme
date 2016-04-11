@@ -73,7 +73,7 @@ mcrypt.bin: stamp-scheme
 mcrypt.bci: stamp-scheme
 mcrypt.com: stamp-scheme
 mcrypt-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
-stamp-scheme: stamp-shim $(sources)
+stamp-scheme: stamp-shim $(sources) mcrypt.pkg
 	touch stamp-scheme
 	echo '(load "compile.scm")' \
 	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode \
@@ -86,12 +86,15 @@ TESTS = mcrypt-check.sh
 CLEANFILES += encrypted decrypted
 
 tags: tags-am
-	./tags-fix.sh
+	./tags-fix.sh mcrypt
 
-all_sources = $(sources)
-all_sources += mcrypt-check.scm mcrypt-adapter.c mcrypt-shim.h
+all_sources = $(sources) compile.scm make.scm
+all_sources += mcrypt-check.scm mcrypt-adapter.c mcrypt-check.sh
 ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls) mcrypt.pkg
 TAGS_DEPENDENCIES = $(all_sources) $(cdecls) mcrypt.pkg
+
+EXTRA_DIST += $(all_sources) $(cdecls) mcrypt.pkg
+EXTRA_DIST += optiondb.scm tags-fix.sh
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

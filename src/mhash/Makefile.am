@@ -73,7 +73,7 @@ mhash.bin: stamp-scheme
 mhash.bci: stamp-scheme
 mhash.com: stamp-scheme
 mhash-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
-stamp-scheme: stamp-shim $(sources)
+stamp-scheme: stamp-shim $(sources) mhash.pkg
 	touch stamp-scheme
 	echo '(load "compile.scm")' \
 	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode \
@@ -86,12 +86,15 @@ TESTS = mhash-check.sh
 CLEANFILES += sample
 
 tags: tags-am
-	./tags-fix.sh
+	./tags-fix.sh mhash
 
-all_sources = $(sources)
-all_sources += mhash-check.scm mhash-adapter.c mhash-shim.h
+all_sources = $(sources) compile.scm make.scm
+all_sources += mhash-check.scm mhash-adapter.c mhash-check.sh
 ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls) mhash.pkg
 TAGS_DEPENDENCIES = $(all_sources) $(cdecls) mhash.pkg
+
+EXTRA_DIST += $(all_sources) $(cdecls) mhash.pkg
+EXTRA_DIST += optiondb.scm tags-fix.sh
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

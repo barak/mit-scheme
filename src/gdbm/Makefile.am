@@ -73,7 +73,7 @@ gdbm.bin: stamp-scheme
 gdbm.bci: stamp-scheme
 gdbm.com: stamp-scheme
 gdbm-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
-stamp-scheme: stamp-shim $(sources)
+stamp-scheme: stamp-shim $(sources) gdbm.pkg
 	touch stamp-scheme
 	echo '(load "compile.scm")' \
 	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode \
@@ -86,12 +86,15 @@ TESTS = gdbm-check.sh
 CLEANFILES += gdbm-check.db
 
 tags: tags-am
-	./tags-fix.sh
+	./tags-fix.sh gdbm
 
-all_sources = $(sources)
-all_sources += gdbm-check.scm gdbm-adapter.c gdbm-shim.h
+all_sources = $(sources) compile.scm make.scm
+all_sources += gdbm-check.scm gdbm-adapter.c gdbm-check.sh
 ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls) gdbm.pkg
 TAGS_DEPENDENCIES = $(all_sources) $(cdecls) gdbm.pkg
+
+EXTRA_DIST += $(all_sources) $(cdecls) gdbm.pkg
+EXTRA_DIST += optiondb.scm tags-fix.sh
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

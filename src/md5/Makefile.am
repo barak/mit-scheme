@@ -73,7 +73,7 @@ md5.bin: stamp-scheme
 md5.bci: stamp-scheme
 md5.com: stamp-scheme
 md5-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
-stamp-scheme: stamp-shim $(sources)
+stamp-scheme: stamp-shim $(sources) md5.pkg
 	touch stamp-scheme
 	echo '(load "compile.scm")' \
 	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode \
@@ -86,12 +86,15 @@ TESTS = md5-check.sh
 CLEANFILES += sample
 
 tags: tags-am
-	./tags-fix.sh
+	./tags-fix.sh md5
 
-all_sources = $(sources)
-all_sources += md5-check.scm md5-adapter.c md5-shim.h
+all_sources = $(sources) compile.scm make.scm
+all_sources += md5-check.scm md5-adapter.c md5-check.sh
 ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls) md5.pkg
 TAGS_DEPENDENCIES = $(all_sources) $(cdecls) md5.pkg
+
+EXTRA_DIST += $(all_sources) $(cdecls) md5.pkg
+EXTRA_DIST += optiondb.scm tags-fix.sh
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
