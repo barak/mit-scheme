@@ -88,13 +88,13 @@ CLEANFILES += encrypted decrypted
 tags: tags-am
 	./tags-fix.sh mcrypt
 
-all_sources = $(sources) compile.scm make.scm
-all_sources += mcrypt-check.scm mcrypt-adapter.c mcrypt-check.sh
-ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls) mcrypt.pkg
-TAGS_DEPENDENCIES = $(all_sources) $(cdecls) mcrypt.pkg
+all_sources = $(sources) mcrypt-adapter.c
+ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
+TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 
 EXTRA_DIST += $(all_sources) $(cdecls) mcrypt.pkg
-EXTRA_DIST += optiondb.scm tags-fix.sh
+EXTRA_DIST += compile.scm mcrypt-check.scm mcrypt-check.sh
+EXTRA_DIST += make.scm optiondb.scm tags-fix.sh
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

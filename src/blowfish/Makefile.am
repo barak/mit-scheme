@@ -88,13 +88,13 @@ CLEANFILES += test
 tags: tags-am
 	./tags-fix.sh blowfish
 
-all_sources = $(sources) compile.scm make.scm
-all_sources += blowfish-check.scm blowfish-adapter.c blowfish-check.sh
-ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls) blowfish.pkg
-TAGS_DEPENDENCIES = $(all_sources) $(cdecls) blowfish.pkg
+all_sources = $(sources) blowfish-adapter.c
+ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
+TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 
-EXTRA_DIST += $(all_sources) $(cdecls) blowfish.pkg
-EXTRA_DIST += optiondb.scm tags-fix.sh
+EXTRA_DIST += $(all_sources) $(cdecls) compile.scm blowfish.pkg
+EXTRA_DIST += blowfish-check.scm blowfish-check.sh
+EXTRA_DIST += make.scm optiondb.scm tags-fix.sh
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

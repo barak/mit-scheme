@@ -88,13 +88,13 @@ CLEANFILES += sample
 tags: tags-am
 	./tags-fix.sh md5
 
-all_sources = $(sources) compile.scm make.scm
-all_sources += md5-check.scm md5-adapter.c md5-check.sh
-ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls) md5.pkg
-TAGS_DEPENDENCIES = $(all_sources) $(cdecls) md5.pkg
+all_sources = $(sources) md5-adapter.c
+ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
+TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 
 EXTRA_DIST += $(all_sources) $(cdecls) md5.pkg
-EXTRA_DIST += optiondb.scm tags-fix.sh
+EXTRA_DIST += compile.scm md5-check.scm md5-check.sh
+EXTRA_DIST += make.scm optiondb.scm tags-fix.sh
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

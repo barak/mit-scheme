@@ -88,13 +88,13 @@ CLEANFILES += gdbm-check.db
 tags: tags-am
 	./tags-fix.sh gdbm
 
-all_sources = $(sources) compile.scm make.scm
-all_sources += gdbm-check.scm gdbm-adapter.c gdbm-check.sh
-ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls) gdbm.pkg
-TAGS_DEPENDENCIES = $(all_sources) $(cdecls) gdbm.pkg
+all_sources = $(sources) gdbm-adapter.c
+ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
+TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 
 EXTRA_DIST += $(all_sources) $(cdecls) gdbm.pkg
-EXTRA_DIST += optiondb.scm tags-fix.sh
+EXTRA_DIST += compile.scm gdbm-check.scm gdbm-check.sh
+EXTRA_DIST += make.scm optiondb.scm tags-fix.sh
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \

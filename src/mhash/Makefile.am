@@ -88,13 +88,13 @@ CLEANFILES += sample
 tags: tags-am
 	./tags-fix.sh mhash
 
-all_sources = $(sources) compile.scm make.scm
-all_sources += mhash-check.scm mhash-adapter.c mhash-check.sh
-ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls) mhash.pkg
-TAGS_DEPENDENCIES = $(all_sources) $(cdecls) mhash.pkg
+all_sources = $(sources) mhash-adapter.c
+ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
+TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 
 EXTRA_DIST += $(all_sources) $(cdecls) mhash.pkg
-EXTRA_DIST += optiondb.scm tags-fix.sh
+EXTRA_DIST += compile.scm mhash-check.scm mhash-check.sh
+EXTRA_DIST += make.scm optiondb.scm tags-fix.sh
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
