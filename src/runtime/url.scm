@@ -189,68 +189,6 @@ USA.
     (guarantee-utf8-string suffix 'URI-PREFIX)
     (string->absolute-uri (string-append prefix suffix))))
 
-;;;; Merging
-
-(define (merge-uris uri #!optional base-uri)
-  (%merge-uris (->uri uri 'MERGE-URIS)
-	       (compute-base-uri base-uri 'MERGE-URIS)))
-
-(define (compute-base-uri base-uri caller)
-  (let ((default (uri-merge-defaults)))
-    (if default
-	(if (default-object? base-uri)
-	    default
-	    (let ((base-uri (->uri base-uri caller)))
-	      (if (uri-relative? base-uri)
-		  (%merge-uris base-uri default)
-		  base-uri)))
-	(begin
-	  (if (default-object? base-uri)
-	      (error "Must supply a base URI for merging:" caller))
-	  (->absolute-uri base-uri caller)))))
-
-(define uri-merge-defaults)
-(define (make-uri-merge-defaults)
-  (make-parameter #f
-		  (lambda (object)
-		    (and object
-			 (->absolute-uri object 'uri-merge-defaults)))))
-
-(define (%merge-uris uri base-uri)
-  (cond ((uri-scheme uri)
-	 uri)
-	((uri-authority uri)
-	 (make-uri (uri-scheme base-uri)
-		   (uri-authority uri)
-		   (uri-path uri)
-		   (uri-query uri)
-		   (uri-fragment uri)))
-	((null? (uri-path uri))
-	 (make-uri (uri-scheme base-uri)
-		   (uri-authority base-uri)
-		   (uri-path base-uri)
-		   (or (uri-query uri) (uri-query base-uri))
-		   (uri-fragment uri)))
-	(else
-	 (make-uri (uri-scheme base-uri)
-		   (uri-authority base-uri)
-		   (merge-paths (uri-path uri) base-uri)
-		   (uri-query uri)
-		   (uri-fragment uri)))))
-
-(define (merge-paths ref-path base-uri)
-  (cond ((path-absolute? ref-path)
-	 ref-path)
-	((and (uri-authority base-uri)
-	      (null? (uri-path base-uri)))
-	 (cons "" ref-path))
-	(else
-	 (let ((path (uri-path base-uri)))
-	   (if (and (pair? path)
-		    (pair? (cdr path)))
-	       (append (except-last-pair path) ref-path)
-	       ref-path)))))
-
 (define (remove-dot-segments path)
   ;; At all times, (APPEND INPUT (REVERSE OUTPUT)) must be well
   ;; formed.  If both INPUT and OUTPUT are non-null, the slash
@@ -295,7 +233,56 @@ USA.
 	(reverse! (no-output path))
 	path)))
 
-;;;; Parser
+;;;; Merging
+
+(define (merge-uris uri #!optional base-uri)
+  (let ((uri (->uri uri 'merge-uris))
+	(base-uri
+	 (if (default-object? base-uri)
+	     (uri-merge-defaults)
+	     (merge-uris base-uri))))
+    (cond ((or (not base-uri) (uri-scheme uri))
+	   uri)
+	  ((uri-authority uri)
+	   (make-uri (uri-scheme base-uri)
+		     (uri-authority uri)
+		     (uri-path uri)
+		     (uri-query uri)
+		     (uri-fragment uri)))
+	  ((null? (uri-path uri))
+	   (make-uri (uri-scheme base-uri)
+		     (uri-authority base-uri)
+		     (uri-path base-uri)
+		     (or (uri-query uri) (uri-query base-uri))
+		     (uri-fragment uri)))
+	  (else
+	   (make-uri (uri-scheme base-uri)
+		     (uri-authority base-uri)
+		     (merge-paths (uri-path uri) base-uri)
+		     (uri-query uri)
+		     (uri-fragment uri))))))
+
+(define uri-merge-defaults)
+(define (make-uri-merge-defaults)
+  (make-parameter #f
+		  (lambda (object)
+		    (and object
+			 (->uri object 'uri-merge-defaults)))))
+
+(define (merge-paths ref-path base-uri)
+  (cond ((path-absolute? ref-path)
+	 ref-path)
+	((and (uri-authority base-uri)
+	      (null? (uri-path base-uri)))
+	 (cons "" ref-path))
+	(else
+	 (let ((path (uri-path base-uri)))
+	   (if (and (pair? path)
+		    (pair? (cdr path)))
+	       (append (except-last-pair path) ref-path)
+	       ref-path)))))
+
+;;;; Parsing
 
 (define (->uri object #!optional caller)
   (%->uri object parse-uri (lambda (uri) uri #t) caller))
