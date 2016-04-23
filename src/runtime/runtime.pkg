@@ -5415,7 +5415,6 @@ USA.
 	  make-uri
 	  make-uri-authority
 	  merge-uris
-	  param:base-uri
 	  parse-absolute-uri
 	  parse-partial-absolute-uri
 	  parse-partial-uri
@@ -5450,6 +5449,7 @@ USA.
 	  uri-authority?
 	  uri-fragment
 	  uri-host?
+	  uri-merge-defaults
 	  uri-path
 	  uri-path-absolute?
 	  uri-path-relative?

@@ -196,7 +196,7 @@ USA.
 	       (compute-base-uri base-uri 'MERGE-URIS)))
 
 (define (compute-base-uri base-uri caller)
-  (let ((default (param:base-uri)))
+  (let ((default (uri-merge-defaults)))
     (if default
 	(if (default-object? base-uri)
 	    default
@@ -209,12 +209,12 @@ USA.
 	      (error "Must supply a base URI for merging:" caller))
 	  (->absolute-uri base-uri caller)))))
 
-(define param:base-uri)
-(define (make-param:base-uri)
+(define uri-merge-defaults)
+(define (make-uri-merge-defaults)
   (make-parameter #f
 		  (lambda (object)
 		    (and object
-			 (->absolute-uri object 'param:base-uri)))))
+			 (->absolute-uri object 'uri-merge-defaults)))))
 
 (define (%merge-uris uri base-uri)
   (cond ((uri-scheme uri)
@@ -930,7 +930,7 @@ USA.
 	(char-set-union url:char-set:unreserved
 			(string->char-set ";/?:@&=")))
 
-  (set! param:base-uri (make-param:base-uri))
+  (set! uri-merge-defaults (make-uri-merge-defaults))
   unspecific)
 
 ;;;; Partial URIs
