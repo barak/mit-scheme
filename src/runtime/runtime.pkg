@@ -5415,6 +5415,7 @@ USA.
 	  make-uri
 	  make-uri-authority
 	  merge-uris
+	  param:base-uri
 	  parse-absolute-uri
 	  parse-partial-absolute-uri
 	  parse-partial-uri

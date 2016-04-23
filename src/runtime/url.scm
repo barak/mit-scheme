@@ -191,29 +191,52 @@ USA.
 
 ;;;; Merging
 
-(define (merge-uris uri base-uri)
-  (let ((uri (->uri uri 'MERGE-URIS))
-	(base-uri (->absolute-uri base-uri 'MERGE-URIS)))
-    (cond ((uri-scheme uri)
-	   uri)
-	  ((uri-authority uri)
-	   (make-uri (uri-scheme base-uri)
-		     (uri-authority uri)
-		     (uri-path uri)
-		     (uri-query uri)
-		     (uri-fragment uri)))
-	  ((null? (uri-path uri))
-	   (make-uri (uri-scheme base-uri)
-		     (uri-authority base-uri)
-		     (uri-path base-uri)
-		     (or (uri-query uri) (uri-query base-uri))
-		     (uri-fragment uri)))
-	  (else
-	   (make-uri (uri-scheme base-uri)
-		     (uri-authority base-uri)
-		     (merge-paths (uri-path uri) base-uri)
-		     (uri-query uri)
-		     (uri-fragment uri))))))
+(define (merge-uris uri #!optional base-uri)
+  (%merge-uris (->uri uri 'MERGE-URIS)
+	       (compute-base-uri base-uri 'MERGE-URIS)))
+
+(define (compute-base-uri base-uri caller)
+  (let ((default (param:base-uri)))
+    (if default
+	(if (default-object? base-uri)
+	    default
+	    (let ((base-uri (->uri base-uri caller)))
+	      (if (uri-relative? base-uri)
+		  (%merge-uris base-uri default)
+		  base-uri)))
+	(begin
+	  (if (default-object? base-uri)
+	      (error "Must supply a base URI for merging:" caller))
+	  (->absolute-uri base-uri caller)))))
+
+(define param:base-uri)
+(define (make-param:base-uri)
+  (make-parameter #f
+		  (lambda (object)
+		    (and object
+			 (->absolute-uri object 'param:base-uri)))))
+
+(define (%merge-uris uri base-uri)
+  (cond ((uri-scheme uri)
+	 uri)
+	((uri-authority uri)
+	 (make-uri (uri-scheme base-uri)
+		   (uri-authority uri)
+		   (uri-path uri)
+		   (uri-query uri)
+		   (uri-fragment uri)))
+	((null? (uri-path uri))
+	 (make-uri (uri-scheme base-uri)
+		   (uri-authority base-uri)
+		   (uri-path base-uri)
+		   (or (uri-query uri) (uri-query base-uri))
+		   (uri-fragment uri)))
+	(else
+	 (make-uri (uri-scheme base-uri)
+		   (uri-authority base-uri)
+		   (merge-paths (uri-path uri) base-uri)
+		   (uri-query uri)
+		   (uri-fragment uri)))))
 
 (define (merge-paths ref-path base-uri)
   (cond ((path-absolute? ref-path)
@@ -906,6 +929,8 @@ USA.
   (set! url:char-set:unescaped
 	(char-set-union url:char-set:unreserved
 			(string->char-set ";/?:@&=")))
+
+  (set! param:base-uri (make-param:base-uri))
   unspecific)
 
 ;;;; Partial URIs
