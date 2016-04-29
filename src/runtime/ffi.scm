@@ -354,9 +354,11 @@ USA.
      (if (alien-function? arg)
 	 (alien-function-cache! arg)))
    args)
-  (without-interrupts
+  (with-thread-events-blocked
    (lambda ()
-     (call-alien* alien-function args))))
+     (without-interrupts
+      (lambda ()
+	(call-alien* alien-function args))))))
 
 #;(define-integrable (call-alien* alien-function args)
   (apply (ucode-primitive c-call -1) alien-function args))
@@ -540,22 +542,18 @@ USA.
 (define (apply-callback-proc procedure args)
   (call-with-current-continuation
    (lambda (return)
-     (with-restart
-      'USE-VALUE			;name
-      "Return a value from the callback." ;reporter
-      return				;effector
-      (lambda ()			;interactor
-	(values (prompt-for-evaluated-expression
-		 "Value to return from callback")))
-      (lambda ()			;thunk
-	(let ((done? #f))
-	  (if (not done?)
-	      (begin
-		(set! done? #t)
-		(apply procedure args))
-	      (let loop ()
-		(error "Cannot return from a callback more than once.")
-		(loop)))))))))
+     (parameterize ((param:standard-error-hook
+		     (named-lambda (callback-error-handler condition)
+		       (let ((continuation return))
+			 (set! return #f)
+			 (outf-error ";error in callback: "condition"\n")
+			 (continuation 0)))))
+       (let* ((value (apply procedure args))
+	      (continuation return))
+	 (set! return #f)
+	 (if continuation
+	     (continuation value)
+	     (error "Cannot return from a callback multiple times.")))))))
 
 ;;; For callback debugging:
 
