@@ -508,13 +508,18 @@ callout_continue (CalloutTrampIn tramp)
   /* Re-seal the CStack frame over the C results (again, pushing the
      cstack_depth and callout-part2) and abort.  Restart as
      C-CALL-CONTINUE and run callout-part2. */
-  SCM val;
-
   CSTACK_PUSH (int, cstack_depth);
   CSTACK_PUSH (CalloutTrampIn, tramp);
 
+#if 1
+  PRIMITIVE_ABORT (PRIM_POP_RETURN);
+  /* NOTREACHED */
+#else
   /* Just call; do not actually abort. */
-  /* PRIMITIVE_ABORT (PRIM_POP_RETURN); */
+
+  /* This is fubared by a GC during a callback.  callback_run_kernel
+     probably needs to use something like apply_compiled_from_
+     primitive for this to work... */
 
   /* Remove stack sealant created by callout_seal (which used
      back_out_of_primitive), as if removed by pop_return in Interp()
@@ -527,8 +532,8 @@ callout_continue (CalloutTrampIn tramp)
   SET_EXP (APPLY_FRAME_PROCEDURE ());
   /* APPLY_PRIMITIVE_FROM_INTERPRETER (Function); */
   /* Prim_c_call_continue(); */
-  val = tramp ();
-  return (val);
+  return (tramp ());
+#endif
 }
 
 DEFINE_PRIMITIVE ("C-CALL-CONTINUE", Prim_c_call_continue, 1, LEXPR, 0)
@@ -570,7 +575,7 @@ callout_lunseal (CalloutTrampIn expected)
   CSTACK_LPOP (int, depth, tos);
   if (depth != cstack_depth || found != expected)
     {
-      outf_error_line ("\ninternal error: slipped in 1st part of callout");
+      outf_error_line ("\ninternal error: slipped in 2nd tramp of callout");
       signal_error_from_primitive (ERR_EXTERNAL_RETURN);
     }
   return (tos);
