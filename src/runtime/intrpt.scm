@@ -128,7 +128,8 @@ USA.
 	  (begin
 	    (set! running? #t)
 	    (trigger-gc-daemons!)
-	    (set! running? #f))))))
+	    (set! running? #f)
+	    (handle-current-thread-events))))))
 
 (define event:console-resize)
 (define (console-resize-handler interrupt-code interrupt-enables)

@@ -972,6 +972,16 @@ USA.
 	     (deliver-timer-events (get-system-times))
 	     (maybe-signal-io-thread-events))))
      (%maybe-toggle-thread-timer))))
+
+(define (handle-current-thread-events)
+  (without-interrupts
+   (lambda ()
+     (let ((thread first-running-thread))
+       (if thread
+	   (if (not (thread/block-events? thread))
+	       (handle-thread-events thread))
+	   (outf-error
+	    "\nhandle-current-thread-events: no current thread\n"))))))
 
 ;;;; Subprocess Events
 

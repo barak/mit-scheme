@@ -2480,6 +2480,8 @@ USA.
 	  generate-suspend-file?)
   (export (runtime swank)
 	  keyboard-interrupt-vector)
+  (import (runtime thread)
+	  handle-current-thread-events)
   (initialization (initialize-package!)))
 
 (define-package (runtime lambda-abstraction)
