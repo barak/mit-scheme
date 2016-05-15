@@ -4493,7 +4493,8 @@ USA.
 	  (quasiquote :quasiquote)
 	  (receive :receive)
 	  (unless :unless)
-	  (when :when))
+	  (when :when)
+	  get-supported-features)
   (export (runtime)
 	  parse-define-form))
 
