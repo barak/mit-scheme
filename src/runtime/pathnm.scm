@@ -609,8 +609,8 @@ these rules:
     ((host-type/operation/init-file-pathname (host/type host)) host)))
 
 (define (system-library-pathname pathname #!optional required?)
-  (if (if (default-object? required?) #t required?)
-      (or (%find-library-file pathname)
+  (or (%find-library-file pathname)
+      (if (if (default-object? required?) #t required?)
 	  (system-library-pathname
 	   (error:file-operation pathname
 				 "find"
@@ -618,8 +618,8 @@ these rules:
 				 "no such file in system library path"
 				 system-library-pathname
 				 (list pathname required?))
-	   required?))
-      (merge-pathnames pathname (%find-library-directory))))
+	   required?)
+	  (merge-pathnames pathname (%find-library-directory)))))
 
 (define (system-library-directory-pathname #!optional pathname required?)
   (if (if (default-object? pathname) #f pathname)
