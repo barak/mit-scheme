@@ -60,14 +60,14 @@ USA.
     (lambda ()
       (let ((entry (weak-assq context mhash-contexts)))
 	(if entry
-	    (set! mhash-contexts (delq! context mhash-contexts)))))))
+	    (set! mhash-contexts (delq! entry mhash-contexts)))))))
 
 (define (remove-hmac-context-cleanup context)
   (with-thread-mutex-lock mhash-contexts-mutex
     (lambda ()
       (let ((entry (weak-assq context mhash-hmac-contexts)))
 	(if entry
-	    (set! mhash-hmac-contexts (delq! context mhash-hmac-contexts)))))))
+	    (set! mhash-hmac-contexts (delq! entry mhash-hmac-contexts)))))))
 
 (define (weak-assq obj alist)
   (let loop ((alist alist))
