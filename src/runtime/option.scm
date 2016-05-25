@@ -82,7 +82,11 @@ USA.
       (error "Cannot locate a load-option database.")))
 
 (define (library-file? library-internal-path)
-  (confirm-pathname (system-library-pathname library-internal-path #f)))
+  (confirm-pathname
+   (pathname-new-type
+    (system-library-pathname (pathname-default-type library-internal-path "scm")
+			     #f)
+    #f)))
 
 (define (confirm-pathname pathname)
   (and (file-loadable? pathname)
