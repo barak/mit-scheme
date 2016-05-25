@@ -75,9 +75,9 @@ blowfish.com: stamp-scheme
 blowfish-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
 stamp-scheme: stamp-shim $(sources) blowfish.pkg
 	touch stamp-scheme
-	echo '(load "compile.scm")' \
-	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode \
-	|| rm stamp-scheme
+	if ! echo '(load "compile.scm")' \
+	     | $(MIT_SCHEME_EXE) --prepend-library . --batch-mode; then \
+	    rm stamp-scheme; exit 1; fi
 
 CLEANFILES = blowfish-const* blowfish-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd

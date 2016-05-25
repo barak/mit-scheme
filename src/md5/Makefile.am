@@ -75,9 +75,9 @@ md5.com: stamp-scheme
 md5-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
 stamp-scheme: stamp-shim $(sources) md5.pkg
 	touch stamp-scheme
-	echo '(load "compile.scm")' \
-	| $(MIT_SCHEME_EXE) --prepend-library . --batch-mode \
-	|| rm stamp-scheme
+	if ! echo '(load "compile.scm")' \
+	     | $(MIT_SCHEME_EXE) --prepend-library . --batch-mode; then \
+	    rm stamp-scheme; exit 1; fi
 
 CLEANFILES = md5-const* md5-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
