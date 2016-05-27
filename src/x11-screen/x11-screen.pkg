@@ -1,0 +1,215 @@
+#| -*-Scheme-*-
+
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016
+    Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
+USA.
+
+|#
+
+;;;; Edwin Packaging
+
+(global-definitions runtime/)
+(global-definitions edwin/)
+(global-definitions x11/)
+
+(define-package (edwin screen x11-screen)
+  (files "x11-screen")
+  (parent (edwin screen))
+  ;; Until the microcode module based Edwin X Screen is removed, these
+  ;; bindings are already in (edwin) and (edwin x-commands).  They
+  ;; cannot be exported again, and must be patched by
+  ;; (load-option 'x11-screen).
+  #;(export (edwin)
+	  edwin-variable$x-cut-to-clipboard
+	  edwin-variable$x-paste-from-clipboard
+	  os/interprogram-cut
+	  os/interprogram-paste
+	  x-root-window-size
+	  x-screen-ignore-focus-button?
+	  x-selection-timeout
+	  xterm-screen/flush!
+	  xterm-screen/grab-focus!)
+  #;(export (edwin x-commands)
+	  screen-display
+	  screen-xterm
+	  xterm-screen/set-icon-name
+	  xterm-screen/set-name)
+  (import (edwin keyboard)
+	  keyboard-peek-busy-no-hang)
+  (import (edwin process)
+	  register-process-output-events)
+  (import (edwin x-keys)
+	  x-make-special-key)
+  (import (edwin x-commands)
+	  update-xterm-screen-names!)
+  ;; Import bindings that, in (edwin screen x-screen), are defined by
+  ;; a define-primitives form.
+  (import (x11)
+	  x-change-property
+	  x-close-all-displays
+	  x-close-display
+	  x-close-window
+	  x-convert-selection
+	  x-delete-property
+	  x-display-descriptor
+	  x-display-flush
+	  x-display-get-default
+	  x-display-get-size
+	  x-display-process-events
+	  x-display-sync
+	  x-get-atom-name
+	  x-get-selection-owner
+	  x-get-window-property
+	  x-intern-atom
+	  x-max-request-size
+	  x-open-display
+	  x-select-input
+	  x-send-selection-notify
+	  x-set-selection-owner
+	  x-window-andc-event-mask
+	  x-window-beep
+	  x-window-display
+	  x-window-flush
+	  x-window-id
+	  x-window-map
+	  x-window-or-event-mask
+	  x-window-raise
+	  x-window-set-event-mask
+	  x-window-set-icon-name
+	  x-window-set-input-focus
+	  x-window-set-name
+	  xterm-clear-rectangle!
+	  xterm-draw-cursor
+	  xterm-dump-rectangle
+	  xterm-enable-cursor
+	  xterm-erase-cursor
+	  xterm-map-x-coordinate
+	  xterm-map-x-size
+	  xterm-map-y-coordinate
+	  xterm-map-y-size
+	  xterm-open-window
+	  xterm-reconfigure
+	  xterm-restore-contents
+	  xterm-save-contents
+	  xterm-scroll-lines-down
+	  xterm-scroll-lines-up
+	  xterm-set-size
+	  xterm-write-char!
+	  xterm-write-cursor!
+	  xterm-write-substring!
+	  xterm-x-size
+	  xterm-y-size)
+  ;; Import bindings that, in (edwin screen x-screen), are defined by
+  ;; optimistic stabs at FFI constants.
+  (import (x11)
+	  event-type:button-down
+	  event-type:button-up
+	  event-type:configure
+	  event-type:enter
+	  event-type:focus-in
+	  event-type:focus-out
+	  event-type:key-press
+	  event-type:leave
+	  event-type:motion
+	  event-type:expose
+	  event-type:delete-window
+	  event-type:map
+	  event-type:unmap
+	  event-type:take-focus
+	  event-type:visibility
+	  event-type:selection-clear
+	  event-type:selection-notify
+	  event-type:selection-request
+	  event-type:property-notify
+	  number-of-event-types))
+
+#;(define-package (edwin x11-keys)
+  (files "x11-key")
+  (parent (edwin))
+  (export (edwin screen x11-screen)
+	  x-make-special-key))
+
+#;(define-package (edwin x-commands)
+  (files "x11-com")
+  (parent (edwin))
+  (import (edwin)
+	  edwin-command$lower-frame
+	  edwin-command$raise-frame
+	  edwin-command$set-background-color
+	  edwin-command$set-border-color
+	  edwin-command$set-border-width
+	  edwin-command$set-cursor-color
+	  edwin-command$set-default-font
+	  edwin-command$set-font
+	  edwin-command$set-foreground-color
+	  edwin-command$set-frame-icon-name
+	  edwin-command$set-frame-name
+	  edwin-command$set-frame-position
+	  edwin-command$set-frame-size
+	  edwin-command$set-internal-border-width
+	  edwin-command$set-mouse-color
+	  edwin-command$set-mouse-shape
+	  edwin-command$show-frame-position
+	  edwin-command$show-frame-size
+	  edwin-command$x-lower-screen
+	  edwin-command$x-mouse-ignore
+	  edwin-command$x-mouse-keep-one-window
+	  edwin-command$x-mouse-select
+	  edwin-command$x-mouse-select-and-split
+	  edwin-command$x-mouse-set-mark
+	  edwin-command$x-mouse-set-point
+	  edwin-command$x-mouse-show-event
+	  edwin-command$x-raise-screen
+	  edwin-command$x-set-background-color
+	  edwin-command$x-set-border-color
+	  edwin-command$x-set-border-width
+	  edwin-command$x-set-cursor-color
+	  edwin-command$x-set-font
+	  edwin-command$x-set-foreground-color
+	  edwin-command$x-set-icon-name
+	  edwin-command$x-set-internal-border-width
+	  edwin-command$x-set-mouse-color
+	  edwin-command$x-set-mouse-shape
+	  edwin-command$x-set-position
+	  edwin-command$x-set-size
+	  edwin-command$x-set-window-name
+	  edwin-variable$frame-icon-name-format
+	  edwin-variable$frame-icon-name-length
+	  edwin-variable$x-screen-icon-name-format
+	  edwin-variable$x-screen-icon-name-length
+	  edwin-variable$x-screen-name-format
+	  edwin-variable$x-screen-name-length
+
+	  ;; Convenience exports?  Do we need non-X-specific
+	  ;; abstractions to define mouse commands?
+	  ;;x-button1-down
+	  ;;x-button1-up
+	  ;;x-button2-down
+	  ;;x-button2-up
+	  ;;x-button3-down
+	  ;;x-button3-up
+	  ;;x-button4-down
+	  ;;x-button4-up
+	  ;;x-button5-down
+	  ;;x-button5-up
+	  )
+  (export (edwin screen x11-screen)
+	  update-xterm-screen-names!))
