@@ -26,8 +26,8 @@ ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = autogen.sh
 
 MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
-scmlibdir = $(libdir)/mit-scheme-@MIT_SCHEME_ARCH@
-scmlib_md5dir = $(scmlibdir)/md5
+scmlibdir = @MIT_SCHEME_LIBDIR@
+scmlib_md5dir = $(scmlibdir)md5
 
 scmlib_LTLIBRARIES = md5-shim.la
 scmlib_DATA = md5-types.bin md5-const.bin
@@ -92,12 +92,12 @@ all_sources = $(sources) md5-adapter.c
 ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
 TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 
-EXTRA_DIST += $(all_sources) $(cdecls) md5.pkg
-EXTRA_DIST += compile.scm md5-check.scm md5-check.sh
+EXTRA_DIST += $(all_sources) $(cdecls) compile.scm md5.pkg
+EXTRA_DIST += md5-check.scm md5-check.sh
 EXTRA_DIST += make.scm optiondb.scm tags-fix.sh
 
 install-data-hook:
-	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
+	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 
 #install-html: install-html-am
@@ -105,7 +105,7 @@ install-data-hook:
 #	| $(MIT_SCHEME_EXE) --batch-mode
 
 uninstall-hook:
-	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
+	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 	[ -d "$(DESTDIR)$(scmlib_md5dir)" ] \
 	&& rmdir "$(DESTDIR)$(scmlib_md5dir)"

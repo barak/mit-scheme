@@ -26,8 +26,8 @@ ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = autogen.sh
 
 MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
-scmlibdir = $(libdir)/mit-scheme-@MIT_SCHEME_ARCH@
-scmlib_mcryptdir = $(scmlibdir)/mcrypt
+scmlibdir = @MIT_SCHEME_LIBDIR@
+scmlib_mcryptdir = $(scmlibdir)mcrypt
 
 scmlib_LTLIBRARIES = mcrypt-shim.la
 scmlib_DATA = mcrypt-types.bin mcrypt-const.bin
@@ -92,12 +92,12 @@ all_sources = $(sources) mcrypt-adapter.c
 ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
 TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 
-EXTRA_DIST += $(all_sources) $(cdecls) mcrypt.pkg
-EXTRA_DIST += compile.scm mcrypt-check.scm mcrypt-check.sh
+EXTRA_DIST += $(all_sources) $(cdecls) compile.scm mcrypt.pkg
+EXTRA_DIST += mcrypt-check.scm mcrypt-check.sh
 EXTRA_DIST += make.scm optiondb.scm tags-fix.sh
 
 install-data-hook:
-	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
+	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 
 #install-html: install-html-am
@@ -105,7 +105,7 @@ install-data-hook:
 #	| $(MIT_SCHEME_EXE) --batch-mode
 
 uninstall-hook:
-	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
+	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 	[ -d "$(DESTDIR)$(scmlib_mcryptdir)" ] \
 	&& rmdir "$(DESTDIR)$(scmlib_mcryptdir)"

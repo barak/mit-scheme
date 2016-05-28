@@ -61,7 +61,9 @@ USA.
 
 AM_INIT_AUTOMAKE
 
-AC_PROG_LIBTOOL
+LT_PREREQ([2.2.6])
+LT_INIT([dlopen])
+
 AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_INSTALL
@@ -70,10 +72,6 @@ AC_ARG_WITH([openssl],
     AS_HELP_STRING([--with-openssl],
 	[Use OpenSSL crypto library if available [[yes]]]))
 : ${with_openssl='yes'}
-
-dnl Initialize libtool
-LT_PREREQ([2.2.6])
-LT_INIT([dlopen win32-dll])
 
 dnl The OpenSSL crypto library provides support for md5.
 if test "${with_openssl}" != no; then
@@ -94,13 +92,14 @@ if test "${with_openssl}" != no; then
 fi
 
 : ${MIT_SCHEME_EXE=mit-scheme}
-MIT_SCHEME_ARCH=`echo "(display microcode-id/compiled-code-type)" \
-		 | ${MIT_SCHEME_EXE} --batch-mode`
+MIT_SCHEME_LIBDIR=`( echo "(display (->namestring" ;\
+		     echo "          (system-library-directory-pathname)))" ) \
+		   | ${MIT_SCHEME_EXE} --batch-mode`
 MIT_SCHEME_OS_SUFFIX=`echo "(display (microcode-id/operating-system-suffix))" \
-		 | ${MIT_SCHEME_EXE} --batch-mode`
+		      | ${MIT_SCHEME_EXE} --batch-mode`
 
 AC_SUBST([MIT_SCHEME_EXE])
-AC_SUBST([MIT_SCHEME_ARCH])
+AC_SUBST([MIT_SCHEME_LIBDIR])
 AC_SUBST([MIT_SCHEME_OS_SUFFIX])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

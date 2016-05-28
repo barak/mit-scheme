@@ -26,8 +26,8 @@ ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = autogen.sh
 
 MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
-scmlibdir = $(libdir)/mit-scheme-@MIT_SCHEME_ARCH@
-scmlib_blowfishdir = $(scmlibdir)/blowfish
+scmlibdir = @MIT_SCHEME_LIBDIR@
+scmlib_blowfishdir = $(scmlibdir)blowfish
 
 scmlib_LTLIBRARIES = blowfish-shim.la
 scmlib_DATA = blowfish-types.bin blowfish-const.bin
@@ -97,7 +97,7 @@ EXTRA_DIST += blowfish-check.scm blowfish-check.sh
 EXTRA_DIST += make.scm optiondb.scm tags-fix.sh
 
 install-data-hook:
-	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
+	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 
 #install-html: install-html-am
@@ -105,7 +105,7 @@ install-data-hook:
 #	| $(MIT_SCHEME_EXE) --batch-mode
 
 uninstall-hook:
-	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)/")' \
+	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 	[ -d "$(DESTDIR)$(scmlib_blowfishdir)" ] \
 	&& rmdir "$(DESTDIR)$(scmlib_blowfishdir)"
