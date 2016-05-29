@@ -1314,7 +1314,10 @@ Otherwise, it is copied from the primary selection."
   ;; X-OPEN-DISPLAY hangs, uninterruptibly, when the X server is
   ;; running the login loop of xdm.  Can this be fixed?
   (or x-display-data
-      (and (or x-display-name (get-environment-variable "DISPLAY"))
+      (and (or x-display-name
+	       (let ((DISPLAY (get-environment-variable "DISPLAY")))
+		 (and (string? DISPLAY)
+		      (not (string-null? DISPLAY)))))
 	   (plugin-available? "x11")
 	   (begin
 	     (load-option 'X11)
