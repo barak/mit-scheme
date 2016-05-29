@@ -1,11 +1,11 @@
 RUNDIR = $(AUXDIR)/runtime
-RUNOPTS = chrsyn cpress format gdbm hashtb krypt mime-codec numint optiondb \
+RUNOPTS = chrsyn cpress format gdbm hashtb krypt mime-codec numint \
 	  ordvec pgsql process rbtree regexp rexp rgxcmp syncproc wttree ystep
 
 install:
 	rm -rf $(DESTDIR)$(RUNDIR)
 	$(mkinstalldirs) $(DESTDIR)$(RUNDIR)
-	$(INSTALL_DATA) *.pkd *.bci $(DESTDIR)$(RUNDIR)/.
+	$(INSTALL_DATA) *.pkd *.bci optiondb.scm $(DESTDIR)$(RUNDIR)/.
 	@for F in $(RUNOPTS); do \
 	    CMD="$(INSTALL_COM) $${F}.com $(DESTDIR)$(RUNDIR)/.";\
 	    echo "$${CMD}"; eval "$${CMD}";\
