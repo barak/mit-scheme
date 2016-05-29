@@ -94,19 +94,18 @@ stamp-scheme: stamp-shim $(sources) x11.pkg
 CLEANFILES = x11-const* x11-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 
-#TESTS = x11-check.sh
+TESTS = x11-check.sh
 
 tags: tags-am
 	./tags-fix.sh x11
-
-TESTS = x11-check.sh
 
 all_sources = $(sources) $(c_sources)
 ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
 TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 
 EXTRA_DIST += $(all_sources) $(cdecls) compile.sh x11.pkg
-EXTRA_DIST += make.scm tags-fix.sh
+EXTRA_DIST += x11-check.sh
+EXTRA_DIST += make.scm optiondb.scm tags-fix.sh
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)")' \
