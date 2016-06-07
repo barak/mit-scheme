@@ -2493,7 +2493,7 @@ char_ptr_to_prop_data_32 (const unsigned char * data, unsigned long nitems)
   SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, nitems, 1));
   unsigned long index;
   for (index = 0; (index < nitems); index += 1)
-    VECTOR_SET (result, index, (ulong_to_integer (((CARD32 *) data) [index])));
+    VECTOR_SET (result, index, (ulong_to_integer ((CARD32) ((long *) data) [index])));
   return (result);
 }
 

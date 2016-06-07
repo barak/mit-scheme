@@ -797,7 +797,7 @@ USA.
       (if (< index length)
 	  (begin
 	    (vector-set! result index (c-> scan "CARD32"))
-	    (alien-byte-increment! scan (c-sizeof "CARD32"))
+	    (alien-byte-increment! scan (c-sizeof "long"))
 	    (loop (1+ index)))))
     result))
 
