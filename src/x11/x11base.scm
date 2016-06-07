@@ -47,9 +47,9 @@ USA.
 
 ;;; Window Manager Properties
 
-(define (x-window-set-input-hint window hint)
+(define (x-window-set-input-hint window hint?)
   (guarantee-xwindow window 'x-window-set-input-hint)
-  (if (not (zero? (C-call "x_window_set_input_hint" window hint)))
+  (if (not (zero? (C-call "x_window_set_input_hint" window (if hint? 1 0))))
       (error "XAllocWMHints failed.")))
 
 (define (x-window-set-name window name)
@@ -702,7 +702,7 @@ USA.
 
 (define (x-intern-atom display name soft?)
   (guarantee-xdisplay display 'x-intern-atom)
-  (c-call "x_intern_atom" display name soft?))
+  (c-call "x_intern_atom" display name (if soft? 1 0)))
 
 (define (x-get-atom-name display atom)
 
@@ -756,7 +756,7 @@ USA.
     (let ((data-return (make-alien '(* char))))
       (add-alien-cleanup! data-return cleanup-data-return! init-data-return!)
       (let ((code (c-call "x_get_window_property" display window property
-			   long-offset long-length delete? req-type
+			   long-offset long-length (if delete? 1 0) req-type
 			   actual-type-return actual-format-return
 			   nitems-return bytes-after-return data-return)))
 	(if (not (zero? code))
