@@ -320,7 +320,7 @@ USA.
 
 (define (x-select-input display window event-mask)
   (guarantee-xdisplay display 'x-select-input)
-  (guarantee-xwindow window 'x-select-input)
+  (guarantee-Window window 'x-select-input)
   (c-call "x_select_input" display window event-mask))
 
 (define (x-window-event-mask window)
@@ -734,7 +734,8 @@ USA.
 (define (x-get-window-property display window property long-offset
 			       long-length delete? req-type)
   (guarantee-xdisplay display 'x-get-window-property)
-  (guarantee-xwindow window 'x-get-window-property)
+  (guarantee-Window window 'x-get-window-property)
+  (guarantee-Atom property 'x-get-window-property)
   (let ((actual-type-return (malloc (c-sizeof "Atom") '|Atom|))
 	(actual-format-return (malloc (c-sizeof "int") 'int))
 	(nitems-return (malloc (c-sizeof "ulong") 'ulong))
@@ -814,7 +815,11 @@ USA.
 
 (define (x-change-property display window property type format mode data)
   (guarantee-xdisplay display 'x-change-property)
-  (guarantee-xwindow window 'x-change-property)
+  (guarantee-Window window 'x-change-property)
+  (guarantee-Atom property 'x-change-property)
+  (guarantee-Atom type 'x-change-property)
+  (guarantee-integer format 'x-change-property)
+  (guarantee-integer mode 'x-change-property)
   (let* ((bytes.length
 	  (case format
 	    ((8)
@@ -873,13 +878,16 @@ USA.
 
 (define (x-delete-property display window property)
   (guarantee-xdisplay display 'x-delete-property)
-  (guarantee-xwindow window 'x-delete-property)
+  (guarantee-Window window 'x-delete-property)
   (c-call "x_delete_property" display window property))
 
 ;;; Selections
 
 (define (x-set-selection-owner display selection owner time)
   (guarantee-xdisplay display 'x-set-selection-owner)
+  (guarantee-Atom selection 'x-set-selection-owner)
+  (guarantee-Window owner 'x-set-selection-owner)
+  (guarantee-Time time 'x-set-selection-owner)
   (c-call "x_set_selection_owner" display selection owner time))
 
 (define (x-get-selection-owner display selection)
@@ -888,16 +896,35 @@ USA.
 
 (define (x-convert-selection display selection target property requestor time)
   (guarantee-xdisplay display 'x-convert-selection)
+  (guarantee-Atom selection 'x-convert-selection)
+  (guarantee-Atom target 'x-convert-selection)
+  (guarantee-Atom property 'x-convert-selection)
+  (guarantee-Window requestor 'x-convert-selection)
+  (guarantee-Time time 'x-convert-selection)
   (c-call "x_convert_selection"
 	  display selection target property requestor time))
 
 (define (x-send-selection-notify display requestor
 				 selection target property time)
   (guarantee-xdisplay display 'x-send-selection-notify)
+  (guarantee-Window requestor 'x-send-selection-notify) ;a Window
+  (guarantee-Atom selection 'x-send-selection-notify) ;an Atom
+  (guarantee-Atom target 'x-send-selection-notify)	 ;an Atom
+  (guarantee-Atom property 'x-send-selection-notify)	 ;an Atom
+  (guarantee-Time time 'x-send-selection-notify)	 ;a Time
   (c-call "x_send_selection_notify"
 	  display requestor selection target property time))
 
 ;;; Guarantors
+
+(declare (integrate-operator guarantee-Atom))
+(define guarantee-Atom guarantee-exact-positive-integer)
+
+(declare (integrate-operator guarantee-Window))
+(define guarantee-Window guarantee-exact-positive-integer)
+
+(declare (integrate-operator guarantee-Time))
+(define guarantee-Time guarantee-exact-positive-integer)
 
 (define-integrable (guarantee-xvisual object operator)
   (if (not (and (alien? object)
