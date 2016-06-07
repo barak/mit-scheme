@@ -61,7 +61,8 @@ ETAGS_ARGS = $(sources)
 TAGS_DEPENDENCIES = $(sources)
 
 EXTRA_DIST += $(sources) compile.sh x11-screen.pkg
-EXTRA_DIST += make.scm
+EXTRA_DIST += x11-screen-check.sh
+EXTRA_DIST += make.scm optiondb.scm
 
 install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)")' \
