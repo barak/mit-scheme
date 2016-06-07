@@ -46,7 +46,7 @@ AM_MAKEINFOHTMLFLAGS = --no-split
 infodir = $(datarootdir)/info
 htmldir = $(libdir)/mit-scheme/doc
 
-AM_CPPFLAGS = -I$(scmlibdir)
+AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
 
 mcrypt_shim_la_LIBADD = mcrypt-adapter.lo
 mcrypt_shim_la_LDFLAGS = -module -avoid-version -shared

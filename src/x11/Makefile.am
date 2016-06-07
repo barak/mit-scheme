@@ -50,7 +50,7 @@ htmldir = $(libdir)/mit-scheme/doc
 dvidir = $(libdir)/mit-scheme/doc
 pdfdir = $(libdir)/mit-scheme/doc
 
-AM_CPPFLAGS = -I$(scmlibdir)
+AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
 AM_CFLAGS = `pkg-config --cflags x11`
 LIBS = `pkg-config --libs x11`
 
