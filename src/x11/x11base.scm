@@ -752,7 +752,8 @@ USA.
 	    (alien-null! copy))))
 
     (define (init-data-return! copy)
-      ((ucode-primitive c-malloc 2) copy (c-sizeof "* char")))
+      ((ucode-primitive c-malloc 2) copy (c-sizeof "* char"))
+      (c->= copy "* char" 0))
 
     (let ((data-return (make-alien '(* char))))
       (add-alien-cleanup! data-return cleanup-data-return! init-data-return!)
