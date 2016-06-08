@@ -782,7 +782,9 @@ USA.
 				 (c-> data-return "* char")
 				 (c-> nitems-return "ulong")))
 			       ((= 8 actual-format)
-				(c-peek-cstringp data-return))
+				(char-ptr-to-prop-data-8
+				 (c-> data-return "* char")
+				 (c-> nitems-return "ulong")))
 			       (else
 				(error "Unexpected format:" actual-format))))))
 	    (cleanup-alien! data-return)
@@ -811,6 +813,17 @@ USA.
 	  (begin
 	    (vector-set! result index (c-> scan "CARD16"))
 	    (alien-byte-increment! scan (c-sizeof "CARD16"))
+	    (loop (1+ index)))))
+    result))
+
+(define (char-ptr-to-prop-data-8 data length)
+  (let ((scan (copy-alien data))
+	(result (make-string length)))
+    (let loop ((index 0))
+      (if (< index length)
+	  (begin
+	    (string-set! result index (ascii->char (c-> scan "uchar")))
+	    (alien-byte-increment! scan (c-sizeof "uchar"))
 	    (loop (1+ index)))))
     result))
 
