@@ -1755,21 +1755,19 @@ x_get_window_property (struct xdisplay * xd, Window window, Atom property,
 {
     Display * display = (XD_DISPLAY (xd));
 
-    Atom actual_type;
     int actual_format;
-    unsigned long nitems;
-    unsigned long bytes_after;
-    unsigned char * data;
 
     if ((XGetWindowProperty (display, window, property, long_offset,
 			     long_length, delete, req_type,
-			     (&actual_type), (&actual_format),
-			     (&nitems), (&bytes_after), (&data)))
+			     actual_type_return, (&actual_format),
+			     nitems_return, bytes_after_return, prop_return))
 	!= Success)
       return (1);
+    *actual_format_return = actual_format;
     if (actual_format == 0)
       {
-	XFree (data);
+	XFree (*prop_return);
+	*prop_return = NULL;
 	return (2);
       }
     if (! ((actual_format == 8)
