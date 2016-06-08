@@ -70,9 +70,9 @@ USA.
 		     (vector-ref suppress-map 2)
 		     (vector-ref suppress-map 0)))
 	    ((eq? #f suppress-map)
-	     (values #f #f #t))
+	     (values 0 0 #t))
 	    (else
-	     (values #f #f #f)))
+	     (values 0 0 #f)))
     (let ((window
 	   (c-call "xterm_open_window" (make-alien '(struct |xwindow|))
 		   display geometry name class (if map? 1 0))))
