@@ -104,7 +104,7 @@ ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
 TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 
 EXTRA_DIST += $(all_sources) $(cdecls) compile.sh x11.pkg
-EXTRA_DIST += x11-check.sh
+EXTRA_DIST += x11-check.sh x11-test.scm
 EXTRA_DIST += make.scm optiondb.scm tags-fix.sh
 
 install-data-hook:
