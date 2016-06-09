@@ -5,7 +5,7 @@ Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016
     Massachusetts Institute of Technology
 
-This file is part of an x11 plugin for MIT/GNU Scheme.
+This file is part of an X11-screen plugin for MIT/GNU Scheme.
 
 This plugin is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the
