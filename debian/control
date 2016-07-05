@@ -1,9 +1,7 @@
 Source: mit-scheme
 Section: lisp
 Priority: optional
-Maintainer: Chris Hanson <cph@debian.org>
-DM-Upload-Allowed: yes
-Uploaders: Barak A. Pearlmutter <bap@debian.org>
+Maintainer: Barak A. Pearlmutter <bap@debian.org>
 Build-Depends: debhelper (>= 9), dh-autoreconf,
 		mit-scheme,
 		libssl-dev, libmhash-dev, libmcrypt-dev,
