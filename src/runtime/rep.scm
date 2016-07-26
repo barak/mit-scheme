@@ -137,7 +137,6 @@ USA.
 		    (loop
 		     (bind-abort-restart cmdl
 		       (lambda ()
-			 (deregister-all-events)
 			 (with-interrupt-mask interrupt-mask/all
 			   (lambda (interrupt-mask)
 			     interrupt-mask

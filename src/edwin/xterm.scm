@@ -500,23 +500,23 @@ USA.
 		      (guarantee-result)))))))))))
 
 (define (read-event queue display block?)
-  (preview-events display queue)
-  (let ((event
-	 (if (queue-empty? queue)
-	     (if (eq? 'IN-UPDATE block?)
-		 #f
-		 (read-event-1 display block?))
-	     (dequeue!/unsafe queue))))
-    (if (and event trace-port)
-	(write-line event trace-port))
-    event))
-
-(define (preview-events display queue)
   (let loop ()
-    (let ((event (x-display-process-events display 2)))
-      (if event
-	  (begin (preview-event event queue)
-		 (loop))))))
+    (let* ((empty "empty")
+	   (event* (with-thread-events-blocked
+		    (lambda ()
+		      (if (queue-empty? queue)
+			  empty
+			  (dequeue!/unsafe queue)))))
+	   (event (if (eq? event* empty)
+		      (and (not (memq block? '(IN-UPDATE #f)))
+			   (block-for-event display))
+		      event*)))
+      (if (and event trace-port)
+	  (write-line event trace-port))
+      (or event
+	  (if (memq block? '(IN-UPDATE #f))
+	      #f
+	      (loop))))))
 
 (define trace-port #f)
 
@@ -544,54 +544,30 @@ USA.
 			  (vector-ref event 4)
 			  (vector-ref event 5))))
 
-(define (read-event-1 display block?)
-  ;; Now consider other (non-X) events.
-  (if (eq? '#T block?)
-      (let loop ()
-	(let ((event (block-for-event display)))
-	  (or event
-	      (loop))))
-      (cond (inferior-thread-changes?
-	     event:inferior-thread-output)
-	    ((process-output-available?)
-	     event:process-output)
-	    ((process-status-changes?)
-	     event:process-status)
-	    (else #f))))
-
 (define (block-for-event display)
-  (let ((x-events-available? #f)
+  display
+  (let ((queue x-display-events)
 	(output-available? #f)
 	(registrations))
     (dynamic-wind
      (lambda ()
-       (let ((thread (current-thread)))
-	 (set! registrations
-	       (cons
-		(register-io-thread-event
-		 (x-display-descriptor display) 'READ
-		 thread (lambda (mode)
-			  mode
-			  (set! x-events-available? #t)))
-		(register-process-output-events
-		 thread (lambda (mode)
-			  mode
-			  (set! output-available? #t)))))))
+       (set! registrations
+	     (register-process-output-events
+	      (current-thread)
+	      (lambda (mode)
+		mode
+		(set! output-available? #t)))))
      (lambda ()
        (let loop ()
 	 (with-thread-events-blocked
 	  (lambda ()
-	    (if (and (not x-events-available?)
+	    (if (and (queue-empty? queue)
 		     (not output-available?)
 		     (not (process-status-changes?))
 		     (not inferior-thread-changes?))
 		(suspend-current-thread))))
-	 (cond (x-events-available?
-		(let ((queue x-display-events))
-		  (preview-events display queue)
-		  (if (queue-empty? queue)
-		      #f
-		      (dequeue!/unsafe queue))))
+	 (cond ((not (queue-empty? queue))
+		(dequeue!/unsafe queue))
 	       ((process-status-changes?)
 		event:process-status)
 	       (output-available?
@@ -603,6 +579,36 @@ USA.
      (lambda ()
        (for-each deregister-io-thread-event registrations)
        (set! registrations)))))
+
+(define (preview-event-stream)
+  (with-thread-events-blocked
+   (lambda ()
+
+     (define (register!)
+       (set! previewer-registration
+	     (register-io-thread-event (x-display-descriptor x-display-data)
+				       'READ (current-thread) preview-events))
+       unspecific)
+
+     (define (preview-events mode)
+       mode
+       (if previewer-registration
+	   (register!))
+       (let loop ()
+	 (let ((event (x-display-process-events x-display-data 2)))
+	   (if event
+	       (begin (preview-event event x-display-events)
+		      (loop))))))
+
+     (register!))))
+
+(define (unpreview-event-stream)
+  (with-thread-events-blocked
+   (lambda ()
+     (let ((registration previewer-registration))
+       (set! previewer-registration #f)
+       (if registration
+	   (deregister-io-thread-event registration))))))
 
 (define (wait-for-event interval predicate process-event)
   (let ((timeout (+ (real-time-clock) interval)))
@@ -754,6 +760,7 @@ USA.
     (and (not (screen-deleted? screen))
 	 (make-input-event 'DELETE-SCREEN delete-screen! screen))))
 
+;; Note that this handler is run in an interrupt (IO event).
 (define-event-handler event-type:map
   (lambda (screen event)
     event
@@ -763,6 +770,7 @@ USA.
 	   (screen-force-update screen)
 	   (make-input-event 'UPDATE update-screen! screen #f)))))
 
+;; Note that this handler is run in an interrupt (IO event).
 (define-event-handler event-type:unmap
   (lambda (screen event)
     event
@@ -770,6 +778,7 @@ USA.
 	(set-screen-mapped?! screen #f))
     #f))
 
+;; Note that this handler is run in an interrupt (IO event).
 (define-event-handler event-type:visibility
   (lambda (screen event)
     (and (not (screen-deleted? screen))
@@ -1335,13 +1344,18 @@ Otherwise, it is copied from the primary selection."
 
 (define signal-interrupts?)
 (define last-focus-time)
+(define previewer-registration)
 (define ignore-button-state)
 
 (define (with-editor-interrupts-from-x receiver)
   (fluid-let ((signal-interrupts? #t)
 	      (last-focus-time #f)
+	      (previewer-registration)
 	      (ignore-button-state #f))
-    (receiver (lambda (thunk) (thunk)) '())))
+    (dynamic-wind
+     preview-event-stream
+     (lambda () (receiver (lambda (thunk) (thunk)) '()))
+     unpreview-event-stream)))
 
 (define (with-x-interrupts-enabled thunk)
   (with-signal-interrupts #t thunk))
