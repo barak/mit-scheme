@@ -4,7 +4,7 @@ This is a drop-in replacement for the gdbm microcode module and
 runtime/gdbm.scm.  It is not part of the core build and can be built
 outside the core build tree in the customary way:
 
-    ./configure [--with-openssl=directory]...
+    ./configure ...
     make all check install
 
 The install target copies a shared library shim and compiled Scheme
