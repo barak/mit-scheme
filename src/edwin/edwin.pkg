@@ -129,7 +129,8 @@ USA.
 	  inhibit-editor-init-file?
 	  reset-editor
 	  reset-editor-windows
-	  (save-editor-files debug-save-files)))
+	  (save-editor-files debug-save-files)
+	  spawn-edwin))
 
 (define-package (edwin class-macros)
   (files "clsmac")
