@@ -54,6 +54,7 @@ stamp-scheme: $(sources) x11-screen.pkg
 	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
 
 CLEANFILES = *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
+CLEANFILES += stamp-scheme
 
 TESTS = x11-screen-check.sh
 

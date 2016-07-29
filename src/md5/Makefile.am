@@ -81,6 +81,7 @@ stamp-scheme: stamp-shim $(sources) md5.pkg
 
 CLEANFILES = md5-const* md5-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
+CLEANFILES += stamp-shim stamp-scheme
 
 TESTS = md5-check.sh
 CLEANFILES += sample

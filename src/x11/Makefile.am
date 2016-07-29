@@ -93,6 +93,7 @@ stamp-scheme: stamp-shim $(sources) x11.pkg
 
 CLEANFILES = x11-const* x11-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
+CLEANFILES += stamp-shim stamp-scheme
 
 TESTS = x11-check.sh
 

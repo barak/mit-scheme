@@ -81,6 +81,7 @@ stamp-scheme: stamp-shim $(sources) mcrypt.pkg
 
 CLEANFILES = mcrypt-const* mcrypt-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
+CLEANFILES += stamp-shim stamp-scheme
 
 TESTS = mcrypt-check.sh
 CLEANFILES += encrypted decrypted

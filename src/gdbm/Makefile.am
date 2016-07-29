@@ -81,6 +81,7 @@ stamp-scheme: stamp-shim $(sources) gdbm.pkg
 
 CLEANFILES = gdbm-const* gdbm-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
+CLEANFILES += stamp-shim stamp-scheme
 
 TESTS = gdbm-check.sh
 CLEANFILES += gdbm-check.db

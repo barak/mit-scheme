@@ -81,6 +81,7 @@ stamp-scheme: stamp-shim $(sources) blowfish.pkg
 
 CLEANFILES = blowfish-const* blowfish-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
+CLEANFILES += stamp-shim stamp-scheme
 
 TESTS = blowfish-check.sh
 CLEANFILES += test

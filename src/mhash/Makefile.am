@@ -81,6 +81,7 @@ stamp-scheme: stamp-shim $(sources) mhash.pkg
 
 CLEANFILES = mhash-const* mhash-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
+CLEANFILES += stamp-shim stamp-scheme
 
 TESTS = mhash-check.sh
 CLEANFILES += sample
