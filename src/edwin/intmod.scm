@@ -227,8 +227,10 @@ evaluated in the specified inferior REPL buffer."
 	 buffer)
 	(set-run-light! buffer #f)
 	(inferior-thread-run-light! (port/output-registration port)))))
-  (do () ((ready? port))
-    (suspend-current-thread)))
+  (with-thread-events-blocked
+   (lambda ()
+     (do () ((ready? port))
+       (suspend-current-thread)))))
 
 (define (end-input-wait port)
   (set-run-light! (port/buffer port) #t)
@@ -617,8 +619,10 @@ If this is an error, the debugger examines the error condition."
       (lambda ()
 	(set! cmdl (nearest-cmdl))
 	(signal-thread-event thread #f)))
-    (do () (cmdl)
-      (suspend-current-thread))
+    (with-thread-events-blocked
+     (lambda ()
+       (do () (cmdl)
+	 (suspend-current-thread))))
     cmdl))
 
 (define-command inferior-cmdl-self-insert
@@ -1098,10 +1102,12 @@ If this is an error, the debugger examines the error condition."
 			       (lambda ()
 				 (continue (procedure prompt))))))))
 		    'FORCE-RETURN))))))
-	(let loop ()
-	  (cond ((eq? value wait-value) (suspend-current-thread) (loop))
-		((eq? value abort-value) (abort->nearest))
-		(else value)))))))
+	(with-thread-events-blocked
+	 (lambda ()
+	   (let loop ()
+	     (cond ((eq? value wait-value) (suspend-current-thread) (loop))
+		   ((eq? value abort-value) (abort->nearest))
+		   (else value)))))))))
 
 (define (when-buffer-selected buffer thunk)
   (if (current-buffer? buffer)
