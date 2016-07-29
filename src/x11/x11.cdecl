@@ -344,10 +344,11 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	x_max_request_size
 	(xd (* (struct xdisplay))))
 
-(extern (* (struct xwindow))
+(extern int
 	x_display_process_events
 	(xd (* (struct xdisplay)))
-	(event (* XEvent)))
+	(event (* XEvent))
+	(xw_ret (* (* (struct xwindow)))))
 
 (extern void
 	x_select_input

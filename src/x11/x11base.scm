@@ -24,7 +24,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 |#
 
 ;;;; X11 interface
-;;; package: (x11)
+;;; package: (x11 base)
 ;;;
 ;;; These were once primitives created by x11base.c in umodule prx11.
 
@@ -101,13 +101,16 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-display-process-events display how)
   (declare (ignore how))
   (guarantee-xdisplay display 'x-display-process-events)
-  (let* ((event (malloc (C-sizeof "XEvent") '|XEvent|))
-	 (window (C-call "x_display_process_events"
-			 (make-alien '(struct |xwindow|))
-			 display event)))
-    (let ((obj (if (alien-null? window)
-		   #f
-		   (make-event-object window event))))
+  (let ((event (malloc (C-sizeof "XEvent") '|XEvent|))
+	(xw (malloc (C-sizeof "* struct xwindow") '(* (struct |xwindow|)))))
+    (let* ((done-p (C-call "x_display_process_events"
+			   display event xw))
+	   (window (C-> xw "* xwindow" (make-alien '(struct |xwindow|))))
+	   (obj (if (= done-p 1)
+		    #f
+		    (or (make-event-object window event)
+			#t))))
+      (free xw)
       (free event)
       obj)))
 

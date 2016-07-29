@@ -1109,13 +1109,16 @@ ping_server (struct xdisplay * xd)
     }
 }
 
-static struct xwindow *
-xd_process_events (struct xdisplay * xd, XEvent * result)
+static int
+xd_process_events (struct xdisplay * xd, XEvent * result,
+		   struct xwindow ** xw_ret)
 {
   Display * display = (XD_DISPLAY (xd));
   unsigned int events_queued;
   XEvent event;
-  struct xwindow * retval = NULL;
+  struct xwindow * xw = NULL;
+  int done_p = 1;
+
   if (x_debug > 1)
     {
       fprintf (stderr, "Enter xd_process_events\n");
@@ -1125,7 +1128,6 @@ xd_process_events (struct xdisplay * xd, XEvent * result)
   events_queued = (XEventsQueued (display, QueuedAfterReading));
   while (0 < events_queued)
     {
-      struct xwindow * xw;
       events_queued -= 1;
       XNextEvent (display, (&event));
       if ((event.type) == KeymapNotify)
@@ -1140,16 +1142,17 @@ xd_process_events (struct xdisplay * xd, XEvent * result)
       if (xw_process_event (xw, (&event)))
 	continue;
       memcpy (result, &event, sizeof (XEvent));
-      retval = xw;
+      *xw_ret = xw;
+      done_p = 0;
       break;
     }
   if (x_debug > 1)
     {
-      fprintf (stderr, "Return from xd_process_events: 0x%lx\n",
-	       ((unsigned long) retval));
+      fprintf (stderr, "Return from xd_process_events: %d 0x%lx\n",
+	       done_p, ((unsigned long) xw));
       fflush (stderr);
     }
-  return (retval);
+  return (done_p);
 }
 
 /* Open/Close Primitives */
@@ -1255,10 +1258,11 @@ x_max_request_size (struct xdisplay * xd)
   return (XMaxRequestSize (display));
 }
 
-struct xwindow *
-x_display_process_events (struct xdisplay * xd, XEvent * event)
+int
+x_display_process_events (struct xdisplay * xd, XEvent * event,
+			  struct xwindow **xw_ret)
 {
-  return (xd_process_events (xd, event));
+  return (xd_process_events (xd, event, xw_ret));
 }
 
 void

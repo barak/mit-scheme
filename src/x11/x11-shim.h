@@ -51,8 +51,9 @@ extern void x_close_window (struct xwindow * xw);
 extern int x_set_default_font (struct xdisplay * xd, const char * name);
 extern int x_display_descriptor (struct xdisplay * xd);
 extern long x_max_request_size (struct xdisplay * xd);
-extern struct xwindow * x_display_process_events (struct xdisplay * xd,
-						  XEvent * event);
+extern int x_display_process_events (struct xdisplay * xd,
+				     XEvent * event,
+				     struct xwindow ** xw_ret);
 extern void x_select_input (struct xdisplay * xd, Window window, long mask);
 extern long x_window_event_mask (struct xwindow * xw);
 extern int x_window_set_event_mask (struct xwindow * xw, long mask);

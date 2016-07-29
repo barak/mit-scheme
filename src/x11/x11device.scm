@@ -211,8 +211,10 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 			     (x-display-process-events (x-display/xd display)
 						       2)))
 			(if event
-			    (begin (process-event display event)
-				   (loop))))))))))))
+			    (begin
+			      (if (not (eq? #t event))
+				  (process-event display event))
+			      (loop))))))))))))
     (set-x-display/previewer-registration! display registration)))
 
 (define (read-event display)
@@ -235,7 +237,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 			#t
 			'READ))
 		  (x-display-process-events (x-display/xd display) 1)))))
-    (if event
+    (if (and event (not (eq? #t event)))
 	(process-event display event))))
 
 (define (discard-events display)
@@ -248,7 +250,8 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 		      ((x-display-process-events (x-display/xd display) 2)
 		       =>
 		       (lambda (event)
-			 (process-event display event)
+			 (if (not (eq? #t event))
+			     (process-event display event))
 			 (loop))))))))
     (with-thread-events-blocked loop)))
 

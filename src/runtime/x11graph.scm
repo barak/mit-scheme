@@ -304,7 +304,8 @@ USA.
 			     (x-display-process-events (x-display/xd display)
 						       2)))
 			(if event
-			    (begin (process-event display event)
+			    (begin (if (not (eq? #t event))
+				       (process-event display event))
 				   (loop))))))))))))
     (set-x-display/previewer-registration! display registration)))
 
@@ -328,7 +329,7 @@ USA.
 			#t
 			'READ))
 		  (x-display-process-events (x-display/xd display) 1)))))
-    (if event
+    (if (and event (not (eq? #t event)))
 	(process-event display event))))
 
 (define (discard-events display)
@@ -341,7 +342,8 @@ USA.
 		      ((x-display-process-events (x-display/xd display) 2)
 		       =>
 		       (lambda (event)
-			 (process-event display event)
+			 (if (not (eq? #t event))
+			     (process-event display event))
 			 (loop))))))))
     (with-thread-events-blocked loop)))
 

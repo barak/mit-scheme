@@ -525,7 +525,8 @@ USA.
        (let loop ()
 	 (let ((event (x-display-process-events x-display-data 2)))
 	   (if event
-	       (begin (preview-event event x-display-events)
+	       (begin (if (not (eq? #t event))
+			  (preview-event event x-display-events))
 		      (loop))))))
 
      (register!))))
@@ -545,7 +546,9 @@ USA.
 	(if event
 	    (if (and (vector? event) (predicate event))
 		(or (process-event event) (loop))
-		(begin (preview-event event x-display-events) (loop)))
+		(begin (if (not (eq? #t event))
+			   (preview-event event x-display-events))
+		       (loop)))
 	    ;; Busy loop!
 	    (and (< (real-time-clock) timeout)
 		 (loop)))))))
@@ -565,6 +568,12 @@ USA.
 	((and (vector? event)
 	      (fix:= event-type:expose (vector-ref event 0)))
 	 (process-expose-event event))
+	((and (vector? event)
+	      (fix:= event-type:property-notify (vector-ref event 0)))
+	 ;; These events are only used inside wait-for-event, in the
+	 ;; previewer, with events blocked, though many more are sent
+	 ;; and needn't be queued.
+	 unspecific)
 	((and (vector? event)
 	      (or (fix:= event-type:map (vector-ref event 0))
 		  (fix:= event-type:unmap (vector-ref event 0))
