@@ -50,8 +50,10 @@ USA.
   ;; #F if current thread or exited, else continuation for thread.
 
   (block-events? #f)
-  ;; If true, events may not be delivered to this thread.  Instead,
-  ;; they are queued.
+  ;; If #t, events may not run in this thread and should be queued.
+  ;; If 'SUSPENDED, events were blocked when the thread suspended.
+  ;; Events should wake the thread and %resume-current-thread should
+  ;; run them but then it should continue with events blocked (#t).
 
   (pending-events (make-ring) read-only #t)
   ;; Doubly-linked circular list of events waiting to be delivered.
@@ -316,10 +318,12 @@ USA.
 	(%resume-current-thread thread)))))
 
 (define (%resume-current-thread thread)
-  (if (not (thread/block-events? thread))
-      (begin
-	(handle-thread-events thread)
-	(set-thread/block-events?! thread #f)))
+  (let ((block-events? (thread/block-events? thread)))
+    (cond ((eq? #f block-events?)
+	   (handle-thread-events thread))
+	  ((eq? 'suspended block-events?)
+	   (handle-thread-events thread)
+	   (set-thread/block-events?! thread #t))))
   (%maybe-toggle-thread-timer))
 
 (define (suspend-current-thread)
@@ -329,18 +333,18 @@ USA.
   (call-with-current-thread #f
     (lambda (thread)
       (let ((block-events? (thread/block-events? thread)))
-	(set-thread/block-events?! thread #f)
+	(set-thread/block-events?! thread (and block-events? 'suspended))
 	(maybe-signal-io-thread-events)
 	(let ((any-events? (handle-thread-events thread)))
-	  (set-thread/block-events?! thread block-events?)
 	  (if any-events?
-	      (%maybe-toggle-thread-timer)
+	      (begin
+		(set-thread/block-events?! thread block-events?)
+		(%maybe-toggle-thread-timer))
 	      (call-with-current-continuation
 	       (lambda (continuation)
 		 (set-thread/continuation! thread continuation)
 		 (maybe-save-thread-float-environment! thread)
 		 (account-for-times thread (get-system-times))
-		 (set-thread/block-events?! thread #f)
 		 (thread-not-running thread 'WAITING)))))))))
 
 (define (stop-current-thread)
@@ -925,7 +929,7 @@ USA.
 
 (define (%signal-thread-event thread event)
   (%add-pending-event thread event)
-  (if (and (not (thread/block-events? thread))
+  (if (and (not (eq? #t (thread/block-events? thread)))
 	   (eq? 'WAITING (thread/execution-state thread)))
       (%thread-running thread)))
 
