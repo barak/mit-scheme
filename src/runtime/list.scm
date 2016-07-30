@@ -1111,7 +1111,7 @@ USA.
   (%delete item items eq? 'DELQ))
 
 (define (delv item items)
-  (%delete item items eqv? 'DELQ))
+  (%delete item items eqv? 'DELV))
 
 (define (delete item items #!optional =)
   (let ((= (if (default-object? =) equal? =)))
