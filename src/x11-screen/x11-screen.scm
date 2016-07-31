@@ -841,14 +841,15 @@ USA.
       table)))
 
 (define display/cached-atoms-tables
+  ;; This table needs replacing.  It holds interned symbols strongly!
   (let ((table (make-weak-eq-hash-table)))
     (lambda (display)
-      (or (hash-table/get table display #f)
-	  (let ((result
-		 (cons (make-strong-eq-hash-table)
-		       (make-strong-eqv-hash-table))))
-	    (hash-table/put! table display result)
-	    result)))))
+      (let ((key (intern (alien/address-string display))))
+	(or (hash-table/get table key #f)
+	    (let ((result (cons (make-strong-eq-hash-table)
+				(make-strong-eqv-hash-table))))
+	      (hash-table/put! table key result)
+	      result))))))
 
 ;;;; Properties
 
@@ -1018,12 +1019,14 @@ In either case, it is copied to the primary selection."
 	 #t)))
 
 (define display/selection-records
+  ;; This table needs replacing.  It holds interned symbols strongly.
   (let ((table (make-weak-eq-hash-table)))
     (lambda (display)
-      (or (hash-table/get table display #f)
-	  (let ((result (make-strong-eq-hash-table)))
-	    (hash-table/put! table display result)
-	    result)))))
+      (let ((key (intern (alien/address-string display))))
+	(or (hash-table/get table key #f)
+	    (let ((result (make-strong-eq-hash-table)))
+	      (hash-table/put! table key result)
+	      result))))))
 
 ;;; In the next two procedures, we must allow TIME to be 0, even
 ;;; though the ICCCM forbids this, because existing clients use that

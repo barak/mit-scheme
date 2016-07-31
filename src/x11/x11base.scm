@@ -840,7 +840,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	  (case format
 	    ((8)
 	     (guarantee-string data 'x-change-property)
-	     data)
+	     (prop-data-8->bytes.length data))
 	    ((16)
 	     (guarantee-vector data 'x-change-property)
 	     (prop-data-16->bytes.length data))
@@ -854,7 +854,8 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 		  (car bytes.length) (cdr bytes.length))))
     (free (car bytes.length))
     (if (not (zero? code))
-	(error "XChangeProperty failed:" property))))
+	(error "XChangeProperty failed:" property))
+    code))
 
 (define (prop-data-32->bytes.length vector)
   (let* ((nitems (vector-length vector))
@@ -934,7 +935,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 ;;; Guarantors
 
 (declare (integrate-operator guarantee-Atom))
-(define guarantee-Atom guarantee-exact-positive-integer)
+(define guarantee-Atom guarantee-exact-nonnegative-integer)
 
 (declare (integrate-operator guarantee-Window))
 (define guarantee-Window guarantee-exact-positive-integer)
