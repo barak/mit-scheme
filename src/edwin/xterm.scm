@@ -592,13 +592,17 @@ USA.
 
      (define (preview-events mode)
        mode
-       (if previewer-registration
-	   (register!))
-       (let loop ()
-	 (let ((event (x-display-process-events x-display-data 2)))
-	   (if event
-	       (begin (preview-event event x-display-events)
-		      (loop))))))
+       (dynamic-wind
+	(lambda () unspecific)
+	(lambda ()
+	  (let loop ()
+	    (let ((event (x-display-process-events x-display-data 2)))
+	      (if event
+		  (begin (preview-event event x-display-events)
+			 (loop))))))
+	(lambda ()
+	  (if previewer-registration
+	      (register!)))))
 
      (register!))))
 
