@@ -235,9 +235,9 @@ Initialized from the SHELL environment variable."
   (let loop ((processes edwin-processes)
 	     (output? #f))
     (if (pair? processes)
-	(loop (or (poll-process-for-output (car processes))
-		  output?)
-	      (cdr processes))
+	(loop (cdr processes)
+	      (or (poll-process-for-output (car processes))
+		  output?))
 	output?)))
 
 (define input-buffer (make-string 512))
