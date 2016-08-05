@@ -249,13 +249,14 @@ Initialized from the SHELL environment variable."
 		(call-with-current-continuation
 		 (lambda (k)
 		   (bind-condition-handler (list condition-type:port-error)
-		       (lambda (condition) condition (k #t))
+		       (lambda (condition) condition (k 'ERROR))
 		     (lambda ()
 		       (input-port/read-string! port input-buffer)))))))
-	   (if (or (not (fixnum? n))
-		   (fix:= n 0))
+	   (if (or (eq? 'ERROR n)
+		   (and (fixnum? n) (fix:= n 0)))
 	       (close-port port)
-	       (output-substring process input-buffer n))
+	       (if (and (fixnum? n) (fix:> n 0))
+		   (output-substring process input-buffer n)))
 	   (and (fixnum? n)
 		(fix:> n 0))))))
 
