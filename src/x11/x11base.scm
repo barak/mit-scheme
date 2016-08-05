@@ -261,28 +261,36 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 						      (C-enum "LockMask"))))
       (let* ((nbytes (C-call "x_lookup_string"
 			     event buffer buffer-size keysym-buffer))
-	     (keysym (C-> keysym-buffer "KeySym")))
-	(and (not (= keysym (C-enum "NoSymbol")))
-	     (not (= (C-enum "True") (C-call "IsModifierKey" keysym)))
-	     (vector type
-		     window
-		     ;; If the BackSpace keysym is received, and
-		     ;; XLookupString has translated it into ASCII
-		     ;; backspace, substitute ASCII DEL instead.
-		     (if (and (= keysym (C-enum "XK_BackSpace"))
-			      (= nbytes 1)
-			      (= (C-> buffer "char") (char->ascii #\b)))
-			 (char->string #\Delete)
-			 (let ((string (make-string nbytes)))
-			   (c-peek-bytes buffer 0 nbytes string 0)
-			   string))
-		     ;; Create Scheme bucky bits (kept independent of
-		     ;; the character).  X has already controlified, so
-		     ;; Scheme may choose to ignore the control bucky
-		     ;; bit.
-		     (C-call "x_modifier_mask_to_bucky_bits" state window)
-		     keysym
-		     (C-> event "XKeyEvent time")))))))
+	     (keysym (C-> keysym-buffer "KeySym"))
+	     (event (and (not (= keysym (C-enum "NoSymbol")))
+			 (not (= (C-enum "True")
+				 (C-call "IsModifierKey" keysym)))
+			 (vector type
+				 window
+				 ;; If the BackSpace keysym is received, and
+				 ;; XLookupString has translated it into ASCII
+				 ;; backspace, substitute ASCII DEL instead.
+				 (cond ((and (= keysym (C-enum "XK_BackSpace"))
+					     (= nbytes 1)
+					     (= (C-> buffer "char")
+						(char->ascii #\b)))
+					(char->string #\Delete))
+				       ((> nbytes 0)
+					(let ((s (make-string nbytes)))
+					  (c-peek-bytes buffer 0 nbytes s 0)
+					  s))
+				       (else ""))
+				 ;; Create Scheme bucky bits (kept independent
+				 ;; of the character).  X has already
+				 ;; controlified, so Scheme may choose to
+				 ;; ignore the control bucky bit.
+				 (C-call "x_modifier_mask_to_bucky_bits"
+					 state window)
+				 keysym
+				 (C-> event "XKeyEvent time")))))
+	(free keysym-buffer)
+	(free buffer)
+	event))))
 
 (define key-event-state-mask
   (+ (C-enum "ShiftMask")
