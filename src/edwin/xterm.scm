@@ -549,36 +549,53 @@ USA.
   (let ((queue x-display-events)
 	(output-available? #f)
 	(registrations))
-    (dynamic-wind
-     (lambda ()
-       (set! registrations
-	     (register-process-output-events
-	      (current-thread)
-	      (lambda (mode)
-		mode
-		(set! output-available? #t)))))
-     (lambda ()
-       (let loop ()
+    (let loop ()
+      ;; IO events are not delivered when input lingers in port buffers.
+      ;; Incrementally drain the port before suspending.
+      (set! output-available? (accept-process-output))
+      (dynamic-wind
+       (lambda ()
+	 (set! registrations
+	       (if output-available?
+		   '()
+		   (register-process-output-events
+		    (current-thread)
+		    (lambda (mode)
+		      mode
+		      (set! output-available? #t))))))
+       (lambda ()
 	 (with-thread-events-blocked
 	  (lambda ()
+
+	    ;; Drain X event queue before suspending.  Wait-for-event
+	    ;; and throws from the previewer (aborts) may leave events
+	    ;; in buffers.
+	    (let drain ()
+	      (let ((event (x-display-process-events x-display-data 2)))
+		(if event
+		    (begin (preview-event event queue)
+			   (drain)))))
+
 	    (if (and (queue-empty? queue)
 		     (not output-available?)
 		     (not (process-status-changes?))
 		     (not inferior-thread-changes?))
-		(suspend-current-thread))))
-	 (cond ((not (queue-empty? queue))
-		(dequeue!/unsafe queue))
-	       ((process-status-changes?)
-		event:process-status)
-	       (output-available?
-		event:process-output)
-	       (inferior-thread-changes?
-		event:inferior-thread-output)
-	       (else
-		(loop)))))
-     (lambda ()
-       (for-each deregister-io-thread-event registrations)
-       (set! registrations)))))
+		(suspend-current-thread)))))
+       (lambda ()
+	 (for-each deregister-io-thread-event registrations)
+	 (set! registrations)))
+      (or (with-thread-events-blocked
+	   (lambda ()
+	     (and (not (queue-empty? queue))
+		  (dequeue!/unsafe queue))))
+	  (cond ((process-status-changes?)
+		 event:process-status)
+		(output-available?
+		 event:process-output)
+		(inferior-thread-changes?
+		 event:inferior-thread-output)
+		(else
+		 (loop)))))))
 
 (define (preview-event-stream)
   (with-thread-events-blocked
@@ -672,7 +689,9 @@ USA.
 
 (define (process-change-event event)
   (cond ((fix:= event event:process-status) (handle-process-status-changes))
-	((fix:= event event:process-output) (accept-process-output))
+	((fix:= event event:process-output)
+	 (accept-process-output)
+	 #t)
 	((fix:= event event:inferior-thread-output) (accept-thread-output))
 	(else (error "Illegal change event:" event))))
 
