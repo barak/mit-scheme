@@ -1009,7 +1009,9 @@ USA.
   next)
 
 (define (register-timer-event interval event)
-  (let ((time (+ (real-time-clock) interval)))
+  (register-time-event (+ (real-time-clock) interval) event))
+
+(define (register-time-event time event)
     (let ((new-record (make-timer-record time (current-thread) event #f)))
       (without-interrupts
        (lambda ()
@@ -1046,7 +1048,7 @@ USA.
 	(set-timer-record/event! record #f)
 	(%signal-thread-event thread event)))))
 
-(define (deregister-timer-event registration)
+(define (deregister-time-event registration)
   (if (not (timer-record? registration))
       (error:wrong-type-argument registration "timer event registration"
 				 'DEREGISTER-TIMER-EVENT))
@@ -1061,6 +1063,9 @@ USA.
 		     (set! timer-records next))
 		 (loop next record)))))
      (%maybe-toggle-thread-timer))))
+
+(define-integrable (deregister-timer-event registration)
+  (deregister-time-event registration))
 
 (define-integrable (threads-pending-timer-events?)
   timer-records)

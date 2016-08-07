@@ -4682,6 +4682,7 @@ USA.
 	  deregister-all-events
 	  deregister-io-descriptor-events
 	  deregister-io-thread-event
+	  deregister-time-event
 	  deregister-timer-event
 	  detach-thread
 	  exit-current-thread
@@ -4692,6 +4693,7 @@ USA.
 	  other-running-threads?
 	  permanently-register-io-thread-event
 	  register-io-thread-event
+	  register-time-event
 	  register-timer-event
 	  restart-thread
 	  set-thread-timer-interval!
