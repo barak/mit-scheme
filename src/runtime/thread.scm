@@ -1024,7 +1024,7 @@ USA.
 		     (set! timer-records new-record)))
 	       (loop (timer-record/next record) record)))
 	 (%maybe-toggle-thread-timer)))
-      new-record)))
+      new-record))
 
 (define (sleep-current-thread interval)
   (let ((delivered? #f))
