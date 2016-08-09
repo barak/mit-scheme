@@ -444,49 +444,41 @@ USA.
 				 update-screens!
 				 #f))))
 	(let ((get-next-event
-	       (lambda (block?)
-		 (let loop ()
-		   (let ((event (read-event queue display block?)))
-		     (cond ((or (not event) (input-event? event))
-			    event)
-			   ((not (vector? event))
-			    (let ((flag (process-change-event event)))
-			      (if flag
-				  (pce-event flag)
-				  (loop))))
-			   (else
-			    (or (process-event event)
-				(loop)))))))))
+	       (lambda (msec)
+		 (let ((timeout (and msec (+ (real-time-clock) msec))))
+		   (let loop ()
+		     (let ((event (read-event queue display timeout)))
+		       (cond ((or (not event) (input-event? event))
+			      event)
+			     ((not (vector? event))
+			      (let ((flag (process-change-event event)))
+				(if flag
+				    (pce-event flag)
+				    (loop))))
+			     (else
+			      (or (process-event event)
+				  (loop))))))))))
 	  (let ((probe
-		 (lambda (block?)
-		   (let ((result (get-next-event block?)))
+		 (lambda (msec)
+		   (let ((result (get-next-event msec)))
 		     (if result
 			 (set! pending-result result))
-		     result)))
-		(guarantee-result
-		 (lambda ()
-		   (or (get-next-event #t)
-		       (error "#F returned from blocking read")))))
+		     result))))
 	    (values
 	     (lambda ()			;halt-update?
 	       (or pending-result
 		   (fix:< start end)
-		   (probe 'IN-UPDATE)))
-	     (lambda (timeout)		;peek-no-hang
-	       (keyboard-peek-busy-no-hang
-		(lambda ()
-		  (or pending-result
-		      (and (fix:< start end)
-			   (string-ref string start))
-		      (probe #f)))
-		timeout))
+		   (probe 0)))
+	     (lambda (msec)		;peek-no-hang
+	       (or pending-result
+		   (and (fix:< start end)
+			(string-ref string start))
+		   (probe msec)))
 	     (lambda ()			;peek
 	       (or pending-result
-		   (if (fix:< start end)
-		       (string-ref string start)
-		       (let ((result (guarantee-result)))
-			 (set! pending-result result)
-			 result))))
+		   (and (fix:< start end)
+			(string-ref string start))
+		   (probe #f)))
 	     (lambda ()			;read
 	       (cond (pending-result
 		      => (lambda (result)
@@ -497,26 +489,22 @@ USA.
 			(set! start (fix:+ start 1))
 			char))
 		     (else
-		      (guarantee-result)))))))))))
+		      (or (get-next-event #f)
+			  (error "#F returned from blocking read"))))))))))))
 
-(define (read-event queue display block?)
-  (let loop ()
-    (let* ((empty "empty")
-	   (event* (with-thread-events-blocked
-		    (lambda ()
-		      (if (queue-empty? queue)
-			  empty
-			  (dequeue!/unsafe queue)))))
-	   (event (if (eq? event* empty)
-		      (and (not (memq block? '(IN-UPDATE #f)))
-			   (block-for-event display))
-		      event*)))
-      (if (and event trace-port)
-	  (write-line event trace-port))
-      (or event
-	  (if (memq block? '(IN-UPDATE #f))
-	      #f
-	      (loop))))))
+(define (read-event queue display timeout)
+  (let* ((empty "empty")
+	 (event* (with-thread-events-blocked
+		  (lambda ()
+		    (if (queue-empty? queue)
+			empty
+			(dequeue!/unsafe queue)))))
+	 (event (if (eq? event* empty)
+		    (block-for-event display timeout)
+		    event*)))
+    (if (and event trace-port)
+	(write-line event trace-port))
+    event))
 
 (define trace-port #f)
 
@@ -544,22 +532,31 @@ USA.
 			  (vector-ref event 4)
 			  (vector-ref event 5))))
 
-(define (block-for-event display)
+(define (block-for-event display timeout)
   display
   (let ((queue x-display-events)
 	(output-available? #f)
+	(timed-out? #f)
+	(thread (current-thread))
+	(timer)
 	(registrations))
     (let loop ()
       ;; IO events are not delivered when input lingers in port buffers.
       ;; Incrementally drain the port before suspending.
       (set! output-available? (accept-process-output))
+
       (dynamic-wind
        (lambda ()
+	 (set! timer
+	       (and timeout
+		    (register-time-event timeout
+					 (lambda ()
+					   (set! timed-out? #t)))))
 	 (set! registrations
 	       (if output-available?
 		   '()
 		   (register-process-output-events
-		    (current-thread)
+		    thread
 		    (lambda (mode)
 		      mode
 		      (set! output-available? #t))))))
@@ -578,17 +575,25 @@ USA.
 
 	    (if (and (queue-empty? queue)
 		     (not output-available?)
+		     (not timed-out?)
 		     (not (process-status-changes?))
 		     (not inferior-thread-changes?))
 		(suspend-current-thread)))))
        (lambda ()
-	 (for-each deregister-io-thread-event registrations)
-	 (set! registrations)))
+	 (if (eq? (current-thread) thread)
+	     (begin
+	       (if timer (deregister-time-event timer))
+	       (set! timer)
+	       (for-each deregister-io-thread-event registrations)
+	       (set! registrations)))))
+
       (or (with-thread-events-blocked
 	   (lambda ()
 	     (and (not (queue-empty? queue))
 		  (dequeue!/unsafe queue))))
-	  (cond ((process-status-changes?)
+	  (cond (timed-out?
+		 #f)
+		((process-status-changes?)
 		 event:process-status)
 		(output-available?
 		 event:process-output)
