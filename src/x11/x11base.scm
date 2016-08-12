@@ -161,7 +161,8 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
     (and
      (not (eq? #f scmtype))
-     (not (zero? (bitwise-and scmtype (C-call "x_window_event_mask" window))))
+     (not (zero? (bitwise-and (bit scmtype)
+			      (C-call "x_window_event_mask" window))))
      (cond
 
       ((eq? scmtype event-type:key-press)		; xtype = KeyPress
