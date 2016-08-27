@@ -394,9 +394,8 @@ USA.
 		     result))))
 	    (values
 	     (lambda ()			;halt-update?
-	       (or pending-result
-		   (fix:< start end)
-		   (probe 0)))
+	       (or (fix:< start end)
+		   (not (queue-empty? queue))))
 	     (lambda (msec)		;peek-no-hang
 	       (or pending-result
 		   (and (fix:< start end)
