@@ -70,10 +70,6 @@ HOST_SYNTAXER = '$(MIT_SCHEME_EXE)' --batch-mode --band runtime.com \
 HOST_TOOLCHAIN = '$(MIT_SCHEME_EXE)' --batch-mode \
 	--eval '(load-option (quote CREF))'
 
-# XXX Temporary kludge until we get 9.2 out.  Replace by HOST_RUNTIME.
-KLUDGEROUS_RUNTIME = ((echo '(cd "..")' && cat) | (cd runtime && \
-	'$(MIT_SCHEME_EXE)' --batch-mode --fasl make.com --library "../lib"))
-
 SUBDIRS = compiler cref runtime sf star-parser
 
 .PHONY: all
@@ -127,7 +123,6 @@ tools/compiler.com: compile-cross-compiler
 tools/compiler.com: compile-cross-cref
 tools/compiler.com: compile-cross-sf
 tools/compiler.com: compile-kludgerous-star-parser
-tools/compiler.com: compile-kludgerous-runtime
 	(echo '(begin' && \
 	 echo '  (with-working-directory-pathname "cref"' && \
 	 echo '    (lambda () (load "make")))' && \
@@ -138,12 +133,11 @@ tools/compiler.com: compile-kludgerous-runtime
 	 echo '  (with-working-directory-pathname "compiler"' && \
 	 echo '    (lambda () (load "make")))' && \
 	 echo '  (disk-save "$@"))') \
-	| $(KLUDGEROUS_RUNTIME)
+	| $(HOST_RUNTIME)
 
 tools/syntaxer.com: compile-cross-cref
 tools/syntaxer.com: compile-cross-sf
 tools/syntaxer.com: compile-kludgerous-star-parser
-tools/syntaxer.com: compile-kludgerous-runtime
 	(echo '(begin' && \
 	 echo '  (with-working-directory-pathname "cref"' && \
 	 echo '    (lambda () (load "make")))' && \
@@ -152,7 +146,7 @@ tools/syntaxer.com: compile-kludgerous-runtime
 	 echo '  (with-working-directory-pathname "star-parser"' && \
 	 echo '    (lambda () (load "load")))' && \
 	 echo '  (disk-save "$@"))') \
-	| $(KLUDGEROUS_RUNTIME)
+	| $(HOST_RUNTIME)
 
 # Compiler (LIAR)
 
@@ -286,19 +280,4 @@ cref-kludgerous-runtime:
 	(echo '(with-working-directory-pathname "runtime"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "runtime")))') \
-	| $(HOST_TOOLCHAIN)
-
-# XXX Temporary kludge until we get 9.2 out.  Get rid of
-# compile-kludgerous-runtime and syntax-kludgerous-runtime when that
-# happens.
-.PHONY: compile-kludgerous-runtime
-compile-kludgerous-runtime: syntax-kludgerous-runtime
-	(echo '(with-working-directory-pathname "runtime"' && \
-	 echo '  (lambda () (load "runtime.cbf")))') \
-	| $(HOST_TOOLCHAIN)
-
-.PHONY: syntax-kludgerous-runtime
-syntax-kludgerous-runtime: cref-kludgerous-runtime
-	(echo '(with-working-directory-pathname "runtime"' && \
-	 echo '  (lambda () (load "runtime.sf")))') \
 	| $(HOST_TOOLCHAIN)
