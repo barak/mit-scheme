@@ -119,10 +119,10 @@ restore:
 	(cd tools/saved-objects && pax -rw -pe -v . ../../.)
 
 tools/compiler.com: tools/syntaxer.com
-tools/compiler.com: compile-cross-compiler
-tools/compiler.com: compile-cross-cref
-tools/compiler.com: compile-cross-sf
-tools/compiler.com: compile-kludgerous-star-parser
+tools/compiler.com: cross-compiler
+tools/compiler.com: cross-cref
+tools/compiler.com: cross-sf
+tools/compiler.com: kludgerous-star-parser
 	(echo '(begin' && \
 	 echo '  (with-working-directory-pathname "cref"' && \
 	 echo '    (lambda () (load "make")))' && \
@@ -135,9 +135,9 @@ tools/compiler.com: compile-kludgerous-star-parser
 	 echo '  (disk-save "$@"))') \
 	| $(HOST_RUNTIME)
 
-tools/syntaxer.com: compile-cross-cref
-tools/syntaxer.com: compile-cross-sf
-tools/syntaxer.com: compile-kludgerous-star-parser
+tools/syntaxer.com: cross-cref
+tools/syntaxer.com: cross-sf
+tools/syntaxer.com: kludgerous-star-parser
 	(echo '(begin' && \
 	 echo '  (with-working-directory-pathname "cref"' && \
 	 echo '    (lambda () (load "make")))' && \
@@ -149,6 +149,10 @@ tools/syntaxer.com: compile-kludgerous-star-parser
 	| $(HOST_RUNTIME)
 
 # Compiler (LIAR)
+
+.PHONY: cross-compiler
+@IF_DEBUG_TOOLCHAIN@cross-compiler: syntax-cross-compiler
+@IF_NOT_DEBUG_TOOLCHAIN@cross-compiler: compile-cross-compiler
 
 .PHONY: compile-cross-compiler
 compile-cross-compiler: compile-cross-compiler-back
@@ -218,6 +222,10 @@ cref-cross-compiler: cref-kludgerous-runtime
 
 # CREF
 
+.PHONY: cross-cref
+@IF_DEBUG_TOOLCHAIN@cross-cref: syntax-cross-cref
+@IF_NOT_DEBUG_TOOLCHAIN@cross-cref: compile-cross-cref
+
 .PHONY: compile-cross-cref
 compile-cross-cref: syntax-cross-cref
 	(echo '(with-working-directory-pathname "cref"' && \
@@ -238,6 +246,10 @@ cref-cross-cref: cref-kludgerous-runtime
 	| $(HOST_SYNTAXER)
 
 # SF
+
+.PHONY: cross-sf
+@IF_DEBUG_TOOLCHAIN@cross-sf: syntax-cross-sf
+@IF_NOT_DEBUG_TOOLCHAIN@cross-sf: compile-cross-sf
 
 .PHONY: compile-cross-sf
 compile-cross-sf: syntax-cross-sf
@@ -263,6 +275,8 @@ cref-cross-sf: cref-kludgerous-runtime
 # XXX This is a kludge that should be abolished.  The compiler should
 # be able to load and run macros for the target even if we are cross-
 # compiling, but currently that's not doable.
+.PHONY: kludgerous-star-parser
+kludgerous-star-parser: compile-kludgerous-star-parser
 .PHONY: compile-kludgerous-star-parser
 compile-kludgerous-star-parser: cref-kludgerous-runtime
 	(echo '(with-working-directory-pathname "star-parser"' && \

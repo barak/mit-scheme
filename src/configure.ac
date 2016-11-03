@@ -64,6 +64,18 @@ else
     IF_CROSS=\#
 fi
 
+AC_ARG_ENABLE([debug-toolchain],
+    AS_HELP_STRING([--enable-debug-toolchain],
+	[Use slow interpreted cross-compiler toolchain]))
+: ${enable_debug_toolchain=no}
+if test "x$enable_debug_toolchain" = xyes; then
+    IF_DEBUG_TOOLCHAIN=
+    IF_NOT_DEBUG_TOOLCHAIN=\#
+else
+    IF_DEBUG_TOOLCHAIN=\#
+    IF_NOT_DEBUG_TOOLCHAIN=
+fi
+
 AC_ARG_WITH([default-target],
     AS_HELP_STRING([--with-default-target],
 	[Set the default make target [[all]]]))
@@ -173,7 +185,9 @@ AC_SUBST([MIT_SCHEME_EXE])
 AC_SUBST([AUXDIR_NAME])
 AC_SUBST([AUXDIR])
 AC_SUBST([IF_CROSS])
+AC_SUBST([IF_DEBUG_TOOLCHAIN])
 AC_SUBST([IF_LIARC])
+AC_SUBST([IF_NOT_DEBUG_TOOLCHAIN])
 AC_SUBST([IF_SVM])
 
 AC_PROG_INSTALL
