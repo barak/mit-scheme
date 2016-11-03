@@ -521,10 +521,13 @@ USA.
 		    (process-keyword (vector->list unused-command-line) '()))
 	      (for-each (lambda (act) (act))
 			(reverse after-parsing-actions))
-	      (if (param:load-init-file?) (load-init-file)))))
+	      (if (and (param:load-init-file?)
+		       (not (nearest-cmdl/batch-mode?)))
+		  (load-init-file)))))
 	(begin
 	  (set! *unused-command-line* #f)
-	  (load-init-file)))))
+	  (if (not (nearest-cmdl/batch-mode?))
+	      (load-init-file))))))
 
 (define (find-keyword-parser keyword)
   (let ((entry (assoc (strip-leading-hyphens keyword) *command-line-parsers*)))
