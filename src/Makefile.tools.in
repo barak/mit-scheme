@@ -98,7 +98,7 @@ save:
 	    \( \
 	      -name '*.bci' -o \
 	      -name '*.bin' -o \
-	      -name '*.c' -o \
+	      \( -name '*.c' \! -path compiler/documentation/test-c.c \) -o \
 	      -name '*.com' -o \
 	      -name '*.crf' -o \
 	      -name '*.ext' -o \
