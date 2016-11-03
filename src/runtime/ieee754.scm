@@ -80,7 +80,7 @@ USA.
            (cond ((<= 1 x)              ;Nonnegative exponent (normal)
                   (let loop ((exponent 0) (x x))
                     (cond ((< emax exponent) (if-infinite sign))
-                          ((< base x) (loop (+ exponent 1) (/ x base)))
+                          ((<= base x) (loop (+ exponent 1) (/ x base)))
                           (else (if-normal sign exponent (significand x))))))
                  ((< (expt base emin) x) ;Negative exponent, normal
                   (let loop ((exponent 0) (x x))
