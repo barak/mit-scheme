@@ -128,7 +128,7 @@ we adopt here, described in
   (and (fix:< a b) (fix:< (fix:lsh (fix:and a b) 1) b)))
 
 (define-integrable (overweight? a b)
-  (log2< a (fix:lsh b -11)))
+  (log2< a (fix:lsh b -1)))
 
 (define-integrable (single? a b)
   (not (log2< b a)))
