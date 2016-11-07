@@ -24,12 +24,6 @@ USA.
 
 |#
 
-;; XXX Temporary kludge until we get 9.2 out.
-(if (not (microcode-type/name->code 'SEQUENCE))
-    (let ((environment (->environment '(RUNTIME MICROCODE-TABLES))))
-      (set! (access TYPE-ALIASES environment)
-            (cons '(SEQUENCE-2 SEQUENCE) (access TYPE-ALIASES environment)))))
-
 (load-option '*PARSER)			;for url.scm
 (fluid-let ((sf/default-syntax-table (->environment '(RUNTIME))))
   (sf-conditionally "char")

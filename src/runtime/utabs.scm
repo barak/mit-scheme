@@ -69,12 +69,6 @@ USA.
   (set! microcode-id/tty-y-size
 	(microcode-identification-item 'CONSOLE-HEIGHT))
 
-  ;; XXX Temporary kludge until we get 9.2 out.
-  (if (not (microcode-type/name->code 'SEQUENCE))
-      (set! type-aliases (cons '(SEQUENCE-2 SEQUENCE) type-aliases)))
-  (if (not (microcode-return/name->code 'SEQUENCE-CONTINUE))
-      (set! returns-aliases
-	    (cons '(SEQUENCE-2-SECOND SEQUENCE-CONTINUE) returns-aliases)))
   unspecific)
 
 (define (intern string)
