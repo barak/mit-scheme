@@ -99,7 +99,7 @@ c)
     IF_LIARC=
     ;;
 svm1)
-    ALL_TARGET=all-svm
+    ALL_TARGET=all-native
     INSTALL_COM='$(INSTALL_DATA)'
     INSTALL_LIARC_BUNDLES=
     IF_SVM=
