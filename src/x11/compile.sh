@@ -34,11 +34,11 @@ ${MIT_SCHEME_EXE} --prepend-library . --batch-mode <<\EOF
   (load-option 'FFI)
 
   (let ((runtime (->environment '(runtime))))
-    (compile-file "x11base" '() runtime)
-    (compile-file "x11color" '() runtime)
-    (compile-file "x11graph" '() runtime)
-    (compile-file "x11device" '() runtime)
-    (compile-file "x11term" '() runtime))
+    (compile-file "x11-base" '() runtime)
+    (compile-file "x11-color" '() runtime)
+    (compile-file "x11-graphics" '() runtime)
+    (compile-file "x11-device" '() runtime)
+    (compile-file "x11-terminal" '() runtime))
 
   (cref/generate-constructors "x11")
   )

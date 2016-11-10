@@ -63,7 +63,7 @@ os_suffix=`echo "(display (microcode-id/operating-system-suffix))" \
 
 MIT_SCHEME_PKD="x11-${os_suffix}.pkd"
 
-for f in x11base x11color x11graph x11term x11device; do
+for f in x11-base x11-color x11-graphics x11-terminal x11-device; do
     MIT_SCHEME_SCMs="${MIT_SCHEME_SCMs} ${f}.scm"
     MIT_SCHEME_BINs="${MIT_SCHEME_BINs} ${f}.bin"
     MIT_SCHEME_BCIs="${MIT_SCHEME_BCIs} ${f}.bci"
