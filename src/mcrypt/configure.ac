@@ -85,12 +85,46 @@ MIT_SCHEME_INCLUDEDIR=`( echo "(display (->namestring" ;\
 			 echo "           (system-library-pathname" ;\
 			 echo '            "mit-scheme.h"))))' ) \
 		       | ${MIT_SCHEME_EXE} --batch-mode`
-MIT_SCHEME_OS_SUFFIX=`echo "(display (microcode-id/operating-system-suffix))" \
-		      | ${MIT_SCHEME_EXE} --batch-mode`
+
+cc_type=`echo "(display microcode-id/compiled-code-type)" \
+	 | ${MIT_SCHEME_EXE} --batch-mode`
+os_suffix=`echo "(display (microcode-id/operating-system-suffix))" \
+	   | ${MIT_SCHEME_EXE} --batch-mode`
+
+MIT_SCHEME_PKD="mcrypt-${os_suffix}.pkd"
+
+for f in mcrypt; do
+    MIT_SCHEME_SCMs="${MIT_SCHEME_SCMs} ${f}.scm"
+    MIT_SCHEME_BINs="${MIT_SCHEME_BINs} ${f}.bin"
+    MIT_SCHEME_BCIs="${MIT_SCHEME_BCIs} ${f}.bci"
+    MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
+${f}.bin: stamp-scheme"
+    MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
+${f}.bci: stamp-scheme"
+    if test "$cc_type" = "c"; then
+	MIT_SCHEME_COMs="${MIT_SCHEME_COMs} ${f}.so"
+	MIT_SCHEME_CLEAN="${MIT_SCHEME_CLEAN} ${f}.c"
+	MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
+${f}.so: stamp-scheme"
+    else
+	MIT_SCHEME_COMs="${MIT_SCHEME_COMs} ${f}.com"
+	MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
+${f}.com: stamp-scheme"
+    fi
+done
+MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
+${MIT_SCHEME_PKD}: stamp-scheme"
 
 AC_SUBST([MIT_SCHEME_EXE])
 AC_SUBST([MIT_SCHEME_LIBDIR])
 AC_SUBST([MIT_SCHEME_INCLUDEDIR])
-AC_SUBST([MIT_SCHEME_OS_SUFFIX])
+AC_SUBST([MIT_SCHEME_PKD])
+AC_SUBST([MIT_SCHEME_SCMs])
+AC_SUBST([MIT_SCHEME_BINs])
+AC_SUBST([MIT_SCHEME_BCIs])
+AC_SUBST([MIT_SCHEME_COMs])
+AC_SUBST([MIT_SCHEME_CLEAN])
+AC_SUBST([MIT_SCHEME_DEPS])
+AM_SUBST_NOTMAKE([MIT_SCHEME_DEPS])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

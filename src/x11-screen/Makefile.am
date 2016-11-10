@@ -28,13 +28,15 @@ MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)x11-screen
 
-sources = x11-screen.scm # x11-key.scm x11-command.scm
-binaries = x11-screen.bci x11-screen.com
-# binaries += x11-key.bci x11-key.com x11-command.scm.bci x11-command.scm.com
+sources = @MIT_SCHEME_SCMs@
 
-scmlib_sub_DATA = $(sources)
-scmlib_sub_DATA += $(binaries)
-scmlib_sub_DATA += make.scm x11-screen-@MIT_SCHEME_OS_SUFFIX@.pkd
+binaries = @MIT_SCHEME_BINs@ @MIT_SCHEME_BCIs@ @MIT_SCHEME_COMs@
+
+scmlib_sub_DATA = $(sources) $(binaries)
+scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@
+
+#info_TEXINFOS = mit-scheme-x11-screen.texi
+AM_MAKEINFOHTMLFLAGS = --no-split
 
 # Set these to the defaults used by Scheme.
 infodir = $(datarootdir)/info
@@ -42,19 +44,14 @@ htmldir = $(libdir)/mit-scheme/doc
 dvidir = $(libdir)/mit-scheme/doc
 pdfdir = $(libdir)/mit-scheme/doc
 
-#x11-key.bci: stamp-scheme
-#x11-key.com: stamp-scheme
-#x11-command.scm.bci: stamp-scheme
-#x11-command.scm.com: stamp-scheme
-x11-screen.bci: stamp-scheme
-x11-screen.com: stamp-scheme
-x11-screen-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
+@MIT_SCHEME_DEPS@
 stamp-scheme: $(sources) x11-screen.pkg
 	touch stamp-scheme
 	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
 
 CLEANFILES = *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 CLEANFILES += stamp-scheme
+CLEANFILES += @MIT_SCHEME_CLEAN@
 
 TESTS = x11-screen-check.sh
 
@@ -69,8 +66,15 @@ install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 
+#install-html: install-html-am
+#	echo '(update-html-index "$(DESTDIR)$(htmldir)/")' \
+#	| $(MIT_SCHEME_EXE) --batch-mode
+
 uninstall-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 	[ -d "$(DESTDIR)$(scmlib_subdir)" ] \
 	&& rmdir "$(DESTDIR)$(scmlib_subdir)"
+#	[ -d "$(DESTDIR)$(htmldir)" ]					\
+#	&& ( echo  '(update-html-index "$(DESTDIR)$(htmldir)/")'	\
+#	     | $(MIT_SCHEME_EXE) --batch-mode )

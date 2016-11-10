@@ -32,14 +32,13 @@ scmlib_subdir = $(scmlibdir)x11
 scmlib_LTLIBRARIES = x11-shim.la
 scmlib_DATA = x11-types.bin x11-const.bin
 
-sources = x11base.scm x11color.scm x11graph.scm x11term.scm x11device.scm
-binaries = x11base.bci x11base.com x11color.bci x11color.com
-binaries += x11graph.bci x11graph.com x11term.bci x11term.com
-binaries += x11device.bci x11device.com
+sources = @MIT_SCHEME_SCMs@
 cdecls = x11.cdecl
 
+binaries = @MIT_SCHEME_BINs@ @MIT_SCHEME_BCIs@ @MIT_SCHEME_COMs@
+
 scmlib_sub_DATA = $(sources) $(binaries)
-scmlib_sub_DATA += make.scm x11-@MIT_SCHEME_OS_SUFFIX@.pkd
+scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@
 
 #info_TEXINFOS = mit-scheme-x11.texi
 AM_MAKEINFOHTMLFLAGS = --no-split
@@ -76,17 +75,7 @@ x11-const.bin: x11-const.scm
 x11-const.scm: x11-const
 	./x11-const
 
-x11base.bci: stamp-scheme
-x11base.com: stamp-scheme
-x11color.bci: stamp-scheme
-x11color.com: stamp-scheme
-x11graph.bci: stamp-scheme
-x11graph.com: stamp-scheme
-x11term.bci: stamp-scheme
-x11term.com: stamp-scheme
-x11device.bci: stamp-scheme
-x11device.com: stamp-scheme
-x11-@MIT_SCHEME_OS_SUFFIX@.pkg: stamp-scheme
+@MIT_SCHEME_DEPS@
 stamp-scheme: stamp-shim $(sources) x11.pkg
 	touch stamp-scheme
 	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
@@ -94,6 +83,7 @@ stamp-scheme: stamp-shim $(sources) x11.pkg
 CLEANFILES = x11-const* x11-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 CLEANFILES += stamp-shim stamp-scheme
+CLEANFILES += @MIT_SCHEME_CLEAN@
 
 TESTS = x11-check.sh
 
@@ -112,8 +102,15 @@ install-data-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 
+#install-html: install-html-am
+#	echo '(update-html-index "$(DESTDIR)$(htmldir)/")' \
+#	| $(MIT_SCHEME_EXE) --batch-mode
+
 uninstall-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
 	[ -d "$(DESTDIR)$(scmlib_subdir)" ] \
 	&& rmdir "$(DESTDIR)$(scmlib_subdir)"
+#	[ -d "$(DESTDIR)$(htmldir)" ]					\
+#	&& ( echo  '(update-html-index "$(DESTDIR)$(htmldir)/")'	\
+#	     | $(MIT_SCHEME_EXE) --batch-mode )

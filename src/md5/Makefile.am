@@ -27,17 +27,18 @@ EXTRA_DIST = autogen.sh
 
 MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
-scmlib_md5dir = $(scmlibdir)md5
+scmlib_subdir = $(scmlibdir)md5
 
 scmlib_LTLIBRARIES = md5-shim.la
 scmlib_DATA = md5-types.bin md5-const.bin
 
-sources = md5.scm
+sources = @MIT_SCHEME_SCMs@
 cdecls = md5.cdecl
 
-scmlib_md5_DATA = $(sources)
-scmlib_md5_DATA += md5.bin md5.bci md5.com
-scmlib_md5_DATA += make.scm md5-@MIT_SCHEME_OS_SUFFIX@.pkd
+binaries = @MIT_SCHEME_BINs@ @MIT_SCHEME_BCIs@ @MIT_SCHEME_COMs@
+
+scmlib_sub_DATA = $(sources) $(binaries)
+scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@
 
 #info_TEXINFOS = mit-scheme-md5.texi
 AM_MAKEINFOHTMLFLAGS = --no-split
@@ -45,6 +46,8 @@ AM_MAKEINFOHTMLFLAGS = --no-split
 # Set these to the defaults used by Scheme.
 infodir = $(datarootdir)/info
 htmldir = $(libdir)/mit-scheme/doc
+dvidir = $(libdir)/mit-scheme/doc
+pdfdir = $(libdir)/mit-scheme/doc
 
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
 
@@ -69,10 +72,7 @@ md5-const.bin: md5-const.scm
 md5-const.scm: md5-const
 	./md5-const
 
-md5.bin: stamp-scheme
-md5.bci: stamp-scheme
-md5.com: stamp-scheme
-md5-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
+@MIT_SCHEME_DEPS@
 stamp-scheme: stamp-shim $(sources) md5.pkg
 	touch stamp-scheme
 	if ! echo '(load "compile.scm")' \
@@ -82,6 +82,7 @@ stamp-scheme: stamp-shim $(sources) md5.pkg
 CLEANFILES = md5-const* md5-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 CLEANFILES += stamp-shim stamp-scheme
+CLEANFILES += @MIT_SCHEME_CLEAN@
 
 TESTS = md5-check.sh
 CLEANFILES += sample
@@ -108,8 +109,8 @@ install-data-hook:
 uninstall-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
-	[ -d "$(DESTDIR)$(scmlib_md5dir)" ] \
-	&& rmdir "$(DESTDIR)$(scmlib_md5dir)"
+	[ -d "$(DESTDIR)$(scmlib_subdir)" ] \
+	&& rmdir "$(DESTDIR)$(scmlib_subdir)"
 #	[ -d "$(DESTDIR)$(htmldir)" ]					\
 #	&& ( echo  '(update-html-index "$(DESTDIR)$(htmldir)/")'	\
 #	     | $(MIT_SCHEME_EXE) --batch-mode )

@@ -27,17 +27,18 @@ EXTRA_DIST = autogen.sh
 
 MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
-scmlib_mhashdir = $(scmlibdir)mhash
+scmlib_subdir = $(scmlibdir)mhash
 
 scmlib_LTLIBRARIES = mhash-shim.la
 scmlib_DATA = mhash-types.bin mhash-const.bin
 
-sources = mhash.scm
+sources = @MIT_SCHEME_SCMs@
 cdecls = mhash.cdecl
 
-scmlib_mhash_DATA = $(sources)
-scmlib_mhash_DATA += mhash.bin mhash.bci mhash.com
-scmlib_mhash_DATA += make.scm mhash-@MIT_SCHEME_OS_SUFFIX@.pkd
+binaries = @MIT_SCHEME_BINs@ @MIT_SCHEME_BCIs@ @MIT_SCHEME_COMs@
+
+scmlib_sub_DATA = $(sources) $(binaries)
+scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@
 
 #info_TEXINFOS = mit-scheme-mhash.texi
 AM_MAKEINFOHTMLFLAGS = --no-split
@@ -45,6 +46,8 @@ AM_MAKEINFOHTMLFLAGS = --no-split
 # Set these to the defaults used by Scheme.
 infodir = $(datarootdir)/info
 htmldir = $(libdir)/mit-scheme/doc
+dvidir = $(libdir)/mit-scheme/doc
+pdfdir = $(libdir)/mit-scheme/doc
 
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
 
@@ -69,10 +72,7 @@ mhash-const.bin: mhash-const.scm
 mhash-const.scm: mhash-const
 	./mhash-const
 
-mhash.bin: stamp-scheme
-mhash.bci: stamp-scheme
-mhash.com: stamp-scheme
-mhash-@MIT_SCHEME_OS_SUFFIX@.pkd: stamp-scheme
+@MIT_SCHEME_DEPS@
 stamp-scheme: stamp-shim $(sources) mhash.pkg
 	touch stamp-scheme
 	if ! echo '(load "compile.scm")' \
@@ -82,6 +82,7 @@ stamp-scheme: stamp-shim $(sources) mhash.pkg
 CLEANFILES = mhash-const* mhash-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
 CLEANFILES += stamp-shim stamp-scheme
+CLEANFILES += @MIT_SCHEME_CLEAN@
 
 TESTS = mhash-check.sh
 CLEANFILES += sample
@@ -108,8 +109,8 @@ install-data-hook:
 uninstall-hook:
 	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)")' \
 	| $(MIT_SCHEME_EXE) --batch-mode
-	[ -d "$(DESTDIR)$(scmlib_mhashdir)" ] \
-	&& rmdir "$(DESTDIR)$(scmlib_mhashdir)"
+	[ -d "$(DESTDIR)$(scmlib_subdir)" ] \
+	&& rmdir "$(DESTDIR)$(scmlib_subdir)"
 #	[ -d "$(DESTDIR)$(htmldir)" ]					\
 #	&& ( echo  '(update-html-index "$(DESTDIR)$(htmldir)/")'	\
 #	     | $(MIT_SCHEME_EXE) --batch-mode )
