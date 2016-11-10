@@ -431,10 +431,14 @@ USA.
 	      (with-directory-rewriting-rule directory path thunk)
 	      (thunk)))))))
 
+(define (standard-library-directory-pathname)
+  (let ((d (system-library-directory-pathname "lib")))
+    (pathname-new-directory d (except-last-pair (pathname-directory d)))))
+
 (define (pathname->standard-uri pathname)
   (let ((uri
 	 (pathname->uri
-	  (enough-pathname pathname (system-library-directory-pathname)))))
+	  (enough-pathname pathname (standard-library-directory-pathname)))))
     (if (uri-absolute? uri)
 	uri
 	(system-library-uri uri))))
@@ -443,7 +447,7 @@ USA.
   (or (uri->pathname uri #f)
       (merge-pathnames
        (uri->pathname (make-uri #f #f (list-tail (uri-path uri) 4) #f #f))
-       (system-library-directory-pathname))))
+       (standard-library-directory-pathname))))
 
 (define (system-uri #!optional rel-uri)
   (if (string? system-base-uri)

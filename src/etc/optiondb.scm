@@ -75,7 +75,10 @@ USA.
 			(finish dir pathname)
 			(dir-loop (cdr dirs)))))
 		(receive (dir pathname)
-		    (try-dir (system-library-directory-pathname))
+		    (try-dir
+		     (let ((d (system-library-directory-pathname "lib")))
+		       (pathname-new-directory d (except-last-pair
+						  (pathname-directory d)))))
 		  (if (not dir)
 		      (lose))
 		  (finish dir pathname))))))))
