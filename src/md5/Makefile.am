@@ -35,7 +35,7 @@ scmlib_DATA = md5-types.bin md5-const.bin
 sources = @MIT_SCHEME_SCMs@
 cdecls = md5.cdecl
 
-binaries = @MIT_SCHEME_BINs@ @MIT_SCHEME_BCIs@ @MIT_SCHEME_COMs@
+binaries = @MIT_SCHEME_BCIs@ @MIT_SCHEME_COMs@
 
 scmlib_sub_DATA = $(sources) $(binaries)
 scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@

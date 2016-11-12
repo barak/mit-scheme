@@ -30,7 +30,7 @@ scmlib_subdir = $(scmlibdir)x11-screen
 
 sources = @MIT_SCHEME_SCMs@
 
-binaries = @MIT_SCHEME_BINs@ @MIT_SCHEME_BCIs@ @MIT_SCHEME_COMs@
+binaries = @MIT_SCHEME_BCIs@ @MIT_SCHEME_COMs@
 
 scmlib_sub_DATA = $(sources) $(binaries)
 scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@

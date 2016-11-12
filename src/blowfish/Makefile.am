@@ -35,7 +35,7 @@ scmlib_DATA = blowfish-types.bin blowfish-const.bin
 sources = @MIT_SCHEME_SCMs@
 cdecls = blowfish.cdecl
 
-binaries = @MIT_SCHEME_BINs@ @MIT_SCHEME_BCIs@ @MIT_SCHEME_COMs@
+binaries = @MIT_SCHEME_BCIs@ @MIT_SCHEME_COMs@
 
 scmlib_sub_DATA = $(sources) $(binaries)
 scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@

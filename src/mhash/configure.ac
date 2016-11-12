@@ -92,10 +92,7 @@ MIT_SCHEME_PKD="mhash-${os_suffix}.pkd"
 
 for f in mhash; do
     MIT_SCHEME_SCMs="${MIT_SCHEME_SCMs} ${f}.scm"
-    MIT_SCHEME_BINs="${MIT_SCHEME_BINs} ${f}.bin"
     MIT_SCHEME_BCIs="${MIT_SCHEME_BCIs} ${f}.bci"
-    MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
-${f}.bin: stamp-scheme"
     MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
 ${f}.bci: stamp-scheme"
     if test "$cc_type" = "c"; then
@@ -117,7 +114,6 @@ AC_SUBST([MIT_SCHEME_LIBDIR])
 AC_SUBST([MIT_SCHEME_INCLUDEDIR])
 AC_SUBST([MIT_SCHEME_PKD])
 AC_SUBST([MIT_SCHEME_SCMs])
-AC_SUBST([MIT_SCHEME_BINs])
 AC_SUBST([MIT_SCHEME_BCIs])
 AC_SUBST([MIT_SCHEME_COMs])
 AC_SUBST([MIT_SCHEME_CLEAN])
