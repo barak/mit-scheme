@@ -50,6 +50,7 @@ dvidir = $(libdir)/mit-scheme/doc
 pdfdir = $(libdir)/mit-scheme/doc
 
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
+AM_CFLAGS = @MIT_CFLAGS@
 
 blowfish_shim_la_LIBADD = blowfish-adapter.lo
 blowfish_shim_la_LDFLAGS = -module -avoid-version -shared

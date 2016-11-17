@@ -50,6 +50,7 @@ dvidir = $(libdir)/mit-scheme/doc
 pdfdir = $(libdir)/mit-scheme/doc
 
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
+AM_CFLAGS = @MIT_CFLAGS@
 
 md5_shim_la_LIBADD = md5-adapter.lo
 md5_shim_la_LDFLAGS = -module -avoid-version -shared

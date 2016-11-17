@@ -50,7 +50,8 @@ dvidir = $(libdir)/mit-scheme/doc
 pdfdir = $(libdir)/mit-scheme/doc
 
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
-AM_CFLAGS = `pkg-config --cflags x11`
+AM_CFLAGS = @MIT_CFLAGS@
+AM_CFLAGS += `pkg-config --cflags x11`
 LIBS = `pkg-config --libs x11`
 
 x11_shim_la_LIBADD = x11base.lo x11color.lo x11graph.lo x11term.lo

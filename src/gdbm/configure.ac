@@ -41,6 +41,37 @@ AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_INSTALL
 
+if test ${GCC} = yes; then
+
+    MIT_CFLAGS="-Wall -Wundef -Wpointer-arith -Winline"
+    MIT_CFLAGS="${MIT_CFLAGS} -Wstrict-prototypes -Wnested-externs"
+    MIT_CFLAGS="${MIT_CFLAGS} -Wredundant-decls"
+
+    AC_MSG_CHECKING([for GCC>=4])
+    AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM(
+	    [[
+	    #if __GNUC__ >= 4
+	    ;
+	    #else
+	    #error "gcc too old"
+	    #endif
+	    ]],
+	    [[]]
+	)],
+	[
+	AC_MSG_RESULT([yes])
+	MIT_CFLAGS="${MIT_CFLAGS} -Wextra -Wno-sign-compare"
+	MIT_CFLAGS="${MIT_CFLAGS} -Wno-unused-parameter"
+	MIT_CFLAGS="${MIT_CFLAGS} -Wold-style-definition"
+	# The generated shim code violates this big-time.
+	# MIT_CFLAGS="${MIT_CFLAGS} -Wmissing-prototypes"
+	MIT_CFLAGS="${MIT_CFLAGS} -Wunreachable-code"
+	MIT_CFLAGS="${MIT_CFLAGS} -Wwrite-strings"
+	],
+	[AC_MSG_RESULT([no])])
+fi
+
 AC_CHECK_HEADER([gdbm.h],[],[
     AC_MSG_ERROR([Header file <gdbm.h> not found.])])
 
@@ -82,6 +113,7 @@ done
 MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
 ${MIT_SCHEME_PKD}: stamp-scheme"
 
+AC_SUBST([MIT_CFLAGS])
 AC_SUBST([MIT_SCHEME_EXE])
 AC_SUBST([MIT_SCHEME_LIBDIR])
 AC_SUBST([MIT_SCHEME_INCLUDEDIR])
