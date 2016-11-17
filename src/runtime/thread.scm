@@ -981,11 +981,9 @@ USA.
   (without-interrupts
    (lambda ()
      (let ((thread first-running-thread))
-       (if thread
-	   (if (not (thread/block-events? thread))
-	       (handle-thread-events thread))
-	   (outf-error
-	    "\nhandle-current-thread-events: no current thread\n"))))))
+       (if (and thread
+		(not (thread/block-events? thread)))
+	   (handle-thread-events thread))))))
 
 ;;;; Subprocess Events
 
