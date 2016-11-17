@@ -29,8 +29,6 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 /* x11base.c */
 
-extern struct xvisual * allocate_x_visual (Visual * visual);
-extern void x_visual_deallocate (struct xvisual * xv);
 extern void x_close_display (struct xdisplay * xd);
 extern void x_close_all_displays (void);
 extern int x_window_set_input_hint (struct xwindow * xw, int input_hint);
@@ -47,7 +45,6 @@ extern unsigned long x_modifier_mask_to_bucky_bits (unsigned int mask,
 extern struct xdisplay * x_open_display (char * display_name);
 extern void x_display_get_size (struct xdisplay * xd, long screen,
 				int * results);
-extern void x_close_window (struct xwindow * xw);
 extern int x_set_default_font (struct xdisplay * xd, const char * name);
 extern int x_display_descriptor (struct xdisplay * xd);
 extern long x_max_request_size (struct xdisplay * xd);
@@ -126,7 +123,7 @@ extern int x_get_window_property (struct xdisplay * xd,
 extern int x_change_property (struct xdisplay * wd,
 			      Window window, Atom property,
 			      Atom type, int format, int mode,
-			      char * data, unsigned long dlen);
+			      unsigned char * data, unsigned long dlen);
 extern void x_delete_property (struct xdisplay * xd,
 			       Window window, Atom property);
 extern void x_set_selection_owner (struct xdisplay * xd,
@@ -217,7 +214,7 @@ extern void x_graphics_fill_polygon (struct xwindow * xw,
 				     XPoint * points);
 extern struct ximage * x_create_image (struct xwindow * xw,
 				       uint width, uint height);
-extern int x_bytes_into_image (char * vector, int length,
+extern int x_bytes_into_image (unsigned char * vector, int length,
 			       struct ximage * ximage);
 extern long x_get_pixel_from_image (struct ximage * xi, int x, int y);
 extern int x_set_pixel_in_image (struct ximage * xi,
@@ -269,7 +266,7 @@ extern int xterm_write_char (struct xwindow * xw,
 			     int c, unsigned int hl);
 extern int xterm_write_substring (struct xwindow * xw,
 				  unsigned int x, unsigned int y,
-				  char * string, unsigned int start,
+				  unsigned char * string, unsigned int start,
 				  unsigned int end, unsigned int hl);
 extern int xterm_clear_rectangle (struct xwindow * xw,
 				  unsigned int x_start, unsigned int x_end,

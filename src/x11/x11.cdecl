@@ -599,7 +599,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	(type Atom)
 	(format int)
 	(mode int)
-	(data (* char))
+	(data (* uchar))
 	(dlen ulong))
 
 (extern void
@@ -818,7 +818,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 (extern int
 	x_bytes_into_image
-	(vector (* char)) (length int) (ximage (* (struct ximage))))
+	(vector (* uchar)) (length int) (ximage (* (struct ximage))))
 
 (extern long
 	x_get_pixel_from_image
@@ -946,7 +946,9 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	xterm_write_substring
 	(xw (* (struct xwindow)))
 	(x uint) (y uint)
-	(string (* char)) (start uint) (end uint)
+	(string (* uchar))
+	(start uint)
+	(end uint)
 	(hl uint))
 
 (extern int

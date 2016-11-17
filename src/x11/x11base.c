@@ -51,7 +51,6 @@ static const char * x_default_font = 0;
 
 static void initialize_once (void);
 
-static void move_window (struct xwindow *, int, int);
 static void check_expected_move (struct xwindow *);
 
 /* Allocation Tables */
@@ -109,15 +108,6 @@ allocate_table_index (struct allocation_table * table, void * item)
   (table->items) = new_items;
   (table->length) = new_length;
   return (length);
-}
-
-static void *
-allocation_item (unsigned int num, struct allocation_table * table)
-{
-  void * item;
-  if ((num < 0) || (num >= table->length))
-    return (NULL);
-  return ((table->items) [num]);
 }
 
 static struct xwindow *
@@ -1783,7 +1773,7 @@ x_get_window_property (struct xdisplay * xd, Window window, Atom property,
 int
 x_change_property (struct xdisplay * xd, Window window,
 		   Atom property, Atom type, int format, int mode,
-		   char * data, unsigned long dlen)
+		   unsigned char * data, unsigned long dlen)
 {
     Display * display = (XD_DISPLAY (xd));
 

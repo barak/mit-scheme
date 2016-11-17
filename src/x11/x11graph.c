@@ -804,7 +804,7 @@ x_create_image (struct xwindow * xw, uint width, uint height)
 }
 
 int
-x_bytes_into_image (char * vector, int length, struct ximage *ximage)
+x_bytes_into_image (unsigned char * vector, int length, struct ximage *ximage)
 {
   XImage * image = (XI_IMAGE (ximage));
   unsigned long width = (image -> width);
@@ -813,11 +813,12 @@ x_bytes_into_image (char * vector, int length, struct ximage *ximage)
   unsigned long x;
   unsigned long y;
   if (length != (width * height))
-    return (0);
+    return (1);
   vscan = vector;
   for (y = 0; (y < height); y += 1)
     for (x = 0; (x < width); x += 1)
       XPutPixel (image, x, y, ((unsigned long) (*vscan++)));
+  return (0);
 }
 
 long

@@ -626,7 +626,8 @@ xterm_write_char (struct xwindow * xw, unsigned int x, unsigned int y,
 
 int
 xterm_write_substring (struct xwindow * xw, unsigned int x, unsigned int y,
-		       char * string, unsigned int start, unsigned int end,
+		       unsigned char * string,
+		       unsigned int start, unsigned int end,
 		       unsigned int hl)
 {
   unsigned int length, index;
@@ -807,6 +808,7 @@ xterm_scroll_lines_up (struct xwindow * xw,
 	    }
 	}
     }
+  return (0);
 }
 
 static void
@@ -872,6 +874,7 @@ xterm_scroll_lines_down (struct xwindow * xw,
 	    }
 	}
     }
+  return (0);
 }
 
 int
@@ -883,7 +886,6 @@ xterm_save_contents (struct xwindow * xw,
 		     char * contents)
 {
   unsigned int x_length;
-  unsigned int string_length;
 
   if (x_end >= ((XW_X_CSIZE (xw)) + 1))
     return (1);
@@ -894,7 +896,6 @@ xterm_save_contents (struct xwindow * xw,
   if (y_start >= (y_end + 1))
     return (4);
   x_length = (x_end - x_start);
-  string_length = (2 * x_length * (y_end - y_start));
 
   {
     char * string_scan = contents;
@@ -912,6 +913,7 @@ xterm_save_contents (struct xwindow * xw,
 	  }
       }
   }
+  return (0);
 }
 
 int
