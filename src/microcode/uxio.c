@@ -868,27 +868,37 @@ OS_test_select_descriptor (int fd, int blockp, unsigned int mode)
 #endif /* not HAVE_POLL */
 
 int
-OS_pause (bool ignore_status_change)
+OS_pause (bool blockp, bool ignore_status_change)
 {
-#ifdef HAVE_SIGSUSPEND
-  sigset_t old, new;
   int n;
 
-  UX_sigfillset (&new);
-  UX_sigprocmask (SIG_SETMASK, &new, &old);
-  if (!ignore_status_change && OS_process_any_status_change ())
-    n = SELECT_PROCESS_STATUS_CHANGE;
-  else if ((GET_INT_CODE) != 0)
-    n = SELECT_INTERRUPT;
-  else
+  if (!blockp)
     {
-      UX_sigsuspend (&old);
-      if (OS_process_any_status_change ())
-	n = SELECT_PROCESS_STATUS_CHANGE;
-      else
-	n = SELECT_INTERRUPT;
+      if (!ignore_status_change && OS_process_any_status_change ())
+	return (SELECT_PROCESS_STATUS_CHANGE);
+      return (SELECT_INTERRUPT);
     }
-  UX_sigprocmask (SIG_SETMASK, &old, NULL);
+
+#ifdef HAVE_SIGSUSPEND
+  {
+    sigset_t old, new;
+
+    UX_sigfillset (&new);
+    UX_sigprocmask (SIG_SETMASK, &new, &old);
+    if (!ignore_status_change && OS_process_any_status_change ())
+      n = SELECT_PROCESS_STATUS_CHANGE;
+    else if ((GET_INT_CODE) != 0)
+      n = SELECT_INTERRUPT;
+    else
+      {
+	UX_sigsuspend (&old);
+	if (OS_process_any_status_change ())
+	  n = SELECT_PROCESS_STATUS_CHANGE;
+	else
+	  n = SELECT_INTERRUPT;
+      }
+    UX_sigprocmask (SIG_SETMASK, &old, NULL);
+  }
 #else /* not HAVE_SIGSUSPEND */
   INTERRUPTABLE_EXTENT
     (n, (((!ignore_status_change && (OS_process_any_status_change ()))

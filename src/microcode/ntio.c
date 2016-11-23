@@ -848,12 +848,12 @@ OS_test_select_registry (select_registry_t registry, int blockp)
 }
 
 int
-OS_pause (bool ignore_status_change)
+OS_pause (bool blockp, bool ignore_status_change)
 {
-  /* Wait-for-io must spin. */
   return
-    ((OS_process_any_status_change ())
+    ((!ignore_status_change && (OS_process_any_status_change ()))
      ? SELECT_PROCESS_STATUS_CHANGE
+     /* Wait-for-io must spin. */
      : SELECT_INTERRUPT);
 }
 
