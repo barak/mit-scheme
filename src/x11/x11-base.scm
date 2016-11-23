@@ -274,7 +274,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 				 (cond ((and (= keysym (C-enum "XK_BackSpace"))
 					     (= nbytes 1)
 					     (= (C-> buffer "char")
-						(char->ascii #\b)))
+						(char->ascii #\backspace)))
 					(char->string #\Delete))
 				       ((> nbytes 0)
 					(let ((s (make-string nbytes)))
