@@ -52,6 +52,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	  x-window-set-event-mask
 	  x-window-or-event-mask
 	  x-window-andc-event-mask
+	  event-type-name
 	  event-type:button-down
 	  event-type:button-up
 	  event-type:configure

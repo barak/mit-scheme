@@ -146,7 +146,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
    ((eq? xtype (C-enum "UnmapNotify")) event-type:unmap)
    (else (warn "Unexpected XEvent.") #f)))
 
-(define (event-name scmtype)
+(define (event-type-name scmtype)
   (let ((sym (C-enum "ScmEventType" scmtype)))
     (if (not sym)
 	"<unknown>"
