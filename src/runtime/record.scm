@@ -68,6 +68,7 @@ USA.
 (define unparse-record)
 (define record-entity-unparser)
 (define record-description)
+(define record-entity-describer)
 
 (define (initialize-record-type-type!)
   (let* ((type
@@ -126,21 +127,11 @@ USA.
   (set! deferred-unparser-methods)
   (set! record-description (make-generic-procedure 1 'RECORD-DESCRIPTION))
   (set-generic-procedure-default-generator! record-description
-    (lambda (generic tags)
-      generic
-      (if (record-type? (dispatch-tag-contents (car tags)))
-	  (lambda (record)
-	    (let ((type (%record-type-descriptor record)))
-	      (map (lambda (field-name)
-		     `(,field-name
-		       ,((record-accessor type field-name) record)))
-		   (record-type-field-names type))))
-	  (lambda (record)
-	    (let loop ((i (fix:- (%record-length record) 1)) (d '()))
-	      (if (fix:< i 0)
-		  d
-		  (loop (fix:- i 1)
-			(cons (list i (%record-ref record i)) d)))))))))
+                                            record-description/default)
+  (set! record-entity-describer
+        (make-generic-procedure 1 'RECORD-ENTITY-DESCRIBER))
+  (set-generic-procedure-default-generator! record-entity-describer
+                                            record-entity-describer/default))
 
 (define (make-record-type type-name field-names
 			  #!optional
@@ -293,12 +284,12 @@ USA.
 	      generic
 	      (and (eq? (cadr tags) tag) method)))))))
 
-;;; It's not kosher to use this during the cold load.
-
+;; It's not kosher to use this during the cold load.
 (define (set-record-type-entity-unparser-method! record-type method)
-  (guarantee-record-type record-type 'SET-RECORD-TYPE-UNPARSER-METHOD!)
+  (guarantee-record-type record-type 'SET-RECORD-TYPE-ENTITY-UNPARSER-METHOD!)
   (if method
-      (guarantee-unparser-method method 'SET-RECORD-TYPE-UNPARSER-METHOD!))
+      (guarantee-unparser-method method
+                                 'SET-RECORD-TYPE-ENTITY-UNPARSER-METHOD!))
   (let ((tag (%record-type-dispatch-tag record-type)))
     (remove-generic-procedure-generators record-entity-unparser (list tag))
     (if method
@@ -319,6 +310,63 @@ USA.
 				 'UNPARSE-RECORD-ENTITY))
   ((record-entity-unparser (entity-extra entity)) state entity))
 
+(define (record-description/default generic tags)
+  generic
+  (if (record-type? (dispatch-tag-contents (car tags)))
+      (lambda (record)
+        (let ((type (%record-type-descriptor record)))
+          (map (lambda (field-name)
+                 `(,field-name
+                   ,((record-accessor type field-name) record)))
+               (record-type-field-names type))))
+      (lambda (record)
+        (let loop ((i (fix:- (%record-length record) 1)) (d '()))
+          (if (fix:< i 0)
+              d
+              (loop (fix:- i 1)
+                    (cons (list i (%record-ref record i)) d)))))))
+
+;; It's not kosher to use this during the cold load.
+(define (set-record-type-describer! record-type describer)
+  (guarantee-record-type record-type 'SET-RECORD-TYPE-DESCRIBER!)
+  (if describer
+      (guarantee-procedure-of-arity describer 1 'SET-RECORD-TYPE-DESCRIBER!))
+  (define-unary-generic-handler record-description record-type describer))
+
+(define (record-entity-description entity)
+  ((record-entity-describer (entity-extra entity)) entity))
+
+(define (record-entity-describer/default generic tags)
+  generic tags
+  (lambda (extra)
+    extra
+    (lambda (entity)
+      entity
+      #f)))
+
+;; It's not kosher to use this during the cold load.
+(define (set-record-type-entity-describer! record-type describer)
+  (guarantee-record-type record-type 'SET-RECORD-TYPE-ENTITY-DESCRIBER!)
+  (if describer
+      (guarantee-procedure-of-arity describer 1
+                                    'SET-RECORD-TYPE-ENTITY-DESCRIBER!))
+  (define-unary-generic-handler record-entity-describer record-type
+    ;; Kludge to make generic dispatch work.
+    (lambda (extra)
+      extra
+      describer)))
+
+(define (define-unary-generic-handler generic record-type handler)
+  (let ((tag (%record-type-dispatch-tag record-type)))
+    (remove-generic-procedure-generators generic (list tag))
+    (if handler
+        (add-generic-procedure-generator generic
+          (lambda (generic tags)
+            generic
+            (and (eq? (car tags) tag) handler))))))
+
+;;;; Constructors
+
 (define (record-constructor record-type #!optional field-names)
   (guarantee-record-type record-type 'RECORD-CONSTRUCTOR)
   (if (or (default-object? field-names)
@@ -426,7 +474,8 @@ USA.
       ((constructor
 	(lambda keyword-list
 	  (let ((n (%record-type-length record-type)))
-	    (let ((record (%make-record (%record-type-dispatch-tag record-type) n))
+	    (let ((record
+                   (%make-record (%record-type-dispatch-tag record-type) n))
 		  (seen? (vector-cons n #f)))
 	      (do ((kl keyword-list (cddr kl)))
 		  ((not (and (pair? kl)

@@ -3493,6 +3493,7 @@ USA.
 	  record-constructor
 	  record-copy
 	  record-description
+	  record-entity-description
 	  record-entity-unparser
 	  record-keyword-constructor
 	  record-modifier
@@ -3509,6 +3510,8 @@ USA.
 	  record-updater
 	  record?
 	  set-record-type-default-inits!
+	  set-record-type-describer!
+	  set-record-type-entity-describer!
 	  set-record-type-entity-unparser-method!
 	  set-record-type-extension!
 	  set-record-type-unparser-method!
