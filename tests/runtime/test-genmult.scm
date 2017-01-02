@@ -34,16 +34,18 @@ USA.
     ;; Bug exhibited itself in the face of a default generator.
     (set-generic-procedure-default-generator!
      generic
-     (lambda _ (lambda _ 'not-specialised)))
+     (lambda _ _ (lambda _ _ 'not-specialised)))
     (assert-equal (generic #\a) 'not-specialised)
     ;; Add some named generators (for easier removal).
     (define (bool-generator p tags)
+      p                                 ;ignore
       (if (equal? tags (list (built-in-dispatch-tag 'boolean)))
           (lambda (x) (cons 'boolean x))
           #f))
     (add-generic-procedure-generator generic bool-generator)
     (assert-equal (generic #t) '(boolean . #t))
     (define (fixnum-generator p tags)
+      p                                 ;ignore
       (if (equal? tags (list (built-in-dispatch-tag 'fixnum)))
           (lambda (x) (cons 'fixnum x))
           #f))
