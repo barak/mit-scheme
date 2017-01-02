@@ -49,6 +49,7 @@ USA.
     "runtime/test-entity"
     "runtime/test-ephemeron"
     "runtime/test-floenv"
+    "runtime/test-genmult"
     "runtime/test-hash-table"
     "runtime/test-integer-bits"
     "runtime/test-mime-codec"

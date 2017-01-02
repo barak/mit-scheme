@@ -115,11 +115,11 @@ USA.
 (define (maybe-deinstall-multiplexer generic)
   (let* ((m (generic-procedure-generator generic))
 	 (generators (multiplexer-list m)))
-    (cond ((and (not (pair? generators))
-		(not (multiplexer-default m)))
+    (cond ((and (not (multiplexer-default m))
+		(not (pair? generators)))
 	   (set-generic-procedure-generator! generic #f))
-	  ((and (not (pair? (cdr generators)))
-		(not (multiplexer-default m)))
+	  ((and (not (multiplexer-default m))
+		(not (pair? (cdr generators))))
 	   (set-generic-procedure-generator! generic (car generators))))))
 
 (define (make-multiplexer)
