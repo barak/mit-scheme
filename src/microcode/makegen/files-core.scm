@@ -33,6 +33,7 @@ USA.
 "bigprm"
 "bitstr"
 "boot"
+"bytevector"
 "char"
 "daemon"
 "debug"

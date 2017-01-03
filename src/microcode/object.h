@@ -43,8 +43,8 @@ typedef unsigned long SCHEME_OBJECT;
 #define SIZEOF_SCHEME_OBJECT SIZEOF_UNSIGNED_LONG
 #define OBJECT_LENGTH ((unsigned int) (CHAR_BIT * SIZEOF_UNSIGNED_LONG))
 
-/* A convenience definition since "unsigned char" is so verbose.  */
-typedef unsigned char byte_t;
+/* A convenience definition.  */
+typedef uint8_t byte_t;
 
 #if (TYPE_CODE_LENGTH == 6U)
 #  define N_TYPE_CODES (0x40)
