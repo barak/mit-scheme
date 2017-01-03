@@ -515,7 +515,7 @@ import_primitive_table (SCHEME_OBJECT * entries,
       long arity = (FIXNUM_TO_LONG (*entries++));
       SCHEME_OBJECT prim
 	= (find_primitive
-	   ((MAKE_POINTER_OBJECT (TC_CHARACTER_STRING, entries)),
+	   ((MAKE_POINTER_OBJECT (TC_BYTEVECTOR, entries)),
 	    true, true, arity));
 
       if (!PRIMITIVE_P (prim))

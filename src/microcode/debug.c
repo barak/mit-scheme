@@ -379,7 +379,7 @@ do_printing (outf_channel stream, SCHEME_OBJECT Expr, bool Detailed)
       Expr = (MEMORY_REF ((MEMORY_REF (Expr, ASSIGN_NAME)), VARIABLE_SYMBOL));
       goto SPrint;
 
-    case TC_CHARACTER_STRING:
+    case TC_BYTEVECTOR:
       print_string (stream, Expr);
       return;
 
@@ -401,7 +401,7 @@ do_printing (outf_channel stream, SCHEME_OBJECT Expr, bool Detailed)
       print_list (stream, Expr);
       return;
 
-    case TC_NULL:
+    case TC_FALSE:
       break;
 
     case TC_UNINTERNED_SYMBOL:

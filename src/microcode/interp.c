@@ -407,7 +407,7 @@ Interpret (int pop_return_p)
     {
     case TC_BIG_FIXNUM:         /* The self evaluating items */
     case TC_BIG_FLONUM:
-    case TC_CHARACTER_STRING:
+    case TC_BYTEVECTOR:
     case TC_CHARACTER:
     case TC_COMPILED_CODE_BLOCK:
     case TC_COMPLEX:
@@ -422,7 +422,7 @@ Interpret (int pop_return_p)
     case TC_INTERNED_SYMBOL:
     case TC_LIST:
     case TC_NON_MARKED_VECTOR:
-    case TC_NULL:
+    case TC_FALSE:
     case TC_PRIMITIVE:
     case TC_PROCEDURE:
     case TC_QUAD:

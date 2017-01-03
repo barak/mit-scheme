@@ -892,7 +892,7 @@ gc_transport_weak_pair (SCHEME_OBJECT pair)
 
   if ((caddr != 0) && (ADDRESS_IN_FROMSPACE_P (caddr)))
     {
-      WRITE_TOSPACE (new_addr, (OBJECT_NEW_TYPE (TC_NULL, old_car)));
+      WRITE_TOSPACE (new_addr, (OBJECT_NEW_TYPE (TC_FALSE, old_car)));
       (old_addr[1])
 	= ((weak_chain == 0)
 	   ? (MAKE_OBJECT ((OBJECT_TYPE (old_car)), 0))
@@ -1251,7 +1251,7 @@ finalize_gc_object_references (void)
 
 gc_type_t gc_type_map [N_TYPE_CODES] =
 {
-  GC_NON_POINTER,		/* TC_NULL,etc */
+  GC_NON_POINTER,		/* TC_FALSE */
   GC_PAIR,			/* TC_LIST */
   GC_NON_POINTER,		/* TC_CHARACTER */
   GC_PAIR,		   	/* TC_SCODE_QUOTE */
@@ -1281,7 +1281,7 @@ gc_type_t gc_type_map [N_TYPE_CODES] =
   GC_UNDEFINED,			/* was TC_PCOMB1 */
   GC_VECTOR,			/* TC_CONTROL_POINT */
   GC_PAIR,			/* TC_INTERNED_SYMBOL */
-  GC_VECTOR,			/* TC_CHARACTER_STRING,TC_VECTOR_8B */
+  GC_VECTOR,			/* TC_BYTEVECTOR */
   GC_PAIR,			/* TC_ACCESS */
   GC_TRIPLE,			/* TC_HUNK3_A */
   GC_PAIR,			/* TC_DEFINITION */

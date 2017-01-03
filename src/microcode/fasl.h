@@ -89,7 +89,7 @@ USA.
 #define CI_BAND_P(P) ((OBJECT_TYPE (P)) == TC_CONSTANT)
 
 #define MAKE_CI_VERSION(b, v, a)					\
-  (MAKE_OBJECT (((b) ? TC_CONSTANT : TC_NULL),				\
+  (MAKE_OBJECT (((b) ? TC_CONSTANT : TC_FALSE),				\
 		((((unsigned long) (v)) << HALF_DATUM_LENGTH)		\
 		 | ((unsigned long) (a)))))
 

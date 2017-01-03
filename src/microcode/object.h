@@ -178,7 +178,7 @@ extern SCHEME_OBJECT * memory_base;
 #define FLONUM_P(object) ((OBJECT_TYPE (object)) == TC_BIG_FLONUM)
 #define COMPLEX_P(object) ((OBJECT_TYPE (object)) == TC_COMPLEX)
 #define CHARACTER_P(object) ((OBJECT_TYPE (object)) == TC_CHARACTER)
-#define STRING_P(object) ((OBJECT_TYPE (object)) == TC_CHARACTER_STRING)
+#define BYTEVECTOR_P(object) ((OBJECT_TYPE (object)) == TC_BYTEVECTOR)
 #define BIT_STRING_P(object) ((OBJECT_TYPE (object)) == TC_BIT_STRING)
 #define CELL_P(object) ((OBJECT_TYPE (object)) == TC_CELL)
 #define PAIR_P(object) ((OBJECT_TYPE (object)) == TC_LIST)
@@ -255,35 +255,38 @@ extern SCHEME_OBJECT * memory_base;
 
 /* String Operations */
 
+#define STRING_P BYTEVECTOR_P
+
 /* Add 1 byte to length to account for '\0' at end of string.
    Add 1 word to length to account for string header word. */
 #define STRING_LENGTH_TO_GC_LENGTH(n_chars)				\
-  ((BYTES_TO_WORDS ((n_chars) + 1)) + 1)
+  ((BYTES_TO_WORDS ((n_chars) + 1)) + BYTEVECTOR_LENGTH_SIZE)
 
 #define STRING_LENGTH(s)						\
-  (OBJECT_DATUM (MEMORY_REF ((s), STRING_LENGTH_INDEX)))
+  (OBJECT_DATUM (MEMORY_REF ((s), BYTEVECTOR_LENGTH_INDEX)))
 
 #define SET_STRING_LENGTH(s, n_chars) do				\
 {									\
   MEMORY_SET ((s),							\
-	      STRING_LENGTH_INDEX,					\
+	      BYTEVECTOR_LENGTH_INDEX,					\
 	      (MAKE_OBJECT (0, (n_chars))));				\
   STRING_SET ((s), (n_chars), '\0');					\
 } while (0)
 
 /* Subtract 1 to account for the fact that we maintain a '\0'
    at the end of the string. */
-#define MAXIMUM_STRING_LENGTH(s)					\
-  ((((VECTOR_LENGTH (s)) - 1) * (sizeof (SCHEME_OBJECT))) - 1)
+#define MAXIMUM_STRING_LENGTH(s)                                        \
+  ((((VECTOR_LENGTH (s)) - BYTEVECTOR_LENGTH_SIZE) * (sizeof (SCHEME_OBJECT))) \
+   - 1)
 
 #define SET_MAXIMUM_STRING_LENGTH(s, n_chars)				\
   (SET_VECTOR_LENGTH ((s), (STRING_LENGTH_TO_GC_LENGTH (n_chars))))
 
 #define STRING_LOC(s, i)						\
-  (((unsigned char *) (MEMORY_LOC (s, STRING_CHARS))) + (i))
+  (((unsigned char *) (MEMORY_LOC (s, BYTEVECTOR_DATA))) + (i))
 
-#define STRING_POINTER(s) ((char *) (MEMORY_LOC (s, STRING_CHARS)))
-#define STRING_BYTE_PTR(s) ((byte_t *) (MEMORY_LOC (s, STRING_CHARS)))
+#define STRING_POINTER(s) ((char *) (MEMORY_LOC (s, BYTEVECTOR_DATA)))
+#define STRING_BYTE_PTR(s) ((byte_t *) (MEMORY_LOC (s, BYTEVECTOR_DATA)))
 
 #define STRING_REF(s, i) (* (STRING_LOC ((s), (i))))
 #define STRING_SET(s, i, c) ((* (STRING_LOC ((s), (i)))) = (c))
@@ -355,6 +358,8 @@ extern SCHEME_OBJECT * memory_base;
 #define ULONG_TO_FIXNUM(n) (MAKE_OBJECT (TC_FIXNUM, (n)))
 #define FIXNUM_TO_ULONG_P(fixnum) (((OBJECT_DATUM (fixnum)) & SIGN_MASK) == 0)
 #define FIXNUM_TO_ULONG(fixnum) (OBJECT_DATUM (fixnum))
+
+#define FIXNUM_ZERO (ULONG_TO_FIXNUM (0))
 
 #define FIXNUM_TO_DOUBLE(fixnum) ((double) (FIXNUM_TO_LONG (fixnum)))
 
@@ -482,12 +487,11 @@ extern SCHEME_OBJECT * memory_base;
    9 '()
  */
 
-#define SHARP_F			MAKE_OBJECT (TC_NULL, 0)
+#define SHARP_F			MAKE_OBJECT (TC_FALSE, 0)
 #define SHARP_T			MAKE_OBJECT (TC_CONSTANT, 0)
 #define UNSPECIFIC		MAKE_OBJECT (TC_CONSTANT, 1)
 #define DEFAULT_OBJECT		MAKE_OBJECT (TC_CONSTANT, 7)
 #define EMPTY_LIST		MAKE_OBJECT (TC_CONSTANT, 9)
-#define FIXNUM_ZERO		MAKE_OBJECT (TC_FIXNUM, 0)
 #define BROKEN_HEART_ZERO	MAKE_OBJECT (TC_BROKEN_HEART, 0)
 
 /* Last immediate reference trap. */

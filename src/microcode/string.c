@@ -33,7 +33,7 @@ SCHEME_OBJECT
 allocate_string (unsigned long nbytes)
 {
   SCHEME_OBJECT result
-    = (allocate_non_marked_vector (TC_CHARACTER_STRING,
+    = (allocate_non_marked_vector (TC_BYTEVECTOR,
 				   (STRING_LENGTH_TO_GC_LENGTH (nbytes)),
 				   true));
   SET_STRING_LENGTH (result, nbytes);
@@ -44,7 +44,7 @@ SCHEME_OBJECT
 allocate_string_no_gc (unsigned long nbytes)
 {
   SCHEME_OBJECT result
-    = (allocate_non_marked_vector (TC_CHARACTER_STRING,
+    = (allocate_non_marked_vector (TC_BYTEVECTOR,
 				   (STRING_LENGTH_TO_GC_LENGTH (nbytes)),
 				   false));
   SET_STRING_LENGTH (result, nbytes);
@@ -140,7 +140,7 @@ DEFINE_PRIMITIVE ("SET-STRING-MAXIMUM-LENGTH!", Prim_set_string_maximum_length, 
       SET_STRING_LENGTH (string, length);
     MEMORY_SET
       (string,
-       STRING_HEADER,
+       BYTEVECTOR_HEADER,
        (MAKE_OBJECT
 	(TC_MANIFEST_NM_VECTOR, ((BYTES_TO_WORDS (length + 1)) + 1))));
   }

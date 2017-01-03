@@ -26,7 +26,7 @@ USA.
 
 /* Type code definitions */
 
-#define TC_NULL				0x00
+#define TC_FALSE				0x00
 #define TC_LIST				0x01
 #define TC_CHARACTER			0x02
 #define	TC_SCODE_QUOTE			0x03
@@ -56,7 +56,7 @@ USA.
 /* #define TC_PCOMB1			0x1B */
 #define TC_CONTROL_POINT		0x1C
 #define TC_INTERNED_SYMBOL		0x1D
-#define TC_CHARACTER_STRING		0x1E
+#define TC_BYTEVECTOR			0x1E
 #define TC_ACCESS			0x1F
 #define TC_HUNK3_A			0x20
 #define TC_DEFINITION			0x21
@@ -134,7 +134,7 @@ USA.
   /* 0x1B */			0,					\
   /* 0x1C */			"control-point",			\
   /* 0x1D */			"interned-symbol",			\
-  /* 0x1e */			"string",				\
+  /* 0x1e */			"bytevector",				\
   /* 0x1f */			"access",				\
   /* 0x20 */			"hunk3-a",				\
   /* 0x21 */			"definition",				\
@@ -172,10 +172,8 @@ USA.
 
 /* Aliases */
 
-#define TC_FALSE			TC_NULL
-#define TC_MANIFEST_VECTOR		TC_NULL
+#define TC_MANIFEST_VECTOR		TC_FALSE
 #define TC_BIT_STRING			TC_VECTOR_1B
-#define TC_VECTOR_8B			TC_CHARACTER_STRING
 #define TC_HUNK3			TC_HUNK3_B
 
 #define UNMARKED_HISTORY_TYPE		TC_HUNK3_A

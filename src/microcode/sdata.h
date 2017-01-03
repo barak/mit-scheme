@@ -58,20 +58,15 @@ USA.
  */
 #define CELL_CONTENTS 		0
 
-/* CHARACTER
- * Not currently used.  Intended ultimately to complete the abstraction
- * of strings.  This will probably be removed eventually.
+/* BYTEVECTOR
+ * Format consists of the normal non-marked vector header
+ * (BYTEVECTOR_HEADER) followed by the number of bytes in the vector
+ * (with type-code 0), followed by the bytes themselves.
  */
-
-/* CHARACTER_STRING
- * Synonym for 8B_VECTOR.  Used to store strings of characters.  Format
- * consists of the normal non-marked vector header (STRING_HEADER)
- * followed by the number of characters in the string (as a FIXNUM),
- * followed by the characters themselves.
- */
-#define STRING_HEADER		0
-#define STRING_LENGTH_INDEX	1
-#define STRING_CHARS		2
+#define BYTEVECTOR_HEADER	0
+#define BYTEVECTOR_LENGTH_INDEX	1
+#define BYTEVECTOR_LENGTH_SIZE	1
+#define BYTEVECTOR_DATA		2
 
 /* COMPILED_PROCEDURE */
 #define COMP_PROCEDURE_ADDRESS	0
