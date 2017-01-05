@@ -1118,6 +1118,23 @@ USA.
 	  %substring-move!)
   (initialization (initialize-package!)))
 
+(define-package (runtime bytevector)
+  (files "bytevector")
+  (parent (runtime))
+  (export ()
+	  bytevector
+	  bytevector-append
+	  bytevector-copy
+	  bytevector-copy!
+	  bytevector-length
+	  bytevector-u8-ref
+	  bytevector-u8-set!
+	  bytevector?
+	  guarantee-bytevector
+	  make-bytevector
+	  string->utf8
+	  utf8->string))
+
 (define-package (runtime 1d-property)
   (files "prop1d")
   (parent (runtime))
