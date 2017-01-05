@@ -1122,6 +1122,7 @@ USA.
   (files "bytevector")
   (parent (runtime))
   (export ()
+	  byte?
 	  bytevector
 	  bytevector-append
 	  bytevector-copy
@@ -1130,6 +1131,7 @@ USA.
 	  bytevector-u8-ref
 	  bytevector-u8-set!
 	  bytevector?
+	  guarantee-byte
 	  guarantee-bytevector
 	  make-bytevector
 	  string->utf8

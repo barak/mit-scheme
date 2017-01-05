@@ -28,6 +28,12 @@ USA.
 
 (declare (usual-integrations))
 
+(define (byte? object)
+  (and (index-fixnum? object)
+       (fix:< object #x100)))
+
+(define-guarantee byte "byte")
+
 (define-primitives
   (allocate-bytevector 1)
   (bytevector-fill! 4)
