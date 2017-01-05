@@ -205,6 +205,7 @@ USA.
                 (unparser-table/set-entry! table (car entry) (cadr entry)))
               `((ASSIGNMENT ,unparse/assignment)
                 (BIGNUM ,unparse/number)
+                (BYTEVECTOR ,unparse/bytevector)
                 (CHARACTER ,unparse/character)
                 (COMPILED-ENTRY ,unparse/compiled-entry)
                 (COMPLEX ,unparse/number)
@@ -364,17 +365,18 @@ USA.
   (if (or (and (get-param:unparse-with-maximum-readability?) object)
           (param:unparsing-within-brackets?))
       (*unparse-readable-hash object)
-      (parameterize* (list (cons param:unparsing-within-brackets? #t)
-			   (cons param:unparser-list-breadth-limit
-				 (if (get-param:unparser-list-breadth-limit)
-				     (min (get-param:unparser-list-breadth-limit)
-					  within-brackets-list-breadth-limit)
-				     within-brackets-list-breadth-limit))
-			   (cons param:unparser-list-depth-limit
-				 (if (get-param:unparser-list-depth-limit)
-				     (min (get-param:unparser-list-depth-limit)
-					  within-brackets-list-depth-limit)
-				     within-brackets-list-depth-limit)))
+      (parameterize*
+       (list (cons param:unparsing-within-brackets? #t)
+	     (cons param:unparser-list-breadth-limit
+		   (if (get-param:unparser-list-breadth-limit)
+		       (min (get-param:unparser-list-breadth-limit)
+			    within-brackets-list-breadth-limit)
+		       within-brackets-list-breadth-limit))
+	     (cons param:unparser-list-depth-limit
+		   (if (get-param:unparser-list-depth-limit)
+		       (min (get-param:unparser-list-depth-limit)
+			    within-brackets-list-depth-limit)
+		       within-brackets-list-depth-limit)))
 	(lambda ()
 	  (*unparse-string "#[")
 	  (if (string? name)
@@ -646,6 +648,26 @@ USA.
       (error "Attempt to unparse partially marked vector."))
   (map-reference-trap (lambda () (vector-ref vector index))))
 
+(define (unparse/bytevector bytevector)
+  (limit-unparse-depth
+   (lambda ()
+     (let ((length (bytevector-length bytevector)))
+       (if (fix:> length 0)
+	   (begin
+	     (*unparse-string "#u8(")
+	     (*unparse-object (bytevector-u8-ref bytevector 0))
+	     (let loop ((index 1))
+	       (cond ((fix:= index length)
+		      (*unparse-char #\)))
+		     ((let ((limit (get-param:unparser-list-breadth-limit)))
+			(and limit (>= index limit)))
+		      (*unparse-string " ...)"))
+		     (else
+		      (*unparse-char #\space)
+		      (*unparse-object (bytevector-u8-ref bytevector index))
+		      (loop (fix:+ index 1))))))
+	   (*unparse-string "#u8()"))))))
+
 (define (unparse/record record)
   (cond ((uri? record)
 	 (unparse/uri record))
@@ -713,7 +735,7 @@ USA.
     (or (structure-tag/unparser-method tag 'LIST)
         ;; Check the global tagging table too.
         (unparser/tagged-pair-method tag))))
-
+
 (define (unparse-list/entity-unparser pair)
   (structure-tag/entity-unparser-method (safe-car pair) 'LIST))
 
@@ -751,7 +773,8 @@ USA.
                       ((stream-pair? value)
                        (*unparse-char #\space)
                        (*unparse-object (safe-car value))
-                       (if (let ((limit (get-param:unparser-list-breadth-limit)))
+                       (if (let ((limit
+				  (get-param:unparser-list-breadth-limit)))
                              (and limit
                                   (>= n limit)))
                            (*unparse-string " ...")
