@@ -25,6 +25,7 @@ USA.
 |#
 
 ;;;; R7RS bytevectors
+;;; package: (runtime bytevector)
 
 (declare (usual-integrations))
 
