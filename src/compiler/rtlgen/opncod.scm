@@ -587,7 +587,7 @@ USA.
   (rtl:make-cons-non-pointer (rtl:make-machine-constant (ucode-type character))
 			     (rtl:make-fetch locative)))
 
-(define (rtl:vector-8b-fetch locative)
+(define (rtl:bytevector-fetch locative)
   (rtl:make-cons-non-pointer (rtl:make-machine-constant (ucode-type fixnum))
 			     (rtl:make-fetch locative)))
 
@@ -644,8 +644,8 @@ USA.
 (define finish-string-assignment
   (assignment-finisher rtl:string-assignment rtl:string-fetch))
 
-(define finish-vector-8b-assignment
-  (assignment-finisher rtl:make-assignment rtl:vector-8b-fetch))
+(define finish-bytevector-assignment
+  (assignment-finisher rtl:make-assignment rtl:bytevector-fetch))
 
 (define finish-float-assignment
   (assignment-finisher rtl:float-assignment rtl:float-fetch))
@@ -659,6 +659,9 @@ USA.
      (finish (rtl:make-eq-test (car expressions) (rtl:make-constant '()))))
    '(0)
    false))
+
+;;; TODO(cph): eliminate after 9.3 release:
+(define-integrable bytevector-type #x33)
 
 (let ((open-code/type-test
        (lambda (type)
@@ -679,7 +682,8 @@ USA.
     (simple-type-test '%RECORD? (ucode-type record))
     (simple-type-test 'FIXNUM?  (ucode-type fixnum))
     (simple-type-test 'FLONUM?  (ucode-type flonum))
-    (simple-type-test 'BIT-STRING? (ucode-type vector-1b))))
+    (simple-type-test 'BIT-STRING? (ucode-type vector-1b))
+    (simple-type-test 'BYTEVECTOR? bytevector-type)))
 
 (define-open-coder/predicate 'EQ?
   (simple-open-coder
@@ -991,6 +995,7 @@ USA.
 (define-allocator-open-coder 'STRING-ALLOCATE '(0))
 (define-allocator-open-coder 'FLOATING-VECTOR-CONS '(0))
 (define-allocator-open-coder 'VECTOR-CONS '(0 1))
+(define-allocator-open-coder 'ALLOCATE-BYTEVECTOR '(0))
 
 (let ((user-ref
        (lambda (name make-fetch type index)
@@ -1014,6 +1019,7 @@ USA.
   (user-ref '%RECORD-LENGTH rtl:vector-length-fetch (ucode-type record) 0)
   (user-ref 'STRING-LENGTH rtl:length-fetch (ucode-type string) 1)
   (user-ref 'BIT-STRING-LENGTH rtl:length-fetch (ucode-type vector-1b) 1)
+  (user-ref 'BYTEVECTOR-LENGTH rtl:length-fetch bytevector-type 1)
   (user-ref 'FLOATING-VECTOR-LENGTH
 	    rtl:floating-vector-length-fetch
 	    (ucode-type flonum)
@@ -1185,12 +1191,21 @@ USA.
    '(0 1)
    internal-close-coding-for-type-or-range-checks))
 
+(define-open-coder/value 'BYTEVECTOR-U8-REF
+  (simple-open-coder
+   (string-memory-reference 'BYTEVECTOR-U8-REF bytevector-type #f
+     (lambda (locative expressions finish)
+       expressions
+       (finish (rtl:bytevector-fetch locative))))
+   '(0 1)
+   internal-close-coding-for-type-or-range-checks))
+
 (define-open-coder/value 'VECTOR-8B-REF
   (simple-open-coder
    (string-memory-reference 'VECTOR-8B-REF (ucode-type string) false
      (lambda (locative expressions finish)
        expressions
-       (finish (rtl:vector-8b-fetch locative))))
+       (finish (rtl:bytevector-fetch locative))))
    '(0 1)
    internal-close-coding-for-type-or-range-checks))
 
@@ -1204,13 +1219,23 @@ USA.
    '(0 1 2)
    internal-close-coding-for-type-or-range-checks))
 
+(define-open-coder/effect 'BYTEVECTOR-U8-SET!
+  (simple-open-coder
+   (string-memory-reference 'BYTEVECTOR-U8-SET!
+			    bytevector-type
+			    (ucode-type fixnum)
+     (lambda (locative expressions finish)
+       (finish-bytevector-assignment locative (caddr expressions) finish)))
+   '(0 1 2)
+   internal-close-coding-for-type-or-range-checks))
+
 (define-open-coder/effect 'VECTOR-8B-SET!
   (simple-open-coder
    (string-memory-reference 'VECTOR-8B-SET!
 			    (ucode-type string)
 			    (ucode-type fixnum)
      (lambda (locative expressions finish)
-       (finish-vector-8b-assignment locative (caddr expressions) finish)))
+       (finish-bytevector-assignment locative (caddr expressions) finish)))
    '(0 1 2)
    internal-close-coding-for-type-or-range-checks))
 
