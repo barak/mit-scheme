@@ -127,7 +127,7 @@ DEFINE_PRIMITIVE ("bytevector-fill!", Prim_bytevector_fill, 4, 4, 0)
   {
     unsigned long length;
     uint8_t * v = (arg_bytevector (1, (&length)));
-    unsigned long end = (arg_ulong_index_integer (3, length));
+    unsigned long end = (arg_ulong_index_integer (3, (length + 1)));
     unsigned long start = (arg_ulong_index_integer (2, end));
     uint8_t value = (arg_byte (4));
     memset ((v + start), value, (end - start));
@@ -141,7 +141,7 @@ DEFINE_PRIMITIVE ("bytevector-copy", Prim_bytevector_copy, 3, 3, 0)
   {
     unsigned long length;
     uint8_t * v = (arg_bytevector (1, (&length)));
-    unsigned long end = (arg_ulong_index_integer (3, length));
+    unsigned long end = (arg_ulong_index_integer (3, (length + 1)));
     unsigned long start = (arg_ulong_index_integer (2, end));
     PRIMITIVE_RETURN (memory_to_bytevector ((end - start), (v + start)));
   }
@@ -153,10 +153,10 @@ DEFINE_PRIMITIVE ("bytevector-copy!", Prim_bytevector_copyx, 5, 5, 0)
   {
     unsigned long to_length;
     uint8_t * to_v = (arg_bytevector (1, (&to_length)));
-    unsigned long to_start = (arg_ulong_index_integer (2, to_length));
+    unsigned long to_start = (arg_ulong_index_integer (2, (to_length + 1)));
     unsigned long from_length;
     uint8_t * from_v = (arg_bytevector (3, (&from_length)));
-    unsigned long from_end = (arg_ulong_index_integer (5, from_length));
+    unsigned long from_end = (arg_ulong_index_integer (5, (from_length + 1)));
     unsigned long from_start = (arg_ulong_index_integer (4, from_end));
     unsigned long length = (from_end - from_start);
     if ((to_length - to_start) < length)
