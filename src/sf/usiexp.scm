@@ -557,6 +557,13 @@ USA.
 			operands)
       #f))
 
+(define (make-bytevector-expansion expr operands block)
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (make-combination expr block (ucode-primitive allocate-bytevector 1)
+			operands)
+      #f))
+
 (define (not-expansion expr operands block)
   (if (and (pair? operands)
 	   (null? (cdr operands)))
@@ -749,6 +756,7 @@ USA.
 	    int:integer?
 	    intern
 	    list
+	    make-bytevector
 	    make-string
 	    make-vector-8b
 	    ;; modulo	; Compiler does not currently open-code it.
@@ -834,7 +842,7 @@ USA.
 	   exact-integer?-expansion
 	   intern-expansion
 	   list-expansion
-	   make-string-expansion
+	   make-bytevector-expansion
 	   make-string-expansion
 	   ;; modulo-expansion
 	   negative?-expansion
