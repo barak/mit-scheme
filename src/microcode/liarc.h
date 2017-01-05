@@ -78,10 +78,10 @@ typedef unsigned long entry_count_t;
 #define LONG_TO_ADDRESS(source) (DATUM_TO_ADDRESS (source))
 
 #define C_STRING_TO_SCHEME_STRING(len, str)				\
-  (MEMORY_TO_STRING ((len), ((const byte_t *) (str))))
+  (MEMORY_TO_STRING ((len), ((const uint8_t *) (str))))
 
 #define C_SYM_INTERN(len, str)						\
-  (MEMORY_TO_SYMBOL ((len), ((const byte_t *) (str))))
+  (MEMORY_TO_SYMBOL ((len), ((const uint8_t *) (str))))
 
 #define MAKE_PRIMITIVE_PROCEDURE(name, arity) (MAKE_PRIMITIVE (name, arity))
 

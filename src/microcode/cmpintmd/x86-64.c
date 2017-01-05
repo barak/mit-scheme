@@ -195,7 +195,7 @@ trampoline_entry_addr (SCHEME_OBJECT * block, unsigned long index)
 }
 
 bool
-store_trampoline_insns (insn_t * entry, byte_t code)
+store_trampoline_insns (insn_t * entry, uint8_t code)
 {
   (*entry++) = 0xB0;		/* MOV AL,code */
   (*entry++) = code;

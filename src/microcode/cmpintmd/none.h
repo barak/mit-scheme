@@ -29,6 +29,6 @@ USA.
 #ifndef SCM_CMPINTMD_H_INCLUDED
 #define SCM_CMPINTMD_H_INCLUDED 1
 
-typedef byte_t insn_t;
+typedef uint8_t insn_t;
 
 #endif /* !SCM_CMPINTMD_H_INCLUDED */

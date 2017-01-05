@@ -330,7 +330,7 @@ extern insn_t * trampoline_entry_addr (SCHEME_OBJECT *, unsigned long);
 /* Given the address of a trampoline entry and the code for the
    trampoline to be invoked, stores the appropriate instruction
    sequence in the trampoline.  */
-extern bool store_trampoline_insns (insn_t *, byte_t);
+extern bool store_trampoline_insns (insn_t *, uint8_t);
 
 /* Give the address of a trampoline block, returns a pointer to the
    start of the trampoline's storage area.  */

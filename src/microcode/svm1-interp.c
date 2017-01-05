@@ -68,16 +68,16 @@ typedef SCHEME_OBJECT word_t;	/* convenience abbreviation */
 static word_t word_registers [N_WORD_REGISTERS];
 static double float_registers [N_FLOAT_REGISTERS];
 
-#define SBYTE (sizeof (byte_t))
+#define SBYTE (sizeof (uint8_t))
 #define SWORD (sizeof (word_t))
 #define SFLOAT (sizeof (double))
 
 #define PC program_counter
 #define NEXT_BYTE (*program_counter++)
 
-typedef byte_t wreg_t;
-typedef byte_t freg_t;
-typedef byte_t tc_t;
+typedef uint8_t wreg_t;
+typedef uint8_t freg_t;
+typedef uint8_t tc_t;
 
 #define WREG_REF(wr) (word_registers [(wr)])
 #define FREG_REF(fr) (float_registers [(fr)])
@@ -85,7 +85,7 @@ typedef byte_t tc_t;
 #define WREG_SET(wr, w) ((word_registers [(wr)]) = (w))
 #define FREG_SET(fr, f) ((float_registers [(fr)]) = (f))
 
-#define BYTE_ADDR(a) ((byte_t *) a)
+#define BYTE_ADDR(a) ((uint8_t *) a)
 #define WORD_ADDR(a) ((word_t *) a)
 #define FLOAT_ADDR(a) ((double *) a)
 
@@ -94,10 +94,10 @@ typedef byte_t tc_t;
 #define FLOAT_REF(a) (* (FLOAT_ADDR (a)))
 
 
-typedef byte_t * inst_defn_t (byte_t *);
+typedef uint8_t * inst_defn_t (uint8_t *);
 static inst_defn_t * inst_defns [256];
 
-#define DEFINE_INST(name) static byte_t * insn_##name (byte_t * PC)
+#define DEFINE_INST(name) static uint8_t * insn_##name (uint8_t * PC)
 #define NEXT_PC return (PC)
 #define OFFSET_PC(o) do							\
 {									\
@@ -126,38 +126,38 @@ static long svm1_result;
 
 #define	ILL EXIT_VM (ERR_COMPILED_CODE_ERROR)
 
-typedef byte_t * address_decoder_t (byte_t *, word_t *);
+typedef uint8_t * address_decoder_t (uint8_t *, word_t *);
 static address_decoder_t * address_decoders [256];
 
 #define ADDRESS_VALUE(name) name
 
 #define DEFINE_ADDRESS_DECODER(name)					\
-  static byte_t * decode_addr_##name (byte_t * PC,			\
-				      word_t * address)
+  static uint8_t * decode_addr_##name (uint8_t * PC,			\
+                                       word_t * address)
 #define ADDRESS_DECODED(addr) (*address) = (addr); return (PC)
 #define DECODE_ADDRESS(name)						\
   word_t name;								\
   {									\
-    byte_t * new_pc = decode_address (PC, &name);			\
+    uint8_t * new_pc = decode_address (PC, &name);			\
     if (predict_false (! new_pc)) ILL;					\
     PC = new_pc;							\
   }
-static byte_t * decode_address (byte_t *, word_t *);
+static uint8_t * decode_address (uint8_t *, word_t *);
 
-typedef byte_t * trap_0_t (byte_t *);
-typedef byte_t * trap_1_t (byte_t *, wreg_t);
-typedef byte_t * trap_2_t (byte_t *, wreg_t, wreg_t);
-typedef byte_t * trap_3_t (byte_t *, wreg_t, wreg_t, wreg_t);
+typedef uint8_t * trap_0_t (uint8_t *);
+typedef uint8_t * trap_1_t (uint8_t *, wreg_t);
+typedef uint8_t * trap_2_t (uint8_t *, wreg_t, wreg_t);
+typedef uint8_t * trap_3_t (uint8_t *, wreg_t, wreg_t, wreg_t);
 
 static trap_0_t * traps_0 [256];
 static trap_1_t * traps_1 [256];
 static trap_2_t * traps_2 [256];
 static trap_3_t * traps_3 [256];
 
-#define DECODE_TRAP_0(name) byte_t name = NEXT_BYTE
-#define DECODE_TRAP_1(name) byte_t name = NEXT_BYTE
-#define DECODE_TRAP_2(name) byte_t name = NEXT_BYTE
-#define DECODE_TRAP_3(name) byte_t name = NEXT_BYTE
+#define DECODE_TRAP_0(name) uint8_t name = NEXT_BYTE
+#define DECODE_TRAP_1(name) uint8_t name = NEXT_BYTE
+#define DECODE_TRAP_2(name) uint8_t name = NEXT_BYTE
+#define DECODE_TRAP_3(name) uint8_t name = NEXT_BYTE
 
 static void initialize_decoder_tables (void);
 
@@ -226,7 +226,7 @@ C_to_interface (void * address)
   running_p = true;
   while (predict_true (instruction_pointer))
     {
-      byte_t opcode = *instruction_pointer;
+      uint8_t opcode = *instruction_pointer;
       instruction_pointer = (* (inst_defns[opcode])) (instruction_pointer+1);
     }
   EXPORT_REGS ();
@@ -249,8 +249,8 @@ svm_export_instruction_pointer (unsigned long pc)
     }
 }
 
-static byte_t *
-illegal_instruction (byte_t * PC)
+static uint8_t *
+illegal_instruction (uint8_t * PC)
 {
   ILL;
 }
@@ -284,12 +284,12 @@ to_signed (word_t n)
 
 /* Primitive decoders */
 
-#define DECODE_ARG(name,func) do					\
-  {									\
-    byte_t * new_pc = func (PC, &name);			\
-    if (predict_false (! new_pc)) ILL;					\
-    PC = new_pc;						\
-  } while (0);
+#define DECODE_ARG(name, func) do                                       \
+{                                                                       \
+  uint8_t * new_pc = func (PC, &name);                                  \
+  if (predict_false (! new_pc)) ILL;                                    \
+  PC = new_pc;                                                          \
+} while (0);
 
 #define DECODE_WORD_REGISTER(name)  wreg_t name; DECODE_ARG(name,decode_wreg)
 #define DECODE_FLOAT_REGISTER(name) freg_t name; DECODE_ARG(name,decode_freg)
@@ -302,45 +302,45 @@ to_signed (word_t n)
 #define DECODE_SIGNED_32(name)        long name; DECODE_ARG(name,decode_signed_32)
 #define DECODE_FLOAT(name)          double name; DECODE_ARG(name,decode_float)
 
-static inline byte_t *
-decode_wreg (byte_t * PC, wreg_t *wreg)
+static inline uint8_t *
+decode_wreg (uint8_t * PC, wreg_t *wreg)
 {
-  byte_t b = NEXT_BYTE;
+  uint8_t b = NEXT_BYTE;
   if (predict_false (! (WORD_REGISTER_P (b))))
     return (NULL);
   *wreg = b;
   return (PC);
 }
 
-static inline byte_t *
-decode_freg (byte_t * PC, freg_t *freg)
+static inline uint8_t *
+decode_freg (uint8_t * PC, freg_t *freg)
 {
-  byte_t b = NEXT_BYTE;
+  uint8_t b = NEXT_BYTE;
   if (predict_false (! (FLOAT_REGISTER_P (b))))
     return (NULL);
   *freg = b;
   return (PC);
 }
 
-static inline byte_t *
-decode_type_word (byte_t * PC, tc_t *tc)
+static inline uint8_t *
+decode_type_word (uint8_t * PC, tc_t *tc)
 {
-  byte_t b = NEXT_BYTE;
+  uint8_t b = NEXT_BYTE;
   if (predict_false (! (b <= N_TYPE_CODES)))
     return (NULL);
   *tc = b;
   return (PC);
 }
 
-static inline byte_t *
-decode_unsigned_8 (byte_t * PC, word_t *word)
+static inline uint8_t *
+decode_unsigned_8 (uint8_t * PC, word_t *word)
 {
   *word = (NEXT_BYTE);
   return (PC);
 }
 
-static inline byte_t *
-decode_unsigned_16 (byte_t * PC, word_t *word)
+static inline uint8_t *
+decode_unsigned_16 (uint8_t * PC, word_t *word)
 {
   word_t b0 = NEXT_BYTE;
   word_t b1 = NEXT_BYTE;
@@ -348,8 +348,8 @@ decode_unsigned_16 (byte_t * PC, word_t *word)
   return (PC);
 }
 
-static inline byte_t *
-decode_unsigned_32 (byte_t * PC, word_t *word)
+static inline uint8_t *
+decode_unsigned_32 (uint8_t * PC, word_t *word)
 {
   word_t b0 = NEXT_BYTE;
   word_t b1 = NEXT_BYTE;
@@ -359,8 +359,8 @@ decode_unsigned_32 (byte_t * PC, word_t *word)
   return (PC);
 }
 
-static inline byte_t *
-decode_unsigned_64 (byte_t * PC, uint64_t *big)
+static inline uint8_t *
+decode_unsigned_64 (uint8_t * PC, uint64_t *big)
 {
   uint64_t b0, b1, b2, b3, b4, b5, b6, b7;
   b0 = NEXT_BYTE; b1 = NEXT_BYTE; b2 = NEXT_BYTE; b3 = NEXT_BYTE;
@@ -370,16 +370,16 @@ decode_unsigned_64 (byte_t * PC, uint64_t *big)
   return (PC);
 }
 
-static inline byte_t *
-decode_signed_8 (byte_t * PC, long *lng)
+static inline uint8_t *
+decode_signed_8 (uint8_t * PC, long *lng)
 {
   long b = NEXT_BYTE;
   *lng = ((b < 0x80) ? b : (b - 0x100));
   return (PC);
 }
 
-static inline byte_t *
-decode_signed_16 (byte_t * PC, long *lng)
+static inline uint8_t *
+decode_signed_16 (uint8_t * PC, long *lng)
 {
   unsigned long n;
   PC = decode_unsigned_16 (PC, &n);
@@ -388,8 +388,8 @@ decode_signed_16 (byte_t * PC, long *lng)
   return (PC);
 }
 
-static inline byte_t *
-decode_signed_32 (byte_t * PC, long *lng)
+static inline uint8_t *
+decode_signed_32 (uint8_t * PC, long *lng)
 {
   word_t n;
   PC = (decode_unsigned_32 (PC, &n));
@@ -413,8 +413,8 @@ decode_signed_32 (byte_t * PC, long *lng)
   return (PC);
 }
 
-static inline byte_t *
-decode_signed_64 (byte_t * PC, int64_t * big)
+static inline uint8_t *
+decode_signed_64 (uint8_t * PC, int64_t * big)
 {
   uint64_t n;
   PC = (decode_unsigned_64 (PC, &n));
@@ -434,8 +434,8 @@ decode_signed_64 (byte_t * PC, int64_t * big)
   }
 }
 
-static inline byte_t *
-decode_float (byte_t * PC, double * dbl)
+static inline uint8_t *
+decode_float (uint8_t * PC, double * dbl)
 {
   int64_t significand;
   long exponent;
@@ -695,7 +695,7 @@ push_object (SCHEME_OBJECT object)
 }
 
 static inline void
-push_entry (byte_t * PC)
+push_entry (uint8_t * PC)
 {
   push_object (MAKE_CC_ENTRY (PC + CC_ENTRY_HEADER_SIZE));
 }
@@ -827,8 +827,8 @@ DEFINE_INST (trap_trap_0)
   return ((* (traps_0[code])) (PC));
 }
 
-static byte_t *
-illegal_trap_0 (byte_t * PC)
+static uint8_t *
+illegal_trap_0 (uint8_t * PC)
 {
   ILL;
 }
@@ -839,8 +839,8 @@ DEFINE_INST (trap_trap_1_wr)
   return ((* (traps_1[code])) (PC, r1));
 }
 
-static byte_t *
-illegal_trap_1 (byte_t * PC, wreg_t r1)
+static uint8_t *
+illegal_trap_1 (uint8_t * PC, wreg_t r1)
 {
   ILL;
 }
@@ -851,8 +851,8 @@ DEFINE_INST (trap_trap_2_wr)
   return ((* (traps_2[code])) (PC, r1, r2));
 }
 
-static byte_t *
-illegal_trap_2 (byte_t * PC, wreg_t r1, wreg_t r2)
+static uint8_t *
+illegal_trap_2 (uint8_t * PC, wreg_t r1, wreg_t r2)
 {
   ILL;
 }
@@ -863,8 +863,8 @@ DEFINE_INST (trap_trap_3_wr)
   return ((* (traps_3[code])) (PC, r1, r2, r3));
 }
 
-static byte_t *
-illegal_trap_3 (byte_t * PC, wreg_t r1, wreg_t r2, wreg_t r3)
+static uint8_t *
+illegal_trap_3 (uint8_t * PC, wreg_t r1, wreg_t r2, wreg_t r3)
 {
   ILL;
 }
@@ -885,8 +885,8 @@ illegal_trap_3 (byte_t * PC, wreg_t r1, wreg_t r2, wreg_t r3)
     EXIT_VM ((result).arg.interpreter_code)
 
 #define DEFINE_TRAP_0(nl, util_name)					\
-static byte_t *								\
-trap_##nl (byte_t * PC)							\
+static uint8_t *							\
+trap_##nl (uint8t * PC)							\
 {									\
   TRAP_PREFIX (result);							\
   comutil_##util_name ((&result),					\
@@ -898,8 +898,8 @@ trap_##nl (byte_t * PC)							\
 }
 
 #define DEFINE_TRAP_1(nl, util_name)					\
-static byte_t *								\
-trap_##nl (byte_t * PC, wreg_t source1)					\
+static uint8_t *							\
+trap_##nl (uint8_t * PC, wreg_t source1)				\
 {									\
   TRAP_PREFIX (result);							\
   comutil_##util_name ((&result),					\
@@ -911,8 +911,8 @@ trap_##nl (byte_t * PC, wreg_t source1)					\
 }
 
 #define DEFINE_TRAP_2(nl, util_name)					\
-static byte_t *								\
-trap_##nl (byte_t * PC, wreg_t source1, wreg_t source2)			\
+static uint8_t *							\
+trap_##nl (uint8_t * PC, wreg_t source1, wreg_t source2)		\
 {									\
   TRAP_PREFIX (result);							\
   comutil_##util_name ((&result),					\
@@ -924,8 +924,8 @@ trap_##nl (byte_t * PC, wreg_t source1, wreg_t source2)			\
 }
 
 #define DEFINE_TRAP_3(nl, util_name)					\
-static byte_t *								\
-trap_##nl (byte_t * PC, wreg_t source1, wreg_t source2, wreg_t source3)	\
+static uint8_t *							\
+trap_##nl (uint8_t * PC, wreg_t source1, wreg_t source2, wreg_t source3) \
 {									\
   TRAP_PREFIX (result);							\
   comutil_##util_name ((&result),					\
@@ -937,8 +937,8 @@ trap_##nl (byte_t * PC, wreg_t source1, wreg_t source2, wreg_t source3)	\
 }
 
 #define DEFINE_TRAP_R0(nl, util_name)					\
-static byte_t *								\
-trap_##nl (byte_t * PC)							\
+static uint8_t *							\
+trap_##nl (uint8_t * PC)						\
 {									\
   TRAP_PREFIX (result);							\
   comutil_##util_name ((&result),					\
@@ -950,8 +950,8 @@ trap_##nl (byte_t * PC)							\
 }
 
 #define DEFINE_TRAP_R1(nl, util_name)					\
-static byte_t *								\
-trap_##nl (byte_t * PC, wreg_t source1)					\
+static uint8_t *							\
+trap_##nl (uint8_t * PC, wreg_t source1)				\
 {									\
   TRAP_PREFIX (result);							\
   comutil_##util_name ((&result),					\
@@ -963,8 +963,8 @@ trap_##nl (byte_t * PC, wreg_t source1)					\
 }
 
 #define DEFINE_TRAP_R2(nl, util_name)					\
-static byte_t *								\
-trap_##nl (byte_t * PC, wreg_t source1, wreg_t source2)			\
+static uint8_t *							\
+trap_##nl (uint8_t * PC, wreg_t source1, wreg_t source2)		\
 {									\
   TRAP_PREFIX (result);							\
   comutil_##util_name ((&result),					\
@@ -976,8 +976,8 @@ trap_##nl (byte_t * PC, wreg_t source1, wreg_t source2)			\
 }
 
 #define DEFINE_TRAP_R3(nl, util_name)					\
-static byte_t *								\
-trap_##nl (byte_t * PC, wreg_t source1, wreg_t source2, wreg_t source3)	\
+static uint8_t *							\
+trap_##nl (uint8_t * PC, wreg_t source1, wreg_t source2, wreg_t source3) \
 {									\
   TRAP_PREFIX (result);							\
   comutil_##util_name ((&result),					\
@@ -989,8 +989,8 @@ trap_##nl (byte_t * PC, wreg_t source1, wreg_t source2, wreg_t source3)	\
 }
 
 #define DEFINE_TRAMPOLINE(nl, util_name)				\
-static byte_t *								\
-trap_##nl (byte_t * PC)							\
+static uint8_t *							\
+trap_##nl (uint8_t * PC)						\
 {									\
   TRAP_PREFIX (result);							\
   comutil_##util_name							\
@@ -1093,8 +1093,8 @@ DEFINE_INST (enter_closure)
     }
 
   {
-    byte_t * block = (PC - (CLOSURE_ENTRY_START
-			    + ((index + 1) * CLOSURE_ENTRY_SIZE)));
+    uint8_t * block = (PC - (CLOSURE_ENTRY_START
+                             + ((index + 1) * CLOSURE_ENTRY_SIZE)));
     unsigned int count = (read_u16 (block));
     SCHEME_OBJECT * targets
       = (skip_compiled_closure_padding
@@ -1289,15 +1289,15 @@ DEFINE_BINARY_FR (atan2, ATAN2, atan2)
 
 /* Address decoders */
 
-static inline byte_t *
-decode_address (byte_t * PC, word_t * address)
+static inline uint8_t *
+decode_address (uint8_t * PC, word_t * address)
 {
   address_decoder_t * decoder = address_decoders[NEXT_BYTE];
   return ((*decoder) (PC, address));
 }
 
-static byte_t *
-illegal_address (byte_t * PC, word_t * address)
+static uint8_t *
+illegal_address (uint8_t * PC, word_t * address)
 {
   (void) PC;			/* ignore */
   (void) address;		/* ignore */
@@ -1535,7 +1535,7 @@ DEFINE_ADDRESS_DECODER (postinc_f)
 }
 
 static inline word_t
-pcr_value (byte_t * PC, word_t offset)
+pcr_value (uint8_t * PC, word_t offset)
 {
   return (((word_t) PC) + offset);
 }

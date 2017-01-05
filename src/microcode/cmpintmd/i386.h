@@ -200,7 +200,7 @@ magic = ([TC_COMPILED_ENTRY | 0] - (offset + length_of_CALL_instruction))
 
 #define REGBLOCK_ALLOCATED_BY_INTERFACE true
 
-typedef byte_t insn_t;
+typedef uint8_t insn_t;
 
 /* Number of insn_t units preceding entry address in which header
    (type and offset info) is stored.  */

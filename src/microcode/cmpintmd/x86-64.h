@@ -133,7 +133,7 @@ entry	0		MOV	AL,code		0xB0, code-byte
 #define COMPILER_REGBLOCK_EXTRA_SIZE					\
   (COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE)
 
-typedef byte_t insn_t;
+typedef uint8_t insn_t;
 
 /* Number of insn_t units preceding entry address in which header
    (type and offset info) is stored.  */

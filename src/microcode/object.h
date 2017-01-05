@@ -43,9 +43,6 @@ typedef unsigned long SCHEME_OBJECT;
 #define SIZEOF_SCHEME_OBJECT SIZEOF_UNSIGNED_LONG
 #define OBJECT_LENGTH ((unsigned int) (CHAR_BIT * SIZEOF_UNSIGNED_LONG))
 
-/* A convenience definition.  */
-typedef uint8_t byte_t;
-
 #if (TYPE_CODE_LENGTH == 6U)
 #  define N_TYPE_CODES (0x40)
 #  if (SIZEOF_UNSIGNED_LONG == 4) /* 32 bit word versions */
@@ -286,7 +283,7 @@ extern SCHEME_OBJECT * memory_base;
   (((unsigned char *) (MEMORY_LOC (s, BYTEVECTOR_DATA))) + (i))
 
 #define STRING_POINTER(s) ((char *) (MEMORY_LOC (s, BYTEVECTOR_DATA)))
-#define STRING_BYTE_PTR(s) ((byte_t *) (MEMORY_LOC (s, BYTEVECTOR_DATA)))
+#define STRING_BYTE_PTR(s) ((uint8_t *) (MEMORY_LOC (s, BYTEVECTOR_DATA)))
 
 #define STRING_REF(s, i) (* (STRING_LOC ((s), (i))))
 #define STRING_SET(s, i, c) ((* (STRING_LOC ((s), (i)))) = (c))

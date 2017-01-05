@@ -37,7 +37,7 @@ USA.
 /* COMPILER_TEMP_SIZE is NOT ((sizeof (double)) / (sizeof (SCHEME_OBJECT))).
    It must not vary e.g. from 1 on x86-64 to 2 on i386. */
 
-typedef byte_t insn_t;
+typedef uint8_t insn_t;
 
 /* Number of insn_t units preceding entry address in which header
    (type and offset info) is stored.  */

@@ -532,7 +532,7 @@ declare_trampoline_block (entry_count_t n_block_entries)
 }
 
 bool
-store_trampoline_insns (insn_t * entry, byte_t code)
+store_trampoline_insns (insn_t * entry, uint8_t code)
 {
   /* Trampoline entries are stored in the lowest part of the
      compiled_entries table.  That's why we reserve those above.  */

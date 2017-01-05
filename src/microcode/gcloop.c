@@ -293,8 +293,8 @@ tospace_to_newspace (void * addr)
   return
     (((addr >= ((void *) tospace_start))
       && (addr <= ((void *) tospace_end)))
-     ? ((((byte_t *) addr) - ((byte_t *) tospace_start))
-	+ ((byte_t *) newspace_start))
+     ? ((((uint8_t *) addr) - ((uint8_t *) tospace_start))
+	+ ((uint8_t *) newspace_start))
      : addr);
 }
 
@@ -304,8 +304,8 @@ newspace_to_tospace (void * addr)
   return
     (((addr >= ((void *) newspace_start))
       && (addr <= ((void *) newspace_end)))
-     ? ((((byte_t *) addr) - ((byte_t *) newspace_start))
-	+ ((byte_t *) tospace_start))
+     ? ((((uint8_t *) addr) - ((uint8_t *) newspace_start))
+	+ ((uint8_t *) tospace_start))
      : addr);
 }
 
