@@ -176,6 +176,7 @@ extern SCHEME_OBJECT * memory_base;
 #define COMPLEX_P(object) ((OBJECT_TYPE (object)) == TC_COMPLEX)
 #define CHARACTER_P(object) ((OBJECT_TYPE (object)) == TC_CHARACTER)
 #define BYTEVECTOR_P(object) ((OBJECT_TYPE (object)) == TC_BYTEVECTOR)
+#define STRING_P(object) ((OBJECT_TYPE (object)) == TC_CHARACTER_STRING)
 #define BIT_STRING_P(object) ((OBJECT_TYPE (object)) == TC_BIT_STRING)
 #define CELL_P(object) ((OBJECT_TYPE (object)) == TC_CELL)
 #define PAIR_P(object) ((OBJECT_TYPE (object)) == TC_LIST)
@@ -251,8 +252,6 @@ extern SCHEME_OBJECT * memory_base;
 #define VECTOR_SET(v, i, object) MEMORY_SET ((v), ((i) + 1), (object))
 
 /* String Operations */
-
-#define STRING_P BYTEVECTOR_P
 
 /* Add 1 byte to length to account for '\0' at end of string.
    Add 1 word to length to account for string header word. */

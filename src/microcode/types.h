@@ -56,7 +56,7 @@ USA.
 /* #define TC_PCOMB1			0x1B */
 #define TC_CONTROL_POINT		0x1C
 #define TC_INTERNED_SYMBOL		0x1D
-#define TC_BYTEVECTOR			0x1E
+#define TC_CHARACTER_STRING		0x1E
 #define TC_ACCESS			0x1F
 #define TC_HUNK3_A			0x20
 #define TC_DEFINITION			0x21
@@ -77,7 +77,7 @@ USA.
 /* #define TC_PCOMB0			0x30 */
 #define TC_VECTOR_16B			0x31
 #define TC_REFERENCE_TRAP		0x32
-/* #define TC_UNUSED_33			0x33 */
+#define TC_BYTEVECTOR			0x33
 #define TC_CONDITIONAL			0x34
 #define TC_DISJUNCTION			0x35
 #define TC_CELL				0x36
@@ -134,7 +134,7 @@ USA.
   /* 0x1B */			0,					\
   /* 0x1C */			"control-point",			\
   /* 0x1D */			"interned-symbol",			\
-  /* 0x1e */			"bytevector",				\
+  /* 0x1e */			"string",				\
   /* 0x1f */			"access",				\
   /* 0x20 */			"hunk3-a",				\
   /* 0x21 */			"definition",				\
@@ -155,7 +155,7 @@ USA.
   /* 0x30 */			0,					\
   /* 0x31 */			"vector-16b",				\
   /* 0x32 */			"reference-trap",			\
-  /* 0x33 */			0,					\
+  /* 0x33 */			"bytevector",				\
   /* 0x34 */			"conditional",				\
   /* 0x35 */			"disjunction",				\
   /* 0x36 */			"cell",					\

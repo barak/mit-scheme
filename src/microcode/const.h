@@ -101,7 +101,7 @@ USA.
 #define Are_The_Constants_Incompatible					\
 ((TC_FALSE != 0x00) || (TC_CONSTANT != 0x08) ||				\
  (TC_FIXNUM != 0x1A) || (TC_BROKEN_HEART != 0x22) || 			\
- (TC_BYTEVECTOR != 0x1E))
+ (TC_CHARACTER_STRING != 0x1E))
 
 /* The values used above are in sdata.h and types.h,
    check for consistency if the check below fails. */

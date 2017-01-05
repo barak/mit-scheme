@@ -379,7 +379,7 @@ do_printing (outf_channel stream, SCHEME_OBJECT Expr, bool Detailed)
       Expr = (MEMORY_REF ((MEMORY_REF (Expr, ASSIGN_NAME)), VARIABLE_SYMBOL));
       goto SPrint;
 
-    case TC_BYTEVECTOR:
+    case TC_CHARACTER_STRING:
       print_string (stream, Expr);
       return;
 

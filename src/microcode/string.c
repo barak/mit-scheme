@@ -33,7 +33,7 @@ SCHEME_OBJECT
 allocate_string (unsigned long nbytes)
 {
   SCHEME_OBJECT result
-    = (allocate_non_marked_vector (TC_BYTEVECTOR,
+    = (allocate_non_marked_vector (TC_CHARACTER_STRING,
 				   (STRING_LENGTH_TO_GC_LENGTH (nbytes)),
 				   true));
   SET_STRING_LENGTH (result, nbytes);
@@ -44,7 +44,7 @@ SCHEME_OBJECT
 allocate_string_no_gc (unsigned long nbytes)
 {
   SCHEME_OBJECT result
-    = (allocate_non_marked_vector (TC_BYTEVECTOR,
+    = (allocate_non_marked_vector (TC_CHARACTER_STRING,
 				   (STRING_LENGTH_TO_GC_LENGTH (nbytes)),
 				   false));
   SET_STRING_LENGTH (result, nbytes);

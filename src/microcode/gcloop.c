@@ -1281,7 +1281,7 @@ gc_type_t gc_type_map [N_TYPE_CODES] =
   GC_UNDEFINED,			/* was TC_PCOMB1 */
   GC_VECTOR,			/* TC_CONTROL_POINT */
   GC_PAIR,			/* TC_INTERNED_SYMBOL */
-  GC_VECTOR,			/* TC_BYTEVECTOR */
+  GC_VECTOR,			/* TC_CHARACTER_STRING */
   GC_PAIR,			/* TC_ACCESS */
   GC_TRIPLE,			/* TC_HUNK3_A */
   GC_PAIR,			/* TC_DEFINITION */
@@ -1302,7 +1302,7 @@ gc_type_t gc_type_map [N_TYPE_CODES] =
   GC_UNDEFINED,			/* was TC_PCOMB0 */
   GC_VECTOR,			/* TC_VECTOR_16B */
   GC_SPECIAL,			/* TC_REFERENCE_TRAP */
-  GC_UNDEFINED,			/* 0x33 */
+  GC_VECTOR,			/* TC_BYTEVECTOR */
   GC_TRIPLE,			/* TC_CONDITIONAL */
   GC_PAIR,			/* TC_DISJUNCTION */
   GC_CELL,			/* TC_CELL */
