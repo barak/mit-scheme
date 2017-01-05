@@ -292,6 +292,7 @@ USA.
     (store-char special #\F handler:false)
     (store-char special #\t handler:true)
     (store-char special #\T handler:true)
+    (store-char special #\u handler:unsigned-vector)
     (store-char special #\* handler:bit-string)
     (store-char special #\\ handler:char)
     (store-char special #\! handler:named-constant)
@@ -631,6 +632,27 @@ USA.
       (if (eq? object close-parenthesis)
 	  (list->vector (reverse! objects))
 	  (loop (cons object objects))))))
+
+(define (handler:unsigned-vector port db ctx char1 char2)
+  ctx
+  (let ((atom (parse-atom/no-quoting port db '())))
+    (if (not (and atom (string=? atom "8")))
+	(error:unsupported-vector (string char1 char2 (or atom "")))))
+  (let ((char (%read-char/no-eof port db)))
+    (if (not (char=? char #\())
+	(error:illegal-char char)))
+  (let loop ((bytes '()))
+    (let ((object (read-in-context port db 'CLOSE-PAREN-OK)))
+      (if (eq? object close-parenthesis)
+	  (let ((bytevector (make-bytevector (length bytes))))
+	    (do ((bytes (reverse! bytes) (cdr bytes))
+		 (index 0 (fix:+ index 1)))
+		((not (pair? bytes)))
+	      (bytevector-u8-set! bytevector index (car bytes)))
+	    bytevector)
+	  (begin
+	    (guarantee-byte object)
+	    (loop (cons object bytes)))))))
 
 (define (handler:close-parenthesis port db ctx char)
   db
@@ -1110,6 +1132,7 @@ USA.
 (define condition-type:unbalanced-close)
 (define condition-type:undefined-hash)
 (define condition-type:unexpected-restart)
+(define condition-type:unsupported-vector)
 (define error:illegal-bit-string)
 (define error:illegal-boolean)
 (define error:illegal-char)
@@ -1125,6 +1148,7 @@ USA.
 (define error:unbalanced-close)
 (define error:undefined-hash)
 (define error:unexpected-restart)
+(define error:unsupported-vector)
 
 (define (initialize-condition-types!)
   (set! condition-type:parse-error
@@ -1202,4 +1226,8 @@ USA.
     (lambda (port* port)
       (write-string "Unexpected parse restart on: " port)
       (write port* port)))
+  (define-parse-error (unsupported-vector string)
+    (lambda (string port)
+      (write-string "Unsupported vector prefix: " port)
+      (write-string string port)))
   unspecific)
