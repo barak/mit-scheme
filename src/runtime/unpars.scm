@@ -227,6 +227,7 @@ USA.
                 (RECORD ,unparse/record)
                 (RETURN-ADDRESS ,unparse/return-address)
                 (STRING ,unparse/string)
+		(TAGGED-OBJECT ,unparse/tagged-object)
                 (UNINTERNED-SYMBOL ,unparse/uninterned-symbol)
                 (VARIABLE ,unparse/variable)
                 (VECTOR ,unparse/vector)
@@ -982,3 +983,12 @@ USA.
              (begin
                (*unparse-char #\space)
                (*unparse-datum promise)))))))
+
+(define (unparse/tagged-object object)
+  (cond ((get-tagged-object-unparser-method object)
+	 => (lambda (method)
+	      (invoke-user-method method object)))
+	(else
+	 (*unparse-with-brackets 'tagged-object object
+	   (lambda ()
+	     (*unparse-object (tagged-object-tag object)))))))
