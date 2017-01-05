@@ -844,6 +844,7 @@ USA.
 	   list-expansion
 	   make-bytevector-expansion
 	   make-string-expansion
+	   make-string-expansion	;for make-vector-8b
 	   ;; modulo-expansion
 	   negative?-expansion
 	   not-expansion
