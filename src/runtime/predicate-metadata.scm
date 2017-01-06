@@ -115,7 +115,7 @@ USA.
          (%make-tag predicate
                     name
                     (if (default-object? description)
-                        (object->description name)
+                        #f
                         (guarantee string? description 'make-tag))
                     (if (default-object? extra) #f extra)
 		    (make-strong-eq-hash-table)
@@ -128,19 +128,12 @@ USA.
       (and (list? object)
            (every tag-name? object))))
 
-(define (object->description object)
-  (if (symbol? object)
-      (symbol-name object)
-      (call-with-output-string
-	(lambda (port)
-	  (write object port)))))
-
 (define-record-type <tag>
     (%make-tag predicate name description extra subsets supersets)
     tag?
   (predicate tag->predicate)
   (name tag-name)
-  (description tag-description)
+  (description %tag-description)
   (extra tag-extra)
   (subsets tag-subsets)
   (supersets tag-supersets))
@@ -149,6 +142,15 @@ USA.
   (simple-unparser-method 'tag
     (lambda (tag)
       (list (tag-name tag)))))
+
+(define (tag-description tag)
+  (or (%tag-description tag)
+      (object->description (tag-name tag))))
+
+(define (object->description object)
+  (call-with-output-string
+    (lambda (port)
+      (write object port))))
 
 (define (get-tag-subsets tag)
   (hash-table-keys (tag-subsets tag)))
