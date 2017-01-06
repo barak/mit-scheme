@@ -1728,6 +1728,7 @@ USA.
 	  procedure-arity-max
 	  procedure-arity-min
 	  procedure-arity-valid?
+	  procedure-arity<=
 	  procedure-arity?
 	  procedure-components
 	  procedure-environment

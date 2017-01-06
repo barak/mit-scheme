@@ -276,6 +276,7 @@ USA.
    (register-predicate! generic-procedure? 'generic-procedure '<= procedure?)
    (register-predicate! primitive-procedure? 'primitive-procedure
 			'<= procedure?)
+   (register-predicate! procedure-arity? 'procedure-arity)
    (register-predicate! thunk? 'thunk '<= procedure?)
    (register-predicate! unary-procedure? 'unary-procedure '<= procedure?)
    (register-predicate! unparser-method? 'unparser-method '<= procedure?)

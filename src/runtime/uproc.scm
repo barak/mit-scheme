@@ -133,12 +133,8 @@ USA.
 	   (error:wrong-type-argument procedure "procedure"
 				      'PROCEDURE-ARITY)))))
 
-(define (procedure-arity-valid? procedure n-arguments)
-  (guarantee-index-fixnum n-arguments 'PROCEDURE-ARITY-VALID?)
-  (let ((arity (procedure-arity procedure)))
-    (and (<= (car arity) n-arguments)
-	 (or (not (cdr arity))
-	     (<= n-arguments (cdr arity))))))
+(define (procedure-arity-valid? procedure arity)
+  (procedure-arity<= arity (procedure-arity procedure)))
 
 (define (thunk? object)
   (and (procedure? object)
@@ -197,6 +193,14 @@ USA.
   (cond ((simple-arity? arity) arity)
 	((general-arity? arity) (cdr arity))
 	(else (error:not-procedure-arity arity 'PROCEDURE-ARITY-MAX))))
+
+(define (procedure-arity<= arity1 arity2)
+  (and (fix:<= (procedure-arity-min arity2)
+	       (procedure-arity-min arity1))
+       (or (not (procedure-arity-max arity2))
+	   (and (procedure-arity-max arity1)
+		(fix:<= (procedure-arity-max arity1)
+			(procedure-arity-max arity2))))))
 
 (define-integrable (simple-arity? object)
   (index-fixnum? object))
