@@ -3597,6 +3597,7 @@ USA.
   (parent (runtime))
   (export ()
 	  guarantee-tagged-object
+	  object-tagger
 	  set-tagged-object-unparser-method!
 	  tag-object
 	  tagged-object-datum

@@ -35,11 +35,19 @@ USA.
 (define (tagged-object? object)
   (fix:= (object-type object) tagged-object-type))
 
+(define (object-tagger predicate)
+  (let ((tag (predicate->tag predicate)))
+    (lambda (datum)
+      (make-tagged-object tag datum))))
+
 (define (tag-object predicate datum)
-  (system-pair-cons tagged-object-type (predicate->tag predicate) datum))
+  (make-tagged-object (predicate->tag predicate) datum))
 
 (define (tagged-object-predicate object)
   (tag->predicate (tagged-object-tag object)))
+
+(define-integrable (make-tagged-object tag datum)
+  (system-pair-cons tagged-object-type tag datum))
 
 (define (tagged-object-tag object)
   (guarantee tagged-object? object 'tagged-object-tag)
