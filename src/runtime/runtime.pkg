@@ -1743,6 +1743,42 @@ USA.
   (export (runtime continuation-parser)
 	  compiled-procedure-frame-size))
 
+(define-package (runtime predicate-metadata)
+  (files "predicate-metadata")
+  (parent (runtime))
+  (export ()
+	  any-object?
+	  error:not-a
+	  error:not-a-list-of
+	  guarantee
+	  guarantee-list-of
+	  no-object?
+	  predicate-description
+	  predicate-name
+	  predicate?
+	  register-predicate!
+	  set-predicate<=!
+	  simple-predicate?
+	  unregister-predicate!)
+  (export (runtime)
+	  bottom-tag
+	  bottom-tag?
+	  delete-tag!
+	  event:predicate-metadata
+	  get-tag-subsets
+	  get-tag-supersets
+	  make-tag
+	  predicate->tag
+	  set-tag<=!
+	  tag->predicate
+	  tag-description
+	  tag-extra
+	  tag-name
+	  tag?
+	  top-tag
+	  top-tag?)
+  (initialization (initialize-package!)))
+
 (define-package (runtime environment)
   (files "uenvir")
   (parent (runtime))
