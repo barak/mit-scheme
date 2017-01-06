@@ -2738,6 +2738,7 @@ USA.
 	  memq
 	  memv
 	  ninth
+	  non-empty-list?
 	  not-pair?			;SRFI-1
 	  null-list?			;SRFI-1
 	  null?

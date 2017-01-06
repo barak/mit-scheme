@@ -174,6 +174,10 @@ USA.
 		  #f)))
 	#f)))
 
+(define (non-empty-list? object)
+  (and (pair? object)
+       (list? (cdr object))))
+
 (define-guarantee pair "pair")
 (define-guarantee list "list")
 (define-guarantee dotted-list "improper list")

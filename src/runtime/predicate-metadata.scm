@@ -264,6 +264,7 @@ USA.
    (register-predicate! keyword-list? 'keyword-list '<= list?)
    (register-predicate! list-of-unique-symbols? 'list-of-unique-symbols
 			'<= list?)
+   (register-predicate! non-empty-list? 'non-empty-list '<= (list list? pair?))
    (register-predicate! unique-keyword-list? 'unique-keyword-list
 			'<= keyword-list?)
 
