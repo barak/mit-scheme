@@ -2239,6 +2239,8 @@ USA.
 	  equal-hash
 	  equal-hash-mod
 	  equal-hash-table-type
+	  equality-predicate-hasher
+	  equality-predicate?
 	  eqv-hash
 	  eqv-hash-mod
 	  error:not-hash-table
@@ -2295,14 +2297,14 @@ USA.
 	  make-string-hash-table
 	  make-strong-eq-hash-table
 	  make-strong-eqv-hash-table
+	  set-equality-predicate-hasher!
 	  set-hash-table/rehash-size!
 	  set-hash-table/rehash-threshold!
 	  string-hash-table-type
 	  strong-eq-hash-table-type
 	  strong-eqv-hash-table-type
 	  strong-hash-table/constructor
-	  weak-hash-table/constructor)
-  (initialization (initialize-package!)))
+	  weak-hash-table/constructor))
 
 (define-package (runtime history)
   (files "histry")

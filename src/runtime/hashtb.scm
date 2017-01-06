@@ -110,6 +110,24 @@ USA.
 	  (record-address-hash-table! table))
       table)))
 
+(define (record-address-hash-table! table)
+  (if (cadr address-hash-tables)
+      (with-thread-mutex-lock (cadr address-hash-tables)
+        (lambda () (add-to-population!/unsafe address-hash-tables table)))
+      (add-to-population! address-hash-tables table)))
+
+(define address-hash-tables)
+(add-boot-init!
+ (lambda ()
+   (set! address-hash-tables (make-serial-population))
+   (add-primitive-gc-daemon! mark-address-hash-tables!)
+   unspecific))
+
+(define (mark-address-hash-tables!)
+  (for-each-inhabitant address-hash-tables
+		       (lambda (table)
+			 (set-table-needs-rehash?! table #t))))
+
 (define (hash-table/type table)
   (guarantee-hash-table table 'HASH-TABLE/TYPE)
   (table-type table))
@@ -1177,39 +1195,40 @@ USA.
 (define hash-table-type-constructors)
 (define memoized-hash-table-types)
 
-(define (initialize-memoized-hash-table-types!)
-  (set! key-ephemeral-eq-hash-table-type
-	(open-type eq-hash-mod eq? #t hash-table-entry-type:key-ephemeral))
-  (set! make-key-ephemeral-eq-hash-table
-	(hash-table-constructor key-ephemeral-eq-hash-table-type))
-  (set! hash-table-type-constructors (make-key-ephemeral-eq-hash-table))
-  (set! memoized-hash-table-types (make-key-ephemeral-eq-hash-table))
-  (memoize-hash-table-type! eq-hash-mod eq? #t
-			    hash-table-entry-type:key-ephemeral
-			    key-ephemeral-eq-hash-table-type)
-  (open-type-constructor! hash-table-entry-type:strong)
-  (open-type-constructor! hash-table-entry-type:key-weak)
-  (open-type-constructor! hash-table-entry-type:datum-weak)
-  (open-type-constructor! hash-table-entry-type:key/datum-weak)
-  (open-type-constructor! hash-table-entry-type:key-ephemeral)
-  (open-type-constructor! hash-table-entry-type:datum-ephemeral)
-  (open-type-constructor! hash-table-entry-type:key&datum-ephemeral)
-  (let ((make make-hash-table-type))	;For brevity...
-    (set! equal-hash-table-type
-	  (make equal-hash-mod equal? #t hash-table-entry-type:strong))
-    (set! key-weak-eq-hash-table-type	;Open-coded
-	  (open-type! eq-hash-mod eq? #t hash-table-entry-type:key-weak))
-    (set! key-weak-eqv-hash-table-type
-	  (make eqv-hash-mod eqv? #t hash-table-entry-type:key-weak))
-    (set! key-ephemeral-eqv-hash-table-type
-	  (make eqv-hash-mod eqv? #t hash-table-entry-type:key-ephemeral))
-    (set! string-hash-table-type
-	  (make string-hash-mod string=? #t hash-table-entry-type:strong))
-    (set! strong-eq-hash-table-type	;Open-coded
-	  (open-type! eq-hash-mod eq? #t hash-table-entry-type:strong))
-    (set! strong-eqv-hash-table-type
-	  (make eqv-hash-mod eqv? #t hash-table-entry-type:strong)))
-  unspecific)
+(add-boot-init!
+ (lambda ()
+   (set! key-ephemeral-eq-hash-table-type
+	 (open-type eq-hash-mod eq? #t hash-table-entry-type:key-ephemeral))
+   (set! make-key-ephemeral-eq-hash-table
+	 (hash-table-constructor key-ephemeral-eq-hash-table-type))
+   (set! hash-table-type-constructors (make-key-ephemeral-eq-hash-table))
+   (set! memoized-hash-table-types (make-key-ephemeral-eq-hash-table))
+   (memoize-hash-table-type! eq-hash-mod eq? #t
+			     hash-table-entry-type:key-ephemeral
+			     key-ephemeral-eq-hash-table-type)
+   (open-type-constructor! hash-table-entry-type:strong)
+   (open-type-constructor! hash-table-entry-type:key-weak)
+   (open-type-constructor! hash-table-entry-type:datum-weak)
+   (open-type-constructor! hash-table-entry-type:key/datum-weak)
+   (open-type-constructor! hash-table-entry-type:key-ephemeral)
+   (open-type-constructor! hash-table-entry-type:datum-ephemeral)
+   (open-type-constructor! hash-table-entry-type:key&datum-ephemeral)
+   (let ((make make-hash-table-type))	;For brevity...
+     (set! equal-hash-table-type
+	   (make equal-hash-mod equal? #t hash-table-entry-type:strong))
+     (set! key-weak-eq-hash-table-type	;Open-coded
+	   (open-type! eq-hash-mod eq? #t hash-table-entry-type:key-weak))
+     (set! key-weak-eqv-hash-table-type
+	   (make eqv-hash-mod eqv? #t hash-table-entry-type:key-weak))
+     (set! key-ephemeral-eqv-hash-table-type
+	   (make eqv-hash-mod eqv? #t hash-table-entry-type:key-ephemeral))
+     (set! string-hash-table-type
+	   (make string-hash-mod string=? #t hash-table-entry-type:strong))
+     (set! strong-eq-hash-table-type	;Open-coded
+	   (open-type! eq-hash-mod eq? #t hash-table-entry-type:strong))
+     (set! strong-eqv-hash-table-type
+	   (make eqv-hash-mod eqv? #t hash-table-entry-type:strong)))
+   unspecific))
 
 (define make-equal-hash-table)
 (define make-key-ephemeral-eq-hash-table)
@@ -1220,21 +1239,22 @@ USA.
 (define make-strong-eq-hash-table)
 (define make-strong-eqv-hash-table)
 
-(define (initialize-hash-table-type-constructors!)
-  (let-syntax ((init
-		(syntax-rules ()
-		  ((INIT constructor type)
-		   (SET! constructor (HASH-TABLE-CONSTRUCTOR type))))))
-    (init make-equal-hash-table equal-hash-table-type)
-    ;; This is done above.
-    ;; (init make-key-ephemeral-eq-hash-table key-ephemeral-eq-hash-table-type)
-    (init make-key-weak-eq-hash-table key-weak-eq-hash-table-type)
-    (init make-key-ephemeral-eqv-hash-table key-ephemeral-eqv-hash-table-type)
-    (init make-key-weak-eqv-hash-table key-weak-eqv-hash-table-type)
-    (init make-string-hash-table string-hash-table-type)
-    (init make-strong-eq-hash-table strong-eq-hash-table-type)
-    (init make-strong-eqv-hash-table strong-eqv-hash-table-type))
-  unspecific)
+(add-boot-init!
+ (lambda ()
+   (let-syntax ((init
+		 (syntax-rules ()
+		   ((INIT constructor type)
+		    (SET! constructor (HASH-TABLE-CONSTRUCTOR type))))))
+     (init make-equal-hash-table equal-hash-table-type)
+     ;; This is done above.
+     ;; (init make-key-ephemeral-eq-hash-table key-ephemeral-eq-hash-table-type)
+     (init make-key-weak-eq-hash-table key-weak-eq-hash-table-type)
+     (init make-key-ephemeral-eqv-hash-table key-ephemeral-eqv-hash-table-type)
+     (init make-key-weak-eqv-hash-table key-weak-eqv-hash-table-type)
+     (init make-string-hash-table string-hash-table-type)
+     (init make-strong-eq-hash-table strong-eq-hash-table-type)
+     (init make-strong-eqv-hash-table strong-eqv-hash-table-type))
+   unspecific))
 
 ;;;; Compatibility with SRFI 69 and older MIT Scheme
 
@@ -1283,15 +1303,20 @@ USA.
 	      alist)
     table))
 
-(define (hash key #!optional modulus)
-  (if (default-object? modulus)
-      (equal-hash key)
-      (equal-hash-mod key modulus)))
-
 (define (hash-by-identity key #!optional modulus)
   (if (default-object? modulus)
       (eq-hash key)
       (eq-hash-mod key modulus)))
+
+(define (hash-by-eqv key #!optional modulus)
+  (if (default-object? modulus)
+      (eqv-hash key)
+      (eqv-hash-mod key modulus)))
+
+(define (hash-by-equal key #!optional modulus)
+  (if (default-object? modulus)
+      (equal-hash key)
+      (equal-hash-mod key modulus)))
 
 (define (hash-table-exists? table key)
   (not (eq? (hash-table/get table key default-marker) default-marker)))
@@ -1351,24 +1376,6 @@ USA.
 
 ;;;; Miscellany
 
-(define address-hash-tables)
-
-(define (initialize-address-hash-tables!)
-  (set! address-hash-tables (make-serial-population))
-  (add-primitive-gc-daemon! mark-address-hash-tables!)
-  unspecific)
-
-(define (record-address-hash-table! table)
-  (if (cadr address-hash-tables)
-      (with-thread-mutex-lock (cadr address-hash-tables)
-        (lambda () (add-to-population!/unsafe address-hash-tables table)))
-      (add-to-population! address-hash-tables table)))
-
-(define (mark-address-hash-tables!)
-  (for-each-inhabitant address-hash-tables
-		       (lambda (table)
-			 (set-table-needs-rehash?! table #t))))
-
 (define (check-arg object default predicate description procedure)
   (cond ((predicate object) object)
 	((not object) default)
@@ -1379,10 +1386,23 @@ USA.
 (define default-marker
   (list 'DEFAULT-MARKER))
 
-(define (initialize-package!)
-  ;; Must come before any address hash tables are created.
-  (initialize-address-hash-tables!)
-  ;; Must come before any hash table types are constructed or used.
-  ;; This constructs an address hash table, however.
-  (initialize-memoized-hash-table-types!)
-  (initialize-hash-table-type-constructors!))
+(define equality-predicate?)
+(define maybe-get-equality-predicate-hasher)
+(define set-equality-predicate-hasher!)
+(add-boot-init!
+ (lambda ()
+   (let ((table (make-hashed-metadata-table)))
+     (set! equality-predicate? (table 'has?))
+     (set! maybe-get-equality-predicate-hasher (table 'get-if-available))
+     (set! set-equality-predicate-hasher! (table 'put!)))
+   (set-equality-predicate-hasher! eq? hash-by-identity)
+   (set-equality-predicate-hasher! eqv? hash-by-eqv)
+   (set-equality-predicate-hasher! equal? hash)))
+
+(define (equality-predicate-hasher equality-predicate)
+  (let ((hasher (maybe-get-equality-predicate-hasher equality-predicate #f)))
+    (if (not hasher)
+        (error:not-a equality-predicate?
+		     equality-predicate
+		     'equality-predicate-hasher))
+    hasher))
