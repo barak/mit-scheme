@@ -42,15 +42,7 @@ USA.
      (set! delete-predicate-tag! (table 'delete!))
      unspecific)))
 
-(define boot-registrations (cons '() '()))
-(define (register-predicate! . args)
-  (let ((next (cons args '())))
-    (if (pair? (car boot-registrations))
-	(set-cdr! (cdr boot-registrations) next)
-	(set-car! boot-registrations next))
-    (set-cdr! boot-registrations next)))
-
-(define (register-predicate!/after-boot predicate name . keylist)
+(define (register-predicate! predicate name . keylist)
   (guarantee keyword-list? keylist 'register-predicate!)
   (let ((tag
          (make-tag predicate
@@ -190,13 +182,6 @@ USA.
 (define the-bottom-tag)
 (add-boot-init!
  (lambda ()
-   ;; Transition to post-boot registration
-   (set! register-predicate! register-predicate!/after-boot)
-   (do ((regs (car boot-registrations) (cdr regs)))
-       ((not (pair? regs)))
-     (apply register-predicate! (car regs)))
-   (set! boot-registrations)
-
    (register-predicate! predicate? 'predicate)
    (register-predicate! tag-name? 'tag-name)
    (register-predicate! tag? 'tag)
@@ -215,7 +200,6 @@ USA.
 
 (define (any-object? object) object #t)
 (define (no-object? object) object #f)
-
 
 ;;; Registration of standard predicates
 (add-boot-init!
