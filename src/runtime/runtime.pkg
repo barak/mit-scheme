@@ -1789,6 +1789,22 @@ USA.
 	  tag=
 	  tag>=))
 
+(define-package (runtime compound-predicate)
+  (files "compound-predicate")
+  (parent (runtime))
+  (export ()
+	  compound-predicate-operands
+	  compound-predicate-operator
+	  compound-predicate-predicate
+	  compound-predicate?
+	  conjoin
+	  conjoin*
+	  disjoin
+	  disjoin*
+	  is-list-of
+	  is-non-empty-list-of
+	  is-pair-of))
+
 (define-package (runtime environment)
   (files "uenvir")
   (parent (runtime))
