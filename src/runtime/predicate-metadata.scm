@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; Predicate metadata
+;;;; Predicates: metadata
 ;;; package: (runtime predicate-metadata)
 
 (declare (usual-integrations))
