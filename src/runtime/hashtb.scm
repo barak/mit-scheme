@@ -1388,13 +1388,13 @@ USA.
 
 (define equality-predicate?)
 (define maybe-get-equality-predicate-hasher)
-(define set-equality-predicate-hasher!)
+(define %set-equality-predicate-hasher!)
 (add-boot-init!
  (lambda ()
    (let ((table (make-hashed-metadata-table)))
      (set! equality-predicate? (table 'has?))
      (set! maybe-get-equality-predicate-hasher (table 'get-if-available))
-     (set! set-equality-predicate-hasher! (table 'put!)))
+     (set! %set-equality-predicate-hasher! (table 'put!)))
    (set-equality-predicate-hasher! eq? hash-by-identity)
    (set-equality-predicate-hasher! eqv? hash-by-eqv)
    (set-equality-predicate-hasher! equal? hash)))
@@ -1406,3 +1406,12 @@ USA.
 		     equality-predicate
 		     'equality-predicate-hasher))
     hasher))
+
+(define (set-equality-predicate-hasher! equality-predicate hasher)
+  (guarantee binary-procedure? equality-predicate
+	     'set-equality-predicate-hasher!)
+  (guarantee hasher? hasher 'set-equality-predicate-hasher!)
+  (%set-equality-predicate-hasher! equality-predicate hasher))
+
+(define (hasher? object)
+  (procedure-of-arity? object (make-procedure-arity 1 2)))
