@@ -50,8 +50,12 @@ USA.
                    (get-keyword-value keylist 'extra)
                    (get-keyword-value keylist 'description)))
         (superset (get-keyword-value keylist '<=)))
-  (if (not (default-object? superset))
-      (set-tag<=! tag (predicate->tag superset)))))
+    (if (not (default-object? superset))
+	(for-each (lambda (superset)
+		    (set-tag<=! tag (predicate->tag superset)))
+		  (if (list? superset)
+		      superset
+		      (list superset))))))
 
 (define (predicate->tag predicate #!optional caller)
   (let ((tag (get-predicate-tag predicate #f)))
@@ -245,12 +249,11 @@ USA.
    (register-predicate! fix:fixnum? 'fixnum '<= exact-integer?)
    (register-predicate! index-fixnum? 'index-fixnum '<= fix:fixnum?)
    (register-predicate! negative-fixnum? 'negative-fixnum '<= fix:fixnum?)
-   (register-predicate! positive-fixnum? 'positive-fixnum '<= fix:fixnum?)
-   (set-predicate<=! positive-fixnum? exact-positive-integer?)
+   (register-predicate! positive-fixnum? 'positive-fixnum
+			'<= (list fix:fixnum? exact-positive-integer?))
 
    (register-predicate! non-negative-fixnum? 'non-negative-fixnum
-			'<= fix:fixnum?)
-   (set-predicate<=! non-negative-fixnum? exact-nonnegative-integer?)
+			'<= (list fix:fixnum? exact-nonnegative-integer?))
    (register-predicate! non-positive-fixnum? 'non-positive-fixnum
 			'<= fix:fixnum?)
 
@@ -274,9 +277,13 @@ USA.
    (register-predicate! thunk? 'thunk '<= procedure?)
    (register-predicate! unparser-method? 'unparser-method '<= procedure?)
 
+   ;; MIT/GNU Scheme: URIs
+   (register-predicate! uri? 'uniform-resource-identifier)
+   (register-predicate! absolute-uri? 'absolute-uri '<= uri?)
+   (register-predicate! relative-uri? 'relative-uri '<= uri?)
+
    ;; MIT/GNU Scheme: other stuff
    (register-predicate! 8-bit-char? '8-bit-char '<= char?)
-   (register-predicate! absolute-uri? 'absolute-uri)
    (register-predicate! dispatch-tag? 'dispatch-tag)
    (register-predicate! environment? 'environment)
    (register-predicate! interned-symbol? 'interned-symbol '<= symbol?)
@@ -286,7 +293,6 @@ USA.
    (register-predicate! population? 'population)
    (register-predicate! record? 'record)
    (register-predicate! record-type? 'record-type)
-   (register-predicate! relative-uri? 'relative-uri)
    (register-predicate! thread? 'thread)
    (register-predicate! thread-mutex? 'thread-mutex)
    (register-predicate! undefined-value? 'undefined-value)
@@ -294,9 +300,5 @@ USA.
    (register-predicate! unicode-scalar-value? 'unicode-scalar-value
 			'<= index-fixnum?)
    (register-predicate! uninterned-symbol? 'uninterned-symbol '<= symbol?)
-   (register-predicate! uri? 'uniform-resource-identifier)
    (register-predicate! weak-list? 'weak-list)
-   (register-predicate! weak-pair? 'weak-pair)
-
-   (set-predicate<=! absolute-uri? uri?)
-   (set-predicate<=! relative-uri? uri?)))
+   (register-predicate! weak-pair? 'weak-pair)))
