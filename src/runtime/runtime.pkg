@@ -1805,6 +1805,27 @@ USA.
 	  is-non-empty-list-of
 	  is-pair-of))
 
+(define-package (runtime parametric-predicate)
+  (files "parametric-predicate")
+  (parent (runtime))
+  (export ()
+	  make-predicate-template
+          parameter-binding-name
+          parameter-binding-polarity
+          parameter-binding-value
+          parameter-binding-values
+          parameter-binding?
+          parametric-predicate-bindings
+          parametric-predicate-template
+          parametric-predicate?
+          predicate-template-accessor
+          predicate-template-instantiator
+          predicate-template-name
+          predicate-template-parameter-names
+          predicate-template-pattern
+          predicate-template-predicate
+          predicate-template?))
+
 (define-package (runtime environment)
   (files "uenvir")
   (parent (runtime))
