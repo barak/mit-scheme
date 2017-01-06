@@ -35,21 +35,23 @@ USA.
 (define (tagged-object? object)
   (fix:= (object-type object) tagged-object-type))
 
-(define-guarantee tagged-object "tagged object")
+(define (tag-object predicate datum)
+  (system-pair-cons tagged-object-type (predicate->tag predicate) datum))
 
-(define (make-tagged-object tag datum)
-  (system-pair-cons tagged-object-type tag datum))
+(define (tagged-object-predicate object)
+  (tag->predicate (tagged-object-tag object)))
 
 (define (tagged-object-tag object)
-  (guarantee-tagged-object object 'tagged-object-tag)
+  (guarantee tagged-object? object 'tagged-object-tag)
   (system-pair-car object))
 
 (define (tagged-object-datum object)
-  (guarantee-tagged-object object 'tagged-object-datum)
+  (guarantee tagged-object? object 'tagged-object-datum)
   (system-pair-cdr object))
 
 (define unparser-methods)
-(define (initialize-unparser!)
+(define (initialize-package!)
+  (register-predicate! tagged-object? 'tagged-object)
   (set! unparser-methods (make-key-weak-eqv-hash-table))
   unspecific)
 

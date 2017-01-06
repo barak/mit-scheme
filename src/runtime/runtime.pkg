@@ -3597,14 +3597,16 @@ USA.
   (parent (runtime))
   (export ()
 	  guarantee-tagged-object
-	  make-tagged-object
 	  set-tagged-object-unparser-method!
+	  tag-object
 	  tagged-object-datum
-	  tagged-object-tag
+	  tagged-object-predicate
 	  tagged-object?)
+  (export (runtime)
+	  tagged-object-tag)
   (export (runtime unparser)
 	  get-tagged-object-unparser-method)
-  (initialization (initialize-unparser!)))
+  (initialization (initialize-package!)))
 
 (define-package (runtime reference-trap)
   (files "urtrap")
