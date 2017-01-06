@@ -97,32 +97,26 @@ USA.
 (define (unicode-scalar-value? object)
   (and (index-fixnum? object)
        (fix:< object char-code-limit)
-       (not (illegal? object))))
+       (not (surrogate? object))
+       (not (non-character? object))))
 
 (define-guarantee unicode-scalar-value "a Unicode scalar value")
 
 (define-integrable (legal-code-32? pt)
   (and (fix:< pt char-code-limit)
-       (not (illegal? pt))))
+       (not (surrogate? pt))
+       (not (non-character? pt))))
 
 (define-integrable (legal-code-16? pt)
-  (not (illegal? pt)))
+  (and (not (surrogate? pt))
+       (not (non-character? pt))))
 
-(define-integrable (illegal? pt)
-  (or (and (fix:>= pt #xD800) (fix:< pt #xE000))
-      (fix:= pt #xFFFE)
-      (fix:= pt #xFFFF)))
-
-#|
-
-Not used at the moment.
+(define-integrable (surrogate? pt)
+  (and (fix:<= #xD800 pt) (fix:< pt #xDFFF)))
 
 (define-integrable (non-character? pt)
-  (or (and (fix:>= pt #xD800) (fix:< pt #xE000))
-      (and (fix:>= pt #xFDD0) (fix:< pt #xFDF0))
-      (fix:= #x00FFFE (fix:and #x00FFFE pt))))
-
-|#
+  (or (and (fix:<= #xFDD0 pt) (fix:< pt #xFDF0))
+      (fix:= (fix:and #xFFFE pt) #xFFFE)))
 
 (define (8-bit-char? object)
   (and (char? object)
