@@ -2305,6 +2305,21 @@ USA.
 	  strong-hash-table/constructor
 	  weak-hash-table/constructor))
 
+(define-package (runtime memoizer)
+  (files "memoizer")
+  (parent (runtime))
+  (export ()
+	  all-args-memoizer
+          clear-memoizer!
+          list-memoizer
+          lset-memoizer
+          make-list-memoizer
+          make-memoizer
+          memoizer-table
+          memoizer-procedure
+          memoizer?
+          weak-eqv-memoizer))
+
 (define-package (runtime history)
   (files "histry")
   (parent (runtime))

@@ -274,6 +274,7 @@ USA.
    (register-predicate! compiled-procedure? 'compiled-procedure '<= procedure?)
    (register-predicate! entity? 'entity '<= procedure?)
    (register-predicate! generic-procedure? 'generic-procedure '<= procedure?)
+   (register-predicate! memoizer? 'memoizer '<= apply-hook?)
    (register-predicate! primitive-procedure? 'primitive-procedure
 			'<= procedure?)
    (register-predicate! procedure-arity? 'procedure-arity)
@@ -292,6 +293,7 @@ USA.
    (register-predicate! environment? 'environment)
    (register-predicate! equality-predicate? 'equality-predicate
 			'<= binary-procedure?)
+   (register-predicate! hash-table? 'hash-table)
    (register-predicate! interned-symbol? 'interned-symbol '<= symbol?)
    (register-predicate! keyword? 'keyword '<= symbol?)
    (register-predicate! lambda-tag? 'lambda-tag '<= symbol?)
