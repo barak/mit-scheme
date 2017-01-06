@@ -290,6 +290,8 @@ USA.
    (register-predicate! 8-bit-char? '8-bit-char '<= char?)
    (register-predicate! dispatch-tag? 'dispatch-tag)
    (register-predicate! environment? 'environment)
+   (register-predicate! equality-predicate? 'equality-predicate
+			'<= binary-procedure?)
    (register-predicate! interned-symbol? 'interned-symbol '<= symbol?)
    (register-predicate! keyword? 'keyword '<= symbol?)
    (register-predicate! lambda-tag? 'lambda-tag '<= symbol?)
