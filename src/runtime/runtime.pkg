@@ -1779,6 +1779,19 @@ USA.
 	  top-tag?)
   (initialization (initialize-package!)))
 
+(define-package (runtime predicate-lattice)
+  (files "predicate-lattice")
+  (parent (runtime))
+  (export ()
+	  predicate<=
+	  predicate>=)
+  (export (runtime)
+	  define-tag<=
+	  tag<=
+	  tag=
+	  tag>=)
+  (initialization (initialize-package!)))
+
 (define-package (runtime environment)
   (files "uenvir")
   (parent (runtime))
