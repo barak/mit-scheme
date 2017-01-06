@@ -275,6 +275,7 @@ USA.
    (register-predicate! unparser-method? 'unparser-method '<= procedure?)
 
    ;; MIT/GNU Scheme: other stuff
+   (register-predicate! 8-bit-char? '8-bit-char '<= char?)
    (register-predicate! absolute-uri? 'absolute-uri)
    (register-predicate! dispatch-tag? 'dispatch-tag)
    (register-predicate! environment? 'environment)
@@ -289,6 +290,9 @@ USA.
    (register-predicate! thread? 'thread)
    (register-predicate! thread-mutex? 'thread-mutex)
    (register-predicate! undefined-value? 'undefined-value)
+   (register-predicate! unicode-char? 'unicode-char '<= char?)
+   (register-predicate! unicode-scalar-value? 'unicode-scalar-value
+			'<= index-fixnum?)
    (register-predicate! uninterned-symbol? 'uninterned-symbol '<= symbol?)
    (register-predicate! uri? 'uniform-resource-identifier)
    (register-predicate! weak-list? 'weak-list)
