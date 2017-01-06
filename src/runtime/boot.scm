@@ -143,22 +143,6 @@ USA.
 (define-integrable (default-object)
   ((ucode-primitive object-set-type) (ucode-type constant) 7))
 
-(define (load-with-boot-inits! . arguments)
-  (receive (value inits)
-      (let ((inner '()))
-	(define (swap!)
-	  (set! boot-inits (set! inner (set! boot-inits)))
-	  unspecific)
-	(dynamic-wind
-	    swap!
-	    (lambda ()
-	      (let ((value (apply load arguments)))
-		(values value (reverse! boot-inits))))
-	    swap!))
-    (for-each (lambda (init) (init))
-	      inits)
-    value))
-
 (define (init-boot-inits!)
   (set! boot-inits '())
   unspecific)
@@ -174,15 +158,16 @@ USA.
     (set! boot-inits #f)
     ((ucode-primitive local-assignment) environment saved-boot-inits inits)))
 
-(define (run-boot-inits! environment)
+(define (get-boot-init-runner environment)
   (and (not (lexical-unreferenceable? environment saved-boot-inits))
        (let ((inits
 	      ((ucode-primitive lexical-reference)
 	       environment
 	       saved-boot-inits)))
 	 ((ucode-primitive unbind-variable) environment saved-boot-inits)
-	 (for-each (lambda (init) (init))
-		   inits))))
+	 (lambda ()
+	   (for-each (lambda (init) (init))
+		     inits)))))
 
 (define boot-inits #f)
 (define saved-boot-inits '|#[saved-boot-inits]|)

@@ -176,7 +176,7 @@ USA.
 		(let ((env (package/environment package)))
 		  (if (not procedure-name)
 		      (if (lexical-unreferenceable? env 'INITIALIZE-PACKAGE!)
-			  (lambda () ((access run-boot-inits! boot-defs) env))
+			  ((access get-boot-init-runner boot-defs) env)
 			  (lexical-reference env 'INITIALIZE-PACKAGE!))
 		      (and (not (lexical-unreferenceable? env procedure-name))
 			   (lexical-reference env procedure-name))))))

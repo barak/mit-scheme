@@ -168,9 +168,7 @@ USA.
 	  with-limited-interrupts
 	  without-interrupts)
   (export (runtime)
-	  add-boot-init!
-	  load-with-boot-inits!
-	  run-boot-inits!))
+	  add-boot-init!))
 
 (define-package (runtime equality)
   (files "equals")
