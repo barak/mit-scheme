@@ -146,6 +146,14 @@ USA.
 
 (define-guarantee thunk "thunk")
 
+(define (unary-procedure? object)
+  (and (procedure? object)
+       (procedure-arity-valid? object 1)))
+
+(define (binary-procedure? object)
+  (and (procedure? object)
+       (procedure-arity-valid? object 2)))
+
 (define-integrable (procedure-of-arity? object arity)
   (and (procedure? object)
        (procedure-arity-valid? object arity)))

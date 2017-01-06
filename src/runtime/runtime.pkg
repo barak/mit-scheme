@@ -1693,6 +1693,7 @@ USA.
 	  apply-hook-procedure
 	  apply-hook?
 	  arity-dispatched-procedure?
+	  binary-procedure?
 	  compiled-closure->entry
 	  compiled-closure/ref
 	  compiled-closure/set!
@@ -1737,7 +1738,8 @@ USA.
 	  set-apply-hook-procedure!
 	  set-entity-extra!
 	  set-entity-procedure!
-	  thunk?)
+	  thunk?
+	  unary-procedure?)
   (export (runtime continuation-parser)
 	  compiled-procedure-frame-size))
 

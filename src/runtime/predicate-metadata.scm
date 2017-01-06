@@ -104,7 +104,7 @@ USA.
          (not (tag-extra tag)))))
 
 (define (make-tag predicate name #!optional extra description)
-  (guarantee-procedure-of-arity predicate 1 'make-tag)
+  (guarantee unary-procedure? predicate 'make-tag)
   (guarantee tag-name? name 'make-tag)
   (if (predicate? predicate)
       (error "Predicate is already registered:" predicate))
@@ -270,12 +270,14 @@ USA.
 
    ;; MIT/GNU Scheme: procedures
    (register-predicate! apply-hook? 'apply-hook '<= procedure?)
+   (register-predicate! binary-procedure? 'binary-procedure '<= procedure?)
    (register-predicate! compiled-procedure? 'compiled-procedure '<= procedure?)
    (register-predicate! entity? 'entity '<= procedure?)
    (register-predicate! generic-procedure? 'generic-procedure '<= procedure?)
    (register-predicate! primitive-procedure? 'primitive-procedure
 			'<= procedure?)
    (register-predicate! thunk? 'thunk '<= procedure?)
+   (register-predicate! unary-procedure? 'unary-procedure '<= procedure?)
    (register-predicate! unparser-method? 'unparser-method '<= procedure?)
 
    ;; MIT/GNU Scheme: URIs
