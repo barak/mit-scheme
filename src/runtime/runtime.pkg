@@ -1129,8 +1129,6 @@ USA.
 	  bytevector-u8-ref
 	  bytevector-u8-set!
 	  bytevector?
-	  guarantee-byte
-	  guarantee-bytevector
 	  make-bytevector
 	  string->utf8
 	  utf8->string))
@@ -3598,7 +3596,6 @@ USA.
   (files "tagging")
   (parent (runtime))
   (export ()
-	  guarantee-tagged-object
 	  object-tagger
 	  set-tagged-object-unparser-method!
 	  tag-object

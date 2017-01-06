@@ -651,7 +651,7 @@ USA.
 	      (bytevector-u8-set! bytevector index (car bytes)))
 	    bytevector)
 	  (begin
-	    (guarantee-byte object)
+	    (guarantee byte? object)
 	    (loop (cons object bytes)))))))
 
 (define (handler:close-parenthesis port db ctx char)
