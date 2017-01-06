@@ -32,6 +32,8 @@
 /pc/
 /svm/
 /svm1/
+/ubuntu-*/
+/ubuntu/
 TAGS
 changelog.txt
 doc/*/*.aux
@@ -52,6 +54,7 @@ doc/*/*.pg
 doc/*/*.ps
 doc/*/*.toc
 doc/*/*.tp
+doc/*/*.tps
 doc/*/*.vr
 doc/*/*.vrs
 doc/Makefile
