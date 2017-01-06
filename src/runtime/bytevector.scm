@@ -33,8 +33,6 @@ USA.
   (and (index-fixnum? object)
        (fix:< object #x100)))
 
-(define-guarantee byte "byte")
-
 (define-primitives
   (allocate-bytevector 1)
   (bytevector-fill! 4)
@@ -43,7 +41,10 @@ USA.
   (bytevector-u8-set! 3)
   (bytevector? 1))
 
-(define-guarantee bytevector "byte vector")
+(add-boot-init!
+ (lambda ()
+   (register-predicate! byte? 'byte '<= exact-nonnegative-integer?)
+   (register-predicate! bytevector? 'bytevector)))
 
 (define (make-bytevector k #!optional byte)
   (let ((bytevector (allocate-bytevector k)))
@@ -86,12 +87,12 @@ USA.
    (if (default-object? end) (bytevector-length from) end)))
 
 (define (string->utf8 string #!optional start end)
-  (guarantee-string string 'string->utf8)
+  (guarantee string? string 'string->utf8)
   (let* ((end
 	  (if (default-object? end)
 	      (string-length string)
 	      (begin
-		(guarantee-index-fixnum end 'string->utf8)
+		(guarantee index-fixnum? end 'string->utf8)
 		(if (not (fix:<= end (string-length string)))
 		    (error:bad-range-argument end 'string->utf8))
 		end)))
@@ -99,7 +100,7 @@ USA.
 	  (if (default-object? start)
 	      0
 	      (begin
-		(guarantee-index-fixnum start 'string->utf8)
+		(guarantee index-fixnum? start 'string->utf8)
 		(if (not (fix:<= start end))
 		    (error:bad-range-argument start 'string->utf8))
 		start))))
@@ -161,12 +162,12 @@ USA.
 	  (else (error "Not a unicode character:" char)))))
 
 (define (utf8->string bytevector #!optional start end)
-  (guarantee-bytevector bytevector 'utf8->string)
+  (guarantee bytevector? bytevector 'utf8->string)
   (let* ((end
 	  (if (default-object? end)
 	      (bytevector-length bytevector)
 	      (begin
-		(guarantee-index-fixnum end 'utf8->string)
+		(guarantee index-fixnum? end 'utf8->string)
 		(if (not (fix:<= end (bytevector-length bytevector)))
 		    (error:bad-range-argument end 'utf8->string))
 		end)))
@@ -174,7 +175,7 @@ USA.
 	 (if (default-object? start)
 	     0
 	     (begin
-	       (guarantee-index-fixnum start 'utf8->string)
+	       (guarantee index-fixnum? start 'utf8->string)
 	       (if (not (fix:<= start end))
 		   (error:bad-range-argument start 'utf8->string))
 	       start))))

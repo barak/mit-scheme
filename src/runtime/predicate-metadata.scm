@@ -33,13 +33,14 @@ USA.
 (define get-predicate-tag)
 (define set-predicate-tag!)
 (define delete-predicate-tag!)
-(define (initialize-metadata-table!)
-  (let ((table (make-hashed-metadata-table)))
-    (set! predicate? (table 'has?))
-    (set! get-predicate-tag (table 'get-if-available))
-    (set! set-predicate-tag! (table 'put!))
-    (set! delete-predicate-tag! (table 'delete!))
-    unspecific))
+(add-boot-init!
+ (lambda ()
+   (let ((table (make-hashed-metadata-table)))
+     (set! predicate? (table 'has?))
+     (set! get-predicate-tag (table 'get-if-available))
+     (set! set-predicate-tag! (table 'put!))
+     (set! delete-predicate-tag! (table 'delete!))
+     unspecific)))
 
 (define boot-registrations (cons '() '()))
 (define (register-predicate! . args)
@@ -63,7 +64,7 @@ USA.
 (define (predicate->tag predicate #!optional caller)
   (let ((tag (get-predicate-tag predicate #f)))
     (if (not tag)
-        (error:wrong-type-argument predicate "predicate" caller))
+        (error:not-a predicate? predicate caller))
     tag))
 
 (define (predicate-name predicate)
@@ -187,25 +188,24 @@ USA.
 
 (define the-top-tag)
 (define the-bottom-tag)
-(define (initialize-package!)
-  (initialize-metadata-table!)
+(add-boot-init!
+ (lambda ()
+   ;; Transition to post-boot registration
+   (set! register-predicate! register-predicate!/after-boot)
+   (do ((regs (car boot-registrations) (cdr regs)))
+       ((not (pair? regs)))
+     (apply register-predicate! (car regs)))
+   (set! boot-registrations)
 
-  ;; Transition to post-boot registration
-  (set! register-predicate! register-predicate!/after-boot)
-  (do ((regs (car boot-registrations) (cdr regs)))
-      ((not (pair? regs)))
-    (apply register-predicate! (car regs)))
-  (set! boot-registrations)
+   (register-predicate! predicate? 'predicate)
+   (register-predicate! tag-name? 'tag-name)
+   (register-predicate! tag? 'tag)
+   (register-predicate! any-object? '(conjoin) 'description "any object")
+   (register-predicate! no-object? '(disjoin) 'description "no object")
 
-  (register-predicate! predicate? 'predicate)
-  (register-predicate! tag-name? 'tag-name)
-  (register-predicate! tag? 'tag)
-  (register-predicate! any-object? '(conjoin) 'description "any object")
-  (register-predicate! no-object? '(disjoin) 'description "no object")
-
-  (set! the-top-tag (predicate->tag any-object?))
-  (set! the-bottom-tag (predicate->tag no-object?))
-  unspecific)
+   (set! the-top-tag (predicate->tag any-object?))
+   (set! the-bottom-tag (predicate->tag no-object?))
+   unspecific))
 
 (define (top-tag) the-top-tag)
 (define (top-tag? object) (eqv? the-top-tag object))
@@ -215,3 +215,100 @@ USA.
 
 (define (any-object? object) object #t)
 (define (no-object? object) object #f)
+
+
+;;; Registration of standard predicates
+(add-boot-init!
+ (lambda ()
+   ;; R7RS
+   (register-predicate! boolean? 'boolean)
+   (register-predicate! char? 'char)
+   (register-predicate! default-object? 'default-object)
+   (register-predicate! eof-object? 'eof-object)
+   (register-predicate! input-port? 'input-port)
+   (register-predicate! list? 'list)
+   (register-predicate! number? 'number)
+   (register-predicate! output-port? 'output-port)
+   (register-predicate! pair? 'pair)
+   (register-predicate! port? 'port)
+   (register-predicate! procedure? 'procedure)
+   (register-predicate! string? 'string)
+   (register-predicate! symbol? 'symbol)
+   (register-predicate! vector? 'vector)
+
+   (register-predicate! real? 'real-number '<= number?)
+   (register-predicate! rational? 'rational-number '<= real?)
+   (register-predicate! integer? 'integer '<= rational?)
+
+   (register-predicate! null? 'empty-list '<= list?)
+
+   ;; SRFI-1
+   (register-predicate! circular-list? 'circular-list)
+   (register-predicate! dotted-list? 'dotted-list)
+   (register-predicate! not-pair? 'not-pair)))
+
+;;; Registration of predicates defined earlier in the boot load
+(add-boot-init!
+ (lambda ()
+   ;; MIT/GNU Scheme: specialized arithmetic
+   (register-predicate! exact-integer? 'exact-integer '<= integer?)
+   (register-predicate! exact-nonnegative-integer? 'exact-nonnegative-integer
+			'<= exact-integer?)
+   (register-predicate! exact-positive-integer? 'exact-positive-integer
+			'<= exact-integer?)
+   (register-predicate! exact-rational? 'exact-rational '<= rational?)
+
+   (register-predicate! fix:fixnum? 'fixnum '<= exact-integer?)
+   (register-predicate! index-fixnum? 'index-fixnum '<= fix:fixnum?)
+   (register-predicate! negative-fixnum? 'negative-fixnum '<= fix:fixnum?)
+   (register-predicate! positive-fixnum? 'positive-fixnum '<= fix:fixnum?)
+   (set-predicate<=! positive-fixnum? exact-positive-integer?)
+
+   (register-predicate! non-negative-fixnum? 'non-negative-fixnum
+			'<= fix:fixnum?)
+   (set-predicate<=! non-negative-fixnum? exact-nonnegative-integer?)
+   (register-predicate! non-positive-fixnum? 'non-positive-fixnum
+			'<= fix:fixnum?)
+
+   (register-predicate! flo:flonum? 'flonum '<= real?)
+
+   ;; MIT/GNU Scheme: lists
+   (register-predicate! alist? 'association-list '<= list?)
+   (register-predicate! keyword-list? 'keyword-list '<= list?)
+   (register-predicate! list-of-unique-symbols? 'list-of-unique-symbols
+			'<= list?)
+   (register-predicate! unique-keyword-list? 'unique-keyword-list
+			'<= keyword-list?)
+
+   ;; MIT/GNU Scheme: procedures
+   (register-predicate! apply-hook? 'apply-hook '<= procedure?)
+   (register-predicate! compiled-procedure? 'compiled-procedure '<= procedure?)
+   (register-predicate! entity? 'entity '<= procedure?)
+   (register-predicate! generic-procedure? 'generic-procedure '<= procedure?)
+   (register-predicate! primitive-procedure? 'primitive-procedure
+			'<= procedure?)
+   (register-predicate! thunk? 'thunk '<= procedure?)
+   (register-predicate! unparser-method? 'unparser-method '<= procedure?)
+
+   ;; MIT/GNU Scheme: other stuff
+   (register-predicate! absolute-uri? 'absolute-uri)
+   (register-predicate! dispatch-tag? 'dispatch-tag)
+   (register-predicate! environment? 'environment)
+   (register-predicate! interned-symbol? 'interned-symbol '<= symbol?)
+   (register-predicate! keyword? 'keyword '<= symbol?)
+   (register-predicate! lambda-tag? 'lambda-tag '<= symbol?)
+   (register-predicate! named-structure? 'named-structure)
+   (register-predicate! population? 'population)
+   (register-predicate! record? 'record)
+   (register-predicate! record-type? 'record-type)
+   (register-predicate! relative-uri? 'relative-uri)
+   (register-predicate! thread? 'thread)
+   (register-predicate! thread-mutex? 'thread-mutex)
+   (register-predicate! undefined-value? 'undefined-value)
+   (register-predicate! uninterned-symbol? 'uninterned-symbol '<= symbol?)
+   (register-predicate! uri? 'uniform-resource-identifier)
+   (register-predicate! weak-list? 'weak-list)
+   (register-predicate! weak-pair? 'weak-pair)
+
+   (set-predicate<=! absolute-uri? uri?)
+   (set-predicate<=! relative-uri? uri?)))

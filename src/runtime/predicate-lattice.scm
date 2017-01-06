@@ -104,13 +104,14 @@ USA.
 
 (define tag<=-cache)
 (define tag<=-overrides)
-(define (initialize-package!)
-  (set! tag<=-cache (make-equal-hash-table))
-  (set! tag<=-overrides '())
-  (add-event-receiver! event:predicate-metadata metadata-event!)
+(add-boot-init!
+ (lambda ()
+   (set! tag<=-cache (make-equal-hash-table))
+   (set! tag<=-overrides '())
+   (add-event-receiver! event:predicate-metadata metadata-event!)
 
-  (define-tag<= bottom-tag? tag? true-tag<=)
-  (define-tag<= tag? top-tag? true-tag<=)
+   (define-tag<= bottom-tag? tag? true-tag<=)
+   (define-tag<= tag? top-tag? true-tag<=)
 
-  (define-tag<= non-bottom-tag? bottom-tag? false-tag<=)
-  (define-tag<= top-tag? non-top-tag? false-tag<=))
+   (define-tag<= non-bottom-tag? bottom-tag? false-tag<=)
+   (define-tag<= top-tag? non-top-tag? false-tag<=)))

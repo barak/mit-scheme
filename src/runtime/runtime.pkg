@@ -1774,8 +1774,7 @@ USA.
 	  tag-name
 	  tag?
 	  top-tag
-	  top-tag?)
-  (initialization (initialize-package!)))
+	  top-tag?))
 
 (define-package (runtime predicate-lattice)
   (files "predicate-lattice")
@@ -1787,8 +1786,7 @@ USA.
 	  define-tag<=
 	  tag<=
 	  tag=
-	  tag>=)
-  (initialization (initialize-package!)))
+	  tag>=))
 
 (define-package (runtime environment)
   (files "uenvir")
@@ -3489,7 +3487,7 @@ USA.
 	  register-c-callback
 	  set-alien/ctype!
 	  update-html-index
-	  update-optiondb)	  
+	  update-optiondb)
   (initialization (initialize-package!)))
 
 (define-package (runtime program-copier)
@@ -3604,8 +3602,7 @@ USA.
   (export (runtime)
 	  tagged-object-tag)
   (export (runtime unparser)
-	  get-tagged-object-unparser-method)
-  (initialization (initialize-package!)))
+	  get-tagged-object-unparser-method))
 
 (define-package (runtime reference-trap)
   (files "urtrap")

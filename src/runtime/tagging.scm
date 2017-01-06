@@ -58,10 +58,11 @@ USA.
   (system-pair-cdr object))
 
 (define unparser-methods)
-(define (initialize-package!)
-  (register-predicate! tagged-object? 'tagged-object)
-  (set! unparser-methods (make-key-weak-eqv-hash-table))
-  unspecific)
+(add-boot-init!
+ (lambda ()
+   (register-predicate! tagged-object? 'tagged-object)
+   (set! unparser-methods (make-key-weak-eqv-hash-table))
+   unspecific))
 
 (define (get-tagged-object-unparser-method object)
   (hash-table-ref/default unparser-methods (tagged-object-tag object) #f))
@@ -69,6 +70,7 @@ USA.
 (define (set-tagged-object-unparser-method! tag unparser)
   (if unparser
       (begin
-	(guarantee-unparser-method unparser 'set-tagged-object-unparser-method!)
+	(guarantee unparser-method? unparser
+		   'set-tagged-object-unparser-method!)
 	(hash-table-set! unparser-methods tag unparser))
       (hash-table-delete! unparser-methods tag)))
