@@ -28,7 +28,7 @@ USA.
 ;;; package: (runtime tagging)
 
 (declare (usual-integrations))
-
+
 ;;; TODO(cph): eliminate after 9.3 release:
 (define tagged-object-type #x25)
 
