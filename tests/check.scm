@@ -43,6 +43,7 @@ USA.
     "microcode/test-lookup"
     "runtime/test-arith"
     ("runtime/test-char-set" (runtime character-set))
+    ("runtime/test-compound-predicate" (runtime compound-predicate))
     "runtime/test-dragon4"
     "runtime/test-dynamic-env"
     "runtime/test-division"
@@ -53,6 +54,9 @@ USA.
     "runtime/test-hash-table"
     "runtime/test-integer-bits"
     "runtime/test-mime-codec"
+    ("runtime/test-parametric-predicate" (runtime parametric-predicate))
+    ("runtime/test-predicate-lattice" (runtime predicate-lattice))
+    ("runtime/test-predicate-metadata" (runtime predicate-metadata))
     "runtime/test-thread-queue"
     "runtime/test-process"
     "runtime/test-readwrite"
