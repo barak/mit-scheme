@@ -153,6 +153,32 @@ USA.
 	   (v (apply bytevector bytes)))
       (bytevector-copy! v 5 v 3 7)
       (assert-equal v (bytevector 15 14 13 12 11 12 11 10 9 6 5 4 3 2 1 0)))))
+
+(define-test 'bytevector-fill!
+  (lambda ()
+    (do ((n 0 (+ n 1)))
+	((not (< n 16)))
+      (let ((bytes (reverse (iota n))))
+	(do ((end 0 (+ end 1)))
+	    ((> end n))
+	  (do ((start 0 (+ start 1)))
+	      ((> start end))
+	    (let ((v (apply bytevector bytes)))
+	      (bytevector-fill! v 51 start end)
+	      (assert-equal v
+			    (apply bytevector
+				   (append (sublist bytes 0 start)
+					   (make-list (- end start) 51)
+					   (sublist bytes end n))))))))
+      (assert-range-error
+       (lambda ()
+	 (bytevector-fill! (make-bytevector n) 51 0 (+ n 1))))
+	  (assert-range-error
+	   (lambda ()
+	     (bytevector-fill! (make-bytevector n) 51 n (+ n 1))))
+	  (assert-range-error
+	   (lambda ()
+	     (bytevector-fill! (make-bytevector n) 51 -1 n))))))
 
 (define (test-bytevector-properties v bytes)
   (assert-true (bytevector? v))

@@ -127,9 +127,9 @@ DEFINE_PRIMITIVE ("bytevector-fill!", Prim_bytevector_fill, 4, 4, 0)
   {
     unsigned long length;
     uint8_t * v = (arg_bytevector (1, (&length)));
-    unsigned long end = (arg_ulong_index_integer (3, (length + 1)));
-    unsigned long start = (arg_ulong_index_integer (2, (end + 1)));
-    uint8_t value = (arg_byte (4));
+    uint8_t value = (arg_byte (2));
+    unsigned long end = (arg_ulong_index_integer (4, (length + 1)));
+    unsigned long start = (arg_ulong_index_integer (3, (end + 1)));
     memset ((v + start), value, (end - start));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);

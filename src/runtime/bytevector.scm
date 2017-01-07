@@ -35,7 +35,6 @@ USA.
 
 (define-primitives
   (allocate-bytevector 1)
-  (bytevector-fill! 4)
   (bytevector-length 1)
   (bytevector-u8-ref 2)
   (bytevector-u8-set! 3)
@@ -49,7 +48,7 @@ USA.
 (define (make-bytevector k #!optional byte)
   (let ((bytevector (allocate-bytevector k)))
     (if (not (default-object? byte))
-	(bytevector-fill! bytevector 0 k byte))
+	(bytevector-fill! bytevector byte 0 k))
     bytevector))
 
 (define (bytevector . bytes)
@@ -71,6 +70,13 @@ USA.
 	((not (pair? bytevectors)))
       (bytevector-copy! bytevector index (car bytevectors)))
     bytevector))
+
+(define (bytevector-fill! bytevector fill #!optional start end)
+  ((ucode-primitive bytevector-fill! 4)
+   bytevector
+   fill
+   (if (default-object? start) 0 start)
+   (if (default-object? end) (bytevector-length bytevector) end)))
 
 (define (bytevector-copy bytevector #!optional start end)
   ((ucode-primitive bytevector-copy 3)
