@@ -436,8 +436,11 @@ USA.
 (define-for-tests assert-simple-error
   (error-assertion condition-type:simple-error))
 
-(define-for-tests assert-wta-error
+(define-for-tests assert-type-error
   (error-assertion condition-type:wrong-type-argument))
+
+(define-for-tests assert-range-error
+  (error-assertion condition-type:bad-range-argument))
 
 (define-for-tests keep-it-fast!?
   (let ((v (get-environment-variable "FAST")))

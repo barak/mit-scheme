@@ -32,8 +32,8 @@ USA.
   (lambda ()
     (let ((np (lambda (object) #f)))
       (assert-false (predicate? np))
-      (assert-wta-error (lambda () (predicate->tag np)))
-      (assert-wta-error (lambda () (predicate-name np)))
+      (assert-type-error (lambda () (predicate->tag np)))
+      (assert-type-error (lambda () (predicate-name np)))
       (assert-true (string? (predicate-description np))))))
 
 (define-test 'simple-predicate

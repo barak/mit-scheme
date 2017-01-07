@@ -178,7 +178,7 @@ USA.
 
 (define-test 'match-template-pattern
   (lambda ()
-    (assert-wta-error (lambda () (match-numbers '((? a)) 1)))
+    (assert-type-error (lambda () (match-numbers '((? a)) 1)))
     (assert-equal (match-numbers '((? a)) '(1))
                   '((a + 1)))
     (assert-equal (match-numbers '((? a -) (? b)) '(1 2))
