@@ -38,15 +38,6 @@ USA.
 (define-integrable char-bits-limit #x10)
 (define-integrable char-integer-limit #x2000000)
 
-(define-integrable (%make-char code bits)
-  (integer->char (fix:or (fix:lsh bits 21) code)))
-
-(define-integrable (%char-code char)
-  (fix:and (char->integer char) #x1FFFFF))
-
-(define-integrable (%char-bits char)
-  (fix:lsh (char->integer char) -21))
-
 (define-guarantee char "character")
 
 (define (make-char code bits)
@@ -54,39 +45,36 @@ USA.
   (guarantee-limited-index-fixnum bits char-bits-limit 'MAKE-CHAR)
   (%make-char code bits))
 
+(define-integrable (%make-char code bits)
+  (integer->char (fix:or (fix:lsh bits 21) code)))
+
 (define (code->char code)
   (guarantee-limited-index-fixnum code char-code-limit 'CODE->CHAR)
   (integer->char code))
 
 (define (char-code char)
-  (guarantee-char char 'CHAR-CODE)
-  (%char-code char))
+  (fix:and (char->integer char) #x1FFFFF))
 
 (define (char-bits char)
-  (guarantee-char char 'CHAR-BITS)
-  (%char-bits char))
+  (fix:lsh (char->integer char) -21))
 
 (define (char-bits-set? bits char)
   (guarantee-limited-index-fixnum bits char-bits-limit 'CHAR-BITS-SET?)
-  (guarantee-char char 'CHAR-BITS-SET?)
-  (fix:= bits (fix:and (%char-bits char) bits)))
+  (fix:= bits (fix:and (char-bits char) bits)))
 
 (define (char-bits-clear? bits char)
   (guarantee-limited-index-fixnum bits char-bits-limit 'CHAR-BITS-CLEAR?)
-  (guarantee-char char 'CHAR-BITS-CLEAR?)
-  (fix:= 0 (fix:and (%char-bits char) bits)))
+  (fix:= 0 (fix:and (char-bits char) bits)))
 
 (define (set-char-bits bits char)
   (guarantee-limited-index-fixnum bits char-bits-limit 'SET-CHAR-BITS)
-  (guarantee-char char 'SET-CHAR-BITS)
-  (%make-char (%char-code char)
-	      (fix:or (%char-bits char) bits)))
+  (%make-char (char-code char)
+	      (fix:or (char-bits char) bits)))
 
 (define (clear-char-bits bits char)
   (guarantee-limited-index-fixnum bits char-bits-limit 'CLEAR-CHAR-BITS)
-  (guarantee-char char 'CLEAR-CHAR-BITS)
-  (%make-char (%char-code char)
-	      (fix:andc (%char-bits char) bits)))
+  (%make-char (char-code char)
+	      (fix:andc (char-bits char) bits)))
 
 (define (unicode-char? object)
   (and (char? object)
@@ -128,7 +116,6 @@ USA.
       (error:not-8-bit-char object)))
 
 (define (char-ascii? char)
-  (guarantee-char char 'CHAR-ASCII?)
   (let ((n (char->integer char)))
     (and (fix:< n 256)
 	 n)))
@@ -145,41 +132,18 @@ USA.
   (map char->ascii chars))
 
 (define (char=? x y)
-  ;; There's no %CHAR=? because the compiler recodes CHAR=? as EQ?.
-  (guarantee-char x 'CHAR=?)
-  (guarantee-char y 'CHAR=?)
   (fix:= (char->integer x) (char->integer y)))
 
 (define (char<? x y)
-  (guarantee-char x 'CHAR<?)
-  (guarantee-char y 'CHAR<?)
-  (%char<? x y))
-
-(define-integrable (%char<? x y)
   (fix:< (char->integer x) (char->integer y)))
 
 (define (char<=? x y)
-  (guarantee-char x 'CHAR<=?)
-  (guarantee-char y 'CHAR<=?)
-  (%char<=? x y))
-
-(define-integrable (%char<=? x y)
   (fix:<= (char->integer x) (char->integer y)))
 
 (define (char>? x y)
-  (guarantee-char x 'CHAR>?)
-  (guarantee-char y 'CHAR>?)
-  (%char>? x y))
-
-(define-integrable (%char>? x y)
   (fix:> (char->integer x) (char->integer y)))
 
 (define (char>=? x y)
-  (guarantee-char x 'CHAR>=?)
-  (guarantee-char y 'CHAR>=?)
-  (%char>=? x y))
-
-(define-integrable (%char>=? x y)
   (fix:>= (char->integer x) (char->integer y)))
 
 (define (char-ci=? x y)
@@ -201,39 +165,34 @@ USA.
   (char->integer (char-upcase char)))
 
 (define (char-downcase char)
-  (guarantee-char char 'CHAR-DOWNCASE)
   (%case-map-char char downcase-table))
 
 (define (char-upcase char)
-  (guarantee-char char 'CHAR-UPCASE)
   (%case-map-char char upcase-table))
 
 (define-integrable (%case-map-char char table)
-  (if (fix:< (%char-code char) #x100)
-      (%make-char (vector-8b-ref table (%char-code char))
-		  (%char-bits char))
+  (if (fix:< (char-code char) #x100)
+      (%make-char (bytevector-u8-ref table (char-code char))
+		  (char-bits char))
       char))
 
 (define downcase-table)
-(define identity-table)
 (define upcase-table)
 
 (define (initialize-case-conversions!)
-  (set! downcase-table (make-string #x100))
-  (set! identity-table (make-string #x100))
-  (set! upcase-table (make-string #x100))
+  (set! downcase-table (make-bytevector #x100))
+  (set! upcase-table (make-bytevector #x100))
   (do ((i 0 (fix:+ i 1)))
       ((fix:= i #x100))
-    (vector-8b-set! downcase-table i i)
-    (vector-8b-set! identity-table i i)
-    (vector-8b-set! upcase-table i i))
+    (bytevector-u8-set! downcase-table i i)
+    (bytevector-u8-set! upcase-table i i))
   (let ((case-range
 	 (lambda (uc-low uc-high lc-low)
 	   (do ((i uc-low (fix:+ i 1))
 		(j lc-low (fix:+ j 1)))
 	       ((fix:> i uc-high))
-	     (vector-8b-set! downcase-table i j)
-	     (vector-8b-set! upcase-table j i)))))
+	     (bytevector-u8-set! downcase-table i j)
+	     (bytevector-u8-set! upcase-table j i)))))
     (case-range 65 90 97)
     (case-range 192 214 224)
     (case-range 216 222 248)))
@@ -267,7 +226,6 @@ USA.
   (string-ref "0123456789abcdefghijklmnopqrstuvwxyz" digit))
 
 (define (char->digit char #!optional radix)
-  (guarantee-char char 'CHAR->DIGIT)
   (let ((code (char->integer char))
 	(radix
 	 (cond ((default-object? radix)

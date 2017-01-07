@@ -529,19 +529,12 @@ USA.
 
 (define (parse-atom-1 port db prefix quoting?)
   (let ((port* (open-output-string))
-	(table
+	(%canon
 	 (if (db-canonicalize-symbols? db)
-	     downcase-table
-	     identity-table))
+	     char-downcase
+	     (lambda (char) char)))
 	(atom-delimiters (db-atom-delimiters db))
 	(constituents (db-constituents db)))
-    (define (%canon char)
-      ;; Assumption: No character involved in I/O has bucky bits, and
-      ;; case conversion applies only to ISO-8859-1 characters.
-      (let ((integer (char->integer char)))
-	(if (fix:< integer #x100)
-	    (integer->char (vector-8b-ref table integer))
-	    char)))
     (define (%read)
       (if (pair? prefix)
 	  (let ((char (car prefix)))

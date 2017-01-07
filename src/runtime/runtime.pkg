@@ -1259,13 +1259,6 @@ USA.
 	  set-char-bits
 	  unicode-char?
 	  unicode-scalar-value?)
-  (export (runtime string)
-	  %char<?
-	  downcase-table
-	  upcase-table)
-  (export (runtime parser)
-	  downcase-table
-	  identity-table)
   (export (runtime unicode)
 	  legal-code-16?
 	  legal-code-32?)

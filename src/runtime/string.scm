@@ -67,22 +67,6 @@ USA.
 
 (define (string-ci-hash key #!optional modulus)
   (string-hash (string-downcase key) modulus))
-
-;;; Character optimizations
-
-(define-integrable (%%char-downcase char)
-  (integer->char (vector-8b-ref downcase-table (char->integer char))))
-
-(define-integrable (%%char-upcase char)
-  (integer->char (vector-8b-ref upcase-table (char->integer char))))
-
-(define-integrable (%char-ci=? c1 c2)
-  (fix:= (vector-8b-ref upcase-table (char->integer c1))
-	 (vector-8b-ref upcase-table (char->integer c2))))
-
-(define-integrable (%char-ci<? c1 c2)
-  (fix:< (vector-8b-ref upcase-table (char->integer c1))
-	 (vector-8b-ref upcase-table (char->integer c2))))
 
 ;;;; Basic Operations
 
@@ -697,7 +681,7 @@ USA.
     (let ((string* (make-string end)))
       (do ((i 0 (fix:+ i 1)))
 	  ((fix:= i end))
-	(string-set! string* i (%%char-upcase (string-ref string i))))
+	(string-set! string* i (char-upcase (string-ref string i))))
       string*)))
 
 (define (string-upcase! string)
@@ -711,7 +695,7 @@ USA.
 (define (%substring-upcase! string start end)
   (do ((i start (fix:+ i 1)))
       ((fix:= i end))
-    (string-set! string i (%%char-upcase (string-ref string i)))))
+    (string-set! string i (char-upcase (string-ref string i)))))
 
 (define (string-lower-case? string)
   (guarantee-string string 'STRING-LOWER-CASE?)
@@ -742,7 +726,7 @@ USA.
     (let ((string* (make-string end)))
       (do ((i 0 (fix:+ i 1)))
 	  ((fix:= i end))
-	(string-set! string* i (%%char-downcase (string-ref string i))))
+	(string-set! string* i (char-downcase (string-ref string i))))
       string*)))
 
 (define (string-downcase! string)
@@ -756,7 +740,7 @@ USA.
 (define (%substring-downcase! string start end)
   (do ((i start (fix:+ i 1)))
       ((fix:= i end))
-    (string-set! string i (%%char-downcase (string-ref string i)))))
+    (string-set! string i (char-downcase (string-ref string i)))))
 
 (define (string-capitalized? string)
   (guarantee-string string 'STRING-CAPITALIZED?)
@@ -922,8 +906,8 @@ USA.
 	      ((char=? (string-ref string1 index)
 		       (string-ref string2 index))
 	       (loop (fix:+ index 1)))
-	      ((%char<? (string-ref string1 index)
-			(string-ref string2 index))
+	      ((char<? (string-ref string1 index)
+		       (string-ref string2 index))
 	       (if<))
 	      (else
 	       (if>)))))))
@@ -943,11 +927,11 @@ USA.
 		       (if=)
 		       (if<))
 		   (if>)))
-	      ((%char-ci=? (string-ref string1 index)
-			   (string-ref string2 index))
+	      ((char-ci=? (string-ref string1 index)
+			  (string-ref string2 index))
 	       (loop (fix:+ index 1)))
-	      ((%char-ci<? (string-ref string1 index)
-			   (string-ref string2 index))
+	      ((char-ci<? (string-ref string1 index)
+			  (string-ref string2 index))
 	       (if<))
 	      (else
 	       (if>)))))))
@@ -1049,7 +1033,7 @@ USA.
     (and (fix:= end (string-length string2))
 	 (let loop ((i 0))
 	   (or (fix:= i end)
-	       (and (%char-ci=? (string-ref string1 i) (string-ref string2 i))
+	       (and (char-ci=? (string-ref string1 i) (string-ref string2 i))
 		    (loop (fix:+ i 1))))))))
 
 (define (substring=? string1 start1 end1 string2 start2 end2)
@@ -1075,7 +1059,7 @@ USA.
   (and (fix:= (fix:- end1 start1) (fix:- end2 start2))
        (let loop ((i1 start1) (i2 start2))
 	 (or (fix:= i1 end1)
-	     (and (%char-ci=? (string-ref string1 i1) (string-ref string2 i2))
+	     (and (char-ci=? (string-ref string1 i1) (string-ref string2 i2))
 		  (loop (fix:+ i1 1) (fix:+ i2 1)))))))
 
 (define (string<? string1 string2)
@@ -1089,7 +1073,7 @@ USA.
       (let loop ((i 0))
 	(if (fix:= i end)
 	    (fix:< end1 end2)
-	    (or (%char<? (string-ref string1 i) (string-ref string2 i))
+	    (or (char<? (string-ref string1 i) (string-ref string2 i))
 		(and (char=? (string-ref string1 i) (string-ref string2 i))
 		     (loop (fix:+ i 1)))))))))
 
@@ -1104,8 +1088,8 @@ USA.
       (let loop ((i 0))
 	(if (fix:= i end)
 	    (fix:< end1 end2)
-	    (or (%char-ci<? (string-ref string1 i) (string-ref string2 i))
-		(and (%char-ci=? (string-ref string1 i) (string-ref string2 i))
+	    (or (char-ci<? (string-ref string1 i) (string-ref string2 i))
+		(and (char-ci=? (string-ref string1 i) (string-ref string2 i))
 		     (loop (fix:+ i 1)))))))))
 
 (define (substring<? string1 start1 end1 string2 start2 end2)
@@ -1121,7 +1105,7 @@ USA.
       (let loop ((i1 start1) (i2 start2))
 	(if (fix:= i1 end)
 	    (fix:< len1 len2)
-	    (or (%char<? (string-ref string1 i1) (string-ref string2 i2))
+	    (or (char<? (string-ref string1 i1) (string-ref string2 i2))
 		(and (char=? (string-ref string1 i1) (string-ref string2 i2))
 		     (loop (fix:+ i1 1) (fix:+ i2 1)))))))))
 
@@ -1138,9 +1122,9 @@ USA.
       (let loop ((i1 start1) (i2 start2))
 	(if (fix:= i1 end)
 	    (fix:< len1 len2)
-	    (or (%char-ci<? (string-ref string1 i1) (string-ref string2 i2))
-		(and (%char-ci=? (string-ref string1 i1)
-				 (string-ref string2 i2))
+	    (or (char-ci<? (string-ref string1 i1) (string-ref string2 i2))
+		(and (char-ci=? (string-ref string1 i1)
+				(string-ref string2 i2))
 		     (loop (fix:+ i1 1) (fix:+ i2 1)))))))))
 
 (define-integrable (string>? string1 string2)
@@ -1196,8 +1180,8 @@ USA.
   (let ((end (fix:+ start1 (fix:min (fix:- end1 start1) (fix:- end2 start2)))))
     (let loop ((i1 start1) (i2 start2))
       (if (or (fix:= i1 end)
-	      (not (%char-ci=? (string-ref string1 i1)
-			       (string-ref string2 i2))))
+	      (not (char-ci=? (string-ref string1 i1)
+			      (string-ref string2 i2))))
 	  (fix:- i1 start1)
 	  (loop (fix:+ i1 1) (fix:+ i2 1))))))
 
@@ -1239,7 +1223,7 @@ USA.
     (if (fix:= end1 start)
 	0
 	(let loop ((i1 (fix:- end1 1)) (i2 (fix:- end2 1)))
-	  (if (%char-ci=? (string-ref string1 i1) (string-ref string2 i2))
+	  (if (char-ci=? (string-ref string1 i1) (string-ref string2 i2))
 	      (if (fix:= i1 start)
 		  (fix:- end1 i1)
 		  (loop (fix:- i1 1) (fix:- i2 1)))
@@ -1352,7 +1336,7 @@ USA.
 (define (%substring-find-next-char-ci string start end char)
   (let loop ((i start))
     (cond ((fix:= i end) #f)
-	  ((%char-ci=? (string-ref string i) char) i)
+	  ((char-ci=? (string-ref string i) char) i)
 	  (else (loop (fix:+ i 1))))))
 
 (define (string-find-previous-char string char)
@@ -1387,7 +1371,7 @@ USA.
   (if (fix:= start end)
       #f
       (let loop ((i (fix:- end 1)))
-	(cond ((%char-ci=? (string-ref string i) char) i)
+	(cond ((char-ci=? (string-ref string i) char) i)
 	      ((fix:= start i) #f)
 	      (else (loop (fix:- i 1)))))))
 

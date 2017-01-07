@@ -40,11 +40,6 @@ USA.
   (bytevector-u8-set! 3)
   (bytevector? 1))
 
-(add-boot-init!
- (lambda ()
-   (register-predicate! byte? 'byte '<= exact-nonnegative-integer?)
-   (register-predicate! bytevector? 'bytevector)))
-
 (define (make-bytevector k #!optional byte)
   (let ((bytevector (allocate-bytevector k)))
     (if (not (default-object? byte))

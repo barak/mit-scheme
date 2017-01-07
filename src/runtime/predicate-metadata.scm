@@ -210,6 +210,7 @@ USA.
  (lambda ()
    ;; R7RS
    (register-predicate! boolean? 'boolean)
+   (register-predicate! bytevector? 'bytevector)
    (register-predicate! char? 'char)
    (register-predicate! default-object? 'default-object)
    (register-predicate! eof-object? 'eof-object)
@@ -245,6 +246,7 @@ USA.
    (register-predicate! exact-positive-integer? 'exact-positive-integer
 			'<= exact-integer?)
    (register-predicate! exact-rational? 'exact-rational '<= rational?)
+   (register-predicate! byte? 'byte '<= exact-nonnegative-integer?)
 
    (register-predicate! fix:fixnum? 'fixnum '<= exact-integer?)
    (register-predicate! index-fixnum? 'index-fixnum '<= fix:fixnum?)
