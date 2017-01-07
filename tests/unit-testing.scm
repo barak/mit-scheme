@@ -146,7 +146,7 @@ USA.
 
 ;;;; Reporting
 
-(define show-passing-results? #f)
+(define show-passing-results? (make-settable-parameter #f))
 
 (define (report-result test-name elapsed-time sub-test-results port)
   (let ((n-sub-test-results (length sub-test-results))
@@ -171,7 +171,7 @@ USA.
 				       (cdr sub-test-result)
 				       port)))
 	    sub-test-results))
-	  (show-passing-results?
+	  ((show-passing-results?)
 	   (fresh-line port)
 	   (write-char #\; port)
 	   (write test-name port)
@@ -293,7 +293,7 @@ USA.
 				 properties)))
 	    condition-type:error
 	    (lambda (condition)
-	      (if (not throw-test-errors?)
+	      (if (not (throw-test-errors?))
 		  (k (apply make-failure
 			    'CONDITION condition
 			    properties)))))
@@ -312,11 +312,11 @@ USA.
 			     properties))))
 	 condition-type:error
 	 (lambda (condition)
-	   (if (not throw-test-errors?)
+	   (if (not (throw-test-errors?))
 	       (apply fail 'CONDITION condition properties))))
    thunk))
 
-(define throw-test-errors? #f)
+(define throw-test-errors? (make-settable-parameter #f))
 
 (define (bind-condition-handlers bindings thunk)
   (if (pair? bindings)
@@ -399,17 +399,45 @@ USA.
   (binary-assertion (lambda (actual-value expected-list)
 		      (and (member actual-value expected-list) #t))))
 
+(define-for-tests (assert-list= = value expected . properties)
+  (if (not (and (list? value)
+		(= (length value) (length expected))
+		(every = value expected)))
+      (apply fail
+	     'RESULT-OBJECT value
+	     'EXPECTATION-OBJECT expected
+	     'EQUALITY-PREDICATE =
+	     properties)))
+
+(define-for-tests (assert-lset= = value expected . properties)
+  (if (not (lset= = value expected))
+      (apply fail
+	     'RESULT-OBJECT value
+	     'EXPECTATION-OBJECT expected
+	     'EQUALITY-PREDICATE =
+	     properties)))
+
 (define-for-tests (assert-error thunk condition-types . properties)
   (call-with-current-continuation
    (lambda (k)
      (apply fail
-	    'RESULT-OBJECT 
+	    'RESULT-OBJECT
 	    (bind-condition-handler condition-types
 		(lambda (condition)
 		  condition		;ignore
 		  (k #f))
 	      thunk)
 	    properties))))
+
+(define-for-tests (error-assertion . condition-types)
+  (lambda (thunk . properties)
+    (apply assert-error thunk condition-types properties)))
+
+(define-for-tests assert-simple-error
+  (error-assertion condition-type:simple-error))
+
+(define-for-tests assert-wta-error
+  (error-assertion condition-type:wrong-type-argument))
 
 (define-for-tests keep-it-fast!?
   (let ((v (get-environment-variable "FAST")))

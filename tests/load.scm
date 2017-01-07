@@ -25,7 +25,7 @@ USA.
 |#
 
 (let ((environment (make-top-level-environment)))
-  (environment-link-name environment '(runtime mit-macros) 'PARSE-DEFINE-FORM)
+  (environment-link-name environment '(runtime mit-macros) 'parse-define-form)
   (load (merge-pathnames "unit-testing" (current-load-pathname))
 	environment)
   (for-each (lambda (name)
@@ -33,4 +33,7 @@ USA.
 		  (unbind-variable system-global-environment name))
 	      (link-variables system-global-environment name
 			      environment name))
-	    '(RUN-UNIT-TEST RUN-UNIT-TESTS THROW-TEST-ERRORS?)))
+	    '(run-unit-test
+	      run-unit-tests
+	      show-passing-results?
+	      throw-test-errors?)))
