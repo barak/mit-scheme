@@ -42,6 +42,7 @@ USA.
     "microcode/test-flonum-casts.com"
     "microcode/test-lookup"
     "runtime/test-arith"
+    "runtime/test-bytevector"
     ("runtime/test-char-set" (runtime character-set))
     ("runtime/test-compound-predicate" (runtime compound-predicate))
     "runtime/test-dragon4"
