@@ -85,6 +85,15 @@ USA.
    from
    (if (default-object? start) 0 start)
    (if (default-object? end) (bytevector-length from) end)))
+
+(define (bytevector=? b1 b2)
+  (let ((length (bytevector-length b1)))
+    (and (fix:= length (bytevector-length b2))
+	 (let loop ((index 0))
+	   (or (not (fix:< index length))
+	       (and (fix:= (bytevector-u8-ref b1 index)
+			   (bytevector-u8-ref b2 index))
+		    (loop (fix:+ index 1))))))))
 
 (define (string->utf8 string #!optional start end)
   (guarantee string? string 'string->utf8)

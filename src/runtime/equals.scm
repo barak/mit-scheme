@@ -59,6 +59,8 @@ USA.
 			      (and (equal? (vector-ref x index)
 					   (vector-ref y index))
 				   (loop (fix:+ index 1))))))))
+		((bytevector? y)
+		 (bytevector=? x y))
 		((string? y)
 		 (string=? x y))
 		((number? y)

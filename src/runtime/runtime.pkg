@@ -1128,6 +1128,7 @@ USA.
 	  bytevector-length
 	  bytevector-u8-ref
 	  bytevector-u8-set!
+	  bytevector=?
 	  bytevector?
 	  make-bytevector
 	  string->utf8
