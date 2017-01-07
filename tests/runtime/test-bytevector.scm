@@ -142,7 +142,17 @@ USA.
 	     (bytevector-copy! (make-bytevector n) 0 v n (+ n 1))))
 	  (assert-range-error
 	   (lambda ()
-	     (bytevector-copy! (make-bytevector n) 0 v -1 n))))))))
+	     (bytevector-copy! (make-bytevector n) 0 v -1 n))))))
+    ;; shift left
+    (let* ((bytes (reverse (iota 16)))
+	   (v (apply bytevector bytes)))
+      (bytevector-copy! v 3 v 5 9)
+      (assert-equal v (bytevector 15 14 13 10 9 8 7 8 7 6 5 4 3 2 1 0)))
+    ;; shift right
+    (let* ((bytes (reverse (iota 16)))
+	   (v (apply bytevector bytes)))
+      (bytevector-copy! v 5 v 3 7)
+      (assert-equal v (bytevector 15 14 13 12 11 12 11 10 9 6 5 4 3 2 1 0)))))
 
 (define (test-bytevector-properties v bytes)
   (assert-true (bytevector? v))
