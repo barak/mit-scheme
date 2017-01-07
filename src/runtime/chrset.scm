@@ -71,18 +71,18 @@ USA.
 (define-integrable %low-limit #x800)
 
 (define (%make-low #!optional fill-value)
-  (make-vector-8b %low-length fill-value))
+  (make-bytevector %low-length fill-value))
 
 (define (%low-ref low scalar-value)
-  (not (fix:= (fix:and (vector-8b-ref low (fix:lsh scalar-value -3))
+  (not (fix:= (fix:and (bytevector-u8-ref low (fix:lsh scalar-value -3))
 		       (fix:lsh 1 (fix:and scalar-value 7)))
 	      0)))
 
 (define (%low-set! low scalar-value)
-  (vector-8b-set! low
-		  (fix:lsh scalar-value -3)
-		  (fix:or (vector-8b-ref low (fix:lsh scalar-value -3))
-			  (fix:lsh 1 (fix:and scalar-value 7)))))
+  (bytevector-u8-set! low
+		      (fix:lsh scalar-value -3)
+		      (fix:or (bytevector-u8-ref low (fix:lsh scalar-value -3))
+			      (fix:lsh 1 (fix:and scalar-value 7)))))
 
 (define %null-char-set
   (%make-char-set (%make-low 0) '#()))
@@ -93,7 +93,7 @@ USA.
        (let ((low (%char-set-low char-set)))
 	 (let loop ((i #x20))
 	   (or (fix:= i %low-length)
-	       (and (fix:= (vector-8b-ref low i) 0)
+	       (and (fix:= (bytevector-u8-ref low i) 0)
 		    (loop (fix:+ i 1))))))))
 
 (define-guarantee 8-bit-char-set "an 8-bit char-set")
@@ -307,7 +307,7 @@ USA.
 (define (%=?-low l1 l2)
   (let loop ((i 0))
     (if (fix:< i %low-length)
-	(and (fix:= (vector-8b-ref l1 i) (vector-8b-ref l2 i))
+	(and (fix:= (bytevector-u8-ref l1 i) (bytevector-u8-ref l2 i))
 	     (loop (fix:+ i 1)))
 	#t)))
 
@@ -334,9 +334,9 @@ USA.
   (let ((low (%make-low)))
     (do ((i 0 (fix:+ i 1)))
 	((fix:= i %low-length))
-      (vector-8b-set! low i
-		      (fix:and (fix:not (vector-8b-ref low1 i))
-			       #xff)))
+      (bytevector-u8-set! low i
+			  (fix:and (fix:not (bytevector-u8-ref low1 i))
+				   #xff)))
     low))
 
 (define (%high-invert high1)
@@ -407,9 +407,9 @@ USA.
   (let ((low (%make-low)))
     (do ((i 0 (fix:+ i 1)))
 	((fix:= i %low-length))
-      (vector-8b-set! low i
-		      (operation (vector-8b-ref low1 i)
-				 (vector-8b-ref low2 i))))
+      (bytevector-u8-set! low i
+			  (operation (bytevector-u8-ref low1 i)
+				     (bytevector-u8-ref low2 i))))
     low))
 
 (define (%high-binary operation high1 high2)
