@@ -1397,7 +1397,7 @@ USA.
      (set! %set-equality-predicate-hasher! (table 'put!)))
    (set-equality-predicate-hasher! eq? hash-by-identity)
    (set-equality-predicate-hasher! eqv? hash-by-eqv)
-   (set-equality-predicate-hasher! equal? hash)))
+   (set-equality-predicate-hasher! equal? hash-by-equal)))
 
 (define (equality-predicate-hasher equality-predicate)
   (let ((hasher (maybe-get-equality-predicate-hasher equality-predicate #f)))
