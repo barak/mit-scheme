@@ -73,10 +73,10 @@ USA.
 		   (named)
 		   (constructor %make-group (buffer)))
   ;; The microcode file "edwin.h" depends on this structure being a
-  ;; named vector, and knows the indexes of the fields TEXT-DESCRIPTOR,
+  ;; named vector, and knows the indexes of the fields TEXT,
   ;; GAP-START, GAP-LENGTH, GAP-END, START-MARK, END-MARK, and
   ;; MODIFIED?.
-  text-descriptor
+  text
   (gap-start 0)
   (gap-length 0)
   (gap-end 0)
@@ -96,8 +96,7 @@ USA.
   buffer
   (shrink-length 0)
   (text-properties #f)
-  (%hash-number #f)
-  %text)
+  (%hash-number #f))
 
 (define-integrable group-point group-%point)
 
@@ -112,15 +111,6 @@ USA.
       (set-group-display-end! group end))
     (set-group-%point! group (make-permanent-mark group 0 #t))
     group))
-
-(define (set-group-text! group text)
-  (without-interrupts
-   (lambda ()
-     (set-group-%text! group text)
-     (set-group-text-descriptor! group (external-string-descriptor text)))))
-
-(define-integrable (group-text group)
-  (group-%text group))
 
 (define (group-length group)
   (fix:- (xstring-length (group-text group)) (group-gap-length group)))

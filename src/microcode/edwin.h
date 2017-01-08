@@ -30,7 +30,7 @@ USA.
 #define GROUP_P VECTOR_P
 
 #define GROUP_TEXT(group, len_r)					\
-  (lookup_external_string ((VECTOR_REF ((group), 1)), (len_r)))
+  (string_to_char_pointer ((VECTOR_REF ((group), 1)), (len_r)))
 
 #define GROUP_TEXT_LOC(group, offset) ((GROUP_TEXT ((group), 0)) + (offset))
 #define GROUP_GAP_START(group) (FIXNUM_TO_ULONG (VECTOR_REF ((group), 2)))

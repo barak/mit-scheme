@@ -295,6 +295,7 @@ extern SCHEME_OBJECT memory_to_string (unsigned long, const void *);
 extern SCHEME_OBJECT memory_to_string_no_gc (unsigned long, const void *);
 extern SCHEME_OBJECT char_pointer_to_string (const char *);
 extern SCHEME_OBJECT char_pointer_to_string_no_gc (const char *);
+extern unsigned char * string_to_char_pointer (SCHEME_OBJECT, unsigned long *);
 extern SCHEME_OBJECT allocate_bit_string (unsigned long);
 extern const char * arg_symbol (int);
 extern const char * arg_interned_symbol (int);

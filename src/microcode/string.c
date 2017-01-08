@@ -84,6 +84,14 @@ char_pointer_to_string_no_gc (const char * cp)
       ;
   return (memory_to_string_no_gc (((scan - 1) - cp), cp));
 }
+
+unsigned char *
+string_to_char_pointer (SCHEME_OBJECT string, unsigned long * lp)
+{
+  if (lp != 0)
+    (*lp) = (STRING_LENGTH (string));
+  return (STRING_LOC (string, 0));
+}
 
 /* Currently the strings used in symbols have type codes in the length
    field.  They should be changed to have just longwords there.  */

@@ -63,20 +63,8 @@ USA.
   ;; Too much of Edwin relies on fixnum-specific arithmetic for this
   ;; to be safe.  Unfortunately, this means that Edwin can't edit
   ;; files >32MB.
-  (let ((signal-failure
-	 (lambda ()
-	   (error:allocation-failure (chars->words n-chars)
-				     'ALLOCATE-BUFFER-STORAGE))))
-    (if (not (fix:fixnum? n-chars))
-	(signal-failure)
-	;; The ALLOCATE-EXTERNAL-STRING signals a bad-range-argument
-	;; if the allocation with `malloc' (or `mmap') fails.
-	(bind-condition-handler (list condition-type:bad-range-argument)
-	    (lambda (condition)
-	      condition
-	      (signal-failure))
-	  (lambda ()
-	    (allocate-external-string n-chars))))))
+  (guarantee-index-fixnum n-chars 'ALLOCATE-BUFFER-STORAGE)
+  (make-string n-chars))
 
 (define-syntax chars-to-words-shift
   (sc-macro-transformer
@@ -134,9 +122,6 @@ USA.
 			  target start-target)
   (cond ((not (fix:< start-source end-source))
 	 unspecific)
-	((or (external-string? source) (external-string? target))
-	 (xsubstring-move! source start-source end-source
-			   target start-target))
 	((not (eq? source target))
 	 (if (fix:< (fix:- end-source start-source) 32)
 	     (do ((scan-source start-source (fix:+ scan-source 1))
