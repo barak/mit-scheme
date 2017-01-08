@@ -376,8 +376,7 @@ USA.
 	 ("prop1d" . (RUNTIME 1D-PROPERTY))
 	 ("events" . (RUNTIME EVENT-DISTRIBUTOR))
 	 ("gdatab" . (RUNTIME GLOBAL-DATABASE))
-	 ("gcfinal" . (RUNTIME GC-FINALIZER))
-	 ("string" . (RUNTIME STRING))))
+	 ("gcfinal" . (RUNTIME GC-FINALIZER))))
       (load-files
        (lambda (files)
 	 (do ((files files (cdr files)))
@@ -401,7 +400,6 @@ USA.
   (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-UNPARSER! #t)
   (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-UNPARSER! #t)
   (package-initialize '(RUNTIME GC-FINALIZER) #f #t)
-  (package-initialize '(RUNTIME STRING) #f #t)		     ;First GC-finalizer
 
   (set! boot-defs
 	(package/environment (name->package '(RUNTIME BOOT-DEFINITIONS))))

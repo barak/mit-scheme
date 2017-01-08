@@ -426,7 +426,7 @@ USA.
   (call-with-binary-input-file pathname
     (lambda (port)
       (let ((n-bytes ((port/operation port 'LENGTH) port)))
-	(let ((xstring (allocate-external-string n-bytes)))
+	(let ((xstring (make-string n-bytes)))
 	  (let loop ((start 0))
 	    (if (< start n-bytes)
 		(let ((n-read (read-substring! xstring 0 n-bytes port)))
@@ -443,7 +443,7 @@ USA.
       value)))
 
 (define (open-xstring-input-port xstring position)
-  (if (not (<= 0 position (external-string-length xstring)))
+  (if (not (<= 0 position (string-length xstring)))
       (error:bad-range-argument position 'OPEN-XSTRING-INPUT-PORT))
   (let ((state (make-istate xstring position position position)))
     (read-xstring-buffer state)
@@ -468,7 +468,7 @@ USA.
 (define (read-xstring-buffer state)
   (let ((xstring (istate-xstring state))
 	(start (istate-position state)))
-    (let ((xend (external-string-length xstring)))
+    (let ((xend (string-length xstring)))
       (and (< start xend)
 	   (let* ((buffer (istate-buffer state))
 		  (end (min (+ start (string-length buffer)) xend)))
@@ -563,7 +563,7 @@ USA.
       ,(lambda (port)
 	 (let ((state (port/state port)))
 	   (>= (istate-position state)
-	       (external-string-length (istate-xstring state))))))
+	       (string-length (istate-xstring state))))))
      (CLOSE
       ,(lambda (port)
 	 (let ((state (port/state port)))

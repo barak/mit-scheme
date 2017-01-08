@@ -184,9 +184,7 @@ USA.
 	 (lambda ()
 	   ((ucode-primitive channel-read 4)
 	    (channel-descriptor channel)
-	    (if (external-string? buffer)
-		(external-string-descriptor buffer)
-		buffer)
+	    buffer
 	    start
 	    end))))
     (declare (integrate-operator do-read))
@@ -214,9 +212,7 @@ USA.
 	 (lambda ()
 	   ((ucode-primitive channel-write 4)
 	    (channel-descriptor channel)
-	    (if (external-string? buffer)
-		(external-string-descriptor buffer)
-		buffer)
+	    buffer
 	    start
 	    end))))
     (declare (integrate-operator do-write))

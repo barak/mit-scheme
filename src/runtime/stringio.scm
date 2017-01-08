@@ -51,12 +51,6 @@ USA.
 				 'OPEN-INPUT-STRING)
 	   (make-port wide-input-type
 		      (make-internal-input-state string start end))))
-	((external-string? string)
-	 (receive (start end)
-	     (check-index-limits start end (xstring-length string)
-				 'OPEN-INPUT-STRING)
-	   (make-port external-input-type
-		      (make-external-input-state string start end))))
 	(else
 	 (error:not-string string 'OPEN-INPUT-STRING))))
 
@@ -173,55 +167,6 @@ USA.
 	  (error "Unread char incorrect:" char))
       (set-iistate-next! ss prev))))
 
-(define (make-external-input-type)
-  (make-port-type
-   `((CHAR-READY? ,string-in/char-ready?)
-     (EOF? ,external-in/eof?)
-     (PEEK-CHAR ,external-in/peek-char)
-     (READ-CHAR ,external-in/read-char)
-     (READ-SUBSTRING ,external-in/read-substring)
-     (UNREAD-CHAR ,external-in/unread-char)
-     (WRITE-SELF ,string-in/write-self))
-   #f))
-
-(define (make-external-input-state string start end)
-  (make-xistate (external-string-source string start end) #f #f))
-
-(define-structure xistate
-  (source #f read-only #t)
-  unread)
-
-(define (external-in/eof? port)
-  (let ((xs (port/%state port)))
-    (and (not (xistate-unread xs))
-	 (not ((xistate-source xs))))))
-
-(define (external-in/peek-char port)
-  (let ((xs (port/%state port)))
-    (or (xistate-unread xs)
-	(let ((char ((xistate-source xs))))
-	  (set-xistate-unread! xs char)
-	  char))))
-
-(define (external-in/read-char port)
-  (let ((xs (port/%state port)))
-    (let ((unread (xistate-unread xs)))
-      (if unread
-	  (begin
-	    (set-xistate-unread! xs #f)
-	    unread)
-	  ((xistate-source xs))))))
-
-(define (external-in/unread-char port char)
-  (let ((xs (port/%state port)))
-    (if (xistate-unread xs)
-	(error "Can't unread two chars."))
-    (set-xistate-unread! xs char)))
-
-(define (external-in/read-substring port string start end)
-  (source->sink! (xistate-source (port/%state port))
-		 (string-sink string start end)))
-
 (define (move-chars! string start end string* start* end*)
   (let ((n (min (- end start) (- end* start*))))
     (let ((end (+ start n))
@@ -245,13 +190,11 @@ USA.
 (define (string-source string start end)
   (cond ((string? string) (narrow-string-source string start end))
 	((wide-string? string) (wide-string-source string start end))
-	((external-string? string) (external-string-source string start end))
 	(else (error:not-string string #f))))
 
 (define (string-sink string start end)
   (cond ((string? string) (narrow-string-sink string start end))
 	((wide-string? string) (wide-string-sink string start end))
-	((external-string? string) (external-string-sink string start end))
 	(else (error:not-string string #f))))
 
 (define (narrow-string-source string start end)
@@ -288,46 +231,6 @@ USA.
 	   (wide-string-set! string start char)
 	   (set! start (+ start 1))
 	   #t))))
-
-(define (external-string-source string start end)
-  (let ((buffer (make-string #x1000))
-	(bi #x1000)
-	(next start))
-    (lambda ()
-      (and (< next end)
-	   (begin
-	     (if (fix:>= bi #x1000)
-		 (begin
-		   (xsubstring-move! string next (min (+ next #x1000) end)
-				     buffer 0)
-		   (set! bi 0)))
-	     (let ((char (string-ref buffer bi)))
-	       (set! bi (fix:+ bi 1))
-	       (set! next (+ next 1))
-	       char))))))
-
-(define (external-string-sink string start end)
-  (let ((buffer (make-string #x1000))
-	(bi 0))
-    (lambda (char)
-      (if char
-	  (begin
-	    (if (not (fix:< (char->integer char) #x100))
-		(error:not-8-bit-char char))
-	    (and (< start end)
-		 (begin
-		   (string-set! buffer bi char)
-		   (set! bi (fix:+ bi 1))
-		   (set! start (+ start 1))
-		   (if (fix:= bi #x1000)
-		       (begin
-			 (xsubstring-move! buffer 0 bi string (- start bi))
-			 (set! bi 0)))
-		   #t)))
-	  (begin
-	    (xsubstring-move! buffer 0 bi string (- start bi))
-	    (set! bi 0)
-	    #f)))))
 
 ;;;; Input as byte vector
 
@@ -620,7 +523,6 @@ USA.
 
 (define narrow-input-type)
 (define wide-input-type)
-(define external-input-type)
 (define octets-input-type)
 (define narrow-output-type)
 (define wide-output-type)
@@ -630,7 +532,6 @@ USA.
 (define (initialize-package!)
   (set! narrow-input-type (make-narrow-input-type))
   (set! wide-input-type (make-wide-input-type))
-  (set! external-input-type (make-external-input-type))
   (set! octets-input-type (make-octets-input-type))
   (set! narrow-output-type (make-narrow-output-type))
   (set! wide-output-type (make-wide-output-type))

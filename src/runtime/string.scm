@@ -1642,103 +1642,45 @@ USA.
 	    (outer k (fix:+ q 1)))))
     pi))
 
-;;;; External Strings
-
-(define external-strings)
-(define (initialize-package!)
-  (set! external-strings
-	(make-gc-finalizer (ucode-primitive deallocate-external-string)
-			   external-string?
-			   external-string-descriptor
-			   set-external-string-descriptor!))
-  unspecific)
-
-(define-structure external-string
-  descriptor
-  (length #f read-only #t))
-
-(define (allocate-external-string n-bytes)
-  (without-interruption
-   (lambda ()
-     (add-to-gc-finalizer!
-      external-strings
-      (make-external-string
-       ((ucode-primitive allocate-external-string) n-bytes)
-       n-bytes)))))
-
-(define-integrable (external-string-ref string index)
-  (ascii->char
-   (external-string-byte-ref string index)))
-
-(define-integrable (external-string-byte-ref string index)
-  ((ucode-primitive read-byte-from-memory)
-   (+ (external-string-descriptor string) index)))
-
-(define-integrable (external-string-set! string index char)
-  (external-string-byte-set! string index (char->ascii char)))
-
-(define-integrable (external-string-byte-set! string index byte)
-  ((ucode-primitive write-byte-to-memory)
-   byte
-   (+ (external-string-descriptor string) index)))
-
-(define-integrable (external-substring-fill! string start end char)
-  ((ucode-primitive VECTOR-8B-FILL!) (external-string-descriptor string)
-				     start
-				     end
-				     (char->ascii char)))
-
 (define (xstring? object)
   (or (string? object)
-      (wide-string? object)
-      (external-string? object)))
+      (wide-string? object)))
 
 (define (xstring-length string)
   (cond ((string? string) (string-length string))
 	((wide-string? string) (wide-string-length string))
-	((external-string? string) (external-string-length string))
 	(else (error:not-xstring string 'XSTRING-LENGTH))))
 
 (define (xstring-ref string index)
   (cond ((string? string) (string-ref string index))
 	((wide-string? string) (wide-string-ref string index))
-	((external-string? string) (external-string-ref string index))
 	(else (error:not-xstring string 'XSTRING-REF))))
 
 (define (xstring-byte-ref string index)
   (cond ((string? string) (vector-8b-ref string index))
 	((wide-string? string) (wide-string-ref string index))
-	((external-string? string) (external-string-byte-ref string index))
 	(else (error:not-xstring string 'XSTRING-BYTE-REF))))
 
 (define (xstring-set! string index char)
   (cond ((string? string) (string-set! string index char))
 	((wide-string? string) (wide-string-set! string index char))
-	((external-string? string) (external-string-set! string index char))
 	(else (error:not-xstring string 'XSTRING-SET!))))
 
 (define (xstring-byte-set! string index byte)
   (cond ((string? string) (vector-8b-set! string index byte))
 	((wide-string? string) (wide-string-set! string index byte))
-	((external-string? string)
-	 (external-string-byte-set! string index byte))
 	(else (error:not-xstring string 'XSTRING-BYTE-SET!))))
 
 (define (xstring-move! xstring1 xstring2 start2)
   (xsubstring-move! xstring1 0 (xstring-length xstring1) xstring2 start2))
 
 (define (xsubstring-move! xstring1 start1 end1 xstring2 start2)
-  (let ((deref
-	 (lambda (xstring)
-	   (if (external-string? xstring)
-	       (external-string-descriptor xstring)
-	       xstring))))
-    (cond ((or (not (eq? xstring2 xstring1)) (< start2 start1))
-	   (substring-move-left! (deref xstring1) start1 end1
-				 (deref xstring2) start2))
-	  ((> start2 start1)
-	   (substring-move-right! (deref xstring1) start1 end1
-				  (deref xstring2) start2)))))
+  (cond ((or (not (eq? xstring2 xstring1)) (< start2 start1))
+	 (substring-move-left! xstring1 start1 end1
+			       xstring2 start2))
+	((> start2 start1)
+	 (substring-move-right! xstring1 start1 end1
+				xstring2 start2))))
 
 (define (xsubstring xstring start end)
   (guarantee-xsubstring xstring start end 'XSUBSTRING)
@@ -1749,19 +1691,12 @@ USA.
 (define (xstring-fill! xstring char)
   (cond ((string? xstring)
 	 (string-fill! xstring char))
-	((external-string? xstring)
-	 (external-substring-fill! xstring
-				   0
-				   (external-string-length xstring)
-				   char))
 	(else
 	 (error:not-xstring xstring 'XSTRING-FILL!))))
 
 (define (xsubstring-fill! xstring start end char)
   (cond ((string? xstring)
 	 (substring-fill! xstring start end char))
-	((external-string? xstring)
-	 (external-substring-fill! xstring start end char))
 	(else
 	 (error:not-xstring xstring 'XSTRING-FILL!))))
 
@@ -1769,9 +1704,6 @@ USA.
   (cond ((string? xstring)
 	 (guarantee-substring xstring start end caller)
 	 (finder xstring start end datum))
-	((external-string? xstring)
-	 (guarantee-xsubstring xstring start end caller)
-	 (finder (external-string-descriptor xstring) start end datum))
 	(else
 	 (error:not-xstring xstring caller))))
 

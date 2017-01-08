@@ -955,7 +955,6 @@ USA.
 	  (vector-8b-length string-length)
 	  (vector-8b-maximum-length string-maximum-length)
 	  (vector-8b? string?)
-	  allocate-external-string
 	  ascii-string-copy
 	  burst-string
 	  camel-case-string->lisp
@@ -963,9 +962,6 @@ USA.
 	  decorated-string-append
 	  error:not-string
 	  error:not-xstring
-	  external-string-descriptor
-	  external-string-length
-	  external-string?
 	  guarantee-string
 	  guarantee-string-index
 	  guarantee-substring
