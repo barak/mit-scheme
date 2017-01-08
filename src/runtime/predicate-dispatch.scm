@@ -108,7 +108,7 @@ USA.
 
 (define (predicate-dispatcher-rules dispatch)
   (map list-copy
-       ((get-handler-set dispatch 'predicate-dispatcher-rules) 'get-rules)))
+       (((get-handler-set dispatch 'predicate-dispatcher-rules) 'get-rules))))
 
 (define (get-handler-set dispatch caller)
   (metadata-handler-set (get-metadata dispatch caller)))
@@ -119,11 +119,12 @@ USA.
 		       'define-predicate-dispatch-handler)
     (guarantee-procedure-of-arity handler (metadata-arity metadata)
 				  'define-predicate-dispatch-handler)
-    ((metadata-handler-set metadata) 'set-handler! predicates handler)))
+    (((metadata-handler-set metadata) 'set-handler!) predicates handler)))
 
 (define (define-predicate-dispatch-default-handler dispatch handler)
-  ((get-handler-set dispatch 'define-predicate-dispatch-default-handler)
-   'set-default-handler! handler))
+  (((get-handler-set dispatch 'define-predicate-dispatch-default-handler)
+    'set-default-handler!)
+   handler))
 
 ;;;; Handler set implementations
 
@@ -252,7 +253,7 @@ USA.
         (else (delegate operator))))))
 
 (define (cached-most-specific-handler-set)
-  (make-cached-handler-set (most-specific-handler-set) object->tag))
+  (cached-handler-set (most-specific-handler-set) object->tag))
 
 (define (cached-chaining-handler-set)
-  (make-cached-handler-set (chaining-handler-set) object->tag))
+  (cached-handler-set (chaining-handler-set) object->tag))
