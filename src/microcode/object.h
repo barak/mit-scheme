@@ -176,7 +176,7 @@ extern SCHEME_OBJECT * memory_base;
 #define COMPLEX_P(object) ((OBJECT_TYPE (object)) == TC_COMPLEX)
 #define CHARACTER_P(object) ((OBJECT_TYPE (object)) == TC_CHARACTER)
 #define BYTEVECTOR_P(object) ((OBJECT_TYPE (object)) == TC_BYTEVECTOR)
-#define STRING_P(object) ((OBJECT_TYPE (object)) == TC_CHARACTER_STRING)
+#define LEGACY_STRING_P(object) ((OBJECT_TYPE (object)) == TC_CHARACTER_STRING)
 #define BIT_STRING_P(object) ((OBJECT_TYPE (object)) == TC_BIT_STRING)
 #define CELL_P(object) ((OBJECT_TYPE (object)) == TC_CELL)
 #define PAIR_P(object) ((OBJECT_TYPE (object)) == TC_LIST)
@@ -192,6 +192,9 @@ extern SCHEME_OBJECT * memory_base;
 #define BROKEN_HEART_P(object) ((OBJECT_TYPE (object)) == TC_BROKEN_HEART)
 #define RETURN_CODE_P(object) ((OBJECT_TYPE (object)) == TC_RETURN_CODE)
 #define EPHEMERON_P(object) ((OBJECT_TYPE (object)) == TC_EPHEMERON)
+
+#define STRING_P(object)                                                \
+  ((BYTEVECTOR_P (object)) || (LEGACY_STRING_P (object)))
 
 #define NON_MARKED_VECTOR_P(object)					\
   ((OBJECT_TYPE (object)) == TC_NON_MARKED_VECTOR)

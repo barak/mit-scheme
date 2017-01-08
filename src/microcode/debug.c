@@ -380,6 +380,7 @@ do_printing (outf_channel stream, SCHEME_OBJECT Expr, bool Detailed)
       goto SPrint;
 
     case TC_CHARACTER_STRING:
+    case TC_BYTEVECTOR:
       print_string (stream, Expr);
       return;
 
