@@ -404,7 +404,6 @@ USA.
   (%entity-extra/apply-hook? (%entity-extra object)))
 
 (define (%entity-extra/apply-hook? extra)
-  ;; The wabbit cares about this one.
   (and (object-type? (ucode-type hunk3) extra)
        (eq? (system-hunk3-cxr0 extra) apply-hook-tag)))
 

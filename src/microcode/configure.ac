@@ -276,10 +276,6 @@ CCLD=${CC}
 
 MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
 
-if test x${mit_scheme_native_code} = xhppa; then
-   GC_HEAD_FILES="${GC_HEAD_FILES} hppacach.h"
-fi
-
 AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
 EXE_NAME=mit-scheme-${mit_scheme_native_code}
 

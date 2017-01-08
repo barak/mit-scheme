@@ -91,15 +91,9 @@ These are miscellaneous extras:
 
 * "6001" is extra code used here at MIT for teaching 6.001, our
   introductory computer-science course based on "Structure and
-  Interpretation of Computer Programs".  "sicp" contains an older
-  version of this code that is no longer in use (and probably no
-  longer works).
+  Interpretation of Computer Programs".
 
 * "etc" contains miscellaneous files for building the program.
-
-* "rcs" is a parser for RCS files.  It also contains a program for
-  generating merged log files, in RCS or ChangeLog format, for
-  directory trees under RCS or CVS control.
 
 * "ssp" is an implementation of "Scheme Server Pages" that supports
   server-side web programming.  It works in conjunction with Apache
@@ -109,17 +103,6 @@ These are miscellaneous extras:
   experimental electronics circuit course during spring term 2004.
   This language is no longer in active use and will not be supported.
   But it is a good example of "ssp" usage.
-
-These directories are no longer actively in use and the code they
-contain may not work:
-
-* "pcsample" contains a profiling extension.
-
-* "swat" contains an extension that interfaces MIT/GNU Scheme to the
-  Tk graphical toolkit.
-
-* "wabbit" contains program for finding all of the objects that
-  contain pointers to a given object.
 
 Building from source on unix systems
 ====================================

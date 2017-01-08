@@ -20,23 +20,8 @@ AC_MSG_CHECKING([for native-code support])
 case ${_mit_scheme_native_code_spec} in
 yes|YES|y|Y)
     case ${_mit_scheme_native_code_host_cpu} in
-    alpha*)
-	mit_scheme_native_code=alpha
-	;;
-    hppa*)
-	mit_scheme_native_code=hppa
-	;;
     i386)
 	mit_scheme_native_code=i386
-	;;
-    m68k|m680?0)
-	mit_scheme_native_code=mc68k
-	;;
-    mips*)
-	mit_scheme_native_code=mips
-	;;
-    vax)
-	mit_scheme_native_code=vax
 	;;
     x86_64)
 	mit_scheme_native_code=x86-64

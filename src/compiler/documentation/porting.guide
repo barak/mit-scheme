@@ -150,7 +150,7 @@ to this document.
 
 The package structure of the compiler reflects the pass structure and
 is specified in compiler/machines/port/comp.pkg, where port is the
-name of a machine (bobcat, vax, spectrum, mips, i386, alpha, etc.).
+name of a machine (i386, x86-64, C, svm, etc.).
 The major packages are:
 
 (COMPILER):

@@ -56,11 +56,3 @@ distclean | maintainer-clean)
     maybe_rm machines/svm/svm1-opcodes.scm
     ;;
 esac
-
-case ${1} in
-maintainer-clean)
-    for N in 1 2 3; do
-	maybe_unlink machines/vax/dinstr${N}.scm instr${N}.scm
-    done
-    ;;
-esac

@@ -105,12 +105,6 @@ USA.
 (define-load-option '*PARSER
   (guarded-system-loader '(runtime *parser) "star-parser"))
 
-(define-load-option 'PC-SAMPLE
-  (guarded-system-loader '(pc-sample) "pcsample"))
-
-(define-load-option 'RCS
-  (guarded-system-loader '(rcs) "rcs"))
-
 (define-load-option 'SF
   (guarded-system-loader '(scode-optimizer) "sf"))
 
@@ -122,9 +116,6 @@ USA.
 
 (define-load-option 'STUDENT
   (guarded-system-loader '(student) "6001"))
-
-(define-load-option 'SWAT
-  (guarded-system-loader '(swat) "swat"))
 
 (define-load-option 'WIN32
   (guarded-system-loader '(win32) "win32"))

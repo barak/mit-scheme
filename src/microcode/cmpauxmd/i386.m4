@@ -23,7 +23,7 @@
 ### 02110-1301, USA.
 
 ### Intel IA-32 assembly language part of the compiled code interface.
-### See cmpint.txt, cmpint.c, cmpint-mc68k.h, and cmpgc.h for more
+### See cmpint.txt, cmpint.c, cmpintmd/i386*, and cmpgc.h for more
 ### documentation.
 ###
 ### This m4 source expands into either Unix (gas) source or PC

@@ -110,15 +110,8 @@ USA.
 #define CC_BKPT_PROCEDURE		0x3F /* Procedure to invoke when
 						compiled code hits a
 						breakpoint.  */
-/* #F or a vector of 4 elements:
-   - A boolean flag
-   - A vector of objects to find
-   - A vector to fill with references
-   - A boolean flag = do you want a vector of all obj heads returned
-     in this slot. If so, slot 0 will be a boolean flag indicating if
-     there may be more.  */
 
-#define GC_WABBIT_DESCRIPTOR		0x40
+/* #define GC_WABBIT_DESCRIPTOR		0x40 */
 
 #define CALLBACK_HANDLER		0x41
 
@@ -191,7 +184,7 @@ USA.
   /* 0x3D */	"pc-sample/prob-comp-table",				\
   /* 0x3E */	"pc-sample/ufo-table",					\
   /* 0x3F */	"compiled-code-bkpt-handler",				\
-  /* 0x40 */	"gc-wabbit-descwiptor",					\
+  /* 0x40 */	0		,					\
   /* 0x41 */	"callback-handler",					\
   /* 0x42 */	0,							\
   /* 0x43 */	0,							\

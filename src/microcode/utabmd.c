@@ -108,14 +108,7 @@ cc_arch_name (void)
   switch (compiler_processor_type)
     {
     case COMPILER_NONE_TYPE: return ("none");
-    case COMPILER_MC68020_TYPE: return ("mc68k");
-    case COMPILER_VAX_TYPE: return ("vax");
-    case COMPILER_SPECTRUM_TYPE: return ("hppa");
-    case COMPILER_MC68040_TYPE: return ("mc68k");
-    case COMPILER_SPARC_TYPE: return ("sparc");
     case COMPILER_IA32_TYPE: return ("i386");
-    case COMPILER_ALPHA_TYPE: return ("alpha");
-    case COMPILER_MIPS_TYPE: return ("mips");
     case COMPILER_C_TYPE: return ("c");
     case COMPILER_SVM_TYPE: return ("svm1");
     case COMPILER_X86_64_TYPE: return ("x86-64");
