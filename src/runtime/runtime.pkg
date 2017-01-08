@@ -1735,7 +1735,9 @@ USA.
 	  thunk?
 	  unary-procedure?)
   (export (runtime continuation-parser)
-	  compiled-procedure-frame-size))
+	  compiled-procedure-frame-size)
+  (export (runtime tagging)
+	  %entity-is-apply-hook?))
 
 (define-package (runtime predicate-metadata)
   (files "predicate-metadata")
@@ -3643,6 +3645,8 @@ USA.
   (files "tagging")
   (parent (runtime))
   (export ()
+	  object->datum
+	  object->predicate
 	  object-tagger
 	  set-tagged-object-unparser-method!
 	  tag-object

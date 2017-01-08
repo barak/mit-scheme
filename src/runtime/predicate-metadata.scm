@@ -236,7 +236,8 @@ USA.
    (register-predicate! dotted-list? 'dotted-list)
    (register-predicate! not-pair? 'not-pair)))
 
-;;; Registration of predicates defined earlier in the boot load
+;;; Registration of predicates defined earlier in the boot load, or
+;;; needed before their packages are initialized.
 (add-boot-init!
  (lambda ()
    ;; MIT/GNU Scheme: specialized arithmetic
@@ -246,14 +247,14 @@ USA.
    (register-predicate! exact-positive-integer? 'exact-positive-integer
 			'<= exact-integer?)
    (register-predicate! exact-rational? 'exact-rational '<= rational?)
-   (register-predicate! byte? 'byte '<= exact-nonnegative-integer?)
 
    (register-predicate! fix:fixnum? 'fixnum '<= exact-integer?)
-   (register-predicate! index-fixnum? 'index-fixnum '<= fix:fixnum?)
+   (register-predicate! index-fixnum? 'index-fixnum
+			'<= (list fix:fixnum? exact-nonnegative-integer?))
+   (register-predicate! byte? 'byte '<= index-fixnum?)
    (register-predicate! negative-fixnum? 'negative-fixnum '<= fix:fixnum?)
    (register-predicate! positive-fixnum? 'positive-fixnum
 			'<= (list fix:fixnum? exact-positive-integer?))
-
    (register-predicate! non-negative-fixnum? 'non-negative-fixnum
 			'<= (list fix:fixnum? exact-nonnegative-integer?))
    (register-predicate! non-positive-fixnum? 'non-positive-fixnum
@@ -287,22 +288,33 @@ USA.
    ;; MIT/GNU Scheme: URIs
    (register-predicate! uri? 'uniform-resource-identifier)
    (register-predicate! absolute-uri? 'absolute-uri '<= uri?)
-   (register-predicate! relative-uri? 'relative-uri '<= uri?)
-
-   ;; MIT/GNU Scheme: other stuff
+   (register-predicate! relative-uri? 'relative-uri '<= uri?)))
+
+(add-boot-init!
+ (lambda ()
+   ;; MIT/GNU Scheme: misc
    (register-predicate! 8-bit-char? '8-bit-char '<= char?)
+   (register-predicate! bit-string? 'bit-string)
+   (register-predicate! cell? 'cell)
+   (register-predicate! compiled-code-address? 'compiled-code-address)
+   (register-predicate! compiled-code-block? 'compiled-code-block)
+   (register-predicate! compiled-expression? 'compiled-expression)
+   (register-predicate! compiled-return-address? 'compiled-return-address)
    (register-predicate! dispatch-tag? 'dispatch-tag)
+   (register-predicate! ephemeron? 'ephemeron)
    (register-predicate! environment? 'environment)
    (register-predicate! equality-predicate? 'equality-predicate
 			'<= binary-procedure?)
    (register-predicate! hash-table? 'hash-table)
    (register-predicate! interned-symbol? 'interned-symbol '<= symbol?)
    (register-predicate! keyword? 'keyword '<= symbol?)
-   (register-predicate! lambda-tag? 'lambda-tag '<= symbol?)
+   (register-predicate! lambda-tag? 'lambda-tag)
    (register-predicate! named-structure? 'named-structure)
    (register-predicate! population? 'population)
+   (register-predicate! promise? 'promise)
    (register-predicate! record? 'record)
    (register-predicate! record-type? 'record-type)
+   (register-predicate! stack-address? 'stack-address)
    (register-predicate! thread? 'thread)
    (register-predicate! thread-mutex? 'thread-mutex)
    (register-predicate! undefined-value? 'undefined-value)
