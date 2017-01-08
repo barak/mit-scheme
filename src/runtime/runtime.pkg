@@ -1736,7 +1736,7 @@ USA.
 	  unary-procedure?)
   (export (runtime continuation-parser)
 	  compiled-procedure-frame-size)
-  (export (runtime tagging)
+  (export (runtime predicate-tagging)
 	  %entity-is-apply-hook?))
 
 (define-package (runtime predicate-metadata)
@@ -1823,8 +1823,8 @@ USA.
           predicate-template-predicate
           predicate-template?))
 
-(define-package (runtime tagging)
-  (files "tagging")
+(define-package (runtime predicate-tagging)
+  (files "predicate-tagging")
   (parent (runtime))
   (export ()
 	  object->datum
@@ -3674,7 +3674,7 @@ USA.
 	  structure-tag/unparser-method)
   (export (runtime predicate-metadata)
 	  cleanup-boot-time-record-predicates!)
-  (export (runtime tagging)
+  (export (runtime predicate-tagging)
 	  %record-type-descriptor
 	  %record-type-tag)
   (initialization (initialize-package!)))

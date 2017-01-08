@@ -25,7 +25,7 @@ USA.
 |#
 
 ;;;; Predicates: tagging
-;;; package: (runtime tagging)
+;;; package: (runtime predicate-tagging)
 
 (declare (usual-integrations))
 
