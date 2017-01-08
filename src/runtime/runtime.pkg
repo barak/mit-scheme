@@ -1823,6 +1823,39 @@ USA.
           predicate-template-predicate
           predicate-template?))
 
+(define-package (runtime tagging)
+  (files "tagging")
+  (parent (runtime))
+  (export ()
+	  object->datum
+	  object->predicate
+	  object-tagger
+	  set-tagged-object-unparser-method!
+	  tag-object
+	  tagged-object-datum
+	  tagged-object-predicate
+	  tagged-object?)
+  (export (runtime)
+	  object->tag
+	  tagged-object-tag)
+  (export (runtime unparser)
+	  get-tagged-object-unparser-method))
+
+(define-package (runtime predicate-dispatch)
+  (files "predicate-dispatch")
+  (parent (runtime))
+  (export ()
+	  chaining-predicate-dispatcher
+	  define-predicate-dispatch-default-handler
+	  define-predicate-dispatch-handler
+	  predicate-dispatcher-arity
+	  predicate-dispatcher-name
+	  predicate-dispatcher-rules
+	  predicate-dispatcher?
+	  standard-predicate-dispatcher)
+  (export (runtime)
+	  simple-predicate-dispatcher))
+
 (define-package (runtime environment)
   (files "uenvir")
   (parent (runtime))
@@ -3645,23 +3678,6 @@ USA.
 	  %record-type-descriptor
 	  %record-type-tag)
   (initialization (initialize-package!)))
-
-(define-package (runtime tagging)
-  (files "tagging")
-  (parent (runtime))
-  (export ()
-	  object->datum
-	  object->predicate
-	  object-tagger
-	  set-tagged-object-unparser-method!
-	  tag-object
-	  tagged-object-datum
-	  tagged-object-predicate
-	  tagged-object?)
-  (export (runtime)
-	  tagged-object-tag)
-  (export (runtime unparser)
-	  get-tagged-object-unparser-method))
 
 (define-package (runtime reference-trap)
   (files "urtrap")
