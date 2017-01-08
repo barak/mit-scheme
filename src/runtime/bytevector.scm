@@ -116,60 +116,18 @@ USA.
 		start))))
     (let ((buffer (allocate-bytevector (%count-utf8-bytes string start end))))
       (do ((from start (fix:+ from 1))
-	   (to 0 (fix:+ to (%char->utf8! buffer to (string-ref string from)))))
+	   (to 0
+	       (fix:+ to
+		      (char-utf8-bytes! buffer to (string-ref string from)))))
 	  ((not (fix:< from end))))
       buffer)))
 
-(define (%char->utf8! buffer index char)
-  (let ((cp (char->integer char)))
-
-    (define-integrable (initial-byte n-bits offset)
-      (fix:or (fix:and (fix:lsh #xFF (fix:+ n-bits 1)) #xFF)
-	      (fix:lsh cp (fix:- 0 offset))))
-
-    (define-integrable (trailing-byte offset)
-      (fix:or #x80 (fix:and (fix:lsh cp (fix:- 0 offset)) #x3F)))
-
-    (define-integrable (put-byte! offset byte)
-      (bytevector-u8-set! buffer (fix:+ index offset) byte))
-
-    (cond ((fix:< cp #x00000080)
-	   (put-byte! 0 cp)
-	   1)
-	  ((fix:< cp #x00000800)
-	   (put-byte! 0 (initial-byte 5 6))
-	   (put-byte! 1 (trailing-byte 0))
-	   2)
-	  ((fix:< cp #x00010000)
-	   (if (surrogate? cp)
-	       (error "Code point is a UTF-16 surrogate:" cp))
-	   (if (non-character? cp)
-	       (error "Code point is a non-character:" cp))
-	   (put-byte! 0 (initial-byte 4 12))
-	   (put-byte! 1 (trailing-byte 6))
-	   (put-byte! 2 (trailing-byte 0))
-	   3)
-	  (else
-	   (if (non-character? cp)
-	       (error "Code point is a non-character:" cp))
-	   (put-byte! 0 (initial-byte 3 18))
-	   (put-byte! 1 (trailing-byte 12))
-	   (put-byte! 2 (trailing-byte 6))
-	   (put-byte! 3 (trailing-byte 0))
-	   4))))
-
 (define (%count-utf8-bytes string start end)
   (do ((index start (fix:+ index 1))
-       (n-bytes 0 (fix:+ n-bytes (char-utf8-bytes (string-ref string index)))))
+       (n-bytes 0
+		(fix:+ n-bytes
+		       (char-utf8-byte-length (string-ref string index)))))
       ((not (fix:< index end)) n-bytes)))
-
-(define (char-utf8-bytes char)
-  (let ((cp (char->integer char)))
-    (cond ((fix:< cp #x00000080) 1)
-	  ((fix:< cp #x00000800) 2)
-	  ((fix:< cp #x00010000) 3)
-	  ((fix:< cp #x00110000) 4)
-	  (else (error "Not a unicode character:" char)))))
 
 (define (utf8->string bytevector #!optional start end)
   (guarantee bytevector? bytevector 'utf8->string)

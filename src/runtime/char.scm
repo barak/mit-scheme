@@ -90,6 +90,12 @@ USA.
 
 (define-guarantee unicode-scalar-value "a Unicode scalar value")
 
+(define (unicode-char->scalar-value char)
+  (let ((cp (char->integer char)))
+    (if (not (legal-code-32? cp))
+	(error:not-unicode-char char 'char-utf8-byte-length))
+    cp))
+
 (define-integrable (legal-code-32? pt)
   (and (fix:< pt char-code-limit)
        (not (surrogate? pt))
@@ -130,6 +136,52 @@ USA.
 
 (define (chars->ascii chars)
   (map char->ascii chars))
+
+(define (char-utf8-byte-length char)
+  (%sv-utf8-byte-length (unicode-char->scalar-value char)))
+
+(define (char-utf8-bytes char)
+  (let ((sv (unicode-char->scalar-value char)))
+    (let ((bytes (make-bytevector (%sv-utf8-byte-length sv))))
+      (%sv-utf8-bytes! bytes 0 sv)
+      bytes)))
+
+(define (char-utf8-bytes! bytes index char)
+  (%sv-utf8-bytes! bytes index (unicode-char->scalar-value char)))
+
+(define (%sv-utf8-byte-length sv)
+  (cond ((fix:< sv #x00000080) 1)
+	((fix:< sv #x00000800) 2)
+	((fix:< sv #x00010000) 3)
+	(else 4)))
+
+(define (%sv-utf8-bytes! bytes index sv)
+
+  (define-integrable (initial-byte n-bits offset)
+    (fix:or (fix:and (fix:lsh #xFF (fix:+ n-bits 1)) #xFF)
+	    (fix:lsh sv (fix:- 0 offset))))
+
+  (define-integrable (trailing-byte offset)
+    (fix:or #x80 (fix:and (fix:lsh sv (fix:- 0 offset)) #x3F)))
+
+  (cond ((fix:< sv #x00000080)
+	 (bytevector-u8-set! bytes index sv)
+	 (fix:+ index 1))
+	((fix:< sv #x00000800)
+	 (bytevector-u8-set! bytes index (initial-byte 5 6))
+	 (bytevector-u8-set! bytes (fix:+ index 1) (trailing-byte 0))
+	 (fix:+ index 2))
+	((fix:< sv #x00010000)
+	 (bytevector-u8-set! bytes index (initial-byte 4 12))
+	 (bytevector-u8-set! bytes (fix:+ index 1) (trailing-byte 6))
+	 (bytevector-u8-set! bytes (fix:+ index 2) (trailing-byte 0))
+	 (fix:+ index 3))
+	(else
+	 (bytevector-u8-set! bytes index (initial-byte 3 18))
+	 (bytevector-u8-set! bytes (fix:+ index 1) (trailing-byte 12))
+	 (bytevector-u8-set! bytes (fix:+ index 2) (trailing-byte 6))
+	 (bytevector-u8-set! bytes (fix:+ index 3) (trailing-byte 0))
+	 (fix:+ index 4))))
 
 (define (char=? x y)
   (fix:= (char->integer x) (char->integer y)))

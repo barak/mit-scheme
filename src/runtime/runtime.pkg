@@ -1233,6 +1233,9 @@ USA.
 	  char-downcase
 	  char-integer-limit
 	  char-upcase
+	  char-utf8-byte-length
+	  char-utf8-bytes
+	  char-utf8-bytes!
 	  char<=?
 	  char<?
 	  char=?
@@ -1257,6 +1260,7 @@ USA.
 	  name->char
 	  radix?
 	  set-char-bits
+	  unicode-char->scalar-value
 	  unicode-char?
 	  unicode-scalar-value?)
   (export (runtime unicode)
