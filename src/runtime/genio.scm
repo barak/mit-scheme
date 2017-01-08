@@ -920,7 +920,7 @@ USA.
 			(else (error "Unknown result:" r)))))))))
 	(else
 	 (error:not-string string 'INPUT-PORT/READ-SUBSTRING!))))
-
+
 (define (input-buffer-in-8-bit-mode? ib)
   (and (eq? (input-buffer-decode ib) binary-decoder)
        (eq? (input-buffer-normalize ib) binary-normalizer)))

@@ -1,0 +1,5 @@
+((scheme-mode (cph-page-minimum . 50)
+              (cph-page-maximum . 80)
+              (cph-line-length . 80)
+              (whitespace-line-column . 80)
+              (fill-column . 80)))
