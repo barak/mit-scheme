@@ -188,7 +188,6 @@ USA.
  (lambda ()
    (register-predicate! predicate? 'predicate)
    (register-predicate! tag-name? 'tag-name)
-   (register-predicate! tag? 'tag)
    (register-predicate! any-object? '(conjoin) 'description "any object")
    (register-predicate! no-object? '(disjoin) 'description "no object")
 
@@ -205,6 +204,12 @@ USA.
 (define (any-object? object) object #t)
 (define (no-object? object) object #f)
 
+(add-boot-init!
+ (lambda ()
+   (register-predicate! %record? '%record)
+   (register-predicate! record? 'record '<= %record?)
+   (cleanup-boot-time-record-predicates!)))
+
 ;;; Registration of standard predicates
 (add-boot-init!
  (lambda ()
@@ -214,12 +219,11 @@ USA.
    (register-predicate! char? 'char)
    (register-predicate! default-object? 'default-object)
    (register-predicate! eof-object? 'eof-object)
-   (register-predicate! input-port? 'input-port)
+   (register-predicate! input-port? 'input-port '<= port?)
    (register-predicate! list? 'list)
    (register-predicate! number? 'number)
-   (register-predicate! output-port? 'output-port)
+   (register-predicate! output-port? 'output-port '<= port?)
    (register-predicate! pair? 'pair)
-   (register-predicate! port? 'port)
    (register-predicate! procedure? 'procedure)
    (register-predicate! string? 'string)
    (register-predicate! symbol? 'symbol)
@@ -283,12 +287,7 @@ USA.
    (register-predicate! procedure-arity? 'procedure-arity)
    (register-predicate! thunk? 'thunk '<= procedure?)
    (register-predicate! unary-procedure? 'unary-procedure '<= procedure?)
-   (register-predicate! unparser-method? 'unparser-method '<= procedure?)
-
-   ;; MIT/GNU Scheme: URIs
-   (register-predicate! uri? 'uniform-resource-identifier)
-   (register-predicate! absolute-uri? 'absolute-uri '<= uri?)
-   (register-predicate! relative-uri? 'relative-uri '<= uri?)))
+   (register-predicate! unparser-method? 'unparser-method '<= procedure?)))
 
 (add-boot-init!
  (lambda ()
@@ -305,17 +304,15 @@ USA.
    (register-predicate! environment? 'environment)
    (register-predicate! equality-predicate? 'equality-predicate
 			'<= binary-procedure?)
-   (register-predicate! hash-table? 'hash-table)
+   (register-predicate! i/o-port? 'i/o-port '<= (list input-port? output-port?))
    (register-predicate! interned-symbol? 'interned-symbol '<= symbol?)
    (register-predicate! keyword? 'keyword '<= symbol?)
    (register-predicate! lambda-tag? 'lambda-tag)
    (register-predicate! named-structure? 'named-structure)
    (register-predicate! population? 'population)
    (register-predicate! promise? 'promise)
-   (register-predicate! record? 'record)
    (register-predicate! record-type? 'record-type)
    (register-predicate! stack-address? 'stack-address)
-   (register-predicate! thread? 'thread)
    (register-predicate! thread-mutex? 'thread-mutex)
    (register-predicate! undefined-value? 'undefined-value)
    (register-predicate! unicode-char? 'unicode-char '<= char?)
@@ -323,7 +320,4 @@ USA.
 			'<= index-fixnum?)
    (register-predicate! uninterned-symbol? 'uninterned-symbol '<= symbol?)
    (register-predicate! weak-list? 'weak-list)
-   (register-predicate! weak-pair? 'weak-pair)
-
-   ;; Must be called after record? is registered:
-   (cleanup-boot-time-record-predicates!)))
+   (register-predicate! weak-pair? 'weak-pair)))

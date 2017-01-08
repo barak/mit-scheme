@@ -3642,6 +3642,7 @@ USA.
   (export (runtime predicate-metadata)
 	  cleanup-boot-time-record-predicates!)
   (export (runtime tagging)
+	  %record-type-descriptor
 	  %record-type-tag)
   (initialization (initialize-package!)))
 

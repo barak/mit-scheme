@@ -182,8 +182,8 @@ USA.
 	   (else default-tag)))))
 
    (define-primitive-predicate-method 'record
-     (let ((default-tag (predicate->tag record?)))
+     (let ((default-tag (predicate->tag %record?)))
        (lambda (object)
-	 (if (record-type? (%record-ref object 0))
-	     (%record-type-tag (%record-ref object 0))
+	 (if (record? object)
+	     (%record-type-tag (%record-type-descriptor object))
 	     default-tag))))))

@@ -870,55 +870,57 @@ USA.
 (define url:char-set:unreserved)
 (define url:char-set:unescaped)
 
-(define (initialize-package!)
-  (set! char-set:uri-alpha
-	(string->char-set
-	 "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
-  (set! char-set:uri-digit (string->char-set "0123456789"))
-  (set! char-set:uri-hex (string->char-set "0123456789abcdefABCDEF"))
-  (set! char-set:uri-scheme
-	(char-set-union char-set:uri-alpha
-			char-set:uri-digit
-			(string->char-set "+-.")))
-  (let* ((sub-delims (string->char-set "!$&'()*+,;="))
-	 (unreserved
-	  (char-set-union char-set:uri-alpha
-			  char-set:uri-digit
-			  (string->char-set "-._~")))
-	 (component-chars
-	  (lambda (extra)
-	    (char-set-union unreserved sub-delims (string->char-set extra)))))
-    (set! char-set:uri-userinfo		(component-chars ":"))
-    (set! char-set:uri-ipvfuture	char-set:uri-userinfo)
-    (set! char-set:uri-reg-name		(component-chars ""))
-    (set! char-set:uri-segment		(component-chars ":@"))
-    (set! char-set:uri-segment-nc	(component-chars "@"))
-    (set! char-set:uri-query		(component-chars ":@/?"))
-    (set! char-set:uri-fragment		char-set:uri-query)
-    (set! char-set:uri-sloppy-auth	(component-chars ":@[]")))
+(add-boot-init!
+ (lambda ()
+   (set! char-set:uri-alpha
+	 (string->char-set
+	  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+   (set! char-set:uri-digit (string->char-set "0123456789"))
+   (set! char-set:uri-hex (string->char-set "0123456789abcdefABCDEF"))
+   (set! char-set:uri-scheme
+	 (char-set-union char-set:uri-alpha
+			 char-set:uri-digit
+			 (string->char-set "+-.")))
+   (let* ((sub-delims (string->char-set "!$&'()*+,;="))
+	  (unreserved
+	   (char-set-union char-set:uri-alpha
+			   char-set:uri-digit
+			   (string->char-set "-._~")))
+	  (component-chars
+	   (lambda (extra)
+	     (char-set-union unreserved sub-delims (string->char-set extra)))))
+     (set! char-set:uri-userinfo	(component-chars ":"))
+     (set! char-set:uri-ipvfuture	char-set:uri-userinfo)
+     (set! char-set:uri-reg-name	(component-chars ""))
+     (set! char-set:uri-segment		(component-chars ":@"))
+     (set! char-set:uri-segment-nc	(component-chars "@"))
+     (set! char-set:uri-query		(component-chars ":@/?"))
+     (set! char-set:uri-fragment	char-set:uri-query)
+     (set! char-set:uri-sloppy-auth	(component-chars ":@[]")))
 
-  (set! parser:userinfo		(component-parser-* char-set:uri-userinfo))
-  (set! matcher:reg-name	(component-matcher-* char-set:uri-reg-name))
-  (set! parser:segment		(component-parser-* char-set:uri-segment))
-  (set! parser:segment-nz	(component-parser-+ char-set:uri-segment))
-  (set! parser:segment-nz-nc	(component-parser-+ char-set:uri-segment-nc))
-  (set! parser:query		(component-parser-* char-set:uri-query))
-  (set! parser:fragment		(component-parser-* char-set:uri-fragment))
+   (set! parser:userinfo	(component-parser-* char-set:uri-userinfo))
+   (set! matcher:reg-name	(component-matcher-* char-set:uri-reg-name))
+   (set! parser:segment		(component-parser-* char-set:uri-segment))
+   (set! parser:segment-nz	(component-parser-+ char-set:uri-segment))
+   (set! parser:segment-nz-nc	(component-parser-+ char-set:uri-segment-nc))
+   (set! parser:query		(component-parser-* char-set:uri-query))
+   (set! parser:fragment	(component-parser-* char-set:uri-fragment))
 
-  (set! interned-uris (make-string-hash-table))
-  (set! interned-uri-authorities (make-string-hash-table))
+   (set! interned-uris (make-string-hash-table))
+   (set! interned-uri-authorities (make-string-hash-table))
 
-  ;; backwards compatibility:
-  (set! url:char-set:unreserved
-	(char-set-union char-set:uri-alpha
-			char-set:uri-digit
-			(string->char-set "!$'()*+,-._")))
-  (set! url:char-set:unescaped
-	(char-set-union url:char-set:unreserved
-			(string->char-set ";/?:@&=")))
+   ;; backwards compatibility:
+   (set! url:char-set:unreserved
+	 (char-set-union char-set:uri-alpha
+			 char-set:uri-digit
+			 (string->char-set "!$'()*+,-._")))
+   (set! url:char-set:unescaped
+	 (char-set-union url:char-set:unreserved
+			 (string->char-set ";/?:@&=")))
 
-  (set! uri-merge-defaults (make-uri-merge-defaults))
-  unspecific)
+   (set! uri-merge-defaults (make-uri-merge-defaults))
+   (register-predicate! absolute-uri? 'absolute-uri '<= uri?)
+   (register-predicate! relative-uri? 'relative-uri '<= uri?)))
 
 ;;;; Partial URIs
 

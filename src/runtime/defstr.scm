@@ -786,17 +786,9 @@ differences:
 	       `((DEFINE ,tag-name
 		   (,(absolute 'RECORD-TYPE-DISPATCH-TAG context)
 		    ,tag-expression))
-		 (DEFINE (,predicate-name OBJECT)
-		   (DECLARE
-		    (IGNORE-REFERENCE-TRAPS (SET ,(close tag-name context))))
-		   (AND (,(absolute '%RECORD? context) OBJECT)
-			(,(absolute 'NOT context)
-			 (,(absolute 'ZERO? context)
-			  (,(absolute '%RECORD-LENGTH context) OBJECT)))
-			(,(absolute 'EQ? context)
-			 (,(absolute '%RECORD-REF context) OBJECT 0)
-			 ;++ Work around a bug in the expander.
-			 ,(close tag-name context)))))))
+		 (DEFINE ,predicate-name
+		   (,(absolute 'RECORD-PREDICATE context)
+		    ,(close (structure/type-descriptor structure) context))))))
 	    ((VECTOR)
 	     `((DEFINE (,predicate-name OBJECT)
 		 (AND (,(absolute 'VECTOR? context) OBJECT)
