@@ -323,4 +323,7 @@ USA.
 			'<= index-fixnum?)
    (register-predicate! uninterned-symbol? 'uninterned-symbol '<= symbol?)
    (register-predicate! weak-list? 'weak-list)
-   (register-predicate! weak-pair? 'weak-pair)))
+   (register-predicate! weak-pair? 'weak-pair)
+
+   ;; Must be called after record? is registered:
+   (cleanup-boot-time-record-predicates!)))

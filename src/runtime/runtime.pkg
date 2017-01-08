@@ -3639,6 +3639,10 @@ USA.
   (export (runtime unparser)
 	  structure-tag/entity-unparser-method
 	  structure-tag/unparser-method)
+  (export (runtime predicate-metadata)
+	  cleanup-boot-time-record-predicates!)
+  (export (runtime tagging)
+	  %record-type-tag)
   (initialization (initialize-package!)))
 
 (define-package (runtime tagging)

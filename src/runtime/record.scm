@@ -75,8 +75,9 @@ USA.
 	  (%record #f
 		   #f
 		   "record-type"
-		   '#(DISPATCH-TAG NAME FIELD-NAMES DEFAULT-INITS EXTENSION)
-		   (vector-cons 5 #f)
+		   '#(DISPATCH-TAG NAME FIELD-NAMES DEFAULT-INITS EXTENSION TAG)
+		   (vector-cons 6 #f)
+		   #f
 		   #f)))
     (set! record-type-type-tag (make-dispatch-tag type))
     (%record-set! type 0 record-type-type-tag)
@@ -146,11 +147,15 @@ USA.
 		     (->type-name type-name)
 		     names
 		     (vector-cons n #f)
+		     #f
 		     #f))
 	   (tag (make-dispatch-tag record-type)))
       (%record-set! record-type 1 tag)
       (if (not (default-object? default-inits))
 	  (%set-record-type-default-inits! record-type default-inits caller))
+      (%set-record-type-predicate! record-type
+				   (lambda (object)
+				     (%tagged-record? tag object)))
       (if (not (default-object? unparser-method))
 	  (set-record-type-unparser-method! record-type unparser-method))
       (if (not (default-object? entity-unparser-method))
@@ -182,6 +187,12 @@ USA.
 (define-integrable (%set-record-type-extension! record-type extension)
   (%record-set! record-type 5 extension))
 
+(define-integrable (%record-type-tag record-type)
+  (%record-ref record-type 6))
+
+(define-integrable (%set-record-type-tag! record-type tag)
+  (%record-set! record-type 6 tag))
+
 (define-integrable (%record-type-n-fields record-type)
   (vector-length (%record-type-field-names record-type)))
 
@@ -194,7 +205,7 @@ USA.
 
 (define (record-type-name record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-NAME)
-  (%record-type-name record-type))
+  (string-copy (%record-type-name record-type)))
 
 (define (record-type-field-names record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-FIELD-NAMES)
@@ -252,6 +263,39 @@ USA.
 (define (set-record-type-extension! record-type extension)
   (guarantee-record-type record-type 'SET-RECORD-TYPE-EXTENSION!)
   (%set-record-type-extension! record-type extension))
+
+(define boot-time-record-types '())
+
+(define (%set-record-type-predicate! record-type predicate)
+  (set! boot-time-record-types (cons record-type boot-time-record-types))
+  (%set-record-type-tag! record-type predicate))
+
+(define (%record-type-predicate record-type)
+  (%record-type-tag record-type))
+
+(define (%set-record-type-predicate!/after-boot record-type predicate)
+  (%register-record-predicate! predicate record-type)
+  (%set-record-type-tag! record-type (predicate->tag predicate)))
+
+(define (%register-record-predicate! predicate record-type)
+  (register-predicate! predicate
+		       (string->symbol (%record-type-name record-type))
+		       '<= record?))
+
+(define (%record-type-predicate/after-boot! record-type)
+  (tag->predicate (%record-type-tag record-type)))
+
+(define (cleanup-boot-time-record-predicates!)
+  (set! %set-record-type-predicate! %set-record-type-predicate!/after-boot)
+  (set! %record-type-predicate %record-type-predicate/after-boot!)
+  (for-each (lambda (record-type)
+	      (let ((predicate (%record-type-tag record-type)))
+		(if (not (predicate? predicate))
+		    (%register-record-predicate! predicate record-type))
+		(%set-record-type-tag! record-type (predicate->tag predicate))))
+	    boot-time-record-types)
+  (set! boot-time-record-types)
+  unspecific)
 
 ;;;; Unparser Methods
 
@@ -512,9 +556,7 @@ USA.
 
 (define (record-predicate record-type)
   (guarantee-record-type record-type 'RECORD-PREDICATE)
-  (let ((tag (record-type-dispatch-tag record-type)))
-    (lambda (object)
-      (%tagged-record? tag object))))
+  (%record-type-predicate record-type))
 
 (define (record-accessor record-type field-name)
   (guarantee-record-type record-type 'RECORD-ACCESSOR)

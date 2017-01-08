@@ -247,8 +247,6 @@ USA.
  (lambda ()
    (register-predicate! parametric-predicate? 'parametric-predicate
 			'<= predicate?)
-   (register-predicate! predicate-template? 'predicate-template)
-   (register-predicate! parameter-binding? 'parameter-binding)
    (register-predicate! template-pattern? 'template-pattern
 			'<= non-empty-list?)))
 
