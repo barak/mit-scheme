@@ -973,7 +973,7 @@ USA.
 	 (fix:= (%substring-match-forward-ci string1 start1 end1
 					     string2 start2 end2)
 		length))))
-
+
 (define (string-suffix? string1 string2)
   (guarantee-2-strings string1 string2 'STRING-SUFFIX?)
   (%substring-suffix? string1 0 (string-length string1)
@@ -1263,7 +1263,7 @@ USA.
 		    (fix:+ (string-find-previous-char-in-set string char-set)
 			   1))
 	"")))
-
+
 ;;;; Pad
 
 (define (string-pad-right string n #!optional char)
