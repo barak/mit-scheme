@@ -54,6 +54,16 @@ USA.
       (bytevector-u8-set! bytevector i (car bytes)))
     bytevector))
 
+(define (legacy-string->bytevector string)
+  (if (bytevector? string)
+      string
+      (begin
+	(guarantee legacy-string? string 'legacy-string->bytevector)
+	(object-new-type bytevector-type string))))
+
+;;; TODO(cph): eliminate after 9.3 release:
+(define-integrable bytevector-type #x33)
+
 (define (bytevector-append . bytevectors)
   (let* ((k
 	  (do ((bytevectors bytevectors (cdr bytevectors))

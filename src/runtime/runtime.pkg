@@ -969,6 +969,7 @@ USA.
 	  guarantee-substring-start-index
 	  guarantee-xstring
 	  hexadecimal->vector-8b
+	  legacy-string?
 	  lisp-string->camel-case
 	  list->string
 	  make-string
@@ -1127,6 +1128,7 @@ USA.
 	  bytevector-u8-set!
 	  bytevector=?
 	  bytevector?
+	  legacy-string->bytevector
 	  make-bytevector
 	  string->utf8
 	  utf8->string))
