@@ -67,14 +67,14 @@ USA.
 (define-guarantee i/o-port "I/O port")
 
 (define (input-port-open? port)
-  (cond ((binary-port? port) (binary-input-port-open? port))
-	((textual-port? port) (textual-input-port-open? port))
-	(else (error:not-a port? port 'input-port-open?))))
+  (cond ((binary-input-port? port) (binary-input-port-open? port))
+	((textual-input-port? port) (textual-input-port-open? port))
+	(else (error:not-a input-port? port 'input-port-open?))))
 
 (define (output-port-open? port)
-  (cond ((binary-port? port) (binary-output-port-open? port))
-	((textual-port? port) (textual-output-port-open? port))
-	(else (error:not-a port? port 'output-port-open?))))
+  (cond ((binary-output-port? port) (binary-output-port-open? port))
+	((textual-output-port? port) (textual-output-port-open? port))
+	(else (error:not-a output-port? port 'output-port-open?))))
 
 (define (close-port port)
   (cond ((binary-port? port) (close-binary-port port))
@@ -82,14 +82,24 @@ USA.
 	(else (error:not-a port? port 'close-port))))
 
 (define (close-input-port port)
-  (cond ((binary-port? port) (close-binary-input-port port))
-	((textual-port? port) (close-textual-input-port port))
-	(else (error:not-a port? port 'close-input-port))))
+  (cond ((binary-input-port? port) (close-binary-input-port port))
+	((textual-input-port? port) (close-textual-input-port port))
+	(else (error:not-a input-port? port 'close-input-port))))
 
 (define (close-output-port port)
-  (cond ((binary-port? port) (close-binary-output-port port))
-	((textual-port? port) (close-textual-output-port port))
-	(else (error:not-a port? port 'close-output-port))))
+  (cond ((binary-output-port? port) (close-binary-output-port port))
+	((textual-output-port? port) (close-textual-output-port port))
+	(else (error:not-a output-port? port 'close-output-port))))
+
+(define (input-port-channel port)
+  (cond ((binary-input-port? port) (binary-input-port-channel port))
+	((textual-input-port? port) (textual-input-port-channel port))
+	(else (error:not-a input-port? port 'input-port-channel))))
+
+(define (output-port-channel port)
+  (cond ((binary-output-port? port) (binary-output-port-channel port))
+	((textual-output-port? port) (textual-output-port-channel port))
+	(else (error:not-a output-port? port 'output-port-channel))))
 
 ;;;; Port type
 
@@ -557,19 +567,11 @@ USA.
 		 (textual-output-port-open? port)
 		 #t)))))
 
-(define (port/input-open? port)
-  (and (textual-input-port? port)
-       (textual-input-port-open? port)))
-
 (define (textual-input-port-open? port)
   (let ((open? (port/operation port 'INPUT-OPEN?)))
     (if open?
 	(open? port)
 	#t)))
-
-(define (port/output-open? port)
-  (and (textual-output-port? port)
-       (textual-output-port-open? port)))
 
 (define (textual-output-port-open? port)
   (let ((open? (port/operation port 'OUTPUT-OPEN?)))
@@ -577,13 +579,13 @@ USA.
 	(open? port)
 	#t)))
 
-(define (port/input-channel port)
-  (let ((operation (port/operation port 'INPUT-CHANNEL)))
+(define (textual-port-input-channel port)
+  (let ((operation (port/operation port 'input-port-channel)))
     (and operation
 	 (operation port))))
 
-(define (port/output-channel port)
-  (let ((operation (port/operation port 'OUTPUT-CHANNEL)))
+(define (textual-port-output-channel port)
+  (let ((operation (port/operation port 'output-port-channel)))
     (and operation
 	 (operation port))))
 

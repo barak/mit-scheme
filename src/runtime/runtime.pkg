@@ -2471,12 +2471,14 @@ USA.
   (files "port")
   (parent (runtime))
   (export ()
-	  (port/input-open? input-port-open?)
-	  (port/output-open? output-port-open?)
+	  ;; BEGIN legacy bindings
+	  (port/input-channel input-port-channel)
+	  (port/output-channel output-port-channel)
 	  (port/state textual-port-state)
 	  (port/thread-mutex textual-port-thread-mutex)
 	  (port/type textual-port-type)
 	  (set-port/state! set-textual-port-state!)
+	  ;; END legacy bindings
 	  close-input-port
 	  close-output-port
 	  close-port
@@ -2487,10 +2489,12 @@ USA.
 	  guarantee-output-port
 	  guarantee-port
 	  i/o-port?
+	  input-port-channel
 	  input-port-open?
 	  input-port?
 	  interaction-i/o-port
 	  notification-output-port
+	  output-port-channel
 	  output-port-open?
 	  output-port?
 	  port-position
