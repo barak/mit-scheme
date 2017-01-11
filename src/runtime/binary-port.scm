@@ -186,9 +186,6 @@ USA.
 
 (define (close-binary-input-port port)
   (let ((ib (port-input-buffer port)))
-    (if (not ib)
-	(error:not-a binary-input-port? port 'close-input-port))
-    (close-input-buffer ib)
     (let ((ic (buffer-channel ib)))
       (if (and ic
 	       (let ((ob (port-output-buffer port)))
@@ -199,8 +196,6 @@ USA.
 
 (define (close-binary-output-port port)
   (let ((ob (port-output-buffer port)))
-    (if (not ob)
-	(error:not-a binary-output-port? port 'close-output-port))
     (close-output-buffer ob)
     (let ((oc (buffer-channel ob)))
       (if (and oc
@@ -213,10 +208,10 @@ USA.
 ;;;; Input operations
 
 (define (binary-input-port-open? port)
-  (let ((ib (port-input-buffer port)))
-    (if (not ib)
-	(error:not-a binary-input-port? port 'input-port-open?))
-    (buffer-open? ib)))
+  (buffer-open? (port-input-buffer port)))
+
+(define (binary-input-port-channel port)
+  (buffer-channel (port-input-buffer port)))
 
 (define (check-input-port port caller)
   (let* ((port (if (default-object? port) (current-input-port) port))
@@ -393,10 +388,16 @@ USA.
 ;;;; Output operations
 
 (define (binary-output-port-open? port)
+  (buffer-open? (port-output-buffer port)))
+
+(define (binary-output-port-channel port)
+  (buffer-channel (port-output-buffer port)))
+
+(define (flush-binary-output-port port)
   (let ((ob (port-output-buffer port)))
-    (if (not ob)
-	(error:not-a binary-output-port? port 'output-port-open?))
-    (buffer-open? ob)))
+    (if (not (buffer-open? ob))
+	(error:bad-range-argument port 'flush-output-port))
+    (flush-output-buffer ob)))
 
 (define (check-output-port port caller)
   (let* ((port (if (default-object? port) (current-output-port) port))
@@ -406,9 +407,6 @@ USA.
     (if (not (buffer-open? ob))
 	(error:bad-range-argument port caller))
     ob))
-
-(define (flush-binary-output-port #!optional port)
-  (flush-output-buffer (check-output-port port 'flush-output-port)))
 
 (define (write-u8 byte #!optional port)
   (guarantee byte? byte 'write-u8)

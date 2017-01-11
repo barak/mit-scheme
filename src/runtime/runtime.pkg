@@ -2453,10 +2453,12 @@ USA.
 	  output-sink?)
   (export (runtime port)
 	  binary-i/o-port?
+	  binary-input-port-channel
 	  binary-input-port-open?
 	  binary-input-port:buffer-contents
 	  binary-input-port:set-buffer-contents!
 	  binary-input-port?
+	  binary-output-port-channel
 	  binary-output-port-open?
 	  binary-output-port?
 	  close-binary-input-port
