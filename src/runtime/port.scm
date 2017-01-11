@@ -790,6 +790,13 @@ USA.
 (define interaction-i/o-port)
 
 (define (initialize-package!)
+  ;; TODO(cph): This expression is temporary to prevent the build from breaking.
+  ;; It will be removed in a subsequent change.
+  (if (not (predicate? port?))
+      (register-predicate! port? 'port))
+  (register-predicate! input-port? 'input-port '<= port?)
+  (register-predicate! output-port? 'output-port '<= port?)
+  (register-predicate! i/o-port? 'i/o-port '<= (list input-port? output-port?))
   (set! current-input-port (make-port-parameter guarantee-input-port))
   (set! current-output-port (make-port-parameter guarantee-output-port))
   (set! notification-output-port (make-port-parameter guarantee-output-port))

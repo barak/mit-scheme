@@ -864,7 +864,7 @@ USA.
 	   zero?-expansion)
 	  (map (lambda (p)
 		 (make-primitive-expander
-		  (make-primitive-procedure (cadr p))))
+		  (apply make-primitive-procedure (cdr p))))
 	       global-primitives)))
 
 (define usual-integrations/expansion-alist
