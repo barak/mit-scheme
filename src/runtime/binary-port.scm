@@ -151,13 +151,14 @@ USA.
 
 (define (get-output-bytevector port)
   (guarantee bytevector-output-port? port 'get-output-bytevector)
-  ((sink-custom-ref (buffer-source/sink (port-output-buffer port)) 1)))
+  ((output-sink-custom-ref (buffer-source/sink (port-output-buffer port)) 1)))
 
 (define (bytevector-output-port? object)
   (and (binary-output-port? object)
        (let ((sink (buffer-source/sink (port-output-buffer object))))
-	 (and (fix:= (sink-custom-length sink) 2)
-	      (eq? bytevector-output-port-tag (sink-custom-ref sink 0))))))
+	 (and (fix:= (output-sink-custom-length sink) 2)
+	      (eq? bytevector-output-port-tag
+		   (output-sink-custom-ref sink 0))))))
 
 (define bytevector-output-port-tag
   (list 'bytevector-output-port-tag))
@@ -671,10 +672,10 @@ USA.
 (define (source-read-bytes! source bv bs be)
   ((vector-ref (source/sink-custom source) 1) bv bs be))
 
-(define (source-custom-length source)
+(define (input-source-custom-length source)
   (fix:- (vector-length (source/sink-custom source)) 2))
 
-(define (source-custom-ref source index)
+(define (input-source-custom-ref source index)
   (vector-ref (source/sink-custom source) (fix:+ index 2)))
 
 (define (make-channel-output-sink channel)
@@ -688,8 +689,8 @@ USA.
 (define (sink-write-bytes sink bv bs be)
   ((vector-ref (source/sink-custom sink) 0) bv bs be))
 
-(define (sink-custom-length sink)
+(define (output-sink-custom-length sink)
   (fix:- (vector-length (source/sink-custom sink)) 1))
 
-(define (sink-custom-ref sink index)
+(define (output-sink-custom-ref sink index)
   (vector-ref (source/sink-custom sink) (fix:+ index 1)))

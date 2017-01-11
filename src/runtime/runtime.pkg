@@ -2438,6 +2438,8 @@ USA.
   (export (runtime)
 	  (input-source-channel source/sink-channel)
 	  (output-source-channel source/sink-channel)
+	  input-source-custom-length
+	  input-source-custom-ref
 	  input-source?
 	  make-binary-i/o-port
 	  make-binary-input-port
@@ -2446,6 +2448,8 @@ USA.
 	  make-channel-output-sink
 	  make-non-channel-input-source
 	  make-non-channel-output-sink
+	  output-sink-custom-length
+	  output-sink-custom-ref
 	  output-sink?)
   (export (runtime port)
 	  binary-i/o-port?
