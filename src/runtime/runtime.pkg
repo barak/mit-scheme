@@ -2465,6 +2465,7 @@ USA.
 	  close-binary-output-port
 	  close-binary-port)
   (export (runtime output-port)
+	  binary-output-port?
 	  flush-binary-output-port))
 
 (define-package (runtime port)
@@ -2472,11 +2473,25 @@ USA.
   (parent (runtime))
   (export ()
 	  ;; BEGIN legacy bindings
+	  (port/input-blocking-mode input-port-blocking-mode)
 	  (port/input-channel input-port-channel)
+	  (port/input-terminal-mode input-port-terminal-mode)
+	  (port/operation textual-port-operation)
+	  (port/operation-names textual-port-operation-names)
+	  (port/output-blocking-mode output-port-blocking-mode)
 	  (port/output-channel output-port-channel)
+	  (port/output-terminal-mode output-port-terminal-mode)
+	  (port/set-input-blocking-mode set-input-port-blocking-mode!)
+	  (port/set-input-terminal-mode set-input-port-terminal-mode!)
+	  (port/set-output-blocking-mode set-output-port-blocking-mode!)
+	  (port/set-output-terminal-mode set-output-port-terminal-mode!)
 	  (port/state textual-port-state)
 	  (port/thread-mutex textual-port-thread-mutex)
 	  (port/type textual-port-type)
+	  (port/with-input-blocking-mode with-input-port-blocking-mode)
+	  (port/with-input-terminal-mode with-input-port-terminal-mode)
+	  (port/with-output-blocking-mode with-output-port-blocking-mode)
+	  (port/with-output-terminal-mode with-output-port-terminal-mode)
 	  (set-port/state! set-textual-port-state!)
 	  ;; END legacy bindings
 	  close-input-port
@@ -2489,20 +2504,21 @@ USA.
 	  guarantee-output-port
 	  guarantee-port
 	  i/o-port?
+	  input-port-blocking-mode
 	  input-port-channel
 	  input-port-open?
+	  input-port-terminal-mode
 	  input-port?
 	  interaction-i/o-port
 	  notification-output-port
+	  output-port-blocking-mode
 	  output-port-channel
 	  output-port-open?
+	  output-port-terminal-mode
 	  output-port?
-	  port-position
 	  port/coding
 	  port/copy
 	  port/get-property
-	  port/input-blocking-mode
-	  port/input-terminal-mode
 	  port/intern-property!
 	  port/known-coding?
 	  port/known-codings
@@ -2510,61 +2526,62 @@ USA.
 	  port/known-line-endings
 	  port/line-ending
 	  port/open?
-	  port/operation
-	  port/operation-names
-	  port/output-blocking-mode
-	  port/output-terminal-mode
+	  textual-port-operation
+	  textual-port-operation-names
 	  port/remove-property!
 	  port/set-coding
-	  port/set-input-blocking-mode
-	  port/set-input-terminal-mode
 	  port/set-line-ending
-	  port/set-output-blocking-mode
-	  port/set-output-terminal-mode
 	  port/set-property!
 	  port/supports-coding?
-	  port/with-input-blocking-mode
-	  port/with-input-terminal-mode
-	  port/with-output-blocking-mode
-	  port/with-output-terminal-mode
 	  port=?
 	  port?
 	  set-current-input-port!
 	  set-current-output-port!
+	  set-input-port-blocking-mode!
+	  set-input-port-terminal-mode!
 	  set-interaction-i/o-port!
 	  set-notification-output-port!
-	  set-port-position!
+	  set-output-port-blocking-mode!
+	  set-output-port-terminal-mode!
 	  set-trace-output-port!
 	  textual-port?
 	  trace-output-port
 	  with-input-from-port
+	  with-input-port-blocking-mode
+	  with-input-port-terminal-mode
 	  with-interaction-i/o-port
 	  with-notification-output-port
+	  with-output-port-blocking-mode
+	  with-output-port-terminal-mode
 	  with-output-to-port
 	  with-trace-output-port)
   (export (runtime)
+	  (port/input-channel textual-input-port-channel)
+	  (port/output-channel textual-output-port-channel)
 	  generic-port-operation:write-substring
 	  make-port
 	  make-port-type
-	  port/input-channel
-	  port/output-channel
 	  set-textual-port-state!
 	  textual-port-state)
   (export (runtime input-port)
-	  port/operation
-	  port/operation/char-ready?
-	  port/operation/peek-char
-	  port/operation/read-char
-	  port/operation/read-substring
-	  port/operation/unread-char)
+	  textual-input-port-open?
+	  textual-input-port?
+	  textual-port-operation
+	  textual-port-operation/char-ready?
+	  textual-port-operation/peek-char
+	  textual-port-operation/read-char
+	  textual-port-operation/read-substring
+	  textual-port-operation/unread-char)
   (export (runtime output-port)
-	  port/operation
-	  port/operation/discretionary-flush-output
-	  port/operation/flush-output
-	  port/operation/fresh-line
-	  port/operation/line-start?
-	  port/operation/write-char
-	  port/operation/write-substring)
+	  textual-output-port-open?
+	  textual-output-port?
+	  textual-port-operation
+	  textual-port-operation/discretionary-flush-output
+	  textual-port-operation/flush-output
+	  textual-port-operation/fresh-line
+	  textual-port-operation/line-start?
+	  textual-port-operation/write-char
+	  textual-port-operation/write-substring)
   (export (runtime transcript)
 	  set-textual-port-transcript!
 	  textual-port-transcript)
@@ -2580,16 +2597,10 @@ USA.
   (parent (runtime))
   (export ()
 	  (discard-char read-char)
-	  (%discard-char %read-char)
-	  (input-port/%discard-char input-port/%read-char)
 	  (input-port/discard-char input-port/read-char)
-	  %read-char
-	  %peek-char
 	  char-ready?
 	  eof-object
 	  eof-object?
-	  input-port/%read-char
-	  input-port/%peek-char
 	  input-port/char-ready?
 	  input-port/line
 	  input-port/discard-chars
@@ -2618,7 +2629,6 @@ USA.
   (parent (runtime))
   (export ()
 	  (flush-output flush-output-port)
-	  %write-char
 	  beep
 	  call-with-truncated-output-port
 	  clear
@@ -2626,8 +2636,6 @@ USA.
 	  flush-output-port
 	  fresh-line
 	  newline
-	  output-port/%write-char
-	  output-port/%discretionary-flush
 	  output-port/bytes-written
 	  output-port/column
 	  output-port/discretionary-flush

@@ -33,35 +33,29 @@ USA.
 ;;;; Low level
 
 (define (input-port/char-ready? port)
-  ((port/operation/char-ready? port) port))
-
-(define-integrable (input-port/%read-char port)
-  ((port/%operation/read-char port) port))
+  ((textual-port-operation/char-ready? port) port))
 
 (define (input-port/read-char port)
-  ((port/operation/read-char port) port))
+  ((textual-port-operation/read-char port) port))
 
 (define (input-port/unread-char port char)
-  ((port/operation/unread-char port) port char))
-
-(define-integrable (input-port/%peek-char port)
-  ((port/%operation/peek-char port) port))
+  ((textual-port-operation/unread-char port) port char))
 
 (define (input-port/peek-char port)
-  ((port/operation/peek-char port) port))
+  ((textual-port-operation/peek-char port) port))
 
 (define (input-port/read-string! port string)
   (input-port/read-substring! port string 0 (xstring-length string)))
 
 (define (input-port/read-substring! port string start end)
   (if (< start end)
-      ((port/operation/read-substring port) port string start end)
+      ((textual-port-operation/read-substring port) port string start end)
       0))
-
+
 (define (input-port/read-line port)
   (port/with-input-blocking-mode port 'BLOCKING
     (lambda ()
-      (let ((read-char (port/operation/read-char port)))
+      (let ((read-char (textual-port-operation/read-char port)))
 	(let loop ((a (make-accum 128)))
 	  (let ((char (read-char port)))
 	    (cond ((eof-object? char)
@@ -74,7 +68,7 @@ USA.
 (define (input-port/read-string port delimiters)
   (port/with-input-blocking-mode port 'BLOCKING
     (lambda ()
-      (let ((read-char (port/operation/read-char port)))
+      (let ((read-char (textual-port-operation/read-char port)))
 	(let loop ((a (make-accum 128)))
 	  (let ((char (read-char port)))
 	    (cond ((eof-object? char)
@@ -86,11 +80,11 @@ USA.
 		   (accum->string a))
 		  (else
 		   (loop (accum char a))))))))))
-
+
 (define (input-port/discard-chars port delimiters)
   (port/with-input-blocking-mode port 'BLOCKING
     (lambda ()
-      (let ((read-char (port/operation/read-char port)))
+      (let ((read-char (textual-port-operation/read-char port)))
 	(let loop ()
 	  (let ((char (read-char port)))
 	    (cond ((eof-object? char)
@@ -129,12 +123,12 @@ USA.
   (eq? object (eof-object)))
 
 (define (input-port/eof? port)
-  (let ((eof? (port/operation port 'EOF?)))
+  (let ((eof? (textual-port-operation port 'EOF?)))
     (and eof?
 	 (eof? port))))
 
 (define (input-port/line port)
-  (let ((operation (port/operation port 'INPUT-LINE)))
+  (let ((operation (textual-port-operation port 'INPUT-LINE)))
     (and operation
 	 (operation port))))
 
@@ -156,26 +150,22 @@ USA.
 		  (else #f))))
 	(input-port/char-ready? port))))
 
-(define (%read-char port)
-  (let loop ()
-    (or (input-port/%read-char port)
-	(loop))))
-
 (define (read-char #!optional port)
-  (%read-char (optional-input-port port 'READ-CHAR)))
+  (let ((port (optional-input-port port 'READ-CHAR)))
+    (let loop ()
+      (or (input-port/read-char port)
+	  (loop)))))
 
 (define (unread-char char #!optional port)
   (guarantee-char char 'UNREAD-CHAR)
   (input-port/unread-char (optional-input-port port 'UNREAD-CHAR) char))
 
-(define (%peek-char port)
-  (let loop ()
-    (or (input-port/%peek-char port)
-	(loop))))
-
 (define (peek-char #!optional port)
-  (%peek-char (optional-input-port port 'PEEK-CHAR)))
-
+  (let ((port (optional-input-port port 'READ-CHAR)))
+    (let loop ()
+      (or (input-port/peek-char port)
+	  (loop)))))
+
 (define (read-char-no-hang #!optional port)
   (let ((port (optional-input-port port 'READ-CHAR-NO-HANG)))
     (and (input-port/char-ready? port)
@@ -213,6 +203,8 @@ USA.
 			      string start end))
 
 (define (optional-input-port port caller)
-  (if (default-object? port)
-      (current-input-port)
-      (guarantee-input-port port caller)))
+  (let ((port (if (default-object? port) (current-input-port) port)))
+    (guarantee textual-input-port? port caller)
+    (if (not (textual-input-port-open? port))
+	(error:bad-range-argument port caller))
+    port))

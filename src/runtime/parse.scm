@@ -577,23 +577,23 @@ USA.
 			   (if (char=? char #\|)
 			       (read-unquoted #t char (%peek))
 			       (begin
-				 (%write-char (if (char=? char #\\)
-						  (%read)
-						  char)
-					      port*)
+				 (write-char (if (char=? char #\\)
+						 (%read)
+						 char)
+					     port*)
 				 (read-quoted)))))
 		       (error:illegal-char char)))
 		  ((char=? char #\\)
 		   (if quoting?
 		       (begin
-			 (%write-char (%read) port*)
+			 (write-char (%read) port*)
 			 ;; Forget previous char so
 			 ;; that quoting a final colon will
 			 ;; suppress it from being a keyword.
 			 (read-unquoted #t #f (%peek)))
 		       (error:illegal-char char)))
 		  (else
-		   (%write-char (%canon char) port*)
+		   (write-char (%canon char) port*)
 		   (read-unquoted quoted? char (%peek)))))))))
 
 (define (handler:list port db ctx char)
@@ -756,10 +756,10 @@ USA.
 			    ((char-ci=? char #\a) #\bel)
 			    ((char->digit char 8) (octal->char char port db))
 			    (else char)))))
-	       (%write-char char port*)
+	       (write-char char port*)
 	       (loop)))
 	    (else
-	     (%write-char char port*)
+	     (write-char char port*)
 	     (loop))))))))
 
 (define (octal->char c1 port db)
@@ -822,9 +822,9 @@ USA.
 	(name->char
 	 (call-with-output-string
 	   (lambda (port*)
-	     (%write-char char port*)
+	     (write-char char port*)
 	     (let loop ()
-	       (%write-char (let ((char (%read-char/no-eof port db)))
+	       (write-char (let ((char (%read-char/no-eof port db)))
 			     (if (char=? char #\\)
 				 (%read-char/no-eof port db)
 				 char))
@@ -856,7 +856,7 @@ USA.
 	 (let ((char (%read-char/no-eof port db)))
 	   (if (not (char=? char #\>))
 	       (begin
-		 (%write-char char port*)
+		 (write-char char port*)
 		 (loop)))))))))
 
 (define (handler:special-arg port db ctx char1 char2)

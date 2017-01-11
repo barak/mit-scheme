@@ -31,116 +31,104 @@ USA.
 
 ;;;; Low level
 
-(define-integrable (output-port/%write-char port char)
-  ((port/operation/write-char port) port char))
-
 (define (output-port/write-char port char)
-  ((port/operation/write-char port) port char))
+  ((textual-port-operation/write-char port) port char))
 
 (define (output-port/write-string port string)
   (output-port/write-substring port string 0 (xstring-length string)))
 
 (define (output-port/write-substring port string start end)
-  ((port/operation/write-substring port) port string start end))
+  ((textual-port-operation/write-substring port) port string start end))
 
 (define (output-port/fresh-line port)
-  ((port/operation/fresh-line port) port))
+  ((textual-port-operation/fresh-line port) port))
 
 (define (output-port/line-start? port)
-  ((port/operation/line-start? port) port))
+  ((textual-port-operation/line-start? port) port))
 
 (define (output-port/flush-output port)
-  ((port/operation/flush-output port) port))
-
-(define-integrable (output-port/%discretionary-flush port)
-  ((port/operation/discretionary-flush-output port) port))
+  ((textual-port-operation/flush-output port) port))
 
 (define (output-port/discretionary-flush port)
-  ((port/operation/discretionary-flush-output port) port))
+  ((textual-port-operation/discretionary-flush-output port) port))
 
 (define (output-port/write-object port object environment)
   (unparse-object/top-level object port #t environment))
 
 (define (output-port/x-size port)
-  (or (let ((operation (port/operation port 'X-SIZE)))
+  (or (let ((operation (textual-port-operation port 'X-SIZE)))
 	(and operation
 	     (operation port)))
       80))
 
 (define (output-port/y-size port)
-  (let ((operation (port/operation port 'Y-SIZE)))
+  (let ((operation (textual-port-operation port 'Y-SIZE)))
     (and operation
 	 (operation port))))
 
 (define (output-port/column port)
-  (let ((operation (port/operation port 'OUTPUT-COLUMN)))
+  (let ((operation (textual-port-operation port 'OUTPUT-COLUMN)))
     (and operation
 	 (operation port))))
 
 (define (output-port/bytes-written port)
-  (let ((operation (port/operation port 'BYTES-WRITTEN)))
+  (let ((operation (textual-port-operation port 'BYTES-WRITTEN)))
     (and operation
 	 (operation port))))
 
 (define (output-port/synchronize-output port)
-  (let ((operation (port/operation port 'SYNCHRONIZE-OUTPUT)))
+  (let ((operation (textual-port-operation port 'SYNCHRONIZE-OUTPUT)))
     (if operation
 	(operation port))))
 
 ;;;; High level
 
-(define (%write-char char port)
-  (if (let ((n (output-port/%write-char port char)))
-	(and n
-	     (fix:> n 0)))
-      (output-port/%discretionary-flush port)))
-
 (define (write-char char #!optional port)
-  (%write-char char (optional-output-port port 'WRITE-CHAR)))
+  (let ((port (optional-output-port port 'WRITE-CHAR)))
+    (if (let ((n (output-port/write-char port char)))
+	  (and n
+	       (fix:> n 0)))
+	(output-port/discretionary-flush port))))
 
 (define (write-string string #!optional port)
   (let ((port (optional-output-port port 'WRITE-STRING)))
     (if (let ((n (output-port/write-string port string)))
 	  (and n
-	       (> n 0)))
+	       (fix:> n 0)))
 	(output-port/discretionary-flush port))))
 
 (define (write-substring string start end #!optional port)
   (let ((port (optional-output-port port 'WRITE-SUBSTRING)))
     (if (let ((n (output-port/write-substring port string start end)))
 	  (and n
-	       (> n 0)))
+	       (fix:> n 0)))
 	(output-port/discretionary-flush port))))
 
 (define (newline #!optional port)
-  (let ((port (optional-output-port port 'NEWLINE)))
-    (if (let ((n (output-port/%write-char port #\newline)))
-	  (and n
-	       (fix:> n 0)))
-	(output-port/%discretionary-flush port))))
+  (write-char #\newline port))
 
 (define (fresh-line #!optional port)
   (let ((port (optional-output-port port 'FRESH-LINE)))
     (if (let ((n (output-port/fresh-line port)))
 	  (and n
 	       (fix:> n 0)))
-	(output-port/%discretionary-flush port))))
-
+	(output-port/discretionary-flush port))))
+
 (define (display object #!optional port environment)
   (let ((port (optional-output-port port 'DISPLAY)))
     (unparse-object/top-level object port #f environment)
-    (output-port/%discretionary-flush port)))
+    (output-port/discretionary-flush port)))
 
 (define (write object #!optional port environment)
   (let ((port (optional-output-port port 'WRITE)))
     (output-port/write-object port object environment)
-    (output-port/%discretionary-flush port)))
+    (output-port/discretionary-flush port)))
 
 (define (write-line object #!optional port environment)
   (let ((port (optional-output-port port 'WRITE-LINE)))
     (output-port/write-object port object environment)
-    (output-port/%write-char port #\newline)
-    (output-port/%discretionary-flush port)))
+    (output-port/write-char port #\newline)
+    (output-port/discretionary-flush port)))
 
 (define (flush-output-port #!optional port)
   (let ((port (optional-output-port port 'flush-output-port)))
@@ -151,19 +139,21 @@ USA.
 (define (wrap-custom-operation-0 operation-name)
   (lambda (#!optional port)
     (let ((port (optional-output-port port operation-name)))
-      (let ((operation (port/operation port operation-name)))
+      (let ((operation (textual-port-operation port operation-name)))
 	(if operation
 	    (begin
 	      (operation port)
-	      (output-port/%discretionary-flush port)))))))
+	      (output-port/discretionary-flush port)))))))
 
 (define beep (wrap-custom-operation-0 'BEEP))
 (define clear (wrap-custom-operation-0 'CLEAR))
 
 (define (optional-output-port port caller)
-  (if (default-object? port)
-      (current-output-port)
-      (guarantee-output-port port caller)))
+  (let ((port (if (default-object? port) (current-output-port) port)))
+    (guarantee textual-output-port? port caller)
+    (if (not (textual-output-port-open? port))
+	(error:bad-range-argument port caller))
+    port))
 
 ;;;; Tabular output
 
