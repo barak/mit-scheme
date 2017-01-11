@@ -31,25 +31,40 @@ USA.
 
 ;;;; Port type
 
-(define-structure (port-type (type-descriptor <textual-port-type>)
-			     (conc-name port-type/)
-			     (constructor %make-port-type))
-  (parent #f read-only #t)
-  standard-operations
-  custom-operations
+(define-record-type <textual-port-type>
+    (%make-port-type parent
+		     standard-operations
+		     custom-operations
+		     char-ready?
+		     read-char
+		     unread-char
+		     peek-char
+		     read-substring
+		     write-char
+		     write-substring
+		     fresh-line
+		     line-start?
+		     flush-output
+		     discretionary-flush-output)
+    port-type?
+  (parent port-type/parent)
+  (standard-operations port-type/standard-operations
+		       set-port-type/standard-operations!)
+  (custom-operations port-type/custom-operations
+		     set-port-type/custom-operations!)
   ;; input operations:
-  (char-ready? #f read-only #t)
-  (read-char #f read-only #t)
-  (unread-char #f read-only #t)
-  (peek-char #f read-only #t)
-  (read-substring #f read-only #t)
+  (char-ready? port-type/char-ready?)
+  (read-char port-type/read-char)
+  (unread-char port-type/unread-char)
+  (peek-char port-type/peek-char)
+  (read-substring port-type/read-substring)
   ;; output operations:
-  (write-char #f read-only #t)
-  (write-substring #f read-only #t)
-  (fresh-line #f read-only #t)
-  (line-start? #f read-only #t)
-  (flush-output #f read-only #t)
-  (discretionary-flush-output #f read-only #t))
+  (write-char port-type/write-char)
+  (write-substring port-type/write-substring)
+  (fresh-line port-type/fresh-line)
+  (line-start? port-type/line-start?)
+  (flush-output port-type/flush-output)
+  (discretionary-flush-output port-type/discretionary-flush-output))
 
 (set-record-type-unparser-method! <textual-port-type>
   (standard-unparser-method
@@ -107,17 +122,12 @@ USA.
 		  (list (car entry) (cdr entry)))
 		(port-type/custom-operations type))))
 
-;; Assumes type is a PORT-TYPE
-(define (port-type/%operation type name)
+(define (port-type/operation type name)
   (let ((entry
 	 (or (assq name (port-type/custom-operations type))
 	     (assq name (port-type/standard-operations type)))))
     (and entry
 	 (cdr entry))))
-
-(define (port-type/operation type name)
-  (guarantee-port-type type 'PORT-TYPE/OPERATION)
-  (port-type/%operation type name))
 
 ;;;; Constructors
 
@@ -440,7 +450,7 @@ USA.
 
 (define (textual-port-operation port name)
   (guarantee textual-port? port 'textual-port-operation)
-  (port-type/%operation (port/type port) name))
+  (port-type/operation (port/type port) name))
 
 (define-syntax define-port-operation
   (sc-macro-transformer
