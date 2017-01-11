@@ -2424,9 +2424,6 @@ USA.
   (files "binary-port")
   (parent (runtime))
   (export ()
-	  binary-i/o-port?
-	  binary-input-port?
-	  binary-output-port?
 	  binary-port?
 	  get-output-bytevector
 	  open-input-bytevector
@@ -2451,10 +2448,13 @@ USA.
 	  make-non-channel-output-sink
 	  output-sink?)
   (export (runtime port)
+	  binary-i/o-port?
 	  binary-input-port-open?
 	  binary-input-port:buffer-contents
 	  binary-input-port:set-buffer-contents!
+	  binary-input-port?
 	  binary-output-port-open?
+	  binary-output-port?
 	  close-binary-input-port
 	  close-binary-output-port
 	  close-binary-port))
