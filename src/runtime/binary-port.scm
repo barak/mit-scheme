@@ -104,13 +104,15 @@ USA.
     (make-binary-input-port
      (make-non-channel-input-source
       (lambda ()
-	(fix:< start end))
+	(fix:<= start end))
       (lambda (bv bs be)
-	(let ((n (fix:min (fix:- end start) (fix:- be bs))))
-	  (let ((start* (fix:+ start n)))
-	    (bytevector-copy! bv bs bytevector start start*)
-	    (set! start start*))
-	  n)))
+	(if (fix:< bs be)
+	    (let ((n (fix:min (fix:- end start) (fix:- be bs))))
+	      (let ((start* (fix:+ start n)))
+		(bytevector-copy! bv bs bytevector start start*)
+		(set! start start*))
+	      n)
+	    0)))
      'open-input-bytevector)))
 
 ;;;; Bytevector output ports
