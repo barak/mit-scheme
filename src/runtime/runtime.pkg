@@ -2461,63 +2461,41 @@ USA.
 	  binary-output-port?
 	  close-binary-input-port
 	  close-binary-output-port
-	  close-binary-port))
+	  close-binary-port)
+  (export (runtime output-port)
+	  flush-binary-output-port))
 
 (define-package (runtime port)
   (files "port")
   (parent (runtime))
   (export ()
+	  (port/input-open? input-port-open?)
+	  (port/output-open? output-port-open?)
+	  (port/state textual-port-state)
+	  (port/thread-mutex textual-port-thread-mutex)
+	  (port/type textual-port-type)
+	  (set-port/state! set-textual-port-state!)
 	  close-input-port
 	  close-output-port
 	  close-port
 	  current-input-port
 	  current-output-port
-	  error:not-input-port
-	  error:not-output-port
-	  generic-port-operation:read-substring
-	  generic-port-operation:write-substring
 	  guarantee-i/o-port
 	  guarantee-input-port
 	  guarantee-output-port
 	  guarantee-port
-	  guarantee-port-type
-	  i/o-port-type?
 	  i/o-port?
-	  input-port-type?
+	  input-port-open?
 	  input-port?
 	  interaction-i/o-port
-	  make-port
-	  make-port-type
 	  notification-output-port
-	  output-port-type?
+	  output-port-open?
 	  output-port?
 	  port-position
-	  port-type/%operation
-	  port-type/char-ready?
-	  port-type/discretionary-flush-output
-	  port-type/flush-output
-	  port-type/fresh-line
-	  port-type/line-start?
-	  port-type/operation
-	  port-type/operation-names
-	  port-type/operations
-	  port-type/parent
-	  port-type/peek-char
-	  port-type/read-char
-	  port-type/read-substring
-	  port-type/unread-char
-	  port-type/write-char
-	  port-type/write-substring
-	  port-type?
-	  port/%operation
-	  port/%state
-	  port/%type
 	  port/coding
 	  port/copy
 	  port/get-property
 	  port/input-blocking-mode
-	  port/input-channel
-	  port/input-open?
 	  port/input-terminal-mode
 	  port/intern-property!
 	  port/known-coding?
@@ -2529,8 +2507,6 @@ USA.
 	  port/operation
 	  port/operation-names
 	  port/output-blocking-mode
-	  port/output-channel
-	  port/output-open?
 	  port/output-terminal-mode
 	  port/remove-property!
 	  port/set-coding
@@ -2540,10 +2516,7 @@ USA.
 	  port/set-output-blocking-mode
 	  port/set-output-terminal-mode
 	  port/set-property!
-	  port/state
 	  port/supports-coding?
-	  port/thread-mutex
-	  port/type
 	  port/with-input-blocking-mode
 	  port/with-input-terminal-mode
 	  port/with-output-blocking-mode
@@ -2555,25 +2528,31 @@ USA.
 	  set-interaction-i/o-port!
 	  set-notification-output-port!
 	  set-port-position!
-	  set-port/state!
 	  set-trace-output-port!
+	  textual-port?
 	  trace-output-port
 	  with-input-from-port
 	  with-interaction-i/o-port
 	  with-notification-output-port
 	  with-output-to-port
 	  with-trace-output-port)
+  (export (runtime)
+	  generic-port-operation:write-substring
+	  make-port
+	  make-port-type
+	  port/input-channel
+	  port/output-channel
+	  set-textual-port-state!
+	  textual-port-state)
   (export (runtime input-port)
-	  port/%operation/read-char
-	  port/%operation/peek-char
+	  port/operation
 	  port/operation/char-ready?
 	  port/operation/peek-char
 	  port/operation/read-char
 	  port/operation/read-substring
 	  port/operation/unread-char)
   (export (runtime output-port)
-	  port/%operation/discretionary-flush-output
-	  port/%operation/write-char
+	  port/operation
 	  port/operation/discretionary-flush-output
 	  port/operation/flush-output
 	  port/operation/fresh-line
@@ -2581,11 +2560,13 @@ USA.
 	  port/operation/write-char
 	  port/operation/write-substring)
   (export (runtime transcript)
-	  port/transcript
-	  set-port/transcript!)
+	  set-textual-port-transcript!
+	  textual-port-transcript)
   (export (runtime emacs-interface)
-	  set-port/thread-mutex!
-	  set-port/type!)
+	  port-type/operation
+	  set-textual-port-thread-mutex!
+	  set-textual-port-type!
+	  textual-port-type)
   (initialization (initialize-package!)))
 
 (define-package (runtime input-port)
@@ -2630,12 +2611,13 @@ USA.
   (files "output")
   (parent (runtime))
   (export ()
+	  (flush-output flush-output-port)
 	  %write-char
 	  beep
 	  call-with-truncated-output-port
 	  clear
 	  display
-	  flush-output
+	  flush-output-port
 	  fresh-line
 	  newline
 	  output-port/%write-char

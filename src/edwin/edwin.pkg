@@ -119,6 +119,12 @@ USA.
 	  define-primitives
 	  ucode-primitive
 	  ucode-type)
+  (import (runtime port)
+	  generic-port-operation:write-substring
+	  make-port-type
+	  make-port
+	  port/input-channel
+	  port/output-channel)
   (export (edwin class-macros)
 	  class-instance-transforms)
   (export ()

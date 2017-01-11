@@ -31,14 +31,14 @@ USA.
 
 (define (transcript-on filename #!optional port)
   (let ((port (if (default-object? port) (nearest-cmdl/port) port)))
-    (if (port/transcript port)
+    (if (textual-port-transcript port)
 	(error "Transcript already turned on."))
-    (set-port/transcript! port (open-output-file filename))))
+    (set-textual-port-transcript! port (open-output-file filename))))
 
 (define (transcript-off #!optional port)
   (let ((port (if (default-object? port) (nearest-cmdl/port) port)))
-    (let ((transcript-port (port/transcript port)))
+    (let ((transcript-port (textual-port-transcript port)))
       (if transcript-port
 	  (begin
-	    (set-port/transcript! port #f)
+	    (set-textual-port-transcript! port #f)
 	    (close-port transcript-port))))))

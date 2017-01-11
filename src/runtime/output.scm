@@ -142,13 +142,16 @@ USA.
     (output-port/%write-char port #\newline)
     (output-port/%discretionary-flush port)))
 
-(define (flush-output #!optional port)
-  (output-port/flush-output (optional-output-port port 'FLUSH-OUTPUT)))
+(define (flush-output-port #!optional port)
+  (let ((port (optional-output-port port 'flush-output-port)))
+    (cond ((binary-port? port) (flush-binary-output-port port))
+	  ((textual-port? port) (output-port/flush-output port))
+	  (else (error:not-a port? port 'flush-output-port)))))
 
 (define (wrap-custom-operation-0 operation-name)
   (lambda (#!optional port)
     (let ((port (optional-output-port port operation-name)))
-      (let ((operation (port/%operation port operation-name)))
+      (let ((operation (port/operation port operation-name)))
 	(if operation
 	    (begin
 	      (operation port)

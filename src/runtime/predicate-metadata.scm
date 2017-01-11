@@ -219,10 +219,8 @@ USA.
    (register-predicate! char? 'char)
    (register-predicate! default-object? 'default-object)
    (register-predicate! eof-object? 'eof-object)
-   (register-predicate! input-port? 'input-port '<= port?)
    (register-predicate! list? 'list)
    (register-predicate! number? 'number)
-   (register-predicate! output-port? 'output-port '<= port?)
    (register-predicate! pair? 'pair)
    (register-predicate! procedure? 'procedure)
    (register-predicate! string? 'string)
@@ -304,7 +302,6 @@ USA.
    (register-predicate! environment? 'environment)
    (register-predicate! equality-predicate? 'equality-predicate
 			'<= binary-procedure?)
-   (register-predicate! i/o-port? 'i/o-port '<= (list input-port? output-port?))
    (register-predicate! interned-symbol? 'interned-symbol '<= symbol?)
    (register-predicate! keyword? 'keyword '<= symbol?)
    (register-predicate! lambda-tag? 'lambda-tag)

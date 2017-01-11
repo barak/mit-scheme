@@ -29,9 +29,71 @@ USA.
 
 (declare (usual-integrations))
 
+(define (port? object)
+  (or (textual-port? object)
+      (binary-port? object)))
+
+(define (input-port? object)
+  (or (textual-input-port? object)
+      (binary-input-port? object)))
+
+(define (output-port? object)
+  (or (textual-output-port? object)
+      (binary-output-port? object)))
+
+(define (i/o-port? object)
+  (or (textual-i/o-port? object)
+      (binary-i/o-port? object)))
+
+#;
+(add-boot-init!
+ (lambda ()
+   (register-predicate! port? 'port)
+   (set-predicate<=! binary-port? port?)
+   (set-predicate<=! textual-port? port?)
+   (register-predicate! input-port? 'port)
+   (set-predicate<=! binary-input-port? input-port?)
+   (set-predicate<=! textual-input-port? input-port?)
+   (register-predicate! output-port? 'port)
+   (set-predicate<=! binary-output-port? output-port?)
+   (set-predicate<=! textual-output-port? output-port?)
+   (register-predicate! i/o-port? 'port)
+   (set-predicate<=! binary-i/o-port? i/o-port?)
+   (set-predicate<=! textual-i/o-port? i/o-port?)))
+
+(define-guarantee port "port")
+(define-guarantee input-port "input port")
+(define-guarantee output-port "output port")
+(define-guarantee i/o-port "I/O port")
+
+(define (input-port-open? port)
+  (cond ((binary-port? port) (binary-input-port-open? port))
+	((textual-port? port) (textual-input-port-open? port))
+	(else (error:not-a port? port 'input-port-open?))))
+
+(define (output-port-open? port)
+  (cond ((binary-port? port) (binary-output-port-open? port))
+	((textual-port? port) (textual-output-port-open? port))
+	(else (error:not-a port? port 'output-port-open?))))
+
+(define (close-port port)
+  (cond ((binary-port? port) (close-binary-port port))
+	((textual-port? port) (close-textual-port port))
+	(else (error:not-a port? port 'close-port))))
+
+(define (close-input-port port)
+  (cond ((binary-port? port) (close-binary-input-port port))
+	((textual-port? port) (close-textual-input-port port))
+	(else (error:not-a port? port 'close-input-port))))
+
+(define (close-output-port port)
+  (cond ((binary-port? port) (close-binary-output-port port))
+	((textual-port? port) (close-textual-output-port port))
+	(else (error:not-a port? port 'close-output-port))))
+
 ;;;; Port type
 
-(define-structure (port-type (type-descriptor <port-type>)
+(define-structure (port-type (type-descriptor <textual-port-type>)
 			     (conc-name port-type/)
 			     (constructor %make-port-type))
   (parent #f read-only #t)
@@ -51,16 +113,16 @@ USA.
   (flush-output #f read-only #t)
   (discretionary-flush-output #f read-only #t))
 
-(set-record-type-unparser-method! <port-type>
+(set-record-type-unparser-method! <textual-port-type>
   (standard-unparser-method
    (lambda (type)
      (if (port-type/supports-input? type)
 	(if (port-type/supports-output? type)
-	    'I/O-PORT-TYPE
-	    'INPUT-PORT-TYPE)
+	    'TEXTUAL-I/O-PORT-TYPE
+	    'TEXTUAL-INPUT-PORT-TYPE)
 	(if (port-type/supports-output? type)
-	    'OUTPUT-PORT-TYPE
-	    'PORT-TYPE)))
+	    'TEXTUAL-OUTPUT-PORT-TYPE
+	    'TEXTUAL-PORT-TYPE)))
    #f))
 
 (define (guarantee-port-type object #!optional caller)
@@ -290,28 +352,28 @@ USA.
 	   (lambda (port)
 	     (let ((char (defer port)))
 	       (transcribe-input-char char port)
-	       (set-port/unread?! port #f)
+	       (set-textual-port-unread?! port #f)
 	       char))))
 	(unread-char
 	 (let ((defer (op 'UNREAD-CHAR)))
 	   (and defer
 		(lambda (port char)
 		  (defer port char)
-		  (set-port/unread?! port #t)))))
+		  (set-textual-port-unread?! port #t)))))
 	(peek-char
 	 (let ((defer (op 'PEEK-CHAR)))
 	   (and defer
 		(lambda (port)
 		  (let ((char (defer port)))
 		    (transcribe-input-char char port)
-		    (set-port/unread?! port #t)
+		    (set-textual-port-unread?! port #t)
 		    char)))))
 	(read-substring
 	 (let ((defer (op 'READ-SUBSTRING)))
 	   (lambda (port string start end)
 	     (let ((n (defer port string start end)))
 	       (transcribe-input-substring string start n port)
-	       (set-port/unread?! port #f)
+	       (set-textual-port-unread?! port #f)
 	       n)))))
     (lambda (name)
       (case name
@@ -323,13 +385,13 @@ USA.
 
 (define (transcribe-input-char char port)
   (if (and (char? char)
-	   (not (port/unread? port)))
+	   (not (textual-port-unread? port)))
       (transcribe-char char port)))
 
 (define (transcribe-input-substring string start n port)
   (if (and n (> n 0))
       (transcribe-substring string
-			    (if (port/unread? port) (+ start 1) start)
+			    (if (textual-port-unread? port) (+ start 1) start)
 			    (+ start n)
 			    port)))
 
@@ -342,7 +404,7 @@ USA.
 	     (let ((n (defer port char)))
 	       (if (and n (fix:> n 0))
 		   (begin
-		     (set-port/previous! port char)
+		     (set-textual-port-previous! port char)
 		     (transcribe-char char port)))
 	       n))))
 	(write-substring
@@ -351,7 +413,7 @@ USA.
 	     (let ((n (defer port string start end)))
 	       (if (and n (> n 0))
 		   (let ((end (+ start n)))
-		     (set-port/previous! port (xstring-ref string (- end 1)))
+		     (set-textual-port-previous! port (xstring-ref string (- end 1)))
 		     (transcribe-substring string start end port)))
 	       n))))
 	(flush-output
@@ -366,13 +428,13 @@ USA.
 	     (discretionary-flush-transcript port))))
 	(line-start?
 	 (lambda (port)
-	   (if (port/previous port)
-	       (char=? (port/previous port) #\newline)
+	   (if (textual-port-previous port)
+	       (char=? (textual-port-previous port) #\newline)
 	       'UNKNOWN))))
     (let ((fresh-line
 	   (lambda (port)
-	     (if (and (port/previous port)
-		      (not (char=? (port/previous port) #\newline)))
+	     (if (and (textual-port-previous port)
+		      (not (char=? (textual-port-previous port) #\newline)))
 		 (write-char port #\newline)
 		 0))))
       (lambda (name)
@@ -385,46 +447,23 @@ USA.
 	  ((DISCRETIONARY-FLUSH-OUTPUT) discretionary-flush-output)
 	  (else (op name)))))))
 
-;;;; Port object
+;;;; Textual ports
 
-(define-structure (port (type-descriptor <port>)
-			(conc-name port/)
-			(constructor %make-port (%type %state)))
-  %type
-  %state
-  (%thread-mutex (make-thread-mutex))
-  (unread? #f)
-  (previous #f)
-  (properties '())
-  (transcript #f))
+(define-record-type <textual-port>
+    (%make-textual-port type state thread-mutex unread? previous properties
+			transcript)
+    textual-port?
+  (type textual-port-type set-textual-port-type!)
+  (state textual-port-state set-textual-port-state!)
+  (thread-mutex textual-port-thread-mutex set-textual-port-thread-mutex!)
+  (unread? textual-port-unread? set-textual-port-unread?!)
+  (previous textual-port-previous set-textual-port-previous!)
+  (properties textual-port-properties set-textual-port-properties!)
+  (transcript textual-port-transcript set-textual-port-transcript!))
 
 (define (make-port type state)
   (guarantee-port-type type 'MAKE-PORT)
-  (%make-port type state))
-
-(define (port/type port)
-  (guarantee-port port 'PORT/TYPE)
-  (port/%type port))
-
-(define (set-port/type! port type)
-  (guarantee-port port 'SET-PORT/TYPE!)
-  (guarantee-port-type type 'SET-PORT/TYPE!)
-  (set-port/%type! port type))
-
-(define (port/state port)
-  (guarantee-port port 'PORT/STATE)
-  (port/%state port))
-
-(define (set-port/state! port state)
-  (guarantee-port port 'SET-PORT/STATE!)
-  (set-port/%state! port state))
-
-(define (port/thread-mutex port)
-  (guarantee-port port 'PORT/THREAD-MUTEX)
-  (port/%thread-mutex port))
-
-(define (set-port/thread-mutex! port mutex)
-  (set-port/%thread-mutex! port mutex))
+  (%make-textual-port type state (make-thread-mutex) #f #f '() #f))
 
 (define (port=? p1 p2)
   (guarantee-port p1 'PORT=?)
@@ -434,12 +473,9 @@ USA.
 (define (port/operation-names port)
   (port-type/operation-names (port/type port)))
 
-(define-integrable (port/%operation port name)
-  (port-type/%operation (port/%type port) name))
-
 (define (port/operation port name)
   (guarantee-port port 'port/operation)
-  (port/%operation port name))
+  (port-type/%operation (port/type port) name))
 
 (define-syntax define-port-operation
   (sc-macro-transformer
@@ -461,20 +497,6 @@ USA.
 (define-port-operation flush-output)
 (define-port-operation discretionary-flush-output)
 
-;;; These operations assume that the port is in fact a port.
-(define-syntax define-unsafe-port-operation
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((name (cadr form)))
-       `(DEFINE-INTEGRABLE (,(symbol-append 'PORT/%OPERATION/ name) PORT)
-	  (,(close-syntax (symbol-append 'PORT-TYPE/ name) environment)
-	   (PORT/%TYPE PORT)))))))
-
-(define-unsafe-port-operation discretionary-flush-output)
-(define-unsafe-port-operation read-char)
-(define-unsafe-port-operation peek-char)
-(define-unsafe-port-operation write-char)
-
 (define (port-position port)
   ((or (port/operation port 'POSITION)
        (error:bad-range-argument port 'PORT-POSITION))
@@ -485,13 +507,13 @@ USA.
        (error:bad-range-argument port 'SET-PORT-POSITION!))
    port position))
 
-(set-record-type-unparser-method! <port>
+(set-record-type-unparser-method! <textual-port>
   (lambda (state port)
     ((let ((name
-	    (cond ((i/o-port? port) 'I/O-PORT)
-		  ((input-port? port) 'INPUT-PORT)
-		  ((output-port? port) 'OUTPUT-PORT)
-		  (else 'PORT))))
+	    (cond ((textual-i/o-port? port) 'TEXTUAL-I/O-PORT)
+		  ((textual-input-port? port) 'TEXTUAL-INPUT-PORT)
+		  ((textual-output-port? port) 'TEXTUAL-OUTPUT-PORT)
+		  (else 'TEXTUAL-PORT))))
        (cond ((port/operation port 'WRITE-SELF)
 	      => (lambda (operation)
 		   (standard-unparser-method name operation)))
@@ -502,11 +524,11 @@ USA.
 
 (define (port/copy port state)
   (let ((port (copy-record port)))
-    (set-port/state! port state)
-    (set-port/thread-mutex! port (make-thread-mutex))
+    (set-textual-port-state! port state)
+    (set-textual-port-thread-mutex! port (make-thread-mutex))
     port))
 
-(define (close-port port)
+(define (close-textual-port port)
   (let ((close (port/operation port 'CLOSE)))
     (if close
 	(close port)
@@ -514,12 +536,12 @@ USA.
 	  (close-output-port port)
 	  (close-input-port port)))))
 
-(define (close-input-port port)
+(define (close-textual-input-port port)
   (let ((close-input (port/operation port 'CLOSE-INPUT)))
     (if close-input
 	(close-input port))))
 
-(define (close-output-port port)
+(define (close-textual-output-port port)
   (let ((close-output (port/operation port 'CLOSE-OUTPUT)))
     (if close-output
 	(close-output port))))
@@ -528,25 +550,29 @@ USA.
   (let ((open? (port/operation port 'OPEN?)))
     (if open?
 	(open? port)
-	(and (if (input-port? port) (%input-open? port) #t)
-	     (if (output-port? port) (%output-open? port) #t)))))
+	(and (if (textual-input-port? port)
+		 (textual-input-port-open? port)
+		 #t)
+	     (if (textual-output-port? port)
+		 (textual-output-port-open? port)
+		 #t)))))
 
 (define (port/input-open? port)
-  (and (input-port? port)
-       (%input-open? port)))
+  (and (textual-input-port? port)
+       (textual-input-port-open? port)))
 
-(define (%input-open? port)
-  (let ((open? (port/%operation port 'INPUT-OPEN?)))
+(define (textual-input-port-open? port)
+  (let ((open? (port/operation port 'INPUT-OPEN?)))
     (if open?
 	(open? port)
 	#t)))
 
 (define (port/output-open? port)
-  (and (output-port? port)
-       (%output-open? port)))
+  (and (textual-output-port? port)
+       (textual-output-port-open? port)))
 
-(define (%output-open? port)
-  (let ((open? (port/%operation port 'OUTPUT-OPEN?)))
+(define (textual-output-port-open? port)
+  (let ((open? (port/operation port 'OUTPUT-OPEN?)))
     (if open?
 	(open? port)
 	#t)))
@@ -563,101 +589,69 @@ USA.
 
 (define (port/get-property port name default)
   (guarantee-symbol name 'PORT/GET-PROPERTY)
-  (let ((p (assq name (port/properties port))))
+  (let ((p (assq name (textual-port-properties port))))
     (if p
 	(cdr p)
 	default)))
 
 (define (port/set-property! port name value)
   (guarantee-symbol name 'PORT/SET-PROPERTY!)
-  (let ((alist (port/properties port)))
+  (let ((alist (textual-port-properties port)))
     (let ((p (assq name alist)))
       (if p
 	  (set-cdr! p value)
-	  (set-port/properties! port (cons (cons name value) alist))))))
+	  (set-textual-port-properties! port (cons (cons name value) alist))))))
 
 (define (port/intern-property! port name get-value)
   (guarantee-symbol name 'PORT/INTERN-PROPERTY!)
-  (let ((alist (port/properties port)))
+  (let ((alist (textual-port-properties port)))
     (let ((p (assq name alist)))
       (if p
 	  (cdr p)
 	  (let ((value (get-value)))
-	    (set-port/properties! port (cons (cons name value) alist))
+	    (set-textual-port-properties! port (cons (cons name value) alist))
 	    value)))))
 
 (define (port/remove-property! port name)
   (guarantee-symbol name 'PORT/REMOVE-PROPERTY!)
-  (set-port/properties! port (del-assq! name (port/properties port))))
+  (set-textual-port-properties! port (del-assq! name (textual-port-properties port))))
 
 (define (transcribe-char char port)
-  (let ((tport (port/transcript port)))
+  (let ((tport (textual-port-transcript port)))
     (if tport
 	(%write-char char tport))))
 
 (define (transcribe-substring string start end port)
-  (let ((tport (port/transcript port)))
+  (let ((tport (textual-port-transcript port)))
     (if tport
 	(write-substring string start end tport))))
 
 (define (flush-transcript port)
-  (let ((tport (port/transcript port)))
+  (let ((tport (textual-port-transcript port)))
     (if tport
 	(flush-output tport))))
 
 (define (discretionary-flush-transcript port)
-  (let ((tport (port/transcript port)))
+  (let ((tport (textual-port-transcript port)))
     (if tport
 	(output-port/discretionary-flush tport))))
 
-(define (input-port? object)
-  (and (port? object)
-       (port-type/supports-input? (port/%type object))
+(define (textual-input-port? object)
+  (and (textual-port? object)
+       (port-type/supports-input? (port/type object))
        #t))
 
-(define (output-port? object)
-  (and (port? object)
-       (port-type/supports-output? (port/%type object))
+(define (textual-output-port? object)
+  (and (textual-port? object)
+       (port-type/supports-output? (port/type object))
        #t))
 
-(define (i/o-port? object)
-  (and (port? object)
-       (let ((type (port/%type object)))
+(define (textual-i/o-port? object)
+  (and (textual-port? object)
+       (let ((type (port/type object)))
 	 (and (port-type/supports-input? type)
 	      (port-type/supports-output? type)
 	      #t))))
-
-(define (guarantee-port port #!optional caller)
-  (if (not (port? port))
-      (error:not-port port caller))
-  port)
-
-(define (error:not-port port #!optional caller)
-  (error:wrong-type-argument port "port" caller))
-
-(define (guarantee-input-port port #!optional caller)
-  (if (not (input-port? port))
-      (error:not-input-port port caller))
-  port)
-
-(define (error:not-input-port port #!optional caller)
-  (error:wrong-type-argument port "input port" caller))
-
-(define (guarantee-output-port port #!optional caller)
-  (if (not (output-port? port))
-      (error:not-output-port port caller))
-  port)
-
-(define (error:not-output-port port #!optional caller)
-  (error:wrong-type-argument port "output port" caller))
-
-(define (guarantee-i/o-port port #!optional caller)
-  (if (not (i/o-port? port))
-      (error:not-i/o-port port caller))
-  port)
-
-(define (error:not-i/o-port port #!optional caller)
-  (error:wrong-type-argument port "I/O port" caller))
 
 (define (port/supports-coding? port)
   (let ((operation (port/operation port 'SUPPORTS-CODING?)))
@@ -788,14 +782,14 @@ USA.
 (define notification-output-port)
 (define trace-output-port)
 (define interaction-i/o-port)
-
-(define (initialize-package!)
-  (set! current-input-port (make-port-parameter guarantee-input-port))
-  (set! current-output-port (make-port-parameter guarantee-output-port))
-  (set! notification-output-port (make-port-parameter guarantee-output-port))
-  (set! trace-output-port (make-port-parameter guarantee-output-port))
-  (set! interaction-i/o-port (make-port-parameter guarantee-i/o-port))
-  unspecific)
+(add-boot-init!
+ (lambda ()
+   (set! current-input-port (make-port-parameter guarantee-input-port))
+   (set! current-output-port (make-port-parameter guarantee-output-port))
+   (set! notification-output-port (make-port-parameter guarantee-output-port))
+   (set! trace-output-port (make-port-parameter guarantee-output-port))
+   (set! interaction-i/o-port (make-port-parameter guarantee-i/o-port))
+   unspecific))
 
 (define (make-port-parameter guarantee)
   (make-general-parameter #f

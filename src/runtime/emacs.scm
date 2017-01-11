@@ -227,7 +227,7 @@ USA.
 (define emacs-console-port-type)
 
 (define (initialize-package!)
-  (set! vanilla-console-port-type (port/type the-console-port))
+  (set! vanilla-console-port-type (textual-port-type the-console-port))
   (set! emacs-console-port-type
 	(make-port-type
 	 `((PROMPT-FOR-EXPRESSION ,emacs/prompt-for-expression)
@@ -247,10 +247,10 @@ USA.
   (add-event-receiver! event:after-restore
     (lambda ()
       (let ((type (select-console-port-type)))
-	(if (let ((type (port/type the-console-port)))
+	(if (let ((type (textual-port-type the-console-port)))
 	      (or (eq? type vanilla-console-port-type)
 		  (eq? type emacs-console-port-type)))
-	    (set-port/type! the-console-port type))))))
+	    (set-textual-port-type! the-console-port type))))))
 
 (define (select-console-port-type)
   (if ((ucode-primitive under-emacs? 0))
