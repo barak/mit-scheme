@@ -321,8 +321,9 @@ USA.
 (define (call-with-truncated-output-port limit port generator)
   (call-with-current-continuation
    (lambda (k)
-     (let ((port (make-port truncated-output-type
-			    (make-tstate port limit k 0))))
+     (let ((port
+	    (make-textual-port truncated-output-type
+			       (make-tstate port limit k 0))))
        (generator port)
        #f))))
 
@@ -333,7 +334,7 @@ USA.
   count)
 
 (define (trunc-out/write-char port char)
-  (let ((ts (port/state port)))
+  (let ((ts (textual-port-state port)))
     (if (< (tstate-count ts) (tstate-limit ts))
 	(begin
 	  (set-tstate-count! ts (+ (tstate-count ts) 1))
@@ -341,17 +342,17 @@ USA.
 	((tstate-continuation ts) #t))))
 
 (define (trunc-out/flush-output port)
-  (output-port/flush-output (tstate-port (port/state port))))
+  (output-port/flush-output (tstate-port (textual-port-state port))))
 
 (define (trunc-out/discretionary-flush-output port)
-  (output-port/discretionary-flush (tstate-port (port/state port))))
+  (output-port/discretionary-flush (tstate-port (textual-port-state port))))
 
 (define truncated-output-type)
 (define (initialize-package!)
   (set! truncated-output-type
-	(make-port-type `((WRITE-CHAR ,trunc-out/write-char)
-			  (FLUSH-OUTPUT ,trunc-out/flush-output)
-			  (DISCRETIONARY-FLUSH-OUTPUT
-			   ,trunc-out/discretionary-flush-output))
-			#f))
+	(make-textual-port-type `((WRITE-CHAR ,trunc-out/write-char)
+				  (FLUSH-OUTPUT ,trunc-out/flush-output)
+				  (DISCRETIONARY-FLUSH-OUTPUT
+				   ,trunc-out/discretionary-flush-output))
+				#f))
   unspecific)

@@ -149,7 +149,7 @@ USA.
 				(with-create-thread-continuation continuation
 				  (lambda ()
 				    ((cmdl/driver cmdl) cmdl))))))))))))))))
-	  (mutex (port/thread-mutex port)))
+	  (mutex (textual-port-thread-mutex port)))
       (let ((thread (current-thread))
 	    (owner (thread-mutex-owner mutex)))
 	(cond ((and owner (not (eq? thread owner)))

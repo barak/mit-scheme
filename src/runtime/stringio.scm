@@ -43,14 +43,14 @@ USA.
 	 (receive (start end)
 	     (check-index-limits start end (string-length string)
 				 'OPEN-INPUT-STRING)
-	   (make-port narrow-input-type
-		      (make-internal-input-state string start end))))
+	   (make-textual-port narrow-input-type
+			      (make-internal-input-state string start end))))
 	((wide-string? string)
 	 (receive (start end)
 	     (check-index-limits start end (wide-string-length string)
 				 'OPEN-INPUT-STRING)
-	   (make-port wide-input-type
-		      (make-internal-input-state string start end))))
+	   (make-textual-port wide-input-type
+			      (make-internal-input-state string start end))))
 	(else
 	 (error:not-string string 'OPEN-INPUT-STRING))))
 
@@ -73,14 +73,14 @@ USA.
 	    end)))
 
 (define (make-string-in-type peek-char read-char unread-char)
-  (make-port-type `((CHAR-READY? ,string-in/char-ready?)
-		    (EOF? ,internal-in/eof?)
-		    (PEEK-CHAR ,peek-char)
-		    (READ-CHAR ,read-char)
-		    (READ-SUBSTRING ,internal-in/read-substring)
-		    (UNREAD-CHAR ,unread-char)
-		    (WRITE-SELF ,string-in/write-self))
-		  #f))
+  (make-textual-port-type `((CHAR-READY? ,string-in/char-ready?)
+			    (EOF? ,internal-in/eof?)
+			    (PEEK-CHAR ,peek-char)
+			    (READ-CHAR ,read-char)
+			    (READ-SUBSTRING ,internal-in/read-substring)
+			    (UNREAD-CHAR ,unread-char)
+			    (WRITE-SELF ,string-in/write-self))
+			  #f))
 
 (define (make-internal-input-state string start end)
   (make-iistate string start end start))
@@ -100,11 +100,11 @@ USA.
   (write-string " from string" output-port))
 
 (define (internal-in/eof? port)
-  (let ((ss (port/state port)))
+  (let ((ss (textual-port-state port)))
     (not (fix:< (iistate-next ss) (iistate-end ss)))))
 
 (define (internal-in/read-substring port string start end)
-  (let ((ss (port/state port)))
+  (let ((ss (textual-port-state port)))
     (let ((n
 	   (move-chars! (iistate-string ss) (iistate-next ss) (iistate-end ss)
 			string start end)))
@@ -117,13 +117,13 @@ USA.
 		       narrow-in/unread-char))
 
 (define (narrow-in/peek-char port)
-  (let ((ss (port/state port)))
+  (let ((ss (textual-port-state port)))
     (if (fix:< (iistate-next ss) (iistate-end ss))
 	(string-ref (iistate-string ss) (iistate-next ss))
 	(make-eof-object port))))
 
 (define (narrow-in/read-char port)
-  (let ((ss (port/state port)))
+  (let ((ss (textual-port-state port)))
     (if (fix:< (iistate-next ss) (iistate-end ss))
 	(let ((char (string-ref (iistate-string ss) (iistate-next ss))))
 	  (set-iistate-next! ss (fix:+ (iistate-next ss) 1))
@@ -131,7 +131,7 @@ USA.
 	(make-eof-object port))))
 
 (define (narrow-in/unread-char port char)
-  (let ((ss (port/state port)))
+  (let ((ss (textual-port-state port)))
     (if (not (fix:< (iistate-start ss) (iistate-next ss)))
 	(error "No char to unread:" port))
     (let ((prev (fix:- (iistate-next ss) 1)))
@@ -145,13 +145,13 @@ USA.
 		       wide-in/unread-char))
 
 (define (wide-in/peek-char port)
-  (let ((ss (port/state port)))
+  (let ((ss (textual-port-state port)))
     (if (fix:< (iistate-next ss) (iistate-end ss))
 	(wide-string-ref (iistate-string ss) (iistate-next ss))
 	(make-eof-object port))))
 
 (define (wide-in/read-char port)
-  (let ((ss (port/state port)))
+  (let ((ss (textual-port-state port)))
     (if (fix:< (iistate-next ss) (iistate-end ss))
 	(let ((char (wide-string-ref (iistate-string ss) (iistate-next ss))))
 	  (set-iistate-next! ss (fix:+ (iistate-next ss) 1))
@@ -159,7 +159,7 @@ USA.
 	(make-eof-object port))))
 
 (define (wide-in/unread-char port char)
-  (let ((ss (port/state port)))
+  (let ((ss (textual-port-state port)))
     (if (not (fix:< (iistate-start ss) (iistate-next ss)))
 	(error "No char to unread:" port))
     (let ((prev (fix:- (iistate-next ss) 1)))
@@ -262,19 +262,20 @@ USA.
 	 n)))))
 
 (define (make-octets-input-type)
-  (make-port-type `((WRITE-SELF
-		     ,(lambda (port output-port)
-			port
-			(write-string " from byte vector" output-port))))
-		  (generic-i/o-port-type #t #f)))
+  (make-textual-port-type
+   `((WRITE-SELF
+      ,(lambda (port output-port)
+	 port
+	 (write-string " from byte vector" output-port))))
+   (generic-i/o-port-type #t #f)))
 
 ;;;; Output as characters
 
 (define (open-narrow-output-string)
-  (make-port narrow-output-type (make-ostate (make-string 16) 0 0)))
+  (make-textual-port narrow-output-type (make-ostate (make-string 16) 0 0)))
 
 (define (open-wide-output-string)
-  (make-port wide-output-type (make-ostate (make-wide-string 16) 0 0)))
+  (make-textual-port wide-output-type (make-ostate (make-wide-string 16) 0 0)))
 
 (define (get-output-string port)
   ((port/operation port 'EXTRACT-OUTPUT) port))
@@ -315,7 +316,7 @@ USA.
 (define (narrow-out/write-char port char)
   (if (not (fix:< (char->integer char) #x100))
       (error:not-8-bit-char char))
-  (let ((os (port/state port)))
+  (let ((os (textual-port-state port)))
     (maybe-grow-buffer os 1)
     (string-set! (ostate-buffer os) (ostate-index os) char)
     (set-ostate-index! os (fix:+ (ostate-index os) 1))
@@ -323,11 +324,11 @@ USA.
     1))
 
 (define (narrow-out/extract-output port)
-  (let ((os (port/state port)))
+  (let ((os (textual-port-state port)))
     (string-head (ostate-buffer os) (ostate-index os))))
 
 (define (narrow-out/extract-output! port)
-  (let* ((os (port/state port))
+  (let* ((os (textual-port-state port))
 	 (output (string-head! (ostate-buffer os) (ostate-index os))))
     (reset-buffer! os)
     output))
@@ -338,7 +339,7 @@ USA.
 			wide-out/extract-output!))
 
 (define (wide-out/write-char port char)
-  (let ((os (port/state port)))
+  (let ((os (textual-port-state port)))
     (maybe-grow-buffer os 1)
     (wide-string-set! (ostate-buffer os) (ostate-index os) char)
     (set-ostate-index! os (fix:+ (ostate-index os) 1))
@@ -346,24 +347,24 @@ USA.
     1))
 
 (define (wide-out/extract-output port)
-  (let ((os (port/state port)))
+  (let ((os (textual-port-state port)))
     (wide-substring (ostate-buffer os) 0 (ostate-index os))))
 
 (define (wide-out/extract-output! port)
-  (let ((os (port/state port)))
+  (let ((os (textual-port-state port)))
     (let ((output (wide-substring (ostate-buffer os) 0 (ostate-index os))))
       (reset-buffer! os)
       output)))
 
 (define (make-string-out-type write-char extract-output extract-output!)
-  (make-port-type `((WRITE-CHAR ,write-char)
-		    (WRITE-SUBSTRING ,string-out/write-substring)
-		    (EXTRACT-OUTPUT ,extract-output)
-		    (EXTRACT-OUTPUT! ,extract-output!)
-		    (OUTPUT-COLUMN ,string-out/output-column)
-		    (POSITION ,string-out/position)
-		    (WRITE-SELF ,string-out/write-self))
-		  #f))
+  (make-textual-port-type `((WRITE-CHAR ,write-char)
+			    (WRITE-SUBSTRING ,string-out/write-substring)
+			    (EXTRACT-OUTPUT ,extract-output)
+			    (EXTRACT-OUTPUT! ,extract-output!)
+			    (OUTPUT-COLUMN ,string-out/output-column)
+			    (POSITION ,string-out/position)
+			    (WRITE-SELF ,string-out/write-self))
+			  #f))
 
 (define-structure ostate
   buffer
@@ -371,17 +372,17 @@ USA.
   column)
 
 (define (string-out/output-column port)
-  (ostate-column (port/state port)))
+  (ostate-column (textual-port-state port)))
 
 (define (string-out/position port)
-  (ostate-index (port/state port)))
+  (ostate-index (textual-port-state port)))
 
 (define (string-out/write-self port output-port)
   port
   (write-string " to string" output-port))
 
 (define (string-out/write-substring port string start end)
-  (let ((os (port/state port))
+  (let ((os (textual-port-state port))
 	(n (- end start)))
     (maybe-grow-buffer os n)
     (let* ((start* (ostate-index os))
@@ -494,11 +495,11 @@ USA.
 	 (fix:- end start))))))
 
 (define (make-octets-output-type)
-  (make-port-type `((EXTRACT-OUTPUT ,octets-out/extract-output)
-		    (EXTRACT-OUTPUT! ,octets-out/extract-output!)
-		    (POSITION ,octets-out/position)
-		    (WRITE-SELF ,octets-out/write-self))
-		  (generic-i/o-port-type #f #t)))
+  (make-textual-port-type `((EXTRACT-OUTPUT ,octets-out/extract-output)
+			    (EXTRACT-OUTPUT! ,octets-out/extract-output!)
+			    (POSITION ,octets-out/position)
+			    (WRITE-SELF ,octets-out/write-self))
+			  (generic-i/o-port-type #f #t)))
 
 (define (octets-out/extract-output port)
   (output-port/flush-output port)

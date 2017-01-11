@@ -303,7 +303,7 @@ USA.
 	  (eval sexp (buffer-env)))))))
 
 (define (with-output-to-repl socket thunk)
-  (let ((p (make-port repl-port-type socket)))
+  (let ((p (make-textual-port repl-port-type socket)))
     (dynamic-wind
 	(lambda () unspecific)
 	(lambda () (with-output-to-port p thunk))
@@ -316,17 +316,17 @@ USA.
   (set! *index* (make-unsettable-parameter unspecific))
   (set! *buffer-pstring* (make-unsettable-parameter unspecific))
   (set! repl-port-type
-	(make-port-type
+	(make-textual-port-type
 	 `((WRITE-CHAR
 	    ,(lambda (port char)
 	       (write-message `(:write-string ,(string char))
-			      (port/state port))
+			      (textual-port-state port))
 	       1))
 	   (WRITE-SUBSTRING
 	    ,(lambda (port string start end)
 	       (if (< start end)
 		   (write-message `(:write-string ,(substring string start end))
-				  (port/state port)))
+				  (textual-port-state port)))
 	       (- end start))))
 	 #f))
   unspecific)

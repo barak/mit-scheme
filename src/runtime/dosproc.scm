@@ -52,7 +52,7 @@ USA.
 		    (lambda (port*)
 		      (recvr
 		       (channel-descriptor
-			(port/output-channel port*)))))))
+			(output-port-channel port*)))))))
 	     (call-with-input-file fname
 	       (lambda (input)
 		 (let ((string (read-string (char-set) input)))
@@ -72,7 +72,7 @@ USA.
 	     (lambda (port*)
 	       (recvr
 		(channel-descriptor
-		 (port/input-channel port*))))))))
+		 (input-port-channel port*))))))))
 
       (define (with-output-channel in out)
 	(cond ((default-object? stderr)
@@ -81,7 +81,7 @@ USA.
 	       (run in out -1))
 	      ((not (output-port? stderr))
 	       (error "run: stderr not an output port" stderr))
-	      ((port/output-channel stderr)
+	      ((output-port-channel stderr)
 	       =>
 	       (lambda (channel)
 		 (output-port/flush-output stderr)
@@ -103,7 +103,7 @@ USA.
 		 (with-output-channel in -1))
 		((not (output-port? stdout))
 		 (error "run: stdout not an output port" stdout))
-		((port/output-channel stdout)
+		((output-port-channel stdout)
 		 =>
 		 (lambda (channel)
 		   (output-port/flush-output stdout)
@@ -118,7 +118,7 @@ USA.
 	     (with-input-channel -1))
 	    ((not (input-port? stdin))
 	     (error "run: stdin not an input port" stdin))
-	    ((port/input-channel stdin)
+	    ((input-port-channel stdin)
 	     => (lambda (channel)
 		  (with-input-channel (channel-descriptor channel))))
 	    (else

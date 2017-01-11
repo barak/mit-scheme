@@ -34,7 +34,7 @@ USA.
 	(output-channel (tty-output-channel))
 	(gtype (generic-i/o-port-type 'CHANNEL 'CHANNEL)))
     (let ((type
-	   (make-port-type
+	   (make-textual-port-type
 	    `((BEEP ,operation/beep)
 	      (CHAR-READY? ,generic-io/char-ready?)
 	      (CLEAR ,operation/clear)
@@ -48,7 +48,9 @@ USA.
 	      (X-SIZE ,operation/x-size)
 	      (Y-SIZE ,operation/y-size))
 	    gtype)))
-      (let ((port (make-port type (make-cstate input-channel output-channel))))
+      (let ((port
+	     (make-textual-port type
+				(make-cstate input-channel output-channel))))
 	(set-channel-port! input-channel port)
 	(set-channel-port! output-channel port)
 	(set! the-console-port port)
@@ -68,8 +70,8 @@ USA.
 (define (reset-console)
   (let ((input-channel (tty-input-channel))
 	(output-channel (tty-output-channel)))
-    (set-port/state! the-console-port
-		     (make-cstate input-channel output-channel))
+    (set-textual-port-state! the-console-port
+			     (make-cstate input-channel output-channel))
     (let ((s ((ucode-primitive reload-retrieve-string 0))))
       (if s
 	  (set-input-buffer-contents! (port-input-buffer the-console-port)
@@ -93,7 +95,7 @@ USA.
   unspecific)
 
 (define (console-i/o-port? port)
-  (port=? port console-i/o-port))
+  (eqv? port console-i/o-port))
 
 (define the-console-port)
 (define console-i/o-port)

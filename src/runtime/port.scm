@@ -29,124 +29,80 @@ USA.
 
 (declare (usual-integrations))
 
-;;;; Port type
+;;;; Textual port types
 
 (define-record-type <textual-port-type>
-    (%make-port-type parent
-		     standard-operations
-		     custom-operations
-		     char-ready?
-		     read-char
-		     unread-char
-		     peek-char
-		     read-substring
-		     write-char
-		     write-substring
-		     fresh-line
-		     line-start?
-		     flush-output
-		     discretionary-flush-output)
-    port-type?
-  (parent port-type/parent)
-  (standard-operations port-type/standard-operations
-		       set-port-type/standard-operations!)
-  (custom-operations port-type/custom-operations
-		     set-port-type/custom-operations!)
+    (%make-textual-port-type operations
+			     char-ready?
+			     read-char
+			     unread-char
+			     peek-char
+			     read-substring
+			     write-char
+			     write-substring
+			     fresh-line
+			     line-start?
+			     flush-output
+			     discretionary-flush-output)
+    textual-port-type?
+  (operations %port-type-operations)
   ;; input operations:
-  (char-ready? port-type/char-ready?)
-  (read-char port-type/read-char)
-  (unread-char port-type/unread-char)
-  (peek-char port-type/peek-char)
-  (read-substring port-type/read-substring)
+  (char-ready? port-type-operation:char-ready?)
+  (read-char port-type-operation:read-char)
+  (unread-char port-type-operation:unread-char)
+  (peek-char port-type-operation:peek-char)
+  (read-substring port-type-operation:read-substring)
   ;; output operations:
-  (write-char port-type/write-char)
-  (write-substring port-type/write-substring)
-  (fresh-line port-type/fresh-line)
-  (line-start? port-type/line-start?)
-  (flush-output port-type/flush-output)
-  (discretionary-flush-output port-type/discretionary-flush-output))
+  (write-char port-type-operation:write-char)
+  (write-substring port-type-operation:write-substring)
+  (fresh-line port-type-operation:fresh-line)
+  (line-start? port-type-operation:line-start?)
+  (flush-output port-type-operation:flush-output)
+  (discretionary-flush-output port-type-operation:discretionary-flush-output))
 
 (set-record-type-unparser-method! <textual-port-type>
   (standard-unparser-method
    (lambda (type)
-     (if (port-type/supports-input? type)
-	(if (port-type/supports-output? type)
+     (if (port-type-supports-input? type)
+	(if (port-type-supports-output? type)
 	    'TEXTUAL-I/O-PORT-TYPE
 	    'TEXTUAL-INPUT-PORT-TYPE)
-	(if (port-type/supports-output? type)
+	(if (port-type-supports-output? type)
 	    'TEXTUAL-OUTPUT-PORT-TYPE
 	    'TEXTUAL-PORT-TYPE)))
    #f))
 
-(define (guarantee-port-type object #!optional caller)
-  (if (not (port-type? object))
-      (error:not-port-type object caller))
-  object)
+(define (port-type-supports-input? type)
+  (port-type-operation:read-char type))
 
-(define (error:not-port-type object #!optional caller)
-  (error:wrong-type-argument object "port type" caller))
-
-(define-integrable (port-type/supports-input? type)
-  (port-type/read-char type))
+(define (port-type-supports-output? type)
+  (port-type-operation:write-char type))
 
-(define-integrable (port-type/supports-output? type)
-  (port-type/write-char type))
+(define (port-type-operation-names type)
+  (map car (%port-type-operations type)))
 
-(define (input-port-type? object)
-  (and (port-type? object)
-       (port-type/supports-input? object)
-       #t))
+(define (textual-port-type-operations type)
+  (map (lambda (entry)
+	 (list (car entry) (cdr entry)))
+       (%port-type-operations type)))
 
-(define (output-port-type? object)
-  (and (port-type? object)
-       (port-type/supports-output? object)
-       #t))
-
-(define (i/o-port-type? object)
-  (and (port-type? object)
-       (port-type/supports-input? object)
-       (port-type/supports-output? object)
-       #t))
-
-(define (port-type/operation-names type)
-  (guarantee-port-type type 'PORT-TYPE/OPERATION-NAMES)
-  (append (map car (port-type/standard-operations type))
-	  (map car (port-type/custom-operations type))))
-
-(define (port-type/operations type)
-  (guarantee-port-type type 'PORT-TYPE/OPERATIONS)
-  (append! (map (lambda (entry)
-		  (list (car entry) (cdr entry)))
-		(port-type/standard-operations type))
-	   (map (lambda (entry)
-		  (list (car entry) (cdr entry)))
-		(port-type/custom-operations type))))
-
-(define (port-type/operation type name)
-  (let ((entry
-	 (or (assq name (port-type/custom-operations type))
-	     (assq name (port-type/standard-operations type)))))
+(define (textual-port-type-operation type name)
+  (let ((entry (assq name (%port-type-operations type))))
     (and entry
 	 (cdr entry))))
 
 ;;;; Constructors
 
-(define (make-port-type operations parent-type)
-  (if (not (list-of-type? operations
-	     (lambda (elt)
-	       (and (pair? elt)
-		    (symbol? (car elt))
-		    (pair? (cdr elt))
-		    (procedure? (cadr elt))
-		    (null? (cddr elt))))))
-      (error:wrong-type-argument operations "operations list" 'MAKE-PORT-TYPE))
+(define (make-textual-port-type operations parent-type)
+  (guarantee-list-of textual-port-type-operation? operations
+		     'make-textual-port-type)
   (if parent-type
-      (guarantee-port-type parent-type 'MAKE-PORT-TYPE))
+      (guarantee textual-port-type? parent-type 'make-textual-port-type))
   (receive (standard-operations custom-operations)
       (parse-operations-list operations parent-type)
     (let ((op
-	   (let ((input? (assq 'READ-CHAR standard-operations))
-		 (output? (assq 'WRITE-CHAR standard-operations))
+	   (let ((input? (assq 'read-char standard-operations))
+		 (output? (assq 'write-char standard-operations))
 		 (cond-op
 		  (lambda (flag mapper)
 		    (if flag
@@ -160,26 +116,35 @@ USA.
 		   (let ((p (assq name standard-operations)))
 		     (and p
 			  (cdr p)))))))))))
-      (%make-port-type parent-type
-		       standard-operations
-		       custom-operations
-		       (op 'CHAR-READY?)
-		       (op 'READ-CHAR)
-		       (op 'UNREAD-CHAR)
-		       (op 'PEEK-CHAR)
-		       (op 'READ-SUBSTRING)
-		       (op 'WRITE-CHAR)
-		       (op 'WRITE-SUBSTRING)
-		       (op 'FRESH-LINE)
-		       (op 'LINE-START?)
-		       (op 'FLUSH-OUTPUT)
-		       (op 'DISCRETIONARY-FLUSH-OUTPUT)))))
+      (%make-textual-port-type (append custom-operations standard-operations)
+			       (op 'char-ready?)
+			       (op 'read-char)
+			       (op 'unread-char)
+			       (op 'peek-char)
+			       (op 'read-substring)
+			       (op 'write-char)
+			       (op 'write-substring)
+			       (op 'fresh-line)
+			       (op 'line-start?)
+			       (op 'flush-output)
+			       (op 'discretionary-flush-output)))))
+
+(define (textual-port-type-operation? object)
+  (and (pair? object)
+       (symbol? (car object))
+       (pair? (cdr object))
+       (procedure? (cadr object))
+       (null? (cddr object))))
+
+(add-boot-init!
+ (lambda ()
+   (register-predicate! textual-port-type-operation? 'port-type-operation)))
 
 (define (parse-operations-list operations parent-type)
   (parse-operations-list-1
    (if parent-type
        (append operations
-	       (delete-matching-items (port-type/operations parent-type)
+	       (delete-matching-items (textual-port-type-operations parent-type)
 		 (let ((excluded
 			(append
 			 (if (assq 'READ-CHAR operations)
@@ -399,36 +364,36 @@ USA.
 ;;;; Textual ports
 
 (define-record-type <textual-port>
-    (%make-textual-port type state thread-mutex unread? previous properties
+    (%make-textual-port thread-mutex type state unread? previous properties
 			transcript)
     textual-port?
+  (thread-mutex textual-port-thread-mutex)
   (type textual-port-type set-textual-port-type!)
   (state textual-port-state set-textual-port-state!)
-  (thread-mutex textual-port-thread-mutex set-textual-port-thread-mutex!)
   (unread? textual-port-unread? set-textual-port-unread?!)
   (previous textual-port-previous set-textual-port-previous!)
   (properties textual-port-properties set-textual-port-properties!)
   (transcript textual-port-transcript set-textual-port-transcript!))
 
-(define (make-port type state)
-  (guarantee-port-type type 'MAKE-PORT)
-  (%make-textual-port type state (make-thread-mutex) #f #f '() #f))
+(define (make-textual-port type state)
+  (guarantee textual-port-type? type 'MAKE-TEXTUAL-PORT)
+  (%make-textual-port (make-thread-mutex) type state #f #f '() #f))
 
 (define (textual-input-port? object)
   (and (textual-port? object)
-       (port-type/supports-input? (port/type object))
+       (port-type-supports-input? (textual-port-type object))
        #t))
 
 (define (textual-output-port? object)
   (and (textual-port? object)
-       (port-type/supports-output? (port/type object))
+       (port-type-supports-output? (textual-port-type object))
        #t))
 
 (define (textual-i/o-port? object)
   (and (textual-port? object)
-       (let ((type (port/type object)))
-	 (and (port-type/supports-input? type)
-	      (port-type/supports-output? type)
+       (let ((type (textual-port-type object)))
+	 (and (port-type-supports-input? type)
+	      (port-type-supports-output? type)
 	      #t))))
 
 (add-boot-init!
@@ -440,38 +405,6 @@ USA.
    (register-predicate! textual-i/o-port? 'textual-i/o-port
 			'<= textual-port?)))
 
-(define (port=? p1 p2)
-  (guarantee-port p1 'PORT=?)
-  (guarantee-port p2 'PORT=?)
-  (eq? p1 p2))
-
-(define (textual-port-operation-names port)
-  (port-type/operation-names (port/type port)))
-
-(define (textual-port-operation port name)
-  (guarantee textual-port? port 'textual-port-operation)
-  (port-type/operation (port/type port) name))
-
-(define-syntax define-port-operation
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((name (cadr form)))
-       `(DEFINE (,(symbol-append 'TEXTUAL-PORT-OPERATION/ name) PORT)
-	  (,(close-syntax (symbol-append 'PORT-TYPE/ name) environment)
-	   (PORT/TYPE PORT)))))))
-
-(define-port-operation char-ready?)
-(define-port-operation read-char)
-(define-port-operation unread-char)
-(define-port-operation peek-char)
-(define-port-operation read-substring)
-(define-port-operation write-char)
-(define-port-operation write-substring)
-(define-port-operation fresh-line)
-(define-port-operation line-start?)
-(define-port-operation flush-output)
-(define-port-operation discretionary-flush-output)
-
 (set-record-type-unparser-method! <textual-port>
   (standard-unparser-method
    (lambda (port)
@@ -483,13 +416,7 @@ USA.
      (cond ((textual-port-operation port 'WRITE-SELF)
 	    => (lambda (operation)
 		 (operation port output-port)))))))
-
-(define (port/copy port state)
-  (let ((port (copy-record port)))
-    (set-textual-port-state! port state)
-    (set-textual-port-thread-mutex! port (make-thread-mutex))
-    port))
-
+
 (define (close-textual-port port)
   (let ((close (textual-port-operation port 'CLOSE)))
     (if close
@@ -508,7 +435,7 @@ USA.
     (if close-output
 	(close-output port))))
 
-(define (port/open? port)
+(define (textual-port-open? port)
   (let ((open? (textual-port-operation port 'OPEN?)))
     (if open?
 	(open? port)
@@ -541,23 +468,49 @@ USA.
     (and operation
 	 (operation port))))
 
-(define (port/get-property port name default)
-  (guarantee-symbol name 'PORT/GET-PROPERTY)
+(define (textual-port-operation-names port)
+  (port-type-operation-names (textual-port-type port)))
+
+(define (textual-port-operation port name)
+  (textual-port-type-operation (textual-port-type port) name))
+
+(define-syntax define-port-operation
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (cadr form)))
+       `(DEFINE (,(symbol 'TEXTUAL-PORT-OPERATION/ name) PORT)
+	  (,(close-syntax (symbol 'PORT-TYPE-OPERATION: name) environment)
+	   (TEXTUAL-PORT-TYPE PORT)))))))
+
+(define-port-operation char-ready?)
+(define-port-operation read-char)
+(define-port-operation unread-char)
+(define-port-operation peek-char)
+(define-port-operation read-substring)
+(define-port-operation write-char)
+(define-port-operation write-substring)
+(define-port-operation fresh-line)
+(define-port-operation line-start?)
+(define-port-operation flush-output)
+(define-port-operation discretionary-flush-output)
+
+(define (textual-port-property port name default)
+  (guarantee symbol? name 'port-property)
   (let ((p (assq name (textual-port-properties port))))
     (if p
 	(cdr p)
 	default)))
 
-(define (port/set-property! port name value)
-  (guarantee-symbol name 'PORT/SET-PROPERTY!)
+(define (set-textual-port-property! port name value)
+  (guarantee symbol? name 'set-port-property!)
   (let ((alist (textual-port-properties port)))
     (let ((p (assq name alist)))
       (if p
 	  (set-cdr! p value)
 	  (set-textual-port-properties! port (cons (cons name value) alist))))))
 
-(define (port/intern-property! port name get-value)
-  (guarantee-symbol name 'PORT/INTERN-PROPERTY!)
+(define (intern-textual-port-property! port name get-value)
+  (guarantee symbol? name 'INTERN-PORT-PROPERTY!)
   (let ((alist (textual-port-properties port)))
     (let ((p (assq name alist)))
       (if p
@@ -566,8 +519,8 @@ USA.
 	    (set-textual-port-properties! port (cons (cons name value) alist))
 	    value)))))
 
-(define (port/remove-property! port name)
-  (guarantee-symbol name 'PORT/REMOVE-PROPERTY!)
+(define (remove-textual-port-property! port name)
+  (guarantee symbol? name 'REMOVE-PORT-PROPERTY!)
   (set-textual-port-properties! port
 				(del-assq! name
 					   (textual-port-properties port))))
@@ -591,7 +544,7 @@ USA.
   (let ((tport (textual-port-transcript port)))
     (if tport
 	(output-port/discretionary-flush tport))))
-
+
 (define (port/supports-coding? port)
   (let ((operation (textual-port-operation port 'SUPPORTS-CODING?)))
     (if operation
@@ -702,13 +655,13 @@ USA.
     (if (and read-mode write-mode (read-mode port))
 	(let ((outside-mode))
 	  (dynamic-wind (lambda ()
-			  (if (port/open? port)
+			  (if (textual-port-open? port)
 			      (begin
 				(set! outside-mode (read-mode port))
 				(write-mode port mode))))
 			thunk
 			(lambda ()
-			  (if (port/open? port)
+			  (if (textual-port-open? port)
 			      (begin
 				(set! mode (read-mode port))
 				(write-mode port outside-mode))))))
@@ -777,17 +730,17 @@ USA.
 (define interaction-i/o-port)
 (add-boot-init!
  (lambda ()
-   (set! current-input-port (make-port-parameter guarantee-input-port))
-   (set! current-output-port (make-port-parameter guarantee-output-port))
-   (set! notification-output-port (make-port-parameter guarantee-output-port))
-   (set! trace-output-port (make-port-parameter guarantee-output-port))
-   (set! interaction-i/o-port (make-port-parameter guarantee-i/o-port))
+   (set! current-input-port (make-port-parameter input-port?))
+   (set! current-output-port (make-port-parameter output-port?))
+   (set! notification-output-port (make-port-parameter output-port?))
+   (set! trace-output-port (make-port-parameter output-port?))
+   (set! interaction-i/o-port (make-port-parameter i/o-port?))
    unspecific))
 
-(define (make-port-parameter guarantee)
+(define (make-port-parameter predicate)
   (make-general-parameter #f
 			  (lambda (port)
-			    (if port (guarantee port))
+			    (if port (guarantee predicate port))
 			    port)
 			  default-parameter-merger
 			  (lambda (port)

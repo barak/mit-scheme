@@ -2474,25 +2474,21 @@ USA.
   (export ()
 	  ;; BEGIN legacy bindings
 	  (port/input-blocking-mode input-port-blocking-mode)
-	  (port/input-channel input-port-channel)
 	  (port/input-terminal-mode input-port-terminal-mode)
+	  (port/open? textual-port-open?)
 	  (port/operation textual-port-operation)
 	  (port/operation-names textual-port-operation-names)
 	  (port/output-blocking-mode output-port-blocking-mode)
-	  (port/output-channel output-port-channel)
 	  (port/output-terminal-mode output-port-terminal-mode)
 	  (port/set-input-blocking-mode set-input-port-blocking-mode!)
 	  (port/set-input-terminal-mode set-input-port-terminal-mode!)
 	  (port/set-output-blocking-mode set-output-port-blocking-mode!)
 	  (port/set-output-terminal-mode set-output-port-terminal-mode!)
-	  (port/state textual-port-state)
-	  (port/thread-mutex textual-port-thread-mutex)
 	  (port/type textual-port-type)
 	  (port/with-input-blocking-mode with-input-port-blocking-mode)
 	  (port/with-input-terminal-mode with-input-port-terminal-mode)
 	  (port/with-output-blocking-mode with-output-port-blocking-mode)
 	  (port/with-output-terminal-mode with-output-port-terminal-mode)
-	  (set-port/state! set-textual-port-state!)
 	  ;; END legacy bindings
 	  close-input-port
 	  close-output-port
@@ -2505,36 +2501,27 @@ USA.
 	  guarantee-port
 	  i/o-port?
 	  input-port-blocking-mode
-	  input-port-channel
 	  input-port-open?
 	  input-port-terminal-mode
 	  input-port?
 	  interaction-i/o-port
+	  intern-textual-port-property!
 	  notification-output-port
 	  output-port-blocking-mode
-	  output-port-channel
 	  output-port-open?
 	  output-port-terminal-mode
 	  output-port?
 	  port/coding
-	  port/copy
-	  port/get-property
-	  port/intern-property!
 	  port/known-coding?
 	  port/known-codings
 	  port/known-line-ending?
 	  port/known-line-endings
 	  port/line-ending
-	  port/open?
-	  textual-port-operation
-	  textual-port-operation-names
-	  port/remove-property!
 	  port/set-coding
 	  port/set-line-ending
-	  port/set-property!
 	  port/supports-coding?
-	  port=?
 	  port?
+	  remove-textual-port-property!
 	  set-current-input-port!
 	  set-current-output-port!
 	  set-input-port-blocking-mode!
@@ -2543,7 +2530,13 @@ USA.
 	  set-notification-output-port!
 	  set-output-port-blocking-mode!
 	  set-output-port-terminal-mode!
+	  set-textual-port-property!
 	  set-trace-output-port!
+	  textual-port-open?
+	  textual-port-operation
+	  textual-port-operation-names
+	  textual-port-property
+	  textual-port-thread-mutex
 	  textual-port?
 	  trace-output-port
 	  with-input-from-port
@@ -2556,11 +2549,10 @@ USA.
 	  with-output-to-port
 	  with-trace-output-port)
   (export (runtime)
-	  (port/input-channel textual-input-port-channel)
-	  (port/output-channel textual-output-port-channel)
-	  generic-port-operation:write-substring
-	  make-port
-	  make-port-type
+	  input-port-channel
+	  make-textual-port
+	  make-textual-port-type
+	  output-port-channel
 	  set-textual-port-state!
 	  textual-port-state)
   (export (runtime input-port)
@@ -2585,11 +2577,12 @@ USA.
   (export (runtime transcript)
 	  set-textual-port-transcript!
 	  textual-port-transcript)
+  (export (runtime mime-codec)
+	  generic-port-operation:write-substring)
   (export (runtime emacs-interface)
-	  port-type/operation
-	  set-textual-port-thread-mutex!
 	  set-textual-port-type!
-	  textual-port-type)
+	  textual-port-type
+	  textual-port-type-operation)
   (initialization (initialize-package!)))
 
 (define-package (runtime input-port)

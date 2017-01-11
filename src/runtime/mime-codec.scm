@@ -29,22 +29,22 @@ USA.
 (declare (usual-integrations))
 
 (define (make-decoding-port-type update finalize)
-  (make-port-type
+  (make-textual-port-type
    `((WRITE-CHAR
       ,(lambda (port char)
 	 (guarantee-8-bit-char char)
-	 (update (port/state port) (string char) 0 1)
+	 (update (textual-port-state port) (string char) 0 1)
 	 1))
      (WRITE-SUBSTRING
       ,(lambda (port string start end)
 	 (if (string? string)
 	     (begin
-	       (update (port/state port) string start end)
+	       (update (textual-port-state port) string start end)
 	       (fix:- end start))
 	     (generic-port-operation:write-substring port string start end))))
      (CLOSE-OUTPUT
       ,(lambda (port)
-	 (finalize (port/state port)))))
+	 (finalize (textual-port-state port)))))
    #f))
 
 (define condition-type:decode-mime
@@ -227,7 +227,7 @@ USA.
       v)))
 
 (define (make-decode-quoted-printable-port port text?)
-  (make-port decode-quoted-printable-port-type
+  (make-textual-port decode-quoted-printable-port-type
 	     (decode-quoted-printable:initialize port text?)))
 
 (define decode-quoted-printable-port-type
@@ -528,7 +528,8 @@ USA.
       v)))
 
 (define (make-decode-base64-port port text?)
-  (make-port decode-base64-port-type (decode-base64:initialize port text?)))
+  (make-textual-port decode-base64-port-type
+		     (decode-base64:initialize port text?)))
 
 (define decode-base64-port-type
   (make-decoding-port-type decode-base64:update decode-base64:finalize))
@@ -671,8 +672,8 @@ USA.
       v)))
 
 (define (make-decode-binhex40-port port text?)
-  (make-port decode-binhex40-port-type
-	     (decode-binhex40:initialize port text?)))
+  (make-textual-port decode-binhex40-port-type
+		     (decode-binhex40:initialize port text?)))
 
 (define decode-binhex40-port-type
   (make-decoding-port-type decode-binhex40:update decode-binhex40:finalize))
@@ -788,15 +789,15 @@ USA.
 ;;;; BinHex 4.0 run-length decoding
 
 (define (make-binhex40-run-length-decoding-port port)
-  (make-port binhex40-run-length-decoding-port-type
-	     (make-binhex40-rld-state port)))
+  (make-textual-port binhex40-run-length-decoding-port-type
+		     (make-binhex40-rld-state port)))
 
 (define binhex40-run-length-decoding-port-type
-  (make-port-type
+  (make-textual-port-type
    `((WRITE-CHAR
       ,(lambda (port char)
 	 (guarantee-8-bit-char char)
-	 (let ((state (port/state port)))
+	 (let ((state (textual-port-state port)))
 	   (let ((port (binhex40-rld-state/port state))
 		 (char* (binhex40-rld-state/char state)))
 	     (cond ((binhex40-rld-state/marker-seen? state)
@@ -819,7 +820,7 @@ USA.
 	 1))
      (CLOSE-OUTPUT
       ,(lambda (port)
-	 (let ((state (port/state port)))
+	 (let ((state (textual-port-state port)))
 	   (let ((port (binhex40-rld-state/port state))
 		 (char* (binhex40-rld-state/char state)))
 	     (if char*
@@ -846,15 +847,15 @@ USA.
 ;;;; BinHex 4.0 deconstruction
 
 (define (make-binhex40-deconstructing-port port)
-  (make-port binhex40-deconstructing-port-type
-	     (make-binhex40-decon port)))
+  (make-textual-port binhex40-deconstructing-port-type
+		     (make-binhex40-decon port)))
 
 (define binhex40-deconstructing-port-type
-  (make-port-type
+  (make-textual-port-type
    `((WRITE-CHAR
       ,(lambda (port char)
 	 (guarantee-8-bit-char char)
-	 (case (binhex40-decon/state (port/state port))
+	 (case (binhex40-decon/state (textual-port-state port))
 	   ((READING-HEADER) (binhex40-decon-reading-header port char))
 	   ((COPYING-DATA) (binhex40-decon-copying-data port char))
 	   ((SKIPPING-TAIL) (binhex40-decon-skipping-tail port))
@@ -863,12 +864,13 @@ USA.
 	 1))
      (CLOSE-OUTPUT
       ,(lambda (port)
-	 (if (not (eq? (binhex40-decon/state (port/state port)) 'FINISHED))
+	 (if (not (eq? (binhex40-decon/state (textual-port-state port))
+		       'FINISHED))
 	     (error:decode-binhex40 "Premature EOF in BinHex 4.0 stream.")))))
    #f))
 
 (define (binhex40-decon-reading-header port char)
-  (let ((state (port/state port)))
+  (let ((state (textual-port-state port)))
     (let ((index (binhex40-decon/index state)))
       (if (fix:= index 0)
 	  (begin
@@ -888,7 +890,7 @@ USA.
 		    (set-binhex40-decon/state! state 'COPYING-DATA)))))))))
 
 (define (binhex40-decon-copying-data port char)
-  (let ((state (port/state port)))
+  (let ((state (textual-port-state port)))
     (write-char char (binhex40-decon/port state))
     (let ((index (+ (binhex40-decon/index state) 1)))
       (if (< index (binhex40-decon/data-length state))
@@ -903,7 +905,7 @@ USA.
 	    (set-binhex40-decon/state! state 'SKIPPING-TAIL))))))
 
 (define (binhex40-decon-skipping-tail port)
-  (let ((state (port/state port)))
+  (let ((state (textual-port-state port)))
     (let ((index (+ (binhex40-decon/index state) 1)))
       (set-binhex40-decon/index! state index)
       (if (>= index (binhex40-decon/data-length state))
@@ -1061,7 +1063,7 @@ USA.
       v)))
 
 (define (make-decode-uue-port port text?)
-  (make-port decode-uue-port-type (decode-uue:initialize port text?)))
+  (make-textual-port decode-uue-port-type (decode-uue:initialize port text?)))
 
 (define decode-uue-port-type
   (make-decoding-port-type decode-uue:update decode-uue:finalize))

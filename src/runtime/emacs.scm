@@ -178,13 +178,13 @@ USA.
 
 (define (emacs/gc-start port)
   (output-port/flush-output port)
-  (cwb (port/output-channel port) "\033b" 0 2))
+  (cwb (output-port-channel port) "\033b" 0 2))
 
 (define (emacs/gc-finish port)
-  (cwb (port/output-channel port) "\033e" 0 2))
+  (cwb (output-port-channel port) "\033e" 0 2))
 
 (define (transmit-signal port type)
-  (let ((channel (port/output-channel port))
+  (let ((channel (output-port-channel port))
 	(buffer (string #\altmode type)))
     (output-port/flush-output port)
     (with-absolutely-no-interrupts
@@ -192,7 +192,7 @@ USA.
        (cwb channel buffer 0 2)))))
 
 (define (transmit-signal-with-argument port type string)
-  (let ((channel (port/output-channel port))
+  (let ((channel (output-port-channel port))
 	(length (string-length string)))
     (let ((buffer-length (+ length 3)))
       (let ((buffer (make-string buffer-length)))
@@ -229,7 +229,7 @@ USA.
 (define (initialize-package!)
   (set! vanilla-console-port-type (textual-port-type the-console-port))
   (set! emacs-console-port-type
-	(make-port-type
+	(make-textual-port-type
 	 `((PROMPT-FOR-EXPRESSION ,emacs/prompt-for-expression)
 	   (PROMPT-FOR-COMMAND-CHAR ,emacs/prompt-for-command-char)
 	   (PROMPT-FOR-COMMAND-EXPRESSION ,emacs/prompt-for-command-expression)
@@ -267,4 +267,4 @@ USA.
 	vanilla-console-port-type)))
 
 (define (deferred-operation name)
-  (port-type/operation vanilla-console-port-type name))
+  (textual-port-type-operation vanilla-console-port-type name))

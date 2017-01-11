@@ -448,7 +448,7 @@ USA.
 			(and entry
 			     (cdr entry)))
 		      (let ((filename (generate-fat-init-file short-base)))
-			(let ((channel (port/output-channel port)))
+			(let ((channel (output-port-channel port)))
 			  (channel-file-set-position
 			   channel
 			   (channel-file-length channel)))

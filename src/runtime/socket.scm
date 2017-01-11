@@ -150,22 +150,22 @@ USA.
 (define socket-port-type)
 (define (initialize-package!)
   (set! socket-port-type
-	(make-port-type `((CLOSE-INPUT ,socket/close-input)
-			  (CLOSE-OUTPUT ,socket/close-output))
-			(generic-i/o-port-type 'CHANNEL 'CHANNEL)))
+	(make-textual-port-type `((CLOSE-INPUT ,socket/close-input)
+				  (CLOSE-OUTPUT ,socket/close-output))
+				(generic-i/o-port-type 'CHANNEL 'CHANNEL)))
   unspecific)
 
 (define (socket/close-input port)
   (if (port/open? port)
       ((ucode-primitive shutdown-socket 2)
-       (channel-descriptor (port/input-channel port))
+       (channel-descriptor (input-port-channel port))
        1))
   (generic-io/close-input port))
 
 (define (socket/close-output port)
   (if (port/open? port)
       ((ucode-primitive shutdown-socket 2)
-       (channel-descriptor (port/input-channel port))
+       (channel-descriptor (input-port-channel port))
        2))
   (generic-io/close-output port))
 

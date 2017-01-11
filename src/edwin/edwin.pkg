@@ -120,11 +120,12 @@ USA.
 	  ucode-primitive
 	  ucode-type)
   (import (runtime port)
-	  generic-port-operation:write-substring
-	  make-port-type
-	  make-port
-	  port/input-channel
-	  port/output-channel)
+	  (make-port make-textual-port)
+	  (make-port-type make-textual-port-type)
+	  (port/input-channel input-port-channel)
+	  (port/output-channel output-port-channel)
+	  (port/state textual-port-state)
+	  generic-port-operation:write-substring)
   (export (edwin class-macros)
 	  class-instance-transforms)
   (export ()

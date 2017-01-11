@@ -40,8 +40,8 @@ USA.
 	   (WRITE-SELF ,operation/write-self))))
     (let ((make-type
 	   (lambda (source sink)
-	     (make-port-type other-operations
-			     (generic-i/o-port-type source sink)))))
+	     (make-textual-port-type other-operations
+				     (generic-i/o-port-type source sink)))))
       (set! input-file-type (make-type 'CHANNEL #f))
       (set! output-file-type (make-type #f 'CHANNEL))
       (set! i/o-file-type (make-type 'CHANNEL 'CHANNEL))))
@@ -54,8 +54,8 @@ USA.
 
 (define (operation/length port)
   (channel-file-length
-   (or (port/input-channel port)
-       (port/output-channel port))))
+   (or (input-port-channel port)
+       (output-port-channel port))))
 
 (define (operation/write-self port output-port)
   (write-string " for file: " output-port)
@@ -67,9 +67,9 @@ USA.
       (flush-output port))
   (if (input-port? port)
       (let ((input-buffer (port-input-buffer port)))
-	(- (channel-file-position (port/input-channel port))
+	(- (channel-file-position (input-port-channel port))
 	   (input-buffer-free-bytes input-buffer)))
-      (channel-file-position (port/output-channel port))))
+      (channel-file-position (output-port-channel port))))
 
 (define (operation/set-position! port position)
   (guarantee-positionable-port port 'OPERATION/SET-POSITION!)
@@ -79,14 +79,14 @@ USA.
   (if (input-port? port)
       (clear-input-buffer (port-input-buffer port)))
   (channel-file-set-position (if (input-port? port)
-				 (port/input-channel port)
-				 (port/output-channel port))
+				 (input-port-channel port)
+				 (output-port-channel port))
 			     position))
 
 (define (guarantee-positionable-port port caller)
   (guarantee-port port caller)
   (if (and (i/o-port? port)
-	   (not (eq? (port/input-channel port) (port/output-channel port))))
+	   (not (eq? (input-port-channel port) (output-port-channel port))))
       (error:bad-range-argument port caller))
   (if (and (input-port? port)
 	   (not (input-buffer-using-binary-normalizer?

@@ -440,26 +440,26 @@ USA.
 	     (newline port)))))))
 
 (define (wrap-notification-port port)
-  (make-port wrapped-notification-port-type port))
+  (make-textual-port wrapped-notification-port-type port))
 
 (define (make-wrapped-notification-port-type)
-  (make-port-type `((WRITE-CHAR ,operation/write-char)
-		    (X-SIZE ,operation/x-size)
-		    (COLUMN ,operation/column)
-		    (FLUSH-OUTPUT ,operation/flush-output)
-		    (DISCRETIONARY-FLUSH-OUTPUT
-		     ,operation/discretionary-flush-output))
-		  #f))
+  (make-textual-port-type `((WRITE-CHAR ,operation/write-char)
+			    (X-SIZE ,operation/x-size)
+			    (COLUMN ,operation/column)
+			    (FLUSH-OUTPUT ,operation/flush-output)
+			    (DISCRETIONARY-FLUSH-OUTPUT
+			     ,operation/discretionary-flush-output))
+			  #f))
 
 (define (operation/write-char port char)
-  (let ((port* (port/state port)))
+  (let ((port* (textual-port-state port)))
     (let ((n (output-port/write-char port* char)))
       (if (char=? char #\newline)
 	  (write-notification-prefix port*))
       n)))
 
 (define (operation/x-size port)
-  (let ((port* (port/state port)))
+  (let ((port* (textual-port-state port)))
     (let ((op (port/operation port* 'X-SIZE)))
       (and op
 	   (let ((n (op port*)))
@@ -468,7 +468,7 @@ USA.
 		       0)))))))
 
 (define (operation/column port)
-  (let ((port* (port/state port)))
+  (let ((port* (textual-port-state port)))
     (let ((op (port/operation port* 'COLUMN)))
       (and op
 	   (let ((n (op port*)))
@@ -477,10 +477,10 @@ USA.
 		       0)))))))
 
 (define (operation/flush-output port)
-  (output-port/flush-output (port/state port)))
+  (output-port/flush-output (textual-port-state port)))
 
 (define (operation/discretionary-flush-output port)
-  (output-port/discretionary-flush (port/state port)))
+  (output-port/discretionary-flush (textual-port-state port)))
 
 (define (write-notification-prefix port)
   (write-string ";" port)
