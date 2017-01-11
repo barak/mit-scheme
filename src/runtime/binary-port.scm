@@ -81,6 +81,15 @@ USA.
 			'<= binary-port?)
    (register-predicate! binary-i/o-port? 'binary-i/o-port
 			'<= (list binary-input-port? binary-output-port?))))
+
+(set-record-type-unparser-method! <binary-port>
+  (standard-unparser-method
+   (lambda (port)
+     (cond ((binary-i/o-port? port) 'BINARY-I/O-PORT)
+	   ((binary-input-port? port) 'BINARY-INPUT-PORT)
+	   ((binary-output-port? port) 'BINARY-OUTPUT-PORT)
+	   (else 'BINARY-PORT)))
+   #f))
 
 ;;;; Bytevector input ports
 
