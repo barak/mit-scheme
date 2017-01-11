@@ -29,6 +29,13 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 
+// TODO(cph): remove when LEGACY_STRING_P is removed.
+bool
+string_p (SCHEME_OBJECT object)
+{
+  return ((LEGACY_STRING_P (object)) || (BYTEVECTOR_P (object)));
+}
+
 SCHEME_OBJECT
 allocate_string (unsigned long nbytes)
 {
