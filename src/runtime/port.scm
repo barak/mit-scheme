@@ -591,82 +591,6 @@ USA.
        (error:bad-range-argument port 'PORT/KNOWN-LINE-ENDINGS))
    port))
 
-;;;; Special Operations
-
-(define (input-port-blocking-mode port)
-  (let ((operation (textual-port-operation port 'INPUT-BLOCKING-MODE)))
-    (if operation
-	(operation port)
-	#f)))
-
-(define (set-input-port-blocking-mode! port mode)
-  (let ((operation (textual-port-operation port 'SET-INPUT-BLOCKING-MODE)))
-    (if operation
-	(operation port mode))))
-
-(define (with-input-port-blocking-mode port mode thunk)
-  (bind-mode port 'INPUT-BLOCKING-MODE 'SET-INPUT-BLOCKING-MODE mode thunk))
-
-(define (output-port-blocking-mode port)
-  (let ((operation (textual-port-operation port 'OUTPUT-BLOCKING-MODE)))
-    (if operation
-	(operation port)
-	#f)))
-
-(define (set-output-port-blocking-mode! port mode)
-  (let ((operation (textual-port-operation port 'SET-OUTPUT-BLOCKING-MODE)))
-    (if operation
-	(operation port mode))))
-
-(define (with-output-port-blocking-mode port mode thunk)
-  (bind-mode port 'OUTPUT-BLOCKING-MODE 'SET-OUTPUT-BLOCKING-MODE mode thunk))
-
-(define (input-port-terminal-mode port)
-  (let ((operation (textual-port-operation port 'INPUT-TERMINAL-MODE)))
-    (if operation
-	(operation port)
-	#f)))
-
-(define (set-input-port-terminal-mode! port mode)
-  (let ((operation (textual-port-operation port 'SET-INPUT-TERMINAL-MODE)))
-    (if operation
-	(operation port mode))))
-
-(define (with-input-port-terminal-mode port mode thunk)
-  (bind-mode port 'INPUT-TERMINAL-MODE 'SET-INPUT-TERMINAL-MODE mode thunk))
-
-(define (output-port-terminal-mode port)
-  (let ((operation (textual-port-operation port 'OUTPUT-TERMINAL-MODE)))
-    (if operation
-	(operation port)
-	#f)))
-
-(define (set-output-port-terminal-mode! port mode)
-  (let ((operation (textual-port-operation port 'SET-OUTPUT-TERMINAL-MODE)))
-    (if operation
-	(operation port mode))))
-
-(define (with-output-port-terminal-mode port mode thunk)
-  (bind-mode port 'OUTPUT-TERMINAL-MODE 'SET-OUTPUT-TERMINAL-MODE mode thunk))
-
-(define (bind-mode port read-mode write-mode mode thunk)
-  (let ((read-mode (textual-port-operation port read-mode))
-	(write-mode (textual-port-operation port write-mode)))
-    (if (and read-mode write-mode (read-mode port))
-	(let ((outside-mode))
-	  (dynamic-wind (lambda ()
-			  (if (textual-port-open? port)
-			      (begin
-				(set! outside-mode (read-mode port))
-				(write-mode port mode))))
-			thunk
-			(lambda ()
-			  (if (textual-port-open? port)
-			      (begin
-				(set! mode (read-mode port))
-				(write-mode port outside-mode))))))
-	(thunk))))
-
 ;;;; Generic ports
 
 (define port?)
@@ -720,6 +644,117 @@ USA.
   (cond ((binary-output-port? port) (binary-output-port-channel port))
 	((textual-output-port? port) (textual-output-port-channel port))
 	(else (error:not-a output-port? port 'output-port-channel))))
+
+;;;; Port modes
+
+(define (input-port-blocking-mode port)
+  (channel-blocking-mode (input-port-channel port)))
+
+(define (set-input-port-blocking-mode! port mode)
+  (guarantee blocking-mode? mode 'set-input-port-blocking-mode!)
+  (set-channel-blocking-mode! (input-port-channel port) mode))
+
+(define (with-input-port-blocking-mode port mode thunk)
+  (guarantee blocking-mode? mode 'with-input-port-blocking-mode)
+  (with-channel-blocking-mode (input-port-channel port) mode thunk))
+
+(define (output-port-blocking-mode port)
+  (channel-blocking-mode (output-port-channel port)))
+
+(define (set-output-port-blocking-mode! port mode)
+  (guarantee blocking-mode? mode 'set-output-port-blocking-mode!)
+  (set-channel-blocking-mode! (output-port-channel port) mode))
+
+(define (with-output-port-blocking-mode port mode thunk)
+  (guarantee blocking-mode? mode 'with-output-port-blocking-mode)
+  (with-channel-blocking-mode (output-port-channel port) mode thunk))
+
+(define (input-port-terminal-mode port)
+  (channel-terminal-mode (input-port-channel port)))
+
+(define (set-input-port-terminal-mode! port mode)
+  (guarantee terminal-mode? mode 'set-input-port-terminal-mode!)
+  (set-channel-terminal-mode! (input-port-channel port) mode))
+
+(define (with-input-port-terminal-mode port mode thunk)
+  (guarantee terminal-mode? mode 'with-input-port-terminal-mode)
+  (with-channel-terminal-mode (input-port-channel port) mode thunk))
+
+(define (output-port-terminal-mode port)
+  (channel-terminal-mode (output-port-channel port)))
+
+(define (set-output-port-terminal-mode! port mode)
+  (guarantee terminal-mode? mode 'set-output-port-terminal-mode!)
+  (set-channel-terminal-mode! (output-port-channel port) mode))
+
+(define (with-output-port-terminal-mode port mode thunk)
+  (guarantee terminal-mode? mode 'with-output-port-terminal-mode)
+  (with-channel-terminal-mode (output-port-channel port) mode thunk))
+
+(define (blocking-mode? object)
+  (or (eq? 'blocking object)
+      (eq? 'nonblocking object)))
+
+(define (channel-blocking-mode channel)
+  (if channel
+      (if (channel-blocking? channel) 'blocking 'nonblocking)
+      #f))
+
+(define (set-channel-blocking-mode! channel mode)
+  (if channel
+      (if (eq? 'blocking mode)
+	  (channel-blocking channel)
+	  (channel-nonblocking channel))))
+
+(define (channel-mode-binder bind? mode? get-mode set-mode!)
+  (lambda (channel mode thunk)
+    (if (bind? channel)
+	(let ((outside-mode))
+	  (dynamic-wind (lambda ()
+			  (if (channel-open? channel)
+			      (begin
+				(set! outside-mode (get-mode channel))
+				(set-mode! channel mode))))
+			thunk
+			(lambda ()
+			  (if (channel-open? channel)
+			      (begin
+				(set! mode (get-mode channel))
+				(set-mode! channel outside-mode))))))
+	(thunk))))
+
+(define with-channel-blocking-mode
+  (channel-mode-binder (lambda (channel) channel)
+		       blocking-mode?
+		       channel-blocking-mode
+		       set-channel-blocking-mode!))
+
+(define (terminal-mode? object)
+  (or (eq? 'cooked object)
+      (eq? 'raw object)))
+
+(define (channel-terminal-mode channel)
+  (if (and channel (channel-type=terminal? channel))
+      (if (terminal-cooked-input? channel) 'cooked 'raw)
+      #f))
+
+(define (set-channel-terminal-mode! channel mode)
+  (if (and channel (channel-type=terminal? channel))
+      (if (eq? 'cooked mode)
+	  (terminal-cooked-input channel)
+	  (terminal-raw-input channel))))
+
+(define with-channel-terminal-mode
+  (channel-mode-binder (lambda (channel)
+			 (and channel (channel-type=terminal? channel)))
+		       terminal-mode?
+		       channel-terminal-mode
+		       set-channel-terminal-mode!))
+
+(add-boot-init!
+ (lambda ()
+   (register-predicate! blocking-mode? 'blocking-mode)
+   (register-predicate! terminal-mode? 'terminal-mode)))
 
 ;;;; Standard Ports
 

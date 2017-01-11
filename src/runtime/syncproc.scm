@@ -197,12 +197,11 @@ USA.
 	  (handle-broken-pipe process
 	    (lambda ()
 	      (if nonblock?
-		  ((port/operation port 'SET-OUTPUT-BLOCKING-MODE)
-		   port 'NONBLOCKING))
+		  (set-output-port-blocking-mode! port 'nonblocking))
 	      (receiver
 	       (let ((buffer (make-wide-string bsize)))
 		 (lambda ()
-		   (port/with-input-blocking-mode process-input 'BLOCKING
+		   (with-input-port-blocking-mode process-input 'BLOCKING
 		     (lambda ()
 		       (let ((n
 			      (input-port/read-string! process-input buffer)))
@@ -242,17 +241,17 @@ USA.
 		   (lambda ()
 		     (let ((n (input-port/read-string! port buffer)))
 		       (if (and n (fix:> n 0))
-			   (port/with-output-blocking-mode process-output
+			   (with-output-port-blocking-mode process-output
 							   'BLOCKING
 			     (lambda ()
 			       (output-port/write-substring process-output
 							    buffer 0 n))))
 		       n))))
-	      (if nonblock? (port/set-input-blocking-mode port 'NONBLOCKING))
+	      (if nonblock? (set-input-port-blocking-mode! port 'NONBLOCKING))
 	      (let ((status (receiver copy-output)))
 		(if (and nonblock? (input-port/open? port))
 		    (begin
-		      (port/set-input-blocking-mode port 'BLOCKING)
+		      (set-input-port-blocking-mode! port 'BLOCKING)
 		      (do () ((not (fix:> (copy-output) 0))))
 		      (input-port/close port)))
 		status)))

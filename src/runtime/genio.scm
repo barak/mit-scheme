@@ -130,11 +130,7 @@ USA.
 	   (READ-SUBSTRING ,generic-io/read-substring)
 	   (UNREAD-CHAR ,generic-io/unread-char)))
 	(ops:in2
-	 `((INPUT-BLOCKING-MODE ,generic-io/input-blocking-mode)
-	   (INPUT-CHANNEL ,generic-io/input-channel)
-	   (INPUT-TERMINAL-MODE ,generic-io/input-terminal-mode)
-	   (SET-INPUT-BLOCKING-MODE ,generic-io/set-input-blocking-mode)
-	   (SET-INPUT-TERMINAL-MODE ,generic-io/set-input-terminal-mode)))
+	 `((INPUT-CHANNEL ,generic-io/input-channel)))
 	(ops:out1
 	 `((BUFFERED-OUTPUT-BYTES ,generic-io/buffered-output-bytes)
 	   (BYTES-WRITTEN ,generic-io/bytes-written)
@@ -145,11 +141,7 @@ USA.
 	   (WRITE-CHAR ,generic-io/write-char)
 	   (WRITE-SUBSTRING ,generic-io/write-substring)))
 	(ops:out2
-	 `((OUTPUT-BLOCKING-MODE ,generic-io/output-blocking-mode)
-	   (OUTPUT-CHANNEL ,generic-io/output-channel)
-	   (OUTPUT-TERMINAL-MODE ,generic-io/output-terminal-mode)
-	   (SET-OUTPUT-BLOCKING-MODE ,generic-io/set-output-blocking-mode)
-	   (SET-OUTPUT-TERMINAL-MODE ,generic-io/set-output-terminal-mode)
+	 `((OUTPUT-CHANNEL ,generic-io/output-channel)
 	   (SYNCHRONIZE-OUTPUT ,generic-io/synchronize-output)))
 	(other-operations
 	 `((CLOSE ,generic-io/close)
@@ -231,7 +223,7 @@ USA.
 
 (define (generic-io/read-substring port string start end)
   (read-substring (port-input-buffer port) string start end))
-
+
 (define (generic-io/input-line port)
   (input-buffer-line (port-input-buffer port)))
 
@@ -243,35 +235,6 @@ USA.
     (if (not ib)
 	(error:bad-range-argument port #f))
     (input-buffer-channel ib)))
-
-(define (generic-io/input-blocking-mode port)
-  (let ((channel (generic-io/input-channel port)))
-    (if channel
-	(if (channel-blocking? channel) 'BLOCKING 'NONBLOCKING)
-	#f)))
-
-(define (generic-io/set-input-blocking-mode port mode)
-  (let ((channel (generic-io/input-channel port)))
-    (if channel
-	(case mode
-	  ((BLOCKING) (channel-blocking channel))
-	  ((NONBLOCKING) (channel-nonblocking channel))
-	  (else (error:wrong-type-datum mode "blocking mode"))))))
-
-(define (generic-io/input-terminal-mode port)
-  (let ((channel (generic-io/input-channel port)))
-    (if (and channel (channel-type=terminal? channel))
-	(if (terminal-cooked-input? channel) 'COOKED 'RAW)
-	#f)))
-
-(define (generic-io/set-input-terminal-mode port mode)
-  (let ((channel (generic-io/input-channel port)))
-    (if (and channel (channel-type=terminal? channel))
-	(case mode
-	  ((COOKED) (terminal-cooked-input channel))
-	  ((RAW) (terminal-raw-input channel))
-	  ((#F) unspecific)
-	  (else (error:wrong-type-datum mode "terminal mode"))))))
 
 ;;;; Output operations
 
@@ -299,35 +262,6 @@ USA.
     (if (not ob)
 	(error:bad-range-argument port #f))
     (output-buffer-channel ob)))
-
-(define (generic-io/output-blocking-mode port)
-  (let ((channel (generic-io/output-channel port)))
-    (if channel
-	(if (channel-blocking? channel) 'BLOCKING 'NONBLOCKING)
-	#f)))
-
-(define (generic-io/set-output-blocking-mode port mode)
-  (let ((channel (generic-io/output-channel port)))
-    (if channel
-	(case mode
-	  ((BLOCKING) (channel-blocking channel))
-	  ((NONBLOCKING) (channel-nonblocking channel))
-	  (else (error:wrong-type-datum mode "blocking mode"))))))
-
-(define (generic-io/output-terminal-mode port)
-  (let ((channel (generic-io/output-channel port)))
-    (if (and channel (channel-type=terminal? channel))
-	(if (terminal-cooked-output? channel) 'COOKED 'RAW)
-	#f)))
-
-(define (generic-io/set-output-terminal-mode port mode)
-  (let ((channel (generic-io/output-channel port)))
-    (if (and channel (channel-type=terminal? channel))
-	(case mode
-	  ((COOKED) (terminal-cooked-output channel))
-	  ((RAW) (terminal-raw-output channel))
-	  ((#F) unspecific)
-	  (else (error:wrong-type-datum mode "terminal mode"))))))
 
 (define (generic-io/synchronize-output port)
   (let ((channel (generic-io/output-channel port)))

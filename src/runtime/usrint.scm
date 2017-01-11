@@ -43,7 +43,7 @@ USA.
 	  (begin
 	    (guarantee-i/o-port port 'PROMPT-FOR-COMMAND-EXPRESSION)
 	    (write-command-prompt port prompt level)
-	    (port/with-input-terminal-mode port 'COOKED
+	    (with-input-port-terminal-mode port 'COOKED
 	      (lambda ()
 		(read port environment))))))))
 
@@ -72,13 +72,13 @@ USA.
 	  (operation port environment prompt)
 	  (begin
 	    (guarantee-i/o-port port caller)
-	    (port/with-output-terminal-mode port 'COOKED
+	    (with-output-port-terminal-mode port 'COOKED
 	      (lambda ()
 		(fresh-line port)
 		(newline port)
 		(write-string prompt port)
 		(flush-output port)))
-	    (port/with-input-terminal-mode port 'COOKED
+	    (with-input-port-terminal-mode port 'COOKED
 	      (lambda ()
 		(read port environment))))))))
 
@@ -109,12 +109,12 @@ USA.
   (write-command-prompt port prompt level)
   (let loop ()
     (let ((char
-	   (port/with-input-terminal-mode port 'RAW
+	   (with-input-port-terminal-mode port 'RAW
 	     (lambda ()
 	       (read-char port)))))
       (if (char-graphic? char)
 	  (begin
-	    (port/with-output-terminal-mode port 'COOKED
+	    (with-output-port-terminal-mode port 'COOKED
 	      (lambda ()
 		(write-char char port)
 		(flush-output port)))
@@ -130,28 +130,28 @@ USA.
 	  (default/prompt-for-confirmation port prompt)))))
 
 (define (default/prompt-for-confirmation port prompt)
-  (port/with-output-terminal-mode port 'COOKED
+  (with-output-port-terminal-mode port 'COOKED
     (lambda ()
       (fresh-line port)))
   (let loop ()
-    (port/with-output-terminal-mode port 'COOKED
+    (with-output-port-terminal-mode port 'COOKED
       (lambda ()
 	(newline port)
 	(write-string prompt port)
 	(flush-output port)))
     (let ((char
-	   (port/with-input-terminal-mode port 'RAW
+	   (with-input-port-terminal-mode port 'RAW
 	     (lambda ()
 	       (read-char port)))))
       (case char
 	((#\y #\Y #\space)
-	 (port/with-output-terminal-mode port 'COOKED
+	 (with-output-port-terminal-mode port 'COOKED
 	   (lambda ()
 	     (write-string "Yes" port)
 	     (flush-output port)))
 	 true)
 	((#\n #\N #\rubout)
-	 (port/with-output-terminal-mode port 'COOKED
+	 (with-output-port-terminal-mode port 'COOKED
 	   (lambda ()
 	     (write-string "No" port)
 	     (flush-output port)))
@@ -159,7 +159,7 @@ USA.
 	((#\newline)
 	 (loop))
 	(else
-	 (port/with-output-terminal-mode port 'COOKED
+	 (with-output-port-terminal-mode port 'COOKED
 	   (lambda ()
 	     (write char port)
 	     (beep port)
@@ -175,13 +175,13 @@ USA.
 	  (default/prompt-for-string port prompt)))))
 
 (define (default/prompt-for-string port prompt)
-  (port/with-output-terminal-mode port 'COOKED
+  (with-output-port-terminal-mode port 'COOKED
     (lambda ()
       (fresh-line port)
       (newline port)
       (write-string prompt port)
       (flush-output port)))
-  (port/with-input-terminal-mode port 'COOKED
+  (with-input-port-terminal-mode port 'COOKED
     (lambda ()
       (read-line port))))
 
@@ -239,7 +239,7 @@ USA.
 		  (set! outside)))))))
 
   (guarantee-i/o-port port 'default/call-with-pass-phrase)
-  (port/with-output-terminal-mode port 'COOKED
+  (with-output-port-terminal-mode port 'COOKED
     (lambda ()
       (fresh-line port)
       (newline port)
@@ -248,7 +248,7 @@ USA.
   (let loop ((input ""))
     (let ((char (with-binary-line-ending
 		 (lambda ()
-		   (port/with-input-terminal-mode port 'RAW
+		   (with-input-port-terminal-mode port 'RAW
 		     (lambda ()
 		       (read-char port)))))))
       (cond ((or (eof-object? char)
@@ -257,7 +257,7 @@ USA.
 		(receiver input)
 		(set-string-length! input (string-maximum-length input))
 		(string-fill! input #\delete)
-		(port/with-output-terminal-mode port 'COOKED
+		(with-output-port-terminal-mode port 'COOKED
 		  (lambda ()
 		    (newline port)))
 		unspecific)
@@ -289,7 +289,7 @@ USA.
 
 (define (write-command-prompt port prompt level)
   (if (not (nearest-cmdl/batch-mode?))
-      (port/with-output-terminal-mode port 'COOKED
+      (with-output-port-terminal-mode port 'COOKED
 	(lambda ()
 	  (fresh-line port)
 	  (newline port)
@@ -352,7 +352,7 @@ USA.
 (define (default/write-result port expression object hash-number environment)
   expression
   (if (not (nearest-cmdl/batch-mode?))
-      (port/with-output-terminal-mode port 'COOKED
+      (with-output-port-terminal-mode port 'COOKED
 	(lambda ()
 	  (fresh-line port)
 	  (write-string ";" port)

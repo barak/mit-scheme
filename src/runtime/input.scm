@@ -53,7 +53,7 @@ USA.
       0))
 
 (define (input-port/read-line port)
-  (port/with-input-blocking-mode port 'BLOCKING
+  (with-input-port-blocking-mode port 'BLOCKING
     (lambda ()
       (let ((read-char (textual-port-operation/read-char port)))
 	(let loop ((a (make-accum 128)))
@@ -66,7 +66,7 @@ USA.
 		  (else (loop (accum char a))))))))))
 
 (define (input-port/read-string port delimiters)
-  (port/with-input-blocking-mode port 'BLOCKING
+  (with-input-port-blocking-mode port 'BLOCKING
     (lambda ()
       (let ((read-char (textual-port-operation/read-char port)))
 	(let loop ((a (make-accum 128)))
@@ -82,7 +82,7 @@ USA.
 		   (loop (accum char a))))))))))
 
 (define (input-port/discard-chars port delimiters)
-  (port/with-input-blocking-mode port 'BLOCKING
+  (with-input-port-blocking-mode port 'BLOCKING
     (lambda ()
       (let ((read-char (textual-port-operation/read-char port)))
 	(let loop ()

@@ -280,7 +280,7 @@ USA.
 
 (define ((cmdl-message/strings . strings) cmdl)
   (let ((port (cmdl/port cmdl)))
-    (port/with-output-terminal-mode port 'COOKED
+    (with-output-port-terminal-mode port 'COOKED
       (lambda ()
 	(for-each (lambda (string)
 		    (fresh-line port)
@@ -290,7 +290,7 @@ USA.
 
 (define ((cmdl-message/active actor) cmdl)
   (let ((port (cmdl/port cmdl)))
-    (port/with-output-terminal-mode port 'COOKED
+    (with-output-port-terminal-mode port 'COOKED
       (lambda ()
 	(actor port)))))
 
@@ -569,7 +569,7 @@ USA.
 (define hook/set-default-environment)
 (define (default/set-default-environment port environment)
   (let ((port (cmdl/port port)))
-    (port/with-output-terminal-mode port 'COOKED
+    (with-output-port-terminal-mode port 'COOKED
       (lambda ()
 	(if (not (interpreter-environment? environment))
 	    (begin

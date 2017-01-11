@@ -2473,22 +2473,10 @@ USA.
   (parent (runtime))
   (export ()
 	  ;; BEGIN legacy bindings
-	  (port/input-blocking-mode input-port-blocking-mode)
-	  (port/input-terminal-mode input-port-terminal-mode)
 	  (port/open? textual-port-open?)
 	  (port/operation textual-port-operation)
 	  (port/operation-names textual-port-operation-names)
-	  (port/output-blocking-mode output-port-blocking-mode)
-	  (port/output-terminal-mode output-port-terminal-mode)
-	  (port/set-input-blocking-mode set-input-port-blocking-mode!)
-	  (port/set-input-terminal-mode set-input-port-terminal-mode!)
-	  (port/set-output-blocking-mode set-output-port-blocking-mode!)
-	  (port/set-output-terminal-mode set-output-port-terminal-mode!)
 	  (port/type textual-port-type)
-	  (port/with-input-blocking-mode with-input-port-blocking-mode)
-	  (port/with-input-terminal-mode with-input-port-terminal-mode)
-	  (port/with-output-blocking-mode with-output-port-blocking-mode)
-	  (port/with-output-terminal-mode with-output-port-terminal-mode)
 	  ;; END legacy bindings
 	  close-input-port
 	  close-output-port

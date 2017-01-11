@@ -412,7 +412,7 @@ USA.
 					  (%grow-buffer string end min-end))))
 	 (let ((port (parser-buffer-port buffer))
 	       (string (parser-buffer-string buffer)))
-	   (port/with-input-blocking-mode port 'BLOCKING
+	   (with-input-port-blocking-mode port 'BLOCKING
 	     (lambda ()
 	       (let loop ((end end))
 		 (if (< end min-end)
