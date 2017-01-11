@@ -83,7 +83,8 @@ find_stage ()
 {
     find_build_stage "${1}" && return 0
     if [[ ${1} == stage0 ]]; then
-	find_dist_stage "${1}" && return 0
+	find_dist_stage $(pwd)/"${1}" && return 0
+	find_dist_stage /usr/local && return 0
 	find_build_stage "${STAGE0}" && return 0
     fi
     echo "Unable to find ${1} executable" >&2
@@ -104,8 +105,12 @@ find_build_stage ()
 
 find_dist_stage ()
 {
-    local STAGE=$(pwd)/${1}
-    local LIBDIR=${STAGE}/lib/mit-scheme*
+    local STAGE=${1}
+    local LIBDIRS=(${STAGE}/lib/mit-scheme*)
+    if (( ${#LIBDIRS[@]} < 1 )); then
+        return 1
+    fi
+    local LIBDIR=${LIBDIRS[0]}
     if [[ -x ${STAGE}/bin/mit-scheme && -f ${LIBDIR}/all.com ]]; then
 	export MIT_SCHEME_EXE=${STAGE}/bin/mit-scheme
 	export MITSCHEME_LIBRARY_PATH=${LIBDIR}
