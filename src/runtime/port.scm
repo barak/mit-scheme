@@ -721,39 +721,6 @@ USA.
    (set! i/o-port? (disjoin textual-i/o-port? binary-i/o-port?))
    unspecific))
 
-#|
-(define (port? object)
-  (or (textual-port? object)
-      (binary-port? object)))
-
-(define (input-port? object)
-  (or (textual-input-port? object)
-      (binary-input-port? object)))
-
-(define (output-port? object)
-  (or (textual-output-port? object)
-      (binary-output-port? object)))
-
-(define (i/o-port? object)
-  (or (textual-i/o-port? object)
-      (binary-i/o-port? object)))
-
-(add-boot-init!
- (lambda ()
-   (register-predicate! port? 'port)
-   (set-predicate<=! binary-port? port?)
-   (set-predicate<=! textual-port? port?)
-   (register-predicate! input-port? 'port)
-   (set-predicate<=! binary-input-port? input-port?)
-   (set-predicate<=! textual-input-port? input-port?)
-   (register-predicate! output-port? 'port)
-   (set-predicate<=! binary-output-port? output-port?)
-   (set-predicate<=! textual-output-port? output-port?)
-   (register-predicate! i/o-port? 'port)
-   (set-predicate<=! binary-i/o-port? i/o-port?)
-   (set-predicate<=! textual-i/o-port? i/o-port?)))
-|#
-
 (define-guarantee port "port")
 (define-guarantee input-port "input port")
 (define-guarantee output-port "output port")
