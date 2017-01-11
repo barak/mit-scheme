@@ -193,8 +193,8 @@ extern SCHEME_OBJECT * memory_base;
 #define RETURN_CODE_P(object) ((OBJECT_TYPE (object)) == TC_RETURN_CODE)
 #define EPHEMERON_P(object) ((OBJECT_TYPE (object)) == TC_EPHEMERON)
 
-#define STRING_P(object)                                                \
-  ((BYTEVECTOR_P (object)) || (LEGACY_STRING_P (object)))
+#define STRING_P string_p
+extern bool string_p (SCHEME_OBJECT);
 
 #define NON_MARKED_VECTOR_P(object)					\
   ((OBJECT_TYPE (object)) == TC_NON_MARKED_VECTOR)
