@@ -27,13 +27,12 @@ USA.
 ;;;; Output
 ;;; package: (runtime output-port)
 
-(declare (usual-integrations)
-	 (integrate-external "port"))
+(declare (usual-integrations))
 
 ;;;; Low level
 
 (define-integrable (output-port/%write-char port char)
-  ((port/%operation/write-char port) port char))
+  ((port/operation/write-char port) port char))
 
 (define (output-port/write-char port char)
   ((port/operation/write-char port) port char))
@@ -54,7 +53,7 @@ USA.
   ((port/operation/flush-output port) port))
 
 (define-integrable (output-port/%discretionary-flush port)
-  ((port/%operation/discretionary-flush-output port) port))
+  ((port/operation/discretionary-flush-output port) port))
 
 (define (output-port/discretionary-flush port)
   ((port/operation/discretionary-flush-output port) port))
