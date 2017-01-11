@@ -463,19 +463,16 @@ USA.
 (define-port-operation discretionary-flush-output)
 
 (set-record-type-unparser-method! <textual-port>
-  (lambda (state port)
-    ((let ((name
-	    (cond ((textual-i/o-port? port) 'TEXTUAL-I/O-PORT)
-		  ((textual-input-port? port) 'TEXTUAL-INPUT-PORT)
-		  ((textual-output-port? port) 'TEXTUAL-OUTPUT-PORT)
-		  (else 'TEXTUAL-PORT))))
-       (cond ((textual-port-operation port 'WRITE-SELF)
-	      => (lambda (operation)
-		   (standard-unparser-method name operation)))
-	     (else
-	      (standard-unparser-method name #f))))
-     state
-     port)))
+  (standard-unparser-method
+   (lambda (port)
+     (cond ((textual-i/o-port? port) 'TEXTUAL-I/O-PORT)
+	   ((textual-input-port? port) 'TEXTUAL-INPUT-PORT)
+	   ((textual-output-port? port) 'TEXTUAL-OUTPUT-PORT)
+	   (else 'TEXTUAL-PORT)))
+   (lambda (port output-port)
+     (cond ((textual-port-operation port 'WRITE-SELF)
+	    => (lambda (operation)
+		 (operation port output-port)))))))
 
 (define (port/copy port state)
   (let ((port (copy-record port)))
