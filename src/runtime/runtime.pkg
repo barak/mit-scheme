@@ -2420,6 +2420,45 @@ USA.
 	  uncompress
 	  compress-ports))
 
+(define-package (runtime binary-port)
+  (files "binary-port")
+  (parent (runtime))
+  (export ()
+	  binary-i/o-port?
+	  binary-input-port?
+	  binary-output-port?
+	  binary-port?
+	  get-output-bytevector
+	  open-input-bytevector
+	  open-output-bytevector
+	  peek-u8
+	  read-bytevector
+	  read-bytevector!
+	  read-u8
+	  u8-ready?
+	  write-bytevector
+	  write-u8)
+  (export (runtime)
+	  (input-source-channel source/sink-channel)
+	  (output-source-channel source/sink-channel)
+	  input-source?
+	  make-binary-i/o-port
+	  make-binary-input-port
+	  make-binary-output-port
+	  make-channel-input-source
+	  make-channel-output-sink
+	  make-non-channel-input-source
+	  make-non-channel-output-sink
+	  output-sink?)
+  (export (runtime port)
+	  binary-input-port-open?
+	  binary-input-port:buffer-contents
+	  binary-input-port:set-buffer-contents!
+	  binary-output-port-open?
+	  close-binary-input-port
+	  close-binary-output-port
+	  close-binary-port))
+
 (define-package (runtime port)
   (files "port")
   (parent (runtime))
