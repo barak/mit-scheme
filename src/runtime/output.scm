@@ -144,9 +144,9 @@ USA.
 
 (define (flush-output-port #!optional port)
   (let ((port (optional-output-port port 'flush-output-port)))
-    (cond ((binary-port? port) (flush-binary-output-port port))
-	  ((textual-port? port) (output-port/flush-output port))
-	  (else (error:not-a port? port 'flush-output-port)))))
+    (cond ((binary-output-port? port) (flush-binary-output-port port))
+	  ((textual-output-port? port) (output-port/flush-output port))
+	  (else (error:not-a output-port? port 'flush-output-port)))))
 
 (define (wrap-custom-operation-0 operation-name)
   (lambda (#!optional port)
