@@ -90,23 +90,41 @@ USA.
 	       (fix:> n 0)))
 	(output-port/discretionary-flush port))))
 
-(define (write-string string #!optional port)
-  (let ((port (optional-output-port port 'WRITE-STRING)))
-    (if (let ((n (output-port/write-string port string)))
-	  (and n
-	       (fix:> n 0)))
-	(output-port/discretionary-flush port))))
+(define (write-string string #!optional port start end)
+  (let ((port (optional-output-port port 'WRITE-STRING))
+	(end
+	 (if (default-object? end)
+	     (xstring-length string)
+	     (begin
+	       (guarantee index-fixnum? end 'write-string)
+	       (if (not (fix:<= end (xstring-length string)))
+		   (error:bad-range-argument end 'write-string))
+	       end))))
+    (let ((start
+	   (if (default-object? start)
+	       0
+	       (begin
+		 (guarantee index-fixnum? start 'write-string)
+		 (if (not (fix:<= start end))
+		     (error:bad-range-argument start 'write-string))
+		 start))))
+      (if (let ((n (output-port/write-substring port string start end)))
+	    (and n
+		 (fix:> n 0)))
+	  (output-port/discretionary-flush port)))))
 
 (define (write-substring string start end #!optional port)
-  (let ((port (optional-output-port port 'WRITE-SUBSTRING)))
-    (if (let ((n (output-port/write-substring port string start end)))
-	  (and n
-	       (fix:> n 0)))
-	(output-port/discretionary-flush port))))
+  (write-string string port start end))
 
 (define (newline #!optional port)
   (write-char #\newline port))
 
+(define (flush-output-port #!optional port)
+  (let ((port (optional-output-port port 'flush-output-port)))
+    (cond ((binary-output-port? port) (flush-binary-output-port port))
+	  ((textual-output-port? port) (output-port/flush-output port))
+	  (else (error:not-a output-port? port 'flush-output-port)))))
+
 (define (fresh-line #!optional port)
   (let ((port (optional-output-port port 'FRESH-LINE)))
     (if (let ((n (output-port/fresh-line port)))
@@ -129,12 +147,6 @@ USA.
     (output-port/write-object port object environment)
     (output-port/write-char port #\newline)
     (output-port/discretionary-flush port)))
-
-(define (flush-output-port #!optional port)
-  (let ((port (optional-output-port port 'flush-output-port)))
-    (cond ((binary-output-port? port) (flush-binary-output-port port))
-	  ((textual-output-port? port) (output-port/flush-output port))
-	  (else (error:not-a output-port? port 'flush-output-port)))))
 
 (define (wrap-custom-operation-0 operation-name)
   (lambda (#!optional port)
