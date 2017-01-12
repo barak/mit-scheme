@@ -108,17 +108,17 @@ between uppercase and lowercase.  The versions that ignore case include
 @samp{-ci} (for ``case insensitive'') in their names.
 
 @menu
-* Construction of Strings::     
-* Selecting String Components::  
-* Comparison of Strings::       
-* Alphabetic Case in Strings::  
-* Cutting and Pasting Strings::  
-* Searching Strings::           
-* Matching Strings::            
-* Regular Expressions::         
-* Modification of Strings::     
-* Variable-Length Strings::     
-* Byte Vectors::                
+* Construction of Strings::
+* Selecting String Components::
+* Comparison of Strings::
+* Alphabetic Case in Strings::
+* Cutting and Pasting Strings::
+* Searching Strings::
+* Matching Strings::
+* Regular Expressions::
+* Modification of Strings::
+* Variable-Length Strings::
+* Byte Vectors::
 @end menu
 
 @node Construction of Strings, Selecting String Components, Strings, Strings
@@ -824,8 +824,8 @@ it, execute
 once before calling any of the procedures defined here.
 
 @menu
-* Regular-expression procedures::  
-* REXP abstraction::            
+* Regular-expression procedures::
+* REXP abstraction::
 @end menu
 
 @node Regular-expression procedures, REXP abstraction, Regular Expressions, Regular Expressions

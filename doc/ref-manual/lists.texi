@@ -132,15 +132,15 @@ programs may be represented as lists.  Among other things, this permits
 the use of the @code{read} procedure to parse Scheme programs.
 
 @menu
-* Pairs::                       
-* Construction of Lists::       
-* Selecting List Components::   
-* Cutting and Pasting Lists::   
-* Filtering Lists::             
-* Searching Lists::             
-* Mapping of Lists::            
-* Reduction of Lists::          
-* Miscellaneous List Operations::  
+* Pairs::
+* Construction of Lists::
+* Selecting List Components::
+* Cutting and Pasting Lists::
+* Filtering Lists::
+* Searching Lists::
+* Mapping of Lists::
+* Reduction of Lists::
+* Miscellaneous List Operations::
 @end menu
 
 @node Pairs, Construction of Lists, Lists, Lists

@@ -22,14 +22,14 @@ graphics device object that was returned from a call to
 either an exact integer or an inexact real.
 
 @menu
-* Opening and Closing of Graphics Devices::  
-* Coordinates for Graphics::    
-* Drawing Graphics::            
-* Characteristics of Graphics Output::  
-* Buffering of Graphics Output::  
-* Clipping of Graphics Output::  
-* Custom Graphics Operations::  
-* Images::                      
+* Opening and Closing of Graphics Devices::
+* Coordinates for Graphics::
+* Drawing Graphics::
+* Characteristics of Graphics Output::
+* Buffering of Graphics Output::
+* Clipping of Graphics Output::
+* Custom Graphics Operations::
+* Images::
 * X Graphics::                  Graphics on the X Window System
 * Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
 @end menu
@@ -521,9 +521,9 @@ objects.  X display, window, and image objects are automatically closed
 if they are reclaimed by the garbage collector.
 
 @menu
-* X Graphics Type::             
-* Utilities for X Graphics::    
-* Custom Operations on X Graphics Devices::  
+* X Graphics Type::
+* Utilities for X Graphics::
+* Custom Operations on X Graphics Devices::
 @end menu
 
 @node X Graphics Type, Utilities for X Graphics, X Graphics, X Graphics
@@ -848,7 +848,7 @@ the click of a mouse button.
 
 
 @menu
-* Win32 Graphics Type::         
+* Win32 Graphics Type::
 * Custom Operations for Win32 Graphics::  Custom Operations for Win32 Graphics Devices
 @end menu
 

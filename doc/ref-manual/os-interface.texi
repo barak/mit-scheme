@@ -39,15 +39,15 @@ A means to determine the operating system Scheme is running under.
 @end itemize
 
 @menu
-* Pathnames::                   
-* Working Directory::           
-* File Manipulation::           
-* Directory Reader::            
-* Date and Time::               
-* Machine Time::                
-* Subprocesses::                
-* TCP Sockets::                 
-* Miscellaneous OS Facilities::  
+* Pathnames::
+* Working Directory::
+* File Manipulation::
+* Directory Reader::
+* Date and Time::
+* Machine Time::
+* Subprocesses::
+* TCP Sockets::
+* Miscellaneous OS Facilities::
 @end menu
 
 @node Pathnames, Working Directory, Operating-System Interface, Operating-System Interface
@@ -105,10 +105,10 @@ pathnames.  Pathnames for other operating systems have different
 external representations.
 
 @menu
-* Filenames and Pathnames::     
-* Components of Pathnames::     
-* Operations on Pathnames::     
-* Miscellaneous Pathnames::     
+* Filenames and Pathnames::
+* Components of Pathnames::
+* Operations on Pathnames::
+* Miscellaneous Pathnames::
 @end menu
 
 @node Filenames and Pathnames, Components of Pathnames, Pathnames, Pathnames
@@ -1364,11 +1364,11 @@ Within this section, argument variables named @var{universal-time},
 respectively required to be of the corresponding format.
 
 @menu
-* Universal Time::              
-* Decoded Time::                
-* File Time::                   
-* Time-Format Conversion::      
-* External Representation of Time::  
+* Universal Time::
+* Decoded Time::
+* File Time::
+* Time-Format Conversion::
+* External Representation of Time::
 @end menu
 
 @node Universal Time, Decoded Time, Date and Time, Date and Time
@@ -2048,9 +2048,9 @@ it, execute
 once before calling it.
 
 @menu
-* Subprocess Procedures::       
-* Subprocess Conditions::       
-* Subprocess Options::          
+* Subprocess Procedures::
+* Subprocess Conditions::
+* Subprocess Options::
 @end menu
 
 @node Subprocess Procedures, Subprocess Conditions, Subprocesses, Subprocesses

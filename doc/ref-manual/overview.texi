@@ -106,10 +106,10 @@ parses its input; that is, it performs syntactic as well as lexical
 decomposition of what it reads.
 
 @menu
-* Notational Conventions::      
-* Scheme Concepts::             
-* Lexical Conventions::         
-* Expressions::                 
+* Notational Conventions::
+* Scheme Concepts::
+* Lexical Conventions::
+* Expressions::
 @end menu
 
 @node Notational Conventions, Scheme Concepts, Overview, Overview
@@ -121,9 +121,9 @@ This section details the notational conventions used throughout the rest
 of this document.
 
 @menu
-* Errors::                      
-* Examples::                    
-* Entry Format::                
+* Errors::
+* Examples::
+* Entry Format::
 @end menu
 
 @node Errors, Examples, Notational Conventions, Notational Conventions
@@ -330,14 +330,14 @@ character and an output port.
 @cindex scheme concepts
 
 @menu
-* Variable Bindings::           
-* Environment Concepts::        
-* Initial and Current Environments::  
-* Static Scoping::              
-* True and False::              
-* External Representations::    
-* Disjointness of Types::       
-* Storage Model::               
+* Variable Bindings::
+* Environment Concepts::
+* Initial and Current Environments::
+* Static Scoping::
+* True and False::
+* External Representations::
+* Disjointness of Types::
+* Storage Model::
 @end menu
 
 @node Variable Bindings, Environment Concepts, Scheme Concepts, Scheme Concepts
@@ -640,13 +640,13 @@ compiled code.
 This section describes Scheme's lexical conventions.
 
 @menu
-* Whitespace::                  
-* Delimiters::                  
-* Identifiers::                 
-* Uppercase and Lowercase::     
-* Naming Conventions::          
-* Comments::                    
-* Additional Notations::        
+* Whitespace::
+* Delimiters::
+* Identifiers::
+* Uppercase and Lowercase::
+* Naming Conventions::
+* Comments::
+* Additional Notations::
 @end menu
 
 @node Whitespace, Delimiters, Lexical Conventions, Lexical Conventions
@@ -920,10 +920,10 @@ expression may be a @emph{literal}, a @emph{variable reference}, a
 @emph{special form}, or a @emph{procedure call}.
 
 @menu
-* Literal Expressions::         
-* Variable References::         
-* Special Form Syntax::         
-* Procedure Call Syntax::       
+* Literal Expressions::
+* Variable References::
+* Special Form Syntax::
+* Procedure Call Syntax::
 @end menu
 
 @node Literal Expressions, Variable References, Expressions, Expressions

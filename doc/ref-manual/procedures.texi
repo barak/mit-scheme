@@ -53,12 +53,12 @@ The written representation makes this distinction for historical
 reasons, and may eventually change.
 
 @menu
-* Procedure Operations::        
-* Arity::                       
-* Primitive Procedures::        
-* Continuations::               
-* Application Hooks::           
-* Generic Dispatch::            
+* Procedure Operations::
+* Arity::
+* Primitive Procedures::
+* Continuations::
+* Application Hooks::
+* Generic Dispatch::
 @end menu
 
 @node Procedure Operations, Arity, Procedures, Procedures
@@ -570,9 +570,9 @@ object types.  Instead, there is a flat space of types and methods are
 selected by procedural examination of the given operand types.
 
 @menu
-* Generic Procedures::          
-* Method Generators::           
-* Dispatch Tags::               
+* Generic Procedures::
+* Method Generators::
+* Dispatch Tags::
 @end menu
 
 @node Generic Procedures, Method Generators, Generic Dispatch, Generic Dispatch

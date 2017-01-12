@@ -62,13 +62,13 @@ intersection and difference; and indexing of elements by position.
 @end itemize
 
 @menu
-* Association Lists::           
-* 1D Tables::                   
-* The Association Table::       
-* Hash Tables::                 
-* Object Hashing::              
-* Red-Black Trees::             
-* Weight-Balanced Trees::       
+* Association Lists::
+* 1D Tables::
+* The Association Table::
+* Hash Tables::
+* Object Hashing::
+* Red-Black Trees::
+* Weight-Balanced Trees::
 @end menu
 
 @node Association Lists, 1D Tables, Associations, Associations
@@ -405,10 +405,10 @@ option, but as of release 7.7.0 it is loaded by default.  It's no longer
 necessary to call @code{load-option} prior to using hash tables.)
 
 @menu
-* Construction of Hash Tables::  
-* Basic Hash Table Operations::  
-* Resizing of Hash Tables::     
-* Address Hashing::             
+* Construction of Hash Tables::
+* Basic Hash Table Operations::
+* Resizing of Hash Tables::
+* Address Hashing::
 @end menu
 
 @node Construction of Hash Tables, Basic Hash Table Operations, Hash Tables, Hash Tables
@@ -1453,10 +1453,10 @@ To use weight-balanced trees, execute
 once before calling any of the procedures defined here.
 
 @menu
-* Construction of Weight-Balanced Trees::  
-* Basic Operations on Weight-Balanced Trees::  
-* Advanced Operations on Weight-Balanced Trees::  
-* Indexing Operations on Weight-Balanced Trees::  
+* Construction of Weight-Balanced Trees::
+* Basic Operations on Weight-Balanced Trees::
+* Advanced Operations on Weight-Balanced Trees::
+* Indexing Operations on Weight-Balanced Trees::
 @end menu
 
 @node Construction of Weight-Balanced Trees, Basic Operations on Weight-Balanced Trees, Weight-Balanced Trees, Weight-Balanced Trees

@@ -6,13 +6,13 @@ Characters are objects that represent printed characters, such as
 letters and digits.
 
 @menu
-* External Representation of Characters::  
-* Comparison of Characters::    
-* Miscellaneous Character Operations::  
-* Internal Representation of Characters::  
-* ISO-8859-1 Characters::       
-* Character Sets::              
-* Unicode::                     
+* External Representation of Characters::
+* Comparison of Characters::
+* Miscellaneous Character Operations::
+* Internal Representation of Characters::
+* ISO-8859-1 Characters::
+* Character Sets::
+* Unicode::
 @end menu
 
 @node External Representation of Characters, Comparison of Characters, Characters, Characters
@@ -737,8 +737,8 @@ several external representations, specifically @acronym{UTF-8},
 @end itemize
 
 @menu
-* Wide Strings::                
-* Unicode Representations::     
+* Wide Strings::
+* Unicode Representations::
 @end menu
 
 @node Wide Strings, Unicode Representations, Unicode, Unicode
@@ -831,7 +831,7 @@ accumulated output is returned as a wide string.  This is equivalent to:
 @end example
 @end deffn
 
-@node Unicode Representations, , Wide Strings, Unicode
+@node Unicode Representations,  , Wide Strings, Unicode
 @subsection Unicode Representations
 
 @cindex Unicode external representations

@@ -2,13 +2,13 @@
 @chapter Miscellaneous Datatypes
 
 @menu
-* Booleans::                    
-* Symbols::                     
-* Parameters::                       
-* Records::                     
-* Promises::                    
-* Streams::                     
-* Weak References::                  
+* Booleans::
+* Symbols::
+* Parameters::
+* Records::
+* Promises::
+* Streams::
+* Weak References::
 @end menu
 
 @node Booleans, Symbols, Miscellaneous Datatypes, Miscellaneous Datatypes
@@ -943,7 +943,7 @@ their keys weakly, and the association table (@pxref{The Association
 Table}), which also holds its keys weakly.
 
 @menu
-* Weak Pairs::                  
+* Weak Pairs::
 * Ephemerons::
 * Reference barriers::
 @end menu

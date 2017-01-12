@@ -2,10 +2,10 @@
 @chapter Environments
 
 @menu
-* Environment Operations::      
-* Environment Variables::       
-* REPL Environment::            
-* Top-level Environments::      
+* Environment Operations::
+* Environment Variables::
+* REPL Environment::
+* Top-level Environments::
 @end menu
 
 @node Environment Operations, Environment Variables, Environments, Environments

@@ -134,13 +134,13 @@ uniformly by specifying a handler for the generalization.
 @end table
 
 @menu
-* Condition Signalling::        
-* Error Messages::              
-* Condition Handling::          
-* Restarts::                    
-* Condition Instances::         
-* Condition Types::             
-* Taxonomy::                    
+* Condition Signalling::
+* Error Messages::
+* Condition Handling::
+* Restarts::
+* Condition Instances::
+* Condition Types::
+* Taxonomy::
 @end menu
 
 @node Condition Signalling, Error Messages, Error System, Error System
@@ -587,10 +587,10 @@ equivalent to having specified the symbol @code{bound-restarts}.
 @end itemize
 
 @menu
-* Establishing Restart Code::   
-* Invoking Standard Restart Code::  
-* Finding and Invoking General Restart Code::  
-* The Named Restart Abstraction::  
+* Establishing Restart Code::
+* Invoking Standard Restart Code::
+* Finding and Invoking General Restart Code::
+* The Named Restart Abstraction::
 @end menu
 
 @node Establishing Restart Code, Invoking Standard Restart Code, Restarts, Restarts
@@ -917,9 +917,9 @@ to provide a mechanism for continuing the computation; that mechanism is
 provided by restarts.
 
 @menu
-* Generating Operations on Conditions::  
-* Condition State::             
-* Simple Condition Instance Operations::  
+* Generating Operations on Conditions::
+* Condition State::
+* Simple Condition Instance Operations::
 @end menu
 
 @node Generating Operations on Conditions, Condition State, Condition Instances, Condition Instances
