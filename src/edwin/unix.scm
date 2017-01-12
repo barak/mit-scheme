@@ -636,7 +636,8 @@ option, instead taking -P <filename>."
 		 (list "-p"
 		       (call-with-input-file (cadr password)
 			 (lambda (port)
-			   (read-string (char-set #\newline) port))))))
+			   (read-delimited-string (char-set #\newline)
+						  port))))))
 	       (else
 		(error "Illegal password:" password))))))
 

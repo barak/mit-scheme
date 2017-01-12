@@ -361,7 +361,7 @@ USA.
 	 (read-required-line port)))))
 
 (define (read-to-eom port)
-  (let ((string (read-string rmail-message:end-char-set port)))
+  (let ((string (read-delimited-string rmail-message:end-char-set port)))
     (if (or (eof-object? string)
 	    (eof-object? (read-char port)))
 	(error "EOF while reading RMAIL message body:" port))

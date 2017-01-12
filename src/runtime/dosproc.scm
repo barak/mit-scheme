@@ -55,7 +55,7 @@ USA.
 			(output-port-channel port*)))))))
 	     (call-with-input-file fname
 	       (lambda (input)
-		 (let ((string (read-string (char-set) input)))
+		 (let ((string (read-delimited-string (char-set) input)))
 		   (if (not (eof-object? string))
 		       (write-string string
 				     port)))))
@@ -66,7 +66,7 @@ USA.
 	 (lambda (fname)
 	   (call-with-output-file fname
 	     (lambda (output)
-	       (write-string (read-string (char-set) port)
+	       (write-string (read-delimited-string (char-set) port)
 			     output)))
 	   (call-with-input-file fname
 	     (lambda (port*)

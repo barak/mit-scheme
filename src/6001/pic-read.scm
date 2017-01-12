@@ -56,7 +56,7 @@ USA.
   (let ((delimiters (char-set #\newline)))
     (lambda (port)
       (let loop ()
-	(let ((line (read-string delimiters port)))
+	(let ((line (read-delimited-string delimiters port)))
 	  (if (eof-object? line)
 	      (error "EOF encountered when parsing line."))
 	  (read-char port)

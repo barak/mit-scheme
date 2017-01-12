@@ -543,7 +543,7 @@ USA.
     char))
 
 (define (read-string-internal delimiters port)
-  (let ((s (read-string delimiters port)))
+  (let ((s (read-delimited-string delimiters port)))
     (if (and (not (eof-object? s))
              imap-transcript-port)
 	(write-string s imap-transcript-port))

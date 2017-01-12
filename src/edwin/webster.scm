@@ -60,7 +60,7 @@ USA.
 	   (error "Unrecognized response from Webster server:" line)))))
 
 (define (webster-read-line port)
-  (let ((line (read-string webster-line-delimiters port)))
+  (let ((line (read-delimited-string webster-line-delimiters port)))
     (values line
 	    (let ((delim (read-char port)))
 	      (or (eof-object? delim)

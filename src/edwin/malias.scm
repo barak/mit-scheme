@@ -140,7 +140,7 @@ USA.
 	      '()))))))
 
 (define (read-mailrc-line port)
-  (let ((line (read-string char-set:newline port)))
+  (let ((line (read-delimited-string char-set:newline port)))
     (and (not (eof-object? line))
 	 (begin
 	   (read-char port)
