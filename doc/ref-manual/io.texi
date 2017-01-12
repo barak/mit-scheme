@@ -69,7 +69,7 @@ binary ports are distinct.)
 Ports can be used to access files, devices, and similar things on the
 host system on which the Scheme program is running.
 
-@deffn procedure call-with-port port procedure
+@deffn {standard procedure} call-with-port port procedure
 It is an error if @var{procedure} does not accept one argument.
 
 The @code{call-with-port} procedure calls @var{procedure} with
@@ -111,12 +111,12 @@ In no case does @code{call-with-truncated-output-port} close
 @var{output-port}.
 @end deffn
 
-@deffn procedure input-port? object
-@deffnx procedure output-port? object
+@deffn {standard procedure} input-port? object
+@deffnx {standard procedure} output-port? object
 @deffnx procedure i/o-port? object
-@deffnx procedure textual-port? object
-@deffnx procedure binary-port? object
-@deffnx procedure port? object
+@deffnx {standard procedure} textual-port? object
+@deffnx {standard procedure} binary-port? object
+@deffnx {standard procedure} port? object
 @cindex type predicate, for port
 These procedures return @code{#t} if @var{object} is an input port,
 output port, input/output port, textual port, binary port, or any kind
@@ -132,15 +132,15 @@ These procedures are @strong{deprecated}.  Instead use
 @code{guarantee} with the appropriate predicate.
 @end deffn
 
-@deffn procedure input-port-open? port
-@deffnx procedure output-port-open? port
+@deffn {standard procedure} input-port-open? port
+@deffnx {standard procedure} output-port-open? port
 Returns @code{#t} if @var{port} is still open and capable of
 performing input or output, respectively, and @code{#f} otherwise.
 @end deffn
 
-@deffn parameter current-input-port [input-port]
-@deffnx parameter current-output-port [output-port]
-@deffnx parameter current-error-port [output-port]
+@deffn {standard parameter} current-input-port [input-port]
+@deffnx {standard parameter} current-output-port [output-port]
+@deffnx {standard parameter} current-error-port [output-port]
 @cindex current input port (defn)
 @cindex input port, current (defn)
 @cindex current output port (defn)
@@ -188,9 +188,9 @@ This procedure is a parameter object, which can be overridden with
 @code{parameterize}.
 @end deffn
 
-@deffn procedure close-port port
-@deffnx procedure close-input-port port
-@deffnx procedure close-output-port port
+@deffn {standard procedure} close-port port
+@deffnx {standard procedure} close-input-port port
+@deffnx {standard procedure} close-output-port port
 @cindex closing, of port
 Closes the resource associated with @var{port}, rendering the port
 incapable of delivering or accepting data.  It is an error to apply
@@ -258,8 +258,8 @@ argument.  Thus, @var{filename} can be either a string or a pathname,
 and it is merged with the current pathname defaults to produce the
 pathname that is then opened.
 
-@deffn procedure call-with-input-file filename procedure
-@deffnx procedure call-with-output-file filename procedure
+@deffn {standard procedure} call-with-input-file filename procedure
+@deffnx {standard procedure} call-with-output-file filename procedure
 It is an error if @var{procedure} does not accept one argument.
 
 @findex open-input-file
@@ -284,8 +284,8 @@ file for input or output as if by @code{open-binary-input-file} or
 passed to a procedure equivalent to @code{call-with-port}.
 @end deffn
 
-@deffn procedure with-input-from-file filename thunk
-@deffnx procedure with-output-to-file filename thunk
+@deffn {standard procedure} with-input-from-file filename thunk
+@deffnx {standard procedure} with-output-to-file filename thunk
 @cindex current input port, rebinding
 @cindex current output port, rebinding
 @findex current-input-port
@@ -317,23 +317,22 @@ These procedures are @strong{deprecated}; instead use
 
 @deffn procedure open-input-file filename
 @deffnx procedure open-binary-input-file filename
-@findex condition-type:file-operation-error
+@findex file-error?
 Takes a @var{filename} for an existing file and returns a textual
 input port or binary input port that is capable of delivering data
 from the file.  If the file does not exist or cannot be opened, an
-error an error of type @code{condition-type:file-operation-error} is
-signaled.
+error an error that satisfies @code{file-error?} is signaled.
 @end deffn
 
-@deffn procedure open-output-file filename [append?]
-@deffnx procedure open-binary-output-file filename [append?]
-@findex condition-type:file-operation-error
+@deffn {standard procedure} open-output-file filename [append?]
+@deffnx {standard procedure} open-binary-output-file filename [append?]
+@findex file-error?
 Takes a @var{filename} naming an output file to be created and returns
 a textual output port or binary output port that is capable of writing
 data to a new file by that name.  If a file with the given name
 already exists, the effect is unspecified.  (In that case, MIT/GNU
 Scheme overwrites an existing file.)  If the file cannot be opened, an
-error of type @code{condition-type:file-operation-error} is signalled.
+error that satisfies @code{file-error?} is signalled.
 
 @cindex appending, to output file
 The optional argument @var{append?} is an MIT/GNU Scheme extension.  If
@@ -346,11 +345,11 @@ mode creates the file and writes to it in the normal way.
 
 @deffn procedure open-i/o-file filename
 @deffnx procedure open-binary-i/o-file filename
-@findex condition-type:file-operation-error
+@findex file-error?
 Takes a @var{filename} referring to an existing file and returns an
 @acronym{I/O} port that is capable of both reading from and writing to
-the file.  If the file cannot be opened, an error of type
-@code{condition-type:file-operation-error} is signalled.
+the file.  If the file cannot be opened, an error that satisfies
+@code{file-error?} is signalled.
 
 This procedure is often used to open special files.  For example, under
 unix this procedure can be used to open terminal device files, @sc{pty}
@@ -375,7 +374,7 @@ This section describes textual input ports that read their input from
 given strings, and textual output ports that accumulate their output
 and return it as a string.
 
-@deffn procedure open-input-string string [start [end]]
+@deffn {standard procedure} open-input-string string [start [end]]
 Takes a string and returns a textual input port that delivers
 characters from the string.  If the string is modified, the effect is
 unspecified.
@@ -386,12 +385,12 @@ that the string port delivers characters from a substring of
 @var{end} defaults to @code{(string-length @var{string})}.
 @end deffn
 
-@deffn procedure open-output-string
+@deffn {standard procedure} open-output-string
 Returns a textual output port that will accumulate characters for
 retrieval by @code{get-output-string}.
 @end deffn
 
-@deffn procedure get-output-string port
+@deffn {standard procedure} get-output-string port
 It is an error if @var{port} was not created with @var{open-output-string}.
 
 Returns a string consisting of the characters that have been output to
@@ -513,7 +512,7 @@ This section describes binary input ports that read their input from
 given bytevectors, and binary output ports that accumulate their
 output and return it as a bytevector.
 
-@deffn procedure open-input-bytevector bytevector [start [end]]
+@deffn {standard procedure} open-input-bytevector bytevector [start [end]]
 Takes a bytevector and returns a binary input port that delivers
 bytes from the bytevector.  If the bytevector is modified, the effect is
 unspecified.
@@ -524,12 +523,12 @@ specify that the bytevector port delivers bytes from a portion of
 @var{end} defaults to @code{(bytevector-length @var{bytevector})}.
 @end deffn
 
-@deffn procedure open-output-bytevector
+@deffn {standard procedure} open-output-bytevector
 Returns a binary output port that will accumulate bytes for retrieval
 by @code{get-output-bytevector}.
 @end deffn
 
-@deffn procedure get-output-bytevector port
+@deffn {standard procedure} get-output-bytevector port
 It is an error if @var{port} was not created with @var{open-output-bytevector}.
 
 Returns a bytevector consisting of the bytes that have been output to
@@ -573,101 +572,137 @@ reads input from a terminal or from another program.  Non-interactive
 input ports read input from a time-independent source, such as an
 ordinary file or a character string.
 
-All optional arguments called @var{input-port}, if not supplied, default
-to the current input port.
+In this section, all optional arguments called @var{port} default to
+the current input port.
 
-@deffn procedure read-char [input-port]
-@cindex character, input from port
-Returns the next character available from @var{input-port}, updating
-@var{input-port} to point to the following character.  If no more
-characters are available, an end-of-file object is returned.
-
-In MIT/GNU Scheme, if @var{input-port} is an interactive input port and no
-characters are immediately available, @code{read-char} will hang waiting
-for input, even if the port is in non-blocking mode.
-@end deffn
-
-@deffn procedure peek-char [input-port]
-Returns the next character available from @var{input-port},
-@emph{without} updating @var{input-port} to point to the following
-character.  If no more characters are available, an end-of-file object
-is returned.@footnote{The value returned by a call to @code{peek-char}
-is the same as the value that would have been returned by a call to
-@code{read-char} on the same port.  The only difference is that the very
-next call to @code{read-char} or @code{peek-char} on that
-@var{input-port} will return the value returned by the preceding call to
-@code{peek-char}.  In particular, a call to @code{peek-char} on an
-interactive port will hang waiting for input whenever a call to
-@code{read-char} would have hung.}
-
-In MIT/GNU Scheme, if @var{input-port} is an interactive input port and no
-characters are immediately available, @code{peek-char} will hang waiting
-for input, even if the port is in non-blocking mode.
-@end deffn
-
-@deffn procedure char-ready? [input-port]
-@findex read-char
-Returns @code{#t} if a character is ready on @var{input-port} and
-returns @code{#f} otherwise.  If @code{char-ready?} returns @code{#t}
-then the next @code{read-char} operation on @var{input-port} is
-guaranteed not to hang.  If @var{input-port} is a file port at end of
-file then @code{char-ready?} returns
-@code{#t}.@footnote{@code{char-ready?} exists to make it possible for a
-program to accept characters from interactive ports without getting
-stuck waiting for input.  Any input editors associated with such ports
-must make sure that characters whose existence has been asserted by
-@code{char-ready?} cannot be rubbed out.  If @code{char-ready?} were to
-return @code{#f} at end of file, a port at end of file would be
-indistinguishable from an interactive port that has no ready
-characters.}
-@end deffn
-
-@deffn procedure read [input-port [environment]]
+@deffn {standard procedure} read [port [environment]]
 @cindex expression, input from port
 @cindex external representation, parsing
 @cindex parsing, of external representation
-Converts external representations of Scheme objects into the objects
-themselves.  @code{read} returns the next object parsable from
-@var{input-port}, updating @var{input-port} to point to the first
-character past the end of the written representation of the object.  If
-an end of file is encountered in the input before any characters are
-found that can begin an object, @code{read} returns an end-of-file
-object.  The @var{input-port} remains open, and further attempts to read
-will also return an end-of-file object.  If an end of file is
-encountered after the beginning of an object's written representation,
-but the written representation is incomplete and therefore not parsable,
-an error is signalled.
+The @code{read} procedure converts external representations of Scheme
+objects into the objects themselves.  It returns the next object
+parsable from the given textual input @var{port}, updating @var{port}
+to point to the first character past the end of the external
+representation of the object.
 
-@var{Environment} is used to look up the values of control variables
-such as @code{param:parser-radix} (@pxref{reader-controls}).  If not
-supplied, it defaults to the @acronym{REP} environment.
+Implementations may support extended syntax to represent record types
+or other types that do not have datum representations.
+
+If an end of file is encountered in the input before any characters
+are found that can begin an object, then an end-of-file object is
+returned.  The port remains open, and further attempts to read will
+also return an end-of-file object.  If an end of file is encountered
+after the beginning of an object’s external representation, but the
+external representation is incomplete and therefore not parsable, an
+error that satisfies @code{read-error?} is signaled.
+
+The @var{port} remains open, and further attempts to read will also
+return an end-of-file object.  If an end of file is encountered after
+the beginning of an object's written representation, but the written
+representation is incomplete and therefore not parsable, an error is
+signalled.
+
+The optional argument @var{environment} is an MIT/GNU Scheme extension
+that is used to look up the values of control variables such as
+@code{param:parser-radix} (@pxref{reader-controls}).  If not supplied,
+it defaults to the @acronym{REP} environment.
 @end deffn
 
-@deffn procedure eof-object? object
+@deffn {standard procedure} read-char [port]
+@cindex character, input from port
+Returns the next character available from the textual input
+@var{port}, updating @var{port} to point to the following character.
+If no more characters are available, an end-of-file object is
+returned.
+
+In MIT/GNU Scheme, if @var{port} is an interactive input port and no
+characters are immediately available, @code{read-char} will hang
+waiting for input, even if the port is in non-blocking mode.
+@end deffn
+
+@deffn {standard procedure} peek-char [port]
+Returns the next character available from the textual input
+@var{port}, @emph{without} updating @var{port} to point to the
+following character.  If no more characters are available, an
+end-of-file object is returned.
+
+@emph{Note}: The value returned by a call to @code{peek-char} is the
+same as the value that would have been returned by a call to
+@code{read-char} on the same port.  The only difference is that the
+very next call to @code{read-char} or @code{peek-char} on that
+@var{port} will return the value returned by the preceding call to
+@code{peek-char}.  In particular, a call to @code{peek-char} on an
+interactive port will hang waiting for input whenever a call to
+@code{read-char} would have hung.
+@end deffn
+
+@deffn {standard procedure} read-line [port]
+Returns the next line of text available from the textual input
+@var{port}, updating the @var{port} to point to the following
+character.  If an end of line is read, a string containing all of the
+text up to (but not including) the end of line is returned, and the
+port is updated to point just past the end of line.  If an end of file
+is encountered before any end of line is read, but some characters
+have been read, a string containing those characters is returned.  If
+an end of file is encountered before any characters are read, an
+end-of-file object is returned.  For the purpose of this procedure, an
+end of line consists of either a linefeed character, a carriage return
+character, or a sequence of a carriage return character followed by
+a linefeed character.  Implementations may also recognize other end of
+line characters or sequences.
+
+In MIT/GNU Scheme, if @var{port} is an interactive input port and no
+characters are immediately available, @code{read-char} will hang
+waiting for input, even if the port is in non-blocking mode.
+@end deffn
+
+@deffn {standard procedure} eof-object? object
 @cindex type predicate, for EOF object
 @cindex EOF object, predicate for
 @cindex end of file object (see EOF object)
 @cindex file, end-of-file marker (see EOF object)
-Returns @code{#t} if @var{object} is an end-of-file object; otherwise
-returns @code{#f}.
+Returns @code{#t} if @var{object} is an end-of-file object, otherwise
+returns @code{#f}.  The precise set of end-of-file objects will vary
+among implementations, but in any case no end-of-file object will ever
+be an object that can be read in using @code{read}.
 @end deffn
 
-@deffn procedure read-char-no-hang [input-port]
-If @var{input-port} can deliver a character without blocking, this
-procedure acts exactly like @code{read-char}, immediately returning that
-character.  Otherwise, @code{#f} is returned, unless @var{input-port} is
-a file port at end of file, in which case an end-of-file object is
-returned.  In no case will this procedure block waiting for input.
+@deffn {standard procedure} eof-object
+@cindex EOF object, construction
+@cindex construction, of EOF object
+Returns an end-of-file object, not necessarily unique.
 @end deffn
 
-@deffn procedure read-string char-set [input-port]
+@deffn {standard procedure} char-ready? [port]
+@findex read-char
+Returns @code{#t} if a character is ready on the textual input
+@var{port} and returns @code{#f} otherwise.  If @code{char-ready?}
+returns @code{#t} then the next @code{read-char} operation on the
+given @var{port} is guaranteed not to hang.  If the @var{port} is at
+end of file then @code{char-ready?} returns @code{#t}.
+
+Rationale: The @code{char-ready?} procedure exists to make it possible
+for a program to accept characters from interactive ports without
+getting stuck waiting for input.  Any input editors associated with
+such ports must ensure that characters whose existence has been
+asserted by @code{char-ready?} cannot be removed from the input.  If
+@code{char-ready?} were to return @code{#f} at end of file, a port at
+end of file would be indistinguishable from an interactive port that
+has no ready characters.
+@end deffn
+
+@deffn procedure read-string char-set [port]
 @cindex string, input from port
-Reads characters from @var{input-port} until it finds a terminating
-character that is a member of @var{char-set} (@pxref{Character Sets}) or
-encounters end of file.  The port is updated to point to the terminating
-character, or to end of file if no terminating character was found.
-@code{read-string} returns the characters, up to but excluding the
-terminating character, as a newly allocated string.
+@strong{Note that this procedure has the same name as a standard
+procedure but behaves differently from it.  This will be addressed in
+a future update.}
+
+Reads characters from @var{port} until it finds a terminating
+character that is a member of @var{char-set} (@pxref{Character Sets})
+or encounters end of file.  The port is updated to point to the
+terminating character, or to end of file if no terminating character
+was found.  @code{read-string} returns the characters, up to but
+excluding the terminating character, as a newly allocated string.
 
 This procedure ignores the blocking mode of the port, blocking
 unconditionally until it sees either a delimiter or end of file.  If end
@@ -680,8 +715,8 @@ following equivalent code using @code{peek-char} and @code{read-char}:
 
 @example
 @group
-(define (read-string char-set input-port)
-  (let ((char (peek-char input-port)))
+(define (read-string char-set port)
+  (let ((char (peek-char port)))
     (if (eof-object? char)
         char
         (list->string
@@ -690,23 +725,57 @@ following equivalent code using @code{peek-char} and @code{read-char}:
                    (char-set-member? char-set char))
                '()
                (begin
-                 (read-char input-port)
+                 (read-char port)
                  (cons char
-                       (loop (peek-char input-port))))))))))
+                       (loop (peek-char port))))))))))
 @end group
 @end example
 @end deffn
 
-@deffn procedure read-line [input-port]
-@code{read-line} reads a single line of text from @var{input-port}, and
-returns that line as a newly allocated string.  The @code{#\newline}
-terminating the line, if any, is discarded and does not appear in the
-returned string.
+@deffn {standard procedure} read-u8 [port]
+Returns the next byte available from the binary input @var{port},
+updating the @var{port} to point to the following byte.  If no more
+bytes are available, an end-of-file object is returned.
+@end deffn
 
-This procedure ignores the blocking mode of the port, blocking
-unconditionally until it has read an entire line.  If end of file is
-encountered before any characters are read, an end-of-file object is
+@deffn {standard procedure} peek-u8 [port]
+Returns the next byte available from the binary input @var{port}, but
+@emph{without} updating the @var{port} to point to the following byte.
+If no more bytes are available, an end-of-file object is returned.
+@end deffn
+
+@deffn {standard procedure} u8-ready? [port]
+Returns @code{#t} if a byte is ready on the binary input @code{port}
+and returns @code{#f} otherwise.  If @code{u8-ready?} returns
+@code{#t} then the next @code{read-u8} operation on the given
+@var{port} is guaranteed not to hang.  If the @var{port} is at end of
+file then @code{u8-ready?} returns @code{#t}.
+@end deffn
+
+@deffn {standard procedure} read-bytevector k [port]
+Reads the next @var{k} bytes, or as many as are available before the
+end of file, from the binary input @var{port} into a newly allocated
+bytevector in left-to-right order and returns the bytevector.  If no
+bytes are available before the end of file, an end-of-file object is
 returned.
+@end deffn
+
+@deffn {standard procedure} read-bytevector! bytevector [port [start [end]]]
+Reads the next end − start bytes, or as many as are available before
+the end of file, from the binary input @var{port} into bytevector in
+left-to-right order beginning at the @var{start} position.  If
+@var{end} is not supplied, reads until the end of @var{bytevector} has
+been reached.  If @var{start} is not supplied, reads beginning at
+position @code{0}.  Returns the number of bytes read.  If no bytes are
+available, an end-of-file object is returned.
+@end deffn
+
+@deffn procedure read-char-no-hang [input-port]
+If @var{input-port} can deliver a character without blocking, this
+procedure acts exactly like @code{read-char}, immediately returning that
+character.  Otherwise, @code{#f} is returned, unless @var{input-port} is
+a file port at end of file, in which case an end-of-file object is
+returned.  In no case will this procedure block waiting for input.
 @end deffn
 
 @deffn procedure read-string! string [input-port]
@@ -817,6 +886,7 @@ unless the buffer is full.
 
 @cindex discretionary flushing, of buffered output
 @findex discretionary-flush-output
+@findex flush-output-port
 However, the standard output procedures described in this section
 perform what is called @dfn{discretionary} flushing of the buffer.
 Discretionary output flushing works as follows.  After a procedure
@@ -826,95 +896,129 @@ to see if the port implements an operation called
 invoked to flush the buffer.  At present, only the console port defines
 @code{discretionary-flush-output}; this is used to guarantee that output
 to the console appears immediately after it is written, without
-requiring calls to @code{flush-output}.
+requiring calls to @code{flush-output-port}.
 
-All optional arguments called @var{output-port}, if not supplied,
-default to the current output port.
+In this section, all optional arguments called @var{port} default to
+the current output port.
 
-@deffn procedure write-char char [output-port]
-@cindex character, output to port
-Writes @var{char} (the character itself, not a written representation of
-the character) to @var{output-port}, performs discretionary output
-flushing, and returns an unspecified value.
+@deffn {standard procedure} write object [port]
+Writes a representation of @var{object} to the given textual output
+@var{port}.  Strings that appear in the written representation are
+enclosed in quotation marks, and within those strings backslash and
+quotation mark characters are escaped by backslashes.  Symbols that
+contain non-ASCII characters are escaped with vertical lines.
+Character objects are written using the @code{#\} notation.
+
+If @var{object} contains cycles which would cause an infinite loop
+using the normal written representation, then at least the objects
+that form part of the cycle must be represented using datum labels.
+Datum labels must not be used if there are no cycles.
+
+Implementations may support extended syntax to represent record types
+or other types that do not have datum representations.
+
+The @code{write} procedure returns an unspecified value.
+
+On MIT/GNU Scheme @code{write} performs discretionary output flushing.
 @end deffn
 
-@deffn procedure write-string string [output-port]
-@cindex string, output to port
-Writes @var{string} to @var{output-port}, performs discretionary output
-flushing, and returns an unspecified value.  This is equivalent to
-writing the contents of @var{string}, one character at a time using
-@code{write-char}, except that it is usually much faster.
+@deffn {standard procedure} write-shared object [port]
+The @code{write-shared} procedure is the same as @code{write}, except
+that shared structure must be represented using datum labels for all
+pairs and vectors that appear more than once in the output.
 @end deffn
 
-@deffn procedure write-substring string start end [output-port]
-@cindex string, output to port
-Writes the substring defined by @var{string}, @var{start}, and @var{end}
-to @var{output-port}, performs discretionary output flushing, and
-returns an unspecified value.  This is equivalent to writing the
-contents of the substring, one character at a time using
-@code{write-char}, except that it is usually much faster.
+@deffn {standard procedure} write-simple object [port]
+The @code{write-simple} procedure is the same as @code{write}, except
+that shared structure is never represented using datum labels.  This
+can cause @code{write-simple} not to terminate if @var{object}
+contains circular structure.
 @end deffn
 
-@deffn procedure write object [output-port]
-@cindex expression, output to port
-Writes a written representation of @var{object} to @var{output-port},
-and returns an unspecified value.  If @var{object} has a standard
-external representation, then the written representation generated by
-@code{write} shall be parsable by @code{read} into an equivalent object.
-Thus strings that appear in the written representation are enclosed in
-doublequotes, and within those strings backslash and doublequote are
-escaped by backslashes.  @code{write} performs discretionary output
-flushing and returns an unspecified value.
+@deffn {standard procedure} display object [port]
+Writes a representation of @var{object} to the given textual output @var{port}.
+Strings that appear in the written representation are output as if by
+write-string instead of by write.  Symbols are not escaped.  Character
+objects appear in the representation as if written by @code{write-char}
+instead of by @code{write}.  The display representation of other objects is
+unspecified.  However, @code{display} must not loop forever on
+self-referencing pairs, vectors, or records.  Thus if the normal @code{write}
+representation is used, datum labels are needed to represent cycles as
+in @code{write}.
+
+Implementations may support extended syntax to represent record types
+or other types that do not have datum representations.
+
+The @code{display} procedure returns an unspecified value.
+
+@emph{Rationale}: The @code{write} procedure is intended for producing
+machine-readable output and @code{display} for producing
+human-readable output.
 @end deffn
 
-@deffn procedure display object [output-port]
-@cindex external representation, generating
-@cindex generating, external representation
-Writes a representation of @var{object} to @var{output-port}.  Strings
-appear in the written representation as if written by
-@code{write-string} instead of by @code{write}.  Character objects
-appear in the representation as if written by @code{write-char} instead
-of by @code{write}.  @code{display} performs discretionary output
-flushing and returns an unspecified value.@footnote{@code{write} is
-intended for producing machine-readable output and @code{display} is for
-producing human-readable output.}
+@deffn {standard procedure} newline [port]
+Writes an end of line to textual output @var{port}.  Exactly how this
+is done differs from one operating system to another.  Returns an
+unspecified value.
 @end deffn
 
-@deffn procedure newline [output-port]
-@cindex newline character, output to port
-Writes an end-of-line to @var{output-port}, performs discretionary
-output flushing, and returns an unspecified value.  Equivalent to
-@code{(write-char #\newline @var{output-port})}.
+@deffn {standard procedure} write-char char [port]
+Writes the character @var{char} (not an external representation of the
+character) to the given textual output @var{port} and returns an
+unspecified value.
 @end deffn
 
-@deffn procedure fresh-line [output-port]
+@deffn {standard procedure} write-string string [port [start [end]]]
+Writes the characters of @var{string} from @var{start} to @var{end} in
+left-to-right order to the textual output @var{port}.
+@end deffn
+
+@deffn {obsolete procedure} write-substring string start end [port]
+This procedure is @strong{deprecated}; use @code{write-string} instead.
+@end deffn
+
+@deffn {standard procedure} write-u8 byte [port]
+Writes the @var{byte} to the given binary output @var{port} and
+returns an unspecified value.
+@end deffn
+
+@deffn {standard procedure} write-bytevector bytevector [port [start [end]]]
+Writes the bytes of @var{bytevector} from @var{start} to @var{end} in
+left-to-right order to the binary output @var{port}.
+@end deffn
+
+@deffn {standard procedure} flush-output-port [port]
+Flushes any buffered output from the buffer of @var{port} to the
+underlying file or device and returns an unspecified value.
+@end deffn
+
+@deffn {obsolete procedure} flush-output [port]
+This procedure is @strong{deprecated}; use @code{flush-output-port}
+instead.
+@end deffn
+
+@deffn procedure fresh-line [port]
 Most output ports are able to tell whether or not they are at the
-beginning of a line of output.  If @var{output-port} is such a port,
+beginning of a line of output.  If @var{port} is such a port,
 this procedure writes an end-of-line to the port only if the port is not
-already at the beginning of a line.  If @var{output-port} is not such a
+already at the beginning of a line.  If @var{port} is not such a
 port, this procedure is identical to @code{newline}.  In either case,
 @code{fresh-line} performs discretionary output flushing and returns an
 unspecified value.
 @end deffn
 
-@deffn procedure write-line object [output-port]
+@deffn procedure write-line object [port]
 Like @code{write}, except that it writes an end-of-line to
-@var{output-port} after writing @var{object}'s representation.  This
+@var{port} after writing @var{object}'s representation.  This
 procedure performs discretionary output flushing and returns an
 unspecified value.
 @end deffn
 
-@deffn procedure flush-output [output-port]
-If @var{output-port} is buffered, this causes the contents of its buffer
-to be written to the output device.  Otherwise it has no effect.
-Returns an unspecified value.
-@end deffn
-
-@deffn procedure beep [output-port]
+@deffn procedure beep [port]
 @cindex console, ringing the bell
 @cindex ringing the console bell
 @cindex bell, ringing on console
-Performs a ``beep'' operation on @var{output-port}, performs
+Performs a ``beep'' operation on @var{port}, performs
 discretionary output flushing, and returns an unspecified value.  On the
 console port, this usually causes the console bell to beep, but more
 sophisticated interactive ports may take other actions, such as flashing
@@ -922,22 +1026,22 @@ the screen.  On most output ports, e.g.@: file and string output ports,
 this does nothing.
 @end deffn
 
-@deffn procedure clear [output-port]
+@deffn procedure clear [port]
 @cindex console, clearing
 @cindex display, clearing
 @cindex screen, clearing
 @cindex terminal screen, clearing
 @cindex clearing the console screen
-``Clears the screen'' of @var{output-port}, performs discretionary
+``Clears the screen'' of @var{port}, performs discretionary
 output flushing, and returns an unspecified value.  On a terminal or
 window, this has a well-defined effect.  On other output ports, e.g.@:
 file and string output ports, this does nothing.
 @end deffn
 
-@deffn procedure pp object [output-port [as-code?]]
+@deffn procedure pp object [port [as-code?]]
 @cindex pretty printer
 @code{pp} prints @var{object} in a visually appealing and structurally
-revealing manner on @var{output-port}.  If object is a procedure,
+revealing manner on @var{port}.  If object is a procedure,
 @code{pp} attempts to print the source text.  If the optional argument
 @var{as-code?} is true, @code{pp} prints lists as Scheme code, providing
 appropriate indentation; by default this argument is false.  @code{pp}
@@ -1076,54 +1180,37 @@ support blocking mode; in that case, the port is not modified in any
 way.
 
 @deffn procedure input-port-blocking-mode input-port
-@deffnx {obsolete procedure} port/input-blocking-mode input-port
-Returns the input blocking mode of @var{input-port}, or @code{#f} if
-@var{input-port} doesn't support blocking mode.
+@deffnx procedure output-port-blocking-mode output-port
+Returns the blocking mode of @var{input-port} or @var{output-port}.
+Returns @code{#f} if the given port doesn't support blocking mode.
 @end deffn
 
 @deffn procedure set-input-port-blocking-mode! input-port mode
-@deffnx {obsolete procedure} port/set-input-blocking-mode input-port mode
-Changes the input blocking mode of @var{input-port} to be @var{mode}.
-Returns an unspecified value.
+@deffnx procedure set-output-port-blocking-mode output-port mode
+Changes the blocking mode of @var{input-port} or @var{output-port} to
+be @var{mode} and returns an unspecified value.
 @end deffn
 
 @deffn procedure with-input-port-blocking-mode input-port mode thunk
+@deffnx procedure with-output-port-blocking-mode output-port mode thunk
+@var{Thunk} must be a procedure of no arguments.
+
+Binds the blocking mode of @var{input-port} or @var{output-port} to be
+@var{mode}, and calls @var{thunk}.  When @var{thunk} returns, the
+original blocking mode is restored and the values yielded by
+@var{thunk} are returned.
+@end deffn
+
+@deffn {obsolete procedure} port/input-blocking-mode input-port
+@deffnx {obsolete procedure} port/set-input-blocking-mode input-port mode
 @deffnx {obsolete procedure} port/with-input-blocking-mode input-port mode thunk
-@var{Thunk} must be a procedure of no arguments.
-@code{with-input-port-blocking-mode} binds the input blocking mode of
-@var{input-port} to be @var{mode}, executes @var{thunk}, restores the
-input blocking mode of @var{input-port} to what it was when
-@code{with-input-port-blocking-mode} was called, and returns the value
-that was yielded by @var{thunk}.  This binding is performed by
-@code{dynamic-wind}, which guarantees that the input blocking mode is
-restored if @var{thunk} escapes from its continuation.
-@end deffn
-
-@deffn procedure output-port-blocking-mode output-port
 @deffnx {obsolete procedure} port/output-blocking-mode output-port
-Returns the output blocking mode of @var{output-port}, or @code{#f} if
-@var{output-port} doesn't support blocking mode.
-@end deffn
-
-@deffn procedure set-output-port-blocking-mode output-port mode
 @deffnx {obsolete procedure} port/set-output-blocking-mode output-port mode
-Changes the output blocking mode of @var{output-port} to be
-@var{mode}.  Returns an unspecified value.
+@deffnx {obsolete procedure} port/with-output-blocking-mode output-port mode thunk
+These procedures are @strong{deprecated}; instead use the
+corresponding procedures above.
 @end deffn
-
-@deffn procedure with-output-port-blocking-mode output-port mode thunk
-@deffnx {obsolete procedure} port/with-output-blocking-mode output-port mode @
-  thunk
-@var{Thunk} must be a procedure of no arguments.
-@code{with-output-port-blocking-mode} binds the output blocking mode
-of @var{output-port} to be @var{mode}, executes @var{thunk}, restores
-the output blocking mode of @var{output-port} to what it was when
-@code{with-output-port-blocking-mode} was called, and returns the
-value that was yielded by @var{thunk}.  This binding is performed by
-@code{dynamic-wind}, which guarantees that the output blocking mode is
-restored if @var{thunk} escapes from its continuation.
-@end deffn
-
+  
 @node Terminal Mode, Format, Blocking Mode, Input/Output
 @section Terminal Mode
 
@@ -1161,60 +1248,41 @@ Terminal ports are initially in cooked mode; this can be changed at any
 time with the procedures defined in this section.
 
 These procedures represent cooked mode by the symbol @code{cooked},
-and raw mode by the symbol @code{raw}.  Additionally, the value
-@code{#f} represents ``no mode''; it is the terminal mode of a port
-that is not a terminal.  An argument called @var{mode} must be one of
-these three values.  A port argument to any of these procedures may be
-any port, even if that port does not support terminal mode; in that
-case, the port is not modified in any way.
+and raw mode by the symbol @code{raw}.  An argument called @var{mode}
+must be one of these symbols.  A @var{port} argument to any of these
+procedures may be any port, even if that port does not support
+terminal mode; in that case, the port is not modified in any way.
 
 @deffn procedure input-port-terminal-mode input-port
-@deffnx {obsolete procedure} port/input-terminal-mode input-port
-Returns the input terminal mode of @var{input-port}, or @code{#f} if
-@var{input-port} is not a terminal port.
+@deffnx procedure output-port-terminal-mode output-port
+Returns the terminal mode of @var{input-port} or @var{output-port}.
+Returns @code{#f} if the given port is not a terminal port.
 @end deffn
 
 @deffn procedure set-input-port-terminal-mode! input-port mode
-@deffnx {obsolete procedure} port/set-input-terminal-mode input-port mode
-Changes the input terminal mode of @var{input-port} to be @var{mode}.
-Returns an unspecified value.
+@deffnx procedure set-output-port-terminal-mode! output-port mode
+Changes the terminal mode of @var{input-port} or @var{output-port} to
+be @var{mode} and returns an unspecified value.
 @end deffn
 
 @deffn procedure with-input-port-terminal-mode input-port mode thunk
+@deffnx procedure with-output-port-terminal-mode output-port mode thunk
+@var{Thunk} must be a procedure of no arguments.
+
+Binds the terminal mode of @var{input-port} or @var{output-port} to be
+@var{mode}, and calls @var{thunk}.  When @var{thunk} returns, the
+original terminal mode is restored and the values yielded by
+@var{thunk} are returned.
+@end deffn
+
+@deffn {obsolete procedure} port/input-terminal-mode input-port
+@deffnx {obsolete procedure} port/set-input-terminal-mode input-port mode
 @deffnx {obsolete procedure} port/with-input-terminal-mode input-port mode thunk
-@var{Thunk} must be a procedure of no arguments.
-@code{with-input-port-terminal-mode} binds the input terminal mode of
-@var{port} to be @var{mode}, executes @var{thunk}, restores the input
-terminal mode of @var{input-port} to what it was when
-@code{with-input-port-terminal-mode} was called, and returns the value
-that was yielded by @var{thunk}.  This binding is performed by
-@code{dynamic-wind}, which guarantees that the input terminal mode is
-restored if @var{thunk} escapes from its continuation.
-@end deffn
-
-@deffn procedure output-port-terminal-mode output-port
 @deffnx {obsolete procedure} port/output-terminal-mode output-port
-Returns the output terminal mode of @var{output-port}, or @code{#f} if
-@var{output-port} is not a terminal port.
-@end deffn
-
-@deffn procedure set-output-port-terminal-mode! output-port mode
 @deffnx {obsolete procedure} port/set-output-terminal-mode output-port mode
-Changes the output terminal mode of @var{output-port} to be @var{mode}.
-Returns an unspecified value.
-@end deffn
-
-@deffn procedure with-output-port-terminal-mode output-port mode thunk
-@deffnx {obsolete procedure} port/with-output-terminal-mode output-port mode @
-  thunk
-@var{Thunk} must be a procedure of no arguments.
-@code{with-output-port-terminal-mode} binds the output terminal mode
-of @var{output-port} to be @var{mode}, executes @var{thunk}, restores
-the output terminal mode of @var{output-port} to what it was when
-@code{with-output-port-terminal-mode} was called, and returns the
-value that was yielded by @var{thunk}.  This binding is performed by
-@code{dynamic-wind}, which guarantees that the output terminal mode is
-restored if @var{thunk} escapes from its continuation.
+@deffnx {obsolete procedure} port/with-output-terminal-mode output-port mode thunk
+These procedures are @strong{deprecated}; instead use the
+corresponding procedures above.
 @end deffn
 
 @node Format, Custom Output, Terminal Mode, Input/Output
@@ -1754,14 +1822,6 @@ Returns the operation named @var{symbol} for @var{textual-port}.  If
 @deffnx {obsolete procedure} port/operation-names port
 Returns a newly allocated list whose elements are the names of the
 operations implemented by @var{textual-port}.
-@end deffn
-
-@deffn procedure make-eof-object input-port
-@cindex EOF object, construction
-@cindex construction, of EOF object
-@findex eof-object?
-Returns an object that satisfies the predicate @code{eof-object?}.  This
-is sometimes useful when building input ports.
 @end deffn
 
 @node Textual Input Port Operations, Textual Output Port Operations, Constructors and Accessors for Textual Ports, Textual Port Primitives
