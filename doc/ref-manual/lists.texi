@@ -527,9 +527,9 @@ list, otherwise returns @code{#f}.
 
 @example
 @group
-(dotted-list? (list 'a 'b 'c))          @result{} #f
-(dotted-list? (cons* 'a 'b 'c))         @result{} #t
-(dotted-list? (circular-list 'a 'b 'c)) @result{} #f
+(circular-list? (list 'a 'b 'c))        @result{} #f
+(circular-list? (cons* 'a 'b 'c))       @result{} #f
+(circular-list? (circular-list 'a 'b 'c)) @result{} #t
 @end group
 @end example
 @end deffn
@@ -540,9 +540,9 @@ list, otherwise returns @code{#f}.
 
 @example
 @group
-(circular-list? (list 'a 'b 'c))        @result{} #f
-(circular-list? (cons* 'a 'b 'c))       @result{} #f
-(circular-list? (circular-list 'a 'b 'c)) @result{} #t
+(dotted-list? (list 'a 'b 'c))          @result{} #f
+(dotted-list? (cons* 'a 'b 'c))         @result{} #t
+(dotted-list? (circular-list 'a 'b 'c)) @result{} #f
 @end group
 @end example
 @end deffn
