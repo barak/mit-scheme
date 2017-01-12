@@ -537,34 +537,37 @@ Do_Micro_Error (long error_code, bool from_pop_return_p)
   SCHEME_OBJECT handler = SHARP_F;
 
 #ifdef ENABLE_DEBUGGING_TOOLS
-  err_print (error_code, ERROR_OUTPUT);
-  if ((GET_RC == RC_INTERNAL_APPLY)
-      || (GET_RC == RC_INTERNAL_APPLY_VAL))
+  if (Print_Errors)
     {
-      Print_Expression (STACK_REF(CONTINUATION_SIZE + STACK_ENV_FUNCTION),
-			"Procedure");
-      outf_error ("\n");
-      {
-	int i, nargs = (APPLY_FRAME_HEADER_N_ARGS
-			(STACK_REF(CONTINUATION_SIZE + STACK_ENV_HEADER)));
-	for (i = 0; i < nargs; i += 1)
+      err_print (error_code, ERROR_OUTPUT);
+      if ((GET_RC == RC_INTERNAL_APPLY)
+	  || (GET_RC == RC_INTERNAL_APPLY_VAL))
+	{
+	  Print_Expression (STACK_REF(CONTINUATION_SIZE + STACK_ENV_FUNCTION),
+			    "Procedure");
+	  outf_error ("\n");
 	  {
-	    outf_error ("Argument %d: ", i+1);
-	    Print_Expression ((STACK_REF(CONTINUATION_SIZE
-					 + STACK_ENV_FIRST_ARG + i)), "");
-	    outf_error ("\n");
+	    int i, nargs = (APPLY_FRAME_HEADER_N_ARGS
+			    (STACK_REF(CONTINUATION_SIZE + STACK_ENV_HEADER)));
+	    for (i = 0; i < nargs; i += 1)
+	      {
+		outf_error ("Argument %d: ", i+1);
+		Print_Expression ((STACK_REF(CONTINUATION_SIZE
+					     + STACK_ENV_FIRST_ARG + i)), "");
+		outf_error ("\n");
+	      }
 	  }
-      }
-    }
-  else
-    {
-      Print_Expression (GET_EXP, "Expression");
+	}
+      else
+	{
+	  Print_Expression (GET_EXP, "Expression");
+	  outf_error ("\n");
+	  Print_Expression (GET_ENV, "Environment");
+	  outf_error ("\n");
+	}
+      Print_Return ("Return code");
       outf_error ("\n");
-      Print_Expression (GET_ENV, "Environment");
-      outf_error ("\n");
     }
-  Print_Return ("Return code");
-  outf_error ("\n");
 #endif
 
   if (Trace_On_Error)

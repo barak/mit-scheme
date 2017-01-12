@@ -30,6 +30,11 @@ USA.
 
 (declare (usual-integrations))
 
+;;; Suppress useless (expected) error reports from a ucode that has
+;;; --enabled-debugging.
+(if ((make-primitive-procedure 'get-primitive-address) 'set-debug-flags! #f)
+    ((make-primitive-procedure 'set-debug-flags!) 15 #f)) ;D_PRINT_ERRORS
+
 ;;; Can't just look at */test-*.scm because not everything has been
 ;;; converted to use the automatic framework.
 
