@@ -76,7 +76,7 @@ USA.
 			unspecific)
 		      (lambda ()
 			(let loop ()
-			  (let ((n (read-substring! buffer 0 4096 port)))
+			  (let ((n (read-string! buffer port)))
 			    (if (fix:= 0 n)
 				(%md5-final context)
 				(begin

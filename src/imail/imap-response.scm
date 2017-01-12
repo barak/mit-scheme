@@ -550,7 +550,7 @@ USA.
     s))
 
 (define (read-substring!-internal string start end port)
-  (let ((n-read (read-substring! string start end port)))
+  (let ((n-read (read-string! string port start end)))
     (if imap-transcript-port
 	(write-substring string start (+ start n-read) imap-transcript-port))
     n-read))

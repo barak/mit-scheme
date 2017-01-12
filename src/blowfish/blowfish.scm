@@ -220,7 +220,7 @@ USA.
 	   (make-string 8 #\NUL))
 	  ((string=? blowfish-file-header-v2 line)
 	   (let ((init-vector (make-string 8)))
-	     (if (not (= 8 (read-substring! init-vector 0 8 port)))
+	     (if (not (= 8 (read-string! init-vector port)))
 		 (error "Short read while getting init-vector:" port))
 	     init-vector))
 	  (else

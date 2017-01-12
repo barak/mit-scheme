@@ -286,7 +286,7 @@ USA.
   (let ((len (vector-8b-length buffer)))
     (let loop ((n n))
       (if (> n 0)
-	  (let ((m (read-substring! buffer 0 (min n len) port)))
+	  (let ((m (read-string! buffer port 0 (min n len))))
 	    (if (= m 0)
 		(error "Premature EOF in HTTP message body."))
 	    (write-substring buffer 0 m output)

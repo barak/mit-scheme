@@ -248,7 +248,7 @@ USA.
 			unspecific)
 		      (lambda ()
 			(let loop ()
-			  (let ((n (read-substring! buffer 0 4096 port)))
+			  (let ((n (read-string! buffer port)))
 			    (if (fix:= 0 n)
 				(mhash-end context)
 				(begin
@@ -312,7 +312,7 @@ USA.
 			unspecific)
 		      (lambda ()
 			(let loop ()
-			  (let ((n (read-substring! buffer 0 4096 port)))
+			  (let ((n (read-string! buffer port)))
 			    (if (fix:= 0 n)
 				((ucode-primitive md5-final 1) context)
 				(begin

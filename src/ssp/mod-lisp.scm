@@ -214,7 +214,7 @@ USA.
 	  (let ((end (string-length entity)))
 	    (let loop ((start 0))
 	      (if (fix:< start end)
-		  (let ((n-read (read-substring! entity start end port)))
+		  (let ((n-read (read-string! entity port start end)))
 		    (cond ((not n-read)
 			   (loop start))
 			  ((> n-read 0)

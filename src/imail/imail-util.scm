@@ -429,7 +429,7 @@ USA.
 	(let ((xstring (make-string n-bytes)))
 	  (let loop ((start 0))
 	    (if (< start n-bytes)
-		(let ((n-read (read-substring! xstring 0 n-bytes port)))
+		(let ((n-read (read-string! xstring port)))
 		  (if (= n-read 0)
 		      (error "Failed to read complete file:"
 			     (+ start n-read) n-bytes pathname))

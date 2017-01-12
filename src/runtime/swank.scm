@@ -154,7 +154,7 @@ USA.
 	 (buffer (make-string end)))
     (let loop ((start 0))
       (if (< start end)
-	  (loop (+ start (read-substring! buffer start end in)))
+	  (loop (+ start (read-string! buffer in start end)))
 	  buffer))))
 
 (define (decode-message socket packet)
