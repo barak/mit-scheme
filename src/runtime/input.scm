@@ -140,7 +140,7 @@ USA.
 	 (if (default-object? interval)
 	     0
 	     (begin
-	       (guarantee-exact-nonnegative-integer interval 'CHAR-READY?)
+	       (guarantee exact-nonnegative-integer? interval 'CHAR-READY?)
 	       interval))))
     (if (positive? interval)
 	(let ((timeout (+ (real-time-clock) interval)))
@@ -157,7 +157,7 @@ USA.
 	  (loop)))))
 
 (define (unread-char char #!optional port)
-  (guarantee-char char 'UNREAD-CHAR)
+  (guarantee char? char 'UNREAD-CHAR)
   (input-port/unread-char (optional-input-port port 'UNREAD-CHAR) char))
 
 (define (peek-char #!optional port)
@@ -173,9 +173,25 @@ USA.
 	     (eof-object)
 	     (input-port/read-char port)))))
 
-(define (read-string delimiters #!optional port)
+(define (read-string k #!optional port)
+  (if (char-set? k)
+      (read-delimited-string k port)
+      (r7rs-read-string k port)))
+
+(define (read-delimited-string delimiters #!optional port)
   (input-port/read-string (optional-input-port port 'READ-STRING) delimiters))
 
+(define (r7rs-read-string k #!optional port)
+  (guarantee index-fixnum? k 'read-string)
+  (let ((port (optional-input-port port 'read-string)))
+    (if (fix:> k 0)
+	(let ((string (make-string k)))
+	  (let ((n (input-port/read-string! port string)))
+	    (cond ((not n) n)
+		  ((fix:> n 0) (if (fix:< n k) (substring string 0 n) string))
+		  (else (eof-object)))))
+	(make-string 0))))
+
 (define (read #!optional port environment)
   (parse-object (optional-input-port port 'READ) environment))
 
@@ -195,12 +211,29 @@ USA.
 (define (read-line #!optional port)
   (input-port/read-line (optional-input-port port 'READ-LINE)))
 
-(define (read-string! string #!optional port)
-  (input-port/read-string! (optional-input-port port 'READ-STRING!) string))
+(define (read-string! string #!optional port start end)
+  (let ((port (optional-input-port port 'read-string!))
+	(end
+	 (if (default-object? end)
+	     (xstring-length string)
+	     (begin
+	       (guarantee index-fixnum? end 'read-string!)
+	       (if (not (fix:<= end (xstring-length string)))
+		   (error:bad-range-argument end 'read-string!))
+	       end))))
+    (let ((start
+	   (if (default-object? start)
+	       0
+	       (begin
+		 (guarantee index-fixnum? start 'read-string!)
+		 (if (not (fix:<= start end))
+		     (error:bad-range-argument start 'read-string!))
+		 start))))
+      (input-port/read-substring! port string start end))))
+
 
 (define (read-substring! string start end #!optional port)
-  (input-port/read-substring! (optional-input-port port 'READ-SUBSTRING!)
-			      string start end))
+  (read-string! string port start end))
 
 (define (optional-input-port port caller)
   (let ((port (if (default-object? port) (current-input-port) port)))

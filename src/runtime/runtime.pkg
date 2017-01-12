@@ -2624,6 +2624,7 @@ USA.
 	  read
 	  read-char
 	  read-char-no-hang
+	  read-delimited-string
 	  read-file
 	  read-line
 	  read-string
