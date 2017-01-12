@@ -27,8 +27,7 @@ USA.
 ;;;; String I/O Ports (SRFI-6)
 ;;; package: (runtime string-i/o-port)
 
-(declare (usual-integrations)
-	 (integrate-external "port"))
+(declare (usual-integrations))
 
 ;;;; Input as characters
 
