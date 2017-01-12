@@ -2637,6 +2637,8 @@ USA.
   (parent (runtime))
   (export ()
 	  (flush-output flush-output-port)
+	  (write-shared write)
+	  (write-simple write)
 	  beep
 	  call-with-truncated-output-port
 	  clear
