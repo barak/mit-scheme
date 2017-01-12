@@ -249,7 +249,7 @@ USA.
   (if (< n (expt 10 (- k 1)))
       (string-append (string-pad-left (number->string n) (- k 1)) " ")
       (let ((s
-	     (parameterize* (list (cons flonum-unparser-cutoff
+	     (parameterize* (list (cons param:flonum-unparser-cutoff
 					`(RELATIVE ,k ENGINEERING)))
 	       (lambda ()
 		 (number->string (exact->inexact n))))))
