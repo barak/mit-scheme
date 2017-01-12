@@ -475,12 +475,12 @@ USA.
 	#t)))
 
 (define (textual-input-port-channel port)
-  (let ((operation (textual-port-operation port 'input-port-channel)))
+  (let ((operation (textual-port-operation port 'input-channel)))
     (and operation
 	 (operation port))))
 
 (define (textual-output-port-channel port)
-  (let ((operation (textual-port-operation port 'output-port-channel)))
+  (let ((operation (textual-port-operation port 'output-channel)))
     (and operation
 	 (operation port))))
 
