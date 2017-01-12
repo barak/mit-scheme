@@ -620,6 +620,21 @@ characters are immediately available, @code{read-char} will hang
 waiting for input, even if the port is in non-blocking mode.
 @end deffn
 
+@deffn procedure read-char-no-hang [port]
+This procedure behaves exactly like @code{read-char} except when
+@var{port} is an interactive port in non-blocking mode, and there are
+no characters immediately available.  In that case this procedure
+returns @code{#f} without blocking.
+@end deffn
+
+@deffn procedure unread-char char [port]
+The given @var{char} must be the most-recently read character from the
+textual input @var{port}.  This procedure ``unreads'' the character,
+updating @var{port} as if the character had never been read.
+
+Note that this only works with characters returned by @code{read-char}.
+@end deffn
+
 @deffn {standard procedure} peek-char [port]
 Returns the next character available from the textual input
 @var{port}, @emph{without} updating @var{port} to point to the
@@ -691,45 +706,44 @@ end of file would be indistinguishable from an interactive port that
 has no ready characters.
 @end deffn
 
-@deffn procedure read-string char-set [port]
-@cindex string, input from port
-@strong{Note that this procedure has the same name as a standard
-procedure but behaves differently from it.  This will be addressed in
-a future update.}
+@deffn {standard procedure} read-string k [port]
+Reads the next @var{k} characters, or as many as are available before
+the end of file, from the textual input @var{port} into a newly
+allocated string in left-to-right order and returns the string.  If no
+characters are available before the end of file, an end-of-file object
+is returned.
 
-Reads characters from @var{port} until it finds a terminating
-character that is a member of @var{char-set} (@pxref{Character Sets})
-or encounters end of file.  The port is updated to point to the
-terminating character, or to end of file if no terminating character
-was found.  @code{read-string} returns the characters, up to but
-excluding the terminating character, as a newly allocated string.
+@emph{Note}: MIT/GNU Scheme previously defined this procedure
+differently, and this alternate usage is @strong{deprecated}; please
+use @code{read-delimited-string} instead.  For now, @code{read-string}
+will redirect to @code{read-delimited-string} as needed, but this
+redirection will be eliminated in a future release.
+@end deffn
 
-This procedure ignores the blocking mode of the port, blocking
-unconditionally until it sees either a delimiter or end of file.  If end
-of file is encountered before any characters are read, an end-of-file
-object is returned.
+@deffn procedure read-string! string [port [start [end]]]
+Reads the next end-start characters, or as many as are available
+before the end of file, from the textual input @var{port} into
+@var{string} in left-to-right order beginning at the @var{start}
+position.  If @var{end} is not supplied, reads until the end of
+@var{string} has been reached.  If @var{start} is not supplied, reads
+beginning at position @code{0}.  Returns the number of characters
+read.  If no characters are available, an end-of-file object is
+returned.
 
-@findex read-char
-On many input ports, this operation is significantly faster than the
-following equivalent code using @code{peek-char} and @code{read-char}:
+In MIT/GNU Scheme, there's a special case if @var{port} is an
+interactive port in non-blocking mode.  If no characters are
+immediately available, @code{#f} is returned without any modification
+of @var{string}.
 
-@example
-@group
-(define (read-string char-set port)
-  (let ((char (peek-char port)))
-    (if (eof-object? char)
-        char
-        (list->string
-         (let loop ((char char))
-           (if (or (eof-object? char)
-                   (char-set-member? char-set char))
-               '()
-               (begin
-                 (read-char port)
-                 (cons char
-                       (loop (peek-char port))))))))))
-@end group
-@end example
+However, if one or more characters are immediately available, the
+region is filled using the available characters.  The procedure then
+returns the number of characters filled in, without waiting for
+further characters, even if the number of filled characters is less
+than the size of the region.
+@end deffn
+
+@deffn {obsolete procedure} read-substring! string start end [port]
+This procedure is @strong{deprecated}; use @code{read-string!} instead.
 @end deffn
 
 @deffn {standard procedure} read-u8 [port]
@@ -761,67 +775,60 @@ returned.
 @end deffn
 
 @deffn {standard procedure} read-bytevector! bytevector [port [start [end]]]
-Reads the next end − start bytes, or as many as are available before
-the end of file, from the binary input @var{port} into bytevector in
+Reads the next end-start bytes, or as many as are available before the
+end of file, from the binary input @var{port} into @var{bytevector} in
 left-to-right order beginning at the @var{start} position.  If
 @var{end} is not supplied, reads until the end of @var{bytevector} has
 been reached.  If @var{start} is not supplied, reads beginning at
 position @code{0}.  Returns the number of bytes read.  If no bytes are
 available, an end-of-file object is returned.
+
+In MIT/GNU Scheme, there's a special case if @var{port} is an
+interactive port in non-blocking mode.  If no bytes are immediately
+available, @code{#f} is returned without any modification of
+@var{bytevector}.
+
+However, if one or more bytes are immediately available, the region is
+filled using the available bytes.  The procedure then returns the
+number of bytes filled in, without waiting for further bytes, even if
+the number of filled bytes is less than the size of the region.
 @end deffn
 
-@deffn procedure read-char-no-hang [input-port]
-If @var{input-port} can deliver a character without blocking, this
-procedure acts exactly like @code{read-char}, immediately returning that
-character.  Otherwise, @code{#f} is returned, unless @var{input-port} is
-a file port at end of file, in which case an end-of-file object is
-returned.  In no case will this procedure block waiting for input.
-@end deffn
+@deffn procedure read-delimited-string char-set [port]
+@cindex string, input from port
+Reads characters from @var{port} until it finds a terminating
+character that is a member of @var{char-set} (@pxref{Character Sets})
+or encounters end of file.  The port is updated to point to the
+terminating character, or to end of file if no terminating character
+was found.  @code{read-string} returns the characters, up to but
+excluding the terminating character, as a newly allocated string.
 
-@deffn procedure read-string! string [input-port]
-@deffnx procedure read-substring! string start end [input-port]
-@code{read-string!} and @code{read-substring!} fill the specified region
-of @var{string} with characters read from @var{input-port} until the
-region is full or else there are no more characters available from the
-port.  For @code{read-string!}, the region is all of @var{string}, and
-for @code{read-substring!}, the region is that part of @var{string}
-specified by @var{start} and @var{end}.
+This procedure ignores the blocking mode of the port, blocking
+unconditionally until it sees either a delimiter or end of file.  If end
+of file is encountered before any characters are read, an end-of-file
+object is returned.
 
-The returned value is the number of characters filled into the region.
-However, there are several interesting cases to consider:
+@findex read-char
+On many input ports, this operation is significantly faster than the
+following equivalent code using @code{peek-char} and @code{read-char}:
 
-@itemize @bullet
-@item
-If @code{read-string!} (@code{read-substring!}) is called when
-@var{input-port} is at ``end-of-file'', then the returned value is
-@code{0}.  Note that ``end-of-file'' can mean a file port that is at the
-file's end, a string port that is at the string's end, or any other port
-that will never produce more characters.
-
-@item
-If @var{input-port} is an interactive port (e.g.@: a terminal), and one
-or more characters are immediately available, the region is filled using
-the available characters.  The procedure then returns immediately,
-without waiting for further characters, even if the number of available
-characters is less than the size of the region.  The returned value is
-the number of characters actually filled in.
-
-@item
-If @var{input-port} is an interactive port and no characters are
-immediately available, the result of the operation depends on the
-blocking mode of the port.  If the port is in non-blocking mode,
-@code{read-string!} (@code{read-substring!}) immediately returns the
-value @code{#f}.  Otherwise, the operation blocks until a character is
-available.  As soon as at least one character is available, the region
-is filled using the available characters.  The procedure then returns
-immediately, without waiting for further characters, even if the number
-of available characters is less than the size of the region.  The
-returned value is the number of characters actually filled in.
-@end itemize
-
-The importance of @code{read-string!} and @code{read-substring!} are
-that they are both flexible and extremely fast, especially for large
-amounts of data.
+@example
+@group
+(define (read-delimited-string char-set port)
+  (let ((char (peek-char port)))
+    (if (eof-object? char)
+        char
+        (list->string
+         (let loop ((char char))
+           (if (or (eof-object? char)
+                   (char-set-member? char-set char))
+               '()
+               (begin
+                 (read-char port)
+                 (cons char
+                       (loop (peek-char port))))))))))
+@end group
+@end example
 @end deffn
 
 @anchor{reader-controls}
@@ -900,6 +907,12 @@ requiring calls to @code{flush-output-port}.
 
 In this section, all optional arguments called @var{port} default to
 the current output port.
+
+@strong{Note}: MIT/GNU Scheme doesn't support datum labels, so any
+behavior in @code{write}, @code{write-shared}, or @code{write-simple}
+that depends on datum labels is not implemented.  At present all three
+of these procedures are equivalent.  This will be remedied in a future
+release.
 
 @deffn {standard procedure} write object [port]
 Writes a representation of @var{object} to the given textual output
@@ -1735,7 +1748,6 @@ The procedures in this section provide means for constructing port types
 with standard and custom operations, and accessing their operations.
 
 @deffn procedure make-textual-port-type operations port-type
-@deffnx {obsolete procedure} make-port-type operations port-type
 @cindex construction, of textual port type
 Creates and returns a new port type.
 @var{Operations} must be a list; each element is a list of two elements,
@@ -1764,16 +1776,21 @@ standard operations without having to enumerate them.
 @end deffn
 
 @deffn procedure textual-port-type? object
-@deffnx {obsolete procedure} port-type? object
 @deffnx procedure textual-input-port-type? object
-@deffnx {obsolete procedure} input-port-type? object
 @deffnx procedure textual-output-port-type? object
-@deffnx {obsolete procedure} output-port-type? object
 @deffnx procedure textual-i/o-port-type? object
-@deffnx {obsolete procedure} i/o-port-type? object
 These predicates return @code{#t} if @var{object} is a port type,
 input-port type, output-port type, or @acronym{I/O}-port type,
 respectively.  Otherwise, they return @code{#f}.
+@end deffn
+
+@deffn {obsolete procedure} make-port-type operations port-type
+@deffnx {obsolete procedure} port-type? object
+@deffnx {obsolete procedure} input-port-type? object
+@deffnx {obsolete procedure} output-port-type? object
+@deffnx {obsolete procedure} i/o-port-type? object
+These procedures are @strong{deprecated}; use the procedures defined
+above.
 @end deffn
 
 @deffn {obsolete procedure} port-type/operations port-type
@@ -1790,38 +1807,42 @@ The procedures in this section provide means for constructing ports,
 accessing the type of a port, and manipulating the state of a port.
 
 @deffn procedure make-textual-port port-type state
-@deffnx {obsolete procedure} make-port port-type state
 Returns a new port with type @var{port-type} and the given
 @var{state}.  The port will be an input, output, or @acronym{I/O} port
 according to @var{port-type}.
 @end deffn
 
 @deffn procedure textual-port-type textual-port
-@deffnx {obsolete procedure} port/type textual-port
 Returns the port type of @var{textual-port}.
 @end deffn
 
 @deffn procedure textual-port-state textual-port
-@deffnx {obsolete procedure} port/state textual-port
 Returns the state component of @var{textual-port}.
 @end deffn
 
 @deffn procedure set-textual-port-state! textual-port object
-@deffnx {obsolete procedure} set-port/state! textual-port object
 Changes the state component of @var{textual-port} to be @var{object}.
 Returns an unspecified value.
 @end deffn
 
 @deffn procedure textual-port-operation textual-port symbol
-@deffnx {obsolete procedure} port/operation textual-port symbol
 Returns the operation named @var{symbol} for @var{textual-port}.  If
 @var{textual-port} has no such operation, returns @code{#f}.
 @end deffn
 
 @deffn procedure textual-port-operation-names textual-port
-@deffnx {obsolete procedure} port/operation-names port
 Returns a newly allocated list whose elements are the names of the
 operations implemented by @var{textual-port}.
+@end deffn
+
+@deffn {obsolete procedure} make-port port-type state
+@deffnx {obsolete procedure} port/type textual-port
+@deffnx {obsolete procedure} port/state textual-port
+@deffnx {obsolete procedure} set-port/state! textual-port object
+@deffnx {obsolete procedure} port/operation textual-port symbol
+@deffnx {obsolete procedure} port/operation-names port
+These procedures are @strong{deprecated}; use the procedures defined
+above.
 @end deffn
 
 @node Textual Input Port Operations, Textual Output Port Operations, Constructors and Accessors for Textual Ports, Textual Port Primitives
