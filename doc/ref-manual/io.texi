@@ -766,8 +766,7 @@ environments.  The global parameters may be dynamically bound by
 local changes by shadowing the global bindings in the local
 environment and assigning new parameters to them.
 
-@defvr parameter param:parser-radix
-@defvrx {obsolete variable} *parser-radix*
+@deffn parameter param:parser-radix
 This parameter defines the radix used by the reader when it parses
 numbers.  This is similar to passing a radix argument to
 @code{string->number}.  The value of the parameter must be one of
@@ -783,10 +782,9 @@ Because of this, it is usually undesirable to bind this parameter to
 anything other than the default.
 
 The default value of this parameter is @code{10}.
-@end defvr
+@end deffn
 
-@defvr parameter param:parser-canonicalize-symbols?
-@defvrx {obsolete variable} *parser-canonicalize-symbols?*
+@deffn parameter param:parser-canonicalize-symbols?
 This parameter controls how the parser handles case-sensitivity of
 symbols.  If it is bound to its default value of @code{#t}, symbols read
 by the parser are converted to lower case before being interned.
@@ -795,6 +793,12 @@ Otherwise, symbols are interned without case conversion.
 In general, it is a bad idea to use this feature, as it doesn't really
 make Scheme case-sensitive, and therefore can break features of the
 Scheme runtime that depend on case-insensitive symbols.
+@end deffn
+
+@defvr {obsolete variable} *parser-radix*
+@defvrx {obsolete variable} *parser-canonicalize-symbols?*
+These variables are @strong{deprecated}; instead use the corresponding
+parameter objects.
 @end defvr
 
 @node Output Procedures, Blocking Mode, Input Procedures, Input/Output
@@ -940,19 +944,18 @@ appropriate indentation; by default this argument is false.  @code{pp}
 performs discretionary output flushing and returns an unspecified value.
 @end deffn
 
-The following variables may be dynamically bound to change the behavior
-of the @code{write} and @code{display} procedures.
+@findex parameterize
+The following parameters may be used with @code{parameterize} to
+change the behavior of the @code{write} and @code{display} procedures.
 
-@defvr parameter param:unparser-radix
-@defvrx {obsolete variable} *unparser-radix*
+@deffn parameter param:unparser-radix
 This parameter specifies the default radix used to print numbers.  Its
 value must be one of the exact integers @code{2}, @code{8}, @code{10},
 or @code{16}; the default is @code{10}.  For values other than
 @code{10}, numbers are prefixed to indicate their radix.
-@end defvr
+@end deffn
 
-@defvr parameter param:unparser-list-breadth-limit
-@defvrx {obsolete variable} *unparser-list-breadth-limit*
+@deffn parameter param:unparser-list-breadth-limit
 This parameter specifies a limit on the length of the printed
 representation of a list or vector; for example, if the limit is
 @code{4}, only the first four elements of any list are printed, followed
@@ -972,10 +975,9 @@ limit; the default is @code{#f}.
                                 @result{} "(a b c d ...)"
 @end group
 @end example
-@end defvr
+@end deffn
 
-@defvr parameter param:unparser-list-depth-limit
-@defvrx {obsolete variable} *unparser-list-depth-limit*
+@deffn parameter param:unparser-list-depth-limit
 This parameter specifies a limit on the nesting of lists and vectors in
 the printed representation.  If lists (or vectors) are more deeply
 nested than the limit, the part of the representation that exceeds the
@@ -995,10 +997,9 @@ is @code{#f}.
                                 @result{} "((((...))) b c d)"
 @end group
 @end example
-@end defvr
+@end deffn
 
-@defvr parameter param:unparser-string-length-limit
-@defvrx {obsolete variable} *unparser-string-length-limit*
+@deffn parameter param:unparser-string-length-limit
 This parameter specifies a limit on the length of the printed
 representation of strings.  If a string's length exceeds this limit, the
 part of the printed representation for the characters exceeding the
@@ -1018,10 +1019,9 @@ is @code{#f}.
                                 @result{} "\"abcd...\""
 @end group
 @end example
-@end defvr
+@end deffn
 
-@defvr parameter param:unparse-with-maximum-readability?
-@defvrx {obsolete variable} *unparse-with-maximum-readability?*
+@deffn parameter param:unparse-with-maximum-readability?
 This parameter, which takes a boolean value, tells the printer to use a
 special printed representation for objects that normally print in a form
 that cannot be recognized by @code{read}.  These objects are printed
@@ -1031,6 +1031,15 @@ recognizes this syntax, calling @code{unhash} on @var{n} to get back the
 original object.  Note that this printed representation can only be
 recognized by the Scheme program in which it was generated, because
 these hash numbers are different for each invocation of Scheme.
+@end deffn
+
+@defvr {obsolete variable} *unparser-radix*
+@defvrx {obsolete variable} *unparser-list-breadth-limit*
+@defvrx {obsolete variable} *unparser-list-depth-limit*
+@defvrx {obsolete variable} *unparser-string-length-limit*
+@defvrx {obsolete variable} *unparse-with-maximum-readability?*
+These variables are @strong{deprecated}; instead use the corresponding
+parameter objects.
 @end defvr
 
 @node Blocking Mode, Terminal Mode, Output Procedures, Input/Output
