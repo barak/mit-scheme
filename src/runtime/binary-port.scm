@@ -444,17 +444,17 @@ USA.
 	 (if (default-object? end)
 	     (bytevector-length bytevector)
 	     (begin
-	       (guarantee index-fixnum? end 'read-bytevector!)
+	       (guarantee index-fixnum? end 'write-bytevector)
 	       (if (not (fix:<= end (bytevector-length bytevector)))
-		   (error:bad-range-argument end 'read-bytevector))
+		   (error:bad-range-argument end 'write-bytevector))
 	       end))))
     (let ((start
 	   (if (default-object? start)
 	       0
 	       (begin
-		 (guarantee index-fixnum? start 'read-bytevector!)
+		 (guarantee index-fixnum? start 'write-bytevector)
 		 (if (not (fix:<= start end))
-		     (error:bad-range-argument start 'read-bytevector!))
+		     (error:bad-range-argument start 'write-bytevector))
 		 start)))
 	  (bv (buffer-bytes ob)))
 
