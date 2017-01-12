@@ -1006,59 +1006,59 @@ symbol @code{normal} may be used, which is equivalent to the list
 @code{normal}.
 
 @noindent
-The default value for @code{flonum-unparser-cutoff} is @code{normal}.
+The default value for @code{param:flonum-unparser-cutoff} is @code{normal}.
 If it is bound to a value different from those described here,
 @code{number->string} issues a warning and acts as though the value had
 been @code{normal}.
 @end defvr
 
 @noindent
-Some examples of @code{flonum-unparser-cutoff}:
+Some examples of @code{param:flonum-unparser-cutoff}:
 
 @example
 (number->string (* 4 (atan 1 1)))
                                     @result{} "3.141592653589793"
-(parameterize ((flonum-unparser-cutoff '(relative 5)))
+(parameterize ((param:flonum-unparser-cutoff '(relative 5)))
   (lambda ()
     (number->string (* 4 (atan 1 1)))))
                                     @result{} "3.1416"
-(parameterize ((flonum-unparser-cutoff '(relative 5)))
+(parameterize ((param:flonum-unparser-cutoff '(relative 5)))
   (lambda ()
     (number->string (* 4000 (atan 1 1)))))
                                     @result{} "3141.6"
-(parameterize ((flonum-unparser-cutoff '(relative 5 scientific)))
+(parameterize ((param:flonum-unparser-cutoff '(relative 5 scientific)))
   (lambda ()
     (number->string (* 4000 (atan 1 1)))))
                                     @result{} "3.1416e3"
-(parameterize ((flonum-unparser-cutoff '(relative 5 scientific)))
+(parameterize ((param:flonum-unparser-cutoff '(relative 5 scientific)))
   (lambda ()
     (number->string (* 40000 (atan 1 1)))))
                                     @result{} "3.1416e4"
-(parameterize ((flonum-unparser-cutoff '(relative 5 engineering)))
+(parameterize ((param:flonum-unparser-cutoff '(relative 5 engineering)))
   (lambda ()
     (number->string (* 40000 (atan 1 1)))))
                                     @result{} "31.416e3"
-(parameterize ((flonum-unparser-cutoff '(absolute 5)))
+(parameterize ((param:flonum-unparser-cutoff '(absolute 5)))
   (lambda ()
     (number->string (* 4 (atan 1 1)))))
                                     @result{} "3.14159"
-(parameterize ((flonum-unparser-cutoff '(absolute 5)))
+(parameterize ((param:flonum-unparser-cutoff '(absolute 5)))
   (lambda ()
     (number->string (* 4000 (atan 1 1)))))
                                     @result{} "3141.59265"
-(parameterize ((flonum-unparser-cutoff '(absolute -4)))
+(parameterize ((param:flonum-unparser-cutoff '(absolute -4)))
   (lambda ()
     (number->string (* 4e10 (atan 1 1)))))
                                     @result{} "31415930000."
-(parameterize ((flonum-unparser-cutoff '(absolute -4 scientific)))
+(parameterize ((param:flonum-unparser-cutoff '(absolute -4 scientific)))
   (lambda ()
     (number->string (* 4e10 (atan 1 1)))))
                                     @result{} "3.141593e10"
-(parameterize ((flonum-unparser-cutoff '(absolute -4 engineering)))
+(parameterize ((param:flonum-unparser-cutoff '(absolute -4 engineering)))
   (lambda ()
     (number->string (* 4e10 (atan 1 1)))))
                                     @result{} "31.41593e9"
-(parameterize ((flonum-unparser-cutoff '(absolute -5)))
+(parameterize ((param:flonum-unparser-cutoff '(absolute -5)))
   (lambda ()
     (number->string (* 4e10 (atan 1 1)))))
                                     @result{} "31415900000."
