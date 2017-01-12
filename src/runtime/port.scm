@@ -45,7 +45,7 @@ USA.
 			     flush-output
 			     discretionary-flush-output)
     textual-port-type?
-  (operations %port-type-operations)
+  (operations port-type-operations)
   ;; input operations:
   (char-ready? port-type-operation:char-ready?)
   (read-char port-type-operation:read-char)
@@ -78,16 +78,32 @@ USA.
 (define (port-type-supports-output? type)
   (port-type-operation:write-char type))
 
-(define (port-type-operation-names type)
-  (map car (%port-type-operations type)))
+(define (textual-input-port-type? object)
+  (and (textual-port-type? object)
+       (port-type-supports-input? object)
+       #t))
+
+(define (textual-output-port-type? object)
+  (and (textual-port-type? object)
+       (port-type-supports-output? object)
+       #t))
+
+(define (textual-i/o-port-type? object)
+  (and (textual-port-type? object)
+       (port-type-supports-input? object)
+       (port-type-supports-output? object)
+       #t))
+
+(define (textual-port-type-operation-names type)
+  (map car (port-type-operations type)))
 
 (define (textual-port-type-operations type)
   (map (lambda (entry)
 	 (list (car entry) (cdr entry)))
-       (%port-type-operations type)))
+       (port-type-operations type)))
 
 (define (textual-port-type-operation type name)
-  (let ((entry (assq name (%port-type-operations type))))
+  (let ((entry (assq name (port-type-operations type))))
     (and entry
 	 (cdr entry))))
 
@@ -469,7 +485,7 @@ USA.
 	 (operation port))))
 
 (define (textual-port-operation-names port)
-  (port-type-operation-names (textual-port-type port)))
+  (textual-port-type-operation-names (textual-port-type port)))
 
 (define (textual-port-operation port name)
   (textual-port-type-operation (textual-port-type port) name))

@@ -2424,7 +2424,11 @@ USA.
   (files "binary-port")
   (parent (runtime))
   (export ()
+	  binary-i/o-port?
+	  binary-input-port?
+	  binary-output-port?
 	  binary-port?
+	  call-with-output-bytevector
 	  get-output-bytevector
 	  open-input-bytevector
 	  open-output-bytevector
@@ -2452,32 +2456,53 @@ USA.
 	  output-sink-custom-ref
 	  output-sink?)
   (export (runtime port)
-	  binary-i/o-port?
 	  binary-input-port-channel
 	  binary-input-port-open?
 	  binary-input-port:buffer-contents
 	  binary-input-port:set-buffer-contents!
-	  binary-input-port?
 	  binary-output-port-channel
 	  binary-output-port-open?
-	  binary-output-port?
 	  close-binary-input-port
 	  close-binary-output-port
 	  close-binary-port)
   (export (runtime output-port)
-	  binary-output-port?
 	  flush-binary-output-port))
 
 (define-package (runtime port)
   (files "port")
   (parent (runtime))
   (export ()
-	  ;; BEGIN legacy bindings
+	  ;; BEGIN deprecated bindings
+	  (i/o-port-type? textual-i/o-port-type?)
+	  (input-port-type? textual-input-port-type?)
+	  (make-port make-textual-port)
+	  (make-port-type make-textual-port-type)
+	  (output-port-type? textual-output-port-type?)
+	  (port-type/operation textual-port-type-operation)
+	  (port-type/operation-names textual-port-type-operation-names)
+	  (port-type/operations textual-port-type-operations)
+	  (port-type? textual-port-type?)
+	  (port/input-blocking-mode input-port-blocking-mode)
+	  (port/input-terminal-mode input-port-terminal-mode)
 	  (port/open? textual-port-open?)
 	  (port/operation textual-port-operation)
 	  (port/operation-names textual-port-operation-names)
+	  (port/output-blocking-mode output-port-blocking-mode)
+	  (port/output-terminal-mode output-port-terminal-mode)
+	  (port/set-input-blocking-mode set-input-port-blocking-mode!)
+	  (port/set-input-terminal-mode set-input-port-terminal-mode!)
+	  (port/set-output-blocking-mode set-output-port-blocking-mode!)
+	  (port/set-output-terminal-mode set-output-port-terminal-mode!)
+	  (port/state textual-port-type)
 	  (port/type textual-port-type)
-	  ;; END legacy bindings
+	  (port/with-input-blocking-mode with-input-port-blocking-mode)
+	  (port/with-input-terminal-mode with-input-port-terminal-mode)
+	  (port/with-output-blocking-mode with-output-port-blocking-mode)
+	  (port/with-output-terminal-mode with-output-port-terminal-mode)
+	  ;; END deprecated bindings
+	  ;; Temporary definition to satisfy R7RS
+	  ;; TODO(cph): provide a proper definition
+	  (current-error-port current-output-port)
 	  close-input-port
 	  close-output-port
 	  close-port
@@ -2494,6 +2519,8 @@ USA.
 	  input-port?
 	  interaction-i/o-port
 	  intern-textual-port-property!
+	  make-textual-port
+	  make-textual-port-type
 	  notification-output-port
 	  output-port-blocking-mode
 	  output-port-open?
@@ -2520,12 +2547,18 @@ USA.
 	  set-output-port-terminal-mode!
 	  set-textual-port-property!
 	  set-trace-output-port!
+	  textual-i/o-port?
+	  textual-input-port?
+	  textual-output-port?
 	  textual-port-open?
 	  textual-port-operation
 	  textual-port-operation-names
 	  textual-port-property
 	  textual-port-thread-mutex
+	  textual-port-type
 	  textual-port?
+	  set-textual-port-state!
+	  textual-port-state
 	  trace-output-port
 	  with-input-from-port
 	  with-input-port-blocking-mode
@@ -2538,14 +2571,9 @@ USA.
 	  with-trace-output-port)
   (export (runtime)
 	  input-port-channel
-	  make-textual-port
-	  make-textual-port-type
-	  output-port-channel
-	  set-textual-port-state!
-	  textual-port-state)
+	  output-port-channel)
   (export (runtime input-port)
 	  textual-input-port-open?
-	  textual-input-port?
 	  textual-port-operation
 	  textual-port-operation/char-ready?
 	  textual-port-operation/peek-char
@@ -2554,7 +2582,6 @@ USA.
 	  textual-port-operation/unread-char)
   (export (runtime output-port)
 	  textual-output-port-open?
-	  textual-output-port?
 	  textual-port-operation
 	  textual-port-operation/discretionary-flush-output
 	  textual-port-operation/flush-output
@@ -2569,7 +2596,6 @@ USA.
 	  generic-port-operation:write-substring)
   (export (runtime emacs-interface)
 	  set-textual-port-type!
-	  textual-port-type
 	  textual-port-type-operation)
   (initialization (initialize-package!)))
 
@@ -5378,6 +5404,8 @@ USA.
   (files "parser-buffer")
   (parent (runtime))
   (export ()
+	  ;; Deprecated:
+	  (input-port->parser-buffer textual-input-port->parser-buffer)
 	  (match-parser-buffer-char-in-alphabet match-parser-buffer-char-in-set)
 	  (match-parser-buffer-char-in-alphabet-no-advance
 	   match-parser-buffer-char-in-set-no-advance)
@@ -5398,7 +5426,6 @@ USA.
 	  discard-parser-buffer-head!
 	  get-parser-buffer-pointer
 	  get-parser-buffer-tail
-	  input-port->parser-buffer
 	  match-parser-buffer-char
 	  match-parser-buffer-char-ci
 	  match-parser-buffer-char-ci-no-advance
@@ -5432,6 +5459,7 @@ USA.
 	  read-parser-buffer-char
 	  set-parser-buffer-pointer!
 	  string->parser-buffer
+	  textual-input-port->parser-buffer
 	  utf8-string->parser-buffer))
 
 (define-package (runtime unicode)

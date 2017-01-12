@@ -176,6 +176,11 @@ USA.
  (lambda ()
    (register-predicate! bytevector-output-port? 'bytevector-output-port
 			'<= binary-output-port?)))
+
+(define (call-with-output-bytevector procedure)
+  (let ((port (open-output-bytevector)))
+    (port port)
+    (get-output-bytevector port)))
 
 ;;;; Closing operations
 

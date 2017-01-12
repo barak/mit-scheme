@@ -74,15 +74,15 @@ USA.
   (let ((ws (utf8-string->wide-string string start end)))
     (make-parser-buffer ws 0 (wide-string-length ws) 0 0 #f #t 0)))
 
-(define (input-port->parser-buffer port #!optional prefix)
-  (guarantee-input-port port 'INPUT-PORT->PARSER-BUFFER)
+(define (textual-input-port->parser-buffer port #!optional prefix)
+  (guarantee textual-input-port? port 'textual-input-port->parser-buffer)
   (if (or (default-object? prefix)
 	  (not prefix)
 	  (and (wide-string? prefix)
 	       (zero? (wide-string-length prefix))))
       (make-parser-buffer (make-wide-string min-length) 0 0 0 0 port #f 0)
       (begin
-	(guarantee-wide-string prefix 'INPUT-PORT->PARSER-BUFFER)
+	(guarantee-wide-string prefix 'textual-input-port->parser-buffer)
 	(let ((n (wide-string-length prefix)))
 	  (make-parser-buffer (%grow-buffer prefix n (max min-length n))
 			      0 n 0 0 port #f 0)))))

@@ -113,353 +113,359 @@ Documentation License.''
 
 Overview
 
-* Notational Conventions::      
-* Scheme Concepts::             
-* Lexical Conventions::         
-* Expressions::                 
+* Notational Conventions::
+* Scheme Concepts::
+* Lexical Conventions::
+* Expressions::
 
 Notational Conventions
 
-* Errors::                      
-* Examples::                    
-* Entry Format::                
+* Errors::
+* Examples::
+* Entry Format::
 
 Scheme Concepts
 
-* Variable Bindings::           
-* Environment Concepts::        
-* Initial and Current Environments::  
-* Static Scoping::              
-* True and False::              
-* External Representations::    
-* Disjointness of Types::       
-* Storage Model::               
+* Variable Bindings::
+* Environment Concepts::
+* Initial and Current Environments::
+* Static Scoping::
+* True and False::
+* External Representations::
+* Disjointness of Types::
+* Storage Model::
 
 Lexical Conventions
 
-* Whitespace::                  
-* Delimiters::                  
-* Identifiers::                 
-* Uppercase and Lowercase::     
-* Naming Conventions::          
-* Comments::                    
-* Additional Notations::        
+* Whitespace::
+* Delimiters::
+* Identifiers::
+* Uppercase and Lowercase::
+* Naming Conventions::
+* Comments::
+* Additional Notations::
 
 Expressions
 
-* Literal Expressions::         
-* Variable References::         
-* Special Form Syntax::         
-* Procedure Call Syntax::       
+* Literal Expressions::
+* Variable References::
+* Special Form Syntax::
+* Procedure Call Syntax::
 
 Special Forms
 
-* Lambda Expressions::          
-* Lexical Binding::             
-* Dynamic Binding::             
-* Definitions::                 
-* Assignments::                 
-* Quoting::                     
-* Conditionals::                
-* Sequencing::                  
-* Iteration::                   
-* Structure Definitions::       
-* Macros::                      
-* SRFI syntax::                 
+* Lambda Expressions::
+* Lexical Binding::
+* Dynamic Binding::
+* Definitions::
+* Assignments::
+* Quoting::
+* Conditionals::
+* Sequencing::
+* Iteration::
+* Structure Definitions::
+* Macros::
+* SRFI syntax::
 
 Definitions
 
-* Top-Level Definitions::       
-* Internal Definitions::        
+* Top-Level Definitions::
+* Internal Definitions::
 
 Macros
 
-* Syntactic Binding Constructs::  
-* Pattern Language::            
-* Syntactic Closures::          
-* Explicit Renaming::           
+* Syntactic Binding Constructs::
+* Pattern Language::
+* Syntactic Closures::
+* Explicit Renaming::
 
 Syntactic Closures
 
-* Syntax Terminology::          
-* SC Transformer Definition::   
-* SC Identifiers::              
+* Syntax Terminology::
+* SC Transformer Definition::
+* SC Identifiers::
 
 SRFI syntax
 
-* cond-expand (SRFI 0)::        
-* receive (SRFI 8)::            
-* and-let* (SRFI 2)::           
-* define-record-type (SRFI 9)::  
+* cond-expand (SRFI 0)::
+* receive (SRFI 8)::
+* and-let* (SRFI 2)::
+* define-record-type (SRFI 9)::
 
 Numbers
 
-* Numerical types::             
-* Exactness::                   
-* Implementation restrictions::  
-* Syntax of numerical constants::  
-* Numerical operations::        
-* Numerical input and output::  
-* Fixnum and Flonum Operations::  
-* Random Numbers::              
+* Numerical types::
+* Exactness::
+* Implementation restrictions::
+* Syntax of numerical constants::
+* Numerical operations::
+* Numerical input and output::
+* Fixnum and Flonum Operations::
+* Random Numbers::
 
 Fixnum and Flonum Operations
 
-* Fixnum Operations::           
-* Flonum Operations::           
+* Fixnum Operations::
+* Flonum Operations::
 
 Characters
 
-* External Representation of Characters::  
-* Comparison of Characters::    
-* Miscellaneous Character Operations::  
-* Internal Representation of Characters::  
-* ISO-8859-1 Characters::       
-* Character Sets::              
-* Unicode::                     
+* External Representation of Characters::
+* Comparison of Characters::
+* Miscellaneous Character Operations::
+* Internal Representation of Characters::
+* ISO-8859-1 Characters::
+* Character Sets::
+* Unicode::
 
 Unicode
 
-* Wide Strings::                
-* Unicode Representations::     
+* Wide Strings::
+* Unicode Representations::
 
 Strings
 
-* Construction of Strings::     
-* Selecting String Components::  
-* Comparison of Strings::       
-* Alphabetic Case in Strings::  
-* Cutting and Pasting Strings::  
-* Searching Strings::           
-* Matching Strings::            
-* Regular Expressions::         
-* Modification of Strings::     
-* Variable-Length Strings::     
-* Byte Vectors::                
+* Construction of Strings::
+* Selecting String Components::
+* Comparison of Strings::
+* Alphabetic Case in Strings::
+* Cutting and Pasting Strings::
+* Searching Strings::
+* Matching Strings::
+* Regular Expressions::
+* Modification of Strings::
+* Variable-Length Strings::
+* Byte Vectors::
 
 Regular Expressions
 
-* Regular-expression procedures::  
-* REXP abstraction::            
+* Regular-expression procedures::
+* REXP abstraction::
 
 Lists
 
-* Pairs::                       
-* Construction of Lists::       
-* Selecting List Components::   
-* Cutting and Pasting Lists::   
-* Filtering Lists::             
-* Searching Lists::             
-* Mapping of Lists::            
-* Reduction of Lists::          
-* Miscellaneous List Operations::  
+* Pairs::
+* Construction of Lists::
+* Selecting List Components::
+* Cutting and Pasting Lists::
+* Filtering Lists::
+* Searching Lists::
+* Mapping of Lists::
+* Reduction of Lists::
+* Miscellaneous List Operations::
 
 Vectors
 
-* Construction of Vectors::     
-* Selecting Vector Components::  
-* Cutting Vectors::             
-* Modifying Vectors::           
+* Construction of Vectors::
+* Selecting Vector Components::
+* Cutting Vectors::
+* Modifying Vectors::
 
 Bit Strings
 
-* Construction of Bit Strings::  
-* Selecting Bit String Components::  
-* Cutting and Pasting Bit Strings::  
-* Bitwise Operations on Bit Strings::  
-* Modification of Bit Strings::  
-* Integer Conversions of Bit Strings::  
+* Construction of Bit Strings::
+* Selecting Bit String Components::
+* Cutting and Pasting Bit Strings::
+* Bitwise Operations on Bit Strings::
+* Modification of Bit Strings::
+* Integer Conversions of Bit Strings::
 
 Miscellaneous Datatypes
 
-* Booleans::                    
-* Symbols::                     
-* Parameters::                  
-* Records::                     
-* Promises::                    
-* Streams::                     
-* Weak Pairs::                  
+* Booleans::
+* Symbols::
+* Parameters::
+* Records::
+* Promises::
+* Streams::
+* Weak References::
+
+Weak References
+
+* Weak Pairs::
 * Ephemerons::
+* Reference barriers::
 
 Associations
 
-* Association Lists::           
-* 1D Tables::                   
-* The Association Table::       
-* Hash Tables::                 
-* Object Hashing::              
-* Red-Black Trees::             
-* Weight-Balanced Trees::       
+* Association Lists::
+* 1D Tables::
+* The Association Table::
+* Hash Tables::
+* Object Hashing::
+* Red-Black Trees::
+* Weight-Balanced Trees::
 
 Hash Tables
 
-* Construction of Hash Tables::  
-* Basic Hash Table Operations::  
-* Resizing of Hash Tables::     
-* Address Hashing::             
+* Construction of Hash Tables::
+* Basic Hash Table Operations::
+* Resizing of Hash Tables::
+* Address Hashing::
 
 Weight-Balanced Trees
 
-* Construction of Weight-Balanced Trees::  
-* Basic Operations on Weight-Balanced Trees::  
-* Advanced Operations on Weight-Balanced Trees::  
-* Indexing Operations on Weight-Balanced Trees::  
+* Construction of Weight-Balanced Trees::
+* Basic Operations on Weight-Balanced Trees::
+* Advanced Operations on Weight-Balanced Trees::
+* Indexing Operations on Weight-Balanced Trees::
 
 Procedures
 
-* Procedure Operations::        
-* Arity::                       
-* Primitive Procedures::        
-* Continuations::               
-* Application Hooks::           
-* Generic Dispatch::            
+* Procedure Operations::
+* Arity::
+* Primitive Procedures::
+* Continuations::
+* Application Hooks::
+* Generic Dispatch::
 
 Generic Dispatch
 
-* Generic Procedures::          
-* Method Generators::           
-* Dispatch Tags::               
+* Generic Procedures::
+* Method Generators::
+* Dispatch Tags::
 
 Environments
 
-* Environment Operations::      
-* Environment Variables::       
-* REPL Environment::            
-* Top-level Environments::      
+* Environment Operations::
+* Environment Variables::
+* REPL Environment::
+* Top-level Environments::
 
 Input/Output
 
-* Ports::                       
-* File Ports::                  
-* String Ports::                
-* Input Procedures::            
-* Output Procedures::           
-* Format::                      
-* Custom Output::               
-* Prompting::                   
-* Port Primitives::             
-* Parser Buffers::              
-* Parser Language::             
-* XML Support::                 
+* Ports::
+* File Ports::
+* String Ports::
+* Bytevector Ports::
+* Input Procedures::
+* Output Procedures::
+* Blocking Mode::
+* Terminal Mode::
+* Format::
+* Custom Output::
+* Prompting::
+* Textual Port Primitives::
+* Parser Buffers::
+* Parser Language::
+* XML Support::
 
-Port Primitives
+Textual Port Primitives
 
-* Port Types::                  
-* Constructors and Accessors for Ports::  
-* Input Port Operations::       
-* Output Port Operations::      
-* Blocking Mode::               
-* Terminal Mode::               
+* Textual Port Types::
+* Constructors and Accessors for Textual Ports::
+* Textual Input Port Operations::
+* Textual Output Port Operations::
 
 Parser Language
 
-* *Matcher::                    
-* *Parser::                     
-* Parser-language Macros::      
+* *Matcher::
+* *Parser::
+* Parser-language Macros::
 
 XML Support
 
-* XML Input::                   
-* XML Output::                  
-* XML Names::                   
-* XML Structure::               
+* XML Input::
+* XML Output::
+* XML Names::
+* XML Structure::
 
 Operating-System Interface
 
-* Pathnames::                   
-* Working Directory::           
-* File Manipulation::           
-* Directory Reader::            
-* Date and Time::               
-* Machine Time::                
-* Subprocesses::                
-* TCP Sockets::                 
-* Miscellaneous OS Facilities::  
+* Pathnames::
+* Working Directory::
+* File Manipulation::
+* Directory Reader::
+* Date and Time::
+* Machine Time::
+* Subprocesses::
+* TCP Sockets::
+* Miscellaneous OS Facilities::
 
 Pathnames
 
-* Filenames and Pathnames::     
-* Components of Pathnames::     
-* Operations on Pathnames::     
-* Miscellaneous Pathnames::     
+* Filenames and Pathnames::
+* Components of Pathnames::
+* Operations on Pathnames::
+* Miscellaneous Pathnames::
 
 Date and Time
 
-* Universal Time::              
-* Decoded Time::                
-* File Time::                   
-* Time-Format Conversion::      
-* External Representation of Time::  
+* Universal Time::
+* Decoded Time::
+* File Time::
+* Time-Format Conversion::
+* External Representation of Time::
 
 Subprocesses
 
-* Subprocess Procedures::       
-* Subprocess Conditions::       
-* Subprocess Options::          
+* Subprocess Procedures::
+* Subprocess Conditions::
+* Subprocess Options::
 
 Error System
 
-* Condition Signalling::        
-* Error Messages::              
-* Condition Handling::          
-* Restarts::                    
-* Condition Instances::         
-* Condition Types::             
-* Taxonomy::                    
+* Condition Signalling::
+* Error Messages::
+* Condition Handling::
+* Restarts::
+* Condition Instances::
+* Condition Types::
+* Taxonomy::
 
 Restarts
 
-* Establishing Restart Code::   
-* Invoking Standard Restart Code::  
-* Finding and Invoking General Restart Code::  
-* The Named Restart Abstraction::  
+* Establishing Restart Code::
+* Invoking Standard Restart Code::
+* Finding and Invoking General Restart Code::
+* The Named Restart Abstraction::
 
 Condition Instances
 
-* Generating Operations on Conditions::  
-* Condition State::             
-* Simple Condition Instance Operations::  
+* Generating Operations on Conditions::
+* Condition State::
+* Simple Condition Instance Operations::
 
 Graphics
 
-* Opening and Closing of Graphics Devices::  
-* Coordinates for Graphics::    
-* Drawing Graphics::            
-* Characteristics of Graphics Output::  
-* Buffering of Graphics Output::  
-* Clipping of Graphics Output::  
-* Custom Graphics Operations::  
-* Images::                      
+* Opening and Closing of Graphics Devices::
+* Coordinates for Graphics::
+* Drawing Graphics::
+* Characteristics of Graphics Output::
+* Buffering of Graphics Output::
+* Clipping of Graphics Output::
+* Custom Graphics Operations::
+* Images::
 * X Graphics::                  Graphics on the X Window System
 * Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
 
 X Graphics
 
-* X Graphics Type::             
-* Utilities for X Graphics::    
-* Custom Operations on X Graphics Devices::  
+* X Graphics Type::
+* Utilities for X Graphics::
+* Custom Operations on X Graphics Devices::
 
 Win32 Graphics
 
-* Win32 Graphics Type::         
+* Win32 Graphics Type::
 * Custom Operations for Win32 Graphics::  Custom Operations for Win32 Graphics Devices
 
 Win32 Package Reference
 
-* Win32 Package Overview::      
-* Foreign function interface::  
-* Device Independent Bitmap Utilities::  
+* Win32 Package Overview::
+* Foreign function interface::
+* Device Independent Bitmap Utilities::
 
 Foreign Function Interface
 
-* Windows Types::               
-* Windows Foreign Procedures::  
-* Win32 API names and procedures::  
+* Windows Types::
+* Windows Foreign Procedures::
+* Win32 API names and procedures::
 
 Device Independent Bitmap Utilities
 
-* DIB procedures::              
-* Other parts of the DIB Utilities implementation::  
+* DIB procedures::
+* Other parts of the DIB Utilities implementation::
 
 @end detailmenu
 @end menu
