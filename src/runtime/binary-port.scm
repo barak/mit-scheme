@@ -160,6 +160,7 @@ USA.
 
 (define (get-output-bytevector port)
   (guarantee bytevector-output-port? port 'get-output-bytevector)
+  (flush-binary-output-port port)
   ((output-sink-custom-ref (buffer-source/sink (port-output-buffer port)) 1)))
 
 (define (bytevector-output-port? object)
