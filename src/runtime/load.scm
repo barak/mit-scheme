@@ -287,12 +287,12 @@ USA.
 	env)))
 
 (define (set-load-environment! environment)
-  (guarantee-environment environment 'SET-LOAD-ENVIRONMENT!)
+  (guarantee environment? environment 'SET-LOAD-ENVIRONMENT!)
   (if (not (default-object? (param:current-load-environment)))
       (param:current-load-environment environment)))
 
 (define (with-load-environment environment thunk)
-  (guarantee-environment environment 'WITH-LOAD-ENVIRONMENT)
+  (guarantee environment? environment 'WITH-LOAD-ENVIRONMENT)
   (parameterize* (list (cons param:current-load-environment environment))
     thunk))
 
@@ -549,12 +549,12 @@ USA.
   unspecific)
 
 (define (set-command-line-parser! keyword proc #!optional description)
-  (guarantee-string keyword 'SET-COMMAND-LINE-PARSER!)
+  (guarantee string? keyword 'SET-COMMAND-LINE-PARSER!)
   (let ((keyword (strip-leading-hyphens keyword))
 	(desc (if (default-object? description)
 		  ""
 		  (begin
-		    (guarantee-string description 'SET-COMMAND-LINE-PARSER!)
+		    (guarantee string? description 'SET-COMMAND-LINE-PARSER!)
 		    description))))
 
     (let ((place (assoc keyword *command-line-parsers*)))
@@ -586,14 +586,14 @@ USA.
 	  ""
 	  (begin
 	    (for-each (lambda (description-line)
-			(guarantee-string description-line caller))
+			(guarantee string? description-line caller))
 		      description-lines)
 	    (decorated-string-append "" "\n  " ""
 				     (cons keyword-line description-lines))))
       (string-append keyword-line "\n  (No description.)")))
 
 (define (simple-command-line-parser keyword thunk . description-lines)
-  (guarantee-string keyword 'SIMPLE-COMMAND-LINE-PARSER)
+  (guarantee string? keyword 'SIMPLE-COMMAND-LINE-PARSER)
   (set-command-line-parser! keyword
     (lambda (command-line)
       (values (cdr command-line) thunk))
