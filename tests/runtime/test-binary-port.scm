@@ -28,14 +28,24 @@ USA.
 
 (declare (usual-integrations))
 
+(define (random-bytevector k)
+  (let ((bv (make-bytevector k)))
+    (do ((i 0 (fix:+ i 1)))
+	((not (fix:< i k)))
+      (bytevector-u8-set! bv i (random-integer #x100)))
+    bv))
+
 (define bv0 (bytevector))
-(define bv1 (apply bytevector (reverse (iota 9))))
+(define bv1 (random-bytevector 9))
+(define bv2 (random-bytevector 1000))
+(define bv3 (random-bytevector 4096))	;buffer-size
+(define bv4 (random-bytevector 10000))
+(define all-bvs (list bv0 bv1 bv2 bv3 bv4))
 (define strides '(1 2 3 5 7 11))
 
 (define-test 'peek/read
   (lambda ()
-    (test-peek/read bv0)
-    (test-peek/read bv1)))
+    (for-each test-peek/read all-bvs)))
 
 (define (test-peek/read bv)
   (let ((port (open-input-bytevector bv)))
@@ -55,8 +65,7 @@ USA.
 
 (define-test 'read-bytevector
   (lambda ()
-    (test-read-bytevector bv0)
-    (test-read-bytevector bv1)))
+    (for-each test-read-bytevector all-bvs)))
 
 (define (test-read-bytevector bv)
   (for-each (lambda (stride)
@@ -83,8 +92,7 @@ USA.
 
 (define-test 'read-bytevector!
   (lambda ()
-    (test-read-bytevector! bv0)
-    (test-read-bytevector! bv1)))
+    (for-each test-read-bytevector! all-bvs)))
 
 (define (test-read-bytevector! bv)
   (for-each (lambda (stride)
@@ -111,6 +119,46 @@ USA.
 			(eof-object)))))
     (assert-equal (bytevector-copy target 0 (bytevector-length bv))
 		  bv)))
+
+(define-test 'write-u8
+  (lambda ()
+    (for-each test-write-u8 all-bvs)))
+
+(define (test-write-u8 bv)
+  (let ((port (open-output-bytevector)))
+    (assert-binary-output-port port)
+
+    (do ((i 0 (fix:+ i 1)))
+	((not (fix:< i (bytevector-length bv))))
+      (write-u8 (bytevector-u8-ref bv i) port))
+
+    (assert-equal (get-output-bytevector port) bv)))
+
+(define-test 'write-bytevector
+  (lambda ()
+    (for-each test-write-bytevector all-bvs)))
+
+(define (test-write-bytevector bv)
+  (for-each (lambda (stride)
+	      (test-write-bytevector-1 bv (lambda () stride)))
+	    strides)
+  (test-write-bytevector-1 bv (sequential-get-stride strides))
+  (test-write-bytevector-1 bv (sequential-get-stride (reverse strides))))
+
+(define (test-write-bytevector-1 bv get-stride)
+  (let ((port (open-output-bytevector)))
+    (assert-binary-output-port port)
+
+    (let loop ((i 0))
+      (let ((stride (get-stride))
+	    (remaining (fix:- (bytevector-length bv) i)))
+	(if (fix:> remaining 0)
+	    (let ((i* (fix:+ i (fix:min stride remaining))))
+	      (assert-eqv (write-bytevector bv port i i*)
+			  (fix:- i* i))
+	      (loop i*)))))
+
+    (assert-equal (get-output-bytevector port) bv)))
 
 (define (sequential-get-stride strides)
   (lambda ()

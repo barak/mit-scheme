@@ -464,19 +464,24 @@ USA.
 	      (available (output-buffer-available ob 'write-bytevector)))
 	  (cond ((fix:<= remaining available)
 		 (fix:- (write-to-buffer index remaining) start))
-		((fix:> available 0)
-		 (let ((index* (write-to-buffer index available)))
+		((fix:< available output-buffer-length)
+		 ;; There's already some data in the buffer, so fill it, drain
+		 ;; it, and write the rest directly.
+		 (let ((index*
+			(if (fix:> available 0)
+			    (write-to-buffer index available)
+			    index)))
 		   (let ((n (drain-output-buffer ob)))
 		     (if (and n (fix:> n 0))
 			 (if (fix:< n output-buffer-length)
 			     ;; partial drain
 			     (loop index*)
 			     ;; full drain
-			     (write-to-sink index))
+			     (write-to-sink index*))
 			 ;; no progress was made
 			 (fix:- index* start)))))
 		(else
-		 (write-to-sink start)))))
+		 (write-to-sink index)))))
 
       (define (write-to-buffer index n)
 	(let ((bi (buffer-end ob))
