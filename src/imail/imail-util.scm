@@ -423,7 +423,7 @@ USA.
 ;;;; Extended-string input port
 
 (define (read-file-into-xstring pathname)
-  (call-with-binary-input-file pathname
+  (call-with-legacy-binary-input-file pathname
     (lambda (port)
       (let ((n-bytes ((port/operation port 'LENGTH) port)))
 	(let ((xstring (make-string n-bytes)))

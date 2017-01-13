@@ -227,7 +227,7 @@ USA.
 	   (error:bad-range-argument port 'READ-BLOWFISH-FILE-HEADER)))))
 
 (define (blowfish-file? pathname)
-  (let ((line (call-with-binary-input-file pathname read-line)))
+  (let ((line (call-with-legacy-binary-input-file pathname read-line)))
     (and (not (eof-object? line))
 	 (or (string=? line blowfish-file-header-v1)
 	     (string=? line blowfish-file-header-v2)))))

@@ -133,7 +133,7 @@ USA.
     (port/set-line-ending port (file-line-ending pathname))
     port))
 
-(define (open-binary-input-file filename)
+(define (open-legacy-binary-input-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-input-channel (->namestring pathname)))
 	 (port (make-generic-i/o-port channel #f input-file-type pathname)))
@@ -142,7 +142,7 @@ USA.
     (port/set-line-ending port 'BINARY)
     port))
 
-(define (open-binary-output-file filename #!optional append?)
+(define (open-legacy-binary-output-file filename #!optional append?)
   (let* ((pathname (merge-pathnames filename))
 	 (channel
 	  (let ((filename (->namestring pathname)))
@@ -155,7 +155,7 @@ USA.
     (port/set-line-ending port 'BINARY)
     port))
 
-(define (open-exclusive-binary-output-file filename)
+(define (open-exclusive-legacy-binary-output-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-exclusive-output-channel (->namestring pathname)))
 	 (port (make-generic-i/o-port #f channel output-file-type pathname)))
@@ -164,7 +164,7 @@ USA.
     (port/set-line-ending port 'BINARY)
     port))
 
-(define (open-binary-i/o-file filename)
+(define (open-legacy-binary-i/o-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-io-channel (->namestring pathname)))
 	 (port (make-generic-i/o-port channel channel i/o-file-type pathname)))
@@ -182,8 +182,8 @@ USA.
 (define call-with-input-file
   (make-call-with-file open-input-file))
 
-(define call-with-binary-input-file
-  (make-call-with-file open-binary-input-file))
+(define call-with-legacy-binary-input-file
+  (make-call-with-file open-legacy-binary-input-file))
 
 (define call-with-output-file
   (make-call-with-file open-output-file))
@@ -191,18 +191,18 @@ USA.
 (define call-with-exclusive-output-file
   (make-call-with-file open-exclusive-output-file))
 
-(define call-with-binary-output-file
-  (make-call-with-file open-binary-output-file))
+(define call-with-legacy-binary-output-file
+  (make-call-with-file open-legacy-binary-output-file))
 
-(define call-with-exclusive-binary-output-file
-  (make-call-with-file open-exclusive-binary-output-file))
+(define call-with-exclusive-legacy-binary-output-file
+  (make-call-with-file open-exclusive-legacy-binary-output-file))
 
 (define call-with-append-file
   (make-call-with-file (lambda (filename) (open-output-file filename #t))))
 
-(define call-with-binary-append-file
+(define call-with-legacy-binary-append-file
   (make-call-with-file
-   (lambda (filename) (open-binary-output-file filename #t))))
+   (lambda (filename) (open-legacy-binary-output-file filename #t))))
 
 (define ((make-with-input-from-file call) input-specifier thunk)
   (call input-specifier
@@ -213,7 +213,7 @@ USA.
   (make-with-input-from-file call-with-input-file))
 
 (define with-input-from-binary-file
-  (make-with-input-from-file call-with-binary-input-file))
+  (make-with-input-from-file call-with-legacy-binary-input-file))
 
 (define ((make-with-output-to-file call) output-specifier thunk)
   (call output-specifier
@@ -227,7 +227,7 @@ USA.
   (make-with-output-to-file call-with-exclusive-output-file))
 
 (define with-output-to-binary-file
-  (make-with-output-to-file call-with-binary-output-file))
+  (make-with-output-to-file call-with-legacy-binary-output-file))
 
-(define with-output-to-exclusive-binary-file
-  (make-with-output-to-file call-with-exclusive-binary-output-file))
+(define with-output-to-exclusive-legacy-binary-file
+  (make-with-output-to-file call-with-exclusive-legacy-binary-output-file))

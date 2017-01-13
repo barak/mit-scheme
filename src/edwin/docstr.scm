@@ -143,7 +143,7 @@ USA.
 	    output
 	    permanent))	
   (set-string-length! *doc-strings* *doc-string-posn*)
-  (call-with-binary-output-file
+  (call-with-legacy-binary-output-file
    output
    (lambda (port)
      (output-port/write-string port *doc-strings*)))

@@ -973,6 +973,7 @@ USA.
 	  guarantee-string
 	  guarantee-string-index
 	  guarantee-xstring
+	  legacy-string?
 	  ;; END deprecated bindings
 	  (set-vector-8b-length! set-string-length!)
 	  (vector-8b-length string-length)
@@ -987,7 +988,6 @@ USA.
 	  guarantee-substring-end-index
 	  guarantee-substring-start-index
 	  hexadecimal->vector-8b
-	  legacy-string?
 	  lisp-string->camel-case
 	  list->string
 	  make-string
@@ -1135,6 +1135,9 @@ USA.
   (files "bytevector")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  legacy-string->bytevector
+	  ;; END deprecated bindings
 	  byte?
 	  bytevector
 	  bytevector-append
@@ -1146,7 +1149,6 @@ USA.
 	  bytevector-u8-set!
 	  bytevector=?
 	  bytevector?
-	  legacy-string->bytevector
 	  make-bytevector
 	  string->utf8
 	  utf8->string))
@@ -2100,27 +2102,27 @@ USA.
   (parent (runtime))
   (export ()
 	  ;; BEGIN deprecated bindings
+	  call-with-exclusive-legacy-binary-output-file
+	  call-with-legacy-binary-append-file
+	  call-with-legacy-binary-input-file
+	  call-with-legacy-binary-output-file
+	  open-exclusive-legacy-binary-output-file
+	  open-legacy-binary-i/o-file
+	  open-legacy-binary-input-file
+	  open-legacy-binary-output-file
 	  with-input-from-binary-file
 	  with-output-to-binary-file
+	  with-output-to-exclusive-legacy-binary-file
 	  ;; END deprecated bindings
 	  call-with-append-file
-	  call-with-binary-append-file
-	  call-with-binary-input-file
-	  call-with-binary-output-file
-	  call-with-exclusive-binary-output-file
 	  call-with-exclusive-output-file
 	  call-with-input-file
 	  call-with-output-file
-	  open-binary-i/o-file
-	  open-binary-input-file
-	  open-binary-output-file
-	  open-exclusive-binary-output-file
 	  open-exclusive-output-file
 	  open-i/o-file
 	  open-input-file
 	  open-output-file
 	  with-input-from-file
-	  with-output-to-exclusive-binary-file
 	  with-output-to-exclusive-file
 	  with-output-to-file)
   (initialization (initialize-package!)))

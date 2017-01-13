@@ -667,7 +667,7 @@ Prefix arg means treat the plaintext file as binary data."
 			   " already exists; overwrite")))
        (begin
 	 ((if binary-plaintext?
-	      call-with-binary-input-file
+	      call-with-legacy-binary-input-file
 	      call-with-input-file)
 	  from
 	  (lambda (input)
@@ -687,7 +687,7 @@ Prefix arg means treat the plaintext file as binary data."
 			   " already exists; overwrite")))
        (begin
 	 ((if binary-plaintext?
-	      call-with-binary-output-file
+	      call-with-legacy-binary-output-file
 	      call-with-output-file)
 	  to
 	  (lambda (output)
@@ -699,7 +699,7 @@ Prefix arg means treat the plaintext file as binary data."
 	 #t)))
 
 (define (%blowfish-encrypt-file pathname input)
-  (call-with-binary-output-file pathname
+  (call-with-legacy-binary-output-file pathname
     (lambda (output)
       (call-with-sensitive-string (call-with-confirmed-pass-phrase md5-string)
 	(lambda (key-string)
@@ -708,7 +708,7 @@ Prefix arg means treat the plaintext file as binary data."
 				 #t))))))
 
 (define (%blowfish-decrypt-file pathname output)
-  (call-with-binary-input-file pathname
+  (call-with-legacy-binary-input-file pathname
     (lambda (input)
       (call-with-sensitive-string
        (call-with-pass-phrase "Pass phrase" md5-string)

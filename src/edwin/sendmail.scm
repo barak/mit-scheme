@@ -1457,7 +1457,7 @@ the user from the mailer."
 	  (let ((context (initialize port text?)))
 	    ((if (eq? type 'TEXT)
 		 call-with-input-file
-		 call-with-binary-input-file)
+		 call-with-legacy-binary-input-file)
 	     (mime-attachment-pathname attachment)
 	     (lambda (input-port)
 	       (let ((buffer (make-string 4096)))

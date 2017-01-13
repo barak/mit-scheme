@@ -203,7 +203,7 @@ USA.
 
 (define (fasl-file? pathname)
   (and (file-regular? pathname)
-       (call-with-binary-input-file pathname
+       (call-with-legacy-binary-input-file pathname
 	 (lambda (port)
 	   (let ((n (vector-ref (gc-space-status) 0)))
 	     (let ((marker (make-string n)))

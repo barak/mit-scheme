@@ -86,9 +86,9 @@ USA.
 ;;; determines the algorithm.
 
 (define (compress ifile ofile)
-  (call-with-binary-input-file (merge-pathnames ifile)
+  (call-with-legacy-binary-input-file (merge-pathnames ifile)
     (lambda (input)
-      (call-with-binary-output-file (merge-pathnames ofile)
+      (call-with-legacy-binary-output-file (merge-pathnames ofile)
         (lambda (output)
 	  (write-string "Compressed-B1-1.00" output)
 	  (compress-ports input output))))))

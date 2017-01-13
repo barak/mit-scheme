@@ -604,7 +604,7 @@ USA.
 	(fasload-loader temporary-file))))))
 
 (define (uncompress-internal ifile ofile if-fail)
-  (call-with-binary-input-file (merge-pathnames ifile)
+  (call-with-legacy-binary-input-file (merge-pathnames ifile)
     (lambda (input)
       (let* ((file-marker "Compressed-B1-1.00")
 	     (marker-size (string-length file-marker))
@@ -614,7 +614,7 @@ USA.
 						   actual-marker 0 marker-size)
 			marker-size)
 		 (string=? file-marker actual-marker))
-	    (call-with-binary-output-file (merge-pathnames ofile)
-   	      (lambda (output)
+	    (call-with-legacy-binary-output-file (merge-pathnames ofile)
+	      (lambda (output)
 		(uncompress-ports input output (fix:* (file-length ifile) 2))))
 	    (if-fail "Not a recognized compressed file:" ifile))))))

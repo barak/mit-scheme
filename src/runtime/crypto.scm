@@ -240,7 +240,7 @@ USA.
   unspecific)
 
 (define (mhash-file hash-type filename)
-  (call-with-binary-input-file filename
+  (call-with-legacy-binary-input-file filename
     (lambda (port)
       (let ((buffer (make-string 4096))
 	    (context (mhash-init hash-type)))
@@ -304,7 +304,7 @@ USA.
 	 (error "This Scheme system was built without MD5 support."))))
 
 (define (%md5-file filename)
-  (call-with-binary-input-file filename
+  (call-with-legacy-binary-input-file filename
     (lambda (port)
       (let ((buffer (make-string 4096))
 	    (context ((ucode-primitive md5-init 0))))

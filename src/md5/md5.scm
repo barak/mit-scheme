@@ -68,7 +68,7 @@ USA.
     result))
 
 (define (md5-file filename)
-  (call-with-binary-input-file filename
+  (call-with-legacy-binary-input-file filename
     (lambda (port)
       (let ((buffer (make-string 4096))
 	    (context (%md5-init)))

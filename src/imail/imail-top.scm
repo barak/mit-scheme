@@ -1097,7 +1097,7 @@ With prefix argument, prompt even when point is on an attachment."
 		 (eq? type 'MESSAGE)))))
       (if (or (not (file-exists? filename))
 	      (prompt-for-yes-or-no? "File already exists; overwrite"))
-	  ((if text? call-with-output-file call-with-binary-output-file)
+	  ((if text? call-with-output-file call-with-legacy-binary-output-file)
 	   filename
 	   (lambda (port)
 	     (call-with-mime-decoding-output-port

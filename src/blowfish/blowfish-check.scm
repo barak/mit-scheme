@@ -27,7 +27,7 @@ USA.
 ;;;; Test the BLOWFISH option.
 
 (let ((sample "Some text to encrypt and decrypt."))
-  (call-with-binary-output-file "test"
+  (call-with-legacy-binary-output-file "test"
     (lambda (output)
       (call-with-input-string sample
 	(lambda (input)
@@ -35,7 +35,7 @@ USA.
 				 (write-blowfish-file-header output)
 				 #t)))))
   (let ((read-back
-	 (call-with-binary-input-file "test"
+	 (call-with-legacy-binary-input-file "test"
 	   (lambda (input)
 	     (call-with-output-string
 	      (lambda (output)

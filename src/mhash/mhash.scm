@@ -393,7 +393,7 @@ USA.
   unspecific)
 
 (define (mhash-file hash-type filename)
-  (call-with-binary-input-file filename
+  (call-with-legacy-binary-input-file filename
     (lambda (port)
       (let ((buffer (make-string 4096))
 	    (context (mhash-init hash-type)))
