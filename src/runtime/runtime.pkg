@@ -122,6 +122,9 @@ USA.
   (files "boole")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  guarantee-boolean
+	  ;; END deprecated bindings
 	  (false? not)
 	  boolean/and
 	  boolean/or
@@ -129,7 +132,6 @@ USA.
 	  boolean?
 	  false
 	  for-all?
-	  guarantee-boolean
 	  not
 	  there-exists?
 	  true))
@@ -138,13 +140,15 @@ USA.
   (files "boot")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-unparser-method
+	  guarantee-unparser-method
+	  ;; END deprecated bindings
 	  bracketed-unparser-method
 	  default-object
 	  default-object?
-	  error:not-unparser-method
 	  gc-space-status
 	  general-unparser-method
-	  guarantee-unparser-method
 	  interrupt-bit/after-gc
 	  interrupt-bit/gc
 	  interrupt-bit/global-1
@@ -181,6 +185,15 @@ USA.
   (files "fixart")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  guarantee-fixnum
+	  guarantee-index-fixnum
+	  guarantee-limited-index-fixnum
+	  guarantee-negative-fixnum
+	  guarantee-non-negative-fixnum
+	  guarantee-non-positive-fixnum
+	  guarantee-positive-fixnum
+	  ;; END deprecated bindings
 	  (exact-integer? int:integer?)
 	  ->flonum
 	  fix:*
@@ -275,13 +288,6 @@ USA.
 	  flo:y1
 	  flo:yn
 	  flo:zero?
-	  guarantee-fixnum
-	  guarantee-index-fixnum
-	  guarantee-limited-index-fixnum
-	  guarantee-negative-fixnum
-	  guarantee-non-negative-fixnum
-	  guarantee-non-positive-fixnum
-	  guarantee-positive-fixnum
 	  index-fixnum?
 	  int:*
 	  int:+
@@ -433,6 +439,10 @@ USA.
   (files "global")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-hook-list
+	  guarantee-hook-list
+	  ;; END deprecated bindings
 	  %exit
 	  %quit
 	  (*the-non-printing-object* unspecific)
@@ -454,7 +464,6 @@ USA.
 	  ephemeron?
 	  eq?
 	  error-procedure
-	  error:not-hook-list
 	  eval
 	  exit
 	  false-procedure
@@ -462,7 +471,6 @@ USA.
 	  for-each-interned-symbol
 	  get-fixed-objects-vector
 	  get-interrupt-enables
-	  guarantee-hook-list
 	  hook-in-list?
 	  hook-list?
 	  hook/exit
@@ -621,6 +629,17 @@ USA.
   (files "sfile")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-mime-token
+	  error:not-mime-token-string
+	  error:not-mime-type
+	  error:not-mime-type-string
+	  guarantee-init-file-specifier
+	  guarantee-mime-token
+	  guarantee-mime-token-string
+	  guarantee-mime-type
+	  guarantee-mime-type-string
+	  ;; END deprecated bindings
 	  <mime-type>
 	  allocate-temporary-file
 	  associate-pathname-type-with-mime-type
@@ -634,10 +653,6 @@ USA.
 	  delete-file-no-errors
 	  directory-file-names
 	  disassociate-pathname-type-from-mime-type
-	  error:not-mime-token
-	  error:not-mime-token-string
-	  error:not-mime-type
-	  error:not-mime-type-string
 	  file-access
 	  file-directory?
 	  file-eq?
@@ -658,11 +673,6 @@ USA.
 	  file-writable?
 	  file-writeable?
 	  guarantee-init-file-directory
-	  guarantee-init-file-specifier
-	  guarantee-mime-token
-	  guarantee-mime-token-string
-	  guarantee-mime-type
-	  guarantee-mime-type-string
 	  hard-link-file
 	  init-file-specifier?
 	  make-directory
@@ -694,6 +704,7 @@ USA.
   (files "symbol")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
 	  (symbol-append symbol)
 	  error:not-interned-symbol
 	  error:not-symbol
@@ -701,6 +712,7 @@ USA.
 	  guarantee-interned-symbol
 	  guarantee-symbol
 	  guarantee-uninterned-symbol
+	  ;; END deprecated bindings
 	  intern
 	  intern-soft
 	  interned-symbol?
@@ -727,6 +739,9 @@ USA.
   (files "udata")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  guarantee-promise
+	  ;; END deprecated bindings
 	  compiled-code-address->block
 	  compiled-code-address->offset
 	  compiled-code-address?
@@ -757,7 +772,6 @@ USA.
 	  environment-extension-procedure
 	  environment-extension?
 	  force
-	  guarantee-promise
 	  interpreter-return-address?
 	  make-return-address
 	  microcode-error
@@ -783,11 +797,13 @@ USA.
   (files "vector")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  guarantee-vector
+	  guarantee-vector-of-unique-symbols
+	  ;; END deprecated bindings
 	  for-each-vector-element
 	  guarantee-subvector
-	  guarantee-vector
 	  guarantee-vector-of-type
-	  guarantee-vector-of-unique-symbols
 	  list->vector
 	  make-initialized-vector
 	  make-vector
@@ -950,7 +966,14 @@ USA.
   (files "string")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
 	  (guarantee-vector-8b guarantee-string)
+	  error:not-string
+	  error:not-xstring
+	  guarantee-string
+	  guarantee-string-index
+	  guarantee-xstring
+	  ;; END deprecated bindings
 	  (set-vector-8b-length! set-string-length!)
 	  (vector-8b-length string-length)
 	  (vector-8b-maximum-length string-maximum-length)
@@ -960,14 +983,9 @@ USA.
 	  camel-case-string->lisp
 	  char->string
 	  decorated-string-append
-	  error:not-string
-	  error:not-xstring
-	  guarantee-string
-	  guarantee-string-index
 	  guarantee-substring
 	  guarantee-substring-end-index
 	  guarantee-substring-start-index
-	  guarantee-xstring
 	  hexadecimal->vector-8b
 	  legacy-string?
 	  lisp-string->camel-case
@@ -1203,8 +1221,18 @@ USA.
   (files "char")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
 	  (error:not-wide-char error:not-unicode-char)
 	  (guarantee-wide-char guarantee-unicode-char)
+	  error:not-char
+	  error:not-radix
+	  error:not-unicode-char
+	  error:not-unicode-scalar-value
+	  guarantee-char
+	  guarantee-radix
+	  guarantee-unicode-char
+	  guarantee-unicode-scalar-value
+	  ;; END deprecated bindings
 	  (wide-char? unicode-char?)
 	  8-bit-char?
 	  ascii->char
@@ -1244,15 +1272,7 @@ USA.
 	  clear-char-bits
 	  code->char
 	  digit->char
-	  error:not-char
-	  error:not-radix
-	  error:not-unicode-char
-	  error:not-unicode-scalar-value
 	  guarantee-8-bit-char
-	  guarantee-char
-	  guarantee-radix
-	  guarantee-unicode-char
-	  guarantee-unicode-scalar-value
 	  integer->char
 	  make-char
 	  name->char
@@ -1270,6 +1290,20 @@ USA.
   (files "chrset")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  (error:not-8-bit-alphabet error:not-8-bit-char-set)
+	  (error:not-alphabet error:not-char-set)
+	  (guarantee-8-bit-alphabet guarantee-8-bit-char-set)
+	  (guarantee-alphabet guarantee-char-set)
+	  error:not-8-bit-char-set
+	  error:not-char-set
+	  error:not-well-formed-scalar-value-list
+	  error:not-well-formed-scalar-value-range
+	  guarantee-8-bit-char-set
+	  guarantee-char-set
+	  guarantee-well-formed-scalar-value-list
+	  guarantee-well-formed-scalar-value-range
+	  ;; END deprecated bindings
 	  (8-bit-alphabet? 8-bit-char-set?)
 	  (<alphabet> <char-set>)
 	  (alphabet char-set)
@@ -1278,10 +1312,6 @@ USA.
 	  (alphabet->string char-set->string)
 	  (alphabet-predicate char-set-predicate)
 	  (alphabet? char-set?)
-	  (error:not-8-bit-alphabet error:not-8-bit-char-set)
-	  (error:not-alphabet error:not-char-set)
-	  (guarantee-8-bit-alphabet guarantee-8-bit-char-set)
-	  (guarantee-alphabet guarantee-char-set)
 	  (string->alphabet string->char-set)
 	  8-bit-char-set?
 	  <char-set>
@@ -1332,14 +1362,6 @@ USA.
 	  char-whitespace?
 	  char-wsp?
 	  chars->char-set
-	  error:not-8-bit-char-set
-	  error:not-char-set
-	  error:not-well-formed-scalar-value-list
-	  error:not-well-formed-scalar-value-range
-	  guarantee-8-bit-char-set
-	  guarantee-char-set
-	  guarantee-well-formed-scalar-value-list
-	  guarantee-well-formed-scalar-value-range
 	  scalar-value-in-char-set?
 	  scalar-values->alphabet
 	  scalar-values->char-set
@@ -1436,13 +1458,15 @@ USA.
   (files "contin")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-continuation
+	  guarantee-continuation
+	  ;; END deprecated bindings
 	  call-with-current-continuation
 	  continuation/block-thread-events?
 	  continuation/control-point
 	  continuation/dynamic-state
 	  continuation?
-	  error:not-continuation
-	  guarantee-continuation
 	  make-continuation
 	  within-continuation)
   (export (runtime thread)
@@ -1511,6 +1535,12 @@ USA.
   (files "datime")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-decoded-time
+	  error:not-time-zone
+	  guarantee-decoded-time
+	  guarantee-time-zone
+	  ;; END deprecated bindings
 	  (decode-universal-time universal-time->local-decoded-time)
 	  (decoded-time->string decoded-time->rfc2822-string)
 	  (encode-universal-time decoded-time->universal-time)
@@ -1548,8 +1578,6 @@ USA.
 	  decoded-time/zone
 	  decoded-time?
 	  epoch
-	  error:not-decoded-time
-	  error:not-time-zone
 	  file-time->global-ctime-string
 	  file-time->global-iso8601-string
 	  file-time->global-rfc2822-string
@@ -1558,8 +1586,6 @@ USA.
 	  file-time->local-rfc2822-string
 	  get-universal-time
 	  global-decoded-time
-	  guarantee-decoded-time
-	  guarantee-time-zone
 	  iso8601-string->decoded-time
 	  iso8601-string->file-time
 	  iso8601-string->universal-time
@@ -1680,6 +1706,20 @@ USA.
   (files "uproc")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-compiled-procedure
+	  error:not-compound-procedure
+	  error:not-primitive-procedure
+	  error:not-procedure
+	  error:not-procedure-arity
+	  error:not-thunk
+	  guarantee-compiled-procedure
+	  guarantee-compound-procedure
+	  guarantee-primitive-procedure
+	  guarantee-procedure
+	  guarantee-procedure-arity
+	  guarantee-thunk
+	  ;; END deprecated bindings
 	  %entity-extra
 	  %entity-procedure
 	  %set-entity-extra!
@@ -1698,19 +1738,7 @@ USA.
 	  entity-extra
 	  entity-procedure
 	  entity?
-	  error:not-compiled-procedure
-	  error:not-compound-procedure
-	  error:not-primitive-procedure
-	  error:not-procedure
-	  error:not-procedure-arity
-	  error:not-thunk
-	  guarantee-compiled-procedure
-	  guarantee-compound-procedure
-	  guarantee-primitive-procedure
-	  guarantee-procedure
-	  guarantee-procedure-arity
 	  guarantee-procedure-of-arity
-	  guarantee-thunk
 	  implemented-primitive-procedure?
 	  make-apply-hook
 	  make-arity-dispatched-procedure
@@ -1862,6 +1890,9 @@ USA.
   (files "uenvir")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  guarantee-environment
+	  ;; END deprecated bindings
 	  compiled-procedure/environment
 	  environment-arguments
 	  environment-assign!
@@ -1886,7 +1917,6 @@ USA.
 	  environment?
 	  (extend-ic-environment extend-top-level-environment)
 	  extend-top-level-environment
-	  guarantee-environment
 	  ic-environment?
 	  interpreter-environment?
 	  (make-null-interpreter-environment make-root-top-level-environment)
@@ -2069,6 +2099,10 @@ USA.
   (files "fileio")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  with-input-from-binary-file
+	  with-output-to-binary-file
+	  ;; END deprecated bindings
 	  call-with-append-file
 	  call-with-binary-append-file
 	  call-with-binary-input-file
@@ -2085,9 +2119,7 @@ USA.
 	  open-i/o-file
 	  open-input-file
 	  open-output-file
-	  with-input-from-binary-file
 	  with-input-from-file
-	  with-output-to-binary-file
 	  with-output-to-exclusive-binary-file
 	  with-output-to-exclusive-file
 	  with-output-to-file)
@@ -2280,6 +2312,10 @@ USA.
   (import (runtime population)
 	  add-to-population!/unsafe)
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-hash-table
+	  guarantee-hash-table
+	  ;; END deprecated bindings
 	  (eq-hash-table-type key-weak-eq-hash-table-type)
 	  (eqv-hash-table-type key-weak-eqv-hash-table-type)
 	  (hash-table-clear! hash-table/clear!)
@@ -2311,8 +2347,6 @@ USA.
 	  equality-predicate?
 	  eqv-hash
 	  eqv-hash-mod
-	  error:not-hash-table
-	  guarantee-hash-table
 	  hash-by-identity
 	  hash-table->alist
 	  hash-table-copy
@@ -2499,6 +2533,20 @@ USA.
 	  (port/with-input-terminal-mode with-input-port-terminal-mode)
 	  (port/with-output-blocking-mode with-output-port-blocking-mode)
 	  (port/with-output-terminal-mode with-output-port-terminal-mode)
+	  guarantee-i/o-port
+	  guarantee-input-port
+	  guarantee-output-port
+	  guarantee-port
+	  set-current-input-port!
+	  set-current-output-port!
+	  set-interaction-i/o-port!
+	  set-notification-output-port!
+	  set-trace-output-port!
+	  with-input-from-port
+	  with-interaction-i/o-port
+	  with-notification-output-port
+	  with-output-to-port
+	  with-trace-output-port
 	  ;; END deprecated bindings
 	  ;; Temporary definition to satisfy R7RS
 	  ;; TODO(cph): provide a proper definition
@@ -2508,10 +2556,6 @@ USA.
 	  close-port
 	  current-input-port
 	  current-output-port
-	  guarantee-i/o-port
-	  guarantee-input-port
-	  guarantee-output-port
-	  guarantee-port
 	  i/o-port?
 	  input-port-blocking-mode
 	  input-port-open?
@@ -2537,16 +2581,11 @@ USA.
 	  port/supports-coding?
 	  port?
 	  remove-textual-port-property!
-	  set-current-input-port!
-	  set-current-output-port!
 	  set-input-port-blocking-mode!
 	  set-input-port-terminal-mode!
-	  set-interaction-i/o-port!
-	  set-notification-output-port!
 	  set-output-port-blocking-mode!
 	  set-output-port-terminal-mode!
 	  set-textual-port-property!
-	  set-trace-output-port!
 	  textual-i/o-port?
 	  textual-input-port?
 	  textual-output-port?
@@ -2560,15 +2599,10 @@ USA.
 	  set-textual-port-state!
 	  textual-port-state
 	  trace-output-port
-	  with-input-from-port
 	  with-input-port-blocking-mode
 	  with-input-port-terminal-mode
-	  with-interaction-i/o-port
-	  with-notification-output-port
 	  with-output-port-blocking-mode
-	  with-output-port-terminal-mode
-	  with-output-to-port
-	  with-trace-output-port)
+	  with-output-port-terminal-mode)
   (export (runtime)
 	  input-port-channel
 	  output-port-channel)
@@ -2603,6 +2637,10 @@ USA.
   (files "input")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  make-eof-object
+	  read-substring!
+	  ;; END deprecated bindings
 	  (discard-char read-char)
 	  (input-port/discard-char input-port/read-char)
 	  char-ready?
@@ -2619,7 +2657,6 @@ USA.
 	  input-port/read-string!
 	  input-port/read-substring!
 	  input-port/unread-char
-	  make-eof-object
 	  peek-char
 	  read
 	  read-char
@@ -2629,14 +2666,16 @@ USA.
 	  read-line
 	  read-string
 	  read-string!
-	  read-substring!
 	  unread-char))
 
 (define-package (runtime output-port)
   (files "output")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
 	  (flush-output flush-output-port)
+	  write-substring
+	  ;; END deprecated bindings
 	  (write-shared write)
 	  (write-simple write)
 	  beep
@@ -2664,8 +2703,7 @@ USA.
 	  write-line
 	  write-string
 	  write-strings-in-columns
-	  write-strings-in-paragraph
-	  write-substring)
+	  write-strings-in-paragraph)
   (initialization (initialize-package!)))
 
 (define-package (runtime interrupt-handler)
@@ -2722,6 +2760,24 @@ USA.
   (files "list")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-alist
+	  error:not-circular-list
+	  error:not-dotted-list
+	  error:not-keyword-list
+	  error:not-list
+	  error:not-pair
+	  error:not-unique-keyword-list
+	  error:not-weak-list
+	  guarantee-alist
+	  guarantee-circular-list
+	  guarantee-dotted-list
+	  guarantee-keyword-list
+	  guarantee-list
+	  guarantee-pair
+	  guarantee-unique-keyword-list
+	  guarantee-weak-list
+	  ;; END deprecated bindings
 	  (improper-list? dotted-list?)
 	  (list-search-negative find-non-matching-item)
 	  (list-search-positive find-matching-item)
@@ -2805,15 +2861,7 @@ USA.
 	  dotted-list?			;SRFI-1
 	  eighth
 	  encode-general-car-cdr
-	  error:not-alist
-	  error:not-circular-list
-	  error:not-dotted-list
-	  error:not-keyword-list
-	  error:not-list
-	  error:not-pair
 	  error:not-restricted-keyword-list
-	  error:not-unique-keyword-list
-	  error:not-weak-list
 	  except-last-pair
 	  except-last-pair!
 	  fifth
@@ -2829,18 +2877,10 @@ USA.
 	  fourth
 	  general-car-cdr
 	  get-keyword-value
-	  guarantee-alist
-	  guarantee-circular-list
-	  guarantee-dotted-list
-	  guarantee-keyword-list
-	  guarantee-list
 	  guarantee-list->length
 	  guarantee-list-of-type
 	  guarantee-list-of-type->length
-	  guarantee-pair
 	  guarantee-restricted-keyword-list
-	  guarantee-unique-keyword-list
-	  guarantee-weak-list
 	  iota				;SRFI-1
 	  keep-matching-items
 	  keep-matching-items!
@@ -2914,10 +2954,12 @@ USA.
   (files "lambda-list")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
 	  error:not-mit-lambda-list
 	  error:not-r4rs-lambda-list
 	  guarantee-mit-lambda-list
 	  guarantee-r4rs-lambda-list
+	  ;; END deprecated bindings
 	  lambda-tag:aux
 	  lambda-tag:key
 	  lambda-tag:optional
@@ -3078,7 +3120,7 @@ USA.
 	  microcode-id/machine-type
 	  microcode-id/operating-system
 	  microcode-id/operating-system-name
-  	  microcode-id/operating-system-suffix
+	  microcode-id/operating-system-suffix
 	  microcode-id/operating-system-variant
 	  microcode-id/stack-type
 	  microcode-id/tty-x-size
@@ -3108,6 +3150,38 @@ USA.
   (files "arith" "dragon4")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-complex
+	  error:not-exact
+	  error:not-exact-integer
+	  error:not-exact-nonnegative-integer
+	  error:not-exact-positive-integer
+	  error:not-exact-rational
+	  error:not-inexact
+	  error:not-integer
+	  error:not-negative
+	  error:not-non-negative
+	  error:not-non-positive
+	  error:not-number
+	  error:not-positive
+	  error:not-rational
+	  error:not-real
+	  guarantee-complex
+	  guarantee-exact
+	  guarantee-exact-integer
+	  guarantee-exact-nonnegative-integer
+	  guarantee-exact-positive-integer
+	  guarantee-exact-rational
+	  guarantee-inexact
+	  guarantee-integer
+	  guarantee-negative
+	  guarantee-non-negative
+	  guarantee-non-positive
+	  guarantee-number
+	  guarantee-positive
+	  guarantee-rational
+	  guarantee-real
+	  ;; END deprecated bindings
 	  (-1+ complex:-1+)
 	  (1+ complex:1+)
 	  (abs complex:abs)
@@ -3175,21 +3249,6 @@ USA.
 	  >=
 	  atan
 	  cube
-	  error:not-complex
-	  error:not-exact
-	  error:not-exact-integer
-	  error:not-exact-nonnegative-integer
-	  error:not-exact-positive-integer
-	  error:not-exact-rational
-	  error:not-inexact
-	  error:not-integer
-	  error:not-negative
-	  error:not-non-negative
-	  error:not-non-positive
-	  error:not-number
-	  error:not-positive
-	  error:not-rational
-	  error:not-real
 	  exact-nonnegative-integer?
 	  exact-positive-integer?
 	  flo:nan?
@@ -3200,21 +3259,6 @@ USA.
 	  flonum-unparser:normal-output
 	  flonum-unparser:scientific-output
 	  gcd
-	  guarantee-complex
-	  guarantee-exact
-	  guarantee-exact-integer
-	  guarantee-exact-nonnegative-integer
-	  guarantee-exact-positive-integer
-	  guarantee-exact-rational
-	  guarantee-inexact
-	  guarantee-integer
-	  guarantee-negative
-	  guarantee-non-negative
-	  guarantee-non-positive
-	  guarantee-number
-	  guarantee-positive
-	  guarantee-rational
-	  guarantee-real
 	  inexact?
 	  integer-divide-quotient
 	  integer-divide-remainder
@@ -3278,6 +3322,7 @@ USA.
   (files "parse")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
 	  *parser-associate-positions?*
 	  *parser-atom-delimiters*
 	  *parser-canonicalize-symbols?*
@@ -3286,6 +3331,7 @@ USA.
 	  *parser-keyword-style*
 	  *parser-radix*
 	  *parser-table*
+	  ;; END deprecated bindings
 	  define-bracketed-object-parser-method
 	  param:parser-associate-positions?
 	  param:parser-atom-delimiters
@@ -3334,8 +3380,10 @@ USA.
   (files "partab")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
 	  error:not-parser-table
 	  guarantee-parser-table
+	  ;; END deprecated bindings
 	  make-parser-table
 	  parser-table/copy
 	  parser-table/entry
@@ -3349,6 +3397,10 @@ USA.
   (files "pathnm")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-pathname
+	  guarantee-pathname
+	  ;; END deprecated bindings
 	  *default-pathname-defaults*
 	  ->namestring
 	  ->pathname
@@ -3359,10 +3411,8 @@ USA.
 	  directory-pathname?
 	  enough-namestring
 	  enough-pathname
-	  error:not-pathname
 	  file-namestring
 	  file-pathname
-	  guarantee-pathname
 	  host-namestring
 	  host/type-name
 	  host=?
@@ -3468,6 +3518,14 @@ USA.
   (files "io")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-channel
+	  error:not-directory-channel
+	  error:not-dld-handle
+	  guarantee-channel
+	  guarantee-directory-channel
+	  guarantee-dld-handle
+	  ;; END deprecated bindings
 	  all-dld-handles
 	  all-open-channels
 	  channel-blocking
@@ -3509,18 +3567,12 @@ USA.
 	  dld-loaded-file?
 	  dld-lookup-symbol
 	  dld-unload-file
-	  error:not-channel
-	  error:not-directory-channel
-	  error:not-dld-handle
 	  file-open-append-channel
 	  file-open-exclusive-output-channel
 	  file-open-input-channel
 	  file-open-io-channel
 	  file-open-output-channel
 	  find-dld-handle
-	  guarantee-channel
-	  guarantee-directory-channel
-	  guarantee-dld-handle
 	  guarantee-valid-dld-handle
 	  make-pipe
 	  open-pty-master
@@ -3663,6 +3715,14 @@ USA.
   (files "record")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-list-of-unique-symbols
+	  error:not-record
+	  error:not-record-type
+	  guarantee-list-of-unique-symbols
+	  guarantee-record
+	  guarantee-record-type
+	  ;; END deprecated bindings
 	  %copy-record
 	  %make-record
 	  %record
@@ -3679,12 +3739,6 @@ USA.
 	  define-structure/list-modifier
 	  define-structure/vector-accessor
 	  define-structure/vector-modifier
-	  error:not-list-of-unique-symbols
-	  error:not-record
-	  error:not-record-type
-	  guarantee-list-of-unique-symbols
-	  guarantee-record
-	  guarantee-record-type
 	  list-of-unique-symbols?
 	  make-define-structure-type
 	  make-record-type
@@ -3767,6 +3821,12 @@ USA.
   (files "rep")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-cmdl
+	  error:not-repl
+	  guarantee-cmdl
+	  guarantee-repl
+	  ;; END deprecated bindings
 	  ->environment
 	  abort->nearest
 	  abort->previous
@@ -3797,11 +3857,7 @@ USA.
 	  cmdl?
 	  condition-type:breakpoint
 	  condition/breakpoint?
-	  error:not-cmdl
-	  error:not-repl
 	  ge
-	  guarantee-cmdl
-	  guarantee-repl
 	  hook/repl-eval
 	  hook/repl-read
 	  hook/repl-write
@@ -4386,10 +4442,12 @@ USA.
   (files "stream")
   (parent (runtime))
   (export ()
-	  condition-type:illegal-stream-element
-	  empty-stream?
+	  ;; BEGIN deprecated bindings
 	  error:not-stream-pair
 	  guarantee-stream-pair
+	  ;; END deprecated bindings
+	  condition-type:illegal-stream-element
+	  empty-stream?
 	  head
 	  list->stream
 	  make-prime-numbers-stream
@@ -4424,6 +4482,15 @@ USA.
   (files "stringio")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  call-with-input-octets
+	  call-with-output-octets
+	  open-input-octets
+	  open-output-octets
+	  with-input-from-string
+	  with-output-to-string
+	  with-output-to-truncated-string
+	  ;; END deprecated bindings
 	  (call-with-output-string call-with-narrow-output-string)
 	  (get-output-from-accumulator get-output-string!)
 	  (make-accumulator-output-port open-narrow-output-string)
@@ -4431,22 +4498,15 @@ USA.
 	  (open-wide-input-string open-input-string)
 	  (string->input-port open-input-string)
 	  (with-string-output-port call-with-narrow-output-string)
-	  call-with-input-octets
 	  call-with-input-string
 	  call-with-narrow-output-string
-	  call-with-output-octets
 	  call-with-truncated-output-string
 	  call-with-wide-output-string
 	  get-output-string
 	  get-output-string!
-	  open-input-octets
 	  open-input-string
 	  open-narrow-output-string
-	  open-output-octets
-	  open-wide-output-string
-	  with-input-from-string
-	  with-output-to-string
-	  with-output-to-truncated-string)
+	  open-wide-output-string)
   (initialization (initialize-package!)))
 
 (define-package (runtime syntax)
@@ -4457,15 +4517,17 @@ USA.
   (files "syntax")
   (parent (runtime syntax))
   (export ()
-	  <syntactic-closure>
-	  capture-syntactic-environment
-	  close-syntax
+	  ;; BEGIN deprecated bindings
 	  error:not-identifier
 	  error:not-syntactic-closure
 	  error:not-synthetic-identifier
 	  guarantee-identifier
 	  guarantee-syntactic-closure
 	  guarantee-synthetic-identifier
+	  ;; END deprecated bindings
+	  <syntactic-closure>
+	  capture-syntactic-environment
+	  close-syntax
 	  identifier->symbol
 	  identifier=?
 	  identifier?
@@ -4541,8 +4603,10 @@ USA.
   (files "syntax-environment")
   (parent (runtime syntax))
   (export ()
+	  ;; BEGIN deprecated bindings
 	  error:not-syntactic-environment
 	  guarantee-syntactic-environment
+	  ;; END deprecated bindings
 	  syntactic-environment?)
   (export (runtime syntax)
 	  ->syntactic-environment
@@ -4728,6 +4792,7 @@ USA.
   (files "sysmac")
   (parent (runtime))
   (export ()
+	  ;; deprecated:
 	  define-guarantee)
   (export (runtime)
 	  define-deferred
@@ -4767,6 +4832,7 @@ USA.
   (files "unpars")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
 	  *unparse-abbreviate-quotations?*
 	  *unparse-compound-procedure-names?*
 	  *unparse-primitives-by-name?*
@@ -4783,6 +4849,7 @@ USA.
 	  error:not-unparser-table
 	  guarantee-unparser-state
 	  guarantee-unparser-table
+	  ;; END deprecated bindings
 	  make-unparser-table
 	  param:unparse-abbreviate-quotations?
 	  param:unparse-compound-procedure-names?
@@ -4877,6 +4944,9 @@ USA.
   (files "thread-low" "thread")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  guarantee-thread
+	  ;; END deprecated bindings
 	  assert-thread-mutex-owned
 	  block-thread-events
 	  condition-type:no-current-thread
@@ -4895,7 +4965,6 @@ USA.
 	  deregister-timer-event
 	  detach-thread
 	  exit-current-thread
-	  guarantee-thread
 	  join-thread
 	  lock-thread-mutex
 	  make-thread-mutex
@@ -5119,9 +5188,11 @@ USA.
   (parent (runtime))
   (export ()
 	  ;; tag.scm:
+	  ;; BEGIN deprecated bindings
+	  guarantee-dispatch-tag
+	  ;; END deprecated bindings
 	  dispatch-tag-contents
 	  dispatch-tag?
-	  guarantee-dispatch-tag
 	  make-dispatch-tag
 
 	  ;; generic.scm:
@@ -5259,12 +5330,14 @@ USA.
   (files "regsexp")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-compiled-regsexp
+	  guarantee-compiled-regsexp
+	  ;; END deprecated bindings
 	  <compiled-regsexp>
 	  compile-regsexp
 	  compiled-regsexp?
 	  condition-type:compile-regsexp
-	  error:not-compiled-regsexp
-	  guarantee-compiled-regsexp
 	  regsexp-match-input-port
 	  regsexp-match-string))
 
@@ -5469,6 +5542,28 @@ USA.
   (files "unicode")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-utf16-be-string
+	  error:not-utf16-high-surrogate
+	  error:not-utf16-le-string
+	  error:not-utf16-low-surrogate
+	  error:not-utf16-string
+	  error:not-utf32-be-string
+	  error:not-utf32-le-string
+	  error:not-utf32-string
+	  error:not-utf8-string
+	  error:not-wide-string
+	  guarantee-utf16-be-string
+	  guarantee-utf16-high-surrogate
+	  guarantee-utf16-le-string
+	  guarantee-utf16-low-surrogate
+	  guarantee-utf16-string
+	  guarantee-utf32-be-string
+	  guarantee-utf32-le-string
+	  guarantee-utf32-string
+	  guarantee-utf8-string
+	  guarantee-wide-string
+	  ;; END deprecated bindings
 	  (wide-string->utf16-be-string string->utf16-be-string)
 	  (wide-string->utf16-le-string string->utf16-le-string)
 	  (wide-string->utf16-string string->utf16-string)
@@ -5492,28 +5587,8 @@ USA.
 	  call-with-utf8-input-string
 	  call-with-utf8-output-string
 	  combine-utf16-surrogates
-	  error:not-utf16-be-string
-	  error:not-utf16-high-surrogate
-	  error:not-utf16-le-string
-	  error:not-utf16-low-surrogate
-	  error:not-utf16-string
-	  error:not-utf32-be-string
-	  error:not-utf32-le-string
-	  error:not-utf32-string
-	  error:not-utf8-string
-	  error:not-wide-string
 	  for-all-chars-in-string?
 	  for-any-char-in-string?
-	  guarantee-utf16-be-string
-	  guarantee-utf16-high-surrogate
-	  guarantee-utf16-le-string
-	  guarantee-utf16-low-surrogate
-	  guarantee-utf16-string
-	  guarantee-utf32-be-string
-	  guarantee-utf32-le-string
-	  guarantee-utf32-string
-	  guarantee-utf8-string
-	  guarantee-wide-string
 	  guarantee-wide-string-index
 	  guarantee-wide-substring
 	  make-wide-string
@@ -5589,6 +5664,25 @@ USA.
   (files "url")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-partial-uri
+	  error:not-uri-authority
+	  error:not-uri-host
+	  error:not-uri-path
+	  error:not-uri-port
+	  error:not-uri-scheme
+	  error:not-uri-userinfo
+	  guarantee-absolute-uri
+	  guarantee-partial-uri
+	  guarantee-relative-uri
+	  guarantee-uri
+	  guarantee-uri-authority
+	  guarantee-uri-host
+	  guarantee-uri-path
+	  guarantee-uri-port
+	  guarantee-uri-scheme
+	  guarantee-uri-userinfo
+	  ;; END deprecated bindings
 	  (url:decode-string decode-component)
 	  (url:match:escape matcher:pct-encoded)
 	  (url:parse:hostport parser:hostport)
@@ -5611,23 +5705,6 @@ USA.
 	  char-set:uri-segment-nc
 	  char-set:uri-userinfo
 	  encode-uri-path-segment
-	  error:not-partial-uri
-	  error:not-uri-authority
-	  error:not-uri-host
-	  error:not-uri-path
-	  error:not-uri-port
-	  error:not-uri-scheme
-	  error:not-uri-userinfo
-	  guarantee-absolute-uri
-	  guarantee-partial-uri
-	  guarantee-relative-uri
-	  guarantee-uri
-	  guarantee-uri-authority
-	  guarantee-uri-host
-	  guarantee-uri-path
-	  guarantee-uri-port
-	  guarantee-uri-scheme
-	  guarantee-uri-userinfo
 	  make-uri
 	  make-uri-authority
 	  merge-uris
@@ -5720,14 +5797,16 @@ USA.
   (files "rfc2822-headers")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-rfc2822-header
+	  guarantee-rfc2822-header
+	  ;; END deprecated bindings
 	  all-rfc2822-headers
 	  char-set:rfc2822-name
 	  char-set:rfc2822-qtext
 	  char-set:rfc2822-text
 	  condition-type:rfc2822-parse-error
-	  error:not-rfc2822-header
 	  first-rfc2822-header
-	  guarantee-rfc2822-header
 	  make-rfc2822-header
 	  parser:rfc2822-quoted-string
 	  quote-rfc2822-text
@@ -5745,11 +5824,7 @@ USA.
   (files "http-syntax")
   (parent (runtime))
   (export ()
-	  <http-header>
-	  char-set:http-text
-	  char-set:http-token
-	  convert-http-headers
-	  default-http-user-agent
+	  ;; BEGIN deprecated bindings
 	  error:not-http-header
 	  error:not-http-status
 	  error:not-http-text
@@ -5757,12 +5832,18 @@ USA.
 	  error:not-http-token-string
 	  error:not-http-version
 	  guarantee-http-header
-	  guarantee-http-headers
 	  guarantee-http-status
 	  guarantee-http-text
 	  guarantee-http-token
 	  guarantee-http-token-string
 	  guarantee-http-version
+	  ;; END deprecated bindings
+	  <http-header>
+	  char-set:http-text
+	  char-set:http-token
+	  convert-http-headers
+	  default-http-user-agent
+	  guarantee-http-headers
 	  http-header
 	  http-header-name
 	  http-header-parsed-value
@@ -5795,6 +5876,7 @@ USA.
   (files "httpio")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
 	  error:not-http-message
 	  error:not-http-request
 	  error:not-http-request-uri
@@ -5809,6 +5891,7 @@ USA.
 	  guarantee-simple-http-request
 	  guarantee-simple-http-request-uri
 	  guarantee-simple-http-response
+	  ;; END deprecated bindings
 	  http-message-body
 	  http-message-body-port
 	  http-message-header
@@ -5867,11 +5950,13 @@ USA.
   (files "structure-parser")
   (parent (runtime))
   (export ()
+	  ;; BEGIN deprecated bindings
+	  error:not-structure-parser-values
+	  guarantee-structure-parser-values
+	  ;; END deprecated bindings
 	  apply-list-parser
 	  apply-object-parser
 	  apply-vector-parser
-	  error:not-structure-parser-values
-	  guarantee-structure-parser-values
 	  list->structure-parser-values
 	  list-parser
 	  map-structure-parser-values
