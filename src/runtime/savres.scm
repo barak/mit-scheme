@@ -128,7 +128,7 @@ USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee-output-port port 'IDENTIFY-WORLD))))
+	     (guarantee textual-output-port? port 'IDENTIFY-WORLD))))
     (write-mit-scheme-copyright port #!default #!default #t)
     (newline port)
     (write-mit-scheme-license port #!default #t)
