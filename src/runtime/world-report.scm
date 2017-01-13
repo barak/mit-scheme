@@ -33,7 +33,7 @@ USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee-output-port port 'WORLD-REPORT)))
+	     (guarantee textual-output-port? port 'WORLD-REPORT)))
 	(flags (cons (cons (console-thread) "console")
 		     (if (default-object? thread-flags)
 			 '()
