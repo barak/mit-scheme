@@ -241,7 +241,7 @@ USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee-output-port port 'STREAM-WRITE))))
+	     (guarantee textual-output-port? port 'STREAM-WRITE))))
     (if (stream-pair? stream)
 	(begin
 	  (write-char #\{ port)

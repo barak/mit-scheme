@@ -84,7 +84,7 @@ USA.
 			     position))
 
 (define (guarantee-positionable-port port caller)
-  (guarantee-port port caller)
+  (guarantee textual-port? port caller)
   (if (and (i/o-port? port)
 	   (not (eq? (input-port-channel port) (output-port-channel port))))
       (error:bad-range-argument port caller))

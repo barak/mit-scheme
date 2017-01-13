@@ -41,7 +41,7 @@ USA.
       (if operation
 	  (operation port environment prompt level)
 	  (begin
-	    (guarantee-i/o-port port 'PROMPT-FOR-COMMAND-EXPRESSION)
+	    (guarantee textual-i/o-port? port 'PROMPT-FOR-COMMAND-EXPRESSION)
 	    (write-command-prompt port prompt level)
 	    (with-input-port-terminal-mode port 'COOKED
 	      (lambda ()
@@ -71,7 +71,7 @@ USA.
       (if operation
 	  (operation port environment prompt)
 	  (begin
-	    (guarantee-i/o-port port caller)
+	    (guarantee textual-i/o-port? port caller)
 	    (with-output-port-terminal-mode port 'COOKED
 	      (lambda ()
 		(fresh-line port)
@@ -85,9 +85,7 @@ USA.
 (define (optional-port port caller)
   (if (default-object? port)
       (interaction-i/o-port)
-      (begin
-	(guarantee-port port caller)
-	port)))
+      (guarantee textual-port? port caller)))
 
 (define (optional-environment environment caller)
   (if (default-object? environment)
@@ -238,7 +236,7 @@ USA.
 		  (port/set-line-ending port outside)
 		  (set! outside)))))))
 
-  (guarantee-i/o-port port 'default/call-with-pass-phrase)
+  (guarantee textual-i/o-port? port 'default/call-with-pass-phrase)
   (with-output-port-terminal-mode port 'COOKED
     (lambda ()
       (fresh-line port)

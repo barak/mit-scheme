@@ -174,7 +174,7 @@ USA.
   (if (not (list-of-type? strings string?))
       (error:wrong-type-argument strings "list of strings"
 				 'WRITE-STRINGS-IN-COLUMNS))
-  (guarantee-output-port port 'WRITE-STRINGS-IN-COLUMNS)
+  (guarantee textual-output-port? port 'WRITE-STRINGS-IN-COLUMNS)
   (guarantee-exact-positive-integer min-minor 'WRITE-STRINGS-IN-COLUMNS)
   (guarantee-string left-margin 'WRITE-STRINGS-IN-COLUMNS)
   (guarantee-string col-sep 'WRITE-STRINGS-IN-COLUMNS)
@@ -299,7 +299,7 @@ USA.
 	   (pair? strings))
       (error:wrong-type-argument strings "non-empty list of strings"
 				 'WRITE-STRINGS-IN-PARAGRAPH))
-  (guarantee-output-port port 'WRITE-STRINGS-IN-PARAGRAPH)
+  (guarantee textual-output-port? port 'WRITE-STRINGS-IN-PARAGRAPH)
   (guarantee-exact-positive-integer width 'WRITE-STRINGS-IN-PARAGRAPH)
   (guarantee-exact-nonnegative-integer indent 'WRITE-STRINGS-IN-PARAGRAPH)
   (guarantee-exact-nonnegative-integer first 'WRITE-STRINGS-IN-PARAGRAPH)

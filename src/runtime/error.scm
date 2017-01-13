@@ -288,7 +288,7 @@ USA.
 
 (define (write-condition-report condition port)
   (guarantee-condition condition 'WRITE-CONDITION-REPORT)
-  (guarantee-output-port port 'WRITE-CONDITION-REPORT)
+  (guarantee textual-output-port? port 'WRITE-CONDITION-REPORT)
   (let ((reporter (%condition-type/reporter (%condition/type condition))))
     (if (%condition/error? condition)
 	(ignore-errors (lambda () (reporter condition port)))
@@ -352,7 +352,7 @@ USA.
 
 (define (write-restart-report restart port)
   (guarantee-restart restart 'WRITE-RESTART-REPORT)
-  (guarantee-output-port port 'WRITE-RESTART-REPORT)
+  (guarantee textual-output-port? port 'WRITE-RESTART-REPORT)
   (let ((reporter (%restart/reporter restart)))
     (if (string? reporter)
 	(write-string reporter port)

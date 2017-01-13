@@ -560,7 +560,7 @@ USA.
 (define (regsexp-match-input-port crsexp port)
   (let ((caller 'REGSEXP-MATCH-INPUT-PORT))
     (guarantee-compiled-regsexp crsexp caller)
-    (guarantee-input-port port caller)
+    (guarantee textual-input-port? port caller)
     (%top-level-match crsexp
 		      (%char-source->position
 		       (lambda ()
