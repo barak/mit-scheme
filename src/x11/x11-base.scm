@@ -105,7 +105,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	(xw (malloc (C-sizeof "* struct xwindow") '(* (struct |xwindow|)))))
     (let* ((done-p (C-call "x_display_process_events"
 			   display event xw))
-	   (window (C-> xw "* xwindow" (make-alien '(struct |xwindow|))))
+	   (window (C-> xw "* struct xwindow" (make-alien '(struct |xwindow|))))
 	   (obj (if (= done-p 1)
 		    #f
 		    (or (make-event-object window event)
@@ -161,8 +161,9 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
     (and
      (not (eq? #f scmtype))
-     (not (zero? (bitwise-and (bit scmtype)
-			      (C-call "x_window_event_mask" window))))
+     (or (alien-null? window)
+	 (not (zero? (bitwise-and (bit scmtype)
+				  (C-call "x_window_event_mask" window)))))
      (cond
 
       ((eq? scmtype event-type:key-press)		; xtype = KeyPress

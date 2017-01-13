@@ -1291,9 +1291,9 @@ Returns #T if the scan was successful and #F if there were any complaints.")
 #define D_TRACE_ON_ERROR	12
 #define D_PER_FILE		13
 #define D_BIGNUM		14
-
+#define D_PRINT_ERRORS		15
 #ifndef LAST_SWITCH
-#define LAST_SWITCH D_BIGNUM
+#define LAST_SWITCH D_PRINT_ERRORS
 #endif
 
 static bool *
@@ -1316,6 +1316,7 @@ find_flag (int flag_number)
     case D_TRACE_ON_ERROR:	return (&Trace_On_Error);
     case D_PER_FILE:		return (&Per_File);
     case D_BIGNUM:		return (&Bignum_Debug);
+    case D_PRINT_ERRORS:	return (&Print_Errors);
     MORE_DEBUG_FLAG_CASES ();
     default:			return (0);
     }
@@ -1341,6 +1342,7 @@ flag_name (int flag_number)
     case D_TRACE_ON_ERROR:	return ("Trace_On_Error");
     case D_PER_FILE:		return ("Per_File");
     case D_BIGNUM:		return ("Bignum_Debug");
+    case D_PRINT_ERRORS:	return ("Print_Errors");
     MORE_DEBUG_FLAG_NAMES ();
     default:			return ("Unknown Debug Flag");
     }

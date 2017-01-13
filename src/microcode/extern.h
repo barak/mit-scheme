@@ -107,10 +107,11 @@ extern void set_ulong_register (unsigned int, unsigned long);
    extern bool Lookup_Debug;
    extern bool GC_Debug;
    extern bool Upgrade_Debug;
-   extern bool Trace_On_Error;
    extern bool Dump_Debug;
+   extern bool Trace_On_Error;
    extern bool Per_File;
    extern bool Bignum_Debug;
+   extern bool Print_Errors;
 
    extern bool verify_heap (void);
    extern void Pop_Return_Break_Point (void);
@@ -136,6 +137,7 @@ extern void set_ulong_register (unsigned int, unsigned long);
 #  define Dump_Debug 0
 #  define Per_File 0
 #  define Bignum_Debug 0
+#  define Print_Errors 0
 #endif
 
 extern SCHEME_OBJECT * Free;
