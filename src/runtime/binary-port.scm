@@ -29,11 +29,15 @@ USA.
 
 (declare (usual-integrations))
 
+(define (make-binary-port input-buffer output-buffer)
+  (%make-binary-port input-buffer output-buffer (make-alist-metadata-table)))
+
 (define-record-type <binary-port>
-    (make-binary-port input-buffer output-buffer)
+    (%make-binary-port input-buffer output-buffer metadata)
     binary-port?
   (input-buffer port-input-buffer)
-  (output-buffer port-output-buffer))
+  (output-buffer port-output-buffer)
+  (metadata binary-port-metadata))
 
 (define (make-binary-input-port source caller)
   (let ((port

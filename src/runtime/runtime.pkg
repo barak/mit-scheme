@@ -2498,6 +2498,7 @@ USA.
 	  binary-input-port:set-buffer-contents!
 	  binary-output-port-channel
 	  binary-output-port-open?
+	  binary-port-metadata
 	  close-binary-input-port
 	  close-binary-output-port
 	  close-binary-port)

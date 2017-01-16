@@ -380,20 +380,21 @@ USA.
 ;;;; Textual ports
 
 (define-record-type <textual-port>
-    (%make-textual-port thread-mutex type state unread? previous properties
-			transcript)
+    (%make-textual-port thread-mutex type state unread? previous transcript
+			metadata)
     textual-port?
   (thread-mutex textual-port-thread-mutex)
   (type textual-port-type set-textual-port-type!)
   (state textual-port-state set-textual-port-state!)
   (unread? textual-port-unread? set-textual-port-unread?!)
   (previous textual-port-previous set-textual-port-previous!)
-  (properties textual-port-properties set-textual-port-properties!)
-  (transcript textual-port-transcript set-textual-port-transcript!))
+  (transcript textual-port-transcript set-textual-port-transcript!)
+  (metadata textual-port-metadata))
 
 (define (make-textual-port type state)
   (guarantee textual-port-type? type 'MAKE-TEXTUAL-PORT)
-  (%make-textual-port (make-thread-mutex) type state #f #f '() #f))
+  (%make-textual-port (make-thread-mutex) type state #f #f #f
+		      (make-alist-metadata-table)))
 
 (define (textual-input-port? object)
   (and (textual-port? object)
@@ -510,36 +511,21 @@ USA.
 (define-port-operation flush-output)
 (define-port-operation discretionary-flush-output)
 
-(define (textual-port-property port name default)
+(define (textual-port-property port name #!optional default-value)
   (guarantee symbol? name 'port-property)
-  (let ((p (assq name (textual-port-properties port))))
-    (if p
-	(cdr p)
-	default)))
+  (((port-metadata port) 'get) name default-value))
 
 (define (set-textual-port-property! port name value)
   (guarantee symbol? name 'set-port-property!)
-  (let ((alist (textual-port-properties port)))
-    (let ((p (assq name alist)))
-      (if p
-	  (set-cdr! p value)
-	  (set-textual-port-properties! port (cons (cons name value) alist))))))
+  (((port-metadata port) 'put!) name value))
 
 (define (intern-textual-port-property! port name get-value)
-  (guarantee symbol? name 'INTERN-PORT-PROPERTY!)
-  (let ((alist (textual-port-properties port)))
-    (let ((p (assq name alist)))
-      (if p
-	  (cdr p)
-	  (let ((value (get-value)))
-	    (set-textual-port-properties! port (cons (cons name value) alist))
-	    value)))))
+  (guarantee symbol? name 'intern-port-property!)
+  (((port-metadata port) 'intern!) name get-value))
 
 (define (remove-textual-port-property! port name)
-  (guarantee symbol? name 'REMOVE-PORT-PROPERTY!)
-  (set-textual-port-properties! port
-				(del-assq! name
-					   (textual-port-properties port))))
+  (guarantee symbol? name 'remove-port-property!)
+  (((port-metadata port) 'delete!) name))
 
 (define (transcribe-char char port)
   (let ((tport (textual-port-transcript port)))
@@ -660,6 +646,11 @@ USA.
   (cond ((binary-output-port? port) (binary-output-port-channel port))
 	((textual-output-port? port) (textual-output-port-channel port))
 	(else (error:not-a output-port? port 'output-port-channel))))
+
+(define (port-metadata port)
+  (cond ((binary-port? port) (binary-port-metadata port))
+	((textual-port? port) (textual-port-metadata port))
+	(else (error:not-a port? port 'port-metadata))))
 
 ;;;; Port modes
 
