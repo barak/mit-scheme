@@ -29,8 +29,10 @@ USA.
 
 (declare (usual-integrations))
 
+(define input-file-type)
+(define output-file-type)
+(define i/o-file-type)
 (define (initialize-package!)
-  (set! operation/pathname (generic-i/o-port-accessor 0))
   (let ((other-operations
 	 `((LENGTH ,operation/length)
 	   (PATHNAME ,operation/pathname)
@@ -47,10 +49,11 @@ USA.
       (set! i/o-file-type (make-type 'CHANNEL 'CHANNEL))))
   unspecific)
 
-(define input-file-type)
-(define output-file-type)
-(define i/o-file-type)
-(define operation/pathname)
+(define (operation/pathname port)
+  (port-property 'pathname))
+
+(define (set-port-pathname! port pathname)
+  (set-port-property! port 'pathname pathname))
 
 (define (operation/length port)
   (channel-file-length
@@ -60,7 +63,7 @@ USA.
 (define (operation/write-self port output-port)
   (write-string " for file: " output-port)
   (write (->namestring (operation/pathname port)) output-port))
-
+
 (define (operation/position port)
   (guarantee-positionable-port port 'OPERATION/POSITION)
   (if (output-port? port)
@@ -97,81 +100,115 @@ USA.
 		 (port-output-buffer port))))
       (error:bad-range-argument port caller)))
 
-(define (open-input-file filename)
-  (let* ((pathname (merge-pathnames filename))
-	 (channel (file-open-input-channel (->namestring pathname)))
-	 (port (make-generic-i/o-port channel #f input-file-type pathname)))
-    (set-channel-port! channel port)
-    (port/set-line-ending port (file-line-ending pathname))
-    port))
+(define (input-file-opener caller make-port)
+  (lambda (filename)
+    (let* ((pathname (merge-pathnames filename))
+	   (channel (file-open-input-channel (->namestring pathname))))
+      (make-port channel #f pathname caller))))
 
-(define (open-output-file filename #!optional append?)
-  (let* ((pathname (merge-pathnames filename))
-	 (channel
-	  (let ((filename (->namestring pathname)))
+(define (output-file-opener caller make-port)
+  (lambda (filename #!optional append?)
+    (let* ((pathname (merge-pathnames filename))
+	   (filename (->namestring pathname))
+	   (channel
 	    (if (if (default-object? append?) #f append?)
 		(file-open-append-channel filename)
 		(file-open-output-channel filename))))
-	 (port (make-generic-i/o-port #f channel output-file-type pathname)))
-    (set-channel-port! channel port)
+      (make-port #f channel pathname caller))))
+
+(define (exclusive-output-file-opener caller make-port)
+  (lambda (filename)
+    (let* ((pathname (merge-pathnames filename))
+	   (channel
+	    (file-open-exclusive-output-channel (->namestring pathname))))
+      (make-port #f channel pathname caller))))
+
+(define (i/o-file-opener caller make-port)
+  (lambda (filename)
+    (let* ((pathname (merge-pathnames filename))
+	   (channel (file-open-io-channel (->namestring pathname))))
+      (make-port channel channel pathname caller))))
+
+(define (make-textual-port input-channel output-channel pathname caller)
+  caller
+  (let ((port (%make-textual-port input-channel output-channel pathname)))
     (port/set-line-ending port (file-line-ending pathname))
     port))
 
-(define (open-exclusive-output-file filename)
-  (let* ((pathname (merge-pathnames filename))
-	 (channel (file-open-exclusive-output-channel (->namestring pathname)))
-	 (port (make-generic-i/o-port #f channel output-file-type pathname)))
-    (set-channel-port! channel port)
-    (port/set-line-ending port (file-line-ending pathname))
-    port))
-
-(define (open-i/o-file filename)
-  (let* ((pathname (merge-pathnames filename))
-	 (channel (file-open-io-channel (->namestring pathname)))
-	 (port (make-generic-i/o-port channel channel i/o-file-type pathname)))
-    (set-channel-port! channel port)
-    (port/set-line-ending port (file-line-ending pathname))
-    port))
-
-(define (open-legacy-binary-input-file filename)
-  (let* ((pathname (merge-pathnames filename))
-	 (channel (file-open-input-channel (->namestring pathname)))
-	 (port (make-generic-i/o-port channel #f input-file-type pathname)))
-    (set-channel-port! channel port)
+(define (make-legacy-binary-port input-channel output-channel pathname caller)
+  caller
+  (let ((port (%make-textual-port input-channel output-channel pathname)))
     (port/set-coding port 'BINARY)
     (port/set-line-ending port 'BINARY)
     port))
 
-(define (open-legacy-binary-output-file filename #!optional append?)
-  (let* ((pathname (merge-pathnames filename))
-	 (channel
-	  (let ((filename (->namestring pathname)))
-	    (if (if (default-object? append?) #f append?)
-		(file-open-append-channel filename)
-		(file-open-output-channel filename))))
-	 (port (make-generic-i/o-port #f channel output-file-type pathname)))
-    (set-channel-port! channel port)
-    (port/set-coding port 'BINARY)
-    (port/set-line-ending port 'BINARY)
+(define (%make-textual-port input-channel output-channel pathname)
+  (let ((port
+	 (make-generic-i/o-port input-channel
+				output-channel
+				(cond ((not input-channel) output-file-type)
+				      ((not output-channel) input-file-type)
+				      (else i/o-file-type)))))
+    ;; If both channels are set they are the same.
+    (cond (input-channel (set-channel-port! input-channel port))
+	  (output-channel (set-channel-port! output-channel port)))
+    (set-port-pathname! port pathname)
+    port))
+
+(define open-input-file
+  (input-file-opener 'open-input-file make-textual-port))
+
+(define open-output-file
+  (output-file-opener 'open-output-file make-textual-port))
+
+(define open-exclusive-output-file
+  (exclusive-output-file-opener 'open-exclusive-output-file make-textual-port))
+
+(define open-i/o-file
+  (i/o-file-opener 'open-i/o-file make-textual-port))
+
+(define open-legacy-binary-input-file
+  (input-file-opener 'open-legacy-binary-input-file make-legacy-binary-port))
+
+(define open-legacy-binary-output-file
+  (output-file-opener 'open-legacy-binary-output-file make-legacy-binary-port))
+
+(define open-exclusive-legacy-binary-output-file
+  (exclusive-output-file-opener 'open-exclusive-legacy-binary-output-file
+				make-legacy-binary-port))
+
+(define open-legacy-binary-i/o-file
+  (i/o-file-opener 'open-legacy-binary-i/o-file make-legacy-binary-port))
+
+(define (make-binary-port input-channel output-channel pathname caller)
+  (let ((port (%make-binary-port input-channel output-channel caller)))
+    (set-port-pathname! port pathname)
     port))
 
-(define (open-exclusive-legacy-binary-output-file filename)
-  (let* ((pathname (merge-pathnames filename))
-	 (channel (file-open-exclusive-output-channel (->namestring pathname)))
-	 (port (make-generic-i/o-port #f channel output-file-type pathname)))
-    (set-channel-port! channel port)
-    (port/set-coding port 'BINARY)
-    (port/set-line-ending port 'BINARY)
-    port))
+(define (%make-binary-port input-channel output-channel caller)
+  (cond ((not input-channel)
+	 (make-binary-output-port (make-channel-output-sink output-channel)
+				  caller))
+	((not output-channel)
+	 (make-binary-input-port (make-channel-input-source input-channel)
+				 caller))
+	(else
+	 (make-binary-i/o-port (make-channel-input-source input-channel)
+			       (make-channel-output-sink output-channel)
+			       caller))))
 
-(define (open-legacy-binary-i/o-file filename)
-  (let* ((pathname (merge-pathnames filename))
-	 (channel (file-open-io-channel (->namestring pathname)))
-	 (port (make-generic-i/o-port channel channel i/o-file-type pathname)))
-    (set-channel-port! channel port)
-    (port/set-coding port 'BINARY)
-    (port/set-line-ending port 'BINARY)
-    port))
+(define open-binary-input-file
+  (input-file-opener 'open-binary-input-file make-binary-port))
+
+(define open-binary-output-file
+  (output-file-opener 'open-binary-output-file make-binary-port))
+
+(define open-exclusive-binary-output-file
+  (exclusive-output-file-opener 'open-exclusive-binary-output-file
+				make-binary-port))
+
+(define open-binary-i/o-file
+  (i/o-file-opener 'open-binary-i/o-file make-binary-port))
 
 (define ((make-call-with-file open) input-specifier receiver)
   (let ((port (open input-specifier)))
@@ -182,23 +219,38 @@ USA.
 (define call-with-input-file
   (make-call-with-file open-input-file))
 
-(define call-with-legacy-binary-input-file
-  (make-call-with-file open-legacy-binary-input-file))
-
 (define call-with-output-file
   (make-call-with-file open-output-file))
 
 (define call-with-exclusive-output-file
   (make-call-with-file open-exclusive-output-file))
 
+(define call-with-append-file
+  (make-call-with-file (lambda (filename) (open-output-file filename #t))))
+
+
+(define call-with-binary-input-file
+  (make-call-with-file open-binary-input-file))
+
+(define call-with-binary-output-file
+  (make-call-with-file open-binary-output-file))
+
+(define call-with-exclusive-binary-output-file
+  (make-call-with-file open-exclusive-binary-output-file))
+
+(define call-with-binary-append-file
+  (make-call-with-file
+   (lambda (filename) (open-binary-output-file filename #t))))
+
+
+(define call-with-legacy-binary-input-file
+  (make-call-with-file open-legacy-binary-input-file))
+
 (define call-with-legacy-binary-output-file
   (make-call-with-file open-legacy-binary-output-file))
 
 (define call-with-exclusive-legacy-binary-output-file
   (make-call-with-file open-exclusive-legacy-binary-output-file))
-
-(define call-with-append-file
-  (make-call-with-file (lambda (filename) (open-output-file filename #t))))
 
 (define call-with-legacy-binary-append-file
   (make-call-with-file
@@ -212,7 +264,7 @@ USA.
 (define with-input-from-file
   (make-with-input-from-file call-with-input-file))
 
-(define with-input-from-binary-file
+(define with-input-from-legacy-binary-file
   (make-with-input-from-file call-with-legacy-binary-input-file))
 
 (define ((make-with-output-to-file call) output-specifier thunk)
@@ -226,7 +278,7 @@ USA.
 (define with-output-to-exclusive-file
   (make-with-output-to-file call-with-exclusive-output-file))
 
-(define with-output-to-binary-file
+(define with-output-to-legacy-binary-file
   (make-with-output-to-file call-with-legacy-binary-output-file))
 
 (define with-output-to-exclusive-legacy-binary-file

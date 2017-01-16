@@ -2110,20 +2110,28 @@ USA.
 	  open-legacy-binary-i/o-file
 	  open-legacy-binary-input-file
 	  open-legacy-binary-output-file
-	  with-input-from-binary-file
-	  with-output-to-binary-file
+	  with-input-from-legacy-binary-file
+	  with-output-to-legacy-binary-file
+	  with-output-to-exclusive-file
 	  with-output-to-exclusive-legacy-binary-file
 	  ;; END deprecated bindings
 	  call-with-append-file
+	  call-with-binary-append-file
+	  call-with-binary-input-file
+	  call-with-binary-output-file
+	  call-with-exclusive-binary-output-file
 	  call-with-exclusive-output-file
 	  call-with-input-file
 	  call-with-output-file
+	  open-binary-i/o-file
+	  open-binary-input-file
+	  open-binary-output-file
+	  open-exclusive-binary-output-file
 	  open-exclusive-output-file
 	  open-i/o-file
 	  open-input-file
 	  open-output-file
 	  with-input-from-file
-	  with-output-to-exclusive-file
 	  with-output-to-file)
   (initialization (initialize-package!)))
 
