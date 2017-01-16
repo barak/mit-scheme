@@ -185,8 +185,8 @@ USA.
 
 (define (with-rdf-input-port port thunk)
   (fluid-let ((*rdf-bnode-registry*
-	       (intern-textual-port-property! port 'RDF-BNODE-REGISTRY
-					      make-string-hash-table)))
+	       (intern-port-property! port 'RDF-BNODE-REGISTRY
+				      make-string-hash-table)))
     (thunk)))
 
 (define *rdf-bnode-registry*)
@@ -414,9 +414,9 @@ USA.
   (if registry
       (begin
 	(guarantee-rdf-prefix-registry registry 'PORT/SET-RDF-PREFIX-REGISTRY!)
-	(set-textual-port-property! port 'RDF-PREFIX-REGISTRY registry))
-      (remove-textual-port-property! port 'RDF-PREFIX-REGISTRY)))
+	(set-port-property! port 'RDF-PREFIX-REGISTRY registry))
+      (remove-port-property! port 'RDF-PREFIX-REGISTRY)))
 
 (define (port/rdf-prefix-registry port)
-  (or (textual-port-property port 'RDF-PREFIX-REGISTRY #f)
+  (or (port-property port 'RDF-PREFIX-REGISTRY #f)
       *default-rdf-prefix-registry*))

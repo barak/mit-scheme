@@ -975,7 +975,7 @@ USA.
   ;; Check the port property list for the name, and then the
   ;; environment.  This way a port can override the default.
   (let* ((nope "no-overridden-value")
-	 (v (textual-port-property port name nope)))
+	 (v (port-property port name nope)))
     (if (eq? v nope)
 	default-value
 	v)))
@@ -1011,9 +1011,9 @@ USA.
   (if file-attribute-alist
       (begin
 	;; Disable further attributes parsing.
-	(set-textual-port-property! port
-				    '*PARSER-ENABLE-FILE-ATTRIBUTES-PARSING?*
-				    #f)
+	(set-port-property! port
+			    '*PARSER-ENABLE-FILE-ATTRIBUTES-PARSING?*
+			    #f)
 	(process-keyword-attribute file-attribute-alist port)
 	(process-mode-attribute file-attribute-alist port)
 	(process-studly-case-attribute file-attribute-alist port))))
@@ -1032,15 +1032,13 @@ USA.
 	  (cond ((and (symbol? value)
 		      (or (string-ci=? (symbol-name value) "none")
 			  (string-ci=? (symbol-name value) "false")))
-		 (set-textual-port-property! port '*PARSER-KEYWORD-STYLE* #f))
+		 (set-port-property! port '*PARSER-KEYWORD-STYLE* #f))
 		((and (symbol? value)
 		      (string-ci=? (symbol-name value) "prefix"))
-		 (set-textual-port-property! port '*PARSER-KEYWORD-STYLE*
-					     'PREFIX))
+		 (set-port-property! port '*PARSER-KEYWORD-STYLE* 'PREFIX))
 		((and (symbol? value)
 		      (string-ci=? (symbol-name value) "suffix"))
-		 (set-textual-port-property! port '*PARSER-KEYWORD-STYLE*
-					     'SUFFIX))
+		 (set-port-property! port '*PARSER-KEYWORD-STYLE* 'SUFFIX))
 		(else
 		 (warn "Unrecognized value for keyword-style" value)))))))
 
@@ -1079,14 +1077,12 @@ USA.
 			(warn "Attribute value mismatch.  Expected True.")
 			#f)
 		       (else
-			(set-textual-port-property!
-			 port '*PARSER-CANONICALIZE-SYMBOLS?* #f))))
+			(set-port-property! port '*PARSER-CANONICALIZE-SYMBOLS?*
+					    #f))))
 		((or (not value)
 		     (and (symbol? value)
 			  (string-ci=? (symbol-name value) "false")))
-		 (set-textual-port-property! port
-					     '*PARSER-CANONICALIZE-SYMBOLS?*
-					     #t))
+		 (set-port-property! port '*PARSER-CANONICALIZE-SYMBOLS?* #t))
 		(else (warn "Unrecognized value for sTuDly-case" value)))))))
 
 (define-syntax define-parse-error

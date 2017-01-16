@@ -2565,7 +2565,7 @@ USA.
 	  input-port-terminal-mode
 	  input-port?
 	  interaction-i/o-port
-	  intern-textual-port-property!
+	  intern-port-property!
 	  make-textual-port
 	  make-textual-port-type
 	  notification-output-port
@@ -2573,6 +2573,7 @@ USA.
 	  output-port-open?
 	  output-port-terminal-mode
 	  output-port?
+	  port-property
 	  port/coding
 	  port/known-coding?
 	  port/known-codings
@@ -2583,19 +2584,18 @@ USA.
 	  port/set-line-ending
 	  port/supports-coding?
 	  port?
-	  remove-textual-port-property!
+	  remove-port-property!
 	  set-input-port-blocking-mode!
 	  set-input-port-terminal-mode!
 	  set-output-port-blocking-mode!
 	  set-output-port-terminal-mode!
-	  set-textual-port-property!
+	  set-port-property!
 	  textual-i/o-port?
 	  textual-input-port?
 	  textual-output-port?
 	  textual-port-open?
 	  textual-port-operation
 	  textual-port-operation-names
-	  textual-port-property
 	  textual-port-thread-mutex
 	  textual-port-type
 	  textual-port?

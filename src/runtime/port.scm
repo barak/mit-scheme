@@ -511,19 +511,19 @@ USA.
 (define-port-operation flush-output)
 (define-port-operation discretionary-flush-output)
 
-(define (textual-port-property port name #!optional default-value)
+(define (port-property port name #!optional default-value)
   (guarantee symbol? name 'port-property)
   (((port-metadata port) 'get) name default-value))
 
-(define (set-textual-port-property! port name value)
+(define (set-port-property! port name value)
   (guarantee symbol? name 'set-port-property!)
   (((port-metadata port) 'put!) name value))
 
-(define (intern-textual-port-property! port name get-value)
+(define (intern-port-property! port name get-value)
   (guarantee symbol? name 'intern-port-property!)
   (((port-metadata port) 'intern!) name get-value))
 
-(define (remove-textual-port-property! port name)
+(define (remove-port-property! port name)
   (guarantee symbol? name 'remove-port-property!)
   (((port-metadata port) 'delete!) name))
 
