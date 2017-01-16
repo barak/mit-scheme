@@ -886,7 +886,7 @@ illegal_trap_3 (uint8_t * PC, wreg_t r1, wreg_t r2, wreg_t r3)
 
 #define DEFINE_TRAP_0(nl, util_name)					\
 static uint8_t *							\
-trap_##nl (uint8t * PC)							\
+trap_##nl (uint8_t * PC)						\
 {									\
   TRAP_PREFIX (result);							\
   comutil_##util_name ((&result),					\
