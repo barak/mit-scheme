@@ -493,17 +493,14 @@ USA.
     (define (has? key)
       (if (assv key alist) #t #f))
 
-    (define (get key)
-      (let ((metadata (get-if-available key (default-object))))
-	(if (default-object? metadata)
-	    (error "Object has no associated metadata:" key))
-	metadata))
-
-    (define (get-if-available key default-value)
+    (define (get key #!optional default-value)
       (let ((p (assv key alist)))
 	(if p
 	    (cdr p)
-	    default-value)))
+	    (begin
+	      (if (default-object? default-value)
+		  (error "Object has no associated metadata:" key))
+	      default-value))))
 
     (define (put! key metadata)
       (let ((p (assv key alist)))
@@ -512,6 +509,14 @@ USA.
 	    (begin
 	      (set! alist (cons (cons key metadata) alist))
 	      unspecific))))
+
+    (define (intern! key get-value)
+      (let ((p (assv key alist)))
+	(if p
+	    (cdr p)
+	    (let ((value (get-value)))
+	      (set! alist (cons (cons key value) alist))
+	      value))))
 
     (define (delete! key)
       (set! alist
@@ -532,11 +537,12 @@ USA.
       (case operator
 	((has?) has?)
 	((get) get)
-	((get-if-available) get-if-available)
 	((put!) put!)
+	((intern!) intern!)
 	((delete!) delete!)
 	((get-alist) get-alist)
 	((put-alist!) put-alist!)
+	((get-if-available) get)
 	(else (error "Unknown operator:" operator))))))
 
 (define (make-hashed-metadata-table)
@@ -545,17 +551,16 @@ USA.
     (define (has? key)
       (hash-table-exists? table key))
 
-    (define (get key)
-      (let ((metadata (get-if-available key (default-object))))
-	(if (default-object? metadata)
-	    (error "Object has no associated metadata:" key))
-	metadata))
-
-    (define (get-if-available key default-value)
-      (hash-table-ref/default table key default-value))
+    (define (get key #!optional default-value)
+      (if (default-object? default-value)
+	  (hash-table-ref table key)
+	  (hash-table-ref/default table key default-value)))
 
     (define (put! key metadata)
       (hash-table-set! table key metadata))
+
+    (define (intern! key get-value)
+      (hash-table-intern! table key get-value))
 
     (define (delete! key)
       (hash-table-delete! table key))
@@ -572,11 +577,12 @@ USA.
       (case operator
 	((has?) has?)
 	((get) get)
-	((get-if-available) get-if-available)
 	((put!) put!)
+	((intern!) intern!)
 	((delete!) delete!)
 	((get-alist) get-alist)
 	((put-alist!) put-alist!)
+	((get-if-available) get)
 	(else (error "Unknown operator:" operator))))))
 
 ;;;; Ephemerons
