@@ -45,8 +45,9 @@ USA.
 (define (register-predicate! predicate name . keylist)
   (guarantee keyword-list? keylist 'register-predicate!)
   (let ((tag
-         (make-tag predicate
-                   name
+         (make-tag name
+                   predicate
+		   predicate-tagging-strategy:never
                    (get-keyword-value keylist 'extra)
                    (get-keyword-value keylist 'description))))
     (for-each (lambda (superset)
@@ -100,22 +101,25 @@ USA.
     (and tag
          (not (tag-extra tag)))))
 
-(define (make-tag predicate name #!optional extra description)
-  (guarantee unary-procedure? predicate 'make-tag)
-  (guarantee tag-name? name 'make-tag)
-  (if (predicate? predicate)
-      (error "Predicate is already registered:" predicate))
-  (let ((tag
-         (%make-tag predicate
-                    name
-                    (if (default-object? description)
-                        #f
-                        (guarantee string? description 'make-tag))
-                    (if (default-object? extra) #f extra)
-		    (make-strong-eq-hash-table)
-		    (make-strong-eq-hash-table))))
-    (set-predicate-tag! predicate tag)
-    tag))
+(define (make-tag name datum-test tagging-strategy caller
+		  #!optional extra description)
+  (guarantee tag-name? name caller)
+  (guarantee unary-procedure? datum-test caller)
+  (if (not (default-object? description))
+      (guarantee string? description caller))
+  (tagging-strategy name datum-test
+    (lambda (predicate constructor accessor)
+      (let ((tag
+	     (%make-tag name
+			predicate
+			constructor
+			accessor
+			(if (default-object? extra) #f extra)
+			(if (default-object? description) #f description)
+			(make-strong-eq-hash-table)
+			(make-strong-eq-hash-table))))
+	(set-predicate-tag! predicate tag)
+	tag))))
 
 (define (tag-name? object)
   (or (symbol? object)
@@ -123,12 +127,15 @@ USA.
            (every tag-name? object))))
 
 (define-record-type <tag>
-    (%make-tag predicate name description extra subsets supersets)
+    (%make-tag name predicate constructor accessor extra description
+	       subsets supersets)
     tag?
-  (predicate tag->predicate)
   (name tag-name)
-  (description %tag-description)
+  (predicate tag->predicate)
+  (constructor tag-constructor)
+  (accessor tag-accessor)
   (extra tag-extra)
+  (description %tag-description)
   (subsets tag-subsets)
   (supersets tag-supersets))
 

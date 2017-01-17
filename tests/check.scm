@@ -49,7 +49,7 @@ USA.
     "runtime/test-arith"
     "runtime/test-bytevector"
     ("runtime/test-char-set" (runtime character-set))
-    ("runtime/test-compound-predicate" (runtime compound-predicate))
+    ("runtime/test-compound-predicate" (runtime))
     "runtime/test-dragon4"
     "runtime/test-dynamic-env"
     "runtime/test-division"
@@ -61,8 +61,8 @@ USA.
     "runtime/test-integer-bits"
     "runtime/test-mime-codec"
     ("runtime/test-parametric-predicate" (runtime parametric-predicate))
-    ("runtime/test-predicate-lattice" (runtime predicate-lattice))
-    ("runtime/test-predicate-metadata" (runtime predicate-metadata))
+    ("runtime/test-predicate-lattice" (runtime))
+    ("runtime/test-predicate-metadata" (runtime))
     "runtime/test-thread-queue"
     "runtime/test-process"
     "runtime/test-readwrite"

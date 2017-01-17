@@ -29,9 +29,21 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-parametric-tag predicate name template bindings)
-  (make-tag predicate
-            name
+(define (parametric-predicate? object)
+  (and (predicate? object)
+       (tag-is-parametric? (predicate->tag object))))
+
+(define (parametric-predicate-template predicate)
+  (parametric-tag-template (predicate->tag predicate)))
+
+(define (parametric-predicate-bindings predicate)
+  (parametric-tag-bindings (predicate->tag predicate)))
+
+(define (make-parametric-tag name datum-test tagging-strategy template bindings)
+  (make-tag name
+            datum-test
+	    tagging-strategy
+	    'make-predicate-template
             (make-parametric-tag-extra template bindings)))
 
 (define (tag-is-parametric? tag)
@@ -49,100 +61,91 @@ USA.
   (template parametric-tag-extra-template)
   (bindings parametric-tag-extra-bindings))
 
-(define (parametric-predicate? object)
-  (and (predicate? object)
-       (tag-is-parametric? (predicate->tag object))))
+;;;; Templates
 
-(define (parametric-predicate-template predicate)
-  (parametric-tag-template (predicate->tag predicate)))
-
-(define (parametric-predicate-bindings predicate)
-  (parametric-tag-bindings (predicate->tag predicate)))
+(define (make-predicate-template name pattern tagging-strategy make-data-test)
+  (guarantee template-pattern? pattern 'make-predicate-template)
+  (letrec*
+      ((instantiator
+        (make-instantiator name pattern make-data-test tagging-strategy
+			   (lambda () template)))
+       (template
+        (%make-predicate-template name
+				  pattern
+				  (all-args-memoizer equal?
+						     (lambda patterned-tags
+						       patterned-tags)
+						     instantiator)
+				  (lambda (object)
+				    (and (parametric-predicate? object)
+					 (eqv? template
+					       (parametric-predicate-template
+						  object)))))))
+    (register-predicate! (predicate-template-predicate template)
+			 (symbol name '-predicate)
+                         '<= parametric-predicate?)
+    template))
 
 (define-record-type <predicate-template>
     (%make-predicate-template name pattern instantiator predicate)
     predicate-template?
   (name predicate-template-name)
   (pattern predicate-template-pattern)
-  (instantiator predicate-template-instantiator)
+  (instantiator template-instantiator)
   (predicate predicate-template-predicate))
 
-(define (make-predicate-template name pattern)
-  (guarantee template-pattern? pattern 'make-predicate-template)
-  (letrec*
-      ((instantiator
-        (make-predicate-template-instantiator
-         (lambda () template)))
-       (predicate
-        (lambda (object)
-          (and (parametric-predicate? object)
-               (eqv? (parametric-predicate-template object)
-                     template))))
-       (template
-        (%make-predicate-template
-         name
-         pattern
-         (all-args-memoizer equal?
-                            (lambda parameters parameters)
-                            instantiator)
-         predicate)))
-    (register-predicate! predicate (symbol name '-predicate)
-                         '<= parametric-predicate?)
-    template))
+(define (make-instantiator name pattern make-data-test tagging-strategy
+			   get-template)
+  (lambda (patterned-tags caller)
+    (letrec ((tag
+	      (make-parametric-tag
+	       (cons name
+		     (map-template-pattern pattern
+					   patterned-tags
+					   tag-name
+					   caller))
+	       (make-data-test (lambda () tag))
+	       tagging-strategy
+	       (get-template)
+	       (match-template-pattern pattern
+				       patterned-tags
+				       tag?
+				       caller))))
+      tag)))
 
-(define (make-predicate-template-instantiator get-template)
-  (lambda parameters
-    (let ((template (get-template)))
-      (let ((name (predicate-template-name template))
-            (pattern (predicate-template-pattern template)))
-        (let ((parameters
-               (map-template-pattern pattern
-                                     parameters
-                                     predicate->tag)))
-          (letrec* ((predicate
-                     (lambda (object)
-                       (and (predicate? object)
-                            (tag<= (predicate->tag object) tag))))
-                    (tag
-                     (make-parametric-tag
-                      predicate
-                      (cons name
-                            (map-template-pattern pattern
-                                                  parameters
-                                                  tag-name))
-                      template
-                      (match-template-pattern pattern
-                                              parameters
-                                              tag?))))
-            predicate))))))
+(define (predicate-template-constructor template #!optional caller)
+  (let ((instantiator (template-instantiator template))
+        (pattern (predicate-template-pattern template)))
+    (lambda patterned-predicates
+      (tag->predicate
+       (instantiator (map-template-pattern pattern
+					   patterned-predicates
+					   predicate->tag
+					   caller)
+		     caller)))))
 
 (define (predicate-template-parameter-names template)
   (template-pattern->names (predicate-template-pattern template)))
 
-(define (predicate-template-accessor name template)
+(define (predicate-template-accessor name template #!optional caller)
   (let ((elt
          (find (lambda (elt)
-                 (eq? (template-pattern-element-name elt) name))
+                 (eq? name (template-pattern-element-name elt)))
                (predicate-template-pattern template))))
     (if (not elt)
-        (error "Unknown parameter name:" name template))
+        (error:bad-range-argument name 'predicate-template-accessor))
     (let ((valid? (predicate-template-predicate template))
           (convert
            (if (template-pattern-element-single-valued? elt)
                tag->predicate
-               tags->predicates)))
+	       (lambda (tags) (map tag->predicate tags)))))
       (lambda (predicate)
-        (if (not (valid? predicate))
-            (error "Not a valid predicate:" predicate))
+	(guarantee valid? predicate caller)
         (convert
          (parameter-binding-value
           (find (lambda (binding)
                   (eqv? name (parameter-binding-name binding)))
-                (parametric-tag-bindings
-                 (predicate->tag predicate)))))))))
-
-(define (tags->predicates tags)
-  (map tag->predicate tags))
+                (parametric-tag-bindings (predicate->tag predicate)))))))))
 
 ;;;; Template patterns
 
@@ -188,11 +191,11 @@ USA.
 
 (define (template-pattern->names pattern)
   (map template-pattern-element-name pattern))
-
-(define (match-template-pattern pattern values value-predicate)
-  (guarantee list? values 'match-template-pattern)
+
+(define (match-template-pattern pattern values value-predicate caller)
+  (guarantee list? values caller)
   (if (not (= (length values) (length pattern)))
-      (error "Wrong number of values:" values pattern))
+      (error:bad-range-argument values caller))
   (map (lambda (element value)
          (case (template-pattern-element-operator element)
            ((?)
@@ -207,12 +210,20 @@ USA.
                           (list? (cdr value))
                           (every value-predicate value)))
                 (error "Mismatch:" element value)))
-           (else
-            (error:not-a template-pattern? pattern 'match-template-pattern)))
+           (else (error:not-a template-pattern? pattern caller)))
          (make-parameter-binding element value))
        pattern
        values))
 
+(define (map-template-pattern pattern object value-procedure caller)
+  (map (lambda (element o)
+         (case (template-pattern-element-operator element)
+           ((?) (value-procedure o))
+           ((?* ?+) (map value-procedure o))
+           (else (error:not-a template-pattern? pattern caller))))
+       pattern
+       object))
+
 (define-record-type <parameter-binding>
     (make-parameter-binding element value)
     parameter-binding?
@@ -232,16 +243,6 @@ USA.
        (parameter-binding-element binding))
       (list (parameter-binding-value binding))
       (parameter-binding-value binding)))
-
-(define (map-template-pattern pattern object value-procedure)
-  (map (lambda (element o)
-         (case (template-pattern-element-operator element)
-           ((?) (value-procedure o))
-           ((?* ?+) (map value-procedure o))
-           (else
-            (error:not-a template-pattern? pattern 'map-template-pattern))))
-       pattern
-       object))
 
 (add-boot-init!
  (lambda ()

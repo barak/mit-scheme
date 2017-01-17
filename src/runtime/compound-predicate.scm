@@ -29,9 +29,11 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-compound-tag predicate operator operands)
-  (make-tag predicate
-            (cons operator (map tag-name operands))
+(define (make-compound-tag datum-test operator operands)
+  (make-tag (cons operator (map tag-name operands))
+            datum-test
+	    predicate-tagging-strategy:optional
+	    operator
             (make-compound-tag-extra operator operands)))
 
 (define (compound-tag? object)

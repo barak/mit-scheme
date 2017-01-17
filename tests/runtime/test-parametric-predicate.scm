@@ -28,17 +28,22 @@ USA.
 
 (declare (usual-integrations))
 
+(define (make-template name pattern)
+  (make-predicate-template name pattern
+			   predicate-tagging-strategy:always
+			   (lambda (tag) tag any-object?)))
+
 (define-test 'parametric-predicate-one-parameter
   (lambda ()
     (let ((pattern '((? base))))
-      (let* ((template (make-predicate-template 'template pattern))
-             (instantiator (predicate-template-instantiator template)))
+      (let* ((template (make-template 'template pattern))
+             (constructor (predicate-template-constructor template)))
         (test-template-operations template 'template pattern)
 
         (let ((params1 (list number?))
               (params2 (list boolean?)))
-          (let ((tn (apply instantiator params1))
-                (tb (apply instantiator params2)))
+          (let ((tn (apply constructor params1))
+                (tb (apply constructor params2)))
             (test-predicate-operations tn '(template number))
             (test-predicate-operations tb '(template boolean))
             (test-parametric-predicate-operations tn template params1)
@@ -47,14 +52,14 @@ USA.
 (define-test 'parametric-predicate-two-parameters
   (lambda ()
     (let ((pattern '((?* domains -) (? base))))
-      (let* ((template (make-predicate-template 'template pattern))
-             (instantiator (predicate-template-instantiator template)))
+      (let* ((template (make-template 'template pattern))
+             (constructor (predicate-template-constructor template)))
         (test-template-operations template 'template pattern)
 
         (let ((params1 (list (list number? number?) number?))
               (params2 (list (list boolean? boolean?) boolean?)))
-          (let ((tn (apply instantiator params1))
-                (tb (apply instantiator params2)))
+          (let ((tn (apply constructor params1))
+                (tb (apply constructor params2)))
             (test-predicate-operations tn '(template (number number) number))
             (test-predicate-operations tb '(template (boolean boolean) boolean))
             (test-parametric-predicate-operations tn template params1)
@@ -62,11 +67,11 @@ USA.
 
 (define-test 'covariant-ordering
   (lambda ()
-    (let* ((template (make-predicate-template 'foo '((? a))))
-           (instantiator (predicate-template-instantiator template)))
-      (let ((p1 (instantiator (disjoin string? symbol?)))
-            (p2 (instantiator string?))
-            (p3 (instantiator symbol?)))
+    (let* ((template (make-template 'foo '((? a))))
+           (constructor (predicate-template-constructor template)))
+      (let ((p1 (constructor (disjoin string? symbol?)))
+            (p2 (constructor string?))
+            (p3 (constructor symbol?)))
 
         (assert-true (predicate<= p1 p1))
         (assert-false (predicate<= p1 p2))
@@ -84,11 +89,11 @@ USA.
 
 (define-test 'contravariant-ordering
   (lambda ()
-    (let* ((template (make-predicate-template 'foo '((? a -))))
-           (instantiator (predicate-template-instantiator template)))
-      (let ((p1 (instantiator (disjoin string? symbol?)))
-            (p2 (instantiator string?))
-            (p3 (instantiator symbol?)))
+    (let* ((template (make-template 'foo '((? a -))))
+           (constructor (predicate-template-constructor template)))
+      (let ((p1 (constructor (disjoin string? symbol?)))
+            (p2 (constructor string?))
+            (p3 (constructor symbol?)))
 
         (assert-true (predicate<= p1 p1))
         (assert-true (predicate<= p1 p2))
@@ -106,13 +111,13 @@ USA.
 
 (define-test 'mixed-ordering
   (lambda ()
-    (let* ((template (make-predicate-template 'foo '((? a -) (? b))))
-           (instantiator (predicate-template-instantiator template)))
-      (let ((p1 (instantiator (disjoin string? symbol?)
-                              (disjoin string? symbol?)))
-            (p2 (instantiator string? string?))
-            (p3 (instantiator string? (disjoin string? symbol?)))
-            (p4 (instantiator (disjoin string? symbol?) string?)))
+    (let* ((template (make-template 'foo '((? a -) (? b))))
+           (constructor (predicate-template-constructor template)))
+      (let ((p1 (constructor (disjoin string? symbol?)
+			     (disjoin string? symbol?)))
+            (p2 (constructor string? string?))
+            (p3 (constructor string? (disjoin string? symbol?)))
+            (p4 (constructor (disjoin string? symbol?) string?)))
 
         (for-each (lambda (predicate)
                     (assert-true (predicate<= predicate predicate)))
@@ -237,7 +242,8 @@ USA.
    (parametric-predicate-template predicate)))
 
 (define (match-numbers pattern values)
-  (parameter-bindings->alist (match-template-pattern pattern values number?)))
+  (parameter-bindings->alist
+   (match-template-pattern pattern values number? 'match-numbers)))
 
 (define (parameter-bindings->alist bindings)
   (map (lambda (binding)
