@@ -74,7 +74,73 @@ USA.
 		   'set-tagged-object-unparser-method!)
 	(hash-table-set! unparser-methods tag unparser))
       (hash-table-delete! unparser-methods tag)))
+
+;;;; Tagging strategies
 
+(define (predicate-tagging-strategy:never name predicate make-tag)
+
+  (define (constructor object #!optional caller)
+    (guarantee predicate object caller)
+    object)
+
+  (define (accessor object #!optional caller)
+    (guarantee predicate object caller)
+    object)
+
+  (define tag
+    (make-tag predicate constructor accessor))
+
+  tag)
+
+(define (predicate-tagging-strategy:always name datum-test make-tag)
+
+  (define (predicate object)
+    (and (tagged-object? object)
+         (tag<= (tagged-object-tag object) tag)
+         (datum-test (tagged-object-datum object))))
+
+  (define (constructor datum #!optional caller)
+    (if (not (datum-test datum))
+	(error:wrong-type-argument datum (string "datum for " name) caller))
+    (make-tagged-object tag datum))
+
+  (define (accessor object #!optional caller)
+    (guarantee predicate object caller)
+    object)
+
+  (define tag
+    (make-tag predicate constructor tagged-object-datum))
+
+  tag)
+
+(define (predicate-tagging-strategy:optional name datum-test make-tag)
+
+  (define (predicate object)
+    (or (tagged-object-test object)
+        (datum-test object)))
+
+  (define (tagged-object-test object)
+    (and (tagged-object? object)
+	 (tag<= (tagged-object-tag object) tag)
+	 (datum-test (tagged-object-datum object))))
+
+  (define (constructor datum #!optional caller)
+    (if (not (datum-test datum))
+	(error:wrong-type-argument datum (string "datum for " name) caller))
+    (if (eq? tag (object->tag datum))
+        datum
+        (make-tagged-object tag datum)))
+
+  (define (accessor object #!optional caller)
+    (cond ((tagged-object-test object) (tagged-object-datum object))
+	  ((datum-test object) object)
+	  (else (error:not-a predicate object caller))))
+
+  (define tag
+    (make-tag predicate constructor accessor))
+
+  tag)
+
 (define (object->predicate object)
   (tag->predicate (object->tag object)))
 
@@ -86,7 +152,7 @@ USA.
 (define (object->datum object)
   (cond ((tagged-object? object) (system-pair-cdr object))
         (else object)))
-
+
 (define primitive-tags)
 (define primitive-tag-methods)
 (add-boot-init!

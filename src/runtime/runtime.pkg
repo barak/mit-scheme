@@ -1862,6 +1862,9 @@ USA.
 	  object->datum
 	  object->predicate
 	  object-tagger
+	  predicate-tagging-strategy:always
+	  predicate-tagging-strategy:never
+	  predicate-tagging-strategy:optional
 	  set-tagged-object-unparser-method!
 	  tag-object
 	  tagged-object-datum
