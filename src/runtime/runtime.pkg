@@ -2891,6 +2891,7 @@ USA.
 	  fourth
 	  general-car-cdr
 	  get-keyword-value
+	  get-keyword-values
 	  guarantee-list->length
 	  guarantee-list-of-type
 	  guarantee-list-of-type->length
