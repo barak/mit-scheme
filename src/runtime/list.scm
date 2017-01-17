@@ -1400,7 +1400,7 @@ USA.
 (define (get-keyword-values klist key)
   (let ((lose
 	 (lambda () (error:not-a keyword-list? klist 'get-keyword-values))))
-    (let loop ((klist klist) (values values))
+    (let loop ((klist klist) (values '()))
       (if (pair? klist)
 	  (begin
 	    (if (not (pair? (cdr klist)))
