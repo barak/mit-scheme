@@ -84,7 +84,8 @@ USA.
    (register-predicate! binary-output-port? 'binary-output-port
 			'<= binary-port?)
    (register-predicate! binary-i/o-port? 'binary-i/o-port
-			'<= (list binary-input-port? binary-output-port?))))
+			'<= binary-input-port?
+			'<= binary-output-port?)))
 
 (set-record-type-unparser-method! <binary-port>
   (standard-unparser-method

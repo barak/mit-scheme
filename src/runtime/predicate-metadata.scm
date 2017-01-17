@@ -48,14 +48,11 @@ USA.
          (make-tag predicate
                    name
                    (get-keyword-value keylist 'extra)
-                   (get-keyword-value keylist 'description)))
-        (superset (get-keyword-value keylist '<=)))
-    (if (not (default-object? superset))
-	(for-each (lambda (superset)
-		    (set-tag<=! tag (predicate->tag superset)))
-		  (if (list? superset)
-		      superset
-		      (list superset))))))
+                   (get-keyword-value keylist 'description))))
+    (for-each (lambda (superset)
+		(set-tag<=! tag (predicate->tag superset)))
+	      (get-keyword-values keylist '<=))
+    tag))
 
 (define (predicate->tag predicate #!optional caller)
   (let ((tag (get-predicate-tag predicate #f)))
@@ -252,13 +249,16 @@ USA.
 
    (register-predicate! fix:fixnum? 'fixnum '<= exact-integer?)
    (register-predicate! index-fixnum? 'index-fixnum
-			'<= (list fix:fixnum? exact-nonnegative-integer?))
+			'<= fix:fixnum?
+			'<= exact-nonnegative-integer?)
    (register-predicate! byte? 'byte '<= index-fixnum?)
    (register-predicate! negative-fixnum? 'negative-fixnum '<= fix:fixnum?)
    (register-predicate! positive-fixnum? 'positive-fixnum
-			'<= (list fix:fixnum? exact-positive-integer?))
+			'<= fix:fixnum?
+			'<= exact-positive-integer?)
    (register-predicate! non-negative-fixnum? 'non-negative-fixnum
-			'<= (list fix:fixnum? exact-nonnegative-integer?))
+			'<= fix:fixnum?
+			'<= exact-nonnegative-integer?)
    (register-predicate! non-positive-fixnum? 'non-positive-fixnum
 			'<= fix:fixnum?)
 
@@ -269,7 +269,9 @@ USA.
    (register-predicate! keyword-list? 'keyword-list '<= list?)
    (register-predicate! list-of-unique-symbols? 'list-of-unique-symbols
 			'<= list?)
-   (register-predicate! non-empty-list? 'non-empty-list '<= (list list? pair?))
+   (register-predicate! non-empty-list? 'non-empty-list
+			'<= list?
+			'<= pair?)
    (register-predicate! unique-keyword-list? 'unique-keyword-list
 			'<= keyword-list?)
 
