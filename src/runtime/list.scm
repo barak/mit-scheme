@@ -1405,7 +1405,7 @@ USA.
 	  (begin
 	    (if (not (pair? (cdr klist)))
 		(lose))
-	    (loop (cdr (cdr list))
+	    (loop (cdr (cdr klist))
 		  (if (eq? (car klist) key)
 		      (cons (car (cdr klist)) values)
 		      values)))
