@@ -1277,8 +1277,13 @@ USA.
 	  char-downcase
 	  char-integer-limit
 	  char-upcase
+	  char-utf16-byte-length
+	  char-utf16be-bytes!
+	  char-utf16le-bytes!
+	  char-utf32-byte-length
+	  char-utf32be-bytes!
+	  char-utf32le-bytes!
 	  char-utf8-byte-length
-	  char-utf8-bytes
 	  char-utf8-bytes!
 	  char<=?
 	  char<?
