@@ -506,9 +506,9 @@ USA.
 
     (define (short-substring-move! s1 start1 end1 s2 start2)
       (do ((i1 start1 (fix:+ i1 1))
-    	   (i2 start2 (fix:+ i2 1)))
-    	  ((fix:= i1 end1))
-    	(string-set! s2 i2 (string-ref s1 i1))))
+	   (i2 start2 (fix:+ i2 1)))
+	  ((fix:= i1 end1))
+	(string-set! s2 i2 (string-ref s1 i1))))
 
     (let parse-command ((bp 0) (cp 0) (ip 0) (ip-end 0)
 			       (buffer (make-string buffer-size))
