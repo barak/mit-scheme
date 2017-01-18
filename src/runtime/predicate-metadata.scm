@@ -104,11 +104,6 @@ USA.
                              (string-append "list of "
                                             (predicate-description predicate))
                              caller))
-
-(define (simple-predicate? object)
-  (let ((tag (get-predicate-tag object #f)))
-    (and tag
-         (not (tag-extra tag)))))
 
 (define (make-tag name datum-test tagging-strategy caller
 		  #!optional extra description)
