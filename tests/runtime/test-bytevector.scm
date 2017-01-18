@@ -197,3 +197,121 @@ USA.
 	((not (pair? bytes)))
       (bytevector-u8-set! v i (car bytes)))
     v))
+
+(define-test 'bytevector-u16-ref
+  (lambda ()
+    (do ((i 0 (+ i 1)))
+	((not (< i 16)))
+      (test-bytevector-u16-ref (iota i)))))
+
+(define (test-bytevector-u16-ref bytes)
+  (let ((bv (apply bytevector bytes))
+	(index-limit (- (length bytes) 1)))
+    (assert-u16-refs bv bytes)
+    (assert-range-error (lambda () (bytevector-u16be-ref bv -1)))
+    (assert-range-error (lambda () (bytevector-u16le-ref bv -1)))
+    (assert-range-error (lambda () (bytevector-u16be-ref bv index-limit)))
+    (assert-range-error (lambda () (bytevector-u16le-ref bv index-limit)))))
+
+(define-test 'bytevector-u16-set!
+  (lambda ()
+    (do ((i 2 (+ i 1)))
+	((not (< i 16)))
+      (do ((j 0 (+ j 1)))
+	  ((not (< (+ j 1) i)))
+	(test-bytevector-u16-set! (iota i) j #xFFFE)))))
+
+(define (test-bytevector-u16-set! bytes index-to-set value-to-set)
+  (let ((value-as-bytes
+	 (list (quotient value-to-set #x100)
+	       (remainder value-to-set #x100))))
+    (test-bytevector-u16-set!-1 bytevector-u16be-set! value-as-bytes
+				bytes index-to-set value-to-set)
+    (test-bytevector-u16-set!-1 bytevector-u16le-set! (reverse value-as-bytes)
+				bytes index-to-set value-to-set)))
+
+(define (test-bytevector-u16-set!-1 setter value-as-bytes
+				    bytes index-to-set value-to-set)
+  (let ((bv (apply bytevector bytes))
+	(index-limit (- (length bytes) 1))
+	(expected-bytes
+	 (append (take bytes index-to-set)
+		 value-as-bytes
+		 (drop bytes (+ index-to-set 2)))))
+    (setter bv index-to-set value-to-set)
+    (assert-u16-refs bv expected-bytes)
+    (assert-range-error (lambda () (setter bv -1 value-to-set)))
+    (assert-range-error (lambda () (setter bv index-limit value-to-set)))))
+
+(define (assert-u16-refs bv bytes)
+  (do ((bytes bytes (cdr bytes))
+       (index 0 (+ index 1)))
+      ((not (>= (length bytes) 2)))
+    (assert-= (bytevector-u16be-ref bv index)
+	      (+ (* (car bytes) #x100)
+		 (cadr bytes)))
+    (assert-= (bytevector-u16le-ref bv index)
+	      (+ (* (cadr bytes) #x100)
+		 (car bytes)))))
+
+(define-test 'bytevector-u32-ref
+  (lambda ()
+    (do ((i 0 (+ i 1)))
+	((not (< i 32)))
+      (test-bytevector-u32-ref (iota i)))))
+
+(define (test-bytevector-u32-ref bytes)
+  (let ((bv (apply bytevector bytes))
+	(index-limit (- (length bytes) 1)))
+    (assert-u32-refs bv bytes)
+    (assert-range-error (lambda () (bytevector-u32be-ref bv -1)))
+    (assert-range-error (lambda () (bytevector-u32le-ref bv -1)))
+    (assert-range-error (lambda () (bytevector-u32be-ref bv index-limit)))
+    (assert-range-error (lambda () (bytevector-u32le-ref bv index-limit)))))
+
+(define-test 'bytevector-u32-set!
+  (lambda ()
+    (do ((i 2 (+ i 1)))
+	((not (< i 32)))
+      (do ((j 0 (+ j 1)))
+	  ((not (< (+ j 3) i)))
+	(test-bytevector-u32-set! (iota i) j #xFFFEFDFC)))))
+
+(define (test-bytevector-u32-set! bytes index-to-set value-to-set)
+  (let ((value-as-bytes
+	 (list (quotient value-to-set #x1000000)
+	       (remainder (quotient value-to-set #x10000) #x100)
+	       (remainder (quotient value-to-set #x100) #x100)
+	       (remainder value-to-set #x100))))
+    (test-bytevector-u32-set!-1 bytevector-u32be-set! value-as-bytes
+				bytes index-to-set value-to-set)
+    (test-bytevector-u32-set!-1 bytevector-u32le-set! (reverse value-as-bytes)
+				bytes index-to-set value-to-set)))
+
+(define (test-bytevector-u32-set!-1 setter value-as-bytes
+				    bytes index-to-set value-to-set)
+  (let ((bv (apply bytevector bytes))
+	(index-limit (- (length bytes) 1))
+	(expected-bytes
+	 (append (take bytes index-to-set)
+		 value-as-bytes
+		 (drop bytes (+ index-to-set 4)))))
+    (setter bv index-to-set value-to-set)
+    (assert-u32-refs bv expected-bytes)
+    (assert-range-error (lambda () (setter bv -1 value-to-set)))
+    (assert-range-error (lambda () (setter bv index-limit value-to-set)))))
+
+(define (assert-u32-refs bv bytes)
+  (do ((bytes bytes (cdr bytes))
+       (index 0 (+ index 1)))
+      ((not (>= (length bytes) 4)))
+    (assert-= (bytevector-u32be-ref bv index)
+	      (+ (* (car bytes) #x1000000)
+		 (* (cadr bytes) #x10000)
+		 (* (caddr bytes) #x100)
+		 (cadddr bytes)))
+    (assert-= (bytevector-u32le-ref bv index)
+	      (+ (* (cadddr bytes) #x1000000)
+		 (* (caddr bytes) #x10000)
+		 (* (cadr bytes) #x100)
+		 (car bytes)))))
