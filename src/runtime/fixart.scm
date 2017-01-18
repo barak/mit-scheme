@@ -24,11 +24,13 @@ USA.
 
 |#
 
-;;;; Fixnum Arithmetic
+;;;; Low-level arithmetic
 ;;; package: (runtime fixnum-arithmetic)
 
 (declare (usual-integrations))
 
+;;;; Fixnums
+
 (define-primitives
   (fix:fixnum? fixnum? 1)
   (fixnum? fixnum? 1)
@@ -53,25 +55,47 @@ USA.
   (fix:or fixnum-or 2)
   (fix:xor fixnum-xor 2)
   (fix:not fixnum-not 1)
-  (fix:lsh fixnum-lsh 2)
+  (fix:lsh fixnum-lsh 2))
 
-  (int:integer? integer? 1)
-  (int:zero? integer-zero? 1)
-  (int:positive? integer-positive? 1)
-  (int:negative? integer-negative? 1)
-  (int:= integer-equal? 2)
-  (int:< integer-less? 2)
-  (int:> integer-greater? 2)
-  (int:negate integer-negate 1)
-  (int:1+ integer-add-1 1)
-  (int:-1+ integer-subtract-1 1)
-  (int:+ integer-add 2)
-  (int:- integer-subtract 2)
-  (int:* integer-multiply 2)
-  (int:divide integer-divide 2)
-  (int:quotient integer-quotient 2)
-  (int:remainder integer-remainder 2)
+(define (positive-fixnum? object)
+  (and (fixnum? object)
+       (fix:positive? object)))
 
+(define (negative-fixnum? object)
+  (and (fixnum? object)
+       (fix:negative? object)))
+
+(define (non-negative-fixnum? object)
+  (and (fixnum? object)
+       (not (fix:negative? object))))
+
+(define (non-positive-fixnum? object)
+  (and (fixnum? object)
+       (not (fix:positive? object))))
+
+(define-guarantee fixnum "fixnum")
+(define-guarantee positive-fixnum "positive fixnum")
+(define-guarantee negative-fixnum "negative fixnum")
+(define-guarantee non-positive-fixnum "non-positive fixnum")
+(define-guarantee non-negative-fixnum "non-negative fixnum")
+
+(define-integrable (guarantee-index-fixnum object caller)
+  (if (not (index-fixnum? object))
+      (error:wrong-type-argument object "index integer" caller)))
+
+(define (guarantee-limited-index-fixnum object limit caller)
+  (guarantee-index-fixnum object caller)
+  (if (not (fix:< object limit))
+      (error:bad-range-argument object caller)))
+
+(define-integrable (fix:<= n m) (not (fix:> n m)))
+(define-integrable (fix:>= n m) (not (fix:< n m)))
+(define (fix:min n m) (if (fix:< n m) n m))
+(define (fix:max n m) (if (fix:> n m) n m))
+
+;;;; Flonums
+
+(define-primitives
   (flo:flonum? flonum? 1)
   (flo:zero? flonum-zero? 1)
   (flo:positive? flonum-positive? 1)
@@ -132,46 +156,6 @@ USA.
   (flo:vector-ref floating-vector-ref 2)
   (flo:vector-set! floating-vector-set! 3))
 
-(define-guarantee fixnum "fixnum")
-
-(define-integrable (positive-fixnum? object)
-  (and (fixnum? object)
-       (fix:positive? object)))
-
-(define-integrable (negative-fixnum? object)
-  (and (fixnum? object)
-       (fix:negative? object)))
-
-(define-integrable (non-negative-fixnum? object)
-  (and (fixnum? object)
-       (not (fix:negative? object))))
-
-(define-integrable (non-positive-fixnum? object)
-  (and (fixnum? object)
-       (not (fix:positive? object))))
-
-(define-guarantee positive-fixnum "positive fixnum")
-(define-guarantee negative-fixnum "negative fixnum")
-(define-guarantee non-positive-fixnum "non-positive fixnum")
-(define-guarantee non-negative-fixnum "non-negative fixnum")
-
-(define-integrable (guarantee-index-fixnum object caller)
-  (if (not (index-fixnum? object))
-      (error:wrong-type-argument object "index integer" caller)))
-
-(define (guarantee-limited-index-fixnum object limit caller)
-  (guarantee-index-fixnum object caller)
-  (if (not (fix:< object limit))
-      (error:bad-range-argument object caller)))
-
-(define-integrable (fix:<= n m) (not (fix:> n m)))
-(define-integrable (fix:>= n m) (not (fix:< n m)))
-(define-integrable (int:<= n m) (not (int:> n m)))
-(define-integrable (int:>= n m) (not (int:< n m)))
-
-(define (fix:min n m) (if (fix:< n m) n m))
-(define (fix:max n m) (if (fix:> n m) n m))
-
 (define (flo:<= x y) (or (flo:< x y) (flo:= x y)))
 (define (flo:>= x y) (or (flo:> x y) (flo:= x y)))
 
@@ -204,9 +188,32 @@ USA.
       ;; XXX (and (flo:nan? x) (flo:nan? y) ...)
       #f))
 
-(define-integrable (int:->flonum n)
+(define (int:->flonum n)
   ((ucode-primitive integer->flonum 2) n #b10))
 
 (define (->flonum x)
   (guarantee-real x '->FLONUM)
   (exact->inexact (real-part x)))
+
+;;;; Exact integers
+
+(define-primitives
+  (int:integer? integer? 1)
+  (int:zero? integer-zero? 1)
+  (int:positive? integer-positive? 1)
+  (int:negative? integer-negative? 1)
+  (int:= integer-equal? 2)
+  (int:< integer-less? 2)
+  (int:> integer-greater? 2)
+  (int:negate integer-negate 1)
+  (int:1+ integer-add-1 1)
+  (int:-1+ integer-subtract-1 1)
+  (int:+ integer-add 2)
+  (int:- integer-subtract 2)
+  (int:* integer-multiply 2)
+  (int:divide integer-divide 2)
+  (int:quotient integer-quotient 2)
+  (int:remainder integer-remainder 2))
+
+(define-integrable (int:<= n m) (not (int:> n m)))
+(define-integrable (int:>= n m) (not (int:< n m)))
