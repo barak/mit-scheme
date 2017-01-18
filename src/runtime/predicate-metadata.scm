@@ -55,12 +55,6 @@ USA.
 	      (get-keyword-values keylist '<=))
     tag))
 
-(define (predicate->tag predicate #!optional caller)
-  (let ((tag (get-predicate-tag predicate #f)))
-    (if (not tag)
-        (error:not-a predicate? predicate caller))
-    tag))
-
 (define (predicate-name predicate)
   (tag-name (predicate->tag predicate 'predicate-name)))
 
@@ -85,6 +79,12 @@ USA.
 
 (define (unregister-predicate! predicate)
   (delete-tag! (predicate->tag predicate)))
+
+(define (predicate->tag predicate #!optional caller)
+  (let ((tag (get-predicate-tag predicate #f)))
+    (if (not tag)
+        (error:not-a predicate? predicate caller))
+    tag))
 
 (define (guarantee predicate object #!optional caller)
   (if (not (predicate object))
@@ -149,7 +149,7 @@ USA.
   (simple-unparser-method 'tag
     (lambda (tag)
       (list (tag-name tag)))))
-
+
 (define (tag-description tag)
   (or (%tag-description tag)
       (object->description (tag-name tag))))
