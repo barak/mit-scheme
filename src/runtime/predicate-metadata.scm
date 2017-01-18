@@ -264,7 +264,6 @@ USA.
    (register-predicate! index-fixnum? 'index-fixnum
 			'<= fix:fixnum?
 			'<= exact-nonnegative-integer?)
-   (register-predicate! byte? 'byte '<= index-fixnum?)
    (register-predicate! negative-fixnum? 'negative-fixnum '<= fix:fixnum?)
    (register-predicate! positive-fixnum? 'positive-fixnum
 			'<= fix:fixnum?
@@ -276,6 +275,8 @@ USA.
 			'<= fix:fixnum?)
 
    (register-predicate! flo:flonum? 'flonum '<= real?)
+
+   (register-mit-bytevector-predicates!)
 
    ;; MIT/GNU Scheme: lists
    (register-predicate! alist? 'association-list '<= list?)

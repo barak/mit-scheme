@@ -1149,13 +1149,25 @@ USA.
 	  bytevector-copy!
 	  bytevector-fill!
 	  bytevector-length
+	  bytevector-u16be-ref
+	  bytevector-u16be-set!
+	  bytevector-u16le-ref
+	  bytevector-u16le-set!
+	  bytevector-u32be-ref
+	  bytevector-u32be-set!
+	  bytevector-u32le-ref
+	  bytevector-u32le-set!
 	  bytevector-u8-ref
 	  bytevector-u8-set!
 	  bytevector=?
 	  bytevector?
 	  make-bytevector
 	  string->utf8
-	  utf8->string))
+	  u16?
+	  u32?
+	  utf8->string)
+  (export (runtime predicate-metadata)
+	  register-mit-bytevector-predicates!))
 
 (define-package (runtime 1d-property)
   (files "prop1d")
