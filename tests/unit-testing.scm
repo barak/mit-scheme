@@ -69,7 +69,7 @@ USA.
   (let ((test-environment
 	 (if (default-object? parent)
 	     (make-top-level-environment)
-	     (extend-top-level-environment parent))))
+	     (extend-top-level-environment (->environment parent)))))
     (for-each (lambda (p)
 		(environment-define test-environment (car p) (cdr p)))
 	      test-definitions)
