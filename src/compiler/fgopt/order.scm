@@ -238,12 +238,10 @@ USA.
 				(not (procedure-original-rest model))))
 		       (warn "wrong number of arguments"
 			     n-supplied
-			     (error-irritant/noise char:newline)
-			     (error-irritant/noise "in call to procedure")
+			     (error-irritant/noise "\nin call to procedure")
 			     (procedure-name model)
-			     (error-irritant/noise char:newline)
 			     (error-irritant/noise
-			      "minimum/maximum number of arguments:")
+			      "\nminimum/maximum number of arguments:")
 			     n-required
 			     n-expected))
 		   (- n-expected n-supplied))))

@@ -3123,17 +3123,6 @@ USA.
   (files "utabs")
   (parent (runtime))
   (export ()
-	  char:newline
-	  fixed-object/code->name
-	  fixed-object/code-limit
-	  fixed-object/name->code
-	  fixed-objects-item
-	  fixed-objects-vector-slot
-	  get-microcode-version-numbers
-	  get-microcode-version-string
-	  microcode-error/code->name
-	  microcode-error/code-limit
-	  microcode-error/name->code
 	  microcode-id/compiled-code-type
 	  microcode-id/floating-epsilon
 	  microcode-id/floating-mantissa-bits
@@ -3145,23 +3134,43 @@ USA.
 	  microcode-id/stack-type
 	  microcode-id/tty-x-size
 	  microcode-id/tty-y-size
-	  microcode-identification-item
-	  microcode-identification-vector-slot
-	  microcode-object/unassigned
+	  microcode-type/code-limit)
+  (export (runtime)
+	  char:newline
+	  fixed-objects-accessor
+	  fixed-objects-item
+	  fixed-objects-modifier
+	  fixed-objects-updater
+	  get-microcode-version-numbers
+	  microcode-type/code->name
+	  microcode-type/code->names
+	  microcode-type/name->code
+	  set-fixed-objects-item!
+	  update-fixed-objects-item!)
+  (export (runtime continuation-parser)
+	  microcode-return/code-limit)
+  (export (runtime garbage-collector)
+	  fixed-objects-vector-slot)
+  (export (runtime gc-daemons)
+	  fixed-objects-vector-slot)
+  (export (runtime interrupt-handler)
+	  fixed-objects-vector-slot
+	  microcode-termination/code-limit)
+  (export (runtime microcode-data)
+	  microcode-error/name->code
 	  microcode-return/code->name
-	  microcode-return/code-limit
+	  microcode-return/name->code
+	  microcode-termination/name->code)
+  (export (runtime microcode-errors)
+	  fixed-objects-vector-slot
+	  microcode-error/code->name
+	  microcode-error/code-limit
+	  microcode-error/name->code
+	  microcode-return/code->name
 	  microcode-return/name->code
 	  microcode-system-call-error/code->name
 	  microcode-system-call-error/name->code
-	  microcode-system-call/code->name
-	  microcode-system-call/name->code
-	  microcode-termination/code->name
-	  microcode-termination/code-limit
-	  microcode-termination/name->code
-	  microcode-type/code->name
-	  microcode-type/code->names
-	  microcode-type/code-limit
-	  microcode-type/name->code)
+	  microcode-system-call/code->name)
   (export (runtime save/restore)
 	  read-microcode-tables!)
   (initialization (initialize-package!)))

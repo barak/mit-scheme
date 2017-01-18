@@ -121,10 +121,32 @@ USA.
 
 (define (fixed-objects-vector-slot name)
   (or (fixed-object/name->code name)
-      (error:bad-range-argument name 'FIXED-OBJECTS-VECTOR-SLOT)))
+      (error:bad-range-argument name 'fixed-objects-vector-slot)))
+
+(define (fixed-objects-accessor name)
+  (let ((index (fixed-objects-vector-slot name)))
+    (lambda ()
+      (vector-ref (get-fixed-objects-vector) index))))
+
+(define (fixed-objects-modifier name)
+  (let ((index (fixed-objects-vector-slot name)))
+    (lambda (object)
+      (vector-set! (get-fixed-objects-vector) index object))))
+
+(define (fixed-objects-updater name)
+  (let ((index (fixed-objects-vector-slot name)))
+    (lambda (updater)
+      (let ((v (get-fixed-objects-vector)))
+	(vector-set! v index (updater (vector-ref v index)))))))
 
 (define (fixed-objects-item name)
-  (vector-ref (get-fixed-objects-vector) (fixed-objects-vector-slot name)))
+  ((fixed-objects-accessor name)))
+
+(define (set-fixed-objects-item! name object)
+  ((fixed-objects-modifier name) object))
+
+(define (update-fixed-objects-item! name updater)
+  ((fixed-objects-updater name) updater))
 
 (define (microcode-object/unassigned)
   (vector-ref (get-fixed-objects-vector) non-object-slot))

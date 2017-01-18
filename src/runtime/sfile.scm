@@ -202,28 +202,26 @@ USA.
 
 (define (allocate-temporary-file pathname)
   (and (not (file-exists? pathname))
-       (let ((objects (get-fixed-objects-vector))
-	     (slot (fixed-objects-vector-slot 'FILES-TO-DELETE))
+       (let ((updater (fixed-objects-updater 'files-to-delete))
 	     (filename (->namestring pathname)))
 	 (with-files-to-delete-locked
 	  (lambda ()
 	    (and (file-touch pathname)
 		 (begin
-		   (vector-set! objects slot
-				(cons filename (vector-ref objects slot)))
-		   ((ucode-primitive set-fixed-objects-vector! 1) objects)
+		   (updater
+		    (lambda (filenames)
+		      (cons filename filenames)))
 		   #t)))))))
 
 (define (deallocate-temporary-file pathname)
   (delete-file-no-errors pathname)
-  (let ((objects (get-fixed-objects-vector))
-	(slot (fixed-objects-vector-slot 'FILES-TO-DELETE))
+  (let ((updater (fixed-objects-updater 'files-to-delete))
 	(filename (->namestring pathname)))
     (with-files-to-delete-locked
      (lambda ()
-       (vector-set! objects slot
-		    (delete! filename (vector-ref objects slot)))
-       ((ucode-primitive set-fixed-objects-vector! 1) objects)))))
+       (updater
+	(lambda (filenames)
+	  (delete! filename filenames)))))))
 
 ;;;; Init files
 

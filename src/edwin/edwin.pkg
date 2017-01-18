@@ -119,6 +119,9 @@ USA.
 	  define-primitives
 	  ucode-primitive
 	  ucode-type)
+  (import (runtime microcode-tables)
+	  fixed-objects-item
+	  update-fixed-objects-item!)
   (import (runtime port)
 	  (make-port make-textual-port)
 	  (make-port-type make-textual-port-type)

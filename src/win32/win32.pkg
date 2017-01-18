@@ -50,6 +50,8 @@ USA.
 	  win32-screen-width)
   (import (runtime)
 	  ucode-primitive)
+  (import (runtime microcode-tables)
+	  fixed-objects-item)
   (initialization
    (begin
      (initialize-protection-list-package!)

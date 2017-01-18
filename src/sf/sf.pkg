@@ -38,7 +38,9 @@ USA.
   (parent ())
   (export ()
           sf:enable-argument-deletion?
-          sf:enable-constant-folding?))
+          sf:enable-constant-folding?)
+  (import (runtime microcode-tables)
+	  microcode-type/code->name))
 
 (define-package (scode-optimizer global-imports)
   (files "gimprt")

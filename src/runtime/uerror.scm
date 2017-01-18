@@ -458,19 +458,12 @@ USA.
      continuation
      argument)))
 
-(let ((fixed-objects (get-fixed-objects-vector)))
-  (vector-set! fixed-objects
-	       (fixed-objects-vector-slot 'SYSTEM-ERROR-VECTOR)
-	       error-handler-vector)
-  (vector-set! fixed-objects
-	       (fixed-objects-vector-slot 'ERROR-PROCEDURE)
-	       (lambda (datum arguments environment)
-		 environment
-		 (apply error (cons* datum arguments))))
-  (vector-set! fixed-objects
-	       (fixed-objects-vector-slot 'COMPILER-ERROR-PROCEDURE)
-	       error)
-  ((ucode-primitive set-fixed-objects-vector!) fixed-objects))
+(set-fixed-objects-item! 'system-error-vector error-handler-vector)
+(set-fixed-objects-item! 'error-procedure
+			 (lambda (datum arguments environment)
+			   environment
+			   (apply error (cons* datum arguments))))
+(set-fixed-objects-item! 'compiler-error-procedure error)
 
 ;;;; Variable Errors
 

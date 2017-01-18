@@ -109,25 +109,18 @@ This file is not the file you visited; that changes only when you save."
    (lambda ()
      (remove-group-microcode-entry (buffer-group buffer)))))
 
-(define add-group-microcode-entry)
-(define remove-group-microcode-entry)
-(let ((index (fixed-objects-vector-slot 'EDWIN-AUTO-SAVE)))
-  (set! add-group-microcode-entry
-	(lambda (group namestring)
-	  (let ((vector (get-fixed-objects-vector)))
-	    (let ((alist (vector-ref vector index)))
-	      (let ((entry (assq group alist)))
-		(if entry
-		    (set-cdr! entry namestring)
-		    (vector-set! vector
-				 index
-				 (cons (cons group namestring) alist))))))))
-  (set! remove-group-microcode-entry
-	(lambda (group)
-	  (let ((vector (get-fixed-objects-vector)))
-	    (vector-set! vector
-			 index
-			 (del-assq! group (vector-ref vector index)))))))
+(define (add-group-microcode-entry group namestring)
+  (let ((entry (assq group (fixed-objects-item 'edwin-auto-save))))
+    (if entry
+	(set-cdr! entry namestring)
+	(update-fixed-objects-item! 'edwin-auto-save
+				    (lambda (alist)
+				      (cons (cons group namestring) alist))))))
+
+(define (remove-group-microcode-entry group)
+  (update-fixed-objects-item! 'edwin-auto-save
+			      (lambda (alist)
+				(del-assq! group alist))))
 
 (define (delete-auto-save-file! buffer)
   (and (ref-variable delete-auto-save-files)

@@ -115,6 +115,9 @@ USA.
 	  record-class
 	  record-type-class
 	  subclass?)
+  (import (runtime microcode-tables)
+	  microcode-type/code->name
+	  microcode-type/name->code)
   (import (runtime record-slot-access)
 	  error:no-such-slot))
 

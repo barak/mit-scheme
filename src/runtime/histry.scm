@@ -229,7 +229,6 @@ USA.
 
 (define (initialize-package!)
   (set! the-empty-history
-	(cons (vector-ref (get-fixed-objects-vector)
-			  (fixed-objects-vector-slot 'DUMMY-HISTORY))
+	(cons (fixed-objects-item 'DUMMY-HISTORY)
 	      '()))
   unspecific)
