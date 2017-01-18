@@ -1162,9 +1162,17 @@ USA.
 	  bytevector=?
 	  bytevector?
 	  make-bytevector
+	  string->utf16be
+	  string->utf16le
+	  string->utf32be
+	  string->utf32le
 	  string->utf8
 	  u16?
 	  u32?
+	  utf16be->string
+	  utf16le->string
+	  utf32be->string
+	  utf32le->string
 	  utf8->string)
   (export (runtime predicate-metadata)
 	  register-mit-bytevector-predicates!))
@@ -1278,13 +1286,8 @@ USA.
 	  char-integer-limit
 	  char-upcase
 	  char-utf16-byte-length
-	  char-utf16be-bytes!
-	  char-utf16le-bytes!
 	  char-utf32-byte-length
-	  char-utf32be-bytes!
-	  char-utf32le-bytes!
 	  char-utf8-byte-length
-	  char-utf8-bytes!
 	  char<=?
 	  char<?
 	  char=?
@@ -1294,8 +1297,21 @@ USA.
 	  chars->ascii
 	  clear-char-bits
 	  code->char
+	  decode-utf16be-char
+	  decode-utf16le-char
+	  decode-utf32be-char
+	  decode-utf32le-char
+	  decode-utf8-char
 	  digit->char
+	  encode-utf16be-char!
+	  encode-utf16le-char!
+	  encode-utf32be-char!
+	  encode-utf32le-char!
+	  encode-utf8-char!
 	  guarantee-8-bit-char
+	  initial-byte->utf8-char-length
+	  initial-u16->utf16-char-length
+	  initial-u32->utf32-char-length
 	  integer->char
 	  make-char
 	  name->char
