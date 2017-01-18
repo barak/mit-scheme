@@ -79,17 +79,17 @@ USA.
 (define-guarantee non-positive-fixnum "non-positive fixnum")
 (define-guarantee non-negative-fixnum "non-negative fixnum")
 
-(define-integrable (guarantee-index-fixnum object caller)
+(define (guarantee-index-fixnum object #!optional caller)
   (if (not (index-fixnum? object))
       (error:wrong-type-argument object "index integer" caller)))
 
-(define (guarantee-limited-index-fixnum object limit caller)
+(define (guarantee-limited-index-fixnum object limit #!optional caller)
   (guarantee-index-fixnum object caller)
   (if (not (fix:< object limit))
       (error:bad-range-argument object caller)))
 
-(define-integrable (fix:<= n m) (not (fix:> n m)))
-(define-integrable (fix:>= n m) (not (fix:< n m)))
+(define (fix:<= n m) (not (fix:> n m)))
+(define (fix:>= n m) (not (fix:< n m)))
 (define (fix:min n m) (if (fix:< n m) n m))
 (define (fix:max n m) (if (fix:> n m) n m))
 
