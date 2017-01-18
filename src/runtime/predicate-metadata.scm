@@ -64,6 +64,15 @@ USA.
 (define (predicate-name predicate)
   (tag-name (predicate->tag predicate 'predicate-name)))
 
+(define (predicate-element-constructor predicate)
+  (tag-element-constructor (predicate->tag predicate 'predicate-constructor)))
+
+(define (predicate-element-accessor predicate)
+  (tag-element-accessor (predicate->tag predicate 'predicate-accessor)))
+
+(define (predicate-tagging-strategy predicate)
+  (tag-tagging-strategy (predicate->tag predicate 'predicate-tagging-strategy)))
+
 (define (predicate-description predicate)
   (let ((tag (get-predicate-tag predicate #f)))
     (if tag
@@ -116,6 +125,7 @@ USA.
 			accessor
 			(if (default-object? extra) #f extra)
 			(if (default-object? description) #f description)
+			tagging-strategy
 			(make-strong-eq-hash-table)
 			(make-strong-eq-hash-table))))
 	(set-predicate-tag! predicate tag)
@@ -128,14 +138,15 @@ USA.
 
 (define-record-type <tag>
     (%make-tag name predicate constructor accessor extra description
-	       subsets supersets)
+	       tagging-strategy subsets supersets)
     tag?
   (name tag-name)
   (predicate tag->predicate)
-  (constructor tag-constructor)
-  (accessor tag-accessor)
+  (constructor tag-element-constructor)
+  (accessor tag-element-accessor)
   (extra tag-extra)
   (description %tag-description)
+  (tagging-strategy tag-tagging-strategy)
   (subsets tag-subsets)
   (supersets tag-supersets))
 

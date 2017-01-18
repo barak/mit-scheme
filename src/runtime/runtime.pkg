@@ -1782,7 +1782,10 @@ USA.
 	  guarantee-list-of
 	  no-object?
 	  predicate-description
+	  predicate-element-accessor
+	  predicate-element-constructor
 	  predicate-name
+	  predicate-tagging-strategy
 	  predicate?
 	  register-predicate!
 	  set-predicate<=!
@@ -1800,8 +1803,11 @@ USA.
 	  set-tag<=!
 	  tag->predicate
 	  tag-description
+	  tag-element-accessor
+	  tag-element-constructor
 	  tag-extra
 	  tag-name
+	  tag-tagging-strategy
 	  tag?
 	  top-tag
 	  top-tag?))

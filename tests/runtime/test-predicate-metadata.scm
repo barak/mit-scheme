@@ -50,3 +50,31 @@ USA.
     (assert-equal (predicate-name predicate) name)
     (assert-equal (tag-name tag) name)
     (assert-equal (predicate-description predicate) (tag-description tag))))
+
+(define-test 'simple-predicate-constructor
+  (lambda ()
+    (test-element-construction number? '(41) '(foo))
+    (test-element-construction boolean? '(#t) '(foo))
+    (test-element-construction string? '("41") '(foo))))
+
+(define (test-element-construction predicate data non-data)
+  (let ((constructor (predicate-element-constructor predicate))
+	(accessor (predicate-element-accessor predicate))
+	(tagging-strategy (predicate-tagging-strategy predicate)))
+    (for-each
+     (lambda (datum)
+       (let ((object (constructor datum)))
+	 (assert-true (predicate object))
+	 (assert-eq datum (accessor object))
+	 (cond ((eqv? tagging-strategy predicate-tagging-strategy:never)
+		(assert-eq datum object))
+	       ((eqv? tagging-strategy predicate-tagging-strategy:always)
+		(assert-not-eq datum object))
+	       (else
+		(if (predicate<= (object->predicate datum) predicate)
+		    (assert-eq datum object)
+		    (assert-not-eq datum object))))))
+     data)
+    (for-each (lambda (non-datum)
+		(assert-type-error (lambda () (constructor non-datum))))
+	      non-data)))
