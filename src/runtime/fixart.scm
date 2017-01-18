@@ -78,7 +78,7 @@ USA.
 (define-guarantee negative-fixnum "negative fixnum")
 (define-guarantee non-positive-fixnum "non-positive fixnum")
 (define-guarantee non-negative-fixnum "non-negative fixnum")
-
+
 (define (guarantee-index-fixnum object #!optional caller)
   (if (not (index-fixnum? object))
       (error:wrong-type-argument object "index integer" caller)))
@@ -92,6 +92,32 @@ USA.
 (define (fix:>= n m) (not (fix:< n m)))
 (define (fix:min n m) (if (fix:< n m) n m))
 (define (fix:max n m) (if (fix:> n m) n m))
+
+(define (fix:largest-value)
+  (force largest-fixnum-promise))
+
+(define largest-fixnum-promise
+  (delay
+    (let loop ((n 1))
+      (if (fix:fixnum? n)
+	  (loop (* n 2))
+	  (let ((n (- n 1)))
+	    (if (not (fix:fixnum? n))
+		(error "Unable to compute largest fixnum:" n))
+	    n)))))
+
+(define (fix:smallest-value)
+  (force smallest-fixnum-promise))
+
+(define smallest-fixnum-promise
+  (delay
+    (let loop ((n -1))
+      (if (fix:fixnum? n)
+	  (loop (* n 2))
+	  (let ((n (quotient n 2)))
+	    (if (not (fix:fixnum? n))
+		(error "Unable to compute smallest fixnum:" n))
+	    n)))))
 
 ;;;; Flonums
 

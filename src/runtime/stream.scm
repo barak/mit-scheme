@@ -279,7 +279,7 @@ USA.
    (letrec
        ((primes (cons-stream 3 (fixnum-filter 5)))
 	(fixnum-filter
-	 (let ((limit (fix:- (largest-fixnum) 2)))
+	 (let ((limit (fix:- (fix:largest-value) 2)))
 	   (lambda (n)
 	     (if (fix:<= n limit)
 		 (let loop ((ps primes))

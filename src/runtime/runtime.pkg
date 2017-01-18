@@ -186,6 +186,8 @@ USA.
   (parent (runtime))
   (export ()
 	  ;; BEGIN deprecated bindings
+	  (largest-fixnum fix:largest-value)
+	  (smallest-fixnum fix:smallest-value)
 	  guarantee-fixnum
 	  guarantee-index-fixnum
 	  guarantee-limited-index-fixnum
@@ -211,6 +213,7 @@ USA.
 	  fix:divide
 	  fix:fixnum?
 	  fix:gcd
+	  fix:largest-value
 	  fix:lsh
 	  fix:max
 	  fix:min
@@ -220,6 +223,7 @@ USA.
 	  fix:positive?
 	  fix:quotient
 	  fix:remainder
+	  fix:smallest-value
 	  fix:xor
 	  fix:zero?
 	  fixnum?
@@ -3291,7 +3295,6 @@ USA.
 	  inexact?
 	  integer-divide-quotient
 	  integer-divide-remainder
-	  largest-fixnum
 	  lcm
 	  max
 	  min
@@ -3303,7 +3306,6 @@ USA.
 	  param:flonum-unparser-cutoff
 	  quotient
 	  remainder
-	  smallest-fixnum
 	  square)
   (initialization
    (begin
