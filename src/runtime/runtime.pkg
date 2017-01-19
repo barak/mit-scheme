@@ -2529,10 +2529,11 @@ USA.
 	  write-bytevector
 	  write-u8)
   (export (runtime)
-	  (input-source-channel source/sink-channel)
-	  (output-source-channel source/sink-channel)
+	  input-source-channel
 	  input-source-custom-length
 	  input-source-custom-ref
+	  input-source-open?
+	  input-source-port
 	  input-source?
 	  make-binary-i/o-port
 	  make-binary-input-port
@@ -2541,8 +2542,10 @@ USA.
 	  make-channel-output-sink
 	  make-non-channel-input-source
 	  make-non-channel-output-sink
+	  output-sink-channel
 	  output-sink-custom-length
 	  output-sink-custom-ref
+	  output-sink-port
 	  output-sink?)
   (export (runtime port)
 	  binary-input-port-channel
@@ -2555,6 +2558,16 @@ USA.
 	  close-binary-input-port
 	  close-binary-output-port
 	  close-binary-port)
+  (export (runtime generic-i/o-port)
+	  close-input-source
+	  close-output-sink
+	  input-source-has-bytes?
+	  input-source-open?
+	  input-source-read-bytes!
+	  output-sink-open?
+	  output-sink-write-bytes
+	  set-input-source-port!
+	  set-output-sink-port!)
   (export (runtime output-port)
 	  flush-binary-output-port))
 

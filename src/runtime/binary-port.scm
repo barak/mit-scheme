@@ -245,7 +245,7 @@ USA.
 (define (u8-ready? #!optional port)
   (let ((ib (check-input-port port 'u8-ready?)))
     (or (not (eq? 'unfilled (input-buffer-state ib 'u8-ready?)))
-	(and (source-has-bytes? (buffer-source/sink ib))
+	(and (input-source-has-bytes? (buffer-source/sink ib))
 	     (fill-input-buffer! ib)
 	     #t))))
 
@@ -266,8 +266,7 @@ USA.
   (let ((ib (check-input-port port 'peek-u8)))
     (let loop ((state (input-buffer-state ib 'peek-u8)))
       (case state
-	((filled)
-	 (bytevector-u8-ref (buffer-bytes ib) (buffer-start ib)))
+	((filled) (bytevector-u8-ref (buffer-bytes ib) (buffer-start ib)))
 	((unfilled) (loop (fill-input-buffer! ib)))
 	((eof) (eof-object))
 	(else #f)))))
@@ -284,7 +283,9 @@ USA.
   (let ((ib (check-input-port port 'set-input-port-buffer-contents!)))
     (if (eq? 'unfilled (input-buffer-state ib 'set-input-port-buffer-contents!))
 	(let ((bv (buffer-bytes ib)))
-	  (let ((n (fix:min (bytevector-length contents) input-buffer-length)))
+	  (let ((n
+		 (fix:min (bytevector-length contents)
+			  (bytevector-length bv))))
 	    (bytevector-copy! bv 0 contents 0 n)
 	    (set-buffer-start! ib 0)
 	    (set-buffer-end! ib n))))))
@@ -335,9 +336,9 @@ USA.
 	  (fix:+ index n)))))
 
   (define (read-from-source index)
-    ;; Always read at least page-size bytes; use the buffer if the caller
+    ;; Always read at least a buffer-full of bytes; use the buffer if the caller
     ;; wants less than that.
-    (if (fix:< (fix:- end index) page-size)
+    (if (fix:< (fix:- end index) (bytevector-length (buffer-bytes ib)))
 	(case (fill-input-buffer! ib)
 	  ((filled) (fix:- (read-from-buffer index) start))
 	  ((eof) (eof index))
@@ -364,11 +365,9 @@ USA.
 
 ;;;; Input buffers
 
-(define-integrable input-buffer-length page-size)
-
 (define (make-input-buffer source caller)
   (guarantee input-source? source caller)
-  (make-buffer source input-buffer-length))
+  (make-buffer source page-size))
 
 (define (input-buffer-marked-eof? ib)
   (eq? 'eof (buffer-override ib)))
@@ -391,16 +390,17 @@ USA.
 
 (define (fill-input-buffer! ib)
   ;; assert (eq? 'unfilled (input-buffer-state ib caller))
-  (let ((n (read-bytes! ib (buffer-bytes ib) 0 input-buffer-length)))
-    (set-buffer-start! ib 0)
-    (set-buffer-end! ib (or n 0))
-    (cond ((not n) #f)
-	  ((fix:> n 0) 'filled)
-	  (else 'eof))))
+  (let ((bytes (buffer-bytes ib)))
+    (let ((n (read-bytes! ib bytes 0 (bytevector-length bytes))))
+      (set-buffer-start! ib 0)
+      (set-buffer-end! ib (or n 0))
+      (cond ((not n) #f)
+	    ((fix:> n 0) 'filled)
+	    (else 'eof)))))
 
 (define (read-bytes! ib bv bs be)
   ;; assert (eq? 'unfilled (input-buffer-state ib caller))
-  (let ((n (source-read-bytes! (buffer-source/sink ib) bv bs be)))
+  (let ((n (input-source-read-bytes! (buffer-source/sink ib) bv bs be)))
     (if (eqv? n 0)
 	(mark-input-buffer-eof! ib))
     n))
@@ -463,59 +463,59 @@ USA.
 		     (error:bad-range-argument start 'write-bytevector))
 		 start)))
 	  (bv (buffer-bytes ob)))
+      (let ((bv-length (bytevector-length bv)))
 
-      (define (loop index)
-	(let ((remaining (fix:- end index))
-	      (available (output-buffer-available ob 'write-bytevector)))
-	  (cond ((fix:<= remaining available)
-		 (fix:- (write-to-buffer index remaining) start))
-		((fix:< available output-buffer-length)
-		 ;; There's already some data in the buffer, so fill it, drain
-		 ;; it, and write the rest directly.
-		 (let ((index*
-			(if (fix:> available 0)
-			    (write-to-buffer index available)
-			    index)))
-		   (let ((n (drain-output-buffer ob)))
-		     (if (and n (fix:> n 0))
-			 (if (fix:< n output-buffer-length)
-			     ;; partial drain
-			     (loop index*)
-			     ;; full drain
-			     (write-to-sink index*))
-			 ;; no progress was made
-			 (fix:- index* start)))))
-		(else
-		 (write-to-sink index)))))
+	(define (loop index)
+	  (let ((remaining (fix:- end index))
+		(available (output-buffer-available ob 'write-bytevector)))
+	    (cond ((fix:<= remaining available)
+		   (fix:- (write-to-buffer index remaining) start))
+		  ((fix:< available bv-length)
+		   ;; There's already some data in the buffer, so fill it, drain
+		   ;; it, and write the rest directly.
+		   (let ((index*
+			  (if (fix:> available 0)
+			      (write-to-buffer index available)
+			      index)))
+		     (let ((n (drain-output-buffer ob)))
+		       (if (and n (fix:> n 0))
+			   (if (fix:< n bv-length)
+			       ;; partial drain
+			       (loop index*)
+			       ;; full drain
+			       (write-to-sink index*))
+			   ;; no progress was made
+			   (fix:- index* start)))))
+		  (else
+		   (write-to-sink index)))))
 
-      (define (write-to-buffer index n)
-	(let ((bi (buffer-end ob))
-	      (index* (fix:+ index n)))
-	  (bytevector-copy! bv bi bytevector index index*)
-	  (set-buffer-end! ob (fix:+ bi n))
-	  index*))
+	(define (write-to-buffer index n)
+	  (let ((bi (buffer-end ob))
+		(index* (fix:+ index n)))
+	    (bytevector-copy! bv bi bytevector index index*)
+	    (set-buffer-end! ob (fix:+ bi n))
+	    index*))
 
-      (define (write-to-sink index)
-	(let ((n
-	       (sink-write-bytes (buffer-source/sink ob) bytevector index end)))
-	  (if (and n (fix:> n 0))
-	      (let ((index* (fix:+ index n)))
-		(if (fix:< index* end)
-		    (write-to-sink index*)
-		    (fix:- end start)))
-	      (if (fix:< start index)
-		  (fix:- index start)
-		  n))))
+	(define (write-to-sink index)
+	  (let ((n
+		 (output-sink-write-bytes (buffer-source/sink ob)
+					  bytevector index end)))
+	    (if (and n (fix:> n 0))
+		(let ((index* (fix:+ index n)))
+		  (if (fix:< index* end)
+		      (write-to-sink index*)
+		      (fix:- end start)))
+		(if (fix:< start index)
+		    (fix:- index start)
+		    n))))
 
-      (loop start))))
+	(loop start)))))
 
 ;;;; Output buffers
 
-(define-integrable output-buffer-length page-size)
-
 (define (make-output-buffer sink caller)
   (guarantee output-sink? sink caller)
-  (make-buffer sink output-buffer-length))
+  (make-buffer sink page-size))
 
 (define (close-output-buffer ob)
   (if (not (buffer-marked-closed? ob))
@@ -527,10 +527,10 @@ USA.
 (define (output-buffer-available ob caller)
   (if (buffer-marked-closed? ob)
       (error:bad-range-argument (buffer-port ob) caller))
-  (fix:- output-buffer-length
-	 (let ((bv (buffer-bytes ob))
-	       (bs (buffer-start ob))
-	       (be (buffer-end ob)))
+  (let ((bv (buffer-bytes ob))
+	(bs (buffer-start ob))
+	(be (buffer-end ob)))
+    (fix:- (bytevector-length bv)
 	   (if (fix:> bs 0)
 	       (let ((be* (fix:- be bs)))
 		 (bytevector-copy! bv 0 bv bs be)
@@ -543,12 +543,12 @@ USA.
   ;; assert (fix:= 0 (output-buffer-available ob caller))
   ;; implies
   ;;   (and (fix:= (buffer-start ob) 0)
-  ;;        (fix:= (buffer-end ob) output-buffer-length))
+  ;;        (fix:= (buffer-end ob) (bytevector-length (buffer-bytes ob))))
   (let ((bv (buffer-bytes ob))
 	(be (buffer-end ob))
 	(sink (buffer-source/sink ob)))
     (let loop ((bi 0))
-      (let ((n (sink-write-bytes sink bv bi be)))
+      (let ((n (output-sink-write-bytes sink bv bi be)))
 	(cond ((and n (fix:> n 0))
 	       (let ((bi* (fix:+ bi n)))
 		 (if (fix:< bi* be)
@@ -573,7 +573,7 @@ USA.
 	(sink (buffer-source/sink ob)))
     (if (fix:< bs be)
 	(let loop ((bi bs))
-	  (let ((n (sink-write-bytes sink bv bi be)))
+	  (let ((n (output-sink-write-bytes sink bv bi be)))
 	    (if (and n (fix:> n 0))
 		(let ((bi* (fix:+ bi n)))
 		  (if (fix:< bi* be)
@@ -583,7 +583,7 @@ USA.
 		      (begin
 			(set-buffer-start! ob 0)
 			(set-buffer-end! ob 0)
-			output-buffer-length)))
+			(bytevector-length bv))))
 		(fix:- bi bs))))
 	0)))
 
@@ -607,7 +607,7 @@ USA.
   (source/sink-channel (buffer-source/sink buffer)))
 
 (define (buffer-port buffer)
-  ((source/sink-operation:get-port (buffer-source/sink buffer))))
+  (source/sink-port (buffer-source/sink buffer)))
 
 (define (buffer-marked-eof? buffer)
   (eq? 'eof (buffer-override buffer)))
@@ -623,13 +623,13 @@ USA.
 
 (define (buffer-open? buffer)
   (and (not (buffer-marked-closed? buffer))
-       (or ((source/sink-operation:open? (buffer-source/sink buffer)))
+       (or (source/sink-open? (buffer-source/sink buffer))
 	   (begin
 	     (mark-buffer-closed! buffer)
 	     #f))))
 
 (define (close-buffer buffer)
-  ((source/sink-operation:close (buffer-source/sink buffer))))
+  (close-source/sink (buffer-source/sink buffer)))
 
 ;;;; Sources and sinks
 
@@ -664,21 +664,19 @@ USA.
 		      (lambda () (set! open? #f) unspecific)
 		      (list->vector custom))))
 
+(define (source/sink-port source/sink)
+  ((source/sink-operation:get-port source/sink)))
+
 (define (set-source/sink-port! source/sink port)
   ((source/sink-operation:set-port! source/sink) port))
+
+(define (source/sink-open? source/sink)
+  ((source/sink-operation:open? source/sink)))
+
+(define (close-source/sink source/sink)
+  ((source/sink-operation:close source/sink)))
 
-(define (input-source? object)
-  (and (source/sink? object)
-       (eq? 'source (source/sink-flavor object))))
-
-(define (output-sink? object)
-  (and (source/sink? object)
-       (eq? 'sink (source/sink-flavor object))))
-
-(add-boot-init!
- (lambda ()
-   (register-predicate! input-source? 'input-source '<= source/sink?)
-   (register-predicate! output-sink? 'output-sink '<= source/sink?)))
+;;;; Input source
 
 (define (make-channel-input-source channel)
   (make-channel-ss 'source
@@ -689,10 +687,24 @@ USA.
 (define (make-non-channel-input-source has-bytes? read-bytes! . custom)
   (apply make-non-channel-ss 'source has-bytes? read-bytes! custom))
 
-(define (source-has-bytes? source)
+(define (input-source? object)
+  (and (source/sink? object)
+       (eq? 'source (source/sink-flavor object))))
+
+(add-boot-init!
+ (lambda ()
+   (register-predicate! input-source? 'input-source '<= source/sink?)))
+
+(define input-source-channel source/sink-channel)
+(define input-source-port source/sink-port)
+(define set-input-source-port! set-source/sink-port!)
+(define input-source-open? source/sink-open?)
+(define close-input-source close-source/sink)
+
+(define (input-source-has-bytes? source)
   ((vector-ref (source/sink-custom source) 0)))
 
-(define (source-read-bytes! source bv bs be)
+(define (input-source-read-bytes! source bv bs be)
   ((vector-ref (source/sink-custom source) 1) bv bs be))
 
 (define (input-source-custom-length source)
@@ -700,6 +712,8 @@ USA.
 
 (define (input-source-custom-ref source index)
   (vector-ref (source/sink-custom source) (fix:+ index 2)))
+
+;;;; Output sink
 
 (define (make-channel-output-sink channel)
   (make-channel-ss 'sink
@@ -709,7 +723,21 @@ USA.
 (define (make-non-channel-output-sink write-bytes . custom)
   (apply make-non-channel-ss 'sink write-bytes custom))
 
-(define (sink-write-bytes sink bv bs be)
+(define (output-sink? object)
+  (and (source/sink? object)
+       (eq? 'sink (source/sink-flavor object))))
+
+(add-boot-init!
+ (lambda ()
+   (register-predicate! output-sink? 'output-sink '<= source/sink?)))
+
+(define output-sink-channel source/sink-channel)
+(define output-sink-port source/sink-port)
+(define set-output-sink-port! set-source/sink-port!)
+(define output-sink-open? source/sink-open?)
+(define close-output-sink close-source/sink)
+
+(define (output-sink-write-bytes sink bv bs be)
   ((vector-ref (source/sink-custom sink) 0) bv bs be))
 
 (define (output-sink-custom-length sink)
