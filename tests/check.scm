@@ -48,6 +48,7 @@ USA.
     "microcode/test-lookup"
     "runtime/test-arith"
     "runtime/test-bytevector"
+    "runtime/test-char"
     ("runtime/test-char-set" (runtime character-set))
     ("runtime/test-compound-predicate" (runtime))
     "runtime/test-dragon4"
