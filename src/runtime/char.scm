@@ -295,14 +295,14 @@ USA.
 	 (cadr entry))))
 
 (define named-codes
-  '((#x00 #f "null" "nul")
+  '((#x00 "null" "nul")
     (#x01 #f "soh")
     (#x02 #f "stx")
     (#x03 #f "etx")
     (#x04 #f "eot")
     (#x05 #f "enq")
     (#x06 #f "ack")
-    (#x07 #f "bel")
+    (#x07 "alarm" "bel")
     (#x08 "backspace" "bs")
     (#x09 "tab" "ht")
     (#x0A "newline" "linefeed" "lfd" "lf")
@@ -332,16 +332,16 @@ USA.
     (#xA0 "nbsp")
     (#xFEFF "bom")))
 
-(define named-bits
-  '((#x01 "M" "meta")
-    (#x02 "C" "control" "ctrl")
-    (#x04 "S" "super")
-    (#x08 "H" "hyper")))
-
 (define char-bit:meta #x01)
 (define char-bit:control #x02)
 (define char-bit:super #x04)
 (define char-bit:hyper #x08)
+
+(define named-bits
+  `((,char-bit:meta "M" "meta")
+    (,char-bit:control "C" "control" "ctrl")
+    (,char-bit:super "S" "super")
+    (,char-bit:hyper "H" "hyper")))
 
 ;;;; Unicode characters
 
