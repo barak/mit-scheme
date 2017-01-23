@@ -3066,6 +3066,7 @@ USA.
 	  filter!
 	  filter-map
 	  find
+	  find-map
 	  find-tail
 	  length+
 	  list-index

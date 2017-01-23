@@ -509,6 +509,19 @@ USA.
 	      (cond ((f (car lis)) => (lambda (x) (cons x tail)))
 		    (else tail)))))))
 
+;; Like filter-map, but returns first non-false value.
+(define (find-map f lis1 . lists)
+  (if (pair? lists)
+      (let iter ((lists (cons lis1 lists)))
+	(receive (cars cdrs) (%cars+cdrs lists)
+	  (and (pair? cars)
+	       (or (apply f cars)
+		   (iter cdrs)))))
+      (let iter ((lis lis1))
+	(and (not (null-list? lis 'find-map))
+	     (or (f (car lis))
+		 (iter (cdr lis)))))))
+
 ;;; Map F across lists, guaranteeing to go left-to-right.
 ;;; NOTE: Some implementations of R5RS MAP are compliant with this spec;
 ;;; in which case this procedure may simply be defined as a synonym for MAP.
