@@ -29,7 +29,8 @@ USA.
 (declare (usual-integrations))
 
 (define (enable-group-undo! group)
-  (set-group-undo-data! group '()))
+  (if (eq? #t (group-undo-data group))
+      (set-group-undo-data! group '())))
 
 (define (disable-group-undo! group)
   (set-group-undo-data! group #t))

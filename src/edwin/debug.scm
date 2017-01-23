@@ -136,20 +136,16 @@ USA.
 	  (let ((prefix (browser/name browser)))
 	    (let loop ((index 1))
 	      (let ((name
-		     (string-append
-		      (if (1d-table/get (browser/properties browser)
-					'VISIBLE-SUB-BUFFERS?
-					#f)
-			  ""
-			  " ")
-		      prefix
-		      "-"
-		      (number->string index))))
+		     (string-append " "
+				    prefix
+				    "-"
+				    (number->string index))))
 		(if (find-buffer name)
 		    (loop (+ index 1))
 		    name)))))))
     (if initializer
 	(initializer buffer))
+    (enable-group-undo! (buffer-group buffer))
     (add-browser-buffer! browser buffer)
     buffer))
 
