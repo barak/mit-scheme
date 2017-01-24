@@ -118,6 +118,30 @@ USA.
 	    (if (not (fix:fixnum? n))
 		(error "Unable to compute smallest fixnum:" n))
 	    n)))))
+
+(define (fix:iota count #!optional start step)
+  (guarantee index-fixnum? count 'fix:iota)
+  (let ((start
+	 (if (default-object? start)
+	     0
+	     (begin
+	       (guarantee fix:fixnum? start 'fix:iota)
+	       start)))
+	(step
+	 (if (default-object? step)
+	     1
+	     (begin
+	       (guarantee fix:fixnum? step 'fix:iota)
+	       step))))
+    (let loop
+	((index (fix:- count 1))
+	 (value (fix:+ start (fix:* step (fix:- count 1))))
+	 (result '()))
+      (if (fix:>= index 0)
+	  (loop (fix:- index 1)
+		(fix:- value step)
+		(cons value result))
+	  result))))
 
 ;;;; Flonums
 
