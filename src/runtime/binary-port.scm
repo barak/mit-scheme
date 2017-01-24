@@ -444,6 +444,9 @@ USA.
 		(write)
 		n))))))
 
+;; Returns >0 if some bytes were successfully written.
+;; Returns 0 if unable to write any bytes.
+;; Returns #f if the write would block.
 (define (write-bytevector bytevector #!optional port start end)
   (let ((ob (check-output-port port 'write-bytevector))
 	(end
