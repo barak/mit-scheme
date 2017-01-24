@@ -228,7 +228,7 @@ USA.
 
 (define (make-decode-quoted-printable-port port text?)
   (make-textual-port decode-quoted-printable-port-type
-	     (decode-quoted-printable:initialize port text?)))
+		     (decode-quoted-printable:initialize port text?)))
 
 (define decode-quoted-printable-port-type
   (make-decoding-port-type decode-quoted-printable:update
