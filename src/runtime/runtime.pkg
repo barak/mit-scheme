@@ -1118,9 +1118,7 @@ USA.
 	  xstring-length
 	  xstring-move!
 	  xstring-ref
-	  xstring-byte-ref
 	  xstring-set!
-	  xstring-byte-set!
 	  xstring?
 	  xsubstring
 	  xsubstring-fill!

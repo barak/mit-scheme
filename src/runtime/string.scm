@@ -1657,20 +1657,10 @@ USA.
 	((wide-string? string) (wide-string-ref string index))
 	(else (error:not-xstring string 'XSTRING-REF))))
 
-(define (xstring-byte-ref string index)
-  (cond ((string? string) (vector-8b-ref string index))
-	((wide-string? string) (wide-string-ref string index))
-	(else (error:not-xstring string 'XSTRING-BYTE-REF))))
-
 (define (xstring-set! string index char)
   (cond ((string? string) (string-set! string index char))
 	((wide-string? string) (wide-string-set! string index char))
 	(else (error:not-xstring string 'XSTRING-SET!))))
-
-(define (xstring-byte-set! string index byte)
-  (cond ((string? string) (vector-8b-set! string index byte))
-	((wide-string? string) (wide-string-set! string index byte))
-	(else (error:not-xstring string 'XSTRING-BYTE-SET!))))
 
 (define (xstring-move! xstring1 xstring2 start2)
   (xsubstring-move! xstring1 0 (xstring-length xstring1) xstring2 start2))
