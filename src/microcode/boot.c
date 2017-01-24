@@ -59,6 +59,7 @@ struct obstack ffi_obstack;
 void * initial_C_stack_pointer;
 static char * reload_saved_string;
 static unsigned int reload_saved_string_length;
+static bool reload_saved_legacy_p;
 
 void *
 obstack_chunk_alloc (size_t size)
@@ -291,21 +292,16 @@ DEFINE_PRIMITIVE ("RELOAD-SAVE-STRING", Prim_reload_save_string, 1, 1, 0)
   if ((ARG_REF (1)) != SHARP_F)
     {
       CHECK_ARG (1, STRING_P);
-      {
-	unsigned int length = (STRING_LENGTH (ARG_REF (1)));
-	if (length > 0)
-	  {
-	    reload_saved_string = (OS_malloc (length));
-	    reload_saved_string_length = length;
-	    {
-	      char * scan = (STRING_POINTER (ARG_REF (1)));
-	      char * end = (scan + length);
-	      char * scan_result = reload_saved_string;
-	      while (scan < end)
-		(*scan_result++) = (*scan++);
-	    }
-	  }
-      }
+      SCHEME_OBJECT string = (ARG_REF (1));
+      unsigned int length = (STRING_LENGTH (string));
+      if (length > 0)
+        {
+          reload_saved_legacy_p = (LEGACY_STRING_P (string));
+          reload_saved_string = (OS_malloc (length));
+          reload_saved_string_length = length;
+
+          memcpy (reload_saved_string, (STRING_POINTER (string)), length);
+        }
     }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -315,14 +311,15 @@ DEFINE_PRIMITIVE ("RELOAD-RETRIEVE-STRING", Prim_reload_retrieve_string, 0, 0, 0
   PRIMITIVE_HEADER (0);
   if (reload_saved_string == 0)
     PRIMITIVE_RETURN (SHARP_F);
-  {
-    SCHEME_OBJECT result =
-      (memory_to_string (reload_saved_string_length,
-			 ((unsigned char *) reload_saved_string)));
-    free (reload_saved_string);
-    reload_saved_string = 0;
-    PRIMITIVE_RETURN (result);
-  }
+
+  SCHEME_OBJECT result = reload_saved_legacy_p
+    ? (memory_to_string (reload_saved_string_length,
+                         ((unsigned char *) reload_saved_string)))
+    : (memory_to_bytevector (reload_saved_string_length,
+                             ((unsigned char *) reload_saved_string)));
+  free (reload_saved_string);
+  reload_saved_string = 0;
+  PRIMITIVE_RETURN (result);
 }
 
 DEFINE_PRIMITIVE ("BATCH-MODE?", Prim_batch_mode_p, 0, 0, 0)

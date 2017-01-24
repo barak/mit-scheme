@@ -37,7 +37,7 @@ USA.
 
 #define BYTEVECTOR_POINTER(v) ((uint8_t *) (MEMORY_LOC ((v), BYTEVECTOR_DATA)))
 
-static uint8_t *
+uint8_t *
 arg_bytevector (int n, unsigned long * len_r)
 {
   CHECK_ARG (n, BYTEVECTOR_P);
@@ -58,7 +58,7 @@ arg_byte (int n)
   return (uint8_t) value;
 }
 
-static SCHEME_OBJECT
+SCHEME_OBJECT
 allocate_bytevector (unsigned long nbytes)
 {
   SCHEME_OBJECT result
@@ -70,7 +70,7 @@ allocate_bytevector (unsigned long nbytes)
   return (result);
 }
 
-static SCHEME_OBJECT
+SCHEME_OBJECT
 memory_to_bytevector (unsigned long n_bytes, const void * vp)
 {
   SCHEME_OBJECT result = (allocate_bytevector (n_bytes));
