@@ -145,7 +145,9 @@ USA.
 	 ((ucode-primitive new-open-unix-stream-socket 2) filename p))))))
 
 (define (make-socket-port channel)
-  (make-generic-i/o-port channel channel socket-port-type))
+  (make-generic-i/o-port (make-channel-input-source channel)
+			 (make-channel-output-sink channel)
+			 socket-port-type))
 
 (define socket-port-type)
 (define (initialize-package!)

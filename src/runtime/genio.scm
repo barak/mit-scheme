@@ -27,8 +27,7 @@ USA.
 ;;;; Generic I/O Ports
 ;;; package: (runtime generic-i/o-port)
 
-(declare (usual-integrations)
-	 (integrate-external "port"))
+(declare (usual-integrations))
 
 (define (make-generic-i/o-port source sink #!optional type . extra-state)
   (if (not (or source sink))
@@ -42,20 +41,20 @@ USA.
 				   extra-state))))
     (let ((ib (port-input-buffer port)))
       (if ib
-	  ((source/set-port (input-buffer-source ib)) port)))
+	  (set-input-buffer-port! ib port)))
     (let ((ob (port-output-buffer port)))
       (if ob
-	  ((sink/set-port (output-buffer-sink ob)) port)))
+	  (set-output-buffer-port! ob port)))
     port))
 
 (define (source-type source)
   (cond ((not source) #f)
-	((or (channel? source) ((source/get-channel source))) 'CHANNEL)
+	((input-source-channel source) 'CHANNEL)
 	(else #t)))
 
 (define (sink-type sink)
   (cond ((not sink) #f)
-	((or (channel? sink) ((sink/get-channel sink))) 'CHANNEL)
+	((output-sink-channel sink) 'CHANNEL)
 	(else #t)))
 
 (define (generic-i/o-port-type source sink)
@@ -75,104 +74,54 @@ USA.
        ((#F) generic-type10)
        ((CHANNEL) generic-type12)
        (else generic-type11)))))
+
+(define (generic-i/o-port->binary-port port)
+  (or (let ((ib (port-input-buffer port)))
+	(and ib
+	     (input-buffer-binary-port ib)))
+      (output-buffer-binary-port (port-output-buffer port))))
 
-(define-structure (gstate (constructor %make-gstate))
-  (input-buffer #f read-only #t)
-  (output-buffer #f read-only #t)
-  coding
-  line-ending
-  (extra #f read-only #t))
-
 (define (make-gstate source sink coder-name normalizer-name . extra)
-  (%make-gstate (and source
-		     (make-input-buffer (->source source 'MAKE-GSTATE)
-					coder-name
-					normalizer-name))
-		(and sink
-		     (make-output-buffer (->sink sink 'MAKE-GSTATE)
-					 coder-name
-					 normalizer-name))
-		coder-name
-		normalizer-name
-		(list->vector extra)))
+  (let ((binary-port (make-binary-port source sink)))
+    (%make-gstate (and source
+		       (make-input-buffer binary-port
+					  coder-name
+					  normalizer-name))
+		  (and sink
+		       (make-output-buffer binary-port
+					   coder-name
+					   normalizer-name))
+		  coder-name
+		  normalizer-name
+		  (list->vector extra))))
 
-(define-integrable (port-input-buffer port)
+(define-record-type <gstate>
+    (%make-gstate input-buffer output-buffer coder-name normalizer-name extra)
+    gstate?
+  (input-buffer gstate-input-buffer)
+  (output-buffer gstate-output-buffer)
+  (coder-name gstate-coder-name
+	      set-gstate-coder-name!)
+  (normalizer-name gstate-normalizer-name
+		   set-gstate-normalizer-name!)
+  (extra gstate-extra))
+
+(define (port-input-buffer port)
   (gstate-input-buffer (textual-port-state port)))
 
-(define-integrable (port-output-buffer port)
+(define (port-output-buffer port)
   (gstate-output-buffer (textual-port-state port)))
 
 (define (generic-i/o-port-accessor index)
-  (guarantee-index-fixnum index 'GENERIC-I/O-PORT-ACCESSOR)
+  (guarantee index-fixnum? index 'generic-i/o-port-accessor)
   (lambda (port)
-    (let ((extra (gstate-extra (textual-port-state port))))
-      (if (not (fix:< index (vector-length extra)))
-	  (error "Accessor index out of range:" index))
-      (vector-ref extra index))))
+    (vector-ref (gstate-extra (textual-port-state port)) index)))
 
 (define (generic-i/o-port-modifier index)
-  (guarantee-index-fixnum index 'GENERIC-I/O-PORT-MODIFIER)
+  (guarantee index-fixnum? index 'generic-i/o-port-modifier)
   (lambda (port object)
-    (let ((extra (gstate-extra (textual-port-state port))))
-      (if (not (fix:< index (vector-length extra)))
-	  (error "Accessor index out of range:" index))
-      (vector-set! extra index object))))
+    (vector-set! (gstate-extra (textual-port-state port)) index object)))
 
-(define (initialize-package!)
-  (let ((ops:in1
-	 `((CHAR-READY? ,generic-io/char-ready?)
-	   (CLOSE-INPUT ,generic-io/close-input)
-	   (EOF? ,generic-io/eof?)
-	   (INPUT-LINE ,generic-io/input-line)
-	   (INPUT-OPEN? ,generic-io/input-open?)
-	   (PEEK-CHAR ,generic-io/peek-char)
-	   (READ-CHAR ,generic-io/read-char)
-	   (READ-SUBSTRING ,generic-io/read-substring)
-	   (UNREAD-CHAR ,generic-io/unread-char)))
-	(ops:in2
-	 `((INPUT-CHANNEL ,generic-io/input-channel)))
-	(ops:out1
-	 `((BUFFERED-OUTPUT-BYTES ,generic-io/buffered-output-bytes)
-	   (BYTES-WRITTEN ,generic-io/bytes-written)
-	   (CLOSE-OUTPUT ,generic-io/close-output)
-	   (FLUSH-OUTPUT ,generic-io/flush-output)
-	   (OUTPUT-COLUMN ,generic-io/output-column)
-	   (OUTPUT-OPEN? ,generic-io/output-open?)
-	   (WRITE-CHAR ,generic-io/write-char)
-	   (WRITE-SUBSTRING ,generic-io/write-substring)))
-	(ops:out2
-	 `((OUTPUT-CHANNEL ,generic-io/output-channel)
-	   (SYNCHRONIZE-OUTPUT ,generic-io/synchronize-output)))
-	(other-operations
-	 `((CLOSE ,generic-io/close)
-	   (CODING ,generic-io/coding)
-	   (KNOWN-CODING? ,generic-io/known-coding?)
-	   (KNOWN-CODINGS ,generic-io/known-codings)
-	   (KNOWN-LINE-ENDING? ,generic-io/known-line-ending?)
-	   (KNOWN-LINE-ENDINGS ,generic-io/known-line-endings)
-	   (LINE-ENDING ,generic-io/line-ending)
-	   (OPEN? ,generic-io/open?)
-	   (SET-CODING ,generic-io/set-coding)
-	   (SET-LINE-ENDING ,generic-io/set-line-ending)
-	   (SUPPORTS-CODING? ,generic-io/supports-coding?)
-	   (WRITE-SELF ,generic-io/write-self))))
-    (let ((make-type
-	   (lambda ops
-	     (make-textual-port-type (append (apply append ops)
-					     other-operations)
-				     #f))))
-      (set! generic-type00 (make-type))
-      (set! generic-type10 (make-type ops:in1))
-      (set! generic-type20 (make-type ops:in1 ops:in2))
-      (set! generic-type01 (make-type ops:out1))
-      (set! generic-type02 (make-type ops:out1 ops:out2))
-      (set! generic-type11 (make-type ops:in1 ops:out1))
-      (set! generic-type21 (make-type ops:in1 ops:in2 ops:out1))
-      (set! generic-type12 (make-type ops:in1 ops:out1 ops:out2))
-      (set! generic-type22 (make-type ops:in1 ops:in2 ops:out1 ops:out2))))
-  (initialize-name-maps!)
-  (initialize-conditions!))
-
 (define generic-type00)
 (define generic-type10)
 (define generic-type20)
@@ -182,47 +131,109 @@ USA.
 (define generic-type21)
 (define generic-type12)
 (define generic-type22)
+(add-boot-init!
+ (lambda ()
+   (let ((ops:in1
+	  `((CHAR-READY? ,generic-io/char-ready?)
+	    (CLOSE-INPUT ,generic-io/close-input)
+	    (EOF? ,generic-io/eof?)
+	    (INPUT-LINE ,generic-io/input-line)
+	    (INPUT-OPEN? ,generic-io/input-open?)
+	    (PEEK-CHAR ,generic-io/peek-char)
+	    (READ-CHAR ,generic-io/read-char)
+	    (READ-SUBSTRING ,generic-io/read-substring)
+	    (UNREAD-CHAR ,generic-io/unread-char)))
+	 (ops:in2
+	  `((INPUT-CHANNEL ,generic-io/input-channel)))
+	 (ops:out1
+	  `((BUFFERED-OUTPUT-BYTES ,generic-io/buffered-output-bytes)
+	    (BYTES-WRITTEN ,generic-io/bytes-written)
+	    (CLOSE-OUTPUT ,generic-io/close-output)
+	    (FLUSH-OUTPUT ,generic-io/flush-output)
+	    (OUTPUT-COLUMN ,generic-io/output-column)
+	    (OUTPUT-OPEN? ,generic-io/output-open?)
+	    (WRITE-CHAR ,generic-io/write-char)
+	    (WRITE-SUBSTRING ,generic-io/write-substring)))
+	 (ops:out2
+	  `((OUTPUT-CHANNEL ,generic-io/output-channel)
+	    (SYNCHRONIZE-OUTPUT ,generic-io/synchronize-output)))
+	 (other-operations
+	  `((CLOSE ,generic-io/close)
+	    (CODING ,generic-io/coding)
+	    (KNOWN-CODING? ,generic-io/known-coding?)
+	    (KNOWN-CODINGS ,generic-io/known-codings)
+	    (KNOWN-LINE-ENDING? ,generic-io/known-line-ending?)
+	    (KNOWN-LINE-ENDINGS ,generic-io/known-line-endings)
+	    (LINE-ENDING ,generic-io/line-ending)
+	    (OPEN? ,generic-io/open?)
+	    (SET-CODING ,generic-io/set-coding)
+	    (SET-LINE-ENDING ,generic-io/set-line-ending)
+	    (SUPPORTS-CODING? ,generic-io/supports-coding?)
+	    (WRITE-SELF ,generic-io/write-self))))
+     (let ((make-type
+	    (lambda ops
+	      (make-textual-port-type (append (apply append ops)
+					      other-operations)
+				      #f))))
+       (set! generic-type00 (make-type))
+       (set! generic-type10 (make-type ops:in1))
+       (set! generic-type20 (make-type ops:in1 ops:in2))
+       (set! generic-type01 (make-type ops:out1))
+       (set! generic-type02 (make-type ops:out1 ops:out2))
+       (set! generic-type11 (make-type ops:in1 ops:out1))
+       (set! generic-type21 (make-type ops:in1 ops:in2 ops:out1))
+       (set! generic-type12 (make-type ops:in1 ops:out1 ops:out2))
+       (set! generic-type22 (make-type ops:in1 ops:in2 ops:out1 ops:out2))))))
 
 ;;;; Input operations
 
 (define (generic-io/char-ready? port)
-  (buffer-has-input? (port-input-buffer port)))
+  (let ((ib (port-input-buffer port)))
+    (or (input-buffer-peeked ib)
+	(u8-ready? (input-buffer-binary-port ib)))))
 
 (define (generic-io/peek-char port)
-  (let* ((ib (port-input-buffer port))
-	 (line (input-buffer-line ib))
-	 (char (generic-io/read-char port)))
-    (if (char? char)
-	;; Undo effect of read-char.
-	(begin
-	  (set-input-buffer-line! ib line)
-	  (set-input-buffer-start! ib (input-buffer-prev ib))))
-    char))
+  (let ((ib (port-input-buffer port)))
+    (or (input-buffer-peeked ib)
+	(let ((char ((input-buffer-normalizer ib) ib)))
+	  (if (char? char)
+	      (set-input-buffer-peeked! ib char))
+	  char))))
 
 (define (generic-io/read-char port)
   (let ((ib (port-input-buffer port)))
-    (reset-prev-char ib)
-    (let loop ()
-      (or (read-next-char ib)
-	  (let ((r (fill-input-buffer ib)))
-	    (case r
-	      ((OK) (loop))
-	      ((WOULD-BLOCK) #f)
-	      ((EOF) (eof-object))
-	      (else (error "Unknown result:" r))))))))
+    (let ((char (input-buffer-peeked ib)))
+      (if char
+	  (begin
+	    (set-input-buffer-peeked! ib #f)
+	    char)
+	  (let ((char ((input-buffer-normalizer ib) ib)))
+	    (if (eq? char #\newline)
+		(let ((line (input-buffer-line ib)))
+		  (if line
+		      (set-input-buffer-line! ib (fix:+ line 1)))))
+	    char)))))
 
 (define (generic-io/unread-char port char)
   (let ((ib (port-input-buffer port)))
-    (let ((bp (input-buffer-prev ib)))
-      (if (not (fix:< bp (input-buffer-start ib)))
-	  (error "No char to unread:" port))
-      ;; If unreading a newline, decrement the line count.
-      (if (char=? char #\newline)
-	  (set-input-buffer-line! ib (fix:- (input-buffer-line ib) 1)))
-      (set-input-buffer-start! ib bp))))
+    (guarantee char? char 'unread-char)
+    (if (input-buffer-peeked ib)
+	(error "Can't unread another char:" char (input-buffer-port ib)))
+    (set-input-buffer-peeked! ib char)
+    ;; If unreading a newline, decrement the line count.
+    (if (char=? char #\newline)
+	(set-input-buffer-line! ib (fix:- (input-buffer-line ib) 1)))))
 
 (define (generic-io/read-substring port string start end)
-  (read-substring (port-input-buffer port) string start end))
+  (let loop ((index start))
+    (if (fix:< index end)
+	(let ((char (generic-io/read-char port)))
+	  (cond ((not char) #f)
+		((eof-object? char) (fix:- index start))
+		(else
+		 (xstring-set! string index char)
+		 (loop (fix:+ index 1)))))
+	(fix:- end start))))
 
 (define (generic-io/input-line port)
   (input-buffer-line (port-input-buffer port)))
@@ -239,20 +250,21 @@ USA.
 ;;;; Output operations
 
 (define (generic-io/write-char port char)
-  (let ((ob (port-output-buffer port)))
-    (let loop ()
-      (if (write-next-char ob char)
-	  1
-	  (let ((n (drain-output-buffer ob)))
-	    (if (and n (fix:> n 0))
-		(loop)
-		n))))))
+  (guarantee char? char)
+  (write-next-char (port-output-buffer port) char))
 
 (define (generic-io/write-substring port string start end)
-  (write-substring (port-output-buffer port) string start end))
+  (let ((ob (port-output-buffer port)))
+    (let loop ((index start))
+      (if (fix:< index end)
+	  (let ((n (write-next-char ob (xstring-ref string index))))
+	    (cond ((and n (fix:> n 0)) (loop (fix:+ index 1)))
+		  ((fix:< start index) (fix:- index start))
+		  (else n)))
+	  (fix:- end start)))))
 
 (define (generic-io/flush-output port)
-  (force-drain-output-buffer (port-output-buffer port)))
+  (flush-output-buffer (port-output-buffer port)))
 
 (define (generic-io/output-column port)
   (output-buffer-column (port-output-buffer port)))
@@ -269,7 +281,8 @@ USA.
 	(channel-synchronize channel))))
 
 (define (generic-io/buffered-output-bytes port)
-  (output-buffer-start (port-output-buffer port)))
+  (binary-output-port-buffered-byte-count
+   (output-buffer-binary-port (port-output-buffer port))))
 
 (define (generic-io/bytes-written port)
   (output-buffer-total (port-output-buffer port)))
@@ -277,52 +290,23 @@ USA.
 ;;;; Non-specific operations
 
 (define (generic-io/close port)
-  (maybe-close-input port)
-  (maybe-close-output port)
-  (maybe-close-channels port))
-
-(define (generic-io/close-output port)
-  (maybe-close-output port)
-  (maybe-close-channels port))
-
-(define (generic-io/close-input port)
-  (maybe-close-input port)
-  (maybe-close-channels port))
-
-(define (maybe-close-input port)
-  (let ((ib (port-input-buffer port)))
-    (if ib
-	(close-input-buffer ib))))
-
-(define (maybe-close-output port)
-  (let ((ob (port-output-buffer port)))
-    (if ob
-	(close-output-buffer ob))))
-
-(define (maybe-close-channels port)
   (let ((ib (port-input-buffer port))
 	(ob (port-output-buffer port)))
-    (let ((ic (and ib (input-buffer-channel ib)))
-	  (oc (and ob (output-buffer-channel ob))))
-      (if (and ic (eq? ic oc))
-	  (if (and (not (%input-buffer-open? ib))
-		   (not (%output-buffer-open? ob)))
-	      (channel-close ic))
-	  (begin
-	    (if (and ic (not (%input-buffer-open? ib)))
-		(channel-close ic))
-	    (if (and oc (not (%output-buffer-open? ob)))
-		(channel-close oc)))))))
+    (cond ((and ib
+		ob
+		(eq? (input-buffer-binary-port ib)
+		     (output-buffer-binary-port ob)))
+	   (close-binary-port (input-buffer-binary-port ib)))
+	  (ib (close-binary-input-port (input-buffer-binary-port ib)))
+	  (ob (close-binary-output-port (output-buffer-binary-port ob))))))
 
-(define (generic-io/output-open? port)
-  (let ((ob (port-output-buffer port)))
-    (and ob
-	 (output-buffer-open? ob))))
+(define (generic-io/close-input port)
+  (close-binary-input-port
+   (input-buffer-binary-port (port-input-buffer port))))
 
-(define (generic-io/input-open? port)
-  (let ((ib (port-input-buffer port)))
-    (and ib
-	 (input-buffer-open? ib))))
+(define (generic-io/close-output port)
+  (close-binary-output-port
+   (output-buffer-binary-port (port-output-buffer port))))
 
 (define (generic-io/open? port)
   (and (let ((ib (port-input-buffer port)))
@@ -333,6 +317,16 @@ USA.
 	 (if ob
 	     (output-buffer-open? ob)
 	     #t))))
+
+(define (generic-io/input-open? port)
+  (let ((ib (port-input-buffer port)))
+    (and ib
+	 (input-buffer-open? ib))))
+
+(define (generic-io/output-open? port)
+  (let ((ob (port-output-buffer port)))
+    (and ob
+	 (output-buffer-open? ob))))
 
 (define (generic-io/write-self port output-port)
   (cond ((i/o-port? port)
@@ -352,17 +346,16 @@ USA.
   #t)
 
 (define (generic-io/coding port)
-  (gstate-coding (textual-port-state port)))
+  (gstate-coder-name (textual-port-state port)))
 
 (define (generic-io/set-coding port name)
-  (let ((state (textual-port-state port)))
-    (let ((ib (gstate-input-buffer state)))
-      (if ib
-	  (set-input-buffer-coding! ib name)))
-    (let ((ob (gstate-output-buffer state)))
-      (if ob
-	  (set-output-buffer-coding! ob name)))
-    (set-gstate-coding! state name)))
+  (let ((ib (port-input-buffer port)))
+    (if ib
+	(set-input-buffer-coding! ib name)))
+  (let ((ob (port-output-buffer port)))
+    (if ob
+	(set-output-buffer-coding! ob name)))
+  (set-gstate-coder-name! (textual-port-state port) name))
 
 (define (generic-io/known-coding? port coding)
   (and (if (input-port? port) (known-input-port-coding? coding) #t)
@@ -370,28 +363,28 @@ USA.
 
 (define (generic-io/known-codings port)
   (cond ((i/o-port? port)
-	 (eq-intersection (known-input-port-codings)
-			  (known-output-port-codings)))
+	 (lset-intersection eq?
+			    (known-input-port-codings)
+			    (known-output-port-codings)))
 	((input-port? port) (known-input-port-codings))
 	((output-port? port) (known-output-port-codings))
 	(else '())))
 
 (define (generic-io/line-ending port)
-  (gstate-line-ending (textual-port-state port)))
+  (gstate-normalizer-name (textual-port-state port)))
 
 (define (generic-io/set-line-ending port name)
-  (let ((state (textual-port-state port)))
-    (let ((ib (gstate-input-buffer state)))
-      (if ib
-	  (set-input-buffer-line-ending!
-	   ib
-	   (line-ending (input-buffer-channel ib) name #f))))
-    (let ((ob (gstate-output-buffer state)))
-      (if ob
-	  (set-output-buffer-line-ending!
-	   ob
-	   (line-ending (output-buffer-channel ob) name #t))))
-    (set-gstate-line-ending! state name)))
+  (let ((ib (port-input-buffer port)))
+    (if ib
+	(set-input-buffer-line-ending!
+	 ib
+	 (line-ending (input-buffer-channel ib) name #f))))
+  (let ((ob (port-output-buffer port)))
+    (if ob
+	(set-output-buffer-line-ending!
+	 ob
+	 (line-ending (output-buffer-channel ob) name #t))))
+  (set-gstate-normalizer-name! (textual-port-state port) name))
 
 (define (generic-io/known-line-ending? port line-ending)
   (and (if (input-port? port) (known-input-line-ending? line-ending) #t)
@@ -399,8 +392,9 @@ USA.
 
 (define (generic-io/known-line-endings port)
   (cond ((i/o-port? port)
-	 (eq-intersection (known-input-line-endings)
-			  (known-output-line-endings)))
+	 (lset-intersection eq?
+			    (known-input-line-endings)
+			    (known-output-line-endings)))
 	((input-port? port) (known-input-line-endings))
 	((output-port? port) (known-output-line-endings))
 	(else '())))
@@ -410,16 +404,11 @@ USA.
   (if (and for-output?
 	   (known-input-line-ending? name)
 	   (not (known-output-line-ending? name)))
-      (if (and channel (eq? (channel-type channel) 'TCP-STREAM-SOCKET))
+      (if (and channel
+	       (eq? (channel-type channel) 'TCP-STREAM-SOCKET))
 	  'CRLF
 	  (default-line-ending))
       name))
-
-(define (eq-intersection a b)
-  (let loop ((a a))
-    (cond ((not (pair? a)) '())
-	  ((memq (car a) b) (cons (car a) (loop (cdr a))))
-	  (else (loop (cdr a))))))
 
 ;;;; Name maps
 
@@ -463,7 +452,6 @@ USA.
 
 (define-name-map decoder)
 (define-name-map encoder)
-(define-name-map sizer)
 (define-name-map normalizer)
 (define-name-map denormalizer)
 
@@ -499,63 +487,59 @@ USA.
   (append (hash-table/key-list denormalizer-aliases)
 	  (hash-table/key-list denormalizers)))
 
-(define (initialize-name-maps!)
-  (let ((convert-reverse
-	 (lambda (alist)
-	   (let ((table (make-strong-eq-hash-table)))
-	     (for-each (lambda (n.d)
-			 (hash-table/put! table (cdr n.d) (car n.d)))
-		       alist)
-	     table)))
-	(convert-forward
-	 (lambda (alist)
-	   (let ((table (make-strong-eq-hash-table)))
-	     (for-each (lambda (n.d)
-			 (hash-table/put! table (car n.d) (cdr n.d)))
-		       alist)
-	     table))))
-    (let-syntax
-	((initialize-name-map
-	  (sc-macro-transformer
-	   (lambda (form environment)
-	     environment
-	     (if (syntax-match? '(SYMBOL) (cdr form))
-		 (let ((sing (cadr form)))
-		   (let ((plur (symbol sing 'S))
-			 (aliases (symbol sing '-ALIASES))
-			 (proc (symbol 'DEFINE- sing)))
-		     (let ((aproc (symbol proc '-ALIAS)))
-		       `(BEGIN
-			  (SET! ,(symbol plur '-REVERSE)
-				(CONVERT-REVERSE ,plur))
-			  (SET! ,plur (CONVERT-FORWARD ,plur))
-			  (SET! ,proc ,(symbol proc '/POST-BOOT))
-			  (SET! ,aliases (CONVERT-FORWARD ,aliases))
-			  (SET! ,aproc ,(symbol aproc '/POST-BOOT))))))
-		 (ill-formed-syntax form))))))
-      (initialize-name-map decoder)
-      (initialize-name-map encoder)
-      (initialize-name-map sizer)
-      (initialize-name-map normalizer)
-      (initialize-name-map denormalizer)))
-  (set! binary-decoder (name->decoder 'BINARY))
-  (set! binary-encoder (name->encoder 'BINARY))
-  (set! binary-sizer (name->sizer 'BINARY))
-  (set! binary-normalizer (name->normalizer 'BINARY))
-  (set! binary-denormalizer (name->denormalizer 'BINARY))
-  unspecific)
-
 (define binary-decoder)
 (define binary-encoder)
-(define binary-sizer)
 (define binary-normalizer)
 (define binary-denormalizer)
+(add-boot-init!
+ (lambda ()
+   (let ((convert-reverse
+	  (lambda (alist)
+	    (let ((table (make-strong-eq-hash-table)))
+	      (for-each (lambda (n.d)
+			  (hash-table/put! table (cdr n.d) (car n.d)))
+			alist)
+	      table)))
+	 (convert-forward
+	  (lambda (alist)
+	    (let ((table (make-strong-eq-hash-table)))
+	      (for-each (lambda (n.d)
+			  (hash-table/put! table (car n.d) (cdr n.d)))
+			alist)
+	      table))))
+     (let-syntax
+	 ((initialize-name-map
+	   (sc-macro-transformer
+	    (lambda (form environment)
+	      environment
+	      (if (syntax-match? '(SYMBOL) (cdr form))
+		  (let ((sing (cadr form)))
+		    (let ((plur (symbol sing 'S))
+			  (aliases (symbol sing '-ALIASES))
+			  (proc (symbol 'DEFINE- sing)))
+		      (let ((aproc (symbol proc '-ALIAS)))
+			`(BEGIN
+			   (SET! ,(symbol plur '-REVERSE)
+				 (CONVERT-REVERSE ,plur))
+			   (SET! ,plur (CONVERT-FORWARD ,plur))
+			   (SET! ,proc ,(symbol proc '/POST-BOOT))
+			   (SET! ,aliases (CONVERT-FORWARD ,aliases))
+			   (SET! ,aproc ,(symbol aproc '/POST-BOOT))))))
+		  (ill-formed-syntax form))))))
+       (initialize-name-map decoder)
+       (initialize-name-map encoder)
+       (initialize-name-map normalizer)
+       (initialize-name-map denormalizer)))
+   (set! binary-decoder (name->decoder 'BINARY))
+   (set! binary-encoder (name->encoder 'BINARY))
+   (set! binary-normalizer (name->normalizer 'BINARY))
+   (set! binary-denormalizer (name->denormalizer 'BINARY))
+   unspecific))
 
 (define (define-coding-aliases name aliases)
   (for-each (lambda (alias)
 	      (define-decoder-alias alias name)
-	      (define-encoder-alias alias name)
-	      (define-sizer-alias alias name))
+	      (define-encoder-alias alias name))
 	    aliases))
 
 (define (primary-input-port-codings)
@@ -563,483 +547,233 @@ USA.
 
 (define (primary-output-port-codings)
   (cons 'US-ASCII (hash-table/key-list encoders)))
-
-;;;; Byte sources
 
-(define-structure (source (constructor make-gsource) (conc-name source/))
-  (get-channel #f read-only #t)
-  (get-port #f read-only #t)
-  (set-port #f read-only #t)
-  (open? #f read-only #t)
-  (close #f read-only #t)
-  (has-bytes? #f read-only #t)
-  (read #f read-only #t))
-
-(define-guarantee source "byte source")
-
-(define (->source object #!optional caller)
-  (if (channel? object)
-      (make-channel-source object)
-      (begin
-	(guarantee-source object caller)
-	object)))
-
-(define (make-channel-source channel)
-  (make-gsource (lambda () channel)
-		(lambda () (channel-port channel))
-		(lambda (port) (set-channel-port! channel port))
-		(lambda () (channel-open? channel))
-		(lambda () ;; channel-close provided by maybe-close-channels
-		  unspecific)
-		(lambda () (channel-has-input? channel))
-		(lambda (string start end)
-		  (channel-read channel string start end))))
-
-(define (make-non-channel-port-source has-bytes? read-bytes)
-  (let ((port #f)
-	(open? #t))
-    (make-gsource (lambda () #f)
-		  (lambda () port)
-		  (lambda (port*) (set! port port*) unspecific)
-		  (lambda () open?)
-		  (lambda () (set! open? #f) unspecific)
-		  has-bytes?
-		  read-bytes)))
-
-;;;; Byte Sinks
-
-(define-structure (sink (constructor make-gsink) (conc-name sink/))
-  (get-channel #f read-only #t)
-  (get-port #f read-only #t)
-  (set-port #f read-only #t)
-  (open? #f read-only #t)
-  (close #f read-only #t)
-  (write #f read-only #t))
-
-(define-guarantee sink "byte sink")
-
-(define (->sink object #!optional caller)
-  (if (channel? object)
-      (make-channel-sink object)
-      (begin
-	(guarantee-sink object caller)
-	object)))
-
-(define (make-channel-sink channel)
-  (make-gsink (lambda () channel)
-	      (lambda () (channel-port channel))
-	      (lambda (port) (set-channel-port! channel port))
-	      (lambda () (channel-open? channel))
-	      (lambda () ;; channel-close provided by maybe-close-channels
-		unspecific)
-	      (lambda (string start end)
-		(channel-write channel string start end))))
-
-(define (make-non-channel-port-sink write-bytes)
-  (let ((port #f)
-	(open? #t))
-    (make-gsink (lambda () #f)
-		(lambda () port)
-		(lambda (port*) (set! port port*) unspecific)
-		(lambda () open?)
-		(lambda () (set! open? #f) unspecific)
-		write-bytes)))
+(define max-char-bytes 4)
 
 ;;;; Input buffer
 
-(define-integrable page-size #x1000)
-(define-integrable max-char-bytes 4)
-
-(define-integrable byte-buffer-length
-  (fix:+ page-size
-	 (fix:- (fix:* max-char-bytes 4) 1)))
-
-(define-structure (input-buffer (constructor %make-input-buffer))
-  (source #f read-only #t)
-  (bytes #f read-only #t)
-  prev
-  start
-  end
-  decode
-  normalize
-  line
-  compute-encoded-character-size)
-
-(define (make-input-buffer source coder-name normalizer-name)
-  (%make-input-buffer source
-		      (make-string byte-buffer-length)
-		      byte-buffer-length
-		      byte-buffer-length
-		      byte-buffer-length
+(define (make-input-buffer binary-port coder-name normalizer-name)
+  (%make-input-buffer binary-port
 		      (name->decoder coder-name)
 		      (name->normalizer
-		       (line-ending ((source/get-channel source))
+		       (line-ending (binary-input-port-channel binary-port)
 				    normalizer-name
 				    #f))
-		      0
-		      (name->sizer coder-name)))
+		      (make-bytevector max-char-bytes)
+		      #f
+		      '()
+		      0))
+
+(define-record-type <input-buffer>
+    (%make-input-buffer binary-port decoder normalizer
+			bytes peeked decoded-chars line)
+    input-buffer?
+  (binary-port input-buffer-binary-port)
+  (decoder input-buffer-decoder
+	   set-input-buffer-decoder!)
+  (normalizer input-buffer-normalizer
+	      set-input-buffer-normalizer!)
+  (bytes input-buffer-bytes)
+  (peeked input-buffer-peeked
+	  set-input-buffer-peeked!)
+  (decoded-chars input-buffer-decoded-chars
+		 set-input-buffer-decoded-chars!)
+  (line input-buffer-line
+	set-input-buffer-line!))
 
 (define (input-buffer-open? ib)
-  (and (%input-buffer-open? ib)
-       ((source/open? (input-buffer-source ib)))))
+  (binary-input-port-open? (input-buffer-binary-port ib)))
 
-(define (%input-buffer-open? ib)
-  (fix:>= (input-buffer-end ib) 0))
-
-(define (clear-input-buffer ib)
-  (set-input-buffer-prev! ib byte-buffer-length)
-  (set-input-buffer-start! ib byte-buffer-length)
-  (set-input-buffer-end! ib byte-buffer-length))
-
-(define (close-input-buffer ib)
-  ((source/close (input-buffer-source ib)))
-  (set-input-buffer-line! ib -1)
-  (set-input-buffer-prev! ib -1)
-  (set-input-buffer-start! ib -1)
-  (set-input-buffer-end! ib -1))
-
 (define (input-buffer-channel ib)
-  ((source/get-channel (input-buffer-source ib))))
+  (input-source-channel (%input-buffer-source ib)))
 
 (define (input-buffer-port ib)
-  ((source/get-port (input-buffer-source ib))))
+  (input-source-port (%input-buffer-source ib)))
+
+(define (set-input-buffer-port! ib port)
+  (set-input-source-port! (%input-buffer-source ib) port))
+
+(define (%input-buffer-source ib)
+  (binary-input-port-source (input-buffer-binary-port ib)))
 
 (define (input-buffer-at-eof? ib)
-  (or (fix:<= (input-buffer-end ib) 0)
-      (and (fix:= (input-buffer-prev ib) 0)
-	   (fix:= (input-buffer-start ib) (input-buffer-end ib)))))
-
-(define (input-buffer-encoded-character-size ib char)
-  ((input-buffer-compute-encoded-character-size ib) ib char))
-
-(define (read-next-char ib)
-  (let ((char ((input-buffer-normalize ib) ib)))
-    (if (and (char? char)
-	     (char=? char #\newline))
-	(let ((line (input-buffer-line ib)))
-	  (if line
-	      (set-input-buffer-line! ib (fix:+ line 1)))))
-    char))
-
-(define (decode-char ib)
-  (and (fix:< (input-buffer-start ib) (input-buffer-end ib))
-       (let ((cp ((input-buffer-decode ib) ib)))
-	 (and cp
-	      (integer->char cp)))))
-
-(define (reset-prev-char ib)
-  (set-input-buffer-prev! ib (input-buffer-start ib)))
-
+  (binary-input-port-at-eof? (input-buffer-binary-port ib)))
+
 (define (set-input-buffer-coding! ib coding)
-  (reset-prev-char ib)
-  (set-input-buffer-decode! ib (name->decoder coding)))
+  (set-input-buffer-decoder! ib (name->decoder coding)))
 
 (define (set-input-buffer-line-ending! ib name)
-  (reset-prev-char ib)
-  (set-input-buffer-normalize! ib (name->normalizer name)))
+  (set-input-buffer-normalizer! ib (name->normalizer name)))
 
-(define (input-buffer-using-binary-normalizer? ib)
-  (eq? (input-buffer-normalize ib) binary-normalizer))
+(define (generic-input-port-buffer-contents port)
+  (binary-input-port-buffer-contents
+     (input-buffer-binary-port (port-input-buffer port))))
 
-(define (input-buffer-contents ib)
-  (substring (input-buffer-bytes ib)
-	     (input-buffer-start ib)
-	     (input-buffer-end ib)))
+(define (set-generic-input-port-buffer-contents! port contents)
+  (set-binary-input-port-buffer-contents!
+     (input-buffer-binary-port (port-input-buffer port))
+     contents))
 
-(define (set-input-buffer-contents! ib contents)
-  (guarantee-string contents 'SET-INPUT-BUFFER-CONTENTS!)
-  (let ((bv (input-buffer-bytes ib)))
-    (let ((n (fix:min (string-length contents) (string-length bv))))
-      (substring-move! contents 0 n bv 0)
-      (set-input-buffer-prev! ib 0)
-      (set-input-buffer-start! ib 0)
-      (set-input-buffer-end! ib n))))
+;; Next two for use only in normalizers.
 
-(define (input-buffer-free-bytes ib)
-  (fix:- (input-buffer-end ib)
-	 (input-buffer-start ib)))
-
-(define (fill-input-buffer ib)
-  (if (input-buffer-at-eof? ib)
-      'EOF
-      (let ((n (read-bytes ib)))
-	(cond ((not n) 'WOULD-BLOCK)
-	      ((fix:> n 0) 'OK)
-	      (else 'EOF)))))
+(define (decode-char ib)
+  (let ((chars (input-buffer-decoded-chars ib)))
+    (if (pair? chars)
+	(let ((char (car chars)))
+	  (set-input-buffer-decoded-chars! ib (cdr chars))
+	  char)
+	(let ((u8 (peek-byte ib)))
+	  (if (fix:fixnum? u8)
+	      ((input-buffer-decoder ib) ib)
+	      u8)))))
 
-(define (buffer-has-input? ib)
-  (or (next-char-ready? ib)
-      (input-buffer-at-eof? ib)
-      (and ((source/has-bytes? (input-buffer-source ib)))
-	   (begin
-	     (read-bytes ib)
-	     (next-char-ready? ib)))))
+(define (unread-decoded-char ib char)
+  (set-input-buffer-decoded-chars!
+     ib
+     (cons char (input-buffer-decoded-chars ib))))
 
-(define (next-char-ready? ib)
-  (let ((bl (input-buffer-line ib))
-	(bs (input-buffer-start ib)))
-    (and (read-next-char ib)
-	 (begin
-	   (set-input-buffer-line! ib bl)
-	   (set-input-buffer-start! ib bs)
-	   #t))))
+;;; Next three for use only in decoders.
 
-(define (read-bytes ib)
-  ;; assumption: (not (input-buffer-at-eof? ib))
-  (reset-prev-char ib)
-  (let ((bv (input-buffer-bytes ib)))
-    (let ((do-read
-	   (lambda (be)
-	     (let ((be* (fix:+ be page-size)))
-	       (if (not (fix:<= be* (vector-8b-length bv)))
-		   (error "Input buffer overflow:" ib))
-	       ((source/read (input-buffer-source ib)) bv be be*)))))
-      (let ((bs (input-buffer-start ib))
-	    (be (input-buffer-end ib)))
-	(if (fix:< bs be)
-	    (begin
-	      (if (fix:> bs 0)
-		  (do ((i bs (fix:+ i 1))
-		       (j 0 (fix:+ j 1)))
-		      ((not (fix:< i be))
-		       (set-input-buffer-prev! ib 0)
-		       (set-input-buffer-start! ib 0)
-		       (set-input-buffer-end! ib j))
-		    (string-set! bv j (string-ref bv i))))
-	      (let ((be (input-buffer-end ib)))
-		(let ((n (do-read be)))
-		  (if n
-		      (set-input-buffer-end! ib (fix:+ be n)))
-		  n)))
-	    (let ((n (do-read 0)))
-	      (if n
-		  (begin
-		    (set-input-buffer-prev! ib 0)
-		    (set-input-buffer-start! ib 0)
-		    (set-input-buffer-end! ib n)))
-	      n))))))
-
-(define (read-substring ib string start end)
-  (reset-prev-char ib)
-  (cond ((string? string)
-	 (if (input-buffer-in-8-bit-mode? ib)
-	     (let ((bv (input-buffer-bytes ib))
-		   (bs (input-buffer-start ib))
-		   (be (input-buffer-end ib)))
-	       (if (fix:< bs be)
-		   (let ((n (fix:min (fix:- be bs) (fix:- end start))))
-		     (let ((be (fix:+ bs n)))
-		       (%substring-move! bv bs be string start)
-		       (set-input-buffer-prev! ib be)
-		       (set-input-buffer-start! ib be)
-		       n))
-		   ((source/read (input-buffer-source ib)) string start end)))
-	     (read-to-8-bit ib string start end)))
-	((wide-string? string)
-	 (let ((v (wide-string-contents string)))
-	   (let loop ((i start))
-	     (cond ((not (fix:< i end))
-		    (fix:- i start))
-		   ((read-next-char ib)
-		    => (lambda (char)
-			 (vector-set! v i char)
-			 (loop (fix:+ i 1))))
-		   ((fix:> i start)
-		    (fix:- i start))
-		   (else
-		    (let ((r (fill-input-buffer ib)))
-		      (case r
-			((OK) (loop i))
-			((WOULD-BLOCK) #f)
-			((EOF) 0)
-			(else (error "Unknown result:" r)))))))))
-	(else
-	 (error:not-string string 'INPUT-PORT/READ-SUBSTRING!))))
+(define (peek-byte ib)
+  (peek-u8 (input-buffer-binary-port ib)))
 
-(define (input-buffer-in-8-bit-mode? ib)
-  (and (eq? (input-buffer-decode ib) binary-decoder)
-       (eq? (input-buffer-normalize ib) binary-normalizer)))
+(define (read-byte ib)
+  (read-u8 (input-buffer-binary-port ib)))
 
-(define (read-to-8-bit ib string start end)
-  (let ((n
-	 (let loop ((i start))
-	   (if (fix:< i end)
-	       (let ((char (read-next-char ib)))
-		 (if char
-		     (if (fix:< (char->integer char) #x100)
-			 (begin
-			   (string-set! string i char)
-			   (loop (fix:+ i 1)))
-			 (error "Character too large for 8-bit string:" char))
-		     (fix:- i start)))
-	       (fix:- i start)))))
-    (if (fix:> n 0)
-	n
-	(let ((r (fill-input-buffer ib)))
-	  (case r
-	    ((OK) (read-to-8-bit ib string start end))
-	    ((WOULD-BLOCK) #f)
-	    ((EOF) 0)
-	    (else (error "Unknown result:" r)))))))
+(define (read-bytes! ib start end)
+  (let loop ((index start))
+    (if (fix:< index end)
+	(let ((n
+	       (read-bytevector! (input-buffer-bytes ib)
+				 (input-buffer-binary-port ib)
+				 index
+				 end)))
+	  (if (not (and (fix:fixnum? n) (fix:> n 0)))
+	      (error:char-decoding ib))
+	  (loop (fix:+ index n))))))
 
 ;;;; Output buffer
 
-(define-structure (output-buffer (constructor %make-output-buffer))
-  (sink #f read-only #t)
-  (bytes #f read-only #t)
-  start
-  total
-  encode
-  denormalize
-  column)
-
-(define (make-output-buffer sink coder-name normalizer-name)
-  (%make-output-buffer sink
-		       (make-string byte-buffer-length)
-		       0
-		       0
+(define (make-output-buffer binary-port coder-name normalizer-name)
+  (%make-output-buffer binary-port
 		       (name->encoder coder-name)
 		       (name->denormalizer
-			(line-ending ((sink/get-channel sink))
+			(line-ending (binary-output-port-channel binary-port)
 				     normalizer-name
 				     #t))
+		       (make-bytevector max-char-bytes)
+		       0
+		       0
 		       0))
 
+(define-record-type <output-buffer>
+    (%make-output-buffer binary-port encoder denormalizer
+			 bytes line column total)
+    output-buffer?
+  (binary-port output-buffer-binary-port)
+  (encoder output-buffer-encoder
+	   set-output-buffer-encoder!)
+  (denormalizer output-buffer-denormalizer
+		set-output-buffer-denormalizer!)
+  (bytes output-buffer-bytes)
+  (line output-buffer-line
+	set-output-buffer-line!)
+  (column output-buffer-column
+	  set-output-buffer-column!)
+  (total output-buffer-total
+	 set-output-buffer-total!))
+
 (define (output-buffer-open? ob)
-  (and (%output-buffer-open? ob)
-       ((sink/open? (output-buffer-sink ob)))))
-
-(define (%output-buffer-open? ob)
-  (fix:>= (output-buffer-start ob) 0))
-
-(define (close-output-buffer ob)
-  (if (output-buffer-open? ob)
-      (begin
-	(force-drain-output-buffer ob)
-	((sink/close (output-buffer-sink ob)))
-	(set-output-buffer-start! ob -1))))
+  (binary-output-port-open? (output-buffer-binary-port ob)))
 
 (define (output-buffer-channel ob)
-  ((sink/get-channel (output-buffer-sink ob))))
+  (output-sink-channel (%output-buffer-sink ob)))
 
 (define (output-buffer-port ob)
-  ((sink/get-port (output-buffer-sink ob))))
+  (output-sink-port (%output-buffer-sink ob)))
 
-(define-integrable (output-buffer-end ob)
-  (string-length (output-buffer-bytes ob)))
+(define (set-output-buffer-port! ob port)
+  (set-output-sink-port! (%output-buffer-sink ob) port))
 
-(define (flush-output-buffer buffer)
-  (set-output-buffer-start! buffer 0))
+(define (%output-buffer-sink ob)
+  (binary-output-port-sink (output-buffer-binary-port ob)))
 
-(define (force-drain-output-buffer ob)
+(define (flush-output-buffer ob)
   (let ((channel (output-buffer-channel ob))
-	(drain-buffer
+	(do-flush
 	 (lambda ()
-	   (let loop ()
-	     (drain-output-buffer ob)
-	     (if (fix:> (output-buffer-start ob) 0)
-		 (loop))))))
+	   (flush-binary-output-port (output-buffer-binary-port ob)))))
     (if channel
-	(with-channel-blocking channel #t drain-buffer)
-	(drain-buffer))))
+	(with-channel-blocking channel #t do-flush)
+	(do-flush))))
 
-(define (drain-output-buffer ob)
-  (let ((bs (output-buffer-start ob)))
-    (if (fix:> bs 0)
-	(let ((bv (output-buffer-bytes ob)))
-	  (let ((n
-		 ((sink/write (output-buffer-sink ob))
-		  bv
-		  0
-		  (fix:min bs page-size))))
-	    (if (and n (fix:> n 0))
-		(do ((bi n (fix:+ bi 1))
-		     (bj 0 (fix:+ bj 1)))
-		    ((not (fix:< bi bs))
-		     (set-output-buffer-start! ob bj))
-		  (vector-8b-set! bv bj (vector-8b-ref bv bi))))
-	    n))
-	0)))
-
-(define (write-next-char ob char)
-  (and (fix:< (output-buffer-start ob) page-size)
-       (begin
-	 ((output-buffer-denormalize ob) ob char)
-	 (if (char=? char #\newline)
-	     (set-output-buffer-column! ob 0)
-	     (let ((column (output-buffer-column ob)))
-	       (if column
-		   (set-output-buffer-column!
-		    ob
-		    (cond ((char=? char #\tab)
-			   (fix:+ column (fix:- 8 (fix:remainder column 8))))
-			  ((and (fix:<= #x20 (char->integer char))
-				(fix:<= (char->integer char) #x7E))
-			   (fix:+ column 1))
-			  (else #f))))))
-	 #t)))
-
-(define (output-buffer-in-8-bit-mode? ob)
-  (and (eq? (output-buffer-encode ob) binary-encoder)
-       (eq? (output-buffer-denormalize ob) binary-denormalizer)))
-
-(define (output-buffer-using-binary-denormalizer? ob)
-  (eq? (output-buffer-denormalize ob) binary-denormalizer))
-
-(define (encode-char ob char)
-  (let ((n-bytes ((output-buffer-encode ob) ob (char->integer char))))
-    (set-output-buffer-start! ob (fix:+ (output-buffer-start ob) n-bytes))
-    (set-output-buffer-total! ob (fix:+ (output-buffer-total ob) n-bytes))))
-
 (define (set-output-buffer-coding! ob coding)
-  (set-output-buffer-encode! ob (name->encoder coding)))
+  (set-output-buffer-encoder! ob (name->encoder coding)))
 
 (define (set-output-buffer-line-ending! ob name)
-  (set-output-buffer-denormalize! ob (name->denormalizer name)))
-
-(define (write-substring ob string start end)
-  (cond ((string? string)
-	 (let loop ((i start))
-	   (if (fix:< i end)
-	       (if (write-next-char ob (string-ref string i))
-		   (loop (fix:+ i 1))
-		   (let ((n (drain-output-buffer ob)))
-		     (cond ((not n) (and (fix:> i start) (fix:- i start)))
-			   ((fix:> n 0) (loop i))
-			   (else (fix:- i start)))))
-	       (fix:- end start))))
-	((wide-string? string)
-	 (let ((v (wide-string-contents string)))
-	   (let loop ((i start))
-	     (if (fix:< i end)
-		 (if (write-next-char ob (vector-ref v i))
-		     (loop (fix:+ i 1))
-		     (let ((n (drain-output-buffer ob)))
-		       (cond ((not n) (and (fix:> i start) (fix:- i start)))
-			     ((fix:> n 0) (loop i))
-			     (else (fix:- i start)))))
-		 (fix:- end start)))))
-	(else
-	 (error:not-string string 'OUTPUT-PORT/WRITE-SUBSTRING))))
+  (set-output-buffer-denormalizer! ob (name->denormalizer name)))
+
+(define (output-buffer-using-binary-denormalizer? ob)
+  (eq? (output-buffer-denormalizer ob) binary-denormalizer))
+
+;; Returns >0 if the character was written in its entirety.
+;; Returns 0 if the character wasn't written at all.
+;; Returns #f if the write would block.
+;; Throws an error if there was a short write.
+(define (write-next-char ob char)
+  (let ((n ((output-buffer-denormalizer ob) ob char)))
+    (if (and n (fix:> n 0))
+	(if (char=? char #\newline)
+	    (begin
+	      (set-output-buffer-column! ob 0)
+	      (set-output-buffer-line! ob (fix:+ (output-buffer-line ob) 1)))
+	    (let ((column (output-buffer-column ob)))
+	      (if column
+		  (set-output-buffer-column!
+		   ob
+		   (cond ((char=? char #\tab)
+			  (fix:+ column (fix:- 8 (fix:remainder column 8))))
+			 ((and (fix:<= #x20 (char->integer char))
+			       (fix:<= (char->integer char) #x7E))
+			  (fix:+ column 1))
+			 (else #f)))))))
+    n))
+
+;; For use only in denormalizers.
+;; Returns 1 if the character was written in its entirety.
+;; Returns 0 if the character wasn't written at all.
+;; Returns #f if the write would block.
+;; Throws an error if there was a short write.
+(define (encode-char ob char)
+  (let ((n ((output-buffer-encoder ob) ob char)))
+    (let ((m
+	   (write-bytevector (output-buffer-bytes ob)
+			     (output-buffer-binary-port ob)
+			     0
+			     n)))
+      (if (and m (fix:> m 0))
+	  (begin
+	    (if (fix:< m n)
+		(error:char-encoding ob char))
+	    (set-output-buffer-total! ob (fix:+ (output-buffer-total ob) n))
+	    1)
+	  m))))
 
 ;;;; 8-bit codecs
 
 (define-decoder 'ISO-8859-1
   (lambda (ib)
-    (let ((cp (vector-8b-ref (input-buffer-bytes ib) (input-buffer-start ib))))
-      (set-input-buffer-start! ib (fix:+ (input-buffer-start ib) 1))
-      cp)))
+    (let ((sv (read-byte ib)))
+      (if (fix:fixnum? sv)
+	  (integer->char sv)
+	  sv))))
 
 (define-encoder 'ISO-8859-1
-  (lambda (ob cp)
-    (if (not (fix:< cp #x100))
-	(error:char-encoding ob cp))
-    (vector-8b-set! (output-buffer-bytes ob) (output-buffer-start ob) cp)
-    1))
-
-(define-sizer 'ISO-8859-1
-  (lambda (ib cp)
-    ib cp
+  (lambda (ob char)
+    (let ((cp (char->integer char)))
+      (if (not (fix:< cp #x100))
+	  (error:char-encoding ob cp))
+      (bytevector-u8-set! (output-buffer-bytes ob) 0 cp))
     1))
 
 (define-coding-aliases 'ISO-8859-1
@@ -1061,69 +795,61 @@ USA.
 	 (let ((name (cadr form))
 	       (start (caddr form))
 	       (code-points (cdddr form)))
-	   `(BEGIN
-	      (DEFINE-DECODER ',name
-		(LET ((TABLE
-		       #(,@(let loop ((i 0))
-			     (if (fix:< i start)
-				 (cons i (loop (fix:+ i 1)))
-				 code-points)))))
-		  (LAMBDA (IB)
-		    (DECODE-8-BIT IB TABLE))))
-	      (DEFINE-ENCODER ',name
-		(RECEIVE (LHS RHS) (REVERSE-ISO-8859-MAP ,start ',code-points)
-		  (LAMBDA (OB CP)
-		    (ENCODE-8-BIT OB CP ,start LHS RHS))))
-	      (DEFINE-SIZER-ALIAS ',name 'ISO-8859-1)))
+	   (let ((alist
+		  (sort (filter-map (lambda (cp byte)
+				      (and cp
+					   (cons cp byte)))
+				    code-points
+				    (iota (length code-points) start))
+			(lambda (a b)
+			  (fix:< (car a) (car b))))))
+	     (let ((lhs (list->vector (map car alist)))
+		   (rhs (map cdr alist)))
+	       `(BEGIN
+		  (DEFINE-DECODER ',name
+		    (LET ((TABLE
+			   #(,@(map (lambda (cp)
+				      (and cp
+					   (integer->char cp)))
+				    (let loop ((i 0))
+				      (if (fix:< i start)
+					  (cons i (loop (fix:+ i 1)))
+					  code-points))))))
+		      (LAMBDA (IB)
+			(DECODE-8-BIT IB TABLE))))
+		  (DEFINE-ENCODER ',name
+		    (LET ((LHS ',lhs)
+			  (RHS (APPLY BYTEVECTOR ',rhs)))
+		      (LAMBDA (OB CHAR)
+			(ENCODE-8-BIT OB CHAR ,start LHS RHS))))))))
 	 (ill-formed-syntax form)))))
 
 (define (decode-8-bit ib table)
-  (let ((cp
-	 (vector-ref table
-		     (vector-8b-ref (input-buffer-bytes ib)
-				    (input-buffer-start ib)))))
-    (if cp
-	(begin
-	  (set-input-buffer-start! ib (fix:+ (input-buffer-start ib) 1))
-	  cp)
-	(error:char-decoding ib))))
+  (let ((u8 (read-byte ib)))
+    (if (fix:fixnum? u8)
+	(let ((char (vector-ref table u8)))
+	  (if (not char)
+	      (error:char-decoding ib))
+	  char)
+	u8)))
 
-(define (encode-8-bit ob cp start map-lhs map-rhs)
-  (vector-8b-set! (input-buffer-bytes ob)
-		  (input-buffer-start ob)
-		  (if (fix:< cp start)
-		      cp
-		      (let loop ((low 0) (high (vector-length map-lhs)))
-			(if (not (fix:< low high))
-			    (error:char-encoding ob cp))
-			(let ((i (fix:quotient (fix:+ low high) 2)))
-			  (cond ((fix:< cp (vector-ref map-lhs i))
-				 (loop low i))
-				((fix:> cp (vector-ref map-lhs i))
-				 (loop (fix:+ i 1) high))
-				(else
-				 (vector-8b-ref map-rhs i)))))))
+(define (encode-8-bit ob char start map-lhs map-rhs)
+  (bytevector-u8-set! (output-buffer-bytes ob)
+		      0
+		      (let ((cp (char->integer char)))
+			(if (fix:< cp start)
+			    cp
+			    (let loop ((low 0) (high (vector-length map-lhs)))
+			      (if (not (fix:< low high))
+				  (error:char-encoding ob cp))
+			      (let ((i (fix:quotient (fix:+ low high) 2)))
+				(cond ((fix:< cp (vector-ref map-lhs i))
+				       (loop low i))
+				      ((fix:> cp (vector-ref map-lhs i))
+				       (loop (fix:+ i 1) high))
+				      (else
+				       (bytevector-u8-ref map-rhs i))))))))
   1)
-
-(define (reverse-iso-8859-map start code-points)
-  (let ((n (length code-points)))
-    (let ((lhs (make-vector n))
-	  (rhs (make-vector-8b n)))
-      (do ((alist (sort (let loop ((code-points code-points) (i start))
-			  (if (pair? code-points)
-			      (if (car code-points)
-				  (cons (cons (car code-points) i)
-					(loop (cdr code-points) (fix:+ i 1)))
-				  (loop (cdr code-points) (fix:+ i 1)))
-			      '()))
-		    (lambda (a b)
-		      (fix:< (car a) (car b))))
-		  (cdr alist))
-	   (i 0 (fix:+ i 1)))
-	  ((not (pair? alist)))
-	(vector-set! lhs i (caar alist))
-	(vector-8b-set! rhs i (cdar alist)))
-      (values lhs rhs))))
 
 (define-8-bit-codecs iso-8859-2 #xA1
   #x0104 #x02D8 #x0141 #x00A4 #x013D #x015A #x00A7 #x00A8
@@ -1586,187 +1312,46 @@ USA.
 
 (define-decoder 'UTF-8
   (lambda (ib)
+    (let ((n (initial-byte->utf8-char-length (peek-byte ib))))
+      (read-bytes! ib 0 n)
+      (decode-utf8-char (input-buffer-bytes ib) 0))))
 
-    (define-integrable (done cp bs)
-      (set-input-buffer-start! ib bs)
-      cp)
-
-    (let ((bv (input-buffer-bytes ib))
-	  (bs (input-buffer-start ib)))
-      (let ((b0 (get-byte bv bs 0)))
-	(cond ((fix:< b0 #x80)
-	       (done b0 (fix:+ bs 1)))
-	      ((fix:< b0 #xE0)
-	       (and (fix:<= (fix:+ bs 2) (input-buffer-end ib))
-		    (let ((b1 (get-byte bv bs 1)))
-		      (if (and (fix:> b0 #xC1)
-			       (trailing-byte? b1))
-			  (done (fix:or (extract b0 #x1F 6)
-					(extract b1 #x3F 0))
-				(fix:+ bs 2))
-			  (error:char-decoding ib)))))
-	      ((fix:< b0 #xF0)
-	       (and (fix:<= (fix:+ bs 3) (input-buffer-end ib))
-		    (let ((b1 (get-byte bv bs 1))
-			  (b2 (get-byte bv bs 2)))
-		      (if (and (or (fix:> b0 #xE0) (fix:> b1 #x9F))
-			       (trailing-byte? b1)
-			       (trailing-byte? b2))
-			  (let ((cp
-				 (fix:or (fix:or (extract b0 #x0F 12)
-						 (extract b1 #x3F 6))
-					 (extract b2 #x3F 0))))
-			    (if (illegal-low? cp)
-				(error:char-decoding ib)
-				(done cp (fix:+ bs 3))))
-			  (error:char-decoding ib)))))
-	      ((fix:< b0 #xF8)
-	       (and (fix:<= (fix:+ bs 4) (input-buffer-end ib))
-		    (let ((b1 (get-byte bv bs 1))
-			  (b2 (get-byte bv bs 2))
-			  (b3 (get-byte bv bs 3)))
-		      (if (and (or (fix:> b0 #xF0) (fix:> b1 #x8F))
-			       (trailing-byte? b1)
-			       (trailing-byte? b2)
-			       (trailing-byte? b3))
-			  (let ((cp
-				 (fix:or (fix:or (extract b0 #x07 18)
-						 (extract b1 #x3F 12))
-					 (fix:or (extract b2 #x3F 6)
-						 (extract b3 #x3F 0)))))
-			    (if (fix:< cp #x110000)
-				(done cp (fix:+ bs 4))
-				(error:char-decoding ib)))
-			  (error:char-decoding ib)))))
-	      (else
-	       (error:char-decoding ib)))))))
-
 (define-encoder 'UTF-8
-  (lambda (ob cp)
-    (let ((bv (output-buffer-bytes ob))
-	  (bs (output-buffer-start ob)))
+  (lambda (ob char)
+    (encode-utf8-char! (output-buffer-bytes ob) 0 char)))
 
-      (define-integrable (initial-byte n-bits offset)
-	(fix:or (fix:and (fix:lsh #xFF (fix:+ n-bits 1)) #xFF)
-		(fix:lsh cp (fix:- 0 offset))))
-
-      (define-integrable (trailing-byte offset)
-	(fix:or #x80 (fix:and (fix:lsh cp (fix:- 0 offset)) #x3F)))
-
-      (cond ((fix:< cp #x00000080)
-	     (put-byte bv bs 0 cp)
-	     1)
-	    ((fix:< cp #x00000800)
-	     (put-byte bv bs 0 (initial-byte 5 6))
-	     (put-byte bv bs 1 (trailing-byte 0))
-	     2)
-	    ((fix:< cp #x00010000)
-	     (put-byte bv bs 0 (initial-byte 4 12))
-	     (put-byte bv bs 1 (trailing-byte 6))
-	     (put-byte bv bs 2 (trailing-byte 0))
-	     3)
-	    ((fix:< cp #x00110000)
-	     (put-byte bv bs 0 (initial-byte 3 18))
-	     (put-byte bv bs 1 (trailing-byte 12))
-	     (put-byte bv bs 2 (trailing-byte 6))
-	     (put-byte bv bs 3 (trailing-byte 0))
-	     4)
-	    (else
-	     (error:char-encoding ob cp))))))
-
-(define-sizer 'UTF-8
-  (lambda (ib cp)
-    (cond ((fix:< cp #x00000080) 1)
-	  ((fix:< cp #x00000800) 2)
-	  ((fix:< cp #x00010000) 3)
-	  ((fix:< cp #x00110000) 4)
-	  (else (error:char-encoding ib cp)))))
-
-(define-integrable (get-byte bv base offset)
-  (vector-8b-ref bv (fix:+ base offset)))
-
-(define-integrable (put-byte bv base offset byte)
-  (vector-8b-set! bv (fix:+ base offset) byte))
-
-(define-integrable (extract b m n)
-  (fix:lsh (fix:and b m) n))
-
-(define-integrable (trailing-byte? b)
-  (fix:= (fix:and #xC0 b) #x80))
-
-(define-integrable (illegal-low? n)
-  (or (fix:= (fix:and #xF800 n) #xD800)
-      (fix:= (fix:and #xFFFE n) #xFFFE)))
-
 (let ((alias (lambda () (if (host-big-endian?) 'UTF-16BE 'UTF-16LE))))
   (define-decoder-alias 'UTF-16 alias)
   (define-encoder-alias 'UTF-16 alias))
 
-(define-decoder 'UTF-16BE (lambda (ib) (decode-utf-16 ib be-bytes->digit16)))
-(define-decoder 'UTF-16LE (lambda (ib) (decode-utf-16 ib le-bytes->digit16)))
+(define-decoder 'utf-16be
+  (lambda (ib)
+    (read-bytes! ib 0 2)
+    (let ((n
+	   (initial-u16->utf16-char-length
+	    (bytevector-u16be-ref (input-buffer-bytes ib) 0))))
+      (if (fix:> n 2)
+	  (read-bytes! ib 2 n))
+      (decode-utf16be-char (input-buffer-bytes ib) 0))))
 
-(define-integrable (decode-utf-16 ib combine)
-
-  (define-integrable (done cp bs)
-    (set-input-buffer-start! ib bs)
-    cp)
-
-  (let ((bv (input-buffer-bytes ib))
-	(bs (input-buffer-start ib)))
-    (and (fix:<= (fix:+ bs 2) (input-buffer-end ib))
-	 (let ((d0
-		(combine (get-byte bv bs 0)
-			 (get-byte bv bs 1))))
-	   (if (utf16-high-surrogate? d0)
-	       (and (fix:<= (fix:+ bs 4) (input-buffer-end ib))
-		    (let ((d1
-			   (combine (get-byte bv bs 2)
-				    (get-byte bv bs 3))))
-		      (if (utf16-low-surrogate? d1)
-			  (done (combine-utf16-surrogates d0 d1) (fix:+ bs 4))
-			  (error:char-decoding ib))))
-	       (if (illegal-low? d0)
-		   (error:char-decoding ib)
-		   (done d0 (fix:+ bs 2))))))))
+(define-decoder 'utf-16le
+  (lambda (ib)
+    (read-bytes! ib 0 2)
+    (let ((n
+	   (initial-u16->utf16-char-length
+	    (bytevector-u16le-ref (input-buffer-bytes ib) 0))))
+      (if (fix:> n 2)
+	  (read-bytes! ib 2 n))
+      (decode-utf16le-char (input-buffer-bytes ib) 0))))
 
 (define-encoder 'UTF-16BE
-  (lambda (ob cp)
-    (encode-utf-16 ob cp high-byte low-byte)))
+  (lambda (ob char)
+    (encode-utf16be-char! (output-buffer-bytes ob) 0 char)))
 
 (define-encoder 'UTF-16LE
-  (lambda (ob cp)
-    (encode-utf-16 ob cp low-byte high-byte)))
+  (lambda (ob char)
+    (encode-utf16le-char! (output-buffer-bytes ob) 0 char)))
 
-(define-integrable (encode-utf-16 ob cp first-byte second-byte)
-  (let ((bv (output-buffer-bytes ob))
-	(bs (output-buffer-start ob)))
-    (cond ((fix:< cp #x10000)
-	   (put-byte bv bs 0 (first-byte cp))
-	   (put-byte bv bs 1 (second-byte cp))
-	   2)
-	  ((fix:< cp #x110000)
-	   (receive (h l) (split-into-utf16-surrogates cp)
-	     (put-byte bv bs 0 (first-byte h))
-	     (put-byte bv bs 1 (second-byte h))
-	     (put-byte bv bs 2 (first-byte l))
-	     (put-byte bv bs 3 (second-byte l)))
-	   4)
-	  (else
-	   (error:char-encoding ob cp)))))
-
-(define-sizer 'UTF-16
-  (lambda (ib cp)
-    (cond ((fix:< cp #x00010000) 2)
-	  ((fix:< cp #x00110000) 4)
-	  (else (error:char-encoding ib cp)))))
-(define-sizer-alias 'UTF-16BE 'UTF-16)
-(define-sizer-alias 'UTF-16LE 'UTF-16)
-
-(define-integrable (be-bytes->digit16 b0 b1) (fix:or (fix:lsh b0 8) b1))
-(define-integrable (le-bytes->digit16 b0 b1) (fix:or b0 (fix:lsh b1 8)))
-(define-integrable (high-byte d) (fix:lsh d -8))
-(define-integrable (low-byte d) (fix:and d #xFF))
-
 (let ((alias
        (lambda ()
 	 (if (host-big-endian?)
@@ -1775,68 +1360,23 @@ USA.
   (define-decoder-alias 'UTF-32 alias)
   (define-encoder-alias 'UTF-32 alias))
 
-(define-decoder 'UTF-32BE
+(define-decoder 'utf-32be
   (lambda (ib)
-    (let ((bv (input-buffer-bytes ib))
-	  (bs (input-buffer-start ib)))
-      (and (fix:<= (fix:+ bs 4) (input-buffer-end ib))
-	   (let ((cp
-		  (+ (* (get-byte bv bs 0) #x1000000)
-		     (* (get-byte bv bs 1) #x10000)
-		     (* (get-byte bv bs 2) #x100)
-		     (get-byte bv bs 3))))
-	     (if (unicode-scalar-value? cp)
-		 (begin
-		   (set-input-buffer-start! ib (fix:+ bs 4))
-		   cp)
-		 (error:char-decoding ib)))))))
+    (read-bytes! ib 0 4)
+    (decode-utf32be-char (input-buffer-bytes ib) 0)))
 
-(define-decoder 'UTF-32LE
+(define-decoder 'utf-32le
   (lambda (ib)
-    (let ((bv (input-buffer-bytes ib))
-	  (bs (input-buffer-start ib)))
-      (and (fix:<= (fix:+ bs 4) (input-buffer-end ib))
-	   (let ((cp
-		  (+ (* (get-byte bv bs 3) #x1000000)
-		     (* (get-byte bv bs 2) #x10000)
-		     (* (get-byte bv bs 1) #x100)
-		     (get-byte bv bs 0))))
-	     (if (unicode-scalar-value? cp)
-		 (begin
-		   (set-input-buffer-start! ib (fix:+ bs 4))
-		   cp)
-		 (error:char-decoding ib)))))))
+    (read-bytes! ib 0 4)
+    (decode-utf32le-char (input-buffer-bytes ib) 0)))
 
 (define-encoder 'UTF-32BE
-  (lambda (ob cp)
-    (if (fix:< cp #x110000)
-	(let ((bv (output-buffer-bytes ob))
-	      (bs (output-buffer-start ob)))
-	  (put-byte bv bs 0 #x00)
-	  (put-byte bv bs 1 (fix:and (fix:lsh cp -16) #xFF))
-	  (put-byte bv bs 2 (fix:and (fix:lsh cp -8) #xFF))
-	  (put-byte bv bs 3 (fix:and cp #xFF))
-	  4)
-	(error:char-encoding ob cp))))
+  (lambda (ob char)
+    (encode-utf32be-char! (output-buffer-bytes ob) 0 char)))
 
 (define-encoder 'UTF-32LE
-  (lambda (ob cp)
-    (if (fix:< cp #x110000)
-	(let ((bv (output-buffer-bytes ob))
-	      (bs (output-buffer-start ob)))
-	  (put-byte bv bs 0 (fix:and cp #xFF))
-	  (put-byte bv bs 1 (fix:and (fix:lsh cp -8) #xFF))
-	  (put-byte bv bs 2 (fix:and (fix:lsh cp -16) #xFF))
-	  (put-byte bv bs 3 #x00)
-	  4)
-	(error:char-encoding ob cp))))
-
-(define-sizer 'UTF-32
-  (lambda (ib cp)
-    (cond ((fix:< cp #x110000) 4)
-	  (else (error:char-encoding ib cp)))))
-(define-sizer-alias 'UTF-32BE 'UTF-32)
-(define-sizer-alias 'UTF-32LE 'UTF-32)
+  (lambda (ob char)
+    (encode-utf32le-char! (output-buffer-bytes ob) 0 char)))
 
 ;;;; Normalizers
 
@@ -1861,67 +1401,69 @@ USA.
 
 (define-normalizer 'CRLF
   (lambda (ib)
-    (let* ((bs0 (input-buffer-start ib))
-	   (c0 (decode-char ib)))
-      (if (eq? c0 #\U+000D)
-	  (let* ((bs1 (input-buffer-start ib))
-		 (c1 (decode-char ib)))
-	    (case c1
-	      ((#\U+000A)
-	       #\newline)
-	      ((#f)
-	       (set-input-buffer-start! ib bs0)
-	       #f)
-	      (else
-	       (set-input-buffer-start! ib bs1)
-	       c0)))
-	  c0))))
+    (let ((c0 (decode-char ib)))
+      (case c0
+	((#\U+000D)
+	 (let ((c1 (decode-char ib)))
+	   (case c1
+	     ((#\U+000A)
+	      #\newline)
+	     ((#f)
+	      (unread-decoded-char ib c1)
+	      (unread-decoded-char ib c0)
+	      #f)
+	     (else
+	      (unread-decoded-char ib c1)
+	      c0))))
+	(else c0)))))
 
 (define-denormalizer 'CRLF
   (lambda (ob char)
     (if (char=? char #\newline)
-	(begin
-	  (encode-char ob #\U+000D)
-	  (encode-char ob #\U+000A))
+	(let ((n1 (encode-char ob #\U+000D)))
+	  (if (eq? n1 1)
+	      (let ((n2 (encode-char ob #\U+000A)))
+		(if (not (eq? n2 1))
+		    (error:char-encoding ob char))
+		2)
+	      n1))
 	(encode-char ob char))))
 
 (define-normalizer 'XML-1.0
   (lambda (ib)
-    (let* ((bs0 (input-buffer-start ib))
-	   (c0 (decode-char ib)))
+    (let ((c0 (decode-char ib)))
       (case c0
 	((#\U+000D)
-	 (let* ((bs1 (input-buffer-start ib))
-		(c1 (decode-char ib)))
+	 (let ((c1 (decode-char ib)))
 	   (case c1
 	     ((#\U+000A)
-	      #\U+000A)
+	      #\newline)
 	     ((#f)
-	      (set-input-buffer-start! ib bs0)
+	      (unread-decoded-char ib c1)
+	      (unread-decoded-char ib c0)
 	      #f)
 	     (else
-	      (set-input-buffer-start! ib bs1)
-	      #\U+000A))))
+	      (unread-decoded-char ib c1)
+	      #\newline))))
 	(else c0)))))
 
 (define-normalizer 'XML-1.1
   (lambda (ib)
-    (let* ((bs0 (input-buffer-start ib))
-	   (c0 (decode-char ib)))
+    (let ((c0 (decode-char ib)))
       (case c0
 	((#\U+000D)
-	 (let* ((bs1 (input-buffer-start ib))
-		(c1 (decode-char ib)))
+	 (let ((c1 (decode-char ib)))
 	   (case c1
 	     ((#\U+000A #\U+0085)
-	      #\U+000A)
+	      #\newline)
 	     ((#f)
-	      (set-input-buffer-start! ib bs0)
+	      (unread-decoded-char ib c1)
+	      (unread-decoded-char ib c0)
 	      #f)
 	     (else
-	      (set-input-buffer-start! ib bs1)
-	      #\U+000A))))
-	((#\U+0085 #\U+2028) #\U+000A)
+	      (unread-decoded-char ib c1)
+	      #\newline))))
+	((#\U+0085 #\U+2028) #\newline)
 	(else c0)))))
 
 (define-normalizer-alias 'TEXT 'XML-1.0)
@@ -1934,34 +1476,40 @@ USA.
 
 ;;;; Conditions
 
+(define (error:char-decoding ib)
+  (%error:char-decoding (input-buffer-port ib)))
+
+(define (error:char-encoding ob cp)
+  (%error:char-encoding (output-buffer-port ob) (integer->char cp)))
+
 (define condition-type:char-decoding-error)
 (define condition-type:char-encoding-error)
-(define error:char-decoding)
-(define error:char-encoding)
-
-(define (initialize-conditions!)
-  (set! condition-type:char-decoding-error
-	(make-condition-type 'CHAR-DECODING-ERROR condition-type:port-error '()
-	  (lambda (condition port)
-	    (write-string "The input port " port)
-	    (write (access-condition condition 'PORT) port)
-	    (write-string " was unable to decode a character." port)
-	    (newline port))))
-  (set! error:char-decoding
-	(condition-signaller condition-type:char-decoding-error
-			     '(PORT)
-			     standard-error-handler))
-  (set! condition-type:char-encoding-error
-	(make-condition-type 'CHAR-ENCODING-ERROR condition-type:port-error
-	    '(CHAR)
-	  (lambda (condition port)
-	    (write-string "The output port " port)
-	    (write (access-condition condition 'PORT) port)
-	    (write-string " was unable to encode the character " port)
-	    (write (access-condition condition 'CHAR) port)
-	    (newline port))))
-  (set! error:char-encoding
-	(condition-signaller condition-type:char-encoding-error
-			     '(PORT CHAR)
-			     standard-error-handler))
-  unspecific)
+(define %error:char-decoding)
+(define %error:char-encoding)
+(add-boot-init!
+ (lambda ()
+   (set! condition-type:char-decoding-error
+	 (make-condition-type 'CHAR-DECODING-ERROR condition-type:port-error '()
+	   (lambda (condition port)
+	     (write-string "The input port " port)
+	     (write (access-condition condition 'PORT) port)
+	     (write-string " was unable to decode a character." port)
+	     (newline port))))
+   (set! %error:char-decoding
+	 (condition-signaller condition-type:char-decoding-error
+			      '(PORT)
+			      standard-error-handler))
+   (set! condition-type:char-encoding-error
+	 (make-condition-type 'CHAR-ENCODING-ERROR condition-type:port-error
+	     '(CHAR)
+	   (lambda (condition port)
+	     (write-string "The output port " port)
+	     (write (access-condition condition 'PORT) port)
+	     (write-string " was unable to encode the character " port)
+	     (write (access-condition condition 'CHAR) port)
+	     (newline port))))
+   (set! %error:char-encoding
+	 (condition-signaller condition-type:char-encoding-error
+			      '(PORT CHAR)
+			      standard-error-handler))
+   unspecific))

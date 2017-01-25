@@ -87,7 +87,11 @@ USA.
 		(let ((input-channel (subprocess-input-channel process))
 		      (output-channel (subprocess-output-channel process)))
 		  (and (or input-channel output-channel)
-		       (make-generic-i/o-port input-channel output-channel)))))
+		       (make-generic-i/o-port
+			(and input-channel
+			     (make-channel-input-source input-channel))
+			(and output-channel
+			     (make-channel-output-sink output-channel)))))))
 	   (set-subprocess-%i/o-port! process port)
 	   port)))))
 

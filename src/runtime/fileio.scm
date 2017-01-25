@@ -50,55 +50,23 @@ USA.
   unspecific)
 
 (define (operation/pathname port)
-  (port-property 'pathname))
+  (port-property port 'pathname))
 
 (define (set-port-pathname! port pathname)
   (set-port-property! port 'pathname pathname))
 
 (define (operation/length port)
-  (channel-file-length
-   (or (input-port-channel port)
-       (output-port-channel port))))
+  (binary-port-length (generic-i/o-port->binary-port port)))
 
 (define (operation/write-self port output-port)
   (write-string " for file: " output-port)
   (write (->namestring (operation/pathname port)) output-port))
 
 (define (operation/position port)
-  (guarantee-positionable-port port 'OPERATION/POSITION)
-  (if (output-port? port)
-      (flush-output port))
-  (if (input-port? port)
-      (let ((input-buffer (port-input-buffer port)))
-	(- (channel-file-position (input-port-channel port))
-	   (input-buffer-free-bytes input-buffer)))
-      (channel-file-position (output-port-channel port))))
+  (binary-port-position (generic-i/o-port->binary-port port)))
 
 (define (operation/set-position! port position)
-  (guarantee-positionable-port port 'OPERATION/SET-POSITION!)
-  (guarantee-exact-nonnegative-integer position 'OPERATION/SET-POSITION!)
-  (if (output-port? port)
-      (flush-output port))
-  (if (input-port? port)
-      (clear-input-buffer (port-input-buffer port)))
-  (channel-file-set-position (if (input-port? port)
-				 (input-port-channel port)
-				 (output-port-channel port))
-			     position))
-
-(define (guarantee-positionable-port port caller)
-  (guarantee textual-port? port caller)
-  (if (and (i/o-port? port)
-	   (not (eq? (input-port-channel port) (output-port-channel port))))
-      (error:bad-range-argument port caller))
-  (if (and (input-port? port)
-	   (not (input-buffer-using-binary-normalizer?
-		 (port-input-buffer port))))
-      (error:bad-range-argument port caller))
-  (if (and (output-port? port)
-	   (not (output-buffer-using-binary-denormalizer?
-		 (port-output-buffer port))))
-      (error:bad-range-argument port caller)))
+  (set-binary-port-position! (generic-i/o-port->binary-port port) position))
 
 (define (input-file-opener caller make-port)
   (lambda (filename)
@@ -129,26 +97,30 @@ USA.
 	   (channel (file-open-io-channel (->namestring pathname))))
       (make-port channel channel pathname caller))))
 
-(define (make-textual-port input-channel output-channel pathname caller)
+(define (make-textual-file-port input-channel output-channel pathname caller)
   caller
-  (let ((port (%make-textual-port input-channel output-channel pathname)))
+  (let ((port (%make-textual-file-port input-channel output-channel pathname)))
     (port/set-line-ending port (file-line-ending pathname))
     port))
 
-(define (make-legacy-binary-port input-channel output-channel pathname caller)
+(define (make-legacy-binary-file-port input-channel output-channel pathname
+				      caller)
   caller
-  (let ((port (%make-textual-port input-channel output-channel pathname)))
+  (let ((port (%make-textual-file-port input-channel output-channel pathname)))
     (port/set-coding port 'BINARY)
     (port/set-line-ending port 'BINARY)
     port))
 
-(define (%make-textual-port input-channel output-channel pathname)
+(define (%make-textual-file-port input-channel output-channel pathname)
   (let ((port
-	 (make-generic-i/o-port input-channel
-				output-channel
-				(cond ((not input-channel) output-file-type)
-				      ((not output-channel) input-file-type)
-				      (else i/o-file-type)))))
+	 (make-generic-i/o-port
+	    (and input-channel
+		 (make-channel-input-source input-channel))
+	    (and output-channel
+		 (make-channel-output-sink output-channel))
+	    (cond ((not input-channel) output-file-type)
+		  ((not output-channel) input-file-type)
+		  (else i/o-file-type)))))
     ;; If both channels are set they are the same.
     (cond (input-channel (set-channel-port! input-channel port))
 	  (output-channel (set-channel-port! output-channel port)))
@@ -156,59 +128,56 @@ USA.
     port))
 
 (define open-input-file
-  (input-file-opener 'open-input-file make-textual-port))
+  (input-file-opener 'open-input-file make-textual-file-port))
 
 (define open-output-file
-  (output-file-opener 'open-output-file make-textual-port))
+  (output-file-opener 'open-output-file make-textual-file-port))
 
 (define open-exclusive-output-file
-  (exclusive-output-file-opener 'open-exclusive-output-file make-textual-port))
+  (exclusive-output-file-opener 'open-exclusive-output-file
+				make-textual-file-port))
 
 (define open-i/o-file
-  (i/o-file-opener 'open-i/o-file make-textual-port))
+  (i/o-file-opener 'open-i/o-file make-textual-file-port))
 
 (define open-legacy-binary-input-file
-  (input-file-opener 'open-legacy-binary-input-file make-legacy-binary-port))
+  (input-file-opener 'open-legacy-binary-input-file
+		     make-legacy-binary-file-port))
 
 (define open-legacy-binary-output-file
-  (output-file-opener 'open-legacy-binary-output-file make-legacy-binary-port))
+  (output-file-opener 'open-legacy-binary-output-file
+		      make-legacy-binary-file-port))
 
 (define open-exclusive-legacy-binary-output-file
   (exclusive-output-file-opener 'open-exclusive-legacy-binary-output-file
-				make-legacy-binary-port))
+				make-legacy-binary-file-port))
 
 (define open-legacy-binary-i/o-file
-  (i/o-file-opener 'open-legacy-binary-i/o-file make-legacy-binary-port))
+  (i/o-file-opener 'open-legacy-binary-i/o-file make-legacy-binary-file-port))
 
-(define (make-binary-port input-channel output-channel pathname caller)
-  (let ((port (%make-binary-port input-channel output-channel caller)))
+(define (make-binary-file-port input-channel output-channel pathname caller)
+  (let ((port (%make-binary-file-port input-channel output-channel caller)))
     (set-port-pathname! port pathname)
     port))
 
-(define (%make-binary-port input-channel output-channel caller)
-  (cond ((not input-channel)
-	 (make-binary-output-port (make-channel-output-sink output-channel)
-				  caller))
-	((not output-channel)
-	 (make-binary-input-port (make-channel-input-source input-channel)
-				 caller))
-	(else
-	 (make-binary-i/o-port (make-channel-input-source input-channel)
-			       (make-channel-output-sink output-channel)
-			       caller))))
+(define (%make-binary-file-port input-channel output-channel caller)
+  (make-binary-port
+     (and input-channel (make-channel-input-source input-channel))
+     (and output-channel (make-channel-output-sink output-channel))
+     caller))
 
 (define open-binary-input-file
-  (input-file-opener 'open-binary-input-file make-binary-port))
+  (input-file-opener 'open-binary-input-file make-binary-file-port))
 
 (define open-binary-output-file
-  (output-file-opener 'open-binary-output-file make-binary-port))
+  (output-file-opener 'open-binary-output-file make-binary-file-port))
 
 (define open-exclusive-binary-output-file
   (exclusive-output-file-opener 'open-exclusive-binary-output-file
-				make-binary-port))
+				make-binary-file-port))
 
 (define open-binary-i/o-file
-  (i/o-file-opener 'open-binary-i/o-file make-binary-port))
+  (i/o-file-opener 'open-binary-i/o-file make-binary-file-port))
 
 (define ((make-call-with-file open) input-specifier receiver)
   (let ((port (open input-specifier)))

@@ -65,23 +65,22 @@ USA.
 
 (define (save-console-input)
   ((ucode-primitive reload-save-string 1)
-   (input-buffer-contents (port-input-buffer console-input-port))))
+   (generic-input-port-buffer-contents console-input-port)))
 
 (define (reset-console)
   (let ((input-channel (tty-input-channel))
 	(output-channel (tty-output-channel)))
     (set-textual-port-state! the-console-port
 			     (make-cstate input-channel output-channel))
-    (let ((s ((ucode-primitive reload-retrieve-string 0))))
-      (if s
-	  (set-input-buffer-contents! (port-input-buffer the-console-port)
-				      s)))
+    (let ((contents ((ucode-primitive reload-retrieve-string 0))))
+      (if contents
+	  (set-generic-input-port-buffer-contents! the-console-port contents)))
     (set-channel-port! input-channel the-console-port)
     (set-channel-port! output-channel the-console-port)))
 
 (define (make-cstate input-channel output-channel)
-  (make-gstate input-channel
-	       output-channel
+  (make-gstate (make-channel-input-source input-channel)
+	       (make-channel-output-sink output-channel)
 	       'TEXT
 	       'TEXT
 	       (channel-type=file? input-channel)))

@@ -244,20 +244,24 @@ USA.
 	   (make-generic-i/o-port (make-octets-source octets start end)
 				  #f
 				  octets-input-type)))
-      (port/set-coding port 'ISO-8859-1)
-      (port/set-line-ending port 'NEWLINE)
+      (port/set-coding port 'BINARY)
+      (port/set-line-ending port 'BINARY)
       port)))
 
 (define (make-octets-source string start end)
   (let ((index start))
-    (make-non-channel-port-source
+    (make-non-channel-input-source
      (lambda ()
        (< index end))
-     (lambda (string* start* end*)
+     (lambda (bv start* end*)
        (let ((n (min (- end index) (- end* start*))))
 	 (let ((limit (+ index n)))
-	   (xsubstring-move! string index limit string* start*)
-	   (set! index limit))
+	   (do ((i index (+ i 1))
+		(j start* (+ j 1)))
+	       ((not (< i limit))
+		(set! index i))
+	     (bytevector-u8-set! bv j
+				 (char->ascii (xstring-ref string i)))))
 	 n)))))
 
 (define (make-octets-input-type)
@@ -473,8 +477,8 @@ USA.
     port))
 
 (define (make-byte-sink os)
-  (make-non-channel-port-sink
-   (lambda (octets start end)
+  (make-non-channel-output-sink
+   (lambda (bv start end)
      (let ((index (ostate-index os)))
        (let ((n (fix:+ index (fix:- end start))))
 	 (let ((buffer (ostate-buffer os)))
@@ -489,7 +493,11 @@ USA.
 			      (loop (fix:+ m m)))))))
 		  (substring-move! buffer 0 index new 0)
 		  new))))
-	 (substring-move! octets start end (ostate-buffer os) index)
+	 (let ((buffer (ostate-buffer os)))
+	   (do ((i start (fix:+ i 1))
+		(j index (fix:+ j 1)))
+	       ((not (fix:< i end)))
+	     (vector-8b-set! buffer j (bytevector-u8-ref bv j))))
 	 (set-ostate-index! os n)
 	 (fix:- end start))))))
 

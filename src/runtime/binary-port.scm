@@ -29,8 +29,18 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-binary-port input-buffer output-buffer)
-  (%make-binary-port input-buffer output-buffer (make-alist-metadata-table)))
+(define (make-binary-port source sink #!optional caller)
+  (if (not (or source sink))
+      (error "Must provide either a source or a sink"))
+  (let ((port
+	 (%make-binary-port (and source (make-input-buffer source caller))
+			    (and sink (make-output-buffer sink caller))
+			    (make-alist-metadata-table))))
+    (if source
+	(set-source/sink-port! source port))
+    (if sink
+	(set-source/sink-port! sink port))
+    port))
 
 (define-record-type <binary-port>
     (%make-binary-port input-buffer output-buffer metadata)
@@ -38,28 +48,6 @@ USA.
   (input-buffer port-input-buffer)
   (output-buffer port-output-buffer)
   (metadata binary-port-metadata))
-
-(define (make-binary-input-port source caller)
-  (let ((port
-	 (make-binary-port (make-input-buffer source caller)
-			   #f)))
-    (set-source/sink-port! source port)
-    port))
-
-(define (make-binary-output-port sink caller)
-  (let ((port
-	 (make-binary-port #f
-			   (make-output-buffer sink caller))))
-    (set-source/sink-port! sink port)
-    port))
-
-(define (make-binary-i/o-port source sink caller)
-  (let ((port
-	 (make-binary-port (make-input-buffer source caller)
-			   (make-output-buffer sink caller))))
-    (set-source/sink-port! source port)
-    (set-source/sink-port! sink port)
-    port))
 
 (define (binary-input-port? object)
   (and (binary-port? object)
@@ -115,7 +103,7 @@ USA.
 		(if (not (fix:<= start end))
 		    (error:bad-range-argument start 'open-input-bytevector))
 		start))))
-    (make-binary-input-port
+    (make-binary-port
      (make-non-channel-input-source
       (lambda ()
 	(fix:<= start end))
@@ -127,6 +115,7 @@ USA.
 		(set! start start*))
 	      n)
 	    0)))
+     #f
      'open-input-bytevector)))
 
 ;;;; Bytevector output ports
@@ -141,7 +130,8 @@ USA.
 		initial-size)))
 	 (bytevector (make-bytevector size))
 	 (index 0))
-    (make-binary-output-port
+    (make-binary-port
+     #f
      (make-non-channel-output-sink
       (lambda (bv bs be)
 	(let ((index* (fix:+ index (fix:- be bs))))
@@ -185,7 +175,7 @@ USA.
 
 (define (call-with-output-bytevector procedure)
   (let ((port (open-output-bytevector)))
-    (port port)
+    (procedure port)
     (get-output-bytevector port)))
 
 ;;;; Closing operations
@@ -225,13 +215,66 @@ USA.
 			  (buffer-marked-closed? ib)))))
 	  (channel-close oc)))))
 
+;;;; Positioning
+
+(define (positionable-binary-port? object)
+  (and (binary-port? object)
+       (binary-port-positionable? object)))
+
+(define (binary-port-positionable? port)
+  (let ((ib (port-input-buffer port))
+	(ob (port-output-buffer port)))
+    (let ((ic (and ib (buffer-channel ib)))
+	  (oc (and ob (buffer-channel ob))))
+      (and (or ic oc)
+	   (if (and ic oc)
+	       (and (eq? ic oc)
+		    (channel-type=file? ic))
+	       (channel-type=file? (or ic oc)))))))
+
+(add-boot-init!
+ (lambda ()
+   (register-predicate! positionable-binary-port? 'positionable-binary-port
+			'<= binary-port?)))
+
+(define (binary-port-length port)
+  (guarantee positionable-binary-port? port 'port-length)
+  (channel-file-length (or (let ((ib (port-input-buffer port)))
+			     (and ib
+				  (buffer-channel ib)))
+			   (buffer-channel (port-output-buffer port)))))
+
+(define (binary-port-position port)
+  (guarantee positionable-binary-port? port 'port-position)
+  (let ((ib (port-input-buffer port)))
+    (if ib
+	(- (channel-file-position (buffer-channel ib))
+	   (fix:- (buffer-end ib) (buffer-start ib)))
+	(channel-file-position (buffer-channel (port-output-buffer port))))))
+
+(define (set-binary-port-position! port position)
+  (guarantee positionable-binary-port? port 'set-port-position!)
+  (let ((ib (port-input-buffer port))
+	(ob (port-output-buffer port)))
+    (if ib (clear-input-buffer ib))
+    (if ob (flush-output-buffer ob))
+    (channel-file-set-position (or (and ib (buffer-channel ib))
+				   (and ob (buffer-channel ob)))
+			       position)))
+
 ;;;; Input operations
 
 (define (binary-input-port-open? port)
   (buffer-open? (port-input-buffer port)))
 
+(define (binary-input-port-source port)
+  (buffer-source/sink (port-input-buffer port)))
+
 (define (binary-input-port-channel port)
   (buffer-channel (port-input-buffer port)))
+
+(define (binary-input-port-at-eof? port #!optional caller)
+  (eq? 'eof (input-buffer-state (port-input-buffer port) caller)))
 
 (define (check-input-port port caller)
   (let* ((port (if (default-object? port) (current-input-port) port))
@@ -271,7 +314,7 @@ USA.
 	((eof) (eof-object))
 	(else #f)))))
 
-(define (binary-input-port:buffer-contents port)
+(define (binary-input-port-buffer-contents port)
   (let ((ib (check-input-port port 'input-port-buffer-contents)))
     (if (eq? 'filled (input-buffer-state ib 'input-port-buffer-contents))
 	(bytevector-copy (buffer-bytes ib)
@@ -279,7 +322,7 @@ USA.
 			 (buffer-end ib))
 	(make-bytevector 0))))
 
-(define (binary-input-port:set-buffer-contents! port contents)
+(define (set-binary-input-port-buffer-contents! port contents)
   (let ((ib (check-input-port port 'set-input-port-buffer-contents!)))
     (if (eq? 'unfilled (input-buffer-state ib 'set-input-port-buffer-contents!))
 	(let ((bv (buffer-bytes ib)))
@@ -381,6 +424,10 @@ USA.
 	(close-buffer ib)
 	(mark-buffer-closed! ib))))
 
+(define (clear-input-buffer ib)
+  (set-buffer-start! ib 0)
+  (set-buffer-end! ib 0))
+
 (define (input-buffer-state ib caller)
   (if (buffer-marked-closed? ib)
       (error:bad-range-argument (buffer-port ib) caller))
@@ -410,14 +457,11 @@ USA.
 (define (binary-output-port-open? port)
   (buffer-open? (port-output-buffer port)))
 
+(define (binary-output-port-sink port)
+  (buffer-source/sink (port-output-buffer port)))
+
 (define (binary-output-port-channel port)
   (buffer-channel (port-output-buffer port)))
-
-(define (flush-binary-output-port port)
-  (let ((ob (port-output-buffer port)))
-    (if (not (buffer-open? ob))
-	(error:bad-range-argument port 'flush-output-port))
-    (flush-output-buffer ob)))
 
 (define (check-output-port port caller)
   (let* ((port (if (default-object? port) (current-output-port) port))
@@ -427,6 +471,13 @@ USA.
     (if (not (buffer-open? ob))
 	(error:bad-range-argument port caller))
     ob))
+
+(define (flush-binary-output-port port)
+  (flush-output-buffer (check-output-port port 'flush-output-port)))
+
+(define (binary-output-port-buffered-byte-count port)
+  (let ((ob (check-output-port port 'output-port-buffered-byte-count)))
+    (fix:- (buffer-end ob) (buffer-start ob))))
 
 (define (write-u8 byte #!optional port)
   (guarantee byte? byte 'write-u8)
@@ -649,7 +700,7 @@ USA.
 
 (define (make-channel-ss flavor channel . custom)
   (make-source/sink flavor
-		    (lambda () channel)
+		    channel
 		    (lambda () (channel-port channel))
 		    (lambda (port) (set-channel-port! channel port))
 		    (lambda () (channel-open? channel))
@@ -660,7 +711,7 @@ USA.
   (let ((port #f)
 	(open? #t))
     (make-source/sink flavor
-		      (lambda () #f)
+		      #f
 		      (lambda () port)
 		      (lambda (port*) (set! port port*) unspecific)
 		      (lambda () open?)
