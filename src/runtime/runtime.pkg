@@ -213,6 +213,7 @@ USA.
 	  fix:divide
 	  fix:fixnum?
 	  fix:gcd
+	  fix:iota
 	  fix:largest-value
 	  fix:lsh
 	  fix:max
