@@ -29,7 +29,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-generic-i/o-port source sink #!optional type . extra-state)
+(define (make-generic-i/o-port source sink caller #!optional type . extra-state)
   (if (not (or source sink))
       (error "Missing arguments."))
   (let ((port
@@ -37,8 +37,9 @@ USA.
 				(generic-i/o-port-type (source-type source)
 						       (sink-type sink))
 				type)
-			    (apply make-gstate source sink 'TEXT 'TEXT
-				   extra-state))))
+			    (apply make-gstate source sink 'TEXT 'TEXT caller
+				   extra-state)
+			    caller)))
     (let ((ib (port-input-buffer port)))
       (if ib
 	  (set-input-buffer-port! ib port)))
@@ -81,16 +82,18 @@ USA.
 	     (input-buffer-binary-port ib)))
       (output-buffer-binary-port (port-output-buffer port))))
 
-(define (make-gstate source sink coder-name normalizer-name . extra)
-  (let ((binary-port (make-binary-port source sink)))
+(define (make-gstate source sink coder-name normalizer-name caller . extra)
+  (let ((binary-port (make-binary-port source sink caller)))
     (%make-gstate (and source
 		       (make-input-buffer binary-port
 					  coder-name
-					  normalizer-name))
+					  normalizer-name
+					  caller))
 		  (and sink
 		       (make-output-buffer binary-port
 					   coder-name
-					   normalizer-name))
+					   normalizer-name
+					   caller))
 		  coder-name
 		  normalizer-name
 		  (list->vector extra))))
@@ -351,10 +354,11 @@ USA.
 (define (generic-io/set-coding port name)
   (let ((ib (port-input-buffer port)))
     (if ib
-	(set-input-buffer-coding! ib name)))
+	(set-input-buffer-decoder! ib (name->decoder name 'port/set-coding))))
   (let ((ob (port-output-buffer port)))
     (if ob
-	(set-output-buffer-coding! ob name)))
+	(set-output-buffer-encoder! ob
+				    (name->encoder name 'port/set-coding))))
   (set-gstate-coder-name! (textual-port-state port) name))
 
 (define (generic-io/known-coding? port coding)
@@ -376,14 +380,18 @@ USA.
 (define (generic-io/set-line-ending port name)
   (let ((ib (port-input-buffer port)))
     (if ib
-	(set-input-buffer-line-ending!
+	(set-input-buffer-normalizer!
 	 ib
-	 (line-ending (input-buffer-channel ib) name #f))))
+	 (name->normalizer (line-ending (input-buffer-channel ib) name #f
+					'port/set-line-ending)
+			   'port/set-line-ending))))
   (let ((ob (port-output-buffer port)))
     (if ob
-	(set-output-buffer-line-ending!
+	(set-output-buffer-denormalizer!
 	 ob
-	 (line-ending (output-buffer-channel ob) name #t))))
+	 (name->denormalizer (line-ending (output-buffer-channel ob) name #t
+					  'port/set-line-ending)
+			     'port/set-line-ending))))
   (set-gstate-normalizer-name! (textual-port-state port) name))
 
 (define (generic-io/known-line-ending? port line-ending)
@@ -399,8 +407,8 @@ USA.
 	((output-port? port) (known-output-line-endings))
 	(else '())))
 
-(define (line-ending channel name for-output?)
-  (guarantee-symbol name #f)
+(define (line-ending channel name for-output? caller)
+  (guarantee-symbol name caller)
   (if (and for-output?
 	   (known-input-line-ending? name)
 	   (not (known-output-line-ending? name)))
@@ -441,13 +449,14 @@ USA.
 		    NAME)
 		  (DEFINE (,(symbol aproc '/POST-BOOT) NAME ALIAS)
 		    (HASH-TABLE/PUT! ,aliases NAME ALIAS))
-		  (DEFINE (,(symbol 'NAME-> sing) NAME)
+		  (DEFINE (,(symbol 'NAME-> sing) NAME #!OPTIONAL CALLER)
 		    (LET LOOP ((NAME NAME))
 		      (LET ((ALIAS (HASH-TABLE/GET ,aliases NAME #F)))
 			(COND ((SYMBOL? ALIAS) (LOOP ALIAS))
 			      ((PROCEDURE? ALIAS) (LOOP (ALIAS)))
 			      ((HASH-TABLE/GET ,plur NAME #F))
-			      (else (ERROR:BAD-RANGE-ARGUMENT NAME #F))))))))))
+			      (else
+			       (ERROR:BAD-RANGE-ARGUMENT NAME CALLER))))))))))
 	 (ill-formed-syntax form)))))
 
 (define-name-map decoder)
@@ -552,13 +561,15 @@ USA.
 
 ;;;; Input buffer
 
-(define (make-input-buffer binary-port coder-name normalizer-name)
+(define (make-input-buffer binary-port coder-name normalizer-name caller)
   (%make-input-buffer binary-port
-		      (name->decoder coder-name)
+		      (name->decoder coder-name caller)
 		      (name->normalizer
 		       (line-ending (binary-input-port-channel binary-port)
 				    normalizer-name
-				    #f))
+				    #f
+				    caller)
+		       caller)
 		      (make-bytevector max-char-bytes)
 		      #f
 		      '()
@@ -599,12 +610,6 @@ USA.
 (define (input-buffer-at-eof? ib)
   (binary-input-port-at-eof? (input-buffer-binary-port ib)))
 
-(define (set-input-buffer-coding! ib coding)
-  (set-input-buffer-decoder! ib (name->decoder coding)))
-
-(define (set-input-buffer-line-ending! ib name)
-  (set-input-buffer-normalizer! ib (name->normalizer name)))
-
 (define (generic-input-port-buffer-contents port)
   (binary-input-port-buffer-contents
      (input-buffer-binary-port (port-input-buffer port))))
@@ -654,13 +659,15 @@ USA.
 
 ;;;; Output buffer
 
-(define (make-output-buffer binary-port coder-name normalizer-name)
+(define (make-output-buffer binary-port coder-name normalizer-name caller)
   (%make-output-buffer binary-port
-		       (name->encoder coder-name)
+		       (name->encoder coder-name caller)
 		       (name->denormalizer
 			(line-ending (binary-output-port-channel binary-port)
 				     normalizer-name
-				     #t))
+				     #t
+				     caller)
+			caller)
 		       (make-bytevector max-char-bytes)
 		       0
 		       0
@@ -707,15 +714,6 @@ USA.
 	(with-channel-blocking channel #t do-flush)
 	(do-flush))))
 
-(define (set-output-buffer-coding! ob coding)
-  (set-output-buffer-encoder! ob (name->encoder coding)))
-
-(define (set-output-buffer-line-ending! ob name)
-  (set-output-buffer-denormalizer! ob (name->denormalizer name)))
-
-(define (output-buffer-using-binary-denormalizer? ob)
-  (eq? (output-buffer-denormalizer ob) binary-denormalizer))
-
 ;; Returns >0 if the character was written in its entirety.
 ;; Returns 0 if the character wasn't written at all.
 ;; Returns #f if the write would block.

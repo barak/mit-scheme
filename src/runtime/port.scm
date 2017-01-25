@@ -391,8 +391,8 @@ USA.
   (transcript textual-port-transcript set-textual-port-transcript!)
   (metadata textual-port-metadata))
 
-(define (make-textual-port type state)
-  (guarantee textual-port-type? type 'MAKE-TEXTUAL-PORT)
+(define (make-textual-port type state #!optional caller)
+  (guarantee textual-port-type? type caller)
   (%make-textual-port (make-thread-mutex) type state #f #f #f
 		      (make-alist-metadata-table)))
 
@@ -713,7 +713,7 @@ USA.
 	  (channel-blocking channel)
 	  (channel-nonblocking channel))))
 
-(define (channel-mode-binder bind? mode? get-mode set-mode!)
+(define (channel-mode-binder bind? get-mode set-mode!)
   (lambda (channel mode thunk)
     (if (bind? channel)
 	(let ((outside-mode))
@@ -732,7 +732,6 @@ USA.
 
 (define with-channel-blocking-mode
   (channel-mode-binder (lambda (channel) channel)
-		       blocking-mode?
 		       channel-blocking-mode
 		       set-channel-blocking-mode!))
 
@@ -754,7 +753,6 @@ USA.
 (define with-channel-terminal-mode
   (channel-mode-binder (lambda (channel)
 			 (and channel (channel-type=terminal? channel)))
-		       terminal-mode?
 		       channel-terminal-mode
 		       set-channel-terminal-mode!))
 

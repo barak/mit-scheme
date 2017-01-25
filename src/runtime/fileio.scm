@@ -98,26 +98,29 @@ USA.
       (make-port channel channel pathname caller))))
 
 (define (make-textual-file-port input-channel output-channel pathname caller)
-  caller
-  (let ((port (%make-textual-file-port input-channel output-channel pathname)))
+  (let ((port
+	 (%make-textual-file-port input-channel output-channel pathname
+				  caller)))
     (port/set-line-ending port (file-line-ending pathname))
     port))
 
 (define (make-legacy-binary-file-port input-channel output-channel pathname
 				      caller)
-  caller
-  (let ((port (%make-textual-file-port input-channel output-channel pathname)))
+  (let ((port
+	 (%make-textual-file-port input-channel output-channel pathname
+				  caller)))
     (port/set-coding port 'BINARY)
     (port/set-line-ending port 'BINARY)
     port))
 
-(define (%make-textual-file-port input-channel output-channel pathname)
+(define (%make-textual-file-port input-channel output-channel pathname caller)
   (let ((port
 	 (make-generic-i/o-port
 	    (and input-channel
 		 (make-channel-input-source input-channel))
 	    (and output-channel
 		 (make-channel-output-sink output-channel))
+	    caller
 	    (cond ((not input-channel) output-file-type)
 		  ((not output-channel) input-file-type)
 		  (else i/o-file-type)))))

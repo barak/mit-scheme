@@ -83,7 +83,8 @@ USA.
 	       (make-channel-output-sink output-channel)
 	       'TEXT
 	       'TEXT
-	       (channel-type=file? input-channel)))
+	       (channel-type=file? input-channel)
+	       (default-object)))
 
 (define (set-console-i/o-port! port)
   (if (not (i/o-port? port))

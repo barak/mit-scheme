@@ -237,12 +237,13 @@ USA.
   (procedure (open-input-octets octets)))
 
 (define (open-input-octets octets #!optional start end)
-  (guarantee-xstring octets 'OPEN-INPUT-OCTETS)
+  (guarantee-xstring octets 'open-input-octets)
   (receive (start end)
       (check-index-limits start end (xstring-length octets) 'OPEN-INPUT-OCTETS)
     (let ((port
 	   (make-generic-i/o-port (make-octets-source octets start end)
 				  #f
+				  'open-input-octets
 				  octets-input-type)))
       (port/set-coding port 'BINARY)
       (port/set-line-ending port 'BINARY)
@@ -471,9 +472,10 @@ USA.
 	 (let ((os (make-ostate (make-vector-8b 16) 0 #f)))
 	   (make-generic-i/o-port #f
 				  (make-byte-sink os)
+				  'open-output-octets
 				  octets-output-type
 				  os))))
-    (port/set-line-ending port 'NEWLINE)
+    (port/set-line-ending port 'newline)
     port))
 
 (define (make-byte-sink os)

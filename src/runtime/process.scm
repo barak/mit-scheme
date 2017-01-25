@@ -80,6 +80,19 @@ USA.
   (1d-table/remove! (subprocess-properties process) key))
 
 (define (subprocess-i/o-port process)
+  (%subprocess-i/o-port process 'subprocess-i/o-port))
+
+(define (subprocess-input-port process)
+  (let ((port (%subprocess-i/o-port process 'subprocess-input-port)))
+    (and (input-port? port)
+	 port)))
+
+(define (subprocess-output-port process)
+  (let ((port (%subprocess-i/o-port process 'subprocess-output-port)))
+    (and (output-port? port)
+	 port)))
+
+(define (%subprocess-i/o-port process caller)
   (without-interruption
    (lambda ()
      (or (subprocess-%i/o-port process)
@@ -91,19 +104,10 @@ USA.
 			(and input-channel
 			     (make-channel-input-source input-channel))
 			(and output-channel
-			     (make-channel-output-sink output-channel)))))))
+			     (make-channel-output-sink output-channel))
+			caller)))))
 	   (set-subprocess-%i/o-port! process port)
 	   port)))))
-
-(define (subprocess-input-port process)
-  (let ((port (subprocess-i/o-port process)))
-    (and (input-port? port)
-	 port)))
-
-(define (subprocess-output-port process)
-  (let ((port (subprocess-i/o-port process)))
-    (and (output-port? port)
-	 port)))
 
 (define (close-subprocess-i/o process)
   (cond ((subprocess-%i/o-port process)

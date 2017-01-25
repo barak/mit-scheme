@@ -74,7 +74,8 @@ USA.
 
 (define (tcp-server-connection-accept server-socket block? peer-address)
   (connection-accept (ucode-primitive new-tcp-server-connection-accept 3)
-		     server-socket block? peer-address))
+		     server-socket block? peer-address
+		     'tcp-server-connection-accept))
 
 (define (unix-server-connection-accept server-socket block?)
   (connection-accept (named-lambda (new-unix-server-connection-accept
@@ -82,9 +83,10 @@ USA.
 		       (declare (ignore peer))
 		       ((ucode-primitive new-unix-server-connection-accept 2)
 			socket pair))
-		     server-socket block? #f))
+		     server-socket block? #f
+		     'unix-server-connection-accept))
 
-(define (connection-accept accept! server-socket block? peer-address)
+(define (connection-accept accept! server-socket block? peer-address caller)
   (let ((channel
 	 (with-thread-events-blocked
 	   (lambda ()
@@ -113,15 +115,15 @@ USA.
 		   (let loop () (do-test loop))
 		   (do-test (lambda () #f))))))))
     (and channel
-	 (make-socket-port channel))))
+	 (make-socket-port channel caller))))
 
 (define (open-tcp-stream-socket host-name service)
   (let ((channel (open-tcp-stream-socket-channel host-name service)))
-    (make-socket-port channel)))
+    (make-socket-port channel 'open-tcp-stream-socket)))
 
 (define (open-unix-stream-socket filename)
   (let ((channel (open-unix-stream-socket-channel filename)))
-    (make-socket-port channel)))
+    (make-socket-port channel 'open-unix-stream-socket)))
 
 (define (open-tcp-stream-socket-channel host-name service)
   (let ((host
@@ -144,9 +146,10 @@ USA.
        (lambda ()
 	 ((ucode-primitive new-open-unix-stream-socket 2) filename p))))))
 
-(define (make-socket-port channel)
+(define (make-socket-port channel caller)
   (make-generic-i/o-port (make-channel-input-source channel)
 			 (make-channel-output-sink channel)
+			 caller
 			 socket-port-type))
 
 (define socket-port-type)
