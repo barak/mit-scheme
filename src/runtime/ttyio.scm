@@ -65,7 +65,7 @@ USA.
 
 (define (save-console-input)
   ((ucode-primitive reload-save-string 1)
-   (generic-input-port-buffer-contents console-input-port)))
+   (generic-io/buffer-contents console-input-port)))
 
 (define (reset-console)
   (let ((input-channel (tty-input-channel))
@@ -74,7 +74,7 @@ USA.
 			     (make-cstate input-channel output-channel))
     (let ((contents ((ucode-primitive reload-retrieve-string 0))))
       (if contents
-	  (set-generic-input-port-buffer-contents! the-console-port contents)))
+	  (generic-io/set-buffer-contents the-console-port contents)))
     (set-channel-port! input-channel the-console-port)
     (set-channel-port! output-channel the-console-port)))
 

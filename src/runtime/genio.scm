@@ -610,11 +610,11 @@ USA.
 (define (input-buffer-at-eof? ib)
   (binary-input-port-at-eof? (input-buffer-binary-port ib)))
 
-(define (generic-input-port-buffer-contents port)
+(define (generic-io/buffer-contents port)
   (binary-input-port-buffer-contents
      (input-buffer-binary-port (port-input-buffer port))))
 
-(define (set-generic-input-port-buffer-contents! port contents)
+(define (generic-io/set-buffer-contents port contents)
   (set-binary-input-port-buffer-contents!
      (input-buffer-binary-port (port-input-buffer port))
      contents))

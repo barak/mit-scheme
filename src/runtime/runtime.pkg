@@ -2288,30 +2288,39 @@ USA.
   (files "genio")
   (parent (runtime))
   (export ()
-	  generic-i/o-port-accessor
-	  generic-i/o-port-modifier
-	  generic-i/o-port-type
-	  generic-io/char-ready?
-	  generic-io/close-input
-	  generic-io/close-output
-	  generic-io/flush-output
-	  generic-io/peek-char
-	  generic-io/read-char
-	  generic-io/unread-char
 	  known-input-port-coding?
 	  known-input-port-codings
 	  known-output-port-coding?
 	  known-output-port-codings
-	  make-generic-i/o-port
 	  primary-input-port-codings
 	  primary-output-port-codings)
   (export (runtime console-i/o-port)
-	  generic-input-port-buffer-contents
-	  make-gstate
-	  set-generic-input-port-buffer-contents!)
+	  generic-i/o-port-accessor
+	  generic-i/o-port-type
+	  generic-io/buffer-contents
+	  generic-io/char-ready?
+	  generic-io/flush-output
+	  generic-io/peek-char
+	  generic-io/read-char
+	  generic-io/set-buffer-contents
+	  generic-io/unread-char
+	  make-generic-i/o-port
+	  make-gstate)
   (export (runtime file-i/o-port)
-	  generic-i/o-port->binary-port)
-  (initialization (initialize-package!)))
+	  generic-i/o-port->binary-port
+	  generic-i/o-port-type
+	  make-generic-i/o-port)
+  (export (runtime socket)
+	  generic-i/o-port-type
+	  generic-io/close-input
+	  generic-io/close-output
+	  make-generic-i/o-port)
+  (export (runtime string-i/o-port)
+	  generic-i/o-port-accessor
+	  generic-i/o-port-type
+	  make-generic-i/o-port)
+  (export (runtime subprocess)
+	  make-generic-i/o-port))
 
 (define-package (runtime gensym)
   (files "gensym")
