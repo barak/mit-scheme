@@ -475,6 +475,9 @@ USA.
 (define (flush-binary-output-port port)
   (flush-output-buffer (check-output-port port 'flush-output-port)))
 
+(define (synchronize-binary-output-port port)
+  (synchronize-output-buffer (check-output-port port 'synchronize-output-port)))
+
 (define (binary-output-port-buffered-byte-count port)
   (let ((ob (check-output-port port 'output-port-buffered-byte-count)))
     (fix:- (buffer-end ob) (buffer-start ob))))
@@ -619,8 +622,16 @@ USA.
 	       (set-buffer-end! ob (fix:- be bi))
 	       bi)
 	      (else n))))))
-
+
 (define (flush-output-buffer ob)
+  (if (fix:< (buffer-start ob) (buffer-end ob))
+      (let ((channel (buffer-channel ob))
+	    (do-flush (lambda () (%flush-output-buffer ob))))
+	(if channel
+	    (with-channel-blocking channel #t do-flush)
+	    (do-flush)))))
+
+(define (%flush-output-buffer ob)
   (let ((bv (buffer-bytes ob))
 	(bs (buffer-start ob))
 	(be (buffer-end ob))
@@ -640,6 +651,12 @@ USA.
 			(bytevector-length bv))))
 		(fix:- bi bs))))
 	0)))
+
+(define (synchronize-output-buffer ob)
+  (flush-output-buffer ob)
+  (let ((oc (buffer-channel ob)))
+    (if oc
+	(channel-synchronize oc))))
 
 ;;;; Buffers
 

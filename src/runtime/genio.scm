@@ -77,10 +77,15 @@ USA.
        (else generic-type11)))))
 
 (define (generic-i/o-port->binary-port port)
-  (or (let ((ib (port-input-buffer port)))
-	(and ib
-	     (input-buffer-binary-port ib)))
-      (output-buffer-binary-port (port-output-buffer port))))
+  (if (port-input-buffer port)
+      (input-port->binary-port port)
+      (output-port->binary-port port)))
+
+(define (input-port->binary-port port)
+  (input-buffer-binary-port (port-input-buffer port)))
+
+(define (output-port->binary-port port)
+  (output-buffer-binary-port (port-output-buffer port)))
 
 (define (make-gstate source sink coder-name normalizer-name caller . extra)
   (let ((binary-port (make-binary-port source sink caller)))
@@ -249,6 +254,13 @@ USA.
     (if (not ib)
 	(error:bad-range-argument port #f))
     (input-buffer-channel ib)))
+
+(define (generic-io/buffer-contents port)
+  (binary-input-port-buffer-contents (input-port->binary-port port)))
+
+(define (generic-io/set-buffer-contents port contents)
+  (set-binary-input-port-buffer-contents! (input-port->binary-port port)
+					  contents))
 
 ;;;; Output operations
 
@@ -267,7 +279,7 @@ USA.
 	  (fix:- end start)))))
 
 (define (generic-io/flush-output port)
-  (flush-output-buffer (port-output-buffer port)))
+  (flush-binary-output-port (output-port->binary-port port)))
 
 (define (generic-io/output-column port)
   (output-buffer-column (port-output-buffer port)))
@@ -279,13 +291,10 @@ USA.
     (output-buffer-channel ob)))
 
 (define (generic-io/synchronize-output port)
-  (let ((channel (generic-io/output-channel port)))
-    (if channel
-	(channel-synchronize channel))))
+  (synchronize-binary-output-port (output-port->binary-port port)))
 
 (define (generic-io/buffered-output-bytes port)
-  (binary-output-port-buffered-byte-count
-   (output-buffer-binary-port (port-output-buffer port))))
+  (binary-output-port-buffered-byte-count (output-port->binary-port port)))
 
 (define (generic-io/bytes-written port)
   (output-buffer-total (port-output-buffer port)))
@@ -304,12 +313,10 @@ USA.
 	  (ob (close-binary-output-port (output-buffer-binary-port ob))))))
 
 (define (generic-io/close-input port)
-  (close-binary-input-port
-   (input-buffer-binary-port (port-input-buffer port))))
+  (close-binary-input-port (input-port->binary-port port)))
 
 (define (generic-io/close-output port)
-  (close-binary-output-port
-   (output-buffer-binary-port (port-output-buffer port))))
+  (close-binary-output-port (output-port->binary-port port)))
 
 (define (generic-io/open? port)
   (and (let ((ib (port-input-buffer port)))
@@ -610,15 +617,6 @@ USA.
 (define (input-buffer-at-eof? ib)
   (binary-input-port-at-eof? (input-buffer-binary-port ib)))
 
-(define (generic-io/buffer-contents port)
-  (binary-input-port-buffer-contents
-     (input-buffer-binary-port (port-input-buffer port))))
-
-(define (generic-io/set-buffer-contents port contents)
-  (set-binary-input-port-buffer-contents!
-     (input-buffer-binary-port (port-input-buffer port))
-     contents))
-
 ;; Next two for use only in normalizers.
 
 (define (decode-char ib)
@@ -704,15 +702,6 @@ USA.
 
 (define (%output-buffer-sink ob)
   (binary-output-port-sink (output-buffer-binary-port ob)))
-
-(define (flush-output-buffer ob)
-  (let ((channel (output-buffer-channel ob))
-	(do-flush
-	 (lambda ()
-	   (flush-binary-output-port (output-buffer-binary-port ob)))))
-    (if channel
-	(with-channel-blocking channel #t do-flush)
-	(do-flush))))
 
 ;; Returns >0 if the character was written in its entirety.
 ;; Returns 0 if the character wasn't written at all.

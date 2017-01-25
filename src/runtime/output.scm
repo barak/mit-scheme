@@ -124,6 +124,12 @@ USA.
     (cond ((binary-output-port? port) (flush-binary-output-port port))
 	  ((textual-output-port? port) (output-port/flush-output port))
 	  (else (error:not-a output-port? port 'flush-output-port)))))
+
+(define (synchronize-output-port #!optional port)
+  (let ((port (optional-output-port port 'synchronize-output-port)))
+    (cond ((binary-output-port? port) (synchronize-binary-output-port port))
+	  ((textual-output-port? port) (output-port/synchronize-output port))
+	  (else (error:not-a output-port? port 'synchronize-output-port)))))
 
 (define (fresh-line #!optional port)
   (let ((port (optional-output-port port 'FRESH-LINE)))

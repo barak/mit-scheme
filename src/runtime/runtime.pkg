@@ -2574,14 +2574,16 @@ USA.
 	  output-sink-write-bytes
 	  set-binary-input-port-buffer-contents!
 	  set-input-source-port!
-	  set-output-sink-port!)
+	  set-output-sink-port!
+	  synchronize-binary-output-port)
   (export (runtime file-i/o-port)
 	  binary-port-length
 	  binary-port-position
 	  binary-port-positionable?
 	  set-binary-port-position!)
   (export (runtime output-port)
-	  flush-binary-output-port))
+	  flush-binary-output-port
+	  synchronize-binary-output-port))
 
 (define-package (runtime port)
   (files "port")
@@ -2779,6 +2781,7 @@ USA.
 	  output-port/write-substring
 	  output-port/x-size
 	  output-port/y-size
+	  synchronize-output-port
 	  write
 	  write-char
 	  write-line
