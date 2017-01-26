@@ -224,7 +224,6 @@ USA.
     (assert-equal (tag-name tag) name)))
 
 (define (test-parametric-predicate-operations predicate template parameters)
-  (assert-false (simple-predicate? predicate))
   (assert-false (compound-predicate? predicate))
   (assert-true (parametric-predicate? predicate))
   (assert-eqv (parametric-predicate-template predicate) template)
