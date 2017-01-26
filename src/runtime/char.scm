@@ -133,6 +133,16 @@ USA.
 
 (define-integrable (char-ci->integer char)
   (char->integer (char-upcase char)))
+
+(define (char=-predicate char)
+  (guarantee char? char 'char=-predicate)
+  (lambda (char*)
+    (char=? char* char)))
+
+(define (char-ci=-predicate char)
+  (guarantee char? char 'char-ci=-predicate)
+  (lambda (char*)
+    (char-ci=? char* char)))
 
 (define (char-downcase char)
   (%case-map-char char downcase-table))

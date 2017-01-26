@@ -1308,6 +1308,7 @@ USA.
 	  char-bits-set?
 	  char-ci<=?
 	  char-ci<?
+	  char-ci=-predicate
 	  char-ci=?
 	  char-ci>=?
 	  char-ci>?
@@ -1321,6 +1322,7 @@ USA.
 	  char-utf8-byte-length
 	  char<=?
 	  char<?
+	  char=-predicate
 	  char=?
 	  char>=?
 	  char>?
