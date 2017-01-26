@@ -975,17 +975,56 @@ USA.
   (export ()
 	  ;; BEGIN deprecated bindings
 	  (guarantee-vector-8b guarantee-string)
+	  (legacy-string string)
+	  (legacy-string->list string->list)
+	  (legacy-string->vector string->vector)
+	  (legacy-string-append string-append)
+	  (legacy-string-capitalize string-capitalize)
+	  (legacy-string-ci<=? string-ci<=?)
+	  (legacy-string-ci<? string-ci<?)
+	  (legacy-string-ci=? string-ci=?)
+	  (legacy-string-ci>=? string-ci>=?)
+	  (legacy-string-ci>? string-ci>?)
+	  (legacy-string-copy string-copy)
+	  (legacy-string-copy! string-copy!)
+	  (legacy-string-downcase string-downcase)
+	  (legacy-string-fill! string-fill!)
+	  (legacy-string-for-each string-for-each)
+	  (legacy-string-hash string-hash)
+	  (legacy-string-length string-length)
+	  (legacy-string-map string-map)
+	  (legacy-string-ref string-ref)
+	  (legacy-string-set! string-set!)
+	  (legacy-string-upcase string-upcase)
+	  (legacy-string<=? string<=?)
+	  (legacy-string<? string<?)
+	  (legacy-string=? string=?)
+	  (legacy-string>=? string>=?)
+	  (legacy-string>? string>?)
+	  (legacy-string? string?)
+	  (legacy-substring substring)
+	  (list->legacy-string list->string)
+	  (make-legacy-string make-string)
+	  (set-vector-8b-length! set-string-length!)
+	  (vector-8b-length string-length)
+	  (vector-8b-maximum-length string-maximum-length)
+	  (vector-8b? string?)
 	  error:not-string
 	  error:not-xstring
 	  guarantee-string
 	  guarantee-string-index
 	  guarantee-xstring
-	  legacy-string?
+	  hexadecimal->vector-8b
+	  make-vector-8b
+	  vector-8b->hexadecimal
+	  vector-8b-fill!
+	  vector-8b-find-next-char
+	  vector-8b-find-next-char-ci
+	  vector-8b-find-previous-char
+	  vector-8b-find-previous-char-ci
+	  vector-8b-ref
+	  vector-8b-set!
 	  ;; END deprecated bindings
-	  (set-vector-8b-length! set-string-length!)
-	  (vector-8b-length string-length)
-	  (vector-8b-maximum-length string-maximum-length)
-	  (vector-8b? string?)
 	  ascii-string-copy
 	  burst-string
 	  camel-case-string->lisp
@@ -994,11 +1033,9 @@ USA.
 	  guarantee-substring
 	  guarantee-substring-end-index
 	  guarantee-substring-start-index
-	  hexadecimal->vector-8b
 	  lisp-string->camel-case
 	  list->string
 	  make-string
-	  make-vector-8b
 	  reverse-string
 	  reverse-string!
 	  reverse-substring
@@ -1109,14 +1146,6 @@ USA.
 	  substring=?
 	  substring?
 	  utf8-string
-	  vector-8b->hexadecimal
-	  vector-8b-fill!
-	  vector-8b-find-next-char
-	  vector-8b-find-next-char-ci
-	  vector-8b-find-previous-char
-	  vector-8b-find-previous-char-ci
-	  vector-8b-ref
-	  vector-8b-set!
 	  xstring-fill!
 	  xstring-length
 	  xstring-move!

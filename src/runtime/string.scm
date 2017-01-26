@@ -43,7 +43,6 @@ USA.
 ;;;; Primitives
 
 (define-primitives
-  (legacy-string? string? 1)
   (set-string-length! 2)
   (string-allocate 1)
   (string-hash-mod 2)
