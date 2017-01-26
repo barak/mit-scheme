@@ -1165,6 +1165,63 @@ USA.
 	  %substring-move!)
   (initialization (initialize-package!)))
 
+(define-package (runtime ustring)
+  (files "ustring")
+  (parent (runtime))
+  (export ()
+	  (make-ustring make-utf32-string)
+	  (usubstring ustring-copy)
+	  list->ustring
+	  ustring
+	  ustring*
+	  ustring->ascii
+	  ustring->list
+	  ustring->vector
+	  ustring-any
+	  ustring-append
+	  ustring-ascii?
+	  ustring-capitalize
+	  ustring-ci<=?
+	  ustring-ci<?
+	  ustring-ci=?
+	  ustring-ci>=?
+	  ustring-ci>?
+	  ustring-copy
+	  ustring-copy!
+	  ustring-downcase
+	  ustring-every
+	  ustring-fill!
+	  ustring-find-first-char	 ;prefer ustring-find-first-index
+	  ustring-find-first-char-in-set ;prefer ustring-find-first-index
+	  ustring-find-first-index
+	  ustring-find-last-char	 ;prefer ustring-find-last-index
+	  ustring-find-last-char-in-set	 ;prefer ustring-find-last-index
+	  ustring-find-last-index
+	  ;; ustring-foldcase
+	  ustring-for-each
+	  ustring-hash
+	  ustring-head
+	  ustring-length
+	  ustring-map
+	  ustring-prefix-ci?
+	  ustring-prefix?
+	  ustring-ref
+	  ustring-set!
+	  ustring-suffix-ci?
+	  ustring-suffix?
+	  ustring-tail
+	  ustring-upcase
+	  ustring<=?
+	  ustring<?
+	  ustring=?
+	  ustring>=?
+	  ustring>?
+	  ustring?
+	  ;; vector->ustring
+	  )
+  (export (runtime predicate-metadata)
+	  register-ustring-predicates!))
+
 (define-package (runtime bytevector)
   (files "bytevector")
   (parent (runtime))
