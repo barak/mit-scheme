@@ -59,7 +59,10 @@ USA.
       string
       (begin
 	(guarantee legacy-string? string 'legacy-string->bytevector)
-	(object-new-type bytevector-type string))))
+	(%legacy-string->bytevector string))))
+
+(define-integrable (%legacy-string->bytevector string)
+  (object-new-type bytevector-type string))
 
 ;;; TODO(cph): eliminate after 9.3 release:
 (define-integrable bytevector-type #x33)
@@ -255,7 +258,7 @@ USA.
 (define-integrable (string-encoder char-byte-length allocator encode-char!
 				   caller)
   (lambda (string #!optional start end)
-    (let* ((end (fix:end-index end (string-length string) caller))
+    (let* ((end (fix:end-index end (ustring-length string) caller))
 	   (start (fix:start-index start end caller)))
       (let ((bytes
 	     (allocator
@@ -263,17 +266,17 @@ USA.
 		(if (fix:< index end)
 		    (loop (fix:+ index 1)
 			  (fix:+ n-bytes
-				 (char-byte-length (string-ref string index))))
+				 (char-byte-length (ustring-ref string index))))
 		    n-bytes)))))
 	(let loop ((from start) (to 0))
 	  (if (fix:< from end)
 	      (loop (fix:+ from 1)
-		    (encode-char! bytes to (string-ref string from)))))
+		    (encode-char! bytes to (ustring-ref string from)))))
 	bytes))))
 
 ;; Make sure UTF-8 bytevectors have null termination.
 (define (utf8-allocator k)
-  (legacy-string->bytevector (make-string k)))
+  (legacy-string->bytevector (make-legacy-string k)))
 
 (define string->utf8)
 (define string->utf16be)
@@ -305,7 +308,7 @@ USA.
     (let* ((end (fix:end-index end (bytevector-length bytevector) caller))
 	   (start (fix:start-index start end caller))
 	   (string
-	    (make-string
+	    (make-ustring
 	     (let (
 		   (truncated
 		    (lambda (index)
@@ -327,10 +330,11 @@ USA.
       (let loop ((from start) (to 0))
 	(if (fix:< from end)
 	    (let ((char (decode-char bytevector from)))
-	      (string-set! string to char)
+	      (ustring-set! string to char)
 	      (loop (fix:+ from (char-length char))
 		    (fix:+ to 1)))))
-      string)))
+      (or (ustring->ascii string)	;return legacy string if possible
+	  string))))
 
 (define utf8->string)
 (define utf16be->string)
