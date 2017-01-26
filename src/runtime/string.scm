@@ -1643,6 +1643,25 @@ USA.
 	    (outer k (fix:+ q 1)))))
     pi))
 
+(define (xstring? object)
+  (or (string? object)
+      (wide-string? object)))
+
+(define (xstring-length string)
+  (cond ((string? string) (string-length string))
+	((wide-string? string) (wide-string-length string))
+	(else (error:not-xstring string 'XSTRING-LENGTH))))
+
+(define (xstring-ref string index)
+  (cond ((string? string) (string-ref string index))
+	((wide-string? string) (wide-string-ref string index))
+	(else (error:not-xstring string 'XSTRING-REF))))
+
+(define (xstring-set! string index char)
+  (cond ((string? string) (string-set! string index char))
+	((wide-string? string) (wide-string-set! string index char))
+	(else (error:not-xstring string 'XSTRING-SET!))))
+
 (define (xstring-move! xstring1 xstring2 start2)
   (xsubstring-move! xstring1 0 (xstring-length xstring1) xstring2 start2))
 
@@ -1653,6 +1672,18 @@ USA.
 	((> start2 start1)
 	 (substring-move-right! xstring1 start1 end1
 				xstring2 start2))))
+
+(define (xsubstring xstring start end)
+  (guarantee-xsubstring xstring start end 'XSUBSTRING)
+  (let ((string (make-string (- end start))))
+    (xsubstring-move! xstring start end string 0)
+    string))
+
+(define (xstring-fill! xstring char)
+  (cond ((string? xstring)
+	 (string-fill! xstring char))
+	(else
+	 (error:not-xstring xstring 'XSTRING-FILL!))))
 
 (define (xsubstring-fill! xstring start end char)
   (cond ((string? xstring)
