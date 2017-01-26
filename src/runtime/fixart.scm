@@ -142,6 +142,24 @@ USA.
 		(fix:- value step)
 		(cons value result))
 	  result))))
+
+(define (fix:end-index end length #!optional caller)
+  (if (default-object? end)
+      length
+      (begin
+	(guarantee index-fixnum? end caller)
+	(if (not (fix:<= end length))
+	    (error:bad-range-argument end caller))
+	end)))
+
+(define (fix:start-index start end #!optional caller)
+  (if (default-object? start)
+      0
+      (begin
+	(guarantee index-fixnum? start caller)
+	(if (not (fix:<= start end))
+	    (error:bad-range-argument start caller))
+	start)))
 
 ;;;; Flonums
 

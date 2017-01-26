@@ -211,6 +211,7 @@ USA.
 	  fix:and
 	  fix:andc
 	  fix:divide
+	  fix:end-index
 	  fix:fixnum?
 	  fix:gcd
 	  fix:iota
@@ -225,6 +226,7 @@ USA.
 	  fix:quotient
 	  fix:remainder
 	  fix:smallest-value
+	  fix:start-index
 	  fix:xor
 	  fix:zero?
 	  fixnum?
