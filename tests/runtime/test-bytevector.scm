@@ -254,6 +254,13 @@ USA.
 	      (+ (* (cadr bytes) #x100)
 		 (car bytes)))))
 
+(define-test 'u32-implementation
+  (lambda ()
+    ;; This will fail on 32-bit machines if the wrong implementation is used:
+    (assert-true (u32? #xFFFFFFFF))
+    ;; This should fail for either implementation:
+    (assert-false (u32? #x100000000))))
+
 (define-test 'bytevector-u32-ref
   (lambda ()
     (do ((i 0 (+ i 1)))

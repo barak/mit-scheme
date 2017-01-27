@@ -29,7 +29,12 @@ USA.
 
 (declare (usual-integrations))
 
-(define (byte? object)
+(define (register-mit-bytevector-predicates!)
+  (register-predicate! u8? 'u8 '<= index-fixnum?)
+  (register-predicate! u16? 'u16 '<= index-fixnum?)
+  (register-predicate! u32? 'u32 '<= exact-nonnegative-integer?))
+
+(define (u8? object)
   (and (index-fixnum? object)
        (fix:< object #x100)))
 
@@ -78,7 +83,7 @@ USA.
 	((not (pair? bytevectors)))
       (bytevector-copy! bytevector index (car bytevectors)))
     bytevector))
-
+
 (define (bytevector-fill! bytevector fill #!optional start end)
   ((ucode-primitive bytevector-fill! 4)
    bytevector
@@ -157,103 +162,142 @@ USA.
 
 ;;;; U32 accessors
 
-(define-syntax select-u32-code
-  (er-macro-transformer
-   (lambda (form rename compare)
-     rename compare
-     (syntax-check '(KEYWORD EXPRESSION EXPRESSION) form)
-     (if (fix:fixnum? #xFFFFFFFF)
-	 (cadr form)
-	 (caddr form)))))
-
-(select-u32-code
- ;; Can use fixnums:
- (begin
-   (define-integrable (bytes->u32be b0 b1 b2 b3)
-     (fix:or (fix:or (fix:lsh b0 24)
-		     (fix:lsh b1 16))
-	     (fix:or (fix:lsh b2 8)
-		     b3)))
-
-   (define-integrable (u32be-byte0 u32) (fix:lsh u32 -24))
-   (define-integrable (u32be-byte1 u32) (fix:and (fix:lsh u32 -16) #xFF))
-   (define-integrable (u32be-byte2 u32) (fix:and (fix:lsh u32 -8) #xFF))
-   (define-integrable (u32be-byte3 u32) (fix:and u32 #xFF))
-
-   (define (u32? object)
-     (and (index-fixnum? object)
-	  (fix:<= object #xFFFFFFFF))))
- ;; Must use bignums:
- (begin
-   (define-integrable (bytes->u32be b0 b1 b2 b3)
-     (int:+ (int:+ (int:* b0 #x1000000)
-		   (int:* b1 #x10000))
-	    (int:+ (int:* b2 #x100)
-		   b3)))
-
-   (define-integrable (u32be-byte0 u32)
-     (int:quotient u32 #x1000000))
-
-   (define-integrable (u32be-byte1 u32)
-     (int:remainder (int:quotient u32 #x10000) #x100))
-
-   (define-integrable (u32be-byte2 u32)
-     (int:remainder (int:quotient u32 #x100) #x100))
-
-   (define-integrable (u32be-byte3 u32)
-     (int:remainder u32 #x100))
-
-   (define (u32? object)
-     (and (exact-nonnegative-integer? object)
-	  (int:<= object #xFFFFFFFF)))))
-
-(define-integrable (bytes->u32le b0 b1 b2 b3) (bytes->u32be b3 b2 b1 b0))
-(define-integrable u32le-byte0 u32be-byte3)
-(define-integrable u32le-byte1 u32be-byte2)
-(define-integrable u32le-byte2 u32be-byte1)
-(define-integrable u32le-byte3 u32be-byte0)
+;;; A lot of trouble to use fixnums if the architecture supports them.  When
+;;; Scheme is started it does the test and chooses the impleemntation.  The
+;;; exported names are fixed so that stashed copies of their values always get
+;;; the current implementation.
 
 (define (bytevector-u32be-ref bytevector index)
-  (if (not (fix:< (fix:+ index 3) (bytevector-length bytevector)))
-      (error:bad-range-argument index 'bytevector-u32be-ref))
-  (bytes->u32be (bytevector-u8-ref bytevector index)
-		(bytevector-u8-ref bytevector (fix:+ index 1))
-		(bytevector-u8-ref bytevector (fix:+ index 2))
-		(bytevector-u8-ref bytevector (fix:+ index 3))))
+  (%u32be-ref bytevector index))
 
 (define (bytevector-u32be-set! bytevector index u32)
-  (if (not (fix:< (fix:+ index 3) (bytevector-length bytevector)))
-      (error:bad-range-argument index 'bytevector-u32be-ref))
-  (guarantee u32? u32 'bytevector-u32be-set!)
-  (bytevector-u8-set! bytevector index (u32be-byte0 u32))
-  (bytevector-u8-set! bytevector (fix:+ index 1) (u32be-byte1 u32))
-  (bytevector-u8-set! bytevector (fix:+ index 2) (u32be-byte2 u32))
-  (bytevector-u8-set! bytevector (fix:+ index 3) (u32be-byte3 u32)))
+  (%u32be-set! bytevector index u32))
 
 (define (bytevector-u32le-ref bytevector index)
-  (if (not (fix:< (fix:+ index 3) (bytevector-length bytevector)))
-      (error:bad-range-argument index 'bytevector-u32le-ref))
-  (bytes->u32le (bytevector-u8-ref bytevector index)
-		(bytevector-u8-ref bytevector (fix:+ index 1))
-		(bytevector-u8-ref bytevector (fix:+ index 2))
-		(bytevector-u8-ref bytevector (fix:+ index 3))))
+  (%u32le-ref bytevector index))
 
 (define (bytevector-u32le-set! bytevector index u32)
-  (if (not (fix:< (fix:+ index 3) (bytevector-length bytevector)))
-      (error:bad-range-argument index 'bytevector-u32le-ref))
-  (guarantee u32? u32 'bytevector-u32le-set!)
-  (bytevector-u8-set! bytevector index (u32le-byte0 u32))
-  (bytevector-u8-set! bytevector (fix:+ index 1) (u32le-byte1 u32))
-  (bytevector-u8-set! bytevector (fix:+ index 2) (u32le-byte2 u32))
-  (bytevector-u8-set! bytevector (fix:+ index 3) (u32le-byte3 u32)))
+  (%u32le-set! bytevector index u32))
 
-(define (register-mit-bytevector-predicates!)
-  (register-predicate! byte? 'byte '<= index-fixnum?)
-  (register-predicate! u16? 'u16 '<= index-fixnum?)
-  (register-predicate! u32? 'u32
-		       '<= (if (fix:fixnum? #xFFFFFFFF)
-			       index-fixnum?
-			       exact-nonnegative-integer?)))
+(define (u32? object)
+  (%u32? object))
+
+(define %u32?)
+(define %u32be-ref)
+(define %u32be-set!)
+(define %u32le-ref)
+(define %u32le-set!)
+(define (choose-u32-type!)
+  (if (<= #xFFFFFFFF (fix:largest-value))
+      (begin
+	(set! %u32? fix:u32?)
+	(set! %u32be-ref fix:u32be-ref)
+	(set! %u32be-set! fix:u32be-set!)
+	(set! %u32le-ref fix:u32le-ref)
+	(set! %u32le-set! fix:u32le-set!))
+      (begin
+	(set! %u32? int:u32?)
+	(set! %u32be-ref int:u32be-ref)
+	(set! %u32be-set! int:u32be-set!)
+	(set! %u32le-ref int:u32le-ref)
+	(set! %u32le-set! int:u32le-set!)))
+  unspecific)
+
+(add-boot-init!
+ (lambda ()
+   (choose-u32-type!)
+   (add-event-receiver! event:after-restore choose-u32-type!)))
+
+(define-integrable (u32-getter bytes->u32 caller)
+  (lambda (bytevector index)
+    (if (not (fix:< (fix:+ index 3) (bytevector-length bytevector)))
+	(error:bad-range-argument index caller))
+    (bytes->u32 (bytevector-u8-ref bytevector index)
+		(bytevector-u8-ref bytevector (fix:+ index 1))
+		(bytevector-u8-ref bytevector (fix:+ index 2))
+		(bytevector-u8-ref bytevector (fix:+ index 3)))))
+
+(define-integrable (u32-setter u32-byte0 u32-byte1 u32-byte2 u32-byte3
+			       u32? caller)
+  (lambda (bytevector index u32)
+    (if (not (fix:< (fix:+ index 3) (bytevector-length bytevector)))
+	(error:bad-range-argument index caller))
+    (guarantee u32? u32 caller)
+    (bytevector-u8-set! bytevector index (u32-byte0 u32))
+    (bytevector-u8-set! bytevector (fix:+ index 1) (u32-byte1 u32))
+    (bytevector-u8-set! bytevector (fix:+ index 2) (u32-byte2 u32))
+    (bytevector-u8-set! bytevector (fix:+ index 3) (u32-byte3 u32))))
+
+(define-integrable (fix:bytes->u32be b0 b1 b2 b3)
+  (fix:or (fix:or (fix:lsh b0 24)
+		  (fix:lsh b1 16))
+	  (fix:or (fix:lsh b2 8)
+		  b3)))
+
+(define-integrable (fix:u32be-byte0 u32) (fix:lsh u32 -24))
+(define-integrable (fix:u32be-byte1 u32) (fix:and (fix:lsh u32 -16) #xFF))
+(define-integrable (fix:u32be-byte2 u32) (fix:and (fix:lsh u32 -8) #xFF))
+(define-integrable (fix:u32be-byte3 u32) (fix:and u32 #xFF))
+
+(define (fix:u32? object)
+  (and (index-fixnum? object)
+       (fix:<= object #xFFFFFFFF)))
+
+(define-integrable (fix:bytes->u32le b0 b1 b2 b3)
+  (fix:bytes->u32be b3 b2 b1 b0))
+
+(define fix:u32be-ref
+  (u32-getter fix:bytes->u32be 'bytevector-u32be-ref))
+
+(define fix:u32be-set!
+  (u32-setter fix:u32be-byte0 fix:u32be-byte1 fix:u32be-byte2 fix:u32be-byte3
+	      fix:u32? 'bytevector-u32be-set!))
+
+(define fix:u32le-ref
+  (u32-getter fix:bytes->u32le 'bytevector-u32le-ref))
+
+(define fix:u32le-set!
+  (u32-setter fix:u32be-byte3 fix:u32be-byte2 fix:u32be-byte1 fix:u32be-byte0
+	      fix:u32? 'bytevector-u32le-set!))
+
+(define-integrable (int:bytes->u32be b0 b1 b2 b3)
+  (int:+ (int:+ (int:* b0 #x1000000)
+		(int:* b1 #x10000))
+	 (int:+ (int:* b2 #x100)
+		b3)))
+
+(define-integrable (int:u32be-byte0 u32)
+  (int:quotient u32 #x1000000))
+
+(define-integrable (int:u32be-byte1 u32)
+  (int:remainder (int:quotient u32 #x10000) #x100))
+
+(define-integrable (int:u32be-byte2 u32)
+  (int:remainder (int:quotient u32 #x100) #x100))
+
+(define-integrable (int:u32be-byte3 u32)
+  (int:remainder u32 #x100))
+
+(define (int:u32? object)
+  (and (exact-nonnegative-integer? object)
+       (int:<= object #xFFFFFFFF)))
+
+(define-integrable (int:bytes->u32le b0 b1 b2 b3)
+  (int:bytes->u32be b3 b2 b1 b0))
+
+(define int:u32be-ref
+  (u32-getter int:bytes->u32be 'bytevector-u32be-ref))
+
+(define int:u32be-set!
+  (u32-setter int:u32be-byte0 int:u32be-byte1 int:u32be-byte2 int:u32be-byte3
+	      int:u32? 'bytevector-u32be-set!))
+
+(define int:u32le-ref
+  (u32-getter int:bytes->u32le 'bytevector-u32le-ref))
+
+(define int:u32le-set!
+  (u32-setter int:u32be-byte3 int:u32be-byte2 int:u32be-byte1 int:u32be-byte0
+	      int:u32? 'bytevector-u32le-set!))
 
 (define-integrable (string-encoder char-byte-length allocator encode-char!
 				   caller)

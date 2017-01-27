@@ -318,7 +318,8 @@ USA.
 	  negative-fixnum?
 	  non-negative-fixnum?
 	  non-positive-fixnum?
-	  positive-fixnum?))
+	  positive-fixnum?)
+  (initialization (initialize-package!)))
 
 (define-package (runtime floating-point-environment)
   (files "floenv")
@@ -1211,7 +1212,7 @@ USA.
 	  ;; BEGIN deprecated bindings
 	  legacy-string->bytevector
 	  ;; END deprecated bindings
-	  byte?
+	  (byte? u8?)
 	  bytevector
 	  bytevector-append
 	  bytevector-copy
@@ -1239,6 +1240,7 @@ USA.
 	  string->utf8
 	  u16?
 	  u32?
+	  u8?
 	  utf16be->string
 	  utf16le->string
 	  utf32be->string
