@@ -522,7 +522,7 @@ USA.
 	(string-set! string i char)))))
 
 (define (decorated-string-append prefix infix suffix strings)
-  ((string-joiner* prefix infix suffix) strings))
+  ((string-joiner* infix prefix suffix) strings))
 
 (define (string-joiner infix #!optional prefix suffix)
   (let ((joiner (string-joiner* prefix infix suffix)))
