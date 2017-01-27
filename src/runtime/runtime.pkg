@@ -1167,6 +1167,7 @@ USA.
 	  (make-ustring make-utf32-string)
 	  (usubstring ustring-copy)
 	  list->ustring
+	  string-for-primitive		;export to (runtime) after 9.3
 	  ustring
 	  ustring*
 	  ustring->ascii

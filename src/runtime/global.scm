@@ -414,7 +414,7 @@ USA.
 	   (lambda ()
 	     (let loop ()
 	       (if (not ((ucode-primitive primitive-fasdump)
-			 object filename dump-option))
+			 object (string-for-primitive filename) dump-option))
 		   (begin
 		     (with-simple-restart 'RETRY "Try again."
 		       (lambda ()

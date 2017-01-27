@@ -401,7 +401,7 @@ USA.
 		    (let ((pathname*
 			   (pathname-new-directory pathname directory*)))
 		      (and ((ucode-primitive file-eq? 2)
-			    (->namestring pathname)
-			    (->namestring pathname*))
+			    (string-for-primitive (->namestring pathname))
+			    (string-for-primitive (->namestring pathname*)))
 			   pathname*)))))
 	pathname)))

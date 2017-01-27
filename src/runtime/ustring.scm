@@ -699,3 +699,7 @@ USA.
 	(pathname? object)
 	(number? object)
 	(uri? object)))
+
+(define (string-for-primitive string)
+  (or (ustring->ascii string)
+      (string->utf8 string)))

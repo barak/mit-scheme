@@ -32,7 +32,7 @@ USA.
 (define (file-exists-direct? filename)
   (let ((result
 	 ((ucode-primitive file-exists-direct? 1)
-	  (->namestring (merge-pathnames filename)))))
+	  (string-for-primitive (->namestring (merge-pathnames filename))))))
     (if (eq? 0 result)
 	#t
 	result)))
@@ -40,7 +40,7 @@ USA.
 (define (file-exists-indirect? filename)
   (let ((result
 	 ((ucode-primitive file-exists? 1)
-	  (->namestring (merge-pathnames filename)))))
+	  (string-for-primitive (->namestring (merge-pathnames filename))))))
     (if (eq? 0 result)
 	#f
 	result)))
@@ -52,7 +52,10 @@ USA.
 (let ((make-file-type
        (lambda (procedure)
 	 (lambda (filename)
-	   (let ((n (procedure (->namestring (merge-pathnames filename)))))
+	   (let ((n
+		  (procedure
+		   (string-for-primitive
+		    (->namestring (merge-pathnames filename))))))
 	     (and n
 		  (let ((types
 			 '#(REGULAR
@@ -80,12 +83,12 @@ USA.
 
 (define (file-symbolic-link? filename)
   ((ucode-primitive file-symlink? 1)
-   (->namestring (merge-pathnames filename))))
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 (define file-soft-link? file-symbolic-link?)
 
 (define (file-access filename amode)
   ((ucode-primitive file-access 2)
-   (->namestring (merge-pathnames filename))
+   (string-for-primitive (->namestring (merge-pathnames filename)))
    amode))
 
 (define (file-readable? filename)
@@ -94,10 +97,10 @@ USA.
 (define (file-writeable? filename)
   ((ucode-primitive file-access 2)
    (let ((pathname (merge-pathnames filename)))
-     (let ((filename (->namestring pathname)))
+     (let ((filename (string-for-primitive (->namestring pathname))))
        (if ((ucode-primitive file-exists? 1) filename)
 	   filename
-	   (directory-namestring pathname))))
+	   (string-for-primitive (directory-namestring pathname)))))
    2))
 (define file-writable? file-writeable?) ;upwards compatability
 
@@ -105,30 +108,37 @@ USA.
   (file-access filename 1))
 
 (define (file-touch filename)
-  ((ucode-primitive file-touch 1) (->namestring (merge-pathnames filename))))
+  ((ucode-primitive file-touch 1)
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define (make-directory name)
   ((ucode-primitive directory-make 1)
-   (->namestring (directory-pathname-as-file (merge-pathnames name)))))
+   (string-for-primitive
+    (->namestring (directory-pathname-as-file (merge-pathnames name))))))
 
 (define (delete-directory name)
   ((ucode-primitive directory-delete 1)
-   (->namestring (directory-pathname-as-file (merge-pathnames name)))))
+   (string-for-primitive
+    (->namestring (directory-pathname-as-file (merge-pathnames name))))))
 
 (define (rename-file from to)
-  ((ucode-primitive file-rename) (->namestring (merge-pathnames from))
-				 (->namestring (merge-pathnames to))))
+  ((ucode-primitive file-rename)
+   (string-for-primitive (->namestring (merge-pathnames from)))
+   (string-for-primitive (->namestring (merge-pathnames to)))))
 
 (define (delete-file filename)
-  ((ucode-primitive file-remove) (->namestring (merge-pathnames filename))))
+  ((ucode-primitive file-remove)
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define (hard-link-file from to)
-  ((ucode-primitive file-link-hard 2) (->namestring (merge-pathnames from))
-				      (->namestring (merge-pathnames to))))
+  ((ucode-primitive file-link-hard 2)
+   (string-for-primitive (->namestring (merge-pathnames from)))
+   (string-for-primitive (->namestring (merge-pathnames to)))))
 
 (define (soft-link-file from to)
-  ((ucode-primitive file-link-soft 2) (->namestring from)
-				      (->namestring (merge-pathnames to))))
+  ((ucode-primitive file-link-soft 2)
+   (string-for-primitive (->namestring from))
+   (string-for-primitive (->namestring (merge-pathnames to)))))
 
 (define (delete-file-no-errors filename)
   (call-with-current-continuation
@@ -143,8 +153,9 @@ USA.
 	 #t)))))
 
 (define (file-eq? x y)
-  ((ucode-primitive file-eq?) (->namestring (merge-pathnames x))
-			      (->namestring (merge-pathnames y))))
+  ((ucode-primitive file-eq?)
+   (string-for-primitive (->namestring (merge-pathnames x)))
+   (string-for-primitive (->namestring (merge-pathnames y)))))
 
 (define (current-file-time)
   (call-with-temporary-file-pathname file-modification-time))
@@ -152,7 +163,8 @@ USA.
 (define (directory-file-names directory #!optional include-dots?)
   (let ((channel
 	 (directory-channel-open
-	  (->namestring (pathname-as-directory directory))))
+	  (string-for-primitive
+	   (->namestring (pathname-as-directory directory)))))
 	(include-dots?
 	 (if (default-object? include-dots?) #f include-dots?)))
     (let loop ((result '()))
@@ -160,8 +172,8 @@ USA.
 	(if name
 	    (loop
 	     (if (and (not include-dots?)
-		      (or (string=? "." name)
-			  (string=? ".." name)))
+		      (or (ustring=? "." name)
+			  (ustring=? ".." name)))
 		 result
 		 (cons name result)))
 	    (begin
@@ -203,7 +215,7 @@ USA.
 (define (allocate-temporary-file pathname)
   (and (not (file-exists? pathname))
        (let ((updater (fixed-objects-updater 'files-to-delete))
-	     (filename (->namestring pathname)))
+	     (filename (string-for-primitive (->namestring pathname))))
 	 (with-files-to-delete-locked
 	  (lambda ()
 	    (and (file-touch pathname)
@@ -216,7 +228,7 @@ USA.
 (define (deallocate-temporary-file pathname)
   (delete-file-no-errors pathname)
   (let ((updater (fixed-objects-updater 'files-to-delete))
-	(filename (->namestring pathname)))
+	(filename (string-for-primitive (->namestring pathname))))
     (with-files-to-delete-locked
      (lambda ()
        (updater
@@ -233,8 +245,8 @@ USA.
   (and (list? object)
        (for-all? object
 	 (lambda (object)
-	   (and (string? object)
-		(not (string-null? object)))))))
+	   (and (ustring? object)
+		(not (fix:= 0 (ustring-length object))))))))
 
 (define (guarantee-init-file-directory pathname)
   (let ((directory (user-homedir-pathname)))
@@ -261,7 +273,7 @@ USA.
   (pathname-type->mime-type (pathname-type pathname)))
 
 (define (pathname-type->mime-type type)
-  (and (string? type)
+  (and (ustring? type)
        (let ((mime-type (hash-table/get local-type-map type #f)))
 	 (if mime-type
 	     (and (mime-type? mime-type)
@@ -271,12 +283,12 @@ USA.
 		    (string->mime-type string)))))))
 
 (define (associate-pathname-type-with-mime-type type mime-type)
-  (guarantee-string type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
+  (guarantee ustring? type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
   (guarantee-mime-type mime-type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
   (hash-table/put! local-type-map type mime-type))
 
 (define (disassociate-pathname-type-from-mime-type type)
-  (guarantee-string type 'DISASSOCIATE-PATHNAME-TYPE-FROM-MIME-TYPE)
+  (guarantee ustring? type 'DISASSOCIATE-PATHNAME-TYPE-FROM-MIME-TYPE)
   (hash-table/put! local-type-map type 'DISASSOCIATED))
 
 (define-record-type <mime-type>
@@ -353,7 +365,7 @@ USA.
 	      0))
 
 (define (mime-type-string? object)
-  (and (string? object)
+  (and (ustring? object)
        (string-is-mime-type? object)))
 
 (define (string-is-mime-type? string #!optional start end)
@@ -364,7 +376,7 @@ USA.
        (string-is-mime-token? (symbol-name object))))
 
 (define (mime-token-string? object)
-  (and (string? object)
+  (and (ustring? object)
        (string-is-mime-token? object)))
 
 (define (string-is-mime-token? string #!optional start end)

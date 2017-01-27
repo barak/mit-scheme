@@ -1428,7 +1428,10 @@ Otherwise, it is copied from the primary selection."
 	     (implemented-primitive-procedure?
 	      (ucode-primitive x-open-display 1)))
 	   (or x-display-name (get-environment-variable "DISPLAY"))
-	   (let ((display (x-open-display x-display-name)))
+	   (let ((display
+		  (x-open-display
+		   (and x-display-name
+			(string-for-primitive x-display-name)))))
 	     (set! x-display-data display)
 	     (set! x-display-events (make-queue))
 	     display))))

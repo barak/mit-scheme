@@ -30,11 +30,12 @@ USA.
 (declare (usual-integrations))
 
 (define (file-modes filename)
-  ((ucode-primitive file-modes 1) (->namestring (merge-pathnames filename))))
+  ((ucode-primitive file-modes 1)
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define (set-file-modes! filename modes)
   ((ucode-primitive set-file-modes! 2)
-   (->namestring (merge-pathnames filename))
+   (string-for-primitive (->namestring (merge-pathnames filename)))
    modes))
 
 (define-integrable nt-file-mode/read-only  #x001)
@@ -73,12 +74,13 @@ USA.
 	 (file-attributes/length attr))))
 
 (define (copy-file from to)
-  ((ucode-primitive nt-copy-file 2) (->namestring (merge-pathnames from))
-				    (->namestring (merge-pathnames to))))
+  ((ucode-primitive nt-copy-file 2)
+   (string-for-primitive (->namestring (merge-pathnames from)))
+   (string-for-primitive (->namestring (merge-pathnames to)))))
 
 (define (file-modification-time filename)
   ((ucode-primitive file-mod-time 1)
-   (->namestring (merge-pathnames filename))))
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 (define file-modification-time-direct file-modification-time)
 (define file-modification-time-indirect file-modification-time)
 
@@ -90,7 +92,8 @@ USA.
 (define file-access-time-indirect file-modification-time-indirect)
 
 (define (set-file-times! filename access-time modification-time)
-  (let ((filename (->namestring (merge-pathnames filename))))
+  (let ((filename
+	 (string-for-primitive (->namestring (merge-pathnames filename)))))
     ((ucode-primitive set-file-times! 3)
      filename
      (or access-time (file-access-time filename))
@@ -141,7 +144,8 @@ USA.
 
   (define (default-variable! var val)
     (if (and (not (assoc var environment-variables))
-	     (not ((ucode-primitive get-environment-variable 1) var)))
+	     (not ((ucode-primitive get-environment-variable 1)
+		   (string-for-primitive var))))
 	(set! environment-variables
 	      (cons (cons var (if (procedure? val) (val) val))
 		    environment-variables)))
@@ -155,7 +159,8 @@ USA.
 	    (cond ((assoc variable environment-variables)
 		   => cdr)
 		  (else
-		   ((ucode-primitive get-environment-variable 1) variable))))))
+		   ((ucode-primitive get-environment-variable 1)
+		    (string-for-primitive variable)))))))
 
   (set! set-environment-variable!
 	(lambda (variable value)
@@ -377,7 +382,7 @@ USA.
 	  '(ABSOLUTE))))
     (let ((info
 	   ((ucode-primitive nt-get-volume-information 1)
-	    (->namestring root))))
+	    (string-for-primitive (->namestring root)))))
       (if (not info)
 	  (error "Error reading volume information:" root))
       info)))
@@ -489,7 +494,7 @@ USA.
   (if ctty
       (error "Can't manipulate controlling terminal of subprocess:" ctty))
   ((ucode-primitive nt-make-subprocess 8)
-   filename
+   (string-for-primitive filename)
    (rewrite-args filename (vector->list arguments))
    (and environment
 	(rewrite-env (vector->list environment)))

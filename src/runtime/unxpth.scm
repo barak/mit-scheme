@@ -352,5 +352,6 @@ USA.
 	(cons (car p*) (loop (cdr p*))))))
 
 (define (file-eq? p1 p2)
-  ((ucode-primitive file-eq? 2) (->namestring (merge-pathnames p1))
-				(->namestring (merge-pathnames p2))))
+  ((ucode-primitive file-eq? 2)
+   (string-for-primitive (->namestring (merge-pathnames p1)))
+   (string-for-primitive (->namestring (merge-pathnames p2)))))

@@ -68,7 +68,9 @@ USA.
 			interrupt-mask
 			(gc-flip)
 			(do ()
-			    (((ucode-primitive dump-band) restart filename))
+			    (((ucode-primitive dump-band)
+			      restart
+			      (string-for-primitive filename)))
 			  (with-simple-restart 'RETRY "Try again."
 			    (lambda ()
 			      (error "Disk save failed:" filename))))
@@ -122,7 +124,7 @@ USA.
 			  (or (try pathname)
 			      (system-library-pathname pathname))))))))))
     (event-distributor/invoke! event:before-exit)
-    ((ucode-primitive load-band) filename)))
+    ((ucode-primitive load-band) (string-for-primitive filename))))
 
 (define (identify-world #!optional port)
   (let ((port

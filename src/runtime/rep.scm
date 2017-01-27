@@ -59,7 +59,7 @@ USA.
 (define (top-level-repl/set-default-directory cmdl pathname)
   cmdl
   ((ucode-primitive set-working-directory-pathname! 1)
-   (->namestring pathname)))
+   (string-for-primitive (->namestring pathname))))
 
 ;;;; Command Loops
 

@@ -31,7 +31,7 @@ USA.
 
 (define (file-directory? filename)
   ((ucode-primitive file-directory? 1)
-   (->namestring (merge-pathnames filename))))
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define (file-symbolic-link? filename)
   filename				; ignored
@@ -39,16 +39,16 @@ USA.
 
 (define (file-modes filename)
   ((ucode-primitive file-modes 1)
-   (->namestring (merge-pathnames filename))))
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define (set-file-modes! filename modes)
   ((ucode-primitive set-file-modes! 2)
-   (->namestring (merge-pathnames filename))
+   (string-for-primitive (->namestring (merge-pathnames filename)))
    modes))
 
 (define (file-access filename amode)
   ((ucode-primitive file-access 2)
-   (->namestring (merge-pathnames filename))
+   (string-for-primitive (->namestring (merge-pathnames filename)))
    amode))
 ;; upwards compatability
 (define dos/file-access file-access)
@@ -58,12 +58,13 @@ USA.
 
 (define (file-writeable? filename)
   (let ((pathname (merge-pathnames filename)))
-    (let ((filename (->namestring pathname)))
+    (let ((filename (string-for-primitive (->namestring pathname))))
       (or ((ucode-primitive file-access 2) filename 2)
 	  (and (not ((ucode-primitive file-exists? 1) filename))
 	       ((ucode-primitive file-access 2)
-		(directory-namestring pathname)
+		(string-for-primitive (directory-namestring pathname))
 		2))))))
+
 ;; upwards compatability
 (define file-writable? file-writeable?)
 
@@ -105,7 +106,7 @@ USA.
 
 (define (file-attributes filename)
   ((ucode-primitive file-attributes 1)
-   (->namestring (merge-pathnames filename))))
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define file-attributes-direct
   file-attributes)
@@ -133,7 +134,7 @@ USA.
 
 (define (file-modification-time filename)
   ((ucode-primitive file-mod-time 1)
-   (->namestring (merge-pathnames filename))))
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define file-modification-time-direct
   file-modification-time)
@@ -159,7 +160,7 @@ USA.
 		  access-time
 		  (file-modification-time-direct filename))))
     ((ucode-primitive set-file-times! 3)
-     filename
+     (string-for-primitive filename)
      (or access-time time)
      (or modification-time time))))
 
@@ -180,7 +181,8 @@ USA.
 
   (define (default-variable! var val)
     (if (and (not (assoc var environment-variables))
-	     (not ((ucode-primitive get-environment-variable 1) var)))
+	     (not ((ucode-primitive get-environment-variable 1)
+		   (string-for-primitive var))))
 	(set! environment-variables
 	      (cons (cons var (if (procedure? val) (val) val))
 		    environment-variables)))
@@ -188,19 +190,20 @@ USA.
 
   (set! get-environment-variable
 	(lambda (variable)
-	  (if (not (string? variable))
+	  (if (not (ustring? variable))
 	      (env-error 'GET-ENVIRONMENT-VARIABLE variable))
-	  (let ((variable (string-upcase variable)))
+	  (let ((variable (ustring-upcase variable)))
 	    (cond ((assoc variable environment-variables)
 		   => cdr)
 		  (else
-		   ((ucode-primitive get-environment-variable 1) variable))))))
+		   ((ucode-primitive get-environment-variable 1)
+		    (string-for-primitive variable)))))))
 
   (set! set-environment-variable!
 	(lambda (variable value)
-	  (if (not (string? variable))
+	  (if (not (ustring? variable))
 	      (env-error 'SET-ENVIRONMENT-VARIABLE! variable))
-	  (let ((variable (string-upcase variable)))
+	  (let ((variable (ustring-upcase variable)))
 	    (cond ((assoc variable environment-variables)
 		   => (lambda (pair) (set-cdr! pair value)))
 		  (else
@@ -210,7 +213,7 @@ USA.
 
   (set! delete-environment-variable!
 	(lambda (variable)
-	  (if (not (string? variable))
+	  (if (not (ustring? variable))
 	      (env-error 'DELETE-ENVIRONMENT-VARIABLE! variable))
 	  (set-environment-variable! variable *variable-deleted*)))
 
@@ -222,9 +225,9 @@ USA.
 
   (set! set-environment-variable-default!
 	(lambda (var val)
-	  (if (not (string? var))
+	  (if (not (ustring? var))
 	      (env-error 'SET-ENVIRONMENT-VARIABLE-DEFAULT! var))
-	  (let ((var (string-upcase var)))
+	  (let ((var (ustring-upcase var)))
 	    (cond ((assoc var environment-defaults)
 		   => (lambda (pair) (set-cdr! pair val)))
 		  (else
@@ -271,15 +274,17 @@ USA.
 
 (define (file-touch filename)
   ((ucode-primitive file-touch 1)
-   (->namestring (merge-pathnames filename))))
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define (make-directory name)
   ((ucode-primitive directory-make 1)
-   (->namestring (directory-pathname-as-file (merge-pathnames name)))))
+   (string-for-primitive
+    (->namestring (directory-pathname-as-file (merge-pathnames name))))))
 
 (define (delete-directory name)
   ((ucode-primitive directory-delete 1)
-   (->namestring (directory-pathname-as-file (merge-pathnames name)))))
+   (string-for-primitive
+    (->namestring (directory-pathname-as-file (merge-pathnames name))))))
 
 (define (file-line-ending pathname)
   pathname
@@ -314,7 +319,8 @@ USA.
 	 (set! input-channel (file-open-input-channel input-filename))
 	 (set! output-channel
 	       (begin
-		 ((ucode-primitive file-remove-link 1) output-filename)
+		 ((ucode-primitive file-remove-link 1)
+		  (string-for-primitive output-filename))
 		 (file-open-output-channel output-filename)))
 	 unspecific)
        (lambda ()
@@ -362,7 +368,7 @@ USA.
 	    (begin
 	      (if (not (and (pair? item)
 			    (init-file-specifier? (car item))
-			    (string? (cdr item))))
+			    (ustring? (cdr item))))
 		  (error "Malformed init-file map item:" item))
 	      (loop (cons item result)))))))
 

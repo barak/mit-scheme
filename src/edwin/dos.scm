@@ -51,13 +51,15 @@ USA.
 	     (->namestring
 	      (directory-pathname-as-file (working-directory-pathname))))
        (set-working-directory-pathname! inside)
-       ((ucode-primitive set-working-directory-pathname! 1) inside))
+       ((ucode-primitive set-working-directory-pathname! 1)
+	(string-for-primitive inside)))
      thunk
      (lambda ()
        (set! inside
 	     (->namestring
 	      (directory-pathname-as-file (working-directory-pathname))))
-       ((ucode-primitive set-working-directory-pathname! 1) outside)
+       ((ucode-primitive set-working-directory-pathname! 1)
+	(string-for-primitive outside))
        (set-working-directory-pathname! outside)
        (start-thread-timer)))))
 
