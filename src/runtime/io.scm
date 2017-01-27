@@ -238,9 +238,7 @@ USA.
 	    ((< n n-left) (loop (+ start n) (- n-left n)))))))
 
 (define (channel-write-byte-block channel byte)
-  (let ((bytes (make-string 1)))
-    (vector-8b-set! bytes 0 byte)
-    (channel-write-block channel bytes 0 1)))
+  (channel-write-block channel (bytevector byte) 0 1))
 
 (define (channel-blocking? channel)
   ((ucode-primitive channel-blocking? 1) (channel-descriptor channel)))
