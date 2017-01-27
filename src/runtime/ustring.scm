@@ -640,11 +640,11 @@ USA.
 (define (ustring-find-last-char string char #!optional start end)
   (ustring-find-last-index (char=-predicate char) string start end))
 
-(define (ustring-find-first-char-in-set string char #!optional start end)
-  (ustring-find-first-index (char-set-predicate char) string start end))
+(define (ustring-find-first-char-in-set string char-set #!optional start end)
+  (ustring-find-first-index (char-set-predicate char-set) string start end))
 
-(define (ustring-find-last-char-in-set string char #!optional start end)
-  (ustring-find-last-index (char-set-predicate char) string start end))
+(define (ustring-find-last-char-in-set string char-set #!optional start end)
+  (ustring-find-last-index (char-set-predicate char-set) string start end))
 
 (define (ustring-upcase string)
   (cond ((legacy-string? string) (legacy-string-upcase string))
