@@ -41,6 +41,26 @@ if ! [[ -d .git && -d src && -d etc ]]; then
     exit 1
 fi
 
+if (( ${#} > 0 )); then
+    case ${1} in
+        -1)
+            MAX_STAGE=1
+            shift
+            ;;
+        -2)
+            MAX_STAGE=2
+            shift
+            ;;
+        -3)
+            MAX_STAGE=3
+            shift
+            ;;
+        *)
+            MAX_STAGE=3
+            ;;
+    esac
+fi
+
 CONFIG_ARGS=("${@}")
 
 # Hack for cph
@@ -122,5 +142,5 @@ find_dist_stage ()
 
 rm -rf stage[123]
 run_stage 1
-run_stage 2
-run_stage 3
+(( ${MAX_STAGE} >= 2 )) && run_stage 2
+(( ${MAX_STAGE} >= 3 )) && run_stage 3
