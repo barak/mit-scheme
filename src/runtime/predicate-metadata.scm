@@ -321,7 +321,6 @@ USA.
    (register-predicate! interned-symbol? 'interned-symbol '<= symbol?)
    (register-predicate! keyword? 'keyword '<= symbol?)
    (register-predicate! lambda-tag? 'lambda-tag)
-   (register-predicate! legacy-string? 'legacy-string)
    (register-predicate! named-structure? 'named-structure)
    (register-predicate! population? 'population)
    (register-predicate! promise? 'promise)
