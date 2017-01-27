@@ -380,7 +380,7 @@ USA.
 		       within-brackets-list-depth-limit)))
 	(lambda ()
 	  (*unparse-string "#[")
-	  (if (string? name)
+	  (if (ustring? name)
 	      (*unparse-string name)
 	      (*unparse-object name))
 	  (if object
@@ -419,7 +419,7 @@ USA.
       (if type-name
           (rename-user-object-type type-name)
           (intern
-           (string-append "undefined-type:" (number->string type-code)))))))
+           (ustring-append "undefined-type:" (number->string type-code)))))))
 
 (define (rename-user-object-type type-name)
   (let ((entry (assq type-name renamed-user-object-types)))
@@ -491,46 +491,45 @@ USA.
      (*unparse-char #\]))))
 
 (define (unparse-symbol-name s)
-  (if (or (string-find-next-char-in-set
+  (if (or (ustring-find-first-char-in-set
            s
            (if (get-param:parser-canonicalize-symbols? (param:environment))
                canon-symbol-quoted
                non-canon-symbol-quoted))
-          (fix:= (string-length s) 0)
-          (and (char-set-member? char-set/number-leaders (string-ref s 0))
+          (fix:= (ustring-length s) 0)
+          (and (char-set-member? char-set/number-leaders (ustring-ref s 0))
                (string->number s))
-          (and (fix:> (string-length s) 1)
+          (and (fix:> (ustring-length s) 1)
                (or (looks-special? s)
                    (looks-like-keyword? s)))
-          (string=? s "."))
+          (ustring=? s "."))
       (begin
         (*unparse-char #\|)
-        (let ((end (string-length s)))
+        (let ((end (ustring-length s)))
           (let loop ((start 0))
             (if (fix:< start end)
                 (let ((i
-                       (substring-find-next-char-in-set
-                        s start end
-                        char-set/symbol-quotes)))
+                       (ustring-find-first-char-in-set
+                        s char-set/symbol-quotes start end)))
                   (if i
                       (begin
                         (*unparse-substring s start i)
                         (*unparse-char #\\)
-                        (*unparse-char (string-ref s i))
+                        (*unparse-char (ustring-ref s i))
                         (loop (fix:+ i 1)))
                       (*unparse-substring s start end))))))
         (*unparse-char #\|))
       (*unparse-string s)))
 
 (define (looks-special? string)
-  (char=? (string-ref string 0) #\#))
+  (char=? #\# (ustring-ref string 0)))
 
 (define (looks-like-keyword? string)
   (case (get-param:parser-keyword-style (param:environment))
     ((PREFIX)
-     (char=? (string-ref string 0) #\:))
+     (char=? #\: (ustring-ref string 0)))
     ((SUFFIX)
-     (char=? (string-ref string (- (string-length string) 1)) #\:))
+     (char=? #\: (ustring-ref string (fix:- (ustring-length string) 1))))
     (else #f)))
 
 (define (unparse/character character)
@@ -543,24 +542,23 @@ USA.
 
 (define (unparse/string string)
   (if (param:slashify?)
-      (let ((end (string-length string)))
+      (let ((end (ustring-length string)))
         (let ((end*
                (let ((limit (get-param:unparser-string-length-limit)))
                  (if limit
                      (min limit end)
                      end))))
           (*unparse-char #\")
-          (if (substring-find-next-char-in-set string 0 end*
-                                               string-delimiters)
+          (if (ustring-find-first-char-in-set string string-delimiters 0 end*)
               (let loop ((start 0))
                 (let ((index
-                       (substring-find-next-char-in-set string start end*
-                                                        string-delimiters)))
+                       (ustring-find-first-char-in-set string string-delimiters
+						       start end*)))
                   (if index
                       (begin
                         (*unparse-substring string start index)
                         (*unparse-char #\\)
-                        (let ((char (string-ref string index)))
+                        (let ((char (ustring-ref string index)))
                           (cond ((char=? char char:newline)
                                  (*unparse-char #\n))
                                 ((char=? char #\tab)
@@ -670,12 +668,11 @@ USA.
 	   (*unparse-string "#u8()"))))))
 
 (define (unparse/record record)
-  (cond ((uri? record)
-	 (unparse/uri record))
+  (cond ((ustring? record) (unparse/string record))
+	((uri? record) (unparse/uri record))
 	((get-param:unparse-with-maximum-readability?)
 	 (*unparse-readable-hash record))
-	(else
-	 (invoke-user-method unparse-record record))))
+	(else (invoke-user-method unparse-record record))))
 
 (define (unparse/uri uri)
   (*unparse-string "#<")
