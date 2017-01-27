@@ -52,7 +52,7 @@ USA.
 ;;;; Pathname Parser
 
 (define (unix/parse-namestring string host)
-  (let ((end (string-length string)))
+  (let ((end (ustring-length string)))
     (let ((components
 	   (expand-directory-prefixes
 	    (substring-components string 0 end #\/))))
@@ -63,7 +63,8 @@ USA.
 			  (let ((components (except-last-pair components)))
 			    (and (pair? components)
 				 (simplify-directory
-				  (if (string=? "" (car components))
+				  (if (fix:= 0
+					     (ustring-length (car components)))
 				      (cons 'ABSOLUTE
 					    (parse-directory-components
 					     (cdr components)))
@@ -80,16 +81,16 @@ USA.
 	 (lambda (string)
 	   (append (string-components string #\/)
 		   (cdr components)))))
-    (let ((end (string-length string)))
-      (if (or (= 0 end)
+    (let ((end (ustring-length string)))
+      (if (or (fix:= 0 end)
 	      (not (*expand-directory-prefixes?*)))
 	  components
-	  (case (string-ref string 0)
+	  (case (ustring-ref string 0)
 	    ((#\$)
-	     (if (= 1 end)
+	     (if (fix:= 1 end)
 		 components
 		 (let ((value
-			(get-environment-variable (substring string 1 end))))
+			(get-environment-variable (usubstring string 1 end))))
 		   (if (not value)
 		       components
 		       (replace-head value)))))
@@ -97,9 +98,9 @@ USA.
 	     (let ((expansion
 		    (ignore-errors
 		     (lambda ()
-		       (if (= 1 end)
+		       (if (fix:= 1 end)
 			   (current-home-directory)
-			   (user-home-directory (substring string 1 end)))))))
+			   (user-home-directory (usubstring string 1 end)))))))
 	       (if (condition? expansion)
 		   components
 		   (replace-head (->namestring expansion)))))
@@ -112,68 +113,71 @@ USA.
 
 (define (parse-directory-components components)
   (map parse-directory-component
-       (delete-matching-items components string-null?)))
+       (remove (lambda (component)
+		 (fix:= 0 (ustring-length component)))
+	       components)))
 
 (define (parse-directory-component component)
-  (cond ((string=? ".." component) 'UP)
-	((string=? "." component) 'HERE)
+  (cond ((ustring=? ".." component) 'UP)
+	((ustring=? "." component) 'HERE)
 	(else component)))
 
 (define (string-components string delimiter)
-  (substring-components string 0 (string-length string) delimiter))
+  (substring-components string 0 (ustring-length string) delimiter))
 
 (define (substring-components string start end delimiter)
   (let loop ((start start))
-    (let ((index (substring-find-next-char string start end delimiter)))
+    (let ((index (ustring-find-first-char string delimiter start end)))
       (if index
-	  (cons (substring string start index) (loop (+ index 1)))
-	  (list (substring string start end))))))
+	  (cons (usubstring string start index) (loop (fix:+ index 1)))
+	  (list (usubstring string start end))))))
 
 (define (parse-name string receiver)
-  (let ((end (string-length string)))
-    (let ((dot (substring-find-previous-char string 0 end #\.)))
+  (let ((end (ustring-length string)))
+    (let ((dot (ustring-find-last-char string #\.)))
       (if (or (not dot)
-	      (= dot 0)
-	      (= dot (- end 1))
-	      (char=? #\. (string-ref string (- dot 1))))
-	  (receiver (cond ((= end 0) #f)
-			  ((string=? "*" string) 'WILD)
+	      (fix:= dot 0)
+	      (fix:= dot (fix:- end 1))
+	      (char=? #\. (ustring-ref string (fix:- dot 1))))
+	  (receiver (cond ((fix:= end 0) #f)
+			  ((ustring=? "*" string) 'WILD)
 			  (else string))
 		    #f)
 	  (receiver (extract string 0 dot)
 		    (extract string (+ dot 1) end))))))
 
 (define (extract string start end)
-  (if (substring=? string start end "*" 0 1)
+  (if (and (fix:= 1 (fix:- end start))
+	   (char=? #\* (ustring-ref string start)))
       'WILD
-      (substring string start end)))
+      (usubstring string start end)))
 
 ;;;; Pathname Unparser
 
 (define (unix/pathname->namestring pathname)
-  (string-append (unparse-directory (%pathname-directory pathname))
-		 (unparse-name (%pathname-name pathname)
-			       (%pathname-type pathname))))
+  (ustring-append (unparse-directory (%pathname-directory pathname))
+		  (unparse-name (%pathname-name pathname)
+				(%pathname-type pathname))))
 
 (define (unparse-directory directory)
   (cond ((not directory)
 	 "")
 	((pair? directory)
-	 (string-append
+	 (ustring-append
 	  (if (eq? (car directory) 'ABSOLUTE) "/" "")
 	  (let loop ((directory (cdr directory)))
 	    (if (not (pair? directory))
 		""
-		(string-append (unparse-directory-component (car directory))
-			       "/"
-			       (loop (cdr directory)))))))
+		(ustring-append (unparse-directory-component (car directory))
+				"/"
+				(loop (cdr directory)))))))
 	(else
 	 (error:illegal-pathname-component directory "directory"))))
 
 (define (unparse-directory-component component)
   (cond ((eq? component 'UP) "..")
 	((eq? component 'HERE) ".")
-	((string? component) component)
+	((ustring? component) component)
 	(else
 	 (error:illegal-pathname-component component "directory component"))))
 
@@ -181,11 +185,11 @@ USA.
   (let ((name (or (unparse-component name) ""))
 	(type (unparse-component type)))
     (if type
-	(string-append name "." type)
+	(ustring-append name "." type)
 	name)))
 
 (define (unparse-component component)
-  (cond ((or (not component) (string? component)) component)
+  (cond ((or (not component) (ustring? component)) component)
 	((eq? component 'WILD) "*")
 	(else (error:illegal-pathname-component component "component"))))
 
@@ -203,18 +207,18 @@ USA.
 	       (memq (car directory) '(RELATIVE ABSOLUTE))
 	       (list-of-type? (cdr directory)
 		 (lambda (element)
-		   (if (string? element)
-		       (not (string-null? element))
+		   (if (ustring? element)
+		       (not (fix:= 0 (ustring-length element)))
 		       (memq element '(UP HERE))))))
 	  (simplify-directory directory))
 	 (else
 	  (error:illegal-pathname-component directory "directory")))
    (if (or (memq name '(#F WILD))
-	   (and (string? name) (not (string-null? name))))
+	   (and (ustring? name) (not (fix:= 0 (ustring-length name)))))
        name
        (error:illegal-pathname-component name "name"))
    (if (or (memq type '(#F WILD))
-	   (and (string? type) (not (string-null? type))))
+	   (and (ustring? type) (not (fix:= 0 (ustring-length type)))))
        type
        (error:illegal-pathname-component type "type"))
    (if (memq version '(#F UNSPECIFIC WILD NEWEST))

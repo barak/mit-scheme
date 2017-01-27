@@ -126,7 +126,7 @@ these rules:
 
 (define (pathname-arg object defaults operator)
   (cond ((pathname? object) object)
-	((string? object) (parse-namestring object #f defaults))
+	((ustring? object) (parse-namestring object #f defaults))
 	(else (error:not-pathname object operator))))
 
 (define (make-pathname host device directory name type version)
@@ -306,7 +306,7 @@ these rules:
 		     (cond ((eq? x 'WILD) "*")
 			   ((eq? x 'UP) "..")
 			   ((eq? x 'HERE) ".")
-			   (else (string->utf8-string x))))
+			   (else x)))
 		   (append (if (pathname-absolute? pathname)
 			       (list "")
 			       '())
@@ -335,7 +335,7 @@ these rules:
 	       (if (pair? path)
 		   (let ((d (cons keyword (except-last-pair path)))
 			 (s (car (last-pair path))))
-		     (if (string-null? s)
+		     (if (fix:= 0 (ustring-length s))
 			 (values d #f #f)
 			 (let ((pn (parse-namestring s)))
 			   (values d
@@ -346,10 +346,10 @@ these rules:
     (let ((scheme (uri-scheme uri))
 	  (path
 	   (map (lambda (x)
-		  (cond ((string=? x "*") 'WILD)
-			((string=? x "..") 'UP)
-			((string=? x ".") 'HERE)
-			(else (utf8-string->string x))))
+		  (cond ((ustring=? x "*") 'WILD)
+			((ustring=? x "..") 'UP)
+			((ustring=? x ".") 'HERE)
+			(else x)))
 		(uri-path uri)))
 	  (lose
 	   (lambda ()
@@ -358,7 +358,7 @@ these rules:
       (case scheme
 	((file)
 	 (if (and (pair? path)
-		  (string-null? (car path)))
+		  (fix:= 0 (ustring-length (car path))))
 	     (let ((path (cdr path)))
 	       (receive (device path)
 		   (let ((device (pathname-device defaults)))
@@ -387,7 +387,7 @@ these rules:
 	      (if (and (not (default-object? defaults)) defaults)
 		  defaults
 		  (param:default-pathname-defaults))))))
-    (cond ((string? namestring)
+    (cond ((ustring? namestring)
 	   ((host-type/operation/parse-namestring (host/type host))
 	    namestring host))
 	  ((pathname? namestring)
@@ -400,8 +400,8 @@ these rules:
 
 (define (->namestring pathname)
   (let ((pathname (->pathname pathname)))
-    (string-append (host-namestring pathname)
-		   (pathname->namestring pathname))))
+    (ustring-append (host-namestring pathname)
+		    (pathname->namestring pathname))))
 
 (define (file-namestring pathname)
   (pathname->namestring (file-pathname pathname)))
@@ -412,7 +412,7 @@ these rules:
 (define (host-namestring pathname)
   (let ((host (host/name (pathname-host pathname))))
     (if host
-	(string-append host "::")
+	(ustring-append host "::")
 	"")))
 
 (define (enough-namestring pathname #!optional defaults)
@@ -424,7 +424,7 @@ these rules:
       (let ((namestring (pathname->namestring pathname)))
 	(if (host=? (%pathname-host pathname) (%pathname-host defaults))
 	    namestring
-	    (string-append (host-namestring pathname) namestring))))))
+	    (ustring-append (host-namestring pathname) namestring))))))
 
 (define (pathname->namestring pathname)
   ((host-type/operation/pathname->namestring

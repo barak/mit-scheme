@@ -66,11 +66,10 @@ USA.
 (define (dos/parse-namestring string host)
   (call-with-values
       (lambda ()
-	(let ((components
-	       (expand-directory-prefixes
-		(string-components string sub-directory-delimiters))))
-	  (for-each string-downcase! components)
-	  (parse-device-and-path components)))
+	(parse-device-and-path
+	 (map ustring-downcase
+	      (expand-directory-prefixes
+	       (string-components string sub-directory-delimiters)))))
     (lambda (device components)
       (call-with-values (lambda () (parse-name (car (last-pair components))))
 	(lambda (name type)
@@ -80,10 +79,12 @@ USA.
 	   (let ((components (except-last-pair components)))
 	     (and (not (null? components))
 		  (simplify-directory
-		   (if (string-null? (car components))
+		   (if (fix:= 0 (ustring-length (car components)))
 		       (cons 'ABSOLUTE
 			     (if (and (pair? (cdr components))
-				      (string-null? (cadr components)))
+				      (fix:= 0
+					     (ustring-length
+					      (cadr components))))
 				 ;; Handle "\\foo\bar" notation here:
 				 ;; the "\\foo" isn't part of the
 				 ;; directory path.
@@ -107,20 +108,20 @@ USA.
 	   (let ((head (string-components string sub-directory-delimiters)))
 	     (append (if (and (pair? (cdr components))
 			      (pair? (cdr head))
-			      (string-null? (car (last-pair head))))
+			      (fix:= 0 (ustring-length (car (last-pair head)))))
 			 (except-last-pair head)
 			 head)
 		     (cdr components))))))
-    (let ((end (string-length string)))
-      (if (or (= 0 end)
+    (let ((end (ustring-length string)))
+      (if (or (fix:= 0 end)
 	      (not (*expand-directory-prefixes?*)))
 	  components
-	  (case (string-ref string 0)
+	  (case (ustring-ref string 0)
 	    ((#\$)
-	     (if (= 1 end)
+	     (if (fix:= 1 end)
 		 components
 		 (let ((value
-			(get-environment-variable (substring string 1 end))))
+			(get-environment-variable (usubstring string 1 end))))
 		   (if (not value)
 		       components
 		       (replace-head value)))))
@@ -130,7 +131,7 @@ USA.
 		     (lambda ()
 		       (if (= 1 end)
 			   (current-home-directory)
-			   (user-home-directory (substring string 1 end)))))))
+			   (user-home-directory (usubstring string 1 end)))))))
 	       (if (condition? expansion)
 		   components
 		   (replace-head (->namestring expansion)))))
@@ -138,10 +139,10 @@ USA.
 
 (define (parse-device-and-path components)
   (let ((string (car components)))
-    (if (and (fix:= (string-length string) 2)
-	     (char=? #\: (string-ref string 1))
-	     (char-alphabetic? (string-ref string 0)))
-	(values (string-head string 1) (cons "" (cdr components)))
+    (if (and (fix:= 2 (ustring-length string))
+	     (char=? #\: (ustring-ref string 1))
+	     (char-alphabetic? (ustring-ref string 0)))
+	(values (ustring-head string 1) (cons "" (cdr components)))
 	(values #f components))))
 
 (define (simplify-directory directory)
@@ -150,78 +151,81 @@ USA.
 	(else directory)))
 
 (define (parse-directory-components components)
-  (if (there-exists? components string-null?)
+  (if (any (lambda (component)
+	     (fix:= 0 (ustring-length component)))
+	   components)
       (error "Directory contains null component:" components))
   (map parse-directory-component components))
 
 (define (parse-directory-component component)
-  (if (string=? ".." component)
+  (if (ustring=? ".." component)
       'UP
       component))
 
 (define (string-components string delimiters)
-  (substring-components string 0 (string-length string) delimiters))
+  (substring-components string 0 (ustring-length string) delimiters))
 
 (define (substring-components string start end delimiters)
   (let loop ((start start))
     (let ((index
-	   (substring-find-next-char-in-set string start end delimiters)))
+	   (ustring-find-first-char-in-set string delimiters start end)))
       (if index
-	  (cons (substring string start index) (loop (fix:+ index 1)))
-	  (list (substring string start end))))))
+	  (cons (usubstring string start index) (loop (fix:+ index 1)))
+	  (list (usubstring string start end))))))
 
 (define (parse-name string)
-  (let ((dot (string-find-previous-char string #\.))
-	(end (string-length string)))
+  (let ((dot (ustring-find-last-char string #\.))
+	(end (ustring-length string)))
     (if (or (not dot)
 	    (fix:= dot 0)
 	    (fix:= dot (fix:- end 1))
-	    (char=? #\. (string-ref string (fix:- dot 1))))
+	    (char=? #\. (ustring-ref string (fix:- dot 1))))
 	(values (cond ((fix:= end 0) #f)
-		      ((string=? "*" string) 'WILD)
+		      ((ustring=? "*" string) 'WILD)
 		      (else string))
 		#f)
 	(values (extract string 0 dot)
 		(extract string (fix:+ dot 1) end)))))
 
 (define (extract string start end)
-  (if (substring=? string start end "*" 0 1)
+  (if (and (fix:= 1 (fix:- end start))
+	   (char=? #\* (ustring-ref string start)))
       'WILD
-      (substring string start end)))
+      (usubstring string start end)))
 
 ;;;; Pathname Unparser
 
 (define (dos/pathname->namestring pathname)
-  (string-append (unparse-device (%pathname-device pathname))
-		 (unparse-directory (%pathname-directory pathname))
-		 (unparse-name (%pathname-name pathname)
-			       (%pathname-type pathname))))
+  (ustring-append (unparse-device (%pathname-device pathname))
+		  (unparse-directory (%pathname-directory pathname))
+		  (unparse-name (%pathname-name pathname)
+				(%pathname-type pathname))))
 
 (define (unparse-device device)
   (if (or (not device) (eq? device 'UNSPECIFIC))
       ""
-      (string-append device ":")))
+      (ustring-append device ":")))
 
 (define (unparse-directory directory)
   (cond ((or (not directory) (eq? directory 'UNSPECIFIC))
 	 "")
 	((pair? directory)
-	 (string-append
+	 (ustring-append
 	  (if (eq? (car directory) 'ABSOLUTE)
               sub-directory-delimiter-string
               "")
 	  (let loop ((directory (cdr directory)))
 	    (if (null? directory)
 		""
-		(string-append (unparse-directory-component (car directory))
-			       sub-directory-delimiter-string
-			       (loop (cdr directory)))))))
+		(ustring-append (unparse-directory-component (car directory))
+				sub-directory-delimiter-string
+				(loop (cdr directory)))))))
 	(else
 	 (error:illegal-pathname-component directory "directory"))))
 
 (define (unparse-directory-component component)
   (cond ((eq? component 'UP) "..")
-	((string? component) component)
+	((ustring? component) component)
 	(else
 	 (error:illegal-pathname-component component "directory component"))))
 
@@ -229,11 +233,11 @@ USA.
   (let ((name (or (unparse-component name) ""))
 	(type (unparse-component type)))
     (if type
-	(string-append name "." type)
+	(ustring-append name "." type)
 	name)))
 
 (define (unparse-component component)
-  (cond ((or (not component) (string? component)) component)
+  (cond ((or (not component) (ustring? component)) component)
 	((eq? component 'WILD) "*")
 	(else (error:illegal-pathname-component component "component"))))
 
@@ -242,7 +246,7 @@ USA.
 (define (dos/make-pathname host device directory name type version)
   (%%make-pathname
    host
-   (cond ((string? device) device)
+   (cond ((ustring? device) device)
 	 ((memq device '(#F UNSPECIFIC)) device)
 	 (else (error:illegal-pathname-component device "device")))
    (cond ((or (not directory) (eq? directory 'UNSPECIFIC))
@@ -254,18 +258,18 @@ USA.
 			     (cddr directory)
 			     (cdr directory))
 		 (lambda (element)
-		   (if (string? element)
-		       (not (string-null? element))
+		   (if (ustring? element)
+		       (not (fix:= 0 (ustring-length element)))
 		       (eq? element 'UP)))))
 	  (simplify-directory directory))
 	 (else
 	  (error:illegal-pathname-component directory "directory")))
    (if (or (memq name '(#F WILD))
-	   (and (string? name) (not (string-null? name))))
+	   (and (ustring? name) (not (fix:= 0 (ustring-length name)))))
        name
        (error:illegal-pathname-component name "name"))
    (if (or (memq type '(#F WILD))
-	   (and (string? type) (not (string-null? type))))
+	   (and (ustring? type) (not (fix:= 0 (ustring-length type)))))
        type
        (error:illegal-pathname-component type "type"))
    (if (memq version '(#F UNSPECIFIC WILD NEWEST))
@@ -289,8 +293,8 @@ USA.
   (and (pair? directory)
        (eq? (car directory) 'ABSOLUTE)
        (pair? (cdr directory))
-       (string? (cadr directory))
-       (string-null? (cadr directory))))
+       (ustring? (cadr directory))
+       (fix:= 0 (ustring-length (cadr directory)))))
 
 (define (dos/directory-pathname? pathname)
   (and (not (%pathname-name pathname))
@@ -357,8 +361,8 @@ USA.
 
 (define (dos/pathname-wild? pathname)
   (let ((namestring (file-namestring pathname)))
-    (or (string-find-next-char namestring #\*)
-	(string-find-next-char namestring #\?))))
+    (or (ustring-find-first-char namestring #\*)
+	(ustring-find-first-char namestring #\?))))
 
 (define (dos/pathname->truename pathname)
   (if (file-exists-direct? pathname)
