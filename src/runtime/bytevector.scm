@@ -241,7 +241,7 @@ USA.
 
 (define (fix:u32? object)
   (and (index-fixnum? object)
-       (fix:<= object #xFFFFFFFF)))
+       (int:<= object #xFFFFFFFF)))
 
 (define-integrable (fix:bytes->u32le b0 b1 b2 b3)
   (fix:bytes->u32be b3 b2 b1 b0))
