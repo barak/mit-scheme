@@ -721,6 +721,7 @@ USA.
 	  guarantee-interned-symbol
 	  guarantee-symbol
 	  guarantee-uninterned-symbol
+	  symbol-name
 	  ;; END deprecated bindings
 	  intern
 	  intern-soft
@@ -732,7 +733,6 @@ USA.
 	  symbol
 	  symbol->string
 	  symbol-hash
-	  symbol-name
 	  symbol<?
 	  symbol>?
 	  symbol?
