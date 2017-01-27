@@ -1347,7 +1347,7 @@ the user from the mailer."
 	    (lambda (string start end)
 	      (encode-quoted-printable:update
                context
-               (xsubstring string 0 (xstring-length string))
+               (substring string 0 (string-length string))
                start
                end)))
 	  (encode-quoted-printable:finalize context)))

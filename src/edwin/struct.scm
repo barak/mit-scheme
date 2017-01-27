@@ -113,7 +113,7 @@ USA.
     group))
 
 (define (group-length group)
-  (fix:- (xstring-length (group-text group)) (group-gap-length group)))
+  (fix:- (string-length (group-text group)) (group-gap-length group)))
 
 (define-integrable (group-start-index group)
   (mark-index (group-start-mark group)))

@@ -630,21 +630,21 @@ USA.
 
 (define (%window-line-start-index? window index)
   (or (%window-group-start-index? window index)
-      (char=? (xstring-ref (group-text (%window-group window))
-			   (fix:- (group-index->position-integrable
-				   (%window-group window)
-				   index
-				   #f)
-				  1))
+      (char=? (string-ref (group-text (%window-group window))
+			  (fix:- (group-index->position-integrable
+				  (%window-group window)
+				  index
+				  #f)
+				 1))
 	      #\newline)))
 
 (define (%window-line-end-index? window index)
   (or (%window-group-end-index? window index)
-      (char=? (xstring-ref (group-text (%window-group window))
-			   (group-index->position-integrable
-			    (%window-group window)
-			    index
-			    #t))
+      (char=? (string-ref (group-text (%window-group window))
+			  (group-index->position-integrable
+			   (%window-group window)
+			   index
+			   #t))
 	      #\newline)))
 
 (define (clip-mark-to-display window mark)
