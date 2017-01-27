@@ -188,7 +188,7 @@ USA.
 			(cons "seen" (reverse! flags)))))))))
 
 (define (read-rmail-alternate-headers port)
-  (let ((start (xstring-port/position port)))
+  (let ((start (string-port/position port)))
     (make-file-external-ref
      start
      (let* ((separator rmail-message:headers-separator)
@@ -197,7 +197,7 @@ USA.
        (let loop ()
 	 (let ((char (read-required-char port)))
 	   (cond ((char=? char #\newline)
-		  (let ((end (- (xstring-port/position port) 1)))
+		  (let ((end (- (string-port/position port) 1)))
 		    (if (not (string=? separator (read-required-line port)))
 			(error "Missing RMAIL headers-separator string:" port))
 		    end))
@@ -205,7 +205,7 @@ USA.
 		  (let ((line (read-required-line port)))
 		    (if (substring=? line 0 (string-length line)
 				     separator 1 sl)
-			(- (xstring-port/position port)
+			(- (string-port/position port)
 			   (+ (string-length line) 1))
 			(loop))))
 		 (else
@@ -213,15 +213,15 @@ USA.
 		  (loop)))))))))
 
 (define (read-rmail-displayed-headers port)
-  (let ((start (xstring-port/position port)))
+  (let ((start (string-port/position port)))
     (skip-past-blank-line port)
-    (make-file-external-ref start (- (xstring-port/position port) 1))))
+    (make-file-external-ref start (- (string-port/position port) 1))))
 
 (define (read-rmail-body port)
-  (let ((start (xstring-port/position port)))
+  (let ((start (string-port/position port)))
     (input-port/discard-chars port rmail-message:end-char-set)
     (input-port/discard-char port)
-    (make-file-external-ref start (- (xstring-port/position port) 1))))
+    (make-file-external-ref start (- (string-port/position port) 1))))
 
 (define (rmail-internal-time folder ref)
   (let ((v

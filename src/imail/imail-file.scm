@@ -252,7 +252,7 @@ USA.
 			  initial-value #f)
   (file-modification-count define standard
 			   initial-value #f)
-  (xstring define standard))
+  (string define standard))
 
 (define (file-folder-messages folder)
   (if (eq? 'UNKNOWN (%file-folder-messages folder))
@@ -287,10 +287,10 @@ USA.
 	     (set-file-folder-messages! folder 'UNKNOWN)
 	     (for-each-vector-element messages detach-message!)))))))
 
-(define (discard-file-folder-xstring folder)
+(define (discard-file-folder-string folder)
   (without-interrupts
    (lambda ()
-     (set-file-folder-xstring! folder #f)
+     (set-file-folder-string! folder #f)
      (set-file-folder-file-modification-time! folder #f)
      (set-file-folder-file-modification-count! folder #f))))
 
@@ -428,14 +428,14 @@ USA.
 	(pathname (file-folder-pathname folder)))
     (if (not (and t (= t (file-modification-time pathname))))
 	(begin
-	  (if t (discard-file-folder-xstring folder))
+	  (if t (discard-file-folder-string folder))
 	  (let loop ()
 	    (let ((t (file-modification-time pathname)))
 	      ((imail-ui:message-wrapper "Reading file "
 					 (->namestring pathname))
 	       (lambda ()
-		 (set-file-folder-xstring! folder
-					   (read-file-into-xstring pathname))))
+		 (set-file-folder-string! folder
+					  (read-file-into-string pathname))))
 	      (if (= t (file-modification-time pathname))
 		  (begin
 		    (set-file-folder-file-modification-time! folder t)
@@ -447,11 +447,11 @@ USA.
    folder
    ((imail-ui:message-wrapper "Parsing messages")
     (lambda ()
-      (call-with-input-xstring (file-folder-xstring folder) 0 reader)))))
+      (call-with-input-string (file-folder-string folder) 0 reader)))))
 
 (define-method discard-folder-cache ((folder <file-folder>))
   (discard-file-folder-messages folder)
-  (discard-file-folder-xstring folder))
+  (discard-file-folder-string folder))
 
 (define-method probe-folder ((folder <file-folder>))
   folder
@@ -494,8 +494,8 @@ USA.
 (define-class <file-message> (<message>)
   body)
 
-(define (file-message-xstring message)
-  (file-folder-xstring (message-folder message)))
+(define (file-message-string message)
+  (file-folder-string (message-folder message)))
 
 (define (file-external-ref? object)
   (and (pair? object)
@@ -512,9 +512,9 @@ USA.
       (let ((item (accessor message)))
 	(if (file-external-ref? item)
 	    (operator
-	     (xsubstring (file-message-xstring message)
-			 (file-external-ref/start item)
-			 (file-external-ref/end item)))
+	     (substring (file-message-string message)
+			(file-external-ref/start item)
+			(file-external-ref/end item)))
             item)))))
 
 (define-file-external-message-method message-header-fields
@@ -593,6 +593,6 @@ USA.
 (define (file-folder-internal-headers folder ref)
   (filter! internal-header-field?
 	   (string->header-fields
-	    (xsubstring (file-folder-xstring folder)
-			(file-external-ref/start ref)
-			(file-external-ref/end ref)))))
+	    (substring (file-folder-string folder)
+		       (file-external-ref/start ref)
+		       (file-external-ref/end ref)))))

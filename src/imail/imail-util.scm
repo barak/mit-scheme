@@ -422,53 +422,53 @@ USA.
 
 ;;;; Extended-string input port
 
-(define (read-file-into-xstring pathname)
+(define (read-file-into-string pathname)
   (call-with-legacy-binary-input-file pathname
     (lambda (port)
       (let ((n-bytes ((port/operation port 'LENGTH) port)))
-	(let ((xstring (make-string n-bytes)))
+	(let ((string (make-string n-bytes)))
 	  (let loop ((start 0))
 	    (if (< start n-bytes)
-		(let ((n-read (read-string! xstring port)))
+		(let ((n-read (read-string! string port)))
 		  (if (= n-read 0)
 		      (error "Failed to read complete file:"
 			     (+ start n-read) n-bytes pathname))
 		  (loop (+ start n-read)))))
-	  xstring)))))
+	  string)))))
 
-(define (call-with-input-xstring xstring position receiver)
-  (let ((port (open-xstring-input-port xstring position)))
+(define (call-with-input-string string position receiver)
+  (let ((port (open-string-input-port string position)))
     (let ((value (receiver port)))
       (close-port port)
       value)))
 
-(define (open-xstring-input-port xstring position)
-  (if (not (<= 0 position (string-length xstring)))
-      (error:bad-range-argument position 'OPEN-XSTRING-INPUT-PORT))
-  (let ((state (make-istate xstring position position position)))
-    (read-xstring-buffer state)
-    (make-port xstring-input-type state)))
+(define (open-string-input-port string position)
+  (if (not (<= 0 position (string-length string)))
+      (error:bad-range-argument position 'OPEN-STRING-INPUT-PORT))
+  (let ((state (make-istate string position position position)))
+    (read-string-buffer state)
+    (make-port string-input-type state)))
 
 (define-structure (istate
 		   (constructor make-istate
-				(xstring position buffer-start buffer-end))
+				(string position buffer-start buffer-end))
 		   (conc-name istate-))
-  xstring
+  string
   position
   (buffer (make-string #x10000) read-only #t)
   buffer-start
   buffer-end)
 
-(define (xstring-port/xstring port)
-  (istate-xstring (port/state port)))
+(define (string-port/string port)
+  (istate-string (port/state port)))
 
-(define (xstring-port/position port)
+(define (string-port/position port)
   (istate-position (port/state port)))
 
-(define (read-xstring-buffer state)
-  (let ((xstring (istate-xstring state))
+(define (read-string-buffer state)
+  (let ((string (istate-string state))
 	(start (istate-position state)))
-    (let ((xend (string-length xstring)))
+    (let ((xend (string-length string)))
       (and (< start xend)
 	   (let* ((buffer (istate-buffer state))
 		  (end (min (+ start (string-length buffer)) xend)))
@@ -476,13 +476,13 @@ USA.
 	      (lambda ()
 		(set-istate-buffer-start! state start)
 		(set-istate-buffer-end! state end)
-		(xsubstring-move! xstring start end buffer 0)))
+		(substring-move! string start end buffer 0)))
 	     #t)))))
 
-(define (xstring-input-port/discard-chars port delimiters)
+(define (string-input-port/discard-chars port delimiters)
   (let ((state (port/state port)))
     (if (or (< (istate-position state) (istate-buffer-end state))
-	    (read-xstring-buffer state))
+	    (read-string-buffer state))
 	(let loop ()
 	  (let* ((start (istate-buffer-start state))
 		 (index
@@ -495,13 +495,13 @@ USA.
 		(set-istate-position! state (+ start index))
 		(begin
 		  (set-istate-position! state (istate-buffer-end state))
-		  (if (read-xstring-buffer state)
+		  (if (read-string-buffer state)
 		      (loop)))))))))
 
-(define (xstring-input-port/read-string port delimiters)
+(define (string-input-port/read-string port delimiters)
   (let ((state (port/state port)))
     (if (or (< (istate-position state) (istate-buffer-end state))
-	    (read-xstring-buffer state))
+	    (read-string-buffer state))
 	(let loop ((prefix #f))
 	  (let* ((start (istate-buffer-start state))
 		 (b (istate-buffer state))
@@ -524,19 +524,19 @@ USA.
 			   (if prefix
 			       (string-append prefix s)
 			       s)))
-		      (if (read-xstring-buffer state)
+		      (if (read-string-buffer state)
 			  (loop p)
 			  p)))))))
 	(eof-object))))
 
-(define xstring-input-type
+(define string-input-type
   (make-port-type
    `((PEEK-CHAR
       ,(lambda (port)
 	 (let ((state (port/state port)))
 	   (let ((position (istate-position state)))
 	     (if (or (< position (istate-buffer-end state))
-		     (read-xstring-buffer state))
+		     (read-string-buffer state))
 		 (string-ref (istate-buffer state)
 			     (- position (istate-buffer-start state)))
 		 (eof-object))))))
@@ -545,7 +545,7 @@ USA.
 	 (let ((state (port/state port)))
 	   (let ((position (istate-position state)))
 	     (if (or (< position (istate-buffer-end state))
-		     (read-xstring-buffer state))
+		     (read-string-buffer state))
 		 (let ((char
 			(string-ref (istate-buffer state)
 				    (- position (istate-buffer-start state)))))
@@ -563,13 +563,13 @@ USA.
       ,(lambda (port)
 	 (let ((state (port/state port)))
 	   (>= (istate-position state)
-	       (string-length (istate-xstring state))))))
+	       (string-length (istate-string state))))))
      (CLOSE
       ,(lambda (port)
 	 (let ((state (port/state port)))
 	   (without-interrupts
 	    (lambda ()
-	      (set-istate-xstring! state #f)
+	      (set-istate-string! state #f)
 	      (set-istate-position! state 0)
 	      (set-istate-buffer-start! state 0)
 	      (set-istate-buffer-end! state 0)))))))

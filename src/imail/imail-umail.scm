@@ -108,9 +108,9 @@ USA.
 			  (list->vector (reverse! messages)))))))))))))
 
 (define (read-umail-message folder from-line port delimiter?)
-  (let ((h-start (xstring-port/position port)))
+  (let ((h-start (string-port/position port)))
     (skip-past-blank-line port)
-    (let ((b-start (xstring-port/position port)))
+    (let ((b-start (string-port/position port)))
       (let ((finish
 	     (lambda (b-end line)
 	       (values
@@ -123,9 +123,9 @@ USA.
 	(let loop ()
 	  (let ((line (read-line port)))
 	    (cond ((eof-object? line)
-		   (finish (xstring-port/position port) #f))
+		   (finish (string-port/position port) #f))
 		  ((delimiter? line)
-		   (finish (- (xstring-port/position port)
+		   (finish (- (string-port/position port)
 			      (+ (string-length line) 1))
 			   line))
 		  (else
