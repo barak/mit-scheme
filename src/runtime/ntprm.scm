@@ -49,7 +49,7 @@ USA.
 
 (define (file-attributes filename)
   ((ucode-primitive file-attributes 1)
-   (->namestring (merge-pathnames filename))))
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 (define file-attributes-direct file-attributes)
 (define file-attributes-indirect file-attributes)
 

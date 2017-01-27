@@ -309,8 +309,7 @@ USA.
 	   (start (fix:start-index start end caller))
 	   (string
 	    (make-ustring
-	     (let (
-		   (truncated
+	     (let ((truncated
 		    (lambda (index)
 		      (error (string "Truncated " noun " sequence:")
 			     (bytevector-copy bytevector

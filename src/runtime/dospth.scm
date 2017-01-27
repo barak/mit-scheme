@@ -167,8 +167,7 @@ USA.
 
 (define (substring-components string start end delimiters)
   (let loop ((start start))
-    (let ((index
-	   (ustring-find-first-char-in-set string delimiters start end)))
+    (let ((index (ustring-find-first-char-in-set string delimiters start end)))
       (if index
 	  (cons (usubstring string start index) (loop (fix:+ index 1)))
 	  (list (usubstring string start end))))))
