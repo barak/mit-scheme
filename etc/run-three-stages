@@ -41,6 +41,7 @@ if ! [[ -d .git && -d src && -d etc ]]; then
     exit 1
 fi
 
+MAX_STAGE=3
 if (( ${#} > 0 )); then
     case ${1} in
         -1)
@@ -54,9 +55,6 @@ if (( ${#} > 0 )); then
         -3)
             MAX_STAGE=3
             shift
-            ;;
-        *)
-            MAX_STAGE=3
             ;;
     esac
 fi
