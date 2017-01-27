@@ -1172,6 +1172,7 @@ USA.
 	  ustring*
 	  ustring->ascii
 	  ustring->list
+	  ustring->utf8-string		;temporary scaffolding
 	  ustring->vector
 	  ustring-any
 	  ustring-append
@@ -1213,6 +1214,7 @@ USA.
 	  ustring>=?
 	  ustring>?
 	  ustring?
+	  utf8-string->ustring		;temporary scaffolding
 	  ;; vector->ustring
 	  )
   (export (runtime predicate-metadata)

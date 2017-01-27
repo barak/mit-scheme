@@ -703,3 +703,26 @@ USA.
 (define (string-for-primitive string)
   (or (ustring->ascii string)
       (string->utf8 string)))
+
+;; temporary scaffolding
+(define (ustring->utf8-string string #!optional start end)
+  (let* ((caller 'ustring->utf8-string)
+	 (end (fix:end-index end (ustring-length string) caller))
+	 (start (fix:start-index start end caller)))
+    (cond ((legacy-string? string)
+	   (if (%legacy-string-ascii? string start end)
+	       (legacy-string-copy string start end)
+	       (%string->utf8-string string start end)))
+	  ((utf32-string? string)
+	   (if (%utf32-string-ascii? string start end)
+	       (%utf32-string->ascii string start end)
+	       (%string->utf8-string string start end)))
+	  (else
+	   (error:not-a ustring? string caller)))))
+
+(define (%string->utf8-string string start end)
+  (object-new-type (ucode-type string) (string->utf8 string start end)))
+
+;; temporary scaffolding
+(define (utf8-string->ustring string #!optional start end)
+  (utf8->string (legacy-string->bytevector string) start end))
