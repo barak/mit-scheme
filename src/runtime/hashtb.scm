@@ -1024,9 +1024,9 @@ USA.
 	((%ratnum? key) (%ratnum->nonneg-int key))
 	((flo:flonum? key) (%flonum->nonneg-int key))
 	((%recnum? key) (%recnum->nonneg-int key))
-	((string? key) (string-hash key))
+	((ustring? key) (ustring-hash key))
 	((bit-string? key) (bit-string->unsigned-integer key))
-	((pathname? key) (string-hash (->namestring key)))
+	((pathname? key) (ustring-hash (->namestring key)))
 	(else (eq-hash key))))
 
 (define-integrable (%bignum? object)
@@ -1223,7 +1223,7 @@ USA.
      (set! key-ephemeral-eqv-hash-table-type
 	   (make eqv-hash-mod eqv? #t hash-table-entry-type:key-ephemeral))
      (set! string-hash-table-type
-	   (make string-hash-mod string=? #t hash-table-entry-type:strong))
+	   (make ustring-hash ustring=? #t hash-table-entry-type:strong))
      (set! strong-eq-hash-table-type	;Open-coded
 	   (open-type! eq-hash-mod eq? #t hash-table-entry-type:strong))
      (set! strong-eqv-hash-table-type
@@ -1286,9 +1286,11 @@ USA.
   (make-hash-table-type key-hash
 			key=?
 			(if (and (or (eq? key=? string=?)
-				     (eq? key=? string-ci=?))
+				     (eq? key=? string-ci=?)
+				     (eq? key=? ustring=?))
 				 (or (eq? key-hash string-hash-mod)
 				     (eq? key-hash string-hash)
+				     (eq? key-hash ustring-hash)
 				     (eq? key-hash hash)
 				     (eq? key-hash string-ci-hash)))
 			    #f		;No rehash needed after GC
