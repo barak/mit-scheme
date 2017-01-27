@@ -547,10 +547,10 @@ USA.
 ;;;; Backwards compatibility
 
 (define (string->char-set string)
-  (scalar-values->char-set (map char->integer (string->list string))))
+  (scalar-values->char-set (map char->integer (ustring->list string))))
 
 (define (char-set->string char-set)
-  (list->string (map integer->char (char-set-members char-set))))
+  (list->ustring (char-set-members char-set)))
 
 (define (char-set-members char-set)
   (guarantee-char-set char-set 'CHAR-SET-MEMBERS)
