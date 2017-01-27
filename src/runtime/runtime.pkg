@@ -4669,6 +4669,10 @@ USA.
   (parent (runtime))
   (export ()
 	  ;; BEGIN deprecated bindings
+	  (get-output-from-accumulator get-output-string!)
+	  (make-accumulator-output-port open-output-string)
+	  (string->input-port open-input-string)
+	  (with-string-output-port call-with-output-string)
 	  call-with-input-octets
 	  call-with-output-octets
 	  open-input-octets
@@ -4677,22 +4681,13 @@ USA.
 	  with-output-to-string
 	  with-output-to-truncated-string
 	  ;; END deprecated bindings
-	  (call-with-output-string call-with-narrow-output-string)
-	  (get-output-from-accumulator get-output-string!)
-	  (make-accumulator-output-port open-narrow-output-string)
-	  (open-output-string open-narrow-output-string)
-	  (open-wide-input-string open-input-string)
-	  (string->input-port open-input-string)
-	  (with-string-output-port call-with-narrow-output-string)
 	  call-with-input-string
-	  call-with-narrow-output-string
+	  call-with-output-string
 	  call-with-truncated-output-string
-	  call-with-wide-output-string
 	  get-output-string
 	  get-output-string!
 	  open-input-string
-	  open-narrow-output-string
-	  open-wide-output-string)
+	  open-output-string)
   (initialization (initialize-package!)))
 
 (define-package (runtime syntax)

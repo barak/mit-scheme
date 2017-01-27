@@ -815,7 +815,7 @@ USA.
 (define (camel-case-string->lisp string)
   (call-with-input-string string
     (lambda (input)
-      (call-with-narrow-output-string
+      (call-with-output-string
 	(lambda (output)
 	  (let loop ((prev #f))
 	    (let ((c (read-char input)))
@@ -829,7 +829,7 @@ USA.
 (define (lisp-string->camel-case string #!optional upcase-initial?)
   (call-with-input-string string
     (lambda (input)
-      (call-with-narrow-output-string
+      (call-narrow-output-string
 	(lambda (output)
 	  (let loop
 	      ((upcase?
