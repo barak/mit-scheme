@@ -180,7 +180,7 @@ USA.
   (xml-element-name (node-item node)))
 
 (define-method node-string ((node <element-node>))
-  (call-with-utf8-output-string
+  (call-with-output-string
     (lambda (port)
       (let loop ((node node))
 	(stream-for-each (lambda (child)

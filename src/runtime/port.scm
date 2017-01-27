@@ -229,7 +229,7 @@ USA.
       (cond ((not char) #f)
 	    ((eof-object? char) 0)
 	    (else
-	     (xstring-set! string start char)
+	     (ustring-set! string start char)
 	     (let loop ((index (+ start 1)))
 	       (if (and (< index end)
 			(char-ready? port))
@@ -237,7 +237,7 @@ USA.
 		     (if (or (not char) (eof-object? char))
 			 (- index start)
 			 (begin
-			   (xstring-set! string index char)
+			   (ustring-set! string index char)
 			   (loop (+ index 1)))))
 		   (- index start))))))))
 
@@ -267,7 +267,7 @@ USA.
   (let ((write-char (textual-port-operation/write-char port)))
     (let loop ((i start))
       (if (< i end)
-	  (let ((n (write-char port (xstring-ref string i))))
+	  (let ((n (write-char port (ustring-ref string i))))
 	    (cond ((not n) (and (> i start) (- i start)))
 		  ((> n 0) (loop (+ i 1)))
 		  (else (- i start))))
@@ -343,7 +343,7 @@ USA.
 	       (if (and n (> n 0))
 		   (let ((end (+ start n)))
 		     (set-textual-port-previous! port
-						 (xstring-ref string (- end 1)))
+						 (ustring-ref string (- end 1)))
 		     (transcribe-substring string start end port)))
 	       n))))
 	(flush-output

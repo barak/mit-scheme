@@ -29,44 +29,32 @@ USA.
 
 (declare (usual-integrations))
 
-(define (string->number string #!optional radix error?)
-  (if (not (string? string))
-      (error:wrong-type-argument string "string" 'STRING->NUMBER))
-  (parse-number string 0 (string-length string) radix error? 'STRING->NUMBER))
-
-(define (substring->number string start end #!optional radix error?)
-  (if (not (string? string))
-      (error:wrong-type-argument string "string" 'SUBSTRING->NUMBER))
-  (if (not (index-fixnum? start))
-      (error:wrong-type-argument start "string index" 'SUBSTRING->NUMBER))
-  (if (not (index-fixnum? end))
-      (error:wrong-type-argument end "string index" 'SUBSTRING->NUMBER))
-  (if (not (fix:<= end (string-length string)))
-      (error:bad-range-argument end 'SUBSTRING->NUMBER))
-  (if (not (fix:<= start end))
-      (error:bad-range-argument start 'SUBSTRING->NUMBER))
-  (parse-number string start end radix error? 'SUBSTRING->NUMBER))
-
-(define (parse-number string start end radix error? caller)
-  (let ((z
-	 (parse-number-1 string start end
-			 (if (default-object? radix) #f radix)
-			 caller)))
+(define (string->number string #!optional radix error? start end)
+  (let* ((caller 'string->number)
+	 (end (fix:end-index end (ustring-length string) caller))
+	 (start (fix:start-index start end caller))
+	 (z
+	  (parse-number string start end
+			(if (default-object? radix) #f radix)
+			caller)))
     (if (and (not z) (if (default-object? error?) #f error?))
 	(error:bad-range-argument string caller))
     z))
 
-(define (parse-number-1 string start end default-radix name)
+(define (substring->number string start end #!optional radix error?)
+  (string->number string radix error? start end))
+
+(define (parse-number string start end default-radix name)
   (if (not (or (eq? #f default-radix) (eq? 2 default-radix)
 	       (eq? 8 default-radix) (eq? 10 default-radix)
 	       (eq? 16 default-radix)))
       (error:bad-range-argument default-radix name))
   (let loop ((start start) (exactness #f) (radix #f))
     (and (fix:< start end)
-	 (if (char=? #\# (string-ref string start))
+	 (if (char=? #\# (ustring-ref string start))
 	     (let ((start (fix:+ start 1)))
 	       (and (fix:< start end)
-		    (let ((char (string-ref string start))
+		    (let ((char (ustring-ref string start))
 			  (start (fix:+ start 1)))
 		      (let ((do-radix
 			     (lambda (r)
@@ -92,7 +80,7 @@ USA.
 
 (define (parse-top-level string start end exactness radix)
   (and (fix:< start end)
-       (let ((char (string-ref string start))
+       (let ((char (ustring-ref string start))
 	     (start (fix:+ start 1)))
 	 (cond ((sign? char)
 		(find-leader string start end
@@ -111,7 +99,7 @@ USA.
 (define (find-leader string start end exactness radix sign)
   ;; State: leading sign has been seen.
   (and (fix:< start end)
-       (let ((char (string-ref string start))
+       (let ((char (ustring-ref string start))
 	     (start (fix:+ start 1)))
 	 (cond ((char->digit char radix)
 		=> (lambda (digit)
@@ -131,7 +119,7 @@ USA.
   (parse-digits string start end integer exactness radix
     (lambda (start integer exactness sharp?)
       (if (fix:< start end)
-	  (let ((char (string-ref string start))
+	  (let ((char (ustring-ref string start))
 		(start+1 (fix:+ start 1)))
 	    (cond ((char=? #\/ char)
 		   (parse-denominator-1 string start+1 end
@@ -160,7 +148,7 @@ USA.
 (define (parse-digits string start end integer exactness radix k)
   (let loop ((start start) (integer integer))
     (if (fix:< start end)
-	(let ((char (string-ref string start)))
+	(let ((char (ustring-ref string start)))
 	  (cond ((char->digit char radix)
 		 => (lambda (digit)
 		      (loop (fix:+ start 1)
@@ -169,7 +157,7 @@ USA.
 		 (do ((start (fix:+ start 1) (fix:+ start 1))
 		      (integer (* integer radix) (* integer radix)))
 		     ((not (and (fix:< start end)
-				(char=? #\# (string-ref string start))))
+				(char=? #\# (ustring-ref string start))))
 		      (k start integer (or exactness 'IMPLICIT-INEXACT) #t))))
 		(else
 		 (k start integer exactness #f))))
@@ -191,7 +179,7 @@ USA.
 (define (parse-decimal-1 string start end exactness sign)
   ;; State: radix is 10, leading dot seen.
   (and (fix:< start end)
-       (let ((digit (char->digit (string-ref string start) 10))
+       (let ((digit (char->digit (ustring-ref string start) 10))
 	     (start (fix:+ start 1)))
 	 (and digit
 	      (parse-decimal-2 string start end digit -1 exactness sign)))))
@@ -200,7 +188,7 @@ USA.
   ;; State: radix is 10, dot seen.
   (let loop ((start start) (integer integer) (exponent exponent))
     (if (fix:< start end)
-	(let ((char (string-ref string start))
+	(let ((char (ustring-ref string start))
 	      (start+1 (fix:+ start 1)))
 	  (cond ((char->digit char 10)
 		 => (lambda (digit)
@@ -219,7 +207,7 @@ USA.
   ;; State: radix is 10, dot and # seen.
   (let loop ((start start))
     (if (fix:< start end)
-	(let ((char (string-ref string start))
+	(let ((char (ustring-ref string start))
 	      (start+1 (fix:+ start 1)))
 	  (if (char=? #\# char)
 	      (loop start+1)
@@ -228,7 +216,7 @@ USA.
 	(finish-real integer exponent exactness sign))))
 
 (define (parse-decimal-4 string start end integer exponent exactness sign)
-  (if (exponent-marker? (string-ref string start))
+  (if (exponent-marker? (ustring-ref string start))
       (parse-exponent-1 string (fix:+ start 1) end
 			integer exponent exactness sign)
       (parse-decimal-5 string start end integer exponent exactness sign)))
@@ -237,12 +225,12 @@ USA.
   ;; State: radix is 10, exponent seen.
   (define (get-digits start esign)
     (and (fix:< start end)
-	 (let ((digit (char->digit (string-ref string start) 10)))
+	 (let ((digit (char->digit (ustring-ref string start) 10)))
 	   (and digit
 		(let loop ((start (fix:+ start 1)) (eint digit))
 		  (if (fix:< start end)
 		      (let ((digit
-			     (char->digit (string-ref string start) 10)))
+			     (char->digit (ustring-ref string start) 10)))
 			(if digit
 			    (loop (fix:+ start 1)
 				  (+ (* eint 10) digit))
@@ -257,7 +245,7 @@ USA.
 			   integer exponent exactness sign))))
 
   (and (fix:< start end)
-       (let ((esign (string-ref string start)))
+       (let ((esign (ustring-ref string start)))
 	 (if (sign? esign)
 	     (get-digits (fix:+ start 1) esign)
 	     (get-digits start #f)))))
@@ -269,7 +257,7 @@ USA.
 
 (define (parse-complex string start end real exactness radix sign)
   (if (fix:< start end)
-      (let ((char (string-ref string start))
+      (let ((char (ustring-ref string start))
 	    (start+1 (fix:+ start 1))
 	    (exactness (if (eq? 'IMPLICIT-INEXACT exactness) #f exactness)))
 	(cond ((sign? char)

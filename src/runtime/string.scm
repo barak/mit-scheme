@@ -266,23 +266,11 @@ USA.
 (define (string . objects)
   (%string-append (map ->string objects)))
 
-(define (utf8-string . objects)
-  (%string-append (map ->utf8-string objects)))
-
 (define (->string object)
   (cond ((string? object) object)
 	((symbol? object) (symbol->string object))
-	((wide-string? object) (wide-string->string object))
 	((8-bit-char? object) (make-string 1 object))
 	(else (%->string object 'STRING))))
-
-(define (->utf8-string object)
-  (cond ((string? object) (string->utf8-string object))
-	((symbol? object) (symbol-name object))
-	((wide-string? object) (string->utf8-string object))
-	((unicode-char? object)
-	 (string->utf8-string (wide-string object)))
-	(else (%->string object 'UTF8-STRING))))
 
 (define (%->string object caller)
   (cond ((not object) "")
@@ -417,10 +405,14 @@ USA.
                        (VECTOR-8B-SET! STRING2 START2 CODE)
                        ,(let loop ((i 1))
                           (if (< i n)
-                              `(LET ((CODE (VECTOR-8B-REF STRING1 (FIX:+ START1 ,i))))
+                              `(LET ((CODE
+				      (VECTOR-8B-REF STRING1
+						     (FIX:+ START1 ,i))))
                                  (AND (FIX:< CODE #x80)
                                       (BEGIN
-                                        (VECTOR-8B-SET! STRING2 (FIX:+ START2 ,i) CODE)
+					(VECTOR-8B-SET! STRING2
+							(FIX:+ START2 ,i)
+							CODE)
                                         ,(loop (+ i 1)))))
                               'STRING2)))))))))
        (unrolled-move-right
@@ -434,10 +426,14 @@ USA.
                        (VECTOR-8B-SET! STRING2 (FIX:+ START2 ,(- n 1)) CODE)
                        ,(let loop ((i (- n 1)))
                           (if (> i 0)
-                              `(LET ((CODE (VECTOR-8B-REF STRING1 (FIX:+ START1 ,(- i 1)))))
+                              `(LET ((CODE
+				      (VECTOR-8B-REF STRING1
+						     (FIX:+ START1 ,(- i 1)))))
                                  (AND (FIX:< CODE #x80)
                                       (BEGIN
-                                        (VECTOR-8B-SET! STRING2 (FIX:+ START2 ,(- i 1)) CODE)
+				       (VECTOR-8B-SET! STRING2
+						       (FIX:+ START2 ,(- i 1))
+						       CODE)
                                         ,(loop (- i 1)))))
                               'STRING2))))))))))
     (let ((n (fix:- end1 start1)))
@@ -491,89 +487,6 @@ USA.
 	    (loop (cdr strings) (fix:+ index size)))
 	  result))))
 
-(define (decorated-string-append prefix infix suffix strings)
-  (guarantee-string prefix 'DECORATED-STRING-APPEND)
-  (guarantee-string infix 'DECORATED-STRING-APPEND)
-  (guarantee-string suffix 'DECORATED-STRING-APPEND)
-  (%decorated-string-append prefix infix suffix strings
-			    'DECORATED-STRING-APPEND))
-
-(define (%decorated-string-append prefix infix suffix strings procedure)
-  (if (pair? strings)
-      (let ((np (string-length prefix))
-	    (ni (string-length infix))
-	    (ns (string-length suffix)))
-	(guarantee-string (car strings) procedure)
-	(let ((string
-	       (make-string
-		(let ((ni* (fix:+ np (fix:+ ni ns))))
-		  (do ((strings (cdr strings) (cdr strings))
-		       (count (fix:+ np (string-length (car strings)))
-			      (fix:+ count
-				     (fix:+ ni*
-					    (string-length (car strings))))))
-		      ((not (pair? strings))
-		       (fix:+ count ns))
-		    (guarantee-string (car strings) procedure))))))
-	  (let ((mp
-		 (lambda (index)
-		   (%substring-move! prefix 0 np string index)))
-		(mi
-		 (lambda (index)
-		   (%substring-move! infix 0 ni string index)))
-		(ms
-		 (lambda (index)
-		   (%substring-move! suffix 0 ns string index)))
-		(mv
-		 (lambda (s index)
-		   (%substring-move! s 0 (string-length s) string index))))
-	    (let loop
-		((strings (cdr strings))
-		 (index (mv (car strings) (mp 0))))
-	      (if (pair? strings)
-		  (loop (cdr strings)
-			(mv (car strings) (mp (mi (ms index)))))
-		  (ms index))))
-	  string))
-      (make-string 0)))
-
-(define (burst-string string delimiter allow-runs?)
-  (guarantee-string string 'BURST-STRING)
-  (let ((end (string-length string)))
-    (cond ((char? delimiter)
-	   (let loop ((start 0) (index 0) (result '()))
-	     (cond ((fix:= index end)
-		    (reverse!
-		     (if (and allow-runs? (fix:= start index))
-			 result
-			 (cons (%substring string start index) result))))
-		   ((char=? delimiter (string-ref string index))
-		    (loop (fix:+ index 1)
-			  (fix:+ index 1)
-			  (if (and allow-runs? (fix:= start index))
-			      result
-			      (cons (%substring string start index) result))))
-		   (else
-		    (loop start (fix:+ index 1) result)))))
-	  ((char-set? delimiter)
-	   (let loop ((start 0) (index 0) (result '()))
-	     (cond ((fix:= index end)
-		    (reverse!
-		     (if (and allow-runs? (fix:= start index))
-			 result
-			 (cons (%substring string start index) result))))
-		   ((char-set-member? delimiter (string-ref string index))
-		    (loop (fix:+ index 1)
-			  (fix:+ index 1)
-			  (if (and allow-runs? (fix:= start index))
-			      result
-			      (cons (%substring string start index) result))))
-		   (else
-		    (loop start (fix:+ index 1) result)))))
-	  (else
-	   (error:wrong-type-argument delimiter "character or character set"
-				      'BURST-STRING)))))
-
 (define (reverse-string string)
   (guarantee-string string 'REVERSE-STRING)
   (%reverse-substring string 0 (string-length string)))
@@ -607,6 +520,75 @@ USA.
       (let ((char (string-ref string j)))
 	(string-set! string j (string-ref string i))
 	(string-set! string i char)))))
+
+(define (decorated-string-append prefix infix suffix strings)
+  ((string-joiner* prefix infix suffix) strings))
+
+(define (string-joiner infix #!optional prefix suffix)
+  (let ((joiner (string-joiner* prefix infix suffix)))
+    (lambda strings
+      (joiner strings))))
+
+(define (string-joiner* infix #!optional prefix suffix)
+  (let ((prefix (if (default-object? prefix) "" prefix))
+	(suffix (if (default-object? suffix) "" suffix)))
+    (let ((infix (ustring-append suffix infix prefix)))
+
+      (lambda (strings)
+	(ustring-append*
+	 (if (pair? strings)
+	     (cons* prefix
+		    (car strings)
+		    (let loop ((strings (cdr strings)))
+		      (if (pair? strings)
+			  (cons* infix
+				 (car strings)
+				 (loop (cdr strings)))
+			  (list suffix))))
+	     '()))))))
+
+(define (burst-string string delimiter allow-runs?)
+  ((string-splitter delimiter allow-runs?) string))
+
+(define (string-splitter delimiter #!optional allow-runs?)
+  (let ((predicate (splitter-delimiter->predicate delimiter))
+	(allow-runs? (if (default-object? allow-runs?) #t allow-runs?)))
+
+    (lambda (string #!optional start end)
+      (let* ((end (fix:end-index end (ustring-length string) 'string-splitter))
+	     (start (fix:start-index start end 'string-splitter)))
+
+	(define (find-start start)
+	  (if allow-runs?
+	      (let loop ((index start))
+		(if (fix:< index end)
+		    (if (predicate (ustring-ref string index))
+			(loop (fix:+ index 1))
+			(find-end index (fix:+ index 1)))
+		    '()))
+	      (find-end start start)))
+
+	(define (find-end start index)
+	  (let loop ((index index))
+	    (if (fix:< index end)
+		(if (predicate (ustring-ref string index))
+		    (cons (ustring-copy string start index)
+			  (find-start (fix:+ index 1)))
+		    (loop (fix:+ index 1)))
+		(list (ustring-copy string start end)))))
+
+	(find-start start)))))
+
+(define (splitter-delimiter->predicate delimiter)
+  (cond ((char? delimiter) (char=-predicate delimiter))
+	((char-set? delimiter) (char-set-predicate delimiter))
+	((unary-procedure? delimiter) delimiter)
+	(else (error:not-a splitter-delimiter? delimiter 'string-splitter))))
+
+(define (splitter-delimiter? object)
+  (or (char? object)
+      (char-set? object)
+      (unary-procedure? object)))
 
 (define (vector-8b->hexadecimal bytes)
   (define-integrable (hex-char k)
@@ -829,7 +811,7 @@ USA.
 (define (lisp-string->camel-case string #!optional upcase-initial?)
   (call-with-input-string string
     (lambda (input)
-      (call-narrow-output-string
+      (call-with-output-string
 	(lambda (output)
 	  (let loop
 	      ((upcase?
@@ -1642,97 +1624,6 @@ USA.
 	    (outer k (fix:+ q 1)))))
     pi))
 
-(define (xstring? object)
-  (or (string? object)
-      (wide-string? object)))
-
-(define (xstring-length string)
-  (cond ((string? string) (string-length string))
-	((wide-string? string) (wide-string-length string))
-	(else (error:not-xstring string 'XSTRING-LENGTH))))
-
-(define (xstring-ref string index)
-  (cond ((string? string) (string-ref string index))
-	((wide-string? string) (wide-string-ref string index))
-	(else (error:not-xstring string 'XSTRING-REF))))
-
-(define (xstring-set! string index char)
-  (cond ((string? string) (string-set! string index char))
-	((wide-string? string) (wide-string-set! string index char))
-	(else (error:not-xstring string 'XSTRING-SET!))))
-
-(define (xstring-move! xstring1 xstring2 start2)
-  (xsubstring-move! xstring1 0 (xstring-length xstring1) xstring2 start2))
-
-(define (xsubstring-move! xstring1 start1 end1 xstring2 start2)
-  (cond ((or (not (eq? xstring2 xstring1)) (< start2 start1))
-	 (substring-move-left! xstring1 start1 end1
-			       xstring2 start2))
-	((> start2 start1)
-	 (substring-move-right! xstring1 start1 end1
-				xstring2 start2))))
-
-(define (xsubstring xstring start end)
-  (guarantee-xsubstring xstring start end 'XSUBSTRING)
-  (let ((string (make-string (- end start))))
-    (xsubstring-move! xstring start end string 0)
-    string))
-
-(define (xstring-fill! xstring char)
-  (cond ((string? xstring)
-	 (string-fill! xstring char))
-	(else
-	 (error:not-xstring xstring 'XSTRING-FILL!))))
-
-(define (xsubstring-fill! xstring start end char)
-  (cond ((string? xstring)
-	 (substring-fill! xstring start end char))
-	(else
-	 (error:not-xstring xstring 'XSTRING-FILL!))))
-
-(define-integrable (xsubstring-find-char xstring start end datum finder caller)
-  (cond ((string? xstring)
-	 (guarantee-substring xstring start end caller)
-	 (finder xstring start end datum))
-	(else
-	 (error:not-xstring xstring caller))))
-
-(define (xsubstring-find-next-char xstring start end char)
-  (guarantee-char char 'XSUBSTRING-FIND-NEXT-CHAR)
-  (xsubstring-find-char xstring start end (char->ascii char)
-			(ucode-primitive VECTOR-8B-FIND-NEXT-CHAR)
-			'XSUBSTRING-FIND-NEXT-CHAR))
-
-(define (xsubstring-find-next-char-ci xstring start end char)
-  (guarantee-char char 'XSUBSTRING-FIND-NEXT-CHAR-CI)
-  (xsubstring-find-char xstring start end (char->ascii char)
-			(ucode-primitive VECTOR-8B-FIND-NEXT-CHAR-CI)
-			'XSUBSTRING-FIND-NEXT-CHAR-CI))
-
-(define (xsubstring-find-next-char-in-set xstring start end char-set)
-  (guarantee-char-set char-set 'XSUBSTRING-FIND-NEXT-CHAR-IN-SET)
-  (xsubstring-find-char xstring start end (char-set-table char-set)
-			(ucode-primitive SUBSTRING-FIND-NEXT-CHAR-IN-SET)
-			'XSUBSTRING-FIND-NEXT-CHAR-IN-SET))
-
-(define (xsubstring-find-previous-char xstring start end char)
-  (guarantee-char char 'XSUBSTRING-FIND-PREVIOUS-CHAR)
-  (xsubstring-find-char xstring start end (char->ascii char)
-			(ucode-primitive VECTOR-8B-FIND-PREVIOUS-CHAR)
-			'XSUBSTRING-FIND-PREVIOUS-CHAR))
-
-(define (xsubstring-find-previous-char-ci xstring start end char)
-  (guarantee-char char 'XSUBSTRING-FIND-PREVIOUS-CHAR-CI)
-  (xsubstring-find-char xstring start end (char->ascii char)
-			(ucode-primitive VECTOR-8B-FIND-PREVIOUS-CHAR-CI)
-			'XSUBSTRING-FIND-PREVIOUS-CHAR-CI))
-
-(define (xsubstring-find-previous-char-in-set xstring start end char-set)
-  (guarantee-char-set char-set 'XSUBSTRING-FIND-PREVIOUS-CHAR-IN-SET)
-  (xsubstring-find-char xstring start end (char-set-table char-set)
-			(ucode-primitive SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET)
-			'XSUBSTRING-FIND-PREVIOUS-CHAR-IN-SET))
-
 ;;;; Guarantors
 ;;
 ;; The guarantors are integrated.  Most are structured as combination of
@@ -1741,9 +1632,8 @@ USA.
 ;; meaningful message.  Structuring the code this way significantly
 ;; reduces code bloat from large integrated procedures.
 
-(declare (integrate-operator guarantee-string guarantee-xstring))
+(declare (integrate-operator guarantee-string))
 (define-guarantee string "string")
-(define-guarantee xstring "xstring")
 
 (define-integrable (guarantee-2-strings object1 object2 procedure)
   (if (not (and (string? object1) (string? object2)))
@@ -1759,10 +1649,6 @@ USA.
   (if (not (index-fixnum? object))
       (error:wrong-type-argument object "string index" caller)))
 
-(define-integrable (guarantee-xstring-index object caller)
-  (if (not (exact-nonnegative-integer? object))
-      (error:wrong-type-argument object "xstring index" caller)))
-
 (define-integrable (guarantee-substring string start end caller)
   (if (not (and (string? string)
 		(index-fixnum? start)
@@ -1775,19 +1661,6 @@ USA.
   (guarantee-string string caller)
   (guarantee-substring-end-index end (string-length string) caller)
   (guarantee-substring-start-index start end caller))
-
-(define-integrable (guarantee-xsubstring xstring start end caller)
-  (if (not (and (xstring? xstring)
-		(exact-nonnegative-integer? start)
-		(exact-nonnegative-integer? end)
-		(<= start end)
-		(<= end (xstring-length xstring))))
-      (guarantee-xsubstring/fail xstring start end caller)))
-
-(define (guarantee-xsubstring/fail xstring start end caller)
-  (guarantee-xstring xstring caller)
-  (guarantee-xsubstring-end-index end (xstring-length xstring) caller)
-  (guarantee-xsubstring-start-index start end caller))
 
 (define-integrable (guarantee-substring-end-index end length caller)
   (guarantee-string-index end caller)
@@ -1798,18 +1671,6 @@ USA.
 (define-integrable (guarantee-substring-start-index start end caller)
   (guarantee-string-index start caller)
   (if (not (fix:<= start end))
-      (error:bad-range-argument start caller))
-  start)
-
-(define-integrable (guarantee-xsubstring-end-index end length caller)
-  (guarantee-xstring-index end caller)
-  (if (not (<= end length))
-      (error:bad-range-argument end caller))
-  end)
-
-(define-integrable (guarantee-xsubstring-start-index start end caller)
-  (guarantee-xstring-index start caller)
-  (if (not (<= start end))
       (error:bad-range-argument start caller))
   start)
 

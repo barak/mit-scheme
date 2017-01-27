@@ -325,7 +325,7 @@ USA.
 (define (delimited-region-parser name start-delim end-delim
 				 char-set parse-escapes)
   (lambda (buffer)
-    (let ((output (open-utf8-output-string))
+    (let ((output (open-output-string))
 	  (start (get-parser-buffer-pointer buffer)))
 
       (define (read-head)
@@ -766,18 +766,18 @@ USA.
 		    (else #f))))
 	((rdf-bnode? o)
 	 (and (not (inline-bnode o))
-	      (call-with-utf8-output-string
+	      (call-with-output-string
 		(lambda (port)
 		  (write-rdf/nt-bnode o port)))))
 	((uri? o)
-	 (call-with-utf8-output-string
+	 (call-with-output-string
 	   (lambda (port*)
 	     (write-uri o (port/rdf-prefix-registry port) port*))))
 	((rdf-graph? o)
 	 (and (null? (rdf-graph-triples o))
 	      "{}"))
 	((rdf-literal? o)
-	 (call-with-utf8-output-string
+	 (call-with-output-string
 	   (lambda (port)
 	     (write-rdf/turtle-literal o port))))
 	(else
@@ -912,7 +912,7 @@ USA.
 
 (define (write-literal-text text port)
   (if (string-find-next-char text #\newline)
-      (let ((tport (open-utf8-input-string text)))
+      (let ((tport (open-input-string text)))
 	(write-string "\"\"\"" port)
 	(let loop ()
 	  (let ((char (read-char tport)))

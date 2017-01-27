@@ -313,8 +313,7 @@ USA.
 				       'encode-value))))))
 
 (define (encode-string string)
-  (if (and (utf8-string-valid? string)
-	   (string-of-xml-chars? string))
+  (if (string-of-xml-chars? string)
       string
       (rpc-elt:base64
        (call-with-output-string

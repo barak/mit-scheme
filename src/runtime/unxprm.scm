@@ -471,7 +471,7 @@ USA.
 
 (define (os/parse-path-string string)
   (let ((end (ustring-length string))
-	(substring
+	(extract
 	 (lambda (string start end)
 	   (pathname-as-directory (usubstring string start end)))))
     (let loop ((start 0))
@@ -480,9 +480,9 @@ USA.
 	    (if index
 		(cons (if (= index start)
 			  #f
-			  (usubstring string start index))
+			  (extract string start index))
 		      (loop (+ index 1)))
-		(list (usubstring string start end))))
+		(list (extract string start end))))
 	  '()))))
 
 (define (os/shell-file-name)

@@ -202,7 +202,7 @@ USA.
 (define-guarantee rdf-literal "RDF literal")
 
 (define (make-rdf-literal text type)
-  (guarantee utf8-string? text 'MAKE-RDF-LITERAL)
+  (guarantee ustring? text 'MAKE-RDF-LITERAL)
   (let ((type
 	 (if (or (not type)
 		 (language? type))
@@ -322,8 +322,8 @@ USA.
 
 (define (make-rdf-qname prefix local)
   (guarantee-rdf-prefix prefix 'MAKE-RDF-QNAME)
-  (guarantee utf8-string? local 'MAKE-RDF-QNAME)
-  (if (not (*match-utf8-string match:name local))
+  (guarantee ustring? local 'MAKE-RDF-QNAME)
+  (if (not (*match-string match:name local))
       (error:bad-range-argument local 'MAKE-RDF-QNAME))
   (symbol prefix local))
 

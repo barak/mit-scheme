@@ -547,16 +547,18 @@ USA.
 ;;;; Backwards compatibility
 
 (define (string->char-set string)
-  (scalar-values->char-set (map char->integer (ustring->list string))))
+  (scalar-values->char-set (map char->integer (string->list string))))
 
+;; Returns ASCII string:
 (define (char-set->string char-set)
-  (list->ustring (char-set-members char-set)))
+  (list->string (char-set-members char-set)))
 
+;; Returns only ASCII members:
 (define (char-set-members char-set)
   (guarantee-char-set char-set 'CHAR-SET-MEMBERS)
   (let ((low (%char-set-low char-set)))
     (let loop ((code 0))
-      (if (fix:< code #x100)
+      (if (fix:< code #x80)
 	  (if (%low-ref low code)
 	      (cons (integer->char code)
 		    (loop (fix:+ code 1)))

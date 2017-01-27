@@ -130,7 +130,7 @@ USA.
 
 (define (string-matcher matcher)
   (lambda (string #!optional start end)
-    (matcher (utf8-string->parser-buffer string start end))))
+    (matcher (string->parser-buffer string start end))))
 
 (define string-is-xml-qname? (string-matcher match:xml-qname))
 (define string-is-xml-name? (string-matcher match:xml-name))

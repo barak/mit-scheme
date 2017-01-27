@@ -435,7 +435,7 @@ USA.
 
 (define (get-object-type-name obj)
   (cond ((boolean? obj) "boolean")
-	((string? obj) "string")
+	((ustring? obj) "string")
 	((char? obj) "char")
 	((fixnum? obj) "fixnum")
 	((integer? obj) "integer")
@@ -455,7 +455,6 @@ USA.
 	((symbol? obj) "symbol")
 	((weak-pair? obj) "weak-pair")
 	((record-type? obj) "record-type")
-	((wide-string? obj) "wide-string")
 	(else (user-object-type obj))))
 
 ;;;; Miscellaneous

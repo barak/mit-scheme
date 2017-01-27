@@ -35,7 +35,7 @@ USA.
   ((textual-port-operation/write-char port) port char))
 
 (define (output-port/write-string port string)
-  (output-port/write-substring port string 0 (xstring-length string)))
+  (output-port/write-substring port string 0 (ustring-length string)))
 
 (define (output-port/write-substring port string start end)
   ((textual-port-operation/write-substring port) port string start end))
@@ -94,10 +94,10 @@ USA.
   (let ((port (optional-output-port port 'WRITE-STRING))
 	(end
 	 (if (default-object? end)
-	     (xstring-length string)
+	     (ustring-length string)
 	     (begin
 	       (guarantee index-fixnum? end 'write-string)
-	       (if (not (fix:<= end (xstring-length string)))
+	       (if (not (fix:<= end (ustring-length string)))
 		   (error:bad-range-argument end 'write-string))
 	       end))))
     (let ((start

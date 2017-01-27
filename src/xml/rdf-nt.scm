@@ -120,7 +120,7 @@ USA.
   (*parser (map intern (match match-language))))
 
 (define (parse-string b)
-  (let ((port (open-utf8-output-string)))
+  (let ((port (open-output-string)))
 
     (define (loop)
       (let ((p (get-parser-buffer-pointer b)))
@@ -228,7 +228,7 @@ USA.
 	      (write-string (symbol-name lang) port)))))
 
 (define (write-rdf/nt-literal-text text port)
-  (let ((text (open-utf8-input-string text)))
+  (let ((text (open-input-string text)))
     (write-string "\"" port)
     (let loop ()
       (let ((char (read-char text)))

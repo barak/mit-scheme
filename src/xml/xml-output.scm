@@ -44,11 +44,6 @@ USA.
      (set-coding xml port)
      (write-xml-1 xml port options))))
 
-(define (xml->wide-string xml . options)
-  (call-with-wide-output-string
-   (lambda (port)
-     (write-xml-1 xml port options))))
-
 (define (set-coding xml port)
   (if (port/supports-coding? port)
       (let ((coding
@@ -91,9 +86,9 @@ USA.
 
 (define (emit-string string ctx)
   (let ((port (ctx-port ctx)))
-    (for-each-unicode-char string
-      (lambda (char)
-	(write-char char port)))))
+    (ustring-for-each (lambda (char)
+			(write-char char port))
+		      string)))
 
 (define (emit-newline ctx)
   (newline (ctx-port ctx)))
@@ -414,23 +409,23 @@ USA.
 
 (define (xml-string-columns string)
   (let ((n 0))
-    (for-each-unicode-char string
-      (lambda (char)
-	(set! n
-	      (fix:+ n
-		     (case char
-		       ((#\") 6)
-		       ((#\<) 4)
-		       ((#\&) 5)
-		       (else 1))))
-	unspecific))
+    (ustring-for-each (lambda (char)
+			(set! n
+			      (fix:+ n
+				     (case char
+				       ((#\") 6)
+				       ((#\<) 4)
+				       ((#\&) 5)
+				       (else 1))))
+			unspecific)
+		      string)
     n))
 
 (define (write-xml-name name ctx)
   (emit-string (xml-name-string name) ctx))
 
 (define (xml-name-columns name)
-  (utf8-string-length (xml-name-string name)))
+  (ustring-length (xml-name-string name)))
 
 (define (write-xml-nmtoken nmtoken ctx)
   (emit-string (symbol-name nmtoken) ctx))
@@ -487,24 +482,15 @@ USA.
       (emit-char #\space ctx)))
 
 (define (write-escaped-string string escapes ctx)
-  (for-each-unicode-char string
-    (lambda (char)
-      (cond ((assq char escapes)
-	     => (lambda (e)
-		  (emit-string (cdr e) ctx)))
-	    (((ctx-char-map ctx) char)
-	     => (lambda (name)
-		  (emit-char #\& ctx)
-		  (emit-string (symbol-name name) ctx)
-		  (emit-char #\; ctx)))
-	    (else
-	     (emit-char char ctx))))))
-
-(define (for-each-unicode-char string procedure)
-  (let ((port (open-utf8-input-string string)))
-    (let loop ()
-      (let ((char (read-char port)))
-	(if (not (eof-object? char))
-	    (begin
-	      (procedure char)
-	      (loop)))))))
+  (ustring-for-each (lambda (char)
+		      (cond ((assq char escapes)
+			     => (lambda (e)
+				  (emit-string (cdr e) ctx)))
+			    (((ctx-char-map ctx) char)
+			     => (lambda (name)
+				  (emit-char #\& ctx)
+				  (emit-string (symbol-name name) ctx)
+				  (emit-char #\; ctx)))
+			    (else
+			     (emit-char char ctx))))
+		    string))

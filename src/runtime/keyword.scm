@@ -38,15 +38,15 @@ USA.
 (define-integrable keyword-prefix "#[keyword]")
 
 (define (string->keyword string)
-  (guarantee-string string 'STRING->KEYWORD)
-  (string->symbol (string-append keyword-prefix string)))
+  (guarantee ustring? string 'STRING->KEYWORD)
+  (string->symbol (ustring-append keyword-prefix string)))
 
 (define (keyword? object)
   (and (interned-symbol? object)
-       (string-prefix? keyword-prefix (symbol-name object))))
+       (ustring-prefix? keyword-prefix (symbol->string object))))
 
 (define-guarantee keyword "keyword")
 
 (define (keyword->string keyword)
   (guarantee-keyword keyword 'KEYWORD->STRING)
-  (string-tail (symbol-name keyword) (string-length keyword-prefix)))
+  (ustring-tail (symbol->string keyword) (ustring-length keyword-prefix)))

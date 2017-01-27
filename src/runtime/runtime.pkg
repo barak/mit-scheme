@@ -1005,10 +1005,8 @@ USA.
 	  (vector-8b-maximum-length string-maximum-length)
 	  (vector-8b? string?)
 	  error:not-string
-	  error:not-xstring
 	  guarantee-string
 	  guarantee-string-index
-	  guarantee-xstring
 	  hexadecimal->vector-8b
 	  make-vector-8b
 	  vector-8b->hexadecimal
@@ -1068,6 +1066,8 @@ USA.
 	  string-hash-mod
 	  string-head
 	  string-head!
+	  string-joiner
+	  string-joiner*
 	  string-length
 	  string-lower-case?
 	  string-map
@@ -1089,6 +1089,7 @@ USA.
 	  string-search-backward
 	  string-search-forward
 	  string-set!
+	  string-splitter
 	  string-suffix-ci?
 	  string-suffix?
 	  string-tail
@@ -1139,43 +1140,25 @@ USA.
 	  substring-upper-case?
 	  substring<?
 	  substring=?
-	  substring?
-	  utf8-string
-	  xstring-fill!
-	  xstring-length
-	  xstring-move!
-	  xstring-ref
-	  xstring-set!
-	  xstring?
-	  xsubstring
-	  xsubstring-fill!
-	  xsubstring-find-next-char
-	  xsubstring-find-next-char-ci
-	  xsubstring-find-next-char-in-set
-	  xsubstring-find-previous-char
-	  xsubstring-find-previous-char-ci
-	  xsubstring-find-previous-char-in-set
-	  xsubstring-move!)
-  (export (runtime generic-i/o-port)
-	  %substring-move!)
+	  substring?)
   (initialization (initialize-package!)))
 
 (define-package (runtime ustring)
   (files "ustring")
   (parent (runtime))
   (export ()
-	  (make-ustring make-utf32-string)
 	  (usubstring ustring-copy)
 	  list->ustring
+	  make-ustring
 	  string-for-primitive		;export to (runtime) after 9.3
 	  ustring
 	  ustring*
 	  ustring->ascii
 	  ustring->list
-	  ustring->utf8-string		;temporary scaffolding
 	  ustring->vector
 	  ustring-any
 	  ustring-append
+	  ustring-append*
 	  ustring-ascii?
 	  ustring-capitalize
 	  ustring-ci<=?
@@ -1214,7 +1197,6 @@ USA.
 	  ustring>=?
 	  ustring>?
 	  ustring?
-	  utf8-string->ustring		;temporary scaffolding
 	  ;; vector->ustring
 	  )
   (export (runtime predicate-metadata)
@@ -1412,9 +1394,6 @@ USA.
 	  unicode-char->scalar-value
 	  unicode-char?
 	  unicode-scalar-value?)
-  (export (runtime unicode)
-	  legal-code-16?
-	  legal-code-32?)
   (initialization (initialize-package!)))
 
 (define-package (runtime character-set)
@@ -1422,10 +1401,22 @@ USA.
   (parent (runtime))
   (export ()
 	  ;; BEGIN deprecated bindings
+	  (8-bit-alphabet? 8-bit-char-set?)
+	  (alphabet char-set)
+	  (alphabet+ char-set-union)
+	  (alphabet- char-set-difference)
+	  (alphabet->string char-set->string)
+	  (alphabet-predicate char-set-predicate)
+	  (alphabet? char-set?)
 	  (error:not-8-bit-alphabet error:not-8-bit-char-set)
 	  (error:not-alphabet error:not-char-set)
 	  (guarantee-8-bit-alphabet guarantee-8-bit-char-set)
 	  (guarantee-alphabet guarantee-char-set)
+	  (string->alphabet string->char-set)
+	  alphabet->char-set
+	  alphabet->scalar-values
+	  char-in-alphabet?
+	  char-set->alphabet
 	  error:not-8-bit-char-set
 	  error:not-char-set
 	  error:not-well-formed-scalar-value-list
@@ -1434,30 +1425,17 @@ USA.
 	  guarantee-char-set
 	  guarantee-well-formed-scalar-value-list
 	  guarantee-well-formed-scalar-value-range
+	  scalar-values->alphabet
 	  ;; END deprecated bindings
-	  (8-bit-alphabet? 8-bit-char-set?)
-	  (<alphabet> <char-set>)
-	  (alphabet char-set)
-	  (alphabet+ char-set-union)
-	  (alphabet- char-set-difference)
-	  (alphabet->string char-set->string)
-	  (alphabet-predicate char-set-predicate)
-	  (alphabet? char-set?)
-	  (string->alphabet string->char-set)
 	  8-bit-char-set?
-	  <char-set>
-	  alphabet->char-set
-	  alphabet->scalar-values
 	  ascii-range->char-set
 	  char-alphabetic?
 	  char-alphanumeric?
 	  char-ctl?
 	  char-graphic?
-	  char-in-alphabet?
 	  char-lower-case?
 	  char-numeric?
 	  char-set
-	  char-set->alphabet
 	  char-set->scalar-values
 	  char-set-difference
 	  char-set-intersection
@@ -1494,7 +1472,6 @@ USA.
 	  char-wsp?
 	  chars->char-set
 	  scalar-value-in-char-set?
-	  scalar-values->alphabet
 	  scalar-values->char-set
 	  string->char-set
 	  well-formed-scalar-value-list?
@@ -4687,8 +4664,7 @@ USA.
 	  get-output-string
 	  get-output-string!
 	  open-input-string
-	  open-output-string)
-  (initialization (initialize-package!)))
+	  open-output-string))
 
 (define-package (runtime syntax)
   (files)
@@ -5661,7 +5637,7 @@ USA.
   (files "parser-buffer")
   (parent (runtime))
   (export ()
-	  ;; Deprecated:
+	  ;; BEGIN deprecated bindings
 	  (input-port->parser-buffer textual-input-port->parser-buffer)
 	  (match-parser-buffer-char-in-alphabet match-parser-buffer-char-in-set)
 	  (match-parser-buffer-char-in-alphabet-no-advance
@@ -5671,12 +5647,11 @@ USA.
 	  (match-parser-buffer-char-not-in-alphabet-no-advance
 	   match-parser-buffer-char-not-in-set-no-advance)
 	  (match-utf8-char-in-alphabet match-parser-buffer-char-in-set)
+	  ;; END deprecated bindings
 	  *match-string
 	  *match-symbol
-	  *match-utf8-string
 	  *parse-string
 	  *parse-symbol
-	  *parse-utf8-string
 	  call-with-parser-buffer-tail
 	  complete-*match
 	  complete-*parse
@@ -5716,34 +5691,7 @@ USA.
 	  read-parser-buffer-char
 	  set-parser-buffer-pointer!
 	  string->parser-buffer
-	  textual-input-port->parser-buffer
-	  utf8-string->parser-buffer))
-
-(define-package (runtime unicode)
-  (files "unicode")
-  (parent (runtime))
-  (export ()
-	  call-with-utf8-input-string
-	  call-with-utf8-output-string
-	  for-all-chars-in-string?
-	  make-wide-string
-	  open-utf8-input-string
-	  open-utf8-output-string
-	  string->utf8-string
-	  string->wide-string
-	  utf8-string->string
-	  utf8-string->wide-string
-	  utf8-string-length
-	  utf8-string-valid?
-	  utf8-string?
-	  wide-string
-	  wide-string->string
-	  wide-string-index?
-	  wide-string-length
-	  wide-string-ref
-	  wide-string-set!
-	  wide-string?
-	  wide-substring))
+	  textual-input-port->parser-buffer))
 
 (define-package (runtime uri)
   (files "url")

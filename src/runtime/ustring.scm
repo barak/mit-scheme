@@ -270,6 +270,12 @@ USA.
   (set-predicate<=! utf32-string? ustring?)
   (register-predicate! ->ustring-component? '->ustring-component))
 
+(define (make-ustring k #!optional char)
+  (guarantee index-fixnum? k 'make-ustring)
+  (if (fix:> k 0)
+      (make-utf32-string k char)
+      (make-legacy-string 0)))
+
 (define (ustring-length string)
   (cond ((legacy-string? string) (legacy-string-length string))
 	((utf32-string? string) (utf32-string-length string))
@@ -286,6 +292,13 @@ USA.
 	(else (error:not-a ustring? string 'ustring-set!))))
 
 (define (ustring-append . strings)
+  (%ustring-append* strings))
+
+(define (ustring-append* strings)
+  (guarantee list? strings 'ustring-append*)
+  (%ustring-append* strings))
+
+(define (%ustring-append* strings)
   (let ((string
 	 (do ((strings strings (cdr strings))
 	      (n 0 (fix:+ n (ustring-length (car strings))))
@@ -676,10 +689,10 @@ USA.
   (%ustring* objects 'ustring*))
 
 (define (%ustring* objects caller)
-  (apply ustring-append
-	 (map (lambda (object)
-		(->ustring object caller))
-	      objects)))
+  (%ustring-append*
+   (map (lambda (object)
+	  (->ustring object caller))
+	objects)))
 
 (define (->ustring object caller)
   (cond ((not object) "")
@@ -703,26 +716,3 @@ USA.
 (define (string-for-primitive string)
   (or (ustring->ascii string)
       (string->utf8 string)))
-
-;; temporary scaffolding
-(define (ustring->utf8-string string #!optional start end)
-  (let* ((caller 'ustring->utf8-string)
-	 (end (fix:end-index end (ustring-length string) caller))
-	 (start (fix:start-index start end caller)))
-    (cond ((legacy-string? string)
-	   (if (%legacy-string-ascii? string start end)
-	       (legacy-string-copy string start end)
-	       (%string->utf8-string string start end)))
-	  ((utf32-string? string)
-	   (if (%utf32-string-ascii? string start end)
-	       (%utf32-string->ascii string start end)
-	       (%string->utf8-string string start end)))
-	  (else
-	   (error:not-a ustring? string caller)))))
-
-(define (%string->utf8-string string start end)
-  (object-new-type (ucode-type string) (string->utf8 string start end)))
-
-;; temporary scaffolding
-(define (utf8-string->ustring string #!optional start end)
-  (utf8->string (legacy-string->bytevector string) start end))

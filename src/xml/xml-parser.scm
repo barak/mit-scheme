@@ -94,11 +94,6 @@ USA.
 		 'ANY)
 	     (guarantee-pi-handlers pi-handlers 'STRING->XML)))
 
-(define (utf8-string->xml string #!optional start end pi-handlers)
-  (parse-xml (utf8-string->parser-buffer string start end)
-	     'UTF-8
-	     (guarantee-pi-handlers pi-handlers 'UTF8-STRING->XML)))
-
 (define (guarantee-pi-handlers object caller)
   (if (default-object? object)
       '()
@@ -136,7 +131,7 @@ USA.
 	     (char->integer c))))
 	(prefix
 	 (lambda (n)
-	   (wide-string (integer->char n))))
+	   (ustring (integer->char n))))
 	(lose
 	 (lambda bytes
 	   (error "Illegal starting bytes:" bytes))))
@@ -679,7 +674,7 @@ USA.
 	     (let ((char (integer->char n)))
 	       (if (not (char-set-member? char-set:xml-char char))
 		   (perror p "Disallowed Unicode character" char))
-	       (call-with-utf8-output-string
+	       (call-with-output-string
 		 (lambda (port)
 		   (write-char char port))))))))
     (*parser
@@ -825,10 +820,10 @@ USA.
 ;;;; Normalization
 
 (define (normalize-attribute-value string)
-  (call-with-utf8-output-string
+  (call-with-output-string
     (lambda (port)
       (let normalize-string ((string string))
-	(let ((b (utf8-string->parser-buffer (normalize-line-endings string))))
+	(let ((b (string->parser-buffer (normalize-line-endings string))))
 	  (let loop ()
 	    (let* ((p (get-parser-buffer-pointer b))
 		   (char (read-parser-buffer-char b)))
@@ -859,7 +854,7 @@ USA.
 		 (loop))))))))))
 
 (define (trim-attribute-whitespace string)
-  (call-with-utf8-output-string
+  (call-with-output-string
    (lambda (port)
      (let ((string (string-trim string)))
        (let ((end (string-length string)))
@@ -988,7 +983,7 @@ USA.
   (let ((v
 	 (expand-entity-value name p
 	   (lambda ()
-	     (*parse-utf8-string parse-content string)))))
+	     (*parse-string parse-content string)))))
     (if (not v)
 	(perror p "Malformed entity reference" string))
     v))
@@ -1325,7 +1320,7 @@ USA.
 	     (string? (vector-ref v 0)))
 	(let ((v*
 	       (fluid-let ((*external-expansion?* #t))
-		 (*parse-utf8-string parser (vector-ref v 0)))))
+		 (*parse-string parser (vector-ref v 0)))))
 	  (if (not v*)
 	      (perror ptr
 		      (string-append "Malformed " description)

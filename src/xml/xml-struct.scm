@@ -164,34 +164,25 @@ USA.
 
 (define (xml-char-data? object)
   (or (unicode-char? object)
-      (and (or (wide-string? object)
-               (and (string? object)
-                    (utf8-string-valid? object)))
+      (and (ustring? object)
            (string-of-xml-chars? object))))
 
 (define (string-of-xml-chars? string)
-  (for-all-chars-in-string? (char-set-predicate char-set:xml-char)
-                            string
-                            0
-                            (string-length string)
-                            'UTF-8))
+  (ustring-every (char-set-predicate char-set:xml-char) string))
 
 (define (canonicalize-char-data object)
   (cond ((unicode-char? object)
-	 (call-with-utf8-output-string
+	 (call-with-output-string
 	   (lambda (port)
 	     (write-char object port))))
-	((wide-string? object)
-	 (string->utf8-string object))
-	((string? object)
-	 (cond ((not (utf8-string-valid? object))
-                (error:wrong-type-datum object "valid UTF-8 XML char data"))
-               ((not (string-of-xml-chars? object))
-                (error:wrong-type-datum object "well-formed XML char data"))
-               (else object)))
+	((ustring? object)
+	 (if (not (string-of-xml-chars? object))
+	     (error:wrong-type-datum object "well-formed XML char data"))
+	 object)
 	((uri? object)
 	 (uri->string object))
-	(else (error:wrong-type-datum object "an XML char data"))))
+	(else
+	 (error:wrong-type-datum object "an XML char data"))))
 
 (define-xml-type element
   (name xml-name?)
@@ -520,20 +511,19 @@ USA.
 
 (define (xml-comment . strings)
   (make-xml-comment
-   (let* ((s (apply string-append (map canonicalize-char-data strings)))
-	  (ws (utf8-string->wide-string s))
-	  (n (wide-string-length ws)))
+   (let* ((s (apply ustring-append (map canonicalize-char-data strings)))
+	  (n (ustring-length s)))
      (if (fix:> n 0)
-	 (string-append
-	  (if (char-whitespace? (wide-string-ref ws 0)) "" " ")
+	 (ustring-append
+	  (if (char-whitespace? (ustring-ref s 0)) "" " ")
 	  s
-	  (if (char-whitespace? (wide-string-ref ws (fix:- n 1))) "" " "))
+	  (if (char-whitespace? (ustring-ref s (fix:- n 1))) "" " "))
 	 " "))))
 
 (define (xml-stylesheet . items)
   (make-xml-processing-instructions
    'xml-stylesheet
-   (call-with-utf8-output-string
+   (call-with-output-string
      (lambda (port)
        (for-each (lambda (attr)
 		   (write-char #\space port)
