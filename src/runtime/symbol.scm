@@ -81,25 +81,30 @@ USA.
       (legacy-string-downcase string)
       (ustring-downcase string)))
 
-(define (ascii-string? string)
-  (and (legacy-string? string)
-       (let ((end (legacy-string-length string)))
-	 (let loop ((i 0))
-	   (if (fix:< i end)
-	       (and (fix:< (vector-8b-ref string i) #x80)
-		    (loop (fix:+ i 1)))
-	       #t)))))
-
 (define (symbol-name symbol)
   (if (not (symbol? symbol))
       (error:not-a symbol? symbol 'symbol-name))
-  (object-new-type (ucode-type string) (system-pair-car symbol)))
+  (let* ((bytes (system-pair-car symbol))
+	 (string (object-new-type (ucode-type string) bytes)))
+    (if (ascii-string? string)
+	;; Needed during cold load.
+	string
+	(utf8->string bytes))))
+
+(define (ascii-string? string)
+  (and ((ucode-primitive string?) string)
+       (let ((end ((ucode-primitive string-length) string)))
+	 (let loop ((i 0))
+	   (if (fix:< i end)
+	       (and (fix:< ((ucode-primitive vector-8b-ref) string i) #x80)
+		    (loop (fix:+ i 1)))
+	       #t)))))
 
 (define (symbol-hash symbol #!optional modulus)
-  (legacy-string-hash (symbol-name symbol) modulus))
+  (ustring-hash (symbol-name symbol) modulus))
 
 (define (symbol<? x y)
-  (legacy-string<? (symbol-name x) (symbol-name y)))
+  (ustring<? (symbol-name x) (symbol-name y)))
 
 (define (symbol>? x y)
-  (legacy-string<? (symbol-name y) (symbol-name x)))
+  (ustring<? (symbol-name y) (symbol-name x)))
