@@ -46,8 +46,8 @@ USA.
     (if scheme (guarantee-uri-scheme scheme 'MAKE-URI))
     (if authority (guarantee-uri-authority authority 'MAKE-URI))
     (guarantee-uri-path path 'MAKE-URI)
-    (if query (guarantee-utf8-string query 'MAKE-URI))
-    (if fragment (guarantee-utf8-string fragment 'MAKE-URI))
+    (if query (guarantee utf8-string? query 'MAKE-URI))
+    (if fragment (guarantee utf8-string? fragment 'MAKE-URI))
     (if (and authority (pair? path) (path-relative? path))
 	(error:bad-range-argument path 'MAKE-URI))
     (let* ((path (remove-dot-segments path))
@@ -184,9 +184,9 @@ USA.
 	    '()))))
 
 (define (uri-prefix prefix)
-  (guarantee-utf8-string prefix 'URI-PREFIX)
+  (guarantee utf8-string? prefix 'URI-PREFIX)
   (lambda (suffix)
-    (guarantee-utf8-string suffix 'URI-PREFIX)
+    (guarantee utf8-string? suffix 'URI-PREFIX)
     (string->absolute-uri (string-append prefix suffix))))
 
 (define (remove-dot-segments path)
@@ -318,7 +318,7 @@ USA.
 	  ((symbol? object)
 	   (do-string (symbol-name object)))
 	  ((wide-string? object)
-	   (let ((string (wide-string->utf8-string object)))
+	   (let ((string (string->utf8-string object)))
 	     (or (hash-table/get interned-uris string #f)
 		 (do-parse object))))
 	  (else

@@ -182,7 +182,7 @@ USA.
 	   (lambda (port)
 	     (write-char object port))))
 	((wide-string? object)
-	 (wide-string->utf8-string object))
+	 (string->utf8-string object))
 	((string? object)
 	 (cond ((not (utf8-string-valid? object))
                 (error:wrong-type-datum object "valid UTF-8 XML char data"))

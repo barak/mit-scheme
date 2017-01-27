@@ -183,14 +183,14 @@ USA.
   (%make-wide-string (list->vector chars)))
 
 (define (wide-string-length string)
-  (guarantee-wide-string string 'WIDE-STRING-LENGTH)
+  (guarantee wide-string? string 'WIDE-STRING-LENGTH)
   (%wide-string-length string))
 
 (define-integrable (%wide-string-length string)
   (vector-length (wide-string-contents string)))
 
 (define (wide-string-ref string index)
-  (guarantee-wide-string string 'WIDE-STRING-REF)
+  (guarantee wide-string? string 'WIDE-STRING-REF)
   (guarantee-wide-string-index index string 'WIDE-STRING-REF)
   (%wide-string-ref string index))
 
@@ -198,7 +198,7 @@ USA.
   (vector-ref (wide-string-contents string) index))
 
 (define (wide-string-set! string index char)
-  (guarantee-wide-string string 'WIDE-STRING-SET!)
+  (guarantee wide-string? string 'WIDE-STRING-SET!)
   (guarantee-wide-string-index index string 'WIDE-STRING-SET!)
   (guarantee-unicode-char char 'WIDE-STRING-SET!)
   (%wide-string-set! string index char))
@@ -240,7 +240,7 @@ USA.
       (guarantee-wide-substring/fail string start end caller)))
 
 (define (guarantee-wide-substring/fail string start end caller)
-  (guarantee-wide-string string caller)
+  (guarantee wide-string? string caller)
   (guarantee-limited-index end (%wide-string-length string) caller)
   (guarantee-limited-index start end caller))
 
@@ -543,8 +543,8 @@ USA.
   (fix:or (fix:lsh b1 8) b0))
 
 (define (combine-utf16-surrogates h l)
-  (guarantee-utf16-high-surrogate h 'combine-utf16-surrogates)
-  (guarantee-utf16-low-surrogate l 'combine-utf16-surrogates)
+  (guarantee utf16-high-surrogate? h 'combine-utf16-surrogates)
+  (guarantee utf16-low-surrogate? l 'combine-utf16-surrogates)
   (fix:+ (fix:+ (fix:lsh (fix:and h #x3FF) 10)
 		(fix:and l #x3FF))
 	 #x10000))

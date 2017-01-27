@@ -5725,106 +5725,14 @@ USA.
   (files "unicode")
   (parent (runtime))
   (export ()
-	  ;; BEGIN deprecated bindings
-	  error:not-utf16-be-string
-	  error:not-utf16-high-surrogate
-	  error:not-utf16-le-string
-	  error:not-utf16-low-surrogate
-	  error:not-utf16-string
-	  error:not-utf32-be-string
-	  error:not-utf32-le-string
-	  error:not-utf32-string
-	  error:not-utf8-string
-	  error:not-wide-string
-	  guarantee-utf16-be-string
-	  guarantee-utf16-high-surrogate
-	  guarantee-utf16-le-string
-	  guarantee-utf16-low-surrogate
-	  guarantee-utf16-string
-	  guarantee-utf32-be-string
-	  guarantee-utf32-le-string
-	  guarantee-utf32-string
-	  guarantee-utf8-string
-	  guarantee-wide-string
-	  ;; END deprecated bindings
-	  (wide-string->utf16-be-string string->utf16-be-string)
-	  (wide-string->utf16-le-string string->utf16-le-string)
-	  (wide-string->utf16-string string->utf16-string)
-	  (wide-string->utf32-be-string string->utf32-be-string)
-	  (wide-string->utf32-le-string string->utf32-le-string)
-	  (wide-string->utf32-string string->utf32-string)
-	  (wide-string->utf8-string string->utf8-string)
-	  <wide-string>
-	  call-with-utf16-be-input-string
-	  call-with-utf16-be-output-string
-	  call-with-utf16-input-string
-	  call-with-utf16-le-input-string
-	  call-with-utf16-le-output-string
-	  call-with-utf16-output-string
-	  call-with-utf32-be-input-string
-	  call-with-utf32-be-output-string
-	  call-with-utf32-input-string
-	  call-with-utf32-le-input-string
-	  call-with-utf32-le-output-string
-	  call-with-utf32-output-string
 	  call-with-utf8-input-string
 	  call-with-utf8-output-string
-	  combine-utf16-surrogates
 	  for-all-chars-in-string?
-	  for-any-char-in-string?
-	  guarantee-wide-string-index
-	  guarantee-wide-substring
 	  make-wide-string
-	  open-utf16-be-input-string
-	  open-utf16-be-output-string
-	  open-utf16-input-string
-	  open-utf16-le-input-string
-	  open-utf16-le-output-string
-	  open-utf16-output-string
-	  open-utf32-be-input-string
-	  open-utf32-be-output-string
-	  open-utf32-input-string
-	  open-utf32-le-input-string
-	  open-utf32-le-output-string
-	  open-utf32-output-string
 	  open-utf8-input-string
 	  open-utf8-output-string
-	  split-into-utf16-surrogates
-	  string->utf16-be-string
-	  string->utf16-le-string
-	  string->utf16-string
-	  string->utf32-be-string
-	  string->utf32-le-string
-	  string->utf32-string
-	  string->utf8-string
 	  string->utf8-string
 	  string->wide-string
-	  utf16-be-string->wide-string
-	  utf16-be-string-length
-	  utf16-be-string-valid?
-	  utf16-be-string?
-	  utf16-high-surrogate?
-	  utf16-le-string->wide-string
-	  utf16-le-string-length
-	  utf16-le-string-valid?
-	  utf16-le-string?
-	  utf16-low-surrogate?
-	  utf16-string->wide-string
-	  utf16-string-length
-	  utf16-string-valid?
-	  utf16-string?
-	  utf32-be-string->wide-string
-	  utf32-be-string-length
-	  utf32-be-string-valid?
-	  utf32-be-string?
-	  utf32-le-string->wide-string
-	  utf32-le-string-length
-	  utf32-le-string-valid?
-	  utf32-le-string?
-	  utf32-string->wide-string
-	  utf32-string-length
-	  utf32-string-valid?
-	  utf32-string?
 	  utf8-string->string
 	  utf8-string->wide-string
 	  utf8-string-length
@@ -5837,11 +5745,7 @@ USA.
 	  wide-string-ref
 	  wide-string-set!
 	  wide-string?
-	  wide-substring)
-  (export (runtime generic-i/o-port)
-	  wide-string-contents)
-  (export (runtime input-port)
-	  wide-string-contents))
+	  wide-substring))
 
 (define-package (runtime uri)
   (files "url")

@@ -56,7 +56,7 @@ USA.
       (let ((string (string->wide-string string start end)))
 	(make-parser-buffer string 0 (wide-string-length string) 0 0 #f #t 0))
       (begin
-	(guarantee-wide-string string 'STRING->PARSER-BUFFER)
+	(guarantee wide-string? string 'STRING->PARSER-BUFFER)
 	(let* ((end
 		(if (or (default-object? end) (not end))
 		    (wide-string-length string)
@@ -82,7 +82,7 @@ USA.
 	       (zero? (wide-string-length prefix))))
       (make-parser-buffer (make-wide-string min-length) 0 0 0 0 port #f 0)
       (begin
-	(guarantee-wide-string prefix 'textual-input-port->parser-buffer)
+	(guarantee wide-string? prefix 'textual-input-port->parser-buffer)
 	(let ((n (wide-string-length prefix)))
 	  (make-parser-buffer (%grow-buffer prefix n (max min-length n))
 			      0 n 0 0 port #f 0)))))
@@ -135,7 +135,7 @@ USA.
   (set-parser-buffer-line! buffer (parser-buffer-pointer-line p)))
 
 (define (get-parser-buffer-tail buffer p)
-  (call-with-parser-buffer-tail buffer p wide-string->utf8-string))
+  (call-with-parser-buffer-tail buffer p string->utf8-string))
 
 (define (call-with-parser-buffer-tail buffer p procedure)
   ;; P must be a buffer pointer previously returned by
