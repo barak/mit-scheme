@@ -549,7 +549,7 @@ USA.
 ;;;; Output
 
 (define (uri->symbol uri)
-  (utf8-string->symbol (uri->string uri)))
+  (string->symbol (uri->string uri)))
 
 (define (write-uri uri port)
   (write-string (uri->string uri) port))

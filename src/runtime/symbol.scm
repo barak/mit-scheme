@@ -44,125 +44,62 @@ USA.
 (define-guarantee interned-symbol "interned symbol")
 (define-guarantee uninterned-symbol "uninterned symbol")
 
-(define (string->uninterned-symbol string)
-  (make-uninterned-symbol (if (string? string)
-			      (or (ascii-string-copy string)
-				  (string->utf8-string string))
-			      (wide-string->utf8-string string))))
-
-(define (utf8-string->uninterned-symbol string)
-  (make-uninterned-symbol (if (utf8-string? string)
-			      (string-copy string)
-			      (wide-string->utf8-string string))))
-
-(define (make-uninterned-symbol string)
+(define (string->uninterned-symbol string #!optional start end)
   ((ucode-primitive system-pair-cons) (ucode-type uninterned-symbol)
-				      string
+				      (string->utf8 string start end)
 				      (make-unmapped-unbound-reference-trap)))
 
-(define (string->symbol string)
-  ((ucode-primitive string->symbol) (if (string? string)
-					(or (ascii-string-copy string)
-					    (string->utf8-string string))
-					(wide-string->utf8-string string))))
-
-(define (utf8-string->symbol string)
-  (if (utf8-string? string)
-      (or ((ucode-primitive find-symbol) string)
-	  ((ucode-primitive string->symbol) (string-copy string)))
-      ((ucode-primitive string->symbol) (wide-string->utf8-string string))))
-
-(define (substring->symbol string start end)
-  (guarantee-substring string start end 'SUBSTRING->SYMBOL)
-  ((ucode-primitive string->symbol) (string->utf8-string string start end)))
-
-(define (string-head->symbol string end)
-  (substring->symbol string 0 end))
-
-(define (string-tail->symbol string start)
-  (substring->symbol string start (string-length string)))
-
-(define (symbol . objects)
-  ((ucode-primitive string->symbol) (apply utf8-string objects)))
-
-(define (intern string)
-  ((ucode-primitive string->symbol)
-   (utf8-string-downcase
-    (if (string? string)
-	string
-	(wide-string->utf8-string string)))))
-
-(define (intern-soft string)
-  ((ucode-primitive find-symbol)
-   (utf8-string-downcase
-    (if (string? string)
-	string
-	(wide-string->utf8-string string)))))
-
-(define (utf8-string-downcase string)
-  (if (ascii-string? string)
-      ;; Needed during cold load.
-      (string-downcase string)
-      (call-with-utf8-input-string string
-	(lambda (input)
-	  (call-with-utf8-output-string
-	    (lambda (output)
-	      (let loop ()
-		(let ((c (read-char input)))
-		  (if (not (eof-object? c))
-		      (begin
-			(write-char (char-downcase c) output)
-			(loop)))))))))))
-
-(define (ascii-string? string)
-  (let ((end (string-length string)))
-    (let loop ((i 0))
-      (if (fix:< i end)
-	  (and (fix:< (vector-8b-ref string i) #x80)
-	       (loop (fix:+ i 1)))
-	  #t))))
-
-(define (symbol-name symbol)
-  (guarantee-symbol symbol 'SYMBOL-NAME)
-  (system-pair-car symbol))
-
-(define (symbol-hash symbol)
-  (string-hash (symbol-name symbol)))
-
-(define (symbol-hash-mod symbol modulus)
-  (string-hash-mod (symbol-name symbol) modulus))
-
-(define (%symbol<? x y)
-  (let ((sx (system-pair-car x))
-	(sy (system-pair-car y)))
-    (let ((lx (string-length sx))
-	  (ly (string-length sy)))
-      (let ((l (if (fix:< lx ly) lx ly)))
-	(let loop ((i 0))
-	  (cond ((fix:= i l)
-		 (fix:< lx ly))
-		((fix:= (vector-8b-ref sx i) (vector-8b-ref sy i))
-		 (loop (fix:+ i 1)))
-		(else
-		 (fix:< (vector-8b-ref sx i) (vector-8b-ref sy i)))))))))
-
-(define (symbol<? x y)
-  (guarantee-symbol x 'SYMBOL<?)
-  (guarantee-symbol y 'SYMBOL<?)
-  (%symbol<? x y))
-
-(define (symbol>? x y)
-  (guarantee-symbol x 'SYMBOL>?)
-  (guarantee-symbol y 'SYMBOL>?)
-  (%symbol<? y x))
-
-(define (symbol->utf8-string symbol)
-  (string-copy (symbol-name symbol)))
-
-(define (symbol->wide-string symbol)
-  (utf8-string->wide-string (symbol-name symbol)))
+(define (string->symbol string #!optional start end)
+  ((ucode-primitive string->symbol) (string->utf8 string start end)))
 
 (define (symbol->string symbol)
-  ;; `Gensyms' are constructed with this, so try the fast copy first.
-  (or (ascii-string-copy (symbol-name symbol))
-      (utf8-string->string (symbol-name symbol))))
+  (guarantee symbol? symbol 'symbol->string)
+  (utf8->string
+   (let ((name (system-pair-car symbol)))
+     (cond ((bytevector? name) name)
+	   ((legacy-string? name) (%legacy-string->bytevector name))
+	   (else (error "Illegal symbol name:" name))))))
+
+(define (string-head->symbol string end)
+  (string->symbol (ustring-copy string 0 end)))
+
+(define (string-tail->symbol string start)
+  (string->symbol (ustring-copy string start)))
+
+(define (symbol . objects)
+  (string->symbol (%ustring* objects 'symbol)))
+
+(define (intern string)
+  (string->symbol (cold-load-downcase string)))
+
+(define (intern-soft string)
+  ((ucode-primitive find-symbol) (string->utf8 (cold-load-downcase string))))
+
+(define (cold-load-downcase string)
+  (if (ascii-string? string)
+      ;; Needed during cold load.
+      (legacy-string-downcase string)
+      (ustring-downcase string)))
+
+(define (ascii-string? string)
+  (and (legacy-string? string)
+       (let ((end (legacy-string-length string)))
+	 (let loop ((i 0))
+	   (if (fix:< i end)
+	       (and (fix:< (vector-8b-ref string i) #x80)
+		    (loop (fix:+ i 1)))
+	       #t)))))
+
+(define (symbol-name symbol)
+  (if (not (symbol? symbol))
+      (error:not-a symbol? symbol 'symbol-name))
+  (object-new-type (ucode-type string) (system-pair-car symbol)))
+
+(define (symbol-hash symbol #!optional modulus)
+  (legacy-string-hash (symbol-name symbol) modulus))
+
+(define (symbol<? x y)
+  (legacy-string<? (symbol-name x) (symbol-name y)))
+
+(define (symbol>? x y)
+  (legacy-string<? (symbol-name y) (symbol-name x)))

@@ -82,7 +82,7 @@ USA.
       (require (xml-name=? (xml-element-name elt) '|methodCall|))
       (values (let ((s (content-string (named-child '|methodName| elt))))
 		(require (re-string-match "\\`[a-zA-Z0-9_.:/]+\\'" s))
-		(utf8-string->symbol s))
+		(string->symbol s))
 	      (let ((elt (%named-child 'params elt)))
 		(if elt
 		    (parse-params elt)
@@ -248,7 +248,7 @@ USA.
 	  (named-children 'value (single-named-child 'data elt))))
     ((struct)
      (map (lambda (elt)
-	    (cons (utf8-string->symbol
+	    (cons (string->symbol
 		   (content-string (named-child 'name elt)))
 		  (decode-value (named-child 'value elt))))
 	  (named-children 'member elt)))
@@ -291,7 +291,7 @@ USA.
 	   ((string? object)
 	    (encode-string object))
 	   ((symbol? object)
-	    (encode-string (symbol->utf8-string object)))
+	    (encode-string (symbol->string object)))
 	   ((decoded-time? object)
 	    (rpc-elt:date-time (decoded-time->xml-rpc-iso8601-string object)))
 	   ((and (pair? object)
@@ -302,7 +302,7 @@ USA.
 	    (rpc-elt:struct
 	     (map (lambda (item)
 		    (rpc-elt:member
-		     (rpc-elt:name (symbol->utf8-string (car item)))
+		     (rpc-elt:name (symbol->string (car item)))
 		     (encode-value (cdr item))))
 		  (cdr object))))
 	   ((list? object)

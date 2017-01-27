@@ -712,6 +712,7 @@ USA.
   (parent (runtime))
   (export ()
 	  ;; BEGIN deprecated bindings
+	  (substring->symbol string->symbol)
 	  (symbol-append symbol)
 	  error:not-interned-symbol
 	  error:not-symbol
@@ -727,20 +728,14 @@ USA.
 	  string->uninterned-symbol
 	  string-head->symbol
 	  string-tail->symbol
-	  substring->symbol
 	  symbol
 	  symbol->string
-	  symbol->utf8-string
-	  symbol->wide-string
 	  symbol-hash
-	  symbol-hash-mod
 	  symbol-name
 	  symbol<?
 	  symbol>?
 	  symbol?
-	  uninterned-symbol?
-	  utf8-string->symbol
-	  utf8-string->uninterned-symbol))
+	  uninterned-symbol?))
 
 (define-package (runtime microcode-data)
   (files "udata")
@@ -1220,7 +1215,9 @@ USA.
 	  ;; vector->ustring
 	  )
   (export (runtime predicate-metadata)
-	  register-ustring-predicates!))
+	  register-ustring-predicates!)
+  (export (runtime symbol)
+	  %ustring*))
 
 (define-package (runtime bytevector)
   (files "bytevector")
@@ -1263,7 +1260,9 @@ USA.
 	  utf32le->string
 	  utf8->string)
   (export (runtime predicate-metadata)
-	  register-mit-bytevector-predicates!))
+	  register-mit-bytevector-predicates!)
+  (export (runtime symbol)
+	  %legacy-string->bytevector))
 
 (define-package (runtime 1d-property)
   (files "prop1d")

@@ -66,7 +66,7 @@ USA.
 	   (lambda (n-fields field-indexes)
 	     (%make-condition-type
 	      (cond ((string? name) (string-copy name))
-		    ((symbol? name) (symbol->utf8-string name))
+		    ((symbol? name) (symbol->string name))
 		    ((not name) "(anonymous)")
 		    (else
 		     (error:wrong-type-argument name "condition-type name"

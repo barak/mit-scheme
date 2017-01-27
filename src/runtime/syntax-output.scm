@@ -91,7 +91,7 @@ USA.
 
 (define (output/letrec names values body)
   (let ((temps (map (lambda (name)
-		      (utf8-string->uninterned-symbol
+		      (string->uninterned-symbol
 		       (string-append (symbol-name (identifier->symbol name))
 				      "-value"))) names)))
     (output/let
@@ -426,7 +426,7 @@ USA.
     (let ((mapping-table (rename-database/mapping-table renames)))
       (or (hash-table/get mapping-table key #f)
 	  (let ((mapped-identifier
-		 (utf8-string->uninterned-symbol
+		 (string->uninterned-symbol
 		  (symbol-name (identifier->symbol identifier)))))
 	    (hash-table/put! mapping-table key mapped-identifier)
 	    (hash-table/put! (rename-database/unmapping-table renames)
@@ -445,7 +445,7 @@ USA.
       ;; with a nicer name.  The decorations on this name are just
       ;; that -- decorations, for human legibility.  It is the use of
       ;; an uninterned symbol that guarantees uniqueness.
-      (utf8-string->uninterned-symbol
+      (string->uninterned-symbol
        (string-append "."
 		      (symbol-name (identifier->symbol identifier))
 		      "."

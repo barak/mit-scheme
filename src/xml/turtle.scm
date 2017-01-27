@@ -202,7 +202,7 @@ USA.
 
 (define parse:language
   (*parser
-   (map utf8-string->symbol
+   (map string->symbol
 	(match (seq (+ (char-set char-set:turtle-lower))
 		    (* (seq "-"
 			    (+ (char-set char-set:turtle-lower+digit)))))))))
