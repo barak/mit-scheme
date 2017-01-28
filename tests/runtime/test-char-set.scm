@@ -83,7 +83,7 @@ USA.
 	   (map (lambda (value)
 		  (run-sub-test
 		   (lambda ()
-		     (assert-boolean-=
+		     (assert-boolean=
 		      (char-set-member? (scalar-values->char-set svl)
 					(integer->char value))
 		      (named-call 'SVL-MEMBER? svl-member? svl value)))

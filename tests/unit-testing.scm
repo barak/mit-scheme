@@ -225,35 +225,20 @@ USA.
 (define (failure-property key failure)
   (assq key (failure-alist failure)))
 
-(define (write-string-property tag p port)
-  (write-tag tag port)
-  (write-string (cdr p) port))
-
-(define (write-object-property tag p port)
-  (write-tag tag port)
-  (write (cdr p) port))
-
-(define (write-expr-property tag p port)
-  (write-tag tag port)
-  (parameterize* (list (cons param:unparse-abbreviate-quotations? #t))
-    (lambda ()
-      (write (cdr p) port))))
-
-(define (write-tag tag port)
-  (if tag
-      (begin
-	(write-string " " port)
-	(write-string tag port)
-	(write-string " " port))))
-
 (define (failure-feature feature failure)
-  (or (failure-property (symbol feature '-DESCRIPTION) failure)
-      (failure-property (symbol feature '-OBJECT) failure)))
-
-(define (write-feature tag p port)
-  (if (string-suffix-ci? "-DESCRIPTION" (symbol-name (car p)))
-      (write-string-property tag p port)
-      (write-object-property tag p port)))
+  (let ((variants
+	 (cons (cons feature 'PATTERN)
+	       (map (lambda (variant-type)
+		      (cons (symbol feature '- variant-type)
+			    variant-type))
+		    '(DESCRIPTION OBJECT)))))
+    ;; Return the first instance of any variant.
+    ;; The result is tagged by the variant type.
+    (find-map (lambda (p)
+		(let ((p* (assq (car p) variants)))
+		  (and p*
+		       (cons (cdr p*) (cdr p)))))
+	      (failure-alist failure))))
 
 (define (report-failure failure port)
   (cond ((failure-property 'CONDITION failure)
@@ -262,7 +247,7 @@ USA.
 		(if expr
 		    (begin
 		      (write-expr-property #f expr port)
-		      (write-string " " port))))
+		      (write-char #\space port))))
 	      (write-string "failed with error: " port)
 	      (write-condition-report (cdr p) port)))
 	((failure-feature 'RESULT failure)
@@ -280,6 +265,49 @@ USA.
 	      (write-string (cdr p) port)))
 	(else
 	 (error "Ill-formed failure:" failure))))
+
+(define (write-tag tag port)
+  (if tag
+      (begin
+	(write-char #\space port)
+	(display tag port))))
+
+(define (write-expr-property tag p port)
+  (write-tag tag port)
+  (write-char #\space port)
+  (parameterize* (list (cons param:unparse-abbreviate-quotations? #t))
+    (lambda ()
+      (write (cdr p) port))))
+
+(define (write-feature tag p port)
+  (write-tag tag port)
+  (receive (pattern objects) (decode-feature (car p) (cdr p))
+    (guarantee list? pattern)
+    (guarantee list? objects)
+    (if (not (= (count marker? pattern) (length objects)))
+	(error "Mismatch between pattern and objects:" pattern objects))
+    (let loop ((pattern pattern) (objects objects))
+      (if (pair? pattern)
+	  (begin
+	    (write-char #\space port)
+	    (if (marker? (car pattern))
+		(begin
+		  (write (car objects) port)
+		  (loop (cdr pattern) (cdr objects)))
+		(begin
+		  (display (car pattern) port)
+		  (loop (cdr pattern) objects))))))))
+
+(define (decode-feature variant-type value)
+  (case variant-type
+    ((PATTERN) (values (car value) (cdr value)))
+    ((DESCRIPTION) (values (list value) '()))
+    ((OBJECT) (values (list (marker)) (list value)))
+    (else (error "Unknown variant type:" variant-type))))
+
+(define-record-type <marker>
+    (marker)
+    marker?)
 
 ;;;; Assertions
 
@@ -367,55 +395,6 @@ USA.
 
 (define-for-tests assert-null
   (predicate-assertion null? "an empty list"))
-
-(define-for-tests (binary-assertion comparator)
-  (lambda (value expected . properties)
-    (if (not (comparator value expected))
-	(apply fail
-	       'RESULT-OBJECT value
-	       'EXPECTATION-OBJECT expected
-	       properties))))
-
-(define-for-tests assert-eq (binary-assertion eq?))
-(define-for-tests assert-eqv (binary-assertion eqv?))
-(define-for-tests assert-equal (binary-assertion equal?))
-
-(define-for-tests assert-= (binary-assertion =))
-(define-for-tests assert-!= (binary-assertion (lambda (v e) (not (= v e)))))
-(define-for-tests assert-< (binary-assertion <))
-(define-for-tests assert-<= (binary-assertion <=))
-(define-for-tests assert-> (binary-assertion >))
-(define-for-tests assert->= (binary-assertion >=))
-
-(define-for-tests assert-boolean-= (binary-assertion boolean=?))
-(define-for-tests assert-boolean-!=
-  (binary-assertion (lambda (x y) (not (boolean=? x y)))))
-
-(define-for-tests assert-memv
-  (binary-assertion (lambda (actual-value expected-list)
-		      (and (memv actual-value expected-list) #t))))
-
-(define-for-tests assert-member
-  (binary-assertion (lambda (actual-value expected-list)
-		      (and (member actual-value expected-list) #t))))
-
-(define-for-tests (assert-list= = value expected . properties)
-  (if (not (and (list? value)
-		(= (length value) (length expected))
-		(every = value expected)))
-      (apply fail
-	     'RESULT-OBJECT value
-	     'EXPECTATION-OBJECT expected
-	     'EQUALITY-PREDICATE =
-	     properties)))
-
-(define-for-tests (assert-lset= = value expected . properties)
-  (if (not (lset= = value expected))
-      (apply fail
-	     'RESULT-OBJECT value
-	     'EXPECTATION-OBJECT expected
-	     'EQUALITY-PREDICATE =
-	     properties)))
 
 (define-for-tests (assert-error thunk #!optional condition-types . properties)
   (call-with-current-continuation
@@ -452,3 +431,153 @@ USA.
 	  (warn "To avoid long run times, export FAST=y.")
 	  #f)
 	#t)))
+
+(define comparator?)
+(define comparator-metadata)
+(define set-comparator-metadata!)
+(let ((table (make-hashed-metadata-table)))
+  (set! comparator? (table 'has?))
+  (set! comparator-metadata (table 'get))
+  (set! set-comparator-metadata! (table 'put!))
+  unspecific)
+
+(define-for-tests (define-comparator comparator name relation)
+  (guarantee binary-procedure? comparator 'define-comparator)
+  (guarantee symbol? name 'define-comparator)
+  (guarantee string? relation 'define-comparator)
+  (set-comparator-metadata! comparator (cons name relation)))
+
+(define-for-tests (define-equality equality name)
+  (define-comparator equality name (string name " to")))
+
+(define (name-of comparator)
+  (car (comparator-metadata comparator)))
+
+(define (text-of comparator)
+  (cdr (comparator-metadata comparator)))
+
+(define-equality eq? 'eq?)
+(define-equality eqv? 'eqv?)
+(define-equality equal? 'equal?)
+(define-equality = '=)
+(define-comparator < '< "less than")
+(define-comparator <= '<= "less than or equal to")
+(define-comparator > '> "greater than")
+(define-comparator >= '>= "greater than or equal to")
+(define-equality boolean=? 'boolean=?)
+(define-equality char=? 'char=?)
+(define-equality string=? 'string=?)
+
+(define (binary-assertion negate? test pattern)
+  (let ((test (if negate? (negate-test test) test))
+	(pattern (expand-pattern negate? pattern)))
+    (lambda (value expected . properties)
+      (if (not (test value expected))
+	  (apply fail
+		 'RESULT-OBJECT value
+		 'EXPECTATION (list pattern expected)
+		 properties)))))
+
+(define (negate-test test)
+  (lambda (value expected)
+    (not (test value expected))))
+
+(define (expand-pattern negate? pattern)
+  (append-map (lambda (element)
+		(if (pattern-if? element)
+		    (if negate?
+			(pattern-if-negative element)
+			(pattern-if-positive element))
+		    (list element)))
+	      pattern))
+
+(define (if+ positive #!optional negative)
+  (pattern-if (list positive)
+	      (if (default-object? negative)
+		  '()
+		  (list negative))))
+
+(define (if- negative)
+  (pattern-if '() (list negative)))
+
+(define-record-type <pattern-if>
+    (pattern-if positive negative)
+    pattern-if?
+  (positive pattern-if-positive)
+  (negative pattern-if-negative))
+
+(define-for-tests (simple-binary-assertion comparator negate?)
+  (binary-assertion negate?
+		    comparator
+		    (list "an object" (if- "not")
+			  (text-of comparator) (marker))))
+
+(define-for-tests assert-eq (simple-binary-assertion eq? #f))
+(define-for-tests assert-eqv (simple-binary-assertion eqv? #f))
+(define-for-tests assert-equal (simple-binary-assertion equal? #f))
+(define-for-tests assert-!eq (simple-binary-assertion eq? #t))
+(define-for-tests assert-!eqv (simple-binary-assertion eqv? #t))
+(define-for-tests assert-!equal (simple-binary-assertion equal? #t))
+
+(define-for-tests assert-= (simple-binary-assertion = #f))
+(define-for-tests assert-!= (simple-binary-assertion = #t))
+(define-for-tests assert-< (simple-binary-assertion < #f))
+(define-for-tests assert-<= (simple-binary-assertion <= #f))
+(define-for-tests assert-> (simple-binary-assertion > #f))
+(define-for-tests assert->= (simple-binary-assertion >= #f))
+
+(define-for-tests assert-boolean= (simple-binary-assertion boolean=? #f))
+(define-for-tests assert-boolean!= (simple-binary-assertion boolean=? #t))
+(define-for-tests assert-char= (simple-binary-assertion char=? #f))
+(define-for-tests assert-char!= (simple-binary-assertion char=? #t))
+(define-for-tests assert-string= (simple-binary-assertion string=? #f))
+(define-for-tests assert-string!= (simple-binary-assertion string=? #t))
+
+(define-for-tests (member-assertion comparator negate?)
+  (binary-assertion negate?
+		    (lambda (value expected)
+		      (any (lambda (x) (comparator value x)) expected))
+		    (list "an object" (if- "not") "in"
+			  (marker)
+			  "compared using" (name-of comparator))))
+
+(define-for-tests assert-memq (member-assertion eq? #f))
+(define-for-tests assert-memv (member-assertion eqv? #f))
+(define-for-tests assert-member (member-assertion equal? #f))
+(define-for-tests assert-!memq (member-assertion eq? #t))
+(define-for-tests assert-!memv (member-assertion eqv? #t))
+(define-for-tests assert-!member (member-assertion equal? #t))
+
+(define-for-tests (assert-list= comparator . args)
+  (apply (list-assertion comparator #f) args))
+
+(define-for-tests (assert-list!= comparator . args)
+  (apply (list-assertion comparator #t) args))
+
+(define (list-assertion comparator negate?)
+  (binary-assertion negate?
+		    (lambda (value expected)
+		      (and (list? value)
+			   (= (length value) (length expected))
+			   (every comparator value expected)))
+		    (list "a list with"
+			  (if+ "the same elements as" "different elements from")
+			  (marker)
+			  "comparing elements with" (name-of comparator)
+			  "in the same order")))
+
+(define-for-tests (assert-lset= comparator . args)
+  (apply (lset=-assertion comparator #f) args))
+
+(define-for-tests (assert-lset!= comparator . args)
+  (apply (lset=-assertion comparator #t) args))
+
+(define (lset=-assertion comparator negate?)
+  (binary-assertion negate?
+		    (lambda (value expected)
+		      (lset= comparator value expected))
+		    (list "a list with"
+			  (if+ "the same elements as" "different elements from")
+			  (marker)
+			  "comparing elements with" (name-of comparator)
+			  "in any order")))
