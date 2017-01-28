@@ -1906,6 +1906,8 @@ USA.
 	  get-tag-subsets
 	  get-tag-supersets
 	  make-tag
+	  non-bottom-tag?
+	  non-top-tag?
 	  predicate->tag
 	  set-tag<=!
 	  tag->predicate

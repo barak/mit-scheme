@@ -99,9 +99,6 @@ USA.
 (define (false-tag<= tag1 tag2) tag1 tag2 #f)
 (define (true-tag<= tag1 tag2) tag1 tag2 #t)
 
-(define (non-top-tag? object) (not (top-tag? object)))
-(define (non-bottom-tag? object) (not (bottom-tag? object)))
-
 (define tag<=-cache)
 (define tag<=-overrides)
 (add-boot-init!

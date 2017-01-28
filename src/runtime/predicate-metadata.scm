@@ -207,9 +207,11 @@ USA.
 
 (define (top-tag) the-top-tag)
 (define (top-tag? object) (eqv? the-top-tag object))
+(define (non-top-tag? object) (not (top-tag? object)))
 
 (define (bottom-tag) the-bottom-tag)
 (define (bottom-tag? object) (eqv? the-bottom-tag object))
+(define (non-bottom-tag? object) (not (bottom-tag? object)))
 
 (define (any-object? object) object #t)
 (define (no-object? object) object #f)
