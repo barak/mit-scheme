@@ -58,11 +58,11 @@ USA.
 (define (predicate-name predicate)
   (tag-name (predicate->tag predicate 'predicate-name)))
 
-(define (predicate-element-constructor predicate)
-  (tag-element-constructor (predicate->tag predicate 'predicate-constructor)))
+(define (predicate-tagger predicate)
+  (tag-tagger (predicate->tag predicate 'predicate-tagger)))
 
-(define (predicate-element-accessor predicate)
-  (tag-element-accessor (predicate->tag predicate 'predicate-accessor)))
+(define (predicate-untagger predicate)
+  (tag-untagger (predicate->tag predicate 'predicate-untagger)))
 
 (define (predicate-tagging-strategy predicate)
   (tag-tagging-strategy (predicate->tag predicate 'predicate-tagging-strategy)))
@@ -112,12 +112,12 @@ USA.
   (if (not (default-object? description))
       (guarantee string? description caller))
   (tagging-strategy name datum-test
-    (lambda (predicate constructor accessor)
+    (lambda (predicate tagger untagger)
       (let ((tag
 	     (%make-tag name
 			predicate
-			constructor
-			accessor
+			tagger
+			untagger
 			(if (default-object? extra) #f extra)
 			(if (default-object? description) #f description)
 			tagging-strategy
@@ -132,13 +132,13 @@ USA.
            (every tag-name? object))))
 
 (define-record-type <tag>
-    (%make-tag name predicate constructor accessor extra description
+    (%make-tag name predicate tagger untagger extra description
 	       tagging-strategy subsets supersets)
     tag?
   (name tag-name)
   (predicate tag->predicate)
-  (constructor tag-element-constructor)
-  (accessor tag-element-accessor)
+  (tagger tag-tagger)
+  (untagger tag-untagger)
   (extra tag-extra)
   (description %tag-description)
   (tagging-strategy tag-tagging-strategy)

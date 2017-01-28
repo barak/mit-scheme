@@ -78,17 +78,18 @@ USA.
 ;;;; Tagging strategies
 
 (define (predicate-tagging-strategy:never name predicate make-tag)
+  (declare (ignore name))
 
-  (define (constructor object #!optional constructor-name)
-    (guarantee predicate object constructor-name)
+  (define (tagger object #!optional tagger-name)
+    (guarantee predicate object tagger-name)
     object)
 
-  (define (accessor object #!optional accessor-name)
-    (guarantee predicate object accessor-name)
+  (define (untagger object #!optional untagger-name)
+    (guarantee predicate object untagger-name)
     object)
 
   (define tag
-    (make-tag predicate constructor accessor))
+    (make-tag predicate tagger untagger))
 
   tag)
 
@@ -99,18 +100,18 @@ USA.
          (tag<= (tagged-object-tag object) tag)
          (datum-test (tagged-object-datum object))))
 
-  (define (constructor datum #!optional constructor-name)
+  (define (tagger datum #!optional tagger-name)
     (if (not (datum-test datum))
 	(error:wrong-type-argument datum (string "datum for " name)
-				   constructor-name))
+				   tagger-name))
     (make-tagged-object tag datum))
 
-  (define (accessor object #!optional accessor-name)
-    (guarantee predicate object accessor-name)
-    object)
+  (define (untagger object #!optional untagger-name)
+    (guarantee predicate object untagger-name)
+    (tagged-object-datum object))
 
   (define tag
-    (make-tag predicate constructor tagged-object-datum))
+    (make-tag predicate tagger untagger))
 
   tag)
 
@@ -125,21 +126,21 @@ USA.
 	 (tag<= (tagged-object-tag object) tag)
 	 (datum-test (tagged-object-datum object))))
 
-  (define (constructor datum #!optional constructor-name)
+  (define (tagger datum #!optional tagger-name)
     (if (not (datum-test datum))
 	(error:wrong-type-argument datum (string "datum for " name)
-				   constructor-name))
+				   tagger-name))
     (if (tag<= (object->tag datum) tag)
         datum
         (make-tagged-object tag datum)))
 
-  (define (accessor object #!optional accessor-name)
+  (define (untagger object #!optional untagger-name)
     (cond ((tagged-object-test object) (tagged-object-datum object))
 	  ((datum-test object) object)
-	  (else (error:not-a predicate object accessor-name))))
+	  (else (error:not-a predicate object untagger-name))))
 
   (define tag
-    (make-tag predicate constructor accessor))
+    (make-tag predicate tagger untagger))
 
   tag)
 

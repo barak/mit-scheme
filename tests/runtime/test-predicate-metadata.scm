@@ -51,21 +51,21 @@ USA.
     (assert-equal (tag-name tag) name)
     (assert-equal (predicate-description predicate) (tag-description tag))))
 
-(define-test 'simple-predicate-constructor
+(define-test 'simple-predicate-tagging
   (lambda ()
-    (test-element-construction number? '(41) '(foo))
-    (test-element-construction boolean? '(#t) '(foo))
-    (test-element-construction string? '("41") '(foo))))
+    (test-tagging number? '(41) '(foo))
+    (test-tagging boolean? '(#t) '(foo))
+    (test-tagging string? '("41") '(foo))))
 
-(define (test-element-construction predicate data non-data)
-  (let ((constructor (predicate-element-constructor predicate))
-	(accessor (predicate-element-accessor predicate))
+(define (test-tagging predicate data non-data)
+  (let ((tagger (predicate-tagger predicate))
+	(untagger (predicate-untagger predicate))
 	(tagging-strategy (predicate-tagging-strategy predicate)))
     (for-each
      (lambda (datum)
-       (let ((object (constructor datum)))
+       (let ((object (tagger datum)))
 	 (assert-true (predicate object))
-	 (assert-eq datum (accessor object))
+	 (assert-eq datum (untagger object))
 	 (cond ((eqv? tagging-strategy predicate-tagging-strategy:never)
 		(assert-eq datum object))
 	       ((eqv? tagging-strategy predicate-tagging-strategy:always)
@@ -76,5 +76,5 @@ USA.
 		    (assert-not-eq datum object))))))
      data)
     (for-each (lambda (non-datum)
-		(assert-type-error (lambda () (constructor non-datum))))
+		(assert-type-error (lambda () (tagger non-datum))))
 	      non-data)))

@@ -1890,10 +1890,10 @@ USA.
 	  guarantee-list-of
 	  no-object?
 	  predicate-description
-	  predicate-element-accessor
-	  predicate-element-constructor
 	  predicate-name
+	  predicate-tagger
 	  predicate-tagging-strategy
+	  predicate-untagger
 	  predicate?
 	  register-predicate!
 	  set-predicate<=!
@@ -1910,11 +1910,11 @@ USA.
 	  set-tag<=!
 	  tag->predicate
 	  tag-description
-	  tag-element-accessor
-	  tag-element-constructor
 	  tag-extra
 	  tag-name
+	  tag-tagger
 	  tag-tagging-strategy
+	  tag-untagger
 	  tag?
 	  top-tag
 	  top-tag?))
