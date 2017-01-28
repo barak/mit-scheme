@@ -35,29 +35,27 @@
 # This script requires bash; don't try it with other shells.
 
 set -e
+shopt -s extglob
 
 if ! [[ -d .git && -d src && -d etc ]]; then
     echo "This doesn't appear to be an MIT/GNU Scheme top-level directory." >&2
     exit 1
 fi
 
-MAX_STAGE=3
-if (( ${#} > 0 )); then
-    case ${1} in
-        -1)
-            MAX_STAGE=1
-            shift
-            ;;
-        -2)
-            MAX_STAGE=2
-            shift
-            ;;
-        -3)
-            MAX_STAGE=3
-            shift
-            ;;
-    esac
+if [[ ${1} = -n ]]; then
+    declare -r NORUN=t
+    shift
+else
+    declare -r NORUN=
 fi
+
+if [[ ${1} =~ -?([[:digit:]]+) ]]; then
+    declare -ri MAX_STAGE=${BASH_REMATCH[1]}
+    shift
+else
+    declare -ri MAX_STAGE=3
+fi
+[[ -n ${NORUN} ]] && echo "MAX_STAGE =" "${MAX_STAGE}"
 
 CONFIG_ARGS=("${@}")
 
@@ -66,21 +64,6 @@ if which cpx > /dev/null; then
     : ${COPY:="cpx -sq"}
 fi
 
-case $(uname -s) in
-    Darwin)
-	: ${STAGE0:=macosx}
-	: ${COPY:="cp -pR"}
-	;;
-    Linux)
-	: ${STAGE0:=linux}
-	: ${COPY:="cp -a"}
-	;;
-    *)
-	echo "Unknown system type: $(uname -s)" >&2
-	exit 1
-	;;
-esac
-
 run_stage ()
 {
     local N=${1}
@@ -88,6 +71,9 @@ run_stage ()
 
     echo "**************** ${STAGE} ****************"
     find_stage stage$((N-1))
+    echo "MIT_SCHEME_EXE =" "${MIT_SCHEME_EXE}"
+    echo "MITSCHEME_LIBRARY_PATH =" "${MITSCHEME_LIBRARY_PATH}"
+    [[ -n ${NORUN} ]] && return 0
     rm -rf ${STAGE}
     ${COPY} src ${STAGE}
     (set -e; cd ${STAGE}; ./Setup.sh && ./configure "${CONFIG_ARGS[@]}" && make)
@@ -99,11 +85,15 @@ run_stage ()
 
 find_stage ()
 {
-    find_build_stage "${1}" && return 0
     if [[ ${1} == stage0 ]]; then
-	find_dist_stage $(pwd)/"${1}" && return 0
+        if [[ -n ${STAGE0} ]]; then
+            find_build_stage "${STAGE0}" && return 0
+        fi
+        find_build_stage stage0 && return 0
+	find_dist_stage $(pwd)/stage0 && return 0
 	find_dist_stage /usr/local && return 0
-	find_build_stage "${STAGE0}" && return 0
+    else
+        find_build_stage "${1}" && return 0
     fi
     echo "Unable to find ${1} executable" >&2
     exit 1
@@ -138,7 +128,49 @@ find_dist_stage ()
     fi
 }
 
+find_stage0_default ()
+{
+    local root
+    local suffix
+    local candidate
+    for root in "${@}"; do
+        for suffix in "" -64 64 -32 32; do
+            candidate=${root}${suffix}
+            if [[ -d ${candidate} ]]; then
+                echo "${candidate}"
+                return
+            fi
+        done
+    done
+    for candidate in svm1 svm; do
+        if [[ -d ${candidate} ]]; then
+            echo "${candidate}"
+            return
+        fi
+    done
+}
+
+case $(uname -s) in
+    Linux)
+	: ${COPY:="cp -a"}
+        if [[ -z ${STAGE0} ]]; then
+            STAGE0=$(find_stage0_default gnu-linux linux debian ubuntu)
+        fi
+	;;
+    Darwin)
+	: ${COPY:="cp -pR"}
+        if [[ -z ${STAGE0} ]]; then
+            STAGE0=$(find_stage0_default macos macosx darwin)
+        fi
+	;;
+    *)
+	echo "Unknown system type: $(uname -s)" >&2
+	exit 1
+	;;
+esac
+
 rm -rf stage[123]
-run_stage 1
-(( ${MAX_STAGE} >= 2 )) && run_stage 2
-(( ${MAX_STAGE} >= 3 )) && run_stage 3
+declare -i stage_number
+for (( stage_number=1 ; stage_number <= MAX_STAGE ; stage_number++ )); do
+    run_stage ${stage_number}
+done
