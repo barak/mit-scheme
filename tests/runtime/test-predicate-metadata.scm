@@ -69,11 +69,11 @@ USA.
 	 (cond ((eqv? tagging-strategy predicate-tagging-strategy:never)
 		(assert-eq datum object))
 	       ((eqv? tagging-strategy predicate-tagging-strategy:always)
-		(assert-not-eq datum object))
+		(assert-!eq datum object))
 	       (else
 		(if (predicate<= (object->predicate datum) predicate)
 		    (assert-eq datum object)
-		    (assert-not-eq datum object))))))
+		    (assert-!eq datum object))))))
      data)
     (for-each (lambda (non-datum)
 		(assert-type-error (lambda () (tagger non-datum))))
