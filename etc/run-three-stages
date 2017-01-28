@@ -46,18 +46,21 @@ if [[ ${1} = -n ]]; then
     declare -r NORUN=t
     shift
 else
-    declare -r NORUN=
+    declare -r NORUN=nil
 fi
 
-if [[ ${1} =~ -?([[:digit:]]+) ]]; then
+if [[ ${1} =~ ^-?([[:digit:]]+)$ ]]; then
     declare -ri MAX_STAGE=${BASH_REMATCH[1]}
     shift
 else
     declare -ri MAX_STAGE=3
 fi
-[[ -n ${NORUN} ]] && echo "MAX_STAGE =" "${MAX_STAGE}"
 
 CONFIG_ARGS=("${@}")
+
+echo "NORUN = " "${NORUN}"
+echo "MAX_STAGE =" "${MAX_STAGE}"
+echo "CONFIG_ARGS =" "${CONFIG_ARGS[@]}"
 
 # Hack for cph
 if which cpx > /dev/null; then
@@ -73,7 +76,7 @@ run_stage ()
     find_stage stage$((N-1))
     echo "MIT_SCHEME_EXE =" "${MIT_SCHEME_EXE}"
     echo "MITSCHEME_LIBRARY_PATH =" "${MITSCHEME_LIBRARY_PATH}"
-    [[ -n ${NORUN} ]] && return 0
+    [[ ${NORUN} = t ]] && return 0
     rm -rf ${STAGE}
     ${COPY} src ${STAGE}
     (set -e; cd ${STAGE}; ./Setup.sh && ./configure "${CONFIG_ARGS[@]}" && make)
