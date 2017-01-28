@@ -192,32 +192,10 @@ USA.
 
 (define event:predicate-metadata (make-event-distributor))
 
-(define the-top-tag)
-(define the-bottom-tag)
 (add-boot-init!
  (lambda ()
    (register-predicate! predicate? 'predicate)
    (register-predicate! tag-name? 'tag-name)
-   (register-predicate! any-object? '(conjoin) 'description "any object")
-   (register-predicate! no-object? '(disjoin) 'description "no object")
-
-   (set! the-top-tag (predicate->tag any-object?))
-   (set! the-bottom-tag (predicate->tag no-object?))
-   unspecific))
-
-(define (top-tag) the-top-tag)
-(define (top-tag? object) (eqv? the-top-tag object))
-(define (non-top-tag? object) (not (top-tag? object)))
-
-(define (bottom-tag) the-bottom-tag)
-(define (bottom-tag? object) (eqv? the-bottom-tag object))
-(define (non-bottom-tag? object) (not (bottom-tag? object)))
-
-(define (any-object? object) object #t)
-(define (no-object? object) object #f)
-
-(add-boot-init!
- (lambda ()
    (register-predicate! %record? '%record)
    (register-predicate! record? 'record '<= %record?)
    (cleanup-boot-time-record-predicates!)))

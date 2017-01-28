@@ -1883,12 +1883,10 @@ USA.
   (files "predicate-metadata")
   (parent (runtime))
   (export ()
-	  any-object?
 	  error:not-a
 	  error:not-a-list-of
 	  guarantee
 	  guarantee-list-of
-	  no-object?
 	  predicate-description
 	  predicate-name
 	  predicate-tagger
@@ -1899,15 +1897,11 @@ USA.
 	  set-predicate<=!
 	  unregister-predicate!)
   (export (runtime)
-	  bottom-tag
-	  bottom-tag?
 	  delete-tag!
 	  event:predicate-metadata
 	  get-tag-subsets
 	  get-tag-supersets
 	  make-tag
-	  non-bottom-tag?
-	  non-top-tag?
 	  predicate->tag
 	  set-tag<=!
 	  tag->predicate
@@ -1917,9 +1911,7 @@ USA.
 	  tag-tagger
 	  tag-tagging-strategy
 	  tag-untagger
-	  tag?
-	  top-tag
-	  top-tag?))
+	  tag?))
 
 (define-package (runtime predicate-lattice)
   (files "predicate-lattice")
@@ -1928,18 +1920,25 @@ USA.
 	  predicate<=
 	  predicate>=)
   (export (runtime)
+	  bottom-tag
 	  define-tag<=
+	  tag-is-bottom?
+	  tag-is-top?
 	  tag<=
 	  tag=
-	  tag>=))
+	  tag>=
+	  top-tag)
+  (export (runtime compound-predicate)
+	  the-bottom-tag
+	  the-top-tag))
 
 (define-package (runtime compound-predicate)
   (files "compound-predicate")
   (parent (runtime))
   (export ()
+	  any-object?
 	  compound-predicate-operands
 	  compound-predicate-operator
-	  compound-predicate-predicate
 	  compound-predicate?
 	  conjoin
 	  conjoin*
@@ -1947,7 +1946,12 @@ USA.
 	  disjoin*
 	  is-list-of
 	  is-non-empty-list-of
-	  is-pair-of))
+	  is-pair-of
+	  no-object?)
+  (export (runtime)
+	  compound-tag-operands
+	  compound-tag-operator
+	  tag-is-compound?))
 
 (define-package (runtime parametric-predicate)
   (files "parametric-predicate")
@@ -1968,7 +1972,11 @@ USA.
           predicate-template-parameter-names
           predicate-template-pattern
           predicate-template-predicate
-          predicate-template?))
+          predicate-template?)
+  (export (runtime)
+	  parametric-tag-bindings
+	  parametric-tag-template
+	  tag-is-parametric?))
 
 (define-package (runtime predicate-tagging)
   (files "predicate-tagging")

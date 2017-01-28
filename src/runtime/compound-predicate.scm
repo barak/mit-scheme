@@ -36,32 +36,14 @@ USA.
 	    operator
             (make-compound-tag-extra operator operands)))
 
-(define (compound-tag? object)
-  (and (tag? object)
-       (tag-is-compound? object)))
-
-(add-boot-init!
- (lambda ()
-   (register-predicate! compound-tag? 'compound-tag '<= tag?)))
-
 (define (tag-is-compound? tag)
-  (or (compound-tag-extra? (tag-extra tag))
-      (top-tag? tag)
-      (bottom-tag? tag)))
+  (compound-tag-extra? (tag-extra tag)))
 
 (define (compound-tag-operator tag)
-  (cond ((compound-tag-extra? (tag-extra tag))
-         (compound-tag-extra-operator (tag-extra tag)))
-        ((top-tag? tag) 'conjoin)
-        ((bottom-tag? tag) 'disjoin)
-        (else (error:not-a compound-tag? tag 'compound-tag-operator))))
+  (compound-tag-extra-operator (tag-extra tag)))
 
 (define (compound-tag-operands tag)
-  (cond ((compound-tag-extra? (tag-extra tag))
-         (compound-tag-extra-operands (tag-extra tag)))
-        ((top-tag? tag) '())
-        ((bottom-tag? tag) '())
-        (else (error:not-a compound-tag? tag 'compound-tag-operands))))
+  (compound-tag-extra-operands (tag-extra tag)))
 
 (define-record-type <compound-tag-extra>
     (make-compound-tag-extra operator operands)
@@ -69,6 +51,29 @@ USA.
   (operator compound-tag-extra-operator)
   (operands compound-tag-extra-operands))
 
+(define (tag-is-disjoin? object)
+  (and (tag-is-compound? object)
+       (eq? 'disjoin (compound-tag-operator object))))
+
+(define (tag-is-conjoin? object)
+  (and (tag-is-compound? object)
+       (eq? 'conjoin (compound-tag-operator object))))
+
+(add-boot-init!
+ (lambda ()
+
+   (define-tag<= tag? tag-is-disjoin?
+     (lambda (tag1 tag2)
+       (any (lambda (component2)
+	      (tag<= tag1 component2))
+	    (compound-tag-operands tag2))))
+
+   (define-tag<= tag-is-conjoin? tag?
+     (lambda (tag1 tag2)
+       (any (lambda (component1)
+	      (tag<= component1 tag2))
+	    (compound-tag-operands tag1))))))
+
 (define (compound-predicate? object)
   (and (predicate? object)
        (tag-is-compound? (predicate->tag object))))
@@ -84,180 +89,127 @@ USA.
 (define (compound-predicate-operands predicate)
   (map tag->predicate (compound-tag-operands (predicate->tag predicate))))
 
-(define (compound-predicate-predicate operator)
-  (define (predicate object)
-    (and (predicate? object)
-         (let ((tag (predicate->tag object)))
-           (and (tag-is-compound? tag)
-                (eq? operator (compound-tag-operator tag))))))
-  (register-predicate! predicate `(compound-predicate-predicate ,operator)
-                       '<= compound-predicate?)
-  predicate)
-
 (define (disjoin . predicates)
   (disjoin* predicates))
 
-(define (unmemoized:disjoin* predicates)
-  (lambda (object)
-    (any (lambda (predicate)
-           (predicate object))
-         predicates)))
+(define (disjoin* predicates)
+  (make-predicate (lambda (object)
+		    (any (lambda (predicate)
+			   (predicate object))
+			 predicates))
+		  'disjoin
+		  predicates))
 
 (define (conjoin . predicates)
   (conjoin* predicates))
 
-(define (unmemoized:conjoin* predicates)
-  (lambda (object)
-    (every (lambda (predicate)
-             (predicate object))
-           predicates)))
+(define (conjoin* predicates)
+  (make-predicate (lambda (object)
+		    (every (lambda (predicate)
+			     (predicate object))
+			   predicates))
+		  'conjoin
+		  predicates))
 
-(define (unmemoized:is-list-of predicate)
-  (lambda (object)
-    (and (list? object)
-         (every predicate object))))
+(define (is-list-of predicate)
+  (make-predicate (lambda (object)
+		    (and (list? object)
+			 (every predicate object)))
+		  'is-list-of
+		  (list predicate)))
 
-(define (unmemoized:is-non-empty-list-of predicate)
-  (lambda (object)
-    (and (non-empty-list? object)
-         (every predicate object))))
+(define (is-non-empty-list-of predicate)
+  (make-predicate (lambda (object)
+		    (and (non-empty-list? object)
+			 (every predicate object)))
+		  'is-non-empty-list-of
+		  (list predicate)))
 
-(define (unmemoized:is-pair-of car-predicate cdr-predicate)
-  (lambda (object)
-    (and (pair? object)
-         (car-predicate (car object))
-         (cdr-predicate (cdr object)))))
-
-(define (memoize-uniform-nary operator nullary procedure)
-  (let ((memoizer
-         (lset-memoizer eqv?
-                        (lambda (predicates) predicates)
-                        (lambda (predicates)
-                          (make-predicate (lambda () (procedure predicates))
-                                          operator
-                                          predicates)))))
-    (lambda (predicates)
-      (guarantee list? predicates)
-      (let ((predicates (delete-duplicates predicates eqv?)))
-        (cond ((null? predicates)
-               nullary)
-              ((and (pair? predicates) (null? (cdr predicates)))
-               (car predicates))
-              (else
-               (memoizer predicates)))))))
+(define (is-pair-of car-predicate cdr-predicate)
+  (make-predicate (lambda (object)
+		    (and (pair? object)
+			 (car-predicate (car object))
+			 (cdr-predicate (cdr object))))
+		  'is-pair-of
+		  (list car-predicate cdr-predicate)))
 
-(define (memoize-unary operator procedure)
-  (weak-eqv-memoizer (lambda (p1) p1)
-                     (lambda (p1)
-                       (make-predicate (lambda () (procedure p1))
-                                       operator
-                                       (list p1)))))
-
-(define (memoize-binary operator procedure)
-  (list-memoizer eqv?
-                 (lambda (p1 p2) (list p1 p2))
-                 (lambda (p1 p2)
-                   (make-predicate (lambda () (procedure p1 p2))
-                                   operator
-                                   (list p1 p2)))))
-
-(define (make-predicate get-predicate operator operands)
+(define (make-predicate datum-test operator operands)
   (tag->predicate
-   (let ((builder (get-compound-operator-builder operator #f))
-         (operand-tags (map predicate->tag operands)))
-     (if (not builder)
-         (error:not-a compound-operator? operator 'make-predicate))
-     (builder (lambda ()
-                (make-compound-tag (get-predicate) operator operand-tags))
-              operator
-              operand-tags))))
+   ((compound-operator-builder operator)
+    datum-test
+    operator
+    (map predicate->tag operands))))
 
 (define compound-operator?)
-(define get-compound-operator-builder)
-(define set-compound-operator-builder!)
+(define compound-operator-builder)
+(define define-compound-operator)
 (add-boot-init!
  (lambda ()
    (let ((table (make-hashed-metadata-table)))
      (set! compound-operator? (table 'has?))
-     (set! get-compound-operator-builder (table 'get-if-available))
-     (set! set-compound-operator-builder! (table 'put!))
+     (set! compound-operator-builder (table 'get))
+     (set! define-compound-operator (table 'put!))
      unspecific)
    (register-predicate! compound-operator? 'compound-predicate '<= symbol?)))
 
-(define (define-compound-operator operator builder)
-  (guarantee symbol? operator 'define-compound-operator)
-  (set-compound-operator-builder! operator builder)
-  operator)
+(add-boot-init!
+ (lambda ()
+
+   (define (make-listish-memoizer)
+     (simple-list-memoizer eq?
+       (lambda (datum-test operator tags)
+	 (declare (ignore datum-test operator))
+	 tags)
+       make-compound-tag))
+
+   (define-compound-operator 'is-list-of
+     (make-listish-memoizer))
+
+   (define-compound-operator 'is-non-empty-list-of
+     (make-listish-memoizer))
+
+   (define-compound-operator 'is-pair-of
+     (make-listish-memoizer))))
 
 (add-boot-init!
  (lambda ()
 
-   (define (builder:uniform-nary builder)
-     (lambda (get-tag operator operand-tags)
-       (let ((operand-tags
-	      (append-map (lambda (tag)
-			    (if (and (tag-is-compound? tag)
-				     (eq? operator (compound-tag-operator tag)))
-				(compound-tag-operands tag)
-				(list tag)))
-			  operand-tags)))
-	 (if (and (pair? operand-tags) (null? (cdr operand-tags)))
-	     (car operand-tags)
-	     (builder get-tag operand-tags)))))
+   (define (make-joinish-memoizer tag-is-limit?)
+     (let ((memoizer
+	    (simple-lset-memoizer eq?
+	      (lambda (datum-test operator tags)
+		(declare (ignore datum-test operator))
+		tags)
+	      make-compound-tag)))
+       (lambda (datum-test operator tags)
+	 (let ((tags
+		(delete-duplicates
+		 (append-map
+		  (lambda (tag)
+		    (if (and (tag-is-compound? tag)
+			     (eq? operator
+				  (compound-tag-operator tag)))
+			(compound-tag-operands tag)
+			(list tag)))
+		  tags)
+		 eq?)))
+	   (if (and (pair? tags) (null? (cdr tags)))
+	       (car tags)
+	       (or (find tag-is-limit? tags)
+		   (memoizer datum-test operator tags)))))))
 
    (define-compound-operator 'disjoin
-     (builder:uniform-nary
-      (lambda (get-tag operand-tags)
-	(if (any top-tag? operand-tags)
-	    (top-tag)
-	    (let ((tag (get-tag)))
-	      (for-each (lambda (tag*)
-			  (set-tag<=! tag* tag))
-			operand-tags)
-	      tag)))))
+     (make-joinish-memoizer tag-is-top?))
 
    (define-compound-operator 'conjoin
-     (builder:uniform-nary
-      (lambda (get-tag operand-tags)
-	(if (any bottom-tag? operand-tags)
-	    (bottom-tag)
-	    (let ((tag (get-tag)))
-	      (for-each (lambda (tag*)
-			  (set-tag<=! tag tag*))
-			operand-tags)
-	      tag)))))))
+     (make-joinish-memoizer tag-is-bottom?))))
 
+(define any-object?)
+(define no-object?)
 (add-boot-init!
  (lambda ()
-
-   (define (simple-nary superset)
-     (let ((superset-tag (predicate->tag superset)))
-       (lambda (get-tag operator operand-tags)
-	 operator operand-tags
-	 (let ((tag (get-tag)))
-	   (set-tag<=! tag superset-tag)
-	   tag))))
-
-   (define-compound-operator 'is-list-of (simple-nary list?))
-   (define-compound-operator 'is-non-empty-list-of
-     (simple-nary non-empty-list?))
-   (define-compound-operator 'is-pair-of (simple-nary pair?))))
-
-(define disjoin*)
-(define conjoin*)
-(define is-list-of)
-(define is-non-empty-list-of)
-(define is-pair-of)
-(add-boot-init!
- (lambda ()
-   (set! disjoin*
-	 (memoize-uniform-nary 'disjoin no-object? unmemoized:disjoin*))
-   (set! conjoin*
-	 (memoize-uniform-nary 'conjoin any-object? unmemoized:conjoin*))
-   (set! is-list-of
-	 (memoize-unary 'is-list-of unmemoized:is-list-of))
-   (set! is-non-empty-list-of
-	 (memoize-unary 'is-list-of unmemoized:is-non-empty-list-of))
-   (set! is-pair-of
-	 (memoize-binary 'is-pair-of unmemoized:is-pair-of))
+   (set! any-object? (conjoin))
+   (set! no-object? (disjoin))
+   (set! the-top-tag (predicate->tag any-object?))
+   (set! the-bottom-tag (predicate->tag no-object?))
    unspecific))

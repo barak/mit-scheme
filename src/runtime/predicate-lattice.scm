@@ -55,11 +55,47 @@ USA.
 		      (lambda () (uncached-tag<= tag1 tag2))))
 
 (define (uncached-tag<= tag1 tag2)
-  (or (eqv? tag1 tag2)
-      ((get-override-handler tag1 tag2) tag1 tag2)
-      (any (lambda (tag)
-             (cached-tag<= tag tag2))
-           (get-tag-supersets tag1))))
+  (or (eq? tag1 tag2)
+      (tag-is-bottom? tag1)
+      (tag-is-top? tag2)
+      (and (not (tag-is-top? tag1))
+	   (not (tag-is-bottom? tag2))
+	   (let ((v
+		  (find (lambda (v)
+			  (and ((vector-ref v 0) tag1)
+			       ((vector-ref v 1) tag2)))
+			tag<=-overrides)))
+	     (if v
+		 ((vector-ref v 2) tag1 tag2)
+		 (any (lambda (tag)
+			(cached-tag<= tag tag2))
+		      (get-tag-supersets tag1)))))))
+
+(define (define-tag<= test1 test2 handler)
+  (set! tag<=-overrides
+	(cons (vector test1 test2 handler)
+	      tag<=-overrides))
+  unspecific)
+
+(define (top-tag) the-top-tag)
+(define (bottom-tag) the-bottom-tag)
+
+(define-integrable (tag-is-top? tag) (eq? the-top-tag tag))
+(define-integrable (tag-is-bottom? tag) (eq? the-bottom-tag tag))
+
+;; These definitions will be overwritten when the tags are created:
+(define the-top-tag #f)
+(define the-bottom-tag #f)
+
+(define tag<=-cache)
+(define tag<=-overrides)
+(add-boot-init!
+ (lambda ()
+   ;; TODO(cph): should be a weak-key table, but we don't have tables that have
+   ;; weak compound keys.
+   (set! tag<=-cache (make-equal-hash-table))
+   (set! tag<=-overrides '())
+   (add-event-receiver! event:predicate-metadata metadata-event!)))
 
 (define (metadata-event! operator tag . rest)
   (if (and (eq? operator 'set-tag<=!)
@@ -70,45 +106,3 @@ USA.
         (if (tag>= tag superset)
             (error "Not allowed to create a superset loop:" tag superset))))
   (hash-table-clear! tag<=-cache))
-
-(define (get-override-handler tag1 tag2)
-  (let ((p
-	 (find (lambda (p)
-		 (and ((caar p) tag1)
-		      ((cdar p) tag2)))
-	       tag<=-overrides)))
-    (if p
-	(cdr p)
-	false-tag<=)))
-
-(define (define-tag<= predicate1 predicate2 handler)
-  (let ((p
-	 (find (lambda (p)
-		 (and (eqv? (caar p) predicate1)
-		      (eqv? (cdar p) predicate2)))
-	       tag<=-overrides)))
-    (if p
-	(if (not (eqv? (cdr p) handler))
-	    (error "Can't redefine tag<= override:" predicate1 predicate2))
-	(begin
-	  (set! tag<=-overrides
-		(cons (cons (cons predicate1 predicate2) handler)
-		      tag<=-overrides))
-	  unspecific))))
-
-(define (false-tag<= tag1 tag2) tag1 tag2 #f)
-(define (true-tag<= tag1 tag2) tag1 tag2 #t)
-
-(define tag<=-cache)
-(define tag<=-overrides)
-(add-boot-init!
- (lambda ()
-   (set! tag<=-cache (make-equal-hash-table))
-   (set! tag<=-overrides '())
-   (add-event-receiver! event:predicate-metadata metadata-event!)
-
-   (define-tag<= bottom-tag? tag? true-tag<=)
-   (define-tag<= tag? top-tag? true-tag<=)
-
-   (define-tag<= non-bottom-tag? bottom-tag? false-tag<=)
-   (define-tag<= top-tag? non-top-tag? false-tag<=)))
