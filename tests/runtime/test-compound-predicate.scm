@@ -48,6 +48,9 @@ USA.
 
 (define-test 'ordering
   (lambda ()
+    (assert-eqv (disjoin string?) string?)
+    (assert-eqv (conjoin string?) string?)
+
     (assert-true (predicate<= string? (disjoin string? symbol?)))
     (assert-false (predicate<= (disjoin string? symbol?) string?))
 
