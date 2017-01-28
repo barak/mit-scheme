@@ -2547,6 +2547,8 @@ USA.
           memoizer-table
           memoizer-procedure
           memoizer?
+          simple-list-memoizer
+          simple-lset-memoizer
           weak-eqv-memoizer))
 
 (define-package (runtime history)

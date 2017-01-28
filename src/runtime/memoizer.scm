@@ -125,3 +125,22 @@ USA.
    (set! list-memoizer (make-list-memoizer make-list= #f))
    (set! lset-memoizer (make-list-memoizer make-lset= #t))
    unspecific))
+
+(define (make-simple-list-memoizer list-memoizer)
+  (lambda (elt= get-key get-datum)
+    (let ((memoizer
+           (list-memoizer elt=
+                          (lambda (args)
+                            (apply get-key args))
+                          (lambda (args)
+                            (apply get-datum args)))))
+      (lambda args
+        (memoizer args)))))
+
+(define simple-list-memoizer)
+(define simple-lset-memoizer)
+(add-boot-init!
+ (lambda ()
+   (set! simple-list-memoizer (make-simple-list-memoizer list-memoizer))
+   (set! simple-lset-memoizer (make-simple-list-memoizer lset-memoizer))
+   unspecific))
