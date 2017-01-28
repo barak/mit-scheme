@@ -37,7 +37,7 @@ USA.
  (lambda ()
    (let ((table (make-hashed-metadata-table)))
      (set! predicate? (table 'has?))
-     (set! get-predicate-tag (table 'get-if-available))
+     (set! get-predicate-tag (table 'get))
      (set! set-predicate-tag! (table 'put!))
      (set! delete-predicate-tag! (table 'delete!))
      unspecific)))
