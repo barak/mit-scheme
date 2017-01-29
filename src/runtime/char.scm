@@ -235,7 +235,11 @@ USA.
 		 (loop (fix:+ hyphen 1) (fix:or bit bits)))
 	       (make-char
 		(or (->code named-codes string start end)
-		    (and (substring-prefix-ci? "U+" 0 1 string start end)
+		    ;; R7RS syntax:
+		    (and (substring-prefix-ci? "x" 0 1 string start end)
+			 (substring->number string (fix:+ start 1) end 16))
+		    ;; Non-standard Unicode-style syntax:
+		    (and (substring-prefix-ci? "u+" 0 2 string start end)
 			 (substring->number string (fix:+ start 2) end 16))
 		    (lose))
 		bits))))))))
@@ -255,15 +259,7 @@ USA.
 	     ((char-graphic? base-char)
 	      (string base-char))
 	     (else
-	      (string-append "U+"
-			     (let ((s (number->string code 16)))
-			       (string-pad-left s
-						(let ((l (string-length s)))
-						  (let loop ((n 2))
-						    (if (fix:<= l n)
-							n
-							(loop (fix:* 2 n)))))
-						#\0)))))))))
+	      (string-append "x" (number->string code 16))))))))
 
 ;; This procedure used by Edwin.
 (define (bucky-bits->prefix bits)
