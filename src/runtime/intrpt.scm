@@ -47,7 +47,7 @@ USA.
 	(let ((table (make-vector 256 false)))
 	  (for-each (lambda (entry)
 		      (vector-set! table
-				   (char->ascii (car entry))
+				   (char->integer (car entry))
 				   (cadr entry)))
 		    `((#\B ,^B-interrupt-handler)
 		      (#\G ,^G-interrupt-handler)

@@ -275,7 +275,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 				 (cond ((and (= keysym (C-enum "XK_BackSpace"))
 					     (= nbytes 1)
 					     (= (C-> buffer "char")
-						(char->ascii #\backspace)))
+						(char->integer #\backspace)))
 					(char->string #\Delete))
 				       ((> nbytes 0)
 					(let ((s (make-string nbytes)))
@@ -834,7 +834,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
     (let loop ((index 0))
       (if (< index length)
 	  (begin
-	    (string-set! result index (ascii->char (c-> scan "uchar")))
+	    (string-set! result index (integer->char (c-> scan "uchar")))
 	    (alien-byte-increment! scan (c-sizeof "uchar"))
 	    (loop (1+ index)))))
     result))

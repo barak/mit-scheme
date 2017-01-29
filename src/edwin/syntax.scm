@@ -32,7 +32,8 @@ USA.
 
 (define (modify-syntax-entries! syntax-table cl ch string)
   (set-char-syntax! syntax-table
-		    (ascii-range->char-set (char->ascii cl) (char->ascii ch))
+		    (ascii-range->char-set (char->integer cl)
+					   (char->integer ch))
 		    string))
 
 (define (group-syntax-table-entries group)
@@ -56,7 +57,7 @@ which is selected so you can see it."
 		(lambda (bottom top)
 		  (let ((describe-char
 			 (lambda (ascii)
-			   (emacs-key-name (ascii->char ascii) #f)))
+			   (emacs-key-name (integer->char ascii) #f)))
 			(top (- top 1)))
 		    (if (= bottom top)
 			(describe-char bottom)
@@ -97,7 +98,7 @@ which is selected so you can see it."
 	    (if (not (zero? match))
 		(begin
 		  (write-string ", matches ")
-		  (write-string (emacs-key-name (ascii->char match) #f)))))
+		  (write-string (emacs-key-name (integer->char match) #f)))))
 	  (let ((decode-comment-bit
 		 (lambda (code pos se style)
 		   (if (not (fix:= 0 (fix:and code entry)))

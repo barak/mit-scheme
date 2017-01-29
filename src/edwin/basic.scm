@@ -69,7 +69,7 @@ Whichever character you type to run this command is inserted."
 	     (if (input-event? input)
 		 (abort-current-command input)
 		 (begin
-		   (if (not (and (char? input) (char-ascii? input)))
+		   (if (not (ascii-char? input))
 		       (editor-error "Can't quote non-ASCII char:" input))
 		   (set-command-prompt!
 		    (string-append (command-prompt) (key-name input)))
@@ -82,7 +82,7 @@ Whichever character you type to run this command is inserted."
       (let ((char (read-ascii-char)))
 	(let ((digit (char->digit char 4)))
 	  (if digit
-	      (ascii->char
+	      (integer->char
 	       (let ((digit2 (read-digit)))
 		 (let ((digit3 (read-digit)))
 		   (+ (* (+ (* digit 8) digit2) 8) digit3))))

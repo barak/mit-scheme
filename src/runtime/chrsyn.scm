@@ -47,16 +47,16 @@ USA.
 
 (define (get-char-syntax table char)
   (vector-ref (guarantee-char-syntax-table table 'GET-CHAR-SYNTAX)
-	      (char->ascii char)))
+	      (char->integer char)))
 
 (define (set-char-syntax! table char string)
   (let ((entries (guarantee-char-syntax-table table 'SET-CHAR-SYNTAX!))
 	(entry (string->char-syntax string)))
     (cond ((char? char)
-	   (vector-set! entries (char->ascii char) entry))
+	   (vector-set! entries (char->integer char) entry))
 	  ((char-set? char)
 	   (for-each (lambda (char)
-		       (vector-set! entries (char->ascii char) entry))
+		       (vector-set! entries (char->integer char) entry))
 		     (char-set-members char)))
 	  (else
 	   (error:wrong-type-argument char "character" 'SET-CHAR-SYNTAX!)))))
@@ -117,7 +117,7 @@ USA.
      (let ((match (fix:and #xff (fix:lsh entry -4))))
        (if (zero? match)
 	   " "
-	   (string (ascii->char match))))
+	   (string (integer->char match))))
      (let ((cbits (fix:and #xFF (fix:lsh entry -12))))
        (string-append
 	(if (fix:= 0 (fix:and #x40 cbits)) "" "1")

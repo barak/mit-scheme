@@ -480,7 +480,7 @@ USA.
   (make-port-type
    `((WRITE-CHAR
       ,(lambda (port char)
-	 (guarantee-8-bit-char char)
+	 (guarantee 8-bit-char? char)
 	 (region-insert-char! (port/state port) char)
 	 1))
      (PROMPT-FOR-CONFIRMATION

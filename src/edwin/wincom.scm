@@ -239,7 +239,7 @@ means scroll one screenful down."
 	(message (if (group-end? point)
 		     ""
 		     (let ((char (mark-right-char point)))
-		       (let ((n (char->ascii char)))
+		       (let ((n (char->integer char)))
 			 (string-append "Char: " (key-name char)
 					" ("
 					(if (zero? n) "" "0")

@@ -81,7 +81,7 @@ USA.
 	  result))))
 
 (define (make-vector-8b length #!optional ascii)
-  (make-string length (if (default-object? ascii) ascii (ascii->char ascii))))
+  (make-string length (if (default-object? ascii) ascii (integer->char ascii))))
 
 (define (string-fill! string char #!optional start end)
   (substring-fill! string
@@ -280,7 +280,7 @@ USA.
 	(else (error:wrong-type-argument object "string component" caller))))
 
 (define (char->string char)
-  (guarantee-8-bit-char char 'CHAR->STRING)
+  (guarantee 8-bit-char? char 'CHAR->STRING)
   (make-string 1 char))
 
 (define (list->string chars)
@@ -289,7 +289,7 @@ USA.
     (let loop ((chars chars) (index 0))
       (if (pair? chars)
 	  (begin
-	    (guarantee-8-bit-char (car chars))
+	    (guarantee 8-bit-char? (car chars))
 	    (string-set! result index (car chars))
 	    (loop (cdr chars) (fix:+ index 1)))
 	  result))))

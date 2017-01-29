@@ -73,7 +73,7 @@ USA.
   (write (port/mark port) output))
 
 (define (operation/write-char port char)
-  (guarantee-8-bit-char char)
+  (guarantee 8-bit-char? char)
   (region-insert-char! (port/mark port) char)
   1)
 

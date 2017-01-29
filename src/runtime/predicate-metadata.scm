@@ -287,6 +287,7 @@ USA.
  (lambda ()
    ;; MIT/GNU Scheme: misc
    (register-predicate! 8-bit-char? '8-bit-char '<= char?)
+   (register-predicate! ascii-char? 'ascii-char '<= 8-bit-char?)
    (register-predicate! bit-string? 'bit-string)
    (register-predicate! cell? 'cell)
    (register-predicate! compiled-code-address? 'compiled-code-address)

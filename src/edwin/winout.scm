@@ -39,7 +39,7 @@ USA.
   (make-port window-output-port-type window))
 
 (define (operation/write-char port char)
-  (guarantee-8-bit-char char)
+  (guarantee 8-bit-char? char)
   (let ((window (port/state port)))
     (let ((buffer (window-buffer window))
 	  (point (window-point window)))

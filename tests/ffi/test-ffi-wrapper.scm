@@ -17,9 +17,9 @@
 	 (chars (malloc (1+ (* (c-sizeof "char") (string-length string)))
 			'(* char)))
 	 (callback-id (C-callback (lambda (d) (* d pi)))))
-    (C->= struct "TestStruct first" (char->ascii #\A))
+    (C->= struct "TestStruct first" (char->integer #\A))
     (C->= struct "TestStruct second" pi)
-    (C->= struct "TestStruct third" (char->ascii #\C))
+    (C->= struct "TestStruct third" (char->integer #\C))
     (c-poke-string chars string)
     (C->= struct "TestStruct fourth" chars)
     (C-call "test_register_double"

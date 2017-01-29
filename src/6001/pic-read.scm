@@ -86,7 +86,7 @@ USA.
 	    (flo:vector-set!
 	     nth-row
 	     m
-	     (exact->inexact (char->ascii (read-char port)))))))))
+	     (exact->inexact (char->integer (read-char port)))))))))
     (picture-set-data! pic data)
     pic))
 

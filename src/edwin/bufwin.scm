@@ -217,7 +217,7 @@ USA.
 
 (define-integrable (%window-char->image window char)
   (vector-ref (%window-char-image-strings window)
-	      (char->ascii char)))
+	      (char->integer char)))
 
 (define-integrable (%window-point window)
   (with-instance-variables buffer-window window () point))

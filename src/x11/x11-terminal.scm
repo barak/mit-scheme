@@ -99,7 +99,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 (define (xterm-write-char! xterm x y char highlight)
   (let ((code (c-call "xterm_write_char"
-		      xterm x y (char->ascii char) highlight)))
+		      xterm x y (char->integer char) highlight)))
     (case code
       ((1) (error:bad-range-argument x 'xterm-write-char!))
       ((2) (error:bad-range-argument y 'xterm-write-char!))

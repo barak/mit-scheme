@@ -1301,7 +1301,7 @@ Prefix argument means do not kill the debugger buffer."
       value)))
 
 (define (operation/write-char port char)
-  (guarantee-8-bit-char char)
+  (guarantee 8-bit-char? char)
   (region-insert-char! (port/state port) char))
 
 (define (operation/write-substring port string start end)

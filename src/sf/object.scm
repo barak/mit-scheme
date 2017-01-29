@@ -227,7 +227,6 @@ USA.
          &>
          BIT-STRING?
          CELL?
-         CHAR-ASCII?
          CHAR?
          EQ?
          EQUAL-FIXNUM?
@@ -358,11 +357,8 @@ USA.
 	 &/
 	 -1+
 	 1+
-	 ASCII->CHAR
 	 CELL?
-	 CHAR->ASCII
 	 CHAR->INTEGER
-	 CHAR-ASCII?
 	 CHAR-BITS
 	 CHAR-CODE
 	 CHAR-DOWNCASE

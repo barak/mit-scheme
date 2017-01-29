@@ -133,7 +133,7 @@ USA.
 		(j start* (fix:+ j 1)))
 	       ((not (fix:< i limit))
 		(set! index i))
-	     (bytevector-u8-set! bv j (char->ascii (ustring-ref string i)))))
+	     (bytevector-u8-set! bv j (char->integer (ustring-ref string i)))))
 	 n)))))
 
 (define (make-octets-input-type)

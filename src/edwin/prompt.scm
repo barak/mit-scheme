@@ -849,12 +849,12 @@ a repetition of this command will exit."
 	 (prompt-for-typein (string-append prompt ": ") #f
 	   (lambda ()
 	     (let ((input (with-editor-interrupts-disabled keyboard-read)))
-	       (if (and (char? input) (char-ascii? input))
+	       (if (ascii-char? input)
 		   (set-typein-string! (key-name input) #t))
 	       (if (input-event? input)
 		   (abort-typein-edit input)
 		   input))))))
-    (if (not (and (char? input) (char-ascii? input)))
+    (if (not (ascii-char? input))
 	(editor-error "Not an ASCII character:" input))
     input))
 
@@ -1024,7 +1024,7 @@ it is added to the front of the command history."
 				     (set! phrase (string-head phrase length))
 				     (string-fill! phrase* #\NUL)
 				     (set! phrase* #f)))))
-			    ((and (char? input) (char-ascii? input))
+			    ((ascii-char? input)
 			     (set! phrase* phrase)
 			     (set! phrase
 				   (string-append phrase (string input)))

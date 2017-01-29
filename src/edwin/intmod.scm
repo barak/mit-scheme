@@ -881,7 +881,7 @@ If this is an error, the debugger examines the error condition."
 ;;; Output operations
 
 (define (operation/write-char port char)
-  (guarantee-8-bit-char char)
+  (guarantee 8-bit-char? char)
   (enqueue-output-string! port (string char))
   1)
 

@@ -441,11 +441,11 @@ USA.
 	  (if (>= row 0)
 	      (let ((rowvals
 		     (map (cond ((= pmin pmax)
-				 (lambda (x) x (ascii->char 0)))
+				 (lambda (x) x (integer->char 0)))
 				(else
 				 (let ((scale (/ 255. (- pmax pmin))))
 				   (lambda (x)
-				     (ascii->char
+				     (integer->char
 				      (round->exact (* (- x pmin) scale)))))))
 			  (flo:vector->list (vector-ref data row)))))
 		(begin

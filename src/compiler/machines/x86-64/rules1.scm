@@ -338,7 +338,7 @@ USA.
     (LAP (MOV B ,target ,source))))
 
 (define (char->signed-8-bit-immediate character)
-  (let ((ascii (char->ascii character)))
+  (let ((ascii (char->integer character)))
     (if (< ascii 128) ascii (- ascii 256))))
 
 ;;;; Utilities specific to rules1

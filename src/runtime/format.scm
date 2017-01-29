@@ -212,7 +212,7 @@ USA.
 	(let ((table (make-vector 256 parse-default)))
 	  (for-each (lambda (entry)
 		      (vector-set! table
-				   (char->ascii (car entry))
+				   (char->integer (car entry))
 				   (cadr entry)))
 		    (let ((format-string
 			   (format-wrapper (format-object display)))
@@ -235,10 +235,10 @@ USA.
 			(#\@ ,(parse-modifier 'AT))
 			(#\: ,(parse-modifier 'COLON))
 			(#\%
-			 ,(format-wrapper (format-insert-character #\Newline)))
+			 ,(format-wrapper (format-insert-character #\newline)))
 			(#\~ ,(format-wrapper (format-insert-character #\~)))
 			(#\; ,(format-wrapper format-ignore-comment))
-			(#\Newline ,(format-wrapper format-ignore-whitespace))
+			(#\newline ,(format-wrapper format-ignore-whitespace))
 			(#\A ,format-string)
 			(#\a ,format-string)
 			(#\S ,format-object)

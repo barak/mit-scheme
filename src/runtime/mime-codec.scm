@@ -32,7 +32,7 @@ USA.
   (make-textual-port-type
    `((WRITE-CHAR
       ,(lambda (port char)
-	 (guarantee-8-bit-char char)
+	 (guarantee 8-bit-char? char)
 	 (update (textual-port-state port) (string char) 0 1)
 	 1))
      (WRITE-SUBSTRING
@@ -796,7 +796,7 @@ USA.
   (make-textual-port-type
    `((WRITE-CHAR
       ,(lambda (port char)
-	 (guarantee-8-bit-char char)
+	 (guarantee 8-bit-char? char)
 	 (let ((state (textual-port-state port)))
 	   (let ((port (binhex40-rld-state/port state))
 		 (char* (binhex40-rld-state/char state)))
@@ -854,7 +854,7 @@ USA.
   (make-textual-port-type
    `((WRITE-CHAR
       ,(lambda (port char)
-	 (guarantee-8-bit-char char)
+	 (guarantee 8-bit-char? char)
 	 (case (binhex40-decon/state (textual-port-state port))
 	   ((READING-HEADER) (binhex40-decon-reading-header port char))
 	   ((COPYING-DATA) (binhex40-decon-copying-data port char))

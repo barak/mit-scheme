@@ -228,7 +228,7 @@ USA.
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CHAR->ASCII (CONSTANT (? char))))
-  (QUALIFIER (and (char? char) (char-ascii? char)))
+  (QUALIFIER (ascii-char? char))
   (inst:load-immediate (word-target target)
 		       (object-datum char)))
 

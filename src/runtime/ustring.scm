@@ -73,9 +73,6 @@ USA.
 	     (loop (fix:+ i 1)))
 	#t)))
 
-(define-integrable (char-ascii? char)
-  (fix:< (char->integer char) #x80))
-
 (define (min-length string-length string strings)
   (do ((strings strings (cdr strings))
        (n (string-length string)

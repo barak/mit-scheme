@@ -587,7 +587,7 @@ USA.
       (*unparse-string string)))
 
 (define (char->octal char)
-  (let ((qr1 (integer-divide (char->ascii char) 8)))
+  (let ((qr1 (integer-divide (char->integer char) 8)))
     (let ((qr2 (integer-divide (integer-divide-quotient qr1) 8)))
       (string (digit->char (integer-divide-quotient qr2) 8)
               (digit->char (integer-divide-remainder qr2) 8)

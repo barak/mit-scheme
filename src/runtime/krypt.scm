@@ -195,7 +195,7 @@ USA.
 			    (update-checksum checksum output-string index
 					     count))
 		      (rcm-iter key1 count output-string index))))
-	      (let ((check-char (ascii->char (modulo (- checksum) ts))))
+	      (let ((check-char (integer->char (modulo (- checksum) ts))))
 		(let ((cc-string (char->string check-char)))
 		  (rcm key1 1 cc-string)
 		  (string-set! output-string

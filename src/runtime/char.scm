@@ -80,26 +80,12 @@ USA.
   (and (char? object)
        (fix:< (char->integer object) #x100)))
 
-(define (guarantee-8-bit-char object #!optional caller)
-  caller
-  (if (not (8-bit-char? object))
-      (error:not-8-bit-char object)))
+(define (ascii-char? object)
+  (and (char? object)
+       (char-ascii? object)))
 
-(define (char-ascii? char)
-  (let ((n (char->integer char)))
-    (and (fix:< n #x100)
-	 n)))
-
-(define (char->ascii char)
-  (guarantee-8-bit-char char 'CHAR->ASCII)
-  (char->integer char))
-
-(define (ascii->char code)
-  (guarantee-limited-index-fixnum code #x100 'ASCII->CHAR)
-  (%make-char code 0))
-
-(define (chars->ascii chars)
-  (map char->ascii chars))
+(define-integrable (char-ascii? char)
+  (fix:< (char->integer char) #x100))
 
 (define (char=? x y)
   (fix:= (char->integer x) (char->integer y)))

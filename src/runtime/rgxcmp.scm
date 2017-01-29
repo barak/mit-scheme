@@ -357,7 +357,7 @@ USA.
   (cached-procedure 16
     (lambda (pattern case-fold?)
       (let* ((output (list 'OUTPUT))
-	     (ctx (make-rgxcmpctx (map char->ascii (string->list pattern))
+	     (ctx (make-rgxcmpctx (map char->integer (string->list pattern))
 				  #f	;current-byte
 				  (re-translation-table case-fold?)
 				  output ;output-head
@@ -380,7 +380,7 @@ USA.
 		(if (not (stack-empty? ctx))
 		    (compilation-error ctx "Unmatched \\("))
 		(make-compiled-regexp
-		 (list->string (map ascii->char (cdr (output-head ctx))))
+		 (list->string (map integer->char (cdr (output-head ctx))))
 		 case-fold?))
 	      (begin
 		(compile-pattern-char ctx)
@@ -424,7 +424,7 @@ USA.
 	char)))
 
 (define (input-match? byte . chars)
-  (memv (ascii->char byte) chars))
+  (memv (integer->char byte) chars))
 
 ;;;; Output
 
@@ -508,7 +508,7 @@ USA.
   (caddr (list-ref (stack ctx) i)))
 
 (define (ascii->syntax-entry ascii)
-  ((ucode-primitive string->syntax-entry) (char->string (ascii->char ascii))))
+  ((ucode-primitive string->syntax-entry) (char->string (integer->char ascii))))
 
 ;;;; Pattern Dispatch
 
@@ -538,7 +538,7 @@ USA.
 	(pointer-operate! (pending-exact ctx) 1+))))
 
 (define (define-pattern-char char procedure)
-  (vector-set! pattern-chars (char->ascii char) procedure)
+  (vector-set! pattern-chars (char->integer char) procedure)
   unspecific)
 
 (define pattern-chars
@@ -553,7 +553,7 @@ USA.
 	  ((vector-ref backslash-chars (input-peek-1 ctx)) ctx)))))
 
 (define (define-backslash-char char procedure)
-  (vector-set! backslash-chars (char->ascii char) procedure)
+  (vector-set! backslash-chars (char->integer char) procedure)
   unspecific)
 
 (define backslash-chars
@@ -674,7 +674,7 @@ USA.
     (let ((invert?
 	   (and (input-match? (input-peek ctx) #\^)
 		(begin (input-discard! ctx) #t)))
-	  (charset (make-string 32 (ascii->char 0))))
+	  (charset (make-string 32 (integer->char 0))))
       (if (input-end? ctx)
 	  (premature-end ctx))
       (let loop
@@ -692,10 +692,10 @@ USA.
 		(for-each
 		 (lambda (char)
 		   ((ucode-primitive re-char-set-adjoin!) charset
-							  (char->ascii char)))
+							  (char->integer char)))
 		 (char-set-members
 		  (re-compile-char-set
-		   (list->string (map ascii->char (reverse! chars)))
+		   (list->string (map integer->char (reverse! chars)))
 		   #f))))
 	      (loop (cons char chars)))))
       (output-start! ctx (if invert? re-code:not-char-set re-code:char-set))

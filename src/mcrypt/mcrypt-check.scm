@@ -30,7 +30,7 @@ USA.
   (list->string (make-initialized-list length
 				       (lambda (i)
 					 (declare (ignore i))
-					 (ascii->char (random 256))))))
+					 (integer->char (random 256))))))
 
 (if (not (member "tripledes" (mcrypt-algorithm-names)))
     (error "No tripledes."))
