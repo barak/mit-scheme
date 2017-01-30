@@ -265,7 +265,7 @@ USA.
 (define (re-compile-char-set pattern negate?)
   (receive (scalar-values negate?*)
       (re-char-pattern->scalar-values pattern)
-    (let ((char-set (scalar-values->char-set scalar-values)))
+    (let ((char-set (char-set* scalar-values)))
       (if (if negate? (not negate?*) negate?*)
 	  (char-set-invert char-set)
 	  char-set))))

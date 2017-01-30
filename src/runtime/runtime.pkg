@@ -1401,31 +1401,13 @@ USA.
   (parent (runtime))
   (export ()
 	  ;; BEGIN deprecated bindings
-	  (8-bit-alphabet? 8-bit-char-set?)
-	  (alphabet char-set)
-	  (alphabet+ char-set-union)
-	  (alphabet- char-set-difference)
-	  (alphabet->string char-set->string)
-	  (alphabet-predicate char-set-predicate)
-	  (alphabet? char-set?)
-	  (error:not-8-bit-alphabet error:not-8-bit-char-set)
-	  (error:not-alphabet error:not-char-set)
-	  (guarantee-8-bit-alphabet guarantee-8-bit-char-set)
-	  (guarantee-alphabet guarantee-char-set)
-	  (string->alphabet string->char-set)
-	  alphabet->char-set
-	  alphabet->scalar-values
-	  char-in-alphabet?
-	  char-set->alphabet
+	  (char-set->scalar-values char-set->code-points)
+	  (chars->char-set char-set*)
+	  (scalar-values->char-set char-set*)
+	  (well-formed-scalar-value-list? code-point-list?)
+	  char-set-member?
 	  error:not-8-bit-char-set
-	  error:not-char-set
-	  error:not-well-formed-scalar-value-list
-	  error:not-well-formed-scalar-value-range
 	  guarantee-8-bit-char-set
-	  guarantee-char-set
-	  guarantee-well-formed-scalar-value-list
-	  guarantee-well-formed-scalar-value-range
-	  scalar-values->alphabet
 	  ;; END deprecated bindings
 	  8-bit-char-set?
 	  ascii-range->char-set
@@ -1433,17 +1415,20 @@ USA.
 	  char-alphanumeric?
 	  char-ctl?
 	  char-graphic?
+	  char-in-set?
 	  char-lower-case?
 	  char-numeric?
 	  char-set
-	  char-set->scalar-values
+	  char-set*
+	  char-set->code-points
 	  char-set-difference
 	  char-set-intersection
+	  char-set-intersection*
 	  char-set-invert
-	  char-set-member?
 	  char-set-members
 	  char-set-predicate
 	  char-set-union
+	  char-set-union*
 	  char-set:alphabetic
 	  char-set:alphanumeric
 	  char-set:ascii
@@ -1470,12 +1455,10 @@ USA.
 	  char-upper-case?
 	  char-whitespace?
 	  char-wsp?
-	  chars->char-set
+	  code-point-list?
+	  char-set*
 	  scalar-value-in-char-set?
-	  scalar-values->char-set
-	  string->char-set
-	  well-formed-scalar-value-list?
-	  well-formed-scalar-value-range?)
+	  string->char-set)
   (export (runtime string)
 	  (char-set-table %char-set-table)))
 
@@ -5651,14 +5634,6 @@ USA.
   (export ()
 	  ;; BEGIN deprecated bindings
 	  (input-port->parser-buffer textual-input-port->parser-buffer)
-	  (match-parser-buffer-char-in-alphabet match-parser-buffer-char-in-set)
-	  (match-parser-buffer-char-in-alphabet-no-advance
-	   match-parser-buffer-char-in-set-no-advance)
-	  (match-parser-buffer-char-not-in-alphabet
-	   match-parser-buffer-char-not-in-set)
-	  (match-parser-buffer-char-not-in-alphabet-no-advance
-	   match-parser-buffer-char-not-in-set-no-advance)
-	  (match-utf8-char-in-alphabet match-parser-buffer-char-in-set)
 	  ;; END deprecated bindings
 	  *match-string
 	  *match-symbol

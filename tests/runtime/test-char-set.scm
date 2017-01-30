@@ -39,14 +39,14 @@ USA.
 	 interesting-svls)))
 
 (define (svl-round-trip svl)
-  (char-set->scalar-values (scalar-values->char-set svl)))
+  (char-set->code-points (char-set* svl)))
 
 (define-test 'random-svl-round-trip
   (lambda ()
     (map (lambda (svl)
 	   (run-sub-test
 	    (lambda ()
-	      (guarantee-well-formed-scalar-value-list svl)
+	      (guarantee code-point-list? svl)
 	      (assert-equal-canonical-svls (canonicalize-svl svl)
 					   (svl-round-trip svl)))))
 	 (append! (append-map! (lambda (i)
@@ -84,7 +84,7 @@ USA.
 		  (run-sub-test
 		   (lambda ()
 		     (assert-boolean=
-		      (char-set-member? (scalar-values->char-set svl)
+		      (char-set-member? (char-set* svl)
 					(integer->char value))
 		      (named-call 'SVL-MEMBER? svl-member? svl value)))
 		   'EXPRESSION `(CHAR-SET-MEMBER? ,svl ,value)))
@@ -117,7 +117,7 @@ USA.
 	 interesting-svls)))
 
 (define (svl-invert-thru svl)
-  (char-set->scalar-values (char-set-invert (scalar-values->char-set svl))))
+  (char-set->code-points (char-set-invert (char-set* svl))))
 
 (define (svl-invert-direct svl)
 
@@ -144,9 +144,9 @@ USA.
 		  (run-sub-test
 		   (lambda ()
 		     (assert-equal
-		      (char-set->scalar-values
-		       (operation (scalar-values->char-set svl1)
-				  (scalar-values->char-set svl2)))
+		      (char-set->code-points
+		       (operation (char-set* svl1)
+				  (char-set* svl2)))
 		      (svl-direct (trim-empty-segments svl1)
 				  (trim-empty-segments svl2))))
 		   'EXPRESSION `(,name ,svl1 ,svl2)))

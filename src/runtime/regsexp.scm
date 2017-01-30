@@ -77,21 +77,6 @@ USA.
 	(else
 	 (error "Ill-formed regular s-expression:" regsexp))))
 
-(define (%compile-char-set items)
-  (scalar-values->char-set
-   (append-map (lambda (item)
-		 (cond ((well-formed-scalar-value-range? item)
-			(list item))
-		       ((unicode-char? item)
-			(list (char->integer item)))
-		       ((char-set? item)
-			(char-set->scalar-values item))
-		       ((string? item)
-			(map char->integer (string->list item)))
-		       (else
-			(error "Ill-formed char-set item:" item))))
-	       items)))
-
 (define (%compile-group-key key)
   (if (not (or (fix:fixnum? key)
 	       (unicode-char? key)
@@ -151,11 +136,11 @@ USA.
 
 (define-rule '(CHAR-SET * DATUM)
   (lambda items
-    (insn:char-set (%compile-char-set items))))
+    (insn:char-set (char-set* items))))
 
 (define-rule '(INVERSE-CHAR-SET * DATUM)
   (lambda items
-    (insn:inverse-char-set (%compile-char-set items))))
+    (insn:inverse-char-set (char-set* items))))
 
 (define-rule '(LINE-START) (lambda () (insn:line-start)))
 (define-rule '(LINE-END) (lambda () (insn:line-end)))

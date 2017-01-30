@@ -279,7 +279,7 @@ USA.
 		  char-set:turtle-digit))
 
 (define char-set:name-start-char
-  (scalar-values->char-set
+  (char-set*
    '((#x0041 . #x005B)
      #x005F
      (#x0061 . #x007B)
@@ -298,7 +298,7 @@ USA.
 
 (define char-set:name-char
   (char-set-union char-set:name-start-char
-		  (scalar-values->char-set
+		  (char-set*
 		   '(#x002D
 		     (#x0030 . #x003A)
 		     #x00B7
@@ -309,7 +309,7 @@ USA.
   (char-set-difference char-set:name-start-char (char-set #\_)))
 
 (define char-set:character
-  (scalar-values->char-set '((#x20 . #x5C) (#x5D . #x110000))))
+  (char-set* '((#x20 . #x5C) (#x5D . #x110000))))
 
 (define char-set:ucharacter
   (char-set-difference char-set:character (char-set #\>)))

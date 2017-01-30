@@ -290,6 +290,7 @@ USA.
    (register-predicate! ascii-char? 'ascii-char '<= 8-bit-char?)
    (register-predicate! bit-string? 'bit-string)
    (register-predicate! cell? 'cell)
+   (register-predicate! code-point-list? 'code-point-list '<= list?)
    (register-predicate! compiled-code-address? 'compiled-code-address)
    (register-predicate! compiled-code-block? 'compiled-code-block)
    (register-predicate! compiled-expression? 'compiled-expression)
@@ -310,8 +311,10 @@ USA.
    (register-predicate! thread-mutex? 'thread-mutex)
    (register-predicate! undefined-value? 'undefined-value)
    (register-predicate! unicode-char? 'unicode-char '<= char?)
-   (register-predicate! unicode-scalar-value? 'unicode-scalar-value
+   (register-predicate! unicode-code-point? 'unicode-code-point
 			'<= index-fixnum?)
+   (register-predicate! unicode-scalar-value? 'unicode-scalar-value
+			'<= unicode-code-point?)
    (register-predicate! uninterned-symbol? 'uninterned-symbol '<= symbol?)
    (register-predicate! weak-list? 'weak-list)
    (register-predicate! weak-pair? 'weak-pair)

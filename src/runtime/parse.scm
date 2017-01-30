@@ -306,7 +306,7 @@ USA.
   value)
 
 (define (char-set-converter value)
-  (guarantee-char-set value)
+  (guarantee char-set? value)
   value)
 
 (define (keyword-style-converter value)
@@ -967,8 +967,8 @@ USA.
 		environment)))
 	 (atom-delimiters (get-param:parser-atom-delimiters environment))
 	 (constituents (get-param:parser-constituents environment)))
-    (guarantee-char-set atom-delimiters #f)
-    (guarantee-char-set constituents #f)
+    (guarantee char-set? atom-delimiters #f)
+    (guarantee char-set? constituents #f)
     (make-db (get-param:parser-associate-positions? environment)
 	     atom-delimiters
 	     (overridable-value

@@ -29,35 +29,26 @@ USA.
 
 (declare (usual-integrations))
 
-;;; The character set is stored in two parts.  The LOW part is a
-;;; bit-vector encoding of the scalar values below %LOW-LIMIT.  The
-;;; HIGH part is a sequence of scalar-value ranges, each of which has
-;;; an inclusive START and an exclusive END.  The ranges in the
-;;; sequence are all disjoint from one another, and no two ranges are
-;;; adjacent.  These ranges are sorted so that their STARTs are in
-;;; order.
+;;; The character set is stored in two parts.  The LOW part is a bit-vector
+;;; encoding of the code points below %LOW-LIMIT.  The HIGH part is a sequence
+;;; of code-point ranges, each of which has an inclusive START and an
+;;; exclusive END.  The ranges in the sequence are all disjoint from one
+;;; another, and no two ranges are adjacent.  These ranges are sorted so that
+;;; their STARTs are in order.
 ;;;
-;;; The HIGH range sequence is implemented as a vector of alternating
-;;; START and END points.  The vector always has an even number of
-;;; points.
+;;; The HIGH range sequence is implemented as a vector of alternating START and
+;;; END points.  The vector always has an even number of points.
 ;;;
-;;; For simplicity, character sets are allowed to contain ranges that
-;;; contain illegal scalar values.  However, CHAR-SET-MEMBER? doesn't
-;;; accept illegal characters.
+;;; For simplicity, character sets are allowed to contain any code point.
+;;; However, CHAR-SET-MEMBER? only accepts scalar values.
 
-(define-structure (char-set (type-descriptor <char-set>)
-			    (constructor %%make-char-set)
-			    (conc-name %char-set-))
-  (low #f read-only #t)
-  (high #f read-only #t)
+(define-record-type <char-set>
+    (%%make-char-set low high table)
+    char-set?
+  (low %char-set-low)
+  (high %char-set-high)
   ;; Backwards compatibility:
-  (table #f read-only #t))
-
-(define-guarantee char-set "character set")
-
-(define (guarantee-char-sets char-sets #!optional caller)
-  (for-each (lambda (char-set) (guarantee-char-set char-set caller))
-	    char-sets))
+  (table %char-set-table))
 
 (define (%make-char-set low high)
   (%%make-char-set low high
@@ -98,22 +89,23 @@ USA.
 
 (define-guarantee 8-bit-char-set "an 8-bit char-set")
 
-;;;; Conversion to and from scalar-values list
+;;;; Code-point lists
 
-(define (well-formed-scalar-value-list? ranges)
-  (list-of-type? ranges well-formed-scalar-value-range?))
+(define (code-point-list? object)
+  (list-of-type? object cpl-element?))
 
-(define (well-formed-scalar-value-range? range)
-  (if (pair? range)
-      (and (index-fixnum? (car range))
-	   (index-fixnum? (cdr range))
-	   (fix:<= (car range) (cdr range))
-	   (fix:<= (cdr range) char-code-limit))
-      (and (index-fixnum? range)
-	   (fix:< range char-code-limit))))
+(define (cpl-element? object)
+  (or (%range? object)
+      (unicode-char? object)
+      (ustring? object)
+      (char-set? object)))
 
-(define-guarantee well-formed-scalar-value-list "a Unicode scalar-value list")
-(define-guarantee well-formed-scalar-value-range "a Unicode scalar-value range")
+(define (%range? object)
+  (or (and (pair? object)
+	   (unicode-code-point? (car object))
+	   (unicode-code-point? (cdr object))
+	   (fix:<= (car object) (cdr object)))
+      (unicode-code-point? object)))
 
 (define (%make-range start end)
   (if (fix:= (fix:- end start) 1)
@@ -130,13 +122,15 @@ USA.
       (cdr range)
       (fix:+ range 1)))
 
-(define (char-set->scalar-values char-set)
-  (guarantee-char-set char-set 'CHAR-SET->SCALAR-VALUES)
-  (reverse!
-   (%high->scalar-values (%char-set-high char-set)
-			 (%low->scalar-values (%char-set-low char-set)))))
+;;;; Convert char-set to code-point list
 
-(define (%low->scalar-values low)
+(define (char-set->code-points char-set)
+  (guarantee char-set? char-set 'char-set->code-points)
+  (reverse!
+   (%high->code-points (%char-set-high char-set)
+		       (%low->code-points (%char-set-low char-set)))))
+
+(define (%low->code-points low)
 
   (define (find-start i result)
     (if (fix:< i %low-limit)
@@ -155,7 +149,7 @@ USA.
 
   (find-start 0 '()))
 
-(define (%high->scalar-values high result)
+(define (%high->code-points high result)
   (let ((n (vector-length high)))
     (define (loop i result)
       (if (fix:< i n)
@@ -174,18 +168,45 @@ USA.
 				 (vector-ref high 1))
 		    (cdr result)))
 	(loop 0 result))))
+
+;;;; General char-set constructor
 
-(define (scalar-values->char-set ranges)
-  (guarantee-well-formed-scalar-value-list ranges 'SCALAR-VALUES->CHAR-SET)
-  (%scalar-values->char-set ranges))
+(define (char-set . chars)
+  (char-set* chars))
 
-(define (%scalar-values->char-set ranges)
+(define (char-set* cpl)
+  (guarantee-list-of cpl-element? cpl 'char-set*)
+  (char-set-union* (%cpl->char-sets cpl)))
+
+(define (%cpl->char-sets cpl)
+  (let loop ((cpl cpl) (ranges '()) (char-sets '()))
+    (cond ((not (pair? cpl))
+	   (cons (%ranges->char-set ranges) char-sets))
+	  ((%cpl-element->ranges (car cpl))
+	   => (lambda (ranges*)
+		(loop (cdr cpl)
+		      (append ranges* ranges)
+		      char-sets)))
+	  ((char-set? (car cpl))
+	   (loop (cdr cpl)
+		 ranges
+		 (cons (car cpl) char-sets)))
+	  (else
+	   (error:not-a cpl-element? (car cpl))))))
+
+(define (%cpl-element->ranges elt)
+  (cond ((%range? elt) (list elt))
+	((unicode-char? elt) (list (char->integer elt)))
+	((ustring? elt) (map char->integer (ustring->list elt)))
+	(else #f)))
+
+(define (%ranges->char-set ranges)
   (receive (low-ranges high-ranges)
-      (%split-ranges (%canonicalize-scalar-value-list ranges))
-    (%make-char-set (%scalar-values->low low-ranges)
-		    (%scalar-values->high high-ranges))))
+      (%split-ranges (%canonicalize-ranges ranges))
+    (%make-char-set (%code-points->low low-ranges)
+		    (%code-points->high high-ranges))))
 
-(define (%scalar-values->low ranges)
+(define (%code-points->low ranges)
   (let ((low (%make-low 0)))
     (for-each (lambda (range)
 		(let ((end (%range-end range)))
@@ -195,7 +216,7 @@ USA.
 	      ranges)
     low))
 
-(define (%scalar-values->high ranges)
+(define (%code-points->high ranges)
   (let ((high (make-vector (fix:* 2 (length ranges)))))
     (do ((ranges ranges (cdr ranges))
 	 (i 0 (fix:+ i 2)))
@@ -204,9 +225,8 @@ USA.
       (vector-set! high (fix:+ i 1) (%range-end (car ranges))))
     high))
 
-(define (%canonicalize-scalar-value-list ranges)
-  ;; Sort ranges in order, delete empty ranges, then merge adjacent
-  ;; ranges.
+(define (%canonicalize-ranges ranges)
+  ;; Sorts ranges in order, deletes empty ranges, then merges adjacent ranges.
   (let ((ranges
 	 (filter! (lambda (range)
 		    (fix:< (%range-start range)
@@ -264,38 +284,38 @@ USA.
 
 ;;;; Predicates
 
-(define (char-set-member? char-set char)
-  (guarantee-char-set char-set 'CHAR-SET-MEMBER?)
-  (guarantee-char char 'CHAR-SET-MEMBER?)
-  (%scalar-value-in-char-set? (char-code char) char-set))
+(define (char-in-set? char char-set)
+  (guarantee unicode-char? char 'char-in-set?)
+  (guarantee char-set? char-set 'char-in-set?)
+  (%scalar-value-in-char-set? (char->integer char) char-set))
 
-(define (scalar-value-in-char-set? scalar-value char-set)
-  (guarantee-unicode-scalar-value scalar-value 'SCALAR-VALUE-IN-CHAR-SET?)
-  (guarantee-char-set char-set 'SCALAR-VALUE-IN-CHAR-SET?)
-  (%scalar-value-in-char-set? scalar-value char-set))
+(define (scalar-value-in-char-set? sv char-set)
+  (guarantee unicode-scalar-value? sv 'scalar-value-in-char-set?)
+  (guarantee char-set? char-set 'scalar-value-in-char-set?)
+  (%scalar-value-in-char-set? sv char-set))
 
-(define (%scalar-value-in-char-set? value char-set)
-  (if (fix:< value %low-limit)
-      (%low-ref (%char-set-low char-set) value)
+(define (%scalar-value-in-char-set? sv char-set)
+  (if (fix:< sv %low-limit)
+      (%low-ref (%char-set-low char-set) sv)
       (let ((high (%char-set-high char-set)))
 	(let loop ((lower 0) (upper (vector-length high)))
 	  (if (fix:< lower upper)
 	      (let ((i (fix:* 2 (fix:quotient (fix:+ lower upper) 4))))
-		(cond ((fix:< value (vector-ref high i))
+		(cond ((fix:< sv (vector-ref high i))
 		       (loop lower i))
-		      ((fix:>= value (vector-ref high (fix:+ i 1)))
+		      ((fix:>= sv (vector-ref high (fix:+ i 1)))
 		       (loop (fix:+ i 2) upper))
 		      (else #t)))
 	      #f)))))
 
 (define (char-set-predicate char-set)
-  (guarantee-char-set char-set 'CHAR-SET-PREDICATE)
+  (guarantee char-set? char-set 'CHAR-SET-PREDICATE)
   (lambda (char)
     (char-set-member? char-set char)))
 
 (define (char-set=? char-set . char-sets)
-  (guarantee-char-set char-set 'CHAR-SET=?)
-  (guarantee-char-sets char-sets 'CHAR-SET=?)
+  (guarantee char-set? char-set 'CHAR-SET=?)
+  (guarantee-list-of char-set? char-sets 'CHAR-SET=?)
   (every (lambda (char-set*)
 	   (%=? char-set* char-set))
 	 char-sets))
@@ -323,7 +343,7 @@ USA.
 ;;;; Mapping operations
 
 (define (char-set-invert char-set)
-  (guarantee-char-set char-set 'CHAR-SET-INVERT)
+  (guarantee char-set? char-set 'CHAR-SET-INVERT)
   (%invert char-set))
 
 (define (%invert cs1)
@@ -365,7 +385,10 @@ USA.
 	(vector %low-limit char-code-limit))))
 
 (define (char-set-union . char-sets)
-  (guarantee-char-sets char-sets 'CHAR-SET-UNION)
+  (char-set-union* char-sets))
+
+(define (char-set-union* char-sets)
+  (guarantee-list-of char-set? char-sets 'char-set-union*)
   (reduce %union %null-char-set char-sets))
 
 (define (%union cs1 cs2)
@@ -375,7 +398,10 @@ USA.
 	   cs2))
 
 (define (char-set-intersection . char-sets)
-  (guarantee-char-sets char-sets 'CHAR-SET-INTERSECTION)
+  (char-set-intersection* char-sets))
+
+(define (char-set-intersection* char-sets)
+  (guarantee-list-of char-set? char-sets 'char-set-intersection*)
   (reduce %intersection %null-char-set char-sets))
 
 (define (%intersection cs1 cs2)
@@ -385,8 +411,8 @@ USA.
 	   cs2))
 
 (define (char-set-difference char-set . char-sets)
-  (guarantee-char-set char-set 'CHAR-SET-DIFFERENCE)
-  (guarantee-char-sets char-sets 'CHAR-SET-DIFFERENCE)
+  (guarantee char-set? char-set 'char-set-difference)
+  (guarantee-list-of char-set? char-sets 'char-set-difference)
   (fold-left %difference char-set char-sets))
 
 (define (%difference cs1 cs2)
@@ -489,21 +515,21 @@ USA.
 ;;;; Standard character sets
 
 (define-deferred char-set:upper-case
-  (scalar-values->char-set '((#x41 . #x5B) (#xC0 . #xD7) (#xD8 . #xDE))))
+  (char-set* '((#x41 . #x5B) (#xC0 . #xD7) (#xD8 . #xDE))))
 (define-deferred char-set:not-upper-case (char-set-invert char-set:upper-case))
 (define-deferred char-upper-case? (char-set-predicate char-set:upper-case))
 
 (define-deferred char-set:lower-case
-  (scalar-values->char-set '((#x61 . #x7B) (#xE0 . #xF7) (#xF8 . #xFF))))
+  (char-set* '((#x61 . #x7B) (#xE0 . #xF7) (#xF8 . #xFF))))
 (define-deferred char-set:not-lower-case (char-set-invert char-set:lower-case))
 (define-deferred char-lower-case? (char-set-predicate char-set:lower-case))
 
-(define-deferred char-set:numeric (scalar-values->char-set '((#x30 . #x3A))))
+(define-deferred char-set:numeric (char-set* '((#x30 . #x3A))))
 (define-deferred char-set:not-numeric (char-set-invert char-set:numeric))
 (define-deferred char-numeric? (char-set-predicate char-set:numeric))
 
 (define-deferred char-set:graphic
-  (scalar-values->char-set '((#x20 . #x7F) (#xA0 . #x100))))
+  (char-set* '((#x20 . #x7F) (#xA0 . #x100))))
 (define-deferred char-set:not-graphic (char-set-invert char-set:graphic))
 (define-deferred char-graphic? (char-set-predicate char-set:graphic))
 
@@ -534,11 +560,9 @@ USA.
 
 ;;; Used in RFCs:
 
-(define-deferred char-set:ascii
-  (scalar-values->char-set '((#x00 . #x80))))
+(define-deferred char-set:ascii (char-set* '((#x00 . #x80))))
 
-(define-deferred char-set:ctls
-  (scalar-values->char-set '((#x00 . #x20) #x7F)))
+(define-deferred char-set:ctls (char-set* '((#x00 . #x20) #x7F)))
 (define-deferred char-ctl? (char-set-predicate char-set:ctls))
 
 (define-deferred char-set:wsp (char-set #\space #\tab))
@@ -546,8 +570,11 @@ USA.
 
 ;;;; Backwards compatibility
 
+(define (char-set-member? char-set char)
+  (char-in-set? char char-set))
+
 (define (string->char-set string)
-  (scalar-values->char-set (map char->integer (string->list string))))
+  (char-set* (map char->integer (string->list string))))
 
 ;; Returns ASCII string:
 (define (char-set->string char-set)
@@ -555,7 +582,7 @@ USA.
 
 ;; Returns only ASCII members:
 (define (char-set-members char-set)
-  (guarantee-char-set char-set 'CHAR-SET-MEMBERS)
+  (guarantee char-set? char-set 'CHAR-SET-MEMBERS)
   (let ((low (%char-set-low char-set)))
     (let loop ((code 0))
       (if (fix:< code #x80)
@@ -564,16 +591,6 @@ USA.
 		    (loop (fix:+ code 1)))
 	      (loop (fix:+ code 1)))
 	  '()))))
-
-(define (char-set . chars)
-  (for-each (lambda (char)
-	      (guarantee-char char 'CHAR-SET))
-	    chars)
-  (%scalar-values->char-set (map char->integer chars)))
-
-(define (chars->char-set chars)
-  (guarantee-list-of-type chars char? "character" 'CHARS->CHAR-SET)
-  (%scalar-values->char-set (map char->integer chars)))
 
 (define (ascii-range->char-set start end)
   (if (not (index-fixnum? start))
@@ -584,34 +601,4 @@ USA.
       (error:bad-range-argument start 'ASCII-RANGE->CHAR-SET))
   (if (not (fix:<= end #x100))
       (error:bad-range-argument end 'ASCII-RANGE->CHAR-SET))
-  (%scalar-values->char-set (list (cons start end))))
-
-(define (alphabet->char-set char-set)
-  char-set)
-
-(define (char-set->alphabet char-set)
-  char-set)
-
-(define (char-in-alphabet? char char-set)
-  (char-set-member? char-set char))
-
-(define (alphabet->scalar-values char-set)
-  (map (lambda (range)
-	 (if (pair? range)
-	     (cons (car range)
-		   (fix:- (cdr range) 1))
-	     range))
-       (char-set->scalar-values char-set)))
-
-(define (scalar-values->alphabet ranges)
-  (guarantee-well-formed-scalar-value-list ranges 'SCALAR-VALUES->ALPHABET)
-  (%scalar-values->char-set
-   (map (lambda (range)
-	  (if (pair? range)
-	      (cons (car range)
-		    (if (fix:< (cdr range) char-code-limit)
-			(fix:+ (cdr range) 1)
-			(error:bad-range-argument (cdr range)
-						  'SCALAR-VALUES->ALPHABET)))
-	      range))
-	ranges)))
+  (char-set (cons start end)))

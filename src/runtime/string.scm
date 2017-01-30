@@ -1359,12 +1359,12 @@ USA.
 
 (define (string-find-next-char-in-set string char-set)
   (guarantee-string string 'STRING-FIND-NEXT-CHAR-IN-SET)
-  (guarantee-char-set char-set 'STRING-FIND-NEXT-CHAR-IN-SET)
+  (guarantee char-set? char-set 'STRING-FIND-NEXT-CHAR-IN-SET)
   (%substring-find-next-char-in-set string 0 (string-length string) char-set))
 
 (define (substring-find-next-char-in-set string start end char-set)
   (guarantee-substring string start end 'SUBSTRING-FIND-NEXT-CHAR-IN-SET)
-  (guarantee-char-set char-set 'SUBSTRING-FIND-NEXT-CHAR-IN-SET)
+  (guarantee char-set? char-set 'SUBSTRING-FIND-NEXT-CHAR-IN-SET)
   (%substring-find-next-char-in-set string start end char-set))
 
 (define-integrable (%substring-find-next-char-in-set string start end char-set)
@@ -1373,13 +1373,13 @@ USA.
 
 (define (string-find-previous-char-in-set string char-set)
   (guarantee-string string 'STRING-FIND-PREVIOUS-CHAR-IN-SET)
-  (guarantee-char-set char-set 'STRING-FIND-PREVIOUS-CHAR-IN-SET)
+  (guarantee char-set? char-set 'STRING-FIND-PREVIOUS-CHAR-IN-SET)
   (%substring-find-previous-char-in-set string 0 (string-length string)
 					char-set))
 
 (define (substring-find-previous-char-in-set string start end char-set)
   (guarantee-substring string start end 'SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET)
-  (guarantee-char-set char-set 'SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET)
+  (guarantee char-set? char-set 'SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET)
   (%substring-find-previous-char-in-set string start end char-set))
 
 (define (%substring-find-previous-char-in-set string start end char-set)
@@ -1679,7 +1679,3 @@ USA.
 					   procedure)
   (guarantee-substring string1 start1 end1 procedure)
   (guarantee-substring string2 start2 end2 procedure))
-
-(define-integrable (guarantee-char-set object procedure)
-  (if (not (char-set? object))
-      (error:wrong-type-argument object "character set" procedure)))

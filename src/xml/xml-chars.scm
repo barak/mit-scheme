@@ -29,7 +29,7 @@ USA.
 (declare (usual-integrations))
 
 (define char-set:xml-base-char
-  (scalar-values->char-set
+  (char-set*
    '((#x0041 . #x005B)
      (#x0061 . #x007B)
      (#x00C0 . #x00D7)
@@ -234,13 +234,13 @@ USA.
      (#xAC00 . #xD7A4))))
 
 (define char-set:xml-ideographic
-  (scalar-values->char-set
+  (char-set*
    '(#x3007
      (#x3021 . #x302A)
      (#x4E00 . #x9FA6))))
 
 (define char-set:xml-combining-char
-  (scalar-values->char-set
+  (char-set*
    '((#x0300 . #x0346)
      (#x0360 . #x0362)
      (#x0483 . #x0487)
@@ -338,7 +338,7 @@ USA.
      #x309A)))
 
 (define char-set:xml-digit
-  (scalar-values->char-set
+  (char-set*
    '((#x0030 . #x003A)
      (#x0660 . #x066A)
      (#x06F0 . #x06FA)
@@ -356,7 +356,7 @@ USA.
      (#x0F20 . #x0F2A))))
 
 (define char-set:xml-extender
-  (scalar-values->char-set
+  (char-set*
    '(#x00B7
      #x02D0
      #x02D1
@@ -370,7 +370,7 @@ USA.
      (#x30FC . #x30FF))))
 
 (define char-set:xml-char
-  (scalar-values->char-set
+  (char-set*
    '(#x0009
      #x000A
      #x000D
