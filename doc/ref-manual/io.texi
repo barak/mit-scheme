@@ -860,15 +860,17 @@ anything other than the default.
 The default value of this parameter is @code{10}.
 @end deffn
 
-@deffn parameter param:parser-canonicalize-symbols?
-This parameter controls how the parser handles case-sensitivity of
-symbols.  If it is bound to its default value of @code{#t}, symbols read
-by the parser are converted to lower case before being interned.
-Otherwise, symbols are interned without case conversion.
+@deffn parameter param:parser-fold-case?
+This parameter controls whether the parser folds the case of symbols,
+character names, and certain other syntax.  If it is bound to its
+default value of @code{#t}, symbols read by the parser are case-folded
+prior to being interned.  Otherwise, symbols are interned without
+folding.
 
-In general, it is a bad idea to use this feature, as it doesn't really
+At present, it is a bad idea to use this feature, as it doesn't really
 make Scheme case-sensitive, and therefore can break features of the
-Scheme runtime that depend on case-insensitive symbols.
+Scheme runtime that depend on case-folded symbols.  Instead, use the
+@code{#!fold-case} or @code{#!no-fold-case} markers in your code.
 @end deffn
 
 @defvr {obsolete variable} *parser-radix*
