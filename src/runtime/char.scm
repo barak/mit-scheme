@@ -295,10 +295,10 @@ USA.
 (define char-bit:hyper #x08)
 
 (define named-bits
-  `((,char-bit:hyper "h-" "hyper-")
-    (,char-bit:super "s-" "super-")
-    (,char-bit:meta "m-" "meta-")
-    (,char-bit:control "c-" "control-" "ctrl-")))
+  `((,char-bit:hyper "H-" "h-" "hyper-")
+    (,char-bit:super "S-" "s-" "super-")
+    (,char-bit:meta "M-" "m-" "meta-")
+    (,char-bit:control "C-" "c-" "control-" "ctrl-")))
 
 (define (match-named-code string fold-case?)
   (let ((match? (if fold-case? ustring-ci=? ustring=?)))
