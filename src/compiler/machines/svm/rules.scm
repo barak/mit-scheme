@@ -228,9 +228,12 @@ USA.
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CHAR->ASCII (CONSTANT (? char))))
-  (QUALIFIER (ascii-char? char))
   (inst:load-immediate (word-target target)
-		       (object-datum char)))
+		       (char->signed-8-bit-immediate char)))
+
+(define (char->signed-8-bit-immediate character)
+  (let ((ascii (char->integer character)))
+    (if (< ascii 128) ascii (- ascii 256))))
 
 (define-rule predicate
   (TYPE-TEST (REGISTER (? source)) (? type))
