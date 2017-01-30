@@ -339,29 +339,28 @@ USA.
 
 (define (unicode-char? object)
   (and (char? object)
-       (legal-code-32? (char->integer object))))
+       (let ((n (char->integer object)))
+	 (and (unicode-scalar-value? n)
+	      (not (non-character? n))))))
+
+(define-integrable (unicode-code-point? object)
+  (and (index-fixnum? object)
+       (fix:< object char-code-limit)))
 
 (define (unicode-scalar-value? object)
-  (and (index-fixnum? object)
-       (legal-code-32? object)))
+  (and (unicode-code-point? object)
+       (not (utf16-surrogate? object))))
 
 (define-guarantee unicode-char "a Unicode character")
 (define-guarantee unicode-scalar-value "a Unicode scalar value")
 
 (define (unicode-char->scalar-value char #!optional caller)
-  (let ((cp (char->integer char)))
-    (if (not (legal-code-32? cp))
-	(error:not-a unicode-char? char caller))
-    cp))
+  (guarantee unicode-char? char caller)
+  (char->integer char))
 
-(define-integrable (legal-code-32? cp)
-  (and (fix:< cp char-code-limit)
-       (not (utf16-surrogate? cp))
-       (not (non-character? cp))))
-
-(define (legal-code-16? pt)
-  (and (not (utf16-surrogate? pt))
-       (not (non-character? pt))))
+(define (unicode-scalar-value->char sv #!optional caller)
+  (guarantee unicode-scalar-value? sv caller)
+  (integer->char sv))
 
 (define-integrable (utf16-surrogate? cp)
   (fix:= #xD800 (fix:and #xF800 cp)))

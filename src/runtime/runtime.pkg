@@ -1392,6 +1392,8 @@ USA.
 	  set-char-bits
 	  unicode-char->scalar-value
 	  unicode-char?
+	  unicode-code-point?
+	  unicode-scalar-value->char
 	  unicode-scalar-value?)
   (initialization (initialize-package!)))
 
