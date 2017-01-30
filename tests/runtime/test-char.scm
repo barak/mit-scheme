@@ -164,13 +164,28 @@ USA.
 (define-test 'illegal-chars
   (lambda ()
     (for-each (lambda (cp)
-		(assert-false (unicode-scalar-value? cp))
+		(value-assert (lambda (cp)
+                                (not (unicode-scalar-value? cp)))
+                              "non-scalar value"
+                              cp))
+              utf16-surrogates)
+    (for-each (lambda (cp)
+		(value-assert unicode-scalar-value? "scalar value" cp))
+              illegal-characters)
+    (for-each (lambda (cp)
+		(value-assert unicode-code-point? "code point" cp)
 		(let ((char (integer->char cp)))
-		  (assert-false (unicode-char? char))
+                  (value-assert (lambda (char)
+                                  (not (unicode-char? char)))
+                                "non-unicode character"
+                                char)
 		  (assert-error
 		   (lambda ()
 		     (encode-utf8-char! (make-bytevector 16) 0 char)))))
-	      illegal-characters)))
+	      (append utf16-surrogates illegal-characters))))
+
+(define utf16-surrogates
+  (iota #x800 #xD800))
 
 (define illegal-characters
   `(
@@ -180,7 +195,7 @@ USA.
 		    (let ((prefix (* plane #x10000)))
 		      (list (+ prefix #xFFFE)
 			    (+ prefix #xFFFF))))
-		  (iota #x11 #x01))
+		  (iota #x11))
     ))
 
 (define-test 'invalid-utf8-sequences
