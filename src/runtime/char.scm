@@ -380,6 +380,11 @@ USA.
 (define-guarantee unicode-char "a Unicode character")
 (define-guarantee unicode-scalar-value "a Unicode scalar value")
 
+(define (char->scalar-value char #!optional caller)
+  (let ((n (char->integer char)))
+    (guarantee unicode-scalar-value? n caller)
+    n))
+
 (define (unicode-char->scalar-value char #!optional caller)
   (guarantee unicode-char? char caller)
   (char->integer char))

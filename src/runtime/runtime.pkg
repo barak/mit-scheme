@@ -1339,6 +1339,7 @@ USA.
 	  char->digit
 	  char->integer
 	  char->name
+	  char->scalar-value
 	  char-ascii?
 	  char-bit:control
 	  char-bit:hyper
