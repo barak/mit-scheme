@@ -31,7 +31,7 @@ USA.
 
 (define hook/interned-symbol)
 (define hook/procedure-unparser)
-(define string-delimiters)
+(define string-quoted)
 (define non-canon-symbol-quoted)
 (define canon-symbol-quoted)
 (define system-global-unparser-table)
@@ -75,8 +75,8 @@ USA.
 (define (initialize-package!)
   (set! hook/interned-symbol unparse-symbol)
   (set! hook/procedure-unparser #f)
-  (set! string-delimiters
-        (char-set-union char-set:not-graphic (char-set #\" #\\)))
+  (set! string-quoted
+        (char-set-union char-set:not-graphic (char-set #\\ #\" #\|)))
   (set! non-canon-symbol-quoted
         (char-set-union char-set/atom-delimiters char-set/symbol-quotes))
   (set! canon-symbol-quoted
@@ -534,7 +534,7 @@ USA.
 
 (define (unparse/character character)
   (if (or (param:slashify?)
-          (not (char-ascii? character)))
+          (not (ascii-char? character)))
       (begin
         (*unparse-string "#\\")
         (*unparse-string (char->name character #t)))
@@ -542,51 +542,36 @@ USA.
 
 (define (unparse/string string)
   (if (param:slashify?)
-      (let ((end (ustring-length string)))
-        (let ((end*
-               (let ((limit (get-param:unparser-string-length-limit)))
-                 (if limit
-                     (min limit end)
-                     end))))
+      (let* ((end (ustring-length string))
+	     (end*
+	      (let ((limit (get-param:unparser-string-length-limit)))
+		(if limit
+		    (min limit end)
+		    end))))
           (*unparse-char #\")
-          (if (ustring-find-first-char-in-set string string-delimiters 0 end*)
-              (let loop ((start 0))
-                (let ((index
-                       (ustring-find-first-char-in-set string string-delimiters
-						       start end*)))
-                  (if index
-                      (begin
-                        (*unparse-substring string start index)
-                        (*unparse-char #\\)
-                        (let ((char (ustring-ref string index)))
-                          (cond ((char=? char char:newline)
-                                 (*unparse-char #\n))
-                                ((char=? char #\tab)
-                                 (*unparse-char #\t))
-                                ((char=? char #\vt)
-                                 (*unparse-char #\v))
-                                ((char=? char #\bs)
-                                 (*unparse-char #\b))
-                                ((char=? char #\return)
-                                 (*unparse-char #\r))
-                                ((char=? char #\page)
-                                 (*unparse-char #\f))
-                                ((char=? char #\bel)
-                                 (*unparse-char #\a))
-                                ((or (char=? char #\\)
-                                     (char=? char #\"))
-                                 (*unparse-char char))
-                                (else
-				 (*unparse-char #\x)
-				 (*unparse-string
-				  (number->string (char->integer char) 16))
-				 (*unparse-char #\;))))
-                        (loop (+ index 1)))
-                      (*unparse-substring string start end*))))
-              (*unparse-substring string 0 end*))
+	  (do ((index 0 (fix:+ index 1)))
+	      ((not (fix:< index end*)))
+	    (if (fix:< index end)
+		(let ((char (ustring-ref string index)))
+		  (if (char-set-member? string-quoted char)
+		      (begin
+			(*unparse-char #\\)
+			(case char
+			  ((#\bel) (*unparse-char #\a))
+			  ((#\bs) (*unparse-char #\b))
+			  ((#\tab) (*unparse-char #\t))
+			  ((#\newline) (*unparse-char #\n))
+			  ((#\return) (*unparse-char #\r))
+			  ((#\\ #\" #\|) (*unparse-char char))
+			  (else
+			   (*unparse-char #\x)
+			   (*unparse-string
+			    (number->string (char->integer char) 16))
+			   (*unparse-char #\;))))
+		      (*unparse-char char)))))
           (if (< end* end)
               (*unparse-string "..."))
-          (*unparse-char #\")))
+          (*unparse-char #\"))
       (*unparse-string string)))
 
 (define (unparse/bit-string bit-string)
