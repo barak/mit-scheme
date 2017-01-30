@@ -366,7 +366,7 @@ USA.
   (if (and (let ((line (current-line port db)))
 	     (and line
 		  (< line 2)))
-	   (db-enable-file-attributes-parsing db))
+	   (db-enable-attributes? db))
       (scan)
       (discard continue-parsing)))
 
@@ -455,7 +455,7 @@ USA.
   (if (and (let ((line (current-line port db)))
 	     (and line
 		  (< line 2)))
-	   (db-enable-file-attributes-parsing db))
+	   (db-enable-attributes? db))
       (scan)
       (discard 0 continue-parsing)))
 
@@ -712,19 +712,19 @@ USA.
 
 (define (handler:quote port db ctx char)
   ctx char
-  (list 'QUOTE (read-object port db)))
+  (list 'quote (read-object port db)))
 
 (define (handler:quasiquote port db ctx char)
   ctx char
-  (list 'QUASIQUOTE (read-object port db)))
+  (list 'quasiquote (read-object port db)))
 
 (define (handler:unquote port db ctx char)
   ctx char
   (if (char=? (%peek-char/no-eof port db) #\@)
       (begin
 	(%read-char port db)
-	(list 'UNQUOTE-SPLICING (read-object port db)))
-      (list 'UNQUOTE (read-object port db))))
+	(list 'unquote-splicing (read-object port db)))
+      (list 'unquote (read-object port db))))
 
 (define (handler:string port db ctx char)
   ctx char
@@ -861,7 +861,14 @@ USA.
 	  ((%string-ci=? db name "eof") (eof-object))
 	  ((%string-ci=? db name "default") (default-object))
 	  ((%string-ci=? db name "unspecific") unspecific)
-	  (else (error:illegal-named-constant name)))))
+	  ((ustring=? name "fold-case")
+	   (set-db-fold-case! db #t)
+	   continue-parsing)
+	  ((ustring=? name "no-fold-case")
+	   (set-db-fold-case! db #f)
+	   continue-parsing)
+	  (else
+	   (error:illegal-named-constant name)))))
 
 (define (handler:uri port db ctx char1 char2)
   ctx char1 char2
@@ -946,55 +953,78 @@ USA.
       (ustring-ci=? s1 s2)
       (ustring=? s1 s2)))
 
-(define-structure db
-  (associate-positions? #f read-only #t)
-  (atom-delimiters #f read-only #t)
-  (fold-case? #f read-only #t)
-  (constituents #f read-only #t)
-  (enable-file-attributes-parsing #f read-only #t)
-  (keyword-style #f read-only #t)
-  (radix #f read-only #t)
-  (parser-table #f read-only #t)
-  (shared-objects #f read-only #t)
+(define-record-type <db>
+    (make-db port env shared-objects position-mapping discretionary-write-char
+	     get-position input-line peek-char read-char)
+    db?
+  (port db-port)
+  (env db-env)
+  (shared-objects db-shared-objects)
+  (position-mapping db-position-mapping set-db-position-mapping!)
   ;; Cached port operations
-  (discretionary-write-char #f read-only #t)
-  (get-position #f read-only #t)
-  (input-line #f read-only #t)
-  (peek-char #f read-only #t)
-  (read-char #f read-only #t)
-  position-mapping)
+  (discretionary-write-char db-discretionary-write-char)
+  (get-position db-get-position)
+  (input-line db-input-line)
+  (peek-char db-peek-char)
+  (read-char db-read-char))
 
 (define (initial-db port environment)
-  (let* ((environment
-	  (if (or (default-object? environment)
-		  (parser-table? environment))
-	      (nearest-repl/environment)
-	      (begin
-		(guarantee-environment environment #f)
-		environment)))
-	 (atom-delimiters (get-param:parser-atom-delimiters environment))
-	 (constituents (get-param:parser-constituents environment)))
-    (guarantee char-set? atom-delimiters #f)
-    (guarantee char-set? constituents #f)
-    (make-db (get-param:parser-associate-positions? environment)
-	     atom-delimiters
-	     (port-property port 'parser-fold-case?
-			    (get-param:parser-fold-case? environment))
-	     constituents
-	     (port-property
-	      port 'parser-enable-file-attributes?
-	      (get-param:parser-enable-attributes? environment))
-	     (port-property port 'parser-keyword-style
-				(get-param:parser-keyword-style environment))
-	     (get-param:parser-radix environment)
-	     (get-param:parser-table environment)
+  (let ((environment
+	 (if (or (default-object? environment)
+		 (parser-table? environment))
+	     (nearest-repl/environment)
+	     (begin
+	       (guarantee environment? environment)
+	       environment))))
+    (make-db port
+	     environment
 	     (make-shared-objects)
+	     '()
 	     (port/operation port 'DISCRETIONARY-WRITE-CHAR)
 	     (position-operation port environment)
 	     (port/operation port 'INPUT-LINE)
 	     (port/operation port 'PEEK-CHAR)
-	     (port/operation port 'READ-CHAR)
-	     '())))
+	     (port/operation port 'READ-CHAR))))
+
+(define (db-param-getter property env-getter)
+  (lambda (db)
+    (port-property (db-port db) property (env-getter (db-env db)))))
+
+(define (db-param-setter property)
+  (lambda (db value)
+    (set-port-property! (db-port db) property value)))
+
+(define db-enable-attributes?
+  (db-param-getter 'parser-enable-attributes?
+		   get-param:parser-enable-attributes?))
+
+(define db-fold-case?
+  (db-param-getter 'parser-fold-case? get-param:parser-fold-case?))
+
+(define set-db-fold-case!
+  (db-param-setter 'parser-fold-case?))
+
+(define db-keyword-style
+  (db-param-getter 'parser-keyword-style get-param:parser-keyword-style))
+
+(define (db-env-getter env-getter)
+  (lambda (db)
+    (env-getter (db-env db))))
+
+(define db-associate-positions?
+  (db-env-getter get-param:parser-associate-positions?))
+
+(define db-atom-delimiters
+  (db-env-getter get-param:parser-atom-delimiters))
+
+(define db-constituents
+  (db-env-getter get-param:parser-constituents))
+
+(define db-parser-table
+  (db-env-getter get-param:parser-table))
+
+(define db-radix
+  (db-env-getter get-param:parser-radix))
 
 (define (position-operation port environment)
   (let ((default (lambda (port) port #f)))
@@ -1027,7 +1057,7 @@ USA.
   (if file-attribute-alist
       (begin
 	;; Disable further attributes parsing.
-	(set-port-property! port 'parser-enable-file-attributes? #f)
+	(set-port-property! port 'parser-enable-attributes? #f)
 	(process-keyword-attribute file-attribute-alist port)
 	(process-mode-attribute file-attribute-alist port)
 	(process-studly-case-attribute file-attribute-alist port))))
