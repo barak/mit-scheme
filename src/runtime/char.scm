@@ -427,14 +427,14 @@ USA.
 ;;;; UTF-{8,16,32} encoders
 
 (define (char-utf8-byte-length char)
-  (let ((sv (unicode-char->scalar-value char 'char-utf8-byte-length)))
+  (let ((sv (char->scalar-value char 'char-utf8-byte-length)))
     (cond ((fix:< sv #x80) 1)
 	  ((fix:< sv #x800) 2)
 	  ((fix:< sv #x10000) 3)
 	  (else 4))))
 
 (define (encode-utf8-char! bytes index char)
-  (let ((sv (unicode-char->scalar-value char 'encode-utf8-char!)))
+  (let ((sv (char->scalar-value char 'encode-utf8-char!)))
 
     (define-integrable (initial-byte leader offset)
       (fix:or leader (fix:lsh sv offset)))
@@ -462,13 +462,13 @@ USA.
 	   (fix:+ index 4)))))
 
 (define (char-utf16-byte-length char)
-  (if (fix:< (unicode-char->scalar-value char 'char-utf16-byte-length) #x10000)
+  (if (fix:< (char->scalar-value char 'char-utf16-byte-length) #x10000)
       2
       4))
 
 (define (utf16-char-encoder setter caller)
   (lambda (bytes index char)
-    (let ((sv (unicode-char->scalar-value char caller)))
+    (let ((sv (char->scalar-value char caller)))
       (cond ((fix:< sv #x10000)
 	     (setter bytes index sv)
 	     (fix:+ index 2))
@@ -487,12 +487,12 @@ USA.
   (utf16-char-encoder bytevector-u16le-set! 'encode-utf16le-char!))
 
 (define (char-utf32-byte-length char)
-  (unicode-char->scalar-value char 'char-utf32-byte-length)
+  (char->scalar-value char 'char-utf32-byte-length)
   4)
 
 (define (utf32-char-encoder setter caller)
   (lambda (bytes index char)
-    (setter bytes index (unicode-char->scalar-value char caller))))
+    (setter bytes index (char->scalar-value char caller))))
 
 (define encode-utf32be-char!
   (utf32-char-encoder bytevector-u32be-set! 'encode-utf32be-char!))
@@ -502,13 +502,13 @@ USA.
 
 ;;;; UTF-{8,16,32} decoders
 
-(define (initial-byte->utf8-char-length byte)
-  (guarantee byte? byte 'initial-byte->utf8-char-length)
-  (cond ((utf8-initial-byte-1? byte) 1)
-	((utf8-initial-byte-2? byte) 2)
-	((utf8-initial-byte-3? byte) 3)
-	((utf8-initial-byte-4? byte) 4)
-	(else (error "Illegal UTF-8 initial byte:" byte))))
+(define (initial-byte->utf8-char-length b0)
+  (guarantee u8? b0 'initial-byte->utf8-char-length)
+  (cond ((utf8-initial-byte-1? b0) 1)
+	((utf8-initial-byte-2? b0) 2)
+	((utf8-initial-byte-3? b0) 3)
+	((utf8-initial-byte-4? b0) 4)
+	(else (error "Illegal UTF-8 initial byte:" b0))))
 
 (define (decode-utf8-char bytes index)
   (integer->char
@@ -516,91 +516,123 @@ USA.
      (cond ((utf8-initial-byte-1? b0)
 	    b0)
 	   ((utf8-initial-byte-2? b0)
-	    (decode-utf8-2 b0
-			   (bytevector-u8-ref bytes (fix:+ index 1))))
+	    (let ((b1 (bytevector-u8-ref bytes (fix:+ index 1))))
+	      (if (not (valid-utf8-sequence-2? b0 b1))
+		  (error "Ill-formed UTF-8 sequence:" b0 b1))
+	      (fix:or (extract-bits b0 #x1F 6)
+		      (extract-bits b1 #x3F 0))))
 	   ((utf8-initial-byte-3? b0)
-	    (decode-utf8-3 b0
-			   (bytevector-u8-ref bytes (fix:+ index 1))
-			   (bytevector-u8-ref bytes (fix:+ index 2))))
+	    (let ((b1 (bytevector-u8-ref bytes (fix:+ index 1)))
+		  (b2 (bytevector-u8-ref bytes (fix:+ index 2))))
+	      (if (not (valid-utf8-sequence-3? b0 b1 b2))
+		  (error "Ill-formed UTF-8 sequence:" b0 b1 b2))
+	      (fix:or (fix:or (extract-bits b0 #x0F 12)
+			      (extract-bits b1 #x3F 6))
+		      (extract-bits b2 #x3F 0))))
 	   ((utf8-initial-byte-4? b0)
-	    (decode-utf8-4 b0
-			   (bytevector-u8-ref bytes (fix:+ index 1))
-			   (bytevector-u8-ref bytes (fix:+ index 2))
-			   (bytevector-u8-ref bytes (fix:+ index 3))))
+	    (let ((b1 (bytevector-u8-ref bytes (fix:+ index 1)))
+		  (b2 (bytevector-u8-ref bytes (fix:+ index 2)))
+		  (b3 (bytevector-u8-ref bytes (fix:+ index 3))))
+	      (if (not (valid-utf8-sequence-4? b0 b1 b2 b3))
+		  (error "Ill-formed UTF-8 sequence:" b0 b1 b2 b3))
+	      (fix:or (fix:or (extract-bits b0 #x07 18)
+			      (extract-bits b1 #x3F 12))
+		      (fix:or (extract-bits b2 #x3F 6)
+			      (extract-bits b3 #x3F 0)))))
 	   (else
 	    (error "Illegal UTF-8 initial byte:" b0))))))
-
-(define (decode-utf8-2 b0 b1)
-  (if (not (and (fix:> b0 #xC1)
-		(utf8-trailing-byte? b1)))
-      (error "Ill-formed UTF-8 sequence:" b0 b1))
-  (fix:or (extract-bits b0 #x1F 6)
-	  (extract-bits b1 #x3F 0)))
-
-(define (decode-utf8-3 b0 b1 b2)
-  (if (not (and (or (fix:> b0 #xE0) (fix:> b1 #x9F))
-		(utf8-trailing-byte? b1)
-		(utf8-trailing-byte? b2)))
-      (error "Ill-formed UTF-8 sequence:" b0 b1 b2))
-  (let ((cp
-	 (fix:or (fix:or (extract-bits b0 #x0F 12)
-			 (extract-bits b1 #x3F 6))
-		 (extract-bits b2 #x3F 0))))
-    (guarantee-cp-not-utf16-surrogate cp)
-    (guarantee-cp-is-character cp)
-    cp))
-
-(define (decode-utf8-4 b0 b1 b2 b3)
-  (if (not (and (or (fix:> b0 #xF0) (fix:> b1 #x8F))
-		(utf8-trailing-byte? b1)
-		(utf8-trailing-byte? b2)
-		(utf8-trailing-byte? b3)))
-      (error "Ill-formed UTF-8 sequence:" b0 b1 b2 b3))
-  (let ((cp
-	 (fix:or (fix:or (extract-bits b0 #x07 18)
-			 (extract-bits b1 #x3F 12))
-		 (fix:or (extract-bits b2 #x3F 6)
-			 (extract-bits b3 #x3F 0)))))
-    (guarantee-cp-in-range cp)
-    (guarantee-cp-is-character cp)
-    cp))
 
 (define-integrable (utf8-initial-byte-1? byte)
   (fix:= #x00 (fix:and #x80 byte)))
 
 (define-integrable (utf8-initial-byte-2? byte)
-  (fix:= #xC0 (fix:and #xE0 byte)))
+  (and (fix:>= byte #xC2) (fix:<= byte #xDF)))
 
 (define-integrable (utf8-initial-byte-3? byte)
   (fix:= #xE0 (fix:and #xF0 byte)))
 
 (define-integrable (utf8-initial-byte-4? byte)
-  (fix:= #xF0 (fix:and #xF8 byte)))
+  (and (fix:>= byte #xF0) (fix:<= byte #xF4)))
+
+;;  code-point range     b0
+;; ------------------  ------
+;; U+000000..U+00007F  00..7F
+(define-integrable (valid-utf8-sequence-1? b0)
+  (utf8-initial-byte-1? b0))
 
-(define-integrable (utf8-trailing-byte? byte)
+;;  code-point range     b0      b1
+;; ------------------  ------  ------
+;; U+000080..U+0007FF  C2..DF  80..BF
+(define-integrable (valid-utf8-sequence-2? b0 b1)
+  (and (utf8-initial-byte-2? b0)
+       (u8:80..BF? b1)))
+
+;;  code-point range     b0      b1      b2
+;; ------------------  ------  ------  ------
+;; U+000800..U+000FFF  E0      A0..BF  80..BF
+;; U+001000..U+00CFFF  E1..EC  80..BF  80..BF
+;; U+00D000..U+00D7FF  ED      80..9F  80..BF
+;; U+00E000..U+00FFFF  EE..EF  80..BF  80..BF
+(define-integrable (valid-utf8-sequence-3? b0 b1 b2)
+  (and (utf8-initial-byte-3? b0)
+       (cond ((fix:= b0 #xE0) (u8:A0..BF? b1))
+	     ((fix:< b0 #xED) (u8:80..BF? b1))
+	     ((fix:= b0 #xED) (u8:80..9F? b1))
+	     (else            (u8:80..BF? b1)))
+       (u8:80..BF? b2)))
+
+;;  code-point range     b0      b1      b2      b3
+;; ------------------  ------  ------  ------  ------
+;; U+010000..U+03FFFF  F0      90..BF  80..BF  80..BF
+;; U+040000..U+0FFFFF  F1..F3  80..BF  80..BF  80..BF
+;; U+100000..U+10FFFF  F4      80..8F  80..BF  80..BF
+(define-integrable (valid-utf8-sequence-4? b0 b1 b2 b3)
+  (and (utf8-initial-byte-4? b0)
+       (cond ((fix:= b0 #xF0) (u8:90..BF? b1))
+	     ((fix:< b0 #xF4) (u8:80..BF? b1))
+	     (else            (u8:80..8F? b1)))
+       (u8:80..BF? b2)
+       (u8:80..BF? b3)))
+
+;; Trailing bytes:
+
+(define-integrable (u8:80..8F? byte)
+  (fix:= #x80 (fix:and #xF0 byte)))
+
+(define-integrable (u8:80..9F? byte)
+  (fix:= #x80 (fix:and #xE0 byte)))
+
+(define-integrable (u8:80..BF? byte)
   (fix:= #x80 (fix:and #xC0 byte)))
+
+(define-integrable (u8:90..BF? byte)
+  (and (fix:>= byte #x90) (fix:<= byte #xBF)))
+
+(define-integrable (u8:A0..BF? byte)
+  (and (fix:>= byte #xA0) (fix:<= byte #xBF)))
 
 (define (initial-u16->utf16-char-length u16)
   (guarantee u16? u16 'initial-u16->utf16-char-length)
-  (if (utf16-high-surrogate? u16) 4 2))
+  (if (utf16-low-surrogate? u16)
+      (error "Illegal initial UTF-16 unit:" u16))
+  (if (utf16-high-surrogate? u16)
+      4
+      2))
 
 (define (utf16-char-decoder getter)
   (lambda (bytes index)
-    (let ((d0 (getter bytes index)))
-      (if (utf16-low-surrogate? d0)
-	  (error "Ill-formed UTF-16 sequence:" d0))
-      (let ((cp
-	     (if (utf16-high-surrogate? d0)
-		 (let ((d1 (getter bytes (fix:+ index 2))))
-		   (if (not (utf16-low-surrogate? d1))
-		       (error "Ill-formed UTF-16 sequence:" d0 d1))
-		   (fix:+ (fix:or (extract-bits d0 #x3FF 10)
-				  (extract-bits d1 #x3FF 0))
-			  #x10000))
-		 d0)))
-	(guarantee-cp-in-range cp)
-	(guarantee-cp-is-character cp)
-	(integer->char cp)))))
+    (integer->char
+     (let ((d0 (getter bytes index)))
+       (if (utf16-low-surrogate? d0)
+	   (error "Illegal initial UTF-16 unit:" d0))
+       (if (utf16-high-surrogate? d0)
+	   (let ((d1 (getter bytes (fix:+ index 2))))
+	     (if (not (utf16-low-surrogate? d1))
+		 (error "Ill-formed UTF-16 sequence:" d0 d1))
+	     (fix:+ (fix:or (extract-bits d0 #x3FF 10)
+			    (extract-bits d1 #x3FF 0))
+		    #x10000))
+	   d0)))))
 
 (define decode-utf16be-char
   (utf16-char-decoder bytevector-u16be-ref))
@@ -609,16 +641,13 @@ USA.
   (utf16-char-decoder bytevector-u16le-ref))
 
 (define (initial-u32->utf32-char-length u32)
-  (guarantee u32? u32 'initial-u32->utf32-char-length)
+  (guarantee unicode-scalar-value? u32 'initial-u32->utf32-char-length)
   4)
 
 (define (utf32-char-decoder getter)
   (lambda (bytes index)
     (let ((u32 (getter bytes index)))
-      (if (not (< u32 char-code-limit))
-	  (error "Value is not a code point:" u32))
-      (guarantee-cp-not-utf16-surrogate u32)
-      (guarantee-cp-is-character u32)
+      (guarantee unicode-scalar-value? u32 'utf32-char-decoder)
       (integer->char u32))))
 
 (define decode-utf32be-char

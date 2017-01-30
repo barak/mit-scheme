@@ -50,16 +50,16 @@ USA.
 	      named-chars)))
 
 (define ascii-chars
-  '(#\u+00 #\u+01 #\u+02 #\u+03 #\u+04 #\u+05 #\u+06 #\u+07
-    #\u+08 #\u+09 #\u+0A #\u+0B #\u+0C #\u+0D #\u+0E #\u+0F
-    #\u+10 #\u+11 #\u+12 #\u+13 #\u+14 #\u+15 #\u+16 #\u+17
-    #\u+18 #\u+19 #\u+1A #\u+1B #\u+1C #\u+1D #\u+1E #\u+1F
-    #\u+20 #\! #\" #\# #\$ #\% #\& #\' #\( #\) #\* #\+ #\, #\- #\. #\/
+  '(#\x00 #\x01 #\x02 #\x03 #\x04 #\x05 #\x06 #\x07
+    #\x08 #\x09 #\x0A #\x0B #\x0C #\x0D #\x0E #\x0F
+    #\x10 #\x11 #\x12 #\x13 #\x14 #\x15 #\x16 #\x17
+    #\x18 #\x19 #\x1A #\x1B #\x1C #\x1D #\x1E #\x1F
+    #\x20 #\! #\" #\# #\$ #\% #\& #\' #\( #\) #\* #\+ #\, #\- #\. #\/
     #\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9 #\: #\; #\< #\= #\> #\? #\@
     #\A #\B #\C #\D #\E #\F #\G #\H #\I #\J #\K #\L #\M #\N #\O #\P #\Q
     #\R #\S #\T #\U #\V #\W #\X #\Y #\Z #\[ #\\ #\] #\^ #\_ #\`
     #\a #\b #\c #\d #\e #\f #\g #\h #\i #\j #\k #\l #\m #\n #\o #\p #\q
-    #\r #\s #\t #\u #\v #\w #\x #\y #\z #\{ #\| #\} #\~ #\u+7F))
+    #\r #\s #\t #\u #\v #\w #\x #\y #\z #\{ #\| #\} #\~ #\x7F))
 
 (define-test 'basic-ascii
   (lambda ()
@@ -99,31 +99,56 @@ USA.
 	   ascii-chars)
 
     ;; 2.1  First possible sequence of a certain length
-    (#u8(#x00) #\u+00000000)
-    (#u8(#xC2 #x80) #\u+00000080)
-    (#u8(#xE0 #xA0 #x80) #\u+00000800)
-    (#u8(#xF0 #x90 #x80 #x80) #\u+00010000)
+    (#u8(#x00) #\x00000000)
+    (#u8(#xC2 #x80) #\x00000080)
+    (#u8(#xE0 #xA0 #x80) #\x00000800)
+    (#u8(#xF0 #x90 #x80 #x80) #\x00010000)
 
     ;; 2.2  Last possible sequence of a certain length
-    (#u8(#x7F) #\u+0000007F)
-    (#u8(#xDF #xBF) #\u+000007FF)
-    (#u8(#xEF #xBF #xBD) #\u+0000FFFD)
+    (#u8(#x7F) #\x0000007F)
+    (#u8(#xDF #xBF) #\x000007FF)
+    (#u8(#xEF #xBF #xBD) #\x0000FFFD)
+    (#u8(#xEF #xBF #xBF) #\x0000FFFF)
 
     ;; 2.3  Other boundary conditions
-    (#u8(#xED #x9F #xBF) #\u+0000D7FF)
-    (#u8(#xEE #x80 #x80) #\u+0000E000)
-    (#u8(#xEF #xBF #xBD) #\u+0000FFFD)
-    (#u8(#xF4 #x8F #xBF #xBD) #\u+0010FFFD)
+    (#u8(#xED #x9F #xBF) #\x0000D7FF)
+    (#u8(#xEE #x80 #x80) #\x0000E000)
+    (#u8(#xEF #xBF #xBD) #\x0000FFFD)
+    (#u8(#xF4 #x8F #xBF #xBD) #\x0010FFFD)
+    (#u8(#xF4 #x8F #xBF #xBF) #\x0010FFFF)
+
+    ;; 5.3 Noncharacter code positions
+    ;; Particularly problematic noncharacters in 16-bit applications:
+    (#u8(#xEF #xBF #xBE) #\xFFFE)
+    (#u8(#xEF #xBF #xBF) #\xFFFF)
     ))
+
+(define-test 'utf8-initial-byte
+  (lambda ()
+    (for-each (lambda (b)
+                (if (memv b invalid-utf8-initial-bytes)
+                    (assert-error
+                     (lambda () (initial-byte->utf8-char-length b)))
+                    (assert-= (cond ((< b #x80) 1)
+                                    ((< b #xE0) 2)
+                                    ((< b #xF0) 3)
+                                    (else 4))
+                              (initial-byte->utf8-char-length b))))
+              (iota #x100))))
+
+(define invalid-utf8-initial-bytes
+  (append (iota (- #xc2 #x80) #x80)
+          (iota (- #x100 #xf5) #xF5)))
 
 (define-test 'invalid-known-length-utf8-sequences
   (lambda ()
     (for-each (lambda (entry)
 		(let ((bytes (car entry))
 		      (length (cadr entry)))
-		  (assert-= length
-			    (initial-byte->utf8-char-length
-                             (bytevector-u8-ref bytes 0)))
+                  (let ((b0 (bytevector-u8-ref bytes 0)))
+                    (if (not (memv b0 invalid-utf8-initial-bytes))
+                        (assert-= length
+                                  (initial-byte->utf8-char-length b0))))
 		  (assert-error (lambda () (decode-utf8-char bytes 0)))))
               invalid-known-length-sequences)))
 
@@ -152,28 +177,23 @@ USA.
     ,@(map (lambda (bytes)
              (list bytes (+ (bytevector-length bytes) 1)))
            '(
-             #u8(#xC0)                     ; #\u+0000
-             #u8(#xE0 #x80)                ; #\u+0000
-             #u8(#xF0 #x80 #x80)           ; #\u+0000
-             #u8(#xDF)                     ; #\u+000007FF
-             #u8(#xEF #xBF)                ; #\u+0000FFFF
-             #u8(#xF7 #xBF #xBF)           ; #\u+001FFFFF
+             #u8(#xC0)                     ; #\x0000
+             #u8(#xE0 #x80)                ; #\x0000
+             #u8(#xF0 #x80 #x80)           ; #\x0000
+             #u8(#xDF)                     ; #\x000007FF
+             #u8(#xEF #xBF)                ; #\x0000FFFF
+             #u8(#xF7 #xBF #xBF)           ; #\x001FFFFF
              ))
     ))
 
-(define-test 'illegal-chars
+(define-test 'utf16-surrogates
   (lambda ()
     (for-each (lambda (cp)
+		(value-assert unicode-code-point? "code point" cp)
 		(value-assert (lambda (cp)
                                 (not (unicode-scalar-value? cp)))
                               "non-scalar value"
-                              cp))
-              utf16-surrogates)
-    (for-each (lambda (cp)
-		(value-assert unicode-scalar-value? "scalar value" cp))
-              illegal-characters)
-    (for-each (lambda (cp)
-		(value-assert unicode-code-point? "code point" cp)
+                              cp)
 		(let ((char (integer->char cp)))
                   (value-assert (lambda (char)
                                   (not (unicode-char? char)))
@@ -182,10 +202,23 @@ USA.
 		  (assert-error
 		   (lambda ()
 		     (encode-utf8-char! (make-bytevector 16) 0 char)))))
-	      (append utf16-surrogates illegal-characters))))
+              utf16-surrogates)))
 
 (define utf16-surrogates
   (iota #x800 #xD800))
+
+(define-test 'illegal-chars
+  (lambda ()
+    (for-each (lambda (cp)
+		(value-assert unicode-code-point? "code point" cp)
+		(value-assert unicode-scalar-value? "scalar value" cp)
+		(let ((char (integer->char cp)))
+                  (value-assert (lambda (char)
+                                  (not (unicode-char? char)))
+                                "non-unicode character"
+                                char)
+                  (encode-utf8-char! (make-bytevector 16) 0 char)))
+              illegal-characters)))
 
 (define illegal-characters
   `(
@@ -207,13 +240,9 @@ USA.
 (define invalid-utf8-sequences
   `(
 
-    ;; 2.2  Last possible sequence of a certain length
-    #u8(#xEF #xBF #xBF)			; #\u+0000FFFF
-    #u8(#xF7 #xBF #xBF #xBF)		; #\u+001FFFFF
-
     ;; 2.3  Other boundary conditions
-    #u8(#xF4 #x8F #xBF #xBF)		; #\u+0010FFFF
-    #u8(#xF4 #x90 #x80 #x80)		; #\u+00110000
+    #u8(#xF4 #x90 #x80 #x80)		; #\x00110000
+    #u8(#xF7 #xBF #xBF #xBF)		; #\x001FFFFF
 
     ;; 3.1  Unexpected continuation bytes
     ;; (duplicated below)
@@ -244,31 +273,31 @@ USA.
            (iota #x02 #xFC))
 
     ;; 3.3  Sequences with last continuation byte missing
-    #u8(#xF8 #x80 #x80 #x80)		; #\u+0000
-    #u8(#xFC #x80 #x80 #x80 #x80)	; #\u+0000
-    #u8(#xFB #xBF #xBF #xBF)		; #\u+03FFFFFF
-    #u8(#xFD #xBF #xBF #xBF #xBF)	; #\u+7FFFFFFF
+    #u8(#xF8 #x80 #x80 #x80)		; #\x0000
+    #u8(#xFC #x80 #x80 #x80 #x80)	; #\x0000
+    #u8(#xFB #xBF #xBF #xBF)		; #\x03FFFFFF
+    #u8(#xFD #xBF #xBF #xBF #xBF)	; #\x7FFFFFFF
 
     ;; 4.1  Examples of an overlong ASCII character
-    #u8(#xC0 #xAF)                      ; #\u+002F
-    #u8(#xE0 #x80 #xAF)                 ; #\u+002F
-    #u8(#xF0 #x80 #x80 #xAF)            ; #\u+002F
-    #u8(#xF8 #x80 #x80 #x80 #xAF)       ; #\u+002F
-    #u8(#xFC #x80 #x80 #x80 #x80 #xAF)  ; #\u+002F
+    #u8(#xC0 #xAF)                      ; #\x002F
+    #u8(#xE0 #x80 #xAF)                 ; #\x002F
+    #u8(#xF0 #x80 #x80 #xAF)            ; #\x002F
+    #u8(#xF8 #x80 #x80 #x80 #xAF)       ; #\x002F
+    #u8(#xFC #x80 #x80 #x80 #x80 #xAF)  ; #\x002F
 
     ;; 4.2  Maximum overlong sequences
-    #u8(#xC1 #xBF)                      ; #\u+0000007F
-    #u8(#xE0 #x9F #xBF)                 ; #\u+000007FF
-    #u8(#xF0 #x8F #xBF #xBF)            ; #\u+0000FFFF
-    #u8(#xF8 #x87 #xBF #xBF #xBF)       ; #\u+001FFFFF
-    #u8(#xFC #x83 #xBF #xBF #xBF #xBF)  ; #\u+03FFFFFF
+    #u8(#xC1 #xBF)                      ; #\x0000007F
+    #u8(#xE0 #x9F #xBF)                 ; #\x000007FF
+    #u8(#xF0 #x8F #xBF #xBF)            ; #\x0000FFFF
+    #u8(#xF8 #x87 #xBF #xBF #xBF)       ; #\x001FFFFF
+    #u8(#xFC #x83 #xBF #xBF #xBF #xBF)  ; #\x03FFFFFF
 
     ;; 4.3  Overlong representation of the NUL character
-    #u8(#xC0 #x80)                      ; #\u+0000
-    #u8(#xE0 #x80 #x80)                 ; #\u+0000
-    #u8(#xF0 #x80 #x80 #x80)            ; #\u+0000
-    #u8(#xF8 #x80 #x80 #x80 #x80)       ; #\u+0000
-    #u8(#xFC #x80 #x80 #x80 #x80 #x80)  ; #\u+0000
+    #u8(#xC0 #x80)                      ; #\x0000
+    #u8(#xE0 #x80 #x80)                 ; #\x0000
+    #u8(#xF0 #x80 #x80 #x80)            ; #\x0000
+    #u8(#xF8 #x80 #x80 #x80 #x80)       ; #\x0000
+    #u8(#xFC #x80 #x80 #x80 #x80 #x80)  ; #\x0000
 
     ;; 3.5  Impossible bytes
     #u8(#xFE)
@@ -276,26 +305,21 @@ USA.
     #u8(#xFE #xFE #xFF #xFF)
 
     ;; 5.1 Single UTF-16 surrogates
-    #u8(#xED #xA0 #x80)                 ; #\u+D800
-    #u8(#xED #xAD #xBF)                 ; #\u+DB7F
-    #u8(#xED #xAE #x80)                 ; #\u+DB80
-    #u8(#xED #xAF #xBF)                 ; #\u+DBFF
-    #u8(#xED #xB0 #x80)                 ; #\u+DC00
-    #u8(#xED #xBE #x80)                 ; #\u+DF80
-    #u8(#xED #xBF #xBF)                 ; #\u+DFFF
+    #u8(#xED #xA0 #x80)                 ; #\xD800
+    #u8(#xED #xAD #xBF)                 ; #\xDB7F
+    #u8(#xED #xAE #x80)                 ; #\xDB80
+    #u8(#xED #xAF #xBF)                 ; #\xDBFF
+    #u8(#xED #xB0 #x80)                 ; #\xDC00
+    #u8(#xED #xBE #x80)                 ; #\xDF80
+    #u8(#xED #xBF #xBF)                 ; #\xDFFF
 
     ;; 5.2 Paired UTF-16 surrogates
-    ;; (#\u+D800 #\u+DC00 #u8(#xED #xA0 #x80 #xED #xB0 #x80))
-    ;; (#\u+D800 #\u+DFFF #u8(#xED #xA0 #x80 #xED #xBF #xBF))
-    ;; (#\u+DB7F #\u+DC00 #u8(#xED #xAD #xBF #xED #xB0 #x80))
-    ;; (#\u+DB7F #\u+DFFF #u8(#xED #xAD #xBF #xED #xBF #xBF))
-    ;; (#\u+DB80 #\u+DC00 #u8(#xED #xAE #x80 #xED #xB0 #x80))
-    ;; (#\u+DB80 #\u+DFFF #u8(#xED #xAE #x80 #xED #xBF #xBF))
-    ;; (#\u+DBFF #\u+DC00 #u8(#xED #xAF #xBF #xED #xB0 #x80))
-    ;; (#\u+DBFF #\u+DFFF #u8(#xED #xAF #xBF #xED #xBF #xBF))
-
-    ;; 5.3 Noncharacter code positions
-    ;; Particularly problematic noncharacters in 16-bit applications:
-    #u8(#xEF #xBF #xBE)                 ; #\u+FFFE
-    #u8(#xEF #xBF #xBF)                 ; #\u+FFFF
+    ;; (#\xD800 #\xDC00 #u8(#xED #xA0 #x80 #xED #xB0 #x80))
+    ;; (#\xD800 #\xDFFF #u8(#xED #xA0 #x80 #xED #xBF #xBF))
+    ;; (#\xDB7F #\xDC00 #u8(#xED #xAD #xBF #xED #xB0 #x80))
+    ;; (#\xDB7F #\xDFFF #u8(#xED #xAD #xBF #xED #xBF #xBF))
+    ;; (#\xDB80 #\xDC00 #u8(#xED #xAE #x80 #xED #xB0 #x80))
+    ;; (#\xDB80 #\xDFFF #u8(#xED #xAE #x80 #xED #xBF #xBF))
+    ;; (#\xDBFF #\xDC00 #u8(#xED #xAF #xBF #xED #xB0 #x80))
+    ;; (#\xDBFF #\xDFFF #u8(#xED #xAF #xBF #xED #xBF #xBF))
     ))
