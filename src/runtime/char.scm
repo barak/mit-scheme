@@ -144,35 +144,29 @@ USA.
 
 (define downcase-table)
 (define upcase-table)
-
-(define (initialize-case-conversions!)
-  (set! downcase-table (make-bytevector #x100))
-  (set! upcase-table (make-bytevector #x100))
-  (do ((i 0 (fix:+ i 1)))
-      ((fix:= i #x100))
-    (bytevector-u8-set! downcase-table i i)
-    (bytevector-u8-set! upcase-table i i))
-  (let ((case-range
-	 (lambda (uc-low uc-high lc-low)
-	   (do ((i uc-low (fix:+ i 1))
-		(j lc-low (fix:+ j 1)))
-	       ((fix:> i uc-high))
-	     (bytevector-u8-set! downcase-table i j)
-	     (bytevector-u8-set! upcase-table j i)))))
-    (case-range 65 90 97)
-    (case-range 192 214 224)
-    (case-range 216 222 248)))
+(add-boot-init!
+ (lambda ()
+   (set! downcase-table (make-bytevector #x100))
+   (set! upcase-table (make-bytevector #x100))
+   (do ((i 0 (fix:+ i 1)))
+       ((fix:= i #x100))
+     (bytevector-u8-set! downcase-table i i)
+     (bytevector-u8-set! upcase-table i i))
+   (let ((case-range
+	  (lambda (uc-low uc-high lc-low)
+	    (do ((i uc-low (fix:+ i 1))
+		 (j lc-low (fix:+ j 1)))
+		((fix:> i uc-high))
+	      (bytevector-u8-set! downcase-table i j)
+	      (bytevector-u8-set! upcase-table j i)))))
+     (case-range 65 90 97)
+     (case-range 192 214 224)
+     (case-range 216 222 248))))
 
-(define 0-code)
-(define upper-a-code)
-(define lower-a-code)
-
-(define (initialize-package!)
-  (set! 0-code (char->integer #\0))
-  ;; Next two codes are offset by 10 to speed up CHAR->DIGIT.
-  (set! upper-a-code (fix:- (char->integer #\A) 10))
-  (set! lower-a-code (fix:- (char->integer #\a) 10))
-  (initialize-case-conversions!))
+(define-deferred 0-code (char->integer #\0))
+;; Next two codes are offset by 10 to speed up CHAR->DIGIT.
+(define-deferred upper-a-code (fix:- (char->integer #\A) 10))
+(define-deferred lower-a-code (fix:- (char->integer #\a) 10))
 
 (define (radix? object)
   (and (index-fixnum? object)

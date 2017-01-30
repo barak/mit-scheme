@@ -1394,8 +1394,7 @@ USA.
 	  unicode-char?
 	  unicode-code-point?
 	  unicode-scalar-value->char
-	  unicode-scalar-value?)
-  (initialization (initialize-package!)))
+	  unicode-scalar-value?))
 
 (define-package (runtime character-set)
   (files "chrset")
