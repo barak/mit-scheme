@@ -577,7 +577,10 @@ USA.
                                      (char=? char #\"))
                                  (*unparse-char char))
                                 (else
-                                 (*unparse-string (char->octal char)))))
+				 (*unparse-char #\x)
+				 (*unparse-string
+				  (number->string (char->integer char) 16))
+				 (*unparse-char #\;))))
                         (loop (+ index 1)))
                       (*unparse-substring string start end*))))
               (*unparse-substring string 0 end*))
@@ -585,13 +588,6 @@ USA.
               (*unparse-string "..."))
           (*unparse-char #\")))
       (*unparse-string string)))
-
-(define (char->octal char)
-  (let ((qr1 (integer-divide (char->integer char) 8)))
-    (let ((qr2 (integer-divide (integer-divide-quotient qr1) 8)))
-      (string (digit->char (integer-divide-quotient qr2) 8)
-              (digit->char (integer-divide-remainder qr2) 8)
-              (digit->char (integer-divide-remainder qr1) 8)))))
 
 (define (unparse/bit-string bit-string)
   (*unparse-string "#*")
