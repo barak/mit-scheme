@@ -206,45 +206,42 @@ USA.
 		      n
 		      #f))))))))
 
-;;;; Character Names
+;;;; Character names
 
-(define (name->char string)
-  (let ((end (string-length string))
+(define (name->char string #!optional fold-case?)
+  (let ((fold-case? (if (default-object? fold-case?) #t fold-case?))
+	(parse-hex
+	 (lambda (string start)
+	   (let ((n (string->number string 16 #f start)))
+	     (and (exact-nonnegative-integer? n)
+		  n))))
 	(lose (lambda () (error:bad-range-argument string 'NAME->CHAR))))
-    (let loop ((start 0) (bits 0))
-      (case (fix:- end start)
-	((0)
-	 (lose))
-	((1)
-	 (let ((char (string-ref string start)))
-	   (if (not (char-graphic? char))
-	       (lose))
-	   (make-char (char-code char) bits)))
-	(else
-	 (let ((hyphen (substring-find-next-char string start end #\-)))
-	   (if hyphen
-	       (let ((bit (->code named-bits string start hyphen)))
-		 (if (not (and bit (fix:= 0 (fix:and bit bits))))
-		     (lose))
-		 (loop (fix:+ hyphen 1) (fix:or bit bits)))
-	       (make-char
-		(or (->code named-codes string start end)
-		    ;; R7RS syntax:
-		    (and (substring-prefix-ci? "x" 0 1 string start end)
-			 (substring->number string (fix:+ start 1) end 16))
-		    ;; Non-standard Unicode-style syntax:
-		    (and (substring-prefix-ci? "u+" 0 2 string start end)
-			 (substring->number string (fix:+ start 2) end 16))
-		    (lose))
-		bits))))))))
+    (receive (string bits) (match-bucky-bits-prefix string fold-case?)
+      (let ((end (ustring-length string)))
+	(if (fix:= 0 end)
+	    (lose))
+	(if (fix:= 1 end)
+	    (let ((char (ustring-ref string 0)))
+	      (if (not (char-graphic? char))
+		  (lose))
+	      (make-char (char-code char) bits))
+	    (make-char (or (match-named-code string fold-case?)
+			   ;; R7RS syntax (not sure if -ci is right)
+			   (and (ustring-prefix-ci? "x" string)
+				(parse-hex string 1))
+			   ;; Non-standard syntax (Unicode style)
+			   (and (ustring-prefix-ci? "u+" string)
+				(parse-hex string 2))
+			   (lose))
+		       bits))))))
 
 (define (char->name char #!optional slashify?)
-  (let ((code (char-code char))
-	(bits (char-bits char)))
+  (let ((bits (char-bits char))
+	(code (char-code char)))
     (string-append
      (bucky-bits->prefix bits)
      (let ((base-char (if (fix:= 0 bits) char (integer->char code))))
-       (cond ((->name named-codes code))
+       (cond ((code->name code))
 	     ((and (if (default-object? slashify?) #f slashify?)
 		   (not (fix:= 0 bits))
 		   (or (char=? base-char #\\)
@@ -254,69 +251,43 @@ USA.
 	      (string base-char))
 	     (else
 	      (string-append "x" (number->string code 16))))))))
+
+(define (match-bucky-bits-prefix string fold-case?)
+  (let ((match? (if fold-case? ustring-prefix-ci? ustring-prefix?)))
+    (let per-index ((index 0) (bits 0))
+      (let per-entry ((entries named-bits))
+	(if (pair? entries)
+	    (let* ((entry (car entries))
+		   (prefix
+		    (find (lambda (prefix)
+			    (match? prefix string index))
+			  (cdr entry))))
+	      (if prefix
+		  (per-index (fix:+ index (ustring-length prefix))
+			     (fix:or bits (car entry)))
+		  (per-entry (cdr entries))))
+	    (values (if (fix:> index 0)
+			(ustring-tail string index)
+			string)
+		    bits))))))
 
 ;; This procedure used by Edwin.
 (define (bucky-bits->prefix bits)
-  (let loop ((entries named-bits))
-    (if (pair? entries)
-	(if (fix:= 0 (fix:and (caar entries) bits))
-	    (loop (cdr entries))
-	    (string-append (cadar entries) "-" (loop (cdr entries))))
-	"")))
-
-(define (->code entries string start end)
-  (let ((entry
-	 (find-matching-item entries
-	   (lambda (entry)
-	     (there-exists? (if (cadr entry) (cdr entry) (cddr entry))
-	       (lambda (key)
-		 (substring-ci=? string start end
-				 key 0 (string-length key))))))))
-    (and entry
-	 (car entry))))
+  (guarantee index-fixnum? bits 'bucky-bits->prefix)
+  (if (not (fix:< bits char-bits-limit))
+      (error:bad-range-argument bits 'bucky-bits->prefix))
+  (vector-ref bits-prefixes bits))
 
-(define (->name entries n)
-  (let ((entry (assv n entries)))
-    (and entry
-	 (cadr entry))))
-
-(define named-codes
-  '((#x00 "null" "nul")
-    (#x01 #f "soh")
-    (#x02 #f "stx")
-    (#x03 #f "etx")
-    (#x04 #f "eot")
-    (#x05 #f "enq")
-    (#x06 #f "ack")
-    (#x07 "alarm" "bel")
-    (#x08 "backspace" "bs")
-    (#x09 "tab" "ht")
-    (#x0A "newline" "linefeed" "lfd" "lf")
-    (#x0B #f "vt")
-    (#x0C "page" "formfeed" "ff" "np")
-    (#x0D "return" "ret" "cr")
-    (#x0E #f "so")
-    (#x0F #f "si")
-    (#x10 #f "dle")
-    (#x11 #f "dc1")
-    (#x12 #f "dc2")
-    (#x13 #f "dc3")
-    (#x14 #f "dc4")
-    (#x15 #f "nak")
-    (#x16 #f "syn")
-    (#x17 #f "etb")
-    (#x18 #f "can")
-    (#x19 #f "em")
-    (#x1A #f "sub" "call")
-    (#x1B "escape" "esc" "altmode")
-    (#x1C #f "fs")
-    (#x1D #f "gs")
-    (#x1E #f "rs")
-    (#x1F #f "us" "backnext")
-    (#x20 "space" "spc" "sp")
-    (#x7F "delete" "del" "rubout")
-    (#xA0 "nbsp")
-    (#xFEFF "bom")))
+(define-deferred bits-prefixes
+  (list->vector
+   (map (lambda (bits)
+	  (apply ustring-append
+		 (filter-map (lambda (entry)
+			       (if (fix:= 0 (fix:and (car entry) bits))
+				   #f
+				   (cadr entry)))
+			     named-bits)))
+	(fix:iota char-bits-limit))))
 
 (define char-bit:meta #x01)
 (define char-bit:control #x02)
@@ -324,10 +295,71 @@ USA.
 (define char-bit:hyper #x08)
 
 (define named-bits
-  `((,char-bit:meta "M" "meta")
-    (,char-bit:control "C" "control" "ctrl")
-    (,char-bit:super "S" "super")
-    (,char-bit:hyper "H" "hyper")))
+  `((,char-bit:hyper "h-" "hyper-")
+    (,char-bit:super "s-" "super-")
+    (,char-bit:meta "m-" "meta-")
+    (,char-bit:control "c-" "control-" "ctrl-")))
+
+(define (match-named-code string fold-case?)
+  (let ((match? (if fold-case? ustring-ci=? ustring=?)))
+    (find-map (lambda (entry)
+		(and (any (lambda (name)
+			    (match? name string))
+			  (cdr entry))
+		     (car entry)))
+	      named-codes)))
+
+(define named-codes
+  '((#x00 "null" "nul")
+    (#x01 "soh")
+    (#x02 "stx")
+    (#x03 "etx")
+    (#x04 "eot")
+    (#x05 "enq")
+    (#x06 "ack")
+    (#x07 "alarm" "bel")
+    (#x08 "backspace" "bs")
+    (#x09 "tab" "ht")
+    (#x0A "newline" "linefeed" "lfd" "lf")
+    (#x0B "vt")
+    (#x0C "page" "formfeed" "ff" "np")
+    (#x0D "return" "ret" "cr")
+    (#x0E "so")
+    (#x0F "si")
+    (#x10 "dle")
+    (#x11 "dc1")
+    (#x12 "dc2")
+    (#x13 "dc3")
+    (#x14 "dc4")
+    (#x15 "nak")
+    (#x16 "syn")
+    (#x17 "etb")
+    (#x18 "can")
+    (#x19 "em")
+    (#x1A "sub" "call")
+    (#x1B "escape" "esc" "altmode")
+    (#x1C "fs")
+    (#x1D "gs")
+    (#x1E "rs")
+    (#x1F "us" "backnext")
+    (#x20 "space" "spc" "sp")
+    (#x7F "delete" "del" "rubout")
+    (#xA0 "nbsp")
+    (#xFEFF "bom")))
+
+;; These are the standard R7RS names.
+(define (code->name code)
+  (case code
+    ((#x00) "null")
+    ((#x07) "alarm")
+    ((#x08) "backspace")
+    ((#x09) "tab")
+    ((#x0A) "newline")
+    ((#x0D) "return")
+    ((#x1B) "escape")
+    ((#x20) "space" )
+    ((#x7F) "delete")
+    (else #f)))
 
 ;;;; Unicode characters
 
