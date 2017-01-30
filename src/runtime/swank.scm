@@ -830,7 +830,7 @@ swank:xref
 
 (define (all-completions prefix environment)
   (let ((prefix
-	 (if (get-param:parser-canonicalize-symbols? environment)
+	 (if (get-param:parser-fold-case? environment)
 	     (string-downcase prefix)
 	     prefix))
 	(completions '()))

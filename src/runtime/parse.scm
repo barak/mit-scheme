@@ -27,46 +27,44 @@ USA.
 ;;;; Scheme Parser
 ;;; package: (runtime parser)
 
-(declare (usual-integrations)
-	 (integrate-external "input")
-	 (integrate-external "port"))
+(declare (usual-integrations))
 
 (define *parser-associate-positions?* #!default)
 (define *parser-atom-delimiters* #!default)
 (define *parser-canonicalize-symbols?* #!default)
 (define *parser-constituents* #!default)
-(define *parser-enable-file-attributes-parsing?* #!default)
-(define *parser-keyword-style* #!default)
 (define *parser-radix* #!default)
 (define *parser-table* #!default)
 
 (define param:parser-associate-positions?)
 (define param:parser-atom-delimiters)
-(define param:parser-canonicalize-symbols?)
+(define param:parser-enable-attributes?)
+(define param:parser-fold-case?)
 (define param:parser-constituents)
-(define param:parser-enable-file-attributes-parsing?)
 (define param:parser-keyword-style)
 (define param:parser-radix)
 (define param:parser-table)
 
 (define runtime-param:parser-associate-positions?)
 (define runtime-param:parser-atom-delimiters)
-(define runtime-param:parser-canonicalize-symbols?)
+(define runtime-param:parser-enable-attributes?)
+(define runtime-param:parser-fold-case?)
 (define runtime-param:parser-constituents)
-(define runtime-param:parser-enable-file-attributes-parsing?)
 (define runtime-param:parser-keyword-style)
 (define runtime-param:parser-radix)
 (define runtime-param:parser-table)
 
 (define ignore-extra-list-closes #t)
 
-(define (param-getter fluid-name param-name)
+(define (param-getter param-name #!optional fluid-name)
   (lambda (environment)
-    (let ((fluid (repl-environment-value environment fluid-name))
-	  (param (repl-environment-value environment param-name)))
-      (if (default-object? fluid)
+    (let ((param (repl-environment-value environment param-name)))
+      (if (default-object? fluid-name)
 	  (param)
-	  ((parameter-converter param) fluid)))))
+	  (let ((fluid (repl-environment-value environment fluid-name)))
+	    (if (default-object? fluid)
+		(param)
+		((parameter-converter param) fluid)))))))
 
 (define (repl-environment-value environment name)
   (environment-lookup-or environment name
@@ -76,36 +74,29 @@ USA.
 	  (environment-lookup environment name))))))
 
 (define get-param:parser-associate-positions?
-  (param-getter '*parser-associate-positions?*
-		'param:parser-associate-positions?))
+  (param-getter 'param:parser-associate-positions?
+		'*parser-associate-positions?*))
 
 (define get-param:parser-atom-delimiters
-  (param-getter '*parser-atom-delimiters*
-		'param:parser-atom-delimiters))
+  (param-getter 'param:parser-atom-delimiters '*parser-atom-delimiters*))
 
-(define get-param:parser-canonicalize-symbols?
-  (param-getter '*parser-canonicalize-symbols?*
-		'param:parser-canonicalize-symbols?))
+(define get-param:parser-fold-case?
+  (param-getter 'param:parser-fold-case? '*parser-canonicalize-symbols?*))
 
 (define get-param:parser-constituents
-  (param-getter '*parser-constituents*
-		'param:parser-constituents))
+  (param-getter 'param:parser-constituents '*parser-constituents*))
 
-(define get-param:parser-enable-file-attributes-parsing?
-  (param-getter '*parser-enable-file-attributes-parsing?*
-		'param:parser-enable-file-attributes-parsing?))
+(define get-param:parser-enable-attributes?
+  (param-getter 'param:parser-enable-attributes?))
 
 (define get-param:parser-keyword-style
-  (param-getter '*parser-keyword-style*
-		'param:parser-keyword-style))
+  (param-getter 'param:parser-keyword-style))
 
 (define get-param:parser-radix
-  (param-getter '*parser-radix*
-		'param:parser-radix))
+  (param-getter 'param:parser-radix '*parser-radix*))
 
 (define get-param:parser-table
-  (param-getter '*parser-table*
-		'param:parser-table))
+  (param-getter 'param:parser-table '*parser-table*))
 
 (define (parse-object port environment)
   ((top-level-parser port) port environment))
@@ -212,13 +203,13 @@ USA.
   (set! param:parser-atom-delimiters
 	(make-unsettable-parameter char-set/atom-delimiters
 				   char-set-converter))
-  (set! param:parser-canonicalize-symbols?
+  (set! param:parser-fold-case?
 	(make-unsettable-parameter #t
 				   boolean-converter))
   (set! param:parser-constituents
 	(make-unsettable-parameter char-set/constituents
 				   char-set-converter))
-  (set! param:parser-enable-file-attributes-parsing?
+  (set! param:parser-enable-attributes?
 	(make-unsettable-parameter #t
 				   boolean-converter))
   (set! param:parser-keyword-style
@@ -235,12 +226,12 @@ USA.
 	(copy-parameter param:parser-associate-positions?))
   (set! runtime-param:parser-atom-delimiters
 	(copy-parameter param:parser-atom-delimiters))
-  (set! runtime-param:parser-canonicalize-symbols?
-	(copy-parameter param:parser-canonicalize-symbols?))
+  (set! runtime-param:parser-fold-case?
+	(copy-parameter param:parser-fold-case?))
   (set! runtime-param:parser-constituents
 	(copy-parameter param:parser-constituents))
-  (set! runtime-param:parser-enable-file-attributes-parsing?
-	(copy-parameter param:parser-enable-file-attributes-parsing?))
+  (set! runtime-param:parser-enable-attributes?
+	(copy-parameter param:parser-enable-attributes?))
   (set! runtime-param:parser-keyword-style
 	(copy-parameter param:parser-keyword-style))
   (set! runtime-param:parser-radix
@@ -530,7 +521,7 @@ USA.
 (define (parse-atom-1 port db prefix quoting?)
   (let ((port* (open-output-string))
 	(%canon
-	 (if (db-canonicalize-symbols? db)
+	 (if (db-fold-case? db)
 	     char-downcase
 	     (lambda (char) char)))
 	(atom-delimiters (db-atom-delimiters db))
@@ -942,7 +933,7 @@ USA.
 (define-structure db
   (associate-positions? #f read-only #t)
   (atom-delimiters #f read-only #t)
-  (canonicalize-symbols? #f read-only #t)
+  (fold-case? #f read-only #t)
   (constituents #f read-only #t)
   (enable-file-attributes-parsing #f read-only #t)
   (keyword-style #f read-only #t)
@@ -971,14 +962,13 @@ USA.
     (guarantee char-set? constituents #f)
     (make-db (get-param:parser-associate-positions? environment)
 	     atom-delimiters
-	     (overridable-value
-	      port '*PARSER-CANONICALIZE-SYMBOLS?*
-	      (get-param:parser-canonicalize-symbols? environment))
+	     (port-property port 'parser-fold-case?
+			    (get-param:parser-fold-case? environment))
 	     constituents
-	     (overridable-value
-	      port '*PARSER-ENABLE-FILE-ATTRIBUTES-PARSING?*
-	      (get-param:parser-enable-file-attributes-parsing? environment))
-	     (overridable-value port '*PARSER-KEYWORD-STYLE*
+	     (port-property
+	      port 'parser-enable-file-attributes?
+	      (get-param:parser-enable-attributes? environment))
+	     (port-property port 'parser-keyword-style
 				(get-param:parser-keyword-style environment))
 	     (get-param:parser-radix environment)
 	     (get-param:parser-table environment)
@@ -989,15 +979,6 @@ USA.
 	     (port/operation port 'PEEK-CHAR)
 	     (port/operation port 'READ-CHAR)
 	     '())))
-
-(define (overridable-value port name default-value)
-  ;; Check the port property list for the name, and then the
-  ;; environment.  This way a port can override the default.
-  (let* ((nope "no-overridden-value")
-	 (v (port-property port name nope)))
-    (if (eq? v nope)
-	default-value
-	v)))
 
 (define (position-operation port environment)
   (let ((default (lambda (port) port #f)))
@@ -1030,9 +1011,7 @@ USA.
   (if file-attribute-alist
       (begin
 	;; Disable further attributes parsing.
-	(set-port-property! port
-			    '*PARSER-ENABLE-FILE-ATTRIBUTES-PARSING?*
-			    #f)
+	(set-port-property! port 'parser-enable-file-attributes? #f)
 	(process-keyword-attribute file-attribute-alist port)
 	(process-mode-attribute file-attribute-alist port)
 	(process-studly-case-attribute file-attribute-alist port))))
@@ -1051,13 +1030,13 @@ USA.
 	  (cond ((and (symbol? value)
 		      (or (string-ci=? (symbol-name value) "none")
 			  (string-ci=? (symbol-name value) "false")))
-		 (set-port-property! port '*PARSER-KEYWORD-STYLE* #f))
+		 (set-port-property! port 'parser-keyword-style #f))
 		((and (symbol? value)
 		      (string-ci=? (symbol-name value) "prefix"))
-		 (set-port-property! port '*PARSER-KEYWORD-STYLE* 'PREFIX))
+		 (set-port-property! port 'parser-keyword-style 'prefix))
 		((and (symbol? value)
 		      (string-ci=? (symbol-name value) "suffix"))
-		 (set-port-property! port '*PARSER-KEYWORD-STYLE* 'SUFFIX))
+		 (set-port-property! port 'parser-keyword-style 'suffix))
 		(else
 		 (warn "Unrecognized value for keyword-style" value)))))))
 
@@ -1096,13 +1075,13 @@ USA.
 			(warn "Attribute value mismatch.  Expected True.")
 			#f)
 		       (else
-			(set-port-property! port '*PARSER-CANONICALIZE-SYMBOLS?*
-					    #f))))
+			(set-port-property! port 'parser-fold-case? #f))))
 		((or (not value)
 		     (and (symbol? value)
 			  (string-ci=? (symbol-name value) "false")))
-		 (set-port-property! port '*PARSER-CANONICALIZE-SYMBOLS?* #t))
-		(else (warn "Unrecognized value for sTuDly-case" value)))))))
+		 (set-port-property! port 'parser-fold-case? #t))
+		(else
+		 (warn "Unrecognized value for sTuDly-case" value)))))))
 
 (define-syntax define-parse-error
   (sc-macro-transformer

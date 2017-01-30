@@ -222,8 +222,7 @@ The following commands evaluate Scheme expressions:
 		 (let ((environment (evaluation-environment #f)))
 		   (obarray-completions
 		    (if (and bound-only?
-			     (get-param:parser-canonicalize-symbols?
-			      environment))
+			     (get-param:parser-fold-case? environment))
 			(string-downcase prefix)
 			prefix)
 		    (if bound-only?

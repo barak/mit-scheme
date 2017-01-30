@@ -493,7 +493,7 @@ USA.
 (define (unparse-symbol-name s)
   (if (or (ustring-find-first-char-in-set
            s
-           (if (get-param:parser-canonicalize-symbols? (param:environment))
+           (if (get-param:parser-fold-case? (param:environment))
                canon-symbol-quoted
                non-canon-symbol-quoted))
           (fix:= (ustring-length s) 0)

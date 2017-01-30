@@ -106,11 +106,10 @@ USA.
   (import (runtime parser)
 	  (param:parser-associate-positions?
 	   runtime-param:parser-associate-positions?)
-	  (param:parser-canonicalize-symbols?
-	   runtime-param:parser-canonicalize-symbols?)
+	  (param:parser-fold-case? runtime-param:parser-fold-case?)
 	  (param:parser-radix runtime-param:parser-radix)
 	  (param:parser-table runtime-param:parser-table)
-	  get-param:parser-canonicalize-symbols?)
+	  get-param:parser-fold-case?)
   (import (runtime character)
 	  bucky-bits->prefix)
   (import (runtime char-syntax)

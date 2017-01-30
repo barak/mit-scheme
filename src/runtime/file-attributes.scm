@@ -123,12 +123,11 @@ This file is part of MIT/GNU Scheme.
   (parameterize* (list (cons param:parser-associate-positions? #f)
 		       (cons param:parser-atom-delimiters
 			     char-set/file-attributes-atom-delimiters)
-		       (cons param:parser-canonicalize-symbols? #f)
+		       (cons param:parser-fold-case? #f)
 		       (cons param:parser-constituents
 			     char-set/file-attributes-constituents)
 		       ;; no recursion!
-		       (cons param:parser-enable-file-attributes-parsing?
-			     #f)
+		       (cons param:parser-enable-attributes? #f)
 		       (cons param:parser-keyword-style #f)
 		       (cons param:parser-radix 10)
 		       (cons param:parser-table file-attributes-parser-table))
@@ -137,8 +136,6 @@ This file is part of MIT/GNU Scheme.
 		  (*parser-atom-delimiters* #!default)
 		  (*parser-canonicalize-symbols?* #!default)
 		  (*parser-constituents* #!default)
-		  (*parser-enable-file-attributes-parsing?* #!default)
-		  (*parser-keyword-style* #!default)
 		  (*parser-radix* #!default)
 		  (*parser-table* #!default))
 	(parse port system-global-environment)))))
@@ -148,10 +145,10 @@ This file is part of MIT/GNU Scheme.
   (parameterize* (list (cons param:parser-associate-positions? #f)
 		       (cons param:parser-atom-delimiters
 			     char-set/atom-delimiters)
-		       (cons param:parser-canonicalize-symbols? #f)
+		       (cons param:parser-fold-case? #f)
 		       (cons param:parser-constituents char-set/constituents)
 		       ;; no recursion!
-		       (cons param:parser-enable-file-attributes-parsing? #f)
+		       (cons param:parser-enable-attributes? #f)
 		       ;; enable prefix keywords
 		       (cons param:parser-keyword-style 'prefix)
 		       (cons param:parser-radix 10)
@@ -161,8 +158,6 @@ This file is part of MIT/GNU Scheme.
 		  (*parser-atom-delimiters* #!default)
 		  (*parser-canonicalize-symbols?* #!default)
 		  (*parser-constituents* #!default)
-		  (*parser-enable-file-attributes-parsing?* #!default)
-		  (*parser-keyword-style* #!default)
 		  (*parser-radix* #!default)
 		  (*parser-table* #!default))
 	(parse port system-global-environment)))))

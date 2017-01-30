@@ -3481,21 +3481,20 @@ USA.
   (parent (runtime))
   (export ()
 	  ;; BEGIN deprecated bindings
+	  (param:parser-canonicalize-symbols? param:parser-fold-case?)
 	  *parser-associate-positions?*
 	  *parser-atom-delimiters*
 	  *parser-canonicalize-symbols?*
 	  *parser-constituents*
-	  *parser-enable-file-attributes-parsing?*
-	  *parser-keyword-style*
 	  *parser-radix*
 	  *parser-table*
 	  ;; END deprecated bindings
 	  define-bracketed-object-parser-method
 	  param:parser-associate-positions?
 	  param:parser-atom-delimiters
-	  param:parser-canonicalize-symbols?
+	  param:parser-enable-attributes?
 	  param:parser-constituents
-	  param:parser-enable-file-attributes-parsing?
+	  param:parser-fold-case?
 	  param:parser-keyword-style
 	  param:parser-radix
 	  param:parser-table
@@ -3506,23 +3505,22 @@ USA.
 	  (param:parser-associate-positions?
 	   runtime-param:parser-associate-positions?)
 	  (param:parser-atom-delimiters runtime-param:parser-atom-delimiters)
-	  (param:parser-canonicalize-symbols?
-	   runtime-param:parser-canonicalize-symbols?)
+	  (param:parser-fold-case? runtime-param:parser-fold-case?)
 	  (param:parser-constituents runtime-param:parser-constituents)
-	  (param:parser-enable-file-attributes-parsing?
-	   runtime-param:parser-enable-file-attributes-parsing?)
+	  (param:parser-enable-attributes?
+	   runtime-param:parser-enable-attributes?)
 	  (param:parser-keyword-style runtime-param:parser-keyword-style)
 	  (param:parser-radix runtime-param:parser-radix)
 	  (param:parser-table runtime-param:parser-table))
   (export (runtime character)
 	  char-set/atom-delimiters)
   (export (runtime swank)
-	  get-param:parser-canonicalize-symbols?)
+	  get-param:parser-fold-case?)
   (export (runtime unparser)
 	  char-set/atom-delimiters
 	  char-set/number-leaders
 	  char-set/symbol-quotes
-	  get-param:parser-canonicalize-symbols?
+	  get-param:parser-fold-case?
 	  get-param:parser-keyword-style
 	  repl-environment-value)
   (initialization (initialize-package!)))
