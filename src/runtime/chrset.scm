@@ -102,8 +102,9 @@ USA.
 
 (define (%range? object)
   (or (and (pair? object)
-	   (unicode-code-point? (car object))
-	   (unicode-code-point? (cdr object))
+	   (index-fixnum? (car object))
+	   (index-fixnum? (cdr object))
+           (fix:<= (cdr object) char-code-limit)
 	   (fix:<= (car object) (cdr object)))
       (unicode-code-point? object)))
 
