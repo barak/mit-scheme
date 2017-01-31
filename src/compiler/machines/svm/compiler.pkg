@@ -230,13 +230,6 @@ USA.
 	  syntax-files!)
   (import (scode-optimizer top-level)
 	  sf/internal)
-  (import (cross-reference)
-	  os-types
-	  read-package-model
-	  pmodel/pathname
-	  pmodel/packages
-	  package/name
-	  package/files)
   (initialization (initialize-package!)))
 
 (define-package (compiler top-level)
