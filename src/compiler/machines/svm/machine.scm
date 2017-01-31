@@ -114,9 +114,12 @@ USA.
 (define-inst copy-block size size-type from to)
 
 (define (load-immediate-operand? n)
-  (or (and (exact-integer? n)
-	   (<= signed-fixnum/lower-limit n) (< n signed-fixnum/upper-limit))
+  (or (immediate-integer? n)
       (flo:flonum? n)))
+
+(define (immediate-integer? n)
+  (and (exact-integer? n)
+       (<= signed-fixnum/lower-limit n) (< n signed-fixnum/upper-limit)))
 
 ;; TYPE and DATUM can be constants or registers; address is a register.
 (define-inst load-pointer target type address)

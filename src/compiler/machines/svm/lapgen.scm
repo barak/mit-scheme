@@ -250,13 +250,17 @@ USA.
        (let ((base (rtl:offset-base expression))
 	     (offset (rtl:offset-offset expression)))
 	 (if (rtl:register? base)
-	     (or (rtl:machine-constant? offset)
+	     (or (rtl:immediate-machine-constant? offset)
 		 (rtl:register? offset))
 	     (and (rtl:offset-address? base)
-		  (rtl:machine-constant? offset)
+		  (rtl:immediate-machine-constant? offset)
 		  (rtl:register? (rtl:offset-address-base base))
 		  (rtl:register? (rtl:offset-address-offset base)))))
        expression))
+
+(define (rtl:immediate-machine-constant? expression)
+  (and (rtl:machine-constant? expression)
+       (immediate-integer? (rtl:machine-constant-value offset))))
 
 (define (simple-offset->ea! offset)
   (let ((base (rtl:offset-base offset))
@@ -292,6 +296,7 @@ USA.
 	(rule-matcher ((? scale offset-operator?)
 		       (REGISTER (? base))
 		       (MACHINE-CONSTANT (? offset)))
+		      (QUALIFIER (immediate-integer? offset))
 		      (values scale
 			      (ea:offset (word-source base) offset scale)))
 	(rule-matcher ((? scale offset-operator?)
@@ -299,6 +304,7 @@ USA.
 			(REGISTER (? base))
 			(REGISTER (? index)))
 		       (MACHINE-CONSTANT (? offset)))
+		      (QUALIFIER (immediate-integer? offset))
 		      (values scale
 			      (ea:indexed (word-source base)
 					  offset scale
@@ -308,6 +314,7 @@ USA.
 			(REGISTER (? base))
 			(MACHINE-CONSTANT (? offset)))
 		       (REGISTER (? index)))
+		      (QUALIFIER (immediate-integer? offset))
 		      (values scale
 			      (ea:indexed (word-source base)
 					  offset scale*
