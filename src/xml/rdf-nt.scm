@@ -147,8 +147,8 @@ USA.
 			   (integer->char
 			    (call-with-parser-buffer-tail b p
 			      (lambda (string start end)
-				(substring->number string (+ start 2) end
-						   16 #t)))))
+				(string->number string 16 #t (+ start 2)
+						end)))))
 			  (else #f))))))
 	(if char
 	    (begin

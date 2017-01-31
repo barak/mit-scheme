@@ -123,13 +123,13 @@ USA.
   (string-composed-of? object char-set:xml-whitespace))
 
 (define (string-composed-of? string char-set)
-  (and (string? string)
-       (substring-composed-of? string 0 (string-length string) char-set)))
+  (and (ustring? string)
+       (ustring-every (char-set-predicate char-set) string)))
 
 (define (substring-composed-of? string start end char-set)
   (let loop ((index start))
     (or (fix:= index end)
-	(and (char-set-member? char-set (string-ref string index))
+	(and (char-set-member? char-set (ustring-ref string index))
 	     (loop (fix:+ index 1))))))
 
 (define-xml-type declaration
@@ -139,7 +139,7 @@ USA.
 
 (define (xml-version? object)
   (and (string-composed-of? object char-set:xml-version)
-       (fix:> (string-length object) 0)))
+       (fix:> (ustring-length object) 0)))
 
 (define char-set:xml-version
   (char-set-union char-set:alphanumeric
@@ -147,10 +147,10 @@ USA.
 
 (define (xml-encoding? object)
   (or (not object)
-      (and (string? object)
-	   (let ((end (string-length object)))
+      (and (ustring? object)
+	   (let ((end (ustring-length object)))
 	     (and (fix:> end 0)
-		  (char-alphabetic? (string-ref object 0))
+		  (char-alphabetic? (ustring-ref object 0))
 		  (substring-composed-of? object 1 end
 					  char-set:xml-encoding))))))
 
@@ -172,9 +172,9 @@ USA.
 
 (define (canonicalize-char-data object)
   (cond ((unicode-char? object)
-	 (call-with-output-string
-	   (lambda (port)
-	     (write-char object port))))
+         (if (not (char-in-set? object char-set:xml-char))
+	     (error:wrong-type-datum object "well-formed XML char data"))
+         (ustring object))
 	((ustring? object)
 	 (if (not (string-of-xml-chars? object))
 	     (error:wrong-type-datum object "well-formed XML char data"))
@@ -230,7 +230,7 @@ USA.
 	      (let ((item (car items))
 		    (items (cdr items)))
 		(if (xml-char-data? item)
-		    (join (string-append s (canonicalize-char-data item))
+		    (join (ustring-append s (canonicalize-char-data item))
 			  items)
 		    (begin
 		      (check-item item)
@@ -278,7 +278,7 @@ USA.
 	 (xml-attribute-value attr))))
 
 (define (xml-name-arg arg caller)
-  (if (string? arg)
+  (if (ustring? arg)
       (make-xml-name arg)
       (begin
 	(guarantee-xml-name arg caller)
@@ -499,7 +499,7 @@ USA.
   (let ((attr
 	 (find (lambda (attr)
 		 (and (xml-attribute-namespace-decl? attr)
-		      (string=? (xml-attribute-value attr) uri-string)))
+		      (ustring=? (xml-attribute-value attr) uri-string)))
 	       (xml-element-attributes elt))))
     (and attr
 	 (let ((name (xml-attribute-name attr)))
@@ -565,10 +565,10 @@ USA.
 	    (let ((item (car items))
 		  (items (cdr items)))
 	      (cond ((and (or (xml-name? item)
-			      (string? item))
+			      (ustring? item))
 			  (pair? items))
 		     (let ((name
-			    (if (string? item)
+			    (if (ustring? item)
 				(make-xml-name item)
 				item))
 			   (value (car items))
@@ -621,19 +621,19 @@ USA.
   (if (pair? nmtokens)
       (let ((nmtoken-length
 	     (lambda (nmtoken)
-	       (string-length (symbol-name nmtoken)))))
+	       (ustring-length (symbol-name nmtoken)))))
 	(let ((s
-	       (make-string
+	       (make-ustring
 		(let loop ((nmtokens nmtokens) (n 0))
 		  (let ((n (fix:+ n (nmtoken-length (car nmtokens)))))
 		    (if (pair? (cdr nmtokens))
 			(loop (cdr nmtokens) (fix:+ n 1))
 			n))))))
 	  (let loop ((nmtokens nmtokens) (index 0))
-	    (string-move! (symbol-name (car nmtokens)) s index)
+	    (ustring-copy! s index (symbol-name (car nmtokens)))
 	    (if (pair? (cdr nmtokens))
 		(let ((index (fix:+ index (nmtoken-length (car nmtokens)))))
-		  (string-set! s index #\space)
+		  (ustring-set! s index #\space)
 		  (loop (cdr nmtokens) (fix:+ index 1)))))
 	  s))
-      (make-string 0)))
+      (make-ustring 0)))

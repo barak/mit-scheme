@@ -161,10 +161,10 @@ USA.
   (emit-string "<?" ctx)
   (write-xml-name (xml-processing-instructions-name pi) ctx)
   (let ((text (xml-processing-instructions-text pi)))
-    (if (fix:> (string-length text) 0)
+    (if (fix:> (ustring-length text) 0)
 	(begin
 	  (if (not (char-set-member? char-set:xml-whitespace
-				     (string-ref text 0)))
+				     (ustring-ref text 0)))
 	      (emit-string " " ctx))
 	  (emit-string text ctx))))
   (emit-string "?>" ctx))
@@ -196,7 +196,7 @@ USA.
   (emit-string " " ctx)
   (let ((type (xml-!element-content-type decl)))
     (cond ((symbol? type)
-	   (emit-string (string-upcase (symbol-name type)) ctx))
+	   (emit-string (ustring-upcase (symbol-name type)) ctx))
 	  ((and (pair? type) (eq? (car type) '|#PCDATA|))
 	   (emit-string "(#PCDATA" ctx)
 	   (if (pair? (cdr type))
@@ -243,7 +243,7 @@ USA.
 			 (emit-char (car type) ctx))
 		       (procedure type))))
 		(lose
-		 (lambda () 
+		 (lambda ()
 		   (error "Malformed !ELEMENT content type:" type))))
 	     (write-children type)))))
   (emit-string ">" ctx))
@@ -258,7 +258,7 @@ USA.
 	   (emit-string " " ctx)
 	   (let ((type (cadr definition)))
 	     (cond ((symbol? type)
-		    (emit-string (string-upcase (symbol-name type)) ctx))
+		    (emit-string (ustring-upcase (symbol-name type)) ctx))
 		   ((and (pair? type) (eq? (car type) '|NOTATION|))
 		    (emit-string "NOTATION (" ctx)
 		    (if (pair? (cdr type))
@@ -437,7 +437,7 @@ USA.
 	(emit-char #\" ctx)
 	(for-each
 	 (lambda (item)
-	   (if (string? item)
+	   (if (ustring? item)
 	       (write-escaped-string item
 				     '((#\" . "&quot;")
 				       (#\& . "&amp;")

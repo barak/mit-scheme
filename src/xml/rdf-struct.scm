@@ -96,7 +96,7 @@ USA.
 
 (define (canonicalize-rdf-object object #!optional caller)
   (cond ((rdf-literal? object) object)
-	((string? object) (make-rdf-literal object #f))
+	((ustring? object) (make-rdf-literal object #f))
 	(else (canonicalize-rdf-subject object caller))))
 
 (define (canonicalize-rdf-uri uri #!optional caller)
@@ -161,15 +161,15 @@ USA.
   (if (default-object? name)
       (%make-rdf-bnode)
       (begin
-	(guarantee-string name 'MAKE-RDF-BNODE)
+	(guarantee ustring? name 'MAKE-RDF-BNODE)
 	(hash-table/intern! *rdf-bnode-registry* name %make-rdf-bnode))))
 
 (define (rdf-bnode-name bnode)
-  (string-append "B" (number->string (hash bnode))))
+  (ustring-append "B" (number->string (hash bnode))))
 
 (define (%decode-bnode-uri uri)
   (let ((v
-	 (cond ((string? uri) (*parse-string parse-bnode uri))
+	 (cond ((ustring? uri) (*parse-string parse-bnode uri))
 	       ((symbol? uri) (*parse-symbol parse-bnode uri))
 	       (else #f))))
     (and v
@@ -268,7 +268,7 @@ USA.
 (define (%register-rdf-prefix prefix expansion registry)
   (let ((p (assq prefix (registry-bindings registry))))
     (if p
-	(if (not (string=? (cdr p) expansion))
+	(if (not (ustring=? (cdr p) expansion))
 	    (begin
 	      (warn "RDF prefix override:" prefix (cdr p) expansion)
 	      (set-cdr! p expansion)))
@@ -291,7 +291,7 @@ USA.
 	   (let ((alist
 		  (registry-bindings
 		   (check-registry registry 'URI->RDF-PREFIX)))
-		 (filter (lambda (p) (string-prefix? (cdr p) s))))
+		 (filter (lambda (p) (ustring-prefix? (cdr p) s))))
 	     (or (find-matching-item alist
 		   (lambda (p)
 		     (and (not (eq? (car p) ':))
@@ -308,14 +308,14 @@ USA.
     (receive (prefix expansion) (uri->rdf-prefix uri registry error?)
       (and prefix
 	   (symbol prefix
-		   (string-tail (uri->string uri)
-				(string-length expansion)))))))
+		   (ustring-tail (uri->string uri)
+				 (ustring-length expansion)))))))
 
 (define (rdf-qname->uri qname #!optional registry error?)
   (receive (prefix local) (split-rdf-qname qname)
     (let ((expansion (rdf-prefix-expansion prefix registry)))
       (if expansion
-	  (->absolute-uri (string-append expansion local) 'RDF-QNAME->URI)
+	  (->absolute-uri (ustring-append expansion local) 'RDF-QNAME->URI)
 	  (begin
 	    (if error? (error:bad-range-argument qname 'RDF-QNAME->URI))
 	    #f)))))
@@ -330,19 +330,19 @@ USA.
 (define (rdf-qname-prefix qname)
   (guarantee-rdf-qname qname 'RDF-QNAME-PREFIX)
   (let ((s (symbol-name qname)))
-    (symbol (string-head s (fix:+ (string-find-next-char s #\:) 1)))))
+    (symbol (ustring-head s (fix:+ (ustring-find-first-char s #\:) 1)))))
 
 (define (rdf-qname-local qname)
   (guarantee-rdf-qname qname 'RDF-QNAME-LOCAL)
   (let ((s (symbol-name qname)))
-    (string-tail s (fix:+ (string-find-next-char s #\:) 1))))
+    (ustring-tail s (fix:+ (ustring-find-first-char s #\:) 1))))
 
 (define (split-rdf-qname qname)
   (guarantee-rdf-qname qname 'SPLIT-RDF-QNAME)
   (let ((s (symbol-name qname)))
-    (let ((i (fix:+ (string-find-next-char s #\:) 1)))
-      (values (symbol (string-head s i))
-	      (string-tail s i)))))
+    (let ((i (fix:+ (ustring-find-first-char s #\:) 1)))
+      (values (symbol (ustring-head s i))
+	      (ustring-tail s i)))))
 
 (define (rdf-qname? object)
   (and (interned-symbol? object)

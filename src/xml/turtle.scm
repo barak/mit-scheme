@@ -211,15 +211,15 @@ USA.
   (*parser
    (map (lambda (s)
 	  (make-rdf-literal
-	   (if (char=? (string-ref s 0) #\-)
+	   (if (char=? (ustring-ref s 0) #\-)
 	       s
-	       (let ((end (string-length s)))
-		 (let loop ((i (if (char=? (string-ref s 0) #\+) 1 0)))
-		   (if (and (fix:< i end) (char=? (string-ref s i) #\0))
+	       (let ((end (ustring-length s)))
+		 (let loop ((i (if (char=? (ustring-ref s 0) #\+) 1 0)))
+		   (if (and (fix:< i end) (char=? (ustring-ref s i) #\0))
 		       (loop (fix:+ i 1))
 		       (if (fix:= i 0)
 			   s
-			   (string-tail s i))))))
+			   (ustring-tail s i))))))
 	   xsd:integer))
 	(match (seq (? (alt "-" "+"))
 		    (+ (char-set char-set:turtle-digit)))))))
@@ -360,7 +360,7 @@ USA.
 	      (parser-buffer-error p (emsg "Malformed string escape")))))
 
       (define (emsg msg)
-	(string-append msg " in " name))
+	(ustring-append msg " in " name))
 
       (define (copy p)
 	(call-with-parser-buffer-tail buffer p
@@ -550,12 +550,12 @@ USA.
 
 (define (post-process-qname prefix local prefixes)
   (string->uri
-   (string-append (cdr
-		   (or (find (lambda (p)
-			       (string=? (car p) prefix))
-			     prefixes)
-		       (error "Unknown prefix:" prefix)))
-		  (or local ""))))
+   (ustring-append (cdr
+		    (or (find (lambda (p)
+				(ustring=? (car p) prefix))
+			      prefixes)
+			(error "Unknown prefix:" prefix)))
+		   (or local ""))))
 
 (define (post-process-collection resources prefixes base-uri)
   (if (pair? resources)
@@ -614,8 +614,9 @@ USA.
 		(lambda (a b)
 		  (let ((a (symbol-name (car a)))
 			(b (symbol-name (car b))))
-		    (substring<? a 0 (fix:- (string-length a) 1)
-				 b 0 (fix:- (string-length b) 1))))))))
+		    (ustring<?
+		     (ustring-head a (fix:- (ustring-length a) 1))
+		     (ustring-head b (fix:- (ustring-length b) 1)))))))))
 
 (define (write-rdf/turtle-prefix prefix expansion #!optional port)
   (let ((port (if (default-object? port) (current-output-port) port)))
@@ -762,7 +763,7 @@ USA.
 						inline-bnode
 						port))
 		     => (lambda (elt)
-			  (string-append "(" elt ")")))
+			  (ustring-append "(" elt ")")))
 		    (else #f))))
 	((rdf-bnode? o)
 	 (and (not (inline-bnode o))
@@ -815,7 +816,7 @@ USA.
 (define (write-object o indentation inline-bnode port)
   (cond ((linear-object-string o inline-bnode port)
 	 => (lambda (s)
-	      (maybe-break (string-length s) indentation port)
+	      (maybe-break (ustring-length s) indentation port)
 	      (write-string s port)))
 	((rdf-graph? o)
 	 (space port)
@@ -911,7 +912,7 @@ USA.
 		      (write-symbol lang port))))))))
 
 (define (write-literal-text text port)
-  (if (string-find-next-char text #\newline)
+  (if (ustring-find-first-char text #\newline)
       (let ((tport (open-input-string text)))
 	(write-string "\"\"\"" port)
 	(let loop ()
@@ -931,10 +932,10 @@ USA.
 
 (define (write-uri uri registry port)
   (let* ((s (uri->string uri))
-	 (end (string-length s)))
+	 (end (ustring-length s)))
     (receive (prefix expansion) (uri->rdf-prefix uri registry #f)
       (if prefix
-	  (let ((start (string-length expansion)))
+	  (let ((start (ustring-length expansion)))
 	    (if (*match-string match:name s start end)
 		(begin
 		  (write-string (symbol-name prefix) port)
@@ -976,10 +977,10 @@ USA.
 	(reverse! groups))))
 
 (define (uri<? a b)
-  (string<? (uri->string a) (uri->string b)))
+  (ustring<? (uri->string a) (uri->string b)))
 
 (define (rdf-bnode<? a b)
-  (string<? (rdf-bnode-name a) (rdf-bnode-name b)))
+  (ustring<? (rdf-bnode-name a) (rdf-bnode-name b)))
 
 (define (rdf-list->list node inline-bnode)
   (let loop ((node node))

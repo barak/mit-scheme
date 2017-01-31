@@ -81,12 +81,25 @@ USA.
     (let ((elt (xml-document-root document)))
       (require (xml-name=? (xml-element-name elt) '|methodCall|))
       (values (let ((s (content-string (named-child '|methodName| elt))))
-		(require (re-string-match "\\`[a-zA-Z0-9_.:/]+\\'" s))
+		(require (valid-method-name? s))
 		(string->symbol s))
 	      (let ((elt (%named-child 'params elt)))
 		(if elt
 		    (parse-params elt)
 		    '()))))))
+
+(define (valid-method-name? string)
+  (and (fix:> 0 (ustring-length string))
+       (ustring-every (char-set-predicate char-set:method-name) string)))
+
+(define char-set:method-name
+  (char-set-union (ascii-range->char-set (char->integer #\a)
+					 (fix:+ (char->integer #\z) 1))
+		  (ascii-range->char-set (char->integer #\A)
+					 (fix:+ (char->integer #\Z) 1))
+		  (ascii-range->char-set (char->integer #\0)
+					 (fix:+ (char->integer #\9) 1))
+		  (char-set #\_ #\. #\: #\/)))
 
 (define (xml-rpc:parse-response document)
   (fluid-let ((*document* document)
@@ -104,7 +117,7 @@ USA.
 		 (let ((p1 (or (assq '|faultCode| alist) (lose)))
 		       (p2 (or (assq '|faultString| alist) (lose))))
 		   (require (exact-integer? (cdr p1)))
-		   (require (string? (cdr p2)))
+		   (require (ustring? (cdr p2)))
 		   (error:xml-rpc-fault (cdr p1) (cdr p2)))))
 	      (else (lose)))))))
 
@@ -204,7 +217,7 @@ USA.
 (define (decode-value elt)
   (let ((items (xml-element-contents elt)))
     (if (and (pair? items)
-	     (string? (car items))
+	     (ustring? (car items))
 	     (null? (cdr items)))
 	(car items)
 	(let ((object (decode-value-1 (single-child elt))))
@@ -216,8 +229,8 @@ USA.
   (case (xml-element-name elt)
     ((boolean)
      (let ((s (content-string elt)))
-       (cond ((string=? s "0") #f)
-	     ((string=? s "1") #t)
+       (cond ((ustring=? s "0") #f)
+	     ((ustring=? s "1") #t)
 	     (else (lose)))))
     ((nil)
      #!default)
@@ -258,7 +271,7 @@ USA.
   (let ((items (xml-element-contents elt)))
     (require
      (and (pair? items)
-	  (string? (car items))
+	  (ustring? (car items))
 	  (null? (cdr items))))
     (car items)))
 
@@ -288,7 +301,7 @@ USA.
 	    (rpc-elt:boolean (if object "1" "0")))
 	   ((default-object? object)
 	    (rpc-elt:nil))
-	   ((string? object)
+	   ((ustring? object)
 	    (encode-string object))
 	   ((symbol? object)
 	    (encode-string (symbol->string object)))
@@ -319,7 +332,7 @@ USA.
        (call-with-output-string
 	 (lambda (port)
 	   (let ((context (encode-base64:initialize port #f)))
-	     (encode-base64:update context string 0 (string-length string))
+	     (encode-base64:update context string 0 (ustring-length string))
 	     (encode-base64:finalize context)))))))
 
 (define *xml-rpc:encode-value-handler* #f)
