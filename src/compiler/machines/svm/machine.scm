@@ -473,45 +473,8 @@ USA.
      (error "No such interpreter register" locative))))
 
 (define (rtl:constant-cost expression)
-  (let ((if-integer
-	 (lambda (value)
-	   value
-	   ;; Can this be done in fewer bytes for suitably small values?
-	   1))				; MOV immediate
-	(get-pc-cost
-	 (+ 3				; CALL
-	    4))				; POP
-	(based-reference-cost
-	 1)				; MOV r/m
-	(address-offset-cost
-	 1))				; LEA instruction
-
-    (define (if-synthesized-constant type datum)
-      (if-integer (make-non-pointer-literal type datum)))
-
-    (case (rtl:expression-type expression)
-      ((CONSTANT)
-       (let ((value (rtl:constant-value expression)))
-	 (if (object-non-pointer? value)
-	     (if-synthesized-constant (object-type value) (object-datum value))
-	     (+ get-pc-cost based-reference-cost))))
-      ((MACHINE-CONSTANT)
-       (if-integer (rtl:machine-constant-value expression)))
-      ((ENTRY:PROCEDURE ENTRY:CONTINUATION)
-       (+ get-pc-cost address-offset-cost))
-      ((ASSIGNMENT-CACHE VARIABLE-CACHE)
-       (+ get-pc-cost based-reference-cost))
-      ((OFFSET-ADDRESS BYTE-OFFSET-ADDRESS FLOAT-OFFSET-ADDRESS)
-       address-offset-cost)
-      ((CONS-POINTER)
-       (and (rtl:machine-constant? (rtl:cons-pointer-type expression))
-	    (rtl:machine-constant? (rtl:cons-pointer-datum expression))
-	    (if-synthesized-constant
-	     (rtl:machine-constant-value (rtl:cons-pointer-type expression))
-	     (rtl:machine-constant-value
-	      (rtl:cons-pointer-datum expression)))))
-      (else
-       #f))))
+  expression				; ignored
+  1)
 
 (define compiler:open-code-floating-point-arithmetic?
   #t)
