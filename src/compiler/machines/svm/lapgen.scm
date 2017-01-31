@@ -260,7 +260,7 @@ USA.
 
 (define (rtl:immediate-machine-constant? expression)
   (and (rtl:machine-constant? expression)
-       (immediate-integer? (rtl:machine-constant-value offset))))
+       (immediate-integer? (rtl:machine-constant-value expression))))
 
 (define (simple-offset->ea! offset)
   (let ((base (rtl:offset-base offset))
