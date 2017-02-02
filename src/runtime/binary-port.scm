@@ -196,6 +196,7 @@ USA.
 
 (define (close-binary-input-port port)
   (let ((ib (port-input-buffer port)))
+    (close-input-buffer ib)
     (let ((ic (buffer-channel ib)))
       (if (and ic
 	       (let ((ob (port-output-buffer port)))
