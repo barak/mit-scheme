@@ -134,9 +134,13 @@ USA.
 	(cmdl-message/strings "Aborting!: out of memory")
 	;; Clean up whatever possible to avoid a reoccurrence.
 	(cmdl-message/active
-	 (lambda (port)
-	   port
-	   (with-gc-notification! #t gc-clean)))))))
+	 (if (nearest-cmdl/batch-mode?)
+	     (lambda (port)
+	       (newline port)
+	       (%exit 1))
+	     (lambda (port)
+	       port
+	       (with-gc-notification! #t gc-clean))))))))
 
 (define gc-boot-loading?)
 
