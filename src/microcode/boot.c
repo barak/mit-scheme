@@ -79,7 +79,7 @@ obstack_chunk_alloc (size_t size)
 /* Declare the outermost critical section. */
 DECLARE_CRITICAL_SECTION ();
 
-#define BLOCKS_TO_BYTES(n) ((n) * 1024)
+#define BLOCKS_TO_WORDS(n) ((n) * 1024)
 
 /* Exit is done in a different way on some operating systems (eg. VMS)  */
 
@@ -108,9 +108,9 @@ main_name (int argc, const char ** argv)
   reload_saved_string_length = 0;
   read_command_line_options (argc, argv);
 
-  setup_memory ((BLOCKS_TO_BYTES (option_heap_size)),
-		(BLOCKS_TO_BYTES (option_stack_size)),
-		(BLOCKS_TO_BYTES (option_constant_size)));
+  setup_memory ((BLOCKS_TO_WORDS (option_heap_size)),
+		(BLOCKS_TO_WORDS (option_stack_size)),
+		(BLOCKS_TO_WORDS (option_constant_size)));
 
   initialize_primitives ();
   compiler_initialize (option_fasl_file != 0);
