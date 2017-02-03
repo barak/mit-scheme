@@ -397,19 +397,21 @@ USA.
   (predicate-assertion null? "an empty list"))
 
 (define-for-tests (assert-error thunk #!optional condition-types . properties)
-  (call-with-current-continuation
-   (lambda (k)
-     (apply fail
-	    'RESULT-OBJECT
-	    (bind-condition-handler
-		(if (default-object? condition-types)
-		    (list condition-type:error)
-		    condition-types)
-		(lambda (condition)
-		  condition		;ignore
-		  (k #f))
-	      thunk)
-	    properties))))
+  (let ((condition-types (if (default-object? condition-types)
+			     (list condition-type:error)
+			     condition-types)))
+    (call-with-current-continuation
+     (lambda (k)
+       (apply fail
+	      'RESULT-OBJECT
+	      (bind-condition-handler
+		  condition-types
+		  (lambda (condition)
+		    condition		;ignore
+		    (k #f))
+		thunk)
+	      'EXPECTATION-OBJECT condition-types
+	      properties)))))
 
 (define-for-tests (error-assertion . condition-types)
   (lambda (thunk . properties)
