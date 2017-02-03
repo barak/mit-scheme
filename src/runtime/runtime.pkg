@@ -318,8 +318,7 @@ USA.
 	  negative-fixnum?
 	  non-negative-fixnum?
 	  non-positive-fixnum?
-	  positive-fixnum?)
-  (initialization (initialize-package!)))
+	  positive-fixnum?))
 
 (define-package (runtime floating-point-environment)
   (files "floenv")

@@ -93,6 +93,32 @@ USA.
 (define (fix:min n m) (if (fix:< n m) n m))
 (define (fix:max n m) (if (fix:> n m) n m))
 
+(define (fix:largest-value)
+  (force largest-fixnum-promise))
+
+(define largest-fixnum-promise
+  (delay
+    (let loop ((n 1))
+      (if (fix:fixnum? n)
+	  (loop (* n 2))
+	  (let ((n (- n 1)))
+	    (if (not (fix:fixnum? n))
+		(error "Unable to compute largest fixnum:" n))
+	    n)))))
+
+(define (fix:smallest-value)
+  (force smallest-fixnum-promise))
+
+(define smallest-fixnum-promise
+  (delay
+    (let loop ((n -1))
+      (if (fix:fixnum? n)
+	  (loop (* n 2))
+	  (let ((n (quotient n 2)))
+	    (if (not (fix:fixnum? n))
+		(error "Unable to compute smallest fixnum:" n))
+	    n)))))
+
 (define (fix:iota count #!optional start step)
   (guarantee index-fixnum? count 'fix:iota)
   (let ((start
@@ -134,37 +160,6 @@ USA.
 	(if (not (fix:<= start end))
 	    (error:bad-range-argument start caller))
 	start)))
-
-(define (fix:largest-value)
-  largest-fixnum-value)
-
-(define (fix:smallest-value)
-  smallest-fixnum-value)
-
-(define (initialize-package!)
-  (initialize-microcode-dependencies!)
-  (add-event-receiver! event:after-restore initialize-microcode-dependencies!))
-
-(define largest-fixnum-value)
-(define smallest-fixnum-value)
-(define (initialize-microcode-dependencies!)
-  (set! largest-fixnum-value
-	(let loop ((n 1))
-	  (if (fix:fixnum? n)
-	      (loop (* n 2))
-	      (let ((n (- n 1)))
-		(if (not (fix:fixnum? n))
-		    (error "Unable to compute largest fixnum:" n))
-		n))))
-  (set! smallest-fixnum-value
-	(let loop ((n -1))
-	  (if (fix:fixnum? n)
-	      (loop (* n 2))
-	      (let ((n (quotient n 2)))
-		(if (not (fix:fixnum? n))
-		    (error "Unable to compute smallest fixnum:" n))
-		n))))
-  unspecific)
 
 ;;;; Flonums
 
