@@ -43,13 +43,15 @@ USA.
   (if (null? source-nodes)
       (setup-source-nodes!)))
 
+(define (access* binding-name environment)
+  (environment-lookup (->environment environment) binding-name))
+
 (define (setup-source-nodes!)
 
-  (define xref (->environment '(cross-reference)))
-  (define read-package-model (access read-package-model xref))
-  (define pmodel/packages (access pmodel/packages xref))
-  (define package/name (access package/name xref))
-  (define package/files (access package/files xref))
+  (define read-package-model (access* 'read-package-model '(cross-reference)))
+  (define pmodel/packages (access* 'pmodel/packages '(cross-reference)))
+  (define package/name (access* 'package/name '(cross-reference)))
+  (define package/files (access* 'package/files '(cross-reference)))
 
   ;; Assume there are no os-specific files or packages.
   (define pmodel (read-package-model "compiler" 'unix))
