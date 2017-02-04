@@ -32,8 +32,6 @@ USA.
 ;;; compiler.
 
 (declare (usual-integrations))
-
-(load-option 'COMPRESS)			; XXX ugh
 
 (define (finish-cross-compilation:directory directory #!optional force?)
   (let ((force? (if (default-object? force?) #f force?)))
@@ -222,3 +220,8 @@ USA.
    (lambda (form environment)
      environment
      (apply microcode-type (cdr form)))))
+
+;;(load-option 'COMPRESS)			; XXX ugh
+;; The interpreted compress is terribly slow.
+(finish-cross-compilation:file "cpress.moc")
+(load "cpress.com" (->environment '(runtime compress)))
