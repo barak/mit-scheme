@@ -98,6 +98,7 @@ all-native: cross-target
 
 @IF_CROSS@COMPILER_SETTINGS_CROSS = (set! compiler:cross-compiling? true)
 @IF_LIARC@COMPILER_SETTINGS_LIARC = (set! compiler:invoke-c-compiler? false)
+TOOL_TOOLCHAIN_HEAP = @TOOL_TOOLCHAIN_HEAP@
 
 TOOL_COMPILER_SETTINGS = \
 	$(COMPILER_SETTINGS_CROSS) \
@@ -110,6 +111,7 @@ HOST_SCHEME = '$(MIT_SCHEME_EXE)' --batch-mode
 TOOL_COMPILER = $(TOOL_TOOLCHAIN)
 TOOL_SYNTAXER = $(HOST_SCHEME) --band $(TOOLCHAIN)/syntaxer.com
 TOOL_TOOLCHAIN = $(HOST_SCHEME) --band $(TOOLCHAIN)/compiler.com \
+  $(TOOL_TOOLCHAIN_HEAP) \
   --eval '(begin $(TOOL_COMPILER_SETTINGS))'
 
 .PHONY: toolchain

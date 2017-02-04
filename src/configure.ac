@@ -177,6 +177,13 @@ directory, which is usually \`/usr/local/lib/mit-scheme-${mit_scheme_native_code
     fi
 fi
 
+# A 32bit host running LIAR/svm needs a large heap.
+small_words='(= 4 (vector-ref (gc-space-status) 0))'
+if test x"${mit_scheme_native_code}" = xsvm1 \
+   && ${MIT_SCHEME_EXE} --eval "(%exit (if ${small_words} 0 1))"; then \
+    TOOL_TOOLCHAIN_HEAP="--heap 10000"
+fi
+
 AC_SUBST([DEFAULT_TARGET])
 AC_SUBST([ALL_TARGET])
 AC_SUBST([INSTALL_COM])
@@ -189,6 +196,7 @@ AC_SUBST([IF_DEBUG_TOOLCHAIN])
 AC_SUBST([IF_LIARC])
 AC_SUBST([IF_NOT_DEBUG_TOOLCHAIN])
 AC_SUBST([IF_SVM])
+AC_SUBST([TOOL_TOOLCHAIN_HEAP])
 
 AC_PROG_INSTALL
 AC_PROG_LN_S
