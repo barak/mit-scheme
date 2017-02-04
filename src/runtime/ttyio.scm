@@ -120,11 +120,12 @@ USA.
 (define (operation/read-finish port)
   (let loop ()
     (if (char-ready? port)
-	(let ((char (read-char port)))
+	(let ((char (generic-io/peek-char port)))
 	  (if (not (eof-object? char))
 	      (if (char-whitespace? char)
-		  (loop)
-		  (unread-char char port))))))
+		  (begin
+		    (generic-io/read-char port)
+		    (loop)))))))
   (output-port/discretionary-flush port))
 
 (define (operation/discretionary-write-char char port)
