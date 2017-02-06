@@ -459,19 +459,20 @@ USA.
                             output-file-root))
 
 (define (generate-property-tables std-prop-alists root-name)
-  (for-each (lambda (p)
-              (let ((exprs (generate-property-table (car p) (cdr p))))
-                (call-with-output-file (prop-file-name root-name (car p))
-                  (lambda (port)
-                    (write-table-header (car p)
-                                        (car std-prop-alists)
-                                        port)
-                    (pp (car exprs) port)
-                    (for-each (lambda (exprs)
-                                (newline port)
-                                (pp exprs port))
-                              (cdr exprs))))))
-            (cdr std-prop-alists)))
+  (parameterize ((param:pp-forced-x-size 1000))
+    (for-each (lambda (p)
+		(let ((exprs (generate-property-table (car p) (cdr p))))
+		  (call-with-output-file (prop-file-name root-name (car p))
+		    (lambda (port)
+		      (write-table-header (car p)
+					  (car std-prop-alists)
+					  port)
+		      (pp (car exprs) port)
+		      (for-each (lambda (exprs)
+				  (newline port)
+				  (pp exprs port))
+				(cdr exprs))))))
+	      (cdr std-prop-alists))))
 
 (define (write-table-header prop-name ucd-version port)
   (call-with-input-file copyright-file-name
@@ -525,8 +526,11 @@ USA.
 	  (values offsets-expr
 		  `(((vector-ref ,table-name
 				 ,(coder offsets-name
-					 `(fix:and ,(- (expt 2 n-bits) 1)
-						   ,(code:rsh sv-name offset))))
+				    (lambda (shift)
+				      `(fix:and ,(* (expt 2 shift)
+						    (- (expt 2 n-bits) 1))
+						,(code:rsh sv-name
+							   (- offset shift))))))
 		     ,sv-name
 		     ,table-name))))))
 
@@ -646,11 +650,20 @@ USA.
 (define (linear-coder slope indexes)
   (values 0
 	  #f
-          (lambda (offsets-name index-code)
+          (lambda (offsets-name make-index-code)
 	    offsets-name
-            (if (< slope 0)
-                (code:+ (last indexes) (code:* (- slope) index-code))
-                (code:+ (car indexes) (code:* slope index-code))))))
+	    (let ((make-offset
+		   (lambda (slope)
+		     (let ((power
+			    (find (lambda (i)
+				    (= slope (expt 2 i)))
+				  (iota 8 1))))
+		       (if power
+			   (make-index-code power)
+			   (code:* slope (make-index-code 0)))))))
+	      (if (< slope 0)
+		  (code:+ (last indexes) (make-offset (- slope)))
+		  (code:+ (car indexes) (make-offset slope)))))))
 
 (define (try-8-bit-direct indexes)
   (and (< (apply max indexes) #x100)
@@ -667,9 +680,10 @@ USA.
 	    ,@(map (lambda (index)
 		     (- index base))
 		   indexes))
-          (lambda (offsets-name index-code)
+          (lambda (offsets-name make-index-code)
             (code:+ base
-                    `(bytevector-u8-ref ,offsets-name ,index-code)))))
+                    `(bytevector-u8-ref ,offsets-name
+					,(make-index-code 0))))))
 
 (define (try-16-bit-direct indexes)
   (and (< (apply max indexes) #x10000)
@@ -685,11 +699,13 @@ USA.
 	  `(bytevector
 	    ,@(append-map (lambda (index)
 			    (let ((delta (- index base)))
-			      (list (remainder delta #x10000)
-				    (quotient delta #x10000))))
+			      (list (remainder delta #x100)
+				    (quotient delta #x100))))
 			  indexes))
-          (lambda (offsets-name index-code)
-            (code:+ base `(bytevector-u16le-ref ,offsets-name ,index-code)))))
+          (lambda (offsets-name make-index-code)
+            (code:+ base
+		    `(bytevector-u16le-ref ,offsets-name
+					   ,(make-index-code 1))))))
 
 (define (code:+ a b)
   (cond ((eqv? 0 a) b)
