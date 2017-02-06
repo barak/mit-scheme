@@ -582,24 +582,25 @@ USA.
     `(,(generate-entry-definition (symbol "ucd-" prop-name "-value")
 				  root-entry
 				  'sv
-				  table-name)
+				  table-name
+				  '(sv))
 
       ,@(map (lambda (name entry)
-	       (generate-entry-definition name entry 'sv 'table))
+	       (generate-entry-definition name entry 'sv 'table '(sv table)))
              entry-names
              table-entries)
 
       (define ,table-name)
       ,@(generate-table-initializers table-name entry-names))))
 
-(define (generate-entry-definition name entry sv-name table-name)
+(define (generate-entry-definition name entry sv-name table-name arg-names)
   (receive (offsets-expr body) (entry 'offsets sv-name table-name)
     (if offsets-expr
 	`(define-deferred ,name
 	   (let ((offsets ,offsets-expr))
-	     (named-lambda (,name ,sv-name ,table-name)
+	     (named-lambda (,name ,@arg-names)
 	       ,@body)))
-	`(define (,name ,sv-name ,table-name)
+	`(define (,name ,@arg-names)
 	   ,@body))))
 
 (define (generate-table-initializers table-name entries)
