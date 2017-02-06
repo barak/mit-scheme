@@ -508,11 +508,12 @@ USA.
         (byte-count 0))
 
     (define (make-value-code value)
-      (lambda (sv-name table-name)
-        `(,sv-name ,table-name ,value)))
+      (lambda (offsets-name sv-name table-name)
+	offsets-name
+        (values #f `(,sv-name ,table-name ,value))))
 
     (define (make-node-code n-bits offset indexes)
-      (receive (bytes-per-entry coder)
+      (receive (bytes-per-entry offsets-expr coder)
           (or (try-linear indexes)
               (try-8-bit-direct indexes)
               (try-8-bit-spread indexes)
@@ -520,13 +521,14 @@ USA.
               (try-16-bit-spread indexes)
               (error "Dispatch won't fit in 16 bits:" indexes))
         (count-entries! indexes bytes-per-entry)
-        (lambda (sv-name table-name)
-          `(((vector-ref ,table-name
-                         ,(coder
-                           `(fix:and ,(- (expt 2 n-bits) 1)
-                                     ,(code:rsh sv-name offset))))
-             ,sv-name
-             ,table-name)))))
+        (lambda (offsets-name sv-name table-name)
+	  (values offsets-expr
+		  `(((vector-ref ,table-name
+				 ,(coder offsets-name
+					 `(fix:and ,(- (expt 2 n-bits) 1)
+						   ,(code:rsh sv-name offset))))
+		     ,sv-name
+		     ,table-name))))))
 
     (define (count-entries! indexes bytes-per-entry)
       (let ((n (length indexes))
@@ -562,9 +564,9 @@ USA.
      (write-string prop-name port)
      (write-string ": dispatch tables = " port)
      (write entry-count port)
-     (write-string " entries (" port)
+     (write-string "/" port)
      (write unique-entry-count port)
-     (write-string " unique), " port)
+     (write-string " entries, " port)
      (write byte-count port)
      (write-string " bytes; object table = " port)
      (write n-entries port)
@@ -577,21 +579,31 @@ USA.
                 (symbol "ucd-" prop-name "-entry-" index))
               (iota (length table-entries)))))
 
-    `((define (,(symbol "ucd-" prop-name "-value") sv)
-        ,@(root-entry 'sv table-name))
-
-      (define ,table-name)
-      ,@(generate-table-initializers table-name entry-names)
+    `(,(generate-entry-definition (symbol "ucd-" prop-name "-value")
+				  root-entry
+				  'sv
+				  table-name)
 
       ,@(map (lambda (name entry)
-               `(define (,name sv table)
-                  ,@(entry 'sv 'table)))
+	       (generate-entry-definition name entry 'sv 'table))
              entry-names
-             table-entries))))
+             table-entries)
+
+      (define ,table-name)
+      ,@(generate-table-initializers table-name entry-names))))
+
+(define (generate-entry-definition name entry sv-name table-name)
+  (receive (offsets-expr body) (entry 'offsets sv-name table-name)
+    (if offsets-expr
+	`(define-deferred ,name
+	   (let ((offsets ,offsets-expr))
+	     (named-lambda (,name ,sv-name ,table-name)
+	       ,@body)))
+	`(define (,name ,sv-name ,table-name)
+	   ,@body))))
 
 (define (generate-table-initializers table-name entries)
-  (let ((root-name (symbol "initialize-" table-name))
-        (groups
+  (let ((groups
          (let split-items
              ((items
                (map cons
@@ -600,18 +612,18 @@ USA.
            (let ((n-items (length items)))
              (if (<= n-items 100)
                  (list items)
-                 (let ((split (quotient n-items 2)))
-                   (append (split-items (list-head items split))
-                           (split-items (list-tail items split)))))))))
+		 (append (split-items (list-head items 100))
+			 (split-items (list-tail items 100))))))))
     (let ((group-names
            (map (lambda (index)
-                  (symbol root-name "-" index))
+                  (symbol "initialize-" table-name "-" index))
                 (iota (length groups)))))
-      `((define (,root-name)
-          (set! ,table-name (make-vector ,(length entries)))
-          ,@(map (lambda (name)
-                   `(,name))
-                 group-names))
+      `((add-boot-init!
+	 (lambda ()
+	   (set! ,table-name (make-vector ,(length entries)))
+	   ,@(map (lambda (name)
+		    `(,name))
+		  group-names)))
         ,@(map (lambda (name group)
                  `(define (,name)
                     ,@(map (lambda (p)
@@ -632,7 +644,9 @@ USA.
 
 (define (linear-coder slope indexes)
   (values 0
-          (lambda (index-code)
+	  #f
+          (lambda (offsets-name index-code)
+	    offsets-name
             (if (< slope 0)
                 (code:+ (last indexes) (code:* (- slope) index-code))
                 (code:+ (car indexes) (code:* slope index-code))))))
@@ -648,13 +662,13 @@ USA.
 
 (define (8-bit-spread-coder base indexes)
   (values 1
-          (lambda (index-code)
+	  `(bytevector
+	    ,@(map (lambda (index)
+		     (- index base))
+		   indexes))
+          (lambda (offsets-name index-code)
             (code:+ base
-                    `(bytevector-u8-ref ',(apply bytevector
-                                                 (map (lambda (index)
-                                                        (- index base))
-                                                      indexes))
-                                        ,index-code)))))
+                    `(bytevector-u8-ref ,offsets-name ,index-code)))))
 
 (define (try-16-bit-direct indexes)
   (and (< (apply max indexes) #x10000)
@@ -667,21 +681,14 @@ USA.
 
 (define (16-bit-spread-coder base indexes)
   (values 2
-          (lambda (index-code)
-            (code:+ base
-                    `(bytevector-u16le-ref ',(make-u16-vector
-                                              (map (lambda (index)
-                                                     (- index base))
-                                                   indexes))
-                                           ,index-code)))))
-
-(define (make-u16-vector u16s)
-  (let ((bv (make-bytevector (* 2 (length u16s)))))
-    (for-each (lambda (u16 index)
-                (bytevector-u16le-set! bv (* 2 index) u16))
-              u16s
-              (iota (length u16s)))
-    bv))
+	  `(bytevector
+	    ,@(append-map (lambda (index)
+			    (let ((delta (- index base)))
+			      (list (remainder delta #x10000)
+				    (quotient delta #x10000))))
+			  indexes))
+          (lambda (offsets-name index-code)
+            (code:+ base `(bytevector-u16le-ref ,offsets-name ,index-code)))))
 
 (define (code:+ a b)
   (cond ((eqv? 0 a) b)
