@@ -410,7 +410,13 @@ USA.
       (let* ((subnodes (node-subnodes node))
 	     (association
 	      (and (not (null? (cdr subnodes)))
-		   (assq (unhighlight (car subnodes)) (dispatch-list)))))
+		   (let ((first (unhighlight (car subnodes))))
+		     (and (symbol? first)
+			  (assq (if (ustring-prefix? "define-"
+						     (symbol->string first))
+				    'define
+				    first)
+				(dispatch-list)))))))
 	(if (and (not association)
 		 (fits-within? node column depth))
 	    (print-guaranteed-list-node node)
