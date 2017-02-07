@@ -641,10 +641,10 @@ USA.
   (and (pair? indexes)
        (pair? (cdr indexes))
        (let ((slope (- (cadr indexes) (car indexes))))
-         (let loop ((indexes (cdr indexes)))
-           (if (pair? (cdr indexes))
-               (and (= slope (- (cadr indexes) (car indexes)))
-                    (loop (cdr indexes)))
+         (let loop ((indexes* (cdr indexes)))
+           (if (pair? (cdr indexes*))
+               (and (= slope (- (cadr indexes*) (car indexes*)))
+                    (loop (cdr indexes*)))
                (linear-coder slope indexes))))))
 
 (define (linear-coder slope indexes)
@@ -662,7 +662,7 @@ USA.
 			   (make-index-code power)
 			   (code:* slope (make-index-code 0)))))))
 	      (if (< slope 0)
-		  (code:+ (last indexes) (make-offset (- slope)))
+		  (code:- (car indexes) (make-offset (- slope)))
 		  (code:+ (car indexes) (make-offset slope)))))))
 
 (define (try-8-bit-direct indexes)
@@ -711,6 +711,10 @@ USA.
   (cond ((eqv? 0 a) b)
         ((eqv? 0 b) a)
         (else `(fix:+ ,a ,b))))
+
+(define (code:- a b)
+  (cond ((eqv? 0 b) a)
+        (else `(fix:- ,a ,b))))
 
 (define (code:* a b)
   (cond ((or (eqv? 0 a) (eqv? 0 b)) 0)
