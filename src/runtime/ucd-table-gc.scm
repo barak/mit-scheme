@@ -26,7 +26,7 @@ USA.
 
 ;;;; UCD property: gc
 
-;;; Generated from Unicode 9.0.0 UCD at 2017-02-07T20:26:42-08
+;;; Generated from Unicode 9.0.0 UCD at 2017-02-07T22:28:43-08
 
 (declare (usual-integrations))
 
@@ -39,112 +39,112 @@ USA.
 (define (ucd-gc-entry-0 sv table)
   sv
   table
-  "Cc")
+  'other:control)
 
 (define (ucd-gc-entry-1 sv table)
   sv
   table
-  "Zs")
+  'separator:space)
 
 (define (ucd-gc-entry-2 sv table)
   sv
   table
-  "Po")
+  'punctuation:other)
 
 (define (ucd-gc-entry-3 sv table)
   sv
   table
-  "Sc")
+  'symbol:currency)
 
 (define (ucd-gc-entry-4 sv table)
   sv
   table
-  "Ps")
+  'punctuation:open)
 
 (define (ucd-gc-entry-5 sv table)
   sv
   table
-  "Pe")
+  'punctuation:close)
 
 (define (ucd-gc-entry-6 sv table)
   sv
   table
-  "Sm")
+  'symbol:math)
 
 (define (ucd-gc-entry-7 sv table)
   sv
   table
-  "Pd")
+  'punctuation:dash)
 
 (define (ucd-gc-entry-8 sv table)
   sv
   table
-  "Nd")
+  'number:decimal-digit)
 
 (define (ucd-gc-entry-9 sv table)
   sv
   table
-  "Lu")
+  'letter:uppercase)
 
 (define (ucd-gc-entry-10 sv table)
   sv
   table
-  "Sk")
+  'symbol:modifier)
 
 (define (ucd-gc-entry-11 sv table)
   sv
   table
-  "Pc")
+  'punctuation:connector)
 
 (define (ucd-gc-entry-12 sv table)
   sv
   table
-  "Ll")
+  'letter:lowercase)
 
 (define (ucd-gc-entry-13 sv table)
   sv
   table
-  "So")
+  'symbol:other)
 
 (define (ucd-gc-entry-14 sv table)
   sv
   table
-  "Lo")
+  'letter:other)
 
 (define (ucd-gc-entry-15 sv table)
   sv
   table
-  "Pi")
+  'punctuation:initial-quote)
 
 (define (ucd-gc-entry-16 sv table)
   sv
   table
-  "Cf")
+  'other:format)
 
 (define (ucd-gc-entry-17 sv table)
   sv
   table
-  "No")
+  'number:other)
 
 (define (ucd-gc-entry-18 sv table)
   sv
   table
-  "Pf")
+  'punctuation:final-quote)
 
 (define (ucd-gc-entry-19 sv table)
   sv
   table
-  "Lt")
+  'letter:titlecase)
 
 (define (ucd-gc-entry-20 sv table)
   sv
   table
-  "Lm")
+  'letter:modifier)
 
 (define (ucd-gc-entry-21 sv table)
   sv
   table
-  "Mn")
+  'mark:nonspacing)
 
 (define (ucd-gc-entry-22 sv table)
   sv
@@ -154,32 +154,32 @@ USA.
 (define (ucd-gc-entry-23 sv table)
   sv
   table
-  "Me")
+  'mark:enclosing)
 
 (define (ucd-gc-entry-24 sv table)
   sv
   table
-  "Mc")
+  'mark:spacing-combining)
 
 (define (ucd-gc-entry-25 sv table)
   sv
   table
-  "Nl")
+  'number:letter)
 
 (define (ucd-gc-entry-26 sv table)
   sv
   table
-  "Zl")
+  'separator:line)
 
 (define (ucd-gc-entry-27 sv table)
   sv
   table
-  "Zp")
+  'separator:paragraph)
 
 (define (ucd-gc-entry-28 sv table)
   sv
   table
-  "Co")
+  'other:private-use)
 
 ;;; (1 2 2 2 3 2 2 2 4 5 2 6 2 7 2 2)
 (define-deferred ucd-gc-entry-29
