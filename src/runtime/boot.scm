@@ -156,18 +156,23 @@ USA.
 (define (save-boot-inits! environment)
   (let ((inits (reverse! boot-inits)))
     (set! boot-inits #f)
-    ((ucode-primitive local-assignment) environment saved-boot-inits inits)))
+    (let ((p (assq environment saved-boot-inits)))
+      (if p
+	  (set-cdr! p (append! (cdr p) inits))
+	  (begin
+	    (set! saved-boot-inits
+		  (cons (cons environment inits)
+			saved-boot-inits))
+	    unspecific)))))
 
 (define (get-boot-init-runner environment)
-  (and (not (lexical-unreferenceable? environment saved-boot-inits))
-       (let ((inits
-	      ((ucode-primitive lexical-reference)
-	       environment
-	       saved-boot-inits)))
-	 ((ucode-primitive unbind-variable) environment saved-boot-inits)
-	 (lambda ()
-	   (for-each (lambda (init) (init))
-		     inits)))))
+  (let ((p (assq environment saved-boot-inits)))
+    (and p
+	 (let ((inits (cdr p)))
+	   (set! saved-boot-inits (delq! p saved-boot-inits))
+	   (lambda ()
+	     (for-each (lambda (init) (init))
+		       inits))))))
 
 (define boot-inits #f)
-(define saved-boot-inits '|#[saved-boot-inits]|)
+(define saved-boot-inits '())
