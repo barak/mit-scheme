@@ -660,31 +660,39 @@ USA.
 (define (make-method:modify! compute-hash! key=? entry-type)
   (declare (integrate-operator compute-hash! key=? entry-type))
   (define (method:modify! table key default procedure)
-    (let ((hash (compute-hash! table key)))
-      (let loop ((p (vector-ref (table-buckets table) hash)) (q #f))
-	(if (pair? p)
-	    (call-with-entry-key&datum entry-type (car p)
-	      (lambda (key* datum barrier)
-		(declare (integrate key* datum barrier))
-		(if (key=? key* key)
-		    (let ((datum* (procedure datum)))
-		      (without-interruption
-			(lambda ()
-			  (set-entry-datum! entry-type (car p) datum*)))
-		      (barrier)
-		      datum*)
-		    (loop (cdr p) p)))
-	      (lambda () (loop (cdr p) p)))
-	    (let ((datum (procedure default)))
-	      (without-interruption
-		(lambda ()
-		  (let ((r (cons (make-entry entry-type key datum) '())))
-		    (if q
-			(set-cdr! q r)
-			(vector-set! (table-buckets table) hash r)))
-		  (increment-table-count! table)
-		  (maybe-grow-table! table)))
-	      datum)))))
+    (let restart ((has-value? #f) (value #f))
+      (let ((hash (compute-hash! table key)))
+	(let loop ((p (vector-ref (table-buckets table) hash)) (q #f))
+	  (if (pair? p)
+	      (call-with-entry-key&datum entry-type (car p)
+		(lambda (key* datum barrier)
+		  (declare (integrate key* datum barrier))
+		  (if (key=? key* key)
+		      (let ((datum* (procedure datum)))
+			(without-interruption
+			  (lambda ()
+			    (set-entry-datum! entry-type (car p) datum*)))
+			(barrier)
+			datum*)
+		      (loop (cdr p) p)))
+		(lambda () (loop (cdr p) p)))
+	      ;; If there's no entry, we have to create a new one.  But calling
+	      ;; PROCEDURE potentially modifies TABLE, so we can't assume that Q
+	      ;; or the bucket are valid when it returns.  Instead, re-start the
+	      ;; loop, and if there's still no entry, we can then safely add the
+	      ;; previously computed value.
+	      (if (not has-value?)
+		  (restart #t (procedure default))
+		  (begin
+		    (without-interruption
+		      (lambda ()
+			(let ((r (cons (make-entry entry-type key value) '())))
+			  (if q
+			      (set-cdr! q r)
+			      (vector-set! (table-buckets table) hash r)))
+			(increment-table-count! table)
+			(maybe-grow-table! table)))
+		    value)))))))
   method:modify!)
 
 (define (make-method:remove! compute-hash! key=? entry-type)
