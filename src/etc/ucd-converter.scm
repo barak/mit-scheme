@@ -95,10 +95,10 @@ USA.
                (cdr index)))))
 
 (define (prop-file-name root-name suffix)
-  (ustring-append (->namestring root-name)
-                  "-"
-                  (ustring-downcase suffix)
-                  ".scm"))
+  (string-append (->namestring root-name)
+		 "-"
+		 (string-downcase suffix)
+		 ".scm"))
 
 ;;;; UCD property extraction
 
@@ -148,7 +148,7 @@ USA.
             (if (and (cprs-adjacent? (car p1) (car p2))
                      (if (cdr p1)
                          (and (cdr p2)
-                              (ustring=? (cdr p1) (cdr p2)))
+                              (string=? (cdr p1) (cdr p2)))
                          (not (cdr p2))))
                 (begin
                   (set-car! alist
@@ -186,7 +186,7 @@ USA.
                (xml-element-attributes elt))))
     (and attr
          (let ((value (xml-attribute-value attr)))
-           (and (fix:> (ustring-length value) 0)
+           (and (fix:> (string-length value) 0)
                 value)))))
 
 (define (cp-attribute elt)
@@ -201,7 +201,7 @@ USA.
          (xml-element-content
           (xml-element-child 'description (xml-document-root document)))))
     (if (not (and (pair? content)
-                  (ustring? (car content))
+                  (string? (car content))
                   (null? (cdr content))))
         (error "Unexpected description content:" content))
     (car content)))
@@ -218,14 +218,19 @@ USA.
 
 ;;;; Code-point ranges
 
-(define (make-cpr start end)
-  (guarantee index-fixnum? start)
-  (guarantee index-fixnum? end)
-  (if (not (fix:< start end))
-      (error "Start must be less than end:" start end))
-  (if (fix:= start (fix:- end 1))
-      start
-      (cons start end)))
+(define (make-cpr start #!optional end)
+  (guarantee-index-fixnum start 'make-cpr)
+  (let ((end
+	 (if (default-object? end)
+	     (fix:+ start 1)
+	     (begin
+	       (guarantee-index-fixnum end 'make-cpr)
+	       (if (not (fix:< start end))
+		   (error:bad-range-argument end 'make-cpr))
+	       end))))
+    (if (fix:= start (fix:- end 1))
+	start
+	(cons start end))))
 
 (define (cpr? object)
   (or (index-fixnum? object)
@@ -235,13 +240,11 @@ USA.
            (fix:< (car object) (cdr object)))))
 
 (define (cpr-start cpr)
-  (guarantee cpr? cpr)
   (if (pair? cpr)
       (car cpr)
       cpr))
 
 (define (cpr-end cpr)
-  (guarantee cpr? cpr)
   (if (pair? cpr)
       (cdr cpr)
       (fix:+ cpr 1)))
@@ -272,6 +275,10 @@ USA.
       (error "Can't merge non-adjacent cprs:" cpr1 cpr2))
   (make-cpr (cpr-start cpr1)
             (cpr-end cpr2)))
+
+(define (rebase-cpr cpr base)
+  (make-cpr (fix:- (cpr-start cpr) base)
+	    (fix:- (cpr-end cpr) base)))
 
 ;;;; Code-point range prefix encoding
 
@@ -279,13 +286,9 @@ USA.
   (append-map (lambda (p)
                 (let ((value (cdr p)))
                   (map (lambda (cpr)
-                         (cons (cpr->prefix cpr) value))
+                         (cons cpr value))
                        (split-cpr-by-prefix (car p)))))
               alist))
-
-(define (cpr->prefix cpr)
-  (receive (p n) (compute-low-prefix (cpr-start cpr) (fix:- (cpr-end cpr) 1))
-    (unsigned-integer->bit-string (fix:- 21 n) p)))
 
 (define (split-cpr-by-prefix cpr)
   (let loop ((low (cpr-start cpr)) (high (fix:- (cpr-end cpr) 1)))
@@ -342,107 +345,6 @@ USA.
               (fix:+ n 1))
         (values high n))))
 
-;;;; Stratification of dispatch tables
-
-(define (stratify-prop-alist alist slices)
-  (let loop ((alist alist) (slices slices))
-    (if (pair? slices)
-        (stratify-prop-alist-1 alist
-                               (car slices)
-                               (lambda (alist)
-                                 (loop alist (cdr slices))))
-        '())))
-
-(define (stratify-prop-alist-1 alist n-bits continue)
-  (cons n-bits
-        (let loop ((alist alist))
-          (if (pair? alist)
-              (if (< n-bits (bit-string-length (caar alist)))
-                  (let ((p1 (prefix-head (caar alist) n-bits)))
-                    (let gather
-                        ((alist (cdr alist))
-                         (tails
-                          (list (cons (prefix-tail (caar alist) n-bits)
-                                      (cdar alist)))))
-                      (if (and (pair? alist)
-                               (prefix-match? p1 (caar alist)))
-                          (gather (cdr alist)
-                                  (cons (cons (prefix-tail (caar alist) n-bits)
-                                              (cdar alist))
-                                        tails))
-                          (cons (cons p1 (continue (reverse! tails)))
-                                (loop alist)))))
-                  (cons (car alist)
-                        (loop (cdr alist))))
-              '()))))
-
-(define (prefix-match? p1 p2)
-  (let ((n1 (bit-string-length p1))
-        (n2 (bit-string-length p2)))
-    (if (<= n1 n2)
-        (bit-string=? p1 (prefix-head p2 n1))
-        (bit-string=? (prefix-head p1 n2) p2))))
-
-(define (prefix-head s n-bits)
-  (bit-substring s
-                 (- (bit-string-length s) n-bits)
-                 (bit-string-length s)))
-
-(define (prefix-tail s n-bits)
-  (bit-substring s 0 (- (bit-string-length s) n-bits)))
-
-(define (compute-stratification-costs alists slices)
-  (map (lambda (alist)
-         (cons (car alist)
-               (compute-stratification-cost
-                (split-prop-alist-by-prefix (cdr alist))
-                slices)))
-       alists))
-
-(define (compute-stratification-cost alist slices)
-  (let loop ((alist alist) (slices slices))
-    (if (pair? slices)
-        (compute-stratification-cost-1 alist
-                                       (car slices)
-                                       (lambda (alist)
-                                         (loop alist (cdr slices))))
-        0)))
-
-(define (compute-stratification-cost-1 alist n-bits continue)
-  (+ (expt 2 n-bits)
-     (let loop ((alist alist))
-       (if (pair? alist)
-           (if (< n-bits (bit-string-length (caar alist)))
-               (let ((p1 (prefix-head (caar alist) n-bits)))
-                 (let gather
-                     ((alist (cdr alist))
-                      (tails
-                       (list (cons (prefix-tail (caar alist) n-bits)
-                                   (cdar alist)))))
-                   (if (and (pair? alist)
-                            (< n-bits (bit-string-length (caar alist)))
-                            (bit-string=? p1
-                                          (prefix-head (caar alist) n-bits)))
-                       (gather (cdr alist)
-                               (cons (cons (prefix-tail (caar alist) n-bits)
-                                           (cdar alist))
-                                     tails))
-                       (+ (continue (reverse! tails))
-                          (loop alist)))))
-               (loop (cdr alist)))
-           0))))
-
-(define (count-nodes stratified)
-  (fold (lambda (p1 p2)
-          (cons (+ (car p1) (car p2))
-                (+ (cdr p1) (cdr p2))))
-        '(1 . 0)
-        (map (lambda (entry)
-               (if (pair? (cdr entry))
-                   (count-nodes (cdr entry))
-                   '(0 . 1)))
-             (cdr stratified))))
-
 ;;;; Code generator
 
 (define mit-scheme-root-pathname
@@ -467,12 +369,22 @@ USA.
 		      (write-table-header (car p)
 					  (car std-prop-alists)
 					  port)
-		      (pp (car exprs) port)
-		      (for-each (lambda (exprs)
+		      (print-code-expr (car exprs) port)
+		      (for-each (lambda (expr)
 				  (newline port)
-				  (pp exprs port))
+				  (print-code-expr expr port))
 				(cdr exprs))))))
 	      (cdr std-prop-alists))))
+
+(define (print-code-expr expr port)
+  (if (and (pair? expr)
+           (eq? 'comment (car expr))
+	   (pair? (cdr expr))
+           (null? (cddr expr)))
+      (begin
+        (write-string ";;; " port)
+        (display (cadr expr) port))
+      (pp expr port)))
 
 (define (write-table-header prop-name ucd-version port)
   (call-with-input-file copyright-file-name
@@ -500,10 +412,7 @@ USA.
   (newline port))
 
 (define (generate-property-table prop-name prop-alist)
-  (let ((stratified-entries
-         (stratify-prop-alist (split-prop-alist-by-prefix prop-alist)
-                              '(5 8 4 4)))
-        (maker (entries-maker))
+  (let ((maker (entries-maker))
         (entry-count 0)
         (unique-entry-count 0)
         (byte-count 0))
@@ -511,7 +420,7 @@ USA.
     (define (make-value-code value)
       (lambda (offsets-name sv-name table-name)
 	offsets-name
-        (values #f `(,sv-name ,table-name ,value))))
+        (values #f #f `(,sv-name ,table-name ,value))))
 
     (define (make-node-code n-bits offset indexes)
       (receive (bytes-per-entry offsets-expr coder)
@@ -523,7 +432,8 @@ USA.
               (error "Dispatch won't fit in 16 bits:" indexes))
         (count-entries! indexes bytes-per-entry)
         (lambda (offsets-name sv-name table-name)
-	  (values offsets-expr
+	  (values indexes
+                  offsets-expr
 		  `(((vector-ref ,table-name
 				 ,(coder offsets-name
 				    (lambda (shift)
@@ -542,12 +452,28 @@ USA.
         (set! byte-count (+ byte-count (* n bytes-per-entry))))
       unspecific)
 
-    (let ((make-entry (maker 'make-entry)))
-      (generate-code stratified-entries
-                     (lambda (n-bits offset indexes)
-                       (make-entry (make-node-code n-bits offset indexes)))
-                     (lambda (value)
-                       (make-entry (make-value-code value)))))
+    (let ((table (make-equal-hash-table))
+	  (make-entry (maker 'make-entry)))
+
+      ;; Make sure that the leaf nodes are at the beginning of the table.
+      (for-each (lambda (value)
+		  (hash-table/intern! table value
+				      (lambda ()
+					(make-entry (make-value-code value)))))
+		(map cdr prop-alist))
+
+      (let loop
+          ((entries (expand-ranges (slice-prop-alist prop-alist '(5 8 4 4))))
+           (n-max 21))
+	(hash-table/intern! table entries
+	  (lambda ()
+	    (make-entry
+	     (let* ((n-bits (car entries))
+		    (n-max* (- n-max n-bits)))
+	       (make-node-code n-bits n-max*
+		 (map (lambda (entry)
+                        (loop entry n-max*))
+                      (cdr entries)))))))))
 
     (let ((root-entry ((maker 'get-root-entry)))
           (table-entries ((maker 'get-table-entries))))
@@ -556,7 +482,7 @@ USA.
                                unique-entry-count
                                byte-count
                                (length table-entries))
-      (generate-top-level (ustring-downcase prop-name)
+      (generate-top-level (string-downcase prop-name)
                           root-entry
                           table-entries))))
 
@@ -583,29 +509,34 @@ USA.
                 (symbol "ucd-" prop-name "-entry-" index))
               (iota (length table-entries)))))
 
-    `(,(generate-entry-definition (symbol "ucd-" prop-name "-value")
-				  root-entry
-				  'sv
-				  table-name
-				  '(sv))
+    `(,@(generate-entry-definition (symbol "ucd-" prop-name "-value")
+                                   root-entry
+                                   'sv
+                                   table-name
+                                   '(sv))
 
-      ,@(map (lambda (name entry)
-	       (generate-entry-definition name entry 'sv 'table '(sv table)))
-             entry-names
-             table-entries)
+      ,@(append-map (lambda (name entry)
+                      (generate-entry-definition name entry
+                                                 'sv 'table '(sv table)))
+                    entry-names
+                    table-entries)
 
       (define ,table-name)
       ,@(generate-table-initializers table-name entry-names))))
 
 (define (generate-entry-definition name entry sv-name table-name arg-names)
-  (receive (offsets-expr body) (entry 'offsets sv-name table-name)
-    (if offsets-expr
-	`(define-deferred ,name
-	   (let ((offsets ,offsets-expr))
-	     (named-lambda (,name ,@arg-names)
-	       ,@body)))
-	`(define (,name ,@arg-names)
-	   ,@body))))
+  (receive (comment offsets-expr body) (entry 'offsets sv-name table-name)
+    (let ((defn
+            (if offsets-expr
+                `(define-deferred ,name
+                   (let ((offsets ,offsets-expr))
+                     (named-lambda (,name ,@arg-names)
+                       ,@body)))
+                `(define (,name ,@arg-names)
+                   ,@body))))
+      (if comment
+          (list `(comment ,comment) defn)
+          (list defn)))))
 
 (define (generate-table-initializers table-name entries)
   (let ((groups
@@ -743,21 +674,80 @@ USA.
         ((get-table-entries) (lambda () (reverse (cdr entries))))
         ((get-root-entry) (lambda () (car entries)))
         (else (error "Unknown operator:" operator))))))
+
+(define (expand-ranges stratified)
+  (if (list? stratified)
+      (let ((elements*
+             (append-map (lambda (element)
+                           (make-list (car element)
+                                      (expand-ranges (cdr element))))
+                         stratified)))
+        (cons (count->bits (length elements*))
+              elements*))
+      stratified))
 
-(define (generate-code stratified-entries make-node make-value)
-  (let ((value-table (make-equal-hash-table)))
+(define (count->bits count)
+  (let loop ((bits 0) (n 1))
+    (if (fix:< n count)
+        (loop (fix:+ bits 1)
+              (fix:lsh n 1))
+        bits)))
 
-    (define (intern-value value)
-      (hash-table-intern! value-table value (lambda () (make-value value))))
+(define (slice-prop-alist alist slices)
+  (let loop ((alist alist) (slices (reverse slices)))
+    (if (pair? slices)
+        (loop (slice-by-bits alist (car slices))
+              (cdr slices))
+        (cdar alist))))
 
-    (let loop ((entries stratified-entries) (n-max 21))
-      (let ((n-bits (car entries)))
-        (make-node n-bits (- n-max n-bits)
-          (append-map (lambda (entry)
-                        (make-list (expt 2
-                                         (- n-bits
-                                            (bit-string-length (car entry))))
-                                   (if (pair? (cdr entry))
-                                       (loop (cdr entry) (- n-max n-bits))
-                                       (intern-value (cdr entry)))))
-                      (cdr entries)))))))
+(define (slice-by-bits alist n-bits)
+  (let ((step (fix:lsh 1 n-bits)))
+    (let loop ((tail alist) (splits '()) (start 0))
+      (if (pair? tail)
+	  (receive (head tail* end) (slice-prop-alist-at tail start step)
+	    (loop tail*
+		  (cons (cons (make-cpr (fix:quotient start step)
+					(fix:quotient end step))
+                              (if (fix:= 1 (length head))
+                                  (cdar head)
+                                  (map (lambda (entry)
+                                         (cons (cpr-size (car entry))
+                                               (cdr entry)))
+                                       head)))
+			splits)
+		  end))
+	  (reverse! splits)))))
+
+(define (slice-prop-alist-at alist start step)
+  (let loop ((head '()) (tail alist) (end (fix:+ start step)))
+    (if (pair? tail)
+	(let ((entry (car tail)))
+	  (let ((cpr (car entry)))
+	    (cond ((fix:>= (cpr-start cpr) end)
+		   (values (reverse! head) tail end))
+		  ((fix:<= (cpr-end cpr) end)
+		   (loop (cons entry head) (cdr tail) end))
+		  (else
+		   (let ((end*
+			  (if (pair? head)
+			      end
+			      (fix:+ end
+				     (fix:* (fix:quotient (fix:- (cpr-end cpr)
+								 end)
+							  step)
+					    step)))))
+		     (receive (entry1 entry2)
+			 (split-entry-at cpr (cdr entry) end*)
+		       (values (reverse! (cons entry1 head))
+			       (if entry2
+				   (cons entry2 (cdr tail))
+				   (cdr tail))
+			       end*)))))))
+	(values (reverse! head) tail end))))
+
+(define (split-entry-at cpr value cp)
+  (if (fix:< cp (cpr-end cpr))
+      (values (cons (make-cpr (cpr-start cpr) cp) value)
+	      (cons (make-cpr cp (cpr-end cpr)) value))
+      (values (cons cpr value)
+	      #f)))
