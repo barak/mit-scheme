@@ -397,6 +397,10 @@ USA.
   (guarantee unicode-char? char 'char-general-category)
   (ucd-gc-value (char->integer char)))
 
+(define (unicode-code-point-general-category cp)
+  (guarantee unicode-code-point? cp 'unicode-code-point-general-category)
+  (ucd-gc-value cp))
+
 (define-integrable (utf16-surrogate? cp)
   (fix:= #xD800 (fix:and #xF800 cp)))
 

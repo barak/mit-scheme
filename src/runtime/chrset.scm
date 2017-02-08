@@ -283,6 +283,43 @@ USA.
 			       (cdr ranges))))))
 	(values low '()))))
 
+(define (compute-char-set procedure)
+  (%make-char-set (%compute-low procedure)
+		  (%code-points->high (%compute-high-ranges procedure))))
+
+(define (%compute-low procedure)
+  (let ((low (%make-low 0)))
+    (do ((cp 0 (fix:+ cp 1)))
+	((not (fix:< cp %low-limit)))
+      (if (procedure cp)
+	  (%low-set! low cp)))
+    low))
+
+(define (%compute-high-ranges procedure)
+  (append! (%compute-high-ranges-1 %low-limit #xD800 procedure)
+	   (%compute-high-ranges-1 #xE000 char-code-limit procedure)))
+
+(define (%compute-high-ranges-1 start end procedure)
+  (define (find-start cp ranges)
+    (if (fix:< cp end)
+	(if (procedure cp)
+	    (find-end (fix:+ cp 1) cp ranges)
+	    (find-start (fix:+ cp 1) ranges))
+	(done ranges)))
+
+  (define (find-end cp start ranges)
+    (if (fix:< cp end)
+	(if (procedure cp)
+	    (find-end (fix:+ cp 1) start ranges)
+	    (find-start (fix:+ cp 1)
+			(cons (%make-range start cp) ranges)))
+	(done (cons (%make-range start end) ranges))))
+
+  (define (done ranges)
+    (reverse! ranges))
+
+  (find-start start '()))
+
 ;;;; Predicates
 
 (define (char-in-set? char char-set)
@@ -568,6 +605,45 @@ USA.
 
 (define-deferred char-set:wsp (char-set #\space #\tab))
 (define-deferred char-wsp? (char-set-predicate char-set:wsp))
+
+;;;; Scheme language:
+
+(define (symbol-constituent? sv)
+  (lambda (sv)
+    (case sv
+      ;; #\" #\# #\' #\, #\; #\\ #\` #\|
+      ((#x22 #x23 #x27 #x2c #x3b #x5c #x60 #x7c) #f)
+      ((#x200C #x200D) #t)
+      (else
+       (case (unicode-code-point-general-category sv)
+	 ((letter:uppercase
+	   letter:lowercase
+	   letter:titlecase
+	   letter:modifier
+	   letter:other
+	   mark:nonspacing
+	   number:letter
+	   number:other
+	   punctuation:connector
+	   punctuation:dash
+	   punctuation:other
+	   symbol:math
+	   symbol:currency
+	   symbol:modifier
+	   symbol:other
+	   other:private-use)
+	  #t)
+	 ((mark:spacing-combining
+	   mark:enclosing
+	   number:decimal-digit)
+	  'subsequent-only)
+	 (else #f))))))
+
+(define-deferred char-set:symbol-constituent
+  (compute-char-set symbol-constituent?))
+
+(define-deferred char-set:symbol-initial
+  (compute-char-set (lambda (sv) (eq? #t (symbol-constituent? sv)))))
 
 ;;;; Backwards compatibility
 

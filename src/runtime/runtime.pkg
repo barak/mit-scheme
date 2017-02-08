@@ -1393,6 +1393,7 @@ USA.
 	  set-char-bits
 	  unicode-char->scalar-value
 	  unicode-char?
+	  unicode-code-point-general-category
 	  unicode-code-point?
 	  unicode-scalar-value->char
 	  unicode-scalar-value?))
@@ -1500,6 +1501,8 @@ USA.
 	  char-set:upper-case
 	  char-set:whitespace
 	  char-set:wsp
+	  char-set:symbol-constituent
+	  char-set:symbol-initial
 	  char-set=?
 	  char-set?
 	  char-standard?
@@ -1508,6 +1511,7 @@ USA.
 	  char-wsp?
 	  code-point-list?
 	  char-set*
+	  compute-char-set
 	  scalar-value-in-char-set?
 	  string->char-set)
   (export (runtime string)
