@@ -609,35 +609,34 @@ USA.
 ;;;; Scheme language:
 
 (define (symbol-constituent? sv)
-  (lambda (sv)
-    (case sv
-      ;; #\" #\# #\' #\, #\; #\\ #\` #\|
-      ((#x22 #x23 #x27 #x2c #x3b #x5c #x60 #x7c) #f)
-      ((#x200C #x200D) #t)
-      (else
-       (case (unicode-code-point-general-category sv)
-	 ((letter:uppercase
-	   letter:lowercase
-	   letter:titlecase
-	   letter:modifier
-	   letter:other
-	   mark:nonspacing
-	   number:letter
-	   number:other
-	   punctuation:connector
-	   punctuation:dash
-	   punctuation:other
-	   symbol:math
-	   symbol:currency
-	   symbol:modifier
-	   symbol:other
-	   other:private-use)
-	  #t)
-	 ((mark:spacing-combining
-	   mark:enclosing
-	   number:decimal-digit)
-	  'subsequent-only)
-	 (else #f))))))
+  (case sv
+    ;; #\" #\# #\' #\, #\; #\\ #\` #\|
+    ((#x22 #x23 #x27 #x2c #x3b #x5c #x60 #x7c) #f)
+    ((#x200C #x200D) #t)
+    (else
+     (case (unicode-code-point-general-category sv)
+       ((letter:uppercase
+	 letter:lowercase
+	 letter:titlecase
+	 letter:modifier
+	 letter:other
+	 mark:nonspacing
+	 number:letter
+	 number:other
+	 punctuation:connector
+	 punctuation:dash
+	 punctuation:other
+	 symbol:math
+	 symbol:currency
+	 symbol:modifier
+	 symbol:other
+	 other:private-use)
+	#t)
+       ((mark:spacing-combining
+	 mark:enclosing
+	 number:decimal-digit)
+	'subsequent-only)
+       (else #f)))))
 
 (define-deferred char-set:symbol-constituent
   (compute-char-set symbol-constituent?))
