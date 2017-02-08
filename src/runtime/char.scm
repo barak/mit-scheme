@@ -393,6 +393,10 @@ USA.
   (guarantee unicode-scalar-value? sv caller)
   (integer->char sv))
 
+(define (char-general-category char)
+  (guarantee unicode-char? char 'char-general-category)
+  (ucd-gc-value (char->integer char)))
+
 (define-integrable (utf16-surrogate? cp)
   (fix:= #xD800 (fix:and #xF800 cp)))
 

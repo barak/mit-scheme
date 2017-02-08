@@ -1357,6 +1357,7 @@ USA.
 	  char-code
 	  char-code-limit
 	  char-downcase
+	  char-general-category
 	  char-integer-limit
 	  char-upcase
 	  char-utf16-byte-length
