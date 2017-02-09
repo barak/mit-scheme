@@ -34,71 +34,87 @@ USA.
 ;;;
 ;;; (load-option 'xml)
 ;;; (define ucd (read-xml-file "path/to/ucd.all.grouped.xml"))
-;;; (write-standard-property-files ucd "tmp/path/XXX")
+;;; (load ".../ucd-converter")
+;;; (write-standard-property-files ucd)
 
 ;;; Stage two, uses normal sizes:
 ;;;
-;;; (load ".../src/etc/ucd-converter")
-;;; (generate-standard-property-tables "tmp/path/XXX")
+;;; (load ".../ucd-converter")
+;;; (generate-standard-property-tables)
+
+(define this-directory
+  (directory-pathname (current-load-pathname)))
+
+(define mit-scheme-root-pathname
+  (merge-pathnames "../../" this-directory))
 
-;;;; Raw UCD property tables
+;;;; Raw UCD attribute tables
 
-(define ucd-prop-names
-  '("CI"
-    "CWCF"
-    "CWCM"
-    "CWKCF"
-    "CWL"
-    "CWT"
-    "CWU"
-    "Cased"
-    "Lower"
-    "NFKC_CF"
-    "OLower"
-    "OUpper"
-    "Upper"
-    "cf"
-    "gc"
-    "lc"
-    "scf"
-    "slc"
-    "stc"
-    "suc"
-    "tc"
-    "uc"))
+(define raw-directory
+  (pathname-as-directory (merge-pathnames "ucd-raw-props" this-directory)))
 
-(define (write-standard-property-files document root-name)
-  (call-with-output-file (prop-file-name root-name "index")
-    (lambda (port)
-      (write (ucd-description document) port)
-      (for-each (lambda (prop-name)
-                  (newline port)
-                  (write prop-name port))
-                ucd-prop-names)))
-  (for-each (lambda (prop-name)
-              (let ((entries
-                     (single-repertoire-property (string->symbol prop-name)
-                                                 document)))
-                (call-with-output-file (prop-file-name root-name prop-name)
-                  (lambda (port)
-                    (for-each (lambda (p)
-                                (write-line p port))
-                              entries)))))
-            ucd-prop-names))
+(define (raw-file-name name)
+  (merge-pathnames (ustring-append name ".scm") raw-directory))
 
-(define (read-standard-property-files root-name)
-  (let ((index (read-file (prop-file-name root-name "index"))))
-    (cons (car index)
-          (map (lambda (prop-name)
-                 (cons prop-name
-                       (read-file (prop-file-name root-name prop-name))))
-               (cdr index)))))
+(define ucd-version-file-name
+  (raw-file-name "version"))
 
-(define (prop-file-name root-name suffix)
-  (string-append (->namestring root-name)
-		 "-"
-		 (string-downcase suffix)
-		 ".scm"))
+(define (prop-file-name prop-name)
+  (raw-file-name (ustring-append "prop-" prop-name)))
+
+(define all-ucd-prop-names
+  (read-file (raw-file-name "names")))
+
+(define (write-standard-property-files document)
+  (let ((ucd-version (ucd-description document)))
+    (call-with-output-file ucd-version-file-name
+      (lambda (port)
+	(write-line ucd-version port)))
+    (for-each (lambda (prop-name)
+		(write-prop-file prop-name ucd-version document))
+	      all-ucd-prop-names)))
+
+(define (write-prop-file prop-name ucd-version document)
+  (with-notification (lambda (port)
+                       (write-string "Writing property " port)
+                       (write-string prop-name port))
+    (lambda ()
+      (let ((entries
+             (single-repertoire-property (string->symbol prop-name)
+                                         document)))
+        (call-with-output-file (prop-file-name prop-name)
+          (lambda (port)
+            (write-copyright-and-title prop-name ucd-version port)
+            (for-each (lambda (p)
+                        (write-line p port))
+                      entries)))))))
+
+(define (write-copyright-and-title prop-name ucd-version port)
+  (call-with-input-file copyright-file-name
+    (lambda (ip)
+      (let loop ()
+        (let ((char (read-char ip)))
+          (if (not (eof-object? char))
+              (begin
+                (write-char char port)
+                (loop)))))))
+  (write-string ";;;; UCD property: " port)
+  (write-string prop-name port)
+  (newline port)
+  (newline port)
+  (write-string ";;; Generated from " port)
+  (write-string ucd-version port)
+  (write-string " UCD at " port)
+  (write-string (universal-time->local-iso8601-string (get-universal-time))
+                port)
+  (newline port)
+  (newline port))
+
+(define (read-ucd-version-file)
+  (car (read-file ucd-version-file-name)))
+
+(define (read-prop-file prop-name)
+  (read-file (prop-file-name prop-name)))
 
 ;;;; UCD property extraction
 
@@ -148,7 +164,7 @@ USA.
             (if (and (cprs-adjacent? (car p1) (car p2))
                      (if (cdr p1)
                          (and (cdr p2)
-                              (string=? (cdr p1) (cdr p2)))
+                              (ustring=? (cdr p1) (cdr p2)))
                          (not (cdr p2))))
                 (begin
                   (set-car! alist
@@ -186,7 +202,7 @@ USA.
                (xml-element-attributes elt))))
     (and attr
          (let ((value (xml-attribute-value attr)))
-           (and (fix:> (string-length value) 0)
+           (and (fix:> (ustring-length value) 0)
                 value)))))
 
 (define (cp-attribute elt)
@@ -201,7 +217,7 @@ USA.
          (xml-element-content
           (xml-element-child 'description (xml-document-root document)))))
     (if (not (and (pair? content)
-                  (string? (car content))
+                  (ustring? (car content))
                   (null? (cdr content))))
         (error "Unexpected description content:" content))
     (car content)))
@@ -347,34 +363,50 @@ USA.
 
 ;;;; Code generator
 
-(define mit-scheme-root-pathname
-  (merge-pathnames "../../" (directory-pathname (current-load-pathname))))
-
 (define copyright-file-name
   (merge-pathnames "dist/copyright.scm" mit-scheme-root-pathname))
 
 (define output-file-root
   (merge-pathnames "src/runtime/ucd-table" mit-scheme-root-pathname))
 
-(define (generate-standard-property-tables prop-root)
-  (generate-property-tables (read-standard-property-files prop-root)
-                            output-file-root))
+(define (generate-standard-property-tables)
+  (for-each generate-property-table
+	    '("Alpha"
+	      "Lower"
+	      "Upper"
+	      "WSpace"
+	      "gc"
+	      "lc"
+	      "nt"
+	      "slc"
+	      "suc"
+	      "uc")))
 
-(define (generate-property-tables std-prop-alists root-name)
-  (parameterize ((param:pp-forced-x-size 1000))
-    (for-each (lambda (p)
-		(let ((exprs (generate-property-table (car p) (cdr p))))
-		  (call-with-output-file (prop-file-name root-name (car p))
-		    (lambda (port)
-		      (write-table-header (car p)
-					  (car std-prop-alists)
-					  port)
-		      (print-code-expr (car exprs) port)
-		      (for-each (lambda (expr)
-				  (newline port)
-				  (print-code-expr expr port))
-				(cdr exprs))))))
-	      (cdr std-prop-alists))))
+(define (generate-property-table prop-name)
+  (let ((exprs (generate-property-table-code prop-name))
+	(ucd-version (read-ucd-version-file)))
+    (parameterize ((param:pp-forced-x-size 1000))
+      (call-with-output-file (prop-table-file-name prop-name)
+	(lambda (port)
+	  (write-copyright-and-title prop-name ucd-version port)
+	  (write-code-header port)
+	  (print-code-expr (car exprs) port)
+	  (for-each (lambda (expr)
+		      (newline port)
+		      (print-code-expr expr port))
+		    (cdr exprs)))))))
+
+(define (prop-table-file-name prop-name)
+  (ustring-append (->namestring output-file-root)
+		  "-"
+		  (ustring-downcase prop-name)
+		  ".scm"))
+
+(define (write-code-header port)
+  (write-string "(declare (usual-integrations))" port)
+  (newline port)
+  (write-char #\page port)
+  (newline port))
 
 (define (print-code-expr expr port)
   (if (and (pair? expr)
@@ -385,34 +417,10 @@ USA.
         (write-string ";;; " port)
         (display (cadr expr) port))
       (pp expr port)))
-
-(define (write-table-header prop-name ucd-version port)
-  (call-with-input-file copyright-file-name
-    (lambda (ip)
-      (let loop ()
-        (let ((char (read-char ip)))
-          (if (not (eof-object? char))
-              (begin
-                (write-char char port)
-                (loop)))))))
-  (write-string ";;;; UCD property: " port)
-  (write-string prop-name port)
-  (newline port)
-  (newline port)
-  (write-string ";;; Generated from " port)
-  (write-string ucd-version port)
-  (write-string " UCD at " port)
-  (write-string (universal-time->local-iso8601-string (get-universal-time))
-                port)
-  (newline port)
-  (newline port)
-  (write-string "(declare (usual-integrations))" port)
-  (newline port)
-  (write-char #\page port)
-  (newline port))
 
-(define (generate-property-table prop-name prop-alist)
-  (let ((maker (entries-maker))
+(define (generate-property-table-code prop-name)
+  (let ((prop-alist (read-prop-file prop-name))
+	(maker (entries-maker))
         (entry-count 0)
         (unique-entry-count 0)
         (byte-count 0)
@@ -483,7 +491,7 @@ USA.
                                unique-entry-count
                                byte-count
                                (length table-entries))
-      (generate-top-level (string-downcase prop-name)
+      (generate-top-level (ustring-downcase prop-name)
                           root-entry
                           table-entries))))
 
@@ -755,76 +763,66 @@ USA.
 
 ;;;; Value conversions
 
-;;; Converted values must be constant expressions, so quoting may be needed.
+(define (enum-converter name translations)
+  (lambda (value)
+    (if value
+	(let ((p
+	       (find (lambda (p)
+		       (ustring=? value (car p)))
+		     translations)))
+	  (if (not p)
+	      (error (ustring-append "Illegal " name " value:") value))
+	  (cdr p))
+	(default-object))))
 
-(define (value-converter prop-name)
-  (cond ((string=? prop-name "CI") converter:boolean)
-	((string=? prop-name "CWCF") converter:boolean)
-	((string=? prop-name "CWCM") converter:boolean)
-	((string=? prop-name "CWKCF") converter:boolean)
-	((string=? prop-name "CWL") converter:boolean)
-	((string=? prop-name "CWT") converter:boolean)
-	((string=? prop-name "CWU") converter:boolean)
-	((string=? prop-name "Cased") converter:boolean)
-	((string=? prop-name "Lower") converter:boolean)
-	((string=? prop-name "NFKC_CF") converter:zero-or-more-code-points)
-	((string=? prop-name "OLower") converter:boolean)
-	((string=? prop-name "OUpper") converter:boolean)
-	((string=? prop-name "Upper") converter:boolean)
-	((string=? prop-name "cf") converter:one-or-more-code-points)
-	((string=? prop-name "gc") converter:category)
-	((string=? prop-name "lc") converter:one-or-more-code-points)
-	((string=? prop-name "scf") converter:single-code-point)
-	((string=? prop-name "slc") converter:single-code-point)
-	((string=? prop-name "stc") converter:single-code-point)
-	((string=? prop-name "suc") converter:single-code-point)
-	((string=? prop-name "tc") converter:one-or-more-code-points)
-	((string=? prop-name "uc") converter:one-or-more-code-points)
-	(else (error "Unsupported property:" prop-name))))
+(define converter:category
+  (enum-converter "category"
+		  '(("Lu" . letter:uppercase)
+		    ("Ll" . letter:lowercase)
+		    ("Lt" . letter:titlecase)
+		    ("Lm" . letter:modifier)
+		    ("Lo" . letter:other)
+		    ("Mn" . mark:nonspacing)
+		    ("Mc" . mark:spacing-combining)
+		    ("Me" . mark:enclosing)
+		    ("Nd" . number:decimal-digit)
+		    ("Nl" . number:letter)
+		    ("No" . number:other)
+		    ("Pc" . punctuation:connector)
+		    ("Pd" . punctuation:dash)
+		    ("Ps" . punctuation:open)
+		    ("Pe" . punctuation:close)
+		    ("Pi" . punctuation:initial-quote)
+		    ("Pf" . punctuation:final-quote)
+		    ("Po" . punctuation:other)
+		    ("Sm" . symbol:math)
+		    ("Sc" . symbol:currency)
+		    ("Sk" . symbol:modifier)
+		    ("So" . symbol:other)
+		    ("Zs" . separator:space)
+		    ("Zl" . separator:line)
+		    ("Zp" . separator:paragraph)
+		    ("Cc" . other:control)
+		    ("Cf" . other:format)
+		    ("Cs" . other:surrogate)
+		    ("Co" . other:private-use)
+		    ("Cn" . other:not-assigned))))
 
-(define (converter:boolean value)
-  (cond ((not value) (default-object))
-	((string=? value "N") #f)
-	((string=? value "Y") #t)
-	(else (error "Illegal boolean value:" value))))
+(define converter:boolean
+  (enum-converter "boolean"
+		  '(("N" . #f)
+		    ("Y" . #t))))
 
-(define (converter:category value)
-  (cond ((not value) value)
-	((string=? value "Lu") ''letter:uppercase)
-	((string=? value "Ll") ''letter:lowercase)
-	((string=? value "Lt") ''letter:titlecase)
-	((string=? value "Lm") ''letter:modifier)
-	((string=? value "Lo") ''letter:other)
-	((string=? value "Mn") ''mark:nonspacing)
-	((string=? value "Mc") ''mark:spacing-combining)
-	((string=? value "Me") ''mark:enclosing)
-	((string=? value "Nd") ''number:decimal-digit)
-	((string=? value "Nl") ''number:letter)
-	((string=? value "No") ''number:other)
-	((string=? value "Pc") ''punctuation:connector)
-	((string=? value "Pd") ''punctuation:dash)
-	((string=? value "Ps") ''punctuation:open)
-	((string=? value "Pe") ''punctuation:close)
-	((string=? value "Pi") ''punctuation:initial-quote)
-	((string=? value "Pf") ''punctuation:final-quote)
-	((string=? value "Po") ''punctuation:other)
-	((string=? value "Sm") ''symbol:math)
-	((string=? value "Sc") ''symbol:currency)
-	((string=? value "Sk") ''symbol:modifier)
-	((string=? value "So") ''symbol:other)
-	((string=? value "Zs") ''separator:space)
-	((string=? value "Zl") ''separator:line)
-	((string=? value "Zp") ''separator:paragraph)
-	((string=? value "Cc") ''other:control)
-	((string=? value "Cf") ''other:format)
-	((string=? value "Cs") ''other:surrogate)
-	((string=? value "Co") ''other:private-use)
-	((string=? value "Cn") ''other:not-assigned)
-	(else (error "Illegal category value:" value))))
+(define converter:numeric-type
+  (enum-converter "numeric-type"
+		  '(("None" . #f)
+		    ("De" . decimal)
+		    ("Di" . digit)
+		    ("Nu" . numeric))))
 
 (define (converter:single-code-point value)
   (cond ((not value) (default-object))
-	((string=? value "#") #f)
+	((ustring=? value "#") #f)
 	((string->number value 16)
 	 => (lambda (cp)
 	      (if (not (unicode-code-point? cp))
@@ -840,18 +838,64 @@ USA.
 
 (define (convert-code-points value zero-ok?)
   (cond ((not value) (default-object))
-	((string=? value "#") #f)
-	((string=? value "")
+	((ustring=? value "#") #f)
+	((ustring=? value "")
 	 (if (not zero-ok?)
 	     (error "At least one code point required:"  value))
-	 ''())
+	 '())
 	(else
-	 `',(map (lambda (part)
-		   (let ((cp (string->number part 16 #t)))
-		     (if (not (unicode-code-point? cp))
-			 (error "Illegal code-points value:" value))
-		     cp))
-		 (code-points-splitter value)))))
+	 (map (lambda (part)
+		(let ((cp (string->number part 16 #t)))
+		  (if (not (unicode-code-point? cp))
+		      (error "Illegal code-points value:" value))
+		  cp))
+	      (code-points-splitter value)))))
 
 (define code-points-splitter
   (string-splitter #\space #f))
+
+(define (value-converter prop-name)
+  (let ((p
+	 (find (lambda (p)
+		 (ustring=? prop-name (car p)))
+	       value-converters)))
+    (if (not p)
+	(error "Unsupported property:" prop-name))
+    (maybe-quote (cdr p))))
+
+;;; Converted values must be constant expressions.
+(define (maybe-quote converter)
+  (lambda (value)
+    (let ((converted (converter value)))
+      (if (or (symbol? converted)
+	      (list? converted)
+	      (vector? converted))
+	  `',converted
+	  converted))))
+
+(define value-converters
+  (list (cons "Alpha" converter:boolean)
+	(cons "CI" converter:boolean)
+	(cons "CWCF" converter:boolean)
+	(cons "CWCM" converter:boolean)
+	(cons "CWKCF" converter:boolean)
+	(cons "CWL" converter:boolean)
+	(cons "CWT" converter:boolean)
+	(cons "CWU" converter:boolean)
+	(cons "Cased" converter:boolean)
+	(cons "Lower" converter:boolean)
+	(cons "NFKC_CF" converter:zero-or-more-code-points)
+	(cons "OLower" converter:boolean)
+	(cons "OUpper" converter:boolean)
+	(cons "Upper" converter:boolean)
+	(cons "WSpace" converter:boolean)
+	(cons "cf" converter:one-or-more-code-points)
+	(cons "gc" converter:category)
+	(cons "lc" converter:one-or-more-code-points)
+	(cons "nt" converter:numeric-type)
+	(cons "scf" converter:single-code-point)
+	(cons "slc" converter:single-code-point)
+	(cons "stc" converter:single-code-point)
+	(cons "suc" converter:single-code-point)
+	(cons "tc" converter:one-or-more-code-points)
+	(cons "uc" converter:one-or-more-code-points)))
