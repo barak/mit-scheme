@@ -376,11 +376,9 @@ USA.
 	      "Upper"
 	      "WSpace"
 	      "gc"
-	      "lc"
 	      "nt"
 	      "slc"
-	      "suc"
-	      "uc")))
+	      "suc")))
 
 (define (generate-property-table prop-name)
   (let ((exprs (generate-property-table-code prop-name))
@@ -413,10 +411,13 @@ USA.
            (eq? 'comment (car expr))
 	   (pair? (cdr expr))
            (null? (cddr expr)))
-      (begin
-        (write-string ";;; " port)
-        (display (cadr expr) port))
+      (if output-comments?
+	  (begin
+	    (write-string ";;; " port)
+	    (display (cadr expr) port)))
       (pp expr port)))
+
+(define output-comments? #f)
 
 (define (generate-property-table-code prop-name)
   (let ((prop-alist (read-prop-file prop-name))
@@ -472,7 +473,7 @@ USA.
 		(map cdr prop-alist))
 
       (let loop
-          ((entries (expand-ranges (slice-prop-alist prop-alist '(5 8 4 4))))
+          ((entries (expand-ranges (slice-prop-alist prop-alist '(5 8 8))))
            (n-max 21))
 	(hash-table/intern! table entries
 	  (lambda ()
