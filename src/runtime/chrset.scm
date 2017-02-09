@@ -552,33 +552,43 @@ USA.
 
 ;;;; Standard character sets
 
+(define-deferred char-set:alphabetic
+  (compute-char-set
+   (lambda (sv)
+     (eq? #t (ucd-alpha-value sv)))))
+
+(define-deferred char-set:numeric
+  (compute-char-set
+   (lambda (sv)
+     (eq? 'decimal (ucd-nt-value sv)))))
+
+(define-deferred char-set:whitespace
+  (compute-char-set
+   (lambda (sv)
+     (eq? #t (ucd-wspace-value sv)))))
+
 (define-deferred char-set:upper-case
-  (char-set* '((#x41 . #x5B) (#xC0 . #xD7) (#xD8 . #xDE))))
+  (compute-char-set
+   (lambda (sv)
+     (eq? #t (ucd-upper-value sv)))))
+
+(define-deferred char-set:lower-case
+  (compute-char-set
+   (lambda (sv)
+     (eq? #t (ucd-lower-value sv)))))
+
 (define-deferred char-set:not-upper-case (char-set-invert char-set:upper-case))
 (define-deferred char-upper-case? (char-set-predicate char-set:upper-case))
 
-(define-deferred char-set:lower-case
-  (char-set* '((#x61 . #x7B) (#xE0 . #xF7) (#xF8 . #xFF))))
 (define-deferred char-set:not-lower-case (char-set-invert char-set:lower-case))
 (define-deferred char-lower-case? (char-set-predicate char-set:lower-case))
 
-(define-deferred char-set:numeric (char-set* '((#x30 . #x3A))))
 (define-deferred char-set:not-numeric (char-set-invert char-set:numeric))
 (define-deferred char-numeric? (char-set-predicate char-set:numeric))
 
-(define-deferred char-set:graphic
-  (char-set* '((#x20 . #x7F) (#xA0 . #x100))))
-(define-deferred char-set:not-graphic (char-set-invert char-set:graphic))
-(define-deferred char-graphic? (char-set-predicate char-set:graphic))
-
-(define-deferred char-set:whitespace
-  (char-set #\newline #\tab #\linefeed #\page #\return #\space
-	    (integer->char #xA0)))
 (define-deferred char-set:not-whitespace (char-set-invert char-set:whitespace))
 (define-deferred char-whitespace? (char-set-predicate char-set:whitespace))
 
-(define-deferred char-set:alphabetic
-  (char-set-union char-set:upper-case char-set:lower-case))
 (define-deferred char-set:not-alphabetic (char-set-invert char-set:alphabetic))
 (define-deferred char-alphabetic? (char-set-predicate char-set:alphabetic))
 
@@ -587,6 +597,11 @@ USA.
 (define-deferred char-set:not-alphanumeric
   (char-set-invert char-set:alphanumeric))
 (define-deferred char-alphanumeric? (char-set-predicate char-set:alphanumeric))
+
+(define-deferred char-set:graphic
+  (char-set* '((#x20 . #x7F) (#xA0 . #x100))))
+(define-deferred char-set:not-graphic (char-set-invert char-set:graphic))
+(define-deferred char-graphic? (char-set-predicate char-set:graphic))
 
 (define-deferred char-set:standard
   (char-set-union char-set:graphic (char-set #\newline)))

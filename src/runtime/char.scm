@@ -129,39 +129,20 @@ USA.
   (guarantee char? char 'char-ci=-predicate)
   (lambda (char*)
     (char-ci=? char* char)))
-
+
 (define (char-downcase char)
-  (%case-map-char char downcase-table))
+  (guarantee unicode-char? char 'char-downcase)
+  (let ((cp (ucd-slc-value (char->integer char))))
+    (if (index-fixnum? cp)
+	(integer->char cp)
+	char)))
 
 (define (char-upcase char)
-  (%case-map-char char upcase-table))
-
-(define-integrable (%case-map-char char table)
-  (if (fix:< (char-code char) #x100)
-      (%make-char (bytevector-u8-ref table (char-code char))
-		  (char-bits char))
-      char))
-
-(define downcase-table)
-(define upcase-table)
-(add-boot-init!
- (lambda ()
-   (set! downcase-table (make-bytevector #x100))
-   (set! upcase-table (make-bytevector #x100))
-   (do ((i 0 (fix:+ i 1)))
-       ((fix:= i #x100))
-     (bytevector-u8-set! downcase-table i i)
-     (bytevector-u8-set! upcase-table i i))
-   (let ((case-range
-	  (lambda (uc-low uc-high lc-low)
-	    (do ((i uc-low (fix:+ i 1))
-		 (j lc-low (fix:+ j 1)))
-		((fix:> i uc-high))
-	      (bytevector-u8-set! downcase-table i j)
-	      (bytevector-u8-set! upcase-table j i)))))
-     (case-range 65 90 97)
-     (case-range 192 214 224)
-     (case-range 216 222 248))))
+  (guarantee unicode-char? char 'char-upcase)
+  (let ((cp (ucd-suc-value (char->integer char))))
+    (if (index-fixnum? cp)
+	(integer->char cp)
+	char)))
 
 (define-deferred 0-code (char->integer #\0))
 ;; Next two codes are offset by 10 to speed up CHAR->DIGIT.
@@ -240,17 +221,16 @@ USA.
 	(code (char-code char)))
     (string-append
      (bucky-bits->prefix bits)
-     (let ((base-char (if (fix:= 0 bits) char (integer->char code))))
-       (cond ((code->name code))
-	     ((and (if (default-object? slashify?) #f slashify?)
-		   (not (fix:= 0 bits))
-		   (or (char=? base-char #\\)
-		       (char-set-member? char-set/atom-delimiters base-char)))
-	      (string-append "\\" (string base-char)))
-	     ((char-graphic? base-char)
-	      (string base-char))
-	     (else
-	      (string-append "x" (number->string code 16))))))))
+     (cond ((code->name code))
+	   ((not (fix:< code #x80))
+	    (string-append "x" (number->string code 16)))
+	   ((scalar-value-in-char-set? code char-set:symbol-constituent)
+	    (string (integer->char code)))
+	   ((and (if (default-object? slashify?) #f slashify?)
+		 (not (fix:= 0 bits)))
+	    (string-append "\\" (string (integer->char code))))
+	   (else
+	    (string-append "x" (number->string code 16)))))))
 
 (define (match-bucky-bits-prefix string fold-case?)
   (let ((match? (if fold-case? ustring-prefix-ci? ustring-prefix?)))
@@ -395,11 +375,16 @@ USA.
 
 (define (char-general-category char)
   (guarantee unicode-char? char 'char-general-category)
-  (ucd-gc-value (char->integer char)))
+  (sv-general-category (char->integer char)))
 
 (define (unicode-code-point-general-category cp)
   (guarantee unicode-code-point? cp 'unicode-code-point-general-category)
-  (ucd-gc-value cp))
+  (sv-general-category cp))
+
+(define (sv-general-category sv)
+  (let ((value (ucd-gc-value sv)))
+    (and (symbol? value)
+	 value)))
 
 (define-integrable (utf16-surrogate? cp)
   (fix:= #xD800 (fix:and #xF800 cp)))

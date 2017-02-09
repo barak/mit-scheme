@@ -1399,54 +1399,25 @@ USA.
 	  unicode-scalar-value?))
 
 (define-package (runtime ucd-tables)
-  (files "ucd-table-gc"
-	 ;; "ucd-table-cased"
-	 ;; "ucd-table-cf"
-	 ;; "ucd-table-ci"
-	 ;; "ucd-table-cwcf"
-	 ;; "ucd-table-cwcm"
-	 ;; "ucd-table-cwkcf"
-	 ;; "ucd-table-cwl"
-	 ;; "ucd-table-cwt"
-	 ;; "ucd-table-cwu"
-	 ;; "ucd-table-lc"
-	 ;; "ucd-table-lower"
-	 ;; "ucd-table-nfkc_cf"
-	 ;; "ucd-table-olower"
-	 ;; "ucd-table-oupper"
-	 ;; "ucd-table-scf"
-	 ;; "ucd-table-slc"
-	 ;; "ucd-table-stc"
-	 ;; "ucd-table-suc"
-	 ;; "ucd-table-tc"
-	 ;; "ucd-table-uc"
-	 ;; "ucd-table-upper"
-	 )
+  (files "ucd-table-alpha"
+	 "ucd-table-gc"
+	 "ucd-table-lower"
+	 "ucd-table-nt"
+	 "ucd-table-slc"
+	 "ucd-table-suc"
+	 "ucd-table-upper"
+	 "ucd-table-wspace")
   (parent (runtime))
   (export (runtime character)
 	  ucd-gc-value
-	  ;; ucd-cased-value
-	  ;; ucd-cf-value
-	  ;; ucd-ci-value
-	  ;; ucd-cwcf-value
-	  ;; ucd-cwcm-value
-	  ;; ucd-cwkcf-value
-	  ;; ucd-cwl-value
-	  ;; ucd-cwt-value
-	  ;; ucd-cwu-value
-	  ;; ucd-lc-value
-	  ;; ucd-lower-value
-	  ;; ucd-nfkc_cf-value
-	  ;; ucd-olower-value
-	  ;; ucd-oupper-value
-	  ;; ucd-scf-value
-	  ;; ucd-slc-value
-	  ;; ucd-stc-value
-	  ;; ucd-suc-value
-	  ;; ucd-tc-value
-	  ;; ucd-uc-value
-	  ;; ucd-upper-value
-	  ))
+	  ucd-slc-value
+	  ucd-suc-value)
+  (export (runtime character-set)
+	  ucd-alpha-value
+	  ucd-lower-value
+	  ucd-nt-value
+	  ucd-upper-value
+	  ucd-wspace-value))
 
 (define-package (runtime character-set)
   (files "chrset")
@@ -3567,8 +3538,6 @@ USA.
 	  (param:parser-keyword-style runtime-param:parser-keyword-style)
 	  (param:parser-radix runtime-param:parser-radix)
 	  (param:parser-table runtime-param:parser-table))
-  (export (runtime character)
-	  char-set/atom-delimiters)
   (export (runtime swank)
 	  get-param:parser-fold-case?)
   (export (runtime unparser)
