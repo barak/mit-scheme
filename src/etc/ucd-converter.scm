@@ -509,9 +509,7 @@ USA.
 	(hash-table-ref/default ,table-name sv
 				,(and default-value (default-value 'sv))))
       (define-deferred ,table-name
-	;; TODO(cph): this table uses fixnums as keys. It doesn't need to rehash
-	;; on GC, but for now this is expedient.
-	(let ((table (make-strong-eq-hash-table)))
+	(let ((table (make-non-pointer-hash-table)))
 	  (for-each (lambda (p)
 		      (hash-table-set! table (car p) (cdr p)))
 		    ',mapping)

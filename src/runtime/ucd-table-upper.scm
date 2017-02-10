@@ -26,7 +26,7 @@ USA.
 
 ;;;; UCD property: Upper
 
-;;; Generated from Unicode 9.0.0 UCD at 2017-02-09T23:45:15-08
+;;; Generated from Unicode 9.0.0 UCD at 2017-02-10T00:13:06-08
 
 (declare (usual-integrations))
 

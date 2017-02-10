@@ -26,7 +26,7 @@ USA.
 
 ;;;; UCD property: suc
 
-;;; Generated from Unicode 9.0.0 UCD at 2017-02-09T23:45:17-08
+;;; Generated from Unicode 9.0.0 UCD at 2017-02-10T00:13:09-08
 
 (declare (usual-integrations))
 
@@ -34,7 +34,7 @@ USA.
   (hash-table-ref/default char-map:simple-upper-case sv sv))
 
 (define-deferred char-map:simple-upper-case
-  (let ((table (make-strong-eq-hash-table)))
+  (let ((table (make-non-pointer-hash-table)))
     (for-each
      (lambda (p)
        (hash-table-set! table (car p) (cdr p)))
