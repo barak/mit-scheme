@@ -56,18 +56,57 @@ USA.
 (define (raw-file-name name)
   (merge-pathnames (ustring-append name ".scm") raw-directory))
 
-(define ucd-version-file-name
-  (raw-file-name "version"))
+(define (read-ucd-property-metadata)
+  (let ((properties (read-file (raw-file-name "names"))))
+    (for-each (lambda (metadata)
+		(if (not (and (list? metadata)
+			      (= 3 (length metadata))
+			      (string? (car metadata))
+			      (symbol? (cadr metadata))
+			      (property-type? (caddr metadata))))
+		    (error "Ill-formed property metadata record:" metadata)))
+	      properties)
+    properties))
 
-(define (prop-file-name prop-name)
-  (raw-file-name (ustring-append "prop-" prop-name)))
+(define (property-type? object)
+  (or (simple-property-type? object)
+      (and (pair? object)
+	   (symbol? (car object))
+	   (list? (cdr object))
+	   (case (car object)
+	     ((enum)
+	      (or (every string? (cdr object))
+		  (every (lambda (elt)
+			   (and (pair? elt)
+				(string? (car elt))
+				(or (boolean? (cdr elt))
+				    (symbol? (cdr elt)))))
+			 (cdr object))))
+	     ((regex)
+	      (and (= 2 (length object))
+		   (string? (cadr object))))
+	     ((or)
+	      (and (= 3 (length object))
+		   (string? (cadr object))
+		   (simple-property-type? (caddr object))))
+	     (else #f)))))
+
+(define (simple-property-type? object)
+  (case object
+    ((boolean byte code-point code-point* code-point+ exact-rational
+	      list-of-script string)
+     #t)
+    (else #f)))
+
+(define ucd-property-metadata
+  (read-ucd-property-metadata))
 
 (define all-ucd-prop-names
-  (read-file (raw-file-name "names")))
-
+  (map car ucd-property-metadata))
+
 (define (write-standard-property-files document)
   (let ((ucd-version (ucd-description document)))
-    (call-with-output-file ucd-version-file-name
+    (call-with-output-file (ucd-version-file-name)
       (lambda (port)
 	(write-line ucd-version port)))
     (for-each (lambda (prop-name)
@@ -111,10 +150,16 @@ USA.
   (newline port))
 
 (define (read-ucd-version-file)
-  (car (read-file ucd-version-file-name)))
+  (car (read-file (ucd-version-file-name))))
 
 (define (read-prop-file prop-name)
   (read-file (prop-file-name prop-name)))
+
+(define (ucd-version-file-name)
+  (raw-file-name "version"))
+
+(define (prop-file-name prop-name)
+  (raw-file-name (ustring-append "prop-" prop-name)))
 
 ;;;; UCD property extraction
 
