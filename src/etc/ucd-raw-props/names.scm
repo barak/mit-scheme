@@ -51,7 +51,7 @@ USA.
 ("Dep" deprecated boolean)
 ("Dia" diacritic boolean)
 ("Ext" extender boolean)
-("FC_NFKC" fc-nfkc-closure (or "#" code-point+))
+("FC_NFKC" fc-nfkc-closure code-point+)
 ("GCB" grapheme-cluster-break
  (enum "CN" "CR" "EB" "EBG" "EM" "EX" "GAZ" "L"  "LF"  "LV" "LVT"
        "PP" "RI" "SM" "T" "V" "XX" "ZWJ"))
@@ -141,7 +141,7 @@ USA.
 ("NChar" noncharactor-code-point boolean)
 ("NFC_QC" nfc-quick-check (enum "Y" "N" "M"))
 ("NFD_QC" nfd-quick-check (enum "Y" "N"))
-("NFKC_CF" nfkc-case-fold (or "#" code-point*))
+("NFKC_CF" nfkc-case-fold code-point*)
 ("NFKC_QC" nfkc-quick-check (enum "Y" "N" "M"))
 ("NFKD_QC" nfkd-quick-check (enum "Y" "N"))
 ("OAlpha" other-alphabetic boolean)
@@ -457,12 +457,12 @@ USA.
 	"Yi_Radicals"
 	"Yi_Syllables"
 	"Yijing"))
-("bmg" mirror-image (or "" code-point))
-("bpb" bidi-paired-bracket (or "#" code-point))
+("bmg" mirror-image code-point?)
+("bpb" bidi-paired-bracket code-point)
 ("bpt" bidi-paired-bracket-type (enum "o" "c" "n"))
 ("ccc" combining-class byte)		;<= 254
-("cf" case-folding (or "#" code-point+))
-("dm" decomposition-mapping (or "#" code-point*))
+("cf" case-folding code-point+)
+("dm" decomposition-mapping code-point*)
 ("dt" decomposition-type
  (enum "can"  "com" "enc" "fin"  "font" "fra" "init" "iso" "med"
        "nar"  "nb" "sml" "sqr"  "sub" "sup" "vert" "wide" "none"))
@@ -554,7 +554,7 @@ USA.
        "EM" "EX" "GL" "H2" "H3" "HL" "HY" "ID" "IN" "IS" "JL" "JT" "JV"
        "LF" "NL" "NS" "NU" "OP" "PO" "PR" "QU" "RI" "SA" "SG" "SP" "SY"
        "WJ" "XX" "ZW" "ZWJ"))
-("lc" lower-case (or "#" code-point+))
+("lc" lower-case code-point+)
 ("na" name string)
 ("na1" name string)
 ("nt" numeric-type
@@ -562,7 +562,7 @@ USA.
        ("De" . decimal)
        ("Di" . digit)
        ("Nu" . numeric)))
-("nv" numeric-value (or "NaN" exact-rational))
+("nv" numeric-value rational-or-nan)
 ("sc" script
  (enum "Adlm" "Aghb" "Ahom" "Arab" "Armi" "Armn" "Avst"
        "Bali" "Bamu" "Bass" "Batk" "Beng" "Bhks"
@@ -598,10 +598,10 @@ USA.
        "Xpeo" "Xsux"
        "Yiii"
        "Zinh" "Zyyy" "Zzzz"))
-("scf" simple-case-folding (or "#" code-point))
+("scf" simple-case-folding code-point)
 ("scx" script-extension list-of-script)
-("slc" simple-lower-case (or "#" code-point))
-("stc" simple-title-case (or "#" code-point))
-("suc" simple-upper-case (or "#" code-point))
-("tc" title-case (or "#" code-point+))
-("uc" upper-case (or "#" code-point+))
+("slc" simple-lower-case code-point)
+("stc" simple-title-case code-point)
+("suc" simple-upper-case code-point)
+("tc" title-case code-point+)
+("uc" upper-case code-point+)

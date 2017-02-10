@@ -41,14 +41,69 @@ USA.
 ;;;
 ;;; (load ".../ucd-converter")
 ;;; (generate-standard-property-tables)
+
+;;;; UCD property metadata
 
+(define (well-formed-metadata-spec? object)
+  (and (list? object)
+       (= 3 (length object))
+       (string? (car object))
+       (symbol? (cadr object))
+       (property-type? (caddr object))))
+
+(define (property-type? object)
+  (or (simple-type? object)
+      (unmapped-enum-type? object)
+      (mapped-enum-type? object)
+      (regex-type? object)
+      (or-type? object)))
+
+(define (simple-type? object)
+  (case object
+    ((boolean byte code-point code-point? code-point* code-point+
+	      list-of-script rational-or-nan string)
+     #t)
+    (else #f)))
+
+(define (unmapped-enum-type? object)
+  (and (list? object)
+       (>= (length object) 2)
+       (eq? 'enum (car object))
+       (every string? (cdr object))))
+
+(define (mapped-enum-type? object)
+  (and (list? object)
+       (>= (length object) 2)
+       (eq? 'enum (car object))
+       (every enum-value-map? (cdr object))))
+
+(define (mapped-enum-type-translations enum-type)
+  (cdr enum-type))
+
+(define (enum-value-map? object)
+  (and (pair? object)
+       (string? (car object))
+       (or (boolean? (cdr object))
+	   (symbol? (cdr object)))))
+
+(define (regex-type? object)
+  (and (list? object)
+       (= 2 (length object))
+       (eq? 'regex (car object))
+       (string? (cadr object))))
+
+(define (or-type? object)
+  (and (list? object)
+       (= 3 (length object))
+       (eq? 'or (car object))
+       (string? (cadr object))
+       (simple-type? (caddr object))))
+
 (define this-directory
   (directory-pathname (current-load-pathname)))
 
 (define mit-scheme-root-pathname
   (merge-pathnames "../../" this-directory))
-
-;;;; Raw UCD attribute tables
 
 (define raw-directory
   (pathname-as-directory (merge-pathnames "ucd-raw-props" this-directory)))
@@ -58,59 +113,42 @@ USA.
 
 (define (read-ucd-property-metadata)
   (let ((properties (read-file (raw-file-name "names"))))
-    (for-each (lambda (metadata)
-		(if (not (and (list? metadata)
-			      (= 3 (length metadata))
-			      (string? (car metadata))
-			      (symbol? (cadr metadata))
-			      (property-type? (caddr metadata))))
-		    (error "Ill-formed property metadata record:" metadata)))
-	      properties)
-    properties))
+    (map (lambda (metadata)
+	   (if (not (well-formed-metadata-spec? metadata))
+	       (error "Ill-formed property metadata record:" metadata))
+	   (make-metadata (car metadata)
+			  (cadr metadata)
+			  (caddr metadata)))
+	 properties)))
 
-(define (property-type? object)
-  (or (simple-property-type? object)
-      (and (pair? object)
-	   (symbol? (car object))
-	   (list? (cdr object))
-	   (case (car object)
-	     ((enum)
-	      (or (every string? (cdr object))
-		  (every (lambda (elt)
-			   (and (pair? elt)
-				(string? (car elt))
-				(or (boolean? (cdr elt))
-				    (symbol? (cdr elt)))))
-			 (cdr object))))
-	     ((regex)
-	      (and (= 2 (length object))
-		   (string? (cadr object))))
-	     ((or)
-	      (and (= 3 (length object))
-		   (string? (cadr object))
-		   (simple-property-type? (caddr object))))
-	     (else #f)))))
-
-(define (simple-property-type? object)
-  (case object
-    ((boolean byte code-point code-point* code-point+ exact-rational
-	      list-of-script string)
-     #t)
-    (else #f)))
+(define-record-type <metadata>
+    (make-metadata name full-name type-spec)
+    metadata?
+  (name metadata-name)
+  (full-name metadata-full-name)
+  (type-spec metadata-type-spec))
 
 (define ucd-property-metadata
   (read-ucd-property-metadata))
 
-(define all-ucd-prop-names
-  (map car ucd-property-metadata))
+(define (prop-metadata prop-name)
+  (let ((metadata
+	 (find (lambda (metadata)
+		 (string=? prop-name (metadata-name metadata)))
+	       ucd-property-metadata)))
+    (if (not metadata)
+	(error "Unknown property name:" prop-name))
+    metadata))
 
+;;;; Raw UCD attribute tables
+
 (define (write-standard-property-files document)
   (let ((ucd-version (ucd-description document)))
     (call-with-output-file (ucd-version-file-name)
       (lambda (port)
 	(write-line ucd-version port)))
-    (for-each (lambda (prop-name)
-		(write-prop-file prop-name ucd-version document))
+    (for-each (lambda (metadata)
+		(write-prop-file (metadata-name metadata) ucd-version document))
 	      all-ucd-prop-names)))
 
 (define (write-prop-file prop-name ucd-version document)
@@ -340,71 +378,9 @@ USA.
 (define (rebase-cpr cpr base)
   (make-cpr (fix:- (cpr-start cpr) base)
 	    (fix:- (cpr-end cpr) base)))
-
-;;;; Code-point range prefix encoding
 
-(define (split-prop-alist-by-prefix alist)
-  (append-map (lambda (p)
-                (let ((value (cdr p)))
-                  (map (lambda (cpr)
-                         (cons cpr value))
-                       (split-cpr-by-prefix (car p)))))
-              alist))
-
-(define (split-cpr-by-prefix cpr)
-  (let loop ((low (cpr-start cpr)) (high (fix:- (cpr-end cpr) 1)))
-    (if (fix:<= low high)
-        (receive (ll lh) (low-bracket low high)
-          (receive (hl hh) (high-bracket low high)
-            (if (fix:< low hl)
-                (if (fix:< lh high)
-                    (append (loop low lh)
-                            (loop (fix:+ lh 1) (fix:- hl 1))
-                            (loop hl high))
-                    (append (loop low (fix:- hl 1))
-                            (loop hl high)))
-                (if (fix:< lh high)
-                    (append (loop low lh)
-                            (loop (fix:+ lh 1) high))
-                    (list (make-cpr low (fix:+ high 1)))))))
-        '())))
-
-(define (low-bracket low high)
-  (receive (p n) (compute-low-prefix low high)
-    (bracket p n)))
-
-(define (high-bracket low high)
-  (receive (p n) (compute-high-prefix low high)
-    (bracket p n)))
-
-(define (bracket p n)
-  (let ((low (fix:lsh p n)))
-    (values low
-            (fix:or low (fix:- (fix:lsh 1 n) 1)))))
-
-(define (compute-low-prefix low high)
-  (let loop
-      ((low low)
-       (high high)
-       (n 0))
-    (if (and (fix:< low high)
-             (fix:= 0 (fix:and 1 low)))
-        (loop (fix:lsh low -1)
-              (fix:lsh high -1)
-              (fix:+ n 1))
-        (values low n))))
-
-(define (compute-high-prefix low high)
-  (let loop
-      ((low low)
-       (high high)
-       (n 0))
-    (if (and (fix:< low high)
-             (fix:= 1 (fix:and 1 high)))
-        (loop (fix:lsh low -1)
-              (fix:lsh high -1)
-              (fix:+ n 1))
-        (values high n))))
+(define (expand-cpr cpr)
+  (iota (cpr-size cpr) (cpr-start cpr)))
 
 ;;;; Code generator
 
@@ -465,17 +441,100 @@ USA.
 (define output-comments? #f)
 
 (define (generate-property-table-code prop-name)
-  (let ((prop-alist (read-prop-file prop-name))
-	(maker (entries-maker))
+  (let ((metadata (prop-metadata prop-name)))
+    (let ((generator
+	   (let ((type-spec (metadata-type-spec metadata)))
+	     (cond ((string=? "nt" prop-name)
+		    code-generator:nt)
+		   ((mapped-enum-type? type-spec)
+		    code-generator:mapped-enum)
+		   ((eq? 'boolean type-spec)
+		    code-generator:boolean)
+		   ((eq? 'code-point type-spec)
+		    code-generator:code-point)
+		   (else
+		    (error "Unsupported property type:" type-spec))))))
+      (generator prop-name
+		 metadata
+		 (read-prop-file prop-name)
+		 (symbol "ucd-" (string-downcase prop-name) "-value")))))
+
+(define (code-generator:boolean prop-name metadata prop-alist proc-name)
+  (let ((char-set-name (symbol "char-set:" (metadata-full-name metadata))))
+    `((define (,proc-name sv)
+	(scalar-value-in-char-set? sv ,char-set-name))
+      (define-deferred ,char-set-name
+	(char-set*
+	 ',(filter-map (lambda (value-map)
+			 (and (equal? "Y" (cdr value-map))
+			      (car value-map)))
+		       prop-alist))))))
+
+(define (code-generator:code-point prop-name metadata prop-alist proc-name)
+  (code-generator:hash-table prop-name metadata prop-alist proc-name
+			     (lambda (value)
+			       (and (string? value)
+				    (not (string=? "#" value))))
+			     converter:code-point
+			     (lambda (sv-name)
+			       sv-name)))
+
+(define (code-generator:nt prop-name metadata prop-alist proc-name)
+  (code-generator:hash-table prop-name metadata prop-alist proc-name
+			     (lambda (value)
+			       (and (string? value)
+				    (not (string=? "None" value))))
+			     (converter:mapped-enum metadata)
+			     #f))
+
+(define (code-generator:hash-table prop-name metadata prop-alist proc-name
+				   keep-value? value-converter default-value)
+  (let ((table-name (symbol "char-map:" (metadata-full-name metadata)))
+	(mapping
+	 (append-map (lambda (p)
+		       (map (let ((cp* (value-converter (cdr p))))
+			      (lambda (cp)
+				(cons cp cp*)))
+			    (expand-cpr (car p))))
+		     (filter (lambda (p)
+			       (keep-value? (cdr p)))
+			     prop-alist))))
+    (with-notification
+     (lambda (port)
+       (write-string "UCD property " port)
+       (write-string prop-name port)
+       (write-string ": table pairs = " port)
+       (write (length mapping) port)))
+    `((define (,proc-name sv)
+	(hash-table-ref/default ,table-name sv
+				,(and default-value (default-value 'sv))))
+      (define-deferred ,table-name
+	;; TODO(cph): this table uses fixnums as keys. It doesn't need to rehash
+	;; on GC, but for now this is expedient.
+	(let ((table (make-strong-eq-hash-table)))
+	  (for-each (lambda (p)
+		      (hash-table-set! table (car p) (cdr p)))
+		    ',mapping)
+	  table)))))
+
+(define (code-generator:mapped-enum prop-name metadata prop-alist proc-name)
+  (let ((maker (entries-maker))
         (entry-count 0)
         (unique-entry-count 0)
         (byte-count 0)
-	(convert-value (value-converter prop-name)))
+	(convert-value (converter:mapped-enum metadata)))
 
     (define (make-value-code value)
-      (lambda (offsets-name sv-name table-name)
-	offsets-name
-        (values #f #f `(,sv-name ,table-name ,(convert-value value)))))
+      (let ((value*
+	     (let ((converted (convert-value value)))
+	       (if (or (symbol? converted)
+		       (list? converted)
+		       (vector? converted))
+		   `',converted
+		   converted))))
+	(lambda (offsets-name sv-name table-name)
+	  offsets-name
+	  (values #f #f `(,sv-name ,table-name ,value*)))))
 
     (define (make-node-code n-bits offset indexes)
       (receive (bytes-per-entry offsets-expr coder)
@@ -539,7 +598,8 @@ USA.
                                (length table-entries))
       (generate-top-level (ustring-downcase prop-name)
                           root-entry
-                          table-entries))))
+                          table-entries
+			  proc-name))))
 
 (define (report-table-statistics prop-name entry-count unique-entry-count
                                  byte-count n-entries)
@@ -557,18 +617,14 @@ USA.
      (write n-entries port)
      (write-string " words" port))))
 
-(define (generate-top-level prop-name root-entry table-entries)
+(define (generate-top-level prop-name root-entry table-entries proc-name)
   (let ((table-name (symbol "ucd-" prop-name "-entries"))
         (entry-names
          (map (lambda (index)
                 (symbol "ucd-" prop-name "-entry-" index))
               (iota (length table-entries)))))
 
-    `(,@(generate-entry-definition (symbol "ucd-" prop-name "-value")
-                                   root-entry
-                                   'sv
-                                   table-name
-                                   '(sv))
+    `(,@(generate-entry-definition proc-name root-entry 'sv table-name '(sv))
 
       ,@(append-map (lambda (name entry)
                       (generate-entry-definition name entry
@@ -809,139 +865,53 @@ USA.
 
 ;;;; Value conversions
 
-(define (enum-converter name translations)
+(define (converter:mapped-enum metadata)
+  (let ((name (symbol->string (metadata-full-name metadata)))
+	(translations
+	 (mapped-enum-type-translations (metadata-type-spec metadata))))
+    (lambda (value)
+      (if value
+	  (let ((p
+		 (find (lambda (p)
+			 (ustring=? value (car p)))
+		       translations)))
+	    (if (not p)
+		(error (ustring-append "Illegal " name " value:") value))
+	    (cdr p))
+	  (default-object)))))
+
+(define (converter:code-point value)
+  (cond ((not value) (default-object))
+	((ustring=? value "#") #f)
+	(else (string->cp value))))
+
+(define (converter:code-point? value)
+  (cond ((not value) (default-object))
+	((ustring=? value "") #f)
+	(else (string->cp value))))
+
+(define (code-points-converter zero-ok?)
   (lambda (value)
-    (if value
-	(let ((p
-	       (find (lambda (p)
-		       (ustring=? value (car p)))
-		     translations)))
-	  (if (not p)
-	      (error (ustring-append "Illegal " name " value:") value))
-	  (cdr p))
-	(default-object))))
+    (cond ((not value) (default-object))
+	  ((ustring=? value "#") #f)
+	  ((ustring=? value "")
+	   (if (not zero-ok?)
+	       (error "At least one code point required:"  value))
+	   '())
+	  (else
+	   (map string->cp (code-points-splitter value))))))
 
-(define converter:category
-  (enum-converter "category"
-		  '(("Lu" . letter:uppercase)
-		    ("Ll" . letter:lowercase)
-		    ("Lt" . letter:titlecase)
-		    ("Lm" . letter:modifier)
-		    ("Lo" . letter:other)
-		    ("Mn" . mark:nonspacing)
-		    ("Mc" . mark:spacing-combining)
-		    ("Me" . mark:enclosing)
-		    ("Nd" . number:decimal-digit)
-		    ("Nl" . number:letter)
-		    ("No" . number:other)
-		    ("Pc" . punctuation:connector)
-		    ("Pd" . punctuation:dash)
-		    ("Ps" . punctuation:open)
-		    ("Pe" . punctuation:close)
-		    ("Pi" . punctuation:initial-quote)
-		    ("Pf" . punctuation:final-quote)
-		    ("Po" . punctuation:other)
-		    ("Sm" . symbol:math)
-		    ("Sc" . symbol:currency)
-		    ("Sk" . symbol:modifier)
-		    ("So" . symbol:other)
-		    ("Zs" . separator:space)
-		    ("Zl" . separator:line)
-		    ("Zp" . separator:paragraph)
-		    ("Cc" . other:control)
-		    ("Cf" . other:format)
-		    ("Cs" . other:surrogate)
-		    ("Co" . other:private-use)
-		    ("Cn" . other:not-assigned))))
-
-(define converter:boolean
-  (enum-converter "boolean"
-		  '(("N" . #f)
-		    ("Y" . #t))))
-
-(define converter:numeric-type
-  (enum-converter "numeric-type"
-		  '(("None" . #f)
-		    ("De" . decimal)
-		    ("Di" . digit)
-		    ("Nu" . numeric))))
-
-(define (converter:single-code-point value)
-  (cond ((not value) (default-object))
-	((ustring=? value "#") #f)
-	((string->number value 16)
-	 => (lambda (cp)
-	      (if (not (unicode-code-point? cp))
-		  (error "Illegal code-point value:" value))
-	      cp))
-	(else (error "Illegal code-point value:" value))))
-
-(define (converter:zero-or-more-code-points value)
-  (convert-code-points value #t))
-
-(define (converter:one-or-more-code-points value)
-  (convert-code-points value #f))
-
-(define (convert-code-points value zero-ok?)
-  (cond ((not value) (default-object))
-	((ustring=? value "#") #f)
-	((ustring=? value "")
-	 (if (not zero-ok?)
-	     (error "At least one code point required:"  value))
-	 '())
-	(else
-	 (map (lambda (part)
-		(let ((cp (string->number part 16 #t)))
-		  (if (not (unicode-code-point? cp))
-		      (error "Illegal code-points value:" value))
-		  cp))
-	      (code-points-splitter value)))))
+(define (string->cp string)
+  (let ((cp (string->number string 16 #t)))
+    (if (not (unicode-code-point? cp))
+	(error "Illegal code-point value:" string))
+    cp))
 
 (define code-points-splitter
   (string-splitter #\space #f))
-
-(define (value-converter prop-name)
-  (let ((p
-	 (find (lambda (p)
-		 (ustring=? prop-name (car p)))
-	       value-converters)))
-    (if (not p)
-	(error "Unsupported property:" prop-name))
-    (maybe-quote (cdr p))))
 
-;;; Converted values must be constant expressions.
-(define (maybe-quote converter)
-  (lambda (value)
-    (let ((converted (converter value)))
-      (if (or (symbol? converted)
-	      (list? converted)
-	      (vector? converted))
-	  `',converted
-	  converted))))
+(define converter:code-point*
+  (code-points-converter #t))
 
-(define value-converters
-  (list (cons "Alpha" converter:boolean)
-	(cons "CI" converter:boolean)
-	(cons "CWCF" converter:boolean)
-	(cons "CWCM" converter:boolean)
-	(cons "CWKCF" converter:boolean)
-	(cons "CWL" converter:boolean)
-	(cons "CWT" converter:boolean)
-	(cons "CWU" converter:boolean)
-	(cons "Cased" converter:boolean)
-	(cons "Lower" converter:boolean)
-	(cons "NFKC_CF" converter:zero-or-more-code-points)
-	(cons "OLower" converter:boolean)
-	(cons "OUpper" converter:boolean)
-	(cons "Upper" converter:boolean)
-	(cons "WSpace" converter:boolean)
-	(cons "cf" converter:one-or-more-code-points)
-	(cons "gc" converter:category)
-	(cons "lc" converter:one-or-more-code-points)
-	(cons "nt" converter:numeric-type)
-	(cons "scf" converter:single-code-point)
-	(cons "slc" converter:single-code-point)
-	(cons "stc" converter:single-code-point)
-	(cons "suc" converter:single-code-point)
-	(cons "tc" converter:one-or-more-code-points)
-	(cons "uc" converter:one-or-more-code-points)))
+(define converter:code-point+
+  (code-points-converter #f))

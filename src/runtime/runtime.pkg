@@ -1408,16 +1408,38 @@ USA.
 	 "ucd-table-upper"
 	 "ucd-table-wspace")
   (parent (runtime))
+  (export ()
+	  (char-set:whitespace char-set:white-space)
+	  char-set:alphabetic
+	  char-set:lower-case
+	  char-set:upper-case)
   (export (runtime character)
 	  ucd-gc-value
 	  ucd-slc-value
 	  ucd-suc-value)
-  (export (runtime character-set)
-	  ucd-alpha-value
-	  ucd-lower-value
-	  ucd-nt-value
-	  ucd-upper-value
-	  ucd-wspace-value))
+  (export (runtime ucd-table-glue)
+	  ucd-nt-value))
+
+(define-package (runtime ucd-table-glue)
+  (files "ucd-table-glue")
+  (parent (runtime))
+  (export ()
+	  char-alphabetic?
+	  char-alphanumeric?
+	  char-lower-case?
+	  char-numeric?
+	  char-set:alphanumeric
+	  char-set:not-alphabetic
+	  char-set:not-alphanumeric
+	  char-set:not-lower-case
+	  char-set:not-numeric
+	  char-set:not-upper-case
+	  char-set:not-whitespace
+	  char-set:numeric
+	  char-set:symbol-constituent
+	  char-set:symbol-initial
+	  char-upper-case?
+	  char-whitespace?))
 
 (define-package (runtime character-set)
   (files "chrset")
@@ -1434,13 +1456,9 @@ USA.
 	  ;; END deprecated bindings
 	  8-bit-char-set?
 	  ascii-range->char-set
-	  char-alphabetic?
-	  char-alphanumeric?
 	  char-ctl?
 	  char-graphic?
 	  char-in-set?
-	  char-lower-case?
-	  char-numeric?
 	  char-set
 	  char-set*
 	  char-set->code-points
@@ -1452,33 +1470,17 @@ USA.
 	  char-set-predicate
 	  char-set-union
 	  char-set-union*
-	  char-set:alphabetic
-	  char-set:alphanumeric
 	  char-set:ascii
 	  char-set:ctls
 	  char-set:graphic
-	  char-set:lower-case
 	  char-set:newline
-	  char-set:not-alphabetic
-	  char-set:not-alphanumeric
 	  char-set:not-graphic
-	  char-set:not-lower-case
-	  char-set:not-numeric
 	  char-set:not-standard
-	  char-set:not-upper-case
-	  char-set:not-whitespace
-	  char-set:numeric
 	  char-set:standard
-	  char-set:upper-case
-	  char-set:whitespace
 	  char-set:wsp
-	  char-set:symbol-constituent
-	  char-set:symbol-initial
 	  char-set=?
 	  char-set?
 	  char-standard?
-	  char-upper-case?
-	  char-whitespace?
 	  char-wsp?
 	  code-point-list?
 	  char-set*
