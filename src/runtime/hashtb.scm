@@ -1196,6 +1196,7 @@ USA.
 (define key-weak-eq-hash-table-type)
 (define key-ephemeral-eqv-hash-table-type)
 (define key-weak-eqv-hash-table-type)
+(define non-pointer-hash-table-type)
 (define string-hash-table-type)
 (define strong-eq-hash-table-type)
 (define strong-eqv-hash-table-type)
@@ -1230,6 +1231,8 @@ USA.
 	   (make eqv-hash-mod eqv? #t hash-table-entry-type:key-weak))
      (set! key-ephemeral-eqv-hash-table-type
 	   (make eqv-hash-mod eqv? #t hash-table-entry-type:key-ephemeral))
+     (set! non-pointer-hash-table-type	;Open-coded
+	   (open-type! eq-hash-mod eq? #f hash-table-entry-type:strong))
      (set! string-hash-table-type
 	   (make ustring-hash ustring=? #t hash-table-entry-type:strong))
      (set! strong-eq-hash-table-type	;Open-coded
@@ -1243,6 +1246,7 @@ USA.
 (define make-key-weak-eq-hash-table)
 (define make-key-ephemeral-eqv-hash-table)
 (define make-key-weak-eqv-hash-table)
+(define make-non-pointer-hash-table)
 (define make-string-hash-table)
 (define make-strong-eq-hash-table)
 (define make-strong-eqv-hash-table)
@@ -1259,6 +1263,7 @@ USA.
      (init make-key-weak-eq-hash-table key-weak-eq-hash-table-type)
      (init make-key-ephemeral-eqv-hash-table key-ephemeral-eqv-hash-table-type)
      (init make-key-weak-eqv-hash-table key-weak-eqv-hash-table-type)
+     (init make-non-pointer-hash-table non-pointer-hash-table-type)
      (init make-string-hash-table string-hash-table-type)
      (init make-strong-eq-hash-table strong-eq-hash-table-type)
      (init make-strong-eqv-hash-table strong-eqv-hash-table-type))

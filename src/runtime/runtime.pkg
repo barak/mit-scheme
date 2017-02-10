@@ -2541,9 +2541,11 @@ USA.
 	  make-key-ephemeral-eqv-hash-table
 	  make-key-weak-eq-hash-table
 	  make-key-weak-eqv-hash-table
+	  make-non-pointer-hash-table
 	  make-string-hash-table
 	  make-strong-eq-hash-table
 	  make-strong-eqv-hash-table
+	  non-pointer-hash-table-type
 	  set-equality-predicate-hasher!
 	  set-hash-table/rehash-size!
 	  set-hash-table/rehash-threshold!
