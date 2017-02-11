@@ -503,7 +503,8 @@ USA.
 	(error:illegal-number string))))
 
 (define (parse-atom port db prefix)
-  (let ((port* (open-output-string)))
+  (let ((port* (open-output-string))
+	(atom-delimiters (db-atom-delimiters db)))
 
     (define (%peek)
       (if (pair? prefix)
@@ -529,7 +530,7 @@ USA.
     (let loop ()
       (let ((char (%peek)))
 	(if (or (eof-object? char)
-		(not (char-in-set? char char-set:symbol-constituent)))
+		(char-in-set? char atom-delimiters))
 	    (get-output-string port*)
 	    (begin
 	      (%discard)
