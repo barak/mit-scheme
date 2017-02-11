@@ -243,7 +243,7 @@ USA.
      (cond ((code->name code))
 	   ((not (fix:< code #x80))
 	    (string-append "x" (number->string code 16)))
-	   ((scalar-value-in-char-set? code char-set:symbol-constituent)
+	   ((scalar-value-in-char-set? code char-set:graphic)
 	    (string (integer->char code)))
 	   ((and (if (default-object? slashify?) #f slashify?)
 		 (not (fix:= 0 bits)))
