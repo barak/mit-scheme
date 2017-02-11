@@ -132,15 +132,18 @@ USA.
 
 (define (char-downcase char)
   (guarantee unicode-char? char 'char-downcase)
-  (integer->char (ucd-slc-value (char->integer char))))
+  (%make-char (ucd-slc-value (char-code char))
+	      (char-bits char)))
 
 (define (char-foldcase char)
   (guarantee unicode-char? char 'char-foldcase)
-  (integer->char (ucd-scf-value (char->integer char))))
+  (%make-char (ucd-scf-value (char-code char))
+	      (char-bits char)))
 
 (define (char-upcase char)
   (guarantee unicode-char? char 'char-upcase)
-  (integer->char (ucd-suc-value (char->integer char))))
+  (%make-char (ucd-suc-value (char-code char))
+	      (char-bits char)))
 
 (define-deferred 0-code (char->integer #\0))
 ;; Next two codes are offset by 10 to speed up CHAR->DIGIT.
