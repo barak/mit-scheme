@@ -169,7 +169,7 @@ USA.
 ("WB" word-break
  (enum "CR" "DQ" "EB" "EBG" "EM" "EX" "Extend" "FO" "GAZ" "HL" "KA" "LE" "LF"
        "MB" "ML" "MN" "NL" "NU" "RI" "SQ" "XX" "ZWJ"))
-("WSpace" white-space boolean)
+("WSpace" whitespace boolean)
 ("XIDC" xid-continue boolean)
 ("XIDS" xid-start boolean)
 ("XO_NFC" expands-on-nfc boolean)

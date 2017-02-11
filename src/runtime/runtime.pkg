@@ -1419,10 +1419,10 @@ USA.
 	 "ucd-table-wspace")
   (parent (runtime))
   (export ()
-	  (char-set:whitespace char-set:white-space)
 	  char-set:alphabetic
 	  char-set:lower-case
-	  char-set:upper-case)
+	  char-set:upper-case
+	  char-set:whitespace)
   (export (runtime character)
 	  ucd-cf-value
 	  ucd-gc-value

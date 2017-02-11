@@ -26,12 +26,12 @@ USA.
 
 ;;;; UCD property: WSpace
 
-;;; Generated from Unicode 9.0.0 UCD at 2017-02-10T19:43:18-08
+;;; Generated from Unicode 9.0.0
 
 (declare (usual-integrations))
 
 (define (ucd-wspace-value sv)
-  (scalar-value-in-char-set? sv char-set:white-space))
+  (scalar-value-in-char-set? sv char-set:whitespace))
 
-(define-deferred char-set:white-space
+(define-deferred char-set:whitespace
   (char-set* '((9 . 14) 32 133 160 5760 (8192 . 8203) (8232 . 8234) 8239 8287 12288)))
