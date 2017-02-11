@@ -181,9 +181,6 @@ USA.
   (newline port)
   (write-string ";;; Generated from " port)
   (write-string ucd-version port)
-  (write-string " UCD at " port)
-  (write-string (universal-time->local-iso8601-string (get-universal-time))
-                port)
   (newline port)
   (newline port))
 
