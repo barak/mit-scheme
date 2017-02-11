@@ -26,12 +26,12 @@ USA.
 
 ;;;; UCD property: slc
 
-;;; Generated from Unicode 9.0.0 UCD at 2017-02-10T00:13:08-08
+;;; Generated from Unicode 9.0.0 UCD at 2017-02-10T19:43:21-08
 
 (declare (usual-integrations))
 
 (define (ucd-slc-value sv)
-  (hash-table-ref/default char-map:simple-lower-case sv sv))
+  (hash-table-ref char-map:simple-lower-case sv (lambda () sv)))
 
 (define-deferred char-map:simple-lower-case
   (let ((table (make-non-pointer-hash-table)))

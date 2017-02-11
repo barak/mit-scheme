@@ -26,7 +26,7 @@ USA.
 
 ;;;; UCD property: Alpha
 
-;;; Generated from Unicode 9.0.0 UCD at 2017-02-10T00:13:06-08
+;;; Generated from Unicode 9.0.0 UCD at 2017-02-10T19:43:17-08
 
 (declare (usual-integrations))
 

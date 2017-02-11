@@ -26,12 +26,12 @@ USA.
 
 ;;;; UCD property: suc
 
-;;; Generated from Unicode 9.0.0 UCD at 2017-02-10T00:13:09-08
+;;; Generated from Unicode 9.0.0 UCD at 2017-02-10T19:43:21-08
 
 (declare (usual-integrations))
 
 (define (ucd-suc-value sv)
-  (hash-table-ref/default char-map:simple-upper-case sv sv))
+  (hash-table-ref char-map:simple-upper-case sv (lambda () sv)))
 
 (define-deferred char-map:simple-upper-case
   (let ((table (make-non-pointer-hash-table)))

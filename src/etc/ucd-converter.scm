@@ -396,10 +396,14 @@ USA.
 	      "Lower"
 	      "Upper"
 	      "WSpace"
+	      "cf"
 	      "gc"
+	      "lc"
 	      "nt"
+	      "scf"
 	      "slc"
-	      "suc")))
+	      "suc"
+	      "uc")))
 
 (define (generate-property-table prop-name)
   (let ((exprs (generate-property-table-code prop-name))
@@ -441,23 +445,22 @@ USA.
 (define output-comments? #f)
 
 (define (generate-property-table-code prop-name)
-  (let ((metadata (prop-metadata prop-name)))
-    (let ((generator
-	   (let ((type-spec (metadata-type-spec metadata)))
-	     (cond ((string=? "nt" prop-name)
-		    code-generator:nt)
-		   ((mapped-enum-type? type-spec)
-		    code-generator:mapped-enum)
-		   ((eq? 'boolean type-spec)
-		    code-generator:boolean)
-		   ((eq? 'code-point type-spec)
-		    code-generator:code-point)
-		   (else
-		    (error "Unsupported property type:" type-spec))))))
-      (generator prop-name
-		 metadata
-		 (read-prop-file prop-name)
-		 (symbol "ucd-" (string-downcase prop-name) "-value")))))
+  (let* ((metadata (prop-metadata prop-name))
+	 (generator (metadata->code-generator metadata)))
+    (generator prop-name
+	       metadata
+	       (read-prop-file prop-name)
+	       (symbol "ucd-" (string-downcase prop-name) "-value"))))
+
+(define (metadata->code-generator metadata)
+  (let ((type-spec (metadata-type-spec metadata)))
+    (cond ((string=? "nt" (metadata-name metadata)) code-generator:nt)
+	  ((mapped-enum-type? type-spec) code-generator:mapped-enum)
+	  ((eq? 'boolean type-spec) code-generator:boolean)
+	  ((eq? 'code-point type-spec) code-generator:code-point)
+	  ((eq? 'code-point* type-spec) code-generator:code-point*)
+	  ((eq? 'code-point+ type-spec) code-generator:code-point+)
+	  (else (error "Unsupported metadata:" metadata)))))
 
 (define (code-generator:boolean prop-name metadata prop-alist proc-name)
   (let ((char-set-name (symbol "char-set:" (metadata-full-name metadata))))
@@ -470,50 +473,84 @@ USA.
 			      (car value-map)))
 		       prop-alist))))))
 
-(define (code-generator:code-point prop-name metadata prop-alist proc-name)
-  (code-generator:hash-table prop-name metadata prop-alist proc-name
-			     (lambda (value)
-			       (and (string? value)
-				    (not (string=? "#" value))))
-			     converter:code-point
-			     (lambda (sv-name)
-			       sv-name)))
+(define (hashed-code-generator keep-value? value-converter default-value)
+  (lambda (prop-name metadata prop-alist proc-name)
+    (let ((table-name (symbol "char-map:" (metadata-full-name metadata)))
+	  (mapping
+	   (append-map (lambda (p)
+			 (map (let ((value (value-converter (cdr p))))
+				(lambda (cp)
+				  (cons cp value)))
+			      (expand-cpr (car p))))
+		       (filter (lambda (p)
+				 (keep-value? (cdr p)))
+			       prop-alist))))
+      (with-notification
+       (lambda (port)
+	 (write-string "UCD property " port)
+	 (write-string prop-name port)
+	 (write-string ": table pairs = " port)
+	 (write (length mapping) port)))
+      `((define (,proc-name sv)
+	  (hash-table-ref ,table-name sv (lambda () ,(default-value 'sv))))
+	(define-deferred ,table-name
+	  (let ((table (make-non-pointer-hash-table)))
+	    (for-each (lambda (p)
+			(hash-table-set! table (car p) (cdr p)))
+		      ',mapping)
+	    table))))))
+
+(define (code-point-filter value)
+  (and (string? value)
+       (not (string=? "#" value))))
 
-(define (code-generator:nt prop-name metadata prop-alist proc-name)
-  (code-generator:hash-table prop-name metadata prop-alist proc-name
-			     (lambda (value)
-			       (and (string? value)
-				    (not (string=? "None" value))))
-			     (converter:mapped-enum metadata)
-			     #f))
+(define (string->cp string)
+  (let ((cp (string->number string 16 #t)))
+    (if (not (unicode-code-point? cp))
+	(error "Illegal code-point value:" string))
+    cp))
 
-(define (code-generator:hash-table prop-name metadata prop-alist proc-name
-				   keep-value? value-converter default-value)
-  (let ((table-name (symbol "char-map:" (metadata-full-name metadata)))
-	(mapping
-	 (append-map (lambda (p)
-		       (map (let ((cp* (value-converter (cdr p))))
-			      (lambda (cp)
-				(cons cp cp*)))
-			    (expand-cpr (car p))))
-		     (filter (lambda (p)
-			       (keep-value? (cdr p)))
-			     prop-alist))))
-    (with-notification
-     (lambda (port)
-       (write-string "UCD property " port)
-       (write-string prop-name port)
-       (write-string ": table pairs = " port)
-       (write (length mapping) port)))
-    `((define (,proc-name sv)
-	(hash-table-ref/default ,table-name sv
-				,(and default-value (default-value 'sv))))
-      (define-deferred ,table-name
-	(let ((table (make-non-pointer-hash-table)))
-	  (for-each (lambda (p)
-		      (hash-table-set! table (car p) (cdr p)))
-		    ',mapping)
-	  table)))))
+(define (string->cps value)
+  (if (ustring=? "" value)
+      '()
+      (map string->cp (code-points-splitter value))))
+
+(define code-points-splitter
+  (string-splitter #\space #f))
+
+(define (code-points-default sv)
+  `(list ,sv))
+
+(define code-generator:code-point
+  (hashed-code-generator code-point-filter string->cp (lambda (sv) sv)))
+
+(define code-generator:code-point*
+  (hashed-code-generator code-point-filter string->cps code-points-default))
+
+(define code-generator:code-point+
+  (hashed-code-generator code-point-filter string->cps code-points-default))
+
+(define (converter:mapped-enum metadata)
+  (let ((name (symbol->string (metadata-full-name metadata)))
+	(translations
+	 (mapped-enum-type-translations (metadata-type-spec metadata))))
+    (lambda (value)
+      (if value
+	  (let ((p
+		 (find (lambda (p)
+			 (ustring=? value (car p)))
+		       translations)))
+	    (if (not p)
+		(error (ustring-append "Illegal " name " value:") value))
+	    (cdr p))
+	  (default-object)))))
+
+(define code-generator:nt
+  (hashed-code-generator (lambda (value)
+			   (and (string? value)
+				(not (string=? "None" value))))
+			 (converter:mapped-enum (prop-metadata "nt"))
+			 (lambda (sv) sv #f)))
 
 (define (code-generator:mapped-enum prop-name metadata prop-alist proc-name)
   (let ((maker (entries-maker))
@@ -860,56 +897,3 @@ USA.
 	      (cons (make-cpr cp (cpr-end cpr)) value))
       (values (cons cpr value)
 	      #f)))
-
-;;;; Value conversions
-
-(define (converter:mapped-enum metadata)
-  (let ((name (symbol->string (metadata-full-name metadata)))
-	(translations
-	 (mapped-enum-type-translations (metadata-type-spec metadata))))
-    (lambda (value)
-      (if value
-	  (let ((p
-		 (find (lambda (p)
-			 (ustring=? value (car p)))
-		       translations)))
-	    (if (not p)
-		(error (ustring-append "Illegal " name " value:") value))
-	    (cdr p))
-	  (default-object)))))
-
-(define (converter:code-point value)
-  (cond ((not value) (default-object))
-	((ustring=? value "#") #f)
-	(else (string->cp value))))
-
-(define (converter:code-point? value)
-  (cond ((not value) (default-object))
-	((ustring=? value "") #f)
-	(else (string->cp value))))
-
-(define (code-points-converter zero-ok?)
-  (lambda (value)
-    (cond ((not value) (default-object))
-	  ((ustring=? value "#") #f)
-	  ((ustring=? value "")
-	   (if (not zero-ok?)
-	       (error "At least one code point required:"  value))
-	   '())
-	  (else
-	   (map string->cp (code-points-splitter value))))))
-
-(define (string->cp string)
-  (let ((cp (string->number string 16 #t)))
-    (if (not (unicode-code-point? cp))
-	(error "Illegal code-point value:" string))
-    cp))
-
-(define code-points-splitter
-  (string-splitter #\space #f))
-
-(define converter:code-point*
-  (code-points-converter #t))
-
-(define converter:code-point+
-  (code-points-converter #f))
