@@ -270,8 +270,8 @@ USA.
     (store-char special #\[ handler:hashed-object)
     (store-char initial #\) handler:close-parenthesis)
     (store-char initial #\] handler:close-bracket)
-    (store-char initial #\: handler:prefix-keyword)
     (store-char initial #\; handler:comment)
+    (store-char initial #\| handler:quoted-symbol)
     (store-char special #\| handler:multi-line-comment)
     (store-char special #\; handler:expression-comment)
     (store-char initial #\' handler:quote)
@@ -469,69 +469,47 @@ USA.
 
 (define (handler:atom port db ctx char)
   ctx
-  (receive (string quoted? final) (parse-atom port db (list char))
-    (cond ((and (eq? final #\:)
-		(eq? (db-keyword-style db) 'SUFFIX))
-	   (string->keyword (string-head string (- (string-length string) 1))))
-	  (quoted? (string->symbol string))
-	  (else (or (string->number string (db-radix db))
-		    (string->symbol string))))))
+  (let ((string (parse-atom port db (list char))))
+    (or (maybe-keyword db string)
+	(string->number string (db-radix db))
+	(string->symbol string))))
 
 (define (handler:symbol port db ctx char)
   ctx
-  (receive (string quoted? final) (parse-atom port db (list char))
-    (if (and (eq? final #\:)
-	     (eq? (db-keyword-style db) 'SUFFIX)
-	     ;; Nasty edge case:  A bare colon.  Treat as a symbol
-	     ;; unless quoted.
-	     (or (not (= (string-length string) 1))
-		 quoted?))
-	(string->keyword (string-head string (- (string-length string) 1)))
+  (let ((string (parse-atom port db (list char))))
+    (or (maybe-keyword db string)
 	(string->symbol string))))
 
-(define (handler:prefix-keyword port db ctx char)
-  (if (eq? (db-keyword-style db) 'PREFIX)
-      (receive (string quoted? final) (parse-atom port db '())
-	(declare (ignore final))
-	(if (and (zero? (string-length string))
-		 (not quoted?))
-	    ;; Nasty edge case:  A bare colon.  Treat as a symbol
-	    ;; unless quoted.
-	    (string->symbol ":")
-	    (string->keyword string)))
-      ;; If prefix-style keywords are not in use, just
-      ;; tail call the symbol handler.
-      (handler:symbol port db ctx char)))
+(define (maybe-keyword db string)
+  (cond ((and (eq? 'SUFFIX (db-keyword-style db))
+	      (ustring-suffix? ":" string)
+	      (fix:> (ustring-length string) 1))
+	 (string->keyword
+	  (ustring-head string
+			(fix:- (ustring-length string) 1))))
+	((and (eq? 'SUFFIX (db-keyword-style db))
+	      (ustring-prefix? ":" string)
+	      (fix:> (ustring-length string) 1))
+	 (string->keyword (ustring-tail string 1)))
+	(else #f)))
 
 (define (handler:number port db ctx char1 char2)
   ctx
   (parse-number port db (list char1 char2)))
 
 (define (parse-number port db prefix)
-  (let ((string (parse-atom/no-quoting port db prefix)))
+  (let ((string (parse-atom port db prefix)))
     (or (string->number string (db-radix db))
 	(error:illegal-number string))))
-
+
 (define (parse-atom port db prefix)
-  (parse-atom-1 port db prefix #t))
+  (let ((port* (open-output-string)))
 
-(define (parse-atom/no-quoting port db prefix)
-  (parse-atom-1 port db prefix #f))
-
-(define (parse-atom-1 port db prefix quoting?)
-  (let ((port* (open-output-string))
-	(atom-delimiters (db-atom-delimiters db))
-	(constituents (db-constituents db)))
-    (define (%read)
-      (if (pair? prefix)
-	  (let ((char (car prefix)))
-	    (set! prefix (cdr prefix))
-	    char)
-	  (%read-char/no-eof port db)))
     (define (%peek)
       (if (pair? prefix)
 	  (car prefix)
 	  (%peek-char port db)))
+
     (define (%discard)
       (if (pair? prefix)
 	  (begin
@@ -539,54 +517,24 @@ USA.
 	    unspecific)
 	  (%read-char port db)))
 
-    ;; main loop
-    ;; the quoted? flag indicates if we've ever
-    ;; quoted anything in the atom (to disqualify it
-    ;; from being a number).
-    ;; the previous-char is used to detect trailing colons
-    ;; for srfi-88 style keywords.
-    (let read-unquoted ((quoted? #f)
-			(previous-char #f)
-			(char (%peek)))
-      (if (or (eof-object? char)
-	      (char-set-member? atom-delimiters char))
-	  (let ((atom
-		 (let ((s (get-output-string port*)))
-		   (if (db-fold-case? db)
-		       (ustring-foldcase s)
-		       s))))
-	    (if quoting?
-		(values atom quoted? previous-char)
-		atom))
-	  (begin
-	    (if (not (char-set-member? constituents char))
-		(error:illegal-char char))
-	    (%discard)
-	    (cond ((char=? char #\|)
-		   (if quoting?
-		       (let read-quoted ()
-			 (let ((char (%read)))
-			   (if (char=? char #\|)
-			       (read-unquoted #t char (%peek))
-			       (begin
-				 (write-char (if (char=? char #\\)
-						 (%read)
-						 char)
-					     port*)
-				 (read-quoted)))))
-		       (error:illegal-char char)))
-		  ((char=? char #\\)
-		   (if quoting?
-		       (begin
-			 (write-char (%read) port*)
-			 ;; Forget previous char so
-			 ;; that quoting a final colon will
-			 ;; suppress it from being a keyword.
-			 (read-unquoted #t #f (%peek)))
-		       (error:illegal-char char)))
-		  (else
-		   (write-char char port*)
-		   (read-unquoted quoted? char (%peek)))))))))
+    (define %emit
+      (if (db-fold-case? db)
+	  (lambda (char)
+	    (for-each (lambda (char*)
+			(write-char char* port*))
+		      (char-foldcase-full char)))
+	  (lambda (char)
+	    (write-char char port*))))
+
+    (let loop ()
+      (let ((char (%peek)))
+	(if (or (eof-object? char)
+		(not (char-in-set? char char-set:symbol-constituent)))
+	    (get-output-string port*)
+	    (begin
+	      (%discard)
+	      (%emit char)
+	      (loop)))))))
 
 (define (handler:list port db ctx char)
   ctx char
@@ -620,7 +568,7 @@ USA.
 
 (define (handler:unsigned-vector port db ctx char1 char2)
   ctx
-  (let ((atom (parse-atom/no-quoting port db '())))
+  (let ((atom (parse-atom port db '())))
     (if (not (and atom (string=? atom "8")))
 	(error:unsupported-vector (string char1 char2 (or atom "")))))
   (let ((char (%read-char/no-eof port db)))
@@ -729,36 +677,44 @@ USA.
 
 (define (handler:string port db ctx char)
   ctx char
+  (parse-delimited-string port db #\"))
+
+(define (handler:quoted-symbol port db ctx char)
+  ctx char
+  (string->symbol (parse-delimited-string port db #\|)))
+
+(define (parse-delimited-string port db delimiter)
   (call-with-output-string
     (lambda (port*)
       (let loop ()
 	(let ((char (%read-char/no-eof port db)))
-	  (case char
-	    ((#\")
-	     unspecific)
-	    ((#\\)
-	     (let ((char
-		    (let ((char (%read-char/no-eof port db)))
-		      (cond ((%char-ci=? db char #\a) #\bel)
-			    ((%char-ci=? db char #\b) #\bs)
-			    ((%char-ci=? db char #\n) #\newline)
-			    ((%char-ci=? db char #\r) #\return)
-			    ((%char-ci=? db char #\t) #\tab)
-			    ((char=? char #\x) (parse-hex-scalar-value port db))
-			    ((or (char=? char #\")
-				 (char=? char #\\)
-				 (char=? char #\|))
-			     char)
-			    ;; MIT/GNU extensions:
-			    ((%char-ci=? db char #\f) #\page)
-			    ((%char-ci=? db char #\v) #\vt)
-			    ((char->digit char 8) (octal->char char port db))
-			    (else char)))))
-	       (write-char char port*)
-	       (loop)))
-	    (else
-	     (write-char char port*)
-	     (loop))))))))
+	  (cond ((char=? delimiter char)
+		 unspecific)
+		((char=? #\\ char)
+		 (let ((char
+			(let ((char (%read-char/no-eof port db)))
+			  (cond ((char=? char #\a) #\bel)
+				((char=? char #\b) #\bs)
+				((char=? char #\n) #\newline)
+				((char=? char #\r) #\return)
+				((char=? char #\t) #\tab)
+				((char=? char #\x)
+				 (parse-hex-scalar-value port db))
+				((or (char=? char #\")
+				     (char=? char #\\)
+				     (char=? char #\|))
+				 char)
+				;; MIT/GNU extensions:
+				((char=? char #\f) #\page)
+				((char=? char #\v) #\vt)
+				((char->digit char 8)
+				 (octal->char char port db))
+				(else char)))))
+		   (write-char char port*)
+		   (loop)))
+		(else
+		 (write-char char port*)
+		 (loop))))))))
 
 (define (parse-hex-scalar-value port db)
   (let loop ((sv 0) (chars '()))
@@ -793,24 +749,24 @@ USA.
 	(integer->char (fix:+ (fix:lsh (fix:+ (fix:lsh d1 3) d2) 3) d3))))))
 
 (define (handler:false port db ctx char1 char2)
-  ctx
-  (let ((string (parse-atom/no-quoting port db (list char1 char2))))
-    (if (not (or (%string-ci=? db string "#f")
-		 (%string-ci=? db string "#false")))
+  ctx char1
+  (let ((string (parse-atom port db (list char2))))
+    (if (not (or (ustring=? string "f")
+		 (ustring=? string "false")))
 	(error:illegal-boolean string)))
   #f)
 
 (define (handler:true port db ctx char1 char2)
-  ctx
-  (let ((string (parse-atom/no-quoting port db (list char1 char2))))
-    (if (not (or (%string-ci=? db string "#t")
-		 (%string-ci=? db string "#true")))
+  ctx char1
+  (let ((string (parse-atom port db (list char2))))
+    (if (not (or (ustring=? string "t")
+		 (ustring=? string "true")))
 	(error:illegal-boolean string)))
   #t)
 
 (define (handler:bit-string port db ctx char1 char2)
   ctx char1 char2
-  (let ((string (parse-atom/no-quoting port db '())))
+  (let ((string (parse-atom port db '())))
     (let ((n-bits (string-length string)))
       (unsigned-integer->bit-string
        n-bits
@@ -851,17 +807,17 @@ USA.
 
 (define (handler:named-constant port db ctx char1 char2)
   ctx char1 char2
-  (let ((name (parse-atom/no-quoting port db '())))
-    (cond ((%string-ci=? db name "null") '())
-	  ((%string-ci=? db name "false") #f)
-	  ((%string-ci=? db name "true") #t)
-	  ((%string-ci=? db name "optional") lambda-tag:optional)
-	  ((%string-ci=? db name "rest") lambda-tag:rest)
-	  ((%string-ci=? db name "key") lambda-tag:key)
-	  ((%string-ci=? db name "aux") lambda-tag:aux)
-	  ((%string-ci=? db name "eof") (eof-object))
-	  ((%string-ci=? db name "default") (default-object))
-	  ((%string-ci=? db name "unspecific") unspecific)
+  (let ((name (parse-atom port db '())))
+    (cond ((ustring=? name "null") '())
+	  ((ustring=? name "false") #f)
+	  ((ustring=? name "true") #t)
+	  ((ustring=? name "optional") lambda-tag:optional)
+	  ((ustring=? name "rest") lambda-tag:rest)
+	  ((ustring=? name "key") lambda-tag:key)
+	  ((ustring=? name "aux") lambda-tag:aux)
+	  ((ustring=? name "eof") (eof-object))
+	  ((ustring=? name "default") (default-object))
+	  ((ustring=? name "unspecific") unspecific)
 	  ((ustring=? name "fold-case")
 	   (set-db-fold-case! db #t)
 	   continue-parsing)
@@ -943,16 +899,6 @@ USA.
     (if (eof-object? char)
 	(error:premature-eof port))
     char))
-
-(define (%char-ci=? db c1 c2)
-  (if (db-fold-case? db)
-      (char-ci=? c1 c2)
-      (char=? c1 c2)))
-
-(define (%string-ci=? db s1 s2)
-  (if (db-fold-case? db)
-      (ustring-ci=? s1 s2)
-      (ustring=? s1 s2)))
 
 (define-record-type <db>
     (make-db port env shared-objects position-mapping discretionary-write-char
