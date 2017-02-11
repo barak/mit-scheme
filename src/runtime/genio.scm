@@ -166,7 +166,8 @@ USA.
 	  `((OUTPUT-CHANNEL ,generic-io/output-channel)
 	    (SYNCHRONIZE-OUTPUT ,generic-io/synchronize-output)))
 	 (other-operations
-	  `((CLOSE ,generic-io/close)
+	  `((CHAR-SET ,generic-io/char-set)
+	    (CLOSE ,generic-io/close)
 	    (CODING ,generic-io/coding)
 	    (KNOWN-CODING? ,generic-io/known-coding?)
 	    (KNOWN-CODINGS ,generic-io/known-codings)
@@ -436,77 +437,126 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(SYMBOL) (cdr form))
-	 (let ((sing (cadr form)))
-	   (let ((plur (symbol sing 'S))
-		 (proc (symbol 'DEFINE- sing)))
-	     (let ((rev (symbol plur '-REVERSE))
-		   (aliases (symbol sing '-ALIASES))
-		   (aproc (symbol proc '-ALIAS)))
-	       `(BEGIN
-		  (DEFINE ,plur '())
-		  (DEFINE ,rev)
-		  (DEFINE ,aliases '())
-		  (DEFINE (,proc NAME ,sing)
-		    (SET! ,plur (CONS (CONS NAME ,sing) ,plur))
-		    NAME)
-		  (DEFINE (,(symbol proc '/POST-BOOT) NAME ,sing)
-		    (LET ((OLD (HASH-TABLE/GET ,plur NAME #F)))
-		      (IF OLD
-			  (HASH-TABLE/REMOVE! ,rev OLD)))
-		    (HASH-TABLE/PUT! ,plur NAME ,sing)
-		    (HASH-TABLE/PUT! ,rev ,sing NAME))
-		  (DEFINE (,aproc NAME ALIAS)
-		    (SET! ,aliases (CONS (CONS NAME ALIAS) ,aliases))
-		    NAME)
-		  (DEFINE (,(symbol aproc '/POST-BOOT) NAME ALIAS)
-		    (HASH-TABLE/PUT! ,aliases NAME ALIAS))
-		  (DEFINE (,(symbol 'NAME-> sing) NAME #!OPTIONAL CALLER)
-		    (LET LOOP ((NAME NAME))
-		      (LET ((ALIAS (HASH-TABLE/GET ,aliases NAME #F)))
-			(COND ((SYMBOL? ALIAS) (LOOP ALIAS))
-			      ((PROCEDURE? ALIAS) (LOOP (ALIAS)))
-			      ((HASH-TABLE/GET ,plur NAME #F))
-			      (else
-			       (ERROR:BAD-RANGE-ARGUMENT NAME CALLER))))))))))
+     (if (syntax-match? '(symbol symbol) (cdr form))
+	 (let ((sing (cadr form))
+	       (deref (caddr form)))
+	   (let ((plur (symbol sing 's))
+		 (proc (symbol 'define- sing)))
+	     (let ((rev (symbol plur '-reverse)))
+	       `(begin
+		  (define ,plur '())
+		  (define ,rev)
+		  (define (,proc name ,sing)
+		    (set! ,plur (cons (cons name ,sing) ,plur))
+		    name)
+		  (define (,(symbol proc '/post-boot) name ,sing)
+		    (let ((old (hash-table-ref/default ,plur name #f)))
+		      (if old
+			  (hash-table-delete! ,rev old)))
+		    (hash-table-set! ,plur name ,sing)
+		    (hash-table-set! ,rev ,sing name))
+		  (define (,(symbol 'name-> sing) name #!optional caller)
+		    (or (hash-table-ref/default ,plur (,deref name) #f)
+			(error:bad-range-argument name caller)))))))
 	 (ill-formed-syntax form)))))
 
-(define-name-map decoder)
-(define-name-map encoder)
-(define-name-map normalizer)
-(define-name-map denormalizer)
+(define-name-map decoder dereference-coding-alias)
+(define-name-map encoder dereference-coding-alias)
+(define-name-map normalizer dereference-line-ending-alias)
+(define-name-map denormalizer dereference-line-ending-alias)
 
+(define-syntax define-alias-map
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (if (syntax-match? '(symbol) (cdr form))
+	 (let ((root (cadr form)))
+	   (let ((aliases (symbol root '-aliases))
+		 (aproc (symbol 'define- root '-alias)))
+	     `(begin
+		(define ,aliases '())
+		(define (,aproc name alias)
+		  (set! ,aliases (cons (cons name alias) ,aliases))
+		  name)
+		(define (,(symbol aproc '/post-boot) name alias)
+		  (hash-table-set! ,aliases name alias))
+		(define (,(symbol 'dereference- root '-alias) name)
+		  (dereference-alias name ,aliases)))))
+	 (ill-formed-syntax form)))))
+
+(define-alias-map coding)
+(define-alias-map line-ending)
+
+(define (dereference-alias name table)
+  (let ((alias (hash-table-ref/default table name #f)))
+    (cond ((symbol? alias) (dereference-alias alias table))
+	  ((procedure? alias) (dereference-alias (alias) table))
+	  (else name))))
+
 (define (known-input-port-coding? name)
-  (or (hash-table/get decoder-aliases name #f)
-      (hash-table/get decoders name #f)))
+  (or (hash-table-ref/default decoders name #f)
+      (hash-table-ref/default coding-aliases name #f)))
 
 (define (known-input-port-codings)
-  (append (hash-table/key-list decoder-aliases)
-	  (hash-table/key-list decoders)))
+  (append (hash-table-keys decoders)
+	  (hash-table-keys coding-aliases)))
 
 (define (known-output-port-coding? name)
-  (or (hash-table/get encoder-aliases name #f)
-      (hash-table/get encoders name #f)))
+  (or (hash-table-ref/default encoders name #f)
+      (hash-table-ref/default coding-aliases name #f)))
 
 (define (known-output-port-codings)
-  (append (hash-table/key-list encoder-aliases)
-	  (hash-table/key-list encoders)))
+  (append (hash-table-keys encoders)
+	  (hash-table-keys coding-aliases)))
 
 (define (known-input-line-ending? name)
-  (or (hash-table/get normalizer-aliases name #f)
-      (hash-table/get normalizers name #f)))
+  (or (hash-table-ref/default normalizers name #f)
+      (hash-table-ref/default line-ending-aliases name #f)))
 
 (define (known-input-line-endings)
-  (append (hash-table/key-list normalizer-aliases)
-	  (hash-table/key-list normalizers)))
+  (append (hash-table-keys normalizers)
+	  (hash-table-keys line-ending-aliases)))
 
 (define (known-output-line-ending? name)
-  (or (hash-table/get denormalizer-aliases name #f)
-      (hash-table/get denormalizers name #f)))
+  (or (hash-table-ref/default denormalizers name #f)
+      (hash-table-ref/default line-ending-aliases name #f)))
 
 (define (known-output-line-endings)
-  (append (hash-table/key-list denormalizer-aliases)
-	  (hash-table/key-list denormalizers)))
+  (append (hash-table-keys denormalizers)
+	  (hash-table-keys line-ending-aliases)))
+
+(define (generic-io/char-set port)
+  (coder-char-set (gstate-coder-name (textual-port-state port))))
+
+(define (coder-char-set coder-name)
+  (case (dereference-coding-alias coder-name)
+    ((iso-8859-1) char-set:iso-8859-1)
+    ((iso-8859-2) char-set:iso-8859-2)
+    ((iso-8859-3) char-set:iso-8859-3)
+    ((iso-8859-4) char-set:iso-8859-4)
+    ((iso-8859-5) char-set:iso-8859-5)
+    ((iso-8859-6) char-set:iso-8859-6)
+    ((iso-8859-7) char-set:iso-8859-7)
+    ((iso-8859-8) char-set:iso-8859-8)
+    ((iso-8859-9) char-set:iso-8859-9)
+    ((iso-8859-10) char-set:iso-8859-10)
+    ((iso-8859-11) char-set:iso-8859-11)
+    ((iso-8859-13) char-set:iso-8859-13)
+    ((iso-8859-14) char-set:iso-8859-14)
+    ((iso-8859-15) char-set:iso-8859-15)
+    ((iso-8859-16) char-set:iso-8859-16)
+    ((windows-1250) char-set:windows-1250)
+    ((windows-1251) char-set:windows-1251)
+    ((windows-1252) char-set:windows-1252)
+    ((windows-1253) char-set:windows-1253)
+    ((windows-1254) char-set:windows-1254)
+    ((windows-1255) char-set:windows-1255)
+    ((windows-1256) char-set:windows-1256)
+    ((windows-1257) char-set:windows-1257)
+    ((windows-1258) char-set:windows-1258)
+    ((windows-874) char-set:windows-874)
+    ((utf-8 utf-16be utf-16le utf-32be utf-32le) char-set:unicode)
+    (else (error "Unknown coder name:" coder-name))))
 
 (define binary-decoder)
 (define binary-encoder)
@@ -518,14 +568,14 @@ USA.
 	  (lambda (alist)
 	    (let ((table (make-strong-eq-hash-table)))
 	      (for-each (lambda (n.d)
-			  (hash-table/put! table (cdr n.d) (car n.d)))
+			  (hash-table-set! table (cdr n.d) (car n.d)))
 			alist)
 	      table)))
 	 (convert-forward
 	  (lambda (alist)
 	    (let ((table (make-strong-eq-hash-table)))
 	      (for-each (lambda (n.d)
-			  (hash-table/put! table (car n.d) (cdr n.d)))
+			  (hash-table-set! table (car n.d) (cdr n.d)))
 			alist)
 	      table))))
      (let-syntax
@@ -533,24 +583,34 @@ USA.
 	   (sc-macro-transformer
 	    (lambda (form environment)
 	      environment
-	      (if (syntax-match? '(SYMBOL) (cdr form))
+	      (if (syntax-match? '(symbol) (cdr form))
 		  (let ((sing (cadr form)))
-		    (let ((plur (symbol sing 'S))
-			  (aliases (symbol sing '-ALIASES))
-			  (proc (symbol 'DEFINE- sing)))
-		      (let ((aproc (symbol proc '-ALIAS)))
-			`(BEGIN
-			   (SET! ,(symbol plur '-REVERSE)
-				 (CONVERT-REVERSE ,plur))
-			   (SET! ,plur (CONVERT-FORWARD ,plur))
-			   (SET! ,proc ,(symbol proc '/POST-BOOT))
-			   (SET! ,aliases (CONVERT-FORWARD ,aliases))
-			   (SET! ,aproc ,(symbol aproc '/POST-BOOT))))))
+		    (let ((plur (symbol sing 's))
+			  (proc (symbol 'define- sing)))
+		      `(begin
+			 (set! ,(symbol plur '-reverse) (convert-reverse ,plur))
+			 (set! ,plur (convert-forward ,plur))
+			 (set! ,proc ,(symbol proc '/post-boot)))))
 		  (ill-formed-syntax form))))))
        (initialize-name-map decoder)
        (initialize-name-map encoder)
        (initialize-name-map normalizer)
-       (initialize-name-map denormalizer)))
+       (initialize-name-map denormalizer))
+     (let-syntax
+	 ((initialize-name-map
+	   (sc-macro-transformer
+	    (lambda (form environment)
+	      environment
+	      (if (syntax-match? '(SYMBOL) (cdr form))
+		  (let ((root (cadr form)))
+		    (let ((aliases (symbol root '-ALIASES))
+			  (proc (symbol 'DEFINE- root '-ALIAS)))
+		      `(BEGIN
+			 (SET! ,aliases (CONVERT-FORWARD ,aliases))
+			 (SET! ,proc ,(symbol proc '/POST-BOOT)))))
+		  (ill-formed-syntax form))))))
+       (initialize-name-map coding)
+       (initialize-name-map line-ending)))
    (set! binary-decoder (name->decoder 'BINARY))
    (set! binary-encoder (name->encoder 'BINARY))
    (set! binary-normalizer (name->normalizer 'BINARY))
@@ -559,15 +619,14 @@ USA.
 
 (define (define-coding-aliases name aliases)
   (for-each (lambda (alias)
-	      (define-decoder-alias alias name)
-	      (define-encoder-alias alias name))
+	      (define-coding-alias alias name))
 	    aliases))
 
 (define (primary-input-port-codings)
-  (cons 'US-ASCII (hash-table/key-list decoders)))
+  (cons 'US-ASCII (hash-table-keys decoders)))
 
 (define (primary-output-port-codings)
-  (cons 'US-ASCII (hash-table/key-list encoders)))
+  (cons 'US-ASCII (hash-table-keys encoders)))
 
 (define max-char-bytes 4)
 
@@ -768,6 +827,9 @@ USA.
       (bytevector-u8-set! (output-buffer-bytes ob) 0 cp))
     1))
 
+(define-deferred char-set:iso-8859-1
+  (char-set* (iota #x100)))
+
 (define-coding-aliases 'ISO-8859-1
   '(ISO_8859-1:1987 ISO-IR-100 ISO_8859-1 LATIN1 L1 IBM819 CP819 CSISOLATIN1))
 
@@ -813,7 +875,11 @@ USA.
 		    (LET ((LHS ',lhs)
 			  (RHS (APPLY BYTEVECTOR ',rhs)))
 		      (LAMBDA (OB CHAR)
-			(ENCODE-8-BIT OB CHAR ,start LHS RHS))))))))
+			(ENCODE-8-BIT OB CHAR ,start LHS RHS))))
+		  (DEFINE-DEFERRED ,(symbol 'CHAR-SET: name)
+		    (CHAR-SET* ',(append (iota #x80)
+					 (filter (lambda (cp) cp)
+						 code-points))))))))
 	 (ill-formed-syntax form)))))
 
 (define (decode-8-bit ib table)
@@ -1312,9 +1378,9 @@ USA.
   (lambda (ob char)
     (encode-utf8-char! (output-buffer-bytes ob) 0 char)))
 
-(let ((alias (lambda () (if (host-big-endian?) 'UTF-16BE 'UTF-16LE))))
-  (define-decoder-alias 'UTF-16 alias)
-  (define-encoder-alias 'UTF-16 alias))
+(define-coding-alias 'UTF-16
+  (lambda ()
+    (if (host-big-endian?) 'UTF-16BE 'UTF-16LE)))
 
 (define-decoder 'utf-16be
   (lambda (ib)
@@ -1344,13 +1410,9 @@ USA.
   (lambda (ob char)
     (encode-utf16le-char! (output-buffer-bytes ob) 0 char)))
 
-(let ((alias
-       (lambda ()
-	 (if (host-big-endian?)
-	     'UTF-32BE
-	     'UTF-32LE))))
-  (define-decoder-alias 'UTF-32 alias)
-  (define-encoder-alias 'UTF-32 alias))
+(define-coding-alias 'UTF-32
+  (lambda ()
+    (if (host-big-endian?) 'UTF-32BE 'UTF-32LE)))
 
 (define-decoder 'utf-32be
   (lambda (ib)
@@ -1439,6 +1501,10 @@ USA.
 	      #\newline))))
 	(else c0)))))
 
+(define-denormalizer 'XML-1.0
+  (lambda (ob char)
+    (encode-char ob char)))
+
 (define-normalizer 'XML-1.1
   (lambda (ib)
     (let ((c0 (decode-char ib)))
@@ -1458,13 +1524,14 @@ USA.
 	((#\U+0085 #\U+2028) #\newline)
 	(else c0)))))
 
-(define-normalizer-alias 'TEXT 'XML-1.0)
-(define-normalizer-alias 'LF 'NEWLINE)
-(define-denormalizer-alias 'LF 'NEWLINE)
-(define-normalizer-alias 'BINARY 'NEWLINE)
-(define-denormalizer-alias 'BINARY 'NEWLINE)
-(define-normalizer-alias 'HTTP 'XML-1.0)
-(define-denormalizer-alias 'HTTP 'CRLF)
+(define-denormalizer 'XML-1.1
+  (lambda (ob char)
+    (encode-char ob char)))
+
+(define-line-ending-alias 'TEXT 'XML-1.0)
+(define-line-ending-alias 'LF 'NEWLINE)
+(define-line-ending-alias 'BINARY 'NEWLINE)
+(define-line-ending-alias 'HTTP 'XML-1.0)
 
 ;;;; Conditions
 

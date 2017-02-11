@@ -2769,6 +2769,7 @@ USA.
 	  output-port-terminal-mode
 	  output-port?
 	  port-property
+	  port/char-set
 	  port/coding
 	  port/known-coding?
 	  port/known-codings

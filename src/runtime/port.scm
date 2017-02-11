@@ -553,6 +553,11 @@ USA.
 	(operation port)
 	#f)))
 
+(define (port/char-set port)
+  ((or (textual-port-operation port 'CHAR-SET)
+       (error:bad-range-argument port 'PORT/CHAR-SET))
+   port))
+
 (define (port/coding port)
   ((or (textual-port-operation port 'CODING)
        (error:bad-range-argument port 'PORT/CODING))
