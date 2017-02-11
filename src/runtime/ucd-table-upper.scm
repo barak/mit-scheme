@@ -30,8 +30,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (ucd-upper-value sv)
-  (scalar-value-in-char-set? sv char-set:upper-case))
+(define (ucd-upper-value char)
+  (char-in-set? char char-set:upper-case))
 
 (define-deferred char-set:upper-case
   (char-set*

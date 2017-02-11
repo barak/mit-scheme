@@ -30,8 +30,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (ucd-wspace-value sv)
-  (scalar-value-in-char-set? sv char-set:whitespace))
+(define (ucd-wspace-value char)
+  (char-in-set? char char-set:whitespace))
 
 (define-deferred char-set:whitespace
   (char-set* '((9 . 14) 32 133 160 5760 (8192 . 8203) (8232 . 8234) 8239 8287 12288)))

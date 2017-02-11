@@ -30,8 +30,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (ucd-alpha-value sv)
-  (scalar-value-in-char-set? sv char-set:alphabetic))
+(define (ucd-alpha-value char)
+  (char-in-set? char char-set:alphabetic))
 
 (define-deferred char-set:alphabetic
   (char-set*

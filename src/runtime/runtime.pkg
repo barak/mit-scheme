@@ -1380,6 +1380,7 @@ USA.
 	  decode-utf32le-char
 	  decode-utf8-char
 	  digit->char
+	  digit-value
 	  encode-utf16be-char!
 	  encode-utf16le-char!
 	  encode-utf32be-char!
@@ -1411,6 +1412,7 @@ USA.
 	 "ucd-table-lc"
 	 "ucd-table-lower"
 	 "ucd-table-nt"
+	 "ucd-table-nv"
 	 "ucd-table-scf"
 	 "ucd-table-slc"
 	 "ucd-table-suc"
@@ -1427,6 +1429,8 @@ USA.
 	  ucd-cf-value
 	  ucd-gc-value
 	  ucd-lc-value
+	  ucd-nt-value
+	  ucd-nv-value
 	  ucd-scf-value
 	  ucd-slc-value
 	  ucd-suc-value

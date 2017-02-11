@@ -397,6 +397,7 @@ USA.
 	      "gc"
 	      "lc"
 	      "nt"
+	      "nv"
 	      "scf"
 	      "slc"
 	      "suc"
@@ -449,6 +450,7 @@ USA.
 (define (metadata->code-generator metadata)
   (let ((type-spec (metadata-type-spec metadata)))
     (cond ((string=? "nt" (metadata-name metadata)) code-generator:nt)
+	  ((string=? "nv" (metadata-name metadata)) code-generator:nv)
 	  ((mapped-enum-type? type-spec) code-generator:mapped-enum)
 	  ((eq? 'boolean type-spec) code-generator:boolean)
 	  ((eq? 'code-point type-spec) code-generator:code-point)
@@ -559,6 +561,14 @@ USA.
 			   (and (string? value)
 				(not (string=? "None" value))))
 			 (converter:mapped-enum (prop-metadata "nt"))
+			 (lambda (char-expr) char-expr #f)
+			 (lambda (sv-expr) sv-expr)))
+
+(define code-generator:nv
+  (hashed-code-generator (lambda (value)
+			   (and (string? value)
+				(not (string=? "NaN" value))))
+			 (lambda (string) (string->number string 10 #t))
 			 (lambda (char-expr) char-expr #f)
 			 (lambda (sv-expr) sv-expr)))
 

@@ -173,6 +173,10 @@ USA.
      (guarantee unicode-char? char 'char-upcase-full)
      (ucd-uc-value char))))
 
+(define (digit-value char)
+  (and (char-numeric? char)
+       (ucd-nv-value char)))
+
 (define-deferred 0-code (char->integer #\0))
 ;; Next two codes are offset by 10 to speed up CHAR->DIGIT.
 (define-deferred upper-a-code (fix:- (char->integer #\A) 10))
