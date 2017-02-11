@@ -1335,6 +1335,7 @@ USA.
 	  ;; END deprecated bindings
 	  8-bit-char?
 	  ascii-char?
+	  char-8-bit?
 	  char->digit
 	  char->integer
 	  char->name

@@ -78,14 +78,17 @@ USA.
 
 (define (8-bit-char? object)
   (and (char? object)
-       (fix:< (char->integer object) #x100)))
+       (char-8-bit? object)))
+
+(define-integrable (char-8-bit? char)
+  (fix:< (char->integer char) #x100))
 
 (define (ascii-char? object)
   (and (char? object)
        (char-ascii? object)))
 
 (define-integrable (char-ascii? char)
-  (fix:< (char->integer char) #x100))
+  (fix:< (char->integer char) #x80))
 
 (define (char=? x y)
   (fix:= (char->integer x) (char->integer y)))
