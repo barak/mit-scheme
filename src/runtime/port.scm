@@ -547,16 +547,17 @@ USA.
     (if tport
 	(output-port/discretionary-flush tport))))
 
+(define (textual-port-char-set port)
+  (let ((operation (textual-port-operation port 'CHAR-SET)))
+    (if operation
+	(operation port)
+	char-set:iso-8859-1)))
+
 (define (port/supports-coding? port)
   (let ((operation (textual-port-operation port 'SUPPORTS-CODING?)))
     (if operation
 	(operation port)
 	#f)))
-
-(define (port/char-set port)
-  ((or (textual-port-operation port 'CHAR-SET)
-       (error:bad-range-argument port 'PORT/CHAR-SET))
-   port))
 
 (define (port/coding port)
   ((or (textual-port-operation port 'CODING)

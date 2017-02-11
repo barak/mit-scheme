@@ -2399,6 +2399,21 @@ USA.
   (files "genio")
   (parent (runtime))
   (export ()
+	  char-set:iso-8859-1
+	  char-set:iso-8859-10
+	  char-set:iso-8859-11
+	  char-set:iso-8859-13
+	  char-set:iso-8859-14
+	  char-set:iso-8859-15
+	  char-set:iso-8859-16
+	  char-set:iso-8859-2
+	  char-set:iso-8859-3
+	  char-set:iso-8859-4
+	  char-set:iso-8859-5
+	  char-set:iso-8859-6
+	  char-set:iso-8859-7
+	  char-set:iso-8859-8
+	  char-set:iso-8859-9
 	  known-input-port-coding?
 	  known-input-port-codings
 	  known-output-port-coding?
@@ -2769,7 +2784,6 @@ USA.
 	  output-port-terminal-mode
 	  output-port?
 	  port-property
-	  port/char-set
 	  port/coding
 	  port/known-coding?
 	  port/known-codings
@@ -2789,6 +2803,7 @@ USA.
 	  textual-i/o-port?
 	  textual-input-port?
 	  textual-output-port?
+	  textual-port-char-set
 	  textual-port-open?
 	  textual-port-operation
 	  textual-port-operation-names
