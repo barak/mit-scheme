@@ -316,6 +316,8 @@ USA.
 			'<= index-fixnum?)
    (register-predicate! unicode-scalar-value? 'unicode-scalar-value
 			'<= unicode-code-point?)
+   (register-predicate! unicode-char-code? 'unicode-char-code
+			'<= unicode-scalar-value?)
    (register-predicate! uninterned-symbol? 'uninterned-symbol '<= symbol?)
    (register-predicate! weak-list? 'weak-list)
    (register-predicate! weak-pair? 'weak-pair)

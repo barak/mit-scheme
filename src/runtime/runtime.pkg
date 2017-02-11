@@ -1395,6 +1395,7 @@ USA.
 	  radix?
 	  set-char-bits
 	  unicode-char->scalar-value
+	  unicode-char-code?
 	  unicode-char?
 	  unicode-code-point-general-category
 	  unicode-code-point?

@@ -375,9 +375,11 @@ USA.
 
 (define (unicode-char? object)
   (and (char? object)
-       (let ((n (char->integer object)))
-	 (and (unicode-scalar-value? n)
-	      (not (non-character? n))))))
+       (unicode-char-code? (char->integer object))))
+
+(define (unicode-char-code? object)
+  (and (unicode-scalar-value? object)
+       (not (non-character? object))))
 
 (define-integrable (unicode-code-point? object)
   (and (index-fixnum? object)
