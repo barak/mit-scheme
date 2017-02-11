@@ -1496,6 +1496,7 @@ USA.
 	  char-set:not-graphic
 	  char-set:not-standard
 	  char-set:standard
+	  char-set:unicode
 	  char-set:wsp
 	  char-set=?
 	  char-set?

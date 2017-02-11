@@ -552,6 +552,9 @@ USA.
 
 ;;;; Non-Unicode character sets
 
+(define-deferred char-set:unicode
+  (compute-char-set unicode-char-code?))
+
 (define-deferred char-set:graphic
   (char-set* '((#x20 . #x7F) (#xA0 . #x100))))
 (define-deferred char-set:not-graphic (char-set-invert char-set:graphic))
