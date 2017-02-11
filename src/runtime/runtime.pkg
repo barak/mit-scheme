@@ -1177,7 +1177,7 @@ USA.
 	  ustring-find-last-char	 ;prefer ustring-find-last-index
 	  ustring-find-last-char-in-set	 ;prefer ustring-find-last-index
 	  ustring-find-last-index
-	  ;; ustring-foldcase
+	  ustring-foldcase
 	  ustring-for-each
 	  ustring-hash
 	  ustring-head
@@ -1357,6 +1357,7 @@ USA.
 	  char-code
 	  char-code-limit
 	  char-downcase
+	  char-foldcase
 	  char-general-category
 	  char-integer-limit
 	  char-upcase
@@ -1400,11 +1401,15 @@ USA.
 
 (define-package (runtime ucd-tables)
   (files "ucd-table-alpha"
+	 "ucd-table-cf"
 	 "ucd-table-gc"
+	 "ucd-table-lc"
 	 "ucd-table-lower"
 	 "ucd-table-nt"
+	 "ucd-table-scf"
 	 "ucd-table-slc"
 	 "ucd-table-suc"
+	 "ucd-table-uc"
 	 "ucd-table-upper"
 	 "ucd-table-wspace")
   (parent (runtime))
@@ -1415,10 +1420,15 @@ USA.
 	  char-set:upper-case)
   (export (runtime character)
 	  ucd-gc-value
+	  ucd-scf-value
 	  ucd-slc-value
 	  ucd-suc-value)
   (export (runtime ucd-table-glue)
-	  ucd-nt-value))
+	  ucd-nt-value)
+  (export (runtime ustring)
+	  ucd-cf-value
+	  ucd-lc-value
+	  ucd-uc-value))
 
 (define-package (runtime ucd-table-glue)
   (files "ucd-table-glue")

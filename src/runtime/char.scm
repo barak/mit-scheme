@@ -118,7 +118,7 @@ USA.
   (fix:>= (char-ci->integer x) (char-ci->integer y)))
 
 (define-integrable (char-ci->integer char)
-  (char->integer (char-upcase char)))
+  (ucd-scf-value (char->integer char)))
 
 (define (char=-predicate char)
   (guarantee char? char 'char=-predicate)
@@ -132,17 +132,15 @@ USA.
 
 (define (char-downcase char)
   (guarantee unicode-char? char 'char-downcase)
-  (let ((cp (ucd-slc-value (char->integer char))))
-    (if (index-fixnum? cp)
-	(integer->char cp)
-	char)))
+  (integer->char (ucd-slc-value (char->integer char))))
+
+(define (char-foldcase char)
+  (guarantee unicode-char? char 'char-foldcase)
+  (integer->char (ucd-scf-value (char->integer char))))
 
 (define (char-upcase char)
   (guarantee unicode-char? char 'char-upcase)
-  (let ((cp (ucd-suc-value (char->integer char))))
-    (if (index-fixnum? cp)
-	(integer->char cp)
-	char)))
+  (integer->char (ucd-suc-value (char->integer char))))
 
 (define-deferred 0-code (char->integer #\0))
 ;; Next two codes are offset by 10 to speed up CHAR->DIGIT.

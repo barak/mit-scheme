@@ -236,15 +236,29 @@ USA.
 			(utf32-string-ref string i))
 		      strings))))))
 
-;; Incorrect implementation
-(define (utf32-string-upcase string)
-  (utf32-string-map char-upcase string))
-
-;; Incorrect implementation
 (define (utf32-string-downcase string)
-  (utf32-string-map char-downcase string))
+  (utf32-case-transform string ucd-lc-value 'utf32-string-downcase))
 
-;; Random and probably incorrect.
+(define (utf32-string-foldcase string)
+  (utf32-case-transform string ucd-cf-value 'utf32-string-foldcase))
+
+(define (utf32-string-upcase string)
+  (utf32-case-transform string ucd-uc-value 'utf32-string-upcase))
+
+(define (utf32-case-transform string sv-transform caller)
+  (let ((svs
+	 (append-map (lambda (char)
+		       (sv-transform (char->integer char)))
+		     (utf32-string->list string))))
+    (let ((n (length svs)))
+      (let ((result (make-utf32-string n)))
+	(do ((svs svs (cdr svs))
+	     (i 0 (fix:+ i 1)))
+	    ((not (pair? svs)))
+	  (utf32-string-set! result i (integer->char (car svs))))
+	result))))
+
+;; Incorrect, needs title-case implementation
 (define (utf32-string-capitalize string)
   (let ((index (utf32-string-find-first-index char-alphabetic? string))
 	(string (utf32-string-copy string)))
@@ -414,7 +428,7 @@ USA.
   (and (fix:= (ustring-length string1) (ustring-length string2))
        (ustring-every char-ci=? string1 string2)))
 
-;; Incorrect implementation.
+;; Non-Unicode implementation, acceptable to R7RS.
 (define-integrable (%string-comparison-maker c= c<)
   (lambda (string1 string2)
     (let ((end1 (ustring-length string1))
@@ -649,15 +663,20 @@ USA.
 (define (ustring-find-last-char-in-set string char-set #!optional start end)
   (ustring-find-last-index (char-set-predicate char-set) string start end))
 
-(define (ustring-upcase string)
-  (cond ((legacy-string? string) (legacy-string-upcase string))
-	((utf32-string? string) (utf32-string-upcase string))
-	(else (error:not-a ustring? string 'ustring-upcase))))
-
 (define (ustring-downcase string)
   (cond ((legacy-string? string) (legacy-string-downcase string))
 	((utf32-string? string) (utf32-string-downcase string))
 	(else (error:not-a ustring? string 'ustring-downcase))))
+
+(define (ustring-foldcase string)
+  (cond ((legacy-string? string) (legacy-string-downcase string))
+	((utf32-string? string) (utf32-string-foldcase string))
+	(else (error:not-a ustring? string 'ustring-foldcase))))
+
+(define (ustring-upcase string)
+  (cond ((legacy-string? string) (legacy-string-upcase string))
+	((utf32-string? string) (utf32-string-upcase string))
+	(else (error:not-a ustring? string 'ustring-upcase))))
 
 (define (ustring-capitalize string)
   (cond ((legacy-string? string) (legacy-string-capitalize string))
