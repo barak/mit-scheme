@@ -32,7 +32,7 @@ USA.
 (define-deferred char-set:numeric
   (compute-char-set
    (lambda (sv)
-     (eq? 'decimal (ucd-nt-value sv)))))
+     (eq? 'decimal (ucd-nt-value (integer->char sv))))))
 
 (define-deferred char-set:alphanumeric
   (char-set-union char-set:alphabetic char-set:numeric))

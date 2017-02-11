@@ -26,7 +26,7 @@ USA.
 
 ;;;; UCD property: gc
 
-;;; Generated from Unicode 9.0.0 UCD at 2017-02-10T19:43:19-08
+;;; Generated from Unicode 9.0.0
 
 (declare (usual-integrations))
 

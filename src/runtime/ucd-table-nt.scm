@@ -26,18 +26,18 @@ USA.
 
 ;;;; UCD property: nt
 
-;;; Generated from Unicode 9.0.0 UCD at 2017-02-10T19:43:20-08
+;;; Generated from Unicode 9.0.0
 
 (declare (usual-integrations))
 
-(define (ucd-nt-value sv)
-  (hash-table-ref char-map:numeric-type sv (lambda () #f)))
+(define (ucd-nt-value char)
+  (hash-table-ref char-map:numeric-type char (lambda () #f)))
 
 (define-deferred char-map:numeric-type
   (let ((table (make-non-pointer-hash-table)))
     (for-each
      (lambda (p)
-       (hash-table-set! table (car p) (cdr p)))
+       (hash-table-set! table (integer->char (car p)) (cdr p)))
      '((48 . decimal)     (49 . decimal)     (50 . decimal)     (51 . decimal)     (52 . decimal)     (53 . decimal)     (54 . decimal)     (55 . decimal)     (56 . decimal)     (57 . decimal)     (178 . digit)      (179 . digit)      (185 . digit)      (188 . numeric)    (189 . numeric)    (190 . numeric)    (1632 . decimal)   (1633 . decimal)   (1634 . decimal)   (1635 . decimal)   (1636 . decimal)   (1637 . decimal)   (1638 . decimal)   (1639 . decimal)   (1640 . decimal)   (1641 . decimal)   (1776 . decimal)   (1777 . decimal)   (1778 . decimal)   (1779 . decimal)   (1780 . decimal)   (1781 . decimal)   (1782 . decimal)   (1783 . decimal)   (1784 . decimal)   (1785 . decimal)   (1984 . decimal)   (1985 . decimal)   (1986 . decimal)   (1987 . decimal)   (1988 . decimal)   (1989 . decimal)   (1990 . decimal)   (1991 . decimal)   (1992 . decimal)   (1993 . decimal)   (2406 . decimal)   (2407 . decimal)   (2408 . decimal)   (2409 . decimal)   (2410 . decimal)
        (2411 . decimal)   (2412 . decimal)   (2413 . decimal)   (2414 . decimal)   (2415 . decimal)   (2534 . decimal)   (2535 . decimal)   (2536 . decimal)   (2537 . decimal)   (2538 . decimal)   (2539 . decimal)   (2540 . decimal)   (2541 . decimal)   (2542 . decimal)   (2543 . decimal)   (2548 . numeric)   (2549 . numeric)   (2550 . numeric)   (2551 . numeric)   (2552 . numeric)   (2553 . numeric)   (2662 . decimal)   (2663 . decimal)   (2664 . decimal)   (2665 . decimal)   (2666 . decimal)   (2667 . decimal)   (2668 . decimal)   (2669 . decimal)   (2670 . decimal)   (2671 . decimal)   (2790 . decimal)   (2791 . decimal)   (2792 . decimal)   (2793 . decimal)   (2794 . decimal)   (2795 . decimal)   (2796 . decimal)   (2797 . decimal)   (2798 . decimal)   (2799 . decimal)   (2918 . decimal)   (2919 . decimal)   (2920 . decimal)   (2921 . decimal)   (2922 . decimal)   (2923 . decimal)   (2924 . decimal)   (2925 . decimal)   (2926 . decimal)   (2927 . decimal)
        (2930 . numeric)   (2931 . numeric)   (2932 . numeric)   (2933 . numeric)   (2934 . numeric)   (2935 . numeric)   (3046 . decimal)   (3047 . decimal)   (3048 . decimal)   (3049 . decimal)   (3050 . decimal)   (3051 . decimal)   (3052 . decimal)   (3053 . decimal)   (3054 . decimal)   (3055 . decimal)   (3056 . numeric)   (3057 . numeric)   (3058 . numeric)   (3174 . decimal)   (3175 . decimal)   (3176 . decimal)   (3177 . decimal)   (3178 . decimal)   (3179 . decimal)   (3180 . decimal)   (3181 . decimal)   (3182 . decimal)   (3183 . decimal)   (3192 . numeric)   (3193 . numeric)   (3194 . numeric)   (3195 . numeric)   (3196 . numeric)   (3197 . numeric)   (3198 . numeric)   (3302 . decimal)   (3303 . decimal)   (3304 . decimal)   (3305 . decimal)   (3306 . decimal)   (3307 . decimal)   (3308 . decimal)   (3309 . decimal)   (3310 . decimal)   (3311 . decimal)   (3416 . numeric)   (3417 . numeric)   (3418 . numeric)   (3419 . numeric)   (3420 . numeric)

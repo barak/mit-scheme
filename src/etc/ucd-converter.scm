@@ -433,13 +433,10 @@ USA.
            (eq? 'comment (car expr))
 	   (pair? (cdr expr))
            (null? (cddr expr)))
-      (if output-comments?
-	  (begin
-	    (write-string ";;; " port)
-	    (display (cadr expr) port)))
+      (begin
+	(write-string ";;; " port)
+	(display (cadr expr) port))
       (pp expr port)))
-
-(define output-comments? #f)
 
 (define (generate-property-table-code prop-name)
   (let* ((metadata (prop-metadata prop-name))
@@ -461,8 +458,8 @@ USA.
 
 (define (code-generator:boolean prop-name metadata prop-alist proc-name)
   (let ((char-set-name (symbol "char-set:" (metadata-full-name metadata))))
-    `((define (,proc-name sv)
-	(scalar-value-in-char-set? sv ,char-set-name))
+    `((define (,proc-name char)
+	(char-in-set? char ,char-set-name))
       (define-deferred ,char-set-name
 	(char-set*
 	 ',(filter-map (lambda (value-map)
@@ -470,7 +467,8 @@ USA.
 			      (car value-map)))
 		       prop-alist))))))
 
-(define (hashed-code-generator keep-value? value-converter default-value)
+(define (hashed-code-generator keep-value? value-converter default-value
+			       runtime-value-converter)
   (lambda (prop-name metadata prop-alist proc-name)
     (let ((table-name (symbol "char-map:" (metadata-full-name metadata)))
 	  (mapping
@@ -488,19 +486,17 @@ USA.
 	 (write-string prop-name port)
 	 (write-string ": table pairs = " port)
 	 (write (length mapping) port)))
-      `((define (,proc-name sv)
-	  (hash-table-ref ,table-name sv (lambda () ,(default-value 'sv))))
+      `((define (,proc-name char)
+	  (hash-table-ref ,table-name char (lambda () ,(default-value 'char))))
 	(define-deferred ,table-name
 	  (let ((table (make-non-pointer-hash-table)))
 	    (for-each (lambda (p)
-			(hash-table-set! table (car p) (cdr p)))
+			(hash-table-set! table
+					 (integer->char (car p))
+					 ,(runtime-value-converter '(cdr p))))
 		      ',mapping)
 	    table))))))
 
-(define (code-point-filter value)
-  (and (string? value)
-       (not (string=? "#" value))))
-
 (define (string->cp string)
   (let ((cp (string->number string 16 #t)))
     (if (not (unicode-code-point? cp))
@@ -515,17 +511,33 @@ USA.
 (define code-points-splitter
   (string-splitter #\space #f))
 
-(define (code-points-default sv)
-  `(list ,sv))
+(define (code-point-filter value)
+  (and (string? value)
+       (not (string=? "#" value))))
 
 (define code-generator:code-point
-  (hashed-code-generator code-point-filter string->cp (lambda (sv) sv)))
+  (hashed-code-generator code-point-filter
+			 string->cp
+			 (lambda (char-expr) char-expr)
+			 (lambda (sv-expr) `(integer->char ,sv-expr))))
+
+(define (code-points-default char-expr)
+  `(list ,char-expr))
+
+(define (code-points-converter svs-expr)
+  `(map integer->char ,svs-expr))
 
 (define code-generator:code-point*
-  (hashed-code-generator code-point-filter string->cps code-points-default))
+  (hashed-code-generator code-point-filter
+			 string->cps
+			 code-points-default
+			 code-points-converter))
 
 (define code-generator:code-point+
-  (hashed-code-generator code-point-filter string->cps code-points-default))
+  (hashed-code-generator code-point-filter
+			 string->cps
+			 code-points-default
+			 code-points-converter))
 
 (define (converter:mapped-enum metadata)
   (let ((name (symbol->string (metadata-full-name metadata)))
@@ -547,7 +559,8 @@ USA.
 			   (and (string? value)
 				(not (string=? "None" value))))
 			 (converter:mapped-enum (prop-metadata "nt"))
-			 (lambda (sv) sv #f)))
+			 (lambda (char-expr) char-expr #f)
+			 (lambda (sv-expr) sv-expr)))
 
 (define (code-generator:mapped-enum prop-name metadata prop-alist proc-name)
   (let ((maker (entries-maker))
@@ -623,15 +636,10 @@ USA.
 
     (let ((root-entry ((maker 'get-root-entry)))
           (table-entries ((maker 'get-table-entries))))
-      (report-table-statistics prop-name
-                               entry-count
-                               unique-entry-count
-                               byte-count
-                               (length table-entries))
+      (report-table-statistics prop-name entry-count unique-entry-count
+			       byte-count (length table-entries))
       (generate-top-level (ustring-downcase prop-name)
-                          root-entry
-                          table-entries
-			  proc-name))))
+			  root-entry table-entries proc-name))))
 
 (define (report-table-statistics prop-name entry-count unique-entry-count
                                  byte-count n-entries)
@@ -656,30 +664,38 @@ USA.
                 (symbol "ucd-" prop-name "-entry-" index))
               (iota (length table-entries)))))
 
-    `(,@(generate-entry-definition proc-name root-entry 'sv table-name '(sv))
+    `(,@(generate-entry-definition proc-name root-entry 'sv table-name
+				   '(char)
+				   (lambda (body)
+				     `((let ((sv (char->integer char)))
+					 ,@body))))
 
       ,@(append-map (lambda (name entry)
-                      (generate-entry-definition name entry
-                                                 'sv 'table '(sv table)))
+                      (generate-entry-definition name entry 'sv 'table
+						 '(sv table)
+						 (lambda (body) body)))
                     entry-names
                     table-entries)
 
       (define ,table-name)
       ,@(generate-table-initializers table-name entry-names))))
-
-(define (generate-entry-definition name entry sv-name table-name arg-names)
+
+(define (generate-entry-definition name entry sv-name table-name
+				   arg-names wrap-body)
   (receive (comment offsets-expr body) (entry 'offsets sv-name table-name)
     (let ((defn
-            (if offsets-expr
-                `(define-deferred ,name
-                   (let ((offsets ,offsets-expr))
-                     (named-lambda (,name ,@arg-names)
-                       ,@body)))
-                `(define (,name ,@arg-names)
-                   ,@body))))
-      (if comment
+           (if offsets-expr
+	       `(define-deferred ,name
+		  (let ((offsets ,offsets-expr))
+		    (named-lambda (,name ,@arg-names)
+		      ,@(wrap-body body))))
+	       `(define (,name ,@arg-names)
+		  ,@(wrap-body body)))))
+      (if (and comment generate-node-comments?)
           (list `(comment ,comment) defn)
           (list defn)))))
+
+(define generate-node-comments? #f)
 
 (define (generate-table-initializers table-name entries)
   (let ((groups

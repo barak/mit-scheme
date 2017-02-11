@@ -90,38 +90,35 @@ USA.
 (define-integrable (char-ascii? char)
   (fix:< (char->integer char) #x80))
 
-(define (char=? x y)
+(define-integrable (char=? x y)
   (fix:= (char->integer x) (char->integer y)))
 
-(define (char<? x y)
+(define-integrable (char<? x y)
   (fix:< (char->integer x) (char->integer y)))
 
-(define (char<=? x y)
+(define-integrable (char<=? x y)
   (fix:<= (char->integer x) (char->integer y)))
 
-(define (char>? x y)
+(define-integrable (char>? x y)
   (fix:> (char->integer x) (char->integer y)))
 
-(define (char>=? x y)
+(define-integrable (char>=? x y)
   (fix:>= (char->integer x) (char->integer y)))
 
 (define (char-ci=? x y)
-  (fix:= (char-ci->integer x) (char-ci->integer y)))
+  (char=? (ucd-scf-value x) (ucd-scf-value y)))
 
 (define (char-ci<? x y)
-  (fix:< (char-ci->integer x) (char-ci->integer y)))
+  (char<? (ucd-scf-value x) (ucd-scf-value y)))
 
 (define (char-ci<=? x y)
-  (fix:<= (char-ci->integer x) (char-ci->integer y)))
+  (char<=? (ucd-scf-value x) (ucd-scf-value y)))
 
 (define (char-ci>? x y)
-  (fix:> (char-ci->integer x) (char-ci->integer y)))
+  (char>? (ucd-scf-value x) (ucd-scf-value y)))
 
 (define (char-ci>=? x y)
-  (fix:>= (char-ci->integer x) (char-ci->integer y)))
-
-(define-integrable (char-ci->integer char)
-  (ucd-scf-value (char->integer char)))
+  (char>=? (ucd-scf-value x) (ucd-scf-value y)))
 
 (define (char=-predicate char)
   (guarantee char? char 'char=-predicate)
@@ -133,35 +130,48 @@ USA.
   (lambda (char*)
     (char-ci=? char* char)))
 
-(define (char-downcase char)
-  (if (not (unicode-scalar-value? (char-code char)))
-      (error:not-a unicode-char? char 'char-downcase))
-  (%make-char (ucd-slc-value (char-code char))
-	      (char-bits char)))
+(define (char-mapper mapper)
+  (lambda (char)
+    (if (fix:= 0 (char-bits char))
+	(mapper char)
+	(%make-char (mapper (%make-char (char-code char) 0))
+		    (char-bits char)))))
 
-(define (char-foldcase char)
-  (if (not (unicode-scalar-value? (char-code char)))
-      (error:not-a unicode-char? char 'char-foldcase))
-  (%make-char (ucd-scf-value (char-code char))
-	      (char-bits char)))
+(define char-downcase
+  (char-mapper
+   (lambda (char)
+     (guarantee unicode-char? char 'char-downcase)
+     (ucd-slc-value char))))
 
-(define (char-upcase char)
-  (if (not (unicode-scalar-value? (char-code char)))
-      (error:not-a unicode-char? char 'char-upcase))
-  (%make-char (ucd-suc-value (char-code char))
-	      (char-bits char)))
+(define char-foldcase
+  (char-mapper
+   (lambda (char)
+     (guarantee unicode-char? char 'char-foldcase)
+     (ucd-scf-value char))))
 
-(define (char-downcase-full char)
-  (guarantee unicode-char? char 'char-downcase-full)
-  (map integer->char (ucd-lc-value (char->integer char))))
+(define char-upcase
+  (char-mapper
+   (lambda (char)
+     (guarantee unicode-char? char 'char-upcase)
+     (ucd-suc-value char))))
 
-(define (char-foldcase-full char)
-  (guarantee unicode-char? char 'char-foldcase-full)
-  (map integer->char (ucd-cf-value (char->integer char))))
+(define char-downcase-full
+  (char-mapper
+   (lambda (char)
+     (guarantee unicode-char? char 'char-downcase-full)
+     (ucd-lc-value char))))
 
-(define (char-upcase-full char)
-  (guarantee unicode-char? char 'char-upcase-full)
-  (map integer->char (ucd-uc-value (char->integer char))))
+(define char-foldcase-full
+  (char-mapper
+   (lambda (char)
+     (guarantee unicode-char? char 'char-foldcase-full)
+     (ucd-cf-value char))))
+
+(define char-upcase-full
+  (char-mapper
+   (lambda (char)
+     (guarantee unicode-char? char 'char-upcase-full)
+     (ucd-uc-value char))))
 
 (define-deferred 0-code (char->integer #\0))
 ;; Next two codes are offset by 10 to speed up CHAR->DIGIT.
@@ -394,14 +404,14 @@ USA.
 
 (define (char-general-category char)
   (guarantee unicode-char? char 'char-general-category)
-  (sv-general-category (char->integer char)))
+  (%char-general-category char))
 
 (define (unicode-code-point-general-category cp)
   (guarantee unicode-code-point? cp 'unicode-code-point-general-category)
-  (sv-general-category cp))
+  (%char-general-category (integer->char cp)))
 
-(define (sv-general-category sv)
-  (let ((value (ucd-gc-value sv)))
+(define-integrable (%char-general-category char)
+  (let ((value (ucd-gc-value char)))
     (and (symbol? value)
 	 value)))
 
