@@ -301,8 +301,8 @@ USA.
 			 encode-utf32le-char! 'string->utf32le))
    unspecific))
 
-(define-integrable (bytes-decoder getter initial->length char-length decode-char
-				  step noun caller)
+(define-integrable (bytes-decoder getter initial->length decode-char step noun
+				  caller)
   (lambda (bytevector #!optional start end)
     (let* ((end (fix:end-index end (bytevector-length bytevector) caller))
 	   (start (fix:start-index start end caller))
@@ -316,7 +316,7 @@ USA.
 					      (fix:min (fix:+ index 4) end))))))
 	       (let loop ((index start) (n-chars 0))
 		 (if (fix:<= (fix:+ index step) end)
-		     (let ((n (initial->length (getter bytevector start))))
+		     (let ((n (initial->length (getter bytevector index))))
 		       (let ((index* (fix:+ index n)))
 			 (if (not (fix:<= index* end))
 			     (truncated index))
@@ -329,7 +329,7 @@ USA.
 	(if (fix:< from end)
 	    (let ((char (decode-char bytevector from)))
 	      (ustring-set! string to char)
-	      (loop (fix:+ from (char-length char))
+	      (loop (fix:+ from (initial->length (getter bytevector from)))
 		    (fix:+ to 1)))))
       (or (ustring->ascii string)	;return legacy string if possible
 	  string))))
@@ -343,22 +343,17 @@ USA.
  (lambda ()
    (set! utf8->string
 	 (bytes-decoder bytevector-u8-ref initial-byte->utf8-char-length
-			char-utf8-byte-length decode-utf8-char 1 "UTF-8"
-			'utf8->string))
+			decode-utf8-char 1 "UTF-8" 'utf8->string))
    (set! utf16be->string
 	 (bytes-decoder bytevector-u16be-ref initial-u16->utf16-char-length
-			char-utf16-byte-length decode-utf16be-char 1 "UTF-16BE"
-			'utf16be->string))
+			decode-utf16be-char 1 "UTF-16BE" 'utf16be->string))
    (set! utf16le->string
 	 (bytes-decoder bytevector-u16le-ref initial-u16->utf16-char-length
-			char-utf16-byte-length decode-utf16le-char 1 "UTF-16LE"
-			'utf16le->string))
+			decode-utf16le-char 1 "UTF-16LE" 'utf16le->string))
    (set! utf32be->string
 	 (bytes-decoder bytevector-u32be-ref initial-u32->utf32-char-length
-			char-utf32-byte-length decode-utf32be-char 1 "UTF-32BE"
-			'utf32be->string))
+			decode-utf32be-char 1 "UTF-32BE" 'utf32be->string))
    (set! utf32le->string
 	 (bytes-decoder bytevector-u32le-ref initial-u32->utf32-char-length
-			char-utf32-byte-length decode-utf32le-char 1 "UTF-32LE"
-			'utf32le->string))
+			decode-utf32le-char 1 "UTF-32LE" 'utf32le->string))
    unspecific))
