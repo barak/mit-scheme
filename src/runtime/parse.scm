@@ -520,10 +520,6 @@ USA.
 
 (define (parse-atom-1 port db prefix quoting?)
   (let ((port* (open-output-string))
-	(%canon
-	 (if (db-fold-case? db)
-	     char-downcase
-	     (lambda (char) char)))
 	(atom-delimiters (db-atom-delimiters db))
 	(constituents (db-constituents db)))
     (define (%read)
@@ -554,9 +550,14 @@ USA.
 			(char (%peek)))
       (if (or (eof-object? char)
 	      (char-set-member? atom-delimiters char))
-	  (if quoting?
-	      (values (get-output-string port*) quoted? previous-char)
-	      (get-output-string port*))
+	  (let ((atom
+		 (let ((s (get-output-string port*)))
+		   (if (db-fold-case? db)
+		       (ustring-foldcase s)
+		       s))))
+	    (if quoting?
+		(values atom quoted? previous-char)
+		atom))
 	  (begin
 	    (if (not (char-set-member? constituents char))
 		(error:illegal-char char))
@@ -584,7 +585,7 @@ USA.
 			 (read-unquoted #t #f (%peek)))
 		       (error:illegal-char char)))
 		  (else
-		   (write-char (%canon char) port*)
+		   (write-char char port*)
 		   (read-unquoted quoted? char (%peek)))))))))
 
 (define (handler:list port db ctx char)
