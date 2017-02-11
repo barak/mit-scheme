@@ -253,6 +253,7 @@ USA.
 			'<= exact-nonnegative-integer?)
    (register-predicate! non-positive-fixnum? 'non-positive-fixnum
 			'<= fix:fixnum?)
+   (register-predicate! radix? 'radix '<= index-fixnum?)
 
    (register-predicate! flo:flonum? 'flonum '<= real?)
 

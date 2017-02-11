@@ -177,11 +177,6 @@ USA.
   (and (char-numeric? char)
        (ucd-nv-value char)))
 
-(define-deferred 0-code (char->integer #\0))
-;; Next two codes are offset by 10 to speed up CHAR->DIGIT.
-(define-deferred upper-a-code (fix:- (char->integer #\A) 10))
-(define-deferred lower-a-code (fix:- (char->integer #\a) 10))
-
 (define (radix? object)
   (and (index-fixnum? object)
        (fix:<= 2 object)
@@ -190,35 +185,37 @@ USA.
 (define-guarantee radix "radix")
 
 (define (digit->char digit #!optional radix)
-  (guarantee-limited-index-fixnum digit
-				  (if (default-object? radix)
-				      10
-				      (begin
-					(guarantee-radix radix 'DIGIT->CHAR)
-					radix))
-				  'DIGIT->CHAR)
+  (let ((radix
+	 (if (default-object? radix)
+	     10
+	     (begin
+	       (guarantee radix? radix 'digit->char)
+	       radix))))
+    (guarantee index-fixnum? digit 'digit->char)
+    (if (not (fix:< digit radix))
+	(error:bad-range-argument digit 'digit->char)))
   (string-ref "0123456789abcdefghijklmnopqrstuvwxyz" digit))
 
 (define (char->digit char #!optional radix)
-  (let ((code (char->integer char))
-	(radix
-	 (cond ((default-object? radix)
-		10)
-	       ((and (fix:fixnum? radix)
-		     (fix:<= 2 radix) (fix:<= radix 36))
-		radix)
-	       (else
-		(error:wrong-type-argument radix "radix" 'CHAR->DIGIT)))))
-    (let ((n (fix:- code 0-code)))
-      (if (and (fix:<= 0 n) (fix:< n radix))
-	  n
-	  (let ((n (fix:- code upper-a-code)))
-	    (if (and (fix:<= 10 n) (fix:< n radix))
-		n
-		(let ((n (fix:- code lower-a-code)))
-		  (if (and (fix:<= 10 n) (fix:< n radix))
-		      n
-		      #f))))))))
+  (let ((radix
+	 (if (default-object? radix)
+	     10
+	     (begin
+	       (guarantee radix? radix 'CHAR->DIGIT)
+	       radix)))
+	(digit (digit-value char)))
+    (if digit
+	(and (fix:< digit radix)
+	     digit)
+	(and (fix:> radix 10)
+	     (let ((code (char->integer char)))
+	       (let ((n (fix:- code (fix:- (char->integer #\A) 10))))
+		 (if (and (fix:<= 10 n) (fix:< n radix))
+		     n
+		     (let ((n (fix:- code (fix:- (char->integer #\a) 10))))
+		       (if (and (fix:<= 10 n) (fix:< n radix))
+			   n
+			   #f)))))))))
 
 ;;;; Character names
 
