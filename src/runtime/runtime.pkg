@@ -1398,7 +1398,11 @@ USA.
 	  unicode-code-point-general-category
 	  unicode-code-point?
 	  unicode-scalar-value->char
-	  unicode-scalar-value?))
+	  unicode-scalar-value?)
+  (export (runtime)
+	  char-downcase-full
+	  char-foldcase-full
+	  char-upcase-full))
 
 (define-package (runtime ucd-tables)
   (files "ucd-table-alpha"
@@ -1420,16 +1424,15 @@ USA.
 	  char-set:lower-case
 	  char-set:upper-case)
   (export (runtime character)
+	  ucd-cf-value
 	  ucd-gc-value
+	  ucd-lc-value
 	  ucd-scf-value
 	  ucd-slc-value
-	  ucd-suc-value)
+	  ucd-suc-value
+	  ucd-uc-value)
   (export (runtime ucd-table-glue)
-	  ucd-nt-value)
-  (export (runtime ustring)
-	  ucd-cf-value
-	  ucd-lc-value
-	  ucd-uc-value))
+	  ucd-nt-value))
 
 (define-package (runtime ucd-table-glue)
   (files "ucd-table-glue")

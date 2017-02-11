@@ -132,21 +132,36 @@ USA.
   (guarantee char? char 'char-ci=-predicate)
   (lambda (char*)
     (char-ci=? char* char)))
-
+
 (define (char-downcase char)
-  (guarantee unicode-char? char 'char-downcase)
+  (if (not (unicode-scalar-value? (char-code char)))
+      (error:not-a unicode-char? char 'char-downcase))
   (%make-char (ucd-slc-value (char-code char))
 	      (char-bits char)))
 
 (define (char-foldcase char)
-  (guarantee unicode-char? char 'char-foldcase)
+  (if (not (unicode-scalar-value? (char-code char)))
+      (error:not-a unicode-char? char 'char-foldcase))
   (%make-char (ucd-scf-value (char-code char))
 	      (char-bits char)))
 
 (define (char-upcase char)
-  (guarantee unicode-char? char 'char-upcase)
+  (if (not (unicode-scalar-value? (char-code char)))
+      (error:not-a unicode-char? char 'char-upcase))
   (%make-char (ucd-suc-value (char-code char))
 	      (char-bits char)))
+
+(define (char-downcase-full char)
+  (guarantee unicode-char? char 'char-downcase-full)
+  (map integer->char (ucd-lc-value (char->integer char))))
+
+(define (char-foldcase-full char)
+  (guarantee unicode-char? char 'char-foldcase-full)
+  (map integer->char (ucd-cf-value (char->integer char))))
+
+(define (char-upcase-full char)
+  (guarantee unicode-char? char 'char-upcase-full)
+  (map integer->char (ucd-uc-value (char->integer char))))
 
 (define-deferred 0-code (char->integer #\0))
 ;; Next two codes are offset by 10 to speed up CHAR->DIGIT.

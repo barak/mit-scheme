@@ -237,25 +237,24 @@ USA.
 		      strings))))))
 
 (define (utf32-string-downcase string)
-  (utf32-case-transform string ucd-lc-value 'utf32-string-downcase))
+  (utf32-case-transform string char-downcase-full 'utf32-string-downcase))
 
 (define (utf32-string-foldcase string)
-  (utf32-case-transform string ucd-cf-value 'utf32-string-foldcase))
+  (utf32-case-transform string char-foldcase-full 'utf32-string-foldcase))
 
 (define (utf32-string-upcase string)
-  (utf32-case-transform string ucd-uc-value 'utf32-string-upcase))
+  (utf32-case-transform string char-upcase-full 'utf32-string-upcase))
 
-(define (utf32-case-transform string sv-transform caller)
-  (let ((svs
-	 (append-map (lambda (char)
-		       (sv-transform (char->integer char)))
+(define (utf32-case-transform string transform caller)
+  (let ((chars
+	 (append-map transform
 		     (utf32-string->list string))))
-    (let ((n (length svs)))
+    (let ((n (length chars)))
       (let ((result (make-utf32-string n)))
-	(do ((svs svs (cdr svs))
+	(do ((chars chars (cdr chars))
 	     (i 0 (fix:+ i 1)))
-	    ((not (pair? svs)))
-	  (utf32-string-set! result i (integer->char (car svs))))
+	    ((not (pair? chars)))
+	  (utf32-string-set! result i (car chars)))
 	result))))
 
 ;; Incorrect, needs title-case implementation
