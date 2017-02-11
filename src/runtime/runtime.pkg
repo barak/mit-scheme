@@ -1153,13 +1153,11 @@ USA.
 	  string-for-primitive		;export to (runtime) after 9.3
 	  ustring
 	  ustring*
-	  ustring->ascii
 	  ustring->list
 	  ustring->vector
 	  ustring-any
 	  ustring-append
 	  ustring-append*
-	  ustring-ascii?
 	  ustring-capitalize
 	  ustring-ci<=?
 	  ustring-ci<?
@@ -1199,6 +1197,8 @@ USA.
 	  ustring?
 	  ;; vector->ustring
 	  )
+  (export (runtime bytevector)
+	  ustring->legacy-string)
   (export (runtime predicate-metadata)
 	  register-ustring-predicates!)
   (export (runtime symbol)

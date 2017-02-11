@@ -331,7 +331,7 @@ USA.
 	      (ustring-set! string to char)
 	      (loop (fix:+ from (initial->length (getter bytevector from)))
 		    (fix:+ to 1)))))
-      (or (ustring->ascii string)	;return legacy string if possible
+      (or (ustring->legacy-string string)
 	  string))))
 
 (define utf8->string)

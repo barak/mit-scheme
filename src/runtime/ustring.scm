@@ -32,7 +32,7 @@ USA.
 ;;; transitional implementation to convert MIT/GNU Scheme to full Unicode string
 ;;; support.
 ;;;
-;;; For simplicity, the implementation uses the UTF-32 encoding for non-ASCII
+;;; For simplicity, the implementation uses the UTF-32 encoding for non-8-bit
 ;;; strings.  This is not a good long-term approach and should be revisited once
 ;;; the runtime system has been converted to this string abstraction.
 ;;;
@@ -313,9 +313,9 @@ USA.
   (let ((string
 	 (do ((strings strings (cdr strings))
 	      (n 0 (fix:+ n (ustring-length (car strings))))
-	      (ascii? #t (and ascii? (ustring-ascii? (car strings)))))
+	      (8-bit? #t (and 8-bit? (ustring-8-bit? (car strings)))))
 	     ((not (pair? strings))
-	      (if ascii?
+	      (if 8-bit?
 		  (make-legacy-string n)
 		  (make-utf32-string n))))))
     (let loop ((strings strings) (i 0))
@@ -328,7 +328,7 @@ USA.
 (define (list->ustring chars)
   (let ((string
 	 (let ((n (length chars)))
-	   (if (every char-ascii? chars)
+	   (if (every char-8-bit? chars)
 	       (make-legacy-string n)
 	       (make-utf32-string n)))))
     (do ((chars chars (cdr chars))
@@ -337,37 +337,26 @@ USA.
       (ustring-set! string i (car chars)))
     string))
 
-(define (ustring-ascii? string)
-  (cond ((legacy-string? string) (legacy-string-ascii? string))
-	((utf32-string? string) (utf32-string-ascii? string))
-	(else (error:not-a ustring? string 'ustring-ascii?))))
+(define (ustring-8-bit? string)
+  (cond ((legacy-string? string) #t)
+	((utf32-string? string) (utf32-string-8-bit? string))
+	(else (error:not-a ustring? string 'ustring-8-bit?))))
 
-(define (legacy-string-ascii? string)
-  (%legacy-string-ascii? string 0 (legacy-string-length string)))
-
-(define (%legacy-string-ascii? string start end)
-  (every-loop char-ascii? legacy-string-ref string start end))
-
-(define (ustring->ascii string)
-  (cond ((legacy-string? string)
-	 (and (legacy-string-ascii? string)
-	      string))
+(define (ustring->legacy-string string)
+  (cond ((legacy-string? string) string)
 	((utf32-string? string)
-	 (and (utf32-string-ascii? string)
-	      (utf32-string->ascii string)))
-	(else
-	 (error:not-a ustring? string 'ustring->ascii))))
+	 (let ((end (utf32-string-length string)))
+	   (and (%utf32-string-8-bit? string 0 end)
+		(%utf32-string->legacy-string string 0 end))))
+	(else (error:not-a ustring? string 'ustring->legacy-string))))
 
-(define (utf32-string-ascii? string)
-  (%utf32-string-ascii? string 0 (utf32-string-length string)))
+(define (utf32-string-8-bit? string)
+  (%utf32-string-8-bit? string 0 (utf32-string-length string)))
 
-(define (%utf32-string-ascii? string start end)
-  (every-loop char-ascii? utf32-string-ref string start end))
+(define (%utf32-string-8-bit? string start end)
+  (every-loop char-8-bit? utf32-string-ref string start end))
 
-(define (utf32-string->ascii string)
-  (%utf32-string->ascii string 0 (utf32-string-length string)))
-
-(define (%utf32-string->ascii string start end)
+(define (%utf32-string->legacy-string string start end)
   (let ((to (make-legacy-string (fix:- end start))))
     (copy-loop legacy-string-set! to 0
 	       utf32-string-ref string start end)
@@ -377,14 +366,10 @@ USA.
   (let* ((end (fix:end-index end (ustring-length string) 'ustring-copy))
 	 (start (fix:start-index start end 'ustring-copy)))
     (cond ((legacy-string? string)
-	   (if (%legacy-string-ascii? string start end)
-	       (legacy-string-copy string start end)
-	       (let ((result (make-utf32-string (fix:- end start))))
-		 (legacy->utf32-copy! result 0 string start end)
-		 result)))
+	   (legacy-string-copy string start end))
 	  ((utf32-string? string)
-	   (if (%utf32-string-ascii? string start end)
-	       (%utf32-string->ascii string start end)
+	   (if (%utf32-string-8-bit? string start end)
+	       (%utf32-string->legacy-string string start end)
 	       (%utf32-string-copy string start end)))
 	  (else
 	   (error:not-a ustring? string 'ustring-copy)))))
@@ -684,11 +669,7 @@ USA.
 	(else (error:not-a ustring? string 'ustring-capitalize))))
 
 (define (ustring-hash string #!optional modulus)
-  (legacy-string-hash
-   (cond ((legacy-string? string) string)
-	 ((utf32-string? string) (string->utf8 string))
-	 (else (error:not-a ustring? string 'ustring-hash)))
-   modulus))
+  (legacy-string-hash (string-for-primitive string) modulus))
 
 (define (ustring . objects)
   (%ustring* objects 'ustring))
@@ -723,5 +704,15 @@ USA.
 	(uri? object)))
 
 (define (string-for-primitive string)
-  (or (ustring->ascii string)
-      (string->utf8 string)))
+  (cond ((legacy-string? string)
+	 (let ((end (legacy-string-length string)))
+	   (if (every-loop char-ascii? legacy-string-ref string 0 end)
+	       string
+	       (string->utf8 string))))
+	((utf32-string? string)
+	 (let ((end (utf32-string-length string)))
+	   (if (every-loop char-ascii? utf32-string-ref string 0 end)
+	       (%utf32-string->legacy-string string 0 end)
+	       (string->utf8 string))))
+	(else
+	 (error:not-a ustring? string 'ustring-ascii?))))
