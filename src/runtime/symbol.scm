@@ -70,16 +70,16 @@ USA.
   (string->symbol (%ustring* objects 'symbol)))
 
 (define (intern string)
-  (string->symbol (cold-load-downcase string)))
+  (string->symbol (cold-load-foldcase string)))
 
 (define (intern-soft string)
-  ((ucode-primitive find-symbol) (string->utf8 (cold-load-downcase string))))
+  ((ucode-primitive find-symbol) (string->utf8 (cold-load-foldcase string))))
 
-(define (cold-load-downcase string)
+(define (cold-load-foldcase string)
   (if (ascii-string? string)
       ;; Needed during cold load.
       (legacy-string-downcase string)
-      (ustring-downcase string)))
+      (ustring-foldcase string)))
 
 (define (symbol-name symbol)
   (if (not (symbol? symbol))
