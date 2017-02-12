@@ -134,11 +134,13 @@ USA.
 		  (list car-predicate cdr-predicate)))
 
 (define (make-predicate datum-test operator operands)
-  (tag->predicate
-   ((compound-operator-builder operator)
-    datum-test
-    operator
-    (map predicate->tag operands))))
+  (if (every predicate? operands)
+      (tag->predicate
+       ((compound-operator-builder operator)
+	datum-test
+	operator
+	(map predicate->tag operands)))
+      datum-test))
 
 (define compound-operator?)
 (define compound-operator-builder)
