@@ -154,7 +154,7 @@ USA.
 ("OUpper" other-upper-case boolean)
 ("PCM" prepended-concatenation-mark boolean)
 ("Pat_Syn" pattern-syntax boolean)
-("Pat_WS" pattern-white-space boolean)
+("Pat_WS" pattern-whitespace boolean)
 ("QMark" quotation-mark boolean)
 ("Radical" radical boolean)
 ("SB" sentence-break
