@@ -1422,6 +1422,10 @@ USA.
 	 "ucd-table-wspace")
   (parent (runtime))
   (export ()
+	  char-alphabetic?
+	  char-lower-case?
+	  char-upper-case?
+	  char-whitespace?
 	  char-set:alphabetic
 	  char-set:lower-case
 	  char-set:upper-case
@@ -1443,9 +1447,7 @@ USA.
   (files "ucd-glue")
   (parent (runtime))
   (export ()
-	  char-alphabetic?
 	  char-alphanumeric?
-	  char-lower-case?
 	  char-numeric?
 	  char-set:alphanumeric
 	  char-set:not-alphabetic
@@ -1456,9 +1458,7 @@ USA.
 	  char-set:not-whitespace
 	  char-set:numeric
 	  char-set:symbol-constituent
-	  char-set:symbol-initial
-	  char-upper-case?
-	  char-whitespace?))
+	  char-set:symbol-initial))
 
 (define-package (runtime character-set)
   (files "chrset")

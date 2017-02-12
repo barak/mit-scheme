@@ -34,26 +34,14 @@ USA.
    (lambda (sv)
      (eq? 'decimal (ucd-nt-value (integer->char sv))))))
 
-(define-deferred char-set:alphanumeric
-  (char-set-union char-set:alphabetic char-set:numeric))
-
-(define-deferred char-alphabetic?
-  (char-set-predicate char-set:alphabetic))
-
-(define-deferred char-alphanumeric?
-  (char-set-predicate char-set:alphanumeric))
-
-(define-deferred char-lower-case?
-  (char-set-predicate char-set:lower-case))
-
 (define-deferred char-numeric?
   (char-set-predicate char-set:numeric))
 
-(define-deferred char-upper-case?
-  (char-set-predicate char-set:upper-case))
+(define-deferred char-set:alphanumeric
+  (char-set-union char-set:alphabetic char-set:numeric))
 
-(define-deferred char-whitespace?
-  (char-set-predicate char-set:whitespace))
+(define-deferred char-alphanumeric?
+  (char-set-predicate char-set:alphanumeric))
 
 (define-deferred char-set:not-alphabetic
   (char-set-invert char-set:alphabetic))

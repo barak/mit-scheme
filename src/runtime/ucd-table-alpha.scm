@@ -30,7 +30,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define (ucd-alpha-value char)
+(define (char-alphabetic? char)
   (char-in-set? char char-set:alphabetic))
 
 (define-deferred char-set:alphabetic

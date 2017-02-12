@@ -30,7 +30,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define (ucd-lower-value char)
+(define (char-lower-case? char)
   (char-in-set? char char-set:lower-case))
 
 (define-deferred char-set:lower-case

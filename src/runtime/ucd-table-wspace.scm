@@ -30,7 +30,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define (ucd-wspace-value char)
+(define (char-whitespace? char)
   (char-in-set? char char-set:whitespace))
 
 (define-deferred char-set:whitespace

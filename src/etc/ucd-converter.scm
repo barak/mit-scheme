@@ -459,8 +459,10 @@ USA.
 	  (else (error "Unsupported metadata:" metadata)))))
 
 (define (code-generator:boolean prop-name metadata prop-alist proc-name)
-  (let ((char-set-name (symbol "char-set:" (metadata-full-name metadata))))
-    `((define (,proc-name char)
+  (declare (ignore proc-name))
+  (let* ((full-name (metadata-full-name metadata))
+	 (char-set-name (symbol "char-set:" full-name)))
+    `((define (,(symbol "char-" full-name "?") char)
 	(char-in-set? char ,char-set-name))
       (define-deferred ,char-set-name
 	(char-set*
