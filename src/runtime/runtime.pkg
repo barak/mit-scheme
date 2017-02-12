@@ -5071,13 +5071,7 @@ USA.
 	  *unparser-list-depth-limit*
 	  *unparser-radix*
 	  *unparser-string-length-limit*
-	  *unparser-table*
-	  error:not-unparser-state
-	  error:not-unparser-table
-	  guarantee-unparser-state
-	  guarantee-unparser-table
 	  ;; END deprecated bindings
-	  make-unparser-table
 	  param:unparse-abbreviate-quotations?
 	  param:unparse-compound-procedure-names?
 	  param:unparse-primitives-by-name?
@@ -5089,23 +5083,15 @@ USA.
 	  param:unparser-list-depth-limit
 	  param:unparser-radix
 	  param:unparser-string-length-limit
-	  param:unparser-table
-	  system-global-unparser-table
 	  unparse-char
 	  unparse-object
 	  unparse-string
-	  unparser-state/port
-	  unparser-state?
-	  unparser-table/copy
-	  unparser-table/entry
-	  unparser-table/set-entry!
-	  unparser-table?
 	  user-object-type
 	  with-current-unparser-state)
   (export (runtime boot-definitions)
 	  get-param:unparse-with-maximum-readability?)
-  (export (runtime record)
-	  rtd:unparser-state)
+  (export (runtime global-database)
+	  (unparser-state/port context-port))
   (export (runtime output-port)
 	  unparse-object/top-level)
   (export (runtime pretty-printer)
@@ -5115,7 +5101,8 @@ USA.
 	  unparse-list/prefix-pair?
 	  unparse-list/unparser
 	  unparse-vector/unparser)
-  (initialization (initialize-package!)))
+  (export (runtime record)
+	  (rtd:unparser-state <context>)))
 
 (define-package (runtime unsyntaxer)
   (files "unsyn")

@@ -346,7 +346,6 @@ USA.
 ;;; To mimic UNPARSE-RECORD.  Dunno whether anyone cares.
 
 (define (unparse-record-entity state entity)
-  (guarantee-unparser-state state 'UNPARSE-RECORD-ENTITY)
   (if (entity? entity)
       (guarantee-record (entity-extra entity) 'UNPARSE-RECORD-ENTITY)
       (error:wrong-type-argument entity "record entity"
