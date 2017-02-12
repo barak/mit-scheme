@@ -62,6 +62,7 @@ USA.
 (define param:unparser-string-length-limit)
 (define param:unparser-table)
 
+(define param:char-set)
 (define param:default-unparser-state)
 (define param:dispatch-table)
 (define param:environment)
@@ -120,6 +121,7 @@ USA.
 	(make-unsettable-parameter system-global-unparser-table
 				   unparser-table-converter))
 
+  (set! param:char-set (make-unsettable-parameter #f))
   (set! param:default-unparser-state (make-unsettable-parameter #f))
   (set! param:dispatch-table (make-unsettable-parameter #f))
   (set! param:environment (make-unsettable-parameter #f))
@@ -317,7 +319,9 @@ USA.
 			     (unparser-table/dispatch-vector
 			      (let ((table (get-param:unparser-table)))
 				(guarantee-unparser-table table #f)
-				table))))
+				table)))
+		       (cons param:char-set
+			     (textual-port-char-set port)))
     (lambda ()
       (*unparse-object object))))
 
@@ -357,6 +361,9 @@ USA.
 (define (*unparse-readable-hash object)
   (*unparse-string "#@")
   (*unparse-hash object))
+
+(define (allowed-char? char)
+  (char-in-set? char (param:char-set)))
 
 ;; Values to use while unparsing within brackets.
 (define within-brackets-list-breadth-limit 5)
@@ -489,57 +496,41 @@ USA.
      (*unparse-string "#[keyword ")
      (unparse-symbol-name s)
      (*unparse-char #\]))))
-
+
 (define (unparse-symbol-name s)
-  (if (or (ustring-find-first-char-in-set
-           s
-           (if (get-param:parser-fold-case? (param:environment))
-               canon-symbol-quoted
-               non-canon-symbol-quoted))
-          (fix:= (ustring-length s) 0)
-          (and (char-set-member? char-set/number-leaders (ustring-ref s 0))
-               (string->number s))
-          (and (fix:> (ustring-length s) 1)
-               (or (looks-special? s)
-                   (looks-like-keyword? s)))
-          (ustring=? s "."))
+  (if (and (fix:> (ustring-length s) 0)
+	   (not (ustring=? s "."))
+	   (not (ustring-prefix? "#" s))
+	   (char-in-set? (ustring-ref s 0) char-set:symbol-initial)
+	   (ustring-every (symbol-name-no-quoting-predicate) s)
+	   (not (case (get-param:parser-keyword-style (param:environment))
+		  ((PREFIX) (ustring-prefix? ":" s))
+		  ((SUFFIX) (ustring-suffix? ":" s))
+		  (else #f)))
+	   (not (string->number s)))
+      (*unparse-string s)
       (begin
         (*unparse-char #\|)
-        (let ((end (ustring-length s)))
-          (let loop ((start 0))
-            (if (fix:< start end)
-                (let ((i
-                       (ustring-find-first-char-in-set
-                        s char-set/symbol-quotes start end)))
-                  (if i
-                      (begin
-                        (*unparse-substring s start i)
-                        (*unparse-char #\\)
-                        (*unparse-char (ustring-ref s i))
-                        (loop (fix:+ i 1)))
-                      (*unparse-substring s start end))))))
-        (*unparse-char #\|))
-      (*unparse-string s)))
+	(ustring-for-each unparse-string-char s)
+        (*unparse-char #\|))))
 
-(define (looks-special? string)
-  (char=? #\# (ustring-ref string 0)))
-
-(define (looks-like-keyword? string)
-  (case (get-param:parser-keyword-style (param:environment))
-    ((PREFIX)
-     (char=? #\: (ustring-ref string 0)))
-    ((SUFFIX)
-     (char=? #\: (ustring-ref string (fix:- (ustring-length string) 1))))
-    (else #f)))
-
-(define (unparse/character character)
-  (if (or (param:slashify?)
-          (not (ascii-char? character)))
+(define (symbol-name-no-quoting-predicate)
+  (conjoin (char-set-predicate
+	    (if (get-param:parser-fold-case? (param:environment))
+		char-set:folded-symbol-constituent
+		char-set:symbol-constituent))
+	   allowed-char?))
+
+(define (unparse/character char)
+  (if (param:slashify?)
       (begin
         (*unparse-string "#\\")
-        (*unparse-string (char->name character #t)))
-      (*unparse-char character)))
-
+	(if (and (char-in-set? char char-set:normal-printing)
+		 (allowed-char? char))
+	    (*unparse-char char)
+	    (*unparse-string (char->name char))))
+      (*unparse-char char)))
+
 (define (unparse/string string)
   (if (param:slashify?)
       (let* ((end (ustring-length string))
@@ -551,28 +542,41 @@ USA.
           (*unparse-char #\")
 	  (do ((index 0 (fix:+ index 1)))
 	      ((not (fix:< index end*)))
-	    (if (fix:< index end)
-		(let ((char (ustring-ref string index)))
-		  (if (char-set-member? string-quoted char)
-		      (begin
-			(*unparse-char #\\)
-			(case char
-			  ((#\bel) (*unparse-char #\a))
-			  ((#\bs) (*unparse-char #\b))
-			  ((#\tab) (*unparse-char #\t))
-			  ((#\newline) (*unparse-char #\n))
-			  ((#\return) (*unparse-char #\r))
-			  ((#\\ #\" #\|) (*unparse-char char))
-			  (else
-			   (*unparse-char #\x)
-			   (*unparse-string
-			    (number->string (char->integer char) 16))
-			   (*unparse-char #\;))))
-		      (*unparse-char char)))))
+	    (unparse-string-char (ustring-ref string index)))
           (if (< end* end)
               (*unparse-string "..."))
           (*unparse-char #\"))
       (*unparse-string string)))
+
+(define (unparse-string-char char)
+  (case char
+    ((#\bel)
+     (*unparse-char #\\)
+     (*unparse-char #\a))
+    ((#\bs)
+     (*unparse-char #\\)
+     (*unparse-char #\b))
+    ((#\newline)
+     (*unparse-char #\\)
+     (*unparse-char #\n))
+    ((#\return)
+     (*unparse-char #\\)
+     (*unparse-char #\r))
+    ((#\tab)
+     (*unparse-char #\\)
+     (*unparse-char #\t))
+    ((#\\ #\" #\|)
+     (*unparse-char #\\)
+     (*unparse-char char))
+    (else
+     (if (and (char-in-set? char char-set:normal-printing)
+	      (allowed-char? char))
+	 (*unparse-char char)
+	 (begin
+	   (*unparse-char #\\)
+	   (*unparse-char #\x)
+	   (*unparse-string (number->string (char->integer char) 16))
+	   (*unparse-char #\;))))))
 
 (define (unparse/bit-string bit-string)
   (*unparse-string "#*")

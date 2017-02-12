@@ -246,19 +246,15 @@ USA.
 			   (lose))
 		       bits))))))
 
-(define (char->name char #!optional slashify?)
+(define (char->name char)
   (let ((bits (char-bits char))
 	(code (char-code char)))
     (string-append
      (bucky-bits->prefix bits)
      (cond ((code->name code))
-	   ((not (fix:< code #x80))
-	    (string-append "x" (number->string code 16)))
-	   ((scalar-value-in-char-set? code char-set:graphic)
+	   ((and (fix:> code #x20)
+		 (fix:< code #x80))
 	    (string (integer->char code)))
-	   ((and (if (default-object? slashify?) #f slashify?)
-		 (not (fix:= 0 bits)))
-	    (string-append "\\" (string (integer->char code))))
 	   (else
 	    (string-append "x" (number->string code 16)))))))
 
