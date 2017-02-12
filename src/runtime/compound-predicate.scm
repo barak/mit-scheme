@@ -111,28 +111,6 @@ USA.
 		  'conjoin
 		  predicates))
 
-(define (is-list-of predicate)
-  (make-predicate (lambda (object)
-		    (and (list? object)
-			 (every predicate object)))
-		  'is-list-of
-		  (list predicate)))
-
-(define (is-non-empty-list-of predicate)
-  (make-predicate (lambda (object)
-		    (and (non-empty-list? object)
-			 (every predicate object)))
-		  'is-non-empty-list-of
-		  (list predicate)))
-
-(define (is-pair-of car-predicate cdr-predicate)
-  (make-predicate (lambda (object)
-		    (and (pair? object)
-			 (car-predicate (car object))
-			 (cdr-predicate (cdr object))))
-		  'is-pair-of
-		  (list car-predicate cdr-predicate)))
-
 (define (make-predicate datum-test operator operands)
   (if (every predicate? operands)
       (tag->predicate
@@ -153,25 +131,6 @@ USA.
      (set! define-compound-operator (table 'put!))
      unspecific)
    (register-predicate! compound-operator? 'compound-predicate '<= symbol?)))
-
-(add-boot-init!
- (lambda ()
-
-   (define (make-listish-memoizer)
-     (simple-list-memoizer eq?
-       (lambda (datum-test operator tags)
-	 (declare (ignore datum-test operator))
-	 tags)
-       make-compound-tag))
-
-   (define-compound-operator 'is-list-of
-     (make-listish-memoizer))
-
-   (define-compound-operator 'is-non-empty-list-of
-     (make-listish-memoizer))
-
-   (define-compound-operator 'is-pair-of
-     (make-listish-memoizer))))
 
 (add-boot-init!
  (lambda ()

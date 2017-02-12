@@ -31,7 +31,7 @@ USA.
 (define (make-template name pattern)
   (make-predicate-template name pattern
 			   predicate-tagging-strategy:always
-			   (lambda (tag) tag any-object?)))
+			   (lambda args args any-object?)))
 
 (define-test 'parametric-predicate-one-parameter
   (lambda ()

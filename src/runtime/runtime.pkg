@@ -1986,9 +1986,6 @@ USA.
 	  conjoin*
 	  disjoin
 	  disjoin*
-	  is-list-of
-	  is-non-empty-list-of
-	  is-pair-of
 	  no-object?)
   (export (runtime)
 	  compound-tag-operands
@@ -1999,6 +1996,9 @@ USA.
   (files "parametric-predicate")
   (parent (runtime))
   (export ()
+	  is-list-of
+	  is-non-empty-list-of
+	  is-pair-of
 	  make-predicate-template
           parameter-binding-name
           parameter-binding-polarity

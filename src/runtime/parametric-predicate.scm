@@ -104,7 +104,11 @@ USA.
 					   patterned-tags
 					   tag-name
 					   caller))
-	       (make-data-test (lambda () tag))
+	       (apply make-data-test
+		      (map-template-pattern pattern
+					    patterned-tags
+					    tag->predicate
+					    caller))
 	       tagging-strategy
 	       (get-template)
 	       (match-template-pattern pattern
@@ -191,7 +195,7 @@ USA.
 
 (define (template-pattern->names pattern)
   (map template-pattern-element-name pattern))
-
+
 (define (match-template-pattern pattern values value-predicate caller)
   (guarantee list? values caller)
   (if (not (= (length values) (length pattern)))
@@ -223,7 +227,7 @@ USA.
            (else (error:not-a template-pattern? pattern caller))))
        pattern
        object))
-
+
 (define-record-type <parameter-binding>
     (make-parameter-binding element value)
     parameter-binding?
@@ -243,7 +247,7 @@ USA.
        (parameter-binding-element binding))
       (list (parameter-binding-value binding))
       (parameter-binding-value binding)))
-
+
 (add-boot-init!
  (lambda ()
    (register-predicate! parametric-predicate? 'parametric-predicate
@@ -270,3 +274,38 @@ USA.
 				   tags2))))
 		   (parametric-tag-bindings tag1)
 		   (parametric-tag-bindings tag2)))))))
+
+(define is-list-of)
+(define is-non-empty-list-of)
+(define is-pair-of)
+(add-boot-init!
+ (lambda ()
+   (set! is-list-of
+	 (predicate-template-constructor
+	  (make-predicate-template 'is-list-of
+				   '((? elt-predicate))
+				   predicate-tagging-strategy:optional
+				   (lambda (elt-predicate)
+				     (lambda (object)
+				       (list-of-type? object elt-predicate))))))
+   (set! is-non-empty-list-of
+	 (predicate-template-constructor
+	  (make-predicate-template 'is-non-empty-list-of
+				   '((? elt-predicate))
+				   predicate-tagging-strategy:optional
+				   (lambda (elt-predicate)
+				     (lambda (object)
+				       (and (pair? object)
+					    (list-of-type? object
+							   elt-predicate)))))))
+   (set! is-pair-of
+	 (predicate-template-constructor
+	  (make-predicate-template 'is-non-empty-list-of
+				   '((? car-predicate) (? cdr-predicate))
+				   predicate-tagging-strategy:optional
+				   (lambda (car-predicate cdr-predicate)
+				     (lambda (object)
+				       (and (pair? object)
+					    (car-predicate (car object))
+					    (cdr-predicate (cdr object))))))))
+   unspecific))
