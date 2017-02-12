@@ -1465,7 +1465,11 @@ USA.
 	  char-set:not-numeric
 	  char-set:not-upper-case
 	  char-set:not-whitespace
-	  char-set:numeric
+	  char-set:numeric)
+  (export (runtime)
+	  char-set:folded-symbol-constituent
+	  char-set:folded-symbol-initial
+	  char-set:normal-printing
 	  char-set:symbol-constituent
 	  char-set:symbol-initial))
 

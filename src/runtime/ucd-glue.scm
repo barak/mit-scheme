@@ -96,5 +96,42 @@ USA.
 (define-deferred char-set:symbol-constituent
   (compute-char-set symbol-constituent?))
 
+(define-deferred char-set:folded-symbol-constituent
+  (char-set-difference char-set:symbol-constituent
+		       char-set:changes-when-case-folded))
+
 (define-deferred char-set:symbol-initial
   (compute-char-set (lambda (sv) (eq? #t (symbol-constituent? sv)))))
+
+(define-deferred char-set:folded-symbol-initial
+  (char-set-difference char-set:symbol-initial
+		       char-set:changes-when-case-folded))
+
+(define-deferred char-set:normal-printing
+  (compute-char-set
+   (lambda (sv)
+     (case (unicode-code-point-general-category sv)
+       ((letter:uppercase
+	 letter:lowercase
+	 letter:titlecase
+	 letter:modifier
+	 letter:other
+	 mark:nonspacing
+	 mark:spacing-combining
+	 mark:enclosing
+	 number:decimal-digit
+	 number:letter
+	 number:other
+	 punctuation:connector
+	 punctuation:dash
+	 punctuation:open
+	 punctuation:close
+	 punctuation:initial-quote
+	 punctuation:final-quote
+	 punctuation:other
+	 symbol:math
+	 symbol:currency
+	 symbol:modifier
+	 symbol:other)
+	#t)
+       (else #f)))))
