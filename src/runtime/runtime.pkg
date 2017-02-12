@@ -1436,11 +1436,11 @@ USA.
 	  ucd-slc-value
 	  ucd-suc-value
 	  ucd-uc-value)
-  (export (runtime ucd-table-glue)
+  (export (runtime ucd-glue)
 	  ucd-nt-value))
 
-(define-package (runtime ucd-table-glue)
-  (files "ucd-table-glue")
+(define-package (runtime ucd-glue)
+  (files "ucd-glue")
   (parent (runtime))
   (export ()
 	  char-alphabetic?
