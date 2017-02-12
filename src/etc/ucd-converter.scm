@@ -390,6 +390,9 @@ USA.
 (define (generate-standard-property-tables)
   (for-each generate-property-table
 	    '("Alpha"
+	      "CWCF"
+	      "CWL"
+	      "CWU"
 	      "Lower"
 	      "Upper"
 	      "WSpace"
