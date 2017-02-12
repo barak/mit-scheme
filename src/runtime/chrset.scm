@@ -43,20 +43,10 @@ USA.
 ;;; However, CHAR-SET-MEMBER? only accepts scalar values.
 
 (define-record-type <char-set>
-    (%%make-char-set low high table)
+    (%make-char-set low high)
     char-set?
   (low %char-set-low)
-  (high %char-set-high)
-  ;; Backwards compatibility:
-  (table %char-set-table))
-
-(define (%make-char-set low high)
-  (%%make-char-set low high
-		   (let ((table (make-vector-8b #x100)))
-		     (do ((i 0 (fix:+ i 1)))
-			 ((not (fix:< i #x100)))
-		       (vector-8b-set! table i (if (%low-ref low i) 1 0)))
-		     table)))
+  (high %char-set-high))
 
 (define-integrable %low-length #x100)
 (define-integrable %low-limit #x800)
@@ -77,6 +67,15 @@ USA.
 
 (define %null-char-set
   (%make-char-set (%make-low 0) '#()))
+
+;; Backwards compatibility:
+(define (%char-set-table char-set)
+  (let ((table (make-vector-8b #x100))
+	(low (%char-set-low char-set)))
+    (do ((i 0 (fix:+ i 1)))
+	((not (fix:< i #x100)))
+      (vector-8b-set! table i (if (%low-ref low i) 1 0)))
+    table))
 
 (define (8-bit-char-set? char-set)
   (and (char-set? char-set)
