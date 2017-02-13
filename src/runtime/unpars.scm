@@ -433,7 +433,7 @@ USA.
       (unparse-symbol symbol context)
       (*unparse-with-brackets 'UNINTERNED-SYMBOL symbol context
         (lambda (context*)
-          (unparse-symbol symbol context)))))
+          (unparse-symbol symbol context*)))))
 
 (define (unparse-symbol symbol context)
   (if (keyword? symbol)
@@ -825,17 +825,17 @@ USA.
       (*unparse-object (assignment-name assignment) context*))))
 
 (define (unparse/definition definition context)
-  (*unparse-with-brackets 'DEFINITION definition
+  (*unparse-with-brackets 'DEFINITION definition context
     (lambda (context*)
       (*unparse-object (definition-name definition) context*))))
 
 (define (unparse/lambda lambda-object context)
-  (*unparse-with-brackets 'LAMBDA lambda-object
+  (*unparse-with-brackets 'LAMBDA lambda-object context
     (lambda (context*)
       (*unparse-object (lambda-name lambda-object) context*))))
 
 (define (unparse/variable variable context)
-  (*unparse-with-brackets 'VARIABLE variable
+  (*unparse-with-brackets 'VARIABLE variable context
     (lambda (context*)
       (*unparse-object (variable-name variable) context*))))
 
@@ -874,14 +874,14 @@ USA.
 			  (min length limit)
 			  length))))
                (unparse/flonum ((ucode-primitive floating-vector-ref) v 0)
-			       context)
+			       context*)
                (do ((i 1 (+ i 1)))
                    ((>= i limit))
-                 (*unparse-char #\space context)
+                 (*unparse-char #\space context*)
                  (unparse/flonum ((ucode-primitive floating-vector-ref) v i)
-				 context))
+				 context*))
                (if (< limit length)
-                   (*unparse-string " ..." context))))))))
+                   (*unparse-string " ..." context*))))))))
 
 (define (unparse/entity entity context)
 
