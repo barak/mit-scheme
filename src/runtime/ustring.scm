@@ -237,15 +237,15 @@ USA.
 		      strings))))))
 
 (define (utf32-string-downcase string)
-  (utf32-case-transform string char-downcase-full 'utf32-string-downcase))
+  (utf32-case-transform string char-downcase-full))
 
 (define (utf32-string-foldcase string)
-  (utf32-case-transform string char-foldcase-full 'utf32-string-foldcase))
+  (utf32-case-transform string char-foldcase-full))
 
 (define (utf32-string-upcase string)
-  (utf32-case-transform string char-upcase-full 'utf32-string-upcase))
+  (utf32-case-transform string char-upcase-full))
 
-(define (utf32-case-transform string transform caller)
+(define (utf32-case-transform string transform)
   (let ((chars
 	 (append-map transform
 		     (utf32-string->list string))))
