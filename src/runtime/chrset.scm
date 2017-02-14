@@ -89,7 +89,7 @@ USA.
 
 ;;;; Signal codecs
 
-;;; A signal is a list of integers in the range 0 <= N <= CHAR-CODE-LIMIT.  The
+;;; A signal is a list of integers in the range 0 <= N <= #x110000  The
 ;;; list has an even number of elements, and each element is strictly less than
 ;;; the succeeding element.  This is exactly the same format used for the HIGH
 ;;; vector, except in a list.
@@ -101,7 +101,7 @@ USA.
 		    (%signal->high signal low-limit))))
 
 (define (%choose-low-limit signal)
-  (let ((max-low-bytes (fix:quotient char-code-limit %high-bytes-per-cp)))
+  (let ((max-low-bytes (fix:quotient #x110000 %high-bytes-per-cp)))
     (let loop
 	((low-bytes 1)
 	 (best-low-bytes 0)
@@ -180,8 +180,8 @@ USA.
 	(if (fix:< i low-limit)
 	    (if (%low-ref low i)
 		(loop (fix:+ i 1))
-		(find-start i (cons* i start result)))
-	    (cons* low-limit start result))))
+		(find-start i (scons i start result)))
+	    (scons low-limit start result))))
 
     (find-start 0 '())))
 
@@ -199,46 +199,52 @@ USA.
 	     (fix:= (%high-ref high 0) (car result)))
 	(loop 1 (cdr result))
 	(loop 0 result))))
+
+(define-integrable (scons start end signal)
+  (cons start (cons end signal)))
 
-(define (make-signal-combiner p1 p2 p12)
+(define (make-signal-combiner p0 p1 p2 p3)
+  (let ((ps (vector p0 p1 p2 p3)))
 
-  (define (loop sig1 sig2)
-    (cond ((null? sig1) (tail p2 sig2))
-	  ((null? sig2) (tail p1 sig1))
-	  (else
-	   (let ((s1 (car sig1))
-		 (e1 (cadr sig1))
-		 (s2 (car sig2))
-		 (e2 (cadr sig2)))
-	     (cond ((fix:<= e1 s2)
-		    (p1 s1 e1 (loop (cddr sig1) sig2)))
-		   ((fix:<= e2 s1)
-		    (p2 s2 e2 (loop sig1 (cddr sig2))))
-		   (else
-		    (let ((s (fix:max s1 s2))
-			  (e (fix:min e1 e2)))
-		      (let ((k
-			     (lambda ()
-			       (p12 s e
-				    (loop (maybe-push e e1 (cddr sig1))
-					  (maybe-push e e2 (cddr sig2)))))))
-			(cond ((fix:< s1 s) (p1 s1 s (k)))
-			      ((fix:< s2 s) (p2 s2 s (k)))
-			      (else (k)))))))))))
+    (define (loop v start sig1 sig2)
+      (cond ((not (pair? sig1)) (tail v 2 start sig2))
+	    ((not (pair? sig2)) (tail v 1 start sig1))
+	    (else
+	     (let ((end (fix:min (car sig1) (car sig2))))
+	       (process v start end
+			(cond ((fix:> (car sig2) end)
+			       (loop (fix:xor v 1)
+				     end
+				     (cdr sig1)
+				     sig2))
+			      ((fix:> (car sig1) end)
+			       (loop (fix:xor v 2)
+				     end
+				     sig1
+				     (cdr sig2)))
+			      (else
+			       (loop (fix:xor v 3)
+				     end
+				     (cdr sig1)
+				     (cdr sig2)))))))))
 
-  (define (tail p signal)
-    (if (pair? signal)
-	(p (car signal)
-	   (cadr signal)
-	   (tail p (cddr signal)))
-	'()))
+    (define (tail v vi start signal)
+      (if (pair? signal)
+	  (let ((end (car signal)))
+	    (process v start end
+		     (tail (fix:xor v vi)
+			   vi
+			   end
+			   (cdr signal))))
+	  '()))
 
-  (define (maybe-push s e signal)
-    (if (fix:< s e)
-	(cons* s e signal)
-	signal))
+    (define (process v start end signal)
+      (if (fix:< start end)
+	  ((vector-ref ps v) start end signal)
+	  signal))
 
-  loop)
+    (lambda (sig1 sig2)
+      (loop 0 0 sig1 sig2))))
 
 ;;;; Constructors
 
@@ -306,11 +312,11 @@ USA.
     (if (fix:< cp end)
 	(if (procedure cp)
 	    (find-end (fix:+ cp 1) end start signal)
-	    (find-start (fix:+ cp 1) end (cons* cp start signal)))
-	(cons* end start signal)))
+	    (find-start (fix:+ cp 1) end (scons cp start signal)))
+	(scons end start signal)))
 
   (%signal->char-set
-   (reverse! (find-start #xE000 char-code-limit
+   (reverse! (find-start #xE000 #x110000
 			 (find-start 0 #xD800 '())))))
 
 ;;;; Code-point lists
@@ -328,7 +334,7 @@ USA.
   (or (and (pair? object)
 	   (index-fixnum? (car object))
 	   (index-fixnum? (cdr object))
-           (fix:<= (cdr object) char-code-limit)
+           (fix:<= (cdr object) #x110000)
 	   (fix:<= (car object) (cdr object)))
       (unicode-code-point? object)))
 
@@ -359,7 +365,7 @@ USA.
   (let loop ((ranges ranges) (signal '()))
     (if (pair? ranges)
 	(loop (cdr ranges)
-	      (cons* (%range-end (car ranges))
+	      (scons (%range-end (car ranges))
 		     (%range-start (car ranges))
 		     signal))
 	(%signal->char-set (reverse! signal)))))
@@ -412,15 +418,23 @@ USA.
 ;;;; Combinations
 
 (define (char-set-invert char-set)
-  (%signal->char-set
-   (let loop ((start 0) (signal (%char-set->signal char-set)))
-     (if (pair? signal)
-	 (cons* start
-		(car signal)
+
+  (define (loop start signal)
+    (if (pair? signal)
+	(scons start
+	       (car signal)
 	       (loop (cadr signal) (cddr signal)))
-	 (if (fix:< start char-code-limit)
-	     (list start char-code-limit)
-	     '())))))
+	(if (fix:< start #x110000)
+	    (list start #x110000)
+	    '())))
+
+  (%signal->char-set
+   (let ((signal (%char-set->signal char-set)))
+     (if (pair? signal)
+	 (if (fix:< 0 (car signal))
+	     (loop 0 signal)
+	     (loop (cadr signal) (cddr signal)))
+	 '()))))
 
 (define (char-set-union . char-sets)
   (char-set-union* char-sets))
@@ -429,7 +443,7 @@ USA.
   (guarantee list? char-sets 'char-set-union*)
   (%signal->char-set
    (reduce ranges-union
-	   char-set:empty
+	   '()
 	   (map %char-set->signal char-sets))))
 
 (define (char-set-intersection . char-sets)
@@ -439,7 +453,7 @@ USA.
   (guarantee list? char-sets 'char-set-intersection*)
   (%signal->char-set
    (reduce ranges-intersection
-	   char-set:full
+	   '(0 #x110000)
 	   (map %char-set->signal char-sets))))
 
 (define (char-set-difference char-set . char-sets)
@@ -455,7 +469,7 @@ USA.
 (let ()
 
   (define (keep s e signal)
-    (cons* s e signal))
+    (scons s e signal))
 
   (define (drop s e signal)
     (declare (ignore s e))
@@ -467,46 +481,54 @@ USA.
 	(keep s e signal)))
 
   (set! ranges-union
-	(make-signal-combiner join join join))
+	(make-signal-combiner drop join join join))
   (set! ranges-intersection
-	(make-signal-combiner drop drop keep))
+	(make-signal-combiner drop drop drop keep))
   (set! ranges-difference
-	(make-signal-combiner keep drop drop))
+	(make-signal-combiner drop keep drop drop))
   unspecific)
-
-(define char-set:empty
-  (%signal->char-set '()))
-
-(define char-set:full
-  (%signal->char-set (list 0 char-code-limit)))
 
-;;;; Non-Unicode character sets
+;;;; Miscellaneous character sets
 
-(define-deferred char-set:unicode
-  (compute-char-set unicode-char-code?))
+(define char-ctl?)
+(define char-graphic?)
+(define char-set:ascii)
+(define char-set:ctls)
+(define char-set:graphic)
+(define char-set:newline)
+(define char-set:not-graphic)
+(define char-set:not-standard)
+(define char-set:standard)
+(define char-set:unicode)
+(define char-set:wsp)
+(define char-standard?)
+(define char-wsp?)
+(add-boot-init!
+ (lambda ()
+   (set! char-set:unicode (compute-char-set unicode-char-code?))
 
-(define-deferred char-set:graphic
-  (char-set* '((#x20 . #x7F) (#xA0 . #x100))))
-(define-deferred char-set:not-graphic (char-set-invert char-set:graphic))
-(define-deferred char-graphic? (char-set-predicate char-set:graphic))
+   (set! char-set:graphic (%signal->char-set '(#x20 #x7F #xA0 #x100)))
+   (set! char-set:not-graphic (char-set-invert char-set:graphic))
+   (set! char-graphic? (char-set-predicate char-set:graphic))
 
-(define-deferred char-set:standard
-  (char-set-union char-set:graphic (char-set #\newline)))
-(define-deferred char-set:not-standard (char-set-invert char-set:standard))
-(define-deferred char-standard? (char-set-predicate char-set:standard))
+   (set! char-set:standard
+	 (char-set-union char-set:graphic (char-set #\newline)))
+   (set! char-set:not-standard (char-set-invert char-set:standard))
+   (set! char-standard? (char-set-predicate char-set:standard))
 
-(define-deferred char-set:newline
-  (char-set #\newline))
+   (set! char-set:newline (char-set #\newline))
 
-;;; Used in RFCs:
+   ;; Used in RFCs:
 
-(define-deferred char-set:ascii (char-set* '((#x00 . #x80))))
+   (set! char-set:ascii (%signal->char-set '(#x00 #x80)))
 
-(define-deferred char-set:ctls (char-set* '((#x00 . #x20) #x7F)))
-(define-deferred char-ctl? (char-set-predicate char-set:ctls))
+   (set! char-set:ctls (%signal->char-set '(#x00 #x20 #x7F #x80)))
+   (set! char-ctl? (char-set-predicate char-set:ctls))
 
-(define-deferred char-set:wsp (char-set #\space #\tab))
-(define-deferred char-wsp? (char-set-predicate char-set:wsp))
+   (set! char-set:wsp (char-set #\space #\tab))
+   (set! char-wsp? (char-set-predicate char-set:wsp))
+
+   unspecific))
 
 ;;;; Backwards compatibility
 
