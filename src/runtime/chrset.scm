@@ -68,7 +68,6 @@ USA.
 			      (fix:lsh 1 (fix:and cp 7)))))
 
 (define-integrable %high-bytes-per-cp 3)
-(define-integrable %high-bytes-per-range 6)
 
 (define (%make-high n-cps)
   (make-bytevector (fix:* n-cps %high-bytes-per-cp)))
@@ -87,6 +86,232 @@ USA.
     (bytevector-u8-set! high i (fix:and cp #xFF))
     (bytevector-u8-set! high (fix:+ i 1) (fix:and (fix:lsh cp -8) #xFF))
     (bytevector-u8-set! high (fix:+ i 2) (fix:lsh cp -16))))
+
+;;;; Signal codecs
+
+;;; A signal is a list of integers in the range 0 <= N <= CHAR-CODE-LIMIT.  The
+;;; list has an even number of elements, and each element is strictly less than
+;;; the succeeding element.  This is exactly the same format used for the HIGH
+;;; vector, except in a list.
+
+;;; All char-sets are constructed by %SIGNAL->CHAR-SET.
+(define (%signal->char-set signal)
+  (let ((low-limit (%choose-low-limit signal)))
+    (%make-char-set (%signal->low signal low-limit)
+		    (%signal->high signal low-limit))))
+
+(define (%choose-low-limit signal)
+  (let ((max-low-bytes (fix:quotient char-code-limit %high-bytes-per-cp)))
+    (let loop
+	((low-bytes 1)
+	 (best-low-bytes 0)
+	 (best-total-bytes (%estimate-size 0 signal)))
+      (if (fix:< low-bytes max-low-bytes)
+	  (let ((total-bytes (%estimate-size low-bytes signal)))
+	    (if (fix:< total-bytes best-total-bytes)
+		(loop (fix:lsh low-bytes 1) low-bytes total-bytes)
+		(loop (fix:lsh low-bytes 1) best-low-bytes best-total-bytes)))
+	  (fix:* best-low-bytes %low-cps-per-byte)))))
+
+(define (%estimate-size low-bytes signal)
+  (fix:+ low-bytes
+	 (let ((min-cp (fix:* low-bytes %low-cps-per-byte)))
+	   (let loop ((signal signal))
+	     (if (pair? signal)
+		 (if (fix:< (cadr signal) min-cp)
+		     (loop (cddr signal))
+		     (fix:* (length signal) %high-bytes-per-cp))
+		 0)))))
+
+(define (%signal->low signal low-limit)
+  (let ((low (%make-low low-limit)))
+
+    (define (loop signal)
+      (if (pair? signal)
+	  (let ((start (car signal))
+		(end (cadr signal)))
+	    (cond ((fix:<= end low-limit)
+		   (set-range! start end)
+		   (loop (cddr signal)))
+		  ((fix:< start low-limit)
+		   (set-range! start low-limit))))))
+
+    (define (set-range! start end)
+      (do ((i start (fix:+ i 1)))
+	  ((not (fix:< i end)))
+	(%low-set! low i)))
+
+    (loop signal)
+    low))
+
+(define (%signal->high signal low-limit)
+
+  (define (skip-low signal)
+    (cond ((not (pair? signal)) '())
+	  ((fix:<= (cadr signal) low-limit) (skip-low (cddr signal)))
+	  ((fix:< (car signal) low-limit) (cons low-limit (cdr signal)))
+	  (else signal)))
+
+  (let ((signal (skip-low signal)))
+    (let ((high (%make-high (length signal))))
+      (do ((signal signal (cdr signal))
+	   (i 0 (fix:+ i 1)))
+	  ((not (pair? signal)))
+	(%high-set! high i (car signal)))
+      high)))
+
+(define (%char-set->signal char-set)
+  (reverse!
+   (%high->signal (%char-set-high char-set)
+		  (%low->signal (%char-set-low char-set)))))
+
+(define (%low->signal low)
+  (let ((low-limit (%low-limit low)))
+
+    (define (find-start i result)
+      (if (fix:< i low-limit)
+	  (if (%low-ref low i)
+	      (find-end i result)
+	      (find-start (fix:+ i 1) result))
+	  result))
+
+    (define (find-end start result)
+      (let loop ((i (fix:+ start 1)))
+	(if (fix:< i low-limit)
+	    (if (%low-ref low i)
+		(loop (fix:+ i 1))
+		(find-start i (cons* i start result)))
+	    (cons* low-limit start result))))
+
+    (find-start 0 '())))
+
+(define (%high->signal high result)
+  (let ((n (%high-length high)))
+
+    (define (loop i result)
+      (if (fix:< i n)
+	  (loop (fix:+ i 1)
+		(cons (%high-ref high i) result))
+	  result))
+
+    (if (and (fix:> n 0)
+	     (pair? result)
+	     (fix:= (%high-ref high 0) (car result)))
+	(loop 1 (cdr result))
+	(loop 0 result))))
+
+(define (make-signal-combiner p1 p2 p12)
+
+  (define (loop sig1 sig2)
+    (cond ((null? sig1) (tail p2 sig2))
+	  ((null? sig2) (tail p1 sig1))
+	  (else
+	   (let ((s1 (car sig1))
+		 (e1 (cadr sig1))
+		 (s2 (car sig2))
+		 (e2 (cadr sig2)))
+	     (cond ((fix:<= e1 s2)
+		    (p1 s1 e1 (loop (cddr sig1) sig2)))
+		   ((fix:<= e2 s1)
+		    (p2 s2 e2 (loop sig1 (cddr sig2))))
+		   (else
+		    (let ((s (fix:max s1 s2))
+			  (e (fix:min e1 e2)))
+		      (let ((k
+			     (lambda ()
+			       (p12 s e
+				    (loop (maybe-push e e1 (cddr sig1))
+					  (maybe-push e e2 (cddr sig2)))))))
+			(cond ((fix:< s1 s) (p1 s1 s (k)))
+			      ((fix:< s2 s) (p2 s2 s (k)))
+			      (else (k)))))))))))
+
+  (define (tail p signal)
+    (if (pair? signal)
+	(p (car signal)
+	   (cadr signal)
+	   (tail p (cddr signal)))
+	'()))
+
+  (define (maybe-push s e signal)
+    (if (fix:< s e)
+	(cons* s e signal)
+	signal))
+
+  loop)
+
+;;;; Constructors
+
+(define (char-set . chars)
+  (char-set* chars))
+
+(define (char-set* cpl)
+  (guarantee-list-of cpl-element? cpl 'char-set*)
+  (char-set-union* (%cpl->char-sets cpl)))
+
+(define (%cpl->char-sets cpl)
+  (let loop ((cpl cpl) (ranges '()) (char-sets '()))
+    (cond ((not (pair? cpl))
+	   (cons (%ranges->char-set (%normalize-ranges ranges))
+		 char-sets))
+	  ((%cpl-element->ranges (car cpl))
+	   => (lambda (ranges*)
+		(loop (cdr cpl)
+		      (append ranges* ranges)
+		      char-sets)))
+	  ((char-set? (car cpl))
+	   (loop (cdr cpl)
+		 ranges
+		 (cons (car cpl) char-sets)))
+	  (else
+	   (error:not-a cpl-element? (car cpl))))))
+
+(define (%cpl-element->ranges elt)
+  (cond ((%range? elt) (list elt))
+	((unicode-char? elt) (list (char->integer elt)))
+	((ustring? elt) (map char->integer (ustring->list elt)))
+	(else #f)))
+
+(define (%normalize-ranges ranges)
+  (let ((ranges
+	 (filter! (lambda (range)
+		    (fix:< (%range-start range)
+			   (%range-end range)))
+		  (sort ranges %range<?))))
+    (if (pair? ranges)
+	(let loop ((ranges ranges))
+	  (if (pair? (cdr ranges))
+	      (let ((s1 (%range-start (car ranges)))
+		    (e1 (%range-end (car ranges)))
+		    (s2 (%range-start (cadr ranges)))
+		    (e2 (%range-end (cadr ranges))))
+		(if (fix:< e1 s2)
+		    (loop (cdr ranges))
+		    (begin
+		      (set-car! ranges (%make-range s1 (fix:max e1 e2)))
+		      (set-cdr! ranges (cddr ranges))
+		      (loop ranges)))))))
+    ranges))
+
+(define (compute-char-set procedure)
+
+  (define (find-start cp end signal)
+    (if (fix:< cp end)
+	(if (procedure cp)
+	    (find-end (fix:+ cp 1) end cp signal)
+	    (find-start (fix:+ cp 1) end signal))
+	signal))
+
+  (define (find-end cp end start signal)
+    (if (fix:< cp end)
+	(if (procedure cp)
+	    (find-end (fix:+ cp 1) end start signal)
+	    (find-start (fix:+ cp 1) end (cons* cp start signal)))
+	(cons* end start signal)))
+
+  (%signal->char-set
+   (reverse! (find-start #xE000 char-code-limit
+			 (find-start 0 #xD800 '())))))
 
 ;;;; Code-point lists
 
@@ -121,118 +346,6 @@ USA.
   (if (pair? range)
       (cdr range)
       (fix:+ range 1)))
-
-;;;; Convert char-set to code-point list
-
-(define (char-set->code-points char-set)
-  (guarantee char-set? char-set 'char-set->code-points)
-  (reverse!
-   (%high->code-points (%char-set-high char-set)
-		       (%low->code-points (%char-set-low char-set)))))
-
-(define (%low->code-points low)
-  (let ((low-limit (fix:* 8 (bytevector-length low))))
-
-    (define (find-start i result)
-      (if (fix:< i low-limit)
-	  (if (%low-ref low i)
-	      (find-end i result)
-	      (find-start (fix:+ i 1) result))
-	  result))
-
-    (define (find-end start result)
-      (let loop ((i (fix:+ start 1)))
-	(if (fix:< i low-limit)
-	    (if (%low-ref low i)
-		(loop (fix:+ i 1))
-		(find-start i (cons (%make-range start i) result)))
-	    (cons (%make-range start i) result))))
-
-    (find-start 0 '())))
-
-(define (%high->code-points high result)
-  (let ((n (%high-length high)))
-    (define (loop i result)
-      (if (fix:< i n)
-	  (loop (fix:+ i 2)
-		(cons (%make-range (%high-ref high i)
-				   (%high-ref high (fix:+ i 1)))
-		      result))
-	  result))
-
-    (if (and (fix:> n 0)
-	     (pair? result)
-	     (fix:= (%high-ref high 0)
-		    (%range-end (car result))))
-	(loop 2
-	      (cons (%make-range (%range-start (car result))
-				 (%high-ref high 1))
-		    (cdr result)))
-	(loop 0 result))))
-
-;;;; General char-set constructor
-
-(define (char-set . chars)
-  (char-set* chars))
-
-(define (char-set* cpl)
-  (guarantee-list-of cpl-element? cpl 'char-set*)
-  (char-set-union* (%cpl->char-sets cpl)))
-
-(define (%cpl->char-sets cpl)
-  (let loop ((cpl cpl) (ranges '()) (char-sets '()))
-    (cond ((not (pair? cpl))
-	   (cons (%ranges->char-set (%canonicalize-ranges ranges))
-		 char-sets))
-	  ((%cpl-element->ranges (car cpl))
-	   => (lambda (ranges*)
-		(loop (cdr cpl)
-		      (append ranges* ranges)
-		      char-sets)))
-	  ((char-set? (car cpl))
-	   (loop (cdr cpl)
-		 ranges
-		 (cons (car cpl) char-sets)))
-	  (else
-	   (error:not-a cpl-element? (car cpl))))))
-
-(define (%cpl-element->ranges elt)
-  (cond ((%range? elt) (list elt))
-	((unicode-char? elt) (list (char->integer elt)))
-	((ustring? elt) (map char->integer (ustring->list elt)))
-	(else #f)))
-
-(define (%canonicalize-ranges ranges)
-  ;; Sorts ranges in order, deletes empty ranges, then merges adjacent ranges.
-  (let ((ranges
-	 (filter! (lambda (range)
-		    (fix:< (%range-start range)
-			   (%range-end range)))
-		  (sort ranges %range<?))))
-    (if (pair? ranges)
-	(let loop
-	    ((start1 (%range-start (car ranges)))
-	     (end1 (%range-end (car ranges)))
-	     (ranges (cdr ranges))
-	     (result '()))
-	  (if (pair? ranges)
-	      (let ((start2 (%range-start (car ranges)))
-		    (end2 (%range-end (car ranges)))
-		    (ranges (cdr ranges)))
-		(if (fix:< end1 start2)
-		    (loop start2
-			  end2
-			  ranges
-			  (cons (%make-range start1 end1)
-				result))
-		    (loop start1
-			  (fix:max end1 end2)
-			  ranges
-			  result)))
-	      (reverse!
-	       (cons (%make-range start1 end1)
-		     result))))
-	ranges)))
 
 (define (%range<? range1 range2)
   (or (fix:< (%range-start range1)
@@ -241,125 +354,24 @@ USA.
 		  (%range-start range2))
 	   (fix:< (%range-end range1)
 		  (%range-end range2)))))
-
+
 (define (%ranges->char-set ranges)
-  (let ((low-limit (%choose-low-limit ranges)))
-    (%make-char-set (%ranges->low ranges low-limit)
-		    (%ranges->high ranges low-limit))))
-
-(define (%choose-low-limit ranges)
-  (let ((max-low-bytes (fix:quotient char-code-limit %high-bytes-per-cp)))
-    (let loop
-	((low-bytes 1)
-	 (best-low-bytes 0)
-	 (best-total-bytes (%estimate-size 0 ranges)))
-      (if (fix:< low-bytes max-low-bytes)
-	  (let ((total-bytes (%estimate-size low-bytes ranges)))
-	    (if (fix:< total-bytes best-total-bytes)
-		(loop (fix:lsh low-bytes 1) low-bytes total-bytes)
-		(loop (fix:lsh low-bytes 1) best-low-bytes best-total-bytes)))
-	  (fix:* best-low-bytes 8)))))
-
-(define (%estimate-size low-bytes ranges)
-  (fix:+ low-bytes
-	 (let ((min-cp (fix:* 8 low-bytes)))
-	   (let loop ((ranges ranges))
-	     (if (pair? ranges)
-		 (let ((range (car ranges)))
-		   (if (fix:< (%range-end range) min-cp)
-		       (loop (cdr ranges))
-		       (fix:* (length ranges) %high-bytes-per-range)))
-		 0)))))
-
-(define (%ranges->low ranges low-limit)
-  (let ((low (%make-low low-limit)))
-
-    (define (loop ranges)
-      (if (pair? ranges)
-	  (let ((start (%range-start (car ranges)))
-		(end (%range-end (car ranges))))
-	    (cond ((fix:<= end low-limit)
-		   (set-range! start end)
-		   (loop (cdr ranges)))
-		  ((fix:< start low-limit)
-		   (set-range! start low-limit))))))
-
-    (define (set-range! start end)
-      (do ((i start (fix:+ i 1)))
-	  ((not (fix:< i end)))
-	(%low-set! low i)))
-
-    (loop ranges)
-    low))
-
-(define (%ranges->high ranges low-limit)
-
-  (define (skip-low ranges)
+  (let loop ((ranges ranges) (signal '()))
     (if (pair? ranges)
-	(let ((start (%range-start (car ranges)))
-	      (end (%range-end (car ranges))))
-	  (cond ((fix:<= end low-limit)
-		 (skip-low (cdr ranges)))
-		((fix:< start low-limit)
-		 (cons (%make-range low-limit end) (cdr ranges)))
-		(else
-		 ranges)))
-	'()))
-
-  (let ((ranges (skip-low ranges)))
-    (let ((high (%make-high (fix:* 2 (length ranges)))))
-      (do ((ranges ranges (cdr ranges))
-	   (i 0 (fix:+ i 2)))
-	  ((not (pair? ranges)))
-	(%high-set! high i (%range-start (car ranges)))
-	(%high-set! high (fix:+ i 1) (%range-end (car ranges))))
-      high)))
-
-(define char-set:empty
-  (%ranges->char-set '()))
-
-(define char-set:full
-  (%ranges->char-set (list (cons 0 char-code-limit))))
+	(loop (cdr ranges)
+	      (cons* (%range-end (car ranges))
+		     (%range-start (car ranges))
+		     signal))
+	(%signal->char-set (reverse! signal)))))
 
-(define (compute-char-set procedure)
-  (%ranges->char-set (%compute-ranges procedure)))
-
-(define (%compute-ranges procedure)
-  (append! (%compute-ranges-1 0 #xD800 procedure)
-	   (%compute-ranges-1 #xE000 char-code-limit procedure)))
-
-(define (%compute-ranges-1 start end procedure)
-
-  (define (find-start cp ranges)
-    (if (fix:< cp end)
-	(if (procedure cp)
-	    (find-end (fix:+ cp 1) cp ranges)
-	    (find-start (fix:+ cp 1) ranges))
-	(done ranges)))
-
-  (define (find-end cp start ranges)
-    (if (fix:< cp end)
-	(if (procedure cp)
-	    (find-end (fix:+ cp 1) start ranges)
-	    (find-start (fix:+ cp 1)
-			(cons (%make-range start cp) ranges)))
-	(done (cons (%make-range start end) ranges))))
-
-  (define (done ranges)
-    (reverse! ranges))
-
-  (find-start start '()))
-
-;;;; Predicates
+;;;; Accessors
 
 (define (char-in-set? char char-set)
   (guarantee unicode-char? char 'char-in-set?)
-  (guarantee char-set? char-set 'char-in-set?)
   (%scalar-value-in-char-set? (char->integer char) char-set))
 
 (define (scalar-value-in-char-set? sv char-set)
   (guarantee unicode-scalar-value? sv 'scalar-value-in-char-set?)
-  (guarantee char-set? char-set 'scalar-value-in-char-set?)
   (%scalar-value-in-char-set? sv char-set))
 
 (define (%scalar-value-in-char-set? sv char-set)
@@ -382,26 +394,32 @@ USA.
     (char-set-member? char-set char)))
 
 (define (char-set=? char-set . char-sets)
-  (guarantee char-set? char-set 'CHAR-SET=?)
-  (guarantee-list-of char-set? char-sets 'CHAR-SET=?)
   (every (lambda (char-set*)
-	   (%=? char-set* char-set))
+	   (and (bytevector=? (%char-set-low char-set*)
+			      (%char-set-low char-set))
+		(bytevector=? (%char-set-high char-set*)
+			      (%char-set-high char-set))))
 	 char-sets))
 
-(define (%=? c1 c2)
-  (and (bytevector=? (%char-set-low c1) (%char-set-low c2))
-       (bytevector=? (%char-set-high c1) (%char-set-high c2))))
+(define (char-set->code-points char-set)
+  (let loop ((signal (%char-set->signal char-set)) (ranges '()))
+    (if (pair? signal)
+	(loop (cddr signal)
+	      (cons (%make-range (car signal) (cadr signal))
+		    ranges))
+	(reverse! ranges))))
 
 ;;;; Combinations
 
 (define (char-set-invert char-set)
-  (%ranges->char-set
-   (let loop ((start 0) (rs (char-set->code-points char-set)))
-     (if (pair? rs)
-	 (cons (%make-range start (%range-start (car rs)))
-	       (loop (%range-end (car rs)) (cdr rs)))
+  (%signal->char-set
+   (let loop ((start 0) (signal (%char-set->signal char-set)))
+     (if (pair? signal)
+	 (cons* start
+		(car signal)
+	       (loop (cadr signal) (cddr signal)))
 	 (if (fix:< start char-code-limit)
-	     (list (%make-range start char-code-limit))
+	     (list start char-code-limit)
 	     '())))))
 
 (define (char-set-union . char-sets)
@@ -409,92 +427,58 @@ USA.
 
 (define (char-set-union* char-sets)
   (guarantee list? char-sets 'char-set-union*)
-  (%ranges->char-set
+  (%signal->char-set
    (reduce ranges-union
 	   char-set:empty
-	   (map char-set->code-points char-sets))))
+	   (map %char-set->signal char-sets))))
 
 (define (char-set-intersection . char-sets)
   (char-set-intersection* char-sets))
 
 (define (char-set-intersection* char-sets)
   (guarantee list? char-sets 'char-set-intersection*)
-  (%ranges->char-set
+  (%signal->char-set
    (reduce ranges-intersection
 	   char-set:full
-	   (map char-set->code-points char-sets))))
+	   (map %char-set->signal char-sets))))
 
 (define (char-set-difference char-set . char-sets)
   (guarantee list? char-sets 'char-set-difference)
-  (%ranges->char-set
+  (%signal->char-set
    (fold-left ranges-difference
-	      (char-set->code-points char-set)
-	      (map char-set->code-points char-sets))))
-
-(define (make-ranges-combiner p1 p2 p12)
-
-  (define (loop rs1 rs2)
-    (cond ((null? rs1) (tail p2 rs2))
-	  ((null? rs2) (tail p1 rs1))
-	  (else
-	   (let ((s1 (%range-start (car rs1)))
-		 (e1 (%range-end (car rs1)))
-		 (s2 (%range-start (car rs2)))
-		 (e2 (%range-end (car rs2))))
-	     (cond ((fix:<= e1 s2)
-		    (p1 s1 e1 (loop (cdr rs1) rs2)))
-		   ((fix:<= e2 s1)
-		    (p2 s2 e2 (loop rs1 (cdr rs2))))
-		   (else
-		    (let ((s (fix:max s1 s2))
-			  (e (fix:min e1 e2)))
-		      (let ((k
-			     (lambda ()
-			       (p12 s e
-				    (loop (maybe-push e e1 (cdr rs1))
-					  (maybe-push e e2 (cdr rs2)))))))
-			(cond ((fix:< s1 s) (p1 s1 s (k)))
-			      ((fix:< s2 s) (p2 s2 s (k)))
-			      (else (k)))))))))))
-
-  (define (tail p rs)
-    (if (null? rs)
-	'()
-	(p (%range-start (car rs))
-	   (%range-end (car rs))
-	   (tail p (cdr rs)))))
-
-  (define (maybe-push s e rs)
-    (if (fix:< s e)
-	(cons (%make-range s e) rs)
-	rs))
-
-  loop)
+	      (%char-set->signal char-set)
+	      (map %char-set->signal char-sets))))
 
 (define ranges-union)
 (define ranges-intersection)
 (define ranges-difference)
 (let ()
 
-  (define (keep s e rs)
-    (cons (%make-range s e) rs))
+  (define (keep s e signal)
+    (cons* s e signal))
 
-  (define (drop s e rs)
+  (define (drop s e signal)
     (declare (ignore s e))
-    rs)
+    signal)
 
-  (define (join s e rs)
-    (if (and (pair? rs) (fix:= e (%range-start (car rs))))
-	(keep s (%range-end (car rs)) (cdr rs))
-	(keep s e rs)))
+  (define (join s e signal)
+    (if (and (pair? signal) (fix:= e (car signal)))
+	(keep s (cadr signal) (cddr signal))
+	(keep s e signal)))
 
   (set! ranges-union
-	(make-ranges-combiner join join join))
+	(make-signal-combiner join join join))
   (set! ranges-intersection
-	(make-ranges-combiner drop drop keep))
+	(make-signal-combiner drop drop keep))
   (set! ranges-difference
-	(make-ranges-combiner keep drop drop))
+	(make-signal-combiner keep drop drop))
   unspecific)
+
+(define char-set:empty
+  (%signal->char-set '()))
+
+(define char-set:full
+  (%signal->char-set (list 0 char-code-limit)))
 
 ;;;; Non-Unicode character sets
 
@@ -558,8 +542,7 @@ USA.
   (char-set (cons start end)))
 
 (define (%char-set-table char-set)
-  (let ((table (make-vector-8b #x100))
-	(low (%char-set-low char-set)))
+  (let ((table (make-vector-8b #x100)))
     (do ((cp 0 (fix:+ cp 1)))
 	((not (fix:< cp #x100)))
       (vector-8b-set! table cp
