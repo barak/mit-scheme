@@ -40,7 +40,7 @@ USA.
 ;;; START and END points.  The vector always has an even number of points.
 ;;;
 ;;; For simplicity, character sets are allowed to contain any code point.
-;;; However, CHAR-SET-MEMBER? only accepts scalar values.
+;;; However, CHAR-IN-SET? only accepts Unicode characters.
 
 (define-record-type <char-set>
     (%make-char-set low high)
