@@ -256,16 +256,6 @@ USA.
 	    ((not (pair? chars)))
 	  (utf32-string-set! result i (car chars)))
 	result))))
-
-;; Incorrect, needs title-case implementation
-(define (utf32-string-capitalize string)
-  (let ((index (utf32-string-find-first-index char-alphabetic? string))
-	(string (utf32-string-copy string)))
-    (if index
-	(utf32-string-set! string
-			   index
-			   (char-upcase (utf32-string-ref string index))))
-    string))
 
 ;;;; String
 
@@ -661,11 +651,6 @@ USA.
   (cond ((legacy-string? string) (legacy-string-upcase string))
 	((utf32-string? string) (utf32-string-upcase string))
 	(else (error:not-a ustring? string 'ustring-upcase))))
-
-(define (ustring-capitalize string)
-  (cond ((legacy-string? string) (legacy-string-capitalize string))
-	((utf32-string? string) (utf32-string-capitalize string))
-	(else (error:not-a ustring? string 'ustring-capitalize))))
 
 (define (ustring-hash string #!optional modulus)
   (legacy-string-hash (string-for-primitive string) modulus))

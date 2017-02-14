@@ -1158,7 +1158,6 @@ USA.
 	  ustring-any
 	  ustring-append
 	  ustring-append*
-	  ustring-capitalize
 	  ustring-ci<=?
 	  ustring-ci<?
 	  ustring-ci=?
