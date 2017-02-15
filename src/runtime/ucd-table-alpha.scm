@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; UCD property: Alpha
+;;;; UCD property: Alpha (alphabetic)
 
 ;;; Generated from Unicode 9.0.0
 

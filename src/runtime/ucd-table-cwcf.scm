@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; UCD property: CWCF
+;;;; UCD property: CWCF (changes-when-case-folded)
 
 ;;; Generated from Unicode 9.0.0
 

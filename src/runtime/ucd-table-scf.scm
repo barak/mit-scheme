@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; UCD property: scf
+;;;; UCD property: scf (simple-case-folding)
 
 ;;; Generated from Unicode 9.0.0
 

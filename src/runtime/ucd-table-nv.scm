@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; UCD property: nv
+;;;; UCD property: nv (numeric-value)
 
 ;;; Generated from Unicode 9.0.0
 

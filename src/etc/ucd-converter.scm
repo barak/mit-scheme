@@ -149,7 +149,7 @@ USA.
 	(write-line ucd-version port)))
     (for-each (lambda (metadata)
 		(write-prop-file (metadata-name metadata) ucd-version document))
-	      all-ucd-prop-names)))
+              ucd-property-metadata)))
 
 (define (write-prop-file prop-name ucd-version document)
   (with-notification (lambda (port)
@@ -177,6 +177,9 @@ USA.
                 (loop)))))))
   (write-string ";;;; UCD property: " port)
   (write-string prop-name port)
+  (write-string " (" port)
+  (display (metadata-full-name (prop-metadata prop-name)) port)
+  (write-string ")" port)
   (newline port)
   (newline port)
   (write-string ";;; Generated from " port)
@@ -218,13 +221,11 @@ USA.
                         group-value)
                     alist
                     k))
-        ((char)
+        ((char reserved noncharacter surrogate)
          (k (cons (cons (cp-attribute elt)
                         (or (attribute-value name elt)
                             group-value))
                   alist)))
-        ((reserved noncharacter surrogate)
-         (k alist))
         (else
          (error "Unrecognized repertoire element:" elt)))))
 
@@ -253,20 +254,18 @@ USA.
                   (set-cdr! alist (cddr alist))
                   (loop alist))
                 (loop (cdr alist))))))
-    (insert-undefined-ranges sorted)))
+    (detect-undefined-ranges sorted)))
 
-(define (insert-undefined-ranges alist)
+(define (detect-undefined-ranges alist)
   (let loop ((alist alist) (last-end 0))
     (if (pair? alist)
-        (let* ((cpr (caar alist))
-               (tail (cons (car alist) (loop (cdr alist) (cpr-end cpr)))))
+        (let* ((cpr (caar alist)))
           (if (< last-end (cpr-start cpr))
-              (cons (cons (make-cpr last-end (cpr-start cpr)) #f)
-                    tail)
-              tail))
+              (warn "Missing range:" (make-cpr last-end (cpr-start cpr))))
+          (loop (cdr alist) (cpr-end cpr)))
         (if (< last-end char-code-limit)
-            (list (cons (make-cpr last-end char-code-limit) #f))
-            '()))))
+            (warn "Missing range:" (make-cpr last-end char-code-limit)))))
+  alist)
 
 (define (repertoire-elts document)
   (xml-element-children

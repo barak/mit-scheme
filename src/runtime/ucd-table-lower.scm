@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; UCD property: Lower
+;;;; UCD property: Lower (lower-case)
 
 ;;; Generated from Unicode 9.0.0
 

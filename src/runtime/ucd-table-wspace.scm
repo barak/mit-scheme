@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; UCD property: WSpace
+;;;; UCD property: WSpace (whitespace)
 
 ;;; Generated from Unicode 9.0.0
 

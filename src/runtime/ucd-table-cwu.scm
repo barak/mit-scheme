@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; UCD property: CWU
+;;;; UCD property: CWU (changes-when-upper-cased)
 
 ;;; Generated from Unicode 9.0.0
 

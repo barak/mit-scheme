@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; UCD property: uc
+;;;; UCD property: uc (upper-case)
 
 ;;; Generated from Unicode 9.0.0
 
