@@ -236,7 +236,9 @@ USA.
 			   vi
 			   end
 			   (cdr signal))))
-	  '()))
+	  (if (fix:< start #x110000)
+	      (process v start #x110000 '())
+	      '())))
 
     (define (process v start end signal)
       (if (fix:< start end)
@@ -418,6 +420,9 @@ USA.
 ;;;; Combinations
 
 (define (char-set-invert char-set)
+  (%signal->char-set (signal-invert (%char-set->signal char-set))))
+
+(define (signal-invert signal)
 
   (define (loop start signal)
     (if (pair? signal)
@@ -425,16 +430,14 @@ USA.
 	       (car signal)
 	       (loop (cadr signal) (cddr signal)))
 	(if (fix:< start #x110000)
-	    (list start #x110000)
+	    (scons start #x110000 '())
 	    '())))
 
-  (%signal->char-set
-   (let ((signal (%char-set->signal char-set)))
-     (if (pair? signal)
-	 (if (fix:< 0 (car signal))
-	     (loop 0 signal)
-	     (loop (cadr signal) (cddr signal)))
-	 '()))))
+  (if (pair? signal)
+      (if (fix:< 0 (car signal))
+	  (loop 0 signal)
+	  (loop (cadr signal) (cddr signal)))
+      '()))
 
 (define (char-set-union . char-sets)
   (char-set-union* char-sets))
@@ -442,7 +445,7 @@ USA.
 (define (char-set-union* char-sets)
   (guarantee list? char-sets 'char-set-union*)
   (%signal->char-set
-   (reduce ranges-union
+   (reduce signal-union
 	   '()
 	   (map %char-set->signal char-sets))))
 
@@ -452,20 +455,20 @@ USA.
 (define (char-set-intersection* char-sets)
   (guarantee list? char-sets 'char-set-intersection*)
   (%signal->char-set
-   (reduce ranges-intersection
+   (reduce signal-intersection
 	   '(0 #x110000)
 	   (map %char-set->signal char-sets))))
 
 (define (char-set-difference char-set . char-sets)
   (guarantee list? char-sets 'char-set-difference)
   (%signal->char-set
-   (fold-left ranges-difference
+   (fold-left signal-difference
 	      (%char-set->signal char-set)
 	      (map %char-set->signal char-sets))))
 
-(define ranges-union)
-(define ranges-intersection)
-(define ranges-difference)
+(define signal-union)
+(define signal-intersection)
+(define signal-difference)
 (let ()
 
   (define (keep s e signal)
@@ -480,11 +483,11 @@ USA.
 	(keep s (cadr signal) (cddr signal))
 	(keep s e signal)))
 
-  (set! ranges-union
+  (set! signal-union
 	(make-signal-combiner drop join join join))
-  (set! ranges-intersection
+  (set! signal-intersection
 	(make-signal-combiner drop drop drop keep))
-  (set! ranges-difference
+  (set! signal-difference
 	(make-signal-combiner drop keep drop drop))
   unspecific)
 
