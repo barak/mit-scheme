@@ -208,52 +208,56 @@ USA.
 
 (define (make-signal-combiner combine)
 
-  (define (loop v start sig1 sig2)
-    (cond ((not (pair? sig1)) (tail v 2 start sig2))
-	  ((not (pair? sig2)) (tail v 1 start sig1))
+  (define (loop v start sig1 sig2 result)
+    (cond ((not (pair? sig1)) (tail v 2 start sig2 result))
+	  ((not (pair? sig2)) (tail v 1 start sig1 result))
 	  (else
 	   (let ((end (fix:min (car sig1) (car sig2))))
-	     (process v start end
-		      (cond ((fix:> (car sig2) end)
-			     (loop (fix:xor v 1)
-				   end
-				   (cdr sig1)
-				   sig2))
-			    ((fix:> (car sig1) end)
-			     (loop (fix:xor v 2)
-				   end
-				   sig1
-				   (cdr sig2)))
-			    (else
-			     (loop (fix:xor v 3)
-				   end
-				   (cdr sig1)
-				   (cdr sig2)))))))))
+	     (let ((result* (process v start end result)))
+	       (cond ((fix:> (car sig2) end)
+		      (loop (fix:xor v 1)
+			    end
+			    (cdr sig1)
+			    sig2
+			    result*))
+		     ((fix:> (car sig1) end)
+		      (loop (fix:xor v 2)
+			    end
+			    sig1
+			    (cdr sig2)
+			    result*))
+		     (else
+		      (loop (fix:xor v 3)
+			    end
+			    (cdr sig1)
+			    (cdr sig2)
+			    result*))))))))
 
-  (define (tail v vi start signal)
+  (define (tail v vi start signal result)
     (if (pair? signal)
 	(let ((end (car signal)))
-	  (process v start end
-		   (tail (fix:xor v vi)
-			 vi
-			 end
-			 (cdr signal))))
-	(if (fix:< start #x110000)
-	    (process v start #x110000 '())
-	    '())))
+	  (tail (fix:xor v vi)
+		vi
+		end
+		(cdr signal)
+		(process v start end result)))
+	(reverse!
+	 (if (fix:< start #x110000)
+	     (process v start #x110000 result)
+	     result))))
 
-  (define (process v start end signal)
+  (define (process v start end result)
     (if (and (fix:< start end)
 	     (combine (fix:= 1 (fix:and v 1))
 		      (fix:= 2 (fix:and v 2))))
-	(if (and (pair? signal)
-		 (fix:= end (car signal)))
-	    (scons start (cadr signal) (cddr signal))
-	    (scons start end signal))
-	signal))
+	(if (and (pair? result)
+		 (fix:= start (car result)))
+	    (rcons (cadr result) end (cddr result))
+	    (rcons start end result))
+	result))
 
   (lambda (sig1 sig2)
-    (loop 0 0 sig1 sig2)))
+    (loop 0 0 sig1 sig2 '())))
 
 ;;;; Constructors
 
