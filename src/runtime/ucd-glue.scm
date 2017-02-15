@@ -129,6 +129,7 @@ USA.
 	 punctuation:initial-quote
 	 punctuation:final-quote
 	 punctuation:other
+	 separator:space
 	 symbol:math
 	 symbol:currency
 	 symbol:modifier
