@@ -255,6 +255,12 @@ USA.
 	      (and (symbol? (vector-ref object 0))
 		   (package-name? (vector-ref object 1))
 		   (symbol? (vector-ref object 2))))
+	     ((fix:= (vector-length object) 4)
+	      (and (symbol? (vector-ref object 0))
+		   (package-name? (vector-ref object 1))
+		   (symbol? (vector-ref object 2))
+		   (or (eq? #f (vector-ref object 3))
+		       (eq? 'deprecated (vector-ref object 3)))))
 	     (else #f))))
 
 (define (load-description? object)
@@ -338,7 +344,7 @@ USA.
 	    ((fix:= i n))
 	  (let ((binding (vector-ref bindings i)))
 	    (link-variables (find-package-environment (vector-ref binding 1))
-			    (if (fix:= (vector-length binding) 3)
+			    (if (fix:>= (vector-length binding) 3)
 				(vector-ref binding 2)
 				(vector-ref binding 0))
 			    environment
@@ -351,7 +357,7 @@ USA.
 	    (let ((source-environment
 		   (find-package-environment (vector-ref binding 1)))
 		  (source-name
-		   (if (fix:= (vector-length binding) 3)
+		   (if (fix:>= (vector-length binding) 3)
 		       (vector-ref binding 2)
 		       (vector-ref binding 0))))
 	      (guarantee-binding source-environment source-name)

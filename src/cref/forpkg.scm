@@ -60,6 +60,18 @@ USA.
 	    (format-references port indentation width "Free References" #f
 	      (sort free-references reference<?))
 	    (set! output? #t))))
+    (let ((deprecated-references
+	   (append-map! (lambda (package)
+			  (filter (lambda (r)
+				    (let ((b (reference/binding r)))
+				      (and b (binding/deprecated? b))))
+				  (package/references package)))
+			packages)))
+      (if (pair? deprecated-references)
+	  (begin
+	    (format-references port indentation width "Deprecated References" #f
+	      (sort deprecated-references reference<?))
+	    (set! output? #t))))
     (receive (undefined multiple) (get-value-cells/unusual packages)
       (if (pair? undefined)
 	  (begin

@@ -116,7 +116,8 @@ USA.
   (value-cell #f read-only #t)
   (new? #f)
   (references '())
-  (links '()))
+  (links '())
+  (deprecated? #f))
 
 (define (make-binding package name value-cell new?)
   (let ((binding (%make-binding package name value-cell new?)))

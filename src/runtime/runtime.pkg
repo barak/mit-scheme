@@ -121,10 +121,11 @@ USA.
 (define-package (runtime boolean)
   (files "boole")
   (parent (runtime))
+  (export-deprecated ()			;ignored on 9.2 hosts
+	  guarantee-boolean)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  guarantee-boolean)
   (export ()
-	  ;; BEGIN deprecated bindings
-	  guarantee-boolean
-	  ;; END deprecated bindings
 	  (false? not)
 	  boolean/and
 	  boolean/or
@@ -139,11 +140,13 @@ USA.
 (define-package (runtime boot-definitions)
   (files "boot")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-unparser-method
-	  guarantee-unparser-method
-	  ;; END deprecated bindings
+	  guarantee-unparser-method)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-unparser-method
+	  guarantee-unparser-method)
+  (export ()
 	  bracketed-unparser-method
 	  default-object
 	  default-object?
@@ -184,8 +187,7 @@ USA.
 (define-package (runtime fixnum-arithmetic)
   (files "fixart")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  (largest-fixnum fix:largest-value)
 	  (smallest-fixnum fix:smallest-value)
 	  guarantee-fixnum
@@ -194,8 +196,18 @@ USA.
 	  guarantee-negative-fixnum
 	  guarantee-non-negative-fixnum
 	  guarantee-non-positive-fixnum
-	  guarantee-positive-fixnum
-	  ;; END deprecated bindings
+	  guarantee-positive-fixnum)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  (largest-fixnum fix:largest-value)
+	  (smallest-fixnum fix:smallest-value)
+	  guarantee-fixnum
+	  guarantee-index-fixnum
+	  guarantee-limited-index-fixnum
+	  guarantee-negative-fixnum
+	  guarantee-non-negative-fixnum
+	  guarantee-non-positive-fixnum
+	  guarantee-positive-fixnum)
+  (export ()
 	  (exact-integer? int:integer?)
 	  ->flonum
 	  fix:*
@@ -445,11 +457,13 @@ USA.
 (define-package (runtime miscellaneous-global)
   (files "global")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-hook-list
-	  guarantee-hook-list
-	  ;; END deprecated bindings
+	  guarantee-hook-list)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-hook-list
+	  guarantee-hook-list)
+  (export ()
 	  %exit
 	  %quit
 	  (*the-non-printing-object* unspecific)
@@ -635,8 +649,7 @@ USA.
 (define-package (runtime simple-file-ops)
   (files "sfile")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-mime-token
 	  error:not-mime-token-string
 	  error:not-mime-type
@@ -645,8 +658,18 @@ USA.
 	  guarantee-mime-token
 	  guarantee-mime-token-string
 	  guarantee-mime-type
-	  guarantee-mime-type-string
-	  ;; END deprecated bindings
+	  guarantee-mime-type-string)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-mime-token
+	  error:not-mime-token-string
+	  error:not-mime-type
+	  error:not-mime-type-string
+	  guarantee-init-file-specifier
+	  guarantee-mime-token
+	  guarantee-mime-token-string
+	  guarantee-mime-type
+	  guarantee-mime-type-string)
+  (export ()
 	  <mime-type>
 	  allocate-temporary-file
 	  associate-pathname-type-with-mime-type
@@ -710,8 +733,7 @@ USA.
 (define-package (runtime symbol)
   (files "symbol")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  (substring->symbol string->symbol)
 	  (symbol-append symbol)
 	  error:not-interned-symbol
@@ -720,8 +742,18 @@ USA.
 	  guarantee-interned-symbol
 	  guarantee-symbol
 	  guarantee-uninterned-symbol
-	  symbol-name
-	  ;; END deprecated bindings
+	  symbol-name)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  (substring->symbol string->symbol)
+	  (symbol-append symbol)
+	  error:not-interned-symbol
+	  error:not-symbol
+	  error:not-uninterned-symbol
+	  guarantee-interned-symbol
+	  guarantee-symbol
+	  guarantee-uninterned-symbol
+	  symbol-name)
+  (export ()
 	  intern
 	  intern-soft
 	  interned-symbol?
@@ -740,10 +772,11 @@ USA.
 (define-package (runtime microcode-data)
   (files "udata")
   (parent (runtime))
+  (export-deprecated ()			;ignored on 9.2 hosts
+	  guarantee-promise)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  guarantee-promise)
   (export ()
-	  ;; BEGIN deprecated bindings
-	  guarantee-promise
-	  ;; END deprecated bindings
 	  compiled-code-address->block
 	  compiled-code-address->offset
 	  compiled-code-address?
@@ -798,11 +831,13 @@ USA.
 (define-package (runtime vector)
   (files "vector")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  guarantee-vector
-	  guarantee-vector-of-unique-symbols
-	  ;; END deprecated bindings
+	  guarantee-vector-of-unique-symbols)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  guarantee-vector
+	  guarantee-vector-of-unique-symbols)
+  (export ()
 	  for-each-vector-element
 	  guarantee-subvector
 	  guarantee-vector-of-type
@@ -967,8 +1002,7 @@ USA.
 (define-package (runtime string)
   (files "string")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  (guarantee-vector-8b guarantee-string)
 	  (legacy-string string)
 	  (legacy-string->list string->list)
@@ -1016,8 +1050,57 @@ USA.
 	  vector-8b-find-previous-char
 	  vector-8b-find-previous-char-ci
 	  vector-8b-ref
-	  vector-8b-set!
-	  ;; END deprecated bindings
+	  vector-8b-set!)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  (guarantee-vector-8b guarantee-string)
+	  (legacy-string string)
+	  (legacy-string->list string->list)
+	  (legacy-string->vector string->vector)
+	  (legacy-string-append string-append)
+	  (legacy-string-capitalize string-capitalize)
+	  (legacy-string-ci<=? string-ci<=?)
+	  (legacy-string-ci<? string-ci<?)
+	  (legacy-string-ci=? string-ci=?)
+	  (legacy-string-ci>=? string-ci>=?)
+	  (legacy-string-ci>? string-ci>?)
+	  (legacy-string-copy string-copy)
+	  (legacy-string-copy! string-copy!)
+	  (legacy-string-downcase string-downcase)
+	  (legacy-string-fill! string-fill!)
+	  (legacy-string-for-each string-for-each)
+	  (legacy-string-hash string-hash)
+	  (legacy-string-length string-length)
+	  (legacy-string-map string-map)
+	  (legacy-string-ref string-ref)
+	  (legacy-string-set! string-set!)
+	  (legacy-string-upcase string-upcase)
+	  (legacy-string<=? string<=?)
+	  (legacy-string<? string<?)
+	  (legacy-string=? string=?)
+	  (legacy-string>=? string>=?)
+	  (legacy-string>? string>?)
+	  (legacy-string? string?)
+	  (legacy-substring substring)
+	  (list->legacy-string list->string)
+	  (make-legacy-string make-string)
+	  (set-vector-8b-length! set-string-length!)
+	  (vector-8b-length string-length)
+	  (vector-8b-maximum-length string-maximum-length)
+	  (vector-8b? string?)
+	  error:not-string
+	  guarantee-string
+	  guarantee-string-index
+	  hexadecimal->vector-8b
+	  make-vector-8b
+	  vector-8b->hexadecimal
+	  vector-8b-fill!
+	  vector-8b-find-next-char
+	  vector-8b-find-next-char-ci
+	  vector-8b-find-previous-char
+	  vector-8b-find-previous-char-ci
+	  vector-8b-ref
+	  vector-8b-set!)
+  (export ()
 	  ascii-string-copy
 	  burst-string
 	  camel-case-string->lisp
@@ -1206,10 +1289,11 @@ USA.
 (define-package (runtime bytevector)
   (files "bytevector")
   (parent (runtime))
+  (export-deprecated ()			;ignored on 9.2 hosts
+	  legacy-string->bytevector)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  legacy-string->bytevector)
   (export ()
-	  ;; BEGIN deprecated bindings
-	  legacy-string->bytevector
-	  ;; END deprecated bindings
 	  (byte? u8?)
 	  bytevector
 	  bytevector-append
@@ -1318,8 +1402,7 @@ USA.
 (define-package (runtime character)
   (files "char")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  (code->char integer->char)
 	  (error:not-wide-char error:not-unicode-char)
 	  (guarantee-wide-char guarantee-unicode-char)
@@ -1331,8 +1414,21 @@ USA.
 	  guarantee-char
 	  guarantee-radix
 	  guarantee-unicode-char
-	  guarantee-unicode-scalar-value
-	  ;; END deprecated bindings
+	  guarantee-unicode-scalar-value)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  (code->char integer->char)
+	  (error:not-wide-char error:not-unicode-char)
+	  (guarantee-wide-char guarantee-unicode-char)
+	  (wide-char? unicode-char?)
+	  error:not-char
+	  error:not-radix
+	  error:not-unicode-char
+	  error:not-unicode-scalar-value
+	  guarantee-char
+	  guarantee-radix
+	  guarantee-unicode-char
+	  guarantee-unicode-scalar-value)
+  (export ()
 	  8-bit-char?
 	  ascii-char?
 	  base-char?
@@ -1474,16 +1570,23 @@ USA.
 (define-package (runtime character-set)
   (files "chrset")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  (char-set->scalar-values char-set->code-points)
 	  (chars->char-set char-set*)
 	  (scalar-values->char-set char-set*)
 	  (well-formed-scalar-value-list? code-point-list?)
 	  char-set-member?
 	  error:not-8-bit-char-set
-	  guarantee-8-bit-char-set
-	  ;; END deprecated bindings
+	  guarantee-8-bit-char-set)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  (char-set->scalar-values char-set->code-points)
+	  (chars->char-set char-set*)
+	  (scalar-values->char-set char-set*)
+	  (well-formed-scalar-value-list? code-point-list?)
+	  char-set-member?
+	  error:not-8-bit-char-set
+	  guarantee-8-bit-char-set)
+  (export ()
 	  8-bit-char-set?
 	  ascii-range->char-set
 	  char-ctl?
@@ -1607,11 +1710,13 @@ USA.
 (define-package (runtime continuation)
   (files "contin")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-continuation
-	  guarantee-continuation
-	  ;; END deprecated bindings
+	  guarantee-continuation)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-continuation
+	  guarantee-continuation)
+  (export ()
 	  call-with-current-continuation
 	  continuation/block-thread-events?
 	  continuation/control-point
@@ -1684,13 +1789,17 @@ USA.
 (define-package (runtime date/time)
   (files "datime")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-decoded-time
 	  error:not-time-zone
 	  guarantee-decoded-time
-	  guarantee-time-zone
-	  ;; END deprecated bindings
+	  guarantee-time-zone)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-decoded-time
+	  error:not-time-zone
+	  guarantee-decoded-time
+	  guarantee-time-zone)
+  (export ()
 	  (decode-universal-time universal-time->local-decoded-time)
 	  (decoded-time->string decoded-time->rfc2822-string)
 	  (encode-universal-time decoded-time->universal-time)
@@ -1855,8 +1964,7 @@ USA.
 (define-package (runtime procedure)
   (files "uproc")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-compiled-procedure
 	  error:not-compound-procedure
 	  error:not-primitive-procedure
@@ -1868,8 +1976,21 @@ USA.
 	  guarantee-primitive-procedure
 	  guarantee-procedure
 	  guarantee-procedure-arity
-	  guarantee-thunk
-	  ;; END deprecated bindings
+	  guarantee-thunk)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-compiled-procedure
+	  error:not-compound-procedure
+	  error:not-primitive-procedure
+	  error:not-procedure
+	  error:not-procedure-arity
+	  error:not-thunk
+	  guarantee-compiled-procedure
+	  guarantee-compound-procedure
+	  guarantee-primitive-procedure
+	  guarantee-procedure
+	  guarantee-procedure-arity
+	  guarantee-thunk)
+  (export ()
 	  %entity-extra
 	  %entity-procedure
 	  %set-entity-extra!
@@ -2057,10 +2178,11 @@ USA.
 (define-package (runtime environment)
   (files "uenvir")
   (parent (runtime))
+  (export-deprecated ()			;ignored on 9.2 hosts
+	  guarantee-environment)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  guarantee-environment)
   (export ()
-	  ;; BEGIN deprecated bindings
-	  guarantee-environment
-	  ;; END deprecated bindings
 	  compiled-procedure/environment
 	  environment-arguments
 	  environment-assign!
@@ -2266,8 +2388,7 @@ USA.
 (define-package (runtime file-i/o-port)
   (files "fileio")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  call-with-exclusive-legacy-binary-output-file
 	  call-with-legacy-binary-append-file
 	  call-with-legacy-binary-input-file
@@ -2279,8 +2400,21 @@ USA.
 	  with-input-from-legacy-binary-file
 	  with-output-to-legacy-binary-file
 	  with-output-to-exclusive-file
-	  with-output-to-exclusive-legacy-binary-file
-	  ;; END deprecated bindings
+	  with-output-to-exclusive-legacy-binary-file)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  call-with-exclusive-legacy-binary-output-file
+	  call-with-legacy-binary-append-file
+	  call-with-legacy-binary-input-file
+	  call-with-legacy-binary-output-file
+	  open-exclusive-legacy-binary-output-file
+	  open-legacy-binary-i/o-file
+	  open-legacy-binary-input-file
+	  open-legacy-binary-output-file
+	  with-input-from-legacy-binary-file
+	  with-output-to-legacy-binary-file
+	  with-output-to-exclusive-file
+	  with-output-to-exclusive-legacy-binary-file)
+  (export ()
 	  call-with-append-file
 	  call-with-binary-append-file
 	  call-with-binary-input-file
@@ -2502,11 +2636,13 @@ USA.
   (parent (runtime))
   (import (runtime population)
 	  add-to-population!/unsafe)
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-hash-table
-	  guarantee-hash-table
-	  ;; END deprecated bindings
+	  guarantee-hash-table)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-hash-table
+	  guarantee-hash-table)
+  (export ()
 	  (eq-hash-table-type key-weak-eq-hash-table-type)
 	  (eqv-hash-table-type key-weak-eqv-hash-table-type)
 	  (hash-table-clear! hash-table/clear!)
@@ -2729,8 +2865,7 @@ USA.
 (define-package (runtime port)
   (files "port")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  (i/o-port-type? textual-i/o-port-type?)
 	  (input-port-type? textual-input-port-type?)
 	  (make-port make-textual-port)
@@ -2770,8 +2905,49 @@ USA.
 	  with-interaction-i/o-port
 	  with-notification-output-port
 	  with-output-to-port
-	  with-trace-output-port
-	  ;; END deprecated bindings
+	  with-trace-output-port)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  (i/o-port-type? textual-i/o-port-type?)
+	  (input-port-type? textual-input-port-type?)
+	  (make-port make-textual-port)
+	  (make-port-type make-textual-port-type)
+	  (output-port-type? textual-output-port-type?)
+	  (port-type/operation textual-port-type-operation)
+	  (port-type/operation-names textual-port-type-operation-names)
+	  (port-type/operations textual-port-type-operations)
+	  (port-type? textual-port-type?)
+	  (port/input-blocking-mode input-port-blocking-mode)
+	  (port/input-terminal-mode input-port-terminal-mode)
+	  (port/open? textual-port-open?)
+	  (port/operation textual-port-operation)
+	  (port/operation-names textual-port-operation-names)
+	  (port/output-blocking-mode output-port-blocking-mode)
+	  (port/output-terminal-mode output-port-terminal-mode)
+	  (port/set-input-blocking-mode set-input-port-blocking-mode!)
+	  (port/set-input-terminal-mode set-input-port-terminal-mode!)
+	  (port/set-output-blocking-mode set-output-port-blocking-mode!)
+	  (port/set-output-terminal-mode set-output-port-terminal-mode!)
+	  (port/state textual-port-type)
+	  (port/type textual-port-type)
+	  (port/with-input-blocking-mode with-input-port-blocking-mode)
+	  (port/with-input-terminal-mode with-input-port-terminal-mode)
+	  (port/with-output-blocking-mode with-output-port-blocking-mode)
+	  (port/with-output-terminal-mode with-output-port-terminal-mode)
+	  guarantee-i/o-port
+	  guarantee-input-port
+	  guarantee-output-port
+	  guarantee-port
+	  set-current-input-port!
+	  set-current-output-port!
+	  set-interaction-i/o-port!
+	  set-notification-output-port!
+	  set-trace-output-port!
+	  with-input-from-port
+	  with-interaction-i/o-port
+	  with-notification-output-port
+	  with-output-to-port
+	  with-trace-output-port)
+  (export ()
 	  ;; Temporary definition to satisfy R7RS
 	  ;; TODO(cph): provide a proper definition
 	  (current-error-port current-output-port)
@@ -2861,11 +3037,13 @@ USA.
 (define-package (runtime input-port)
   (files "input")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  make-eof-object
-	  read-substring!
-	  ;; END deprecated bindings
+	  read-substring!)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  make-eof-object
+	  read-substring!)
+  (export ()
 	  (discard-char read-char)
 	  (input-port/discard-char input-port/read-char)
 	  char-ready?
@@ -2896,11 +3074,13 @@ USA.
 (define-package (runtime output-port)
   (files "output")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  (flush-output flush-output-port)
-	  write-substring
-	  ;; END deprecated bindings
+	  write-substring)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  (flush-output flush-output-port)
+	  write-substring)
+  (export ()
 	  (write-shared write)
 	  (write-simple write)
 	  beep
@@ -2985,8 +3165,7 @@ USA.
 (define-package (runtime list)
   (files "list")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-alist
 	  error:not-circular-list
 	  error:not-dotted-list
@@ -3002,8 +3181,25 @@ USA.
 	  guarantee-list
 	  guarantee-pair
 	  guarantee-unique-keyword-list
-	  guarantee-weak-list
-	  ;; END deprecated bindings
+	  guarantee-weak-list)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-alist
+	  error:not-circular-list
+	  error:not-dotted-list
+	  error:not-keyword-list
+	  error:not-list
+	  error:not-pair
+	  error:not-unique-keyword-list
+	  error:not-weak-list
+	  guarantee-alist
+	  guarantee-circular-list
+	  guarantee-dotted-list
+	  guarantee-keyword-list
+	  guarantee-list
+	  guarantee-pair
+	  guarantee-unique-keyword-list
+	  guarantee-weak-list)
+  (export ()
 	  (improper-list? dotted-list?)
 	  (list-search-negative find-non-matching-item)
 	  (list-search-positive find-matching-item)
@@ -3180,13 +3376,17 @@ USA.
 (define-package (runtime lambda-list)
   (files "lambda-list")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-mit-lambda-list
 	  error:not-r4rs-lambda-list
 	  guarantee-mit-lambda-list
-	  guarantee-r4rs-lambda-list
-	  ;; END deprecated bindings
+	  guarantee-r4rs-lambda-list)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-mit-lambda-list
+	  error:not-r4rs-lambda-list
+	  guarantee-mit-lambda-list
+	  guarantee-r4rs-lambda-list)
+  (export ()
 	  lambda-tag:aux
 	  lambda-tag:key
 	  lambda-tag:optional
@@ -3386,8 +3586,7 @@ USA.
 (define-package (runtime number)
   (files "arith" "dragon4")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-complex
 	  error:not-exact
 	  error:not-exact-integer
@@ -3417,8 +3616,39 @@ USA.
 	  guarantee-number
 	  guarantee-positive
 	  guarantee-rational
-	  guarantee-real
-	  ;; END deprecated bindings
+	  guarantee-real)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-complex
+	  error:not-exact
+	  error:not-exact-integer
+	  error:not-exact-nonnegative-integer
+	  error:not-exact-positive-integer
+	  error:not-exact-rational
+	  error:not-inexact
+	  error:not-integer
+	  error:not-negative
+	  error:not-non-negative
+	  error:not-non-positive
+	  error:not-number
+	  error:not-positive
+	  error:not-rational
+	  error:not-real
+	  guarantee-complex
+	  guarantee-exact
+	  guarantee-exact-integer
+	  guarantee-exact-nonnegative-integer
+	  guarantee-exact-positive-integer
+	  guarantee-exact-rational
+	  guarantee-inexact
+	  guarantee-integer
+	  guarantee-negative
+	  guarantee-non-negative
+	  guarantee-non-positive
+	  guarantee-number
+	  guarantee-positive
+	  guarantee-rational
+	  guarantee-real)
+  (export ()
 	  (-1+ complex:-1+)
 	  (1+ complex:1+)
 	  (abs complex:abs)
@@ -3556,16 +3786,23 @@ USA.
 (define-package (runtime parser)
   (files "parse")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  (param:parser-canonicalize-symbols? param:parser-fold-case?)
 	  *parser-associate-positions?*
 	  *parser-atom-delimiters*
 	  *parser-canonicalize-symbols?*
 	  *parser-constituents*
 	  *parser-radix*
-	  *parser-table*
-	  ;; END deprecated bindings
+	  *parser-table*)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  (param:parser-canonicalize-symbols? param:parser-fold-case?)
+	  *parser-associate-positions?*
+	  *parser-atom-delimiters*
+	  *parser-canonicalize-symbols?*
+	  *parser-constituents*
+	  *parser-radix*
+	  *parser-table*)
+  (export ()
 	  define-bracketed-object-parser-method
 	  param:parser-associate-positions?
 	  param:parser-atom-delimiters
@@ -3610,11 +3847,13 @@ USA.
 (define-package (runtime parser-table)
   (files "partab")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-parser-table
-	  guarantee-parser-table
-	  ;; END deprecated bindings
+	  guarantee-parser-table)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-parser-table
+	  guarantee-parser-table)
+  (export ()
 	  make-parser-table
 	  parser-table/copy
 	  parser-table/entry
@@ -3627,11 +3866,13 @@ USA.
 (define-package (runtime pathname)
   (files "pathnm")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-pathname
-	  guarantee-pathname
-	  ;; END deprecated bindings
+	  guarantee-pathname)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-pathname
+	  guarantee-pathname)
+  (export ()
 	  *default-pathname-defaults*
 	  ->namestring
 	  ->pathname
@@ -3748,15 +3989,21 @@ USA.
 (define-package (runtime primitive-io)
   (files "io")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-channel
 	  error:not-directory-channel
 	  error:not-dld-handle
 	  guarantee-channel
 	  guarantee-directory-channel
-	  guarantee-dld-handle
-	  ;; END deprecated bindings
+	  guarantee-dld-handle)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-channel
+	  error:not-directory-channel
+	  error:not-dld-handle
+	  guarantee-channel
+	  guarantee-directory-channel
+	  guarantee-dld-handle)
+  (export ()
 	  all-dld-handles
 	  all-open-channels
 	  channel-blocking
@@ -3945,15 +4192,21 @@ USA.
 (define-package (runtime record)
   (files "record")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-list-of-unique-symbols
 	  error:not-record
 	  error:not-record-type
 	  guarantee-list-of-unique-symbols
 	  guarantee-record
-	  guarantee-record-type
-	  ;; END deprecated bindings
+	  guarantee-record-type)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-list-of-unique-symbols
+	  error:not-record
+	  error:not-record-type
+	  guarantee-list-of-unique-symbols
+	  guarantee-record
+	  guarantee-record-type)
+  (export ()
 	  %copy-record
 	  %make-record
 	  %record
@@ -4051,13 +4304,17 @@ USA.
 (define-package (runtime rep)
   (files "rep")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-cmdl
 	  error:not-repl
 	  guarantee-cmdl
-	  guarantee-repl
-	  ;; END deprecated bindings
+	  guarantee-repl)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-cmdl
+	  error:not-repl
+	  guarantee-cmdl
+	  guarantee-repl)
+  (export ()
 	  ->environment
 	  abort->nearest
 	  abort->previous
@@ -4672,11 +4929,13 @@ USA.
 (define-package (runtime stream)
   (files "stream")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-stream-pair
-	  guarantee-stream-pair
-	  ;; END deprecated bindings
+	  guarantee-stream-pair)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-stream-pair
+	  guarantee-stream-pair)
+  (export ()
 	  condition-type:illegal-stream-element
 	  empty-stream?
 	  head
@@ -4712,8 +4971,7 @@ USA.
 (define-package (runtime string-i/o-port)
   (files "stringio")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  (get-output-from-accumulator get-output-string!)
 	  (make-accumulator-output-port open-output-string)
 	  (string->input-port open-input-string)
@@ -4724,8 +4982,20 @@ USA.
 	  open-output-octets
 	  with-input-from-string
 	  with-output-to-string
-	  with-output-to-truncated-string
-	  ;; END deprecated bindings
+	  with-output-to-truncated-string)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  (get-output-from-accumulator get-output-string!)
+	  (make-accumulator-output-port open-output-string)
+	  (string->input-port open-input-string)
+	  (with-string-output-port call-with-output-string)
+	  call-with-input-octets
+	  call-with-output-octets
+	  open-input-octets
+	  open-output-octets
+	  with-input-from-string
+	  with-output-to-string
+	  with-output-to-truncated-string)
+  (export ()
 	  call-with-input-string
 	  call-with-output-string
 	  call-with-truncated-output-string
@@ -4741,15 +5011,21 @@ USA.
 (define-package (runtime syntax top-level)
   (files "syntax")
   (parent (runtime syntax))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-identifier
 	  error:not-syntactic-closure
 	  error:not-synthetic-identifier
 	  guarantee-identifier
 	  guarantee-syntactic-closure
-	  guarantee-synthetic-identifier
-	  ;; END deprecated bindings
+	  guarantee-synthetic-identifier)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-identifier
+	  error:not-syntactic-closure
+	  error:not-synthetic-identifier
+	  guarantee-identifier
+	  guarantee-syntactic-closure
+	  guarantee-synthetic-identifier)
+  (export ()
 	  <syntactic-closure>
 	  capture-syntactic-environment
 	  close-syntax
@@ -4827,11 +5103,13 @@ USA.
 (define-package (runtime syntax environment)
   (files "syntax-environment")
   (parent (runtime syntax))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-syntactic-environment
-	  guarantee-syntactic-environment
-	  ;; END deprecated bindings
+	  guarantee-syntactic-environment)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-syntactic-environment
+	  guarantee-syntactic-environment)
+  (export ()
 	  syntactic-environment?)
   (export (runtime syntax)
 	  ->syntactic-environment
@@ -5016,8 +5294,9 @@ USA.
 (define-package (runtime system-macros)
   (files "sysmac")
   (parent (runtime))
-  (export ()
-	  ;; deprecated:
+  (export-deprecated ()			;ignored on 9.2 hosts
+	  define-guarantee)
+  (export ()				;temporary duplicate for 9.2 hosts
 	  define-guarantee)
   (export (runtime)
 	  define-deferred
@@ -5056,8 +5335,7 @@ USA.
 (define-package (runtime unparser)
   (files "unpars")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  *unparse-abbreviate-quotations?*
 	  *unparse-compound-procedure-names?*
 	  *unparse-primitives-by-name?*
@@ -5068,8 +5346,20 @@ USA.
 	  *unparser-list-breadth-limit*
 	  *unparser-list-depth-limit*
 	  *unparser-radix*
-	  *unparser-string-length-limit*
-	  ;; END deprecated bindings
+	  *unparser-string-length-limit*)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  *unparse-abbreviate-quotations?*
+	  *unparse-compound-procedure-names?*
+	  *unparse-primitives-by-name?*
+	  *unparse-streams?*
+	  *unparse-uninterned-symbols-by-name?*
+	  *unparse-with-datum?*
+	  *unparse-with-maximum-readability?*
+	  *unparser-list-breadth-limit*
+	  *unparser-list-depth-limit*
+	  *unparser-radix*
+	  *unparser-string-length-limit*)
+  (export ()
 	  param:unparse-abbreviate-quotations?
 	  param:unparse-compound-procedure-names?
 	  param:unparse-primitives-by-name?
@@ -5155,10 +5445,11 @@ USA.
 (define-package (runtime thread)
   (files "thread-low" "thread")
   (parent (runtime))
+  (export-deprecated ()			;ignored on 9.2 hosts
+	  guarantee-thread)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  guarantee-thread)
   (export ()
-	  ;; BEGIN deprecated bindings
-	  guarantee-thread
-	  ;; END deprecated bindings
 	  assert-thread-mutex-owned
 	  block-thread-events
 	  condition-type:no-current-thread
@@ -5398,11 +5689,13 @@ USA.
 (define-package (runtime generic-procedure)
   (files "gentag" "gencache" "generic")
   (parent (runtime))
-  (export ()
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  ;; tag.scm:
-	  ;; BEGIN deprecated bindings
-	  guarantee-dispatch-tag
-	  ;; END deprecated bindings
+	  guarantee-dispatch-tag)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  ;; tag.scm:
+	  guarantee-dispatch-tag)
+  (export ()
 	  dispatch-tag-contents
 	  dispatch-tag?
 	  make-dispatch-tag
@@ -5541,11 +5834,13 @@ USA.
 (define-package (runtime regular-sexpression)
   (files "regsexp")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-compiled-regsexp
-	  guarantee-compiled-regsexp
-	  ;; END deprecated bindings
+	  guarantee-compiled-regsexp)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-compiled-regsexp
+	  guarantee-compiled-regsexp)
+  (export ()
 	  <compiled-regsexp>
 	  compile-regsexp
 	  compiled-regsexp?
@@ -5691,10 +5986,11 @@ USA.
 (define-package (runtime parser-buffer)
   (files "parser-buffer")
   (parent (runtime))
+  (export-deprecated ()			;ignored on 9.2 hosts
+	  (input-port->parser-buffer textual-input-port->parser-buffer))
+  (export ()				;temporary duplicate for 9.2 hosts
+	  (input-port->parser-buffer textual-input-port->parser-buffer))
   (export ()
-	  ;; BEGIN deprecated bindings
-	  (input-port->parser-buffer textual-input-port->parser-buffer)
-	  ;; END deprecated bindings
 	  *match-string
 	  *match-symbol
 	  *parse-string
@@ -5743,8 +6039,7 @@ USA.
 (define-package (runtime uri)
   (files "url")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-partial-uri
 	  error:not-uri-authority
 	  error:not-uri-host
@@ -5761,8 +6056,26 @@ USA.
 	  guarantee-uri-path
 	  guarantee-uri-port
 	  guarantee-uri-scheme
-	  guarantee-uri-userinfo
-	  ;; END deprecated bindings
+	  guarantee-uri-userinfo)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-partial-uri
+	  error:not-uri-authority
+	  error:not-uri-host
+	  error:not-uri-path
+	  error:not-uri-port
+	  error:not-uri-scheme
+	  error:not-uri-userinfo
+	  guarantee-absolute-uri
+	  guarantee-partial-uri
+	  guarantee-relative-uri
+	  guarantee-uri
+	  guarantee-uri-authority
+	  guarantee-uri-host
+	  guarantee-uri-path
+	  guarantee-uri-port
+	  guarantee-uri-scheme
+	  guarantee-uri-userinfo)
+  (export ()
 	  (url:decode-string decode-component)
 	  (url:match:escape matcher:pct-encoded)
 	  (url:parse:hostport parser:hostport)
@@ -5876,11 +6189,13 @@ USA.
 (define-package (runtime rfc2822-headers)
   (files "rfc2822-headers")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-rfc2822-header
-	  guarantee-rfc2822-header
-	  ;; END deprecated bindings
+	  guarantee-rfc2822-header)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-rfc2822-header
+	  guarantee-rfc2822-header)
+  (export ()
 	  all-rfc2822-headers
 	  char-set:rfc2822-name
 	  char-set:rfc2822-qtext
@@ -5903,8 +6218,7 @@ USA.
 (define-package (runtime http-syntax)
   (files "http-syntax")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-http-header
 	  error:not-http-status
 	  error:not-http-text
@@ -5916,8 +6230,21 @@ USA.
 	  guarantee-http-text
 	  guarantee-http-token
 	  guarantee-http-token-string
-	  guarantee-http-version
-	  ;; END deprecated bindings
+	  guarantee-http-version)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-http-header
+	  error:not-http-status
+	  error:not-http-text
+	  error:not-http-token
+	  error:not-http-token-string
+	  error:not-http-version
+	  guarantee-http-header
+	  guarantee-http-status
+	  guarantee-http-text
+	  guarantee-http-token
+	  guarantee-http-token-string
+	  guarantee-http-version)
+  (export ()
 	  <http-header>
 	  char-set:http-text
 	  char-set:http-token
@@ -5955,8 +6282,7 @@ USA.
 (define-package (runtime http-i/o)
   (files "httpio")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-http-message
 	  error:not-http-request
 	  error:not-http-request-uri
@@ -5970,8 +6296,23 @@ USA.
 	  guarantee-http-response
 	  guarantee-simple-http-request
 	  guarantee-simple-http-request-uri
-	  guarantee-simple-http-response
-	  ;; END deprecated bindings
+	  guarantee-simple-http-response)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-http-message
+	  error:not-http-request
+	  error:not-http-request-uri
+	  error:not-http-response
+	  error:not-simple-http-request
+	  error:not-simple-http-request-uri
+	  error:not-simple-http-response
+	  guarantee-http-message
+	  guarantee-http-request
+	  guarantee-http-request-uri
+	  guarantee-http-response
+	  guarantee-simple-http-request
+	  guarantee-simple-http-request-uri
+	  guarantee-simple-http-response)
+  (export ()
 	  http-message-body
 	  http-message-body-port
 	  http-message-header
@@ -6029,11 +6370,13 @@ USA.
 (define-package (runtime structure-parser)
   (files "structure-parser")
   (parent (runtime))
-  (export ()
-	  ;; BEGIN deprecated bindings
+  (export-deprecated ()			;ignored on 9.2 hosts
 	  error:not-structure-parser-values
-	  guarantee-structure-parser-values
-	  ;; END deprecated bindings
+	  guarantee-structure-parser-values)
+  (export ()				;temporary duplicate for 9.2 hosts
+	  error:not-structure-parser-values
+	  guarantee-structure-parser-values)
+  (export ()
 	  apply-list-parser
 	  apply-object-parser
 	  apply-vector-parser

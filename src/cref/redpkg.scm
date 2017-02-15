@@ -369,15 +369,25 @@ USA.
 		  (append! (package-description/file-cases package)
 			   (list (parse-file-case (cdr option))))))
 		((EXPORT)
+		 (let ((export
+			(if (and (pair? (cdr option))
+				 (eq? 'DEPRECATED (cadr option)))
+			    (parse-import/export (cddr option) #t)
+			    (parse-import/export (cdr option) #f))))
+		   (set-package-description/exports!
+		    package
+		    (append! (package-description/exports package)
+			     (list export)))))
+		((EXPORT-DEPRECATED)
 		 (set-package-description/exports!
 		  package
 		  (append! (package-description/exports package)
-			   (list (parse-import/export (cdr option))))))
+			   (list (parse-import/export (cdr option) #t)))))
 		((IMPORT)
 		 (set-package-description/imports!
 		  package
 		  (append! (package-description/imports package)
-			   (list (parse-import/export (cdr option))))))
+			   (list (parse-import/export (cdr option) #f)))))
 		((INITIALIZATION)
 		 (let ((initialization (parse-initialization (cdr option))))
 		   (if initialization
@@ -432,7 +442,7 @@ USA.
 	(warn "Illegal initialization/finalization:" initialization)
 	#f)))
 
-(define (parse-import/export object)
+(define (parse-import/export object deprecated?)
   (if (not (and (pair? object)
 		(check-list (cdr object)
 			    (lambda (item)
@@ -446,8 +456,8 @@ USA.
   (cons (parse-name (car object))
 	(map (lambda (entry)
 	       (if (pair? entry)
-		   (cons (car entry) (cadr entry))
-		   (cons entry entry)))
+		   (vector (car entry) (cadr entry) deprecated?)
+		   (vector entry entry deprecated?)))
 	     (cdr object))))
 
 (define (check-list items predicate)
@@ -551,7 +561,9 @@ USA.
 			     (vector-ref entry 2))))
 		    (link! package name
 			   external-package external-name
-			   package #f)))
+			   package #f
+			   (and (fix:= (vector-length entry) 4)
+				(vector-ref entry 3)))))
 		exports)))
 	  ;; Imported bindings.
 	  (for-each-vector-element (vector-ref desc 4)
@@ -563,7 +575,9 @@ USA.
 			 (vector-ref entry 2))))
 		(link! external-package external-name
 		       package (vector-ref entry 0)
-		       package #f)))))))))
+		       package #f
+		       (and (fix:= (vector-length entry) 4)
+			    (vector-ref entry 3)))))))))))
 
 (define (for-each-exported-name exports receiver)
   (for-each
@@ -602,21 +616,21 @@ USA.
 	      (append-map! (lambda (file-case)
 			     (append-map cdr (cdr file-case)))
 			   file-cases))))
-  (for-each (lambda (export)
-	      (let ((destination (get-package (car export) #t)))
-		(for-each (lambda (names)
-			    (link! package (cdr names)
-				   destination (car names)
-				   package #t))
-			  (cdr export))))
+  (for-each (lambda (name.exports)
+	      (let ((destination (get-package (car name.exports) #t)))
+		(for-each (lambda (export)
+			    (link! package (vector-ref export 1)
+				   destination (vector-ref export 0)
+				   package #t (vector-ref export 2)))
+			  (cdr name.exports))))
 	    (package-description/exports description))
-  (for-each (lambda (import)
-	      (let ((source (get-package (car import) #t)))
-		(for-each (lambda (names)
-			    (link! source (cdr names)
-				   package (car names)
-				   package #t))
-			  (cdr import))))
+  (for-each (lambda (name.imports)
+	      (let ((source (get-package (car name.imports) #t)))
+		(for-each (lambda (import)
+			    (link! source (vector-ref import 1)
+				   package (vector-ref import 0)
+				   package #t #f))
+			  (cdr name.imports))))
 	    (package-description/imports description)))
 
 (define primitive-package-name
@@ -639,7 +653,7 @@ USA.
 
 (define (link! source-package source-name
 	       destination-package destination-name
-	       owner-package new?)
+	       owner-package new? deprecated?)
   (let ((source-binding (intern-binding! source-package source-name #f)))
     (make-link source-binding
 	       (let ((binding
@@ -652,6 +666,7 @@ USA.
 			   (error "Attempt to reinsert binding:"
 				  destination-name destination-package))
 		       (if new? (set-binding/new?! binding #t))
+		       (if deprecated? (set-binding/deprecated?! binding #t))
 		       binding)
 		     (let ((binding
 			    (make-binding destination-package
@@ -659,6 +674,7 @@ USA.
 					  (binding/value-cell source-binding)
 					  new?)))
 		       (package/put-binding! destination-package binding)
+		       (if deprecated? (set-binding/deprecated?! binding #t))
 		       binding)))
 	       owner-package
 	       new?)))
