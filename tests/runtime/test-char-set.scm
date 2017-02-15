@@ -66,7 +66,7 @@ USA.
        (iota n-iter)))
 
 (define (make-random-svl n-ranges)
-  (let ((modulus (* %low-limit 2)))
+  (let ((modulus #x1000))
     (make-initialized-list n-ranges
       (lambda (i)
 	i
@@ -84,15 +84,17 @@ USA.
 		  (run-sub-test
 		   (lambda ()
 		     (assert-boolean=
-		      (char-set-member? (char-set* svl)
-					(integer->char value))
+		      (char-in-set? (integer->char value) (char-set* svl))
+		      (named-call 'SVL-MEMBER? svl-member? svl value))
+		     (assert-boolean=
+		      (scalar-value-in-char-set? value (char-set* svl))
 		      (named-call 'SVL-MEMBER? svl-member? svl value)))
-		   'EXPRESSION `(CHAR-SET-MEMBER? ,svl ,value)))
+		   'EXPRESSION `(CHAR-IN-SET? ,value ,svl)))
 		(enumerate-test-values)))
 	 interesting-svls)))
 
 (define (enumerate-test-values)
-  (append (iota (+ %low-limit 8))
+  (append (iota #x808)
 	  (if keep-it-fast!?
 	      '()
 	      (iota 8 (- char-code-limit 8)))))
@@ -338,9 +340,6 @@ USA.
 (define interesting-points
   (list 0
 	1
-	(- %low-limit 1)
-	%low-limit
-	(+ %low-limit 1)
 	(- char-code-limit 1)
 	char-code-limit))
 
