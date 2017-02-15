@@ -206,50 +206,54 @@ USA.
 (define-integrable (rcons start end signal)
   (cons end (cons start signal)))
 
-(define (make-signal-combiner p0 p1 p2 p3)
-  (let ((ps (vector p0 p1 p2 p3)))
+(define (make-signal-combiner combine)
 
-    (define (loop v start sig1 sig2)
-      (cond ((not (pair? sig1)) (tail v 2 start sig2))
-	    ((not (pair? sig2)) (tail v 1 start sig1))
-	    (else
-	     (let ((end (fix:min (car sig1) (car sig2))))
-	       (process v start end
-			(cond ((fix:> (car sig2) end)
-			       (loop (fix:xor v 1)
-				     end
-				     (cdr sig1)
-				     sig2))
-			      ((fix:> (car sig1) end)
-			       (loop (fix:xor v 2)
-				     end
-				     sig1
-				     (cdr sig2)))
-			      (else
-			       (loop (fix:xor v 3)
-				     end
-				     (cdr sig1)
-				     (cdr sig2)))))))))
+  (define (loop v start sig1 sig2)
+    (cond ((not (pair? sig1)) (tail v 2 start sig2))
+	  ((not (pair? sig2)) (tail v 1 start sig1))
+	  (else
+	   (let ((end (fix:min (car sig1) (car sig2))))
+	     (process v start end
+		      (cond ((fix:> (car sig2) end)
+			     (loop (fix:xor v 1)
+				   end
+				   (cdr sig1)
+				   sig2))
+			    ((fix:> (car sig1) end)
+			     (loop (fix:xor v 2)
+				   end
+				   sig1
+				   (cdr sig2)))
+			    (else
+			     (loop (fix:xor v 3)
+				   end
+				   (cdr sig1)
+				   (cdr sig2)))))))))
 
-    (define (tail v vi start signal)
-      (if (pair? signal)
-	  (let ((end (car signal)))
-	    (process v start end
-		     (tail (fix:xor v vi)
-			   vi
-			   end
-			   (cdr signal))))
-	  (if (fix:< start #x110000)
-	      (process v start #x110000 '())
-	      '())))
+  (define (tail v vi start signal)
+    (if (pair? signal)
+	(let ((end (car signal)))
+	  (process v start end
+		   (tail (fix:xor v vi)
+			 vi
+			 end
+			 (cdr signal))))
+	(if (fix:< start #x110000)
+	    (process v start #x110000 '())
+	    '())))
 
-    (define (process v start end signal)
-      (if (fix:< start end)
-	  ((vector-ref ps v) start end signal)
-	  signal))
+  (define (process v start end signal)
+    (if (and (fix:< start end)
+	     (combine (fix:= 1 (fix:and v 1))
+		      (fix:= 2 (fix:and v 2))))
+	(if (and (pair? signal)
+		 (fix:= end (car signal)))
+	    (scons start (cadr signal) (cddr signal))
+	    (scons start end signal))
+	signal))
 
-    (lambda (sig1 sig2)
-      (loop 0 0 sig1 sig2))))
+  (lambda (sig1 sig2)
+    (loop 0 0 sig1 sig2)))
 
 ;;;; Constructors
 
@@ -469,30 +473,14 @@ USA.
 	      (%char-set->signal char-set)
 	      (map %char-set->signal char-sets))))
 
-(define signal-union)
-(define signal-intersection)
-(define signal-difference)
-(let ()
+(define signal-union
+  (make-signal-combiner (lambda (a b) (or a b))))
 
-  (define (keep s e signal)
-    (scons s e signal))
+(define signal-intersection
+  (make-signal-combiner (lambda (a b) (and a b))))
 
-  (define (drop s e signal)
-    (declare (ignore s e))
-    signal)
-
-  (define (join s e signal)
-    (if (and (pair? signal) (fix:= e (car signal)))
-	(keep s (cadr signal) (cddr signal))
-	(keep s e signal)))
-
-  (set! signal-union
-	(make-signal-combiner drop join join join))
-  (set! signal-intersection
-	(make-signal-combiner drop drop drop keep))
-  (set! signal-difference
-	(make-signal-combiner drop keep drop drop))
-  unspecific)
+(define signal-difference
+  (make-signal-combiner (lambda (a b) (and a (not b)))))
 
 ;;;; Miscellaneous character sets
 
