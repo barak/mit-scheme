@@ -753,8 +753,8 @@ USA.
 	       (d2 (char->digit c2 8))
 	       (c3 (%read-char/no-eof port db))
 	       (d3 (char->digit c3 8)))
-	  (if (and d2 d3)
-	      (error:illegal-string-escape (list->ustring (cons #\\ c1 c2 c3))))
+	  (if (not (and d2 d3))
+	      (error:illegal-string-escape (list->ustring (list #\\ c1 c2 c3))))
 	  (integer->char (fix:+ (fix:lsh (fix:+ (fix:lsh d1 3) d2) 3) d3))))
 
       (loop))))
