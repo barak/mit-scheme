@@ -1320,6 +1320,7 @@ USA.
   (parent (runtime))
   (export ()
 	  ;; BEGIN deprecated bindings
+	  (code->char integer->char)
 	  (error:not-wide-char error:not-unicode-char)
 	  (guarantee-wide-char guarantee-unicode-char)
 	  (wide-char? unicode-char?)
@@ -1334,6 +1335,7 @@ USA.
 	  ;; END deprecated bindings
 	  8-bit-char?
 	  ascii-char?
+	  base-char?
 	  char-8-bit?
 	  char->digit
 	  char->integer
@@ -1361,9 +1363,6 @@ USA.
 	  char-general-category
 	  char-integer-limit
 	  char-upcase
-	  char-utf16-byte-length
-	  char-utf32-byte-length
-	  char-utf8-byte-length
 	  char<=?
 	  char<?
 	  char=-predicate
@@ -1372,14 +1371,30 @@ USA.
 	  char>?
 	  char?
 	  clear-char-bits
-	  code->char
+	  code-point-general-category
+	  decode-utf8-char
+	  digit->char
+	  digit-value
+	  integer->char
+	  make-char
+	  name->char
+	  radix?
+	  set-char-bits
+	  unicode-char-code?
+	  unicode-char?
+	  unicode-code-point?
+	  unicode-scalar-value?)
+  (export (runtime)
+	  char-downcase-full
+	  char-foldcase-full
+	  char-upcase-full
+	  char-utf16-byte-length
+	  char-utf32-byte-length
+	  char-utf8-byte-length
 	  decode-utf16be-char
 	  decode-utf16le-char
 	  decode-utf32be-char
 	  decode-utf32le-char
-	  decode-utf8-char
-	  digit->char
-	  digit-value
 	  encode-utf16be-char!
 	  encode-utf16le-char!
 	  encode-utf32be-char!
@@ -1387,23 +1402,7 @@ USA.
 	  encode-utf8-char!
 	  initial-byte->utf8-char-length
 	  initial-u16->utf16-char-length
-	  initial-u32->utf32-char-length
-	  integer->char
-	  make-char
-	  name->char
-	  radix?
-	  set-char-bits
-	  unicode-char->scalar-value
-	  unicode-char-code?
-	  unicode-char?
-	  unicode-code-point-general-category
-	  unicode-code-point?
-	  unicode-scalar-value->char
-	  unicode-scalar-value?)
-  (export (runtime)
-	  char-downcase-full
-	  char-foldcase-full
-	  char-upcase-full))
+	  initial-u32->utf32-char-length))
 
 (define-package (runtime ucd-tables)
   (files "ucd-table-alpha"

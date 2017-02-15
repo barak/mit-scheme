@@ -69,7 +69,7 @@ USA.
     ((#x22 #x23 #x27 #x2c #x3b #x5c #x60 #x7c) #f)
     ((#x200C #x200D) #t)
     (else
-     (case (unicode-code-point-general-category sv)
+     (case (code-point-general-category sv)
        ((letter:uppercase
 	 letter:lowercase
 	 letter:titlecase
@@ -110,7 +110,7 @@ USA.
 (define-deferred char-set:normal-printing
   (compute-char-set
    (lambda (sv)
-     (case (unicode-code-point-general-category sv)
+     (case (code-point-general-category sv)
        ((letter:uppercase
 	 letter:lowercase
 	 letter:titlecase

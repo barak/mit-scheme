@@ -289,6 +289,7 @@ USA.
    ;; MIT/GNU Scheme: misc
    (register-predicate! 8-bit-char? '8-bit-char '<= char?)
    (register-predicate! ascii-char? 'ascii-char '<= 8-bit-char?)
+   (register-predicate! base-char? 'base-char '<= char?)
    (register-predicate! bit-string? 'bit-string)
    (register-predicate! cell? 'cell)
    (register-predicate! code-point-list? 'code-point-list '<= list?)
