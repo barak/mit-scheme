@@ -87,7 +87,7 @@ USA.
 		      (char-in-set? (integer->char value) (char-set* svl))
 		      (named-call 'SVL-MEMBER? svl-member? svl value))
 		     (assert-boolean=
-		      (scalar-value-in-char-set? value (char-set* svl))
+		      (code-point-in-char-set? value (char-set* svl))
 		      (named-call 'SVL-MEMBER? svl-member? svl value)))
 		   'EXPRESSION `(CHAR-IN-SET? ,value ,svl)))
 		(enumerate-test-values)))

@@ -38,9 +38,6 @@ USA.
 ;;;
 ;;; The HIGH range sequence is implemented as a u32 bytevector of alternating
 ;;; START and END points.  The vector always has an even number of points.
-;;;
-;;; For simplicity, character sets are allowed to contain any code point.
-;;; However, CHAR-IN-SET? only accepts Unicode characters.
 
 (define-record-type <char-set>
     (%make-char-set low high)
@@ -287,7 +284,7 @@ USA.
 
 (define (%cpl-element->ranges elt)
   (cond ((%range? elt) (list elt))
-	((unicode-char? elt) (list (char->integer elt)))
+	((base-char? elt) (list (char->integer elt)))
 	((ustring? elt) (map char->integer (ustring->list elt)))
 	(else #f)))
 
@@ -339,7 +336,7 @@ USA.
 
 (define (cpl-element? object)
   (or (%range? object)
-      (unicode-char? object)
+      (base-char? object)
       (ustring? object)
       (char-set? object)))
 
@@ -386,23 +383,23 @@ USA.
 ;;;; Accessors
 
 (define (char-in-set? char char-set)
-  (guarantee unicode-char? char 'char-in-set?)
-  (%scalar-value-in-char-set? (char->integer char) char-set))
+  (guarantee base-char? char 'char-in-set?)
+  (%code-point-in-char-set? (char->integer char) char-set))
 
-(define (scalar-value-in-char-set? sv char-set)
-  (guarantee unicode-scalar-value? sv 'scalar-value-in-char-set?)
-  (%scalar-value-in-char-set? sv char-set))
+(define (code-point-in-char-set? cp char-set)
+  (guarantee unicode-code-point? cp 'code-point-in-char-set?)
+  (%code-point-in-char-set? cp char-set))
 
-(define (%scalar-value-in-char-set? sv char-set)
-  (if (fix:< sv (%low-limit (%char-set-low char-set)))
-      (%low-ref (%char-set-low char-set) sv)
+(define (%code-point-in-char-set? cp char-set)
+  (if (fix:< cp (%low-limit (%char-set-low char-set)))
+      (%low-ref (%char-set-low char-set) cp)
       (let ((high (%char-set-high char-set)))
 	(let loop ((lower 0) (upper (%high-length high)))
 	  (if (fix:< lower upper)
 	      (let ((i (fix:* 2 (fix:quotient (fix:+ lower upper) 4))))
-		(cond ((fix:< sv (%high-ref high i))
+		(cond ((fix:< cp (%high-ref high i))
 		       (loop lower i))
-		      ((fix:>= sv (%high-ref high (fix:+ i 1)))
+		      ((fix:>= cp (%high-ref high (fix:+ i 1)))
 		       (loop (fix:+ i 2) upper))
 		      (else #t)))
 	      #f)))))
@@ -545,7 +542,7 @@ USA.
 (define (char-set-members char-set)
   (let loop ((cp 0))
     (if (fix:< cp #x80)
-	(if (%scalar-value-in-char-set? cp char-set)
+	(if (%code-point-in-char-set? cp char-set)
 	    (cons (integer->char cp)
 		  (loop (fix:+ cp 1)))
 	    (loop (fix:+ cp 1)))
@@ -567,7 +564,7 @@ USA.
     (do ((cp 0 (fix:+ cp 1)))
 	((not (fix:< cp #x100)))
       (vector-8b-set! table cp
-		      (if (%scalar-value-in-char-set? cp char-set) 1 0)))
+		      (if (%code-point-in-char-set? cp char-set) 1 0)))
     table))
 
 (define (8-bit-char-set? char-set)

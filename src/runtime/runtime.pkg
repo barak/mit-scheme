@@ -1515,8 +1515,8 @@ USA.
 	  char-wsp?
 	  code-point-list?
 	  char-set*
+	  code-point-in-char-set?
 	  compute-char-set
-	  scalar-value-in-char-set?
 	  string->char-set)
   (export (runtime string)
 	  (char-set-table %char-set-table)))
