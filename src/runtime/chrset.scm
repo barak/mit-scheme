@@ -180,8 +180,8 @@ USA.
 	(if (fix:< i low-limit)
 	    (if (%low-ref low i)
 		(loop (fix:+ i 1))
-		(find-start i (scons i start result)))
-	    (scons low-limit start result))))
+		(find-start i (rcons start i result)))
+	    (rcons start low-limit result))))
 
     (find-start 0 '())))
 
@@ -202,6 +202,9 @@ USA.
 
 (define-integrable (scons start end signal)
   (cons start (cons end signal)))
+
+(define-integrable (rcons start end signal)
+  (cons end (cons start signal)))
 
 (define (make-signal-combiner p0 p1 p2 p3)
   (let ((ps (vector p0 p1 p2 p3)))
@@ -367,8 +370,8 @@ USA.
   (let loop ((ranges ranges) (signal '()))
     (if (pair? ranges)
 	(loop (cdr ranges)
-	      (scons (%range-end (car ranges))
-		     (%range-start (car ranges))
+	      (rcons (%range-start (car ranges))
+		     (%range-end (car ranges))
 		     signal))
 	(%signal->char-set (reverse! signal)))))
 
@@ -424,19 +427,19 @@ USA.
 
 (define (signal-invert signal)
 
-  (define (loop start signal)
+  (define (loop start signal inverse)
     (if (pair? signal)
-	(scons start
-	       (car signal)
-	       (loop (cadr signal) (cddr signal)))
+	(loop (cadr signal)
+	      (cddr signal)
+	      (rcons start (car signal) inverse))
 	(if (fix:< start #x110000)
-	    (scons start #x110000 '())
-	    '())))
+	    (scons start #x110000 (reverse! inverse))
+	    (reverse! inverse))))
 
   (if (pair? signal)
       (if (fix:< 0 (car signal))
-	  (loop 0 signal)
-	  (loop (cadr signal) (cddr signal)))
+	  (loop 0 signal '())
+	  (loop (cadr signal) (cddr signal) '()))
       '()))
 
 (define (char-set-union . char-sets)
