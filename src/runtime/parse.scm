@@ -678,76 +678,86 @@ USA.
 
 (define (handler:string port db ctx char)
   ctx char
-  (parse-delimited-string port db #\"))
+  (parse-delimited-string port db #\" #t))
 
 (define (handler:quoted-symbol port db ctx char)
   ctx char
-  (string->symbol (parse-delimited-string port db #\|)))
+  (string->symbol (parse-delimited-string port db #\| #f)))
 
-(define (parse-delimited-string port db delimiter)
+(define (parse-delimited-string port db delimiter allow-newline-escape?)
   (call-with-output-string
     (lambda (port*)
-      (let loop ()
+
+      (define (loop)
+	(dispatch (%read-char/no-eof port db)))
+
+      (define (dispatch char)
+	(cond ((char=? delimiter char) unspecific)
+	      ((char=? #\\ char) (parse-quoted))
+	      (else (emit char))))
+
+      (define (parse-quoted)
 	(let ((char (%read-char/no-eof port db)))
-	  (cond ((char=? delimiter char)
-		 unspecific)
-		((char=? #\\ char)
-		 (let ((char
-			(let ((char (%read-char/no-eof port db)))
-			  (cond ((char=? char #\a) #\bel)
-				((char=? char #\b) #\bs)
-				((char=? char #\n) #\newline)
-				((char=? char #\r) #\return)
-				((char=? char #\t) #\tab)
-				((char=? char #\x)
-				 (parse-hex-scalar-value port db))
-				((or (char=? char #\")
-				     (char=? char #\\)
-				     (char=? char #\|))
-				 char)
-				;; MIT/GNU extensions:
-				((char=? char #\f) #\page)
-				((char=? char #\v) #\vt)
-				((char->digit char 8)
-				 (octal->char char port db))
-				(else char)))))
-		   (write-char char port*)
-		   (loop)))
-		(else
-		 (write-char char port*)
-		 (loop))))))))
+	  (cond ((char=? char #\a) (emit #\bel))
+		((char=? char #\b) (emit #\bs))
+		((char=? char #\n) (emit #\newline))
+		((char=? char #\r) (emit #\return))
+		((char=? char #\t) (emit #\tab))
+		((char=? char #\x) (emit (parse-hex-escape 0 '())))
+		((and allow-newline-escape?
+		      (or (char=? char #\newline)
+			  (char=? char #\space)
+			  (char=? char #\tab)))
+		 (if (not (char=? char #\newline))
+		     (let ((char (skip-space)))
+		       (if (not (char=? char #\newline))
+			   (error:illegal-char char))))
+		 (dispatch (skip-space)))
+		;; MIT/GNU extensions:
+		((char=? char #\f) (emit #\page))
+		((char=? char #\v) (emit #\vt))
+		((char->digit char 3)
+		 => (lambda (d) (emit (parse-octal-escape char d))))
+		(else (emit char)))))
 
-(define (parse-hex-scalar-value port db)
-  (let loop ((sv 0) (chars '()))
-    (let* ((char (%read-char/no-eof port db))
-	   (chars (cons char chars))
-	   (lose
-	    (lambda ()
-	      (error:illegal-string-escape
-	       (list->ustring (cons* #\\ #\x (reverse chars)))))))
-      (if (char=? #\; char)
-	  (begin
-	    (if (not (unicode-scalar-value? sv))
-		(lose))
-	    (integer->char sv))
-	  (let ((digit (char->digit char 16)))
-	    (if (not digit)
-		(lose))
-	    (loop (+ (* sv #x10) digit) chars))))))
+      (define (emit char)
+	(write-char char port*)
+	(loop))
 
-(define (octal->char c1 port db)
-  (let ((d1 (char->digit c1 8)))
-    (if (or (not d1) (fix:> d1 3))
-	(error:illegal-char c1))
-    (let* ((c2 (%read-char/no-eof port db))
-	   (d2 (char->digit c2 8)))
-      (if (not d2)
-	  (error:illegal-char c2))
-      (let* ((c3 (%read-char/no-eof port db))
-	     (d3 (char->digit c3 8)))
-	(if (not d3)
-	    (error:illegal-char c3))
-	(integer->char (fix:+ (fix:lsh (fix:+ (fix:lsh d1 3) d2) 3) d3))))))
+      (define (skip-space)
+	(let ((char (%read-char/no-eof port db)))
+	  (if (or (char=? char #\space)
+		  (char=? char #\tab))
+	      (skip-space)
+	      char)))
+
+      (define (parse-hex-escape sv chars)
+	(let* ((char (%read-char/no-eof port db))
+	       (chars (cons char chars)))
+	  (if (char=? #\; char)
+	      (begin
+		(if (not (unicode-scalar-value? sv))
+		    (ill-formed-hex chars))
+		(integer->char sv))
+	      (let ((digit (char->digit char 16)))
+		(if (not digit)
+		    (ill-formed-hex chars))
+		(parse-hex-escape (+ (* sv #x10) digit) chars)))))
+
+      (define (ill-formed-hex chars)
+	(error:illegal-string-escape
+	 (list->ustring (cons* #\\ #\x (reverse chars)))))
+
+      (define (parse-octal-escape c1 d1)
+	(let* ((c2 (%read-char/no-eof port db))
+	       (d2 (char->digit c2 8))
+	       (c3 (%read-char/no-eof port db))
+	       (d3 (char->digit c3 8)))
+	  (if (and d2 d3)
+	      (error:illegal-string-escape (list->ustring (cons #\\ c1 c2 c3))))
+	  (integer->char (fix:+ (fix:lsh (fix:+ (fix:lsh d1 3) d2) 3) d3))))
+
+      (loop))))
 
 (define (handler:false port db ctx char1 char2)
   ctx char1
