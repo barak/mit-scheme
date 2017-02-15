@@ -312,7 +312,7 @@ USA.
    (register-predicate! stack-address? 'stack-address)
    (register-predicate! thread-mutex? 'thread-mutex)
    (register-predicate! undefined-value? 'undefined-value)
-   (register-predicate! unicode-char? 'unicode-char '<= char?)
+   (register-predicate! unicode-char? 'unicode-char '<= base-char?)
    (register-predicate! unicode-code-point? 'unicode-code-point
 			'<= index-fixnum?)
    (register-predicate! unicode-scalar-value? 'unicode-scalar-value
