@@ -486,6 +486,7 @@ USA.
       (begin
         (*unparse-string "#\\" context)
 	(if (and (char-in-set? char char-set:normal-printing)
+                 (not (eq? 'separator:space (char-general-category char)))
 		 (allowed-char? char context))
 	    (*unparse-char char context)
 	    (*unparse-string (char->name char) context)))
