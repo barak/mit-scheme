@@ -2070,7 +2070,7 @@ a command shell for interpretation; how the shell is chosen is detailed
 below.
 
 The @var{option}s are a sequence of keyword/value pairs that specify
-optional behavior.  See below for more information about options.
+optional behavior.  @xref{Subprocess Options}.
 
 @code{run-shell-command} waits until the subprocess completes its
 execution and returns the exit code from the subprocess.  If the
@@ -2085,7 +2085,7 @@ a pathname to a specific program.  @var{Arguments} must be a list of
 strings; each string is a single command-line argument to the program.
 
 The @var{option}s are a sequence of keyword/value pairs that specify
-optional behavior.  See below for more information about options.
+optional behavior.  @xref{Subprocess Options}.
 
 @code{run-synchronous-subprocess} waits until the subprocess completes
 its execution and returns the exit code from the subprocess.  If the
