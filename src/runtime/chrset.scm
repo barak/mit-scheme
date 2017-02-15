@@ -440,9 +440,10 @@ USA.
 	(loop (cadr signal)
 	      (cddr signal)
 	      (rcons start (car signal) inverse))
-	(if (fix:< start #x110000)
-	    (scons start #x110000 (reverse! inverse))
-	    (reverse! inverse))))
+	(reverse!
+	 (if (fix:< start #x110000)
+	     (rcons start #x110000 inverse)
+	     inverse))))
 
   (if (pair? signal)
       (if (fix:< 0 (car signal))
