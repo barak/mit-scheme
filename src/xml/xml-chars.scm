@@ -378,6 +378,9 @@ USA.
      (#xE000 . #xFFFE)
      (#x10000 . #x110000))))
 
+(define xml-char?
+  (char-set-predicate char-set:xml-char))
+
 (define char-set:char-data
   (char-set-difference char-set:xml-char
 		       (string->char-set "<&")))

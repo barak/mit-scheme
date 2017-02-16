@@ -163,17 +163,15 @@ USA.
   (value canonicalize canonicalize-char-data))
 
 (define (xml-char-data? object)
-  (or (unicode-char? object)
+  (or (xml-char? object)
       (and (ustring? object)
            (string-of-xml-chars? object))))
 
 (define (string-of-xml-chars? string)
-  (ustring-every (char-set-predicate char-set:xml-char) string))
+  (ustring-every xml-char? string))
 
 (define (canonicalize-char-data object)
-  (cond ((unicode-char? object)
-         (if (not (char-in-set? object char-set:xml-char))
-	     (error:wrong-type-datum object "well-formed XML char data"))
+  (cond ((xml-char? object)
          (ustring object))
 	((ustring? object)
 	 (if (not (string-of-xml-chars? object))

@@ -38,7 +38,8 @@ USA.
   (parent (runtime xml))
   (export ()
 	  char-set:xml-char
-	  char-set:xml-whitespace)
+	  char-set:xml-whitespace
+	  xml-char?)
   (export (runtime xml)
 	  char-set:char-data
 	  char-set:name-initial
