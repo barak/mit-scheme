@@ -301,7 +301,7 @@ but @code{string=?} and @code{substring=?} do.
 @deffnx {procedure} string-ci<=? string1 string2
 @deffnx {procedure} string-ci>=? string1 string2
 These procedures compare strings (substrings) according to the order of
-the characters they contain (also @pxref{Comparison of Characters}).
+the characters they contain (also @pxref{Characters}).
 The arguments are compared using a lexicographic (or dictionary) order.
 If two strings differ in length but are the same up to the length of the
 shorter string, the shorter string is considered to be less than the
