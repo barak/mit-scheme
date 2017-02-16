@@ -122,7 +122,11 @@ USA.
 (define-integrable event-type:unmap 12)
 (define-integrable event-type:take-focus 13)
 (define-integrable event-type:visibility 14)
-(define-integrable number-of-event-types 15)
+(define-integrable event-type:selection-clear 15)
+(define-integrable event-type:selection-notify 16)
+(define-integrable event-type:selection-request 17)
+(define-integrable event-type:property-notify 18)
+(define-integrable number-of-event-types 19)
 
 ;; This mask contains button-down, button-up,configure, enter,
 ;; focus-in, focus-out, key-press, leave, motion, delete-window, map,
