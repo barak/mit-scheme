@@ -841,7 +841,7 @@ USA.
 	(or (hash-table/get table name #f)
 	    (let ((atom
 		   (x-intern-atom display
-				  (string-upcase (symbol-name name))
+				  (string-upcase (symbol->string name))
 				  soft?)))
 	      (if (not (= atom 0))
 		  (hash-table/put! table name atom))

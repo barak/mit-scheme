@@ -189,7 +189,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
   ;; These pixels are written onto IMAGE by repeated calls to XPutPixel.
   ;; This procedure is equivalent to calling X-SET-PIXEL-IN-IMAGE for each
   ;; pixel in VECTOR.
-  (guarantee-string vector 'x-bytes-into-image)
+  (guarantee string? vector 'x-bytes-into-image)
   (C-call "x_bytes_into_image" vector image))
 
 (define (x-get-pixel-from-image image x y)

@@ -150,7 +150,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
   (let ((sym (C-enum "ScmEventType" scmtype)))
     (if (not sym)
 	"<unknown>"
-	(symbol-name sym))))
+	(symbol->string sym))))
 
 (define (make-event-object window xevent)
   (let* ((xtype (C-> xevent "XEvent type"))
@@ -521,8 +521,8 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 (define (x-window-set-font window font)
   (guarantee-xwindow window 'x-window-set-font)
-  (guarantee-string font 'x-window-set-font)
-  (not (zero? (C-call "x_window_set_font" window font))))
+  (guarantee string? font 'x-window-set-font)
+  (not (zero? (C-call "x_window_set_font" window (string->utf8 font)))))
 
 (define (x-window-set-border-width window width)
   (guarantee-xwindow window 'x-window-set-border-width)
@@ -844,18 +844,18 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
   (guarantee-Window window 'x-change-property)
   (guarantee-Atom property 'x-change-property)
   (guarantee-Atom type 'x-change-property)
-  (guarantee-integer format 'x-change-property)
-  (guarantee-integer mode 'x-change-property)
+  (guarantee integer? format 'x-change-property)
+  (guarantee integer? mode 'x-change-property)
   (let* ((bytes.length
 	  (case format
 	    ((8)
-	     (guarantee-string data 'x-change-property)
+	     (guarantee string? data 'x-change-property)
 	     (prop-data-8->bytes.length data))
 	    ((16)
-	     (guarantee-vector data 'x-change-property)
+	     (guarantee vector? data 'x-change-property)
 	     (prop-data-16->bytes.length data))
 	    ((32)
-	     (guarantee-vector data 'x-change-property)
+	     (guarantee vector? data 'x-change-property)
 	     (prop-data-32->bytes.length data))
 	    (else
 	     (error:bad-range-argument format 'x-change-property))))
@@ -875,7 +875,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
     (let loop ((index 0))
       (if (< index nitems)
 	  (let ((n (vector-ref vector index)))
-	    (guarantee-integer n 'prop-data-32->bytes.length)
+	    (guarantee integer? n 'prop-data-32->bytes.length)
 	    (c->= scan "CARD32" n)
 	    (alien-byte-increment scan (c-sizeof "CARD32"))
 	    (loop (1+ index)))))
@@ -889,7 +889,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
     (let loop ((index 0))
       (if (< index nitems)
 	  (let ((n (vector-ref vector index)))
-	    (guarantee-integer n 'prop-data-16->bytes.length)
+	    (guarantee integer? n 'prop-data-16->bytes.length)
 	    (if (or (< n 0) (<= 65536 n))
 		(error:bad-range-argument vector 'prop-data-16->bytes.length))
 	    (c->= scan "CARD16" n)
@@ -944,14 +944,14 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 ;;; Guarantors
 
-(declare (integrate-operator guarantee-Atom))
-(define guarantee-Atom guarantee-exact-nonnegative-integer)
+(define-integrable (guarantee-Atom object operator)
+  (guarantee exact-nonnegative-integer? object operator))
 
-(declare (integrate-operator guarantee-Window))
-(define guarantee-Window guarantee-exact-positive-integer)
+(define-integrable (guarantee-Window object operator)
+  (guarantee exact-positive-integer? object operator))
 
-(declare (integrate-operator guarantee-Time))
-(define guarantee-Time guarantee-exact-positive-integer)
+(define-integrable (guarantee-Time object operator)
+  (guarantee exact-positive-integer? object operator))
 
 (define-integrable (guarantee-xvisual object operator)
   (if (not (and (alien? object)
