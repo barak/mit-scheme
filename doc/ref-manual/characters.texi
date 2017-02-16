@@ -1,4 +1,4 @@
-@node Characters
+@node Characters, Strings, Numbers, Top
 @chapter Characters
 
 @cindex character (defn)
