@@ -284,7 +284,7 @@ USA.
 
 (define (%cpl-element->ranges elt)
   (cond ((%range? elt) (list elt))
-	((base-char? elt) (list (char->integer elt)))
+	((bitless-char? elt) (list (char->integer elt)))
 	((ustring? elt) (map char->integer (ustring->list elt)))
 	(else #f)))
 
@@ -336,7 +336,7 @@ USA.
 
 (define (cpl-element? object)
   (or (%range? object)
-      (base-char? object)
+      (bitless-char? object)
       (ustring? object)
       (char-set? object)))
 
@@ -383,7 +383,7 @@ USA.
 ;;;; Accessors
 
 (define (char-in-set? char char-set)
-  (guarantee base-char? char 'char-in-set?)
+  (guarantee bitless-char? char 'char-in-set?)
   (%code-point-in-char-set? (char->integer char) char-set))
 
 (define (code-point-in-char-set? cp char-set)
@@ -495,14 +495,11 @@ USA.
 (define char-set:not-graphic)
 (define char-set:not-standard)
 (define char-set:standard)
-(define char-set:unicode)
 (define char-set:wsp)
 (define char-standard?)
 (define char-wsp?)
 (add-boot-init!
  (lambda ()
-   (set! char-set:unicode (compute-char-set unicode-char-code?))
-
    (set! char-set:graphic (%signal->char-set '(#x20 #x7F #xA0 #x100)))
    (set! char-set:not-graphic (char-set-invert char-set:graphic))
    (set! char-graphic? (char-set-predicate char-set:graphic))

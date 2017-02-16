@@ -36,7 +36,6 @@ USA.
 
 (define-integrable char-code-limit #x110000)
 (define-integrable char-bits-limit #x10)
-(define-integrable char-integer-limit #x2000000)
 
 (define-guarantee char "character")
 
@@ -53,6 +52,10 @@ USA.
 
 (define (char-bits char)
   (fix:lsh (char->integer char) -21))
+
+(define (bitless-char? object)
+  (and (char? object)
+       (fix:< (char->integer object) char-code-limit)))
 
 (define (char-bits-set? bits char)
   (guarantee-limited-index-fixnum bits char-bits-limit 'CHAR-BITS-SET?)
@@ -348,39 +351,28 @@ USA.
 
 (define (unicode-char? object)
   (and (char? object)
-       (unicode-char-code? (char->integer object))))
-
-(define (base-char? object)
-  (and (char? object)
-       (unicode-code-point? (char->integer object))))
-
-(define (unicode-char-code? object)
-  (and (unicode-scalar-value? object)
-       (not (non-character? object))))
+       (let ((cp (char->integer object)))
+	 (and (fix:< object char-code-limit)
+	      (not (utf16-surrogate? object))))))
 
 (define (unicode-scalar-value? object)
   (and (unicode-code-point? object)
        (not (utf16-surrogate? object))))
 
-(define-integrable (unicode-code-point? object)
+(define (unicode-code-point? object)
   (and (index-fixnum? object)
        (fix:< object char-code-limit)))
 
 (define-guarantee unicode-char "a Unicode character")
 (define-guarantee unicode-scalar-value "a Unicode scalar value")
 
-(define (char->code-point char #!optional caller)
-  (let ((n (char->integer char)))
-    (guarantee unicode-code-point? n caller)
-    n))
-
-(define (char->scalar-value char #!optional caller)
+(define (%char->scalar-value char #!optional caller)
   (let ((n (char->integer char)))
     (guarantee unicode-scalar-value? n caller)
     n))
 
 (define (char-general-category char)
-  (guarantee base-char? char 'char-general-category)
+  (guarantee bitless-char? char 'char-general-category)
   (ucd-gc-value char))
 
 (define (code-point-general-category cp)
@@ -421,14 +413,14 @@ USA.
 ;;;; UTF-{8,16,32} encoders
 
 (define (char-utf8-byte-length char)
-  (let ((sv (char->scalar-value char 'char-utf8-byte-length)))
+  (let ((sv (%char->scalar-value char 'char-utf8-byte-length)))
     (cond ((fix:< sv #x80) 1)
 	  ((fix:< sv #x800) 2)
 	  ((fix:< sv #x10000) 3)
 	  (else 4))))
 
 (define (encode-utf8-char! bytes index char)
-  (let ((sv (char->scalar-value char 'encode-utf8-char!)))
+  (let ((sv (%char->scalar-value char 'encode-utf8-char!)))
 
     (define-integrable (initial-byte leader offset)
       (fix:or leader (fix:lsh sv offset)))
@@ -456,13 +448,13 @@ USA.
 	   (fix:+ index 4)))))
 
 (define (char-utf16-byte-length char)
-  (if (fix:< (char->scalar-value char 'char-utf16-byte-length) #x10000)
+  (if (fix:< (%char->scalar-value char 'char-utf16-byte-length) #x10000)
       2
       4))
 
 (define (utf16-char-encoder setter caller)
   (lambda (bytes index char)
-    (let ((sv (char->scalar-value char caller)))
+    (let ((sv (%char->scalar-value char caller)))
       (cond ((fix:< sv #x10000)
 	     (setter bytes index sv)
 	     (fix:+ index 2))
@@ -481,12 +473,12 @@ USA.
   (utf16-char-encoder bytevector-u16le-set! 'encode-utf16le-char!))
 
 (define (char-utf32-byte-length char)
-  (char->scalar-value char 'char-utf32-byte-length)
+  (%char->scalar-value char 'char-utf32-byte-length)
   4)
 
 (define (utf32-char-encoder setter caller)
   (lambda (bytes index char)
-    (setter bytes index (char->scalar-value char caller))))
+    (setter bytes index (%char->scalar-value char caller))))
 
 (define encode-utf32be-char!
   (utf32-char-encoder bytevector-u32be-set! 'encode-utf32be-char!))

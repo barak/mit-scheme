@@ -60,6 +60,16 @@ USA.
 
 (define-deferred char-set:not-whitespace
   (char-set-invert char-set:whitespace))
+
+(define-deferred char-set:unicode
+  (compute-char-set
+   (lambda (cp)
+     (case (code-point-general-category cp)
+       ((other:surrogate other:not-assigned) #f)
+       (else #t)))))
+
+(define-deferred unicode-char?
+  (char-set-predicate char-set:unicode))
 
 ;;;; Scheme language:
 

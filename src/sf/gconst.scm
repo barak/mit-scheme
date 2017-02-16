@@ -32,7 +32,6 @@ USA.
 (define global-constant-objects
   '(CHAR-BITS-LIMIT
     CHAR-CODE-LIMIT
-    CHAR-INTEGER-LIMIT
     FALSE
     LAMBDA-TAG:UNNAMED			;needed for cold load
     SYSTEM-GLOBAL-ENVIRONMENT		;suppresses warnings about (access ...)

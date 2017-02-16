@@ -1431,12 +1431,11 @@ USA.
   (export ()
 	  8-bit-char?
 	  ascii-char?
-	  base-char?
+	  bitless-char?
 	  char-8-bit?
 	  char->digit
 	  char->integer
 	  char->name
-	  char->scalar-value
 	  char-ascii?
 	  char-bit:control
 	  char-bit:hyper
@@ -1457,7 +1456,6 @@ USA.
 	  char-downcase
 	  char-foldcase
 	  char-general-category
-	  char-integer-limit
 	  char-upcase
 	  char<=?
 	  char<?
@@ -1476,8 +1474,6 @@ USA.
 	  name->char
 	  radix?
 	  set-char-bits
-	  unicode-char-code?
-	  unicode-char?
 	  unicode-code-point?
 	  unicode-scalar-value?)
   (export (runtime)
@@ -1559,7 +1555,9 @@ USA.
 	  char-set:not-numeric
 	  char-set:not-upper-case
 	  char-set:not-whitespace
-	  char-set:numeric)
+	  char-set:numeric
+	  char-set:unicode
+	  unicode-char?)
   (export (runtime)
 	  char-set:folded-symbol-constituent
 	  char-set:folded-symbol-initial
@@ -1610,7 +1608,6 @@ USA.
 	  char-set:not-graphic
 	  char-set:not-standard
 	  char-set:standard
-	  char-set:unicode
 	  char-set:wsp
 	  char-set=?
 	  char-set?

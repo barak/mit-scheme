@@ -289,8 +289,8 @@ USA.
    ;; MIT/GNU Scheme: misc
    (register-predicate! 8-bit-char? '8-bit-char '<= char?)
    (register-predicate! ascii-char? 'ascii-char '<= 8-bit-char?)
-   (register-predicate! base-char? 'base-char '<= char?)
    (register-predicate! bit-string? 'bit-string)
+   (register-predicate! bitless-char? 'bitless-char '<= char?)
    (register-predicate! cell? 'cell)
    (register-predicate! code-point-list? 'code-point-list '<= list?)
    (register-predicate! compiled-code-address? 'compiled-code-address)
@@ -312,13 +312,11 @@ USA.
    (register-predicate! stack-address? 'stack-address)
    (register-predicate! thread-mutex? 'thread-mutex)
    (register-predicate! undefined-value? 'undefined-value)
-   (register-predicate! unicode-char? 'unicode-char '<= base-char?)
+   (register-predicate! unicode-char? 'unicode-char '<= bitless-char?)
    (register-predicate! unicode-code-point? 'unicode-code-point
 			'<= index-fixnum?)
    (register-predicate! unicode-scalar-value? 'unicode-scalar-value
 			'<= unicode-code-point?)
-   (register-predicate! unicode-char-code? 'unicode-char-code
-			'<= unicode-scalar-value?)
    (register-predicate! uninterned-symbol? 'uninterned-symbol '<= symbol?)
    (register-predicate! weak-list? 'weak-list)
    (register-predicate! weak-pair? 'weak-pair)
