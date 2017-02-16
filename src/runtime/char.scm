@@ -352,8 +352,8 @@ USA.
 (define (unicode-char? object)
   (and (char? object)
        (let ((cp (char->integer object)))
-	 (and (fix:< object char-code-limit)
-	      (not (utf16-surrogate? object))))))
+	 (and (fix:< cp char-code-limit)
+	      (not (utf16-surrogate? cp))))))
 
 (define (unicode-scalar-value? object)
   (and (unicode-code-point? object)
