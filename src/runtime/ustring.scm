@@ -257,6 +257,85 @@ USA.
 	  (utf32-string-set! result i (car chars)))
 	result))))
 
+;;;; Legacy strings
+
+(define-primitives
+  (legacy-string-length string-length 1)
+  (legacy-string-ref string-ref 2)
+  (legacy-string-set! string-set! 3)
+  (legacy-string? string? 1)
+  (make-legacy-string string-allocate 1))
+
+(define (legacy-string-fill! string char #!optional start end)
+  (let* ((end (fix:end-index end (legacy-string-length string) 'string-fill!))
+	 (start (fix:start-index start end 'string-fill!)))
+    (do ((index start (fix:+ index 1)))
+	((not (fix:< index end)) unspecific)
+      (legacy-string-set! string index char))))
+
+(define legacy-string-copy
+  (x-copy-maker legacy-string-length legacy-string-ref make-legacy-string
+		legacy-string-set! 'string-copy))
+
+(define legacy-string-copy!
+  (x-copy!-maker legacy-string-length legacy-string-ref legacy-string-set!
+		 'string-copy!))
+
+(define (legacy-string->list string #!optional start end)
+  (let* ((end (fix:end-index end (legacy-string-length string) 'string->list))
+	 (start (fix:start-index start end 'string->list)))
+    (let loop ((index (fix:- end 1)) (chars '()))
+      (if (fix:<= start index)
+	  (loop (fix:- index 1) (cons (legacy-string-ref string index) chars))
+	  chars))))
+
+(define legacy-string->vector
+  (x-copy-maker legacy-string-length legacy-string-ref make-vector vector-set!
+		'string->vector))
+
+(define (legacy-string-find-first-index proc string #!optional start end)
+  (let* ((caller 'legacy-string-find-next-index)
+	 (end (fix:end-index end (legacy-string-length string) caller))
+	 (start (fix:start-index start end caller)))
+    (let loop ((i start))
+      (and (fix:< i end)
+	   (if (proc (legacy-string-ref string i))
+	       i
+	       (loop (fix:+ i 1)))))))
+
+(define (legacy-string-find-last-index proc string #!optional start end)
+  (let* ((caller 'legacy-string-find-last-index)
+	 (end (fix:end-index end (legacy-string-length string) caller))
+	 (start (fix:start-index start end caller)))
+    (let loop ((i (fix:- end 1)))
+      (and (fix:>= i start)
+	   (if (proc (legacy-string-ref string i))
+	       i
+	       (loop (fix:- i 1)))))))
+
+(define (legacy-string-downcase string)
+  (let ((end (legacy-string-length string)))
+    (let ((string* (make-legacy-string end)))
+      (do ((i 0 (fix:+ i 1)))
+	  ((fix:= i end))
+	(legacy-string-set! string* i
+			    (char-downcase (legacy-string-ref string i))))
+      string*)))
+
+(define (legacy-string-upcase string)
+  (let ((end (legacy-string-length string)))
+    (let ((string* (make-legacy-string end)))
+      (do ((i 0 (fix:+ i 1)))
+	  ((fix:= i end))
+	(legacy-string-set! string* i
+			    (char-upcase (legacy-string-ref string i))))
+      string*)))
+
+(define (legacy-string-hash key #!optional modulus)
+  (if (default-object? modulus)
+      ((ucode-primitive string-hash) key)
+      ((ucode-primitive string-hash-mod) key modulus)))
+
 ;;;; String
 
 (define (ustring? object)
@@ -264,6 +343,7 @@ USA.
       (utf32-string? object)))
 
 (define (register-ustring-predicates!)
+  (register-predicate! legacy-string? 'legacy-string)
   (register-predicate! utf32-string? 'utf32-string)
   (register-predicate! ustring? 'ustring)
   (set-predicate<=! legacy-string? ustring?)
@@ -604,26 +684,6 @@ USA.
 	 (utf32-string-find-last-index proc string start end))
 	(else
 	 (error:not-a ustring? string 'ustring-find-last-index))))
-
-(define (legacy-string-find-first-index proc string #!optional start end)
-  (let* ((caller 'legacy-string-find-next-index)
-	 (end (fix:end-index end (legacy-string-length string) caller))
-	 (start (fix:start-index start end caller)))
-    (let loop ((i start))
-      (and (fix:< i end)
-	   (if (proc (legacy-string-ref string i))
-	       i
-	       (loop (fix:+ i 1)))))))
-
-(define (legacy-string-find-last-index proc string #!optional start end)
-  (let* ((caller 'legacy-string-find-last-index)
-	 (end (fix:end-index end (legacy-string-length string) caller))
-	 (start (fix:start-index start end caller)))
-    (let loop ((i (fix:- end 1)))
-      (and (fix:>= i start)
-	   (if (proc (legacy-string-ref string i))
-	       i
-	       (loop (fix:- i 1)))))))
 
 (define (ustring-find-first-char string char #!optional start end)
   (ustring-find-first-index (char=-predicate char) string start end))
