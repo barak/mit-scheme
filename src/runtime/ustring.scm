@@ -161,7 +161,9 @@ USA.
 (define (make-full-string k #!optional char)
   (let ((v (make-cp-vector k)))
     (if (not (default-object? char))
-	(cp-vector-fill! v 0 k (char->integer char)))
+	(begin
+	  (guarantee bitless-char? char 'make-ustring)
+	  (cp-vector-fill! v 0 k (char->integer char))))
     (%record %full-string-tag v)))
 
 (define (full-string-vector string caller)
@@ -185,15 +187,16 @@ USA.
   (integer->char
    (cp-vector-ref (full-string-vector string 'ustring-ref) index)))
 
-(define (full-string-set! string index char)
-  (cp-vector-set! (full-string-vector string 'ustring-set!)
-		   index
-		   (char->integer char)))
-
 (define (ustring-set! string index char)
+  (guarantee bitless-char? char 'ustring-set!)
   (cond ((legacy-string? string) (legacy-string-set! string index char))
 	((full-string? string) (full-string-set! string index char))
 	(else (error:not-a ustring? string 'ustring-set!))))
+
+(define (full-string-set! string index char)
+  (cp-vector-set! (full-string-vector string 'ustring-set!)
+		  index
+		  (char->integer char)))
 
 (define (ustring-append . strings)
   (%ustring-append* strings))
@@ -321,6 +324,7 @@ USA.
 		   (full-string-vector from caller) start end))
 
 (define (ustring-fill! string char #!optional start end)
+  (guarantee bitless-char? char 'ustring-fill!)
   (cond ((legacy-string? string) (legacy-string-fill! string char start end))
 	((full-string? string) (full-string-fill! string char start end))
 	(else (error:not-a ustring? string 'ustring-fill!))))
@@ -738,7 +742,7 @@ USA.
 
 (define (->ustring object caller)
   (cond ((not object) "")
-	((char? object) (make-ustring 1 object))
+	((bitless-char? object) (make-ustring 1 object))
 	((ustring? object) object)
 	((symbol? object) (symbol->string object))
 	((pathname? object) (->namestring object))
@@ -748,7 +752,7 @@ USA.
 
 (define (->ustring-component? object)
   (cond (not object)
-	(char? object)
+	(bitless-char? object)
 	(ustring? object)
 	(symbol? object)
 	(pathname? object)
