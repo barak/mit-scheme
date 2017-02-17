@@ -40,6 +40,13 @@ USA.
 ;;; everything to "string".
 
 (declare (usual-integrations))
+
+(define-primitives
+  (legacy-string-length string-length 1)
+  (legacy-string-ref string-ref 2)
+  (legacy-string-set! string-set! 3)
+  (legacy-string? string? 1)
+  (make-legacy-string string-allocate 1))
 
 ;;;; Utilities
 
@@ -108,13 +115,11 @@ USA.
       ((not (fix:< i end)))
     (u32-vector-set! bytes i u32)))
 
-;;;; UTF-32 strings
+;;;; String
 
-(define (make-utf32-string k #!optional char)
-  (let ((v (make-u32-vector k)))
-    (if (not (default-object? char))
-	(u32-vector-fill! v 0 k (char->integer char)))
-    (%record %utf32-string-tag v)))
+(define (ustring? object)
+  (or (legacy-string? object)
+      (utf32-string? object)))
 
 (define (utf32-string? object)
   (and (%record? object)
@@ -123,224 +128,6 @@ USA.
 
 (define %utf32-string-tag
   '|#[(runtime ustring)utf32-string]|)
-
-(define (utf32-string-vector string caller)
-  (guarantee utf32-string? string caller)
-  (%record-ref string 1))
-
-(define-integrable (utf32-end-index end string caller)
-  (fix:end-index end (utf32-string-length string) caller))
-
-(define (utf32-string-length string)
-  (u32-vector-length (utf32-string-vector string 'utf32-string-length)))
-
-(define (utf32-string-ref string index)
-  (integer->char
-   (u32-vector-ref (utf32-string-vector string 'utf32-string-ref) index)))
-
-(define (utf32-string-set! string index char)
-  (u32-vector-set! (utf32-string-vector string 'utf32-string-set!)
-		   index
-		   (char->integer char)))
-
-(define (utf32-string-copy string #!optional start end)
-  (let* ((end (utf32-end-index end string 'utf32-string-copy))
-	 (start (fix:start-index start end 'utf32-string-copy)))
-    (%utf32-string-copy string start end)))
-
-(define (%utf32-string-copy string start end)
-  (let ((to (make-utf32-string (fix:- end start))))
-    (%utf32-string-copy! to 0 string start end utf32-string-copy)
-    to))
-
-(define (utf32-string-copy! to at from #!optional start end)
-  (let* ((end (utf32-end-index end from 'utf32-string-copy!))
-	 (start (fix:start-index start end 'utf32-string-copy!)))
-    (%utf32-string-copy! to at from start end 'utf32-string-copy!)))
-
-(define-integrable (%utf32-string-copy! to at from start end caller)
-  (u32-vector-copy! (utf32-string-vector to caller) at
-		    (utf32-string-vector from caller) start end))
-
-(define (utf32-string-fill! string char #!optional start end)
-  (let* ((end (utf32-end-index end string 'utf32-string-fill!))
-	 (start (fix:start-index start end 'utf32-string-fill!)))
-    (u32-vector-fill! (utf32-string-vector string 'utf32-string-fill!)
-		      start
-		      end
-		      (char->integer char))))
-
-(define (utf32-string->list string #!optional start end)
-  (let* ((end (utf32-end-index end string 'utf32-string->list))
-	 (start (fix:start-index start end 'utf32-string->list)))
-    (do ((i (fix:- end 1) (fix:- i 1))
-	 (chars '() (cons (utf32-string-ref string i) chars)))
-	((not (fix:>= i start)) chars))))
-
-(define utf32-string->vector
-  (x-copy-maker utf32-string-length utf32-string-ref make-vector vector-set!
-		'utf32-string->vector))
-
-(define (utf32-string-find-first-index proc string #!optional start end)
-  (let* ((caller 'utf32-string-find-next-index)
-	 (end (utf32-end-index end string caller))
-	 (start (fix:start-index start end caller)))
-    (let loop ((i start))
-      (and (fix:< i end)
-	   (if (proc (utf32-string-ref string i))
-	       i
-	       (loop (fix:+ i 1)))))))
-
-(define (utf32-string-find-last-index proc string #!optional start end)
-  (let* ((caller 'utf32-string-find-last-index)
-	 (end (utf32-end-index end string caller))
-	 (start (fix:start-index start end caller)))
-    (let loop ((i (fix:- end 1)))
-      (and (fix:>= i start)
-	   (if (proc (utf32-string-ref string i))
-	       i
-	       (loop (fix:- i 1)))))))
-
-(define (utf32-string-map proc string . strings)
-  (if (null? strings)
-      (let* ((n (utf32-string-length string))
-	     (result (make-utf32-string n)))
-	(do ((i 0 (fix:+ i 1)))
-	    ((not (fix:< i n)))
-	  (utf32-string-set! result i (proc (utf32-string-ref string i))))
-	result)
-      (let* ((n (min-length utf32-string-length string strings))
-	     (result (make-utf32-string n)))
-	(do ((i 0 (fix:+ i 1)))
-	    ((not (fix:< i n)))
-	  (utf32-string-set! result i
-			     (apply proc
-				    (utf32-string-ref string i)
-				    (map (lambda (string)
-					   (utf32-string-ref string i))
-					 strings))))
-	result)))
-
-(define (utf32-string-for-each procedure string . strings)
-  (if (null? strings)
-      (let ((n (utf32-string-length string)))
-	(do ((i 0 (fix:+ i 1)))
-	    ((not (fix:< i n)))
-	  (procedure (utf32-string-ref string i))))
-      (let ((n (min-length utf32-string-length string strings)))
-	(do ((i 0 (fix:+ i 1)))
-	    ((not (fix:< i n)))
-	  (apply procedure
-		 (utf32-string-ref string i)
-		 (map (lambda (string)
-			(utf32-string-ref string i))
-		      strings))))))
-
-(define (utf32-string-downcase string)
-  (utf32-case-transform string char-downcase-full))
-
-(define (utf32-string-foldcase string)
-  (utf32-case-transform string char-foldcase-full))
-
-(define (utf32-string-upcase string)
-  (utf32-case-transform string char-upcase-full))
-
-(define (utf32-case-transform string transform)
-  (let ((chars
-	 (append-map transform
-		     (utf32-string->list string))))
-    (let ((n (length chars)))
-      (let ((result (make-utf32-string n)))
-	(do ((chars chars (cdr chars))
-	     (i 0 (fix:+ i 1)))
-	    ((not (pair? chars)))
-	  (utf32-string-set! result i (car chars)))
-	result))))
-
-;;;; Legacy strings
-
-(define-primitives
-  (legacy-string-length string-length 1)
-  (legacy-string-ref string-ref 2)
-  (legacy-string-set! string-set! 3)
-  (legacy-string? string? 1)
-  (make-legacy-string string-allocate 1))
-
-(define (legacy-string-fill! string char #!optional start end)
-  (let* ((end (fix:end-index end (legacy-string-length string) 'string-fill!))
-	 (start (fix:start-index start end 'string-fill!)))
-    (do ((index start (fix:+ index 1)))
-	((not (fix:< index end)) unspecific)
-      (legacy-string-set! string index char))))
-
-(define legacy-string-copy
-  (x-copy-maker legacy-string-length legacy-string-ref make-legacy-string
-		legacy-string-set! 'string-copy))
-
-(define legacy-string-copy!
-  (x-copy!-maker legacy-string-length legacy-string-ref legacy-string-set!
-		 'string-copy!))
-
-(define (legacy-string->list string #!optional start end)
-  (let* ((end (fix:end-index end (legacy-string-length string) 'string->list))
-	 (start (fix:start-index start end 'string->list)))
-    (let loop ((index (fix:- end 1)) (chars '()))
-      (if (fix:<= start index)
-	  (loop (fix:- index 1) (cons (legacy-string-ref string index) chars))
-	  chars))))
-
-(define legacy-string->vector
-  (x-copy-maker legacy-string-length legacy-string-ref make-vector vector-set!
-		'string->vector))
-
-(define (legacy-string-find-first-index proc string #!optional start end)
-  (let* ((caller 'legacy-string-find-next-index)
-	 (end (fix:end-index end (legacy-string-length string) caller))
-	 (start (fix:start-index start end caller)))
-    (let loop ((i start))
-      (and (fix:< i end)
-	   (if (proc (legacy-string-ref string i))
-	       i
-	       (loop (fix:+ i 1)))))))
-
-(define (legacy-string-find-last-index proc string #!optional start end)
-  (let* ((caller 'legacy-string-find-last-index)
-	 (end (fix:end-index end (legacy-string-length string) caller))
-	 (start (fix:start-index start end caller)))
-    (let loop ((i (fix:- end 1)))
-      (and (fix:>= i start)
-	   (if (proc (legacy-string-ref string i))
-	       i
-	       (loop (fix:- i 1)))))))
-
-(define (legacy-string-downcase string)
-  (let ((end (legacy-string-length string)))
-    (let ((string* (make-legacy-string end)))
-      (do ((i 0 (fix:+ i 1)))
-	  ((fix:= i end))
-	(legacy-string-set! string* i
-			    (char-downcase (legacy-string-ref string i))))
-      string*)))
-
-(define (legacy-string-upcase string)
-  (let ((end (legacy-string-length string)))
-    (let ((string* (make-legacy-string end)))
-      (do ((i 0 (fix:+ i 1)))
-	  ((fix:= i end))
-	(legacy-string-set! string* i
-			    (char-upcase (legacy-string-ref string i))))
-      string*)))
-
-(define (legacy-string-hash key #!optional modulus)
-  (if (default-object? modulus)
-      ((ucode-primitive string-hash) key)
-      ((ucode-primitive string-hash-mod) key modulus)))
-
-;;;; String
-
-(define (ustring? object)
-  (or (legacy-string? object)
-      (utf32-string? object)))
 
 (define (register-ustring-predicates!)
   (register-predicate! legacy-string? 'legacy-string)
@@ -356,15 +143,37 @@ USA.
       (make-utf32-string k char)
       (make-legacy-string 0)))
 
+(define (make-utf32-string k #!optional char)
+  (let ((v (make-u32-vector k)))
+    (if (not (default-object? char))
+	(u32-vector-fill! v 0 k (char->integer char)))
+    (%record %utf32-string-tag v)))
+
+(define (utf32-string-vector string caller)
+  (guarantee utf32-string? string caller)
+  (%record-ref string 1))
+
 (define (ustring-length string)
   (cond ((legacy-string? string) (legacy-string-length string))
 	((utf32-string? string) (utf32-string-length string))
 	(else (error:not-a ustring? string 'ustring-length))))
 
+(define (utf32-string-length string)
+  (u32-vector-length (utf32-string-vector string 'utf32-string-length)))
+
 (define (ustring-ref string index)
   (cond ((legacy-string? string) (legacy-string-ref string index))
 	((utf32-string? string) (utf32-string-ref string index))
 	(else (error:not-a ustring? string 'ustring-ref))))
+
+(define (utf32-string-ref string index)
+  (integer->char
+   (u32-vector-ref (utf32-string-vector string 'utf32-string-ref) index)))
+
+(define (utf32-string-set! string index char)
+  (u32-vector-set! (utf32-string-vector string 'utf32-string-set!)
+		   index
+		   (char->integer char)))
 
 (define (ustring-set! string index char)
   (cond ((legacy-string? string) (legacy-string-set! string index char))
@@ -443,6 +252,20 @@ USA.
 	  (else
 	   (error:not-a ustring? string 'ustring-copy)))))
 
+(define legacy-string-copy
+  (x-copy-maker legacy-string-length legacy-string-ref make-legacy-string
+		legacy-string-set! 'string-copy))
+
+(define (utf32-string-copy string #!optional start end)
+  (let* ((end (utf32-end-index end string 'utf32-string-copy))
+	 (start (fix:start-index start end 'utf32-string-copy)))
+    (%utf32-string-copy string start end)))
+
+(define (%utf32-string-copy string start end)
+  (let ((to (make-utf32-string (fix:- end start))))
+    (%utf32-string-copy! to 0 string start end utf32-string-copy)
+    to))
+
 (define (ustring-copy! to at from #!optional start end)
   (cond ((legacy-string? to)
 	 (cond ((legacy-string? from)
@@ -461,6 +284,10 @@ USA.
 	(else
 	 (error:not-a ustring? to 'ustring-copy!))))
 
+(define legacy-string-copy!
+  (x-copy!-maker legacy-string-length legacy-string-ref legacy-string-set!
+		 'string-copy!))
+
 (define utf32->legacy-copy!
   (x-copy!-maker utf32-string-length utf32-string-ref legacy-string-set!
 		 'ustring-copy!))
@@ -469,11 +296,35 @@ USA.
   (x-copy!-maker legacy-string-length legacy-string-ref utf32-string-set!
 		 'legacy->utf32-copy!))
 
+(define (utf32-string-copy! to at from #!optional start end)
+  (let* ((end (utf32-end-index end from 'utf32-string-copy!))
+	 (start (fix:start-index start end 'utf32-string-copy!)))
+    (%utf32-string-copy! to at from start end 'utf32-string-copy!)))
+
+(define-integrable (%utf32-string-copy! to at from start end caller)
+  (u32-vector-copy! (utf32-string-vector to caller) at
+		    (utf32-string-vector from caller) start end))
+
 (define (ustring-fill! string char #!optional start end)
   (cond ((legacy-string? string) (legacy-string-fill! string char start end))
 	((utf32-string? string) (utf32-string-fill! string char start end))
 	(else (error:not-a ustring? string 'ustring-fill!))))
-
+
+(define (legacy-string-fill! string char #!optional start end)
+  (let* ((end (fix:end-index end (legacy-string-length string) 'string-fill!))
+	 (start (fix:start-index start end 'string-fill!)))
+    (do ((index start (fix:+ index 1)))
+	((not (fix:< index end)) unspecific)
+      (legacy-string-set! string index char))))
+
+(define (utf32-string-fill! string char #!optional start end)
+  (let* ((end (utf32-end-index end string 'utf32-string-fill!))
+	 (start (fix:start-index start end 'utf32-string-fill!)))
+    (u32-vector-fill! (utf32-string-vector string 'utf32-string-fill!)
+		      start
+		      end
+		      (char->integer char))))
+
 (define (%ustring=? string1 string2)
   (and (fix:= (ustring-length string1) (ustring-length string2))
        (ustring-every char=? string1 string2)))
@@ -569,10 +420,33 @@ USA.
 	((utf32-string? string) (utf32-string->list string start end))
 	(else (error:not-a ustring? string 'ustring->list))))
 
+(define (utf32-string->list string #!optional start end)
+  (let* ((end (utf32-end-index end string 'utf32-string->list))
+	 (start (fix:start-index start end 'utf32-string->list)))
+    (do ((i (fix:- end 1) (fix:- i 1))
+	 (chars '() (cons (utf32-string-ref string i) chars)))
+	((not (fix:>= i start)) chars))))
+
+(define (legacy-string->list string #!optional start end)
+  (let* ((end (fix:end-index end (legacy-string-length string) 'string->list))
+	 (start (fix:start-index start end 'string->list)))
+    (let loop ((index (fix:- end 1)) (chars '()))
+      (if (fix:<= start index)
+	  (loop (fix:- index 1) (cons (legacy-string-ref string index) chars))
+	  chars))))
+
 (define (ustring->vector string #!optional start end)
   (cond ((legacy-string? string) (legacy-string->vector string start end))
 	((utf32-string? string) (utf32-string->vector string start end))
 	(else (error:not-a ustring? string 'ustring->vector))))
+
+(define legacy-string->vector
+  (x-copy-maker legacy-string-length legacy-string-ref make-vector vector-set!
+		'string->vector))
+
+(define utf32-string->vector
+  (x-copy-maker utf32-string-length utf32-string-ref make-vector vector-set!
+		'utf32-string->vector))
 
 (define (ustring-for-each proc string . strings)
   (if (null? strings)
@@ -587,6 +461,21 @@ USA.
 		 (ustring-ref string i)
 		 (map (lambda (string)
 			(ustring-ref string i))
+		      strings))))))
+
+(define (utf32-string-for-each procedure string . strings)
+  (if (null? strings)
+      (let ((n (utf32-string-length string)))
+	(do ((i 0 (fix:+ i 1)))
+	    ((not (fix:< i n)))
+	  (procedure (utf32-string-ref string i))))
+      (let ((n (min-length utf32-string-length string strings)))
+	(do ((i 0 (fix:+ i 1)))
+	    ((not (fix:< i n)))
+	  (apply procedure
+		 (utf32-string-ref string i)
+		 (map (lambda (string)
+			(utf32-string-ref string i))
 		      strings))))))
 
 (define (ustring-map proc string . strings)
@@ -606,6 +495,26 @@ USA.
 				    (ustring-ref string i)
 				    (map (lambda (string)
 					   (ustring-ref string i))
+					 strings))))
+	result)))
+
+(define (utf32-string-map proc string . strings)
+  (if (null? strings)
+      (let* ((n (utf32-string-length string))
+	     (result (make-utf32-string n)))
+	(do ((i 0 (fix:+ i 1)))
+	    ((not (fix:< i n)))
+	  (utf32-string-set! result i (proc (utf32-string-ref string i))))
+	result)
+      (let* ((n (min-length utf32-string-length string strings))
+	     (result (make-utf32-string n)))
+	(do ((i 0 (fix:+ i 1)))
+	    ((not (fix:< i n)))
+	  (utf32-string-set! result i
+			     (apply proc
+				    (utf32-string-ref string i)
+				    (map (lambda (string)
+					   (utf32-string-ref string i))
 					 strings))))
 	result)))
 
@@ -677,6 +586,26 @@ USA.
 	(else
 	 (error:not-a ustring? string 'ustring-find-first-index))))
 
+(define (legacy-string-find-first-index proc string #!optional start end)
+  (let* ((caller 'legacy-string-find-next-index)
+	 (end (fix:end-index end (legacy-string-length string) caller))
+	 (start (fix:start-index start end caller)))
+    (let loop ((i start))
+      (and (fix:< i end)
+	   (if (proc (legacy-string-ref string i))
+	       i
+	       (loop (fix:+ i 1)))))))
+
+(define (utf32-string-find-first-index proc string #!optional start end)
+  (let* ((caller 'utf32-string-find-next-index)
+	 (end (utf32-end-index end string caller))
+	 (start (fix:start-index start end caller)))
+    (let loop ((i start))
+      (and (fix:< i end)
+	   (if (proc (utf32-string-ref string i))
+	       i
+	       (loop (fix:+ i 1)))))))
+
 (define (ustring-find-last-index proc string #!optional start end)
   (cond ((legacy-string? string)
 	 (legacy-string-find-last-index proc string start end))
@@ -684,6 +613,26 @@ USA.
 	 (utf32-string-find-last-index proc string start end))
 	(else
 	 (error:not-a ustring? string 'ustring-find-last-index))))
+
+(define (legacy-string-find-last-index proc string #!optional start end)
+  (let* ((caller 'legacy-string-find-last-index)
+	 (end (fix:end-index end (legacy-string-length string) caller))
+	 (start (fix:start-index start end caller)))
+    (let loop ((i (fix:- end 1)))
+      (and (fix:>= i start)
+	   (if (proc (legacy-string-ref string i))
+	       i
+	       (loop (fix:- i 1)))))))
+
+(define (utf32-string-find-last-index proc string #!optional start end)
+  (let* ((caller 'utf32-string-find-last-index)
+	 (end (utf32-end-index end string caller))
+	 (start (fix:start-index start end caller)))
+    (let loop ((i (fix:- end 1)))
+      (and (fix:>= i start)
+	   (if (proc (utf32-string-ref string i))
+	       i
+	       (loop (fix:- i 1)))))))
 
 (define (ustring-find-first-char string char #!optional start end)
   (ustring-find-first-index (char=-predicate char) string start end))
@@ -702,18 +651,62 @@ USA.
 	((utf32-string? string) (utf32-string-downcase string))
 	(else (error:not-a ustring? string 'ustring-downcase))))
 
+(define (legacy-string-downcase string)
+  (let ((end (legacy-string-length string)))
+    (let ((string* (make-legacy-string end)))
+      (do ((i 0 (fix:+ i 1)))
+	  ((fix:= i end))
+	(legacy-string-set! string* i
+			    (char-downcase (legacy-string-ref string i))))
+      string*)))
+
+(define (utf32-string-downcase string)
+  (utf32-case-transform string char-downcase-full))
+
 (define (ustring-foldcase string)
   (cond ((legacy-string? string) (legacy-string-downcase string))
 	((utf32-string? string) (utf32-string-foldcase string))
 	(else (error:not-a ustring? string 'ustring-foldcase))))
+
+(define (utf32-string-foldcase string)
+  (utf32-case-transform string char-foldcase-full))
 
 (define (ustring-upcase string)
   (cond ((legacy-string? string) (legacy-string-upcase string))
 	((utf32-string? string) (utf32-string-upcase string))
 	(else (error:not-a ustring? string 'ustring-upcase))))
 
+(define (utf32-string-upcase string)
+  (utf32-case-transform string char-upcase-full))
+
+(define (legacy-string-upcase string)
+  (let ((end (legacy-string-length string)))
+    (let ((string* (make-legacy-string end)))
+      (do ((i 0 (fix:+ i 1)))
+	  ((fix:= i end))
+	(legacy-string-set! string* i
+			    (char-upcase (legacy-string-ref string i))))
+      string*)))
+
+(define (utf32-case-transform string transform)
+  (let ((chars
+	 (append-map transform
+		     (utf32-string->list string))))
+    (let ((n (length chars)))
+      (let ((result (make-utf32-string n)))
+	(do ((chars chars (cdr chars))
+	     (i 0 (fix:+ i 1)))
+	    ((not (pair? chars)))
+	  (utf32-string-set! result i (car chars)))
+	result))))
+
 (define (ustring-hash string #!optional modulus)
   (legacy-string-hash (string-for-primitive string) modulus))
+
+(define (legacy-string-hash key #!optional modulus)
+  (if (default-object? modulus)
+      ((ucode-primitive string-hash) key)
+      ((ucode-primitive string-hash-mod) key modulus)))
 
 (define (ustring . objects)
   (%ustring* objects 'ustring))
@@ -746,6 +739,9 @@ USA.
 	(pathname? object)
 	(number? object)
 	(uri? object)))
+
+(define-integrable (utf32-end-index end string caller)
+  (fix:end-index end (utf32-string-length string) caller))
 
 (define (string-for-primitive string)
   (cond ((legacy-string? string)
