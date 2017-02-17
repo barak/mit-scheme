@@ -126,11 +126,11 @@ USA.
 ;;;; String
 
 (define-primitives
+  (legacy-string? string? 1)
+  (legacy-string-allocate string-allocate 1)
   (legacy-string-length string-length 1)
   (legacy-string-ref string-ref 2)
-  (legacy-string-set! string-set! 3)
-  (legacy-string? string? 1)
-  (make-legacy-string string-allocate 1))
+  (legacy-string-set! string-set! 3))
 
 (define (ustring? object)
   (or (legacy-string? object)
@@ -156,7 +156,7 @@ USA.
   (guarantee index-fixnum? k 'make-ustring)
   (if (fix:> k 0)
       (make-full-string k char)
-      (make-legacy-string 0)))
+      (legacy-string-allocate 0)))
 
 (define (make-full-string k #!optional char)
   (let ((v (make-cp-vector k)))
@@ -212,7 +212,7 @@ USA.
 	      (8-bit? #t (and 8-bit? (ustring-8-bit? (car strings)))))
 	     ((not (pair? strings))
 	      (if 8-bit?
-		  (make-legacy-string n)
+		  (legacy-string-allocate n)
 		  (make-full-string n))))))
     (let loop ((strings strings) (i 0))
       (if (pair? strings)
@@ -225,7 +225,7 @@ USA.
   (let ((string
 	 (let ((n (length chars)))
 	   (if (every char-8-bit? chars)
-	       (make-legacy-string n)
+	       (legacy-string-allocate n)
 	       (make-full-string n)))))
     (do ((chars chars (cdr chars))
 	 (i 0 (fix:+ i 1)))
@@ -253,7 +253,7 @@ USA.
   (every-loop char-8-bit? full-string-ref string start end))
 
 (define (%full-string->legacy-string string start end)
-  (let ((to (make-legacy-string (fix:- end start))))
+  (let ((to (legacy-string-allocate (fix:- end start))))
     (copy-loop legacy-string-set! to 0
 	       full-string-ref string start end)
     to))
@@ -271,7 +271,7 @@ USA.
 	   (error:not-a ustring? string 'ustring-copy)))))
 
 (define legacy-string-copy
-  (x-copy-maker legacy-string-length legacy-string-ref make-legacy-string
+  (x-copy-maker legacy-string-length legacy-string-ref legacy-string-allocate
 		legacy-string-set! 'string-copy))
 
 (define (full-string-copy string #!optional start end)
@@ -672,7 +672,7 @@ USA.
 
 (define (legacy-string-downcase string)
   (let ((end (legacy-string-length string)))
-    (let ((string* (make-legacy-string end)))
+    (let ((string* (legacy-string-allocate end)))
       (do ((i 0 (fix:+ i 1)))
 	  ((fix:= i end))
 	(legacy-string-set! string* i
@@ -700,7 +700,7 @@ USA.
 
 (define (legacy-string-upcase string)
   (let ((end (legacy-string-length string)))
-    (let ((string* (make-legacy-string end)))
+    (let ((string* (legacy-string-allocate end)))
       (do ((i 0 (fix:+ i 1)))
 	  ((fix:= i end))
 	(legacy-string-set! string* i

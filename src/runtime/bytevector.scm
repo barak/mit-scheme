@@ -275,7 +275,7 @@ USA.
 
 ;; Make sure UTF-8 bytevectors have null termination.
 (define (utf8-allocator k)
-  (legacy-string->bytevector (make-legacy-string k)))
+  (legacy-string->bytevector (legacy-string-allocate k)))
 
 (define string->utf8)
 (define string->utf16be)

@@ -1220,8 +1220,8 @@ USA.
 	  ;; vector->ustring
 	  )
   (export (runtime bytevector)
+	  legacy-string-allocate
 	  legacy-string?
-	  make-legacy-string
 	  ustring->legacy-string)
   (export (runtime predicate-metadata)
 	  register-ustring-predicates!)
