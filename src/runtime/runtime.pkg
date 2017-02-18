@@ -1479,6 +1479,7 @@ USA.
 
 (define-package (runtime ucd-tables)
   (files "ucd-table-alpha"
+	 "ucd-table-ccc"
 	 "ucd-table-cf"
 	 "ucd-table-cwcf"
 	 "ucd-table-cwl"
@@ -1497,16 +1498,10 @@ USA.
   (parent (runtime))
   (export ()
 	  char-alphabetic?
-	  char-changes-when-case-folded?
-	  char-changes-when-lower-cased?
-	  char-changes-when-upper-cased?
 	  char-lower-case?
 	  char-upper-case?
 	  char-whitespace?
 	  char-set:alphabetic
-	  char-set:changes-when-case-folded
-	  char-set:changes-when-lower-cased
-	  char-set:changes-when-upper-cased
 	  char-set:lower-case
 	  char-set:upper-case
 	  char-set:whitespace)
@@ -1521,7 +1516,10 @@ USA.
 	  ucd-suc-value
 	  ucd-uc-value)
   (export (runtime ucd-glue)
-	  ucd-nt-value))
+	  char-set:changes-when-case-folded
+	  ucd-nt-value)
+  (export (runtime ustring)
+	  ucd-ccc-value))
 
 (define-package (runtime ucd-glue)
   (files "ucd-glue")

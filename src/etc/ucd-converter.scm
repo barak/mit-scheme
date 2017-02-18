@@ -395,6 +395,7 @@ USA.
 	      "Lower"
 	      "Upper"
 	      "WSpace"
+	      "ccc"
 	      "cf"
 	      "gc"
 	      "lc"
@@ -455,6 +456,7 @@ USA.
 	  ((string=? "nv" (metadata-name metadata)) code-generator:nv)
 	  ((mapped-enum-type? type-spec) code-generator:mapped-enum)
 	  ((eq? 'boolean type-spec) code-generator:boolean)
+	  ((eq? 'byte type-spec) code-generator:byte)
 	  ((eq? 'code-point type-spec) code-generator:code-point)
 	  ((eq? 'code-point* type-spec) code-generator:code-point*)
 	  ((eq? 'code-point+ type-spec) code-generator:code-point+)
@@ -473,7 +475,7 @@ USA.
 			      (car value-map)))
 		       prop-alist))))))
 
-(define (hashed-code-generator keep-value? value-converter default-value
+(define (hashed-code-generator default-string value-converter default-value
 			       runtime-value-converter)
   (lambda (prop-name metadata prop-alist proc-name)
     (let ((table-name (symbol "char-map:" (metadata-full-name metadata)))
@@ -483,8 +485,8 @@ USA.
 				(lambda (cp)
 				  (cons cp value)))
 			      (expand-cpr (car p))))
-		       (filter (lambda (p)
-				 (keep-value? (cdr p)))
+		       (remove (lambda (p)
+				 (ustring=? default-string (cdr p)))
 			       prop-alist))))
       (with-notification
        (lambda (port)
@@ -518,11 +520,10 @@ USA.
   (string-splitter #\space #f))
 
 (define (code-point-filter value)
-  (and (string? value)
-       (not (string=? "#" value))))
+  (not (ustring=? "#" value)))
 
 (define code-generator:code-point
-  (hashed-code-generator code-point-filter
+  (hashed-code-generator "#"
 			 string->cp
 			 (lambda (char-expr) char-expr)
 			 (lambda (sv-expr) `(integer->char ,sv-expr))))
@@ -534,16 +535,26 @@ USA.
   `(map integer->char ,svs-expr))
 
 (define code-generator:code-point*
-  (hashed-code-generator code-point-filter
+  (hashed-code-generator "#"
 			 string->cps
 			 code-points-default
 			 code-points-converter))
 
 (define code-generator:code-point+
-  (hashed-code-generator code-point-filter
+  (hashed-code-generator "#"
 			 string->cps
 			 code-points-default
 			 code-points-converter))
+
+(define code-generator:byte
+  (hashed-code-generator "0"
+			 (lambda (string)
+			   (let ((n (string->number string 10 #t)))
+			     (if (not (and (fix:<= 0 n) (fix:<= n 254)))
+				 (error "Illegal ccc value:" string))
+			     n))
+			 (lambda (char-expr) char-expr 0)
+			 (lambda (sv-expr) sv-expr)))
 
 (define (converter:mapped-enum metadata)
   (let ((name (symbol->string (metadata-full-name metadata)))
@@ -561,17 +572,13 @@ USA.
 	  (default-object)))))
 
 (define code-generator:nt
-  (hashed-code-generator (lambda (value)
-			   (and (string? value)
-				(not (string=? "None" value))))
+  (hashed-code-generator "None"
 			 (converter:mapped-enum (prop-metadata "nt"))
 			 (lambda (char-expr) char-expr #f)
 			 (lambda (sv-expr) sv-expr)))
 
 (define code-generator:nv
-  (hashed-code-generator (lambda (value)
-			   (and (string? value)
-				(not (string=? "NaN" value))))
+  (hashed-code-generator "NaN"
 			 (lambda (string) (string->number string 10 #t))
 			 (lambda (char-expr) char-expr #f)
 			 (lambda (sv-expr) sv-expr)))
