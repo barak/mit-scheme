@@ -397,6 +397,7 @@ USA.
 	      "WSpace"
 	      "ccc"
 	      "cf"
+	      "dm"
 	      "gc"
 	      "lc"
 	      "nt"
@@ -451,15 +452,18 @@ USA.
 	       (symbol "ucd-" (string-downcase prop-name) "-value"))))
 
 (define (metadata->code-generator metadata)
-  (let ((type-spec (metadata-type-spec metadata)))
-    (cond ((string=? "nt" (metadata-name metadata)) code-generator:nt)
-	  ((string=? "nv" (metadata-name metadata)) code-generator:nv)
+  (let ((name (metadata-name metadata))
+	(type-spec (metadata-type-spec metadata)))
+    (cond ((string=? name "NFC_QC") code-generator:qc)
+	  ((string=? name "NFKC_QC") code-generator:qc)
+	  ((string=? name "nt") code-generator:nt)
+	  ((eq? type-spec 'boolean) code-generator:boolean)
+	  ((eq? type-spec 'byte) code-generator:byte)
+	  ((eq? type-spec 'code-point) code-generator:code-point)
+	  ((eq? type-spec 'code-point*) code-generator:code-point*)
+	  ((eq? type-spec 'code-point+) code-generator:code-point+)
+	  ((eq? type-spec 'rational-or-nan) code-generator:rational-or-nan)
 	  ((mapped-enum-type? type-spec) code-generator:mapped-enum)
-	  ((eq? 'boolean type-spec) code-generator:boolean)
-	  ((eq? 'byte type-spec) code-generator:byte)
-	  ((eq? 'code-point type-spec) code-generator:code-point)
-	  ((eq? 'code-point* type-spec) code-generator:code-point*)
-	  ((eq? 'code-point+ type-spec) code-generator:code-point+)
 	  (else (error "Unsupported metadata:" metadata)))))
 
 (define (code-generator:boolean prop-name metadata prop-alist proc-name)
@@ -474,36 +478,48 @@ USA.
 			 (and (equal? "Y" (cdr value-map))
 			      (car value-map)))
 		       prop-alist))))))
-
-(define (hashed-code-generator default-string value-converter default-value
-			       runtime-value-converter)
-  (lambda (prop-name metadata prop-alist proc-name)
-    (let ((table-name (symbol "char-map:" (metadata-full-name metadata)))
-	  (mapping
-	   (append-map (lambda (p)
-			 (map (let ((value (value-converter (cdr p))))
-				(lambda (cp)
-				  (cons cp value)))
-			      (expand-cpr (car p))))
-		       (remove (lambda (p)
-				 (ustring=? default-string (cdr p)))
-			       prop-alist))))
-      (with-notification
-       (lambda (port)
-	 (write-string "UCD property " port)
-	 (write-string prop-name port)
-	 (write-string ": table pairs = " port)
-	 (write (length mapping) port)))
-      `((define (,proc-name char)
-	  (hash-table-ref ,table-name char (lambda () ,(default-value 'char))))
-	(define-deferred ,table-name
-	  (let ((table (make-non-pointer-hash-table)))
-	    (for-each (lambda (p)
-			(hash-table-set! table
-					 (integer->char (car p))
-					 ,(runtime-value-converter '(cdr p))))
-		      ',mapping)
-	    table))))))
+
+(define (hashed-code-generator default-string value-converter
+			       #!optional default-value runtime-value-converter)
+  (let ((default-value
+	 (if (default-object? default-value)
+	     (let ((value (value-converter default-string)))
+	       (lambda (char-expr)
+		 char-expr
+		 value))
+	     default-value))
+	(runtime-value-converter
+	 (if (default-object? runtime-value-converter)
+	     (lambda (sv-expr) sv-expr)
+	     runtime-value-converter)))
+    (lambda (prop-name metadata prop-alist proc-name)
+      (let ((table-name (symbol "char-map:" (metadata-full-name metadata)))
+	    (mapping
+	     (append-map (lambda (p)
+			   (map (let ((value (value-converter (cdr p))))
+				  (lambda (cp)
+				    (cons cp value)))
+				(expand-cpr (car p))))
+			 (remove (lambda (p)
+				   (ustring=? default-string (cdr p)))
+				 prop-alist))))
+	(with-notification
+	 (lambda (port)
+	   (write-string "UCD property " port)
+	   (write-string prop-name port)
+	   (write-string ": table pairs = " port)
+	   (write (length mapping) port)))
+	`((define (,proc-name char)
+	    (hash-table-ref ,table-name char
+			    (lambda () ,(default-value 'char))))
+	  (define-deferred ,table-name
+	    (let ((table (make-non-pointer-hash-table)))
+	      (for-each (lambda (p)
+			  (hash-table-set! table
+					   (integer->char (car p))
+					   ,(runtime-value-converter '(cdr p))))
+			',mapping)
+	      table)))))))
 
 (define (string->cp string)
   (let ((cp (string->number string 16 #t)))
@@ -518,9 +534,6 @@ USA.
 
 (define code-points-splitter
   (string-splitter #\space #f))
-
-(define (code-point-filter value)
-  (not (ustring=? "#" value)))
 
 (define code-generator:code-point
   (hashed-code-generator "#"
@@ -552,9 +565,17 @@ USA.
 			   (let ((n (string->number string 10 #t)))
 			     (if (not (and (fix:<= 0 n) (fix:<= n 254)))
 				 (error "Illegal ccc value:" string))
-			     n))
-			 (lambda (char-expr) char-expr 0)
-			 (lambda (sv-expr) sv-expr)))
+			     n))))
+
+(define code-generator:rational-or-nan
+  (hashed-code-generator "NaN"
+			 (lambda (string)
+			   (if (string=? string "NaN")
+			       #f
+			       (let ((n (string->number string 10 #t)))
+				 (if (not (exact-rational? n))
+				     (error "Illegal rational value:" string))
+				 n)))))
 
 (define (converter:mapped-enum metadata)
   (let ((name (symbol->string (metadata-full-name metadata)))
@@ -572,16 +593,10 @@ USA.
 	  (default-object)))))
 
 (define code-generator:nt
-  (hashed-code-generator "None"
-			 (converter:mapped-enum (prop-metadata "nt"))
-			 (lambda (char-expr) char-expr #f)
-			 (lambda (sv-expr) sv-expr)))
+  (hashed-code-generator "None" (converter:mapped-enum (prop-metadata "nt"))))
 
-(define code-generator:nv
-  (hashed-code-generator "NaN"
-			 (lambda (string) (string->number string 10 #t))
-			 (lambda (char-expr) char-expr #f)
-			 (lambda (sv-expr) sv-expr)))
+(define code-generator:qc
+  (hashed-code-generator "Y" (converter:mapped-enum (prop-metadata "NFC_QC"))))
 
 (define (code-generator:mapped-enum prop-name metadata prop-alist proc-name)
   (let ((maker (entries-maker))
