@@ -393,6 +393,7 @@ USA.
 	      "CWL"
 	      "CWU"
 	      "Lower"
+	      "NFD_QC"
 	      "Upper"
 	      "WSpace"
 	      "ccc"
