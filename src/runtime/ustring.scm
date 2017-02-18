@@ -670,3 +670,81 @@ USA.
 	(and (proc (ref string i))
 	     (loop (fix:+ i 1)))
 	#t)))
+
+(define (ustring->nfd string)
+  (if (ustring-in-nfd? string)
+      string
+      (canonical-ordering! (canonical-decomposition string))))
+
+(define (ustring-in-nfd? string)
+  (let ((n (ustring-length string)))
+    (let loop ((i 0) (last-ccc 0))
+      (if (fix:< i n)
+	  (let* ((char (ustring-ref string i))
+		 (ccc (ucd-ccc-value char)))
+	    (and (or (fix:= ccc 0)
+		     (fix:>= ccc last-ccc))
+		 (char-nfd-quick-check? char)
+		 (loop (fix:+ i 1) ccc)))
+	  #t))))
+
+(define (canonical-decomposition string)
+  (let ((end (ustring-length string)))
+    (let ((result
+	   (make-ustring
+	    (do ((i 0 (fix:+ i 1))
+		 (j 0 (fix:+ j (length (ucd-dm-value (ustring-ref string i))))))
+		((not (fix:< i end)) j)))))
+      (let loop ((i 0) (j 0))
+	(if (fix:< i end)
+	    (loop (fix:+ i 1)
+		  (do ((chars (ucd-dm-value (ustring-ref string i))
+			      (cdr chars))
+		       (j j (fix:+ j 1)))
+		      ((not (pair? chars)) j)
+		    (ustring-set! result j (car chars))))))
+      result)))
+
+(define (canonical-ordering! string)
+  (let ((end (ustring-length string)))
+
+    (define (scan-for-non-starter i)
+      (if (fix:< i end)
+	  (let* ((char (ustring-ref string i))
+		 (ccc (ucd-ccc-value char)))
+	    (if (fix:= 0 ccc)
+		(scan-for-non-starter (fix:+ i 1))
+		(maybe-twiddle char ccc i)))))
+
+    (define (maybe-twiddle char1 ccc1 i1)
+      (let ((i2 (fix:+ i1 1)))
+	(if (fix:< i2 end)
+	    (let* ((char2 (ustring-ref string i2))
+		   (ccc2 (ucd-ccc-value char2)))
+	      (cond ((fix:= 0 ccc2)
+		     (scan-for-non-starter (fix:+ i2 1)))
+		    ((fix:<= ccc1 ccc2)
+		     (maybe-twiddle char2 ccc2 i2))
+		    (else
+		     (ustring-set! string i1 char2)
+		     (ustring-set! string i2 char1)
+		     (maybe-twiddle char1 ccc1 i2)))))))
+
+    (scan-for-non-starter 0))
+  string)
+
+(define (quick-check string qc-value)
+  (let ((n (ustring-length string)))
+    (let loop ((i 0) (last-ccc 0) (result #t))
+      (if (fix:< i n)
+	  (let* ((char (ustring-ref string i))
+		 (ccc (ucd-ccc-value char)))
+	    (if (and (fix:> ccc 0)
+		     (fix:< ccc last-ccc))
+		#f
+		(let ((check (qc-value char)))
+		  (and check
+		       (if (eq? check 'maybe)
+			   (loop (fix:+ i 1) ccc check)
+			   (loop (fix:+ i 1) ccc result))))))
+	  result))))

@@ -1484,9 +1484,11 @@ USA.
 	 "ucd-table-cwcf"
 	 "ucd-table-cwl"
 	 "ucd-table-cwu"
+	 "ucd-table-dm"
 	 "ucd-table-gc"
 	 "ucd-table-lc"
 	 "ucd-table-lower"
+	 "ucd-table-nfd_qc"
 	 "ucd-table-nt"
 	 "ucd-table-nv"
 	 "ucd-table-scf"
@@ -1519,7 +1521,9 @@ USA.
 	  char-set:changes-when-case-folded
 	  ucd-nt-value)
   (export (runtime ustring)
-	  ucd-ccc-value))
+	  char-nfd-quick-check?
+	  ucd-ccc-value
+	  ucd-dm-value))
 
 (define-package (runtime ucd-glue)
   (files "ucd-glue")
