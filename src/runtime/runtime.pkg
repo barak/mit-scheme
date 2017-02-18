@@ -1207,6 +1207,7 @@ USA.
 	  ustring-prefix?
 	  ustring-ref
 	  ustring-set!
+	  ustring-slice
 	  ustring-suffix-ci?
 	  ustring-suffix?
 	  ustring-tail
@@ -1217,8 +1218,7 @@ USA.
 	  ustring>=?
 	  ustring>?
 	  ustring?
-	  ;; vector->ustring
-	  )
+	  vector->ustring)
   (export (runtime bytevector)
 	  legacy-string-allocate
 	  legacy-string?

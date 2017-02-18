@@ -79,11 +79,6 @@ USA.
 (define-integrable (cp-vector-copy! to at from start end)
   (bytevector-copy! to (cp->byte-index at)
 		    from (cp->byte-index start) (cp->byte-index end)))
-
-(define (cp-vector-fill! bytes start end cp)
-  (do ((i start (fix:+ i 1)))
-      ((not (fix:< i end)))
-    (cp-vector-set! bytes i cp)))
 
 ;;;; Component types
 
@@ -102,10 +97,10 @@ USA.
 (define-integrable (full-string-allocate k)
   (%record %full-string-tag (make-cp-vector k)))
 
-(define %full-string-tag
+(define-integrable %full-string-tag
   '|#[(runtime ustring)full-string]|)
 
-(define (%full-string-cp-vector string)
+(define-integrable (%full-string-cp-vector string)
   (%record-ref string 1))
 
 (define (make-full-string k #!optional char)
@@ -123,17 +118,36 @@ USA.
 (define-integrable (%full-string-set! string index char)
   (cp-vector-set! (%full-string-cp-vector string) index (char->integer char)))
 
+(define-record-type <slice>
+    (make-slice string start length)
+    slice?
+  (string slice-string)
+  (start slice-start)
+  (length slice-length))
+
+(define (slice-end slice)
+  (fix:+ (slice-start slice) (slice-length slice)))
+
+(define (translate-slice string start end)
+  (if (slice? string)
+      (values (slice-string string)
+	      (fix:+ (slice-start string) start)
+	      (fix:+ (slice-start string) end))
+      (values string start end)))
+
 (define (register-ustring-predicates!)
   (register-predicate! ustring? 'ustring)
   (register-predicate! legacy-string? 'legacy-string '<= ustring?)
   (register-predicate! full-string? 'full-string '<= ustring?)
+  (register-predicate! slice? 'string-slice '<= ustring?)
   (register-predicate! ->ustring-component? '->ustring-component))
 
 ;;;; Strings
 
 (define (ustring? object)
   (or (legacy-string? object)
-      (full-string? object)))
+      (full-string? object)
+      (slice? object)))
 
 (define (make-ustring k #!optional char)
   (guarantee index-fixnum? k 'make-ustring)
@@ -144,6 +158,7 @@ USA.
 (define (ustring-length string)
   (cond ((legacy-string? string) (legacy-string-length string))
 	((full-string? string) (full-string-length string))
+	((slice? string) (slice-length string))
 	(else (error:not-a ustring? string 'ustring-length))))
 
 (define (ustring-ref string index)
@@ -154,6 +169,12 @@ USA.
 	 (if (not (fix:< index (full-string-length string)))
 	     (error:bad-range-argument index 'ustring-ref))
 	 (%full-string-ref string index))
+	((slice? string)
+	 (let ((string* (slice-string string))
+	       (index* (fix:+ (slice-start string) index)))
+	   (if (legacy-string? string*)
+	       (legacy-string-ref string* index*)
+	       (%full-string-ref string* index*))))
 	(else
 	 (error:not-a ustring? string 'ustring-ref))))
 
@@ -166,8 +187,29 @@ USA.
 	 (if (not (fix:< index (full-string-length string)))
 	     (error:bad-range-argument index 'ustring-set!))
 	 (%full-string-set! string index char))
+	((slice? string)
+	 (let ((string* (slice-string string))
+	       (index* (fix:+ (slice-start string) index)))
+	   (if (legacy-string? string*)
+	       (legacy-string-set! string* index* char)
+	       (%full-string-set! string* index* char))))
 	(else
 	 (error:not-a ustring? string 'ustring-set!))))
+
+(define (ustring-slice string #!optional start end)
+  (let* ((len (ustring-length string))
+	 (end (fix:end-index end len 'ustring-slice))
+	 (start (fix:start-index start end 'ustring-slice)))
+    (cond ((and (fix:= start 0) (fix:= end len))
+	   string)
+	  ((slice? string)
+	   (make-slice (slice-string string)
+		       (fix:+ (slice-start string) start)
+		       (fix:- end start)))
+	  (else
+	   (make-slice string
+		       start
+		       (fix:- end start))))))
 
 (define (ustring-copy! to at from #!optional start end)
   (let* ((end (fix:end-index end (ustring-length from) 'ustring-copy!))
@@ -175,16 +217,22 @@ USA.
     (guarantee index-fixnum? at 'ustring-copy!)
     (if (not (fix:<= (fix:+ at (fix:- end start)) (ustring-length to)))
 	(error:bad-range-argument to 'ustring-copy!))
-    (if (legacy-string? to)
-	(if (legacy-string? from)
-	    (copy-loop legacy-string-set! to at
-		       legacy-string-ref from start end)
-	    (copy-loop legacy-string-set! to at
-		       %full-string-ref from start end))
-	(if (legacy-string? from)
-	    (copy-loop %full-string-set! to at
-		       legacy-string-ref from start end)
-	    (%full-string-copy! to at from start end)))))
+    (receive (to at)
+	(if (slice? to)
+	    (values (slice-string to)
+		    (fix:+ (slice-start to) at))
+	    (values to at))
+      (receive (from start end) (translate-slice from start end)
+	(if (legacy-string? to)
+	    (if (legacy-string? from)
+		(copy-loop legacy-string-set! to at
+			   legacy-string-ref from start end)
+		(copy-loop legacy-string-set! to at
+			   %full-string-ref from start end))
+	    (if (legacy-string? from)
+		(copy-loop %full-string-set! to at
+			   legacy-string-ref from start end)
+		(%full-string-copy! to at from start end)))))))
 
 (define-integrable (%full-string-copy! to at from start end)
   (cp-vector-copy! (%full-string-cp-vector to) at
@@ -193,20 +241,21 @@ USA.
 (define (ustring-copy string #!optional start end)
   (let* ((end (fix:end-index end (ustring-length string) 'ustring-copy))
 	 (start (fix:start-index start end 'ustring-copy)))
-    (cond ((legacy-string? string)
-	   (let ((to (legacy-string-allocate (fix:- end start))))
-	     (copy-loop legacy-string-set! to 0
-			legacy-string-ref string start end)
-	     to))
-	  ((%full-string-8-bit? string start end)
-	   (let ((to (legacy-string-allocate (fix:- end start))))
-	     (copy-loop legacy-string-set! to 0
-			%full-string-ref string start end)
-	     to))
-	  (else
-	   (let ((to (full-string-allocate (fix:- end start))))
-	     (%full-string-copy! to 0 string start end)
-	     to)))))
+    (receive (string start end) (translate-slice string start end)
+      (cond ((legacy-string? string)
+	     (let ((to (legacy-string-allocate (fix:- end start))))
+	       (copy-loop legacy-string-set! to 0
+			  legacy-string-ref string start end)
+	       to))
+	    ((%full-string-8-bit? string start end)
+	     (let ((to (legacy-string-allocate (fix:- end start))))
+	       (copy-loop legacy-string-set! to 0
+			  %full-string-ref string start end)
+	       to))
+	    (else
+	     (let ((to (full-string-allocate (fix:- end start))))
+	       (%full-string-copy! to 0 string start end)
+	       to))))))
 
 (define (ustring-head string end)
   (ustring-copy string 0 end))
@@ -337,26 +386,41 @@ USA.
 (define (ustring->list string #!optional start end)
   (let* ((end (fix:end-index end (ustring-length string) 'ustring->list))
 	 (start (fix:start-index start end 'ustring->list)))
-    (if (legacy-string? string)
-	(do ((i (fix:- end 1) (fix:- i 1))
-	     (chars '() (cons (legacy-string-ref string i) chars)))
-	    ((not (fix:>= i start)) chars))
-	(do ((i (fix:- end 1) (fix:- i 1))
-	     (chars '() (cons (%full-string-ref string i) chars)))
-	    ((not (fix:>= i start)) chars)))))
+    (receive (string start end) (translate-slice string start end)
+      (if (legacy-string? string)
+	  (do ((i (fix:- end 1) (fix:- i 1))
+	       (chars '() (cons (legacy-string-ref string i) chars)))
+	      ((not (fix:>= i start)) chars))
+	  (do ((i (fix:- end 1) (fix:- i 1))
+	       (chars '() (cons (%full-string-ref string i) chars)))
+	      ((not (fix:>= i start)) chars))))))
+
+(define (vector->ustring vector #!optional start end)
+  (let* ((end (fix:end-index end (vector-length string) 'vector->ustring))
+	 (start (fix:start-index start end 'vector->ustring))
+	 (to
+	  (if (do ((i start (fix:+ i 1))
+		   (8-bit? #t (and 8-bit? (char-8-bit? (vector-ref vector i)))))
+		  ((not (fix:< start end)) 8-bit?))
+	      (legacy-string-allocate (fix:- end start))
+	      (full-string-allocate (fix:- end start)))))
+    (copy-loop ustring-set! to 0
+	       vector-ref vector start end)
+    to))
 
 (define (ustring->vector string #!optional start end)
   (let* ((end (fix:end-index end (ustring-length string) 'ustring->vector))
 	 (start (fix:start-index start end 'ustring->vector)))
-    (if (legacy-string? string)
-	(let ((to (make-vector (fix:- end start))))
-	  (copy-loop vector-set! to 0
-		     legacy-string-ref string start end)
-	  to)
-	(let ((to (make-vector (fix:- end start))))
-	  (copy-loop vector-set! to 0
-		     %full-string-ref string start end)
-	  to))))
+    (receive (string start end) (translate-slice string start end)
+      (if (legacy-string? string)
+	  (let ((to (make-vector (fix:- end start))))
+	    (copy-loop vector-set! to 0
+		       legacy-string-ref string start end)
+	    to)
+	  (let ((to (make-vector (fix:- end start))))
+	    (copy-loop vector-set! to 0
+		       %full-string-ref string start end)
+	    to)))))
 
 (define (ustring-append . strings)
   (%ustring-append* strings))
@@ -499,58 +563,50 @@ USA.
 	       (loop (fix:- i 1)))))))
 
 (define (ustring-find-first-char string char #!optional start end)
-  (let* ((caller 'ustring-find-first-char)
-	 (end (fix:end-index end (ustring-length string) caller))
-	 (start (fix:start-index start end caller)))
-    (let ((index
-	   (ustring-find-first-index (char=-predicate char)
-				     (ustring-copy string start end))))
-      (and index
-	   (fix:+ start index)))))
+  (translate-index (let ((predicate (char=-predicate char)))
+		     (lambda (string)
+		       (ustring-find-first-index predicate string)))
+		   string start end 'ustring-find-first-char))
 
 (define (ustring-find-last-char string char #!optional start end)
-  (let* ((caller 'ustring-find-last-char)
-	 (end (fix:end-index end (ustring-length string) caller))
-	 (start (fix:start-index start end caller)))
-    (let ((index
-	   (ustring-find-last-index (char=-predicate char)
-				    (ustring-copy string start end))))
-      (and index
-	   (fix:+ start index)))))
+  (translate-index (let ((predicate (char=-predicate char)))
+		     (lambda (string)
+		       (ustring-find-last-index predicate string)))
+		   string start end 'ustring-find-last-char))
 
 (define (ustring-find-first-char-in-set string char-set #!optional start end)
-  (let* ((caller 'ustring-find-first-char-in-set)
-	 (end (fix:end-index end (ustring-length string) caller))
-	 (start (fix:start-index start end caller)))
-    (let ((index
-	   (ustring-find-first-index (char-set-predicate char-set)
-				     (ustring-copy string start end))))
-      (and index
-	   (fix:+ start index)))))
+  (translate-index (let ((predicate (char-set-predicate char-set)))
+		     (lambda (string)
+		       (ustring-find-first-index predicate string)))
+		   string start end 'ustring-find-first-char-in-set))
 
 (define (ustring-find-last-char-in-set string char-set #!optional start end)
-  (let* ((caller 'ustring-find-last-char-in-set)
-	 (end (fix:end-index end (ustring-length string) caller))
-	 (start (fix:start-index start end caller)))
-    (let ((index
-	   (ustring-find-last-index (char-set-predicate char-set)
-				    (ustring-copy string start end))))
-      (and index
-	   (fix:+ start index)))))
+  (translate-index (let ((predicate (char-set-predicate char-set)))
+		     (lambda (string)
+		       (ustring-find-last-index predicate string)))
+		   string start end 'ustring-find-last-char-in-set))
+
+(define (translate-index proc string start end caller)
+  (let* ((end (fix:end-index end (ustring-length string) caller))
+	 (start (fix:start-index start end caller))
+	 (index (proc (ustring-slice string start end))))
+    (and index
+	 (fix:+ start index))))
 
 (define (ustring-fill! string char #!optional start end)
   (guarantee bitless-char? char 'ustring-fill!)
   (let* ((end (fix:end-index end (ustring-length string) 'ustring-fill!))
 	 (start (fix:start-index start end 'ustring-fill!)))
-    (if (legacy-string? string)
-	(do ((index start (fix:+ index 1)))
-	    ((not (fix:< index end)) unspecific)
-	  (legacy-string-set! string index char))
-	(let ((bytes (%full-string-cp-vector string))
-	      (cp (char->integer char)))
-	  (do ((i start (fix:+ i 1)))
-	      ((not (fix:< i end)))
-	    (cp-vector-set! bytes i cp))))))
+    (receive (string start end) (translate-slice string start end)
+      (if (legacy-string? string)
+	  (do ((index start (fix:+ index 1)))
+	      ((not (fix:< index end)) unspecific)
+	    (legacy-string-set! string index char))
+	  (let ((bytes (%full-string-cp-vector string))
+		(cp (char->integer char)))
+	    (do ((i start (fix:+ i 1)))
+		((not (fix:< i end)))
+	      (cp-vector-set! bytes i cp)))))))
 
 (define (ustring-hash string #!optional modulus)
   (let ((string* (string-for-primitive string)))
@@ -559,23 +615,18 @@ USA.
 	((ucode-primitive string-hash-mod) string* modulus))))
 
 (define (ustring->legacy-string string)
-  (cond ((legacy-string? string) string)
-	((full-string? string)
-	 (let ((end (full-string-length string)))
-	   (and (%full-string-8-bit? string 0 end)
-		(let ((to (legacy-string-allocate end)))
-		  (copy-loop legacy-string-set! to 0
-			     %full-string-ref string 0 end)
-		  to))))
-	(else (error:not-a ustring? string 'ustring->legacy-string))))
+  (if (legacy-string? string)
+      string
+      (and (ustring-8-bit? string)
+	   (ustring-copy string))))
 
 (define (ustring-8-bit? string)
-  (cond ((legacy-string? string) #t)
-	((full-string? string)
-	 (%full-string-8-bit? string 0 (full-string-length string)))
-	(else (error:not-a ustring? string 'ustring-8-bit?))))
+  (receive (string start end) (translate-slice string 0 (ustring-length string))
+    (if (legacy-string? string)
+	#t
+	(%full-string-8-bit? string start end))))
 
-(define (%full-string-8-bit? string start end)
+(define-integrable (%full-string-8-bit? string start end)
   (every-loop char-8-bit? %full-string-ref string start end))
 
 (define (string-for-primitive string)
