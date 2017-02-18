@@ -37,153 +37,123 @@ USA.
         ((vector-ref ucd-gc-entries (bytevector-u8-ref offsets (fix:and 31 (fix:lsh sv -16)))) sv ucd-gc-entries)))))
 
 (define (ucd-gc-entry-0 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'other:control)
 
 (define (ucd-gc-entry-1 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'separator:space)
 
 (define (ucd-gc-entry-2 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'punctuation:other)
 
 (define (ucd-gc-entry-3 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'symbol:currency)
 
 (define (ucd-gc-entry-4 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'punctuation:open)
 
 (define (ucd-gc-entry-5 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'punctuation:close)
 
 (define (ucd-gc-entry-6 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'symbol:math)
 
 (define (ucd-gc-entry-7 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'punctuation:dash)
 
 (define (ucd-gc-entry-8 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'number:decimal-digit)
 
 (define (ucd-gc-entry-9 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'letter:uppercase)
 
 (define (ucd-gc-entry-10 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'symbol:modifier)
 
 (define (ucd-gc-entry-11 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'punctuation:connector)
 
 (define (ucd-gc-entry-12 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'letter:lowercase)
 
 (define (ucd-gc-entry-13 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'symbol:other)
 
 (define (ucd-gc-entry-14 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'letter:other)
 
 (define (ucd-gc-entry-15 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'punctuation:initial-quote)
 
 (define (ucd-gc-entry-16 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'other:format)
 
 (define (ucd-gc-entry-17 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'number:other)
 
 (define (ucd-gc-entry-18 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'punctuation:final-quote)
 
 (define (ucd-gc-entry-19 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'letter:titlecase)
 
 (define (ucd-gc-entry-20 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'letter:modifier)
 
 (define (ucd-gc-entry-21 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'mark:nonspacing)
 
 (define (ucd-gc-entry-22 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'other:not-assigned)
 
 (define (ucd-gc-entry-23 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'mark:enclosing)
 
 (define (ucd-gc-entry-24 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'mark:spacing-combining)
 
 (define (ucd-gc-entry-25 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'number:letter)
 
 (define (ucd-gc-entry-26 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'separator:line)
 
 (define (ucd-gc-entry-27 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'separator:paragraph)
 
 (define (ucd-gc-entry-28 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'other:surrogate)
 
 (define (ucd-gc-entry-29 sv table)
-  sv
-  table
+  (declare (ignore sv table))
   'other:private-use)
 
 (define-deferred ucd-gc-entry-30

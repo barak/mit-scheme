@@ -455,8 +455,9 @@ USA.
 (define (metadata->code-generator metadata)
   (let ((name (metadata-name metadata))
 	(type-spec (metadata-type-spec metadata)))
-    (cond ((string=? name "NFC_QC") code-generator:qc)
-	  ((string=? name "NFKC_QC") code-generator:qc)
+    (cond ((string=? name "NFC_QC") code-generator:nfc-qc)
+	  ((string=? name "NFKC_QC") code-generator:nfc-qc)
+	  ((string=? name "gc") code-generator:gc)
 	  ((string=? name "nt") code-generator:nt)
 	  ((eq? type-spec 'boolean) code-generator:boolean)
 	  ((eq? type-spec 'byte) code-generator:byte)
@@ -464,7 +465,6 @@ USA.
 	  ((eq? type-spec 'code-point*) code-generator:code-point*)
 	  ((eq? type-spec 'code-point+) code-generator:code-point+)
 	  ((eq? type-spec 'rational-or-nan) code-generator:rational-or-nan)
-	  ((mapped-enum-type? type-spec) code-generator:mapped-enum)
 	  (else (error "Unsupported metadata:" metadata)))))
 
 (define (code-generator:boolean prop-name metadata prop-alist proc-name)
@@ -479,104 +479,105 @@ USA.
 			 (and (equal? "Y" (cdr value-map))
 			      (car value-map)))
 		       prop-alist))))))
+
+(define (code-generator:byte prop-name metadata prop-alist proc-name)
+  ((hashed-code-generator value-manager:byte)
+   prop-name metadata prop-alist proc-name))
+
+(define (code-generator:code-point prop-name metadata prop-alist proc-name)
+  ((hashed-code-generator value-manager:code-point)
+   prop-name metadata prop-alist proc-name))
+
+(define (code-generator:code-point* prop-name metadata prop-alist proc-name)
+  ((hashed-code-generator value-manager:code-points)
+   prop-name metadata prop-alist proc-name))
+
+(define (code-generator:code-point+ prop-name metadata prop-alist proc-name)
+  ((hashed-code-generator value-manager:code-points)
+   prop-name metadata prop-alist proc-name))
+
+(define (code-generator:gc prop-name metadata prop-alist proc-name)
+  ((trie-code-generator (mapped-enum-value-manager #f metadata) '(5 8 8))
+   prop-name metadata prop-alist proc-name))
+
+(define (code-generator:nfc-qc prop-name metadata prop-alist proc-name)
+  ((hashed-code-generator (mapped-enum-value-manager "Y" metadata))
+   prop-name metadata prop-alist proc-name))
+
+(define (code-generator:nt prop-name metadata prop-alist proc-name)
+  ((hashed-code-generator (mapped-enum-value-manager "None" metadata))
+   prop-name metadata prop-alist proc-name))
+
+(define (code-generator:rational-or-nan prop-name metadata prop-alist proc-name)
+  ((hashed-code-generator value-manager:rational-or-nan)
+   prop-name metadata prop-alist proc-name))
 
-(define (hashed-code-generator default-string value-converter
-			       #!optional default-value runtime-value-converter)
-  (let ((default-value
-	 (if (default-object? default-value)
-	     (let ((value (value-converter default-string)))
-	       (lambda (char-expr)
-		 char-expr
-		 value))
-	     default-value))
-	(runtime-value-converter
-	 (if (default-object? runtime-value-converter)
-	     (lambda (sv-expr) sv-expr)
-	     runtime-value-converter)))
-    (lambda (prop-name metadata prop-alist proc-name)
-      (let ((table-name (symbol "char-map:" (metadata-full-name metadata)))
-	    (mapping
-	     (append-map (lambda (p)
-			   (map (let ((value (value-converter (cdr p))))
-				  (lambda (cp)
-				    (cons cp value)))
-				(expand-cpr (car p))))
-			 (remove (lambda (p)
-				   (ustring=? default-string (cdr p)))
-				 prop-alist))))
-	(with-notification
-	 (lambda (port)
-	   (write-string "UCD property " port)
-	   (write-string prop-name port)
-	   (write-string ": table pairs = " port)
-	   (write (length mapping) port)))
-	`((define (,proc-name char)
-	    (hash-table-ref ,table-name char
-			    (lambda () ,(default-value 'char))))
-	  (define-deferred ,table-name
-	    (let ((table (make-non-pointer-hash-table)))
-	      (for-each (lambda (p)
-			  (hash-table-set! table
-					   (integer->char (car p))
-					   ,(runtime-value-converter '(cdr p))))
-			',mapping)
-	      table)))))))
-
+(define (value-manager default-string converter
+		       #!optional runtime-default runtime-converter)
+  (make-value-manager default-string
+		      converter
+		      (if (default-object? runtime-default)
+			  (let ((value
+				 (and default-string
+				      (converter default-string))))
+			    (lambda (char-expr)
+			      char-expr
+			      value))
+			  runtime-default)
+		      (if (default-object? runtime-converter)
+			  (lambda (sv-expr) sv-expr)
+			  runtime-converter)))
+
+(define-record-type <value-manager>
+    (make-value-manager default-string
+			converter
+			runtime-default
+			runtime-converter)
+    value-manager?
+  (default-string value-manager-default-string)
+  (converter value-manager-converter)
+  (runtime-default value-manager-runtime-default)
+  (runtime-converter value-manager-runtime-converter))
+
 (define (string->cp string)
-  (let ((cp (string->number string 16 #t)))
+  (let ((cp (string->number string 16)))
     (if (not (unicode-code-point? cp))
 	(error "Illegal code-point value:" string))
     cp))
 
-(define (string->cps value)
-  (if (ustring=? "" value)
-      '()
-      (map string->cp (code-points-splitter value))))
+(define value-manager:code-point
+  (value-manager "#"
+		 string->cp
+		 (lambda (char-expr) char-expr)
+		 (lambda (sv-expr) `(integer->char ,sv-expr))))
 
-(define code-points-splitter
-  (string-splitter #\space #f))
+(define value-manager:code-points
+  (value-manager "#"
+		 (let ((splitter (string-splitter #\space #f)))
+		   (lambda (value)
+		     (if (ustring=? "" value)
+			 '()
+			 (map string->cp (splitter value)))))
+		 (lambda (char-expr) `(list ,char-expr))
+		 (lambda (svs-expr) `(map integer->char ,svs-expr))))
+
+(define value-manager:byte
+  (value-manager "0"
+		 (lambda (string)
+		   (let ((n (string->number string 10)))
+		     (if (not (and (index-fixnum? n) (fix:<= n 254)))
+			 (error "Illegal ccc value:" string))
+		     n))))
 
-(define code-generator:code-point
-  (hashed-code-generator "#"
-			 string->cp
-			 (lambda (char-expr) char-expr)
-			 (lambda (sv-expr) `(integer->char ,sv-expr))))
-
-(define (code-points-default char-expr)
-  `(list ,char-expr))
-
-(define (code-points-converter svs-expr)
-  `(map integer->char ,svs-expr))
-
-(define code-generator:code-point*
-  (hashed-code-generator "#"
-			 string->cps
-			 code-points-default
-			 code-points-converter))
-
-(define code-generator:code-point+
-  (hashed-code-generator "#"
-			 string->cps
-			 code-points-default
-			 code-points-converter))
-
-(define code-generator:byte
-  (hashed-code-generator "0"
-			 (lambda (string)
-			   (let ((n (string->number string 10 #t)))
-			     (if (not (and (fix:<= 0 n) (fix:<= n 254)))
-				 (error "Illegal ccc value:" string))
-			     n))))
-
-(define code-generator:rational-or-nan
-  (hashed-code-generator "NaN"
-			 (lambda (string)
-			   (if (string=? string "NaN")
-			       #f
-			       (let ((n (string->number string 10 #t)))
-				 (if (not (exact-rational? n))
-				     (error "Illegal rational value:" string))
-				 n)))))
+(define value-manager:rational-or-nan
+  (value-manager "NaN"
+		 (lambda (string)
+		   (if (string=? string "NaN")
+		       #f
+		       (let ((n (string->number string 10)))
+			 (if (not (exact-rational? n))
+			     (error "Illegal rational value:" string))
+			 n)))))
 
 (define (converter:mapped-enum metadata)
   (let ((name (symbol->string (metadata-full-name metadata)))
@@ -593,107 +594,125 @@ USA.
 	    (cdr p))
 	  (default-object)))))
 
-(define code-generator:nt
-  (hashed-code-generator "None" (converter:mapped-enum (prop-metadata "nt"))))
-
-(define code-generator:qc
-  (hashed-code-generator "Y" (converter:mapped-enum (prop-metadata "NFC_QC"))))
+(define (mapped-enum-value-manager default-string metadata)
+  (value-manager default-string (converter:mapped-enum metadata)))
 
-(define (code-generator:mapped-enum prop-name metadata prop-alist proc-name)
-  (let ((maker (entries-maker))
-        (entry-count 0)
-        (unique-entry-count 0)
-        (byte-count 0)
-	(convert-value (converter:mapped-enum metadata)))
-
-    (define (make-value-code value)
-      (let ((value*
-	     (let ((converted (convert-value value)))
-	       (if (or (symbol? converted)
-		       (list? converted)
-		       (vector? converted))
-		   `',converted
-		   converted))))
-	(lambda (offsets-name sv-name table-name)
-	  offsets-name
-	  (values #f #f `(,sv-name ,table-name ,value*)))))
-
-    (define (make-node-code n-bits offset indexes)
-      (receive (bytes-per-entry offsets-expr coder)
-          (or (try-linear indexes)
-              (try-8-bit-direct indexes)
-              (try-8-bit-spread indexes)
-              (try-16-bit-direct indexes)
-              (try-16-bit-spread indexes)
-              (error "Dispatch won't fit in 16 bits:" indexes))
-        (count-entries! indexes bytes-per-entry)
-        (lambda (offsets-name sv-name table-name)
-	  (values indexes
-                  offsets-expr
-		  `(((vector-ref ,table-name
-				 ,(coder offsets-name
-				    (lambda (shift)
-				      `(fix:and ,(* (expt 2 shift)
-						    (- (expt 2 n-bits) 1))
-						,(code:rsh sv-name
-							   (- offset shift))))))
-		     ,sv-name
-		     ,table-name))))))
-
-    (define (count-entries! indexes bytes-per-entry)
-      (let ((n (length indexes))
-            (u (length (delete-duplicates indexes eqv?))))
-        (set! entry-count (+ entry-count n))
-        (set! unique-entry-count (+ unique-entry-count u))
-        (set! byte-count (+ byte-count (* n bytes-per-entry))))
-      unspecific)
-
-    (let ((table (make-equal-hash-table))
-	  (make-entry (maker 'make-entry)))
-
-      ;; Make sure that the leaf nodes are at the beginning of the table.
-      (for-each (lambda (value)
-		  (hash-table/intern! table value
-				      (lambda ()
-					(make-entry (make-value-code value)))))
-		(map cdr prop-alist))
-
-      (let loop
-          ((entries (expand-ranges (slice-prop-alist prop-alist '(5 8 8))))
-           (n-max 21))
-	(hash-table/intern! table entries
-	  (lambda ()
-	    (make-entry
-	     (let* ((n-bits (car entries))
-		    (n-max* (- n-max n-bits)))
-	       (make-node-code n-bits n-max*
-		 (map (lambda (entry)
-                        (loop entry n-max*))
-                      (cdr entries)))))))))
-
-    (let ((root-entry ((maker 'get-root-entry)))
-          (table-entries ((maker 'get-table-entries))))
-      (report-table-statistics prop-name entry-count unique-entry-count
-			       byte-count (length table-entries))
-      (generate-top-level (ustring-downcase prop-name)
-			  root-entry table-entries proc-name))))
+(define (hashed-code-generator value-manager)
+  (let ((default-string (value-manager-default-string value-manager))
+	(value-converter (value-manager-converter value-manager))
+	(default-value (value-manager-runtime-default value-manager))
+	(runtime-converter (value-manager-runtime-converter value-manager)))
+    (lambda (prop-name metadata prop-alist proc-name)
+      (let ((table-name (symbol "char-map:" (metadata-full-name metadata)))
+	    (mapping
+	     (append-map (lambda (p)
+			   (map (let ((value (value-converter (cdr p))))
+				  (lambda (cp)
+				    (cons cp value)))
+				(expand-cpr (car p))))
+			 (remove (lambda (p)
+				   (and default-string
+					(ustring=? default-string (cdr p))))
+				 prop-alist))))
+	(with-notification
+	 (lambda (port)
+	   (write-string "UCD property " port)
+	   (write-string prop-name port)
+	   (write-string ": table pairs = " port)
+	   (write (length mapping) port)))
+	`((define (,proc-name char)
+	    (hash-table-ref ,table-name char
+			    (lambda () ,(default-value 'char))))
+	  (define-deferred ,table-name
+	    (let ((table (make-non-pointer-hash-table)))
+	      (for-each (lambda (p)
+			  (hash-table-set! table
+					   (integer->char (car p))
+					   ,(runtime-converter '(cdr p))))
+			',mapping)
+	      table)))))))
 
-(define (report-table-statistics prop-name entry-count unique-entry-count
-                                 byte-count n-entries)
-  (with-notification
-   (lambda (port)
-     (write-string "UCD property " port)
-     (write-string prop-name port)
-     (write-string ": dispatch tables = " port)
-     (write entry-count port)
-     (write-string "/" port)
-     (write unique-entry-count port)
-     (write-string " entries, " port)
-     (write byte-count port)
-     (write-string " bytes; object table = " port)
-     (write n-entries port)
-     (write-string " words" port))))
+(define (trie-code-generator value-manager slices)
+  (let ((default-string (value-manager-default-string value-manager))
+	(value-converter (value-manager-converter value-manager))
+	(default-value (value-manager-runtime-default value-manager))
+	(runtime-converter (value-manager-runtime-converter value-manager)))
+    (lambda (prop-name metadata prop-alist proc-name)
+      (let ((maker (entries-maker))
+	    (stats (trie-stats)))
 
+	(define (make-value-code value)
+	  (if (and default-string (string=? value default-string))
+	      (lambda (offsets-name sv-name table-name)
+		offsets-name
+		(values #f #f
+			`((declare (ignore ,table-name))
+			  ,(default-value sv-name))))
+	      (let ((value*
+		     (let ((converted (value-converter value)))
+		       (if (or (symbol? converted)
+			       (list? converted)
+			       (vector? converted))
+			   `',converted
+			   converted))))
+		(lambda (offsets-name sv-name table-name)
+		  offsets-name
+		  (values #f #f
+			  `((declare (ignore ,sv-name ,table-name))
+			    ,(runtime-converter value*)))))))
+
+	(define (make-node-code n-bits offset indexes)
+	  (receive (bytes-per-entry offsets-expr coder)
+	      (or (try-linear indexes)
+		  (try-8-bit-direct indexes)
+		  (try-8-bit-spread indexes)
+		  (try-16-bit-direct indexes)
+		  (try-16-bit-spread indexes)
+		  (error "Dispatch won't fit in 16 bits:" indexes))
+	    ((stats 'record!) indexes bytes-per-entry)
+	    (lambda (offsets-name sv-name table-name)
+	      (values indexes
+		      offsets-expr
+		      `(((vector-ref ,table-name
+				     ,(coder offsets-name
+					(lambda (shift)
+					  `(fix:and ,(* (expt 2 shift)
+							(- (expt 2 n-bits) 1))
+						    ,(code:rsh sv-name
+							       (- offset
+								  shift))))))
+			 ,sv-name
+			 ,table-name))))))
+
+	(let ((table (make-equal-hash-table))
+	      (make-entry (maker 'make-entry)))
+
+	  ;; Make sure that the leaf nodes are at the beginning of the table.
+	  (for-each (lambda (value)
+		      (hash-table/intern! table value
+			(lambda ()
+			  (make-entry (make-value-code value)))))
+		    (map cdr prop-alist))
+
+	  (let loop
+	      ((entries (expand-ranges (slice-prop-alist prop-alist slices)))
+	       (n-max 21))
+	    (hash-table/intern! table entries
+	      (lambda ()
+		(make-entry
+		 (let* ((n-bits (car entries))
+			(n-max* (- n-max n-bits)))
+		   (make-node-code n-bits n-max*
+		     (map (lambda (entry)
+			    (loop entry n-max*))
+			  (cdr entries)))))))))
+
+	(let ((root-entry ((maker 'get-root-entry)))
+	      (table-entries ((maker 'get-table-entries))))
+	  ((stats 'report) prop-name (length table-entries))
+	  (generate-top-level (ustring-downcase prop-name)
+			      root-entry table-entries proc-name))))))
+
 (define (generate-top-level prop-name root-entry table-entries proc-name)
   (let ((table-name (symbol "ucd-" prop-name "-entries"))
         (entry-names
@@ -716,7 +735,7 @@ USA.
 
       (define ,table-name)
       ,@(generate-table-initializers table-name entry-names))))
-
+
 (define (generate-entry-definition name entry sv-name table-name
 				   arg-names wrap-body)
   (receive (comment offsets-expr body) (entry 'offsets sv-name table-name)
@@ -870,6 +889,40 @@ USA.
         ((get-table-entries) (lambda () (reverse (cdr entries))))
         ((get-root-entry) (lambda () (car entries)))
         (else (error "Unknown operator:" operator))))))
+
+(define (trie-stats)
+  (let ((entry-count 0)
+	(unique-entry-count 0)
+	(byte-count 0))
+
+    (define (record! indexes bytes-per-entry)
+      (let ((n (length indexes))
+	    (u (length (delete-duplicates indexes eqv?))))
+	(set! entry-count (+ entry-count n))
+	(set! unique-entry-count (+ unique-entry-count u))
+	(set! byte-count (+ byte-count (* n bytes-per-entry))))
+      unspecific)
+
+    (define (report prop-name n-entries)
+      (with-notification
+       (lambda (port)
+	 (write-string "UCD property " port)
+	 (write-string prop-name port)
+	 (write-string ": dispatch tables = " port)
+	 (write entry-count port)
+	 (write-string "/" port)
+	 (write unique-entry-count port)
+	 (write-string " entries, " port)
+	 (write byte-count port)
+	 (write-string " bytes; object table = " port)
+	 (write n-entries port)
+	 (write-string " words" port))))
+
+    (lambda (operator)
+      (case operator
+	((record!) record!)
+	((report) report)
+	(else (error "Unknown operator:" operator))))))
 
 (define (expand-ranges stratified)
   (if (list? stratified)
