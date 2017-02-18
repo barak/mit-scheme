@@ -614,6 +614,9 @@ USA.
 	((ucode-primitive string-hash) string*)
 	((ucode-primitive string-hash-mod) string* modulus))))
 
+(define (ustring-ci-hash string #!optional modulus)
+  (ustring-hash (ustring-foldcase string) modulus))
+
 (define (ustring->legacy-string string)
   (if (legacy-string? string)
       string

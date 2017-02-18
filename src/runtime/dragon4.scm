@@ -80,7 +80,7 @@ not much different to numbers within a few orders of magnitude of 1.
 		     (dragon4 f e p radix cutoff-mode cutoff
 		       (lambda (u k generate)
 			 (let ((digits
-				(list->string
+				(list->ustring
 				 (let loop ((u u) (k k) (generate generate))
 				   k	;ignore
 				   (if (negative? u)

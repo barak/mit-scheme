@@ -1299,13 +1299,10 @@ USA.
   (make-hash-table-type key-hash
 			key=?
 			(if (and (or (eq? key=? string=?)
-				     (eq? key=? string-ci=?)
-				     (eq? key=? ustring=?))
-				 (or (eq? key-hash string-hash-mod)
-				     (eq? key-hash string-hash)
-				     (eq? key-hash ustring-hash)
-				     (eq? key-hash hash)
-				     (eq? key-hash string-ci-hash)))
+				     (eq? key=? string-ci=?))
+				 (or (eq? key-hash string-hash)
+				     (eq? key-hash string-ci-hash)
+				     (eq? key-hash hash)))
 			    #f		;No rehash needed after GC
 			    #t)		;Rehash needed after GC
 			hash-table-entry-type:strong))

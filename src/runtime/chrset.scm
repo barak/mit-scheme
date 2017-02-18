@@ -533,7 +533,7 @@ USA.
 
 ;; Returns ASCII string:
 (define (char-set->string char-set)
-  (list->string (char-set-members char-set)))
+  (list->ustring (char-set-members char-set)))
 
 ;; Returns only ASCII members:
 (define (char-set-members char-set)

@@ -380,7 +380,7 @@ USA.
 		(if (not (stack-empty? ctx))
 		    (compilation-error ctx "Unmatched \\("))
 		(make-compiled-regexp
-		 (list->string (map integer->char (cdr (output-head ctx))))
+		 (list->ustring (map integer->char (cdr (output-head ctx))))
 		 case-fold?))
 	      (begin
 		(compile-pattern-char ctx)
@@ -695,7 +695,7 @@ USA.
 							  (char->integer char)))
 		 (char-set-members
 		  (re-compile-char-set
-		   (list->string (map integer->char (reverse! chars)))
+		   (list->ustring (map integer->char (reverse! chars)))
 		   #f))))
 	      (loop (cons char chars)))))
       (output-start! ctx (if invert? re-code:not-char-set re-code:char-set))

@@ -1050,7 +1050,7 @@ USA.
 	  guarantee-substring-end-index
 	  guarantee-substring-start-index
 	  lisp-string->camel-case
-	  list->string
+	  ;;list->string
 	  make-string
 	  reverse-string
 	  reverse-string!
@@ -1058,19 +1058,19 @@ USA.
 	  reverse-substring!
 	  set-string-length!
 	  string
-	  string->list
-	  string->vector
+	  ;;string->list
+	  ;;string->vector
 	  string-allocate
 	  string-append
 	  string-capitalize
 	  string-capitalize!
 	  string-capitalized?
-	  string-ci-hash
-	  string-ci<=?
-	  string-ci<?
-	  string-ci=?
-	  string-ci>=?
-	  string-ci>?
+	  ;; string-ci-hash
+	  ;; string-ci<=?
+	  ;; string-ci<?
+	  ;; string-ci=?
+	  ;; string-ci>=?
+	  ;; string-ci>?
 	  string-compare
 	  string-compare-ci
 	  string-copy
@@ -1085,8 +1085,8 @@ USA.
 	  string-find-previous-char-ci
 	  string-find-previous-char-in-set
 	  string-for-each
-	  string-hash
-	  string-hash-mod
+	  ;; string-hash
+	  ;; string-hash-mod
 	  string-head
 	  string-head!
 	  string-joiner
@@ -1122,11 +1122,11 @@ USA.
 	  string-upcase
 	  string-upcase!
 	  string-upper-case?
-	  string<=?
-	  string<?
-	  string=?
-	  string>=?
-	  string>?
+	  ;; string<=?
+	  ;; string<?
+	  ;; string=?
+	  ;; string>=?
+	  ;; string>?
 	  string?
 	  substring
 	  substring->list
@@ -1170,6 +1170,22 @@ USA.
   (files "ustring")
   (parent (runtime))
   (export ()
+	  (list->string list->ustring)
+	  (string->list ustring->list)
+	  (string->vector ustring->vector)
+	  (string-ci-hash ustring-ci-hash)
+	  (string-ci<=? ustring-ci<=?)
+	  (string-ci<? ustring-ci<?)
+	  (string-ci=? ustring-ci=?)
+	  (string-ci>=? ustring-ci>=?)
+	  (string-ci>? ustring-ci>?)
+	  (string-hash ustring-hash)
+	  (string-hash-mod ustring-hash)
+	  (string<=? ustring<=?)
+	  (string<? ustring<?)
+	  (string=? ustring=?)
+	  (string>=? ustring>=?)
+	  (string>? ustring>?)
 	  (usubstring ustring-copy)
 	  list->ustring
 	  make-ustring
@@ -1186,6 +1202,7 @@ USA.
 	  ustring-ci=?
 	  ustring-ci>=?
 	  ustring-ci>?
+	  ustring-ci-hash
 	  ustring-copy
 	  ustring-copy!
 	  ustring-downcase
