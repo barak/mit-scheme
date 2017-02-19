@@ -729,7 +729,7 @@ USA.
 
 (define (dld-lookup-symbol handle name)
   (guarantee-dld-handle handle 'DLD-LOOKUP-SYMBOL)
-  (guarantee ustring? name 'DLD-LOOKUP-SYMBOL)
+  (guarantee string? name 'DLD-LOOKUP-SYMBOL)
   ((ucode-primitive dld-lookup-symbol 2)
    (dld-handle-address handle)
    (string-for-primitive name)))

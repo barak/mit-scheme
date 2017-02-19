@@ -47,7 +47,7 @@ USA.
 		     ,v
 		     ,(if (string? description)
 			  (string-append "Malformed " description)
-			  `(USTRING-APPEND "Malformed " ,description))))))))))
+			  `(STRING-APPEND "Malformed " ,description))))))))))
 
 (define-*parser-macro (sbracket description open close . body)
   `(BRACKET ,description (NOISE (STRING ,open)) (NOISE (STRING ,close))

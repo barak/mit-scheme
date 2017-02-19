@@ -109,7 +109,7 @@ USA.
   (pathname-as-directory (merge-pathnames "ucd-raw-props" this-directory)))
 
 (define (raw-file-name name)
-  (merge-pathnames (ustring-append name ".scm") raw-directory))
+  (merge-pathnames (string-append name ".scm") raw-directory))
 
 (define (read-ucd-property-metadata)
   (let ((properties (read-file (raw-file-name "names"))))
@@ -197,7 +197,7 @@ USA.
   (raw-file-name "version"))
 
 (define (prop-file-name prop-name)
-  (raw-file-name (ustring-append "prop-" prop-name)))
+  (raw-file-name (string-append "prop-" prop-name)))
 
 ;;;; UCD property extraction
 
@@ -245,7 +245,7 @@ USA.
             (if (and (cprs-adjacent? (car p1) (car p2))
                      (if (cdr p1)
                          (and (cdr p2)
-                              (ustring=? (cdr p1) (cdr p2)))
+                              (string=? (cdr p1) (cdr p2)))
                          (not (cdr p2))))
                 (begin
                   (set-car! alist
@@ -281,7 +281,7 @@ USA.
                (xml-element-attributes elt))))
     (and attr
          (let ((value (xml-attribute-value attr)))
-           (and (fix:> (ustring-length value) 0)
+           (and (fix:> (string-length value) 0)
                 value)))))
 
 (define (cp-attribute elt)
@@ -296,7 +296,7 @@ USA.
          (xml-element-content
           (xml-element-child 'description (xml-document-root document)))))
     (if (not (and (pair? content)
-                  (ustring? (car content))
+                  (string? (car content))
                   (null? (cdr content))))
         (error "Unexpected description content:" content))
     (car content)))
@@ -423,9 +423,9 @@ USA.
 		    (cdr exprs)))))))
 
 (define (prop-table-file-name prop-name)
-  (ustring-append (->namestring output-file-root)
+  (string-append (->namestring output-file-root)
 		  "-"
-		  (ustring-downcase prop-name)
+		  (string-downcase prop-name)
 		  ".scm"))
 
 (define (write-code-header port)
@@ -555,7 +555,7 @@ USA.
   (value-manager "#"
 		 (let ((splitter (string-splitter #\space #f)))
 		   (lambda (value)
-		     (if (ustring=? "" value)
+		     (if (string=? "" value)
 			 '()
 			 (map string->cp (splitter value)))))
 		 (lambda (char-expr) `(list ,char-expr))
@@ -587,10 +587,10 @@ USA.
       (if value
 	  (let ((p
 		 (find (lambda (p)
-			 (ustring=? value (car p)))
+			 (string=? value (car p)))
 		       translations)))
 	    (if (not p)
-		(error (ustring-append "Illegal " name " value:") value))
+		(error (string-append "Illegal " name " value:") value))
 	    (cdr p))
 	  (default-object)))))
 
@@ -612,7 +612,7 @@ USA.
 				(expand-cpr (car p))))
 			 (remove (lambda (p)
 				   (and default-string
-					(ustring=? default-string (cdr p))))
+					(string=? default-string (cdr p))))
 				 prop-alist))))
 	(with-notification
 	 (lambda (port)
@@ -710,7 +710,7 @@ USA.
 	(let ((root-entry ((maker 'get-root-entry)))
 	      (table-entries ((maker 'get-table-entries))))
 	  ((stats 'report) prop-name (length table-entries))
-	  (generate-top-level (ustring-downcase prop-name)
+	  (generate-top-level (string-downcase prop-name)
 			      root-entry table-entries proc-name))))))
 
 (define (generate-top-level prop-name root-entry table-entries proc-name)

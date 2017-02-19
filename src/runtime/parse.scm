@@ -482,15 +482,15 @@ USA.
 
 (define (maybe-keyword db string)
   (cond ((and (eq? 'SUFFIX (db-keyword-style db))
-	      (ustring-suffix? ":" string)
-	      (fix:> (ustring-length string) 1))
+	      (string-suffix? ":" string)
+	      (fix:> (string-length string) 1))
 	 (string->keyword
-	  (ustring-head string
-			(fix:- (ustring-length string) 1))))
+	  (string-head string
+			(fix:- (string-length string) 1))))
 	((and (eq? 'SUFFIX (db-keyword-style db))
-	      (ustring-prefix? ":" string)
-	      (fix:> (ustring-length string) 1))
-	 (string->keyword (ustring-tail string 1)))
+	      (string-prefix? ":" string)
+	      (fix:> (string-length string) 1))
+	 (string->keyword (string-tail string 1)))
 	(else #f)))
 
 (define (handler:number port db ctx char1 char2)
@@ -746,7 +746,7 @@ USA.
 
       (define (ill-formed-hex chars)
 	(error:illegal-string-escape
-	 (list->ustring (cons* #\\ #\x (reverse chars)))))
+	 (list->string (cons* #\\ #\x (reverse chars)))))
 
       (define (parse-octal-escape c1 d1)
 	(let* ((c2 (%read-char/no-eof port db))
@@ -754,7 +754,7 @@ USA.
 	       (c3 (%read-char/no-eof port db))
 	       (d3 (char->digit c3 8)))
 	  (if (not (and d2 d3))
-	      (error:illegal-string-escape (list->ustring (list #\\ c1 c2 c3))))
+	      (error:illegal-string-escape (list->string (list #\\ c1 c2 c3))))
 	  (integer->char (fix:+ (fix:lsh (fix:+ (fix:lsh d1 3) d2) 3) d3))))
 
       (loop))))
@@ -762,16 +762,16 @@ USA.
 (define (handler:false port db ctx char1 char2)
   ctx char1
   (let ((string (parse-atom port db (list char2))))
-    (if (not (or (ustring=? string "f")
-		 (ustring=? string "false")))
+    (if (not (or (string=? string "f")
+		 (string=? string "false")))
 	(error:illegal-boolean string)))
   #f)
 
 (define (handler:true port db ctx char1 char2)
   ctx char1
   (let ((string (parse-atom port db (list char2))))
-    (if (not (or (ustring=? string "t")
-		 (ustring=? string "true")))
+    (if (not (or (string=? string "t")
+		 (string=? string "true")))
 	(error:illegal-boolean string)))
   #t)
 
@@ -819,20 +819,20 @@ USA.
 (define (handler:named-constant port db ctx char1 char2)
   ctx char1 char2
   (let ((name (parse-atom port db '())))
-    (cond ((ustring=? name "null") '())
-	  ((ustring=? name "false") #f)
-	  ((ustring=? name "true") #t)
-	  ((ustring=? name "optional") lambda-tag:optional)
-	  ((ustring=? name "rest") lambda-tag:rest)
-	  ((ustring=? name "key") lambda-tag:key)
-	  ((ustring=? name "aux") lambda-tag:aux)
-	  ((ustring=? name "eof") (eof-object))
-	  ((ustring=? name "default") (default-object))
-	  ((ustring=? name "unspecific") unspecific)
-	  ((ustring=? name "fold-case")
+    (cond ((string=? name "null") '())
+	  ((string=? name "false") #f)
+	  ((string=? name "true") #t)
+	  ((string=? name "optional") lambda-tag:optional)
+	  ((string=? name "rest") lambda-tag:rest)
+	  ((string=? name "key") lambda-tag:key)
+	  ((string=? name "aux") lambda-tag:aux)
+	  ((string=? name "eof") (eof-object))
+	  ((string=? name "default") (default-object))
+	  ((string=? name "unspecific") unspecific)
+	  ((string=? name "fold-case")
 	   (set-db-fold-case! db #t)
 	   continue-parsing)
-	  ((ustring=? name "no-fold-case")
+	  ((string=? name "no-fold-case")
 	   (set-db-fold-case! db #f)
 	   continue-parsing)
 	  (else

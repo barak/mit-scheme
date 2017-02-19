@@ -36,19 +36,19 @@ USA.
 
 (define (perror ptr msg . irritants)
   (apply error
-	 (ustring-append msg
-			 (if ptr
-			     (ustring-append
-			      " at "
-			      (parser-buffer-position-string
-			       ;; **** This isn't quite right.  ****
-			       (if (pair? *entity-expansion-nesting*)
-				   (cdar (last-pair *entity-expansion-nesting*))
-				   ptr)))
-			     "")
-			 (if (pair? irritants)
-			     ":"
-			     "."))
+	 (string-append msg
+			(if ptr
+			    (string-append
+			     " at "
+			     (parser-buffer-position-string
+			      ;; **** This isn't quite right.  ****
+			      (if (pair? *entity-expansion-nesting*)
+				  (cdar (last-pair *entity-expansion-nesting*))
+				  ptr)))
+			    "")
+			(if (pair? irritants)
+			    ":"
+			    "."))
 	 irritants))
 
 (define (coalesce-elements v)
@@ -57,13 +57,13 @@ USA.
 (define (coalesce-strings! elements)
   (do ((elements elements (cdr elements)))
       ((not (pair? elements)))
-    (if (ustring? (car elements))
+    (if (string? (car elements))
 	(do ()
 	    ((not (and (pair? (cdr elements))
-		       (ustring? (cadr elements)))))
+		       (string? (cadr elements)))))
 	  (set-car! elements
-		    (ustring-append (car elements)
-				    (cadr elements)))
+		    (string-append (car elements)
+				   (cadr elements)))
 	  (set-cdr! elements (cddr elements)))))
   elements)
 
@@ -129,7 +129,7 @@ USA.
 	     (char->integer c))))
 	(prefix
 	 (lambda (n)
-	   (ustring (integer->char n))))
+	   (string (integer->char n))))
 	(lose
 	 (lambda bytes
 	   (error "Illegal starting bytes:" bytes))))
@@ -293,7 +293,7 @@ USA.
 	   (if (and version
 		    (not (*match-string match-xml-version version)))
 	       (perror p "Malformed XML version" version))
-	   (if (and version (not (ustring=? version "1.0")))
+	   (if (and version (not (string=? version "1.0")))
 	       (perror p "Unsupported XML version" version))
 	   (if (not (if encoding
 			(*match-string match-encoding encoding)
@@ -354,7 +354,7 @@ USA.
 	       (vector (let ((name (vector-ref v 0)))
 			 (make-xml-element name
 					   (vector-ref v 1)
-					   (if (ustring=? (vector-ref v 2) ">")
+					   (if (string=? (vector-ref v 2) ">")
 					       (parse-element-content b p name)
 					       '()))))))))))
 
@@ -447,7 +447,7 @@ USA.
 	  (let ((av (xml-attribute-value attr)))
 	    (if (and (pair? default)
 		     (eq? (car default) '|#FIXED|)
-		     (not (ustring=? av (cdr default))))
+		     (not (string=? av (cdr default))))
 		(perror (cdar attr) "Incorrect attribute value" name))
 	    (if (not (eq? type '|CDATA|))
 		(set-xml-attribute-value! attr (trim-attribute-whitespace av)))
@@ -497,7 +497,7 @@ USA.
 				   "]]>")))
     (*parser
      (transform (lambda (v)
-		  (if (fix:= 0 (ustring-length (vector-ref v 0)))
+		  (if (fix:= 0 (string-length (vector-ref v 0)))
 		      '#()
 		      v))
        parse-body))))
@@ -533,7 +533,7 @@ USA.
 	  (match match:xml-name)))))
 
 (define (simple-name-parser type)
-  (let ((m (ustring-append "Malformed " type " name")))
+  (let ((m (string-append "Malformed " type " name")))
     (*parser (require-success m (map make-xml-name (match match:xml-name))))))
 
 (define parse-entity-name (simple-name-parser "entity"))
@@ -572,10 +572,10 @@ USA.
 			       (perror p "Illegal namespace prefix" name))
 			   (string->uri value) ;signals error if not URI
 			   (if (if (xml-name=? name 'xmlns:xml)
-				   (not (ustring=? value xml-uri-string))
-				   (or (fix:= 0 (ustring-length value))
-				       (ustring=? value xml-uri-string)
-				       (ustring=? value xmlns-uri-string)))
+				   (not (string=? value xml-uri-string))
+				   (or (fix:= 0 (string-length value))
+				       (string=? value xml-uri-string)
+				       (string=? value xmlns-uri-string)))
 			       (forbidden-uri))
 			   (cons (cons (xml-name-local name) value) tail))
 			  (else tail)))))
@@ -628,7 +628,7 @@ USA.
 	     (lambda (v)
 	       (let ((name (vector-ref v 0))
 		     (text (vector-ref v 1)))
-		 (if (ustring-ci=? (symbol-name name) "xml")
+		 (if (string-ci=? (symbol-name name) "xml")
 		     (perror p "Reserved XML processor name" name))
 		 (let ((entry (assq name *pi-handlers*)))
 		   (if entry
@@ -809,7 +809,7 @@ USA.
     (*parser
      (map (lambda (elements)
 	    (if (not (and (pair? elements)
-			  (ustring? (car elements))
+			  (string? (car elements))
 			  (null? (cdr elements))))
 		(error "Uncoalesced attribute value:" elements))
 	    (normalize-attribute-value (car elements)))
@@ -852,13 +852,13 @@ USA.
 		 (loop))))))))))
 
 (define (trim-attribute-whitespace string)
-  (let ((end (ustring-length string)))
+  (let ((end (string-length string)))
     (call-with-output-string
      (lambda (port)
 
 	 (define (skip-spaces start pending-space?)
 	   (if (fix:< start end)
-	       (let ((char (ustring-ref string start)))
+	       (let ((char (string-ref string start)))
 		 (if (char-in-set? char-set:whitespace)
 		     (skip-spaces (fix:+ start 1) pending-space?)
 		     (begin
@@ -868,7 +868,7 @@ USA.
 
 	 (define (find-next-space start)
 	   (if (fix:< start end)
-	       (let ((char (ustring-ref string start)))
+	       (let ((char (string-ref string start)))
 		 (if (char-in-set? char-set:whitespace)
 		     (skip-spaces (fix:+ start 1) #t)
 		     (begin
@@ -878,20 +878,20 @@ USA.
 	 (skip-spaces 0 #f)))))
 
 (define (normalize-line-endings string #!optional always-copy?)
-  (if (ustring-find-first-char string #\return)
-      (let ((end (ustring-length string)))
+  (if (string-find-next-char string #\return)
+      (let ((end (string-length string)))
 	(let ((step-over-eol
 	       (lambda (index)
 		 (fix:+ index
 			(if (and (fix:< (fix:+ index 1) end)
-				 (char=? (ustring-ref string (fix:+ index 1))
+				 (char=? (string-ref string (fix:+ index 1))
 					 #\linefeed))
 			    2
 			    1)))))
 	  (let ((n
 		 (let loop ((start 0) (n 0))
 		   (let ((index
-			  (ustring-find-first-char string #\return start end)))
+			  (substring-find-next-char string start end #\return)))
 		     (if index
 			 (loop (step-over-eol index)
 			       (fix:+ n (fix:+ (fix:- index start) 1)))
@@ -899,17 +899,17 @@ USA.
 	    (let ((string* (make-ustring n)))
 	      (let loop ((start 0) (start* 0))
 		(let ((index
-		       (ustring-find-first-char string #\return start end)))
+		       (substring-find-next-char string start end #\return)))
 		  (if index
 		      (let ((start*
-			     (ustring-copy! string* start* string start index)))
-			(ustring-set! string* start* #\newline)
+			     (string-copy! string* start* string start index)))
+			(string-set! string* start* #\newline)
 			(loop (step-over-eol index)
 			      (fix:+ start* 1)))
-		      (ustring-copy! string* start* string start end))))
+		      (string-copy! string* start* string start end))))
 	      string*))))
       (if (if (default-object? always-copy?) #f always-copy?)
-	  (ustring-copy string)
+	  (string-copy string)
 	  string)))
 
 ;;;; Parameter entities
@@ -942,7 +942,7 @@ USA.
 		(and entity
 		     (xml-parameter-!entity-value entity))))))
     (if (and (pair? value)
-	     (ustring? (car value))
+	     (string? (car value))
 	     (null? (cdr value)))
 	(car value)
 	(begin
@@ -973,7 +973,7 @@ USA.
       (if (xml-external-id? value)
 	  (perror p "Reference to external entity" name))
       (if (not (and (pair? value)
-		    (ustring? (car value))
+		    (string? (car value))
 		    (null? (cdr value))))
 	  (perror p "Reference to partially-declared entity" name))
       (if in-attribute?
@@ -1066,8 +1066,8 @@ USA.
 	  (transform
 	      (lambda (v)
 		(let ((value (vector-ref v 0)))
-		  (if (ustring? value)
-		      (reparse-text (vector (ustring-append " " value " "))
+		  (if (string? value)
+		      (reparse-text (vector (string-append " " value " "))
 				    parse-external-subset-decl
 				    "parameter-entity value"
 				    p)
@@ -1111,7 +1111,7 @@ USA.
 	(lambda (v)
 	  (if (fix:= (vector-length v) 1)
 	      (vector-ref v 0)
-	      (list (ustring-ref (vector-ref v 1) 0)
+	      (list (string-ref (vector-ref v 1) 0)
 		    (vector-ref v 0))))))
 
     (*parser
@@ -1318,13 +1318,13 @@ USA.
 (define (reparse-text v parser description ptr)
   (let ((v (coalesce-elements v)))
     (if (and (fix:= (vector-length v) 1)
-	     (ustring? (vector-ref v 0)))
+	     (string? (vector-ref v 0)))
 	(let ((v*
 	       (fluid-let ((*external-expansion?* #t))
 		 (*parse-string parser (vector-ref v 0)))))
 	  (if (not v*)
 	      (perror ptr
-		      (ustring-append "Malformed " description)
+		      (string-append "Malformed " description)
 		      (vector-ref v 0)))
 	  v*)
 	v)))

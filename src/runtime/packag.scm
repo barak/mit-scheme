@@ -183,13 +183,13 @@ USA.
   (let ((p (->pathname pathname)))
     (pathname-new-type
      (pathname-new-name p
-			(ustring-append
+			(string-append
 			 (or (pathname-name p)
 			     ;; Interpret dirname/ as dirname/dirname-OS.pkd.
 			     (let ((dir (pathname-directory p)))
 			       (if (pair? dir)
 				   (let ((name (last dir)))
-				     (if (ustring? name)
+				     (if (string? name)
 					 name
 					 ""))
 				   "")))
@@ -276,8 +276,8 @@ USA.
 			(and (pair? clause)
 			     (or (eq? (car clause) 'ELSE)
 				 (vector-of-type? (car clause) symbol?))
-			     (vector-of-type? (cdr clause) ustring?)))))
-	       (vector-of-type? file-case ustring?))))
+			     (vector-of-type? (cdr clause) string?)))))
+	       (vector-of-type? file-case string?))))
        (vector? (load-description/initializations object))
        (vector? (load-description/finalizations object))))
 

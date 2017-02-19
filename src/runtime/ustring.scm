@@ -27,17 +27,9 @@ USA.
 ;;;; Unicode strings
 ;;; package: (runtime ustring)
 
-;;; This implementation supports all R7RS and some MIT/GNU string operations in
-;;; which all the names have "string" replaced by "ustring".  This is a
-;;; transitional implementation to convert MIT/GNU Scheme to full Unicode string
-;;; support.
-;;;
-;;; For simplicity, the implementation uses the UTF-32 encoding for non-8-bit
+;;; For simplicity, the implementation uses a 24-bit encoding for non-8-bit
 ;;; strings.  This is not a good long-term approach and should be revisited once
 ;;; the runtime system has been converted to this string abstraction.
-;;;
-;;; At some point in the future we'll eliminate legacy string support and rename
-;;; everything to "string".
 
 (declare (usual-integrations))
 
@@ -106,7 +98,7 @@ USA.
 (define (make-full-string k #!optional char)
   (let ((string (full-string-allocate k)))
     (if (not (default-object? char))
-	(ustring-fill! string char))
+	(string-fill! string char))
     string))
 
 (define-integrable (full-string-length string)
@@ -118,12 +110,20 @@ USA.
 (define-integrable (%full-string-set! string index char)
   (cp-vector-set! (%full-string-cp-vector string) index (char->integer char)))
 
-(define-record-type <slice>
-    (make-slice string start length)
-    slice?
-  (string slice-string)
-  (start slice-start)
-  (length slice-length))
+(define (slice? object)
+  (and (%record? object)
+       (fix:= 4 (%record-length object))
+       (eq? %slice-tag (%record-ref object 0))))
+
+(define-integrable (make-slice string start length)
+  (%record %slice-tag string start length))
+
+(define-integrable %slice-tag
+  '|#[(runtime ustring)slice]|)
+
+(define-integrable (slice-string slice) (%record-ref slice 1))
+(define-integrable (slice-start slice) (%record-ref slice 2))
+(define-integrable (slice-length slice) (%record-ref slice 3))
 
 (define (slice-end slice)
   (fix:+ (slice-start slice) (slice-length slice)))
@@ -136,15 +136,15 @@ USA.
       (values string start end)))
 
 (define (register-ustring-predicates!)
-  (register-predicate! ustring? 'string)
-  (register-predicate! legacy-string? 'legacy-string '<= ustring?)
-  (register-predicate! full-string? 'full-string '<= ustring?)
-  (register-predicate! slice? 'string-slice '<= ustring?)
-  (register-predicate! ->ustring-component? '->ustring-component))
+  (register-predicate! string? 'string)
+  (register-predicate! legacy-string? 'legacy-string '<= string?)
+  (register-predicate! full-string? 'full-string '<= string?)
+  (register-predicate! slice? 'string-slice '<= string?)
+  (register-predicate! ->string-component? '->string-component))
 
 ;;;; Strings
 
-(define (ustring? object)
+(define (string? object)
   (or (legacy-string? object)
       (full-string? object)
       (slice? object)))
@@ -155,19 +155,19 @@ USA.
       (make-full-string k char)
       (legacy-string-allocate 0)))
 
-(define (ustring-length string)
+(define (string-length string)
   (cond ((legacy-string? string) (legacy-string-length string))
 	((full-string? string) (full-string-length string))
 	((slice? string) (slice-length string))
-	(else (error:not-a ustring? string 'ustring-length))))
+	(else (error:not-a string? string 'string-length))))
 
-(define (ustring-ref string index)
-  (guarantee index-fixnum? index 'ustring-ref)
+(define (string-ref string index)
+  (guarantee index-fixnum? index 'string-ref)
   (cond ((legacy-string? string)
 	 (legacy-string-ref string index))
 	((full-string? string)
 	 (if (not (fix:< index (full-string-length string)))
-	     (error:bad-range-argument index 'ustring-ref))
+	     (error:bad-range-argument index 'string-ref))
 	 (%full-string-ref string index))
 	((slice? string)
 	 (let ((string* (slice-string string))
@@ -176,16 +176,16 @@ USA.
 	       (legacy-string-ref string* index*)
 	       (%full-string-ref string* index*))))
 	(else
-	 (error:not-a ustring? string 'ustring-ref))))
+	 (error:not-a string? string 'string-ref))))
 
-(define (ustring-set! string index char)
-  (guarantee index-fixnum? index 'ustring-set!)
-  (guarantee bitless-char? char 'ustring-set!)
+(define (string-set! string index char)
+  (guarantee index-fixnum? index 'string-set!)
+  (guarantee bitless-char? char 'string-set!)
   (cond ((legacy-string? string)
 	 (legacy-string-set! string index char))
 	((full-string? string)
 	 (if (not (fix:< index (full-string-length string)))
-	     (error:bad-range-argument index 'ustring-set!))
+	     (error:bad-range-argument index 'string-set!))
 	 (%full-string-set! string index char))
 	((slice? string)
 	 (let ((string* (slice-string string))
@@ -194,12 +194,12 @@ USA.
 	       (legacy-string-set! string* index* char)
 	       (%full-string-set! string* index* char))))
 	(else
-	 (error:not-a ustring? string 'ustring-set!))))
+	 (error:not-a string? string 'string-set!))))
 
-(define (ustring-slice string #!optional start end)
-  (let* ((len (ustring-length string))
-	 (end (fix:end-index end len 'ustring-slice))
-	 (start (fix:start-index start end 'ustring-slice)))
+(define (string-slice string #!optional start end)
+  (let* ((len (string-length string))
+	 (end (fix:end-index end len 'string-slice))
+	 (start (fix:start-index start end 'string-slice)))
     (cond ((and (fix:= start 0) (fix:= end len))
 	   string)
 	  ((slice? string)
@@ -211,12 +211,12 @@ USA.
 		       start
 		       (fix:- end start))))))
 
-(define (ustring-copy! to at from #!optional start end)
-  (let* ((end (fix:end-index end (ustring-length from) 'ustring-copy!))
-	 (start (fix:start-index start end 'ustring-copy!)))
-    (guarantee index-fixnum? at 'ustring-copy!)
-    (if (not (fix:<= (fix:+ at (fix:- end start)) (ustring-length to)))
-	(error:bad-range-argument to 'ustring-copy!))
+(define (string-copy! to at from #!optional start end)
+  (let* ((end (fix:end-index end (string-length from) 'string-copy!))
+	 (start (fix:start-index start end 'string-copy!)))
+    (guarantee index-fixnum? at 'string-copy!)
+    (if (not (fix:<= (fix:+ at (fix:- end start)) (string-length to)))
+	(error:bad-range-argument to 'string-copy!))
     (receive (to at)
 	(if (slice? to)
 	    (values (slice-string to)
@@ -238,9 +238,9 @@ USA.
   (cp-vector-copy! (%full-string-cp-vector to) at
 		   (%full-string-cp-vector from) start end))
 
-(define (ustring-copy string #!optional start end)
-  (let* ((end (fix:end-index end (ustring-length string) 'ustring-copy))
-	 (start (fix:start-index start end 'ustring-copy)))
+(define (string-copy string #!optional start end)
+  (let* ((end (fix:end-index end (string-length string) 'string-copy))
+	 (start (fix:start-index start end 'string-copy)))
     (receive (string start end) (translate-slice string start end)
       (cond ((legacy-string? string)
 	     (let ((to (legacy-string-allocate (fix:- end start))))
@@ -257,43 +257,43 @@ USA.
 	       (%full-string-copy! to 0 string start end)
 	       to))))))
 
-(define (ustring-head string end)
-  (ustring-copy string 0 end))
+(define (string-head string end)
+  (string-copy string 0 end))
 
-(define (ustring-tail string start)
-  (ustring-copy string start))
+(define (string-tail string start)
+  (string-copy string start))
 
 ;; Non-Unicode implementation, acceptable to R7RS.
 (define-integrable (%string-comparison-maker c= c< f<)
   (lambda (string1 string2)
-    (let ((end1 (ustring-length string1))
-	  (end2 (ustring-length string2)))
+    (let ((end1 (string-length string1))
+	  (end2 (string-length string2)))
       (let ((end (fix:min end1 end2)))
 	(let loop ((i 0))
 	  (if (fix:< i end)
-	      (let ((c1 (ustring-ref string1 i))
-		    (c2 (ustring-ref string2 i)))
+	      (let ((c1 (string-ref string1 i))
+		    (c2 (string-ref string2 i)))
 		(if (c= c1 c2)
 		    (loop (fix:+ i 1))
 		    (c< c1 c2)))
 	      (f< end1 end2)))))))
 
-(define %ustring<? (%string-comparison-maker char=? char<? fix:<))
-(define %ustring<=? (%string-comparison-maker char=? char<=? fix:<=))
-(define %ustring=? (%string-comparison-maker char=? char=? fix:=))
-(define %ustring>? (%string-comparison-maker char=? char>? fix:>))
-(define %ustring>=? (%string-comparison-maker char=? char>=? fix:<=))
+(define %string<? (%string-comparison-maker char=? char<? fix:<))
+(define %string<=? (%string-comparison-maker char=? char<=? fix:<=))
+(define %string=? (%string-comparison-maker char=? char=? fix:=))
+(define %string>? (%string-comparison-maker char=? char>? fix:>))
+(define %string>=? (%string-comparison-maker char=? char>=? fix:<=))
 
 (define-integrable (%string-ci-comparison-maker string-compare)
   (lambda (string1 string2)
-    (string-compare (ustring-foldcase string1)
-		    (ustring-foldcase string2))))
+    (string-compare (string-foldcase string1)
+		    (string-foldcase string2))))
 
-(define %ustring-ci<? (%string-ci-comparison-maker %ustring<?))
-(define %ustring-ci<=? (%string-ci-comparison-maker %ustring<=?))
-(define %ustring-ci=? (%string-ci-comparison-maker %ustring=?))
-(define %ustring-ci>? (%string-ci-comparison-maker %ustring>?))
-(define %ustring-ci>=? (%string-ci-comparison-maker %ustring>=?))
+(define %string-ci<? (%string-ci-comparison-maker %string<?))
+(define %string-ci<=? (%string-ci-comparison-maker %string<=?))
+(define %string-ci=? (%string-ci-comparison-maker %string=?))
+(define %string-ci>? (%string-ci-comparison-maker %string>?))
+(define %string-ci>=? (%string-ci-comparison-maker %string>=?))
 
 (define-integrable (string-comparison-maker %compare)
   (lambda (string1 string2 . strings)
@@ -303,59 +303,60 @@ USA.
 	       (loop string2 (car strings) (cdr strings)))
 	  (%compare string1 string2)))))
 
-(define ustring=? (string-comparison-maker %ustring=?))
-(define ustring<? (string-comparison-maker %ustring<?))
-(define ustring<=? (string-comparison-maker %ustring<=?))
-(define ustring>? (string-comparison-maker %ustring>?))
-(define ustring>=? (string-comparison-maker %ustring>=?))
+(define string=? (string-comparison-maker %string=?))
+(define string<? (string-comparison-maker %string<?))
+(define string<=? (string-comparison-maker %string<=?))
+(define string>? (string-comparison-maker %string>?))
+(define string>=? (string-comparison-maker %string>=?))
 
-(define ustring-ci=? (string-comparison-maker %ustring-ci=?))
-(define ustring-ci<? (string-comparison-maker %ustring-ci<?))
-(define ustring-ci<=? (string-comparison-maker %ustring-ci<=?))
-(define ustring-ci>? (string-comparison-maker %ustring-ci>?))
-(define ustring-ci>=? (string-comparison-maker %ustring-ci>=?))
+(define string-ci=? (string-comparison-maker %string-ci=?))
+(define string-ci<? (string-comparison-maker %string-ci<?))
+(define string-ci<=? (string-comparison-maker %string-ci<=?))
+(define string-ci>? (string-comparison-maker %string-ci>?))
+(define string-ci>=? (string-comparison-maker %string-ci>=?))
 
 (define-integrable (prefix-maker c= caller)
   (lambda (prefix string #!optional start end)
-    (let* ((end (fix:end-index end (ustring-length string) caller))
+    (let* ((end (fix:end-index end (string-length string) caller))
 	   (start (fix:start-index start end caller))
-	   (n (ustring-length prefix)))
+	   (n (string-length prefix)))
       (and (fix:<= n (fix:- end start))
 	   (let loop ((i 0) (j start))
 	     (if (fix:< i n)
-		 (and (c= (ustring-ref prefix i) (ustring-ref string j))
+		 (and (c= (string-ref prefix i) (string-ref string j))
 		      (loop (fix:+ i 1) (fix:+ j 1)))
 		 #t))))))
 
 (define-integrable (suffix-maker c= caller)
   (lambda (suffix string #!optional start end)
-    (let* ((end (fix:end-index end (ustring-length string) caller))
+    (let* ((end (fix:end-index end (string-length string) caller))
 	   (start (fix:start-index start end caller))
-	   (n (ustring-length suffix)))
+	   (n (string-length suffix)))
       (and (fix:<= n (fix:- end start))
 	   (let loop ((i 0) (j (fix:- end n)))
 	     (if (fix:< i n)
-		 (and (c= (ustring-ref suffix i) (ustring-ref string j))
+		 (and (c= (string-ref suffix i) (string-ref string j))
 		      (loop (fix:+ i 1) (fix:+ j 1)))
 		 #t))))))
 
-(define ustring-prefix? (prefix-maker eq? 'ustring-prefix?))
-(define ustring-suffix? (suffix-maker eq? 'ustring-suffix?))
+(define string-prefix? (prefix-maker eq? 'string-prefix?))
+(define string-suffix? (suffix-maker eq? 'string-suffix?))
 
-(define ustring-prefix-ci? (prefix-maker char-ci=? 'ustring-prefix-ci?))
-(define ustring-suffix-ci? (suffix-maker char-ci=? 'ustring-suffix-ci?))
+;;; Incorrect implementation: should do string-foldcase on both args.
+(define string-prefix-ci? (prefix-maker char-ci=? 'string-prefix-ci?))
+(define string-suffix-ci? (suffix-maker char-ci=? 'string-suffix-ci?))
 
-(define (ustring-downcase string)
+(define (string-downcase string)
   (case-transform char-downcase-full string))
 
-(define (ustring-foldcase string)
+(define (string-foldcase string)
   (case-transform char-foldcase-full string))
 
-(define (ustring-upcase string)
+(define (string-upcase string)
   (case-transform char-upcase-full string))
 
 (define (case-transform transform string)
-  (let ((chars (append-map transform (ustring->list string))))
+  (let ((chars (append-map transform (string->list string))))
     (let ((n (length chars)))
       (let ((result
 	     (if (every char-8-bit? chars)
@@ -364,37 +365,37 @@ USA.
 	(do ((chars chars (cdr chars))
 	     (i 0 (fix:+ i 1)))
 	    ((not (pair? chars)))
-	  (ustring-set! result i (car chars)))
+	  (string-set! result i (car chars)))
 	result))))
 
-(define (ustring-lower-case? string)
-  (let* ((nfd (ustring->nfd string))
-	 (end (ustring-length nfd)))
+(define (string-lower-case? string)
+  (let* ((nfd (string->nfd string))
+	 (end (string-length nfd)))
     (let loop ((i 0))
       (if (fix:< i end)
-	  (and (not (char-changes-when-lower-cased? (ustring-ref nfd i)))
+	  (and (not (char-changes-when-lower-cased? (string-ref nfd i)))
 	       (loop (fix:+ i 1)))
 	  #t))))
 
-(define (ustring-upper-case? string)
-  (let* ((nfd (ustring->nfd string))
-	 (end (ustring-length nfd)))
+(define (string-upper-case? string)
+  (let* ((nfd (string->nfd string))
+	 (end (string-length nfd)))
     (let loop ((i 0))
       (if (fix:< i end)
-	  (and (not (char-changes-when-upper-cased? (ustring-ref nfd i)))
+	  (and (not (char-changes-when-upper-cased? (string-ref nfd i)))
 	       (loop (fix:+ i 1)))
 	  #t))))
 
-(define (ustring->nfd string)
-  (if (ustring-in-nfd? string)
+(define (string->nfd string)
+  (if (string-in-nfd? string)
       string
       (canonical-ordering! (canonical-decomposition string))))
 
-(define (ustring-in-nfd? string)
-  (let ((n (ustring-length string)))
+(define (string-in-nfd? string)
+  (let ((n (string-length string)))
     (let loop ((i 0) (last-ccc 0))
       (if (fix:< i n)
-	  (let* ((char (ustring-ref string i))
+	  (let* ((char (string-ref string i))
 		 (ccc (ucd-ccc-value char)))
 	    (and (or (fix:= ccc 0)
 		     (fix:>= ccc last-ccc))
@@ -403,28 +404,28 @@ USA.
 	  #t))))
 
 (define (canonical-decomposition string)
-  (let ((end (ustring-length string)))
+  (let ((end (string-length string)))
     (let ((result
 	   (make-ustring
 	    (do ((i 0 (fix:+ i 1))
-		 (j 0 (fix:+ j (length (ucd-dm-value (ustring-ref string i))))))
+		 (j 0 (fix:+ j (length (ucd-dm-value (string-ref string i))))))
 		((not (fix:< i end)) j)))))
       (let loop ((i 0) (j 0))
 	(if (fix:< i end)
 	    (loop (fix:+ i 1)
-		  (do ((chars (ucd-dm-value (ustring-ref string i))
+		  (do ((chars (ucd-dm-value (string-ref string i))
 			      (cdr chars))
 		       (j j (fix:+ j 1)))
 		      ((not (pair? chars)) j)
-		    (ustring-set! result j (car chars))))))
+		    (string-set! result j (car chars))))))
       result)))
 
 (define (canonical-ordering! string)
-  (let ((end (ustring-length string)))
+  (let ((end (string-length string)))
 
     (define (scan-for-non-starter i)
       (if (fix:< i end)
-	  (let* ((char (ustring-ref string i))
+	  (let* ((char (string-ref string i))
 		 (ccc (ucd-ccc-value char)))
 	    (if (fix:= 0 ccc)
 		(scan-for-non-starter (fix:+ i 1))
@@ -433,15 +434,15 @@ USA.
     (define (maybe-twiddle char1 ccc1 i1)
       (let ((i2 (fix:+ i1 1)))
 	(if (fix:< i2 end)
-	    (let* ((char2 (ustring-ref string i2))
+	    (let* ((char2 (string-ref string i2))
 		   (ccc2 (ucd-ccc-value char2)))
 	      (cond ((fix:= 0 ccc2)
 		     (scan-for-non-starter (fix:+ i2 1)))
 		    ((fix:<= ccc1 ccc2)
 		     (maybe-twiddle char2 ccc2 i2))
 		    (else
-		     (ustring-set! string i1 char2)
-		     (ustring-set! string i2 char1)
+		     (string-set! string i1 char2)
+		     (string-set! string i2 char1)
 		     (maybe-twiddle char1 ccc1 i2)))))))
 
     (scan-for-non-starter 0))
@@ -449,10 +450,10 @@ USA.
 
 #|
 (define (quick-check string qc-value)
-  (let ((n (ustring-length string)))
+  (let ((n (string-length string)))
     (let loop ((i 0) (last-ccc 0) (result #t))
       (if (fix:< i n)
-	  (let* ((char (ustring-ref string i))
+	  (let* ((char (string-ref string i))
 		 (ccc (ucd-ccc-value char)))
 	    (if (and (fix:> ccc 0)
 		     (fix:< ccc last-ccc))
@@ -465,7 +466,7 @@ USA.
 	  result))))
 |#
 
-(define (list->ustring chars)
+(define (list->string chars)
   (if (every char-8-bit? chars)
       (let ((string (legacy-string-allocate (length chars))))
 	(do ((chars chars (cdr chars))
@@ -480,9 +481,9 @@ USA.
 	  (%full-string-set! string i (car chars)))
 	string)))
 
-(define (ustring->list string #!optional start end)
-  (let* ((end (fix:end-index end (ustring-length string) 'ustring->list))
-	 (start (fix:start-index start end 'ustring->list)))
+(define (string->list string #!optional start end)
+  (let* ((end (fix:end-index end (string-length string) 'string->list))
+	 (start (fix:start-index start end 'string->list)))
     (receive (string start end) (translate-slice string start end)
       (if (legacy-string? string)
 	  (do ((i (fix:- end 1) (fix:- i 1))
@@ -492,22 +493,22 @@ USA.
 	       (chars '() (cons (%full-string-ref string i) chars)))
 	      ((not (fix:>= i start)) chars))))))
 
-(define (vector->ustring vector #!optional start end)
-  (let* ((end (fix:end-index end (vector-length string) 'vector->ustring))
-	 (start (fix:start-index start end 'vector->ustring))
+(define (vector->string vector #!optional start end)
+  (let* ((end (fix:end-index end (vector-length string) 'vector->string))
+	 (start (fix:start-index start end 'vector->string))
 	 (to
 	  (if (do ((i start (fix:+ i 1))
 		   (8-bit? #t (and 8-bit? (char-8-bit? (vector-ref vector i)))))
 		  ((not (fix:< start end)) 8-bit?))
 	      (legacy-string-allocate (fix:- end start))
 	      (full-string-allocate (fix:- end start)))))
-    (copy-loop ustring-set! to 0
+    (copy-loop string-set! to 0
 	       vector-ref vector start end)
     to))
 
-(define (ustring->vector string #!optional start end)
-  (let* ((end (fix:end-index end (ustring-length string) 'ustring->vector))
-	 (start (fix:start-index start end 'ustring->vector)))
+(define (string->vector string #!optional start end)
+  (let* ((end (fix:end-index end (string-length string) 'string->vector))
+	 (start (fix:start-index start end 'string->vector)))
     (receive (string start end) (translate-slice string start end)
       (if (legacy-string? string)
 	  (let ((to (make-vector (fix:- end start))))
@@ -519,56 +520,62 @@ USA.
 		       %full-string-ref string start end)
 	    to)))))
 
-(define (ustring-append . strings)
-  (%ustring-append* strings))
+(define (string-append . strings)
+  (%string-append* strings))
 
-(define (ustring-append* strings)
-  (guarantee list? strings 'ustring-append*)
-  (%ustring-append* strings))
+(define (string-append* strings)
+  (guarantee list? strings 'string-append*)
+  (%string-append* strings))
 
-(define (%ustring-append* strings)
+(define (%string-append* strings)
   (let ((string
 	 (do ((strings strings (cdr strings))
-	      (n 0 (fix:+ n (ustring-length (car strings))))
-	      (8-bit? #t (and 8-bit? (ustring-8-bit? (car strings)))))
+	      (n 0 (fix:+ n (string-length (car strings))))
+	      (8-bit? #t (and 8-bit? (string-8-bit? (car strings)))))
 	     ((not (pair? strings))
 	      (if 8-bit?
 		  (legacy-string-allocate n)
 		  (full-string-allocate n))))))
     (let loop ((strings strings) (i 0))
       (if (pair? strings)
-	  (let ((n (ustring-length (car strings))))
-	    (ustring-copy! string i (car strings) 0 n)
+	  (let ((n (string-length (car strings))))
+	    (string-copy! string i (car strings) 0 n)
 	    (loop (cdr strings) (fix:+ i n)))))
     string))
 
-(define (ustring . objects)
-  (%ustring* objects 'ustring))
+(define (string . objects)
+  (%string* objects 'string))
 
-(define (ustring* objects)
-  (guarantee list? objects 'ustring*)
-  (%ustring* objects 'ustring*))
+(define (string* objects)
+  (guarantee list? objects 'string*)
+  (%string* objects 'string*))
 
-(define (%ustring* objects caller)
-  (%ustring-append*
+(define (%string* objects caller)
+  (%string-append*
    (map (lambda (object)
-	  (->ustring object caller))
+	  (->string object caller))
 	objects)))
 
-(define (->ustring object caller)
+(define (->string object caller)
   (cond ((not object) "")
-	((bitless-char? object) (make-ustring 1 object))
-	((ustring? object) object)
+	((bitless-char? object)
+	 (let ((s
+		(if (char-8-bit? object)
+		    (legacy-string-allocate 1)
+		    (full-string-allocate 1))))
+	   (string-set! s 0 object)
+	   s))
+	((string? object) object)
 	((symbol? object) (symbol->string object))
 	((pathname? object) (->namestring object))
 	((number? object) (number->string object))
 	((uri? object) (uri->string object))
-	(else (error:not-a ->ustring-component? object caller))))
+	(else (error:not-a ->string-component? object caller))))
 
-(define (->ustring-component? object)
+(define (->string-component? object)
   (cond (not object)
 	(bitless-char? object)
-	(ustring? object)
+	(string? object)
 	(symbol? object)
 	(pathname? object)
 	(number? object)
@@ -576,25 +583,25 @@ USA.
 
 (define (mapper-values proc string strings)
   (cond ((null? strings)
-	 (values (ustring-length string)
+	 (values (string-length string)
 		 (lambda (i)
-		   (proc (ustring-ref string i)))))
+		   (proc (string-ref string i)))))
 	((null? (cdr strings))
 	 (let* ((string2 (car strings))
-		(n (fix:min (ustring-length string)
-			    (ustring-length string2))))
+		(n (fix:min (string-length string)
+			    (string-length string2))))
 	   (values n
 		   (lambda (i)
-		     (proc (ustring-ref string i)
-			   (ustring-ref string2 i))))))
+		     (proc (string-ref string i)
+			   (string-ref string2 i))))))
 	(else
-	 (let ((n (min-length ustring-length string strings)))
+	 (let ((n (min-length string-length string strings)))
 	   (values n
 		   (lambda (i)
 		     (apply proc
-			    (ustring-ref string i)
+			    (string-ref string i)
 			    (map (lambda (string)
-				   (ustring-ref string i))
+				   (string-ref string i))
 				 strings))))))))
 
 (define (min-length string-length string strings)
@@ -603,13 +610,13 @@ USA.
 	  (fix:min n (string-length (car strings)))))
       ((null? strings) n)))
 
-(define (ustring-for-each proc string . strings)
+(define (string-for-each proc string . strings)
   (receive (n proc) (mapper-values proc string strings)
     (do ((i 0 (fix:+ i 1)))
 	((not (fix:< i n)))
       (proc i))))
 
-(define (ustring-map proc string . strings)
+(define (string-map proc string . strings)
   (receive (n proc) (mapper-values proc string strings)
     (let ((result (full-string-allocate n)))
       (do ((i 0 (fix:+ i 1)))
@@ -617,7 +624,7 @@ USA.
 	(%full-string-set! result i (proc i)))
       result)))
 
-(define (ustring-count proc string . strings)
+(define (string-count proc string . strings)
   (receive (n proc) (mapper-values proc string strings)
     (let loop ((i 0) (count 0))
       (if (fix:< i n)
@@ -627,7 +634,7 @@ USA.
 		    count))
 	  count))))
 
-(define (ustring-any proc string . strings)
+(define (string-any proc string . strings)
   (receive (n proc) (mapper-values proc string strings)
     (let loop ((i 0))
       (and (fix:< i n)
@@ -635,7 +642,7 @@ USA.
 	       #t
 	       (loop (fix:+ i 1)))))))
 
-(define (ustring-every proc string . strings)
+(define (string-every proc string . strings)
   (receive (n proc) (mapper-values proc string strings)
     (let loop ((i 0))
       (if (fix:< i n)
@@ -643,7 +650,7 @@ USA.
 	       (loop (fix:+ i 1)))
 	  #t))))
 
-(define (ustring-find-first-index proc string . strings)
+(define (string-find-first-index proc string . strings)
   (receive (n proc) (mapper-values proc string strings)
     (let loop ((i 0))
       (and (fix:< i n)
@@ -651,7 +658,7 @@ USA.
 	       i
 	       (loop (fix:+ i 1)))))))
 
-(define (ustring-find-last-index proc string . strings)
+(define (string-find-last-index proc string . strings)
   (receive (n proc) (mapper-values proc string strings)
     (let loop ((i (fix:- n 1)))
       (and (fix:>= i 0)
@@ -659,41 +666,10 @@ USA.
 	       i
 	       (loop (fix:- i 1)))))))
 
-(define (ustring-find-first-char string char #!optional start end)
-  (translate-index (let ((predicate (char=-predicate char)))
-		     (lambda (string)
-		       (ustring-find-first-index predicate string)))
-		   string start end 'ustring-find-first-char))
-
-(define (ustring-find-last-char string char #!optional start end)
-  (translate-index (let ((predicate (char=-predicate char)))
-		     (lambda (string)
-		       (ustring-find-last-index predicate string)))
-		   string start end 'ustring-find-last-char))
-
-(define (ustring-find-first-char-in-set string char-set #!optional start end)
-  (translate-index (let ((predicate (char-set-predicate char-set)))
-		     (lambda (string)
-		       (ustring-find-first-index predicate string)))
-		   string start end 'ustring-find-first-char-in-set))
-
-(define (ustring-find-last-char-in-set string char-set #!optional start end)
-  (translate-index (let ((predicate (char-set-predicate char-set)))
-		     (lambda (string)
-		       (ustring-find-last-index predicate string)))
-		   string start end 'ustring-find-last-char-in-set))
-
-(define (translate-index proc string start end caller)
-  (let* ((end (fix:end-index end (ustring-length string) caller))
-	 (start (fix:start-index start end caller))
-	 (index (proc (ustring-slice string start end))))
-    (and index
-	 (fix:+ start index))))
-
-(define (ustring-fill! string char #!optional start end)
-  (guarantee bitless-char? char 'ustring-fill!)
-  (let* ((end (fix:end-index end (ustring-length string) 'ustring-fill!))
-	 (start (fix:start-index start end 'ustring-fill!)))
+(define (string-fill! string char #!optional start end)
+  (guarantee bitless-char? char 'string-fill!)
+  (let* ((end (fix:end-index end (string-length string) 'string-fill!))
+	 (start (fix:start-index start end 'string-fill!)))
     (receive (string start end) (translate-slice string start end)
       (if (legacy-string? string)
 	  (do ((index start (fix:+ index 1)))
@@ -705,23 +681,23 @@ USA.
 		((not (fix:< i end)))
 	      (cp-vector-set! bytes i cp)))))))
 
-(define (ustring-hash string #!optional modulus)
+(define (string-hash string #!optional modulus)
   (let ((string* (string-for-primitive string)))
     (if (default-object? modulus)
 	((ucode-primitive string-hash) string*)
 	((ucode-primitive string-hash-mod) string* modulus))))
 
-(define (ustring-ci-hash string #!optional modulus)
-  (ustring-hash (ustring-foldcase string) modulus))
-
+(define (string-ci-hash string #!optional modulus)
+  (string-hash (string-foldcase string) modulus))
+
 (define (ustring->legacy-string string)
   (if (legacy-string? string)
       string
-      (and (ustring-8-bit? string)
-	   (ustring-copy string))))
+      (and (string-8-bit? string)
+	   (string-copy string))))
 
-(define (ustring-8-bit? string)
-  (receive (string start end) (translate-slice string 0 (ustring-length string))
+(define (string-8-bit? string)
+  (receive (string start end) (translate-slice string 0 (string-length string))
     (if (legacy-string? string)
 	#t
 	(%full-string-8-bit? string start end))))
@@ -744,7 +720,7 @@ USA.
 		 to)
 	       (string->utf8 string))))
 	(else
-	 (error:not-a ustring? string 'ustring-ascii?))))
+	 (error:not-a string? string 'string-for-primitive))))
 
 (define (legacy-string-downcase string)
   (let ((end (legacy-string-length string)))
@@ -767,3 +743,93 @@ USA.
 	(and (proc (ref string i))
 	     (loop (fix:+ i 1)))
 	#t)))
+
+(define (string-find-next-char string char)
+  (string-find-first-index (char=-predicate char) string))
+
+(define (string-find-next-char-ci string char)
+  (string-find-first-index (char-ci=-predicate char) string))
+
+(define (string-find-next-char-in-set string char-set)
+  (string-find-first-index (char-set-predicate char-set) string))
+
+(define (string-find-previous-char string char)
+  (string-find-last-index (char=-predicate char) string))
+
+(define (string-find-previous-char-ci string char)
+  (string-find-last-index (char-ci=-predicate char) string))
+
+(define (string-find-previous-char-in-set string char-set)
+  (string-find-last-index (char-set-predicate char-set) string))
+
+(define-integrable (substring-find-maker string-find)
+  (lambda (string start end key)
+    (let* ((slice (string-slice string start end))
+	   (index (string-find slice key)))
+      (and index
+	   (fix:+ start index)))))
+
+(define substring-find-next-char
+  (substring-find-maker string-find-next-char))
+
+(define substring-find-next-char-ci
+  (substring-find-maker string-find-next-char-ci))
+
+(define substring-find-next-char-in-set
+  (substring-find-maker string-find-next-char-in-set))
+
+(define substring-find-previous-char
+  (substring-find-maker string-find-previous-char))
+
+(define substring-find-previous-char-ci
+  (substring-find-maker string-find-previous-char-ci))
+
+(define substring-find-previous-char-in-set
+  (substring-find-maker string-find-previous-char-in-set))
+
+(define (string-move! string1 string2 start2)
+  (string-copy! string2 start2 string1))
+
+(define (substring-move! string1 start1 end1 string2 start2)
+  (string-copy! string2 start2 string1 start1 end1))
+
+(define (substring-ci<? string1 start1 end1 string2 start2 end2)
+  (string-ci<? (string-slice string1 start1 end1)
+	       (string-slice string2 start2 end2)))
+
+(define (substring-ci=? string1 start1 end1 string2 start2 end2)
+  (string-ci=? (string-slice string1 start1 end1)
+	       (string-slice string2 start2 end2)))
+
+(define (substring<? string1 start1 end1 string2 start2 end2)
+  (string<? (string-slice string1 start1 end1)
+	    (string-slice string2 start2 end2)))
+
+(define (substring=? string1 start1 end1 string2 start2 end2)
+  (string=? (string-slice string1 start1 end1)
+	    (string-slice string2 start2 end2)))
+
+(define (substring-prefix? string1 start1 end1 string2 start2 end2)
+  (string-prefix? (string-slice string1 start1 end1)
+		  (string-slice string2 start2 end2)))
+
+(define (substring-prefix-ci? string1 start1 end1 string2 start2 end2)
+  (string-prefix-ci? (string-slice string1 start1 end1)
+		     (string-slice string2 start2 end2)))
+
+(define (substring-suffix? string1 start1 end1 string2 start2 end2)
+  (string-suffix? (string-slice string1 start1 end1)
+		  (string-slice string2 start2 end2)))
+
+(define (substring-suffix-ci? string1 start1 end1 string2 start2 end2)
+  (string-suffix-ci? (string-slice string1 start1 end1)
+		     (string-slice string2 start2 end2)))
+
+(define (substring-fill! string start end char)
+  (string-fill! string char start end))
+
+(define (substring-lower-case? string start end)
+  (string-lower-case? (string-slice string start end)))
+
+(define (substring-upper-case? string start end)
+  (string-upper-case? (string-slice string start end)))

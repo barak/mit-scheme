@@ -285,7 +285,7 @@ USA.
 (define (%cpl-element->ranges elt)
   (cond ((%range? elt) (list elt))
 	((bitless-char? elt) (list (char->integer elt)))
-	((ustring? elt) (map char->integer (ustring->list elt)))
+	((string? elt) (map char->integer (string->list elt)))
 	(else #f)))
 
 (define (%normalize-ranges ranges)
@@ -337,7 +337,7 @@ USA.
 (define (cpl-element? object)
   (or (%range? object)
       (bitless-char? object)
-      (ustring? object)
+      (string? object)
       (char-set? object)))
 
 (define (%range? object)
@@ -533,7 +533,7 @@ USA.
 
 ;; Returns ASCII string:
 (define (char-set->string char-set)
-  (list->ustring (char-set-members char-set)))
+  (list->string (char-set-members char-set)))
 
 ;; Returns only ASCII members:
 (define (char-set-members char-set)

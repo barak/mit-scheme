@@ -46,8 +46,8 @@ USA.
     (if scheme (guarantee-uri-scheme scheme 'MAKE-URI))
     (if authority (guarantee-uri-authority authority 'MAKE-URI))
     (guarantee-uri-path path 'MAKE-URI)
-    (if query (guarantee ustring? query 'MAKE-URI))
-    (if fragment (guarantee ustring? fragment 'MAKE-URI))
+    (if query (guarantee string? query 'MAKE-URI))
+    (if fragment (guarantee string? fragment 'MAKE-URI))
     (if (and authority (pair? path) (path-relative? path))
 	(error:bad-range-argument path 'MAKE-URI))
     (let* ((path (remove-dot-segments path))
@@ -91,7 +91,7 @@ USA.
 ;;; an empty segment.
 
 (define (uri-path? object)
-  (list-of-type? object ustring?))
+  (list-of-type? object string?))
 
 (define (uri-path-absolute? path)
   (guarantee-uri-path path 'URI-PATH-ABSOLUTE?)
@@ -99,7 +99,7 @@ USA.
 
 (define (path-absolute? path)
   (and (pair? path)
-       (fix:= 0 (ustring-length (car path)))))
+       (fix:= 0 (string-length (car path)))))
 
 (define (uri-path-relative? path)
   (guarantee-uri-path path 'URI-PATH-RELATIVE?)
@@ -136,10 +136,10 @@ USA.
 (define interned-uri-authorities)
 
 (define (uri-userinfo? object)
-  (ustring? object))
+  (string? object))
 
 (define (uri-host? object)
-  (ustring? object))
+  (string? object))
 
 (define (uri-port? object)
   (exact-nonnegative-integer? object))
@@ -184,10 +184,10 @@ USA.
 	    '()))))
 
 (define (uri-prefix prefix)
-  (guarantee ustring? prefix 'URI-PREFIX)
+  (guarantee string? prefix 'URI-PREFIX)
   (lambda (suffix)
-    (guarantee ustring? suffix 'URI-PREFIX)
-    (string->absolute-uri (ustring-append prefix suffix))))
+    (guarantee string? suffix 'URI-PREFIX)
+    (string->absolute-uri (string-append prefix suffix))))
 
 (define (remove-dot-segments path)
   ;; At all times, (APPEND INPUT (REVERSE OUTPUT)) must be well
@@ -199,8 +199,8 @@ USA.
 	  (if (pair? input)
 	      (let ((segment (car input))
 		    (input (cdr input)))
-		(if (or (ustring=? segment "..")
-			(ustring=? segment "."))
+		(if (or (string=? segment "..")
+			(string=? segment "."))
 		    ;; Rules A and D
 		    (no-output input)
 		    ;; Rule E
@@ -211,10 +211,10 @@ USA.
 	  (if (pair? input)
 	      (let ((segment (car input))
 		    (input (cdr input)))
-		(cond ((ustring=? segment ".")
+		(cond ((string=? segment ".")
 		       ;; Rule B
 		       (maybe-done input output))
-		      ((ustring=? segment "..")
+		      ((string=? segment "..")
 		       ;; Rule C
 		       (maybe-done input
 				   (if (pair? (cdr output))
@@ -313,7 +313,7 @@ USA.
 	       (begin
 		 (if caller (error:bad-range-argument object caller))
 		 #f)))
-	  ((ustring? object)
+	  ((string? object)
 	   (do-string object))
 	  ((symbol? object)
 	   (do-string (symbol->string object)))
@@ -331,7 +331,7 @@ USA.
   (%string->uri parse-relative-uri string start end 'STRING->RELATIVE-URI))
 
 (define (%string->uri parser string start end caller)
-  (or (and (ustring? string)
+  (or (and (string? string)
 	   (default-object? start)
 	   (default-object? end)
 	   (hash-table/get interned-uris string #f))
@@ -423,7 +423,7 @@ USA.
 
 (define parser:hostport
   (*parser
-   (seq (map ustring-downcase
+   (seq (map string-downcase
 	     (alt (match matcher:ip-literal)
 		  ;; subsumed by MATCHER:REG-NAME
 		  ;;matcher:ipv4-address
@@ -613,13 +613,13 @@ USA.
 	(char-set char-set:uri-hex))))
 
 (define (decode-component string)
-  (if (ustring-find-first-char string #\%)
+  (if (string-find-next-char string #\%)
       (call-with-output-string
 	(lambda (port)
-	  (let ((end (ustring-length string)))
+	  (let ((end (string-length string)))
 	    (let loop ((i 0))
 	      (if (fix:< i end)
-		  (if (char=? #\% (ustring-ref string i))
+		  (if (char=? #\% (string-ref string i))
 		      (begin
 			(write-char (integer->char
 				     (string->number string
@@ -630,24 +630,24 @@ USA.
 				    port)
 			(loop (fix:+ i 3)))
 		      (begin
-			(write-char (ustring-ref string i) port)
+			(write-char (string-ref string i) port)
 			(loop (fix:+ i 1)))))))))
       string))
 
 (define (write-encoded string unescaped port)
-  (write-encoded-substring string 0 (ustring-length string) unescaped port))
+  (write-encoded-substring string 0 (string-length string) unescaped port))
 
 (define (write-encoded-substring string start end unescaped port)
   (do ((i start (fix:+ i 1)))
       ((not (fix:< i end)))
-    (let ((char (ustring-ref string i)))
+    (let ((char (string-ref string i)))
       (if (char-set-member? unescaped char)
 	  (write-char char port)
 	  (begin
 	    (write-char #\% port)
 	    (write-string (string-pad-left
-			   (ustring-upcase (number->string (char->integer char)
-							   16))
+			   (string-upcase (number->string (char->integer char)
+							  16))
 			   2
 			   #\0)
 			  port))))))

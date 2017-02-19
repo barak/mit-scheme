@@ -138,7 +138,7 @@ USA.
 
 (define (name-constructor string-predicate constructor)
   (lambda (object)
-    (if (ustring? object)
+    (if (string? object)
 	(begin
 	  (if (not (string-predicate object))
 	      (error:bad-range-argument object constructor))
@@ -231,9 +231,9 @@ USA.
 
 (define (%xml-qname-prefix qname)
   (let ((s (symbol-name qname)))
-    (let ((c (ustring-find-first-char s #\:)))
+    (let ((c (string-find-next-char s #\:)))
       (if c
-	  (string->symbol (ustring-head s c))
+	  (string->symbol (string-head s c))
 	  (null-xml-name-prefix)))))
 
 (define (xml-qname-local qname)
@@ -242,7 +242,7 @@ USA.
 
 (define (%xml-qname-local qname)
   (let ((s (symbol-name qname)))
-    (let ((c (ustring-find-first-char s #\:)))
+    (let ((c (string-find-next-char s #\:)))
       (if c
-	  (string->symbol (ustring-tail s (fix:+ c 1)))
+	  (string->symbol (string-tail s (fix:+ c 1)))
 	  qname))))

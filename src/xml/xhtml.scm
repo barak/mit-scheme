@@ -81,8 +81,8 @@ USA.
   "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd")
 
 (define (html-public-id? id)
-  (and (ustring? id)
-       (ustring-prefix? "-//W3C//DTD XHTML " id)))
+  (and (string? id)
+       (string-prefix? "-//W3C//DTD XHTML " id)))
 
 (define (html-external-id? object)
   (and (xml-external-id? object)
@@ -263,7 +263,7 @@ USA.
 	 contents))
 
 (define (html:id-ref tag . contents)
-  (apply html:href (ustring-append "#" tag) contents))
+  (apply html:href (string-append "#" tag) contents))
 
 (define (html:rel-link rel uri)
   (html:link 'rel rel
@@ -282,10 +282,10 @@ USA.
   (guarantee-keyword-list keyword-list 'HTML:STYLE-ATTR)
   (if (pair? keyword-list)
       (let loop ((bindings keyword-list))
-	(ustring-append (symbol-name (car bindings))
-			": "
-			(cadr bindings)
-			(if (pair? (cddr bindings))
-			    (ustring-append "; " (loop (cddr bindings)))
-			    ";")))
+	(string-append (symbol-name (car bindings))
+		       ": "
+		       (cadr bindings)
+		       (if (pair? (cddr bindings))
+			   (string-append "; " (loop (cddr bindings)))
+			   ";")))
       ""))

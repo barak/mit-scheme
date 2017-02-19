@@ -1032,9 +1032,9 @@ USA.
 	((%ratnum? key) (%ratnum->nonneg-int key))
 	((flo:flonum? key) (%flonum->nonneg-int key))
 	((%recnum? key) (%recnum->nonneg-int key))
-	((ustring? key) (ustring-hash key))
+	((string? key) (string-hash key))
 	((bit-string? key) (bit-string->unsigned-integer key))
-	((pathname? key) (ustring-hash (->namestring key)))
+	((pathname? key) (string-hash (->namestring key)))
 	(else (eq-hash key))))
 
 (define-integrable (%bignum? object)
@@ -1234,7 +1234,7 @@ USA.
      (set! non-pointer-hash-table-type	;Open-coded
 	   (open-type! eq-hash-mod eq? #f hash-table-entry-type:strong))
      (set! string-hash-table-type
-	   (make ustring-hash ustring=? #t hash-table-entry-type:strong))
+	   (make string-hash string=? #t hash-table-entry-type:strong))
      (set! strong-eq-hash-table-type	;Open-coded
 	   (open-type! eq-hash-mod eq? #t hash-table-entry-type:strong))
      (set! strong-eqv-hash-table-type

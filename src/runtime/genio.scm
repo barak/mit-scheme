@@ -244,7 +244,7 @@ USA.
 		((eof-object? char)
 		 (fix:- index start))
 		(else
-		 (ustring-set! string index char)
+		 (string-set! string index char)
 		 (loop (fix:+ index 1)))))
 	(fix:- end start))))
 
@@ -277,7 +277,7 @@ USA.
   (let ((ob (port-output-buffer port)))
     (let loop ((index start))
       (if (fix:< index end)
-	  (let ((n (write-next-char ob (ustring-ref string index))))
+	  (let ((n (write-next-char ob (string-ref string index))))
 	    (cond ((and n (fix:> n 0)) (loop (fix:+ index 1)))
 		  ((fix:< start index) (fix:- index start))
 		  (else n)))

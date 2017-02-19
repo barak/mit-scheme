@@ -857,7 +857,6 @@ USA.
 	  subvector-uniform?
 	  vector
 	  vector->list
-	  vector->string
 	  vector-append
 	  vector-binary-search
 	  vector-copy
@@ -1050,91 +1049,73 @@ USA.
 	  guarantee-substring-end-index
 	  guarantee-substring-start-index
 	  lisp-string->camel-case
-	  ;; list->string
 	  make-string
 	  reverse-string
 	  reverse-string!
 	  reverse-substring
 	  reverse-substring!
 	  set-string-length!
-	  string
-	  ;; string->list
-	  ;; string->vector
 	  string-allocate
-	  ;; string-append
 	  string-capitalize
 	  string-capitalize!
 	  string-capitalized?
-	  ;; string-ci-hash
-	  ;; string-ci<=?
-	  ;; string-ci<?
-	  ;; string-ci=?
-	  ;; string-ci>=?
-	  ;; string-ci>?
 	  string-compare
 	  string-compare-ci
-	  ;; string-copy
-	  ;; string-copy!
-	  ;; string-downcase
 	  string-downcase!
-	  ;; string-fill!
+	  string-head!
+	  string-joiner
+	  string-joiner*
+	  string-match-backward
+	  string-match-backward-ci
+	  string-match-forward
+	  string-match-forward-ci
+	  string-maximum-length
+	  string-null?
+	  string-pad-left
+	  string-pad-right
+	  string-replace
+	  string-replace!
+	  string-search-all
+	  string-search-backward
+	  string-search-forward
+	  string-splitter
+	  string-trim
+	  string-trim-left
+	  string-trim-right
+	  string-upcase!
+	  substring-capitalize!
+	  substring-capitalized?
+	  substring-downcase!
+	  substring-match-backward
+	  substring-match-backward-ci
+	  substring-match-forward
+	  substring-match-forward-ci
+	  substring-replace
+	  substring-replace!
+	  substring-search-all
+	  substring-search-backward
+	  substring-search-forward
+	  substring-upcase!
+	  substring?)
+  (initialization (initialize-package!)))
+
+(define-package (runtime ustring)
+  (files "ustring")
+  (parent (runtime))
+  (export ()				;export-deprecated
+	  (string-hash-mod string-hash)
+	  (substring->list string->list)
+	  (substring-move-left! substring-move!)
+	  (substring-move-right! substring-move!)
 	  string-find-next-char
 	  string-find-next-char-ci
 	  string-find-next-char-in-set
 	  string-find-previous-char
 	  string-find-previous-char-ci
 	  string-find-previous-char-in-set
-	  ;; string-for-each
-	  ;; string-hash
-	  ;; string-hash-mod
-	  ;; string-head
-	  string-head!
-	  string-joiner
-	  string-joiner*
-	  ;; string-length
-	  ;; string-lower-case?
-	  ;; string-map
-	  string-match-backward
-	  string-match-backward-ci
-	  string-match-forward
-	  string-match-forward-ci
-	  string-maximum-length
 	  string-move!
-	  string-null?
-	  string-pad-left
-	  string-pad-right
-	  ;; string-prefix-ci?
-	  ;; string-prefix?
-	  ;; string-ref
-	  string-replace
-	  string-replace!
-	  string-search-all
-	  string-search-backward
-	  string-search-forward
-	  ;; string-set!
-	  string-splitter
-	  ;; string-suffix-ci?
-	  ;; string-suffix?
-	  ;; string-tail
-	  string-trim
-	  string-trim-left
-	  string-trim-right
-	  ;; string-upcase
-	  string-upcase!
-	  ;; string-upper-case?
-	  ;; string<=?
-	  ;; string<?
-	  ;; string=?
-	  ;; string>=?
-	  ;; string>?
-	  ;; string?
-	  ;; substring
-	  substring->list
-	  substring-capitalize!
-	  substring-capitalized?
 	  substring-ci<?
 	  substring-ci=?
-	  substring-downcase!
 	  substring-fill!
 	  substring-find-next-char
 	  substring-find-next-char-ci
@@ -1143,123 +1124,64 @@ USA.
 	  substring-find-previous-char-ci
 	  substring-find-previous-char-in-set
 	  substring-lower-case?
-	  substring-match-backward
-	  substring-match-backward-ci
-	  substring-match-forward
-	  substring-match-forward-ci
 	  substring-move!
-	  substring-move-left!
-	  substring-move-right!
 	  substring-prefix-ci?
 	  substring-prefix?
-	  substring-replace
-	  substring-replace!
-	  substring-search-all
-	  substring-search-backward
-	  substring-search-forward
 	  substring-suffix-ci?
 	  substring-suffix?
-	  substring-upcase!
 	  substring-upper-case?
 	  substring<?
-	  substring=?
-	  substring?)
-  (initialization (initialize-package!)))
-
-(define-package (runtime ustring)
-  (files "ustring")
-  (parent (runtime))
+	  substring=?)
   (export ()
-	  (list->string list->ustring)
-	  (string->list ustring->list)
-	  (string->vector ustring->vector)
-	  (string-append ustring-append)
-	  (string-ci-hash ustring-ci-hash)
-	  (string-ci<=? ustring-ci<=?)
-	  (string-ci<? ustring-ci<?)
-	  (string-ci=? ustring-ci=?)
-	  (string-ci>=? ustring-ci>=?)
-	  (string-ci>? ustring-ci>?)
-	  (string-copy ustring-copy)
-	  (string-copy! ustring-copy!)
-	  (string-downcase ustring-downcase)
-	  (string-fill! ustring-fill!)
-	  (string-foldcase ustring-foldcase)
-	  (string-for-each ustring-for-each)
-	  (string-hash ustring-hash)
-	  (string-hash-mod ustring-hash)
-	  (string-head ustring-head)
-	  (string-length ustring-length)
-	  (string-lower-case? ustring-lower-case?)
-	  (string-map ustring-map)
-	  (string-prefix-ci? ustring-prefix-ci?)
-	  (string-prefix? ustring-prefix?)
-	  (string-ref ustring-ref)
-	  (string-set! ustring-set!)
-	  (string-suffix-ci? ustring-suffix-ci?)
-	  (string-suffix? ustring-suffix?)
-	  (string-tail ustring-tail)
-	  (string-upcase ustring-upcase)
-	  (string-upper-case? ustring-upper-case?)
-	  (string<=? ustring<=?)
-	  (string<? ustring<?)
-	  (string=? ustring=?)
-	  (string>=? ustring>=?)
-	  (string>? ustring>?)
-	  (string? ustring?)
-	  (substring ustring-copy)
-	  (usubstring ustring-copy)
-	  list->ustring
+	  (substring string-copy)
+	  list->string
 	  make-ustring
+	  string
+	  string*
+	  string->list
+	  string->vector
+	  string-any
+	  string-append
+	  string-append*
+	  string-ci-hash
+	  string-ci<=?
+	  string-ci<?
+	  string-ci=?
+	  string-ci>=?
+	  string-ci>?
+	  string-copy
+	  string-copy!
+	  string-count
+	  string-downcase
+	  string-every
+	  string-fill!
+	  string-find-first-index
+	  string-find-last-index
+	  string-foldcase
+	  string-for-each
 	  string-for-primitive		;export to (runtime) after 9.3
-	  ustring
-	  ustring*
-	  ustring->list
-	  ustring->vector
-	  ustring-any
-	  ustring-append
-	  ustring-append*
-	  ustring-ci<=?
-	  ustring-ci<?
-	  ustring-ci=?
-	  ustring-ci>=?
-	  ustring-ci>?
-	  ustring-ci-hash
-	  ustring-copy
-	  ustring-copy!
-	  ustring-downcase
-	  ustring-every
-	  ustring-fill!
-	  ustring-find-first-char	 ;prefer ustring-find-first-index
-	  ustring-find-first-char-in-set ;prefer ustring-find-first-index
-	  ustring-find-first-index
-	  ustring-find-last-char	 ;prefer ustring-find-last-index
-	  ustring-find-last-char-in-set	 ;prefer ustring-find-last-index
-	  ustring-find-last-index
-	  ustring-foldcase
-	  ustring-for-each
-	  ustring-hash
-	  ustring-head
-	  ustring-lower-case?
-	  ustring-length
-	  ustring-map
-	  ustring-prefix-ci?
-	  ustring-prefix?
-	  ustring-ref
-	  ustring-set!
-	  ustring-slice
-	  ustring-suffix-ci?
-	  ustring-suffix?
-	  ustring-tail
-	  ustring-upcase
-	  ustring-upper-case?
-	  ustring<=?
-	  ustring<?
-	  ustring=?
-	  ustring>=?
-	  ustring>?
-	  ustring?
-	  vector->ustring)
+	  string-hash
+	  string-head
+	  string-length
+	  string-lower-case?
+	  string-map
+	  string-prefix-ci?
+	  string-prefix?
+	  string-ref
+	  string-set!
+	  string-slice
+	  string-suffix-ci?
+	  string-suffix?
+	  string-tail
+	  string-upcase
+	  string-upper-case?
+	  string<=?
+	  string<?
+	  string=?
+	  string>=?
+	  string>?
+	  string?
+	  vector->string)
   (export (runtime bytevector)
 	  legacy-string-allocate
 	  legacy-string?
@@ -1267,7 +1189,7 @@ USA.
   (export (runtime predicate-metadata)
 	  register-ustring-predicates!)
   (export (runtime symbol)
-	  %ustring*
+	  %string*
 	  legacy-string-downcase
 	  legacy-string?))
 

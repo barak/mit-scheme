@@ -257,7 +257,7 @@ USA.
 (define-integrable (string-encoder char-byte-length allocator encode-char!
 				   caller)
   (lambda (string #!optional start end)
-    (let* ((end (fix:end-index end (ustring-length string) caller))
+    (let* ((end (fix:end-index end (string-length string) caller))
 	   (start (fix:start-index start end caller)))
       (let ((bytes
 	     (allocator
@@ -265,12 +265,12 @@ USA.
 		(if (fix:< index end)
 		    (loop (fix:+ index 1)
 			  (fix:+ n-bytes
-				 (char-byte-length (ustring-ref string index))))
+				 (char-byte-length (string-ref string index))))
 		    n-bytes)))))
 	(let loop ((from start) (to 0))
 	  (if (fix:< from end)
 	      (loop (fix:+ from 1)
-		    (encode-char! bytes to (ustring-ref string from)))))
+		    (encode-char! bytes to (string-ref string from)))))
 	bytes))))
 
 ;; Make sure UTF-8 bytevectors have null termination.
@@ -328,7 +328,7 @@ USA.
       (let loop ((from start) (to 0))
 	(if (fix:< from end)
 	    (let ((char (decode-char bytevector from)))
-	      (ustring-set! string to char)
+	      (string-set! string to char)
 	      (loop (fix:+ from (initial->length (getter bytevector from)))
 		    (fix:+ to 1)))))
       (or (ustring->legacy-string string)

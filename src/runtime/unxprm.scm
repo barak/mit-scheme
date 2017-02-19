@@ -60,7 +60,7 @@ USA.
     (let loop ((ext 0))
       (let ((pathname
 	     (transformer
-	      (merge-pathnames (ustring-append root-string (number->string ext))
+	      (merge-pathnames (string-append root-string (number->string ext))
 			       directory))))
 	(if (allocate-temporary-file pathname)
 	    (begin
@@ -164,7 +164,7 @@ USA.
 (define environment-variables)
 
 (define (get-environment-variable name)
-  (guarantee ustring? name 'GET-ENVIRONMENT-VARIABLE)
+  (guarantee string? name 'GET-ENVIRONMENT-VARIABLE)
   (let ((value (hash-table/get environment-variables name 'NONE)))
     (if (eq? value 'NONE)
 	(let ((value
@@ -175,13 +175,13 @@ USA.
 	value)))
 
 (define (set-environment-variable! name value)
-  (guarantee ustring? name 'SET-ENVIRONMENT-VARIABLE!)
+  (guarantee string? name 'SET-ENVIRONMENT-VARIABLE!)
   (if value
-      (guarantee ustring? value 'SET-ENVIRONMENT-VARIABLE!))
+      (guarantee string? value 'SET-ENVIRONMENT-VARIABLE!))
   (hash-table/put! environment-variables name value))
 
 (define (delete-environment-variable! name)
-  (guarantee ustring? name 'DELETE-ENVIRONMENT-VARIABLE!)
+  (guarantee string? name 'DELETE-ENVIRONMENT-VARIABLE!)
   (hash-table/remove! environment-variables name))
 
 (define (reset-environment-variables!)
@@ -266,8 +266,8 @@ USA.
 			  entries)))))))))
 
 (define (parse-mime.types-line line)
-  (if (and (fix:> (ustring-length line) 0)
-	   (char=? #\# (ustring-ref line 0)))
+  (if (and (fix:> (string-length line) 0)
+	   (char=? #\# (string-ref line 0)))
       #f
       (let ((parts (burst-string line char-set:whitespace #t)))
 	(and (pair? parts)
@@ -412,7 +412,7 @@ USA.
 
 (define (init-file-specifier->pathname specifier)
   (guarantee-init-file-specifier specifier 'INIT-FILE-SPECIFIER->PATHNAME)
-  (merge-pathnames (apply ustring-append
+  (merge-pathnames (apply string-append
 			  (cons ".mit-scheme"
 				(append-map (lambda (string) (list "/" string))
 					    specifier)))
@@ -470,13 +470,13 @@ USA.
      path)))
 
 (define (os/parse-path-string string)
-  (let ((end (ustring-length string))
+  (let ((end (string-length string))
 	(extract
 	 (lambda (string start end)
-	   (pathname-as-directory (usubstring string start end)))))
+	   (pathname-as-directory (substring string start end)))))
     (let loop ((start 0))
       (if (< start end)
-	  (let ((index (ustring-find-first-char string #\: start end)))
+	  (let ((index (substring-find-next-char string start end #\:)))
 	    (if index
 		(cons (if (= index start)
 			  #f

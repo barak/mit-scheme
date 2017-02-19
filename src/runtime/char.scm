@@ -228,20 +228,20 @@ USA.
 		  n))))
 	(lose (lambda () (error:bad-range-argument string 'NAME->CHAR))))
     (receive (string bits) (match-bucky-bits-prefix string fold-case?)
-      (let ((end (ustring-length string)))
+      (let ((end (string-length string)))
 	(if (fix:= 0 end)
 	    (lose))
 	(if (fix:= 1 end)
-	    (let ((char (ustring-ref string 0)))
+	    (let ((char (string-ref string 0)))
 	      (if (not (char-graphic? char))
 		  (lose))
 	      (make-char (char-code char) bits))
 	    (make-char (or (match-named-code string fold-case?)
 			   ;; R7RS syntax (not sure if -ci is right)
-			   (and (ustring-prefix-ci? "x" string)
+			   (and (string-prefix-ci? "x" string)
 				(parse-hex string 1))
 			   ;; Non-standard syntax (Unicode style)
-			   (and (ustring-prefix-ci? "u+" string)
+			   (and (string-prefix-ci? "u+" string)
 				(parse-hex string 2))
 			   (lose))
 		       bits))))))
@@ -259,7 +259,7 @@ USA.
 	    (string-append "x" (number->string code 16)))))))
 
 (define (match-bucky-bits-prefix string fold-case?)
-  (let ((match? (if fold-case? ustring-prefix-ci? ustring-prefix?)))
+  (let ((match? (if fold-case? string-prefix-ci? string-prefix?)))
     (let per-index ((index 0) (bits 0))
       (let per-entry ((entries named-bits))
 	(if (pair? entries)
@@ -269,11 +269,11 @@ USA.
 			    (match? prefix string index))
 			  (cdr entry))))
 	      (if prefix
-		  (per-index (fix:+ index (ustring-length prefix))
+		  (per-index (fix:+ index (string-length prefix))
 			     (fix:or bits (car entry)))
 		  (per-entry (cdr entries))))
 	    (values (if (fix:> index 0)
-			(ustring-tail string index)
+			(string-tail string index)
 			string)
 		    bits))))))
 
@@ -287,7 +287,7 @@ USA.
 (define-deferred bits-prefixes
   (list->vector
    (map (lambda (bits)
-	  (apply ustring-append
+	  (apply string-append
 		 (filter-map (lambda (entry)
 			       (if (fix:= 0 (fix:and (car entry) bits))
 				   #f
@@ -307,7 +307,7 @@ USA.
     (,char-bit:control "C-" "c-" "control-" "ctrl-")))
 
 (define (match-named-code string fold-case?)
-  (let ((match? (if fold-case? ustring-ci=? ustring=?)))
+  (let ((match? (if fold-case? string-ci=? string=?)))
     (find-map (lambda (entry)
 		(and (any (lambda (name)
 			    (match? name string))

@@ -172,8 +172,8 @@ USA.
 	(if name
 	    (loop
 	     (if (and (not include-dots?)
-		      (or (ustring=? "." name)
-			  (ustring=? ".." name)))
+		      (or (string=? "." name)
+			  (string=? ".." name)))
 		 result
 		 (cons name result)))
 	    (begin
@@ -245,8 +245,8 @@ USA.
   (and (list? object)
        (for-all? object
 	 (lambda (object)
-	   (and (ustring? object)
-		(not (fix:= 0 (ustring-length object))))))))
+	   (and (string? object)
+		(not (fix:= 0 (string-length object))))))))
 
 (define (guarantee-init-file-directory pathname)
   (let ((directory (user-homedir-pathname)))
@@ -273,7 +273,7 @@ USA.
   (pathname-type->mime-type (pathname-type pathname)))
 
 (define (pathname-type->mime-type type)
-  (and (ustring? type)
+  (and (string? type)
        (let ((mime-type (hash-table/get local-type-map type #f)))
 	 (if mime-type
 	     (and (mime-type? mime-type)
@@ -283,12 +283,12 @@ USA.
 		    (string->mime-type string)))))))
 
 (define (associate-pathname-type-with-mime-type type mime-type)
-  (guarantee ustring? type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
+  (guarantee string? type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
   (guarantee-mime-type mime-type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
   (hash-table/put! local-type-map type mime-type))
 
 (define (disassociate-pathname-type-from-mime-type type)
-  (guarantee ustring? type 'DISASSOCIATE-PATHNAME-TYPE-FROM-MIME-TYPE)
+  (guarantee string? type 'DISASSOCIATE-PATHNAME-TYPE-FROM-MIME-TYPE)
   (hash-table/put! local-type-map type 'DISASSOCIATED))
 
 (define-record-type <mime-type>
@@ -365,7 +365,7 @@ USA.
 	      0))
 
 (define (mime-type-string? object)
-  (and (ustring? object)
+  (and (string? object)
        (string-is-mime-type? object)))
 
 (define (string-is-mime-type? string #!optional start end)
@@ -376,7 +376,7 @@ USA.
        (string-is-mime-token? (symbol-name object))))
 
 (define (mime-token-string? object)
-  (and (ustring? object)
+  (and (string? object)
        (string-is-mime-token? object)))
 
 (define (string-is-mime-token? string #!optional start end)

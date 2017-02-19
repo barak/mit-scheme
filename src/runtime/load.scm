@@ -216,8 +216,8 @@ USA.
 
 (define (object-file? pathname)
   (and (let ((type (pathname-type pathname)))
-	 (and (ustring? type)
-	      (ustring=? type "so")))
+	 (and (string? type)
+	      (string=? type "so")))
        (file-regular? pathname)))
 
 (define (load/purification-root object)
@@ -334,7 +334,7 @@ USA.
    (lambda ()
      (let ((handle (dld-load-file (standard-uri->pathname uri))))
        (let ((nonce* (liarc-object-file-nonce handle)))
-	 (if (not (and nonce* (ustring=? nonce* nonce)))
+	 (if (not (and nonce* (string=? nonce* nonce)))
 	     (begin
 	       (dld-unload-file handle)
 	       (error "Can't restore liarc object file:" uri))))
@@ -346,7 +346,7 @@ USA.
 	  (lambda ()
 	    ((ucode-primitive address-to-string 1)
 	     (dld-lookup-symbol handle "dload_nonce"))))))
-    (and (ustring? nonce)
+    (and (string? nonce)
 	 nonce)))
 
 (define (initialize-object-file handle uri)
@@ -375,8 +375,8 @@ USA.
 			(if (and (equal? p
 					 '("" "software" "mit-scheme"
 					      "lib" "lib"))
-				 (ustring-suffix? ".so" s))
-			    (list (ustring-head s (fix:- (ustring-length s) 3)))
+				 (string-suffix? ".so" s))
+			    (list (string-head s (fix:- (string-length s) 3)))
 			    '())
 			(list ""))))
 		   #f
@@ -414,7 +414,7 @@ USA.
 			(reverse! (let ((rp (reverse (uri-path uri))))
 				    (if (and (pair? rp)
 					     (fix:= 0
-						    (ustring-length (car rp))))
+						    (string-length (car rp))))
 					(cdr rp)
 					rp))))))
 		 (and (eq? (uri-scheme uri) (uri-scheme lib))
@@ -424,7 +424,7 @@ USA.
 		      (let loop ((pu (trim-path uri)) (pl (trim-path lib)))
 			(if (pair? pl)
 			    (and (pair? pu)
-				 (ustring=? (car pu) (car pl))
+				 (string=? (car pu) (car pl))
 				 (loop (cdr pu) (cdr pl)))
 			    (make-pathname #f #f (cons 'RELATIVE pu)
 					   #f #f #f)))))))
@@ -451,7 +451,7 @@ USA.
        (standard-library-directory-pathname))))
 
 (define (system-uri #!optional rel-uri)
-  (if (ustring? system-base-uri)
+  (if (string? system-base-uri)
       (begin
 	(set! system-base-uri (string->uri system-base-uri))
 	unspecific))
@@ -540,8 +540,8 @@ USA.
 	 (cddr entry))))
 
 (define (option-keyword? argument)
-  (and (fix:> (ustring-length argument) 1)
-       (char=? #\- (ustring-ref argument 0))))
+  (and (fix:> (string-length argument) 1)
+       (char=? #\- (string-ref argument 0))))
 
 (define (load-init-file)
   (let ((pathname (init-file-pathname)))
@@ -550,12 +550,12 @@ USA.
   unspecific)
 
 (define (set-command-line-parser! keyword proc #!optional description)
-  (guarantee ustring? keyword 'SET-COMMAND-LINE-PARSER!)
+  (guarantee string? keyword 'SET-COMMAND-LINE-PARSER!)
   (let ((keyword (strip-leading-hyphens keyword))
 	(desc (if (default-object? description)
 		  ""
 		  (begin
-		    (guarantee ustring? description 'SET-COMMAND-LINE-PARSER!)
+		    (guarantee string? description 'SET-COMMAND-LINE-PARSER!)
 		    description))))
 
     (let ((place (assoc keyword *command-line-parsers*)))
@@ -570,15 +570,15 @@ USA.
 	    unspecific)))))
 
 (define (strip-leading-hyphens keyword)
-  (let ((end (ustring-length keyword)))
+  (let ((end (string-length keyword)))
     (let loop ((start 0))
       (cond ((and (fix:< start end)
-		  (char=? #\- (ustring-ref keyword start)))
+		  (char=? #\- (string-ref keyword start)))
 	     (loop (fix:+ start 1)))
 	    ((fix:= start 0)
 	     keyword)
 	    (else
-	     (usubstring keyword start end))))))
+	     (substring keyword start end))))))
 
 (define (command-line-option-description keyword-line description-lines caller)
   (if (pair? description-lines)
@@ -587,19 +587,19 @@ USA.
 	  ""
 	  (begin
 	    (for-each (lambda (description-line)
-			(guarantee ustring? description-line caller))
+			(guarantee string? description-line caller))
 		      description-lines)
 	    (decorated-string-append "" "\n  " ""
 				     (cons keyword-line description-lines))))
-      (ustring-append keyword-line "\n  (No description.)")))
+      (string-append keyword-line "\n  (No description.)")))
 
 (define (simple-command-line-parser keyword thunk . description-lines)
-  (guarantee ustring? keyword 'SIMPLE-COMMAND-LINE-PARSER)
+  (guarantee string? keyword 'SIMPLE-COMMAND-LINE-PARSER)
   (set-command-line-parser! keyword
     (lambda (command-line)
       (values (cdr command-line) thunk))
     (command-line-option-description
-     (ustring-append "--" keyword)
+     (string-append "--" keyword)
      description-lines
      'SIMPLE-COMMAND-LINE-PARSER)))
 
@@ -619,9 +619,9 @@ USA.
 	      (values '()
 		      (lambda ()
 			(warn "Missing argument to command-line option:"
-			      (ustring-append "--" keyword)))))))
+			      (string-append "--" keyword)))))))
     (command-line-option-description
-     (ustring-append "--" keyword " ARG" (if multiple? " ..." ""))
+     (string-append "--" keyword " ARG" (if multiple? " ..." ""))
      description-lines
      'ARGUMENT-COMMAND-LINE-PARSER)))
 
@@ -664,11 +664,11 @@ USA.
 
 ADDITIONAL OPTIONS supported by this band:\n")
   (do ((parsers (sort *command-line-parsers*
-		      (lambda (a b) (ustring<? (car a) (car b))))
+		      (lambda (a b) (string<? (car a) (car b))))
 		(cdr parsers)))
       ((null? parsers))
     (let ((description (cadar parsers)))
-      (if (not (fix:= 0 (ustring-length description)))
+      (if (not (fix:= 0 (string-length description)))
 	  (begin
 	    (newline)
 	    (write-string description)

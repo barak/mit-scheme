@@ -86,9 +86,9 @@ USA.
 
 (define (emit-string string ctx)
   (let ((port (ctx-port ctx)))
-    (ustring-for-each (lambda (char)
-			(write-char char port))
-		      string)))
+    (string-for-each (lambda (char)
+		       (write-char char port))
+		     string)))
 
 (define (emit-newline ctx)
   (newline (ctx-port ctx)))
@@ -161,10 +161,10 @@ USA.
   (emit-string "<?" ctx)
   (write-xml-name (xml-processing-instructions-name pi) ctx)
   (let ((text (xml-processing-instructions-text pi)))
-    (if (fix:> (ustring-length text) 0)
+    (if (fix:> (string-length text) 0)
 	(begin
 	  (if (not (char-set-member? char-set:xml-whitespace
-				     (ustring-ref text 0)))
+				     (string-ref text 0)))
 	      (emit-string " " ctx))
 	  (emit-string text ctx))))
   (emit-string "?>" ctx))
@@ -196,7 +196,7 @@ USA.
   (emit-string " " ctx)
   (let ((type (xml-!element-content-type decl)))
     (cond ((symbol? type)
-	   (emit-string (ustring-upcase (symbol-name type)) ctx))
+	   (emit-string (string-upcase (symbol-name type)) ctx))
 	  ((and (pair? type) (eq? (car type) '|#PCDATA|))
 	   (emit-string "(#PCDATA" ctx)
 	   (if (pair? (cdr type))
@@ -258,7 +258,7 @@ USA.
 	   (emit-string " " ctx)
 	   (let ((type (cadr definition)))
 	     (cond ((symbol? type)
-		    (emit-string (ustring-upcase (symbol-name type)) ctx))
+		    (emit-string (string-upcase (symbol-name type)) ctx))
 		   ((and (pair? type) (eq? (car type) '|NOTATION|))
 		    (emit-string "NOTATION (" ctx)
 		    (if (pair? (cdr type))
@@ -409,23 +409,23 @@ USA.
 
 (define (xml-string-columns string)
   (let ((n 0))
-    (ustring-for-each (lambda (char)
-			(set! n
-			      (fix:+ n
-				     (case char
-				       ((#\") 6)
-				       ((#\<) 4)
-				       ((#\&) 5)
-				       (else 1))))
-			unspecific)
-		      string)
+    (string-for-each (lambda (char)
+		       (set! n
+			     (fix:+ n
+				    (case char
+				      ((#\") 6)
+				      ((#\<) 4)
+				      ((#\&) 5)
+				      (else 1))))
+		       unspecific)
+		     string)
     n))
 
 (define (write-xml-name name ctx)
   (emit-string (xml-name-string name) ctx))
 
 (define (xml-name-columns name)
-  (ustring-length (xml-name-string name)))
+  (string-length (xml-name-string name)))
 
 (define (write-xml-nmtoken nmtoken ctx)
   (emit-string (symbol-name nmtoken) ctx))
@@ -437,7 +437,7 @@ USA.
 	(emit-char #\" ctx)
 	(for-each
 	 (lambda (item)
-	   (if (ustring? item)
+	   (if (string? item)
 	       (write-escaped-string item
 				     '((#\" . "&quot;")
 				       (#\& . "&amp;")
@@ -482,15 +482,15 @@ USA.
       (emit-char #\space ctx)))
 
 (define (write-escaped-string string escapes ctx)
-  (ustring-for-each (lambda (char)
-		      (cond ((assq char escapes)
-			     => (lambda (e)
-				  (emit-string (cdr e) ctx)))
-			    (((ctx-char-map ctx) char)
-			     => (lambda (name)
-				  (emit-char #\& ctx)
-				  (emit-string (symbol-name name) ctx)
-				  (emit-char #\; ctx)))
-			    (else
-			     (emit-char char ctx))))
-		    string))
+  (string-for-each (lambda (char)
+		     (cond ((assq char escapes)
+			    => (lambda (e)
+				 (emit-string (cdr e) ctx)))
+			   (((ctx-char-map ctx) char)
+			    => (lambda (name)
+				 (emit-char #\& ctx)
+				 (emit-string (symbol-name name) ctx)
+				 (emit-char #\; ctx)))
+			   (else
+			    (emit-char char ctx))))
+		   string))

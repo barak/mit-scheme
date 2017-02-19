@@ -53,7 +53,7 @@ USA.
 
 (define (string->parser-buffer string #!optional start end)
   (let* ((caller 'string->parser-buffer)
-	 (end (fix:end-index end (ustring-length string) caller))
+	 (end (fix:end-index end (string-length string) caller))
 	 (start (fix:start-index start end caller)))
     (make-parser-buffer string start end 0 0 #f #t 0)))
 
@@ -61,10 +61,10 @@ USA.
   (guarantee textual-input-port? port 'textual-input-port->parser-buffer)
   (if (or (default-object? prefix)
 	  (not prefix)
-	  (and (ustring? prefix)
-	       (fix:= 0 (ustring-length prefix))))
+	  (and (string? prefix)
+	       (fix:= 0 (string-length prefix))))
       (make-parser-buffer (make-ustring min-length) 0 0 0 0 port #f 0)
-      (let ((n (ustring-length prefix)))
+      (let ((n (string-length prefix)))
 	(make-parser-buffer (%grow-buffer prefix n (fix:max min-length n))
 			    0 n 0 0 port #f 0))))
 
@@ -110,7 +110,7 @@ USA.
   (set-parser-buffer-line! buffer (parser-buffer-pointer-line p)))
 
 (define (get-parser-buffer-tail buffer p)
-  (call-with-parser-buffer-tail buffer p ustring-copy))
+  (call-with-parser-buffer-tail buffer p string-copy))
 
 (define (call-with-parser-buffer-tail buffer p procedure)
   ;; P must be a buffer pointer previously returned by
@@ -156,8 +156,8 @@ USA.
   ;; characters available, return #F and leave the position unchanged.
   (and (guarantee-buffer-chars buffer 1)
        (let ((char
-	      (ustring-ref (parser-buffer-string buffer)
-			   (parser-buffer-index buffer))))
+	      (string-ref (parser-buffer-string buffer)
+			  (parser-buffer-index buffer))))
 	 (increment-buffer-index! buffer char)
 	 char)))
 
@@ -166,15 +166,15 @@ USA.
   ;; current position.  If there is a character available, return it,
   ;; otherwise return #F.  The position is unaffected in either case.
   (and (guarantee-buffer-chars buffer 1)
-       (ustring-ref (parser-buffer-string buffer)
-		    (parser-buffer-index buffer))))
+       (string-ref (parser-buffer-string buffer)
+		   (parser-buffer-index buffer))))
 
 (define (parser-buffer-ref buffer index)
   (if (not (index-fixnum? index))
       (error:wrong-type-argument index "index" 'PARSER-BUFFER-REF))
   (and (guarantee-buffer-chars buffer (fix:+ index 1))
-       (ustring-ref (parser-buffer-string buffer)
-		    (fix:+ (parser-buffer-index buffer) index))))
+       (string-ref (parser-buffer-string buffer)
+		   (fix:+ (parser-buffer-index buffer) index))))
 
 (define (match-parser-buffer-char buffer char)
   (match-char buffer char char=?))
@@ -218,8 +218,8 @@ USA.
 (define-integrable (match-char buffer reference compare)
   (and (guarantee-buffer-chars buffer 1)
        (let ((char
-	      (ustring-ref (parser-buffer-string buffer)
-			   (parser-buffer-index buffer))))
+	      (string-ref (parser-buffer-string buffer)
+			  (parser-buffer-index buffer))))
 	 (and (compare char reference)
 	      (begin
 		(increment-buffer-index! buffer char)
@@ -227,8 +227,8 @@ USA.
 
 (define-integrable (match-char-no-advance buffer reference compare)
   (and (guarantee-buffer-chars buffer 1)
-       (compare (ustring-ref (parser-buffer-string buffer)
-			     (parser-buffer-index buffer))
+       (compare (string-ref (parser-buffer-string buffer)
+			    (parser-buffer-index buffer))
 		reference)))
 
 (define-integrable (match-char-not buffer reference compare)
@@ -256,7 +256,7 @@ USA.
   (match-string buffer string match-substring-loop-na char-ci=?))
 
 (define-integrable (match-string buffer string loop compare)
-  (loop buffer string 0 (ustring-length string) compare))
+  (loop buffer string 0 (string-length string) compare))
 
 (define (match-parser-buffer-substring buffer string start end)
   (match-substring buffer string start end match-substring-loop char=?))
@@ -271,7 +271,7 @@ USA.
   (match-substring buffer string start end match-substring-loop-na char-ci=?))
 
 (define-integrable (match-substring buffer string start end loop compare)
-  (guarantee ustring? string)
+  (guarantee string? string)
   (loop buffer string start end compare))
 
 (define-integrable (match-substring-loop buffer string start end compare)
@@ -282,10 +282,10 @@ USA.
 	      (bi (parser-buffer-index buffer))
 	      (bl (parser-buffer-line buffer)))
 	   (if (fix:< i end)
-	       (and (compare (ustring-ref string i) (ustring-ref bs bi))
+	       (and (compare (string-ref string i) (string-ref bs bi))
 		    (loop (fix:+ i 1)
 			  (fix:+ bi 1)
-			  (if (char=? (ustring-ref bs bi) #\newline)
+			  (if (char=? (string-ref bs bi) #\newline)
 			      (fix:+ bl 1)
 			      bl)))
 	       (begin
@@ -298,7 +298,7 @@ USA.
        (let ((bs (parser-buffer-string buffer)))
 	 (let loop ((i start) (bi (parser-buffer-index buffer)))
 	   (if (fix:< i end)
-	       (and (compare (ustring-ref string i) (ustring-ref bs bi))
+	       (and (compare (string-ref string i) (string-ref bs bi))
 		    (loop (fix:+ i 1) (fix:+ bi 1)))
 	       #t)))))
 
@@ -314,7 +314,7 @@ USA.
       (let loop ((i i) (n (parser-buffer-line buffer)))
 	(if (fix:< i j)
 	    (loop (fix:+ i 1)
-		  (if (char=? (ustring-ref s i) #\newline)
+		  (if (char=? (string-ref s i) #\newline)
 		      (fix:+ n 1)
 		      n))
 	    (set-parser-buffer-line! buffer n)))
@@ -330,14 +330,14 @@ USA.
 	(if (fix:> index 0)
 	    (let* ((end* (fix:- end index))
 		   (string*
-		    (let ((n (ustring-length string)))
+		    (let ((n (string-length string)))
 		      (if (and (fix:> n min-length)
 			       (fix:<= end* (fix:quotient n 4)))
 			  (make-ustring (fix:quotient n 2))
 			  string))))
 	      (without-interruption
 	       (lambda ()
-		 (ustring-copy! string* 0 string index end)
+		 (string-copy! string* 0 string index end)
 		 (set-parser-buffer-string! buffer string*)
 		 (set-parser-buffer-index! buffer 0)
 		 (set-parser-buffer-end! buffer end*)
@@ -359,7 +359,7 @@ USA.
 	     (end (parser-buffer-end buffer)))
 	 ;; (assert (fix:> min-end end))
 	 (let ((string (parser-buffer-string buffer)))
-	   (if (fix:> min-end (ustring-length string))
+	   (if (fix:> min-end (string-length string))
 	       (set-parser-buffer-string! buffer
 					  (%grow-buffer string end min-end))))
 	 (let ((port (parser-buffer-port buffer))
@@ -383,9 +383,9 @@ USA.
 (define (%grow-buffer string end min-length)
   (let ((new-string
 	 (make-ustring
-	  (let loop ((n (ustring-length string)))
+	  (let loop ((n (string-length string)))
 	    (if (fix:<= min-length n)
 		n
 		(loop (fix:* n 2)))))))
-    (ustring-copy! new-string 0 string 0 end)
+    (string-copy! new-string 0 string 0 end)
     new-string))

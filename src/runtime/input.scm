@@ -45,7 +45,7 @@ USA.
   ((textual-port-operation/peek-char port) port))
 
 (define (input-port/read-string! port string)
-  (input-port/read-substring! port string 0 (ustring-length string)))
+  (input-port/read-substring! port string 0 (string-length string)))
 
 (define (input-port/read-substring! port string start end)
   (if (< start end)
@@ -188,7 +188,7 @@ USA.
 	(let ((string (make-ustring k)))
 	  (let ((n (input-port/read-string! port string)))
 	    (cond ((not n) n)
-		  ((fix:> n 0) (if (fix:< n k) (ustring-head string n) string))
+		  ((fix:> n 0) (if (fix:< n k) (string-head string n) string))
 		  (else (eof-object)))))
 	(make-ustring 0))))
 
@@ -215,10 +215,10 @@ USA.
   (let ((port (optional-input-port port 'read-string!))
 	(end
 	 (if (default-object? end)
-	     (ustring-length string)
+	     (string-length string)
 	     (begin
 	       (guarantee index-fixnum? end 'read-string!)
-	       (if (not (fix:<= end (ustring-length string)))
+	       (if (not (fix:<= end (string-length string)))
 		   (error:bad-range-argument end 'read-string!))
 	       end))))
     (let ((start

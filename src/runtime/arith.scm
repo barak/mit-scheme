@@ -468,9 +468,9 @@ USA.
   (cond ((not (int:integer? number))
 	 (error:wrong-type-argument number #f 'NUMBER->STRING))
 	((int:negative? number)
-	 (list->ustring (cons #\- (n>0 (int:negate number)))))
+	 (list->string (cons #\- (n>0 (int:negate number)))))
 	(else
-	 (list->ustring (n>0 number)))))
+	 (list->string (n>0 number)))))
 
 (declare (integrate-operator rat:rational?))
 (define (rat:rational? object)

@@ -281,7 +281,7 @@ USA.
 (define (with-highlight-strings-printed pph thunk)
   (let ((print-string
 	 (lambda (s)
-	   (if (ustring? s)
+	   (if (string? s)
 	       (*unparse-string s)
 	       (s (output-port))))))
     (print-string (pph/start-string pph))
@@ -290,14 +290,14 @@ USA.
 
 (define (pph/start-string-length pph)
   (let ((start (pph/start-string pph)))
-    (if (ustring? start)
-	(ustring-length start)
+    (if (string? start)
+	(string-length start)
 	0)))
 
 (define (pph/end-string-length pph)
   (let ((end (pph/end-string pph)))
-    (if (ustring? end)
-	(ustring-length end)
+    (if (string? end)
+	(string-length end)
 	0)))
 
 (define (pp-top-level expression port as-code? indentation list-depth)
@@ -378,7 +378,7 @@ USA.
 	((prefix-node? node)
 	 (*unparse-string (prefix-node-prefix node))
 	 (let ((new-column
-		(+ column (ustring-length (prefix-node-prefix node))))
+		(+ column (string-length (prefix-node-prefix node))))
 	       (subnode (prefix-node-subnode node)))
 	   (if (null? (dispatch-list))
 	       (print-node subnode new-column depth)
@@ -412,8 +412,8 @@ USA.
 	      (and (not (null? (cdr subnodes)))
 		   (let ((first (unhighlight (car subnodes))))
 		     (and (symbol? first)
-			  (assq (if (ustring-prefix? "define-"
-						     (symbol->string first))
+			  (assq (if (string-prefix? "define-"
+						    (symbol->string first))
 				    'define
 				    first)
 				(dispatch-list)))))))
@@ -981,7 +981,7 @@ USA.
 			     (update-queue (cdr half-pointer/queue) '(CDR)))))
 		       (if (eq? (car half-pointer/queue) (cdr pair))
 			   (make-singleton-list-node
-			    (ustring-append
+			    (string-append
 			     ". "
 			     (circularity-string (cdr half-pointer/queue))))
 			   (loop (cdr pair) list-breadth half-pointer/queue)))
@@ -1207,19 +1207,19 @@ USA.
 (define (circularity-string queue)
   (let ((depth (queue-depth queue))
 	(cdrs (queue/past-cdrs queue)))
-    (ustring-append
+    (string-append
      (cond ((= depth 1) "#[circularity (current parenthetical level")
 	   ((= depth 2) "#[circularity (up 1 parenthetical level")
 	   (else
-	    (ustring-append "#[circularity (up "
-			    (number->string (-1+ depth))
-			    " parenthetical levels")))
+	    (string-append "#[circularity (up "
+			   (number->string (-1+ depth))
+			   " parenthetical levels")))
      (cond ((= cdrs 0) ")]")
 	   ((= cdrs 1) ", downstream 1 cdr.)]")
 	   (else
-	    (ustring-append ", downstream "
-			    (number->string cdrs)
-			    " cdrs.)]"))))))
+	    (string-append ", downstream "
+			   (number->string cdrs)
+			   " cdrs.)]"))))))
 
 
 ;;;; Node Model
@@ -1231,7 +1231,7 @@ USA.
 ;;;  be gained by keeping it around.
 
 (define (symbol-length symbol)
-  (ustring-length
+  (string-length
    (call-with-output-string
      (lambda (port)
        (write symbol port)))))
@@ -1247,13 +1247,13 @@ USA.
   (subnode #f read-only #t))
 
 (define (make-prefix-node prefix subnode)
-  (cond ((ustring? subnode)
-	 (ustring-append prefix subnode))
+  (cond ((string? subnode)
+	 (string-append prefix subnode))
 	((prefix-node? subnode)
-	 (make-prefix-node (ustring-append prefix (prefix-node-prefix subnode))
+	 (make-prefix-node (string-append prefix (prefix-node-prefix subnode))
 			   (prefix-node-subnode subnode)))
 	(else
-	 (%make-prefix-node (+ (ustring-length prefix) (node-size subnode))
+	 (%make-prefix-node (+ (string-length prefix) (node-size subnode))
 			    prefix
 			    subnode))))
 
@@ -1281,7 +1281,7 @@ USA.
 	((prefix-node? node) (prefix-node-size node))
 	((highlighted-node? node)
 	 (highlighted-node/size node))
-	(else (ustring-length node))))
+	(else (string-length node))))
 
 (define-structure (highlighted-node
 		   (conc-name highlighted-node/)

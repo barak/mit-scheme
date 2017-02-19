@@ -61,13 +61,13 @@ USA.
 	   (else (error "Illegal symbol name:" name))))))
 
 (define (string-head->symbol string end)
-  (string->symbol (ustring-copy string 0 end)))
+  (string->symbol (string-copy string 0 end)))
 
 (define (string-tail->symbol string start)
-  (string->symbol (ustring-copy string start)))
+  (string->symbol (string-copy string start)))
 
 (define (symbol . objects)
-  (string->symbol (%ustring* objects 'symbol)))
+  (string->symbol (%string* objects 'symbol)))
 
 (define (intern string)
   (string->symbol (cold-load-foldcase string)))
@@ -79,7 +79,7 @@ USA.
   (if (ascii-string? string)
       ;; Needed during cold load.
       (legacy-string-downcase string)
-      (ustring-foldcase string)))
+      (string-foldcase string)))
 
 (define (symbol-name symbol)
   (if (not (symbol? symbol))
@@ -101,10 +101,10 @@ USA.
 	       #t)))))
 
 (define (symbol-hash symbol #!optional modulus)
-  (ustring-hash (symbol-name symbol) modulus))
+  (string-hash (symbol-name symbol) modulus))
 
 (define (symbol<? x y)
-  (ustring<? (symbol-name x) (symbol-name y)))
+  (string<? (symbol-name x) (symbol-name y)))
 
 (define (symbol>? x y)
-  (ustring<? (symbol-name y) (symbol-name x)))
+  (string<? (symbol-name y) (symbol-name x)))

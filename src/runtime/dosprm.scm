@@ -190,9 +190,9 @@ USA.
 
   (set! get-environment-variable
 	(lambda (variable)
-	  (if (not (ustring? variable))
+	  (if (not (string? variable))
 	      (env-error 'GET-ENVIRONMENT-VARIABLE variable))
-	  (let ((variable (ustring-upcase variable)))
+	  (let ((variable (string-upcase variable)))
 	    (cond ((assoc variable environment-variables)
 		   => cdr)
 		  (else
@@ -201,9 +201,9 @@ USA.
 
   (set! set-environment-variable!
 	(lambda (variable value)
-	  (if (not (ustring? variable))
+	  (if (not (string? variable))
 	      (env-error 'SET-ENVIRONMENT-VARIABLE! variable))
-	  (let ((variable (ustring-upcase variable)))
+	  (let ((variable (string-upcase variable)))
 	    (cond ((assoc variable environment-variables)
 		   => (lambda (pair) (set-cdr! pair value)))
 		  (else
@@ -213,7 +213,7 @@ USA.
 
   (set! delete-environment-variable!
 	(lambda (variable)
-	  (if (not (ustring? variable))
+	  (if (not (string? variable))
 	      (env-error 'DELETE-ENVIRONMENT-VARIABLE! variable))
 	  (set-environment-variable! variable *variable-deleted*)))
 
@@ -225,9 +225,9 @@ USA.
 
   (set! set-environment-variable-default!
 	(lambda (var val)
-	  (if (not (ustring? var))
+	  (if (not (string? var))
 	      (env-error 'SET-ENVIRONMENT-VARIABLE-DEFAULT! var))
-	  (let ((var (ustring-upcase var)))
+	  (let ((var (string-upcase var)))
 	    (cond ((assoc var environment-defaults)
 		   => (lambda (pair) (set-cdr! pair val)))
 		  (else
@@ -368,7 +368,7 @@ USA.
 	    (begin
 	      (if (not (and (pair? item)
 			    (init-file-specifier? (car item))
-			    (ustring? (cdr item))))
+			    (string? (cdr item))))
 		  (error "Malformed init-file map item:" item))
 	      (loop (cons item result)))))))
 

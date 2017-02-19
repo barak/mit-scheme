@@ -52,7 +52,7 @@ USA.
 ;;;; Pathname Parser
 
 (define (unix/parse-namestring string host)
-  (let ((end (ustring-length string)))
+  (let ((end (string-length string)))
     (let ((components
 	   (expand-directory-prefixes
 	    (substring-components string 0 end #\/))))
@@ -64,7 +64,7 @@ USA.
 			    (and (pair? components)
 				 (simplify-directory
 				  (if (fix:= 0
-					     (ustring-length (car components)))
+					     (string-length (car components)))
 				      (cons 'ABSOLUTE
 					    (parse-directory-components
 					     (cdr components)))
@@ -81,16 +81,16 @@ USA.
 	 (lambda (string)
 	   (append (string-components string #\/)
 		   (cdr components)))))
-    (let ((end (ustring-length string)))
+    (let ((end (string-length string)))
       (if (or (fix:= 0 end)
 	      (not (*expand-directory-prefixes?*)))
 	  components
-	  (case (ustring-ref string 0)
+	  (case (string-ref string 0)
 	    ((#\$)
 	     (if (fix:= 1 end)
 		 components
 		 (let ((value
-			(get-environment-variable (usubstring string 1 end))))
+			(get-environment-variable (substring string 1 end))))
 		   (if (not value)
 		       components
 		       (replace-head value)))))
@@ -100,7 +100,7 @@ USA.
 		     (lambda ()
 		       (if (fix:= 1 end)
 			   (current-home-directory)
-			   (user-home-directory (usubstring string 1 end)))))))
+			   (user-home-directory (substring string 1 end)))))))
 	       (if (condition? expansion)
 		   components
 		   (replace-head (->namestring expansion)))))
@@ -114,33 +114,33 @@ USA.
 (define (parse-directory-components components)
   (map parse-directory-component
        (remove (lambda (component)
-		 (fix:= 0 (ustring-length component)))
+		 (fix:= 0 (string-length component)))
 	       components)))
 
 (define (parse-directory-component component)
-  (cond ((ustring=? ".." component) 'UP)
-	((ustring=? "." component) 'HERE)
+  (cond ((string=? ".." component) 'UP)
+	((string=? "." component) 'HERE)
 	(else component)))
 
 (define (string-components string delimiter)
-  (substring-components string 0 (ustring-length string) delimiter))
+  (substring-components string 0 (string-length string) delimiter))
 
 (define (substring-components string start end delimiter)
   (let loop ((start start))
-    (let ((index (ustring-find-first-char string delimiter start end)))
+    (let ((index (substring-find-next-char string start end delimiter)))
       (if index
-	  (cons (usubstring string start index) (loop (fix:+ index 1)))
-	  (list (usubstring string start end))))))
+	  (cons (substring string start index) (loop (fix:+ index 1)))
+	  (list (substring string start end))))))
 
 (define (parse-name string receiver)
-  (let ((end (ustring-length string)))
-    (let ((dot (ustring-find-last-char string #\.)))
+  (let ((end (string-length string)))
+    (let ((dot (string-find-previous-char string #\.)))
       (if (or (not dot)
 	      (fix:= dot 0)
 	      (fix:= dot (fix:- end 1))
-	      (char=? #\. (ustring-ref string (fix:- dot 1))))
+	      (char=? #\. (string-ref string (fix:- dot 1))))
 	  (receiver (cond ((fix:= end 0) #f)
-			  ((ustring=? "*" string) 'WILD)
+			  ((string=? "*" string) 'WILD)
 			  (else string))
 		    #f)
 	  (receiver (extract string 0 dot)
@@ -148,36 +148,36 @@ USA.
 
 (define (extract string start end)
   (if (and (fix:= 1 (fix:- end start))
-	   (char=? #\* (ustring-ref string start)))
+	   (char=? #\* (string-ref string start)))
       'WILD
-      (usubstring string start end)))
+      (substring string start end)))
 
 ;;;; Pathname Unparser
 
 (define (unix/pathname->namestring pathname)
-  (ustring-append (unparse-directory (%pathname-directory pathname))
-		  (unparse-name (%pathname-name pathname)
-				(%pathname-type pathname))))
+  (string-append (unparse-directory (%pathname-directory pathname))
+		 (unparse-name (%pathname-name pathname)
+			       (%pathname-type pathname))))
 
 (define (unparse-directory directory)
   (cond ((not directory)
 	 "")
 	((pair? directory)
-	 (ustring-append
+	 (string-append
 	  (if (eq? (car directory) 'ABSOLUTE) "/" "")
 	  (let loop ((directory (cdr directory)))
 	    (if (not (pair? directory))
 		""
-		(ustring-append (unparse-directory-component (car directory))
-				"/"
-				(loop (cdr directory)))))))
+		(string-append (unparse-directory-component (car directory))
+			       "/"
+			       (loop (cdr directory)))))))
 	(else
 	 (error:illegal-pathname-component directory "directory"))))
 
 (define (unparse-directory-component component)
   (cond ((eq? component 'UP) "..")
 	((eq? component 'HERE) ".")
-	((ustring? component) component)
+	((string? component) component)
 	(else
 	 (error:illegal-pathname-component component "directory component"))))
 
@@ -185,11 +185,11 @@ USA.
   (let ((name (or (unparse-component name) ""))
 	(type (unparse-component type)))
     (if type
-	(ustring-append name "." type)
+	(string-append name "." type)
 	name)))
 
 (define (unparse-component component)
-  (cond ((or (not component) (ustring? component)) component)
+  (cond ((or (not component) (string? component)) component)
 	((eq? component 'WILD) "*")
 	(else (error:illegal-pathname-component component "component"))))
 
@@ -207,18 +207,18 @@ USA.
 	       (memq (car directory) '(RELATIVE ABSOLUTE))
 	       (list-of-type? (cdr directory)
 		 (lambda (element)
-		   (if (ustring? element)
-		       (not (fix:= 0 (ustring-length element)))
+		   (if (string? element)
+		       (not (fix:= 0 (string-length element)))
 		       (memq element '(UP HERE))))))
 	  (simplify-directory directory))
 	 (else
 	  (error:illegal-pathname-component directory "directory")))
    (if (or (memq name '(#F WILD))
-	   (and (ustring? name) (not (fix:= 0 (ustring-length name)))))
+	   (and (string? name) (not (fix:= 0 (string-length name)))))
        name
        (error:illegal-pathname-component name "name"))
    (if (or (memq type '(#F WILD))
-	   (and (ustring? type) (not (fix:= 0 (ustring-length type)))))
+	   (and (string? type) (not (fix:= 0 (string-length type)))))
        type
        (error:illegal-pathname-component type "type"))
    (if (memq version '(#F UNSPECIFIC WILD NEWEST))

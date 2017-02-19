@@ -39,7 +39,7 @@ USA.
   (procedure (open-input-string string)))
 
 (define (open-input-string string #!optional start end)
-  (let* ((end (fix:end-index end (ustring-length string) 'open-input-string))
+  (let* ((end (fix:end-index end (string-length string) 'open-input-string))
 	 (start (fix:start-index start end 'open-input-string)))
     (make-textual-port string-input-type
 		       (make-istate string start end start))))
@@ -71,13 +71,13 @@ USA.
 (define (string-in/peek-char port)
   (let ((ss (textual-port-state port)))
     (if (fix:< (istate-next ss) (istate-end ss))
-	(ustring-ref (istate-string ss) (istate-next ss))
+	(string-ref (istate-string ss) (istate-next ss))
 	(make-eof-object port))))
 
 (define (string-in/read-char port)
   (let ((ss (textual-port-state port)))
     (if (fix:< (istate-next ss) (istate-end ss))
-	(let ((char (ustring-ref (istate-string ss) (istate-next ss))))
+	(let ((char (string-ref (istate-string ss) (istate-next ss))))
 	  (set-istate-next! ss (fix:+ (istate-next ss) 1))
 	  char)
 	(make-eof-object port))))
@@ -88,7 +88,7 @@ USA.
 	  (start* (istate-next ss))
 	  (end* (istate-end ss)))
       (let ((n (fix:min (fix:- end start) (fix:- end* start*))))
-	(ustring-copy! string* start* string start (fix:+ start n))
+	(string-copy! string* start* string start (fix:+ start n))
 	(set-istate-next! ss (fix:+ start* n))
 	n))))
 
@@ -97,7 +97,7 @@ USA.
     (if (not (fix:< (istate-start ss) (istate-next ss)))
 	(error "No char to unread:" port))
     (let ((prev (fix:- (istate-next ss) 1)))
-      (if (not (char=? char (ustring-ref (istate-string ss) prev)))
+      (if (not (char=? char (string-ref (istate-string ss) prev)))
 	  (error "Unread char incorrect:" char))
       (set-istate-next! ss prev))))
 
@@ -111,7 +111,7 @@ USA.
   (procedure (open-input-octets octets)))
 
 (define (open-input-octets octets #!optional start end)
-  (let* ((end (fix:end-index end (ustring-length octets) 'open-input-octets))
+  (let* ((end (fix:end-index end (string-length octets) 'open-input-octets))
 	 (start (fix:start-index start end 'open-input-octets))
 	 (port
 	  (make-generic-i/o-port (make-octets-source octets start end)
@@ -134,7 +134,7 @@ USA.
 		(j start* (fix:+ j 1)))
 	       ((not (fix:< i limit))
 		(set! index i))
-	     (bytevector-u8-set! bv j (char->integer (ustring-ref string i)))))
+	     (bytevector-u8-set! bv j (char->integer (string-ref string i)))))
 	 n)))))
 
 (define (make-octets-input-type)
@@ -199,7 +199,7 @@ USA.
 (define (string-out/write-char port char)
   (let ((os (textual-port-state port)))
     (maybe-grow-buffer os 1)
-    (ustring-set! (ostate-buffer os) (ostate-index os) char)
+    (string-set! (ostate-buffer os) (ostate-index os) char)
     (set-ostate-index! os (fix:+ (ostate-index os) 1))
     (set-ostate-column! os (new-column char (ostate-column os)))
     1))
@@ -208,18 +208,18 @@ USA.
   (let ((os (textual-port-state port))
 	(n (fix:- end start)))
     (maybe-grow-buffer os n)
-    (ustring-copy! (ostate-buffer os) (ostate-index os) string start end)
+    (string-copy! (ostate-buffer os) (ostate-index os) string start end)
     (set-ostate-index! os (fix:+ (ostate-index os) n))
     (update-column-for-substring! os n)
     n))
 
 (define (string-out/extract-output port)
   (let ((os (textual-port-state port)))
-    (ustring-copy (ostate-buffer os) 0 (ostate-index os))))
+    (string-copy (ostate-buffer os) 0 (ostate-index os))))
 
 (define (string-out/extract-output! port)
   (let* ((os (textual-port-state port))
-	 (output (ustring-copy (ostate-buffer os) 0 (ostate-index os))))
+	 (output (string-copy (ostate-buffer os) 0 (ostate-index os))))
     (reset-buffer! os)
     output))
 
@@ -236,7 +236,7 @@ USA.
 (define (maybe-grow-buffer os n)
   (let ((buffer (ostate-buffer os))
 	(n (fix:+ (ostate-index os) n)))
-    (let ((m (ustring-length buffer)))
+    (let ((m (string-length buffer)))
       (if (fix:< m n)
 	  (let ((buffer*
 		 (make-ustring
@@ -244,7 +244,7 @@ USA.
 		    (if (fix:< m n)
 			(loop (fix:+ m m))
 			m)))))
-	    (ustring-copy! buffer* 0 buffer 0 (ostate-index os))
+	    (string-copy! buffer* 0 buffer 0 (ostate-index os))
 	    (set-ostate-buffer! os buffer*))))))
 
 (define (reset-buffer! os)
@@ -267,7 +267,7 @@ USA.
 	    (lambda (i column)
 	      (if (fix:< i end)
 		  (loop (fix:+ i 1)
-			(new-column (ustring-ref string i) column))
+			(new-column (string-ref string i) column))
 		  (set-ostate-column! os column)))))
 	(let ((nl (find-newline string start end)))
 	  (if nl
@@ -275,7 +275,7 @@ USA.
 	      (loop start (ostate-column os))))))))
 
 (define (find-newline string start end)
-  (ustring-find-first-char string #\newline start end))
+  (substring-find-next-char string start end #\newline))
 
 ;;;; Output as octets
 

@@ -283,9 +283,9 @@ USA.
   (map (lambda (b)
 	 (make-xml-!entity
 	  (car b)
-	  (list (ustring-append "&#x"
-				(number->string (char->integer (cadr b)) 16)
-				";"))))
+	  (list (string-append "&#x"
+			       (number->string (char->integer (cadr b)) 16)
+			       ";"))))
        html-entity-alist))
 
 (define html-char->name-map

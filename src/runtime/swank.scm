@@ -435,7 +435,7 @@ USA.
 
 (define (get-object-type-name obj)
   (cond ((boolean? obj) "boolean")
-	((ustring? obj) "string")
+	((string? obj) "string")
 	((char? obj) "char")
 	((fixnum? obj) "fixnum")
 	((integer? obj) "integer")

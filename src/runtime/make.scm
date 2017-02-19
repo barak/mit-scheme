@@ -360,6 +360,7 @@ USA.
 	 ("queue" . (RUNTIME SIMPLE-QUEUE))
 	 ("equals" . (RUNTIME EQUALITY))
 	 ("list" . (RUNTIME LIST))
+	 ("ustring" . (RUNTIME USTRING))
 	 ("symbol" . (RUNTIME SYMBOL))
 	 ("uproc" . (RUNTIME PROCEDURE))
 	 ("fixart" . (RUNTIME FIXNUM-ARITHMETIC))

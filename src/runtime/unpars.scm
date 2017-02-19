@@ -346,7 +346,7 @@ USA.
       (begin
 	(*unparse-string "#[" context)
 	(let ((context* (context-in-brackets context)))
-	  (if (ustring? name)
+	  (if (string? name)
 	      (*unparse-string name context*)
 	      (*unparse-object name context*))
 	  (if object
@@ -383,7 +383,7 @@ USA.
       (if type-name
           (rename-user-object-type type-name)
           (intern
-           (ustring-append "undefined-type:" (number->string type-code)))))))
+           (string-append "undefined-type:" (number->string type-code)))))))
 
 (define (rename-user-object-type type-name)
   (let ((entry (assq type-name renamed-user-object-types)))
@@ -454,23 +454,23 @@ USA.
      (*unparse-char #\] context))))
 
 (define (unparse-symbol-name s context)
-  (if (and (fix:> (ustring-length s) 0)
-	   (not (ustring=? s "."))
-	   (not (ustring-prefix? "#" s))
-	   (char-in-set? (ustring-ref s 0) char-set:symbol-initial)
-	   (ustring-every (symbol-name-no-quoting-predicate context) s)
+  (if (and (fix:> (string-length s) 0)
+	   (not (string=? s "."))
+	   (not (string-prefix? "#" s))
+	   (char-in-set? (string-ref s 0) char-set:symbol-initial)
+	   (string-every (symbol-name-no-quoting-predicate context) s)
 	   (not (case (get-param:parser-keyword-style
 		       (context-environment context))
-		  ((PREFIX) (ustring-prefix? ":" s))
-		  ((SUFFIX) (ustring-suffix? ":" s))
+		  ((PREFIX) (string-prefix? ":" s))
+		  ((SUFFIX) (string-suffix? ":" s))
 		  (else #f)))
 	   (not (string->number s)))
       (*unparse-string s context)
       (begin
         (*unparse-char #\| context)
-	(ustring-for-each (lambda (char)
-			    (unparse-string-char char context))
-			  s)
+	(string-for-each (lambda (char)
+			   (unparse-string-char char context))
+			 s)
         (*unparse-char #\| context))))
 
 (define (symbol-name-no-quoting-predicate context)
@@ -494,7 +494,7 @@ USA.
 
 (define (unparse/string string context)
   (if (context-slashify? context)
-      (let* ((end (ustring-length string))
+      (let* ((end (string-length string))
 	     (end*
 	      (let ((limit (get-param:unparser-string-length-limit)))
 		(if limit
@@ -503,7 +503,7 @@ USA.
           (*unparse-char #\" context)
 	  (do ((index 0 (fix:+ index 1)))
 	      ((not (fix:< index end*)))
-	    (unparse-string-char (ustring-ref string index) context))
+	    (unparse-string-char (string-ref string index) context))
           (if (< end* end)
               (*unparse-string "..." context))
           (*unparse-char #\" context))
@@ -618,7 +618,7 @@ USA.
 	    (*unparse-string "#u8()" context*))))))
 
 (define (unparse/record record context)
-  (cond ((ustring? record) (unparse/string record context))
+  (cond ((string? record) (unparse/string record context))
 	((uri? record) (unparse/uri record context))
 	((get-param:unparse-with-maximum-readability?)
 	 (*unparse-readable-hash record context))
