@@ -45,8 +45,8 @@ USA.
     (for-each (lambda (entry)
 		(let ((char (car entry))
 		      (code (cadr entry)))
-		  (assert-= code (char->integer char))
-		  (assert-eq char (integer->char code))))
+		  (assert-= (char->integer char) code)
+		  (assert-eq (integer->char code) char)))
 	      named-chars)))
 
 (define ascii-chars
@@ -69,8 +69,184 @@ USA.
 
 (define (basic-char-tests char code)
   (assert-true (char? char))
-  (assert-eq char (integer->char code))
-  (assert-= code (char->integer char)))
+  (assert-eq (integer->char code) char)
+  (assert-= (char->integer char) code))
+
+;;;; Tests adapted from the Larceny R7RS test suite:
+
+(define-test 'larceny-char-spot-checks
+  (lambda ()
+    (assert-eqv (char-upcase #\i) #\I)
+    (assert-eqv (char-downcase #\i) #\i)
+    (assert-eqv (char-foldcase #\i) #\i)
+
+    (assert-false (char-ci<? #\z #\Z))
+    (assert-false (char-ci<? #\Z #\z))
+    (assert-true  (char-ci<? #\a #\Z))
+    (assert-false (char-ci<? #\Z #\a))
+    (assert-true  (char-ci<=? #\z #\Z))
+    (assert-true  (char-ci<=? #\Z #\z))
+    (assert-true  (char-ci<=? #\a #\Z))
+    (assert-false (char-ci<=? #\Z #\a))
+    (assert-false (char-ci=? #\z #\a))
+    (assert-true  (char-ci=? #\z #\Z))
+    (assert-false (char-ci>? #\z #\Z))
+    (assert-false (char-ci>? #\Z #\z))
+    (assert-false (char-ci>? #\a #\Z))
+    (assert-true  (char-ci>? #\Z #\a))
+    (assert-true  (char-ci>=? #\Z #\z))
+    (assert-true  (char-ci>=? #\z #\Z))
+    (assert-true  (char-ci>=? #\z #\Z))
+    (assert-false (char-ci>=? #\a #\z))
+
+    (assert-true  (char-alphabetic? #\a))
+    (assert-false (char-alphabetic? #\1))
+    (assert-true  (char-numeric? #\1))
+    (assert-false (char-numeric? #\a))
+    (assert-true  (char-whitespace? #\space))
+    (assert-false (char-whitespace? #\a))
+    (assert-false (char-upper-case? #\a))
+    (assert-true  (char-upper-case? #\A))
+    (assert-true  (char-lower-case? #\a))
+    (assert-false (char-lower-case? #\A))))
+
+(define-test 'larceny-char-spot-checks-2
+  (lambda ()
+    (let* ((w #\a)
+	   (x #\N)
+	   (y #\z)
+	   (z (integer->char (+ 13 (char->integer w)))))
+
+      ;; (assert-false (char-ci=? x y z))
+      ;; (assert-true  (char-ci=? x x z))
+      ;; (assert-false (char-ci=? w x y))
+      ;; (assert-false (char-ci=? y x w))
+
+      ;; (assert-false (char-ci<? x y z))
+      ;; (assert-false (char-ci<? x x z))
+      ;; (assert-true  (char-ci<? w x y))
+      ;; (assert-false (char-ci<? y x w))
+
+      ;; (assert-false (char-ci>? x y z))
+      ;; (assert-false (char-ci>? x x z))
+      ;; (assert-false (char-ci>? w x y))
+      ;; (assert-true  (char-ci>? y x w))
+
+      ;; (assert-false (char-ci<=? x y z))
+      ;; (assert-true  (char-ci<=? x x z))
+      ;; (assert-true  (char-ci<=? w x y))
+      ;; (assert-false (char-ci<=? y x w))
+
+      ;; (assert-false (char-ci>=? x y z))
+      ;; (assert-true  (char-ci>=? x x z))
+      ;; (assert-false (char-ci>=? w x y))
+      ;; (assert-true  (char-ci>=? y x w))
+
+      (assert-true  (char-ci=? x x))
+      (assert-false (char-ci=? w x))
+      (assert-false (char-ci=? y x))
+
+      (assert-false (char-ci<? x x))
+      (assert-true  (char-ci<? w x))
+      (assert-false (char-ci<? y x))
+
+      (assert-false (char-ci>? x x))
+      (assert-false (char-ci>? w x))
+      (assert-true  (char-ci>? y x))
+
+      (assert-true  (char-ci<=? x x))
+      (assert-true  (char-ci<=? w x))
+      (assert-false (char-ci<=? y x))
+
+      (assert-true  (char-ci>=? x x))
+      (assert-false (char-ci>=? w x))
+      (assert-true  (char-ci>=? y x)))))
+
+(define-test 'larceny-unicode-spot-checks
+  (lambda ()
+    (assert-eqv (char-upcase #\xDF) #\xDF)
+    (assert-eqv (char-downcase #\xDF) #\xDF)
+    (assert-eqv (char-foldcase #\xDF) #\xDF)
+
+    (assert-eqv (char-upcase #\x3A3) #\x3A3)
+    (assert-eqv (char-downcase #\x3A3) #\x3C3)
+    (assert-eqv (char-foldcase #\x3A3) #\x3C3)
+
+    (assert-eqv (char-upcase #\x3C2) #\x3A3)
+    (assert-eqv (char-downcase #\x3C2) #\x3C2)
+    (assert-eqv (char-foldcase #\x3C2) #\x3C3)
+
+    (assert-char-ci= #\x3C3 #\x3C2)
+
+    (assert-true (char-whitespace? #\x00A0))
+    (assert-true (char-upper-case? #\x3A3))
+    (assert-true (char-lower-case? #\x3C3))
+    (assert-true (char-lower-case? #\x00AA))))
+
+;; Systematic testing on every Unicode character.
+;; The counts are believed to be correct for Unicode 5.0,
+;; except for char-whitespace? (which has dropped to 25 in Unicode 7.0).
+;; The counts are likely to increase monotonically (if at all) in later
+;; versions, but that's not a given.
+
+(define-test 'larceny-unicode-systematic
+  (lambda ()
+
+    (define (count-all-chars predicate)
+      (do ((i 0 (fix:+ i 1))
+	   (m 0
+	      (if (and (or (fix:< i #xD800) (fix:>= i #xE000))
+		       (predicate (integer->char i)))
+		  (fix:+ m 1)
+		  m)))
+	  ((not (fix:< i #x110000)) m)))
+
+    (assert-= (count-all-chars
+	       (lambda (c)
+		 (and (char? c)
+		      (char? (char-upcase c))
+		      (char? (char-downcase c))
+		      (char? (char-foldcase c))
+		      (char=? c (integer->char (char->integer c))))))
+	      1112064)
+
+    (assert->= (count-all-chars char-alphabetic?) 93217)
+    (assert->= (count-all-chars char-numeric?) 282)
+    (assert->= (count-all-chars char-whitespace?) 25)
+    (assert->= (count-all-chars char-upper-case?) 1362)
+    (assert->= (count-all-chars char-lower-case?) 1791)))
+
+(define-test 'larceny-digit-value
+  (lambda ()
+
+    (define (filter-all-chars predicate)
+      (do ((i 0 (fix:+ i 1))
+	   (chars '()
+		  (if (or (fix:< i #xD800) (fix:>= i #xE000))
+		      (let ((char (integer->char i)))
+			(if (predicate char)
+			    (cons char chars)
+			    chars))
+		      chars)))
+	  ((not (fix:< i #x110000)) (reverse! chars))))
+
+    (for-each (lambda (expected char)
+		(assert-eqv (digit-value char) expected))
+	      '(0 1 2 3 4 5 6 7 8 9 #f #f #f #f #f #f)
+	      (string->list "0123456789abcDEF"))
+
+    (assert-null
+     (remove! (lambda (char)
+		(let ((n (digit-value char)))
+		  (and (exact-integer? n)
+		       (<= 0 n 9))))
+	      (filter-all-chars char-numeric?)))
+
+    (assert-null
+     (filter! digit-value
+	      (filter-all-chars
+	       (lambda (c)
+		 (not (char-numeric? c))))))))
 
 (define-test 'valid-utf8-sequences
   (lambda ()
@@ -78,18 +254,18 @@ USA.
                 (let ((bytes (car entry))
                       (char (cadr entry)))
 		  (let ((n (bytevector-length bytes)))
-		    (assert-= n
-			      (initial-byte->utf8-char-length
-			       (bytevector-u8-ref bytes 0)))
-		    (assert-= n
-			      (char-utf8-byte-length char))
-		    (assert-eq char (decode-utf8-char bytes 0))
+		    (assert-= (initial-byte->utf8-char-length
+			       (bytevector-u8-ref bytes 0))
+			      n)
+		    (assert-= (char-utf8-byte-length char)
+			      n)
+		    (assert-eq (decode-utf8-char bytes 0) char)
 		    (do ((offset 0 (+ offset 1)))
 			((not (< offset 8)))
 		      (let ((bv (make-bytevector 16))
 			    (m (+ offset n)))
-			(assert-= m (encode-utf8-char! bv offset char))
-			(assert-equal bytes (bytevector-copy bv offset m)))))))
+			(assert-= (encode-utf8-char! bv offset char) m)
+			(assert-equal (bytevector-copy bv offset m) bytes))))))
               valid-utf8-sequences)))
 
 (define valid-utf8-sequences
@@ -129,11 +305,11 @@ USA.
                 (if (memv b invalid-utf8-initial-bytes)
                     (assert-error
                      (lambda () (initial-byte->utf8-char-length b)))
-                    (assert-= (cond ((< b #x80) 1)
+                    (assert-= (initial-byte->utf8-char-length b)
+                              (cond ((< b #x80) 1)
                                     ((< b #xE0) 2)
                                     ((< b #xF0) 3)
-                                    (else 4))
-                              (initial-byte->utf8-char-length b))))
+                                    (else 4)))))
               (iota #x100))))
 
 (define invalid-utf8-initial-bytes
@@ -147,8 +323,8 @@ USA.
 		      (length (cadr entry)))
                   (let ((b0 (bytevector-u8-ref bytes 0)))
                     (if (not (memv b0 invalid-utf8-initial-bytes))
-                        (assert-= length
-                                  (initial-byte->utf8-char-length b0))))
+                        (assert-= (initial-byte->utf8-char-length b0)
+                                  length)))
 		  (assert-error (lambda () (decode-utf8-char bytes 0)))))
               invalid-known-length-sequences)))
 

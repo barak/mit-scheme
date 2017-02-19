@@ -443,14 +443,10 @@ USA.
   (set! set-comparator-metadata! (table 'put!))
   unspecific)
 
-(define-for-tests (define-comparator comparator name relation)
+(define-for-tests (define-comparator comparator name)
   (guarantee binary-procedure? comparator 'define-comparator)
   (guarantee symbol? name 'define-comparator)
-  (guarantee string? relation 'define-comparator)
-  (set-comparator-metadata! comparator (cons name relation)))
-
-(define-for-tests (define-equality equality name)
-  (define-comparator equality name (string name " to")))
+  (set-comparator-metadata! comparator (cons name (string name " to"))))
 
 (define (name-of comparator)
   (car (comparator-metadata comparator)))
@@ -458,18 +454,40 @@ USA.
 (define (text-of comparator)
   (cdr (comparator-metadata comparator)))
 
-(define-equality eq? 'eq?)
-(define-equality eqv? 'eqv?)
-(define-equality equal? 'equal?)
-(define-equality = '=)
-(define-comparator < '< "less than")
-(define-comparator <= '<= "less than or equal to")
-(define-comparator > '> "greater than")
-(define-comparator >= '>= "greater than or equal to")
-(define-equality boolean=? 'boolean=?)
-(define-equality char=? 'char=?)
-(define-equality string=? 'string=?)
+(define-comparator eq? 'eq?)
+(define-comparator eqv? 'eqv?)
+(define-comparator equal? 'equal?)
+(define-comparator < '<)
+(define-comparator <= '<=)
+(define-comparator = '=)
+(define-comparator > '>)
+(define-comparator >= '>=)
+(define-comparator boolean=? 'boolean=?)
 
+(define-comparator char<=? 'char<=)
+(define-comparator char<? 'char<)
+(define-comparator char=? 'char=)
+(define-comparator char>=? 'char>=)
+(define-comparator char>? 'char>)
+
+(define-comparator char-ci<=? 'char-ci<=)
+(define-comparator char-ci<? 'char-ci<)
+(define-comparator char-ci=? 'char-ci=)
+(define-comparator char-ci>=? 'char-ci>=)
+(define-comparator char-ci>? 'char-ci>)
+
+(define-comparator string<=? 'string<=)
+(define-comparator string<? 'string<)
+(define-comparator string=? 'string=)
+(define-comparator string>=? 'string>=)
+(define-comparator string>? 'string>)
+
+(define-comparator string-ci<=? 'string-ci<=)
+(define-comparator string-ci<? 'string-ci<)
+(define-comparator string-ci=? 'string-ci=)
+(define-comparator string-ci>=? 'string-ci>=)
+(define-comparator string-ci>? 'string-ci>)
+
 (define (binary-assertion negate? test pattern)
   (let ((test (if negate? (negate-test test) test))
 	(pattern (expand-pattern negate? pattern)))
@@ -530,11 +548,35 @@ USA.
 
 (define-for-tests assert-boolean= (simple-binary-assertion boolean=? #f))
 (define-for-tests assert-boolean!= (simple-binary-assertion boolean=? #t))
+
 (define-for-tests assert-char= (simple-binary-assertion char=? #f))
 (define-for-tests assert-char!= (simple-binary-assertion char=? #t))
+(define-for-tests assert-char< (simple-binary-assertion char<? #f))
+(define-for-tests assert-char<= (simple-binary-assertion char<=? #f))
+(define-for-tests assert-char> (simple-binary-assertion char>? #f))
+(define-for-tests assert-char>= (simple-binary-assertion char>=? #f))
+
+(define-for-tests assert-char-ci= (simple-binary-assertion char-ci=? #f))
+(define-for-tests assert-char-ci!= (simple-binary-assertion char-ci=? #t))
+(define-for-tests assert-char-ci< (simple-binary-assertion char-ci<? #f))
+(define-for-tests assert-char-ci<= (simple-binary-assertion char-ci<=? #f))
+(define-for-tests assert-char-ci> (simple-binary-assertion char-ci>? #f))
+(define-for-tests assert-char-ci>= (simple-binary-assertion char-ci>=? #f))
+
 (define-for-tests assert-string= (simple-binary-assertion string=? #f))
 (define-for-tests assert-string!= (simple-binary-assertion string=? #t))
+(define-for-tests assert-string< (simple-binary-assertion string<? #f))
+(define-for-tests assert-string<= (simple-binary-assertion string<=? #f))
+(define-for-tests assert-string> (simple-binary-assertion string>? #f))
+(define-for-tests assert-string>= (simple-binary-assertion string>=? #f))
 
+(define-for-tests assert-string-ci= (simple-binary-assertion string-ci=? #f))
+(define-for-tests assert-string-ci!= (simple-binary-assertion string-ci=? #t))
+(define-for-tests assert-string-ci< (simple-binary-assertion string-ci<? #f))
+(define-for-tests assert-string-ci<= (simple-binary-assertion string-ci<=? #f))
+(define-for-tests assert-string-ci> (simple-binary-assertion string-ci>? #f))
+(define-for-tests assert-string-ci>= (simple-binary-assertion string-ci>=? #f))
+
 (define-for-tests (member-assertion comparator negate?)
   (binary-assertion negate?
 		    (lambda (value expected)

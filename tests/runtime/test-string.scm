@@ -71,7 +71,7 @@ USA.
    "D0D1D2D3D4D5D6D7D8D9DADBDCDDDEDF"
    "E0E1E2E3E4E5E6E7E8E9EAEBECEDEEEF"
    "F0F1F2F3F4F5F6F7F8F9FAFBFCFDFEFF"))
-
+
 (define-test 'HEXADECIMAL->VECTOR-8B/LOWERCASE
   (lambda ()
     (assert-equal (allbytes) (hexadecimal->vector-8b (allbytes:lower)))))
@@ -110,3 +110,75 @@ USA.
         (assert-equal v
           (hexadecimal->vector-8b
            (string-upcase (vector-8b->hexadecimal v))))))))
+
+;;;; Tests adapted from the Larceny R7RS test suite:
+
+(define-test 'larceny-string
+  (lambda ()
+
+    (assert-string-ci< "A" "z")
+    (assert-string-ci< "A" "z")
+    (assert-string-ci< "a" "Z")
+    (assert-string-ci< "a" "Z")
+    (assert-string-ci<= "A" "z")
+    (assert-string-ci<= "A" "z")
+    (assert-string-ci<= "Z" "z")
+    (assert-string-ci<= "Z" "z")
+    (assert-string-ci<= "a" "Z")
+    (assert-string-ci<= "a" "Z")
+    (assert-string-ci<= "z" "Z")
+    (assert-string-ci<= "z" "Z")
+    (assert-string-ci= "z" "Z")
+    (assert-string-ci!= "z" "a")
+    (assert-string-ci> "Z" "a")
+    (assert-string-ci> "Z" "a")
+    (assert-string-ci> "z" "A")
+    (assert-string-ci> "z" "A")
+    (assert-string-ci>= "Z" "a")
+    (assert-string-ci>= "Z" "a")
+    (assert-string-ci>= "Z" "z")
+    (assert-string-ci>= "Z" "z")
+    (assert-string-ci>= "z" "A")
+    (assert-string-ci>= "z" "A")
+    (assert-string-ci>= "z" "Z")
+    (assert-string-ci>= "z" "Z")
+
+    (assert-string= (string-upcase "Hi") "HI")
+    (assert-string= (string-upcase "HI") "HI")
+    (assert-string= (string-downcase "Hi") "hi")
+    (assert-string= (string-downcase "hi") "hi")
+    (assert-string= (string-foldcase "Hi") "hi")
+    (assert-string= (string-foldcase "HI") "hi")
+    (assert-string= (string-foldcase "hi") "hi")
+    (assert-string= (string-downcase "STRASSE")  "strasse")
+
+    (assert-string= (string-upcase "Stra\xDF;e") "STRASSE")
+    (assert-string= (string-downcase "Stra\xDF;e") "stra\xDF;e")
+    (assert-string= (string-foldcase "Stra\xDF;e") "strasse")
+    (assert-string= (string-downcase "\x3A3;") "\x3C3;")
+
+    (assert-string= (string-upcase "\x39E;\x391;\x39F;\x3A3;")
+		    "\x39E;\x391;\x39F;\x3A3;")
+    ;; Would be "\x3BE;\x3B1;\x3BF;\x3C2;" with final sigma
+    (assert-string= (string-downcase "\x39E;\x391;\x39F;\x3A3;")
+		    "\x3BE;\x3B1;\x3BF;\x3C3;")
+    ;; Would be "\x3BE;\x3B1;\x3BF;\x3C3;\x3C2;" with final sigma
+    (assert-string= (string-downcase "\x39E;\x391;\x39F;\x3A3;\x3A3;")
+		    "\x3BE;\x3B1;\x3BF;\x3C3;\x3C3;")
+    ;; Would be "\x3BE;\x3B1;\x3BF;\x3C2; \x3C3;" with final sigma
+    (assert-string= (string-downcase "\x39E;\x391;\x39F;\x3A3; \x3A3;")
+		    "\x3BE;\x3B1;\x3BF;\x3C3; \x3C3;")
+    (assert-string= (string-foldcase "\x39E;\x391;\x39F;\x3A3;")
+		    "\x3BE;\x3B1;\x3BF;\x3C3;")
+    (assert-string= (string-upcase "\x3BE;\x3B1;\x3BF;\x3C3;")
+		    "\x39E;\x391;\x39F;\x3A3;")
+    (assert-string= (string-upcase "\x3BE;\x3B1;\x3BF;\x3C2;")
+		    "\x39E;\x391;\x39F;\x3A3;")
+
+    (assert-string= (string-downcase "A\x3A3;'x") ; ' is a MidLetter
+		    "a\x3C3;'x")
+
+    (assert-string-ci= "Strasse" "Stra\xDF;e")
+    (assert-string-ci= "STRASSE" "Stra\xDF;e")
+    (assert-string-ci= "\x3BE;\x3B1;\x3BF;\x3C2;" "\x39E;\x391;\x39F;\x3A3;")
+    (assert-string-ci= "\x3BE;\x3B1;\x3BF;\x3C3;" "\x39E;\x391;\x39F;\x3A3;")))
