@@ -45,13 +45,10 @@ USA.
 (define-primitives
   (set-string-length! 2)
   (string-allocate 1)
-  (string-hash-mod 2)
   (string-length 1)
   (string-ref 2)
   (string-set! 3)
   (string? 1)
-  substring-move-left!
-  substring-move-right!
   vector-8b-fill!
   vector-8b-find-next-char
   vector-8b-find-next-char-ci
@@ -59,14 +56,6 @@ USA.
   vector-8b-find-previous-char-ci
   (vector-8b-ref 2)
   (vector-8b-set! 3))
-
-(define (string-hash key #!optional modulus)
-  (if (default-object? modulus)
-      ((ucode-primitive string-hash) key)
-      ((ucode-primitive string-hash-mod) key modulus)))
-
-(define (string-ci-hash key #!optional modulus)
-  (string-hash (string-downcase key) modulus))
 
 ;;;; Basic Operations
 
@@ -77,27 +66,11 @@ USA.
       (begin
 	(guarantee-char char 'MAKE-STRING)
 	(let ((result (string-allocate length)))
-	  (%substring-fill! result 0 length char)
+	  (substring-fill! result 0 length char)
 	  result))))
 
 (define (make-vector-8b length #!optional ascii)
   (make-string length (if (default-object? ascii) ascii (integer->char ascii))))
-
-(define (string-fill! string char #!optional start end)
-  (substring-fill! string
-		   (if (default-object? start) 0 start)
-		   (if (default-object? end) (string-length string) end)
-		   char))
-
-(define (substring-fill! string start end char)
-  (guarantee-substring string start end 'SUBSTRING-FILL)
-  (guarantee-char char 'SUBSTRING-FILL)
-  (%substring-fill! string start end char))
-
-(define (%substring-fill! string start end char)
-  (do ((i start (fix:+ i 1)))
-      ((fix:= i end))
-    (string-set! string i char)))
 
 (define (string-null? string)
   (guarantee-string string 'STRING-NULL?)
@@ -105,34 +78,6 @@ USA.
 
 (define-integrable (%string-null? string)
   (fix:= 0 (string-length string)))
-
-(declare (integrate-operator %substring))
-(define (%substring string start end)
-  (let ((result (string-allocate (fix:- end start))))
-    (%substring-move! string start end result 0)
-    result))
-
-(define (substring string start end)
-  (guarantee-substring string start end 'SUBSTRING)
-  (%substring string start end))
-
-(define (string-head string end)
-  (guarantee-string string 'STRING-HEAD)
-  (guarantee-substring-end-index end (string-length string) 'STRING-HEAD)
-  (%string-head string end))
-
-(define-integrable (%string-head string end)
-  (%substring string 0 end))
-
-(define (string-tail string start)
-  (guarantee-string string 'STRING-TAIL)
-  (guarantee-substring-start-index start (string-length string) 'STRING-TAIL)
-  (%substring string start (string-length string)))
-
-(define (string-copy string #!optional start end)
-  (substring string
-	     (if (default-object? start) 0 start)
-	     (if (default-object? end) (string-length string) end)))
 
 (define (ascii-string-copy string)
   (guarantee-string string 'ASCII-STRING-COPY)
@@ -179,7 +124,7 @@ USA.
 	     string))))
     (if (compiled-procedure? reuse)
 	reuse
-	%string-head)))
+	string-head)))
 
 (define (string-maximum-length string)
   (guarantee-string string 'STRING-MAXIMUM-LENGTH)
@@ -196,195 +141,10 @@ USA.
 
 (define %words->octets-shift
   (- %octets->words-shift))
-
-(define (%string-copy string)
-  (let ((size (string-length string)))
-    (let ((result (string-allocate size)))
-      (%substring-move! string 0 size result 0)
-      result)))
-
-(define (string-copy! to at from #!optional start end)
-  (substring-move! from
-		   (if (default-object? start) 0 start)
-		   (if (default-object? end) (string-length from) end)
-		   to
-		   at))
-
-(define (string->vector string #!optional start end)
-  (let ((start (if (default-object? start) 0 start))
-	(end (if (default-object? end) (string-length string) end)))
-    (guarantee-substring string start end 'SUBSTRING)
-    (let ((result (make-vector (fix:- end start))))
-      (do ((i start (fix:+ i 1)))
-	  ((not (fix:< i end)))
-	(vector-set! result
-		     (fix:- i start)
-		     (string-ref string i)))
-      result)))
-
-(define (string-map procedure string . strings)
-  (if (pair? strings)
-      (let ((n
-	     (apply min
-		    (string-length string)
-		    (map string-length strings))))
-	(let ((result (make-string n)))
-	  (do ((i 0 (fix:+ i 1)))
-	      ((not (fix:< i n)))
-	    (string-set! result i
-			 (apply procedure
-				(string-ref string i)
-				(map (lambda (string)
-				       (string-ref string i))
-				     strings))))
-	  result))
-      (let ((n (string-length string)))
-	(let ((result (make-string n)))
-	  (do ((i 0 (fix:+ i 1)))
-	      ((not (fix:< i n)))
-	    (string-set! result i (procedure (string-ref string i))))
-	  result))))
-
-(define (string-for-each procedure string . strings)
-  (if (pair? strings)
-      (let ((n
-	     (apply min
-		    (string-length string)
-		    (map string-length strings))))
-	(do ((i 0 (fix:+ i 1)))
-	    ((not (fix:< i n)) unspecific)
-	  (apply procedure
-		 (string-ref string i)
-		 (map (lambda (string)
-			(string-ref string i))
-		      strings))))
-      (let ((n (string-length string)))
-	(do ((i 0 (fix:+ i 1)))
-	    ((not (fix:< i n)) unspecific)
-	  (procedure (string-ref string i))))))
-
-(define (string . objects)
-  (%string-append (map ->string objects)))
-
-(define (->string object)
-  (cond ((string? object) object)
-	((symbol? object) (symbol->string object))
-	((8-bit-char? object) (make-string 1 object))
-	(else (%->string object 'STRING))))
-
-(define (%->string object caller)
-  (cond ((not object) "")
-	((number? object) (number->string object))
-	((uri? object) (uri->string object))
-	((pathname? object) (->namestring object))
-	(else (error:wrong-type-argument object "string component" caller))))
 
 (define (char->string char)
   (guarantee 8-bit-char? char 'CHAR->STRING)
   (make-string 1 char))
-
-(define (list->string chars)
-  ;; LENGTH will signal an error if CHARS is not a proper list.
-  (let ((result (string-allocate (length chars))))
-    (let loop ((chars chars) (index 0))
-      (if (pair? chars)
-	  (begin
-	    (guarantee 8-bit-char? (car chars))
-	    (string-set! result index (car chars))
-	    (loop (cdr chars) (fix:+ index 1)))
-	  result))))
-
-(define (string->list string #!optional start end)
-  (substring->list string
-		   (if (default-object? start) 0 start)
-		   (if (default-object? end) (string-length string) end)))
-
-(define (substring->list string start end)
-  (guarantee-substring string start end 'SUBSTRING->LIST)
-  (%substring->list string start end))
-
-(define (%substring->list string start end)
-  (if (fix:= start end)
-      '()
-      (let loop ((index (fix:- end 1)) (chars '()))
-	(if (fix:= start index)
-	    (cons (string-ref string index) chars)
-	    (loop (fix:- index 1) (cons (string-ref string index) chars))))))
-
-(define (string-move! string1 string2 start2)
-  (guarantee-string string1 'STRING-MOVE!)
-  (guarantee-string string2 'STRING-MOVE!)
-  (guarantee-string-index start2 'STRING-MOVE!)
-  (let ((end1 (string-length string1)))
-    (if (not (fix:<= (fix:+ start2 end1) (string-length string2)))
-	(error:bad-range-argument start2 'STRING-MOVE!))
-    (%substring-move! string1 0 end1 string2 start2)))
-
-(define (substring-move! string1 start1 end1 string2 start2)
-  (guarantee-substring string1 start1 end1 'SUBSTRING-MOVE!)
-  (guarantee-string string2 'SUBSTRING-MOVE!)
-  (guarantee-string-index start2 'SUBSTRING-MOVE!)
-  (if (not (fix:<= (fix:+ start2 (fix:- end1 start1)) (string-length string2)))
-      (error:bad-range-argument start2 'SUBSTRING-MOVE!))
-  (%substring-move! string1 start1 end1 string2 start2))
-
-(define (%substring-move! string1 start1 end1 string2 start2)
-  ;; Calling the primitive is expensive, so avoid it for small copies.
-  (let-syntax
-      ((unrolled-move-left
-	(sc-macro-transformer
-	 (lambda (form environment)
-	   environment
-	   (let ((n (cadr form)))
-	     `(BEGIN
-		(STRING-SET! STRING2 START2 (STRING-REF STRING1 START1))
-		,@(let loop ((i 1))
-		    (if (< i n)
-			`((STRING-SET! STRING2 (FIX:+ START2 ,i)
-				       (STRING-REF STRING1 (FIX:+ START1 ,i)))
-			  ,@(loop (+ i 1)))
-			'())))))))
-       (unrolled-move-right
-	(sc-macro-transformer
-	 (lambda (form environment)
-	   environment
-	   (let ((n (cadr form)))
-	     `(BEGIN
-		,@(let loop ((i 1))
-		    (if (< i n)
-			`(,@(loop (+ i 1))
-			  (STRING-SET! STRING2 (FIX:+ START2 ,i)
-				       (STRING-REF STRING1 (FIX:+ START1 ,i))))
-			'()))
-		(STRING-SET! STRING2 START2 (STRING-REF STRING1 START1))))))))
-    (let ((n (fix:- end1 start1)))
-      (if (or (not (eq? string2 string1)) (fix:< start2 start1))
-	  (cond ((fix:> n 4)
-		 (if (fix:> n 32)
-		     (substring-move-left! string1 start1 end1 string2 start2)
-		     (let loop ((i1 start1) (i2 start2))
-		       (if (fix:< i1 end1)
-			   (begin
-			     (string-set! string2 i2 (string-ref string1 i1))
-			     (loop (fix:+ i1 1) (fix:+ i2 1)))))))
-		((fix:= n 4) (unrolled-move-left 4))
-		((fix:= n 3) (unrolled-move-left 3))
-		((fix:= n 2) (unrolled-move-left 2))
-		((fix:= n 1) (unrolled-move-left 1)))
-	  (cond ((fix:> n 4)
-		 (if (fix:> n 32)
-		     (substring-move-right! string1 start1 end1 string2 start2)
-		     (let loop ((i1 end1) (i2 (fix:+ start2 n)))
-		       (if (fix:> i1 start1)
-			   (let ((i1 (fix:- i1 1))
-				 (i2 (fix:- i2 1)))
-			     (string-set! string2 i2 (string-ref string1 i1))
-			     (loop i1 i2))))))
-		((fix:= n 4) (unrolled-move-right 4))
-		((fix:= n 3) (unrolled-move-right 3))
-		((fix:= n 2) (unrolled-move-right 2))
-		((fix:= n 1) (unrolled-move-right 1))))
-      (fix:+ start2 n))))
 
 ;;; Almost all symbols are ascii, so it is worthwhile to handle them
 ;;; specially.  In this procedure, we `optimistically' move the
@@ -467,26 +227,6 @@ USA.
 		((fix:= n 2) (unrolled-move-right 2))
 		((fix:= n 1) (unrolled-move-right 1)))))))
 
-(define (string-append . strings)
-  (%string-append strings))
-
-(define (%string-append strings)
-  (let ((result
-	 (string-allocate
-	  (let loop ((strings strings) (length 0))
-	    (if (pair? strings)
-		(begin
-		  (guarantee-string (car strings) 'STRING-APPEND)
-		  (loop (cdr strings)
-			(fix:+ (string-length (car strings)) length)))
-		length)))))
-    (let loop ((strings strings) (index 0))
-      (if (pair? strings)
-	  (let ((size (string-length (car strings))))
-	    (%substring-move! (car strings) 0 size result index)
-	    (loop (cdr strings) (fix:+ index size)))
-	  result))))
-
 (define (reverse-string string)
   (guarantee-string string 'REVERSE-STRING)
   (%reverse-substring string 0 (string-length string)))
@@ -634,38 +374,6 @@ USA.
 
 ;;;; Case
 
-(define (string-upper-case? string)
-  (guarantee-string string 'STRING-UPPER-CASE?)
-  (%substring-upper-case? string 0 (string-length string)))
-
-(define (substring-upper-case? string start end)
-  (guarantee-substring string start end 'SUBSTRING-UPPER-CASE?)
-  (%substring-upper-case? string start end))
-
-(define (%substring-upper-case? string start end)
-  (let find-upper ((start start))
-    (and (fix:< start end)
-	 (let ((char (string-ref string start)))
-	   (if (char-upper-case? char)
-	       (let search-rest ((start (fix:+ start 1)))
-		 (or (fix:= start end)
-		     (and (not (char-lower-case? (string-ref string start)))
-			  (search-rest (fix:+ start 1)))))
-	       (and (not (char-lower-case? char))
-		    (find-upper (fix:+ start 1))))))))
-
-(define (string-upcase string)
-  (guarantee-string string 'STRING-UPCASE)
-  (%string-upcase string))
-
-(define (%string-upcase string)
-  (let ((end (string-length string)))
-    (let ((string* (make-string end)))
-      (do ((i 0 (fix:+ i 1)))
-	  ((fix:= i end))
-	(string-set! string* i (char-upcase (string-ref string i))))
-      string*)))
-
 (define (string-upcase! string)
   (guarantee-string string 'STRING-UPCASE!)
   (%substring-upcase! string 0 (string-length string)))
@@ -678,38 +386,6 @@ USA.
   (do ((i start (fix:+ i 1)))
       ((fix:= i end))
     (string-set! string i (char-upcase (string-ref string i)))))
-
-(define (string-lower-case? string)
-  (guarantee-string string 'STRING-LOWER-CASE?)
-  (%substring-lower-case? string 0 (string-length string)))
-
-(define (substring-lower-case? string start end)
-  (guarantee-substring string start end 'SUBSTRING-LOWER-CASE?)
-  (%substring-lower-case? string start end))
-
-(define (%substring-lower-case? string start end)
-  (let find-lower ((start start))
-    (and (fix:< start end)
-	 (let ((char (string-ref string start)))
-	   (if (char-lower-case? char)
-	       (let search-rest ((start (fix:+ start 1)))
-		 (or (fix:= start end)
-		     (and (not (char-upper-case? (string-ref string start)))
-			  (search-rest (fix:+ start 1)))))
-	       (and (not (char-upper-case? char))
-		    (find-lower (fix:+ start 1))))))))
-
-(define (string-downcase string)
-  (guarantee-string string 'STRING-DOWNCASE)
-  (%string-downcase string))
-
-(define (%string-downcase string)
-  (let ((end (string-length string)))
-    (let ((string* (make-string end)))
-      (do ((i 0 (fix:+ i 1)))
-	  ((fix:= i end))
-	(string-set! string* i (char-downcase (string-ref string i))))
-      string*)))
 
 (define (string-downcase! string)
   (guarantee-string string 'STRING-DOWNCASE!)
@@ -723,7 +399,7 @@ USA.
   (do ((i start (fix:+ i 1)))
       ((fix:= i end))
     (string-set! string i (char-downcase (string-ref string i)))))
-
+
 (define (string-capitalized? string)
   (guarantee-string string 'STRING-CAPITALIZED?)
   (substring-capitalized? string 0 (string-length string)))
@@ -767,7 +443,7 @@ USA.
 
 (define (string-capitalize string)
   (guarantee-string string 'STRING-CAPITALIZE)
-  (let ((string (%string-copy string)))
+  (let ((string (string-copy string)))
     (%substring-capitalize! string 0 (string-length string))
     string))
 
@@ -785,8 +461,8 @@ USA.
   ;; useful if the substring happens to be a sentence.  Again, if you
   ;; need finer control, parse the words yourself.
   (let ((index
-	 (%substring-find-next-char-in-set string start end
-					   char-set:alphabetic)))
+	 (substring-find-next-char-in-set string start end
+					  char-set:alphabetic)))
     (if index
 	(begin
 	  (%substring-upcase! string index (fix:+ index 1))
@@ -836,7 +512,7 @@ USA.
   (guarantee-string string 'STRING-REPLACE)
   (guarantee-char char1 'STRING-REPLACE)
   (guarantee-char char2 'STRING-REPLACE)
-  (let ((string (%string-copy string)))
+  (let ((string (string-copy string)))
     (%substring-replace! string 0 (string-length string) char1 char2)
     string))
 
@@ -844,7 +520,7 @@ USA.
   (guarantee-substring string start end 'SUBSTRING-REPLACE)
   (guarantee-char char1 'SUBSTRING-REPLACE)
   (guarantee-char char2 'SUBSTRING-REPLACE)
-  (let ((string (%string-copy string)))
+  (let ((string (string-copy string)))
     (%substring-replace! string start end char1 char2)
     string))
 
@@ -862,7 +538,7 @@ USA.
 
 (define (%substring-replace! string start end char1 char2)
   (let loop ((start start))
-    (let ((index (%substring-find-next-char string start end char1)))
+    (let ((index (substring-find-next-char string start end char1)))
       (if index
 	  (begin
 	    (string-set! string index char2)
@@ -917,215 +593,6 @@ USA.
 	       (if<))
 	      (else
 	       (if>)))))))
-
-(define (string-prefix? string1 string2)
-  (guarantee-2-strings string1 string2 'STRING-PREFIX?)
-  (%substring-prefix? string1 0 (string-length string1)
-		      string2 0 (string-length string2)))
-
-(define (substring-prefix? string1 start1 end1 string2 start2 end2)
-  (guarantee-2-substrings string1 start1 end1
-			  string2 start2 end2
-			  'SUBSTRING-PREFIX?)
-  (%substring-prefix? string1 start1 end1
-		      string2 start2 end2))
-
-(define (%substring-prefix? string1 start1 end1 string2 start2 end2)
-  (let ((length (fix:- end1 start1)))
-    (and (fix:<= length (fix:- end2 start2))
-	 (fix:= (%substring-match-forward string1 start1 end1
-					  string2 start2 end2)
-		length))))
-
-(define (string-prefix-ci? string1 string2)
-  (guarantee-2-strings string1 string2 'STRING-PREFIX-CI?)
-  (%substring-prefix-ci? string1 0 (string-length string1)
-			 string2 0 (string-length string2)))
-
-(define (substring-prefix-ci? string1 start1 end1 string2 start2 end2)
-  (guarantee-2-substrings string1 start1 end1
-			  string2 start2 end2
-			  'SUBSTRING-PREFIX-CI?)
-  (%substring-prefix-ci? string1 start1 end1
-			 string2 start2 end2))
-
-(define (%substring-prefix-ci? string1 start1 end1 string2 start2 end2)
-  (let ((length (fix:- end1 start1)))
-    (and (fix:<= length (fix:- end2 start2))
-	 (fix:= (%substring-match-forward-ci string1 start1 end1
-					     string2 start2 end2)
-		length))))
-
-(define (string-suffix? string1 string2)
-  (guarantee-2-strings string1 string2 'STRING-SUFFIX?)
-  (%substring-suffix? string1 0 (string-length string1)
-		      string2 0 (string-length string2)))
-
-(define (substring-suffix? string1 start1 end1 string2 start2 end2)
-  (guarantee-2-substrings string1 start1 end1
-			  string2 start2 end2
-			  'SUBSTRING-SUFFIX?)
-  (%substring-suffix? string1 start1 end1
-		      string2 start2 end2))
-
-(define (%substring-suffix? string1 start1 end1 string2 start2 end2)
-  (let ((length (fix:- end1 start1)))
-    (and (fix:<= length (fix:- end2 start2))
-	 (fix:= (%substring-match-backward string1 start1 end1
-					   string2 start2 end2)
-		length))))
-
-(define (string-suffix-ci? string1 string2)
-  (guarantee-2-strings string1 string2 'STRING-SUFFIX-CI?)
-  (%substring-suffix-ci? string1 0 (string-length string1)
-			 string2 0 (string-length string2)))
-
-(define (substring-suffix-ci? string1 start1 end1 string2 start2 end2)
-  (guarantee-2-substrings string1 start1 end1
-			  string2 start2 end2
-			  'SUBSTRING-SUFFIX-CI?)
-  (%substring-suffix-ci? string1 start1 end1
-			 string2 start2 end2))
-
-(define (%substring-suffix-ci? string1 start1 end1 string2 start2 end2)
-  (let ((length (fix:- end1 start1)))
-    (and (fix:<= length (fix:- end2 start2))
-	 (fix:= (%substring-match-backward-ci string1 start1 end1
-					      string2 start2 end2)
-		length))))
-
-(define (string=? string1 string2)
-  (guarantee-2-strings string1 string2 'STRING=?)
-  (%string=? string1 string2))
-
-(define (%string=? string1 string2)
-  (let ((end (string-length string1)))
-    (and (fix:= end (string-length string2))
-	 (let loop ((i 0))
-	   (or (fix:= i end)
-	       (and (char=? (string-ref string1 i) (string-ref string2 i))
-		    (loop (fix:+ i 1))))))))
-
-(define (string-ci=? string1 string2)
-  (guarantee-2-strings string1 string2 'STRING-CI=?)
-  (%string-ci=? string1 string2))
-
-(define (%string-ci=? string1 string2)
-  (let ((end (string-length string1)))
-    (and (fix:= end (string-length string2))
-	 (let loop ((i 0))
-	   (or (fix:= i end)
-	       (and (char-ci=? (string-ref string1 i) (string-ref string2 i))
-		    (loop (fix:+ i 1))))))))
-
-(define (substring=? string1 start1 end1 string2 start2 end2)
-  (guarantee-2-substrings string1 start1 end1
-			  string2 start2 end2
-			  'SUBSTRING=?)
-  (%substring=? string1 start1 end1 string2 start2 end2))
-
-(define (%substring=? string1 start1 end1 string2 start2 end2)
-  (and (fix:= (fix:- end1 start1) (fix:- end2 start2))
-       (let loop ((i1 start1) (i2 start2))
-	 (or (fix:= i1 end1)
-	     (and (char=? (string-ref string1 i1) (string-ref string2 i2))
-		  (loop (fix:+ i1 1) (fix:+ i2 1)))))))
-
-(define (substring-ci=? string1 start1 end1 string2 start2 end2)
-  (guarantee-2-substrings string1 start1 end1
-			  string2 start2 end2
-			  'SUBSTRING-CI=?)
-  (%substring-ci=? string1 start1 end1 string2 start2 end2))
-
-(define (%substring-ci=? string1 start1 end1 string2 start2 end2)
-  (and (fix:= (fix:- end1 start1) (fix:- end2 start2))
-       (let loop ((i1 start1) (i2 start2))
-	 (or (fix:= i1 end1)
-	     (and (char-ci=? (string-ref string1 i1) (string-ref string2 i2))
-		  (loop (fix:+ i1 1) (fix:+ i2 1)))))))
-
-(define (string<? string1 string2)
-  (guarantee-2-strings string1 string2 'STRING<?)
-  (%string<? string1 string2))
-
-(define (%string<? string1 string2)
-  (let ((end1 (string-length string1))
-	(end2 (string-length string2)))
-    (let ((end (fix:min end1 end2)))
-      (let loop ((i 0))
-	(if (fix:= i end)
-	    (fix:< end1 end2)
-	    (or (char<? (string-ref string1 i) (string-ref string2 i))
-		(and (char=? (string-ref string1 i) (string-ref string2 i))
-		     (loop (fix:+ i 1)))))))))
-
-(define (string-ci<? string1 string2)
-  (guarantee-2-strings string1 string2 'STRING-CI<?)
-  (%string-ci<? string1 string2))
-
-(define (%string-ci<? string1 string2)
-  (let ((end1 (string-length string1))
-	(end2 (string-length string2)))
-    (let ((end (fix:min end1 end2)))
-      (let loop ((i 0))
-	(if (fix:= i end)
-	    (fix:< end1 end2)
-	    (or (char-ci<? (string-ref string1 i) (string-ref string2 i))
-		(and (char-ci=? (string-ref string1 i) (string-ref string2 i))
-		     (loop (fix:+ i 1)))))))))
-
-(define (substring<? string1 start1 end1 string2 start2 end2)
-  (guarantee-2-substrings string1 start1 end1
-			  string2 start2 end2
-			  'SUBSTRING<?)
-  (%substring<? string1 start1 end1 string2 start2 end2))
-
-(define (%substring<? string1 start1 end1 string2 start2 end2)
-  (let ((len1 (fix:- end1 start1))
-	(len2 (fix:- end2 start2)))
-    (let ((end (fix:+ start1 (fix:min len1 len2))))
-      (let loop ((i1 start1) (i2 start2))
-	(if (fix:= i1 end)
-	    (fix:< len1 len2)
-	    (or (char<? (string-ref string1 i1) (string-ref string2 i2))
-		(and (char=? (string-ref string1 i1) (string-ref string2 i2))
-		     (loop (fix:+ i1 1) (fix:+ i2 1)))))))))
-
-(define (substring-ci<? string1 start1 end1 string2 start2 end2)
-  (guarantee-2-substrings string1 start1 end1
-			  string2 start2 end2
-			  'SUBSTRING-CI<?)
-  (%substring-ci<? string1 start1 end1 string2 start2 end2))
-
-(define (%substring-ci<? string1 start1 end1 string2 start2 end2)
-  (let ((len1 (fix:- end1 start1))
-	(len2 (fix:- end2 start2)))
-    (let ((end (fix:+ start1 (fix:min len1 len2))))
-      (let loop ((i1 start1) (i2 start2))
-	(if (fix:= i1 end)
-	    (fix:< len1 len2)
-	    (or (char-ci<? (string-ref string1 i1) (string-ref string2 i2))
-		(and (char-ci=? (string-ref string1 i1)
-				(string-ref string2 i2))
-		     (loop (fix:+ i1 1) (fix:+ i2 1)))))))))
-
-(define-integrable (string>? string1 string2)
-  (string<? string2 string1))
-
-(define-integrable (string-ci>? string1 string2)
-  (string-ci<? string2 string1))
-
-(define-integrable (string>=? string1 string2)
-  (not (string<? string1 string2)))
-
-(define-integrable (string-ci>=? string1 string2)
-  (not (string-ci<? string1 string2)))
-
-(define-integrable (string<=? string1 string2)
-  (not (string<? string2 string1)))
-
-(define-integrable (string-ci<=? string1 string2)
-  (not (string-ci<? string2 string1)))
 
 (define (string-match-forward string1 string2)
   (guarantee-2-strings string1 string2 'STRING-MATCH-FORWARD)
@@ -1220,7 +687,7 @@ USA.
 					   char-set:not-whitespace
 					   char-set))))
     (if index
-	(%substring string index (string-length string))
+	(substring string index (string-length string))
 	"")))
 
 (define (string-trim-right string #!optional char-set)
@@ -1230,7 +697,7 @@ USA.
 					       char-set:not-whitespace
 					       char-set))))
     (if index
-	(%substring string 0 (fix:+ index 1))
+	(substring string 0 (fix:+ index 1))
 	"")))
 
 (define (string-trim string #!optional char-set)
@@ -1240,10 +707,10 @@ USA.
 	     char-set))
 	 (index (string-find-next-char-in-set string char-set)))
     (if index
-	(%substring string
-		    index
-		    (fix:+ (string-find-previous-char-in-set string char-set)
-			   1))
+	(substring string
+		   index
+		   (fix:+ (string-find-previous-char-in-set string char-set)
+			  1))
 	"")))
 
 ;;;; Pad
@@ -1256,15 +723,17 @@ USA.
 	string
 	(let ((result (string-allocate n)))
 	  (if (fix:> length n)
-	      (%substring-move! string 0 n result 0)
+	      (string-copy! result 0 string 0 n)
 	      (begin
-		(%substring-move! string 0 length result 0)
-		(%substring-fill! result length n
-				  (if (default-object? char)
-				      #\space
-				      (begin
-					(guarantee-char char 'STRING-PAD-RIGHT)
-					char)))))
+		(string-copy! result 0 string 0 length)
+		(string-fill! result
+			      (if (default-object? char)
+				  #\space
+				  (begin
+				    (guarantee-char char 'STRING-PAD-RIGHT)
+				    char))
+			      length
+			      n)))
 	  result))))
 
 (define (string-pad-left string n #!optional char)
@@ -1276,115 +745,18 @@ USA.
 	(let ((result (string-allocate n))
 	      (i (fix:- n length)))
 	  (if (fix:< i 0)
-	      (%substring-move! string (fix:- 0 i) length result 0)
+	      (string-copy! result 0 string (fix:- 0 i) length)
 	      (begin
-		(%substring-fill! result 0 i
-				  (if (default-object? char)
-				      #\space
-				      (begin
-					(guarantee-char char 'STRING-PAD-RIGHT)
-					char)))
-		(%substring-move! string 0 length result i)))
+		(string-fill! result
+			      (if (default-object? char)
+				  #\space
+				  (begin
+				    (guarantee-char char 'STRING-PAD-RIGHT)
+				    char))
+			      0
+			      i)
+		(string-copy! result i string 0 length)))
 	  result))))
-
-;;;; Character search
-
-(define (string-find-next-char string char)
-  (guarantee-string string 'STRING-FIND-NEXT-CHAR)
-  (guarantee-char char 'STRING-FIND-NEXT-CHAR)
-  (%substring-find-next-char string 0 (string-length string) char))
-
-(define (substring-find-next-char string start end char)
-  (guarantee-substring string start end 'SUBSTRING-FIND-NEXT-CHAR)
-  (guarantee-char char 'SUBSTRING-FIND-NEXT-CHAR)
-  (%substring-find-next-char string start end char))
-
-(define (%substring-find-next-char string start end char)
-  (let loop ((i start))
-    (cond ((fix:= i end) #f)
-	  ((char=? (string-ref string i) char) i)
-	  (else (loop (fix:+ i 1))))))
-
-(define (string-find-next-char-ci string char)
-  (guarantee-string string 'STRING-FIND-NEXT-CHAR-CI)
-  (guarantee-char char 'STRING-FIND-NEXT-CHAR-CI)
-  (%substring-find-next-char-ci string 0 (string-length string) char))
-
-(define (substring-find-next-char-ci string start end char)
-  (guarantee-substring string start end 'SUBSTRING-FIND-NEXT-CHAR-CI)
-  (guarantee-char char 'SUBSTRING-FIND-NEXT-CHAR-CI)
-  (%substring-find-next-char-ci string start end char))
-
-(define (%substring-find-next-char-ci string start end char)
-  (let loop ((i start))
-    (cond ((fix:= i end) #f)
-	  ((char-ci=? (string-ref string i) char) i)
-	  (else (loop (fix:+ i 1))))))
-
-(define (string-find-previous-char string char)
-  (guarantee-string string 'STRING-FIND-PREVIOUS-CHAR)
-  (guarantee-char char 'STRING-FIND-PREVIOUS-CHAR)
-  (%substring-find-previous-char string 0 (string-length string) char))
-
-(define (substring-find-previous-char string start end char)
-  (guarantee-substring string start end 'SUBSTRING-FIND-PREVIOUS-CHAR)
-  (guarantee-char char 'SUBSTRING-FIND-PREVIOUS-CHAR)
-  (%substring-find-previous-char string start end char))
-
-(define (%substring-find-previous-char string start end char)
-  (if (fix:= start end)
-      #f
-      (let loop ((i (fix:- end 1)))
-	(cond ((char=? (string-ref string i) char) i)
-	      ((fix:= start i) #f)
-	      (else (loop (fix:- i 1)))))))
-
-(define (string-find-previous-char-ci string char)
-  (guarantee-string string 'STRING-FIND-PREVIOUS-CHAR-CI)
-  (guarantee-char char 'STRING-FIND-PREVIOUS-CHAR-CI)
-  (%substring-find-previous-char-ci string 0 (string-length string) char))
-
-(define (substring-find-previous-char-ci string start end char)
-  (guarantee-substring string start end 'SUBSTRING-FIND-PREVIOUS-CHAR-CI)
-  (guarantee-char char 'SUBSTRING-FIND-PREVIOUS-CHAR-CI)
-  (%substring-find-previous-char-ci string start end char))
-
-(define (%substring-find-previous-char-ci string start end char)
-  (if (fix:= start end)
-      #f
-      (let loop ((i (fix:- end 1)))
-	(cond ((char-ci=? (string-ref string i) char) i)
-	      ((fix:= start i) #f)
-	      (else (loop (fix:- i 1)))))))
-
-(define (string-find-next-char-in-set string char-set)
-  (guarantee-string string 'STRING-FIND-NEXT-CHAR-IN-SET)
-  (guarantee char-set? char-set 'STRING-FIND-NEXT-CHAR-IN-SET)
-  (%substring-find-next-char-in-set string 0 (string-length string) char-set))
-
-(define (substring-find-next-char-in-set string start end char-set)
-  (guarantee-substring string start end 'SUBSTRING-FIND-NEXT-CHAR-IN-SET)
-  (guarantee char-set? char-set 'SUBSTRING-FIND-NEXT-CHAR-IN-SET)
-  (%substring-find-next-char-in-set string start end char-set))
-
-(define-integrable (%substring-find-next-char-in-set string start end char-set)
-  ((ucode-primitive substring-find-next-char-in-set)
-   string start end (char-set-table char-set)))
-
-(define (string-find-previous-char-in-set string char-set)
-  (guarantee-string string 'STRING-FIND-PREVIOUS-CHAR-IN-SET)
-  (guarantee char-set? char-set 'STRING-FIND-PREVIOUS-CHAR-IN-SET)
-  (%substring-find-previous-char-in-set string 0 (string-length string)
-					char-set))
-
-(define (substring-find-previous-char-in-set string start end char-set)
-  (guarantee-substring string start end 'SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET)
-  (guarantee char-set? char-set 'SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET)
-  (%substring-find-previous-char-in-set string start end char-set))
-
-(define (%substring-find-previous-char-in-set string start end char-set)
-  ((ucode-primitive substring-find-previous-char-in-set)
-   string start end (char-set-table char-set)))
 
 ;;;; String search
 
@@ -1483,7 +855,7 @@ USA.
     (cond ((fix:= plen 1)
 	   (let ((c (string-ref pattern pstart)))
 	     (let loop ((ti tend) (occurrences '()))
-	       (let ((index (%substring-find-previous-char text tstart ti c)))
+	       (let ((index (substring-find-previous-char text tstart ti c)))
 		 (if index
 		     (loop index (cons index occurrences))
 		     occurrences)))))
