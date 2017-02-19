@@ -74,7 +74,7 @@ USA.
   (guarantee-limited-index-fixnum bits char-bits-limit 'CLEAR-CHAR-BITS)
   (%make-char (char-code char)
 	      (fix:andc (char-bits char) bits)))
-
+
 (define (8-bit-char? object)
   (and (char? object)
        (char-8-bit? object)))
@@ -89,36 +89,6 @@ USA.
 (define-integrable (char-ascii? char)
   (fix:< (char->integer char) #x80))
 
-(define-integrable (char=? x y)
-  (fix:= (char->integer x) (char->integer y)))
-
-(define-integrable (char<? x y)
-  (fix:< (char->integer x) (char->integer y)))
-
-(define-integrable (char<=? x y)
-  (fix:<= (char->integer x) (char->integer y)))
-
-(define-integrable (char>? x y)
-  (fix:> (char->integer x) (char->integer y)))
-
-(define-integrable (char>=? x y)
-  (fix:>= (char->integer x) (char->integer y)))
-
-(define (char-ci=? x y)
-  (char=? (char-foldcase x) (char-foldcase y)))
-
-(define (char-ci<? x y)
-  (char<? (char-foldcase x) (char-foldcase y)))
-
-(define (char-ci<=? x y)
-  (char<=? (char-foldcase x) (char-foldcase y)))
-
-(define (char-ci>? x y)
-  (char>? (char-foldcase x) (char-foldcase y)))
-
-(define (char-ci>=? x y)
-  (char>=? (char-foldcase x) (char-foldcase y)))
-
 (define (char=-predicate char)
   (guarantee char? char 'char=-predicate)
   (lambda (char*)
@@ -128,6 +98,56 @@ USA.
   (guarantee char? char 'char-ci=-predicate)
   (lambda (char*)
     (char-ci=? char* char)))
+
+(define-integrable (%char=? x y)
+  (fix:= (char->integer x) (char->integer y)))
+
+(define-integrable (%char<? x y)
+  (fix:< (char->integer x) (char->integer y)))
+
+(define-integrable (%char<=? x y)
+  (fix:<= (char->integer x) (char->integer y)))
+
+(define-integrable (%char>? x y)
+  (fix:> (char->integer x) (char->integer y)))
+
+(define-integrable (%char>=? x y)
+  (fix:>= (char->integer x) (char->integer y)))
+
+(define (%char-ci=? x y)
+  (%char=? (char-foldcase x) (char-foldcase y)))
+
+(define (%char-ci<? x y)
+  (%char<? (char-foldcase x) (char-foldcase y)))
+
+(define (%char-ci<=? x y)
+  (%char<=? (char-foldcase x) (char-foldcase y)))
+
+(define (%char-ci>? x y)
+  (%char>? (char-foldcase x) (char-foldcase y)))
+
+(define (%char-ci>=? x y)
+  (%char>=? (char-foldcase x) (char-foldcase y)))
+
+(define-integrable (char-comparison-maker %compare)
+  (lambda (char1 char2 . chars)
+    (let loop ((char1 char1) (char2 char2) (chars chars))
+      (if (pair? chars)
+	  (and (%compare char1 char2)
+	       (loop char2 (car chars) (cdr chars)))
+	  (%compare char1 char2)))))
+
+(define char=? (char-comparison-maker %char=?))
+(define char<? (char-comparison-maker %char<?))
+(define char<=? (char-comparison-maker %char<=?))
+(define char>? (char-comparison-maker %char>?))
+(define char>=? (char-comparison-maker %char>=?))
+
+(define char-ci=? (char-comparison-maker %char-ci=?))
+(define char-ci<? (char-comparison-maker %char-ci<?))
+(define char-ci<=? (char-comparison-maker %char-ci<=?))
+(define char-ci>? (char-comparison-maker %char-ci>?))
+(define char-ci>=? (char-comparison-maker %char-ci>=?))
 
 (define char-downcase)
 (define char-foldcase)
