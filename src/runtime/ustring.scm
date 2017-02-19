@@ -136,7 +136,7 @@ USA.
       (values string start end)))
 
 (define (register-ustring-predicates!)
-  (register-predicate! ustring? 'ustring)
+  (register-predicate! ustring? 'string)
   (register-predicate! legacy-string? 'legacy-string '<= ustring?)
   (register-predicate! full-string? 'full-string '<= ustring?)
   (register-predicate! slice? 'string-slice '<= ustring?)
@@ -263,16 +263,8 @@ USA.
 (define (ustring-tail string start)
   (ustring-copy string start))
 
-(define (%ustring=? string1 string2)
-  (and (fix:= (ustring-length string1) (ustring-length string2))
-       (ustring-every char=? string1 string2)))
-
-(define (%ustring-ci=? string1 string2)
-  (and (fix:= (ustring-length string1) (ustring-length string2))
-       (ustring-every char-ci=? string1 string2)))
-
 ;; Non-Unicode implementation, acceptable to R7RS.
-(define-integrable (%string-comparison-maker c= c<)
+(define-integrable (%string-comparison-maker c= c< f<)
   (lambda (string1 string2)
     (let ((end1 (ustring-length string1))
 	  (end2 (ustring-length string2)))
@@ -284,17 +276,24 @@ USA.
 		(if (c= c1 c2)
 		    (loop (fix:+ i 1))
 		    (c< c1 c2)))
-	      (fix:< end1 end2)))))))
+	      (f< end1 end2)))))))
 
-(define %ustring<? (%string-comparison-maker char=? char<?))
-(define %ustring<=? (%string-comparison-maker char=? char<=?))
-(define %ustring>? (%string-comparison-maker char=? char>?))
-(define %ustring>=? (%string-comparison-maker char=? char>=?))
+(define %ustring<? (%string-comparison-maker char=? char<? fix:<))
+(define %ustring<=? (%string-comparison-maker char=? char<=? fix:<=))
+(define %ustring=? (%string-comparison-maker char=? char=? fix:=))
+(define %ustring>? (%string-comparison-maker char=? char>? fix:>))
+(define %ustring>=? (%string-comparison-maker char=? char>=? fix:<=))
 
-(define %ustring-ci<? (%string-comparison-maker char-ci=? char-ci<?))
-(define %ustring-ci<=? (%string-comparison-maker char-ci=? char-ci<=?))
-(define %ustring-ci>? (%string-comparison-maker char-ci=? char-ci>?))
-(define %ustring-ci>=? (%string-comparison-maker char-ci=? char-ci>=?))
+(define-integrable (%string-ci-comparison-maker string-compare)
+  (lambda (string1 string2)
+    (string-compare (ustring-foldcase string1)
+		    (ustring-foldcase string2))))
+
+(define %ustring-ci<? (%string-ci-comparison-maker %ustring<?))
+(define %ustring-ci<=? (%string-ci-comparison-maker %ustring<=?))
+(define %ustring-ci=? (%string-ci-comparison-maker %ustring=?))
+(define %ustring-ci>? (%string-ci-comparison-maker %ustring>?))
+(define %ustring-ci>=? (%string-ci-comparison-maker %ustring>=?))
 
 (define-integrable (string-comparison-maker %compare)
   (lambda (string1 string2 . strings)
