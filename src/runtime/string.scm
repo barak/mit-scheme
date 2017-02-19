@@ -72,13 +72,6 @@ USA.
 (define (make-vector-8b length #!optional ascii)
   (make-string length (if (default-object? ascii) ascii (integer->char ascii))))
 
-(define (string-null? string)
-  (guarantee-string string 'STRING-NULL?)
-  (%string-null? string))
-
-(define-integrable (%string-null? string)
-  (fix:= 0 (string-length string)))
-
 (define (ascii-string-copy string)
   (guarantee-string string 'ASCII-STRING-COPY)
   (%ascii-string-copy string))
@@ -260,75 +253,6 @@ USA.
       (let ((char (string-ref string j)))
 	(string-set! string j (string-ref string i))
 	(string-set! string i char)))))
-
-(define (decorated-string-append prefix infix suffix strings)
-  ((string-joiner* infix prefix suffix) strings))
-
-(define (string-joiner infix #!optional prefix suffix)
-  (let ((joiner (string-joiner* prefix infix suffix)))
-    (lambda strings
-      (joiner strings))))
-
-(define (string-joiner* infix #!optional prefix suffix)
-  (let ((prefix (if (default-object? prefix) "" prefix))
-	(suffix (if (default-object? suffix) "" suffix)))
-    (let ((infix (string-append suffix infix prefix)))
-
-      (lambda (strings)
-	(string-append*
-	 (if (pair? strings)
-	     (cons* prefix
-		    (car strings)
-		    (let loop ((strings (cdr strings)))
-		      (if (pair? strings)
-			  (cons* infix
-				 (car strings)
-				 (loop (cdr strings)))
-			  (list suffix))))
-	     '()))))))
-
-(define (burst-string string delimiter allow-runs?)
-  ((string-splitter delimiter allow-runs?) string))
-
-(define (string-splitter delimiter #!optional allow-runs?)
-  (let ((predicate (splitter-delimiter->predicate delimiter))
-	(allow-runs? (if (default-object? allow-runs?) #t allow-runs?)))
-
-    (lambda (string #!optional start end)
-      (let* ((end (fix:end-index end (string-length string) 'string-splitter))
-	     (start (fix:start-index start end 'string-splitter)))
-
-	(define (find-start start)
-	  (if allow-runs?
-	      (let loop ((index start))
-		(if (fix:< index end)
-		    (if (predicate (string-ref string index))
-			(loop (fix:+ index 1))
-			(find-end index (fix:+ index 1)))
-		    '()))
-	      (find-end start start)))
-
-	(define (find-end start index)
-	  (let loop ((index index))
-	    (if (fix:< index end)
-		(if (predicate (string-ref string index))
-		    (cons (string-copy string start index)
-			  (find-start (fix:+ index 1)))
-		    (loop (fix:+ index 1)))
-		(list (string-copy string start end)))))
-
-	(find-start start)))))
-
-(define (splitter-delimiter->predicate delimiter)
-  (cond ((char? delimiter) (char=-predicate delimiter))
-	((char-set? delimiter) (char-set-predicate delimiter))
-	((unary-procedure? delimiter) delimiter)
-	(else (error:not-a splitter-delimiter? delimiter 'string-splitter))))
-
-(define (splitter-delimiter? object)
-  (or (char? object)
-      (char-set? object)
-      (unary-procedure? object)))
 
 (define (vector-8b->hexadecimal bytes)
   (define-integrable (hex-char k)

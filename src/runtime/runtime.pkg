@@ -1041,10 +1041,8 @@ USA.
 	  vector-8b-set!)
   (export ()
 	  ascii-string-copy
-	  burst-string
 	  camel-case-string->lisp
 	  char->string
-	  decorated-string-append
 	  guarantee-substring
 	  guarantee-substring-end-index
 	  guarantee-substring-start-index
@@ -1063,14 +1061,11 @@ USA.
 	  string-compare-ci
 	  string-downcase!
 	  string-head!
-	  string-joiner
-	  string-joiner*
 	  string-match-backward
 	  string-match-backward-ci
 	  string-match-forward
 	  string-match-forward-ci
 	  string-maximum-length
-	  string-null?
 	  string-pad-left
 	  string-pad-right
 	  string-replace
@@ -1078,7 +1073,6 @@ USA.
 	  string-search-all
 	  string-search-backward
 	  string-search-forward
-	  string-splitter
 	  string-trim
 	  string-trim-left
 	  string-trim-right
@@ -1107,6 +1101,8 @@ USA.
 	  (substring->list string->list)
 	  (substring-move-left! substring-move!)
 	  (substring-move-right! substring-move!)
+	  burst-string
+	  decorated-string-append
 	  string-find-next-char
 	  string-find-next-char-ci
 	  string-find-next-char-in-set
@@ -1162,14 +1158,18 @@ USA.
 	  string-for-primitive		;export to (runtime) after 9.3
 	  string-hash
 	  string-head
+	  string-joiner
+	  string-joiner*
 	  string-length
 	  string-lower-case?
 	  string-map
+	  string-null?
 	  string-prefix-ci?
 	  string-prefix?
 	  string-ref
 	  string-set!
 	  string-slice
+	  string-splitter
 	  string-suffix-ci?
 	  string-suffix?
 	  string-tail
