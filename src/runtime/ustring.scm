@@ -224,6 +224,10 @@ USA.
 	(set! index 0)
 	unspecific)
 
+      (define (empty?)
+	(and (fix:= 0 index)
+	     (null? buffers)))
+
       (define (append-char! char)
 	(if (not (fix:< index buffer-size))
 	    (new-buffer!))
@@ -259,6 +263,7 @@ USA.
 	(cond ((default-object? object) (build))
 	      ((bitless-char? object) (append-char! object))
 	      ((string? object) (append-string! object))
+	      ((eq? 'empty? object) (empty?))
 	      (else (error "Not a char or string:" object)))))))
 
 (define (string-copy! to at from #!optional start end)

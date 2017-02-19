@@ -59,10 +59,9 @@ USA.
 	(let loop ()
 	  (let ((char (read-char port)))
 	    (cond ((eof-object? char)
-		   (let ((string (builder)))
-		     (if (fix:= 0 (string-length string))
-			 char
-			 string)))
+		   (if (builder 'empty?)
+		       char
+		       (builder)))
 		  ((char=? char #\newline)
 		   (builder))
 		  (else
@@ -77,10 +76,9 @@ USA.
 	(let loop ()
 	  (let ((char (read-char port)))
 	    (cond ((eof-object? char)
-		   (let ((string (builder)))
-		     (if (fix:= 0 (string-length string))
-			 char
-			 string)))
+		   (if (builder 'empty?)
+		       char
+		       (builder)))
 		  ((char-set-member? delimiters char)
 		   (input-port/unread-char port char)
 		   (builder))
