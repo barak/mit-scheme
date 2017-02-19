@@ -567,13 +567,13 @@ USA.
 	(else (error:not-a ->string-component? object caller))))
 
 (define (->string-component? object)
-  (cond (not object)
-	(bitless-char? object)
-	(string? object)
-	(symbol? object)
-	(pathname? object)
-	(number? object)
-	(uri? object)))
+  (or (not object)
+      (bitless-char? object)
+      (string? object)
+      (symbol? object)
+      (pathname? object)
+      (number? object)
+      (uri? object)))
 
 (define (mapper-values proc string strings)
   (cond ((null? strings)
