@@ -211,28 +211,80 @@ USA.
 		       start
 		       (fix:- end start))))))
 
+(define (string-builder)
+  ;; This is optimized to minimize copying, so it wastes some space.
+  (let ((buffer-size 16))
+    (let ((buffers '())
+	  (buffer (full-string-allocate buffer-size))
+	  (index 0))
+
+      (define (new-buffer!)
+	(set! buffers (cons (string-slice buffer 0 index) buffers))
+	(set! buffer (full-string-allocate buffer-size))
+	(set! index 0)
+	unspecific)
+
+      (define (append-char! char)
+	(if (not (fix:< index buffer-size))
+	    (new-buffer!))
+	(string-set! buffer index char)
+	(set! index (fix:+ index 1))
+	unspecific)
+
+      (define (append-string! string)
+	(if (fix:> index 0)
+	    (new-buffer!))
+	(set! buffers (cons string buffers))
+	unspecific)
+
+      (define (build)
+	(let ((strings (reverse! (cons (string-slice buffer 0 index) buffers))))
+	  (set! buffer)
+	  (set! buffers)
+	  (set! index)
+	  (let ((result
+		 (do ((strings strings (cdr strings))
+		      (n 0 (fix:+ n (string-length (car strings))))
+		      (8-bit? #t (and 8-bit? (string-8-bit? (car strings)))))
+		     ((not (pair? strings))
+		      (if 8-bit?
+			  (legacy-string-allocate n)
+			  (full-string-allocate n))))))
+	    (do ((strings strings (cdr strings))
+		 (i 0 (string-copy! result i (car strings))))
+		((not (pair? strings))))
+	    result)))
+
+      (lambda (#!optional object)
+	(cond ((default-object? object) (build))
+	      ((bitless-char? object) (append-char! object))
+	      ((string? object) (append-string! object))
+	      (else (error "Not a char or string:" object)))))))
+
 (define (string-copy! to at from #!optional start end)
   (let* ((end (fix:end-index end (string-length from) 'string-copy!))
 	 (start (fix:start-index start end 'string-copy!)))
     (guarantee index-fixnum? at 'string-copy!)
-    (if (not (fix:<= (fix:+ at (fix:- end start)) (string-length to)))
-	(error:bad-range-argument to 'string-copy!))
-    (receive (to at)
-	(if (slice? to)
-	    (values (slice-string to)
-		    (fix:+ (slice-start to) at))
-	    (values to at))
-      (receive (from start end) (translate-slice from start end)
-	(if (legacy-string? to)
-	    (if (legacy-string? from)
-		(copy-loop legacy-string-set! to at
-			   legacy-string-ref from start end)
-		(copy-loop legacy-string-set! to at
-			   %full-string-ref from start end))
-	    (if (legacy-string? from)
-		(copy-loop %full-string-set! to at
-			   legacy-string-ref from start end)
-		(%full-string-copy! to at from start end)))))))
+    (let ((final-at (fix:+ at (fix:- end start))))
+      (if (not (fix:<= final-at (string-length to)))
+	  (error:bad-range-argument to 'string-copy!))
+      (receive (to at)
+	  (if (slice? to)
+	      (values (slice-string to)
+		      (fix:+ (slice-start to) at))
+	      (values to at))
+	(receive (from start end) (translate-slice from start end)
+	  (if (legacy-string? to)
+	      (if (legacy-string? from)
+		  (copy-loop legacy-string-set! to at
+			     legacy-string-ref from start end)
+		  (copy-loop legacy-string-set! to at
+			     %full-string-ref from start end))
+	      (if (legacy-string? from)
+		  (copy-loop %full-string-set! to at
+			     legacy-string-ref from start end)
+		  (%full-string-copy! to at from start end)))))
+      final-at)))
 
 (define-integrable (%full-string-copy! to at from start end)
   (cp-vector-copy! (%full-string-cp-vector to) at

@@ -182,3 +182,70 @@ USA.
     (assert-string-ci= "STRASSE" "Stra\xDF;e")
     (assert-string-ci= "\x3BE;\x3B1;\x3BF;\x3C2;" "\x39E;\x391;\x39F;\x3A3;")
     (assert-string-ci= "\x3BE;\x3B1;\x3BF;\x3C3;" "\x39E;\x391;\x39F;\x3A3;")))
+
+(define-test 'string-builder
+  (lambda ()
+    (let ((end (length latin-alphabet)))
+      (do ((i 0 (fix:+ i 1)))
+	  ((not (fix:< i end)))
+	(let ((chars (list-head latin-alphabet i)))
+	  (let ((result (build-string chars)))
+	    (assert-true (legacy-string? result))
+	    (assert-string= result (chars->string chars))))
+	(let ((strings (make-test-strings i latin-alphabet #f)))
+	  (let ((result (build-string strings)))
+	    (assert-true (legacy-string? result))
+	    (assert-string= result (string-append* strings))))
+	(let ((strings (make-test-strings i latin-alphabet #t)))
+	  (let ((result (build-string strings)))
+	    (assert-true (legacy-string? result))
+	    (assert-string= result (string-append* strings))))))
+    (let ((end (length greek-alphabet)))
+      (do ((i 0 (fix:+ i 1)))
+	  ((not (fix:< i end)))
+	(let ((chars (list-head greek-alphabet i)))
+	  (assert-string= (build-string chars)
+			  (chars->string chars)))
+	(let ((strings (make-test-strings i greek-alphabet #f)))
+	  (assert-string= (build-string strings)
+			  (string-append* strings)))
+	(let ((strings (make-test-strings i greek-alphabet #t)))
+	  (assert-string= (build-string strings)
+			  (string-append* strings)))))))
+
+(define legacy-string?
+  (make-primitive-procedure 'string? 1))
+
+(define latin-alphabet
+  '(#\a #\b #\c #\d #\e #\f #\g #\h #\i #\j #\k #\l #\m
+    #\n #\o #\p #\q #\r #\s #\t #\u #\v #\w #\x #\y #\z))
+
+(define greek-alphabet
+  '(#\x3B1 #\x3B2 #\x3B3 #\x3B4 #\x3B5
+    #\x3B6 #\x3B7 #\x3B8 #\x3B9 #\x3BA
+    #\x3BB #\x3BC #\x3BD #\x3BE #\x3BF
+    #\x3C0 #\x3C1 #\x3C2 #\x3C3 #\x3C4
+    #\x3C5 #\x3C6 #\x3C7 #\x3C8 #\x3C9))
+
+(define (build-string objects)
+  (let ((builder (string-builder)))
+    (for-each builder objects)
+    (builder)))
+
+(define (chars->string chars)
+  (let ((s (make-ustring (length chars))))
+    (do ((chars chars (cdr chars))
+	 (i 0 (fix:+ i 1)))
+	((not (pair? chars)))
+      (string-set! s i (car chars)))
+    s))
+
+(define (make-test-strings n alphabet reverse?)
+  (let loop ((k 0) (strings '()))
+    (if (fix:< k n)
+	(loop (fix:+ k 1)
+	      (cons (chars->string (list-head alphabet k))
+		    strings))
+	(if reverse?
+	    strings
+	    (reverse! strings)))))

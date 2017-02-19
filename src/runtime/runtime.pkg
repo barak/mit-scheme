@@ -1127,6 +1127,7 @@ USA.
 	  string-any
 	  string-append
 	  string-append*
+	  string-builder
 	  string-ci-hash
 	  string-ci<=?
 	  string-ci<?
