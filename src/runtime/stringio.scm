@@ -335,7 +335,7 @@ USA.
 (define (octets-out/extract-output! port)
   (output-port/flush-output port)
   (let* ((os (output-octets-port/os port))
-	 (output (string-head! (ostate-buffer os) (ostate-index os))))
+	 (output (string-head (ostate-buffer os) (ostate-index os))))
     (set-ostate-buffer! os (make-vector-8b 16))
     (set-ostate-index! os 0)
     output))

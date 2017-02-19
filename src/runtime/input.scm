@@ -107,7 +107,7 @@ USA.
   a)
 
 (define-integrable (accum->string a)
-  (string-head! (car a) (cdr a)))
+  (string-head (car a) (cdr a)))
 
 (define-integrable (accum-count a)
   (cdr a))

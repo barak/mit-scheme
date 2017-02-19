@@ -1049,18 +1049,13 @@ USA.
 	  lisp-string->camel-case
 	  make-string
 	  reverse-string
-	  reverse-string!
 	  reverse-substring
-	  reverse-substring!
 	  set-string-length!
 	  string-allocate
 	  string-capitalize
-	  string-capitalize!
 	  string-capitalized?
 	  string-compare
 	  string-compare-ci
-	  string-downcase!
-	  string-head!
 	  string-match-backward
 	  string-match-backward-ci
 	  string-match-forward
@@ -1069,27 +1064,21 @@ USA.
 	  string-pad-left
 	  string-pad-right
 	  string-replace
-	  string-replace!
 	  string-search-all
 	  string-search-backward
 	  string-search-forward
 	  string-trim
 	  string-trim-left
 	  string-trim-right
-	  string-upcase!
-	  substring-capitalize!
 	  substring-capitalized?
-	  substring-downcase!
 	  substring-match-backward
 	  substring-match-backward-ci
 	  substring-match-forward
 	  substring-match-forward-ci
 	  substring-replace
-	  substring-replace!
 	  substring-search-all
 	  substring-search-backward
 	  substring-search-forward
-	  substring-upcase!
 	  substring?)
   (initialization (initialize-package!)))
 

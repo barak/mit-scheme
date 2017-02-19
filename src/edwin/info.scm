@@ -649,9 +649,7 @@ The name may be an abbreviation of the reference name."
     (%cref-item-keyword item (mark-1+ colon))))
 
 (define (%cref-item-keyword item colon)
-  (let ((string (extract-string item colon)))
-    (string-replace! string #\newline #\Space)
-    (string-trim string)))
+  (string-trim (string-replace (extract-string item colon) #\newline #\space)))
 
 (define (cref-item-name item)
   (let ((colon (char-search-forward #\: item (group-end item) false)))

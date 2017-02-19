@@ -113,7 +113,7 @@ Includes the new backup.  Must be > 0."
     (let loop ((result '()))
       (let ((name (directory-channel-read channel)))
 	(if name
-	    (loop (cons (begin (string-downcase! name) name) result))
+	    (loop (cons (string-downcase name) result))
 	    (begin
 	      (directory-channel-close channel)
 	      result))))))
@@ -123,7 +123,7 @@ Includes the new backup.  Must be > 0."
     (let loop ((result '()))
       (let ((name (directory-channel-read-matching channel prefix)))
 	(if name
-	    (loop (cons (begin (string-downcase! name) name) result))
+	    (loop (cons (string-downcase name) result))
 	    (begin
 	      (directory-channel-close channel)
 	      result))))))

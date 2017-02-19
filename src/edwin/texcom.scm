@@ -183,16 +183,10 @@ With negative argument, capitalize previous words but do not move."
     (if (positive? argument) (set-current-point! end))))
 
 (define (downcase-region region)
-  (region-transform! region
-    (lambda (string)
-      (string-downcase! string)
-      string)))
+  (region-transform! region string-downcase))
 
 (define (upcase-region region)
-  (region-transform! region
-    (lambda (string)
-      (string-upcase! string)
-      string)))
+  (region-transform! region string-upcase))
 
 (define (capitalize-region region)
   (let ((end (region-end region)))
@@ -203,14 +197,10 @@ With negative argument, capitalize previous words but do not move."
 	      (if m
 		  (begin
 		    (region-transform! (make-region start m)
-		      (lambda (string)
-			(string-capitalize! string)
-			string))
+				       string-capitalize)
 		    (loop m))
 		  (region-transform! (make-region start end)
-		    (lambda (string)
-		      (string-capitalize! string)
-		      string)))))))))
+				     string-capitalize))))))))
 
 ;;;; Sentences
 

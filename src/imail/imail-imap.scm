@@ -139,9 +139,7 @@ USA.
   (cond ((string-ci=? "inbox" mailbox) "inbox")
 	((and (string-prefix-ci? "inbox/" mailbox)
 	      (not (string-prefix? "inbox/" mailbox)))
-	 (let ((mailbox (string-copy mailbox)))
-	   (substring-downcase! mailbox 0 5)
-	   mailbox))
+	 (substring-downcase mailbox 0 5))
 	(else mailbox)))
 
 (define (compatible-imap-urls? url1 url2)

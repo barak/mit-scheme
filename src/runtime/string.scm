@@ -81,43 +81,6 @@ USA.
     (let ((result (string-allocate size)))
       (and (%ascii-substring-move! string 0 size result 0)
 	   result))))
-
-(define (string-head! string end)
-  (declare (no-type-checks) (no-range-checks))
-  (guarantee-string string 'STRING-HEAD!)
-  (guarantee-substring-end-index end (string-length string) 'STRING-HEAD!)
-  (%string-head! string end))
-
-(define %string-head!
-  (let ((reuse
-	 (named-lambda (%string-head! string end)
-	   (declare (no-type-checks) (no-range-checks))
-	   (let ((mask (set-interrupt-enables! interrupt-mask/none)))
-	     (if (fix:< end (string-length string))
-		 (begin
-		   (string-set! string end #\nul)
-		   (set-string-length! string end)))
-	     (let ((new-gc-length (fix:+ 2 (fix:lsh end %octets->words-shift)))
-		   (old-gc-length (system-vector-length string)))
-	       (let ((delta (fix:- old-gc-length new-gc-length)))
-		 (cond ((fix:= delta 1)
-			(system-vector-set! string new-gc-length #f))
-		       ((fix:> delta 1)
-			(system-vector-set!
-			 string new-gc-length
-			 ((ucode-primitive primitive-object-set-type 2)
-			  (ucode-type manifest-nm-vector) (fix:-1+ delta)))))
-		 (if (fix:> delta 0)
-		     ((ucode-primitive primitive-object-set! 3)
-		      string
-		      0
-		      ((ucode-primitive primitive-object-set-type 2)
-		       (ucode-type manifest-nm-vector) new-gc-length)))))
-	     (set-interrupt-enables! mask)
-	     string))))
-    (if (compiled-procedure? reuse)
-	reuse
-	string-head)))
 
 (define (string-maximum-length string)
   (guarantee-string string 'STRING-MAXIMUM-LENGTH)
@@ -236,23 +199,6 @@ USA.
 	  ((fix:= i end))
 	(string-set! result j (string-ref string i)))
       result)))
-
-(define (reverse-string! string)
-  (guarantee-string string 'REVERSE-STRING!)
-  (%reverse-substring! string 0 (string-length string)))
-
-(define (reverse-substring! string start end)
-  (guarantee-substring string start end 'REVERSE-SUBSTRING!)
-  (%reverse-substring! string start end))
-
-(define (%reverse-substring! string start end)
-  (let ((k (fix:+ start (fix:quotient (fix:- end start) 2))))
-    (do ((i start (fix:+ i 1))
-	 (j (fix:- end 1) (fix:- j 1)))
-	((fix:= i k))
-      (let ((char (string-ref string j)))
-	(string-set! string j (string-ref string i))
-	(string-set! string i char)))))
 
 (define (vector-8b->hexadecimal bytes)
   (define-integrable (hex-char k)
@@ -297,32 +243,6 @@ USA.
       bytes)))
 
 ;;;; Case
-
-(define (string-upcase! string)
-  (guarantee-string string 'STRING-UPCASE!)
-  (%substring-upcase! string 0 (string-length string)))
-
-(define (substring-upcase! string start end)
-  (guarantee-substring string start end 'SUBSTRING-UPCASE!)
-  (%substring-upcase! string start end))
-
-(define (%substring-upcase! string start end)
-  (do ((i start (fix:+ i 1)))
-      ((fix:= i end))
-    (string-set! string i (char-upcase (string-ref string i)))))
-
-(define (string-downcase! string)
-  (guarantee-string string 'STRING-DOWNCASE!)
-  (substring-downcase! string 0 (string-length string)))
-
-(define (substring-downcase! string start end)
-  (guarantee-substring string start end 'SUBSTRING-DOWNCASE!)
-  (%substring-downcase! string start end))
-
-(define (%substring-downcase! string start end)
-  (do ((i start (fix:+ i 1)))
-      ((fix:= i end))
-    (string-set! string i (char-downcase (string-ref string i)))))
 
 (define (string-capitalized? string)
   (guarantee-string string 'STRING-CAPITALIZED?)
@@ -371,14 +291,6 @@ USA.
     (%substring-capitalize! string 0 (string-length string))
     string))
 
-(define (string-capitalize! string)
-  (guarantee-string string 'STRING-CAPITALIZE!)
-  (%substring-capitalize! string 0 (string-length string)))
-
-(define (substring-capitalize! string start end)
-  (guarantee-substring string start end 'SUBSTRING-CAPITALIZE!)
-  (%substring-capitalize! string start end))
-
 (define (%substring-capitalize! string start end)
   ;; This algorithm capitalizes the first word in the substring and
   ;; downcases the subsequent words.  This is arbitrary, but seems
@@ -391,6 +303,16 @@ USA.
 	(begin
 	  (%substring-upcase! string index (fix:+ index 1))
 	  (%substring-downcase! string (fix:+ index 1) end)))))
+
+(define (%substring-upcase! string start end)
+  (do ((i start (fix:+ i 1)))
+      ((fix:= i end))
+    (string-set! string i (char-upcase (string-ref string i)))))
+
+(define (%substring-downcase! string start end)
+  (do ((i start (fix:+ i 1)))
+      ((fix:= i end))
+    (string-set! string i (char-downcase (string-ref string i)))))
 
 ;;;; CamelCase support
 
@@ -447,18 +369,6 @@ USA.
   (let ((string (string-copy string)))
     (%substring-replace! string start end char1 char2)
     string))
-
-(define (string-replace! string char1 char2)
-  (guarantee-string string 'STRING-REPLACE!)
-  (guarantee-char char1 'STRING-REPLACE!)
-  (guarantee-char char2 'STRING-REPLACE!)
-  (%substring-replace! string 0 (string-length string) char1 char2))
-
-(define (substring-replace! string start end char1 char2)
-  (guarantee-substring string start end 'SUBSTRING-REPLACE!)
-  (guarantee-char char1 'SUBSTRING-REPLACE!)
-  (guarantee-char char2 'SUBSTRING-REPLACE!)
-  (%substring-replace! string start end char1 char2))
 
 (define (%substring-replace! string start end char1 char2)
   (let loop ((start start))
