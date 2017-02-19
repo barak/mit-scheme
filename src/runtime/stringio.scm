@@ -232,7 +232,7 @@ USA.
 (define (string-out/write-self port output-port)
   port
   (write-string " to string" output-port))
-
+
 (define (maybe-grow-buffer os n)
   (let ((buffer (ostate-buffer os))
 	(n (fix:+ (ostate-index os) n)))
