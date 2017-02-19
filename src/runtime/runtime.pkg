@@ -1092,7 +1092,7 @@ USA.
 	  string-joiner
 	  string-joiner*
 	  ;; string-length
-	  string-lower-case?
+	  ;; string-lower-case?
 	  ;; string-map
 	  string-match-backward
 	  string-match-backward-ci
@@ -1121,7 +1121,7 @@ USA.
 	  string-trim-right
 	  ;; string-upcase
 	  string-upcase!
-	  string-upper-case?
+	  ;; string-upper-case?
 	  ;; string<=?
 	  ;; string<?
 	  ;; string=?
@@ -1190,6 +1190,7 @@ USA.
 	  (string-hash-mod ustring-hash)
 	  (string-head ustring-head)
 	  (string-length ustring-length)
+	  (string-lower-case? ustring-lower-case?)
 	  (string-map ustring-map)
 	  (string-prefix-ci? ustring-prefix-ci?)
 	  (string-prefix? ustring-prefix?)
@@ -1199,6 +1200,7 @@ USA.
 	  (string-suffix? ustring-suffix?)
 	  (string-tail ustring-tail)
 	  (string-upcase ustring-upcase)
+	  (string-upper-case? ustring-upper-case?)
 	  (string<=? ustring<=?)
 	  (string<? ustring<?)
 	  (string=? ustring=?)
@@ -1238,6 +1240,7 @@ USA.
 	  ustring-for-each
 	  ustring-hash
 	  ustring-head
+	  ustring-lower-case?
 	  ustring-length
 	  ustring-map
 	  ustring-prefix-ci?
@@ -1249,6 +1252,7 @@ USA.
 	  ustring-suffix?
 	  ustring-tail
 	  ustring-upcase
+	  ustring-upper-case?
 	  ustring<=?
 	  ustring<?
 	  ustring=?
@@ -1521,6 +1525,8 @@ USA.
 	  char-set:changes-when-case-folded
 	  ucd-nt-value)
   (export (runtime ustring)
+	  char-changes-when-lower-cased?
+	  char-changes-when-upper-cased?
 	  char-nfd-quick-check?
 	  ucd-ccc-value
 	  ucd-dm-value))
