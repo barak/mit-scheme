@@ -1040,7 +1040,6 @@ USA.
 	  vector-8b-ref
 	  vector-8b-set!)
   (export ()
-	  ascii-string-copy
 	  camel-case-string->lisp
 	  char->string
 	  guarantee-substring

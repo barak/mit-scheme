@@ -72,16 +72,6 @@ USA.
 (define (make-vector-8b length #!optional ascii)
   (make-string length (if (default-object? ascii) ascii (integer->char ascii))))
 
-(define (ascii-string-copy string)
-  (guarantee-string string 'ASCII-STRING-COPY)
-  (%ascii-string-copy string))
-
-(define (%ascii-string-copy string)
-  (let ((size (string-length string)))
-    (let ((result (string-allocate size)))
-      (and (%ascii-substring-move! string 0 size result 0)
-	   result))))
-
 (define (string-maximum-length string)
   (guarantee-string string 'STRING-MAXIMUM-LENGTH)
   (fix:- (fix:lsh (fix:- (system-vector-length string) 1)
@@ -101,88 +91,7 @@ USA.
 (define (char->string char)
   (guarantee 8-bit-char? char 'CHAR->STRING)
   (make-string 1 char))
-
-;;; Almost all symbols are ascii, so it is worthwhile to handle them
-;;; specially.  In this procedure, we `optimistically' move the
-;;; characters, but if we find any non-ascii characters, we
-;;; immediately return #F.  Success is signalled by returning the
-;;; second string.  NOTE that the second string will likely be mutated
-;;; in either case.
-(define (%ascii-substring-move! string1 start1 end1 string2 start2)
-  (let-syntax
-      ((unrolled-move-left
-	(sc-macro-transformer
-	 (lambda (form environment)
-	   environment
-	   (let ((n (cadr form)))
-	     `(LET ((CODE (VECTOR-8B-REF STRING1 START1)))
-		(AND (FIX:< CODE #x80)
-                     (BEGIN
-                       (VECTOR-8B-SET! STRING2 START2 CODE)
-                       ,(let loop ((i 1))
-                          (if (< i n)
-                              `(LET ((CODE
-				      (VECTOR-8B-REF STRING1
-						     (FIX:+ START1 ,i))))
-                                 (AND (FIX:< CODE #x80)
-                                      (BEGIN
-					(VECTOR-8B-SET! STRING2
-							(FIX:+ START2 ,i)
-							CODE)
-                                        ,(loop (+ i 1)))))
-                              'STRING2)))))))))
-       (unrolled-move-right
-	(sc-macro-transformer
-	 (lambda (form environment)
-	   environment
-	   (let ((n (cadr form)))
-	     `(LET ((CODE (VECTOR-8B-REF STRING1 (FIX:+ START1 ,(- n 1)))))
-		(AND (FIX:< CODE #x80)
-                     (BEGIN
-                       (VECTOR-8B-SET! STRING2 (FIX:+ START2 ,(- n 1)) CODE)
-                       ,(let loop ((i (- n 1)))
-                          (if (> i 0)
-                              `(LET ((CODE
-				      (VECTOR-8B-REF STRING1
-						     (FIX:+ START1 ,(- i 1)))))
-                                 (AND (FIX:< CODE #x80)
-                                      (BEGIN
-				       (VECTOR-8B-SET! STRING2
-						       (FIX:+ START2 ,(- i 1))
-						       CODE)
-                                        ,(loop (- i 1)))))
-                              'STRING2))))))))))
-    (let ((n (fix:- end1 start1)))
-      (if (or (not (eq? string2 string1)) (fix:< start2 start1))
-	  (cond ((fix:> n 4)
-		 (let loop ((i1 start1) (i2 start2))
-		   (if (fix:< i1 end1)
-		       (let ((code (vector-8b-ref string1 i1)))
-			 (and (fix:< code #x80)
-			      (begin
-				(vector-8b-set! string2 i2 code)
-				(loop (fix:+ i1 1) (fix:+ i2 1)))))
-		       string2)))
-		((fix:= n 4) (unrolled-move-left 4))
-		((fix:= n 3) (unrolled-move-left 3))
-		((fix:= n 2) (unrolled-move-left 2))
-		((fix:= n 1) (unrolled-move-left 1)))
-	  (cond ((fix:> n 4)
-		 (let loop ((i1 end1) (i2 (fix:+ start2 n)))
-		   (if (fix:> i1 start1)
-		       (let ((i1 (fix:- i1 1))
-			     (i2 (fix:- i2 1)))
-			 (let ((code (vector-8b-ref string1 i1)))
-			   (and (fix:< code #x80)
-				(begin
-				  (vector-8b-set! string2 i2 code)
-				  (loop i1 i2)))))
-		       string2)))
-		((fix:= n 4) (unrolled-move-right 4))
-		((fix:= n 3) (unrolled-move-right 3))
-		((fix:= n 2) (unrolled-move-right 2))
-		((fix:= n 1) (unrolled-move-right 1)))))))
-
+
 (define (reverse-string string)
   (guarantee-string string 'REVERSE-STRING)
   (%reverse-substring string 0 (string-length string)))
