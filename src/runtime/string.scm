@@ -88,10 +88,6 @@ USA.
 (define %words->octets-shift
   (- %octets->words-shift))
 
-(define (char->string char)
-  (guarantee 8-bit-char? char 'CHAR->STRING)
-  (make-string 1 char))
-
 (define (reverse-string string)
   (guarantee-string string 'REVERSE-STRING)
   (%reverse-substring string 0 (string-length string)))

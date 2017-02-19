@@ -558,13 +558,7 @@ USA.
 
 (define (->string object caller)
   (cond ((not object) "")
-	((bitless-char? object)
-	 (let ((s
-		(if (char-8-bit? object)
-		    (legacy-string-allocate 1)
-		    (full-string-allocate 1))))
-	   (string-set! s 0 object)
-	   s))
+	((bitless-char? object) (char->string object))
 	((string? object) object)
 	((symbol? object) (symbol->string object))
 	((pathname? object) (->namestring object))
@@ -905,3 +899,12 @@ USA.
 
 (define (string-null? string)
   (fix:= 0 (string-length string)))
+
+(define (char->string char)
+  (guarantee bitless-char? char 'char->string)
+  (let ((s
+	 (if (char-8-bit? char)
+	     (legacy-string-allocate 1)
+	     (full-string-allocate 1))))
+    (string-set! s 0 char)
+    s))
