@@ -242,10 +242,7 @@ USA.
 	unspecific)
 
       (define (build)
-	(let ((strings (reverse! (cons (string-slice buffer 0 index) buffers))))
-	  (set! buffer)
-	  (set! buffers)
-	  (set! index)
+	(let ((strings (reverse (cons (string-slice buffer 0 index) buffers))))
 	  (let ((result
 		 (do ((strings strings (cdr strings))
 		      (n 0 (fix:+ n (string-length (car strings))))
