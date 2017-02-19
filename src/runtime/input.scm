@@ -27,8 +27,7 @@ USA.
 ;;;; Input
 ;;; package: (runtime input-port)
 
-(declare (usual-integrations)
-         (integrate-external "port"))
+(declare (usual-integrations))
 
 ;;;; Low level
 
@@ -55,31 +54,39 @@ USA.
 (define (input-port/read-line port)
   (with-input-port-blocking-mode port 'BLOCKING
     (lambda ()
-      (let ((read-char (textual-port-operation/read-char port)))
-	(let loop ((a (make-accum 128)))
+      (let ((read-char (textual-port-operation/read-char port))
+	    (builder (string-builder)))
+	(let loop ()
 	  (let ((char (read-char port)))
 	    (cond ((eof-object? char)
-		   (if (fix:> (accum-count a) 0)
-		       (accum->string a)
-		       char))
-		  ((char=? char #\newline) (accum->string a))
-		  (else (loop (accum char a))))))))))
+		   (let ((string (builder)))
+		     (if (fix:= 0 (string-length string))
+			 char
+			 string)))
+		  ((char=? char #\newline)
+		   (builder))
+		  (else
+		   (builder char)
+		   (loop)))))))))
 
 (define (input-port/read-string port delimiters)
   (with-input-port-blocking-mode port 'BLOCKING
     (lambda ()
-      (let ((read-char (textual-port-operation/read-char port)))
-	(let loop ((a (make-accum 128)))
+      (let ((read-char (textual-port-operation/read-char port))
+	    (builder (string-builder)))
+	(let loop ()
 	  (let ((char (read-char port)))
 	    (cond ((eof-object? char)
-		   (if (fix:> (accum-count a) 0)
-		       (accum->string a)
-		       char))
+		   (let ((string (builder)))
+		     (if (fix:= 0 (string-length string))
+			 char
+			 string)))
 		  ((char-set-member? delimiters char)
 		   (input-port/unread-char port char)
-		   (accum->string a))
+		   (builder))
 		  (else
-		   (loop (accum char a))))))))))
+		   (builder char)
+		   (loop)))))))))
 
 (define (input-port/discard-chars port delimiters)
   (with-input-port-blocking-mode port 'BLOCKING
@@ -93,24 +100,6 @@ USA.
 		   (input-port/unread-char port char))
 		  (else
 		   (loop)))))))))
-
-(define-integrable (make-accum n)
-  (cons (make-string n) 0))
-
-(define (accum char a)
-  (if (fix:= (cdr a) (string-length (car a)))
-      (let ((s* (make-string (fix:* (cdr a) 2))))
-	(substring-move! (car a) 0 (cdr a) s* 0)
-	(set-car! a s*)))
-  (string-set! (car a) (cdr a) char)
-  (set-cdr! a (fix:+ (cdr a) 1))
-  a)
-
-(define-integrable (accum->string a)
-  (string-head (car a) (cdr a)))
-
-(define-integrable (accum-count a)
-  (cdr a))
 
 (define-integrable (make-eof-object port)
   port
