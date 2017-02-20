@@ -994,18 +994,23 @@ USA.
 		 (if (= b/w 1)
 		     (make-string bytes)
 		     (make-vector (quotient bytes b/w))))
-		(move!
+		(copy!
 		 (if (= b/w 1)
-		     substring-move-right!
-		     subvector-move-right!)))
+		     string-copy!
+		     vector-copy!)))
 	    (let loop ((offset 0) (bytes bytes))
 	      (if (<= bytes qb)
-		  (move! (read-once offset bytes bytes delete?)
-			 0 (quotient bytes b/w)
-			 result (quotient offset b/w))
+		  (copy! result
+			 (quotient offset b/w)
+			 (read-once offset bytes bytes delete?)
+			 0
+			 (quotient bytes b/w))
 		  (begin
-		    (move! (read-once offset bytes qb #f) 0 (quotient qb b/w)
-			   result (quotient offset b/w))
+		    (copy! result
+			   (quotient offset b/w)
+			   (read-once offset bytes qb #f)
+			   0
+			   (quotient qb b/w))
 		    (loop (+ offset qb) (- bytes qb)))))
 	    result)))))
 
