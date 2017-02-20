@@ -253,18 +253,6 @@ USA.
 	  ((fix:> to start)
 	   (subvector-move-right! from start end to at)))))
 
-(define (vector->string vector #!optional start end)
-  (let ((start (if (default-object? start) 0 start))
-	(end (if (default-object? end) (vector-length vector) end)))
-    (guarantee-subvector vector start end 'vector->string)
-    (let ((result (make-string (fix:- end start))))
-      (do ((i start (fix:+ i 1)))
-	  ((not (fix:< i end)))
-	(string-set! result
-		     (fix:- i start)
-		     (vector-ref vector i)))
-      result)))
-
 (define (subvector-filled? vector start end element)
   (guarantee-subvector vector start end 'SUBVECTOR-FILLED?)
   (let loop ((index start))
