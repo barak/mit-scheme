@@ -757,8 +757,6 @@ USA.
 	    intern
 	    list
 	    make-bytevector
-	    make-string
-	    make-vector-8b
 	    ;; modulo	; Compiler does not currently open-code it.
 	    negative?
 	    not
@@ -843,8 +841,6 @@ USA.
 	   intern-expansion
 	   list-expansion
 	   make-bytevector-expansion
-	   make-string-expansion
-	   make-string-expansion	;for make-vector-8b
 	   ;; modulo-expansion
 	   negative?-expansion
 	   not-expansion
