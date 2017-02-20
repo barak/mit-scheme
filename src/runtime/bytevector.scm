@@ -306,33 +306,24 @@ USA.
   (lambda (bytevector #!optional start end)
     (let* ((end (fix:end-index end (bytevector-length bytevector) caller))
 	   (start (fix:start-index start end caller))
-	   (string
-	    (make-ustring
-	     (let ((truncated
-		    (lambda (index)
-		      (error (string "Truncated " noun " sequence:")
-			     (bytevector-copy bytevector
-					      index
-					      (fix:min (fix:+ index 4) end))))))
-	       (let loop ((index start) (n-chars 0))
-		 (if (fix:<= (fix:+ index step) end)
-		     (let ((n (initial->length (getter bytevector index))))
-		       (let ((index* (fix:+ index n)))
-			 (if (not (fix:<= index* end))
-			     (truncated index))
-			 (loop index* (fix:+ n-chars 1))))
-		     (begin
-		       (if (fix:< index end)
-			   (truncated index))
-		       n-chars)))))))
-      (let loop ((from start) (to 0))
-	(if (fix:< from end)
-	    (let ((char (decode-char bytevector from)))
-	      (string-set! string to char)
-	      (loop (fix:+ from (initial->length (getter bytevector from)))
-		    (fix:+ to 1)))))
-      (or (ustring->legacy-string string)
-	  string))))
+	   (builder (string-builder)))
+      (let ((truncated
+	     (lambda (index)
+	       (error (string "Truncated " noun " sequence:")
+		      (bytevector-copy bytevector
+				       index
+				       (fix:min (fix:+ index 4) end))))))
+	(let loop ((index start))
+	  (if (fix:<= (fix:+ index step) end)
+	      (let ((n (initial->length (getter bytevector index))))
+		(let ((index* (fix:+ index n)))
+		  (if (not (fix:<= index* end))
+		      (truncated index))
+		  (builder (decode-char bytevector index))
+		  (loop index*)))
+	      (if (fix:< index end)
+		  (truncated index)))))
+      (builder))))
 
 (define utf8->string)
 (define utf16be->string)

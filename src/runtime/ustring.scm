@@ -214,9 +214,15 @@ USA.
 (define (string-builder)
   ;; This is optimized to minimize copying, so it wastes some space.
   (let ((buffer-size 16))
-    (let ((buffers '())
-	  (buffer (full-string-allocate buffer-size))
-	  (index 0))
+    (let ((buffers)
+	  (buffer)
+	  (index))
+
+      (define (reset!)
+	(set! buffers '())
+	(set! buffer (full-string-allocate buffer-size))
+	(set! index 0)
+	unspecific)
 
       (define (new-buffer!)
 	(set! buffers (cons (string-slice buffer 0 index) buffers))
@@ -227,6 +233,11 @@ USA.
       (define (empty?)
 	(and (fix:= 0 index)
 	     (null? buffers)))
+
+      (define (count)
+	(do ((buffers buffers (cdr buffers))
+	     (n 0 (fix:+ n (string-length (car buffers)))))
+	    ((not (pair? buffers)) (fix:+ n index))))
 
       (define (append-char! char)
 	(if (not (fix:< index buffer-size))
@@ -256,11 +267,14 @@ USA.
 		((not (pair? strings))))
 	    result)))
 
+      (reset!)
       (lambda (#!optional object)
 	(cond ((default-object? object) (build))
 	      ((bitless-char? object) (append-char! object))
 	      ((string? object) (append-string! object))
 	      ((eq? 'empty? object) (empty?))
+	      ((eq? 'count object) (count))
+	      ((eq? 'reset! object) (reset!))
 	      (else (error "Not a char or string:" object)))))))
 
 (define (string-copy! to at from #!optional start end)
@@ -458,21 +472,12 @@ USA.
 	  #t))))
 
 (define (canonical-decomposition string)
-  (let ((end (string-length string)))
-    (let ((result
-	   (make-ustring
-	    (do ((i 0 (fix:+ i 1))
-		 (j 0 (fix:+ j (length (ucd-dm-value (string-ref string i))))))
-		((not (fix:< i end)) j)))))
-      (let loop ((i 0) (j 0))
-	(if (fix:< i end)
-	    (loop (fix:+ i 1)
-		  (do ((chars (ucd-dm-value (string-ref string i))
-			      (cdr chars))
-		       (j j (fix:+ j 1)))
-		      ((not (pair? chars)) j)
-		    (string-set! result j (car chars))))))
-      result)))
+  (let ((end (string-length string))
+	(builder (string-builder)))
+    (do ((i 0 (fix:+ i 1)))
+	((not (fix:< i end)))
+      (for-each builder (ucd-dm-value (string-ref string i))))
+    (builder)))
 
 (define (canonical-ordering! string)
   (let ((end (string-length string)))

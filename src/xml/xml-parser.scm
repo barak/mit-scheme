@@ -888,26 +888,17 @@ USA.
 					 #\linefeed))
 			    2
 			    1)))))
-	  (let ((n
-		 (let loop ((start 0) (n 0))
-		   (let ((index
-			  (substring-find-next-char string start end #\return)))
-		     (if index
-			 (loop (step-over-eol index)
-			       (fix:+ n (fix:+ (fix:- index start) 1)))
-			 (fix:+ n (fix:- end start)))))))
-	    (let ((string* (make-ustring n)))
-	      (let loop ((start 0) (start* 0))
-		(let ((index
-		       (substring-find-next-char string start end #\return)))
-		  (if index
-		      (let ((start*
-			     (string-copy! string* start* string start index)))
-			(string-set! string* start* #\newline)
-			(loop (step-over-eol index)
-			      (fix:+ start* 1)))
-		      (string-copy! string* start* string start end))))
-	      string*))))
+	  (let ((builder (string-builder)))
+	    (let loop ((start 0))
+	      (let ((index
+		     (substring-find-next-char string start end #\return)))
+		(if index
+		    (begin
+		      (builder #\newline)
+		      (builder (string-slice string start index))
+		      (loop (step-over-eol index)))
+		    (builder (string-slice string start index)))))
+	    (builder))))
       (if (if (default-object? always-copy?) #f always-copy?)
 	  (string-copy string)
 	  string)))

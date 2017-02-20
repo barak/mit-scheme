@@ -318,7 +318,7 @@ USA.
 		  numerical-walk))
 	     (node (numerical-walk expression list-depth)))
 	(if (positive? indentation)
-	    (*unparse-string (make-ustring indentation #\space)))
+	    (*unparse-string (make-string indentation #\space)))
 	(if as-code?
 	    (print-node node indentation list-depth)
 	    (print-non-code-node node indentation list-depth))
@@ -723,7 +723,7 @@ USA.
   (pad-with-spaces column))
 
 (define-integrable (pad-with-spaces n-spaces)
-  (*unparse-string (make-ustring n-spaces #\space)))
+  (*unparse-string (make-string n-spaces #\space)))
 
 ;;;; Numerical Walk
 

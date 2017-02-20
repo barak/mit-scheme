@@ -177,7 +177,7 @@ USA.
 	    (cond ((not n) n)
 		  ((fix:> n 0) (if (fix:< n k) (string-head string n) string))
 		  (else (eof-object)))))
-	(make-ustring 0))))
+	"")))
 
 (define (read #!optional port environment)
   (parse-object (optional-input-port port 'READ) environment))

@@ -147,9 +147,6 @@ USA.
 
 ;;;; Output as characters
 
-(define (open-output-string)
-  (make-output-string (make-ustring 16)))
-
 (define (get-output-string port)
   ((port/operation port 'extract-output) port))
 
@@ -178,12 +175,11 @@ USA.
     (lambda (port)
       (with-output-to-port port thunk))))
 
-(define (make-output-string buffer)
-  (make-textual-port string-output-type (make-ostate buffer 0 0)))
+(define (open-output-string)
+  (make-textual-port string-output-type (make-ostate (string-builder) 0)))
 
 (define-structure ostate
-  buffer
-  index
+  (builder #f read-only #t)
   column)
 
 (define (make-string-output-type)
@@ -198,59 +194,37 @@ USA.
 
 (define (string-out/write-char port char)
   (let ((os (textual-port-state port)))
-    (maybe-grow-buffer os 1)
-    (string-set! (ostate-buffer os) (ostate-index os) char)
-    (set-ostate-index! os (fix:+ (ostate-index os) 1))
+    ((ostate-builder os) char)
     (set-ostate-column! os (new-column char (ostate-column os)))
     1))
 
 (define (string-out/write-substring port string start end)
   (let ((os (textual-port-state port))
 	(n (fix:- end start)))
-    (maybe-grow-buffer os n)
-    (string-copy! (ostate-buffer os) (ostate-index os) string start end)
-    (set-ostate-index! os (fix:+ (ostate-index os) n))
-    (update-column-for-substring! os n)
+    ((ostate-builder os) (string-slice string start end))
+    (update-column-for-substring! os string start end)
     n))
 
 (define (string-out/extract-output port)
-  (let ((os (textual-port-state port)))
-    (string-copy (ostate-buffer os) 0 (ostate-index os))))
+  ((ostate-builder (textual-port-state port))))
 
 (define (string-out/extract-output! port)
   (let* ((os (textual-port-state port))
-	 (output (string-copy (ostate-buffer os) 0 (ostate-index os))))
-    (reset-buffer! os)
+	 (builder (ostate-builder os))
+	 (output (builder)))
+    (builder 'reset!)
+    (set-ostate-column! os 0)
     output))
 
 (define (string-out/output-column port)
   (ostate-column (textual-port-state port)))
 
 (define (string-out/position port)
-  (ostate-index (textual-port-state port)))
+  ((ostate-builder (textual-port-state port)) 'count))
 
 (define (string-out/write-self port output-port)
   port
   (write-string " to string" output-port))
-
-(define (maybe-grow-buffer os n)
-  (let ((buffer (ostate-buffer os))
-	(n (fix:+ (ostate-index os) n)))
-    (let ((m (string-length buffer)))
-      (if (fix:< m n)
-	  (let ((buffer*
-		 (make-ustring
-		  (let loop ((m (fix:+ m m)))
-		    (if (fix:< m n)
-			(loop (fix:+ m m))
-			m)))))
-	    (string-copy! buffer* 0 buffer 0 (ostate-index os))
-	    (set-ostate-buffer! os buffer*))))))
-
-(define (reset-buffer! os)
-  (set-ostate-buffer! os (make-ustring 16))
-  (set-ostate-index! os 0)
-  (set-ostate-column! os 0))
 
 (define (new-column char column)
   (case char
@@ -258,24 +232,18 @@ USA.
     ((#\tab) (fix:+ column (fix:- 8 (fix:remainder column 8))))
     (else (fix:+ column 1))))
 
-(define (update-column-for-substring! os n)
-  (let ((string (ostate-buffer os))
-	(end (ostate-index os)))
-    (let ((start (fix:- (ostate-index os) n)))
-      (letrec
-	  ((loop
-	    (lambda (i column)
-	      (if (fix:< i end)
-		  (loop (fix:+ i 1)
-			(new-column (string-ref string i) column))
-		  (set-ostate-column! os column)))))
-	(let ((nl (find-newline string start end)))
-	  (if nl
-	      (loop (fix:+ nl 1) 0)
-	      (loop start (ostate-column os))))))))
-
-(define (find-newline string start end)
-  (substring-find-next-char string start end #\newline))
+(define (update-column-for-substring! os string start end)
+  (letrec
+      ((loop
+	(lambda (i column)
+	  (if (fix:< i end)
+	      (loop (fix:+ i 1)
+		    (new-column (string-ref string i) column))
+	      (set-ostate-column! os column)))))
+    (let ((nl (substring-find-previous-char string start end #\newline)))
+      (if nl
+	  (loop (fix:+ nl 1) 0)
+	  (loop start (ostate-column os))))))
 
 ;;;; Output as octets
 
@@ -286,7 +254,7 @@ USA.
 
 (define (open-output-octets)
   (let ((port
-	 (let ((os (make-ostate (make-vector-8b 16) 0 #f)))
+	 (let ((os (make-ostate (string-builder) #f)))
 	   (make-generic-i/o-port #f
 				  (make-byte-sink os)
 				  'open-output-octets
@@ -298,56 +266,23 @@ USA.
 (define (make-byte-sink os)
   (make-non-channel-output-sink
    (lambda (bv start end)
-     (let ((index (ostate-index os)))
-       (let ((n (fix:+ index (fix:- end start))))
-	 (let ((buffer (ostate-buffer os)))
-	   (if (fix:> n (vector-8b-length buffer))
-	       (set-ostate-buffer!
-		os
-		(let ((new
-		       (make-vector-8b
-			(let loop ((m (vector-8b-length buffer)))
-			  (if (fix:>= m n)
-			      m
-			      (loop (fix:+ m m)))))))
-		  (substring-move! buffer 0 index new 0)
-		  new))))
-	 (let ((buffer (ostate-buffer os)))
-	   (do ((i start (fix:+ i 1))
-		(j index (fix:+ j 1)))
-	       ((not (fix:< i end)))
-	     (vector-8b-set! buffer j (bytevector-u8-ref bv j))))
-	 (set-ostate-index! os n)
-	 (fix:- end start))))))
+     (let ((builder (ostate-builder os)))
+       (do ((i start (fix:+ i 1)))
+	   ((not (fix:< i end)))
+	 (builder (integer->char (bytevector-u8-ref bv i)))))
+     (fix:- end start))))
 
 (define (make-octets-output-type)
-  (make-textual-port-type `((EXTRACT-OUTPUT ,octets-out/extract-output)
-			    (EXTRACT-OUTPUT! ,octets-out/extract-output!)
-			    (POSITION ,octets-out/position)
-			    (WRITE-SELF ,octets-out/write-self))
+  (make-textual-port-type `((extract-output ,string-out/extract-output)
+			    (extract-output! ,string-out/extract-output!)
+			    (position ,string-out/position)
+			    (write-self ,octets-out/write-self))
 			  (generic-i/o-port-type #f #t)))
-
-(define (octets-out/extract-output port)
-  (output-port/flush-output port)
-  (let ((os (output-octets-port/os port)))
-    (string-head (ostate-buffer os) (ostate-index os))))
-
-(define (octets-out/extract-output! port)
-  (output-port/flush-output port)
-  (let* ((os (output-octets-port/os port))
-	 (output (string-head (ostate-buffer os) (ostate-index os))))
-    (set-ostate-buffer! os (make-vector-8b 16))
-    (set-ostate-index! os 0)
-    output))
-
-(define (octets-out/position port)
-  (output-port/flush-output port)
-  (ostate-index (output-octets-port/os port)))
 
 (define (octets-out/write-self port output-port)
   port
   (write-string " to byte vector" output-port))
-
+
 (define string-input-type)
 (define octets-input-type)
 (define string-output-type)
