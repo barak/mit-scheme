@@ -140,7 +140,7 @@ appropriate number of spaces and then one space is deleted."
     (define (perform-replacement)
       (let ((n (- (mark-column m2) (mark-column m1))))
 	(delete-string m1 m2)
-	(insert-string (make-string n #\Space) m2)))
+	(insert-string (make-string n #\space) m2)))
     (if at-point?
 	(let ((start (mark-right-inserting m1)))
 	  (perform-replacement)
