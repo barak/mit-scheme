@@ -121,6 +121,31 @@ USA.
   (if (default-object? modulus)
       ((ucode-primitive string-hash) bytevector)
       ((ucode-primitive string-hash-mod) bytevector modulus)))
+
+(define (bytevector-builder)
+  (let ((builder
+	 (make-sequence-builder (lambda () (allocate-bytevector 16))
+				bytevector-length
+				bytevector-u8-set!
+				bytevector-builder:finish-build)))
+    (lambda (#!optional object)
+      (cond ((default-object? object) ((builder 'build)))
+	    ((byte? object) ((builder 'append-element!) object))
+	    ((bytevector? object) ((builder 'append-sequence!) object))
+	    ((memq object '(empty? count reset!)) ((builder object)))
+	    (else (error "Not a byte or bytevector:" object))))))
+
+(define (bytevector-builder:finish-build parts)
+  (let ((result
+	 (do ((parts parts (cdr parts))
+	      (n 0 (fix:+ n (cdar parts))))
+	     ((not (pair? parts))
+	      (allocate-bytevector n)))))
+    (do ((parts parts (cdr parts))
+	 (i 0 (fix:+ i (cdar parts))))
+	((not (pair? parts)))
+      (bytevector-copy! result i (caar parts) 0 (cdar parts)))
+    result))
 
 ;;;; U16 accessors
 

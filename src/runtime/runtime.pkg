@@ -1194,6 +1194,7 @@ USA.
 	  (byte? u8?)
 	  bytevector
 	  bytevector-append
+	  bytevector-builder
 	  bytevector-copy
 	  bytevector-copy!
 	  bytevector-fill!

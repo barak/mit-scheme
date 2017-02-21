@@ -237,8 +237,9 @@ USA.
 		  (legacy-string-allocate n)
 		  (full-string-allocate n))))))
     (do ((parts parts (cdr parts))
-	 (i 0 (string-copy! result i (caar parts) 0 (cdar parts))))
-	((not (pair? parts))))
+	 (i 0 (fix:+ i (cdar parts))))
+	((not (pair? parts)))
+      (string-copy! result i (caar parts) 0 (cdar parts)))
     result))
 
 (define (string-copy! to at from #!optional start end)
