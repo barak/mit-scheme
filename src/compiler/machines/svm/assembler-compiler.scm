@@ -692,7 +692,7 @@ USA.
        coding-types))))
 
 (define (defn-name-length defn)
-  (string-length (symbol-name (defn-name defn))))
+  (string-length (symbol->string (defn-name defn))))
 
 (define (wrap-scheme-output title pathname generator)
   (call-with-output-file pathname
@@ -860,7 +860,7 @@ USA.
   (newline port))
 
 (define (name->c-string name upcase?)
-  (name-string->c-string (symbol-name name) upcase?))
+  (name-string->c-string (symbol->string name) upcase?))
 
 (define (name-string->c-string name upcase?)
   (call-with-output-string
@@ -868,7 +868,7 @@ USA.
       (write-c-name-string name upcase? port))))
 
 (define (write-c-name name upcase? port)
-  (write-c-name-string (symbol-name name) upcase? port))
+  (write-c-name-string (symbol->string name) upcase? port))
 
 (define (write-c-name-string name upcase? port)
   (let ((e (string-length name))

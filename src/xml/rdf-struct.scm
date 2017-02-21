@@ -329,17 +329,17 @@ USA.
 
 (define (rdf-qname-prefix qname)
   (guarantee-rdf-qname qname 'RDF-QNAME-PREFIX)
-  (let ((s (symbol-name qname)))
+  (let ((s (symbol->string qname)))
     (symbol (string-head s (fix:+ (string-find-next-char s #\:) 1)))))
 
 (define (rdf-qname-local qname)
   (guarantee-rdf-qname qname 'RDF-QNAME-LOCAL)
-  (let ((s (symbol-name qname)))
+  (let ((s (symbol->string qname)))
     (string-tail s (fix:+ (string-find-next-char s #\:) 1))))
 
 (define (split-rdf-qname qname)
   (guarantee-rdf-qname qname 'SPLIT-RDF-QNAME)
-  (let ((s (symbol-name qname)))
+  (let ((s (symbol->string qname)))
     (let ((i (fix:+ (string-find-next-char s #\:) 1)))
       (values (symbol (string-head s i))
 	      (string-tail s i)))))

@@ -73,7 +73,7 @@ USA.
 		    (ERROR:WRONG-TYPE-ARGUMENT
 		     OBJECT
 		     ,(string-append "an XML "
-				     (string-replace (symbol-name (cadr form))
+				     (string-replace (symbol->string (cadr form))
 						     #\-
 						     #\space))
 		     CALLER))
@@ -609,7 +609,7 @@ USA.
 
 (define (convert-xml-string-value value)
   (cond ((xml-content-item? value) value)
-	((symbol? value) (symbol-name value))
+	((symbol? value) (symbol->string value))
 	((number? value) (number->string value))
 	((uri? value) (uri->string value))
 	((list-of-type? value xml-nmtoken?) (nmtokens->string value))
@@ -620,6 +620,6 @@ USA.
     (for-each (lambda (nmtokens)
 		(if (not (builder 'empty?))
 		    (builder #\space))
-		(builder (symbol-name (car nmtokens))))
+		(builder (symbol->string (car nmtokens))))
 	      nmtokens)
     (builder)))

@@ -54,7 +54,7 @@ USA.
 
 (define (find-global-definitions name model-pathname os-type)
   (let* ((filename (->pathname
-		    (cond ((symbol? name) (symbol-name name))
+		    (cond ((symbol? name) (symbol->string name))
 			  ((string? name) name)
 			  (else (error "Not a globals name:" name)))))
 	 (pkd (package-set-pathname filename os-type)))

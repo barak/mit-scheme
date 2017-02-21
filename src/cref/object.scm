@@ -199,7 +199,7 @@ USA.
 (declare (integrate-operator name->string))
 (define (name->string name)
   (if (interned-symbol? name)
-      (symbol-name name)
+      (symbol->string name)
       (write-to-string name)))
 
 (define-integrable (name<? x y)

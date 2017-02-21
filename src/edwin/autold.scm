@@ -185,7 +185,7 @@ Second arg is prefix arg when called interactively."
     (list
      (prompt-for-alist-value "Load library"
 			     (map (lambda (library)
-				    (cons (symbol-name (car library))
+				    (cons (symbol->string (car library))
 					  (car library)))
 				  known-libraries))
      (command-argument)))

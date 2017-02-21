@@ -55,7 +55,7 @@ USA.
   (cond ((string? name)
 	 (write-string name port))
 	((interned-symbol? name)
-	 (write-string (symbol-name name) port))
+	 (write-string (symbol->string name) port))
 	(else
 	 (write name port))))
 
@@ -63,7 +63,7 @@ USA.
   (cond ((string? name)
 	 (write-string (string-upcase name)))
 	((interned-symbol? name)
-	 (write-string (string-upcase (symbol-name name)) port))
+	 (write-string (string-upcase (symbol->string name)) port))
 	(else
 	 (write name port))))
 

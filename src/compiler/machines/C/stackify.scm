@@ -498,7 +498,7 @@ USA.
 	  (if (uninterned-symbol? obj)
 	      stackify-opcode/push-uninterned-symbol
 	      stackify-opcode/push-symbol)
-	  (symbol-name obj)
+	  (symbol->string obj)
 	  prog))
 	((bit-string? obj)
 	 (build/string stackify-opcode/push-bit-string
@@ -509,7 +509,7 @@ USA.
 		       (build/push-nat (bit-string-length obj) prog)))
 	((scode/primitive-procedure? obj)
 	 (let ((arity (primitive-procedure-arity obj))
-	       (name (symbol-name (primitive-procedure-name obj))))
+	       (name (symbol->string (primitive-procedure-name obj))))
 	   (cond ((fix:< arity 0)
 		  (build/string stackify-opcode/push-primitive-lexpr
 				name

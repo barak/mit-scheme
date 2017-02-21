@@ -252,7 +252,7 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 
 (define (mode-apropos regexp)
   (for-each (lambda (mode)
-	      (write-string (symbol-name (mode-name mode)))
+	      (write-string (symbol->string (mode-name mode)))
 	      (newline)
 	      (print-short-description "Mode" (mode-description mode)))
 	    (string-table-apropos editor-modes regexp)))
@@ -403,7 +403,7 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 		    (if (pair? bindings)
 			(xkey->name (car bindings))
 			(string-append "M-x " (command-name-string command))))
-		  (string-append "M-x " (symbol-name argument))))
+		  (string-append "M-x " (symbol->string argument))))
 	    (find-escape next comtabs)))
 
     (define (show-bindings argument next comtabs)

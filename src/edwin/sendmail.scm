@@ -1415,9 +1415,9 @@ the user from the mailer."
 	(subtype (mime-attachment-subtype attachment)))
     (write-message-header-field
      "Content-Type"
-     (string-append (symbol-name type)
+     (string-append (symbol->string type)
 		    "/"
-		    (symbol-name subtype)
+		    (symbol->string subtype)
 		    (mime-parameters->string
 		     (mime-attachment-parameters attachment)))
      port)
@@ -1539,14 +1539,14 @@ the user from the mailer."
   (decorated-string-append
    "; " "" ""
    (map (lambda (parameter)
-	  (string-append (symbol-name (car parameter))
+	  (string-append (symbol->string (car parameter))
 			 "=\""
 			 (cadr parameter)
 			 "\""))
 	parameters)))
 
 (define (mime-disposition->string disposition)
-  (string-append (symbol-name (car disposition))
+  (string-append (symbol->string (car disposition))
 		 (mime-parameters->string (cdr disposition))))
 
 (define (guarantee-mime-compliant-headers h-start h-end)
@@ -1659,9 +1659,9 @@ You can add and delete attachments from that buffer."
   (let ((start (mark-right-inserting-copy mark))
 	(type (mime-attachment-type attachment))
 	(subtype (mime-attachment-subtype attachment)))
-    (insert-string-pad-right (string-append (symbol-name type)
+    (insert-string-pad-right (string-append (symbol->string type)
 					    "/"
-					    (symbol-name subtype))
+					    (symbol->string subtype))
 			     30 #\space mark)
     (if (not (and (eq? type 'MESSAGE) (eq? subtype 'RFC822)))
 	(begin

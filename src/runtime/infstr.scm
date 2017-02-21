@@ -209,7 +209,7 @@ USA.
 	   `(DEFINE-INTEGRABLE ,symbol
 	      ',((ucode-primitive string->symbol)
 		 (string-append "#[(runtime compiler-info)"
-				(string-downcase (symbol-name symbol))
+				(string-downcase (symbol->string symbol))
 				"]"))))))))
   ;; Various names used in `layout' to identify things that wouldn't
   ;; otherwise have names.

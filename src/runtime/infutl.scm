@@ -332,7 +332,7 @@ USA.
     (and procedure
 	 (let ((name (dbg-procedure/name procedure)))
 	   (or (special-form-procedure-name? name)
-	       (symbol-name name))))))
+	       (symbol->string name))))))
 
 (define load-debugging-info-on-demand?
   #f)
@@ -340,7 +340,7 @@ USA.
 (define (special-form-procedure-name? name)
   (let ((association (assq name special-form-procedure-names)))
     (and association
-	 (symbol-name (cdr association)))))
+	 (symbol->string (cdr association)))))
 
 (define special-form-procedure-names)
 

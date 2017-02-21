@@ -53,18 +53,13 @@ USA.
   ((ucode-primitive string->symbol) (string->utf8 string start end)))
 
 (define (symbol->string symbol)
-  (guarantee symbol? symbol 'symbol->string)
+  (if (not (symbol? symbol))
+      (error:not-a symbol? symbol 'symbol->string))
   (let ((s (system-pair-car symbol)))
     (cond ((maybe-ascii s))
 	  ((bytevector? s) (utf8->string s))
 	  ((legacy-string? s) (utf8->string (%legacy-string->bytevector s)))
 	  (else (error "Illegal symbol name:" s)))))
-
-(define (string-head->symbol string end)
-  (string->symbol (string-slice string 0 end)))
-
-(define (string-tail->symbol string start)
-  (string->symbol (string-slice string start)))
 
 (define (symbol . objects)
   (string->symbol (%string* objects 'symbol)))
@@ -76,8 +71,6 @@ USA.
   ((ucode-primitive find-symbol) (foldcase->utf8 string)))
 
 (define (symbol-name symbol)
-  (if (not (symbol? symbol))
-      (error:not-a symbol? symbol 'symbol-name))
   (let ((bytes (system-pair-car symbol)))
     (or (maybe-ascii bytes)
 	(utf8->string bytes))))

@@ -603,7 +603,7 @@ USA.
 
 (define (->type-name object)
   (cond ((string? object) object)
-	((symbol? object) (symbol-name object))
+	((symbol? object) (symbol->string object))
 	(else (error:wrong-type-argument object "type name" #f))))
 
 (define (list-of-unique-symbols? object)

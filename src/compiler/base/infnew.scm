@@ -272,14 +272,14 @@ USA.
 		label-bindings)
       (let ((map-label/fail
 	     (lambda (label)
-	       (let ((key (symbol-name label)))
+	       (let ((key (symbol->string label)))
 		 (let ((datum (hash-table/get labels key no-datum)))
 		   (if (eq? datum no-datum)
 		       (error "Missing label:" key))
 		   datum))))
 	    (map-label/false
 	     (lambda (label)
-	       (hash-table/get labels (symbol-name label) #f))))
+	       (hash-table/get labels (symbol->string label) #f))))
 	(for-each (lambda (label)
 		    (set-dbg-label/external?! (map-label/fail label) true))
 		  external-labels)
@@ -321,7 +321,7 @@ USA.
        (let ((offsets (make-rb-tree = <)))
 	 (for-each (lambda (binding)
 		     (let ((offset (cdr binding))
-			   (name (symbol-name (car binding))))
+			   (name (symbol->string (car binding))))
 		       (let ((datum (rb-tree/lookup offsets offset #f)))
 			 (if datum
 			     (set-cdr! datum (cons name (cdr datum)))

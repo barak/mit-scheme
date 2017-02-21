@@ -722,12 +722,12 @@ USA.
   (let ((bindings (http-request-post-parameter-bindings)))
     (let per-elt ((elt elt) (containers (xdoc-element-containers elt)))
       (let* ((id (xdoc-db-id elt))
-	     (suffix (string-append "-" (symbol-name id))))
+	     (suffix (string-append "-" (symbol->string id))))
 	(cond ((find-matching-item bindings
 		 (lambda (binding)
-		   (string-suffix? suffix (symbol-name (car binding)))))
+		   (string-suffix? suffix (symbol->string (car binding)))))
 	       => (lambda (binding)
-		    (values (let ((name (symbol-name (car binding))))
+		    (values (let ((name (symbol->string (car binding))))
 			      (substring->symbol
 			       name
 			       0
@@ -954,7 +954,7 @@ USA.
     source
     (let ((expected (boolean-attribute 'expected elt #t)))
       (if (or (string=? value "true") (string=? value "false"))
-	  (if (string=? value (symbol-name expected))
+	  (if (string=? value (symbol->string expected))
 	      "correct"
 	      "incorrect")
 	  "malformed"))))
@@ -1262,7 +1262,7 @@ USA.
     symbol))
 
 (define (xdoc-procedure-name? symbol)
-  (re-string-match "[A-Za-z_][0-9A-Za-z_]*" (symbol-name symbol)))
+  (re-string-match "[A-Za-z_][0-9A-Za-z_]*" (symbol->string symbol)))
 
 ;;;; Merging of attributes
 

@@ -60,10 +60,10 @@ USA.
       names)))
 
 (define (aproposer text env search-parents? process-env process-symbol)
-  (let ((text (if (symbol? text) (symbol-name text) text)))
+  (let ((text (if (symbol? text) (symbol->string text) text)))
     (process-env env)
     (for-each (lambda (symbol)
-		(if (substring? text (symbol-name symbol))
+		(if (substring? text (symbol->string symbol))
 		    (process-symbol symbol env)))
 	      (sort (environment-bound-names env) symbol<?))
     (if (and search-parents? (environment-has-parent? env))

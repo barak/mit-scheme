@@ -78,7 +78,7 @@ USA.
 			      (list (car p) (cdr p)))
 			    (http-message-headers message)))))
   (for-each (lambda (header)
-	      (write-string (symbol-name (car header)) port)
+	      (write-string (symbol->string (car header)) port)
 	      (newline port)
 	      (write-string (cdr header) port)
 	      (newline port))
@@ -323,7 +323,7 @@ USA.
 			  (if (default-object? value)
 			      ""
 			      (string-append "; "
-					     (symbol-name name)
+					     (symbol->string name)
 					     "="
 					     (if map-value
 						 (map-value value)
@@ -331,7 +331,7 @@ USA.
 		     (attr
 		      (lambda (name map-value)
 			(%attr name name map-value))))
-		(string-append (symbol-name name) "=" value
+		(string-append (symbol->string name) "=" value
 			       (%attr 'max-age 'expires max-age->expires)
 			       (attr 'domain #f)
 			       (attr 'path #f)
@@ -415,7 +415,7 @@ USA.
 		  (write-string (status-message code) port)))))
 
 (define (set-content-type-header message type)
-  (set-header message 'CONTENT-TYPE (symbol-name type)))
+  (set-header message 'CONTENT-TYPE (symbol->string type)))
 
 (define (status-message code)
   (let loop ((low 0) (high (vector-length known-status-codes)))

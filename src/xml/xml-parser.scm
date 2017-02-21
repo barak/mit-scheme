@@ -628,7 +628,7 @@ USA.
 	     (lambda (v)
 	       (let ((name (vector-ref v 0))
 		     (text (vector-ref v 1)))
-		 (if (string-ci=? (symbol-name name) "xml")
+		 (if (string-ci=? (symbol->string name) "xml")
 		     (perror p "Reserved XML processor name" name))
 		 (let ((entry (assq name *pi-handlers*)))
 		   (if entry

@@ -97,7 +97,7 @@ USA.
 (define (c:line-item item)
   (cond ((string? item) item)
 	((char? item) (string item))
-	((symbol? item) (symbol-name item))
+	((symbol? item) (symbol->string item))
 	((number? item)
 	 ;; XXX Kludgey test for negative zero, to support building
 	 ;; from versions when NUMBER->STRING failed to do that itself.
@@ -387,11 +387,11 @@ USA.
   (let ((types
 	 (let ((types '(char short int long float double)))
 	   `(,@(map (lambda (t)
-		      (cons t (symbol-name t)))
+		      (cons t (symbol->string t)))
 		    types)
 	     ,@(map (lambda (t)
 		      (cons (symbol 'u t)
-			    (string-append "unsigned " (symbol-name t))))
+			    (string-append "unsigned " (symbol->string t))))
 		    types)
 	     (sobj . "SCHEME_OBJECT")))))
     `(,@types
@@ -412,7 +412,7 @@ USA.
 
 (define (c:var item)
   (cond ((string? item) item)
-	((symbol? item) (symbol-name item))
+	((symbol? item) (symbol->string item))
 	(else (error:wrong-type-argument item "C variable" 'C:VAR))))
 
 (define (c:array-decl type name dim items)

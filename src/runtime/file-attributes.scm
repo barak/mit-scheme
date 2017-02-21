@@ -210,7 +210,7 @@ This file is part of MIT/GNU Scheme.
 				     (trim-initial-token token)
 				     token)))
 		     (cond ((not token*) (tokenize confusion-count tokens))
-			   ((string-suffix? "-*-" (symbol-name token*))
+			   ((string-suffix? "-*-" (symbol->string token*))
 			    (let ((token** (trim-final-token token*)))
 			      (if token**
 				  (reverse (cons token** tokens))
@@ -232,8 +232,8 @@ This file is part of MIT/GNU Scheme.
 ;;;  -*-*- coding: latin-1 -*-*-
 
 (define (trim-initial-token sym)
-  (if (string-prefix? "*-" (symbol-name sym))
-      (do ((token-string (symbol-name sym) (string-tail token-string 2)))
+  (if (string-prefix? "*-" (symbol->string sym))
+      (do ((token-string (symbol->string sym) (string-tail token-string 2)))
 	  ((not (string-prefix? "*-" token-string))
 	   (if (zero? (string-length token-string))
 	       #f
@@ -248,7 +248,7 @@ This file is part of MIT/GNU Scheme.
 ;;; -*-outline-*-*-
 (define (trim-final-token sym)
   (do ((token-string
-	(let ((s (symbol-name sym)))
+	(let ((s (symbol->string sym)))
 	  (string-head s (- (string-length s) 3)))
 	(string-head token-string (- (string-length token-string) 2))))
       ((not (string-suffix? "-*" token-string))

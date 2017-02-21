@@ -443,7 +443,7 @@ USA.
 	    ((and (eq? (mime-type/top-level type) 'APPLICATION)
 		  (let ((sub (mime-type/subtype type)))
 		    (or (eq? sub 'XML)
-			(string-suffix-ci? "+xml" (symbol-name sub)))))
+			(string-suffix-ci? "+xml" (symbol->string sub)))))
 	     (port/set-coding port (or coding 'UTF-8))
 	     (port/set-line-ending port 'XML-1.0))
 	    (coding

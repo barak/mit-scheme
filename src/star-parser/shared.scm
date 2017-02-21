@@ -274,7 +274,7 @@ USA.
   (string->uninterned-symbol
    (string-append
     internal-identifier-prefix
-    (symbol-name prefix)
+    (symbol->string prefix)
     (number->string
      (let ((entry (assq prefix *id-counters*)))
        (if entry
@@ -287,7 +287,7 @@ USA.
     internal-identifier-suffix)))
 
 (define (internal-identifier? identifier)
-  (let ((string (symbol-name identifier)))
+  (let ((string (symbol->string identifier)))
     (and (string-prefix? internal-identifier-prefix string)
 	 (string-suffix? internal-identifier-suffix string))))
 

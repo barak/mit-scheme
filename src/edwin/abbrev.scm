@@ -78,7 +78,7 @@ USA.
   (let ((abbrev
 	 (string-downcase
 	  (cond ((string? abbrev) abbrev)
-		((symbol? abbrev) (symbol-name abbrev))
+		((symbol? abbrev) (symbol->string abbrev))
 		(else
 		 (error:wrong-type-argument abbrev "string"
 					    'ABBREV-EXPANSION))))))
@@ -472,7 +472,7 @@ Mark is set after the inserted text."
      (lambda (name)
        (let ((table (get-named-abbrev-table name)))
 	 (insert-string "(" mark)
-	 (insert-string (symbol-name name) mark)
+	 (insert-string (symbol->string name) mark)
 	 (insert-string ")\n\n" mark)
 	 (hash-table/for-each table
 	   (lambda (abbrev entry)

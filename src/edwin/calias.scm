@@ -244,7 +244,7 @@ USA.
 
 (define (special-key/name special-key)
   (string-append (bucky-bits->prefix (special-key/bucky-bits special-key))
-		 (symbol-name (special-key/symbol special-key))))
+		 (symbol->string (special-key/symbol special-key))))
 
 (define (make-special-key name bits)
   (hook/make-special-key name bits))

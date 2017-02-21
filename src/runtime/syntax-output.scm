@@ -92,7 +92,7 @@ USA.
 (define (output/letrec names values body)
   (let ((temps (map (lambda (name)
 		      (string->uninterned-symbol
-		       (string-append (symbol-name (identifier->symbol name))
+		       (string-append (symbol->string (identifier->symbol name))
 				      "-value"))) names)))
     (output/let
      names (map (lambda (name) name (output/unassigned)) names)
@@ -427,7 +427,7 @@ USA.
       (or (hash-table/get mapping-table key #f)
 	  (let ((mapped-identifier
 		 (string->uninterned-symbol
-		  (symbol-name (identifier->symbol identifier)))))
+		  (symbol->string (identifier->symbol identifier)))))
 	    (hash-table/put! mapping-table key mapped-identifier)
 	    (hash-table/put! (rename-database/unmapping-table renames)
 			     mapped-identifier
@@ -447,7 +447,7 @@ USA.
       ;; an uninterned symbol that guarantees uniqueness.
       (string->uninterned-symbol
        (string-append "."
-		      (symbol-name (identifier->symbol identifier))
+		      (symbol->string (identifier->symbol identifier))
 		      "."
 		      (number->string (force (make-rename-id)))))))
 

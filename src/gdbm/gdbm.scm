@@ -261,7 +261,7 @@ USA.
    (lambda ()
      (let ((args (gdbf-args gdbf)))
        (if (alien-null? args)
-	   (error (string-append (symbol-name operator) " failed: closed")))
+	   (error (string-append (symbol->string operator) " failed: closed")))
        (receiver args)))))
 
 (define (gdbm-error gdbf msg)

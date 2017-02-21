@@ -112,7 +112,7 @@ USA.
      (port/set-line-ending port 'crlf)
      (let ((write-datum
 	    (lambda (datum)
-	      (encode-segment (symbol-name (car datum)) port)
+	      (encode-segment (symbol->string (car datum)) port)
 	      (write-char #\= port)
 	      (encode-segment (cdr datum) port))))
        (if (pair? data)

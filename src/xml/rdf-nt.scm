@@ -225,7 +225,7 @@ USA.
 	((rdf-literal-language literal)
 	 => (lambda (lang)
 	      (write-string "@" port)
-	      (write-string (symbol-name lang) port)))))
+	      (write-string (symbol->string lang) port)))))
 
 (define (write-rdf/nt-literal-text text port)
   (let ((text (open-input-string text)))

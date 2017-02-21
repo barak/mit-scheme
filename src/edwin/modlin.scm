@@ -276,7 +276,7 @@ If #F, the normal method is used."
 	   ((#\s)
 	    (let ((process (get-buffer-process buffer)))
 	      (if process
-		  (symbol-name (process-status process))
+		  (symbol->string (process-status process))
 		  "no process")))
 	   ((#\p)
 	    (let ((group (buffer-group buffer)))

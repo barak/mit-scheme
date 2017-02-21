@@ -127,7 +127,7 @@ USA.
        (not (button-down? object))))
 
 (define (button-name button)
-  (symbol-name (button-symbol button)))
+  (symbol->string (button-symbol button)))
 
 (set-record-type-unparser-method! <button>
   (simple-unparser-method (record-type-name <button>)

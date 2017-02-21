@@ -250,7 +250,7 @@ USA.
   ;; munge the correct alist in INCLUDES.
   (if (not (and (pair? rest) (symbol? (car rest))
 		(list? (cdr rest))))
-      (cerror form "malformed "(symbol-name (car form))" declaration"))
+      (cerror form "malformed " (symbol->string (car form)) " declaration"))
   (let* ((name (car rest))
 	 (params (cdr rest))
 	 (others (if (eq? 'EXTERN (car form))
@@ -261,7 +261,7 @@ USA.
 		      (alien-function/filename (cdr entry))))
     (let ((new (cons name
 		     (make-alien-function
-		      (symbol-name name)
+		      (symbol->string name)
 		      (c-includes/library includes)
 		      (valid-ctype rettype includes)
 		      (valid-params params includes)
@@ -285,7 +285,7 @@ USA.
 		(null? (cddr form))))
       (cerror form "malformed parameter declaration"))
   (if (string-find-next-char-in-set
-       (symbol-name (car form)) char-set:not-c-symbol)
+       (symbol->string (car form)) char-set:not-c-symbol)
       (cerror form "invalid parameter name"))
   (let ((name (car form))
 	(ctype (valid-ctype (cadr form) includes)))

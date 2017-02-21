@@ -282,7 +282,7 @@ USA.
   (guarantee-keyword-list keyword-list 'HTML:STYLE-ATTR)
   (if (pair? keyword-list)
       (let loop ((bindings keyword-list))
-	(string-append (symbol-name (car bindings))
+	(string-append (symbol->string (car bindings))
 		       ": "
 		       (cadr bindings)
 		       (if (pair? (cddr bindings))

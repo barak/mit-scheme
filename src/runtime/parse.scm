@@ -1023,7 +1023,7 @@ USA.
 (define (lookup-file-attribute file-attribute-alist attribute)
   (assoc attribute file-attribute-alist
 	 (lambda (left right)
-	   (string-ci=? (symbol-name left) (symbol-name right)))))
+	   (string-ci=? (symbol->string left) (symbol->string right)))))
 
 ;;; Look for keyword-style: prefix or keyword-style: suffix
 (define (process-keyword-attribute file-attribute-alist port)
@@ -1032,14 +1032,14 @@ USA.
     (if (pair? keyword-entry)
 	(let ((value (cdr keyword-entry)))
 	  (cond ((and (symbol? value)
-		      (or (string-ci=? (symbol-name value) "none")
-			  (string-ci=? (symbol-name value) "false")))
+		      (or (string-ci=? (symbol->string value) "none")
+			  (string-ci=? (symbol->string value) "false")))
 		 (set-port-property! port 'parser-keyword-style #f))
 		((and (symbol? value)
-		      (string-ci=? (symbol-name value) "prefix"))
+		      (string-ci=? (symbol->string value) "prefix"))
 		 (set-port-property! port 'parser-keyword-style 'prefix))
 		((and (symbol? value)
-		      (string-ci=? (symbol-name value) "suffix"))
+		      (string-ci=? (symbol->string value) "suffix"))
 		 (set-port-property! port 'parser-keyword-style 'suffix))
 		(else
 		 (warn "Unrecognized value for keyword-style" value)))))))
@@ -1052,9 +1052,9 @@ USA.
     (if (pair? mode-entry)
 	(let ((value (cdr mode-entry)))
 	  (if (or (not (symbol? value))
-		  (not (string-ci=? (symbol-name value) "scheme")))
+		  (not (string-ci=? (symbol->string value) "scheme")))
 	      (warn "Unexpected file mode:" (if (symbol? value)
-						(symbol-name value)
+						(symbol->string value)
 						value)))))))
 
 ;; If you want to turn on studly case, then the attribute must be
@@ -1068,21 +1068,21 @@ USA.
 	(let ((value (cdr studly-case-entry)))
 	  (cond ((or (eq? value #t)
 		     (and (symbol? value)
-			  (string-ci=? (symbol-name value) "true")))
+			  (string-ci=? (symbol->string value) "true")))
 		 ;; STricTly cHeck thE case.
-		 (cond ((not (string=? (symbol-name (car studly-case-entry))
+		 (cond ((not (string=? (symbol->string (car studly-case-entry))
 				       "sTuDly-case"))
 			(warn "Attribute name mismatch.  Expected sTuDly-case.")
 			#f)
 		       ((and (symbol? value)
-			     (not (string=? (symbol-name value) "True")))
+			     (not (string=? (symbol->string value) "True")))
 			(warn "Attribute value mismatch.  Expected True.")
 			#f)
 		       (else
 			(set-port-property! port 'parser-fold-case? #f))))
 		((or (not value)
 		     (and (symbol? value)
-			  (string-ci=? (symbol-name value) "false")))
+			  (string-ci=? (symbol->string value) "false")))
 		 (set-port-property! port 'parser-fold-case? #t))
 		(else
 		 (warn "Unrecognized value for sTuDly-case" value)))))))

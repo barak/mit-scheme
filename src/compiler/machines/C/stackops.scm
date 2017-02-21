@@ -402,7 +402,7 @@ push-primitive-7			; name in string table
 	    (for-each
 	     write-string
 	     (list "\t"
-		   (stackify/C-quotify (symbol-name (car binding)))
+		   (stackify/C-quotify (symbol->string (car binding)))
 		   " = 0"
 		   (if (zero? value)
 		       ""

@@ -836,9 +836,9 @@ swank:xref
 	(completions '()))
     (for-each-interned-symbol
      (lambda (symbol)
-       (if (and (string-prefix? prefix (symbol-name symbol))
+       (if (and (string-prefix? prefix (symbol->string symbol))
 		(environment-bound? environment symbol))
-	   (set! completions (cons (symbol-name symbol) completions)))
+	   (set! completions (cons (symbol->string symbol) completions)))
        unspecific))
     completions))
 

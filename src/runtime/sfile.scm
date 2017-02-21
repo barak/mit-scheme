@@ -355,9 +355,9 @@ USA.
 
 (define (write-mime-type mime-type port)
   (guarantee-mime-type mime-type 'WRITE-MIME-TYPE)
-  (write-string (symbol-name (mime-type/top-level mime-type)) port)
+  (write-string (symbol->string (mime-type/top-level mime-type)) port)
   (write-string "/" port)
-  (write-string (symbol-name (mime-type/subtype mime-type)) port))
+  (write-string (symbol->string (mime-type/subtype mime-type)) port))
 
 (define (string->mime-type string #!optional start end)
   (vector-ref (or (*parse-string parser:mime-type string start end)
@@ -373,7 +373,7 @@ USA.
 
 (define (mime-token? object)
   (and (interned-symbol? object)
-       (string-is-mime-token? (symbol-name object))))
+       (string-is-mime-token? (symbol->string object))))
 
 (define (mime-token-string? object)
   (and (string? object)

@@ -126,7 +126,7 @@ USA.
 
 (define (mode-name? object)
   (and (symbol? object)
-       (string-table-get editor-modes (symbol-name object))))
+       (string-table-get editor-modes (symbol->string object))))
 
 (define (list-of-comtabs? object)
   (and (not (null? object))

@@ -3225,7 +3225,7 @@ Returns the @dfn{URI} of @var{xml-name}.  The result always satisfies
 Returns the @dfn{qname} of @var{xml-name} as a string.  Equivalent to
 
 @example
-(symbol-name (xml-name->symbol @var{xml-name}))
+(symbol->string (xml-name->symbol @var{xml-name}))
 @end example
 @end deffn
 

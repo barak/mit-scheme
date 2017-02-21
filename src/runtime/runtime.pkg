@@ -737,31 +737,29 @@ USA.
   (export-deprecated ()			;ignored on 9.2 hosts
 	  (substring->symbol string->symbol)
 	  (symbol-append symbol)
+	  (symbol-name symbol->string)
 	  error:not-interned-symbol
 	  error:not-symbol
 	  error:not-uninterned-symbol
 	  guarantee-interned-symbol
 	  guarantee-symbol
-	  guarantee-uninterned-symbol
-	  symbol-name)
+	  guarantee-uninterned-symbol)
   (export ()				;temporary duplicate for 9.2 hosts
 	  (substring->symbol string->symbol)
 	  (symbol-append symbol)
+	  (symbol-name symbol->string)
 	  error:not-interned-symbol
 	  error:not-symbol
 	  error:not-uninterned-symbol
 	  guarantee-interned-symbol
 	  guarantee-symbol
-	  guarantee-uninterned-symbol
-	  symbol-name)
+	  guarantee-uninterned-symbol)
   (export ()
 	  intern
 	  intern-soft
 	  interned-symbol?
 	  string->symbol
 	  string->uninterned-symbol
-	  string-head->symbol
-	  string-tail->symbol
 	  symbol
 	  symbol->string
 	  symbol-hash

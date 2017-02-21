@@ -36,7 +36,7 @@ USA.
 	       ((string? argument)
 		argument)
 	       ((symbol? argument)
-		(symbol-name argument))
+		(symbol->string argument))
 	       ((exact-nonnegative-integer? argument)
 		(set! name-counter argument)
 		name-prefix)

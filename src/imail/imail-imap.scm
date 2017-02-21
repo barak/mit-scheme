@@ -2010,7 +2010,7 @@ USA.
 		  (map (lambda (x)
 			 (if (exact-nonnegative-integer? x)
 			     (number->string x)
-			     (symbol-name x)))
+			     (symbol->string x)))
 		       section))
 		 "]"))
 
@@ -2043,7 +2043,7 @@ USA.
    `(,@(imap-message-cache-specifier message)
      ,(encode-cache-namestring
        (if (symbol? keyword)
-	   (symbol-name keyword)
+	   (symbol->string keyword)
 	   keyword)))))
 
 (define (imap-message-cache-pathname message)
@@ -2576,7 +2576,7 @@ USA.
 	  (flush-output imap-trace-port)))
     (imap-transcript-write-string tag port)
     (imap-transcript-write-char #\space port)
-    (imap-transcript-write-string (symbol-name command) port)
+    (imap-transcript-write-string (symbol->string command) port)
     (for-each (lambda (argument)
 		(if argument
 		    (begin
@@ -2594,7 +2594,7 @@ USA.
       (cond ((exact-nonnegative-integer? argument)
 	     (imap-transcript-write argument port))
 	    ((symbol? argument)
-	     (imap-transcript-write-string (symbol-name argument) port))
+	     (imap-transcript-write-string (symbol->string argument) port))
 	    ((and (pair? argument)
 		  (eq? (car argument) 'QUOTE)
 		  (pair? (cdr argument))

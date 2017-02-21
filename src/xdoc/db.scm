@@ -95,7 +95,7 @@ USA.
 	  (string-append "'"
 			 (escape-pgsql-string
 			  (if (symbol? object)
-			      (symbol-name object)
+			      (symbol->string object)
 			      object))
 			 "'"))
       "NULL"))

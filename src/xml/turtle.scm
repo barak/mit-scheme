@@ -612,8 +612,8 @@ USA.
 		(write-rdf/turtle-prefix (car p) (cdr p) port))
 	      (sort (hash-table->alist table)
 		(lambda (a b)
-		  (let ((a (symbol-name (car a)))
-			(b (symbol-name (car b))))
+		  (let ((a (symbol->string (car a)))
+			(b (symbol->string (car b))))
 		    (string<?
 		     (string-head a (fix:- (string-length a) 1))
 		     (string-head b (fix:- (string-length b) 1)))))))))
@@ -938,7 +938,7 @@ USA.
 	  (let ((start (string-length expansion)))
 	    (if (*match-string match:name s start end)
 		(begin
-		  (write-string (symbol-name prefix) port)
+		  (write-string (symbol->string prefix) port)
 		  (write-substring s start end port))
 		(write-rdf/nt-uri uri port)))
 	  (write-rdf/nt-uri uri port)))))
@@ -1003,7 +1003,7 @@ USA.
   (write-char #\space port))
 
 (define (write-symbol symbol port)
-  (write-string (symbol-name symbol) port))
+  (write-string (symbol->string symbol) port))
 
 (define (write-parens open close indentation port procedure)
   (write-string open port)

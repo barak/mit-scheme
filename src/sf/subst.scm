@@ -863,7 +863,7 @@ USA.
 (define (hackify-variable variable)
   (set-variable/name!
    variable
-   (string->uninterned-symbol (symbol-name (variable/name variable)))))
+   (string->uninterned-symbol (symbol->string (variable/name variable)))))
 
 (define (sequence-with-actions sequence actions)
   (sequence/make (sequence/scode sequence) actions))

@@ -1029,8 +1029,8 @@ USA.
 	     (actions (cdr clause)))
 	 `(,(cond ((eq? key 'EOF)
 		   `(EOF-OBJECT? CHAR))
-		  ((fix:= 1 (string-length (symbol-name key)))
-		   `(CHAR=? CHAR ,(string-ref (symbol-name key) 0)))
+		  ((fix:= 1 (string-length (symbol->string key)))
+		   `(CHAR=? CHAR ,(string-ref (symbol->string key) 0)))
 		  (else
 		   `(CHAR-SET-MEMBER? ,(symbol 'CHAR-SET:URI- key) CHAR)))
 	   ,@(map (lambda (action)
@@ -1046,7 +1046,7 @@ USA.
      (define (action:push? action) (syntax-match? '('PUSH ? SYMBOL) action))
      (define (expand:push action)
        `(WRITE-CHAR ,(if (pair? (cdr action))
-			 (string-ref (symbol-name (cadr action)) 0)
+			 (string-ref (symbol->string (cadr action)) 0)
 			 'CHAR)
 		    BUFFER))
 

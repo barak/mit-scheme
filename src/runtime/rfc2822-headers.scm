@@ -50,7 +50,7 @@ USA.
 (define (header-name? object)
   (and (interned-symbol? object)
        (not (eq? object '||))
-       (string-in-char-set? (symbol-name object) char-set:rfc2822-name)))
+       (string-in-char-set? (symbol->string object) char-set:rfc2822-name)))
 
 (define-guarantee header-name "RFC 2822 header-field name")
 
@@ -109,7 +109,7 @@ USA.
   (newline port))
 
 (define (write-name name port)
-  (let* ((name (symbol-name name))
+  (let* ((name (symbol->string name))
          (end (string-length name)))
     (if (char-alphabetic? (string-ref name 0))
 	(letrec

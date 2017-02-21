@@ -279,9 +279,9 @@ The following commands evaluate Scheme expressions:
 	    (cond ((not (pair? completions))
 		   (if-not-found))
 		  ((null? (cdr completions))
-		   (if-unique (symbol-name (car completions))))
+		   (if-unique (symbol->string (car completions))))
 		  (else
-		   (let ((completions (map symbol-name completions)))
+		   (let ((completions (map symbol->string completions)))
 		     (if-not-unique
 		      (string-greatest-common-prefix completions)
 		      (lambda () (sort completions string<=?))))))))
@@ -293,7 +293,7 @@ The following commands evaluate Scheme expressions:
   (let ((completions '()))
     (for-each-interned-symbol
      (lambda (symbol)
-       (if (and (string-prefix? prefix (symbol-name symbol))
+       (if (and (string-prefix? prefix (symbol->string symbol))
 		(filter symbol))
 	   (set! completions (cons symbol completions)))
        unspecific))
@@ -353,13 +353,13 @@ Otherwise, it is shown in the echo area."
 			(cond ((pair? argl)
 			       (insert-char #\space point)
 			       (insert-string (if (symbol? (car argl))
-						  (symbol-name (car argl))
+						  (symbol->string (car argl))
 						  (write-to-string (car argl)))
 					      point)
 			       (loop (cdr argl)))
 			      ((symbol? argl)
 			       (insert-string " . " point)
-			       (insert-string (symbol-name argl) point)))))
+			       (insert-string (symbol->string argl) point)))))
 		    (parameterize*
 		     (list (cons param:unparse-uninterned-symbols-by-name? #t))
 		     (lambda ()

@@ -73,7 +73,7 @@ USA.
 (define-guarantee xml-name "an XML Name")
 
 (define (xml-name-string name)
-  (symbol-name (xml-name->symbol name)))
+  (symbol->string (xml-name->symbol name)))
 
 (define (xml-name->symbol name)
   (cond ((xml-name-symbol? name) name)
@@ -145,7 +145,7 @@ USA.
 	  (string->symbol object))
 	(begin
 	  (guarantee-symbol object constructor)
-	  (if (not (string-predicate (symbol-name object)))
+	  (if (not (string-predicate (symbol->string object)))
 	      (error:bad-range-argument object constructor))
 	  object))))
 
@@ -161,7 +161,7 @@ USA.
 (define (name-predicate string-predicate)
   (lambda (object)
     (and (symbol? object)
-	 (string-predicate (symbol-name object)))))
+	 (string-predicate (symbol->string object)))))
 
 (define xml-name-symbol? (name-predicate string-is-xml-name?))
 (define xml-nmtoken? (name-predicate string-is-xml-nmtoken?))
@@ -230,7 +230,7 @@ USA.
   (%xml-qname-prefix qname))
 
 (define (%xml-qname-prefix qname)
-  (let ((s (symbol-name qname)))
+  (let ((s (symbol->string qname)))
     (let ((c (string-find-next-char s #\:)))
       (if c
 	  (string->symbol (string-head s c))
@@ -241,7 +241,7 @@ USA.
   (%xml-qname-local qname))
 
 (define (%xml-qname-local qname)
-  (let ((s (symbol-name qname)))
+  (let ((s (symbol->string qname)))
     (let ((c (string-find-next-char s #\:)))
       (if c
 	  (string->symbol (string-tail s (fix:+ c 1)))

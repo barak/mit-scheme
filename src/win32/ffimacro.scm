@@ -114,7 +114,7 @@ to inside a string that is being used as the buffer).
 		   (map (lambda (sym)
 			  (intern
 			   (string-append "[converted "
-					  (symbol-name sym)
+					  (symbol->string sym)
 					  "]")))
 			arg-names)))
 	     `((ACCESS PARAMETERIZE-WITH-MODULE-ENTRY

@@ -933,7 +933,7 @@ and reverse search is specified by a negative numeric arg."
 		(number->string (msg-memo/number (msg-memo/last memo)))
 		(append-map!
 		 (lambda (label) (list "," label))
-		 (append! (map symbol-name (msg-memo/attributes memo))
+		 (append! (map symbol->string (msg-memo/attributes memo))
 			  (parse-labels (msg-memo/start memo))))))))
 
 ;;;; Message deletion
@@ -1767,7 +1767,7 @@ Completion is performed over known labels when reading."
 	  rmail-last-label
 	  (alist->string-table
 	   (map list
-		(append! (map symbol-name attributes)
+		(append! (map symbol->string attributes)
 			 (buffer-keywords (current-buffer)))))
 	  'REQUIRE-MATCH? require-match?)))
     (set! rmail-last-label label)
@@ -1825,7 +1825,7 @@ Completion is performed over known labels when reading."
 	      (update-mode-line! (mark-buffer start))))))))
 
 (define (attribute->string attribute)
-  (string-append " " (string-downcase (symbol-name attribute)) ","))
+  (string-append " " (string-downcase (symbol->string attribute)) ","))
 
 (define (label->attribute label)
   (let ((s (intern-soft label)))

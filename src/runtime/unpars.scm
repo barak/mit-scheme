@@ -438,7 +438,7 @@ USA.
 (define (unparse-symbol symbol context)
   (if (keyword? symbol)
       (unparse-keyword-name (keyword->string symbol) context)
-      (unparse-symbol-name (symbol-name symbol) context)))
+      (unparse-symbol-name (symbol->string symbol) context)))
 
 (define (unparse-keyword-name s context)
   (case (get-param:parser-keyword-style (context-environment context))

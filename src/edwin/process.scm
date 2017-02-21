@@ -507,7 +507,7 @@ after the listing is made.)"
 	    (let ((process (car processes)))
 	      (write-line (or (process-name process) "")
 			  (let ((status (process-status process)))
-			    (let ((name (symbol-name status)))
+			    (let ((name (symbol->string status)))
 			      (if (or (eq? 'EXIT status)
 				      (eq? 'SIGNAL status))
 				  (let ((reason (process-exit-reason process)))

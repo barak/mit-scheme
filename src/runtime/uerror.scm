@@ -317,7 +317,7 @@ USA.
 	(and code
 	     ((ucode-primitive system-call-error-message 1) code)))
       (if (symbol? error-type)
-	  (string-replace (symbol-name error-type) #\- #\space)
+	  (string-replace (symbol->string error-type) #\- #\space)
 	  (string-append "error " (write-to-string error-type)))))
 
 ;++ Whattakludge!

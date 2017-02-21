@@ -292,12 +292,12 @@ USA.
 
 (define (http-token? object)
   (and (interned-symbol? object)
-       (string-is-http-token? (symbol-name object))))
+       (string-is-http-token? (symbol->string object))))
 
 (define-guarantee http-token "HTTP token")
 
 (define (write-http-token token port)
-  (write-string (symbol-name token) port))
+  (write-string (symbol->string token) port))
 
 (define (http-token-string? object)
   (and (string? object)
@@ -656,7 +656,7 @@ USA.
 			(*matcher
 			 (seq segment
 			      (* (seq #\- segment)))))
-		      (symbol-name object))))
+		      (symbol->string object))))
 
 (define language-range?
   (alt-predicate *? language-tag?))
