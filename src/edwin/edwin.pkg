@@ -103,6 +103,17 @@ USA.
 	 )
 
   (parent ())
+  (import (runtime)
+	  define-primitives
+	  ucode-primitive
+	  ucode-type)
+  (import (runtime char-syntax)
+	  char-syntax-table/entries)
+  (import (runtime character)
+	  bucky-bits->prefix)
+  (import (runtime microcode-tables)
+	  fixed-objects-item
+	  update-fixed-objects-item!)
   (import (runtime parser)
 	  (param:parser-associate-positions?
 	   runtime-param:parser-associate-positions?)
@@ -110,17 +121,6 @@ USA.
 	  (param:parser-radix runtime-param:parser-radix)
 	  (param:parser-table runtime-param:parser-table)
 	  get-param:parser-fold-case?)
-  (import (runtime character)
-	  bucky-bits->prefix)
-  (import (runtime char-syntax)
-	  char-syntax-table/entries)
-  (import (runtime)
-	  define-primitives
-	  ucode-primitive
-	  ucode-type)
-  (import (runtime microcode-tables)
-	  fixed-objects-item
-	  update-fixed-objects-item!)
   (import (runtime port)
 	  (make-port make-textual-port)
 	  (make-port-type make-textual-port-type)
@@ -128,8 +128,8 @@ USA.
 	  (port/output-channel output-port-channel)
 	  (port/state textual-port-state)
 	  generic-port-operation:write-substring)
-  (export (edwin class-macros)
-	  class-instance-transforms)
+  (import (runtime string)
+	  (make-string make-legacy-string))
   (export ()
 	  create-editor
 	  create-editor-args
@@ -139,7 +139,9 @@ USA.
 	  reset-editor
 	  reset-editor-windows
 	  (save-editor-files debug-save-files)
-	  spawn-edwin))
+	  spawn-edwin)
+  (export (edwin class-macros)
+	  class-instance-transforms))
 
 (define-package (edwin class-macros)
   (files "clsmac")

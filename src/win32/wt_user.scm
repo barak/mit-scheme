@@ -72,7 +72,7 @@ USA.
 (define-integrable (set-rect/bottom! r v) (int32-offset-set! (rect/mem r) 12 v))
 
 (define (make-rect left top right bottom)
-  (define r (%make-rect (make-string 16)))
+  (define r (%make-rect (make-legacy-string 16)))
   (set-rect/left!   r left)
   (set-rect/top!    r top)
   (set-rect/right!  r right)
@@ -134,7 +134,7 @@ USA.
   (byte-offset-set! (paintstruct/mem r) 28 (bool->int v)))
 
 (define (make-paintstruct)
-  (define r (%make-paintstruct (make-string 64)))
+  (define r (%make-paintstruct (make-legacy-string 64)))
   r)
 
 (define-windows-type paintstruct

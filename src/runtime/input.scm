@@ -172,7 +172,7 @@ USA.
   (guarantee index-fixnum? k 'read-string)
   (let ((port (optional-input-port port 'read-string)))
     (if (fix:> k 0)
-	(let ((string (make-ustring k)))
+	(let ((string (make-string k)))
 	  (let ((n (input-port/read-string! port string)))
 	    (cond ((not n) n)
 		  ((fix:> n 0) (if (fix:< n k) (string-head string n) string))

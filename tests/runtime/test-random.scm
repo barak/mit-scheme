@@ -44,7 +44,7 @@ USA.
 	    (j-limit (quotient n-bits-in-file n-bits-per-integer))
 	    (i-limit (quotient n-bits-per-integer 8)))
 	(let ((j-dot (quotient j-limit n-progress-dots))
-	      (buffer (make-string i-limit)))
+	      (buffer (make-legacy-string i-limit)))
 	  (do ((j 0 (+ j 1)))
 	      ((= j j-limit))
 	    (if (= 0 (remainder j j-dot))

@@ -125,7 +125,8 @@ USA.
   (delete-value! key name))
 
 (define (win32/expand-environment-strings string)
-  (let ((result (make-string (win32-expand-environment-strings string ""))))
+  (let ((result
+	 (make-legacy-string (win32-expand-environment-strings string ""))))
     (win32-expand-environment-strings string result)
     (let ((nul (string-find-next-char result #\nul)))
       (if nul
@@ -416,7 +417,7 @@ USA.
   (let* ((handle (guarantee-handle key))
 	 (buffer-length
 	  (vector-ref (win32-query-info-registry-key handle) length-index))
-	 (buffer (make-string buffer-length)))
+	 (buffer (make-legacy-string buffer-length)))
     (let loop ((index 0) (vs '()))
       (let ((v (enumerator handle index buffer)))
 	(if v

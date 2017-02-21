@@ -328,7 +328,7 @@ USA.
 	       (buffer-length 8192))
 	   (if (zero? source-length)
 	       0
-	       (let* ((buffer (make-string buffer-length))
+	       (let* ((buffer (make-legacy-string buffer-length))
 		      (transfer
 		       (lambda (length)
 			 (let ((n-read

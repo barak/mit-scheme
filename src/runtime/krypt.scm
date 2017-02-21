@@ -167,14 +167,14 @@ USA.
 		 (header (string-append kryptid (get-krypt-time-string) "\n"))
 		 (hlen (string-length header))
 		 (output-string
-		  (make-string
+		  (make-legacy-string
 		   (fix:+ 6 (fix:+ hlen (string-length input-string)))))
 		 (end-index (fix:- (string-length output-string) ts)))
 	    (let ((key1 (make-krypt-key)))
 	      (rcm-keyinit key1)
 	      (rcm-key key1 header)
 	      (rcm-key key1 password)
-	      (let ((passwordmac (make-string 5 #\NUL)))
+	      (let ((passwordmac (make-legacy-string 5 #\NUL)))
 		(rcm key1 5 passwordmac)
 		(substring-move! header 0 hlen output-string 0)
 		(substring-move! passwordmac 0 5 output-string hlen)
@@ -220,7 +220,7 @@ USA.
 	      (rcm-keyinit key1)
 	      (rcm-key key1 header)
 	      (rcm-key key1 password)
-	      (let ((passwordmac (make-string 5 #\NUL)))
+	      (let ((passwordmac (make-legacy-string 5 #\NUL)))
 		(rcm key1 5 passwordmac)
 		(if (string=? passwordmac pwordmac)
 		    (begin

@@ -646,7 +646,7 @@ USA.
      (if %trace? (%outf-error . MSG)))))
 
 (define (tindent)
-  (make-string (* 2 (length calloutback-stack)) #\space))
+  (make-legacy-string (* 2 (length calloutback-stack)) #\space))
 
 (define (%outf-error . msg)
   (apply outf-error `("; ",@msg"\n")))

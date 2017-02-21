@@ -114,13 +114,13 @@ not much different to numbers within a few orders of magnitude of 1.
 	    ((< k+1-l (- n))
 	     (scientific-output digits k radix 0))
 	    ((negative? k)
-	     (string-append "." (make-string (- k+1) #\0) digits))
+	     (string-append "." (make-legacy-string (- k+1) #\0) digits))
 	    ((negative? k+1-l)
 	     (string-append (string-head digits k+1)
 			    "."
 			    (string-tail digits k+1)))
 	    ((<= k n)
-	     (string-append digits (make-string k+1-l #\0) "."))
+	     (string-append digits (make-legacy-string k+1-l #\0) "."))
 	    (else
 	     (scientific-output digits k radix 0))))))
 
@@ -137,7 +137,7 @@ not much different to numbers within a few orders of magnitude of 1.
     (cond ((= l 0)
 	   (string-append "0e" exponent))
 	  ((< l i)
-	   (string-append digits (make-string (- i l) #\0) "e" exponent))
+	   (string-append digits (make-legacy-string (- i l) #\0) "e" exponent))
 	  ((= l i)
 	   (string-append digits "e" exponent))
 	  (else

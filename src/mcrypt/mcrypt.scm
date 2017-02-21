@@ -278,8 +278,8 @@ USA.
 			     encrypt?)
   ;; Assumes that INPUT is in blocking mode.
   (let ((context (mcrypt-open-module algorithm mode))
-	(input-buffer (make-string 4096))
-	(output-buffer (make-string 4096)))
+	(input-buffer (make-legacy-string 4096))
+	(output-buffer (make-legacy-string 4096)))
     (mcrypt-init context key init-vector)
     (dynamic-wind
      (lambda ()

@@ -234,7 +234,7 @@ USA.
 
 
 (define (make-message-polling-loop)
-  (define msg (make-string 40))
+  (define msg (make-legacy-string 40))
   (define (message-polling-loop)
     (if (peek-message msg 0 0 0 1 #|PM_REMOVE|#)
         (begin

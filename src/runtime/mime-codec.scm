@@ -317,7 +317,7 @@ USA.
   (if (fix:< start end)
       (if pending
 	  (let ((s
-		 (make-string
+		 (make-legacy-string
 		  (fix:+ (string-length pending) (fix:- end start)))))
 	    (substring-move! string start end
 			     s (string-move! pending s 0))
@@ -372,8 +372,8 @@ USA.
 
 (define hex-char-table)
 (define hex-digit-table)
-(let ((char-table (make-string 256 (integer->char #xff)))
-      (digit-table (make-string 16)))
+(let ((char-table (make-legacy-string 256 (integer->char #xff)))
+      (digit-table (make-legacy-string 16)))
   (define (do-range low high value)
     (do-char low value)
     (if (fix:< low high)
@@ -395,7 +395,7 @@ USA.
 		   (constructor encode-base64:initialize (port text?)))
   (port #f read-only #t)
   (text? #f read-only #t)
-  (buffer (make-string 48) read-only #t)
+  (buffer (make-legacy-string 48) read-only #t)
   (index 0))
 
 (define (encode-base64:finalize context)
@@ -469,14 +469,14 @@ USA.
 		   (constructor decode-base64:initialize (port text?)))
   (port #f read-only #t)
   (text? #f read-only #t)
-  (input-buffer (make-string 4) read-only #t)
+  (input-buffer (make-legacy-string 4) read-only #t)
   (input-index 0)
   ;; Ugh bletch.  Add state to look for line starting with NON-BASE64
   ;; character, and stop decoding there.  This works around problem
   ;; that arises when mail-processing agents randomly glue text on the
   ;; end of a MIME message.
   (input-state 'LINE-START)
-  (output-buffer (make-string 3) read-only #t)
+  (output-buffer (make-legacy-string 3) read-only #t)
   (pending-return? #f))
 
 (define (decode-base64:finalize context)
@@ -594,8 +594,8 @@ USA.
 
 (define base64-char-table)
 (define base64-digit-table)
-(let ((char-table (make-string 256 (integer->char #xff)))
-      (digit-table (make-string 64)))
+(let ((char-table (make-legacy-string 256 (integer->char #xff)))
+      (digit-table (make-legacy-string 64)))
   (define (do-range low high value)
     (do-char low value)
     (if (fix:< low high)
@@ -631,9 +631,9 @@ USA.
   (port #f read-only #t)
   (state 'SEEKING-COMMENT)
   (line-buffer "")
-  (input-buffer (make-string 4) read-only #t)
+  (input-buffer (make-legacy-string 4) read-only #t)
   (input-index 0)
-  (output-buffer (make-string 3) read-only #t))
+  (output-buffer (make-legacy-string 3) read-only #t))
 
 (define (decode-binhex40:initialize port text?)
   text?					;ignored
@@ -778,7 +778,7 @@ USA.
   "!\"#$%&\'()*+,-012345689@ABCDEFGHIJKLMNPQRSTUVXYZ[`abcdefhijklmpqr")
 
 (define binhex40-char-table
-  (make-string 256 (integer->char #xff)))
+  (make-legacy-string 256 (integer->char #xff)))
 
 (do ((code 0 (fix:+ code 1)))
     ((fix:= code 64))
@@ -875,7 +875,7 @@ USA.
       (if (fix:= index 0)
 	  (begin
 	    (set-binhex40-decon/header!
-	     state (make-string (fix:+ 22 (char->integer char))))
+	     state (make-legacy-string (fix:+ 22 (char->integer char))))
 	    (set-binhex40-decon/index! state 1))
 	  (let ((header (binhex40-decon/header state)))
 	    (string-set! header index char)
@@ -931,7 +931,7 @@ USA.
   text?
   (let ((state 'BEGIN)
 	(line-buffer (make-line-buffer 256))
-	(output-buffer (make-string 3)))
+	(output-buffer (make-legacy-string 3)))
 
     (define (update string start end)
       (if (and (not (eq? state 'FINISHED))
@@ -1008,7 +1008,7 @@ USA.
   (finalize uudecode-ctx-finalize))
 
 (define (make-line-buffer n-max)
-  (let ((s (make-string n-max)))
+  (let ((s (make-legacy-string n-max)))
     (set-string-length! s 0)
     (cons n-max s)))
 
@@ -1021,7 +1021,7 @@ USA.
 	    (let loop ((n-max (fix:* n-max 2)))
 	      (if (fix:< n-max m)
 		  (loop (fix:* n-max 2))
-		  (let ((s* (make-string n-max)))
+		  (let ((s* (make-legacy-string n-max)))
 		    (substring-move! s 0 n s* 0)
 		    (set-string-length! s* m)
 		    (set-cdr! line-buffer s*))))
@@ -1030,7 +1030,7 @@ USA.
 
 (define (line-buffer-contents line-buffer)
   (let ((contents (cdr line-buffer))
-	(s (make-string (car line-buffer))))
+	(s (make-legacy-string (car line-buffer))))
     (set-string-length! s 0)
     (set-cdr! line-buffer s)
     contents))

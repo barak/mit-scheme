@@ -44,7 +44,7 @@ USA.
 	 (image (image/create window image-width image-height))
 	 (pixels
 	  (if use-string?
-	      (make-string (fix:* image-width image-height))
+	      (make-legacy-string (fix:* image-width image-height))
 	      (make-vector (fix:* image-width image-height))))
 	 (write-pixel (if use-string? vector-8b-set! vector-set!))
 	 (py-max (- pic-height 1))

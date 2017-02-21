@@ -44,7 +44,7 @@ USA.
 
   x-left y-bottom x-right y-top ;
   x-scale y-scale
-    
+
   fg-color  bg-color
   pen-valid?
   line-width line-style
@@ -117,18 +117,18 @@ USA.
 	     (hdc        (get-dc hwnd))
 	     (bitmap-dc)
 	     (bitmap))
-	
+
 	(if palette
 	    (select-palette hdc palette #f))
 	(set! bitmap-dc  (create-compatible-dc hdc))
 	(if palette
 	    (select-palette bitmap-dc palette #f))
-	(set! bitmap   
+	(set! bitmap
 	      (create-compatible-bitmap hdc (win32-device/width window)
 					(win32-device/height window)))
 	(if palette
 	    (realize-palette hdc))
-	
+
 	(set-win32-device/bitmap! window bitmap)
 	(set-win32-device/hwnd! window hwnd)
 	(set-win32-device/hdc! window bitmap-dc)
@@ -149,7 +149,7 @@ USA.
       ;; windows and closing them with the close button; the result is
       ;; the BSOD.
       0)
-     
+
      ((= msg WM_DESTROY)
       (let ((bitmap-dc (win32-device/hdc window)))
 	(if (not (eqv? 0 bitmap-dc))
@@ -182,7 +182,7 @@ USA.
 	      (realize-palette hdc)
 	      (realize-palette (win32-device/hdc window))
 	    ))
-	(bit-blt hdc 0 0 
+	(bit-blt hdc 0 0
 		 (win32-device/width window) (win32-device/height window)
 		 (win32-device/hdc window) 0 0 SRCCOPY)
 	(end-paint hwnd ps))
@@ -196,10 +196,10 @@ USA.
 	    (release-dc hwnd hdc)
 	    ))
        0)
-	    
+
      ((and (= msg WM_PALETTEISCHANGING) (win32-device/palette window))
       (default))
-	    
+
      ((and (= msg WM_QUERYNEWPALETTE) (win32-device/palette window))
       (update-palette))
 
@@ -259,10 +259,9 @@ USA.
 
     (else
       (default)))))
-	
 
 (define (make-standard-palette)
-  (define pal (make-string (+ 4 (* 4 256))))
+  (define pal (make-legacy-string (+ 4 (* 4 256))))
   (define i 0)
   (define (alloc r g b f)
     (let ((base (fix:+ 4 (fix:* i 4))))
@@ -298,7 +297,7 @@ USA.
 )
 
 (define (make-grayscale-palette)
-  (define pal (make-string (+ 4 (* 4 256))))
+  (define pal (make-legacy-string (+ 4 (* 4 256))))
   (define i 0)
   (define (alloc r g b f)
     (let ((base (fix:+ 4 (fix:* i 4))))
@@ -323,9 +322,8 @@ USA.
   (create-palette pal)
 )
 
-
 (define (make-grayscale-128-palette)
-  (define pal (make-string (+ 4 (* 4 256))))
+  (define pal (make-legacy-string (+ 4 (* 4 256))))
   (define i 0)
   (define (alloc r g b f)
     (let ((base (fix:+ 4 (fix:* i 4))))
@@ -361,7 +359,7 @@ USA.
 			 (loop (+ i 1)))))))))
 
 (define (convert-palette external)
-  (let ((s (make-string (+ 4 (* 4 256))))
+  (let ((s (make-legacy-string (+ 4 (* 4 256))))
 	(n-entries (vector-length external)))
     (vector-8b-set! s 0 #x00)
     (vector-8b-set! s 1 #x03)
@@ -393,7 +391,7 @@ USA.
 
 (define device-protection-list)
 
-(define (win32-graphics/open descriptor->device 
+(define (win32-graphics/open descriptor->device
 			     #!optional width height palette)
   (let* ((width   (if (default-object? width)  512 width))
          (height  (if (default-object? height) 512 height))
@@ -432,7 +430,7 @@ USA.
 	 (old-pen  (select-object hdc new-pen)))
     (delete-object old-pen)
     (set-win32-device/pen-valid?! window #t)))
-  
+
 (define-integrable (win32-device/validate-pen window)
   (if (not (win32-device/pen-valid? window))
       (win32-device/select-pen window)))
@@ -470,7 +468,7 @@ USA.
   (set-win32-device/y-scale!   window
     (/ (- (win32-device/height window) 1)
       (- (win32-device/y-bottom window) (win32-device/y-top window)))))
-    
+
 (define (win32-translate-drawing-mode mode)
   (case mode				;X11 function names:
     (( 0) R2_BLACK)			;GXclear
@@ -589,7 +587,7 @@ USA.
     (text-out hdc xt yt text (string-length text))
     (win32-device/invalidate! window)
     unspecific))
-  
+
 
 (define (win32-graphics/move-cursor device x y)
   (let ((window (graphics-device/descriptor device)))
@@ -622,7 +620,7 @@ USA.
 
 (define (make-C-point-vector window vec)
   (let* ((n  (vector-length vec))
-         (s  (make-string (* 4 n))))
+         (s  (make-legacy-string (* 4 n))))
     (define (loop i)
       (if (fix:< i n)
 	(begin
@@ -690,7 +688,7 @@ USA.
 	(set! h heightt)))
 
     (bit-blt hdc x1 y1 w h hdc x0 y0 SRCCOPY)
-	  
+
     (win32-device/invalidate! window)
     unspecific))
 
@@ -809,7 +807,7 @@ USA.
     ("pink"         255 181 197)
     ("brown"        127  63   0)))
 
-    
+
 (define (win32-graphics/set-foreground-color device color)
   (let* ((window (graphics-device/descriptor device))
          (hdc    (win32-device/hdc window))
@@ -840,7 +838,7 @@ USA.
          (hwnd   (win32-device/hwnd window)))
     (set-window-pos hwnd 0 x y 0 0
 		    (+ SWP_NOZORDER SWP_NOSIZE SWP_NOACTIVATE))))
-      
+
 (define (win32-graphics/resize-window device w h)
   (let* ((window (graphics-device/descriptor device))
          (hwnd   (win32-device/hwnd window)))
@@ -848,7 +846,7 @@ USA.
       (client-width->window-width w)
       (client-height->window-height h)
       (+ SWP_NOZORDER SWP_NOMOVE SWP_NOACTIVATE))))
-      
+
 (define (win32-graphics/set-font device font)
   (let* ((window (graphics-device/descriptor device))
          (hdc    (win32-device/hdc window)))

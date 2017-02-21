@@ -423,7 +423,7 @@ USA.
 (define-integrable buffer-read 4096)
 
 (define-structure (bb (constructor make-byte-buffer ()))
-  (vector (make-string buffer-size) read-only true)
+  (vector (make-legacy-string buffer-size) read-only true)
   (ptr 0)
   (end 0)
   (eof? false))
@@ -676,7 +676,7 @@ USA.
 	(set-oldest state (oldest-node state) pointer))))
 
 (define (make-output-buffer)
-  (cons 0 (make-string 4096)))
+  (cons 0 (make-legacy-string 4096)))
 
 (define (write-byte state byte)
   (let ((ob (output-buffer state)))

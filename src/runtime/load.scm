@@ -206,7 +206,7 @@ USA.
        (call-with-legacy-binary-input-file pathname
 	 (lambda (port)
 	   (let ((n (vector-ref (gc-space-status) 0)))
-	     (let ((marker (make-string n)))
+	     (let ((marker (make-legacy-string n)))
 	       (and (eqv? (read-string! marker port) n)
 		    (let loop ((i 0))
 		      (if (fix:< i n)

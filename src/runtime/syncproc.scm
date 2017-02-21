@@ -199,7 +199,7 @@ USA.
 	      (if nonblock?
 		  (set-output-port-blocking-mode! port 'nonblocking))
 	      (receiver
-	       (let ((buffer (make-ustring bsize)))
+	       (let ((buffer (make-string bsize)))
 		 (lambda ()
 		   (with-input-port-blocking-mode process-input 'BLOCKING
 		     (lambda ()
@@ -235,7 +235,7 @@ USA.
     (let ((input-port/open? (port/operation port 'INPUT-OPEN?))
 	  (input-port/close (port/operation port 'CLOSE-INPUT)))
       (if process-output
-	  (let ((buffer (make-ustring bsize)))
+	  (let ((buffer (make-string bsize)))
 	    (let ((copy-output
 		   (lambda ()
 		     (let ((n (input-port/read-string! port buffer)))

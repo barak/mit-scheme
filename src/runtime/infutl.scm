@@ -495,7 +495,7 @@ USA.
 				     read-substring)
   (define-integrable input-size 4096)
   (let ((cp-table (make-vector window-size))
-	(input-buffer (make-string input-size)))
+	(input-buffer (make-legacy-string input-size)))
 
     (define (displacement->cp-index displacement cp)
       (let ((index (fix:- cp displacement)))
@@ -511,12 +511,12 @@ USA.
 	(string-set! s2 i2 (string-ref s1 i1))))
 
     (let parse-command ((bp 0) (cp 0) (ip 0) (ip-end 0)
-			       (buffer (make-string buffer-size))
+			       (buffer (make-legacy-string buffer-size))
 			       (buffer-size buffer-size))
       ;; Invariant: (SUBTRING BUFFER IP IP-END) is unprocessed input.
       (define (retry-with-bigger-output-buffer)
 	(let* ((new-size (fix:+ buffer-size (fix:quotient buffer-size 4)))
-	       (nbuffer (make-string new-size)))
+	       (nbuffer (make-legacy-string new-size)))
 	  (substring-move! buffer 0 buffer-size nbuffer 0)
 	  (parse-command bp cp ip ip-end nbuffer new-size)))
 
@@ -608,7 +608,7 @@ USA.
     (lambda (input)
       (let* ((file-marker "Compressed-B1-1.00")
 	     (marker-size (string-length file-marker))
-	     (actual-marker (make-string marker-size)))
+	     (actual-marker (make-legacy-string marker-size)))
 	;; This may get more hairy as we up versions
 	(if (and (fix:= (uncompress-read-substring input
 						   actual-marker 0 marker-size)

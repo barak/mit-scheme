@@ -278,7 +278,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 						(char->integer #\backspace)))
 					(char->string #\Delete))
 				       ((> nbytes 0)
-					(let ((s (make-string nbytes)))
+					(let ((s (make-legacy-string nbytes)))
 					  (c-peek-bytes buffer 0 nbytes s 0)
 					  s))
 				       (else ""))
@@ -830,7 +830,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 (define (char-ptr-to-prop-data-8 data length)
   (let ((scan (copy-alien data))
-	(result (make-string length)))
+	(result (make-legacy-string length)))
     (let loop ((index 0))
       (if (< index length)
 	  (begin

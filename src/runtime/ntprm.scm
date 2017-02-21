@@ -516,7 +516,7 @@ USA.
 		      (substring<? (car s1) 0 (cdr s1)
 				   (car s2) 0 (cdr s2)))))))
     (let ((result
-	   (make-string
+	   (make-legacy-string
 	    (reduce +
 		    0
 		    (map (lambda (s) (fix:+ (string-length s) 1))
@@ -544,7 +544,7 @@ USA.
 (define (rewrite-args/no-quoting strings)
   (if (pair? strings)
       (let ((result
-	     (make-string
+	     (make-legacy-string
 	      (fix:+ (reduce +
 			     0
 			     (map (lambda (s) (string-length s)) strings))
@@ -583,7 +583,7 @@ USA.
 	   (cons (if need-quotes? (fix:+ k 2) k)
 		 need-quotes?)))))
   (let ((analyses (map analyze-arg strings)))
-    (let ((result (make-string (reduce + 0 (map car analyses)))))
+    (let ((result (make-legacy-string (reduce + 0 (map car analyses)))))
       (define (do-arg index s analysis)
 	(if (cdr analysis)
 	    (begin
@@ -696,7 +696,7 @@ USA.
 	     (pathname-default-type
 	      ((make-primitive-procedure 'SCHEME-PROGRAM-NAME))
 	      "exe"))))
-	  (buf (make-string 256)))
+	  (buf (make-legacy-string 256)))
       (substring buf 0 ((access get-module-file-name env) handle buf 256)))))
 
 (define (os/shell-file-name)

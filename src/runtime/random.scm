@@ -168,7 +168,7 @@ USA.
 
 (define (random-byte-vector n #!optional state)
   (let ((state (get-random-state state 'RANDOM-BYTE-VECTOR))
-	(s (make-string n)))
+	(s (make-vector-8b n)))
     (do ((i 0 (fix:+ i 1)))
 	((fix:= i n))
       (vector-8b-set! s i (small-random-integer 256 state)))

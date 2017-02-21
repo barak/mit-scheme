@@ -294,7 +294,7 @@ USA.
 ;;;; Translation Tables
 
 (define re-translation-table
-  (let ((normal-table (make-string 256)))
+  (let ((normal-table (make-legacy-string 256)))
     (let loop ((n 0))
       (if (< n 256)
 	  (begin
@@ -674,7 +674,7 @@ USA.
     (let ((invert?
 	   (and (input-match? (input-peek ctx) #\^)
 		(begin (input-discard! ctx) #t)))
-	  (charset (make-string 32 (integer->char 0))))
+	  (charset (make-legacy-string 32 (integer->char 0))))
       (if (input-end? ctx)
 	  (premature-end ctx))
       (let loop

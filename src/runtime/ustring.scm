@@ -149,8 +149,8 @@ USA.
       (full-string? object)
       (slice? object)))
 
-(define (make-ustring k #!optional char)
-  (guarantee index-fixnum? k 'make-ustring)
+(define (make-string k #!optional char)
+  (guarantee index-fixnum? k 'make-string)
   (if (fix:> k 0)
       (make-full-string k char)
       (legacy-string-allocate 0)))

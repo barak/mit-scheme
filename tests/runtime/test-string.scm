@@ -233,7 +233,7 @@ USA.
     (builder)))
 
 (define (chars->string chars)
-  (let ((s (make-ustring (length chars))))
+  (let ((s (make-string (length chars))))
     (do ((chars chars (cdr chars))
 	 (i 0 (fix:+ i 1)))
 	((not (pair? chars)))

@@ -41,7 +41,7 @@ USA.
 	(error:bad-range-argument string
 				  "a string of no more than 72 characters"
 				  'blowfish-set-key))
-    (let ((result (make-string (C-sizeof "BF_KEY"))))
+    (let ((result (make-legacy-string (C-sizeof "BF_KEY"))))
       (C-call "BF_set_key" result length string)
       result)))
 
@@ -174,8 +174,8 @@ USA.
 (define (blowfish-encrypt-port input output key init-vector encrypt?)
   ;; Assumes that INPUT is in blocking mode.
   (let ((key (blowfish-set-key key))
-	(input-buffer (make-string 4096))
-	(output-buffer (make-string 4096)))
+	(input-buffer (make-legacy-string 4096))
+	(output-buffer (make-legacy-string 4096)))
     (dynamic-wind
      (lambda ()
        unspecific)
@@ -196,7 +196,7 @@ USA.
   ;; This init vector includes a timestamp with a resolution of
   ;; milliseconds, plus 20 random bits.  This should make it very
   ;; difficult to generate two identical vectors.
-  (let ((iv (make-string 8)))
+  (let ((iv (make-legacy-string 8)))
     (do ((i 0 (fix:+ i 1))
 	 (t (+ (* (+ (* (get-universal-time) 1000)
 		     (remainder (real-time-clock) 1000))
@@ -217,9 +217,9 @@ USA.
 (define (read-blowfish-file-header port)
   (let ((line (read-line port)))
     (cond ((string=? blowfish-file-header-v1 line)
-	   (make-string 8 #\NUL))
+	   (make-legacy-string 8 #\NUL))
 	  ((string=? blowfish-file-header-v2 line)
-	   (let ((init-vector (make-string 8)))
+	   (let ((init-vector (make-legacy-string 8)))
 	     (if (not (= 8 (read-string! init-vector port)))
 		 (error "Short read while getting init-vector:" port))
 	     init-vector))

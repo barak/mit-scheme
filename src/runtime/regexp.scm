@@ -195,7 +195,7 @@ USA.
 			   (loop (cdr ranges)
 				 (fix:+ n (if (pair? (car ranges)) 3 1)))
 			   n))))
-		(let ((s (make-string n)))
+		(let ((s (make-legacy-string n)))
 		  (string-set! s 0 #\[)
 		  (let loop ((ranges ranges) (i 1))
 		    (if (pair? ranges)

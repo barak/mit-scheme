@@ -136,7 +136,7 @@ USA.
   (if (not (mhash-keygen-type? type))
       (error:wrong-type-argument type "mhash type" 'MHASH-KEYGEN))
   (let ((id (mhash-keygen-type-id type))
-	(keyword (make-string (mhash-keygen-type-key-length type)))
+	(keyword (make-legacy-string (mhash-keygen-type-key-length type)))
 	(v (mhash-keygen-type-parameter-vector type)))
     (if (not ((ucode-primitive mhash_keygen 4)
 	      id
@@ -242,7 +242,7 @@ USA.
 (define (mhash-file hash-type filename)
   (call-with-legacy-binary-input-file filename
     (lambda (port)
-      (let ((buffer (make-string 4096))
+      (let ((buffer (make-legacy-string 4096))
 	    (context (mhash-init hash-type)))
 	(dynamic-wind (lambda ()
 			unspecific)
@@ -274,7 +274,7 @@ USA.
 (define (mhash-sum->hexadecimal sum)
   (let ((n (string-length sum))
 	(digits "0123456789abcdef"))
-    (let ((s (make-string (fix:* 2 n))))
+    (let ((s (make-legacy-string (fix:* 2 n))))
       (do ((i 0 (fix:+ i 1)))
 	  ((fix:= i n))
 	(string-set! s (fix:* 2 i)
@@ -306,7 +306,7 @@ USA.
 (define (%md5-file filename)
   (call-with-legacy-binary-input-file filename
     (lambda (port)
-      (let ((buffer (make-string 4096))
+      (let ((buffer (make-legacy-string 4096))
 	    (context ((ucode-primitive md5-init 0))))
 	(dynamic-wind (lambda ()
 			unspecific)
@@ -484,8 +484,8 @@ USA.
 			     encrypt?)
   ;; Assumes that INPUT is in blocking mode.
   (let ((context (mcrypt-open-module algorithm mode))
-	(input-buffer (make-string 4096))
-	(output-buffer (make-string 4096)))
+	(input-buffer (make-legacy-string 4096))
+	(output-buffer (make-legacy-string 4096)))
     (mcrypt-init context key init-vector)
     (dynamic-wind
      (lambda ()

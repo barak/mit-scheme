@@ -1012,6 +1012,7 @@ USA.
 	  guarantee-string
 	  guarantee-string-index
 	  hexadecimal->vector-8b
+	  make-legacy-string
 	  make-vector-8b
 	  vector-8b->hexadecimal
 	  vector-8b-fill!
@@ -1031,6 +1032,7 @@ USA.
 	  guarantee-string
 	  guarantee-string-index
 	  hexadecimal->vector-8b
+	  make-legacy-string
 	  make-vector-8b
 	  vector-8b->hexadecimal
 	  vector-8b-fill!
@@ -1046,7 +1048,6 @@ USA.
 	  guarantee-substring-end-index
 	  guarantee-substring-start-index
 	  lisp-string->camel-case
-	  make-string
 	  reverse-string
 	  reverse-substring
 	  set-string-length!
@@ -1120,7 +1121,7 @@ USA.
   (export ()
 	  (substring string-copy)
 	  list->string
-	  make-ustring
+	  make-string
 	  string
 	  string*
 	  string->list

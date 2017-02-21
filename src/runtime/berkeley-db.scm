@@ -260,7 +260,7 @@ USA.
     dbt))
 
 (define (make-dbt)
-  (make-string dbt-length))
+  (make-legacy-string dbt-length))
 
 (define rc:db_notfound
   (db4:name->rc 'db_notfound))
@@ -278,17 +278,17 @@ USA.
       (cond ((= rc rc:db_notfound)
 	     #f)
 	    ((= rc rc:enomem)
-	     (let ((string (make-string (db4:dbt-size datum))))
+	     (let ((string (make-legacy-string (db4:dbt-size datum))))
 	       (db4:init-dbt datum string #f #f)
 	       (pcall db4:db-get db txn key datum flags)
 	       string))
 	    ((= rc 0)
-	     (make-string 0))
+	     (make-legacy-string 0))
 	    (else
 	     (bdb-error rc 'db4:db-get))))))
 
 (define (bdb-get-partial db txn key flags start length)
-  (let ((string (make-string length)))
+  (let ((string (make-legacy-string length)))
     (let ((rc
 	   (db4:db-get (bdb-handle db)
 		       (and txn (bdb-txn-handle txn))
@@ -368,7 +368,7 @@ USA.
   (pcall db4:db-env-lock-id-free (bdb-env-handle env) id))
 
 (define (bdb-env-lock-get env id flags object lock-mode)
-  (let ((lock (make-string db-lock-length)))
+  (let ((lock (make-legacy-string db-lock-length)))
     (pcall db4:db-env-lock-get
 	   (bdb-env-handle env)
 	   id

@@ -151,9 +151,9 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
   ;; Get the contents of the terminal screen rectangle as a string.
   ;; The string contains alternating (CHARACTER, HIGHLIGHT) pairs.
   ;; The pairs are organized in row-major order from (X-START, Y-START).
-  (let* ((string (make-string (* 2
-				 (- x-end x-start)
-				 (- y-end y-start))))
+  (let* ((string (make-legacy-string (* 2
+					(- x-end x-start)
+					(- y-end y-start))))
 	 (code (c-call "xterm_save_contents"
 		       xterm x-start x-end y-start y-end string)))
     (case code

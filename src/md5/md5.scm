@@ -33,7 +33,7 @@ USA.
 
 (define (%md5-init)
   ;; Create and return an MD5 digest context.
-  (let ((context (make-string (C-sizeof "MD5_CTX"))))
+  (let ((context (make-legacy-string (C-sizeof "MD5_CTX"))))
     (C-call "MD5_INIT" context)
     context))
 
@@ -46,7 +46,7 @@ USA.
 (define (%md5-final context)
   ;; Finalize CONTEXT and return the digest as a 16-byte string.
   (guarantee-md5-context context '%MD5-FINAL)
-  (let ((result (make-string (C-enum "MD5_DIGEST_LENGTH"))))
+  (let ((result (make-legacy-string (C-enum "MD5_DIGEST_LENGTH"))))
     (C-call "do_MD5_FINAL" context result)
     result))
 
@@ -63,14 +63,14 @@ USA.
   ;; The digest is returned as a 16-byte string.
   (guarantee-string string '%MD5)
   (let ((length (string-length string))
-	(result (make-string (C-enum "MD5_DIGEST_LENGTH"))))
+	(result (make-legacy-string (C-enum "MD5_DIGEST_LENGTH"))))
     (C-call "do_MD5" string length result)
     result))
 
 (define (md5-file filename)
   (call-with-legacy-binary-input-file filename
     (lambda (port)
-      (let ((buffer (make-string 4096))
+      (let ((buffer (make-legacy-string 4096))
 	    (context (%md5-init)))
 	(dynamic-wind (lambda ()
 			unspecific)
@@ -102,7 +102,7 @@ USA.
 (define (md5-sum->hexadecimal sum)
   (let ((n (string-length sum))
 	(digits "0123456789abcdef"))
-    (let ((s (make-string (fix:* 2 n))))
+    (let ((s (make-legacy-string (fix:* 2 n))))
       (do ((i 0 (fix:+ i 1)))
 	  ((fix:= i n))
 	(string-set! s (fix:* 2 i)

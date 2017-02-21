@@ -63,7 +63,7 @@ USA.
 	  (not prefix)
 	  (and (string? prefix)
 	       (fix:= 0 (string-length prefix))))
-      (make-parser-buffer (make-ustring min-length) 0 0 0 0 port #f 0)
+      (make-parser-buffer (make-string min-length) 0 0 0 0 port #f 0)
       (let ((n (string-length prefix)))
 	(make-parser-buffer (%grow-buffer prefix n (fix:max min-length n))
 			    0 n 0 0 port #f 0))))
@@ -333,7 +333,7 @@ USA.
 		    (let ((n (string-length string)))
 		      (if (and (fix:> n min-length)
 			       (fix:<= end* (fix:quotient n 4)))
-			  (make-ustring (fix:quotient n 2))
+			  (make-string (fix:quotient n 2))
 			  string))))
 	      (without-interruption
 	       (lambda ()
@@ -382,7 +382,7 @@ USA.
 
 (define (%grow-buffer string end min-length)
   (let ((new-string
-	 (make-ustring
+	 (make-string
 	  (let loop ((n (string-length string)))
 	    (if (fix:<= min-length n)
 		n

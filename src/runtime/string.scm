@@ -59,18 +59,19 @@ USA.
 
 ;;;; Basic Operations
 
-(define (make-string length #!optional char)
-  (guarantee-string-index length 'MAKE-STRING)
-  (if (default-object? char)
-      (string-allocate length)
-      (begin
-	(guarantee-char char 'MAKE-STRING)
-	(let ((result (string-allocate length)))
-	  (substring-fill! result 0 length char)
-	  result))))
+(define (make-legacy-string k #!optional char)
+  (let ((string (string-allocate k)))
+    (if (not (default-object? char))
+	(begin
+	  (guarantee 8-bit-char? char 'make-legacy-string)
+	  (string-fill! string char)))
+    string))
 
 (define (make-vector-8b length #!optional ascii)
-  (make-string length (if (default-object? ascii) ascii (integer->char ascii))))
+  (make-legacy-string length
+		      (if (default-object? ascii)
+			  ascii
+			  (integer->char ascii))))
 
 (define (string-maximum-length string)
   (guarantee-string string 'STRING-MAXIMUM-LENGTH)
@@ -98,7 +99,7 @@ USA.
 
 (define (%reverse-substring string start end)
   (let ((n (fix:- end start)))
-    (let ((result (make-string n)))
+    (let ((result (make-legacy-string n)))
       (do ((i start (fix:+ i 1))
 	   (j (fix:- n 1) (fix:- j 1)))
 	  ((fix:= i end))
@@ -110,7 +111,7 @@ USA.
     (string-ref "0123456789abcdef" (fix:and k #x0F)))
   (guarantee-string bytes 'VECTOR-8B->HEXADECIMAL)
   (let ((n (vector-8b-length bytes)))
-    (let ((s (make-string (fix:* 2 n))))
+    (let ((s (make-legacy-string (fix:* 2 n))))
       (do ((i 0 (fix:+ i 1))
 	   (j 0 (fix:+ j 2)))
 	  ((not (fix:< i n)))
