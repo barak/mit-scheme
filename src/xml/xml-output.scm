@@ -163,8 +163,8 @@ USA.
   (let ((text (xml-processing-instructions-text pi)))
     (if (fix:> (string-length text) 0)
 	(begin
-	  (if (not (char-set-member? char-set:xml-whitespace
-				     (string-ref text 0)))
+	  (if (not (char-in-set? (string-ref text 0)
+				     char-set:xml-whitespace))
 	      (emit-string " " ctx))
 	  (emit-string text ctx))))
   (emit-string "?>" ctx))

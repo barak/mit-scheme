@@ -329,7 +329,7 @@ USA.
     (do ((i 0 (fix:+ i 1)))
 	((not (fix:< i n)))
       (let ((char (string-ref string i)))
-	(if (not (char-set-member? unquoted char))
+	(if (not (char-in-set? char unquoted))
 	    (write-char #\\ port))
 	(write-char char port)))))
 
@@ -835,7 +835,7 @@ USA.
 
 (define (separator-token? object)
   (and (char? object)
-       (char-set-member? char-set:http-separators object)))
+       (char-in-set? object char-set:http-separators)))
 
 (define (separator-token->char token)
   token)
@@ -984,7 +984,7 @@ USA.
 	      ((char=? char #\\)
 	       (fifo (rc))
 	       (loop level))
-	      ((char-set-member? char-set:http-text char)
+	      ((char-in-set? char char-set:http-text)
 	       (fifo char)
 	       (loop level))
 	      (else
@@ -1468,8 +1468,7 @@ USA.
 	   (let ((end (string-length s)))
 	     (do ((i 0 (+ i 1)))
 		 ((not (< i end)))
-	       (if (not (char-set-member? char-set:http-token
-					  (string-ref s i)))
+	       (if (not (char-in-set? (string-ref s i) char-set:http-token))
 		   (string-set! s i #\_))))
 	   s))))
 

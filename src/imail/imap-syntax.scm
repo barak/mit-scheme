@@ -64,13 +64,13 @@ USA.
   (char-set-union url:char-set:unreserved (string->char-set "&=~")))
 
 (define (imap:atom-char? char)
-  (char-set-member? imap:char-set:atom-char char))
+  (char-in-set? char imap:char-set:atom-char))
 
 (define (imap:quoted-special? char)
-  (char-set-member? imap:char-set:quoted-specials char))
+  (char-in-set? char imap:char-set:quoted-specials))
 
 (define (imap:quoted-char? char)
-  (char-set-member? imap:char-set:quoted-char char))
+  (char-in-set? char imap:char-set:quoted-char))
 
 (define ((string-matching-procedure matcher) string)
   (matcher (string->parser-buffer string)))

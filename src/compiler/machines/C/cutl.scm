@@ -368,7 +368,7 @@ USA.
 	      1
 	      0)))
       (if (fix:< i n)
-	  (and (char-set-member? c:decimal-chars (string-ref e i))
+	  (and (char-in-set? (string-ref e i) c:decimal-chars)
 	       (loop (fix:+ i 1)))
 	  #t))))
 
@@ -449,7 +449,7 @@ USA.
   (let ((n (string-length e)))
     (let loop ((i 0))
       (if (fix:< i n)
-	  (and (char-set-member? c:identifier-chars (string-ref e i))
+	  (and (char-in-set? (string-ref e i) c:identifier-chars)
 	       (loop (fix:+ i 1)))
 	  #t))))
 

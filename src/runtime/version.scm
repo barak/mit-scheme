@@ -161,14 +161,13 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")
 
     (define (skip-white i)
       (if (and (fix:< i end)
-	       (char-set-member? char-set:whitespace (string-ref text i)))
+	       (char-in-set? (string-ref text i) char-set:whitespace))
 	  (skip-white (fix:+ i 1))
 	  i))
 
     (define (skip-non-white i)
       (if (and (fix:< i end)
-	       (not (char-set-member? char-set:whitespace
-				      (string-ref text i))))
+	       (not (char-in-set? (string-ref text i) char-set:whitespace)))
 	  (skip-non-white (fix:+ i 1))
 	  i))
 

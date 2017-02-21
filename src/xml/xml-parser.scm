@@ -670,7 +670,7 @@ USA.
 	     (if (not (unicode-scalar-value? n))
 		 (perror p "Invalid code point" n))
 	     (let ((char (integer->char n)))
-	       (if (not (char-set-member? char-set:xml-char char))
+	       (if (not (char-in-set? char char-set:xml-char))
 		   (perror p "Disallowed Unicode character" char))
 	       (call-with-output-string
 		 (lambda (port)

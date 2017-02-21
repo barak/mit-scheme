@@ -144,7 +144,7 @@ USA.
 	   (write-char (digit->char (fix:and octet #x0F) 16) port)))))
 
 (define (char-unreserved? char)
-  (char-set-member? char-set:unreserved char))
+  (char-in-set? char char-set:unreserved))
 
 (define char-set:unreserved)
 

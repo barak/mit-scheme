@@ -641,7 +641,7 @@ USA.
   (do ((i start (fix:+ i 1)))
       ((not (fix:< i end)))
     (let ((char (string-ref string i)))
-      (if (char-set-member? unescaped char)
+      (if (char-in-set? char unescaped)
 	  (write-char char port)
 	  (begin
 	    (write-char #\% port)
@@ -1032,7 +1032,7 @@ USA.
 		  ((fix:= 1 (string-length (symbol->string key)))
 		   `(CHAR=? CHAR ,(string-ref (symbol->string key) 0)))
 		  (else
-		   `(CHAR-SET-MEMBER? ,(symbol 'CHAR-SET:URI- key) CHAR)))
+		   `(CHAR-in-SET? CHAR ,(symbol 'CHAR-SET:URI- key))))
 	   ,@(map (lambda (action)
 		    (cond ((action:push? action) (expand:push action))
 			  ((action:set? action) (expand:set action))

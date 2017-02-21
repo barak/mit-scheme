@@ -129,7 +129,7 @@ USA.
 (define (substring-composed-of? string start end char-set)
   (let loop ((index start))
     (or (fix:= index end)
-	(and (char-set-member? char-set (string-ref string index))
+	(and (char-in-set? (string-ref string index) char-set)
 	     (loop (fix:+ index 1))))))
 
 (define-xml-type declaration

@@ -79,7 +79,7 @@ USA.
 		   (if (builder 'empty?)
 		       char
 		       (builder)))
-		  ((char-set-member? delimiters char)
+		  ((char-in-set? char delimiters)
 		   (input-port/unread-char port char)
 		   (builder))
 		  (else
@@ -94,7 +94,7 @@ USA.
 	  (let ((char (read-char port)))
 	    (cond ((eof-object? char)
 		   unspecific)
-		  ((char-set-member? delimiters char)
+		  ((char-in-set? char delimiters)
 		   (input-port/unread-char port char))
 		  (else
 		   (loop)))))))))

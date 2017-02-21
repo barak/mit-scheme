@@ -821,7 +821,7 @@ following equivalent code using @code{peek-char} and @code{read-char}:
         (list->string
          (let loop ((char char))
            (if (or (eof-object? char)
-                   (char-set-member? char-set char))
+                   (char-in-set? char char-set))
                '()
                (begin
                  (read-char port)
@@ -2237,7 +2237,7 @@ if the character @emph{doesn't} match @var{char}.
 @deffn procedure match-parser-buffer-char-in-set buffer char-set
 @deffnx procedure match-parser-buffer-char-in-set-no-advance buffer char-set
 These procedures compare the next character in @var{buffer} against
-@var{char-set} using @code{char-set-member?}.
+@var{char-set} using @code{char-in-set?}.
 @end deffn
 
 @deffn procedure match-parser-buffer-string buffer string

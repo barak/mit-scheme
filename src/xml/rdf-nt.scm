@@ -239,7 +239,7 @@ USA.
     (write-string "\"" port)))
 
 (define (write-literal-char char port)
-  (if (char-set-member? char-set:unescaped char)
+  (if (char-in-set? char char-set:unescaped)
       (write-char char port)
       (begin
 	(write-char #\\ port)

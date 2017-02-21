@@ -841,8 +841,7 @@ USA.
 				  (string-prefix-ci? "a " type)
 				  (string-prefix-ci? "an " type)))
 			 (write-string
-			  (if (char-set-member? char-set:vowels
-						(string-ref type 0))
+			  (if (char-in-set? (string-ref type 0) char-set:vowels)
 			      "an "
 			      "a ")
 			  port))

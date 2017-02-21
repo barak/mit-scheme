@@ -2088,7 +2088,7 @@ USA.
        (do ((i 0 (fix:+ i 1)))
 	   ((fix:= i n))
 	 (let ((char (string-ref string i)))
-	   (cond ((char-set-member? char-set:cache-namestring-safe char)
+	   (cond ((char-in-set? char char-set:cache-namestring-safe)
 		  (write-char char port))
 		 ((char=? char #\/)
 		  (write-char #\# port))

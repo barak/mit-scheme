@@ -371,7 +371,7 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
 	  (string-set!
 	   copy i
 	   (let ((char (string-ref name i)))
-	     (if (char-set-member? valid-chars char)
+	     (if (char-in-set? char valid-chars)
 		 char
 		 #\_))))
 	copy))))
@@ -382,7 +382,7 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
 	  (let loop ((chars (string->list (buffer-name buffer))))
 	    (cond ((null? chars)
 		   '())
-		  ((char-set-member? valid-chars (car chars))
+		  ((char-in-set? (car chars) valid-chars)
 		   (cons (car chars) (loop (cdr chars))))
 		  (else
 		   (loop (cdr chars))))))))

@@ -387,8 +387,8 @@ USA.
   (let ((atom-chars
          (char-set-difference (ascii-range->char-set #x21 #x7F)
                               special-chars)))
-    (define (special-char? char) (char-set-member? special-chars char))
-    (define    (atom-char? char) (char-set-member?    atom-chars char))
+    (define (special-char? char) (char-in-set? char special-chars))
+    (define    (atom-char? char) (char-in-set?    char atom-chars))
 
     (define (lose chars char-count)
       (list (cons 'UNTERMINATED

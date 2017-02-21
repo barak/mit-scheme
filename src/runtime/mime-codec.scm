@@ -94,7 +94,7 @@ USA.
 	   (let ((char (string-ref string start))
 		 (start (fix:+ start 1)))
 	     (cond ((not (char-lwsp? char))
-		    (if (char-set-member? char-set:qp-encoded char)
+		    (if (char-in-set? char char-set:qp-encoded)
 			(write-qp-encoded context char)
 			(write-qp-clear context char))
 		    (loop start))

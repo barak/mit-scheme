@@ -566,13 +566,13 @@ USA.
 ;; convention for the named characters when they appear in strings.
 
 (define (C-quotify-string-char char next)
-  (cond ((char-set-member? char-set:C-named-chars char)
+  (cond ((char-in-set? char char-set:C-named-chars)
 	 (let ((result (write-to-string (string char))))
 	   (substring result 1 (-1+ (string-length result)))))
 	((char=? char #\NUL)
 	 ;; Avoid ambiguities
 	 (if (or (not next)
-		 (not (char-set-member? char-set:numeric next)))
+		 (not (char-in-set? next char-set:numeric)))
 	     "\\0"
 	     "\\000"))
 	((char=? char #\?)

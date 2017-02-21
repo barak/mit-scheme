@@ -298,7 +298,7 @@ USA.
     (lambda (position groups fail)
       (if (let ((char (next-char position)))
 	    (and char
-		 (char-set-member? char-set char)))
+		 (char-in-set? char char-set)))
 	  (succeed (next-position position) groups fail)
 	  (fail)))))
 
@@ -307,7 +307,7 @@ USA.
     (lambda (position groups fail)
       (if (let ((char (next-char position)))
 	    (and char
-		 (not (char-set-member? char-set char))))
+		 (not (char-in-set? char char-set))))
 	  (succeed (next-position position) groups fail)
 	  (fail)))))
 

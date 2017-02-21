@@ -64,7 +64,7 @@ USA.
   (let ((end (string-length string)))
     (let loop ((i 0))
       (if (fix:< i end)
-	  (and (char-set-member? char-set (string-ref string i))
+	  (and (char-in-set? (string-ref string i) char-set)
 	       (loop (fix:+ i 1)))
 	  #t))))
 
@@ -210,10 +210,10 @@ USA.
 		 (if quote?
 		     (string-append "\"" s "\"")
 		     s)))
-	      ((char-set-member? char-set:rfc2822-qtext char)
+	      ((char-in-set? char char-set:rfc2822-qtext)
 	       (write-char char output)
 	       (loop quote?))
-	      ((char-set-member? char-set:rfc2822-text char)
+	      ((char-in-set? char char-set:rfc2822-text)
 	       (write-char #\\ output)
 	       (write-char char output)
 	       (loop #t))

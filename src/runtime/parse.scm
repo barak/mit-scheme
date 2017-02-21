@@ -798,8 +798,8 @@ USA.
 	 (lambda ()
 	   (let ((char (%peek-char port db)))
 	     (or (eof-object? char)
-		 (char-set-member? (db-atom-delimiters db) char))))))
-    (if (or (char-set-member? (db-atom-delimiters db) char)
+		 (char-in-set? char (db-atom-delimiters db)))))))
+    (if (or (char-in-set? char (db-atom-delimiters db))
 	    (at-end?))
 	char
 	(name->char

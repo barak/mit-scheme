@@ -212,9 +212,6 @@ USA.
 (define (match-parser-buffer-char-not-in-set-no-advance buffer set)
   (match-char-not-no-advance buffer set char-in-set?))
 
-(define-integrable (char-in-set? char set)
-  (char-set-member? set char))
-
 (define-integrable (match-char buffer reference compare)
   (and (guarantee-buffer-chars buffer 1)
        (let ((char
