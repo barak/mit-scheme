@@ -585,6 +585,63 @@ USA.
 	((get-if-available) get)
 	(else (error "Unknown operator:" operator))))))
 
+;;;; Builder for vector-like sequences
+
+(define (make-sequence-builder make-buffer sequence-length sequence-set!
+			       finish-build)
+    ;; This is optimized to minimize copying, so it wastes some space.
+  (let ((buffers)
+	(buffer)
+	(index))
+
+    (define (reset!)
+      (set! buffers '())
+      (set! buffer (make-buffer))
+      (set! index 0)
+      unspecific)
+
+    (define (new-buffer!)
+      (set! buffers (cons (cons buffer index) buffers))
+      (set! buffer (make-buffer))
+      (set! index 0)
+      unspecific)
+
+    (define (empty?)
+      (and (fix:= 0 index)
+	   (null? buffers)))
+
+    (define (count)
+      (do ((buffers buffers (cdr buffers))
+	   (n 0 (fix:+ n (cdr (car buffers)))))
+	  ((not (pair? buffers)) (fix:+ n index))))
+
+    (define (append-element! element)
+      (if (not (fix:< index (sequence-length buffer)))
+	  (new-buffer!))
+      (sequence-set! buffer index element)
+      (set! index (fix:+ index 1))
+      unspecific)
+
+    (define (append-sequence! sequence)
+      (if (fix:> index 0)
+	  (new-buffer!))
+      (set! buffers (cons (cons sequence (sequence-length sequence)) buffers))
+      unspecific)
+
+    (define (build)
+      (finish-build (reverse (cons (cons buffer index) buffers))))
+
+    (reset!)
+    (lambda (operator)
+      (case operator
+	((append-element!) append-element!)
+	((append-sequence!) append-sequence!)
+	((build) build)
+	((empty?) empty?)
+	((count) count)
+	((reset!) reset!)
+	(else (error "Unknown operator:" operator))))))
+
 ;;;; Ephemerons
 
 ;;; The layout of an ephemeron is as follows:

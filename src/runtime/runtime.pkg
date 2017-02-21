@@ -516,6 +516,7 @@ USA.
 	  make-hashed-metadata-table
 	  make-hook-list
 	  make-non-pointer-object
+	  make-sequence-builder
 	  non-pointer-type-code?
 	  null-procedure
 	  obarray->list

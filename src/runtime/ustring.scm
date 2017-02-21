@@ -212,70 +212,34 @@ USA.
 		       (fix:- end start))))))
 
 (define (string-builder)
-  ;; This is optimized to minimize copying, so it wastes some space.
-  (let ((buffer-size 16))
-    (let ((buffers)
-	  (buffer)
-	  (index))
+  (let ((builder
+	 (make-sequence-builder (lambda () (full-string-allocate 16))
+				string-length
+				string-set!
+				string-builder:finish-build)))
+    (lambda (#!optional object)
+      (cond ((default-object? object) ((builder 'build)))
+	    ((bitless-char? object) ((builder 'append-element!) object))
+	    ((string? object) ((builder 'append-sequence!) object))
+	    ((memq object '(empty? count reset!)) ((builder object)))
+	    (else (error "Not a char or string:" object))))))
 
-      (define (reset!)
-	(set! buffers '())
-	(set! buffer (full-string-allocate buffer-size))
-	(set! index 0)
-	unspecific)
-
-      (define (new-buffer!)
-	(set! buffers (cons (string-slice buffer 0 index) buffers))
-	(set! buffer (full-string-allocate buffer-size))
-	(set! index 0)
-	unspecific)
-
-      (define (empty?)
-	(and (fix:= 0 index)
-	     (null? buffers)))
-
-      (define (count)
-	(do ((buffers buffers (cdr buffers))
-	     (n 0 (fix:+ n (string-length (car buffers)))))
-	    ((not (pair? buffers)) (fix:+ n index))))
-
-      (define (append-char! char)
-	(if (not (fix:< index buffer-size))
-	    (new-buffer!))
-	(string-set! buffer index char)
-	(set! index (fix:+ index 1))
-	unspecific)
-
-      (define (append-string! string)
-	(if (fix:> index 0)
-	    (new-buffer!))
-	(set! buffers (cons string buffers))
-	unspecific)
-
-      (define (build)
-	(let ((strings (reverse (cons (string-slice buffer 0 index) buffers))))
-	  (let ((result
-		 (do ((strings strings (cdr strings))
-		      (n 0 (fix:+ n (string-length (car strings))))
-		      (8-bit? #t (and 8-bit? (string-8-bit? (car strings)))))
-		     ((not (pair? strings))
-		      (if 8-bit?
-			  (legacy-string-allocate n)
-			  (full-string-allocate n))))))
-	    (do ((strings strings (cdr strings))
-		 (i 0 (string-copy! result i (car strings))))
-		((not (pair? strings))))
-	    result)))
-
-      (reset!)
-      (lambda (#!optional object)
-	(cond ((default-object? object) (build))
-	      ((bitless-char? object) (append-char! object))
-	      ((string? object) (append-string! object))
-	      ((eq? 'empty? object) (empty?))
-	      ((eq? 'count object) (count))
-	      ((eq? 'reset! object) (reset!))
-	      (else (error "Not a char or string:" object)))))))
+(define (string-builder:finish-build parts)
+  (let ((result
+	 (do ((parts parts (cdr parts))
+	      (n 0 (fix:+ n (cdar parts)))
+	      (8-bit? #t
+		      (and 8-bit?
+			   (string-8-bit?
+			    (string-slice (caar parts) 0 (cdar parts))))))
+	     ((not (pair? parts))
+	      (if 8-bit?
+		  (legacy-string-allocate n)
+		  (full-string-allocate n))))))
+    (do ((parts parts (cdr parts))
+	 (i 0 (string-copy! result i (caar parts) 0 (cdar parts))))
+	((not (pair? parts))))
+    result))
 
 (define (string-copy! to at from #!optional start end)
   (let* ((end (fix:end-index end (string-length from) 'string-copy!))
