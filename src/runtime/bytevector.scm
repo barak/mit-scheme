@@ -45,7 +45,9 @@ USA.
   (bytevector-length 1)
   (bytevector-u8-ref 2)
   (bytevector-u8-set! 3)
-  (bytevector? 1))
+  (bytevector? 1)
+  (legacy-string-allocate string-allocate 1)
+  (legacy-string? string? 1))
 
 (define (make-bytevector k #!optional byte)
   (let ((bytevector (allocate-bytevector k)))

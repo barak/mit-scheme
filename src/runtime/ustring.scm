@@ -777,12 +777,6 @@ USA.
 (define (burst-string string delimiter allow-runs?)
   ((string-splitter delimiter allow-runs?) string))
 
-(define (ustring->legacy-string string)
-  (if (legacy-string? string)
-      string
-      (and (string-8-bit? string)
-	   (string-copy string))))
-
 (define (string-8-bit? string)
   (receive (string start end) (translate-slice string 0 (string-length string))
     (if (legacy-string? string)
@@ -808,15 +802,6 @@ USA.
 	       (string->utf8 string))))
 	(else
 	 (error:not-a string? string 'string-for-primitive))))
-
-(define (legacy-string-downcase string)
-  (let ((end (legacy-string-length string)))
-    (let ((string* (legacy-string-allocate end)))
-      (do ((i 0 (fix:+ i 1)))
-	  ((fix:= i end))
-	(legacy-string-set! string* i
-			    (char-downcase (legacy-string-ref string i))))
-      string*)))
 
 (define-integrable (copy-loop to-set! to at from-ref from start end)
   (do ((i start (fix:+ i 1))

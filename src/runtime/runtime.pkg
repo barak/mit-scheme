@@ -1173,16 +1173,10 @@ USA.
 	  string>?
 	  string?
 	  vector->string)
-  (export (runtime bytevector)
-	  legacy-string-allocate
-	  legacy-string?
-	  ustring->legacy-string)
   (export (runtime predicate-metadata)
 	  register-ustring-predicates!)
   (export (runtime symbol)
-	  %string*
-	  legacy-string-downcase
-	  legacy-string?))
+	  %string*))
 
 (define-package (runtime bytevector)
   (files "bytevector")

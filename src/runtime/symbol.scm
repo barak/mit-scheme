@@ -54,51 +54,33 @@ USA.
 
 (define (symbol->string symbol)
   (guarantee symbol? symbol 'symbol->string)
-  (utf8->string
-   (let ((name (system-pair-car symbol)))
-     (cond ((bytevector? name) name)
-	   ((legacy-string? name) (%legacy-string->bytevector name))
-	   (else (error "Illegal symbol name:" name))))))
+  (let ((s (system-pair-car symbol)))
+    (cond ((maybe-ascii s))
+	  ((bytevector? s) (utf8->string s))
+	  ((legacy-string? s) (utf8->string (%legacy-string->bytevector s)))
+	  (else (error "Illegal symbol name:" s)))))
 
 (define (string-head->symbol string end)
-  (string->symbol (string-copy string 0 end)))
+  (string->symbol (string-slice string 0 end)))
 
 (define (string-tail->symbol string start)
-  (string->symbol (string-copy string start)))
+  (string->symbol (string-slice string start)))
 
 (define (symbol . objects)
   (string->symbol (%string* objects 'symbol)))
 
 (define (intern string)
-  (string->symbol (cold-load-foldcase string)))
+  ((ucode-primitive string->symbol) (foldcase->utf8 string)))
 
 (define (intern-soft string)
-  ((ucode-primitive find-symbol) (string->utf8 (cold-load-foldcase string))))
-
-(define (cold-load-foldcase string)
-  (if (ascii-string? string)
-      ;; Needed during cold load.
-      (legacy-string-downcase string)
-      (string-foldcase string)))
+  ((ucode-primitive find-symbol) (foldcase->utf8 string)))
 
 (define (symbol-name symbol)
   (if (not (symbol? symbol))
       (error:not-a symbol? symbol 'symbol-name))
-  (let* ((bytes (system-pair-car symbol))
-	 (string (object-new-type (ucode-type string) bytes)))
-    (if (ascii-string? string)
-	;; Needed during cold load.
-	string
+  (let ((bytes (system-pair-car symbol)))
+    (or (maybe-ascii bytes)
 	(utf8->string bytes))))
-
-(define (ascii-string? string)
-  (and ((ucode-primitive string?) string)
-       (let ((end ((ucode-primitive string-length) string)))
-	 (let loop ((i 0))
-	   (if (fix:< i end)
-	       (and (fix:< ((ucode-primitive vector-8b-ref) string i) #x80)
-		    (loop (fix:+ i 1)))
-	       #t)))))
 
 (define (symbol-hash symbol #!optional modulus)
   (string-hash (symbol-name symbol) modulus))
@@ -108,3 +90,58 @@ USA.
 
 (define (symbol>? x y)
   (string<? (symbol-name y) (symbol-name x)))
+
+(define-primitives
+  (legacy-string? string? 1)
+  (legacy-string-allocate string-allocate 1)
+  (legacy-string-length string-length 1)
+  (vector-8b-ref 2)
+  (vector-8b-set! 3))
+
+(define (maybe-ascii bytes)
+  ;; Needed during cold load.
+  (let ((string (object-new-type (ucode-type string) bytes)))
+    (and (ascii-string? string)
+	 string)))
+
+(define (foldcase->utf8 string)
+  (if (ascii-string? string)
+      ;; Needed during cold load.
+      (%legacy-string->bytevector (ascii-string-foldcase string))
+      (string->utf8 (string-foldcase string))))
+
+(define (ascii-string? string)
+  (and (legacy-string? string)
+       (let ((end (legacy-string-length string)))
+	 (let loop ((i 0))
+	   (if (fix:< i end)
+	       (and (fix:< (vector-8b-ref string i) #x80)
+		    (loop (fix:+ i 1)))
+	       #t)))))
+
+(define (ascii-string-foldcase string)
+  (let ((end (legacy-string-length string)))
+    (if (let loop ((i 0))
+	  (if (fix:< i end)
+	      (and (not (ascii-changes-when-case-folded?
+			 (vector-8b-ref string i)))
+		   (loop (fix:+ i 1)))
+	      #t))
+	string
+	(let ((string* (legacy-string-allocate end)))
+	  (do ((i 0 (fix:+ i 1)))
+	      ((fix:= i end))
+	    (vector-8b-set! string*
+			    i
+			    (ascii-foldcase (vector-8b-ref string i))))
+	  string*))))
+
+(define (ascii-changes-when-case-folded? code)
+  (and (fix:>= code (char->integer #\A))
+       (fix:<= code (char->integer #\Z))))
+
+(define (ascii-foldcase code)
+  (if (ascii-changes-when-case-folded? code)
+      (fix:+ (char->integer #\a)
+	     (fix:- code (char->integer #\A)))
+      code))
