@@ -73,8 +73,8 @@ USA.
 
 (define (intern string)
   ((ucode-primitive string->symbol)
-   (let ((size (string-length string)))
-     (let ((result (string-allocate size)))
+   (let ((size ((ucode-primitive string-length) string)))
+     (let ((result ((ucode-primitive string-allocate) size)))
        ((ucode-primitive substring-move-right!) string 0 size result 0)
        ((ucode-primitive substring-downcase!) result 0 size)
        result))))

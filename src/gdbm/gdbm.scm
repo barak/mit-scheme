@@ -295,7 +295,7 @@ USA.
     (if (alien-null? data)
 	#f
 	(let* ((size (C-> args "gdbm_args key dsize"))
-	       (string (string-allocate size)))
+	       (string (make-legacy-string size)))
 	  (c-peek-bytes data 0 size string 0)
 	  string))))
 
@@ -304,7 +304,7 @@ USA.
     (if (alien-null? data)
 	#f
 	(let* ((size (C-> args "gdbm_args content dsize"))
-	       (string (string-allocate size)))
+	       (string (make-legacy-string size)))
 	  (c-peek-bytes data 0 size string 0)
 	  string))))
 

@@ -47,7 +47,7 @@ USA.
   (let ((mem (get-clipboard-data CF_TEXT)))
     (and (not (= mem 0))
 	 (let* ((maxlen (global-size mem))
-		(s (string-allocate maxlen))
+		(s (make-legacy-string maxlen))
 		(ptr (global-lock mem)))
 	   (copy-memory s ptr maxlen)
 	   (global-unlock mem)

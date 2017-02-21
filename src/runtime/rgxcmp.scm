@@ -182,7 +182,7 @@ USA.
 ;;;; String Compiler
 
 (define (re-compile-char char case-fold?)
-  (let ((result (string-allocate 2)))
+  (let ((result (make-legacy-string 2)))
     (vector-8b-set! result 0 re-code:exact-1)
     (string-set! result 1 (if case-fold? (char-upcase char) char))
     (make-compiled-regexp result case-fold?)))
@@ -195,7 +195,7 @@ USA.
 	  (if (fix:zero? n)
 	      (make-compiled-regexp string case-fold?)
 	      (let ((result
-		     (string-allocate
+		     (make-legacy-string
 		      (let ((qr (integer-divide n 255)))
 			(fix:+ (fix:* 257 (integer-divide-quotient qr))
 			       (let ((r (integer-divide-remainder qr)))
@@ -237,7 +237,7 @@ USA.
 		   n)))))
       (if (zero? n)
 	  string
-	  (let ((result (string-allocate (+ end n))))
+	  (let ((result (make-legacy-string (+ end n))))
 	    (let loop ((start 0) (i 0))
 	      (let ((index
 		     (substring-find-next-char-in-set string start end
