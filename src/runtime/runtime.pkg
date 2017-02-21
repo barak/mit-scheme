@@ -1051,7 +1051,6 @@ USA.
 	  reverse-string
 	  reverse-substring
 	  set-string-length!
-	  string-allocate
 	  string-capitalize
 	  string-capitalized?
 	  string-compare
