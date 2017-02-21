@@ -91,23 +91,9 @@ USA.
 	(output-port/discretionary-flush port))))
 
 (define (write-string string #!optional port start end)
-  (let ((port (optional-output-port port 'WRITE-STRING))
-	(end
-	 (if (default-object? end)
-	     (string-length string)
-	     (begin
-	       (guarantee index-fixnum? end 'write-string)
-	       (if (not (fix:<= end (string-length string)))
-		   (error:bad-range-argument end 'write-string))
-	       end))))
-    (let ((start
-	   (if (default-object? start)
-	       0
-	       (begin
-		 (guarantee index-fixnum? start 'write-string)
-		 (if (not (fix:<= start end))
-		     (error:bad-range-argument start 'write-string))
-		 start))))
+  (let ((port (optional-output-port port 'write-string))
+	(end (fix:end-index end (string-length string) 'write-string)))
+    (let ((start (fix:start-index start end 'write-string)))
       (if (let ((n (output-port/write-substring port string start end)))
 	    (and n
 		 (fix:> n 0)))
@@ -130,7 +116,7 @@ USA.
     (cond ((binary-output-port? port) (synchronize-binary-output-port port))
 	  ((textual-output-port? port) (output-port/synchronize-output port))
 	  (else (error:not-a output-port? port 'synchronize-output-port)))))
-
+
 (define (fresh-line #!optional port)
   (let ((port (optional-output-port port 'FRESH-LINE)))
     (if (let ((n (output-port/fresh-line port)))
