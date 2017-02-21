@@ -81,6 +81,7 @@ USA.
 
       (let ((environment (->environment '(EDWIN))))
 	(load "utils" environment)
+	(load "string" (->environment '(EDWIN STRING)))
 	(load "nvector" environment)
 	(load "ring" environment)
 	(load "strtab" environment)

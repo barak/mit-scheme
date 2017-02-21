@@ -93,6 +93,7 @@ USA.
 	      "rename"
 	      "rfc822"
 	      "ring"
+	      "string"
 	      "strpad"
 	      "strtab"
 	      "termcap"

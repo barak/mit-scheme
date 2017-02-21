@@ -128,8 +128,6 @@ USA.
 	  (port/output-channel output-port-channel)
 	  (port/state textual-port-state)
 	  generic-port-operation:write-substring)
-  (import (runtime string)
-	  (make-string make-legacy-string))
   (export ()
 	  create-editor
 	  create-editor-args
@@ -142,6 +140,153 @@ USA.
 	  spawn-edwin)
   (export (edwin class-macros)
 	  class-instance-transforms))
+
+(define-package (edwin string)
+  (files "string")
+  (parent (edwin))
+  (import (runtime character-set)
+	  (char-set-table %char-set-table))
+  (export (edwin)
+	  (guarantee-vector-8b guarantee-string)
+	  (set-vector-8b-length! set-string-length!)
+	  (vector-8b-length string-length)
+	  (vector-8b-maximum-length string-maximum-length)
+	  (vector-8b? string?)
+	  ascii-string-copy
+	  burst-string
+	  camel-case-string->lisp
+	  char->string
+	  decorated-string-append
+	  error:not-string
+	  guarantee-string
+	  guarantee-string-index
+	  guarantee-substring
+	  guarantee-substring-end-index
+	  guarantee-substring-start-index
+	  hexadecimal->vector-8b
+	  lisp-string->camel-case
+	  list->string
+	  make-string
+	  make-vector-8b
+	  reverse-string
+	  reverse-string!
+	  reverse-substring
+	  reverse-substring!
+	  set-string-length!
+	  string
+	  string->list
+	  string->vector
+	  string-append
+	  string-capitalize
+	  string-capitalize!
+	  string-capitalized?
+	  string-ci-hash
+	  string-ci<=?
+	  string-ci<?
+	  string-ci=?
+	  string-ci>=?
+	  string-ci>?
+	  string-compare
+	  string-compare-ci
+	  string-copy
+	  string-copy!
+	  string-downcase
+	  string-downcase!
+	  string-fill!
+	  string-find-next-char
+	  string-find-next-char-ci
+	  string-find-next-char-in-set
+	  string-find-previous-char
+	  string-find-previous-char-ci
+	  string-find-previous-char-in-set
+	  string-for-each
+	  string-hash
+	  string-head
+	  string-head!
+	  string-joiner
+	  string-joiner*
+	  string-length
+	  string-lower-case?
+	  string-map
+	  string-match-backward
+	  string-match-backward-ci
+	  string-match-forward
+	  string-match-forward-ci
+	  string-maximum-length
+	  string-move!
+	  string-null?
+	  string-pad-left
+	  string-pad-right
+	  string-prefix-ci?
+	  string-prefix?
+	  string-ref
+	  string-replace
+	  string-replace!
+	  string-search-all
+	  string-search-backward
+	  string-search-forward
+	  string-set!
+	  string-splitter
+	  string-suffix-ci?
+	  string-suffix?
+	  string-tail
+	  string-trim
+	  string-trim-left
+	  string-trim-right
+	  string-upcase
+	  string-upcase!
+	  string-upper-case?
+	  string<=?
+	  string<?
+	  string=?
+	  string>=?
+	  string>?
+	  string?
+	  substring
+	  substring->list
+	  substring-capitalize!
+	  substring-capitalized?
+	  substring-ci<?
+	  substring-ci=?
+	  substring-downcase!
+	  substring-fill!
+	  substring-find-next-char
+	  substring-find-next-char-ci
+	  substring-find-next-char-in-set
+	  substring-find-previous-char
+	  substring-find-previous-char-ci
+	  substring-find-previous-char-in-set
+	  substring-lower-case?
+	  substring-match-backward
+	  substring-match-backward-ci
+	  substring-match-forward
+	  substring-match-forward-ci
+	  substring-move!
+	  substring-move-left!
+	  substring-move-right!
+	  substring-prefix-ci?
+	  substring-prefix?
+	  substring-replace
+	  substring-replace!
+	  substring-search-all
+	  substring-search-backward
+	  substring-search-forward
+	  substring-suffix-ci?
+	  substring-suffix?
+	  substring-upcase!
+	  substring-upper-case?
+	  substring<?
+	  substring=?
+	  substring?
+	  vector-8b->hexadecimal
+	  vector-8b-fill!
+	  vector-8b-find-next-char
+	  vector-8b-find-next-char-ci
+	  vector-8b-find-previous-char
+	  vector-8b-find-previous-char-ci
+	  vector-8b-ref
+	  vector-8b-set!)
+  (initialization (initialize-package!)))
 
 (define-package (edwin class-macros)
   (files "clsmac")
