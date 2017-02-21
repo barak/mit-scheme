@@ -201,7 +201,7 @@ USA.
   (canonical-host-name (get-host-name)))
 
 (define (allocate-host-address)
-  (string-allocate ((ucode-primitive host-address-length 0))))
+  (make-bytevector ((ucode-primitive host-address-length 0))))
 
 (define host-address-any
   (ucode-primitive host-address-any 0))
