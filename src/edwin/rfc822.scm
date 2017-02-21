@@ -557,7 +557,7 @@ USA.
 
 (define (reverse-list->string list start end)
   (let* ((length (fix:- end start))
-         (string (string-allocate length)))
+         (string (make-string length)))
     (let loop ((list (list-tail list start))
                (index length))
       (cond ((fix:zero? index)

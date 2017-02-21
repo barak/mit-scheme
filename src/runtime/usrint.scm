@@ -211,7 +211,7 @@ USA.
 	    (set-string-length! str (fix:1+ i))
 	    (string-set! str i char)
 	    str)
-	  (let ((new (string-allocate (fix:+ 10 i))))
+	  (let ((new (make-string (fix:+ 10 i))))
 	    (if (not (string-null? str))
 		(begin
 		  (substring-move! str 0 i new 0)
