@@ -686,8 +686,7 @@ USA.
      `(BEGIN
 	,@(let loop ((names (cddr form)) (index (cadr form)))
 	    (if (pair? names)
-		(cons `(DEFINE-INTEGRABLE
-			 ,(symbol-append 'CODE:COMPILER-
+		(cons `(DEFINE-INTEGRABLE ,(symbol 'CODE:COMPILER-
 					 (car names))
 			 ,index)
 		      (loop (cdr names) (+ index 1)))
@@ -727,7 +726,7 @@ USA.
 	,@(let loop ((names (cddr form)) (index (cadr form)))
 	    (if (pair? names)
 		(cons `(DEFINE-INTEGRABLE
-			   ,(symbol-append 'ENTRY:COMPILER- (car names))
+			   ,(symbol 'ENTRY:COMPILER- (car names))
 			 (BYTE-OFFSET-REFERENCE REGNUM:REGS-POINTER ,index))
 		      (loop (cdr names) (+ index 8)))
 		'()))))))

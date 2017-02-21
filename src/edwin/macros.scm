@@ -93,7 +93,7 @@ USA.
 	 (ill-formed-syntax form)))))
 
 (define (command-name->scheme-name name)
-  (symbol-append 'EDWIN-COMMAND$ name))
+  (symbol 'EDWIN-COMMAND$ name))
 
 (define-syntax ref-command
   (sc-macro-transformer
@@ -146,7 +146,7 @@ USA.
 	 (ill-formed-syntax form)))))
 
 (define (variable-name->scheme-name name)
-  (symbol-append 'EDWIN-VARIABLE$ name))
+  (symbol 'EDWIN-VARIABLE$ name))
 
 (define-syntax ref-variable
   (sc-macro-transformer
@@ -261,4 +261,4 @@ USA.
 	 (ill-formed-syntax form)))))
 
 (define (mode-name->scheme-name name)
-  (symbol-append 'EDWIN-MODE$ name))
+  (symbol 'EDWIN-MODE$ name))

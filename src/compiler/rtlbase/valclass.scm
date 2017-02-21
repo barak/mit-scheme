@@ -85,7 +85,7 @@ USA.
 	   (parent-name (caddr form)))
        (let* ((name->variable
 	       (lambda (name)
-		 (symbol-append 'VALUE-CLASS= name)))
+		 (symbol 'VALUE-CLASS= name)))
 	      (variable (name->variable name)))
 	 `(BEGIN
 	    (DEFINE ,variable
@@ -95,9 +95,9 @@ USA.
 		    (close-syntax (name->variable parent-name)
 				  environment)
 		    `#F)))
-	    (DEFINE (,(symbol-append variable '?) CLASS)
+	    (DEFINE (,(symbol variable '?) CLASS)
 	      (VALUE-CLASS/ANCESTOR-OR-SELF? CLASS ,variable))
-	    (DEFINE (,(symbol-append 'REGISTER- variable '?) REGISTER)
+	    (DEFINE (,(symbol 'REGISTER- variable '?) REGISTER)
 	      (VALUE-CLASS/ANCESTOR-OR-SELF?
 	       (REGISTER-VALUE-CLASS REGISTER)
 	       ,variable))))))))

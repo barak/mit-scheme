@@ -662,8 +662,7 @@ USA.
 	,@(let loop ((names (cddr form)) (index (cadr form)))
 	    (if (pair? names)
 		(cons `(DEFINE-INTEGRABLE
-			 ,(symbol-append 'CODE:COMPILER-
-					 (car names))
+			 ,(symbol 'CODE:COMPILER- (car names))
 			 ,index)
 		      (loop (cdr names) (1+ index)))
 		`()))))))

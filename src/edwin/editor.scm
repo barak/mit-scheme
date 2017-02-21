@@ -291,7 +291,7 @@ with the contents of the startup message."
 (define (maybe-debug-scheme-error error-type condition)
   (let ((p
 	 (variable-default-value
-	  (or (name->variable (symbol-append 'DEBUG-ON- error-type '-ERROR) #f)
+	  (or (name->variable (symbol 'DEBUG-ON- error-type '-ERROR) #f)
 	      (ref-variable-object debug-on-internal-error)))))
     (if p
 	(debug-scheme-error error-type condition (eq? p 'ASK))))

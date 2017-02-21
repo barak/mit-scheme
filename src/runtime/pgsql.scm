@@ -125,11 +125,11 @@ USA.
      environment
      (if (syntax-match? '(SYMBOL EXPRESSION) (cdr form))
 	 (let ((type (cadr form)))
-	   (let ((type? (symbol-append type '?))
-		 (guarantee-type (symbol-append 'GUARANTEE- type))
-		 (error:not-type (symbol-append 'ERROR:NOT- type))
-		 (guarantee-valid-type (symbol-append 'GUARANTEE-VALID- type))
-		 (type-handle (symbol-append type '-HANDLE)))
+	   (let ((type? (symbol type '?))
+		 (guarantee-type (symbol 'GUARANTEE- type))
+		 (error:not-type (symbol 'ERROR:NOT- type))
+		 (guarantee-valid-type (symbol 'GUARANTEE-VALID- type))
+		 (type-handle (symbol type '-HANDLE)))
 	     `(BEGIN
 		(DEFINE-INTEGRABLE (,guarantee-type OBJECT CALLER)
 		  (IF (NOT (,type? OBJECT))
@@ -270,8 +270,8 @@ USA.
      environment
      (if (syntax-match? '(SYMBOL) (cdr form))
 	 (let ((field (cadr form)))
-	   `(DEFINE (,(symbol-append 'PGSQL-CONN- field) OBJECT)
-	      (,(symbol-append 'PQ- field) (CONNECTION->HANDLE OBJECT))))
+	   `(DEFINE (,(symbol 'PGSQL-CONN- field) OBJECT)
+	      (,(symbol 'PQ- field) (CONNECTION->HANDLE OBJECT))))
 	 (ill-formed-syntax form)))))
 
 (define-connection-accessor db)
@@ -350,8 +350,8 @@ USA.
      environment
      (if (syntax-match? '(SYMBOL) (cdr form))
 	 (let ((field (cadr form)))
-	   `(DEFINE (,(symbol-append 'PGSQL- field) OBJECT)
-	      (,(symbol-append 'PQ- field) (RESULT->HANDLE OBJECT))))
+	   `(DEFINE (,(symbol 'PGSQL- field) OBJECT)
+	      (,(symbol 'PQ- field) (RESULT->HANDLE OBJECT))))
 	 (ill-formed-syntax form)))))
 
 (define-result-accessor result-error-message)

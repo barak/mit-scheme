@@ -157,7 +157,7 @@ USA.
 		,(make-primitive-procedure name #t))
 	       FRAME-SIZE CONTINUATION
 	       (INVOKE-SPECIAL-PRIMITIVE
-		,(close-syntax (symbol-append 'CODE:COMPILER- name)
+		,(close-syntax (symbol 'CODE:COMPILER- name)
 			       environment))))))))
   (define-special-primitive-invocation &+)
   (define-special-primitive-invocation &-)

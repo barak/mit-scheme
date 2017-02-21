@@ -289,16 +289,16 @@ differences:
   (car (option/arguments option)))
 
 (define (default-conc-name context)
-  (symbol-append (parser-context/name context) '-))
+  (symbol (parser-context/name context) '-))
 
 (define (default-constructor-name context)
-  (symbol-append 'MAKE- (parser-context/name context)))
+  (symbol 'MAKE- (parser-context/name context)))
 
 (define (default-copier-name context)
-  (symbol-append 'COPY- (parser-context/name context)))
+  (symbol 'COPY- (parser-context/name context)))
 
 (define (default-predicate-name context)
-  (symbol-append (parser-context/name context) '?))
+  (symbol (parser-context/name context) '?))
 
 (define (default-unparser-text context)
   `(,(absolute 'STANDARD-UNPARSER-METHOD context)
@@ -306,7 +306,7 @@ differences:
     #F))
 
 (define (default-type-name context)
-  (symbol-append 'RTD: (parser-context/name context)))
+  (symbol 'RTD: (parser-context/name context)))
 
 (define (apply-option-transformers options context)
   (let loop ((options options))
@@ -623,7 +623,7 @@ differences:
 		  (accessor-name
 		   (let ((conc-name (structure/conc-name structure)))
 		     (if conc-name
-			 (symbol-append conc-name name)
+			 (symbol conc-name name)
 			 name))))
 	     (if (structure/safe-accessors? structure)
 		 `(DEFINE ,accessor-name
@@ -651,8 +651,8 @@ differences:
 		  (modifier-name
 		   (let ((conc-name (structure/conc-name structure)))
 		     (if conc-name
-			 (symbol-append 'SET- conc-name name '!)
-			 (symbol-append 'SET- name '!)))))
+			 (symbol 'SET- conc-name name '!)
+			 (symbol 'SET- name '!)))))
 	     (if (structure/safe-accessors? structure)
 		 `(DEFINE ,modifier-name
 		    (,(absolute (case (structure/physical-type structure)

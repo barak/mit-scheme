@@ -76,7 +76,7 @@ USA.
           (DEFINE ,enumeration-name
             (ENUMERATION/MAKE ',enumerand-names))
           ,@(map (lambda (enumerand-name)
-                   `(DEFINE ,(symbol-append enumerand-name '/ENUMERAND)
+                   `(DEFINE ,(symbol enumerand-name '/ENUMERAND)
                       (ENUMERATION/NAME->ENUMERAND
                        ,(close-syntax enumeration-name environment)
                        ',enumerand-name)))
@@ -122,11 +122,11 @@ USA.
               (,name
                (TYPE VECTOR)
                (NAMED
-                ,(close-syntax (symbol-append name '/ENUMERAND) environment))
-               (TYPE-DESCRIPTOR ,(symbol-append 'RTD: name))
-               (CONC-NAME ,(symbol-append name '/))
+                ,(close-syntax (symbol name '/ENUMERAND) environment))
+               (TYPE-DESCRIPTOR ,(symbol 'RTD: name))
+               (CONC-NAME ,(symbol name '/))
                (CONSTRUCTOR ,(or constructor-name
-                                 (symbol-append name '/MAKE))))
+                                 (symbol name '/MAKE))))
             (scode #f read-only #t)
             ,@slots)
          (DEFINE-GUARANTEE ,name ,(symbol->string name)))))))

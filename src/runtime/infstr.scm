@@ -205,7 +205,7 @@ USA.
     ((dbg-block-name
       (sc-macro-transformer
        (lambda (form environment)
-	 (let ((symbol (symbol-append 'DBG-BLOCK-NAME/ (cadr form))))
+	 (let ((symbol (symbol 'DBG-BLOCK-NAME/ (cadr form))))
 	   `(DEFINE-INTEGRABLE ,symbol
 	      ',((ucode-primitive string->symbol)
 		 (string-append "#[(runtime compiler-info)"

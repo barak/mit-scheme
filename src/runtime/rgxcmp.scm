@@ -42,7 +42,7 @@ USA.
 	  ,@(let loop ((n 0) (suffixes suffixes))
 	      (if (pair? suffixes)
 		  (cons `(DEFINE-INTEGRABLE
-			   ,(symbol-append prefix (car suffixes))
+			   ,(symbol prefix (car suffixes))
 			   ,n)
 			(loop (+ n 1) (cdr suffixes)))
 		  '()))

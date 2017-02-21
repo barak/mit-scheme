@@ -490,8 +490,8 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      (let ((name (cadr form)))
-       `(DEFINE-INTEGRABLE (,(symbol-append 'SCREEN- name) SCREEN)
-	  (,(close-syntax (symbol-append 'TERMINAL-STATE/ name)
+       `(DEFINE-INTEGRABLE (,(symbol 'SCREEN- name) SCREEN)
+	  (,(close-syntax (symbol 'TERMINAL-STATE/ name)
 			  environment)
 	   (SCREEN-STATE SCREEN)))))))
 
@@ -501,9 +501,9 @@ USA.
      (let ((name (cadr form)))
        (let ((param (make-synthetic-identifier name)))
 	 `(DEFINE-INTEGRABLE
-	    (,(symbol-append 'SET-SCREEN- name '!) SCREEN ,param)
+	    (,(symbol 'SET-SCREEN- name '!) SCREEN ,param)
 	    (,(close-syntax
-	       (symbol-append 'SET-TERMINAL-STATE/ name '!)
+	       (symbol 'SET-TERMINAL-STATE/ name '!)
 	       environment)
 	     (SCREEN-STATE SCREEN)
 	     ,param)))))))

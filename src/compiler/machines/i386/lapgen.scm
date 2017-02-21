@@ -265,7 +265,7 @@ USA.
 (define (load-pc-relative-address target label-expr)
   (with-pc
     (lambda (pc-label pc-register)
-      (LAP (LEA ,target (@RO W ,pc-register (- ,label-expr ,pc-label)))))))  
+      (LAP (LEA ,target (@RO W ,pc-register (- ,label-expr ,pc-label)))))))
 
 (define (with-pc recvr)
   (with-values (lambda () (get-cached-label))
@@ -310,7 +310,7 @@ USA.
 (define (target-register target)
   (delete-dead-registers!)
   (or (register-alias target 'GENERAL)
-      (allocate-alias-register! target 'GENERAL)))  
+      (allocate-alias-register! target 'GENERAL)))
 
 (define-integrable (target-register-reference target)
   (register-reference (target-register target)))
@@ -357,7 +357,7 @@ USA.
 	 (with-reused-temp
 	   (lambda (temp)
 	     (need-register! temp)
-	     (with-address-temp temp)))	       
+	     (with-address-temp temp)))
 	 (fail-index
 	  (lambda ()
 	    (with-address-temp
@@ -575,8 +575,7 @@ USA.
 	,@(let loop ((names (cddr form)) (index (cadr form)))
 	    (if (pair? names)
 		(cons `(DEFINE-INTEGRABLE
-			 ,(symbol-append 'CODE:COMPILER-
-					 (car names))
+			 ,(symbol 'CODE:COMPILER- (car names))
 			 ,index)
 		      (loop (cdr names) (+ index 1)))
 		'()))))))
@@ -584,7 +583,7 @@ USA.
 (define-codes #x012
   primitive-apply primitive-lexpr-apply
   apply error lexpr-apply link
-  interrupt-closure interrupt-dlink interrupt-procedure 
+  interrupt-closure interrupt-dlink interrupt-procedure
   interrupt-continuation interrupt-ic-procedure
   assignment-trap cache-reference-apply
   reference-trap safe-reference-trap unassigned?-trap
@@ -619,8 +618,7 @@ USA.
 	    (if (pair? names)
 		(if (< index high)
 		    (cons `(DEFINE-INTEGRABLE
-			     ,(symbol-append 'ENTRY:COMPILER-
-					     (car names))
+			     ,(symbol 'ENTRY:COMPILER- (car names))
 			     (byte-offset-reference regnum:regs-pointer
 						    ,index))
 			  (loop (cdr names) (+ index 4) high))

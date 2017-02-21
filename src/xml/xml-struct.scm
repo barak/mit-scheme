@@ -38,13 +38,13 @@ USA.
 		  (or (syntax-match? '(IDENTIFIER EXPRESSION) slot)
 		      (syntax-match? '(IDENTIFIER 'CANONICALIZE EXPRESSION)
 				     slot)))))
-	 (let ((root (symbol-append 'XML- (cadr form)))
+	 (let ((root (symbol 'XML- (cadr form)))
 	       (slots (cddr form)))
-	   (let ((rtd (symbol-append '< root '>))
-		 (%constructor (symbol-append '%MAKE- root))
-		 (constructor (symbol-append 'MAKE- root))
-		 (predicate (symbol-append root '?))
-		 (error:not (symbol-append 'ERROR:NOT- root))
+	   (let ((rtd (symbol '< root '>))
+		 (%constructor (symbol '%MAKE- root))
+		 (constructor (symbol 'MAKE- root))
+		 (predicate (symbol root '?))
+		 (error:not (symbol 'ERROR:NOT- root))
 		 (slot-vars
 		  (map (lambda (slot)
 			 (close-syntax (car slot) environment))
@@ -66,7 +66,7 @@ USA.
 		    (MAKE-RECORD-TYPE ',root '(,@(map car slots))))
 		  (DEFINE ,predicate
 		    (RECORD-PREDICATE ,rtd))
-		  (DEFINE (,(symbol-append 'GUARANTEE- root) OBJECT CALLER)
+		  (DEFINE (,(symbol 'GUARANTEE- root) OBJECT CALLER)
 		    (IF (NOT ,predicate)
 			(,error:not OBJECT CALLER)))
 		  (DEFINE (,error:not OBJECT CALLER)
@@ -86,8 +86,8 @@ USA.
 			    slots
 			    slot-vars)))
 		  ,@(map (lambda (slot var)
-			   (let* ((accessor (symbol-append root '- (car slot)))
-				  (modifier (symbol-append 'SET- accessor '!)))
+			   (let* ((accessor (symbol root '- (car slot)))
+				  (modifier (symbol 'SET- accessor '!)))
 			     `(BEGIN
 				(DEFINE ,accessor
 				  (RECORD-ACCESSOR ,rtd ',(car slot)))
@@ -447,9 +447,9 @@ USA.
      (if (syntax-match? '(IDENTIFIER EXPRESSION) (cdr form))
 	 (let ((name (cadr form))
 	       (accessor (caddr form)))
-	   (let ((root (symbol-append 'XML- name)))
+	   (let ((root (symbol 'XML- name)))
 	     `(SET-RECORD-TYPE-UNPARSER-METHOD!
-	       ,(close-syntax (symbol-append '< root '>) environment)
+	       ,(close-syntax (symbol '< root '>) environment)
 	       (SIMPLE-UNPARSER-METHOD ',root
 		 (LAMBDA (,name)
 		   (LIST (,(close-syntax accessor environment) ,name)))))))
@@ -486,7 +486,7 @@ USA.
   (let ((value
 	 (find-xml-attr (if (null-xml-name-prefix? prefix)
 			    'xmlns
-			    (symbol-append 'xmlns: prefix))
+			    (symbol 'xmlns: prefix))
 			elt)))
     (and value
 	 (begin

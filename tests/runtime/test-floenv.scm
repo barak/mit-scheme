@@ -54,7 +54,7 @@ USA.
 
 (for-each-rounding-mode
  (lambda (mode)
-   (define-test (symbol-append 'FLO:SET-ROUNDING-MODE ': mode)
+   (define-test (symbol 'FLO:SET-ROUNDING-MODE ': mode)
      (lambda ()
        (let ((mode* (flo:rounding-mode)))
          (flo:preserving-environment
@@ -65,7 +65,7 @@ USA.
 
 (for-each-rounding-mode
  (lambda (mode)
-   (define-test (symbol-append 'FLO:WITH-ROUNDING-MODE ': mode)
+   (define-test (symbol 'FLO:WITH-ROUNDING-MODE ': mode)
      (lambda ()
        (let ((mode* (flo:rounding-mode)))
 	 (flo:with-rounding-mode mode
@@ -77,7 +77,7 @@ USA.
  (lambda (mode)
    (define inputs '(-2.0 -1.5 -1.0 -0.5 -0.0 0.0 0.5 1.0 1.5 2.0))
    (define (define-rounding-test name operator outputs)
-     (define-test (symbol-append 'ROUNDING-MODE-INDEPENDENT ': mode '/ name)
+     (define-test (symbol 'ROUNDING-MODE-INDEPENDENT ': mode '/ name)
        (lambda ()
 	 (do ((inputs inputs (cdr inputs))
 	      (outputs outputs (cdr outputs))
@@ -229,10 +229,10 @@ USA.
 (for-each-exception
  (lambda (name exception condition-type trappable? elicitors)
    condition-type trappable? elicitors	;ignore
-   (define-test (symbol-append 'FLO:EXCEPTIONS->NAMES ': name)
+   (define-test (symbol 'FLO:EXCEPTIONS->NAMES ': name)
      (lambda ()
        (assert-equal (flo:exceptions->names (exception)) (list name))))
-   (define-test (symbol-append 'FLO:NAMES->EXCEPTIONS ': name)
+   (define-test (symbol 'FLO:NAMES->EXCEPTIONS ': name)
      (lambda ()
        (assert-equal (flo:names->exceptions (list name)) (exception))))))
 
@@ -271,7 +271,7 @@ USA.
     (flo:trapped-exceptions)))
 
 (define (define-set-trapped-exceptions-test name to-trap)
-  (define-test (symbol-append 'FLO:SET-TRAPPED-EXCEPTIONS! ': name)
+  (define-test (symbol 'FLO:SET-TRAPPED-EXCEPTIONS! ': name)
     (lambda ()
       (let ((exceptions (to-trap))
 	    (trapped (flo:trapped-exceptions)))
@@ -281,7 +281,7 @@ USA.
 	   (assert-eqv (flo:trapped-exceptions) exceptions)))))))
 
 (define (define-with-trapped-exceptions-test name to-trap)
-  (define-test (symbol-append 'FLO:WITH-TRAPPED-EXCEPTIONS ': name)
+  (define-test (symbol 'FLO:WITH-TRAPPED-EXCEPTIONS ': name)
     (lambda ()
       (let ((exceptions (to-trap)))
 	(flo:with-trapped-exceptions exceptions
@@ -297,7 +297,7 @@ USA.
 (for-each-trappable-exception
  (lambda (name exception condition-type elicitors)
    condition-type elicitors		;ignore
-   (define-test (symbol-append 'FLO:WITH-TRAPPED-EXCEPTIONS ': name)
+   (define-test (symbol 'FLO:WITH-TRAPPED-EXCEPTIONS ': name)
      (lambda ()
        (flo:with-trapped-exceptions (exception)
 	 (lambda ()
@@ -306,7 +306,7 @@ USA.
 (for-each-trappable-exception
  (lambda (name exception condition-type elicitors)
    condition-type elicitors		;ignore
-   (define-test (symbol-append 'FLO:TRAP-EXCEPTIONS! ': name)
+   (define-test (symbol 'FLO:TRAP-EXCEPTIONS! ': name)
      (lambda ()
        (flo:with-trapped-exceptions 0
 	 (lambda ()
@@ -316,7 +316,7 @@ USA.
 (for-each-trappable-exception
  (lambda (name exception condition-type elicitors)
    condition-type elicitors		;ignore
-   (define-test (symbol-append 'FLO:UNTRAP-EXCEPTIONS! ': name)
+   (define-test (symbol 'FLO:UNTRAP-EXCEPTIONS! ': name)
      (lambda ()
        (flo:with-trapped-exceptions (flo:trappable-exceptions)
 	 (lambda ()
@@ -328,7 +328,7 @@ USA.
 (for-each-trappable-exception
  (lambda (name exception condition-type elicitors)
    condition-type elicitors		;ignore
-   (define-test (symbol-append 'FLO:SET-TRAPPED-EXCEPTIONS! ': name ': 'ENABLE)
+   (define-test (symbol 'FLO:SET-TRAPPED-EXCEPTIONS! ': name ': 'ENABLE)
      (lambda ()
        (flo:with-trapped-exceptions 0
 	 (lambda ()
@@ -338,7 +338,7 @@ USA.
 (for-each-trappable-exception
  (lambda (name exception condition-type elicitors)
    condition-type elicitors		;ignore
-   (define-test (symbol-append 'FLO:SET-TRAPPED-EXCEPTIONS! ': name ': 'DISABLE)
+   (define-test (symbol 'FLO:SET-TRAPPED-EXCEPTIONS! ': name ': 'DISABLE)
      (lambda ()
        (let ((exceptions (fix:andc (flo:trappable-exceptions) (exception))))
 	 (flo:with-trapped-exceptions (flo:trappable-exceptions)
@@ -349,7 +349,7 @@ USA.
 
 (for-each-trappable-exception-elicitor
  (lambda (name exception condition-type elicitor-name elicitor)
-   (define-test (symbol-append 'ELICIT ': name ': elicitor-name)
+   (define-test (symbol 'ELICIT ': name ': elicitor-name)
      (lambda ()
        (assert-error (lambda ()
 		       (flo:with-trapped-exceptions (exception) elicitor))
@@ -358,7 +358,7 @@ USA.
 (for-each-trappable-exception-elicitor
  (lambda (name exception condition-type elicitor-name elicitor)
    exception				;ignore
-   (define-test (symbol-append 'ELICIT-DEFERRED ': name ': elicitor-name)
+   (define-test (symbol 'ELICIT-DEFERRED ': name ': elicitor-name)
      (lambda ()
        (assert-error
 	(lambda ()
@@ -375,14 +375,14 @@ USA.
 (for-each-exception-elicitor
  (lambda (name exception condition-type trappable? elicitor-name elicitor)
    exception condition-type trappable?	;ignore
-   (define-test (symbol-append 'ELICIT-IGNORED ': name ': elicitor-name)
+   (define-test (symbol 'ELICIT-IGNORED ': name ': elicitor-name)
      (lambda ()
        (flo:ignoring-exception-traps elicitor)))))
 
 (for-each-exception-elicitor
  (lambda (name exception condition-type trappable? elicitor-name elicitor)
    condition-type trappable?		;ignore
-   (define-test (symbol-append 'ELICIT-AND-TEST ': name ': elicitor-name)
+   (define-test (symbol 'ELICIT-AND-TEST ': name ': elicitor-name)
      (lambda ()
        (assert-eqv (flo:ignoring-exception-traps
 		    (lambda ()
@@ -393,7 +393,7 @@ USA.
 (for-each-exception-elicitor
  (lambda (name exception condition-type trappable? elicitor-name elicitor)
    condition-type trappable?		;ignore
-   (define-test (symbol-append 'ELICIT-CLEAR-TEST ': name ': elicitor-name)
+   (define-test (symbol 'ELICIT-CLEAR-TEST ': name ': elicitor-name)
      (lambda ()
        (assert-eqv (flo:ignoring-exception-traps
 		    (lambda ()
@@ -427,7 +427,7 @@ USA.
     (flo:with-default-environment (lambda () 0))))
 
 (define (define-default-environment-test name procedure)
-  (define-test (symbol-append 'FLO:DEFAULT-ENVIRONMENT ': name)
+  (define-test (symbol 'FLO:DEFAULT-ENVIRONMENT ': name)
     (lambda ()
       (flo:preserving-environment
        (lambda ()

@@ -268,8 +268,8 @@ When called interactively, completion is available on the input."
   (sc-macro-transformer
    (lambda (form environment)
      (let ((name (cadr form)))
-       `(DEFINE ,(symbol-append 'EDWIN-COMMAND$X- name)
-	  ,(close-syntax (symbol-append 'EDWIN-COMMAND$ name)
+       `(DEFINE ,(symbol 'EDWIN-COMMAND$X- name)
+	  ,(close-syntax (symbol 'EDWIN-COMMAND$ name)
 			 environment))))))
 
 (define-old-mouse-command set-foreground-color)

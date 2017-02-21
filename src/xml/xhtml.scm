@@ -139,9 +139,9 @@ USA.
 	       (context (caddr form))
 	       (empty? (pair? (cdddr form))))
 	   `(BEGIN
-	      (DEFINE ,(symbol-append 'HTML: name)
+	      (DEFINE ,(symbol 'HTML: name)
 		(STANDARD-XML-ELEMENT-CONSTRUCTOR ',name HTML-URI ,empty?))
-	      (DEFINE ,(symbol-append 'HTML: name '?)
+	      (DEFINE ,(symbol 'HTML: name '?)
 		(STANDARD-XML-ELEMENT-PREDICATE ',name HTML-URI))
 	      (DEFINE-HTML-ELEMENT-CONTEXT ',name ',context)))
 	 (ill-formed-syntax form)))))

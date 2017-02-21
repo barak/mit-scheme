@@ -979,7 +979,7 @@ USA.
 	   (lambda (form environment)
 	     (let ((name (cadr form)))
 	       `(DISPATCH-ENTRY ,name
-				,(close-syntax (symbol-append 'GENERATE/ name)
+				,(close-syntax (symbol 'GENERATE/ name)
 					       environment)))))))
       (standard-entry access)
       (standard-entry assignment)

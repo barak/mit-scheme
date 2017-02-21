@@ -235,7 +235,7 @@ to inside a string that is being used as the buffer).
 	      (,revert X Y))))))))
 
 (define ((make-type-namer suffix) type #!optional environment)
-  (let ((name (symbol-append type suffix)))
+  (let ((name (symbol type suffix)))
     (if (default-object? environment)
 	name
 	(close-syntax name environment))))

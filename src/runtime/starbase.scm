@@ -113,15 +113,15 @@ USA.
    (lambda (form environment)
      (let ((name (cadr form)))
        `(BEGIN
-	  (DEFINE (,(symbol-append 'STARBASE-DEVICE/ name) DEVICE)
+	  (DEFINE (,(symbol 'STARBASE-DEVICE/ name) DEVICE)
 	    (,(close-syntax
-	       (symbol-append 'STARBASE-GRAPHICS-DESCRIPTOR/ name)
+	       (symbol 'STARBASE-GRAPHICS-DESCRIPTOR/ name)
 	       environment)
 	     (GRAPHICS-DEVICE/DESCRIPTOR DEVICE)))
 	  (DEFINE
-	    (,(symbol-append 'SET-STARBASE-DEVICE/ name '!) DEVICE VALUE)
+	    (,(symbol 'SET-STARBASE-DEVICE/ name '!) DEVICE VALUE)
 	    (,(close-syntax
-	       (symbol-append 'SET-STARBASE-GRAPHICS-DESCRIPTOR/ name '!)
+	       (symbol 'SET-STARBASE-GRAPHICS-DESCRIPTOR/ name '!)
 	       environment)
 	     (GRAPHICS-DEVICE/DESCRIPTOR DEVICE)
 	     VALUE)))))))

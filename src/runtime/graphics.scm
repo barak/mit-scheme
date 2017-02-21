@@ -259,8 +259,8 @@ USA.
    (lambda (form environment)
      (let ((name (cadr form)))
        `(DEFINE-INTEGRABLE
-	  (,(symbol-append 'GRAPHICS-DEVICE/OPERATION/ name) DEVICE)
-	  (,(close-syntax (symbol-append 'GRAPHICS-DEVICE-TYPE/OPERATION/
+	  (,(symbol 'GRAPHICS-DEVICE/OPERATION/ name) DEVICE)
+	  (,(close-syntax (symbol 'GRAPHICS-DEVICE-TYPE/OPERATION/
 					 name)
 			  environment)
 	   (GRAPHICS-DEVICE/TYPE DEVICE)))))))

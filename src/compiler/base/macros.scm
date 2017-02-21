@@ -86,11 +86,11 @@ USA.
 		 (slots (cdddr form)))
 	     (let ((make-defs
 		    (lambda (slot index)
-		      (let ((ref-name (symbol-append class '- slot)))
+		      (let ((ref-name (symbol class '- slot)))
 			`((DEFINE-INTEGRABLE (,ref-name V)
 			    (VECTOR-REF V ,index))
 			  (DEFINE-INTEGRABLE
-			    (,(symbol-append 'SET- ref-name '!) V OBJECT)
+			    (,(symbol 'SET- ref-name '!) V OBJECT)
 			    (VECTOR-SET! V ,index OBJECT)))))))
 	       (if (pair? slots)
 		   `(BEGIN
@@ -117,12 +117,12 @@ USA.
        (if (syntax-match? pattern (cdr form))
 	   (let ((type (cadr form))
 		 (slots (cddr form)))
-	     (let ((tag-name (symbol-append type '-TAG)))
+	     (let ((tag-name (symbol type '-TAG)))
 	       (let ((tag-ref (close-syntax tag-name environment)))
 		 `(BEGIN
 		    (DEFINE ,tag-name
 		      (MAKE-VECTOR-TAG #F ',type #F))
-		    (DEFINE ,(symbol-append type '?)
+		    (DEFINE ,(symbol type '?)
 		      (TAGGED-VECTOR/SUBCLASS-PREDICATE ,tag-ref))
 		    (DEFINE-VECTOR-SLOTS ,type 1 ,@slots)
 		    (SET-VECTOR-TAG-DESCRIPTION! ,tag-ref
@@ -137,8 +137,8 @@ USA.
 	   (reserved (caddr form))
 	   (enumeration (close-syntax (cadddr form) environment)))
        (let ((parent
-	      (close-syntax (symbol-append name '-TAG) environment)))
-	 `(define-syntax ,(symbol-append 'DEFINE- name)
+	      (close-syntax (symbol name '-TAG) environment)))
+	 `(define-syntax ,(symbol 'DEFINE- name)
 	    (sc-macro-transformer
 	     (let ((pattern
 		    `(SYMBOL * ,(lambda (x)
@@ -149,14 +149,14 @@ USA.
 		 (if (syntax-match? pattern (cdr form))
 		     (let ((type (cadr form))
 			   (slots (cddr form)))
-		       (let ((tag-name (symbol-append type '-TAG)))
+		       (let ((tag-name (symbol type '-TAG)))
 			 (let ((tag-ref
 				(close-syntax tag-name environment)))
 			   `(BEGIN
 			      (DEFINE ,tag-name
 				(MAKE-VECTOR-TAG ,',parent ',type
 						 ,',enumeration))
-			      (DEFINE ,(symbol-append type '?)
+			      (DEFINE ,(symbol type '?)
 				(TAGGED-VECTOR/PREDICATE ,tag-ref))
 			      (DEFINE-VECTOR-SLOTS ,type ,,reserved
 				,@slots)
@@ -191,7 +191,7 @@ USA.
 		 (slots (cdddr form)))
 	     (let ((ref-name
 		    (lambda (slot)
-		      (close-syntax (symbol-append type '- slot)
+		      (close-syntax (symbol type '- slot)
 				    environment))))
 	       `(LIST
 		 ,@(map (lambda (slot)
@@ -290,18 +290,18 @@ USA.
 	   (SET! ,types (CONS ',type ,types))
 	   ,(let ((parameters (map make-synthetic-identifier components)))
 	      `(DEFINE-INTEGRABLE
-		 (,(symbol-append prefix 'MAKE- type) ,@parameters)
+		 (,(symbol prefix 'MAKE- type) ,@parameters)
 		 ,(wrap-constructor `(LIST ',type ,@parameters))))
-	   (DEFINE-INTEGRABLE (,(symbol-append 'RTL: type '?) EXPRESSION)
+	   (DEFINE-INTEGRABLE (,(symbol 'RTL: type '?) EXPRESSION)
 	     (EQ? (CAR EXPRESSION) ',type))
 	   ,@(let loop ((components components) (ref-index 6) (set-index 2))
 	       (if (pair? components)
-		   (let ((name (symbol-append type '- (car components))))
+		   (let ((name (symbol type '- (car components))))
 		     `((DEFINE-INTEGRABLE
-			 (,(symbol-append 'RTL: name) OBJECT)
+			 (,(symbol 'RTL: name) OBJECT)
 			 (GENERAL-CAR-CDR OBJECT ,ref-index))
 		       (DEFINE-INTEGRABLE
-			 (,(symbol-append 'RTL:SET- name '!) OBJECT V)
+			 (,(symbol 'RTL:SET- name '!) OBJECT V)
 			 (SET-CAR! (GENERAL-CAR-CDR OBJECT ,set-index) V))
 		       ,@(loop (cdr components)
 			       (* ref-index 2)
@@ -358,13 +358,13 @@ USA.
      (if (syntax-match? '(SYMBOL (* SYMBOL)) (cdr form))
 	 (let ((name (cadr form))
 	       (elements (caddr form)))
-	   (let ((enumeration (symbol-append name 'S)))
+	   (let ((enumeration (symbol name 'S)))
 	     (let ((enum-ref (close-syntax enumeration environment)))
 	       `(BEGIN
 		  (DEFINE ,enumeration
 		    (MAKE-ENUMERATION ',elements))
 		  ,@(map (lambda (element)
-			   `(DEFINE ,(symbol-append name '/ element)
+			   `(DEFINE ,(symbol name '/ element)
 			      (ENUMERATION/NAME->INDEX ,enum-ref ',element)))
 			 elements)))))
 	 (ill-formed-syntax form)))))
@@ -375,7 +375,7 @@ USA.
      (if (syntax-match? '(SYMBOL EXPRESSION * (DATUM * EXPRESSION)) (cdr form))
 	 (enumeration-case-1 (caddr form) (cdddr form) environment
 			     (lambda (element)
-			       (symbol-append (cadr form) '/ element))
+			       (symbol (cadr form) '/ element))
 			     (lambda (expression) expression '()))
 	 (ill-formed-syntax form)))))
 
@@ -384,7 +384,7 @@ USA.
    (lambda (form environment)
      (if (syntax-match? '(EXPRESSION * (DATUM * EXPRESSION)) (cdr form))
 	 (enumeration-case-1 (cadr form) (cddr form) environment
-			     (lambda (element) (symbol-append element '-TAG))
+			     (lambda (element) (symbol element '-TAG))
 			     (lambda (expression)
 			       `((ELSE
 				  (ERROR "Unknown node type:" ,expression)))))

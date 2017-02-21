@@ -156,13 +156,13 @@ USA.
 			       ZS))
 		     (VECTOR
 		      (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
-		      (NAMED-LAMBDA (,(symbol-append 'NULLARY- name))
+		      (NAMED-LAMBDA (,(symbol 'NULLARY- name))
 			,identity)
-		      (NAMED-LAMBDA (,(symbol-append 'UNARY- name) Z)
+		      (NAMED-LAMBDA (,(symbol 'UNARY- name) Z)
 			(IF (NOT (COMPLEX:COMPLEX? Z))
 			    (ERROR:WRONG-TYPE-ARGUMENT Z "number" ',name))
 			Z)
-		      (NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
+		      (NAMED-LAMBDA (,(symbol 'BINARY- name) Z1 Z2)
 			((UCODE-PRIMITIVE ,(list-ref form 4)) Z1 Z2))))))))))
     (commutative + complex:+ 0 &+)
     (commutative * complex:* 1 &*))
@@ -185,7 +185,7 @@ USA.
 		      (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
 		      #F
 		      ,(close-syntax (list-ref form 2) environment)
-		      (NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
+		      (NAMED-LAMBDA (,(symbol 'BINARY- name) Z1 Z2)
 			((UCODE-PRIMITIVE ,(list-ref form 6)) Z1 Z2))))))))))
     (non-commutative - complex:negate complex:- complex:+ 0 &-)
     (non-commutative / complex:invert complex:/ complex:* 1 &/))
@@ -205,14 +205,14 @@ USA.
 			ZS ',name))
 		     (VECTOR
 		      (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
-		      (NAMED-LAMBDA (,(symbol-append 'NULLARY- name)) #T)
-		      (NAMED-LAMBDA (,(symbol-append 'UNARY- name) Z)
+		      (NAMED-LAMBDA (,(symbol 'NULLARY- name)) #T)
+		      (NAMED-LAMBDA (,(symbol 'UNARY- name) Z)
 			(IF (NOT (,(intern (string-append "complex:" type "?"))
 				  Z))
 			    (ERROR:WRONG-TYPE-ARGUMENT
 			     Z ,(string-append type " number") ',name))
 			#T)
-		      (NAMED-LAMBDA (,(symbol-append 'BINARY- name) Z1 Z2)
+		      (NAMED-LAMBDA (,(symbol 'BINARY- name) Z1 Z2)
 			,(let ((p
 				`((UCODE-PRIMITIVE ,(list-ref form 3)) Z1 Z2)))
 			   (if (list-ref form 5)
@@ -238,7 +238,7 @@ USA.
 		     (VECTOR
 		      (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
 		      #F
-		      (NAMED-LAMBDA (,(symbol-append 'UNARY- name) X)
+		      (NAMED-LAMBDA (,(symbol 'UNARY- name) X)
 			(IF (NOT (COMPLEX:REAL? X))
 			    (ERROR:WRONG-TYPE-ARGUMENT X "real number" ',name))
 			X)

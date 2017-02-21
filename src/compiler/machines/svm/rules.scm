@@ -725,7 +725,7 @@ USA.
 	  frame-size continuation
 	  (expect-no-exit-interrupt-checks)
 	  (%primitive-invocation
-	   ,(close-syntax (symbol-append 'TRAP: name) environment)))))))
+	   ,(close-syntax (symbol 'TRAP: name) environment)))))))
 
 (define (%primitive-invocation make-trap)
   (LAP ,@(clear-map!)

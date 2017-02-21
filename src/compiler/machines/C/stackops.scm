@@ -64,7 +64,7 @@ USA.
 		       (bindings '()))
 	      (if (not (pair? elements))
 		  (reverse!
-		   (cons `(define ,(symbol-append '* name '*)
+		   (cons `(define ,(symbol '* name '*)
 			    '#(,@(reverse! bindings)))
 			 code))
 		  (let* ((next (car elements))
@@ -78,7 +78,7 @@ USA.
 				      (error "define-enumeration: Overlap"
 					     next)
 				      m)))))
-		    (let ((name (symbol-append name '/ suffix)))
+		    (let ((name (symbol name '/ suffix)))
 		      (loop (+ n 1)
 			    (cdr elements)
 			    (cons `(DEFINE-INTEGRABLE ,name ,n)

@@ -1095,7 +1095,7 @@ USA.
 	 (let ((name (caadr form))
 	       (field-names (cdadr form))
 	       (reporter (caddr form)))
-	   (let ((ct (symbol-append 'CONDITION-TYPE: name)))
+	   (let ((ct (symbol 'CONDITION-TYPE: name)))
 	     `(BEGIN
 		(SET! ,ct
 		      (MAKE-CONDITION-TYPE ',name CONDITION-TYPE:PARSE-ERROR
@@ -1106,7 +1106,7 @@ USA.
 				    `(ACCESS-CONDITION CONDITION ',field-name))
 				  field-names)
 			   PORT))))
-		(SET! ,(symbol-append 'ERROR: name)
+		(SET! ,(symbol 'ERROR: name)
 		      (CONDITION-SIGNALLER ,ct
 					   ',field-names
 					   STANDARD-ERROR-HANDLER)))))

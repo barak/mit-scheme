@@ -209,10 +209,10 @@ USA.
   (for-each (lambda (hash-parameters)
 	      (for-each (lambda (entry-type)
 			  (define-test
-			    (symbol-append 'CORRECTNESS-VS-RB:
-					   (car entry-type)
-					   '-
-					   (car hash-parameters))
+			    (symbol 'CORRECTNESS-VS-RB:
+				    (car entry-type)
+				    '-
+				    (car hash-parameters))
 			    (lambda ()
 			      (check
 			       (make-hash-table-implementation

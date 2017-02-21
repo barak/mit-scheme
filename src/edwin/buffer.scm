@@ -53,8 +53,8 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      (let ((slot-name (cadr form)))
-       `(DEFINE-INTEGRABLE ,(symbol-append 'BUFFER- slot-name)
-	  ,(close-syntax (symbol-append 'BUFFER-% slot-name)
+       `(DEFINE-INTEGRABLE ,(symbol 'BUFFER- slot-name)
+	  ,(close-syntax (symbol 'BUFFER-% slot-name)
 			 environment))))))
 
 (rename-buffer-accessor name)

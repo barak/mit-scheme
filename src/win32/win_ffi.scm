@@ -72,7 +72,7 @@ USA.
 		      (intern (string-append "arg" (number->string i))))
 		    indexes))
 	      (type-names
-	       (map (lambda (n) (symbol-append n '-TYPE))
+	       (map (lambda (n) (symbol n '-TYPE))
 		    arg-names)))
 	 `(LAMBDA (MODULE-ENTRY)
 	    (LET ,(map (lambda (type-name index)

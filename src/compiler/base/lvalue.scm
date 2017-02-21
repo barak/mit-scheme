@@ -110,17 +110,17 @@ USA.
    (lambda (form environment)
      environment
      (let* ((name (cadr form))
-	    (symbol
+	    (variable-name
 	     (intern (string-append "#[" (symbol->string name) "]"))))
        `(BEGIN (DEFINE-INTEGRABLE
-		 (,(symbol-append 'MAKE- name '-VARIABLE) BLOCK)
-		 (MAKE-VARIABLE BLOCK ',symbol))
+		 (,(symbol 'MAKE- name '-VARIABLE) BLOCK)
+		 (MAKE-VARIABLE BLOCK ',variable-name))
 	       (DEFINE-INTEGRABLE
-		 (,(symbol-append 'VARIABLE/ name '-VARIABLE?) LVALUE)
-		 (EQ? (VARIABLE-NAME LVALUE) ',symbol))
-	       (DEFINE (,(symbol-append name '-VARIABLE?) LVALUE)
+		 (,(symbol 'VARIABLE/ name '-VARIABLE?) LVALUE)
+		 (EQ? (VARIABLE-NAME LVALUE) ',variable-name))
+	       (DEFINE (,(symbol name '-VARIABLE?) LVALUE)
 		 (AND (VARIABLE? LVALUE)
-		      (EQ? (VARIABLE-NAME LVALUE) ',symbol))))))))
+		      (EQ? (VARIABLE-NAME LVALUE) ',variable-name))))))))
 
 (define-named-variable continuation)
 (define-named-variable value)

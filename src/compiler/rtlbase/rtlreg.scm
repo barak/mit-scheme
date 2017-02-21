@@ -73,16 +73,16 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      (let ((slot (cadr form)))
-       (let ((name (symbol-append 'REGISTER- slot)))
+       (let ((name (symbol 'REGISTER- slot)))
 	 (let ((vector
-		`(,(close-syntax (symbol-append 'RGRAPH- name)
+		`(,(close-syntax (symbol 'RGRAPH- name)
 				 environment)
 		  *CURRENT-RGRAPH*)))
 	   `(BEGIN
 	      (DEFINE-INTEGRABLE (,name REGISTER)
 		(VECTOR-REF ,vector REGISTER))
 	      (DEFINE-INTEGRABLE
-		(,(symbol-append 'SET- name '!) REGISTER VALUE)
+		(,(symbol 'SET- name '!) REGISTER VALUE)
 		(VECTOR-SET! ,vector REGISTER VALUE)))))))))
 
 (define-register-references bblock)

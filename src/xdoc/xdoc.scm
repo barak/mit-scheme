@@ -1474,12 +1474,12 @@ USA.
      (let ((local (cadr form))
 	   (content-type (caddr form))
 	   (elt-type (cadddr form)))
-       (let ((qname (symbol-append 'xd: local)))
+       (let ((qname (symbol 'xd: local)))
 	 `(BEGIN
 	    (DEFINE ,qname
 	      (STANDARD-XML-ELEMENT-CONSTRUCTOR ',qname XDOC-URI
 						,(eq? content-type 'empty)))
-	    (DEFINE ,(symbol-append qname '?)
+	    (DEFINE ,(symbol qname '?)
 	      (LET ((NAME (MAKE-XML-NAME ',qname XDOC-URI)))
 		(LAMBDA (OBJECT)
 		  (AND (XML-ELEMENT? OBJECT)

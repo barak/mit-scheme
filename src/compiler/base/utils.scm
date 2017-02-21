@@ -144,7 +144,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     `(DEFINE-INTEGRABLE ,(symbol-append 'TYPE-CODE: (cadr form))
+     `(DEFINE-INTEGRABLE ,(symbol 'TYPE-CODE: (cadr form))
 	',(microcode-type (cadr form))))))
 
 (define-type-code lambda)

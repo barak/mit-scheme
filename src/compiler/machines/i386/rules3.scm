@@ -233,11 +233,11 @@ USA.
 	       (expect-no-exit-interrupt-checks)
 	       #|
 	       (special-primitive-invocation
-		,(close-syntax (symbol-append 'CODE:COMPILER- name)
+		,(close-syntax (symbol 'CODE:COMPILER- name)
 			       environment))
 	       |#
 	       (optimized-primitive-invocation
-		,(close-syntax (symbol-append 'ENTRY:COMPILER- name)
+		,(close-syntax (symbol 'ENTRY:COMPILER- name)
 			       environment))))))))
 
   (define-primitive-invocation &+)

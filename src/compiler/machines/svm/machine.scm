@@ -73,11 +73,11 @@ USA.
      (if (syntax-match? '(SYMBOL * SYMBOL) (cdr form))
 	 (let ((tag (cadr form))
 	       (params (cddr form)))
-	   (let ((name (symbol-append 'INST: tag)))
+	   (let ((name (symbol 'INST: tag)))
 	     `(BEGIN
 		(DEFINE-INTEGRABLE (,name ,@params)
 		  (LIST (LIST ',tag ,@params)))
-		(DEFINE-INTEGRABLE (,(symbol-append name '?) INST)
+		(DEFINE-INTEGRABLE (,(symbol name '?) INST)
 		  (EQ? (CAR INST) ',tag)))))
 	 (ill-formed-syntax form)))))
 
@@ -178,12 +178,12 @@ USA.
      (if (syntax-match? '(SYMBOL * SYMBOL) (cdr form))
 	 (let ((tag (cadr form))
 	       (params (cddr form)))
-	   (let ((name (symbol-append 'EA: tag)))
+	   (let ((name (symbol 'EA: tag)))
 	     `(BEGIN
 		(DEFINE-INTEGRABLE (,name ,@params)
 		  (INST-EA (,tag ,@(map (lambda (p) (list 'UNQUOTE p))
 					params))))
-		(DEFINE-INTEGRABLE (,(symbol-append name '?) EA)
+		(DEFINE-INTEGRABLE (,(symbol name '?) EA)
 		  (AND (PAIR? EA)
 		       (EQ? (CAR EA) ',tag))))))
 	 (ill-formed-syntax form)))))
@@ -257,7 +257,7 @@ USA.
 	,@(map (lambda (name)
 		 (let ((code (if (pair? name) (cadr name) name))
 		       (prim (if (pair? name) (car name) name)))
-		   `(DEFINE (,(symbol-append 'TRAP: prim) . ARGS)
+		   `(DEFINE (,(symbol 'TRAP: prim) . ARGS)
 		      (APPLY INST:TRAP ',code ARGS))))
 	       (cdr form))))))
 
@@ -281,7 +281,7 @@ USA.
      environment
      `(BEGIN
        ,@(map (lambda (name)
-		`(DEFINE-INST ,(symbol-append 'INTERRUPT-TEST- name)))
+		`(DEFINE-INST ,(symbol 'INTERRUPT-TEST- name)))
 	      (cdr form))))))
 
 (define-interrupt-tests dynamic-link procedure continuation ic-procedure)
@@ -331,11 +331,11 @@ USA.
 		      '()))))
 	   `(BEGIN
 	      ,@(map (lambda (p)
-		       `(DEFINE-INTEGRABLE ,(symbol-append 'REGNUM: (car p))
+		       `(DEFINE-INTEGRABLE ,(symbol 'REGNUM: (car p))
 			  ,(cdr p)))
 		     alist)
 	      ,@(map (lambda (p)
-		       `(DEFINE-INTEGRABLE ,(symbol-append 'RREF: (car p))
+		       `(DEFINE-INTEGRABLE ,(symbol 'RREF: (car p))
 			  (REGISTER-REFERENCE ,(cdr p))))
 		     alist)
 	      (DEFINE FIXED-REGISTERS ',alist)))
@@ -407,12 +407,12 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      (if (syntax-match? '(symbol identifier) (cdr form))
-	 (let ((name (symbol-append 'INTERPRETER- (cadr form)))
+	 (let ((name (symbol 'INTERPRETER- (cadr form)))
 	       (regnum (close-syntax (caddr form) environment)))
 	   `(BEGIN
 	      (DEFINE (,name)
 		(RTL:MAKE-MACHINE-REGISTER ,regnum))
-	      (DEFINE (,(symbol-append name '?) EXPRESSION)
+	      (DEFINE (,(symbol name '?) EXPRESSION)
 		(AND (RTL:REGISTER? EXPRESSION)
 		     (FIX:= (RTL:REGISTER-NUMBER EXPRESSION) ,regnum)))))
 	 (ill-formed-syntax form)))))

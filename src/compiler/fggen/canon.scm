@@ -835,8 +835,7 @@ ARBITRARY:	The expression may be executed more than once.  It
 	   (lambda (form environment)
 	     (let ((name (cadr form)))
 	       `(DISPATCH-ENTRY ,name
-				,(close-syntax (symbol-append 'CANONICALIZE/
-							      name)
+				,(close-syntax (symbol 'CANONICALIZE/ name)
 					       environment))))))
 
 	 (nary-entry
@@ -846,9 +845,9 @@ ARBITRARY:	The expression may be executed more than once.  It
 		   (name (caddr form)))
 	       `(DISPATCH-ENTRY ,name
 				,(close-syntax
-				  `(,(symbol-append 'CANONICALIZE/ nary)
-				    ,(symbol-append 'SCODE/ name '-COMPONENTS)
-				    ,(symbol-append 'SCODE/MAKE- name))
+				  `(,(symbol 'CANONICALIZE/ nary)
+				    ,(symbol 'SCODE/ name '-COMPONENTS)
+				    ,(symbol 'SCODE/MAKE- name))
 				  environment))))))
 
 	 (binary-entry
