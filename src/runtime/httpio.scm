@@ -184,7 +184,7 @@ USA.
 	(write-string (http-request-body request) port))
       (begin
 	(newline port)))
-  (flush-output port))
+  (flush-output-port port))
 
 (define (write-http-response response port)
   (if (http-response-version response)
@@ -199,7 +199,7 @@ USA.
 	(write-http-headers (http-response-headers response) port)))
   (%binary-mode port)
   (write-string (http-response-body response) port)
-  (flush-output port))
+  (flush-output-port port))
 
 ;;;; Input
 

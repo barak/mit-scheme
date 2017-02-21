@@ -540,7 +540,7 @@ USA.
 (define (flush-transcript port)
   (let ((tport (textual-port-transcript port)))
     (if tport
-	(flush-output tport))))
+	(flush-output-port tport))))
 
 (define (discretionary-flush-transcript port)
   (let ((tport (textual-port-transcript port)))

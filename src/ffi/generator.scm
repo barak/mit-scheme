@@ -517,7 +517,7 @@ Scm_"name" ("arglist")
 
 #include <stdio.h>
 " (basics-grovel-func) (enums-grovel-func includes)))
-      (flush-output)
+      (flush-output-port)
       (let* ((structs (gen-struct-grovel-funcs includes))
 	     (unions (gen-union-grovel-funcs includes)))
 	(let ((library (c-includes/library includes)))

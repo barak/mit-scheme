@@ -176,7 +176,7 @@ USA.
 	(error "Expression length exceeds 24 bits:" s))
     (write-string (string-pad-left s 6 #\0) out))
   (write-string packet out)
-  (flush-output out))
+  (flush-output-port out))
 
 (define (dispatch message socket level)
   (let ((p
@@ -307,7 +307,7 @@ USA.
     (dynamic-wind
 	(lambda () unspecific)
 	(lambda () (with-output-to-port p thunk))
-	(lambda () (flush-output p)))))
+	(lambda () (flush-output-port p)))))
 
 (define repl-port-type)
 (define (initialize-package!)

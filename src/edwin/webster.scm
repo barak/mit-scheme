@@ -37,7 +37,7 @@ USA.
   (write-string " " webster-server-port)
   (write-string word webster-server-port)
   (newline webster-server-port)
-  (flush-output webster-server-port)
+  (flush-output-port webster-server-port)
   (let ((line (read-line webster-server-port)))
     (cond ((string=? "SPELLING 0" line)
 	   (message "Word not found."))

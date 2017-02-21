@@ -1097,7 +1097,7 @@ the user from the mailer."
   (newline (smtp-port-port port)))
 
 (define (smtp-drain-output port)
-  (flush-output (smtp-port-port port)))
+  (flush-output-port (smtp-port-port port)))
 
 (define (smtp-trace-write-string string port)
   (let ((trace-buffer (smtp-port-trace-buffer port)))

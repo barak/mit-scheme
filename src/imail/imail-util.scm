@@ -643,7 +643,7 @@ USA.
 	    (begin
 	      (write-line (cons* 'OBJECT-EVENT object type arguments)
 			  imap-trace-port)
-	      (flush-output imap-trace-port)))
+	      (flush-output-port imap-trace-port)))
 	(event-distributor/invoke! (object-modification-event object)
 				   object
 				   type

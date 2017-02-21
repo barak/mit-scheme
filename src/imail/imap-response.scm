@@ -587,9 +587,9 @@ USA.
       (write object imap-transcript-port)))
 
 (define (imap-transcript-flush-output port)
-  (flush-output port)
+  (flush-output-port port)
   (if imap-transcript-port
-      (flush-output imap-transcript-port)))
+      (flush-output-port imap-transcript-port)))
 
 (define imap-transcript-port #f)
 

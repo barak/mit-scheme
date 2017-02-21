@@ -100,7 +100,7 @@ USA.
 		(begin
 		  (write-xml document *trace-expansion-port*)
 		  (fresh-line *trace-expansion-port*)
-		  (flush-output *trace-expansion-port*)))
+		  (flush-output-port *trace-expansion-port*)))
 	    (procedure document)))))))
 
 (define (trace-expansion filename)

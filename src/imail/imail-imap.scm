@@ -2573,7 +2573,7 @@ USA.
 					(cddr arguments))
 				 arguments))
 		      imap-trace-port)
-	  (flush-output imap-trace-port)))
+	  (flush-output-port imap-trace-port)))
     (imap-transcript-write-string tag port)
     (imap-transcript-write-char #\space port)
     (imap-transcript-write-string (symbol->string command) port)
@@ -2662,7 +2662,7 @@ USA.
     (if imap-trace-port
 	(begin
 	  (write-line (list 'RECEIVE response) imap-trace-port)
-	  (flush-output imap-trace-port)))
+	  (flush-output-port imap-trace-port)))
     response))
 
 (define (imap:catch-no-response predicate thunk)

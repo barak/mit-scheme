@@ -77,7 +77,7 @@ USA.
 		(fresh-line port)
 		(newline port)
 		(write-string prompt port)
-		(flush-output port)))
+		(flush-output-port port)))
 	    (with-input-port-terminal-mode port 'COOKED
 	      (lambda ()
 		(read port environment))))))))
@@ -115,7 +115,7 @@ USA.
 	    (with-output-port-terminal-mode port 'COOKED
 	      (lambda ()
 		(write-char char port)
-		(flush-output port)))
+		(flush-output-port port)))
 	    char)
 	  (loop)))))
 
@@ -136,7 +136,7 @@ USA.
       (lambda ()
 	(newline port)
 	(write-string prompt port)
-	(flush-output port)))
+	(flush-output-port port)))
     (let ((char
 	   (with-input-port-terminal-mode port 'RAW
 	     (lambda ()
@@ -146,13 +146,13 @@ USA.
 	 (with-output-port-terminal-mode port 'COOKED
 	   (lambda ()
 	     (write-string "Yes" port)
-	     (flush-output port)))
+	     (flush-output-port port)))
 	 true)
 	((#\n #\N #\rubout)
 	 (with-output-port-terminal-mode port 'COOKED
 	   (lambda ()
 	     (write-string "No" port)
-	     (flush-output port)))
+	     (flush-output-port port)))
 	 false)
 	((#\newline)
 	 (loop))
@@ -161,7 +161,7 @@ USA.
 	   (lambda ()
 	     (write char port)
 	     (beep port)
-	     (flush-output port)))
+	     (flush-output-port port)))
 	 (loop))))))
 
 (define (prompt-for-string prompt #!optional port)
@@ -178,7 +178,7 @@ USA.
       (fresh-line port)
       (newline port)
       (write-string prompt port)
-      (flush-output port)))
+      (flush-output-port port)))
   (with-input-port-terminal-mode port 'COOKED
     (lambda ()
       (read-line port))))
@@ -242,7 +242,7 @@ USA.
       (fresh-line port)
       (newline port)
       (write-string (canonicalize-prompt prompt ": ") port)
-      (flush-output port)))
+      (flush-output-port port)))
   (let loop ((input ""))
     (let ((char (with-binary-line-ending
 		 (lambda ()
@@ -298,7 +298,7 @@ USA.
 		(write-string " " port)
 		(write-string (cdr prompt) port))
 	      (write-string prompt port))
-	  (flush-output port)))))
+	  (flush-output-port port)))))
 
 ;;;; Debugger Support
 

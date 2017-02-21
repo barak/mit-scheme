@@ -63,7 +63,7 @@ USA.
 			   (status-response 500 (condition->html response))
 			   response))))
 	       port)
-	      (flush-output port))
+	      (flush-output-port port))
 	    (lambda ()
 	      (transcript-off port)
 	      (close-port port))))))
@@ -836,6 +836,6 @@ USA.
 			  (http-request-user-name)
 			  (http-message-post-parameters request))
 		    request-log-port)
-	(flush-output request-log-port))))
+	(flush-output-port request-log-port))))
 
 (define request-log-port #f)
