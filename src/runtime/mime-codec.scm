@@ -930,7 +930,7 @@ USA.
 (define (decode-uue:initialize port text?)
   text?
   (let ((state 'BEGIN)
-	(line-buffer (make-line-buffer 256))
+	(builder (string-builder))
 	(output-buffer (make-legacy-string 3)))
 
     (define (update string start end)
@@ -939,10 +939,12 @@ USA.
 	  (let ((nl (substring-find-next-char string start end #\newline)))
 	    (if nl
 		(begin
-		  (add-to-line-buffer string start nl line-buffer)
-		  (process-line (line-buffer-contents line-buffer))
+		  (builder (string-slice string start nl))
+		  (let ((line (builder)))
+		    (builder 'reset!)
+		    (process-line line))
 		  (update string (fix:+ nl 1) end))
-		(add-to-line-buffer string start end line-buffer)))))
+		(builder (string-slice string start end))))))
 
     (define (process-line line)
       (if (not (fix:> (string-length line) 0))
@@ -1006,34 +1008,6 @@ USA.
     uudecode-ctx?
   (update uudecode-ctx-update)
   (finalize uudecode-ctx-finalize))
-
-(define (make-line-buffer n-max)
-  (let ((s (make-legacy-string n-max)))
-    (set-string-length! s 0)
-    (cons n-max s)))
-
-(define (add-to-line-buffer string start end line-buffer)
-  (let ((s (cdr line-buffer)))
-    (let ((n (string-length s)))
-      (let ((n-max (string-maximum-length s))
-	    (m (fix:+ n (fix:- end start))))
-	(if (fix:< n-max m)
-	    (let loop ((n-max (fix:* n-max 2)))
-	      (if (fix:< n-max m)
-		  (loop (fix:* n-max 2))
-		  (let ((s* (make-legacy-string n-max)))
-		    (substring-move! s 0 n s* 0)
-		    (set-string-length! s* m)
-		    (set-cdr! line-buffer s*))))
-	    (set-string-length! s m)))
-      (substring-move! string start end (cdr line-buffer) n))))
-
-(define (line-buffer-contents line-buffer)
-  (let ((contents (cdr line-buffer))
-	(s (make-legacy-string (car line-buffer))))
-    (set-string-length! s 0)
-    (set-cdr! line-buffer s)
-    contents))
 
 (define (uudecode-quantum string start buffer)
   (let ((n0 (uudecode-char (string-ref string start)))
