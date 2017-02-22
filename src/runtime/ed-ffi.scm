@@ -101,8 +101,6 @@ USA.
     ("intrpt"	(runtime interrupt-handler))
     ("io"	(runtime primitive-io))
     ("keyword"	(runtime keyword))
-    ("krypt"	(runtime krypt))
-    ("kryptdum"	(runtime krypt))
     ("lambda"	(runtime lambda-abstraction))
     ("lambda-list" (runtime lambda-list))
     ("lambdx"	(runtime alternative-lambda))

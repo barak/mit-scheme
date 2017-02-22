@@ -2657,15 +2657,6 @@ USA.
 	  history-untransform)
   (initialization (initialize-package!)))
 
-(define-package (runtime krypt)
-  (file-case options
-    ((load) "krypt")
-    (else))
-  (parent (runtime))
-  (export ()
-	  encrypt
-	  decrypt))
-
 (define-package (runtime compress)
   (file-case options
     ((load) "cpress")

@@ -67,7 +67,6 @@ USA.
    (DOSPROCESS	()			#F			"dosproc")
    (FORMAT	(RUNTIME FORMAT)	(INITIALIZE-PACKAGE!)	"format")
    (GDBM	(RUNTIME GDBM)		#F			"gdbm")
-   (KRYPT	(RUNTIME KRYPT)		#F			"krypt")
    (MIME-CODEC	(RUNTIME MIME-CODEC)	#F			"mime-codec")
    (ORDERED-VECTOR (RUNTIME ORDERED-VECTOR) #F			"ordvec")
    (POSTGRESQL	(RUNTIME POSTGRESQL)	#F			"pgsql")
