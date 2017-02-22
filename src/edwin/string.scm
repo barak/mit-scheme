@@ -588,6 +588,14 @@ USA.
       (char-set? object)
       (unary-procedure? object)))
 
+(define (random-byte-vector n #!optional state)
+  (let ((bv (random-bytevector n state))
+	(s (make-vector-8b n)))
+    (do ((i 0 (fix:+ i 1)))
+	((not (fix:< i n)))
+      (vector-8b-set! s i (bytevector-u8-ref bv i)))
+    s))
+
 (define (vector-8b->hexadecimal bytes)
   (define-integrable (hex-char k)
     (string-ref "0123456789abcdef" (fix:and k #x0F)))
