@@ -89,48 +89,6 @@ USA.
 	(string-set! result j (string-ref string i)))
       result)))
 
-(define (vector-8b->hexadecimal bytes)
-  (define-integrable (hex-char k)
-    (string-ref "0123456789abcdef" (fix:and k #x0F)))
-  (guarantee-string bytes 'VECTOR-8B->HEXADECIMAL)
-  (let ((n (vector-8b-length bytes)))
-    (let ((s (make-legacy-string (fix:* 2 n))))
-      (do ((i 0 (fix:+ i 1))
-	   (j 0 (fix:+ j 2)))
-	  ((not (fix:< i n)))
-	(string-set! s j (hex-char (fix:lsh (vector-8b-ref bytes i) -4)))
-	(string-set! s (fix:+ j 1) (hex-char (vector-8b-ref bytes i))))
-      s)))
-
-(define (hexadecimal->vector-8b string)
-  (guarantee-string string 'HEXADECIMAL->VECTOR-8B)
-  (let ((end (string-length string))
-	(lose
-	 (lambda ()
-	   (error:bad-range-argument string 'HEXADECIMAL->VECTOR-8B))))
-    (define-integrable (hex-digit char)
-      (let ((i (char->integer char))
-	    (d0 (char->integer #\0))
-	    (d9 (char->integer #\9))
-	    (la (char->integer #\a))
-	    (lf (char->integer #\f))
-	    (UA (char->integer #\A))
-	    (UF (char->integer #\F)))
-	(cond ((and (fix:<= d0 i) (fix:<= i d9)) (fix:- i d0))
-	      ((and (fix:<= la i) (fix:<= i lf)) (fix:+ #xa (fix:- i la)))
-	      ((and (fix:<= UA i) (fix:<= i UF)) (fix:+ #xA (fix:- i UA)))
-	      (else (lose)))))
-    (if (not (fix:= (fix:and end 1) 0))
-	(lose))
-    (let ((bytes (make-vector-8b (fix:lsh end -1))))
-      (do ((i 0 (fix:+ i 2))
-	   (j 0 (fix:+ j 1)))
-	  ((not (fix:< i end)))
-	(vector-8b-set! bytes j
-			(fix:+ (fix:lsh (hex-digit (string-ref string i)) 4)
-			       (hex-digit (string-ref string (fix:+ i 1))))))
-      bytes)))
-
 ;;;; Case
 
 (define (string-capitalized? string)

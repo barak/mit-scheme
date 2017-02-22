@@ -1007,10 +1007,8 @@ USA.
 	  error:not-string
 	  guarantee-string
 	  guarantee-string-index
-	  hexadecimal->vector-8b
 	  make-legacy-string
 	  make-vector-8b
-	  vector-8b->hexadecimal
 	  vector-8b-fill!
 	  vector-8b-find-next-char
 	  vector-8b-find-next-char-ci
@@ -1025,10 +1023,8 @@ USA.
 	  error:not-string
 	  guarantee-string
 	  guarantee-string-index
-	  hexadecimal->vector-8b
 	  make-legacy-string
 	  make-vector-8b
-	  vector-8b->hexadecimal
 	  vector-8b-fill!
 	  vector-8b-find-next-char
 	  vector-8b-find-next-char-ci

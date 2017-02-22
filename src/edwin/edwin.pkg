@@ -163,7 +163,6 @@ USA.
 	  guarantee-substring
 	  guarantee-substring-end-index
 	  guarantee-substring-start-index
-	  hexadecimal->vector-8b
 	  lisp-string->camel-case
 	  list->string
 	  make-string
@@ -279,7 +278,6 @@ USA.
 	  substring<?
 	  substring=?
 	  substring?
-	  vector-8b->hexadecimal
 	  vector-8b-fill!
 	  vector-8b-find-next-char
 	  vector-8b-find-next-char-ci
