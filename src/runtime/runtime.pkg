@@ -1179,6 +1179,7 @@ USA.
   (export ()
 	  (byte? u8?)
 	  bytevector
+	  bytevector->hexadecimal
 	  bytevector-append
 	  bytevector-builder
 	  bytevector-copy
@@ -1198,6 +1199,7 @@ USA.
 	  bytevector-u8-set!
 	  bytevector=?
 	  bytevector?
+	  hexadecimal->bytevector
 	  make-bytevector
 	  string->utf16be
 	  string->utf16le
