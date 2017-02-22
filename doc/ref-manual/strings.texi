@@ -118,7 +118,7 @@ are initialized to @var{char}, otherwise the contents of the
 string are unspecified.
 @end deffn
 
-@deffn {standard procedure} string char @dots
+@deffn {standard procedure} string char @dots{}
 Returns a newly allocated string composed of the arguments.  It is
 analogous to @code{list}.
 @end deffn
@@ -152,13 +152,13 @@ There is no requirement for this procedure to execute in constant time.
 @end example
 @end deffn
 
-@deffn {standard procedure} string=? string1 string2 string @dots
+@deffn {standard procedure} string=? string1 string2 string @dots{}
 Returns @code{#t} if all the strings are the same length and contain
 exactly the same characters in the same positions, otherwise returns
 @code{#f}.
 @end deffn
 
-@deffn {standard procedure} string-ci=? string1 string2 string @dots
+@deffn {standard procedure} string-ci=? string1 string2 string @dots{}
 Returns @code{#t} if, after case-folding, all the strings are the same
 length and contain the same characters in the same positions,
 otherwise returns @code{#f}.  Specifically, these procedures behave as
@@ -166,14 +166,14 @@ if @code{string-foldcase} were applied to their arguments before
 comparing them.
 @end deffn
 
-@deffn {standard procedure} string<? string1 string2 string @dots
-@deffnx {standard procedure} string-ci<? string1 string2 string @dots
-@deffnx {standard procedure} string>? string1 string2 string @dots
-@deffnx {standard procedure} string-ci>? string1 string2 string @dots
-@deffnx {standard procedure} string<=? string1 string2 string @dots
-@deffnx {standard procedure} string-ci<=? string1 string2 string @dots
-@deffnx {standard procedure} string>=? string1 string2 string @dots
-@deffnx {standard procedure} string-ci>=? string1 string2 string @dots
+@deffn {standard procedure} string<? string1 string2 string @dots{}
+@deffnx {standard procedure} string-ci<? string1 string2 string @dots{}
+@deffnx {standard procedure} string>? string1 string2 string @dots{}
+@deffnx {standard procedure} string-ci>? string1 string2 string @dots{}
+@deffnx {standard procedure} string<=? string1 string2 string @dots{}
+@deffnx {standard procedure} string-ci<=? string1 string2 string @dots{}
+@deffnx {standard procedure} string>=? string1 string2 string @dots{}
+@deffnx {standard procedure} string-ci>=? string1 string2 string @dots{}
 These procedures return @code{#t} if their arguments are (respectively):
 monotonically increasing, monotonically decreasing,
 monotonically non-decreasing, or monotonically non-increasing.
@@ -268,7 +268,7 @@ arguments, but is provided for backward compatibility and stylistic
 flexibility.
 @end deffn
 
-@deffn {standard procedure} string-append string @dots
+@deffn {standard procedure} string-append string @dots{}
 @deffnx procedure string-append* strings
 Returns a newly allocated string whose characters are the
 concatenation of the characters in the given strings.
@@ -479,7 +479,7 @@ Returns a newly allocated string with the same characters as
 @end example
 @end deffn
 
-@node Searching Strings, Matching Strings, Cutting and Pasting Strings, Strings
+@node Searching Strings, Matching Strings, Strings, Strings
 @section Searching Strings
 @cindex searching, of string
 @cindex character, searching string for
@@ -693,7 +693,7 @@ don't distinguish uppercase and lowercase letters.
 @end example
 @end deffn
 
-@node Regular Expressions, Modification of Strings, Matching Strings, Strings
+@node Regular Expressions, , Matching Strings, Strings
 @section Regular Expressions
 
 MIT/GNU Scheme provides support for using regular expressions to search and
