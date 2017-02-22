@@ -216,17 +216,9 @@ Characters
 
 Strings
 
-* Construction of Strings::
-* Selecting String Components::
-* Comparison of Strings::
-* Alphabetic Case in Strings::
-* Cutting and Pasting Strings::
 * Searching Strings::
 * Matching Strings::
 * Regular Expressions::
-* Modification of Strings::
-* Variable-Length Strings::
-* Byte Vectors::
 
 Regular Expressions
 
