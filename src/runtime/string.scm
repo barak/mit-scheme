@@ -89,90 +89,6 @@ USA.
 	(string-set! result j (string-ref string i)))
       result)))
 
-(define (string-match-forward string1 string2)
-  (guarantee-2-strings string1 string2 'STRING-MATCH-FORWARD)
-  (%substring-match-forward string1 0 (string-length string1)
-			    string2 0 (string-length string2)))
-
-(define (substring-match-forward string1 start1 end1 string2 start2 end2)
-  (guarantee-2-substrings string1 start1 end1
-			  string2 start2 end2
-			  'SUBSTRING-MATCH-FORWARD)
-  (%substring-match-forward string1 start1 end1 string2 start2 end2))
-
-(define (%substring-match-forward string1 start1 end1 string2 start2 end2)
-  (let ((end (fix:+ start1 (fix:min (fix:- end1 start1) (fix:- end2 start2)))))
-    (let loop ((i1 start1) (i2 start2))
-      (if (or (fix:= i1 end)
-	      (not (char=? (string-ref string1 i1)
-			   (string-ref string2 i2))))
-	  (fix:- i1 start1)
-	  (loop (fix:+ i1 1) (fix:+ i2 1))))))
-
-(define (string-match-forward-ci string1 string2)
-  (guarantee-2-strings string1 string2 'STRING-MATCH-FORWARD-CI)
-  (%substring-match-forward-ci string1 0 (string-length string1)
-			       string2 0 (string-length string2)))
-
-(define (substring-match-forward-ci string1 start1 end1 string2 start2 end2)
-  (guarantee-2-substrings string1 start1 end1
-			  string2 start2 end2
-			  'SUBSTRING-MATCH-FORWARD-CI)
-  (%substring-match-forward-ci string1 start1 end1 string2 start2 end2))
-
-(define (%substring-match-forward-ci string1 start1 end1 string2 start2 end2)
-  (let ((end (fix:+ start1 (fix:min (fix:- end1 start1) (fix:- end2 start2)))))
-    (let loop ((i1 start1) (i2 start2))
-      (if (or (fix:= i1 end)
-	      (not (char-ci=? (string-ref string1 i1)
-			      (string-ref string2 i2))))
-	  (fix:- i1 start1)
-	  (loop (fix:+ i1 1) (fix:+ i2 1))))))
-
-(define (string-match-backward string1 string2)
-  (guarantee-2-strings string1 string2 'STRING-MATCH-BACKWARD)
-  (%substring-match-backward string1 0 (string-length string1)
-			     string2 0 (string-length string2)))
-
-(define (substring-match-backward string1 start1 end1 string2 start2 end2)
-  (guarantee-2-substrings string1 start1 end1
-			  string2 start2 end2
-			  'SUBSTRING-MATCH-BACKWARD)
-  (%substring-match-backward string1 start1 end1 string2 start2 end2))
-
-(define (%substring-match-backward string1 start1 end1 string2 start2 end2)
-  (let ((start (fix:- end1 (fix:min (fix:- end1 start1) (fix:- end2 start2)))))
-    (if (fix:= end1 start)
-	0
-	(let loop ((i1 (fix:- end1 1)) (i2 (fix:- end2 1)))
-	  (if (char=? (string-ref string1 i1) (string-ref string2 i2))
-	      (if (fix:= i1 start)
-		  (fix:- end1 i1)
-		  (loop (fix:- i1 1) (fix:- i2 1)))
-	      (fix:- end1 (fix:+ i1 1)))))))
-
-(define (string-match-backward-ci string1 string2)
-  (guarantee-2-strings string1 string2 'STRING-MATCH-BACKWARD-CI)
-  (%substring-match-backward-ci string1 0 (string-length string1)
-				string2 0 (string-length string2)))
-
-(define (substring-match-backward-ci string1 start1 end1 string2 start2 end2)
-  (guarantee-2-substrings string1 start1 end1
-			  string2 start2 end2
-			  'SUBSTRING-MATCH-BACKWARD-CI)
-  (%substring-match-backward-ci string1 start1 end1 string2 start2 end2))
-
-(define (%substring-match-backward-ci string1 start1 end1 string2 start2 end2)
-  (let ((start (fix:- end1 (fix:min (fix:- end1 start1) (fix:- end2 start2)))))
-    (if (fix:= end1 start)
-	0
-	(let loop ((i1 (fix:- end1 1)) (i2 (fix:- end2 1)))
-	  (if (char-ci=? (string-ref string1 i1) (string-ref string2 i2))
-	      (if (fix:= i1 start)
-		  (fix:- end1 i1)
-		  (loop (fix:- i1 1) (fix:- i2 1)))
-	      (fix:- end1 (fix:+ i1 1)))))))
-
 ;;;; Trim
 
 (define (string-trim-left string #!optional char-set)

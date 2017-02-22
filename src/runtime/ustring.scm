@@ -364,6 +364,38 @@ USA.
 (define string-ci>? (string-comparison-maker %string-ci>?))
 (define string-ci>=? (string-comparison-maker %string-ci>=?))
 
+;;;; Match
+
+(define (string-match-forward string1 string2)
+  (let ((end1 (string-length string1))
+	(end2 (string-length string2)))
+    (let ((end (fix:min end1 end2)))
+      (let loop ((i 0))
+	(if (and (fix:< i end)
+		 (char=? (string-ref string1 i)
+			 (string-ref string2 i)))
+	    (loop (fix:+ i 1))
+	    i)))))
+
+(define (string-match-forward-ci string1 string2)
+  (string-match-forward (string-foldcase string1)
+			(string-foldcase string2)))
+
+(define (string-match-backward string1 string2)
+  (let ((s1 (fix:- (string-length string1) 1)))
+    (let loop ((i s1) (j (fix:- (string-length string2) 1)))
+      (if (and (fix:>= i 0)
+	       (fix:>= j 0)
+	       (char=? (string-ref string1 i)
+		       (string-ref string2 j)))
+	  (loop (fix:- i 1)
+		(fix:- j 1))
+	  (fix:- s1 i)))))
+
+(define (string-match-backward-ci string1 string2)
+  (string-match-backward (string-foldcase string1)
+			 (string-foldcase string2)))
+
 (define-integrable (prefix-maker c= caller)
   (lambda (prefix string #!optional start end)
     (let* ((end (fix:end-index end (string-length string) caller))
@@ -394,6 +426,8 @@ USA.
 ;;; Incorrect implementation: should do string-foldcase on both args.
 (define string-prefix-ci? (prefix-maker char-ci=? 'string-prefix-ci?))
 (define string-suffix-ci? (suffix-maker char-ci=? 'string-suffix-ci?))
+
+;;;; Case
 
 (define (string-downcase string)
   (case-transform char-downcase-full string))
