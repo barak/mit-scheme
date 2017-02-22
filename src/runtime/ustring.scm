@@ -780,6 +780,13 @@ USA.
 
 (define (burst-string string delimiter allow-runs?)
   ((string-splitter delimiter allow-runs?) string))
+
+(define (string-replace string char1 char2)
+  (guarantee bitless-char? char1 'string-replace)
+  (guarantee bitless-char? char2 'string-replace)
+  (string-map (lambda (char)
+		(if (char=? char char1) char2 char))
+	      string))
 
 (define (string-8-bit? string)
   (receive (string start end) (translate-slice string 0 (string-length string))

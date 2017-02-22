@@ -89,32 +89,6 @@ USA.
 	(string-set! result j (string-ref string i)))
       result)))
 
-;;;; Replace
-
-(define (string-replace string char1 char2)
-  (guarantee-string string 'STRING-REPLACE)
-  (guarantee-char char1 'STRING-REPLACE)
-  (guarantee-char char2 'STRING-REPLACE)
-  (let ((string (string-copy string)))
-    (%substring-replace! string 0 (string-length string) char1 char2)
-    string))
-
-(define (substring-replace string start end char1 char2)
-  (guarantee-substring string start end 'SUBSTRING-REPLACE)
-  (guarantee-char char1 'SUBSTRING-REPLACE)
-  (guarantee-char char2 'SUBSTRING-REPLACE)
-  (let ((string (string-copy string)))
-    (%substring-replace! string start end char1 char2)
-    string))
-
-(define (%substring-replace! string start end char1 char2)
-  (let loop ((start start))
-    (let ((index (substring-find-next-char string start end char1)))
-      (if index
-	  (begin
-	    (string-set! string index char2)
-	    (loop (fix:+ index 1)))))))
-
 ;;;; Compare
 
 (define (string-compare string1 string2 if= if< if>)

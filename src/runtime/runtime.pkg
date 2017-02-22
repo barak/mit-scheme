@@ -1046,7 +1046,6 @@ USA.
 	  string-match-forward-ci
 	  string-pad-left
 	  string-pad-right
-	  string-replace
 	  string-search-all
 	  string-search-backward
 	  string-search-forward
@@ -1057,7 +1056,6 @@ USA.
 	  substring-match-backward-ci
 	  substring-match-forward
 	  substring-match-forward-ci
-	  substring-replace
 	  substring-search-all
 	  substring-search-backward
 	  substring-search-forward
@@ -1140,6 +1138,7 @@ USA.
 	  string-prefix-ci?
 	  string-prefix?
 	  string-ref
+	  string-replace
 	  string-set!
 	  string-slice
 	  string-splitter
