@@ -31,6 +31,13 @@ USA.
 
 ;;;; Miscellaneous
 
+;; Temporary definition, for 9.2 hosts.
+(define (random-bytevector n #!optional state)
+  (let ((env (->environment '(runtime random-number))))
+    ((if (environment-bound? env 'random-byte-vector)
+	 (access random-byte-vector env)
+	 (access random-bytevector env)) n state)))
+
 (define (three-way-sort = set set* receiver)
   (let ((member? (member-procedure =)))
     (define (loop set set* receiver)
