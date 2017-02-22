@@ -89,56 +89,6 @@ USA.
 	(string-set! result j (string-ref string i)))
       result)))
 
-;;;; Compare
-
-(define (string-compare string1 string2 if= if< if>)
-  (guarantee-2-strings string1 string2 'STRING-COMPARE)
-  (%string-compare string1 string2 if= if< if>))
-
-(define (%string-compare string1 string2 if= if< if>)
-  (let ((length1 (string-length string1))
-	(length2 (string-length string2)))
-    (let ((end (fix:min length1 length2)))
-      (let loop ((index 0))
-	(cond ((fix:= index end)
-	       (if (fix:= index length1)
-		   (if (fix:= index length2)
-		       (if=)
-		       (if<))
-		   (if>)))
-	      ((char=? (string-ref string1 index)
-		       (string-ref string2 index))
-	       (loop (fix:+ index 1)))
-	      ((char<? (string-ref string1 index)
-		       (string-ref string2 index))
-	       (if<))
-	      (else
-	       (if>)))))))
-
-(define (string-compare-ci string1 string2 if= if< if>)
-  (guarantee-2-strings string1 string2 'STRING-COMPARE-CI)
-  (%string-compare-ci string1 string2 if= if< if>))
-
-(define (%string-compare-ci string1 string2 if= if< if>)
-  (let ((length1 (string-length string1))
-	(length2 (string-length string2)))
-    (let ((end (fix:min length1 length2)))
-      (let loop ((index 0))
-	(cond ((fix:= index end)
-	       (if (fix:= index length1)
-		   (if (fix:= index length2)
-		       (if=)
-		       (if<))
-		   (if>)))
-	      ((char-ci=? (string-ref string1 index)
-			  (string-ref string2 index))
-	       (loop (fix:+ index 1)))
-	      ((char-ci<? (string-ref string1 index)
-			  (string-ref string2 index))
-	       (if<))
-	      (else
-	       (if>)))))))
-
 (define (string-match-forward string1 string2)
   (guarantee-2-strings string1 string2 'STRING-MATCH-FORWARD)
   (%substring-match-forward string1 0 (string-length string1)

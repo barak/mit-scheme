@@ -1038,8 +1038,6 @@ USA.
 	  guarantee-substring-start-index
 	  reverse-string
 	  reverse-substring
-	  string-compare
-	  string-compare-ci
 	  string-match-backward
 	  string-match-backward-ci
 	  string-match-forward
@@ -1116,6 +1114,8 @@ USA.
 	  string-ci=?
 	  string-ci>=?
 	  string-ci>?
+	  string-compare
+	  string-compare-ci
 	  string-copy
 	  string-copy!
 	  string-count
