@@ -152,8 +152,7 @@ USA.
 		 compiler:generate-lap-files?
 		 (pathname-new-type output-pathname "lap")
 		 (lambda (lap-output-port)
-		   (fluid-let ((*debugging-key*
-				(random-byte-vector 32)))
+		   (fluid-let ((*debugging-key* (random-bytevector 32)))
 		     (compile-scode/file/hook
 		      input-pathname
 		      output-pathname

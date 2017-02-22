@@ -77,7 +77,7 @@ USA.
   (fluid-let ((*compiler-file-handle*
 	       (string-append
 		"(anonymous scode "
-		(vector-8b->hexadecimal (random-byte-vector 8))
+		(bytevector->hexadecimal (random-bytevector 8))
 		")")))
     (action)))
 
@@ -96,7 +96,7 @@ USA.
   (let ((typifier
 	 ;; Guarantee unique temporary files for liarc.  We could
 	 ;; instead change how the files are loaded.
-	 (let ((suffix (vector-8b->hexadecimal (random-byte-vector #x10))))
+	 (let ((suffix (bytevector->hexadecimal (random-bytevector #x10))))
 	   (lambda (type)
 	     (lambda (pathname)
 	       (pathname-new-type

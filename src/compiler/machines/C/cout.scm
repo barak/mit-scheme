@@ -425,7 +425,7 @@ USA.
 (define (make-nonce)
   (if *disable-nonces?*
       "nonce"
-      (vector-8b->hexadecimal (random-byte-vector 8))))
+      (bytevector->hexadecimal (random-bytevector 8))))
 
 (define (top-level/stackify handle ntags code-fn
 			    decl-code-name code-name code-blocks
@@ -504,12 +504,12 @@ USA.
 (define (declare-dynamic-initialization handle)
   (c:line (c:call "DECLARE_DYNAMIC_INITIALIZATION"
 		  (c:string handle)
-		  (c:string (vector-8b->hexadecimal (random-byte-vector 8))))))
+		  (c:string (bytevector->hexadecimal (random-bytevector 8))))))
 
 (define (declare-dynamic-object-initialization handle)
   (c:line (c:call "DECLARE_DYNAMIC_OBJECT_INITIALIZATION"
 		  (c:string handle)
-		  (c:string (vector-8b->hexadecimal (random-byte-vector 8))))))
+		  (c:string (bytevector->hexadecimal (random-bytevector 8))))))
 
 (define (declare-subcodes decl-name blocks)
   (if (and (pair? blocks)

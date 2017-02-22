@@ -360,11 +360,13 @@ USA.
 	      (vector-ref v index)))))
 
 (define (dbg-info-key? object)
-  (and (string? object)
-       (fix:= (string-length object) 32)))
+  (or (and (bytevector? object)
+	   (fix:= (bytevector-length object) 32))
+      (and (legacy-string? object)
+	   (fix:= (legacy-string-length object) 32))))
 
 (define (dbg-info-key=? a b)
-  (string=? a b))
+  (equal? a b))
 
 (define (debug-info-pathname? object)
   (or (pathname? object)
