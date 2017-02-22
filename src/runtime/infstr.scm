@@ -362,8 +362,8 @@ USA.
 (define (dbg-info-key? object)
   (or (and (bytevector? object)
 	   (fix:= (bytevector-length object) 32))
-      (and (legacy-string? object)
-	   (fix:= (legacy-string-length object) 32))))
+      (and ((ucode-primitive string? 1) object)
+	   (fix:= ((ucode-primitive string-length 1) object) 32))))
 
 (define (dbg-info-key=? a b)
   (equal? a b))
