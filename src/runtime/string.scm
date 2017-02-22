@@ -43,7 +43,6 @@ USA.
 ;;;; Primitives
 
 (define-primitives
-  (set-string-length! 2)
   (string-allocate 1)
   (string-length 1)
   (string-ref 2)

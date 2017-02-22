@@ -52,8 +52,7 @@ USA.
 	   (copy-memory s ptr maxlen)
 	   (global-unlock mem)
 	   (close-clipboard)
-	   (set-string-length! s (vector-8b-find-next-char s 0 maxlen 0))
-	   s))))
+	   (substring s 0 (vector-8b-find-next-char s 0 maxlen 0))))))
 
 (define (win32-screen-width)
   (get-system-metrics SM_CXSCREEN))

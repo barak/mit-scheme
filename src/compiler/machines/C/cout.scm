@@ -626,8 +626,7 @@ USA.
 	  (if (fix:> j 1)
 	      (begin
 		(string-set! s j #\")
-		(set-string-length! s (fix:+ j 1))
-		(list s))
+		(list (substring s 0 (fix:+ j 1))))
 	      '())))))
 
 (define (handle-objects start-offset)

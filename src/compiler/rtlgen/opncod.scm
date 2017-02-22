@@ -1090,26 +1090,6 @@ USA.
   (fixed-assignment 'SET-CAR! (ucode-type pair) 0)
   (fixed-assignment 'SET-CDR! (ucode-type pair) 1))
 
-(define-open-coder/effect 'SET-STRING-LENGTH!
-  (simple-open-coder
-   (lambda (combination expressions finish)
-     (let ((object (car expressions))
-	   (length (cadr expressions)))
-       (open-code:with-checks
-	combination
-	(let ((name 'SET-STRING-LENGTH!)
-	      (block (combination/block combination)))
-	  (list (open-code:type-check object (ucode-type string) name block)
-		(open-code:index-fixnum-check length name block)))
-	(finish-vector-assignment (rtl:locative-offset object 1)
-				  (rtl:make-object->datum length)
-				  finish)
-	finish
-	'SET-STRING-LENGTH!
-	expressions)))
-   '(0 1)
-   internal-close-coding-for-type-or-range-checks))
-
 (let ((make-assignment
        (lambda (name type)
 	 (define-open-coder/effect name

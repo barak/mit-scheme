@@ -1002,7 +1002,6 @@ USA.
   (parent (runtime))
   (export-deprecated ()			;ignored on 9.2 hosts
 	  (guarantee-vector-8b guarantee-string)
-	  (set-vector-8b-length! set-string-length!)
 	  (vector-8b-length string-length)
 	  (vector-8b? string?)
 	  error:not-string
@@ -1021,7 +1020,6 @@ USA.
 	  vector-8b-set!)
   (export ()				;temporary duplicate for 9.2 hosts
 	  (guarantee-vector-8b guarantee-string)
-	  (set-vector-8b-length! set-string-length!)
 	  (vector-8b-length string-length)
 	  (vector-8b? string?)
 	  error:not-string
@@ -1046,7 +1044,6 @@ USA.
 	  lisp-string->camel-case
 	  reverse-string
 	  reverse-substring
-	  set-string-length!
 	  string-capitalize
 	  string-capitalized?
 	  string-compare
