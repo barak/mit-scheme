@@ -1040,8 +1040,6 @@ USA.
 	  lisp-string->camel-case
 	  reverse-string
 	  reverse-substring
-	  string-capitalize
-	  string-capitalized?
 	  string-compare
 	  string-compare-ci
 	  string-match-backward
@@ -1057,7 +1055,6 @@ USA.
 	  string-trim
 	  string-trim-left
 	  string-trim-right
-	  substring-capitalized?
 	  substring-match-backward
 	  substring-match-backward-ci
 	  substring-match-forward
@@ -1151,6 +1148,7 @@ USA.
 	  string-suffix-ci?
 	  string-suffix?
 	  string-tail
+	  string-titlecase
 	  string-upcase
 	  string-upper-case?
 	  string<=?

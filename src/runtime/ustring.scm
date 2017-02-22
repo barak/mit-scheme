@@ -388,6 +388,10 @@ USA.
 (define (string-upcase string)
   (case-transform char-upcase-full string))
 
+(define (string-titlecase string)
+  ;; TODO(cph): implement this
+  (string-copy string))
+
 (define (case-transform transform string)
   (let ((chars (append-map transform (string->list string))))
     (let ((n (length chars)))

@@ -1066,7 +1066,7 @@ USA.
 	      (write-string " because: " port)
 	      (let ((reason (access-condition condition 'REASON)))
 		(if reason
-		    (write-string (string-capitalize reason) port)
+		    (write-string (string-titlecase reason) port)
 		    (begin
 		      (write-string "No such " port)
 		      (write-string noun port))))

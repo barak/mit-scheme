@@ -953,7 +953,7 @@ using the read-eval-print environment instead.")
   (debugger-failure port "There is no current environment."))
 
 (define (reason+message reason message)
-  (string-capitalize (if reason (string-append reason "; " message) message)))
+  (string-titlecase (if reason (string-append reason "; " message) message)))
 
 (define (debugger-pp expression indentation port)
   (parameterize* (list (cons param:unparser-list-depth-limit

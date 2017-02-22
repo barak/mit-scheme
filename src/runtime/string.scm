@@ -89,78 +89,6 @@ USA.
 	(string-set! result j (string-ref string i)))
       result)))
 
-;;;; Case
-
-(define (string-capitalized? string)
-  (guarantee-string string 'STRING-CAPITALIZED?)
-  (substring-capitalized? string 0 (string-length string)))
-
-(define (substring-capitalized? string start end)
-  (guarantee-substring string start end 'SUBSTRING-CAPITALIZED?)
-  (%substring-capitalized? string start end))
-
-(define (%substring-capitalized? string start end)
-  ;; Testing for capitalization is somewhat more involved than testing
-  ;; for upper or lower case.  This algorithm requires that the first
-  ;; word be capitalized, and that the subsequent words be either
-  ;; lower case or capitalized.  This is a very general definition of
-  ;; capitalization; if you need something more specific you should
-  ;; call this procedure on the individual words.
-  (letrec
-      ((find-first-word
-	(lambda (start)
-	  (and (fix:< start end)
-	       (let ((char (string-ref string start)))
-		 (if (char-upper-case? char)
-		     (scan-word-tail (fix:+ start 1))
-		     (and (not (char-lower-case? char))
-			  (find-first-word (fix:+ start 1))))))))
-       (scan-word-tail
-	(lambda (start)
-	  (or (fix:= start end)
-	      (let ((char (string-ref string start)))
-		(if (char-lower-case? char)
-		    (scan-word-tail (fix:+ start 1))
-		    (and (not (char-upper-case? char))
-			 (find-subsequent-word (fix:+ start 1))))))))
-       (find-subsequent-word
-	(lambda (start)
-	  (or (fix:= start end)
-	      (let ((char (string-ref string start)))
-		(if (char-alphabetic? char)
-		    (scan-word-tail (fix:+ start 1))
-		    (find-subsequent-word (fix:+ start 1))))))))
-    (find-first-word start)))
-
-(define (string-capitalize string)
-  (guarantee-string string 'STRING-CAPITALIZE)
-  (let ((string (string-copy string)))
-    (%substring-capitalize! string 0 (string-length string))
-    string))
-
-(define (%substring-capitalize! string start end)
-  ;; This algorithm capitalizes the first word in the substring and
-  ;; downcases the subsequent words.  This is arbitrary, but seems
-  ;; useful if the substring happens to be a sentence.  Again, if you
-  ;; need finer control, parse the words yourself.
-  (let ((index
-	 (substring-find-next-char-in-set string start end
-					  char-set:alphabetic)))
-    (if index
-	(begin
-	  (%substring-upcase! string index (fix:+ index 1))
-	  (%substring-downcase! string (fix:+ index 1) end)))))
-
-(define (%substring-upcase! string start end)
-  (do ((i start (fix:+ i 1)))
-      ((fix:= i end))
-    (string-set! string i (char-upcase (string-ref string i)))))
-
-(define (%substring-downcase! string start end)
-  (do ((i start (fix:+ i 1)))
-      ((fix:= i end))
-    (string-set! string i (char-downcase (string-ref string i)))))
-
 ;;;; CamelCase support
 
 (define (camel-case-string->lisp string)

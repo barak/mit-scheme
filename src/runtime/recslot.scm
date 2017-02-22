@@ -133,7 +133,7 @@ USA.
   (with-restart 'USE-VALUE
       (string-append "Specify a " noun-phrase ".")
       k
-      (string->interactor (string-capitalize noun-phrase))
+      (string->interactor (string-titlecase noun-phrase))
     thunk))
 
 (define ((string->interactor string))
