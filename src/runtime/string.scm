@@ -55,7 +55,7 @@ USA.
   vector-8b-find-previous-char-ci
   (vector-8b-ref 2)
   (vector-8b-set! 3))
-
+
 ;;;; Basic Operations
 
 (define (make-legacy-string k #!optional char)
@@ -71,23 +71,6 @@ USA.
 		      (if (default-object? ascii)
 			  ascii
 			  (integer->char ascii))))
-
-(define (reverse-string string)
-  (guarantee-string string 'REVERSE-STRING)
-  (%reverse-substring string 0 (string-length string)))
-
-(define (reverse-substring string start end)
-  (guarantee-substring string start end 'REVERSE-SUBSTRING)
-  (%reverse-substring string start end))
-
-(define (%reverse-substring string start end)
-  (let ((n (fix:- end start)))
-    (let ((result (make-legacy-string n)))
-      (do ((i start (fix:+ i 1))
-	   (j (fix:- n 1) (fix:- j 1)))
-	  ((fix:= i end))
-	(string-set! result j (string-ref string i)))
-      result)))
 
 ;;;; Trim
 
@@ -313,7 +296,7 @@ USA.
 (define (%bm-substring-search-backward text tstart tend pattern pstart pend)
   (let ((m (fix:- pend pstart))
 	(pend-1 (fix:- pend 1))
-	(rpattern (reverse-substring pattern pstart pend)))
+	(rpattern (reverse-string (string-slice pattern pstart pend))))
     (let ((tstart+m (fix:+ tstart m))
 	  (lambda* (compute-last-occurrence-function rpattern 0 m))
 	  (gamma
@@ -369,8 +352,9 @@ USA.
 (define (compute-good-suffix-function pattern pstart pend gamma0)
   (let ((m (fix:- pend pstart)))
     (let ((pi
-	   (compute-prefix-function (reverse-substring pattern pstart pend)
-				    0 m))
+	   (compute-prefix-function
+	    (reverse-string (string-slice pattern pstart pend))
+	    0 m))
 	  (gamma (make-vector m gamma0))
 	  (m-1 (fix:- m 1)))
       (do ((l 0 (fix:+ l 1)))

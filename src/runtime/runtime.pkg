@@ -1036,8 +1036,6 @@ USA.
 	  guarantee-substring
 	  guarantee-substring-end-index
 	  guarantee-substring-start-index
-	  reverse-string
-	  reverse-substring
 	  string-pad-left
 	  string-pad-right
 	  string-search-all
@@ -1092,6 +1090,7 @@ USA.
 	  (substring string-copy)
 	  list->string
 	  make-string
+	  reverse-string
 	  string
 	  string*
 	  string->list

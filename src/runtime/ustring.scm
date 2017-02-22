@@ -830,13 +830,21 @@ USA.
 
 (define (burst-string string delimiter allow-runs?)
   ((string-splitter delimiter allow-runs?) string))
-
+
 (define (string-replace string char1 char2)
   (guarantee bitless-char? char1 'string-replace)
   (guarantee bitless-char? char2 'string-replace)
   (string-map (lambda (char)
 		(if (char=? char char1) char2 char))
 	      string))
+
+(define (reverse-string string)
+  (let ((builder (string-builder)))
+    (do ((i (fix:- (string-length string) 1)
+	    (fix:- i 1)))
+	((not (fix:>= i 0)))
+      (builder (string-ref string i)))
+    (builder)))
 
 (define (string-8-bit? string)
   (receive (string start end) (translate-slice string 0 (string-length string))
