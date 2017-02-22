@@ -370,10 +370,21 @@ USA.
 			   (list (parse-file-case (cdr option))))))
 		((EXPORT)
 		 (let ((export
-			(if (and (pair? (cdr option))
-				 (eq? 'DEPRECATED (cadr option)))
-			    (parse-import/export (cddr option) #t)
-			    (parse-import/export (cdr option) #f))))
+			(cond ((and (pair? (cdr option))
+				    (eq? 'DEPRECATED (cadr option)))
+			       (parse-import/export (cddr option) #t))
+			      ;; 9.2 compatibility
+			      ((and (pair? (cdr option))
+				    (pair? (cddr option))
+				    (symbol? (caddr option))
+				    (string-prefix-ci?
+				     "deprecated:"
+				     (symbol->string (caddr option))))
+			       (parse-import/export (cons (cadr option)
+							  (cdddr option))
+						    #t))
+			      (else
+			       (parse-import/export (cdr option) #f)))))
 		   (set-package-description/exports!
 		    package
 		    (append! (package-description/exports package)
