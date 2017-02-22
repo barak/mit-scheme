@@ -32,6 +32,13 @@ USA.
 	  (cref/generate-trivial-constructor "edwin"))
       (construct-packages-from-file (fasload package-set))))
 
+(if (lexical-unreferenceable? (->environment '(EDWIN STRING))
+			      'STRING?)
+    (begin
+      (fluid-let ((sf/default-syntax-table (->environment '(EDWIN))))
+	(sf-conditionally "string"))
+      (load "string.bin" '(EDWIN STRING))))
+
 (if (lexical-unreferenceable? (->environment '(EDWIN CLASS-CONSTRUCTOR))
 			      'CLASS-DESCRIPTORS)
     (begin
