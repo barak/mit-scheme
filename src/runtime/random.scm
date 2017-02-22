@@ -174,6 +174,14 @@ USA.
       (vector-8b-set! s i (small-random-integer 256 state)))
     s))
 
+(define (random-bytevector n #!optional state)
+  (let ((state (get-random-state state 'random-bytevector))
+	(bytes (make-bytevector n)))
+    (do ((i 0 (fix:+ i 1)))
+	((fix:= i n))
+      (bytevector-u8-set! bytes i (small-random-integer #x100 state)))
+    bytes))
+
 (define (random-source-make-integers source)
   (guarantee-random-state source 'RANDOM-SOURCE-MAKE-INTEGERS)
   (lambda (modulus)
