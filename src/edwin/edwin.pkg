@@ -154,7 +154,6 @@ USA.
 	  (vector-8b? string?)
 	  ascii-string-copy
 	  burst-string
-	  camel-case-string->lisp
 	  char->string
 	  decorated-string-append
 	  error:not-string
@@ -163,7 +162,6 @@ USA.
 	  guarantee-substring
 	  guarantee-substring-end-index
 	  guarantee-substring-start-index
-	  lisp-string->camel-case
 	  list->string
 	  make-string
 	  make-vector-8b

@@ -756,44 +756,6 @@ USA.
 	  (%substring-upcase! string index (fix:+ index 1))
 	  (%substring-downcase! string (fix:+ index 1) end)))))
 
-;;;; CamelCase support
-
-(define (camel-case-string->lisp string)
-  (call-with-input-string string
-    (lambda (input)
-      (call-with-output-string
-	(lambda (output)
-	  (let loop ((prev #f))
-	    (let ((c (read-char input)))
-	      (if (not (eof-object? c))
-		  (begin
-		    (if (and prev (char-upper-case? c))
-			(write-char #\- output))
-		    (write-char (char-downcase c) output)
-		    (loop c))))))))))
-
-(define (lisp-string->camel-case string #!optional upcase-initial?)
-  (call-with-input-string string
-    (lambda (input)
-      (call-with-output-string
-	(lambda (output)
-	  (let loop
-	      ((upcase?
-		(if (default-object? upcase-initial?)
-		    #t
-		    upcase-initial?)))
-	    (let ((c (read-char input)))
-	      (if (not (eof-object? c))
-		  (if (char-alphabetic? c)
-		      (begin
-			(write-char (if upcase? (char-upcase c) c) output)
-			(loop #f))
-		      (begin
-			(if (or (char-numeric? c)
-				(eq? c #\_))
-			    (write-char c output))
-			(loop #t)))))))))))
-
 ;;;; Replace
 
 (define (string-replace string char1 char2)

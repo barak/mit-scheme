@@ -1033,11 +1033,9 @@ USA.
 	  vector-8b-ref
 	  vector-8b-set!)
   (export ()
-	  camel-case-string->lisp
 	  guarantee-substring
 	  guarantee-substring-end-index
 	  guarantee-substring-start-index
-	  lisp-string->camel-case
 	  reverse-string
 	  reverse-substring
 	  string-compare
