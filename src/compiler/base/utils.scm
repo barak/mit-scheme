@@ -249,7 +249,7 @@ USA.
     ;; References (assumes immediate constants are immutable)
     CAR CDR LENGTH
     VECTOR-REF VECTOR-LENGTH
-    STRING-REF STRING-LENGTH STRING-MAXIMUM-LENGTH
+    STRING-REF STRING-LENGTH
     BIT-STRING-LENGTH
     ))
 

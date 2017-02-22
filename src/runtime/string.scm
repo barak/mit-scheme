@@ -73,22 +73,6 @@ USA.
 			  ascii
 			  (integer->char ascii))))
 
-(define (string-maximum-length string)
-  (guarantee-string string 'STRING-MAXIMUM-LENGTH)
-  (fix:- (fix:lsh (fix:- (system-vector-length string) 1)
-		  %words->octets-shift)
-	 1))
-
-(define %octets->words-shift
-  (let ((chars-per-word (vector-ref (gc-space-status) 0)))
-    (case chars-per-word
-      ((4) -2)
-      ((8) -3)
-      (else (error "Can't support this word size:" chars-per-word)))))
-
-(define %words->octets-shift
-  (- %octets->words-shift))
-
 (define (reverse-string string)
   (guarantee-string string 'REVERSE-STRING)
   (%reverse-substring string 0 (string-length string)))
