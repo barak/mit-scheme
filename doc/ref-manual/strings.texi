@@ -467,18 +467,6 @@ Returns a newly allocated string containing the same characters as
 replaced by @var{char2}.
 @end deffn
 
-@deffn procedure reverse-string string
-Returns a newly allocated string with the same characters as
-@var{string} but in the reverse order.
-
-@example
-@group
-(reverse-string "foo bar baz")          @result{} "zab rab oof"
-(reverse-string (string-slice "foo bar baz" 4 7))   @result{} "rab"
-@end group
-@end example
-@end deffn
-
 @node Searching Strings, Matching Strings, Strings, Strings
 @section Searching Strings
 @cindex searching, of string

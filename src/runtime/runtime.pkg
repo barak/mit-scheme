@@ -1031,7 +1031,6 @@ USA.
 	  (substring string-copy)
 	  list->string
 	  make-string
-	  reverse-string
 	  string
 	  string*
 	  string->list

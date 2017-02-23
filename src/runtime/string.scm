@@ -296,7 +296,7 @@ USA.
 (define (%bm-substring-search-backward text tstart tend pattern pstart pend)
   (let ((m (fix:- pend pstart))
 	(pend-1 (fix:- pend 1))
-	(rpattern (reverse-string (string-slice pattern pstart pend))))
+	(rpattern (reverse-pattern pattern pstart pend)))
     (let ((tstart+m (fix:+ tstart m))
 	  (lambda* (compute-last-occurrence-function rpattern 0 m))
 	  (gamma
@@ -352,9 +352,9 @@ USA.
 (define (compute-good-suffix-function pattern pstart pend gamma0)
   (let ((m (fix:- pend pstart)))
     (let ((pi
-	   (compute-prefix-function
-	    (reverse-string (string-slice pattern pstart pend))
-	    0 m))
+	   (compute-prefix-function (reverse-pattern pattern pstart pend)
+				    0
+				    m))
 	  (gamma (make-vector m gamma0))
 	  (m-1 (fix:- m 1)))
       (do ((l 0 (fix:+ l 1)))
@@ -390,6 +390,13 @@ USA.
 	    (vector-set! pi q k)
 	    (outer k (fix:+ q 1)))))
     pi))
+
+(define (reverse-pattern pattern pstart pend)
+  (let ((builder (string-builder)))
+    (do ((i (fix:- pend 1) (fix:- i 1)))
+	((not (fix:>= i pstart)))
+      (builder (string-ref pattern i)))
+    (builder)))
 
 ;;;; Guarantors
 ;;

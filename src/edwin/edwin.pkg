@@ -166,10 +166,6 @@ USA.
 	  make-string
 	  make-vector-8b
 	  random-byte-vector
-	  reverse-string
-	  reverse-string!
-	  reverse-substring
-	  reverse-substring!
 	  set-string-length!
 	  string
 	  string->list

@@ -502,10 +502,12 @@ USA.
 	  prog))
 	((bit-string? obj)
 	 (build/string stackify-opcode/push-bit-string
-		       (reverse-string
-			(number->string
-			 (bit-string->unsigned-integer obj)
-			 16))
+		       (list->string
+			(reverse
+			 (string->list
+			  (number->string
+			   (bit-string->unsigned-integer obj)
+			   16))))
 		       (build/push-nat (bit-string-length obj) prog)))
 	((scode/primitive-procedure? obj)
 	 (let ((arity (primitive-procedure-arity obj))
