@@ -40,8 +40,8 @@ USA.
 (define GDBM_FAST   (C-enum "GDBM_FAST"))	;Write fast! => No fsyncs.
 
 (define (gdbm-open filename block-size flags mode)
-  (guarantee-integer block-size 'GDBM-OPEN)
-  (guarantee-integer mode 'GDBM-OPEN)
+  (guarantee integer? block-size 'GDBM-OPEN)
+  (guarantee integer? mode 'GDBM-OPEN)
   (let ((args (make-alien '|gdbm_args|))
 	(flagsnum (guarantee-gdbm-open-flags flags)))
     (let ((gdbf (make-gdbf args (make-thread-mutex) filename)))
@@ -49,7 +49,8 @@ USA.
       (with-gdbf-locked
        gdbf
        (lambda ()
-	 (C-call "do_gdbm_open" args filename block-size flagsnum mode)
+	 (C-call "do_gdbm_open"
+		 args (string->utf8 filename) block-size flagsnum mode)
 	 (if (alien-null? args)
 	     (error "gdbm_open failed: malloc failed")
 	     (if (alien-null? (C-> args "gdbm_args dbf"))
@@ -189,12 +190,14 @@ USA.
      (C-call "do_gdbm_sync" args))))
 
 (define (gdbm-strerror errno)
-  (guarantee-fixnum errno 'GDBM-STRERROR)
-  (c-peek-cstring (C-call "gdbm_strerror" (make-alien '(* char)) errno)))
+  (guarantee fixnum? errno 'GDBM-STRERROR)
+  (utf8->string
+   (c-peek-cstring (C-call "gdbm_strerror" (make-alien '(* char)) errno))))
 
 (define (strerror errno)
-  (guarantee-fixnum errno 'STRERROR)
-  (c-peek-cstring (C-call "strerror" (make-alien '(* char)) errno)))
+  (guarantee fixnum? errno 'STRERROR)
+  (utf8->string
+   (c-peek-cstring (C-call "strerror" (make-alien '(* char)) errno))))
 
 ;; Parameters to gdbm_setopt, specifing the type of operation to perform.
 (define GDBM_CACHESIZE (C-enum "GDBM_CACHESIZE"))	;Set the cache size.
@@ -217,7 +220,7 @@ USA.
 		       (else (error:wrong-type-argument val "SYNCMODE boolean"
 							'GDBM-SETOPT))))
 		((= optnum GDBM_CACHESIZE)
-		 (guarantee-integer val 'GDBM-SETOPT)
+		 (guarantee integer? val 'GDBM-SETOPT)
 		 val))))
     (with-gdbf-locked-open
      gdbf 'GDBM-SETOPT
@@ -226,10 +229,12 @@ USA.
 	   (gdbm-error gdbf "gdbm_setopt"))))))
 
 (define (gdbm-version)
-  (c-peek-cstring (C-call "get_gdbm_version" (make-alien '(* char)))))
+  (utf8->string
+   (c-peek-cstring (C-call "get_gdbm_version" (make-alien '(* char))))))
 
 (define (guarantee-nonnull-string obj procedure)
-  (if (or (not (string? obj)) (string-null? obj))
+  (guarantee string? obj procedure)
+  (if (string-null? obj)
       (error:wrong-type-argument obj "non-null string" procedure)))
 
 (define-structure (gdbf (constructor make-gdbf)
@@ -271,42 +276,44 @@ USA.
 	   (strerror (C-> args "gdbm_args sys_errno")))))
 
 (define (gdbf-args-put-key! args key)
-  (let ((size (string-length key))
-	(dptr (make-alien '(* char))))
-    (if (< size 1)
-	(error "empty key:" key))
-    (C-call "alloc_gdbm_key" dptr args size)
-    (if (alien-null? dptr)
-	(error "gdbf-args-put-key!: malloc failed" key))
-    (c-poke-bytes dptr 0 size key 0)))
+  (let ((bytevector (string->utf8 key)))
+    (let ((size (bytevector-length bytevector))
+	  (dptr (make-alien '(* char))))
+      (if (< size 1)
+	  (error "empty key:" key))
+      (C-call "alloc_gdbm_key" dptr args size)
+      (if (alien-null? dptr)
+	  (error "gdbf-args-put-key!: malloc failed" key))
+      (c-poke-bytes dptr 0 size bytevector 0))))
 
 (define (gdbf-args-put-content! args content)
-  (let ((size (string-length content))
-	(dptr (make-alien '(* char))))
-    (if (< size 1)
-	(error "empty content:" content))
-    (C-call "alloc_gdbm_content" dptr args size)
-    (if (alien-null? dptr)
-	(error "gdbf-args-put-content!: malloc failed" size))
-    (c-poke-bytes dptr 0 size content 0)))
+  (let ((bytevector (string->utf8 content)))
+    (let ((size (bytevector-length bytevector))
+	  (dptr (make-alien '(* char))))
+      (if (< size 1)
+	  (error "empty content:" content))
+      (C-call "alloc_gdbm_content" dptr args size)
+      (if (alien-null? dptr)
+	  (error "gdbf-args-put-content!: malloc failed" size))
+      (c-poke-bytes dptr 0 size bytevector 0))))
 
 (define (gdbf-args-get-key args)
   (let ((data (C-> args "gdbm_args key dptr")))
     (if (alien-null? data)
 	#f
 	(let* ((size (C-> args "gdbm_args key dsize"))
-	       (string (make-legacy-string size)))
-	  (c-peek-bytes data 0 size string 0)
-	  string))))
+	       (bytevector (make-bytevector size)))
+	  (c-peek-bytes data 0 size bytevector 0)
+	  (utf8->string bytevector)))))
 
 (define (gdbf-args-get-content args)
   (let ((data (C-> args "gdbm_args content dptr")))
     (if (alien-null? data)
 	#f
 	(let* ((size (C-> args "gdbm_args content dsize"))
-	       (string (make-legacy-string size)))
-	  (c-peek-bytes data 0 size string 0)
-	  string))))
+	       (bytevector (make-bytevector size)))
+	  (c-peek-bytes data 0 size bytevector 0)
+	  (utf8->string bytevector)))))
 
 (define open-gdbfs '())
 (define open-gdbfs-mutex)

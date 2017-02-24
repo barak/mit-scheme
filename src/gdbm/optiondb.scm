@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-(define-load-option 'GDBM
+(define-load-option 'GDBM2
   (standard-system-loader "."))
 
 (further-load-options
