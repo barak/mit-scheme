@@ -503,7 +503,7 @@ USA.
 
 (define (find-c-includes env)
   ;; Returns the c-includes structure bound to 'C-INCLUDES in ENV.
-  (guarantee-syntactic-environment env 'find-c-includes)
+  (guarantee syntactic-environment? env 'find-c-includes)
   (let ((ienv (syntactic-environment->environment env)))
     (if (and (environment-bound? ienv 'C-INCLUDES)
 	     (environment-assigned? ienv 'C-INCLUDES))

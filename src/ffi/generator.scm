@@ -33,7 +33,7 @@ USA.
 (define (c-generate library #!optional prefix)
   (let ((prefix (if (default-object? prefix) "" prefix))
 	(includes (include-cdecls library)))
-    (guarantee-string prefix 'c-generate)
+    (guarantee string? prefix 'c-generate)
     (let ((shim.c (string-append library "-shim.c")))
       (if c-generate-noisily?
 	  (with-notification
