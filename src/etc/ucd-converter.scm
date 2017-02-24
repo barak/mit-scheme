@@ -392,6 +392,7 @@ USA.
 	      "CWCF"
 	      "CWL"
 	      "CWU"
+	      "GCB"
 	      "Lower"
 	      "NFD_QC"
 	      "Upper"
@@ -455,7 +456,8 @@ USA.
 (define (metadata->code-generator metadata)
   (let ((name (metadata-name metadata))
 	(type-spec (metadata-type-spec metadata)))
-    (cond ((string=? name "NFC_QC") code-generator:nfc-qc)
+    (cond ((string=? name "GCB") code-generator:gcb)
+	  ((string=? name "NFC_QC") code-generator:nfc-qc)
 	  ((string=? name "NFKC_QC") code-generator:nfc-qc)
 	  ((string=? name "gc") code-generator:gc)
 	  ((string=? name "nt") code-generator:nt)
@@ -497,6 +499,10 @@ USA.
    prop-name metadata prop-alist proc-name))
 
 (define (code-generator:gc prop-name metadata prop-alist proc-name)
+  ((trie-code-generator (mapped-enum-value-manager #f metadata) '(5 8 8))
+   prop-name metadata prop-alist proc-name))
+
+(define (code-generator:gcb prop-name metadata prop-alist proc-name)
   ((trie-code-generator (mapped-enum-value-manager #f metadata) '(5 8 8))
    prop-name metadata prop-alist proc-name))
 
