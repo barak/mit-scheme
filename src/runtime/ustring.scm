@@ -474,9 +474,18 @@ USA.
 	  #t))))
 
 (define (string->nfd string)
-  (if (string-in-nfd? string)
+  (if (or (string-ascii? string)	;ASCII unaffected by normalization
+	  (string-in-nfd? string))
       string
       (canonical-ordering! (canonical-decomposition string))))
+
+(define (string-ascii? string)
+  (let ((n (string-length string)))
+    (let loop ((i 0))
+      (if (fix:< i n)
+	  (and (char-ascii? (string-ref string i))
+	       (loop (fix:+ i 1)))
+	  #t))))
 
 (define (string-in-nfd? string)
   (let ((n (string-length string)))
@@ -543,6 +552,136 @@ USA.
 			   (loop (fix:+ i 1) ccc result))))))
 	  result))))
 |#
+
+(define (count-grapheme-clusters string)
+  (let ((breaks
+	 (find-grapheme-cluster-breaks string
+				       0
+				       (lambda (i count)
+					 (declare (ignore i))
+					 (fix:+ count 1)))))
+    (if (fix:> breaks 0)
+	(fix:- breaks 1)
+	breaks)))
+
+(define (find-grapheme-cluster-breaks string initial-ctx break)
+  (let ((n (string-length string)))
+
+    (define (state:control i ctx)
+      (normal-transition (get-gcb i) i (break i ctx)))
+
+    (define (state:carriage-return i ctx)
+      (let ((gcb (get-gcb i)))
+	(normal-transition gcb i
+	  (case gcb
+	    ((linefeed) ctx)
+	    (else (break i ctx))))))
+
+    (define (state:extend i ctx)
+      (let ((gcb (get-gcb i)))
+	(normal-transition gcb i
+	  (case gcb
+	    ((extend spacing-mark zero-width-joiner) ctx)
+	    (else (break i ctx))))))
+
+    (define (state:zero-width-joiner i ctx)
+      (let ((gcb (get-gcb i)))
+	(normal-transition gcb i
+	  (case gcb
+	    ((emoji-base-gaz glue-after-zero-width-joiner
+			     extend spacing-mark zero-width-joiner)
+	     ctx)
+	    (else (break i ctx))))))
+
+    (define (state:hangul-syllable-type=l i ctx)
+      (let ((gcb (get-gcb i)))
+	(normal-transition gcb i
+	  (case gcb
+	    ((hangul-syllable-type=l
+	      hangul-syllable-type=lv
+	      hangul-syllable-type=lvt
+	      hangul-syllable-type=v
+	      extend spacing-mark zero-width-joiner)
+	     ctx)
+	    (else (break i ctx))))))
+
+    (define (state:hangul-syllable-type=v i ctx)
+      (let ((gcb (get-gcb i)))
+	(normal-transition gcb i
+	  (case gcb
+	    ((hangul-syllable-type=t hangul-syllable-type=v
+				     extend spacing-mark zero-width-joiner)
+	     ctx)
+	    (else (break i ctx))))))
+
+    (define (state:hangul-syllable-type=t i ctx)
+      (let ((gcb (get-gcb i)))
+	(normal-transition gcb i
+	  (case gcb
+	    ((hangul-syllable-type=t extend spacing-mark zero-width-joiner) ctx)
+	    (else (break i ctx))))))
+
+    (define (state:prepend i ctx)
+      (let ((gcb (get-gcb i)))
+	(normal-transition gcb i
+	  (case gcb
+	    ((control carriage-return linefeed end-of-text) (break i ctx))
+	    (else ctx)))))
+
+    (define (state:emoji-base i ctx)
+      (let ((gcb (get-gcb i)))
+	(normal-transition (if (eq? gcb 'extend) 'emoji-base gcb) i
+	  (case gcb
+	    ((emoji-modifier extend spacing-mark zero-width-joiner) ctx)
+	    (else (break i ctx))))))
+
+    (define (state:regional-indicator i ctx)
+      (let ((gcb
+	     (let ((gcb (get-gcb i)))
+	       (if (eq? gcb 'regional-indicator)
+		   'extend
+		   gcb))))
+	(normal-transition gcb i
+	  (case gcb
+	    ((extend spacing-mark zero-width-joiner) ctx)
+	    (else (break i ctx))))))
+
+    (define (state:end-of-text i ctx)
+      (declare (ignore i))
+      ctx)
+
+    (define (transition state i ctx)
+      (state (fix:+ i 1) ctx))
+
+    (define (normal-transition gcb i ctx)
+      (transition (gcb->state gcb) i ctx))
+
+    (define (gcb->state gcb)
+      (case gcb
+	((control linefeed) state:control)
+	((carriage-return) state:carriage-return)
+	((emoji-base emoji-base-gaz) state:emoji-base)
+	((emoji-modifier extend glue-after-zero-width-joiner spacing-mark other)
+	 state:extend)
+	((hangul-syllable-type=l) state:hangul-syllable-type=l)
+	((hangul-syllable-type=t hangul-syllable-type=lvt)
+	 state:hangul-syllable-type=t)
+	((hangul-syllable-type=v hangul-syllable-type=lv)
+	 state:hangul-syllable-type=v)
+	((prepend) state:prepend)
+	((regional-indicator) state:regional-indicator)
+	((zero-width-joiner) state:zero-width-joiner)
+	((end-of-text) state:end-of-text)
+	(else (error "Unknown gcb value:" gcb))))
+
+    (define (get-gcb i)
+      (if (fix:< i n)
+	  (ucd-gcb-value (string-ref string i))
+	  'end-of-text))
+
+    (if (fix:> n 0)
+	(normal-transition (get-gcb 0) 0 (break 0 initial-ctx))
+	initial-ctx)))
 
 (define (list->string chars)
   (if (every char-8-bit? chars)

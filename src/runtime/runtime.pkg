@@ -1029,6 +1029,7 @@ USA.
 	  substring=?)
   (export ()
 	  (substring string-copy)
+	  count-grapheme-clusters
 	  list->string
 	  make-string
 	  string
@@ -1302,6 +1303,7 @@ USA.
 	 "ucd-table-cwu"
 	 "ucd-table-dm"
 	 "ucd-table-gc"
+	 "ucd-table-gcb"
 	 "ucd-table-lc"
 	 "ucd-table-lower"
 	 "ucd-table-nfd_qc"
@@ -1341,7 +1343,8 @@ USA.
 	  char-changes-when-upper-cased?
 	  char-nfd-quick-check?
 	  ucd-ccc-value
-	  ucd-dm-value))
+	  ucd-dm-value
+	  ucd-gcb-value))
 
 (define-package (runtime ucd-glue)
   (files "ucd-glue")
