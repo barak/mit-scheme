@@ -26,21 +26,21 @@ USA.
 
 ;;;; Test the BLOWFISH option.
 
-(let ((sample "Some text to encrypt and decrypt."))
-  (call-with-legacy-binary-output-file "test"
+(let ((sample (string->utf8 "Some text to encrypt and decrypt.")))
+  (call-with-binary-output-file "test"
     (lambda (output)
-      (call-with-input-string sample
-	(lambda (input)
-	  (blowfish-encrypt-port input output "secret"
-				 (write-blowfish-file-header output)
-				 #t)))))
+      (blowfish-encrypt-port (open-input-bytevector sample)
+			     output
+			     "secret"
+			     (write-blowfish-file-header output)
+			     #t)))
   (let ((read-back
-	 (call-with-legacy-binary-input-file "test"
+	 (call-with-binary-input-file "test"
 	   (lambda (input)
-	     (call-with-output-string
+	     (call-with-output-bytevector
 	      (lambda (output)
 		(blowfish-encrypt-port input output "secret"
 				       (read-blowfish-file-header input)
 				       #f)))))))
-    (if (not (string=? sample read-back))
+    (if (not (bytevector=? sample read-back))
 	(error "sample did not decrypt correctly"))))
