@@ -144,6 +144,15 @@ USA.
   (if (alien-null? (mhash-hmac-context-alien object))
       (error:bad-range-argument object procedure)))
 
+(define (guarantee-subbytevector object start end operator)
+  (guarantee bytevector? object operator)
+  (guarantee index-fixnum? start operator)
+  (guarantee index-fixnum? end operator)
+  (if (not (fix:<= start end))
+      (error:bad-range-argument start operator))
+  (if (not (fix:<= end (bytevector-length object)))
+      (error:bad-range-argument end operator)))
+
 (define (with-context-locked context thunk)
   (with-thread-mutex-lock (mhash-context-mutex context) thunk))
 
@@ -185,29 +194,29 @@ USA.
 	      (error "Unable to allocate mhash context:" name))))
       context)))
 
-(define (mhash-update context string start end)
-  (guarantee-substring string start end 'MHASH-UPDATE)
+(define (mhash-update context bytevector start end)
+  (guarantee-subbytevector bytevector start end 'MHASH-UPDATE)
   (with-context-locked-open context 'MHASH-UPDATE
     (lambda (alien)
-      (C-call "do_mhash" alien string start end))))
+      (C-call "do_mhash" alien bytevector start end))))
 
 (define (mhash-end context)
   (with-context-locked-open context 'MHASH-END
     (lambda (alien)
       (let* ((id (mhash-context-id context))
 	     (size (C-call "mhash_get_block_size" id))
-	     (digest (make-legacy-string size)))
+	     (digest (make-bytevector size)))
 	(C-call "do_mhash_end" alien digest size)
 	(remove-context-cleanup context)
 	digest))))
 
 (define (mhash-hmac-init name key)
-  (guarantee-string key 'HMASH-HMAC-INIT)
+  (guarantee bytevector? key 'hmash-hmac-init)
   (let ((id (mhash-name->id name 'MHASH-HMAC-INIT))
 	(alien (make-alien '|MHASH_INSTANCE|)))
     (let ((context (make-mhash-hmac-context (make-thread-mutex) alien id))
 	  (block-size (C-call "mhash_get_hash_pblock" id))
-	  (key-size (string-length key)))
+	  (key-size (bytevector-length key)))
       (add-hmac-context-cleanup context)
       (with-hmac-context-locked context
 	(lambda ()
@@ -216,18 +225,18 @@ USA.
 	      (error "Unable to allocate mhash HMAC context:" name))))
       context)))
 
-(define (mhash-hmac-update context string start end)
-  (guarantee-substring string start end 'MHASH-HMAC-UPDATE)
+(define (mhash-hmac-update context bytevector start end)
+  (guarantee-subbytevector bytevector start end 'MHASH-HMAC-UPDATE)
   (with-hmac-context-locked-open context 'MHASH-HMAC-UPDATE
     (lambda (alien)
-      (C-call "do_mhash" alien string start end))))
+      (C-call "do_mhash" alien bytevector start end))))
 
 (define (mhash-hmac-end context)
   (with-hmac-context-locked-open context 'MHASH-HMAC-END
     (lambda (alien)
       (let* ((id (mhash-hmac-context-id context))
 	     (size (C-call "mhash_get_block_size" id))
-	     (digest (make-legacy-string size)))
+	     (digest (make-bytevector size)))
 	(C-call "do_mhash_hmac_end" alien digest size)
 	(remove-hmac-context-cleanup context)
 	digest))))
@@ -265,13 +274,15 @@ USA.
 	  (keygen-name->id name 'MHASH-KEYGEN-MAX-KEY-SIZE)))
 
 (define (mhash-keygen type passphrase #!optional salt)
+
   (if (not (mhash-keygen-type? type))
       (error:wrong-type-argument type "mhash type" 'MHASH-KEYGEN))
   (let ((keygenid (mhash-keygen-type-id type))
-	(keyword-size (mhash-keygen-type-key-length type)))
+	(keyword-size (mhash-keygen-type-key-length type))
+	(passbytes (string->utf8 passphrase)))
     (let ((params (salted-keygen-params
 		   keygenid (mhash-keygen-type-parameter-vector type) salt))
-	  (keyword (make-legacy-string keyword-size))
+	  (keyword (make-bytevector keyword-size))
 	  (max-key-size (C-call "mhash_get_keygen_max_key_size" keygenid)))
 
       (define (hashid-map params i)
@@ -281,7 +292,7 @@ USA.
 	      (mhash-name->id name 'MHASH-KEYGEN))))
 
       (if (not (or (zero? max-key-size)
-		   (< max-key-size (string-length keyword))))
+		   (< max-key-size (bytevector-length keyword))))
 	  (error "keyword size exceeds maximum:" max-key-size type))
       (if (not (zero? (C-call "do_mhash_keygen"
 			      keygenid
@@ -289,9 +300,9 @@ USA.
 			      (hashid-map params 4) ;hash_algorithm[1]
 			      (vector-ref params 1) ;count
 			      (vector-ref params 0) ;salt
-			      (string-length (vector-ref params 0))
+			      (bytevector-length (vector-ref params 0))
 			      keyword keyword-size
-			      passphrase (string-length passphrase))))
+			      passbytes (bytevector-length passbytes))))
 	  (error "Error signalled by mhash_keygen."))
       keyword)))
 
@@ -303,9 +314,9 @@ USA.
 		   (vector-ref mhash-keygen-names id)))
 	(let ((n (C-call "mhash_get_keygen_salt_size" id)))
 	  (if (not (or (= n 0)
-		       (= n (string-length salt))))
+		       (= n (bytevector-length salt))))
 	      (error "Salt size incorrect:"
-		     (string-length salt)
+		     (bytevector-length salt)
 		     (error-irritant/noise "; should be:")
 		     n)))
 	(let ((p (vector-copy params)))
@@ -368,9 +379,10 @@ USA.
 			  (lambda (alien)
 			    (C-call "mhash_get_hash_name"
 				    alien hashid))))
-		  (str (c-peek-cstring alien)))
+		  (bytevector (and (not (alien-null? alien))
+					  (c-peek-cstring alien))))
 	     (free alien)
-	     str))))
+	     bytevector))))
   (set! mhash-keygen-names
 	(make-names-vector
 	 (lambda () (C-call "mhash_keygen_count"))
@@ -380,9 +392,10 @@ USA.
 			  (lambda (alien)
 			    (C-call "mhash_get_keygen_name"
 				    alien keygenid))))
-		  (str (c-peek-cstring alien)))
+		  (bytevector (and (not (alien-null? alien))
+				   (c-peek-cstring alien))))
 	     (free alien)
-	     str)))))
+	     bytevector)))))
 
 (define (reset-mhash-variables!)
   (for-each (lambda (weak) (alien-null! (weak-cdr weak))) mhash-contexts)
@@ -393,50 +406,42 @@ USA.
   unspecific)
 
 (define (mhash-file hash-type filename)
-  (call-with-legacy-binary-input-file filename
+  (call-with-binary-input-file filename
     (lambda (port)
-      (let ((buffer (make-legacy-string 4096))
+      (let ((buffer (make-bytevector 4096))
 	    (context (mhash-init hash-type)))
 	(dynamic-wind (lambda ()
 			unspecific)
 		      (lambda ()
 			(let loop ()
-			  (let ((n (read-string! buffer port)))
-			    (if (fix:= 0 n)
+			  (let ((n (read-bytevector! buffer port)))
+			    (if (or (eof-object? n)
+				    (fix:= 0 n))
 				(mhash-end context)
 				(begin
 				  (mhash-update context buffer 0 n)
 				  (loop))))))
 		      (lambda ()
-			(string-fill! buffer #\NUL)))))))
+			(bytevector-fill! buffer 0)))))))
 
 (define (mhash-string hash-type string)
-  (mhash-substring hash-type string 0 (string-length string)))
+  (mhash-bytevector hash-type (string->utf8 string)))
 
 (define (mhash-substring hash-type string start end)
+  (mhash-bytevector hash-type (string->utf8 (substring string start end))))
+
+(define (mhash-bytevector hash-type bytevector)
   (let ((context (mhash-init hash-type)))
-    (mhash-update context string start end)
+    (mhash-update context bytevector 0 (bytevector-length bytevector))
     (mhash-end context)))
 
 (define (mhash-sum->number sum)
-  (let ((l (string-length sum)))
+  (let ((l (bytevector-length sum)))
     (do ((i 0 (fix:+ i 1))
-	 (n 0 (+ (* n #x100) (vector-8b-ref sum i))))
+	 (n 0 (+ (* n #x100) (bytevector-u8-ref sum i))))
 	((fix:= i l) n))))
 
-(define (mhash-sum->hexadecimal sum)
-  (let ((n (string-length sum))
-	(digits "0123456789abcdef"))
-    (let ((s (make-legacy-string (fix:* 2 n))))
-      (do ((i 0 (fix:+ i 1)))
-	  ((fix:= i n))
-	(string-set! s (fix:* 2 i)
-		     (string-ref digits
-				 (fix:lsh (vector-8b-ref sum i) -4)))
-	(string-set! s (fix:+ (fix:* 2 i) 1)
-		     (string-ref digits
-				 (fix:and (vector-8b-ref sum i) #x0F))))
-      s)))
+(define mhash-sum->hexadecimal bytevector->hexadecimal)
 
 ;;;; Package initialization
 
@@ -454,7 +459,7 @@ USA.
 	(vector-set! v i
 		     (let ((name (get-name i)))
 		       (and name
-			    (intern name)))))
+			    (intern (utf8->string name))))))
       v)))
 
 (define (names-vector->list v)
