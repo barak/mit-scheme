@@ -329,7 +329,7 @@ USA.
 
 (define (c-poke-string! alien bytevector)
   ;; Like c-poke-string, but increments ALIEN past the terminating null byte.
-  (guarantee-string bytevector 'C-POKE-STRING!)
+  (guarantee bytevector? bytevector 'C-POKE-STRING!)
   ((ucode-primitive c-poke-string! 3) alien 0 bytevector))
 
 (define-integrable (c-poke-bytes alien offset count buffer start)
