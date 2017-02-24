@@ -322,18 +322,20 @@ USA.
   ;; Like c-poke-pointer, but increments DEST by a pointer width.
   ((ucode-primitive c-poke-pointer! 3) dest 0 alien))
 
-(define (c-poke-string alien string)
-  ;; Copy STRING to the bytes at the ALIEN address.
-  (guarantee-string string 'C-POKE-STRING)
-  ((ucode-primitive c-poke-string 3) alien 0 string))
+(define (c-poke-string alien bytevector)
+  ;; Copy BYTEVECTOR and a terminating null byte to the ALIEN address.
+  (guarantee bytevector? bytevector 'C-POKE-STRING)
+  ((ucode-primitive c-poke-string 3) alien 0 bytevector))
 
-(define (c-poke-string! alien string)
-  ;; Like c-poke-string, but increments ALIEN by the null-terminated
-  ;; STRING length.
-  (guarantee-string string 'C-POKE-STRING)
-  ((ucode-primitive c-poke-string! 3) alien 0 string))
+(define (c-poke-string! alien bytevector)
+  ;; Like c-poke-string, but increments ALIEN past the terminating null byte.
+  (guarantee-string bytevector 'C-POKE-STRING!)
+  ((ucode-primitive c-poke-string! 3) alien 0 bytevector))
 
 (define-integrable (c-poke-bytes alien offset count buffer start)
+  ;; Like c-poke-string, but does not add a terminating null byte, copying only
+  ;; COUNT bytes from BUFFER and starting at START.  START+COUNT-1 must be a
+  ;; valid index into BUFFER.
   ((ucode-primitive c-poke-bytes 5) alien offset count buffer start))
 
 (define (c-enum-name value enum-name constants)
@@ -559,8 +561,14 @@ USA.
 
 (define (outf-error . objects)
   ((ucode-primitive outf-error 1)
-   (apply string-append
-	  (map (lambda (o) (if (string? o) o (write-to-string o)))
+   (apply bytevector-append
+	  (map (lambda (o)
+		 (if (bytevector? o)
+		     0
+		     (string->utf8
+		      (if (string? o)
+			  o
+			  (write-to-string o)))))
 	       objects))))
 
 (define (registered-callback-count)
@@ -646,7 +654,7 @@ USA.
      (if %trace? (%outf-error . MSG)))))
 
 (define (tindent)
-  (make-legacy-string (* 2 (length calloutback-stack)) #\space))
+  (make-string (* 2 (length calloutback-stack)) #\space))
 
 (define (%outf-error . msg)
   (apply outf-error `("; ",@msg"\n")))
