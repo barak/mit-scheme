@@ -31,84 +31,53 @@ USA.
 
 (C-include "md5")
 
-(define (%md5-init)
-  ;; Create and return an MD5 digest context.
-  (let ((context (make-legacy-string (C-sizeof "MD5_CTX"))))
+(define-integrable (%md5-init)
+  (let ((context (make-bytevector (C-sizeof "MD5_CTX"))))
     (C-call "MD5_INIT" context)
     context))
 
-(define (%md5-update context string start end)
-  ;; Update CONTEXT with the contents of the substring (STRING,START,END).
-  (guarantee-md5-context context '%MD5-UPDATE)
-  (guarantee-substring string start end '%MD5-UPDATE)
-  (C-call "do_MD5_UPDATE" context string start end))
+(define-integrable (%md5-update context bytevector start end)
+  (C-call "do_MD5_UPDATE" context bytevector start end))
 
-(define (%md5-final context)
-  ;; Finalize CONTEXT and return the digest as a 16-byte string.
-  (guarantee-md5-context context '%MD5-FINAL)
-  (let ((result (make-legacy-string (C-enum "MD5_DIGEST_LENGTH"))))
+(define-integrable (%md5-final context)
+  (let ((result (make-bytevector (C-enum "MD5_DIGEST_LENGTH"))))
     (C-call "do_MD5_FINAL" context result)
     result))
 
-(define (guarantee-md5-context object operator)
-  (if (and (string? object)
-	   (= (string-length object) (C-sizeof "MD5_CTX")))
-      object
-      (error:bad-range-argument object
-				"an MD5 context"
-				operator)))
-
-(define (%md5 string)
-  ;; Generate an MD5 digest of string.
-  ;; The digest is returned as a 16-byte string.
-  (guarantee-string string '%MD5)
-  (let ((length (string-length string))
-	(result (make-legacy-string (C-enum "MD5_DIGEST_LENGTH"))))
-    (C-call "do_MD5" string length result)
-    result))
-
 (define (md5-file filename)
-  (call-with-legacy-binary-input-file filename
+  (call-with-binary-input-file filename
     (lambda (port)
-      (let ((buffer (make-legacy-string 4096))
+      (let ((buffer (make-bytevector 4096))
 	    (context (%md5-init)))
 	(dynamic-wind (lambda ()
 			unspecific)
 		      (lambda ()
 			(let loop ()
-			  (let ((n (read-string! buffer port)))
-			    (if (fix:= 0 n)
+			  (let ((n (read-bytevector! buffer port)))
+			    (if (or (eof-object? n)
+				    (fix:= 0 n))
 				(%md5-final context)
 				(begin
 				  (%md5-update context buffer 0 n)
 				  (loop))))))
 		      (lambda ()
-			(string-fill! buffer #\NUL)))))))
+			(bytevector-fill! buffer 0)))))))
 
 (define (md5-string string)
-  (md5-substring string 0 (string-length string)))
+  (md5-bytevector (string->utf8 string)))
 
 (define (md5-substring string start end)
+  (md5-bytevector (string->utf8 (substring string start end))))
+
+(define (md5-bytevector bytevector)
   (let ((context (%md5-init)))
-    (%md5-update context string start end)
+    (%md5-update context bytevector 0 (bytevector-length bytevector))
     (%md5-final context)))
 
 (define (md5-sum->number sum)
-  (let ((l (string-length sum)))
+  (let ((l (bytevector-length sum)))
     (do ((i 0 (fix:+ i 1))
-	 (n 0 (+ (* n #x100) (vector-8b-ref sum i))))
+	 (n 0 (+ (* n #x100) (bytevector-u8-ref sum i))))
 	((fix:= i l) n))))
 
-(define (md5-sum->hexadecimal sum)
-  (let ((n (string-length sum))
-	(digits "0123456789abcdef"))
-    (let ((s (make-legacy-string (fix:* 2 n))))
-      (do ((i 0 (fix:+ i 1)))
-	  ((fix:= i n))
-	(string-set! s (fix:* 2 i)
-		     (string-ref digits
-				 (fix:lsh (vector-8b-ref sum i) -4)))
-	(string-set! s (fix:+ (fix:* 2 i) 1)
-		     (string-ref digits
-				 (fix:and (vector-8b-ref sum i) #x0F))))
-      s)))
+(define md5-sum->hexadecimal bytevector->hexadecimal)
