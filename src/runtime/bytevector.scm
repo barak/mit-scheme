@@ -379,7 +379,7 @@ USA.
 (define (bytevector->hexadecimal bytes)
   (define-integrable (hex-char k)
     (string-ref "0123456789ABCDEF" (fix:and k #x0F)))
-  (guarantee string? bytes 'bytevector->hexadecimal)
+  (guarantee bytevector? bytes 'bytevector->hexadecimal)
   (let ((n (bytevector-length bytes))
 	(builder (string-builder)))
     (do ((i 0 (fix:+ i 1)))
