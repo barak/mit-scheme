@@ -41,29 +41,29 @@ USA.
 (let ((key (let ((sizes (mcrypt-supported-key-sizes "tripledes")))
 	     (if (not (vector? sizes))
 		 (error "Bogus key sizes for tripledes."))
-	     (random-string (vector-ref sizes
-					(-1+ (vector-length sizes))))))
+	     (random-bytevector (vector-ref sizes
+					    (-1+ (vector-length sizes))))))
       (init-vector (let* ((context
 			   ;; Unfortunately the size is
 			   ;; available only from the MCRYPT(?)!
 			   (mcrypt-open-module "tripledes" "cfb"))
 			  (size (mcrypt-init-vector-size context)))
 		     (mcrypt-end context)
-		     (random-string size))))
+		     (random-bytevector size))))
 
-  (call-with-input-file "mcrypt.scm"
+  (call-with-binary-input-file "mcrypt.scm"
     (lambda (input)
-      (call-with-output-file "encrypted"
+      (call-with-binary-output-file "encrypted"
 	(lambda (output)
-	  (let ((copy (string-copy init-vector)))
+	  (let ((copy (bytevector-copy init-vector)))
 	    (mcrypt-encrypt-port "tripledes" "cfb"
 				 input output key init-vector #t)
-	    (if (not (string=? copy init-vector))
+	    (if (not (bytevector=? copy init-vector))
 		(error "Init vector modified.")))))))
 
-  (call-with-input-file "encrypted"
+  (call-with-binary-input-file "encrypted"
     (lambda (input)
-      (call-with-output-file "decrypted"
+      (call-with-binary-output-file "decrypted"
 	(lambda (output)
 	  (mcrypt-encrypt-port "tripledes" "cfb"
 			       input output key init-vector #f))))))
