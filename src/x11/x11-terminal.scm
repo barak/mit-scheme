@@ -74,7 +74,11 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	     (values 0 0 #f)))
     (let ((window
 	   (c-call "xterm_open_window" (make-alien '(struct |xwindow|))
-		   display geometry name class (if map? 1 0))))
+		   display
+		   (string->utf8 geometry)
+		   (string->utf8 name)
+		   (string->utf8 class)
+		   (if map? 1 0))))
       (if (alien-null? window)
 	  (error "Could not open xterm:" geometry))
       window)))
@@ -105,9 +109,23 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
       ((2) (error:bad-range-argument y 'xterm-write-char!))
       ((3) (error:bad-range-argument highlight 'xterm-write-char!)))))
 
+(define (all-ascii? string)
+  (let ((len (string-length string)))
+    (let loop ((i 0))
+      (if (fix:< i len)
+	  (and (char-ascii? (string-ref string i))
+	       (loop (fix:+ i 1)))
+	  #t))))
+
+(define (guarantee-all-ascii string operator)
+  (if (not (all-ascii? string))
+      (error:wrong-type-argument string "an ASCII string" operator))
+  string)
+
 (define (xterm-write-substring! xterm x y string start end highlight)
+  (guarantee-all-ascii string 'xterm-write-substring!)
   (let ((code (c-call "xterm_write_substring"
-		      xterm x y string start end highlight)))
+		      xterm x y (string->utf8 string) start end highlight)))
     (case code
       ((1) (error:bad-range-argument x 'xterm-write-substring!))
       ((2) (error:bad-range-argument y 'xterm-write-substring!))
@@ -148,24 +166,25 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
       ((5) (error:bad-range-argument lines 'xterm-scroll-lines-down)))))
 
 (define (xterm-save-contents xterm x-start x-end y-start y-end)
-  ;; Get the contents of the terminal screen rectangle as a string.
-  ;; The string contains alternating (CHARACTER, HIGHLIGHT) pairs.
+  ;; Get the contents of the terminal screen rectangle as a bytevector.
+  ;; The bytevector contains alternating (CHARACTER, HIGHLIGHT) pairs.
   ;; The pairs are organized in row-major order from (X-START, Y-START).
-  (let* ((string (make-legacy-string (* 2
-					(- x-end x-start)
-					(- y-end y-start))))
+  (let* ((bytevector (make-bytevector (* 2
+					 (- x-end x-start)
+					 (- y-end y-start))))
 	 (code (c-call "xterm_save_contents"
-		       xterm x-start x-end y-start y-end string)))
+		       xterm x-start x-end y-start y-end bytevector)))
     (case code
       ((1) (error:bad-range-argument x-end 'xterm-save-contents))
       ((2) (error:bad-range-argument y-end 'xterm-save-contents))
       ((3) (error:bad-range-argument x-start 'xterm-save-contents))
-      ((4) (error:bad-range-argument y-start 'xterm-save-contents)))))
+      ((4) (error:bad-range-argument y-start 'xterm-save-contents)))
+    bytevector))
 
 (define (xterm-restore-contents xterm x-start x-end y-start y-end contents)
   ;; Replace the terminal screen rectangle with CONTENTS.
   ;; See `XTERM-SCREEN-CONTENTS' for the format of CONTENTS.
-  (if (not (= (string-length string)
+  (if (not (= (bytevector-length contents)
 	      (* 2
 		 (- x-end x-start)
 		 (- y-end y-start))))

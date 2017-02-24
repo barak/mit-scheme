@@ -81,7 +81,11 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	     (values #f #f #f)))
     (let ((window
 	   (c-call "x_graphics_open_window" (make-alien '(struct |xwindow|))
-		   display geometry name class (if map? 1 0))))
+		   display
+		   (string->utf8 geometry)
+		   (string->utf8 name)
+		   (string->utf8 class)
+		   (if map? 1 0))))
       (if (alien-null? window)
 	  (error "Could not open window:" geometry))
       window)))
@@ -116,12 +120,12 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-graphics-draw-string window x y string)
   ;; Draw characters in the current font at the given coordinates, with
   ;; transparent background.
-  (C-call "x_graphics_draw_string" window x y string))
+  (C-call "x_graphics_draw_string" window x y (string->utf8 string)))
 
 (define (x-graphics-draw-image-string window x y string)
   ;; Draw characters in the current font at the given coordinates, with
   ;; solid background.
-  (C-call "x_graphics_draw_image_string" window x y string))
+  (C-call "x_graphics_draw_image_string" window x y (string->utf8 string)))
 
 (define (x-graphics-set-function window function)
   (if (not (zero? (C-call "x_graphics_set_function" window function)))
@@ -184,12 +188,11 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	result)))
 
 (define (x-bytes-into-image vector image)
-  ;; VECTOR is a vector or vector-8b of pixel values stored in row-major
-  ;; order; it must have the same number of pixels as IMAGE.
-  ;; These pixels are written onto IMAGE by repeated calls to XPutPixel.
-  ;; This procedure is equivalent to calling X-SET-PIXEL-IN-IMAGE for each
-  ;; pixel in VECTOR.
-  (guarantee string? vector 'x-bytes-into-image)
+  ;; VECTOR is a bytevector of pixel values stored in row-major order; it must
+  ;; have the same number of pixels as IMAGE.  These pixels are written onto
+  ;; IMAGE by repeated calls to XPutPixel.  This procedure is equivalent to
+  ;; calling X-SET-PIXEL-IN-IMAGE for each pixel in VECTOR.
+  (guarantee bytevector? vector 'x-bytes-into-image)
   (C-call "x_bytes_into_image" vector image))
 
 (define (x-get-pixel-from-image image x y)
