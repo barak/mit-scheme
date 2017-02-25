@@ -71,6 +71,9 @@ USA.
        (eq? 'enum (car object))
        (every string? (cdr object))))
 
+(define (unmapped-enum-type-names enum-type)
+  (cdr enum-type))
+
 (define (mapped-enum-type? object)
   (and (list? object)
        (>= (length object) 2)
@@ -503,7 +506,7 @@ USA.
    prop-name metadata prop-alist proc-name))
 
 (define (code-generator:gcb prop-name metadata prop-alist proc-name)
-  ((trie-code-generator (mapped-enum-value-manager #f metadata) '(5 8 8))
+  ((trie-code-generator (unmapped-enum-value-manager #f metadata) '(5 8 8))
    prop-name metadata prop-alist proc-name))
 
 (define (code-generator:nfc-qc prop-name metadata prop-alist proc-name)
@@ -585,10 +588,24 @@ USA.
 			     (error "Illegal rational value:" string))
 			 n)))))
 
-(define (converter:mapped-enum metadata)
-  (let ((name (symbol->string (metadata-full-name metadata)))
-	(translations
-	 (mapped-enum-type-translations (metadata-type-spec metadata))))
+(define (unmapped-enum-value-manager default-string metadata)
+  (value-manager default-string
+		 (enum-converter metadata
+				 (let ((names
+					(unmapped-enum-type-names
+					 (metadata-type-spec metadata))))
+				   (map cons
+					names
+					(iota (length names)))))))
+
+(define (mapped-enum-value-manager default-string metadata)
+  (value-manager default-string
+		 (enum-converter metadata
+				 (mapped-enum-type-translations
+				  (metadata-type-spec metadata)))))
+
+(define (enum-converter metadata translations)
+  (let ((name (symbol->string (metadata-full-name metadata))))
     (lambda (value)
       (if value
 	  (let ((p
@@ -599,9 +616,6 @@ USA.
 		(error (string-append "Illegal " name " value:") value))
 	    (cdr p))
 	  (default-object)))))
-
-(define (mapped-enum-value-manager default-string metadata)
-  (value-manager default-string (converter:mapped-enum metadata)))
 
 (define (hashed-code-generator value-manager)
   (let ((default-string (value-manager-default-string value-manager))
