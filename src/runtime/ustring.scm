@@ -564,6 +564,26 @@ USA.
 	(fix:- breaks 1)
 	breaks)))
 
+(define (find-grapheme-cluster-breaks string initial-ctx break)
+  (let ((n (string-length string)))
+
+    (define (get-gcb i)
+      (and (fix:< i n)
+	   (ucd-gcb-value (string-ref string i))))
+
+    (define (transition gcb i ctx)
+      (if gcb
+	  (let ((i* (fix:+ i 1)))
+	    ((vector-ref gcb-states gcb)
+	     (get-gcb i*)
+	     (lambda (gcb* break?)
+	       (transition gcb* i* (if break? (break i* ctx) ctx)))))
+	  ctx))
+
+    (if (fix:> n 0)
+	(transition (get-gcb 0) 0 (break 0 initial-ctx))
+	initial-ctx)))
+
 (define gcb-names
   '#(control
      carriage-return
@@ -665,26 +685,6 @@ USA.
 	      (simple-state
 	       (make-no-breaks
 		'(emoji-base-gaz glue-after-zwj extend spacing-mark zwj)))))))
-
-(define (find-grapheme-cluster-breaks string initial-ctx break)
-  (let ((n (string-length string)))
-
-    (define (get-gcb i)
-      (and (fix:< i n)
-	   (ucd-gcb-value (string-ref string i))))
-
-    (define (transition gcb i ctx)
-      (if gcb
-	  (let ((i* (fix:+ i 1)))
-	    ((vector-ref gcb-states gcb)
-	     (get-gcb i*)
-	     (lambda (gcb* break?)
-	       (transition gcb* i* (if break? (break i* ctx) ctx)))))
-	  ctx))
-
-    (if (fix:> n 0)
-	(transition (get-gcb 0) 0 (break 0 initial-ctx))
-	initial-ctx)))
 
 (define (list->string chars)
   (if (every char-8-bit? chars)
