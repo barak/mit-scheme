@@ -1314,6 +1314,7 @@ USA.
 	 "ucd-table-suc"
 	 "ucd-table-uc"
 	 "ucd-table-upper"
+	 "ucd-table-wb"
 	 "ucd-table-wspace")
   (parent (runtime))
   (export ()
@@ -1344,7 +1345,8 @@ USA.
 	  char-nfd-quick-check?
 	  ucd-ccc-value
 	  ucd-dm-value
-	  ucd-gcb-value))
+	  ucd-gcb-value
+	  ucd-wb-value))
 
 (define-package (runtime ucd-glue)
   (files "ucd-glue")

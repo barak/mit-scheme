@@ -399,6 +399,7 @@ USA.
 	      "Lower"
 	      "NFD_QC"
 	      "Upper"
+	      "WB"
 	      "WSpace"
 	      "ccc"
 	      "cf"
@@ -462,6 +463,7 @@ USA.
     (cond ((string=? name "GCB") code-generator:gcb)
 	  ((string=? name "NFC_QC") code-generator:nfc-qc)
 	  ((string=? name "NFKC_QC") code-generator:nfc-qc)
+	  ((string=? name "WB") code-generator:wb)
 	  ((string=? name "gc") code-generator:gc)
 	  ((string=? name "nt") code-generator:nt)
 	  ((eq? type-spec 'boolean) code-generator:boolean)
@@ -519,6 +521,10 @@ USA.
 
 (define (code-generator:rational-or-nan prop-name metadata prop-alist proc-name)
   ((hashed-code-generator value-manager:rational-or-nan)
+   prop-name metadata prop-alist proc-name))
+
+(define (code-generator:wb prop-name metadata prop-alist proc-name)
+  ((trie-code-generator (unmapped-enum-value-manager #f metadata) '(5 8 8))
    prop-name metadata prop-alist proc-name))
 
 (define (value-manager default-string converter
