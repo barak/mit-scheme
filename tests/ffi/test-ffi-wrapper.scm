@@ -1,4 +1,4 @@
-;;;-*-Scheme-*-
+;;; -*-Scheme-*-
 
 (C-include "ffi-test")
 
@@ -12,15 +12,16 @@
 
 (define (test-ffi)
   (let* ((struct (malloc (c-sizeof "TestStruct") '|TestStruct|))
-	 (string "input string")
+	 (bytevector (string->utf8 "input string"))
 	 (pi (* 4 (atan 1 1)))
-	 (chars (malloc (1+ (* (c-sizeof "char") (string-length string)))
+	 (chars (malloc (1+ (* (c-sizeof "char")
+			       (bytevector-length bytevector)))
 			'(* char)))
 	 (callback-id (C-callback (lambda (d) (* d pi)))))
     (C->= struct "TestStruct first" (char->integer #\A))
     (C->= struct "TestStruct second" pi)
     (C->= struct "TestStruct third" (char->integer #\C))
-    (c-poke-string chars string)
+    (c-poke-string chars bytevector)
     (C->= struct "TestStruct fourth" chars)
     (C-call "test_register_double"
 	    (C-callback "test_double_callback")
@@ -28,19 +29,19 @@
     (let ((d (C-call "test_double" pi struct)))
       (assert-equal (* pi pi pi) d))
     (de-register-c-callback callback-id)
-    (assert-equal (number->string (* 2 (string-length string)))
+    (assert-equal (number->string (* 2 (bytevector-length bytevector)))
 		  (let* ((alien (make-alien-to-free
 				 '(* char)
 				 (lambda (retval)
 				   (C-call "test_string" retval
-					   string struct))))
+					   bytevector struct))))
 			 (new (c-peek-cstring alien)))
 		    (free alien)
-		    new))
+		    (utf8->string new)))
     (let ((a (C-call "test_struct" struct struct)))
       (assert-equal a struct)
       (assert-equal (C-> a "TestStruct second")
-		    (+ pi (string-length string))))
+		    (+ pi (bytevector-length bytevector))))
     (let ((union (begin
 		   (set-alien/ctype! struct '|TestUnion|)
 		   struct)))
