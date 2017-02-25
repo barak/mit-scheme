@@ -38,75 +38,75 @@ USA.
 
 (define (ucd-gcb-entry-0 sv table)
   (declare (ignore sv table))
-  'control)
+  0)
 
 (define (ucd-gcb-entry-1 sv table)
   (declare (ignore sv table))
-  'linefeed)
+  8)
 
 (define (ucd-gcb-entry-2 sv table)
   (declare (ignore sv table))
-  'carriage-return)
+  1)
 
 (define (ucd-gcb-entry-3 sv table)
   (declare (ignore sv table))
-  'other)
+  16)
 
 (define (ucd-gcb-entry-4 sv table)
   (declare (ignore sv table))
-  'extend)
+  5)
 
 (define (ucd-gcb-entry-5 sv table)
   (declare (ignore sv table))
-  'prepend)
+  11)
 
 (define (ucd-gcb-entry-6 sv table)
   (declare (ignore sv table))
-  'spacing-mark)
+  13)
 
 (define (ucd-gcb-entry-7 sv table)
   (declare (ignore sv table))
-  'hangul-syllable-type=l)
+  7)
 
 (define (ucd-gcb-entry-8 sv table)
   (declare (ignore sv table))
-  'hangul-syllable-type=v)
+  15)
 
 (define (ucd-gcb-entry-9 sv table)
   (declare (ignore sv table))
-  'hangul-syllable-type=t)
+  14)
 
 (define (ucd-gcb-entry-10 sv table)
   (declare (ignore sv table))
-  'zero-width-joiner)
+  17)
 
 (define (ucd-gcb-entry-11 sv table)
   (declare (ignore sv table))
-  'emoji-base)
+  2)
 
 (define (ucd-gcb-entry-12 sv table)
   (declare (ignore sv table))
-  'glue-after-zero-width-joiner)
+  6)
 
 (define (ucd-gcb-entry-13 sv table)
   (declare (ignore sv table))
-  'hangul-syllable-type=lv)
+  9)
 
 (define (ucd-gcb-entry-14 sv table)
   (declare (ignore sv table))
-  'hangul-syllable-type=lvt)
+  10)
 
 (define (ucd-gcb-entry-15 sv table)
   (declare (ignore sv table))
-  'regional-indicator)
+  12)
 
 (define (ucd-gcb-entry-16 sv table)
   (declare (ignore sv table))
-  'emoji-modifier)
+  4)
 
 (define (ucd-gcb-entry-17 sv table)
   (declare (ignore sv table))
-  'emoji-base-gaz)
+  3)
 
 (define-deferred ucd-gcb-entry-18
   (let ((offsets (bytevector 0 0 0 0 0 0 0 0 0 0 1 0 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3 3 3 3 3 3 3 3 3 3 3 3 3 0 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3)))

@@ -564,123 +564,126 @@ USA.
 	(fix:- breaks 1)
 	breaks)))
 
+(define gcb-names
+  '#(control
+     carriage-return
+     emoji-base
+     emoji-base-gaz
+     emoji-modifier
+     extend
+     glue-after-zwj
+     hst=l
+     linefeed
+     hst=lv
+     hst=lvt
+     prepend
+     regional-indicator
+     spacing-mark
+     hst=t
+     hst=v
+     other
+     zwj))
+
+(define (gcb-code name)
+  (let ((end (vector-length gcb-names)))
+    (let loop ((code 0))
+      (if (not (fix:< code end))
+	  (error "Unknown GCB name:" name))
+      (if (eq? (vector-ref gcb-names code) name)
+	  code
+	  (loop (fix:+ code 1))))))
+
+(define gcb-states
+  (let ((simple-state
+	 (lambda (break?)
+	   (lambda (gcb k)
+	     (k gcb (break? gcb)))))
+	(make-no-breaks
+	 (lambda (names)
+	   (let loop
+	       ((names names)
+		(mask (fix:- (fix:lsh 1 (vector-length gcb-names)) 1)))
+	     (if (pair? names)
+		 (loop (cdr names)
+		       (fix:andc mask (fix:lsh 1 (gcb-code (car names)))))
+		 (lambda (gcb)
+		   (not (fix:= 0 (fix:and mask (fix:lsh 1 gcb)))))))))
+	(make-breaks
+	 (lambda (names)
+	   (let loop
+	       ((names names)
+		(mask 0))
+	     (if (pair? names)
+		 (loop (cdr names)
+		       (fix:or mask (fix:lsh 1 (gcb-code (car names)))))
+		 (lambda (gcb)
+		   (not (fix:= 0 (fix:and mask (fix:lsh 1 gcb))))))))))
+    (let ((state:control (simple-state (make-no-breaks '())))
+	  (state:emoji-base
+	   (let ((gcb:extend (gcb-code 'extend))
+		 (gcb:emoji-base (gcb-code 'emoji-base))
+		 (break?
+		  (make-no-breaks '(emoji-modifier extend spacing-mark zwj))))
+	     (lambda (gcb k)
+	       (if (fix:= gcb gcb:extend)
+		   (k gcb:emoji-base #f)
+		   (k gcb (break? gcb))))))
+	  (state:extend
+	   (simple-state (make-no-breaks '(extend spacing-mark zwj))))
+	  (state:hst=v
+	   (simple-state
+	    (make-no-breaks '(hst=t hst=v extend spacing-mark zwj))))
+	  (state:hst=t
+	   (simple-state (make-no-breaks '(hst=t extend spacing-mark zwj)))))
+      (vector state:control
+	      (simple-state (make-no-breaks '(linefeed)))
+	      state:emoji-base
+	      state:emoji-base
+	      state:extend
+	      state:extend
+	      state:extend
+	      (simple-state
+	       (make-no-breaks
+		'(hst=l hst=lv hst=lvt hst=v extend spacing-mark zwj)))
+	      state:control
+	      state:hst=v
+	      state:hst=t
+	      (simple-state (make-breaks '(control carriage-return linefeed)))
+	      (let ((gcb:regional-indicator (gcb-code 'regional-indicator))
+		    (gcb:extend (gcb-code 'extend))
+		    (break? (make-no-breaks '(extend spacing-mark zwj))))
+		(lambda (gcb k)
+		  (let ((gcb
+			 (if (fix:= gcb gcb:regional-indicator)
+			     gcb:extend
+			     gcb)))
+		    (k gcb (break? gcb)))))
+	      state:extend
+	      state:hst=t
+	      state:hst=v
+	      state:extend
+	      (simple-state
+	       (make-no-breaks
+		'(emoji-base-gaz glue-after-zwj extend spacing-mark zwj)))))))
+
 (define (find-grapheme-cluster-breaks string initial-ctx break)
   (let ((n (string-length string)))
 
-    (define (state:control i ctx)
-      (normal-transition (get-gcb i) i (break i ctx)))
-
-    (define (state:carriage-return i ctx)
-      (let ((gcb (get-gcb i)))
-	(normal-transition gcb i
-	  (case gcb
-	    ((linefeed) ctx)
-	    (else (break i ctx))))))
-
-    (define (state:extend i ctx)
-      (let ((gcb (get-gcb i)))
-	(normal-transition gcb i
-	  (case gcb
-	    ((extend spacing-mark zero-width-joiner) ctx)
-	    (else (break i ctx))))))
-
-    (define (state:zero-width-joiner i ctx)
-      (let ((gcb (get-gcb i)))
-	(normal-transition gcb i
-	  (case gcb
-	    ((emoji-base-gaz glue-after-zero-width-joiner
-			     extend spacing-mark zero-width-joiner)
-	     ctx)
-	    (else (break i ctx))))))
-
-    (define (state:hangul-syllable-type=l i ctx)
-      (let ((gcb (get-gcb i)))
-	(normal-transition gcb i
-	  (case gcb
-	    ((hangul-syllable-type=l
-	      hangul-syllable-type=lv
-	      hangul-syllable-type=lvt
-	      hangul-syllable-type=v
-	      extend spacing-mark zero-width-joiner)
-	     ctx)
-	    (else (break i ctx))))))
-
-    (define (state:hangul-syllable-type=v i ctx)
-      (let ((gcb (get-gcb i)))
-	(normal-transition gcb i
-	  (case gcb
-	    ((hangul-syllable-type=t hangul-syllable-type=v
-				     extend spacing-mark zero-width-joiner)
-	     ctx)
-	    (else (break i ctx))))))
-
-    (define (state:hangul-syllable-type=t i ctx)
-      (let ((gcb (get-gcb i)))
-	(normal-transition gcb i
-	  (case gcb
-	    ((hangul-syllable-type=t extend spacing-mark zero-width-joiner) ctx)
-	    (else (break i ctx))))))
-
-    (define (state:prepend i ctx)
-      (let ((gcb (get-gcb i)))
-	(normal-transition gcb i
-	  (case gcb
-	    ((control carriage-return linefeed end-of-text) (break i ctx))
-	    (else ctx)))))
-
-    (define (state:emoji-base i ctx)
-      (let ((gcb (get-gcb i)))
-	(normal-transition (if (eq? gcb 'extend) 'emoji-base gcb) i
-	  (case gcb
-	    ((emoji-modifier extend spacing-mark zero-width-joiner) ctx)
-	    (else (break i ctx))))))
-
-    (define (state:regional-indicator i ctx)
-      (let ((gcb
-	     (let ((gcb (get-gcb i)))
-	       (if (eq? gcb 'regional-indicator)
-		   'extend
-		   gcb))))
-	(normal-transition gcb i
-	  (case gcb
-	    ((extend spacing-mark zero-width-joiner) ctx)
-	    (else (break i ctx))))))
-
-    (define (state:end-of-text i ctx)
-      (declare (ignore i))
-      ctx)
-
-    (define (transition state i ctx)
-      (state (fix:+ i 1) ctx))
-
-    (define (normal-transition gcb i ctx)
-      (transition (gcb->state gcb) i ctx))
-
-    (define (gcb->state gcb)
-      (case gcb
-	((control linefeed) state:control)
-	((carriage-return) state:carriage-return)
-	((emoji-base emoji-base-gaz) state:emoji-base)
-	((emoji-modifier extend glue-after-zero-width-joiner spacing-mark other)
-	 state:extend)
-	((hangul-syllable-type=l) state:hangul-syllable-type=l)
-	((hangul-syllable-type=t hangul-syllable-type=lvt)
-	 state:hangul-syllable-type=t)
-	((hangul-syllable-type=v hangul-syllable-type=lv)
-	 state:hangul-syllable-type=v)
-	((prepend) state:prepend)
-	((regional-indicator) state:regional-indicator)
-	((zero-width-joiner) state:zero-width-joiner)
-	((end-of-text) state:end-of-text)
-	(else (error "Unknown gcb value:" gcb))))
-
     (define (get-gcb i)
-      (if (fix:< i n)
-	  (ucd-gcb-value (string-ref string i))
-	  'end-of-text))
+      (and (fix:< i n)
+	   (ucd-gcb-value (string-ref string i))))
+
+    (define (transition gcb i ctx)
+      (if gcb
+	  (let ((i* (fix:+ i 1)))
+	    ((vector-ref gcb-states gcb)
+	     (get-gcb i*)
+	     (lambda (gcb* break?)
+	       (transition gcb* i* (if break? (break i* ctx) ctx)))))
+	  ctx))
 
     (if (fix:> n 0)
-	(normal-transition (get-gcb 0) 0 (break 0 initial-ctx))
+	(transition (get-gcb 0) 0 (break 0 initial-ctx))
 	initial-ctx)))
 
 (define (list->string chars)
