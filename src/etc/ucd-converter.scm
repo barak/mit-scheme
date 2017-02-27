@@ -412,6 +412,7 @@ USA.
 	      "scf"
 	      "slc"
 	      "suc"
+	      "tc"
 	      "uc")))
 
 (define (generate-property-table prop-name)
