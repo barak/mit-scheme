@@ -563,6 +563,8 @@ USA.
     (if (fix:> breaks 0)
 	(fix:- breaks 1)
 	breaks)))
+
+;;;; Grapheme-cluster breaks
 
 (define (find-grapheme-cluster-breaks string initial-ctx break)
   (let ((n (string-length string)))
@@ -604,40 +606,49 @@ USA.
      other
      zwj))
 
-(define (gcb-code name)
-  (let ((end (vector-length gcb-names)))
+(define (name->code namev name)
+  (let ((end (vector-length namev)))
     (let loop ((code 0))
       (if (not (fix:< code end))
-	  (error "Unknown GCB name:" name))
-      (if (eq? (vector-ref gcb-names code) name)
+	  (error "Unknown name:" name))
+      (if (eq? (vector-ref namev code) name)
 	  code
 	  (loop (fix:+ code 1))))))
+
+(define (make-!selector namev names)
+  (let loop
+      ((names names)
+       (mask (fix:- (fix:lsh 1 (vector-length namev)) 1)))
+    (if (pair? names)
+	(loop (cdr names)
+	      (fix:andc mask (fix:lsh 1 (name->code namev (car names)))))
+	(lambda (gcb)
+	  (not (fix:= 0 (fix:and mask (fix:lsh 1 gcb))))))))
+
+(define (make-selector namev names)
+  (let loop
+      ((names names)
+       (mask 0))
+    (if (pair? names)
+	(loop (cdr names)
+	      (fix:or mask (fix:lsh 1 (name->code namev (car names)))))
+	(lambda (gcb)
+	  (not (fix:= 0 (fix:and mask (fix:lsh 1 gcb))))))))
 
 (define gcb-states
   (let ((simple-state
 	 (lambda (break?)
 	   (lambda (gcb k)
 	     (k gcb (break? gcb)))))
+	(gcb-code
+	 (lambda (name)
+	   (name->code gcb-names name)))
 	(make-no-breaks
 	 (lambda (names)
-	   (let loop
-	       ((names names)
-		(mask (fix:- (fix:lsh 1 (vector-length gcb-names)) 1)))
-	     (if (pair? names)
-		 (loop (cdr names)
-		       (fix:andc mask (fix:lsh 1 (gcb-code (car names)))))
-		 (lambda (gcb)
-		   (not (fix:= 0 (fix:and mask (fix:lsh 1 gcb)))))))))
+	   (make-!selector gcb-names names)))
 	(make-breaks
 	 (lambda (names)
-	   (let loop
-	       ((names names)
-		(mask 0))
-	     (if (pair? names)
-		 (loop (cdr names)
-		       (fix:or mask (fix:lsh 1 (gcb-code (car names)))))
-		 (lambda (gcb)
-		   (not (fix:= 0 (fix:and mask (fix:lsh 1 gcb))))))))))
+	   (make-selector gcb-names names))))
     (let ((state:control (simple-state (make-no-breaks '())))
 	  (state:emoji-base
 	   (let ((gcb:extend (gcb-code 'extend))
@@ -685,6 +696,170 @@ USA.
 	      (simple-state
 	       (make-no-breaks
 		'(emoji-base-gaz glue-after-zwj extend spacing-mark zwj)))))))
+
+;;;; Word breaks
+
+(define (find-word-breaks string initial-ctx break)
+  (let ((n (string-length string)))
+
+    (define (get-wb i)
+      (and (fix:< i n)
+	   (ucd-wb-value (string-ref string i))))
+
+    (define (transition wb0 wb1 i0 ctx)
+      (if wb0
+	  (let* ((i1 (fix:+ i0 1))
+		 (i2 (fix:+ i1 1))
+		 (wb2 (get-wb i2)))
+	    ((vector-ref wb-states wb0)
+	     wb1
+	     wb2
+	     (lambda (break?)
+	       (transition wb0
+			   wb2
+			   i1
+			   (if break? (break i1 ctx) ctx)))
+	     (lambda (wb1* break?)
+	       (transition wb1*
+			   wb2
+			   i1
+			   (if break? (break i1 ctx) ctx)))
+	     (lambda (wb2* break?)
+	       (transition wb2*
+			   (get-wb (fix:+ i2 1))
+			   i2
+			   (if break? (break i2 ctx) ctx)))))
+	  ctx))
+
+    (if (fix:> n 0)
+	(transition (get-wb 0)
+		    (get-wb 1)
+		    0
+		    (break 0 initial-ctx))
+	initial-ctx)))
+
+(define wb-names
+  '#(carriage-return
+     double-quote
+     emoji-base
+     emoji-base-gaz
+     emoji-modifier
+     extend-num-let
+     extend
+     format
+     glue-after-zwj
+     hebrew-letter
+     katakana
+     letter
+     linefeed
+     mid-num-let
+     mid-letter
+     mid-number
+     newline
+     numeric
+     regional-indicator
+     single-quote
+     other
+     zwj))
+
+(define wb-states
+  (let ((select:extender (make-selector wb-names '(extend format zwj)))
+	(select:mb/ml/sq
+	 (make-selector wb-names '(mid-letter mid-num-let single-quote)))
+	(select:hl/le (make-selector wb-names '(hebrew-letter letter))))
+
+    (let ((standard-state
+	   (lambda (break?)
+	     (lambda (wb1 wb2 k0 k1 k2)
+	       (declare (ignore wb2 k2))
+	       (if (select:extender wb1)
+		   (k0 #f)
+		   (k1 wb1 (break? wb1)))))))
+
+      (let ((state:always-break
+	     (lambda (wb1 wb2 k0 k1 k2)
+	       (declare (ignore wb2 k0 k2))
+	       (k1 wb1 #t)))
+	    (state:default
+	     (lambda (wb1 wb2 k0 k1 k2)
+	       (declare (ignore wb2 k2))
+	       (if (select:extender wb1)
+		   (k0 #f)
+		   (k1 wb1 #t))))
+	    (state:emoji-base
+	     (standard-state (make-!selector wb-names '(emoji-modifier)))))
+
+	(vector (let ((break? (make-!selector wb-names '(linefeed))))
+		  (lambda (wb1 wb2 k0 k1 k2)
+		    (declare (ignore wb2 k0 k2))
+		    (k1 wb1 (break? wb1))))
+		state:default
+		state:emoji-base
+		state:emoji-base
+		state:default
+		(standard-state
+		 (make-!selector wb-names
+				 '(extend-num-let hebrew-letter katakana letter
+						  numeric)))
+		state:default
+		state:default
+		state:default
+		(let ((select:dq (make-selector wb-names '(double-quote)))
+		      (select:hl (make-selector wb-names '(hebrew-letter)))
+		      (break?
+		       (make-!selector wb-names
+				       '(extend-num-let hebrew-letter letter
+							numeric single-quote))))
+		  (lambda (wb1 wb2 k0 k1 k2)
+		    (cond ((select:extender wb1)
+			   (k0 #f))
+			  ((and wb2
+				(select:mb/ml/sq wb1)
+				(select:hl/le wb2))
+			   (k2 wb2 #f))
+			  ((and wb2
+				(select:dq wb1)
+				(select:hl wb2))
+			   (k2 wb2 #f))
+			  (else
+			   (k1 wb1 (break? wb1))))))
+		(standard-state
+		 (make-!selector wb-names '(extend-num-let katakana)))
+		(let ((break?
+		       (make-!selector wb-names
+				       '(extend-num-let hebrew-letter letter
+							numeric))))
+		  (lambda (wb1 wb2 k0 k1 k2)
+		    (cond ((select:extender wb1)
+			   (k0 #f))
+			  ((and wb2
+				(select:mb/ml/sq wb1)
+				(select:hl/le wb2))
+			   (k2 wb2 #f))
+			  (else
+			   (k1 wb1 (break? wb1))))))
+		state:always-break
+		state:default
+		state:default
+		state:default
+		state:always-break
+		(standard-state
+		 (make-!selector wb-names
+				 '(extend-num-let hebrew-letter letter numeric)))
+		(let ((select:regional-indicator
+		       (make-selector wb-names '(regional-indicator)))
+		      (wb:extend (name->code wb-names 'extend)))
+		  (lambda (wb1 wb2 k0 k1 k2)
+		    (declare (ignore wb2 k2))
+		    (cond ((select:extender wb1)
+			   (k0 #f))
+			  ((select:regional-indicator wb1)
+			   (k1 wb:extend #f))
+			  (else
+			   (k1 wb1 #t)))))
+		state:default
+		state:default
+		state:default)))))
 
 (define (list->string chars)
   (if (every char-8-bit? chars)
