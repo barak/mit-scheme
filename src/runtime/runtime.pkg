@@ -1296,6 +1296,7 @@ USA.
 
 (define-package (runtime ucd-tables)
   (files "ucd-table-alpha"
+	 "ucd-table-cased"
 	 "ucd-table-ccc"
 	 "ucd-table-cf"
 	 "ucd-table-cwcf"
@@ -1319,10 +1320,12 @@ USA.
   (parent (runtime))
   (export ()
 	  char-alphabetic?
+	  char-cased?
 	  char-lower-case?
 	  char-upper-case?
 	  char-whitespace?
 	  char-set:alphabetic
+	  char-set:cased
 	  char-set:lower-case
 	  char-set:upper-case
 	  char-set:whitespace)
