@@ -58,6 +58,10 @@ USA.
       (string-set! string i (string-ref text-characters (random n-text))))
     string))
 
+(define (random-byte-vector length)
+  (object-new-type (microcode-type 'string)
+		   (random-bytevector length)))
+
 (define text-characters
   (list->string
    (append '(#\tab #\newline)
