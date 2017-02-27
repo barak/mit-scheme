@@ -395,6 +395,7 @@ USA.
 	      "CWCF"
 	      "CWL"
 	      "CWU"
+	      "Cased"
 	      "GCB"
 	      "Lower"
 	      "NFD_QC"
