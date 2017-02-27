@@ -1275,9 +1275,6 @@ USA.
 	  unicode-code-point?
 	  unicode-scalar-value?)
   (export (runtime)
-	  char-downcase-full
-	  char-foldcase-full
-	  char-upcase-full
 	  char-utf16-byte-length
 	  char-utf32-byte-length
 	  char-utf8-byte-length
@@ -1313,6 +1310,7 @@ USA.
 	 "ucd-table-scf"
 	 "ucd-table-slc"
 	 "ucd-table-suc"
+	 "ucd-table-tc"
 	 "ucd-table-uc"
 	 "ucd-table-upper"
 	 "ucd-table-wb"
@@ -1329,16 +1327,18 @@ USA.
 	  char-set:lower-case
 	  char-set:upper-case
 	  char-set:whitespace)
+  (export (runtime)
+	  (char-downcase-full ucd-lc-value)
+	  (char-foldcase-full ucd-cf-value)
+	  (char-titlecase-full ucd-tc-value)
+	  (char-upcase-full ucd-uc-value))
   (export (runtime character)
-	  ucd-cf-value
 	  ucd-gc-value
-	  ucd-lc-value
 	  ucd-nt-value
 	  ucd-nv-value
 	  ucd-scf-value
 	  ucd-slc-value
-	  ucd-suc-value
-	  ucd-uc-value)
+	  ucd-suc-value)
   (export (runtime ucd-glue)
 	  char-set:changes-when-case-folded
 	  ucd-nt-value)

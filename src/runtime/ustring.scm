@@ -438,22 +438,36 @@ USA.
 (define (string-upcase string)
   (case-transform char-upcase-full string))
 
-(define (string-titlecase string)
-  ;; TODO(cph): implement this
-  (string-copy string))
-
 (define (case-transform transform string)
-  (let ((chars (append-map transform (string->list string))))
-    (let ((n (length chars)))
-      (let ((result
-	     (if (every char-8-bit? chars)
-		 (legacy-string-allocate n)
-		 (full-string-allocate n))))
-	(do ((chars chars (cdr chars))
-	     (i 0 (fix:+ i 1)))
-	    ((not (pair? chars)))
-	  (string-set! result i (car chars)))
-	result))))
+  (let ((builder (string-builder))
+	(end (string-length string)))
+    (do ((index 0 (fix:+ index 1)))
+	((not (fix:< index end)))
+      (for-each builder (transform (string-ref string index))))
+    (builder)))
+
+(define (string-titlecase string)
+  (let ((builder (string-builder)))
+    (find-word-breaks string 0
+		      (lambda (end start)
+			(maybe-titlecase string start end builder)
+			end))
+    (builder)))
+
+(define (maybe-titlecase string start end builder)
+  (let loop ((index start))
+    (if (fix:< index end)
+	(let ((char (string-ref string index)))
+	  (if (char-cased? char)
+	      (begin
+		(for-each builder (char-titlecase-full char))
+		(do ((index (fix:+ index 1) (fix:+ index 1)))
+		    ((not (fix:< index end)))
+		  (for-each builder
+			    (char-downcase-full (string-ref string index)))))
+	      (begin
+		(builder char)
+		(loop (fix:+ index 1))))))))
 
 (define (string-lower-case? string)
   (let* ((nfd (string->nfd string))
@@ -789,27 +803,28 @@ USA.
 	    (state:emoji-base
 	     (standard-state (make-!selector wb-names '(emoji-modifier)))))
 
-	(vector (let ((break? (make-!selector wb-names '(linefeed))))
+	(vector (let ((break?		;carriage-return
+		       (make-!selector wb-names '(linefeed))))
 		  (lambda (wb1 wb2 k0 k1 k2)
 		    (declare (ignore wb2 k0 k2))
 		    (k1 wb1 (break? wb1))))
-		state:default
-		state:emoji-base
-		state:emoji-base
-		state:default
-		(standard-state
+		state:default		;double-quote
+		state:emoji-base	;emoji-base
+		state:emoji-base	;emoji-base-gaz
+		state:default		;emoji-modifier
+		(standard-state		;extend-num-let
 		 (make-!selector wb-names
 				 '(extend-num-let hebrew-letter katakana letter
 						  numeric)))
-		state:default
-		state:default
-		state:default
-		(let ((select:dq (make-selector wb-names '(double-quote)))
-		      (select:hl (make-selector wb-names '(hebrew-letter)))
-		      (break?
+		state:default		;extend
+		state:default		;format
+		state:default		;glue-after-zwj
+		(let ((break?		;hebrew-letter
 		       (make-!selector wb-names
 				       '(extend-num-let hebrew-letter letter
-							numeric single-quote))))
+							numeric single-quote)))
+		      (select:dq (make-selector wb-names '(double-quote)))
+		      (select:hl (make-selector wb-names '(hebrew-letter))))
 		  (lambda (wb1 wb2 k0 k1 k2)
 		    (cond ((select:extender wb1)
 			   (k0 #f))
@@ -823,9 +838,9 @@ USA.
 			   (k2 wb2 #f))
 			  (else
 			   (k1 wb1 (break? wb1))))))
-		(standard-state
+		(standard-state		;katakana
 		 (make-!selector wb-names '(extend-num-let katakana)))
-		(let ((break?
+		(let ((break?		;letter
 		       (make-!selector wb-names
 				       '(extend-num-let hebrew-letter letter
 							numeric))))
@@ -838,14 +853,30 @@ USA.
 			   (k2 wb2 #f))
 			  (else
 			   (k1 wb1 (break? wb1))))))
-		state:always-break
-		state:default
-		state:default
-		state:default
-		state:always-break
-		(standard-state
-		 (make-!selector wb-names
-				 '(extend-num-let hebrew-letter letter numeric)))
+		state:always-break	;linefeed
+		state:default		;mid-num-let
+		state:default		;mid-letter
+		state:default		;mid-number
+		state:always-break	;newline
+		(let ((break?		;numeric
+		       (make-!selector wb-names
+				       '(extend-num-let hebrew-letter letter
+							numeric)))
+		      (select:mb/mn/sq
+		       (make-selector wb-names
+				      '(mid-num-let mid-number single-quote)))
+		      (select:numeric
+		       (make-selector wb-names '(numeric))))
+		  (lambda (wb1 wb2 k0 k1 k2)
+		    (cond ((select:extender wb1)
+			   (k0 #f))
+			  ((and wb2
+				(select:mb/mn/sq wb1)
+				(select:numeric wb2))
+			   (k2 wb2 #f))
+			  (else
+			   (k1 wb1 (break? wb1))))))
+		;; regional-indicator
 		(let ((select:regional-indicator
 		       (make-selector wb-names '(regional-indicator)))
 		      (wb:extend (name->code wb-names 'extend)))
@@ -857,9 +888,11 @@ USA.
 			   (k1 wb:extend #f))
 			  (else
 			   (k1 wb1 #t)))))
-		state:default
-		state:default
-		state:default)))))
+		state:default		;single-quote
+		state:default		;other
+		(standard-state		;zwj
+		 (make-!selector wb-names '(emoji-base-gaz glue-after-zwj)))
+		)))))
 
 (define (list->string chars)
   (if (every char-8-bit? chars)
