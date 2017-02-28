@@ -1428,6 +1428,25 @@ USA.
 	      (cons (cdr (car alist))
 		    (loop (cdr alist))))
 	'())))
+
+(define (keyword-option-parser keyword-option-specs)
+  (guarantee-list-of keyword-option-spec? keyword-option-specs
+		     'keyword-option-parser)
+  (lambda (options caller)
+    (guarantee keyword-list? options caller)
+    (apply values
+	   (map (lambda (spec)
+		  (let ((value (get-keyword-value options (car spec))))
+		    (if (default-object? value)
+			(caddr spec)
+			(guarantee (cadr spec) value caller))))
+		keyword-option-specs))))
+
+(define (keyword-option-spec? object)
+  (and (list? object)
+       (fix:= 3 (length object))
+       (interned-symbol? (car object))
+       (unary-procedure? (cadr object))))
 
 ;;;; Last pair
 

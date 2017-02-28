@@ -2995,6 +2995,7 @@ USA.
 	  keep-matching-items!
 	  keyword-list->alist
 	  keyword-list?
+	  keyword-option-parser
 	  last				;SRFI-1
 	  last-pair
 	  length
