@@ -353,14 +353,15 @@ USA.
 
 ;;; Global databases.  Load, then initialize.
 (define boot-defs)
-(let ((files1
+(let ((files0
        '(("gcdemn" . (RUNTIME GC-DAEMONS))
 	 ("gc" . (RUNTIME GARBAGE-COLLECTOR))
 	 ("boot" . (RUNTIME BOOT-DEFINITIONS))
 	 ("queue" . (RUNTIME SIMPLE-QUEUE))
 	 ("equals" . (RUNTIME EQUALITY))
-	 ("list" . (RUNTIME LIST))
-	 ("ustring" . (RUNTIME USTRING))
+	 ("list" . (RUNTIME LIST))))
+      (files1
+       '(("ustring" . (RUNTIME USTRING))
 	 ("symbol" . (RUNTIME SYMBOL))
 	 ("uproc" . (RUNTIME PROCEDURE))
 	 ("fixart" . (RUNTIME FIXNUM-ARITHMETIC))
@@ -383,8 +384,23 @@ USA.
 	 (do ((files files (cdr files)))
 	     ((null? files))
 	   (eval (file->object (car (car files)) #t #t)
-		 (package-reference (cdr (car files))))))))
-  (load-files files1)
+		 (package-reference (cdr (car files)))))))
+      (load-files-with-boot-inits
+       (lambda (files)
+	 (do ((files files (cdr files)))
+	     ((null? files))
+	   ((access init-boot-inits! boot-defs))
+	   (let ((environment (package-reference (cdr (car files)))))
+	     (eval (file->object (car (car files)) #t #t)
+		   environment)
+	     ((access save-boot-inits! boot-defs) environment))))))
+
+  (load-files files0)
+
+  (set! boot-defs
+	(package/environment (name->package '(RUNTIME BOOT-DEFINITIONS))))
+
+  (load-files-with-boot-inits files1)
   (package-initialize '(RUNTIME GC-DAEMONS) #f #t)
   (package-initialize '(RUNTIME GARBAGE-COLLECTOR) #f #t)
   (package-initialize '(RUNTIME RANDOM-NUMBER) #f #t)
@@ -392,7 +408,8 @@ USA.
 		      #t)
   (package-initialize '(RUNTIME POPULATION) #f #t)
   (package-initialize '(RUNTIME RECORD) 'INITIALIZE-RECORD-TYPE-TYPE! #t)
-  (load-files files2)
+
+  (load-files-with-boot-inits files2)
   (package-initialize '(RUNTIME 1D-PROPERTY) #f #t)	     ;First population.
   (package-initialize '(RUNTIME STATE-SPACE) #f #t)
   (package-initialize '(RUNTIME THREAD) 'INITIALIZE-LOW! #t) ;First 1d-table.
@@ -401,9 +418,6 @@ USA.
   (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-UNPARSER! #t)
   (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-UNPARSER! #t)
   (package-initialize '(RUNTIME GC-FINALIZER) #f #t)
-
-  (set! boot-defs
-	(package/environment (name->package '(RUNTIME BOOT-DEFINITIONS))))
 
   ;; Load everything else.
   ((lexical-reference environment-for-package 'LOAD-PACKAGES-FROM-FILE)
@@ -420,6 +434,7 @@ USA.
      (lambda (filename environment)
        (if (not (or (string=? filename "make")
 		    (string=? filename "packag")
+		    (file-member? filename files0)
 		    (file-member? filename files1)
 		    (file-member? filename files2)))
 	   (begin
@@ -445,6 +460,7 @@ USA.
    (RUNTIME CHARACTER)
    (RUNTIME BYTEVECTOR)
    (RUNTIME CHARACTER-SET)
+   (RUNTIME USTRING)
    (RUNTIME GENSYM)
    (RUNTIME STREAM)
    (RUNTIME 2D-PROPERTY)

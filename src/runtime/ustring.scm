@@ -1187,6 +1187,38 @@ USA.
 		(if (char=? char char1) char2 char))
 	      string))
 
+(define (string-trimmer . options)
+  (receive (where copy? trim-char?)
+      (string-trimmer-options options 'string-trimmer)
+    (let ((get-trimmed (if copy? string-copy string-slice)))
+      (lambda (string)
+	(let ((end (string-length string)))
+	  (get-trimmed
+	   string
+	   (if (eq? where 'trailing)
+	       0
+	       (let loop ((index 0))
+		 (if (and (fix:< index end)
+			  (trim-char? (string-ref string index)))
+		     (loop (fix:+ index 1))
+		     index)))
+	   (if (eq? where 'leading)
+	       end
+	       (let loop ((index end))
+		 (if (and (fix:> index 0)
+			  (trim-char? (string-ref string (fix:- index 1))))
+		     (loop (fix:- index 1))
+		     index)))))))))
+
+(define-deferred string-trimmer-options
+  (keyword-option-parser
+   (list (list 'where where-value? 'both)
+	 (list 'copy? boolean? #t)
+	 (list 'trim-char? unary-procedure? char-whitespace?))))
+
+(define (where-value? object)
+  (memq object '(leading trailing both)))
+
 (define (string-8-bit? string)
   (receive (string start end) (translate-slice string 0 (string-length string))
     (if (legacy-string? string)
