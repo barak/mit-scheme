@@ -1039,11 +1039,11 @@ USA.
 
 (define (string-map proc string . strings)
   (receive (n proc) (mapper-values proc string strings)
-    (let ((result (full-string-allocate n)))
+    (let ((builder (string-builder)))
       (do ((i 0 (fix:+ i 1)))
 	  ((not (fix:< i n)))
-	(%full-string-set! result i (proc i)))
-      result)))
+	(builder (proc i)))
+      (builder))))
 
 (define (string-count proc string . strings)
   (receive (n proc) (mapper-values proc string strings)
