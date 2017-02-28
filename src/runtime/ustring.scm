@@ -1359,3 +1359,17 @@ USA.
 	     (full-string-allocate 1))))
     (string-set! s 0 char)
     s))
+
+(define (legacy-string-trimmer where)
+  (lambda (string #!optional char-set)
+    ((string-trimmer 'where where
+		     'trim-char?
+		     (char-set-predicate
+		      (if (default-object? char-set)
+			  char-set:whitespace
+			  (char-set-invert char-set))))
+     string)))
+
+(define string-trim-left (legacy-string-trimmer 'leading))
+(define string-trim-right (legacy-string-trimmer 'trailing))
+(define string-trim (legacy-string-trimmer 'both))

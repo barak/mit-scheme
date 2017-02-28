@@ -982,9 +982,6 @@ USA.
 	  string-search-all
 	  string-search-backward
 	  string-search-forward
-	  string-trim
-	  string-trim-left
-	  string-trim-right
 	  substring-search-all
 	  substring-search-backward
 	  substring-search-forward
@@ -994,7 +991,7 @@ USA.
 (define-package (runtime ustring)
   (files "ustring")
   (parent (runtime))
-  (export ()				;export-deprecated
+  (export () deprecated:ustring
 	  (string-hash-mod string-hash)
 	  (substring->list string->list)
 	  (substring-move-left! substring-move!)
@@ -1009,6 +1006,9 @@ USA.
 	  string-find-previous-char-ci
 	  string-find-previous-char-in-set
 	  string-move!
+	  string-trim
+	  string-trim-left
+	  string-trim-right
 	  substring-ci<?
 	  substring-ci=?
 	  substring-fill!
@@ -1082,6 +1082,7 @@ USA.
 	  string-suffix?
 	  string-tail
 	  string-titlecase
+	  string-trimmer
 	  string-upcase
 	  string-upper-case?
 	  string<=?

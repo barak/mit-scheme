@@ -72,41 +72,6 @@ USA.
 			  ascii
 			  (integer->char ascii))))
 
-;;;; Trim
-
-(define (string-trim-left string #!optional char-set)
-  (let ((index
-	 (string-find-next-char-in-set string
-				       (if (default-object? char-set)
-					   char-set:not-whitespace
-					   char-set))))
-    (if index
-	(substring string index (string-length string))
-	"")))
-
-(define (string-trim-right string #!optional char-set)
-  (let ((index
-	 (string-find-previous-char-in-set string
-					   (if (default-object? char-set)
-					       char-set:not-whitespace
-					       char-set))))
-    (if index
-	(substring string 0 (fix:+ index 1))
-	"")))
-
-(define (string-trim string #!optional char-set)
-  (let* ((char-set
-	 (if (default-object? char-set)
-	     char-set:not-whitespace
-	     char-set))
-	 (index (string-find-next-char-in-set string char-set)))
-    (if index
-	(substring string
-		   index
-		   (fix:+ (string-find-previous-char-in-set string char-set)
-			  1))
-	"")))
-
 ;;;; Pad
 
 (define (string-pad-right string n #!optional char)
