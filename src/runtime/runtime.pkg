@@ -977,8 +977,6 @@ USA.
 	  guarantee-substring
 	  guarantee-substring-end-index
 	  guarantee-substring-start-index
-	  string-pad-left
-	  string-pad-right
 	  string-search-all
 	  string-search-backward
 	  string-search-forward
@@ -1006,6 +1004,8 @@ USA.
 	  string-find-previous-char-ci
 	  string-find-previous-char-in-set
 	  string-move!
+	  string-pad-left
+	  string-pad-right
 	  string-trim
 	  string-trim-left
 	  string-trim-right
@@ -1029,7 +1029,8 @@ USA.
 	  substring=?)
   (export ()
 	  (substring string-copy)
-	  count-grapheme-clusters
+	  grapheme-cluster-length
+	  grapheme-cluster-slice
 	  list->string
 	  make-string
 	  string
@@ -1071,6 +1072,7 @@ USA.
 	  string-match-forward
 	  string-match-forward-ci
 	  string-null?
+	  string-padder
 	  string-prefix-ci?
 	  string-prefix?
 	  string-ref

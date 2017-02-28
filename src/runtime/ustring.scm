@@ -566,7 +566,7 @@ USA.
 	  result))))
 |#
 
-(define (count-grapheme-clusters string)
+(define (grapheme-cluster-length string)
   (let ((breaks
 	 (find-grapheme-cluster-breaks string
 				       0
@@ -576,6 +576,29 @@ USA.
     (if (fix:> breaks 0)
 	(fix:- breaks 1)
 	breaks)))
+
+(define (grapheme-cluster-slice string start end)
+  ;; START and END refer to the cluster breaks, they must be <= the number of
+  ;; clusters in STRING.
+  (guarantee index-fixnum? start 'grapheme-cluster-slice)
+  (guarantee index-fixnum? end 'grapheme-cluster-slice)
+  (if (not (fix:<= start end))
+      (error:bad-range-argument start 'grapheme-cluster-slice))
+  (let ((start-index #f)
+	(end-index #f))
+    (find-grapheme-cluster-breaks string
+				  0
+				  (lambda (index count)
+				    (if (fix:= count start)
+					(set! start-index index))
+				    (if (fix:= count end)
+					(set! end-index index))
+				    (fix:+ count 1)))
+    (if (not start-index)
+	(error:bad-range-argument start 'grapheme-cluster-slice))
+    (if (not end-index)
+	(error:bad-range-argument end 'grapheme-cluster-slice))
+    (string-slice string start-index end-index)))
 
 ;;;; Grapheme-cluster breaks
 
@@ -1210,14 +1233,52 @@ USA.
 		     (loop (fix:- index 1))
 		     index)))))))))
 
+(define (one-of values)
+  (lambda (object)
+    (memq object values)))
+
 (define-deferred string-trimmer-options
   (keyword-option-parser
-   (list (list 'where where-value? 'both)
+   (list (list 'where (one-of '(leading trailing both)) 'both)
 	 (list 'copy? boolean? #t)
 	 (list 'trim-char? unary-procedure? char-whitespace?))))
 
-(define (where-value? object)
-  (memq object '(leading trailing both)))
+(define (string-padder . options)
+  (receive (where fill-with clip?)
+      (string-padder-options options 'string-padder)
+    (lambda (string n)
+      (guarantee index-fixnum? n 'string-padder)
+      (let ((cluster-length (grapheme-cluster-length string)))
+	(cond ((fix:= n cluster-length)
+	       string)
+	      ((fix:< n cluster-length)
+	       (if clip?
+		   (if (eq? where 'leading)
+		       (grapheme-cluster-slice string
+					       (fix:- cluster-length n)
+					       cluster-length)
+		       (grapheme-cluster-slice string 0 n))
+		   string))
+	      (else
+	       (let ((builder (string-builder)))
+		 (if (eq? where 'trailing)
+		     (builder string))
+		 (do ((i 0 (fix:+ i 1)))
+		     ((not (fix:< i n)))
+		   (builder fill-with))
+		 (if (eq? where 'leading)
+		     (builder string))
+		 (builder))))))))
+
+(define (grapheme-cluster-string? object)
+  (and (string? object)
+       (fix:= 1 (grapheme-cluster-length object))))
+
+(define-deferred string-padder-options
+  (keyword-option-parser
+   (list (list 'where (one-of '(leading trailing)) 'leading)
+	 (list 'fill-with grapheme-cluster-string? " ")
+	 (list 'clip? boolean? #t))))
 
 (define (string-8-bit? string)
   (receive (string start end) (translate-slice string 0 (string-length string))
@@ -1359,7 +1420,7 @@ USA.
 	     (full-string-allocate 1))))
     (string-set! s 0 char)
     s))
-
+
 (define (legacy-string-trimmer where)
   (lambda (string #!optional char-set)
     ((string-trimmer 'where where
@@ -1373,3 +1434,14 @@ USA.
 (define string-trim-left (legacy-string-trimmer 'leading))
 (define string-trim-right (legacy-string-trimmer 'trailing))
 (define string-trim (legacy-string-trimmer 'both))
+
+(define (legacy-string-padder where)
+  (lambda (string n #!optional char)
+    ((string-padder 'where where
+		    'fill-with (if (default-object? char)
+				   char
+				   (char->string char)))
+     string n)))
+
+(define string-pad-left (legacy-string-padder 'leading))
+(define string-pad-right (legacy-string-padder 'trailing))

@@ -72,51 +72,6 @@ USA.
 			  ascii
 			  (integer->char ascii))))
 
-;;;; Pad
-
-(define (string-pad-right string n #!optional char)
-  (guarantee-string string 'STRING-PAD-RIGHT)
-  (guarantee-string-index n 'STRING-PAD-RIGHT)
-  (let ((length (string-length string)))
-    (if (fix:= length n)
-	string
-	(let ((result (string-allocate n)))
-	  (if (fix:> length n)
-	      (string-copy! result 0 string 0 n)
-	      (begin
-		(string-copy! result 0 string 0 length)
-		(string-fill! result
-			      (if (default-object? char)
-				  #\space
-				  (begin
-				    (guarantee-char char 'STRING-PAD-RIGHT)
-				    char))
-			      length
-			      n)))
-	  result))))
-
-(define (string-pad-left string n #!optional char)
-  (guarantee-string string 'STRING-PAD-LEFT)
-  (guarantee-string-index n 'STRING-PAD-LEFT)
-  (let ((length (string-length string)))
-    (if (fix:= length n)
-	string
-	(let ((result (string-allocate n))
-	      (i (fix:- n length)))
-	  (if (fix:< i 0)
-	      (string-copy! result 0 string (fix:- 0 i) length)
-	      (begin
-		(string-fill! result
-			      (if (default-object? char)
-				  #\space
-				  (begin
-				    (guarantee-char char 'STRING-PAD-RIGHT)
-				    char))
-			      0
-			      i)
-		(string-copy! result i string 0 length)))
-	  result))))
-
 ;;;; String search
 
 (define (substring? pattern text)
