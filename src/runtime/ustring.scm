@@ -143,7 +143,7 @@ USA.
   (register-predicate! 8-bit-string? '8-bit-string '<= string?)
   (register-predicate! ->string-component? '->string-component))
 
-;;;; Strings
+;;;; Basic operations
 
 (define (string? object)
   (or (legacy-string? object)
@@ -212,6 +212,8 @@ USA.
 		       start
 		       (fix:- end start))))))
 
+;;;; Streaming build
+
 (define (string-builder)
   (let ((builder
 	 (make-sequence-builder (lambda () (full-string-allocate 16))
@@ -243,6 +245,8 @@ USA.
       (string-copy! result i (caar parts) 0 (cdar parts)))
     result))
 
+;;;; Copy
+
 (define (string-copy! to at from #!optional start end)
   (let* ((end (fix:end-index end (string-length from) 'string-copy!))
 	 (start (fix:start-index start end 'string-copy!)))
@@ -487,6 +491,8 @@ USA.
 	       (loop (fix:+ i 1)))
 	  #t))))
 
+;;;; Normalization
+
 (define (string->nfd string)
   (if (or (string-ascii? string)	;ASCII unaffected by normalization
 	  (string-in-nfd? string))
@@ -549,7 +555,6 @@ USA.
     (scan-for-non-starter 0))
   string)
 
-#|
 (define (quick-check string qc-value)
   (let ((n (string-length string)))
     (let loop ((i 0) (last-ccc 0) (result #t))
@@ -565,8 +570,9 @@ USA.
 			   (loop (fix:+ i 1) ccc check)
 			   (loop (fix:+ i 1) ccc result))))))
 	  result))))
-|#
 
+;;;; Grapheme clusters
+
 (define (grapheme-cluster-length string)
   (let ((breaks
 	 (find-grapheme-cluster-breaks string
@@ -600,8 +606,6 @@ USA.
     (if (not end-index)
 	(error:bad-range-argument end 'grapheme-cluster-slice))
     (string-slice string start-index end-index)))
-
-;;;; Grapheme-cluster breaks
 
 (define (find-grapheme-cluster-breaks string initial-ctx break)
   (let ((n (string-length string)))
@@ -622,7 +626,7 @@ USA.
     (if (fix:> n 0)
 	(transition (get-gcb 0) 0 (break 0 initial-ctx))
 	initial-ctx)))
-
+
 (define gcb-names
   '#(control
      carriage-return
@@ -917,6 +921,70 @@ USA.
 		 (make-!selector wb-names '(emoji-base-gaz glue-after-zwj)))
 		)))))
 
+;;;; Search
+
+(define-integrable (string-matcher caller matcher)
+  (lambda (pattern text)
+    (guarantee string? pattern caller)
+    (guarantee string? text caller)
+    (let ((pend (string-length pattern)))
+      (if (fix:= 0 pend)
+	  (error:bad-range-argument pend caller))
+      (matcher pattern pend text (fix:- (string-length text) pend)))))
+
+(define string-find-first-match
+  (string-matcher 'string-find-first-match
+		  %dumb-string-find-first-match))
+
+(define string-find-last-match
+  (string-matcher 'string-find-last-match
+		  %dumb-string-find-last-match))
+
+(define string-find-all-matches
+  (string-matcher 'string-find-all-matches
+		  %dumb-string-find-all-matches))
+
+(define (%dumb-string-find-first-match pattern pend text tlast)
+  (and (fix:>= tlast 0)
+       (let find-match ((tstart 0))
+	 (and (fix:<= tstart tlast)
+	      (let match ((pi 0) (ti tstart))
+		(if (fix:< pi pend)
+		    (if (char=? (string-ref pattern pi)
+				(string-ref text ti))
+			(match (fix:+ pi 1) (fix:+ ti 1))
+			(find-match (fix:+ tstart 1)))
+		    tstart))))))
+
+(define (%dumb-string-find-last-match pattern pend text tlast)
+  (and (fix:>= tlast 0)
+       (let find-match ((tstart tlast))
+	 (and (fix:>= tstart 0)
+	      (let match ((pi 0) (ti tstart))
+		(if (fix:< pi pend)
+		    (if (char=? (string-ref pattern pi)
+				(string-ref text ti))
+			(match (fix:+ pi 1) (fix:+ ti 1))
+			(find-match (fix:- tstart 1)))
+		    tstart))))))
+
+(define (%dumb-string-find-all-matches pattern pend text tlast)
+  (if (fix:>= tlast 0)
+      (let find-match ((tstart tlast) (matches '()))
+	(if (fix:>= tstart 0)
+	    (find-match (fix:- tstart 1)
+			(let match ((pi 0) (ti tstart))
+			  (if (fix:< pi pend)
+			      (if (char=? (string-ref pattern pi)
+					  (string-ref text ti))
+				  (match (fix:+ pi 1) (fix:+ ti 1))
+				  matches)
+			      (cons tstart matches))))
+	    matches))
+      '()))
+
+;;;; Sequence converters
+
 (define (list->string chars)
   (if (every char-8-bit? chars)
       (let ((string (legacy-string-allocate (length chars))))
@@ -971,6 +1039,8 @@ USA.
 		       %full-string-ref string start end)
 	    to)))))
 
+;;;; Append and general constructor
+
 (define (string-append . strings)
   (%string-append* strings))
 
@@ -1026,6 +1096,8 @@ USA.
       (number? object)
       (uri? object)))
 
+;;;; Mapping
+
 (define (mapper-values proc string strings)
   (cond ((null? strings)
 	 (values (string-length string)
@@ -1068,7 +1140,7 @@ USA.
 	  ((not (fix:< i n)))
 	(builder (proc i)))
       (builder))))
-
+
 (define (string-count proc string . strings)
   (receive (n proc) (mapper-values proc string strings)
     (let loop ((i 0) (count 0))
@@ -1078,7 +1150,7 @@ USA.
 		    (fix:+ count 1)
 		    count))
 	  count))))
-
+
 (define (string-any proc string . strings)
   (receive (n proc) (mapper-values proc string strings)
     (let loop ((i 0))
@@ -1110,31 +1182,9 @@ USA.
 	   (if (proc i)
 	       i
 	       (loop (fix:- i 1)))))))
-
-(define (string-fill! string char #!optional start end)
-  (guarantee bitless-char? char 'string-fill!)
-  (let* ((end (fix:end-index end (string-length string) 'string-fill!))
-	 (start (fix:start-index start end 'string-fill!)))
-    (receive (string start end) (translate-slice string start end)
-      (if (legacy-string? string)
-	  (do ((index start (fix:+ index 1)))
-	      ((not (fix:< index end)) unspecific)
-	    (legacy-string-set! string index char))
-	  (let ((bytes (%full-string-cp-vector string))
-		(cp (char->integer char)))
-	    (do ((i start (fix:+ i 1)))
-		((not (fix:< i end)))
-	      (cp-vector-set! bytes i cp)))))))
-
-(define (string-hash string #!optional modulus)
-  (let ((string* (string-for-primitive string)))
-    (if (default-object? modulus)
-	((ucode-primitive string-hash) string*)
-	((ucode-primitive string-hash-mod) string* modulus))))
-
-(define (string-ci-hash string #!optional modulus)
-  (string-hash (string-foldcase string) modulus))
 
+;;;; Joiner/splitter
+
 (define (string-joiner infix #!optional prefix suffix)
   (let ((joiner (string-joiner* prefix infix suffix)))
     (lambda strings
@@ -1211,6 +1261,8 @@ USA.
 		(if (char=? char char1) char2 char))
 	      string))
 
+;;;; Trimmer/padder
+
 (define (string-trimmer . options)
   (receive (where copy? trim-char?)
       (string-trimmer-options options 'string-trimmer)
@@ -1281,6 +1333,32 @@ USA.
 	 (list 'fill-with grapheme-cluster-string? " ")
 	 (list 'clip? boolean? #t))))
 
+;;;; Miscellaneous
+
+(define (string-fill! string char #!optional start end)
+  (guarantee bitless-char? char 'string-fill!)
+  (let* ((end (fix:end-index end (string-length string) 'string-fill!))
+	 (start (fix:start-index start end 'string-fill!)))
+    (receive (string start end) (translate-slice string start end)
+      (if (legacy-string? string)
+	  (do ((index start (fix:+ index 1)))
+	      ((not (fix:< index end)) unspecific)
+	    (legacy-string-set! string index char))
+	  (let ((bytes (%full-string-cp-vector string))
+		(cp (char->integer char)))
+	    (do ((i start (fix:+ i 1)))
+		((not (fix:< i end)))
+	      (cp-vector-set! bytes i cp)))))))
+
+(define (string-hash string #!optional modulus)
+  (let ((string* (string-for-primitive string)))
+    (if (default-object? modulus)
+	((ucode-primitive string-hash) string*)
+	((ucode-primitive string-hash-mod) string* modulus))))
+
+(define (string-ci-hash string #!optional modulus)
+  (string-hash (string-foldcase string) modulus))
+
 (define (8-bit-string? object)
   (and (string? object)
        (string-8-bit? object)))
@@ -1324,6 +1402,8 @@ USA.
 	     (loop (fix:+ i 1)))
 	#t)))
 
+;;;;Backwards compatibility
+
 (define (string-find-next-char string char)
   (string-find-first-index (char=-predicate char) string))
 
@@ -1366,6 +1446,35 @@ USA.
 
 (define substring-find-previous-char-in-set
   (substring-find-maker string-find-previous-char-in-set))
+
+(define (substring? pattern text)
+  (and (or (fix:= 0 (string-length pattern))
+	   (string-find-first-match pattern text))
+       #t))
+
+(define (string-search-backward pattern text)
+  (let ((index (string-find-last-match pattern text)))
+    (and index
+	 (fix:+ index (string-length pattern)))))
+
+(define-integrable (substring-search-maker string-search)
+  (lambda (pattern text tstart tend)
+    (let* ((slice (string-slice text tstart tend))
+	   (index (string-search pattern slice)))
+      (and index
+	   (fix:+ tstart index)))))
+
+(define substring-search-forward
+  (substring-search-maker string-find-first-match))
+
+(define substring-search-backward
+  (substring-search-maker string-search-backward))
+
+(define (substring-search-all pattern text tstart tend)
+  (let ((slice (string-slice text tstart tend)))
+    (map (lambda (index)
+	   (fix:+ tstart index))
+	 (string-find-all-matches pattern slice))))
 
 (define (string-move! string1 string2 start2)
   (string-copy! string2 start2 string1))

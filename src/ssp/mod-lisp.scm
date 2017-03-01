@@ -601,8 +601,8 @@ USA.
 	(reverse! strings))))
 
 (define (http-response-header keyword datum #!optional overwrite?)
-  (guarantee-symbol keyword 'HTTP-RESPONSE-HEADER)
-  (guarantee-string datum 'HTTP-RESPONSE-HEADER)
+  (guarantee symbol? keyword 'HTTP-RESPONSE-HEADER)
+  (guarantee string? datum 'HTTP-RESPONSE-HEADER)
   (if (memq keyword '(STATUS CONTENT-LENGTH))
       (error "Illegal header keyword:" keyword))
   (if (or (eq? keyword 'CONTENT-TYPE)
@@ -617,7 +617,7 @@ USA.
   (maybe-set-entity *current-request* *current-response* entity))
 
 (define (http-status-response code . extra)
-  (guarantee-exact-nonnegative-integer code 'HTTP-STATUS-RESPONSE)
+  (guarantee exact-nonnegative-integer? code 'HTTP-STATUS-RESPONSE)
   (status-response! *current-response* code extra))
 
 ;;;; MIME stuff
@@ -758,7 +758,7 @@ USA.
     'handler handler))
 
 (define (define-url-bindings url . klist)
-  (guarantee-keyword-list klist 'define-url-bindings)
+  (guarantee keyword-list? klist 'define-url-bindings)
   (let* ((binding
 	  (find-matching-item url-bindings
 	    (lambda (binding)

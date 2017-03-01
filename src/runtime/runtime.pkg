@@ -958,35 +958,21 @@ USA.
   (files "string")
   (parent (runtime))
   (export () deprecated:string
-	  (guarantee-vector-8b guarantee-string)
-	  (vector-8b-length string-length)
-	  (vector-8b? string?)
-	  error:not-string
-	  guarantee-string
-	  guarantee-string-index
+	  (vector-8b? legacy-string?)
+	  legacy-string?
 	  make-legacy-string
 	  make-vector-8b
-	  vector-8b-fill!
-	  vector-8b-find-next-char
-	  vector-8b-find-next-char-ci
-	  vector-8b-find-previous-char
-	  vector-8b-find-previous-char-ci
+	  vector-8b-length
 	  vector-8b-ref
-	  vector-8b-set!)
-  (export ()
-	  string-search-all
-	  string-search-backward
-	  string-search-forward
-	  substring-search-all
-	  substring-search-backward
-	  substring-search-forward
-	  substring?))
+	  vector-8b-set!))
 
 (define-package (runtime ustring)
   (files "ustring")
   (parent (runtime))
   (export () deprecated:ustring
 	  (string-hash-mod string-hash)
+	  (string-search-all string-find-all-matches)
+	  (string-search-forward string-find-first-match)
 	  (substring->list string->list)
 	  (substring-move-left! substring-move!)
 	  (substring-move-right! substring-move!)
@@ -1002,6 +988,7 @@ USA.
 	  string-move!
 	  string-pad-left
 	  string-pad-right
+	  string-search-backward
 	  string-trim
 	  string-trim-left
 	  string-trim-right
@@ -1018,6 +1005,9 @@ USA.
 	  substring-move!
 	  substring-prefix-ci?
 	  substring-prefix?
+	  substring-search-all
+	  substring-search-backward
+	  substring-search-forward
 	  substring-suffix-ci?
 	  substring-suffix?
 	  substring-upper-case?
@@ -1052,8 +1042,11 @@ USA.
 	  string-downcase
 	  string-every
 	  string-fill!
+	  string-find-all-matches
 	  string-find-first-index
+	  string-find-first-match
 	  string-find-last-index
+	  string-find-last-match
 	  string-foldcase
 	  string-for-each
 	  string-for-primitive		;export to (runtime) after 9.3
@@ -1090,6 +1083,7 @@ USA.
 	  string>=?
 	  string>?
 	  string?
+	  substring?
 	  vector->string)
   (export (runtime predicate-metadata)
 	  register-ustring-predicates!)

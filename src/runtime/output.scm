@@ -167,10 +167,10 @@ USA.
       (error:wrong-type-argument strings "list of strings"
 				 'WRITE-STRINGS-IN-COLUMNS))
   (guarantee textual-output-port? port 'WRITE-STRINGS-IN-COLUMNS)
-  (guarantee-exact-positive-integer min-minor 'WRITE-STRINGS-IN-COLUMNS)
-  (guarantee-string left-margin 'WRITE-STRINGS-IN-COLUMNS)
-  (guarantee-string col-sep 'WRITE-STRINGS-IN-COLUMNS)
-  (guarantee-string right-margin 'WRITE-STRINGS-IN-COLUMNS)
+  (guarantee exact-positive-integer? min-minor 'WRITE-STRINGS-IN-COLUMNS)
+  (guarantee string? left-margin 'WRITE-STRINGS-IN-COLUMNS)
+  (guarantee string? col-sep 'WRITE-STRINGS-IN-COLUMNS)
+  (guarantee string? right-margin 'WRITE-STRINGS-IN-COLUMNS)
   (let ((n-strings (length strings))
 	(max-width (output-port/x-size port))
 	(lm-width (string-length left-margin))
@@ -292,9 +292,9 @@ USA.
       (error:wrong-type-argument strings "non-empty list of strings"
 				 'WRITE-STRINGS-IN-PARAGRAPH))
   (guarantee textual-output-port? port 'WRITE-STRINGS-IN-PARAGRAPH)
-  (guarantee-exact-positive-integer width 'WRITE-STRINGS-IN-PARAGRAPH)
-  (guarantee-exact-nonnegative-integer indent 'WRITE-STRINGS-IN-PARAGRAPH)
-  (guarantee-exact-nonnegative-integer first 'WRITE-STRINGS-IN-PARAGRAPH)
+  (guarantee exact-positive-integer? width 'WRITE-STRINGS-IN-PARAGRAPH)
+  (guarantee exact-nonnegative-integer? indent 'WRITE-STRINGS-IN-PARAGRAPH)
+  (guarantee exact-nonnegative-integer? first 'WRITE-STRINGS-IN-PARAGRAPH)
   (if (< width (+ indent first (string-length (car strings))))
       (error:bad-range-argument width 'WRITE-STRINGS-IN-PARAGRAPH))
 

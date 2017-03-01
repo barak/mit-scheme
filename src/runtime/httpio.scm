@@ -85,7 +85,7 @@ USA.
   (guarantee-http-headers headers caller)
   (if body
       (begin
-	(guarantee-string body caller)
+	(guarantee string? body caller)
 	(let ((n (%get-content-length headers))
 	      (m (vector-8b-length body)))
 	  (if n
@@ -116,7 +116,7 @@ USA.
 (define-guarantee simple-http-response "simple HTTP response")
 
 (define (make-simple-http-response body)
-  (guarantee-string body 'MAKE-SIMPLE-HTTP-RESPONSE)
+  (guarantee string? body 'MAKE-SIMPLE-HTTP-RESPONSE)
   (%make-http-response #f 200 (http-status-description 200) '() body))
 
 (define (http-message? object)

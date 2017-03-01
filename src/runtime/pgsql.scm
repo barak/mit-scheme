@@ -311,7 +311,7 @@ USA.
   (pq-unescape-bytea string))
 
 (define (exec-pgsql-query connection query)
-  (guarantee-string query 'EXEC-PGSQL-QUERY)
+  (guarantee string? query 'EXEC-PGSQL-QUERY)
   (let ((result
 	 (let ((handle (connection->handle connection)))
 	   (make-gc-finalized-object
