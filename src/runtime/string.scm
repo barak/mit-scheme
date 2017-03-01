@@ -329,16 +329,6 @@ USA.
 (declare (integrate-operator guarantee-string))
 (define-guarantee string "string")
 
-(define-integrable (guarantee-2-strings object1 object2 procedure)
-  (if (not (and (string? object1) (string? object2)))
-      (guarantee-2-strings/fail object1 object2 procedure)))
-
-(define (guarantee-2-strings/fail object1 object2 procedure)
-  (cond ((not (string? object1))
-	 (error:wrong-type-argument object1 "string" procedure))
-	((not (string? object2))
-	 (error:wrong-type-argument object2 "string" procedure))))
-
 (define-integrable (guarantee-string-index object caller)
   (if (not (index-fixnum? object))
       (error:wrong-type-argument object "string index" caller)))

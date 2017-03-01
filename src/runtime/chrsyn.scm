@@ -149,21 +149,26 @@ USA.
   '#(" " "." "w" "_" "(" ")" "'" "\"" "$" "\\" "/" "<" ">"))
 
 (define (substring-find-next-char-of-syntax string start end table code)
-  (guarantee-substring string start end 'SUBSTRING-FIND-NEXT-CHAR-OF-SYNTAX)
-  (let loop ((index start))
-    (and (fix:< index end)
-	 (if (char=? code (char->syntax-code table (string-ref string index)))
-	     index
-	     (loop (fix:+ index 1))))))
+  (guarantee 8-bit-string? string 'substring-find-next-char-of-syntax)
+  (let ((index
+	 (string-find-first-index (syntax-code-predicate code)
+				  (string-slice string start end))))
+    (and index
+	 (fix:+ start index))))
 
 (define (substring-find-next-char-not-of-syntax string start end table code)
-  (guarantee-substring string start end
-		       'SUBSTRING-FIND-NEXT-CHAR-NOT-OF-SYNTAX)
-  (let loop ((index start))
-    (and (fix:< index end)
-	 (if (char=? code (char->syntax-code table (string-ref string index)))
-	     (loop (fix:+ index 1))
-	     index))))
+  (guarantee 8-bit-string? string 'substring-find-next-char-not-of-syntax)
+  (let ((index
+	 (string-find-first-index (let ((pred (syntax-code-predicate code)))
+				    (lambda (char)
+				      (not (pred char))))
+				  (string-slice string start end))))
+    (and index
+	 (fix:+ start index))))
+
+(define (syntax-code-predicate code)
+  (lambda (char)
+    (char=? code (char->syntax-code char))))
 
 (define (char->syntax-code table char)
   (string-ref (vector-ref char-syntax-codes

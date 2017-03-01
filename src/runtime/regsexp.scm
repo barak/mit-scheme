@@ -544,7 +544,7 @@ USA.
 
 (define (regsexp-match-input-port crsexp port)
   (let ((caller 'REGSEXP-MATCH-INPUT-PORT))
-    (guarantee-compiled-regsexp crsexp caller)
+    (guarantee compiled-regsexp? crsexp caller)
     (guarantee textual-input-port? port caller)
     (%top-level-match crsexp
 		      (%char-source->position
@@ -585,21 +585,10 @@ USA.
 
 (define (regsexp-match-string crsexp string #!optional start end)
   (let ((caller 'REGSEXP-MATCH-STRING))
-    (guarantee-compiled-regsexp crsexp caller)
-    (guarantee-string string caller)
-    (let* ((end
-	    (let ((length (string-length string)))
-	      (if (default-object? end)
-		  length
-		  (begin
-		    (guarantee-substring-end-index end length caller)
-		    end))))
-	   (start
-	    (if (default-object? start)
-		0
-		(begin
-		  (guarantee-substring-start-index start end caller)
-		  start))))
+    (guarantee compiled-regsexp? crsexp caller)
+    (guarantee string? string caller)
+    (let* ((end (fix:end-index end (string-length string) caller))
+	   (start (fix:start-index start end caller)))
       (%top-level-match crsexp
 			(cons start (%make-substring string start end))))))
 

@@ -974,17 +974,13 @@ USA.
 	  vector-8b-ref
 	  vector-8b-set!)
   (export ()
-	  guarantee-substring
-	  guarantee-substring-end-index
-	  guarantee-substring-start-index
 	  string-search-all
 	  string-search-backward
 	  string-search-forward
 	  substring-search-all
 	  substring-search-backward
 	  substring-search-forward
-	  substring?)
-  (initialization (initialize-package!)))
+	  substring?))
 
 (define-package (runtime ustring)
   (files "ustring")
@@ -1029,6 +1025,7 @@ USA.
 	  substring=?)
   (export ()
 	  (substring string-copy)
+	  8-bit-string?
 	  grapheme-cluster-length
 	  grapheme-cluster-slice
 	  list->string

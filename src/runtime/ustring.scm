@@ -140,6 +140,7 @@ USA.
   (register-predicate! legacy-string? 'legacy-string '<= string?)
   (register-predicate! full-string? 'full-string '<= string?)
   (register-predicate! slice? 'string-slice '<= string?)
+  (register-predicate! 8-bit-string? '8-bit-string '<= string?)
   (register-predicate! ->string-component? '->string-component))
 
 ;;;; Strings
@@ -1280,6 +1281,10 @@ USA.
 	 (list 'fill-with grapheme-cluster-string? " ")
 	 (list 'clip? boolean? #t))))
 
+(define (8-bit-string? object)
+  (and (string? object)
+       (string-8-bit? object)))
+
 (define (string-8-bit? string)
   (receive (string start end) (translate-slice string 0 (string-length string))
     (if (legacy-string? string)
