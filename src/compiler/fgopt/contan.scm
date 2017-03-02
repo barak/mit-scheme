@@ -105,8 +105,7 @@ may change if call-with-current-continuation is handled specially.
 		    (and (not (lvalue/external-source? lvalue))
 			 (null? (lvalue-initial-values lvalue))
 			 (memq end (lvalue-backward-links lvalue))
-			 (for-all? (lvalue-initial-backward-links lvalue)
-				   next)))
+			 (every next (lvalue-initial-backward-links lvalue))))
 
 		  (define (next lvalue)
 		    (if (lvalue-marked? lvalue)
@@ -149,28 +148,28 @@ may change if call-with-current-continuation is handled specially.
 	       (else true)))))
 
 (define (block/no-free-references? block)
-  (and (for-all? (block-free-variables block)
-	 (lambda (variable)
-	   (or (lvalue-integrated? variable)
-	       (let ((block (variable-block variable)))
-		 (and (ic-block? block)
-		      (not (ic-block/use-lookup? block)))))))
+  (and (every (lambda (variable)
+		(or (lvalue-integrated? variable)
+		    (let ((block (variable-block variable)))
+		      (and (ic-block? block)
+			   (not (ic-block/use-lookup? block))))))
+	      (block-free-variables block))
        (let loop ((block* block))
 	 (and (not
-	       (there-exists? (block-applications block*)
-		 (lambda (application)
-		   (let ((block*
-			  (if (application/combination? application)
-			      (let ((adjustment
-				     (combination/frame-adjustment
-				      application)))
-				(and adjustment
-				     (cdr adjustment)))
-			      (block-popping-limit
-			       (reference-context/block
-				(application-context application))))))
-		     (and block* (block-ancestor? block block*))))))
-	      (for-all? (block-children block*) loop)))))
+	       (any (lambda (application)
+		      (let ((block*
+			     (if (application/combination? application)
+				 (let ((adjustment
+					(combination/frame-adjustment
+					 application)))
+				   (and adjustment
+					(cdr adjustment)))
+				 (block-popping-limit
+				  (reference-context/block
+				   (application-context application))))))
+			(and block* (block-ancestor? block block*))))
+		    (block-applications block*)))
+	      (every loop (block-children block*))))))
 
 (define (compute-block-popping-limits block)
   (let ((external (stack-block/external-ancestor block)))

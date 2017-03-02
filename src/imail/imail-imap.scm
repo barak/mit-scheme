@@ -2391,7 +2391,7 @@ USA.
 (define (imap:command:fetch-response connection command arguments)
   (let ((responses (apply imap:command connection command arguments)))
     (if (and (pair? (cdr responses))
-	     (for-all? (cdr responses) imap:response:fetch?))
+	     (every imap:response:fetch? (cdr responses)))
 	(if (null? (cddr responses))
 	    (cadr responses)
 	    ;; Some servers, notably UW IMAP, sometimes return
@@ -2494,7 +2494,7 @@ USA.
 (define (imap:command:multiple-response predicate
 					connection command . arguments)
   (let ((responses (apply imap:command connection command arguments)))
-    (if (for-all? (cdr responses) predicate)
+    (if (every predicate (cdr responses))
 	(cdr responses)
 	(error "Malformed response from IMAP server:" responses))))
 

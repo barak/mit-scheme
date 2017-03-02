@@ -68,20 +68,14 @@ USA.
 	       (loop (fix:+ i 1)))
 	  #t))))
 
-(define (guarantee-rfc2822-headers object #!optional caller)
-  (guarantee-list-of-type object
-			  rfc2822-header?
-			  "list of RFC 2822 header fields"
-			  caller))
-
 (define (first-rfc2822-header name headers)
-  (guarantee-rfc2822-headers headers 'FIRST-RFC2822-HEADER)
+  (guarantee-list-of rfc2822-header? headers 'FIRST-RFC2822-HEADER)
   (find (lambda (header)
 	  (eq? (rfc2822-header-name header) name))
 	headers))
 
 (define (all-rfc2822-headers name headers)
-  (guarantee-rfc2822-headers headers 'ALL-RFC2822-HEADERS)
+  (guarantee-list-of rfc2822-header? headers 'ALL-RFC2822-HEADERS)
   (filter (lambda (header)
 	    (eq? (rfc2822-header-name header) name))
 	  headers))
@@ -94,7 +88,7 @@ USA.
       (write-rfc2822-headers headers port))))
 
 (define (write-rfc2822-headers headers port)
-  (guarantee-rfc2822-headers headers 'WRITE-RFC2822-HEADERS)
+  (guarantee-list-of rfc2822-header? headers 'WRITE-RFC2822-HEADERS)
   (for-each (lambda (header)
               (write-header header port))
             headers)

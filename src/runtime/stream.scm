@@ -36,11 +36,11 @@ USA.
 (define-guarantee stream-pair "stream pair")
 
 (define (stream-car stream)
-  (guarantee-stream-pair stream 'STREAM-CAR)
+  (guarantee stream-pair? stream 'STREAM-CAR)
   (car stream))
 
 (define (stream-cdr stream)
-  (guarantee-stream-pair stream 'STREAM-CDR)
+  (guarantee stream-pair? stream 'STREAM-CDR)
   (force (cdr stream)))
 
 (define the-empty-stream '())
@@ -70,7 +70,7 @@ USA.
     (car tail)))
 
 (define (stream-head stream index)
-  (guarantee-exact-nonnegative-integer index 'STREAM-HEAD)
+  (guarantee exact-nonnegative-integer? index 'STREAM-HEAD)
   (let loop ((stream stream) (index index))
     (if (> index 0)
 	(begin
@@ -81,7 +81,7 @@ USA.
 	'())))
 
 (define (stream-tail stream index)
-  (guarantee-exact-nonnegative-integer index 'STREAM-TAIL)
+  (guarantee exact-nonnegative-integer? index 'STREAM-TAIL)
   (let loop ((stream stream) (index index))
     (if (> index 0)
 	(begin
@@ -261,7 +261,7 @@ USA.
       (cons-stream (car list) (list->stream (cdr list)))
       (begin
 	(if (not (null? list))
-	    (error:not-list list 'LIST->STREAM))
+	    (error:not-a list? list 'LIST->STREAM))
 	'())))
 
 (define (stream->list stream)

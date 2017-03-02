@@ -216,7 +216,7 @@ USA.
        (thunk)))))
 
 (define (%mode-name->number mode caller)
-  (guarantee-interned-symbol mode caller)
+  (guarantee interned-symbol? mode caller)
   (let ((n (vector-length float-rounding-mode-names)))
     (let loop ((i 0))
       (if (not (fix:< i n))
@@ -292,7 +292,7 @@ USA.
     (if (fix:zero? (fix:and bits exceptions))
 	tail
 	(cons name tail)))
-  (guarantee-index-fixnum exceptions 'FLO:EXCEPTIONS->NAMES)
+  (guarantee index-fixnum? exceptions 'FLO:EXCEPTIONS->NAMES)
   (if (not (fix:zero? (fix:andc exceptions (flo:supported-exceptions))))
       (error:bad-range-argument exceptions 'FLO:EXCEPTIONS->NAMES))
   (n 'DIVIDE-BY-ZERO (flo:exception:divide-by-zero)
@@ -311,7 +311,7 @@ USA.
       ((OVERFLOW) (flo:exception:overflow))
       ((UNDERFLOW) (flo:exception:underflow))
       (else (error:bad-range-argument names 'FLO:NAMES->EXCEPTIONS))))
-  (guarantee-list-of-unique-symbols names 'FLO:NAMES->EXCEPTIONS)
+  (guarantee list-of-unique-symbols? names 'FLO:NAMES->EXCEPTIONS)
   (reduce fix:or 0 (map name->exceptions names)))
 
 ;;;; Floating-point environment utilities

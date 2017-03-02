@@ -47,7 +47,7 @@ USA.
   (syntax* (list form) environment))
 
 (define (syntax* forms environment)
-  (guarantee-list forms 'SYNTAX*)
+  (guarantee list? forms 'SYNTAX*)
   (let ((senv (->syntactic-environment environment 'SYNTAX*)))
     (parameterize* (list (cons *rename-database* (initial-rename-database)))
       (lambda ()
@@ -133,7 +133,7 @@ USA.
 	    (loop (syntactic-closure/form identifier))
 	    (and (symbol? identifier)
 		 identifier)))
-      (error:not-identifier identifier 'IDENTIFIER->SYMBOL)))
+      (error:not-a identifier? identifier 'IDENTIFIER->SYMBOL)))
 
 (define (identifier=? environment-1 identifier-1 environment-2 identifier-2)
   (let ((item-1 (lookup-identifier identifier-1 environment-1))
@@ -161,7 +161,7 @@ USA.
 	   (lookup-identifier (syntactic-closure/form identifier)
 			      (syntactic-closure/environment identifier)))
 	  (else
-	   (error:not-identifier identifier 'LOOKUP-IDENTIFIER)))))
+	   (error:not-a identifier? identifier 'LOOKUP-IDENTIFIER)))))
 
 ;;;; Utilities
 

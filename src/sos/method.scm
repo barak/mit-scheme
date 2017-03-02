@@ -177,16 +177,16 @@ USA.
 	 (let ((result (apply (method-procedure (car generators)) classes)))
 	   (cond ((not result)
 		  (loop (cdr generators)))
-		 ((or (there-exists? (cdr generators)
-			(lambda (generator)
-			  (and (specializers=?
-				(method-specializers generator)
-				(method-specializers (car generators)))
-			       (apply (method-procedure generator) classes))))
-		      (there-exists? methods
-			(lambda (method)
-			  (specializers=? (method-specializers method)
-					  classes))))
+		 ((or (any (lambda (generator)
+			     (and (specializers=?
+				   (method-specializers generator)
+				   (method-specializers (car generators)))
+				  (apply (method-procedure generator) classes)))
+			   (cdr generators))
+		      (any (lambda (method)
+			     (specializers=? (method-specializers method)
+					     classes))
+			   methods))
 		  (lambda args
 		    (error:extra-applicable-methods generic args)))
 		 (else result))))))
@@ -257,12 +257,9 @@ USA.
   (let loop ((s1 s1) (s2 s2))
     (or (null? s2)
 	(if (null? s1)
-	    (for-all? s2
-	      (lambda (s)
-		(subclass? <object> s)))
-	    (and (for-all? (specializer-classes (car s1))
-		   (lambda (c)
-		     (subclass? c (car s2))))
+	    (every (lambda (s) (subclass? <object> s)) s2)
+	    (and (every (lambda (c) (subclass? c (car s2)))
+			(specializer-classes (car s1)))
 		 (loop (cdr s1) (cdr s2)))))))
 
 ;;;; Method Specializers
@@ -270,7 +267,7 @@ USA.
 (define (specializers? object)
   (and (list? object)
        (not (null? object))
-       (for-all? object specializer?)))
+       (every specializer? object)))
 
 (define (specializer? object)
   (or (class? object)
@@ -309,8 +306,8 @@ USA.
 	    (specializer-classes s2)))
 
 (define (eq-set=? x y)
-  (and (for-all? x (lambda (x) (memq x y)))
-       (for-all? y (lambda (y) (memq y x)))))
+  (and (every (lambda (x) (memq x y)) x)
+       (every (lambda (y) (memq y x)) y)))
 
 (define (specializer-classes s)
   (cond ((class? s)

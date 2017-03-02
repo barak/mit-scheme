@@ -369,14 +369,14 @@ USA.
 (define vx:idrefs
   (vx:tester "ID references"
     (lambda (string)
-      (for-all? (burst-string string char-set:whitespace #t)
-	string-is-xml-name?))))
+      (every string-is-xml-name?
+	     (burst-string string char-set:whitespace #t)))))
 
 (define vx:nmtokens
   (vx:tester "XML tokens"
     (lambda (string)
-      (for-all? (burst-string string char-set:whitespace #t)
-	string-is-xml-nmtoken?))))
+      (every string-is-xml-nmtoken?
+	     (burst-string string char-set:whitespace #t)))))
 
 (define vx:boolean
   (vx:tester "true or false"

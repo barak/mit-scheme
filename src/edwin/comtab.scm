@@ -131,7 +131,7 @@ USA.
 (define (list-of-comtabs? object)
   (and (not (null? object))
        (list? object)
-       (for-all? object comtab?)))
+       (every comtab? object)))
 
 (define (comtab-key? object)
   (or (key? object)

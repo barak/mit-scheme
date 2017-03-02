@@ -151,7 +151,7 @@ USA.
 
 (define (thread-queue/dequeue-no-hang! queue msec)
   (guarantee-thread-queue queue 'thread-queue/dequeue-no-hang!)
-  (guarantee-non-negative-fixnum msec 'thread-queue/dequeue-no-hang!)
+  (guarantee non-negative-fixnum? msec 'thread-queue/dequeue-no-hang!)
   (thread-queue/dequeue-until!
    queue (+ (real-time-clock) (internal-time/seconds->ticks (/ msec 1000)))))
 
@@ -192,7 +192,7 @@ USA.
 
 (define (thread-queue/peek-no-hang queue msec)
   (guarantee-thread-queue queue 'thread-queue/peek-no-hang)
-  (guarantee-non-negative-fixnum msec 'thread-queue/peek-no-hang)
+  (guarantee non-negative-fixnum? msec 'thread-queue/peek-no-hang)
   (thread-queue/peek-until
    queue (+ (real-time-clock) (internal-time/seconds->ticks (/ msec 1000)))))
 

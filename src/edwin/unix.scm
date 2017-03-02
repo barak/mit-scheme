@@ -317,9 +317,9 @@ Includes the new backup.  Must be > 0."
 
 (define (os/completion-ignore-filename? filename)
   (and (not (file-test-no-errors file-directory? filename))
-       (there-exists? (ref-variable completion-ignored-extensions)
-         (lambda (extension)
-	   (string-suffix? extension filename)))))
+       (any (lambda (extension)
+	      (string-suffix? extension filename))
+	    (ref-variable completion-ignored-extensions))))
 
 (define (os/completion-ignored-extensions)
   (append (list ".bin" ".com" ".ext" ".so"
@@ -336,10 +336,10 @@ Includes the new backup.  Must be > 0."
   (os/completion-ignored-extensions)
   (lambda (extensions)
     (and (list? extensions)
-	 (for-all? extensions
-	   (lambda (extension)
-	     (and (string? extension)
-		  (not (string-null? extension))))))))
+	 (every (lambda (extension)
+		  (and (string? extension)
+		       (not (string-null? extension))))
+		extensions))))
 
 (define (os/init-file-name) "~/.edwin")
 (define (os/abbrev-file-name) "~/.abbrev_defs")

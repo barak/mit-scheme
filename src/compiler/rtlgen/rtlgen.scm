@@ -128,16 +128,16 @@ USA.
        ;; provided that all of the procedure calls made by them are
        ;; reductions.
        (let loop ((block (procedure-block procedure)))
-	 (for-all? (block-children block)
-	   (lambda (block)
-	     (let ((procedure (block-procedure block)))
-	       (and (procedure? procedure)
-		    (if (procedure-continuation? procedure)
-			(continuation/always-known-operator? procedure)
-			;; Inline-coded child procedures are treated
-			;; as an extension of this procedure.
-			(or (not (procedure-inline-code? procedure))
-			    (loop block))))))))))))
+	 (every (lambda (block)
+		  (let ((procedure (block-procedure block)))
+		    (and (procedure? procedure)
+			 (if (procedure-continuation? procedure)
+			     (continuation/always-known-operator? procedure)
+			     ;; Inline-coded child procedures are treated
+			     ;; as an extension of this procedure.
+			     (or (not (procedure-inline-code? procedure))
+				 (loop block))))))
+		(block-children block)))))))
 
 (define (generate/procedure-entry/inline procedure)
   (generate/procedure-header procedure
@@ -185,11 +185,11 @@ USA.
 
 (define (continuation/avoid-check? continuation)
   (and (null? (continuation/returns continuation))
-       (for-all?
-	(continuation/combinations continuation)
+       (every
 	(lambda (combination)
 	  (let ((op (rvalue-known-value (combination/operator combination))))
-	    (and op (operator/needs-no-heap-check? op)))))))
+	    (and op (operator/needs-no-heap-check? op))))
+	(continuation/combinations continuation))))
 
 (define (operator/needs-no-heap-check? op)
   (and (rvalue/constant? op)

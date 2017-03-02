@@ -298,9 +298,9 @@ USA.
 (define mime:media-parsers '())
 
 (define (define-mime-media-parser type subtype parser)
-  (guarantee-interned-symbol type 'DEFINE-MIME-MEDIA-PARSER)
+  (guarantee interned-symbol? type 'DEFINE-MIME-MEDIA-PARSER)
   (if subtype
-      (guarantee-interned-symbol subtype 'DEFINE-MIME-MEDIA-PARSER))
+      (guarantee interned-symbol? subtype 'DEFINE-MIME-MEDIA-PARSER))
   (guarantee-procedure-of-arity
    parser
    (length '(HEADER-FIELDS STRING START END TYPE SUBTYPE PARAMETERS))

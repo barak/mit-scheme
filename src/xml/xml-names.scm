@@ -144,7 +144,7 @@ USA.
 	      (error:bad-range-argument object constructor))
 	  (string->symbol object))
 	(begin
-	  (guarantee-symbol object constructor)
+	  (guarantee symbol? object constructor)
 	  (if (not (string-predicate (symbol->string object)))
 	      (error:bad-range-argument object constructor))
 	  object))))

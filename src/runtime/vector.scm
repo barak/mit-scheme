@@ -43,12 +43,8 @@ USA.
   (vector-set! 3)
   (vector? 1))
 
-(define-integrable (guarantee-vector object procedure)
-  (if (not (vector? object))
-      (error:wrong-type-argument object "vector" procedure)))
-
 (define-integrable (guarantee-subvector vector start end procedure)
-  (guarantee-vector vector procedure)
+  (guarantee vector? vector procedure)
   (if (not (index-fixnum? start))
       (error:wrong-type-argument start "vector index" procedure))
   (if (not (index-fixnum? end))
@@ -92,7 +88,7 @@ USA.
   vector)
 
 (define (vector-tail vector start)
-  (guarantee-vector vector 'VECTOR-TAIL)
+  (guarantee vector? vector 'VECTOR-TAIL)
   (subvector vector start (vector-length vector)))
 
 (define (vector-copy vector #!optional start end)
@@ -109,7 +105,7 @@ USA.
 	  (let loop ((vectors vectors) (length 0))
 	    (if (pair? vectors)
 		(begin
-		  (guarantee-vector (car vectors) 'VECTOR-APPEND)
+		  (guarantee vector? (car vectors) 'VECTOR-APPEND)
 		  (loop (cdr vectors)
 			(fix:+ (vector-length (car vectors)) length)))
 		length)))))
@@ -121,7 +117,7 @@ USA.
 	  result))))
 
 (define (vector-grow vector length #!optional value)
-  (guarantee-vector vector 'VECTOR-GROW)
+  (guarantee vector? vector 'VECTOR-GROW)
   (if (not (index-fixnum? length))
       (error:wrong-type-argument length "vector length" 'VECTOR-GROW))
   (if (fix:< length (vector-length vector))
@@ -141,8 +137,8 @@ USA.
     vector))
 
 (define (vector-map procedure vector . vectors)
-  (guarantee-vector vector 'VECTOR-MAP)
-  (for-each (lambda (v) (guarantee-vector v 'VECTOR-MAP)) vectors)
+  (guarantee vector? vector 'VECTOR-MAP)
+  (for-each (lambda (v) (guarantee vector? v 'VECTOR-MAP)) vectors)
   (let ((n (vector-length vector)))
     (for-each (lambda (v)
 		(if (not (fix:= (vector-length v) n))
@@ -159,8 +155,8 @@ USA.
       result)))
 
 (define (vector-for-each procedure vector . vectors)
-  (guarantee-vector vector 'VECTOR-FOR-EACH)
-  (for-each (lambda (v) (guarantee-vector v 'VECTOR-FOR-EACH)) vectors)
+  (guarantee vector? vector 'VECTOR-FOR-EACH)
+  (for-each (lambda (v) (guarantee vector? v 'VECTOR-FOR-EACH)) vectors)
   (let ((n (vector-length vector)))
     (for-each (lambda (v)
 		(if (not (fix:= (vector-length v) n))
@@ -208,15 +204,15 @@ USA.
 	     index))))
 
 (define-integrable (vector-find-next-element vector item)
-  (guarantee-vector vector 'VECTOR-FIND-NEXT-ELEMENT)
+  (guarantee vector? vector 'VECTOR-FIND-NEXT-ELEMENT)
   (subvector-find-next-element vector 0 (vector-length vector) item))
 
 (define-integrable (vector-find-previous-element vector item)
-  (guarantee-vector vector 'VECTOR-FIND-PREVIOUS-ELEMENT)
+  (guarantee vector? vector 'VECTOR-FIND-PREVIOUS-ELEMENT)
   (subvector-find-previous-element vector 0 (vector-length vector) item))
 
 (define (vector-binary-search vector key<? unwrap-key key)
-  (guarantee-vector vector 'VECTOR-BINARY-SEARCH)
+  (guarantee vector? vector 'VECTOR-BINARY-SEARCH)
   (let loop ((start 0) (end (vector-length vector)))
     (and (fix:< start end)
 	 (let ((midpoint (fix:quotient (fix:+ start end) 2)))
@@ -231,7 +227,7 @@ USA.
       (sc-macro-transformer
        (lambda (form environment)
 	 `(DEFINE-INTEGRABLE (,(cadr form) VECTOR)
-	    (GUARANTEE-VECTOR VECTOR ',(cadr form))
+	    (GUARANTEE VECTOR? VECTOR ',(cadr form))
 	    (VECTOR-REF VECTOR ,(caddr form)))))))
   (iref vector-first 0)
   (iref vector-second 1)
@@ -261,7 +257,7 @@ USA.
 	     (loop (fix:+ index 1))))))
 
 (define (vector-filled? vector element)
-  (guarantee-vector vector 'VECTOR-FILLED?)
+  (guarantee vector? vector 'VECTOR-FILLED?)
   (subvector-filled? vector 0 (vector-length vector) element))
 
 (define (subvector-uniform? vector start end)
@@ -271,7 +267,7 @@ USA.
       #t))
 
 (define (vector-uniform? vector)
-  (guarantee-vector vector 'VECTOR-UNIFORM?)
+  (guarantee vector? vector 'VECTOR-UNIFORM?)
   (subvector-uniform? vector 0 (vector-length vector)))
 
 (define (vector-of-type? object predicate)

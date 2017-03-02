@@ -72,19 +72,9 @@ USA.
 (define (non-positive-fixnum? object)
   (and (fixnum? object)
        (not (fix:positive? object))))
-
-(define-guarantee fixnum "fixnum")
-(define-guarantee positive-fixnum "positive fixnum")
-(define-guarantee negative-fixnum "negative fixnum")
-(define-guarantee non-positive-fixnum "non-positive fixnum")
-(define-guarantee non-negative-fixnum "non-negative fixnum")
 
-(define (guarantee-index-fixnum object #!optional caller)
-  (if (not (index-fixnum? object))
-      (error:wrong-type-argument object "index integer" caller)))
-
 (define (guarantee-limited-index-fixnum object limit #!optional caller)
-  (guarantee-index-fixnum object caller)
+  (guarantee index-fixnum? object caller)
   (if (not (fix:< object limit))
       (error:bad-range-argument object caller)))
 
@@ -260,7 +250,7 @@ USA.
   ((ucode-primitive integer->flonum 2) n #b10))
 
 (define (->flonum x)
-  (guarantee-real x '->FLONUM)
+  (guarantee real? x '->FLONUM)
   (exact->inexact (real-part x)))
 
 ;;;; Exact integers

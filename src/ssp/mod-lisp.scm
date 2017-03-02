@@ -640,7 +640,7 @@ USA.
 	 (hash-table/put! mime-handlers type handle-request))
 	((and (pair? type)
 	      (symbol? (car type))
-	      (for-all? (cdr type) string?))
+	      (every string? (cdr type)))
 	 (hash-table/put! mime-handlers (car type) handle-request)
 	 (for-each (lambda (extension)
 		     (hash-table/put! mime-extensions extension (car type)))

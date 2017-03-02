@@ -44,10 +44,6 @@ USA.
       (error:wrong-type-argument x "integer" 'FLONUM->INTEGER))
   (flo:truncate->exact x))
 
-(define-integrable (guarantee-integer object procedure)
-  (if (not (int:integer? object))
-      (error:wrong-type-argument object "number" procedure)))
-
 (define-syntax define-standard-unary
   (sc-macro-transformer
    (lambda (form environment)
@@ -60,7 +56,7 @@ USA.
 (define-standard-unary integer? flo:integer? int:integer?)
 (define-standard-unary exact? (lambda (x) x false)
   (lambda (x)
-    (guarantee-integer x 'EXACT?)
+    (guarantee int:integer? x 'EXACT?)
     true))
 (define-standard-unary zero? flo:zero? int:zero?)
 (define-standard-unary negative? flo:negative? int:negative?)
@@ -77,7 +73,7 @@ USA.
 	(error:bad-range-argument x 'INEXACT->EXACT))
     (flo:truncate->exact x))
   (lambda (x)
-    (guarantee-integer x 'INEXACT->EXACT)
+    (guarantee int:integer? x 'INEXACT->EXACT)
     x))
 
 (define-syntax define-standard-binary
@@ -138,12 +134,12 @@ USA.
       (if (flonum? y)
 	  (flo:= x y)
 	  (begin
-	    (guarantee-integer y '=)
+	    (guarantee int:integer? y '=)
 	    (and (flo:= x (flo:truncate x))
 		 (int:= (flo:truncate->exact x) y))))
       (if (flonum? y)
 	  (begin
-	    (guarantee-integer x '=)
+	    (guarantee int:integer? x '=)
 	    (and (flo:= y (flo:truncate y))
 		 (int:= x (flo:truncate->exact y))))
 	  (int:= x y))))
@@ -219,14 +215,14 @@ USA.
   (if (flonum? q)
       (int:->flonum (rat:numerator (flo:->rational q)))
       (begin
-	(guarantee-integer q 'NUMERATOR)
+	(guarantee int:integer? q 'NUMERATOR)
 	q)))
 
 (define (denominator q)
   (if (flonum? q)
       (int:->flonum (rat:denominator (flo:->rational q)))
       (begin
-	(guarantee-integer q 'DENOMINATOR)
+	(guarantee int:integer? q 'DENOMINATOR)
 	1)))
 
 (define-syntax define-transcendental-unary

@@ -828,7 +828,7 @@ USA.
                         (encloser
                          (declaration-with-expression operator expression)))))
           (else #f)))
-  (and (for-all? operands expression/effect-free?)
+  (and (every expression/effect-free? operands)
        (scan-operator operator (lambda (body) body))))
 
 (define (combination-with-operator combination operator)

@@ -293,8 +293,7 @@ USA.
     (make-parser-table initial special)))
 
 (define (boolean-converter value)
-  (guarantee-boolean value)
-  value)
+  (guarantee boolean? value))
 
 (define (char-set-converter value)
   (guarantee char-set? value)
@@ -306,7 +305,7 @@ USA.
   value)
 
 (define (parser-table-converter value)
-  (guarantee-parser-table value)
+  (guarantee parser-table? value)
   value)
 
 (define (radix-converter value)
@@ -633,9 +632,8 @@ USA.
 	  (loop (cons object objects))))))
 
 (define (define-bracketed-object-parser-method name method)
-  (guarantee-interned-symbol name 'DEFINE-BRACKETED-OBJECT-PARSER-METHOD)
-  (guarantee-procedure-of-arity method 2
-				'DEFINE-BRACKETED-OBJECT-PARSER-METHOD)
+  (guarantee interned-symbol? name 'DEFINE-BRACKETED-OBJECT-PARSER-METHOD)
+  (guarantee binary-procedure? method 'DEFINE-BRACKETED-OBJECT-PARSER-METHOD)
   (hash-table/put! hashed-object-interns name method))
 
 (define hashed-object-interns)

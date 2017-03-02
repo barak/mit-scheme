@@ -84,8 +84,8 @@
 		      dependent)))))))
 
 (define (nodes-simple? nodes)
-  (for-all? (cdr nodes)
-    (lambda (node) (subproblem-simple? (node-value node)))))
+  (every (lambda (node) (subproblem-simple? (node-value node)))
+	 (cdr nodes)))
 
 (define (trivial-assignment node rest)
   (if (node/noop? node)

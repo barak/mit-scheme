@@ -199,7 +199,7 @@ B 3BAB8C
 
 (define (keyboard-peek-no-hang #!optional timeout)
   (let ((milliseconds (if (default-object? timeout) 0 timeout)))
-    (guarantee-fixnum milliseconds 'keyboard-peek-no-hang)
+    (guarantee fixnum? milliseconds 'keyboard-peek-no-hang)
     (handle-simple-events-until
      (+ (real-time-clock) milliseconds)
      (editor-peek-no-hang current-editor)

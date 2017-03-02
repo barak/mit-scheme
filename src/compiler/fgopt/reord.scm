@@ -159,10 +159,10 @@ number of assignments of any ordering.
 		  (if (first-node-needs-temporary? nodes) (1+ cost) cost))))))
 
 (define (first-node-needs-temporary? nodes)
-  (there-exists? (cdr nodes)
-    (let ((target (node-target (car nodes))))
-      (lambda (node)
-	(memq target (node-original-dependencies node))))))
+  (any (let ((target (node-target (car nodes))))
+	 (lambda (node)
+	   (memq target (node-original-dependencies node))))
+       (cdr nodes)))
 
 (define (reorder! nodes find-index)
   ;; This is expensive.  It could be done for all at once,

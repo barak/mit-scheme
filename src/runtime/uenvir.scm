@@ -35,13 +35,6 @@ USA.
       (stack-ccenv? object)
       (closure-ccenv? object)))
 
-(define (guarantee-environment object name)
-  (if (not (environment? object))
-      (illegal-environment object name)))
-
-(define (illegal-environment object name)
-  (error:wrong-type-argument object "environment" name))
-
 (define (environment-has-parent? environment)
   (cond ((system-global-environment? environment)
 	 #f)
@@ -52,7 +45,7 @@ USA.
 	((closure-ccenv? environment)
 	 (closure-ccenv/has-parent? environment))
 	(else
-	 (illegal-environment environment 'ENVIRONMENT-HAS-PARENT?))))
+	 (error:not-a environment? environment 'ENVIRONMENT-HAS-PARENT?))))
 
 (define (environment-parent environment)
   (cond ((system-global-environment? environment)
@@ -64,7 +57,7 @@ USA.
 	((closure-ccenv? environment)
 	 (closure-ccenv/parent environment))
 	(else
-	 (illegal-environment environment 'ENVIRONMENT-PARENT))))
+	 (error:not-a environment? environment 'ENVIRONMENT-PARENT))))
 
 (define (environment-bound-names environment)
   (cond ((system-global-environment? environment)
@@ -76,7 +69,7 @@ USA.
 	((closure-ccenv? environment)
 	 (closure-ccenv/bound-names environment))
 	(else
-	 (illegal-environment environment 'ENVIRONMENT-BOUND-NAMES))))
+	 (error:not-a environment? environment 'ENVIRONMENT-BOUND-NAMES))))
 
 (define (environment-macro-names environment)
   (cond ((system-global-environment? environment)
@@ -87,7 +80,7 @@ USA.
 	     (closure-ccenv? environment))
 	 '())
 	(else
-	 (illegal-environment environment 'ENVIRONMENT-MACRO-NAMES))))
+	 (error:not-a environment? environment 'ENVIRONMENT-MACRO-NAMES))))
 
 (define (environment-bindings environment)
   (let ((items (environment-bound-names environment)))
@@ -112,7 +105,7 @@ USA.
 	     (closure-ccenv? environment))
 	 'UNKNOWN)
 	(else
-	 (illegal-environment environment 'ENVIRONMENT-ARGUMENTS))))
+	 (error:not-a environment? environment 'ENVIRONMENT-ARGUMENTS))))
 
 (define (environment-procedure-name environment)
   (let ((scode-lambda (environment-lambda environment)))
@@ -129,7 +122,7 @@ USA.
 	((closure-ccenv? environment)
 	 (closure-ccenv/lambda environment))
 	(else
-	 (illegal-environment environment 'ENVIRONMENT-LAMBDA))))
+	 (error:not-a environment? environment 'ENVIRONMENT-LAMBDA))))
 
 (define (environment-bound? environment name)
   (not (eq? 'UNBOUND (environment-reference-type environment name))))
@@ -142,7 +135,7 @@ USA.
 	((closure-ccenv? environment)
 	 (closure-ccenv/reference-type environment name))
 	(else
-	 (illegal-environment environment 'ENVIRONMENT-REFERENCE-TYPE))))
+	 (error:not-a environment? environment 'ENVIRONMENT-REFERENCE-TYPE))))
 
 (define (environment-assigned? environment name)
   (case (environment-reference-type environment name)
@@ -179,7 +172,7 @@ USA.
 	((closure-ccenv? environment)
 	 (closure-ccenv/safe-lookup environment name))
 	(else
-	 (illegal-environment environment 'ENVIRONMENT-SAFE-LOOKUP))))
+	 (error:not-a environment? environment 'ENVIRONMENT-SAFE-LOOKUP))))
 
 (define (environment-assignable? environment name)
   (cond ((interpreter-environment? environment)
@@ -189,7 +182,7 @@ USA.
 	((closure-ccenv? environment)
 	 (closure-ccenv/assignable? environment name))
 	(else
-	 (illegal-environment environment 'ENVIRONMENT-ASSIGNABLE?))))
+	 (error:not-a environment? environment 'ENVIRONMENT-ASSIGNABLE?))))
 
 (define (environment-assign! environment name value)
   (cond ((interpreter-environment? environment)
@@ -199,13 +192,13 @@ USA.
 	((closure-ccenv? environment)
 	 (closure-ccenv/assign! environment name value))
 	(else
-	 (illegal-environment environment 'ENVIRONMENT-ASSIGN!))))
+	 (error:not-a environment? environment 'ENVIRONMENT-ASSIGN!))))
 
 (define (environment-definable? environment name)
   name
   (cond ((interpreter-environment? environment) #t)
 	((or (stack-ccenv? environment) (closure-ccenv? environment)) #f)
-	(else (illegal-environment environment 'ENVIRONMENT-DEFINABLE?))))
+	(else (error:not-a environment? environment 'ENVIRONMENT-DEFINABLE?))))
 
 (define (environment-define environment name value)
   (cond ((interpreter-environment? environment)
@@ -214,7 +207,7 @@ USA.
 	     (closure-ccenv? environment))
 	 (error:bad-range-argument environment 'ENVIRONMENT-DEFINE))
 	(else
-	 (illegal-environment environment 'ENVIRONMENT-DEFINE))))
+	 (error:not-a environment? environment 'ENVIRONMENT-DEFINE))))
 
 (define (environment-define-macro environment name value)
   (cond ((interpreter-environment? environment)
@@ -223,7 +216,7 @@ USA.
 	     (closure-ccenv? environment))
 	 (error:bad-range-argument environment 'ENVIRONMENT-DEFINE-MACRO))
 	(else
-	 (illegal-environment environment 'ENVIRONMENT-DEFINE-MACRO))))
+	 (error:not-a environment? environment 'ENVIRONMENT-DEFINE-MACRO))))
 
 ;;;; Global environment
 
@@ -413,7 +406,7 @@ USA.
 
 (define (extend-top-level-environment environment #!optional names values)
   (if (not (interpreter-environment? environment))
-      (illegal-environment environment 'EXTEND-TOP-LEVEL-ENVIRONMENT))
+      (error:not-a environment? environment 'EXTEND-TOP-LEVEL-ENVIRONMENT))
   (%extend-top-level-environment environment
 				 (if (default-object? names) '() names)
 				 (if (default-object? values) 'DEFAULT values)

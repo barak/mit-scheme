@@ -246,9 +246,9 @@ Now, there is formatting stuff to be considered here, in print-pgm.sh.
 
 ;;; Returns #t iff FILES all exist in DIRECTORY.
 (define (files-all-exist? files directory)
-  (for-all? files
-    (lambda (file)
-      (file-exists? (merge-pathnames directory file)))))
+  (every (lambda (file)
+	   (file-exists? (merge-pathnames directory file)))
+	 files))
 
 (define-command load-problem-set
   "Load a 6.001 problem set."

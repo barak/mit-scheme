@@ -121,8 +121,6 @@ USA.
 (define-package (runtime boolean)
   (files "boole")
   (parent (runtime))
-  (export () deprecated:boolean
-	  guarantee-boolean)
   (export ()
 	  (false? not)
 	  boolean/and
@@ -130,17 +128,12 @@ USA.
 	  boolean=?
 	  boolean?
 	  false
-	  for-all?
 	  not
-	  there-exists?
 	  true))
 
 (define-package (runtime boot-definitions)
   (files "boot")
   (parent (runtime))
-  (export () deprecated:boot-definitions
-	  error:not-unparser-method
-	  guarantee-unparser-method)
   (export ()
 	  bracketed-unparser-method
 	  default-object
@@ -184,14 +177,7 @@ USA.
   (parent (runtime))
   (export () deprecated:fixnum-arithmetic
 	  (largest-fixnum fix:largest-value)
-	  (smallest-fixnum fix:smallest-value)
-	  guarantee-fixnum
-	  guarantee-index-fixnum
-	  guarantee-limited-index-fixnum
-	  guarantee-negative-fixnum
-	  guarantee-non-negative-fixnum
-	  guarantee-non-positive-fixnum
-	  guarantee-positive-fixnum)
+	  (smallest-fixnum fix:smallest-value))
   (export ()
 	  (exact-integer? int:integer?)
 	  ->flonum
@@ -292,6 +278,7 @@ USA.
 	  flo:y1
 	  flo:yn
 	  flo:zero?
+	  guarantee-limited-index-fixnum
 	  index-fixnum?
 	  int:*
 	  int:+
@@ -442,9 +429,6 @@ USA.
 (define-package (runtime miscellaneous-global)
   (files "global")
   (parent (runtime))
-  (export () deprecated:miscellaneous-global
-	  error:not-hook-list
-	  guarantee-hook-list)
   (export ()
 	  %exit
 	  %quit
@@ -632,16 +616,6 @@ USA.
 (define-package (runtime simple-file-ops)
   (files "sfile")
   (parent (runtime))
-  (export () deprecated:simple-file-ops
-	  error:not-mime-token
-	  error:not-mime-token-string
-	  error:not-mime-type
-	  error:not-mime-type-string
-	  guarantee-init-file-specifier
-	  guarantee-mime-token
-	  guarantee-mime-token-string
-	  guarantee-mime-type
-	  guarantee-mime-type-string)
   (export ()
 	  <mime-type>
 	  allocate-temporary-file
@@ -709,13 +683,7 @@ USA.
   (export () deprecated:symbol
 	  (substring->symbol string->symbol)
 	  (symbol-append symbol)
-	  (symbol-name symbol->string)
-	  error:not-interned-symbol
-	  error:not-symbol
-	  error:not-uninterned-symbol
-	  guarantee-interned-symbol
-	  guarantee-symbol
-	  guarantee-uninterned-symbol)
+	  (symbol-name symbol->string))
   (export ()
 	  intern
 	  intern-soft
@@ -733,8 +701,6 @@ USA.
 (define-package (runtime microcode-data)
   (files "udata")
   (parent (runtime))
-  (export () deprecated:microcode-data
-	  guarantee-promise)
   (export ()
 	  compiled-code-address->block
 	  compiled-code-address->offset
@@ -790,9 +756,6 @@ USA.
 (define-package (runtime vector)
   (files "vector")
   (parent (runtime))
-  (export () deprecated:vector
-	  guarantee-vector
-	  guarantee-vector-of-unique-symbols)
   (export ()
 	  for-each-vector-element
 	  guarantee-subvector
@@ -1209,17 +1172,7 @@ USA.
   (parent (runtime))
   (export () deprecated:character
 	  (code->char integer->char)
-	  (error:not-wide-char error:not-unicode-char)
-	  (guarantee-wide-char guarantee-unicode-char)
-	  (wide-char? unicode-char?)
-	  error:not-char
-	  error:not-radix
-	  error:not-unicode-char
-	  error:not-unicode-scalar-value
-	  guarantee-char
-	  guarantee-radix
-	  guarantee-unicode-char
-	  guarantee-unicode-scalar-value)
+	  (wide-char? unicode-char?))
   (export ()
 	  8-bit-char?
 	  ascii-char?
@@ -1376,9 +1329,7 @@ USA.
 	  (chars->char-set char-set*)
 	  (scalar-values->char-set char-set*)
 	  (well-formed-scalar-value-list? code-point-list?)
-	  char-set-member?
-	  error:not-8-bit-char-set
-	  guarantee-8-bit-char-set)
+	  char-set-member?)
   (export ()
 	  8-bit-char-set?
 	  ascii-range->char-set
@@ -1502,9 +1453,6 @@ USA.
 (define-package (runtime continuation)
   (files "contin")
   (parent (runtime))
-  (export () deprecated:continuation
-	  error:not-continuation
-	  guarantee-continuation)
   (export ()
 	  call-with-current-continuation
 	  continuation/block-thread-events?
@@ -1578,11 +1526,6 @@ USA.
 (define-package (runtime date/time)
   (files "datime")
   (parent (runtime))
-  (export () deprecated:date/time
-	  error:not-decoded-time
-	  error:not-time-zone
-	  guarantee-decoded-time
-	  guarantee-time-zone)
   (export ()
 	  (decode-universal-time universal-time->local-decoded-time)
 	  (decoded-time->string decoded-time->rfc2822-string)
@@ -1748,19 +1691,6 @@ USA.
 (define-package (runtime procedure)
   (files "uproc")
   (parent (runtime))
-  (export () deprecated:procedure
-	  error:not-compiled-procedure
-	  error:not-compound-procedure
-	  error:not-primitive-procedure
-	  error:not-procedure
-	  error:not-procedure-arity
-	  error:not-thunk
-	  guarantee-compiled-procedure
-	  guarantee-compound-procedure
-	  guarantee-primitive-procedure
-	  guarantee-procedure
-	  guarantee-procedure-arity
-	  guarantee-thunk)
   (export ()
 	  %entity-extra
 	  %entity-procedure
@@ -1949,8 +1879,6 @@ USA.
 (define-package (runtime environment)
   (files "uenvir")
   (parent (runtime))
-  (export () deprecated:environment
-	  guarantee-environment)
   (export ()
 	  compiled-procedure/environment
 	  environment-arguments
@@ -2392,9 +2320,6 @@ USA.
   (parent (runtime))
   (import (runtime population)
 	  add-to-population!/unsafe)
-  (export () deprecated:hash-table
-	  error:not-hash-table
-	  guarantee-hash-table)
   (export ()
 	  (eq-hash-table-type key-weak-eq-hash-table-type)
 	  (eqv-hash-table-type key-weak-eqv-hash-table-type)
@@ -2636,10 +2561,6 @@ USA.
 	  (port/with-input-terminal-mode with-input-port-terminal-mode)
 	  (port/with-output-blocking-mode with-output-port-blocking-mode)
 	  (port/with-output-terminal-mode with-output-port-terminal-mode)
-	  guarantee-i/o-port
-	  guarantee-input-port
-	  guarantee-output-port
-	  guarantee-port
 	  set-current-input-port!
 	  set-current-output-port!
 	  set-interaction-i/o-port!
@@ -2862,23 +2783,6 @@ USA.
 (define-package (runtime list)
   (files "list")
   (parent (runtime))
-  (export () deprecated:list
-	  error:not-alist
-	  error:not-circular-list
-	  error:not-dotted-list
-	  error:not-keyword-list
-	  error:not-list
-	  error:not-pair
-	  error:not-unique-keyword-list
-	  error:not-weak-list
-	  guarantee-alist
-	  guarantee-circular-list
-	  guarantee-dotted-list
-	  guarantee-keyword-list
-	  guarantee-list
-	  guarantee-pair
-	  guarantee-unique-keyword-list
-	  guarantee-weak-list)
   (export ()
 	  (improper-list? dotted-list?)
 	  (list-search-negative find-non-matching-item)
@@ -3057,11 +2961,6 @@ USA.
 (define-package (runtime lambda-list)
   (files "lambda-list")
   (parent (runtime))
-  (export () deprecated:lambda-list
-	  error:not-mit-lambda-list
-	  error:not-r4rs-lambda-list
-	  guarantee-mit-lambda-list
-	  guarantee-r4rs-lambda-list)
   (export ()
 	  lambda-tag:aux
 	  lambda-tag:key
@@ -3079,6 +2978,9 @@ USA.
 (define-package (runtime srfi-1)
   (files "srfi-1")
   (parent (runtime))
+  (export () deprecated:srfi-1
+	  for-all?
+	  there-exists?)
   (export ()
 	  any
 	  append-reverse
@@ -3262,37 +3164,6 @@ USA.
 (define-package (runtime number)
   (files "arith" "dragon4")
   (parent (runtime))
-  (export () deprecated:number
-	  error:not-complex
-	  error:not-exact
-	  error:not-exact-integer
-	  error:not-exact-nonnegative-integer
-	  error:not-exact-positive-integer
-	  error:not-exact-rational
-	  error:not-inexact
-	  error:not-integer
-	  error:not-negative
-	  error:not-non-negative
-	  error:not-non-positive
-	  error:not-number
-	  error:not-positive
-	  error:not-rational
-	  error:not-real
-	  guarantee-complex
-	  guarantee-exact
-	  guarantee-exact-integer
-	  guarantee-exact-nonnegative-integer
-	  guarantee-exact-positive-integer
-	  guarantee-exact-rational
-	  guarantee-inexact
-	  guarantee-integer
-	  guarantee-negative
-	  guarantee-non-negative
-	  guarantee-non-positive
-	  guarantee-number
-	  guarantee-positive
-	  guarantee-rational
-	  guarantee-real)
   (export ()
 	  (-1+ complex:-1+)
 	  (1+ complex:1+)
@@ -3484,9 +3355,6 @@ USA.
 (define-package (runtime parser-table)
   (files "partab")
   (parent (runtime))
-  (export () deprecated:parser-table
-	  error:not-parser-table
-	  guarantee-parser-table)
   (export ()
 	  make-parser-table
 	  parser-table/copy
@@ -3500,9 +3368,6 @@ USA.
 (define-package (runtime pathname)
   (files "pathnm")
   (parent (runtime))
-  (export () deprecated:pathname
-	  error:not-pathname
-	  guarantee-pathname)
   (export ()
 	  *default-pathname-defaults*
 	  ->namestring
@@ -3620,13 +3485,6 @@ USA.
 (define-package (runtime primitive-io)
   (files "io")
   (parent (runtime))
-  (export () deprecated:primitive-io
-	  error:not-channel
-	  error:not-directory-channel
-	  error:not-dld-handle
-	  guarantee-channel
-	  guarantee-directory-channel
-	  guarantee-dld-handle)
   (export ()
 	  all-dld-handles
 	  all-open-channels
@@ -3816,13 +3674,6 @@ USA.
 (define-package (runtime record)
   (files "record")
   (parent (runtime))
-  (export () deprecated:record
-	  error:not-list-of-unique-symbols
-	  error:not-record
-	  error:not-record-type
-	  guarantee-list-of-unique-symbols
-	  guarantee-record
-	  guarantee-record-type)
   (export ()
 	  %copy-record
 	  %make-record
@@ -3921,11 +3772,6 @@ USA.
 (define-package (runtime rep)
   (files "rep")
   (parent (runtime))
-  (export () deprecated:rep
-	  error:not-cmdl
-	  error:not-repl
-	  guarantee-cmdl
-	  guarantee-repl)
   (export ()
 	  ->environment
 	  abort->nearest
@@ -4541,9 +4387,6 @@ USA.
 (define-package (runtime stream)
   (files "stream")
   (parent (runtime))
-  (export () deprecated:stream
-	  error:not-stream-pair
-	  guarantee-stream-pair)
   (export ()
 	  condition-type:illegal-stream-element
 	  empty-stream?
@@ -4608,13 +4451,6 @@ USA.
 (define-package (runtime syntax top-level)
   (files "syntax")
   (parent (runtime syntax))
-  (export () deprecated:syntax-top-level
-	  error:not-identifier
-	  error:not-syntactic-closure
-	  error:not-synthetic-identifier
-	  guarantee-identifier
-	  guarantee-syntactic-closure
-	  guarantee-synthetic-identifier)
   (export ()
 	  <syntactic-closure>
 	  capture-syntactic-environment
@@ -4693,9 +4529,6 @@ USA.
 (define-package (runtime syntax environment)
   (files "syntax-environment")
   (parent (runtime syntax))
-  (export () deprecated:syntax-environment
-	  error:not-syntactic-environment
-	  guarantee-syntactic-environment)
   (export ()
 	  syntactic-environment?)
   (export (runtime syntax)
@@ -5018,8 +4851,6 @@ USA.
 (define-package (runtime thread)
   (files "thread-low" "thread")
   (parent (runtime))
-  (export () deprecated:thread
-	  guarantee-thread)
   (export ()
 	  assert-thread-mutex-owned
 	  block-thread-events
@@ -5260,9 +5091,6 @@ USA.
 (define-package (runtime generic-procedure)
   (files "gentag" "gencache" "generic")
   (parent (runtime))
-  (export () deprecated:generic-procedure
-	  ;; tag.scm:
-	  guarantee-dispatch-tag)
   (export ()
 	  dispatch-tag-contents
 	  dispatch-tag?
@@ -5402,9 +5230,6 @@ USA.
 (define-package (runtime regular-sexpression)
   (files "regsexp")
   (parent (runtime))
-  (export () deprecated:regular-sexpression
-	  error:not-compiled-regsexp
-	  guarantee-compiled-regsexp)
   (export ()
 	  compile-regsexp
 	  compiled-regsexp?
@@ -5601,24 +5426,6 @@ USA.
 (define-package (runtime uri)
   (files "url")
   (parent (runtime))
-  (export () deprecated:uri
-	  error:not-partial-uri
-	  error:not-uri-authority
-	  error:not-uri-host
-	  error:not-uri-path
-	  error:not-uri-port
-	  error:not-uri-scheme
-	  error:not-uri-userinfo
-	  guarantee-absolute-uri
-	  guarantee-partial-uri
-	  guarantee-relative-uri
-	  guarantee-uri
-	  guarantee-uri-authority
-	  guarantee-uri-host
-	  guarantee-uri-path
-	  guarantee-uri-port
-	  guarantee-uri-scheme
-	  guarantee-uri-userinfo)
   (export ()
 	  (url:decode-string decode-component)
 	  (url:match:escape matcher:pct-encoded)
@@ -5733,9 +5540,6 @@ USA.
 (define-package (runtime rfc2822-headers)
   (files "rfc2822-headers")
   (parent (runtime))
-  (export () deprecated:rfc2822-headers
-	  error:not-rfc2822-header
-	  guarantee-rfc2822-header)
   (export ()
 	  all-rfc2822-headers
 	  char-set:rfc2822-name
@@ -5759,26 +5563,12 @@ USA.
 (define-package (runtime http-syntax)
   (files "http-syntax")
   (parent (runtime))
-  (export () deprecated:http-syntax
-	  error:not-http-header
-	  error:not-http-status
-	  error:not-http-text
-	  error:not-http-token
-	  error:not-http-token-string
-	  error:not-http-version
-	  guarantee-http-header
-	  guarantee-http-status
-	  guarantee-http-text
-	  guarantee-http-token
-	  guarantee-http-token-string
-	  guarantee-http-version)
   (export ()
 	  <http-header>
 	  char-set:http-text
 	  char-set:http-token
 	  convert-http-headers
 	  default-http-user-agent
-	  guarantee-http-headers
 	  http-header
 	  http-header-name
 	  http-header-parsed-value
@@ -5810,21 +5600,6 @@ USA.
 (define-package (runtime http-i/o)
   (files "httpio")
   (parent (runtime))
-  (export () deprecated:http-i/o
-	  error:not-http-message
-	  error:not-http-request
-	  error:not-http-request-uri
-	  error:not-http-response
-	  error:not-simple-http-request
-	  error:not-simple-http-request-uri
-	  error:not-simple-http-response
-	  guarantee-http-message
-	  guarantee-http-request
-	  guarantee-http-request-uri
-	  guarantee-http-response
-	  guarantee-simple-http-request
-	  guarantee-simple-http-request-uri
-	  guarantee-simple-http-response)
   (export ()
 	  http-message-body
 	  http-message-body-port
@@ -5883,9 +5658,6 @@ USA.
 (define-package (runtime structure-parser)
   (files "structure-parser")
   (parent (runtime))
-  (export () deprecated:structure-parser
-	  error:not-structure-parser-values
-	  guarantee-structure-parser-values)
   (export ()
 	  apply-list-parser
 	  apply-object-parser

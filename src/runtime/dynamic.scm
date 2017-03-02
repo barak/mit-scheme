@@ -75,9 +75,9 @@ USA.
 (define (default-parameter-setter set-param value) (set-param value))
 
 (define (make-general-parameter initial-value converter merger getter setter)
-  (guarantee-procedure converter 'make-general-parameter)
-  (guarantee-procedure getter 'make-general-parameter)
-  (if setter (guarantee-procedure setter 'make-general-parameter))
+  (guarantee procedure? converter 'make-general-parameter)
+  (guarantee procedure? getter 'make-general-parameter)
+  (if setter (guarantee procedure? setter 'make-general-parameter))
   (make-general-parameter-1 (converter initial-value)
 			    converter
 			    merger
@@ -108,7 +108,7 @@ USA.
     parameter))
 
 (define (parameterize* new-bindings thunk)
-  (guarantee-alist new-bindings 'parameterize*)
+  (guarantee alist? new-bindings 'parameterize*)
   (let ((temp
 	 (map* bindings
 	       (lambda (p)

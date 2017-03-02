@@ -395,7 +395,7 @@ USA.
 				    ,(single-test (cadddr items))))
 		   (else
 		    `(,(rename
-			(if (for-all? items eq-testable?) 'MEMQ 'MEMV))
+			(if (every eq-testable? items) 'MEMQ 'MEMV))
 		      ,(rename 'TEMP)
 		      ',items)))))
 	  (single-test

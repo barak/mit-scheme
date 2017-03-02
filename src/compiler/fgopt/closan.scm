@@ -254,7 +254,7 @@ USA.
 	   (close-combination-arguments! combination)))))
 
 (define (compatibility-class procs)
-  (if (for-all? procs rvalue/procedure?)
+  (if (every rvalue/procedure? procs)
       (let* ((model (car procs))
 	     (model-env (procedure-closing-block model)))
 	(call-with-values (lambda () (procedure-arity-encoding model))
@@ -491,9 +491,9 @@ USA.
   (remove-condition procedure)
   (for-each (let ((block (procedure-block procedure)))
 	      (lambda (entry)
-		(if (there-exists? (cdr entry)
-		      (lambda (entry*)
-			(block-ancestor-or-self? (car entry*) block)))
+		(if (any (lambda (entry*)
+			   (block-ancestor-or-self? (car entry*) block))
+			 (cdr entry))
 		    (close-non-descendant-callees! (car entry) block
 						   condition))))
 	    *undrifting-constraints*))
@@ -565,7 +565,7 @@ USA.
 (define (pending-undrifting? procedure)
   (let ((entry (assq (procedure-block procedure) *undrifting-constraints*)))
     (and entry
-	 (there-exists? (cdr entry) valid-constraint-conditions?))))
+	 (any valid-constraint-conditions? (cdr entry)))))
 
 (define (undrift-procedures! constraints)
   (for-each
@@ -589,12 +589,12 @@ USA.
    constraints))
 
 (define (valid-constraint-conditions? entry)
-  (there-exists? (cdr entry)
-    (lambda (condition)
-      (not
-       (and condition
-	    (eq? 'CONTAGION (condition-keyword condition))
-	    (procedure/trivial-closure? (condition-argument condition)))))))
+  (any (lambda (condition)
+	 (not
+	  (and condition
+	       (eq? 'CONTAGION (condition-keyword condition))
+	       (procedure/trivial-closure? (condition-argument condition)))))
+       (cdr entry)))
 
 (define-structure condition
   (procedure #f read-only #t)

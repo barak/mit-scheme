@@ -208,7 +208,7 @@ USA.
 
 ;; When processing a global reference, we only have a name.
 (define (operations/lookup-global operations name if-found if-not)
-  (guarantee-symbol name 'operations/lookup-global)
+  (guarantee symbol? name 'operations/lookup-global)
   (let ((probe (find (lambda (entry)
 		       (eq? (variable/name (car entry)) name))
 		     (vector-ref operations 2))))

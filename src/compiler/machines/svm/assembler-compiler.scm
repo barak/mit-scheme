@@ -139,16 +139,16 @@ USA.
   ;; Check for duplicate pattern variables.
   (do ((pvars (defn-pvars defn) (cdr pvars)))
       ((not (pair? pvars)))
-    (if (there-exists? (cdr pvars)
-	  (lambda (pv)
-	    (eq? (pvar-name pv) (pvar-name (car pvars)))))
+    (if (any (lambda (pv)
+	       (eq? (pvar-name pv) (pvar-name (car pvars))))
+	     (cdr pvars))
 	(error "Duplicate pattern variable:" (car pvars))))
   ;; Check for missing or extra variable references in coding.
   (let ((pvars1 (defn-pvars defn))
 	(pvars2 (defn-coding defn)))
     (if (not (and (fix:= (length pvars1) (length pvars2))
-		  (for-all? pvars1 (lambda (pv1) (memq pv1 pvars2)))
-		  (for-all? pvars2 (lambda (pv2) (memq pv2 pvars1)))))
+		  (every (lambda (pv1) (memq pv1 pvars2)) pvars1)
+		  (every (lambda (pv2) (memq pv2 pvars1)) pvars2)))
 	(error "Pattern/coding mismatch:" pvars1 pvars2)))
   ;; Check for incorrect use of code marker.
   (if (and (defn-has-code? defn)
@@ -365,7 +365,7 @@ USA.
 		  pvars
 		  has-code?
 		  (map (lambda (item)
-			 (guarantee-symbol item #f)
+			 (guarantee symbol? item #f)
 			 (or (find-matching-item pvars
 			       (lambda (pv)
 				 (eq? (pvar-name pv) item)))
@@ -402,11 +402,11 @@ USA.
 (define (independent-coding-type? type coding-types)
   (let ((implicit-types
 	 (delete-matching-items coding-types coding-type-explicit?)))
-    (for-all? (coding-type-defns type)
-      (lambda (defn)
-	(not (there-exists? (defn-pvars defn)
-	       (lambda (pv)
-		 (find-coding-type (pvar-type pv) implicit-types #f))))))))
+    (every (lambda (defn)
+	     (not (any (lambda (pv)
+			 (find-coding-type (pvar-type pv) implicit-types #f))
+		       (defn-pvars defn))))
+	   (coding-type-defns type))))
 
 (define (expand-coding-type to-substitute to-expand)
   (let ((type-name (coding-type-name to-substitute)))
@@ -475,9 +475,9 @@ USA.
 	       (let ((pv (car pvars))
 		     (clash?
 		      (lambda (name)
-			(there-exists? pvars*
-			  (lambda (pv)
-			    (eq? (pvar-name pv) name)))))
+			(any (lambda (pv)
+			       (eq? (pvar-name pv) name))
+			     pvars*)))
 		     (k
 		      (lambda (pv)
 			(loop (cdr pvars) (cons pv pvars*)))))
@@ -615,7 +615,7 @@ USA.
 					      (defn-name defn)
 					      lower-limit))
 		defns)))
-      (if (for-all? indices (lambda (i) i))
+      (if (every (lambda (i) i) indices)
 	  (loop (if (apply = indices)
 		    (let ((index (car indices)))
 		      (let ((names
@@ -651,9 +651,9 @@ USA.
       #t))
 
 (define (deleteable-name-item? item)
-  (there-exists? (pvar-types)
-    (lambda (pvt)
-      (eq? (pvt-abbreviation pvt) item))))
+  (any (lambda (pvt)
+	 (eq? (pvt-abbreviation pvt) item))
+       (pvar-types)))
 
 (define (deleteable-name-items)
   (map pvt-abbreviation (pvar-types)))
@@ -728,9 +728,9 @@ USA.
 				 #t)
 		 "_"))
 	       (long-form?
-		(there-exists? (coding-type-defns coding-type)
-		  (lambda (defn)
-		    (pair? (defn-coding defn))))))
+		(any (lambda (defn)
+		       (pair? (defn-coding defn)))
+		     (coding-type-defns coding-type))))
 	   (write-c-code-macro prefix
 			       "START_CODE"
 			       (coding-type-start-index coding-type)

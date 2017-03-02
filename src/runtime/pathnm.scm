@@ -127,7 +127,7 @@ these rules:
 (define (pathname-arg object defaults operator)
   (cond ((pathname? object) object)
 	((string? object) (parse-namestring object #f defaults))
-	(else (error:not-pathname object operator))))
+	(else (error:not-a pathname? object operator))))
 
 (define (make-pathname host device directory name type version)
   (let ((host (if host (guarantee-host host 'MAKE-PATHNAME) local-host)))

@@ -655,9 +655,9 @@ With prefix argument N moves forward N messages with these flags."
 		flags)
       (move-relative delta
 		     (lambda (message)
-		       (there-exists? flags
-			 (lambda (flag)
-			   (message-flagged? message flag))))
+		       (any (lambda (flag)
+			      (message-flagged? message flag))
+			    flags))
 		     (string-append "message with flag"
 				    (if (= 1 (length flags)) "" "s")
 				    " "
@@ -1044,9 +1044,9 @@ With prefix argument, prompt even when point is on an attachment."
 	(loop (cdr alist)
 	      (cons (cons (let ((name (caar alist)))
 			    (let loop ((name* name) (n 1))
-			      (if (there-exists? converted
-				    (lambda (entry)
-				      (string=? (car entry) name*)))
+			      (if (any (lambda (entry)
+					 (string=? (car entry) name*))
+				       converted)
 				  (loop (string-append
 					 name "<" (number->string n) ">")
 					(+ n 1))

@@ -149,12 +149,11 @@ USA.
 	   (list-transform-positive
 	       (block-free-variables block)
 	     (lambda (variable)
-	       (there-exists?
-		(variable-assignments variable)
-		(lambda (assignment)
-		  (eq? (reference-context/block
-			(assignment-context assignment))
-		       block)))))))
+	       (any (lambda (assignment)
+		      (eq? (reference-context/block
+			    (assignment-context assignment))
+			   block))
+		    (variable-assignments variable))))))
 	(arbitrary-callees
 	 (list-transform-negative
 	     (car (procedure-initial-callees procedure))
@@ -318,13 +317,13 @@ USA.
 
   (define (check value op-vals)
     (if (and value
-	     (for-all? op-vals
-		       (lambda (proc)
-			 (and (rvalue/procedure? proc)
-			      (eq? value
-				   (procedure/simplified-value
-				    proc
-				    (application-block app)))))))
+	     (every (lambda (proc)
+		      (and (rvalue/procedure? proc)
+			   (eq? value
+				(procedure/simplified-value
+				 proc
+				 (application-block app)))))
+		    op-vals))
 	(simplify-combination! value)))
 
   (define (check-operators operator)
@@ -340,10 +339,10 @@ USA.
        (let ((operator (application-operator app))
 	     (cont (combination/continuation app)))
 	 (and (not (rvalue-passed-in? operator))
-	      (for-all? (rvalue-values operator)
-			(lambda (proc)
-			  (and (rvalue/procedure? proc)
-			       (null? (procedure-side-effects proc)))))
+	      (every (lambda (proc)
+		       (and (rvalue/procedure? proc)
+			    (null? (procedure-side-effects proc))))
+		     (rvalue-values operator))
 	      (cond ((rvalue/procedure? cont)
 		     (if (eq? (continuation/type cont)
 			      continuation-type/effect)

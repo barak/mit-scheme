@@ -281,9 +281,7 @@ USA.
 ;; known!
 
 (define (rtl:simple-subexpressions? expr)
-  (for-all? (cdr expr)
-    (lambda (sub)
-      (or (rtl:machine-constant? sub)
-	  (rtl:register? sub)))))
-
-
+  (every (lambda (sub)
+	   (or (rtl:machine-constant? sub)
+	       (rtl:register? sub)))
+	 (cdr expr)))

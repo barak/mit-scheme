@@ -240,7 +240,7 @@ USA.
       (list (http-header-name header)))))
 
 (define (make-http-header name value)
-  (guarantee-http-token name 'MAKE-HTTP-HEADER)
+  (guarantee http-token? name 'MAKE-HTTP-HEADER)
   (let ((defn (header-value-defn name)))
     (if defn
 	(if ((hvdefn-predicate defn) value)
@@ -250,15 +250,15 @@ USA.
 			      ((hvdefn-writer defn) value port)))
 			  value)
 	    (begin
-	      (guarantee-http-text value 'MAKE-HTTP-HEADER)
+	      (guarantee http-text? value 'MAKE-HTTP-HEADER)
 	      (%make-header name value
 			    (%call-parser (hvdefn-parser defn) value #t))))
 	(begin
-	  (guarantee-http-text value 'MAKE-HTTP-HEADER)
+	  (guarantee http-text? value 'MAKE-HTTP-HEADER)
 	  (%make-header name value (%unparsed-value))))))
 
 (define (convert-http-headers headers #!optional caller)
-  (guarantee-list headers caller)
+  (guarantee list? headers caller)
   (map (lambda (header)
 	 (cond ((http-header? header)
 		header)
@@ -275,9 +275,6 @@ USA.
 	       (else
 		(error:not-http-header header caller))))
        headers))
-
-(define (guarantee-http-headers object #!optional caller)
-  (guarantee-list-of-type object http-header? "HTTP headers" caller))
 
 (define (http-header name headers error?)
   (let ((h
@@ -396,7 +393,7 @@ USA.
   (default-object))
 
 (define (write-http-headers headers port)
-  (guarantee-http-headers headers 'WRITE-HTTP-HEADERS)
+  (guarantee-list-of http-header? headers 'WRITE-HTTP-HEADERS)
   (for-each (lambda (header)
 	      (let ((name (http-header-name header)))
 		(let ((defn (header-value-defn name)))

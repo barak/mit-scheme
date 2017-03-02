@@ -920,9 +920,9 @@ If this is an error, the debugger examines the error condition."
 	      (transcript-write value #f))))))
 
 (define (mark-visible? mark)
-  (there-exists? (buffer-windows (mark-buffer mark))
-    (lambda (window)
-      (window-mark-visible? window mark))))
+  (any (lambda (window)
+	 (window-mark-visible? window mark))
+       (buffer-windows (mark-buffer mark))))
 
 (define (enqueue-output-string! port string)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
@@ -937,7 +937,7 @@ If this is an error, the debugger examines the error condition."
 ;;; We assume here that none of the OPERATORs passed to this procedure
 ;;; generate any output in the REPL buffer, and consequently we don't
 ;;; need to update bytes-written here.  Review of the current usage of
-;;; this procedure confirms the assumption. 
+;;; this procedure confirms the assumption.
 
 (define (enqueue-output-operation! port operator)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))

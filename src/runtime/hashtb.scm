@@ -87,13 +87,13 @@ USA.
   (%make-hash-table type initial-size))
 
 (define (%make-hash-table type #!optional initial-size)
-  (guarantee-hash-table-type type '%MAKE-HASH-TABLE)
+  (guarantee hash-table-type? type '%MAKE-HASH-TABLE)
   (let ((initial-size
 	 (if (or (default-object? initial-size) (not initial-size))
 	     #f
 	     (begin
-	       (guarantee-exact-nonnegative-integer initial-size
-						    '%MAKE-HASH-TABLE)
+	       (guarantee exact-nonnegative-integer? initial-size
+			  '%MAKE-HASH-TABLE)
 	       initial-size))))
     (let ((table (make-table type)))
       (if (and initial-size (> initial-size minimum-size))
@@ -129,19 +129,19 @@ USA.
 			 (set-table-needs-rehash?! table #t))))
 
 (define (hash-table/type table)
-  (guarantee-hash-table table 'HASH-TABLE/TYPE)
+  (guarantee hash-table? table 'HASH-TABLE/TYPE)
   (table-type table))
 
 (define (hash-table/key-hash table)
-  (guarantee-hash-table table 'HASH-TABLE/KEY-HASH)
+  (guarantee hash-table? table 'HASH-TABLE/KEY-HASH)
   (table-type-key-hash (table-type table)))
 
 (define (hash-table/key=? table)
-  (guarantee-hash-table table 'HASH-TABLE/KEY=?)
+  (guarantee hash-table? table 'HASH-TABLE/KEY=?)
   (table-type-key=? (table-type table)))
 
 (define (hash-table/get table key default)
-  (guarantee-hash-table table 'HASH-TABLE/GET)
+  (guarantee hash-table? table 'HASH-TABLE/GET)
   ((table-type-method:get (table-type table)) table key default))
 
 (define (hash-table/lookup table key if-found if-not-found)
@@ -151,11 +151,11 @@ USA.
 	(if-found datum))))
 
 (define (hash-table/put! table key datum)
-  (guarantee-hash-table table 'HASH-TABLE/PUT!)
+  (guarantee hash-table? table 'HASH-TABLE/PUT!)
   ((table-type-method:put! (table-type table)) table key datum))
 
 (define (hash-table/modify! table key default procedure)
-  (guarantee-hash-table table 'HASH-TABLE/MODIFY!)
+  (guarantee hash-table? table 'HASH-TABLE/MODIFY!)
   ((table-type-method:modify! (table-type table)) table key default procedure))
 
 (define (hash-table/intern! table key generator)
@@ -164,11 +164,11 @@ USA.
       (if (eq? datum default-marker) (generator) datum))))
 
 (define (hash-table/remove! table key)
-  (guarantee-hash-table table 'HASH-TABLE/REMOVE!)
+  (guarantee hash-table? table 'HASH-TABLE/REMOVE!)
   ((table-type-method:remove! (table-type table)) table key))
 
 (define (hash-table/clean! table)
-  (guarantee-hash-table table 'HASH-TABLE/CLEAN!)
+  (guarantee hash-table? table 'HASH-TABLE/CLEAN!)
   (without-interruption
     (lambda ()
       ((table-type-method:clean! (table-type table)) table)
@@ -182,19 +182,19 @@ USA.
 	    (hash-table->alist table)))
 
 (define (hash-table->alist table)
-  (guarantee-hash-table table 'HASH-TABLE->ALIST)
+  (guarantee hash-table? table 'HASH-TABLE->ALIST)
   (%hash-table-fold table
 		    (lambda (key datum alist) (cons (cons key datum) alist))
 		    '()))
 
 (define (hash-table/key-list table)
-  (guarantee-hash-table table 'HASH-TABLE/KEY-LIST)
+  (guarantee hash-table? table 'HASH-TABLE/KEY-LIST)
   (%hash-table-fold table
 		    (lambda (key datum alist) datum (cons key alist))
 		    '()))
 
 (define (hash-table/datum-list table)
-  (guarantee-hash-table table 'HASH-TABLE/DATUM-LIST)
+  (guarantee hash-table? table 'HASH-TABLE/DATUM-LIST)
   (%hash-table-fold table
 		    (lambda (key datum alist) key (cons datum alist))
 		    '()))
@@ -203,11 +203,11 @@ USA.
   ((table-type-method:fold (table-type table)) table procedure initial-value))
 
 (define (hash-table/rehash-threshold table)
-  (guarantee-hash-table table 'HASH-TABLE/REHASH-THRESHOLD)
+  (guarantee hash-table? table 'HASH-TABLE/REHASH-THRESHOLD)
   (table-rehash-threshold table))
 
 (define (set-hash-table/rehash-threshold! table threshold)
-  (guarantee-hash-table table 'SET-HASH-TABLE/REHASH-THRESHOLD!)
+  (guarantee hash-table? table 'SET-HASH-TABLE/REHASH-THRESHOLD!)
   (let ((threshold
 	 (check-arg threshold
 		    default-rehash-threshold
@@ -223,11 +223,11 @@ USA.
 	(new-size! table (table-grow-size table))))))
 
 (define (hash-table/rehash-size table)
-  (guarantee-hash-table table 'HASH-TABLE/REHASH-SIZE)
+  (guarantee hash-table? table 'HASH-TABLE/REHASH-SIZE)
   (table-rehash-size table))
 
 (define (set-hash-table/rehash-size! table size)
-  (guarantee-hash-table table 'SET-HASH-TABLE/REHASH-SIZE!)
+  (guarantee hash-table? table 'SET-HASH-TABLE/REHASH-SIZE!)
   (let ((size
 	 (check-arg size
 		    default-rehash-size
@@ -244,7 +244,7 @@ USA.
 	(maybe-shrink-table! table)))))
 
 (define (hash-table/count table)
-  (guarantee-hash-table table 'HASH-TABLE/COUNT)
+  (guarantee hash-table? table 'HASH-TABLE/COUNT)
   (let loop ()
     (let ((count (table-count table)))
       (if (table-needs-rehash? table)
@@ -254,11 +254,11 @@ USA.
 	  count))))
 
 (define (hash-table/size table)
-  (guarantee-hash-table table 'HASH-TABLE/SIZE)
+  (guarantee hash-table? table 'HASH-TABLE/SIZE)
   (table-grow-size table))
 
 (define (hash-table/clear! table)
-  (guarantee-hash-table table 'HASH-TABLE/CLEAR!)
+  (guarantee hash-table? table 'HASH-TABLE/CLEAR!)
   (without-interruption
     (lambda ()
       (if (not (table-initial-size-in-effect? table))
@@ -1308,7 +1308,7 @@ USA.
 			hash-table-entry-type:strong))
 
 (define (alist->hash-table alist #!optional key=? key-hash)
-  (guarantee-alist alist 'ALIST->HASH-TABLE)
+  (guarantee alist? alist 'ALIST->HASH-TABLE)
   (let ((table (make-hash-table key=? key-hash)))
     (for-each (lambda (p)
 		(hash-table/put! table (car p) (cdr p)))
@@ -1358,7 +1358,7 @@ USA.
   (hash-table-update! table key procedure (lambda () default)))
 
 (define (hash-table-copy table)
-  (guarantee-hash-table table 'HASH-TABLE-COPY)
+  (guarantee hash-table? table 'HASH-TABLE-COPY)
   (without-interruption
     (lambda ()
       (let ((table* (copy-table table))
@@ -1371,8 +1371,8 @@ USA.
 	table*))))
 
 (define (hash-table-merge! table1 table2)
-  (guarantee-hash-table table1 'HASH-TABLE-MERGE!)
-  (guarantee-hash-table table2 'HASH-TABLE-MERGE!)
+  (guarantee hash-table? table1 'HASH-TABLE-MERGE!)
+  (guarantee hash-table? table2 'HASH-TABLE-MERGE!)
   (if (not (eq? table2 table1))
       (%hash-table-fold table2
 			(lambda (key datum ignore)

@@ -142,9 +142,9 @@ Previous contents of that buffer are killed first."
 	  (if (and (pair? (cdr comtabs))
 		   (comtab? (cadr comtabs))
 		   (or global?
-		       (not (there-exists? global-modes
-			      (lambda (mode)
-				(eq? (cdr comtabs) (mode-comtabs mode)))))))
+		       (not (any (lambda (mode)
+				   (eq? (cdr comtabs) (mode-comtabs mode)))
+				 global-modes))))
 	      (loop (cdr comtabs))
 	      '()))))
 

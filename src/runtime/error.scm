@@ -58,7 +58,7 @@ USA.
 (define (make-condition-type name generalization field-names reporter)
   (if generalization
       (guarantee-condition-type generalization 'MAKE-CONDITION-TYPE))
-  (guarantee-list-of-unique-symbols field-names 'MAKE-CONDITION-TYPE)
+  (guarantee list-of-unique-symbols? field-names 'MAKE-CONDITION-TYPE)
   (let ((type
 	 (call-with-values
 	     (lambda ()
@@ -178,8 +178,8 @@ USA.
 
 (define (make-condition type continuation restarts field-alist)
   (guarantee-condition-type type 'MAKE-CONDITION)
-  (guarantee-continuation continuation 'MAKE-CONDITION)
-  (guarantee-unique-keyword-list field-alist 'MAKE-CONDITION)
+  (guarantee continuation? continuation 'MAKE-CONDITION)
+  (guarantee unique-keyword-list? field-alist 'MAKE-CONDITION)
   (let ((condition
 	 (%make-condition type
 			  continuation
@@ -195,7 +195,7 @@ USA.
 
 (define (condition-constructor type field-names)
   (guarantee-condition-type type 'CONDITION-CONSTRUCTOR)
-  (guarantee-list-of-unique-symbols field-names 'CONDITION-CONSTRUCTOR)
+  (guarantee list-of-unique-symbols? field-names 'CONDITION-CONSTRUCTOR)
   (let ((indexes
 	 (map (lambda (field-name)
 		(%condition-type/field-index type field-name
@@ -204,7 +204,7 @@ USA.
     (letrec
 	((constructor
 	  (lambda (continuation restarts . field-values)
-	    (guarantee-continuation continuation constructor)
+	    (guarantee continuation? continuation constructor)
 	    (let ((condition
 		   (%make-condition type
 				    continuation
@@ -246,7 +246,7 @@ USA.
 
 (define (condition-accessor type field-name)
   (guarantee-condition-type type 'CONDITION-ACCESSOR)
-  (guarantee-symbol field-name 'CONDITION-ACCESSOR)
+  (guarantee symbol? field-name 'CONDITION-ACCESSOR)
   (let ((predicate (condition-predicate type))
 	(index
 	 (%condition-type/field-index type
@@ -327,7 +327,7 @@ USA.
   (guarantee-list-of-type object restart? "list of restarts" caller))
 
 (define (with-restart name reporter effector interactor thunk)
-  (if name (guarantee-symbol name 'WITH-RESTART))
+  (if name (guarantee symbol? name 'WITH-RESTART))
   (if (not (or (string? reporter) (procedure-of-arity? reporter 1)))
       (error:wrong-type-argument reporter "reporter" 'WITH-RESTART))
   (if (not (procedure? effector))
@@ -444,7 +444,7 @@ USA.
 	     (loop (cdr restarts))))))
 
 (define (find-restart name #!optional restarts)
-  (guarantee-symbol name 'FIND-RESTART)
+  (guarantee symbol? name 'FIND-RESTART)
   (%find-restart name (restarts-default restarts 'FIND-RESTART)))
 
 (define (abort #!optional restarts)
@@ -520,7 +520,7 @@ USA.
    thunk))
 
 (define-integrable (guarantee-condition-handler object caller)
-  (guarantee-procedure-of-arity object 1 caller))
+  (guarantee unary-procedure? object caller))
 
 (define (break-on-signals types)
   (guarantee-condition-types types 'BREAK-ON-SIGNALS)

@@ -155,19 +155,19 @@ USA.
        (procedure-arity-valid? object arity)))
 
 (define (guarantee-procedure-of-arity object arity caller)
-  (guarantee-procedure object caller)
+  (guarantee procedure? object caller)
   (if (not (procedure-arity-valid? object arity))
       (error:bad-range-argument object caller)))
 
 (define (make-procedure-arity min #!optional max simple-ok?)
-  (guarantee-index-fixnum min 'MAKE-PROCEDURE-ARITY)
+  (guarantee index-fixnum? min 'MAKE-PROCEDURE-ARITY)
   (let ((max
 	 (if (default-object? max)
 	     min
 	     (begin
 	       (if max
 		   (begin
-		     (guarantee-index-fixnum max 'MAKE-PROCEDURE-ARITY)
+		     (guarantee index-fixnum? max 'MAKE-PROCEDURE-ARITY)
 		     (if (not (fix:>= max min))
 			 (error:bad-range-argument max
 						   'MAKE-PROCEDURE-ARITY))))
@@ -187,12 +187,12 @@ USA.
 (define (procedure-arity-min arity)
   (cond ((simple-arity? arity) arity)
 	((general-arity? arity) (car arity))
-	(else (error:not-procedure-arity arity 'PROCEDURE-ARITY-MIN))))
+	(else (error:not-a procedure-arity? arity 'PROCEDURE-ARITY-MIN))))
 
 (define (procedure-arity-max arity)
   (cond ((simple-arity? arity) arity)
 	((general-arity? arity) (cdr arity))
-	(else (error:not-procedure-arity arity 'PROCEDURE-ARITY-MAX))))
+	(else (error:not-a procedure-arity? arity 'PROCEDURE-ARITY-MAX))))
 
 (define (procedure-arity<= arity1 arity2)
   (and (fix:<= (procedure-arity-min arity2)
@@ -251,7 +251,7 @@ USA.
 
 (define (%primitive-procedure-arg procedure caller)
   (let ((procedure* (skip-entities procedure)))
-    (guarantee-primitive-procedure procedure* caller)
+    (guarantee primitive-procedure? procedure* caller)
     procedure*))
 
 (declare (integrate-operator %compound-procedure?))

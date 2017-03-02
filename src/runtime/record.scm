@@ -138,7 +138,8 @@ USA.
 			  #!optional
 			  default-inits unparser-method entity-unparser-method)
   (let ((caller 'MAKE-RECORD-TYPE))
-    (guarantee-list-of-unique-symbols field-names caller)
+    (if (not (list-of-unique-symbols? field-names))
+	(error:not-a list-of-unique-symbols? field-names caller))
     (let* ((names ((ucode-primitive list->vector) field-names))
 	   (n (vector-length names))
 	   (record-type
@@ -315,8 +316,8 @@ USA.
 (define set-record-type-unparser-method!/after-boot
   (named-lambda (set-record-type-unparser-method! record-type method)
     (guarantee-record-type record-type 'SET-RECORD-TYPE-UNPARSER-METHOD!)
-    (if method
-	(guarantee-unparser-method method 'SET-RECORD-TYPE-UNPARSER-METHOD!))
+    (if (and method (not (unparser-method? method)))
+	(error:not-a unparser-method? method 'SET-RECORD-TYPE-UNPARSER-METHOD!))
     (let ((tag (%record-type-dispatch-tag record-type)))
       (remove-generic-procedure-generators
        unparse-record
@@ -330,9 +331,9 @@ USA.
 ;; It's not kosher to use this during the cold load.
 (define (set-record-type-entity-unparser-method! record-type method)
   (guarantee-record-type record-type 'SET-RECORD-TYPE-ENTITY-UNPARSER-METHOD!)
-  (if method
-      (guarantee-unparser-method method
-                                 'SET-RECORD-TYPE-ENTITY-UNPARSER-METHOD!))
+  (if (and method (not (unparser-method? method)))
+      (error:not-a unparser-method? method
+		   'SET-RECORD-TYPE-ENTITY-UNPARSER-METHOD!))
   (let ((tag (%record-type-dispatch-tag record-type)))
     (remove-generic-procedure-generators record-entity-unparser (list tag))
     (if method
@@ -372,7 +373,7 @@ USA.
 (define (set-record-type-describer! record-type describer)
   (guarantee-record-type record-type 'SET-RECORD-TYPE-DESCRIBER!)
   (if describer
-      (guarantee-procedure-of-arity describer 1 'SET-RECORD-TYPE-DESCRIBER!))
+      (guarantee unary-procedure? describer 'SET-RECORD-TYPE-DESCRIBER!))
   (define-unary-generic-handler record-description record-type describer))
 
 (define (record-entity-description entity)
@@ -390,8 +391,7 @@ USA.
 (define (set-record-type-entity-describer! record-type describer)
   (guarantee-record-type record-type 'SET-RECORD-TYPE-ENTITY-DESCRIBER!)
   (if describer
-      (guarantee-procedure-of-arity describer 1
-                                    'SET-RECORD-TYPE-ENTITY-DESCRIBER!))
+      (guarantee unary-procedure? describer 'SET-RECORD-TYPE-ENTITY-DESCRIBER!))
   (define-unary-generic-handler record-entity-describer record-type
     ;; Kludge to make generic dispatch work.
     (lambda (extra)
@@ -415,7 +415,8 @@ USA.
 	  (equal? field-names (record-type-field-names record-type)))
       (%record-constructor-default-names record-type)
       (begin
-	(guarantee-list field-names 'RECORD-CONSTRUCTOR)
+	(if (not (list? field-names))
+	    (error:not-a list? field-names 'RECORD-CONSTRUCTOR))
 	(%record-constructor-given-names record-type field-names))))
 
 (define %record-constructor-default-names
@@ -524,7 +525,7 @@ USA.
 			     (symbol? (car kl))
 			     (pair? (cdr kl))))
 		   (if (not (null? kl))
-		       (error:not-keyword-list keyword-list constructor)))
+		       (error:not-a keyword-list? keyword-list constructor)))
 		(let ((i (record-type-field-index record-type (car kl) #t)))
 		  (if (not (vector-ref seen? i))
 		      (begin
@@ -620,7 +621,6 @@ USA.
 		     (else (error "Improper list."))))
 	     #t))))
 
-(define-guarantee list-of-unique-symbols "list of unique symbols")
 (define-guarantee record-type "record type")
 (define-guarantee record "record")
 
@@ -773,7 +773,7 @@ USA.
 	    (do ((args arguments (cddr args)))
 		((not (pair? args)))
 	      (if (not (pair? (cdr args)))
-		  (error:not-keyword-list arguments #f))
+		  (error:not-a keyword-list? arguments #f))
 	      (let ((field-name (car args)))
 		(let loop ((i 0))
 		  (if (not (fix:< i n))

@@ -123,15 +123,6 @@ output port, input/output port, textual port, binary port, or any kind
 of port, respectively.  Otherwise they return @code{#f}.
 @end deffn
 
-@deffn {obsolete procedure} guarantee-port object
-@deffnx {obsolete procedure} guarantee-input-port object
-@deffnx {obsolete procedure} guarantee-output-port object
-@deffnx {obsolete procedure} guarantee-i/o-port object
-@findex guarantee
-These procedures are @strong{deprecated}.  Instead use
-@code{guarantee} with the appropriate predicate.
-@end deffn
-
 @deffn {standard procedure} input-port-open? port
 @deffnx {standard procedure} output-port-open? port
 Returns @code{#t} if @var{port} is still open and capable of

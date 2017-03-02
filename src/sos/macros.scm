@@ -210,7 +210,7 @@ USA.
 			 (if (not (or (eq? 'STANDARD (cadr plist))
 				      (keyword? (cadr plist))
 				      (and (list? (cadr plist))
-					   (for-all? (cadr plist) keyword?))))
+					   (every keyword? (cadr plist)))))
 			     (lose "DEFINE property" arg)))
 		       (set-cdr! prev (cddr plist))
 		       (set! definitions

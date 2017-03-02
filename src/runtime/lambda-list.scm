@@ -38,8 +38,6 @@ USA.
 		 (not (memq (car object) seen))
 		 (loop (cdr object) (cons (car object) seen)))))))
 
-(define-guarantee r4rs-lambda-list "R4RS lambda list")
-
 (define (parse-r4rs-lambda-list bvl)
   (let loop ((bvl* bvl) (required '()))
     (cond ((and (pair? bvl*)
@@ -51,7 +49,7 @@ USA.
 	  ((identifier? bvl*)
 	   (values (reverse! required) bvl*))
 	  (else
-	   (error:not-r4rs-lambda-list bvl)))))
+	   (error:not-a r4rs-lambda-list? bvl)))))
 
 (define (map-r4rs-lambda-list procedure bvl)
   (let loop ((bvl* bvl))
@@ -64,7 +62,7 @@ USA.
 	  ((identifier? bvl*)
 	   (procedure bvl*))
 	  (else
-	   (error:not-r4rs-lambda-list bvl)))))
+	   (error:not-a r4rs-lambda-list? bvl)))))
 
 (define (mit-lambda-list? object)
   (letrec
@@ -117,8 +115,6 @@ USA.
 		   (not (memq (car object) seen))
 		   (k (cons (car object) seen)))))))
     (parse-required object '())))
-
-(define-guarantee mit-lambda-list "MIT/GNU Scheme lambda list")
 
 (define lambda-tag:optional (object-new-type (ucode-type constant) 3))
 (define lambda-tag:rest (object-new-type (ucode-type constant) 4))
@@ -188,7 +184,7 @@ USA.
 	(values required optional rest)))
 
     (define (bad-lambda-list pattern)
-      (error:not-mit-lambda-list pattern 'PARSE-MIT-LAMBDA-LIST))
+      (error:not-a mit-lambda-list? pattern 'PARSE-MIT-LAMBDA-LIST))
 
     (parse-parameters required lambda-list)))
 
@@ -206,11 +202,11 @@ USA.
 
 ;;; Aux is almost always the empty list.
 (define (make-lambda-list required optional rest aux)
-  (guarantee-list-of-unique-symbols required)
-  (guarantee-list-of-unique-symbols optional)
+  (guarantee list-of-unique-symbols? required)
+  (guarantee list-of-unique-symbols? optional)
   (if rest
-      (guarantee-symbol rest))
-  (guarantee-list-of-unique-symbols aux)
+      (guarantee symbol? rest))
+  (guarantee list-of-unique-symbols? aux)
   (let ((rest-aux-tail (if (not rest)
 			   (if (null? aux)
 			       '()

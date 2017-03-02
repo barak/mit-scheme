@@ -929,9 +929,9 @@ The name may be an abbreviation of the reference name."
 			     (let ((info-dir (edwin-info-directory)))
 			       (if (and info-dir
 					(file-directory? info-dir)
-					(not (there-exists? directories
-					       (lambda (dir)
-						 (pathname=? info-dir dir)))))
+					(not (any (lambda (dir)
+						    (pathname=? info-dir dir))
+						  directories)))
 				   (append directories (list info-dir))
 				   directories))))))
 		 (set-variable-local-value! buffer variable directories)

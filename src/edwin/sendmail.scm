@@ -1005,7 +1005,7 @@ the user from the mailer."
                           message-pathname
                           trace-buffer
                           lookup-context)))
-      (cond ((not (for-all? responses smtp-response-valid?))
+      (cond ((not (every smtp-response-valid? responses))
 	     (pop-up-temporary-buffer "*SMTP-invalid*"
 				      '(READ-ONLY FLUSH-ON-SPACE)
 	       (lambda (buffer window)
@@ -1055,8 +1055,8 @@ the user from the mailer."
 
 (define (smtp-responses-ok? responses lookup-context)
   (if (ref-variable smtp-require-valid-recipients lookup-context)
-      (for-all? responses smtp-response-valid?)
-      (there-exists? responses smtp-response-valid?)))
+      (every smtp-response-valid? responses)
+      (any smtp-response-valid? responses)))
 
 (define (call-with-smtp-socket host-name service trace-buffer receiver)
   (let ((port #f))
@@ -1163,7 +1163,7 @@ the user from the mailer."
   (smtp-drain-output port)
   (let ((response (smtp-read-line port)))
     (let ((n (smtp-response-number response)))
-      (if (not (there-exists? numbers (lambda (n*) (= n n*))))
+      (if (not (any (lambda (n*) (= n n*)) numbers))
 	  (editor-error response))
       (if (smtp-response-continued? response)
 	  (let loop ((responses (list response)))
@@ -1845,9 +1845,9 @@ This is a list, each element of which is a list of three items:
 	(and (list? x)
 	     (= (length x) 3)
 	     (or (not (car x)) (string? (car x)))
-	     (there-exists? mime-top-level-types
-	       (lambda (e)
-		 (eq? (cdr e) (cadr x))))
+	     (any (lambda (e)
+		    (eq? (cdr e) (cadr x)))
+		  mime-top-level-types)
 	     (symbol? (caddr x)))))))
 
 (define mime-top-level-types

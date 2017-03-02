@@ -55,7 +55,7 @@ USA.
       value)))
 
 (define (http-client-request method uri headers body)
-  (guarantee-absolute-uri uri)
+  (guarantee absolute-uri? uri)
   (make-http-request method
 		     (make-uri #f
 			       #f

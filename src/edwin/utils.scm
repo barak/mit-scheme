@@ -63,7 +63,7 @@ USA.
   ;; Too much of Edwin relies on fixnum-specific arithmetic for this
   ;; to be safe.  Unfortunately, this means that Edwin can't edit
   ;; files >32MB.
-  (guarantee-index-fixnum n-chars 'ALLOCATE-BUFFER-STORAGE)
+  (guarantee index-fixnum? n-chars 'ALLOCATE-BUFFER-STORAGE)
   (make-string n-chars))
 
 (define-syntax chars-to-words-shift
@@ -254,7 +254,7 @@ USA.
 
 (define (list-of-type? object predicate)
   (and (list? object)
-       (for-all? object predicate)))
+       (every predicate object)))
 
 (define (dotimes n procedure)
   (define (loop i)

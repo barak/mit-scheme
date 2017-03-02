@@ -56,13 +56,13 @@ USA.
 	    (rvalue-values (combination/continuation combination))))
 
 (define (continuation-passed-out? continuation)
-  (there-exists? (continuation/combinations continuation)
-    (lambda (combination)
-      (and (not (combination/simple-inline? combination))
-	   (let ((operator (combination/operator combination)))
-	     (or (rvalue-passed-in? operator)
-		 (there-exists? (rvalue-values operator)
-		   (lambda (rvalue) (not (rvalue/procedure? rvalue))))))))))
+  (any (lambda (combination)
+	 (and (not (combination/simple-inline? combination))
+	      (let ((operator (combination/operator combination)))
+		(or (rvalue-passed-in? operator)
+		    (any (lambda (rvalue) (not (rvalue/procedure? rvalue)))
+			 (rvalue-values operator))))))
+       (continuation/combinations continuation)))
 
 (define (analyze/continuation continuation)
   (let ((returns (continuation/returns continuation))
@@ -96,7 +96,8 @@ USA.
   (and (not (procedure-passed-out? procedure))
        (let ((combinations (procedure-applications procedure)))
 	 (and (not (null? combinations))
-	      (for-all? combinations
-		(lambda (combination)
-		  (eq? (rvalue-known-value (combination/operator combination))
-		       procedure)))))))
+	      (every (lambda (combination)
+		       (eq? (rvalue-known-value
+			     (combination/operator combination))
+			    procedure))
+		     combinations)))))

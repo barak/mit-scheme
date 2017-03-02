@@ -34,8 +34,7 @@ USA.
     (let ((p (make-parameter 1))
 	  (q (make-parameter 2
 			     (lambda (v)
-			       (guarantee-exact-nonnegative-integer v)
-			       v))))
+			       (guarantee exact-nonnegative-integer? v)))))
       (assert-eqv (p) 1)
       (assert-equal (parameterize ((p "7") (q 9))
 		      (cons (p) (q)))

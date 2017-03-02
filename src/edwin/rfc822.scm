@@ -79,8 +79,8 @@ USA.
          (rfc822:strip-quoted-names
           (rfc822:string->non-ignored-tokens string))))
     (if (and address-list
-             (for-all? (cdr address-list)
-               (lambda (token) (eqv? token #\,))))
+             (every (lambda (token) (eqv? token #\,))
+		    (cdr address-list)))
         (car address-list)
         (rfc822:split-address-tokens (rfc822:string->tokens string)))))
 

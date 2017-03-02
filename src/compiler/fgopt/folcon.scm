@@ -96,7 +96,7 @@ USA.
 
 (define (delete-if-known! lvalue)
   (if (and (not (lvalue-known-value lvalue))
-	   (for-all? (lvalue-source-links lvalue) lvalue-known-value))
+	   (every lvalue-known-value (lvalue-source-links lvalue)))
       (let ((value (car (lvalue-values lvalue))))
 	(for-each (lambda (lvalue*)
 		    (if (lvalue-marked? lvalue*)
@@ -167,7 +167,7 @@ USA.
     (and (constant-foldable-operator? operator)
 	 ;; (rvalue-known? continuation)
 	 ;; (uni-continuation? (rvalue-known-value continuation))
-	 (for-all? operands rvalue-known-constant?)
+	 (every rvalue-known-constant? operands)
 	 (let ((op (constant-foldable-operator-value operator)))
 	   (and (or (arity-correct? op (length operands))
 		    (begin
@@ -210,7 +210,7 @@ USA.
 
 (define (recompute-lvalue-passed-in! lvalue)
   (set-lvalue-passed-in?! lvalue false)
-  (if (there-exists? (lvalue-backward-links lvalue) lvalue-passed-in?)
+  (if (any lvalue-passed-in? (lvalue-backward-links lvalue))
       (begin
 	(set-lvalue-passed-in?! lvalue 'INHERITED)
 	;; The assignment would return the right value, but this is clearer.

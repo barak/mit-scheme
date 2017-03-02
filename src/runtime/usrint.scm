@@ -90,9 +90,7 @@ USA.
 (define (optional-environment environment caller)
   (if (default-object? environment)
       (nearest-repl/environment)
-      (begin
-	(guarantee-environment environment caller)
-	environment)))
+      (guarantee environment? environment caller)))
 
 (define (prompt-for-command-char prompt #!optional port)
   (let ((prompt (canonicalize-command-prompt prompt))
@@ -330,9 +328,7 @@ USA.
 	(environment
 	 (if (default-object? environment)
 	     (nearest-repl/environment)
-	     (begin
-	       (guarantee-environment environment 'PORT/WRITE-RESULT)
-	       environment))))
+	     (guarantee environment? environment 'PORT/WRITE-RESULT))))
     (if operation
 	(operation port expression value hash-number environment)
 	(default/write-result port expression value hash-number environment))))

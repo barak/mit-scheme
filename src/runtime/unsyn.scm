@@ -90,9 +90,9 @@ USA.
       (receiver environment)))
 
 (define (is-bound? name environment)
-  (there-exists? environment
-		 (lambda (binding-lambda)
-		   (lambda-bound? binding-lambda name))))
+  (any (lambda (binding-lambda)
+	 (lambda-bound? binding-lambda name))
+       environment))
 
 (define (unsyntax scode)
   (unsyntax-object '()
@@ -466,7 +466,7 @@ USA.
 			 (pair? (cadr definition))
 			 (eq? (caadr definition) (cadddr expression))
 			 (list? (cdadr definition))
-			 (for-all? (cdadr definition) symbol?))))))
+			 (every symbol? (cdadr definition)))))))
       `(LET ,(cadddr (car expression))
 	 ,(map (lambda (name value)
 		 `(,name

@@ -279,18 +279,17 @@ USA.
 				      (cddr expression))))
       ((GLOBAL-DEFINITIONS)
        (let ((filenames (cdr expression)))
-	 (if (not (for-all? filenames
-			    (lambda (f) (or (string? f) (symbol? f)))))
+	 (if (not (every (lambda (f) (or (string? f) (symbol? f))) filenames))
 	     (lose))
 	 (cons 'GLOBAL-DEFINITIONS filenames)))
       ((OS-TYPE-CASE)
        (if (not (and (list? (cdr expression))
-		     (for-all? (cdr expression)
-		       (lambda (clause)
-			 (and (or (eq? 'ELSE (car clause))
-				  (and (list? (car clause))
-				       (for-all? (car clause) symbol?)))
-			      (list? (cdr clause)))))))
+		     (every (lambda (clause)
+			      (and (or (eq? 'ELSE (car clause))
+				       (and (list? (car clause))
+					    (every symbol? (car clause))))
+				   (list? (cdr clause))))
+			    (cdr expression))))
 	   (lose))
        (cons 'NESTED-DESCRIPTIONS
 	     (let loop ((clauses (cdr expression)))
@@ -306,7 +305,7 @@ USA.
       ((INCLUDE)
        (cons 'NESTED-DESCRIPTIONS
 	     (let ((filenames (cdr expression)))
-	       (if (not (for-all? filenames string?))
+	       (if (not (every string? filenames))
 		   (lose))
 	       (append-map (lambda (filename)
 			     (read-and-parse-model
@@ -473,7 +472,7 @@ USA.
 
 (define (check-list items predicate)
   (and (list? items)
-       (for-all? items predicate)))
+       (every predicate items)))
 
 ;;;; Packages
 

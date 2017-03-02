@@ -54,8 +54,8 @@ USA.
   ;; `lexical-unassigned?' with a known block for its first argument
   ;; and a known symbol for its second.  Unfortunately, doing this
   ;; optimally introduces feedback in this analysis.
-  (if (there-exists? (rvalue-values (application-operator application))
-		     (lambda (value) (not (rvalue/procedure? value))))
+  (if (any (lambda (value) (not (rvalue/procedure? value)))
+	   (rvalue-values (application-operator application)))
       (application-arguments-passed-out! application)))
 
 (define (check-application application)

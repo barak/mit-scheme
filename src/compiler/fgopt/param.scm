@@ -114,7 +114,7 @@ parameters in registers.
 		  (order-parallel!
 		   node
 		   (let ((subproblems (parallel-subproblems node)))
-		     (if (for-all? subproblems subproblem-simple?)
+		     (if (every subproblem-simple? subproblems)
 			 false
 			 (complex-parallel-constraints
 			  subproblems
@@ -229,9 +229,9 @@ parameters in registers.
 	     (lambda (subproblems)
 	       (discriminate-items subproblems
 		 (lambda (subproblem)
-		   (there-exists? (subproblem-free-variables subproblem)
-		     (lambda (var)
-		       (memq var vars-referenced-later)))))))
+		   (any (lambda (var)
+			  (memq var vars-referenced-later))
+			(subproblem-free-variables subproblem))))))
 	    (constraint-graph (make-constraint-graph)))
 	(with-values (lambda () (discriminate-by-bad-vars simple))
 	  (lambda (good-simples bad-simples)

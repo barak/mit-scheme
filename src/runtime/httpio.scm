@@ -41,12 +41,10 @@ USA.
   (headers http-request-headers)
   (body http-request-body))
 
-(define-guarantee http-request "HTTP request")
-
 (define (make-http-request method uri version headers body)
-  (guarantee-http-token-string method 'MAKE-HTTP-REQUEST)
-  (guarantee-http-request-uri uri 'MAKE-HTTP-REQUEST)
-  (guarantee-http-version version 'MAKE-HTTP-REQUEST)
+  (guarantee http-token-string? method 'MAKE-HTTP-REQUEST)
+  (guarantee http-request-uri? uri 'MAKE-HTTP-REQUEST)
+  (guarantee http-version? version 'MAKE-HTTP-REQUEST)
   (receive (headers body)
       (guarantee-headers&body headers body 'MAKE-HTTP-REQUEST)
     (%make-http-request method uri version headers body)))
@@ -66,12 +64,10 @@ USA.
   (headers http-response-headers)
   (body http-response-body))
 
-(define-guarantee http-response "HTTP response")
-
 (define (make-http-response version status reason headers body)
-  (guarantee-http-version version 'MAKE-HTTP-RESPONSE)
-  (guarantee-http-status status 'MAKE-HTTP-RESPONSE)
-  (guarantee-http-text reason 'MAKE-HTTP-RESPONSE)
+  (guarantee http-version? version 'MAKE-HTTP-RESPONSE)
+  (guarantee http-status? status 'MAKE-HTTP-RESPONSE)
+  (guarantee http-text? reason 'MAKE-HTTP-RESPONSE)
   (receive (headers body)
       (guarantee-headers&body headers body 'MAKE-HTTP-RESPONSE)
     (%make-http-response version status reason headers body)))
@@ -82,7 +78,7 @@ USA.
       (list (http-response-status response)))))
 
 (define (guarantee-headers&body headers body caller)
-  (guarantee-http-headers headers caller)
+  (guarantee-list-of http-header? headers caller)
   (if body
       (begin
 	(guarantee string? body caller)
@@ -106,7 +102,7 @@ USA.
 (define-guarantee simple-http-request "simple HTTP request")
 
 (define (make-simple-http-request uri)
-  (guarantee-simple-http-request-uri uri 'MAKE-HTTP-REQUEST)
+  (guarantee simple-http-request-uri? uri 'MAKE-HTTP-REQUEST)
   (%make-http-request '|GET| uri #f '() ""))
 
 (define (simple-http-response? object)
@@ -362,7 +358,7 @@ USA.
 ;;;; Status descriptions
 
 (define (http-status-description code)
-  (guarantee-http-status code 'HTTP-STATUS-DESCRIPTION)
+  (guarantee http-status? code 'HTTP-STATUS-DESCRIPTION)
   (let loop ((low 0) (high (vector-length known-status-codes)))
     (if (< low high)
 	(let ((index (quotient (+ low high) 2)))

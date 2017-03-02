@@ -66,7 +66,7 @@ USA.
 (define (walk/node node continuation)
   (cfg-node-case (tagged-vector/tag node)
     ((PARALLEL)
-     (and (for-all? (parallel-subproblems node) walk/subproblem)
+     (and (every walk/subproblem (parallel-subproblems node))
 	  (walk/next (snode-next node) continuation)))
     ((APPLICATION)
      (case (application-type node)

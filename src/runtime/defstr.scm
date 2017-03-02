@@ -264,12 +264,12 @@ differences:
 	    (and (syntactic-closure? object)
 		 (loop (syntactic-closure/form object)))))
       (and (identifier? object)
-	   (there-exists? false-expression-names
-	     (lambda (name)
-	       (identifier=? (parser-context/use-environment context)
-			     object
-			     (parser-context/closing-environment context)
-			     name))))))
+	   (any (lambda (name)
+		  (identifier=? (parser-context/use-environment context)
+				object
+				(parser-context/closing-environment context)
+				name))
+		false-expression-names))))
 
 (define (false-marker? object)
   (or (not object)

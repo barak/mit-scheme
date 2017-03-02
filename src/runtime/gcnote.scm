@@ -66,7 +66,7 @@ USA.
 (define gc-events-mutex (make-thread-mutex))
 
 (define (register-gc-event event)
-  (guarantee-procedure-of-arity event 1 'register-gc-event)
+  (guarantee unary-procedure? event 'register-gc-event)
   (with-thread-mutex-lock gc-events-mutex
     (lambda ()
       (clean-gc-events)

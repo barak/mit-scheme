@@ -900,12 +900,12 @@ M-x rename-file, or use the `r' command in Dired.")
 		    (not (substring-find-next-char-in-set filename 0 end
 							  invalid-chars))
 		    (not
-		     (there-exists? '("clock$" "con" "aux" "com1" "com2"
-					       "com3" "com4" "lpt1" "lpt2"
-					       "lpt3" "nul" "prn")
-		       (lambda (name)
-			 (substring=? filename 0 end
-				      name 0 (string-length name)))))))))
+		     (any (lambda (name)
+			    (substring=? filename 0 end
+					 name 0 (string-length name)))
+			  '("clock$" "con" "aux" "com1" "com2"
+			    "com3" "com4" "lpt1" "lpt2"
+			    "lpt3" "nul" "prn")))))))
 	(let ((dot (string-find-next-char filename #\.)))
 	  (if (not dot)
 	      (valid-name? end)

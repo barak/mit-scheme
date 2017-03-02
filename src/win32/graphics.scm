@@ -756,7 +756,7 @@ USA.
 	 (rgb (vector-ref spec 0) (vector-ref spec 1) (vector-ref spec 2)))
         ((and (list? spec)
 	      (= 3 (length spec))
-	      (for-all? spec dim?))
+	      (every dim? spec))
 	 (rgb (list-ref spec 0) (list-ref spec 1) (list-ref spec 2)))
 	((and (string? spec)
 	      (= 7 (string-length spec))

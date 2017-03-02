@@ -729,7 +729,7 @@ for REGISTER.  If no such register exists, returns #F."
 	      (loop (cdr entries)))))))
 
 (define (register-map-clear? map)
-  (for-all? (map-entries map) map-entry-saved-into-home?))
+  (every map-entry-saved-into-home? (map-entries map)))
 
 ;;;; Map Coercion
 

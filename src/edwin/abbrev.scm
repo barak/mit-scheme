@@ -52,8 +52,8 @@ USA.
     (guarantee-abbrev-table table 'DEFINE-ABBREV)
     (guarantee-string abbrev 'DEFINE-ABBREV)
     (guarantee-string expansion 'DEFINE-ABBREV)
-    (if hook (guarantee-symbol hook 'DEFINE-ABBREV))
-    (guarantee-exact-nonnegative-integer count 'DEFINE-ABBREV)
+    (if hook (guarantee symbol? hook 'DEFINE-ABBREV))
+    (guarantee exact-nonnegative-integer? count 'DEFINE-ABBREV)
     (set! abbrevs-changed? #t)
     (hash-table/put! table
 		     (string-downcase abbrev)

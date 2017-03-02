@@ -216,23 +216,24 @@ USA.
 	 (lambda (node)
 	   (let ((time (source-node/modification-time node)))
 	     (if (and time
-		      (there-exists? (source-node/dependencies node)
-			(lambda (node*)
-			  (let ((newer?
-				 (let ((time*
-					(source-node/modification-time node*)))
-				   (or (not time*)
-				       (> time* time)))))
-			    (if newer?
-				(write-notification-line
-				 (lambda (port)
-				   (write-string "Binary file " port)
-				   (write (source-node/filename node) port)
-				   (write-string " newer than dependency "
-						 port)
-				   (write (source-node/filename node*)
-					  port))))
-			    newer?))))
+		      (any (lambda (node*)
+			     (let ((newer?
+				    (let ((time*
+					   (source-node/modification-time
+					    node*)))
+				      (or (not time*)
+					  (> time* time)))))
+			       (if newer?
+				   (write-notification-line
+				    (lambda (port)
+				      (write-string "Binary file " port)
+				      (write (source-node/filename node) port)
+				      (write-string " newer than dependency "
+						    port)
+				      (write (source-node/filename node*)
+					     port))))
+			       newer?))
+			   (source-node/dependencies node)))
 		 (set-source-node/modification-time! node #f))))
 	 source-nodes)
 	(for-each
@@ -267,10 +268,10 @@ USA.
 		  (if (not (source-node/modification-time node))
 		      (source-node/syntax! node)))
 		source-nodes/by-rank)))
-  (if (there-exists? source-nodes/by-rank
-	(lambda (node)
-	  (and (not (source-node/modification-time node))
-	       (source-node/circular? node))))
+  (if (any (lambda (node)
+	     (and (not (source-node/modification-time node))
+		  (source-node/circular? node)))
+	   source-nodes/by-rank)
       (begin
 	(write-notification-line
 	 (lambda (port)

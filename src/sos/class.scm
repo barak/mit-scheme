@@ -105,9 +105,9 @@ USA.
 
 (define (subclass? c s)
   (let ((pl (class-precedence-list c)))
-    (and (there-exists? (specializer-classes s)
-	   (lambda (s)
-	     (memq s pl)))
+    (and (any (lambda (s)
+		(memq s pl))
+	      (specializer-classes s))
 	 #t)))
 
 (define (guarantee-class class name)

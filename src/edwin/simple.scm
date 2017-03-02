@@ -226,7 +226,7 @@ USA.
 	      (else (extract-string start end))))))))
 
 (define (sit-for interval)
-  (guarantee-fixnum interval 'sit-for)
+  (guarantee fixnum? interval 'sit-for)
   (update-screens! 'ignore-input)
   (keyboard-peek-no-hang interval))
 

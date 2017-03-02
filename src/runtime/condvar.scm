@@ -88,7 +88,7 @@ USA.
              (if (default-object? timeout)
 		 0
                  (begin
-		   (guarantee-real timeout)
+		   (guarantee real? timeout)
 		   (register-timer-event (- timeout (real-time-clock)) #f)))))
 	(begin0
 	    (let loop ()

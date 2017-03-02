@@ -366,7 +366,7 @@ OBJECT->FIXNUM not, after all, independent of the tag.
   (QUALIFIER
    (and (rtl:offset-address? base)
 	(rtl:simple-subexpressions? base)
-	(rtl:machine-constant? (rtl:offset-address-offset base))))   
+	(rtl:machine-constant? (rtl:offset-address-offset base))))
   (rtl:make-float-offset base (rtl:make-machine-constant value)))
 
 ;; This is here to avoid generating things like
@@ -379,9 +379,7 @@ OBJECT->FIXNUM not, after all, independent of the tag.
 ;; known!
 
 (define (rtl:simple-subexpressions? expr)
-  (for-all? (cdr expr)
-    (lambda (sub)
-      (or (rtl:machine-constant? sub)
-	  (rtl:register? sub)))))
-
-
+  (every (lambda (sub)
+	   (or (rtl:machine-constant? sub)
+	       (rtl:register? sub)))
+	 (cdr expr)))

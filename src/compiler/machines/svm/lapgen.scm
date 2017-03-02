@@ -123,8 +123,8 @@ USA.
 			(- (abs max-frame) min-frame 1)
 			(- max-frame min-frame)))
 	(rest? (negative? max-frame)))
-    (guarantee-exact-nonnegative-integer n-required)
-    (guarantee-exact-nonnegative-integer n-optional)
+    (guarantee exact-nonnegative-integer? n-required)
+    (guarantee exact-nonnegative-integer? n-optional)
     (if (not (and (< n-required #x80) (< n-optional #x80)))
 	(error "Can't encode procedure arity:" n-required n-optional))
     (fix:or n-required
@@ -138,7 +138,7 @@ USA.
 	     0)))
     (if offset
 	(begin
-	  (guarantee-exact-nonnegative-integer offset)
+	  (guarantee exact-nonnegative-integer? offset)
 	  (if (not (< offset #x7FF8))
 	      (error "Can't encode continuation offset:" offset))
 	  (+ offset #x8000))

@@ -237,16 +237,12 @@ USA.
 
 ;;;; Init files
 
-(define (guarantee-init-file-specifier object procedure)
-  (if (not (init-file-specifier? object))
-      (error:wrong-type-argument object "init-file specifier" procedure)))
-
 (define (init-file-specifier? object)
   (and (list? object)
-       (for-all? object
-	 (lambda (object)
-	   (and (string? object)
-		(not (fix:= 0 (string-length object))))))))
+       (every (lambda (object)
+		(and (string? object)
+		     (not (fix:= 0 (string-length object)))))
+	      object)))
 
 (define (guarantee-init-file-directory pathname)
   (let ((directory (user-homedir-pathname)))
@@ -284,7 +280,7 @@ USA.
 
 (define (associate-pathname-type-with-mime-type type mime-type)
   (guarantee string? type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
-  (guarantee-mime-type mime-type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
+  (guarantee mime-type? mime-type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
   (hash-table/put! local-type-map type mime-type))
 
 (define (disassociate-pathname-type-from-mime-type type)
@@ -298,8 +294,8 @@ USA.
   (subtype mime-type/subtype))
 
 (define (make-mime-type top-level subtype)
-  (guarantee-mime-token top-level 'MAKE-MIME-TYPE)
-  (guarantee-mime-token subtype 'MAKE-MIME-TYPE)
+  (guarantee mime-token? top-level 'MAKE-MIME-TYPE)
+  (guarantee mime-token? subtype 'MAKE-MIME-TYPE)
   (%make-mime-type top-level subtype))
 
 (define (%make-mime-type top-level subtype)
@@ -354,14 +350,14 @@ USA.
       (write-mime-type mime-type port))))
 
 (define (write-mime-type mime-type port)
-  (guarantee-mime-type mime-type 'WRITE-MIME-TYPE)
+  (guarantee mime-type? mime-type 'WRITE-MIME-TYPE)
   (write-string (symbol->string (mime-type/top-level mime-type)) port)
   (write-string "/" port)
   (write-string (symbol->string (mime-type/subtype mime-type)) port))
 
 (define (string->mime-type string #!optional start end)
   (vector-ref (or (*parse-string parser:mime-type string start end)
-		  (error:not-mime-type-string string 'STRING->MIME-TYPE))
+		  (error:not-a mime-type-string? string 'STRING->MIME-TYPE))
 	      0))
 
 (define (mime-type-string? object)
@@ -397,8 +393,3 @@ USA.
 
 (define matcher:mime-token
   (*matcher (* (char-set char-set:mime-token))))
-
-(define-guarantee mime-type "MIME type")
-(define-guarantee mime-type-string "MIME type string")
-(define-guarantee mime-token "MIME token")
-(define-guarantee mime-token-string "MIME token string")

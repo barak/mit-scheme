@@ -353,7 +353,7 @@ USA.
 				      (options/seen option-structure)))
 	     (if (not (let ((predicate (cadr entry)))
 			(if (pair? predicate)
-			    (there-exists? predicate (lambda (p) (p arg)))
+			    (any (lambda (p) (p arg)) predicate)
 			    (predicate arg))))
 		 (error "Not a valid option argument:" arg))
 	     ((cddr entry) option-structure arg)

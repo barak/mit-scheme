@@ -488,7 +488,7 @@ USA.
 		(count-references identifiers body)
 		identifiers
 		(map cadr bindings)))))
-    (if (there-exists? discards (lambda (discard) discard))
+    (if (any (lambda (discard) discard) discards)
 	(values identifier
 		(apply-discards-to-list discards bindings)
 		(apply-discards-to-calls identifier discards body))
@@ -518,7 +518,7 @@ USA.
 	(let ((discards
 	       (map (lambda (count) (= 0 count))
 		    (count-references identifiers body*))))
-	  (if (there-exists? discards (lambda (discard) discard))
+	  (if (any (lambda (discard) discard) discards)
 	      (values `(LAMBDA ,(apply-discards-to-list discards identifiers)
 			 ,body*)
 		      (apply-discards-to-calls identifier discards body))

@@ -43,9 +43,9 @@ USA.
 
 (define (make-uri scheme authority path query fragment)
   (let ((path (if (equal? path '("")) '() path)))
-    (if scheme (guarantee-uri-scheme scheme 'MAKE-URI))
-    (if authority (guarantee-uri-authority authority 'MAKE-URI))
-    (guarantee-uri-path path 'MAKE-URI)
+    (if scheme (guarantee uri-scheme? scheme 'MAKE-URI))
+    (if authority (guarantee uri-authority? authority 'MAKE-URI))
+    (guarantee uri-path? path 'MAKE-URI)
     (if query (guarantee string? query 'MAKE-URI))
     (if fragment (guarantee string? fragment 'MAKE-URI))
     (if (and authority (pair? path) (path-relative? path))
@@ -94,7 +94,7 @@ USA.
   (list-of-type? object string?))
 
 (define (uri-path-absolute? path)
-  (guarantee-uri-path path 'URI-PATH-ABSOLUTE?)
+  (guarantee uri-path? path 'URI-PATH-ABSOLUTE?)
   (path-absolute? path))
 
 (define (path-absolute? path)
@@ -102,7 +102,7 @@ USA.
        (fix:= 0 (string-length (car path)))))
 
 (define (uri-path-relative? path)
-  (guarantee-uri-path path 'URI-PATH-RELATIVE?)
+  (guarantee uri-path? path 'URI-PATH-RELATIVE?)
   (path-relative? path))
 
 (define-integrable (path-relative? path)
@@ -123,9 +123,9 @@ USA.
 		(write-uri-authority authority port)))))))
 
 (define (make-uri-authority userinfo host port)
-  (if userinfo (guarantee-uri-userinfo userinfo 'MAKE-URI-AUTHORITY))
-  (guarantee-uri-host host 'MAKE-URI-AUTHORITY)
-  (if port (guarantee-uri-port port 'MAKE-URI-AUTHORITY))
+  (if userinfo (guarantee uri-userinfo? userinfo 'MAKE-URI-AUTHORITY))
+  (guarantee uri-host? host 'MAKE-URI-AUTHORITY)
+  (if port (guarantee uri-port? port 'MAKE-URI-AUTHORITY))
   (hash-table/intern! interned-uri-authorities
       (call-with-output-string
 	(lambda (output)
@@ -156,8 +156,8 @@ USA.
        (->uri u2 'URI=?)))
 
 (define (uri-authority=? a1 a2)
-  (guarantee-uri-authority a1 'URI-AUTHORITY=?)
-  (guarantee-uri-authority a2 'URI-AUTHORITY=?)
+  (guarantee uri-authority? a1 'URI-AUTHORITY=?)
+  (guarantee uri-authority? a2 'URI-AUTHORITY=?)
   (eq? a1 a2))
 
 (define (uri->alist uri)
@@ -926,7 +926,7 @@ USA.
       (write-partial-uri puri port))))
 
 (define (write-partial-uri puri port)
-  (guarantee-partial-uri puri 'WRITE-PARTIAL-URI)
+  (guarantee partial-uri? puri 'WRITE-PARTIAL-URI)
   (let ((write-component
 	 (lambda (component prefix suffix)
 	   (if component

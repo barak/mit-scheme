@@ -154,12 +154,6 @@ Returns @samp{#t} if @var{object} is an arity object, and @samp{#f}
 otherwise.
 @end deffn
 
-@deffn procedure guarantee-procedure-arity object caller
-Signals an error if @var{object} is not an arity object.  @var{Caller}
-is a symbol that is printed as part of the error message and is
-intended to be the name of the procedure where the error occurs.
-@end deffn
-
 @deffn procedure procedure-arity-min arity
 @deffnx procedure procedure-arity-max arity
 Return the lower and upper bounds of @var{arity}, respectively.
@@ -230,13 +224,6 @@ zero arguments, and @samp{#f} otherwise.  Equivalent to:
 (procedure-of-arity? @var{object} 0)
 @end group
 @end example
-@end deffn
-
-@deffn procedure guarantee-thunk object caller
-Signals an error if @var{object} is not a procedure accepting zero
-arguments.  @var{Caller} is a symbol that is printed as part of the
-error message and is intended to be the name of the procedure where
-the error occurs.
 @end deffn
 
 
@@ -609,13 +596,6 @@ Returns @samp{#t} if @var{object} is a generic procedure,
 and @samp{#f} otherwise.
 @end deffn
 
-@deffn procedure guarantee-generic-procedure object caller
-Signals an error if @var{object} is not a generic procedure.
-@var{Caller} is a symbol that is printed as part of the error message
-and is intended to be the name of the procedure where the error
-occurs.
-@end deffn
-
 @deffn procedure generic-procedure-arity generic
 Returns the arity of @var{generic}, as given to
 @code{make-generic-procedure}.
@@ -748,10 +728,4 @@ Returns the dispatch tag associate with @var{record-type}.  See
 @deffn procedure dispatch-tag? object
 Returns @samp{#t} if @var{object} is a dispatch tag, and @samp{#f}
 otherwise.
-@end deffn
-
-@deffn procedure guarantee-dispatch-tag object caller
-Signals an error if @var{object} is not a dispatch tag.  @var{Caller}
-is a symbol that is printed as part of the error message and is
-intended to be the name of the procedure where the error occurs.
 @end deffn

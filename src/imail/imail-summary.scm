@@ -96,9 +96,9 @@ FLAGS is a string containing the desired labels, separated by commas."
      (string-append "Flags " flags-string)
      (let ((flags (burst-comma-list-string flags-string)))
        (lambda (m)
-	 (there-exists? (message-flags m)
-	   (lambda (flag)
-	     (flags-member? flag flags))))))))
+	 (any (lambda (flag)
+		(flags-member? flag flags))
+	      (message-flags m)))))))
 
 (define-command imail-summary-by-recipients
   "Display a summary of all messages with the given RECIPIENTS.

@@ -245,7 +245,7 @@ USA.
 ;;;; Selectors
 
 (define (take lis k)
-  (guarantee-index-fixnum k 'TAKE)
+  (guarantee index-fixnum? k 'TAKE)
   (let recur ((lis lis) (k k))
     (if (fix:> k 0)
 	(cons (car lis)
@@ -253,7 +253,7 @@ USA.
 	'())))
 
 (define (drop lis k)
-  (guarantee-index-fixnum k 'DROP)
+  (guarantee index-fixnum? k 'DROP)
   (%drop lis k))
 
 (define (%drop lis k)
@@ -263,7 +263,7 @@ USA.
 	lis)))
 
 (define (take! lis k)
-  (guarantee-index-fixnum k 'TAKE!)
+  (guarantee index-fixnum? k 'TAKE!)
   (if (fix:> k 0)
       (begin
 	(set-cdr! (drop lis (fix:- k 1)) '())
@@ -275,14 +275,14 @@ USA.
 ;;; the end.
 
 (define (take-right lis k)
-  (guarantee-index-fixnum k 'TAKE-RIGHT)
+  (guarantee index-fixnum? k 'TAKE-RIGHT)
   (let lp ((lag lis) (lead (%drop lis k)))
     (if (pair? lead)
 	(lp (cdr lag) (cdr lead))
 	lag)))
 
 (define (drop-right lis k)
-  (guarantee-index-fixnum k 'DROP-RIGHT)
+  (guarantee index-fixnum? k 'DROP-RIGHT)
   (let recur ((lag lis) (lead (%drop lis k)))
     (if (pair? lead)
 	(cons (car lag) (recur (cdr lag) (cdr lead)))
@@ -292,7 +292,7 @@ USA.
 ;;; us stop LAG one step early, in time to smash its cdr to ().
 
 (define (drop-right! lis k)
-  (guarantee-index-fixnum k 'DROP-RIGHT!)
+  (guarantee index-fixnum? k 'DROP-RIGHT!)
   (let ((lead (%drop lis k)))
     (if (pair? lead)
 	;; Standard case
@@ -306,7 +306,7 @@ USA.
 	'())))
 
 (define (split-at x k)
-  (guarantee-index-fixnum k 'SPLIT-AT)
+  (guarantee index-fixnum? k 'SPLIT-AT)
   (let recur ((lis x) (k k))
     (if (fix:> k 0)
 	(receive (prefix suffix) (recur (cdr lis) (fix:- k 1))
@@ -314,7 +314,7 @@ USA.
 	(values '() lis))))
 
 (define (split-at! x k)
-  (guarantee-index-fixnum k 'SPLIT-AT!)
+  (guarantee index-fixnum? k 'SPLIT-AT!)
   (if (fix:> k 0)
       (let* ((prev (%drop x (fix:- k 1)))
 	     (suffix (cdr prev)))
@@ -1061,3 +1061,11 @@ USA.
 	      (cons (caar lists) cars)
 	      (cons (cdar lists) cdrs))
 	(values (reverse! cars) (reverse! cdrs)))))
+
+;;;; Backwards compatibility
+
+(define (there-exists? items predicate)
+  (any predicate items))
+
+(define (for-all? items predicate)
+  (every predicate items))

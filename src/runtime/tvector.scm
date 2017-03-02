@@ -33,7 +33,7 @@ USA.
 ;;; calls to construct and access tagged vectors.
 
 (define (make-tagged-vector tag length)
-  (guarantee-dispatch-tag tag 'MAKE-TAGGED-VECTOR)
+  (guarantee dispatch-tag? tag 'MAKE-TAGGED-VECTOR)
   (guarantee-index-integer length 'MAKE-TAGGED-VECTOR)
   (let ((result
 	 (object-new-type (ucode-type record)
@@ -43,7 +43,7 @@ USA.
     result))
 
 (define (tagged-vector tag . elements)
-  (guarantee-dispatch-tag tag 'MAKE-TAGGED-VECTOR)
+  (guarantee dispatch-tag? tag 'MAKE-TAGGED-VECTOR)
   (object-new-type (ucode-type record) (apply vector tag elements)))
 
 (define (tagged-vector? object)
@@ -56,7 +56,7 @@ USA.
 
 (define (set-tagged-vector-tag! vector tag)
   (guarantee-tagged-vector vector 'SET-TAGGED-VECTOR-TAG!)
-  (guarantee-dispatch-tag tag 'SET-TAGGED-VECTOR-TAG!)
+  (guarantee dispatch-tag? tag 'SET-TAGGED-VECTOR-TAG!)
   (%record-set! vector 0 tag))
 
 (define (tagged-vector-length vector)

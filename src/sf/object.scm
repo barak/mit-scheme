@@ -445,7 +445,7 @@ USA.
               (procedure-arity-valid? operator-value (length operands))
               (memq operator-value combination/constant-folding-operators)))
           ;; Check that the arguments are constant.
-       (for-all? operands constant?)))
+       (every constant? operands)))
 
 ;; An operator is reducible if we can safely rewrite its argument list.
 (define (reducible-operator? operator)
@@ -455,11 +455,11 @@ USA.
        (block/safe? (procedure/block operator))
        ;; if there are declarations we don't understand, we
        ;; should leave things alone.
-       (for-all? (declarations/original
-                  (block/declarations (procedure/block operator)))
-                 declarations/known?)
+       (every declarations/known?
+	      (declarations/original
+	       (block/declarations (procedure/block operator))))
        ;; Unintegrated optionals are tricky and rare.  Punt.
-       (for-all? (procedure/optional operator) variable/integrated)
+       (every variable/integrated (procedure/optional operator))
        ;; Unintegrated rest arguments are tricky and rare.  Punt.
        (let ((rest-arg (procedure/rest operator)))
          (or (not rest-arg) (variable/integrated rest-arg)))))

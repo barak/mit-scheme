@@ -38,9 +38,9 @@ USA.
 	 (image-width (fix:* h-sf pic-width)) ;x
 	 (image-height (fix:* v-sf pic-height)) ;iy
 	 (use-string?
-	  (for-all? (vector->list gray-map)
-	    (lambda (n)
-	      (<= 0 n 255))))
+	  (every (lambda (n)
+		   (<= 0 n 255))
+		 (vector->list gray-map)))
 	 (image (image/create window image-width image-height))
 	 (pixels
 	  (if use-string?

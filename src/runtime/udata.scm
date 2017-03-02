@@ -291,7 +291,7 @@ contains constants derived from the source program.
   (system-pair-car promise))
 
 (define (force promise)
-  (guarantee-promise promise 'FORCE)
+  (guarantee promise? promise 'FORCE)
   (case (system-pair-car promise)
     ((#T)
      (system-pair-cdr promise))

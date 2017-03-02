@@ -317,12 +317,12 @@ USA.
 ;;;; Code-point ranges
 
 (define (make-cpr start #!optional end)
-  (guarantee-index-fixnum start 'make-cpr)
+  (guarantee index-fixnum? start 'make-cpr)
   (let ((end
 	 (if (default-object? end)
 	     (fix:+ start 1)
 	     (begin
-	       (guarantee-index-fixnum end 'make-cpr)
+	       (guarantee index-fixnum? end 'make-cpr)
 	       (if (not (fix:< start end))
 		   (error:bad-range-argument end 'make-cpr))
 	       end))))

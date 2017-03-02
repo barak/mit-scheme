@@ -421,7 +421,7 @@ USA.
 	(else '())))
 
 (define (line-ending channel name for-output? caller)
-  (guarantee-symbol name caller)
+  (guarantee symbol? name caller)
   (if (and for-output?
 	   (known-input-line-ending? name)
 	   (not (known-output-line-ending? name)))

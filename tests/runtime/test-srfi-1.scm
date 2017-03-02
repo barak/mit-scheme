@@ -58,7 +58,7 @@ USA.
 	(eq? foo baz)))
 ;Value 9: (#t #f)
 
-;;; iota, 
+;;; iota,
 (iota 5)
 ;Value 10: (0 1 2 3 4)
 
@@ -594,7 +594,7 @@ USA.
 ;Value: #t
 
 
-(lset-adjoin eq? '(a b c d c e) 'a 'e 'i 'o 'u) 
+(lset-adjoin eq? '(a b c d c e) 'a 'e 'i 'o 'u)
 ;Value 67: (u o i a b c d c e)
 
 

@@ -38,10 +38,8 @@ USA.
   current
   (generation 0))
 
-(define-guarantee thread-barrier "thread barrier")
-
 (define (make-thread-barrier count #!optional name)
-  (guarantee-exact-positive-integer count 'MAKE-THREAD-BARRIER)
+  (guarantee exact-positive-integer? count 'MAKE-THREAD-BARRIER)
   (let ((current count)
         (condvar
          (make-condition-variable
@@ -49,7 +47,7 @@ USA.
     (%make-thread-barrier count current condvar)))
 
 (define (thread-barrier-wait barrier)
-  (guarantee-thread-barrier barrier 'THREAD-BARRIER-WAIT)
+  (guarantee thread-barrier? barrier 'THREAD-BARRIER-WAIT)
   (let ((lock (thread-barrier.lock barrier))
 	(condvar (thread-barrier.condvar barrier)))
     (with-thread-mutex-lock lock

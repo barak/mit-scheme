@@ -91,11 +91,10 @@ USA.
    unspecific))
 
 (define (boolean-converter value)
-  (guarantee-boolean value)
-  value)
+  (guarantee boolean? value))
 
 (define (limit-converter value)
-  (if value (guarantee-exact-positive-integer value))
+  (if value (guarantee exact-positive-integer? value))
   value)
 
 (define (radix-converter value)

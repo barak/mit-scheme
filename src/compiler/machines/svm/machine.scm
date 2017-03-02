@@ -225,7 +225,7 @@ USA.
   (ea:pre-decrement rref:stack-pointer 'WORD))
 
 (define (ea:stack-ref index)
-  (guarantee-non-negative-fixnum index 'ea:stack-ref)
+  (guarantee non-negative-fixnum? index 'ea:stack-ref)
   (if (zero? index)
       (ea:indirect rref:stack-pointer)
       (ea:offset rref:stack-pointer index 'WORD)))

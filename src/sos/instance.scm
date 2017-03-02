@@ -182,7 +182,7 @@ USA.
 		    (eq? 'NO-INITIALIZE-INSTANCE init-arg-names))
 		#f)
 	       ((and (list? init-arg-names)
-		     (for-all? init-arg-names symbol?))
+		     (every symbol? init-arg-names))
 		(length init-arg-names))
 	       ((exact-nonnegative-integer? init-arg-names)
 		init-arg-names)

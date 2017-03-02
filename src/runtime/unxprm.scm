@@ -54,8 +54,7 @@ USA.
 	 (if (or (default-object? transformer) (not transformer))
 	     identity-procedure
 	     (begin
-	       (guarantee-procedure-of-arity transformer 1
-					     'TEMPORARY-FILE-PATHNAME)
+	       (guarantee unary-procedure? transformer 'TEMPORARY-FILE-PATHNAME)
 	       transformer))))
     (let loop ((ext 0))
       (let ((pathname
@@ -411,7 +410,7 @@ USA.
     (set-file-modes! output-filename (file-modes input-filename))))
 
 (define (init-file-specifier->pathname specifier)
-  (guarantee-init-file-specifier specifier 'INIT-FILE-SPECIFIER->PATHNAME)
+  (guarantee init-file-specifier? specifier 'INIT-FILE-SPECIFIER->PATHNAME)
   (merge-pathnames (apply string-append
 			  (cons ".mit-scheme"
 				(append-map (lambda (string) (list "/" string))

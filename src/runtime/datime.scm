@@ -81,7 +81,7 @@ USA.
 			   'MAKE-DECODED-TIME)
   (let ((zone (if (default-object? zone) #f zone)))
     (if zone
-	(guarantee-time-zone zone 'MAKE-DECODED-TIME))
+	(guarantee time-zone? zone 'MAKE-DECODED-TIME))
     (if zone
 	(%make-decoded-time second minute hour day month year
 			    (compute-day-of-week day month year)
@@ -106,10 +106,10 @@ USA.
 (define (check-decoded-time-args second minute hour day month year caller)
   (let ((check-range
 	 (lambda (object min max)
-	   (guarantee-exact-nonnegative-integer object caller)
+	   (guarantee exact-nonnegative-integer? object caller)
 	   (if (not (<= min object max))
 	       (error:bad-range-argument object caller)))))
-    (guarantee-exact-nonnegative-integer year caller)
+    (guarantee exact-nonnegative-integer? year caller)
     (check-range month 1 12)
     (check-range day 1 (month/max-days month))
     (check-range hour 0 23)
@@ -349,7 +349,7 @@ USA.
       (write-time-zone tz port))))
 
 (define (write-time-zone tz port)
-  (guarantee-time-zone tz 'WRITE-TIME-ZONE)
+  (guarantee time-zone? tz 'WRITE-TIME-ZONE)
   (let ((minutes (round (* 60 (- tz)))))
     (let ((qr (integer-divide (abs minutes) 60)))
       (write-char (if (< minutes 0) #\- #\+) port)
@@ -481,7 +481,7 @@ USA.
 
 (define (parser:ctime zone)
   (if zone
-      (guarantee-time-zone zone 'PARSER:CTIME))
+      (guarantee time-zone? zone 'PARSER:CTIME))
   (*parser
    (encapsulate (lambda (v)
 		  (make-decoded-time (vector-ref v 5)

@@ -278,8 +278,8 @@ USA.
 
 (define (register-subprocess-event subprocess status thread event)
   (guarantee-subprocess subprocess 'register-subprocess-event)
-  (guarantee-thread thread 'register-subprocess-event)
-  (guarantee-procedure-of-arity event 1 'register-subprocess-event)
+  (guarantee thread? thread 'register-subprocess-event)
+  (guarantee unary-procedure? event 'register-subprocess-event)
   (let ((registration (make-subprocess-registration
 		       subprocess status thread event)))
     (without-interrupts

@@ -154,7 +154,7 @@ USA.
       (with-output-to-truncated-string max (lambda () (write object)))))
 
 (define (pa procedure)
-  (guarantee-procedure procedure 'PA)
+  (guarantee procedure? procedure 'PA)
   (cond ((procedure-lambda procedure)
 	 => (lambda (scode)
 	      (pp (unsyntax-lambda-list scode))))
@@ -438,15 +438,8 @@ USA.
 (define (make-hook-list)
   (%make-hook-list '()))
 
-(define (guarantee-hook-list object caller)
-  (if (not (hook-list? object))
-      (error:not-hook-list object caller)))
-
-(define (error:not-hook-list object caller)
-  (error:wrong-type-argument object "hook list" caller))
-
 (define (append-hook-to-list hook-list key hook)
-  (guarantee-hook-list hook-list 'APPEND-HOOK-TO-LIST)
+  (guarantee hook-list? hook-list 'APPEND-HOOK-TO-LIST)
   (let loop ((alist (hook-list-hooks hook-list)) (prev #f))
     (if (pair? alist)
 	(loop (cdr alist)
@@ -463,7 +456,7 @@ USA.
 	      (set-hook-list-hooks! hook-list tail))))))
 
 (define (remove-hook-from-list hook-list key)
-  (guarantee-hook-list hook-list 'REMOVE-HOOK-FROM-LIST)
+  (guarantee hook-list? hook-list 'REMOVE-HOOK-FROM-LIST)
   (let loop ((alist (hook-list-hooks hook-list)) (prev #f))
     (if (pair? alist)
 	(loop (cdr alist)
@@ -476,11 +469,11 @@ USA.
 		  alist)))))
 
 (define (hook-in-list? hook-list key)
-  (guarantee-hook-list hook-list 'HOOK-IN-LIST?)
+  (guarantee hook-list? hook-list 'HOOK-IN-LIST?)
   (if (assq key (hook-list-hooks hook-list)) #t #f))
 
 (define (run-hooks-in-list hook-list . arguments)
-  (guarantee-hook-list hook-list 'RUN-HOOKS-IN-LIST)
+  (guarantee hook-list? hook-list 'RUN-HOOKS-IN-LIST)
   (for-each (lambda (p)
 	      (apply (cdr p) arguments))
 	    (hook-list-hooks hook-list)))

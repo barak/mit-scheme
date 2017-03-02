@@ -39,8 +39,6 @@ USA.
   (or (eq? object #f)
       (eq? object #t)))
 
-(define-guarantee boolean "boolean")
-
 (define (boolean=? x y)
   (if x y (not y)))
 
@@ -59,25 +57,3 @@ USA.
 	    (loop (cdr arguments))
 	    #f)
 	#t)))
-
-(define (there-exists? items predicate)
-  (let loop ((items* items))
-    (if (pair? items*)
-	(if (predicate (car items*))
-	    #t
-	    (loop (cdr items*)))
-	(begin
-	  (if (not (null? items*))
-	      (error:not-list items 'THERE-EXISTS?))
-	  #f))))
-
-(define (for-all? items predicate)
-  (let loop ((items* items))
-    (if (pair? items*)
-	(if (predicate (car items*))
-	    (loop (cdr items*))
-	    #f)
-	(begin
-	  (if (not (null? items*))
-	      (error:not-list items 'FOR-ALL?))
-	  #t))))

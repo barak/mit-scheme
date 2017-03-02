@@ -443,7 +443,7 @@ USA.
 	  ((dequeue! queue) repl)))))
 
 (define (run-in-nearest-repl procedure)
-  (guarantee-procedure-of-arity procedure 1 'run-in-nearest-repl)
+  (guarantee unary-procedure? procedure 'run-in-nearest-repl)
   (enqueue! (repl/input-queue (nearest-repl)) procedure))
 
 (define (repl-read #!optional environment repl)
@@ -520,13 +520,11 @@ USA.
 	 (if (default-object? repl)
 	     (nearest-repl)
 	     (begin
-	       (guarantee-repl repl caller)
+	       (guarantee repl? repl caller)
 	       repl))))
     (values (if (default-object? environment)
 		(repl/environment repl)
-		(begin
-		  (guarantee-environment environment caller)
-		  environment))
+		(guarantee environment? environment caller))
 	    repl)))
 
 (define (repl/start repl #!optional message)

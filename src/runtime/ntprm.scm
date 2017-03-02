@@ -427,7 +427,7 @@ USA.
 	    (loop (+ index 1))
 	    filename))))
 
-  (guarantee-init-file-specifier specifier 'INIT-FILE-SPECIFIER->PATHNAME)
+  (guarantee init-file-specifier? specifier 'INIT-FILE-SPECIFIER->PATHNAME)
   (let ((long-base (merge-pathnames ".mit-scheme/" (user-homedir-pathname))))
     (if (dos/fs-long-filenames? long-base)
 	(if (pair? specifier)

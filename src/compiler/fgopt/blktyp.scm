@@ -144,9 +144,7 @@ USA.
     (and block*
 	 (let ((closure-block (block-parent block))
 	       (ancestor-block (block-shared-block (block-parent block*))))
-	   (and (for-all?
-		 (refilter-variables (block-bound-variables closure-block)
-				     update? procedure)
+	   (and (every
 		 (let ((bvars (block-bound-variables ancestor-block)))
 		   (lambda (var)
 		     (or (memq var bvars)
@@ -158,7 +156,9 @@ USA.
 					 (procedure/full-closure? val)
 					 (eq? (block-shared-block
 					       (procedure-closing-block val))
-					      ancestor-block)))))))))
+					      ancestor-block))))))))
+		 (refilter-variables (block-bound-variables closure-block)
+				     update? procedure))
 		(graft-child! procedure ancestor-block closure-block))))))
 
 (define (graft-child! procedure ancestor-block closure-block)
@@ -289,17 +289,17 @@ USA.
 			  (closure-block (block-parent block*)))
 		     (if (and (or (not (block-parent closure-block))
 				  ic-parent)
-			      (for-all?
-			       (refilter-variables
-				(block-bound-variables closure-block)
-				update? (block-procedure block*))
+			      (every
 			       (lambda (var)
 				 (or (lvalue-implicit? var unconditional)
 				     (let ((ind (variable-indirection var)))
 				       (memq (if ind
 						 (car ind)
 						 var)
-					     closed-over-variables))))))
+					     closed-over-variables))))
+			       (refilter-variables
+				(block-bound-variables closure-block)
+				update? (block-procedure block*))))
 			 (cons (car conditional) block-closed)
 			 block-closed))))
 	    ((null? (cdr block-closed))

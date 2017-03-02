@@ -87,7 +87,7 @@ USA.
 ;;;; File Syntaxer
 
 (define (syntax-file input-string bin-string spec-string)
-  (guarantee-environment sf/default-syntax-table 'syntax-file)
+  (guarantee environment? sf/default-syntax-table 'syntax-file)
   (guarantee-list-of-type sf/top-level-definitions symbol? 'syntax-file)
   (for-each (lambda (input-string)
 	      (receive (input-pathname bin-pathname spec-pathname)
@@ -221,10 +221,10 @@ USA.
 		       (values (vector-ref object 2) (vector-ref object 3))
 		       (wrong-version (vector-ref object 1))))
 		  ((and (list? object)
-			(for-all? object
-			  (lambda (element)
-			    (and (vector? element)
-				 (= 4 (vector-length element))))))
+			(every (lambda (element)
+				 (and (vector? element)
+				      (= 4 (vector-length element))))
+			       object))
 		   (wrong-version 1))
 		  (else
 		   (error "Not an externs file:" namestring))))

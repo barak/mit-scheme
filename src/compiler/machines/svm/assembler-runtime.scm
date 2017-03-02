@@ -478,9 +478,9 @@ USA.
 				   (symbol? (caddr pattern))
 				   (null? (cdddr pattern))))
 		     (lose))
-		 (if (there-exists? pvars
-		       (lambda (pv)
-			 (eq? (pvar-name pv) (pvar-name pattern))))
+		 (if (any (lambda (pv)
+			    (eq? (pvar-name pv) (pvar-name pattern)))
+			  pvars)
 		     ;; Don't add duplicate pvar.
 		     pvars
 		     (cons pattern pvars)))

@@ -135,9 +135,9 @@ USA.
 
 (define (add-rnode/initial-value! target expression)
   (let ((values (rnode/initial-values target)))
-    (if (not (there-exists? values
-	       (lambda (value)
-		 (rtl:expression=? expression value))))
+    (if (not (any (lambda (value)
+		    (rtl:expression=? expression value))
+		  values))
 	(set-rnode/initial-values! target
 				   (cons expression values)))))
 
@@ -174,9 +174,9 @@ USA.
 		     (values-substitution-step
 		      rnodes
 		      (rnode/classified-values rnode))))
-		(if (there-exists? values
-		      (lambda (value)
-			(eq? (car value) 'SUBSTITUTABLE-REGISTERS)))
+		(if (any (lambda (value)
+			   (eq? (car value) 'SUBSTITUTABLE-REGISTERS))
+			 values)
 		    (set-rnode/classified-values! rnode values)
 		    (let ((expression (values-unique-expression values)))
 		      (if expression (set! new-constant? true))
@@ -203,9 +203,9 @@ USA.
 
 (define (initial-known-value values)
   (and (not (null? values))
-       (not (there-exists? values
-	      (lambda (value)
-		(rtl:volatile-expression? (cdr value)))))
+       (not (any (lambda (value)
+		   (rtl:volatile-expression? (cdr value)))
+		 values))
        (let loop ((value (car values)) (rest (cdr values)))
 	 (cond ((eq? (car value) 'SUBSTITUTABLE-REGISTERS) 'UNDETERMINED)
 	       ((null? rest) (values-unique-expression values))
@@ -214,10 +214,10 @@ USA.
 (define (values-unique-expression values)
   (let ((class (caar values))
 	(expression (cdar values)))
-    (and (for-all? (cdr values)
-	   (lambda (value)
-	     (and (eq? class (car value))
-		  (rtl:expression=? expression (cdr value)))))
+    (and (every (lambda (value)
+		  (and (eq? class (car value))
+		       (rtl:expression=? expression (cdr value))))
+		(cdr values))
 	 expression)))
 
 (define (values-substitution-step rnodes values)

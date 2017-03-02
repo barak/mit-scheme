@@ -225,7 +225,7 @@ USA.
 		       (if adjustment
 			   (cons adjustment adjustments)
 			   adjustments)))
-		  (if (for-all? e (lambda (b) (eqv? (car b) (cdr b))))
+		  (if (every (lambda (b) (eqv? (car b) (cdr b))) e)
 		      (loop (cdr rx) (cdr ry)
 			    (car rx) (car ry)
 			    e adjustments)

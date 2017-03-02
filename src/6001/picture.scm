@@ -144,18 +144,18 @@ USA.
 	(visual-info (vector->list (x-graphics/visual-info window))))
     (let ((find-class
 	   (lambda (class)
-	     (there-exists? visual-info
-	       (lambda (info)
-		 (eqv? class (x-visual-info/class info))))))
+	     (any (lambda (info)
+		    (eqv? class (x-visual-info/class info)))
+		  visual-info)))
 	  (find-range
 	   (lambda (class depth-min depth-max)
-	     (there-exists? visual-info
-	       (lambda (info)
-		 (and (eqv? class (x-visual-info/class info))
-		      ;; kludge, but X made us do it.
-		      (<= depth-min
-			  (x-visual-info/colormap-size info)
-			  depth-max))))))
+	     (any (lambda (info)
+		    (and (eqv? class (x-visual-info/class info))
+			 ;; kludge, but X made us do it.
+			 (<= depth-min
+			     (x-visual-info/colormap-size info)
+			     depth-max)))
+		  visual-info)))
 	  (make-gray-map
 	   (lambda (n-levels)
 	     (let ((gm (make-vector n-levels))

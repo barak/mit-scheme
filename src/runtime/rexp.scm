@@ -43,7 +43,7 @@ USA.
 			 (rexp? (cadr rexp))))))
 	     (case (car rexp)
 	       ((ALTERNATIVES SEQUENCE)
-		(for-all? (cdr rexp) rexp?))
+		(every rexp? (cdr rexp)))
 	       ((GROUP OPTIONAL * +)
 		(and (one-arg)
 		     (not (or (and (string? rexp)
@@ -242,8 +242,8 @@ USA.
 	(apply char-set chars*))))
 
 (define (rexp-n*m n m . rexps)
-  (guarantee-exact-nonnegative-integer n 'REXP-N*M)
-  (guarantee-exact-nonnegative-integer m 'REXP-N*M)
+  (guarantee exact-nonnegative-integer? n 'REXP-N*M)
+  (guarantee exact-nonnegative-integer? m 'REXP-N*M)
   (if (not (<= n m))
       (error:bad-range-argument m 'REXP-N*M))
   (let ((rexp (apply rexp-sequence rexps)))
@@ -262,7 +262,7 @@ USA.
   (apply rexp-n*m 0 n rexps))
 
 (define (rexp-n* n . rexps)
-  (guarantee-exact-nonnegative-integer n 'REXP-N*)
+  (guarantee exact-nonnegative-integer? n 'REXP-N*)
   (let ((rexp (apply rexp-sequence rexps)))
     (if (= n 0)
 	(rexp* rexp)

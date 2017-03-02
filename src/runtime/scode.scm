@@ -96,7 +96,7 @@ USA.
 ;;;; Variable
 
 (define (make-variable name)
-  (guarantee-symbol name 'MAKE-VARIABLE)
+  (guarantee symbol? name 'MAKE-VARIABLE)
   (system-hunk3-cons (ucode-type variable) name #t '()))
 
 (define (variable? object)
@@ -114,7 +114,7 @@ USA.
 ;;;; Definition/Assignment
 
 (define (make-definition name value)
-  (guarantee-symbol name 'MAKE-DEFINITION)
+  (guarantee symbol? name 'MAKE-DEFINITION)
   (&typed-pair-cons (ucode-type definition) name value))
 
 (define (definition? object)
@@ -156,7 +156,7 @@ USA.
 	    (assignment-value assignment)))
 
 (define (make-assignment name value)
-  (guarantee-symbol name 'MAKE-ASSIGNMENT)
+  (guarantee symbol? name 'MAKE-ASSIGNMENT)
   (make-assignment-from-variable (make-variable name) value))
 
 (define (assignment-name assignment)
@@ -243,7 +243,7 @@ USA.
 ;;;; Access
 
 (define (make-access environment name)
-  (guarantee-symbol name 'MAKE-ACCESS)
+  (guarantee symbol? name 'MAKE-ACCESS)
   (&typed-pair-cons (ucode-type access) environment name))
 
 (define (access? object)

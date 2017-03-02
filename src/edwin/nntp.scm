@@ -1376,7 +1376,7 @@ USA.
       ;; is reasonable since I've already seen bad references during the
       ;; first few days of testing.
       (let ((tokens (parse-references-list (news-header:references header))))
-	(if (for-all? tokens valid-message-id?)
+	(if (every valid-message-id? tokens)
 	    tokens
 	    '()))
       '()))
@@ -1487,11 +1487,11 @@ USA.
   (let ((relatives (step header)))
     (list-transform-positive relatives
       (lambda (child)
-	(there-exists? relatives
-	  (lambda (child*)
-	    (and (not (eq? child* child))
-		 (memq child
-		       (compute-header-relatives step table child*)))))))))
+	(any (lambda (child*)
+	       (and (not (eq? child* child))
+		    (memq child
+			  (compute-header-relatives step table child*))))
+	     relatives)))))
 
 (define (compute-header-relatives step table header)
   (let loop ((header header))

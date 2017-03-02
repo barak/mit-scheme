@@ -842,9 +842,9 @@ USA.
   (let ((operands (generate/operands expression
 				     (scode/combination-operands expression)
 				     block continuation context 1)))
-    (if (for-all? operands
-	  (lambda (subpr)
-	    (rvalue/constant? (subproblem-rvalue subpr))))
+    (if (every (lambda (subpr)
+		 (rvalue/constant? (subproblem-rvalue subpr)))
+	       operands)
 	(generate/constant
 	 block continuation context
 	 (list->vector

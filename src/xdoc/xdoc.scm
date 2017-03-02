@@ -867,7 +867,7 @@ USA.
 		(if (not (pair? sources))
 		    (error "Multiple-input test needs at least one input."))
 		(receive (vals submitter) (current-inputs-status sources)
-		  (values (if (there-exists? vals string-null?)
+		  (values (if (any string-null? vals)
 			      "unspecified"
 			      (procedure elt vals sources))
 			  submitter))))))
@@ -1070,14 +1070,14 @@ USA.
 (define (descendant-outputs-submitted? elt)
   (let ((outputs (descendant-outputs elt)))
     (and (pair? outputs)
-	 (for-all? outputs output-submitted?))))
+	 (every output-submitted? outputs))))
 
 (define (confirming-submission? elt)
-  (there-exists? (descendant-outputs elt)
-    (lambda (elt)
-      (receive (request submitter) (xdoc-active-element-request elt)
-	submitter
-	(eq? request 'confirm)))))
+  (any (lambda (elt)
+	 (receive (request submitter) (xdoc-active-element-request elt)
+	   submitter
+	   (eq? request 'confirm)))
+       (descendant-outputs elt)))
 
 (define (descendant-outputs elt)
   (matching-descendants-or-self elt xdoc-output?))
@@ -1085,13 +1085,13 @@ USA.
 (define (xdoc-outputs-submitted? elt)
   (let ((outputs (descendant-outputs elt)))
     (and (pair? outputs)
-	 (for-all? outputs
-	   (lambda (elt)
-	     (let ((id (xdoc-db-id elt)))
-	       (receive (correctness submitter)
-		   (db-previously-saved-output id)
-		 correctness
-		 submitter)))))))
+	 (every (lambda (elt)
+		  (let ((id (xdoc-db-id elt)))
+		    (receive (correctness submitter)
+			(db-previously-saved-output id)
+		      correctness
+		      submitter)))
+		outputs))))
 
 (define-html-generator 'case
   (lambda (elt)
@@ -1112,11 +1112,10 @@ USA.
 	  (if (pair? choices)
 	      (let ((choice (car choices)))
 		(if (cond ((xd:choice? choice)
-			   (there-exists?
-			       (attribute-value->list
-				(find-attribute 'values choice #t))
-			     (lambda (token*)
-			       (string=? token* token))))
+			   (any (lambda (token*)
+				  (string=? token* token))
+				(attribute-value->list
+				 (find-attribute 'values choice #t))))
 			  ((xd:default? choice)
 			   (if (not (null? (cdr choices)))
 			       (error "<xd:default> must be last child:"
@@ -1153,7 +1152,7 @@ USA.
 		   container)
 		 (nearest-container elt)))))
       (let ((inputs (descendant-inputs container)))
-	(if (for-all? inputs input-submitted?)
+	(if (every input-submitted? inputs)
 	    #f
 	    (html:input
 	     (xdoc-attributes

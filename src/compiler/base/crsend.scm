@@ -131,7 +131,7 @@ USA.
      (if (compiled-code-block? code-vector)
 	 code-vector
 	 (begin
-	   (guarantee-vector code-vector #f)
+	   (guarantee vector? code-vector #f)
 	   (let ((new-code-vector
 		  (cross-link/finish-assembly
 		   (cc-code-block/bit-string code-vector)

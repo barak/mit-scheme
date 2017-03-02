@@ -62,12 +62,8 @@ USA.
   (%record-set! t i x))
 
 (define (dispatch-tag-contents tag)
-  (guarantee-dispatch-tag tag 'DISPATCH-TAG-CONTENTS)
+  (guarantee dispatch-tag? tag 'DISPATCH-TAG-CONTENTS)
   (%record-ref tag 1))
-
-(define-integrable (guarantee-dispatch-tag tag caller)
-  (if (not (dispatch-tag? tag))
-      (error:wrong-type-argument tag "dispatch tag" caller)))
 
 (declare (integrate-operator next-dispatch-tag-index))
 (define (next-dispatch-tag-index index)

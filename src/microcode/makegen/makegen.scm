@@ -194,9 +194,9 @@ USA.
 (define (maybe-update-dependencies deps-filename source-files)
   (if (let ((mtime (file-modification-time deps-filename)))
 	(or (not mtime)
-	    (there-exists? source-files
-	      (lambda (source-file)
-		(> (file-modification-time source-file) mtime)))))
+	    (any (lambda (source-file)
+		   (> (file-modification-time source-file) mtime))
+		 source-files)))
       (let ((rules (map generate-rule source-files)))
 	(call-with-output-file deps-filename
 	  (lambda (output)

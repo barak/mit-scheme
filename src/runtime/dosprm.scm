@@ -382,7 +382,7 @@ USA.
 	    (loop (+ index 1))
 	    filename))))
 
-  (guarantee-init-file-specifier specifier 'INIT-FILE-SPECIFIER->PATHNAME)
+  (guarantee init-file-specifier? specifier 'INIT-FILE-SPECIFIER->PATHNAME)
   (let ((short-base (merge-pathnames "mitschem.ini/" (user-homedir-pathname))))
     (let ((file-map-pathname (merge-pathnames "filemap.dat" short-base)))
       (let ((port #f))

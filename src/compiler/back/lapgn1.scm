@@ -118,9 +118,9 @@ USA.
     (let ((next (edge-next-node edge)))
       (if (and next (not (node-marked? next)))
 	  (let ((previous (node-previous-edges next)))
-	    (cond ((for-all? previous
-		     (lambda (edge)
-		       (memq edge (rgraph-entry-edges rgraph))))
+	    (cond ((every (lambda (edge)
+			    (memq edge (rgraph-entry-edges rgraph)))
+			  previous)
 		   ;; Assumption: no action needed to clear existing
 		   ;; register map at this point.
 		   (loop next (empty-register-map)))

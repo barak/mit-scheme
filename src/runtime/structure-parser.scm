@@ -642,9 +642,9 @@ USA.
 		     (loop (cdr vals*)
 			   tail))))
 	  (else
-	   (error:not-structure-parser-values
-	    vals
-	    'STRUCTURE-PARSER-VALUES->LIST)))))
+	   (error:not-a structure-parser-values?
+			vals
+			'STRUCTURE-PARSER-VALUES->LIST)))))
 
 (define (list->structure-parser-values items)
   (map (lambda (item)
@@ -665,8 +665,8 @@ USA.
 	       (cons (loop (car vals*))
 		     (loop (cdr vals*)))))
 	  (else
-	   (error:not-structure-parser-values vals
-					      'MAP-STRUCTURE-PARSER-VALUES)))))
+	   (error:not-a structure-parser-values? vals
+			'MAP-STRUCTURE-PARSER-VALUES)))))
 
 (define (structure-parser-values? object)
   (let loop ((object object))
@@ -675,8 +675,6 @@ USA.
 	     (or (eq? (car object) single-val-marker)
 		 (and (loop (car object))
 		      (loop (cdr object))))))))
-
-(define-guarantee structure-parser-values "object-parser values")
 
 (define (structure-parser-values-length vals)
   (let loop ((vals* vals))
@@ -688,9 +686,9 @@ USA.
 	       (+ (loop (car vals*))
 		  (loop (cdr vals*)))))
 	  (else
-	   (error:not-structure-parser-values
-	    vals
-	    'STRUCTURE-PARSER-VALUES-LENGTH)))))
+	   (error:not-a structure-parser-values?
+			vals
+			'STRUCTURE-PARSER-VALUES-LENGTH)))))
 
 (define (structure-parser-values-ref vals index)
   (let ((caller 'STRUCTURE-PARSER-VALUES-REF))
@@ -705,7 +703,7 @@ USA.
 		     (cdr vals*))
 		 (push vals* i stack)))
 	    (else
-	     (error:not-structure-parser-values vals caller))))
+	     (error:not-a structure-parser-values? vals caller))))
 
     (define (push vals* i stack)
       (loop (car vals*)

@@ -73,7 +73,7 @@ USA.
   (if (default-object? char)
       (string-allocate length)
       (begin
-	(guarantee-char char 'MAKE-STRING)
+	(guarantee char? char 'MAKE-STRING)
 	(let ((result (string-allocate length)))
 	  (%substring-fill! result 0 length char)
 	  result))))
@@ -89,7 +89,7 @@ USA.
 
 (define (substring-fill! string start end char)
   (guarantee-substring string start end 'SUBSTRING-FILL)
-  (guarantee-char char 'SUBSTRING-FILL)
+  (guarantee char? char 'SUBSTRING-FILL)
   (%substring-fill! string start end char))
 
 (define (%substring-fill! string start end char)
@@ -736,30 +736,30 @@ USA.
 
 (define (string-replace string char1 char2)
   (guarantee-string string 'STRING-REPLACE)
-  (guarantee-char char1 'STRING-REPLACE)
-  (guarantee-char char2 'STRING-REPLACE)
+  (guarantee char? char1 'STRING-REPLACE)
+  (guarantee char? char2 'STRING-REPLACE)
   (let ((string (%string-copy string)))
     (%substring-replace! string 0 (string-length string) char1 char2)
     string))
 
 (define (substring-replace string start end char1 char2)
   (guarantee-substring string start end 'SUBSTRING-REPLACE)
-  (guarantee-char char1 'SUBSTRING-REPLACE)
-  (guarantee-char char2 'SUBSTRING-REPLACE)
+  (guarantee char? char1 'SUBSTRING-REPLACE)
+  (guarantee char? char2 'SUBSTRING-REPLACE)
   (let ((string (%string-copy string)))
     (%substring-replace! string start end char1 char2)
     string))
 
 (define (string-replace! string char1 char2)
   (guarantee-string string 'STRING-REPLACE!)
-  (guarantee-char char1 'STRING-REPLACE!)
-  (guarantee-char char2 'STRING-REPLACE!)
+  (guarantee char? char1 'STRING-REPLACE!)
+  (guarantee char? char2 'STRING-REPLACE!)
   (%substring-replace! string 0 (string-length string) char1 char2))
 
 (define (substring-replace! string start end char1 char2)
   (guarantee-substring string start end 'SUBSTRING-REPLACE!)
-  (guarantee-char char1 'SUBSTRING-REPLACE!)
-  (guarantee-char char2 'SUBSTRING-REPLACE!)
+  (guarantee char? char1 'SUBSTRING-REPLACE!)
+  (guarantee char? char2 'SUBSTRING-REPLACE!)
   (%substring-replace! string start end char1 char2))
 
 (define (%substring-replace! string start end char1 char2)
@@ -1165,7 +1165,7 @@ USA.
 				  (if (default-object? char)
 				      #\space
 				      (begin
-					(guarantee-char char 'STRING-PAD-RIGHT)
+					(guarantee char? char 'STRING-PAD-RIGHT)
 					char)))))
 	  result))))
 
@@ -1184,7 +1184,7 @@ USA.
 				  (if (default-object? char)
 				      #\space
 				      (begin
-					(guarantee-char char 'STRING-PAD-RIGHT)
+					(guarantee char? char 'STRING-PAD-RIGHT)
 					char)))
 		(%substring-move! string 0 length result i)))
 	  result))))
@@ -1193,12 +1193,12 @@ USA.
 
 (define (string-find-next-char string char)
   (guarantee-string string 'STRING-FIND-NEXT-CHAR)
-  (guarantee-char char 'STRING-FIND-NEXT-CHAR)
+  (guarantee char? char 'STRING-FIND-NEXT-CHAR)
   (%substring-find-next-char string 0 (string-length string) char))
 
 (define (substring-find-next-char string start end char)
   (guarantee-substring string start end 'SUBSTRING-FIND-NEXT-CHAR)
-  (guarantee-char char 'SUBSTRING-FIND-NEXT-CHAR)
+  (guarantee char? char 'SUBSTRING-FIND-NEXT-CHAR)
   (%substring-find-next-char string start end char))
 
 (define (%substring-find-next-char string start end char)
@@ -1209,12 +1209,12 @@ USA.
 
 (define (string-find-next-char-ci string char)
   (guarantee-string string 'STRING-FIND-NEXT-CHAR-CI)
-  (guarantee-char char 'STRING-FIND-NEXT-CHAR-CI)
+  (guarantee char? char 'STRING-FIND-NEXT-CHAR-CI)
   (%substring-find-next-char-ci string 0 (string-length string) char))
 
 (define (substring-find-next-char-ci string start end char)
   (guarantee-substring string start end 'SUBSTRING-FIND-NEXT-CHAR-CI)
-  (guarantee-char char 'SUBSTRING-FIND-NEXT-CHAR-CI)
+  (guarantee char? char 'SUBSTRING-FIND-NEXT-CHAR-CI)
   (%substring-find-next-char-ci string start end char))
 
 (define (%substring-find-next-char-ci string start end char)
@@ -1225,12 +1225,12 @@ USA.
 
 (define (string-find-previous-char string char)
   (guarantee-string string 'STRING-FIND-PREVIOUS-CHAR)
-  (guarantee-char char 'STRING-FIND-PREVIOUS-CHAR)
+  (guarantee char? char 'STRING-FIND-PREVIOUS-CHAR)
   (%substring-find-previous-char string 0 (string-length string) char))
 
 (define (substring-find-previous-char string start end char)
   (guarantee-substring string start end 'SUBSTRING-FIND-PREVIOUS-CHAR)
-  (guarantee-char char 'SUBSTRING-FIND-PREVIOUS-CHAR)
+  (guarantee char? char 'SUBSTRING-FIND-PREVIOUS-CHAR)
   (%substring-find-previous-char string start end char))
 
 (define (%substring-find-previous-char string start end char)
@@ -1243,12 +1243,12 @@ USA.
 
 (define (string-find-previous-char-ci string char)
   (guarantee-string string 'STRING-FIND-PREVIOUS-CHAR-CI)
-  (guarantee-char char 'STRING-FIND-PREVIOUS-CHAR-CI)
+  (guarantee char? char 'STRING-FIND-PREVIOUS-CHAR-CI)
   (%substring-find-previous-char-ci string 0 (string-length string) char))
 
 (define (substring-find-previous-char-ci string start end char)
   (guarantee-substring string start end 'SUBSTRING-FIND-PREVIOUS-CHAR-CI)
-  (guarantee-char char 'SUBSTRING-FIND-PREVIOUS-CHAR-CI)
+  (guarantee char? char 'SUBSTRING-FIND-PREVIOUS-CHAR-CI)
   (%substring-find-previous-char-ci string start end char))
 
 (define (%substring-find-previous-char-ci string start end char)

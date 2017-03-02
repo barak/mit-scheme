@@ -93,15 +93,11 @@ USA.
 
   (properties #f read-only #t))
 
-(define-integrable (guarantee-thread thread procedure)
-  (if (not (thread? thread))
-      (error:wrong-type-argument thread "thread" procedure)))
-
 (define no-exit-value-marker
   (list 'NO-EXIT-VALUE-MARKER))
 
 (define (thread-dead? thread)
-  (guarantee-thread thread 'THREAD-DEAD?)
+  (guarantee thread? thread 'THREAD-DEAD?)
   (eq? 'DEAD (thread/execution-state thread)))
 
 (define thread-population)
@@ -200,7 +196,7 @@ USA.
   (map-over-population thread-population (lambda (thread) thread)))
 
 (define (thread-execution-state thread)
-  (guarantee-thread thread 'THREAD-EXECUTION-STATE)
+  (guarantee thread? thread 'THREAD-EXECUTION-STATE)
   (thread/execution-state thread))
 
 (define (create-thread root-continuation thunk)
@@ -274,7 +270,7 @@ USA.
   (thread/next (current-thread)))
 
 (define (thread-continuation thread)
-  (guarantee-thread thread 'THREAD-CONTINUATION)
+  (guarantee thread? thread 'THREAD-CONTINUATION)
   (without-interrupts
    (lambda ()
      (and (eq? 'WAITING (thread/execution-state thread))
@@ -360,7 +356,7 @@ USA.
 	    (thread-not-running thread 'STOPPED))))))))
 
 (define (restart-thread thread discard-events? event)
-  (guarantee-thread thread 'RESTART-THREAD)
+  (guarantee thread? thread 'RESTART-THREAD)
   (let ((discard-events?
 	 (if (eq? discard-events? 'ASK)
 	     (prompt-for-confirmation
@@ -484,7 +480,7 @@ USA.
     (thread-not-running thread 'DEAD)))
 
 (define (join-thread thread event-constructor)
-  (guarantee-thread thread 'JOIN-THREAD)
+  (guarantee thread? thread 'JOIN-THREAD)
   (let ((self (current-thread)))
     (if (eq? thread self)
 	(signal-thread-deadlock self "join thread" join-thread thread)
@@ -507,7 +503,7 @@ USA.
 		     (event-constructor thread value))))))))))
 
 (define (detach-thread thread)
-  (guarantee-thread thread 'DETACH-THREAD)
+  (guarantee thread? thread 'DETACH-THREAD)
   (without-interrupts
    (lambda ()
      (if (eq? (thread/exit-value thread) detached-thread-marker)
@@ -682,7 +678,7 @@ USA.
 
 (define (register-io-thread-event descriptor mode thread event)
   (guarantee-select-mode mode 'REGISTER-IO-THREAD-EVENT)
-  (guarantee-thread thread 'REGISTER-IO-THREAD-EVENT)
+  (guarantee thread? thread 'REGISTER-IO-THREAD-EVENT)
   (without-interrupts
    (lambda ()
      (let ((registration
@@ -906,7 +902,7 @@ USA.
      unspecific)))
 
 (define (signal-thread-event thread event #!optional no-error?)
-  (guarantee-thread thread 'SIGNAL-THREAD-EVENT)
+  (guarantee thread? thread 'SIGNAL-THREAD-EVENT)
   (let ((self first-running-thread)
 	(noerr? (and (not (default-object? no-error?))
 		     no-error?)))
@@ -1098,7 +1094,7 @@ USA.
 
 (define (set-thread-timer-interval! interval)
   (if interval
-      (guarantee-exact-positive-integer interval 'SET-THREAD-TIMER-INTERVAL!))
+      (guarantee exact-positive-integer? interval 'SET-THREAD-TIMER-INTERVAL!))
   (without-interrupts
     (lambda ()
       (set! timer-interval interval)

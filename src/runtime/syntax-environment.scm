@@ -51,7 +51,7 @@ USA.
 	((syntactic-environment? object)
 	 object)
 	(else
-	 (error:not-syntactic-environment object caller))))
+	 (error:not-a syntactic-environment? object caller))))
 
 (define (senv-type senv)
   ((senv-ops:type (senv-ops senv)) (senv-state senv)))
@@ -108,7 +108,7 @@ USA.
 ;;; modified.
 
 (define (runtime-environment->syntactic-environment env)
-  (guarantee-environment env 'environment->syntactic-environment)
+  (guarantee environment? env 'environment->syntactic-environment)
   (make-senv runtime-senv-ops env))
 
 (define runtime-senv-ops
@@ -134,7 +134,7 @@ USA.
 ;;; They are always layered over a real syntactic environment.
 
 (define (make-top-level-syntactic-environment parent)
-  (guarantee-syntactic-environment parent 'make-top-level-syntactic-environment)
+  (guarantee syntactic-environment? parent 'make-top-level-syntactic-environment)
   (if (not (let ((type (senv-type parent)))
 	     (or (eq? type 'top-level)
 		 (eq? type 'runtime-top-level)
@@ -175,7 +175,7 @@ USA.
 ;;; procedure application.
 
 (define (make-internal-syntactic-environment parent)
-  (guarantee-syntactic-environment parent 'make-internal-syntactic-environment)
+  (guarantee syntactic-environment? parent 'make-internal-syntactic-environment)
   (make-senv internal-senv-ops
 	     (make-internal-state parent '() '() (make-rename-id))))
 
@@ -226,11 +226,11 @@ USA.
 ;;; closures that have free names.
 
 (define (make-partial-syntactic-environment names names-senv else-senv)
-  (guarantee-list-of-unique-symbols names 'make-partial-syntactic-environment)
-  (guarantee-syntactic-environment names-senv
-				   'make-partial-syntactic-environment)
-  (guarantee-syntactic-environment else-senv
-				   'make-partial-syntactic-environment)
+  (guarantee list-of-unique-symbols? names 'make-partial-syntactic-environment)
+  (guarantee syntactic-environment? names-senv
+	     'make-partial-syntactic-environment)
+  (guarantee syntactic-environment? else-senv
+	     'make-partial-syntactic-environment)
   (if (or (null? names)
 	  (eq? names-senv else-senv))
       else-senv

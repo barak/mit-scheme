@@ -58,9 +58,9 @@ USA.
 				  (else
 				   (stack-block/external-ancestor block))))))))
 	      (and adjustment
-		   (if (for-all? (block-popping-limits block)
-			 (lambda (limit)
-			   (block-ancestor-or-self? adjustment limit)))
+		   (if (every (lambda (limit)
+				(block-ancestor-or-self? adjustment limit))
+			      (block-popping-limits block))
 		       (cons 'KNOWN adjustment)
 		       (let ((limit (block-popping-limit block)))
 			 (if limit
@@ -266,9 +266,9 @@ USA.
 	 rest)
 	((first-node-needs-temporary? nodes)
 	 (linearize-subproblem!
-	  (if (for-all? (cdr nodes)
-		(lambda (node)
-		  (subproblem-simple? (node-value node))))
+	  (if (every (lambda (node)
+		       (subproblem-simple? (node-value node)))
+		     (cdr nodes))
 	      continuation-type/register
 	      continuation-type/push)
 	  (node-value (car nodes))

@@ -284,7 +284,7 @@ Has no effect if evaluate-in-inferior-repl is false."
 	 (if (default-object? environment)
 	     (evaluation-environment)
 	     (begin
-	       (guarantee-environment environment 'PROMPT-FOR-EXPRESSION-VALUE)
+	       (guarantee environment? environment 'PROMPT-FOR-EXPRESSION-VALUE)
 	       environment))))
     (eval-with-history (apply prompt-for-expression
 			      prompt
@@ -302,7 +302,7 @@ Has no effect if evaluate-in-inferior-repl is false."
 	 (if (default-object? environment)
 	     (evaluation-environment)
 	     (begin
-	       (guarantee-environment environment 'PROMPT-FOR-EXPRESSION)
+	       (guarantee environment? environment 'PROMPT-FOR-EXPRESSION)
 	       environment))))
     (read-from-string
      (apply prompt-for-string

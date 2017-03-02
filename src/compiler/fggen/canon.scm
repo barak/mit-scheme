@@ -430,7 +430,7 @@ ARBITRARY:	The expression may be executed more than once.  It
 			       (collect knames kvals directive-wrapper))
 			 (join (collect knames kvals directive-wrapper)
 			       (collect vnames vvals identity-procedure))))))
-	    (for-all? values canout-safe?)
+	    (every canout-safe? values)
 	    true
 	    false))
 	  ((pseudo-constant? (car values))

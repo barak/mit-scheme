@@ -279,7 +279,7 @@ USA.
 	     'content value))
 
 (define (html:style-attr . keyword-list)
-  (guarantee-keyword-list keyword-list 'HTML:STYLE-ATTR)
+  (guarantee keyword-list? keyword-list 'HTML:STYLE-ATTR)
   (if (pair? keyword-list)
       (let loop ((bindings keyword-list))
 	(string-append (symbol->string (car bindings))

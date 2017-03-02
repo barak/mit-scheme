@@ -573,11 +573,11 @@ merge in the changes into your working copy."
 	    (vc-start-entry
 	     buffer
 	     "Enter a change comment for the marked files."
-	     (if (there-exists? files
-		   (lambda (file)
-		     (let ((master (file-vc-master (car file) #f)))
-		       (and master
-			    (eq? (vc-backend-next-action master) 'CHECKIN)))))
+	     (if (any (lambda (file)
+			(let ((master (file-vc-master (car file) #f)))
+			  (and master
+			       (eq? (vc-backend-next-action master) 'CHECKIN))))
+		      files)
 		 #f
 		 "")
 	     (lambda (comment)

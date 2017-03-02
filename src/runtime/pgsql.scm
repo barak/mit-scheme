@@ -81,7 +81,7 @@ USA.
 	 (ill-formed-syntax form)))))
 
 (define (index->name index enum)
-  (guarantee-index-fixnum index 'INDEX->NAME)
+  (guarantee index-fixnum? index 'INDEX->NAME)
   (if (not (fix:< index (vector-length enum)))
       (error:bad-range-argument index 'INDEX->NAME))
   (vector-ref enum index))
