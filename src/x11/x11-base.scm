@@ -280,7 +280,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 					     (= nbytes 1)
 					     (= (C-> buffer "char")
 						(char->integer #\backspace)))
-					(char->string #\Delete))
+					"\177")
 				       ((> nbytes 0)
 					(let ((bv (make-bytevector nbytes)))
 					  (c-peek-bytes buffer 0 nbytes bv 0)
