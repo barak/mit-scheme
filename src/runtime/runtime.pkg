@@ -971,27 +971,10 @@ USA.
   (parent (runtime))
   (export () deprecated:ustring
 	  (string-hash-mod string-hash)
-	  (string-search-all string-find-all-matches)
-	  (string-search-forward string-find-first-match)
 	  (substring->list string->list)
 	  (substring-move-left! substring-move!)
 	  (substring-move-right! substring-move!)
-	  burst-string
-	  char->string
-	  decorated-string-append
-	  string-find-next-char
-	  string-find-next-char-ci
-	  string-find-next-char-in-set
-	  string-find-previous-char
-	  string-find-previous-char-ci
-	  string-find-previous-char-in-set
 	  string-move!
-	  string-pad-left
-	  string-pad-right
-	  string-search-backward
-	  string-trim
-	  string-trim-left
-	  string-trim-right
 	  substring-ci<?
 	  substring-ci=?
 	  substring-fill!
@@ -1014,8 +997,13 @@ USA.
 	  substring<?
 	  substring=?)
   (export ()
+	  (string-search-all string-find-all-matches)
+	  (string-search-forward string-find-first-match)
 	  (substring string-copy)
 	  8-bit-string?
+	  burst-string
+	  char->string
+	  decorated-string-append
 	  grapheme-cluster-length
 	  grapheme-cluster-slice
 	  list->string
@@ -1047,6 +1035,12 @@ USA.
 	  string-find-first-match
 	  string-find-last-index
 	  string-find-last-match
+	  string-find-next-char
+	  string-find-next-char-ci
+	  string-find-next-char-in-set
+	  string-find-previous-char
+	  string-find-previous-char-ci
+	  string-find-previous-char-in-set
 	  string-foldcase
 	  string-for-each
 	  string-for-primitive		;export to (runtime) after 9.3
@@ -1062,11 +1056,14 @@ USA.
 	  string-match-forward
 	  string-match-forward-ci
 	  string-null?
+	  string-pad-left
+	  string-pad-right
 	  string-padder
 	  string-prefix-ci?
 	  string-prefix?
 	  string-ref
 	  string-replace
+	  string-search-backward
 	  string-set!
 	  string-slice
 	  string-splitter
@@ -1074,6 +1071,9 @@ USA.
 	  string-suffix?
 	  string-tail
 	  string-titlecase
+	  string-trim
+	  string-trim-left
+	  string-trim-right
 	  string-trimmer
 	  string-upcase
 	  string-upper-case?

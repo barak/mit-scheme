@@ -197,8 +197,6 @@ USA.
 	  string-hash
 	  string-head
 	  string-head!
-	  string-joiner
-	  string-joiner*
 	  string-length
 	  string-lower-case?
 	  string-map
@@ -220,7 +218,6 @@ USA.
 	  string-search-backward
 	  string-search-forward
 	  string-set!
-	  string-splitter
 	  string-suffix-ci?
 	  string-suffix?
 	  string-tail

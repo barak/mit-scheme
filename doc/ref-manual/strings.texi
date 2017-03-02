@@ -361,9 +361,11 @@ foo @result{} "abyde"
 @deffn string->vector string [start [end]]
 @deffn vector->string vector [start [end]]
 
-@deffn string-joiner infix [prefix [suffix]]
-@deffn string-joiner* infix [prefix [suffix]]
-@deffn string-splitter delimiter [allow-runs?]
+@deffn string-joiner [keyword object] @dots{}
+@deffn string-joiner* [keyword object] @dots{}
+@deffn string-splitter [keyword object] @dots{}
+@deffn string-trimmer [keyword object] @dots{}
+@deffn string-padder [keyword object] @dots{}
 
 @deffn string-any proc string1 string @dots{}
 @deffn string-count proc string1 string @dots{}

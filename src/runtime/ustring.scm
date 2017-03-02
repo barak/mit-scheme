@@ -1183,18 +1183,19 @@ USA.
 	       i
 	       (loop (fix:- i 1)))))))
 
-;;;; Joiner/splitter
+;;;; Joiner
 
-(define (string-joiner infix #!optional prefix suffix)
-  (let ((joiner (string-joiner* prefix infix suffix)))
+(define (string-joiner . options)
+  (let ((joiner (%string-joiner options 'string-joiner)))
     (lambda strings
       (joiner strings))))
 
-(define (string-joiner* infix #!optional prefix suffix)
-  (let ((prefix (if (default-object? prefix) "" prefix))
-	(suffix (if (default-object? suffix) "" suffix)))
-    (let ((infix (string-append suffix infix prefix)))
+(define (string-joiner* . options)
+  (%string-joiner options 'string-joiner*))
 
+(define (%string-joiner options caller)
+  (receive (infix prefix suffix) (string-joiner-options options caller)
+    (let ((infix (string-append suffix infix prefix)))
       (lambda (strings)
 	(string-append*
 	 (if (pair? strings)
@@ -1208,34 +1209,50 @@ USA.
 			  (list suffix))))
 	     '()))))))
 
-(define (string-splitter delimiter #!optional allow-runs?)
-  (let ((predicate (splitter-delimiter->predicate delimiter))
-	(allow-runs? (if (default-object? allow-runs?) #t allow-runs?)))
+(define-deferred string-joiner-options
+  (keyword-option-parser
+   (list (list 'infix string? "")
+	 (list 'prefix string? "")
+	 (list 'suffix string? ""))))
+
+;;;; Splitter
 
-    (lambda (string #!optional start end)
-      (let* ((end (fix:end-index end (string-length string) 'string-splitter))
-	     (start (fix:start-index start end 'string-splitter)))
+(define (string-splitter . options)
+  (receive (delimiter allow-runs? copy?)
+      (string-splitter-options options 'string-splitter)
+    (let ((predicate (splitter-delimiter->predicate delimiter))
+	  (get-part (if copy? string-copy string-slice)))
 
-	(define (find-start start)
-	  (if allow-runs?
-	      (let loop ((index start))
-		(if (fix:< index end)
-		    (if (predicate (string-ref string index))
-			(loop (fix:+ index 1))
-			(find-end index (fix:+ index 1)))
-		    '()))
-	      (find-end start start)))
+      (lambda (string #!optional start end)
+	(let* ((end (fix:end-index end (string-length string) 'string-splitter))
+	       (start (fix:start-index start end 'string-splitter)))
 
-	(define (find-end start index)
-	  (let loop ((index index))
-	    (if (fix:< index end)
-		(if (predicate (string-ref string index))
-		    (cons (string-copy string start index)
-			  (find-start (fix:+ index 1)))
-		    (loop (fix:+ index 1)))
-		(list (string-copy string start end)))))
+	  (define (find-start start)
+	    (if allow-runs?
+		(let loop ((index start))
+		  (if (fix:< index end)
+		      (if (predicate (string-ref string index))
+			  (loop (fix:+ index 1))
+			  (find-end index (fix:+ index 1)))
+		      '()))
+		(find-end start start)))
 
-	(find-start start)))))
+	  (define (find-end start index)
+	    (let loop ((index index))
+	      (if (fix:< index end)
+		  (if (predicate (string-ref string index))
+		      (cons (get-part string start index)
+			    (find-start (fix:+ index 1)))
+		      (loop (fix:+ index 1)))
+		  (list (get-part string start end)))))
+
+	  (find-start start))))))
+
+(define-deferred string-splitter-options
+  (keyword-option-parser
+   (list (list 'delimiter splitter-delimiter? char-whitespace?)
+	 (list 'allow-runs? boolean? #t)
+	 (list 'copy? boolean? #f))))
 
 (define (splitter-delimiter->predicate delimiter)
   (cond ((char? delimiter) (char=-predicate delimiter))
@@ -1247,21 +1264,8 @@ USA.
   (or (char? object)
       (char-set? object)
       (unary-procedure? object)))
-
-(define (decorated-string-append prefix infix suffix strings)
-  ((string-joiner* infix prefix suffix) strings))
-
-(define (burst-string string delimiter allow-runs?)
-  ((string-splitter delimiter allow-runs?) string))
-
-(define (string-replace string char1 char2)
-  (guarantee bitless-char? char1 'string-replace)
-  (guarantee bitless-char? char2 'string-replace)
-  (string-map (lambda (char)
-		(if (char=? char char1) char2 char))
-	      string))
 
-;;;; Trimmer/padder
+;;;; Trimmer/Padder
 
 (define (string-trimmer . options)
   (receive (where copy? trim-char?)
@@ -1286,13 +1290,9 @@ USA.
 		     (loop (fix:- index 1))
 		     index)))))))))
 
-(define (one-of values)
-  (lambda (object)
-    (memq object values)))
-
 (define-deferred string-trimmer-options
   (keyword-option-parser
-   (list (list 'where (one-of '(leading trailing both)) 'both)
+   (list (list 'where '(leading trailing both) 'both)
 	 (list 'copy? boolean? #t)
 	 (list 'trim-char? unary-procedure? char-whitespace?))))
 
@@ -1329,7 +1329,7 @@ USA.
 
 (define-deferred string-padder-options
   (keyword-option-parser
-   (list (list 'where (one-of '(leading trailing)) 'leading)
+   (list (list 'where '(leading trailing) 'leading)
 	 (list 'fill-with grapheme-cluster-string? " ")
 	 (list 'clip? boolean? #t))))
 
@@ -1349,6 +1349,13 @@ USA.
 	    (do ((i start (fix:+ i 1)))
 		((not (fix:< i end)))
 	      (cp-vector-set! bytes i cp)))))))
+
+(define (string-replace string char1 char2)
+  (guarantee bitless-char? char1 'string-replace)
+  (guarantee bitless-char? char2 'string-replace)
+  (string-map (lambda (char)
+		(if (char=? char char1) char2 char))
+	      string))
 
 (define (string-hash string #!optional modulus)
   (let ((string* (string-for-primitive string)))
@@ -1559,3 +1566,15 @@ USA.
 
 (define string-pad-left (legacy-string-padder 'leading))
 (define string-pad-right (legacy-string-padder 'trailing))
+
+(define (decorated-string-append prefix infix suffix strings)
+  ((string-joiner* 'prefix prefix
+		   'infix infix
+		   'suffix suffix)
+   strings))
+
+(define (burst-string string delimiter allow-runs?)
+  ((string-splitter 'delimiter delimiter
+		    'allow-runs? allow-runs?
+		    'copy? #t)
+   string))

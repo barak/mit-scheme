@@ -570,7 +570,9 @@ USA.
 
 (define value-manager:code-points
   (value-manager "#"
-		 (let ((splitter (string-splitter #\space #f)))
+		 (let ((splitter
+			(string-splitter 'delimiter #\space
+					 'allow-runs? #f)))
 		   (lambda (value)
 		     (if (string=? "" value)
 			 '()

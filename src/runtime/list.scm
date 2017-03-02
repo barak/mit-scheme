@@ -1428,7 +1428,7 @@ USA.
 	      (cons (cdr (car alist))
 		    (loop (cdr alist))))
 	'())))
-
+
 (define (keyword-option-parser keyword-option-specs)
   (guarantee-list-of keyword-option-spec? keyword-option-specs
 		     'keyword-option-parser)
@@ -1436,17 +1436,38 @@ USA.
     (guarantee keyword-list? options caller)
     (apply values
 	   (map (lambda (spec)
-		  (let ((value (get-keyword-value options (car spec))))
-		    (if (default-object? value)
-			(caddr spec)
-			(guarantee (cadr spec) value caller))))
+		  (receive (name predicate default-value)
+		      (keyword-option-spec-parts spec)
+		    (let ((value (get-keyword-value options name)))
+		      (if (default-object? value)
+			  (begin
+			    (if (default-object? default-value)
+				(error (string "Missing required option '"
+					       name
+					       "':")
+				       options))
+			    default-value)
+			  (guarantee predicate value caller)))))
 		keyword-option-specs))))
 
 (define (keyword-option-spec? object)
   (and (list? object)
-       (fix:= 3 (length object))
+       (memv (length object) '(2 3))
        (interned-symbol? (car object))
-       (unary-procedure? (cadr object))))
+       (or (unary-procedure? (cadr object))
+	   (and (pair? (cadr object))
+		(list-of-type? (cadr object) interned-symbol?)
+		(or (null? (cddr object))
+		    (memq (caddr object) (cadr object)))))))
+
+(define (keyword-option-spec-parts spec)
+  (values (car spec)
+	  (if (pair? (cadr spec))
+	      (lambda (object) (memq object (cadr spec)))
+	      (cadr spec))
+	  (if (null? (cddr spec))
+	      (default-object)
+	      (caddr spec))))
 
 ;;;; Last pair
 
