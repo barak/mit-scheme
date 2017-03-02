@@ -73,7 +73,9 @@ USA.
 		   ((LOCAL)     operations/bind)
 		   ((TOP-LEVEL) operations/bind-top-level)
 		   ((GLOBAL)    operations/bind-global)
-		   (else (error "Unrecognized binding level" (declaration/binding-level declaration))))
+		   (else
+		    (error "Unrecognized binding level"
+			   (declaration/binding-level declaration))))
 		 operations
 		 (declaration/operation declaration)
 		 (declaration/variable declaration)
@@ -166,8 +168,6 @@ USA.
 (define (known-declaration? operation)
   (or (eq? operation 'EXPAND) ; this one is special
       (assq operation known-declarations)))
-
-(define-guarantee known-declaration "known declaration")
 
 ;;;; Integration Declarations
 

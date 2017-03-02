@@ -1970,7 +1970,6 @@ USA.
 	  condition-type:invalid-floating-point-operation
 	  condition-type:macro-binding
 	  condition-type:no-such-restart
-	  condition-type:not-8-bit-char
 	  condition-type:port-error
 	  condition-type:serious-condition
 	  condition-type:simple-condition
@@ -2009,7 +2008,6 @@ USA.
 	  error:file-operation
 	  error:illegal-pathname-component
 	  error:no-such-restart
-	  error:not-8-bit-char
 	  error:wrong-number-of-arguments
 	  error:wrong-type-argument
 	  error:wrong-type-datum

@@ -51,16 +51,6 @@ USA.
   (files "xml-names")
   (parent (runtime xml))
   (export ()
-	  error:not-xml-name
-	  error:not-xml-name-symbol
-	  error:not-xml-namespace-conformant-name
-	  error:not-xml-nmtoken
-	  error:not-xml-qname
-	  guarantee-xml-name
-	  guarantee-xml-name-symbol
-	  guarantee-xml-namespace-conformant-name
-	  guarantee-xml-nmtoken
-	  guarantee-xml-qname
 	  make-xml-name
 	  make-xml-name-symbol
 	  make-xml-nmtoken
@@ -121,42 +111,8 @@ USA.
 	  <xml-parameter-entity-ref>
 	  <xml-processing-instructions>
 	  <xml-unparsed-!entity>
-	  error:not-xml-!attlist
-	  error:not-xml-!element
-	  error:not-xml-!entity
-	  error:not-xml-!notation
-	  error:not-xml-attribute
-	  error:not-xml-attribute-list
-	  error:not-xml-comment
-	  error:not-xml-declaration
-	  error:not-xml-document
-	  error:not-xml-dtd
-	  error:not-xml-element
-	  error:not-xml-entity-ref
-	  error:not-xml-external-id
-	  error:not-xml-parameter-!entity
-	  error:not-xml-parameter-entity-ref
-	  error:not-xml-processing-instructions
-	  error:not-xml-unparsed-!entity
 	  find-xml-attr
 	  flatten-xml-element-content
-	  guarantee-xml-!attlist
-	  guarantee-xml-!element
-	  guarantee-xml-!entity
-	  guarantee-xml-!notation
-	  guarantee-xml-attribute
-	  guarantee-xml-attribute-list
-	  guarantee-xml-comment
-	  guarantee-xml-declaration
-	  guarantee-xml-document
-	  guarantee-xml-dtd
-	  guarantee-xml-element
-	  guarantee-xml-entity-ref
-	  guarantee-xml-external-id
-	  guarantee-xml-parameter-!entity
-	  guarantee-xml-parameter-entity-ref
-	  guarantee-xml-processing-instructions
-	  guarantee-xml-unparsed-!entity
 	  make-xml-!attlist
 	  make-xml-!element
 	  make-xml-!entity
@@ -326,10 +282,6 @@ USA.
 	  (html-document html-1.0-document)
 	  (html-dtd html-1.0-dtd)
 	  (html-external-id html-1.0-external-id)
-	  error:not-html-element
-	  error:not-html-element-name
-	  guarantee-html-element
-	  guarantee-html-element-name
 	  html-1.0-document
 	  html-1.0-dtd
 	  html-1.0-external-id
@@ -559,29 +511,9 @@ USA.
 	  canonicalize-rdf-subject
 	  canonicalize-rdf-uri
 	  copy-rdf-prefix-registry
-	  error:not-rdf-bnode
-	  error:not-rdf-graph
-	  error:not-rdf-literal
-	  error:not-rdf-object
-	  error:not-rdf-predicate
-	  error:not-rdf-prefix
-	  error:not-rdf-prefix-registry
-	  error:not-rdf-qname
-	  error:not-rdf-subject
-	  error:not-rdf-triple
 	  event:new-rdf-graph
 	  event:new-rdf-triple
 	  for-each-rdf-triple
-	  guarantee-rdf-bnode
-	  guarantee-rdf-graph
-	  guarantee-rdf-literal
-	  guarantee-rdf-object
-	  guarantee-rdf-predicate
-	  guarantee-rdf-prefix
-	  guarantee-rdf-prefix-registry
-	  guarantee-rdf-qname
-	  guarantee-rdf-subject
-	  guarantee-rdf-triple
 	  make-rdf-bnode
 	  make-rdf-graph
 	  make-rdf-literal

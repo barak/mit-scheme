@@ -66,17 +66,6 @@ USA.
 		    (MAKE-RECORD-TYPE ',root '(,@(map car slots))))
 		  (DEFINE ,predicate
 		    (RECORD-PREDICATE ,rtd))
-		  (DEFINE (,(symbol 'GUARANTEE- root) OBJECT CALLER)
-		    (IF (NOT ,predicate)
-			(,error:not OBJECT CALLER)))
-		  (DEFINE (,error:not OBJECT CALLER)
-		    (ERROR:WRONG-TYPE-ARGUMENT
-		     OBJECT
-		     ,(string-append "an XML "
-				     (string-replace (symbol->string (cadr form))
-						     #\-
-						     #\space))
-		     CALLER))
 		  (DEFINE ,%constructor
 		    (RECORD-CONSTRUCTOR ,rtd '(,@(map car slots))))
 		  (DEFINE (,constructor ,@slot-vars)
@@ -198,8 +187,6 @@ USA.
 		  (loop (cdr attrs)))
 	     #t))))
 
-(define-guarantee xml-attribute-list "XML attribute list")
-
 (define (xml-content? object)
   (list-of-type? object xml-content-item?))
 
@@ -268,7 +255,7 @@ USA.
 	       (if (xml-element? elt)
 		   (xml-element-attributes elt)
 		   (begin
-		     (guarantee-xml-attribute-list elt 'FIND-XML-ATTR)
+		     (guarantee xml-attribute-list? elt 'FIND-XML-ATTR)
 		     elt)))))
     (if (and (not attr) (if (default-object? error?) #f error?))
 	(error:bad-range-argument name 'FIND-XML-ATTR))
@@ -279,7 +266,7 @@ USA.
   (if (string? arg)
       (make-xml-name arg)
       (begin
-	(guarantee-xml-name arg caller)
+	(guarantee xml-name? arg caller)
 	arg)))
 
 (define-xml-type comment

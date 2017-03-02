@@ -226,7 +226,7 @@ USA.
 	  (vector-ref operations 2)))
 
 (define (operations/bind operations operation variable value)
-  (guarantee-known-declaration operation 'operations/bind)
+  (guarantee known-declaration? operation 'operations/bind)
   (guarantee-variable variable 'operations/bind)
   (vector (cons (cons* variable operation value)
 		(vector-ref operations 0))
@@ -234,7 +234,7 @@ USA.
 	  (vector-ref operations 2)))
 
 (define (operations/bind-top-level operations operation variable value)
-  (guarantee-known-declaration operation 'operations/bind-top-level)
+  (guarantee known-declaration? operation 'operations/bind-top-level)
   (guarantee-variable variable 'operations/bind-top-level)
   (vector (vector-ref operations 0)
 	  (cons (cons* variable operation value)
@@ -242,7 +242,7 @@ USA.
 	  (vector-ref operations 2)))
 
 (define (operations/bind-global operations operation variable value)
-  (guarantee-known-declaration operation 'operations/bind-global)
+  (guarantee known-declaration? operation 'operations/bind-global)
   (guarantee-variable variable 'operations/bind-global)
   (vector (vector-ref operations 0)
 	  (vector-ref operations 1)

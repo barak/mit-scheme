@@ -36,7 +36,7 @@ USA.
 	   name-symbol)
 	  (else
 	   (let ((uri (->absolute-uri uri 'MAKE-XML-NAME)))
-	     (guarantee-xml-qname name-symbol 'MAKE-XML-NAME)
+	     (guarantee xml-qname? name-symbol 'MAKE-XML-NAME)
 	     (if (not (case (xml-qname-prefix name-symbol)
 			((xml) (uri=? uri xml-uri))
 			((xmlns) (uri=? uri xmlns-uri))
@@ -70,15 +70,13 @@ USA.
   (or (xml-name-symbol? object)
       (combo-name? object)))
 
-(define-guarantee xml-name "an XML Name")
-
 (define (xml-name-string name)
   (symbol->string (xml-name->symbol name)))
 
 (define (xml-name->symbol name)
   (cond ((xml-name-symbol? name) name)
 	((combo-name? name) (combo-name-qname name))
-	(else (error:not-xml-name name 'XML-NAME->SYMBOL))))
+	(else (error:not-a xml-name? name 'XML-NAME->SYMBOL))))
 
 (define (xml-name=? n1 n2)
   (if (and (combo-name? n1) (combo-name? n2))
@@ -166,10 +164,6 @@ USA.
 (define xml-name-symbol? (name-predicate string-is-xml-name?))
 (define xml-nmtoken? (name-predicate string-is-xml-nmtoken?))
 (define xml-qname? (name-predicate string-is-xml-qname?))
-
-(define-guarantee xml-name-symbol "an XML name symbol")
-(define-guarantee xml-nmtoken "an XML name token")
-(define-guarantee xml-qname "an XML QName")
 
 ;;;; Namespace support
 
@@ -177,13 +171,10 @@ USA.
   (or (xml-qname? object)
       (combo-name? object)))
 
-(define-guarantee xml-namespace-conformant-name
-  "XML Namespaces conformant name")
-
 (define (xml-name-uri name)
   (cond ((xml-qname? name) (null-xml-namespace-uri))
 	((combo-name? name) (expanded-name-uri (combo-name-expanded name)))
-	(else (error:not-xml-namespace-conformant-name name 'XML-NAME-URI))))
+	(else (error:not-a xml-namespace-conformant-name? name 'XML-NAME-URI))))
 
 (define (xml-name-uri=? name uri)
   (uri=? (xml-name-uri name) uri))
@@ -193,7 +184,7 @@ USA.
    (cond ((xml-qname? name) name)
 	 ((combo-name? name) (combo-name-qname name))
 	 (else
-	  (error:not-xml-namespace-conformant-name name 'XML-NAME-PREFIX)))))
+	  (error:not-a xml-namespace-conformant-name? name 'XML-NAME-PREFIX)))))
 
 (define (null-xml-name-prefix? object)
   (eq? object '||))
@@ -207,7 +198,8 @@ USA.
 (define (xml-name-local name)
   (cond ((xml-qname? name) (%xml-qname-local name))
 	((combo-name? name) (expanded-name-local (combo-name-expanded name)))
-	(else (error:not-xml-namespace-conformant-name name 'XML-NAME-LOCAL))))
+	(else
+	 (error:not-a xml-namespace-conformant-name? name 'XML-NAME-LOCAL))))
 
 (define (xml-name-local=? name local)
   (eq? (xml-name-local name) local))
@@ -226,7 +218,7 @@ USA.
 (define xmlns-uri (->uri xmlns-uri-string))
 
 (define (xml-qname-prefix qname)
-  (guarantee-xml-qname qname 'XML-QNAME-PREFIX)
+  (guarantee xml-qname? qname 'XML-QNAME-PREFIX)
   (%xml-qname-prefix qname))
 
 (define (%xml-qname-prefix qname)
@@ -237,7 +229,7 @@ USA.
 	  (null-xml-name-prefix)))))
 
 (define (xml-qname-local qname)
-  (guarantee-xml-qname qname 'XML-QNAME-LOCAL)
+  (guarantee xml-qname? qname 'XML-QNAME-LOCAL)
   (%xml-qname-local qname))
 
 (define (%xml-qname-local qname)

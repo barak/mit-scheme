@@ -726,7 +726,6 @@ USA.
 (define condition-type:invalid-floating-point-operation)
 (define condition-type:macro-binding)
 (define condition-type:no-such-restart)
-(define condition-type:not-8-bit-char)
 (define condition-type:port-error)
 (define condition-type:serious-condition)
 (define condition-type:simple-condition)
@@ -754,7 +753,6 @@ USA.
 (define error:derived-thread)
 (define error:illegal-pathname-component)
 (define error:macro-binding)
-(define error:not-8-bit-char)
 (define error:unassigned-variable)
 (define error:unbound-variable)
 (define error:wrong-number-of-arguments)
@@ -1175,13 +1173,6 @@ USA.
 	      '()
 	    (arithmetic-error-report "Floating-point underflow"))))
 
-  (set! condition-type:not-8-bit-char
-	(make-condition-type 'NOT-8-BIT-CHAR condition-type:error '(CHAR)
-	  (lambda (condition port)
-	    (write-string "Character too large for 8-bit string: " port)
-	    (write (access-condition condition 'CHAR) port)
-	    (newline port))))
-
   (set! make-simple-error
 	(condition-constructor condition-type:simple-error
 			       '(MESSAGE IRRITANTS)))
@@ -1232,10 +1223,6 @@ USA.
   (set! error:macro-binding
 	(condition-signaller condition-type:macro-binding
 			     '(ENVIRONMENT LOCATION)
-			     standard-error-handler))
-  (set! error:not-8-bit-char
-	(condition-signaller condition-type:not-8-bit-char
-			     '(CHAR)
 			     standard-error-handler))
   unspecific)
 

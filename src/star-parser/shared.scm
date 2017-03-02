@@ -156,7 +156,7 @@ USA.
   (parser-table parser-macros-table))
 
 (define (make-parser-macros parent)
-  (if parent (guarantee-parser-macros parent 'MAKE-PARSER-MACROS))
+  (if parent (guarantee parser-macros? parent 'MAKE-PARSER-MACROS))
   (%make-parser-macros (or parent *global-parser-macros*)
 		       (make-strong-eq-hash-table)
 		       (make-strong-eq-hash-table)))
@@ -165,10 +165,6 @@ USA.
   (%make-parser-macros #f
 		       (make-strong-eq-hash-table)
 		       (make-strong-eq-hash-table)))
-
-(define (guarantee-parser-macros object procedure)
-  (if (not (parser-macros? object))
-      (error:wrong-type-argument object "parser macros" procedure)))
 
 (define (define-matcher-macro name expander)
   (hash-table/put! (matcher-macros-table *parser-macros*) name expander))
@@ -189,7 +185,7 @@ USA.
 	     (loop (parent-macros environment))))))
 
 (define (with-current-parser-macros macros thunk)
-  (guarantee-parser-macros macros 'WITH-CURRENT-PARSER-MACROS)
+  (guarantee parser-macros? macros 'WITH-CURRENT-PARSER-MACROS)
   (fluid-let ((*parser-macros* macros))
     (thunk)))
 
@@ -197,7 +193,7 @@ USA.
   *parser-macros*)
 
 (define (set-current-parser-macros! macros)
-  (guarantee-parser-macros macros 'SET-CURRENT-PARSER-MACROS!)
+  (guarantee parser-macros? macros 'SET-CURRENT-PARSER-MACROS!)
   (set! *parser-macros* macros)
   unspecific)
 

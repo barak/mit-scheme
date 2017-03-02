@@ -40,7 +40,6 @@ USA.
 	  define-*parser-expander
 	  define-*parser-macro
 	  global-parser-macros
-	  guarantee-parser-macros
 	  make-parser-macros
 	  parser-macros?
 	  set-current-parser-macros!
