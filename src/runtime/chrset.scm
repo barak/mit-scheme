@@ -407,7 +407,8 @@ USA.
 (define (char-set-predicate char-set)
   (guarantee char-set? char-set 'CHAR-SET-PREDICATE)
   (lambda (char)
-    (char-in-set? char char-set)))
+    (and (bitless-char? char)
+	 (char-in-set? char char-set))))
 
 (define (char-set=? char-set . char-sets)
   (every (lambda (char-set*)
