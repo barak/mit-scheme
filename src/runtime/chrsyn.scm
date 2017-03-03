@@ -151,7 +151,7 @@ USA.
 (define (substring-find-next-char-of-syntax string start end table code)
   (guarantee 8-bit-string? string 'substring-find-next-char-of-syntax)
   (let ((index
-	 (string-find-first-index (syntax-code-predicate code)
+	 (string-find-first-index (syntax-code-predicate table code)
 				  (string-slice string start end))))
     (and index
 	 (fix:+ start index))))
@@ -159,16 +159,17 @@ USA.
 (define (substring-find-next-char-not-of-syntax string start end table code)
   (guarantee 8-bit-string? string 'substring-find-next-char-not-of-syntax)
   (let ((index
-	 (string-find-first-index (let ((pred (syntax-code-predicate code)))
+	 (string-find-first-index (let ((pred
+					 (syntax-code-predicate table code)))
 				    (lambda (char)
 				      (not (pred char))))
 				  (string-slice string start end))))
     (and index
 	 (fix:+ start index))))
 
-(define (syntax-code-predicate code)
+(define (syntax-code-predicate table code)
   (lambda (char)
-    (char=? code (char->syntax-code char))))
+    (char=? code (char->syntax-code table char))))
 
 (define (char->syntax-code table char)
   (string-ref (vector-ref char-syntax-codes
