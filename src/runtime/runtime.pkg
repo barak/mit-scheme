@@ -974,6 +974,7 @@ USA.
 	  string
 	  string*
 	  string->list
+	  string->nfd
 	  string->vector
 	  string-any
 	  string-append
@@ -987,6 +988,7 @@ USA.
 	  string-ci>?
 	  string-compare
 	  string-compare-ci
+	  string-canonical-foldcase
 	  string-copy
 	  string-copy!
 	  string-count
@@ -1290,6 +1292,7 @@ USA.
 	  char-set:changes-when-case-folded
 	  ucd-nt-value)
   (export (runtime ustring)
+	  char-changes-when-case-folded?
 	  char-changes-when-lower-cased?
 	  char-changes-when-upper-cased?
 	  char-nfd-quick-check?

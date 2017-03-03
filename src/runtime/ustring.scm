@@ -474,22 +474,40 @@ USA.
 		(loop (fix:+ index 1))))))))
 
 (define (string-lower-case? string)
-  (let* ((nfd (string->nfd string))
-	 (end (string-length nfd)))
+  (nfd-string-lower-case? (string->nfd string)))
+
+(define (string-upper-case? string)
+  (nfd-string-upper-case? (string->nfd string)))
+
+(define (nfd-string-lower-case? nfd)
+  (let ((end (string-length nfd)))
     (let loop ((i 0))
       (if (fix:< i end)
 	  (and (not (char-changes-when-lower-cased? (string-ref nfd i)))
 	       (loop (fix:+ i 1)))
 	  #t))))
 
-(define (string-upper-case? string)
-  (let* ((nfd (string->nfd string))
-	 (end (string-length nfd)))
+(define (nfd-string-upper-case? nfd)
+  (let ((end (string-length nfd)))
     (let loop ((i 0))
       (if (fix:< i end)
 	  (and (not (char-changes-when-upper-cased? (string-ref nfd i)))
 	       (loop (fix:+ i 1)))
 	  #t))))
+
+(define (nfd-string-case-folded? nfd)
+  (let ((end (string-length nfd)))
+    (let loop ((i 0))
+      (if (fix:< i end)
+	  (and (not (char-changes-when-case-folded? (string-ref nfd i)))
+	       (loop (fix:+ i 1)))
+	  #t))))
+
+(define (string-canonical-foldcase string)
+  (let ((nfd (string->nfd string)))
+    (if (nfd-string-case-folded? nfd)
+	nfd
+	(string->nfd (string-foldcase string)))))
 
 ;;;; Normalization
 
