@@ -660,9 +660,6 @@ USA.
    '(0)
    false))
 
-;;; TODO(cph): eliminate after 9.3 release:
-(define-integrable bytevector-type #x33)
-
 (let ((open-code/type-test
        (lambda (type)
 	 (lambda (combination expressions finish)
@@ -683,7 +680,7 @@ USA.
     (simple-type-test 'FIXNUM?  (ucode-type fixnum))
     (simple-type-test 'FLONUM?  (ucode-type flonum))
     (simple-type-test 'BIT-STRING? (ucode-type vector-1b))
-    (simple-type-test 'BYTEVECTOR? bytevector-type)))
+    (simple-type-test 'BYTEVECTOR? (ucode-type bytevector))))
 
 (define-open-coder/predicate 'EQ?
   (simple-open-coder
@@ -1019,7 +1016,7 @@ USA.
   (user-ref '%RECORD-LENGTH rtl:vector-length-fetch (ucode-type record) 0)
   (user-ref 'STRING-LENGTH rtl:length-fetch (ucode-type string) 1)
   (user-ref 'BIT-STRING-LENGTH rtl:length-fetch (ucode-type vector-1b) 1)
-  (user-ref 'BYTEVECTOR-LENGTH rtl:length-fetch bytevector-type 1)
+  (user-ref 'BYTEVECTOR-LENGTH rtl:length-fetch (ucode-type bytevector) 1)
   (user-ref 'FLOATING-VECTOR-LENGTH
 	    rtl:floating-vector-length-fetch
 	    (ucode-type flonum)
@@ -1173,7 +1170,7 @@ USA.
 
 (define-open-coder/value 'BYTEVECTOR-U8-REF
   (simple-open-coder
-   (string-memory-reference 'BYTEVECTOR-U8-REF bytevector-type #f
+   (string-memory-reference 'BYTEVECTOR-U8-REF (ucode-type bytevector) #f
      (lambda (locative expressions finish)
        expressions
        (finish (rtl:bytevector-fetch locative))))
@@ -1202,7 +1199,7 @@ USA.
 (define-open-coder/effect 'BYTEVECTOR-U8-SET!
   (simple-open-coder
    (string-memory-reference 'BYTEVECTOR-U8-SET!
-			    bytevector-type
+			    (ucode-type bytevector)
 			    (ucode-type fixnum)
      (lambda (locative expressions finish)
        (finish-bytevector-assignment locative (caddr expressions) finish)))
