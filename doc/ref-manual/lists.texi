@@ -473,24 +473,6 @@ is @code{list->vector}.
 @end example
 @end deffn
 
-@deffn procedure string->list string
-@deffnx procedure substring->list string start end
-@cindex string, converting to list
-@findex list->string
-@code{string->list} returns a newly allocated list of the character
-elements of @var{string}.@*
-@code{substring->list} returns a newly allocated list of the character
-elements of the given substring.  The inverse of @code{string->list} is
-@code{list->string}.
-
-@example
-@group
-(string->list "abcd")                   @result{} (#\a #\b #\c #\d)
-(substring->list "abcdef" 1 3)          @result{} (#\b #\c)
-@end group
-@end example
-@end deffn
-
 @node Selecting List Components, Cutting and Pasting Lists, Construction of Lists, Lists
 @section Selecting List Components
 @cindex selection, of list component
