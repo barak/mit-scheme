@@ -942,64 +942,60 @@ USA.
 ;;;; Search
 
 (define-integrable (string-matcher caller matcher)
-  (lambda (pattern text)
-    (guarantee string? pattern caller)
-    (guarantee string? text caller)
+  (lambda (pattern text #!optional start end)
     (let ((pend (string-length pattern)))
       (if (fix:= 0 pend)
 	  (error:bad-range-argument pend caller))
-      (matcher pattern pend text (fix:- (string-length text) pend)))))
+      (let* ((tend (fix:end-index end (string-length text) caller))
+	     (tstart (fix:start-index start end caller)))
+	(matcher pattern pend text tstart (fix:- tend pend))))))
 
-(define string-find-first-match
-  (string-matcher 'string-find-first-match
-		  %dumb-string-find-first-match))
+(define string-search-forward
+  (string-matcher 'string-search-forward
+		  %dumb-string-search-forward))
 
-(define string-find-last-match
-  (string-matcher 'string-find-last-match
-		  %dumb-string-find-last-match))
+(define string-search-backward
+  (string-matcher 'string-search-backward
+		  %dumb-string-search-backward))
 
-(define string-find-all-matches
-  (string-matcher 'string-find-all-matches
-		  %dumb-string-find-all-matches))
+(define string-search-all
+  (string-matcher 'string-search-all
+		  %dumb-string-search-all))
 
-(define (%dumb-string-find-first-match pattern pend text tlast)
-  (and (fix:>= tlast 0)
-       (let find-match ((tstart 0))
-	 (and (fix:<= tstart tlast)
-	      (let match ((pi 0) (ti tstart))
-		(if (fix:< pi pend)
-		    (if (char=? (string-ref pattern pi)
-				(string-ref text ti))
-			(match (fix:+ pi 1) (fix:+ ti 1))
-			(find-match (fix:+ tstart 1)))
-		    tstart))))))
+(define (%dumb-string-search-forward pattern pend text tstart tlast)
+  (let find-match ((tindex tstart))
+    (and (fix:<= tindex tlast)
+	 (let match ((pi 0) (ti tindex))
+	   (if (fix:< pi pend)
+	       (if (char=? (string-ref pattern pi)
+			   (string-ref text ti))
+		   (match (fix:+ pi 1) (fix:+ ti 1))
+		   (find-match (fix:+ tindex 1)))
+	       tindex)))))
 
-(define (%dumb-string-find-last-match pattern pend text tlast)
-  (and (fix:>= tlast 0)
-       (let find-match ((tstart tlast))
-	 (and (fix:>= tstart 0)
-	      (let match ((pi 0) (ti tstart))
-		(if (fix:< pi pend)
-		    (if (char=? (string-ref pattern pi)
-				(string-ref text ti))
-			(match (fix:+ pi 1) (fix:+ ti 1))
-			(find-match (fix:- tstart 1)))
-		    tstart))))))
+(define (%dumb-string-search-backward pattern pend text tstart tlast)
+  (let find-match ((tindex tlast))
+    (and (fix:>= tindex tstart)
+	 (let match ((pi 0) (ti tindex))
+	   (if (fix:< pi pend)
+	       (if (char=? (string-ref pattern pi)
+			   (string-ref text ti))
+		   (match (fix:+ pi 1) (fix:+ ti 1))
+		   (find-match (fix:- tindex 1)))
+	       ti)))))
 
-(define (%dumb-string-find-all-matches pattern pend text tlast)
-  (if (fix:>= tlast 0)
-      (let find-match ((tstart tlast) (matches '()))
-	(if (fix:>= tstart 0)
-	    (find-match (fix:- tstart 1)
-			(let match ((pi 0) (ti tstart))
-			  (if (fix:< pi pend)
-			      (if (char=? (string-ref pattern pi)
-					  (string-ref text ti))
-				  (match (fix:+ pi 1) (fix:+ ti 1))
-				  matches)
-			      (cons tstart matches))))
-	    matches))
-      '()))
+(define (%dumb-string-search-all pattern pend text tstart tlast)
+  (let find-match ((tindex tlast) (matches '()))
+    (if (fix:>= tindex tstart)
+	(find-match (fix:- tindex 1)
+		    (let match ((pi 0) (ti tindex))
+		      (if (fix:< pi pend)
+			  (if (char=? (string-ref pattern pi)
+				      (string-ref text ti))
+			      (match (fix:+ pi 1) (fix:+ ti 1))
+			      matches)
+			  (cons tindex matches))))
+	matches)))
 
 ;;;; Sequence converters
 
@@ -1474,32 +1470,8 @@ USA.
 
 (define (substring? pattern text)
   (and (or (fix:= 0 (string-length pattern))
-	   (string-find-first-match pattern text))
+	   (string-search-forward pattern text))
        #t))
-
-(define (string-search-backward pattern text)
-  (let ((index (string-find-last-match pattern text)))
-    (and index
-	 (fix:+ index (string-length pattern)))))
-
-(define-integrable (substring-search-maker string-search)
-  (lambda (pattern text tstart tend)
-    (let* ((slice (string-slice text tstart tend))
-	   (index (string-search pattern slice)))
-      (and index
-	   (fix:+ tstart index)))))
-
-(define substring-search-forward
-  (substring-search-maker string-find-first-match))
-
-(define substring-search-backward
-  (substring-search-maker string-search-backward))
-
-(define (substring-search-all pattern text tstart tend)
-  (let ((slice (string-slice text tstart tend)))
-    (map (lambda (index)
-	   (fix:+ tstart index))
-	 (string-find-all-matches pattern slice))))
 
 (define (string-move! string1 string2 start2)
   (string-copy! string2 start2 string1))

@@ -937,6 +937,9 @@ USA.
 	  (substring->list string->list)
 	  (substring-move-left! substring-move!)
 	  (substring-move-right! substring-move!)
+	  (substring-search-all string-search-all)
+	  (substring-search-backward string-search-backward)
+	  (substring-search-forward string-search-forward)
 	  string-move!
 	  substring-ci<?
 	  substring-ci=?
@@ -951,17 +954,12 @@ USA.
 	  substring-move!
 	  substring-prefix-ci?
 	  substring-prefix?
-	  substring-search-all
-	  substring-search-backward
-	  substring-search-forward
 	  substring-suffix-ci?
 	  substring-suffix?
 	  substring-upper-case?
 	  substring<?
 	  substring=?)
   (export ()
-	  (string-search-all string-find-all-matches)
-	  (string-search-forward string-find-first-match)
 	  (substring string-copy)
 	  8-bit-string?
 	  burst-string
@@ -995,11 +993,8 @@ USA.
 	  string-downcase
 	  string-every
 	  string-fill!
-	  string-find-all-matches
 	  string-find-first-index
-	  string-find-first-match
 	  string-find-last-index
-	  string-find-last-match
 	  string-find-next-char
 	  string-find-next-char-ci
 	  string-find-next-char-in-set
@@ -1028,7 +1023,9 @@ USA.
 	  string-prefix?
 	  string-ref
 	  string-replace
+	  string-search-all
 	  string-search-backward
+	  string-search-forward
 	  string-set!
 	  string-slice
 	  string-splitter
