@@ -221,8 +221,7 @@ Characters
 
 Strings
 
-* Searching Strings::
-* Matching Strings::
+* Searching and Matching Strings::
 * Regular Expressions::
 
 Regular Expressions
