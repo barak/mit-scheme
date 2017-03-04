@@ -1005,6 +1005,7 @@ USA.
 	  string-for-each
 	  string-for-primitive		;export to (runtime) after 9.3
 	  string-hash
+	  string-hash-ci
 	  string-head
 	  string-joiner
 	  string-joiner*
