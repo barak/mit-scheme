@@ -912,7 +912,7 @@ Writes a representation of @var{object} to the given textual output
 @var{port}.  Strings that appear in the written representation are
 enclosed in quotation marks, and within those strings backslash and
 quotation mark characters are escaped by backslashes.  Symbols that
-contain non-ASCII characters are escaped with vertical lines.
+contain non-@acronym{ASCII} characters are escaped with vertical lines.
 Character objects are written using the @code{#\} notation.
 
 If @var{object} contains cycles which would cause an infinite loop
