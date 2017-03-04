@@ -102,6 +102,24 @@ Returns a newly allocated vector initialized to the elements of
 @end example
 @end deffn
 
+@deffn {standard procedure} string->vector string [start [end]]
+@deffnx {standard procedure} vector->string vector [start [end]]
+It is an error if any element of @var{vector} is not a character.
+
+The @code{vector->string} procedure returns a newly allocated string
+of the objects contained in the elements of @var{vector} between
+@var{start} and @var{end}.  The @code{string->vector} procedure
+returns a newly created vector initialized to the elements of the
+string @var{string} between @var{start} and @var{end}.
+
+In both procedures, order is preserved.
+
+@example
+(string->vector "ABC")                  @result{}  #(#\A #\B #\C)
+(vector->string #(#\1 #\2 #\3)          @result{}  "123"
+@end example
+@end deffn
+
 @deffn procedure make-initialized-vector k initialization
 Similar to @code{make-vector}, except that the elements of the result
 are determined by calling the procedure @var{initialization} on the
