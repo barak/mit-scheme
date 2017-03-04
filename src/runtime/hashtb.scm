@@ -1301,7 +1301,7 @@ USA.
 			(if (and (or (eq? key=? string=?)
 				     (eq? key=? string-ci=?))
 				 (or (eq? key-hash string-hash)
-				     (eq? key-hash string-ci-hash)
+				     (eq? key-hash string-hash-ci)
 				     (eq? key-hash hash)))
 			    #f		;No rehash needed after GC
 			    #t)		;Rehash needed after GC
