@@ -962,6 +962,11 @@ USA.
   (string-matcher 'string-search-all
 		  %dumb-string-search-all))
 
+(define (substring? pattern text)
+  (and (or (fix:= 0 (string-length pattern))
+	   (string-search-forward pattern text))
+       #t))
+
 (define (%dumb-string-search-forward pattern pend text tstart tlast)
   (let find-match ((tindex tstart))
     (and (fix:<= tindex tlast)
@@ -1467,11 +1472,6 @@ USA.
 
 (define substring-find-previous-char-in-set
   (substring-find-maker string-find-previous-char-in-set))
-
-(define (substring? pattern text)
-  (and (or (fix:= 0 (string-length pattern))
-	   (string-search-forward pattern text))
-       #t))
 
 (define (string-move! string1 string2 start2)
   (string-copy! string2 start2 string1))
