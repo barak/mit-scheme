@@ -392,17 +392,19 @@ Returns @code{#t} if @var{string} has zero length; otherwise returns
 @end deffn
 
 @deffn procedure string-hash string [modulus]
+@deffnx procedure string-hash-ci string [modulus]
 @cindex hashing, of string
 @findex string=?
+@findex string-ci=?
 @findex =
-@code{string-hash} returns an exact non-negative integer that can be used
+These procedures return an exact non-negative integer that can be used
 for storing the specified @var{string} in a hash table.  Equal strings
-(in the sense of @code{string=?}) return equal (@code{=}) hash codes,
-and non-equal but similar strings are usually mapped to distinct hash
-codes.
+(in the sense of @code{string=?} and @code{string-ci=?} respectively)
+return equal (@code{=}) hash codes, and non-equal but similar strings
+are usually mapped to distinct hash codes.
 
 If the optional argument @var{modulus} is specified, it must be an
-exact positive integer, and the result of @code{string-hash} is
+exact positive integer, and the result of the hash computation is
 restricted to be less than that value.  This is equivalent to calling
 @code{modulo} on the result, but may be faster.
 @end deffn
