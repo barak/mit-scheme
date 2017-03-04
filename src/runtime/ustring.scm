@@ -1430,30 +1430,36 @@ USA.
 
 ;;;;Backwards compatibility
 
-(define (string-find-next-char string char)
-  (string-find-first-index (char=-predicate char) string))
+(define-integrable (string-find-maker finder key->predicate)
+  (lambda (string key #!optional start end)
+    (let* ((start (if (default-object? start) 0 start))
+	   (index
+	    (finder (key->predicate key)
+		    (string-slice string start end))))
+      (and index
+	   (fix:+ start index)))))
 
-(define (string-find-next-char-ci string char)
-  (string-find-first-index (char-ci=-predicate char) string))
+(define string-find-next-char
+  (string-find-maker string-find-first-index char=-predicate))
 
-(define (string-find-next-char-in-set string char-set)
-  (string-find-first-index (char-set-predicate char-set) string))
+(define string-find-next-char-ci
+  (string-find-maker string-find-first-index char-ci=-predicate))
 
-(define (string-find-previous-char string char)
-  (string-find-last-index (char=-predicate char) string))
+(define string-find-next-char-in-set
+  (string-find-maker string-find-first-index char-set-predicate))
 
-(define (string-find-previous-char-ci string char)
-  (string-find-last-index (char-ci=-predicate char) string))
+(define string-find-previous-char
+  (string-find-maker string-find-last-index char=-predicate))
 
-(define (string-find-previous-char-in-set string char-set)
-  (string-find-last-index (char-set-predicate char-set) string))
+(define string-find-previous-char-ci
+  (string-find-maker string-find-last-index char-ci=-predicate))
+
+(define string-find-previous-char-in-set
+  (string-find-maker string-find-last-index char-set-predicate))
 
 (define-integrable (substring-find-maker string-find)
   (lambda (string start end key)
-    (let* ((slice (string-slice string start end))
-	   (index (string-find slice key)))
-      (and index
-	   (fix:+ start index)))))
+    (string-find string key start end)))
 
 (define substring-find-next-char
   (substring-find-maker string-find-next-char))
