@@ -1330,7 +1330,7 @@ USA.
 	       (let ((builder (string-builder)))
 		 (if (eq? where 'trailing)
 		     (builder string))
-		 (do ((i 0 (fix:+ i 1)))
+		 (do ((i cluster-length (fix:+ i 1)))
 		     ((not (fix:< i n)))
 		   (builder fill-with))
 		 (if (eq? where 'leading)
