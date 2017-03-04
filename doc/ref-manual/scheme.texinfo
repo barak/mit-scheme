@@ -61,6 +61,11 @@ Documentation License.''
 @end ifnothtml
 @contents
 
+@tex
+\global\urefurlonlylinktrue
+\global\def\urlcolor{0 0 1}   % blue
+@end tex
+
 @ifnottex
 @node Top, Acknowledgements, (dir), (dir)
 @top MIT/GNU Scheme
