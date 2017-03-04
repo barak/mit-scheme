@@ -71,10 +71,7 @@ USA.
 	(%legacy-string->bytevector string))))
 
 (define-integrable (%legacy-string->bytevector string)
-  (object-new-type bytevector-type string))
-
-;;; TODO(cph): eliminate after 9.3 release:
-(define-integrable bytevector-type #x33)
+  (object-new-type (ucode-type bytevector) string))
 
 (define (bytevector-append . bytevectors)
   (let* ((k

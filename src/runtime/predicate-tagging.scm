@@ -29,11 +29,8 @@ USA.
 
 (declare (usual-integrations))
 
-;;; TODO(cph): eliminate after 9.3 release:
-(define-integrable tagged-object-type #x25)
-
 (define (tagged-object? object)
-  (fix:= tagged-object-type (object-type object)))
+  (fix:= (ucode-type tagged) (object-type object)))
 
 (define (object-tagger predicate)
   (let ((tag (predicate->tag predicate)))
@@ -47,7 +44,7 @@ USA.
   (tag->predicate (tagged-object-tag object)))
 
 (define-integrable (make-tagged-object tag datum)
-  (system-pair-cons tagged-object-type tag datum))
+  (system-pair-cons (ucode-type tagged) tag datum))
 
 (define (tagged-object-tag object)
   (guarantee tagged-object? object 'tagged-object-tag)

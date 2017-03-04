@@ -63,11 +63,14 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/microcode/mkinstalldirs
 MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
 
 HOST_COMPILER = $(HOST_TOOLCHAIN)
-HOST_RUNTIME = '$(MIT_SCHEME_EXE)' --batch-mode --band runtime.com
+HOST_RUNTIME = '$(MIT_SCHEME_EXE)' --batch-mode --band runtime.com \
+	--eval '(load "runtime/host-adapter")'
 HOST_SYNTAXER = '$(MIT_SCHEME_EXE)' --batch-mode --band runtime.com \
+	--eval '(load "runtime/host-adapter")' \
 	--eval '(load-option (quote CREF))' \
 	--eval '(load-option (quote SF))'
 HOST_TOOLCHAIN = '$(MIT_SCHEME_EXE)' --batch-mode \
+	--eval '(load "runtime/host-adapter")' \
 	--eval '(load-option (quote CREF))'
 
 SUBDIRS = compiler cref runtime sf star-parser
