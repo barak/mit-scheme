@@ -28,7 +28,6 @@ USA.
 
 (global-definitions "../runtime/runtime")
 (global-definitions "../sf/sf")
-(global-definitions "../cref/cref")
 
 (define-package (compiler)
   (files "base/switch"
