@@ -750,9 +750,14 @@ cross-target: cross-host
 cross-end: cross-host
 	(echo '(let ((env (->environment (quote (RUNTIME)))))' && \
 	 echo '  (load "../compiler/base/crsend" env)' && \
-	 echo '  ((access FINISH-CROSS-COMPILATION:DIRECTORY env) ".."))') \
+	 echo '  ((access FINISH-CROSS-COMPILATION:FILES env) ".."))') \
 	| (cd runtime && ../microcode/scheme --batch-mode --library ../lib \
-	    --fasl make.bin)
+					     --fasl make.bin)
+	(echo '(let ((env (->environment (quote (RUNTIME)))))' && \
+	 echo '  (load "../compiler/base/crsend" env)' && \
+	 echo '  ((access FINISH-CROSS-COMPILATION:INFO-FILES env) ".."))') \
+	 | (cd runtime && ../microcode/scheme --batch-mode --library ../lib \
+					      --fasl make.com)
 
 ### Stuff that depends on running the code we just compiled, because it
 ### uses Edwin macros.  This is a kludge until we can fix macro phasing
