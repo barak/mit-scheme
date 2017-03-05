@@ -280,6 +280,36 @@ The non-standard procedure @code{string-append*} is identical to
 strings, rather than multiple string arguments.
 @end deffn
 
+@deffn procedure string object @dots{}
+@deffnx procedure string* objects
+Returns a newly allocated string whose characters are the
+concatenation of the characters from the given objects.
+
+Unlike @code{string-append}, each @var{object} may be one of several
+types:
+
+@itemize @bullet
+@item
+A string
+@item
+@code{#f}, equivalent to an empty string.
+@item
+A bitless character, equivalent to a string containing that character.
+@item
+A symbol, equivalent to the result of @code{symbol->string}.
+@item
+A number, equivalent to the result of @code{number->string}.
+@item
+A @acronym{URI}, equivalent to the result of @code{uri->string}.
+@item
+A pathname, equivalent to the result of @code{->namestring}.
+@end itemize
+
+The procedure @code{string*} is identical to @code{string} but takes a
+single argument that's a list of objects, rather than multiple object
+arguments.
+@end deffn
+
 @deffn {standard procedure} string->list string [start [end]]
 @deffnx {standard procedure} list->string list
 It is an error if any element of @var{list} is not a character.
@@ -484,17 +514,6 @@ runs out.  The dynamic order in which @var{proc} is applied to the
 elements of the @var{string}s is unspecified.
 @end deffn
 
-@ignore
-
-@deffn procedure string object @dots{}
-@deffn procedure string* objects
-
-@deffn procedure string-joiner [keyword object] @dots{}
-@deffn procedure string-joiner* [keyword object] @dots{}
-@deffn procedure string-splitter [keyword object] @dots{}
-
-@end ignore
-
 @deffn procedure string-null? string
 @cindex empty string, predicate for
 @cindex null string, predicate for
@@ -533,6 +552,98 @@ Equivalent to @code{(string-copy @var{string} 0 @var{end})}.
 
 @deffn procedure string-tail string start
 Equivalent to @code{(string-copy @var{string} @var{start})}.
+@end deffn
+
+@deffn procedure string-joiner infix prefix suffix
+@deffnx procedure string-joiner* infix prefix suffix
+@cindex joining, of strings
+This procedure's arguments are keyword arguments; that is, each
+argument is a symbol of the same name followed by its value.  The
+order of the arguments doesn't matter, but each argument may appear
+only once.
+
+@cindex joiner procedure
+These procedures return a @dfn{joiner} procedure that takes multiple
+strings and joins them together into a newly allocated string.  The
+joiner returned by @code{string-joiner} accepts these strings as
+multiple string arguments, while @code{string-joiner*} accepts the
+strings as a single list-valued argument.
+
+The joiner produces a result by adding @var{prefix} before,
+@var{suffix} after, and @var{infix} between each input string, then
+concatenating everything together into a single string.  Each of the
+@var{prefix}, @var{suffix}, and @var{infix} arguments is optional and
+defaults to an empty string, so normally at least one is specified.
+
+Some examples:
+@example
+((string-joiner) "a" "b" "c")
+  @result{}  "abc"
+
+((string-joiner 'infix " ") "a" "b" "c")
+  @result{}  "a b c"
+
+((string-joiner 'infix ", ") "a" "b" "c")
+  @result{}  "a, b, c"
+
+((string-joiner* 'infix ", " 'prefix "<" 'suffix ">")
+ '("a" "b" "c"))
+  @result{}  "<a>, <b>, <c>"
+@end example
+@end deffn
+
+@deffn procedure string-splitter delimiter allow-runs? copy?
+@cindex splitting, of string
+This procedure's arguments are keyword arguments; that is, each
+argument is a symbol of the same name followed by its value.  The
+order of the arguments doesn't matter, but each argument may appear
+only once.
+
+@cindex splitter procedure
+This procedure returns a @dfn{splitter} procedure that splits a given
+string into parts, returning a list of the parts.  This is done by
+identifying delimiter characters and breaking the string at those
+delimiters.  The splitting process is controlled by the arguments:
+
+@itemize @bullet
+@item
+@var{delimiter} is either a character, a character set, or more
+generally a procedure that accepts a single character argument and
+returns a boolean value.  The splitter uses this to identify
+delimiters in the string.  The default value of this argument is
+@code{char-whitespace?}.
+@item
+@var{allow-runs?} is a boolean that controls what happens when two or
+more adjacent delimiters are found.  If @var{allow-runs?} is
+@code{#t}, then all of the adjacent delimiters are treated as if they
+were a single delimiter, and the string is split at the beginning and
+end of the delimiters.  If @var{allow-runs?} is @code{#f}, then
+adjacent delimiters are treated as if they were separate with an empty
+string between them.  The default value of this argument is @code{#t}.
+@item
+@code{copy?} is a boolean: if it is @code{#t}, then the returned
+strings are newly allocated copies, but if it is @code{#f} the
+returned strings are slices of the original string.  The default value
+of this argument is @code{#f}.
+@end itemize
+
+Some examples:
+@example
+((string-splitter) "a b c")
+  @result{}  ("a" "b" "c")
+
+((string-splitter) "a\tb\tc")
+  @result{}  ("a" "b" "c")
+
+((string-splitter 'delimiter #\space) "a\tb\tc")
+  @result{}  ("a\tb\tc")
+
+((string-splitter) " a  b  c ")
+  @result{}  ("a" "b" "c")
+
+((string-splitter 'allow-runs? #f) " a  b  c ")
+  @result{}  ("" "a" "" "b" "" "c" "")
+@end example
 @end deffn
 
 @deffn procedure string-padder where fill-with clip?
@@ -631,7 +742,7 @@ argument is a symbol of the same name followed by its value.  The
 order of the arguments doesn't matter, but each argument may appear
 only once.
 
-@cindex padder procedure
+@cindex trimmer procedure
 This procedure returns a @dfn{trimmer} procedure that takes a string as
 its argument and trims that string, returning the trimmed result.  The
 trimming process is controlled by the arguments:
@@ -654,7 +765,7 @@ be retained.  The default value of this argument is @code{char-whitespace?}.
 @item
 @var{copy?} is a boolean: if @code{#t}, the trimmer returns a copy of
 the trimmed string, if @code{#f} it returns a slice.  The default value
-of this argument is @code{#t}.
+of this argument is @code{#f}.
 @end itemize
 
 Some examples:
