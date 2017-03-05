@@ -1312,7 +1312,7 @@ USA.
 (define-deferred string-trimmer-options
   (keyword-option-parser
    (list (list 'where '(leading trailing both) 'both)
-	 (list 'copy? boolean? #t)
+	 (list 'copy? boolean? #f)
 	 (list 'trim-char? unary-procedure? char-whitespace?))))
 
 (define (string-padder . options)
@@ -1541,6 +1541,7 @@ USA.
 (define (legacy-string-trimmer where)
   (lambda (string #!optional char-set)
     ((string-trimmer 'where where
+		     'copy? #t
 		     'trim-char?
 		     (char-set-predicate
 		      (if (default-object? char-set)
