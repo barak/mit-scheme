@@ -629,17 +629,16 @@ USA.
   (let ((n (string-length string)))
 
     (define (get-gcb i)
-      (and (fix:< i n)
-	   (ucd-gcb-value (string-ref string i))))
+      (ucd-gcb-value (string-ref string i)))
 
     (define (transition gcb i ctx)
-      (if gcb
-	  (let ((i* (fix:+ i 1)))
+      (let ((i* (fix:+ i 1)))
+	(if (fix:< i* n)
 	    ((vector-ref gcb-states gcb)
 	     (get-gcb i*)
 	     (lambda (gcb* break?)
-	       (transition gcb* i* (if break? (break i* ctx) ctx)))))
-	  ctx))
+	       (transition gcb* i* (if break? (break i* ctx) ctx))))
+	    (break n ctx))))
 
     (if (fix:> n 0)
 	(transition (get-gcb 0) 0 (break 0 initial-ctx))
@@ -681,8 +680,8 @@ USA.
     (if (pair? names)
 	(loop (cdr names)
 	      (fix:andc mask (fix:lsh 1 (name->code namev (car names)))))
-	(lambda (gcb)
-	  (not (fix:= 0 (fix:and mask (fix:lsh 1 gcb))))))))
+	(lambda (code)
+	  (not (fix:= 0 (fix:and mask (fix:lsh 1 code))))))))
 
 (define (make-selector namev names)
   (let loop
@@ -691,8 +690,8 @@ USA.
     (if (pair? names)
 	(loop (cdr names)
 	      (fix:or mask (fix:lsh 1 (name->code namev (car names)))))
-	(lambda (gcb)
-	  (not (fix:= 0 (fix:and mask (fix:lsh 1 gcb))))))))
+	(lambda (code)
+	  (not (fix:= 0 (fix:and mask (fix:lsh 1 code))))))))
 
 (define gcb-states
   (let ((simple-state
@@ -762,39 +761,41 @@ USA.
   (let ((n (string-length string)))
 
     (define (get-wb i)
-      (and (fix:< i n)
-	   (ucd-wb-value (string-ref string i))))
+      (ucd-wb-value (string-ref string i)))
 
-    (define (transition wb0 wb1 i0 ctx)
-      (if wb0
-	  (let* ((i1 (fix:+ i0 1))
-		 (i2 (fix:+ i1 1))
-		 (wb2 (get-wb i2)))
+    (define (t1 wb0 i0 ctx)
+      (let ((i1 (fix:+ i0 1)))
+	(if (fix:< i1 n)
+	    (t2 wb0 (get-wb i1) i1 ctx)
+	    (break n ctx))))
+
+    (define (t2 wb0 wb1 i1 ctx)
+      (let ((i2 (fix:+ i1 1)))
+	(if (fix:< i2 n)
+	    (let ((wb2 (get-wb i2)))
+	      ((vector-ref wb-states wb0)
+	       wb1
+	       wb2
+	       (lambda ()
+		 (t2 wb0 wb2 i2 ctx))
+	       (lambda (wb1* break?)
+		 (t2 wb1* wb2 i2 (if break? (break i1 ctx) ctx)))
+	       (lambda (wb2*)
+		 (t1 wb2* i2 ctx))))
 	    ((vector-ref wb-states wb0)
 	     wb1
-	     wb2
-	     (lambda (break?)
-	       (transition wb0
-			   wb2
-			   i1
-			   (if break? (break i1 ctx) ctx)))
+	     #f
+	     (lambda ()
+	       (break n ctx))
 	     (lambda (wb1* break?)
-	       (transition wb1*
-			   wb2
-			   i1
-			   (if break? (break i1 ctx) ctx)))
-	     (lambda (wb2* break?)
-	       (transition wb2*
-			   (get-wb (fix:+ i2 1))
-			   i2
-			   (if break? (break i2 ctx) ctx)))))
-	  ctx))
+	       (declare (ignore wb1*))
+	       (break n (if break? (break i1 ctx) ctx)))
+	     (lambda (wb2*)
+	       (declare (ignore wb2*))
+	       (error "Should never be called"))))))
 
-    (if (fix:> n 0)
-	(transition (get-wb 0)
-		    (get-wb 1)
-		    0
-		    (break 0 initial-ctx))
+    (if (fix:< 0 n)
+	(t1 (get-wb 0) 0 (break 0 initial-ctx))
 	initial-ctx)))
 
 (define wb-names
@@ -832,7 +833,7 @@ USA.
 	     (lambda (wb1 wb2 k0 k1 k2)
 	       (declare (ignore wb2 k2))
 	       (if (select:extender wb1)
-		   (k0 #f)
+		   (k0)
 		   (k1 wb1 (break? wb1)))))))
 
       (let ((state:always-break
@@ -843,7 +844,7 @@ USA.
 	     (lambda (wb1 wb2 k0 k1 k2)
 	       (declare (ignore wb2 k2))
 	       (if (select:extender wb1)
-		   (k0 #f)
+		   (k0)
 		   (k1 wb1 #t))))
 	    (state:emoji-base
 	     (standard-state (make-!selector wb-names '(emoji-modifier)))))
@@ -872,15 +873,15 @@ USA.
 		      (select:hl (make-selector wb-names '(hebrew-letter))))
 		  (lambda (wb1 wb2 k0 k1 k2)
 		    (cond ((select:extender wb1)
-			   (k0 #f))
+			   (k0))
 			  ((and wb2
 				(select:mb/ml/sq wb1)
 				(select:hl/le wb2))
-			   (k2 wb2 #f))
+			   (k2 wb2))
 			  ((and wb2
 				(select:dq wb1)
 				(select:hl wb2))
-			   (k2 wb2 #f))
+			   (k2 wb2))
 			  (else
 			   (k1 wb1 (break? wb1))))))
 		(standard-state		;katakana
@@ -891,11 +892,11 @@ USA.
 							numeric))))
 		  (lambda (wb1 wb2 k0 k1 k2)
 		    (cond ((select:extender wb1)
-			   (k0 #f))
+			   (k0))
 			  ((and wb2
 				(select:mb/ml/sq wb1)
 				(select:hl/le wb2))
-			   (k2 wb2 #f))
+			   (k2 wb2))
 			  (else
 			   (k1 wb1 (break? wb1))))))
 		state:always-break	;linefeed
@@ -914,11 +915,11 @@ USA.
 		       (make-selector wb-names '(numeric))))
 		  (lambda (wb1 wb2 k0 k1 k2)
 		    (cond ((select:extender wb1)
-			   (k0 #f))
+			   (k0))
 			  ((and wb2
 				(select:mb/mn/sq wb1)
 				(select:numeric wb2))
-			   (k2 wb2 #f))
+			   (k2 wb2))
 			  (else
 			   (k1 wb1 (break? wb1))))))
 		;; regional-indicator
@@ -928,7 +929,7 @@ USA.
 		  (lambda (wb1 wb2 k0 k1 k2)
 		    (declare (ignore wb2 k2))
 		    (cond ((select:extender wb1)
-			   (k0 #f))
+			   (k0))
 			  ((select:regional-indicator wb1)
 			   (k1 wb:extend #f))
 			  (else
