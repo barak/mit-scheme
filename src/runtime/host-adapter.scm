@@ -41,7 +41,8 @@ USA.
 (define random-bytevector random-byte-vector) env)
   (eval '
 (define (guarantee predicate object #!optional caller)
-  (if (not (predicate object))
+  (if (predicate object)
+      object
       (error "Not a:" predicate object))) env)
   (eval '
 (define (microcode-type name)

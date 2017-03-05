@@ -87,9 +87,9 @@ USA.
     tag))
 
 (define (guarantee predicate object #!optional caller)
-  (if (not (predicate object))
-      (error:not-a predicate object caller))
-  object)
+  (if (predicate object)
+      object
+      (error:not-a predicate object caller)))
 
 (define (error:not-a predicate object #!optional caller)
   (error:wrong-type-argument object (predicate-description predicate) caller))

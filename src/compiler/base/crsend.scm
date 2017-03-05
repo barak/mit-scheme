@@ -32,6 +32,8 @@ USA.
 ;;; compiler.
 
 (declare (usual-integrations))
+
+(load-option 'COMPRESS)                        ; XXX ugh
 
 (define (finish-cross-compilation:directory directory #!optional force?)
   (let ((force? (if (default-object? force?) #f force?)))
@@ -51,6 +53,21 @@ USA.
 				(string=? t "moc")))
 			 (finish-cross-compilation:file pathname force?))))
 		(directory-read (pathname-as-directory directory))))))
+
+(define (finish-cross-compilation:files directory #!optional force?)
+  (let ((force? (if (default-object? force?) #f force?)))
+    (let loop ((directory directory))
+      (for-each (lambda (pathname)
+                 (cond ((file-directory? pathname)
+                        (if (not (let ((ns (file-namestring pathname)))
+                                   (or (string=? ns ".")
+                                       (string=? ns ".."))))
+                            (loop pathname)))
+                       ((let ((t (pathname-type pathname)))
+                          (and (string? t)
+                               (string=? t "moc")))
+                        (finish-cross-compilation:file pathname force?))))
+               (directory-read (pathname-as-directory directory))))))
 
 (define (finish-cross-compilation:info-files directory #!optional force?)
   (let ((force? (if (default-object? force?) #f force?)))
@@ -220,8 +237,3 @@ USA.
    (lambda (form environment)
      environment
      (apply microcode-type (cdr form)))))
-
-;;(load-option 'COMPRESS)			; XXX ugh
-;; The interpreted compress is terribly slow.
-(finish-cross-compilation:file "cpress.moc")
-(load "cpress.com" (->environment '(runtime compress)))
