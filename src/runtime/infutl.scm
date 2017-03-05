@@ -34,7 +34,6 @@ USA.
   (set! special-form-procedure-names
 	`((,lambda-tag:unnamed . LAMBDA)
 	  (,lambda-tag:internal-lambda . LAMBDA)
-	  (,lambda-tag:internal-lexpr . LAMBDA)
 	  (,lambda-tag:let . LET)
 	  (,lambda-tag:fluid-let . FLUID-LET)))
   (set! directory-rewriting-rules (make-settable-parameter '()))

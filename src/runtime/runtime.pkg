@@ -2770,11 +2770,9 @@ USA.
 	  lambda-names-vector
 	  make-slambda)
   (export (runtime compiler-info)
-	  lambda-tag:internal-lambda
-	  lambda-tag:internal-lexpr)
+	  lambda-tag:internal-lambda)
   (export (runtime lambda-list)
-	  lambda-tag:internal-lambda
-	  lambda-tag:internal-lexpr)
+	  lambda-tag:internal-lambda)
   (export (runtime unsyntaxer)
 	  lambda-immediate-body)
   (initialization (initialize-package!)))

@@ -52,16 +52,14 @@ USA.
 ;;; of a compound lambda.
 
 (define (initialize-package!)
-  (define ((dispatch-0 op-name clambda-op clexpr-op xlambda-op) *lambda)
+  (define ((dispatch-0 op-name clambda-op xlambda-op) *lambda)
     ((cond ((slambda? *lambda) clambda-op)
-	   ((slexpr? *lambda) clexpr-op)
 	   ((xlambda? *lambda) xlambda-op)
 	   (else (error:wrong-type-argument *lambda "SCode lambda" op-name)))
      *lambda))
 
-  (define ((dispatch-1 op-name clambda-op clexpr-op xlambda-op) *lambda arg)
+  (define ((dispatch-1 op-name clambda-op xlambda-op) *lambda arg)
     ((cond ((slambda? *lambda) clambda-op)
-	   ((slexpr? *lambda) clexpr-op)
 	   ((xlambda? *lambda) xlambda-op)
 	   (else (error:wrong-type-argument *lambda "SCode lambda" op-name)))
      *lambda arg))
@@ -85,80 +83,58 @@ USA.
   (set! &lambda-components
 	(dispatch-1 'LAMBDA-COMPONENTS
 		    clambda-components
-		    clexpr-components
 		    xlambda-components))
   (set! has-internal-lambda?
 	(dispatch-0 'HAS-INTERNAL-LAMBDA?
 		    clambda-has-internal-lambda?
-		    clexpr-has-internal-lambda?
 		    xlambda-has-internal-lambda?))
   (set! lambda-arity
 	(dispatch-1 'LAMBDA-ARITY
 		    slambda-arity
-		    slexpr-arity
 		    xlambda-arity))
   (set! lambda-body
 	(dispatch-0 'LAMBDA-BODY
 		    clambda-unwrapped-body
-		    clexpr/physical-body
 		    xlambda-unwrapped-body))
   (set! lambda-bound
 	(dispatch-0 'LAMBDA-BOUND
 		    clambda-bound
-		    clexpr-bound
 		    xlambda-bound))
   (set! lambda-bound?
 	(dispatch-1 'LAMBDA-BOUND?
 		    clambda-bound?
-		    clexpr-bound?
 		    xlambda-bound?))
   (set! lambda-immediate-body
 	(dispatch-0 'LAMBDA-IMMEDIATE-BODY
 		    slambda-body
-		    slexpr-body
 		    xlambda-body))
   (set! lambda-interface
 	(dispatch-0 'LAMBDA-INTERFACE
 		    slambda-interface
-		    clexpr-interface
 		    xlambda-interface))
   (set! lambda-name
 	(dispatch-0 'LAMBDA-NAME
 		    slambda-name
-		    slexpr-name
 		    xlambda-name))
   (set! lambda-names-vector
 	(dispatch-0 'LAMBDA-NAMES-VECTOR
 		    slambda-names-vector
-		    slexpr-names-vector
 		    xlambda-names-vector))
   (set! lambda-unwrap-body!
 	(dispatch-0 'LAMBDA-UNWRAP-BODY!
 		    clambda-unwrap-body!
-		    (lambda (*lambda)
-		      *lambda
-		      (error "Cannot advise clexprs."))
 		    xlambda-unwrap-body!))
   (set! lambda-wrap-body!
 	(dispatch-1 'LAMBDA-WRAP-BODY!
 		    clambda-wrap-body!
-		    (lambda (*lambda transform)
-		      *lambda transform
-		      (error "Cannot advise clexprs."))
 		    xlambda-wrap-body!))
   (set! lambda-wrapper-components
 	(dispatch-1 'LAMBDA-WRAPPER-COMPONENTS
 		    clambda-wrapper-components
-		    (lambda (*lambda receiver)
-		      *lambda receiver
-		      (error "Cannot advise clexprs."))
 		    xlambda-wrapper-components))
   (set! set-lambda-body!
 	(dispatch-1 'SET-LAMBDA-BODY!
 		    set-clambda-unwrapped-body!
-		    (lambda (*lambda new-body)
-		      *lambda new-body
-		      (error "Cannot advise clexprs."))
 		    set-xlambda-unwrapped-body!)))
 
 ;;;; Hairy Advice Wrappers
@@ -296,64 +272,6 @@ USA.
 (define (clambda/set-physical-body! clambda body)
   (set-slambda-body! (or (clambda-has-internal-lambda? clambda) clambda) body))
 
-;;;; Compound Lexpr
-
-;;; TODO(jrm):  I'm removing constructor so new SCode won't contain
-;;; these, although given the conditions it is unlikely there were
-;;; any.  In the next release we can remove the accessors etc.
-
-(define (clexpr-components clexpr receiver)
-  (slexpr-components clexpr
-    (lambda (name required body)
-      (let ((internal (combination-operator body)))
-	(let ((auxiliary (slambda-auxiliary internal)))
-	  (receiver name
-		    required
-		    '()
-		    (car auxiliary)
-		    (append (cdr auxiliary)
-			    (lambda-body-auxiliary (slambda-body internal)))
-		    (clexpr/physical-body clexpr)))))))
-
-(define (clexpr-bound clexpr)
-  (slexpr-components clexpr
-    (lambda (name required body)
-      name
-      (let ((internal (combination-operator body)))
-	(append required
-		(slambda-auxiliary internal)
-		(lambda-body-auxiliary (slambda-body internal)))))))
-
-(define (clexpr-bound? clexpr symbol)
-  (or (slexpr-bound? clexpr symbol)
-      (clexpr-internal-bound? clexpr symbol)))
-
-(define (clexpr-interface clexpr)
-  (slexpr-components clexpr
-    (lambda (name required body)
-      name
-      (let ((internal (combination-operator body)))
-	(let ((auxiliary (slambda-auxiliary internal)))
-	  (make-lambda-list required '() (car auxiliary) '()))))))
-
-(define (clexpr-has-internal-lambda? clexpr)
-  (let ((internal (combination-operator (slexpr-body clexpr))))
-    (or (lambda-body-has-internal-lambda? (slambda-body internal))
-	internal)))
-
-(define (clexpr-internal-bound? clexpr symbol)
-  (let ((body (slexpr-body clexpr)))
-    (and (combination? body)
-	 (let ((operator (combination-operator body)))
-	   (and (internal-lambda? operator)
-		(internal-lambda-bound? operator symbol))))))
-
-(define (clexpr/physical-body clexpr)
-  (slambda-body (clexpr-has-internal-lambda? clexpr)))
-
-(define (clexpr/set-physical-body! clexpr body)
-  (set-slambda-body! (clexpr-has-internal-lambda? clexpr) body))
-
 ;;;; Extended Lambda
 
 (define (xlambda? object)
@@ -486,7 +404,6 @@ USA.
 
 (define (lambda? object)
   (or (slambda? object)
-      (slexpr? object)
       (xlambda? object)))
 
 (define (make-lambda name required optional rest auxiliary declarations body)
@@ -636,53 +553,11 @@ USA.
   (receiver (%slambda-name slambda)
 	    (%slambda-interface slambda)
 	    (%slambda-body slambda)))
-
-;;;; Simple lexpr
-
-;;; TODO(jrm):  I've removed the constructor so new SCode won't
-;;; contain these.  In the next release we can remove the accessors
-;;; etc.
-
-(define-integrable slexpr-type
-  (ucode-type lexpr))
-
-(define-integrable (slexpr? object)
-  (object-type? slexpr-type object))
-
-(define (slexpr-components slexpr receiver)
-  (let ((bound (&pair-cdr slexpr)))
-    (receiver (vector-ref bound 0)
-	      (subvector->list bound 1 (vector-length bound))
-	      (&pair-car slexpr))))
-
-(define (slexpr-interface slexpr)
-  (let ((bound (&pair-cdr slexpr)))
-    (subvector->list bound 1 (vector-length bound))))
-
-(define (slexpr-arity slexpr offset)
-  (let ((bound (&pair-cdr slexpr)))
-    (make-lambda-arity (- (vector-length bound) 2) 0 #t offset)))
-
-(define (slexpr-names-vector slexpr)
-  (&pair-cdr slexpr))
-
-(define (slexpr-bound? slexpr symbol)
-  (let ((bound (&pair-cdr slexpr)))
-    (subvector-find-next-element bound 1 (vector-length bound) symbol)))
-
-(define-integrable (slexpr-name slexpr)
-  (vector-ref (&pair-cdr slexpr) 0))
-
-(define-integrable (slexpr-body slexpr)
-  (&pair-car slexpr))
 
 ;;;; Internal Lambda
 
 (define-integrable lambda-tag:internal-lambda
   ((ucode-primitive string->symbol) "#[internal-lambda]"))
-
-(define-integrable lambda-tag:internal-lexpr
-  ((ucode-primitive string->symbol) "#[internal-lexpr]"))
 
 (define-integrable (%make-internal-lambda names body)
   (make-slambda lambda-tag:internal-lambda names body))
@@ -695,8 +570,7 @@ USA.
 
 (define (internal-lambda? *lambda)
   (and (slambda? *lambda)
-       (or (eq? (slambda-name *lambda) lambda-tag:internal-lambda)
-	   (eq? (slambda-name *lambda) lambda-tag:internal-lexpr))))
+       (eq? (slambda-name *lambda) lambda-tag:internal-lambda)))
 
 (define (internal-lambda-bound? *lambda symbol)
   (and (slambda? *lambda)

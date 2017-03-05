@@ -133,7 +133,6 @@ USA.
 
       ;; From lambda.scm
       (eq? object lambda-tag:internal-lambda)
-      (eq? object lambda-tag:internal-lexpr)
 
       ;; From syntax-output.scm
       (eq? object lambda-tag:fluid-let)
