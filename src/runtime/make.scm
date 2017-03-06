@@ -359,7 +359,8 @@ USA.
 	 ("boot" . (RUNTIME BOOT-DEFINITIONS))
 	 ("queue" . (RUNTIME SIMPLE-QUEUE))
 	 ("equals" . (RUNTIME EQUALITY))
-	 ("list" . (RUNTIME LIST))))
+	 ("list" . (RUNTIME LIST))
+	 ("vector" . (RUNTIME VECTOR))))
       (files1
        '(("ustring" . (RUNTIME USTRING))
 	 ("symbol" . (RUNTIME SYMBOL))

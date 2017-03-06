@@ -625,6 +625,9 @@ USA.
 	(error:bad-range-argument end 'grapheme-cluster-slice))
     (string-slice string start-index end-index)))
 
+(define (grapheme-cluster-breaks string)
+  (reverse! (find-grapheme-cluster-breaks string '() cons)))
+
 (define (find-grapheme-cluster-breaks string initial-ctx break)
   (let ((n (string-length string)))
 
@@ -757,6 +760,9 @@ USA.
 
 ;;;; Word breaks
 
+(define (string-word-breaks string)
+  (reverse! (find-word-breaks string '() cons)))
+
 (define (find-word-breaks string initial-ctx break)
   (let ((n (string-length string)))
 
@@ -764,40 +770,62 @@ USA.
       (ucd-wb-value (string-ref string i)))
 
     (define (t1 wb0 i0 ctx)
+      (if (select:breaker wb0)
+	  (t1-breaker wb0 i0 ctx)
+	  (t1-!breaker wb0 i0 ctx)))
+
+    (define (t1-breaker wb0 i0 ctx)
       (let ((i1 (fix:+ i0 1)))
 	(if (fix:< i1 n)
-	    (t2 wb0 (get-wb i1) i1 ctx)
-	    (break n ctx))))
-
-    (define (t2 wb0 wb1 i1 ctx)
-      (let ((i2 (fix:+ i1 1)))
-	(if (fix:< i2 n)
-	    (let ((wb2 (get-wb i2)))
+	    (let ((wb1 (get-wb i1)))
 	      ((vector-ref wb-states wb0)
 	       wb1
-	       wb2
-	       (lambda ()
-		 (t2 wb0 wb2 i2 ctx))
+	       #f
 	       (lambda (wb1* break?)
-		 (t2 wb1* wb2 i2 (if break? (break i1 ctx) ctx)))
-	       (lambda (wb2*)
-		 (t1 wb2* i2 ctx))))
+		 (t1 wb1* i1 (if break? (break i1 ctx) ctx)))
+	       k2-none))
+	    ctx)))
+
+    (define (t1-!breaker wb0 i0 ctx)
+      (let ((i1 (fix:+ i0 1)))
+	(if (fix:< i1 n)
+	    (let ((wb1 (get-wb i1)))
+	      (cond ((select:extender wb1)
+		     (t1-!breaker wb0 i1 ctx))
+		    ((select:breaker wb1)
+		     (t1-breaker wb1 i1 (break i1 ctx)))
+		    (else
+		     (t2 wb0 wb1 i1 ctx))))
+	    ctx)))
+
+    (define (t2 wb0 wb1 i1 ctx)
+      (let find-i2 ((i2 (fix:+ i1 1)))
+	(if (fix:< i2 n)
+	    (let ((wb2 (get-wb i2)))
+	      (if (select:extender wb2)
+		  (find-i2 (fix:+ i2 1))
+		  ((vector-ref wb-states wb0)
+		   wb1
+		   wb2
+		   (lambda (wb1* break?)
+		     (t2 wb1* wb2 i2 (if break? (break i1 ctx) ctx)))
+		   (lambda ()
+		     (t1 wb2 i2 ctx)))))
 	    ((vector-ref wb-states wb0)
 	     wb1
 	     #f
-	     (lambda ()
-	       (break n ctx))
 	     (lambda (wb1* break?)
 	       (declare (ignore wb1*))
-	       (break n (if break? (break i1 ctx) ctx)))
-	     (lambda (wb2*)
-	       (declare (ignore wb2*))
-	       (error "Should never be called"))))))
+	       (if break? (break i1 ctx) ctx))
+	     k2-none))))
+
+    (define (k2-none)
+      (error "Should never be called"))
 
     (if (fix:< 0 n)
-	(t1 (get-wb 0) 0 (break 0 initial-ctx))
+	(break n (t1 (get-wb 0) 0 (break 0 initial-ctx)))
 	initial-ctx)))
-
+
 (define wb-names
   '#(carriage-return
      double-quote
@@ -821,124 +849,87 @@ USA.
      single-quote
      other
      zwj))
-
+
+(define select:breaker
+  (make-selector wb-names '(carriage-return linefeed newline)))
+
+(define select:extender
+  (make-selector wb-names '(extend format zwj)))
+
 (define wb-states
-  (let ((select:extender (make-selector wb-names '(extend format zwj)))
-	(select:mb/ml/sq
-	 (make-selector wb-names '(mid-letter mid-num-let single-quote)))
-	(select:hl/le (make-selector wb-names '(hebrew-letter letter))))
+  (make-vector (vector-length wb-names)
+	       (lambda (wb1 wb2 k1 k2)
+		 (declare (ignore wb2 k2))
+		 (k1 wb1 #t))))
+
+(let ((select:mb/ml/sq
+       (make-selector wb-names '(mid-num-let mid-letter single-quote)))
+      (select:mb/mn/sq
+       (make-selector wb-names '(mid-num-let mid-number single-quote)))
+      (select:hl/le (make-selector wb-names '(hebrew-letter letter)))
+      (select:hl (make-selector wb-names '(hebrew-letter)))
+      (select:numeric (make-selector wb-names '(numeric)))
+      (select:dq (make-selector wb-names '(double-quote)))
+      (select:ri (make-selector wb-names '(regional-indicator)))
+      (break?:hl
+       (make-!selector wb-names
+		       '(extend-num-let hebrew-letter letter numeric
+					single-quote)))
+      (break?:alphanum
+       (make-!selector wb-names
+		       '(extend-num-let hebrew-letter letter numeric)))
+      (wb:extend (name->code wb-names 'extend)))
 
-    (let ((standard-state
-	   (lambda (break?)
-	     (lambda (wb1 wb2 k0 k1 k2)
-	       (declare (ignore wb2 k2))
-	       (if (select:extender wb1)
-		   (k0)
-		   (k1 wb1 (break? wb1)))))))
+  (define (define-state name state)
+    (vector-set! wb-states (name->code wb-names name) state))
 
-      (let ((state:always-break
-	     (lambda (wb1 wb2 k0 k1 k2)
-	       (declare (ignore wb2 k0 k2))
-	       (k1 wb1 #t)))
-	    (state:default
-	     (lambda (wb1 wb2 k0 k1 k2)
-	       (declare (ignore wb2 k2))
-	       (if (select:extender wb1)
-		   (k0)
-		   (k1 wb1 #t))))
-	    (state:emoji-base
-	     (standard-state (make-!selector wb-names '(emoji-modifier)))))
+  (for-each
+   (lambda (n.b)
+     (define-state (car n.b)
+       (let ((break? (make-!selector wb-names (cdr n.b))))
+	 (lambda (wb1 wb2 k1 k2)
+	   (declare (ignore wb2 k2))
+	   (k1 wb1 (break? wb1))))))
+   '((carriage-return linefeed)
+     (emoji-base emoji-modifier)
+     (emoji-base-gaz emoji-modifier)
+     (katakana extend-num-let katakana)
+     (zwj emoji-base-gaz glue-after-zwj)
+     (extend-num-let extend-num-let hebrew-letter katakana letter numeric)))
 
-	(vector (let ((break?		;carriage-return
-		       (make-!selector wb-names '(linefeed))))
-		  (lambda (wb1 wb2 k0 k1 k2)
-		    (declare (ignore wb2 k0 k2))
-		    (k1 wb1 (break? wb1))))
-		state:default		;double-quote
-		state:emoji-base	;emoji-base
-		state:emoji-base	;emoji-base-gaz
-		state:default		;emoji-modifier
-		(standard-state		;extend-num-let
-		 (make-!selector wb-names
-				 '(extend-num-let hebrew-letter katakana letter
-						  numeric)))
-		state:default		;extend
-		state:default		;format
-		state:default		;glue-after-zwj
-		(let ((break?		;hebrew-letter
-		       (make-!selector wb-names
-				       '(extend-num-let hebrew-letter letter
-							numeric single-quote)))
-		      (select:dq (make-selector wb-names '(double-quote)))
-		      (select:hl (make-selector wb-names '(hebrew-letter))))
-		  (lambda (wb1 wb2 k0 k1 k2)
-		    (cond ((select:extender wb1)
-			   (k0))
-			  ((and wb2
-				(select:mb/ml/sq wb1)
-				(select:hl/le wb2))
-			   (k2 wb2))
-			  ((and wb2
-				(select:dq wb1)
-				(select:hl wb2))
-			   (k2 wb2))
-			  (else
-			   (k1 wb1 (break? wb1))))))
-		(standard-state		;katakana
-		 (make-!selector wb-names '(extend-num-let katakana)))
-		(let ((break?		;letter
-		       (make-!selector wb-names
-				       '(extend-num-let hebrew-letter letter
-							numeric))))
-		  (lambda (wb1 wb2 k0 k1 k2)
-		    (cond ((select:extender wb1)
-			   (k0))
-			  ((and wb2
-				(select:mb/ml/sq wb1)
-				(select:hl/le wb2))
-			   (k2 wb2))
-			  (else
-			   (k1 wb1 (break? wb1))))))
-		state:always-break	;linefeed
-		state:default		;mid-num-let
-		state:default		;mid-letter
-		state:default		;mid-number
-		state:always-break	;newline
-		(let ((break?		;numeric
-		       (make-!selector wb-names
-				       '(extend-num-let hebrew-letter letter
-							numeric)))
-		      (select:mb/mn/sq
-		       (make-selector wb-names
-				      '(mid-num-let mid-number single-quote)))
-		      (select:numeric
-		       (make-selector wb-names '(numeric))))
-		  (lambda (wb1 wb2 k0 k1 k2)
-		    (cond ((select:extender wb1)
-			   (k0))
-			  ((and wb2
-				(select:mb/mn/sq wb1)
-				(select:numeric wb2))
-			   (k2 wb2))
-			  (else
-			   (k1 wb1 (break? wb1))))))
-		;; regional-indicator
-		(let ((select:regional-indicator
-		       (make-selector wb-names '(regional-indicator)))
-		      (wb:extend (name->code wb-names 'extend)))
-		  (lambda (wb1 wb2 k0 k1 k2)
-		    (declare (ignore wb2 k2))
-		    (cond ((select:extender wb1)
-			   (k0))
-			  ((select:regional-indicator wb1)
-			   (k1 wb:extend #f))
-			  (else
-			   (k1 wb1 #t)))))
-		state:default		;single-quote
-		state:default		;other
-		(standard-state		;zwj
-		 (make-!selector wb-names '(emoji-base-gaz glue-after-zwj)))
-		)))))
+  (define-state 'hebrew-letter
+    (lambda (wb1 wb2 k1 k2)
+      (if (and wb2
+	       (or (and (select:mb/ml/sq wb1)
+			(select:hl/le wb2))
+		   (and (select:dq wb1)
+			(select:hl wb2))))
+	  (k2)
+	  (k1 wb1 (break?:hl wb1)))))
+
+  (define-state 'letter
+    (lambda (wb1 wb2 k1 k2)
+      (if (and wb2
+	       (select:mb/ml/sq wb1)
+	       (select:hl/le wb2))
+	  (k2)
+	  (k1 wb1 (break?:alphanum wb1)))))
+
+  (define-state 'numeric
+    (lambda (wb1 wb2 k1 k2)
+      (if (and wb2
+	       (select:mb/mn/sq wb1)
+	       (select:numeric wb2))
+	  (k2)
+	  (k1 wb1 (break?:alphanum wb1)))))
+
+  (define-state 'regional-indicator
+    (let ()
+      (lambda (wb1 wb2 k1 k2)
+	(declare (ignore wb2 k2))
+	(if (select:ri wb1)
+	    (k1 wb:extend #f)
+	    (k1 wb1 #t))))))
 
 ;;;; Search
 

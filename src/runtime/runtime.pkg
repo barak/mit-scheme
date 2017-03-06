@@ -966,6 +966,7 @@ USA.
 	  burst-string
 	  char->string
 	  decorated-string-append
+	  grapheme-cluster-breaks
 	  grapheme-cluster-length
 	  grapheme-cluster-slice
 	  list->string
@@ -1040,6 +1041,7 @@ USA.
 	  string-trimmer
 	  string-upcase
 	  string-upper-case?
+	  string-word-breaks
 	  string<=?
 	  string<?
 	  string=?
