@@ -447,7 +447,7 @@ USA.
 	(end (string-length string)))
     (do ((index 0 (fix:+ index 1)))
 	((not (fix:< index end)))
-      (for-each builder (transform (string-ref string index))))
+      (builder (transform (string-ref string index))))
     (builder)))
 
 (define (string-titlecase string)
@@ -464,11 +464,10 @@ USA.
 	(let ((char (string-ref string index)))
 	  (if (char-cased? char)
 	      (begin
-		(for-each builder (char-titlecase-full char))
+		(builder (char-titlecase-full char))
 		(do ((index (fix:+ index 1) (fix:+ index 1)))
 		    ((not (fix:< index end)))
-		  (for-each builder
-			    (char-downcase-full (string-ref string index)))))
+		  (builder (char-downcase-full (string-ref string index)))))
 	      (begin
 		(builder char)
 		(loop (fix:+ index 1))))))))
@@ -542,7 +541,7 @@ USA.
 	(builder (string-builder)))
     (do ((i 0 (fix:+ i 1)))
 	((not (fix:< i end)))
-      (for-each builder (ucd-dm-value (string-ref string i))))
+      (builder (ucd-dm-value (string-ref string i))))
     (builder)))
 
 (define (canonical-ordering! string)

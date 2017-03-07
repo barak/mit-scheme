@@ -577,8 +577,8 @@ USA.
 		     (if (string=? "" value)
 			 '()
 			 (map string->cp (splitter value)))))
-		 (lambda (char-expr) `(list ,char-expr))
-		 (lambda (svs-expr) `(map integer->char ,svs-expr))))
+		 (lambda (char-expr) `(string ,char-expr))
+		 (lambda (svs-expr) `(string* (map integer->char ,svs-expr)))))
 
 (define value-manager:byte
   (value-manager "0"
