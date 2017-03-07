@@ -28,6 +28,8 @@ USA.
 
 (declare (usual-integrations))
 
+(load-option 'mime-codec)
+
 (define (test-encoder n-packets packet-length text? filename
 		      initialize finalize update)
   (call-with-output-file filename

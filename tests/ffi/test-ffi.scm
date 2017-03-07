@@ -26,6 +26,7 @@ USA.
 
 ;;;; Build and test the test plugin.
 
+(load-option 'synchronous-subprocess)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (let ((port (notification-output-port)))

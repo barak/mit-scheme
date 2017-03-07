@@ -28,6 +28,8 @@ USA.
 
 (declare (usual-integrations))
 
+(load-option 'subprocess)
+
 (define (shell-subprocess command)
   (start-pipe-subprocess "/bin/sh" `#("/bin/sh" "-c" ,command) '#()))
 
