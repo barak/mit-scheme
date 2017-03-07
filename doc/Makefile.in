@@ -44,6 +44,7 @@ libdir = @libdir@
 infodir = @infodir@
 mandir = @mandir@
 includedir = @includedir@
+docdir = @docdir@
 oldincludedir = /usr/include
 
 DESTDIR =
@@ -116,7 +117,7 @@ install-info-gz install-info:
 
 install-man:
 	$(mkinstalldirs) $(DESTDIR)$(mandir)/man1
-	$(INSTALL_DATA) scheme.1 $(DESTDIR)$(mandir)/man1/.
+	$(INSTALL_DATA) mit-scheme.1 $(DESTDIR)$(mandir)/man1/.
 
 install-html:
 	$(mkinstalldirs) $(DESTDIR)$(htmldir)

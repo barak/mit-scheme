@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme documentation],
-	[9.2],
+	[9.2.1],
 	[bug-mit-scheme@gnu.org],
 	[mit-scheme-doc])
 AC_CONFIG_SRCDIR([ref-manual/scheme.texinfo])
@@ -44,11 +44,9 @@ INST_TARGETS=
 
 AC_ARG_ENABLE([html],
 	[AC_HELP_STRING([--enable-html], [generate HTML documentation])])
-if test "${enable_html:-yes}" = "yes"; then
-    htmldir="${libdir}/mit-scheme/doc"
-elif test "${enable_html}" = "no"; then
+if test "${enable_html}" = "no"; then
     htmldir=
-else
+elif test "${enable_html:-yes}" != "yes"; then
     htmldir="${enable_html}"
 fi
 test "${htmldir}" = "" || TARGETS="${TARGETS} \$(TARGET_ROOT)/index.html"
@@ -57,11 +55,9 @@ AC_SUBST([htmldir])
 
 AC_ARG_ENABLE([pdf],
 	[AC_HELP_STRING([--enable-pdf], [generate PDF documentation])])
-if test "${enable_pdf:-yes}" = "yes"; then
-    pdfdir="${libdir}/mit-scheme/doc"
-elif test "${enable_pdf}" = "no"; then
+if test "${enable_pdf}" = "no"; then
     pdfdir=
-else
+elif test "${enable_pdf:-yes}" != "yes"; then
     pdfdir="${enable_pdf}"
 fi
 test "${pdfdir}" = "" || TARGETS="${TARGETS} \$(TARGET_ROOT).pdf"
@@ -72,9 +68,7 @@ AC_ARG_ENABLE([ps],
 	[AC_HELP_STRING([--enable-ps], [generate Postscript documentation])])
 if test "${enable_ps:-no}" = "no"; then
     psdir=
-elif test "${enable_ps}" = "yes"; then
-    psdir="${libdir}/mit-scheme/doc"
-else
+elif test "${enable_ps}" != "yes"; then
     psdir="${enable_ps}"
 fi
 test "${psdir}" = "" || TARGETS="${TARGETS} \$(TARGET_ROOT).ps"
