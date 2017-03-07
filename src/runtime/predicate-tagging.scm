@@ -29,8 +29,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (tagged-object? object)
-  (fix:= (ucode-type tagged) (object-type object)))
+(define-integrable (tagged-object? object)
+  (object-type? (ucode-type tagged-object) object))
 
 (define (object-tagger predicate)
   (let ((tag (predicate->tag predicate)))
@@ -44,7 +44,7 @@ USA.
   (tag->predicate (tagged-object-tag object)))
 
 (define-integrable (make-tagged-object tag datum)
-  (system-pair-cons (ucode-type tagged) tag datum))
+  (system-pair-cons (ucode-type tagged-object) tag datum))
 
 (define (tagged-object-tag object)
   (guarantee tagged-object? object 'tagged-object-tag)
