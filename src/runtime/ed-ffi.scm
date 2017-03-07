@@ -64,7 +64,7 @@ USA.
     ("error"	(runtime error-handler))
     ("events"	(runtime event-distributor))
     ("ffi"	(runtime ffi))
-    ("file-attributes" (runtime parser file-attributes))
+    ("file-attributes" (runtime file-attributes))
     ("fileio"	(runtime file-i/o-port))
     ("fixart"	(runtime fixnum-arithmetic))
     ("floenv"	(runtime floating-point-environment))
