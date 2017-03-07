@@ -440,7 +440,13 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 
 (define-structure (input-event
 		   (constructor make-input-event (type operator . operands))
-		   (conc-name input-event/))
+		   (conc-name input-event/)
+		   (print-procedure
+		    (standard-unparser-method
+		     'input-event
+		     (lambda (event port)
+		       (write-char #\space port)
+		       (write (input-event/type event) port)))))
   (type #f read-only #t)
   (operator #f read-only #t)
   (operands #f read-only #t))
