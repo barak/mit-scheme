@@ -154,16 +154,17 @@ USA.
   unspecific)
 
 (define (save-boot-inits! environment)
-  (let ((inits (reverse! boot-inits)))
-    (set! boot-inits #f)
-    (let ((p (assq environment saved-boot-inits)))
-      (if p
-	  (set-cdr! p (append! (cdr p) inits))
-	  (begin
-	    (set! saved-boot-inits
-		  (cons (cons environment inits)
-			saved-boot-inits))
-	    unspecific)))))
+  (if (pair? boot-inits)
+      (let ((inits (reverse! boot-inits)))
+	(set! boot-inits #f)
+	(let ((p (assq environment saved-boot-inits)))
+	  (if p
+	      (set-cdr! p (append! (cdr p) inits))
+	      (begin
+		(set! saved-boot-inits
+		      (cons (cons environment inits)
+			    saved-boot-inits))
+		unspecific))))))
 
 (define (get-boot-init-runner environment)
   (let ((p (assq environment saved-boot-inits)))
