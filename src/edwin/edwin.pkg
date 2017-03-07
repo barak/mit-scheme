@@ -119,7 +119,6 @@ USA.
 	   runtime-param:parser-associate-positions?)
 	  (param:parser-fold-case? runtime-param:parser-fold-case?)
 	  (param:parser-radix runtime-param:parser-radix)
-	  (param:parser-table runtime-param:parser-table)
 	  get-param:parser-fold-case?)
   (import (runtime port)
 	  (make-port make-textual-port)

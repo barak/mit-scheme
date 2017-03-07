@@ -34,7 +34,6 @@ USA.
 (define *parser-canonicalize-symbols?* #!default)
 (define *parser-constituents* #!default)
 (define *parser-radix* #!default)
-(define *parser-table* #!default)
 
 (define param:parser-associate-positions?)
 (define param:parser-atom-delimiters)
@@ -43,7 +42,6 @@ USA.
 (define param:parser-constituents)
 (define param:parser-keyword-style)
 (define param:parser-radix)
-(define param:parser-table)
 
 (define runtime-param:parser-associate-positions?)
 (define runtime-param:parser-atom-delimiters)
@@ -52,7 +50,6 @@ USA.
 (define runtime-param:parser-constituents)
 (define runtime-param:parser-keyword-style)
 (define runtime-param:parser-radix)
-(define runtime-param:parser-table)
 
 (define ignore-extra-list-closes #t)
 
@@ -94,9 +91,6 @@ USA.
 
 (define get-param:parser-radix
   (param-getter 'param:parser-radix '*parser-radix*))
-
-(define get-param:parser-table
-  (param-getter 'param:parser-table '*parser-table*))
 
 (define (parse-object port environment)
   ((top-level-parser port) port environment))
@@ -134,7 +128,7 @@ USA.
   (read-in-context port db 'OBJECT))
 
 (define (dispatch port db ctx)
-  (let ((handlers (parser-table/initial (db-parser-table db))))
+  (let ((handlers (parser-table/initial system-global-parser-table)))
     (let loop ()
       (let* ((position (current-position port db))
 	     (char (%read-char port db)))
@@ -161,7 +155,7 @@ USA.
 
 (define (handler:special port db ctx char1)
   (let ((char2 (%read-char/no-eof port db)))
-    ((get-handler char2 (parser-table/special (db-parser-table db)))
+    ((get-handler char2 (parser-table/special system-global-parser-table))
      port db ctx char1 char2)))
 
 (define (get-handler char handlers)
@@ -218,9 +212,6 @@ USA.
   (set! param:parser-radix
 	(make-unsettable-parameter 10
 				   radix-converter))
-  (set! param:parser-table
-	(make-unsettable-parameter system-global-parser-table
-				   parser-table-converter))
 
   (set! runtime-param:parser-associate-positions?
 	(copy-parameter param:parser-associate-positions?))
@@ -236,8 +227,6 @@ USA.
 	(copy-parameter param:parser-keyword-style))
   (set! runtime-param:parser-radix
 	(copy-parameter param:parser-radix))
-  (set! runtime-param:parser-table
-	(copy-parameter param:parser-table))
 
   (set! hashed-object-interns (make-strong-eq-hash-table))
   (initialize-condition-types!))
@@ -302,10 +291,6 @@ USA.
 (define (keyword-style-converter value)
   (if (not (memq value '(#f prefix suffix)))
       (error "Invalid keyword style:" value))
-  value)
-
-(define (parser-table-converter value)
-  (guarantee parser-table? value)
   value)
 
 (define (radix-converter value)
@@ -924,8 +909,7 @@ USA.
 
 (define (initial-db port environment)
   (let ((environment
-	 (if (or (default-object? environment)
-		 (parser-table? environment))
+	 (if (default-object? environment)
 	     (nearest-repl/environment)
 	     (begin
 	       (guarantee environment? environment)
@@ -973,9 +957,6 @@ USA.
 
 (define db-constituents
   (db-env-getter get-param:parser-constituents))
-
-(define db-parser-table
-  (db-env-getter get-param:parser-table))
 
 (define db-radix
   (db-env-getter get-param:parser-radix))

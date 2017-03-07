@@ -3307,8 +3307,7 @@ USA.
 	  *parser-atom-delimiters*
 	  *parser-canonicalize-symbols?*
 	  *parser-constituents*
-	  *parser-radix*
-	  *parser-table*)
+	  *parser-radix*)
   (export ()
 	  define-bracketed-object-parser-method
 	  param:parser-associate-positions?
@@ -3318,10 +3317,8 @@ USA.
 	  param:parser-fold-case?
 	  param:parser-keyword-style
 	  param:parser-radix
-	  param:parser-table
 	  parse-object
-	  parse-objects
-	  system-global-parser-table)
+	  parse-objects)
   (export (runtime)
 	  (param:parser-associate-positions?
 	   runtime-param:parser-associate-positions?)
@@ -3331,8 +3328,7 @@ USA.
 	  (param:parser-enable-attributes?
 	   runtime-param:parser-enable-attributes?)
 	  (param:parser-keyword-style runtime-param:parser-keyword-style)
-	  (param:parser-radix runtime-param:parser-radix)
-	  (param:parser-table runtime-param:parser-table))
+	  (param:parser-radix runtime-param:parser-radix))
   (export (runtime swank)
 	  get-param:parser-fold-case?)
   (export (runtime unparser)
@@ -3344,6 +3340,18 @@ USA.
 	  repl-environment-value)
   (initialization (initialize-package!)))
 
+(define-package (runtime parser-table)
+  (files "partab")
+  (parent (runtime))
+  (export (runtime parser)
+	  make-parser-table
+	  parser-table/copy
+	  parser-table/entry
+	  parser-table/initial
+	  parser-table/set-entry!
+	  parser-table/special
+	  parser-table?))
+
 (define-package (runtime file-attributes)
   (files "file-attributes")
   (parent (runtime))
@@ -3351,19 +3359,6 @@ USA.
 	  parse-file-attributes-string)
   (export (runtime parser)
 	  parse-file-attributes-line))
-
-(define-package (runtime parser-table)
-  (files "partab")
-  (parent (runtime))
-  (export ()
-	  make-parser-table
-	  parser-table/copy
-	  parser-table/entry
-	  parser-table/set-entry!
-	  parser-table?)
-  (export (runtime parser)
-	  parser-table/initial
-	  parser-table/special))
 
 (define-package (runtime pathname)
   (files "pathnm")
