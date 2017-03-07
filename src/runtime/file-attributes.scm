@@ -38,30 +38,33 @@ USA.
 ;;; delimit the end of a key or a value.
 
 (define (parse-file-attributes-string string)
-  (let ((start (string-search-forward "-*-" string)))
-    (and start
-	 (let ((v
-		(*parse-string parse:attributes-line
-			       (string-slice string start))))
-	   (and v
-                (filter-map (lambda (p)
-                              (let ((value
-                                     (ignore-errors
-                                      (lambda ()
-                                        (read (open-input-string (cdr p)))))))
-                                (and (not (condition? value))
-                                     (cons (intern (car p))
-                                           value))))
-                            (vector-ref v 0)))))))
+  (parse-file-attributes (string->parser-buffer string)))
 
 (define (parse-file-attributes-line port db multiline?)
   (declare (ignore db multiline?))
-  (parse-file-attributes-string (read-line port)))
+  ;;(parse-file-attributes (textual-input-port->parser-buffer port))
+  #f)
+
+(define (parse-file-attributes parser-buffer)
+  (let ((v (parse:attributes-line parser-buffer)))
+    (and v
+	 (filter-map (lambda (p)
+		       (let ((value
+			      (ignore-errors
+			       (lambda ()
+				 (read (open-input-string (cdr p)))))))
+			 (and (not (condition? value))
+			      (cons (intern (car p))
+				    value))))
+		     (vector-ref v 0)))))
 
 (define parse:attributes-line
   (*parser
    (encapsulate vector->list
-     (seq (noise match:leader/trailer)
+     (seq (noise (* (alt (char-set not-hyphen)
+			 (seq #\- (char-set not-asterisk))
+			 (seq #\- #\* (char-set not-hyphen)))))
+	  (noise match:leader/trailer)
 	  (noise (* (char-set char-set:whitespace)))
           (alt (seq parse:key/value-pair
                     (* (seq ";"
@@ -73,8 +76,7 @@ USA.
                               (cons "mode" (vector-ref v 0)))
                             (seq (match (+ (char-set name-chars)))
                                  (noise (* (char-set char-set:whitespace))))))
-          (noise match:leader/trailer)
-          (noise (* (char-set char-set:unicode)))))))
+          (noise match:leader/trailer)))))
 
 (define match:leader/trailer
   (*matcher (seq "-*-" (* "*-"))))
