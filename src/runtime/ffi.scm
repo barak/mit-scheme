@@ -589,29 +589,33 @@ USA.
 ;;; Build support, autoloaded
 
 (define (generate-shim library #!optional prefix)
-  (load-ffi-quietly)
+  (load-option-quietly 'ffi)
   ((environment-lookup (->environment '(ffi)) 'c-generate) library prefix))
 
 (define (update-optiondb directory)
-  (load-ffi-quietly)
+  (load-option-quietly 'ffi)
   ((environment-lookup (->environment '(ffi)) 'update-optiondb) directory))
 
 (define (update-html-index directory)
-  (load-ffi-quietly)
+  (load-option-quietly 'ffi)
+  (load-option-quietly 'regular-expression)
   ((environment-lookup (->environment '(ffi)) 'update-html-index) directory))
 
-(define (load-ffi-quietly)
-  (if (not (name->package '(FFI)))
+(define (load-option-quietly name)
+  (if (not (name->package (list name)))
       (let ((kernel
 	     (lambda ()
 	       (parameterize* (list (cons param:suppress-loading-message? #t))
 		 (lambda ()
-		   (load-option 'FFI))))))
+		   (load-option name))))))
 	(if (nearest-cmdl/batch-mode?)
 	    (kernel)
-	    (with-notification (lambda (port)
-				 (write-string "Loading FFI option" port))
-			       kernel)))))
+	    (with-notification
+	     (lambda (port)
+	       (write-string "Loading " port)
+	       (write-string (string-upcase (symbol-name name)) port)
+	       (write-string " option" port))
+	     kernel)))))
 
 (define calloutback-stack '())
 

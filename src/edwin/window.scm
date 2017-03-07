@@ -366,6 +366,7 @@ USA.
 (unparser/set-tagged-vector-method! %inferior-tag
   (standard-unparser-method 'INFERIOR
     (lambda (inferior port)
+      (write-string " " port)
       (write (inferior-window inferior) port)
       (write-string " x,y=(" port)
       (write (inferior-x-start inferior) port)

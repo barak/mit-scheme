@@ -2,5 +2,6 @@
 
 Please see the git commit log:
 
-$ git clone git://git.savannah.gnu.org/mit-scheme.git
+$ git clone git://git.savannah.gnu.org/mit-scheme.git whatever
+$ cd whatever/
 $ git log origin/master -- src/mhash/ | more

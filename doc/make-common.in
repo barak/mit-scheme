@@ -56,6 +56,7 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 
 # **** END BOILERPLATE ****
 
+docdir = @docdir@
 htmldir = @htmldir@
 pdfdir = @pdfdir@
 psdir = @psdir@
