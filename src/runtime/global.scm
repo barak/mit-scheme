@@ -580,8 +580,8 @@ USA.
 
 ;;;; Builder for vector-like sequences
 
-(define (make-sequence-builder make-buffer sequence-length sequence-set!
-			       finish-build)
+(define (make-sequence-builder make-sequence sequence-length sequence-ref
+			       sequence-set! buffer-length finish-build)
     ;; This is optimized to minimize copying, so it wastes some space.
   (let ((buffers)
 	(buffer)
@@ -589,13 +589,13 @@ USA.
 
     (define (reset!)
       (set! buffers '())
-      (set! buffer (make-buffer))
+      (set! buffer (make-sequence buffer-length))
       (set! index 0)
       unspecific)
 
     (define (new-buffer!)
       (set! buffers (cons (cons buffer index) buffers))
-      (set! buffer (make-buffer))
+      (set! buffer (make-sequence buffer-length))
       (set! index 0)
       unspecific)
 
@@ -609,17 +609,23 @@ USA.
 	  ((not (pair? buffers)) (fix:+ n index))))
 
     (define (append-element! element)
-      (if (not (fix:< index (sequence-length buffer)))
+      (if (not (fix:< index buffer-length))
 	  (new-buffer!))
       (sequence-set! buffer index element)
       (set! index (fix:+ index 1))
       unspecific)
 
     (define (append-sequence! sequence)
-      (if (fix:> index 0)
-	  (new-buffer!))
-      (set! buffers (cons (cons sequence (sequence-length sequence)) buffers))
-      unspecific)
+      (let ((length (sequence-length sequence)))
+	(if (fix:<= length buffer-length)
+	    (do ((i 0 (fix:+ i 1)))
+		((not (fix:< i length)))
+	      (append-element! (sequence-ref sequence i)))
+	    (begin
+	      (if (fix:> index 0)
+		  (new-buffer!))
+	      (set! buffers (cons (cons sequence length) buffers))
+	      unspecific))))
 
     (define (build)
       (finish-build (reverse (cons (cons buffer index) buffers))))

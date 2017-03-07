@@ -123,9 +123,11 @@ USA.
 
 (define (bytevector-builder)
   (let ((builder
-	 (make-sequence-builder (lambda () (allocate-bytevector 16))
+	 (make-sequence-builder allocate-bytevector
 				bytevector-length
+				bytevector-u8-ref
 				bytevector-u8-set!
+				16
 				bytevector-builder:finish-build)))
     (lambda (#!optional object)
       (cond ((default-object? object) ((builder 'build)))

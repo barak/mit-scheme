@@ -216,9 +216,11 @@ USA.
 
 (define (string-builder)
   (let ((builder
-	 (make-sequence-builder (lambda () (full-string-allocate 16))
+	 (make-sequence-builder full-string-allocate
 				string-length
+				string-ref
 				string-set!
+				16
 				string-builder:finish-build)))
     (lambda (#!optional object)
       (cond ((default-object? object) ((builder 'build)))
