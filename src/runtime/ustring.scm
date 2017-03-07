@@ -791,7 +791,7 @@ USA.
 	(if (fix:< i1 n)
 	    (let ((wb1 (get-wb i1)))
 	      (cond ((select:extender wb1)
-		     (t1-!breaker wb0 i1 ctx))
+		     (t1-!breaker (if (select:zwj wb0) wb1 wb0) i1 ctx))
 		    ((select:breaker wb1)
 		     (t1-breaker wb1 i1 (break i1 ctx)))
 		    (else
@@ -855,6 +855,9 @@ USA.
 
 (define select:extender
   (make-selector wb-names '(extend format zwj)))
+
+(define select:zwj
+  (make-selector wb-names '(zwj)))
 
 (define wb-states
   (make-vector (vector-length wb-names)

@@ -2356,11 +2356,9 @@ USA.
 	 (#t #\x200D #t #\x1F3FB #t)
 	 (#t #\x200D #f #\x0308 #t #\x1F3FB #t)
 	 (#t #\x200D #f #\x2764 #t)
-	 ;; Not clear why this is correct:
-	 ;; (#t #\x200D #f #\x0308 #t #\x2764 #t)
+	 (#t #\x200D #f #\x0308 #t #\x2764 #t)
 	 (#t #\x200D #f #\x1F466 #t)
-	 ;; Not clear why this is correct:
-	 ;; (#t #\x200D #f #\x0308 #t #\x1F466 #t)
+	 (#t #\x200D #f #\x0308 #t #\x1F466 #t)
 	 (#t #\x200D #f #\x00AD #t)
 	 (#t #\x200D #f #\x0308 #f #\x00AD #t)
 	 (#t #\x200D #f #\x0300 #t)
