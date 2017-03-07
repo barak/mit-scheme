@@ -44,7 +44,6 @@ USA.
 		 (%constructor (symbol '%MAKE- root))
 		 (constructor (symbol 'MAKE- root))
 		 (predicate (symbol root '?))
-		 (error:not (symbol 'ERROR:NOT- root))
 		 (slot-vars
 		  (map (lambda (slot)
 			 (close-syntax (car slot) environment))
