@@ -42,7 +42,8 @@ USA.
 
 (define (parse-file-attributes-line port db multiline?)
   (declare (ignore db multiline?))
-  ;;(parse-file-attributes (textual-input-port->parser-buffer port))
+  ;; (parse-file-attributes
+  ;;  (textual-input-port->parser-buffer port "-*- "))
   #f)
 
 (define (parse-file-attributes parser-buffer)
@@ -65,17 +66,15 @@ USA.
 			 (seq #\- (char-set not-asterisk))
 			 (seq #\- #\* (char-set not-hyphen)))))
 	  (noise match:leader/trailer)
-	  (noise (* (char-set char-set:whitespace)))
           (alt (seq parse:key/value-pair
                     (* (seq ";"
-                            (noise (* (char-set char-set:whitespace)))
                             parse:key/value-pair))
                     (? (seq ";"
                             (noise (* (char-set char-set:whitespace))))))
                (encapsulate (lambda (v)
                               (cons "mode" (vector-ref v 0)))
-                            (seq (match (+ (char-set name-chars)))
-                                 (noise (* (char-set char-set:whitespace))))))
+		 (seq (match (+ (char-set name-chars)))
+		      (noise (* (char-set char-set:whitespace))))))
           (noise match:leader/trailer)))))
 
 (define match:leader/trailer
@@ -86,7 +85,8 @@ USA.
    (encapsulate (lambda (v)
 		  (cons (vector-ref v 0)
 			(string-trim (vector-ref v 1))))
-     (seq (match (+ (char-set name-chars)))
+     (seq (noise (* (char-set char-set:whitespace)))
+	  (match (+ (char-set name-chars)))
 	  (noise (* (char-set char-set:whitespace)))
 	  ":"
 	  (match match:value)))))
