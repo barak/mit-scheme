@@ -2595,6 +2595,7 @@ USA.
 	  output-port-open?
 	  output-port-terminal-mode
 	  output-port?
+	  port-properties
 	  port-property
 	  port/coding
 	  port/known-coding?

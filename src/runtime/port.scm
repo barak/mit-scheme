@@ -527,6 +527,9 @@ USA.
   (guarantee symbol? name 'remove-port-property!)
   (((port-metadata port) 'delete!) name))
 
+(define (port-properties port)
+  (alist-copy (((port-metadata port) 'get-alist))))
+
 (define (transcribe-char char port)
   (let ((tport (textual-port-transcript port)))
     (if tport
