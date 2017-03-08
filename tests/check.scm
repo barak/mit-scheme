@@ -56,6 +56,7 @@ USA.
     "runtime/test-division"
     "runtime/test-entity"
     "runtime/test-ephemeron"
+    ("runtime/test-file-attributes" (runtime))
     "runtime/test-floenv"
     "runtime/test-genmult"
     "runtime/test-hash-table"
