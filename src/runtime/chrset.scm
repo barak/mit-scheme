@@ -383,8 +383,9 @@ USA.
 ;;;; Accessors
 
 (define (char-in-set? char char-set)
-  (guarantee bitless-char? char 'char-in-set?)
-  (%code-point-in-char-set? (char->integer char) char-set))
+  (guarantee char? char 'char-in-set?)
+  (and (bitless-char? char)
+       (%code-point-in-char-set? (char->integer char) char-set)))
 
 (define (code-point-in-char-set? cp char-set)
   (guarantee unicode-code-point? cp 'code-point-in-char-set?)
