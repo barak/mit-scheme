@@ -923,6 +923,8 @@ USA.
 (define (process-file-attributes file-attribute-alist port)
   ;; Disable further attributes parsing.
   (set-port-property! port 'parser-enable-attributes? #f)
+  ;; Save all the attributes; this helps with testing.
+  (set-port-property! port 'parser-file-attributes file-attribute-alist)
   (process-keyword-attribute file-attribute-alist port)
   (process-mode-attribute file-attribute-alist port)
   (process-studly-case-attribute file-attribute-alist port))
