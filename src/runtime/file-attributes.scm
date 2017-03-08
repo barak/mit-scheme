@@ -40,12 +40,6 @@ USA.
 (define (parse-file-attributes-string string)
   (parse-file-attributes (string->parser-buffer string)))
 
-(define (parse-file-attributes-line port db multiline?)
-  (declare (ignore db multiline?))
-  ;; (parse-file-attributes
-  ;;  (textual-input-port->parser-buffer port "-*- "))
-  #f)
-
 (define (parse-file-attributes parser-buffer)
   (let ((v (parse:attributes-line parser-buffer)))
     (and v

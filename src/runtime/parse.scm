@@ -302,147 +302,79 @@ USA.
   port db ctx char
   continue-parsing)
 
+(define (start-attributes-comment port db)
+  (and (db-enable-attributes? db)
+       ;; If we're past the second line, just discard.
+       (let ((line (current-line port db)))
+	 (and line
+	      (< line 2)))
+       (string-builder)))
+
+(define (finish-attributes-comment builder port)
+  (let ((attributes (and builder (parse-file-attributes-string (builder)))))
+    (if attributes
+	(begin
+	  (process-file-attributes attributes port)
+	  restart-parsing)
+	continue-parsing)))
+
 (define (handler:comment port db ctx char)
   (declare (ignore ctx char))
+  (let ((builder (start-attributes-comment port db)))
+    (let walk ()
+      (let ((char (%read-char port db)))
+	(cond ((eof-object? char)
+	       (finish-attributes-comment builder port)
+	       char)
+	      ((char=? char #\newline)
+	       (finish-attributes-comment builder port))
+	      (else
+	       (if builder (builder char))
+	       (walk)))))))
 
-  ;; This is a small state machine that looks for  -*-
-  ;; The scan state is when it hasn't found anything.
-  ;; The dash state is after a - has been seen.
-  ;; The discard state is after the file-attributes-line has
-  ;; been parsed.
-  (define (scan)
-    (let ((char (%read-char port db)))
-      (if (eof-object? char)
-	  char
-	  (case char
-	    ((#\newline) continue-parsing)
-	    ((#\-) (dash))
-	    (else (scan))))))
-
-  (define (dash)
-    (let ((char (%read-char port db)))
-      (if (eof-object? char)
-	  char
-	  (case char
-	    ((#\newline) continue-parsing)
-	    ((#\*)
-	     (let ((char (%read-char port db)))
-	       (if (eof-object? char)
-		   char
-		   (case char
-		     ((#\newline) continue-parsing)
-		     ((#\-)
-		      (process-file-attributes
-		       (parse-file-attributes-line port db false)
-		       port)
-		      (discard restart-parsing))
-		     (else (scan))))))
-	    ((#\-) (dash))
-	    (else (scan))))))
-
-  (define (discard action)
-    (let ((char (%read-char port db)))
-      (cond ((eof-object? char) char)
-	    ((char=? char #\newline) action)
-	    (else (discard action)))))
-
-  ;; If we're past the second line, just discard.
-  (if (and (let ((line (current-line port db)))
-	     (and line
-		  (< line 2)))
-	   (db-enable-attributes? db))
-      (scan)
-      (discard continue-parsing)))
-
 (define (handler:multi-line-comment port db ctx char1 char2)
   (declare (ignore ctx char1 char2))
-  ;; In addition to parsing out the multi-line-comment, we want to
-  ;; extract out the file attribute line if it exists in the first
-  ;; line.  To do this, we use a small state machine implemented as a
-  ;; bunch of internal functions.  Each state function takes a
-  ;; character from the port as an input and finishes by tail-calling
-  ;; the next state with the next character.
+  (let ((builder (start-attributes-comment port db)))
 
-  ;; These first five states are where we scan the
-  ;; first line looking for the file attribute marker, end of comment,
-  ;; nested comment, or end of line.
+    (define (walk depth)
+      (let ((char (%read-char/no-eof port db)))
+	(case char
+	  ((#\#)
+	   (if builder (builder char))
+	   (walk-sharp depth))
+	  ((#\|)
+	   (if (and builder (> depth 0))
+	       (builder char))
+	   (walk-vbar depth))
+	  (else
+	   (if builder (builder char))
+	   (walk depth)))))
 
-  (define (scan)
-    (case (%read-char/no-eof port db)
-      ((#\newline) (discard 0 continue-parsing))
-      ((#\#) (sharp))
-      ((#\-) (dash))
-      ((#\|) (vbar))
-      (else (scan))))
+    (define (walk-sharp depth)
+      (let ((char (%read-char/no-eof port db)))
+	(if builder (builder char))
+	(case char
+	  ((#\#) (walk-sharp depth))
+	  ((#\|) (walk (+ depth 1)))	; push
+	  (else (walk depth)))))
 
-  (define (sharp)
-    (case (%read-char/no-eof port db)
-      ((#\newline) (discard 0 continue-parsing))
-      ((#\#) (sharp))
-      ((#\-) (dash))
-      ((#\|) (discard 1 continue-parsing))		; nested comment
-      (else (scan))))
+    (define (walk-vbar depth)
+      (let ((char (%read-char/no-eof port db)))
+	(case char
+	  ((#\#)
+	   (if (> depth 0)
+	       (begin			; pop
+		 (if builder (builder char))
+		 (walk (- depth 1)))))
+	  ((#\|)
+	   (if builder (builder char))
+	   (walk-vbar depth))
+	  (else
+	   (if builder (builder char))
+	   (walk depth)))))
 
-  (define (vbar)
-    (case (%read-char/no-eof port db)
-      ((#\newline) (discard 0 continue-parsing))
-      ((#\#) continue-parsing)		; end of comment
-      ((#\-) (dash))
-      ((#\|) (vbar))
-      (else (scan))))
-
-  (define (dash)
-    (case (%read-char/no-eof port db)
-      ((#\newline) (discard 0 continue-parsing))
-      ((#\#) (sharp))
-      ((#\*) (dash-star))
-      ((#\-) (dash))
-      ((#\|) (vbar))
-      (else (scan))))
-
-  (define (dash-star)
-    (case (%read-char/no-eof port db)
-      ((#\newline) (discard 0 continue-parsing))
-      ((#\#) (sharp))
-      ((#\-)
-       (process-file-attributes (parse-file-attributes-line port db true) port)
-       (discard 0 restart-parsing))
-      ((#\|) (vbar))
-      (else (scan))))
-
-  ;; Next three states are the discard loop where we
-  ;; just track the nesting level and discard stuff.
-  ;; We don't look for the file-attribute marker.
-
-  (define (discard depth action)
-    (case (%read-char/no-eof port db)
-      ((#\#) (discard-sharp depth action))
-      ((#\|) (discard-vbar depth action))
-      (else (discard depth action))))
-
-  (define (discard-sharp depth action)
-    (case (%read-char/no-eof port db)
-      ((#\#) (discard-sharp depth action))
-      ((#\|) (discard (+ depth 1) action)) ; push
-      (else (discard depth action))))
-
-  (define (discard-vbar depth action)
-    (case (%read-char/no-eof port db)
-      ((#\#) (if (> depth 0)
-		 (discard (- depth 1) action) ; pop
-		 action))
-      ((#\|) (discard-vbar depth action))
-      (else (discard depth action))))
-
-  ;; Start the machine.
-  ;; If we're past the second line, just discard.
-  (if (and (let ((line (current-line port db)))
-	     (and line
-		  (< line 2)))
-	   (db-enable-attributes? db))
-      (scan)
-      (discard 0 continue-parsing)))
-
+    (walk 0)
+    (finish-attributes-comment builder port)))
 
 ;; It would be better if we could skip over the object without
 ;; creating it, but for now this will work.
@@ -989,13 +921,11 @@ USA.
       object))
 
 (define (process-file-attributes file-attribute-alist port)
-  (if file-attribute-alist
-      (begin
-	;; Disable further attributes parsing.
-	(set-port-property! port 'parser-enable-attributes? #f)
-	(process-keyword-attribute file-attribute-alist port)
-	(process-mode-attribute file-attribute-alist port)
-	(process-studly-case-attribute file-attribute-alist port))))
+  ;; Disable further attributes parsing.
+  (set-port-property! port 'parser-enable-attributes? #f)
+  (process-keyword-attribute file-attribute-alist port)
+  (process-mode-attribute file-attribute-alist port)
+  (process-studly-case-attribute file-attribute-alist port))
 
 (define (lookup-file-attribute file-attribute-alist attribute)
   (assoc attribute file-attribute-alist

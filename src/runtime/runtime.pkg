@@ -3356,9 +3356,7 @@ USA.
   (files "file-attributes")
   (parent (runtime))
   (export (runtime)
-	  parse-file-attributes-string)
-  (export (runtime parser)
-	  parse-file-attributes-line))
+	  parse-file-attributes-string))
 
 (define-package (runtime pathname)
   (files "pathnm")
