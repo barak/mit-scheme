@@ -42,24 +42,26 @@ USA.
   (let* ((end (fix:end-index end (string-length string) 'open-input-string))
 	 (start (fix:start-index start end 'open-input-string)))
     (make-textual-port string-input-type
-		       (make-istate string start end start))))
+		       (make-istate string start end start 0))))
 
 (define-structure istate
   (string #f read-only #t)
   (start #f read-only #t)
   (end #f read-only #t)
-  next)
+  next
+  line-number)
 
 (define (make-string-input-type)
   (make-textual-port-type `((char-ready? ,string-in/char-ready?)
 			    (eof? ,string-in/eof?)
+			    (input-line ,string-in/input-line)
 			    (peek-char ,string-in/peek-char)
 			    (read-char ,string-in/read-char)
 			    (read-substring ,string-in/read-substring)
 			    (unread-char ,string-in/unread-char)
 			    (write-self ,string-in/write-self))
 			  #f))
-
+
 (define (string-in/char-ready? port)
   port
   #t)
@@ -79,8 +81,13 @@ USA.
     (if (fix:< (istate-next ss) (istate-end ss))
 	(let ((char (string-ref (istate-string ss) (istate-next ss))))
 	  (set-istate-next! ss (fix:+ (istate-next ss) 1))
+	  (if (char=? char #\newline)
+	      (set-istate-line-number! ss (fix:+ 1 (istate-line-number ss))))
 	  char)
 	(make-eof-object port))))
+
+(define (string-in/input-line port)
+  (istate-line-number (textual-port-state port)))
 
 (define (string-in/read-substring port string start end)
   (let ((ss (textual-port-state port)))
