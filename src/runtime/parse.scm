@@ -30,111 +30,88 @@ USA.
 (declare (usual-integrations))
 
 (define *parser-associate-positions?* #!default)
-(define *parser-atom-delimiters* #!default)
 (define *parser-canonicalize-symbols?* #!default)
-(define *parser-constituents* #!default)
 (define *parser-radix* #!default)
 
-(define param:parser-associate-positions?)
-(define param:parser-atom-delimiters)
-(define param:parser-enable-attributes?)
-(define param:parser-fold-case?)
-(define param:parser-constituents)
-(define param:parser-keyword-style)
-(define param:parser-radix)
+(define-deferred param:parser-associate-positions?
+  (make-unsettable-parameter #f boolean-converter))
 
-(define runtime-param:parser-associate-positions?)
-(define runtime-param:parser-atom-delimiters)
-(define runtime-param:parser-enable-attributes?)
-(define runtime-param:parser-fold-case?)
-(define runtime-param:parser-constituents)
-(define runtime-param:parser-keyword-style)
-(define runtime-param:parser-radix)
+(define-deferred param:parser-fold-case?
+  (make-unsettable-parameter #t boolean-converter))
 
-(define ignore-extra-list-closes #t)
+(define-deferred param:parser-enable-attributes?
+  (make-unsettable-parameter #t boolean-converter))
 
-(define (param-getter param-name #!optional fluid-name)
-  (lambda (environment)
-    (let ((param (repl-environment-value environment param-name)))
-      (if (default-object? fluid-name)
-	  (param)
-	  (let ((fluid (repl-environment-value environment fluid-name)))
-	    (if (default-object? fluid)
-		(param)
-		((parameter-converter param) fluid)))))))
+(define-deferred param:parser-keyword-style
+  (make-unsettable-parameter #f keyword-style-converter))
 
-(define (repl-environment-value environment name)
-  (environment-lookup-or environment name
-    (lambda ()
-      (environment-lookup-or (->environment '(USER)) name
-	(lambda ()
-	  (environment-lookup environment name))))))
+(define-deferred param:parser-radix
+  (make-unsettable-parameter 10 radix-converter))
 
-(define get-param:parser-associate-positions?
-  (param-getter 'param:parser-associate-positions?
-		'*parser-associate-positions?*))
+(define (boolean-converter value)
+  (guarantee boolean? value))
 
-(define get-param:parser-atom-delimiters
-  (param-getter 'param:parser-atom-delimiters '*parser-atom-delimiters*))
+(define (keyword-style-converter value)
+  (if (not (memq value '(#f prefix suffix)))
+      (error "Invalid keyword style:" value))
+  value)
 
-(define get-param:parser-fold-case?
-  (param-getter 'param:parser-fold-case? '*parser-canonicalize-symbols?*))
+(define (radix-converter value)
+  (if (not (memv value '(2 8 10 16)))
+      (error "Invalid parser radix:" value))
+  value)
 
-(define get-param:parser-constituents
-  (param-getter 'param:parser-constituents '*parser-constituents*))
+(define (get-param:parser-associate-positions?)
+  (if (default-object? *parser-associate-positions?*)
+      (param:parser-associate-positions?)
+      *parser-associate-positions?*))
 
-(define get-param:parser-enable-attributes?
-  (param-getter 'param:parser-enable-attributes?))
+(define (get-param:parser-fold-case?)
+  (if (default-object? *parser-canonicalize-symbols?*)
+      (param:parser-fold-case?)
+      *parser-canonicalize-symbols?*))
 
-(define get-param:parser-keyword-style
-  (param-getter 'param:parser-keyword-style))
-
-(define get-param:parser-radix
-  (param-getter 'param:parser-radix '*parser-radix*))
+(define (get-param:parser-radix)
+  (if (default-object? *parser-radix*)
+      (param:parser-radix)
+      *parser-radix*))
 
-(define (parse-object port environment)
-  ((top-level-parser port) port environment))
-
-(define (parse-objects port environment last-object?)
-  (let ((parser (top-level-parser port)))
-    (let loop ()
-      (let ((object (parser port environment)))
-	(if (last-object? object)
-	    '()
-	    (cons-stream object (loop)))))))
-
-(define (top-level-parser port)
-  (or (port/operation port 'READ)
-      (let ((read-start (port/operation port 'READ-START))
-	    (read-finish (port/operation port 'READ-FINISH)))
-	(lambda (port environment)
-	  (if read-start (read-start port))
+(define (parse-object port)
+  (let ((read-operation (port/operation port 'read)))
+    (if read-operation
+	(read-operation port)
+	(begin
+	  (let ((read-start (port/operation port 'read-start)))
+	    (if read-start
+		(read-start port)))
 	  (let restart ()
-	    (let* ((db (initial-db port environment))
-		   (object (dispatch port db 'TOP-LEVEL)))
+	    (let* ((db (initial-db port))
+		   (object (dispatch db 'top-level)))
 	      (if (eq? object restart-parsing)
 		  (restart)
 		  (begin
-		    (if read-finish (read-finish port))
+		    (let ((read-finish (port/operation port 'read-finish)))
+		      (if read-finish
+			  (read-finish port)))
 		    (finish-parsing object db)))))))))
 
-(define (read-in-context port db ctx)
-  (let ((object (dispatch port db ctx)))
-    (cond ((eof-object? object)	(error:premature-eof port))
-	  ((eq? object restart-parsing) (error:unexpected-restart port))
+(define (read-object db)
+  (read-in-context db 'OBJECT))
+
+(define (read-in-context db ctx)
+  (let ((object (dispatch db ctx)))
+    (cond ((eof-object? object)	(error:premature-eof db))
+	  ((eq? object restart-parsing) (error:unexpected-restart db))
 	  (else object))))
 
-(define-integrable (read-object port db)
-  (read-in-context port db 'OBJECT))
-
-(define (dispatch port db ctx)
+(define (dispatch db ctx)
   (let ((handlers (parser-table/initial system-global-parser-table)))
     (let loop ()
-      (let* ((position (current-position port db))
-	     (char (%read-char port db)))
+      (let* ((position ((db-get-position db)))
+	     (char (%read-char db)))
 	(if (eof-object? char)
 	    char
-	    (let ((object ((get-handler char handlers) port db ctx char)))
+	    (let ((object ((get-handler char handlers) db ctx char)))
 	      (cond ((eq? object continue-parsing) (loop))
 		    ((eq? object restart-parsing) object)
 		    (else
@@ -144,19 +121,19 @@ USA.
 ;; Causes the dispatch to be re-run.
 ;; Used to discard things like whitespace and comments.
 (define continue-parsing
-  (list 'CONTINUE-PARSING))
+  (list 'continue-parsing))
 
 ;; Causes the dispatch to finish, but the top-level parser will return
 ;; back into the dispatch after re-initializing the db.  This is used
 ;; to reset the parser when changing read syntax as specified by the
 ;; file attributes list.
 (define restart-parsing
-  (list 'RESTART-PARSING))
+  (list 'restart-parsing))
 
-(define (handler:special port db ctx char1)
-  (let ((char2 (%read-char/no-eof port db)))
+(define (handler:special db ctx char1)
+  (let ((char2 (%read-char/no-eof db)))
     ((get-handler char2 (parser-table/special system-global-parser-table))
-     port db ctx char1 char2)))
+     db ctx char1 char2)))
 
 (define (get-handler char handlers)
   (let ((n (char->integer char)))
@@ -167,70 +144,26 @@ USA.
 	  (error:illegal-char char))
       handler)))
 
-(define system-global-parser-table)
-(define char-set/constituents)
-(define char-set/atom-delimiters)
-(define char-set/symbol-quotes)
-(define char-set/number-leaders)
+(define-deferred char-set/constituents
+  (char-set-difference char-set:graphic
+		       char-set:whitespace))
 
-(define (initialize-package!)
-  (set! char-set/constituents
-	(char-set-difference char-set:graphic
-			     char-set:whitespace))
-  (set! char-set/atom-delimiters
-	(char-set-union char-set:whitespace
-			;; Note that #\, may break older code.
-			(string->char-set "()[]{}\";'`,")
-			(char-set #\U+00AB #\U+00BB)))
-  (set! char-set/symbol-quotes
-	(string->char-set "\\|"))
-  (set! char-set/number-leaders
-	(char-set-union char-set:numeric
-			(string->char-set "+-.")))
+(define-deferred char-set/atom-delimiters
+  (char-set-union char-set:whitespace
+		  ;; Note that #\, may break older code.
+		  (string->char-set "()[]{}\";'`,")
+		  (char-set #\U+00AB #\U+00BB)))
 
-  (set! system-global-parser-table
-	(make-initial-parser-table))
+(define-deferred char-set/symbol-quotes
+  (string->char-set "\\|"))
 
-  (set! param:parser-associate-positions?
-	(make-unsettable-parameter #f
-				   boolean-converter))
-  (set! param:parser-atom-delimiters
-	(make-unsettable-parameter char-set/atom-delimiters
-				   char-set-converter))
-  (set! param:parser-fold-case?
-	(make-unsettable-parameter #t
-				   boolean-converter))
-  (set! param:parser-constituents
-	(make-unsettable-parameter char-set/constituents
-				   char-set-converter))
-  (set! param:parser-enable-attributes?
-	(make-unsettable-parameter #t
-				   boolean-converter))
-  (set! param:parser-keyword-style
-	(make-unsettable-parameter #f
-				   keyword-style-converter))
-  (set! param:parser-radix
-	(make-unsettable-parameter 10
-				   radix-converter))
+(define-deferred char-set/number-leaders
+  (char-set-union char-set:numeric
+		  (string->char-set "+-.")))
 
-  (set! runtime-param:parser-associate-positions?
-	(copy-parameter param:parser-associate-positions?))
-  (set! runtime-param:parser-atom-delimiters
-	(copy-parameter param:parser-atom-delimiters))
-  (set! runtime-param:parser-fold-case?
-	(copy-parameter param:parser-fold-case?))
-  (set! runtime-param:parser-constituents
-	(copy-parameter param:parser-constituents))
-  (set! runtime-param:parser-enable-attributes?
-	(copy-parameter param:parser-enable-attributes?))
-  (set! runtime-param:parser-keyword-style
-	(copy-parameter param:parser-keyword-style))
-  (set! runtime-param:parser-radix
-	(copy-parameter param:parser-radix))
+(define-deferred system-global-parser-table
+  (make-initial-parser-table))
 
-  (set! hashed-object-interns (make-strong-eq-hash-table))
-  (initialize-condition-types!))
-
 (define (make-initial-parser-table)
 
   (define (store-char v c h)
@@ -280,64 +213,47 @@ USA.
     (store-char-set special char-set:numeric handler:special-arg)
 
     (make-parser-table initial special)))
-
-(define (boolean-converter value)
-  (guarantee boolean? value))
-
-(define (char-set-converter value)
-  (guarantee char-set? value)
-  value)
-
-(define (keyword-style-converter value)
-  (if (not (memq value '(#f prefix suffix)))
-      (error "Invalid keyword style:" value))
-  value)
-
-(define (radix-converter value)
-  (if (not (memv value '(2 8 10 16)))
-      (error "Invalid parser radix:" value))
-  value)
 
-(define (handler:whitespace port db ctx char)
-  port db ctx char
+(define (handler:whitespace db ctx char)
+  db ctx char
   continue-parsing)
 
-(define (start-attributes-comment port db)
+(define (start-attributes-comment db)
   (and (db-enable-attributes? db)
        ;; If we're past the second line, just discard.
-       (let ((line (current-line port db)))
+       (let ((line ((db-input-line db))))
 	 (and line
 	      (< line 2)))
        (string-builder)))
 
-(define (finish-attributes-comment builder port)
+(define (finish-attributes-comment builder db)
   (let ((attributes (and builder (parse-file-attributes-string (builder)))))
     (if attributes
 	(begin
-	  (process-file-attributes attributes port)
+	  (process-file-attributes attributes db)
 	  restart-parsing)
 	continue-parsing)))
 
-(define (handler:comment port db ctx char)
+(define (handler:comment db ctx char)
   (declare (ignore ctx char))
-  (let ((builder (start-attributes-comment port db)))
+  (let ((builder (start-attributes-comment db)))
     (let walk ()
-      (let ((char (%read-char port db)))
+      (let ((char (%read-char db)))
 	(cond ((eof-object? char)
-	       (finish-attributes-comment builder port)
+	       (finish-attributes-comment builder db)
 	       char)
 	      ((char=? char #\newline)
-	       (finish-attributes-comment builder port))
+	       (finish-attributes-comment builder db))
 	      (else
 	       (if builder (builder char))
 	       (walk)))))))
 
-(define (handler:multi-line-comment port db ctx char1 char2)
+(define (handler:multi-line-comment db ctx char1 char2)
   (declare (ignore ctx char1 char2))
-  (let ((builder (start-attributes-comment port db)))
+  (let ((builder (start-attributes-comment db)))
 
     (define (walk depth)
-      (let ((char (%read-char/no-eof port db)))
+      (let ((char (%read-char/no-eof db)))
 	(case char
 	  ((#\#)
 	   (if builder (builder char))
@@ -351,7 +267,7 @@ USA.
 	   (walk depth)))))
 
     (define (walk-sharp depth)
-      (let ((char (%read-char/no-eof port db)))
+      (let ((char (%read-char/no-eof db)))
 	(if builder (builder char))
 	(case char
 	  ((#\#) (walk-sharp depth))
@@ -359,7 +275,7 @@ USA.
 	  (else (walk depth)))))
 
     (define (walk-vbar depth)
-      (let ((char (%read-char/no-eof port db)))
+      (let ((char (%read-char/no-eof db)))
 	(case char
 	  ((#\#)
 	   (if (> depth 0)
@@ -374,25 +290,25 @@ USA.
 	   (walk depth)))))
 
     (walk 0)
-    (finish-attributes-comment builder port)))
+    (finish-attributes-comment builder db)))
 
 ;; It would be better if we could skip over the object without
 ;; creating it, but for now this will work.
-(define (handler:expression-comment port db ctx char1 char2)
+(define (handler:expression-comment db ctx char1 char2)
   ctx char1 char2
-  (read-object port db)
+  (read-object db)
   continue-parsing)
 
-(define (handler:atom port db ctx char)
+(define (handler:atom db ctx char)
   ctx
-  (let ((string (parse-atom port db (list char))))
+  (let ((string (parse-atom db (list char))))
     (or (maybe-keyword db string)
-	(string->number string (db-radix db))
+	(string->number string (get-param:parser-radix))
 	(string->symbol string))))
 
-(define (handler:symbol port db ctx char)
+(define (handler:symbol db ctx char)
   ctx
-  (let ((string (parse-atom port db (list char))))
+  (let ((string (parse-atom db (list char))))
     (or (maybe-keyword db string)
 	(string->symbol string))))
 
@@ -409,30 +325,29 @@ USA.
 	 (string->keyword (string-tail string 1)))
 	(else #f)))
 
-(define (handler:number port db ctx char1 char2)
+(define (handler:number db ctx char1 char2)
   ctx
-  (parse-number port db (list char1 char2)))
+  (parse-number db (list char1 char2)))
 
-(define (parse-number port db prefix)
-  (let ((string (parse-atom port db prefix)))
-    (or (string->number string (db-radix db))
+(define (parse-number db prefix)
+  (let ((string (parse-atom db prefix)))
+    (or (string->number string (get-param:parser-radix))
 	(error:illegal-number string))))
 
-(define (parse-atom port db prefix)
-  (let ((builder (string-builder))
-	(atom-delimiters (db-atom-delimiters db)))
+(define (parse-atom db prefix)
+  (let ((builder (string-builder)))
 
     (define (%peek)
       (if (pair? prefix)
 	  (car prefix)
-	  (%peek-char port db)))
+	  (%peek-char db)))
 
     (define (%discard)
       (if (pair? prefix)
 	  (begin
 	    (set! prefix (cdr prefix))
 	    unspecific)
-	  (%read-char port db)))
+	  (%read-char db)))
 
     (define %emit
       (if (db-fold-case? db)
@@ -444,17 +359,17 @@ USA.
     (let loop ()
       (let ((char (%peek)))
 	(if (or (eof-object? char)
-		(char-in-set? char atom-delimiters))
+		(char-in-set? char char-set/atom-delimiters))
 	    (builder)
 	    (begin
 	      (%discard)
 	      (%emit char)
 	      (loop)))))))
 
-(define (handler:list port db ctx char)
+(define (handler:list db ctx char)
   ctx char
   (let loop ((objects '()))
-    (let ((object (read-in-context port db 'CLOSE-PAREN-OK)))
+    (let ((object (read-in-context db 'close-paren-ok)))
       (if (eq? object close-parenthesis)
 	  (let ((objects (reverse! objects)))
 	    (fix-up-list! objects)
@@ -473,24 +388,24 @@ USA.
 	      (set-cdr! prev (cadr objects*)))
 	    (loop (cdr objects*) objects*)))))
 
-(define (handler:vector port db ctx char1 char2)
+(define (handler:vector db ctx char1 char2)
   ctx char1 char2
   (let loop ((objects '()))
-    (let ((object (read-in-context port db 'CLOSE-PAREN-OK)))
+    (let ((object (read-in-context db 'close-paren-ok)))
       (if (eq? object close-parenthesis)
 	  (list->vector (reverse! objects))
 	  (loop (cons object objects))))))
 
-(define (handler:unsigned-vector port db ctx char1 char2)
+(define (handler:unsigned-vector db ctx char1 char2)
   ctx
-  (let ((atom (parse-atom port db '())))
+  (let ((atom (parse-atom db '())))
     (if (not (and atom (string=? atom "8")))
 	(error:unsupported-vector (string char1 char2 (or atom "")))))
-  (let ((char (%read-char/no-eof port db)))
+  (let ((char (%read-char/no-eof db)))
     (if (not (char=? char #\())
 	(error:illegal-char char)))
   (let loop ((bytes '()))
-    (let ((object (read-in-context port db 'CLOSE-PAREN-OK)))
+    (let ((object (read-in-context db 'close-paren-ok)))
       (if (eq? object close-parenthesis)
 	  (let ((bytevector (make-bytevector (length bytes))))
 	    (do ((bytes (reverse! bytes) (cdr bytes))
@@ -502,30 +417,30 @@ USA.
 	    (guarantee byte? object)
 	    (loop (cons object bytes)))))))
 
-(define (handler:close-parenthesis port db ctx char)
-  db
-  (cond ((eq? ctx 'CLOSE-PAREN-OK)
+(define (handler:close-parenthesis db ctx char)
+  (cond ((eq? ctx 'close-paren-ok)
 	 close-parenthesis)
-	((and (eq? ctx 'TOP-LEVEL)
-	      (console-i/o-port? port)
+	((and (eq? ctx 'top-level)
+	      (console-i/o-port? (db-port db))
 	      ignore-extra-list-closes)
 	 continue-parsing)
 	(else
 	 (error:unbalanced-close char))))
 
-(define (handler:close-bracket port db ctx char)
-  port db
+(define (handler:close-bracket db ctx char)
+  db
   (if (not (eq? ctx 'CLOSE-BRACKET-OK))
       (error:unbalanced-close char))
   close-bracket)
 
+(define ignore-extra-list-closes #t)
 (define close-parenthesis (list 'CLOSE-PARENTHESIS))
 (define close-bracket (list 'CLOSE-BRACKET))
 
-(define (handler:hashed-object port db ctx char1 char2)
+(define (handler:hashed-object db ctx char1 char2)
   ctx char1 char2
   (let loop ((objects '()))
-    (let ((object (read-in-context port db 'CLOSE-BRACKET-OK)))
+    (let ((object (read-in-context db 'CLOSE-BRACKET-OK)))
       (if (eq? object close-bracket)
 	  (let* ((objects (reverse! objects))
 		 (lose (lambda () (error:illegal-hashed-object objects))))
@@ -551,11 +466,12 @@ USA.
   (guarantee binary-procedure? method 'DEFINE-BRACKETED-OBJECT-PARSER-METHOD)
   (hash-table/put! hashed-object-interns name method))
 
-(define hashed-object-interns)
+(define-deferred hashed-object-interns
+  (make-strong-eq-hash-table))
 
-(define (handler:unhash port db ctx char1 char2)
+(define (handler:unhash db ctx char1 char2)
   ctx char1 char2
-  (let ((object (parse-unhash (parse-number port db '()))))
+  (let ((object (parse-unhash (parse-number db '()))))
     ;; This may seem a little random, because #@N doesn't just
     ;; return an object.  However, the motivation for this piece of
     ;; syntax is convenience -- and 99.99% of the time the result of
@@ -573,36 +489,36 @@ USA.
       (or (object-unhash object)
 	  (error:undefined-hash object))))
 
-(define (handler:quote port db ctx char)
+(define (handler:quote db ctx char)
   ctx char
-  (list 'quote (read-object port db)))
+  (list 'quote (read-object db)))
 
-(define (handler:quasiquote port db ctx char)
+(define (handler:quasiquote db ctx char)
   ctx char
-  (list 'quasiquote (read-object port db)))
+  (list 'quasiquote (read-object db)))
 
-(define (handler:unquote port db ctx char)
+(define (handler:unquote db ctx char)
   ctx char
-  (if (char=? (%peek-char/no-eof port db) #\@)
+  (if (char=? (%peek-char/no-eof db) #\@)
       (begin
-	(%read-char port db)
-	(list 'unquote-splicing (read-object port db)))
-      (list 'unquote (read-object port db))))
+	(%read-char db)
+	(list 'unquote-splicing (read-object db)))
+      (list 'unquote (read-object db))))
 
-(define (handler:string port db ctx char)
+(define (handler:string db ctx char)
   ctx char
-  (parse-delimited-string port db #\" #t))
+  (parse-delimited-string db #\" #t))
 
-(define (handler:quoted-symbol port db ctx char)
+(define (handler:quoted-symbol db ctx char)
   ctx char
-  (string->symbol (parse-delimited-string port db #\| #f)))
+  (string->symbol (parse-delimited-string db #\| #f)))
 
-(define (parse-delimited-string port db delimiter allow-newline-escape?)
+(define (parse-delimited-string db delimiter allow-newline-escape?)
   (call-with-output-string
     (lambda (port*)
 
       (define (loop)
-	(dispatch (%read-char/no-eof port db)))
+	(dispatch (%read-char/no-eof db)))
 
       (define (dispatch char)
 	(cond ((char=? delimiter char) unspecific)
@@ -610,7 +526,7 @@ USA.
 	      (else (emit char))))
 
       (define (parse-quoted)
-	(let ((char (%read-char/no-eof port db)))
+	(let ((char (%read-char/no-eof db)))
 	  (cond ((char=? char #\a) (emit #\bel))
 		((char=? char #\b) (emit #\bs))
 		((char=? char #\n) (emit #\newline))
@@ -638,14 +554,14 @@ USA.
 	(loop))
 
       (define (skip-space)
-	(let ((char (%read-char/no-eof port db)))
+	(let ((char (%read-char/no-eof db)))
 	  (if (or (char=? char #\space)
 		  (char=? char #\tab))
 	      (skip-space)
 	      char)))
 
       (define (parse-hex-escape sv chars)
-	(let* ((char (%read-char/no-eof port db))
+	(let* ((char (%read-char/no-eof db))
 	       (chars (cons char chars)))
 	  (if (char=? #\; char)
 	      (begin
@@ -662,9 +578,9 @@ USA.
 	 (list->string (cons* #\\ #\x (reverse chars)))))
 
       (define (parse-octal-escape c1 d1)
-	(let* ((c2 (%read-char/no-eof port db))
+	(let* ((c2 (%read-char/no-eof db))
 	       (d2 (char->digit c2 8))
-	       (c3 (%read-char/no-eof port db))
+	       (c3 (%read-char/no-eof db))
 	       (d3 (char->digit c3 8)))
 	  (if (not (and d2 d3))
 	      (error:illegal-string-escape (list->string (list #\\ c1 c2 c3))))
@@ -672,25 +588,25 @@ USA.
 
       (loop))))
 
-(define (handler:false port db ctx char1 char2)
+(define (handler:false db ctx char1 char2)
   ctx char1
-  (let ((string (parse-atom port db (list char2))))
+  (let ((string (parse-atom db (list char2))))
     (if (not (or (string=? string "f")
 		 (string=? string "false")))
 	(error:illegal-boolean string)))
   #f)
 
-(define (handler:true port db ctx char1 char2)
+(define (handler:true db ctx char1 char2)
   ctx char1
-  (let ((string (parse-atom port db (list char2))))
+  (let ((string (parse-atom db (list char2))))
     (if (not (or (string=? string "t")
 		 (string=? string "true")))
 	(error:illegal-boolean string)))
   #t)
 
-(define (handler:bit-string port db ctx char1 char2)
+(define (handler:bit-string db ctx char1 char2)
   ctx char1 char2
-  (let ((string (parse-atom port db '())))
+  (let ((string (parse-atom db '())))
     (let ((n-bits (string-length string)))
       (unsigned-integer->bit-string
        n-bits
@@ -704,15 +620,15 @@ USA.
 			(else (error:illegal-bit-string string)))))
 	     result))))))
 
-(define (handler:char port db ctx char1 char2)
+(define (handler:char db ctx char1 char2)
   ctx char1 char2
-  (let ((char (%read-char/no-eof port db))
+  (let ((char (%read-char/no-eof db))
 	(at-end?
 	 (lambda ()
-	   (let ((char (%peek-char port db)))
+	   (let ((char (%peek-char db)))
 	     (or (eof-object? char)
-		 (char-in-set? char (db-atom-delimiters db)))))))
-    (if (or (char-in-set? char (db-atom-delimiters db))
+		 (char-in-set? char char-set/atom-delimiters))))))
+    (if (or (char-in-set? char char-set/atom-delimiters)
 	    (at-end?))
 	char
 	(name->char
@@ -720,18 +636,18 @@ USA.
 	   (lambda (port*)
 	     (write-char char port*)
 	     (let loop ()
-	       (write-char (let ((char (%read-char/no-eof port db)))
+	       (write-char (let ((char (%read-char/no-eof db)))
 			     (if (char=? char #\\)
-				 (%read-char/no-eof port db)
+				 (%read-char/no-eof db)
 				 char))
 			   port*)
 	       (if (not (at-end?))
 		   (loop)))))
 	 (db-fold-case? db)))))
 
-(define (handler:named-constant port db ctx char1 char2)
+(define (handler:named-constant db ctx char1 char2)
   ctx char1 char2
-  (let ((name (parse-atom port db '())))
+  (let ((name (parse-atom db '())))
     (cond ((string=? name "null") '())
 	  ((string=? name "false") #f)
 	  ((string=? name "true") #t)
@@ -751,26 +667,26 @@ USA.
 	  (else
 	   (error:illegal-named-constant name)))))
 
-(define (handler:uri port db ctx char1 char2)
+(define (handler:uri db ctx char1 char2)
   ctx char1 char2
   (string->uri
    (call-with-output-string
      (lambda (port*)
        (let loop ()
-	 (let ((char (%read-char/no-eof port db)))
+	 (let ((char (%read-char/no-eof db)))
 	   (if (not (char=? char #\>))
 	       (begin
 		 (write-char char port*)
 		 (loop)))))))))
 
-(define (handler:special-arg port db ctx char1 char2)
+(define (handler:special-arg db ctx char1 char2)
   ctx char1
   (let loop ((n (char->digit char2 10)))
-    (let ((char (%read-char/no-eof port db)))
+    (let ((char (%read-char/no-eof db)))
       (cond ((char-numeric? char)
 	     (loop (+ (* 10 n) (char->digit char 10))))
 	    ((char=? char #\=)
-	     (let ((object (read-object port db)))
+	     (let ((object (read-object db)))
 	       (save-shared-object! db n object)
 	       object))
 	    ((char=? char #\#)
@@ -797,39 +713,36 @@ USA.
 (define non-shared-object
   (list 'NON-SHARED-OBJECT))
 
-(define (%read-char port db)
+(define (%read-char db)
   (let ((char
 	 (let loop ()
-	   (or ((db-read-char db) port)
-	       (loop))))
-	(op (db-discretionary-write-char db)))
-    (if op
-	(op char port))
+	   (or ((db-read-char db))
+	       (loop)))))
+    ((db-discretionary-write-char db) char)
     char))
 
-(define (%read-char/no-eof port db)
-  (let ((char (%read-char port db)))
+(define (%read-char/no-eof db)
+  (let ((char (%read-char db)))
     (if (eof-object? char)
-	(error:premature-eof port))
+	(error:premature-eof db))
     char))
 
-(define-integrable (%peek-char port db)
+(define (%peek-char db)
   (let loop ()
-    (or ((db-peek-char db) port)
+    (or ((db-peek-char db))
 	(loop))))
 
-(define (%peek-char/no-eof port db)
-  (let ((char (%peek-char port db)))
+(define (%peek-char/no-eof db)
+  (let ((char (%peek-char db)))
     (if (eof-object? char)
-	(error:premature-eof port))
+	(error:premature-eof db))
     char))
 
 (define-record-type <db>
-    (make-db port env shared-objects position-mapping discretionary-write-char
+    (make-db port shared-objects position-mapping discretionary-write-char
 	     get-position input-line peek-char read-char)
     db?
   (port db-port)
-  (env db-env)
   (shared-objects db-shared-objects)
   (position-mapping db-position-mapping set-db-position-mapping!)
   ;; Cached port operations
@@ -839,95 +752,69 @@ USA.
   (peek-char db-peek-char)
   (read-char db-read-char))
 
-(define (initial-db port environment)
-  (let ((environment
-	 (if (default-object? environment)
-	     (nearest-repl/environment)
-	     (begin
-	       (guarantee environment? environment)
-	       environment))))
-    (make-db port
-	     environment
-	     (make-shared-objects)
-	     '()
-	     (port/operation port 'DISCRETIONARY-WRITE-CHAR)
-	     (position-operation port environment)
-	     (port/operation port 'INPUT-LINE)
-	     (port/operation port 'PEEK-CHAR)
-	     (port/operation port 'READ-CHAR))))
+(define (initial-db port)
+  (make-db port
+	   (make-shared-objects)
+	   '()
+	   (let ((operation (port/operation port 'discretionary-write-char)))
+	     (if operation
+		 (lambda (char) (operation port char))
+		 (lambda (char) char unspecific)))
+	   (if (get-param:parser-associate-positions?)
+	       (optional-unary-port-operation port 'position #f)
+	       (lambda () #f))
+	   (optional-unary-port-operation port 'input-line #f)
+	   (required-unary-port-operation port 'peek-char)
+	   (required-unary-port-operation port 'read-char)))
 
-(define (db-param-getter property env-getter)
-  (lambda (db)
-    (port-property (db-port db) property (env-getter (db-env db)))))
+(define (required-unary-port-operation port operator)
+  (let ((operation (port/operation port operator)))
+    (lambda ()
+      (operation port))))
 
-(define (db-param-setter property)
-  (lambda (db value)
-    (set-port-property! (db-port db) property value)))
+(define (optional-unary-port-operation port operator default-value)
+  (let ((operation (port/operation port operator)))
+    (if operation
+	(lambda () (operation port))
+	(lambda () default-value))))
 
-(define db-enable-attributes?
-  (db-param-getter 'parser-enable-attributes?
-		   get-param:parser-enable-attributes?))
+(define (db-property db name default-value)
+  (port-property (db-port db) name default-value))
 
-(define db-fold-case?
-  (db-param-getter 'parser-fold-case? get-param:parser-fold-case?))
+(define (set-db-property! db name value)
+  (set-port-property! (db-port db) name value))
 
-(define set-db-fold-case!
-  (db-param-setter 'parser-fold-case?))
+(define (db-fold-case? db)
+  (db-property db 'parser-fold-case? (get-param:parser-fold-case?)))
 
-(define db-keyword-style
-  (db-param-getter 'parser-keyword-style get-param:parser-keyword-style))
+(define (set-db-fold-case! db value)
+  (set-db-property! db 'parser-fold-case? value))
 
-(define (db-env-getter env-getter)
-  (lambda (db)
-    (env-getter (db-env db))))
+(define (db-enable-attributes? db)
+  (db-property db 'parser-enable-attributes? (param:parser-enable-attributes?)))
 
-(define db-associate-positions?
-  (db-env-getter get-param:parser-associate-positions?))
+(define (db-keyword-style db)
+  (db-property db 'parser-keyword-style (param:parser-keyword-style)))
 
-(define db-atom-delimiters
-  (db-env-getter get-param:parser-atom-delimiters))
-
-(define db-constituents
-  (db-env-getter get-param:parser-constituents))
-
-(define db-radix
-  (db-env-getter get-param:parser-radix))
-
-(define (position-operation port environment)
-  (let ((default (lambda (port) port #f)))
-    (if (get-param:parser-associate-positions? environment)
-	(or (port/operation port 'POSITION)
-	    default)
-	default)))
-
-(define (current-line port db)
-  (let ((proc (db-input-line db)))
-    (if proc
-	(proc port)
-	#f)))
-
-(define-integrable (current-position port db)
-  ((db-get-position db) port))
-
-(define-integrable (record-object-position! position object db)
+(define (record-object-position! position object db)
   (if (and position (object-pointer? object))
       (set-db-position-mapping! db
 				(cons (cons position object)
 				      (db-position-mapping db)))))
 
-(define-integrable (finish-parsing object db)
-  (if (db-associate-positions? db)
+(define (finish-parsing object db)
+  (if (get-param:parser-associate-positions?)
       (cons object (db-position-mapping db))
       object))
 
-(define (process-file-attributes file-attribute-alist port)
+(define (process-file-attributes file-attribute-alist db)
   ;; Disable further attributes parsing.
-  (set-port-property! port 'parser-enable-attributes? #f)
+  (set-db-property! db 'parser-enable-attributes? #f)
   ;; Save all the attributes; this helps with testing.
-  (set-port-property! port 'parser-file-attributes file-attribute-alist)
-  (process-keyword-attribute file-attribute-alist port)
-  (process-mode-attribute file-attribute-alist port)
-  (process-studly-case-attribute file-attribute-alist port))
+  (set-db-property! db 'parser-file-attributes file-attribute-alist)
+  (process-keyword-attribute file-attribute-alist db)
+  (process-mode-attribute file-attribute-alist db)
+  (process-studly-case-attribute file-attribute-alist db))
 
 (define (lookup-file-attribute file-attribute-alist attribute)
   (assoc attribute file-attribute-alist
@@ -935,7 +822,7 @@ USA.
 	   (string-ci=? (symbol->string left) (symbol->string right)))))
 
 ;;; Look for keyword-style: prefix or keyword-style: suffix
-(define (process-keyword-attribute file-attribute-alist port)
+(define (process-keyword-attribute file-attribute-alist db)
   (let ((keyword-entry
 	 (lookup-file-attribute file-attribute-alist 'KEYWORD-STYLE)))
     (if (pair? keyword-entry)
@@ -943,19 +830,19 @@ USA.
 	  (cond ((and (symbol? value)
 		      (or (string-ci=? (symbol->string value) "none")
 			  (string-ci=? (symbol->string value) "false")))
-		 (set-port-property! port 'parser-keyword-style #f))
+		 (set-db-property! db 'parser-keyword-style #f))
 		((and (symbol? value)
 		      (string-ci=? (symbol->string value) "prefix"))
-		 (set-port-property! port 'parser-keyword-style 'prefix))
+		 (set-db-property! db 'parser-keyword-style 'prefix))
 		((and (symbol? value)
 		      (string-ci=? (symbol->string value) "suffix"))
-		 (set-port-property! port 'parser-keyword-style 'suffix))
+		 (set-db-property! db 'parser-keyword-style 'suffix))
 		(else
 		 (warn "Unrecognized value for keyword-style" value)))))))
 
 ;;; Don't do anything with the mode, but warn if it isn't scheme.
-(define (process-mode-attribute file-attribute-alist port)
-  (declare (ignore port))
+(define (process-mode-attribute file-attribute-alist db)
+  (declare (ignore db))
   (let ((mode-entry
 	 (lookup-file-attribute file-attribute-alist 'MODE)))
     (if (pair? mode-entry)
@@ -970,7 +857,7 @@ USA.
 ;; exactly "sTuDly-case" and the value must be exactly "True".  After
 ;; all, case is important.  If you want to turn it off, the case of
 ;; the attribute and the value don't matter.
-(define (process-studly-case-attribute file-attribute-alist port)
+(define (process-studly-case-attribute file-attribute-alist db)
   (let ((studly-case-entry
 	 (lookup-file-attribute file-attribute-alist 'STUDLY-CASE)))
     (if (pair? studly-case-entry)
@@ -988,157 +875,136 @@ USA.
 			(warn "Attribute value mismatch.  Expected True.")
 			#f)
 		       (else
-			(set-port-property! port 'parser-fold-case? #f))))
+			(set-db-property! db 'parser-fold-case? #f))))
 		((or (not value)
 		     (and (symbol? value)
 			  (string-ci=? (symbol->string value) "false")))
-		 (set-port-property! port 'parser-fold-case? #t))
+		 (set-db-property! db 'parser-fold-case? #t))
 		(else
 		 (warn "Unrecognized value for sTuDly-case" value)))))))
 
+(define-deferred condition-type:parse-error
+  (make-condition-type 'PARSE-ERROR condition-type:error '()
+    (lambda (condition port)
+      condition
+      (write-string "Anonymous parsing error." port))))
+
 (define-syntax define-parse-error
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '((+ SYMBOL) EXPRESSION) (cdr form))
+     (if (syntax-match? '((+ symbol) expression) (cdr form))
 	 (let ((name (caadr form))
 	       (field-names (cdadr form))
 	       (reporter (caddr form)))
-	   (let ((ct (symbol 'CONDITION-TYPE: name)))
-	     `(BEGIN
-		(SET! ,ct
-		      (MAKE-CONDITION-TYPE ',name CONDITION-TYPE:PARSE-ERROR
-			  ',field-names
-			(LAMBDA (CONDITION PORT)
-			  (,reporter
-			   ,@(map (lambda (field-name)
-				    `(ACCESS-CONDITION CONDITION ',field-name))
-				  field-names)
-			   PORT))))
-		(SET! ,(symbol 'ERROR: name)
-		      (CONDITION-SIGNALLER ,ct
-					   ',field-names
-					   STANDARD-ERROR-HANDLER)))))
+	   (let ((ct (symbol 'condition-type: name)))
+	     `(begin
+		(define-deferred ,ct
+		  (make-condition-type ',name condition-type:parse-error
+		      ',field-names
+		    (lambda (condition port)
+		      (,reporter
+		       ,@(map (lambda (field-name)
+				`(access-condition condition ',field-name))
+			      field-names)
+		       port))))
+		(define-deferred ,(symbol 'error: name)
+		  (condition-signaller ,ct
+				       ',field-names
+				       standard-error-handler)))))
 	 (ill-formed-syntax form)))))
 
-(define condition-type:illegal-bit-string)
-(define condition-type:illegal-boolean)
-(define condition-type:illegal-char)
-(define condition-type:illegal-dot-usage)
-(define condition-type:illegal-hashed-object)
-(define condition-type:illegal-named-constant)
-(define condition-type:illegal-number)
-(define condition-type:illegal-string-escape)
-(define condition-type:illegal-unhash)
-(define condition-type:no-quoting-allowed)
-(define condition-type:non-shared-object)
-(define condition-type:parse-error)
-(define condition-type:premature-eof)
-(define condition-type:re-shared-object)
-(define condition-type:unbalanced-close)
-(define condition-type:undefined-hash)
-(define condition-type:unexpected-restart)
-(define condition-type:unsupported-vector)
-(define error:illegal-bit-string)
-(define error:illegal-boolean)
-(define error:illegal-char)
-(define error:illegal-dot-usage)
-(define error:illegal-hashed-object)
-(define error:illegal-named-constant)
-(define error:illegal-number)
-(define error:illegal-string-escape)
-(define error:illegal-unhash)
-(define error:no-quoting-allowed)
-(define error:non-shared-object)
-(define error:premature-eof)
-(define error:re-shared-object)
-(define error:unbalanced-close)
-(define error:undefined-hash)
-(define error:unexpected-restart)
-(define error:unsupported-vector)
+(define-parse-error (illegal-bit-string string)
+  (lambda (string port)
+    (write-string "Ill-formed bit string: #*" port)
+    (write-string string port)))
+
+(define-parse-error (illegal-boolean string)
+  (lambda (string port)
+    (write-string "Ill-formed boolean: " port)
+    (write-string string port)))
+
+(define-parse-error (illegal-char char)
+  (lambda (char port)
+    (write-string "Illegal character: " port)
+    (write char port)))
+
+(define-parse-error (illegal-dot-usage objects)
+  (lambda (objects port)
+    (write-string "Ill-formed dotted list: " port)
+    (write objects port)))
+
+(define-parse-error (illegal-hashed-object objects)
+  (lambda (objects port)
+    (write-string "Ill-formed object syntax: #[" port)
+    (if (pair? objects)
+	(begin
+	  (write (car objects) port)
+	  (for-each (lambda (object)
+		      (write-char #\space port)
+		      (write object port))
+		    (cdr objects))))
+    (write-string "]" port)))
 
-(define (initialize-condition-types!)
-  (set! condition-type:parse-error
-	(make-condition-type 'PARSE-ERROR condition-type:error '()
-	  (lambda (condition port)
-	    condition
-	    (write-string "Anonymous parsing error." port))))
-  (define-parse-error (illegal-bit-string string)
-    (lambda (string port)
-      (write-string "Ill-formed bit string: #*" port)
-      (write-string string port)))
-  (define-parse-error (illegal-boolean string)
-    (lambda (string port)
-      (write-string "Ill-formed boolean: " port)
-      (write-string string port)))
-  (define-parse-error (illegal-char char)
-    (lambda (char port)
-      (write-string "Illegal character: " port)
-      (write char port)))
-  (define-parse-error (illegal-dot-usage objects)
-    (lambda (objects port)
-      (write-string "Ill-formed dotted list: " port)
-      (write objects port)))
-  (define-parse-error (illegal-hashed-object objects)
-    (lambda (objects port)
-      (write-string "Ill-formed object syntax: #[" port)
-      (if (pair? objects)
-	  (begin
-	    (write (car objects) port)
-	    (for-each (lambda (object)
-			(write-char #\space port)
-			(write object port))
-		      (cdr objects))))
-      (write-string "]" port)))
-  (define-parse-error (illegal-named-constant name)
-    (lambda (name port)
-      (write-string "Ill-formed named constant: #!" port)
-      (write name port)))
-  (define-parse-error (illegal-string-escape string)
-    (lambda (string port)
-      (write-string "Ill-formed string escape: " port)
-      (write-string string port)))
-  (define-parse-error (illegal-number string)
-    (lambda (string port)
-      (write-string "Ill-formed number: " port)
-      (write-string string port)))
-  (define-parse-error (illegal-unhash object)
-    (lambda (object port)
-      (write-string "Ill-formed unhash syntax: #@" port)
-      (write object port)))
-  (define-parse-error (undefined-hash object)
-    (lambda (object port)
-      (write-string "Undefined hash number: #@" port)
-      (write object port)))
-  (define-parse-error (no-quoting-allowed string)
-    (lambda (string port)
-      (write-string "Quoting not permitted: " port)
-      (write-string string port)))
-  (define-parse-error (premature-eof port)
-    (lambda (port* port)
-      (write-string "Premature EOF on " port)
-      (write port* port)))
-  (define-parse-error (re-shared-object n object)
-    (lambda (n object port)
-      (write-string "Can't re-share object: #" port)
-      (write n port)
-      (write-string "=" port)
-      (write object port)))
-  (define-parse-error (non-shared-object n)
-    (lambda (n port)
-      (write-string "Reference to non-shared object: #" port)
-      (write n port)
-      (write-string "#" port)))
-  (define-parse-error (unbalanced-close char)
-    (lambda (char port)
-      (write-string "Unbalanced close parenthesis: " port)
-      (write char port)))
-  (define-parse-error (unexpected-restart port)
-    (lambda (port* port)
-      (write-string "Unexpected parse restart on: " port)
-      (write port* port)))
-  (define-parse-error (unsupported-vector string)
-    (lambda (string port)
-      (write-string "Unsupported vector prefix: " port)
-      (write-string string port)))
-  unspecific)
+(define-parse-error (illegal-named-constant name)
+  (lambda (name port)
+    (write-string "Ill-formed named constant: #!" port)
+    (write name port)))
+
+(define-parse-error (illegal-string-escape string)
+  (lambda (string port)
+    (write-string "Ill-formed string escape: " port)
+    (write-string string port)))
+
+(define-parse-error (illegal-number string)
+  (lambda (string port)
+    (write-string "Ill-formed number: " port)
+    (write-string string port)))
+
+(define-parse-error (illegal-unhash object)
+  (lambda (object port)
+    (write-string "Ill-formed unhash syntax: #@" port)
+    (write object port)))
+
+(define-parse-error (undefined-hash object)
+  (lambda (object port)
+    (write-string "Undefined hash number: #@" port)
+    (write object port)))
+
+(define-parse-error (no-quoting-allowed string)
+  (lambda (string port)
+    (write-string "Quoting not permitted: " port)
+    (write-string string port)))
+
+(define-parse-error (premature-eof db)
+  (lambda (db port)
+    (write-string "Premature EOF on " port)
+    (write (db-port db) port)))
+
+(define-parse-error (re-shared-object n object)
+  (lambda (n object port)
+    (write-string "Can't re-share object: #" port)
+    (write n port)
+    (write-string "=" port)
+    (write object port)))
+
+(define-parse-error (non-shared-object n)
+  (lambda (n port)
+    (write-string "Reference to non-shared object: #" port)
+    (write n port)
+    (write-string "#" port)))
+
+(define-parse-error (unbalanced-close char)
+  (lambda (char port)
+    (write-string "Unbalanced close parenthesis: " port)
+    (write char port)))
+
+(define-parse-error (unexpected-restart db)
+  (lambda (db port)
+    (write-string "Unexpected parse restart on: " port)
+    (write (db-port db) port)))
+
+(define-parse-error (unsupported-vector string)
+  (lambda (string port)
+    (write-string "Unsupported vector prefix: " port)
+    (write-string string port)))

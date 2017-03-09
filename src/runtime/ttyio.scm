@@ -128,7 +128,7 @@ USA.
 		    (loop)))))))
   (output-port/discretionary-flush port))
 
-(define (operation/discretionary-write-char char port)
+(define (operation/discretionary-write-char port char)
   (if (and (port/echo-input? port)
 	   (not (nearest-cmdl/batch-mode?)))
       (output-port/write-char port char)))

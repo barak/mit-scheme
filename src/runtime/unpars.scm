@@ -440,7 +440,7 @@ USA.
       (unparse-symbol-name (symbol->string symbol) context)))
 
 (define (unparse-keyword-name s context)
-  (case (get-param:parser-keyword-style (context-environment context))
+  (case (param:parser-keyword-style)
     ((PREFIX)
      (*unparse-char #\: context)
      (unparse-symbol-name s context))
@@ -458,8 +458,7 @@ USA.
 	   (not (string-prefix? "#" s))
 	   (char-in-set? (string-ref s 0) char-set:symbol-initial)
 	   (string-every (symbol-name-no-quoting-predicate context) s)
-	   (not (case (get-param:parser-keyword-style
-		       (context-environment context))
+	   (not (case (param:parser-keyword-style)
 		  ((PREFIX) (string-prefix? ":" s))
 		  ((SUFFIX) (string-suffix? ":" s))
 		  (else #f)))
@@ -474,7 +473,7 @@ USA.
 
 (define (symbol-name-no-quoting-predicate context)
   (conjoin (char-set-predicate
-	    (if (get-param:parser-fold-case? (context-environment context))
+	    (if (get-param:parser-fold-case?)
 		char-set:folded-symbol-constituent
 		char-set:symbol-constituent))
 	   (lambda (char)

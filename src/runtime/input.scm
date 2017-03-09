@@ -180,20 +180,18 @@ USA.
 	"")))
 
 (define (read #!optional port environment)
-  (parse-object (optional-input-port port 'READ) environment))
+  (declare (ignore environment))
+  (parse-object (optional-input-port port 'READ)))
 
 (define (read-file pathname #!optional environment)
+  (declare (ignore environment))
   (call-with-input-file (pathname-default-version pathname 'NEWEST)
     (lambda (port)
-      (let ((environment
-	     (if (default-object? environment)
-		 (nearest-repl/environment)
-		 environment)))
-	(let loop ((sexps '()))
-	  (let ((sexp (read port environment)))
-	    (if (eof-object? sexp)
-		(reverse! sexps)
-		(loop (cons sexp sexps)))))))))
+      (let loop ((sexps '()))
+	(let ((sexp (read port)))
+	  (if (eof-object? sexp)
+	      (reverse! sexps)
+	      (loop (cons sexp sexps))))))))
 
 (define (read-line #!optional port)
   (input-port/read-line (optional-input-port port 'READ-LINE)))

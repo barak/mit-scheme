@@ -69,9 +69,6 @@ USA.
 (define c-include-noisily? #f)
 (define current-filename)
 
-(define read-environment
-  (simple-top-level-environment #f))
-
 (define (include-cdecl-file filename cwd twd includes)
   ;; Adds the C declarations in FILENAME to INCLUDES.  Interprets
   ;; FILENAME relative to CWD (current working directory).
@@ -93,7 +90,7 @@ USA.
 	    (call-with-input-file namestring
 	      (lambda (inport)
 		(let loop ()
-		  (let ((form (parse-object inport read-environment)))
+		  (let ((form (read inport)))
 		    (if (not (eof-object? form))
 			(begin
 			  (include-cdecl form new-cwd twd includes)
