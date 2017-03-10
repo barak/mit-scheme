@@ -401,8 +401,8 @@ USA.
 	       mailbox)))
 	(flags (imap:response:list-flags response)))
     (let ((url (imap-url-new-mailbox url mailbox))
-	  (noselect? (memq '\\NOSELECT flags))
-	  (noinferiors? (memq '\\NOINFERIORS flags)))
+	  (noselect? (memq '|\\NOSELECT| flags))
+	  (noinferiors? (memq '|\\NOINFERIORS| flags)))
       (if (and noselect? noinferiors?)
 	  #f				;Completely uninteresting.
 	  (receive (folder-url container-url)
@@ -2771,10 +2771,10 @@ USA.
 	     (let ((pflags (imap:response-code:permanentflags code)))
 	       (set-imap-folder-permanent-keywords?!
 		folder
-		(if (memq '\\* pflags) #t #f))
+		(if (memq '|\\*| pflags) #t #f))
 	       (set-imap-folder-permanent-flags!
 		folder
-		(map imap-flag->imail-flag (delq '\\* pflags)))))))
+		(map imap-flag->imail-flag (delq '|\\*| pflags)))))))
 	((imap:response-code:read-only? code)
 	 (with-imap-connection-folder connection
 	   (lambda (folder)
