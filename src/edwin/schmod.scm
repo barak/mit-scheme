@@ -266,8 +266,7 @@ The following commands evaluate Scheme expressions:
 	  (let ((completions
 		 (let ((environment (evaluation-environment #f)))
 		   (obarray-completions
-		    (if (and bound-only?
-			     (get-param:parser-fold-case? environment))
+		    (if (and bound-only? (get-param:parser-fold-case?))
 			(string-downcase prefix)
 			prefix)
 		    (if bound-only?

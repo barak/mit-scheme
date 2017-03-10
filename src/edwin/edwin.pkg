@@ -115,8 +115,6 @@ USA.
 	  fixed-objects-item
 	  update-fixed-objects-item!)
   (import (runtime parser)
-	  (param:parser-fold-case? runtime-param:parser-fold-case?)
-	  (param:parser-radix runtime-param:parser-radix)
 	  get-param:parser-fold-case?)
   (import (runtime port)
 	  (make-port make-textual-port)
