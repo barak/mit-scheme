@@ -1343,6 +1343,7 @@ USA.
 	  char-set*
 	  char-set->code-points
 	  char-set-difference
+	  char-set-empty?
 	  char-set-intersection
 	  char-set-intersection*
 	  char-set-invert
@@ -1360,6 +1361,7 @@ USA.
 	  char-set:wsp
 	  char-set=?
 	  char-set?
+	  char-sets-disjoint?
 	  char-standard?
 	  char-wsp?
 	  code-point-list?
@@ -3320,22 +3322,7 @@ USA.
   (export (runtime swank)
 	  get-param:parser-fold-case?)
   (export (runtime unparser)
-	  char-set/atom-delimiters
-	  char-set/number-leaders
-	  char-set/symbol-quotes
 	  get-param:parser-fold-case?))
-
-(define-package (runtime parser-table)
-  (files "partab")
-  (parent (runtime))
-  (export (runtime parser)
-	  make-parser-table
-	  parser-table/copy
-	  parser-table/entry
-	  parser-table/initial
-	  parser-table/set-entry!
-	  parser-table/special
-	  parser-table?))
 
 (define-package (runtime file-attributes)
   (files "file-attributes")

@@ -33,6 +33,9 @@ USA.
 (define *parser-canonicalize-symbols?* #!default)
 (define *parser-radix* #!default)
 
+(define (boolean-converter value)
+  (guarantee boolean? value))
+
 (define-deferred param:parser-associate-positions?
   (make-unsettable-parameter #f boolean-converter))
 
@@ -43,23 +46,18 @@ USA.
   (make-unsettable-parameter #t boolean-converter))
 
 (define-deferred param:parser-keyword-style
-  (make-unsettable-parameter #f keyword-style-converter))
+  (make-unsettable-parameter #f
+			     (lambda (value)
+			       (if (memq value '(#f prefix suffix))
+				   value
+				   (error "Invalid keyword style:" value)))))
 
 (define-deferred param:parser-radix
-  (make-unsettable-parameter 10 radix-converter))
-
-(define (boolean-converter value)
-  (guarantee boolean? value))
-
-(define (keyword-style-converter value)
-  (if (not (memq value '(#f prefix suffix)))
-      (error "Invalid keyword style:" value))
-  value)
-
-(define (radix-converter value)
-  (if (not (memv value '(2 8 10 16)))
-      (error "Invalid parser radix:" value))
-  value)
+  (make-unsettable-parameter 10
+			     (lambda (value)
+			       (if (memv value '(2 8 10 16))
+				   value
+				   (error "Invalid parser radix:" value)))))
 
 (define (get-param:parser-associate-positions?)
   (if (default-object? *parser-associate-positions?*)
@@ -86,7 +84,7 @@ USA.
 		(read-start port)))
 	  (let restart ()
 	    (let* ((db (initial-db port))
-		   (object (dispatch db 'top-level)))
+		   (object (dispatch db (ctx:top-level))))
 	      (if (eq? object restart-parsing)
 		  (restart)
 		  (begin
@@ -95,28 +93,17 @@ USA.
 			  (read-finish port)))
 		    (finish-parsing object db)))))))))
 
-(define (read-object db)
-  (read-in-context db 'OBJECT))
-
-(define (read-in-context db ctx)
-  (let ((object (dispatch db ctx)))
-    (cond ((eof-object? object)	(error:premature-eof db))
-	  ((eq? object restart-parsing) (error:unexpected-restart db))
-	  (else object))))
-
 (define (dispatch db ctx)
-  (let ((handlers (parser-table/initial system-global-parser-table)))
-    (let loop ()
-      (let* ((position ((db-get-position db)))
-	     (char (%read-char db)))
-	(if (eof-object? char)
-	    char
-	    (let ((object ((get-handler char handlers) db ctx char)))
-	      (cond ((eq? object continue-parsing) (loop))
-		    ((eq? object restart-parsing) object)
-		    (else
-		     (record-object-position! position object db)
-		     object))))))))
+  (let* ((position ((db-get-position db)))
+	 (char (%read-char db)))
+    (if (eof-object? char)
+	char
+	(let ((object ((get-initial-handler char) db ctx char)))
+	  (cond ((eq? object continue-parsing) (dispatch db ctx))
+		((eq? object restart-parsing) object)
+		(else
+		 (record-object-position! position object db)
+		 object))))))
 
 ;; Causes the dispatch to be re-run.
 ;; Used to discard things like whitespace and comments.
@@ -132,92 +119,224 @@ USA.
 
 (define (handler:special db ctx char1)
   (let ((char2 (%read-char/no-eof db)))
-    ((get-handler char2 (parser-table/special system-global-parser-table))
-     db ctx char1 char2)))
-
-(define (get-handler char handlers)
-  (let ((n (char->integer char)))
-    (if (not (fix:< n #x100))
-	(error:illegal-char char))
-    (let ((handler (vector-ref handlers n)))
-      (if (not handler)
-	  (error:illegal-char char))
-      handler)))
+    ((get-special-handler char2) db ctx char1 char2)))
 
-(define-deferred char-set/constituents
-  (char-set-difference char-set:graphic
-		       char-set:whitespace))
+(define (read-object db)
+  (read-in-context db ctx:object))
 
-(define-deferred char-set/atom-delimiters
-  (char-set-union char-set:whitespace
-		  ;; Note that #\, may break older code.
-		  (string->char-set "()[]{}\";'`,")
-		  (char-set #\U+00AB #\U+00BB)))
+(define (read-in-context db get-ctx)
+  (let ((object (dispatch db (get-ctx))))
+    (cond ((eof-object? object)	(error:premature-eof db))
+	  ((eq? object restart-parsing) (error:unexpected-restart db))
+	  (else object))))
 
-(define-deferred char-set/symbol-quotes
-  (string->char-set "\\|"))
+(define (ctx:object)
+  'object)
 
-(define-deferred char-set/number-leaders
-  (char-set-union char-set:numeric
-		  (string->char-set "+-.")))
+(define (ctx:top-level)
+  'top-level)
 
-(define-deferred system-global-parser-table
-  (make-initial-parser-table))
+(define (top-level-ctx? ctx)
+  (eq? ctx (ctx:top-level)))
 
-(define (make-initial-parser-table)
+(define (ctx:close-paren-ok)
+  'close-paren-ok)
 
-  (define (store-char v c h)
-    (vector-set! v (char->integer c) h))
+(define (close-paren-ok? ctx)
+  (eq? ctx (ctx:close-paren-ok)))
 
-  (define (store-char-set v c h)
-    (for-each (lambda (c) (store-char v c h))
-	      (char-set-members c)))
+(define (close-parenthesis-token)
+  %close-parenthesis-token)
 
-  (let ((initial (make-vector #x100 #f))
-	(special (make-vector #x100 #f))
-	(symbol-leaders
-	 (char-set-difference char-set/constituents
-			      (char-set-union char-set/atom-delimiters
-					      char-set/number-leaders)))
-	(special-number-leaders
-	 (string->char-set "bBoOdDxXiIeEsSlL")))
+(define (close-parenthesis-token? object)
+  (eq? object %close-parenthesis-token))
 
-    (store-char-set initial char-set:whitespace handler:whitespace)
-    (store-char-set initial char-set/number-leaders handler:atom)
-    (store-char-set initial symbol-leaders handler:symbol)
-    (store-char-set special special-number-leaders handler:number)
-    (store-char initial #\( handler:list)
-    (store-char special #\( handler:vector)
-    (store-char special #\< handler:uri)
-    (store-char special #\[ handler:hashed-object)
-    (store-char initial #\) handler:close-parenthesis)
-    (store-char initial #\] handler:close-bracket)
-    (store-char initial #\; handler:comment)
-    (store-char initial #\| handler:quoted-symbol)
-    (store-char special #\| handler:multi-line-comment)
-    (store-char special #\; handler:expression-comment)
-    (store-char initial #\' handler:quote)
-    (store-char initial #\` handler:quasiquote)
-    (store-char initial #\, handler:unquote)
-    (store-char initial #\" handler:string)
-    (store-char initial #\# handler:special)
-    (store-char special #\f handler:false)
-    (store-char special #\F handler:false)
-    (store-char special #\t handler:true)
-    (store-char special #\T handler:true)
-    (store-char special #\u handler:unsigned-vector)
-    (store-char special #\* handler:bit-string)
-    (store-char special #\\ handler:char)
-    (store-char special #\! handler:named-constant)
-    (store-char special #\@ handler:unhash)
-    (store-char-set special char-set:numeric handler:special-arg)
+(define %close-parenthesis-token
+  (list 'close-parenthesis))
 
-    (make-parser-table initial special)))
+(define (ctx:close-bracket-ok)
+  'close-bracket-ok)
+
+(define (close-bracket-ok? ctx)
+  (eq? ctx (ctx:close-bracket-ok)))
+
+(define (close-bracket-token)
+  %close-bracket-token)
+
+(define (close-bracket-token? object)
+  (eq? object %close-bracket-token))
+
+(define %close-bracket-token
+  (list 'close-bracket))
 
+;;;; Dispatch tables
+
+(define (make-dispatch-table)
+  (let ((low (make-vector #x80 #f))
+	(high '()))
+
+    (define (add-handler! key handler)
+      (cond ((char? key)
+	     (let ((cp (char->integer key)))
+	       (if (fix:< cp #x80)
+		   (add-low-handler! cp handler)
+		   (begin
+		     (if (find (lambda (p)
+				 (match-char key (car p)))
+			       high)
+			 (boot-error "Duplicate binding for:" key))
+		     (set! high (cons (cons key handler) high))
+		     unspecific))))
+	    ((char-set? key)
+	     (do ((cp 0 (fix:+ cp 1)))
+		 ((not (fix:< cp #x80)))
+	       (if (code-point-in-char-set? cp key)
+		   (add-low-handler! cp handler)))
+	     (if (find (lambda (p)
+			 (match-char-set key (car p)))
+		       high)
+		 (boot-error "Overlapping binding for:" key))
+	     (set! high (cons (cons key handler) high))
+	     unspecific)
+	    (else
+	     (error "Unsupported dispatch key:" key))))
+
+    (define (get-handler char)
+      (let ((handler
+	     (let ((cp (char->integer char)))
+	       (if (fix:< cp #x80)
+		   (vector-ref low cp)
+		   (let ((p
+			  (find (lambda (p)
+				  (match-char char (car p)))
+				high)))
+		     (and p
+			  (cdr p)))))))
+	(if (not handler)
+	    (error:illegal-char char))
+	handler))
+
+    (define (add-low-handler! cp handler)
+      (if (vector-ref low cp)
+	  (boot-error "Duplicate binding for:" (integer->char cp)))
+      (vector-set! low cp handler))
+
+    (define (match-char char key)
+      (if (char? key)
+	  (char=? char key)
+	  (char-in-set? char key)))
+
+    (define (match-char-set char-set key)
+      (if (char? key)
+	  (char-in-set? key char-set)
+	  (not (char-sets-disjoint? key char-set))))
+
+    (define (boot-error msg key)
+      ((ucode-primitive debugging-printer) msg)
+      ((ucode-primitive debugging-printer) key))
+
+    (lambda (operator)
+      (case operator
+	((add-handler!) add-handler!)
+	((get-handler) get-handler)
+	(else (error "Unsupported operation:" operator))))))
+
+(define initial-dispatch-table)
+(define get-initial-handler)
+(define special-dispatch-table)
+(define get-special-handler)
+(add-boot-init!
+ (lambda ()
+
+   (set! initial-dispatch-table (make-dispatch-table))
+   (set! get-initial-handler (initial-dispatch-table 'get-handler))
+   (define add-initial! (initial-dispatch-table 'add-handler!))
+
+   (add-initial! #\" handler:string)
+   (add-initial! #\# handler:special)
+   (add-initial! #\' handler:quote)
+   (add-initial! #\( handler:list)
+   (add-initial! #\) handler:close-parenthesis)
+   (add-initial! #\+ handler:atom)
+   (add-initial! #\, handler:unquote)
+   (add-initial! #\- handler:atom)
+   (add-initial! #\. handler:atom)
+   (add-initial! #\; handler:comment)
+   (add-initial! #\] handler:close-bracket)
+   (add-initial! #\` handler:quasiquote)
+   (add-initial! #\| handler:quoted-symbol)
+   (add-initial! char-set:whitespace handler:whitespace)
+   (add-initial! char-set:numeric handler:atom)
+   (add-initial! (char-set-difference char-set:symbol-initial (char-set "+-."))
+		 handler:symbol)
+
+   (set! special-dispatch-table (make-dispatch-table))
+   (set! get-special-handler (special-dispatch-table 'get-handler))
+   (define add-special! (special-dispatch-table 'add-handler!))
+
+   (add-special! #\( handler:vector)
+   (add-special! #\< handler:uri)
+   (add-special! #\[ handler:hashed-object)
+   (add-special! #\| handler:multi-line-comment)
+   (add-special! #\; handler:expression-comment)
+   (add-special! #\f handler:false)
+   (add-special! #\F handler:false)
+   (add-special! #\t handler:true)
+   (add-special! #\T handler:true)
+   (add-special! #\u handler:unsigned-vector)
+   (add-special! #\* handler:bit-string)
+   (add-special! #\\ handler:char)
+   (add-special! #\! handler:named-constant)
+   (add-special! #\@ handler:unhash)
+   (add-special! (char-set "bBoOdDxXiIeEsSlL") handler:number)
+   (add-special! char-set:numeric handler:special-arg)))
+
+(define (%read-char db)
+  (let ((char
+	 (let loop ()
+	   (or ((db-read-char db))
+	       (loop)))))
+    ((db-discretionary-write-char db) char)
+    char))
+
+(define (%read-char/no-eof db)
+  (let ((char (%read-char db)))
+    (if (eof-object? char)
+	(error:premature-eof db))
+    char))
+
+(define (%peek-char db)
+  (let loop ()
+    (or ((db-peek-char db))
+	(loop))))
+
+(define (%peek-char/no-eof db)
+  (let ((char (%peek-char db)))
+    (if (eof-object? char)
+	(error:premature-eof db))
+    char))
+
+(define-deferred atom-delimiters
+  (char-set char-set:whitespace
+	    ;; Note that #\, may break older code.
+	    "()[]{}\";'`,"
+	    (integer->char #xAB)
+	    (integer->char #xBB)))
+
+(define-deferred atom-delimiter?
+  (char-set-predicate atom-delimiters))
+
 (define (handler:whitespace db ctx char)
   db ctx char
   continue-parsing)
 
+;; It would be better if we could skip over the object without
+;; creating it, but for now this will work.
+(define (handler:expression-comment db ctx char1 char2)
+  ctx char1 char2
+  (read-object db)
+  continue-parsing)
+
 (define (start-attributes-comment db)
   (and (db-enable-attributes? db)
        ;; If we're past the second line, just discard.
@@ -292,13 +411,6 @@ USA.
     (walk 0)
     (finish-attributes-comment builder db)))
 
-;; It would be better if we could skip over the object without
-;; creating it, but for now this will work.
-(define (handler:expression-comment db ctx char1 char2)
-  ctx char1 char2
-  (read-object db)
-  continue-parsing)
-
 (define (handler:atom db ctx char)
   ctx
   (let ((string (parse-atom db (list char))))
@@ -353,13 +465,12 @@ USA.
       (if (db-fold-case? db)
 	  (lambda (char)
 	    (builder (char-foldcase-full char)))
-	  (lambda (char)
-	    (builder char))))
+	  builder))
 
     (let loop ()
       (let ((char (%peek)))
 	(if (or (eof-object? char)
-		(char-in-set? char char-set/atom-delimiters))
+		(atom-delimiter? char))
 	    (builder)
 	    (begin
 	      (%discard)
@@ -369,8 +480,8 @@ USA.
 (define (handler:list db ctx char)
   ctx char
   (let loop ((objects '()))
-    (let ((object (read-in-context db 'close-paren-ok)))
-      (if (eq? object close-parenthesis)
+    (let ((object (read-in-context db ctx:close-paren-ok)))
+      (if (close-parenthesis-token? object)
 	  (let ((objects (reverse! objects)))
 	    (fix-up-list! objects)
 	    objects)
@@ -391,8 +502,8 @@ USA.
 (define (handler:vector db ctx char1 char2)
   ctx char1 char2
   (let loop ((objects '()))
-    (let ((object (read-in-context db 'close-paren-ok)))
-      (if (eq? object close-parenthesis)
+    (let ((object (read-in-context db ctx:close-paren-ok)))
+      (if (close-parenthesis-token? object)
 	  (list->vector (reverse! objects))
 	  (loop (cons object objects))))))
 
@@ -405,8 +516,8 @@ USA.
     (if (not (char=? char #\())
 	(error:illegal-char char)))
   (let loop ((bytes '()))
-    (let ((object (read-in-context db 'close-paren-ok)))
-      (if (eq? object close-parenthesis)
+    (let ((object (read-in-context db ctx:close-paren-ok)))
+      (if (close-parenthesis-token? object)
 	  (let ((bytevector (make-bytevector (length bytes))))
 	    (do ((bytes (reverse! bytes) (cdr bytes))
 		 (index 0 (fix:+ index 1)))
@@ -418,53 +529,53 @@ USA.
 	    (loop (cons object bytes)))))))
 
 (define (handler:close-parenthesis db ctx char)
-  (cond ((eq? ctx 'close-paren-ok)
-	 close-parenthesis)
-	((and (eq? ctx 'top-level)
-	      (console-i/o-port? (db-port db))
-	      ignore-extra-list-closes)
-	 continue-parsing)
-	(else
-	 (error:unbalanced-close char))))
-
-(define (handler:close-bracket db ctx char)
-  db
-  (if (not (eq? ctx 'CLOSE-BRACKET-OK))
-      (error:unbalanced-close char))
-  close-bracket)
+  (if (and ignore-extra-list-closes
+	   (top-level-ctx? ctx)
+	   (console-i/o-port? (db-port db)))
+      continue-parsing
+      (begin
+	(if (not (close-paren-ok? ctx))
+	    (error:unbalanced-close char))
+	(close-parenthesis-token))))
 
 (define ignore-extra-list-closes #t)
-(define close-parenthesis (list 'CLOSE-PARENTHESIS))
-(define close-bracket (list 'CLOSE-BRACKET))
 
 (define (handler:hashed-object db ctx char1 char2)
   ctx char1 char2
   (let loop ((objects '()))
-    (let ((object (read-in-context db 'CLOSE-BRACKET-OK)))
-      (if (eq? object close-bracket)
+    (let ((object (read-in-context db ctx:close-bracket-ok)))
+      (if (close-bracket-token? object)
 	  (let* ((objects (reverse! objects))
-		 (lose (lambda () (error:illegal-hashed-object objects))))
-	    (let ((method
-		   (and (pair? objects)
-			(interned-symbol? (car objects))
-			(hash-table/get hashed-object-interns
-					(car objects)
-					(lambda (objects lose)
-					  (if (pair? (cdr objects))
-					      (parse-unhash (cadr objects))
-					      (lose)))))))
-	      (if method
-		  (bind-condition-handler (list condition-type:error)
-		      (lambda (condition) condition (lose))
-		    (lambda ()
-		      (method objects lose)))
-		  (lose))))
+		 (lose (lambda () (error:illegal-hashed-object objects)))
+		 (default-method
+		   (lambda (objects lose)
+		     (if (pair? (cdr objects))
+			 (parse-unhash (cadr objects))
+			 (lose))))
+		 (method
+		  (and (pair? objects)
+		       (interned-symbol? (car objects))
+		       (hash-table-ref/default hashed-object-interns
+					       (car objects)
+					       default-method))))
+	    (if method
+		(bind-condition-handler (list condition-type:error)
+		    (lambda (condition) condition (lose))
+		  (lambda ()
+		    (method objects lose)))
+		(lose)))
 	  (loop (cons object objects))))))
 
+(define (handler:close-bracket db ctx char)
+  db
+  (if (close-bracket-ok? ctx)
+      (error:unbalanced-close char))
+  (close-bracket-token))
+
 (define (define-bracketed-object-parser-method name method)
-  (guarantee interned-symbol? name 'DEFINE-BRACKETED-OBJECT-PARSER-METHOD)
-  (guarantee binary-procedure? method 'DEFINE-BRACKETED-OBJECT-PARSER-METHOD)
-  (hash-table/put! hashed-object-interns name method))
+  (guarantee interned-symbol? name 'define-bracketed-object-parser-method)
+  (guarantee binary-procedure? method 'define-bracketed-object-parser-method)
+  (hash-table-set! hashed-object-interns name method))
 
 (define-deferred hashed-object-interns
   (make-strong-eq-hash-table))
@@ -627,8 +738,8 @@ USA.
 	 (lambda ()
 	   (let ((char (%peek-char db)))
 	     (or (eof-object? char)
-		 (char-in-set? char char-set/atom-delimiters))))))
-    (if (or (char-in-set? char char-set/atom-delimiters)
+		 (atom-delimiter? char))))))
+    (if (or (atom-delimiter? char)
 	    (at-end?))
 	char
 	(name->char
@@ -699,44 +810,20 @@ USA.
 
 (define (save-shared-object! db n object)
   (let ((table (db-shared-objects db)))
-    (if (not (eq? (hash-table/get table n non-shared-object)
+    (if (not (eq? (hash-table-ref/default table n non-shared-object)
 		  non-shared-object))
 	(error:re-shared-object n object))
-    (hash-table/put! table n object)))
+    (hash-table-set! table n object)))
 
 (define (get-shared-object db n)
-  (let ((object (hash-table/get (db-shared-objects db) n non-shared-object)))
+  (let ((object
+	 (hash-table-ref/default (db-shared-objects db) n non-shared-object)))
     (if (eq? object non-shared-object)
 	(error:non-shared-object n))
     object))
 
 (define non-shared-object
-  (list 'NON-SHARED-OBJECT))
-
-(define (%read-char db)
-  (let ((char
-	 (let loop ()
-	   (or ((db-read-char db))
-	       (loop)))))
-    ((db-discretionary-write-char db) char)
-    char))
-
-(define (%read-char/no-eof db)
-  (let ((char (%read-char db)))
-    (if (eof-object? char)
-	(error:premature-eof db))
-    char))
-
-(define (%peek-char db)
-  (let loop ()
-    (or ((db-peek-char db))
-	(loop))))
-
-(define (%peek-char/no-eof db)
-  (let ((char (%peek-char db)))
-    (if (eof-object? char)
-	(error:premature-eof db))
-    char))
+  (list 'non-shared-object))
 
 (define-record-type <db>
     (make-db port shared-objects position-mapping discretionary-write-char

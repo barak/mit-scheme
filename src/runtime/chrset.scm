@@ -426,6 +426,14 @@ USA.
 	      (cons (%make-range (car signal) (cadr signal))
 		    ranges))
 	(reverse! ranges))))
+
+(define (char-set-empty? cs)
+  (char-set=? (char-set) cs))
+
+(define (char-sets-disjoint? char-set . char-sets)
+  (every (lambda (char-set*)
+	   (char-set-empty? (char-set-intersection char-set char-set*)))
+	 char-sets))
 
 ;;;; Combinations
 

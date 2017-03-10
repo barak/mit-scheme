@@ -122,7 +122,6 @@ USA.
     ("packag"	(package))
     ("parse"	(runtime parser))
     ("parser-buffer" (runtime parser-buffer))
-    ("partab"	(runtime parser-table))
     ("pathnm"	(runtime pathname))
     ("pgsql"	(runtime postgresql))
     ("poplat"	(runtime population))
