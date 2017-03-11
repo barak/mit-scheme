@@ -733,27 +733,21 @@ USA.
 
 (define (handler:char db ctx char1 char2)
   ctx char1 char2
-  (let ((char (%read-char/no-eof db))
-	(at-end?
-	 (lambda ()
-	   (let ((char (%peek-char db)))
-	     (or (eof-object? char)
-		 (atom-delimiter? char))))))
-    (if (or (atom-delimiter? char)
-	    (at-end?))
-	char
-	(name->char
-	 (let ((builder (string-builder)))
-	   (builder char)
-	   (let loop ()
-	     (builder (let ((char (%read-char/no-eof db)))
-			(if (char=? char #\\)
-			    (%read-char/no-eof db)
-			    char)))
-	     (if (not (at-end?))
-		 (loop)))
-	   (builder))
-	 (db-fold-case? db)))))
+  (let ((char (%read-char/no-eof db)))
+    (cond ((or (atom-delimiter? char)
+	       (let ((char (%peek-char db)))
+		 (or (eof-object? char)
+		     (atom-delimiter? char))))
+	   char)
+	  ((char-ci=? char #\x)
+	   (let* ((string (parse-atom db '()))
+		  (cp (string->number string 16 #t)))
+	     (if (not (unicode-code-point? cp))
+		 (error:illegal-code-point string))
+	     (integer->char cp)))
+	  (else
+	   (name->char (parse-atom db (list char))
+		       (db-fold-case? db))))))
 
 (define (handler:named-constant db ctx char1 char2)
   ctx char1 char2
@@ -1032,6 +1026,11 @@ USA.
 		    (cdr objects))))
     (write-string "]" port)))
 
+(define-parse-error (illegal-code-point string)
+  (lambda (string port)
+    (write-string "Ill-formed code point: " port)
+    (write string port)))
+
 (define-parse-error (illegal-named-constant name)
   (lambda (name port)
     (write-string "Ill-formed named constant: #!" port)
