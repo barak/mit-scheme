@@ -84,52 +84,52 @@ USA.
     (bytevector-u8-set! high (fix:+ i 1) (fix:and (fix:lsh cp -8) #xFF))
     (bytevector-u8-set! high (fix:+ i 2) (fix:lsh cp -16))))
 
-;;;; Signal codecs
+;;;; Inversion-list codecs
 
-;;; A signal is a list of integers in the range 0 <= N <= #x110000  The
-;;; list has an even number of elements, and each element is strictly less than
-;;; the succeeding element.  This is exactly the same format used for the HIGH
-;;; vector, except in a list.
+;;; An inversion list is a list of integers in the range 0 <= N <= #x110000.
+;;; The list has an even number of elements, and each element is strictly less
+;;; than the succeeding element.  This is exactly the same format used for the
+;;; HIGH vector, except in a list.
 
-;;; All char-sets are constructed by %SIGNAL->CHAR-SET.
-(define (%signal->char-set signal)
-  (let ((low-limit (%choose-low-limit signal)))
-    (%make-char-set (%signal->low signal low-limit)
-		    (%signal->high signal low-limit))))
+;;; All char-sets are constructed by %INVERSION-LIST->CHAR-SET.
+(define (%inversion-list->char-set ilist)
+  (let ((low-limit (%choose-low-limit ilist)))
+    (%make-char-set (%inversion-list->low ilist low-limit)
+		    (%inversion-list->high ilist low-limit))))
 
-(define (%choose-low-limit signal)
+(define (%choose-low-limit ilist)
   (let ((max-low-bytes (fix:quotient #x110000 %high-bytes-per-cp)))
     (let loop
 	((low-bytes 1)
 	 (best-low-bytes 0)
-	 (best-total-bytes (%estimate-size 0 signal)))
+	 (best-total-bytes (%estimate-size 0 ilist)))
       (if (fix:< low-bytes max-low-bytes)
-	  (let ((total-bytes (%estimate-size low-bytes signal)))
+	  (let ((total-bytes (%estimate-size low-bytes ilist)))
 	    (if (fix:< total-bytes best-total-bytes)
 		(loop (fix:lsh low-bytes 1) low-bytes total-bytes)
 		(loop (fix:lsh low-bytes 1) best-low-bytes best-total-bytes)))
 	  (fix:* best-low-bytes %low-cps-per-byte)))))
 
-(define (%estimate-size low-bytes signal)
+(define (%estimate-size low-bytes ilist)
   (fix:+ low-bytes
 	 (let ((min-cp (fix:* low-bytes %low-cps-per-byte)))
-	   (let loop ((signal signal))
-	     (if (pair? signal)
-		 (if (fix:< (cadr signal) min-cp)
-		     (loop (cddr signal))
-		     (fix:* (length signal) %high-bytes-per-cp))
+	   (let loop ((ilist ilist))
+	     (if (pair? ilist)
+		 (if (fix:< (cadr ilist) min-cp)
+		     (loop (cddr ilist))
+		     (fix:* (length ilist) %high-bytes-per-cp))
 		 0)))))
 
-(define (%signal->low signal low-limit)
+(define (%inversion-list->low ilist low-limit)
   (let ((low (%make-low low-limit)))
 
-    (define (loop signal)
-      (if (pair? signal)
-	  (let ((start (car signal))
-		(end (cadr signal)))
+    (define (loop ilist)
+      (if (pair? ilist)
+	  (let ((start (car ilist))
+		(end (cadr ilist)))
 	    (cond ((fix:<= end low-limit)
 		   (set-range! start end)
-		   (loop (cddr signal)))
+		   (loop (cddr ilist)))
 		  ((fix:< start low-limit)
 		   (set-range! start low-limit))))))
 
@@ -138,31 +138,31 @@ USA.
 	  ((not (fix:< i end)))
 	(%low-set! low i)))
 
-    (loop signal)
+    (loop ilist)
     low))
 
-(define (%signal->high signal low-limit)
+(define (%inversion-list->high ilist low-limit)
 
-  (define (skip-low signal)
-    (cond ((not (pair? signal)) '())
-	  ((fix:<= (cadr signal) low-limit) (skip-low (cddr signal)))
-	  ((fix:< (car signal) low-limit) (cons low-limit (cdr signal)))
-	  (else signal)))
+  (define (skip-low ilist)
+    (cond ((not (pair? ilist)) '())
+	  ((fix:<= (cadr ilist) low-limit) (skip-low (cddr ilist)))
+	  ((fix:< (car ilist) low-limit) (cons low-limit (cdr ilist)))
+	  (else ilist)))
 
-  (let ((signal (skip-low signal)))
-    (let ((high (%make-high (length signal))))
-      (do ((signal signal (cdr signal))
+  (let ((ilist (skip-low ilist)))
+    (let ((high (%make-high (length ilist))))
+      (do ((ilist ilist (cdr ilist))
 	   (i 0 (fix:+ i 1)))
-	  ((not (pair? signal)))
-	(%high-set! high i (car signal)))
+	  ((not (pair? ilist)))
+	(%high-set! high i (car ilist)))
       high)))
 
-(define (%char-set->signal char-set)
+(define (%char-set->inversion-list char-set)
   (reverse!
-   (%high->signal (%char-set-high char-set)
-		  (%low->signal (%char-set-low char-set)))))
+   (%high->inversion-list (%char-set-high char-set)
+			  (%low->inversion-list (%char-set-low char-set)))))
 
-(define (%low->signal low)
+(define (%low->inversion-list low)
   (let ((low-limit (%low-limit low)))
 
     (define (find-start i result)
@@ -182,7 +182,7 @@ USA.
 
     (find-start 0 '())))
 
-(define (%high->signal high result)
+(define (%high->inversion-list high result)
   (let ((n (%high-length high)))
 
     (define (loop i result)
@@ -197,46 +197,46 @@ USA.
 	(loop 1 (cdr result))
 	(loop 0 result))))
 
-(define-integrable (scons start end signal)
-  (cons start (cons end signal)))
+(define-integrable (scons start end ilist)
+  (cons start (cons end ilist)))
 
-(define-integrable (rcons start end signal)
-  (cons end (cons start signal)))
+(define-integrable (rcons start end ilist)
+  (cons end (cons start ilist)))
 
-(define (make-signal-combiner combine)
+(define (make-inversion-list-combiner combine)
 
-  (define (loop v start sig1 sig2 result)
-    (cond ((not (pair? sig1)) (tail v 2 start sig2 result))
-	  ((not (pair? sig2)) (tail v 1 start sig1 result))
+  (define (loop v start il1 il2 result)
+    (cond ((not (pair? il1)) (tail v 2 start il2 result))
+	  ((not (pair? il2)) (tail v 1 start il1 result))
 	  (else
-	   (let ((end (fix:min (car sig1) (car sig2))))
+	   (let ((end (fix:min (car il1) (car il2))))
 	     (let ((result* (process v start end result)))
-	       (cond ((fix:> (car sig2) end)
+	       (cond ((fix:> (car il2) end)
 		      (loop (fix:xor v 1)
 			    end
-			    (cdr sig1)
-			    sig2
+			    (cdr il1)
+			    il2
 			    result*))
-		     ((fix:> (car sig1) end)
+		     ((fix:> (car il1) end)
 		      (loop (fix:xor v 2)
 			    end
-			    sig1
-			    (cdr sig2)
+			    il1
+			    (cdr il2)
 			    result*))
 		     (else
 		      (loop (fix:xor v 3)
 			    end
-			    (cdr sig1)
-			    (cdr sig2)
+			    (cdr il1)
+			    (cdr il2)
 			    result*))))))))
 
-  (define (tail v vi start signal result)
-    (if (pair? signal)
-	(let ((end (car signal)))
+  (define (tail v vi start ilist result)
+    (if (pair? ilist)
+	(let ((end (car ilist)))
 	  (tail (fix:xor v vi)
 		vi
 		end
-		(cdr signal)
+		(cdr ilist)
 		(process v start end result)))
 	(reverse!
 	 (if (fix:< start #x110000)
@@ -253,8 +253,8 @@ USA.
 	    (rcons start end result))
 	result))
 
-  (lambda (sig1 sig2)
-    (loop 0 0 sig1 sig2 '())))
+  (lambda (il1 il2)
+    (loop 0 0 il1 il2 '())))
 
 ;;;; Constructors
 
@@ -311,21 +311,21 @@ USA.
 
 (define (compute-char-set procedure)
 
-  (define (find-start cp end signal)
+  (define (find-start cp end ilist)
     (if (fix:< cp end)
 	(if (procedure cp)
-	    (find-end (fix:+ cp 1) end cp signal)
-	    (find-start (fix:+ cp 1) end signal))
-	signal))
+	    (find-end (fix:+ cp 1) end cp ilist)
+	    (find-start (fix:+ cp 1) end ilist))
+	ilist))
 
-  (define (find-end cp end start signal)
+  (define (find-end cp end start ilist)
     (if (fix:< cp end)
 	(if (procedure cp)
-	    (find-end (fix:+ cp 1) end start signal)
-	    (find-start (fix:+ cp 1) end (scons cp start signal)))
-	(scons end start signal)))
+	    (find-end (fix:+ cp 1) end start ilist)
+	    (find-start (fix:+ cp 1) end (scons cp start ilist)))
+	(scons end start ilist)))
 
-  (%signal->char-set
+  (%inversion-list->char-set
    (reverse! (find-start #xE000 #x110000
 			 (find-start 0 #xD800 '())))))
 
@@ -372,13 +372,13 @@ USA.
 		  (%range-end range2)))))
 
 (define (%ranges->char-set ranges)
-  (let loop ((ranges ranges) (signal '()))
+  (let loop ((ranges ranges) (ilist '()))
     (if (pair? ranges)
 	(loop (cdr ranges)
 	      (rcons (%range-start (car ranges))
 		     (%range-end (car ranges))
-		     signal))
-	(%signal->char-set (reverse! signal)))))
+		     ilist))
+	(%inversion-list->char-set (reverse! ilist)))))
 
 ;;;; Accessors
 
@@ -420,10 +420,10 @@ USA.
 	 char-sets))
 
 (define (char-set->code-points char-set)
-  (let loop ((signal (%char-set->signal char-set)) (ranges '()))
-    (if (pair? signal)
-	(loop (cddr signal)
-	      (cons (%make-range (car signal) (cadr signal))
+  (let loop ((ilist (%char-set->inversion-list char-set)) (ranges '()))
+    (if (pair? ilist)
+	(loop (cddr ilist)
+	      (cons (%make-range (car ilist) (cadr ilist))
 		    ranges))
 	(reverse! ranges))))
 
@@ -438,24 +438,25 @@ USA.
 ;;;; Combinations
 
 (define (char-set-invert char-set)
-  (%signal->char-set (signal-invert (%char-set->signal char-set))))
+  (%inversion-list->char-set
+   (inversion-list-invert (%char-set->inversion-list char-set))))
 
-(define (signal-invert signal)
+(define (inversion-list-invert ilist)
 
-  (define (loop start signal inverse)
-    (if (pair? signal)
-	(loop (cadr signal)
-	      (cddr signal)
-	      (rcons start (car signal) inverse))
+  (define (loop start ilist inverse)
+    (if (pair? ilist)
+	(loop (cadr ilist)
+	      (cddr ilist)
+	      (rcons start (car ilist) inverse))
 	(reverse!
 	 (if (fix:< start #x110000)
 	     (rcons start #x110000 inverse)
 	     inverse))))
 
-  (if (pair? signal)
-      (if (fix:< 0 (car signal))
-	  (loop 0 signal '())
-	  (loop (cadr signal) (cddr signal) '()))
+  (if (pair? ilist)
+      (if (fix:< 0 (car ilist))
+	  (loop 0 ilist '())
+	  (loop (cadr ilist) (cddr ilist) '()))
       '()))
 
 (define (char-set-union . char-sets)
@@ -463,36 +464,36 @@ USA.
 
 (define (char-set-union* char-sets)
   (guarantee list? char-sets 'char-set-union*)
-  (%signal->char-set
-   (reduce signal-union
+  (%inversion-list->char-set
+   (reduce inversion-list-union
 	   '()
-	   (map %char-set->signal char-sets))))
+	   (map %char-set->inversion-list char-sets))))
 
 (define (char-set-intersection . char-sets)
   (char-set-intersection* char-sets))
 
 (define (char-set-intersection* char-sets)
   (guarantee list? char-sets 'char-set-intersection*)
-  (%signal->char-set
-   (reduce signal-intersection
+  (%inversion-list->char-set
+   (reduce inversion-list-intersection
 	   '(0 #x110000)
-	   (map %char-set->signal char-sets))))
+	   (map %char-set->inversion-list char-sets))))
 
 (define (char-set-difference char-set . char-sets)
   (guarantee list? char-sets 'char-set-difference)
-  (%signal->char-set
-   (fold-left signal-difference
-	      (%char-set->signal char-set)
-	      (map %char-set->signal char-sets))))
+  (%inversion-list->char-set
+   (fold-left inversion-list-difference
+	      (%char-set->inversion-list char-set)
+	      (map %char-set->inversion-list char-sets))))
 
-(define signal-union
-  (make-signal-combiner (lambda (a b) (or a b))))
+(define inversion-list-union
+  (make-inversion-list-combiner (lambda (a b) (or a b))))
 
-(define signal-intersection
-  (make-signal-combiner (lambda (a b) (and a b))))
+(define inversion-list-intersection
+  (make-inversion-list-combiner (lambda (a b) (and a b))))
 
-(define signal-difference
-  (make-signal-combiner (lambda (a b) (and a (not b)))))
+(define inversion-list-difference
+  (make-inversion-list-combiner (lambda (a b) (and a (not b)))))
 
 ;;;; Miscellaneous character sets
 
@@ -510,7 +511,7 @@ USA.
 (define char-wsp?)
 (add-boot-init!
  (lambda ()
-   (set! char-set:graphic (%signal->char-set '(#x20 #x7F #xA0 #x100)))
+   (set! char-set:graphic (%inversion-list->char-set '(#x20 #x7F #xA0 #x100)))
    (set! char-set:not-graphic (char-set-invert char-set:graphic))
    (set! char-graphic? (char-set-predicate char-set:graphic))
 
@@ -523,9 +524,9 @@ USA.
 
    ;; Used in RFCs:
 
-   (set! char-set:ascii (%signal->char-set '(#x00 #x80)))
+   (set! char-set:ascii (%inversion-list->char-set '(#x00 #x80)))
 
-   (set! char-set:ctls (%signal->char-set '(#x00 #x20 #x7F #x80)))
+   (set! char-set:ctls (%inversion-list->char-set '(#x00 #x20 #x7F #x80)))
    (set! char-ctl? (char-set-predicate char-set:ctls))
 
    (set! char-set:wsp (char-set #\space #\tab))
