@@ -36,8 +36,7 @@ USA.
 ;;; another, and no two ranges are adjacent.  These ranges are sorted so that
 ;;; their STARTs are in order.
 ;;;
-;;; The HIGH range sequence is implemented as a u32 bytevector of alternating
-;;; START and END points.  The vector always has an even number of points.
+;;; The HIGH range sequence is a u24 bytevector implementing an inversion list.
 
 (define-record-type <char-set>
     (%make-char-set low high)
