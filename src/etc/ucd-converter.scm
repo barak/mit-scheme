@@ -661,6 +661,51 @@ USA.
 					   ,(runtime-converter '(cdr p))))
 			',mapping)
 	      table)))))))
+
+(define (inversion-map-generator value-manager)
+  (let ((default-string (value-manager-default-string value-manager))
+	(value-converter (value-manager-converter value-manager))
+	(default-value (value-manager-runtime-default value-manager))
+	(runtime-converter (value-manager-runtime-converter value-manager))
+	(code-point->bytes
+	 (lambda (cp)
+	   (list (fix:and cp #xFF)
+		 (fix:and (fix:lsh cp -8) #xFF)
+		 (fix:lsh cp -16)))))
+    (lambda (prop-name metadata prop-alist proc-name)
+      (let ((table-name (symbol "char-map:" (metadata-full-name metadata)))
+	    (pairs
+	     (remove (lambda (p)
+		       (and default-string
+			    (string=? default-string (cdr p))))
+		     prop-alist)))
+	(with-notification
+	 (lambda (port)
+	   (write-string "UCD property " port)
+	   (write-string prop-name port)
+	   (write-string ": table pairs = " port)
+	   (write (length pairs) port)))
+	(let ((keys
+	       (list->vector
+		(append-map (lambda (p)
+			      (let ((cpr (car p)))
+				(list (cpr-start cpr)
+				      (cpr-end cpr))))
+			    pairs)))
+	      (values
+	       (list->vector
+		(map (lambda (p)
+		       (value-converter (cdr p)))
+		     pairs))))
+	  `((define (,proc-name char)
+	      (inversion-map-ref ,table-name
+				 char
+				 (lambda () ,(default-value 'char))))
+	    (define-deferred ,table-name
+	      (make-inversion-map ',keys
+				  (vector-map (lambda (value)
+						,(runtime-converter 'value))
+					      ',values)))))))))
 
 (define (trie-code-generator value-manager slices)
   (let ((default-string (value-manager-default-string value-manager))
