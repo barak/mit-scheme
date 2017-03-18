@@ -41,6 +41,8 @@ USA.
 ;;;
 ;;; (load ".../ucd-converter")
 ;;; (generate-standard-property-tables)
+
+(declare (usual-integrations))
 
 ;;;; UCD property metadata
 
@@ -477,7 +479,7 @@ USA.
 	  (else (error "Unsupported metadata:" metadata)))))
 
 (define (code-generator:boolean prop-name metadata prop-alist proc-name)
-  (declare (ignore proc-name))
+  (declare (ignore prop-name proc-name))
   (let* ((full-name (metadata-full-name metadata))
 	 (char-set-name (symbol "char-set:" full-name)))
     `((define (,(symbol "char-" full-name "?") char)
@@ -490,43 +492,43 @@ USA.
 		       prop-alist))))))
 
 (define (code-generator:byte prop-name metadata prop-alist proc-name)
-  ((hashed-code-generator value-manager:byte)
+  ((trie-code-generator value-manager:byte)
    prop-name metadata prop-alist proc-name))
 
 (define (code-generator:code-point prop-name metadata prop-alist proc-name)
-  ((hashed-code-generator value-manager:code-point)
+  ((trie-code-generator value-manager:code-point)
    prop-name metadata prop-alist proc-name))
 
 (define (code-generator:code-point* prop-name metadata prop-alist proc-name)
-  ((hashed-code-generator value-manager:code-points)
+  ((trie-code-generator value-manager:code-points)
    prop-name metadata prop-alist proc-name))
 
 (define (code-generator:code-point+ prop-name metadata prop-alist proc-name)
-  ((hashed-code-generator value-manager:code-points)
+  ((trie-code-generator value-manager:code-points)
    prop-name metadata prop-alist proc-name))
 
 (define (code-generator:gc prop-name metadata prop-alist proc-name)
-  ((trie-code-generator (mapped-enum-value-manager #f metadata) '(5 8 8))
+  ((trie-code-generator (mapped-enum-value-manager #f metadata))
    prop-name metadata prop-alist proc-name))
 
 (define (code-generator:gcb prop-name metadata prop-alist proc-name)
-  ((trie-code-generator (unmapped-enum-value-manager #f metadata) '(5 8 8))
+  ((trie-code-generator (unmapped-enum-value-manager #f metadata))
    prop-name metadata prop-alist proc-name))
 
 (define (code-generator:nfc-qc prop-name metadata prop-alist proc-name)
-  ((hashed-code-generator (mapped-enum-value-manager "Y" metadata))
+  ((trie-code-generator (mapped-enum-value-manager "Y" metadata))
    prop-name metadata prop-alist proc-name))
 
 (define (code-generator:nt prop-name metadata prop-alist proc-name)
-  ((hashed-code-generator (mapped-enum-value-manager "None" metadata))
+  ((trie-code-generator (mapped-enum-value-manager "None" metadata))
    prop-name metadata prop-alist proc-name))
 
 (define (code-generator:rational-or-nan prop-name metadata prop-alist proc-name)
-  ((hashed-code-generator value-manager:rational-or-nan)
+  ((trie-code-generator value-manager:rational-or-nan)
    prop-name metadata prop-alist proc-name))
 
 (define (code-generator:wb prop-name metadata prop-alist proc-name)
-  ((trie-code-generator (unmapped-enum-value-manager #f metadata) '(5 8 8))
+  ((trie-code-generator (unmapped-enum-value-manager #f metadata))
    prop-name metadata prop-alist proc-name))
 
 (define (value-manager default-string converter
@@ -630,7 +632,7 @@ USA.
 (define (hashed-code-generator value-manager)
   (let ((default-string (value-manager-default-string value-manager))
 	(value-converter (value-manager-converter value-manager))
-	(default-value (value-manager-runtime-default value-manager))
+	(runtime-default (value-manager-runtime-default value-manager))
 	(runtime-converter (value-manager-runtime-converter value-manager)))
     (lambda (prop-name metadata prop-alist proc-name)
       (let ((table-name (symbol "char-map:" (metadata-full-name metadata)))
@@ -652,7 +654,7 @@ USA.
 	   (write (length mapping) port)))
 	`((define (,proc-name char)
 	    (hash-table-ref ,table-name char
-			    (lambda () ,(default-value 'char))))
+			    (lambda () ,(runtime-default 'char))))
 	  (define-deferred ,table-name
 	    (let ((table (make-non-pointer-hash-table)))
 	      (for-each (lambda (p)
@@ -665,13 +667,8 @@ USA.
 (define (inversion-map-generator value-manager)
   (let ((default-string (value-manager-default-string value-manager))
 	(value-converter (value-manager-converter value-manager))
-	(default-value (value-manager-runtime-default value-manager))
-	(runtime-converter (value-manager-runtime-converter value-manager))
-	(code-point->bytes
-	 (lambda (cp)
-	   (list (fix:and cp #xFF)
-		 (fix:and (fix:lsh cp -8) #xFF)
-		 (fix:lsh cp -16)))))
+	(runtime-default (value-manager-runtime-default value-manager))
+	(runtime-converter (value-manager-runtime-converter value-manager)))
     (lambda (prop-name metadata prop-alist proc-name)
       (let ((table-name (symbol "char-map:" (metadata-full-name metadata)))
 	    (pairs
@@ -700,378 +697,299 @@ USA.
 	  `((define (,proc-name char)
 	      (inversion-map-ref ,table-name
 				 char
-				 (lambda () ,(default-value 'char))))
+				 (lambda () ,(runtime-default 'char))))
 	    (define-deferred ,table-name
 	      (make-inversion-map ',keys
 				  (vector-map (lambda (value)
 						,(runtime-converter 'value))
 					      ',values)))))))))
 
-(define (trie-code-generator value-manager slices)
-  (let ((default-string (value-manager-default-string value-manager))
-	(value-converter (value-manager-converter value-manager))
-	(default-value (value-manager-runtime-default value-manager))
+(define (trie-code-generator value-manager #!optional bit-slices)
+  (let ((bit-slices (if (default-object? bit-slices) '(5 4 4 4 4) bit-slices))
+        (convert-value (make-trie-value-converter value-manager))
+	(runtime-default (value-manager-runtime-default value-manager))
 	(runtime-converter (value-manager-runtime-converter value-manager)))
     (lambda (prop-name metadata prop-alist proc-name)
-      (let ((maker (entries-maker))
-	    (stats (trie-stats)))
+      (declare (ignore metadata))
+      (let ((tables
+	     (build-trie-tables bit-slices convert-value runtime-converter
+                                prop-name prop-alist)))
+	(with-notification
+	 (lambda (port)
+	   (write-string "UCD property " port)
+	   (write-string prop-name port)
+	   (write-string ": tables = " port)
+	   (write (apply + (map trie-table-size tables)) port)
+	   (write-string " bytes" port)))
+	`((define (,proc-name char)
+            ,(let ((accesses
+                    `(let ((sv (char->integer char)))
+                       ,(generate-accesses prop-name 'sv tables)))
+                   (default (runtime-default 'char)))
+               (if default
+                   `(or ,accesses ,default)
+                   accesses)))
+	  ,@(map (lambda (table)
+		   `(define-deferred ,(trie-table-name table)
+		      ,(trie-table-expr table)))
+                 tables))))))
 
-	(define (make-value-code value)
-	  (if (and default-string (string=? value default-string))
-	      (lambda (offsets-name sv-name table-name)
-		offsets-name
-		(values #f #f
-			`((declare (ignore ,table-name))
-			  ,(default-value sv-name))))
-	      (let ((value*
-		     (let ((converted (value-converter value)))
-		       (if (or (symbol? converted)
-			       (list? converted)
-			       (vector? converted))
-			   `',converted
-			   converted))))
-		(lambda (offsets-name sv-name table-name)
-		  offsets-name
-		  (values #f #f
-			  `((declare (ignore ,sv-name ,table-name))
-			    ,(runtime-converter value*)))))))
-
-	(define (make-node-code n-bits offset indexes)
-	  (receive (bytes-per-entry offsets-expr coder)
-	      (or (try-linear indexes)
-		  (try-8-bit-direct indexes)
-		  (try-8-bit-spread indexes)
-		  (try-16-bit-direct indexes)
-		  (try-16-bit-spread indexes)
-		  (error "Dispatch won't fit in 16 bits:" indexes))
-	    ((stats 'record!) indexes bytes-per-entry)
-	    (lambda (offsets-name sv-name table-name)
-	      (values indexes
-		      offsets-expr
-		      `(((vector-ref ,table-name
-				     ,(coder offsets-name
-					(lambda (shift)
-					  `(fix:and ,(* (expt 2 shift)
-							(- (expt 2 n-bits) 1))
-						    ,(code:rsh sv-name
-							       (- offset
-								  shift))))))
-			 ,sv-name
-			 ,table-name))))))
-
-	(let ((table (make-equal-hash-table))
-	      (make-entry (maker 'make-entry)))
-
-	  ;; Make sure that the leaf nodes are at the beginning of the table.
-	  (for-each (lambda (value)
-		      (hash-table/intern! table value
-			(lambda ()
-			  (make-entry (make-value-code value)))))
-		    (map cdr prop-alist))
-
-	  (let loop
-	      ((entries (expand-ranges (slice-prop-alist prop-alist slices)))
-	       (n-max 21))
-	    (hash-table/intern! table entries
-	      (lambda ()
-		(make-entry
-		 (let* ((n-bits (car entries))
-			(n-max* (- n-max n-bits)))
-		   (make-node-code n-bits n-max*
-		     (map (lambda (entry)
-			    (loop entry n-max*))
-			  (cdr entries)))))))))
-
-	(let ((root-entry ((maker 'get-root-entry)))
-	      (table-entries ((maker 'get-table-entries))))
-	  ((stats 'report) prop-name (length table-entries))
-	  (generate-top-level (string-downcase prop-name)
-			      root-entry table-entries proc-name))))))
-
-(define (generate-top-level prop-name root-entry table-entries proc-name)
-  (let ((table-name (symbol "ucd-" prop-name "-entries"))
-        (entry-names
-         (map (lambda (index)
-                (symbol "ucd-" prop-name "-entry-" index))
-              (iota (length table-entries)))))
-
-    `(,@(generate-entry-definition proc-name root-entry 'sv table-name
-				   '(char)
-				   (lambda (body)
-				     `((let ((sv (char->integer char)))
-					 ,@body))))
-
-      ,@(append-map (lambda (name entry)
-                      (generate-entry-definition name entry 'sv 'table
-						 '(sv table)
-						 (lambda (body) body)))
-                    entry-names
-                    table-entries)
-
-      (define ,table-name)
-      ,@(generate-table-initializers table-name entry-names))))
-
-(define (generate-entry-definition name entry sv-name table-name
-				   arg-names wrap-body)
-  (receive (comment offsets-expr body) (entry 'offsets sv-name table-name)
-    (let ((defn
-           (if offsets-expr
-	       `(define-deferred ,name
-		  (let ((offsets ,offsets-expr))
-		    (named-lambda (,name ,@arg-names)
-		      ,@(wrap-body body))))
-	       `(define (,name ,@arg-names)
-		  ,@(wrap-body body)))))
-      (if (and comment generate-node-comments?)
-          (list `(comment ,comment) defn)
-          (list defn)))))
-
-(define generate-node-comments? #f)
-
-(define (generate-table-initializers table-name entries)
-  (let ((groups
-         (let split-items
-             ((items
-               (map cons
-                    (iota (length entries))
-                    entries)))
-           (let ((n-items (length items)))
-             (if (<= n-items 100)
-                 (list items)
-		 (append (split-items (list-head items 100))
-			 (split-items (list-tail items 100))))))))
-    (let ((group-names
-           (map (lambda (index)
-                  (symbol "initialize-" table-name "-" index))
-                (iota (length groups)))))
-      `((add-boot-init!
-	 (lambda ()
-	   (set! ,table-name (make-vector ,(length entries)))
-	   ,@(map (lambda (name)
-		    `(,name))
-		  group-names)))
-        ,@(map (lambda (name group)
-                 `(define (,name)
-                    ,@(map (lambda (p)
-                             `(vector-set! ,table-name ,(car p) ,(cdr p)))
-                           group)))
-               group-names
-               groups)))))
-
-(define (try-linear indexes)
-  (and (pair? indexes)
-       (pair? (cdr indexes))
-       (let ((slope (- (cadr indexes) (car indexes))))
-         (let loop ((indexes* (cdr indexes)))
-           (if (pair? (cdr indexes*))
-               (and (= slope (- (cadr indexes*) (car indexes*)))
-                    (loop (cdr indexes*)))
-               (linear-coder slope indexes))))))
-
-(define (linear-coder slope indexes)
-  (values 0
+(define (make-trie-value-converter value-manager)
+  (let ((default-string (value-manager-default-string value-manager))
+	(value-converter (value-manager-converter value-manager)))
+    (lambda (value)
+      (if (and default-string (string=? value default-string))
 	  #f
-          (lambda (offsets-name make-index-code)
-	    offsets-name
-	    (let ((make-offset
-		   (lambda (slope)
-		     (let ((power
-			    (find (lambda (i)
-				    (= slope (expt 2 i)))
-				  (iota 8 1))))
-		       (if power
-			   (make-index-code power)
-			   (code:* slope (make-index-code 0)))))))
-	      (if (< slope 0)
-		  (code:- (car indexes) (make-offset (- slope)))
-		  (code:+ (car indexes) (make-offset slope)))))))
+          (value-converter value)))))
 
-(define (try-8-bit-direct indexes)
-  (and (< (apply max indexes) #x100)
-       (8-bit-spread-coder 0 indexes)))
+(define (generate-accesses prop-name sv-expr tables)
+  (define (generate-access table index)
+    ((trie-table-accessor table)
+     (trie-table-name table)
+     (if (trie-table-scale table)
+	 (code:or (code:lsh index (trie-table-scale table))
+		  (code:and (trie-table-mask table)
+			    (code:rsh sv-expr (trie-table-offset table))))
+	 index)))
 
-(define (try-8-bit-spread indexes)
-  (let ((base (apply min indexes)))
-    (and (< (- (apply max indexes) base) #x100)
-         (8-bit-spread-coder base indexes))))
+  (let loop ((tables tables) (expr 0))
+    (if (pair? tables)
+	(loop (cdr tables)
+	      (generate-access (car tables) expr))
+	expr)))
 
-(define (8-bit-spread-coder base indexes)
-  (values 1
-	  `(bytevector
-	    ,@(map (lambda (index)
-		     (- index base))
-		   indexes))
-          (lambda (offsets-name make-index-code)
-            (code:+ base
-                    `(bytevector-u8-ref ,offsets-name
-					,(make-index-code 0))))))
+(define (code:and m a)
+  (cond ((not m) a)
+        ((index-fixnum? a) (fix:and m a))
+        (else `(fix:and ,m ,a))))
 
-(define (try-16-bit-direct indexes)
-  (and (< (apply max indexes) #x10000)
-       (16-bit-spread-coder 0 indexes)))
-
-(define (try-16-bit-spread indexes)
-  (let ((base (apply min indexes)))
-    (and (< (- (apply max indexes) base) #x10000)
-         (16-bit-spread-coder base indexes))))
-
-(define (16-bit-spread-coder base indexes)
-  (values 2
-	  `(bytevector
-	    ,@(append-map (lambda (index)
-			    (let ((delta (- index base)))
-			      (list (remainder delta #x100)
-				    (quotient delta #x100))))
-			  indexes))
-          (lambda (offsets-name make-index-code)
-            (code:+ base
-		    `(bytevector-u16le-ref ,offsets-name
-					   ,(make-index-code 1))))))
-
-(define (code:+ a b)
+(define (code:or a b)
   (cond ((eqv? 0 a) b)
         ((eqv? 0 b) a)
-        (else `(fix:+ ,a ,b))))
+        (else `(fix:or ,a ,b))))
 
-(define (code:- a b)
-  (cond ((eqv? 0 b) a)
-        (else `(fix:- ,a ,b))))
-
-(define (code:* a b)
-  (cond ((or (eqv? 0 a) (eqv? 0 b)) 0)
-        ((eqv? 1 a) b)
-        ((eqv? 1 b) a)
-        (else `(fix:* ,a ,b))))
+(define (code:lsh a n)
+  (cond ((index-fixnum? a) (fix:lsh a n))
+        ((= n 0) a)
+        (else `(fix:lsh ,a ,n))))
 
 (define (code:rsh a n)
-  (if (= n 0)
-      a
-      `(fix:lsh ,a ,(- n))))
-
-(define (entries-maker)
-  (let ((next-index 0)
-        (entries '()))
-
-    (define (make-entry entry)
-      (let ((index next-index))
-        (set! next-index (+ next-index 1))
-        (set! entries (cons entry entries))
-        index))
-
-    (lambda (operator)
-      (case operator
-        ((make-entry) make-entry)
-        ((get-table-entries) (lambda () (reverse (cdr entries))))
-        ((get-root-entry) (lambda () (car entries)))
-        (else (error "Unknown operator:" operator))))))
-
-(define (trie-stats)
-  (let ((entry-count 0)
-	(unique-entry-count 0)
-	(byte-count 0))
-
-    (define (record! indexes bytes-per-entry)
-      (let ((n (length indexes))
-	    (u (length (delete-duplicates indexes eqv?))))
-	(set! entry-count (+ entry-count n))
-	(set! unique-entry-count (+ unique-entry-count u))
-	(set! byte-count (+ byte-count (* n bytes-per-entry))))
-      unspecific)
-
-    (define (report prop-name n-entries)
-      (with-notification
-       (lambda (port)
-	 (write-string "UCD property " port)
-	 (write-string prop-name port)
-	 (write-string ": dispatch tables = " port)
-	 (write entry-count port)
-	 (write-string "/" port)
-	 (write unique-entry-count port)
-	 (write-string " entries, " port)
-	 (write byte-count port)
-	 (write-string " bytes; object table = " port)
-	 (write n-entries port)
-	 (write-string " words" port))))
-
-    (lambda (operator)
-      (case operator
-	((record!) record!)
-	((report) report)
-	(else (error "Unknown operator:" operator))))))
+  (code:lsh a (- n)))
 
-(define (expand-ranges stratified)
-  (if (list? stratified)
-      (let ((elements*
-             (append-map (lambda (element)
-                           (make-list (car element)
-                                      (expand-ranges (cdr element))))
-                         stratified)))
-        (cons (count->bits (length elements*))
-              elements*))
-      stratified))
+(define (build-trie-tables bit-slices convert-value runtime-converter
+                           prop-name prop-alist)
+  (define (loop suffix offset scale bit-slices tables)
+    (let ((mask
+	   (and (fix:> suffix 0)
+		(fix:- (fix:lsh 1 (car bit-slices)) 1)))
+	  (offset (fix:- offset (car bit-slices))))
+      (if (pair? (cdr tables))
+	  (receive (size table-expr accessor)
+	      (choose-index-format (car tables) (cadr tables) (cadr bit-slices))
+	    (cons (make-trie-table (make-name suffix)
+				   size
+				   table-expr
+				   accessor
+				   mask
+				   offset
+				   scale)
+		  (loop (fix:+ suffix 1)
+			offset
+			(cadr bit-slices)
+			(cdr bit-slices)
+			(cdr tables))))
+	  (receive (index table) (maybe-split-trie-value-table (car tables))
+	    (let ((converted-values (map convert-value (vector->list table))))
+	      (if index
+		  (receive (size table-expr accessor)
+		      (choose-index-format index table 0)
+		    (list (make-trie-table (make-name suffix)
+					   size
+					   table-expr
+					   accessor
+					   mask
+					   offset
+					   scale)
+			  (receive (size table-expr accessor)
+			      (choose-value-format converted-values
+                                                   runtime-converter)
+			    (make-trie-table (make-name (fix:+ suffix 1))
+					     size
+					     table-expr
+					     accessor
+					     #f
+					     #f
+					     #f))))
+		  (receive (size table-expr accessor)
+		      (choose-value-format converted-values runtime-converter)
+		    (list (make-trie-table (make-name suffix)
+					   size
+					   table-expr
+					   accessor
+					   mask
+					   offset
+					   scale)))))))))
 
-(define (count->bits count)
-  (let loop ((bits 0) (n 1))
-    (if (fix:< n count)
-        (loop (fix:+ bits 1)
-              (fix:lsh n 1))
-        bits)))
+  (define (make-name suffix)
+    (symbol "ucd-" prop-name "-table-" suffix))
 
-(define (slice-prop-alist alist slices)
-  (let loop ((alist alist) (slices (reverse slices)))
-    (if (pair? slices)
-        (loop (slice-by-bits alist (car slices))
-              (cdr slices))
-        (cdar alist))))
+  (loop 0
+	21
+	1
+	bit-slices
+	(prop-alist->tables prop-alist
+			    (reverse
+			     (map (lambda (bit-slice)
+				    (fix:lsh 1 bit-slice))
+				  (cdr bit-slices))))))
+
+(define-record-type <trie-table>
+    (make-trie-table name size expr accessor mask offset scale)
+    trie-table?
+  (name trie-table-name)
+  (size trie-table-size)
+  (expr trie-table-expr)
+  (accessor trie-table-accessor)
+  (mask trie-table-mask)
+  (offset trie-table-offset)
+  (scale trie-table-scale))
 
-(define (slice-by-bits alist n-bits)
-  (let ((step (fix:lsh 1 n-bits)))
-    (let loop ((tail alist) (splits '()) (start 0))
-      (if (pair? tail)
-	  (receive (head tail* end) (slice-prop-alist-at tail start step)
-	    (loop tail*
-		  (cons (cons (make-cpr (fix:quotient start step)
-					(fix:quotient end step))
-                              (if (fix:= 1 (length head))
-                                  (cdar head)
-                                  (map (lambda (entry)
-                                         (cons (cpr-size (car entry))
-                                               (cdr entry)))
-                                       head)))
-			splits)
-		  end))
-	  (reverse! splits)))))
+(define (choose-index-format index table bit-slice)
+  (let ((n (fix:lsh (vector-length table) (fix:- 0 bit-slice))))
+    (cond ((fix:< n #x100)
+	   (values (+ 2 (vector-length index))
+                   `(apply bytevector ',(vector->list index))
+		   (lambda (bv-expr i-expr)
+		     `(bytevector-u8-ref ,bv-expr ,i-expr))))
+	  ((fix:< n #x10000)
+	   (values (+ 2 (* 2 (vector-length index)))
+                   `(apply bytevector-u16be ',(vector->list index))
+		   (lambda (bv-expr i-expr)
+		     `(bytevector-u16be-ref ,bv-expr
+					    (fix:lsh ,i-expr 1)))))
+	  (else
+	   (error "Table too large:" n)))))
 
-(define (slice-prop-alist-at alist start step)
-  (let loop ((head '()) (tail alist) (end (fix:+ start step)))
+(define (choose-value-format converted-values runtime-converter)
+  (values (+ 1 (* 8 (length converted-values)))
+          (let ((conversion (runtime-converter 'converted)))
+            (if (eq? 'converted conversion)
+                `(list->vector ',converted-values)
+                `(list->vector
+                  (map (lambda (converted)
+                         ,(if (memq #f converted-values)
+                              `(and converted ,conversion)
+                              conversion))
+                       ',converted-values))))
+	  (lambda (v-expr i-expr)
+	    `(vector-ref ,v-expr ,i-expr))))
+
+(define (generate-trie-table-builder make-table combine-tables values)
+  (let ((tables
+	 (let loop ((values values) (n (length values)))
+	   (if (<= n 100)
+	       (list `(,make-table ,@values))
+	       (cons `(,make-table ,@(list-head values 100))
+		     (loop (list-tail values 100)
+			   (- n 100)))))))
+    (if (= 1 (length tables))
+	(car tables)
+	`(,combine-tables ,@tables))))
+
+(define (maybe-split-trie-value-table table)
+  (let ((distinct-values
+	 (list->vector
+	  (delete-duplicates! (vector->list table)
+			      string=?))))
+    (let ((n-values (vector-length distinct-values))
+	  (table-size (vector-length table)))
+      ;; Check whether two tables would use less space than one.
+      (if (< (+ (if (< n-values #x100)
+		    table-size
+		    (* 2 table-size))
+		(* 8 n-values))
+	     (* 8 table-size))
+	  (values (vector-map (lambda (value)
+				(do ((i 0 (fix:+ i 1)))
+				    ((string=? (vector-ref distinct-values i)
+					       value)
+				     i)))
+			      table)
+		  distinct-values)
+	  (values #f table)))))
+
+(define (prop-alist->tables prop-alist slice-steps)
+  (let loop
+      ((slices (slice-prop-alist prop-alist (car slice-steps)))
+       (slice-steps (cdr slice-steps))
+       (tables '()))
+    (receive (indices table) (generate-index-from-slices slices)
+      (if (pair? slice-steps)
+	  (loop (slice-list indices (car slice-steps))
+		(cdr slice-steps)
+		(cons (list->vector table) tables))
+	  (cons* (list->vector indices)
+		 (list->vector table)
+		 tables)))))
+
+(define (generate-index-from-slices slices)
+  (let ((table (make-equal-hash-table)))
+    (let loop ((slices slices) (next-index 0) (indices '()))
+      (let ((next (slices)))
+	(if (pair? next)
+	    (let ((index
+                   (hash-table-intern! table
+                                       (car next)
+                                       (lambda () next-index))))
+	      (loop (cdr next)
+		    (if (fix:= index next-index)
+			(fix:+ next-index 1)
+			next-index)
+		    (cons index indices)))
+	    (values (reverse! indices)
+		    (append-map car
+                                (sort (hash-table->alist table)
+                                      (lambda (a b)
+                                        (fix:< (cdr a) (cdr b)))))))))))
+
+(define (slice-list items step)
+  (let loop ((items items))
+    (lambda ()
+      (if (pair? items)
+	  (cons (list-head items step)
+		(loop (list-tail items step)))
+	  '()))))
+
+(define (slice-prop-alist alist step)
+  (let loop ((alist alist) (start 0))
+    (lambda ()
+      (if (pair? alist)
+	  (let ((end (fix:+ start step)))
+	    (receive (head tail) (slice-prop-alist-at alist start end)
+	      (cons head
+		    (loop tail end))))
+	  '()))))
+
+(define (slice-prop-alist-at alist start end)
+  (let loop ((tail alist) (head '()))
     (if (pair? tail)
 	(let ((entry (car tail)))
-	  (let ((cpr (car entry)))
-	    (cond ((fix:>= (cpr-start cpr) end)
-		   (values (reverse! head) tail end))
-		  ((fix:<= (cpr-end cpr) end)
-		   (loop (cons entry head) (cdr tail) end))
-		  (else
-		   (let ((end*
-			  (if (pair? head)
-			      end
-			      (fix:+ end
-				     (fix:* (fix:quotient (fix:- (cpr-end cpr)
-								 end)
-							  step)
-					    step)))))
-		     (receive (entry1 entry2)
-			 (split-entry-at cpr (cdr entry) end*)
-		       (values (reverse! (cons entry1 head))
-			       (if entry2
-				   (cons entry2 (cdr tail))
-				   (cdr tail))
-			       end*)))))))
-	(values (reverse! head) tail end))))
+	  (let ((cpr (car entry))
+		(value (cdr entry)))
 
-(define (split-entry-at cpr value cp)
-  (if (fix:< cp (cpr-end cpr))
-      (values (cons (make-cpr (cpr-start cpr) cp) value)
-	      (cons (make-cpr cp (cpr-end cpr)) value))
-      (values (cons cpr value)
-	      #f)))
+            (define (cons-head n head)
+              (if (fix:> n 0)
+                  (cons-head (fix:- n 1) (cons value head))
+                  head))
+
+            (if (fix:< end (cpr-end cpr))
+                (values (reverse!
+                         (cons-head (fix:- end (cpr-start cpr))
+                                    head))
+                        (cons (cons (make-cpr end (cpr-end cpr))
+                                    value)
+                              (cdr tail)))
+                (loop (cdr tail)
+                      (cons-head (cpr-size cpr)
+                                 head)))))
+	(values (reverse! head) tail))))
