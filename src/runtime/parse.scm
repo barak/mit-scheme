@@ -733,21 +733,41 @@ USA.
 
 (define (handler:char db ctx char1 char2)
   ctx char1 char2
-  (let ((char (%read-char/no-eof db)))
+  (let ((char (%read-char/no-eof db))
+	(at-end?
+	 (lambda ()
+	   (let ((char (%peek-char db)))
+	     (or (eof-object? char)
+		 (atom-delimiter? char))))))
     (cond ((or (atom-delimiter? char)
-	       (let ((char (%peek-char db)))
-		 (or (eof-object? char)
-		     (atom-delimiter? char))))
+	       (at-end?))
 	   char)
-	  ((char-ci=? char #\x)
-	   (let* ((string (parse-atom db '()))
-		  (cp (string->number string 16 #t)))
-	     (if (not (unicode-code-point? cp))
-		 (error:illegal-code-point string))
-	     (integer->char cp)))
+	  ((char=? char #\x)
+	   (let ((builder (string-builder)))
+	     (let loop ()
+	       (if (not (at-end?))
+		   (begin
+		     (builder (%read-char db))
+		     (loop))))
+	     (let* ((string (builder))
+		    (cp (string->number string 16 #t)))
+	       (if (not (unicode-code-point? cp))
+		   (error:illegal-code-point string))
+	       (integer->char cp))))
 	  (else
-	   (name->char (parse-atom db (list char))
-		       (db-fold-case? db))))))
+	   (let ((builder (string-builder)))
+	     (builder char)
+	     (let loop ()
+	       (if (not (at-end?))
+		   (begin
+		     (builder
+		      (let ((char (%read-char db)))
+			(if (char=? #\\ char)
+			    (%read-char/no-eof db)
+			    char)))
+		     (loop))))
+	     (name->char (builder)
+			 (db-fold-case? db)))))))
 
 (define (handler:named-constant db ctx char1 char2)
   ctx char1 char2
