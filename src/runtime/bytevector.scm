@@ -158,6 +158,22 @@ USA.
 (define-integrable (u16le-byte0 u16) (fix:and u16 #xFF))
 (define-integrable (u16le-byte1 u16) (fix:lsh u16 -8))
 
+(define-integrable (u16-bytevector-maker u16-byte0 u16-byte1)
+  (lambda u16s
+    (let ((bytevector (allocate-bytevector (fix:lsh (length u16s) 1))))
+      (do ((u16s u16s (cdr u16s))
+	   (i 0 (fix:+ i 2)))
+	  ((not (pair? u16s)))
+	(bytevector-u8-set! bytevector i (u16-byte0 (car u16s)))
+	(bytevector-u8-set! bytevector (fix:+ i 1) (u16-byte1 (car u16s))))
+      bytevector)))
+
+(define bytevector-u16be
+  (u16-bytevector-maker u16be-byte0 u16be-byte1))
+
+(define bytevector-u16le
+  (u16-bytevector-maker u16le-byte0 u16le-byte1))
+
 (define (u16? object)
   (and (index-fixnum? object)
        (fix:< object #x10000)))
@@ -245,6 +261,25 @@ USA.
 (define-integrable u32le-byte1 u32be-byte2)
 (define-integrable u32le-byte2 u32be-byte1)
 (define-integrable u32le-byte3 u32be-byte0)
+
+(define-integrable (u32-bytevector-maker u32-byte0 u32-byte1 u32-byte2
+					 u32-byte3)
+  (lambda u32s
+    (let ((bytevector (allocate-bytevector (fix:lsh (length u32s) 2))))
+      (do ((u32s u32s (cdr u32s))
+	   (i 0 (fix:+ i 4)))
+	  ((not (pair? u32s)))
+	(bytevector-u8-set! bytevector i (u32-byte0 (car u32s)))
+	(bytevector-u8-set! bytevector (fix:+ i 1) (u32-byte1 (car u32s)))
+	(bytevector-u8-set! bytevector (fix:+ i 2) (u32-byte2 (car u32s)))
+	(bytevector-u8-set! bytevector (fix:+ i 3) (u32-byte3 (car u32s))))
+      bytevector)))
+
+(define bytevector-u32be
+  (u32-bytevector-maker u32be-byte0 u32be-byte1 u32be-byte2 u32be-byte3))
+
+(define bytevector-u32le
+  (u32-bytevector-maker u32le-byte0 u32le-byte1 u32le-byte2 u32le-byte3))
 
 (define (bytevector-u32be-ref bytevector index)
   (if (not (fix:< (fix:+ index 3) (bytevector-length bytevector)))
