@@ -56,12 +56,7 @@ USA.
     bytevector))
 
 (define (bytevector . bytes)
-  (let ((bytevector (allocate-bytevector (length bytes))))
-    (do ((bytes bytes (cdr bytes))
-	 (i 0 (fix:+ i 1)))
-	((not (pair? bytes)))
-      (bytevector-u8-set! bytevector i (car bytes)))
-    bytevector))
+  (list->bytevector bytes))
 
 (define (legacy-string->bytevector string)
   (if (bytevector? string)
@@ -148,6 +143,42 @@ USA.
       (bytevector-copy! result i (caar parts) 0 (cdar parts)))
     result))
 
+(define (list->bytevector bytes)
+  (let ((bytevector (allocate-bytevector (length bytes))))
+    (do ((bytes bytes (cdr bytes))
+	 (i 0 (fix:+ i 1)))
+	((not (pair? bytes)))
+      (bytevector-u8-set! bytevector i (car bytes)))
+    bytevector))
+
+(define (bytevector->list bv #!optional start end)
+  (let* ((end (fix:end-index end (bytevector-length bv) 'bytevector->list))
+	 (start (fix:start-index start end 'bytevector->list)))
+    (do ((i (fix:- end 1) (fix:- i 1))
+	 (bytes '() (cons (bytevector-u8-ref bv i) bytes)))
+	((not (fix:>= i start))
+	 bytes))))
+
+(define (vector->bytevector v #!optional start end)
+  (let* ((end (fix:end-index end (vector-length v) 'vector->bytevector))
+	 (start (fix:start-index start end 'vector->bytevector))
+	 (bv (allocate-bytevector (fix:- end start))))
+    (do ((i start (fix:+ i 1))
+	 (j 0 (fix:+ j 1)))
+	((not (fix:< i end)))
+      (bytevector-u8-set! bv j (vector-ref v i)))
+    bv))
+
+(define (bytevector->vector bv #!optional start end)
+  (let* ((end (fix:end-index end (bytevector-length bv) 'bytevector->vector))
+	 (start (fix:start-index start end 'bytevector->vector))
+	 (v (make-vector (fix:- end start))))
+    (do ((i start (fix:+ i 1))
+	 (j 0 (fix:+ j 1)))
+	((not (fix:< i end)))
+      (vector-set! v j (bytevector-u8-ref bv i)))
+    v))
+
 ;;;; U16 accessors
 
 (define-integrable (bytes->u16be b0 b1) (fix:or (fix:lsh b0 8) b1))
@@ -157,22 +188,6 @@ USA.
 (define-integrable (bytes->u16le b0 b1) (fix:or b0 (fix:lsh b1 8)))
 (define-integrable (u16le-byte0 u16) (fix:and u16 #xFF))
 (define-integrable (u16le-byte1 u16) (fix:lsh u16 -8))
-
-(define-integrable (u16-bytevector-maker u16-byte0 u16-byte1)
-  (lambda u16s
-    (let ((bytevector (allocate-bytevector (fix:lsh (length u16s) 1))))
-      (do ((u16s u16s (cdr u16s))
-	   (i 0 (fix:+ i 2)))
-	  ((not (pair? u16s)))
-	(bytevector-u8-set! bytevector i (u16-byte0 (car u16s)))
-	(bytevector-u8-set! bytevector (fix:+ i 1) (u16-byte1 (car u16s))))
-      bytevector)))
-
-(define bytevector-u16be
-  (u16-bytevector-maker u16be-byte0 u16be-byte1))
-
-(define bytevector-u16le
-  (u16-bytevector-maker u16le-byte0 u16le-byte1))
 
 (define (u16? object)
   (and (index-fixnum? object)
@@ -203,6 +218,84 @@ USA.
   (guarantee u16? u16 'bytevector-u16le-set!)
   (bytevector-u8-set! bytevector index (u16le-byte0 u16))
   (bytevector-u8-set! bytevector (fix:+ index 1) (u16le-byte1 u16)))
+
+(define-integrable (list->bytevector-u16-maker u16-byte0 u16-byte1)
+  (lambda (u16s)
+    (let ((bv (allocate-bytevector (fix:lsh (length u16s) 1))))
+      (do ((u16s u16s (cdr u16s))
+	   (i 0 (fix:+ i 2)))
+	  ((not (pair? u16s)))
+	(bytevector-u8-set! bv i (u16-byte0 (car u16s)))
+	(bytevector-u8-set! bv (fix:+ i 1) (u16-byte1 (car u16s))))
+      bv)))
+
+(define list->bytevector-u16be
+  (list->bytevector-u16-maker u16be-byte0 u16be-byte1))
+
+(define list->bytevector-u16le
+  (list->bytevector-u16-maker u16le-byte0 u16le-byte1))
+
+(define (bytevector-u16be . u16s)
+  (list->bytevector-u16be u16s))
+
+(define (bytevector-u16le . u16s)
+  (list->bytevector-u16le u16s))
+
+(define-integrable (bytevector-u16->list-maker bytes->u16 caller)
+  (lambda (bv #!optional start end)
+    (let* ((end (fix:end-index end (bytevector-length bv) caller))
+	   (start (fix:start-index start end caller)))
+      (do ((i (fix:- end 2) (fix:- i 2))
+	   (bytes '()
+		  (cons (bytes->u16 (bytevector-u8-ref bv i)
+				    (bytevector-u8-ref bv (fix:+ i 1)))
+			bytes)))
+	  ((not (fix:>= i start)) bytes)))))
+
+(define bytevector-u16be->list
+  (bytevector-u16->list-maker bytes->u16be 'bytevector-u16be->list))
+
+(define bytevector-u16le->list
+  (bytevector-u16->list-maker bytes->u16le 'bytevector-u16le->list))
+
+(define-integrable (vector->bytevector-u16-maker u16-byte0 u16-byte1 caller)
+  (lambda (v #!optional start end)
+    (let* ((end (fix:end-index end (vector-length v) caller))
+	   (start (fix:start-index start end caller))
+	   (bv (allocate-bytevector (fix:lsh (fix:- end start) 1))))
+      (do ((i start (fix:+ i 1))
+	   (j 0 (fix:+ j 2)))
+	  ((not (fix:< i end)))
+	(bytevector-u8-set! bv j (u16-byte0 (vector-ref v i)))
+	(bytevector-u8-set! bv (fix:+ j 1) (u16-byte1 (vector-ref v i))))
+      bv)))
+
+(define vector->bytevector-u16be
+  (vector->bytevector-u16-maker u16be-byte0 u16be-byte1
+				'vector->bytevector-u16be))
+
+(define vector->bytevector-u16le
+  (vector->bytevector-u16-maker u16le-byte0 u16le-byte1
+				'vector->bytevector-u16le))
+
+(define-integrable (bytevector-u16->vector-maker bytes->u16 caller)
+  (lambda (bv #!optional start end)
+    (let* ((end (fix:end-index end (bytevector-length bv) caller))
+	   (start (fix:start-index start end caller))
+	   (v (make-vector (fix:lsh (fix:- end start) -1))))
+      (do ((i start (fix:+ i 2))
+	   (j 0 (fix:+ j 1)))
+	  ((not (fix:< (fix:+ i 1) end)))
+	(vector-set! bv j
+		     (bytes->u16 (bytevector-u8-ref v i)
+				 (bytevector-u8-ref v (fix:+ i 1)))))
+      v)))
+
+(define bytevector-u16be->vector
+  (bytevector-u16->vector-maker bytes->u16be 'bytevector-u16be->vector))
+
+(define bytevector-u16le->vector
+  (bytevector-u16->vector-maker bytes->u16le 'bytevector-u16le->vector))
 
 ;;;; U32 accessors
 
@@ -262,25 +355,6 @@ USA.
 (define-integrable u32le-byte2 u32be-byte1)
 (define-integrable u32le-byte3 u32be-byte0)
 
-(define-integrable (u32-bytevector-maker u32-byte0 u32-byte1 u32-byte2
-					 u32-byte3)
-  (lambda u32s
-    (let ((bytevector (allocate-bytevector (fix:lsh (length u32s) 2))))
-      (do ((u32s u32s (cdr u32s))
-	   (i 0 (fix:+ i 4)))
-	  ((not (pair? u32s)))
-	(bytevector-u8-set! bytevector i (u32-byte0 (car u32s)))
-	(bytevector-u8-set! bytevector (fix:+ i 1) (u32-byte1 (car u32s)))
-	(bytevector-u8-set! bytevector (fix:+ i 2) (u32-byte2 (car u32s)))
-	(bytevector-u8-set! bytevector (fix:+ i 3) (u32-byte3 (car u32s))))
-      bytevector)))
-
-(define bytevector-u32be
-  (u32-bytevector-maker u32be-byte0 u32be-byte1 u32be-byte2 u32be-byte3))
-
-(define bytevector-u32le
-  (u32-bytevector-maker u32le-byte0 u32le-byte1 u32le-byte2 u32le-byte3))
-
 (define (bytevector-u32be-ref bytevector index)
   (if (not (fix:< (fix:+ index 3) (bytevector-length bytevector)))
       (error:bad-range-argument index 'bytevector-u32be-ref))
@@ -314,6 +388,94 @@ USA.
   (bytevector-u8-set! bytevector (fix:+ index 1) (u32le-byte1 u32))
   (bytevector-u8-set! bytevector (fix:+ index 2) (u32le-byte2 u32))
   (bytevector-u8-set! bytevector (fix:+ index 3) (u32le-byte3 u32)))
+
+(define-integrable (list->bytevector-u32-maker u32-byte0 u32-byte1 u32-byte2
+					       u32-byte3)
+  (lambda (u32s)
+    (let ((bv (allocate-bytevector (fix:lsh (length u32s) 2))))
+      (do ((u32s u32s (cdr u32s))
+	   (i 0 (fix:+ i 4)))
+	  ((not (pair? u32s)))
+	(bytevector-u8-set! bv i (u32-byte0 (car u32s)))
+	(bytevector-u8-set! bv (fix:+ i 1) (u32-byte1 (car u32s)))
+	(bytevector-u8-set! bv (fix:+ i 2) (u32-byte2 (car u32s)))
+	(bytevector-u8-set! bv (fix:+ i 3) (u32-byte3 (car u32s))))
+      bv)))
+
+(define list->bytevector-u32be
+  (list->bytevector-u32-maker u32be-byte0 u32be-byte1 u32be-byte2 u32be-byte3))
+
+(define list->bytevector-u32le
+  (list->bytevector-u32-maker u32le-byte0 u32le-byte1 u32le-byte2 u32le-byte3))
+
+(define (bytevector-u32be . u32s)
+  (list->bytevector-u32be u32s))
+
+(define (bytevector-u32le . u32s)
+  (list->bytevector-u32le u32s))
+
+(define-integrable (bytevector-u32->list-maker bytes->u32 caller)
+  (lambda (bv #!optional start end)
+    (let* ((end (fix:end-index end (bytevector-length bv) caller))
+	   (start (fix:start-index start end caller)))
+      (do ((i (fix:- end 4) (fix:- i 4))
+	   (bytes '()
+		  (cons (bytes->u32 (bytevector-u8-ref bv i)
+				    (bytevector-u8-ref bv (fix:+ i 1))
+				    (bytevector-u8-ref bv (fix:+ i 2))
+				    (bytevector-u8-ref bv (fix:+ i 3)))
+			bytes)))
+	  ((not (fix:>= i start)) bytes)))))
+
+(define bytevector-u32be->list
+  (bytevector-u32->list-maker bytes->u32be 'bytevector-u32be->list))
+
+(define bytevector-u32le->list
+  (bytevector-u32->list-maker bytes->u32le 'bytevector-u32le->list))
+
+(define-integrable (vector->bytevector-u32-maker u32-byte0 u32-byte1 u32-byte2
+						 u32-byte3 caller)
+  (lambda (v #!optional start end)
+    (let* ((end (fix:end-index end (vector-length v) caller))
+	   (start (fix:start-index start end caller))
+	   (bv (allocate-bytevector (fix:lsh (fix:- end start) 1))))
+      (do ((i start (fix:+ i 1))
+	   (j 0 (fix:+ j 4)))
+	  ((not (fix:< i end)))
+	(bytevector-u8-set! bv j (u32-byte0 (vector-ref v i)))
+	(bytevector-u8-set! bv (fix:+ j 1) (u32-byte1 (vector-ref v i)))
+	(bytevector-u8-set! bv (fix:+ j 2) (u32-byte2 (vector-ref v i)))
+	(bytevector-u8-set! bv (fix:+ j 3) (u32-byte3 (vector-ref v i))))
+      bv)))
+
+(define vector->bytevector-u32be
+  (vector->bytevector-u32-maker u32be-byte0 u32be-byte1 u32be-byte2 u32be-byte3
+				'vector->bytevector-u32be))
+
+(define vector->bytevector-u32le
+  (vector->bytevector-u32-maker u32le-byte0 u32le-byte1 u32le-byte2 u32le-byte3
+				'vector->bytevector-u32le))
+
+(define-integrable (bytevector-u32->vector-maker bytes->u32 caller)
+  (lambda (bv #!optional start end)
+    (let* ((end (fix:end-index end (bytevector-length bv) caller))
+	   (start (fix:start-index start end caller))
+	   (v (make-vector (fix:lsh (fix:- end start) -2))))
+      (do ((i start (fix:+ i 4))
+	   (j 0 (fix:+ j 1)))
+	  ((not (fix:< (fix:+ i 3) end)))
+	(vector-set! bv j
+		     (bytes->u32 (bytevector-u8-ref v i)
+				 (bytevector-u8-ref v (fix:+ i 1))
+				 (bytevector-u8-ref v (fix:+ i 2))
+				 (bytevector-u8-ref v (fix:+ i 3)))))
+      v)))
+
+(define bytevector-u32be->vector
+  (bytevector-u32->vector-maker bytes->u32be 'bytevector-u32be->vector))
+
+(define bytevector-u32le->vector
+  (bytevector-u32->vector-maker bytes->u32le 'bytevector-u32le->vector))
 
 (define-integrable (string-encoder char-byte-length allocator encode-char!
 				   caller)

@@ -1064,6 +1064,8 @@ USA.
 	  (byte? u8?)
 	  bytevector
 	  bytevector->hexadecimal
+	  bytevector->list
+	  bytevector->vector
 	  bytevector-append
 	  bytevector-builder
 	  bytevector-copy
@@ -1072,15 +1074,23 @@ USA.
 	  bytevector-hash
 	  bytevector-length
 	  bytevector-u16be
+	  bytevector-u16be->list
+	  bytevector-u16be->vector
 	  bytevector-u16be-ref
 	  bytevector-u16be-set!
 	  bytevector-u16le
+	  bytevector-u16le->list
+	  bytevector-u16le->vector
 	  bytevector-u16le-ref
 	  bytevector-u16le-set!
 	  bytevector-u32be
+	  bytevector-u32be->list
+	  bytevector-u32be->vector
 	  bytevector-u32be-ref
 	  bytevector-u32be-set!
 	  bytevector-u32le
+	  bytevector-u32le->list
+	  bytevector-u32le->vector
 	  bytevector-u32le-ref
 	  bytevector-u32le-set!
 	  bytevector-u8-ref
@@ -1088,6 +1098,11 @@ USA.
 	  bytevector=?
 	  bytevector?
 	  hexadecimal->bytevector
+	  list->bytevector
+	  list->bytevector-u16be
+	  list->bytevector-u16le
+	  list->bytevector-u32be
+	  list->bytevector-u32le
 	  make-bytevector
 	  string->utf16be
 	  string->utf16le
@@ -1101,7 +1116,12 @@ USA.
 	  utf16le->string
 	  utf32be->string
 	  utf32le->string
-	  utf8->string)
+	  utf8->string
+	  vector->bytevector
+	  vector->bytevector-u16be
+	  vector->bytevector-u16le
+	  vector->bytevector-u32be
+	  vector->bytevector-u32le)
   (export (runtime predicate-metadata)
 	  register-mit-bytevector-predicates!)
   (export (runtime symbol)
