@@ -425,11 +425,12 @@ USA.
 	(lambda (port)
 	  (write-copyright-and-title prop-name ucd-version port)
 	  (write-code-header port)
-	  (print-code-expr (car exprs) port)
-	  (for-each (lambda (expr)
-		      (newline port)
-		      (print-code-expr expr port))
-		    (cdr exprs)))))))
+	  (parameterize ((param:unparse-char-in-unicode-syntax? #t))
+	    (print-code-expr (car exprs) port)
+	    (for-each (lambda (expr)
+			(newline port)
+			(print-code-expr expr port))
+		      (cdr exprs))))))))
 
 (define (prop-table-file-name prop-name)
   (string-append (->namestring output-file-root)
@@ -558,17 +559,17 @@ USA.
   (runtime-default value-manager-runtime-default)
   (runtime-converter value-manager-runtime-converter))
 
-(define (string->cp string)
+(define (string->char string)
   (let ((cp (string->number string 16)))
     (if (not (unicode-code-point? cp))
 	(error "Illegal code-point value:" string))
-    cp))
+    (integer->char cp)))
 
 (define value-manager:code-point
   (value-manager "#"
-		 string->cp
+		 string->char
 		 (lambda (char-expr) char-expr)
-		 (lambda (sv-expr) `(integer->char ,sv-expr))))
+		 (lambda (sv-expr) sv-expr)))
 
 (define value-manager:code-points
   (value-manager "#"
@@ -578,9 +579,9 @@ USA.
 		   (lambda (value)
 		     (if (string=? "" value)
 			 '()
-			 (map string->cp (splitter value)))))
+			 (list->vector (map string->char (splitter value))))))
 		 (lambda (char-expr) `(string ,char-expr))
-		 (lambda (svs-expr) `(string* (map integer->char ,svs-expr)))))
+		 (lambda (svs-expr) `(vector->string ,svs-expr))))
 
 (define value-manager:byte
   (value-manager "0"
@@ -719,8 +720,10 @@ USA.
 	   (write-string "UCD property " port)
 	   (write-string prop-name port)
 	   (write-string ": tables = " port)
-	   (write (apply + (map trie-table-size tables)) port)
-	   (write-string " bytes" port)))
+	   (write (map trie-table-n-entries tables) port)
+	   (write-string " entries; " port)
+	   (write (apply + (map trie-table-n-bytes tables)) port)
+	   (write-string " total bytes" port)))
 	`((define (,proc-name char)
             ,(let ((accesses
                     `(let ((sv (char->integer char)))
@@ -784,10 +787,11 @@ USA.
 		(fix:- (fix:lsh 1 (car bit-slices)) 1)))
 	  (offset (fix:- offset (car bit-slices))))
       (if (pair? (cdr tables))
-	  (receive (size table-expr accessor)
+	  (receive (n-entries n-bytes table-expr accessor)
 	      (choose-index-format (car tables) (cadr tables) (cadr bit-slices))
 	    (cons (make-trie-table (make-name suffix)
-				   size
+				   n-entries
+				   n-bytes
 				   table-expr
 				   accessor
 				   mask
@@ -799,31 +803,34 @@ USA.
 			(cdr bit-slices)
 			(cdr tables))))
 	  (receive (index table) (maybe-split-trie-value-table (car tables))
-	    (let ((converted-values (map convert-value (vector->list table))))
+	    (let ((converted-values (vector-map convert-value table)))
 	      (if index
-		  (receive (size table-expr accessor)
+		  (receive (n-entries n-bytes table-expr accessor)
 		      (choose-index-format index table 0)
 		    (list (make-trie-table (make-name suffix)
-					   size
+					   n-entries
+					   n-bytes
 					   table-expr
 					   accessor
 					   mask
 					   offset
 					   scale)
-			  (receive (size table-expr accessor)
+			  (receive (n-entries n-bytes table-expr accessor)
 			      (choose-value-format converted-values
                                                    runtime-converter)
 			    (make-trie-table (make-name (fix:+ suffix 1))
-					     size
+					     n-entries
+					     n-bytes
 					     table-expr
 					     accessor
 					     #f
 					     #f
 					     #f))))
-		  (receive (size table-expr accessor)
+		  (receive (n-entries n-bytes table-expr accessor)
 		      (choose-value-format converted-values runtime-converter)
 		    (list (make-trie-table (make-name suffix)
-					   size
+					   n-entries
+					   n-bytes
 					   table-expr
 					   accessor
 					   mask
@@ -844,10 +851,11 @@ USA.
 				  (cdr bit-slices))))))
 
 (define-record-type <trie-table>
-    (make-trie-table name size expr accessor mask offset scale)
+    (make-trie-table name n-entries n-bytes expr accessor mask offset scale)
     trie-table?
   (name trie-table-name)
-  (size trie-table-size)
+  (n-entries trie-table-n-entries)
+  (n-bytes trie-table-n-bytes)
   (expr trie-table-expr)
   (accessor trie-table-accessor)
   (mask trie-table-mask)
@@ -857,13 +865,15 @@ USA.
 (define (choose-index-format index table bit-slice)
   (let ((n (fix:lsh (vector-length table) (fix:- 0 bit-slice))))
     (cond ((fix:< n #x100)
-	   (values (+ 2 (vector-length index))
-                   `(apply bytevector ',(vector->list index))
+	   (values (vector-length index)
+		   (+ 2 (vector-length index))
+                   `(vector->bytevector ',index)
 		   (lambda (bv-expr i-expr)
 		     `(bytevector-u8-ref ,bv-expr ,i-expr))))
 	  ((fix:< n #x10000)
-	   (values (+ 2 (* 2 (vector-length index)))
-                   `(apply bytevector-u16be ',(vector->list index))
+	   (values (vector-length index)
+		   (+ 2 (* 2 (vector-length index)))
+                   `(vector->bytevector-u16be ',index)
 		   (lambda (bv-expr i-expr)
 		     `(bytevector-u16be-ref ,bv-expr
 					    (fix:lsh ,i-expr 1)))))
@@ -871,16 +881,17 @@ USA.
 	   (error "Table too large:" n)))))
 
 (define (choose-value-format converted-values runtime-converter)
-  (values (+ 1 (* 8 (length converted-values)))
+  (values (vector-length converted-values)
+	  (+ 1 (* 8 (vector-length converted-values)))
           (let ((conversion (runtime-converter 'converted)))
             (if (eq? 'converted conversion)
-                `(list->vector ',converted-values)
-                `(list->vector
-                  (map (lambda (converted)
-                         ,(if (memq #f converted-values)
-                              `(and converted ,conversion)
-                              conversion))
-                       ',converted-values))))
+                converted-values
+		`(vector-map (lambda (converted)
+			       ,(if (vector-find-next-element converted-values
+							      #f)
+				    `(and converted ,conversion)
+				    conversion))
+			     ',converted-values)))
 	  (lambda (v-expr i-expr)
 	    `(vector-ref ,v-expr ,i-expr))))
 
