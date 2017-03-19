@@ -588,9 +588,16 @@ USA.
 		   (lambda (value)
 		     (if (string=? "" value)
 			 '()
-			 (list->vector (map string->char (splitter value))))))
-		 (lambda (char-expr) `(string ,char-expr))
-		 (lambda (svs-expr) `(vector->string ,svs-expr))))
+			 (let ((cps (splitter value)))
+			   (if (and (pair? cps)
+				    (null? (cdr cps)))
+			       (string->char (car cps))
+			       (list->vector (map string->char cps)))))))
+		 (lambda (char-expr) char-expr)
+		 (lambda (svs-expr)
+		   `(if (vector? ,svs-expr)
+			(vector->string ,svs-expr)
+			,svs-expr))))
 
 (define value-manager:byte
   (value-manager "0"
