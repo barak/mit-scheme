@@ -1028,12 +1028,12 @@ USA.
 	      ((not (fix:>= i start)) chars))))))
 
 (define (vector->string vector #!optional start end)
-  (let* ((end (fix:end-index end (vector-length string) 'vector->string))
+  (let* ((end (fix:end-index end (vector-length vector) 'vector->string))
 	 (start (fix:start-index start end 'vector->string))
 	 (to
 	  (if (do ((i start (fix:+ i 1))
 		   (8-bit? #t (and 8-bit? (char-8-bit? (vector-ref vector i)))))
-		  ((not (fix:< start end)) 8-bit?))
+		  ((not (fix:< i end)) 8-bit?))
 	      (legacy-string-allocate (fix:- end start))
 	      (full-string-allocate (fix:- end start)))))
     (copy-loop string-set! to 0
