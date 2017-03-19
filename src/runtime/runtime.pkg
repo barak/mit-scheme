@@ -1287,8 +1287,6 @@ USA.
 	  ucd-scf-value
 	  ucd-slc-value
 	  ucd-suc-value)
-  (export (runtime parser)
-	  (char-foldcase-full ucd-cf-value))
   (export (runtime ucd-glue)
 	  char-set:changes-when-case-folded
 	  ucd-nt-value)

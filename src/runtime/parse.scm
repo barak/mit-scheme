@@ -326,6 +326,16 @@ USA.
 (define-deferred atom-delimiter?
   (char-set-predicate atom-delimiters))
 
+(define (make-symbol db string)
+  (if (db-fold-case? db)
+      (intern string)
+      (string->symbol string)))
+
+(define (string-maybe-ci=? db s1 s2)
+  (if (db-fold-case? db)
+      (string-ci=? s1 s2)
+      (string-maybe-ci=? db s1 s2)))
+
 (define (handler:whitespace db ctx char)
   db ctx char
   continue-parsing)
@@ -416,25 +426,26 @@ USA.
   (let ((string (parse-atom db (list char))))
     (or (maybe-keyword db string)
 	(string->number string (get-param:parser-radix))
-	(string->symbol string))))
+	(make-symbol db string))))
 
 (define (handler:symbol db ctx char)
   ctx
   (let ((string (parse-atom db (list char))))
     (or (maybe-keyword db string)
-	(string->symbol string))))
+	(make-symbol db string))))
 
 (define (maybe-keyword db string)
   (cond ((and (eq? 'SUFFIX (db-keyword-style db))
 	      (string-suffix? ":" string)
 	      (fix:> (string-length string) 1))
-	 (string->keyword
-	  (string-head string
-			(fix:- (string-length string) 1))))
-	((and (eq? 'SUFFIX (db-keyword-style db))
+	 (string->keyword (string-slice string
+					0
+					(fix:- (string-length string) 1))
+			  (db-fold-case? db)))
+	((and (eq? 'PREFIX (db-keyword-style db))
 	      (string-prefix? ":" string)
 	      (fix:> (string-length string) 1))
-	 (string->keyword (string-tail string 1)))
+	 (string->keyword (string-slice string 1) (db-fold-case? db)))
 	(else #f)))
 
 (define (handler:number db ctx char1 char2)
@@ -448,34 +459,18 @@ USA.
 
 (define (parse-atom db prefix)
   (let ((builder (string-builder)))
-
-    (define (%peek)
-      (if (pair? prefix)
-	  (car prefix)
-	  (%peek-char db)))
-
-    (define (%discard)
-      (if (pair? prefix)
-	  (begin
-	    (set! prefix (cdr prefix))
-	    unspecific)
-	  (%read-char db)))
-
-    (define %emit
-      (if (db-fold-case? db)
-	  (lambda (char)
-	    (builder (char-foldcase-full char)))
-	  builder))
-
+    (for-each builder prefix)
     (let loop ()
-      (let ((char (%peek)))
-	(if (or (eof-object? char)
-		(atom-delimiter? char))
-	    (builder)
-	    (begin
-	      (%discard)
-	      (%emit char)
-	      (loop)))))))
+      (if (not (%atom-end? db))
+	  (begin
+	    (builder (%read-char db))
+	    (loop))))
+    (builder)))
+
+(define (%atom-end? db)
+  (let ((char (%peek-char db)))
+    (or (eof-object? char)
+	(atom-delimiter? char))))
 
 (define (handler:list db ctx char)
   ctx char
@@ -702,16 +697,16 @@ USA.
 (define (handler:false db ctx char1 char2)
   ctx char1
   (let ((string (parse-atom db (list char2))))
-    (if (not (or (string=? string "f")
-		 (string=? string "false")))
+    (if (not (or (string-maybe-ci=? db string "f")
+		 (string-maybe-ci=? db string "false")))
 	(error:illegal-boolean string)))
   #f)
 
 (define (handler:true db ctx char1 char2)
   ctx char1
   (let ((string (parse-atom db (list char2))))
-    (if (not (or (string=? string "t")
-		 (string=? string "true")))
+    (if (not (or (string-maybe-ci=? db string "t")
+		 (string-maybe-ci=? db string "true")))
 	(error:illegal-boolean string)))
   #t)
 
@@ -733,19 +728,14 @@ USA.
 
 (define (handler:char db ctx char1 char2)
   ctx char1 char2
-  (let ((char (%read-char/no-eof db))
-	(at-end?
-	 (lambda ()
-	   (let ((char (%peek-char db)))
-	     (or (eof-object? char)
-		 (atom-delimiter? char))))))
+  (let ((char (%read-char/no-eof db)))
     (cond ((or (atom-delimiter? char)
-	       (at-end?))
+	       (%atom-end? db))
 	   char)
 	  ((char=? char #\x)
 	   (let ((builder (string-builder)))
 	     (let loop ()
-	       (if (not (at-end?))
+	       (if (not (%atom-end? db))
 		   (begin
 		     (builder (%read-char db))
 		     (loop))))
@@ -758,7 +748,7 @@ USA.
 	   (let ((builder (string-builder)))
 	     (builder char)
 	     (let loop ()
-	       (if (not (at-end?))
+	       (if (not (%atom-end? db))
 		   (begin
 		     (builder
 		      (let ((char (%read-char db)))
@@ -772,16 +762,16 @@ USA.
 (define (handler:named-constant db ctx char1 char2)
   ctx char1 char2
   (let ((name (parse-atom db '())))
-    (cond ((string=? name "null") '())
-	  ((string=? name "false") #f)
-	  ((string=? name "true") #t)
-	  ((string=? name "optional") lambda-tag:optional)
-	  ((string=? name "rest") lambda-tag:rest)
-	  ((string=? name "key") lambda-tag:key)
-	  ((string=? name "aux") lambda-tag:aux)
-	  ((string=? name "eof") (eof-object))
-	  ((string=? name "default") (default-object))
-	  ((string=? name "unspecific") unspecific)
+    (cond ((string-maybe-ci=? db name "null") '())
+	  ((string-maybe-ci=? db name "false") #f)
+	  ((string-maybe-ci=? db name "true") #t)
+	  ((string-maybe-ci=? db name "optional") lambda-tag:optional)
+	  ((string-maybe-ci=? db name "rest") lambda-tag:rest)
+	  ((string-maybe-ci=? db name "key") lambda-tag:key)
+	  ((string-maybe-ci=? db name "aux") lambda-tag:aux)
+	  ((string-maybe-ci=? db name "eof") (eof-object))
+	  ((string-maybe-ci=? db name "default") (default-object))
+	  ((string-maybe-ci=? db name "unspecific") unspecific)
 	  ((string=? name "fold-case")
 	   (set-db-fold-case! db #t)
 	   continue-parsing)

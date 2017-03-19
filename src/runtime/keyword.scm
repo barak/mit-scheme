@@ -37,9 +37,12 @@ USA.
 
 (define-integrable keyword-prefix "#[keyword]")
 
-(define (string->keyword string)
+(define (string->keyword string #!optional fold-case?)
   (guarantee string? string 'STRING->KEYWORD)
-  (string->symbol (string-append keyword-prefix string)))
+  ((if (if (default-object? fold-case?) #f fold-case?)
+       intern
+       string->symbol)
+   (string-append keyword-prefix string)))
 
 (define (keyword? object)
   (and (interned-symbol? object)
