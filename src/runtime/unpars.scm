@@ -52,6 +52,7 @@ USA.
 (define param:unparser-list-depth-limit)
 (define param:unparser-radix)
 (define param:unparser-string-length-limit)
+(define param:unparse-char-in-unicode-syntax?)
 
 (add-boot-init!
  (lambda ()
@@ -88,6 +89,9 @@ USA.
    (set! param:unparser-string-length-limit
 	 (make-unsettable-parameter #f
 				    limit-converter))
+   (set! param:unparse-char-in-unicode-syntax?
+	 (make-unsettable-parameter #f
+				    boolean-converter))
    unspecific))
 
 (define (boolean-converter value)
@@ -480,15 +484,19 @@ USA.
 	     (allowed-char? char context))))
 
 (define (unparse/character char context)
-  (if (context-slashify? context)
-      (begin
-        (*unparse-string "#\\" context)
-	(if (and (char-in-set? char char-set:normal-printing)
-                 (not (eq? 'separator:space (char-general-category char)))
-		 (allowed-char? char context))
-	    (*unparse-char char context)
-	    (*unparse-string (char->name char) context)))
-      (*unparse-char char context)))
+  (cond ((and (param:unparse-char-in-unicode-syntax?)
+	      (bitless-char? char))
+	 (*unparse-string "#\\u+" context)
+	 (*unparse-string (number->string (char->integer char) 16) context))
+	((context-slashify? context)
+	 (*unparse-string "#\\" context)
+	 (if (and (char-in-set? char char-set:normal-printing)
+		  (not (eq? 'separator:space (char-general-category char)))
+		  (allowed-char? char context))
+	     (*unparse-char char context)
+	     (*unparse-string (char->name char) context)))
+	(else
+	 (*unparse-char char context))))
 
 (define (unparse/string string context)
   (if (context-slashify? context)

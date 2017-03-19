@@ -4735,6 +4735,7 @@ USA.
 	  *unparser-string-length-limit*)
   (export ()
 	  param:unparse-abbreviate-quotations?
+	  param:unparse-char-in-unicode-syntax?
 	  param:unparse-compound-procedure-names?
 	  param:unparse-primitives-by-name?
 	  param:unparse-streams?
