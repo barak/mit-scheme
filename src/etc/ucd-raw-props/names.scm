@@ -464,8 +464,24 @@ USA.
 ("cf" case-folding code-point+)
 ("dm" decomposition-mapping code-point*)
 ("dt" decomposition-type
- (enum "can"  "com" "enc" "fin"  "font" "fra" "init" "iso" "med"
-       "nar"  "nb" "sml" "sqr"  "sub" "sup" "vert" "wide" "none"))
+ (enum ("can" . canonical)
+       ("com" . unspecified)
+       ("enc" . encircled)
+       ("fin" . final-presentation)
+       ("font" . font-variant)
+       ("fra" . vulgar-fraction)
+       ("init" . initial-presentation)
+       ("iso" . isolated-presentation)
+       ("med" . medial-presentation)
+       ("nar" . narrow-compatibility)
+       ("nb" . no-break-version)
+       ("sml" . small-variant)
+       ("sqr" . cjk-squared-font-variant)
+       ("sub" . subscript)
+       ("sup" . superscript)
+       ("vert" . vertical-layout-presentation)
+       ("wide" . wide-compatibility)
+       ("none" . #f)))
 ("ea" east-asian-width (enum "A" "F" "H" "N" "Na" "W"))
 ("gc" general-category
  (enum ("Lu" . letter:uppercase)
@@ -504,7 +520,7 @@ USA.
        ("LVT" . lvt-syllable)
        ("T" . trailing-jamo)
        ("V" . vowel-jamo)
-       ("NA" . not-applicable)))
+       ("NA" . #f)))
 ("isc" iso-10646-comment string)
 ("jg" joining-group
  (enum "African_Feh" "African_Noon" "African_Qaf"

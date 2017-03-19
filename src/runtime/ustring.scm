@@ -543,7 +543,11 @@ USA.
 	(builder (string-builder)))
     (do ((i 0 (fix:+ i 1)))
 	((not (fix:< i end)))
-      (builder (ucd-dm-value (string-ref string i))))
+      (builder
+       (let ((char (string-ref string i)))
+	 (if (eq? 'canonical (ucd-dt-value char))
+	     (ucd-dm-value char)
+	     char))))
     (builder)))
 
 (define (canonical-ordering! string)
@@ -573,22 +577,6 @@ USA.
 
     (scan-for-non-starter 0))
   string)
-
-(define (quick-check string qc-value)
-  (let ((n (string-length string)))
-    (let loop ((i 0) (last-ccc 0) (result #t))
-      (if (fix:< i n)
-	  (let* ((char (string-ref string i))
-		 (ccc (ucd-ccc-value char)))
-	    (if (and (fix:> ccc 0)
-		     (fix:< ccc last-ccc))
-		#f
-		(let ((check (qc-value char)))
-		  (and check
-		       (if (eq? check 'maybe)
-			   (loop (fix:+ i 1) ccc check)
-			   (loop (fix:+ i 1) ccc result))))))
-	  result))))
 
 ;;;; Grapheme clusters
 

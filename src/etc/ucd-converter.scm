@@ -407,6 +407,7 @@ USA.
 	      "ccc"
 	      "cf"
 	      "dm"
+	      "dt"
 	      "gc"
 	      "lc"
 	      "nt"
@@ -420,17 +421,17 @@ USA.
 (define (generate-property-table prop-name)
   (let ((exprs (generate-property-table-code prop-name))
 	(ucd-version (read-ucd-version-file)))
-    (parameterize ((param:pp-forced-x-size 1000))
+    (parameterize ((param:pp-forced-x-size 1000)
+		   (param:unparse-char-in-unicode-syntax? #t))
       (call-with-output-file (prop-table-file-name prop-name)
 	(lambda (port)
 	  (write-copyright-and-title prop-name ucd-version port)
 	  (write-code-header port)
-	  (parameterize ((param:unparse-char-in-unicode-syntax? #t))
-	    (print-code-expr (car exprs) port)
-	    (for-each (lambda (expr)
-			(newline port)
-			(print-code-expr expr port))
-		      (cdr exprs))))))))
+	  (print-code-expr (car exprs) port)
+	  (for-each (lambda (expr)
+		      (newline port)
+		      (print-code-expr expr port))
+		    (cdr exprs)))))))
 
 (define (prop-table-file-name prop-name)
   (string-append (->namestring output-file-root)
@@ -465,10 +466,9 @@ USA.
 (define (metadata->code-generator metadata)
   (let ((name (metadata-name metadata))
 	(type-spec (metadata-type-spec metadata)))
-    (cond ((string=? name "GCB") code-generator:gcb)
-	  ((string=? name "NFC_QC") code-generator:nfc-qc)
+    (cond ((string=? name "NFC_QC") code-generator:nfc-qc)
 	  ((string=? name "NFKC_QC") code-generator:nfc-qc)
-	  ((string=? name "WB") code-generator:wb)
+	  ((string=? name "dt") code-generator:dt)
 	  ((string=? name "gc") code-generator:gc)
 	  ((string=? name "nt") code-generator:nt)
 	  ((eq? type-spec 'boolean) code-generator:boolean)
@@ -477,6 +477,7 @@ USA.
 	  ((eq? type-spec 'code-point*) code-generator:code-point*)
 	  ((eq? type-spec 'code-point+) code-generator:code-point+)
 	  ((eq? type-spec 'rational-or-nan) code-generator:rational-or-nan)
+	  ((unmapped-enum-type? type-spec) code-generator:unmapped-enum)
 	  (else (error "Unsupported metadata:" metadata)))))
 
 (define (code-generator:boolean prop-name metadata prop-alist proc-name)
@@ -508,12 +509,20 @@ USA.
   ((trie-code-generator value-manager:code-points)
    prop-name metadata prop-alist proc-name))
 
-(define (code-generator:gc prop-name metadata prop-alist proc-name)
-  ((trie-code-generator (mapped-enum-value-manager #f metadata))
+(define (code-generator:rational-or-nan prop-name metadata prop-alist proc-name)
+  ((trie-code-generator value-manager:rational-or-nan)
    prop-name metadata prop-alist proc-name))
 
-(define (code-generator:gcb prop-name metadata prop-alist proc-name)
+(define (code-generator:unmapped-enum prop-name metadata prop-alist proc-name)
   ((trie-code-generator (unmapped-enum-value-manager #f metadata))
+   prop-name metadata prop-alist proc-name))
+
+(define (code-generator:dt prop-name metadata prop-alist proc-name)
+  ((trie-code-generator (mapped-enum-value-manager "none" metadata))
+   prop-name metadata prop-alist proc-name))
+
+(define (code-generator:gc prop-name metadata prop-alist proc-name)
+  ((trie-code-generator (mapped-enum-value-manager #f metadata))
    prop-name metadata prop-alist proc-name))
 
 (define (code-generator:nfc-qc prop-name metadata prop-alist proc-name)
@@ -523,30 +532,30 @@ USA.
 (define (code-generator:nt prop-name metadata prop-alist proc-name)
   ((trie-code-generator (mapped-enum-value-manager "None" metadata))
    prop-name metadata prop-alist proc-name))
-
-(define (code-generator:rational-or-nan prop-name metadata prop-alist proc-name)
-  ((trie-code-generator value-manager:rational-or-nan)
-   prop-name metadata prop-alist proc-name))
-
-(define (code-generator:wb prop-name metadata prop-alist proc-name)
-  ((trie-code-generator (unmapped-enum-value-manager #f metadata))
-   prop-name metadata prop-alist proc-name))
 
 (define (value-manager default-string converter
 		       #!optional runtime-default runtime-converter)
   (make-value-manager default-string
 		      converter
 		      (if (default-object? runtime-default)
-			  (let ((value
+			  (let ((value-expr
 				 (and default-string
-				      (converter default-string))))
+				      (maybe-quote
+				       (converter default-string)))))
 			    (lambda (char-expr)
 			      char-expr
-			      value))
+			      value-expr))
 			  runtime-default)
 		      (if (default-object? runtime-converter)
 			  (lambda (sv-expr) sv-expr)
 			  runtime-converter)))
+
+(define (maybe-quote object)
+  (if (or (symbol? object)
+	  (pair? object)
+	  (null? object))
+      `',object
+      object))
 
 (define-record-type <value-manager>
     (make-value-manager default-string

@@ -1273,6 +1273,7 @@ USA.
 	 "ucd-table-cwl"
 	 "ucd-table-cwu"
 	 "ucd-table-dm"
+	 "ucd-table-dt"
 	 "ucd-table-gc"
 	 "ucd-table-gcb"
 	 "ucd-table-lc"
@@ -1318,6 +1319,7 @@ USA.
 	  ucd-ccc-value
 	  ucd-cf-value
 	  ucd-dm-value
+	  ucd-dt-value
 	  ucd-gcb-value
 	  ucd-lc-value
 	  ucd-tc-value
