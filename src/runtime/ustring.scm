@@ -436,13 +436,13 @@ USA.
 ;;;; Case
 
 (define (string-downcase string)
-  (case-transform char-downcase-full string))
+  (case-transform ucd-lc-value string))
 
 (define (string-foldcase string)
-  (case-transform char-foldcase-full string))
+  (case-transform ucd-cf-value string))
 
 (define (string-upcase string)
-  (case-transform char-upcase-full string))
+  (case-transform ucd-uc-value string))
 
 (define (case-transform transform string)
   (let ((builder (string-builder))
@@ -466,10 +466,10 @@ USA.
 	(let ((char (string-ref string index)))
 	  (if (char-cased? char)
 	      (begin
-		(builder (char-titlecase-full char))
+		(builder (ucd-tc-value char))
 		(do ((index (fix:+ index 1) (fix:+ index 1)))
 		    ((not (fix:< index end)))
-		  (builder (char-downcase-full (string-ref string index)))))
+		  (builder (ucd-lc-value (string-ref string index)))))
 	      (begin
 		(builder char)
 		(loop (fix:+ index 1))))))))

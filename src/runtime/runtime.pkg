@@ -1280,11 +1280,6 @@ USA.
 	  char-set:lower-case
 	  char-set:upper-case
 	  char-set:whitespace)
-  (export (runtime)
-	  (char-downcase-full ucd-lc-value)
-	  (char-foldcase-full ucd-cf-value)
-	  (char-titlecase-full ucd-tc-value)
-	  (char-upcase-full ucd-uc-value))
   (export (runtime character)
 	  ucd-gc-value
 	  ucd-nt-value
@@ -1292,6 +1287,8 @@ USA.
 	  ucd-scf-value
 	  ucd-slc-value
 	  ucd-suc-value)
+  (export (runtime parser)
+	  (char-foldcase-full ucd-cf-value))
   (export (runtime ucd-glue)
 	  char-set:changes-when-case-folded
 	  ucd-nt-value)
@@ -1301,8 +1298,12 @@ USA.
 	  char-changes-when-upper-cased?
 	  char-nfd-quick-check?
 	  ucd-ccc-value
+	  ucd-cf-value
 	  ucd-dm-value
 	  ucd-gcb-value
+	  ucd-lc-value
+	  ucd-tc-value
+	  ucd-uc-value
 	  ucd-wb-value))
 
 (define-package (runtime ucd-glue)
