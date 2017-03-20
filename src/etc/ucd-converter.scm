@@ -153,23 +153,25 @@ USA.
       (lambda (port)
 	(write-line ucd-version port)))
     (for-each (lambda (metadata)
-		(write-prop-file (metadata-name metadata) ucd-version document))
+		(let ((prop-name (metadata-name metadata)))
+		  (write-prop-file
+		   prop-name
+		   ucd-version
+		   (single-repertoire-property (string->symbol prop-name)
+					       document))))
               ucd-property-metadata)))
 
-(define (write-prop-file prop-name ucd-version document)
+(define (write-prop-file prop-name ucd-version prop-alist)
   (with-notification (lambda (port)
                        (write-string "Writing property " port)
                        (write-string prop-name port))
     (lambda ()
-      (let ((entries
-             (single-repertoire-property (string->symbol prop-name)
-                                         document)))
-        (call-with-output-file (prop-file-name prop-name)
-          (lambda (port)
-            (write-copyright-and-title prop-name ucd-version port)
-            (for-each (lambda (p)
-                        (write-line p port))
-                      entries)))))))
+      (call-with-output-file (prop-file-name prop-name)
+	(lambda (port)
+	  (write-copyright-and-title prop-name ucd-version port)
+	  (for-each (lambda (p)
+		      (write-line p port))
+		    prop-alist))))))
 
 (define (write-copyright-and-title prop-name ucd-version port)
   (call-with-input-file copyright-file-name
@@ -316,6 +318,30 @@ USA.
              (filter xml-element?
                      (xml-element-content elt)))))
 
+(define (generate-canonical-dm-prop)
+  (write-prop-file "canonical-dm"
+		   (read-ucd-version-file)
+		   (compute-canonical-dm-prop-alist)))
+
+(define (compute-canonical-dm-prop-alist)
+  (let ((canonical
+	 (char-set*
+	  (filter-map (lambda (e)
+			(and (string=? "can" (cdr e))
+			     (car e)))
+		      (read-prop-file "dt")))))
+    (merge-property-alist
+     (append-map (lambda (e)
+		   (if (string=? "#" (cdr e))
+		       (list e)
+		       (map (lambda (cp)
+			      (cons cp
+				    (if (code-point-in-char-set? cp canonical)
+					(cdr e)
+					"#")))
+			    (iota (cpr-size (car e)) (cpr-start (car e))))))
+		 (read-prop-file "dm")))))
+
 ;;;; Code-point ranges
 
 (define (make-cpr start #!optional end)
@@ -404,6 +430,7 @@ USA.
 	      "Upper"
 	      "WB"
 	      "WSpace"
+	      "canonical-dm"
 	      "ccc"
 	      "cf"
 	      "dm"

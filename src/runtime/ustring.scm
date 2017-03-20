@@ -544,16 +544,16 @@ USA.
     (do ((i 0 (fix:+ i 1)))
 	((not (fix:< i end)))
       (let loop ((char (string-ref string i)))
-	(if (eq? 'canonical (ucd-dt-value char))
-	    (let ((dm (ucd-dm-value char)))
-	      ;; Canonical decomposition always length 1 or 2.
-	      ;; First char might need recursion, second doesn't:
-	      (if (char? dm)
-		  (loop dm)
-		  (begin
-		    (loop (string-ref dm 0))
-		    (builder (string-ref dm 1)))))
-	    (builder char))))
+	(let ((dm (ucd-canonical-dm-value char)))
+	  (cond ((eqv? dm char)
+		 (builder char))
+		;; Canonical decomposition always length 1 or 2.
+		;; First char might need recursion, second doesn't:
+		((char? dm)
+		 (loop dm))
+		(else
+		 (loop (string-ref dm 0))
+		 (builder (string-ref dm 1)))))))
     (builder)))
 
 (define (canonical-ordering! string)
@@ -1210,17 +1210,17 @@ USA.
   (receive (infix prefix suffix) (string-joiner-options options caller)
     (let ((infix (string-append suffix infix prefix)))
       (lambda (strings)
-	(string-append*
-	 (if (pair? strings)
-	     (cons* prefix
-		    (car strings)
-		    (let loop ((strings (cdr strings)))
-		      (if (pair? strings)
-			  (cons* infix
-				 (car strings)
-				 (loop (cdr strings)))
-			  (list suffix))))
-	     '()))))))
+	(if (pair? strings)
+	    (let ((builder (string-builder)))
+	      (builder prefix)
+	      (builder (car strings))
+	      (for-each (lambda (string)
+			  (builder infix)
+			  (builder string))
+			(cdr strings))
+	      (builder suffix)
+	      (builder))
+	    "")))))
 
 (define-deferred string-joiner-options
   (keyword-option-parser

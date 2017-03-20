@@ -460,6 +460,7 @@ USA.
 ("bmg" mirror-image code-point?)
 ("bpb" bidi-paired-bracket code-point)
 ("bpt" bidi-paired-bracket-type (enum "o" "c" "n"))
+("canonical-dm" canonical-decomposition-mapping code-point*)
 ("ccc" combining-class byte)		;<= 254
 ("cf" case-folding code-point+)
 ("dm" decomposition-mapping code-point*)

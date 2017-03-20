@@ -1266,14 +1266,13 @@ USA.
 
 (define-package (runtime ucd-tables)
   (files "ucd-table-alpha"
+	 "ucd-table-canonical-dm"
 	 "ucd-table-cased"
 	 "ucd-table-ccc"
 	 "ucd-table-cf"
 	 "ucd-table-cwcf"
 	 "ucd-table-cwl"
 	 "ucd-table-cwu"
-	 "ucd-table-dm"
-	 "ucd-table-dt"
 	 "ucd-table-gc"
 	 "ucd-table-gcb"
 	 "ucd-table-lc"
@@ -1318,8 +1317,7 @@ USA.
 	  char-nfd-quick-check?
 	  ucd-ccc-value
 	  ucd-cf-value
-	  ucd-dm-value
-	  ucd-dt-value
+	  ucd-canonical-dm-value
 	  ucd-gcb-value
 	  ucd-lc-value
 	  ucd-tc-value
