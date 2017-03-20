@@ -93700,26 +93700,28 @@ USA.
 	  (#\x115B9 #\x0334 #\x115AF))
 	 )))
 
+(define (norm-tc-source tc) (car tc))
+(define (norm-tc-nfc tc) (cadr tc))
+(define (norm-tc-nfd tc) (caddr tc))
+(define (norm-tc-nfkc tc) (cadddr tc))
+(define (norm-tc-nfkd tc) (car (cddddr tc)))
+
+(define (nfd-test source expected)
+  (lambda ()
+    (with-test-properties
+     (lambda ()
+       (assert-ts= (string->nfd source)
+		   expected))
+     'expression `(string->nfd ,source))))
+
 (define-test 'string->nfd
   (map (lambda (tc)
-	 (lambda ()
-	   (run-nfd-test tc)))
+	 (list (nfd-test (norm-tc-source tc) (norm-tc-nfd tc))
+	       (nfd-test    (norm-tc-nfc tc) (norm-tc-nfd tc))
+	       (nfd-test    (norm-tc-nfd tc) (norm-tc-nfd tc))
+	       (nfd-test   (norm-tc-nfkc tc) (norm-tc-nfkd tc))
+	       (nfd-test   (norm-tc-nfkd tc) (norm-tc-nfkd tc))))
        normalization-test-cases))
-
-(define (run-nfd-test tc)
-  (with-test-properties
-   (lambda ()
-     (assert-ts= (string->nfd (norm-tc-source tc))
-		 (norm-tc-nfd tc))
-     (assert-ts= (string->nfd (norm-tc-nfc tc))
-		 (norm-tc-nfd tc))
-     (assert-ts= (string->nfd (norm-tc-nfd tc))
-		 (norm-tc-nfd tc))
-     (assert-ts= (string->nfd (norm-tc-nfkc tc))
-		 (norm-tc-nfkd tc))
-     (assert-ts= (string->nfd (norm-tc-nfkd tc))
-		 (norm-tc-nfkd tc)))
-   'expression `(nfd-test ,tc)))
 
 (define (trivial-string=? s1 s2)
   (let ((n (string-length s1)))
@@ -93731,20 +93733,5 @@ USA.
 		    (loop (fix:+ i 1)))
 	       #t)))))
 
-(define-comparator trivial-string=? 'trivial-string=?)
+(define-comparator trivial-string=? 'string=?)
 (define assert-ts= (simple-binary-assertion trivial-string=? #f))
-
-(define (norm-tc-source tc)
-  (car tc))
-
-(define (norm-tc-nfc tc)
-  (cadr tc))
-
-(define (norm-tc-nfd tc)
-  (caddr tc))
-
-(define (norm-tc-nfkc tc)
-  (cadddr tc))
-
-(define (norm-tc-nfkd tc)
-  (car (cddddr tc)))
