@@ -543,11 +543,17 @@ USA.
 	(builder (string-builder)))
     (do ((i 0 (fix:+ i 1)))
 	((not (fix:< i end)))
-      (builder
-       (let ((char (string-ref string i)))
-	 (if (eq? 'canonical (ucd-dt-value char))
-	     (ucd-dm-value char)
-	     char))))
+      (let loop ((char (string-ref string i)))
+	(if (eq? 'canonical (ucd-dt-value char))
+	    (let ((dm (ucd-dm-value char)))
+	      ;; Canonical decomposition always length 1 or 2.
+	      ;; First char might need recursion, second doesn't:
+	      (if (char? dm)
+		  (loop dm)
+		  (begin
+		    (loop (string-ref dm 0))
+		    (builder (string-ref dm 1)))))
+	    (builder char))))
     (builder)))
 
 (define (canonical-ordering! string)
@@ -555,25 +561,29 @@ USA.
 
     (define (scan-for-non-starter i)
       (if (fix:< i end)
-	  (let* ((char (string-ref string i))
-		 (ccc (ucd-ccc-value char)))
+	  (let ((ccc (ucd-ccc-value (string-ref string i))))
 	    (if (fix:= 0 ccc)
 		(scan-for-non-starter (fix:+ i 1))
-		(maybe-twiddle char ccc i)))))
+		(scan-for-non-starter-pair (list ccc) (fix:+ i 1))))))
 
-    (define (maybe-twiddle char1 ccc1 i1)
-      (let ((i2 (fix:+ i1 1)))
-	(if (fix:< i2 end)
-	    (let* ((char2 (string-ref string i2))
-		   (ccc2 (ucd-ccc-value char2)))
-	      (cond ((fix:= 0 ccc2)
-		     (scan-for-non-starter (fix:+ i2 1)))
-		    ((fix:<= ccc1 ccc2)
-		     (maybe-twiddle char2 ccc2 i2))
-		    (else
-		     (string-set! string i1 char2)
-		     (string-set! string i2 char1)
-		     (maybe-twiddle char1 ccc1 i2)))))))
+    (define (scan-for-non-starter-pair previous i)
+      (if (fix:< i end)
+	  (let ((ccc (ucd-ccc-value (string-ref string i))))
+	    (if (fix:= 0 ccc)
+		(scan-for-non-starter (fix:+ i 1))
+		(scan-for-non-starter-pair (maybe-twiddle previous i ccc)
+					   (fix:+ i 1))))))
+
+    (define (maybe-twiddle previous i ccc)
+      (if (and (pair? previous)
+	       (fix:< ccc (car previous)))
+	  (begin
+	    (let ((char (string-ref string (fix:- i 1))))
+	      (string-set! string (fix:- i 1) (string-ref string i))
+	      (string-set! string i char))
+	    (cons (car previous)
+		  (maybe-twiddle (cdr previous) (fix:- i 1) ccc)))
+	  (cons ccc previous)))
 
     (scan-for-non-starter 0))
   string)
