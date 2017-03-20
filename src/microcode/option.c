@@ -253,7 +253,7 @@ Additional options may be supported by the band (and described below).\n\
 #endif
 
 #ifndef DEFAULT_STACK_SIZE
-#  define DEFAULT_STACK_SIZE 128
+#  define DEFAULT_STACK_SIZE 1024
 #endif
 
 #ifndef STACK_SIZE_VARIABLE
