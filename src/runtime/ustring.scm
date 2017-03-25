@@ -513,30 +513,44 @@ USA.
 ;;;; Normalization
 
 (define (string->nfd string)
-  (if (or (string-ascii? string)	;ASCII unaffected by normalization
-	  (string-in-nfd? string))
+  (if (string-in-nfd? string)
       string
       (canonical-ordering! (canonical-decomposition string))))
 
-(define (string-ascii? string)
-  (let ((n (string-length string)))
-    (let loop ((i 0))
-      (if (fix:< i n)
-	  (and (char-ascii? (string-ref string i))
-	       (loop (fix:+ i 1)))
-	  #t))))
+(define (string->nfc string)
+  (if (string-in-nfc? string)
+      string
+      (canonical-composition (string->nfd string))))
 
 (define (string-in-nfd? string)
-  (let ((n (string-length string)))
+  (let ((end (string-length string)))
     (let loop ((i 0) (last-ccc 0))
-      (if (fix:< i n)
-	  (let* ((char (string-ref string i))
-		 (ccc (ucd-ccc-value char)))
-	    (and (or (fix:= ccc 0)
-		     (fix:>= ccc last-ccc))
-		 (char-nfd-quick-check? char)
-		 (loop (fix:+ i 1) ccc)))
+      (if (fix:< i end)
+	  (let ((char (string-ref string i)))
+	    (if (fix:< (char->integer char) #xC0)
+		(loop (fix:+ i 1) 0)
+		(let ((ccc (ucd-ccc-value char)))
+		  (and (or (fix:= ccc 0)
+			   (fix:>= ccc last-ccc))
+		       (char-nfd-quick-check? char)
+		       (loop (fix:+ i 1) ccc)))))
 	  #t))))
+
+(define (string-in-nfc? string)
+  (let ((end (string-length string)))
+    (let loop ((i 0) (last-ccc 0) (result #t))
+      (if (fix:< i end)
+	  (let ((char (string-ref string i)))
+	    (if (fix:< (char->integer char) #x300)
+		(loop (fix:+ i 1) 0 result)
+		(let ((ccc (ucd-ccc-value char)))
+		  (and (or (fix:= ccc 0)
+			   (fix:>= ccc last-ccc))
+		       (case (ucd-nfc_qc-value char)
+			 ((yes) (loop (fix:+ i 1) ccc result))
+			 ((maybe) (loop (fix:+ i 1) ccc 'maybe))
+			 (else #f))))))
+	  result))))
 
 (define (canonical-decomposition string)
   (let ((end (string-length string))
@@ -586,6 +600,9 @@ USA.
 	  (cons ccc previous)))
 
     (scan-for-non-starter 0))
+  string)
+
+(define (canonical-composition string)
   string)
 
 ;;;; Grapheme clusters

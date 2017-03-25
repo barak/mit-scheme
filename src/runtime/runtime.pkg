@@ -974,6 +974,7 @@ USA.
 	  string
 	  string*
 	  string->list
+	  string->nfc
 	  string->nfd
 	  string->vector
 	  string-any
@@ -1008,6 +1009,8 @@ USA.
 	  string-hash
 	  string-hash-ci
 	  string-head
+	  string-in-nfc?
+	  string-in-nfd?
 	  string-joiner
 	  string-joiner*
 	  string-length
@@ -1270,6 +1273,7 @@ USA.
 	 "ucd-table-cased"
 	 "ucd-table-ccc"
 	 "ucd-table-cf"
+	 "ucd-table-comp_ex"
 	 "ucd-table-cwcf"
 	 "ucd-table-cwl"
 	 "ucd-table-cwu"
@@ -1277,6 +1281,7 @@ USA.
 	 "ucd-table-gcb"
 	 "ucd-table-lc"
 	 "ucd-table-lower"
+	 "ucd-table-nfc_qc"
 	 "ucd-table-nfd_qc"
 	 "ucd-table-nt"
 	 "ucd-table-nv"
@@ -1314,12 +1319,14 @@ USA.
 	  char-changes-when-case-folded?
 	  char-changes-when-lower-cased?
 	  char-changes-when-upper-cased?
+	  char-full-composition-exclusion?
 	  char-nfd-quick-check?
 	  ucd-ccc-value
 	  ucd-cf-value
 	  ucd-canonical-dm-value
 	  ucd-gcb-value
 	  ucd-lc-value
+	  ucd-nfc_qc-value
 	  ucd-tc-value
 	  ucd-uc-value
 	  ucd-wb-value))
