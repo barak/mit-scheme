@@ -424,8 +424,10 @@ USA.
 	      "CWL"
 	      "CWU"
 	      "Cased"
+	      "Comp_Ex"
 	      "GCB"
 	      "Lower"
+	      "NFC_QC"
 	      "NFD_QC"
 	      "Upper"
 	      "WB"
@@ -433,8 +435,6 @@ USA.
 	      "canonical-dm"
 	      "ccc"
 	      "cf"
-	      "dm"
-	      "dt"
 	      "gc"
 	      "lc"
 	      "nt"
@@ -493,17 +493,13 @@ USA.
 (define (metadata->code-generator metadata)
   (let ((name (metadata-name metadata))
 	(type-spec (metadata-type-spec metadata)))
-    (cond ((string=? name "NFC_QC") code-generator:nfc-qc)
-	  ((string=? name "NFKC_QC") code-generator:nfc-qc)
-	  ((string=? name "dt") code-generator:dt)
-	  ((string=? name "gc") code-generator:gc)
-	  ((string=? name "nt") code-generator:nt)
-	  ((eq? type-spec 'boolean) code-generator:boolean)
+    (cond ((eq? type-spec 'boolean) code-generator:boolean)
 	  ((eq? type-spec 'byte) code-generator:byte)
 	  ((eq? type-spec 'code-point) code-generator:code-point)
 	  ((eq? type-spec 'code-point*) code-generator:code-point*)
 	  ((eq? type-spec 'code-point+) code-generator:code-point+)
 	  ((eq? type-spec 'rational-or-nan) code-generator:rational-or-nan)
+	  ((mapped-enum-type? type-spec) code-generator:mapped-enum)
 	  ((unmapped-enum-type? type-spec) code-generator:unmapped-enum)
 	  (else (error "Unsupported metadata:" metadata)))))
 
@@ -540,24 +536,12 @@ USA.
   ((trie-code-generator value-manager:rational-or-nan)
    prop-name metadata prop-alist proc-name))
 
-(define (code-generator:unmapped-enum prop-name metadata prop-alist proc-name)
-  ((trie-code-generator (unmapped-enum-value-manager #f metadata))
-   prop-name metadata prop-alist proc-name))
-
-(define (code-generator:dt prop-name metadata prop-alist proc-name)
-  ((trie-code-generator (mapped-enum-value-manager "none" metadata))
-   prop-name metadata prop-alist proc-name))
-
-(define (code-generator:gc prop-name metadata prop-alist proc-name)
+(define (code-generator:mapped-enum prop-name metadata prop-alist proc-name)
   ((trie-code-generator (mapped-enum-value-manager #f metadata))
    prop-name metadata prop-alist proc-name))
 
-(define (code-generator:nfc-qc prop-name metadata prop-alist proc-name)
-  ((trie-code-generator (mapped-enum-value-manager "Y" metadata))
-   prop-name metadata prop-alist proc-name))
-
-(define (code-generator:nt prop-name metadata prop-alist proc-name)
-  ((trie-code-generator (mapped-enum-value-manager "None" metadata))
+(define (code-generator:unmapped-enum prop-name metadata prop-alist proc-name)
+  ((trie-code-generator (unmapped-enum-value-manager #f metadata))
    prop-name metadata prop-alist proc-name))
 
 (define (value-manager default-string converter
