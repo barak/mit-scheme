@@ -505,10 +505,11 @@ USA.
 	  #t))))
 
 (define (string-canonical-foldcase string)
-  (let ((nfd (string->nfd string)))
-    (if (nfd-string-case-folded? nfd)
-	nfd
-	(string->nfd (string-foldcase string)))))
+  (string->nfc
+   (let ((nfd (string->nfd string)))
+     (if (nfd-string-case-folded? nfd)
+	 nfd
+	 (string-foldcase string)))))
 
 ;;;; Normalization
 
