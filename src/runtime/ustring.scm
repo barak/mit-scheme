@@ -518,7 +518,7 @@ USA.
       (canonical-ordering! (canonical-decomposition string))))
 
 (define (string->nfc string)
-  (if (string-in-nfc? string)
+  (if (eq? #t (string-in-nfc? string))
       string
       (canonical-composition (string->nfd string))))
 
@@ -551,7 +551,7 @@ USA.
 			 ((maybe) (loop (fix:+ i 1) ccc 'maybe))
 			 (else #f))))))
 	  result))))
-
+
 (define (canonical-decomposition string)
   (let ((end (string-length string))
 	(builder (string-builder)))
@@ -601,9 +601,87 @@ USA.
 
     (scan-for-non-starter 0))
   string)
-
+
 (define (canonical-composition string)
-  string)
+  (let ((end (string-length string))
+	(builder (string-builder))
+	(sk ucd-canonical-cm-second-keys)
+	(sv ucd-canonical-cm-second-values))
+
+    (define (scan-for-first-char i)
+      (if (fix:< i end)
+	  (test-first-char (fix:+ i 1) (string-ref string i))))
+
+    (define (test-first-char i+1 fc)
+      (let ((fc-index (and (fix:< i+1 end) (ucd-canonical-cm-value fc))))
+	(if fc-index
+	    (let ((combiners (get-combiners i+1)))
+	      (if (pair? combiners)
+		  (let ((j (fix:+ i+1 (length combiners))))
+		    (scan-combiners fc fc-index combiners)
+		    (scan-for-first-char j))
+		  (let ((fc* (match-second fc-index (string-ref string i+1))))
+		    (if fc*
+			(test-first-char (fix:+ i+1 1) fc*)
+			(begin
+			  (builder fc)
+			  (scan-for-first-char i+1))))))
+	    (begin
+	      (builder fc)
+	      (scan-for-first-char i+1)))))
+
+    (define (get-combiners j)
+      (if (fix:< j end)
+	  (let* ((char (string-ref string j))
+		 (ccc (ucd-ccc-value char)))
+	    (if (fix:= 0 ccc)
+		'()
+		(cons (cons char ccc) (get-combiners (fix:+ j 1)))))
+	  '()))
+
+    (define (scan-combiners fc fc-index combiners)
+      (let loop ((cs combiners) (last-ccc 0))
+	(if (pair? cs)
+	    (let* ((c (car cs))
+		   (fc*
+		    (and (fix:> (cdr c) last-ccc)
+			 (match-second fc-index (car c)))))
+	      (if fc*
+		  (let ((fc-index* (ucd-canonical-cm-value fc*))
+			(combiners* (remove-combiner! c combiners)))
+		    (if fc-index*
+			(scan-combiners fc* fc-index* combiners*)
+			(done-matching fc* combiners*)))
+		  (loop (cdr cs) (cdr c))))
+	    (done-matching fc combiners))))
+
+    (define (remove-combiner! combiner combiners)
+      (if (eq? combiner (car combiners))
+	  (cdr combiners)
+	  (begin
+	    (let loop ((this (cdr combiners)) (prev combiners))
+	      (if (eq? combiner (car this))
+		  (set-cdr! prev (cdr this))
+		  (loop (cdr this) this)))
+	    combiners)))
+
+    (define (done-matching fc combiners)
+      (builder fc)
+      (for-each (lambda (combiner) (builder (car combiner)))
+		combiners))
+
+    (define (match-second fc-index sc)
+      (let ((keys (vector-ref sk fc-index)))
+	(let loop ((start 0) (end (string-length keys)))
+	  (and (fix:< start end)
+	       (let ((m (fix:quotient (fix:+ start end) 2)))
+		 (let ((key (string-ref keys m)))
+		   (cond ((char<? sc key) (loop start m))
+			 ((char<? key sc) (loop (fix:+ m 1) end))
+			 (else (string-ref (vector-ref sv fc-index) m)))))))))
+
+    (scan-for-first-char 0)
+    (builder)))
 
 ;;;; Grapheme clusters
 

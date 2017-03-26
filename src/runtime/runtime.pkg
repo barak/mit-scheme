@@ -1269,6 +1269,8 @@ USA.
 
 (define-package (runtime ucd-tables)
   (files "ucd-table-alpha"
+	 "ucd-table-canonical-cm"
+	 "ucd-table-canonical-cm-second"
 	 "ucd-table-canonical-dm"
 	 "ucd-table-cased"
 	 "ucd-table-ccc"
@@ -1321,9 +1323,12 @@ USA.
 	  char-changes-when-upper-cased?
 	  char-full-composition-exclusion?
 	  char-nfd-quick-check?
+	  ucd-canonical-cm-second-keys
+	  ucd-canonical-cm-second-values
+	  ucd-canonical-cm-value
+	  ucd-canonical-dm-value
 	  ucd-ccc-value
 	  ucd-cf-value
-	  ucd-canonical-dm-value
 	  ucd-gcb-value
 	  ucd-lc-value
 	  ucd-nfc_qc-value

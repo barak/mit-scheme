@@ -62,8 +62,8 @@ USA.
 
 (define (simple-type? object)
   (case object
-    ((boolean byte code-point code-point? code-point* code-point+
-	      list-of-script rational-or-nan string)
+    ((boolean ccc code-point code-point? code-point* code-point+
+	      list-of-script rational-or-nan string u16)
      #t)
     (else #f)))
 
@@ -136,6 +136,11 @@ USA.
 (define ucd-property-metadata
   (read-ucd-property-metadata))
 
+(define (has-metadata? prop-name)
+  (any (lambda (metadata)
+	 (string=? prop-name (metadata-name metadata)))
+       ucd-property-metadata))
+
 (define (prop-metadata prop-name)
   (let ((metadata
 	 (find (lambda (metadata)
@@ -184,9 +189,11 @@ USA.
                 (loop)))))))
   (write-string ";;;; UCD property: " port)
   (write-string prop-name port)
-  (write-string " (" port)
-  (display (metadata-full-name (prop-metadata prop-name)) port)
-  (write-string ")" port)
+  (if (has-metadata? prop-name)
+      (begin
+	(write-string " (" port)
+	(display (metadata-full-name (prop-metadata prop-name)) port)
+	(write-string ")" port)))
   (newline port)
   (newline port)
   (write-string ";;; Generated from " port)
@@ -274,6 +281,22 @@ USA.
             (warn "Missing range:" (make-cpr last-end char-code-limit)))))
   alist)
 
+(define (add-undefined-ranges alist value)
+  (let loop ((i 0) (alist alist) (result '()))
+    (if (pair? alist)
+	(let ((e (car alist)))
+	  (loop (cpr-end (car e))
+		(cdr alist)
+		(cons e
+		      (if (fix:< i (cpr-start (car e)))
+			  (cons (cons (make-cpr i (cpr-start (car e))) value)
+				result)
+			  result))))
+	(reverse!
+	 (if (fix:< i #x110000)
+	     (cons (cons (make-cpr i #x110000) value) result)
+	     result)))))
+
 (define (repertoire-elts document)
   (xml-element-children
    (xml-element-child 'repertoire (xml-document-root document))))
@@ -318,6 +341,8 @@ USA.
              (filter xml-element?
                      (xml-element-content elt)))))
 
+;;;; Derived properties
+
 (define (generate-canonical-dm-prop)
   (write-prop-file "canonical-dm"
 		   (read-ucd-version-file)
@@ -341,6 +366,76 @@ USA.
 					"#")))
 			    (iota (cpr-size (car e)) (cpr-start (car e))))))
 		 (read-prop-file "dm")))))
+
+(define (generate-canonical-cm-prop)
+  (let ((alist (compute-canonical-cm-prop-alist)))
+    (let ((trie-part
+	   (map (lambda (e i)
+		  (cons (char->integer (car e))
+			(number->string i 16)))
+		alist
+		(iota (length alist)))))
+      (write-prop-file "canonical-cm"
+		       (read-ucd-version-file)
+		       (merge-property-alist
+			(add-undefined-ranges trie-part ""))))
+    (let ((char-vectors
+	   (lambda (accessor)
+	     (list->vector
+	      (map (lambda (e)
+		     (list->vector (map accessor (cdr e))))
+		   alist)))))
+      (parameterize ((param:pp-lists-as-tables? #f))
+	(generate-property-table-1 "canonical-cm-second"
+	  `((define-deferred ucd-canonical-cm-second-keys
+	      (vector-map vector->string ,(char-vectors car)))
+	    (define-deferred ucd-canonical-cm-second-values
+	      (vector-map vector->string ,(char-vectors cdr)))))))))
+
+(define (compute-canonical-cm-prop-alist)
+  (let ((table (make-strong-eqv-hash-table)))
+    (for-each (lambda (e)
+		(let ((c1 (car e))
+		      (c2 (cadr e))
+		      (c3 (caddr e)))
+		  (hash-table-update!/default table
+					      c2
+					      (lambda (alist)
+						(cons (cons c3 c1) alist))
+					      '())))
+              (compute-reverse-canonical-cm-prop-alist))
+    (sort (map (lambda (e)
+		 (cons (car e)
+		       (sort (cdr e)
+			     (lambda (a b)
+			       (char<? (car a) (car b))))))
+	       (hash-table->alist table))
+	  (lambda (a b)
+	    (char<? (car a) (car b))))))
+
+(define (compute-reverse-canonical-cm-prop-alist)
+  (remove (lambda (e)
+            (char-full-composition-exclusion? (car e)))
+	  (append-map (let ((split
+			     (string-splitter 'delimiter #\space
+					      'allow-runs? #f)))
+			(lambda (e)
+			  (let ((decomp
+				 (map (lambda (s)
+					(integer->char
+					 (string->number s 16 #t)))
+				      (split (cdr e)))))
+			    (map (lambda (i)
+				   (cons (integer->char i) decomp))
+				 (if (pair? (car e))
+				     (iota (- (cdar e) (caar e)) (caar e))
+				     (list (car e)))))))
+		      (remove (lambda (e)
+				(string=? "#" (cdr e)))
+			      (read-prop-file "canonical-dm")))))
+
+(define char-full-composition-exclusion?
+  (access char-full-composition-exclusion? (->environment '(runtime ustring))))
 
 ;;;; Code-point ranges
 
@@ -432,6 +527,7 @@ USA.
 	      "Upper"
 	      "WB"
 	      "WSpace"
+	      "canonical-cm"
 	      "canonical-dm"
 	      "ccc"
 	      "cf"
@@ -446,8 +542,11 @@ USA.
 	      "uc")))
 
 (define (generate-property-table prop-name)
-  (let ((exprs (generate-property-table-code prop-name))
-	(ucd-version (read-ucd-version-file)))
+  (generate-property-table-1 prop-name
+			     (generate-property-table-code prop-name)))
+
+(define (generate-property-table-1 prop-name exprs)
+  (let ((ucd-version (read-ucd-version-file)))
     (parameterize ((param:pp-forced-x-size 1000)
 		   (param:unparse-char-in-unicode-syntax? #t))
       (call-with-output-file (prop-table-file-name prop-name)
@@ -494,11 +593,12 @@ USA.
   (let ((name (metadata-name metadata))
 	(type-spec (metadata-type-spec metadata)))
     (cond ((eq? type-spec 'boolean) code-generator:boolean)
-	  ((eq? type-spec 'byte) code-generator:byte)
+	  ((eq? type-spec 'ccc) code-generator:ccc)
 	  ((eq? type-spec 'code-point) code-generator:code-point)
 	  ((eq? type-spec 'code-point*) code-generator:code-point*)
 	  ((eq? type-spec 'code-point+) code-generator:code-point+)
 	  ((eq? type-spec 'rational-or-nan) code-generator:rational-or-nan)
+	  ((eq? type-spec 'u16) code-generator:u16)
 	  ((mapped-enum-type? type-spec) code-generator:mapped-enum)
 	  ((unmapped-enum-type? type-spec) code-generator:unmapped-enum)
 	  (else (error "Unsupported metadata:" metadata)))))
@@ -516,8 +616,8 @@ USA.
 			      (car value-map)))
 		       prop-alist))))))
 
-(define (code-generator:byte prop-name metadata prop-alist proc-name)
-  ((trie-code-generator value-manager:byte)
+(define (code-generator:ccc prop-name metadata prop-alist proc-name)
+  ((trie-code-generator value-manager:ccc)
    prop-name metadata prop-alist proc-name))
 
 (define (code-generator:code-point prop-name metadata prop-alist proc-name)
@@ -534,6 +634,10 @@ USA.
 
 (define (code-generator:rational-or-nan prop-name metadata prop-alist proc-name)
   ((trie-code-generator value-manager:rational-or-nan)
+   prop-name metadata prop-alist proc-name))
+
+(define (code-generator:u16 prop-name metadata prop-alist proc-name)
+  ((trie-code-generator value-manager:u16)
    prop-name metadata prop-alist proc-name))
 
 (define (code-generator:mapped-enum prop-name metadata prop-alist proc-name)
@@ -610,13 +714,22 @@ USA.
 			(vector->string ,svs-expr)
 			,svs-expr))))
 
-(define value-manager:byte
+(define value-manager:ccc
   (value-manager "0"
 		 (lambda (string)
 		   (let ((n (string->number string 10)))
 		     (if (not (and (index-fixnum? n) (fix:<= n 254)))
 			 (error "Illegal ccc value:" string))
 		     n))))
+
+(define value-manager:u16
+  (value-manager ""
+		 (lambda (string)
+		   (let ((n (string->number string 16)))
+		     (if (not (u16? n))
+			 (error "Illegal u16 value:" string))
+		     n))
+		 (lambda (char-expr) char-expr #f)))
 
 (define value-manager:rational-or-nan
   (value-manager "NaN"

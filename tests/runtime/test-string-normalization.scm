@@ -93706,6 +93706,23 @@ USA.
 (define (norm-tc-nfkc tc) (cadddr tc))
 (define (norm-tc-nfkd tc) (car (cddddr tc)))
 
+(define (nfc-test source expected)
+  (lambda ()
+    (with-test-properties
+     (lambda ()
+       (assert-ts= (string->nfc source)
+		   expected))
+     'expression `(string->nfc ,source))))
+
+(define-test 'string->nfc
+  (map (lambda (tc)
+	 (list (nfc-test (norm-tc-source tc) (norm-tc-nfc tc))
+	       (nfc-test    (norm-tc-nfc tc) (norm-tc-nfc tc))
+	       (nfc-test    (norm-tc-nfc tc) (norm-tc-nfc tc))
+	       (nfc-test   (norm-tc-nfkc tc) (norm-tc-nfkc tc))
+	       (nfc-test   (norm-tc-nfkd tc) (norm-tc-nfkc tc))))
+       normalization-test-cases))
+
 (define (nfd-test source expected)
   (lambda ()
     (with-test-properties
