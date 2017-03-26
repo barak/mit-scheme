@@ -214,20 +214,29 @@ USA.
 
 ;;;; Streaming build
 
-(define (string-builder)
-  (let ((builder
-	 (make-sequence-builder full-string-allocate
-				string-length
-				string-ref
-				string-set!
-				16
-				string-builder:finish-build)))
-    (lambda (#!optional object)
-      (cond ((default-object? object) ((builder 'build)))
-	    ((bitless-char? object) ((builder 'append-element!) object))
-	    ((string? object) ((builder 'append-sequence!) object))
-	    ((memq object '(empty? count reset!)) ((builder object)))
-	    (else (error "Not a char or string:" object))))))
+(define (string-builder . options)
+  (receive (buffer-length ->nfc?)
+      (string-builder-options options 'string-builder)
+    (let ((builder
+	   (make-sequence-builder full-string-allocate
+				  string-length
+				  string-ref
+				  string-set!
+				  buffer-length
+				  (if ->nfc?
+				      string-builder:finish-build-nfc
+				      string-builder:finish-build))))
+      (lambda (#!optional object)
+	(cond ((default-object? object) ((builder 'build)))
+	      ((bitless-char? object) ((builder 'append-element!) object))
+	      ((string? object) ((builder 'append-sequence!) object))
+	      ((memq object '(empty? count reset!)) ((builder object)))
+	      (else (error "Not a char or string:" object)))))))
+
+(define-deferred string-builder-options
+  (keyword-option-parser
+   (list (list 'buffer-length positive-fixnum? 16)
+	 (list '->nfc? boolean? #t))))
 
 (define (string-builder:finish-build parts)
   (let ((result
@@ -246,6 +255,9 @@ USA.
 	((not (pair? parts)))
       (string-copy! result i (caar parts) 0 (cdar parts)))
     result))
+
+(define (string-builder:finish-build-nfc parts)
+  (string->nfc (string-builder:finish-build parts)))
 
 ;;;; Copy
 
@@ -555,7 +567,7 @@ USA.
 
 (define (canonical-decomposition string)
   (let ((end (string-length string))
-	(builder (string-builder)))
+	(builder (string-builder '->nfc? #f)))
     (do ((i 0 (fix:+ i 1)))
 	((not (fix:< i end)))
       (let loop ((char (string-ref string i)))
@@ -605,7 +617,7 @@ USA.
 
 (define (canonical-composition string)
   (let ((end (string-length string))
-	(builder (string-builder))
+	(builder (string-builder '->nfc? #f))
 	(sk ucd-canonical-cm-second-keys)
 	(sv ucd-canonical-cm-second-values))
 
