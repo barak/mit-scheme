@@ -1322,6 +1322,7 @@ USA.
 	  char-changes-when-lower-cased?
 	  char-changes-when-upper-cased?
 	  char-full-composition-exclusion?
+	  char-nfc-quick-check?
 	  char-nfd-quick-check?
 	  ucd-canonical-cm-second-keys
 	  ucd-canonical-cm-second-values
@@ -1331,7 +1332,6 @@ USA.
 	  ucd-cf-value
 	  ucd-gcb-value
 	  ucd-lc-value
-	  ucd-nfc_qc-value
 	  ucd-tc-value
 	  ucd-uc-value
 	  ucd-wb-value))
