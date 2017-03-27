@@ -212,52 +212,101 @@ USA.
 		       start
 		       (fix:- end start))))))
 
-;;;; Streaming build
+;;;; Streaming builder
 
 (define (string-builder . options)
-  (receive (buffer-length ->nfc?)
-      (string-builder-options options 'string-builder)
-    (let ((builder
-	   (make-sequence-builder full-string-allocate
-				  string-length
-				  string-ref
-				  string-set!
-				  buffer-length
-				  (if ->nfc?
-				      string-builder:finish-build-nfc
-				      string-builder:finish-build))))
+  (let ((builder (make-string-builder options)))
+    (let ((append-element! (builder 'append-element!))
+	  (append-sequence! (builder 'append-sequence!)))
       (lambda (#!optional object)
 	(cond ((default-object? object) ((builder 'build)))
-	      ((bitless-char? object) ((builder 'append-element!) object))
-	      ((string? object) ((builder 'append-sequence!) object))
-	      ((memq object '(empty? count reset!)) ((builder object)))
+	      ((bitless-char? object) (append-element! object))
+	      ((string? object) (append-sequence! object))
+	      ((interned-symbol? object) ((builder object)))
 	      (else (error "Not a char or string:" object)))))))
+
+(define (make-string-builder options)
+  (receive (buffer-length ->nfc?)
+      (string-builder-options options 'string-builder)
+    (let ((tracker (max-cp-tracker)))
+      (combine-tracker-and-builder
+       tracker
+       (make-sequence-builder full-string-allocate
+			      string-length
+			      string-ref
+			      string-set!
+			      buffer-length
+			      (string-builder-finish ->nfc? (tracker 'get)))))))
 
 (define-deferred string-builder-options
   (keyword-option-parser
    (list (list 'buffer-length positive-fixnum? 16)
 	 (list '->nfc? boolean? #t))))
+
+(define (max-cp-tracker)
+  (let ((max-cp 0))
 
-(define (string-builder:finish-build parts)
-  (let ((result
-	 (do ((parts parts (cdr parts))
-	      (n 0 (fix:+ n (cdar parts)))
-	      (8-bit? #t
-		      (and 8-bit?
-			   (string-8-bit?
-			    (string-slice (caar parts) 0 (cdar parts))))))
-	     ((not (pair? parts))
-	      (if 8-bit?
-		  (legacy-string-allocate n)
-		  (full-string-allocate n))))))
+    (define (track-char! char)
+      (set! max-cp (fix:max (char->integer char) max-cp))
+      unspecific)
+
+    (define (track-string! string)
+      (let ((end (string-length string)))
+	(do ((i 0 (fix:+ i 1)))
+	    ((not (fix:< i end)))
+	  (track-char! (string-ref string i)))))
+
+    (lambda (operator)
+      (case operator
+	((track-char!) track-char!)
+	((track-string!) track-string!)
+	((reset!) (lambda () (set! max-cp #\null) unspecific))
+	((get) (lambda () max-cp))
+	(else (error "Unknown operator:" operator))))))
+
+(define ((string-builder-finish ->nfc? get-max-cp) parts)
+  (let* ((max-cp (get-max-cp))
+	 (result
+	  (do ((parts parts (cdr parts))
+	       (n 0 (fix:+ n (cdar parts))))
+	      ((not (pair? parts))
+	       (if (fix:< max-cp #x100)
+		   (legacy-string-allocate n)
+		   (full-string-allocate n))))))
     (do ((parts parts (cdr parts))
 	 (i 0 (fix:+ i (cdar parts))))
 	((not (pair? parts)))
       (string-copy! result i (caar parts) 0 (cdar parts)))
-    result))
+    (if (and ->nfc? (fix:>= max-cp #x300))
+	(string->nfc result)
+	result)))
 
-(define (string-builder:finish-build-nfc parts)
-  (string->nfc (string-builder:finish-build parts)))
+(define (combine-tracker-and-builder tracker delegate)
+  (let ((track-char! (tracker 'track-char!))
+	(track-string! (tracker 'track-string!))
+	(tracker-reset! (tracker 'reset!))
+	(delegate-append-element! (delegate 'append-element!))
+	(delegate-append-sequence! (delegate 'append-sequence!))
+	(delegate-reset! (delegate 'reset!)))
+
+    (define (append-element! element)
+      (track-char! element)
+      (delegate-append-element! element))
+
+    (define (append-sequence! sequence)
+      (track-string! sequence)
+      (delegate-append-sequence! sequence))
+
+    (define (reset!)
+      (tracker-reset!)
+      (delegate-reset!))
+
+    (lambda (operator)
+      (case operator
+	((append-element!) append-element!)
+	((append-sequence!) append-sequence!)
+	((reset!) reset!)
+	(else (delegate operator))))))
 
 ;;;; Copy
 
