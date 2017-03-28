@@ -337,7 +337,7 @@ USA.
 		   FIXNUM-AND
 		   FIXNUM-OR
 		   FIXNUM-XOR)))
-	     
+
 (define ((fixnum-2-args/standard commutative? operate) target source1
 						       source2 overflow?)
   overflow?				; ignored
@@ -639,7 +639,7 @@ USA.
 			  (LAP (NEG Q ,target))
 			  (LAP))))))
 	  (else
-	   (error "Fixnum-quotient/constant: Bad value" n)))))
+	   (error "fixnum-quotient: Bad value:" n)))))
 
 (define-arithmetic-method 'FIXNUM-REMAINDER fixnum-methods/2-args-constant
   (lambda (target n overflow?)
@@ -679,7 +679,7 @@ USA.
 			(OR Q ,target ,sign)
 		       (LABEL ,merge))))))
 	    (else
-	     (error "Fixnum-remainder/constant: Bad value" n))))))
+	     (error "fixnum-remainder: Bad value:" n))))))
 
 ;;;; Fast division by multiplication
 
@@ -718,7 +718,7 @@ USA.
 (define (fast-remainder/signed n d width multiplier s1 s2)
   (- n (* d (fast-quotient/signed n d width multiplier s1 s2))))
 
-(define (fast-division d get-target get-source finish)
+(define (fast-division target* source* d finish)
   (flush-register! rax)
   (need-register! rax)
   (flush-register! rdx)
@@ -728,10 +728,11 @@ USA.
 	   (if-negative2 (generate-label 'QUO-NEGATIVE-2))
 	   (merge1 (generate-label 'QUO-MULTIPLY))
 	   (merge2 (generate-label 'QUO-RESULT))
-	   (source (get-source))
-	   (target (get-target)))
-      (LAP ;; Divide by 2^t so that factor doesn't mess us up.
-           (SAR Q ,target (&U ,scheme-type-width))
+	   (source (source-register-reference source*))
+	   (target (target-register-reference target*)))
+      (LAP (MOV Q ,target ,source)
+	   ;; Divide by 2^t so that factor doesn't mess us up.
+	   (SAR Q ,target (&U ,scheme-type-width))
 	   ;; No need to CMP; SAR sets the SF bit for us to detect
 	   ;; whether the input is negative.
 	   (JS B (@PCR ,if-negative1))
@@ -767,22 +768,18 @@ USA.
 	   ,@(finish target source (INST-EA (R ,rax)))))))
 
 (define (fixnum-quotient/constant target source d)
-  (fast-division d
-    (lambda () (standard-move-to-target! source target))
-    (lambda () (standard-move-to-temporary! source))
+  (fast-division target source d
     (lambda (quotient numerator temp)
-      quotient numerator temp		;ignore
+      (declare (ignore quotient numerator temp))
       (LAP))))
 
 (define (fixnum-remainder/constant target source d)
-  (fast-division d
-    (lambda () (standard-move-to-temporary! source))
-    (lambda () (standard-move-to-target! source target))
+  (fast-division target source d
     (lambda (quotient numerator temp)
       ;; Compute n - d q.
-      (LAP (MOV Q ,temp (& ,d))
+      (LAP (MOV Q ,temp (& ,(- d)))
 	   (IMUL Q ,quotient ,temp)
-	   (SUB Q ,numerator ,quotient)))))
+	   (ADD Q ,quotient ,numerator)))))
 
 (define (fixnum-predicate/unary->binary predicate)
   (case predicate
