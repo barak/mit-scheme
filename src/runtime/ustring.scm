@@ -607,16 +607,18 @@ USA.
     (do ((i 0 (fix:+ i 1)))
 	((not (fix:< i end)))
       (let loop ((char (string-ref string i)))
-	(let ((dm (ucd-canonical-dm-value char)))
-	  (cond ((eqv? dm char)
-		 (builder char))
-		;; Canonical decomposition always length 1 or 2.
-		;; First char might need recursion, second doesn't:
-		((char? dm)
-		 (loop dm))
-		(else
-		 (loop (string-ref dm 0))
-		 (builder (string-ref dm 1)))))))
+	(if (jamo-precomposed? char)
+	    (jamo-decompose char builder)
+	    (let ((dm (ucd-canonical-dm-value char)))
+	      (cond ((eqv? dm char)
+		     (builder char))
+		    ;; Canonical decomposition always length 1 or 2.
+		    ;; First char might need recursion, second doesn't:
+		    ((char? dm)
+		     (loop dm))
+		    (else
+		     (loop (string-ref dm 0))
+		     (builder (string-ref dm 1))))))))
     (builder)))
 
 (define (canonical-ordering! string)
@@ -659,7 +661,25 @@ USA.
 
     (define (scan-for-first-char i)
       (if (fix:< i end)
-	  (test-first-char (fix:+ i 1) (string-ref string i))))
+	  (let ((fc (string-ref string i)))
+	    (if (and (jamo-leading? fc)
+		     (fix:< (fix:+ i 1) end)
+		     (jamo-vowel? (string-ref string (fix:+ i 1))))
+		(if (and (fix:< (fix:+ i 2) end)
+			 (jamo-trailing? (string-ref string (fix:+ i 2))))
+		    (begin
+		      (builder
+		       (jamo-compose fc
+				     (string-ref string (fix:+ i 1))
+				     (string-ref string (fix:+ i 2))))
+		      (scan-for-first-char (fix:+ i 3)))
+		    (begin
+		      (builder
+		       (jamo-compose fc
+				     (string-ref string (fix:+ i 1))
+				     #f))
+		      (scan-for-first-char (fix:+ i 2))))
+		(test-first-char (fix:+ i 1) fc)))))
 
     (define (test-first-char i+1 fc)
       (let ((fc-index (and (fix:< i+1 end) (ucd-canonical-cm-value fc))))
@@ -731,6 +751,69 @@ USA.
 
     (scan-for-first-char 0)
     (builder)))
+
+(define-integrable jamo-leading-start #x1100)
+(define-integrable jamo-leading-end   #x1113)
+(define-integrable jamo-vowel-start #x1161)
+(define-integrable jamo-vowel-end   #x1176)
+(define-integrable jamo-trailing-start #x11A8)
+(define-integrable jamo-trailing-end   #x11C3)
+(define-integrable jamo-precomposed-start #xAC00)
+(define-integrable jamo-precomposed-end   #xD7A4)
+
+(define-integrable jamo-vowel-size
+  (fix:- jamo-vowel-end jamo-vowel-start))
+
+(define-integrable jamo-trailing-size
+  (fix:- jamo-trailing-end jamo-trailing-start))
+
+(define-integrable jamo-tbase (fix:- jamo-trailing-start 1))
+
+;;; These can be integrable after 9.3 is released.
+;;; Otherwise they trip a bug in the 9.2 compiler.
+(define jamo-tcount (fix:+ jamo-trailing-size 1))
+(define jamo-ncount (fix:* jamo-vowel-size jamo-tcount))
+
+(define (jamo-leading? char)
+  (and (fix:>= (char->integer char) jamo-leading-start)
+       (fix:< (char->integer char) jamo-leading-end)))
+
+(define (jamo-vowel? char)
+  (and (fix:>= (char->integer char) jamo-vowel-start)
+       (fix:< (char->integer char) jamo-vowel-end)))
+
+(define (jamo-trailing? char)
+  (and (fix:>= (char->integer char) jamo-trailing-start)
+       (fix:< (char->integer char) jamo-trailing-end)))
+
+(define (jamo-precomposed? char)
+  (and (fix:>= (char->integer char) jamo-precomposed-start)
+       (fix:< (char->integer char) jamo-precomposed-end)))
+
+(define (jamo-decompose precomposed builder)
+  (let ((pi (fix:- (char->integer precomposed) jamo-precomposed-start)))
+    (builder
+     (integer->char (fix:+ jamo-leading-start (fix:quotient pi jamo-ncount))))
+    (builder
+     (integer->char
+      (fix:+ jamo-vowel-start
+	     (fix:quotient (fix:remainder pi jamo-ncount) jamo-tcount))))
+    (let ((ti (fix:remainder pi jamo-tcount)))
+      (if (fix:> ti 0)
+	  (builder (integer->char (fix:+ jamo-tbase ti)))))))
+
+(define (jamo-compose leading vowel trailing)
+  (integer->char
+   (fix:+ jamo-precomposed-start
+	  (fix:+ (fix:+ (fix:* (fix:- (char->integer leading)
+				      jamo-leading-start)
+			       jamo-ncount)
+			(fix:* (fix:- (char->integer vowel)
+				      jamo-vowel-start)
+			       jamo-tcount))
+		 (if trailing
+		     (fix:- (char->integer trailing) jamo-tbase)
+		     0)))))
 
 ;;;; Grapheme clusters
 
