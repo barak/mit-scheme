@@ -349,19 +349,25 @@ USA.
 		   (compute-canonical-dm-prop-alist)))
 
 (define (compute-canonical-dm-prop-alist)
-  (let ((canonical
-	 (char-set*
-	  (filter-map (lambda (e)
-			(and (string=? "can" (cdr e))
-			     (car e)))
-		      (read-prop-file "dt")))))
+  (let ((keepers
+	 (char-set-intersection
+	  (char-set*
+	   (filter-map (lambda (e)
+			 (and (string=? "can" (cdr e))
+			      (car e)))
+		       (read-prop-file "dt")))
+	  (char-set*
+	   (filter-map (lambda (e)
+			 (and (string=? "NA" (cdr e))
+			      (car e)))
+		       (read-prop-file "hst"))))))
     (merge-property-alist
      (append-map (lambda (e)
 		   (if (string=? "#" (cdr e))
 		       (list e)
 		       (map (lambda (cp)
 			      (cons cp
-				    (if (code-point-in-char-set? cp canonical)
+				    (if (code-point-in-char-set? cp keepers)
 					(cdr e)
 					"#")))
 			    (iota (cpr-size (car e)) (cpr-start (car e))))))
