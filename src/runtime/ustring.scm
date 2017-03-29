@@ -1648,8 +1648,8 @@ USA.
 			    %full-string-ref string 0 end)
 		 to)
 	       (string->utf8 string))))
-	(else
-	 (error:not-a string? string 'string-for-primitive))))
+	((slice? string) (string->utf8 string))
+	(else (error:not-a string? string 'string-for-primitive))))
 
 (define-integrable (copy-loop to-set! to at from-ref from start end)
   (do ((i start (fix:+ i 1))
