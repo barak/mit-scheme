@@ -420,6 +420,54 @@ grapheme-cluster indices, @emph{not} normal string indices.
 For @acronym{ASCII} strings, this is identical to @code{string-slice}.
 @end deffn
 
+@deffn procedure string-word-breaks string
+This procedure returns a list of @dfn{word break} indices for
+@var{string}, ordered from smallest index to largest.  Word breaks are
+defined by the Unicode standard in
+@uref{http://www.unicode.org/reports/tr29/tr29-29.html, UAX #29}, and
+generally coincide with what we think of as the boundaries of words in
+written text.
+@end deffn
+
+@cindex NFC
+@cindex Normalization Form C (NFC)
+@cindex NFD
+@cindex Normalization Form D (NFD)
+@cindex Unicode normalization forms
+MIT/GNU Scheme supports the Unicode canonical normalization forms
+@acronym{NFC} (@dfn{Normalization Form C}) and @acronym{NFD}
+(@dfn{Normalization Form D}).  The reason for these forms is that
+there can be multiple different Unicode sequences for a given text;
+these sequences are semantically identical and should be treated
+equivalently for all purposes.  If two such sequences are normalized to
+the same form, the resulting normalized sequences will be identical.
+
+Generally speaking, @acronym{NFC} is preferred for most purposes, as
+it is the minimal-length sequence for the variants.  Consult the
+Unicode standard for the details and for information about why one
+normalization form is preferable for a specific purpose.
+
+@deffn procedure string-in-nfd? string
+@deffnx procedure string-in-nfc? string
+The procedures return @code{#t} if @var{string} is in Unicode
+Normalization Form D or C respectively.  Otherwise they return
+@code{#f}.
+
+Note that if @var{string} consists only of code points strictly less
+than @code{#xC0}, then @code{string-in-nfd?} returns @code{#t}.  If
+@var{string} consists only of code points strictly less than
+@code{#x300}, then @code{string-in-nfc?} returns @code{#t}.
+Consequently both of these procedures will return @code{#t} for an
+@acronym{ASCII} string argument.
+@end deffn
+
+@deffn procedure string->nfd string
+@deffnx procedure string->nfc string
+The procedures convert @var{string} into Unicode Normalization Form D
+or C respectively.  If @var{string} is already in the correct form,
+they return @var{string} itself (not a copy).
+@end deffn
+
 @deffn {standard procedure} string-map proc string string @dots{}
 It is an error if @var{proc} does not accept as many arguments as
 there are @var{string}s and return a single character.
@@ -554,6 +602,61 @@ Equivalent to @code{(string-copy @var{string} 0 @var{end})}.
 Equivalent to @code{(string-copy @var{string} @var{start})}.
 @end deffn
 
+@deffn procedure string-builder buffer-length ->nfc?
+This procedure's arguments are keyword arguments; that is, each
+argument is a symbol of the same name followed by its value.  The
+order of the arguments doesn't matter, but each argument may appear
+only once.
+
+@cindex string builder procedure
+This procedure returns a @dfn{string builder} that can be used to
+incrementally collect characters and later convert that collection to
+a string.  This is similar to a string output port, but is less
+general and significantly faster.
+
+The returned string builder can be customized with the arguments:
+
+@itemize @bullet
+@item
+@var{buffer-length} is an exact positive integer that controls the
+size of the internal buffers that are used to accumulate characters.
+Larger values make the builder somewhat faster but use more space.
+The default value of this argument is @code{16}.
+@item
+@var{->nfc?} is a boolean that says whether the built string is
+normalized into Unicode Normalization Form C; if false no
+normalization is done.  The default value of this argument is
+@code{#t}.
+@end itemize
+
+The returned string builder is a procedure that accepts zero or one
+arguments as follows:
+
+@itemize @bullet
+@item
+Given a bitless character argument, the string builder appends that
+character to the string being built and returns an unspecified value.
+@item
+Given a string argument, the string builder appends that string to the
+string being built and returns an unspecified value.
+@item
+Given no arguments, the string builder returns a copy of the string
+being built.  Note that this does not affect the string being built,
+so immediately calling the builder with no arguments a second time
+returns a new copy of the same string.
+@item
+Given the argument @code{empty?}, the string builder returns @code{#t}
+if the string being built is empty and @code{#f} otherwise.
+@item
+Given the argument @code{count}, the string builder returns the size
+of the string begin built.
+@item
+Given the argument @code{reset!}, the string builder discards the
+string being built and returns to the state it was in when initially
+created.
+@end itemize
+@end deffn
+
 @deffn procedure string-joiner infix prefix suffix
 @deffnx procedure string-joiner* infix prefix suffix
 @cindex joining, of strings
@@ -562,7 +665,7 @@ argument is a symbol of the same name followed by its value.  The
 order of the arguments doesn't matter, but each argument may appear
 only once.
 
-@cindex joiner procedure
+@cindex joiner procedure, of strings
 These procedures return a @dfn{joiner} procedure that takes multiple
 strings and joins them together into a newly allocated string.  The
 joiner returned by @code{string-joiner} accepts these strings as
