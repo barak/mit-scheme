@@ -1161,8 +1161,8 @@ key_event (struct xwindow * xw, XKeyEvent * event, enum event_type type)
 
   /* Make ShiftLock modifier not affect keys with other modifiers. */
   if ((event->state)
-      & (ShiftMask || ControlMask
-	 || Mod1Mask || Mod2Mask || Mod3Mask || Mod4Mask || Mod5Mask))
+      & (ShiftMask | ControlMask
+	 | Mod1Mask | Mod2Mask | Mod3Mask | Mod4Mask | Mod5Mask))
     {
       if (((event->state) & LockMask) != 0)
 	(event->state) &=~ LockMask;
