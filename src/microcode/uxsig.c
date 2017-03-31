@@ -305,12 +305,12 @@ find_signal_name (int signo)
 }
 
 void
-foreach_async_signal (void(*func)(int signo))
+foreach_async_signal (void (*func) (int signo))
 {
   struct signal_descriptor * scan = signal_descriptors;
   struct signal_descriptor * end = (scan + signal_descriptors_length);
   for (; (scan < end); scan += 1)
-    if ((scan -> flags) && ASYNC)
+    if ((scan -> flags) & ASYNC)
       func (scan -> signo);
 }
 
