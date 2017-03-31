@@ -208,7 +208,7 @@ USA.
 (define (string-out/write-substring port string start end)
   (let ((os (textual-port-state port))
 	(n (fix:- end start)))
-    ((ostate-builder os) (string-slice string start end))
+    ((ostate-builder os) (string-copy string start end))
     (update-column-for-substring! os string start end)
     n))
 
