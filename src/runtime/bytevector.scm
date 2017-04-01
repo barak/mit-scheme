@@ -122,6 +122,7 @@ USA.
 				bytevector-length
 				bytevector-u8-ref
 				bytevector-u8-set!
+				(lambda (bv) bv)
 				16
 				bytevector-builder:finish-build)))
     (lambda (#!optional object)

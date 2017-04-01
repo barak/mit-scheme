@@ -581,7 +581,8 @@ USA.
 ;;;; Builder for vector-like sequences
 
 (define (make-sequence-builder make-sequence sequence-length sequence-ref
-			       sequence-set! buffer-length finish-build)
+			       sequence-set! sequence-copy buffer-length
+			       finish-build)
     ;; This is optimized to minimize copying, so it wastes some space.
   (let ((buffers)
 	(buffer)
@@ -624,7 +625,9 @@ USA.
 	    (begin
 	      (if (fix:> index 0)
 		  (new-buffer!))
-	      (set! buffers (cons (cons sequence length) buffers))
+	      (set! buffers
+		    (cons (cons (sequence-copy sequence) length)
+			  buffers))
 	      unspecific))))
 
     (define (build)

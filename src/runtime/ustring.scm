@@ -226,7 +226,7 @@ USA.
 	      (else (error "Not a char or string:" object)))))))
 
 (define (make-string-builder options)
-  (receive (buffer-length ->nfc?)
+  (receive (buffer-length ->nfc? copy?)
       (string-builder-options options 'string-builder)
     (let ((tracker (max-cp-tracker)))
       (combine-tracker-and-builder
@@ -235,13 +235,15 @@ USA.
 			      string-length
 			      string-ref
 			      string-set!
+			      (if copy? string-copy (lambda (s) s))
 			      buffer-length
 			      (string-builder-finish ->nfc? (tracker 'get)))))))
 
 (define-deferred string-builder-options
   (keyword-option-parser
    (list (list 'buffer-length positive-fixnum? 16)
-	 (list '->nfc? boolean? #t))))
+	 (list '->nfc? boolean? #t)
+	 (list 'copy? boolean? #f))))
 
 (define (max-cp-tracker)
   (let ((max-cp 0))
