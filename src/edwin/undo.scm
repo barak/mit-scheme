@@ -178,7 +178,7 @@ which includes both the saved text and other data."
   ;; the editor does not exist or is not running.  It would actually
   ;; prefer to be run *before* the GC, but that's not possible now.
   (if edwin-editor
-      (let ((bytes/word (vector-ref (gc-space-status) 0)))
+      (let ((bytes/word (bytes-per-object)))
 	(let ((words->bytes
 	       (lambda (words)
 		 (round (/ words bytes/word)))))

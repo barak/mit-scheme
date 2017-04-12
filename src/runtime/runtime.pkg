@@ -136,6 +136,7 @@ USA.
   (parent (runtime))
   (export ()
 	  bracketed-unparser-method
+	  bytes-per-object
 	  default-object
 	  default-object?
 	  gc-space-status

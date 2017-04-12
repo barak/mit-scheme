@@ -130,8 +130,11 @@ USA.
 (define (object-constant? object)
   ((ucode-primitive constant?) object))
 
-(define (gc-space-status)
+(define-integrable (gc-space-status)
   ((ucode-primitive gc-space-status)))
+
+(define (bytes-per-object)
+  (vector-ref (gc-space-status) 0))
 
 (define (object-pure? object)
   object

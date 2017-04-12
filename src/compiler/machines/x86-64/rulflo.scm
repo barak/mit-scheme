@@ -391,8 +391,6 @@ USA.
    (let ((bit-string (make-bit-string 64 #f)))
      ;; Skip the manifest preceding the flonum data.  Is there a
      ;; better way to express this?
-     (let* ((bytes-per-object (vector-ref (gc-space-status) 0))
-            (bits-per-object (* 8 bytes-per-object))
-            (flonum-data-offset-in-bits bits-per-object))
+     (let ((flonum-data-offset-in-bits (* 8 (bytes-per-object))))
        (read-bits! flonum flonum-data-offset-in-bits bit-string))
      bit-string)))

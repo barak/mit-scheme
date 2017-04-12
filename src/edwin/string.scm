@@ -186,7 +186,7 @@ USA.
 	 1))
 
 (define %octets->words-shift
-  (let ((chars-per-word (vector-ref (gc-space-status) 0)))
+  (let ((chars-per-word (bytes-per-object)))
     (case chars-per-word
       ((4) -2)
       ((8) -3)

@@ -73,7 +73,7 @@ USA.
      ;; This is written as a macro so that the shift will be a constant
      ;; in the compiled code.
      ;; It does not work when cross-compiled!
-     (let ((chars-per-word (vector-ref (gc-space-status) 0)))
+     (let ((chars-per-word (bytes-per-object)))
        (case chars-per-word
 	 ((4) -2)
 	 ((8) -3)
