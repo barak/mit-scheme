@@ -542,7 +542,7 @@ USA.
 			     1
 			     scfg*scfg->scfg!)))
 
-(define string-memory-reference
+(define byte-memory-reference
   (indexed-memory-reference
    (lambda (expression) (rtl:make-fetch (rtl:locative-offset expression 1)))
    (index-locative-generator rtl:locative-byte-offset
@@ -1063,6 +1063,15 @@ USA.
       (finish (rtl:make-fetch locative))))
    '(0 1)
    false))
+
+(define-open-coder/value 'PRIMITIVE-BYTE-REF
+  (simple-open-coder
+   (byte-memory-reference 'PRIMITIVE-BYTE-REF false false
+    (lambda (locative expressions finish)
+      expressions
+      (finish (rtl:make-fetch locative))))
+   '(0 1)
+   false))
 
 (let ((fixed-assignment
        (lambda (name type index)
@@ -1104,6 +1113,16 @@ USA.
 (define-open-coder/effect 'PRIMITIVE-OBJECT-SET!
   (simple-open-coder
    (object-memory-reference 'PRIMITIVE-OBJECT-SET! false false
+    (lambda (locative expressions finish)
+      (finish-vector-assignment locative
+				(caddr expressions)
+				finish)))
+   '(0 1 2)
+   false))
+
+(define-open-coder/effect 'PRIMITIVE-BYTE-SET!
+  (simple-open-coder
+   (byte-memory-reference 'PRIMITIVE-BYTE-SET! false false
     (lambda (locative expressions finish)
       (finish-vector-assignment locative
 				(caddr expressions)
@@ -1161,7 +1180,7 @@ USA.
 
 (define-open-coder/value 'STRING-REF
   (simple-open-coder
-   (string-memory-reference 'STRING-REF (ucode-type string) false
+   (byte-memory-reference 'STRING-REF (ucode-type string) false
      (lambda (locative expressions finish)
        expressions
        (finish (rtl:string-fetch locative))))
@@ -1170,7 +1189,7 @@ USA.
 
 (define-open-coder/value 'BYTEVECTOR-U8-REF
   (simple-open-coder
-   (string-memory-reference 'BYTEVECTOR-U8-REF (ucode-type bytevector) #f
+   (byte-memory-reference 'BYTEVECTOR-U8-REF (ucode-type bytevector) #f
      (lambda (locative expressions finish)
        expressions
        (finish (rtl:bytevector-fetch locative))))
@@ -1179,7 +1198,7 @@ USA.
 
 (define-open-coder/value 'VECTOR-8B-REF
   (simple-open-coder
-   (string-memory-reference 'VECTOR-8B-REF (ucode-type string) false
+   (byte-memory-reference 'VECTOR-8B-REF (ucode-type string) false
      (lambda (locative expressions finish)
        expressions
        (finish (rtl:bytevector-fetch locative))))
@@ -1188,9 +1207,9 @@ USA.
 
 (define-open-coder/effect 'STRING-SET!
   (simple-open-coder
-   (string-memory-reference 'STRING-SET!
-			    (ucode-type string)
-			    (ucode-type character)
+   (byte-memory-reference 'STRING-SET!
+			  (ucode-type string)
+			  (ucode-type character)
      (lambda (locative expressions finish)
        (finish-string-assignment locative (caddr expressions) finish)))
    '(0 1 2)
@@ -1198,9 +1217,9 @@ USA.
 
 (define-open-coder/effect 'BYTEVECTOR-U8-SET!
   (simple-open-coder
-   (string-memory-reference 'BYTEVECTOR-U8-SET!
-			    (ucode-type bytevector)
-			    (ucode-type fixnum)
+   (byte-memory-reference 'BYTEVECTOR-U8-SET!
+			  (ucode-type bytevector)
+			  (ucode-type fixnum)
      (lambda (locative expressions finish)
        (finish-bytevector-assignment locative (caddr expressions) finish)))
    '(0 1 2)
@@ -1208,9 +1227,9 @@ USA.
 
 (define-open-coder/effect 'VECTOR-8B-SET!
   (simple-open-coder
-   (string-memory-reference 'VECTOR-8B-SET!
-			    (ucode-type string)
-			    (ucode-type fixnum)
+   (byte-memory-reference 'VECTOR-8B-SET!
+			  (ucode-type string)
+			  (ucode-type fixnum)
      (lambda (locative expressions finish)
        (finish-bytevector-assignment locative (caddr expressions) finish)))
    '(0 1 2)
