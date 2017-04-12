@@ -51,6 +51,7 @@ USA.
 	    (or (microcode-type/name->code name)
 		(cond ((eq? name 'bytevector) #x33)
 		      ((eq? name 'tagged-object) #x25)
+		      ((eq? name 'unicode-string) #x1B)
 		      (else #t))
 		(error "MICROCODE-TYPE: Unknown name" name))))
        (->environment '()))
@@ -75,13 +76,15 @@ USA.
 		       (else #f))))
 	  (define (create-links-from-description description)
 	    (let ((environment
-		   (find-package-environment (package-description/name description))))
+		   (find-package-environment
+		    (package-description/name description))))
 	      (let ((bindings (package-description/exports description)))
 		(let ((n (vector-length bindings)))
 		  (do ((i 0 (fix:+ i 1)))
 		      ((fix:= i n))
 		    (let ((binding (vector-ref bindings i)))
-		      (link-variables (find-package-environment (vector-ref binding 1))
+		      (link-variables (find-package-environment
+				       (vector-ref binding 1))
 				      (if (fix:= (vector-length binding) 3)
 					  (vector-ref binding 2)
 					  (vector-ref binding 0))

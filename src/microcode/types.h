@@ -26,7 +26,7 @@ USA.
 
 /* Type code definitions */
 
-#define TC_FALSE				0x00
+#define TC_FALSE			0x00
 #define TC_LIST				0x01
 #define TC_CHARACTER			0x02
 #define	TC_SCODE_QUOTE			0x03
@@ -53,7 +53,7 @@ USA.
 #define TC_PRIMITIVE			0x18
 #define TC_SEQUENCE			0x19
 #define TC_FIXNUM			0x1A
-/* #define TC_PCOMB1			0x1B */
+#define TC_UNICODE_STRING		0x1B
 #define TC_CONTROL_POINT		0x1C
 #define TC_INTERNED_SYMBOL		0x1D
 #define TC_CHARACTER_STRING		0x1E
@@ -131,7 +131,7 @@ USA.
   /* 0x18 */			"primitive",				\
   /* 0x19 */			"sequence",				\
   /* 0x1A */			"fixnum",				\
-  /* 0x1B */			0,					\
+  /* 0x1B */			"unicode-string",			\
   /* 0x1C */			"control-point",			\
   /* 0x1D */			"interned-symbol",			\
   /* 0x1e */			"string",				\
