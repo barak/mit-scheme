@@ -93,6 +93,15 @@ make_vector (unsigned long length, SCHEME_OBJECT contents, bool gc_check_p)
   }
 }
 
+DEFINE_PRIMITIVE ("ALLOCATE-NM-VECTOR", Prim_allocate_nm_vector, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (allocate_non_marked_vector ((arg_ulong_index_integer (1, N_TYPE_CODES)),
+                                 (arg_ulong_index_integer (2, (1UL << DATUM_LENGTH))),
+                                 true));
+}
+
 DEFINE_PRIMITIVE ("VECTOR-CONS", Prim_vector_cons, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
