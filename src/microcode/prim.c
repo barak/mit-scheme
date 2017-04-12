@@ -147,24 +147,88 @@ Return the object whose representation is INTEGER.")
    In particular, they are not gc-safe: You can screw yourself royally
    by using them.  */
 
-/* (PRIMITIVE-OBJECT-REF OBJECT INDEX)
-   Fetches the index'ed slot in object.
-   Performs no type checking on object.  */
-
-DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-REF", Prim_prim_obj_ref, 2, 2, 0)
+static SCHEME_OBJECT *
+arg_address (int n)
 {
-  PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN (MEMORY_REF ((ARG_REF (1)), (arg_nonnegative_integer (2))));
+  SCHEME_OBJECT object = (ARG_REF (n));
+  if ((gc_ptr_type (object)) != GC_POINTER_NORMAL)
+    error_wrong_type_arg (n);
+  return (OBJECT_ADDRESS (object));
 }
 
-/* (PRIMITIVE-OBJECT-SET! OBJECT INDEX VALUE)
-   Stores value in the index'ed slot in object.
-   Performs no type checking on object.  */
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-REF", Prim_prim_obj_ref, 2, 2,
+  "(OBJECT INDEX)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+Fetches the object at offset INDEX in OBJECT.")
+{
+  PRIMITIVE_HEADER (2);
+  SCHEME_OBJECT * address = arg_address (1);
+  unsigned long index = (arg_ulong_integer (2));
+  PRIMITIVE_RETURN (address[index]);
+}
 
-DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET!", Prim_prim_obj_set, 3, 3, 0)
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET!", Prim_prim_obj_set, 3, 3,
+"(OBJECT INDEX VALUE)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+VALUE may be any object.\n\
+Stores VALUE at offset INDEX in OBJECT.")
 {
   PRIMITIVE_HEADER (3);
-  MEMORY_SET ((ARG_REF (1)), (arg_nonnegative_integer (2)), (ARG_REF (3)));
+  MEMORY_SET ((ARG_REF (1)), (arg_ulong_integer (2)), (ARG_REF (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-BYTE-REF", Prim_prim_byte_ref, 2, 2,
+  "(OBJECT INDEX)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+Fetches the 8-bit unsigned integer at offset INDEX in OBJECT.")
+{
+  PRIMITIVE_HEADER (2);
+  uint8_t * ptr = ((uint8_t *) (OBJECT_ADDRESS (ARG_REF (1))));
+  unsigned long index = (arg_ulong_integer (2));
+  PRIMITIVE_RETURN (ulong_to_integer (ptr[index]));
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-BYTE-SET!", Prim_prim_byte_set, 3, 3,
+"(OBJECT INDEX VALUE)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+VALUE must be an 8-bit unsigned integer.\n\
+Stores VALUE at offset INDEX in OBJECT.")
+{
+  PRIMITIVE_HEADER (3);
+  uint8_t * ptr = ((uint8_t *) (OBJECT_ADDRESS (ARG_REF (1))));
+  unsigned long index = (arg_ulong_integer (2));
+  (ptr[index]) = (arg_ulong_index_integer (3, 0x100));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-U16-REF", Prim_prim_u16_ref, 2, 2,
+  "(OBJECT INDEX)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+Fetches the 16-bit unsigned integer at offset INDEX in OBJECT.")
+{
+  PRIMITIVE_HEADER (2);
+  uint16_t * ptr = ((uint16_t *) (OBJECT_ADDRESS (ARG_REF (1))));
+  unsigned long index = (arg_ulong_integer (2));
+  PRIMITIVE_RETURN (ulong_to_integer (ptr[index]));
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-U16-SET!", Prim_prim_u16_set, 3, 3,
+"(OBJECT INDEX VALUE)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+VALUE must be a 16-bit unsigned integer.\n\
+Stores VALUE at offset INDEX in OBJECT.")
+{
+  PRIMITIVE_HEADER (3);
+  uint16_t * ptr = ((uint16_t *) (OBJECT_ADDRESS (ARG_REF (1))));
+  unsigned long index = (arg_ulong_integer (2));
+  (ptr[index]) = (arg_ulong_index_integer (3, 0x10000));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
