@@ -53,7 +53,10 @@ USA.
 		      ((eq? name 'tagged-object) #x25)
 		      ((eq? name 'unicode-string) #x1B)
 		      (else #t))
-		(error "MICROCODE-TYPE: Unknown name" name))))
+		(error "MICROCODE-TYPE: Unknown name" name)))
+
+	  (define (bytes-per-object)
+	    (vector-ref (gc-space-status) 0)))
        (->environment '()))
       ;; Make new CREF's .pkds usable.
       (eval
