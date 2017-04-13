@@ -504,7 +504,9 @@ USA.
 
 (define (raw-indexed-memory-reference index-locative)
   (lambda (name base-type value-type generator)
+    name base-type value-type
     (lambda (combination expressions finish)
+      combination
       (index-locative (car expressions) (cadr expressions)
 	(lambda (locative)
 	  (generator locative expressions finish))))))
@@ -1146,28 +1148,24 @@ USA.
 ;;;; Characters
 
 (define-open-coder/value 'INTEGER->CHAR
-  (conditional-open-coder
-   (lambda (operands primitive block)
-     operands
-     (not (block/generate-range-checks? block primitive)))
-   (simple-open-coder
-    (lambda (combination expressions finish)
-      (let ((arg (car expressions)))
-	(open-code:with-checks
-	 combination
-	 (list (open-code:type-check arg
-				     (ucode-type fixnum)
-				     'INTEGER->CHAR
-				     (combination/block combination)))
-	 (finish
-	  (rtl:make-cons-non-pointer
-	   (rtl:make-machine-constant (ucode-type character))
-	   (rtl:make-object->datum arg)))
-	 finish
-	 'INTEGER->CHAR
-	 expressions)))
-    '(0)
-    internal-close-coding-for-type-checks)))
+  (simple-open-coder
+   (lambda (combination expressions finish)
+     (let ((arg (car expressions)))
+       (open-code:with-checks
+	combination
+	(list (open-code:type-check arg
+				    (ucode-type fixnum)
+				    'INTEGER->CHAR
+				    (combination/block combination)))
+	(finish
+	 (rtl:make-cons-non-pointer
+	  (rtl:make-machine-constant (ucode-type character))
+	  (rtl:make-object->datum arg)))
+	finish
+	'INTEGER->CHAR
+	expressions)))
+   '(0)
+   internal-close-coding-for-type-checks))
 
 (define-open-coder/value 'CHAR->INTEGER
   (simple-open-coder
