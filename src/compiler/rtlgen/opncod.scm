@@ -502,6 +502,13 @@ USA.
 	 name
 	 expressions)))))
 
+(define (raw-indexed-memory-reference index-locative)
+  (lambda (name base-type value-type generator)
+    (lambda (combination expressions finish)
+      (index-locative (car expressions) (cadr expressions)
+	(lambda (locative)
+	  (generator locative expressions finish))))))
+
 (define (index-locative-generator make-constant-locative
 				  make-variable-locative
 				  header-length-in-units
@@ -526,11 +533,17 @@ USA.
 		(unknown-index)))
 	  (unknown-index)))))
 
-(define object-memory-reference
-  (indexed-memory-reference
-   (lambda (expression) expression false)
+(define raw-object-memory-reference
+  (raw-indexed-memory-reference
    (index-locative-generator rtl:locative-object-offset
 			     rtl:locative-object-index
+			     0
+			     scfg*scfg->scfg!)))
+
+(define raw-byte-memory-reference
+  (raw-indexed-memory-reference
+   (index-locative-generator rtl:locative-byte-offset
+			     rtl:locative-byte-index
 			     0
 			     scfg*scfg->scfg!)))
 
@@ -1057,7 +1070,7 @@ USA.
 
 (define-open-coder/value 'PRIMITIVE-OBJECT-REF
   (simple-open-coder
-   (object-memory-reference 'PRIMITIVE-OBJECT-REF false false
+   (raw-object-memory-reference 'PRIMITIVE-OBJECT-REF false false
     (lambda (locative expressions finish)
       expressions
       (finish (rtl:make-fetch locative))))
@@ -1066,7 +1079,7 @@ USA.
 
 (define-open-coder/value 'PRIMITIVE-BYTE-REF
   (simple-open-coder
-   (byte-memory-reference 'PRIMITIVE-BYTE-REF false false
+   (raw-byte-memory-reference 'PRIMITIVE-BYTE-REF false false
     (lambda (locative expressions finish)
       expressions
       (finish (rtl:make-fetch locative))))
@@ -1112,7 +1125,7 @@ USA.
 
 (define-open-coder/effect 'PRIMITIVE-OBJECT-SET!
   (simple-open-coder
-   (object-memory-reference 'PRIMITIVE-OBJECT-SET! false false
+   (raw-object-memory-reference 'PRIMITIVE-OBJECT-SET! false false
     (lambda (locative expressions finish)
       (finish-vector-assignment locative
 				(caddr expressions)
@@ -1122,7 +1135,7 @@ USA.
 
 (define-open-coder/effect 'PRIMITIVE-BYTE-SET!
   (simple-open-coder
-   (byte-memory-reference 'PRIMITIVE-BYTE-SET! false false
+   (raw-byte-memory-reference 'PRIMITIVE-BYTE-SET! false false
     (lambda (locative expressions finish)
       (finish-vector-assignment locative
 				(caddr expressions)
