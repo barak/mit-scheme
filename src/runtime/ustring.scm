@@ -32,14 +32,110 @@ USA.
 ;;; the runtime system has been converted to this string abstraction.
 
 (declare (usual-integrations))
+
+(define-primitives
+  (allocate-nm-vector 2)
+  (legacy-string? string? 1)
+  (legacy-string-allocate string-allocate 1)
+  (legacy-string-length string-length 1)
+  (legacy-string-ref string-ref 2)
+  (legacy-string-set! string-set! 3)
+  (primitive-byte-ref 2)
+  (primitive-byte-set! 3)
+  (primitive-object-ref 2)
+  (primitive-object-set! 3))
 
-;;;; Code-point vectors
+;;;; Unicode string layout
 
-(define-integrable (cp->byte-index index)
-  (fix:* index 3))
+(select-on-bytes-per-word
+ ;; 32-bit words
+ (begin
+   (define-integrable byte->object-shift -2)
+   (define-integrable flags-index 8)
+   (define-integrable byte0-index 9))
+ ;; 64-bit words
+ (begin
+   (define-integrable byte->object-shift -3)
+   (define-integrable flags-index 16)
+   (define-integrable byte0-index 17)))
 
-(define-integrable (byte->cp-index index)
-  (fix:quotient index 3))
+(define-integrable (full-string? object)
+  (object-type? (ucode-type unicode-string) object))
+
+(define (full-string-allocate k)
+  (let ((string
+	 (allocate-nm-vector (ucode-type unicode-string)
+			     (fix:+ 2
+				    (fix:lsh (fix:* k 3) byte->object-shift)))))
+    (primitive-object-set! string 1 k)
+    (%set-flags! 0 string)
+    string))
+
+(define (make-full-string k #!optional char)
+  (let ((string (full-string-allocate k)))
+    (if (not (default-object? char))
+	(do ((i 0 (fix:+ i 1)))
+	    ((not (fix:< i k)))
+	  (%full-string-set! string char)))
+    string))
+
+(define-integrable (%get-flags string)
+  (primitive-byte-ref string flags-index))
+
+(define-integrable (%set-flags! flags string)
+  (primitive-byte-set! string flags-index flags))
+
+(define-integrable (%full-string-length string)
+  (primitive-object-ref string 1))
+
+(define (%full-string-ref string index)
+  (let ((i (cp-index index)))
+    (integer->char
+     (make-cp (primitive-byte-ref string i)
+	      (primitive-byte-ref string (fix:+ i 1))
+	      (primitive-byte-ref string (fix:+ i 2))))))
+
+(define (%full-string-set! string index char)
+  (let ((i (cp-index index))
+	(cp (char->integer char)))
+    (primitive-byte-set! string i (cp-byte-0 cp))
+    (primitive-byte-set! string (fix:+ i 1) (cp-byte-1 cp))
+    (primitive-byte-set! string (fix:+ i 2) (cp-byte-2 cp))))
+
+;;; Code-point size:
+;;; 0 = 3 bytes, mutable
+;;; 1 = 1 byte, immutable
+;;; 2 = 2 bytes, immutable
+;;; 3 = 3 bytes, immutable
+
+(define-integrable (%get-cp-size string)
+  (fix:and (%get-flags string) #x03))
+
+(define-integrable (%set-cp-size! string cps)
+  (%set-flags! (fix:or (fix:andc (%get-flags string) #x03)
+		       cps)
+	       string))
+
+(define-integrable (%full-string-immutable? string)
+  (fix:> (%get-cp-size string) 0))
+
+(define-integrable flag:nfc #x04)
+(define-integrable flag:nfd #x08)
+
+(define-integrable (%flag-clear? flag string)
+  (fix:= 0 (fix:and (%get-flags string) flag)))
+
+(define-integrable (%flag-set? flag string)
+  (fix:= flag (fix:and (%get-flags string) flag)))
+
+(define-integrable (%flag-clear! flag string)
+  (%set-flags! (fix:andc (%get-flags string) flag) string))
+
+(define-integrable (%flag-set! flag string)
+  (%set-flags! (fix:or (%get-flags string) flag) string))
+
+(define-integrable (cp-index index)
+  (fix:+ byte0-index (fix:* index 3)))
 
 (define-integrable (make-cp b0 b1 b2)
   (fix:+ b0
@@ -50,65 +146,11 @@ USA.
 (define-integrable (cp-byte-1 cp) (fix:and (fix:lsh cp -8) #xFF))
 (define-integrable (cp-byte-2 cp) (fix:and (fix:lsh cp -16) #x1F))
 
-(define (make-cp-vector length)
-  (make-bytevector (cp->byte-index length)))
-
-(define (cp-vector-length bytes)
-  (byte->cp-index (bytevector-length bytes)))
-
-(define (cp-vector-ref bytes index)
-  (let ((i (cp->byte-index index)))
-    (make-cp (bytevector-u8-ref bytes i)
-	     (bytevector-u8-ref bytes (fix:+ i 1))
-	     (bytevector-u8-ref bytes (fix:+ i 2)))))
-
-(define (cp-vector-set! bytes index cp)
-  (let ((i (cp->byte-index index)))
-    (bytevector-u8-set! bytes i (cp-byte-0 cp))
-    (bytevector-u8-set! bytes (fix:+ i 1) (cp-byte-1 cp))
-    (bytevector-u8-set! bytes (fix:+ i 2) (cp-byte-2 cp))))
-
-(define-integrable (cp-vector-copy! to at from start end)
-  (bytevector-copy! to (cp->byte-index at)
-		    from (cp->byte-index start) (cp->byte-index end)))
+(define-integrable (%full-string-copy! to at from start end)
+  (copy-loop primitive-byte-set! to (cp-index at)
+	     primitive-byte-ref from (cp-index start) (cp-index end)))
 
-;;;; Component types
-
-(define-primitives
-  (legacy-string? string? 1)
-  (legacy-string-allocate string-allocate 1)
-  (legacy-string-length string-length 1)
-  (legacy-string-ref string-ref 2)
-  (legacy-string-set! string-set! 3))
-
-(define (full-string? object)
-  (and (%record? object)
-       (fix:= 2 (%record-length object))
-       (eq? %full-string-tag (%record-ref object 0))))
-
-(define-integrable (full-string-allocate k)
-  (%record %full-string-tag (make-cp-vector k)))
-
-(define-integrable %full-string-tag
-  '|#[(runtime ustring)full-string]|)
-
-(define-integrable (%full-string-cp-vector string)
-  (%record-ref string 1))
-
-(define (make-full-string k #!optional char)
-  (let ((string (full-string-allocate k)))
-    (if (not (default-object? char))
-	(string-fill! string char))
-    string))
-
-(define-integrable (full-string-length string)
-  (cp-vector-length (%full-string-cp-vector string)))
-
-(define-integrable (%full-string-ref string index)
-  (integer->char (cp-vector-ref (%full-string-cp-vector string) index)))
-
-(define-integrable (%full-string-set! string index char)
-  (cp-vector-set! (%full-string-cp-vector string) index (char->integer char)))
+;;;; String slices
 
 (define (slice? object)
   (and (%record? object)
@@ -158,7 +200,7 @@ USA.
 
 (define (string-length string)
   (cond ((legacy-string? string) (legacy-string-length string))
-	((full-string? string) (full-string-length string))
+	((full-string? string) (%full-string-length string))
 	((slice? string) (slice-length string))
 	(else (error:not-a string? string 'string-length))))
 
@@ -167,7 +209,7 @@ USA.
   (cond ((legacy-string? string)
 	 (legacy-string-ref string index))
 	((full-string? string)
-	 (if (not (fix:< index (full-string-length string)))
+	 (if (not (fix:< index (%full-string-length string)))
 	     (error:bad-range-argument index 'string-ref))
 	 (%full-string-ref string index))
 	((slice? string)
@@ -185,7 +227,7 @@ USA.
   (cond ((legacy-string? string)
 	 (legacy-string-set! string index char))
 	((full-string? string)
-	 (if (not (fix:< index (full-string-length string)))
+	 (if (not (fix:< index (%full-string-length string)))
 	     (error:bad-range-argument index 'string-set!))
 	 (%full-string-set! string index char))
 	((slice? string)
@@ -336,10 +378,6 @@ USA.
 			     legacy-string-ref from start end)
 		  (%full-string-copy! to at from start end)))))
       final-at)))
-
-(define-integrable (%full-string-copy! to at from start end)
-  (cp-vector-copy! (%full-string-cp-vector to) at
-		   (%full-string-cp-vector from) start end))
 
 (define (string-copy string #!optional start end)
   (let* ((end (fix:end-index end (string-length string) 'string-copy))
@@ -1601,11 +1639,9 @@ USA.
 	  (do ((index start (fix:+ index 1)))
 	      ((not (fix:< index end)) unspecific)
 	    (legacy-string-set! string index char))
-	  (let ((bytes (%full-string-cp-vector string))
-		(cp (char->integer char)))
-	    (do ((i start (fix:+ i 1)))
-		((not (fix:< i end)))
-	      (cp-vector-set! bytes i cp)))))))
+	  (do ((index start (fix:+ index 1)))
+	      ((not (fix:< index end)) unspecific)
+	    (%full-string-set! string index char))))))
 
 (define (string-replace string char1 char2)
   (guarantee bitless-char? char1 'string-replace)
@@ -1643,7 +1679,7 @@ USA.
 	       string
 	       (string->utf8 string))))
 	((full-string? string)
-	 (let ((end (full-string-length string)))
+	 (let ((end (%full-string-length string)))
 	   (if (every-loop char-ascii? %full-string-ref string 0 end)
 	       (let ((to (legacy-string-allocate end)))
 		 (copy-loop legacy-string-set! to 0
