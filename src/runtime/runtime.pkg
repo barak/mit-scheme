@@ -4702,6 +4702,7 @@ USA.
   (export (runtime)
 	  define-deferred
 	  define-primitives
+	  select-on-bytes-per-word
 	  ucode-primitive
 	  ucode-return-address
 	  ucode-type))

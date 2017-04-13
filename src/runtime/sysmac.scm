@@ -73,7 +73,7 @@ USA.
    (lambda (form environment)
      environment
      (make-return-address (apply microcode-return (cdr form))))))
-
+
 (define-syntax define-guarantee
   (sc-macro-transformer
    (lambda (form environment)
@@ -105,3 +105,14 @@ USA.
 	   (,(rename 'LAMBDA) ()
 	     (,(rename 'SET!) ,name ,value)
 	     ,(rename 'UNSPECIFIC))))))))
+
+(define-syntax select-on-bytes-per-word
+  (er-macro-transformer
+   (lambda (form rename compare)
+     rename compare
+     (syntax-check '(KEYWORD EXPRESSION EXPRESSION) form)
+     (let ((bpo (bytes-per-object)))
+       (case bpo
+	 ((4) (cadr form))
+	 ((8) (caddr form))
+	 (else (error "Unsupported bytes-per-object:" bpo)))))))

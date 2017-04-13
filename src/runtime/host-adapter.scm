@@ -107,4 +107,16 @@ USA.
 			(guarantee-binding source-environment source-name)
 			(link-variables environment (vector-ref binding 0)
 					source-environment source-name)))))))))
-       (->environment '(package)))))
+       (->environment '(package)))
+      (eval
+       '(define-syntax select-on-bytes-per-word
+	  (er-macro-transformer
+	   (lambda (form rename compare)
+	     rename compare
+	     (syntax-check '(KEYWORD EXPRESSION EXPRESSION) form)
+	     (let ((bpo (bytes-per-object)))
+	       (case bpo
+		 ((4) (cadr form))
+		 ((8) (caddr form))
+		 (else (error "Unsupported bytes-per-object:" bpo)))))))
+       (->environment '(runtime)))))
