@@ -408,30 +408,31 @@ Interpret (int pop_return_p)
     case TC_BIG_FIXNUM:         /* The self evaluating items */
     case TC_BIG_FLONUM:
     case TC_BYTEVECTOR:
-    case TC_CHARACTER_STRING:
     case TC_CHARACTER:
+    case TC_CHARACTER_STRING:
     case TC_COMPILED_CODE_BLOCK:
     case TC_COMPLEX:
+    case TC_CONSTANT:
     case TC_CONTROL_POINT:
     case TC_DELAYED:
     case TC_ENTITY:
     case TC_ENVIRONMENT:
     case TC_EXTENDED_PROCEDURE:
+    case TC_FALSE:
     case TC_FIXNUM:
     case TC_HUNK3_A:
     case TC_HUNK3_B:
     case TC_INTERNED_SYMBOL:
     case TC_LIST:
     case TC_NON_MARKED_VECTOR:
-    case TC_FALSE:
     case TC_PRIMITIVE:
     case TC_PROCEDURE:
     case TC_QUAD:
     case TC_RATNUM:
     case TC_REFERENCE_TRAP:
     case TC_RETURN_CODE:
+    case TC_UNICODE_STRING:
     case TC_UNINTERNED_SYMBOL:
-    case TC_CONSTANT:
     case TC_VECTOR:
     case TC_VECTOR_16B:
     case TC_VECTOR_1B:
