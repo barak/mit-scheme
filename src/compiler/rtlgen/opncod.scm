@@ -422,7 +422,7 @@ USA.
 	(else
 	 (make-true-pcfg))))
 |#
-
+
 (define (open-code:index-check index-expression limit-locative
 			       primitive block)
   (cond ((not limit-locative)
@@ -557,7 +557,7 @@ USA.
 			     1
 			     scfg*scfg->scfg!)))
 
-(define byte-memory-reference
+(define bytevector-memory-reference
   (indexed-memory-reference
    (lambda (expression) (rtl:make-fetch (rtl:locative-offset expression 1)))
    (index-locative-generator rtl:locative-byte-offset
@@ -590,35 +590,32 @@ USA.
 	       (unknown-index)))))))
 
 (define (rtl:length-fetch locative)
-  (rtl:make-cons-non-pointer (rtl:make-machine-constant (ucode-type fixnum))
-			     (rtl:make-fetch locative)))
-
-(define (rtl:vector-length-fetch locative)
   (rtl:make-cons-non-pointer
    (rtl:make-machine-constant (ucode-type fixnum))
    (rtl:make-object->datum (rtl:make-fetch locative))))
 
-(define (rtl:string-fetch locative)
+;; Assumes that LOCATIVE is an unsigned word with zero in the type field.
+(define (rtl:char-fetch locative)
   (rtl:make-cons-non-pointer (rtl:make-machine-constant (ucode-type character))
 			     (rtl:make-fetch locative)))
 
-(define (rtl:bytevector-fetch locative)
+;; Assumes that LOCATIVE is an unsigned word with zero in the type field.
+(define (rtl:small-fixnum-fetch locative)
   (rtl:make-cons-non-pointer (rtl:make-machine-constant (ucode-type fixnum))
 			     (rtl:make-fetch locative)))
 
 (define (rtl:float-fetch locative)
   (rtl:make-float->object (rtl:make-fetch locative)))
 
-(define (rtl:string-assignment locative value)
-  (rtl:make-assignment locative (rtl:make-char->ascii value)))
+(define (rtl:datum-assignment locative value)
+  (rtl:make-assignment locative (rtl:make-object->datum value)))
 
 (define (rtl:float-assignment locative value)
-  (rtl:make-assignment locative
-		       (rtl:make-object->float value)))
+  (rtl:make-assignment locative (rtl:make-object->float value)))
 
 (define rtl:floating-vector-length-fetch
   (if (back-end:= address-units-per-float address-units-per-object)
-      rtl:vector-length-fetch
+      rtl:length-fetch
       (let ((quantum
 	     (back-end:quotient
 	      (back-end:+ address-units-per-float
@@ -629,41 +626,22 @@ USA.
 	      (rtl:make-fixnum->object
 	       (rtl:make-fixnum-2-args
 		'FIXNUM-LSH
-		(rtl:make-object->fixnum (rtl:vector-length-fetch locative))
+		(rtl:make-object->fixnum (rtl:length-fetch locative))
 		(rtl:make-object->fixnum (rtl:make-constant -1))
 		false)))
 	    (lambda (locative)
 	      (rtl:make-fixnum->object
 	       (rtl:make-fixnum-2-args
 		'FIXNUM-QUOTIENT
-		(rtl:make-object->fixnum (rtl:vector-length-fetch locative))
+		(rtl:make-object->fixnum (rtl:length-fetch locative))
 		(rtl:make-object->fixnum (rtl:make-constant quantum))
 		false)))))))
 
-(define (assignment-finisher make-assignment make-fetch)
-  make-fetch				;ignore
-  (lambda (locative value finish)
-    (let ((assignment (make-assignment locative value)))
-      (if finish
-#|
-	  (load-temporary-register scfg*scfg->scfg! (make-fetch locative)
-	    (lambda (temporary)
-	      (scfg*scfg->scfg! assignment (finish temporary))))
-|#
-	  (scfg*scfg->scfg! assignment (finish (rtl:make-constant unspecific)))
-	  assignment))))
-
-(define finish-vector-assignment
-  (assignment-finisher rtl:make-assignment rtl:make-fetch))
-
-(define finish-string-assignment
-  (assignment-finisher rtl:string-assignment rtl:string-fetch))
-
-(define finish-bytevector-assignment
-  (assignment-finisher rtl:make-assignment rtl:bytevector-fetch))
-
-(define finish-float-assignment
-  (assignment-finisher rtl:float-assignment rtl:float-fetch))
+(define (finish-assignment make-assignment locative value finish)
+  (let ((assignment (make-assignment locative value)))
+    (if finish
+	(scfg*scfg->scfg! assignment (finish (rtl:make-constant unspecific)))
+	assignment)))
 
 ;;;; Open Coders
 
@@ -1028,7 +1006,7 @@ USA.
 	    '(0)
 	    internal-close-coding-for-type-checks)))))
   (user-ref 'VECTOR-LENGTH rtl:length-fetch (ucode-type vector) 0)
-  (user-ref '%RECORD-LENGTH rtl:vector-length-fetch (ucode-type record) 0)
+  (user-ref '%RECORD-LENGTH rtl:length-fetch (ucode-type record) 0)
   (user-ref 'STRING-LENGTH rtl:length-fetch (ucode-type string) 1)
   (user-ref 'BIT-STRING-LENGTH rtl:length-fetch (ucode-type vector-1b) 1)
   (user-ref 'BYTEVECTOR-LENGTH rtl:length-fetch (ucode-type bytevector) 1)
@@ -1054,7 +1032,7 @@ USA.
   (system-ref 'SYSTEM-HUNK3-CXR0 rtl:make-fetch 0)
   (system-ref 'SYSTEM-HUNK3-CXR1 rtl:make-fetch 1)
   (system-ref 'SYSTEM-HUNK3-CXR2 rtl:make-fetch 2)
-  (system-ref 'SYSTEM-VECTOR-SIZE rtl:vector-length-fetch 0))
+  (system-ref 'SYSTEM-VECTOR-SIZE rtl:length-fetch 0))
 
 (let ((make-ref
        (lambda (name type)
@@ -1069,24 +1047,6 @@ USA.
   (make-ref 'VECTOR-REF (ucode-type vector))
   (make-ref '%RECORD-REF (ucode-type record))
   (make-ref 'SYSTEM-VECTOR-REF false))
-
-(define-open-coder/value 'PRIMITIVE-OBJECT-REF
-  (simple-open-coder
-   (raw-object-memory-reference 'PRIMITIVE-OBJECT-REF false false
-    (lambda (locative expressions finish)
-      expressions
-      (finish (rtl:make-fetch locative))))
-   '(0 1)
-   false))
-
-(define-open-coder/value 'PRIMITIVE-BYTE-REF
-  (simple-open-coder
-   (raw-byte-memory-reference 'PRIMITIVE-BYTE-REF false false
-    (lambda (locative expressions finish)
-      expressions
-      (finish (rtl:make-fetch locative))))
-   '(0 1)
-   false))
 
 (let ((fixed-assignment
        (lambda (name type index)
@@ -1100,9 +1060,10 @@ USA.
 					     type
 					     name
 					     (combination/block combination)))
-		 (finish-vector-assignment (rtl:locative-offset object index)
-					   (cadr expressions)
-					   finish)
+		 (finish-assignment rtl:make-assignment
+				    (rtl:locative-offset object index)
+				    (cadr expressions)
+				    finish)
 		 finish
 		 name
 		 expressions)))
@@ -1117,31 +1078,32 @@ USA.
 	   (simple-open-coder
 	    (vector-memory-reference name type false
 	      (lambda (locative expressions finish)
-		(finish-vector-assignment locative
-					  (caddr expressions)
-					  finish)))
+		(finish-assignment rtl:make-assignment
+				   locative
+				   (caddr expressions)
+				   finish)))
 	    '(0 1 2)
 	    internal-close-coding-for-type-or-range-checks)))))
   (make-assignment 'VECTOR-SET! (ucode-type vector))
   (make-assignment '%RECORD-SET! (ucode-type record)))
 
+(define-open-coder/value 'PRIMITIVE-OBJECT-REF
+  (simple-open-coder
+   (raw-object-memory-reference 'PRIMITIVE-OBJECT-REF false false
+    (lambda (locative expressions finish)
+      expressions
+      (finish (rtl:make-fetch locative))))
+   '(0 1)
+   false))
+
 (define-open-coder/effect 'PRIMITIVE-OBJECT-SET!
   (simple-open-coder
    (raw-object-memory-reference 'PRIMITIVE-OBJECT-SET! false false
     (lambda (locative expressions finish)
-      (finish-vector-assignment locative
-				(caddr expressions)
-				finish)))
-   '(0 1 2)
-   false))
-
-(define-open-coder/effect 'PRIMITIVE-BYTE-SET!
-  (simple-open-coder
-   (raw-byte-memory-reference 'PRIMITIVE-BYTE-SET! false false
-    (lambda (locative expressions finish)
-      (finish-vector-assignment locative
-				(caddr expressions)
-				finish)))
+      (finish-assignment rtl:make-assignment
+			 locative
+			 (caddr expressions)
+			 finish)))
    '(0 1 2)
    false))
 
@@ -1189,60 +1151,45 @@ USA.
 
 ;;;; Unboxed vectors
 
-(define-open-coder/value 'STRING-REF
+(define-open-coder/value 'PRIMITIVE-BYTE-REF
   (simple-open-coder
-   (byte-memory-reference 'STRING-REF (ucode-type string) false
-     (lambda (locative expressions finish)
-       expressions
-       (finish (rtl:string-fetch locative))))
+   (raw-byte-memory-reference 'PRIMITIVE-BYTE-REF false false
+    (lambda (locative expressions finish)
+      expressions
+      (finish (rtl:small-fixnum-fetch locative))))
    '(0 1)
-   internal-close-coding-for-type-or-range-checks))
+   false))
+
+(define-open-coder/effect 'PRIMITIVE-BYTE-SET!
+  (simple-open-coder
+   (raw-byte-memory-reference 'PRIMITIVE-BYTE-SET! false false
+    (lambda (locative expressions finish)
+      (finish-assignment rtl:datum-assignment
+			 locative
+			 (caddr expressions)
+			 finish)))
+   '(0 1 2)
+   false))
 
 (define-open-coder/value 'BYTEVECTOR-U8-REF
   (simple-open-coder
-   (byte-memory-reference 'BYTEVECTOR-U8-REF (ucode-type bytevector) #f
+   (bytevector-memory-reference 'BYTEVECTOR-U8-REF (ucode-type bytevector) #f
      (lambda (locative expressions finish)
        expressions
-       (finish (rtl:bytevector-fetch locative))))
+       (finish (rtl:small-fixnum-fetch locative))))
    '(0 1)
-   internal-close-coding-for-type-or-range-checks))
-
-(define-open-coder/value 'VECTOR-8B-REF
-  (simple-open-coder
-   (byte-memory-reference 'VECTOR-8B-REF (ucode-type string) false
-     (lambda (locative expressions finish)
-       expressions
-       (finish (rtl:bytevector-fetch locative))))
-   '(0 1)
-   internal-close-coding-for-type-or-range-checks))
-
-(define-open-coder/effect 'STRING-SET!
-  (simple-open-coder
-   (byte-memory-reference 'STRING-SET!
-			  (ucode-type string)
-			  (ucode-type character)
-     (lambda (locative expressions finish)
-       (finish-string-assignment locative (caddr expressions) finish)))
-   '(0 1 2)
    internal-close-coding-for-type-or-range-checks))
 
 (define-open-coder/effect 'BYTEVECTOR-U8-SET!
   (simple-open-coder
-   (byte-memory-reference 'BYTEVECTOR-U8-SET!
-			  (ucode-type bytevector)
-			  (ucode-type fixnum)
+   (bytevector-memory-reference 'BYTEVECTOR-U8-SET!
+				(ucode-type bytevector)
+				(ucode-type fixnum)
      (lambda (locative expressions finish)
-       (finish-bytevector-assignment locative (caddr expressions) finish)))
-   '(0 1 2)
-   internal-close-coding-for-type-or-range-checks))
-
-(define-open-coder/effect 'VECTOR-8B-SET!
-  (simple-open-coder
-   (byte-memory-reference 'VECTOR-8B-SET!
-			  (ucode-type string)
-			  (ucode-type fixnum)
-     (lambda (locative expressions finish)
-       (finish-bytevector-assignment locative (caddr expressions) finish)))
+       (finish-assignment rtl:datum-assignment
+			  locative
+			  (caddr expressions)
+			  finish)))
    '(0 1 2)
    internal-close-coding-for-type-or-range-checks))
 
@@ -1261,7 +1208,54 @@ USA.
 			    (ucode-type flonum)
 			    (ucode-type flonum)
      (lambda (locative expressions finish)
-       (finish-float-assignment locative (caddr expressions) finish)))
+       (finish-assignment rtl:float-assignment
+			  locative
+			  (caddr expressions)
+			  finish)))
+   '(0 1 2)
+   internal-close-coding-for-type-or-range-checks))
+
+(define-open-coder/value 'STRING-REF
+  (simple-open-coder
+   (bytevector-memory-reference 'STRING-REF (ucode-type string) false
+     (lambda (locative expressions finish)
+       expressions
+       (finish (rtl:char-fetch locative))))
+   '(0 1)
+   internal-close-coding-for-type-or-range-checks))
+
+(define-open-coder/effect 'STRING-SET!
+  (simple-open-coder
+   (bytevector-memory-reference 'STRING-SET!
+				(ucode-type string)
+				(ucode-type character)
+     (lambda (locative expressions finish)
+       (finish-assignment rtl:datum-assignment
+			  locative
+			  (caddr expressions)
+			  finish)))
+   '(0 1 2)
+   internal-close-coding-for-type-or-range-checks))
+
+(define-open-coder/value 'VECTOR-8B-REF
+  (simple-open-coder
+   (bytevector-memory-reference 'VECTOR-8B-REF (ucode-type string) false
+     (lambda (locative expressions finish)
+       expressions
+       (finish (rtl:small-fixnum-fetch locative))))
+   '(0 1)
+   internal-close-coding-for-type-or-range-checks))
+
+(define-open-coder/effect 'VECTOR-8B-SET!
+  (simple-open-coder
+   (bytevector-memory-reference 'VECTOR-8B-SET!
+				(ucode-type string)
+				(ucode-type fixnum)
+     (lambda (locative expressions finish)
+       (finish-assignment rtl:datum-assignment
+			  locative
+			  (caddr expressions)
+			  finish)))
    '(0 1 2)
    internal-close-coding-for-type-or-range-checks))
 
