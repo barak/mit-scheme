@@ -76,7 +76,7 @@ USA.
     (if (not (default-object? char))
 	(do ((i 0 (fix:+ i 1)))
 	    ((not (fix:< i k)))
-	  (%full-string-set! string char)))
+	  (%full-string-set! string i char)))
     string))
 
 (define-integrable (%get-flags string)
