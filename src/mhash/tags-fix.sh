@@ -5,7 +5,7 @@
 
 set -e
 : ${MIT_SCHEME_EXE=mit-scheme}
-${MIT_SCHEME_EXE} --batch-mode -- "${@}" <<\EOF
+${MIT_SCHEME_EXE} --batch-mode -- ${1+"$@"} <<\EOF
 (let ((name (car (command-line))))
   (let ((shim.c-prefix (string-append name "-shim.c,"))
 	(const.c-prefix (string-append name "-const.c,")))

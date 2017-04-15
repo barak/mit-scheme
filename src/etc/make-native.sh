@@ -28,7 +28,7 @@ set -e
 
 FASTP=no
 NATIVE_CODE=
-for ARG in "${@}"; do
+for ARG in ${1+"$@"}; do
     case ${ARG} in
     --help|--help=*|--version)
 	FASTP=yes
@@ -40,7 +40,7 @@ for ARG in "${@}"; do
 done
 
 if [ ${FASTP} = yes ]; then
-    exec ./configure "${@}"
+    exec ./configure ${1+"$@"}
 fi
 
 : ${MIT_SCHEME_EXE:=mit-scheme-c}
@@ -112,5 +112,5 @@ EOF
 
 run_make stamp_install-native-boot-compiler c-clean distclean
 
-run_configure "${@}"
+run_configure ${1+"$@"}
 run_make stamp_native-compile-scheme build-bands clean-boot-root

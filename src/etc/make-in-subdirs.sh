@@ -28,6 +28,6 @@ set -e
 
 TARGET=${1}
 shift
-for SUBDIR in "${@}"; do
+for SUBDIR in ${1+"$@"}; do
     run_cmd_in_dir "${SUBDIR}" make "${TARGET}"
 done

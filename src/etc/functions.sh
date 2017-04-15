@@ -32,12 +32,12 @@ run_cmd ()
 
 run_configure ()
 {
-    run_cmd ./configure "${@}"
+    run_cmd ./configure ${1+"$@"}
 }
 
 run_make ()
 {
-    run_cmd make "${@}"
+    run_cmd make ${1+"$@"}
 }
 
 run_cmd_in_dir ()
@@ -102,7 +102,7 @@ maybe_rm ()
 {
     FILES=
     DIRS=
-    for FN in "${@}"; do
+    for FN in ${1+"$@"}; do
 	if [ -L "${FN}" ]; then
 	    :
 	elif [ -f "${FN}" ]; then

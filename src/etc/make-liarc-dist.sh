@@ -30,5 +30,5 @@ set -e
 export MIT_SCHEME_EXE
 
 run_cmd ./Setup.sh
-run_configure --enable-native-code=c "${@}"
+run_configure --enable-native-code=c ${1+"$@"}
 run_make liarc-dist

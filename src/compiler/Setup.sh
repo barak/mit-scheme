@@ -29,4 +29,4 @@ set -eu
 
 . ../etc/functions.sh
 
-../etc/Setup.sh ${@:+"${@}"}
+../etc/Setup.sh ${1+"$@"}

@@ -58,9 +58,9 @@ if [ ! -x configure ]; then
     autoconf
     autoconf=done
 fi
-( cd cmpauxmd && make ${@:+"${@}"} )
+( cd cmpauxmd && make ${1+"$@"} )
 if [ ! -f Makefile.in ]; then
     makeinit=clean
-    makegen/makeinit.sh ${@:+"${@}"}
+    makegen/makeinit.sh ${1+"$@"}
     makeinit=done
 fi

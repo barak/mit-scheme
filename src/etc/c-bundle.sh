@@ -43,7 +43,7 @@ shift 3
 GEN_NONCE=${AUXDIR}/gen-nonce
 EXTRACT_DECLS=${AUXDIR}/extract-liarc-decls
 
-"${EXTRACT_DECLS}" "${@}" > "${SYSTEM}.h"
+"${EXTRACT_DECLS}" ${1+"$@"} > "${SYSTEM}.h"
 
 cat <<EOF > "${SYSTEM}.c"
 

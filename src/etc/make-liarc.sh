@@ -27,7 +27,7 @@ set -e
 . etc/functions.sh
 
 FASTP=no
-for ARG in "${@}"; do
+for ARG in ${1+"$@"}; do
     case ${ARG} in
     --help|--help=*|--version)
 	FASTP=yes
@@ -36,7 +36,7 @@ for ARG in "${@}"; do
 done
 
 if [ ${FASTP} = yes ]; then
-    exec ./configure "${@}"
+    exec ./configure ${1+"$@"}
 fi
 
 if [ ! -f runtime/runtime-unx.c ]; then
@@ -55,5 +55,5 @@ run_configure --prefix=`pwd`/boot-root --enable-native-code=c \
     --disable-host-scheme-test
 run_make stamp_install-liarc-boot-compiler c-clean distclean
 
-run_configure --enable-native-code=c --disable-host-scheme-test "${@}"
+run_configure --enable-native-code=c --disable-host-scheme-test ${1+"$@"}
 run_make stamp_compile-liarc-bundles build-bands clean-boot-root

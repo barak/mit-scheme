@@ -102,5 +102,5 @@ maybe_link config.guess microcode/config.guess
 for SUBDIR in ${INSTALLED_SUBDIRS} ${OTHER_SUBDIRS}; do
     echo "setting up ${SUBDIR}"
     maybe_link ${SUBDIR}/Setup.sh ../etc/Setup.sh
-    (cd ${SUBDIR} && ./Setup.sh ${@:+"${@}"})
+    (cd ${SUBDIR} && ./Setup.sh ${1+"$@"})
 done
