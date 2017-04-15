@@ -52,7 +52,7 @@ EOF
 fi
 
 run_configure --prefix=`pwd`/boot-root --enable-native-code=c \
-    --disable-host-scheme-test
+    --disable-host-scheme-test --without-x
 run_make stamp_install-liarc-boot-compiler c-clean distclean
 
 run_configure --enable-native-code=c --disable-host-scheme-test ${1+"$@"}
