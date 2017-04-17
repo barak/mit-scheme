@@ -589,10 +589,14 @@ USA.
 		     (unknown-index)))
 	       (unknown-index)))))))
 
-(define (rtl:length-fetch locative)
-  (rtl:make-cons-non-pointer
-   (rtl:make-machine-constant (ucode-type fixnum))
-   (rtl:make-object->datum (rtl:make-fetch locative))))
+(define (rtl:type-fetch locative)
+  (rtl:make-cons-non-pointer (rtl:make-machine-constant (ucode-type fixnum))
+			     (rtl:make-object->type (rtl:make-fetch locative))))
+
+(define (rtl:datum-fetch locative)
+  (rtl:make-cons-non-pointer (rtl:make-machine-constant (ucode-type fixnum))
+			     (rtl:make-object->datum
+			      (rtl:make-fetch locative))))
 
 ;; Assumes that LOCATIVE is an unsigned word with zero in the type field.
 (define (rtl:char-fetch locative)
@@ -607,6 +611,19 @@ USA.
 (define (rtl:float-fetch locative)
   (rtl:make-float->object (rtl:make-fetch locative)))
 
+(define (rtl:type-merge locative value)
+  (rtl:make-assignment
+   locative
+   (rtl:make-cons-non-pointer (rtl:make-object->datum value)
+			      (rtl:make-object->datum
+			       (rtl:make-fetch locative)))))
+
+(define (rtl:datum-merge locative value)
+  (rtl:make-assignment
+   locative
+   (rtl:make-cons-non-pointer (rtl:make-object->type (rtl:make-fetch locative))
+			      (rtl:make-object->datum value))))
+
 (define (rtl:datum-assignment locative value)
   (rtl:make-assignment locative (rtl:make-object->datum value)))
 
@@ -615,7 +632,7 @@ USA.
 
 (define rtl:floating-vector-length-fetch
   (if (back-end:= address-units-per-float address-units-per-object)
-      rtl:length-fetch
+      rtl:datum-fetch
       (let ((quantum
 	     (back-end:quotient
 	      (back-end:+ address-units-per-float
@@ -626,14 +643,14 @@ USA.
 	      (rtl:make-fixnum->object
 	       (rtl:make-fixnum-2-args
 		'FIXNUM-LSH
-		(rtl:make-object->fixnum (rtl:length-fetch locative))
+		(rtl:make-object->fixnum (rtl:datum-fetch locative))
 		(rtl:make-object->fixnum (rtl:make-constant -1))
 		false)))
 	    (lambda (locative)
 	      (rtl:make-fixnum->object
 	       (rtl:make-fixnum-2-args
 		'FIXNUM-QUOTIENT
-		(rtl:make-object->fixnum (rtl:length-fetch locative))
+		(rtl:make-object->fixnum (rtl:datum-fetch locative))
 		(rtl:make-object->fixnum (rtl:make-constant quantum))
 		false)))))))
 
@@ -775,7 +792,7 @@ USA.
   (simple-open-coder
    (lambda (combination expressions finish)
      combination expressions
-     (finish (rtl:length-fetch register:int-mask)))
+     (finish (rtl:datum-fetch register:int-mask)))
    '()
    false))
 
@@ -800,7 +817,7 @@ USA.
 				    (rtl:make-object->datum mask))))
 	  (if finish
 	      (load-temporary-register scfg*scfg->scfg!
-				       (rtl:length-fetch register:int-mask)
+				       (rtl:datum-fetch register:int-mask)
 		(lambda (temporary)
 		  (scfg*scfg->scfg! assignment (finish temporary))))
 	      assignment))
@@ -1005,11 +1022,11 @@ USA.
 		 expressions)))
 	    '(0)
 	    internal-close-coding-for-type-checks)))))
-  (user-ref 'VECTOR-LENGTH rtl:length-fetch (ucode-type vector) 0)
-  (user-ref '%RECORD-LENGTH rtl:length-fetch (ucode-type record) 0)
-  (user-ref 'STRING-LENGTH rtl:length-fetch (ucode-type string) 1)
-  (user-ref 'BIT-STRING-LENGTH rtl:length-fetch (ucode-type vector-1b) 1)
-  (user-ref 'BYTEVECTOR-LENGTH rtl:length-fetch (ucode-type bytevector) 1)
+  (user-ref 'VECTOR-LENGTH rtl:datum-fetch (ucode-type vector) 0)
+  (user-ref '%RECORD-LENGTH rtl:datum-fetch (ucode-type record) 0)
+  (user-ref 'STRING-LENGTH rtl:datum-fetch (ucode-type string) 1)
+  (user-ref 'BIT-STRING-LENGTH rtl:datum-fetch (ucode-type vector-1b) 1)
+  (user-ref 'BYTEVECTOR-LENGTH rtl:datum-fetch (ucode-type bytevector) 1)
   (user-ref 'FLOATING-VECTOR-LENGTH
 	    rtl:floating-vector-length-fetch
 	    (ucode-type flonum)
@@ -1032,7 +1049,7 @@ USA.
   (system-ref 'SYSTEM-HUNK3-CXR0 rtl:make-fetch 0)
   (system-ref 'SYSTEM-HUNK3-CXR1 rtl:make-fetch 1)
   (system-ref 'SYSTEM-HUNK3-CXR2 rtl:make-fetch 2)
-  (system-ref 'SYSTEM-VECTOR-SIZE rtl:length-fetch 0))
+  (system-ref 'SYSTEM-VECTOR-SIZE rtl:datum-fetch 0))
 
 (let ((make-ref
        (lambda (name type)
@@ -1086,7 +1103,7 @@ USA.
 	    internal-close-coding-for-type-or-range-checks)))))
   (make-assignment 'VECTOR-SET! (ucode-type vector))
   (make-assignment '%RECORD-SET! (ucode-type record)))
-
+
 (define-open-coder/value 'PRIMITIVE-OBJECT-REF
   (simple-open-coder
    (raw-object-memory-reference 'PRIMITIVE-OBJECT-REF false false
@@ -1096,11 +1113,51 @@ USA.
    '(0 1)
    false))
 
+(define-open-coder/value 'PRIMITIVE-TYPE-REF
+  (simple-open-coder
+   (raw-object-memory-reference 'PRIMITIVE-TYPE-REF false false
+    (lambda (locative expressions finish)
+      expressions
+      (finish (rtl:type-fetch locative))))
+   '(0 1)
+   false))
+
+(define-open-coder/value 'PRIMITIVE-DATUM-REF
+  (simple-open-coder
+   (raw-object-memory-reference 'PRIMITIVE-DATUM-REF false false
+    (lambda (locative expressions finish)
+      expressions
+      (finish (rtl:datum-fetch locative))))
+   '(0 1)
+   false))
+
 (define-open-coder/effect 'PRIMITIVE-OBJECT-SET!
   (simple-open-coder
    (raw-object-memory-reference 'PRIMITIVE-OBJECT-SET! false false
     (lambda (locative expressions finish)
       (finish-assignment rtl:make-assignment
+			 locative
+			 (caddr expressions)
+			 finish)))
+   '(0 1 2)
+   false))
+
+(define-open-coder/effect 'PRIMITIVE-TYPE-SET!
+  (simple-open-coder
+   (raw-object-memory-reference 'PRIMITIVE-TYPE-SET! false false
+    (lambda (locative expressions finish)
+      (finish-assignment rtl:type-merge
+			 locative
+			 (caddr expressions)
+			 finish)))
+   '(0 1 2)
+   false))
+
+(define-open-coder/effect 'PRIMITIVE-DATUM-SET!
+  (simple-open-coder
+   (raw-object-memory-reference 'PRIMITIVE-DATUM-SET! false false
+    (lambda (locative expressions finish)
+      (finish-assignment rtl:datum-merge
 			 locative
 			 (caddr expressions)
 			 finish)))
