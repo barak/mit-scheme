@@ -163,9 +163,33 @@ INDEX must be an unsigned integer.\n\
 Fetches the object at offset INDEX in OBJECT.")
 {
   PRIMITIVE_HEADER (2);
-  SCHEME_OBJECT * address = arg_address (1);
+  SCHEME_OBJECT * address = (arg_address (1));
   unsigned long index = (arg_ulong_integer (2));
   PRIMITIVE_RETURN (address[index]);
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-TYPE-REF", Prim_prim_type_ref, 2, 2,
+  "(OBJECT INDEX)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+Fetches the type of the object at offset INDEX in OBJECT.")
+{
+  PRIMITIVE_HEADER (2);
+  SCHEME_OBJECT * address = (arg_address (1));
+  unsigned long index = (arg_ulong_integer (2));
+  PRIMITIVE_RETURN (ulong_to_integer (OBJECT_TYPE (address[index])));
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-DATUM-REF", Prim_prim_datum_ref, 2, 2,
+  "(OBJECT INDEX)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+Fetches the datum of the object at offset INDEX in OBJECT.")
+{
+  PRIMITIVE_HEADER (2);
+  SCHEME_OBJECT * address = (arg_address (1));
+  unsigned long index = (arg_ulong_integer (2));
+  PRIMITIVE_RETURN (ulong_to_integer (OBJECT_DATUM (address[index])));
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET!", Prim_prim_obj_set, 3, 3,
@@ -177,6 +201,36 @@ Stores VALUE at offset INDEX in OBJECT.")
 {
   PRIMITIVE_HEADER (3);
   MEMORY_SET ((ARG_REF (1)), (arg_ulong_integer (2)), (ARG_REF (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-TYPE-SET!", Prim_prim_type_set, 3, 3,
+"(OBJECT INDEX TYPE)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+TYPE must be a type code.\n\
+Sets the type of the object at offset INDEX in OBJECT to TYPE.")
+{
+  PRIMITIVE_HEADER (3);
+  SCHEME_OBJECT * address = (arg_address (1));
+  unsigned long index = (arg_ulong_integer (2));
+  unsigned long type = (arg_type (3));
+  (address[index]) = (OBJECT_NEW_TYPE (type, (address[index])));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-DATUM-SET!", Prim_prim_datum_set, 3, 3,
+"(OBJECT INDEX DATUM)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+DATUM must be a datum value.\n\
+Sets the datum of the object at offset INDEX in OBJECT to DATUM.")
+{
+  PRIMITIVE_HEADER (3);
+  SCHEME_OBJECT * address = (arg_address (1));
+  unsigned long index = (arg_ulong_integer (2));
+  unsigned long datum = (arg_datum (3));
+  (address[index]) = (OBJECT_NEW_DATUM ((address[index]), datum));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
