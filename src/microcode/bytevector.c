@@ -150,18 +150,17 @@ DEFINE_PRIMITIVE ("bytevector-copy", Prim_bytevector_copy, 3, 3, 0)
 DEFINE_PRIMITIVE ("bytevector-copy!", Prim_bytevector_copyx, 5, 5, 0)
 {
   PRIMITIVE_HEADER (5);
-  {
-    unsigned long to_length;
-    uint8_t * to_v = (arg_bytevector (1, (&to_length)));
-    unsigned long to_start = (arg_ulong_index_integer (2, (to_length + 1)));
-    unsigned long from_length;
-    uint8_t * from_v = (arg_bytevector (3, (&from_length)));
-    unsigned long from_end = (arg_ulong_index_integer (5, (from_length + 1)));
-    unsigned long from_start = (arg_ulong_index_integer (4, (from_end + 1)));
-    unsigned long length = (from_end - from_start);
-    if ((to_length - to_start) < length)
-      error_bad_range_arg (5);
-    memmove ((to_v + to_start), (from_v + from_start), length);
-  }
-  PRIMITIVE_RETURN (UNSPECIFIC);
+  unsigned long to_length;
+  uint8_t * to_v = (arg_bytevector (1, (&to_length)));
+  unsigned long to_start = (arg_ulong_index_integer (2, (to_length + 1)));
+  unsigned long from_length;
+  uint8_t * from_v = (arg_bytevector (3, (&from_length)));
+  unsigned long from_end = (arg_ulong_index_integer (5, (from_length + 1)));
+  unsigned long from_start = (arg_ulong_index_integer (4, (from_end + 1)));
+  unsigned long length = (from_end - from_start);
+  unsigned long to_end = (to_start + length);
+  if (to_end > to_length)
+    error_bad_range_arg (5);
+  memmove ((to_v + to_start), (from_v + from_start), length);
+  PRIMITIVE_RETURN (ulong_to_integer (to_end));
 }
