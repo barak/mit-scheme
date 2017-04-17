@@ -602,7 +602,7 @@ Equivalent to @code{(string-copy @var{string} 0 @var{end})}.
 Equivalent to @code{(string-copy @var{string} @var{start})}.
 @end deffn
 
-@deffn procedure string-builder buffer-length ->nfc?
+@deffn procedure string-builder buffer-length normalization
 This procedure's arguments are keyword arguments; that is, each
 argument is a symbol of the same name followed by its value.  The
 order of the arguments doesn't matter, but each argument may appear
@@ -623,10 +623,9 @@ size of the internal buffers that are used to accumulate characters.
 Larger values make the builder somewhat faster but use more space.
 The default value of this argument is @code{16}.
 @item
-@var{->nfc?} is a boolean that says whether the built string is
-normalized into Unicode Normalization Form C; if false no
-normalization is done.  The default value of this argument is
-@code{#t}.
+@var{normalization} is a symbol: either @code{none}, @code{nfc}, or
+@code{nfd}, which directs the builder whether and how to normalize the
+result.  The default value of this argument is @code{nfc}.
 @end itemize
 
 The returned string builder is a procedure that accepts zero or one

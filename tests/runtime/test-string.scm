@@ -175,7 +175,7 @@ USA.
      'expression string)))
 
 (define (convert-break-test-case test-case)
-  (let ((builder (string-builder '->nfc? #f)))
+  (let ((builder (string-builder 'normalization 'none)))
     (let loop ((test-case test-case) (index 0) (breaks '()))
       (let ((breaks
 	     (if (car test-case)

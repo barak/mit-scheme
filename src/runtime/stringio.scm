@@ -183,8 +183,7 @@ USA.
       (with-output-to-port port thunk))))
 
 (define (open-output-string)
-  (make-textual-port string-output-type
-		     (make-ostate (string-builder 'copy? #t) 0)))
+  (make-textual-port string-output-type (make-ostate (string-builder) 0)))
 
 (define-structure ostate
   (builder #f read-only #t)
@@ -209,7 +208,7 @@ USA.
 (define (string-out/write-substring port string start end)
   (let ((os (textual-port-state port))
 	(n (fix:- end start)))
-    ((ostate-builder os) (string-slice string start end))
+    ((ostate-builder os) (string-copy string start end))
     (update-column-for-substring! os string start end)
     n))
 
