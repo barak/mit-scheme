@@ -42,22 +42,24 @@ USA.
   (legacy-string-set! string-set! 3)
   (primitive-byte-ref 2)
   (primitive-byte-set! 3)
-  (primitive-object-ref 2)
-  (primitive-object-set! 3))
+  (primitive-datum-ref 2)
+  (primitive-datum-set! 3)
+  (primitive-type-ref 2)
+  (primitive-type-set! 3))
 
 ;;;; Unicode string layout
 
 (select-on-bytes-per-word
  ;; 32-bit words
  (begin
+   (define-integrable byte->object-offset 3)
    (define-integrable byte->object-shift -2)
-   (define-integrable flags-index 8)
-   (define-integrable byte0-index 9))
+   (define-integrable byte0-index 8))
  ;; 64-bit words
  (begin
+   (define-integrable byte->object-offset 7)
    (define-integrable byte->object-shift -3)
-   (define-integrable flags-index 16)
-   (define-integrable byte0-index 17)))
+   (define-integrable byte0-index 16)))
 
 (define-integrable (full-string? object)
   (object-type? (ucode-type unicode-string) object))
@@ -65,11 +67,28 @@ USA.
 (define (full-string-allocate k)
   (let ((string
 	 (allocate-nm-vector (ucode-type unicode-string)
-			     (fix:+ 2
-				    (fix:lsh (fix:* k 3) byte->object-shift)))))
-    (primitive-object-set! string 1 k)
+			     (fix:+ 1
+				    (fix:lsh (fix:+ (fix:* k 3)
+						    byte->object-offset)
+					     byte->object-shift)))))
+    (%set-string-length! string k)
     (%set-flags! 0 string)
     string))
+
+(define-integrable (cp-index index)
+  (fix:+ byte0-index (fix:* index 3)))
+
+(define-integrable (%get-flags string)
+  (primitive-type-ref string 1))
+
+(define-integrable (%set-flags! flags string)
+  (primitive-type-set! string 1 flags))
+
+(define-integrable (%string-length string)
+  (primitive-datum-ref string 1))
+
+(define-integrable (%set-string-length! string length)
+  (primitive-datum-set! string 1 length))
 
 (define (make-full-string k #!optional char)
   (let ((string (full-string-allocate k)))
@@ -78,15 +97,6 @@ USA.
 	    ((not (fix:< i k)))
 	  (%full-string-set! string i char)))
     string))
-
-(define-integrable (%get-flags string)
-  (primitive-byte-ref string flags-index))
-
-(define-integrable (%set-flags! flags string)
-  (primitive-byte-set! string flags-index flags))
-
-(define-integrable (%full-string-length string)
-  (primitive-object-ref string 1))
 
 (define (%full-string-ref string index)
   (let ((i (cp-index index)))
@@ -133,9 +143,6 @@ USA.
 
 (define-integrable (%flag-set! flag string)
   (%set-flags! (fix:or (%get-flags string) flag) string))
-
-(define-integrable (cp-index index)
-  (fix:+ byte0-index (fix:* index 3)))
 
 (define-integrable (make-cp b0 b1 b2)
   (fix:+ b0
@@ -200,7 +207,7 @@ USA.
 
 (define (string-length string)
   (cond ((legacy-string? string) (legacy-string-length string))
-	((full-string? string) (%full-string-length string))
+	((full-string? string) (%string-length string))
 	((slice? string) (slice-length string))
 	(else (error:not-a string? string 'string-length))))
 
@@ -209,7 +216,7 @@ USA.
   (cond ((legacy-string? string)
 	 (legacy-string-ref string index))
 	((full-string? string)
-	 (if (not (fix:< index (%full-string-length string)))
+	 (if (not (fix:< index (%string-length string)))
 	     (error:bad-range-argument index 'string-ref))
 	 (%full-string-ref string index))
 	((slice? string)
@@ -227,7 +234,7 @@ USA.
   (cond ((legacy-string? string)
 	 (legacy-string-set! string index char))
 	((full-string? string)
-	 (if (not (fix:< index (%full-string-length string)))
+	 (if (not (fix:< index (%string-length string)))
 	     (error:bad-range-argument index 'string-set!))
 	 (%full-string-set! string index char))
 	((slice? string)
@@ -1679,7 +1686,7 @@ USA.
 	       string
 	       (string->utf8 string))))
 	((full-string? string)
-	 (let ((end (%full-string-length string)))
+	 (let ((end (%string-length string)))
 	   (if (every-loop char-ascii? %full-string-ref string 0 end)
 	       (let ((to (legacy-string-allocate end)))
 		 (copy-loop legacy-string-set! to 0
