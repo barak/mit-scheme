@@ -309,6 +309,7 @@ USA.
 	       (RETURN-ADDRESS ,unparse/return-address)
 	       (STRING ,unparse/string)
 	       (TAGGED-OBJECT ,unparse/tagged-object)
+	       (UNICODE-STRING ,unparse/string)
 	       (UNINTERNED-SYMBOL ,unparse/uninterned-symbol)
 	       (VARIABLE ,unparse/variable)
 	       (VECTOR ,unparse/vector)
