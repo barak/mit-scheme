@@ -911,6 +911,7 @@ stamp_native-compile-scheme: compile-microcode
 
 
 mostlyclean clean distclean maintainer-clean c-clean:
+	$(MAKE) -f Makefile.tools clean
 	$(top_srcdir)/Clean.sh $@ $(SUBDIRS)
 
 clean-boot-root:
