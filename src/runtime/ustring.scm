@@ -167,20 +167,20 @@ USA.
     ((2) (ustring2-ref string index))
     (else (ustring3-ref string index))))
 
-(define (ustring1-ref string index)
-  (integer->char (primitive-byte-ref string (cp1-index index))))
+(define-integrable (ustring1-ref string index)
+  (integer->char (cp1-ref string index)))
 
-(define (ustring1-set! string index char)
+(define-integrable (ustring1-set! string index char)
   (primitive-byte-set! string (cp1-index index) (char->integer char)))
+
+(define-integrable (cp1-ref string index)
+  (primitive-byte-ref string (cp1-index index)))
 
 (define-integrable (cp1-index index)
   (fix:+ byte0-index index))
 
-(define (ustring2-ref string index)
-  (let ((i (cp2-index index)))
-    (integer->char
-     (fix:+ (primitive-byte-ref string i)
-	    (fix:lsh (primitive-byte-ref string (fix:+ i 1)) 8)))))
+(define-integrable (ustring2-ref string index)
+  (integer->char (cp2-ref string index)))
 
 (define (ustring2-set! string index char)
   (let ((i (cp2-index index))
@@ -188,15 +188,16 @@ USA.
     (primitive-byte-set! string i (fix:and cp #xFF))
     (primitive-byte-set! string (fix:+ i 1) (fix:lsh cp -8))))
 
+(define (cp2-ref string index)
+  (let ((i (cp2-index index)))
+    (fix:or (primitive-byte-ref string i)
+	    (fix:lsh (primitive-byte-ref string (fix:+ i 1)) 8))))
+
 (define-integrable (cp2-index index)
   (fix:+ byte0-index (fix:* 2 index)))
 
-(define (ustring3-ref string index)
-  (let ((i (cp3-index index)))
-    (integer->char
-     (fix:+ (primitive-byte-ref string i)
-	    (fix:+ (fix:lsh (primitive-byte-ref string (fix:+ i 1)) 8)
-		   (fix:lsh (primitive-byte-ref string (fix:+ i 2)) 16))))))
+(define-integrable (ustring3-ref string index)
+  (integer->char (cp3-ref string index)))
 
 (define (ustring3-set! string index char)
   (let ((i (cp3-index index))
@@ -208,6 +209,12 @@ USA.
 (define (ustring3-copy! to at from start end)
   (copy-loop primitive-byte-set! to (cp3-index at)
 	     primitive-byte-ref from (cp3-index start) (cp3-index end)))
+
+(define (cp3-ref string index)
+  (let ((i (cp3-index index)))
+    (fix:or (primitive-byte-ref string i)
+	    (fix:or (fix:lsh (primitive-byte-ref string (fix:+ i 1)) 8)
+		    (fix:lsh (primitive-byte-ref string (fix:+ i 2)) 16)))))
 
 (define-integrable (cp3-index index)
   (fix:+ byte0-index (fix:* 3 index)))
@@ -307,6 +314,8 @@ USA.
 		  (error:not-a mutable-string? string 'string-set!)))))
 	(else
 	 (error:not-a mutable-string? string 'string-set!))))
+
+;;;; Slice/Copy
 
 (define (string-slice string #!optional start end)
   (let* ((len (string-length string))
@@ -322,6 +331,140 @@ USA.
 	   (make-slice string
 		       start
 		       (fix:- end start))))))
+
+(define (string-copy! to at from #!optional start end)
+  (let* ((end (fix:end-index end (string-length from) 'string-copy!))
+	 (start (fix:start-index start end 'string-copy!)))
+    (guarantee index-fixnum? at 'string-copy!)
+    (let ((final-at (fix:+ at (fix:- end start))))
+      (if (not (fix:<= final-at (string-length to)))
+	  (error:bad-range-argument at 'string-copy!))
+      (if (not (string-mutable? to))
+	  (error:bad-range-argument to 'string-copy!))
+      (receive (to at)
+	  (if (slice? to)
+	      (values (slice-string to)
+		      (fix:+ (slice-start to) at))
+	      (values to at))
+	(receive (from start end) (translate-slice from start end)
+	  (%general-copy! to at from start end)))
+      final-at)))
+
+(define (string-copy string #!optional start end)
+  (let* ((end (fix:end-index end (string-length string) 'string-copy))
+	 (start (fix:start-index start end 'string-copy)))
+    (receive (string start end) (translate-slice string start end)
+      (let* ((n (fix:- end start))
+	     (to
+	      (if (or (legacy-string? string)
+		      (fix:< (%general-max-cp string start end) #x100))
+		  (legacy-string-allocate n)
+		  (mutable-ustring-allocate n))))
+	(%general-copy! to 0 string start end)
+	to))))
+
+(define (string-head string end)
+  (string-copy string 0 end))
+
+(define (string-tail string start)
+  (string-copy string start))
+
+(define (%general-copy! to at from start end)
+
+  (define-integrable (copy! j i o)
+    (primitive-byte-set! to (fix:+ j o) (primitive-byte-ref from (fix:+ i o))))
+
+  (define-integrable (zero! j o)
+    (primitive-byte-set! to (fix:+ j o) 0))
+
+  (case (%general-cp-size from)
+    ((1)
+     (let ((start (cp1-index start))
+	   (end (cp1-index end)))
+       (case (%general-cp-size to)
+	 ((1)
+	  (do ((i start (fix:+ i 1))
+	       (j (cp1-index at) (fix:+ j 1)))
+	      ((not (fix:< i end)))
+	    (copy! j i 0)))
+	 ((2)
+	  (do ((i start (fix:+ i 1))
+	       (j (cp2-index at) (fix:+ j 2)))
+	      ((not (fix:< i end)))
+	    (copy! j i 0)
+	    (zero! j 1)))
+	 (else
+	  (do ((i start (fix:+ i 1))
+	       (j (cp3-index at) (fix:+ j 3)))
+	      ((not (fix:< i end)))
+	    (copy! j i 0)
+	    (zero! j 1)
+	    (zero! j 2))))))
+    ((2)
+     (let ((start (cp2-index start))
+	   (end (cp2-index end)))
+       (case (%general-cp-size to)
+	 ((1)
+	  (do ((i start (fix:+ i 2))
+	       (j (cp1-index at) (fix:+ j 1)))
+	      ((not (fix:< i end)))
+	    (copy! j i 0)))
+	 ((2)
+	  (do ((i start (fix:+ i 2))
+	       (j (cp2-index at) (fix:+ j 2)))
+	      ((not (fix:< i end)))
+	    (copy! j i 0)
+	    (copy! j i 1)))
+	 (else
+	  (do ((i start (fix:+ i 2))
+	       (j (cp3-index at) (fix:+ j 3)))
+	      ((not (fix:< i end)))
+	    (copy! j i 0)
+	    (copy! j i 1)
+	    (zero! j 2))))))
+    (else
+     (let ((start (cp3-index start))
+	   (end (cp3-index end)))
+       (case (%general-cp-size to)
+	 ((1)
+	  (do ((i start (fix:+ i 3))
+	       (j (cp1-index at) (fix:+ j 1)))
+	      ((not (fix:< i end)))
+	    (copy! j i 0)))
+	 ((2)
+	  (do ((i start (fix:+ i 3))
+	       (j (cp2-index at) (fix:+ j 2)))
+	      ((not (fix:< i end)))
+	    (copy! j i 0)
+	    (copy! j i 1)))
+	 (else
+	  (do ((i start (fix:+ i 3))
+	       (j (cp3-index at) (fix:+ j 3)))
+	      ((not (fix:< i end)))
+	    (copy! j i 0)
+	    (copy! j i 1)
+	    (copy! j i 2))))))))
+
+(define (%general-max-cp string start end)
+
+  (define-integrable (max-loop cp-ref)
+    (do ((i start (fix:+ i 1))
+	 (max-cp 0
+		 (let ((cp (cp-ref string i)))
+		   (if (fix:> cp max-cp)
+		       cp
+		       max-cp))))
+	((not (fix:< i end)) max-cp)))
+
+  (case (%general-cp-size string)
+    ((1) (max-loop cp1-ref))
+    ((2) (max-loop cp2-ref))
+    (else (max-loop cp3-ref))))
+
+(define-integrable (%general-cp-size string)
+  (if (legacy-string? string)
+      1
+      (%ustring-cp-size string)))
 
 ;;;; Streaming builder
 
@@ -428,58 +571,6 @@ USA.
 	((append-sequence!) append-sequence!)
 	((reset!) reset!)
 	(else (delegate operator))))))
-
-;;;; Copy
-
-(define (string-copy! to at from #!optional start end)
-  (let* ((end (fix:end-index end (string-length from) 'string-copy!))
-	 (start (fix:start-index start end 'string-copy!)))
-    (guarantee index-fixnum? at 'string-copy!)
-    (let ((final-at (fix:+ at (fix:- end start))))
-      (if (not (fix:<= final-at (string-length to)))
-	  (error:bad-range-argument to 'string-copy!))
-      (receive (to at)
-	  (if (slice? to)
-	      (values (slice-string to)
-		      (fix:+ (slice-start to) at))
-	      (values to at))
-	(receive (from start end) (translate-slice from start end)
-	  (if (legacy-string? to)
-	      (if (legacy-string? from)
-		  (copy-loop legacy-string-set! to at
-			     legacy-string-ref from start end)
-		  (copy-loop legacy-string-set! to at
-			     ustring3-ref from start end))
-	      (if (legacy-string? from)
-		  (copy-loop ustring3-set! to at
-			     legacy-string-ref from start end)
-		  (ustring3-copy! to at from start end)))))
-      final-at)))
-
-(define (string-copy string #!optional start end)
-  (let* ((end (fix:end-index end (string-length string) 'string-copy))
-	 (start (fix:start-index start end 'string-copy)))
-    (receive (string start end) (translate-slice string start end)
-      (cond ((legacy-string? string)
-	     (let ((to (legacy-string-allocate (fix:- end start))))
-	       (copy-loop legacy-string-set! to 0
-			  legacy-string-ref string start end)
-	       to))
-	    ((mutable-ustring-8-bit? string start end)
-	     (let ((to (legacy-string-allocate (fix:- end start))))
-	       (copy-loop legacy-string-set! to 0
-			  ustring3-ref string start end)
-	       to))
-	    (else
-	     (let ((to (mutable-ustring-allocate (fix:- end start))))
-	       (ustring3-copy! to 0 string start end)
-	       to))))))
-
-(define (string-head string end)
-  (string-copy string 0 end))
-
-(define (string-tail string start)
-  (string-copy string start))
 
 ;;;; Compare
 
