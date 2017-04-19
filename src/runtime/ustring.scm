@@ -480,60 +480,33 @@ USA.
 	      (else (error "Not a char or string:" object)))))))
 
 (define (make-string-builder options)
-  (receive (buffer-length normalization copy?)
+  (receive (buffer-length normalization)
       (string-builder-options options 'string-builder)
-    (let ((tracker (max-cp-tracker)))
-      (combine-tracker-and-builder
-       tracker
-       (make-sequence-builder mutable-ustring-allocate
-			      string-length
-			      string-ref
-			      string-set!
-			      (if copy? string-copy (lambda (s) s))
-			      buffer-length
-			      (string-builder-finish normalization
-						     (tracker 'get)))))))
+    (%make-string-builder buffer-length
+      (lambda (parts count max-cp)
+	(string-builder-finish parts count max-cp normalization)))))
 
 (define-deferred string-builder-options
   (keyword-option-parser
    (list (list 'buffer-length positive-fixnum? 16)
-	 (list 'normalization '(none nfd nfc) 'nfc)
-	 (list 'copy? boolean? #f))))
-
-(define (max-cp-tracker)
-  (let ((max-cp 0))
+	 (list 'normalization '(none nfd nfc) 'nfc))))
 
-    (define (track-char! char)
-      (set! max-cp (fix:max (char->integer char) max-cp))
-      unspecific)
-
-    (define (track-string! string)
-      (let ((end (string-length string)))
-	(do ((i 0 (fix:+ i 1)))
-	    ((not (fix:< i end)))
-	  (track-char! (string-ref string i)))))
-
-    (lambda (operator)
-      (case operator
-	((track-char!) track-char!)
-	((track-string!) track-string!)
-	((reset!) (lambda () (set! max-cp #\null) unspecific))
-	((get) (lambda () max-cp))
-	(else (error "Unknown operator:" operator))))))
-
-(define ((string-builder-finish normalization get-max-cp) parts)
-  (let* ((max-cp (get-max-cp))
-	 (result
-	  (do ((parts parts (cdr parts))
-	       (n 0 (fix:+ n (cdar parts))))
-	      ((not (pair? parts))
-	       (if (fix:< max-cp #x100)
-		   (legacy-string-allocate n)
-		   (mutable-ustring-allocate n))))))
+(define (string-builder-finish parts count max-cp normalization)
+  (let ((result
+	 (if (fix:< max-cp #x100)
+	     (legacy-string-allocate count)
+	     (mutable-ustring-allocate count))))
     (do ((parts parts (cdr parts))
-	 (i 0 (fix:+ i (cdar parts))))
+	 (i 0
+	    (fix:+ i
+		   (fix:- (vector-ref (car parts) 2)
+			  (vector-ref (car parts) 1)))))
 	((not (pair? parts)))
-      (string-copy! result i (caar parts) 0 (cdar parts)))
+      (%general-copy! result
+		      i
+		      (vector-ref (car parts) 0)
+		      (vector-ref (car parts) 1)
+		      (vector-ref (car parts) 2)))
     (case normalization
       ((nfd)
        (if (fix:>= max-cp #xC0)
@@ -544,33 +517,75 @@ USA.
 	   (string->nfc result)
 	   result))
       (else result))))
-
-(define (combine-tracker-and-builder tracker delegate)
-  (let ((track-char! (tracker 'track-char!))
-	(track-string! (tracker 'track-string!))
-	(tracker-reset! (tracker 'reset!))
-	(delegate-append-element! (delegate 'append-element!))
-	(delegate-append-sequence! (delegate 'append-sequence!))
-	(delegate-reset! (delegate 'reset!)))
-
-    (define (append-element! element)
-      (track-char! element)
-      (delegate-append-element! element))
-
-    (define (append-sequence! sequence)
-      (track-string! sequence)
-      (delegate-append-sequence! sequence))
+
+(define (%make-string-builder buffer-length finish-build)
+    ;; This is optimized to minimize copying, so it wastes some space.
+  (let ((buffers)
+	(buffer)
+	(index)
+	(count)
+	(max-cp))
 
     (define (reset!)
-      (tracker-reset!)
-      (delegate-reset!))
+      (set! buffers '())
+      (set! buffer (mutable-ustring-allocate buffer-length))
+      (set! index 0)
+      (set! count 0)
+      (set! max-cp 0)
+      unspecific)
 
+    (define (new-buffer!)
+      (if (fix:> index 0)
+	  (begin
+	    (set! buffers (cons (vector buffer 0 index) buffers))
+	    (set! buffer (mutable-ustring-allocate buffer-length))
+	    (set! index 0)
+	    unspecific)))
+
+    (define (empty?)
+      (and (fix:= 0 index)
+	   (null? buffers)))
+
+    (define (append-char! char)
+      (if (not (fix:< index buffer-length))
+	  (new-buffer!))
+      (ustring3-set! buffer index char)
+      (set! index (fix:+ index 1))
+      (set! count (fix:+ count 1))
+      (set! max-cp (fix:max max-cp (char->integer char)))
+      unspecific)
+
+    (define (append-string! string)
+      (let ((length (string-length string)))
+	(receive (string start end) (translate-slice string 0 length)
+	  (if (fix:<= length buffer-length)
+	      (do ((i start (fix:+ i 1)))
+		  ((not (fix:< i end)))
+		(append-char! (string-ref string i)))
+	      (begin
+		(new-buffer!)
+		(set! buffers
+		      (cons (vector string start end)
+			    buffers))
+		(set! count (fix:+ count length))
+		(set! max-cp
+		      (fix:max max-cp (%general-max-cp string start end)))
+		unspecific)))))
+
+    (define (build)
+      (new-buffer!)
+      (finish-build (reverse buffers) count max-cp))
+
+    (reset!)
     (lambda (operator)
       (case operator
-	((append-element!) append-element!)
-	((append-sequence!) append-sequence!)
+	((append-element!) append-char!)
+	((append-sequence!) append-string!)
+	((build) build)
+	((empty?) empty?)
+	((count) (lambda () count))
 	((reset!) reset!)
-	(else (delegate operator))))))
+	(else (error "Unknown operator:" operator))))))
 
 ;;;; Compare
 
