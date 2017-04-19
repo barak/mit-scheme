@@ -589,8 +589,18 @@ USA.
 
 ;;;; Compare
 
+(define (string-compare string1 string2 if= if< if>)
+  (%string-compare (string->nfc string1)
+		   (string->nfc string2)
+		   if= if< if>))
+
+(define (string-compare-ci string1 string2 if= if< if>)
+  (%string-compare (string->nfc-cf string1)
+		   (string->nfc-cf string2)
+		   if= if< if>))
+
 ;; Non-Unicode implementation, acceptable to R7RS.
-(define-integrable (string-compare string1 string2 if= if< if>)
+(define-integrable (%string-compare string1 string2 if= if< if>)
   (let ((end1 (string-length string1))
 	(end2 (string-length string2)))
     (let ((end (fix:min end1 end2)))
@@ -605,19 +615,12 @@ USA.
 		  ((fix:< end2 end1) (if>))
 		  (else (if=))))))))
 
-(define-integrable (string-compare-ci string1 string2 if= if< if>)
-  (string-compare (string-foldcase string1)
-		  (string-foldcase string2)
-		  if=
-		  if<
-		  if>))
-
 (define-integrable (true) #t)
 (define-integrable (false) #f)
 
 (define-integrable (%string-comparison-maker if= if< if>)
   (lambda (string1 string2)
-    (string-compare string1 string2 if= if< if>)))
+    (%string-compare string1 string2 if= if< if>)))
 
 (define %string=?  (%string-comparison-maker  true false false))
 (define %string<?  (%string-comparison-maker false  true false))
@@ -625,35 +628,28 @@ USA.
 (define %string>?  (%string-comparison-maker false false  true))
 (define %string>=? (%string-comparison-maker  true false  true))
 
-(define-integrable (%string-ci-comparison-maker if= if< if>)
-  (lambda (string1 string2)
-    (string-compare-ci string1 string2 if= if< if>)))
-
-(define %string-ci=?  (%string-ci-comparison-maker  true false false))
-(define %string-ci<?  (%string-ci-comparison-maker false  true false))
-(define %string-ci<=? (%string-ci-comparison-maker  true  true false))
-(define %string-ci>?  (%string-ci-comparison-maker false false  true))
-(define %string-ci>=? (%string-ci-comparison-maker  true false  true))
-
-(define-integrable (string-comparison-maker %compare)
+(define-integrable (string-comparison-maker preprocess compare)
   (lambda (string1 string2 . strings)
-    (let loop ((string1 string1) (string2 string2) (strings strings))
+    (let loop
+	((string1 (preprocess string1))
+	 (string2 (preprocess string2))
+	 (strings strings))
       (if (pair? strings)
-	  (and (%compare string1 string2)
-	       (loop string2 (car strings) (cdr strings)))
-	  (%compare string1 string2)))))
+	  (and (compare string1 string2)
+	       (loop string2 (preprocess (car strings)) (cdr strings)))
+	  (compare string1 string2)))))
 
-(define string=? (string-comparison-maker %string=?))
-(define string<? (string-comparison-maker %string<?))
-(define string<=? (string-comparison-maker %string<=?))
-(define string>? (string-comparison-maker %string>?))
-(define string>=? (string-comparison-maker %string>=?))
+(define string=? (string-comparison-maker string->nfc %string=?))
+(define string<? (string-comparison-maker string->nfc %string<?))
+(define string<=? (string-comparison-maker string->nfc %string<=?))
+(define string>? (string-comparison-maker string->nfc %string>?))
+(define string>=? (string-comparison-maker string->nfc %string>=?))
 
-(define string-ci=? (string-comparison-maker %string-ci=?))
-(define string-ci<? (string-comparison-maker %string-ci<?))
-(define string-ci<=? (string-comparison-maker %string-ci<=?))
-(define string-ci>? (string-comparison-maker %string-ci>?))
-(define string-ci>=? (string-comparison-maker %string-ci>=?))
+(define string-ci=? (string-comparison-maker string->nfc-cf %string=?))
+(define string-ci<? (string-comparison-maker string->nfc-cf %string<?))
+(define string-ci<=? (string-comparison-maker string->nfc-cf %string<=?))
+(define string-ci>? (string-comparison-maker string->nfc-cf %string>?))
+(define string-ci>=? (string-comparison-maker string->nfc-cf %string>=?))
 
 ;;;; Match
 
@@ -688,34 +684,39 @@ USA.
 			 (string-foldcase string2)))
 
 (define (string-prefix? prefix string #!optional start end)
-  (let* ((end (fix:end-index end (string-length string) 'string-prefix?))
-	 (start (fix:start-index start end 'string-prefix?))
-	 (n (string-length prefix)))
-    (and (fix:<= n (fix:- end start))
-	 (let loop ((i 0) (j start))
+  (%string-prefix? (string->nfc prefix)
+		   (string->nfc (string-slice string start end))))
+
+(define (string-prefix-ci? prefix string #!optional start end)
+  (%string-prefix? (string->nfc-cf prefix)
+		   (string->nfc-cf (string-slice string start end))))
+
+(define (%string-prefix? prefix string)
+  (let ((n (string-length prefix)))
+    (and (fix:<= n (string-length string))
+	 (let loop ((i 0) (j 0))
 	   (if (fix:< i n)
 	       (and (eq? (string-ref prefix i) (string-ref string j))
 		    (loop (fix:+ i 1) (fix:+ j 1)))
 	       #t)))))
 
 (define (string-suffix? suffix string #!optional start end)
-  (let* ((end (fix:end-index end (string-length string) 'string-suffix?))
-	 (start (fix:start-index start end 'string-suffix?))
-	 (n (string-length suffix)))
-    (and (fix:<= n (fix:- end start))
-	 (let loop ((i 0) (j (fix:- end n)))
+  (%string-suffix? (string->nfc suffix)
+		   (string->nfc (string-slice string start end))))
+
+(define (string-suffix-ci? suffix string #!optional start end)
+  (%string-suffix? (string->nfc-cf suffix)
+		   (string->nfc-cf (string-slice string start end))))
+
+(define (%string-suffix? suffix string)
+  (let ((n (string-length suffix))
+	(n* (string-length string)))
+    (and (fix:<= n n*)
+	 (let loop ((i 0) (j (fix:- n* n)))
 	   (if (fix:< i n)
 	       (and (eq? (string-ref suffix i) (string-ref string j))
 		    (loop (fix:+ i 1) (fix:+ j 1)))
 	       #t)))))
-
-(define (string-prefix-ci? prefix string #!optional start end)
-  (string-prefix? (string-foldcase prefix)
-		  (string-foldcase (string-slice string start end))))
-
-(define (string-suffix-ci? suffix string #!optional start end)
-  (string-suffix? (string-foldcase suffix)
-		  (string-foldcase (string-slice string start end))))
 
 ;;;; Case
 
@@ -826,6 +827,9 @@ USA.
   (if (string-in-nfc? string)
       string
       (canonical-composition (string->nfd string))))
+
+(define (string->nfc-cf string)
+  (string->nfc (string-foldcase string)))
 
 (define (string-in-nfc? string)
   (cond ((legacy-string? string)
