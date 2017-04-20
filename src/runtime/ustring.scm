@@ -37,9 +37,6 @@ USA.
   (allocate-nm-vector 2)
   (legacy-string? string? 1)
   (legacy-string-allocate string-allocate 1)
-  (legacy-string-length string-length 1)
-  (legacy-string-ref string-ref 2)
-  (legacy-string-set! string-set! 3)
   (primitive-byte-ref 2)
   (primitive-byte-set! 3)
   (primitive-datum-ref 2)
@@ -49,10 +46,6 @@ USA.
 
 (define-integrable (ustring? object)
   (object-type? (ucode-type unicode-string) object))
-
-(define (mutable-ustring? object)
-  (and (ustring? object)
-       (ustring-mutable? object)))
 
 (define (mutable-string? object)
   (%string-mutable? object (lambda () #f)))
@@ -64,7 +57,7 @@ USA.
 
 (define (%string-mutable? string fail)
   (cond ((legacy-string? string))
-	((ustring? string) (ustring-mutable? string))
+	((ustring? string) (%ustring-mutable? string))
 	((slice? string) (slice-mutable? string))
 	(else (fail))))
 
@@ -78,7 +71,7 @@ USA.
 
 (define (%string-immutable? string fail)
   (cond ((legacy-string? string) #f)
-	((ustring? string) (not (ustring-mutable? string)))
+	((ustring? string) (not (%ustring-mutable? string)))
 	((slice? string) (not (slice-mutable? string)))
 	(else (fail))))
 
@@ -139,10 +132,10 @@ USA.
 (define-integrable (%set-ustring-flags! string flags)
   (primitive-type-set! string 1 flags))
 
-(define-integrable (%ustring-cp-size string)
+(define (%ustring-cp-size string)
   (fix:and #x03 (%ustring-flags string)))
 
-(define-integrable (ustring-mutable? string)
+(define (%ustring-mutable? string)
   (fix:= 0 (%ustring-cp-size string)))
 
 (define-integrable flag:nfc #x04)
@@ -162,10 +155,30 @@ USA.
 (define ustring-in-nfd! (%make-flag-setter flag:nfd))
 
 (define (ustring-ref string index)
-  (case (%ustring-cp-size string)
+  (case (ustring-cp-size string)
     ((1) (ustring1-ref string index))
     ((2) (ustring2-ref string index))
     (else (ustring3-ref string index))))
+
+(define (ustring-set! string index char)
+  (case (ustring-cp-size string)
+    ((1) (ustring1-set! string index char))
+    ((2) (ustring2-set! string index char))
+    (else (ustring3-set! string index char))))
+
+(define (ustring-cp-size string)
+  (if (legacy-string? string)
+      1
+      (%ustring-cp-size string)))
+
+(define (mutable-ustring? object)
+  (or (legacy-string? object)
+      (and (ustring? object)
+	   (%ustring-mutable? object))))
+
+(define (ustring-mutable? string)
+  (or (legacy-string? string)
+      (%ustring-mutable? string)))
 
 (define-integrable (ustring1-ref string index)
   (integer->char (cp1-ref string index)))
@@ -240,9 +253,7 @@ USA.
   (fix:+ (slice-start slice) (slice-length slice)))
 
 (define (slice-mutable? slice)
-  (let ((string (slice-string slice)))
-    (or (legacy-string? string)
-	(ustring-mutable? string))))
+  (ustring-mutable? (slice-string slice)))
 
 (define (translate-slice string start end)
   (if (slice? string)
@@ -268,52 +279,35 @@ USA.
     string))
 
 (define (string-length string)
-  (cond ((legacy-string? string) (legacy-string-length string))
-	((ustring? string) (ustring-length string))
+  (cond ((or (legacy-string? string) (ustring? string)) (ustring-length string))
 	((slice? string) (slice-length string))
 	(else (error:not-a string? string 'string-length))))
 
 (define (string-ref string index)
   (guarantee index-fixnum? index 'string-ref)
-  (cond ((legacy-string? string)
-	 (legacy-string-ref string index))
-	((ustring? string)
+  (cond ((or (legacy-string? string) (ustring? string))
 	 (if (not (fix:< index (ustring-length string)))
 	     (error:bad-range-argument index 'string-ref))
 	 (ustring-ref string index))
 	((slice? string)
 	 (if (not (fix:< index (slice-length string)))
 	     (error:bad-range-argument index 'string-ref))
-	 (let ((string* (slice-string string))
-	       (index* (fix:+ (slice-start string) index)))
-	   (if (legacy-string? string*)
-	       (legacy-string-ref string* index*)
-	       (ustring-ref string* index*))))
+	 (ustring-ref (slice-string string)
+		      (fix:+ (slice-start string) index)))
 	(else
 	 (error:not-a string? string 'string-ref))))
 
 (define (string-set! string index char)
+  (guarantee mutable-string? string 'string-set!)
   (guarantee index-fixnum? index 'string-set!)
   (guarantee bitless-char? char 'string-set!)
-  (cond ((legacy-string? string)
-	 (legacy-string-set! string index char))
-	((mutable-ustring? string)
-	 (if (not (fix:< index (ustring-length string)))
-	     (error:bad-range-argument index 'string-set!))
-	 (ustring3-set! string index char))
-	((slice? string)
-	 (if (not (fix:< index (slice-length string)))
-	     (error:bad-range-argument index 'string-set!))
-	 (let ((string* (slice-string string))
-	       (index* (fix:+ (slice-start string) index)))
-	   (cond ((legacy-string? string*)
-		  (legacy-string-set! string* index* char))
-		 ((mutable-ustring? string*)
-		  (ustring3-set! string* index* char))
-		 (else
-		  (error:not-a mutable-string? string 'string-set!)))))
-	(else
-	 (error:not-a mutable-string? string 'string-set!))))
+  (if (not (fix:< index (string-length string)))
+      (error:bad-range-argument index 'string-set!))
+  (if (slice? string)
+      (ustring-set! (slice-string string)
+		    (fix:+ (slice-start string) index)
+		    char)
+      (ustring-set! string index char)))
 
 ;;;; Slice/Copy
 
@@ -356,7 +350,7 @@ USA.
     (receive (string start end) (translate-slice string start end)
       (let* ((n (fix:- end start))
 	     (to
-	      (if (or (legacy-string? string)
+	      (if (or (fix:= 1 (ustring-cp-size string))
 		      (fix:< (%general-max-cp string start end) #x100))
 		  (legacy-string-allocate n)
 		  (mutable-ustring-allocate n))))
@@ -377,11 +371,11 @@ USA.
   (define-integrable (zero! j o)
     (primitive-byte-set! to (fix:+ j o) 0))
 
-  (case (%general-cp-size from)
+  (case (ustring-cp-size from)
     ((1)
      (let ((start (cp1-index start))
 	   (end (cp1-index end)))
-       (case (%general-cp-size to)
+       (case (ustring-cp-size to)
 	 ((1)
 	  (do ((i start (fix:+ i 1))
 	       (j (cp1-index at) (fix:+ j 1)))
@@ -403,7 +397,7 @@ USA.
     ((2)
      (let ((start (cp2-index start))
 	   (end (cp2-index end)))
-       (case (%general-cp-size to)
+       (case (ustring-cp-size to)
 	 ((1)
 	  (do ((i start (fix:+ i 2))
 	       (j (cp1-index at) (fix:+ j 1)))
@@ -425,7 +419,7 @@ USA.
     (else
      (let ((start (cp3-index start))
 	   (end (cp3-index end)))
-       (case (%general-cp-size to)
+       (case (ustring-cp-size to)
 	 ((1)
 	  (do ((i start (fix:+ i 3))
 	       (j (cp1-index at) (fix:+ j 1)))
@@ -456,15 +450,26 @@ USA.
 		       max-cp))))
 	((not (fix:< i end)) max-cp)))
 
-  (case (%general-cp-size string)
+  (case (ustring-cp-size string)
     ((1) (max-loop cp1-ref))
     ((2) (max-loop cp2-ref))
     (else (max-loop cp3-ref))))
 
-(define-integrable (%general-cp-size string)
-  (if (legacy-string? string)
-      1
-      (%ustring-cp-size string)))
+(define (%mutable-allocate n max-cp)
+  (if (fix:< max-cp #x100)
+      (legacy-string-allocate n)
+      (mutable-ustring-allocate n)))
+
+(define (%immutable-allocate n max-cp)
+  (cond ((fix:< max-cp #x100)
+	 (ustring1-allocate n))
+	((fix:< max-cp #x10000)
+	 (let ((s (ustring2-allocate n)))
+	   (if (fix:< max-cp #x300)
+	       (ustring-in-nfc! s))
+	   s))
+	(else
+	 (ustring3-allocate n))))
 
 ;;;; Streaming builder
 
@@ -492,10 +497,7 @@ USA.
 	 (list 'normalization '(none nfd nfc) 'nfc))))
 
 (define (string-builder-finish parts count max-cp normalization)
-  (let ((result
-	 (if (fix:< max-cp #x100)
-	     (legacy-string-allocate count)
-	     (mutable-ustring-allocate count))))
+  (let ((result (%mutable-allocate count max-cp)))
     (do ((parts parts (cdr parts))
 	 (i 0
 	    (fix:+ i
@@ -509,13 +511,13 @@ USA.
 		      (vector-ref (car parts) 2)))
     (case normalization
       ((nfd)
-       (if (fix:>= max-cp #xC0)
-	   (string->nfd result)
-	   result))
+       (if (fix:< max-cp #xC0)
+	   result
+	   (string->nfd result)))
       ((nfc)
-       (if (fix:>= max-cp #x300)
-	   (string->nfc result)
-	   result))
+       (if (fix:< max-cp #x300)
+	   result
+	   (string->nfc result)))
       (else result))))
 
 (define (%make-string-builder buffer-length finish-build)
@@ -804,22 +806,14 @@ USA.
       (canonical-ordering! (canonical-decomposition string))))
 
 (define (string-in-nfd? string)
-  (cond ((legacy-string? string)
-	 (legacy-string-nfd-qc? string 0 (legacy-string-length string)))
-	((ustring? string)
+  (cond ((or (legacy-string? string) (ustring? string))
 	 (if (ustring-mutable? string)
-	     (ustring3-nfd-qc? string 0 (ustring-length string))
+	     (ustring-nfd-qc? string 0 (ustring-length string))
 	     (ustring-in-nfd? string)))
 	((slice? string)
-	 (let ((string (slice-string string))
-	       (start (slice-start string))
-	       (end (slice-end string)))
-	   (if (legacy-string? string)
-	       (legacy-string-nfd-qc? string start end)
-	       (case (%ustring-cp-size string)
-		 ((1) (ustring1-nfd-qc? string start end))
-		 ((2) (ustring2-nfd-qc? string start end))
-		 (else (ustring3-nfd-qc? string start end))))))
+	 (ustring-nfd-qc? (slice-string string)
+			  (slice-start string)
+			  (slice-end string)))
 	(else
 	 (error:not-a string? string 'string-in-nfd?))))
 
@@ -836,22 +830,29 @@ USA.
 	 #t)
 	((ustring? string)
 	 (if (ustring-mutable? string)
-	     (ustring3-nfc-qc? string 0 (ustring-length string))
+	     (ustring-nfc-qc? string 0 (ustring-length string))
 	     (ustring-in-nfc? string)))
 	((slice? string)
-	 (let ((string (slice-string string))
-	       (start (slice-start string))
-	       (end (slice-end string)))
-	   (or (legacy-string? string)
-	       (case (%ustring-cp-size string)
-		 ((1) #t)
-		 ((2) (ustring2-nfd-qc? string start end))
-		 (else (ustring3-nfd-qc? string start end))))))
+	 (ustring-nfc-qc? (slice-string string)
+			  (slice-start string)
+			  (slice-end string)))
 	(else
 	 (error:not-a string? string 'string-in-nfc?))))
-
-(define-integrable (string-nqc-loop cp-limit char-nqc? sref)
-  (lambda (string start end)
+
+(define (ustring-nfc-qc? string start end)
+  (case (ustring-cp-size string)
+    ((1) #t)
+    ((2) (%ustring-nfc-qc? ustring2-ref string start end))
+    (else (%ustring-nfc-qc? ustring3-ref string start end))))
+
+(define (ustring-nfd-qc? string start end)
+  (case (ustring-cp-size string)
+    ((1) (%ustring-nfd-qc? ustring1-ref string start end))
+    ((2) (%ustring-nfd-qc? ustring2-ref string start end))
+    (else (%ustring-nfd-qc? ustring3-ref string start end))))
+
+(define-integrable (string-nqc-loop cp-limit char-nqc?)
+  (lambda (sref string start end)
     (let loop ((i start) (last-ccc 0))
       (if (fix:< i end)
 	  (let ((char (sref string i)))
@@ -863,23 +864,8 @@ USA.
 		       (loop (fix:+ i 1) ccc)))))
 	  #t))))
 
-(define legacy-string-nfd-qc?
-  (string-nqc-loop #xC0 char-nfd-quick-check? legacy-string-ref))
-
-(define ustring1-nfd-qc?
-  (string-nqc-loop #xC0 char-nfd-quick-check? ustring1-ref))
-
-(define ustring2-nfd-qc?
-  (string-nqc-loop #xC0 char-nfd-quick-check? ustring2-ref))
-
-(define ustring3-nfd-qc?
-  (string-nqc-loop #xC0 char-nfd-quick-check? ustring3-ref))
-
-(define ustring2-nfc-qc?
-  (string-nqc-loop #x300 char-nfc-quick-check? ustring2-ref))
-
-(define ustring3-nfc-qc?
-  (string-nqc-loop #x300 char-nfc-quick-check? ustring3-ref))
+(define %ustring-nfc-qc? (string-nqc-loop #x300 char-nfc-quick-check?))
+(define %ustring-nfd-qc? (string-nqc-loop #xC0 char-nfd-quick-check?))
 
 (define (canonical-decomposition string)
   (let ((end (string-length string))
@@ -1506,19 +1492,14 @@ USA.
 ;;;; Sequence converters
 
 (define (list->string chars)
-  (if (every char-8-bit? chars)
-      (let ((string (legacy-string-allocate (length chars))))
-	(do ((chars chars (cdr chars))
-	     (i 0 (fix:+ i 1)))
-	    ((not (pair? chars)))
-	  (legacy-string-set! string i (car chars)))
-	string)
-      (let ((string (mutable-ustring-allocate (length chars))))
-	(do ((chars chars (cdr chars))
-	     (i 0 (fix:+ i 1)))
-	    ((not (pair? chars)))
-	  (ustring3-set! string i (car chars)))
-	string)))
+  (let ((string
+	 (%mutable-allocate (length chars)
+			    (if (every char-8-bit? chars) #x0F #x10FFFF))))
+    (do ((chars chars (cdr chars))
+	 (i 0 (fix:+ i 1)))
+	((not (pair? chars)))
+      (ustring-set! string i (car chars)))
+    string))
 
 (define (string->list string #!optional start end)
   (let* ((end (fix:end-index end (string-length string) 'string->list))
@@ -1526,7 +1507,7 @@ USA.
     (receive (string start end) (translate-slice string start end)
       (if (legacy-string? string)
 	  (do ((i (fix:- end 1) (fix:- i 1))
-	       (chars '() (cons (legacy-string-ref string i) chars)))
+	       (chars '() (cons (ustring1-ref string i) chars)))
 	      ((not (fix:>= i start)) chars))
 	  (do ((i (fix:- end 1) (fix:- i 1))
 	       (chars '() (cons (ustring3-ref string i) chars)))
@@ -1541,7 +1522,7 @@ USA.
 		  ((not (fix:< i end)) 8-bit?))
 	      (legacy-string-allocate (fix:- end start))
 	      (mutable-ustring-allocate (fix:- end start)))))
-    (copy-loop string-set! to 0
+    (copy-loop ustring-set! to 0
 	       vector-ref vector start end)
     to))
 
@@ -1549,15 +1530,10 @@ USA.
   (let* ((end (fix:end-index end (string-length string) 'string->vector))
 	 (start (fix:start-index start end 'string->vector)))
     (receive (string start end) (translate-slice string start end)
-      (if (legacy-string? string)
-	  (let ((to (make-vector (fix:- end start))))
-	    (copy-loop vector-set! to 0
-		       legacy-string-ref string start end)
-	    to)
-	  (let ((to (make-vector (fix:- end start))))
-	    (copy-loop vector-set! to 0
-		       ustring3-ref string start end)
-	    to)))))
+      (let ((to (make-vector (fix:- end start))))
+	(copy-loop vector-set! to 0
+		   ustring-ref string start end)
+	to))))
 
 ;;;; Append and general constructor
 
@@ -1856,17 +1832,14 @@ USA.
 ;;;; Miscellaneous
 
 (define (string-fill! string char #!optional start end)
+  (guarantee mutable-string? string 'string-fill)
   (guarantee bitless-char? char 'string-fill!)
   (let* ((end (fix:end-index end (string-length string) 'string-fill!))
 	 (start (fix:start-index start end 'string-fill!)))
     (receive (string start end) (translate-slice string start end)
-      (if (legacy-string? string)
-	  (do ((index start (fix:+ index 1)))
-	      ((not (fix:< index end)) unspecific)
-	    (legacy-string-set! string index char))
-	  (do ((index start (fix:+ index 1)))
-	      ((not (fix:< index end)) unspecific)
-	    (ustring3-set! string index char))))))
+      (do ((index start (fix:+ index 1)))
+	  ((not (fix:< index end)) unspecific)
+	(ustring-set! string index char)))))
 
 (define (string-replace string char1 char2)
   (guarantee bitless-char? char1 'string-replace)
@@ -1890,29 +1863,20 @@ USA.
 
 (define (string-8-bit? string)
   (receive (string start end) (translate-slice string 0 (string-length string))
-    (if (legacy-string? string)
-	#t
-	(mutable-ustring-8-bit? string start end))))
-
-(define-integrable (mutable-ustring-8-bit? string start end)
-  (every-loop char-8-bit? ustring3-ref string start end))
+    (case (ustring-cp-size string)
+      ((1) #t)
+      ((2) (every-loop char-8-bit? ustring2-ref string start end))
+      (else (every-loop char-8-bit? ustring3-ref string start end)))))
 
 (define (string-for-primitive string)
-  (cond ((legacy-string? string)
-	 (let ((end (legacy-string-length string)))
-	   (if (every-loop char-ascii? legacy-string-ref string 0 end)
-	       string
-	       (string->utf8 string))))
-	((mutable-ustring? string)
-	 (let ((end (ustring-length string)))
-	   (if (every-loop char-ascii? ustring3-ref string 0 end)
-	       (let ((to (legacy-string-allocate end)))
-		 (copy-loop legacy-string-set! to 0
-			    ustring3-ref string 0 end)
-		 to)
-	       (string->utf8 string))))
-	((slice? string) (string->utf8 string))
-	(else (error:not-a string? string 'string-for-primitive))))
+  (if (and (not (slice? string))
+	   (let ((end (string-length string)))
+	     (case (ustring-cp-size string)
+	       ((1) (every-loop char-ascii? ustring1-ref string 0 end))
+	       ((2) (every-loop char-ascii? ustring2-ref string 0 end))
+	       (else (every-loop char-ascii? ustring3-ref string 0 end)))))
+      string
+      (string->utf8 string)))
 
 (define-integrable (copy-loop to-set! to at from-ref from start end)
   (do ((i start (fix:+ i 1))
@@ -2030,11 +1994,8 @@ USA.
 
 (define (char->string char)
   (guarantee bitless-char? char 'char->string)
-  (let ((s
-	 (if (char-8-bit? char)
-	     (legacy-string-allocate 1)
-	     (mutable-ustring-allocate 1))))
-    (string-set! s 0 char)
+  (let ((s (%immutable-allocate 1 (char->integer char))))
+    (ustring-set! s 0 char)
     s))
 
 (define (legacy-string-trimmer where)
