@@ -33,7 +33,15 @@ USA.
 bool
 string_p (SCHEME_OBJECT object)
 {
-  return ((LEGACY_STRING_P (object)) || (BYTEVECTOR_P (object)));
+  return ((LEGACY_STRING_P (object))
+          || (BYTEVECTOR_P (object))
+          || ((UNICODE_STRING_P (object))
+              // This tests that the ustring-cp-size is == 1, meaning
+              // one byte per code point.  This must be kept in sync
+              // with "runtime/ustring.scm".
+              && (((OBJECT_TYPE (MEMORY_REF (object, BYTEVECTOR_LENGTH_INDEX)))
+                   && 0x03)
+                  == 0x01)));
 }
 
 SCHEME_OBJECT

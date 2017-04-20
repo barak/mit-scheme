@@ -177,6 +177,7 @@ extern SCHEME_OBJECT * memory_base;
 #define CHARACTER_P(object) ((OBJECT_TYPE (object)) == TC_CHARACTER)
 #define BYTEVECTOR_P(object) ((OBJECT_TYPE (object)) == TC_BYTEVECTOR)
 #define LEGACY_STRING_P(object) ((OBJECT_TYPE (object)) == TC_CHARACTER_STRING)
+#define UNICODE_STRING_P(object) ((OBJECT_TYPE (object)) == TC_UNICODE_STRING)
 #define BIT_STRING_P(object) ((OBJECT_TYPE (object)) == TC_BIT_STRING)
 #define CELL_P(object) ((OBJECT_TYPE (object)) == TC_CELL)
 #define PAIR_P(object) ((OBJECT_TYPE (object)) == TC_LIST)
