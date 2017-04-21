@@ -485,40 +485,44 @@ USA.
 	      (else (error "Not a char or string:" object)))))))
 
 (define (make-string-builder options)
-  (receive (buffer-length normalization)
+  (receive (buffer-length result)
       (string-builder-options options 'string-builder)
     (%make-string-builder buffer-length
       (lambda (parts count max-cp)
-	(string-builder-finish parts count max-cp normalization)))))
+	(let ((finish
+	       (case result
+		 ((mutable) string-builder-finish:mutable)
+		 ((immutable) string-builder-finish:immutable)
+		 (else (error "Unsupported result type:" result)))))
+	  (finish count
+		  max-cp
+		  (lambda (result)
+		    (do ((parts parts (cdr parts))
+			 (i 0
+			    (fix:+ i
+				   (fix:- (vector-ref (car parts) 2)
+					  (vector-ref (car parts) 1)))))
+			((not (pair? parts)))
+		      (%general-copy! result
+				      i
+				      (vector-ref (car parts) 0)
+				      (vector-ref (car parts) 1)
+				      (vector-ref (car parts) 2))))))))))
 
 (define-deferred string-builder-options
   (keyword-option-parser
    (list (list 'buffer-length positive-fixnum? 16)
-	 (list 'normalization '(none nfd nfc) 'nfc))))
+	 (list 'result '(mutable immutable) 'immutable))))
 
-(define (string-builder-finish parts count max-cp normalization)
+(define (string-builder-finish:mutable count max-cp fill-result!)
   (let ((result (%mutable-allocate count max-cp)))
-    (do ((parts parts (cdr parts))
-	 (i 0
-	    (fix:+ i
-		   (fix:- (vector-ref (car parts) 2)
-			  (vector-ref (car parts) 1)))))
-	((not (pair? parts)))
-      (%general-copy! result
-		      i
-		      (vector-ref (car parts) 0)
-		      (vector-ref (car parts) 1)
-		      (vector-ref (car parts) 2)))
-    (case normalization
-      ((nfd)
-       (if (fix:< max-cp #xC0)
-	   result
-	   (string->nfd result)))
-      ((nfc)
-       (if (fix:< max-cp #x300)
-	   result
-	   (string->nfc result)))
-      (else result))))
+    (fill-result! result)
+    result))
+
+(define (string-builder-finish:immutable count max-cp fill-result!)
+  (let ((result (%immutable-allocate count max-cp)))
+    (fill-result! result)
+    result))
 
 (define (%make-string-builder buffer-length finish-build)
     ;; This is optimized to minimize copying, so it wastes some space.
@@ -869,7 +873,7 @@ USA.
 
 (define (canonical-decomposition string)
   (let ((end (string-length string))
-	(builder (string-builder 'normalization 'none)))
+	(builder (string-builder 'result 'mutable)))
     (do ((i 0 (fix:+ i 1)))
 	((not (fix:< i end)))
       (let loop ((char (string-ref string i)))
@@ -921,7 +925,7 @@ USA.
 
 (define (canonical-composition string)
   (let ((end (string-length string))
-	(builder (string-builder 'normalization 'none))
+	(builder (string-builder))
 	(sk ucd-canonical-cm-second-keys)
 	(sv ucd-canonical-cm-second-values))
 
@@ -1016,7 +1020,9 @@ USA.
 			 (else (string-ref (vector-ref sv fc-index) m)))))))))
 
     (scan-for-first-char 0)
-    (builder)))
+    (let ((result (builder)))
+      (ustring-in-nfc! result)
+      result)))
 
 (define-integrable jamo-leading-start #x1100)
 (define-integrable jamo-leading-end   #x1113)
@@ -1505,13 +1511,16 @@ USA.
   (let* ((end (fix:end-index end (string-length string) 'string->list))
 	 (start (fix:start-index start end 'string->list)))
     (receive (string start end) (translate-slice string start end)
-      (if (legacy-string? string)
-	  (do ((i (fix:- end 1) (fix:- i 1))
-	       (chars '() (cons (ustring1-ref string i) chars)))
-	      ((not (fix:>= i start)) chars))
-	  (do ((i (fix:- end 1) (fix:- i 1))
-	       (chars '() (cons (ustring3-ref string i) chars)))
-	      ((not (fix:>= i start)) chars))))))
+
+      (define-integrable (%string->list sref)
+	(do ((i (fix:- end 1) (fix:- i 1))
+	     (chars '() (cons (sref string i) chars)))
+	    ((not (fix:>= i start)) chars)))
+
+      (case (ustring-cp-size string)
+	((1) (%string->list ustring1-ref))
+	((2) (%string->list ustring2-ref))
+	(else (%string->list ustring3-ref))))))
 
 (define (vector->string vector #!optional start end)
   (let* ((end (fix:end-index end (vector-length vector) 'vector->string))
