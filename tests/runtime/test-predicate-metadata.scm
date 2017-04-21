@@ -30,7 +30,7 @@ USA.
 
 (define-test 'non-predicate
   (lambda ()
-    (let ((np (lambda (object) #f)))
+    (let ((np (lambda (object) object #f)))
       (assert-false (predicate? np))
       (assert-type-error (lambda () (predicate->tag np)))
       (assert-type-error (lambda () (predicate-name np)))
