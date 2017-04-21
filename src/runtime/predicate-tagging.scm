@@ -147,7 +147,8 @@ USA.
 (define (object->tag object)
   (let ((code (object-type object)))
     (or (vector-ref primitive-tags code)
-	((vector-ref primitive-tag-methods code) object))))
+	((vector-ref primitive-tag-methods code) object)
+	(error "Unknown type code:" code))))
 
 (define (object->datum object)
   (cond ((tagged-object? object) (system-pair-cdr object))
@@ -190,6 +191,7 @@ USA.
    (define-primitive-predicate 'recnum number?)
    (define-primitive-predicate 'stack-environment stack-address?)
    (define-primitive-predicate 'string string?)
+   (define-primitive-predicate 'unicode-string string?)
    (define-primitive-predicate 'uninterned-symbol uninterned-symbol?)
    (define-primitive-predicate 'vector vector?)
    (define-primitive-predicate 'vector-1b bit-string?)
