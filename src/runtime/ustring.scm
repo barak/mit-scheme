@@ -820,7 +820,17 @@ USA.
 
 (define (string->nfd string)
   (if (string-in-nfd? string)
-      string
+      (if (and (ustring? string) (not (ustring-mutable? string)))
+	  string
+	  (unpack-slice string
+	    (lambda (string* start end)
+	      (let ((result
+		     (immutable-ustring-allocate
+		      (fix:- end start)
+		      (%general-max-cp string* start end))))
+		(%general-copy! result 0 string* start end)
+		(ustring-in-nfd! result)
+		result))))
       (canonical-decomposition&ordering string
 	(lambda (string* n max-cp)
 	  (let ((result (immutable-ustring-allocate n max-cp)))
@@ -834,9 +844,7 @@ USA.
 	     (ustring-nfd-qc? string 0 (ustring-length string))
 	     (ustring-in-nfd? string)))
 	((slice? string)
-	 (ustring-nfd-qc? (slice-string string)
-			  (slice-start string)
-			  (slice-end string)))
+	 (unpack-slice string ustring-nfd-qc?))
 	(else
 	 (error:not-a string? string 'string-in-nfd?))))
 
@@ -909,9 +917,8 @@ USA.
 		      (else
 		       (loop (string-ref dm 0))
 		       (append-char! (string-ref dm 1)))))))))
-    (let ((string ((builder 'build)))
-	  (end ((builder 'count)))
-	  (max-cp ((builder 'max-cp))))
+    (let* ((string ((builder 'build)))
+	   (end (ustring-length string)))
 
       (define (scan-for-non-starter i)
 	(if (fix:< i end)
