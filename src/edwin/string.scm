@@ -41,22 +41,65 @@ USA.
 ;;;; Primitives
 
 (define-primitives
+  (primitive-byte-ref 2)
+  (primitive-byte-set! 3)
+  (primitive-datum-ref 2)
+  (primitive-type-ref 2)
   (set-string-length! 2)
   (string-allocate 1)
-  (string-hash-mod 2)
-  (string-length 1)
-  (string-ref 2)
-  (string-set! 3)
-  (string? 1)
   substring-move-left!
   substring-move-right!
   vector-8b-fill!
   vector-8b-find-next-char
   vector-8b-find-next-char-ci
   vector-8b-find-previous-char
-  vector-8b-find-previous-char-ci
-  (vector-8b-ref 2)
-  (vector-8b-set! 3))
+  vector-8b-find-previous-char-ci)
+
+;;; Primitives that would be open-coded by compiler will only recognize legacy
+;;; strings.  We work around this by implementing them by hand using the
+;;; low-level operations provided by the runtime's string implementation.
+
+(define byte0-index
+  (fix:* 2 (bytes-per-object)))
+
+(define (string? object)
+  (or (object-type? (ucode-type string) object)
+      (bytevector? object)
+      (and (object-type? (ucode-type unicode-string) object)
+	   (fix:= 1 (fix:and #x03 (primitive-type-ref object 1))))))
+
+(define (string-length string)
+  (guarantee string? string 'string-length)
+  (%string-length string))
+
+(define-integrable (%string-length string)
+  (primitive-datum-ref string 1))
+
+(define (string-ref string index)
+  (integer->char (vector-8b-ref string index)))
+
+(define (string-set! string index char)
+  (vector-8b-set! string index (char->integer char)))
+
+(define (vector-8b-ref string index)
+  (if (not (string? string))
+      (error:not-a string? string 'vector-8b-ref))
+  (if (not (index-fixnum? index))
+      (error:not-a index-fixnum? index 'vector-8b-ref))
+  (if (not (fix:< index (%string-length string)))
+      (error:bad-range-argument index 'vector-8b-ref))
+  (primitive-byte-ref string (fix:+ byte0-index index)))
+
+(define (vector-8b-set! string index u8)
+  (if (not (string? string))
+      (error:not-a string? string 'vector-8b-set!))
+  (if (not (index-fixnum? index))
+      (error:not-a index-fixnum? index 'vector-8b-set!))
+  (if (not (fix:< index (%string-length string)))
+      (error:bad-range-argument index 'vector-8b-set!))
+  (if (not (u8? u8))
+      (error:not-a u8? u8 'vector-8b-set!))
+  (primitive-byte-set! string (fix:+ byte0-index index) u8))
 
 (define (string-hash key #!optional modulus)
   (if (default-object? modulus)
