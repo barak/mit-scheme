@@ -478,17 +478,20 @@ USA.
 ;;;; Streaming builder
 
 (define (string-builder . options)
-  (let ((builder (make-string-builder options)))
-    (let ((append-element! (builder 'append-element!))
-	  (append-sequence! (builder 'append-sequence!)))
+  (let ((builder (make-string-builder* options)))
+    (let ((append-char! (builder 'append-char!))
+	  (append-string! (builder 'append-string!)))
       (lambda (#!optional object)
 	(cond ((default-object? object) ((builder 'build)))
-	      ((bitless-char? object) (append-element! object))
-	      ((string? object) (append-sequence! object))
+	      ((bitless-char? object) (append-char! object))
+	      ((string? object) (append-string! object))
 	      ((interned-symbol? object) ((builder object)))
 	      (else (error "Not a char or string:" object)))))))
 
-(define (make-string-builder options)
+(define (make-string-builder . options)
+  (make-string-builder* options))
+
+(define (make-string-builder* options)
   (receive (buffer-length result)
       (string-builder-options options 'string-builder)
     (%make-string-builder buffer-length
@@ -595,11 +598,12 @@ USA.
     (reset!)
     (lambda (operator)
       (case operator
-	((append-element!) append-char!)
-	((append-sequence!) append-string!)
+	((append-char!) append-char!)
+	((append-string!) append-string!)
 	((build) build)
 	((empty?) empty?)
 	((count) (lambda () count))
+	((max-cp) (lambda () max-cp))
 	((reset!) reset!)
 	(else (error "Unknown operator:" operator))))))
 
@@ -817,7 +821,12 @@ USA.
 (define (string->nfd string)
   (if (string-in-nfd? string)
       string
-      (canonical-ordering! (canonical-decomposition string))))
+      (canonical-decomposition&ordering string
+	(lambda (string* n max-cp)
+	  (let ((result (immutable-ustring-allocate n max-cp)))
+	    (%general-copy! result 0 string* 0 n)
+	    (ustring-in-nfd! result)
+	    result)))))
 
 (define (string-in-nfd? string)
   (cond ((or (legacy-string? string) (ustring? string))
@@ -881,57 +890,57 @@ USA.
 (define %ustring-nfc-qc? (string-nqc-loop #x300 char-nfc-quick-check?))
 (define %ustring-nfd-qc? (string-nqc-loop #xC0 char-nfd-quick-check?))
 
-(define (canonical-decomposition string)
+(define (canonical-decomposition&ordering string k)
   (let ((end (string-length string))
-	(builder (string-builder 'result 'mutable)))
-    (do ((i 0 (fix:+ i 1)))
-	((not (fix:< i end)))
-      (let loop ((char (string-ref string i)))
-	(if (jamo-precomposed? char)
-	    (jamo-decompose char builder)
-	    (let ((dm (ucd-canonical-dm-value char)))
-	      (cond ((eqv? dm char)
-		     (builder char))
-		    ;; Canonical decomposition always length 1 or 2.
-		    ;; First char might need recursion, second doesn't:
-		    ((char? dm)
-		     (loop dm))
-		    (else
-		     (loop (string-ref dm 0))
-		     (builder (string-ref dm 1))))))))
-    (builder)))
+	(builder (make-string-builder 'result 'mutable)))
+    (let ((append-char! (builder 'append-char!)))
+      (do ((i 0 (fix:+ i 1)))
+	  ((not (fix:< i end)))
+	(let loop ((char (string-ref string i)))
+	  (if (jamo-precomposed? char)
+	      (jamo-decompose char append-char!)
+	      (let ((dm (ucd-canonical-dm-value char)))
+		(cond ((eqv? dm char)
+		       (append-char! char))
+		      ;; Canonical decomposition always length 1 or 2.
+		      ;; First char might need recursion, second doesn't:
+		      ((char? dm)
+		       (loop dm))
+		      (else
+		       (loop (string-ref dm 0))
+		       (append-char! (string-ref dm 1)))))))))
+    (let ((string ((builder 'build)))
+	  (end ((builder 'count)))
+	  (max-cp ((builder 'max-cp))))
 
-(define (canonical-ordering! string)
-  (let ((end (string-length string)))
+      (define (scan-for-non-starter i)
+	(if (fix:< i end)
+	    (let ((ccc (ucd-ccc-value (ustring3-ref string i))))
+	      (if (fix:= 0 ccc)
+		  (scan-for-non-starter (fix:+ i 1))
+		  (scan-for-non-starter-pair (list ccc) (fix:+ i 1))))))
 
-    (define (scan-for-non-starter i)
-      (if (fix:< i end)
-	  (let ((ccc (ucd-ccc-value (string-ref string i))))
-	    (if (fix:= 0 ccc)
-		(scan-for-non-starter (fix:+ i 1))
-		(scan-for-non-starter-pair (list ccc) (fix:+ i 1))))))
+      (define (scan-for-non-starter-pair previous i)
+	(if (fix:< i end)
+	    (let ((ccc (ucd-ccc-value (ustring3-ref string i))))
+	      (if (fix:= 0 ccc)
+		  (scan-for-non-starter (fix:+ i 1))
+		  (scan-for-non-starter-pair (maybe-twiddle previous i ccc)
+					     (fix:+ i 1))))))
 
-    (define (scan-for-non-starter-pair previous i)
-      (if (fix:< i end)
-	  (let ((ccc (ucd-ccc-value (string-ref string i))))
-	    (if (fix:= 0 ccc)
-		(scan-for-non-starter (fix:+ i 1))
-		(scan-for-non-starter-pair (maybe-twiddle previous i ccc)
-					   (fix:+ i 1))))))
+      (define (maybe-twiddle previous i ccc)
+	(if (and (pair? previous)
+		 (fix:< ccc (car previous)))
+	    (begin
+	      (let ((char (ustring3-ref string (fix:- i 1))))
+		(ustring3-set! string (fix:- i 1) (ustring3-ref string i))
+		(ustring3-set! string i char))
+	      (cons (car previous)
+		    (maybe-twiddle (cdr previous) (fix:- i 1) ccc)))
+	    (cons ccc previous)))
 
-    (define (maybe-twiddle previous i ccc)
-      (if (and (pair? previous)
-	       (fix:< ccc (car previous)))
-	  (begin
-	    (let ((char (string-ref string (fix:- i 1))))
-	      (string-set! string (fix:- i 1) (string-ref string i))
-	      (string-set! string i char))
-	    (cons (car previous)
-		  (maybe-twiddle (cdr previous) (fix:- i 1) ccc)))
-	  (cons ccc previous)))
-
-    (scan-for-non-starter 0))
-  string)
+      (scan-for-non-starter 0)
+      (k string end ((builder 'max-cp))))))
 
 (define (canonical-composition string)
   (let ((end (string-length string))
