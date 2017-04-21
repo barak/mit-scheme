@@ -474,6 +474,16 @@ USA.
     ((1) (max-loop cp1-ref))
     ((2) (max-loop cp2-ref))
     (else (max-loop cp3-ref))))
+
+(define (%string->immutable string)
+  (unpack-slice string
+    (lambda (string* start end)
+      (let ((result
+	     (immutable-ustring-allocate
+	      (fix:- end start)
+	      (%general-max-cp string* start end))))
+	(%general-copy! result 0 string* start end)
+	result))))
 
 ;;;; Streaming builder
 
@@ -818,26 +828,6 @@ USA.
 
 ;;;; Normalization
 
-(define (string->nfd string)
-  (if (string-in-nfd? string)
-      (if (and (ustring? string) (not (ustring-mutable? string)))
-	  string
-	  (unpack-slice string
-	    (lambda (string* start end)
-	      (let ((result
-		     (immutable-ustring-allocate
-		      (fix:- end start)
-		      (%general-max-cp string* start end))))
-		(%general-copy! result 0 string* start end)
-		(ustring-in-nfd! result)
-		result))))
-      (canonical-decomposition&ordering string
-	(lambda (string* n max-cp)
-	  (let ((result (immutable-ustring-allocate n max-cp)))
-	    (%general-copy! result 0 string* 0 n)
-	    (ustring-in-nfd! result)
-	    result)))))
-
 (define (string-in-nfd? string)
   (cond ((or (legacy-string? string) (ustring? string))
 	 (if (ustring-mutable? string)
@@ -848,14 +838,6 @@ USA.
 	(else
 	 (error:not-a string? string 'string-in-nfd?))))
 
-(define (string->nfc string)
-  (if (string-in-nfc? string)
-      string
-      (canonical-composition (string->nfd string))))
-
-(define (string->nfc-cf string)
-  (string->nfc (string-foldcase string)))
-
 (define (string-in-nfc? string)
   (cond ((legacy-string? string)
 	 #t)
@@ -864,9 +846,7 @@ USA.
 	     (ustring-nfc-qc? string 0 (ustring-length string))
 	     (ustring-in-nfc? string)))
 	((slice? string)
-	 (ustring-nfc-qc? (slice-string string)
-			  (slice-start string)
-			  (slice-end string)))
+	 (unpack-slice string ustring-nfc-qc?))
 	(else
 	 (error:not-a string? string 'string-in-nfc?))))
 
@@ -897,6 +877,42 @@ USA.
 
 (define %ustring-nfc-qc? (string-nqc-loop #x300 char-nfc-quick-check?))
 (define %ustring-nfd-qc? (string-nqc-loop #xC0 char-nfd-quick-check?))
+
+(define (string->nfd string)
+  (cond ((and (ustring? string)
+	      (ustring-in-nfd? string))
+	 string)
+	((string-in-nfd? string)
+	 (let ((result (%string->immutable string)))
+	   (ustring-in-nfd! result)
+	   result))
+	(else
+	 (canonical-decomposition&ordering string
+	   (lambda (string* n max-cp)
+	     (let ((result (immutable-ustring-allocate n max-cp)))
+	       (%general-copy! result 0 string* 0 n)
+	       (ustring-in-nfd! result)
+	       result))))))
+
+(define (string->nfc string)
+  (cond ((and (ustring? string)
+	      (ustring-in-nfc? string))
+	 string)
+	((string-in-nfc? string)
+	 (let ((result (%string->immutable string)))
+	   (ustring-in-nfc! result)
+	   result))
+	(else
+	 (canonical-composition
+	  (if (string-in-nfd? string)
+	      string
+	      (canonical-decomposition&ordering string
+		(lambda (string* n max-cp)
+		  (declare (ignore n max-cp))
+		  string*)))))))
+
+(define (string->nfc-cf string)
+  (string->nfc (string-foldcase string)))
 
 (define (canonical-decomposition&ordering string k)
   (let ((end (string-length string))
