@@ -111,9 +111,6 @@ USA.
     (%set-ustring-flags! string cp-size) ;assumes cp-size in bottom bits
     string))
 
-(define-integrable (mutable-ustring-allocate n)
-  (%ustring-allocate (fix:* 3 n) n 0))
-
 (define-integrable (ustring-length string)
   (primitive-datum-ref string 1))
 
@@ -203,12 +200,10 @@ USA.
 (define-integrable (cp3-index index)
   (fix:+ byte0-index (fix:* 3 index)))
 
-(define (%mutable-allocate n max-cp)
-  (if (fix:< max-cp #x100)
-      (legacy-string-allocate n)
-      (mutable-ustring-allocate n)))
+(define (mutable-ustring-allocate n)
+  (%ustring-allocate (fix:* 3 n) n 0))
 
-(define (%immutable-allocate n max-cp)
+(define (immutable-ustring-allocate n max-cp)
   (cond ((fix:< max-cp #x100)
 	 (let ((s (%ustring-allocate (fix:+ n 1) n 1)))
 	   (ustring-in-nfc! string)
@@ -516,15 +511,23 @@ USA.
 (define-deferred string-builder-options
   (keyword-option-parser
    (list (list 'buffer-length positive-fixnum? 16)
-	 (list 'result '(mutable immutable) 'immutable))))
+	 (list 'result '(immutable mutable legacy) 'immutable))))
 
-(define (string-builder-finish:mutable count max-cp fill-result!)
-  (let ((result (%mutable-allocate count max-cp)))
+(define (string-builder-finish:immutable count max-cp fill-result!)
+  (let ((result (immutable-ustring-allocate count max-cp)))
     (fill-result! result)
     result))
 
-(define (string-builder-finish:immutable count max-cp fill-result!)
-  (let ((result (%immutable-allocate count max-cp)))
+(define (string-builder-finish:mutable count max-cp fill-result!)
+  (declare (ignore max-cp))
+  (let ((result (mutable-ustring-allocate count)))
+    (fill-result! result)
+    result))
+
+(define (string-builder-finish:legacy count max-cp fill-result!)
+  (if (not (fix:< max-cp #x100))
+      (error "Can't build legacy string:" max-cp))
+  (let ((result (legacy-string-allocate count)))
     (fill-result! result)
     result))
 
@@ -1506,11 +1509,12 @@ USA.
 
 (define (list->string chars)
   (let ((string
-	 (%mutable-allocate (length chars)
-			    (fold-left (lambda (max-cp char)
-					 (fix:max max-cp (char->integer char)))
-				       0
-				       chars))))
+	 (immutable-ustring-allocate
+	  (length chars)
+	  (fold-left (lambda (max-cp char)
+		       (fix:max max-cp (char->integer char)))
+		     0
+		     chars))))
     (do ((chars chars (cdr chars))
 	 (i 0 (fix:+ i 1)))
 	((not (pair? chars)))
@@ -2017,7 +2021,7 @@ USA.
 
 (define (char->string char)
   (guarantee bitless-char? char 'char->string)
-  (let ((s (%immutable-allocate 1 (char->integer char))))
+  (let ((s (immutable-ustring-allocate 1 (char->integer char))))
     (ustring-set! s 0 char)
     s))
 
