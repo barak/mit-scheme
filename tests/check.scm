@@ -102,7 +102,7 @@ USA.
 			   (with-working-directory-pathname
 			    (directory-pathname pathname)
 			    (lambda ()
-					       ;++ Kludge around a bug in SF...
+			      ;;++ Kludge around a bug in SF...
 			      (compile-file (file-pathname pathname)
 					    '()
 					    environment))))
@@ -114,11 +114,23 @@ USA.
 				     pathname)))
 			 (cons pathname
 			       (run-unit-tests p environment)))))))
-		known-tests)))
+		(let ((test-name (get-environment-variable "TEST")))
+		  (if test-name
+		      (let ((e
+			     (find (lambda (e)
+				     (string=? test-name
+					       (if (pair? e) (car e) e)))
+				   known-tests)))
+			(if e
+			    (list e)
+			    (begin
+			      (warn "Unknown test name:" test-name)
+			      '())))
+		      known-tests)))))
 
-      (define (show-results results)
+      (define (show-results results tag)
 	(for-each (lambda (p)
-		    (write-string (if (cdr p) "PASSED" "FAILED"))
+		    (write-string tag)
 		    (write-string ": ")
 		    (write (car p))
 		    (newline))
@@ -126,7 +138,18 @@ USA.
 
       (fresh-line)
       (newline)
-      (write-string "Test results:")
-      (newline)
-      (show-results (filter cdr results))
-      (show-results (remove cdr results)))))
+      (let ((passed (filter cdr results))
+	    (failed (remove cdr results)))
+	(if (or (pair? passed)
+		(pair? failed))
+	    (begin
+	      (write-string "Test results:")
+	      (newline)
+	      (show-results passed "PASSED")
+	      (if (and (pair? passed)
+		       (pair? failed))
+		  (newline))
+	      (show-results failed "FAILED"))
+	    (begin
+	      (write-string "No tests run")
+	      (newline)))))))
