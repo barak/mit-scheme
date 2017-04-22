@@ -893,13 +893,16 @@ USA.
 	   (ustring-in-nfc! result)
 	   result))
 	(else
-	 (canonical-composition
-	  (if (string-in-nfd? string)
-	      string
-	      (canonical-decomposition&ordering string
-		(lambda (string* n max-cp)
-		  (declare (ignore n max-cp))
-		  string*)))))))
+	 (let ((result
+		(canonical-composition
+		 (if (string-in-nfd? string)
+		     string
+		     (canonical-decomposition&ordering string
+		       (lambda (string* n max-cp)
+			 (declare (ignore n max-cp))
+			 string*))))))
+	   (ustring-in-nfc! result)
+	   result))))
 
 (define (string->nfc-cf string)
   (string->nfc (string-foldcase string)))
@@ -1051,9 +1054,7 @@ USA.
 			 (else (string-ref (vector-ref sv fc-index) m)))))))))
 
     (scan-for-first-char 0)
-    (let ((result (builder)))
-      (ustring-in-nfc! result)
-      result)))
+    (builder)))
 
 (define-integrable jamo-leading-start #x1100)
 (define-integrable jamo-leading-end   #x1113)
