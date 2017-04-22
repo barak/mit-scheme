@@ -206,7 +206,7 @@ USA.
 (define (immutable-ustring-allocate n max-cp)
   (cond ((fix:< max-cp #x100)
 	 (let ((s (%ustring-allocate (fix:+ n 1) n 1)))
-	   (ustring-in-nfc! string)
+	   (ustring-in-nfc! s)
 	   (if (fix:< max-cp #xC0)
 	       (ustring-in-nfd! s))
 	   (ustring1-set! s n #\null)	;zero-terminate for C
