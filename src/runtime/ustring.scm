@@ -487,65 +487,55 @@ USA.
 
 ;;;; Streaming builder
 
-(define (string-builder . options)
-  (let ((builder (make-string-builder* options)))
+(define (string-builder #!optional buffer-length)
+  (let ((builder
+	 (%make-string-builder
+	  (if (default-object? buffer-length)
+	      16
+	      (begin
+		(guarantee positive-fixnum? buffer-length 'string-builder)
+		buffer-length)))))
     (let ((append-char! (builder 'append-char!))
-	  (append-string! (builder 'append-string!)))
+	  (append-string! (builder 'append-string!))
+	  (build (builder 'build)))
       (lambda (#!optional object)
-	(cond ((default-object? object) ((builder 'build)))
-	      ((bitless-char? object) (append-char! object))
+	(cond ((bitless-char? object) (append-char! object))
 	      ((string? object) (append-string! object))
-	      ((interned-symbol? object) ((builder object)))
-	      (else (error "Not a char or string:" object)))))))
+	      (else
+	       (case object
+		 ((#!default immutable) (build build-string:immutable))
+		 ((mutable) (build build-string:mutable))
+		 ((legacy) (build build-string:legacy))
+		 ((empty? count max-cp reset!) ((builder object)))
+		 (else (error "Unsupported argument:" object)))))))))
 
-(define (make-string-builder . options)
-  (make-string-builder* options))
-
-(define (make-string-builder* options)
-  (receive (buffer-length result)
-      (string-builder-options options 'string-builder)
-    (%make-string-builder buffer-length
-      (lambda (parts count max-cp)
-	(let ((finish
-	       (case result
-		 ((mutable) string-builder-finish:mutable)
-		 ((immutable) string-builder-finish:immutable)
-		 (else (error "Unsupported result type:" result)))))
-	  (finish count
-		  max-cp
-		  (lambda (result)
-		    (do ((parts parts (cdr parts))
-			 (i 0 (fix:+ i (string-length (car parts)))))
-			((not (pair? parts)))
-		      (unpack-slice (car parts)
-			(lambda (string start end)
-			  (%general-copy! result i string start end)))))))))))
-
-(define-deferred string-builder-options
-  (keyword-option-parser
-   (list (list 'buffer-length positive-fixnum? 16)
-	 (list 'result '(immutable mutable legacy) 'immutable))))
-
-(define (string-builder-finish:immutable count max-cp fill-result!)
+(define (build-string:immutable strings count max-cp)
   (let ((result (immutable-ustring-allocate count max-cp)))
-    (fill-result! result)
+    (fill-result! strings result)
     result))
 
-(define (string-builder-finish:mutable count max-cp fill-result!)
+(define (build-string:mutable strings count max-cp)
   (declare (ignore max-cp))
   (let ((result (mutable-ustring-allocate count)))
-    (fill-result! result)
+    (fill-result! strings result)
     result))
 
-(define (string-builder-finish:legacy count max-cp fill-result!)
+(define (build-string:legacy strings count max-cp)
   (if (not (fix:< max-cp #x100))
       (error "Can't build legacy string:" max-cp))
   (let ((result (legacy-string-allocate count)))
-    (fill-result! result)
+    (fill-result! strings result)
     result))
+
+(define (fill-result! strings result)
+  (do ((strings strings (cdr strings))
+       (i 0 (fix:+ i (string-length (car strings)))))
+      ((not (pair? strings)))
+    (unpack-slice (car strings)
+      (lambda (string start end)
+	(%general-copy! result i string start end)))))
 
-(define (%make-string-builder buffer-length finish-build)
-    ;; This is optimized to minimize copying, so it wastes some space.
+(define (%make-string-builder buffer-length)
   (let ((buffers)
 	(buffer)
 	(start)
@@ -597,13 +587,13 @@ USA.
 			     (unpack-slice string %general-max-cp)))
 	      unspecific))))
 
-    (define (build)
-      (finish-build (reverse
-		     (if (fix:> index start)
-			 (cons (get-partial) buffers)
-			 buffers))
-		    count
-		    max-cp))
+    (define (build finish)
+      (finish (reverse
+	       (if (fix:> index start)
+		   (cons (get-partial) buffers)
+		   buffers))
+	      count
+	      max-cp))
 
     (reset!)
     (lambda (operator)
@@ -916,24 +906,23 @@ USA.
 
 (define (canonical-decomposition&ordering string k)
   (let ((end (string-length string))
-	(builder (make-string-builder 'result 'mutable)))
-    (let ((append-char! (builder 'append-char!)))
-      (do ((i 0 (fix:+ i 1)))
-	  ((not (fix:< i end)))
-	(let loop ((char (string-ref string i)))
-	  (if (jamo-precomposed? char)
-	      (jamo-decompose char append-char!)
-	      (let ((dm (ucd-canonical-dm-value char)))
-		(cond ((eqv? dm char)
-		       (append-char! char))
-		      ;; Canonical decomposition always length 1 or 2.
-		      ;; First char might need recursion, second doesn't:
-		      ((char? dm)
-		       (loop dm))
-		      (else
-		       (loop (string-ref dm 0))
-		       (append-char! (string-ref dm 1)))))))))
-    (let* ((string ((builder 'build)))
+	(builder (string-builder)))
+    (do ((i 0 (fix:+ i 1)))
+	((not (fix:< i end)))
+      (let loop ((char (string-ref string i)))
+	(if (jamo-precomposed? char)
+	    (jamo-decompose char builder)
+	    (let ((dm (ucd-canonical-dm-value char)))
+	      (cond ((eqv? dm char)
+		     (builder char))
+		    ;; Canonical decomposition always length 1 or 2.
+		    ;; First char might need recursion, second doesn't:
+		    ((char? dm)
+		     (loop dm))
+		    (else
+		     (loop (string-ref dm 0))
+		     (builder (string-ref dm 1))))))))
+    (let* ((string (builder 'mutable))
 	   (end (ustring-length string)))
 
       (define (scan-for-non-starter i)
@@ -963,7 +952,7 @@ USA.
 	    (cons ccc previous)))
 
       (scan-for-non-starter 0)
-      (k string end ((builder 'max-cp))))))
+      (k string end (builder 'max-cp)))))
 
 (define (canonical-composition string)
   (let ((end (string-length string))
