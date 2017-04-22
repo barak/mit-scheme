@@ -370,8 +370,7 @@ USA.
       (lambda (string start end)
 	(let* ((n (fix:- end start))
 	       (to
-		(if (or (fix:= 1 (ustring-cp-size string))
-			(fix:< (%general-max-cp string start end) #x100))
+		(if (legacy-string? string)
 		    (legacy-string-allocate n)
 		    (mutable-ustring-allocate n))))
 	  (%general-copy! to 0 string start end)
