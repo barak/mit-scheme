@@ -1509,7 +1509,7 @@ USA.
 
 (define (substring? pattern text)
   (and (or (fix:= 0 (string-length pattern))
-	   (string-search-forward pattern text))
+	   (string-search-forward (string->nfc pattern) (string->nfc text)))
        #t))
 
 (define (%dumb-string-search-forward pattern pend text tstart tlast)
