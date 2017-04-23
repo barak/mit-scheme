@@ -79,6 +79,7 @@ USA.
   (register-predicate! string? 'string)
   (register-predicate! mutable-string? 'mutable-string '<= string?)
   (register-predicate! immutable-string? 'immutable-string '<= string?)
+  (register-predicate! nfc-string? 'nfc-string '<= string?)
   (register-predicate! legacy-string? 'legacy-string
 		       '<= string?
 		       '<= mutable-string?)
@@ -701,6 +702,8 @@ USA.
 ;;;; Match
 
 (define (string-match-forward string1 string2)
+  (guarantee nfc-string? string1 'string-match-forward)
+  (guarantee nfc-string? string2 'string-match-forward)
   (let ((end1 (string-length string1))
 	(end2 (string-length string2)))
     (let ((end (fix:min end1 end2)))
@@ -711,11 +714,9 @@ USA.
 	    (loop (fix:+ i 1))
 	    i)))))
 
-(define (string-match-forward-ci string1 string2)
-  (string-match-forward (string-foldcase string1)
-			(string-foldcase string2)))
-
 (define (string-match-backward string1 string2)
+  (guarantee nfc-string? string1 'string-match-backward)
+  (guarantee nfc-string? string2 'string-match-backward)
   (let ((s1 (fix:- (string-length string1) 1)))
     (let loop ((i s1) (j (fix:- (string-length string2) 1)))
       (if (and (fix:>= i 0)
@@ -725,10 +726,6 @@ USA.
 	  (loop (fix:- i 1)
 		(fix:- j 1))
 	  (fix:- s1 i)))))
-
-(define (string-match-backward-ci string1 string2)
-  (string-match-backward (string-foldcase string1)
-			 (string-foldcase string2)))
 
 (define (string-prefix? prefix string #!optional start end)
   (%string-prefix? (string->nfc prefix)
@@ -837,6 +834,10 @@ USA.
 	  #t))))
 
 ;;;; Normalization
+
+(define (nfc-string? string)
+  (and (string? string)
+       (string-in-nfc? string)))
 
 (define (string-in-nfc? string)
   (cond ((legacy-string? string)
@@ -1485,6 +1486,8 @@ USA.
 
 (define-integrable (string-matcher caller matcher)
   (lambda (pattern text #!optional start end)
+    (guarantee nfc-string? pattern caller)
+    (guarantee nfc-string? text caller)
     (let ((pend (string-length pattern)))
       (if (fix:= 0 pend)
 	  (error:bad-range-argument pend caller))

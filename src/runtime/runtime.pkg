@@ -1016,9 +1016,7 @@ USA.
 	  string-lower-case?
 	  string-map
 	  string-match-backward
-	  string-match-backward-ci
 	  string-match-forward
-	  string-match-forward-ci
 	  string-null?
 	  string-pad-left
 	  string-pad-right
