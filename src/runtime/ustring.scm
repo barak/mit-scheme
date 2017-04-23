@@ -126,6 +126,11 @@ USA.
 (define (%ustring-cp-size string)
   (fix:and #x03 (%ustring-flags string)))
 
+(define (%set-ustring-cp-size! string cp-size)
+  (%set-ustring-flags! string
+		       (fix:or (fix:andc (%ustring-flags string) #x03)
+			       cp-size)))
+
 (define (%ustring-mutable? string)
   (fix:= 0 (%ustring-cp-size string)))
 
@@ -218,6 +223,26 @@ USA.
 	   s))
 	(else
 	 (%ustring-allocate (fix:* 3 n) n 3))))
+
+;;; Used during cold load.
+(define (%ustring1? object)
+  (or (and (ustring? object)
+	   (fix:= 1 (%ustring-cp-size object)))
+      (legacy-string? object)))
+
+;;; Used during cold load.
+(define (%ascii-ustring! string)
+  (%set-ustring-cp-size! string 1)
+  (ustring-in-nfc! string)
+  (ustring-in-nfd! string))
+
+;;; Used during cold load.
+(define (%ascii-ustring-allocate n)
+  (let ((s (%ustring-allocate (fix:+ n 1) n 1)))
+    (ustring-in-nfc! s)
+    (ustring-in-nfd! s)
+    (ustring1-set! s n #\null)	;zero-terminate for C
+    s))
 
 (define (ustring-ref string index)
   (case (ustring-cp-size string)

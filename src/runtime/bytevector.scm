@@ -63,10 +63,7 @@ USA.
       string
       (begin
 	(guarantee legacy-string? string 'legacy-string->bytevector)
-	(%legacy-string->bytevector string))))
-
-(define-integrable (%legacy-string->bytevector string)
-  (object-new-type (ucode-type bytevector) string))
+	(object-new-type (ucode-type bytevector) string))))
 
 (define (bytevector-append . bytevectors)
   (let* ((k

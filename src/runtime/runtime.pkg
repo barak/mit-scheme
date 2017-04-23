@@ -1056,7 +1056,14 @@ USA.
 	  substring?
 	  vector->string)
   (export (runtime predicate-metadata)
-	  register-ustring-predicates!))
+	  register-ustring-predicates!)
+  (export (runtime symbol)
+	  %ascii-ustring!
+	  %ascii-ustring-allocate
+	  %ustring1?
+	  cp1-ref
+	  cp1-set!
+	  ustring-length))
 
 (define-package (runtime bytevector)
   (files "bytevector")
@@ -1107,8 +1114,6 @@ USA.
 	  vector->bytevector)
   (export (runtime predicate-metadata)
 	  register-mit-bytevector-predicates!)
-  (export (runtime symbol)
-	  %legacy-string->bytevector)
   (export (runtime ucd-tables)
 	  vector->bytevector-u16be))
 
