@@ -969,8 +969,10 @@ USA.
 	  grapheme-cluster-breaks
 	  grapheme-cluster-length
 	  grapheme-cluster-slice
+	  immutable-string?
 	  list->string
 	  make-string
+	  mutable-string?
 	  string
 	  string*
 	  string->list
@@ -1008,6 +1010,7 @@ USA.
 	  string-hash
 	  string-hash-ci
 	  string-head
+	  string-immutable?
 	  string-in-nfc?
 	  string-in-nfd?
 	  string-joiner
@@ -1017,6 +1020,7 @@ USA.
 	  string-map
 	  string-match-backward
 	  string-match-forward
+	  string-mutable?
 	  string-null?
 	  string-pad-left
 	  string-pad-right
