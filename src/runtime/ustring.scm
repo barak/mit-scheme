@@ -1528,18 +1528,12 @@ USA.
 ;;;; Sequence converters
 
 (define (list->string chars)
-  (let ((string
-	 (immutable-ustring-allocate
-	  (length chars)
-	  (fold-left (lambda (max-cp char)
-		       (fix:max max-cp (char->integer char)))
-		     0
-		     chars))))
-    (do ((chars chars (cdr chars))
-	 (i 0 (fix:+ i 1)))
-	((not (pair? chars)))
-      (ustring-set! string i (car chars)))
-    string))
+  (let ((builder (string-builder)))
+    (for-each (lambda (char)
+		(guarantee bitless-char? char 'list->string)
+		(builder char))
+	      chars)
+    (builder)))
 
 (define (string->list string #!optional start end)
   (let* ((end (fix:end-index end (string-length string) 'string->list))
@@ -1560,15 +1554,13 @@ USA.
 (define (vector->string vector #!optional start end)
   (let* ((end (fix:end-index end (vector-length vector) 'vector->string))
 	 (start (fix:start-index start end 'vector->string))
-	 (to
-	  (if (do ((i start (fix:+ i 1))
-		   (8-bit? #t (and 8-bit? (char-8-bit? (vector-ref vector i)))))
-		  ((not (fix:< i end)) 8-bit?))
-	      (legacy-string-allocate (fix:- end start))
-	      (mutable-ustring-allocate (fix:- end start)))))
-    (copy-loop ustring-set! to 0
-	       vector-ref vector start end)
-    to))
+	 (builder (string-builder)))
+    (do ((i start (fix:+ i 1)))
+	((not (fix:< i end)))
+      (let ((char (vector-ref vector i)))
+	(guarantee bitless-char? char 'vector->string)
+	(builder char)))
+    (builder)))
 
 (define (string->vector string #!optional start end)
   (let* ((end (fix:end-index end (string-length string) 'string->vector))
@@ -1576,11 +1568,13 @@ USA.
     (translate-slice string start end
       (lambda (string start end)
 	(let ((to (make-vector (fix:- end start))))
-	  (copy-loop vector-set! to 0
-		     ustring-ref string start end)
+	  (do ((i start (fix:+ i 1))
+	       (j 0 (fix:+ j 1)))
+	      ((not (fix:< i end)))
+	    (vector-set! to j (ustring-ref string i)))
 	  to)))))
-
-;;;; Append and general constructor
+
+;;;; Append
 
 (define (string-append . strings)
   (string-append* strings))
@@ -1603,11 +1597,12 @@ USA.
 		    (builder
 		     (cond ((bitless-char? object) object)
 			   ((string? object) object)
+			   ;; Needed during boot load:
 			   ((symbol? object) (symbol->string object))
-			   ((pathname? object) (->namestring object))
-			   ((number? object) (number->string object))
-			   ((uri? object) (uri->string object))
-			   (else (error "Unknown string component:" object))))))
+			   (else
+			    (call-with-output-string
+			      (lambda (port)
+				(display object port))))))))
 	      objects)
     (builder)))
 
@@ -1898,12 +1893,6 @@ USA.
 	       (else (every-loop char-ascii? ustring3-ref string 0 end)))))
       string
       (string->utf8 string)))
-
-(define-integrable (copy-loop to-set! to at from-ref from start end)
-  (do ((i start (fix:+ i 1))
-       (j at (fix:+ j 1)))
-      ((not (fix:< i end)))
-    (to-set! to j (from-ref from i))))
 
 (define-integrable (every-loop proc ref string start end)
   (let loop ((i start))
