@@ -84,8 +84,7 @@ USA.
 		       '<= mutable-string?)
   (register-predicate! ustring? 'unicode-string '<= string?)
   (register-predicate! slice? 'string-slice '<= string?)
-  (register-predicate! 8-bit-string? '8-bit-string '<= string?)
-  (register-predicate! ->string-component? '->string-component))
+  (register-predicate! 8-bit-string? '8-bit-string '<= string?))
 
 ;;;; Unicode string layout
 
@@ -1584,59 +1583,33 @@ USA.
 ;;;; Append and general constructor
 
 (define (string-append . strings)
-  (%string-append* strings))
+  (string-append* strings))
 
 (define (string-append* strings)
-  (guarantee list? strings 'string-append*)
-  (%string-append* strings))
-
-(define (%string-append* strings)
-  (let ((string
-	 (do ((strings strings (cdr strings))
-	      (n 0 (fix:+ n (string-length (car strings))))
-	      (8-bit? #t (and 8-bit? (string-8-bit? (car strings)))))
-	     ((not (pair? strings))
-	      (if 8-bit?
-		  (legacy-string-allocate n)
-		  (mutable-ustring-allocate n))))))
-    (let loop ((strings strings) (i 0))
-      (if (pair? strings)
-	  (let ((n (string-length (car strings))))
-	    (string-copy! string i (car strings) 0 n)
-	    (loop (cdr strings) (fix:+ i n)))))
-    string))
+  (let ((builder (string-builder)))
+    (for-each (lambda (string)
+		(guarantee string? string 'string-append)
+		(builder string))
+	      strings)
+    (builder)))
 
 (define (string . objects)
-  (%string* objects 'string))
+  (string* objects))
 
 (define (string* objects)
-  (guarantee list? objects 'string*)
-  (%string* objects 'string*))
-
-(define (%string* objects caller)
-  (%string-append*
-   (map (lambda (object)
-	  (->string object caller))
-	objects)))
-
-(define (->string object caller)
-  (cond ((not object) "")
-	((bitless-char? object) (char->string object))
-	((string? object) object)
-	((symbol? object) (symbol->string object))
-	((pathname? object) (->namestring object))
-	((number? object) (number->string object))
-	((uri? object) (uri->string object))
-	(else (error:not-a ->string-component? object caller))))
-
-(define (->string-component? object)
-  (or (not object)
-      (bitless-char? object)
-      (string? object)
-      (symbol? object)
-      (pathname? object)
-      (number? object)
-      (uri? object)))
+  (let ((builder (string-builder)))
+    (for-each (lambda (object)
+		(if object
+		    (builder
+		     (cond ((bitless-char? object) object)
+			   ((string? object) object)
+			   ((symbol? object) (symbol->string object))
+			   ((pathname? object) (->namestring object))
+			   ((number? object) (number->string object))
+			   ((uri? object) (uri->string object))
+			   (else (error "Unknown string component:" object))))))
+	      objects)
+    (builder)))
 
 ;;;; Mapping
 

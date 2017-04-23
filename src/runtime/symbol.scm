@@ -62,7 +62,7 @@ USA.
 	  (else (error "Illegal symbol name:" s)))))
 
 (define (symbol . objects)
-  (string->symbol (%string* objects 'symbol)))
+  (string->symbol (string* objects)))
 
 (define (intern string)
   ((ucode-primitive string->symbol) (foldcase->utf8 string)))

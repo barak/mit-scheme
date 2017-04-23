@@ -1055,9 +1055,7 @@ USA.
 	  substring?
 	  vector->string)
   (export (runtime predicate-metadata)
-	  register-ustring-predicates!)
-  (export (runtime symbol)
-	  %string*))
+	  register-ustring-predicates!))
 
 (define-package (runtime bytevector)
   (files "bytevector")
