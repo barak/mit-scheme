@@ -106,19 +106,30 @@ passed to @code{utf8->string}.  It is also an error for a procedure
 passed to @code{string-map} to return a forbidden character, or for
 @code{read-string} to attempt to read one.
 
+@cindex mutable string
+@cindex immutable string
+MIT/GNU Scheme supports both @dfn{mutable} and @dfn{immutable}
+strings.  Procedures that mutate strings, in particular
+@code{string-set!} and @code{string-fill!}, will signal an error if
+given an immutable string.  Nearly all procedures that return strings
+return immutable strings; notable exceptions are @code{make-string}
+and @code{string-copy}, which always return mutable strings, and
+@code{string-builder} which gives the programmer the ability to choose
+mutable or immutable results.
+
 @deffn {standard procedure} string? obj
 Returns @code{#t} if @var{obj} is a string, otherwise returns @code{#f}.
 @end deffn
 
 @deffn {standard procedure} make-string k [char]
-The @code{make-string} procedure returns a newly allocated string of
-length @var{k}.  If @var{char} is given, then all the characters of the string
-are initialized to @var{char}, otherwise the contents of the
-string are unspecified.
+The @code{make-string} procedure returns a newly allocated mutable
+string of length @var{k}.  If @var{char} is given, then all the
+characters of the string are initialized to @var{char}, otherwise the
+contents of the string are unspecified.
 @end deffn
 
 @deffn {standard procedure} string char @dots{}
-Returns a newly allocated string composed of the arguments.  It is
+Returns an immutable string composed of the arguments.  It is
 analogous to @code{list}.
 @end deffn
 
@@ -135,7 +146,8 @@ this procedure to execute in constant time.
 @end deffn
 
 @deffn {standard procedure} string-set! string k char
-It is an error if @var{k} is not a valid index of @var{string}.
+It is an error if @code{string} is not a mutable string or if @var{k}
+is not a valid index of @var{string}.
 
 The @code{string-set!} procedure stores @var{char} in element @var{k} of @var{string}.
 There is no requirement for this procedure to execute in constant time.
@@ -258,20 +270,10 @@ must contain at least one letter or the procedures return @code{#f}.
 @end example
 @end deffn
 
-@deffn {standard procedure} substring string start end
-The @code{substring} procedure returns a newly allocated string formed
-from the characters of @var{string} beginning with index @var{start}
-and ending with index @var{end}.
-
-This is equivalent to calling @code{string-copy} with the same
-arguments, but is provided for backward compatibility and stylistic
-flexibility.
-@end deffn
-
 @deffn {standard procedure} string-append string @dots{}
 @deffnx procedure string-append* strings
-Returns a newly allocated string whose characters are the
-concatenation of the characters in the given strings.
+Returns an immutable string whose characters are the concatenation of
+the characters in the given strings.
 
 The non-standard procedure @code{string-append*} is identical to
 @code{string-append} but takes a single argument that's a list of
@@ -280,28 +282,9 @@ strings, rather than multiple string arguments.
 
 @deffn procedure string object @dots{}
 @deffnx procedure string* objects
-Returns a newly allocated string whose characters are the
-concatenation of the characters from the given objects.
-
-Unlike @code{string-append}, each @var{object} may be one of several
-types:
-
-@itemize @bullet
-@item
-A string
-@item
-@code{#f}, equivalent to an empty string.
-@item
-A bitless character, equivalent to a string containing that character.
-@item
-A symbol, equivalent to the result of @code{symbol->string}.
-@item
-A number, equivalent to the result of @code{number->string}.
-@item
-A @acronym{URI}, equivalent to the result of @code{uri->string}.
-@item
-A pathname, equivalent to the result of @code{->namestring}.
-@end itemize
+Returns an immutable string whose characters are the concatenation of
+the characters from the given objects.  Each object is converted to
+characters as if passed to the @code{display} procedure.
 
 The procedure @code{string*} is identical to @code{string} but takes a
 single argument that's a list of objects, rather than multiple object
@@ -314,15 +297,10 @@ It is an error if any element of @var{list} is not a character.
 
 The @code{string->list} procedure returns a newly allocated list of
 the characters of @var{string} between @var{start} and @var{end}.
-@code{list->string} returns a newly allocated string formed from the
+@code{list->string} returns an immutable string formed from the
 elements in the list @var{list}.  In both procedures, order is
 preserved.  @code{string->list} and @code{list->string} are inverses
 so far as @code{equal?} is concerned.
-@end deffn
-
-@deffn {standard procedure} string-copy string [start [end]]
-Returns a newly allocated copy of the part of the given @var{string}
-between @var{start} and @var{end}.
 @end deffn
 
 @deffn {standard procedure} string-copy! to at from [start [end]]
@@ -342,32 +320,40 @@ the correct direction in such circumstances.
 @group
 (define a "12345")
 (define b (string-copy "abcde"))
-(string-copy! b 1 a 0 2)
+(string-copy! b 1 a 0 2) @result{} 3
 b @result{} "a12de"%
 @end group
 @end example
+
+Implementation note: in MIT/GNU Scheme @code{string-copy!} returns the
+value @code{(+ @var{at} (- @var{end} @var{start}))}.
 @end deffn
 
-@deffn {standard procedure} string-fill! string fill [start [end]]
-It is an error if @var{fill} is not a character.
-
-The @code{string-fill!} procedure stores @var{fill} in the elements of
+@deffn {standard procedure} string-copy string [start [end]]
+Returns a newly allocated mutable copy of the part of the given
 @var{string} between @var{start} and @var{end}.
+@end deffn
+
+@deffn {standard procedure} substring string [start [end]]
+Returns an immutable copy of the part of the given @var{string}
+between @var{start} and @var{end}.
 @end deffn
 
 @deffn procedure string-slice string [start [end]]
 @cindex slice, of string
 @cindex string slice
 Returns a @dfn{slice} of @var{string}, restricted to the range of
-characters specified by @var{start} and @var{end}.
+characters specified by @var{start} and @var{end}.  The returned slice
+will be mutable if @code{string} is mutable, or immutable if
+@code{string} is immutable.
 
 A slice is a kind of string that provides a view into another string.
-The slice behaves like any other string, but changes to a slice are
-reflected in the original string and vice versa.
+The slice behaves like any other string, but changes to a mutable
+slice are reflected in the original string and vice versa.
 
 @example
 @group
-(define foo (string #\a #\b #\c #\d #\e))
+(define foo (string-copy "abcde"))
 foo @result{} "abcde"
 
 (define bar (string-slice foo 1 4))
@@ -382,6 +368,14 @@ bar @result{} "byd"
 foo @result{} "abyde"
 @end group
 @end example
+@end deffn
+
+@deffn {standard procedure} string-fill! string fill [start [end]]
+It is an error if @var{string} is not a mutable string or if
+@var{fill} is not a character.
+
+The @code{string-fill!} procedure stores @var{fill} in the elements of
+@var{string} between @var{start} and @var{end}.
 @end deffn
 
 @cindex grapheme cluster
@@ -440,15 +434,20 @@ these sequences are semantically identical and should be treated
 equivalently for all purposes.  If two such sequences are normalized to
 the same form, the resulting normalized sequences will be identical.
 
+By default, most procedures that return strings return them in
+@acronym{NFC}.  Notable exceptions are @code{list->string},
+@code{vector->string}, and the @code{utfX->string} procedures, which
+do no normalization, and of course @code{string->nfd}.
+
 Generally speaking, @acronym{NFC} is preferred for most purposes, as
 it is the minimal-length sequence for the variants.  Consult the
 Unicode standard for the details and for information about why one
 normalization form is preferable for a specific purpose.
 
-@deffn procedure string-in-nfd? string
-@deffnx procedure string-in-nfc? string
-The procedures return @code{#t} if @var{string} is in Unicode
-Normalization Form D or C respectively.  Otherwise they return
+@deffn procedure string-in-nfc? string
+@deffnx procedure string-in-nfd? string
+These procedures return @code{#t} if @var{string} is in Unicode
+Normalization Form C or D respectively.  Otherwise they return
 @code{#f}.
 
 Note that if @var{string} consists only of code points strictly less
@@ -459,11 +458,12 @@ Consequently both of these procedures will return @code{#t} for an
 @acronym{ASCII} string argument.
 @end deffn
 
-@deffn procedure string->nfd string
-@deffnx procedure string->nfc string
-The procedures convert @var{string} into Unicode Normalization Form D
-or C respectively.  If @var{string} is already in the correct form,
-they return @var{string} itself (not a copy).
+@deffn procedure string->nfc string
+@deffnx procedure string->nfd string
+The procedures convert @var{string} into Unicode Normalization Form C
+or D respectively.  If @var{string} is already in the correct form,
+they return @var{string} itself, or an immutable copy if @var{string}
+is mutable.
 @end deffn
 
 @deffn {standard procedure} string-map proc string string @dots{}
@@ -471,13 +471,13 @@ It is an error if @var{proc} does not accept as many arguments as
 there are @var{string}s and return a single character.
 
 The @code{string-map} procedure applies @var{proc} element-wise to the
-elements of the @var{string}s and returns a string of the results, in
-order.  If more than one @var{string} is given and not all strings
-have the same length, @code{string-map} terminates when the shortest
-string runs out.  The dynamic order in which @var{proc} is applied to
-the elements of the @var{string}s is unspecified.  If multiple returns
-occur from @code{string-map}, the values returned by earlier returns
-are not mutated.
+elements of the @var{string}s and returns an immutable string of the
+results, in order.  If more than one @var{string} is given and not all
+strings have the same length, @code{string-map} terminates when the
+shortest string runs out.  The dynamic order in which @var{proc} is
+applied to the elements of the @var{string}s is unspecified.  If
+multiple returns occur from @code{string-map}, the values returned by
+earlier returns are not mutated.
 
 @example
 (string-map char-foldcase "AbdEgH")  @result{}  "abdegh"
@@ -593,38 +593,25 @@ restricted to be less than that value.  This is equivalent to calling
 @end deffn
 
 @deffn procedure string-head string end
-Equivalent to @code{(string-copy @var{string} 0 @var{end})}.
+Equivalent to @code{(substring @var{string} 0 @var{end})}.
 @end deffn
 
 @deffn procedure string-tail string start
-Equivalent to @code{(string-copy @var{string} @var{start})}.
+Equivalent to @code{(substring @var{string} @var{start})}.
 @end deffn
 
-@deffn procedure string-builder buffer-length normalization
-This procedure's arguments are keyword arguments; that is, each
-argument is a symbol of the same name followed by its value.  The
-order of the arguments doesn't matter, but each argument may appear
-only once.
-
+@deffn procedure string-builder [buffer-length]
 @cindex string builder procedure
 This procedure returns a @dfn{string builder} that can be used to
 incrementally collect characters and later convert that collection to
 a string.  This is similar to a string output port, but is less
 general and significantly faster.
 
-The returned string builder can be customized with the arguments:
-
-@itemize @bullet
-@item
-@var{buffer-length} is an exact positive integer that controls the
-size of the internal buffers that are used to accumulate characters.
-Larger values make the builder somewhat faster but use more space.
-The default value of this argument is @code{16}.
-@item
-@var{normalization} is a symbol: either @code{none}, @code{nfc}, or
-@code{nfd}, which directs the builder whether and how to normalize the
-result.  The default value of this argument is @code{nfc}.
-@end itemize
+The optional @var{buffer-length} argument, if given, must be an exact
+positive integer.  It controls the size of the internal buffers that
+are used to accumulate characters.  Larger values make the builder
+somewhat faster but use more space.  The default value of this
+argument is @code{16}.
 
 The returned string builder is a procedure that accepts zero or one
 arguments as follows:
@@ -637,21 +624,33 @@ character to the string being built and returns an unspecified value.
 Given a string argument, the string builder appends that string to the
 string being built and returns an unspecified value.
 @item
-Given no arguments, the string builder returns a copy of the string
-being built.  Note that this does not affect the string being built,
-so immediately calling the builder with no arguments a second time
-returns a new copy of the same string.
+Given no arguments, or one of the ``result'' arguments (see below),
+the string builder returns a copy of the string being built.  Note
+that this does not affect the string being built, so immediately
+calling the builder with no arguments a second time returns a new copy
+of the same string.
 @item
 Given the argument @code{empty?}, the string builder returns @code{#t}
 if the string being built is empty and @code{#f} otherwise.
 @item
 Given the argument @code{count}, the string builder returns the size
-of the string begin built.
+of the string being built.
 @item
 Given the argument @code{reset!}, the string builder discards the
 string being built and returns to the state it was in when initially
 created.
 @end itemize
+
+The ``result'' arguments control the form of the returned string.  The
+arguments @code{immutable} and @code{mutable} are straightforward,
+specifying the mutability of the returned string.  For these
+arguments, the returned string contains exactly the same characters,
+in the same order, as were appended to the builder.
+
+However, calling with the argument @code{nfc}, or with no arguments,
+returns an immutable string in Unicode Normalization Form C, exactly
+as if @code{string->nfc} were called on one of the other two result
+strings.
 @end deffn
 
 @deffn procedure string-joiner infix prefix suffix
@@ -664,10 +663,10 @@ only once.
 
 @cindex joiner procedure, of strings
 These procedures return a @dfn{joiner} procedure that takes multiple
-strings and joins them together into a newly allocated string.  The
-joiner returned by @code{string-joiner} accepts these strings as
-multiple string arguments, while @code{string-joiner*} accepts the
-strings as a single list-valued argument.
+strings and joins them together into an immutable string.  The joiner
+returned by @code{string-joiner} accepts these strings as multiple
+string arguments, while @code{string-joiner*} accepts the strings as a
+single list-valued argument.
 
 The joiner produces a result by adding @var{prefix} before,
 @var{suffix} after, and @var{infix} between each input string, then
@@ -722,9 +721,9 @@ adjacent delimiters are treated as if they were separate with an empty
 string between them.  The default value of this argument is @code{#t}.
 @item
 @code{copy?} is a boolean: if it is @code{#t}, then the returned
-strings are newly allocated copies, but if it is @code{#f} the
-returned strings are slices of the original string.  The default value
-of this argument is @code{#f}.
+strings are immutable copies, but if it is @code{#f} the returned
+strings are slices of the original string.  The default value of this
+argument is @code{#f}.
 @end itemize
 
 Some examples:
@@ -815,11 +814,11 @@ These procedures are @strong{deprecated} and should be replaced by use
 of @code{string-padder} which is more flexible.
 
 @findex #\space
-These procedures return a newly allocated string created by padding
-@var{string} out to length @var{k}, using @var{char}.  If @var{char} is
-not given, it defaults to @code{#\space}.  If @var{k} is less than the
-length of @var{string}, the resulting string is a truncated form of
-@var{string}.  @code{string-pad-left} adds padding characters or
+These procedures return an immutable string created by padding
+@var{string} out to length @var{k}, using @var{char}.  If @var{char}
+is not given, it defaults to @code{#\space}.  If @var{k} is less than
+the length of @var{string}, the resulting string is a truncated form
+of @var{string}.  @code{string-pad-left} adds padding characters or
 truncates from the beginning of the string (lowest indices), while
 @code{string-pad-right} does so at the end of the string (highest
 indices).
@@ -863,9 +862,9 @@ argument and returns a true value for a character that should be
 removed by the trimmer, or a false value for a character that should
 be retained.  The default value of this argument is @code{char-whitespace?}.
 @item
-@var{copy?} is a boolean: if @code{#t}, the trimmer returns a copy of
-the trimmed string, if @code{#f} it returns a slice.  The default value
-of this argument is @code{#f}.
+@var{copy?} is a boolean: if @code{#t}, the trimmer returns an
+immutable copy of the trimmed string, if @code{#f} it returns a slice.
+The default value of this argument is @code{#f}.
 @end itemize
 
 Some examples:
@@ -903,7 +902,7 @@ These procedures are @strong{deprecated} and should be replaced by use
 of @code{string-trimmer} which is more flexible.
 
 @findex char-set:whitespace
-Returns a newly allocated string created by removing all characters that
+Returns an immutable string created by removing all characters that
 are not in @var{char-set} from: (@code{string-trim}) both ends of
 @var{string}; (@code{string-trim-left}) the beginning of @var{string};
 or (@code{string-trim-right}) the end of @var{string}.  @var{Char-set}
@@ -923,7 +922,7 @@ defaults to @code{char-set:not-whitespace}.
 @end deffn
 
 @deffn procedure string-replace string char1 char2
-Returns a newly allocated string containing the same characters as
+Returns an immutable string containing the same characters as
 @var{string} except that all instances of @var{char1} have been
 replaced by @var{char2}.
 @end deffn
@@ -1024,8 +1023,8 @@ Searches @var{string} to see if it contains the substring
 
 @deffn procedure string-find-first-index proc string string @dots{}
 @deffnx procedure string-find-last-index proc string string @dots{}
-It is an error if @var{proc} does not accept as many arguments as
-there are @var{string}s.
+Each @var{string} must satisfy @code{string-in-nfc?}, and @var{proc}
+must accept as many arguments as there are @var{string}s.
 
 These procedures apply @var{proc} element-wise to the elements of the
 @var{string}s and return the first or last index for which @var{proc}
@@ -1039,6 +1038,8 @@ same length, then only the indexes of the shortest string are tested.
 @deffn procedure string-find-next-char string char [start [end]]
 @deffnx procedure string-find-next-char-ci string char [start [end]]
 @deffnx procedure string-find-next-char-in-set string char-set [start [end]]
+The argument @var{string} must satisfy @code{string-in-nfc?}.
+
 These procedures search @var{string} for a matching character,
 starting from @var{start} and moving forwards to @var{end}.  If there
 is a matching character, the procedures stop the search and return the
@@ -1071,6 +1072,8 @@ member of @var{char-set}.
 @deffn procedure string-find-previous-char string char [start [end]]
 @deffnx procedure string-find-previous-char-ci string char [start [end]]
 @deffnx procedure string-find-previous-char-in-set string char-set [start [end]]
+The argument @var{string} must satisfy @code{string-in-nfc?}.
+
 These procedures search @var{string} for a matching character,
 starting from @var{end} and moving backwards to @var{start}.  If there
 is a matching character, the procedures stop the search and return the
