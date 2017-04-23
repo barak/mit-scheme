@@ -387,7 +387,7 @@ USA.
     (if (and (fix:= start 0)
 	     (fix:= end len)
 	     (not (slice? string))
-	     (not (ustring-mutable? string)))
+	     (ustring-in-nfc? string))
 	string
 	(translate-slice string start end
 	  (lambda (string start end)
