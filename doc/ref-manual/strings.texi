@@ -228,14 +228,12 @@ thunk that is applied.
 @deffnx {standard procedure} string-downcase string
 @deffnx procedure string-titlecase string
 @deffnx {standard procedure} string-foldcase string
-@deffnx procedure string-canonical-foldcase string
 These procedures apply the Unicode full string uppercasing,
-lowercasing, titlecasing, case-folding, and canonical case-folding
-algorithms to their arguments and return the result.  In certain
-cases, the result differs in length from the argument.  If the result
-is equal to the argument in the sense of @code{string=?}, the argument
-may be returned.  Note that language-sensitive mappings and foldings
-are not used.
+lowercasing, titlecasing, and case-folding algorithms to their
+arguments and return the result.  In certain cases, the result differs
+in length from the argument.  If the result is equal to the argument
+in the sense of @code{string=?}, the argument may be returned.  Note
+that language-sensitive mappings and foldings are not used.
 
 The Unicode Standard prescribes special treatment of the Greek letter
 @math{\Sigma}, whose normal lower-case form is @math{\sigma} but which
@@ -941,10 +939,12 @@ This section describes procedures for searching a string, either for a
 character or a substring, and matching two strings to one another.
 
 @deffn procedure string-search-forward pattern string [start [end]]
-@var{Pattern} must be a string.  Searches @var{string} for the leftmost
-occurrence of the substring @var{pattern}.  If successful, the index of
-the first character of the matched substring is returned; otherwise,
-@code{#f} is returned.
+The arguments @var{pattern} and @var{string} must satisfy
+@code{string-in-nfc?}.
+
+Searches @var{string} for the leftmost occurrence of the substring
+@var{pattern}.  If successful, the index of the first character of the
+matched substring is returned; otherwise, @code{#f} is returned.
 
 @example
 @group
@@ -961,10 +961,13 @@ the first character of the matched substring is returned; otherwise,
 @end deffn
 
 @deffn procedure string-search-backward pattern string [start [end]]
-@var{Pattern} must be a string.  Searches @var{string} for the rightmost
-occurrence of the substring @var{pattern}.  If successful, the index to
-the right of the last character of the matched substring is returned;
-otherwise, @code{#f} is returned.
+The arguments @var{pattern} and @var{string} must satisfy
+@code{string-in-nfc?}.
+
+Searches @var{string} for the rightmost occurrence of the substring
+@var{pattern}.  If successful, the index to the right of the last
+character of the matched substring is returned; otherwise, @code{#f}
+is returned.
 
 @example
 @group
@@ -981,10 +984,12 @@ otherwise, @code{#f} is returned.
 @end deffn
 
 @deffn procedure string-search-all pattern string [start [end]]
-@var{Pattern} must be a string.  Searches @var{string} to find all
-occurrences of the substring @var{pattern}.  Returns a list of the
-occurrences; each element of the list is an index pointing to the first
-character of an occurrence.
+The arguments @var{pattern} and @var{string} must satisfy
+@code{string-in-nfc?}.
+
+Searches @var{string} to find all occurrences of the substring
+@var{pattern}.  Returns a list of the occurrences; each element of the
+list is an index pointing to the first character of an occurrence.
 
 @example
 @group
@@ -1001,10 +1006,9 @@ character of an occurrence.
 @end deffn
 
 @deffn procedure substring? pattern string
-@var{Pattern} must be a string.  Searches @var{string} to see if it
-contains the substring @var{pattern}.  Returns @code{#t} if
-@var{pattern} is a substring of @var{string}, otherwise returns
-@code{#f}.
+Searches @var{string} to see if it contains the substring
+@var{pattern}.  Returns @code{#t} if @var{pattern} is a substring of
+@var{string}, otherwise returns @code{#f}.
 
 @example
 @group
@@ -1082,11 +1086,12 @@ member of @var{char-set}.
 @end deffn
 
 @deffn procedure string-match-forward string1 string2
-@deffnx procedure string-match-forward-ci string1 string2
+The arguments @var{string1} and @var{string2} must satisfy
+@code{string-in-nfc?}.
+
 Compares the two strings, starting from the beginning, and returns the
 number of characters that are the same.  If the two strings start
-differently, returns 0.  The @code{-ci} procedures don't distinguish
-uppercase and lowercase letters.
+differently, returns 0.
 
 @example
 @group
@@ -1097,15 +1102,16 @@ uppercase and lowercase letters.
 @end deffn
 
 @deffn procedure string-match-backward string1 string2
-@deffnx procedure string-match-backward-ci string1 string2
+The arguments @var{string1} and @var{string2} must satisfy
+@code{string-in-nfc?}.
+
 Compares the two strings, starting from the end and matching toward
 the front, returning the number of characters that are the same.  If
-the two strings end differently, returns 0.  The @code{-ci} procedures
-don't distinguish uppercase and lowercase letters.
+the two strings end differently, returns 0.
 
 @example
 @group
-(string-match-backward-ci "BULBOUS" "fractious")
+(string-match-backward "bulbous" "fractious")
                                         @result{}  3  @r{; matches "ous"}
 @end group
 @end example
