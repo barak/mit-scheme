@@ -1725,6 +1725,8 @@ USA.
 	  #t))))
 
 (define (string-find-first-index proc string . strings)
+  (guarantee nfc-string? string 'string-find-first-index)
+  (guarantee-list-of nfc-string? strings 'string-find-first-index)
   (receive (n proc) (mapper-values proc string strings)
     (let loop ((i 0))
       (and (fix:< i n)
@@ -1733,6 +1735,8 @@ USA.
 	       (loop (fix:+ i 1)))))))
 
 (define (string-find-last-index proc string . strings)
+  (guarantee nfc-string? string 'string-find-last-index)
+  (guarantee-list-of nfc-string? strings 'string-find-last-index)
   (receive (n proc) (mapper-values proc string strings)
     (let loop ((i (fix:- n 1)))
       (and (fix:>= i 0)
