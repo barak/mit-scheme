@@ -175,7 +175,7 @@ USA.
      'expression string)))
 
 (define (convert-break-test-case test-case)
-  (let ((builder (string-builder 'normalization 'none)))
+  (let ((builder (string-builder)))
     (let loop ((test-case test-case) (index 0) (breaks '()))
       (let ((breaks
 	     (if (car test-case)
@@ -185,7 +185,7 @@ USA.
 	    (begin
 	      (builder (cadr test-case))
 	      (loop (cddr test-case) (fix:+ index 1) breaks))
-	    (values (builder)
+	    (values (builder 'immutable)
 		    (reverse! breaks)))))))
 
 (define-test 'grapheme-cluster-breaks
