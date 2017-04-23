@@ -1911,7 +1911,7 @@ USA.
 	      string))
 
 (define (string-hash string #!optional modulus)
-  (let ((string* (string-for-primitive (string->nfd string))))
+  (let ((string* (string-for-primitive (string->nfc string))))
     (if (default-object? modulus)
 	((ucode-primitive string-hash) string*)
 	((ucode-primitive string-hash-mod) string* modulus))))
