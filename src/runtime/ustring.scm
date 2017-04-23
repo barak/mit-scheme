@@ -523,11 +523,18 @@ USA.
 	      ((string? object) (append-string! object))
 	      (else
 	       (case object
-		 ((#!default immutable) (build build-string:immutable))
+		 ((#!default nfc) (build build-string:nfc))
+		 ((immutable) (build build-string:immutable))
 		 ((mutable) (build build-string:mutable))
 		 ((legacy) (build build-string:legacy))
 		 ((empty? count max-cp reset!) ((builder object)))
 		 (else (error "Unsupported argument:" object)))))))))
+
+(define (build-string:nfc strings count max-cp)
+  (let ((result (build-string:immutable strings count max-cp)))
+    (if (ustring-in-nfc? result)
+	result
+	(string->nfc result))))
 
 (define (build-string:immutable strings count max-cp)
   (let ((result (immutable-ustring-allocate count max-cp)))
@@ -635,8 +642,8 @@ USA.
 		   if= if< if>))
 
 (define (string-compare-ci string1 string2 if= if< if>)
-  (%string-compare (string->nfc-cf string1)
-		   (string->nfc-cf string2)
+  (%string-compare (string-foldcase string1)
+		   (string-foldcase string2)
 		   if= if< if>))
 
 ;; Non-Unicode implementation, acceptable to R7RS.
@@ -685,11 +692,11 @@ USA.
 (define string>? (string-comparison-maker string->nfc %string>?))
 (define string>=? (string-comparison-maker string->nfc %string>=?))
 
-(define string-ci=? (string-comparison-maker string->nfc-cf %string=?))
-(define string-ci<? (string-comparison-maker string->nfc-cf %string<?))
-(define string-ci<=? (string-comparison-maker string->nfc-cf %string<=?))
-(define string-ci>? (string-comparison-maker string->nfc-cf %string>?))
-(define string-ci>=? (string-comparison-maker string->nfc-cf %string>=?))
+(define string-ci=? (string-comparison-maker string-foldcase %string=?))
+(define string-ci<? (string-comparison-maker string-foldcase %string<?))
+(define string-ci<=? (string-comparison-maker string-foldcase %string<=?))
+(define string-ci>? (string-comparison-maker string-foldcase %string>?))
+(define string-ci>=? (string-comparison-maker string-foldcase %string>=?))
 
 ;;;; Match
 
@@ -728,8 +735,8 @@ USA.
 		   (string->nfc (string-slice string start end))))
 
 (define (string-prefix-ci? prefix string #!optional start end)
-  (%string-prefix? (string->nfc-cf prefix)
-		   (string->nfc-cf (string-slice string start end))))
+  (%string-prefix? (string-foldcase prefix)
+		   (string-foldcase (string-slice string start end))))
 
 (define (%string-prefix? prefix string)
   (let ((n (string-length prefix)))
@@ -745,8 +752,8 @@ USA.
 		   (string->nfc (string-slice string start end))))
 
 (define (string-suffix-ci? suffix string #!optional start end)
-  (%string-suffix? (string->nfc-cf suffix)
-		   (string->nfc-cf (string-slice string start end))))
+  (%string-suffix? (string-foldcase suffix)
+		   (string-foldcase (string-slice string start end))))
 
 (define (%string-suffix? suffix string)
   (let ((n (string-length suffix))
@@ -828,25 +835,8 @@ USA.
 	  (and (not (char-changes-when-case-folded? (string-ref nfd i)))
 	       (loop (fix:+ i 1)))
 	  #t))))
-
-(define (string-canonical-foldcase string)
-  (string->nfc
-   (let ((nfd (string->nfd string)))
-     (if (nfd-string-case-folded? nfd)
-	 nfd
-	 (string-foldcase string)))))
 
 ;;;; Normalization
-
-(define (string-in-nfd? string)
-  (cond ((or (legacy-string? string) (ustring? string))
-	 (if (ustring-mutable? string)
-	     (ustring-nfd-qc? string 0 (ustring-length string))
-	     (ustring-in-nfd? string)))
-	((slice? string)
-	 (unpack-slice string ustring-nfd-qc?))
-	(else
-	 (error:not-a string? string 'string-in-nfd?))))
 
 (define (string-in-nfc? string)
   (cond ((legacy-string? string)
@@ -859,6 +849,16 @@ USA.
 	 (unpack-slice string ustring-nfc-qc?))
 	(else
 	 (error:not-a string? string 'string-in-nfc?))))
+
+(define (string-in-nfd? string)
+  (cond ((or (legacy-string? string) (ustring? string))
+	 (if (ustring-mutable? string)
+	     (ustring-nfd-qc? string 0 (ustring-length string))
+	     (ustring-in-nfd? string)))
+	((slice? string)
+	 (unpack-slice string ustring-nfd-qc?))
+	(else
+	 (error:not-a string? string 'string-in-nfd?))))
 
 (define (ustring-nfc-qc? string start end)
   (case (ustring-cp-size string)
@@ -888,22 +888,6 @@ USA.
 (define %ustring-nfc-qc? (string-nqc-loop #x300 char-nfc-quick-check?))
 (define %ustring-nfd-qc? (string-nqc-loop #xC0 char-nfd-quick-check?))
 
-(define (string->nfd string)
-  (cond ((and (ustring? string)
-	      (ustring-in-nfd? string))
-	 string)
-	((string-in-nfd? string)
-	 (let ((result (%string->immutable string)))
-	   (ustring-in-nfd! result)
-	   result))
-	(else
-	 (canonical-decomposition&ordering string
-	   (lambda (string* n max-cp)
-	     (let ((result (immutable-ustring-allocate n max-cp)))
-	       (%general-copy! result 0 string* 0 n)
-	       (ustring-in-nfd! result)
-	       result))))))
-
 (define (string->nfc string)
   (cond ((and (ustring? string)
 	      (ustring-in-nfc? string))
@@ -924,8 +908,21 @@ USA.
 	   (ustring-in-nfc! result)
 	   result))))
 
-(define (string->nfc-cf string)
-  (string->nfc (string-foldcase string)))
+(define (string->nfd string)
+  (cond ((and (ustring? string)
+	      (ustring-in-nfd? string))
+	 string)
+	((string-in-nfd? string)
+	 (let ((result (%string->immutable string)))
+	   (ustring-in-nfd! result)
+	   result))
+	(else
+	 (canonical-decomposition&ordering string
+	   (lambda (string* n max-cp)
+	     (let ((result (immutable-ustring-allocate n max-cp)))
+	       (%general-copy! result 0 string* 0 n)
+	       (ustring-in-nfd! result)
+	       result))))))
 
 (define (canonical-decomposition&ordering string k)
   (let ((end (string-length string))
@@ -1074,7 +1071,7 @@ USA.
 			 (else (string-ref (vector-ref sv fc-index) m)))))))))
 
     (scan-for-first-char 0)
-    (builder)))
+    (builder 'immutable)))
 
 (define-integrable jamo-leading-start #x1100)
 (define-integrable jamo-leading-end   #x1113)
@@ -1555,7 +1552,7 @@ USA.
 		(guarantee bitless-char? char 'list->string)
 		(builder char))
 	      chars)
-    (builder)))
+    (builder 'immutable)))
 
 (define (string->list string #!optional start end)
   (let* ((end (fix:end-index end (string-length string) 'string->list))
@@ -1582,7 +1579,7 @@ USA.
       (let ((char (vector-ref vector i)))
 	(guarantee bitless-char? char 'vector->string)
 	(builder char)))
-    (builder)))
+    (builder 'immutable)))
 
 (define (string->vector string #!optional start end)
   (let* ((end (fix:end-index end (string-length string) 'string->vector))

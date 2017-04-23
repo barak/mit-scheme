@@ -988,7 +988,6 @@ USA.
 	  string-ci>?
 	  string-compare
 	  string-compare-ci
-	  string-canonical-foldcase
 	  string-copy
 	  string-copy!
 	  string-count

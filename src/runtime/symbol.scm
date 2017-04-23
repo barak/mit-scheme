@@ -101,7 +101,7 @@ USA.
   (if (ascii-string? string)
       ;; Needed during cold load.
       (%legacy-string->bytevector (ascii-string-foldcase string))
-      (string->utf8 (string-canonical-foldcase string))))
+      (string->utf8 (string-foldcase string))))
 
 (define (ascii-string? string)
   (and (legacy-string? string)
