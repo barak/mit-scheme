@@ -962,7 +962,6 @@ USA.
 	  substring<?
 	  substring=?)
   (export ()
-	  (substring string-copy)
 	  8-bit-string?
 	  burst-string
 	  char->string
@@ -1052,6 +1051,7 @@ USA.
 	  string>=?
 	  string>?
 	  string?
+	  substring
 	  substring?
 	  vector->string)
   (export (runtime predicate-metadata)

@@ -375,11 +375,33 @@ USA.
 	  (%general-copy! to 0 string start end)
 	  to)))))
 
+(define (substring string #!optional start end)
+  (let* ((len (string-length string))
+	 (end (fix:end-index end (string-length string) 'substring))
+	 (start (fix:start-index start end 'substring)))
+    ;; It shouldn't be necessary to copy immutable substrings, but some of these
+    ;; find their way to Edwin so we can't return a slice here.  We will
+    ;; probably need to implement a procedure to map an arbitrary string to a
+    ;; legacy string for Edwin's use.
+    (if (and (fix:= start 0)
+	     (fix:= end len)
+	     (not (slice? string))
+	     (not (ustring-mutable? string)))
+	string
+	(translate-slice string start end
+	  (lambda (string start end)
+	    (let ((to
+		    (immutable-ustring-allocate
+		     (fix:- end start)
+		     (%general-max-cp string start end))))
+	      (%general-copy! to 0 string start end)
+	      to))))))
+
 (define (string-head string end)
-  (string-copy string 0 end))
+  (substring string 0 end))
 
 (define (string-tail string start)
-  (string-copy string start))
+  (substring string start))
 
 (define (%general-copy! to at from start end)
 
@@ -1731,7 +1753,7 @@ USA.
   (receive (delimiter allow-runs? copy?)
       (string-splitter-options options 'string-splitter)
     (let ((predicate (splitter-delimiter->predicate delimiter))
-	  (get-part (if copy? string-copy string-slice)))
+	  (get-part (if copy? substring string-slice)))
 
       (lambda (string #!optional start end)
 	(let* ((end (fix:end-index end (string-length string) 'string-splitter))
@@ -1780,7 +1802,7 @@ USA.
 (define (string-trimmer . options)
   (receive (where copy? trim-char?)
       (string-trimmer-options options 'string-trimmer)
-    (let ((get-trimmed (if copy? string-copy string-slice)))
+    (let ((get-trimmed (if copy? substring string-slice)))
       (lambda (string)
 	(let ((end (string-length string)))
 	  (get-trimmed
