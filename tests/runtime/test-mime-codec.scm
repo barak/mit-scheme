@@ -31,7 +31,7 @@ USA.
 (load-option 'mime-codec)
 
 (define (test-encoder n-packets packet-length text? filename
-		      initialize finalize update)
+		      binary-codec? initialize finalize update)
   (call-with-output-file filename
     (lambda (port)
       (let ((context (initialize port text?))
@@ -43,128 +43,189 @@ USA.
 	    (write-char #\space port)
 	    (write packet-length port)
 	    (write-char #\space port)
-	    (let ((packet
-		   (if text?
-		       (random-text-string packet-length)
-		       (random-byte-vector packet-length))))
+	    (let ((packet (make-test-packet packet-length text? binary-codec?)))
 	      (write packet port)
 	      (newline port)
 	      (update context packet 0 packet-length))))
 	(finalize context)))))
 
+(define (make-test-packet packet-length text? binary-codec?)
+  (cond (binary-codec? (random-bytevector packet-length))
+	(text? (random-text-string packet-length))
+	(else (random-byte-vector packet-length))))
+
 (define (random-text-string length)
-  (let ((string (make-string length))
+  (let ((builder (string-builder))
 	(n-text (string-length text-characters)))
     (do ((i 0 (fix:+ i 1)))
-	((fix:= i length))
-      (string-set! string i (string-ref text-characters (random n-text))))
-    string))
+	((not (fix:< i length)))
+      (builder (string-ref text-characters (random n-text))))
+    (builder 'immutable)))
 
 (define (random-byte-vector length)
-  (object-new-type (microcode-type 'string)
-		   (random-bytevector length)))
+  (let ((bv (random-bytevector length))
+	(builder (string-builder)))
+    (do ((i 0 (fix:+ i 1)))
+	((not (fix:< i length)))
+      (builder (integer->char (bytevector-u8-ref bv i))))
+    (builder 'immutable)))
 
 (define text-characters
   (list->string
    (append '(#\tab #\newline)
 	   (char-set-members char-set:graphic))))
 
-(define (test-codec n-packets packet-length text? filename
-		      encode:initialize encode:finalize encode:update
-		      decode:initialize decode:finalize decode:update)
-  (let ((packets (make-test-vector n-packets packet-length text?)))
-    (let ((n-packets (vector-length packets)))
-      (call-with-output-file (pathname-new-type filename "clear1")
-	(lambda (port)
-	  (do ((i 0 (+ i 1)))
-	      ((= i n-packets))
-	    (write-string (vector-ref packets i) port))))
-      (call-with-output-file (pathname-new-type filename "encoded")
-	(lambda (port)
-	  (let ((context (encode:initialize port text?)))
-	    (do ((i 0 (+ i 1)))
-		((= i n-packets))
-	      (let ((packet (vector-ref packets i)))
-		(encode:update context packet 0 (string-length packet))))
-	    (encode:finalize context))))))
-  (retest-decoder text? filename
+(define (test-codec n-packets packet-length text? filename binary-codec?
+		    encode:initialize encode:finalize encode:update
+		    decode:initialize decode:finalize decode:update)
+  (let ((packets
+	 (make-test-vector n-packets packet-length text? binary-codec?)))
+    (if binary-codec?
+	(begin
+	  (call-with-binary-output-file (pathname-new-type filename "clear1")
+	    (lambda (port)
+	      (vector-for-each (lambda (packet)
+				 (write-bytevector packet port))
+			       packets)))
+	  (call-with-output-file (pathname-new-type filename "encoded")
+	    (lambda (port)
+	      (let ((context (encode:initialize port text?)))
+		(vector-for-each (lambda (packet)
+				   (encode:update context packet))
+				 packets)
+		(encode:finalize context)))))
+	(begin
+	  (call-with-output-file (pathname-new-type filename "clear1")
+	    (lambda (port)
+	      (vector-for-each (lambda (packet)
+				 (write-string packet port))
+			       packets)))
+	  (call-with-output-file (pathname-new-type filename "encoded")
+	    (lambda (port)
+	      (let ((context (encode:initialize port text?)))
+		(vector-for-each (lambda (packet)
+				   (encode:update context packet))
+				 packets)
+		(encode:finalize context)))))))
+  (retest-decoder text? filename binary-codec?
 		  decode:initialize decode:finalize decode:update))
 
-(define (make-test-vector n-packets packet-length text?)
-  (let ((n-packets (random n-packets)))
-    (let ((packets (make-vector n-packets)))
-      (do ((i 0 (+ i 1)))
-	  ((= i n-packets))
-	(vector-set! packets i
-		     (let ((packet-length (random packet-length)))
-		       (if text?
-			   (random-text-string packet-length)
-			   (random-byte-vector packet-length)))))
-      packets)))
+(define (make-test-vector n-packets packet-length text? binary-codec?)
+  (let ((n-packets (random n-packets))
+	(builder (vector-builder)))
+    (do ((i 0 (fix:+ i 1)))
+	((not (fix:< i n-packets)))
+      (builder
+       (make-test-packet (random packet-length)
+			 text?
+			 binary-codec?)))
+    (builder)))
 
-(define (retest-codec text? filename
+(define (retest-codec text? filename binary-codec?
 		      encode:initialize encode:finalize encode:update
 		      decode:initialize decode:finalize decode:update)
-  (call-with-input-file (pathname-new-type filename "clear1")
-    (lambda (input-port)
-      (call-with-output-file (pathname-new-type filename "encoded")
-	(lambda (output-port)
-	  (let ((context (encode:initialize output-port text?))
-		(buffer (make-string 37)))
-	    (let loop ()
-	      (let ((n-read (read-string! buffer input-port)))
-		(if (fix:> n-read 0)
-		    (begin
-		      (encode:update context buffer 0 n-read)
-		      (loop)))))
-	    (encode:finalize context))))))
-  (retest-decoder text? filename
+  (if binary-codec?
+      (call-with-binary-input-file (pathname-new-type filename "clear1")
+	(lambda (input-port)
+	  (call-with-output-file (pathname-new-type filename "encoded")
+	    (lambda (output-port)
+	      (let ((context (encode:initialize output-port text?)))
+		(let loop ()
+		  (let ((bv (read-bytevector 37 input-port)))
+		    (if (not (eof-object? bv))
+			(begin
+			  (encode:update context bv)
+			  (loop)))))
+		(encode:finalize context))))))
+      (call-with-input-file (pathname-new-type filename "clear1")
+	(lambda (input-port)
+	  (call-with-output-file (pathname-new-type filename "encoded")
+	    (lambda (output-port)
+	      (let ((context (encode:initialize output-port text?)))
+		(let loop ()
+		  (let ((string (read-string 37 input-port)))
+		    (if (not (eof-object? string))
+			(begin
+			  (encode:update context string)
+			  (loop)))))
+		(encode:finalize context)))))))
+  (retest-decoder text? filename binary-codec?
 		  decode:initialize decode:finalize decode:update))
-
-(define (retest-decoder text? filename
+
+(define (retest-decoder text? filename binary-codec?
 			decode:initialize decode:finalize decode:update)
   (let ((pn3 (pathname-new-type filename "clear2")))
-    (call-with-input-file (pathname-new-type filename "encoded")
-      (lambda (input-port)
-	(call-with-output-file pn3
-	  (lambda (output-port)
-	    (let ((context (decode:initialize output-port text?))
-		  (buffer (make-string 41)))
-	      (let loop ()
-		(let ((n-read (read-string! buffer input-port)))
-		  (if (fix:> n-read 0)
-		      (begin
-			(decode:update context buffer 0 n-read)
-			(loop)))))
-	      (decode:finalize context))))))
-    (call-with-input-file (pathname-new-type filename "clear1")
-      (lambda (p1)
-	(call-with-input-file pn3
-	  (lambda (p3)
-	    (let loop ()
-	      (let ((c1 (read-char p1))
-		    (c3 (read-char p3)))
-		(if (eof-object? c1)
-		    (if (eof-object? c3)
-			unspecific
-			(error "Output file longer."))
-		    (if (eof-object? c3)
-			(error "Output file shorter.")
-			(if (char=? c1 c3)
-			    (loop)
-			    (error "Files don't match."))))))))))))
+    (if binary-codec?
+	(begin
+	  (call-with-input-file (pathname-new-type filename "encoded")
+	    (lambda (input-port)
+	      (call-with-binary-output-file pn3
+		(lambda (output-port)
+		  (let ((context (decode:initialize output-port text?)))
+		    (let loop ()
+		      (let ((string (read-string 41 input-port)))
+			(if (not (eof-object? string))
+			    (begin
+			      (decode:update context string)
+			      (loop)))))
+		    (decode:finalize context))))))
+	  (call-with-binary-input-file (pathname-new-type filename "clear1")
+	    (lambda (p1)
+	      (call-with-binary-input-file pn3
+		(lambda (p3)
+		  (let loop ()
+		    (let ((b1 (read-u8 p1))
+			  (b3 (read-u8 p3)))
+		      (if (eof-object? b1)
+			  (if (eof-object? b3)
+			      unspecific
+			      (error "Output file longer."))
+			  (if (eof-object? b3)
+			      (error "Output file shorter.")
+			      (if (fix:= b1 b3)
+				  (loop)
+				  (error "Files don't match.")))))))))))
+	(begin
+	  (call-with-input-file (pathname-new-type filename "encoded")
+	    (lambda (input-port)
+	      (call-with-output-file pn3
+		(lambda (output-port)
+		  (let ((context (decode:initialize output-port text?)))
+		    (let loop ()
+		      (let ((string (read-string 41 input-port)))
+			(if (not (eof-object? string))
+			    (begin
+			      (decode:update context string)
+			      (loop)))))
+		    (decode:finalize context))))))
+	  (call-with-input-file (pathname-new-type filename "clear1")
+	    (lambda (p1)
+	      (call-with-input-file pn3
+		(lambda (p3)
+		  (let loop ()
+		    (let ((c1 (read-char p1))
+			  (c3 (read-char p3)))
+		      (if (eof-object? c1)
+			  (if (eof-object? c3)
+			      unspecific
+			      (error "Output file longer."))
+			  (if (eof-object? c3)
+			      (error "Output file shorter.")
+			      (if (char=? c1 c3)
+				  (loop)
+				  (error "Files don't match."))))))))))))))
 
 (define (for-each-setting procedure)
   (procedure 20 1024 #t)
   (procedure 20 1024 #f))
 
-(define (define-mime-codec-tests name
+(define (define-mime-codec-tests name binary-codec?
 	  encode:initialize encode:finalize encode:update
 	  decode:initialize decode:finalize decode:update)
   (for-each-setting
    (lambda (n-packets packet-length text?)
-     (define-test (symbol 'ENCODE '- name
-			  '/ (if text? 'TEXT 'BINARY)
+     (define-test (symbol 'encode '- name
+			  '/ (if text? 'text 'binary)
 			  '/ n-packets
 			  '/ packet-length)
        (lambda ()
@@ -172,20 +233,21 @@ USA.
 	   (lambda (pathname)
 	     (test-encoder
 	      n-packets packet-length text? pathname
-	      encode:initialize encode:finalize encode:update)))))
-     (define-test (symbol 'CODEC '- name
-			  '/ (if text? 'TEXT 'BINARY)
+	      binary-codec? encode:initialize encode:finalize encode:update)))))
+     (define-test (symbol 'codec '- name
+			  '/ (if text? 'text 'binary)
 			  '/ n-packets
 			  '/ packet-length)
        (lambda ()
 	 (call-with-temporary-file-pathname
 	   (lambda (pathname)
 	     (test-codec
-	      n-packets packet-length text? pathname
+	      n-packets packet-length text? pathname binary-codec?
 	      encode:initialize encode:finalize encode:update
 	      decode:initialize decode:finalize decode:update))))))))
 
 (define-mime-codec-tests 'BASE64
+  #t
   encode-base64:initialize
   encode-base64:finalize
   encode-base64:update
@@ -195,6 +257,7 @@ USA.
 
 #;
 (define-mime-codec-tests 'BINHEX40
+  #t
   encode-binhex40:initialize
   encode-binhex40:finalize
   encode-binhex40:update
@@ -203,6 +266,7 @@ USA.
   decode-binhex40:update)
 
 (define-mime-codec-tests 'QUOTED-PRINTABLE
+  #f
   encode-quoted-printable:initialize
   encode-quoted-printable:finalize
   encode-quoted-printable:update
@@ -212,6 +276,7 @@ USA.
 
 #;
 (define-mime-codec-tests 'UUE
+  #t
   encode-uue:initialize
   encode-uue:finalize
   encode-uue:update
