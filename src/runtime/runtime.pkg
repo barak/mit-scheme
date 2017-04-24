@@ -779,6 +779,7 @@ USA.
 	  vector->list
 	  vector-append
 	  vector-binary-search
+	  vector-builder
 	  vector-copy
 	  vector-copy!
 	  vector-eighth

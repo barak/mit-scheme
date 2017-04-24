@@ -580,69 +580,76 @@ USA.
 
 ;;;; Builder for vector-like sequences
 
-(define (make-sequence-builder make-sequence sequence-length sequence-ref
-			       sequence-set! sequence-copy buffer-length
-			       finish-build)
-    ;; This is optimized to minimize copying, so it wastes some space.
+(define (make-sequence-builder elt? seq? make-seq seq-length seq-set! seq-copy!
+			       buffer-length)
   (let ((buffers)
 	(buffer)
-	(index))
+	(start)
+	(index)
+	(count))
 
     (define (reset!)
       (set! buffers '())
-      (set! buffer (make-sequence buffer-length))
+      (set! buffer (make-seq buffer-length))
+      (set! start 0)
       (set! index 0)
+      (set! count 0)
       unspecific)
 
-    (define (new-buffer!)
-      (set! buffers (cons (cons buffer index) buffers))
-      (set! buffer (make-sequence buffer-length))
-      (set! index 0)
-      unspecific)
-
-    (define (empty?)
-      (and (fix:= 0 index)
-	   (null? buffers)))
-
-    (define (count)
-      (do ((buffers buffers (cdr buffers))
-	   (n 0 (fix:+ n (cdr (car buffers)))))
-	  ((not (pair? buffers)) (fix:+ n index))))
-
-    (define (append-element! element)
-      (if (not (fix:< index buffer-length))
-	  (new-buffer!))
-      (sequence-set! buffer index element)
+    (define (append-elt! elt)
+      (seq-set! buffer index elt)
       (set! index (fix:+ index 1))
-      unspecific)
+      (set! count (fix:+ count 1))
+      (if (not (fix:< index buffer-length))
+	  (begin
+	    (set! buffers (cons (get-partial) buffers))
+	    (set! buffer (make-seq buffer-length))
+	    (set! start 0)
+	    (set! index 0)
+	    unspecific)))
 
-    (define (append-sequence! sequence)
-      (let ((length (sequence-length sequence)))
-	(if (fix:<= length buffer-length)
-	    (do ((i 0 (fix:+ i 1)))
-		((not (fix:< i length)))
-	      (append-element! (sequence-ref sequence i)))
+    (define (append-seq! seq)
+      (let ((length (seq-length seq)))
+	(if (fix:> length 0)
 	    (begin
-	      (if (fix:> index 0)
-		  (new-buffer!))
-	      (set! buffers
-		    (cons (cons (sequence-copy sequence) length)
-			  buffers))
+	      (if (fix:> index start)
+		  (begin
+		    (set! buffers (cons (get-partial) buffers))
+		    (set! start index)))
+	      (set! buffers (cons (vector seq 0 length) buffers))
+	      (set! count (fix:+ count length))
 	      unspecific))))
 
     (define (build)
-      (finish-build (reverse (cons (cons buffer index) buffers))))
+      (let ((result (make-seq count)))
+	(do ((parts (reverse
+		     (if (fix:> index start)
+			 (cons (get-partial) buffers)
+			 buffers))
+		    (cdr parts))
+	     (i 0
+		(let ((v (car parts)))
+		  (let ((start (vector-ref v 1))
+			(end (vector-ref v 2)))
+		  (seq-copy! result i (vector-ref v 0) start end)
+		  (fix:+ i (fix:- end start))))))
+	    ((not (pair? parts))))
+	result))
+
+    (define (get-partial)
+      (vector buffer start index))
 
     (reset!)
-    (lambda (operator)
-      (case operator
-	((append-element!) append-element!)
-	((append-sequence!) append-sequence!)
-	((build) build)
-	((empty?) empty?)
-	((count) count)
-	((reset!) reset!)
-	(else (error "Unknown operator:" operator))))))
+    (lambda (#!optional object)
+      (cond ((default-object? object) (build))
+	    ((elt? object) (append-elt! object))
+	    ((seq? object) (append-seq! object))
+	    (else
+	     (case object
+	       ((empty?) (fix:= count 0))
+	       ((count) count)
+	       ((reset!) (reset!))
+	       (else (error "Unsupported argument:" object))))))))
 
 ;;;; Ephemerons
 

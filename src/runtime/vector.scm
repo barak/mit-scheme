@@ -59,6 +59,15 @@ USA.
       (error:wrong-type-argument size "vector index" 'MAKE-VECTOR))
   ((ucode-primitive vector-cons) size (if (default-object? fill) #f fill)))
 
+(define (vector-builder #!optional buffer-length)
+  (make-sequence-builder any-object? vector? make-vector vector-length
+			 vector-set! vector-copy!
+    (if (default-object? buffer-length)
+	16
+	(begin
+	  (guarantee positive-fixnum? buffer-length 'vector-builder)
+	  buffer-length))))
+
 (define (vector->list vector #!optional start end)
   (subvector->list vector
 		   (if (default-object? start) 0 start)
