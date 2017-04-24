@@ -277,7 +277,9 @@ USA.
        (do ((i start (fix:+ i 1)))
 	   ((not (fix:< i end)))
 	 (builder (integer->char (bytevector-u8-ref bv i)))))
-     (fix:- end start))))
+     (fix:- end start))
+   (lambda ()
+     unspecific)))
 
 (define (make-octets-output-type)
   (make-textual-port-type `((extract-output ,string-out/extract-output)

@@ -725,7 +725,7 @@ USA.
 		    (lambda () unspecific)
 		    (list->vector custom)))
 
-(define (make-non-channel-ss flavor . custom)
+(define (make-non-channel-ss flavor custom)
   (let ((port #f)
 	(open? #t))
     (make-source/sink flavor
@@ -757,7 +757,7 @@ USA.
 		   (lambda (bv bs be) (channel-read channel bv bs be))))
 
 (define (make-non-channel-input-source has-bytes? read-bytes! . custom)
-  (apply make-non-channel-ss 'source has-bytes? read-bytes! custom))
+  (make-non-channel-ss 'source has-bytes? read-bytes! custom))
 
 (define (input-source? object)
   (and (source/sink? object)
@@ -790,10 +790,11 @@ USA.
 (define (make-channel-output-sink channel)
   (make-channel-ss 'sink
 		   channel
-		   (lambda (bv bs be) (channel-write channel bv bs be))))
+		   (lambda (bv bs be) (channel-write channel bv bs be))
+		   (lambda () unspecific)))
 
-(define (make-non-channel-output-sink write-bytes . custom)
-  (apply make-non-channel-ss 'sink write-bytes custom))
+(define (make-non-channel-output-sink write-bytes close . custom)
+  (make-non-channel-ss 'sink write-bytes close custom))
 
 (define (output-sink? object)
   (and (source/sink? object)
@@ -807,13 +808,16 @@ USA.
 (define output-sink-port source/sink-port)
 (define set-output-sink-port! set-source/sink-port!)
 (define output-sink-open? source/sink-open?)
-(define close-output-sink close-source/sink)
 
 (define (output-sink-write-bytes sink bv bs be)
   ((vector-ref (source/sink-custom sink) 0) bv bs be))
 
+(define (close-output-sink sink)
+  ((vector-ref (source/sink-custom sink) 1))
+  (close-source/sink sink))
+
 (define (output-sink-custom-length sink)
-  (fix:- (vector-length (source/sink-custom sink)) 1))
+  (fix:- (vector-length (source/sink-custom sink)) 2))
 
 (define (output-sink-custom-ref sink index)
-  (vector-ref (source/sink-custom sink) (fix:+ index 1)))
+  (vector-ref (source/sink-custom sink) (fix:+ index 2)))
