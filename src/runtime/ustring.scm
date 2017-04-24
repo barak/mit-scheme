@@ -608,10 +608,6 @@ USA.
     (define (get-partial)
       (string-slice buffer start index))
 
-    (define (empty?)
-      (and (fix:= start index)
-	   (null? buffers)))
-
     (define (append-char! char)
       (ustring3-set! buffer index char)
       (set! index (fix:+ index 1))
@@ -654,7 +650,7 @@ USA.
 	((append-char!) append-char!)
 	((append-string!) append-string!)
 	((build) build)
-	((empty?) empty?)
+	((empty?) (lambda () (fix:= count 0)))
 	((count) (lambda () count))
 	((max-cp) (lambda () max-cp))
 	((reset!) reset!)
