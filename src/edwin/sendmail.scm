@@ -920,7 +920,7 @@ the user from the mailer."
 		 (append-message (buffer-length buffer) port)))
 	     (call-with-append-file pathname
 	       (lambda (port)
-		 (append-message ((port/operation port 'LENGTH) port)
+		 (append-message ((textual-port-operation port 'LENGTH) port)
 				 port)))))))
    pathnames))
 

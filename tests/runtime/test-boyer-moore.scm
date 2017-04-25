@@ -74,7 +74,7 @@ USA.
 (define (file->string filename)
   (call-with-input-file filename
     (lambda (port)
-      ((port/operation port 'REST->STRING) port))))
+      ((textual-port-operation port 'REST->STRING) port))))
 
 (define (search-speed-test text die-length die-skew procedure n-repeats)
   (let ((entries (map car (dice-text text die-length die-skew))))

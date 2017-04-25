@@ -118,9 +118,10 @@ USA.
 
 (define (match-entry? name entry)
   (let ((s (car entry)))
-    (substring-ci=? name 0 (string-length name)
-		    s 0
-		    (or (string-find-next-char s #\space)
-			(string-length s)))))
+    (string-ci=? name
+		 (let ((space (string-find-next-char s #\space)))
+		   (if space
+		       (string-slice s 0 space)
+		       s)))))
 
 (define subsystem-identifications '())

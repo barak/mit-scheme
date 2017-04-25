@@ -1062,7 +1062,11 @@ Prefix argument means do not kill the debugger buffer."
       (write-string
        (string-pad-right
 	(string-append
-	 (cdr (with-output-to-truncated-string pad-width expression-thunk))
+	 (cdr
+	  (call-with-truncated-output-string pad-width
+	    (lambda (port)
+	      (parameterize* (list (cons current-output-port port))
+			     expression-thunk))))
 	 " ")
 	pad-width
 	#\-)

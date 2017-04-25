@@ -37,7 +37,8 @@ USA.
 	(environment
 	 (optional-environment environment 'PROMPT-FOR-COMMAND-EXPRESSION))
 	(level (nearest-cmdl/level)))
-    (let ((operation (port/operation port 'PROMPT-FOR-COMMAND-EXPRESSION)))
+    (let ((operation
+	   (textual-port-operation port 'PROMPT-FOR-COMMAND-EXPRESSION)))
       (if operation
 	  (operation port environment prompt level)
 	  (begin
@@ -67,7 +68,7 @@ USA.
 
 (define (%prompt-for-expression port environment prompt caller)
   (let ((prompt (canonicalize-prompt prompt ": ")))
-    (let ((operation (port/operation port 'PROMPT-FOR-EXPRESSION)))
+    (let ((operation (textual-port-operation port 'PROMPT-FOR-EXPRESSION)))
       (if operation
 	  (operation port environment prompt)
 	  (begin
@@ -96,7 +97,7 @@ USA.
   (let ((prompt (canonicalize-command-prompt prompt))
 	(port (if (default-object? port) (interaction-i/o-port) port))
 	(level (nearest-cmdl/level)))
-    (let ((operation (port/operation port 'PROMPT-FOR-COMMAND-CHAR)))
+    (let ((operation (textual-port-operation port 'PROMPT-FOR-COMMAND-CHAR)))
       (if operation
 	  (operation port prompt level)
 	  (default/prompt-for-command-char port prompt level)))))
@@ -120,7 +121,7 @@ USA.
 (define (prompt-for-confirmation prompt #!optional port)
   (let ((prompt (canonicalize-prompt prompt " (y or n)? "))
 	(port (if (default-object? port) (interaction-i/o-port) port)))
-    (let ((operation (port/operation port 'PROMPT-FOR-CONFIRMATION)))
+    (let ((operation (textual-port-operation port 'PROMPT-FOR-CONFIRMATION)))
       (if operation
 	  (operation port prompt)
 	  (default/prompt-for-confirmation port prompt)))))
@@ -165,7 +166,7 @@ USA.
 (define (prompt-for-string prompt #!optional port)
   ;; Returns a string (the normal, "cooked" input line) or eof-object.
   (let ((port (if (default-object? port) (interaction-i/o-port) port)))
-    (let ((operation (port/operation port 'PROMPT-FOR-STRING)))
+    (let ((operation (textual-port-operation port 'PROMPT-FOR-STRING)))
       (if operation
 	  (operation port prompt)
 	  (default/prompt-for-string port prompt)))))
@@ -188,7 +189,7 @@ USA.
 	     (begin
 	       (guarantee textual-i/o-port? port 'call-with-pass-phrase)
 	       port))))
-    (let ((operation (port/operation port 'call-with-pass-phrase)))
+    (let ((operation (textual-port-operation port 'call-with-pass-phrase)))
       (if operation
 	  (operation port prompt receiver)
 	  (default/call-with-pass-phrase port prompt receiver)))))
@@ -291,7 +292,7 @@ USA.
 ;;;; Debugger Support
 
 (define (port/debugger-failure port message)
-  (let ((operation (port/operation port 'DEBUGGER-FAILURE)))
+  (let ((operation (textual-port-operation port 'DEBUGGER-FAILURE)))
     (if operation
 	(operation port message)
 	(default/debugger-failure port message))))
@@ -301,7 +302,7 @@ USA.
   (default/debugger-message port message))
 
 (define (port/debugger-message port message)
-  (let ((operation (port/operation port 'DEBUGGER-MESSAGE)))
+  (let ((operation (textual-port-operation port 'DEBUGGER-MESSAGE)))
     (if operation
 	(operation port message)
 	(default/debugger-message port message))))
@@ -311,7 +312,7 @@ USA.
   (write-string message port))
 
 (define (port/debugger-presentation port thunk)
-  (let ((operation (port/operation port 'DEBUGGER-PRESENTATION)))
+  (let ((operation (textual-port-operation port 'DEBUGGER-PRESENTATION)))
     (if operation
 	(operation port thunk)
 	(default/debugger-presentation port thunk))))
@@ -324,7 +325,7 @@ USA.
 
 (define (port/write-result port expression value hash-number
 			   #!optional environment)
-  (let ((operation (port/operation port 'WRITE-RESULT))
+  (let ((operation (textual-port-operation port 'WRITE-RESULT))
 	(environment
 	 (if (default-object? environment)
 	     (nearest-repl/environment)
@@ -355,32 +356,32 @@ USA.
 (define write-result:undefined-value-is-special? true)
 
 (define (port/set-default-directory port directory)
-  (let ((operation (port/operation port 'SET-DEFAULT-DIRECTORY)))
+  (let ((operation (textual-port-operation port 'SET-DEFAULT-DIRECTORY)))
     (if operation
 	(operation port directory))))
 
 (define (port/set-default-environment port environment)
-  (let ((operation (port/operation port 'SET-DEFAULT-ENVIRONMENT)))
+  (let ((operation (textual-port-operation port 'SET-DEFAULT-ENVIRONMENT)))
     (if operation
 	(operation port environment))))
 
 (define (port/gc-start port)
-  (let ((operation (port/operation port 'GC-START)))
+  (let ((operation (textual-port-operation port 'GC-START)))
     (if (and operation (not (*within-restore-window?*)))
 	(operation port))))
 
 (define (port/gc-finish port)
-  (let ((operation (port/operation port 'GC-FINISH)))
+  (let ((operation (textual-port-operation port 'GC-FINISH)))
     (if (and operation (not (*within-restore-window?*)))
 	(operation port))))
 
 (define (port/read-start port)
-  (let ((operation (port/operation port 'READ-START)))
+  (let ((operation (textual-port-operation port 'READ-START)))
     (if operation
 	(operation port))))
 
 (define (port/read-finish port)
-  (let ((operation (port/operation port 'READ-FINISH)))
+  (let ((operation (textual-port-operation port 'READ-FINISH)))
     (if operation
 	(operation port))))
 
@@ -444,7 +445,7 @@ USA.
 
 (define (operation/x-size port)
   (let ((port* (textual-port-state port)))
-    (let ((op (port/operation port* 'X-SIZE)))
+    (let ((op (textual-port-operation port* 'X-SIZE)))
       (and op
 	   (let ((n (op port*)))
 	     (and n
@@ -453,7 +454,7 @@ USA.
 
 (define (operation/column port)
   (let ((port* (textual-port-state port)))
-    (let ((op (port/operation port* 'COLUMN)))
+    (let ((op (textual-port-operation port* 'COLUMN)))
       (and op
 	   (let ((n (op port*)))
 	     (and n

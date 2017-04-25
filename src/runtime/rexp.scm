@@ -216,8 +216,7 @@ USA.
   (let ((end (string-length s)))
     (let loop ((start 0) (parts '()))
       (let ((index
-	     (substring-find-next-char-in-set s start end
-					      char-set:alphabetic)))
+	     (string-find-next-char-in-set s char-set:alphabetic start end)))
 	(if index
 	    (loop (fix:+ index 1)
 		  (cons* (let ((char (string-ref s index)))

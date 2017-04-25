@@ -1065,7 +1065,7 @@ USA.
       (parameterize* (list (cons param:unparser-radix 16)
 			   (cons param:unparse-uninterned-symbols-by-name? #t))
         (lambda ()
-	  (with-output-to-port port
+	  (parameterize* (list (cons current-output-port port))
 	    (lambda ()
 	      (write-string "LAP for object ")
 	      (write *recursive-compilation-number*)

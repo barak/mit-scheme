@@ -78,7 +78,7 @@ USA.
 (define (write-rtl-instructions rtl port)
   (write-instructions
    (lambda ()
-     (with-output-to-port port
+     (parameterize* (list (cons current-output-port port))
        (lambda ()
 	 (for-each show-rtl-instruction rtl))))))
 

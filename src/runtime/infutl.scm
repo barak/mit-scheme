@@ -516,7 +516,7 @@ USA.
       (define (retry-with-bigger-output-buffer)
 	(let* ((new-size (fix:+ buffer-size (fix:quotient buffer-size 4)))
 	       (nbuffer (make-legacy-string new-size)))
-	  (substring-move! buffer 0 buffer-size nbuffer 0)
+	  (string-copy! nbuffer 0 buffer)
 	  (parse-command bp cp ip ip-end nbuffer new-size)))
 
       (define (refill-input-buffer-and-retry needed)

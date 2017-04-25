@@ -55,8 +55,9 @@ it, and spawn a thread to update it after every
 	(thread-flags (list (cons (current-thread) "edwin"))))
 
     (define (new-report)
-      (with-output-to-string
-	(lambda () (world-report (current-output-port) thread-flags))))
+      (call-with-output-string
+	(lambda (port)
+	  (world-report port thread-flags))))
 
     (define (sleep)
       (sleep-current-thread

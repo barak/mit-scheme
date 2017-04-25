@@ -188,7 +188,7 @@ USA.
 	  (let ((n (read-substring! buffer 0 4096 input)))
 	    (if (> n 0)
 		(begin
-		  (write-substring buffer 0 n output)
+		  (write-string buffer output 0 n)
 		  (loop)))))))))
 
 (define (maybe-update-dependencies deps-filename source-files)

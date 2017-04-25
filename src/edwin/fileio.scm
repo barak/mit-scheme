@@ -216,7 +216,7 @@ of the predicates is satisfied, the file is written in the usual way."
     (lambda (port)
       (if (not (ref-variable translate-file-data-on-input group))
 	  (port/set-line-ending port 'NEWLINE))
-      (let ((length ((port/operation port 'LENGTH) port)))
+      (let ((length ((textual-port-operation port 'LENGTH) port)))
 	(bind-condition-handler (list condition-type:allocation-failure)
 	    (lambda (condition)
 	      condition

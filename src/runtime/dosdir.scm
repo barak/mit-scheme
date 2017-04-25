@@ -122,7 +122,7 @@ USA.
 	 (lambda (posn)
 	   (let* ((len (string-length pattern))
 		  (posn*
-		   (substring-find-next-char pattern (1+ posn) len #\*)))
+		   (string-find-next-char pattern #\* (1+ posn) len)))
 	     (if (not posn*)
 		 (simple-wildcard-matcher pattern posn)
 		 (let ((prefix (substring pattern 0 posn)))
@@ -132,7 +132,7 @@ USA.
 			      (posn posn*))
 		     (let* ((start (1+ posn))
 			    (posn*
-			     (substring-find-next-char pattern start len #\*)))
+			     (string-find-next-char pattern #\* start len)))
 		       (if (not posn*)
 			   (full-wildcard-matcher
 			    prefix

@@ -33,7 +33,8 @@ USA.
 
 ;; obsolete
 (define (with-input-from-string string thunk)
-  (with-input-from-port (open-input-string string) thunk))
+  (parameterize* (list (cons current-input-port (open-input-string string)))
+		 thunk))
 
 (define (call-with-input-string string procedure)
   (procedure (open-input-string string)))
@@ -74,7 +75,7 @@ USA.
   (let ((ss (textual-port-state port)))
     (if (fix:< (istate-next ss) (istate-end ss))
 	(string-ref (istate-string ss) (istate-next ss))
-	(make-eof-object port))))
+	(eof-object))))
 
 (define (string-in/read-char port)
   (let ((ss (textual-port-state port)))
@@ -84,7 +85,7 @@ USA.
 	  (if (char=? char #\newline)
 	      (set-istate-line-number! ss (fix:+ 1 (istate-line-number ss))))
 	  char)
-	(make-eof-object port))))
+	(eof-object))))
 
 (define (string-in/input-line port)
   (istate-line-number (textual-port-state port)))
@@ -155,10 +156,10 @@ USA.
 ;;;; Output as characters
 
 (define (get-output-string port)
-  ((port/operation port 'extract-output) port))
+  ((textual-port-operation port 'extract-output) port))
 
 (define (get-output-string! port)
-  ((port/operation port 'extract-output!) port))
+  ((textual-port-operation port 'extract-output!) port))
 
 (define (call-with-output-string generator)
   (let ((port (open-output-string)))
@@ -174,13 +175,15 @@ USA.
 (define (with-output-to-string thunk)
   (call-with-output-string
     (lambda (port)
-      (with-output-to-port port thunk))))
+      (parameterize* (list (cons current-output-port port))
+		     thunk))))
 
 ;; deprecated
 (define (with-output-to-truncated-string limit thunk)
   (call-with-truncated-output-string limit
     (lambda (port)
-      (with-output-to-port port thunk))))
+      (parameterize* (list (cons current-output-port port))
+		     thunk))))
 
 (define (open-output-string)
   (make-textual-port string-output-type (make-ostate (string-builder) 0)))
@@ -247,7 +250,7 @@ USA.
 	      (loop (fix:+ i 1)
 		    (new-column (string-ref string i) column))
 	      (set-ostate-column! os column)))))
-    (let ((nl (substring-find-previous-char string start end #\newline)))
+    (let ((nl (string-find-previous-char string #\newline start end)))
       (if nl
 	  (loop (fix:+ nl 1) 0)
 	  (loop start (ostate-column os))))))

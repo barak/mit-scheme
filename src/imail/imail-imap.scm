@@ -2155,7 +2155,7 @@ USA.
 	  (let ((n (read-string! buffer input-port)))
 	    (if (fix:> n 0)
 		(begin
-		  (write-substring buffer 0 n output-port)
+		  (write-string buffer output-port 0 n)
 		  (loop)))))))))
 
 (define (delete-file-recursively pathname)

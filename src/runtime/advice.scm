@@ -260,7 +260,7 @@ USA.
 	 (lambda (object width)
 	   (let ((output (write-to-string object width)))
 	     (if (car output)
-		 (substring-fill! (cdr output) (- width 3) width #\.))
+		 (string-fill! (cdr output) #\. (- width 3) width))
 	     (write-string (cdr output) port)))))
     (if (default-object? result)
 	(write-string "[Entering " port)

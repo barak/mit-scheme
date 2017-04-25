@@ -552,7 +552,7 @@ USA.
 (define (read-substring!-internal string start end port)
   (let ((n-read (read-string! string port start end)))
     (if imap-transcript-port
-	(write-substring string start (+ start n-read) imap-transcript-port))
+	(write-string string imap-transcript-port start (+ start n-read)))
     n-read))
 
 (define (start-imap-transcript pathname)
@@ -572,9 +572,9 @@ USA.
       (write-char char imap-transcript-port)))
 
 (define (imap-transcript-write-substring string start end port)
-  (write-substring string start end port)
+  (write-string string port start end)
   (if imap-transcript-port
-      (write-substring string start end imap-transcript-port)))
+      (write-string string imap-transcript-port start end)))
 
 (define (imap-transcript-write-string string port)
   (write-string string port)

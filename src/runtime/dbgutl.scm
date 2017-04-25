@@ -88,9 +88,13 @@ USA.
 		    (write-string ">")
 		    (exit unspecific))
 		thunk))))))
-    (let ((x (with-output-to-truncated-string length thunk)))
+    (let ((x
+	   (call-with-truncated-output-string length
+	     (lambda (port)
+	       (parameterize* (list (cons current-output-port port))
+			      thunk)))))
       (if (and (car x) (> length 4))
-	  (substring-move! " ..." 0 4 (cdr x) (- length 4)))
+	  (string-copy! (cdr x) (- length 4) " ..."))
       (cdr x))))
 
 (define (show-frames environment depth port)

@@ -212,14 +212,13 @@ USA.
 			((fix:< n 256)
 			 (vector-8b-set! result p re-code:exact-n)
 			 (vector-8b-set! result (fix:1+ p) n)
-			 (substring-move! string i (fix:+ i n)
-					  result (fix:+ p 2))
+			 (string-copy! result (fix:+ p 2) string i (fix:+ i n))
 			 (make-compiled-regexp result case-fold?))
 			(else
 			 (vector-8b-set! result p re-code:exact-n)
 			 (vector-8b-set! result (fix:1+ p) 255)
 			 (let ((j (fix:+ i 255)))
-			   (substring-move! string i j result (fix:+ p 2))
+			   (string-copy! result (fix:+ p 2) string i j)
 			   (loop (fix:- n 255) j (fix:+ p 257)))))))))))))
 
 (define char-set:re-special
@@ -230,8 +229,8 @@ USA.
     (let ((n
 	   (let loop ((start 0) (n 0))
 	     (let ((index
-		    (substring-find-next-char-in-set string start end
-						     char-set:re-special)))
+		    (string-find-next-char-in-set string char-set:re-special
+						  start end)))
 	       (if index
 		   (loop (1+ index) (1+ n))
 		   n)))))
@@ -240,18 +239,18 @@ USA.
 	  (let ((result (make-legacy-string (+ end n))))
 	    (let loop ((start 0) (i 0))
 	      (let ((index
-		     (substring-find-next-char-in-set string start end
-						      char-set:re-special)))
+		     (string-find-next-char-in-set string char-set:re-special
+						   start end)))
 		(if index
 		    (begin
-		      (substring-move! string start index result i)
+		      (string-copy! result i string start index)
 		      (let ((i (+ i (- index start))))
 			(string-set! result i #\\)
 			(string-set! result
 				     (1+ i)
 				     (string-ref string index))
 			(loop (1+ index) (+ i 2))))
-		    (substring-move! string start end result i))))
+		    (string-copy! result i string start end))))
 	    result)))))
 
 ;;;; Char-Set Compiler

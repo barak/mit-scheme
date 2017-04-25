@@ -81,7 +81,7 @@ USA.
 	 (start (fix:start-index start end caller)))
     (if (qp-encoding-context/text? context)
 	(let loop ((start start))
-	  (let ((i (substring-find-next-char string start end #\newline)))
+	  (let ((i (string-find-next-char string #\newline start end)))
 	    (if i
 		(begin
 		  (encode-qp context string start i 'line-end)
@@ -216,7 +216,7 @@ USA.
 	 (end (fix:end-index end (string-length string) caller))
 	 (start (fix:start-index start end caller)))
     (let loop ((start start))
-      (let ((i (substring-find-next-char string start end #\newline)))
+      (let ((i (string-find-next-char string #\newline start end)))
 	(if i
 	    (begin
 	      (decode-qp context
@@ -245,8 +245,8 @@ USA.
 
     (define (loop start)
       (let ((i
-	     (substring-find-next-char-in-set string start end*
-					      char-set:qp-encoded)))
+	     (string-find-next-char-in-set string char-set:qp-encoded
+					   start end*)))
 	(if i
 	    (begin
 	      (write-string string port start i)
@@ -910,7 +910,7 @@ USA.
     (define (update string start end)
       (if (and (not (eq? state 'finished))
 	       (fix:< start end))
-	  (let ((nl (substring-find-next-char string start end #\newline)))
+	  (let ((nl (string-find-next-char string #\newline start end)))
 	    (if nl
 		(begin
 		  (builder (string-slice string start nl))

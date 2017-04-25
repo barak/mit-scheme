@@ -398,7 +398,7 @@ USA.
 (define (burst-string string delimiter)
   (let ((end (string-length string)))
     (let loop ((start 0) (result '()))
-      (let ((index (substring-find-next-char string start end delimiter)))
+      (let ((index (string-find-next-char string delimiter start end)))
 	(if index
 	    (loop (fix:+ index 1)
 		  (cons (substring string start index) result))

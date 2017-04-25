@@ -97,7 +97,7 @@ USA.
 	 (terminal-output-baud-rate channel))))
 
 (define (output-port/buffered-bytes port)
-  (let ((operation (port/operation port 'BUFFERED-OUTPUT-BYTES)))
+  (let ((operation (textual-port-operation port 'BUFFERED-OUTPUT-BYTES)))
     (if operation
 	(operation port)
 	0)))

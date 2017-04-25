@@ -221,7 +221,7 @@ Initialized from the SHELL environment variable."
 	 (or (let ((port (subprocess-input-port
 			  (process-subprocess (car processes)))))
 	       (and port
-		    (port/open? port)
+		    (textual-port-open? port)
 		    (call-with-current-continuation
 		     (lambda (k)
 		       (bind-condition-handler
@@ -244,7 +244,7 @@ Initialized from the SHELL environment variable."
 
 (define (poll-process-for-output process)
   (let ((port (subprocess-input-port (process-subprocess process))))
-    (and (port/open? port)
+    (and (textual-port-open? port)
 	 (let ((n
 		(call-with-current-continuation
 		 (lambda (k)

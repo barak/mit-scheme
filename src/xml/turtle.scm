@@ -365,7 +365,7 @@ USA.
       (define (copy p)
 	(call-with-parser-buffer-tail buffer p
 	  (lambda (string start end)
-	    (write-substring string start end output))))
+	    (write-string string output start end))))
 
       (define (finish)
 	(vector (get-output-string output)))
@@ -939,7 +939,7 @@ USA.
 	    (if (*match-string match:name s start end)
 		(begin
 		  (write-string (symbol->string prefix) port)
-		  (write-substring s start end port))
+		  (write-string s port start end))
 		(write-rdf/nt-uri uri port)))
 	  (write-rdf/nt-uri uri port)))))
 

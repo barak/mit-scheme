@@ -39,7 +39,7 @@ USA.
 		  (and repl
 		       (let ((port (cmdl/port repl)))
 			 (let ((operation
-				(port/operation
+				(textual-port-operation
 				 port
 				 'CURRENT-EXPRESSION-CONTEXT)))
 			   (and operation

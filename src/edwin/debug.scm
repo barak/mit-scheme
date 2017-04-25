@@ -696,14 +696,16 @@ USA.
 				    (bline/depth bline)))))
 			 (insert-horizontal-space indentation mark)
 			 (let ((summary
-				(with-output-to-truncated-string
-				    (max summary-minimum-columns
-					 (- columns indentation 4))
-				  (lambda ()
-				    ((bline-type/write-summary
-				      (bline/type bline))
-				     bline
-				     (current-output-port))))))
+				(call-with-truncated-output-string
+				 (max summary-minimum-columns
+				      (- columns indentation 4))
+				 (lambda (port)
+				   (parameterize* (list (cons current-output-port port))
+				     (lambda ()
+				       ((bline-type/write-summary
+					 (bline/type bline))
+					bline
+					(current-output-port))))))))
 			   (insert-string (cdr summary) mark)
 			   (if (car summary)
 			       (insert-string " ..." mark)))
@@ -1586,12 +1588,9 @@ once it has been renamed, it will not be deleted automatically.")
 		      (+ (string-length name1)
 			 (string-length separator))))
 		 (write-string (string-tail
-				(with-output-to-string
+				(call-with-output-string
 				  (lambda ()
-				    (pretty-print value
-						  (current-output-port)
-						  #t
-						  indentation)))
+				    (pretty-print value port #t indentation)))
 				indentation)
 			       port))))))
     (debugger-newline port)))

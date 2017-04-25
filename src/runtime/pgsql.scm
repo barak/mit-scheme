@@ -209,10 +209,10 @@ USA.
 				string
 				#t)))
 	  (if regs
-	      (write-substring string
-			       (re-match-start-index 2 regs)
-			       (re-match-end-index 2 regs)
-			       port)
+	      (write-string string
+			    port
+			    (re-match-start-index 2 regs)
+			    (re-match-end-index 2 regs))
 	      (write-string string port))))
       (write-string "." port)))
 

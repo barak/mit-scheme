@@ -795,7 +795,7 @@ USA.
 	(cond ((not n)
 	       (loop))
 	      ((> n 0)
-	       (write-substring buffer 0 n output)
+	       (write-string buffer output 0 n)
 	       (loop)))))))
 
 (define (for-each-file-line pathname procedure)

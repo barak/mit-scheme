@@ -292,7 +292,7 @@ USA.
 		((string-prefix? "dlname='" line)
 		 (let* ((start 8)
 			(end (string-length line))
-			(close (substring-find-next-char line start end #\')))
+			(close (string-find-next-char line #\' start end)))
 		   (if close
 		       (substring line start close)
 		       (error "No closing delimiter in dlname setting:"
@@ -613,7 +613,7 @@ USA.
 	    (with-notification
 	     (lambda (port)
 	       (write-string "Loading " port)
-	       (write-string (string-upcase (symbol-name name)) port)
+	       (write-string (string-upcase (symbol->string name)) port)
 	       (write-string " option" port))
 	     kernel)))))
 

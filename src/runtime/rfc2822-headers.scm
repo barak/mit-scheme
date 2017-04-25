@@ -164,10 +164,7 @@ USA.
 	     (lambda (out)
 	       (let loop ((line line))
 		 (let ((end (skip-wsp-right line 0 (string-length line))))
-		   (write-substring line
-				    (skip-wsp-left line 0 end)
-				    end
-				    out))
+		   (write-string line out (skip-wsp-left line 0 end) end))
 		 (if (let ((char (peek-char port)))
 		       (if (eof-object? char)
 			   (parse-error port

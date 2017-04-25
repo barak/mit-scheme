@@ -891,7 +891,7 @@ USA.
 	  (let ((builder (string-builder)))
 	    (let loop ((start 0))
 	      (let ((index
-		     (substring-find-next-char string start end #\return)))
+		     (string-find-next-char string #\return start end)))
 		(if index
 		    (begin
 		      (builder #\newline)

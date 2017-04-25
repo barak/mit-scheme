@@ -417,14 +417,18 @@ Set by Scheme evaluation code to update the mode line."
 (define (editor-eval buffer sexp environment)
   (let ((core
 	 (lambda ()
-	   (with-input-from-port dummy-i/o-port
+	   (parameterize* (list (cons current-input-port dummy-i/o-port))
 	     (lambda ()
 	       (let ((value))
 		 (let ((output-string
-			(with-output-to-string
-			  (lambda ()
-			    (set! value (eval-with-history sexp environment))
-			    unspecific))))
+			(call-with-output-string
+			  (lambda (port)
+			    (parameterize* (list (cons current-output-port
+						       port))
+			      (lambda ()
+				(set! value
+				      (eval-with-history sexp environment))
+				unspecific))))))
 		   (let ((evaluation-output-receiver
 			  (ref-variable evaluation-output-receiver buffer)))
 		     (if evaluation-output-receiver
@@ -482,13 +486,16 @@ Set by Scheme evaluation code to update the mode line."
 	       (let ((output-port
 		      (mark->output-port (buffer-end buffer) buffer)))
 		 (fresh-line output-port)
-		 (with-output-to-port output-port thunk))))))
+		 (parameterize* (list (cons current-output-port output-port))
+				thunk))))))
       (let ((value))
 	(let ((output
-	       (with-output-to-string
-		 (lambda ()
-		   (set! value (thunk))
-		   unspecific))))
+	       (call-with-output-string
+		 (lambda (port)
+		   (parameterize* (list (cons current-output-port port))
+		     (lambda ()
+		       (set! value (thunk))
+		       unspecific))))))
 	  (if (and (not (string-null? output))
 		   (not (ref-variable evaluation-output-receiver)))
 	      (string->temporary-buffer output "*Unsolicited-Output*" '())))

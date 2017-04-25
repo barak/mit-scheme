@@ -619,7 +619,7 @@ M-x rename-file, or use the `r' command in Dired.")
 	  (if (= start end)
 	      '()
 	      (let ((eol
-		     (or (substring-find-next-char string start end #\newline)
+		     (or (string-find-next-char string #\newline start end)
 			 end)))
 		(with-values
 		    (lambda ()
@@ -897,8 +897,8 @@ M-x rename-file, or use the `r' command in Dired.")
 	    (valid-name?
 	     (lambda (end)
 	       (and (<= 1 end 8)
-		    (not (substring-find-next-char-in-set filename 0 end
-							  invalid-chars))
+		    (not (string-find-next-char-in-set filename invalid-chars
+						       0 end))
 		    (not
 		     (any (lambda (name)
 			    (substring=? filename 0 end
@@ -911,8 +911,8 @@ M-x rename-file, or use the `r' command in Dired.")
 	      (valid-name? end)
 	      (and (valid-name? dot)
 		   (<= 2 (- end dot) 4)
-		   (not (substring-find-next-char-in-set filename (+ dot 1) end
-							 invalid-chars)))))))))
+		   (not (string-find-next-char-in-set filename invalid-chars
+						      (+ dot 1) end)))))))))
 
 
 (define dos-filename-description

@@ -61,7 +61,7 @@ USA.
 	   (format-loop port format-string arguments)
 	   (output-port/discretionary-flush port))))
     (cond ((not destination)
-	   (with-output-to-string (lambda () (start (current-output-port)))))
+	   (call-with-output-string start))
 	  ((eq? destination true)
 	   (start (current-output-port)))
 	  ((output-port? destination)
@@ -86,7 +86,10 @@ USA.
 
 (define (parse-dispatch port string supplied-arguments parsed-arguments
 			modifiers)
-  ((vector-ref format-dispatch-table (vector-8b-ref string 0))
+  ((let ((cp (char->integer (string-ref string 0))))
+     (if (fix:< cp #x100)
+	 (vector-ref format-dispatch-table cp)
+	 parse-default))
    port
    string
    supplied-arguments
@@ -199,9 +202,9 @@ USA.
 				((if (memq 'AT modifiers)
 				     string-pad-left
 				     string-pad-right)
-				 (with-output-to-string
-				   (lambda ()
-				     (write (car arguments))))
+				 (call-with-output-string
+				   (lambda (port)
+				     (write (car arguments) port)))
 				 n-columns)))
   (format-loop port string (cdr arguments)))
 

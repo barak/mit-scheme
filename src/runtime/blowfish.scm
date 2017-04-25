@@ -54,7 +54,7 @@ USA.
 	       (let ((m
 		      (blowfish-cfb64 input-buffer 0 n output-buffer 0
 				      key init-vector m encrypt?)))
-		 (write-substring output-buffer 0 n output)
+		 (write-string output-buffer output 0 n)
 		 (loop m))))))
      (lambda ()
        (string-fill! input-buffer #\NUL)

@@ -379,7 +379,7 @@ USA.
 	       (buffer-length 8192))
 	   (if (zero? source-length)
 	       0
-	       (let* ((buffer (make-legacy-string buffer-length))
+	       (let* ((buffer (make-bytevector buffer-length))
 		      (transfer
 		       (lambda (length)
 			 (let ((n-read
@@ -475,7 +475,7 @@ USA.
 	   (pathname-as-directory (substring string start end)))))
     (let loop ((start 0))
       (if (< start end)
-	  (let ((index (substring-find-next-char string start end #\:)))
+	  (let ((index (string-find-next-char string #\: start end)))
 	    (if index
 		(cons (if (= index start)
 			  #f

@@ -78,6 +78,6 @@ USA.
 
 (define (convert-old-method method)
   (lambda (state object)
-    (with-output-to-port (unparser-state/port state)
+    (parameterize* (list (cons current-output-port (unparser-state/port state)))
       (lambda ()
 	(method object)))))

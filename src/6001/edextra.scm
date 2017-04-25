@@ -301,7 +301,9 @@ Now, there is formatting stuff to be considered here, in print-pgm.sh.
 (define (->string object)
   (if (string? object)
       object
-      (with-output-to-string (lambda () (display object)))))
+      (call-with-output-string
+	(lambda (port)
+	  (display object port)))))
 
 (define (load-ps-copy-file file source-dir dest-dir)
   (let ((source-file (merge-pathnames file source-dir))

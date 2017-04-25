@@ -1028,12 +1028,12 @@ USA.
 (define (write-header-fields headers port)
   (encode-header-fields headers
     (lambda (string start end)
-      (write-substring string start end port))))
+      (write-string string port start end))))
 
 (define (write-header-field header port)
   (encode-header-field header
     (lambda (string start end)
-      (write-substring string start end port))))
+      (write-string string port start end))))
 
 (define (header-fields->string headers)
   (call-with-output-string
@@ -1050,7 +1050,7 @@ USA.
    (lambda (port)
      (encode-header-field-value value
        (lambda (string start end)
-	 (write-substring string start end port))))))
+	 (write-string string port start end))))))
 
 (define (get-first-header-field headers name error?)
   (let loop ((headers (->header-fields headers)))

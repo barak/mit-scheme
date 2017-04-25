@@ -306,7 +306,7 @@ USA.
   (let ((p (make-textual-port repl-port-type socket)))
     (dynamic-wind
 	(lambda () unspecific)
-	(lambda () (with-output-to-port p thunk))
+	(lambda () (parameterize* (list (cons current-output-port p)) thunk))
 	(lambda () (flush-output-port p)))))
 
 (define repl-port-type)
@@ -383,11 +383,13 @@ USA.
 
 (define (swank:disassemble-symbol socket string)
   socket
-  (with-output-to-string
-    (lambda ()
-      ((environment-lookup #f 'compiler:disassemble)
-       (eval (read-from-string string)
-	     (buffer-env))))))
+  (call-with-output-string
+    (lambda (port)
+      (parameterize* (list (cons current-output-port port))
+	(lambda ()
+	  ((environment-lookup #f 'compiler:disassemble)
+	   (eval (read-from-string string)
+		 (buffer-env))))))))
 
 ;;;; Directory Functions
 (define (swank:default-directory socket)
@@ -407,13 +409,18 @@ USA.
 	 (type (environment-reference-type env symbol))
 	 (binding (if (eq? type 'normal) (environment-lookup env symbol) #f))
 	 (binding-type (if binding (get-object-type-name binding) #f))
-	 (params (if (and binding (procedure? binding)) (procedure-parameters symbol env) #f)))
+	 (params
+	  (if (and binding (procedure? binding))
+	      (procedure-parameters symbol env)
+	      #f)))
     (string-append
-     (format #f "~a in package ~a~a of type ~a.~%~%" (string-upcase (symbol->string symbol))
+     (format #f "~a in package ~a~a of type ~a.~%~%"
+	     (string-upcase (symbol->string symbol))
 	     package
 	     (if (and binding
 		      (procedure? binding))
-		 (format #f " [originally defined in package ~a]" (env->pstring (procedure-environment binding)))
+		 (format #f " [originally defined in package ~a]"
+			 (env->pstring (procedure-environment binding)))
 		 "")
 	     (if binding-type binding-type type))
      (if binding
@@ -423,7 +430,8 @@ USA.
 	 (format #f "~%Signature: ~a.~%~%" params)
 	 "")
      (if binding
-	 (format #f "It is:~%~%~a~%" (with-output-to-string (lambda () (pp binding))))
+	 (format #f "It is:~%~%~a~%"
+		 (call-with-output-string (lambda (port) (pp binding port))))
 	 ""))))
 
 (define (swank:describe-function socket function)
@@ -473,10 +481,11 @@ USA.
 
 (define (swank:swank-macroexpand-all socket string)
   socket
-  (with-output-to-string
-    (lambda ()
+  (call-with-output-string
+    (lambda (port)
       (pp (syntax (read-from-string string)
-		  (buffer-env))))))
+		  (buffer-env))
+	  port))))
 
 (define swank:swank-macroexpand-1 swank:swank-macroexpand-all)
 (define swank:swank-macroexpand swank:swank-macroexpand-all)
@@ -485,10 +494,13 @@ USA.
   socket
   (let ((v (ignore-errors
 	    (lambda ()
-	      (with-output-to-string
-		(lambda ()
-		  (carefully-pa
-		   (eval (read-from-string name) (pstring->env pstring)))))))))
+	      (call-with-output-string
+		(lambda (port)
+		  (parameterize* (list (cons current-output-port port))
+		    (lambda ()
+		      (carefully-pa
+		       (eval (read-from-string name)
+			     (pstring->env pstring)))))))))))
     (if (condition? v) 'NIL v)))
 
 (define (carefully-pa o)
@@ -535,8 +547,14 @@ USA.
 		   (let ((binding (environment-lookup env symbol)))
 		     (if (and binding
 			      (procedure? binding))
-			 (cons symbol (read-from-string (string-trim (with-output-to-string
-								       (lambda () (pa binding))))))
+			 (cons symbol
+			       (read-from-string
+				(string-trim
+				 (call-with-output-string
+				   (lambda (port)
+				     (parameterize*
+				      (list (cons current-output-port port))
+				      (lambda () (pa binding))))))))
 			 #f))
 		   (let ((extra (assq symbol swank-extra-documentation)))
 		     (if extra
@@ -685,7 +703,7 @@ swank:xref
 (define (sldb-restarts restarts)
   (map (lambda (r)
 	 (list (symbol->string (restart/name r))
-	       (with-string-output-port
+	       (call-with-output-string
 		(lambda (p) (write-restart-report r p)))))
        restarts))
 
@@ -1058,9 +1076,12 @@ swank:xref
 			       (lambda () (procedure-environment o))))))
 	(else
 	 (stream (iline "block" (compiled-entry/block o))
-		 (with-output-to-string
-		   (lambda ()
-		     ((environment-lookup #f 'compiler:disassemble) o)))))))
+		 (call-with-output-string
+		   (lambda (port)
+		     (parameterize* (list (cons current-output-port port))
+		       (lambda ()
+			 ((environment-lookup #f 'compiler:disassemble)
+			  o)))))))))
 
 (define (inspect-code-block block)
   (let loop ((i (compiled-code-block/constants-start block)))
@@ -1069,9 +1090,12 @@ swank:xref
 		     (loop (+ i compiled-code-block/bytes-per-object)))
 	(stream (iline "debuginfo" (compiled-code-block/debugging-info block))
 		(iline "env" (compiled-code-block/environment block))
-		(with-output-to-string
-		  (lambda ()
-		    ((environment-lookup #f 'compiler:disassemble) block)))))))
+		(call-with-output-string
+		  (lambda (port)
+		    (parameterize* (list (cons current-output-port port))
+		      (lambda ()
+			((environment-lookup #f 'compiler:disassemble)
+			 block)))))))))
 
 (define (inspect-scode o)
   (stream (pprint-to-string o)))

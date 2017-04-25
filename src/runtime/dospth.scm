@@ -167,7 +167,7 @@ USA.
 
 (define (substring-components string start end delimiters)
   (let loop ((start start))
-    (let ((index (substring-find-next-char-in-set string start end delimiters)))
+    (let ((index (string-find-next-char-in-set string delimiters start end)))
       (if index
 	  (cons (substring string start index) (loop (fix:+ index 1)))
 	  (list (substring string start end))))))

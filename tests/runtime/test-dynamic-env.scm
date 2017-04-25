@@ -73,7 +73,8 @@ USA.
     (assert-equal
      (call-with-output-string
       (lambda (port)
-	(with-output-to-port port complicated-dynamic-parameter)))
+	(parameterize* (list (cons current-output-port port))
+		       complicated-dynamic-parameter)))
      "1
 2
 1

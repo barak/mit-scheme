@@ -403,7 +403,7 @@ USA.
 (define (mcrypt-encrypt context input input-start input-end
 			output output-start encrypt?)
   (guarantee-mcrypt-context context 'MCRYPT-ENCRYPT)
-  (substring-move! input input-start input-end output output-start)
+  (string-copy! output output-start input input-start input-end)
   (let ((code
 	 ((if encrypt?
 	      (ucode-primitive mcrypt_generic 4)
@@ -497,7 +497,7 @@ USA.
 	       (begin
 		 (mcrypt-encrypt context input-buffer 0 n output-buffer 0
 				 encrypt?)
-		 (write-substring output-buffer 0 n output)
+		 (write-string output-buffer output 0 n)
 		 (loop)))))
        (mcrypt-end context))
      (lambda ()

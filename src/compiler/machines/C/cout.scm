@@ -541,8 +541,8 @@ USA.
     (let loop ((src 0) (dst 0))
       (if (fix:>= src len)
 	  (substring temp 0 dst)
-	  (let ((index (substring-find-next-char-in-set
-			string src len char-set:C-string-quoted)))
+	  (let ((index (string-find-next-char-in-set
+			string char-set:C-string-quoted src len)))
 	    (if (not index)
 		(begin
 		  (substring-move! string src len temp dst)

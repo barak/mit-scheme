@@ -538,7 +538,7 @@ USA.
 (define (transcribe-substring string start end port)
   (let ((tport (textual-port-transcript port)))
     (if tport
-	(write-substring string start end tport))))
+	(write-string string tport start end))))
 
 (define (flush-transcript port)
   (let ((tport (textual-port-transcript port)))

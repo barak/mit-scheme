@@ -75,11 +75,11 @@ USA.
       *parser-radix*))
 
 (define (parse-object port)
-  (let ((read-operation (port/operation port 'read)))
+  (let ((read-operation (textual-port-operation port 'read)))
     (if read-operation
 	(read-operation port)
 	(begin
-	  (let ((read-start (port/operation port 'read-start)))
+	  (let ((read-start (textual-port-operation port 'read-start)))
 	    (if read-start
 		(read-start port)))
 	  (let restart ()
@@ -88,7 +88,8 @@ USA.
 	      (if (eq? object restart-parsing)
 		  (restart)
 		  (begin
-		    (let ((read-finish (port/operation port 'read-finish)))
+		    (let ((read-finish
+			   (textual-port-operation port 'read-finish)))
 		      (if read-finish
 			  (read-finish port)))
 		    (finish-parsing object db)))))))))
@@ -840,7 +841,8 @@ USA.
   (make-db port
 	   (make-shared-objects)
 	   '()
-	   (let ((operation (port/operation port 'discretionary-write-char)))
+	   (let ((operation
+		  (textual-port-operation port 'discretionary-write-char)))
 	     (if operation
 		 (lambda (char) (operation port char))
 		 (lambda (char) char unspecific)))
@@ -852,12 +854,12 @@ USA.
 	   (required-unary-port-operation port 'read-char)))
 
 (define (required-unary-port-operation port operator)
-  (let ((operation (port/operation port operator)))
+  (let ((operation (textual-port-operation port operator)))
     (lambda ()
       (operation port))))
 
 (define (optional-unary-port-operation port operator default-value)
-  (let ((operation (port/operation port operator)))
+  (let ((operation (textual-port-operation port operator)))
     (if operation
 	(lambda () (operation port))
 	(lambda () default-value))))

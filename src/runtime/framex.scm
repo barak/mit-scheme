@@ -40,12 +40,12 @@ USA.
 (define (stack-frame/debugging-info/default frame)
   (values (make-debugging-info/noise
 	   (lambda (long?)
-	     (with-output-to-string
-	       (lambda ()
-		 (display "Unknown (methodless) ")
+	     (call-with-output-string
+	       (lambda (port)
+		 (display "Unknown (methodless) " port)
 		 (if long?
-		     (pp frame)
-		     (write frame))))))
+		     (pp frame port)
+		     (write frame port))))))
 	  undefined-environment
 	  undefined-expression))
 
@@ -187,9 +187,11 @@ USA.
 	  undefined-expression))
 
 (define ((hardware-trap-noise frame) long?)
-  (with-output-to-string
-    (lambda ()
-      (hardware-trap-frame/describe frame long?))))
+  (call-with-output-string
+    (lambda (port)
+      (parameterize* (list (cons current-output-port port))
+	(lambda ()
+	  (hardware-trap-frame/describe frame long?))))))
 
 (define (method/compiled-code frame)
   (let ((get-environment

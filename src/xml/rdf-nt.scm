@@ -131,7 +131,7 @@ USA.
 		    (loop)))
 	      (call-with-parser-buffer-tail b p
 		(lambda (string start end)
-		  (write-substring string start end port))))))
+		  (write-string string port start end))))))
       (let ((char
 	     (let ((p (get-parser-buffer-pointer b)))
 	       (and (match-parser-buffer-char b #\\)

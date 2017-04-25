@@ -198,7 +198,7 @@ USA.
       (let ((buffer (make-string buffer-length)))
 	(string-set! buffer 0 #\altmode)
 	(string-set! buffer 1 type)
-	(substring-move! string 0 length buffer 2)
+	(string-copy! buffer 2 string 0 length)
 	(string-set! buffer (- buffer-length 1) #\altmode)
 	(output-port/flush-output port)
 	(with-absolutely-no-interrupts

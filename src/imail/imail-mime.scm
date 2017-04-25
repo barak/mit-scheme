@@ -66,7 +66,7 @@ USA.
 (define-method write-mime-entity-body (mime-entity port)
   (guarantee-mime-entity mime-entity 'WRITE-MIME-ENTITY-BODY)
   (receive (string start end) (mime-entity-body-substring mime-entity)
-    (write-substring string start end port)))
+    (write-string string port start end)))
 
 ;;;; MIME Bodies
 
@@ -96,7 +96,7 @@ USA.
 
 (define-method write-mime-body ((body <mime-body>) port)
   (receive (string start end) (mime-body-substring body)
-    (write-substring string start end port)))
+    (write-string string port start end)))
 
 (define (mime-body-type-string body)
   (string-append (symbol->string (mime-body-type body))
@@ -565,7 +565,7 @@ USA.
                (lambda (output-port)
                  (with-mime-best-effort
                   (lambda ()
-                    (write-substring string start end output-port)))))))))))
+                    (write-string string output-port start end)))))))))))
 
 (define (mime:get-boundary parameters)
   (let ((parameter (assq 'BOUNDARY parameters)))

@@ -30,15 +30,18 @@ USA.
 
 (define (with-input-from-mark mark thunk #!optional receiver)
   (let ((port (make-buffer-input-port mark (group-end mark))))
-    (let ((value (with-input-from-port port thunk)))
+    (let ((value
+	   (parameterize* (list (cons current-input-port port))
+			  thunk)))
       (if (default-object? receiver)
 	  value
 	  (receiver value (input-port/mark port))))))
 
 (define (with-input-from-region region thunk)
-  (with-input-from-port
-      (make-buffer-input-port (region-start region) (region-end region))
-    thunk))
+  (parameterize* (list (cons current-input-port
+			     (make-buffer-input-port (region-start region)
+						     (region-end region))))
+		 thunk))
 
 (define (call-with-input-mark mark procedure)
   (procedure (make-buffer-input-port mark (group-end mark))))
@@ -57,7 +60,7 @@ USA.
 			  (mark-index start))))
 
 (define (input-port/mark port)
-  (let ((operation (port/operation port 'BUFFER-MARK)))
+  (let ((operation (textual-port-operation port 'BUFFER-MARK)))
     (if (not operation)
 	(error:bad-range-argument port 'INPUT-PORT/MARK))
     (operation port)))

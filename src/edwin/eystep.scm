@@ -61,7 +61,7 @@ USA.
   (bind-condition-handler (list condition-type:error)
       evaluation-error-handler
     (lambda ()
-      (with-input-from-port dummy-i/o-port
+      (parameterize* (list (cons current-input-port dummy-i/o-port))
 	(lambda ()
 	  (with-output-to-transcript-buffer thunk))))))
 

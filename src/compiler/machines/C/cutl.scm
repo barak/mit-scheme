@@ -223,13 +223,13 @@ USA.
                 (lambda (port)
                   (let ((end (string-length comment)))
                     (let loop ((start 0) (index index))
-                      (write-substring comment start index port)
+                      (write-string comment port start index)
                       (write-string "*\\/" port)
                       (let ((index (+ index 2)))
                         (cond ((substring-search-forward "*/" comment index end)
                                => (lambda (index*) (loop index index*)))
                               (else
-                               (write-substring comment index end port))))))))))
+                               (write-string comment port index end))))))))))
         (else comment)))
 
 (define (c:string . content)

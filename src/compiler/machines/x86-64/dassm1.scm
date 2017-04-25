@@ -126,8 +126,10 @@ USA.
 	   offset
 	   (lambda ()
 	     (if comment
-		 (let ((s (with-output-to-string
-			    (lambda () (display instruction)))))
+		 (let ((s
+			(call-with-output-string
+			  (lambda (port)
+			    (display instruction port)))))
 		   (if (< (string-length s) 40)
 		       (write-string (string-pad-right s 40))
 		       (write-string s))

@@ -425,7 +425,7 @@ USA.
 (define (read-file-into-string pathname)
   (call-with-legacy-binary-input-file pathname
     (lambda (port)
-      (let ((n-bytes ((port/operation port 'LENGTH) port)))
+      (let ((n-bytes ((textual-port-operation port 'LENGTH) port)))
 	(let ((string (make-string n-bytes)))
 	  (let loop ((start 0))
 	    (if (< start n-bytes)

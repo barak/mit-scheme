@@ -567,11 +567,11 @@ USA.
   (char-set (cons start end)))
 
 (define (%char-set-table char-set)
-  (let ((table (make-vector-8b #x100)))
+  (let ((table (make-bytevector #x100)))
     (do ((cp 0 (fix:+ cp 1)))
 	((not (fix:< cp #x100)))
-      (vector-8b-set! table cp
-		      (if (%code-point-in-char-set? cp char-set) 1 0)))
+      (bytevector-u8-set! table cp
+			  (if (%code-point-in-char-set? cp char-set) 1 0)))
     table))
 
 (define (8-bit-char-set? char-set)

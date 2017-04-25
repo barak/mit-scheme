@@ -192,7 +192,7 @@ USA.
 
 (define (call-with-input-copier process process-input nonblock? bsize receiver)
   (let ((port (subprocess-output-port process)))
-    (let ((output-port/close (port/operation port 'CLOSE-OUTPUT)))
+    (let ((output-port/close (textual-port-operation port 'CLOSE-OUTPUT)))
       (if process-input
 	  (handle-broken-pipe process
 	    (lambda ()
@@ -232,8 +232,8 @@ USA.
 (define (call-with-output-copier process process-output nonblock? bsize
 				 receiver)
   (let ((port (subprocess-input-port process)))
-    (let ((input-port/open? (port/operation port 'INPUT-OPEN?))
-	  (input-port/close (port/operation port 'CLOSE-INPUT)))
+    (let ((input-port/open? (textual-port-operation port 'INPUT-OPEN?))
+	  (input-port/close (textual-port-operation port 'CLOSE-INPUT)))
       (if process-output
 	  (let ((buffer (make-string bsize)))
 	    (let ((copy-output

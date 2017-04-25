@@ -203,14 +203,14 @@ USA.
 
 (define (fasl-file? pathname)
   (and (file-regular? pathname)
-       (call-with-legacy-binary-input-file pathname
+       (call-with-binary-input-file pathname
 	 (lambda (port)
 	   (let ((n (bytes-per-object)))
-	     (let ((marker (make-legacy-string n)))
-	       (and (eqv? (read-string! marker port) n)
+	     (let ((marker (make-bytevector n)))
+	       (and (eqv? (read-bytevector! marker port) n)
 		    (let loop ((i 0))
 		      (if (fix:< i n)
-			  (and (fix:= (vector-8b-ref marker i) #xFA)
+			  (and (fix:= (bytevector-u8-ref marker i) #xFA)
 			       (loop (fix:+ i 1)))
 			  #t)))))))))
 

@@ -165,14 +165,14 @@ USA.
   unspecific)
 
 (define (socket/close-input port)
-  (if (port/open? port)
+  (if (textual-port-open? port)
       ((ucode-primitive shutdown-socket 2)
        (channel-descriptor (input-port-channel port))
        1))
   (generic-io/close-input port))
 
 (define (socket/close-output port)
-  (if (port/open? port)
+  (if (textual-port-open? port)
       ((ucode-primitive shutdown-socket 2)
        (channel-descriptor (input-port-channel port))
        2))

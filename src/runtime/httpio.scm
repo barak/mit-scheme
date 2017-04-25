@@ -285,7 +285,7 @@ USA.
 	  (let ((m (read-string! buffer port 0 (min n len))))
 	    (if (= m 0)
 		(error "Premature EOF in HTTP message body."))
-	    (write-substring buffer 0 m output)
+	    (write-string buffer output 0 m)
 	    (loop (- n m)))))))
 
 (define (%read-delimited-body headers port)
@@ -313,7 +313,7 @@ USA.
 	 (let ((n (read-string! buffer port)))
 	   (if (> n 0)
 	       (begin
-		 (write-substring buffer 0 n output)
+		 (write-string buffer output 0 n)
 		 (loop)))))))))
 
 (define (%no-read-body)
