@@ -90,7 +90,10 @@ USA.
 	    (call-with-input-file namestring
 	      (lambda (inport)
 		(let loop ()
-		  (let ((form (read inport)))
+		  (let ((form
+			 (parameterize* (list (cons param:parser-fold-case? #f))
+			   (lambda ()
+			     (read inport)))))
 		    (if (not (eof-object? form))
 			(begin
 			  (include-cdecl form new-cwd twd includes)
