@@ -602,7 +602,7 @@ USA.
   ((environment-lookup (->environment '(ffi)) 'update-html-index) directory))
 
 (define (load-option-quietly name)
-  (if (not (name->package (list name)))
+  (if (not (option-loaded? name))
       (let ((kernel
 	     (lambda ()
 	       (parameterize* (list (cons param:suppress-loading-message? #t))

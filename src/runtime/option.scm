@@ -58,6 +58,9 @@ USA.
 	name
 	(find-option (*options*) (*parent*)))))
 
+(define (option-loaded? name)
+  (not (eq? #f (memq name loaded-options))))
+
 (define (define-load-option name . loaders)
   (*options* (cons (cons name loaders) (*options*)))
   unspecific)

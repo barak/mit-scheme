@@ -3323,6 +3323,7 @@ USA.
 	  further-load-options
 	  load-option
 	  local-load-options
+	  option-loaded?
 	  standard-load-options
 	  standard-option-loader
 	  standard-system-loader)
