@@ -25,7 +25,7 @@ USA.
 |#
 
 ;;;; Binary I/O ports
-;;; package: (runtime port)
+;;; package: (runtime binary-port)
 
 (declare (usual-integrations))
 
@@ -148,6 +148,7 @@ USA.
 	  (bytevector-copy! bytevector index bv bs be)
 	  (set! index index*)
 	  (fix:- be bs)))
+      (default-object)
       bytevector-output-port-tag
       (lambda ()
 	(bytevector-copy bytevector 0 index)))
