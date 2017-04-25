@@ -433,8 +433,7 @@ USA.
 	      (thunk)))))))
 
 (define (standard-library-directory-pathname)
-  (let ((d (system-library-directory-pathname "lib")))
-    (pathname-new-directory d (except-last-pair (pathname-directory d)))))
+  (last library-directory-path))
 
 (define (pathname->standard-uri pathname)
   (let ((uri

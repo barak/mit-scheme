@@ -3413,6 +3413,8 @@ USA.
 	  system-library-pathname
 	  uri->pathname
 	  user-homedir-pathname)
+  (export (runtime load)
+	  library-directory-path)
   (initialization (initialize-package!)))
 
 (define-package (runtime pathname unix)
