@@ -675,6 +675,7 @@ USA.
 	  string->mime-type
 	  string-is-mime-token?
 	  string-is-mime-type?
+	  with-temporary-file
 	  write-mime-type)
   (initialization (initialize-package!)))
 

@@ -206,6 +206,17 @@ USA.
      (lambda () (receiver pathname))
      (lambda () (deallocate-temporary-file pathname)))))
 
+(define (with-temporary-file pathname thunk)
+  (dynamic-wind
+   (lambda ()
+     (let ((updater (fixed-objects-updater 'files-to-delete))
+	   (string (string-for-primitive (->namestring pathname))))
+       (with-files-to-delete-locked
+	(lambda ()
+	  (updater (lambda (filenames) (cons string filenames)))))))
+   thunk
+   (lambda () (deallocate-temporary-file pathname))))
+
 (define files-to-delete-mutex)
 
 (define (with-files-to-delete-locked thunk)
@@ -226,7 +237,8 @@ USA.
 		   #t)))))))
 
 (define (deallocate-temporary-file pathname)
-  (delete-file-no-errors pathname)
+  (if (file-exists? pathname)
+      (delete-file-no-errors pathname))
   (let ((updater (fixed-objects-updater 'files-to-delete))
 	(filename (string-for-primitive (->namestring pathname))))
     (with-files-to-delete-locked
