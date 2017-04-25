@@ -32,4 +32,4 @@ USA.
   (lambda ()
     (load-package-set "cref")))
 
-(add-subsystem-identification! "CREF" '(2 5))
+(add-subsystem-identification! "CREF" '(2 6))
