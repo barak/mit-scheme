@@ -2499,6 +2499,12 @@ USA.
 	  u8-ready?
 	  write-bytevector
 	  write-u8)
+  ;; Temporary hack: this allows these bindings to be seen by Edwin.
+  ;; Move these bindings back to (runtime) after 9.3 release.
+  (export ()
+	  make-binary-port
+	  make-non-channel-input-source
+	  make-non-channel-output-sink)
   (export (runtime)
 	  input-source-channel
 	  input-source-custom-length
@@ -2506,11 +2512,8 @@ USA.
 	  input-source-open?
 	  input-source-port
 	  input-source?
-	  make-binary-port
 	  make-channel-input-source
 	  make-channel-output-sink
-	  make-non-channel-input-source
-	  make-non-channel-output-sink
 	  output-sink-channel
 	  output-sink-custom-length
 	  output-sink-custom-ref

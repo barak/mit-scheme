@@ -697,11 +697,12 @@ USA.
 
 (define (decode-basic-auth-header string start end)
   (let ((auth
-	 (call-with-output-string
-	   (lambda (port)
-	     (let ((ctx (decode-base64:initialize port #t)))
-	       (decode-base64:update ctx string start end)
-	       (decode-base64:finalize ctx))))))
+	 (utf8->string
+	  (call-with-output-bytevector
+	    (lambda (port)
+	      (let ((ctx (decode-base64:initialize port #t)))
+		(decode-base64:update ctx string start end)
+		(decode-base64:finalize ctx)))))))
     (let ((colon (string-find-next-char auth #\:)))
       (if (not colon)
 	  (error "Malformed authorization string."))

@@ -562,6 +562,62 @@ USA.
 	(string-set! string j (string-ref string i))
 	(string-set! string i char)))))
 
+;;; Binary <-> textual converters
+
+(define (string->bytevector string #!optional start end)
+  (let* ((end (fix:end-index end (string-length string) 'string->bytevector))
+	 (start (fix:start-index start end 'string->bytevector))
+	 (bv (make-bytevector (fix:- end start))))
+    (do ((i start (fix:+ i 1))
+	 (j 0 (fix:+ j 1)))
+	((not (fix:< i end)))
+      (bytevector-u8-set! bv j (char->integer (string-ref string i))))
+    bv))
+
+(define (bytevector->string bv #!optional start end)
+  (let* ((end (fix:end-index end (bytevector-length bv) 'bytevector->string))
+	 (start (fix:start-index start end 'bytevector->string))
+	 (string (make-string (fix:- end start))))
+    (do ((i start (fix:+ i 1))
+	 (j 0 (fix:+ j 1)))
+	((not (fix:< i end)))
+      (string-set! string j (char->integer (bytevector-u8-ref bv i))))
+    string))
+
+(define (textual-input-port->binary textual-port)
+
+  (define (has-bytes?)
+    (char-ready? textual-port))
+
+  (define (read-bytes! bv start end)
+    (let ((string (read-string (fix:- end start) textual-port)))
+      (if (or (not string) (eof-object? string))
+	  string
+	  (let ((n (string-length string)))
+	    (do ((i 0 (fix:+ i 1))
+		 (j start (fix:+ j 1)))
+		((not (fix:< i n)))
+	      (bytevector-u8-set! bv j (char->integer (string-ref string i))))
+	    n))))
+
+  (define (close)
+    (close-port textual-port))
+
+  (make-binary-port (make-non-channel-input-source has-bytes? read-bytes! close)
+		    #f))
+
+(define (textual-output-port->binary textual-port)
+
+  (define (write-bytes bv start end)
+    (do ((i start (fix:+ i 1)))
+	((not (fix:< i end)))
+      (write-char (bytevector-u8-ref bv i) textual-port)))
+
+  (define (close)
+    (close-port textual-port))
+
+  (make-binary-port #f (make-non-channel-output-sink write-bytes close)))
+
 (define (decorated-string-append prefix infix suffix strings)
   (let ((infix (string-append suffix infix prefix)))
     (string-append*

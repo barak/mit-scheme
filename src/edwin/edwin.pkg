@@ -148,6 +148,7 @@ USA.
 	  (vector-8b? string?)
 	  ascii-string-copy
 	  burst-string
+	  bytevector->string
 	  char->string
 	  decorated-string-append
 	  error:not-string
@@ -162,6 +163,7 @@ USA.
 	  random-byte-vector
 	  set-string-length!
 	  string
+	  string->bytevector
 	  string->list
 	  string->vector
 	  string-append
@@ -263,6 +265,8 @@ USA.
 	  substring<?
 	  substring=?
 	  substring?
+	  textual-input-port->binary
+	  textual-output-port->binary
 	  vector-8b-fill!
 	  vector-8b-find-next-char
 	  vector-8b-find-next-char-ci

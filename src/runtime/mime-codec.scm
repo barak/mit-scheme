@@ -27,7 +27,7 @@ USA.
 ;;;; MIME support
 
 (declare (usual-integrations))
-
+
 (define (make-decoding-port-type update finalize)
   (make-textual-port-type
    `((write-char

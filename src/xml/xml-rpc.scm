@@ -250,7 +250,7 @@ USA.
      (content-string elt))
     ((base64)
      (safe-call (lambda (string)
-		  (call-with-output-string
+		  (call-with-output-bytevector
 		    (lambda (port)
 		      (call-with-decode-base64-output-port port #f
 			(lambda (port)
@@ -332,7 +332,7 @@ USA.
        (call-with-output-string
 	 (lambda (port)
 	   (let ((context (encode-base64:initialize port #f)))
-	     (encode-base64:update context string 0 (string-length string))
+	     (encode-base64:update context (string->utf8 string))
 	     (encode-base64:finalize context)))))))
 
 (define *xml-rpc:encode-value-handler* #f)

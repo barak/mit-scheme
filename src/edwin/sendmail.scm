@@ -1273,7 +1273,7 @@ the user from the mailer."
      (call-with-output-string
        (lambda (port)
 	 (let ((context (encode-base64:initialize port #f)))
-	   (encode-base64:update context string 0 (string-length string))
+	   (encode-base64:update context (string->bytevector string))
 	   (encode-base64:finalize context))))))
   (smtp-write-line port (base64 user-name))
   (smtp-read-response port 334)
@@ -1285,12 +1285,12 @@ the user from the mailer."
    (call-with-output-string
      (lambda (port)
        (let ((context (encode-base64:initialize port)))
-	 (encode-base64:update context "\000" 0 1)
-	 (encode-base64:update context user-name 0 (string-length user-name))
-	 (encode-base64:update context "\000" 0 1)
+	 (encode-base64:update context (bytevector 0))
+	 (encode-base64:update context (string->bytevector user-name))
+	 (encode-base64:update context (bytevector 0))
 	 (call-with-stored-pass-phrase pass-phrase-key
 	   (lambda (pass)
-	     (encode-base64:update context pass 0 (string-length pass))))
+	     (encode-base64:update context (string->bytevector pass))))
 	 (encode-base64:finalize context))))))
 
 (define (smtp-server-pass-phrase-key user-name lookup-context)
@@ -1347,7 +1347,7 @@ the user from the mailer."
 	    (lambda (string start end)
 	      (encode-quoted-printable:update
                context
-               (substring string 0 (string-length string))
+               (string-copy string)
                start
                end)))
 	  (encode-quoted-printable:finalize context)))
@@ -1444,30 +1444,31 @@ the user from the mailer."
 		    (mime-attachment-message-headers attachment))
 	  (newline port)
 	  ((mime-attachment-message-body-generator attachment) port))
-	(receive (initialize update finalize text?)
-	    (if (eq? type 'TEXT)
-		(values encode-quoted-printable:initialize
-			encode-quoted-printable:update
-			encode-quoted-printable:finalize
-			#t)
-		(values encode-base64:initialize
-			encode-base64:update
-			encode-base64:finalize
-			#f))
-	  (let ((context (initialize port text?)))
-	    ((if (eq? type 'TEXT)
-		 call-with-input-file
-		 call-with-legacy-binary-input-file)
-	     (mime-attachment-pathname attachment)
-	     (lambda (input-port)
-	       (let ((buffer (make-string 4096)))
-		 (let loop ()
-		   (let ((n-read (read-string! buffer input-port)))
-		     (if (> n-read 0)
-			 (begin
-			   (update context buffer 0 n-read)
-			   (loop))))))))
-	    (finalize context))))))
+	(if (eq? type 'TEXT)
+	    (let ((context (encode-quoted-printable:initialize port #t)))
+	      (call-with-input-file (mime-attachment-pathname attachment)
+		(lambda (input-port)
+		  (let ((buffer (make-string 4096)))
+		    (let loop ()
+		      (let ((n-read (read-string! buffer input-port)))
+			(if (> n-read 0)
+			    (begin
+			      (encode-quoted-printable:update context
+							      buffer 0 n-read)
+			      (loop))))))))
+	      (encode-quoted-printable:finalize context))
+	    (let ((context (encode-base64:initialize port #f)))
+	      (call-with-binary-input-file
+		  (mime-attachment-pathname attachment)
+		(lambda (input-port)
+		  (let ((buffer (make-bytevector 4096)))
+		    (let loop ()
+		      (let ((n-read (read-bytevector! buffer input-port)))
+			(if (> n-read 0)
+			    (begin
+			      (encode-base64:update context buffer 0 n-read)
+			      (loop))))))))
+	      (encode-base64:finalize context))))))
 
 (define (enable-buffer-mime-processing! buffer)
   (buffer-remove! buffer 'MAIL-DISABLE-MIME-PROCESSING))
@@ -1588,8 +1589,7 @@ the user from the mailer."
 		     (write-string prefix port)
 		     (let ((context (encode-base64:initialize port #f)))
 		       (let ((n (* (integer-ceiling (- length 2) 4) 3)))
-			 (encode-base64:update context
-					       (random-byte-vector n) 0 n))
+			 (encode-base64:update context (random-bytevector n)))
 		       (encode-base64:finalize context))))
 		 (+ plen length))))
 

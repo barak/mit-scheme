@@ -706,7 +706,8 @@ USA.
         #f)))
 
 (define (mime:get-content-language header-fields)
-  ;++ implement
+  ;;++ implement
+  (declare (ignore header-fields))
   #f)
 
 ;;;; Extended RFC 822 Tokenizer
@@ -851,6 +852,15 @@ USA.
   make-decode-quoted-printable-port
   call-with-decode-quoted-printable-output-port)
 
+(define (make-decode-base64-port* textual-port text?)
+  (make-decode-base64-port (textual-output-port->binary textual-port) text?))
+
+(define (call-with-decode-base64-port* textual-port text? procedure)
+  (let ((port (make-decode-base64-port* textual-port text?)))
+    (let ((value (procedure port)))
+      (close-port port)
+      value)))
+
 (define-mime-encoding 'BASE64
   encode-base64:initialize
   encode-base64:finalize
@@ -858,13 +868,22 @@ USA.
   decode-base64:initialize
   decode-base64:finalize
   decode-base64:update
-  make-decode-base64-port
-  call-with-decode-base64-output-port)
+  make-decode-base64-port*
+  call-with-decode-base64-port*)
+
+(define (make-decode-binhex40-port* textual-port text?)
+  (make-decode-binhex40-port (textual-output-port->binary textual-port) text?))
+
+(define (call-with-decode-binhex40-port* textual-port text? procedure)
+  (let ((port (make-decode-binhex40-port* textual-port text?)))
+    (let ((value (procedure port)))
+      (close-port port)
+      value)))
 
 (define-mime-encoding 'BINHEX40
   #f #f #f                              ;No BinHex encoder.
   decode-binhex40:initialize
   decode-binhex40:finalize
   decode-binhex40:update
-  make-decode-binhex40-port
-  call-with-decode-binhex40-output-port)
+  make-decode-binhex40-port*
+  call-with-decode-binhex40-port*)
