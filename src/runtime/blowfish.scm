@@ -28,43 +28,44 @@ USA.
 ;;; package: (runtime blowfish)
 
 (declare (usual-integrations))
-
-(define blowfish-set-key (ucode-primitive blowfish-set-key 1))
-(define blowfish-ecb (ucode-primitive blowfish-ecb 4))
-(define blowfish-cbc (ucode-primitive blowfish-cbc-v2 5))
-(define blowfish-cfb64 (ucode-primitive blowfish-cfb64-substring-v2 9))
-(define blowfish-ofb64 (ucode-primitive blowfish-ofb64-substring 8))
+
+(define-primitives
+  (blowfish-set-key 1)
+  (blowfish-ecb 4)
+  (blowfish-cbc blowfish-cbc-v2 5)
+  (blowfish-cfb64 blowfish-cfb64-substring-v2 9)
+  (blowfish-ofb64 blowfish-ofb64-substring 8))
 
 (define (blowfish-available?)
   (load-library-object-file "prbfish" #f)
   (implemented-primitive-procedure? blowfish-cfb64))
-
+
 (define (blowfish-encrypt-port input output key init-vector encrypt?)
   ;; Assumes that INPUT is in blocking mode.
   (let ((key (blowfish-set-key key))
-	(input-buffer (make-legacy-string 4096))
-	(output-buffer (make-legacy-string 4096)))
+	(input-buffer (make-bytevector 4096))
+	(output-buffer (make-bytevector 4096)))
     (dynamic-wind
      (lambda ()
        unspecific)
      (lambda ()
        (let loop ((m 0))
-	 (let ((n (input-port/read-string! input input-buffer)))
+	 (let ((n (read-bytevector! input-buffer input)))
 	   (if (not (fix:= 0 n))
 	       (let ((m
 		      (blowfish-cfb64 input-buffer 0 n output-buffer 0
 				      key init-vector m encrypt?)))
-		 (write-string output-buffer output 0 n)
+		 (write-bytevector output-buffer output 0 n)
 		 (loop m))))))
      (lambda ()
-       (string-fill! input-buffer #\NUL)
-       (string-fill! output-buffer #\NUL)))))
+       (bytevector-fill! input-buffer 0)
+       (bytevector-fill! output-buffer 0)))))
 
 (define (compute-blowfish-init-vector)
   ;; This init vector includes a timestamp with a resolution of
   ;; milliseconds, plus 20 random bits.  This should make it very
   ;; difficult to generate two identical vectors.
-  (let ((iv (make-legacy-string 8)))
+  (let ((iv (make-bytevector 8)))
     (do ((i 0 (fix:+ i 1))
 	 (t (+ (* (+ (* (get-universal-time) 1000)
 		     (remainder (real-time-clock) 1000))
@@ -72,33 +73,44 @@ USA.
 	       (random #x100000))
 	    (quotient t #x100)))
 	((fix:= 8 i))
-      (vector-8b-set! iv i (remainder t #x100)))
+      (bytevector-u8-set! iv i (remainder t #x100)))
     iv))
 
 (define (write-blowfish-file-header port)
-  (write-string blowfish-file-header-v2 port)
-  (newline port)
+  (write-bytevector blowfish-file-header-v2 port)
   (let ((init-vector (compute-blowfish-init-vector)))
-    (write-string init-vector port)
+    (write-bytevector init-vector port)
     init-vector))
 
 (define (read-blowfish-file-header port)
-  (let ((line (read-line port)))
-    (cond ((string=? blowfish-file-header-v1 line)
-	   (make-legacy-string 8 #\NUL))
-	  ((string=? blowfish-file-header-v2 line)
-	   (let ((init-vector (make-legacy-string 8)))
-	     (if (not (= 8 (read-string! init-vector port)))
-		 (error "Short read while getting init-vector:" port))
-	     init-vector))
-	  (else
-	   (error:bad-range-argument port 'READ-BLOWFISH-FILE-HEADER)))))
+  (let ((version (try-read-blowfish-file-header port)))
+    (if (not version)
+	(error:bad-range-argument port 'read-blowfish-file-header))
+    (if (= version 1)
+	(make-bytevector 8 0)
+	(let ((init-vector (read-bytevector 8 port)))
+	  (if (not (fix:= (bytevector-length init-vector) 8))
+	      (error "Short read while getting init-vector:" port))
+	   init-vector))))
+
+(define (try-read-blowfish-file-header port)
+  (let* ((n (bytevector-length blowfish-file-header-v1))
+	 (bv (read-bytevector n port)))
+    (and (not (fix:= (bytevector-length bv) n))
+	 (if (bytevector=? bv blowfish-file-header-v1)
+	     1
+	     (let* ((m (fix:- (bytevector-length blowfish-file-header-v2) n))
+		    (bv2 (read-bytevector m port)))
+	       (and (not (fix:= (bytevector-length bv2) m))
+		    (and (bytevector=? (bytevector-append bv bv2)
+				       blowfish-file-header-v2)
+			 2)))))))
 
 (define (blowfish-file? pathname)
-  (let ((line (call-with-legacy-binary-input-file pathname read-line)))
-    (and (not (eof-object? line))
-	 (or (string=? line blowfish-file-header-v1)
-	     (string=? line blowfish-file-header-v2)))))
+  (call-with-binary-input-file pathname try-read-blowfish-file-header))
 
-(define blowfish-file-header-v1 "Blowfish, 16 rounds")
-(define blowfish-file-header-v2 "Blowfish, 16 rounds, version 2")
+(define-deferred blowfish-file-header-v1
+  (string->utf8 "Blowfish, 16 rounds\n"))
+
+(define-deferred blowfish-file-header-v2
+  (string->utf8 "Blowfish, 16 rounds, version 2\n"))
