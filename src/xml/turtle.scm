@@ -48,7 +48,7 @@ USA.
   (with-rdf-input-port port
     (lambda ()
       (post-process-parser-output
-       (parse-turtle-doc (input-port->parser-buffer port))
+       (parse-turtle-doc (textual-input-port->parser-buffer port))
        (->absolute-uri base-uri 'READ-RDF/TURTLE)))))
 
 (define parse-turtle-doc
