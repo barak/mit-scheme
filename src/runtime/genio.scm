@@ -29,15 +29,14 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-generic-i/o-port source sink caller #!optional type . extra-state)
-  (if (not (or source sink))
-      (error "Missing arguments."))
+(define (make-generic-i/o-port binary-port #!optional type caller . extra-state)
   (let ((port
 	 (make-textual-port (if (default-object? type)
-				(generic-i/o-port-type (source-type source)
-						       (sink-type sink))
+				(generic-i/o-port-type
+				 (source-type (binary-port-source binary-port))
+				 (sink-type (binary-port-sink binary-port)))
 				type)
-			    (apply make-gstate source sink 'TEXT 'TEXT caller
+			    (apply make-gstate binary-port 'text 'text caller
 				   extra-state)
 			    caller)))
     (let ((ib (port-input-buffer port)))
@@ -48,32 +47,35 @@ USA.
 	  (set-output-buffer-port! ob port)))
     port))
 
+(define (binary->textual-port binary-port)
+  (make-generic-i/o-port binary-port))
+
 (define (source-type source)
   (cond ((not source) #f)
-	((input-source-channel source) 'CHANNEL)
+	((input-source-channel source) 'channel)
 	(else #t)))
 
 (define (sink-type sink)
   (cond ((not sink) #f)
-	((output-sink-channel sink) 'CHANNEL)
+	((output-sink-channel sink) 'channel)
 	(else #t)))
 
 (define (generic-i/o-port-type source sink)
   (case source
-    ((#F)
+    ((#f)
      (case sink
-       ((#F) generic-type00)
-       ((CHANNEL) generic-type02)
+       ((#f) generic-type00)
+       ((channel) generic-type02)
        (else generic-type01)))
-    ((CHANNEL)
+    ((channel)
      (case sink
-       ((#F) generic-type20)
-       ((CHANNEL) generic-type22)
+       ((#f) generic-type20)
+       ((channel) generic-type22)
        (else generic-type21)))
     (else
      (case sink
-       ((#F) generic-type10)
-       ((CHANNEL) generic-type12)
+       ((#f) generic-type10)
+       ((channel) generic-type12)
        (else generic-type11)))))
 
 (define (generic-i/o-port->binary-port port)
@@ -87,21 +89,20 @@ USA.
 (define (output-port->binary-port port)
   (output-buffer-binary-port (port-output-buffer port)))
 
-(define (make-gstate source sink coder-name normalizer-name caller . extra)
-  (let ((binary-port (make-binary-port source sink caller)))
-    (%make-gstate (and source
-		       (make-input-buffer binary-port
-					  coder-name
-					  normalizer-name
-					  caller))
-		  (and sink
-		       (make-output-buffer binary-port
-					   coder-name
-					   normalizer-name
-					   caller))
-		  coder-name
-		  normalizer-name
-		  (list->vector extra))))
+(define (make-gstate binary-port coder-name normalizer-name caller . extra)
+  (%make-gstate (and (binary-input-port? binary-port)
+		     (make-input-buffer binary-port
+					coder-name
+					normalizer-name
+					caller))
+		(and (binary-output-port? binary-port)
+		     (make-output-buffer binary-port
+					 coder-name
+					 normalizer-name
+					 caller))
+		coder-name
+		normalizer-name
+		(list->vector extra)))
 
 (define-record-type <gstate>
     (%make-gstate input-buffer output-buffer coder-name normalizer-name extra)
@@ -142,43 +143,43 @@ USA.
 (add-boot-init!
  (lambda ()
    (let ((ops:in1
-	  `((CHAR-READY? ,generic-io/char-ready?)
-	    (CLOSE-INPUT ,generic-io/close-input)
-	    (EOF? ,generic-io/eof?)
-	    (INPUT-LINE ,generic-io/input-line)
-	    (INPUT-OPEN? ,generic-io/input-open?)
-	    (PEEK-CHAR ,generic-io/peek-char)
-	    (READ-CHAR ,generic-io/read-char)
-	    (READ-SUBSTRING ,generic-io/read-substring)
-	    (UNREAD-CHAR ,generic-io/unread-char)))
+	  `((char-ready? ,generic-io/char-ready?)
+	    (close-input ,generic-io/close-input)
+	    (eof? ,generic-io/eof?)
+	    (input-line ,generic-io/input-line)
+	    (input-open? ,generic-io/input-open?)
+	    (peek-char ,generic-io/peek-char)
+	    (read-char ,generic-io/read-char)
+	    (read-substring ,generic-io/read-substring)
+	    (unread-char ,generic-io/unread-char)))
 	 (ops:in2
-	  `((INPUT-CHANNEL ,generic-io/input-channel)))
+	  `((input-channel ,generic-io/input-channel)))
 	 (ops:out1
-	  `((BUFFERED-OUTPUT-BYTES ,generic-io/buffered-output-bytes)
-	    (BYTES-WRITTEN ,generic-io/bytes-written)
-	    (CLOSE-OUTPUT ,generic-io/close-output)
-	    (FLUSH-OUTPUT ,generic-io/flush-output)
-	    (OUTPUT-COLUMN ,generic-io/output-column)
-	    (OUTPUT-OPEN? ,generic-io/output-open?)
-	    (WRITE-CHAR ,generic-io/write-char)
-	    (WRITE-SUBSTRING ,generic-io/write-substring)))
+	  `((buffered-output-bytes ,generic-io/buffered-output-bytes)
+	    (bytes-written ,generic-io/bytes-written)
+	    (close-output ,generic-io/close-output)
+	    (flush-output ,generic-io/flush-output)
+	    (output-column ,generic-io/output-column)
+	    (output-open? ,generic-io/output-open?)
+	    (write-char ,generic-io/write-char)
+	    (write-substring ,generic-io/write-substring)))
 	 (ops:out2
-	  `((OUTPUT-CHANNEL ,generic-io/output-channel)
-	    (SYNCHRONIZE-OUTPUT ,generic-io/synchronize-output)))
+	  `((output-channel ,generic-io/output-channel)
+	    (synchronize-output ,generic-io/synchronize-output)))
 	 (other-operations
-	  `((CHAR-SET ,generic-io/char-set)
-	    (CLOSE ,generic-io/close)
-	    (CODING ,generic-io/coding)
-	    (KNOWN-CODING? ,generic-io/known-coding?)
-	    (KNOWN-CODINGS ,generic-io/known-codings)
-	    (KNOWN-LINE-ENDING? ,generic-io/known-line-ending?)
-	    (KNOWN-LINE-ENDINGS ,generic-io/known-line-endings)
-	    (LINE-ENDING ,generic-io/line-ending)
-	    (OPEN? ,generic-io/open?)
-	    (SET-CODING ,generic-io/set-coding)
-	    (SET-LINE-ENDING ,generic-io/set-line-ending)
-	    (SUPPORTS-CODING? ,generic-io/supports-coding?)
-	    (WRITE-SELF ,generic-io/write-self))))
+	  `((char-set ,generic-io/char-set)
+	    (close ,generic-io/close)
+	    (coding ,generic-io/coding)
+	    (known-coding? ,generic-io/known-coding?)
+	    (known-codings ,generic-io/known-codings)
+	    (known-line-ending? ,generic-io/known-line-ending?)
+	    (known-line-endings ,generic-io/known-line-endings)
+	    (line-ending ,generic-io/line-ending)
+	    (open? ,generic-io/open?)
+	    (set-coding ,generic-io/set-coding)
+	    (set-line-ending ,generic-io/set-line-ending)
+	    (supports-coding? ,generic-io/supports-coding?)
+	    (write-self ,generic-io/write-self))))
      (let ((make-type
 	    (lambda ops
 	      (make-textual-port-type (append (apply append ops)

@@ -2255,6 +2255,7 @@ USA.
   (files "genio")
   (parent (runtime))
   (export ()
+	  binary->textual-port
 	  char-set:iso-8859-1
 	  char-set:iso-8859-10
 	  char-set:iso-8859-11

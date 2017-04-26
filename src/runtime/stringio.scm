@@ -122,10 +122,13 @@ USA.
   (let* ((end (fix:end-index end (string-length octets) 'open-input-octets))
 	 (start (fix:start-index start end 'open-input-octets))
 	 (port
-	  (make-generic-i/o-port (make-octets-source octets start end)
-				 #f
-				 'open-input-octets
-				 octets-input-type)))
+	  (make-generic-i/o-port (make-binary-port (make-octets-source octets
+								       start
+								       end)
+						   #f
+						   'open-input-octets)
+				 octets-input-type
+				 'open-input-octets)))
     (port/set-coding port 'binary)
     (port/set-line-ending port 'binary)
     port))
@@ -265,10 +268,11 @@ USA.
 (define (open-output-octets)
   (let ((port
 	 (let ((os (make-ostate (string-builder) #f)))
-	   (make-generic-i/o-port #f
-				  (make-byte-sink os)
-				  'open-output-octets
+	   (make-generic-i/o-port (make-binary-port #f
+						    (make-byte-sink os)
+						    'open-output-octets)
 				  octets-output-type
+				  'open-output-octets
 				  os))))
     (port/set-line-ending port 'newline)
     port))

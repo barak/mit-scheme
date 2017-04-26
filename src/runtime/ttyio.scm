@@ -79,8 +79,8 @@ USA.
     (set-channel-port! output-channel the-console-port)))
 
 (define (make-cstate input-channel output-channel)
-  (make-gstate (make-channel-input-source input-channel)
-	       (make-channel-output-sink output-channel)
+  (make-gstate (make-binary-port (make-channel-input-source input-channel)
+				 (make-channel-output-sink output-channel))
 	       'TEXT
 	       'TEXT
 	       (default-object)

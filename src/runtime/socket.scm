@@ -151,10 +151,11 @@ USA.
 	   ((ucode-primitive new-open-unix-stream-socket 2) filename p)))))))
 
 (define (make-socket-port channel caller)
-  (make-generic-i/o-port (make-channel-input-source channel)
-			 (make-channel-output-sink channel)
-			 caller
-			 socket-port-type))
+  (make-generic-i/o-port (make-binary-port (make-channel-input-source channel)
+					   (make-channel-output-sink channel)
+					   caller)
+			 socket-port-type
+			 caller))
 
 (define socket-port-type)
 (define (initialize-package!)

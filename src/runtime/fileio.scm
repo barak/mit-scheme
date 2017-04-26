@@ -115,18 +115,16 @@ USA.
 
 (define (%make-textual-file-port input-channel output-channel pathname caller)
   (let ((port
-	 (make-generic-i/o-port
-	    (and input-channel
-		 (make-channel-input-source input-channel))
-	    (and output-channel
-		 (make-channel-output-sink output-channel))
-	    caller
-	    (cond ((not input-channel) output-file-type)
-		  ((not output-channel) input-file-type)
-		  (else i/o-file-type)))))
-    ;; If both channels are set they are the same.
-    (cond (input-channel (set-channel-port! input-channel port))
-	  (output-channel (set-channel-port! output-channel port)))
+	 (make-generic-i/o-port (make-binary-port
+				 (and input-channel
+				      (make-channel-input-source input-channel))
+				 (and output-channel
+				      (make-channel-output-sink output-channel))
+				 caller)
+				(cond ((not input-channel) output-file-type)
+				      ((not output-channel) input-file-type)
+				      (else i/o-file-type))
+				caller)))
     (set-port-pathname! port pathname)
     port))
 

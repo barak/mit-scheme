@@ -101,10 +101,13 @@ USA.
 		      (output-channel (subprocess-output-channel process)))
 		  (and (or input-channel output-channel)
 		       (make-generic-i/o-port
-			(and input-channel
-			     (make-channel-input-source input-channel))
-			(and output-channel
-			     (make-channel-output-sink output-channel))
+			(make-binary-port
+			 (and input-channel
+			      (make-channel-input-source input-channel))
+			 (and output-channel
+			      (make-channel-output-sink output-channel))
+			 caller)
+			(default-object)
 			caller)))))
 	   (set-subprocess-%i/o-port! process port)
 	   port)))))
