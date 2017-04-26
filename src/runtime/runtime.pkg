@@ -2507,6 +2507,8 @@ USA.
 	  make-non-channel-input-source
 	  make-non-channel-output-sink)
   (export (runtime)
+	  binary-port-sink
+	  binary-port-source
 	  input-source-channel
 	  input-source-custom-length
 	  input-source-custom-ref
