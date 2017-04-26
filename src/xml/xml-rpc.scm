@@ -33,7 +33,7 @@ USA.
 	 (http-post uri
 		    `(,@(if (default-object? headers) '() headers)
 		      ,(make-http-header 'CONTENT-TYPE "text/xml"))
-		    (xml->octets (->request request 'XML-RPC)))))
+		    (xml->bytevector (->request request 'XML-RPC)))))
     (if (not (= 200 (http-response-status response)))
 	(error "HTTP error:" (http-response-reason response)))
     (xml-rpc:parse-response (read-xml (http-message-body-port response)))))

@@ -83,14 +83,18 @@ USA.
 
 (define (read-xml port #!optional pi-handlers)
   (receive (coding prefix) (determine-coding port)
-    (parse-xml (input-port->parser-buffer port prefix)
+    (parse-xml (textual-input-port->parser-buffer port prefix)
 	       coding
-	       (guarantee-pi-handlers pi-handlers 'READ-XML))))
+	       (guarantee-pi-handlers pi-handlers 'read-xml))))
+
+(define (bytevector->xml bv #!optional start end pi-handlers)
+  (read-xml (binary->textual-port (open-input-bytevector bv start end))
+	    pi-handlers))
 
 (define (string->xml string #!optional start end pi-handlers)
   (parse-xml (string->parser-buffer string start end)
-	     'ANY
-	     (guarantee-pi-handlers pi-handlers 'STRING->XML)))
+	     'any
+	     (guarantee-pi-handlers pi-handlers 'string->xml)))
 
 (define (guarantee-pi-handlers object caller)
   (if (default-object? object)

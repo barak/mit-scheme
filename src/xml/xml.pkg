@@ -258,6 +258,7 @@ USA.
   (files "xml-parser")
   (parent (runtime xml))
   (export ()
+	  bytevector->xml
 	  read-xml
 	  read-xml-file
 	  string->xml
@@ -270,10 +271,10 @@ USA.
   (files "xml-output")
   (parent (runtime xml))
   (export ()
-	  (xml->string xml->octets)
 	  write-xml
 	  write-xml-file
-	  xml->octets))
+	  xml->bytevector
+	  xml->string))
 
 (define-package (runtime xml html)
   (files "xhtml" "xhtml-entities")

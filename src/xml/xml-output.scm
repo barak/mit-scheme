@@ -29,20 +29,26 @@ USA.
 (declare (usual-integrations))
 
 (define (write-xml xml port . options)
-  (set-coding xml port)
-  (write-xml-1 xml port options))
+  (write-xml* xml port options))
 
 (define (write-xml-file xml pathname . options)
   (call-with-output-file pathname
     (lambda (port)
-      (set-coding xml port)
-      (write-xml-1 xml port options))))
+      (write-xml* xml port options))))
 
-(define (xml->octets xml . options)
-  (call-with-output-octets
-   (lambda (port)
-     (set-coding xml port)
-     (write-xml-1 xml port options))))
+(define (xml->string xml . options)
+  (call-with-output-string
+    (lambda (port)
+      (write-xml* xml port options))))
+
+(define (xml->bytevector xml . options)
+  (call-with-output-bytevector
+   (lambda (binary-port)
+     (write-xml* xml (binary->textual-port binary-port) options))))
+
+(define (write-xml* xml port options)
+  (set-coding xml port)
+  (write-xml-1 xml port options))
 
 (define (set-coding xml port)
   (if (port/supports-coding? port)
