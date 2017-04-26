@@ -2502,6 +2502,7 @@ USA.
 	  read-bytevector
 	  read-bytevector!
 	  read-u8
+	  textual->binary-port
 	  u8-ready?
 	  write-bytevector
 	  write-u8)

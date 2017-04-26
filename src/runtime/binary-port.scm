@@ -189,6 +189,47 @@ USA.
     (procedure port)
     (get-output-bytevector port)))
 
+;;;; Conversion from textual port
+
+(define (textual->binary-port textual-port codec-name)
+  (let ((codec (get-char-codec codec-name)))
+    (make-binary-port
+     (and (textual-input-port? textual-port)
+	  (make-non-channel-input-source
+	   (lambda ()
+	     (char-ready? textual-port))
+	   (lambda (bv bs be)
+	     (let loop ((bi bs))
+	       (if (fix:< bi be)
+		   (let ((char (peek-char textual-port)))
+		     (if (or (not char) (eof-object? char))
+			 (if (fix:> bi bs)
+			     (fix:- bi bs)
+			     char)
+			 (let ((bi* ((char-codec-encoder codec) bv bi be char)))
+			   (if bi*
+			       (loop bi*)
+			       (fix:- bi bs)))))
+		   (fix:- bi bs))))
+	   (lambda ()
+	     (close-input-port textual-port))))
+     (and (textual-output-port? textual-port)
+	  (make-non-channel-output-sink
+	   (lambda (bv bs be)
+	     (let loop ((bi bs))
+	       (if (fix:< bi be)
+		   ((char-codec-decoder codec) bv bi be
+		    (lambda (char bi*)
+		      (if char
+			  (begin
+			    (write-char char textual-port)
+			    (loop bi*))
+			  (fix:- bi bs))))
+		   (fix:- bi bs))))
+	   (lambda ()
+	     (close-output-port textual-port))))
+     'textual-port->binary)))
+
 ;;;; Closing operations
 
 (define (close-binary-port port)
