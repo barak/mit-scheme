@@ -276,6 +276,9 @@ USA.
     "Moriturus te saluto.",						\
     "Happy happy joy joy!",						\
     "Ceterum censeo Carthaginem esse delendam.",			\
-    "..#]^@^@^@ NO CARRIER"						\
+    "..#]^@^@^@ NO CARRIER",						\
+    "Fortitudine vincimus.",						\
+    "Post proelium, praemium.",						\
+    "Pulvis et umbra sumus."						\
 }
 #endif /* SCM_ERRORS_H */
