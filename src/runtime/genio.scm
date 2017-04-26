@@ -48,7 +48,7 @@ USA.
     port))
 
 (define (binary->textual-port binary-port)
-  (make-generic-i/o-port binary-port))
+  (make-generic-i/o-port binary-port (default-object) 'binary->textual-port))
 
 (define (source-type source)
   (cond ((not source) #f)
