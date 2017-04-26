@@ -581,7 +581,7 @@ USA.
     (do ((i start (fix:+ i 1))
 	 (j 0 (fix:+ j 1)))
 	((not (fix:< i end)))
-      (string-set! string j (char->integer (bytevector-u8-ref bv i))))
+      (string-set! string j (integer->char (bytevector-u8-ref bv i))))
     string))
 
 (define (textual-input-port->binary textual-port)
