@@ -81,9 +81,9 @@ USA.
   (guarantee-list-of http-header? headers caller)
   (if body
       (begin
-	(guarantee string? body caller)
+	(guarantee bytevector? body caller)
 	(let ((n (%get-content-length headers))
-	      (m (vector-8b-length body)))
+	      (m (bytevector-length body)))
 	  (if n
 	      (begin
 		(if (not (= n m))
@@ -112,7 +112,7 @@ USA.
 (define-guarantee simple-http-response "simple HTTP response")
 
 (define (make-simple-http-response body)
-  (guarantee string? body 'MAKE-SIMPLE-HTTP-RESPONSE)
+  (guarantee bytevector? body 'make-simple-http-response)
   (%make-http-response #f 200 (http-status-description 200) '() body))
 
 (define (http-message? object)
@@ -177,7 +177,7 @@ USA.
 	(newline port)
 	(write-http-headers (http-request-headers request) port)
 	(%binary-mode port)
-	(write-string (http-request-body request) port))
+	(write-body (http-request-body request) port))
       (begin
 	(newline port)))
   (flush-output-port port))
@@ -194,8 +194,14 @@ USA.
 	(newline port)
 	(write-http-headers (http-response-headers response) port)))
   (%binary-mode port)
-  (write-string (http-response-body response) port)
+  (write-body (http-response-body response) port)
   (flush-output-port port))
+
+(define (write-body body port)
+  (let ((n (bytevector-length body)))
+    (do ((i 0 (fix:+ i 1)))
+	((not (fix:< i n)))
+      (write-char (integer->char (bytevector-u8-ref body)) port))))
 
 ;;;; Input
 
@@ -252,8 +258,8 @@ USA.
 	 (let ((v (http-header-parsed-value h)))
 	   (and (not (default-object? v))
 		(assq 'CHUNKED v)))
-	 (let ((output (open-output-octets))
-	       (buffer (make-vector-8b #x1000)))
+	 (let ((output (open-output-bytevector))
+	       (buffer (make-string #x1000)))
 	   (let loop ()
 	     (let ((n (%read-chunk-leader port)))
 	       (if (> n 0)
@@ -264,7 +270,7 @@ USA.
 		       (if (not (string-null? line))
 			   (error "Missing CRLF after chunk data.")))
 		     (loop)))))
-	   (cons (get-output-string! output)
+	   (cons (get-output-bytevector output)
 		 (read-http-headers port))))))
 
 (define (%read-chunk-leader port)
@@ -279,22 +285,24 @@ USA.
 
 (define (%read-chunk n buffer port output)
   (%binary-mode port)
-  (let ((len (vector-8b-length buffer)))
+  (let ((len (bytevector-length buffer)))
     (let loop ((n n))
       (if (> n 0)
 	  (let ((m (read-string! buffer port 0 (min n len))))
 	    (if (= m 0)
 		(error "Premature EOF in HTTP message body."))
-	    (write-string buffer output 0 m)
+	    (do ((i 0 (+ i 1)))
+		((not (< i m)))
+	      (write-u8 (char->integer (string-ref buffer i)) output))
 	    (loop (- n m)))))))
 
 (define (%read-delimited-body headers port)
   (let ((n (%get-content-length headers)))
     (and n
 	 (list
-	  (call-with-output-octets
+	  (call-with-output-bytevector
 	   (lambda (output)
-	     (%read-chunk n (make-vector-8b #x1000) port output)))))))
+	     (%read-chunk n (make-string #x1000) port output)))))))
 
 (define (%read-terminal-body headers port)
   (and (let ((h (http-header 'CONNECTION headers #f)))
@@ -306,14 +314,16 @@ USA.
 
 (define (%read-all port)
   (%binary-mode port)
-  (call-with-output-octets
+  (call-with-output-bytevector
    (lambda (output)
-     (let ((buffer (make-vector-8b #x1000)))
+     (let ((buffer (make-string #x1000)))
        (let loop ()
 	 (let ((n (read-string! buffer port)))
 	   (if (> n 0)
 	       (begin
-		 (write-string buffer output 0 n)
+		 (do ((i 0 (+ i 1)))
+		     ((not (< i n)))
+		   (write-u8 (char->integer (string-ref buffer i)) output))
 		 (loop)))))))))
 
 (define (%no-read-body)
@@ -431,7 +441,9 @@ USA.
       (= status 304)))
 
 (define (http-message-body-port message)
-  (let ((port (open-input-octets (http-message-body message))))
+  (let ((port
+	 (binary->textual-port
+	  (open-input-bytevector (http-message-body message)))))
     (receive (type coding) (%get-content-type message)
       (cond ((eq? (mime-type/top-level type) 'TEXT)
 	     (port/set-coding port (or coding 'TEXT))
