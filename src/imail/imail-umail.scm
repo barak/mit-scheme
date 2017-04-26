@@ -38,7 +38,7 @@ USA.
 
 (define-method create-file-folder-file (url (type <umail-folder-type>))
   type
-  (call-with-legacy-binary-output-file (pathname-url-pathname url)
+  (call-with-output-file (pathname-url-pathname url)
     (lambda (port)
       port
       unspecific)))
@@ -144,8 +144,10 @@ USA.
 ;;;; Write unix mail file
 
 (define-method write-file-folder ((folder <umail-folder>) pathname)
-  (call-with-legacy-binary-output-file pathname
+  (call-with-output-file pathname
     (lambda (port)
+      (port/set-coding port 'iso-8859-1)
+      (port/set-line-ending port 'newline)
       (for-each-vector-element (file-folder-messages folder)
 	(lambda (message)
 	  (write-umail-message message #t port)))
@@ -153,8 +155,10 @@ USA.
 
 (define-method append-message-to-file (message url (type <umail-folder-type>))
   type
-  (call-with-legacy-binary-append-file (pathname-url-pathname url)
+  (call-with-append-file (pathname-url-pathname url)
     (lambda (port)
+      (port/set-coding port 'iso-8859-1)
+      (port/set-line-ending port 'newline)
       (write-umail-message message #t port))))
 
 (define (write-umail-message message output-flags? port)

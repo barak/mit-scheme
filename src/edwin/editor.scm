@@ -70,7 +70,8 @@ USA.
 		      (lambda (root-continuation)
 			(set! editor-thread-root-continuation
 			      root-continuation)
-			(with-notification-output-port null-output-port
+			(parameterize* (list (cons notification-output-port
+						   null-output-port))
 			  (lambda ()
 			    (do ((thunks (let ((thunks editor-initial-threads))
 					   (set! editor-initial-threads '())

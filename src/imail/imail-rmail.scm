@@ -38,8 +38,10 @@ USA.
 
 (define-method create-file-folder-file (url (type <rmail-folder-type>))
   type
-  (call-with-legacy-binary-output-file (pathname-url-pathname url)
+  (call-with-output-file (pathname-url-pathname url)
     (lambda (port)
+      (port/set-coding port 'iso-8859-1)
+      (port/set-line-ending port 'newline)
       (write-rmail-file-header (make-rmail-folder-header-fields '()) port))))
 
 ;;;; Folder
@@ -233,8 +235,10 @@ USA.
 ;;;; Write RMAIL file
 
 (define-method write-file-folder ((folder <rmail-folder>) pathname)
-  (call-with-legacy-binary-output-file pathname
+  (call-with-output-file pathname
     (lambda (port)
+      (port/set-coding port 'iso-8859-1)
+      (port/set-line-ending port 'newline)
       (write-rmail-file-header (rmail-folder-header-fields folder) port)
       (for-each-vector-element (file-folder-messages folder)
 	(lambda (message)
@@ -243,8 +247,10 @@ USA.
 
 (define-method append-message-to-file (message url (type <rmail-folder-type>))
   type
-  (call-with-legacy-binary-append-file (pathname-url-pathname url)
+  (call-with-append-file (pathname-url-pathname url)
     (lambda (port)
+      (port/set-coding port 'iso-8859-1)
+      (port/set-line-ending port 'newline)
       (write-rmail-message message port))))
 
 (define (write-rmail-file-header header-fields port)

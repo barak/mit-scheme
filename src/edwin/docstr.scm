@@ -141,12 +141,11 @@ USA.
 	(if (or (default-object? permanent)
 		(not permanent))
 	    output
-	    permanent))	
+	    permanent))
   (set-string-length! *doc-strings* *doc-string-posn*)
-  (call-with-legacy-binary-output-file
-   output
-   (lambda (port)
-     (output-port/write-string port *doc-strings*)))
+  (call-with-binary-output-file output
+    (lambda (port)
+      (write-bytevector (string->bytevector *doc-strings*) port)))
   (set! *external-doc-strings?* #f)
   (set! *doc-string-posn* 0)
   (set! *doc-strings* #f)

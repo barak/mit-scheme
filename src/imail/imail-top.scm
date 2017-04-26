@@ -1097,21 +1097,24 @@ With prefix argument, prompt even when point is on an attachment."
 		 (eq? type 'MESSAGE)))))
       (if (or (not (file-exists? filename))
 	      (prompt-for-yes-or-no? "File already exists; overwrite"))
-	  ((if text? call-with-output-file call-with-legacy-binary-output-file)
-	   filename
-	   (lambda (port)
-	     (call-with-mime-decoding-output-port
-	      (let ((encoding (mime-body-one-part-encoding body)))
-		(if (and (mime-type? body 'APPLICATION 'MAC-BINHEX40)
-			 (eq? encoding '7BIT))
-		    'BINHEX40
-		    encoding))
-	      port
-	      text?
-	      (lambda (port)
-		(with-mime-best-effort
-		 (lambda ()
-		   (write-mime-body body port)))))))))))
+	  (call-with-output-file filename
+	    (lambda (port)
+	      (if (not text?)
+		  (begin
+		    (port/set-coding port 'binary)
+		    (port/set-line-ending port 'binary)))
+	      (call-with-mime-decoding-output-port
+	       (let ((encoding (mime-body-one-part-encoding body)))
+		 (if (and (mime-type? body 'APPLICATION 'MAC-BINHEX40)
+			  (eq? encoding '7BIT))
+		     'BINHEX40
+		     encoding))
+	       port
+	       text?
+	       (lambda (port)
+		 (with-mime-best-effort
+		  (lambda ()
+		    (write-mime-body body port)))))))))))
 
 (define (filter-mime-attachment-filename filename)
   (let ((filename

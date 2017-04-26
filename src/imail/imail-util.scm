@@ -423,8 +423,10 @@ USA.
 ;;;; Extended-string input port
 
 (define (read-file-into-string pathname)
-  (call-with-legacy-binary-input-file pathname
+  (call-with-input-file pathname
     (lambda (port)
+      (port/set-coding port 'iso-8859-1)
+      (port/set-line-ending port 'newline)
       (let ((n-bytes ((textual-port-operation port 'LENGTH) port)))
 	(let ((string (make-string n-bytes)))
 	  (let loop ((start 0))
