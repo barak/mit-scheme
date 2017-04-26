@@ -384,26 +384,35 @@ USA.
   (set-status-header response code)
   (set-content-type-header response 'text/html)
   (set-entity response
-	      (call-with-output-octets
-	       (lambda (port)
-		 (write-xml
-		  (let ((message (status-message code)))
-		    (html:html #f
-			       "\n"
-			       (html:head #f
-					  "\n"
-					  (html:title #f code " " message)
-					  "\n")
-			       "\n"
-			       (html:body #f
-					  "\n"
-					  (html:h1 #f message)
-					  "\n"
-					  extra
-					  "\n")
-			       "\n"))
-		  port)
-		 (newline port)))))
+	      (bytevector->string
+	       (call-with-output-bytevector
+		(lambda (port)
+		  (write-xml
+		   (let ((message (status-message code)))
+		     (html:html #f
+				"\n"
+				(html:head #f
+					   "\n"
+					   (html:title #f code " " message)
+					   "\n")
+				"\n"
+				(html:body #f
+					   "\n"
+					   (html:h1 #f message)
+					   "\n"
+					   extra
+					   "\n")
+				"\n"))
+		   port)
+		  (newline port))))))
+
+(define (bytevector->string bv)
+  (let* ((n (bytevector-length bv))
+	 (builder (string-builder)))
+    (do ((i 0 (fix:+ i 1)))
+	((not (fix:< i n)))
+      (builder (integer->char (bytevector-u8-ref bv i))))
+    (builder)))
 
 (define (set-status-header message code)
   (set-header message
