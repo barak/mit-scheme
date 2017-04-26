@@ -1216,6 +1216,9 @@ USA.
 	  char-ci>?
 	  char-code
 	  char-code-limit
+	  char-codec-decoder
+	  char-codec-encoder
+	  char-codec?
 	  char-downcase
 	  char-foldcase
 	  char-general-category
@@ -1232,6 +1235,7 @@ USA.
 	  decode-utf8-char
 	  digit->char
 	  digit-value
+	  get-char-codec
 	  integer->char
 	  make-char
 	  name->char

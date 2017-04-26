@@ -509,6 +509,10 @@ USA.
 	((utf8-initial-byte-4? b0) 4)
 	(else (error "Illegal UTF-8 initial byte:" b0))))
 
+(define (next-char-length:utf8 bv bs be)
+  (and (fix:<= (fix:+ bs 1) be)
+       (initial-byte->utf8-char-length (bytevector-u8-ref bv bs))))
+
 (define (decode-utf8-char bytes index)
   (integer->char
    (let ((b0 (bytevector-u8-ref bytes index)))
@@ -618,6 +622,14 @@ USA.
       4
       2))
 
+(define (next-char-length:utf16le bv bs be)
+  (and (fix:<= (fix:+ bs 2) be)
+       (initial-u16->utf16-char-length (bytevector-u16le-ref bv bs))))
+
+(define (next-char-length:utf16be bv bs be)
+  (and (fix:<= (fix:+ bs 2) be)
+       (initial-u16->utf16-char-length (bytevector-u16be-ref bv bs))))
+
 (define (utf16-char-decoder getter)
   (lambda (bytes index)
     (integer->char
@@ -643,6 +655,14 @@ USA.
   (guarantee unicode-scalar-value? u32 'initial-u32->utf32-char-length)
   4)
 
+(define (next-char-length:utf32le bv bs be)
+  (and (fix:<= (fix:+ bs 2) be)
+       (initial-u32->utf32-char-length (bytevector-u32le-ref bv bs))))
+
+(define (next-char-length:utf32be bv bs be)
+  (and (fix:<= (fix:+ bs 2) be)
+       (initial-u32->utf32-char-length (bytevector-u32be-ref bv bs))))
+
 (define (utf32-char-decoder getter)
   (lambda (bytes index)
     (let ((u32 (getter bytes index)))
@@ -654,3 +674,75 @@ USA.
 
 (define decode-utf32le-char
   (utf32-char-decoder bytevector-u32le-ref))
+
+;;;; Codecs
+
+(define-record-type <char-codec>
+    (make-char-codec encoder decoder)
+    char-codec?
+  (encoder char-codec-encoder)
+  (decoder char-codec-decoder))
+
+(define get-char-codec)
+(define set-char-codec!)
+(add-boot-init!
+ (lambda ()
+   (let ((table (make-alist-metadata-table)))
+     (set! get-char-codec (table 'get))
+     (set! set-char-codec! (table 'put!))
+     unspecific)))
+
+(define (define-char-codec name codec)
+  (add-boot-init! (lambda () (set-char-codec! name codec))))
+
+(define (unicode-codec char-byte-length encode-char!
+		       next-char-length decode-char)
+  (make-char-codec
+   (lambda (bv bs be char)
+     (let ((bs* (fix:+ bs (char-byte-length char))))
+       (and (fix:<= bs* be)
+	    (begin
+	      (encode-char! bv bs char)
+	      bs*))))
+   (lambda (bv bs be k)
+     (let ((n (next-char-length bv bs be)))
+       (if (not n)
+	   (k #f bs)
+	   (let ((bs* (fix:+ bs n)))
+	     (k (and (fix:<= bs* be)
+		     (decode-char bv bs))
+		bs*)))))))
+
+(define-char-codec 'utf8
+  (unicode-codec char-utf8-byte-length encode-utf8-char!
+		 next-char-length:utf8 decode-utf8-char))
+
+(define-char-codec 'utf16le
+  (unicode-codec char-utf16-byte-length encode-utf16le-char!
+		 next-char-length:utf16le decode-utf16le-char))
+
+(define-char-codec 'utf16be
+  (unicode-codec char-utf16-byte-length encode-utf16be-char!
+		 next-char-length:utf16be decode-utf16be-char))
+
+(define-char-codec 'utf32le
+  (unicode-codec char-utf32-byte-length encode-utf32le-char!
+		 next-char-length:utf32le decode-utf32le-char))
+
+(define-char-codec 'utf32be
+  (unicode-codec char-utf32-byte-length encode-utf32be-char!
+		 next-char-length:utf32be decode-utf32be-char))
+
+(define-char-codec 'iso-8859-1
+  (make-char-codec
+   (lambda (bv bs be char)
+     (let ((bs* (fix:+ bs 1)))
+       (and (fix:<= bs* be)
+	    (begin
+	      (bytevector-u8-set! bv bs (char->integer char))
+	      bs*))))
+   (lambda (bv bs be k)
+     (let ((bs* (fix:+ bs 1)))
+       (k (and (fix:<= bs* be)
+	       (integer->char (bytevector-u8-ref bv bs)))
+	  bs*)))))
