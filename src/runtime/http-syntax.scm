@@ -1378,16 +1378,16 @@ USA.
 
 (define-header "Content-MD5"
   (lambda (string win lose)
-    (let ((sum (decode-base64-octets string #f)))
+    (let ((sum (decode-base64-bytes string #f)))
       (if (and sum
-	       (= (vector-8b-length sum) 16))
+	       (= (bytevector-length sum) 16))
 	  (win (structure-parser-values sum))
 	  (lose))))
   (lambda (value)
-    (and (vector-8b? value)
-	 (= (vector-8b-length value) 16)))
+    (and (bytevector? value)
+	 (= (bytevector-length value) 16)))
   (lambda (value port)
-    (write-string (string-trim-right (encode-base64-octets value)) port)))
+    (write-string (string-trim-right (encode-base64-bytes value)) port)))
 
 (define-header "Content-Range"
   (tokenized-parser
@@ -1478,14 +1478,14 @@ USA.
       (and v
 	   (list (vector-ref v 0))))))
 
-(define (encode-base64-octets octets)
+(define (encode-base64-bytes bv)
   (call-with-output-string
     (lambda (port)
       (let ((ctx (encode-base64:initialize port #f)))
-	(encode-base64:update ctx octets 0 (vector-8b-length octets))
+	(encode-base64:update ctx bv 0 (bytevector-length bv))
 	(encode-base64:finalize ctx)))))
 
-(define (decode-base64-octets string)
+(define (decode-base64-bytes string)
   (call-with-current-continuation
    (lambda (k)
      (bind-condition-handler (list condition-type:decode-base64)
@@ -1493,10 +1493,8 @@ USA.
 	   condition
 	   (k #f))
        (lambda ()
-	 (call-with-output-octets
+	 (call-with-output-bytevector
 	   (lambda (port)
-	     (port/set-coding port 'BINARY)
-	     (port/set-line-ending port 'BINARY)
 	     (let ((ctx (decode-base64:initialize port #f)))
 	       (decode-base64:update ctx string 0 (string-length string))
 	       (decode-base64:finalize ctx)))))))))
