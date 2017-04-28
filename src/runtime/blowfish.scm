@@ -38,7 +38,8 @@ USA.
 
 (define (blowfish-available?)
   (load-library-object-file "prbfish" #f)
-  (implemented-primitive-procedure? blowfish-cfb64))
+  (implemented-primitive-procedure?
+   (ucode-primitive blowfish-cfb64-substring-v2 9)))
 
 (define (blowfish-encrypt-port input output key init-vector encrypt?)
   ;; Assumes that INPUT is in blocking mode.
@@ -74,7 +75,7 @@ USA.
 		  #x100000)
 	       (random #x100000))
 	    (quotient t #x100)))
-	((fix:= 8 i))
+	((not (fix:< i 8)))
       (bytevector-u8-set! iv i (remainder t #x100)))
     iv))
 
