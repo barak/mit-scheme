@@ -270,10 +270,9 @@ USA.
 
 (define (%md5-file filename)
   (call-with-binary-input-file filename
-    (lambda (port)
-      (port-consumer (ucode-primitive md5-init 0)
-		     (ucode-primitive md5-update 4)
-		     (ucode-primitive md5-final 1)))))
+    (port-consumer (ucode-primitive md5-init 0)
+		   (ucode-primitive md5-update 4)
+		   (ucode-primitive md5-final 1))))
 
 (define (md5-string string #!optional start end)
   (md5-bytevector (string->utf8 string start end)))
