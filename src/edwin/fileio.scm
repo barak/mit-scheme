@@ -50,7 +50,7 @@ filename suffix \".bf\"."
     (message m)
     (call-with-output-mark mark
       (lambda (output)
-	(%blowfish-decrypt-file pathname output)))
+	(%blowfish-decrypt-to-textual-port pathname output)))
     ;; Disable auto-save here since we don't want to auto-save the
     ;; unencrypted contents of the encrypted file.
     (local-set-variable! auto-save-default #f (mark-buffer mark))
@@ -59,9 +59,10 @@ filename suffix \".bf\"."
 (define (write-encrypted-file region pathname)
   (let ((m (string-append "Encrypting file " (->namestring pathname) "...")))
     (message m)
-    (%blowfish-encrypt-file pathname
-			    (make-buffer-input-port (region-start region)
-						    (region-end region)))
+    (%blowfish-encrypt-from-textual-port
+     pathname
+     (make-buffer-input-port (region-start region)
+			     (region-end region)))
     (message m "done")))
 
 (define (os-independent/read-file-methods)
