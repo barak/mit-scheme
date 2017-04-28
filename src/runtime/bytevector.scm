@@ -46,6 +46,7 @@ USA.
   (bytevector-u8-ref 2)
   (bytevector-u8-set! 3)
   (bytevector? 1)
+  (integer-length-in-bits 1)
   (legacy-string-allocate string-allocate 1)
   (legacy-string? string? 1))
 
@@ -436,3 +437,20 @@ USA.
 	 (fix:+ (fix:lsh (hex-digit (string-ref string i)) 4)
 		(hex-digit (string-ref string (fix:+ i 1))))))
       (builder))))
+
+(define (bytevector->exact-nonnegative-integer bytes)
+  (let ((len (bytevector-length bytes)))
+    (do ((i 0 (fix:+ i 1))
+	 (n 0 (+ (* n #x100) (bytevector-u8-ref bytes i))))
+	((not (fix:< i len)) n))))
+
+(define (exact-nonnegative-integer->bytevector n)
+  (guarantee exact-nonnegative-integer? n
+	     'exact-nonnegative-integer->bytevector)
+  (let* ((n-bytes (quotient (+ (integer-length-in-bits n) #xFF) #x100))
+	 (result (make-bytevector n-bytes)))
+    (do ((n n (quotient n #x100))
+	 (i 0 (fix:+ i 1)))
+	((not (> n 0)))
+      (bytevector-u8-set! result i (remainder n #x100)))
+    result))

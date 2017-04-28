@@ -1075,6 +1075,7 @@ USA.
   (export ()
 	  (byte? u8?)
 	  bytevector
+	  bytevector->exact-nonnegative-integer
 	  bytevector->hexadecimal
 	  bytevector->list
 	  bytevector->vector
@@ -1097,6 +1098,7 @@ USA.
 	  bytevector-u8-set!
 	  bytevector=?
 	  bytevector?
+	  exact-nonnegative-integer->bytevector
 	  hexadecimal->bytevector
 	  list->bytevector
 	  make-bytevector
