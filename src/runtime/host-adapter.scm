@@ -36,7 +36,7 @@ USA.
 ;;; only until the new runtime is released.  They assume the host is
 ;;; the current release (9.2 as of March 2017).
 
-(if (string-prefix? "9.2" (get-subsystem-version-string "release"))
+(if (string=? "9.2" (get-subsystem-version-string "release"))
     (begin
       (eval
        '(begin
