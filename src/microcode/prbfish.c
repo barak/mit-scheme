@@ -40,97 +40,76 @@ USA.
 /* This interface uses the Blowfish library from SSLeay.  */
 
 DEFINE_PRIMITIVE ("BLOWFISH-SET-KEY", Prim_blowfish_set_key, 1, 1,
-  "(STRING)\n\
-Generate a Blowfish key from STRING.\n\
-STRING must be 72 bytes or less in length.\n\
+  "(BYTEVECTOR)\n\
+Generate a Blowfish key from BYTEVECTOR.\n\
+BYTEVECTOR must be 72 bytes or less in length.\n\
 For text-string keys, use MD5 on the text, and pass the digest here.")
 {
-  SCHEME_OBJECT string;
-  SCHEME_OBJECT result;
   PRIMITIVE_HEADER (1);
-
-  CHECK_ARG (1, STRING_P);
-  string = (ARG_REF (1));
-  if ((STRING_LENGTH (string)) > 72)
+  unsigned long length;
+  uint8_t * bytes = (arg_bytevector (1, (&length)));
+  if (length > 72)
     error_bad_range_arg (1);
-  result = (allocate_string (sizeof (BF_KEY)));
-  BF_set_key (((BF_KEY *) (STRING_POINTER (result))),
-	      (STRING_LENGTH (string)),
-	      (STRING_BYTE_PTR (string)));
+  SCHEME_OBJECT result = (allocate_bytevector (sizeof (BF_KEY)));
+  BF_set_key (((BF_KEY *) (BYTEVECTOR_POINTER (result))), length, bytes);
   PRIMITIVE_RETURN (result);
+}
+
+static uint8_t *
+arg_bytevector_fixlen (unsigned int arg, unsigned long required)
+{
+  unsigned long length;
+  uint8_t * bytes = (arg_bytevector (arg, (&length)));
+  if (length != required)
+    error_bad_range_arg (arg);
+  return bytes;
 }
 
 static BF_KEY *
 key_arg (unsigned int arg)
 {
-  CHECK_ARG (arg, STRING_P);
-  if ((STRING_LENGTH (ARG_REF (arg))) != (sizeof (BF_KEY)))
-    error_bad_range_arg (arg);
-  return ((BF_KEY *) (STRING_BYTE_PTR (ARG_REF (arg))));
+  return ((BF_KEY *) (arg_bytevector_fixlen (arg, (sizeof (BF_KEY)))));
 }
 
-static unsigned char *
+static uint8_t *
 init_vector_arg (unsigned int arg)
 {
-  CHECK_ARG (arg, STRING_P);
-  if ((STRING_LENGTH (ARG_REF (arg))) != 8)
-    error_bad_range_arg (arg);
-  return (STRING_BYTE_PTR (ARG_REF (arg)));
+  return (arg_bytevector_fixlen (arg, 8));
 }
 
 DEFINE_PRIMITIVE ("BLOWFISH-ECB", Prim_blowfish_ecb, 4, 4,
   "(INPUT OUTPUT KEY-VECTOR ENCRYPT?)\n\
 Apply Blowfish in Electronic Code Book mode.\n\
-INPUT is an 8-byte string.\n\
-OUTPUT is an 8-byte string.\n\
+INPUT is an 8-byte bytevector.\n\
+OUTPUT is an 8-byte bytevector.\n\
 KEY is a Blowfish key.\n\
 ENCRYPT? says whether to encrypt (#T) or decrypt (#F).")
 {
-  SCHEME_OBJECT input_text;
-  SCHEME_OBJECT output_text;
   PRIMITIVE_HEADER (4);
-
-  CHECK_ARG (1, STRING_P);
-  input_text = (ARG_REF (1));
-  if ((STRING_LENGTH (input_text)) != 8)
-    error_bad_range_arg (1);
-  CHECK_ARG (2, STRING_P);
-  output_text = (ARG_REF (2));
-  if ((STRING_LENGTH (output_text)) != 8)
-    error_bad_range_arg (2);
-  BF_ecb_encrypt ((STRING_BYTE_PTR (input_text)),
-		  (STRING_BYTE_PTR (output_text)),
-		  (key_arg (3)),
-		  ((BOOLEAN_ARG (4)) ? BF_ENCRYPT : BF_DECRYPT));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("BLOWFISH-CBC-V2", Prim_blowfish_cbc, 5, 5,
   "(INPUT OUTPUT KEY INIT-VECTOR ENCRYPT?)\n\
 Apply Blowfish in Cipher Block Chaining mode.\n\
-INPUT is a string whose length is a multiple of 8 bytes.\n\
-OUTPUT is a string whose length is the same as INPUT.\n\
+INPUT is a bytevector whose length is a multiple of 8 bytes.\n\
+OUTPUT is a bytevector whose length is the same as INPUT.\n\
 KEY is a Blowfish key.\n\
-INIT-VECTOR is an 8-byte string; it is modified after each call.\n\
+INIT-VECTOR is an 8-byte bytevector; it is modified after each call.\n\
   The value from any call may be passed in to a later call.\n\
 ENCRYPT? says whether to encrypt (#T) or decrypt (#F).")
 {
-  SCHEME_OBJECT input_text;
-  SCHEME_OBJECT output_text;
   PRIMITIVE_HEADER (5);
-
-  CHECK_ARG (1, STRING_P);
-  input_text = (ARG_REF (1));
-  if (((STRING_LENGTH (input_text)) % 8) != 0)
+  unsigned long input_length;
+  uint8_t * input = (arg_bytevector (1, (&input_length)));
+  if ((input_length % 8) != 0)
     error_bad_range_arg (1);
-  CHECK_ARG (2, STRING_P);
-  output_text = (ARG_REF (2));
-  if ((output_text == input_text)
-      || ((STRING_LENGTH (output_text)) != (STRING_LENGTH (input_text))))
+  uint8_t * output = (arg_bytevector_fixlen (2, input_length));
+  if (output == input)
     error_bad_range_arg (2);
-  BF_cbc_encrypt ((STRING_BYTE_PTR (input_text)),
-		  (STRING_BYTE_PTR (output_text)),
-		  (STRING_LENGTH (input_text)),
+  BF_cbc_encrypt (input,
+		  output,
+		  input_length,
 		  (key_arg (3)),
 		  (init_vector_arg (4)),
 		  ((BOOLEAN_ARG (5)) ? BF_ENCRYPT : BF_DECRYPT));
@@ -140,11 +119,11 @@ ENCRYPT? says whether to encrypt (#T) or decrypt (#F).")
 DEFINE_PRIMITIVE ("BLOWFISH-CFB64-SUBSTRING-V2", Prim_blowfish_cfb64_substring, 9, 9,
   "(INPUT ISTART IEND OUTPUT OSTART KEY INIT-VECTOR NUM ENCRYPT?)\n\
 Apply Blowfish in Cipher Feed-Back mode.\n\
-(INPUT,ISTART,IEND) is an arbitrary substring.\n\
-OUTPUT is a string as large as the input substring.\n\
-OSTART says where to start writing to the output string.\n\
+(INPUT,ISTART,IEND) is an arbitrary bytevector range.\n\
+OUTPUT is a bytevector.\n\
+OSTART says where to start writing in OUTPUT.\n\
 KEY is a Blowfish key.\n\
-INIT-VECTOR is an 8-byte string; it is modified after each call.\n\
+INIT-VECTOR is an 8-byte bytevector; it is modified after each call.\n\
   The value from any call may be passed in to a later call.\n\
   The initial value must be unique for each message/key pair.\n\
 NUM is a digit from 0 to 7 inclusive; it is the low 3 bits of the\n\
@@ -152,86 +131,66 @@ NUM is a digit from 0 to 7 inclusive; it is the low 3 bits of the\n\
 ENCRYPT? says whether to encrypt (#T) or decrypt (#F).\n\
 Returned value is the new value of NUM.")
 {
-  SCHEME_OBJECT input_text;
-  unsigned long istart;
-  unsigned long iend;
-  unsigned long ilen;
-  SCHEME_OBJECT output_text;
-  unsigned long ostart;
-  int num;
   PRIMITIVE_HEADER (9);
 
-  CHECK_ARG (1, STRING_P);
-  input_text = (ARG_REF (1));
-  {
-    unsigned long l = (STRING_LENGTH (input_text));
-    istart = (arg_ulong_index_integer (2, l));
-    iend = (arg_integer_in_range (3, istart, (l + 1)));
-  }
-  ilen = (iend - istart);
-  CHECK_ARG (4, STRING_P);
-  output_text = (ARG_REF (4));
-  ostart = (arg_ulong_index_integer (5, (STRING_LENGTH (output_text))));
-  if ((output_text == input_text)
-      && (ostart < iend)
-      && (istart < (ostart + ilen)))
+  unsigned long input_length;
+  uint8_t * input = (arg_bytevector (1, (&input_length)));
+  unsigned long iend = (arg_ulong_index_integer (3, (input_length + 1)));
+  unsigned long istart = (arg_ulong_index_integer (2, (iend + 1)));
+  unsigned long ilen = (iend - istart);
+
+  unsigned long output_length;
+  uint8_t * output = (arg_bytevector (4, (&output_length)));
+  unsigned long ostart = (arg_ulong_index_integer (5, (output_length + 1)));
+  unsigned long oend = (ostart + ilen);
+  if (oend > output_length)
+    error_bad_range_arg (5);
+  /* Don't allow overlaps of input and output ranges in same bytevector. */
+  if ((output == input) && (ostart < iend) && (istart < oend))
     error_bad_range_arg (4);
-  num = (arg_index_integer (8, 8));
-  BF_cfb64_encrypt ((STRING_BYTE_PTR (input_text)),
-		    (STRING_BYTE_PTR (output_text)),
-		    ilen,
-		    (key_arg (6)),
-		    (init_vector_arg (7)),
-		    (&num),
-		    ((BOOLEAN_ARG (9)) ? BF_ENCRYPT : BF_DECRYPT));
+
+  int num = (arg_index_integer (8, 8));
+  BF_cfb64_encrypt
+    (input, output, ilen, (key_arg (6)), (init_vector_arg (7)), (&num),
+     ((BOOLEAN_ARG (9)) ? BF_ENCRYPT : BF_DECRYPT));
   PRIMITIVE_RETURN (long_to_integer (num));
 }
 
 DEFINE_PRIMITIVE ("BLOWFISH-OFB64-SUBSTRING", Prim_blowfish_ofb64_substring, 8, 8,
   "(INPUT ISTART IEND OUTPUT OSTART KEY INIT-VECTOR NUM)\n\
 Apply Blowfish in Output Feed-Back mode.\n\
-(INPUT,ISTART,IEND) is an arbitrary substring.\n\
-OUTPUT is a string as large as the input substring.\n\
-OSTART says where to start writing to the output string.\n\
+(INPUT,ISTART,IEND) is an arbitrary bytevector range.\n\
+OUTPUT is a bytevector.\n\
+OSTART says where to start writing in OUTPUT.\n\
 KEY is a Blowfish key.\n\
-INIT-VECTOR is an 8-byte string; it is modified after each call.\n\
+INIT-VECTOR is an 8-byte bytevector; it is modified after each call.\n\
   The value from any call may be passed in to a later call.\n\
   The initial value must be unique for each message/key pair.\n\
 NUM is a digit from 0 to 7 inclusive; it is the low 3 bits of the\n\
   number of bytes that have previously been processed in this stream.\n\
 Returned value is the new value of NUM.")
 {
-  SCHEME_OBJECT input_text;
-  unsigned long istart;
-  unsigned long iend;
-  unsigned long ilen;
-  SCHEME_OBJECT output_text;
-  unsigned long ostart;
-  int num;
   PRIMITIVE_HEADER (8);
 
-  CHECK_ARG (1, STRING_P);
-  input_text = (ARG_REF (1));
-  {
-    unsigned long l = (STRING_LENGTH (input_text));
-    istart = (arg_ulong_index_integer (2, l));
-    iend = (arg_integer_in_range (3, istart, (l + 1)));
-  }
-  ilen = (iend - istart);
-  CHECK_ARG (4, STRING_P);
-  output_text = (ARG_REF (4));
-  ostart = (arg_ulong_index_integer (5, (STRING_LENGTH (output_text))));
-  if ((output_text == input_text)
-      && (ostart < iend)
-      && (istart < (ostart + ilen)))
+  unsigned long input_length;
+  uint8_t * input = (arg_bytevector (1, (&input_length)));
+  unsigned long iend = (arg_ulong_index_integer (3, (input_length + 1)));
+  unsigned long istart = (arg_ulong_index_integer (2, (iend + 1)));
+  unsigned long ilen = (iend - istart);
+
+  unsigned long output_length;
+  uint8_t * output = (arg_bytevector (4, (&output_length)));
+  unsigned long ostart = (arg_ulong_index_integer (5, (output_length + 1)));
+  unsigned long oend = (ostart + ilen);
+  if (oend > output_length)
+    error_bad_range_arg (5);
+  /* Don't allow overlaps of input and output ranges in same bytevector. */
+  if ((output == input) && (ostart < iend) && (istart < oend))
     error_bad_range_arg (4);
-  num = (arg_index_integer (8, 8));
-  BF_ofb64_encrypt ((STRING_LOC (input_text, istart)),
-		    (STRING_LOC (output_text, ostart)),
-		    ilen,
-		    (key_arg (6)),
-		    (init_vector_arg (7)),
-		    (&num));
+
+  int num = (arg_index_integer (8, 8));
+  BF_ofb64_encrypt
+    (input, output, ilen, (key_arg (6)), (init_vector_arg (7)), (&num));
   PRIMITIVE_RETURN (long_to_integer (num));
 }
 
@@ -242,37 +201,37 @@ dload_initialize_file (void)
 {
   declare_primitive
     ("BLOWFISH-SET-KEY", Prim_blowfish_set_key, 1, 1,
-     "(STRING)\n\
-Generate a Blowfish key from STRING.\n\
-STRING must be 72 bytes or less in length.\n\
+     "(BYTEVECTOR)\n\
+Generate a Blowfish key from BYTEVECTOR.\n\
+BYTEVECTOR must be 72 bytes or less in length.\n\
 For text-string keys, use MD5 on the text, and pass the digest here.");
   declare_primitive
     ("BLOWFISH-ECB", Prim_blowfish_ecb, 4, 4,
      "(INPUT OUTPUT KEY-VECTOR ENCRYPT?)\n\
 Apply Blowfish in Electronic Code Book mode.\n\
-INPUT is an 8-byte string.\n\
-OUTPUT is an 8-byte string.\n\
+INPUT is an 8-byte bytevector.\n\
+OUTPUT is an 8-byte bytevector.\n\
 KEY is a Blowfish key.\n\
 ENCRYPT? says whether to encrypt (#T) or decrypt (#F).");
   declare_primitive
     ("BLOWFISH-CBC-V2", Prim_blowfish_cbc, 5, 5,
      "(INPUT OUTPUT KEY INIT-VECTOR ENCRYPT?)\n\
 Apply Blowfish in Cipher Block Chaining mode.\n\
-INPUT is a string whose length is a multiple of 8 bytes.\n\
-OUTPUT is a string whose length is the same as INPUT.\n\
+INPUT is a bytevector whose length is a multiple of 8 bytes.\n\
+OUTPUT is a bytevector whose length is the same as INPUT.\n\
 KEY is a Blowfish key.\n\
-INIT-VECTOR is an 8-byte string; it is modified after each call.\n\
+INIT-VECTOR is an 8-byte bytevector; it is modified after each call.\n\
   The value from any call may be passed in to a later call.\n\
 ENCRYPT? says whether to encrypt (#T) or decrypt (#F).");
   declare_primitive
     ("BLOWFISH-CFB64-SUBSTRING-V2", Prim_blowfish_cfb64_substring, 9, 9,
      "(INPUT ISTART IEND OUTPUT OSTART KEY INIT-VECTOR NUM ENCRYPT?)\n\
 Apply Blowfish in Cipher Feed-Back mode.\n\
-\(INPUT,ISTART,IEND) is an arbitrary substring.\n\
-OUTPUT is a string as large as the input substring.\n\
-OSTART says where to start writing to the output string.\n\
+(INPUT,ISTART,IEND) is an arbitrary bytevector range.\n\
+OUTPUT is a bytevector.\n\
+OSTART says where to start writing in OUTPUT.\n\
 KEY is a Blowfish key.\n\
-INIT-VECTOR is an 8-byte string; it is modified after each call.\n\
+INIT-VECTOR is an 8-byte bytevector; it is modified after each call.\n\
   The value from any call may be passed in to a later call.\n\
   The initial value must be unique for each message/key pair.\n\
 NUM is a digit from 0 to 7 inclusive; it is the low 3 bits of the\n\
@@ -283,11 +242,11 @@ Returned value is the new value of NUM.");
     ("BLOWFISH-OFB64-SUBSTRING", Prim_blowfish_ofb64_substring, 8, 8,
      "(INPUT ISTART IEND OUTPUT OSTART KEY INIT-VECTOR NUM)\n\
 Apply Blowfish in Output Feed-Back mode.\n\
-(INPUT,ISTART,IEND) is an arbitrary substring.\n\
-OUTPUT is a string as large as the input substring.\n\
-OSTART says where to start writing to the output string.\n\
+(INPUT,ISTART,IEND) is an arbitrary bytevector range.\n\
+OUTPUT is a bytevector.\n\
+OSTART says where to start writing in OUTPUT.\n\
 KEY is a Blowfish key.\n\
-INIT-VECTOR is an 8-byte string; it is modified after each call.\n\
+INIT-VECTOR is an 8-byte bytevector; it is modified after each call.\n\
   The value from any call may be passed in to a later call.\n\
   The initial value must be unique for each message/key pair.\n\
 NUM is a digit from 0 to 7 inclusive; it is the low 3 bits of the\n\
