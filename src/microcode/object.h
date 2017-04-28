@@ -255,39 +255,51 @@ extern bool string_p (SCHEME_OBJECT);
 #define VECTOR_REF(v, i) (MEMORY_REF ((v), ((i) + 1)))
 #define VECTOR_SET(v, i, object) MEMORY_SET ((v), ((i) + 1), (object))
 
-/* String Operations */
+/* Bytevector operations */
 
-/* Add 1 byte to length to account for '\0' at end of string.
-   Add 1 word to length to account for string header word. */
-#define STRING_LENGTH_TO_GC_LENGTH(n_chars)				\
-  ((BYTES_TO_WORDS ((n_chars) + 1)) + BYTEVECTOR_LENGTH_SIZE)
+/* Add 1 word to length to account for string header word. */
+#define BYTEVECTOR_LENGTH_TO_GC_LENGTH(n_chars)                         \
+  ((BYTES_TO_WORDS (n_chars)) + BYTEVECTOR_LENGTH_SIZE)
 
-#define STRING_LENGTH(s)						\
-  (OBJECT_DATUM (MEMORY_REF ((s), BYTEVECTOR_LENGTH_INDEX)))
+#define BYTEVECTOR_DATA_LENGTH(v) ((VECTOR_LENGTH (v)) - BYTEVECTOR_LENGTH_SIZE)
 
-#define SET_STRING_LENGTH(s, n_chars) do				\
-{									\
-  MEMORY_SET ((s),							\
-	      BYTEVECTOR_LENGTH_INDEX,					\
-	      (MAKE_OBJECT (0, (n_chars))));				\
-  STRING_SET ((s), (n_chars), '\0');					\
+#define BYTEVECTOR_LENGTH(v)                                            \
+  (OBJECT_DATUM (MEMORY_REF ((v), BYTEVECTOR_LENGTH_INDEX)))
+
+#define SET_BYTEVECTOR_LENGTH(v, n_bytes)                               \
+  MEMORY_SET ((v), BYTEVECTOR_LENGTH_INDEX, (MAKE_OBJECT (0, (n_bytes))))
+
+#define BYTEVECTOR_POINTER(v) ((uint8_t *) (MEMORY_LOC ((v), BYTEVECTOR_DATA)))
+#define BYTEVECTOR_LOC(v, i) ((BYTEVECTOR_POINTER (v)) + (i))
+#define BYTEVECTOR_REF(s, i) (* (BYTEVECTOR_LOC ((s), (i))))
+#define BYTEVECTOR_SET(s, i, c) ((* (BYTEVECTOR_LOC ((s), (i)))) = (c))
+
+/* Legacy string operations */
+
+/* Legacy strings are laid out exactly the same way as bytevectors,
+   except that they have a zero byte at the end that isn't included in
+   the string's length. */
+
+#define STRING_LENGTH_TO_GC_LENGTH(n_chars) (BYTEVECTOR_LENGTH_TO_GC_LENGTH ((n_chars) + 1))
+#define STRING_LENGTH BYTEVECTOR_LENGTH
+
+#define SET_STRING_LENGTH(s, n_chars) do                                \
+{                                                                       \
+  SET_BYTEVECTOR_LENGTH((s), (n_chars));                                \
+  STRING_SET ((s), (n_chars), '\0');                                    \
 } while (0)
 
 /* Subtract 1 to account for the fact that we maintain a '\0'
    at the end of the string. */
 #define MAXIMUM_STRING_LENGTH(s)                                        \
-  ((((VECTOR_LENGTH (s)) - BYTEVECTOR_LENGTH_SIZE) * (sizeof (SCHEME_OBJECT))) \
-   - 1)
+  (((BYTEVECTOR_DATA_LENGTH (s)) * (sizeof (SCHEME_OBJECT))) - 1)
 
 #define SET_MAXIMUM_STRING_LENGTH(s, n_chars)				\
   (SET_VECTOR_LENGTH ((s), (STRING_LENGTH_TO_GC_LENGTH (n_chars))))
 
-#define STRING_LOC(s, i)						\
-  (((unsigned char *) (MEMORY_LOC (s, BYTEVECTOR_DATA))) + (i))
-
-#define STRING_POINTER(s) ((char *) (MEMORY_LOC (s, BYTEVECTOR_DATA)))
-#define STRING_BYTE_PTR(s) ((uint8_t *) (MEMORY_LOC (s, BYTEVECTOR_DATA)))
-
+#define STRING_BYTE_PTR BYTEVECTOR_POINTER
+#define STRING_POINTER(s) ((char *) (STRING_BYTE_PTR (s)))
+#define STRING_LOC(s, i) (((unsigned char *) (STRING_BYTE_PTR (s))) + (i))
 #define STRING_REF(s, i) (* (STRING_LOC ((s), (i))))
 #define STRING_SET(s, i, c) ((* (STRING_LOC ((s), (i)))) = (c))
 

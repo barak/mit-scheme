@@ -29,14 +29,6 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 
-#define BYTEVECTOR_LENGTH(v)                                            \
-  (OBJECT_DATUM (MEMORY_REF ((v), BYTEVECTOR_LENGTH_INDEX)))
-
-#define SET_BYTEVECTOR_LENGTH(v, n_bytes)                               \
-  MEMORY_SET ((v), BYTEVECTOR_LENGTH_INDEX, (MAKE_OBJECT (0, (n_bytes))))
-
-#define BYTEVECTOR_POINTER(v) ((uint8_t *) (MEMORY_LOC ((v), BYTEVECTOR_DATA)))
-
 uint8_t *
 arg_bytevector (int n, unsigned long * len_r)
 {
@@ -100,51 +92,42 @@ DEFINE_PRIMITIVE ("bytevector-length", Prim_bytevector_length, 1, 1, 0)
 DEFINE_PRIMITIVE ("bytevector-u8-ref", Prim_bytevector_u8_ref, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  {
-    unsigned long length;
-    uint8_t * v = (arg_bytevector (1, (&length)));
-    unsigned long index = (arg_ulong_index_integer (2, length));
-    PRIMITIVE_RETURN (ulong_to_integer (v[index]));
-  }
+  unsigned long length;
+  uint8_t * v = (arg_bytevector (1, (&length)));
+  unsigned long index = (arg_ulong_index_integer (2, length));
+  PRIMITIVE_RETURN (ulong_to_integer (v[index]));
 }
 
 DEFINE_PRIMITIVE ("bytevector-u8-set!", Prim_bytevector_u8_set, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
-  {
-    unsigned long length;
-    uint8_t * v = (arg_bytevector (1, (&length)));
-    unsigned long index = (arg_ulong_index_integer (2, length));
-    uint8_t value = (arg_byte (3));
-    v[index] = value;
-  }
+  unsigned long length;
+  uint8_t * v = (arg_bytevector (1, (&length)));
+  unsigned long index = (arg_ulong_index_integer (2, length));
+  (v[index]) = (arg_byte (3));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("bytevector-fill!", Prim_bytevector_fill, 4, 4, 0)
 {
   PRIMITIVE_HEADER (4);
-  {
-    unsigned long length;
-    uint8_t * v = (arg_bytevector (1, (&length)));
-    uint8_t value = (arg_byte (2));
-    unsigned long end = (arg_ulong_index_integer (4, (length + 1)));
-    unsigned long start = (arg_ulong_index_integer (3, (end + 1)));
-    memset ((v + start), value, (end - start));
-  }
+  unsigned long length;
+  uint8_t * v = (arg_bytevector (1, (&length)));
+  uint8_t value = (arg_byte (2));
+  unsigned long end = (arg_ulong_index_integer (4, (length + 1)));
+  unsigned long start = (arg_ulong_index_integer (3, (end + 1)));
+  memset ((v + start), value, (end - start));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("bytevector-copy", Prim_bytevector_copy, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
-  {
-    unsigned long length;
-    uint8_t * v = (arg_bytevector (1, (&length)));
-    unsigned long end = (arg_ulong_index_integer (3, (length + 1)));
-    unsigned long start = (arg_ulong_index_integer (2, (end + 1)));
-    PRIMITIVE_RETURN (memory_to_bytevector ((end - start), (v + start)));
-  }
+  unsigned long length;
+  uint8_t * v = (arg_bytevector (1, (&length)));
+  unsigned long end = (arg_ulong_index_integer (3, (length + 1)));
+  unsigned long start = (arg_ulong_index_integer (2, (end + 1)));
+  PRIMITIVE_RETURN (memory_to_bytevector ((end - start), (v + start)));
 }
 
 DEFINE_PRIMITIVE ("bytevector-copy!", Prim_bytevector_copyx, 5, 5, 0)
