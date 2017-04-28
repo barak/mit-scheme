@@ -51,11 +51,13 @@ USA.
      (lambda ()
        (let loop ((m 0))
 	 (let ((n (read-bytevector! input-buffer input)))
-	   (if (not (fix:= 0 n))
+	   (if (and n (not (eof-object? n)))
 	       (let ((m
 		      (blowfish-cfb64 input-buffer 0 n output-buffer 0
 				      key init-vector m encrypt?)))
-		 (write-bytevector output-buffer output 0 n)
+		 (let ((n* (write-bytevector output-buffer output 0 n)))
+		   (if (not (eqv? n n*))
+		       (error "Short write (requested, actual):" n n*)))
 		 (loop m))))))
      (lambda ()
        (bytevector-fill! input-buffer 0)
@@ -88,23 +90,28 @@ USA.
 	(error:bad-range-argument port 'read-blowfish-file-header))
     (if (= version 1)
 	(make-bytevector 8 0)
-	(let ((init-vector (read-bytevector 8 port)))
-	  (if (not (fix:= (bytevector-length init-vector) 8))
-	      (error "Short read while getting init-vector:" port))
-	   init-vector))))
+	(or (%safe-read-bytevector 8 port)
+	    (error "Short read while getting init-vector:" port)))))
 
 (define (try-read-blowfish-file-header port)
   (let* ((n (bytevector-length blowfish-file-header-v1))
-	 (bv (read-bytevector n port)))
-    (and (not (fix:= (bytevector-length bv) n))
-	 (if (bytevector=? bv blowfish-file-header-v1)
+	 (bv1 (%safe-read-bytevector n port)))
+    (and bv1
+	 (if (bytevector=? bv1 blowfish-file-header-v1)
 	     1
 	     (let* ((m (fix:- (bytevector-length blowfish-file-header-v2) n))
-		    (bv2 (read-bytevector m port)))
-	       (and (not (fix:= (bytevector-length bv2) m))
-		    (and (bytevector=? (bytevector-append bv bv2)
-				       blowfish-file-header-v2)
-			 2)))))))
+		    (bv2 (%safe-read-bytevector m port)))
+	       (and bv2
+		    (bytevector=? (bytevector-append bv1 bv2)
+				  blowfish-file-header-v2)
+		    2))))))
+
+(define (%safe-read-bytevector n port)
+  (let ((bv (read-bytevector n port)))
+    (and bv
+	 (not (eof-object? bv))
+	 (fix:= (bytevector-length bv) n)
+	 bv)))
 
 (define (blowfish-file? pathname)
   (call-with-binary-input-file pathname try-read-blowfish-file-header))
