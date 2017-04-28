@@ -400,26 +400,13 @@ USA.
 	(make-bytevector 0))))
 
 (define (read-bytevector! bytevector #!optional port start end)
-  (let ((ib (check-input-port port 'read-bytevector!))
-	(end
-	 (if (default-object? end)
-	     (bytevector-length bytevector)
-	     (begin
-	       (guarantee index-fixnum? end 'read-bytevector!)
-	       (if (not (fix:<= end (bytevector-length bytevector)))
-		   (error:bad-range-argument end 'read-bytevector))
-	       end))))
-    (let ((start
-	   (if (default-object? start)
-	       0
-	       (begin
-		 (guarantee index-fixnum? start 'read-bytevector!)
-		 (if (not (fix:<= start end))
-		     (error:bad-range-argument start 'read-bytevector!))
-		 start))))
-      (if (fix:< start end)
-	  (%read-bytevector! ib bytevector start end 'read-bytevector!)
-	  0))))
+  (let* ((caller 'read-bytevector!)
+	 (ib (check-input-port port caller))
+	 (end (fix:end-index end (bytevector-length bytevector) caller))
+	 (start (fix:start-index start end caller)))
+    (if (fix:< start end)
+	(%read-bytevector! ib bytevector start end caller)
+	0)))
 
 (define (%read-bytevector! ib bytevector start end caller)
 
