@@ -201,15 +201,17 @@ USA.
 	   (lambda (bv bs be)
 	     (let loop ((bi bs))
 	       (if (fix:< bi be)
-		   (let ((char (peek-char textual-port)))
-		     (if (or (not char) (eof-object? char))
-			 (if (fix:> bi bs)
-			     (fix:- bi bs)
-			     char)
-			 (let ((bi* ((char-codec-encoder codec) bv bi be char)))
-			   (if bi*
-			       (loop bi*)
-			       (fix:- bi bs)))))
+		   (let ((char (read-char textual-port)))
+		     (cond ((not char) (if (fix:> bi bs) (fix:- bi bs) #f))
+			   ((eof-object? char) (fix:- bi bs))
+			   (else
+			    (let ((bi*
+				   ((char-codec-encoder codec) bv bi be char)))
+			      (if bi*
+				  (loop bi*)
+				  (begin
+				    (unread-char char textual-port)
+				    (fix:- bi bs)))))))
 		   (fix:- bi bs))))
 	   (lambda ()
 	     (close-input-port textual-port))))
@@ -228,7 +230,7 @@ USA.
 		   (fix:- bi bs))))
 	   (lambda ()
 	     (close-output-port textual-port))))
-     'textual-port->binary)))
+     'textual->binary-port)))
 
 ;;;; Closing operations
 
