@@ -46,27 +46,27 @@ USA.
 (define-structure mhash-context index)
 (define-structure mhash-hmac-context index)
 
-(define (guarantee-mhash-context object procedure)
+(define (guarantee-mhash-context object caller)
   (if (not (mhash-context? object))
-      (error:wrong-type-argument object "mhash context" procedure))
+      (error:wrong-type-argument object "mhash context" caller))
   (if (not (mhash-context-index object))
-      (error:bad-range-argument object procedure)))
+      (error:bad-range-argument object caller)))
 
-(define (guarantee-mhash-hmac-context object procedure)
+(define (guarantee-mhash-hmac-context object caller)
   (if (not (mhash-hmac-context? object))
-      (error:wrong-type-argument object "mhash HMAC context" procedure))
+      (error:wrong-type-argument object "mhash HMAC context" caller))
   (if (not (mhash-hmac-context-index object))
-      (error:bad-range-argument object procedure)))
+      (error:bad-range-argument object caller)))
 
 (define (mhash-type-names)
   (names-vector->list mhash-algorithm-names))
 
 (define (mhash-get-block-size name)
   ((ucode-primitive mhash_get_block_size 1)
-   (mhash-name->id name 'MHASH-GET-BLOCK-SIZE)))
+   (mhash-name->id name 'mhash-get-block-size)))
 
 (define (mhash-init name)
-  (let ((id (mhash-name->id name 'MHASH-INIT)))
+  (let ((id (mhash-name->id name 'mhash-init)))
     (without-interruption
      (lambda ()
        (let ((index ((ucode-primitive mhash_init 1) id)))
@@ -74,15 +74,15 @@ USA.
 	     (error "Unable to allocate mhash context:" name))
 	 (add-to-gc-finalizer! mhash-contexts (make-mhash-context index)))))))
 
-(define (mhash-update context string start end)
-  (guarantee-mhash-context context 'MHASH-UPDATE)
-  ((ucode-primitive mhash 4) (mhash-context-index context) string start end))
+(define (mhash-update context bytes start end)
+  (guarantee-mhash-context context 'mhash-update)
+  ((ucode-primitive mhash 4) (mhash-context-index context) bytes start end))
 
 (define (mhash-end context)
   (remove-from-gc-finalizer! mhash-contexts context))
 
 (define (mhash-hmac-init name key)
-  (let* ((id (mhash-name->id name 'MHASH-INIT))
+  (let* ((id (mhash-name->id name 'mhash-init))
 	 (pblock ((ucode-primitive mhash_get_hash_pblock 1) id)))
     (without-interruption
      (lambda ()
@@ -92,20 +92,20 @@ USA.
 	 (add-to-gc-finalizer! mhash-hmac-contexts
 			       (make-mhash-hmac-context index)))))))
 
-(define (mhash-hmac-update context string start end)
-  (guarantee-mhash-hmac-context context 'MHASH-HMAC-UPDATE)
+(define (mhash-hmac-update context bytes start end)
+  (guarantee-mhash-hmac-context context 'mhash-hmac-update)
   ((ucode-primitive mhash 4) (mhash-hmac-context-index context)
-			     string start end))
+			     bytes start end))
 
 (define (mhash-hmac-end context)
   (remove-from-gc-finalizer! mhash-hmac-contexts context))
 
 (define mhash-keygen-names)
 
-(define (keygen-name->id name procedure)
+(define (keygen-name->id name caller)
   (let ((n (vector-length mhash-keygen-names)))
     (let loop ((i 0))
-      (cond ((fix:= i n) (error:bad-range-argument name procedure))
+      (cond ((fix:= i n) (error:bad-range-argument name caller))
 	    ((eq? name (vector-ref mhash-keygen-names i)) i)
 	    (else (loop (fix:+ i 1)))))))
 
@@ -114,29 +114,29 @@ USA.
 
 (define (mhash-keygen-uses-salt? name)
   ((ucode-primitive mhash_keygen_uses_salt 1)
-   (keygen-name->id name 'MHASH-KEYGEN-USES-SALT?)))
+   (keygen-name->id name 'mhash-keygen-uses-salt?)))
 
 (define (mhash-keygen-uses-count? name)
   ((ucode-primitive mhash_keygen_uses_count 1)
-   (keygen-name->id name 'MHASH-KEYGEN-USES-COUNT?)))
+   (keygen-name->id name 'mhash-keygen-uses-count?)))
 
 (define (mhash-keygen-uses-hash-algorithm name)
   ((ucode-primitive mhash_keygen_uses_hash_algorithm 1)
-   (keygen-name->id name 'MHASH-KEYGEN-USES-HASH-ALGORITHM)))
+   (keygen-name->id name 'mhash-keygen-uses-hash-algorithm)))
 
 (define (mhash-keygen-salt-size name)
   ((ucode-primitive mhash_get_keygen_salt_size 1)
-   (keygen-name->id name 'MHASH-KEYGEN-SALT-SIZE)))
+   (keygen-name->id name 'mhash-keygen-salt-size)))
 
 (define (mhash-keygen-max-key-size name)
   ((ucode-primitive mhash_get_keygen_max_key_size 1)
-   (keygen-name->id name 'MHASH-KEYGEN-MAX-KEY-SIZE)))
+   (keygen-name->id name 'mhash-keygen-max-key-size)))
 
 (define (mhash-keygen type passphrase #!optional salt)
   (if (not (mhash-keygen-type? type))
-      (error:wrong-type-argument type "mhash type" 'MHASH-KEYGEN))
+      (error:wrong-type-argument type "mhash type" 'mhash-keygen))
   (let ((id (mhash-keygen-type-id type))
-	(keyword (make-legacy-string (mhash-keygen-type-key-length type)))
+	(keyword (make-bytevector (mhash-keygen-type-key-length type)))
 	(v (mhash-keygen-type-parameter-vector type)))
     (if (not ((ucode-primitive mhash_keygen 4)
 	      id
@@ -149,9 +149,9 @@ USA.
 			   ((ucode-primitive mhash_get_keygen_salt_size 1)
 			    id)))
 		      (if (not (or (= n 0)
-				   (= n (string-length salt))))
+				   (= n (bytevector-length salt))))
 			  (error "Salt size incorrect:"
-				 (string-length salt)
+				 (bytevector-length salt)
 				 (error-irritant/noise "; should be:")
 				 n)))
 		    (let ((v (vector-copy v)))
@@ -169,15 +169,13 @@ USA.
   (parameter-vector #f read-only #t))
 
 (define (make-mhash-keygen-type name key-length hash-names #!optional count)
-  (if (not (index-fixnum? key-length))
-      (error:wrong-type-argument key-length "key length"
-				 'MAKE-MHASH-KEYGEN-TYPE))
+  (guarantee index-fixnum? key-length 'make-mhash-keygen-type)
   (if (not (let ((m (mhash-keygen-max-key-size name)))
 	     (or (= m 0)
 		 (<= key-length m))))
-      (error:bad-range-argument key-length 'MAKE-MHASH-KEYGEN-TYPE))
+      (error:bad-range-argument key-length 'make-mhash-keygen-type))
   (%make-mhash-keygen-type
-   (keygen-name->id name 'MAKE-MHASH-KEYGEN-TYPE)
+   (keygen-name->id name 'make-mhash-keygen-type)
    key-length
    (let ((n-algorithms (mhash-keygen-uses-hash-algorithm name))
 	 (hash-names
@@ -199,13 +197,13 @@ USA.
 		     (error "Iteration count required:" name))
 		 (if (not (and (exact-integer? count)
 			       (positive? count)))
-		     (error:bad-range-argument count 'MAKE-MHASH-KEYGEN-TYPE))
+		     (error:bad-range-argument count 'make-mhash-keygen-type))
 		 count)))
 	 (do ((i 2 (fix:+ i 1))
 	      (names hash-names (cdr names)))
 	     ((fix:= i n))
 	   (vector-set! v i
-			(mhash-name->id (car names) 'MAKE-MHASH-KEYGEN-TYPE)))
+			(mhash-name->id (car names) 'make-mhash-keygen-type)))
 	 v)))))
 
 (define (mhash-available?)
@@ -240,50 +238,20 @@ USA.
   unspecific)
 
 (define (mhash-file hash-type filename)
-  (call-with-legacy-binary-input-file filename
-    (lambda (port)
-      (let ((buffer (make-legacy-string 4096))
-	    (context (mhash-init hash-type)))
-	(dynamic-wind (lambda ()
-			unspecific)
-		      (lambda ()
-			(let loop ()
-			  (let ((n (read-string! buffer port)))
-			    (if (fix:= 0 n)
-				(mhash-end context)
-				(begin
-				  (mhash-update context buffer 0 n)
-				  (loop))))))
-		      (lambda ()
-			(string-fill! buffer #\NUL)))))))
+  (call-with-binary-input-file filename
+    (port-consumer (lambda () (mhash-init hash-type))
+		   mhash-update
+		   mhash-end)))
 
-(define (mhash-string hash-type string)
-  (mhash-substring hash-type string 0 (string-length string)))
+(define (mhash-string hash-type string #!optional start end)
+  (mhash-bytevector hash-type (string->utf8 string start end)))
 
-(define (mhash-substring hash-type string start end)
-  (let ((context (mhash-init hash-type)))
-    (mhash-update context string start end)
+(define (mhash-bytevector hash-type bytes #!optional start end)
+  (let* ((end (fix:end-index end (bytevector-length bytes) 'mhash-bytevector))
+	 (start (fix:start-index start end 'mhash-bytevector))
+	 (context (mhash-init hash-type)))
+    (mhash-update context bytes start end)
     (mhash-end context)))
-
-(define (mhash-sum->number sum)
-  (let ((l (string-length sum)))
-    (do ((i 0 (fix:+ i 1))
-	 (n 0 (+ (* n #x100) (vector-8b-ref sum i))))
-	((fix:= i l) n))))
-
-(define (mhash-sum->hexadecimal sum)
-  (let ((n (string-length sum))
-	(digits "0123456789abcdef"))
-    (let ((s (make-legacy-string (fix:* 2 n))))
-      (do ((i 0 (fix:+ i 1)))
-	  ((fix:= i n))
-	(string-set! s (fix:* 2 i)
-		     (string-ref digits
-				 (fix:lsh (vector-8b-ref sum i) -4)))
-	(string-set! s (fix:+ (fix:* 2 i) 1)
-		     (string-ref digits
-				 (fix:and (vector-8b-ref sum i) #x0F))))
-      s)))
 
 ;;;; MD5
 
@@ -296,50 +264,32 @@ USA.
   (implemented-primitive-procedure? (ucode-primitive md5-init 0)))
 
 (define (md5-file filename)
-  (cond ((mhash-available?)
-	 (mhash-file 'MD5 filename))
-	((%md5-available?)
-	 (%md5-file filename))
-	(else
-	 (error "This Scheme system was built without MD5 support."))))
+  (cond ((mhash-available?) (mhash-file 'md5 filename))
+	((%md5-available?) (%md5-file filename))
+	(else (error "This Scheme system was built without MD5 support."))))
 
 (define (%md5-file filename)
-  (call-with-legacy-binary-input-file filename
+  (call-with-binary-input-file filename
     (lambda (port)
-      (let ((buffer (make-legacy-string 4096))
-	    (context ((ucode-primitive md5-init 0))))
-	(dynamic-wind (lambda ()
-			unspecific)
-		      (lambda ()
-			(let loop ()
-			  (let ((n (read-string! buffer port)))
-			    (if (fix:= 0 n)
-				((ucode-primitive md5-final 1) context)
-				(begin
-				  ((ucode-primitive md5-update 4)
-				   context buffer 0 n)
-				  (loop))))))
-		      (lambda ()
-			(string-fill! buffer #\NUL)))))))
+      (port-consumer (ucode-primitive md5-init 0)
+		     (ucode-primitive md5-update 4)
+		     (ucode-primitive md5-final 1)))))
 
-(define (md5-string string)
-  (md5-substring string 0 (string-length string)))
+(define (md5-string string #!optional start end)
+  (md5-bytevector (string->utf8 string start end)))
 
-(define (md5-substring string start end)
-  (cond ((mhash-available?)
-	 (mhash-substring 'MD5 string start end))
-	((%md5-available?)
-	 (%md5-substring string start end))
-	(else
-	 (error "This Scheme system was built without MD5 support."))))
+(define (md5-bytevector bytes #!optional start end)
+  (legacy-string->bytevector
+   (cond ((mhash-available?) (mhash-bytevector 'md5 bytes start end))
+	 ((%md5-available?) (%md5-bytevector bytes start end))
+	 (else (error "This Scheme system was built without MD5 support.")))))
 
-(define (%md5-substring string start end)
-  (let ((context ((ucode-primitive md5-init 0))))
-    ((ucode-primitive md5-update 4) context string start end)
+(define (%md5-bytevector bytes #!optional start end)
+  (let ((end (fix:end-index end (bytevector-length bytes) 'md5-bytevector))
+	(start (fix:start-index start end 'md5-bytevector))
+	(context ((ucode-primitive md5-init 0))))
+    ((ucode-primitive md5-update 4) context bytes start end)
     ((ucode-primitive md5-final 1) context)))
-
-(define md5-sum->number mhash-sum->number)
-(define md5-sum->hexadecimal mhash-sum->hexadecimal)
 
 ;;;; The mcrypt library
 
@@ -393,32 +343,36 @@ USA.
 								    mode))))))
 
 (define (mcrypt-init context key init-vector)
-  (guarantee-mcrypt-context context 'MCRYPT-INIT)
+  (guarantee-mcrypt-context context 'mcrypt-init)
   (let ((code
 	 ((ucode-primitive mcrypt_generic_init 3)
 	  (mcrypt-context-index context) key init-vector)))
-    (if (not (= code 0))
+    (if (not (eqv? code 0))
 	(error "Error code signalled by mcrypt_generic_init:" code))))
+
+(define-integrable (make-mcrypt-transform! name primitive)
+  (lambda (context bytes start end)
+    (guarantee-mcrypt-context context name)
+    (let ((code (primitive (mcrypt-context-index context) bytes start end)))
+      (if (not (eqv? code 0))
+	  (error (string-append "Error code signalled by " primitive ":")
+		 code)))))
+
+(define mcrypt-encrypt!
+  (make-mcrypt-transform! 'mcrypt-encrypt!
+			  (ucode-primitive mcrypt_generic 4)))
+
+(define mcrypt-decrypt!
+  (make-mcrypt-transform! 'mcrypt-decrypt!
+			  (ucode-primitive mdecrypt_generic 4)))
 
 (define (mcrypt-encrypt context input input-start input-end
 			output output-start encrypt?)
-  (guarantee-mcrypt-context context 'MCRYPT-ENCRYPT)
-  (string-copy! output output-start input input-start input-end)
-  (let ((code
-	 ((if encrypt?
-	      (ucode-primitive mcrypt_generic 4)
-	      (ucode-primitive mdecrypt_generic 4))
-	  (mcrypt-context-index context)
-	  output
-	  output-start
-	  (fix:+ output-start (fix:- input-end input-start)))))
-    (if (not (= code 0))
-	(error (string-append "Error code signalled by "
-			      (if encrypt?
-				  "mcrypt_generic"
-				  "mdecrypt_generic")
-			      ":")
-	       code))))
+  ((if encrypt? mcrypt-encrypt! mcrypt-decrypt!)
+   context
+   output
+   output-start
+   (bytevector-copy! output output-start input input-start input-end)))
 
 (define (mcrypt-end context)
   (remove-from-gc-finalizer! mcrypt-contexts context))
@@ -426,83 +380,71 @@ USA.
 (define (mcrypt-generic-unary name context-op module-op)
   (lambda (object)
     (cond ((mcrypt-context? object) (context-op (mcrypt-context-index object)))
-	  ((string? object) (module-op object))
+	  ((bytevector? object) (module-op object))
 	  (else (error:wrong-type-argument object "mcrypt context" name)))))
 
 (define mcrypt-self-test
   (mcrypt-generic-unary
-   'MCRYPT-SELF-TEST
+   'mcrypt-self-test
    (ucode-primitive mcrypt_enc_self_test 1)
    (ucode-primitive mcrypt_module_self_test 1)))
 
 (define mcrypt-block-algorithm-mode?
   (mcrypt-generic-unary
-   'MCRYPT-BLOCK-ALGORITHM-MODE?
+   'mcrypt-block-algorithm-mode?
    (ucode-primitive mcrypt_enc_is_block_algorithm_mode 1)
    (ucode-primitive mcrypt_module_is_block_algorithm_mode 1)))
 
 (define mcrypt-block-algorithm?
   (mcrypt-generic-unary
-   'MCRYPT-BLOCK-ALGORITHM?
+   'mcrypt-block-algorithm?
    (ucode-primitive mcrypt_enc_is_block_algorithm 1)
    (ucode-primitive mcrypt_module_is_block_algorithm 1)))
 
 (define mcrypt-block-mode?
   (mcrypt-generic-unary
-   'MCRYPT-BLOCK-MODE?
+   'mcrypt-block-mode?
    (ucode-primitive mcrypt_enc_is_block_mode 1)
    (ucode-primitive mcrypt_module_is_block_mode 1)))
 
 (define mcrypt-key-size
   (mcrypt-generic-unary
-   'MCRYPT-KEY-SIZE
+   'mcrypt-key-size
    (ucode-primitive mcrypt_enc_get_key_size 1)
    (ucode-primitive mcrypt_module_get_algo_key_size 1)))
 
 (define mcrypt-supported-key-sizes
   (mcrypt-generic-unary
-   'MCRYPT-SUPPORTED-KEY-SIZES
+   'mcrypt-supported-key-sizes
    (ucode-primitive mcrypt_enc_get_supported_key_sizes 1)
    (ucode-primitive mcrypt_module_get_algo_supported_key_sizes 1)))
 
 (define (mcrypt-init-vector-size context)
-  (guarantee-mcrypt-context context 'MCRYPT-INIT-VECTOR-SIZE)
+  (guarantee-mcrypt-context context 'mcrypt-init-vector-size)
   ((ucode-primitive mcrypt_enc_get_iv_size 1)
    (mcrypt-context-index context)))
 
 (define (mcrypt-algorithm-name context)
-  (guarantee-mcrypt-context context 'MCRYPT-ALGORITHM-NAME)
+  (guarantee-mcrypt-context context 'mcrypt-algorithm-name)
   ((ucode-primitive mcrypt_enc_get_algorithms_name 1)
    (mcrypt-context-index context)))
 
 (define (mcrypt-mode-name context)
-  (guarantee-mcrypt-context context 'MCRYPT-MODE-NAME)
+  (guarantee-mcrypt-context context 'mcrypt-mode-name)
   ((ucode-primitive mcrypt_enc_get_modes_name 1)
    (mcrypt-context-index context)))
 
 (define (mcrypt-encrypt-port algorithm mode input output key init-vector
 			     encrypt?)
   ;; Assumes that INPUT is in blocking mode.
-  (let ((context (mcrypt-open-module algorithm mode))
-	(input-buffer (make-legacy-string 4096))
-	(output-buffer (make-legacy-string 4096)))
-    (mcrypt-init context key init-vector)
-    (dynamic-wind
-     (lambda ()
-       unspecific)
-     (lambda ()
-       (let loop ()
-	 (let ((n (input-port/read-string! input input-buffer)))
-	   (if (not (fix:= 0 n))
-	       (begin
-		 (mcrypt-encrypt context input-buffer 0 n output-buffer 0
-				 encrypt?)
-		 (write-string output-buffer output 0 n)
-		 (loop)))))
-       (mcrypt-end context))
-     (lambda ()
-       (string-fill! input-buffer #\NUL)
-       (string-fill! output-buffer #\NUL)))))
+  ((port-transformer (lambda ()
+		       (let ((context (mcrypt-open-module algorithm mode)))
+			 (mcrypt-init context key init-vector)
+			 context))
+		     (if encrypt? mcrypt-encrypt! mcrypt-decrypt!)
+		     mcrypt-end)
+   input
+   output))
 
 ;;;; Package initialization
 
@@ -533,3 +475,42 @@ USA.
 		      (cons name names)
 		      names)))
 	  names))))
+
+(define (port-consumer initialize update finalize)
+  (lambda (port)
+    (call-with-buffer #x1000
+      (lambda (buffer)
+	(let ((context (initialize)))
+	  (let loop ()
+	    (let ((n (read-bytevector! buffer port)))
+	      (if (and n (not (eof-object? n)))
+		  (begin
+		    (update context buffer 0 n)
+		    (loop)))))
+	  (finalize context))))))
+
+(define (port-transformer initialize update finalize)
+  (lambda (input-port output-port)
+    (call-with-buffer #x1000
+      (lambda (buffer)
+	(let ((context (initialize)))
+	  (let loop ()
+	    (let ((n (read-bytevector! buffer input-port)))
+	      (if (and n (fix:> n 0))
+		  (begin
+		    (update context buffer 0 n)
+		    (let ((n* (write-bytevector buffer output-port 0 n)))
+		      (if (not (eqv? n n*))
+			  (error "Short write (requested, actual):" n n*)))
+		    (loop)))))
+	  (finalize context))))))
+
+(define (call-with-buffer n procedure)
+  (let ((buffer (make-bytevector n)))
+    (dynamic-wind
+	(lambda ()
+	  unspecific)
+	(lambda ()
+	  (procedure buffer))
+	(lambda ()
+	  (bytevector-fill! buffer 0)))))

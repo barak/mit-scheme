@@ -5192,7 +5192,9 @@ USA.
 	  mcrypt-block-algorithm?
 	  mcrypt-block-mode?
 	  mcrypt-context?
+	  mcrypt-decrypt!
 	  mcrypt-encrypt
+	  mcrypt-encrypt!
 	  mcrypt-encrypt-port
 	  mcrypt-end
 	  mcrypt-init
@@ -5204,12 +5206,11 @@ USA.
 	  mcrypt-self-test
 	  mcrypt-supported-key-sizes
 	  md5-available?
+	  md5-bytevector
 	  md5-file
 	  md5-string
-	  md5-substring
-	  md5-sum->hexadecimal
-	  md5-sum->number
 	  mhash-available?
+	  mhash-bytevector
 	  mhash-context?
 	  mhash-end
 	  mhash-file
@@ -5227,9 +5228,6 @@ USA.
 	  mhash-keygen-uses-hash-algorithm
 	  mhash-keygen-uses-salt?
 	  mhash-string
-	  mhash-substring
-	  mhash-sum->hexadecimal
-	  mhash-sum->number
 	  mhash-type-names
 	  mhash-update)
   (initialization (initialize-package!)))
