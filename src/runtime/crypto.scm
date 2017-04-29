@@ -278,10 +278,9 @@ USA.
   (md5-bytevector (string->utf8 string start end)))
 
 (define (md5-bytevector bytes #!optional start end)
-  (legacy-string->bytevector
-   (cond ((mhash-available?) (mhash-bytevector 'md5 bytes start end))
-	 ((%md5-available?) (%md5-bytevector bytes start end))
-	 (else (error "This Scheme system was built without MD5 support.")))))
+  (cond ((mhash-available?) (mhash-bytevector 'md5 bytes start end))
+	((%md5-available?) (%md5-bytevector bytes start end))
+	(else (error "This Scheme system was built without MD5 support."))))
 
 (define (%md5-bytevector bytes #!optional start end)
   (let ((end (fix:end-index end (bytevector-length bytes) 'md5-bytevector))
