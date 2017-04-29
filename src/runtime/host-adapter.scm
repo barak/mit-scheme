@@ -33,92 +33,119 @@ USA.
 ;;; hack the host e.g. to add bindings that were added to the new
 ;;; runtime AND used in the new CREF/SF/LIAR.  It is NOT loaded into
 ;;; the new runtime.  It contains temporary hacks that will be kept
-;;; only until the new runtime is released.  They assume the host is
-;;; the current release (9.2 as of March 2017).
+;;; only until the new runtime is released.
 
-(if (string=? "9.2" (get-subsystem-version-string "release"))
-    (begin
-      (eval
-       '(begin
-	  (define random-bytevector random-byte-vector)
+(let ()
 
-	  (define (guarantee predicate object #!optional caller)
-	    (if (predicate object)
-		object
-		(error "Not a:" predicate object)))
+  (define (unbound? env name)
+    (eq? 'unbound (environment-reference-type env name)))
 
-	  (define (microcode-type name)
-	    (or (microcode-type/name->code name)
-		(cond ((eq? name 'bytevector) #x33)
-		      ((eq? name 'tagged-object) #x25)
-		      ((eq? name 'unicode-string) #x1B)
-		      (else #t))
-		(error "MICROCODE-TYPE: Unknown name" name)))
+  (let ((env (->environment '())))
+    (if (unbound? env 'guarantee)
+	(eval `(define (guarantee predicate object #!optional caller)
+		 (if (predicate object)
+		     object
+		     (error:wrong-type-argument
+		      object
+		      (string-append "object satisfying "
+				     (call-with-output-string
+				       (lambda (port)
+					 (write predicate port))))
+		      caller)))
+	      env))
+    (if (unbound? env 'bytes-per-object)
+	(eval '(define (bytes-per-object)
+		 (vector-ref (gc-space-status) 0))
+	      env))
+    (if (unbound? env 'random-bytevector)
+	(eval '(define random-bytevector random-byte-vector) env))
+    (if (unbound? env 'string-foldcase)
+	(eval '(define string-foldcase string-downcase) env)))
 
-	  (define (bytes-per-object)
-	    (vector-ref (gc-space-status) 0))
+  (let ((env (->environment '(runtime))))
+    (if (unbound? env 'select-on-bytes-per-word)
+	(eval '(define-syntax select-on-bytes-per-word
+		 (er-macro-transformer
+		  (lambda (form rename compare)
+		    rename compare
+		    (syntax-check '(KEYWORD EXPRESSION EXPRESSION) form)
+		    (let ((bpo (bytes-per-object)))
+		      (case bpo
+			((4) (cadr form))
+			((8) (caddr form))
+			(else (error "Unsupported bytes-per-object:" bpo)))))))
+	      env)))
 
-	  (define string-foldcase string-upcase))
-       (->environment '()))
-      ;; Make new CREF's .pkds usable.
-      (eval
-       '(begin
-	  (define (link-description? object)
-	    (and (vector? object)
-		 (cond ((fix:= (vector-length object) 2)
-			(and (symbol? (vector-ref object 0))
-			     (package-name? (vector-ref object 1))))
-		       ((fix:= (vector-length object) 3)
-			(and (symbol? (vector-ref object 0))
-			     (package-name? (vector-ref object 1))
-			     (symbol? (vector-ref object 2))))
-		       ((fix:= (vector-length object) 4)
-			(and (symbol? (vector-ref object 0))
-			     (package-name? (vector-ref object 1))
-			     (symbol? (vector-ref object 2))
-			     (or (eq? #f (vector-ref object 3))
-				 (eq? 'deprecated (vector-ref object 3)))))
-		       (else #f))))
-	  (define (create-links-from-description description)
-	    (let ((environment
-		   (find-package-environment
-		    (package-description/name description))))
-	      (let ((bindings (package-description/exports description)))
-		(let ((n (vector-length bindings)))
-		  (do ((i 0 (fix:+ i 1)))
-		      ((fix:= i n))
-		    (let ((binding (vector-ref bindings i)))
-		      (link-variables (find-package-environment
-				       (vector-ref binding 1))
-				      (if (fix:= (vector-length binding) 3)
-					  (vector-ref binding 2)
-					  (vector-ref binding 0))
-				      environment
-				      (vector-ref binding 0))))))
-	      (let ((bindings (package-description/imports description)))
-		(let ((n (vector-length bindings)))
-		  (do ((i 0 (fix:+ i 1)))
-		      ((fix:= i n))
-		    (let ((binding (vector-ref bindings i)))
-		      (let ((source-environment
-			     (find-package-environment (vector-ref binding 1)))
-			    (source-name
-			     (if (fix:>= (vector-length binding) 3)
-				 (vector-ref binding 2)
-				 (vector-ref binding 0))))
-			(guarantee-binding source-environment source-name)
-			(link-variables environment (vector-ref binding 0)
-					source-environment source-name)))))))))
-       (->environment '(package)))
-      (eval
-       '(define-syntax select-on-bytes-per-word
-	  (er-macro-transformer
-	   (lambda (form rename compare)
-	     rename compare
-	     (syntax-check '(KEYWORD EXPRESSION EXPRESSION) form)
-	     (let ((bpo (bytes-per-object)))
-	       (case bpo
-		 ((4) (cadr form))
-		 ((8) (caddr form))
-		 (else (error "Unsupported bytes-per-object:" bpo)))))))
-       (->environment '(runtime)))))
+  (let ((env (->environment '(runtime microcode-tables))))
+    (if (eval '(or (not (microcode-type/name->code 'bytevector))
+		   (not (microcode-type/name->code 'tagged-object))
+		   (not (microcode-type/name->code 'unicode-string)))
+	      env)
+        (begin
+          (eval '(define (microcode-type name)
+                   (or (microcode-type/name->code name)
+                       (cond ((eq? name 'bytevector) #x33)
+                             ((eq? name 'tagged-object) #x25)
+                             ((eq? name 'unicode-string) #x1B)
+                             (else #t))
+                       (error "MICROCODE-TYPE: Unknown name:" name)))
+                env)
+          (link-variables system-global-environment 'microcode-type
+                          env 'microcode-type))))
+
+  (let ((env (->environment '(package))))
+    (if (eval '(not (link-description? '#(name1 (package name) name2 #f)))
+	      env)
+	(eval
+	 '(begin
+	    (define (link-description? object)
+	      (and (vector? object)
+		   (cond ((fix:= (vector-length object) 2)
+			  (and (symbol? (vector-ref object 0))
+			       (package-name? (vector-ref object 1))))
+			 ((fix:= (vector-length object) 3)
+			  (and (symbol? (vector-ref object 0))
+			       (package-name? (vector-ref object 1))
+			       (symbol? (vector-ref object 2))))
+			 ((fix:= (vector-length object) 4)
+			  (and (symbol? (vector-ref object 0))
+			       (package-name? (vector-ref object 1))
+			       (symbol? (vector-ref object 2))
+			       (or (eq? #f (vector-ref object 3))
+				   (eq? 'deprecated (vector-ref object 3)))))
+			 (else #f))))
+
+	    (define (create-links-from-description description)
+	      (let ((environment
+		     (find-package-environment
+		      (package-description/name description))))
+		(let ((bindings (package-description/exports description)))
+		  (let ((n (vector-length bindings)))
+		    (do ((i 0 (fix:+ i 1)))
+			((fix:= i n))
+		      (let ((binding (vector-ref bindings i)))
+			(link-variables (find-package-environment
+					 (vector-ref binding 1))
+					(if (fix:= (vector-length binding) 3)
+					    (vector-ref binding 2)
+					    (vector-ref binding 0))
+					environment
+					(vector-ref binding 0))))))
+		(let ((bindings (package-description/imports description)))
+		  (let ((n (vector-length bindings)))
+		    (do ((i 0 (fix:+ i 1)))
+			((fix:= i n))
+		      (let ((binding (vector-ref bindings i)))
+			(let ((source-environment
+			       (find-package-environment
+				(vector-ref binding 1)))
+			      (source-name
+			       (if (fix:>= (vector-length binding) 3)
+				   (vector-ref binding 2)
+				   (vector-ref binding 0))))
+			  (guarantee-binding source-environment source-name)
+			  (link-variables environment
+					  (vector-ref binding 0)
+					  source-environment
+					  source-name)))))))))
+	 env))))
