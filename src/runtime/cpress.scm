@@ -86,11 +86,11 @@ USA.
 ;;; determines the algorithm.
 
 (define (compress ifile ofile)
-  (call-with-legacy-binary-input-file (merge-pathnames ifile)
+  (call-with-binary-input-file (merge-pathnames ifile)
     (lambda (input)
-      (call-with-legacy-binary-output-file (merge-pathnames ofile)
+      (call-with-binary-output-file (merge-pathnames ofile)
         (lambda (output)
-	  (write-string "Compressed-B1-1.00" output)
+	  (write-compressed-file-marker output)
 	  (compress-ports input output))))))
 
 (define-structure (compression-state
@@ -118,11 +118,11 @@ USA.
   output-port)
 
 (define (compress-ports input output)
-  (let ((state (make-compression-state
-		(make-vector 256 false)
-		(make-byte-buffer)
-		(make-output-buffer)
-		input output)))
+  (let ((state
+	 (make-compression-state (make-vector 256 #f)
+				 (make-byte-buffer)
+				 (make-output-buffer)
+				 input output)))
     (call-with-current-continuation
      (lambda (continuation)
        (set-compress-continuation! state continuation)
@@ -240,7 +240,7 @@ USA.
   (let ((byte (read-byte state)))
     (let ((node (vector-ref (root-nodes state) byte)))
       (if (not node)
-	  (add-child state false byte (make-node state 0)))
+	  (add-child state #f byte (make-node state 0)))
       node)))
 
 (define (match-next state node nb)
@@ -251,7 +251,7 @@ USA.
 	  (let loop ((child (node-children node)))
 	    (cond ((not child)
 		   (add-child state node byte (make-node state 0))
-		   false)
+		   #f)
 		  ((fix:= byte (node-byte child))
 		   (discard-byte state)
 		   child)
@@ -267,25 +267,25 @@ USA.
 		  (replace-child state node parent)
 		  (add-child state parent byte* node)
 		  (add-child state parent byte (make-node state 0)))
-		false))))))
+		#f))))))
 
 ;;;; PATRICIA Tree Database
 
 (define-structure (node (constructor %make-node (nb older pointer bp)))
   ;; The parent of this node, or #F for a root node.
-  (parent false)
+  (parent #f)
 
   ;; The children of this node.  Either #F for no children, or the
   ;; first child.  The remaining children are accessed through the
   ;; NODE-NEXT fields.  A node will never have exactly one child.
-  (children false)
+  (children #f)
 
   ;; The adjacent siblings of this node, or #F if none.
-  (previous false)
-  (next false)
+  (previous #f)
+  (next #f)
 
   ;; The first byte of the substring between the parent and this node.
-  (byte false)
+  (byte #f)
 
   ;; The number of bytes in the string represented by this node,
   ;; counting down from the root of the tree.
@@ -293,8 +293,8 @@ USA.
 
   ;; The adjacent nodes in the node pointer ordering.  The OLDER node
   ;; has less recent POINTER and BP, while the newer node has more recent.
-  (older false)
-  (newer false)
+  (older #f)
+  (newer #f)
 
   ;; The command pointer for this node.
   pointer
@@ -322,7 +322,7 @@ USA.
 	  (if older
 	      (set-node-newer! older newer)
 	      (set-oldest-node! state newer))
-	  (set-node-newer! node false)
+	  (set-node-newer! node #f)
 	  (set-node-older! node (newest-node state))
 	  (set-node-newer! (newest-node state) node)
 	  (set-newest-node! state node)
@@ -362,7 +362,7 @@ USA.
 	     ((not (fix:= (node-pointer node) pointer)) node))))
     (if (not (eq? node oldest-node))
 	(let ((older (node-older node)))
-	  (set-node-older! node false)
+	  (set-node-older! node #f)
 	  (set-oldest-node! state node)
 	  ;; We don't have to do anything complicated to delete a node.
 	  ;; If the node has any children, we know that they are also
@@ -373,15 +373,15 @@ USA.
 	  ;; only do the deletion if the parent is not marked.
 	  (do ((node older (node-older node)))
 	      ((not node))
-	    (set-node-nb! node false))
+	    (set-node-nb! node #f))
 	  (do ((node older (node-older node)))
 	      ((not node))
 	    (let ((parent (node-parent node)))
 	      (cond ((not parent)
-		     (vector-set! (root-nodes state) (node-byte node) false))
+		     (vector-set! (root-nodes state) (node-byte node) #f))
 		    ((node-nb parent)
 		     (delete-child state parent node))))
-	    (set-node-nb! node true))
+	    (set-node-nb! node #t))
 	  unspecific))))
 
 (define (delete-child state parent child)
@@ -415,7 +415,7 @@ USA.
 ;;; The optimal size for this buffer is
 ;;;  (+ (* COPY-MAX POINTER-MAX) BUFFER-READ)
 (define-integrable buffer-size 69632)
-(define-integrable buffer-size-optimal? true)
+(define-integrable buffer-size-optimal? #t)
 
 ;;; When input is needed from the input port, we attempt to read this
 ;;; many bytes all at once.  It is assumed that BUFFER-SIZE is an
@@ -423,16 +423,16 @@ USA.
 (define-integrable buffer-read 4096)
 
 (define-structure (bb (constructor make-byte-buffer ()))
-  (vector (make-legacy-string buffer-size) read-only true)
+  (vector (make-bytevector buffer-size) read-only #t)
   (ptr 0)
   (end 0)
-  (eof? false))
+  (eof? #f))
 
 (define (byte-ready? state)
   (let ((bb (byte-buffer state)))
     (if (fix:= (bb-ptr bb) (bb-end bb))
-	(guarantee-buffer-data state bb true)
-	true)))
+	(guarantee-buffer-data state bb #t)
+	#t)))
 
 (define (read-byte state)
   ;; Get a byte from the byte buffer.  If we are reading bytes in the
@@ -454,8 +454,8 @@ USA.
 
 (define (%peek-byte state bb)
   (if (fix:= (bb-ptr bb) (bb-end bb))
-      (guarantee-buffer-data state bb false))
-  (vector-8b-ref (bb-vector bb) (bb-ptr bb)))
+      (guarantee-buffer-data state bb #f))
+  (bytevector-u8-ref (bb-vector bb) (bb-ptr bb)))
 
 (define (%discard-byte bb)
   (set-bb-ptr! bb
@@ -480,11 +480,11 @@ USA.
 
 (define (node-ref node nb state)
   ;; Read byte NB in the string for NODE.
-  (vector-8b-ref (bb-vector (byte-buffer state))
-		 (let ((bp (fix:+ (node-bp node) nb)))
-		   (if (fix:< bp buffer-size)
-		       bp
-		       (fix:- bp buffer-size)))))
+  (bytevector-u8-ref (bb-vector (byte-buffer state))
+		     (let ((bp (fix:+ (node-bp node) nb)))
+		       (if (fix:< bp buffer-size)
+			   bp
+			   (fix:- bp buffer-size)))))
 
 (define (guarantee-buffer-data state bb probe?)
   ;; We have read all of the bytes in the buffer, so it's time to get
@@ -493,7 +493,7 @@ USA.
   ;; means we are now at EOF.
   (if (bb-eof? bb)
       (if probe?
-	  false
+	  #f
 	  (compress-finished state))
       (let* ((end (bb-end bb))
 	     (end* (fix:+ end buffer-read)))
@@ -504,34 +504,32 @@ USA.
 	;; couldn't be sure that any nodes we were holding were valid
 	;; across a call to READ-BYTE.
 	(let ((nb
-	       (input-port/read-substring! (input-port state)
-					   (bb-vector bb) end end*)))
+	       (read-bytevector! (bb-vector bb) (input-port state) end end*)))
 	  (cond ((not nb)
 		 (error "Input port must be in blocking mode:"
 			(input-port state))
-		 false)
+		 #f)
+		((eof-object? nb)
+		 (if probe?
+		     (begin
+		       (set-bb-eof?! bb #t)
+		       #f)
+		     (compress-finished state)))
 		((fix:= nb buffer-read)
 		 ;; A full block was read.
 		 (set-bb-end! bb (if (fix:= end* buffer-size) 0 end*))
-		 true)
-		((fix:= nb 0)
-		 ;; We're at EOF.
-		 (if probe?
-		     (begin
-		       (set-bb-eof?! bb true)
-		       false)
-		     (compress-finished state)))
+		 #t)
 		((and (fix:< 0 nb) (fix:< nb buffer-read))
 		 ;; A partial block was read, meaning that
 		 ;; this is the last block.  Set BB-EOF? to
 		 ;; indicate that there is no more data after
 		 ;; this block is exhausted.
-		 (set-bb-eof?! bb true)
+		 (set-bb-eof?! bb #t)
 		 (set-bb-end! bb (fix:+ end nb))
-		 true)
+		 #t)
 		(else
 		 (error "Illegal result from read:" nb buffer-read)
-		 false))))))
+		 #f))))))
 
 (define (compress-finished state)
   ;; This is called from GUARANTEE-BUFFER-DATA when EOF is
@@ -665,7 +663,7 @@ USA.
 	 (let ((pointer (fix:+ (current-pointer state) 1)))
 	   (if (fix:= pointer pointer-max)
 	       (begin
-		 (set-window-filled?! state true)
+		 (set-window-filled?! state #t)
 		 0)
 	       pointer))))
     (set-current-pointer! state pointer)
@@ -676,15 +674,15 @@ USA.
 	(set-oldest state (oldest-node state) pointer))))
 
 (define (make-output-buffer)
-  (cons 0 (make-legacy-string 4096)))
+  (cons 0 (make-bytevector 4096)))
 
 (define (write-byte state byte)
   (let ((ob (output-buffer state)))
     (let ((index (car ob)))
-      (vector-8b-set! (cdr ob) index byte)
+      (bytevector-u8-set! (cdr ob) index byte)
       (if (fix:= index 4095)
 	  (begin
-	    (output-port/write-string (output-port state) (cdr ob))
+	    (write-bytevector (cdr ob) (output-port state))
 	    (set-car! ob 0))
 	  (set-car! ob (fix:+ index 1))))))
 
@@ -698,18 +696,19 @@ USA.
 		(do ((start start (fix:+ start 1))
 		     (index index (fix:+ index 1)))
 		    ((fix:= start end))
-		  (vector-8b-set! buffer index (vector-8b-ref string start))))
+		  (bytevector-u8-set! buffer index
+				      (bytevector-u8-ref string start))))
 	      (set-car! ob new-index))
 	    (do ((start start (fix:+ start 1)))
 		((fix:= start end))
-	      (write-byte state (vector-8b-ref string start))))))))
+	      (write-byte state (bytevector-u8-ref string start))))))))
 
 (define (flush-output-buffer state)
   (let ((ob (output-buffer state))
 	(op (output-port state)))
     (if (fix:< 0 (car ob))
-	(output-port/write-substring op (cdr ob) 0 (car ob)))
-    (output-port/flush-output op)))
+	(write-bytevector (cdr ob) op 0 (car ob)))
+    (flush-output-port op)))
 
 (define (uncompress ifile ofile)
   (uncompress-internal ifile ofile

@@ -30,16 +30,6 @@ USA.
 (declare (usual-integrations))
 (declare (integrate-external "infstr" "char"))
 
-(define (initialize-package!)
-  (set! special-form-procedure-names
-	`((,lambda-tag:unnamed . LAMBDA)
-	  (,lambda-tag:internal-lambda . LAMBDA)
-	  (,lambda-tag:let . LET)
-	  (,lambda-tag:fluid-let . FLUID-LET)))
-  (set! directory-rewriting-rules (make-settable-parameter '()))
-  (set! wrappers-with-memoized-debugging-info (make-serial-population))
-  (add-secondary-gc-daemon! discard-debugging-info!))
-
 (define (compiled-code-block/dbg-info block demand-load?)
   (let ((wrapper (compiled-code-block/debugging-wrapper block)))
     (and wrapper
@@ -82,6 +72,15 @@ USA.
 		    (loop (cdr left) time* file* receiver*)
 		    (loop (cdr left) time file receiver))))))))
 
+(define (fasload-loader filename)
+  (call-with-current-continuation
+    (lambda (if-fail)
+      (bind-condition-handler (list condition-type:fasload-error
+				    condition-type:file-error
+				    condition-type:bad-range-argument)
+	  (lambda (condition) condition (if-fail #f))
+	(lambda () (fasload filename #t))))))
+
 (define (memoize-debugging-info! wrapper info)
   (without-interruption
    (lambda ()
@@ -94,7 +93,12 @@ USA.
 			 (set-debugging-wrapper/info! wrapper #f)))
   (empty-population! wrappers-with-memoized-debugging-info))
 
-(define wrappers-with-memoized-debugging-info)
+(define-deferred wrappers-with-memoized-debugging-info
+  (make-serial-population))
+
+(add-boot-init!
+ (lambda ()
+   (add-secondary-gc-daemon! discard-debugging-info!)))
 
 (define (compiled-entry/dbg-object entry #!optional demand-load?)
   (let ((block (compiled-entry/block entry))
@@ -139,7 +143,7 @@ USA.
   (if (compiled-closure? entry)
       (compiled-entry/offset (compiled-closure->entry entry))
       (compiled-code-address->offset entry)))
-
+
 (define (compiled-entry/filename-and-index entry)
   (compiled-code-block/filename-and-index (compiled-entry/block entry)))
 
@@ -209,7 +213,8 @@ USA.
 		 (pathname=? (debugging-wrapper/pathname wrapper) pathname))
 	    (set-debugging-wrapper/pathname! wrapper pathname*))))))
 
-(define directory-rewriting-rules)
+(define-deferred directory-rewriting-rules
+  (make-settable-parameter '()))
 
 (define (with-directory-rewriting-rule match replace thunk)
   (parameterize*
@@ -341,7 +346,11 @@ USA.
     (and association
 	 (symbol->string (cdr association)))))
 
-(define special-form-procedure-names)
+(define-deferred special-form-procedure-names
+  `((,lambda-tag:unnamed . LAMBDA)
+    (,lambda-tag:internal-lambda . LAMBDA)
+    (,lambda-tag:let . LET)
+    (,lambda-tag:fluid-let . FLUID-LET)))
 
 (define (compiled-procedure/lambda entry)
   (let ((procedure (compiled-entry/dbg-object entry)))
@@ -396,7 +405,7 @@ USA.
 	 (if (equal? "bcs" (pathname-type pathname))
 	     (compressed-loader pathname)
 	     (fasload-loader pathname)))))
-
+
 ;;;; Splitting of info structures
 
 (define (inf->bif/bsm inffile)
@@ -434,29 +443,44 @@ USA.
 ;;;; UNCOMPRESS
 ;;;  A simple extractor for compressed binary info files.
 
-(define-integrable window-size 4096)
+(define (compressed-loader compressed-file)
+  (call-with-temporary-file-pathname
+   (lambda (temporary-file)
+     (call-with-current-continuation
+      (lambda (k)
+	(uncompress-internal compressed-file
+			     temporary-file
+			     (lambda (message . irritants)
+			       message irritants
+			       (k #f)))
+	(fasload-loader temporary-file))))))
 
-(define (uncompress-ports input-port output-port #!optional buffer-size)
-  (uncompress-kernel-by-blocks
-   input-port output-port
-   (if (default-object? buffer-size) 4096 buffer-size)
-   input-port/read-substring!))
+(define (uncompress-internal ifile ofile if-fail)
+  (call-with-binary-input-file (merge-pathnames ifile)
+    (lambda (input)
+	;; This may get more hairy as we up versions
+      (if (read-compressed-file-marker input)
+	  (call-with-binary-output-file (merge-pathnames ofile)
+	    (lambda (output)
+	      (uncompress-ports input output
+				(fix:* (file-length ifile) 2))))
+	  (if-fail "Not a recognized compressed file:" ifile)))))
 
-(define (uncompress-read-substring port buffer start end)
-  (let loop ((i start))
-    (if (fix:>= i end)
-	(fix:- i start)
-	(let ((char (read-char port)))
-	  (if (not (char? char))
-	      (fix:- i start)
-	      (begin
-		(string-set! buffer i char)
-		(loop (fix:1+ i))))))))
+(define (read-compressed-file-marker input)
+  (let ((n (bytevector-length compressed-file-marker)))
+    (let ((marker (read-bytevector n input)))
+      (and marker
+	   (not (eof-object? marker))
+	   (bytevector=? marker compressed-file-marker)))))
+
+(define (write-compressed-file-marker output)
+  (write-bytevector compressed-file-marker output))
+
+(define-deferred compressed-file-marker
+  (string->utf8 "Compressed-B1-1.00"))
 
 ;; This version will uncompress any input that can be read in chunks by
-;; applying parameter READ-SUBSTRING to INPUT-PORT and a substring
-;; reference.  These do not necesarily have to be a port and a port
-;; operation, but that is the expected use.
+;; calling SOURCE on a bytevector range.
 ;;
 ;; This version is written for speed:
 ;;
@@ -490,130 +514,113 @@ USA.
 ;;    is no unprocessed input, in which case we just tail out of the
 ;;    loop.
 
-(define (uncompress-kernel-by-blocks input-port output-port buffer-size
-				     read-substring)
-  (define-integrable input-size 4096)
+(define (uncompress-ports input-port output-port #!optional buffer-size)
+  (uncompress-kernel-by-blocks
+   (lambda (bytes start end)
+     (let ((n (read-bytevector! bytes input-port start end)))
+       (if (or (not n) (eof-object? n))
+	   0
+	   n)))
+   (lambda (bytes start end)
+     (write-bytevector bytes output-port start end))
+   (if (default-object? buffer-size) 4096 buffer-size)))
+
+(define (uncompress-kernel-by-blocks source sink output-size)
+  (define-integrable window-size #x1000)
+  (define-integrable input-size #x1000)
+
   (let ((cp-table (make-vector window-size))
-	(input-buffer (make-legacy-string input-size)))
+	(input-buffer (make-bytevector input-size)))
 
-    (define (displacement->cp-index displacement cp)
-      (let ((index (fix:- cp displacement)))
-	(if (fix:< index 0) (fix:+ window-size index) index)))
+    (define-integrable (cp:++ cp)
+      (fix:and (fix:+ cp 1)
+	       (fix:- window-size 1)))
 
-    (define-integrable (cp:+ cp n)
-      (fix:remainder (fix:+ cp n) window-size))
+    (define-integrable (cp:- cp n)
+      (fix:and (fix:+ (fix:- cp n) window-size)
+	       (fix:- window-size 1)))
 
-    (define (short-substring-move! s1 start1 end1 s2 start2)
-      (do ((i1 start1 (fix:+ i1 1))
-	   (i2 start2 (fix:+ i2 1)))
-	  ((fix:= i1 end1))
-	(string-set! s2 i2 (string-ref s1 i1))))
+    (define (short-copy! to at from start end)
+      (do ((i start (fix:+ i 1))
+	   (j at (fix:+ j 1)))
+	  ((not (fix:< i end)) j)
+	(bytevector-u8-set! to j (bytevector-u8-ref from i))))
 
-    (let parse-command ((bp 0) (cp 0) (ip 0) (ip-end 0)
-			       (buffer (make-legacy-string buffer-size))
-			       (buffer-size buffer-size))
-      ;; Invariant: (SUBTRING BUFFER IP IP-END) is unprocessed input.
+    (let parse-command
+	((ip 0)
+	 (ip-end 0)
+	 (cp 0)
+	 (output-buffer (make-bytevector output-size))
+	 (op 0)
+	 (output-size output-size))
+
+      ;; Invariant:
+      ;; (BYTEVECTOR-COPY OUTPUT-BUFFER IP IP-END) is unprocessed input.
       (define (retry-with-bigger-output-buffer)
-	(let* ((new-size (fix:+ buffer-size (fix:quotient buffer-size 4)))
-	       (nbuffer (make-legacy-string new-size)))
-	  (string-copy! nbuffer 0 buffer)
-	  (parse-command bp cp ip ip-end nbuffer new-size)))
+	(let* ((new-size (fix:+ output-size (fix:lsh output-size -2)))
+	       (output-buffer* (make-bytevector new-size)))
+	  (bytevector-copy! output-buffer* 0 output-buffer)
+	  (parse-command ip ip-end cp
+			 output-buffer* op new-size)))
 
       (define (refill-input-buffer-and-retry needed)
-	(short-substring-move! input-buffer ip ip-end input-buffer 0)
-	(let* ((left (fix:- ip-end ip))
-	       (count (read-substring input-port input-buffer
-				      left input-size))
-	       (total (fix:+ count left)))
-	  (if (fix:= count 0)
-	      (if (fix:< total needed)
-		  (error "Compressed input ends too soon"
-			 input-port 'UNCOMPRESS-KERNEL-BY-BLOCKS)
-		  (finished))
-	      (parse-command bp cp 0  total buffer buffer-size))))
+	(let* ((ip-end* (short-copy! input-buffer 0 input-buffer ip ip-end))
+	       (n (source input-buffer ip-end* input-size)))
+	  (if (fix:> n 0)
+	      (parse-command 0 (fix:+ ip-end* n) cp
+			     output-buffer op output-size)
+	      (begin
+		(if (fix:< ip-end* needed)
+		    (error "Compressed input ends too soon"
+			   'uncompress-kernel-by-blocks))
+		(sink output-buffer 0 op)
+		op))))
 
-      (define (finished)
-	(output-port/write-substring output-port buffer 0 bp)
-	bp)
-
+      ;; Copy BYTE+1 bytes from input to output, and update CP-TABLE with their
+      ;; indices in the output buffer.
       (define (literal-command byte)
-	(let ((length (fix:+ byte 1))
-	      (ip*    (fix:+ ip 1)))
-	  (let ((nbp (fix:+ bp length))
-		(ncp (cp:+ cp length))
-		(nip (fix:+ ip* length)))
-	    (if (fix:> nbp buffer-size)
-		(retry-with-bigger-output-buffer)
-		(if (fix:> nip ip-end)
-		    (refill-input-buffer-and-retry (fix:+ length 1))
-		    (begin
-		      (short-substring-move! input-buffer ip* nip buffer bp)
-		      (do ((bp bp (fix:+ bp 1)) (cp cp (cp:+ cp 1)))
-			  ((fix:= bp nbp))
-			(vector-set! cp-table cp bp))
-		      (parse-command nbp ncp nip ip-end buffer
-				     buffer-size)))))))
+	(let* ((ip (fix:+ ip 1))
+	       (ip* (fix:+ ip (fix:+ byte 1)))
+	       (op* (fix:+ op (fix:+ byte 1))))
+	  (if (fix:<= op* output-size)
+	      (if (fix:<= ip* ip-end)
+		  (begin
+		    (short-copy! output-buffer op input-buffer ip ip*)
+		    (do ((op op (fix:+ op 1))
+			 (cp cp (cp:++ cp)))
+			((not (fix:< op op*))
+			 (parse-command ip* ip-end cp
+					output-buffer op* output-size))
+		      (vector-set! cp-table cp op)))
+		  (refill-input-buffer-and-retry (fix:+ byte 2)))
+	      (retry-with-bigger-output-buffer))))
 
+      ;; Copy bytes from earlier in the output to here.  Start and length are
+      ;; encoded in BYTE and the next input byte.
       (define (copy-command byte)
-	(let ((ip* (fix:+ ip 1)))
-	  (if (fix:>= ip* ip-end)
-	      (refill-input-buffer-and-retry 2)
-	      (let ((cpi (displacement->cp-index
-			  (fix:+ (fix:* (fix:remainder byte 16) 256)
-				 (vector-8b-ref input-buffer ip*))
-			  cp))
-		    (length (fix:+ (fix:quotient byte 16) 1)))
-		(let ((bp* (vector-ref cp-table cpi))
-		      (nbp (fix:+ bp length))
-		      (ncp (cp:+ cp 1)))
-		  (if (fix:> nbp buffer-size)
-		      (retry-with-bigger-output-buffer)
-		      (let ((end-bp* (fix:+ bp* length)))
-			(short-substring-move! buffer bp* end-bp* buffer bp)
-			(vector-set! cp-table cp bp)
-			(parse-command nbp ncp (fix:+ ip 2) ip-end
-				       buffer buffer-size))))))))
+	(let ((ip (fix:+ ip 1)))
+	  (if (fix:< ip ip-end)
+	      (let ((ostart
+		     (vector-ref cp-table
+				 (cp:- cp
+				       (fix:or (fix:lsh (fix:and byte #x0F) 8)
+					       (bytevector-u8-ref input-buffer
+								  ip)))))
+		    (length (fix:+ (fix:lsh byte -4) 1)))
+		(let ((op* (fix:+ op length)))
+		  (if (fix:<= op* output-size)
+		      (begin
+			(short-copy! output-buffer op
+				     output-buffer ostart (fix:+ ostart length))
+			(vector-set! cp-table cp op)
+			(parse-command (fix:+ ip 1) ip-end (cp:++ cp)
+				       output-buffer op* output-size))
+		      (retry-with-bigger-output-buffer))))
+	      (refill-input-buffer-and-retry 2))))
 
-      (if (fix:>= ip ip-end)
-	  (refill-input-buffer-and-retry 0)
-	  (let ((byte  (vector-8b-ref input-buffer ip)))
-	    (if (fix:< byte 16)
+      (if (fix:< ip ip-end)
+	  (let ((byte (bytevector-u8-ref input-buffer ip)))
+	    (if (fix:< byte #x10)
 		(literal-command byte)
-		(copy-command byte)))))))
-
-(define (fasload-loader filename)
-  (call-with-current-continuation
-    (lambda (if-fail)
-      (bind-condition-handler (list condition-type:fasload-error
-				    condition-type:file-error
-				    condition-type:bad-range-argument)
-	  (lambda (condition) condition (if-fail #f))
-	(lambda () (fasload filename #t))))))
-
-(define (compressed-loader compressed-file)
-  (call-with-temporary-file-pathname
-   (lambda (temporary-file)
-     (call-with-current-continuation
-      (lambda (k)
-	(uncompress-internal compressed-file
-			     temporary-file
-			     (lambda (message . irritants)
-			       message irritants
-			       (k #f)))
-	(fasload-loader temporary-file))))))
-
-(define (uncompress-internal ifile ofile if-fail)
-  (call-with-legacy-binary-input-file (merge-pathnames ifile)
-    (lambda (input)
-      (let* ((file-marker "Compressed-B1-1.00")
-	     (marker-size (string-length file-marker))
-	     (actual-marker (make-legacy-string marker-size)))
-	;; This may get more hairy as we up versions
-	(if (and (fix:= (uncompress-read-substring input
-						   actual-marker 0 marker-size)
-			marker-size)
-		 (string=? file-marker actual-marker))
-	    (call-with-legacy-binary-output-file (merge-pathnames ofile)
-	      (lambda (output)
-		(uncompress-ports input output (fix:* (file-length ifile) 2))))
-	    (if-fail "Not a recognized compressed file:" ifile))))))
+		(copy-command byte)))
+	  (refill-input-buffer-and-retry 0)))))

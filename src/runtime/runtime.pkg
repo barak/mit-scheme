@@ -1464,7 +1464,8 @@ USA.
 	  dbg-procedure/source-code
 	  dbg-expression?)
   (export (runtime compress)
-	  uncompress-internal)
+	  uncompress-internal
+	  write-compressed-file-marker)
   (export (runtime options)
 	  with-directory-rewriting-rule)
   (initialization (initialize-package!)))
