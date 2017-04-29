@@ -106,17 +106,24 @@ USA.
   (write-char #\newline port))
 
 (define (flush-output-port #!optional port)
-  (let ((port (optional-output-port port 'flush-output-port)))
-    (cond ((binary-output-port? port) (flush-binary-output-port port))
-	  ((textual-output-port? port) (output-port/flush-output port))
-	  (else (error:not-a output-port? port 'flush-output-port)))))
+  (let ((port (if (default-object? port) (current-output-port) port)))
+    (if (binary-output-port? port)
+	(flush-binary-output-port port)
+	(flush-textual-output-port port))))
+
+(define (flush-textual-output-port port)
+  (output-port/flush-output (optional-output-port port 'flush-output-port)))
 
 (define (synchronize-output-port #!optional port)
-  (let ((port (optional-output-port port 'synchronize-output-port)))
-    (cond ((binary-output-port? port) (synchronize-binary-output-port port))
-	  ((textual-output-port? port) (output-port/synchronize-output port))
-	  (else (error:not-a output-port? port 'synchronize-output-port)))))
+  (let ((port (if (default-object? port) (current-output-port) port)))
+    (if (binary-output-port? port)
+	(synchronize-binary-output-port port)
+	(synchronize-textual-output-port port))))
 
+(define (synchronize-textual-output-port port)
+  (output-port/synchronize-output
+   (optional-output-port port 'synchronize-output-port)))
+
 (define (fresh-line #!optional port)
   (let ((port (optional-output-port port 'FRESH-LINE)))
     (if (let ((n (output-port/fresh-line port)))
@@ -351,12 +358,9 @@ USA.
 (define (trunc-out/discretionary-flush-output port)
   (output-port/discretionary-flush (tstate-port (textual-port-state port))))
 
-(define truncated-output-type)
-(define (initialize-package!)
-  (set! truncated-output-type
-	(make-textual-port-type `((WRITE-CHAR ,trunc-out/write-char)
-				  (FLUSH-OUTPUT ,trunc-out/flush-output)
-				  (DISCRETIONARY-FLUSH-OUTPUT
-				   ,trunc-out/discretionary-flush-output))
-				#f))
-  unspecific)
+(define-deferred truncated-output-type
+  (make-textual-port-type `((write-char ,trunc-out/write-char)
+			    (flush-output ,trunc-out/flush-output)
+			    (discretionary-flush-output
+			     ,trunc-out/discretionary-flush-output))
+			  #f))
