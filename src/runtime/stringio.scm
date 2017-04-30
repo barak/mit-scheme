@@ -29,7 +29,7 @@ USA.
 
 (declare (usual-integrations))
 
-;;;; Input as characters
+;;;; Input
 
 ;; obsolete
 (define (with-input-from-string string thunk)
@@ -45,14 +45,16 @@ USA.
     (make-textual-port string-input-type
 		       (make-istate string start end start 0))))
 
-(define-structure istate
-  (string #f read-only #t)
-  (start #f read-only #t)
-  (end #f read-only #t)
-  next
-  line-number)
+(define-record-type <istate>
+    (make-istate string start end next line-number)
+    istate?
+  (string istate-string)
+  (start istate-start)
+  (end istate-end)
+  (next istate-next set-istate-next!)
+  (line-number istate-line-number set-istate-line-number!))
 
-(define (make-string-input-type)
+(define-deferred string-input-type
   (make-textual-port-type `((char-ready? ,string-in/char-ready?)
 			    (eof? ,string-in/eof?)
 			    (input-line ,string-in/input-line)
@@ -113,50 +115,7 @@ USA.
   port
   (write-string " from string" output-port))
 
-;;;; Input as byte vector
-
-(define (call-with-input-octets octets procedure)
-  (procedure (open-input-octets octets)))
-
-(define (open-input-octets octets #!optional start end)
-  (let* ((end (fix:end-index end (string-length octets) 'open-input-octets))
-	 (start (fix:start-index start end 'open-input-octets))
-	 (port
-	  (make-generic-i/o-port (make-binary-port (make-octets-source octets
-								       start
-								       end)
-						   #f
-						   'open-input-octets)
-				 octets-input-type
-				 'open-input-octets)))
-    (port/set-coding port 'binary)
-    (port/set-line-ending port 'binary)
-    port))
-
-(define (make-octets-source string start end)
-  (let ((index start))
-    (make-non-channel-input-source
-     (lambda ()
-       (fix:< index end))
-     (lambda (bv start* end*)
-       (let ((n (fix:min (fix:- end index) (fix:- end* start*))))
-	 (let ((limit (fix:+ index n)))
-	   (do ((i index (fix:+ i 1))
-		(j start* (fix:+ j 1)))
-	       ((not (fix:< i limit))
-		(set! index i))
-	     (bytevector-u8-set! bv j (char->integer (string-ref string i)))))
-	 n)))))
-
-(define (make-octets-input-type)
-  (make-textual-port-type
-   `((write-self
-      ,(lambda (port output-port)
-	 port
-	 (write-string " from byte vector" output-port))))
-   (generic-i/o-port-type #t #f)))
-
-;;;; Output as characters
+;;;; Output
 
 (define (get-output-string port)
   ((textual-port-operation port 'extract-output) port))
@@ -191,11 +150,13 @@ USA.
 (define (open-output-string)
   (make-textual-port string-output-type (make-ostate (string-builder) 0)))
 
-(define-structure ostate
-  (builder #f read-only #t)
-  column)
+(define-record-type <ostate>
+    (make-ostate builder column)
+    ostate?
+  (builder ostate-builder)
+  (column ostate-column set-ostate-column!))
 
-(define (make-string-output-type)
+(define-deferred string-output-type
   (make-textual-port-type `((write-char ,string-out/write-char)
 			    (write-substring ,string-out/write-substring)
 			    (extract-output ,string-out/extract-output)
@@ -257,58 +218,3 @@ USA.
       (if nl
 	  (loop (fix:+ nl 1) 0)
 	  (loop start (ostate-column os))))))
-
-;;;; Output as octets
-
-(define (call-with-output-octets generator)
-  (let ((port (open-output-octets)))
-    (generator port)
-    (get-output-string port)))
-
-(define (open-output-octets)
-  (let ((port
-	 (let ((os (make-ostate (string-builder) #f)))
-	   (make-generic-i/o-port (make-binary-port #f
-						    (make-byte-sink os)
-						    'open-output-octets)
-				  octets-output-type
-				  'open-output-octets
-				  os))))
-    (port/set-line-ending port 'newline)
-    port))
-
-(define (make-byte-sink os)
-  (make-non-channel-output-sink
-   (lambda (bv start end)
-     (let ((builder (ostate-builder os)))
-       (do ((i start (fix:+ i 1)))
-	   ((not (fix:< i end)))
-	 (builder (integer->char (bytevector-u8-ref bv i)))))
-     (fix:- end start))
-   (lambda ()
-     unspecific)))
-
-(define (make-octets-output-type)
-  (make-textual-port-type `((extract-output ,string-out/extract-output)
-			    (extract-output! ,string-out/extract-output!)
-			    (position ,string-out/position)
-			    (write-self ,octets-out/write-self))
-			  (generic-i/o-port-type #f #t)))
-
-(define (octets-out/write-self port output-port)
-  port
-  (write-string " to byte vector" output-port))
-
-(define string-input-type)
-(define octets-input-type)
-(define string-output-type)
-(define octets-output-type)
-(define output-octets-port/os)
-(add-boot-init!
- (lambda ()
-   (set! string-input-type (make-string-input-type))
-   (set! octets-input-type (make-octets-input-type))
-   (set! string-output-type (make-string-output-type))
-   (set! octets-output-type (make-octets-output-type))
-   (set! output-octets-port/os (generic-i/o-port-accessor 0))
-   unspecific))

@@ -32,7 +32,7 @@ USA.
   (if (eq? (http-request-method) 'post)
       (let ((entity (http-request-entity)))
 	(if entity
-	    (let ((document (read-xml (open-input-octets entity))))
+	    (let ((document (bytevector->xml (string->iso8859-1 entity))))
 	      (if document
 		  (write-xml (process-xmlrpc-request document pathname) port)
 		  (http-status-response 400 "Ill-formed XML entity")))

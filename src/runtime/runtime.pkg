@@ -4440,10 +4440,6 @@ USA.
 	  (make-accumulator-output-port open-output-string)
 	  (string->input-port open-input-string)
 	  (with-string-output-port call-with-output-string)
-	  call-with-input-octets
-	  call-with-output-octets
-	  open-input-octets
-	  open-output-octets
 	  with-input-from-string
 	  with-output-to-string
 	  with-output-to-truncated-string)
