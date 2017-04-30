@@ -112,6 +112,7 @@ USA.
     (let ((environment (package/environment (find-package package-name)))
 	  (runtime (pathname-as-directory "runtime"))
 	  (rundir (system-library-directory-pathname "runtime" #t)))
+      (if (not init-expression) (init-boot-inits!))
       (for-each
        (lambda (file)
 	 (let ((file (force* file)))
@@ -132,7 +133,11 @@ USA.
 				  #t))))))))))
        files)
       (flush-purification-queue!)
-      (eval init-expression environment))))
+      (if (not init-expression)
+	  (begin
+	    (save-boot-inits! environment)
+	    ((get-boot-init-runner environment)))
+	  (eval init-expression environment)))))
 
 (define (force* value)
   (cond ((procedure? value) (force* (value)))

@@ -157,7 +157,7 @@ USA.
   unspecific)
 
 (define (save-boot-inits! environment)
-  (if (pair? boot-inits)
+  (if boot-inits
       (let ((inits (reverse! boot-inits)))
 	(set! boot-inits #f)
 	(let ((p (assq environment saved-boot-inits)))
