@@ -78,17 +78,17 @@ USA.
    ))
 
 (define-load-option 'REGULAR-EXPRESSION
-  (standard-option-loader '(RUNTIME REGULAR-EXPRESSION-COMPILER)
-			  #F
+  (standard-option-loader '(runtime regular-expression-compiler)
+			  #f
 			  "rgxcmp")
-  (standard-option-loader '(RUNTIME CHAR-SYNTAX)
-			  '(INITIALIZE-PACKAGE!)
+  (standard-option-loader '(runtime char-syntax)
+			  '(initialize-package!)
 			  "chrsyn")
-  (standard-option-loader '(RUNTIME REGULAR-EXPRESSION)
-			  '(INITIALIZE-PACKAGE!)
+  (standard-option-loader '(runtime regular-expression)
+			  #f
 			  "regexp")
-  (standard-option-loader '(RUNTIME REXP)
-			  #F
+  (standard-option-loader '(runtime rexp)
+			  #f
 			  "rexp"))
 
 ;; HASH-TABLE is now always loaded.

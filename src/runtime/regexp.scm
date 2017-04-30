@@ -29,63 +29,58 @@ USA.
 
 (declare (usual-integrations))
 
-(define registers)
+(define-deferred registers (make-vector 20 #f))
 
-(define (initialize-package!)
-  (set! registers (make-vector 20 #f))
-  unspecific)
-
-(define-structure (re-registers (type-descriptor <re-registers>))
-  (vector #f read-only #t))
-
-(define (guarantee-re-registers object procedure)
-  (if (not (re-registers? object))
-      (error:wrong-type-argument object "regular-expression registers"
-				 procedure))
-  (re-registers-vector object))
-
-(define (re-match-start-index i #!optional regs)
-  (guarantee-re-register i 'RE-MATCH-START-INDEX)
-  (vector-ref (if (or (default-object? regs) (not regs))
-		  registers
-		  (guarantee-re-registers regs 'RE-MATCH-START-INDEX))
-	      i))
-
-(define (re-match-end-index i #!optional regs)
-  (guarantee-re-register i 'RE-MATCH-END-INDEX)
-  (vector-ref (if (or (default-object? regs) (not regs))
-		  registers
-		  (guarantee-re-registers regs 'RE-MATCH-START-INDEX))
-	      (fix:+ i 10)))
-
-(define (guarantee-re-register i operator)
-  (if (not (and (exact-nonnegative-integer? i) (< i 10)))
-      (error:wrong-type-argument i "regular-expression register" operator)))
+(define (re-register? object)
+  (and (index-fixnum? object)
+       (fix:< object 10)))
 
 (define (re-registers)
   (make-re-registers (vector-copy registers)))
 
 (define (set-re-registers! regs)
-  (let ((regs (guarantee-re-registers regs 'SET-RE-REGISTERS!)))
-    (do ((i 0 (fix:+ i 1)))
-	((fix:= 20 i))
-      (vector-set! registers i (vector-ref regs i)))))
+  (vector-copy! registers 0 (re-registers-vector regs)))
 
-(define (preserving-re-registers thunk)
-  (let ((registers* unspecific))
-    (dynamic-wind (lambda () (set! registers* (re-registers)) unspecific)
-		  thunk
-		  (lambda () (set-re-registers! registers*)))))
+(define-record-type <re-registers>
+    (make-re-registers vector)
+    re-registers?
+  (vector re-registers-vector))
+
+(define (re-match-start-index i #!optional regs)
+  (guarantee re-register? i 're-match-start-index)
+  (vector-ref (if (or (default-object? regs) (not regs))
+		  registers
+		  (re-registers-vector regs))
+	      i))
+
+(define (re-match-end-index i #!optional regs)
+  (guarantee re-register? i 're-match-end-index)
+  (vector-ref (if (default-object? regs)
+		  registers
+		  (re-registers-vector regs))
+	      (fix:+ i 10)))
 
 (define (re-match-extract string regs i)
   (let ((start (re-match-start-index i regs))
 	(end (re-match-end-index i regs)))
     (if (not (and start end))
-	(error:bad-range-argument i 'RE-MATCH-EXTRACT))
+	(error:bad-range-argument i 're-match-extract))
     (substring string start end)))
+
+(define (preserving-re-registers thunk)
+  (let ((registers* unspecific))
+    (dynamic-wind (lambda ()
+		    (set! registers* (re-registers))
+		    unspecific)
+		  thunk
+		  (lambda ()
+		    (set-re-registers! registers*)
+		    (set! registers*)
+		    unspecific))))
 
 (define (make-substring-operation primitive)
   (lambda (regexp string start end #!optional case-fold? syntax-table)
+    (guarantee 8-bit-string? string)
     (let ((regexp
 	   (if (compiled-regexp? regexp)
 	       regexp

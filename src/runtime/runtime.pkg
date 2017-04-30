@@ -5254,8 +5254,6 @@ USA.
   (parent (runtime))
   (export ()
 	  char-set->regexp
-	  guarantee-re-register
-	  guarantee-re-registers
 	  preserving-re-registers
 	  re-match-end-index
 	  re-match-extract
