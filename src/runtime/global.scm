@@ -149,10 +149,12 @@ USA.
 (define with-values call-with-values)
 
 (define (write-to-string object #!optional max)
-  ((if (or (default-object? max) (not max))
-       call-with-output-string
-       call-with-truncated-output-string)
-   (lambda (port) (write object port))))
+  (if (or (default-object? max) (not max))
+      (call-with-output-string
+       (lambda (port) (write object port)))
+      (call-with-truncated-output-string
+       max
+       (lambda (port) (write object port)))))
 
 (define (pa procedure)
   (guarantee procedure? procedure 'PA)
