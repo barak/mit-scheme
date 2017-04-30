@@ -28,6 +28,8 @@ USA.
 
 (declare (usual-integrations))
 
+(load-option 'regular-expression)
+
 (define-test 'test-compiler
   (lambda ()
     (let ((compiled (re-compile-pattern regexp #f)))
