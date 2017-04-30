@@ -47,15 +47,18 @@ USA.
   (let ((mem (get-clipboard-data CF_TEXT)))
     (and (not (= mem 0))
 	 (let* ((maxlen (global-size mem))
-		(s (make-legacy-string maxlen))
+		(bv (make-bytevector maxlen))
 		(ptr (global-lock mem)))
-	   (copy-memory s ptr maxlen)
+	   (copy-memory bv ptr maxlen)
 	   (global-unlock mem)
 	   (close-clipboard)
-	   (string-copy s
-			0
-			(or (string-find-first-index (char=-predicate #\null) s)
-			    maxlen))))))
+	   (iso8859-1->string bv
+			      0
+			      (let loop ((i 0))
+				(if (or (not (fix:< i maxlen))
+					(fix:= (bytevector-u8-ref bv i) 0))
+				    i
+				    (loop (fix:+ i 1)))))))))
 
 (define (win32-screen-width)
   (get-system-metrics SM_CXSCREEN))

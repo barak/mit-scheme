@@ -209,7 +209,7 @@ USA.
          (C-proc    (get-window-long hwnd GWL_WNDPROC))
          (scheme?   (= C-proc scheme-wndproc))
 	 (old-proc  (if scheme?
-	                (or (hash-table/get wndproc-registry hwnd #f)
+			(or (hash-table/get wndproc-registry hwnd #f)
 			    default-scheme-wndproc)
 			(lambda (hw m w l)
 			  (%call-foreign-function c-proc hw m w l)))))
@@ -234,12 +234,12 @@ USA.
 
 
 (define (make-message-polling-loop)
-  (define msg (make-legacy-string 40))
+  (define msg (make-bytevector 40))
   (define (message-polling-loop)
     (if (peek-message msg 0 0 0 1 #|PM_REMOVE|#)
         (begin
 	  (translate-message msg)
-	  (without-interrupts (lambda()(dispatch-message msg)))
+	  (without-interrupts (lambda() (dispatch-message msg)))
 	  (message-polling-loop))))
   message-polling-loop)
 
