@@ -1104,8 +1104,10 @@ USA.
 	  bytevector?
 	  exact-nonnegative-integer->bytevector
 	  hexadecimal->bytevector
+	  iso8859-1->string
 	  list->bytevector
 	  make-bytevector
+	  string->iso8859-1
 	  string->utf16be
 	  string->utf16le
 	  string->utf32be

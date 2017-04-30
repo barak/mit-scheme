@@ -397,6 +397,25 @@ USA.
 	 (bytes-decoder bytevector-u32le-ref initial-u32->utf32-char-length
 			decode-utf32le-char 1 "UTF-32LE" 'utf32le->string))
    unspecific))
+
+(define (string->iso8859-1 string #!optional start end)
+  (let* ((end (fix:end-index end (string-length string) 'string->iso8859-1))
+	 (start (fix:start-index start end 'string->iso8859-1))
+	 (result (allocate-bytevector (fix:- end start))))
+    (do ((i start (fix:+ i 1))
+	 (j 0 (fix:+ j 1)))
+	((not (fix:< i end)))
+      (bytevector-u8-set! result j (char->integer (string-ref string i))))
+    result))
+
+(define (iso8859-1->string bytes #!optional start end)
+  (let* ((end (fix:end-index end (bytevector-length bytes) 'iso8859-1->string))
+	 (start (fix:start-index start end 'iso8859-1->string))
+	 (builder (string-builder)))
+    (do ((i start (fix:+ i 1)))
+	((not (fix:< i end)))
+      (builder (integer->char (bytevector-u8-ref bytes i))))
+    (builder)))
 
 (define (bytevector->hexadecimal bytes)
   (define-integrable (hex-char k)
