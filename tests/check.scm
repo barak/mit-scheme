@@ -65,12 +65,13 @@ USA.
     ("runtime/test-parametric-predicate" (runtime parametric-predicate))
     ("runtime/test-predicate-lattice" (runtime))
     ("runtime/test-predicate-metadata" (runtime))
-    "runtime/test-thread-queue"
     "runtime/test-process"
     "runtime/test-readwrite"
     "runtime/test-regsexp"
+    "runtime/test-rgxcmp"
     "runtime/test-string"
     "runtime/test-string-normalization"
+    "runtime/test-thread-queue"
     "runtime/test-url"
     ("runtime/test-wttree" (runtime wt-tree))
     ;;"ffi/test-ffi"

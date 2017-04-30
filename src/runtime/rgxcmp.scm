@@ -38,17 +38,21 @@ USA.
      (let ((name (cadr form))
 	   (prefix (caddr form))
 	   (suffixes (cdddr form)))
-       `(BEGIN
+       `(begin
 	  ,@(let loop ((n 0) (suffixes suffixes))
 	      (if (pair? suffixes)
-		  (cons `(DEFINE-INTEGRABLE
+		  (cons `(define-integrable
 			   ,(symbol prefix (car suffixes))
 			   ,n)
 			(loop (+ n 1) (cdr suffixes)))
 		  '()))
-	  (DEFINE ,name
-	    (VECTOR ,@(map (lambda (suffix) `',suffix) suffixes))))))))
+	  (define ,name
+	    (vector ,@(map (lambda (suffix) `',suffix) suffixes))))))))
 
+(define (re-code-name byte)
+  (and (fix:< byte (vector-length re-codes))
+       (vector-ref re-codes byte)))
+
 (define-enumeration re-codes re-code:
 
   ;; Zero bytes may appear in the compiled regular expression.
@@ -88,7 +92,7 @@ USA.
 
   ;; Matches any one character except for newline.
   any-char
-
+
   ;; Matches any one char belonging to specified set. First following
   ;; byte is # bitmap bytes.  Then come bytes for a bit-map saying
   ;; which chars are in.  Bits in each byte are ordered low-bit-first.
@@ -130,8 +134,7 @@ USA.
   syntax-spec
 
   ;; Matches any character whose syntax differs from the specified.
-  not-syntax-spec
-  )
+  not-syntax-spec)
 
 ;;;; Cache
 
@@ -146,7 +149,7 @@ USA.
 	((null? items))
       (set-car! items (cons (cons #f #f) #f)))
     (set-cdr! (last-pair items) items)
-    (cons* 'CACHE (make-thread-mutex) items)))
+    (cons* 'cache (make-thread-mutex) items)))
 
 (define-integrable (with-cache-locked cache thunk)
   (with-thread-mutex-lock (cadr cache)
@@ -182,76 +185,61 @@ USA.
 ;;;; String Compiler
 
 (define (re-compile-char char case-fold?)
-  (let ((result (make-legacy-string 2)))
-    (vector-8b-set! result 0 re-code:exact-1)
-    (string-set! result 1 (if case-fold? (char-upcase char) char))
+  (guarantee 8-bit-char? char 're-compile-char)
+  (let ((result (make-bytevector 2)))
+    (bytevector-u8-set! result 0 re-code:exact-1)
+    (bytevector-u8-set! result 1
+			(char->integer (if case-fold? (char-upcase char) char)))
     (make-compiled-regexp result case-fold?)))
 
 (define re-compile-string
   (cached-procedure 16
     (lambda (string case-fold?)
-      (let ((string (if case-fold? (string-upcase string) string)))
-	(let ((n (string-length string)))
-	  (if (fix:zero? n)
-	      (make-compiled-regexp string case-fold?)
-	      (let ((result
-		     (make-legacy-string
-		      (let ((qr (integer-divide n 255)))
-			(fix:+ (fix:* 257 (integer-divide-quotient qr))
-			       (let ((r (integer-divide-remainder qr)))
-				 (cond ((fix:zero? r) 0)
-				       ((fix:= 1 r) 2)
-				       (else (fix:+ r 2)))))))))
-		(let loop ((n n) (i 0) (p 0))
-		  (cond ((fix:= n 1)
-			 (vector-8b-set! result p re-code:exact-1)
-			 (vector-8b-set! result
-					 (fix:1+ p)
-					 (vector-8b-ref string i))
-			 (make-compiled-regexp result case-fold?))
-			((fix:< n 256)
-			 (vector-8b-set! result p re-code:exact-n)
-			 (vector-8b-set! result (fix:1+ p) n)
-			 (string-copy! result (fix:+ p 2) string i (fix:+ i n))
-			 (make-compiled-regexp result case-fold?))
-			(else
-			 (vector-8b-set! result p re-code:exact-n)
-			 (vector-8b-set! result (fix:1+ p) 255)
-			 (let ((j (fix:+ i 255)))
-			   (string-copy! result (fix:+ p 2) string i j)
-			   (loop (fix:- n 255) j (fix:+ p 257)))))))))))))
+      (guarantee 8-bit-string? string 're-compile-string)
+      (let ((end (string-length string))
+	    (builder (bytevector-builder))
+	    (get-byte
+	     (if case-fold?
+		 (lambda (i)
+		   (char->integer (char-upcase (string-ref string i))))
+		 (lambda (i)
+		   (char->integer (string-ref string i))))))
+	(let ((copy!
+	       (lambda (start end)
+		 (do ((i start (fix:+ i 1)))
+		     ((not (fix:< i end)))
+		   (builder (get-byte i))))))
+	  (let loop ((start 0))
+	    (if (fix:< start end)
+		(let ((n (fix:- end start)))
+		  (if (fix:< n #x100)
+		      (if (fix:= n 1)
+			  (begin
+			    (builder re-code:exact-1)
+			    (builder (get-byte start)))
+			  (begin
+			    (builder re-code:exact-n)
+			    (builder n)
+			    (copy! start end)))
+		      (begin
+			(builder re-code:exact-n)
+			(builder #xFF)
+			(let ((start* (fix:+ start #xFF)))
+			  (copy! start start*)
+			  (loop start*))))))))
+	(make-compiled-regexp (builder) case-fold?)))))
 
 (define char-set:re-special
   (char-set #\[ #\] #\* #\. #\\ #\? #\+ #\^ #\$))
 
 (define (re-quote-string string)
-  (let ((end (string-length string)))
-    (let ((n
-	   (let loop ((start 0) (n 0))
-	     (let ((index
-		    (string-find-next-char-in-set string char-set:re-special
-						  start end)))
-	       (if index
-		   (loop (1+ index) (1+ n))
-		   n)))))
-      (if (zero? n)
-	  string
-	  (let ((result (make-legacy-string (+ end n))))
-	    (let loop ((start 0) (i 0))
-	      (let ((index
-		     (string-find-next-char-in-set string char-set:re-special
-						   start end)))
-		(if index
-		    (begin
-		      (string-copy! result i string start index)
-		      (let ((i (+ i (- index start))))
-			(string-set! result i #\\)
-			(string-set! result
-				     (1+ i)
-				     (string-ref string index))
-			(loop (1+ index) (+ i 2))))
-		    (string-copy! result i string start end))))
-	    result)))))
+  (let ((builder (string-builder)))
+    (string-for-each (lambda (char)
+		       (if (char-in-set? char char-set:re-special)
+			   (builder #\\))
+		       (builder char))
+		     string)
+    (builder)))
 
 ;;;; Char-Set Compiler
 
@@ -293,20 +281,15 @@ USA.
 ;;;; Translation Tables
 
 (define re-translation-table
-  (let ((normal-table (make-legacy-string 256)))
-    (let loop ((n 0))
-      (if (< n 256)
-	  (begin
-	    (vector-8b-set! normal-table n n)
-	    (loop (1+ n)))))
-    (let ((upcase-table (string-copy normal-table)))
-      (let loop ((n #x61))
-	(if (< n #x7B)
-	    (begin
-	      (vector-8b-set! upcase-table n (- n #x20))
-	      (loop (1+ n)))))
-      (lambda (case-fold?)
-	(if case-fold? upcase-table normal-table)))))
+  (let ((normal-table (make-bytevector #x100))
+	(upcase-table (make-bytevector #x100)))
+    (do ((i 0 (fix:+ i 1)))
+	((not (fix:< i #x100)))
+      (bytevector-u8-set! normal-table i i)
+      (bytevector-u8-set! upcase-table i
+			  (char->integer (char-upcase (integer->char i)))))
+    (lambda (case-fold?)
+      (if case-fold? upcase-table normal-table))))
 
 ;;;; Pattern Compiler
 
@@ -317,15 +300,15 @@ USA.
   re-number-of-registers)
 
 (define condition-type:re-compile-pattern
-  (make-condition-type 'RE-COMPILE-PATTERN condition-type:error
-      '(COMPILATION-CONTEXT MESSAGE)
+  (make-condition-type 're-compile-pattern condition-type:error
+      '(compilation-context message)
     (lambda (condition port)
       (write-string "Error compiling regular expression: " port)
-      (write-string (access-condition condition 'MESSAGE) port))))
+      (write-string (access-condition condition 'message) port))))
 
 (define compilation-error
   (condition-signaller condition-type:re-compile-pattern
-		       '(COMPILATION-CONTEXT MESSAGE)
+		       '(compilation-context message)
 		       standard-error-handler))
 
 (define-structure (compiled-regexp
@@ -334,8 +317,8 @@ USA.
   (byte-stream #f read-only #t)
   (translation-table #f read-only #t))
 
-(define (make-compiled-regexp byte-stream case-fold?)
-  (%make-compiled-regexp byte-stream (re-translation-table case-fold?)))
+(define (make-compiled-regexp bytes case-fold?)
+  (%make-compiled-regexp bytes (re-translation-table case-fold?)))
 
 (define-structure (rgxcmpctx (conc-name #f))
   input-list
@@ -355,7 +338,8 @@ USA.
 (define re-compile-pattern
   (cached-procedure 16
     (lambda (pattern case-fold?)
-      (let* ((output (list 'OUTPUT))
+      (guarantee 8-bit-string? pattern 're-compile-pattern)
+      (let* ((output (list 'output))
 	     (ctx (make-rgxcmpctx (map char->integer (string->list pattern))
 				  #f	;current-byte
 				  (re-translation-table case-fold?)
@@ -379,7 +363,7 @@ USA.
 		(if (not (stack-empty? ctx))
 		    (compilation-error ctx "Unmatched \\("))
 		(make-compiled-regexp
-		 (list->string (map integer->char (cdr (output-head ctx))))
+		 (list->bytevector (cdr (output-head ctx)))
 		 case-fold?))
 	      (begin
 		(compile-pattern-char ctx)
@@ -394,15 +378,13 @@ USA.
   (null? (cdr (input-list ctx))))
 
 (define-integrable (input-peek ctx)
-  (vector-8b-ref (translation-table ctx) (car (input-list ctx))))
+  (bytevector-u8-ref (translation-table ctx) (car (input-list ctx))))
 
 (define-integrable (input-peek+1 ctx)
-  (vector-8b-ref (translation-table ctx) (cadr (input-list ctx))))
+  (bytevector-u8-ref (translation-table ctx) (cadr (input-list ctx))))
 
 (define-integrable (input-discard! ctx)
-  (let ((c ctx))
-    (set-input-list! c (cdr (input-list c))))
-  unspecific)
+  (set-input-list! ctx (cdr (input-list ctx))))
 
 (define-integrable (input! ctx)
   (set-current-byte! ctx (input-peek ctx))
@@ -541,7 +523,7 @@ USA.
   unspecific)
 
 (define pattern-chars
-  (make-vector 256 normal-char))
+  (make-vector #x100 normal-char))
 
 (define-pattern-char #\\
   (lambda (ctx)
@@ -556,7 +538,7 @@ USA.
   unspecific)
 
 (define backslash-chars
-  (make-vector 256 normal-char))
+  (make-vector #x100 normal-char))
 
 (define-pattern-char #\$
   ;; $ means succeed if at end of line, but only in special contexts.
@@ -673,7 +655,7 @@ USA.
     (let ((invert?
 	   (and (input-match? (input-peek ctx) #\^)
 		(begin (input-discard! ctx) #t)))
-	  (charset (make-legacy-string 32 (integer->char 0))))
+	  (bitmap (make-bytevector #x20 0)))
       (if (input-end? ctx)
 	  (premature-end ctx))
       (let loop
@@ -687,30 +669,27 @@ USA.
 	    (premature-end ctx))
 	(let ((char (input-read! ctx)))
 	  (if (input-match? char #\])
-	      (begin
-		(for-each
-		 (lambda (char)
-		   ((ucode-primitive re-char-set-adjoin!) charset
-							  (char->integer char)))
-		 (char-set-members
-		  (re-compile-char-set
-		   (list->string (map integer->char (reverse! chars)))
-		   #f))))
+	      (let ((charset
+		     (re-compile-char-set
+		      (list->string (map integer->char (reverse! chars)))
+		      #f)))
+		(do ((i 0 (fix:+ i 1)))
+		    ((not (fix:< i #x100)))
+		  (if (code-point-in-char-set? i charset)
+		      ((ucode-primitive re-char-set-adjoin!) bitmap i))))
 	      (loop (cons char chars)))))
       (output-start! ctx (if invert? re-code:not-char-set re-code:char-set))
-      ;; Discard any bitmap bytes that are all 0 at the end of
-      ;; the map.  Decrement the map-length byte too.
-      (let loop ((n 31))
-	(cond ((not (fix:= 0 (vector-8b-ref charset n)))
-	       (output! ctx (fix:+ n 1))
-	       (let loop ((i 0))
-		 (output! ctx (vector-8b-ref charset i))
-		 (if (fix:< i n)
-		     (loop (fix:+ i 1)))))
-	      ((fix:= 0 n)
-	       (output! ctx 0))
-	      (else
-	       (loop (fix:- n 1))))))))
+      (let ((end
+	     ;; Discard any bitmap bytes that are all 0 at the end of the map.
+	     (let loop ((i #x20))
+	       (if (and (fix:> i 0)
+			(fix:= 0 (bytevector-u8-ref bitmap (fix:- i 1))))
+		   (loop (fix:- i 1))
+		   i))))
+	(output! ctx end)
+	(do ((i 0 (fix:+ i 1)))
+	    ((not (fix:< i end)))
+	  (output! ctx (bytevector-u8-ref bitmap i)))))))
 
 ;;;; Alternative Groups
 
@@ -787,70 +766,92 @@ USA.
 
 ;;;; Compiled Pattern Disassembler
 
-(define (re-disassemble-pattern compiled-pattern)
-  (let* ((bytes (compiled-regexp/byte-stream compiled-pattern))
-	 (n (string-length bytes)))
-    (let loop ((i 0))
-      (newline)
-      (write i)
-      (write-string " (")
-      (if (< i n)
-	  (case (let ((re-code-name
-		       (vector-ref re-codes (vector-8b-ref bytes i))))
-		  (write re-code-name)
-		  re-code-name)
-	    ((UNUSED LINE-START LINE-END ANY-CHAR BUFFER-START BUFFER-END
-	      WORD-CHAR NOT-WORD-CHAR WORD-START WORD-END WORD-BOUND
-	      NOT-WORD-BOUND)
-	     (write-string ")")
-	     (loop (1+ i)))
-	    ((EXACT-1)
-	     (write-string " ")
-	     (let ((end (+ i 2)))
-	       (write (substring bytes (1+ i) end))
-	       (write-string ")")
-	       (loop end)))
-	    ((EXACT-N)
-	     (write-string " ")
-	     (let ((start (+ i 2))
-		   (n (vector-8b-ref bytes (1+ i))))
-	       (let ((end (+ start n)))
-		 (write (substring bytes start end))
-		 (write-string ")")
-		 (loop end))))
-	    ((JUMP ON-FAILURE-JUMP MAYBE-FINALIZE-JUMP DUMMY-FAILURE-JUMP)
-	     (write-string " ")
-	     (let ((end (+ i 3))
-		   (offset
-		    (+ (* 256 (vector-8b-ref bytes (+ i 2)))
-		       (vector-8b-ref bytes (1+ i)))))
-	       (write (+ end (if (< offset #x8000) offset (- offset #x10000))))
-	       (write-string ")")
-	       (loop end)))
-	    ((CHAR-SET NOT-CHAR-SET)
-	     (let ((end (+ (+ i 2) (vector-8b-ref bytes (1+ i)))))
-	       (let spit ((i (+ i 2)))
-		 (if (< i end)
-		     (begin
-		       (write-string " ")
-		       (let ((n (vector-8b-ref bytes i)))
-			 (if (< n 16) (write-char #\0))
-			 (write-string (number->string n 16)))
-		       (spit (1+ i)))
-		     (begin
-		       (write-string ")")
-		       (loop i))))))
-	    ((START-MEMORY STOP-MEMORY DUPLICATE)
-	     (write-string " ")
-	     (write (vector-8b-ref bytes (1+ i)))
-	     (write-string ")")
-	     (loop (+ i 2)))
-	    ((SYNTAX-SPEC NOT-SYNTAX-SPEC)
-	     (write-string " ")
-	     (write (string-ref " .w_()'\"$\\/<>"
-				(vector-8b-ref bytes (1+ i))))
-	     (write-string ")")
-	     (loop (+ i 2))))
-	  (begin
-	    (write 'end)
-	    (write-string ")"))))))
+(define (re-disassemble-pattern compiled-pattern #!optional output)
+  (let ((output (if (default-object? output) (current-output-port) output))
+	(input
+	 (open-input-bytevector
+	  (compiled-regexp/byte-stream compiled-pattern))))
+
+    (define (get-byte)
+      (let ((byte (read-u8 input)))
+	(if (eof-object? byte)
+	    (error "Premature pattern end."))
+	byte))
+
+    (define (write-hex-byte byte)
+      (write-char (digit->char (fix:lsh byte -4) 16) output)
+      (write-char (digit->char (fix:and byte #x0F) 16) output))
+
+    (define (loop address)
+      (write address output)
+      (write-char #\space output)
+      (let ((byte (read-u8 input)))
+	(if (eof-object? byte)
+	    (begin
+	      (write-string "(end)" output)
+	      (newline output))
+	    (let ((address (fix:+ address 1))
+		  (name (re-code-name byte)))
+	      (write-char #\( output)
+	      (write (or name 'unknown) output)
+	      (let ((consumed
+		     (if name
+			 (known-code address name)
+			 (begin
+			   (write-string " #x" output)
+			   (write-hex-byte byte)
+			   0))))
+		(write-char #\) output)
+		(newline output)
+		(loop (fix:+ address consumed)))))))
+
+    (define (known-code address name)
+      (case name
+	((unused line-start line-end any-char buffer-start buffer-end
+		 word-char not-word-char word-start word-end word-bound
+		 not-word-bound)
+	 0)
+	((exact-1)
+	 (write-char #\space output)
+	 (write (string (integer->char (get-byte))) output)
+	 1)
+	((exact-n)
+	 (write-char #\space output)
+	 (let ((n (get-byte))
+	       (sbuilder (string-builder)))
+	   (do ((i 0 (fix:+ i 1)))
+	       ((not (fix:< i 1)))
+	     (sbuilder (integer->char (get-byte))))
+	   (write (sbuilder) output)
+	   (fix:+ 1 n)))
+	((jump on-failure-jump maybe-finalize-jump dummy-failure-jump)
+	 (write-char #\space output)
+	 (write (fix:+ (fix:+ address 2)
+		       (let* ((b1 (get-byte))
+			      (b2 (get-byte))
+			      (offset (fix:or b1 (fix:lsh b2 8))))
+			 (if (fix:< offset #x8000)
+			     offset
+			     (fix:- offset #x10000))))
+		output)
+	 2)
+	((char-set not-char-set)
+	 (let ((n (get-byte)))
+	   (do ((i 0 (fix:+ i 1)))
+	       ((not (fix:< i n)))
+	     (write-char #\space output)
+	     (write-hex-byte (get-byte)))
+	   (fix:+ 1 n)))
+	((start-memory stop-memory duplicate)
+	 (write-char #\space output)
+	 (write (get-byte) output)
+	 1)
+	((syntax-spec not-syntax-spec)
+	 (write-char #\space output)
+	 (write (string-ref " .w_()'\"$\\/<>" (get-byte))
+		output)
+	 1)
+	(else
+	 (error "Unknown code name:" name))))
+
+    (loop 0)))
