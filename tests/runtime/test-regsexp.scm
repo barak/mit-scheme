@@ -616,3 +616,52 @@ USA.
 	   (* (any-char))
 	   (group-ref x))
       ("beriberi" 8 (x 0 4))))))
+
+(define-test 're-pattern->regsexp
+  (map (lambda (entry)
+	 (lambda ()
+	   (assert-equal (re-pattern->regsexp (car entry))
+			 (cadr entry))))
+       '(("[\r\n\t ]*(This file must be converted with BinHex.*[\r\n][\r\n\t ]*:"
+	  (seq (* (char-set (9 . 11) 13 32))
+	       "(This file must be converted with BinHex"
+	       (* (any-char))
+	       (char-set 10 13)
+	       (* (char-set (9 . 11) 13 32))
+	       ":"))
+
+	 ("^begin +[0-7]+ +.+$"
+	  (seq (line-start)
+	       "begin"
+	       (+ #\space)
+	       (+ (char-set (48 . 56)))
+	       (+ #\space)
+	       (+ (any-char))
+	       (line-end)))
+
+	 ("\\`8859-[0-9]+\\'"
+	  (seq (string-start) "8859-" (+ (char-set (48 . 58))) (string-end)))
+
+	 ("\\`0x\\([0-9A-Fa-f][0-9A-Fa-f]\\)\t0x\\([0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]\\)\t"
+	  (seq (string-start)
+	       "0x"
+	       (group 1
+		      (seq (char-set (48 . 58) (65 . 71) (97 . 103))
+			   (char-set (48 . 58) (65 . 71) (97 . 103))))
+	       "\t0x"
+	       (group
+		2
+		(seq (char-set (48 . 58) (65 . 71) (97 . 103))
+		     (char-set (48 . 58) (65 . 71) (97 . 103))
+		     (char-set (48 . 58) (65 . 71) (97 . 103))
+		     (char-set (48 . 58) (65 . 71) (97 . 103))))
+	       "\t"))
+
+	 ("\\`\\s *\\(error:\\)?\\s *\\(.*\\)\\s *\\'"
+	  (seq (string-start)
+	       (* (char-syntax #\space))
+	       (? (group 1 "error:"))
+	       (* (char-syntax #\space))
+	       (group 2 (* (any-char)))
+	       (* (char-syntax #\space))
+	       (string-end))))))

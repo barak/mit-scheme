@@ -145,13 +145,27 @@ USA.
 		(fix:<= (fix:and #xf object) 12)))
       (error:bad-range-argument object procedure)))
 
+(define (char-syntax-code? object)
+  (and (char? object)
+       (let ((n (vector-length char-syntax-codes)))
+	 (let loop ((i 0))
+	   (and (fix:< i n)
+		(or (char=? (string-ref (vector-ref char-syntax-codes i) 0)
+			    object)
+		    (loop (fix:+ i 1))))))))
+
+(define (char->syntax-code table char)
+  (string-ref (vector-ref char-syntax-codes
+			  (fix:and #xf (get-char-syntax table char)))
+	      0))
+
 (define char-syntax-codes
   '#(" " "." "w" "_" "(" ")" "'" "\"" "$" "\\" "/" "<" ">"))
-
+
 (define (substring-find-next-char-of-syntax string start end table code)
   (guarantee 8-bit-string? string 'substring-find-next-char-of-syntax)
   (let ((index
-	 (string-find-first-index (syntax-code-predicate table code)
+	 (string-find-first-index (syntax-code-predicate code table)
 				  (string-slice string start end))))
     (and index
 	 (fix:+ start index))))
@@ -160,18 +174,27 @@ USA.
   (guarantee 8-bit-string? string 'substring-find-next-char-not-of-syntax)
   (let ((index
 	 (string-find-first-index (let ((pred
-					 (syntax-code-predicate table code)))
+					 (syntax-code-predicate code table)))
 				    (lambda (char)
 				      (not (pred char))))
 				  (string-slice string start end))))
     (and index
 	 (fix:+ start index))))
 
-(define (syntax-code-predicate table code)
-  (lambda (char)
-    (char=? code (char->syntax-code table char))))
-
-(define (char->syntax-code table char)
-  (string-ref (vector-ref char-syntax-codes
-			  (fix:and #xf (get-char-syntax table char)))
-	      0))
+(define (syntax-code-predicate code #!optional table)
+  (guarantee char-syntax-code? code 'syntax-code-predicate)
+  (let ((entries
+	 (char-syntax-table/entries
+	  (if (default-object? table)
+	      standard-char-syntax-table
+	      (begin
+		(guarantee char-syntax-table? table 'syntax-code-predicate)
+		table)))))
+    (lambda (char)
+      (let ((cp (char->integer char)))
+	(and (fix:< cp #x100)
+	     (char=? (string-ref (vector-ref char-syntax-codes
+					     (fix:and #x0F
+						      (vector-ref entries cp)))
+				 0)
+		     code))))))

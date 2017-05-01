@@ -267,7 +267,7 @@ USA.
 (define (%cpl->char-sets cpl)
   (let loop ((cpl cpl) (ranges '()) (char-sets '()))
     (cond ((not (pair? cpl))
-	   (cons (%ranges->char-set (%normalize-ranges ranges))
+	   (cons (%ranges->char-set (normalize-ranges ranges))
 		 char-sets))
 	  ((%cpl-element->ranges (car cpl))
 	   => (lambda (ranges*)
@@ -287,7 +287,7 @@ USA.
 	((string? elt) (map char->integer (string->list elt)))
 	(else #f)))
 
-(define (%normalize-ranges ranges)
+(define (normalize-ranges ranges)
   (let ((ranges
 	 (filter! (lambda (range)
 		    (fix:< (%range-start range)

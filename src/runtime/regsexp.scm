@@ -124,7 +124,21 @@ USA.
 
 (define-rule '(ANY-CHAR)
   (lambda ()
-    (%compile-regsexp '(INVERSE-CHAR-SET "\n"))))
+    (insn:test-char (negate (char=-predicate #\newline)))))
+
+(define-rule '(test-char datum)
+  (lambda (predicate)
+    (insn:test-char
+     (if (and (pair? predicate)
+	      (eq? (car predicate) 'not)
+	      (pair? (cdr predicate))
+	      (null? (cddr predicate)))
+	 (negate (cadr predicate))
+	 predicate))))
+
+(define (negate predicate)
+  (lambda (object)
+    (not (predicate object))))
 
 (define-rule '(+ FORM)
   (lambda (regsexp)
@@ -141,6 +155,23 @@ USA.
 (define-rule '(INVERSE-CHAR-SET * DATUM)
   (lambda items
     (insn:inverse-char-set (char-set* items))))
+
+(define-rule '(char-syntax datum)
+  (lambda (code)
+    (insn:test-char
+     (if (or (char=? code #\-)
+	     (char=? code #\space))
+	 char-whitespace?
+	 (syntax-code-predicate code)))))
+
+(define-rule '(inverse-char-syntax datum)
+  (lambda (code)
+    (insn:test-char
+     (negate
+      (if (or (char=? code #\-)
+	      (char=? code #\space))
+	  char-whitespace?
+	  (syntax-code-predicate code))))))
 
 (define-rule '(LINE-START) (lambda () (insn:line-start)))
 (define-rule '(LINE-END) (lambda () (insn:line-end)))
@@ -259,12 +290,23 @@ USA.
 	  (succeed position groups fail)
 	  (fail)))))
 
-(define (insn:char char)
+(define (insn:test-char predicate)
   (lambda (succeed)
     (lambda (position groups fail)
-      (if (eqv? (next-char position) char)
+      (if (let ((char (next-char position)))
+	    (and char
+		 (predicate char)))
 	  (succeed (next-position position) groups fail)
 	  (fail)))))
+
+(define (insn:char char)
+  (insn:test-char (char=-predicate char)))
+
+(define (insn:char-set char-set)
+  (insn:test-char (char-set-predicate char-set)))
+
+(define (insn:inverse-char-set char-set)
+  (insn:test-char (negate (char-set-predicate char-set))))
 
 (define (insn:chars chars)
   (lambda (succeed)
@@ -292,24 +334,6 @@ USA.
 			   (loop (fix:+ i 1) (next-position position))
 			   (fail)))
 		     (succeed position groups fail)))))))))
-
-(define (insn:char-set char-set)
-  (lambda (succeed)
-    (lambda (position groups fail)
-      (if (let ((char (next-char position)))
-	    (and char
-		 (char-in-set? char char-set)))
-	  (succeed (next-position position) groups fail)
-	  (fail)))))
-
-(define (insn:inverse-char-set char-set)
-  (lambda (succeed)
-    (lambda (position groups fail)
-      (if (let ((char (next-char position)))
-	    (and char
-		 (not (char-in-set? char char-set))))
-	  (succeed (next-position position) groups fail)
-	  (fail)))))
 
 (define (insn:group key insn)
   (insn:seq (list (%insn:start-group key)
@@ -641,3 +665,136 @@ USA.
     (declare (no-type-checks))
     (and (eq? (cdr p1) (cdr p2))
 	 (fix:= (car p1) (car p2)))))
+
+(define (re-pattern->regsexp pattern)
+  (let ((end (string-length pattern)))
+    (let ((index 0)
+	  (this-alt '())
+	  (prev-alts '())
+	  (group-number 0)
+	  (pending-groups '()))
+
+      (define (have-next?)
+	(fix:< index end))
+
+      (define (get-next)
+	(let ((char (string-ref pattern index)))
+	  (set! index (fix:+ index 1))
+	  char))
+
+      (define (next-is? char)
+	(and (char=? (string-ref pattern index) char)
+	     (begin
+	       (set! index (fix:+ index 1))
+	       #t)))
+
+      (define (get-expr)
+	(let ((alt (get-alt)))
+	  (if (pair? prev-alts)
+	      `(alt ,@(reverse (cons alt prev-alts)))
+	      alt)))
+
+      (define (get-alt)
+        (let ((exprs (optimize-alt (reverse this-alt) #f)))
+          (if (= (length exprs) 1)
+              (car exprs)
+              `(seq ,@exprs))))
+
+      (define (optimize-alt exprs builder)
+        (if (pair? exprs)
+            (if (char? (car exprs))
+                (let ((builder (or builder (string-builder))))
+                  (builder (car exprs))
+                  (optimize-alt (cdr exprs) builder))
+                (if builder
+                    (cons (builder)
+                          (cons (car exprs)
+                                (optimize-alt (cdr exprs) #f)))
+                    (cons (car exprs)
+                          (optimize-alt (cdr exprs) #f))))
+            (if builder
+                (list (builder))
+                '())))
+
+      (define (dispatch)
+	(if (have-next?)
+	    (let ((char (get-next)))
+	      (case char
+		((#\\) (dispatch-backslash))
+		((#\$) (output-expr '(line-end)))
+		((#\^) (output-expr '(line-start)))
+		((#\.) (output-expr '(any-char)))
+		((#\[) (parse-char-set))
+		((#\*) (replace-last-expr (lambda (expr) `(* ,expr))))
+		((#\+) (replace-last-expr (lambda (expr) `(+ ,expr))))
+		((#\?) (replace-last-expr (lambda (expr) `(? ,expr))))
+		(else (output-expr char))))
+	    (get-expr)))
+
+      (define (dispatch-backslash)
+	(let ((char (get-next)))
+	  (case char
+	    ((#\<) (output-expr '(word-start)))
+	    ((#\>) (output-expr '(word-end)))
+	    ((#\b) (output-expr '(word-bound)))
+	    ((#\B) (output-expr '(not-word-bound)))
+	    ((#\`) (output-expr '(string-start)))
+	    ((#\') (output-expr '(string-end)))
+	    ((#\w) (output-expr '(char-syntax #\w)))
+	    ((#\W) (output-expr '(inverse-char-syntax #\w)))
+	    ((#\s) (output-expr `(char-syntax ,(get-next))))
+	    ((#\S) (output-expr `(inverse-char-syntax ,(get-next))))
+	    ((#\() (start-group))
+	    ((#\)) (end-group))
+	    ((#\|) (push-alt))
+	    (else (error "Unsupported regexp:" (string #\\ char))))))
+
+      (define (output-expr expr)
+	(set! this-alt (cons expr this-alt))
+        (dispatch))
+
+      (define (replace-last-expr transform)
+	(set-car! this-alt (transform (car this-alt)))
+        (dispatch))
+
+      (define (start-group)
+	(set! group-number (fix:+ group-number 1))
+	(set! pending-groups
+	      (cons (vector group-number this-alt prev-alts)
+		    pending-groups))
+	(set! this-alt '())
+	(set! prev-alts '())
+        (dispatch))
+
+      (define (end-group)
+	(let ((expr `(group ,(vector-ref (car pending-groups) 0) ,(get-expr))))
+	  (set! this-alt (vector-ref (car pending-groups) 1))
+	  (set! prev-alts (vector-ref (car pending-groups) 2))
+	  (set! pending-groups (cdr pending-groups))
+	  (output-expr expr)))
+
+      (define (push-alt)
+	(set! prev-alts (cons (get-alt) prev-alts))
+	(set! this-alt '())
+        (dispatch))
+
+      (define (parse-char-set)
+        (let loop
+            ((chars
+              (append (if (next-is? #\^)
+                          (list #\^)
+                          '())
+                      (if (next-is? #\])
+                          (list #\])
+                          '()))))
+          (let ((char (get-next)))
+            (if (char=? char #\])
+                (output-expr
+                 (receive (ranges invert?)
+                     (re-char-pattern->code-points
+                      (list->string (reverse chars)))
+                   (cons (if invert? 'inverse-char-set 'char-set)
+			 (normalize-ranges ranges))))
+                (loop (cons char chars))))))
+
+      (dispatch))))

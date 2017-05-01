@@ -251,13 +251,13 @@ USA.
 
 (define (re-compile-char-set pattern negate?)
   (receive (scalar-values negate?*)
-      (re-char-pattern->scalar-values pattern)
+      (re-char-pattern->code-points pattern)
     (let ((char-set (char-set* scalar-values)))
       (if (if negate? (not negate?*) negate?*)
 	  (char-set-invert char-set)
 	  char-set))))
 
-(define (re-char-pattern->scalar-values pattern)
+(define (re-char-pattern->code-points pattern)
   (define (loop pattern scalar-values)
     (if (pair? pattern)
 	(if (and (pair? (cdr pattern))

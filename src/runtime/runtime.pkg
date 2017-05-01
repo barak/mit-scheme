@@ -1405,6 +1405,8 @@ USA.
 	  code-point-in-char-set?
 	  compute-char-set
 	  string->char-set)
+  (export (runtime regular-sexpression)
+	  normalize-ranges)
   (export (runtime string)
 	  (char-set-table %char-set-table)))
 
@@ -5242,6 +5244,7 @@ USA.
 	  compile-regsexp
 	  compiled-regsexp?
 	  condition-type:compile-regsexp
+	  re-pattern->regsexp
 	  regsexp-match-input-port
 	  regsexp-match-string))
 
@@ -5278,7 +5281,7 @@ USA.
 	  compiled-regexp/byte-stream
 	  compiled-regexp/translation-table
 	  condition-type:re-compile-pattern
-	  re-char-pattern->scalar-values
+	  re-char-pattern->code-points
 	  re-compile-char
 	  re-compile-char-set
 	  re-compile-pattern
@@ -5336,7 +5339,8 @@ USA.
 	  standard-char-syntax-table
 	  string->char-syntax
 	  substring-find-next-char-not-of-syntax
-	  substring-find-next-char-of-syntax)
+	  substring-find-next-char-of-syntax
+	  syntax-code-predicate)
   (export (runtime regular-expression)
 	  char-syntax-table/entries)
   (initialization (initialize-package!)))
