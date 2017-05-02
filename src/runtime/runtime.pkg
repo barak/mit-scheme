@@ -979,6 +979,7 @@ USA.
 	  list->string
 	  make-string
 	  mutable-string?
+	  nfc-string?
 	  string
 	  string*
 	  string->list
