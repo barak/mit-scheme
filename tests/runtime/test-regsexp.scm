@@ -659,9 +659,9 @@ USA.
 
 	 ("\\`\\s *\\(error:\\)?\\s *\\(.*\\)\\s *\\'"
 	  (seq (string-start)
-	       (* (char-syntax #\space))
+	       (* (legacy-char-syntax #\space))
 	       (? (group 1 "error:"))
-	       (* (char-syntax #\space))
+	       (* (legacy-char-syntax #\space))
 	       (group 2 (* (any-char)))
-	       (* (char-syntax #\space))
+	       (* (legacy-char-syntax #\space))
 	       (string-end))))))

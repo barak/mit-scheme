@@ -156,7 +156,7 @@ USA.
   (lambda items
     (insn:inverse-char-set (char-set* items))))
 
-(define-rule '(char-syntax datum)
+(define-rule '(legacy-char-syntax datum)
   (lambda (code)
     (insn:test-char
      (if (or (char=? code #\-)
@@ -164,7 +164,7 @@ USA.
 	 char-whitespace?
 	 (syntax-code-predicate code)))))
 
-(define-rule '(inverse-char-syntax datum)
+(define-rule '(inverse-legacy-char-syntax datum)
   (lambda (code)
     (insn:test-char
      (negate
@@ -740,10 +740,10 @@ USA.
 	    ((#\B) (output-expr '(not-word-bound)))
 	    ((#\`) (output-expr '(string-start)))
 	    ((#\') (output-expr '(string-end)))
-	    ((#\w) (output-expr '(char-syntax #\w)))
-	    ((#\W) (output-expr '(inverse-char-syntax #\w)))
-	    ((#\s) (output-expr `(char-syntax ,(get-next))))
-	    ((#\S) (output-expr `(inverse-char-syntax ,(get-next))))
+	    ((#\w) (output-expr '(legacy-char-syntax #\w)))
+	    ((#\W) (output-expr '(inverse-legacy-char-syntax #\w)))
+	    ((#\s) (output-expr `(legacy-char-syntax ,(get-next))))
+	    ((#\S) (output-expr `(inverse-legacy-char-syntax ,(get-next))))
 	    ((#\() (start-group))
 	    ((#\)) (end-group))
 	    ((#\|) (push-alt))
