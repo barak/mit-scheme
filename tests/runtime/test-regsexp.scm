@@ -28,64 +28,109 @@ USA.
 
 (declare (usual-integrations))
 
-(define (match-string pattern string)
-  (regsexp-match-string (compile-regsexp pattern) string))
-
-(define ((match-string-test pattern string expected))
-  (let ((thunk (lambda () (match-string pattern string))))
-    (run-sub-test
-     (lambda ()
-       (with-test-properties
-	   (lambda ()
-	     (if (eq? expected 'PATTERN-ERROR)
-		 (assert-error thunk (list condition-type:compile-regsexp))
-		 (assert-equal (thunk) expected)))
-	 'EXPRESSION `(match-string ',pattern ,string))))))
-
 (define (match-strings-test pattern entries)
-  (map (lambda (p)
-	 (if (string? p)
-	     (match-string-test pattern p (list (string-length p)))
-	     (match-string-test pattern
-				(car p)
-				(if (exact-nonnegative-integer? (cadr p))
-				    (cdr p)
-				    (cadr p)))))
-       entries))
+  (if (equal? entries '(pattern-error))
+      (lambda ()
+        (assert-error (lambda () (compile-regsexp pattern))
+                      (list condition-type:compile-regsexp)))
+      (let ((cr (compile-regsexp pattern)))
+	(map (lambda (p)
+	       (if (string? p)
+		   (%match-string-test pattern cr p
+                                       (list (cons 0 (string-length p))))
+		   (%match-string-test pattern cr (car p) (cadr p))))
+	     entries))))
+
+(define (match-string-test pattern string expected)
+  (%match-string-test pattern (compile-regsexp pattern) string expected))
+
+(define (%match-string-test pattern cr string expected)
+  (let ((thunk (lambda () (regsexp-match-string cr string))))
+    (lambda ()
+      (with-test-properties
+          (lambda ()
+            (assert-equal (thunk) expected))
+        'expression `(match-string ',pattern ,string)))))
 
 (define (multi-match-strings-test entries)
   (map (lambda (entry)
 	 (match-strings-test (car entry) (cdr entry)))
        entries))
 
-(define-test 'any-char
+(define (search-strings-test pattern entries)
+  (if (equal? entries '(pattern-error))
+      (lambda ()
+	(assert-error (lambda () (compile-regsexp pattern))
+		      (list condition-type:compile-regsexp)))
+      (let ((cr (compile-regsexp pattern)))
+	(map (lambda (p)
+	       (%search-string-test pattern cr (car p) (cadr p)))
+	     entries))))
+
+(define (search-string-test pattern string expected)
+  (%search-string-test pattern (compile-regsexp pattern) string expected))
+
+(define (%search-string-test pattern cr string expected)
+  (let ((thunk (lambda () (regsexp-search-string-forward cr string))))
+    (lambda ()
+      (with-test-properties
+          (lambda ()
+            (assert-equal (thunk) expected))
+        'expression `(search-string ',pattern ,string)))))
+
+(define-test 'match-any-char
   (match-strings-test '(any-char)
 		      '(("" #f)
-			("a" 1)
-			("b" 1)
+			("a" ((0 . 1)))
+			("b" ((0 . 1)))
 			("\n" #f))))
 
-(define-test '*any-char
+(define-test 'search-any-char
+  (search-strings-test '(any-char)
+		       '(("" #f)
+			 ("a" ((0 . 1)))
+			 ("b" ((0 . 1)))
+			 ("\n" #f)
+			 ("ab" ((0 . 1)))
+			 ("\na" ((1 . 2))))))
+
+(define-test 'match-*any-char
   (match-strings-test '(* (any-char))
-		      '(("" 0)
-			("a" 1)
-			("ab" 2)
-			("abc" 3)
-			("ab\n" 2)
-			("a\nb" 1))))
+		      '(("" ((0 . 0)))
+			("a" ((0 . 1)))
+			("ab" ((0 . 2)))
+			("abc" ((0 . 3)))
+			("ab\n" ((0 . 2)))
+			("a\nb" ((0 . 1))))))
 
-(define-test 'simple-seq
-  (match-string-test '(seq "a" "b") "ab" '(2)))
+(define-test 'search-+any-char
+  (search-strings-test '(+ (any-char))
+		       '(("" #f)
+			 ("a" ((0 . 1)))
+			 ("ab" ((0 . 2)))
+			 ("abc" ((0 . 3)))
+			 ("ab\n" ((0 . 2)))
+			 ("a\nb" ((0 . 1)))
+			 ("\nab" ((1 . 3))))))
 
-(define-test 'repeat-equivalences-test
+(define-test 'match-simple-seq
+  (match-string-test '(seq "a" "b") "ab" '((0 . 2))))
+
+(define-test 'search-simple-seq
+  (search-string-test '(seq "a" "b") "1914ab37" '((4 . 6))))
+
+(define-test 'match/repeat-equivalences-test
   (let ((equivalents
 	 (lambda (indices . patterns)
 	   (map (let ((strings '("" "a" "b" "ab" "ba" "aab")))
 		  (lambda (pattern)
-		    (match-strings-test pattern
-					(map list
-					     strings
-					     indices))))
+		    (match-strings-test
+		     pattern
+		     (map (lambda (string index)
+			    (list string
+				  (and index (list (cons 0 index)))))
+			  strings
+			  indices))))
 		patterns))))
     (list
      (equivalents '(0 0 0 0 0 0)
@@ -141,52 +186,114 @@ USA.
 		  '(?? "a")
 		  '(**? 0 1 "a")))))
 
-(define-test 'more-repeat-tests
+(define-test 'match-more-repeat-tests
   (list
-   (match-string-test '(seq (? "a") "a") "aab" '(2))
-   (match-string-test '(seq (? "a") "ab") "aab" '(3))
+   (match-string-test '(seq (? "a") "a") "aab" '((0 . 2)))
+   (match-string-test '(seq (? "a") "ab") "aab" '((0 . 3)))
 
-   (match-string-test '(seq (?? "a") "a") "aab" '(1))
-   (match-string-test '(seq (?? "a") "ab") "aab" '(3))
+   (match-string-test '(seq (?? "a") "a") "aab" '((0 . 1)))
+   (match-string-test '(seq (?? "a") "ab") "aab" '((0 . 3)))
 
-   (match-string-test '(** 1 2 "a") "aab" '(2))
-   (match-string-test '(seq (** 1 2 "a") "b") "aab" '(3))
+   (match-string-test '(** 1 2 "a") "aab" '((0 . 2)))
+   (match-string-test '(seq (** 1 2 "a") "b") "aab" '((0 . 3)))
 
-   (match-string-test '(**? 1 2 "a") "aab" '(1))
-   (match-string-test '(seq (**? 1 2 "a") "b") "aab" '(3))
+   (match-string-test '(**? 1 2 "a") "aab" '((0 . 1)))
+   (match-string-test '(seq (**? 1 2 "a") "b") "aab" '((0 . 3)))
 
-   (match-string-test '(** 1 3 "a") "aaab" '(3))
-   (match-string-test '(seq (** 1 3 "a") "b") "aaab" '(4))
+   (match-string-test '(** 1 3 "a") "aaab" '((0 . 3)))
+   (match-string-test '(seq (** 1 3 "a") "b") "aaab" '((0 . 4)))
 
-   (match-string-test '(**? 1 3 "a") "aaab" '(1))
-   (match-string-test '(seq (**? 1 3 "a") "b") "aaab" '(4))
+   (match-string-test '(**? 1 3 "a") "aaab" '((0 . 1)))
+   (match-string-test '(seq (**? 1 3 "a") "b") "aaab" '((0 . 4)))
 
-   (match-string-test '(seq (group foo (? "a")) "a") "aab" '(2 (foo 0 1)))
-   (match-string-test '(seq (group foo (? "a")) "ab") "aab" '(3 (foo 0 1)))
-   (match-string-test '(seq (group foo (? "a")) "aab") "aab" '(3 (foo 0 0)))
+   (match-string-test '(seq (group foo (? "a")) "a") "aab" '((0 . 2) (foo 0 . 1)))
+   (match-string-test '(seq (group foo (? "a")) "ab") "aab" '((0 . 3) (foo 0 . 1)))
+   (match-string-test '(seq (group foo (? "a")) "aab") "aab" '((0 . 3) (foo 0 . 0)))
 
-   (match-string-test '(seq (group foo (?? "a")) "a") "aab" '(1 (foo 0 0)))
-   (match-string-test '(seq (group foo (?? "a")) "ab") "aab" '(3 (foo 0 1)))
-   (match-string-test '(seq (group foo (?? "a")) "aab") "aab" '(3 (foo 0 0)))
+   (match-string-test '(seq (group foo (?? "a")) "a") "aab" '((0 . 1) (foo 0 . 0)))
+   (match-string-test '(seq (group foo (?? "a")) "ab") "aab" '((0 . 3) (foo 0 . 1)))
+   (match-string-test '(seq (group foo (?? "a")) "aab") "aab" '((0 . 3) (foo 0 . 0)))
 
-   (match-string-test '(seq (group foo (* "a")) "b") "aab" '(3 (foo 0 2)))
-   (match-string-test '(seq (group foo (* "a")) "ab") "aab" '(3 (foo 0 1)))
-   (match-string-test '(seq (group foo (* "a")) "aab") "aab" '(3 (foo 0 0)))
+   (match-string-test '(seq (group foo (* "a")) "b") "aab" '((0 . 3) (foo 0 . 2)))
+   (match-string-test '(seq (group foo (* "a")) "ab") "aab" '((0 . 3) (foo 0 . 1)))
+   (match-string-test '(seq (group foo (* "a")) "aab") "aab" '((0 . 3) (foo 0 . 0)))
 
-   (match-string-test '(seq (group foo (*? "a")) "b") "aab" '(3 (foo 0 2)))
-   (match-string-test '(seq (group foo (*? "a")) "ab") "aab" '(3 (foo 0 1)))
-   (match-string-test '(seq (group foo (*? "a")) "aab") "aab" '(3 (foo 0 0)))
+   (match-string-test '(seq (group foo (*? "a")) "b") "aab" '((0 . 3) (foo 0 . 2)))
+   (match-string-test '(seq (group foo (*? "a")) "ab") "aab" '((0 . 3) (foo 0 . 1)))
+   (match-string-test '(seq (group foo (*? "a")) "aab") "aab" '((0 . 3) (foo 0 . 0)))
 
    ))
 
-(define-test 'palindromes
+(define-test 'search-repeat-tests
+  (list
+   (search-string-test '(seq (? "a") "a") "aab" '((0 . 2)))
+   (search-string-test '(seq (? "a") "a") "xaab" '((1 . 3)))
+   (search-string-test '(seq (? "a") "ab") "aab" '((0 . 3)))
+   (search-string-test '(seq (? "a") "ab") "xaab" '((1 . 4)))
+
+   (search-string-test '(seq (?? "a") "a") "aab" '((0 . 1)))
+   (search-string-test '(seq (?? "a") "a") "xaab" '((1 . 2)))
+   (search-string-test '(seq (?? "a") "ab") "aab" '((0 . 3)))
+   (search-string-test '(seq (?? "a") "ab") "xaab" '((1 . 4)))
+
+   (search-string-test '(** 1 2 "a") "aab" '((0 . 2)))
+   (search-string-test '(** 1 2 "a") "xaab" '((1 . 3)))
+   (search-string-test '(seq (** 1 2 "a") "b") "aab" '((0 . 3)))
+   (search-string-test '(seq (** 1 2 "a") "b") "xaab" '((1 . 4)))
+
+   (search-string-test '(**? 1 2 "a") "aab" '((0 . 1)))
+   (search-string-test '(**? 1 2 "a") "xaab" '((1 . 2)))
+   (search-string-test '(seq (**? 1 2 "a") "b") "aab" '((0 . 3)))
+   (search-string-test '(seq (**? 1 2 "a") "b") "xaab" '((1 . 4)))
+
+   (search-string-test '(** 1 3 "a") "aaab" '((0 . 3)))
+   (search-string-test '(** 1 3 "a") "xaaab" '((1 . 4)))
+   (search-string-test '(seq (** 1 3 "a") "b") "aaab" '((0 . 4)))
+   (search-string-test '(seq (** 1 3 "a") "b") "xaaab" '((1 . 5)))
+
+   (search-string-test '(**? 1 3 "a") "aaab" '((0 . 1)))
+   (search-string-test '(**? 1 3 "a") "xaaab" '((1 . 2)))
+   (search-string-test '(seq (**? 1 3 "a") "b") "aaab" '((0 . 4)))
+   (search-string-test '(seq (**? 1 3 "a") "b") "xaaab" '((1 . 5)))
+
+   (search-string-test '(seq (group foo (? "a")) "a") "aab" '((0 . 2) (foo 0 . 1)))
+   (search-string-test '(seq (group foo (? "a")) "a") "xaab" '((1 . 3) (foo 1 . 2)))
+   (search-string-test '(seq (group foo (? "a")) "ab") "aab" '((0 . 3) (foo 0 . 1)))
+   (search-string-test '(seq (group foo (? "a")) "ab") "xaab" '((1 . 4) (foo 1 . 2)))
+   (search-string-test '(seq (group foo (? "a")) "aab") "aab" '((0 . 3) (foo 0 . 0)))
+   (search-string-test '(seq (group foo (? "a")) "aab") "xaab" '((1 . 4) (foo 1 . 1)))
+
+   (search-string-test '(seq (group foo (?? "a")) "a") "aab" '((0 . 1) (foo 0 . 0)))
+   (search-string-test '(seq (group foo (?? "a")) "a") "xaab" '((1 . 2) (foo 1 . 1)))
+   (search-string-test '(seq (group foo (?? "a")) "ab") "aab" '((0 . 3) (foo 0 . 1)))
+   (search-string-test '(seq (group foo (?? "a")) "ab") "xaab" '((1 . 4) (foo 1 . 2)))
+   (search-string-test '(seq (group foo (?? "a")) "aab") "aab" '((0 . 3) (foo 0 . 0)))
+   (search-string-test '(seq (group foo (?? "a")) "aab") "xaab" '((1 . 4) (foo 1 . 1)))
+
+   (search-string-test '(seq (group foo (* "a")) "b") "aab" '((0 . 3) (foo 0 . 2)))
+   (search-string-test '(seq (group foo (* "a")) "b") "xaab" '((1 . 4) (foo 1 . 3)))
+   (search-string-test '(seq (group foo (* "a")) "ab") "aab" '((0 . 3) (foo 0 . 1)))
+   (search-string-test '(seq (group foo (* "a")) "ab") "xaab" '((1 . 4) (foo 1 . 2)))
+   (search-string-test '(seq (group foo (* "a")) "aab") "aab" '((0 . 3) (foo 0 . 0)))
+   (search-string-test '(seq (group foo (* "a")) "aab") "xaab" '((1 . 4) (foo 1 . 1)))
+
+   (search-string-test '(seq (group foo (*? "a")) "b") "aab" '((0 . 3) (foo 0 . 2)))
+   (search-string-test '(seq (group foo (*? "a")) "b") "xaab" '((1 . 4) (foo 1 . 3)))
+   (search-string-test '(seq (group foo (*? "a")) "ab") "aab" '((0 . 3) (foo 0 . 1)))
+   (search-string-test '(seq (group foo (*? "a")) "ab") "xaab" '((1 . 4) (foo 1 . 2)))
+   (search-string-test '(seq (group foo (*? "a")) "aab") "aab" '((0 . 3) (foo 0 . 0)))
+   (search-string-test '(seq (group foo (*? "a")) "aab") "xaab" '((1 . 4) (foo 1 . 1)))
+
+   ))
+
+(define-test 'match-palindromes
   (list
    (match-strings-test '(seq (group a (any-char))
 			     (group b (any-char))
 			     (any-char)
 			     (group-ref b)
 			     (group-ref a))
-		       '(("radar" 5 (b 1 2) (a 0 1))))
+		       '(("radar" ((0 . 5) (b 1 . 2) (a 0 . 1)))))
    (match-strings-test '(seq (string-start)
 			     (group 1 (? (any-char)))
 			     (group 2 (? (any-char)))
@@ -208,12 +315,14 @@ USA.
 			     (group-ref 2)
 			     (group-ref 1)
 			     (string-end))
-		       '(("civic" 5
-				  (9 2 2) (8 2 2) (7 2 2) (6 2 2) (5 2 2)
-				  (4 2 2) (3 2 2) (2 1 2) (1 0 1))
-			 ("abba" 4
-				 (9 2 2) (8 2 2) (7 2 2) (6 2 2) (5 2 2)
-				 (4 2 2) (3 2 2) (2 1 2) (1 0 1))))
+		       '(("civic" ((0 . 5)
+				   (9 2 . 2) (8 2 . 2) (7 2 . 2) (6 2 . 2)
+				   (5 2 . 2) (4 2 . 2) (3 2 . 2) (2 1 . 2)
+				   (1 0 . 1)))
+			 ("abba" ((0 . 4)
+				  (9 2 . 2) (8 2 . 2) (7 2 . 2) (6 2 . 2)
+				  (5 2 . 2) (4 2 . 2) (3 2 . 2) (2 1 . 2)
+				  (1 0 . 1)))))
    (match-strings-test '(seq (string-start)
 			     (group 1 (?? (any-char)))
 			     (group 2 (?? (any-char)))
@@ -235,16 +344,18 @@ USA.
 			     (group-ref 2)
 			     (group-ref 1)
 			     (string-end))
-		       '(("civic" 5
-				  (9 1 2) (8 0 1) (7 0 0) (6 0 0) (5 0 0)
-				  (4 0 0) (3 0 0) (2 0 0) (1 0 0))
-			 ("abba" 4
-				 (9 1 2) (8 0 1) (7 0 0) (6 0 0) (5 0 0)
-				 (4 0 0) (3 0 0) (2 0 0) (1 0 0))))
+		       '(("civic" ((0 . 5)
+				   (9 1 . 2) (8 0 . 1) (7 0 . 0) (6 0 . 0)
+				   (5 0 . 0) (4 0 . 0) (3 0 . 0) (2 0 . 0)
+				   (1 0 . 0)))
+			 ("abba" ((0 . 4)
+				  (9 1 . 2) (8 0 . 1) (7 0 . 0) (6 0 . 0)
+				  (5 0 . 0) (4 0 . 0) (3 0 . 0) (2 0 . 0)
+				  (1 0 . 0)))))
    ))
 
 ;;; Ripped off from "grep/tests/bre.tests".
-(define-test 'grep-bre
+(define-test 'match-grep-bre
   (multi-match-strings-test
    '(((seq "a" (seq "b") "c")
       "abc")
@@ -257,14 +368,14 @@ USA.
 	   (* "c"))
       "b")
      ((seq)
-      ("abc" 0))
+      ("abc" ((0 . 0))))
      ((seq "a"
 	   (group x (* "b"))
 	   "c"
 	   (group-ref x)
 	   "d")
       ("abbcbd" #f)
-      ("abbcbbd" 7 (x 1 3))
+      ("abbcbbd" ((0 . 7) (x 1 . 3)))
       ("abbcbbbd" #f))
      ((seq (string-start)
 	   (group x (any-char))
@@ -274,32 +385,32 @@ USA.
 	   (* (seq (group x (char-set "bc"))
 		   (group-ref x)))
 	   "d")
-      ("abbccd" 6 (x 3 4) (x 1 2))
+      ("abbccd" ((0 . 6) (x 3 . 4) (x 1 . 2)))
       ("abbcbd" #f))
      ((seq "a"
 	   (* (seq (* (group x "b"))
 		   (group-ref x)))
 	   "d")
-      ("abbbd" 5 (x 2 3) (x 1 2)))
+      ("abbbd" ((0 . 5) (x 2 . 3) (x 1 . 2))))
      ((seq (group x "a")
 	   (group-ref x)
 	   "bcd")
-      ("aabcd" 5 (x 0 1)))
+      ("aabcd" ((0 . 5) (x 0 . 1))))
      ((seq (group x "a")
 	   (group-ref x)
 	   "b"
 	   (* "c")
 	   "d")
-      ("aabcd" 5 (x 0 1))
-      ("aabd" 4 (x 0 1))
-      ("aabcccd" 7 (x 0 1)))
+      ("aabcd" ((0 . 5) (x 0 . 1)))
+      ("aabd" ((0 . 4) (x 0 . 1)))
+      ("aabcccd" ((0 . 7) (x 0 . 1))))
      ((seq (group x "a")
 	   (group-ref x)
 	   "b"
 	   (* "c")
 	   (char-set "ce")
 	   "d")
-      ("aabcccd" 7 (x 0 1)))
+      ("aabcccd" ((0 . 7) (x 0 . 1))))
      ((seq (string-start)
 	   (group x "a")
 	   (group-ref x)
@@ -307,7 +418,7 @@ USA.
 	   (* "c")
 	   "cd"
 	   (string-end))
-      ("aabcccd" 7 (x 0 1)))
+      ("aabcccd" ((0 . 7) (x 0 . 1))))
      ((seq (** 1 "a") "b")
       "ab")
      ((seq (** 1 #f "a") "b")
@@ -328,9 +439,9 @@ USA.
       "abbbc"
       ("abbbbc" #f))
      ((seq "a" (** 1 0 "b") "c")
-      ("ac" pattern-error))
+      pattern-error)
      ((seq "a" (** #f 1 "b") "c")
-      ("ac" pattern-error))
+      pattern-error)
      ((seq "a" (** 1 "b") "c")
       ("ac" #f)
       "abc")
@@ -354,12 +465,12 @@ USA.
       "-5"))))
 
 ;;; Ripped off from "grep/tests/ere.tests".
-(define-test 'grep-ere
+(define-test 'match-grep-ere
   (multi-match-strings-test
    `(((alt "abc" "de")
       "abc")
      ((alt "a" "b" "c")
-      ("abc" 1))
+      ("abc" ((0 . 1))))
      ((seq "a" (any-char) "c")
       "abc")
      ((seq "a" (char-set "bc") "d")
@@ -406,18 +517,18 @@ USA.
       "aaaaabaaaabaaaabaaaabweeknights")
      ((seq (char-set "ab") (char-set "cd") (char-set "ef") (char-set "gh")
 	   (char-set "ij") (char-set "kl") (char-set "mn"))
-      ("acegikmoq" 7))
+      ("acegikmoq" ((0 . 7))))
      ((seq (char-set "ab") (char-set "cd") (char-set "ef") (char-set "gh")
 	   (char-set "ij") (char-set "kl") (char-set "mn") (char-set "op"))
-      ("acegikmoq" 8))
+      ("acegikmoq" ((0 . 8))))
      ((seq (char-set "ab") (char-set "cd") (char-set "ef") (char-set "gh")
 	   (char-set "ij") (char-set "kl") (char-set "mn") (char-set "op")
 	   (char-set "qr"))
-      ("acegikmoqy" 9))
+      ("acegikmoqy" ((0 . 9))))
      ((seq (char-set "ab") (char-set "cd") (char-set "ef") (char-set "gh")
 	   (char-set "ij") (char-set "kl") (char-set "mn") (char-set "op")
 	   (char-set "q"))
-      ("acegikmoqy" 9))
+      ("acegikmoqy" ((0 . 9))))
      ("aBc"
       ("Abc" #f))
      ((seq "a" (* (char-set "Bc")) "d")
@@ -443,7 +554,7 @@ USA.
      ((seq "a" (+ (seq (? "b") "c")) "d")
       "accd")
      ((* "a")
-      ("b" 0))
+      ("b" ((0 . 0))))
      ((seq (alt "wee" "week") (alt "knights" "night"))
       "weeknights")
      ((seq (alt "we" "wee" "week" "frob") (alt "knights" "night" "day"))
@@ -469,7 +580,7 @@ USA.
       "CC11"))))
 
 ;; Ripped off from "grep/tests/khadafy.*".
-(define-test 'grep-muammar-qaddafi
+(define-test 'match-grep-muammar-qaddafi
   (match-strings-test
    '(seq "M"
 	 (char-set "ou")
@@ -523,7 +634,7 @@ USA.
      "Mu'ammar Muhammad Abu Minyar al-Qadhafi")))
 
 ;; Ripped off from "grep/tests/spencer1.*".
-(define-test 'grep-spencer
+(define-test 'match-grep-spencer
   (multi-match-strings-test
    '(("abc"
       "abc"
@@ -551,9 +662,9 @@ USA.
       "abc"
       ("abcc" #f))
      ((seq (string-start) "abc")
-      ("abcc" 3))
+      ("abcc" ((0 . 3))))
      ((string-start)
-      ("abc" 0))
+      ("abc" ((0 . 0))))
      ((string-end)
       ""
       ("a" #f))
@@ -580,22 +691,22 @@ USA.
       "aabbc"
       ("aabbabc" #f))
      ((* (* "a"))
-      ("-" 0))
+      ("-" ((0 . 0))))
      ((+ (* "a"))
-      ("-" 0))
+      ("-" ((0 . 0))))
      ((? (* "a"))
-      ("-" 0))
+      ("-" ((0 . 0))))
      ((* (alt "a" (seq)))
-      ("-" 0))
+      ("-" ((0 . 0))))
      ((* (alt (* "a") "b"))
-      ("-" 0))
+      ("-" ((0 . 0))))
      ((* (alt (+ "a") "b"))
       "ab")
      ((+ (alt (+ "a") "b"))
       "ab")
      ((? (alt (+ "a") "b"))
-      ("ba" 1)
-      ("ab" 1))
+      ("ba" ((0 . 1)))
+      ("ab" ((0 . 1))))
      ((* (inverse-char-set "ab"))
       "cde")
      ((seq (* (char-set "abc")) "d")
@@ -611,11 +722,11 @@ USA.
      ("multiple words of text"
       ("uh-uh" #f))
      ("multiple words"
-      ("multiple words, yeah" 14))
+      ("multiple words, yeah" ((0 . 14))))
      ((seq (group x (seq (any-char) (any-char) (any-char) (any-char)))
 	   (* (any-char))
 	   (group-ref x))
-      ("beriberi" 8 (x 0 4))))))
+      ("beriberi" ((0 . 8) (x 0 . 4)))))))
 
 (define-test 're-pattern->regsexp
   (map (lambda (entry)

@@ -59,7 +59,12 @@ USA.
 (define-guarantee compiled-regsexp "compiled regular s-expression")
 
 (define (%top-level-match crsexp start-position)
-  ((%compiled-regsexp-impl crsexp) start-position '() (lambda () #f)))
+  (let ((result
+	 ((%compiled-regsexp-impl crsexp) start-position '() (lambda () #f))))
+    (and result
+	 (cons (%make-range (get-index start-position)
+			    (car result))
+	       (cdr result)))))
 
 (define (%compile-regsexp regsexp)
   (cond ((unicode-char? regsexp)
@@ -88,15 +93,15 @@ USA.
 (define signal-compile-error)
 (define (initialize-conditions!)
   (set! condition-type:compile-regsexp
-	(make-condition-type 'COMPILE-REGSEXP condition-type:error
-	    '(PATTERN CAUSE)
+	(make-condition-type 'compile-regsexp condition-type:error
+	    '(pattern cause)
 	  (lambda (condition port)
-	    (write (access-condition condition 'PATTERN) port)
+	    (write (access-condition condition 'pattern) port)
 	    (write-string ": " port)
-	    (write-condition-report (access-condition condition 'CAUSE) port))))
+	    (write-condition-report (access-condition condition 'cause) port))))
   (set! signal-compile-error
 	(condition-signaller condition-type:compile-regsexp
-			     '(PATTERN CAUSE)
+			     '(pattern cause)
 			     standard-error-handler))
   unspecific)
 
@@ -107,7 +112,7 @@ USA.
    (lambda ()
      (if (not (and (pair? pattern)
 		   (symbol? (car pattern))))
-	 (error:bad-range-argument pattern 'DEFINE-RULE))
+	 (error:bad-range-argument pattern 'define-rule))
      (let ((p
 	    (find (lambda (p)
 		    (eq? (car p) (car pattern)))
@@ -122,37 +127,22 @@ USA.
 
 (define %compile-regsexp-rules '())
 
-(define-rule '(ANY-CHAR)
+(define-rule '(any-char)
   (lambda ()
     (insn:test-char (negate (char=-predicate #\newline)))))
 
-(define-rule '(test-char datum)
+(define-rule '(test-char expression)
   (lambda (predicate)
     (insn:test-char
-     (if (and (pair? predicate)
-	      (eq? (car predicate) 'not)
-	      (pair? (cdr predicate))
-	      (null? (cddr predicate)))
+     (if (syntax-match? '('not expression) predicate)
 	 (negate (cadr predicate))
 	 predicate))))
 
-(define (negate predicate)
-  (lambda (object)
-    (not (predicate object))))
-
-(define-rule '(+ FORM)
-  (lambda (regsexp)
-    (%compile-regsexp `(** 1 #F ,regsexp))))
-
-(define-rule '(+? FORM)
-  (lambda (regsexp)
-    (%compile-regsexp `(**? 1 #F ,regsexp))))
-
-(define-rule '(CHAR-SET * DATUM)
+(define-rule '(char-set * datum)
   (lambda items
     (insn:char-set (char-set* items))))
 
-(define-rule '(INVERSE-CHAR-SET * DATUM)
+(define-rule '(inverse-char-set * datum)
   (lambda items
     (insn:inverse-char-set (char-set* items))))
 
@@ -173,33 +163,45 @@ USA.
 	  char-whitespace?
 	  (syntax-code-predicate code))))))
 
-(define-rule '(LINE-START) (lambda () (insn:line-start)))
-(define-rule '(LINE-END) (lambda () (insn:line-end)))
-(define-rule '(STRING-START) (lambda () (insn:string-start)))
-(define-rule '(STRING-END) (lambda () (insn:string-end)))
+(define (negate predicate)
+  (lambda (object)
+    (not (predicate object))))
+
+(define-rule '(line-start) (lambda () (insn:line-start)))
+(define-rule '(line-end) (lambda () (insn:line-end)))
+(define-rule '(string-start) (lambda () (insn:string-start)))
+(define-rule '(string-end) (lambda () (insn:string-end)))
 
-(define-rule '(? FORM)
+(define-rule '(? form)			;greedy 0 or 1
   (lambda (regsexp)
     (insn:? (%compile-regsexp regsexp))))
 
-(define-rule '(* FORM)
+(define-rule '(* form)			;greedy 0 or more
   (lambda (regsexp)
     (insn:* (%compile-regsexp regsexp))))
 
-(define-rule '(?? FORM)
+(define-rule '(+ form)			;greedy 1 or more
+  (lambda (regsexp)
+    (%compile-regsexp `(** 1 #f ,regsexp))))
+
+(define-rule '(?? form)			;shy 0 or 1
   (lambda (regsexp)
     (insn:?? (%compile-regsexp regsexp))))
 
-(define-rule '(*? FORM)
+(define-rule '(*? form)			;shy 0 or more
   (lambda (regsexp)
     (insn:*? (%compile-regsexp regsexp))))
 
-(define-rule '(** DATUM FORM)
+(define-rule '(+? form)			;shy 1 or more
+  (lambda (regsexp)
+    (%compile-regsexp `(**? 1 #f ,regsexp))))
+
+(define-rule '(** datum form)		;greedy exactly N
   (lambda (n regsexp)
     (check-repeat-1-arg n)
     (insn:** n n (%compile-regsexp regsexp))))
 
-(define-rule '(**? DATUM FORM)
+(define-rule '(**? datum form)		;shy exactly N
   (lambda (n regsexp)
     (check-repeat-1-arg n)
     (insn:**? n n (%compile-regsexp regsexp))))
@@ -208,12 +210,12 @@ USA.
   (if (not (exact-nonnegative-integer? n))
       (error "Repeat limit must be non-negative integer:" n)))
 
-(define-rule '(** DATUM DATUM FORM)
+(define-rule '(** datum datum form)	;greedy between N and M
   (lambda (n m regsexp)
     (check-repeat-2-args n m)
     (insn:** n m (%compile-regsexp regsexp))))
 
-(define-rule '(**? DATUM DATUM FORM)
+(define-rule '(**? datum datum form)	;shy begin N and M
   (lambda (n m regsexp)
     (check-repeat-2-args n m)
     (insn:**? n m (%compile-regsexp regsexp))))
@@ -228,20 +230,20 @@ USA.
 	(if (not (<= n m))
 	    (error "Repeat lower limit greater than upper limit:" n m)))))
 
-(define-rule '(ALT * FORM)
+(define-rule '(alt * form)
   (lambda regsexps
     (insn:alt (map %compile-regsexp regsexps))))
 
-(define-rule '(SEQ * FORM)
+(define-rule '(seq * form)
   (lambda regsexps
     (insn:seq (map %compile-regsexp regsexps))))
 
-(define-rule '(GROUP DATUM FORM)
+(define-rule '(group datum form)
   (lambda (key regsexp)
     (insn:group (%compile-group-key key)
 		(%compile-regsexp regsexp))))
 
-(define-rule '(GROUP-REF DATUM)
+(define-rule '(group-ref datum)
   (lambda (key)
     (insn:group-ref (%compile-group-key key))))
 
@@ -334,7 +336,7 @@ USA.
 			   (loop (fix:+ i 1) (next-position position))
 			   (fail)))
 		     (succeed position groups fail)))))))))
-
+
 (define (insn:group key insn)
   (insn:seq (list (%insn:start-group key)
 		  insn
@@ -358,7 +360,7 @@ USA.
   (lambda (succeed)
     (lambda (position groups fail)
       (((%find-group key groups) succeed) position groups fail))))
-
+
 (define (insn:seq insns)
   (lambda (succeed)
     (fold-right (lambda (insn next)
@@ -449,10 +451,10 @@ USA.
 		   succeed
 		   insn)))
 
-(define (%hybrid-chain limit linker)
+(define (%hybrid-chain limit pre-linker)
   (if (<= limit 8)
-      (%immediate-chain limit linker)
-      (%delayed-chain limit linker)))
+      (%immediate-chain limit pre-linker)
+      (%delayed-chain limit pre-linker)))
 
 (define (%immediate-chain limit pre-linker)
   (lambda (succeed)
@@ -557,26 +559,26 @@ USA.
 
 (define (%convert-groups groups)
   (map (lambda (g)
-	 (list (car g)
-	       (get-index (cadr g))
-	       (get-index (caddr g))))
+	 (cons (car g)
+	       (%make-range (get-index (cadr g))
+			    (get-index (caddr g)))))
        (remove (lambda (g)
 		 (null? (cddr g)))
 	       groups)))
+
+(define-integrable (%make-range start end)
+  (cons start end))
 
 ;;;; Match input port
 
 (define (regsexp-match-input-port crsexp port)
-  (let ((caller 'REGSEXP-MATCH-INPUT-PORT))
-    (guarantee compiled-regsexp? crsexp caller)
-    (guarantee textual-input-port? port caller)
-    (%top-level-match crsexp
-		      (%char-source->position
-		       (lambda ()
-			 (let ((char (read-char port)))
-			   (if (eof-object? char)
-			       #f
-			       char)))))))
+  (%top-level-match crsexp
+		    (%char-source->position
+		     (lambda ()
+		       (let ((char (read-char port)))
+			 (if (eof-object? char)
+			     #f
+			     char))))))
 
 (define (%char-source->position source)
   (%make-source-position 0 (source) #f source))
@@ -608,13 +610,23 @@ USA.
 ;;;; Match string
 
 (define (regsexp-match-string crsexp string #!optional start end)
-  (let ((caller 'REGSEXP-MATCH-STRING))
-    (guarantee compiled-regsexp? crsexp caller)
-    (guarantee string? string caller)
-    (let* ((end (fix:end-index end (string-length string) caller))
-	   (start (fix:start-index start end caller)))
-      (%top-level-match crsexp
-			(cons start (%make-substring string start end))))))
+  (let* ((caller 'regsexp-match-string)
+	 (end (fix:end-index end (string-length string) caller))
+	 (start (fix:start-index start end caller)))
+    (guarantee nfc-string? string caller)
+    (%top-level-match crsexp
+		      (cons start (%make-substring string start end)))))
+
+(define (regsexp-search-string-forward crsexp string #!optional start end)
+  (let* ((caller 'regsexp-search-string-forward)
+	 (end (fix:end-index end (string-length string) caller))
+	 (start (fix:start-index start end caller))
+	 (substring (%make-substring string start end)))
+    (guarantee nfc-string? string caller)
+    (let loop ((index start))
+      (or (%top-level-match crsexp (cons index substring))
+	  (and (fix:< index end)
+	       (loop (fix:+ index 1)))))))
 
 (define-structure (%substring (constructor %make-substring))
   (string #f read-only #t)
@@ -666,6 +678,8 @@ USA.
     (and (eq? (cdr p1) (cdr p2))
 	 (fix:= (car p1) (car p2)))))
 
+;;;; Convert regexp pattern to regsexp
+
 (define (re-pattern->regsexp pattern)
   (let ((end (string-length pattern)))
     (let ((index 0)
