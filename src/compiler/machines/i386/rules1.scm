@@ -101,7 +101,7 @@ USA.
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (REGISTER (? type)) (REGISTER (? datum))))
   (let ((temp (standard-move-to-temporary! type)))
-    (LAP (ROR W ,temp (&U ,scheme-type-width))
+    (LAP (ROR W ,temp (& ,scheme-type-width))
 	 (OR W ,(standard-move-to-target! datum target) ,temp))))
 
 (define-rule statement
