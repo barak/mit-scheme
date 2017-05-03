@@ -278,6 +278,11 @@ USA.
 	   (loop (cdr cpl)
 		 ranges
 		 (cons (car cpl) char-sets)))
+	  ((name->char-set (car cpl))
+	   => (lambda (char-set)
+		(loop (cdr cpl)
+		      ranges
+		      (cons char-set char-sets))))
 	  (else
 	   (error:not-a cpl-element? (car cpl))))))
 
@@ -337,7 +342,20 @@ USA.
   (or (%range? object)
       (bitless-char? object)
       (string? object)
-      (char-set? object)))
+      (char-set? object)
+      (name->char-set object)))
+
+(define (name->char-set name)
+  (case name
+    ((alphabetic) char-set:alphabetic)
+    ((alphanumeric) char-set:alphanumeric)
+    ((cased) char-set:cased)
+    ((lower-case) char-set:lower-case)
+    ((numeric) char-set:numeric)
+    ((unicode) char-set:unicode)
+    ((upper-case) char-set:upper-case)
+    ((whitespace) char-set:whitespace)
+    (else #f)))
 
 (define (%range? object)
   (or (and (pair? object)
