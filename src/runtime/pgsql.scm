@@ -204,17 +204,23 @@ USA.
   (if string
       (begin
 	(write-string ": " port)
-	(let ((regs
-	       (re-string-match "\\`\\s *\\(error:\\)?\\s *\\(.*\\)\\s *\\'"
-				string
-				#t)))
-	  (if regs
-	      (write-string string
-			    port
-			    (re-match-start-index 2 regs)
-			    (re-match-end-index 2 regs))
-	      (write-string string port))))
+	(write-string
+	 (let ((result (regsexp-match-string error-regsexp string)))
+	   (if result
+	       (cdr (assv 'message (cddr result)))
+	       string))
+	 port))
       (write-string "." port)))
+
+(define error-regsexp
+  (compile-regsexp
+   '(seq (string-start)
+	 (* (char-set whitespace))
+	 (? (string-ci "error:"))
+	 (* (char-set whitespace))
+	 (group message (* (any-char)))
+	 (* (char-set whitespace))
+	 (string-end))))
 
 (define (open-pgsql-conn parameters #!optional wait?)
   (guarantee-pgsql-available)
