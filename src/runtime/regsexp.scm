@@ -334,23 +334,20 @@ USA.
 		     (succeed position groups fail)))))))))
 
 (define (insn:group key insn)
-  (insn:seq (list (%insn:start-group key)
-		  insn
-		  (%insn:end-group key))))
-
-(define (%insn:start-group key)
-  (lambda (succeed)
-    (lambda (position groups fail)
-      (succeed position
-	       (%start-group key position groups)
-	       fail))))
-
-(define (%insn:end-group key)
-  (lambda (succeed)
-    (lambda (position groups fail)
-      (succeed position
-	       (%end-group key position groups)
-	       fail))))
+  (let ((start
+	 (lambda (succeed)
+	   (lambda (position groups fail)
+	     (succeed position
+		      (%start-group key position groups)
+		      fail))))
+	(end
+	 (lambda (succeed)
+	   (lambda (position groups fail)
+	     (succeed position
+		      (%end-group key position groups)
+		      fail)))))
+    (lambda (succeed)
+      (start (insn (end succeed))))))
 
 (define (insn:group-ref key)
   (lambda (succeed)
@@ -547,29 +544,31 @@ USA.
 
 (define (make-groups)
 
-  (define (loop groups)
+  (define (state started-groups ended-groups)
 
     (define (start key position)
-      (loop (cons (list key position) groups)))
+      (if (assv key started-groups)
+	  (error "Incorrectly nested group:" key))
+      (state (cons (cons key position) started-groups)
+	     ended-groups))
 
     (define (end key position)
-      ;; Kind of slow, but it's functional.  Could speed up with side effects.
-      (let ((p (assq key groups)))
-	(if (not (and p (null? (cddr p))))
-	    (error "%END-GROUP called with no %START-GROUP:" key))
-	(loop (cons (list key (cadr p) position)
-		    (delq p groups)))))
+      (if (not (and (pair? started-groups)
+		    (eqv? (caar started-groups) key)))
+	  (error "Incorrectly nested group:" key))
+      (state (cdr started-groups)
+	     (cons (list key (cdar started-groups) position)
+		   ended-groups)))
 
     (define (find key)
-      (let ((p (assq key groups)))
+      (if (assv key started-groups)
+	  (error "Can't refer to unfinished group:" key))
+      (let ((p (assv key ended-groups)))
 	(if (not p)
 	    ;; This can happen with (* (GROUP ...)), but in other cases it
 	    ;; would be an error.
 	    (insn:always-succeed)
-	    (begin
-	      (if (null? (cddr p))
-		  (error "Reference to group appears before group's end:" key))
-	      (insn:chars (%group-chars (cadr p) (caddr p)))))))
+	    (insn:chars (%group-chars (cadr p) (caddr p))))))
 
     (define (%group-chars start-position end-position)
       (let loop ((position end-position) (chars '()))
@@ -586,7 +585,7 @@ USA.
 				(get-index (caddr g)))))
 	   (remove (lambda (g)
 		     (null? (cddr g)))
-		   groups)))
+		   ended-groups)))
 
     (lambda (operator)
       (case operator
@@ -596,7 +595,7 @@ USA.
 	((convert) convert)
 	(else (error "Unknown operator:" operator)))))
 
-  (loop '()))
+  (state '() '()))
 
 (define (%start-group key position groups)
   ((groups 'start) key position))
