@@ -45,9 +45,9 @@ USA.
 
 (define (%compile-regsexp regsexp)
   (cond ((unicode-char? regsexp)
-	 (insn:char regsexp))
+	 (insn:char regsexp #f))
 	((string? regsexp)
-	 (insn:string regsexp))
+	 (insn:string regsexp #f))
 	((and (pair? regsexp)
 	      (symbol? (car regsexp))
 	      (find (lambda (rule)
@@ -125,14 +125,28 @@ USA.
 
 (define-rule '(any-char)
   (lambda ()
-    (insn:test-char (negate (char=-predicate #\newline)))))
+    (insn:char-matching (negate (char=-predicate #\newline)))))
 
-(define-rule '(test-char expression)
+(define-rule `(char-ci datum)
+  (lambda (char)
+    (guarantee unicode-char? char)
+    (insn:char char #t)))
+
+(define-rule `(string-ci datum)
+  (lambda (string)
+    (guarantee string? string)
+    (insn:string string #t)))
+
+(define-rule '(char-matching expression)
   (lambda (predicate)
-    (insn:test-char
-     (if (syntax-match? '('not expression) predicate)
-	 (negate (cadr predicate))
-	 predicate))))
+    (insn:char-matching
+     (cond ((unary-procedure? predicate)
+	    predicate)
+	   ((and (syntax-match? '('not expression) predicate)
+		 (unary-procedure? (cadr predicate)))
+	    (cadr predicate))
+	   (else
+	    (error:not-a unary-procedure? predicate))))))
 
 (define-rule '(char-set * datum)
   (lambda items
@@ -144,18 +158,16 @@ USA.
 
 (define-rule '(legacy-char-syntax datum)
   (lambda (code)
-    (insn:test-char
-     (if (or (char=? code #\-)
-	     (char=? code #\space))
+    (insn:char-matching
+     (if (or (char=? code #\-) (char=? code #\space))
 	 char-whitespace?
 	 (syntax-code-predicate code)))))
 
 (define-rule '(inverse-legacy-char-syntax datum)
   (lambda (code)
-    (insn:test-char
+    (insn:char-matching
      (negate
-      (if (or (char=? code #\-)
-	      (char=? code #\space))
+      (if (or (char=? code #\-) (char=? code #\space))
 	  char-whitespace?
 	  (syntax-code-predicate code))))))
 
@@ -194,17 +206,13 @@ USA.
 
 (define-rule '(** datum form)		;greedy exactly N
   (lambda (n regsexp)
-    (check-repeat-1-arg n)
+    (guarantee exact-nonnegative-integer? n)
     (insn:** n n (%compile-regsexp regsexp))))
 
 (define-rule '(**? datum form)		;shy exactly N
   (lambda (n regsexp)
-    (check-repeat-1-arg n)
+    (guarantee exact-nonnegative-integer? n)
     (insn:**? n n (%compile-regsexp regsexp))))
-
-(define (check-repeat-1-arg n)
-  (if (not (exact-nonnegative-integer? n))
-      (error "Repeat limit must be non-negative integer:" n)))
 
 (define-rule '(** datum datum form)	;greedy between N and M
   (lambda (n m regsexp)
@@ -217,12 +225,10 @@ USA.
     (insn:**? n m (%compile-regsexp regsexp))))
 
 (define (check-repeat-2-args n m)
-  (if (not (exact-nonnegative-integer? n))
-      (error "Repeat limit must be non-negative integer:" n))
+  (guarantee exact-nonnegative-integer? n)
   (if m
       (begin
-	(if (not (exact-nonnegative-integer? m))
-	    (error "Repeat limit must be non-negative integer:" m))
+	(guarantee exact-nonnegative-integer? m)
 	(if (not (<= n m))
 	    (error "Repeat lower limit greater than upper limit:" n m)))))
 
@@ -234,12 +240,14 @@ USA.
   (lambda regsexps
     (insn:seq (map %compile-regsexp regsexps))))
 
-(define-rule `(group ,group-key? form)
+(define-rule `(group datum form)
   (lambda (key regsexp)
+    (guarantee group-key? key)
     (insn:group key (%compile-regsexp regsexp))))
 
-(define-rule `(group-ref ,group-key?)
+(define-rule `(group-ref datum)
   (lambda (key)
+    (guarantee group-key? key)
     (insn:group-ref key)))
 
 ;;;; Instructions
@@ -287,7 +295,7 @@ USA.
 	  (succeed position groups fail)
 	  (fail)))))
 
-(define (insn:test-char predicate)
+(define (insn:char-matching predicate)
   (lambda (succeed)
     (lambda (position groups fail)
       (if (let ((char (next-char position)))
@@ -296,31 +304,34 @@ USA.
 	  (succeed (next-position position) groups fail)
 	  (fail)))))
 
-(define (insn:char char)
-  (insn:test-char (char=-predicate char)))
+(define (insn:char char fold-case?)
+  (insn:char-matching
+   ((if fold-case? char-ci=-predicate char=-predicate) char)))
 
 (define (insn:char-set char-set)
-  (insn:test-char (char-set-predicate char-set)))
+  (insn:char-matching (char-set-predicate char-set)))
 
 (define (insn:inverse-char-set char-set)
-  (insn:test-char (negate (char-set-predicate char-set))))
+  (insn:char-matching (negate (char-set-predicate char-set))))
 
-(define (insn:string string)
+(define (insn:string string fold-case?)
   (let ((end (string-length string)))
     (cond ((fix:= end 0)
 	   (insn:always-succeed))
 	  ((fix:= end 1)
-	   (insn:char (string-ref string 0)))
+	   (insn:char (string-ref string 0) fold-case?))
 	  (else
-	   (lambda (succeed)
-	     (lambda (position groups fail)
-	       (let loop ((i 0) (position position))
-		 (if (fix:< i end)
-		     (let ((char (string-ref string i)))
-		       (if (eqv? (next-char position) char)
+	   (let ((c= (if fold-case? char-ci=? char=?)))
+	     (lambda (succeed)
+	       (lambda (position groups fail)
+		 (let loop ((i 0) (position position))
+		   (if (fix:< i end)
+		       (if (let ((char (next-char position)))
+			     (and char
+				  (c= char (string-ref string i))))
 			   (loop (fix:+ i 1) (next-position position))
-			   (fail)))
-		     (succeed position groups fail)))))))))
+			   (fail))
+		       (succeed position groups fail))))))))))
 
 (define (insn:group key insn)
   (let ((start
@@ -343,7 +354,7 @@ USA.
     (lambda (position groups fail)
       ((let ((value ((groups 'get-value) key)))
 	 (if value
-	     ((insn:string value) succeed)
+	     ((insn:string value #f) succeed)
 	     ;; This can happen with (* (GROUP ...)), but in other cases it
 	     ;; would be an error.
 	     succeed))
