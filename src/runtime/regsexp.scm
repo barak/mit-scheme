@@ -43,29 +43,6 @@ USA.
      (lambda ()
        (%compile-regsexp regsexp)))))
 
-(define (%link-insn insn)
-  (%make-compiled-regsexp
-   (insn
-    (lambda (position groups fail)
-      fail
-      (cons (get-index position)
-	    (%convert-groups groups))))))
-
-(define-record-type <compiled-regsexp>
-    (%make-compiled-regsexp impl)
-    compiled-regsexp?
-  (impl %compiled-regsexp-impl))
-
-(define-guarantee compiled-regsexp "compiled regular s-expression")
-
-(define (%top-level-match crsexp start-position)
-  (let ((result
-	 ((%compiled-regsexp-impl crsexp) start-position '() (lambda () #f))))
-    (and result
-	 (cons (%make-range (get-index start-position)
-			    (car result))
-	       (cdr result)))))
-
 (define (%compile-regsexp regsexp)
   (cond ((unicode-char? regsexp)
 	 (insn:char regsexp))
@@ -82,12 +59,31 @@ USA.
 	(else
 	 (error "Ill-formed regular s-expression:" regsexp))))
 
-(define (%compile-group-key key)
-  (if (not (or (fix:fixnum? key)
-	       (unicode-char? key)
-	       (symbol? key)))
-      (error "Ill-formed regsexp group key:" key))
-  key)
+(define (%link-insn insn)
+  (make-compiled-regsexp
+   (insn
+    (lambda (position groups fail)
+      fail
+      (cons (get-index position)
+	    (%convert-groups groups))))))
+
+(define-record-type <compiled-regsexp>
+    (make-compiled-regsexp impl)
+    compiled-regsexp?
+  (impl compiled-regsexp-impl))
+
+(define (top-level-match crsexp start-position)
+  (let ((result
+	 ((compiled-regsexp-impl crsexp) start-position '() (lambda () #f))))
+    (and result
+	 (cons (%make-range (get-index start-position)
+			    (car result))
+	       (cdr result)))))
+
+(define (group-key? object)
+  (or (fix:fixnum? object)
+      (unicode-char? object)
+      (symbol? object)))
 
 (define condition-type:compile-regsexp)
 (define signal-compile-error)
@@ -238,14 +234,13 @@ USA.
   (lambda regsexps
     (insn:seq (map %compile-regsexp regsexps))))
 
-(define-rule '(group datum form)
+(define-rule `(group ,group-key? form)
   (lambda (key regsexp)
-    (insn:group (%compile-group-key key)
-		(%compile-regsexp regsexp))))
+    (insn:group key (%compile-regsexp regsexp))))
 
-(define-rule '(group-ref datum)
+(define-rule `(group-ref ,group-key?)
   (lambda (key)
-    (insn:group-ref (%compile-group-key key))))
+    (insn:group-ref key)))
 
 ;;;; Instructions
 
@@ -476,50 +471,21 @@ USA.
 ;;;; Positions
 
 (define (get-index position)
-  ((%position-type-get-index (%get-position-type position)) position))
+  ((position 'get-index)))
 
 (define (next-char position)
-  ((%position-type-next-char (%get-position-type position)) position))
+  ((position 'next-char)))
 
 (define (prev-char position)
-  ((%position-type-prev-char (%get-position-type position)) position))
+  ((position 'prev-char)))
 
 (define (next-position position)
-  ((%position-type-next-position (%get-position-type position)) position))
+  ((position 'next-position)))
 
 (define (same-positions? p1 p2)
-  ((%position-type-same? (%get-position-type p1)) p1 p2))
+  (and (eq? ((p1 'get-marker)) ((p2 'get-marker)))
+       (fix:= ((p1 'get-index)) ((p2 'get-index)))))
 
-(define (%get-position-type position)
-  (or (find (lambda (type)
-	      ((%position-type-predicate type) position))
-	    %all-position-types)
-      (error:wrong-type-datum position "position")))
-
-(define-structure (%position-type (constructor %make-position-type))
-  (predicate #f read-only #t)
-  (get-index #f read-only #t)
-  (next-char #f read-only #t)
-  (prev-char #f read-only #t)
-  (next-position #f read-only #t)
-  (same? #f read-only #t))
-
-(define (define-position-type predicate . args)
-  (add-boot-init!
-   (lambda ()
-     (let ((type (apply %make-position-type predicate args)))
-       (let ((tail
-	      (find-tail (lambda (type)
-			   (eq? (%position-type-predicate type) predicate))
-			 %all-position-types)))
-	 (if tail
-	     (set-car! tail type)
-	     (begin
-	       (set! %all-position-types (cons type %all-position-types))
-	       unspecific)))))))
-
-(define %all-position-types '())
-
 ;;;; Groups
 
 (define (%start-group key position groups)
@@ -547,15 +513,14 @@ USA.
 	  (insn:chars (%group-chars (cadr p) (caddr p)))))))
 
 (define (%group-chars start-position end-position)
-  (let ((same? (%position-type-same? (%get-position-type start-position))))
-    (let loop ((position start-position) (chars '()))
-      (if (same? position end-position)
-	  (reverse! chars)
-	  (let ((char (next-char position)))
-	    (if (not char)
-		(error "Failure of SAME? predicate"))
-	    (loop (next-position position)
-		  (cons char chars)))))))
+  (let loop ((position start-position) (chars '()))
+    (if (same-positions? position end-position)
+	(reverse! chars)
+	(let ((char (next-char position)))
+	  (if (not char)
+	      (error "Failure of SAME? predicate"))
+	  (loop (next-position position)
+		(cons char chars))))))
 
 (define (%convert-groups groups)
   (map (lambda (g)
@@ -572,40 +537,32 @@ USA.
 ;;;; Match input port
 
 (define (regsexp-match-input-port crsexp port)
-  (%top-level-match crsexp
-		    (%char-source->position
-		     (lambda ()
-		       (let ((char (read-char port)))
-			 (if (eof-object? char)
-			     #f
-			     char))))))
+  (top-level-match crsexp
+		   (make-source-position
+		    (lambda ()
+		      (let ((char (read-char port)))
+			(if (eof-object? char)
+			    #f
+			    char))))))
 
-(define (%char-source->position source)
-  (%make-source-position 0 (source) #f source))
+(define (make-source-position source)
+  (let ((marker (list 'source-position)))
 
-(define-structure (%source-position (constructor %make-source-position))
-  (index #f read-only #t)
-  (next-char #f read-only #t)
-  (prev-char #f read-only #t)
-  (source #f read-only #t))
+    (define (at-index index next-char prev-char)
 
-(define-position-type %source-position?
-  (lambda (position)
-    (%source-position-index position))
-  (lambda (position)
-    (%source-position-next-char position))
-  (lambda (position)
-    (%source-position-prev-char position))
-  (lambda (position)
-    (%make-source-position (fix:+ (%source-position-index position) 1)
-			   ((%source-position-source position))
-			   (%source-position-next-char position)
-			   (%source-position-source position)))
-  (lambda (p1 p2)
-    (and (eq? (%source-position-source p1)
-	      (%source-position-source p2))
-	 (fix:= (%source-position-index p1)
-		(%source-position-index p2)))))
+      (define (next-position)
+	(at-index (fix:+ index 1) (source) next-char))
+
+      (lambda (operator)
+	(case operator
+	  ((get-marker) (lambda () marker))
+	  ((get-index) (lambda () index))
+	  ((next-char) (lambda () next-char))
+	  ((prev-char) (lambda () prev-char))
+	  ((next-position) next-position)
+	  (else (error "Unknown operator:" operator)))))
+
+    (at-index 0 (source) #f)))
 
 ;;;; Match string
 
@@ -614,69 +571,44 @@ USA.
 	 (end (fix:end-index end (string-length string) caller))
 	 (start (fix:start-index start end caller)))
     (guarantee nfc-string? string caller)
-    (%top-level-match crsexp
-		      (cons start (%make-substring string start end)))))
+    (top-level-match crsexp (make-string-position string start end))))
 
 (define (regsexp-search-string-forward crsexp string #!optional start end)
   (let* ((caller 'regsexp-search-string-forward)
 	 (end (fix:end-index end (string-length string) caller))
-	 (start (fix:start-index start end caller))
-	 (substring (%make-substring string start end)))
+	 (start (fix:start-index start end caller)))
     (guarantee nfc-string? string caller)
-    (let loop ((index start))
-      (or (%top-level-match crsexp (cons index substring))
-	  (and (fix:< index end)
-	       (loop (fix:+ index 1)))))))
+    (let loop ((position (make-string-position string start end)))
+      (or (top-level-match crsexp position)
+	  (and (next-char position)
+	       (loop (next-position position)))))))
 
-(define-structure (%substring (constructor %make-substring))
-  (string #f read-only #t)
-  (start #f read-only #t)
-  (end #f read-only #t))
+(define (make-string-position string start end)
+  (let ((marker (list 'string-position)))
 
-(define (%string-position? object)
-  (declare (no-type-checks))
-  (and (pair? object)
-       (%substring? (cdr object))))
+    (define (at-index index)
 
-(define-integrable (%string-position-index position)
-  (declare (no-type-checks))
-  (car position))
+      (define (next-char)
+	(and (fix:< index end)
+	     (string-ref string index)))
 
-(define-integrable (%string-position-string position)
-  (declare (no-type-checks))
-  (%substring-string (cdr position)))
+      (define (prev-char)
+	(and (fix:> index start)
+	     (string-ref string (fix:- index 1))))
 
-(define-integrable (%string-position-start position)
-  (declare (no-type-checks))
-  (%substring-start (cdr position)))
+      (define (next-position)
+	(at-index (fix:+ index 1)))
 
-(define-integrable (%string-position-end position)
-  (declare (no-type-checks))
-  (%substring-end (cdr position)))
+      (lambda (operator)
+	(case operator
+	  ((get-marker) (lambda () marker))
+	  ((get-index) (lambda () index))
+	  ((next-char) next-char)
+	  ((prev-char) prev-char)
+	  ((next-position) next-position)
+	  (else (error "Unknown operator:" operator)))))
 
-(define-position-type %string-position?
-  (lambda (position)
-    (%string-position-index position))
-  (lambda (position)
-    (if (fix:< (%string-position-index position)
-	       (%string-position-end position))
-	(string-ref (%string-position-string position)
-		    (%string-position-index position))
-	#f))
-  (lambda (position)
-    (if (fix:> (%string-position-index position)
-	       (%string-position-start position))
-	(string-ref (%string-position-string position)
-		    (fix:- (%string-position-index position) 1))
-	#f))
-  (lambda (position)
-    (declare (no-type-checks))
-    (cons (fix:+ (car position) 1)
-	  (cdr position)))
-  (lambda (p1 p2)
-    (declare (no-type-checks))
-    (and (eq? (cdr p1) (cdr p2))
-	 (fix:= (car p1) (car p2)))))
+    (at-index start)))
 
 ;;;; Convert regexp pattern to regsexp
 
