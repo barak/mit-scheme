@@ -74,7 +74,8 @@ USA.
 
 (define (top-level-match crsexp start-position)
   (let ((result
-	 ((compiled-regsexp-impl crsexp) start-position '() (lambda () #f))))
+	 ((compiled-regsexp-impl crsexp)
+	  start-position (make-groups) (lambda () #f))))
     (and result
 	 (cons (%make-range (get-index start-position)
 			    (car result))
@@ -476,95 +477,143 @@ USA.
 (define (next-char position)
   ((position 'next-char)))
 
+(define (next-position position)
+  ((position 'next-position)))
+
 (define (prev-char position)
   ((position 'prev-char)))
 
-(define (next-position position)
-  ((position 'next-position)))
+(define (prev-position position)
+  ((position 'prev-position)))
 
 (define (same-positions? p1 p2)
   (and (eq? ((p1 'get-marker)) ((p2 'get-marker)))
        (fix:= ((p1 'get-index)) ((p2 'get-index)))))
 
-;;;; Groups
-
-(define (%start-group key position groups)
-  (cons (list key position)
-	groups))
-
-(define (%end-group key position groups)
-  ;; Kind of slow, but it's functional.  Could speed up with side
-  ;; effects.
-  (let ((p (assq key groups)))
-    (if (not (and p (null? (cddr p))))
-	(error "%END-GROUP called with no %START-GROUP:" key))
-    (cons (list key (cadr p) position)
-	  (delq p groups))))
-
-(define (%find-group key groups)
-  (let ((p (assq key groups)))
-    (if (not p)
-	;; This can happen with (* (GROUP ...)), but in other cases it
-	;; would be an error.
-	(insn:always-succeed)
-	(begin
-	  (if (null? (cddr p))
-	      (error "Reference to group appears before group's end:" key))
-	  (insn:chars (%group-chars (cadr p) (caddr p)))))))
-
-(define (%group-chars start-position end-position)
-  (let loop ((position start-position) (chars '()))
-    (if (same-positions? position end-position)
-	(reverse! chars)
-	(let ((char (next-char position)))
-	  (if (not char)
-	      (error "Failure of SAME? predicate"))
-	  (loop (next-position position)
-		(cons char chars))))))
-
-(define (%convert-groups groups)
-  (map (lambda (g)
-	 (cons (car g)
-	       (%make-range (get-index (cadr g))
-			    (get-index (caddr g)))))
-       (remove (lambda (g)
-		 (null? (cddr g)))
-	       groups)))
-
-(define-integrable (%make-range start end)
-  (cons start end))
-
-;;;; Match input port
-
-(define (regsexp-match-input-port crsexp port)
-  (top-level-match crsexp
-		   (make-source-position
-		    (lambda ()
-		      (let ((char (read-char port)))
-			(if (eof-object? char)
-			    #f
-			    char))))))
-
 (define (make-source-position source)
   (let ((marker (list 'source-position)))
 
-    (define (at-index index next-char prev-char)
+    (define (at-index index next-char prev-char prev-position)
 
       (define (next-position)
-	(at-index (fix:+ index 1) (source) next-char))
+	(at-index (fix:+ index 1) (source) next-char this))
+
+      (define (this operator)
+	(case operator
+	  ((get-marker) (lambda () marker))
+	  ((get-index) (lambda () index))
+	  ((next-char) (lambda () next-char))
+	  ((next-position) next-position)
+	  ((prev-char) (lambda () prev-char))
+	  ((prev-position) (lambda () prev-position))
+	  (else (error "Unknown operator:" operator))))
+
+      this)
+
+    (at-index 0 (source) #f #f)))
+
+(define (make-string-position string start end)
+  (let ((marker (list 'string-position)))
+
+    (define (at-index index)
+
+      (define (next-char)
+	(and (fix:< index end)
+	     (string-ref string index)))
+
+      (define (next-position)
+	(at-index (fix:+ index 1)))
+
+      (define (prev-char)
+	(and (fix:> index start)
+	     (string-ref string (fix:- index 1))))
+
+      (define (prev-position)
+	(at-index (fix:- index 1)))
 
       (lambda (operator)
 	(case operator
 	  ((get-marker) (lambda () marker))
 	  ((get-index) (lambda () index))
-	  ((next-char) (lambda () next-char))
-	  ((prev-char) (lambda () prev-char))
+	  ((next-char) next-char)
 	  ((next-position) next-position)
+	  ((prev-char) prev-char)
+	  ((prev-position) prev-position)
 	  (else (error "Unknown operator:" operator)))))
 
-    (at-index 0 (source) #f)))
+    (at-index start)))
 
-;;;; Match string
+;;;; Groups
+
+(define (make-groups)
+
+  (define (loop groups)
+
+    (define (start key position)
+      (loop (cons (list key position) groups)))
+
+    (define (end key position)
+      ;; Kind of slow, but it's functional.  Could speed up with side effects.
+      (let ((p (assq key groups)))
+	(if (not (and p (null? (cddr p))))
+	    (error "%END-GROUP called with no %START-GROUP:" key))
+	(loop (cons (list key (cadr p) position)
+		    (delq p groups)))))
+
+    (define (find key)
+      (let ((p (assq key groups)))
+	(if (not p)
+	    ;; This can happen with (* (GROUP ...)), but in other cases it
+	    ;; would be an error.
+	    (insn:always-succeed)
+	    (begin
+	      (if (null? (cddr p))
+		  (error "Reference to group appears before group's end:" key))
+	      (insn:chars (%group-chars (cadr p) (caddr p)))))))
+
+    (define (%group-chars start-position end-position)
+      (let loop ((position end-position) (chars '()))
+	(if (same-positions? position start-position)
+	    chars
+	    (let ((char (prev-char position)))
+	      (loop (prev-position position)
+		    (cons char chars))))))
+
+    (define (convert)
+      (map (lambda (g)
+	     (cons (car g)
+		   (%make-range (get-index (cadr g))
+				(get-index (caddr g)))))
+	   (remove (lambda (g)
+		     (null? (cddr g)))
+		   groups)))
+
+    (lambda (operator)
+      (case operator
+	((start) start)
+	((end) end)
+	((find) find)
+	((convert) convert)
+	(else (error "Unknown operator:" operator)))))
+
+  (loop '()))
+
+(define (%start-group key position groups)
+  ((groups 'start) key position))
+
+(define (%end-group key position groups)
+  ((groups 'end) key position))
+
+(define (%find-group key groups)
+  ((groups 'find) key))
+
+(define (%convert-groups groups)
+  ((groups 'convert)))
+
+(define-integrable (%make-range start end)
+  (cons start end))
+
+;;;; Match and search
 
 (define (regsexp-match-string crsexp string #!optional start end)
   (let* ((caller 'regsexp-match-string)
@@ -583,32 +632,14 @@ USA.
 	  (and (next-char position)
 	       (loop (next-position position)))))))
 
-(define (make-string-position string start end)
-  (let ((marker (list 'string-position)))
-
-    (define (at-index index)
-
-      (define (next-char)
-	(and (fix:< index end)
-	     (string-ref string index)))
-
-      (define (prev-char)
-	(and (fix:> index start)
-	     (string-ref string (fix:- index 1))))
-
-      (define (next-position)
-	(at-index (fix:+ index 1)))
-
-      (lambda (operator)
-	(case operator
-	  ((get-marker) (lambda () marker))
-	  ((get-index) (lambda () index))
-	  ((next-char) next-char)
-	  ((prev-char) prev-char)
-	  ((next-position) next-position)
-	  (else (error "Unknown operator:" operator)))))
-
-    (at-index start)))
+(define (regsexp-match-input-port crsexp port)
+  (top-level-match crsexp
+		   (make-source-position
+		    (lambda ()
+		      (let ((char (read-char port)))
+			(if (eof-object? char)
+			    #f
+			    char))))))
 
 ;;;; Convert regexp pattern to regsexp
 
