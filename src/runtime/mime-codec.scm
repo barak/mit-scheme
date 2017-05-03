@@ -699,16 +699,22 @@ USA.
       ((s
 	(string-append (binhex40-decoding-context/line-buffer context)
 		       (substring string start end))))
-    (let ((regs (re-string-match binhex40-header-regexp s)))
-      (if regs
+    (let ((result (regsexp-match-string binhex40-header-regexp s)))
+      (if result
 	  (begin
 	    (set-binhex40-decoding-context/state! context 'decoding)
 	    (set-binhex40-decoding-context/line-buffer! context #f)
-	    (decode-binhex40:update context s (re-match-end-index 0 regs)))
+	    (decode-binhex40:update context s (cadr result)))
 	  (set-binhex40-decoding-context/line-buffer! context s)))))
 
 (define binhex40-header-regexp
-  "[\r\n\t ]*(This file must be converted with BinHex.*[\r\n][\r\n\t ]*:")
+  (compile-regsexp
+   '(seq (* (char-set "\r\n\t "))
+	 "(This file must be converted with BinHex"
+	 (* (any-char))
+	 (char-set "\r\n")
+	 (* (char-set "\r\n\t "))
+	 ":")))
 
 (define (decode-binhex40-decoding context string start end)
   (let ((buffer (binhex40-decoding-context/input-buffer context)))
