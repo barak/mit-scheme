@@ -65,7 +65,7 @@ USA.
     (lambda (position groups fail)
       fail
       (cons (get-index position)
-	    (%convert-groups groups))))))
+	    ((groups 'get-all)))))))
 
 (define-record-type <compiled-regsexp>
     (make-compiled-regsexp impl)
@@ -77,9 +77,8 @@ USA.
 	 ((compiled-regsexp-impl crsexp)
 	  start-position (make-groups) (lambda () #f))))
     (and result
-	 (cons (%make-range (get-index start-position)
-			    (car result))
-	       (cdr result)))))
+	 (cons (get-index start-position)
+	       result))))
 
 (define (group-key? object)
   (or (fix:fixnum? object)
@@ -306,16 +305,6 @@ USA.
 (define (insn:inverse-char-set char-set)
   (insn:test-char (negate (char-set-predicate char-set))))
 
-(define (insn:chars chars)
-  (lambda (succeed)
-    (lambda (position groups fail)
-      (let loop ((chars chars) (position position))
-	(if (pair? chars)
-	    (if (eqv? (next-char position) (car chars))
-		(loop (cdr chars) (next-position position))
-		(fail))
-	    (succeed position groups fail))))))
-
 (define (insn:string string)
   (let ((end (string-length string)))
     (cond ((fix:= end 0)
@@ -338,13 +327,13 @@ USA.
 	 (lambda (succeed)
 	   (lambda (position groups fail)
 	     (succeed position
-		      (%start-group key position groups)
+		      ((groups 'start) key position)
 		      fail))))
 	(end
 	 (lambda (succeed)
 	   (lambda (position groups fail)
 	     (succeed position
-		      (%end-group key position groups)
+		      ((groups 'end) key position)
 		      fail)))))
     (lambda (succeed)
       (start (insn (end succeed))))))
@@ -352,7 +341,13 @@ USA.
 (define (insn:group-ref key)
   (lambda (succeed)
     (lambda (position groups fail)
-      (((%find-group key groups) succeed) position groups fail))))
+      ((let ((value ((groups 'get-value) key)))
+	 (if value
+	     ((insn:string value) succeed)
+	     ;; This can happen with (* (GROUP ...)), but in other cases it
+	     ;; would be an error.
+	     succeed))
+       position groups fail))))
 
 (define (insn:seq insns)
   (lambda (succeed)
@@ -557,60 +552,36 @@ USA.
 		    (eqv? (caar started-groups) key)))
 	  (error "Incorrectly nested group:" key))
       (state (cdr started-groups)
-	     (cons (list key (cdar started-groups) position)
+	     (cons (finish-group key
+				 (cdar started-groups)
+				 position)
 		   ended-groups)))
 
-    (define (find key)
+    (define (finish-group key start-position end-position)
+      (cons key
+	    (let loop ((position end-position) (chars '()))
+	      (if (same-positions? position start-position)
+		  (list->string chars)
+		  (let ((char (prev-char position)))
+		    (loop (prev-position position)
+			  (cons char chars)))))))
+
+    (define (get-value key)
       (if (assv key started-groups)
 	  (error "Can't refer to unfinished group:" key))
       (let ((p (assv key ended-groups)))
-	(if (not p)
-	    ;; This can happen with (* (GROUP ...)), but in other cases it
-	    ;; would be an error.
-	    (insn:always-succeed)
-	    (insn:chars (%group-chars (cadr p) (caddr p))))))
-
-    (define (%group-chars start-position end-position)
-      (let loop ((position end-position) (chars '()))
-	(if (same-positions? position start-position)
-	    chars
-	    (let ((char (prev-char position)))
-	      (loop (prev-position position)
-		    (cons char chars))))))
-
-    (define (convert)
-      (map (lambda (g)
-	     (cons (car g)
-		   (%make-range (get-index (cadr g))
-				(get-index (caddr g)))))
-	   (remove (lambda (g)
-		     (null? (cddr g)))
-		   ended-groups)))
+	(and p
+	     (cdr p))))
 
     (lambda (operator)
       (case operator
 	((start) start)
 	((end) end)
-	((find) find)
-	((convert) convert)
+	((get-value) get-value)
+	((get-all) (lambda () (reverse ended-groups)))
 	(else (error "Unknown operator:" operator)))))
 
   (state '() '()))
-
-(define (%start-group key position groups)
-  ((groups 'start) key position))
-
-(define (%end-group key position groups)
-  ((groups 'end) key position))
-
-(define (%find-group key groups)
-  ((groups 'find) key))
-
-(define (%convert-groups groups)
-  ((groups 'convert)))
-
-(define-integrable (%make-range start end)
-  (cons start end))
 
 ;;;; Match and search
 
