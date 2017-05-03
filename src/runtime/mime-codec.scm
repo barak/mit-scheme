@@ -937,7 +937,7 @@ USA.
 	(else (error "Illegal state in uuencode decoder:" state))))
 
     (define (process-begin-line line)
-      (if (not (re-string-match "^begin +[0-7]+ +.+$" line))
+      (if (not (regsexp-match-string decode-uue:begin-line-regsexp line))
 	  (error:decode-uue "Malformed \"begin\" line:" line))
       (set! state 'normal))
 
@@ -1012,6 +1012,16 @@ USA.
     (if (not (and (fix:>= n #x20) (fix:< n #x80)))
 	(error "Illegal uuencode char:" char))
     (fix:and (fix:- n #x20) #x3F)))
+
+(define decode-uue:begin-line-regsexp
+  (compile-regsexp
+   '(seq (line-start)
+	 "begin"
+	 (+ #\space)
+	 (+ (char-set (48 . 56)))
+	 (+ #\space)
+	 (+ (any-char))
+	 (line-end))))
 
 (define (call-with-decode-uue-output-port port text? generator)
   (let ((port (make-decode-uue-port port text?)))
