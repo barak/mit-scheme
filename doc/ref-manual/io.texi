@@ -791,8 +791,8 @@ Reads characters from @var{port} until it finds a terminating
 character that is a member of @var{char-set} (@pxref{Character Sets})
 or encounters end of file.  The port is updated to point to the
 terminating character, or to end of file if no terminating character
-was found.  @code{read-string} returns the characters, up to but
-excluding the terminating character, as a newly allocated string.
+was found.  @code{read-delimited-string} returns the characters, up to
+but excluding the terminating character, as a newly allocated string.
 
 This procedure ignores the blocking mode of the port, blocking
 unconditionally until it sees either a delimiter or end of file.  If end
