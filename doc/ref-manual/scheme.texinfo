@@ -226,8 +226,8 @@ Strings
 
 Regular Expressions
 
-* Regular-expression procedures::
-* REXP abstraction::
+* Regular S-Expressions::
+* Regsexp Procedures::
 
 Lists
 
