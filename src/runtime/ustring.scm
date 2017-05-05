@@ -1777,7 +1777,7 @@ USA.
 (define (string-splitter . options)
   (receive (delimiter allow-runs? copy?)
       (string-splitter-options options 'string-splitter)
-    (let ((predicate (splitter-delimiter->predicate delimiter))
+    (let ((predicate (char-matcher->predicate delimiter 'string-splitter))
 	  (get-part (if copy? substring string-slice)))
 
       (lambda (string #!optional start end)
@@ -1807,17 +1807,17 @@ USA.
 
 (define-deferred string-splitter-options
   (keyword-option-parser
-   (list (list 'delimiter splitter-delimiter? char-whitespace?)
+   (list (list 'delimiter char-matcher? char-whitespace?)
 	 (list 'allow-runs? boolean? #t)
 	 (list 'copy? boolean? #f))))
 
-(define (splitter-delimiter->predicate delimiter)
-  (cond ((char? delimiter) (char=-predicate delimiter))
-	((char-set? delimiter) (char-set-predicate delimiter))
-	((unary-procedure? delimiter) delimiter)
-	(else (error:not-a splitter-delimiter? delimiter 'string-splitter))))
+(define (char-matcher->predicate matcher caller)
+  (cond ((char? matcher) (char=-predicate matcher))
+	((char-set? matcher) (char-set-predicate matcher))
+	((unary-procedure? matcher) matcher)
+	(else (error:not-a char-matcher? matcher caller))))
 
-(define (splitter-delimiter? object)
+(define (char-matcher? object)
   (or (char? object)
       (char-set? object)
       (unary-procedure? object)))
@@ -1825,9 +1825,10 @@ USA.
 ;;;; Trimmer/Padder
 
 (define (string-trimmer . options)
-  (receive (where copy? trim-char?)
+  (receive (where to-trim copy?)
       (string-trimmer-options options 'string-trimmer)
-    (let ((get-trimmed (if copy? substring string-slice)))
+    (let ((predicate (char-matcher->predicate to-trim 'string-trimmer))
+	  (get-trimmed (if copy? substring string-slice)))
       (lambda (string)
 	(let ((end (string-length string)))
 	  (get-trimmed
@@ -1836,22 +1837,22 @@ USA.
 	       0
 	       (let loop ((index 0))
 		 (if (and (fix:< index end)
-			  (trim-char? (string-ref string index)))
+			  (predicate (string-ref string index)))
 		     (loop (fix:+ index 1))
 		     index)))
 	   (if (eq? where 'leading)
 	       end
 	       (let loop ((index end))
 		 (if (and (fix:> index 0)
-			  (trim-char? (string-ref string (fix:- index 1))))
+			  (predicate (string-ref string (fix:- index 1))))
 		     (loop (fix:- index 1))
 		     index)))))))))
 
 (define-deferred string-trimmer-options
   (keyword-option-parser
    (list (list 'where '(leading trailing both) 'both)
-	 (list 'copy? boolean? #f)
-	 (list 'trim-char? unary-procedure? char-whitespace?))))
+	 (list 'to-trim char-matcher? char-whitespace?)
+	 (list 'copy? boolean? #f))))
 
 (define (string-padder . options)
   (receive (where fill-with clip?)
@@ -2059,11 +2060,10 @@ USA.
   (lambda (string #!optional char-set)
     ((string-trimmer 'where where
 		     'copy? #t
-		     'trim-char?
-		     (char-set-predicate
-		      (if (default-object? char-set)
-			  char-set:whitespace
-			  (char-set-invert char-set))))
+		     'to-trim
+		     (if (default-object? char-set)
+			 char-set:whitespace
+			 (char-set-invert char-set)))
      string)))
 
 (define string-trim-left (legacy-string-trimmer 'leading))
