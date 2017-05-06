@@ -1185,6 +1185,16 @@ future release.
 A regular s-expression is either a character or a string, which
 matches itself, or one of the following forms.
 
+Examples in this section use the following definitions for brevity:
+
+@example
+(define (try-match pattern string)
+  (regsexp-match-string (compile-regsexp pattern) string))
+
+(define (try-search pattern string)
+  (regsexp-search-string-forward (compile-regsexp pattern) string))
+@end example
+
 These forms match one or more characters literally:
 
 @deffn {regsexp} char-ci char
@@ -1197,12 +1207,28 @@ Matches @var{string} without considering case.
 
 @deffn {regsexp} any-char
 Matches one character other than @code{#\newline}.
+
+@example
+(try-match '(any-char) "") @result{} #f
+(try-match '(any-char) "a") @result{} (0 1)
+(try-match '(any-char) "\n") @result{} #f
+(try-search '(any-char) "") @result{} #f
+(try-search '(any-char) "ab") @result{} (0 1)
+(try-search '(any-char) "\na") @result{} (1 2)
+@end example
 @end deffn
 
-@deffn {regsexp} char-set datum @dots{}
-@deffnx {regsexp} inverse-char-set datum @dots{}
+@deffn {regsexp} char-in datum @dots{}
+@deffnx {regsexp} char-not-in datum @dots{}
 Matches one character in (not in) the character set specified by
 @code{(char-set @var{datum @dots{}})}.
+
+@example
+(try-match '(seq "a" (char-in "ab") "c") "abc") @result{} (0 3)
+(try-match '(seq "a" (char-not-in "ab") "c") "abc") @result{} #f
+(try-match '(seq "a" (char-not-in "ab") "c") "adc") @result{} (0 3)
+(try-match '(seq "a" (+ (char-in numeric)) "c") "a019c") @result{} (0 5)
+@end example
 @end deffn
 
 These forms match no characters, but only at specific locations in the
@@ -1211,11 +1237,65 @@ input string:
 @deffn {regsexp} line-start
 @deffnx {regsexp} line-end
 Matches no characters at the start (end) of a line.
+
+@example
+@group
+(try-match '(seq (line-start)
+                 (* (any-char))
+                 (line-end))
+           "abc") @result{} (0 3)
+@end group
+@group
+(try-match '(seq (line-start)
+                 (* (any-char))
+                 (line-end))
+           "ab\nc") @result{} (0 2)
+@end group
+@group
+(try-search '(seq (line-start)
+                  (* (char-in alphabetic))
+                  (line-end))
+            "1abc") @result{} #f
+@end group
+@group
+(try-search '(seq (line-start)
+                  (* (char-in alphabetic))
+                  (line-end))
+            "1\nabc") @result{} (2 5)
+@end group
+@end example
 @end deffn
 
 @deffn {regsexp} string-start
 @deffnx {regsexp} string-end
 Matches no characters at the start (end) of the string.
+
+@example
+@group
+(try-match '(seq (string-start)
+                 (* (any-char))
+                 (string-end))
+           "abc") @result{} (0 3)
+@end group
+@group
+(try-match '(seq (string-start)
+                 (* (any-char))
+                 (string-end))
+           "ab\nc") @result{} #f
+@end group
+@group
+(try-search '(seq (string-start)
+                  (* (char-in alphabetic))
+                  (string-end))
+            "1abc") @result{} #f
+@end group
+@group
+(try-search '(seq (string-start)
+                  (* (char-in alphabetic))
+                  (string-end))
+            "1\nabc") @result{} #f
+@end group
+@end example
 @end deffn
 
 These forms match repetitions of a given regsexp.  Most of them come
@@ -1230,16 +1310,103 @@ a time.  The shy form is similar to the greedy form except that a
 @deffn {regsexp} ? regsexp
 @deffnx {regsexp} ?? regsexp
 Matches @var{regsexp} zero or one time.
+
+@example
+@group
+(try-search '(seq (char-in alphabetic)
+                  (? (char-in numeric)))
+            "a") @result{} (0 1)
+@end group
+@group
+(try-search '(seq (char-in alphabetic)
+                  (?? (char-in numeric)))
+            "a") @result{} (0 1)
+@end group
+@group
+(try-search '(seq (char-in alphabetic)
+                  (? (char-in numeric)))
+            "a1") @result{} (0 2)
+@end group
+@group
+(try-search '(seq (char-in alphabetic)
+                  (?? (char-in numeric)))
+            "a1") @result{} (0 1)
+@end group
+@group
+(try-search '(seq (char-in alphabetic)
+                  (? (char-in numeric)))
+            "1a2") @result{} (1 3)
+@end group
+@group
+(try-search '(seq (char-in alphabetic)
+                  (?? (char-in numeric)))
+            "1a2") @result{} (1 2)
+@end group
+@end example
 @end deffn
 
 @deffn {regsexp} * regsexp
 @deffnx {regsexp} *? regsexp
 Matches @var{regsexp} zero or more times.
+
+@example
+@group
+(try-match '(seq (char-in alphabetic)
+                 (* (char-in numeric))
+                 (any-char))
+           "aa") @result{} (0 2)
+@end group
+@group
+(try-match '(seq (char-in alphabetic)
+                 (*? (char-in numeric))
+                 (any-char))
+           "aa") @result{} (0 2)
+@end group
+@group
+(try-match '(seq (char-in alphabetic)
+                 (* (char-in numeric))
+                 (any-char))
+           "a123a") @result{} (0 5)
+@end group
+@group
+(try-match '(seq (char-in alphabetic)
+                 (*? (char-in numeric))
+                 (any-char))
+           "a123a") @result{} (0 2)
+@end group
+@end example
 @end deffn
 
 @deffn {regsexp} + regsexp
 @deffnx {regsexp} +? regsexp
 Matches @var{regsexp} one or more times.
+
+@example
+@group
+(try-match '(seq (char-in alphabetic)
+                 (+ (char-in numeric))
+                 (any-char))
+           "aa") @result{} #f
+@end group
+@group
+(try-match '(seq (char-in alphabetic)
+                 (+? (char-in numeric))
+                 (any-char))
+           "aa") @result{} #f
+@end group
+@group
+(try-match '(seq (char-in alphabetic)
+                 (+ (char-in numeric))
+                 (any-char))
+           "a123a") @result{} (0 5)
+@end group
+@group
+(try-match '(seq (char-in alphabetic)
+                 (+? (char-in numeric))
+                 (any-char))
+           "a123a") @result{} (0 3)
+@end group
+@end example
 @end deffn
 
 @deffn {regsexp} ** n m regsexp
@@ -1250,6 +1417,33 @@ to @var{n}, or else @code{#f}.
 
 Matches @var{regsexp} at least @var{n} times and at most @var{m}
 times; if @var{m} is @code{#f} then there is no upper limit.
+
+@example
+@group
+(try-match '(seq (char-in alphabetic)
+                 (** 0 2 (char-in numeric))
+                 (any-char))
+           "aa") @result{} (0 2)
+@end group
+@group
+(try-match '(seq (char-in alphabetic)
+                 (**? 0 2 (char-in numeric))
+                 (any-char))
+           "aa") @result{} (0 2)
+@end group
+@group
+(try-match '(seq (char-in alphabetic)
+                 (** 0 2 (char-in numeric))
+                 (any-char))
+           "a123a") @result{} (0 4)
+@end group
+@group
+(try-match '(seq (char-in alphabetic)
+                 (**? 0 2 (char-in numeric))
+                 (any-char))
+           "a123a") @result{} (0 2)
+@end group
+@end example
 @end deffn
 
 @deffn {regsexp} ** n regsexp
@@ -1263,11 +1457,23 @@ These forms implement alternatives and sequencing:
 @deffn {regsexp} alt regsexp @dots{}
 Matches one of the @var{regsexp} arguments, trying each in order from
 left to right.
+
+@example
+(try-match '(alt #\a (char-in numeric)) "a") @result{} (0 1)
+(try-match '(alt #\a (char-in numeric)) "b") @result{} #f
+(try-match '(alt #\a (char-in numeric)) "1") @result{} (0 1)
+@end example
 @end deffn
 
 @deffn {regsexp} seq regsexp @dots{}
 Matches the first @var{regsexp}, then continues the match with the
 next @var{regsexp}, and so on until all of the arguments are matched.
+
+@example
+(try-match '(seq #\a #\b) "a") @result{} #f
+(try-match '(seq #\a #\b) "aa") @result{} #f
+(try-match '(seq #\a #\b) "ab") @result{} (0 2)
+@end example
 @end deffn
 
 These forms implement named @dfn{registers}, which store matched
@@ -1278,6 +1484,15 @@ The @var{key} argument must be a fixnum, a character, or a symbol.
 
 Matches @var{regsexp}.  If the match succeeds, the matched segment is
 stored in the register named @var{key}.
+
+@example
+@group
+(try-match '(seq (group a (any-char))
+                 (group b (any-char))
+                 (any-char))
+           "radar") @result{} (0 3 (a . "r") (b . "a"))
+@end group
+@end example
 @end deffn
 
 @deffn {regsexp} group-ref key
@@ -1286,6 +1501,17 @@ The @var{key} argument must be a fixnum, a character, or a symbol.
 Matches the characters stored in the register named @var{key}.  It is
 an error if that register has not been initialized with a
 corresponding @code{group} expression.
+
+@example
+@group
+(try-match '(seq (group a (any-char))
+                 (group b (any-char))
+                 (any-char)
+                 (group-ref b)
+                 (group-ref a))
+           "radar") @result{} (0 5 (a . "r") (b . "a"))
+@end group
+@end example
 @end deffn
 
 @node Regsexp Procedures,  , Regular S-Expressions, Regular Expressions
