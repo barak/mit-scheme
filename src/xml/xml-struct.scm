@@ -260,7 +260,8 @@ USA.
 	   (let ((end (string-length object)))
 	     (and (fix:> end 0)
 		  (char-alphabetic? (string-ref object 0))
-		  (string-composed-of? object char-set:xml-encoding 1 end))))))
+		  (string-composed-of? (string-slice object 1)
+				       char-set:xml-encoding))))))
 (register-predicate! xml-encoding? 'xml-encoding '<= string?)
 
 (define char-set:xml-encoding
