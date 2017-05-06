@@ -29,7 +29,19 @@ USA.
 
 (declare (usual-integrations))
 
-(define predicate?)
+(define boot-registrations '())
+
+(define (predicate? object)
+  (any (lambda (reg)
+	 (eqv? (car reg) object))
+       boot-registrations))
+
+(define (register-predicate! predicate name . keylist)
+  (set! boot-registrations
+	(cons (cons* predicate name keylist)
+	      boot-registrations))
+  unspecific)
+
 (define get-predicate-tag)
 (define set-predicate-tag!)
 (define delete-predicate-tag!)
@@ -40,9 +52,10 @@ USA.
      (set! get-predicate-tag (table 'get))
      (set! set-predicate-tag! (table 'put!))
      (set! delete-predicate-tag! (table 'delete!))
+     (set! register-predicate! register-predicate!/after-boot)
      unspecific)))
 
-(define (register-predicate! predicate name . keylist)
+(define (register-predicate!/after-boot predicate name . keylist)
   (guarantee keyword-list? keylist 'register-predicate!)
   (let ((tag
          (make-tag name
@@ -54,7 +67,7 @@ USA.
 		(set-tag<=! tag (predicate->tag superset)))
 	      (get-keyword-values keylist '<=))
     tag))
-
+
 (define (predicate-name predicate)
   (tag-name (predicate->tag predicate 'predicate-name)))
 
@@ -128,8 +141,13 @@ USA.
 
 (define (tag-name? object)
   (or (symbol? object)
-      (and (list? object)
-           (every tag-name? object))))
+      (and (pair? object)
+	   (symbol? (car object))
+	   (list? (cdr object))
+	   (every (lambda (elt)
+		    (or (object-non-pointer? elt)
+			(tag-name? elt)))
+		  (cdr object)))))
 
 (define-record-type <tag>
     (%make-tag name predicate tagger untagger extra description
@@ -322,3 +340,11 @@ USA.
    (register-predicate! weak-pair? 'weak-pair)
 
    (register-ustring-predicates!)))
+
+(add-boot-init!
+ (lambda ()
+   (for-each (lambda (reg)
+	       (apply register-predicate! reg))
+	     (reverse! boot-registrations))
+   (set! boot-registrations)
+   unspecific))
