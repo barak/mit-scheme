@@ -94,8 +94,9 @@ USA.
 	       (parameterize* (list (cons current-output-port port))
 			      thunk)))))
       (if (and (car x) (> length 4))
-	  (string-copy! (cdr x) (- length 4) " ..."))
-      (cdr x))))
+	  (string-append (string-slice (cdr x) 0 (- length 4))
+			 " ...")
+	  (cdr x)))))
 
 (define (show-frames environment depth port)
   (debugger-presentation port
