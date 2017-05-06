@@ -110,7 +110,7 @@ USA.
   (set-parser-buffer-line! buffer (parser-buffer-pointer-line p)))
 
 (define (get-parser-buffer-tail buffer p)
-  (call-with-parser-buffer-tail buffer p string-copy))
+  (call-with-parser-buffer-tail buffer p substring))
 
 (define (call-with-parser-buffer-tail buffer p procedure)
   ;; P must be a buffer pointer previously returned by
