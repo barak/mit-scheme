@@ -252,8 +252,8 @@ USA.
 	((set-default-handler!) set-default-handler!)
         (else (delegate operator))))))
 
-(define (cached-most-specific-handler-set)
-  (cached-handler-set (most-specific-handler-set) object->tag))
+(define (cached-most-specific-handler-set default-handler)
+  (cached-handler-set (most-specific-handler-set default-handler) object->tag))
 
-(define (cached-chaining-handler-set)
-  (cached-handler-set (chaining-handler-set) object->tag))
+(define (cached-chaining-handler-set default-handler)
+  (cached-handler-set (chaining-handler-set default-handler) object->tag))
