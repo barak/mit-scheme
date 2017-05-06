@@ -1170,9 +1170,10 @@ s-expression syntax, which we call a @dfn{regular s-expression},
 abbreviated as @dfn{regsexp}.
 
 Previous releases of MIT/GNU Scheme provided a regular-expression
-mechanism nearly identical to that of GNU Emacs version 18.  This
-mechanism still exists but is deprecated and will be removed in a
-future release.
+implementation nearly identical to that of GNU Emacs version 18.  This
+implementation supported only 8-bit strings, which made it unsuitable
+for use with Unicode strings.  This implementation still exists but is
+deprecated and will be removed in a future release.
 
 @menu
 * Regular S-Expressions::
@@ -1534,6 +1535,11 @@ the index at which the match starts, @var{e} is the index at which the
 match ends, and each @var{register} is a pair @code{(@var{key}
 . @var{contents})} where @var{key} is the register's name and
 @var{contents} is the contents of that register as a string.
+
+In order to get reliable results, the string arguments to these
+procedures must be in Unicode Normalization Form C.  The string
+implementation keeps most strings in this form by default; in other
+cases the caller must convert the string using @code{string->nfc}.
 
 @deffn procedure regsexp-match-string crse string [start [end]]
 The @var{crse} argument must be a value returned by
