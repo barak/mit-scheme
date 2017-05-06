@@ -215,11 +215,11 @@ USA.
 (define error-regsexp
   (compile-regsexp
    '(seq (string-start)
-	 (* (char-set whitespace))
+	 (* (char-in whitespace))
 	 (? (string-ci "error:"))
-	 (* (char-set whitespace))
+	 (* (char-in whitespace))
 	 (group message (* (any-char)))
-	 (* (char-set whitespace))
+	 (* (char-in whitespace))
 	 (string-end))))
 
 (define (open-pgsql-conn parameters #!optional wait?)

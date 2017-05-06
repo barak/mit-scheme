@@ -148,11 +148,11 @@ USA.
 	   (else
 	    (error:not-a unary-procedure? predicate))))))
 
-(define-rule '(char-set * datum)
+(define-rule '(char-in * datum)
   (lambda items
     (insn:char-set (char-set* items))))
 
-(define-rule '(inverse-char-set * datum)
+(define-rule '(char-not-in * datum)
   (lambda items
     (insn:inverse-char-set (char-set* items))))
 
@@ -698,8 +698,8 @@ USA.
 	    ((#\B) (output-expr '(not-word-bound)))
 	    ((#\`) (output-expr '(string-start)))
 	    ((#\') (output-expr '(string-end)))
-	    ((#\w) (output-expr '(char-set whitespace)))
-	    ((#\W) (output-expr '(inverse-char-set whitespace)))
+	    ((#\w) (output-expr '(char-in whitespace)))
+	    ((#\W) (output-expr '(char-not-in whitespace)))
 	    ((#\s) (output-expr `(legacy-char-syntax ,(get-next))))
 	    ((#\S) (output-expr `(inverse-legacy-char-syntax ,(get-next))))
 	    ((#\() (start-group))
@@ -751,7 +751,7 @@ USA.
                  (receive (ranges invert?)
                      (re-char-pattern->code-points
                       (list->string (reverse chars)))
-                   (cons (if invert? 'inverse-char-set 'char-set)
+                   (cons (if invert? 'char-not-in 'char-in)
 			 (normalize-ranges ranges))))
                 (loop (cons char chars))))))
 

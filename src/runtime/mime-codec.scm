@@ -709,11 +709,11 @@ USA.
 
 (define binhex40-header-regexp
   (compile-regsexp
-   '(seq (* (char-set "\r\n\t "))
+   '(seq (* (char-in "\r\n\t "))
 	 "(This file must be converted with BinHex"
 	 (* (any-char))
-	 (char-set "\r\n")
-	 (* (char-set "\r\n\t "))
+	 (char-in "\r\n")
+	 (* (char-in "\r\n\t "))
 	 ":")))
 
 (define (decode-binhex40-decoding context string start end)
@@ -1018,7 +1018,7 @@ USA.
    '(seq (line-start)
 	 "begin"
 	 (+ #\space)
-	 (+ (char-set (48 . 56)))
+	 (+ (char-in (48 . 56)))
 	 (+ #\space)
 	 (+ (any-char))
 	 (line-end))))
