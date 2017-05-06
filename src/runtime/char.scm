@@ -91,13 +91,21 @@ USA.
 
 (define (char=-predicate char)
   (guarantee char? char 'char=-predicate)
-  (lambda (char*)
-    (char=? char* char)))
+  (let ((predicate
+	 (lambda (char*)
+	   (and (char? char*)
+		(char=? char* char)))))
+    (register-predicate! predicate `(char=-predicate ,char) '<= char?)
+    predicate))
 
 (define (char-ci=-predicate char)
   (guarantee char? char 'char-ci=-predicate)
-  (lambda (char*)
-    (char-ci=? char* char)))
+  (let ((predicate
+	 (lambda (char*)
+	   (and (char? char*)
+		(char-ci=? char* char)))))
+    (register-predicate! predicate `(char-ci=-predicate ,char) '<= char?)
+    predicate))
 
 (define-integrable (%char=? x y)
   (fix:= (char->integer x) (char->integer y)))
