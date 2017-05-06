@@ -623,7 +623,8 @@ The given @var{char} must be the most-recently read character from the
 textual input @var{port}.  This procedure ``unreads'' the character,
 updating @var{port} as if the character had never been read.
 
-Note that this only works with characters returned by @code{read-char}.
+Note that this only works with characters returned by @code{read-char}
+or @code{read-char-no-hang}.
 @end deffn
 
 @deffn {standard procedure} peek-char [port]
@@ -658,7 +659,7 @@ a linefeed character.  Implementations may also recognize other end of
 line characters or sequences.
 
 In MIT/GNU Scheme, if @var{port} is an interactive input port and no
-characters are immediately available, @code{read-char} will hang
+characters are immediately available, @code{read-line} will hang
 waiting for input, even if the port is in non-blocking mode.
 @end deffn
 
@@ -721,10 +722,9 @@ beginning at position @code{0}.  Returns the number of characters
 read.  If no characters are available, an end-of-file object is
 returned.
 
-In MIT/GNU Scheme, there's a special case if @var{port} is an
-interactive port in non-blocking mode.  If no characters are
-immediately available, @code{#f} is returned without any modification
-of @var{string}.
+In MIT/GNU Scheme, if @var{port} is an interactive port in
+non-blocking mode and no characters are immediately available,
+@code{#f} is returned without any modification of @var{string}.
 
 However, if one or more characters are immediately available, the
 region is filled using the available characters.  The procedure then
@@ -741,12 +741,20 @@ This procedure is @strong{deprecated}; use @code{read-string!} instead.
 Returns the next byte available from the binary input @var{port},
 updating the @var{port} to point to the following byte.  If no more
 bytes are available, an end-of-file object is returned.
+
+In MIT/GNU Scheme, if @var{port} is an interactive input port in
+non-blocking mode and no characters are immediately available,
+@code{read-u8} will return @code{#f}.
 @end deffn
 
 @deffn {standard procedure} peek-u8 [port]
 Returns the next byte available from the binary input @var{port}, but
 @emph{without} updating the @var{port} to point to the following byte.
 If no more bytes are available, an end-of-file object is returned.
+
+In MIT/GNU Scheme, if @var{port} is an interactive input port in
+non-blocking mode and no characters are immediately available,
+@code{peek-u8} will return @code{#f}.
 @end deffn
 
 @deffn {standard procedure} u8-ready? [port]
@@ -763,6 +771,14 @@ end of file, from the binary input @var{port} into a newly allocated
 bytevector in left-to-right order and returns the bytevector.  If no
 bytes are available before the end of file, an end-of-file object is
 returned.
+
+In MIT/GNU Scheme, if @var{port} is an interactive input port in
+non-blocking mode and no characters are immediately available,
+@code{read-bytevector} will return @code{#f}.
+
+However, if one or more bytes are immediately available, they are read
+and returned as a bytevector, without waiting for further bytes, even
+if the number of bytes is less than @var{k}.
 @end deffn
 
 @deffn {standard procedure} read-bytevector! bytevector [port [start [end]]]
@@ -774,10 +790,9 @@ been reached.  If @var{start} is not supplied, reads beginning at
 position @code{0}.  Returns the number of bytes read.  If no bytes are
 available, an end-of-file object is returned.
 
-In MIT/GNU Scheme, there's a special case if @var{port} is an
-interactive port in non-blocking mode.  If no bytes are immediately
-available, @code{#f} is returned without any modification of
-@var{bytevector}.
+In MIT/GNU Scheme, if @var{port} is an interactive input port in
+non-blocking mode and no characters are immediately available,
+@code{read-bytevector!} will return @code{#f}.
 
 However, if one or more bytes are immediately available, the region is
 filled using the available bytes.  The procedure then returns the
@@ -986,11 +1001,25 @@ This procedure is @strong{deprecated}; use @code{write-string} instead.
 @deffn {standard procedure} write-u8 byte [port]
 Writes the @var{byte} to the given binary output @var{port} and
 returns an unspecified value.
+
+In MIT/GNU Scheme, if @var{port} is an interactive output port in
+non-blocking mode and writing a byte would block, @code{write-u8}
+immediately returns @code{#f} without writing anything.  Otherwise
+@var{byte} is written and @code{1} is returned.
 @end deffn
 
 @deffn {standard procedure} write-bytevector bytevector [port [start [end]]]
 Writes the bytes of @var{bytevector} from @var{start} to @var{end} in
 left-to-right order to the binary output @var{port}.
+
+In MIT/GNU Scheme, if @var{port} is an interactive output port in
+non-blocking mode @code{write-bytevector} will write as many bytes as
+it can without blocking, then returns the number of bytes written; if
+no bytes can be written without blocking, returns @code{#f} without
+writing anything.  Otherwise @code{write-bytevector} returns the
+number of bytes actually written, which may be less than the number
+requested if unable to write all the bytes.  (For example, if writing
+to a file and the file system is full.)
 @end deffn
 
 @deffn {standard procedure} flush-output-port [port]
