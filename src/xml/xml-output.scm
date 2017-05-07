@@ -28,8 +28,12 @@ USA.
 
 (declare (usual-integrations))
 
-(define (write-xml xml port . options)
-  (write-xml* xml port options))
+(define (write-xml xml #!optional port . options)
+  (write-xml* xml
+	      (if (default-object? port)
+		  (current-output-port)
+		  port)
+	      options))
 
 (define (write-xml-file xml pathname . options)
   (call-with-output-file pathname
