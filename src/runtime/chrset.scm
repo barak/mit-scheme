@@ -39,10 +39,24 @@ USA.
 ;;; The HIGH range sequence is a u24 bytevector implementing an inversion list.
 
 (define-record-type <char-set>
-    (%make-char-set low high)
+    (%make-char-set low high predicate)
     char-set?
   (low %char-set-low)
-  (high %char-set-high))
+  (high %char-set-high)
+  (predicate %char-set-predicate))
+
+(define (make-char-set low high)
+  (letrec
+      ((char-set
+	(%make-char-set low high
+	  (delay
+	    (let ((predicate
+		   (lambda (char)
+		     (and (bitless-char? char)
+			  (char-in-set? char char-set)))))
+	      (register-predicate! predicate 'char-set-predicate '<= char?)
+	      predicate)))))
+    char-set))
 
 (define-integrable %low-cps-per-byte 8)
 
@@ -93,8 +107,8 @@ USA.
 ;;; All char-sets are constructed by %INVERSION-LIST->CHAR-SET.
 (define (%inversion-list->char-set ilist)
   (let ((low-limit (%choose-low-limit ilist)))
-    (%make-char-set (%inversion-list->low ilist low-limit)
-		    (%inversion-list->high ilist low-limit))))
+    (make-char-set (%inversion-list->low ilist low-limit)
+		   (%inversion-list->high ilist low-limit))))
 
 (define (%choose-low-limit ilist)
   (let ((max-low-bytes (fix:quotient #x110000 %high-bytes-per-cp)))
@@ -423,13 +437,7 @@ USA.
 	      #f)))))
 
 (define (char-set-predicate char-set)
-  (guarantee char-set? char-set 'char-set-predicate)
-  (let ((predicate
-	 (lambda (char)
-	   (and (bitless-char? char)
-		(char-in-set? char char-set)))))
-    (register-predicate! predicate 'char-set-predicate '<= char?)
-    predicate))
+  (force (%char-set-predicate char-set)))
 
 (define (char-set=? char-set . char-sets)
   (every (lambda (char-set*)
