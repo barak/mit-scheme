@@ -48,7 +48,7 @@ USA.
 
 (define (well-formed-metadata-spec? object)
   (and (list? object)
-       (= 3 (length object))
+       (memv (length object) '(3 4))
        (string? (car object))
        (symbol? (cadr object))
        (property-type? (caddr object))))
@@ -123,15 +123,19 @@ USA.
 	       (error "Ill-formed property metadata record:" metadata))
 	   (make-metadata (car metadata)
 			  (cadr metadata)
-			  (caddr metadata)))
+			  (caddr metadata)
+			  (if (pair? (cdddr metadata))
+			      (cadddr metadata)
+			      #f)))
 	 properties)))
 
 (define-record-type <metadata>
-    (make-metadata name full-name type-spec)
+    (make-metadata name full-name type-spec note)
     metadata?
   (name metadata-name)
   (full-name metadata-full-name)
-  (type-spec metadata-type-spec))
+  (type-spec metadata-type-spec)
+  (note metadata-note))
 
 (define ucd-property-metadata
   (read-ucd-property-metadata))
@@ -158,12 +162,13 @@ USA.
       (lambda (port)
 	(write-line ucd-version port)))
     (for-each (lambda (metadata)
-		(let ((prop-name (metadata-name metadata)))
-		  (write-prop-file
-		   prop-name
-		   ucd-version
-		   (single-repertoire-property (string->symbol prop-name)
-					       document))))
+		(if (not (eq? 'derived (metadata-note metadata)))
+		    (let ((prop-name (metadata-name metadata)))
+		      (write-prop-file
+		       prop-name
+		       ucd-version
+		       (single-repertoire-property (string->symbol prop-name)
+						   document)))))
               ucd-property-metadata)))
 
 (define (write-prop-file prop-name ucd-version prop-alist)
@@ -596,8 +601,7 @@ USA.
 	       (symbol "ucd-" (string-downcase prop-name) "-value"))))
 
 (define (metadata->code-generator metadata)
-  (let ((name (metadata-name metadata))
-	(type-spec (metadata-type-spec metadata)))
+  (let ((type-spec (metadata-type-spec metadata)))
     (cond ((eq? type-spec 'boolean) code-generator:boolean)
 	  ((eq? type-spec 'ccc) code-generator:ccc)
 	  ((eq? type-spec 'code-point) code-generator:code-point)
@@ -873,7 +877,7 @@ USA.
 	`((define (,proc-name char)
             ,(let ((accesses
                     `(let ((sv (char->integer char)))
-                       ,(generate-accesses prop-name 'sv tables)))
+                       ,(generate-accesses 'sv tables)))
                    (default (runtime-default 'char)))
                (if default
                    `(or ,accesses ,default)
@@ -891,7 +895,7 @@ USA.
 	  #f
           (value-converter value)))))
 
-(define (generate-accesses prop-name sv-expr tables)
+(define (generate-accesses sv-expr tables)
   (define (generate-access table index)
     ((trie-table-accessor table)
      (trie-table-name table)
@@ -1122,12 +1126,12 @@ USA.
     (lambda ()
       (if (pair? alist)
 	  (let ((end (fix:+ start step)))
-	    (receive (head tail) (slice-prop-alist-at alist start end)
+	    (receive (head tail) (slice-prop-alist-at alist end)
 	      (cons head
 		    (loop tail end))))
 	  '()))))
 
-(define (slice-prop-alist-at alist start end)
+(define (slice-prop-alist-at alist end)
   (let loop ((tail alist) (head '()))
     (if (pair? tail)
 	(let ((entry (car tail)))
