@@ -86,6 +86,19 @@ KEY is a Blowfish key.\n\
 ENCRYPT? says whether to encrypt (#T) or decrypt (#F).")
 {
   PRIMITIVE_HEADER (4);
+  CHECK_ARG (1, STRING_P);
+  unsigned long input_length;
+  uint8_t * input = (arg_bytevector (1, (&input_length)));
+  if (input_length != 8)
+    error_bad_range_arg (1);
+  unsigned long output_length;
+  uint8_t * output = (arg_bytevector (2, (&output_length)));
+  if (output_length != 8)
+    error_bad_range_arg (2);
+  BF_ecb_encrypt (input,
+		  output,
+		  (key_arg (3)),
+		  ((BOOLEAN_ARG (4)) ? BF_ENCRYPT : BF_DECRYPT));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
