@@ -35,10 +35,12 @@ USA.
     (for-each
      (lambda (entry)
        (write-char #\+)
-       (let ((fr (string-search-forward text (car entry)))
-	     (br (string-search-backward text (car entry))))
+       (let ((fr (string-search-forward (car entry) text))
+	     (br (string-search-backward (car entry) text))
+             (all (string-search-all (car entry) text)))
 	 (if (and (eqv? (cadr entry) fr)
-		  (eqv? (fix:+ (car (last-pair entry)) die-length) br))
+		  (eqv? (fix:+ (last entry) die-length) br)
+                  (equal? (cdr entry) all))
 	     (begin
 	       (set! ok (fix:+ ok 1))
 	       unspecific)
@@ -74,7 +76,15 @@ USA.
 (define (file->string filename)
   (call-with-input-file filename
     (lambda (port)
-      ((textual-port-operation port 'REST->STRING) port))))
+      (let ((builder (string-builder))
+            (buffer (make-string #x1000)))
+        (let loop ()
+          (let ((n (read-string! buffer port)))
+            (if (> n 0)
+                (begin
+                  (builder (substring buffer 0 n))
+                  (loop)))))
+        (builder 'immutable)))))
 
 (define (search-speed-test text die-length die-skew procedure n-repeats)
   (let ((entries (map car (dice-text text die-length die-skew))))
