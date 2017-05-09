@@ -138,20 +138,30 @@ USA.
   (not (%ustring-mutable? string)))
 
 (define-integrable flag:nfc #x04)
-(define-integrable flag:nfd #x08)
+(define-integrable flag:nfc-set #x08)
+(define-integrable flag:nfd #x10)
 
 (define-integrable (%make-flag-tester flag)
   (lambda (string)
     (not (fix:= 0 (fix:and flag (%ustring-flags string))))))
 
-(define-integrable (%make-flag-setter flag)
-  (lambda (string)
-    (%set-ustring-flags! string (fix:or flag (%ustring-flags string)))))
-
 (define ustring-in-nfc? (%make-flag-tester flag:nfc))
-(define ustring-in-nfc! (%make-flag-setter flag:nfc))
+(define ustring-in-nfc-set? (%make-flag-tester flag:nfc-set))
 (define ustring-in-nfd? (%make-flag-tester flag:nfd))
-(define ustring-in-nfd! (%make-flag-setter flag:nfd))
+
+(define (ustring-in-nfc! string nfc?)
+  (%set-ustring-flags! string
+		       (fix:or (fix:andc (%ustring-flags string)
+					 (fix:or flag:nfc flag:nfc-set))
+			       (if nfc?
+				   (fix:or flag:nfc flag:nfc-set)
+				   flag:nfc-set))))
+
+(define (ustring-in-nfd! string nfd?)
+  (%set-ustring-flags! string
+		       (if nfd?
+			   (fix:or (%ustring-flags string) flag:nfd)
+			   (fix:andc (%ustring-flags string) flag:nfd))))
 
 (define-integrable (ustring1-ref string index)
   (integer->char (cp1-ref string index)))
@@ -214,15 +224,15 @@ USA.
 (define (immutable-ustring-allocate n max-cp)
   (cond ((fix:< max-cp #x100)
 	 (let ((s (%ustring-allocate (fix:+ n 1) n 1)))
-	   (ustring-in-nfc! s)
+	   (ustring-in-nfc! s #t)
 	   (if (fix:< max-cp #xC0)
-	       (ustring-in-nfd! s))
+	       (ustring-in-nfd! s #t))
 	   (ustring1-set! s n #\null)	;zero-terminate for C
 	   s))
 	((fix:< max-cp #x10000)
 	 (let ((s (%ustring-allocate (fix:* 2 n) n 2)))
 	   (if (fix:< max-cp #x300)
-	       (ustring-in-nfc! s))
+	       (ustring-in-nfc! s #t))
 	   s))
 	(else
 	 (%ustring-allocate (fix:* 3 n) n 3))))
@@ -236,14 +246,14 @@ USA.
 ;;; Used during cold load.
 (define (%ascii-ustring! string)
   (%set-ustring-cp-size! string 1)
-  (ustring-in-nfc! string)
-  (ustring-in-nfd! string))
+  (ustring-in-nfc! string #t)
+  (ustring-in-nfd! string #t))
 
 ;;; Used during cold load.
 (define (%ascii-ustring-allocate n)
   (let ((s (%ustring-allocate (fix:+ n 1) n 1)))
-    (ustring-in-nfc! s)
-    (ustring-in-nfd! s)
+    (ustring-in-nfc! s #t)
+    (ustring-in-nfd! s #t)
     (ustring1-set! s n #\null)	;zero-terminate for C
     s))
 
@@ -863,35 +873,62 @@ USA.
        (string-in-nfc? string)))
 
 (define (string-in-nfc? string)
-  (let ((qc (string-nfc-qc string 'string-in-nfc?)))
-    (if (eq? qc 'maybe)
-	(%string=? string (%string->nfc string))
-	qc)))
+  (let ((full-check
+	 (lambda ()
+	   (let ((qc (string-nfc-qc string 'string-in-nfc?)))
+	     (if (eq? qc 'maybe)
+		 (%string=? string (%string->nfc string))
+		 qc)))))
+    (if (and (ustring? string)
+	     (%ustring-immutable? string))
+	(if (ustring-in-nfc-set? string)
+	    (ustring-in-nfc? string)
+	    (let ((nfc? (full-check)))
+	      (ustring-in-nfc! string nfc?)
+	      nfc?))
+	(full-check))))
 
 (define (string->nfc string)
-  (if (eq? #t (string-nfc-qc string 'string->nfc))
-      (let ((result (%string->immutable string)))
-	(ustring-in-nfc! result)
-	result)
-      (%string->nfc string)))
-
+  (if (and (ustring? string)
+	   (%ustring-immutable? string))
+      (if (ustring-in-nfc-set? string)
+	  string
+	  (let ((nfc
+		 (case (string-nfc-qc string 'string->nfc)
+		   ((#t)
+		    string)
+		   ((maybe)
+		    (let ((nfc (%string->nfc string)))
+		      (if (%string=? string nfc)
+			  string
+			  nfc)))
+		   (else
+		    (%string->nfc string)))))
+	    (ustring-in-nfc! nfc #t)
+	    nfc))
+      (let ((nfc
+	     (if (eq? #t (string-nfc-qc string 'string->nfc))
+		 (%string->immutable string)
+		 (%string->nfc string))))
+	(ustring-in-nfc! nfc #t)
+	nfc)))
+
 (define (%string->nfc string)
-  (let ((result
-	 (canonical-composition
-	  (if (string-in-nfd? string)
-	      string
-	      (canonical-decomposition&ordering string
-		(lambda (string* n max-cp)
-		  (declare (ignore n max-cp))
-		  string*))))))
-    (ustring-in-nfc! result)
-    result))
+  (canonical-composition
+   (if (string-in-nfd? string)
+       string
+       (canonical-decomposition&ordering string
+	 (lambda (string* n max-cp)
+	   (declare (ignore n max-cp))
+	   string*)))))
 
 (define (string-nfc-qc string caller)
   (cond ((legacy-string? string)
 	 #t)
 	((ustring? string)
-	 (or (ustring-in-nfc? string)
+	 (if (and (%ustring-immutable? string)
+		  (ustring-in-nfc-set? string))
+	     (ustring-in-nfc? string)
 	     (ustring-nfc-qc string 0 (string-length string))))
 	((slice? string)
 	 (unpack-slice string ustring-nfc-qc))
@@ -950,13 +987,13 @@ USA.
 (define (string->nfd string)
   (if (string-in-nfd? string)
       (let ((result (%string->immutable string)))
-	(ustring-in-nfd! result)
+	(ustring-in-nfd! result #t)
 	result)
       (canonical-decomposition&ordering string
 	(lambda (string* n max-cp)
 	  (let ((result (immutable-ustring-allocate n max-cp)))
 	    (%general-copy! result 0 string* 0 n)
-	    (ustring-in-nfd! result)
+	    (ustring-in-nfd! result #t)
 	    result)))))
 
 (define (canonical-decomposition&ordering string k)
