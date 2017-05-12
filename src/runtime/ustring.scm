@@ -1603,20 +1603,30 @@ USA.
 ;;; Press, 2009), section 32.4.
 
 (define (kmp-search-forward pattern pend text tstart tend)
-  (receive (pi new-prefix) (kmp-prefix-function pattern pend)
+  (receive (pi new-n-matched) (kmp-prefix-function pattern pend)
     (declare (ignore pi))
     (let loop ((i tstart) (n-matched 0))
       (and (fix:< i tend)
-	   (let ((n-matched (new-prefix (string-ref text i) n-matched)))
+	   (let ((n-matched (new-n-matched (string-ref text i) n-matched)))
 	     (if (fix:< n-matched pend)
 		 (loop (fix:+ i 1) n-matched)
 		 (fix:- i (fix:- pend 1))))))))
 
+(define (kmp-search-backward pattern pend text tstart tend)
+  (receive (pi new-n-matched) (kmp-suffix-function pattern pend)
+    (declare (ignore pi))
+    (let loop ((i (fix:- tend 1)) (n-matched 0))
+      (and (fix:>= i tstart)
+	   (let ((n-matched (new-n-matched (string-ref text i) n-matched)))
+	     (if (fix:< n-matched pend)
+		 (loop (fix:- i 1) n-matched)
+		 i))))))
+
 (define (kmp-search-all pattern pend text tstart tend)
-  (receive (pi new-prefix) (kmp-prefix-function pattern pend)
+  (receive (pi new-n-matched) (kmp-prefix-function pattern pend)
     (let loop ((i tstart) (n-matched 0) (matches '()))
       (if (fix:< i tend)
-	  (let ((n-matched (new-prefix (string-ref text i) n-matched)))
+	  (let ((n-matched (new-n-matched (string-ref text i) n-matched)))
 	    (if (fix:< n-matched pend)
 		(loop (fix:+ i 1) n-matched matches)
 		(loop (fix:+ i 1)
@@ -1625,22 +1635,33 @@ USA.
 	  (reverse matches)))))
 
 (define (kmp-prefix-function pattern pend)
+  (kmp-prefix-function* pend
+			(lambda (q)
+			  (string-ref pattern q))))
+
+(define (kmp-suffix-function pattern pend)
+  (kmp-prefix-function* pend
+			(let ((plast (fix:- pend 1)))
+			  (lambda (q)
+			    (string-ref pattern (fix:- plast q))))))
+
+(define (kmp-prefix-function* pend pchar)
   (let ((pi (make-vector pend)))
 
-    (define (compute-pi q k)
-      (vector-set! pi q k)
+    (define (compute-pi q n-matched)
+      (vector-set! pi q n-matched)
       (let ((q (fix:+ q 1)))
 	(if (fix:< q pend)
-	    (compute-pi q (new-prefix (string-ref pattern q) k)))))
+	    (compute-pi q (new-n-matched (pchar q) n-matched)))))
 
-    (define (new-prefix char n-matched)
+    (define (new-n-matched char n-matched)
       (let loop ((n-matched n-matched))
-	(cond ((char=? (string-ref pattern n-matched) char) (fix:+ n-matched 1))
+	(cond ((char=? (pchar n-matched) char) (fix:+ n-matched 1))
 	      ((fix:> n-matched 0) (loop (vector-ref pi (fix:- n-matched 1))))
 	      (else 0))))
 
     (compute-pi 0 0)
-    (values pi new-prefix)))
+    (values pi new-n-matched)))
 
 ;;;; Search top level
 
@@ -1667,7 +1688,7 @@ USA.
 (define string-search-backward
   (string-matcher 'string-search-backward
 		  naive-search-backward
-		  naive-search-backward))
+		  kmp-search-backward))
 
 (define string-search-all
   (string-matcher 'string-search-all
