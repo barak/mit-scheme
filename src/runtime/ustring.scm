@@ -1553,9 +1553,98 @@ USA.
 	    (k1 wb:extend #f)
 	    (k1 wb1 #t))))))
 
-;;;; Search
+;;;; Naive search algorithm
 
-(define-integrable (string-matcher caller matcher)
+(define (naive-search-forward pattern pend text tstart tend)
+  (let ((tlast (fix:- tend pend)))
+    (let find-match ((tindex tstart))
+      (and (fix:<= tindex tlast)
+	   (let match ((pi 0) (ti tindex))
+	     (if (fix:< pi pend)
+		 (if (char=? (string-ref pattern pi)
+			     (string-ref text ti))
+		     (match (fix:+ pi 1) (fix:+ ti 1))
+		     (find-match (fix:+ tindex 1)))
+		 tindex))))))
+
+(define (naive-search-backward pattern pend text tstart tend)
+  (let ((tlast (fix:- tend pend)))
+    (let find-match ((tindex tlast))
+      (and (fix:>= tindex tstart)
+	   (let match ((pi 0) (ti tindex))
+	     (if (fix:< pi pend)
+		 (if (char=? (string-ref pattern pi)
+			     (string-ref text ti))
+		     (match (fix:+ pi 1) (fix:+ ti 1))
+		     (find-match (fix:- tindex 1)))
+		 tindex))))))
+
+(define (naive-search-all pattern pend text tstart tend)
+  (let ((tlast (fix:- tend pend)))
+    (let find-match ((tindex tlast) (matches '()))
+      (if (fix:>= tindex tstart)
+	  (find-match (fix:- tindex 1)
+		      (let match ((pi 0) (ti tindex))
+			(if (fix:< pi pend)
+			    (if (char=? (string-ref pattern pi)
+					(string-ref text ti))
+				(match (fix:+ pi 1) (fix:+ ti 1))
+				matches)
+			    (cons tindex matches))))
+	  matches))))
+
+;;; Knuth-Morris-Pratt algorithm
+
+;;; Donald E. Knuth, James H. Morris, Jr., and Vaughan R. Pratt. Fast pattern
+;;; matching in strings.  SIAM Journal on Computing, 6(2):323–350, 1977.
+
+;;; Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, and Clifford
+;;; Stein, "Introduction to Algorithms, third edition" (Cambridge: The MIT
+;;; Press, 2009), section 32.4.
+
+(define (kmp-search-forward pattern pend text tstart tend)
+  (receive (pi new-prefix) (kmp-prefix-function pattern pend)
+    (declare (ignore pi))
+    (let loop ((i tstart) (n-matched 0))
+      (and (fix:< i tend)
+	   (let ((n-matched (new-prefix (string-ref text i) n-matched)))
+	     (if (fix:< n-matched pend)
+		 (loop (fix:+ i 1) n-matched)
+		 (fix:- i (fix:- pend 1))))))))
+
+(define (kmp-search-all pattern pend text tstart tend)
+  (receive (pi new-prefix) (kmp-prefix-function pattern pend)
+    (let loop ((i tstart) (n-matched 0) (matches '()))
+      (if (fix:< i tend)
+	  (let ((n-matched (new-prefix (string-ref text i) n-matched)))
+	    (if (fix:< n-matched pend)
+		(loop (fix:+ i 1) n-matched matches)
+		(loop (fix:+ i 1)
+		      (vector-ref pi (fix:- n-matched 1))
+		      (cons (fix:- i (fix:- pend 1)) matches))))
+	  (reverse matches)))))
+
+(define (kmp-prefix-function pattern pend)
+  (let ((pi (make-vector pend)))
+
+    (define (compute-pi q k)
+      (vector-set! pi q k)
+      (let ((q (fix:+ q 1)))
+	(if (fix:< q pend)
+	    (compute-pi q (new-prefix (string-ref pattern q) k)))))
+
+    (define (new-prefix char n-matched)
+      (let loop ((n-matched n-matched))
+	(cond ((char=? (string-ref pattern n-matched) char) (fix:+ n-matched 1))
+	      ((fix:> n-matched 0) (loop (vector-ref pi (fix:- n-matched 1))))
+	      (else 0))))
+
+    (compute-pi 0 0)
+    (values pi new-prefix)))
+
+;;;; Search top level
+
+(define-integrable (string-matcher caller naive kmp)
   (lambda (pattern text #!optional start end)
     (guarantee nfc-string? pattern caller)
     (guarantee nfc-string? text caller)
@@ -1564,59 +1653,31 @@ USA.
 	  (error:bad-range-argument pend caller))
       (let* ((tend (fix:end-index end (string-length text) caller))
 	     (tstart (fix:start-index start end caller)))
-	(matcher pattern pend text tstart (fix:- tend pend))))))
+	(if (fix:< pend kmp-pattern-min)
+	    (naive pattern pend text tstart tend)
+	    (kmp pattern pend text tstart tend))))))
+
+(define-integrable kmp-pattern-min 8)
 
 (define string-search-forward
   (string-matcher 'string-search-forward
-		  %dumb-string-search-forward))
+		  naive-search-forward
+		  kmp-search-forward))
 
 (define string-search-backward
   (string-matcher 'string-search-backward
-		  %dumb-string-search-backward))
+		  naive-search-backward
+		  naive-search-backward))
 
 (define string-search-all
   (string-matcher 'string-search-all
-		  %dumb-string-search-all))
+		  naive-search-all
+		  kmp-search-all))
 
 (define (substring? pattern text)
   (and (or (fix:= 0 (string-length pattern))
 	   (string-search-forward (string->nfc pattern) (string->nfc text)))
        #t))
-
-(define (%dumb-string-search-forward pattern pend text tstart tlast)
-  (let find-match ((tindex tstart))
-    (and (fix:<= tindex tlast)
-	 (let match ((pi 0) (ti tindex))
-	   (if (fix:< pi pend)
-	       (if (char=? (string-ref pattern pi)
-			   (string-ref text ti))
-		   (match (fix:+ pi 1) (fix:+ ti 1))
-		   (find-match (fix:+ tindex 1)))
-	       tindex)))))
-
-(define (%dumb-string-search-backward pattern pend text tstart tlast)
-  (let find-match ((tindex tlast))
-    (and (fix:>= tindex tstart)
-	 (let match ((pi 0) (ti tindex))
-	   (if (fix:< pi pend)
-	       (if (char=? (string-ref pattern pi)
-			   (string-ref text ti))
-		   (match (fix:+ pi 1) (fix:+ ti 1))
-		   (find-match (fix:- tindex 1)))
-	       ti)))))
-
-(define (%dumb-string-search-all pattern pend text tstart tlast)
-  (let find-match ((tindex tlast) (matches '()))
-    (if (fix:>= tindex tstart)
-	(find-match (fix:- tindex 1)
-		    (let match ((pi 0) (ti tindex))
-		      (if (fix:< pi pend)
-			  (if (char=? (string-ref pattern pi)
-				      (string-ref text ti))
-			      (match (fix:+ pi 1) (fix:+ ti 1))
-			      matches)
-			  (cons tindex matches))))
-	matches)))
 
 ;;;; Sequence converters
 
