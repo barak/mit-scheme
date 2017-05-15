@@ -1161,8 +1161,8 @@ ordinary string matching and searching, but potentially much slower.
 On the other hand it is less powerful than the mechanism described in
 @ref{Parser Language}.
 
-While traditional regular expressions are defined with string patterns
-in which characters like @samp{[} and @samp{*} have special meanings.
+Traditional regular expressions are defined with string patterns in
+which characters like @samp{[} and @samp{*} have special meanings.
 Unfortunately, the syntax of these patterns is not only baroque but
 also comes in many different and mutually-incompatible varieties.  As
 a consequence we have chosen to specify regular expressions using an
