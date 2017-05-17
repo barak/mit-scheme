@@ -29,6 +29,16 @@ USA.
 
 (declare (usual-integrations))
 
+(define (import-md5)
+  (let ((target-environment (nearest-repl/environment))
+	(source-environment (->environment '(md5))))
+    (for-each (lambda (name)
+		(link-variables target-environment name
+				source-environment name))
+	      '(md5-bytevector
+		md5-file
+		md5-string))))
+
 (C-include "md5")
 
 (define (%md5-init)

@@ -29,8 +29,8 @@ USA.
 (define-package (blowfish)
   (files "blowfish")
   (parent ())
-  ;; You'll have to import these from (global-definitions blowfish/).
-  ;; They are currently bound in () by exports from (runtime blowfish).
+  (export ()
+	  import-blowfish)
   (export (blowfish global)
 	  blowfish-cbc
 	  blowfish-cfb64

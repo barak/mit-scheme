@@ -29,6 +29,8 @@ USA.
 (define-package (mhash)
   (files "mhash")
   (parent ())
+  (export ()
+	  import-mhash)
   (initialization (initialize-package!))
   (export (mhash global)
 	  make-mhash-keygen-type

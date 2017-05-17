@@ -1,17 +1,28 @@
-The GDBM option.
+The GDBM2 option.
 
-This is a drop-in replacement for the gdbm microcode module and
-runtime/gdbm.scm.  It is not part of the core build and can be built
-outside the core build tree in the customary way:
+This plugin creates a (gdbm) package, a drop-in replacement for the
+microcode module based (runtime gdbm) package.  It is built in the
+customary GNU way:
 
     ./configure ...
     make all check install
 
-The install target copies a shared library shim and compiled Scheme
-files into the system library path and re-writes the optiondb.scm
-found there.  You can override the default command name "mit-scheme"
-(and thus the system library path) by setting MIT_SCHEME_EXE.
+To use:
 
-To use: (load-option 'GDBM2) and import the bindings you want.  They
-are not exported to the global environment because they would conflict
-with the exports from (runtime gdbm).
+    (load-option 'gdbm2)
+    (import-gdbm2)
+
+Import-gdbm2 will modify the REPL's current environment by adding
+bindings linked to the plugin's exports.  They are not exported to the
+global environment because they would conflict with the exports from
+(runtime gdbm).
+
+To import into a CREF package set, add this to your .pkg file:
+
+    (global-definitions gdbm/)
+
+    (define-package (your package name)
+      (parent (your package parent))
+      (import (gdbm)
+              gdbm-open
+              ...))

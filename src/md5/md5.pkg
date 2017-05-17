@@ -29,6 +29,8 @@ USA.
 (define-package (md5)
   (files "md5")
   (parent ())
+  (export ()
+	  import-md5)
   (export (md5 global)
 	  md5-bytevector
 	  md5-file

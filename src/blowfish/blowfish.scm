@@ -29,6 +29,23 @@ USA.
 
 (declare (usual-integrations))
 
+(define (import-blowfish)
+  (let ((target-environment (nearest-repl/environment))
+	(source-environment (->environment '(blowfish))))
+    (for-each (lambda (name)
+		(link-variables target-environment name
+				source-environment name))
+	      '(blowfish-cbc
+		blowfish-cfb64
+		blowfish-ecb
+		blowfish-encrypt-port
+		blowfish-file?
+		blowfish-ofb64
+		blowfish-set-key
+		compute-blowfish-init-vector
+		read-blowfish-file-header
+		write-blowfish-file-header))))
+
 (C-include "blowfish")
 
 (define (blowfish-set-key bytes)

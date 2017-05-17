@@ -29,6 +29,34 @@ USA.
 
 (declare (usual-integrations))
 
+(define (import-mhash)
+  (let ((target-environment (nearest-repl/environment))
+	(source-environment (->environment '(mhash))))
+    (for-each (lambda (name)
+		(link-variables target-environment name
+				source-environment name))
+	      '(make-mhash-keygen-type
+		mhash-bytevector
+		mhash-context?
+		mhash-end
+		mhash-file
+		mhash-get-block-size
+		mhash-hmac-end
+		mhash-hmac-init
+		mhash-hmac-update
+		mhash-init
+		mhash-keygen
+		mhash-keygen-max-key-size
+		mhash-keygen-salt-size
+		mhash-keygen-type-names
+		mhash-keygen-type?
+		mhash-keygen-uses-count?
+		mhash-keygen-uses-hash-algorithm
+		mhash-keygen-uses-salt?
+		mhash-string
+		mhash-type-names
+		mhash-update))))
+
 (C-include "mhash")
 
 (define mhash-algorithm-names)

@@ -29,6 +29,34 @@ USA.
 
 (declare (usual-integrations))
 
+(define (import-gdbm2)
+  (let ((target-environment (nearest-repl/environment))
+	(source-environment (->environment '(gdbm))))
+    (for-each (lambda (name)
+		(link-variables target-environment name
+				source-environment name))
+	      '(gdbm-close
+		gdbm-delete
+		gdbm-exists?
+		gdbm-fetch
+		gdbm-firstkey
+		gdbm-nextkey
+		gdbm-open
+		gdbm-reorganize
+		gdbm-setopt
+		gdbm-store
+		gdbm-sync
+		gdbm-version
+		gdbm_cachesize
+		gdbm_fast
+		;;gdbm_fastmode obsolete
+		gdbm_insert
+		gdbm_newdb
+		gdbm_reader
+		gdbm_replace
+		gdbm_wrcreat
+		gdbm_writer))))
+
 (C-include "gdbm")
 
 (define-integrable (every-loop proc ref string start end)

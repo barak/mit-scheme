@@ -29,6 +29,8 @@ USA.
 (define-package (mcrypt)
   (files "mcrypt")
   (parent ())
+  (export ()
+	  import-mcrypt)
   (export (mcrypt global)
 	  mcrypt-algorithm-name
 	  mcrypt-algorithm-names

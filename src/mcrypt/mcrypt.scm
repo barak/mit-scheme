@@ -85,6 +85,32 @@ USA.
 ;;; alist that is periodically scanned for objects that were GCed and
 ;;; not freed.
 
+(define (import-mcrypt)
+  (let ((target-environment (nearest-repl/environment))
+	(source-environment (->environment '(mcrypt))))
+    (for-each (lambda (name)
+		(link-variables target-environment name
+				source-environment name))
+	      '(mcrypt-algorithm-name
+		mcrypt-algorithm-names
+		mcrypt-block-algorithm-mode?
+		mcrypt-block-algorithm?
+		mcrypt-block-mode?
+		mcrypt-context?
+		mcrypt-decrypt!
+		mcrypt-encrypt
+		mcrypt-encrypt!
+		mcrypt-encrypt-port
+		mcrypt-end
+		mcrypt-init
+		mcrypt-init-vector-size
+		mcrypt-key-size
+		mcrypt-mode-name
+		mcrypt-mode-names
+		mcrypt-open-module
+		mcrypt-self-test
+		mcrypt-supported-key-sizes))))
+
 (C-include "mcrypt")
 
 (define mcrypt-initialized? #f)

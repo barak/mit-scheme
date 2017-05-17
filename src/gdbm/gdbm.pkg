@@ -34,6 +34,8 @@ USA.
 	  cp1-ref
 	  ustring-cp-size
 	  ustring?)
+  (export ()
+	  import-gdbm2)
   (export (gdbm global)
 	  gdbm-close
 	  gdbm-delete
