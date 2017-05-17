@@ -47,6 +47,9 @@ includedir = @includedir@
 docdir = @docdir@
 oldincludedir = /usr/include
 
+PACKAGE_TARNAME = @PROJECT@
+PROJECT = @PROJECT@
+
 DESTDIR =
 top_builddir = .
 
@@ -117,7 +120,7 @@ install-info-gz install-info:
 
 install-man:
 	$(mkinstalldirs) $(DESTDIR)$(mandir)/man1
-	$(INSTALL_DATA) mit-scheme.1 $(DESTDIR)$(mandir)/man1/.
+	$(INSTALL_DATA) ${PROJECT}.1 $(DESTDIR)$(mandir)/man1/.
 
 install-html:
 	$(mkinstalldirs) $(DESTDIR)$(htmldir)

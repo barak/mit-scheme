@@ -39,6 +39,7 @@ AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AC_CHECK_PROG([INSTALL_INFO_PROG], [install-info], [install-info], [true])
 
+PROJECT=mit-scheme
 TARGETS=
 INST_TARGETS=
 
@@ -51,7 +52,6 @@ elif test "${enable_html:-yes}" != "yes"; then
 fi
 test "${htmldir}" = "" || TARGETS="${TARGETS} \$(TARGET_ROOT)/index.html"
 test "${htmldir}" = "" || INST_TARGETS="${INST_TARGETS} install-html"
-AC_SUBST([htmldir])
 
 AC_ARG_ENABLE([pdf],
 	[AC_HELP_STRING([--enable-pdf], [generate PDF documentation])])
@@ -62,7 +62,6 @@ elif test "${enable_pdf:-yes}" != "yes"; then
 fi
 test "${pdfdir}" = "" || TARGETS="${TARGETS} \$(TARGET_ROOT).pdf"
 test "${pdfdir}" = "" || INST_TARGETS="${INST_TARGETS} install-pdf"
-AC_SUBST([pdfdir])
 
 AC_ARG_ENABLE([ps],
 	[AC_HELP_STRING([--enable-ps], [generate Postscript documentation])])
@@ -73,8 +72,8 @@ elif test "${enable_ps}" != "yes"; then
 fi
 test "${psdir}" = "" || TARGETS="${TARGETS} \$(TARGET_ROOT).ps"
 test "${psdir}" = "" || INST_TARGETS="${INST_TARGETS} install-ps"
-AC_SUBST([psdir])
 
+AC_SUBST([PROJECT])
 AC_SUBST([TARGETS])
 AC_SUBST([INST_TARGETS])
 

@@ -37,10 +37,13 @@ sysconfdir = @sysconfdir@
 sharedstatedir = @sharedstatedir@
 localstatedir = @localstatedir@
 libdir = @libdir@
+docdir = @docdir@
 infodir = @infodir@
 mandir = @mandir@
 includedir = @includedir@
 oldincludedir = /usr/include
+
+PROJECT = @PROJECT@
 
 DESTDIR =
 top_builddir = .
