@@ -353,8 +353,7 @@ USA.
     (guarantee-mcrypt-context context name)
     (let ((code (primitive (mcrypt-context-index context) bytes start end)))
       (if (not (eqv? code 0))
-	  (error (string-append "Error code signalled by " primitive ":")
-		 code)))))
+	  (error (string "Error code signalled by "name":") code)))))
 
 (define mcrypt-encrypt!
   (make-mcrypt-transform! 'mcrypt-encrypt!
@@ -379,6 +378,7 @@ USA.
   (lambda (object)
     (cond ((mcrypt-context? object) (context-op (mcrypt-context-index object)))
 	  ((bytevector? object) (module-op object))
+	  ((string? object) (module-op (string->utf8 object)))
 	  (else (error:wrong-type-argument object "mcrypt context" name)))))
 
 (define mcrypt-self-test
