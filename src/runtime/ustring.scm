@@ -2065,12 +2065,12 @@ USA.
 	(else (every-loop char-8-bit? ustring3-ref string start end))))))
 
 (define (string-for-primitive string)
-  (if (and (not (slice? string))
+  (if (and (or (legacy-string? string)
+	       (and (ustring? string)
+		    (fix:= 1 (ustring-cp-size string))))
 	   (let ((end (string-length string)))
-	     (case (ustring-cp-size string)
-	       ((1) (every-loop char-ascii? ustring1-ref string 0 end))
-	       ((2) (every-loop char-ascii? ustring2-ref string 0 end))
-	       (else (every-loop char-ascii? ustring3-ref string 0 end)))))
+	     (every-loop (lambda (cp) (fix:< cp #x80))
+			 cp1-ref string 0 end)))
       string
       (string->utf8 string)))
 
