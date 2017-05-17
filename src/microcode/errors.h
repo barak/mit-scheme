@@ -269,7 +269,7 @@ USA.
 /* 0x1A */		"Backing out of non-primitive"			\
 }
 
-#define MAX_HALT_MESSAGE	4
+#define MAX_HALT_MESSAGE	7
 
 #define TERM_HALT_MESSAGE_TABLE						\
 {									\
