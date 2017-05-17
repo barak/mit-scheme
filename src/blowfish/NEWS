@@ -22,8 +22,19 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 02110-1301, USA.
 
+mit-scheme-blowfish 0.2 - Matt Birkholz, 2017-05-18
+===================================================
+
+Use byte vectors for binary data instead of strings.  This changes
+every export except blowfish-file? and perhaps compute-blowfish-init-
+vector IF you don't care whether the init vector is a string.  Every
+procedure that previously accepted/returned strings now
+requires/produces byte vectors.  If it accepted/returned generic ports
+it now requires/produces binary ports.  If you are using the md5
+plugin to produce a digest for blowfish-set-key, you're winning, with
+blowfish-set-key at least; md5 digests are now byte vectors too.
+
 mit-scheme-blowfish 0.1 - Matt Birkholz, 2016-02-19
 ===================================================
 
-* Use libtool and automake, rather than the microcode's disappearing
-  module support.
+Use libtool and automake.

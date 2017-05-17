@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; The MCRYPT option.
+;;;; The mcrypt option.
 ;;; package: (mcrypt)
 
 (declare (usual-integrations))
@@ -130,9 +130,20 @@ USA.
 
 (define-structure mcrypt-context algorithm mode alien)
 
-(define (guarantee-mcrypt-context object procedure)
+(define (guarantee-mcrypt-context object caller)
   (if (not (mcrypt-context? object))
-      (error:wrong-type-argument object "mcrypt context" procedure)))
+      (error:wrong-type-argument object "mcrypt context" caller))
+  (if (alien-null? (mcrypt-context-alien object))
+      (error:bad-range-argument object caller)))
+
+(define (guarantee-subbytevector object start end operator)
+  (guarantee bytevector? object operator)
+  (guarantee index-fixnum? start operator)
+  (guarantee index-fixnum? end operator)
+  (if (not (fix:<= start end))
+      (error:bad-range-argument start operator))
+  (if (not (fix:<= end (bytevector-length object)))
+      (error:bad-range-argument end operator)))
 
 (define (mcrypt-open-module algorithm mode)
   (init!)
@@ -143,8 +154,7 @@ USA.
 	    (string->utf8 algorithm) 0 (string->utf8 mode) 0)
     (if (alien-null? alien)
 	(error "Failed to open mcrypt module:"
-	       (utf8->string
-		(C-peek-cstring (C-call "scmcrypt_get_ltdlerror")))))
+	       (C-peek-cstring (C-call "scmcrypt_get_ltdlerror"))))
     context))
 
 (define (make-mcrypt-context-cleanup alien)
@@ -160,31 +170,42 @@ USA.
 		  key (bytevector-length key) init-vector)))
     (if (< code 0)
 	(error "Error code signalled by mcrypt_generic_init:"
-	       (utf8->string
-		(C-peek-cstring (C-call "mcrypt_strerror"
-					(make-alien '(const (* char)))
-					code)))))))
+	       (C-peek-cstring (C-call "mcrypt_strerror"
+				       (make-alien '(const (* char)))
+				       code))))))
+
+(define-integrable (make-mcrypt-transform! name procedure)
+  (lambda (context bytes start end)
+    (guarantee-mcrypt-context context name)
+    (guarantee-subbytevector bytes start end name)
+    (let ((code (procedure context bytes start end)))
+      (if (< code 0)
+	  (error (string "Error code signalled by "name":") code)))))
+
+(define mcrypt-encrypt!
+  (make-mcrypt-transform!
+   'mcrypt-encrypt!
+   (named-lambda (mcrypt_generic context bytes start end)
+     (C-call "scmcrypt_generic" (mcrypt-context-alien context)
+	     bytes start end))))
+
+(define mcrypt-decrypt!
+  (make-mcrypt-transform!
+   'mcrypt-decrypt!
+   (named-lambda (mdecrypt_generic context bytes start end)
+     (C-call "scmdecrypt_generic" (mcrypt-context-alien context)
+	     bytes start end))))
 
 (define (mcrypt-encrypt context input input-start input-end
 			output output-start encrypt?)
-  (guarantee-mcrypt-context context 'MCRYPT-ENCRYPT)
+  (guarantee-mcrypt-context context 'mcrypt-encrypt)
   (guarantee bytevector? input 'mcrypt-encrypt)
   (guarantee bytevector? output 'mcrypt-encrypt)
-  (bytevector-copy! output output-start input input-start input-end)
-  (let ((code
-	 (let ((alien (mcrypt-context-alien context))
-	       (start output-start)
-	       (end (+ output-start (- input-end input-start))))
-	   (if encrypt?
-	       (C-call "scmcrypt_generic" alien output start end)
-	       (C-call "scmdecrypt_generic" alien output start end)))))
-    (if (< code 0)
-	(error (string-append "Error code signalled by "
-			      (if encrypt?
-				  "mcrypt_generic"
-				  "mdecrypt_generic")
-			      ":")
-	       code))))
+  ((if encrypt? mcrypt-encrypt! mcrypt-decrypt!)
+   context
+   output
+   output-start
+   (bytevector-copy! output output-start input input-start input-end)))
 
 (define (mcrypt-end context)
   (let ((alien (mcrypt-context-alien context)))
@@ -199,59 +220,62 @@ USA.
   (lambda (object)
     (cond ((mcrypt-context? object)
 	   (context-op object))
-	  ((string? object)
+	  ((bytevector? object)
 	   (init!)
 	   (module-op object))
+	  ((string? object)
+	   (init!)
+	   (module-op (string->utf8 object)))
 	  (else
 	   (error:wrong-type-argument object "mcrypt context" name)))))
 
 (define mcrypt-self-test
   (mcrypt-generic-unary
-   'MCRYPT-SELF-TEST
+   'mcrypt-self-test
    (named-lambda (mcrypt-enc-self-test context)
      (C-call "mcrypt_enc_self_test" (mcrypt-context-alien context)))
    (named-lambda (mcrypt-module-self-test module-name)
-     (C-call "mcrypt_module_self_test" (string->utf8 module-name) 0))))
+     (C-call "mcrypt_module_self_test" module-name 0))))
 
 (define mcrypt-block-algorithm-mode?
   (mcrypt-generic-unary
-   'MCRYPT-BLOCK-ALGORITHM-MODE?
+   'mcrypt-block-algorithm-mode?
    (named-lambda (mcrypt-enc-is-block-algorithm-mode? context)
      (C-call "mcrypt_enc_is_block_algorithm_mode"
 	     (mcrypt-context-alien context)))
    (named-lambda (mcrypt-module-is-block-algorithm-mode? name)
-     (C-call "mcrypt_module_is_block_algorithm_mode" (string->utf8 name) 0))))
+     (C-call "mcrypt_module_is_block_algorithm_mode" name 0))))
 
 (define mcrypt-block-algorithm?
   (mcrypt-generic-unary
-   'MCRYPT-BLOCK-ALGORITHM?
+   'mcrypt-block-algorithm?
    (named-lambda (mcrypt-enc-is-block-algorithm context)
      (C-call "mcrypt_enc_is_block_algorithm"
 	     (mcrypt-context-alien context)))
    (named-lambda (mcrypt-module-is-block-algorithm name)
-     (C-call "mcrypt_module_is_block_algorithm" (string->utf8 name) 0))))
+     (C-call "mcrypt_module_is_block_algorithm" name 0))))
 
 (define mcrypt-block-mode?
   (mcrypt-generic-unary
-   'MCRYPT-BLOCK-MODE?
+   'mcrypt-block-mode?
    (named-lambda (mcrypt-enc-is-block-mode context)
      (C-call "mcrypt_enc_is_block_mode"
 	     (mcrypt-context-alien context)))
    (named-lambda (mcrypt-module-is-block-mode name)
-     (C-call "mcrypt_module_is_block_mode" (string->utf8 name) 0))))
+     (C-call "mcrypt_module_is_block_mode" name 0))))
 
 (define mcrypt-key-size
   (mcrypt-generic-unary
-   'MCRYPT-KEY-SIZE
+   'mcrypt-key-size
    (named-lambda (mcrypt-enc-get-key-size context)
      (C-call "mcrypt_enc_get_key_size"
 	     (mcrypt-context-alien context)))
    (named-lambda (mcrypt-module-get-algo-key-size name)
-     (C-call "mcrypt_module_get_algo_key_size" (string->utf8 name) 0))))
+     (C-call "mcrypt_module_get_algo_key_size" name 0))))
 
 (define mcrypt-supported-key-sizes
   (mcrypt-generic-unary
-   'MCRYPT-SUPPORTED-KEY-SIZES
+   'mcrypt-supported-key-sizes
    (named-lambda (mcrypt-enc-get-supported-key-sizes context)
      (let ((mlist (malloc (C-sizeof "struct mcrypt_list")
 			  '(struct |mcrypt_list|))))
@@ -262,48 +286,60 @@ USA.
 	 sizes)))
    (named-lambda (mcrypt-module-get-algo-supported-key-sizes name)
      (let ((mlist (make-mcrypt-size-list)))
-       (C-call "scmcrypt_module_get_algo_supported_key_sizes"
-	       (string->utf8 name) 0 mlist)
+       (C-call "scmcrypt_module_get_algo_supported_key_sizes" name 0 mlist)
        (let ((sizes (mcrypt-size-list-elements mlist)))
 	 (free-mcrypt-size-list mlist)
 	 sizes)))))
 
 (define (mcrypt-init-vector-size context)
-  (guarantee-mcrypt-context context 'MCRYPT-INIT-VECTOR-SIZE)
+  (guarantee-mcrypt-context context 'mcrypt-init-vector-size)
   (C-call "mcrypt_enc_get_iv_size" (mcrypt-context-alien context)))
 
 (define (mcrypt-algorithm-name context)
-  (guarantee-mcrypt-context context 'MCRYPT-ALGORITHM-NAME)
+  (guarantee-mcrypt-context context 'mcrypt-algorithm-name)
   (mcrypt-context-algorithm context))
 
 (define (mcrypt-mode-name context)
-  (guarantee-mcrypt-context context 'MCRYPT-MODE-NAME)
+  (guarantee-mcrypt-context context 'mcrypt-mode-name)
   (mcrypt-context-mode context))
 
 (define (mcrypt-encrypt-port algorithm mode input output key init-vector
 			     encrypt?)
   ;; Assumes that INPUT is in blocking mode.
-  (let ((context (mcrypt-open-module algorithm mode))
-	(input-buffer (make-bytevector 4096))
-	(output-buffer (make-bytevector 4096)))
-    (mcrypt-init context key init-vector)
+  ((port-transformer (lambda ()
+		       (let ((context (mcrypt-open-module algorithm mode)))
+			 (mcrypt-init context key init-vector)
+			 context))
+		     (if encrypt? mcrypt-encrypt! mcrypt-decrypt!)
+		     mcrypt-end)
+   input
+   output))
+
+(define (port-transformer initialize update finalize)
+  (lambda (input-port output-port)
+    (call-with-buffer #x1000
+      (lambda (buffer)
+	(let ((context (initialize)))
+	  (let loop ()
+	    (let ((n (read-bytevector! buffer input-port)))
+	      (if (and n (not (eof-object? n)) (fix:> n 0))
+		  (begin
+		    (update context buffer 0 n)
+		    (let ((n* (write-bytevector buffer output-port 0 n)))
+		      (if (not (eqv? n n*))
+			  (error "Short write (requested, actual):" n n*)))
+		    (loop)))))
+	  (finalize context))))))
+
+(define (call-with-buffer n procedure)
+  (let ((buffer (make-bytevector n)))
     (dynamic-wind
-     (lambda ()
-       unspecific)
-     (lambda ()
-       (let loop ()
-	 (let ((n (read-bytevector! input-buffer input)))
-	   (if (and (not (eof-object? n))
-		    (not (= 0 n)))
-	       (begin
-		 (mcrypt-encrypt context input-buffer 0 n output-buffer 0
-				 encrypt?)
-		 (write-bytevector output-buffer output 0 n)
-		 (loop)))))
-       (mcrypt-end context))
-     (lambda ()
-       (bytevector-fill! input-buffer 0)
-       (bytevector-fill! output-buffer 0)))))
+	(lambda ()
+	  unspecific)
+	(lambda ()
+	  (procedure buffer))
+	(lambda ()
+	  (bytevector-fill! buffer 0)))))
 
 ;;;; Mcrypt size lists.
 
@@ -357,7 +393,7 @@ USA.
       (let loop ((i 0))
 	(if (< i size)
 	    (begin
-	      (vector-set! vector i (utf8->string (C-peek-cstringp! elements)))
+	      (vector-set! vector i (C-peek-cstringp! elements))
 	      (loop (1+ i)))))
       vector)))
 

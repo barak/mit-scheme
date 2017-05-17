@@ -22,8 +22,18 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 02110-1301, USA.
 
+mit-scheme-mcrypt 0.2 - Matt Birkholz, 2017-05-18
+=================================================
+
+Use byte vectors for binary data instead of strings.  Thus all keys
+and init vectors now must be byte vectors of the appropriate length
+(per mcrypt-supported-key-sizes or mcrypt-init-vector-size
+respectively).  The input and output arguments to mcrypt-encrypt
+should now be byte vectors, and the input and output arguments to
+mcrypt-encrypt-port must now be binary ports.  Other changes: mcrypt-
+encrypt! and mcrypt-decrypt! were added.
+
 mit-scheme-mcrypt 0.1 - Matt Birkholz, 2016-02-19
 =================================================
 
-* Use libtool and automake, rather than the microcode's disappearing
-  module support.
+Use libtool and automake.

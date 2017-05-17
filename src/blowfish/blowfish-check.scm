@@ -31,7 +31,7 @@ USA.
     (lambda (output)
       (blowfish-encrypt-port (open-input-bytevector sample)
 			     output
-			     "secret"
+			     (string->utf8 "secret")
 			     (write-blowfish-file-header output)
 			     #t)))
   (let ((read-back
@@ -39,7 +39,7 @@ USA.
 	   (lambda (input)
 	     (call-with-output-bytevector
 	      (lambda (output)
-		(blowfish-encrypt-port input output "secret"
+		(blowfish-encrypt-port input output (string->utf8 "secret")
 				       (read-blowfish-file-header input)
 				       #f)))))))
     (if (not (bytevector=? sample read-back))

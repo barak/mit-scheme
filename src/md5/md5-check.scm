@@ -27,11 +27,11 @@ USA.
 ;;;; Test the MD5 option.
 
 (let ((sample "Some text to hash."))
-  (let ((hash (md5-sum->hexadecimal (md5-string sample))))
+  (let ((hash (bytevector->hexadecimal (md5-string sample))))
     (if (not (string=? hash "C8E89C4CBF3ABF9AA758D691CBE4B784"))
 	(error "Bad hash for sample text:" hash)))
   (call-with-output-file "sample"
     (lambda (port) (write-string sample port) (newline port)))
-  (let ((hash (md5-sum->hexadecimal (md5-file "sample"))))
+  (let ((hash (bytevector->hexadecimal (md5-file "sample"))))
     (if (not (string=? hash "43EB9ECCB88C329721925EFC04843AF1"))
 	(error "Bad hash for sample file:" hash))))

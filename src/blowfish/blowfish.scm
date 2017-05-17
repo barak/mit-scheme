@@ -24,26 +24,23 @@ USA.
 
 |#
 
-;;;; The BLOWFISH option.
+;;;; Interface to Blowfish
 ;;; package: (blowfish)
 
 (declare (usual-integrations))
 
 (C-include "blowfish")
 
-(define (blowfish-set-key string)
-  ;; Generate a Blowfish key from STRING.
-  ;; STRING must be 72 bytes or less in length.
+(define (blowfish-set-key bytes)
+  ;; Generate a Blowfish key from BYTES.
+  ;; BYTES must be 72 bytes or less in length.
   ;; For text-string keys, use MD5 on the text, and pass the digest here.
-  (guarantee string? string 'blowfish-set-key)
-  (let* ((data (string->utf8 string))
-	 (len (bytevector-length data)))
+  (guarantee bytevector? bytes 'blowfish-set-key)
+  (let ((len (bytevector-length bytes)))
     (if (> len 72)
-	(error:bad-range-argument
-	 string "a string encodable in UTF8 with fewer than 72 bytes"
-	 'blowfish-set-key))
+	(error:bad-range-argument bytes "72 or fewer bytes" 'blowfish-set-key))
     (let ((key (make-bytevector (C-sizeof "BF_KEY"))))
-      (C-call "BF_set_key" key len data)
+      (C-call "BF_set_key" key len bytes)
       key)))
 
 (define (blowfish-ecb input output key encrypt?)
@@ -51,10 +48,10 @@ USA.
   ;; INPUT is an 8-byte bytevector.
   ;; OUTPUT is an 8-byte bytevector.
   ;; KEY is a Blowfish key.
-  ;; ENCRYPT? says whether to encrypt (non-#F) or decrypt (#F).
-  (guarantee-bfkey key 'BLOWFISH-ECB)
-  (guarantee-8byte-arg input 'BLOWFISH-ECB)
-  (guarantee-8byte-arg output 'BLOWFISH-ECB)
+  ;; ENCRYPT? says whether to encrypt (#T) or decrypt (#F).
+  (guarantee-bfkey key 'blowfish-ecb)
+  (guarantee-8byte-arg input 'blowfish-ecb)
+  (guarantee-8byte-arg output 'blowfish-ecb)
   (C-call "BF_ecb_encrypt" input output key (bf-de/encrypt encrypt?)))
 
 (define (blowfish-cbc input output key init-vector encrypt?)
@@ -63,39 +60,39 @@ USA.
   ;; OUTPUT is a bytevector whose length is the same as INPUT.
   ;; KEY is a Blowfish key.
   ;; INIT-VECTOR is an 8-byte bytevector; it is modified after each call.
-  ;; The value from any call may be passed in to a later call.
-  ;; ENCRYPT? says whether to encrypt (non-#F) or decrypt (#F).
-  (guarantee-init-vector init-vector 'BLOWFISH-CBC)
-  (guarantee-bfkey key 'BLOWFISH-CBC)
-  (guarantee-8Xbyte-arg input 'BLOWFISH-CBC)
+  ;;   The value from any call may be passed in to a later call.
+  ;; ENCRYPT? says whether to encrypt (#T) or decrypt (#F).
+  (guarantee-init-vector init-vector 'blowfish-cbc)
+  (guarantee-bfkey key 'blowfish-cbc)
+  (guarantee-8Xbyte-arg input 'blowfish-cbc)
   (if (or (eq? input output)
 	  (not (= (bytevector-length output) (bytevector-length input))))
       (error:bad-range-argument output
 				"a bytevector as long as the input bytevector"
-				'BLOWFISH-CBC))
+				'blowfish-cbc))
   (C-call "BF_cbc_encrypt" input output (bytevector-length input)
 	  key init-vector (bf-de/encrypt encrypt?)))
 
 (define (blowfish-cfb64 input istart iend output ostart
 			key init-vector num encrypt?)
   ;; Apply Blowfish in Cipher Feed-Back mode.
-  ;; (INPUT,ISTART,IEND) is an arbitrary subbytevector.
-  ;; OUTPUT is a bytevector as large as the input subbytevector.
-  ;; OSTART says where to start writing to the output bytevector.
+  ;; (INPUT,ISTART,IEND) is an arbitrary bytevector range.
+  ;; OUTPUT is a bytevector.
+  ;; OSTART says where to start writing in OUTPUT.
   ;; KEY is a Blowfish key.
   ;; INIT-VECTOR is an 8-byte bytevector; it is modified after each call.
-  ;; The value from any call may be passed in to a later call.
-  ;; The initial value must be unique for each message/key pair.
+  ;;   The value from any call may be passed in to a later call.
+  ;;   The initial value must be unique for each message/key pair.
   ;; NUM is a digit from 0 to 7 inclusive; it is the low 3 bits of the
-  ;; number of bytes that have previously been processed in this stream.
-  ;; ENCRYPT? says whether to encrypt (non-#F) or decrypt (#F). 
+  ;;   number of bytes that have previously been processed in this stream.
+  ;; ENCRYPT? says whether to encrypt (#T) or decrypt (#F). 
   ;; Returned value is the new value of NUM.
-  (guarantee-bfkey key 'BLOWFISH-CFB64)
-  (guarantee-init-vector init-vector 'BLOWFISH-CFB64)
-  (guarantee-subbytevector input istart iend 'BLOWFISH-CFB64)
+  (guarantee-bfkey key 'blowfish-cfb64)
+  (guarantee-init-vector init-vector 'blowfish-cfb64)
+  (guarantee-subbytevector input istart iend 'blowfish-cfb64)
   (guarantee-subbytevector output ostart (+ ostart (- iend istart))
-			   'BLOWFISH-CFB64)
-  (guarantee-init-index num 'BLOWFISH-CFB64)
+			   'blowfish-cfb64)
+  (guarantee-init-index num 'blowfish-cfb64)
   (let ((ilen (- iend istart)))
     (if (and (eq? input output)
 	     (< ostart iend)
@@ -103,16 +100,16 @@ USA.
 	(error:bad-range-argument
 	 ostart
 	 "an index of a subbytevector not overlapping the input subbytevector"
-	 'BLOWFISH-CFB64))
+	 'blowfish-cfb64))
     (C-call "do_BF_cfb64_encrypt" input istart output ostart ilen
 	    key init-vector num (bf-de/encrypt encrypt?))))
 
 (define (blowfish-ofb64 input istart iend output ostart
 			key init-vector num)
   ;; Apply Blowfish in Output Feed-Back mode.
-  ;; (INPUT,ISTART,IEND) is an arbitrary subbytevector.
-  ;; OUTPUT is a bytevector as large as the input subbytevector.
-  ;; OSTART says where to start writing to the output bytevector.
+  ;; (INPUT,ISTART,IEND) is an arbitrary bytevector range.
+  ;; OUTPUT is a bytevector.
+  ;; OSTART says where to start writing in OUTPUT.
   ;; KEY is a Blowfish key.
   ;; INIT-VECTOR is an 8-byte bytevector; it is modified after each call.
   ;;   The value from any call may be passed in to a later call.
@@ -120,12 +117,12 @@ USA.
   ;; NUM is a digit from 0 to 7 inclusive; it is the low 3 bits of the
   ;;   number of bytes that have previously been processed in this stream.
   ;; Returned value is the new value of NUM.
-  (guarantee-bfkey key 'BLOWFISH-OFB64)
-  (guarantee-init-vector init-vector 'BLOWFISH-OFB64)
-  (guarantee-subbytevector input istart iend 'BLOWFISH-OFB64)
+  (guarantee-bfkey key 'blowfish-ofb64)
+  (guarantee-init-vector init-vector 'blowfish-ofb64)
+  (guarantee-subbytevector input istart iend 'blowfish-ofb64)
   (guarantee-subbytevector output ostart (+ ostart (- iend istart))
-			   'BLOWFISH-OFB64)
-  (guarantee-init-index num 'BLOWFISH-OFB64)
+			   'blowfish-ofb64)
+  (guarantee-init-index num 'blowfish-ofb64)
   (let ((ilen (- iend istart)))
     (if (and (eq? input output)
 	     (< ostart iend)
@@ -133,7 +130,7 @@ USA.
 	(error:bad-range-argument
 	 ostart
 	 "an index of a subbytevector not overlapping the input subbytevector"
-	 'BLOWFISH-OFB64))
+	 'blowfish-ofb64))
     (C-call "do_BF_ofb64_encrypt" input istart output ostart ilen
 	    key init-vector num)))
 
@@ -194,12 +191,13 @@ USA.
      (lambda ()
        (let loop ((m 0))
 	 (let ((n (read-bytevector! input-buffer input)))
-	   (if (and (not (eof-object? n))
-		    (not (fix:= 0 n)))
+	   (if (and n (not (eof-object? n)))
 	       (let ((m
 		      (blowfish-cfb64 input-buffer 0 n output-buffer 0
 				      key init-vector m encrypt?)))
-		 (write-bytevector output-buffer output 0 n)
+		 (let ((n* (write-bytevector output-buffer output 0 n)))
+		   (if (not (eqv? n n*))
+		       (error "Short write (requested, actual):" n n*)))
 		 (loop m))))))
      (lambda ()
        (bytevector-fill! input-buffer 0)
@@ -216,40 +214,50 @@ USA.
 		  #x100000)
 	       (random #x100000))
 	    (quotient t #x100)))
-	((fix:= 8 i))
+	((not (fix:< i 8)))
       (bytevector-u8-set! iv i (remainder t #x100)))
     iv))
 
 (define (write-blowfish-file-header port)
   (write-bytevector blowfish-file-header-v2 port)
-  (write-u8 (char->integer #\newline) port)
   (let ((init-vector (compute-blowfish-init-vector)))
     (write-bytevector init-vector port)
     init-vector))
 
 (define (read-blowfish-file-header port)
-  (let ((line (read-header port)))
-    (cond ((bytevector=? blowfish-file-header-v1 line)
-	   (make-bytevector 8 #\NUL))
-	  ((bytevector=? blowfish-file-header-v2 line)
-	   (read-bytevector 8 port))
-	  (else
-	   (error:bad-range-argument port 'READ-BLOWFISH-FILE-HEADER)))))
+  (let ((version (try-read-blowfish-file-header port)))
+    (if (not version)
+	(error:bad-range-argument port 'read-blowfish-file-header))
+    (if (= version 1)
+	(make-bytevector 8 0)
+	(or (%safe-read-bytevector 8 port)
+	    (error "Short read while getting init-vector:" port)))))
 
-(define (read-header port)
-  (let loop ((bytes '()))
-    (let ((byte (read-u8 port)))
-      (if (eof-object? byte)
-	  (apply bytevector (reverse! bytes))
-	  (if (fix:= byte (char->integer #\newline))
-	      (apply bytevector (reverse! bytes))
-	      (loop (cons byte bytes)))))))
+(define (try-read-blowfish-file-header port)
+  (let* ((n (bytevector-length blowfish-file-header-v1))
+	 (bv1 (%safe-read-bytevector n port)))
+    (and bv1
+	 (if (bytevector=? bv1 blowfish-file-header-v1)
+	     1
+	     (let* ((m (fix:- (bytevector-length blowfish-file-header-v2) n))
+		    (bv2 (%safe-read-bytevector m port)))
+	       (and bv2
+		    (bytevector=? (bytevector-append bv1 bv2)
+				  blowfish-file-header-v2)
+		    2))))))
+
+(define (%safe-read-bytevector n port)
+  (let ((bv (read-bytevector n port)))
+    (and bv
+	 (not (eof-object? bv))
+	 (fix:= (bytevector-length bv) n)
+	 bv)))
 
 (define (blowfish-file? pathname)
-  (let ((line (call-with-binary-input-file pathname read-header)))
-    (and (not (eof-object? line))
-	 (or (bytevector=? line blowfish-file-header-v1)
-	     (bytevector=? line blowfish-file-header-v2)))))
+  (call-with-binary-input-file pathname try-read-blowfish-file-header))
 
-(define blowfish-file-header-v1 (string->utf8 "Blowfish, 16 rounds"))
-(define blowfish-file-header-v2 (string->utf8 "Blowfish, 16 rounds, version 2"))
+(define blowfish-file-header-v1
+  (string->utf8 "Blowfish, 16 rounds\n"))
+
+(define blowfish-file-header-v2
+  (string->utf8 "Blowfish, 16 rounds, version 2\n"))

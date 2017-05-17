@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; The MHASH option.
+;;;; The mhash option.
 ;;; package: (mhash)
 
 (declare (usual-integrations))
@@ -132,17 +132,17 @@ USA.
 (define-structure mhash-context mutex alien id)
 (define-structure mhash-hmac-context mutex alien id)
 
-(define (guarantee-mhash-context object procedure)
+(define (guarantee-mhash-context object caller)
   (if (not (mhash-context? object))
-      (error:wrong-type-argument object "mhash context" procedure))
+      (error:wrong-type-argument object "mhash context" caller))
   (if (alien-null? (mhash-context-alien object))
-      (error:bad-range-argument object procedure)))
+      (error:bad-range-argument object caller)))
 
-(define (guarantee-mhash-hmac-context object procedure)
+(define (guarantee-mhash-hmac-context object caller)
   (if (not (mhash-hmac-context? object))
-      (error:wrong-type-argument object "mhash HMAC context" procedure))
+      (error:wrong-type-argument object "mhash HMAC context" caller))
   (if (alien-null? (mhash-hmac-context-alien object))
-      (error:bad-range-argument object procedure)))
+      (error:bad-range-argument object caller)))
 
 (define (guarantee-subbytevector object start end operator)
   (guarantee bytevector? object operator)
@@ -180,10 +180,10 @@ USA.
 
 (define (mhash-get-block-size name)
   (C-call "mhash_get_block_size"
-	  (mhash-name->id name 'MHASH-GET-BLOCK-SIZE)))
+	  (mhash-name->id name 'mhash-get-block-size)))
 
 (define (mhash-init name)
-  (let ((id (mhash-name->id name 'MHASH-INIT))
+  (let ((id (mhash-name->id name 'mhash-init))
 	(alien (make-alien '|MHASH_INSTANCE|)))
     (let ((context (make-mhash-context (make-thread-mutex) alien id)))
       (add-context-cleanup context)
@@ -194,14 +194,14 @@ USA.
 	      (error "Unable to allocate mhash context:" name))))
       context)))
 
-(define (mhash-update context bytevector start end)
-  (guarantee-subbytevector bytevector start end 'MHASH-UPDATE)
-  (with-context-locked-open context 'MHASH-UPDATE
+(define (mhash-update context bytes start end)
+  (guarantee-subbytevector bytes start end 'mhash-update)
+  (with-context-locked-open context 'mhash-update
     (lambda (alien)
-      (C-call "do_mhash" alien bytevector start end))))
+      (C-call "do_mhash" alien bytes start end))))
 
 (define (mhash-end context)
-  (with-context-locked-open context 'MHASH-END
+  (with-context-locked-open context 'mhash-end
     (lambda (alien)
       (let* ((id (mhash-context-id context))
 	     (size (C-call "mhash_get_block_size" id))
@@ -211,12 +211,13 @@ USA.
 	digest))))
 
 (define (mhash-hmac-init name key)
-  (guarantee bytevector? key 'hmash-hmac-init)
-  (let ((id (mhash-name->id name 'MHASH-HMAC-INIT))
+  (let ((id (mhash-name->id name 'mhash-hmac-init))
 	(alien (make-alien '|MHASH_INSTANCE|)))
     (let ((context (make-mhash-hmac-context (make-thread-mutex) alien id))
 	  (block-size (C-call "mhash_get_hash_pblock" id))
-	  (key-size (bytevector-length key)))
+	  (key-size (if (bytevector? key)
+			(bytevector-length key)
+			(string-length key))))
       (add-hmac-context-cleanup context)
       (with-hmac-context-locked context
 	(lambda ()
@@ -225,14 +226,15 @@ USA.
 	      (error "Unable to allocate mhash HMAC context:" name))))
       context)))
 
-(define (mhash-hmac-update context bytevector start end)
-  (guarantee-subbytevector bytevector start end 'MHASH-HMAC-UPDATE)
-  (with-hmac-context-locked-open context 'MHASH-HMAC-UPDATE
+(define (mhash-hmac-update context bytes start end)
+  (guarantee-mhash-hmac-context context 'mhash-hmac-update)
+  (guarantee-subbytevector bytes start end 'mhash-hmac-update)
+  (with-hmac-context-locked-open context 'mhash-hmac-update
     (lambda (alien)
-      (C-call "do_mhash" alien bytevector start end))))
+      (C-call "do_mhash" alien bytes start end))))
 
 (define (mhash-hmac-end context)
-  (with-hmac-context-locked-open context 'MHASH-HMAC-END
+  (with-hmac-context-locked-open context 'mhash-hmac-end
     (lambda (alien)
       (let* ((id (mhash-hmac-context-id context))
 	     (size (C-call "mhash_get_block_size" id))
@@ -243,10 +245,10 @@ USA.
 
 (define mhash-keygen-names)
 
-(define (keygen-name->id name procedure)
+(define (keygen-name->id name caller)
   (let ((n (vector-length mhash-keygen-names)))
     (let loop ((i 0))
-      (cond ((fix:= i n) (error:bad-range-argument name procedure))
+      (cond ((fix:= i n) (error:bad-range-argument name caller))
 	    ((eq? name (vector-ref mhash-keygen-names i)) i)
 	    (else (loop (fix:+ i 1)))))))
 
@@ -255,28 +257,27 @@ USA.
 
 (define (mhash-keygen-uses-salt? name)
   (not (zero? (C-call "mhash_keygen_uses_salt"
-		      (keygen-name->id name 'MHASH-KEYGEN-USES-SALT?)))))
+		      (keygen-name->id name 'mhash-keygen-uses-salt?)))))
 
 (define (mhash-keygen-uses-count? name)
   (not (zero? (C-call "mhash_keygen_uses_count"
-		      (keygen-name->id name 'MHASH-KEYGEN-USES-COUNT?)))))
+		      (keygen-name->id name 'mhash-keygen-uses-count?)))))
 
 (define (mhash-keygen-uses-hash-algorithm name)
   (C-call "mhash_keygen_uses_hash_algorithm"
-	  (keygen-name->id name 'MHASH-KEYGEN-USES-HASH-ALGORITHM)))
+	  (keygen-name->id name 'mhash-keygen-uses-hash-algorithm)))
 
 (define (mhash-keygen-salt-size name)
   (C-call "mhash_get_keygen_salt_size"
-	  (keygen-name->id name 'MHASH-KEYGEN-SALT-SIZE)))
+	  (keygen-name->id name 'mhash-keygen-salt-size)))
 
 (define (mhash-keygen-max-key-size name)
   (C-call "mhash_get_keygen_max_key_size"
-	  (keygen-name->id name 'MHASH-KEYGEN-MAX-KEY-SIZE)))
+	  (keygen-name->id name 'mhash-keygen-max-key-size)))
 
 (define (mhash-keygen type passphrase #!optional salt)
-
   (if (not (mhash-keygen-type? type))
-      (error:wrong-type-argument type "mhash type" 'MHASH-KEYGEN))
+      (error:wrong-type-argument type "mhash type" 'mhash-keygen))
   (let ((keygenid (mhash-keygen-type-id type))
 	(keyword-size (mhash-keygen-type-key-length type))
 	(passbytes (string->utf8 passphrase)))
@@ -289,7 +290,7 @@ USA.
 	(let ((name (vector-ref params i)))
 	  (if (not name)
 	      0
-	      (mhash-name->id name 'MHASH-KEYGEN))))
+	      (mhash-name->id name 'mhash-keygen))))
 
       (if (not (or (zero? max-key-size)
 		   (< max-key-size (bytevector-length keyword))))
@@ -330,15 +331,13 @@ USA.
   (parameter-vector #f read-only #t))
 
 (define (make-mhash-keygen-type name key-length hash-names #!optional count)
-  (if (not (index-fixnum? key-length))
-      (error:wrong-type-argument key-length "key length"
-				 'MAKE-MHASH-KEYGEN-TYPE))
+  (guarantee index-fixnum? key-length 'make-mhash-keygen-type)
   (if (not (let ((m (mhash-keygen-max-key-size name)))
 	     (or (= m 0)
 		 (<= key-length m))))
-      (error:bad-range-argument key-length 'MAKE-MHASH-KEYGEN-TYPE))
+      (error:bad-range-argument key-length 'make-mhash-keygen-type))
   (%make-mhash-keygen-type
-   (keygen-name->id name 'MAKE-MHASH-KEYGEN-TYPE)
+   (keygen-name->id name 'make-mhash-keygen-type)
    key-length
    (let ((n-algorithms (mhash-keygen-uses-hash-algorithm name))
 	 (hash-names
@@ -360,13 +359,13 @@ USA.
 		     (error "Iteration count required:" name))
 		 (if (not (and (exact-integer? count)
 			       (positive? count)))
-		     (error:bad-range-argument count 'MAKE-MHASH-KEYGEN-TYPE))
+		     (error:bad-range-argument count 'make-mhash-keygen-type))
 		 count)))
 	 (do ((i 2 (fix:+ i 1))
 	      (names hash-names (cdr names)))
 	     ((fix:= i n))
 	   (vector-set! v i
-			(mhash-name->id (car names) 'MAKE-MHASH-KEYGEN-TYPE)))
+			(mhash-name->id (car names) 'make-mhash-keygen-type)))
 	 v)))))
 
 (define (initialize-mhash-variables!)
@@ -379,10 +378,10 @@ USA.
 			  (lambda (alien)
 			    (C-call "mhash_get_hash_name"
 				    alien hashid))))
-		  (bytevector (and (not (alien-null? alien))
-					  (c-peek-cstring alien))))
+		  (string (and (not (alien-null? alien))
+			       (c-peek-cstring alien))))
 	     (free alien)
-	     bytevector))))
+	     string))))
   (set! mhash-keygen-names
 	(make-names-vector
 	 (lambda () (C-call "mhash_keygen_count"))
@@ -392,10 +391,10 @@ USA.
 			  (lambda (alien)
 			    (C-call "mhash_get_keygen_name"
 				    alien keygenid))))
-		  (bytevector (and (not (alien-null? alien))
-				   (c-peek-cstring alien))))
+		  (string (and (not (alien-null? alien))
+			       (c-peek-cstring alien))))
 	     (free alien)
-	     bytevector)))))
+	     string)))))
 
 (define (reset-mhash-variables!)
   (for-each (lambda (weak) (alien-null! (weak-cdr weak))) mhash-contexts)
@@ -407,41 +406,42 @@ USA.
 
 (define (mhash-file hash-type filename)
   (call-with-binary-input-file filename
-    (lambda (port)
-      (let ((buffer (make-bytevector 4096))
-	    (context (mhash-init hash-type)))
-	(dynamic-wind (lambda ()
-			unspecific)
-		      (lambda ()
-			(let loop ()
-			  (let ((n (read-bytevector! buffer port)))
-			    (if (or (eof-object? n)
-				    (fix:= 0 n))
-				(mhash-end context)
-				(begin
-				  (mhash-update context buffer 0 n)
-				  (loop))))))
-		      (lambda ()
-			(bytevector-fill! buffer 0)))))))
+    (port-consumer (lambda () (mhash-init hash-type))
+		   mhash-update
+		   mhash-end)))
 
-(define (mhash-string hash-type string)
-  (mhash-bytevector hash-type (string->utf8 string)))
+(define (mhash-string hash-type string #!optional start end)
+  (mhash-bytevector hash-type (string->utf8 string start end)))
 
-(define (mhash-substring hash-type string start end)
-  (mhash-bytevector hash-type (string->utf8 (substring string start end))))
-
-(define (mhash-bytevector hash-type bytevector)
-  (let ((context (mhash-init hash-type)))
-    (mhash-update context bytevector 0 (bytevector-length bytevector))
+(define (mhash-bytevector hash-type bytes #!optional start end)
+  (let* ((end (fix:end-index end (bytevector-length bytes) 'mhash-bytevector))
+	 (start (fix:start-index start end 'mhash-bytevector))
+	 (context (mhash-init hash-type)))
+    (mhash-update context bytes start end)
     (mhash-end context)))
 
-(define (mhash-sum->number sum)
-  (let ((l (bytevector-length sum)))
-    (do ((i 0 (fix:+ i 1))
-	 (n 0 (+ (* n #x100) (bytevector-u8-ref sum i))))
-	((fix:= i l) n))))
+(define (port-consumer initialize update finalize)
+  (lambda (port)
+    (call-with-buffer #x1000
+      (lambda (buffer)
+	(let ((context (initialize)))
+	  (let loop ()
+	    (let ((n (read-bytevector! buffer port)))
+	      (if (and n (not (eof-object? n)))
+		  (begin
+		    (update context buffer 0 n)
+		    (loop)))))
+	  (finalize context))))))
 
-(define mhash-sum->hexadecimal bytevector->hexadecimal)
+(define (call-with-buffer n procedure)
+  (let ((buffer (make-bytevector n)))
+    (dynamic-wind
+	(lambda ()
+	  unspecific)
+	(lambda ()
+	  (procedure buffer))
+	(lambda ()
+	  (bytevector-fill! buffer 0)))))
 
 ;;;; Package initialization
 
@@ -459,7 +459,7 @@ USA.
 	(vector-set! v i
 		     (let ((name (get-name i)))
 		       (and name
-			    (intern (utf8->string name))))))
+			    (intern name)))))
       v)))
 
 (define (names-vector->list v)

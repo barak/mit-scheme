@@ -22,8 +22,18 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 02110-1301, USA.
 
+mit-scheme-mhash 0.2 - Matt Birkholz, 2017-05-18
+================================================
+
+Use byte vectors for binary data instead of strings.  Thus all digests
+and salts now must be byte vectors; the -update procedures must be fed
+byte subvectors, not substrings.  Other changes: mhash-bytevector was
+added, mhash-string takes optional start and end indices, so mhash-
+substring was removed, and mhash-sum->hexadecimal and mhash-sum->
+number were removed.  The latter can be replaced by bytevector->
+hexadecimal and bytevector->exact-nonnegative-integer respectively.
+
 mit-scheme-mhash 0.1 - Matt Birkholz, 2016-02-19
 ================================================
 
-* Use libtool and automake, rather than the microcode's disappearing
-  module support.
+Use libtool and automake.

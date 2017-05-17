@@ -30,10 +30,9 @@ USA.
   (files "mhash")
   (parent ())
   (initialization (initialize-package!))
-  ;; You'll have to import these from (global-definitions mhash/).
-  ;; They are currently bound in () by exports from (runtime crypto).
   (export (mhash global)
 	  make-mhash-keygen-type
+	  mhash-bytevector
 	  mhash-context?
 	  mhash-end
 	  mhash-file
@@ -51,9 +50,6 @@ USA.
 	  mhash-keygen-uses-hash-algorithm
 	  mhash-keygen-uses-salt?
 	  mhash-string
-	  mhash-substring
-	  mhash-sum->hexadecimal
-	  mhash-sum->number
 	  mhash-type-names
 	  mhash-update))
 

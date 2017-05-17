@@ -29,10 +29,6 @@ USA.
 (define-package (mcrypt)
   (files "mcrypt")
   (parent ())
-
-  ;; You'll have to import these from package (mcrypt).  They are
-  ;; currently bound in () by exports from package (runtime crypto).
-  ;; Note that CREF will need "(global-definitions mcrypt/)".
   (export (mcrypt global)
 	  mcrypt-algorithm-name
 	  mcrypt-algorithm-names
@@ -40,7 +36,9 @@ USA.
 	  mcrypt-block-algorithm?
 	  mcrypt-block-mode?
 	  mcrypt-context?
+	  mcrypt-decrypt!
 	  mcrypt-encrypt
+	  mcrypt-encrypt!
 	  mcrypt-encrypt-port
 	  mcrypt-end
 	  mcrypt-init

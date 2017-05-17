@@ -30,8 +30,10 @@ USA.
   (files "gdbm")
   (parent ())
   (initialization (initialize-package!))
-  ;; You'll have to import these from (global-definitions gdbm/).
-  ;; They are currently bound in () by exports from (runtime gdbm).
+  (import (runtime ustring)
+	  cp1-ref
+	  ustring-cp-size
+	  ustring?)
   (export (gdbm global)
 	  gdbm-close
 	  gdbm-delete

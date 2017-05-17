@@ -31,53 +31,52 @@ USA.
 
 (C-include "md5")
 
-(define-integrable (%md5-init)
+(define (%md5-init)
   (let ((context (make-bytevector (C-sizeof "MD5_CTX"))))
     (C-call "MD5_INIT" context)
     context))
 
-(define-integrable (%md5-update context bytevector start end)
+(define (%md5-update context bytevector start end)
   (C-call "do_MD5_UPDATE" context bytevector start end))
 
-(define-integrable (%md5-final context)
+(define (%md5-final context)
   (let ((result (make-bytevector (C-enum "MD5_DIGEST_LENGTH"))))
     (C-call "do_MD5_FINAL" context result)
     result))
 
 (define (md5-file filename)
   (call-with-binary-input-file filename
-    (lambda (port)
-      (let ((buffer (make-bytevector 4096))
-	    (context (%md5-init)))
-	(dynamic-wind (lambda ()
-			unspecific)
-		      (lambda ()
-			(let loop ()
-			  (let ((n (read-bytevector! buffer port)))
-			    (if (or (eof-object? n)
-				    (fix:= 0 n))
-				(%md5-final context)
-				(begin
-				  (%md5-update context buffer 0 n)
-				  (loop))))))
-		      (lambda ()
-			(bytevector-fill! buffer 0)))))))
+    (port-consumer %md5-init %md5-update %md5-final)))
 
-(define (md5-string string)
-  (md5-bytevector (string->utf8 string)))
+(define (md5-string string #!optional start end)
+  (md5-bytevector (string->utf8 string start end)))
 
-(define (md5-substring string start end)
-  (md5-bytevector (string->utf8 (substring string start end))))
-
-(define (md5-bytevector bytevector)
-  (let ((context (%md5-init)))
-    (%md5-update context bytevector 0 (bytevector-length bytevector))
+(define (md5-bytevector bytes #!optional start end)
+  (let ((end (fix:end-index end (bytevector-length bytes) 'md5-bytevector))
+	(start (fix:start-index start end 'md5-bytevector))
+	(context (%md5-init)))
+    (%md5-update context bytes start end)
     (%md5-final context)))
 
-(define (md5-sum->number sum)
-  (let ((l (bytevector-length sum)))
-    (do ((i 0 (fix:+ i 1))
-	 (n 0 (+ (* n #x100) (bytevector-u8-ref sum i))))
-	((fix:= i l) n))))
+(define (port-consumer initialize update finalize)
+  (lambda (port)
+    (call-with-buffer #x1000
+      (lambda (buffer)
+	(let ((context (initialize)))
+	  (let loop ()
+	    (let ((n (read-bytevector! buffer port)))
+	      (if (and n (not (eof-object? n)))
+		  (begin
+		    (update context buffer 0 n)
+		    (loop)))))
+	  (finalize context))))))
 
-(define md5-sum->hexadecimal bytevector->hexadecimal)
+(define (call-with-buffer n procedure)
+  (let ((buffer (make-bytevector n)))
+    (dynamic-wind
+	(lambda ()
+	  unspecific)
+	(lambda ()
+	  (procedure buffer))
+	(lambda ()
+	  (bytevector-fill! buffer 0)))))

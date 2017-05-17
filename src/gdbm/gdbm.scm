@@ -24,12 +24,35 @@ USA.
 
 |#
 
-;;;; The GDBM option.
+;;;; The GDBM2 option.
 ;;; package: (gdbm)
 
 (declare (usual-integrations))
 
 (C-include "gdbm")
+
+(define-integrable (every-loop proc ref string start end)
+  (let loop ((i start))
+    (if (fix:< i end)
+	(and (proc (ref string i))
+	     (loop (fix:+ i 1)))
+	#t)))
+
+(define (->bytes string)
+  (if (and (or (bytevector? string)
+	       (and (ustring? string)
+		    (fix:= 1 (ustring-cp-size string))))
+	   (let ((end (string-length string)))
+	     (every-loop (lambda (cp) (fix:< cp #x80))
+			 cp1-ref string 0 end)))
+      string
+      (string->utf8 string)))
+
+(declare (integrate-operator bytes-length))
+(define (bytes-length bytes)
+  (if (bytevector? bytes)
+      (bytevector-length bytes)
+      (string-length bytes)))
 
 ;; Parameters to gdbm_open for READERS, WRITERS, and WRITERS who can
 ;; create the database.
@@ -43,14 +66,15 @@ USA.
   (guarantee integer? block-size 'GDBM-OPEN)
   (guarantee integer? mode 'GDBM-OPEN)
   (let ((args (make-alien '|gdbm_args|))
-	(flagsnum (guarantee-gdbm-open-flags flags)))
+	(flagsnum (guarantee-gdbm-open-flags flags))
+	(filename (->namestring (merge-pathnames filename))))
     (let ((gdbf (make-gdbf args (make-thread-mutex) filename)))
       (add-open-gdbf-cleanup gdbf)
       (with-gdbf-locked
        gdbf
        (lambda ()
 	 (C-call "do_gdbm_open"
-		 args (string->utf8 filename) block-size flagsnum mode)
+		 args (->bytes filename) block-size flagsnum mode)
 	 (if (alien-null? args)
 	     (error "gdbm_open failed: malloc failed")
 	     (if (alien-null? (C-> args "gdbm_args dbf"))
@@ -191,13 +215,11 @@ USA.
 
 (define (gdbm-strerror errno)
   (guarantee fixnum? errno 'GDBM-STRERROR)
-  (utf8->string
-   (c-peek-cstring (C-call "gdbm_strerror" (make-alien '(* char)) errno))))
+  (c-peek-cstring (C-call "gdbm_strerror" (make-alien '(* char)) errno)))
 
 (define (strerror errno)
   (guarantee fixnum? errno 'STRERROR)
-  (utf8->string
-   (c-peek-cstring (C-call "strerror" (make-alien '(* char)) errno))))
+  (c-peek-cstring (C-call "strerror" (make-alien '(* char)) errno)))
 
 ;; Parameters to gdbm_setopt, specifing the type of operation to perform.
 (define GDBM_CACHESIZE (C-enum "GDBM_CACHESIZE"))	;Set the cache size.
@@ -229,8 +251,7 @@ USA.
 	   (gdbm-error gdbf "gdbm_setopt"))))))
 
 (define (gdbm-version)
-  (utf8->string
-   (c-peek-cstring (C-call "get_gdbm_version" (make-alien '(* char))))))
+  (c-peek-cstring (C-call "get_gdbm_version" (make-alien '(* char)))))
 
 (define (guarantee-nonnull-string obj procedure)
   (guarantee string? obj procedure)
@@ -276,44 +297,44 @@ USA.
 	   (strerror (C-> args "gdbm_args sys_errno")))))
 
 (define (gdbf-args-put-key! args key)
-  (let ((bytevector (string->utf8 key)))
-    (let ((size (bytevector-length bytevector))
+  (let ((bytes (->bytes key)))
+    (let ((size (bytes-length bytes))
 	  (dptr (make-alien '(* char))))
       (if (< size 1)
 	  (error "empty key:" key))
       (C-call "alloc_gdbm_key" dptr args size)
       (if (alien-null? dptr)
 	  (error "gdbf-args-put-key!: malloc failed" key))
-      (c-poke-bytes dptr 0 size bytevector 0))))
+      (c-poke-bytes dptr 0 size bytes 0))))
 
 (define (gdbf-args-put-content! args content)
-  (let ((bytevector (string->utf8 content)))
-    (let ((size (bytevector-length bytevector))
+  (let ((bytes (->bytes content)))
+    (let ((size (bytes-length bytes))
 	  (dptr (make-alien '(* char))))
       (if (< size 1)
 	  (error "empty content:" content))
       (C-call "alloc_gdbm_content" dptr args size)
       (if (alien-null? dptr)
 	  (error "gdbf-args-put-content!: malloc failed" size))
-      (c-poke-bytes dptr 0 size bytevector 0))))
+      (c-poke-bytes dptr 0 size bytes 0))))
 
 (define (gdbf-args-get-key args)
   (let ((data (C-> args "gdbm_args key dptr")))
     (if (alien-null? data)
 	#f
 	(let* ((size (C-> args "gdbm_args key dsize"))
-	       (bytevector (make-bytevector size)))
-	  (c-peek-bytes data 0 size bytevector 0)
-	  (utf8->string bytevector)))))
+	       (string ((ucode-primitive string-allocate 1) size)))
+	  (c-peek-bytes data 0 size string 0)
+	  string))))
 
 (define (gdbf-args-get-content args)
   (let ((data (C-> args "gdbm_args content dptr")))
     (if (alien-null? data)
 	#f
 	(let* ((size (C-> args "gdbm_args content dsize"))
-	       (bytevector (make-bytevector size)))
-	  (c-peek-bytes data 0 size bytevector 0)
-	  (utf8->string bytevector)))))
+	       (string ((ucode-primitive string-allocate 1) size)))
+	  (c-peek-bytes data 0 size string 0)
+	  string))))
 
 (define open-gdbfs '())
 (define open-gdbfs-mutex)

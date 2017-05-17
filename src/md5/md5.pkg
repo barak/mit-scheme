@@ -29,14 +29,10 @@ USA.
 (define-package (md5)
   (files "md5")
   (parent ())
-  ;; You'll have to import these from (global-definitions md5/).  They
-  ;; are currently bound in () by exports from (runtime crypto).
   (export (md5 global)
+	  md5-bytevector
 	  md5-file
-	  md5-string
-	  md5-substring
-	  md5-sum->hexadecimal
-	  md5-sum->number))
+	  md5-string))
 
 (define-package (md5 global)
   ;; Just to get cref to analyze whether all exports are defined.

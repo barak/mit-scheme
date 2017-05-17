@@ -22,8 +22,17 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 02110-1301, USA.
 
+mit-scheme-md5 0.2 - Matt Birkholz, 2017-05-18
+==============================================
+
+Use byte vectors for binary data instead of strings.  Thus all digests
+are now byte vectors.  Other changes: md5-bytevector was added,
+md5-string takes optional start and end indices, so md5-substring was
+removed, and md5-sum->hexadecimal and md5-sum->number were removed.
+The latter can be replaced by bytevector->hexadecimal and bytevector->
+exact-nonnegative-integer respectively.
+
 mit-scheme-md5 0.1 - Matt Birkholz, 2016-02-19
 ==============================================
 
-* Use libtool and automake, rather than the microcode's disappearing
-  module support.
+Use libtool and automake.

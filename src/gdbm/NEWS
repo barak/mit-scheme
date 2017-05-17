@@ -22,8 +22,14 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 02110-1301, USA.
 
+mit-scheme-gdbm 0.2 - Matt Birkholz, 2017-05-18
+===============================================
+
+Use new Unicode support.  Convert non-ASCII strings (keys and data) to
+UTF8.  This assumes any other program adding non-ASCII keys or data is
+using the same encoding.
+
 mit-scheme-gdbm 0.1 - Matt Birkholz, 2016-02-19
 ===============================================
 
-* Use libtool and automake, rather than the microcode's disappearing
-  module support.
+Use libtool and automake.
