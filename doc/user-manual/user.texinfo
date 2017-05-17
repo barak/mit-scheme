@@ -59,7 +59,7 @@ Documentation License.''
 @contents
 
 @ifnottex
-@node Top, Introduction, (dir), (dir)
+@node Top
 @top MIT/GNU Scheme
 
 @insertcopying
@@ -83,7 +83,7 @@ Documentation License.''
 * Concept Index::
 @end menu
 
-@node Introduction, Installation, Top, Top
+@node Introduction
 @unnumbered Introduction
 
 This document describes how to install and use MIT/GNU Scheme, the
@@ -135,7 +135,7 @@ Please include the output of the @code{identify-world} procedure
 (@pxref{Basics of Starting Scheme}), so we know what version of the
 system you are using.
 
-@node Installation, Running Scheme, Introduction, Top
+@node Installation
 @chapter Installation
 
 This chapter describes how to install MIT/GNU Scheme.  The release is
@@ -149,7 +149,7 @@ using.
 * Portable C Installation::
 @end menu
 
-@node Unix Installation, Windows Installation, Installation, Installation
+@node Unix Installation
 @section Unix Installation
 
 We will use as an example the installation for GNU/Linux.  The
@@ -218,6 +218,25 @@ make install
 @end example
 
 Depending on configuration options and file-system permissions, you
+may need super-user privileges to do the installation steps.
+
+@item
+Build the documentation:
+
+@example
+cd ../doc
+./configure
+make
+@end example
+
+@item
+Install the documentation:
+
+@example
+make install-info install-html install-pdf
+@end example
+
+Depending on configuration options and file-system permissions, you
 may need super-user privileges to do the installation step.
 @end enumerate
 
@@ -278,7 +297,7 @@ cd ../..
 rm -rf mit-scheme-@var{VERSION}
 @end example
 
-@node Windows Installation, Portable C Installation, Unix Installation, Installation
+@node Windows Installation
 @section Windows Installation
 
 This section describes how to install MIT/GNU Scheme on Windows 2000,
@@ -294,7 +313,7 @@ to be placed.
 To uninstall the software, open up the @samp{Control Panel}, run
 @samp{Add/Remove Programs}, and double-click on @samp{MIT/GNU Scheme}.
 
-@node Portable C Installation, , Windows Installation, Installation
+@node Portable C Installation
 @section Portable C Installation
 
 This section describes how to generate binaries from the portable C
@@ -356,7 +375,7 @@ Depending on configuration options and file-system permissions, you
 may need super-user privileges to do the installation step.
 @end enumerate
 
-@node Running Scheme, Using Scheme, Installation, Top
+@node Running Scheme
 @chapter Running Scheme
 
 This chapter describes how to run MIT/GNU Scheme.  It also
@@ -374,7 +393,7 @@ using command-line options and environment variables.
 * Leaving Scheme::
 @end menu
 
-@node Basics of Starting Scheme, Customizing Scheme, Running Scheme, Running Scheme
+@node Basics of Starting Scheme
 @section Basics of Starting Scheme
 
 Under unix, MIT/GNU Scheme is invoked by typing
@@ -431,7 +450,7 @@ subsystems.  @samp{SF} refers to the scode optimization program
 @samp{Edwin} is the Emacs-like text editor.  There are other
 subsystems you can load that will add themselves to this list.
 
-@node Customizing Scheme, Memory Usage, Basics of Starting Scheme, Running Scheme
+@node Customizing Scheme
 @section Customizing Scheme
 
 You can customize your setup by using a variety of tools:
@@ -485,7 +504,7 @@ Under Windows, and with some window managers under X11, it is possible
 to create icons that invoke Scheme with different parameters.
 @end itemize
 
-@node Memory Usage, Command-Line Options, Customizing Scheme, Running Scheme
+@node Memory Usage
 @section Memory Usage
 
 Some of the parameters that can be customized determine how much memory
@@ -552,7 +571,7 @@ size is the amount of free space available.
 The Scheme expression @samp{(print-gc-statistics)} shows how much heap
 and constant space is available (@pxref{Garbage Collection}).
 
-@node Command-Line Options, Custom Command-line Options, Memory Usage, Running Scheme
+@node Command-Line Options
 @section Command-Line Options
 
 Scheme accepts the command-line options detailed in the following
@@ -746,7 +765,7 @@ The following option is supported only when Edwin is loaded.
 This option causes Edwin to start immediately when Scheme is started.
 @end table
 
-@node Custom Command-line Options, Environment Variables, Command-Line Options, Running Scheme
+@node Custom Command-line Options
 @section Custom Command-line Options
 
 MIT/GNU Scheme provides a mechanism for you to define your own
@@ -803,7 +822,7 @@ with the init file loaded between the end of parsing and the
 delayed actions.
 @end deffn
 
-@node Environment Variables, Starting Scheme from Microsoft Windows, Custom Command-line Options, Running Scheme
+@node Environment Variables
 @section Environment Variables
 
 Scheme refers to many environment variables.  This section lists these
@@ -827,7 +846,7 @@ procedure, e.g.@:
 * Windows Environment Variables::
 @end menu
 
-@node Microcode Environment Variables, Runtime Environment Variables, Environment Variables, Environment Variables
+@node Microcode Environment Variables
 @subsection Environment Variables for the Microcode
 
 These environment variables are referred to by the microcode (the
@@ -867,7 +886,7 @@ The size of the stack, in 1024-word blocks; overridden by
 @option{--stack}.  The default value is @samp{128}.
 @end table
 
-@node Runtime Environment Variables, Edwin Environment Variables, Microcode Environment Variables, Environment Variables
+@node Runtime Environment Variables
 @subsection Environment Variables for the Runtime System
 
 These environment variables are referred to by the runtime system.
@@ -913,7 +932,7 @@ Specifies the location of the options database file used by the
 the library path.
 @end table
 
-@node Edwin Environment Variables, Windows Environment Variables, Runtime Environment Variables, Environment Variables
+@node Edwin Environment Variables
 @subsection Environment Variables for Edwin
 
 These environment variables are referred to by Edwin.
@@ -971,7 +990,7 @@ Used when Edwin runs under unix on a terminal.  Number of text columns
 on the screen, for systems that don't support @samp{TIOCGWINSZ}.
 @end table
 
-@node Windows Environment Variables,  , Edwin Environment Variables, Environment Variables
+@node Windows Environment Variables
 @subsection Environment Variables for Microsoft Windows
 
 These environment variables are specific to the Microsoft Windows
@@ -1039,7 +1058,7 @@ One of the places in which Scheme looks for the user's home directory,
 by searching for a subdirectory with the user's login name.
 @end table
 
-@node Starting Scheme from Microsoft Windows, Leaving Scheme, Environment Variables, Running Scheme
+@node Starting Scheme from Microsoft Windows
 @section Starting Scheme from Microsoft Windows
 
 The Microsoft Windows version of MIT/GNU Scheme runs as a
@@ -1084,7 +1103,7 @@ If you want the shortcut to start up Edwin automatically, put
 @option{--edit} at the end of the command line.
 @end itemize
 
-@node Leaving Scheme,  , Starting Scheme from Microsoft Windows, Running Scheme
+@node Leaving Scheme
 @section Leaving Scheme
 
 There are several ways that you can leave Scheme: there are two Scheme
@@ -1141,7 +1160,7 @@ window causes that window to go away, and if it is the only Edwin
 window, it terminates Scheme as well.
 @end itemize
 
-@node Using Scheme, Compiling Programs, Running Scheme, Top
+@node Using Scheme
 @chapter Using Scheme
 
 This chapter describes how to use Scheme to evaluate expressions and
@@ -1156,7 +1175,7 @@ describe how to use the compiler, and how to debug your programs.
 * Garbage Collection::
 @end menu
 
-@node REPL, Loading Files, Using Scheme, Using Scheme
+@node REPL
 @section The Read-Eval-Print Loop
 
 @cindex REPL
@@ -1174,7 +1193,7 @@ prints the result, and gives you another prompt.
 * The Current REPL Environment::
 @end menu
 
-@node The Prompt and Level Number, Interrupting, REPL, REPL
+@node The Prompt and Level Number
 @subsection The Prompt and Level Number
 
 @cindex prompt, REPL
@@ -1230,7 +1249,7 @@ find out what is in error is to do some poking around in the error
 @acronym{REPL}.  If you abort out of it, the context of the error will
 be destroyed, and you may not be able to find out what happened.
 
-@node Interrupting, Restarting, The Prompt and Level Number, REPL
+@node Interrupting
 @subsection Interrupting
 
 @kindex C-g
@@ -1329,7 +1348,7 @@ Print help information.  This will describe any other options not
 documented here.
 @end table
 
-@node Restarting, The Current REPL Environment, Interrupting, REPL
+@node Restarting
 @subsection Restarting
 
 Another way to exit a @acronym{REPL} is to use the @code{restart}
@@ -1403,7 +1422,7 @@ Value to use instead of foo: '(a b)
 @end example
 @end deffn
 
-@node The Current REPL Environment,  , Restarting, REPL
+@node The Current REPL Environment
 @subsection The Current REPL Environment
 
 @cindex current REPL environment
@@ -1452,7 +1471,7 @@ environment does not belong to a package then the environment is
 returned.
 @end deffn
 
-@node Loading Files, World Images, REPL, Using Scheme
+@node Loading Files
 @section Loading Files
 
 To load files of Scheme code, use the procedure @code{load}:
@@ -1563,7 +1582,7 @@ called with @var{symbol} as an argument, the @var{thunk} arguments are
 executed in order from left to right.
 @end deffn
 
-@node World Images, Garbage Collection, Loading Files, Using Scheme
+@node World Images
 @section World Images
 
 @cindex world image
@@ -1609,7 +1628,7 @@ which will destroy the current world, replacing it with the saved world.
 The argument to @code{disk-restore} may be omitted, in which case it
 defaults to the filename from which the current world was last restored.
 
-@node Garbage Collection,  , World Images, Using Scheme
+@node Garbage Collection
 @section Garbage Collection
 
 This section describes procedures that control garbage collection.
@@ -1723,7 +1742,7 @@ Toggles @acronym{GC} notification on and off.  If @acronym{GC}
 notification is turned on, turns it off; otherwise turns it on.
 @end deffn
 
-@node Compiling Programs, Debugging, Using Scheme, Top
+@node Compiling Programs
 @chapter Compiling Programs
 
 Note: the procedures described in this section are only available when
@@ -1735,7 +1754,7 @@ the @option{--compiler} command-line option is specified.
 * Efficiency Tips::
 @end menu
 
-@node Compilation Procedures, Declarations, Compiling Programs, Compiling Programs
+@node Compilation Procedures
 @section Compilation Procedures
 
 @deffn procedure cf filename [destination]
@@ -1822,7 +1841,7 @@ the output file.  If this argument is a directory, then the output file
 has its normal name but is put in that directory instead.
 @end deffn
 
-@node Declarations, Efficiency Tips, Compilation Procedures, Compiling Programs
+@node Declarations
 @section Declarations
 @cindex declarations
 
@@ -1836,7 +1855,7 @@ Several declarations can be added to your programs to help @code{cf} and
 * Reduction of Operators::
 @end menu
 
-@node Standard Names, In-line Coding, Declarations, Declarations
+@node Standard Names
 @subsection Standard Names
 
 Normally, all files have a line
@@ -1872,7 +1891,7 @@ following expression:
 @end group
 @end example
 
-@node In-line Coding, Replacement of Operators, Standard Names, Declarations
+@node In-line Coding
 @subsection In-line Coding
 
 Another useful facility is the ability to in-line code procedure
@@ -2010,7 +2029,7 @@ for a lot of output).
 @end group
 @end example
 
-@node Replacement of Operators, Reduction of Operators, In-line Coding, Declarations
+@node Replacement of Operators
 @subsection Operator Replacement
 
 The @code{replace-operator} declaration is provided to inform the
@@ -2115,7 +2134,7 @@ replaced.
 @end itemize
 @end deffn
 
-@node Reduction of Operators,  , Replacement of Operators, Declarations
+@node Reduction of Operators
 @subsection Operator Reduction
 
 @findex reduce-operator
@@ -2346,7 +2365,7 @@ should not be reduced.
 @end itemize
 @end deffn
 
-@node Efficiency Tips,  , Declarations, Compiling Programs
+@node Efficiency Tips
 @section Efficiency Tips
 
 How you write your programs can have a large impact on how efficiently
@@ -2376,7 +2395,7 @@ explanations useful.
 * Flonum arithmetic::
 @end menu
 
-@node Coding style, Global variables, Efficiency Tips, Efficiency Tips
+@node Coding style
 @subsection Coding style
 
 Scheme is a rich language, in which there are usually several ways to
@@ -2516,7 +2535,7 @@ expressions in the body.  Following the standard simultaneously assures
 portability and avoids the implementation inefficiencies described in
 this section.
 
-@node Global variables, Type and range checking, Coding style, Efficiency Tips
+@node Global variables
 @subsection Global variables
 
 @cindex variable caches
@@ -2632,7 +2651,7 @@ For example, to ignore reference traps on all the variables except
 @c
 @c In all versions, top level declarations affect the whole source file.
 
-@node Type and range checking, Fixnum arithmetic, Global variables, Efficiency Tips
+@node Type and range checking
 @subsection Type and range checking
 
 @cindex type checking
@@ -2676,7 +2695,7 @@ In-lined primitives within the block will not check that indices are
 valid.
 @end deffn
 
-@node Fixnum arithmetic, Flonum arithmetic, Type and range checking, Efficiency Tips
+@node Fixnum arithmetic
 @subsection Fixnum arithmetic
 
 The usual arithmetic operations like @code{+} and @code{<} are called
@@ -2707,7 +2726,7 @@ garbage collector.  For a listing of all fixnum operations, see
 A fruitful area for inserting fixnum operations is in the index
 operations in tight loops.
 
-@node Flonum arithmetic,  , Fixnum arithmetic, Efficiency Tips
+@node Flonum arithmetic
 @subsection Flonum arithmetic
 @c
 @c !INCOMPLETE
@@ -2870,7 +2889,7 @@ A great deal of care has to be taken with the standard math procedures.
 For example, when called with a flonum, both @code{sqrt} and @code{asin}
 can return a complex number (e.g@: with argument @code{-1.5}).
 
-@node Debugging, Profiling, Compiling Programs, Top
+@node Debugging
 @chapter Debugging
 
 Parts of this chapter are adapted from @cite{Don't Panic: A 6.001 User's
@@ -2960,7 +2979,7 @@ appear, be prepared to attack them with all the tools available.
 * Advising Procedures::
 @end menu
 
-@node Subproblems and Reductions, Command-Line Debugger, Debugging, Debugging
+@node Subproblems and Reductions
 @section Subproblems and Reductions
 
 @cindex subproblem
@@ -3031,7 +3050,7 @@ subproblem, where they start over at zero.  The best way to get a feel
 for subproblem levels and reduction numbers is to experiment with the
 debugging tools, especially @code{debug}.
 
-@node Command-Line Debugger, Debugging Aids, Subproblems and Reductions, Debugging
+@node Command-Line Debugger
 @section The Command-Line Debugger
 
 @cindex debugger
@@ -3246,7 +3265,7 @@ command quits the debugger, returning to the caller.  And the @kbd{?}
 command prints a brief summary of the debugger's commands.
 @end table
 
-@node Debugging Aids, Advising Procedures, Command-Line Debugger, Debugging
+@node Debugging Aids
 @section Debugging Aids
 
 This section describes additional commands that are useful for
@@ -3409,7 +3428,7 @@ default is @code{#f} if @var{environment} is specified, and @code{#t} if
 @end example
 @end deffn
 
-@node Advising Procedures,  , Debugging Aids, Debugging
+@node Advising Procedures
 @section Advising Procedures
 
 Giving advice to procedures is a powerful debugging technique.
@@ -3619,7 +3638,7 @@ combination of @code{unadvise-entry} and @code{unadvise-exit}.  If
 @var{procedure} is not given, the default is all advised procedures.
 @end deffn
 
-@node Profiling, GNU Emacs Interface, Debugging, Top
+@node Profiling
 @chapter Profiling
 
 MIT/GNU Scheme provides a simple-minded statistical profiler called
@@ -3684,7 +3703,7 @@ ignored.  Set this to true only if you are debugging the internals of
 the system.
 @end defvr
 
-@node GNU Emacs Interface, Edwin, Profiling, Top
+@node GNU Emacs Interface
 @chapter GNU Emacs Interface
 
 There is an interface library, called @file{xscheme}, distributed with
@@ -3825,7 +3844,7 @@ Like typing @kbd{C-c C-b} when running Scheme without Emacs.
 Like evaluating @samp{(continue)}.  (@code{xscheme-send-proceed})
 @end table
 
-@node Edwin, Release Notes, GNU Emacs Interface, Top
+@node Edwin
 @chapter Edwin
 
 This chapter describes how to start Edwin, the MIT/GNU Scheme text
@@ -3845,7 +3864,7 @@ in Emacs Lisp.  This manual does not discuss customization of Edwin.
 * Last Resorts::
 @end menu
 
-@node Starting Edwin, Leaving Edwin, Edwin, Edwin
+@node Starting Edwin
 @section Starting Edwin
 
 To use Edwin, start Scheme with the following command-line options:
@@ -3936,7 +3955,7 @@ Windows only.  Creates a window and uses it as Edwin's main window.
 @end table
 @end defvr
 
-@node Leaving Edwin, Edwin Scheme Mode, Starting Edwin, Edwin
+@node Leaving Edwin
 @section Leaving Edwin
 
 Once Edwin has been entered, it can be exited in the following ways:
@@ -3976,7 +3995,7 @@ This command is identical to the @kbd{C-x C-c} command of GNU
 Emacs.
 @end table
 
-@node Edwin Scheme Mode, Edwin Scheme Evaluation, Leaving Edwin, Edwin
+@node Edwin Scheme Mode
 @section Scheme Mode
 
 As you might expect, Edwin has special support for editing and
@@ -4012,7 +4031,7 @@ argument, @kbd{M-A} will insert the parameter names in the buffer at
 point, so in this example, the buffer would contain @samp{(quotient n d}
 after running @kbd{C-u M-A}.
 
-@node Edwin Scheme Evaluation, Edwin REPL Mode, Edwin Scheme Mode, Edwin
+@node Edwin Scheme Evaluation
 @section Evaluation
 
 Scheme mode also provides commands for evaluating Scheme expressions.
@@ -4047,7 +4066,7 @@ occurring; any output from the evaluation will be shown in a pop-up
 buffer when the evaluation finishes; and you abort the evaluation using
 @kbd{C-g}.
 
-@node Edwin REPL Mode, Edwin Debugger, Edwin Scheme Evaluation, Edwin
+@node Edwin REPL Mode
 @section REPL Mode
 
 Edwin provides a special mechanism for interacting with Scheme
@@ -4102,7 +4121,7 @@ Edwin debugger, which pops up a new window containing the debugger.
 Your @acronym{REPL} buffer remains in the error state, allowing you to
 examine it further if you wish.
 
-@node Edwin Debugger, Last Resorts, Edwin REPL Mode, Edwin
+@node Edwin Debugger
 @section The Edwin Debugger
 
 The Edwin debugger is similar to the command-line debugger, except that
@@ -4168,7 +4187,7 @@ debugger.  If you wish to keep one of these buffers, simply rename it
 using @kbd{M-x rename-buffer}: once it has been renamed, it will not be
 automatically deleted.
 
-@node Last Resorts,  , Edwin Debugger, Edwin
+@node Last Resorts
 @section Last Resorts
 
 When Scheme exits abnormally it tries to save any unsaved Edwin buffers.
@@ -4209,13 +4228,13 @@ Edwin's internal display data structures to get into an inconsistent
 state that prevents Edwin from running.
 @end deffn
 
-@node Release Notes, GNU Free Documentation License, Edwin, Top
+@node Release Notes
 @appendix Release Notes
 
 The release notes are online at
 @uref{http://www.gnu.org/software/mit-scheme/release.html}.
 
-@node GNU Free Documentation License, Environment-variable Index, Release Notes, Top
+@node GNU Free Documentation License
 @appendix GNU Free Documentation License
 
 @cindex FDL, GNU Free Documentation License
@@ -4662,19 +4681,19 @@ recommend releasing these examples in parallel under your choice of
 free software license, such as the GNU General Public License,
 to permit their use in free software.
 
-@node Environment-variable Index, Option Index, GNU Free Documentation License, Top
+@node Environment-variable Index
 @appendix Environment-variable Index
 @printindex nv
 
-@node Option Index, Variable Index, Environment-variable Index, Top
+@node Option Index
 @appendix Option Index
 @printindex op
 
-@node Variable Index, Concept Index, Option Index, Top
+@node Variable Index
 @appendix Variable Index
 @printindex vr
 
-@node Concept Index,  , Variable Index, Top
+@node Concept Index
 @appendix Concept Index
 @printindex cp
 
