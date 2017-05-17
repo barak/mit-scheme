@@ -162,7 +162,7 @@ USA.
   (call-with-current-continuation
    (lambda (continuation)
      (with-restart
-      'USE-VALUE			;name
+      'use-value			;name
       "Continue with an alien."		;reporter
       continuation			;effector
       (lambda ()			;interactor
@@ -182,7 +182,7 @@ USA.
 		   ;; To be fasdump/loadable.
 		   (type vector) (named 'alien-function)
 		   (print-procedure
-		    (standard-unparser-method 'ALIEN-FUNCTION
+		    (standard-unparser-method 'alien-function
 		     (lambda (alienf port)
 		       (write-char #\space port)
 		       (write-string (%alien-function/name alienf)
@@ -322,20 +322,27 @@ USA.
   ;; Like c-poke-pointer, but increments DEST by a pointer width.
   ((ucode-primitive c-poke-pointer! 3) dest 0 alien))
 
-(define (c-poke-string alien bytevector)
-  ;; Copy BYTEVECTOR and a terminating null byte to the ALIEN address.
-  (guarantee bytevector? bytevector 'C-POKE-STRING)
-  ((ucode-primitive c-poke-string 3) alien 0 bytevector))
+(define (c-poke-string alien string)
+  ;; Copy STRING and a terminating null byte to the bytes at the ALIEN address.
+  (guarantee-bytes string 'c-poke-string)
+  ((ucode-primitive c-poke-string 3) alien 0 string))
 
-(define (c-poke-string! alien bytevector)
+(define (c-poke-string! alien string)
   ;; Like c-poke-string, but increments ALIEN past the terminating null byte.
-  (guarantee bytevector? bytevector 'C-POKE-STRING!)
-  ((ucode-primitive c-poke-string! 3) alien 0 bytevector))
+  (guarantee-bytes string 'c-poke-string!)
+  ((ucode-primitive c-poke-string! 3) alien 0 string))
 
-(define-integrable (c-poke-bytes alien offset count buffer start)
+(define (guarantee-bytes bytes caller)
+  (if (not (or (string? bytes)
+	       (bytevector? bytes)))
+      (error:wrong-type-argument bytes "a string or bytevector" caller))
+  bytes)
+
+(define (c-poke-bytes alien offset count buffer start)
   ;; Like c-poke-string, but does not add a terminating null byte, copying only
   ;; COUNT bytes from BUFFER and starting at START.  START+COUNT-1 must be a
   ;; valid index into BUFFER.
+  (guarantee-bytes buffer 'c-poke-bytes)
   ((ucode-primitive c-poke-bytes 5) alien offset count buffer start))
 
 (define (c-enum-name value enum-name constants)
@@ -561,15 +568,9 @@ USA.
 
 (define (outf-error . objects)
   ((ucode-primitive outf-error 1)
-   (apply bytevector-append
-	  (map (lambda (o)
-		 (if (bytevector? o)
-		     0
-		     (string->utf8
-		      (if (string? o)
-			  o
-			  (write-to-string o)))))
-	       objects))))
+   (string-append*
+    (map (lambda (o) (if (string? o) o (write-to-string o)))
+	 objects))))
 
 (define (registered-callback-count)
   (let* ((vector registered-callbacks)

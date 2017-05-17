@@ -196,9 +196,11 @@ evaluated in the syntax environment of such code.
 
 The @strong{@code{C-call}} syntax arranges to invoke a callout
 trampoline.  Arguments to the trampoline can be integers, floats,
-bytevectors or aliens (non-heap pointers, to C data structures,
-@pxref{Alien Data}).  Note the Scheme strings must be converted to
-bytevectors via the appropriate encoding procedure.
+strings (or bytevectors) or aliens (non-heap pointers, to C data
+structures, @pxref{Alien Data}).  If a string argument might contain
+characters larger than one byte (code points U+0080 and larger), it
+should be converted to a bytevector e.g.@: by @code{string->utf8},
+else an error could be signaled.
 
 @smallexample
 (let ((alien (make-alien '|GtkWidget|)))

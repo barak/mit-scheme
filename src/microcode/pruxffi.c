@@ -154,43 +154,35 @@ DEFINE_PRIMITIVE ("C-PEEK-POINTER", Prim_peek_pointer, 3, 3, 0)
   }
 }
 
-SCM
-char_pointer_to_bytevector (char *ptr)
-{
-  unsigned long n_bytes = strlen (ptr);
-  return (memory_to_bytevector ((n_bytes), (ptr)));
-}
-
 DEFINE_PRIMITIVE ("C-PEEK-CSTRING", Prim_peek_cstring, 2, 2, 0)
 {
-  /* Return a bytevector containing the bytes in a C (null-terminated)
+  /* Return a string containing the characters in a C (null-terminated)
      string that starts at the address ALIEN+OFFSET. */
 
   PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN (char_pointer_to_bytevector (ALIEN_ADDRESS_LOC (char)));
+  PRIMITIVE_RETURN (char_pointer_to_string (ALIEN_ADDRESS_LOC (char)));
 }
 
 DEFINE_PRIMITIVE ("C-PEEK-CSTRING!", Prim_peek_cstring_bang, 2, 2, 0)
 {
-  /* Return a bytevector containing the bytes in a C (null-terminated)
-     string that starts at the address ALIEN+OFFSET.  Set ALIEN to the
-     address of the char after the string's null terminator. */
+  /* Return a Scheme string containing the characters in a C string
+     that starts at the address ALIEN+OFFSET.  Set ALIEN to the
+     address of the C char after the string's null terminator. */
 
   PRIMITIVE_HEADER (2);
   {
     char * ptr = (ALIEN_ADDRESS_LOC (char));
-    unsigned long n_bytes = (strlen (ptr));
-    SCM v = (memory_to_bytevector (n_bytes, ptr));
-    set_alien_address ((ARG_REF (1)), (ptr + n_bytes + 1));
-    PRIMITIVE_RETURN (v);
+    SCM string = (char_pointer_to_string (ptr));
+    set_alien_address ((ARG_REF (1)), (ptr + strlen (ptr) + 1));
+    PRIMITIVE_RETURN (string);
   }
 }
 
 DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP", Prim_peek_cstringp, 2, 2, 0)
 {
   /* Follow the pointer at the address ALIEN+OFFSET to a C string.
-     Return a bytevector containing the bytes in the C (null-
-     terminated) string.  If the pointer is null, return (). */
+     Copy the C string into the heap and return the new Scheme
+     string.  If the pointer is null, return (). */
 
   PRIMITIVE_HEADER (2);
   {
@@ -201,7 +193,7 @@ DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP", Prim_peek_cstringp, 2, 2, 0)
       }
     else
       {
-	PRIMITIVE_RETURN (char_pointer_to_bytevector (*ptr));
+	PRIMITIVE_RETURN (char_pointer_to_string (*ptr));
       }
   }
 }
@@ -209,10 +201,10 @@ DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP", Prim_peek_cstringp, 2, 2, 0)
 DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP!", Prim_peek_cstringp_bang, 2, 2, 0)
 {
   /* Follow the pointer at the address ALIEN+OFFSET to a C string.
-     Return a bytevector containing the bytes in the C (null-
-     terminated) string.  If the pointer is null, return ().  If the
-     pointer is not null, set ALIEN to the address of the char pointer
-     after ALIEN+OFFSET. */
+     Set ALIEN to the address of the char pointer after ALIEN+OFFSET.
+     Copy the C string into the heap and return the new Scheme
+     string.  If the pointer is null, return (). */
+
   PRIMITIVE_HEADER (2);
   {
     char ** ptr = (ALIEN_ADDRESS_LOC (char *));
@@ -222,25 +214,25 @@ DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP!", Prim_peek_cstringp_bang, 2, 2, 0)
       }
     else
       {
-	SCM v = char_pointer_to_bytevector (*ptr);
+	SCM string = char_pointer_to_string (*ptr);
 	set_alien_address ((ARG_REF (1)), (ptr + 1)); /* No more aborts! */
-	PRIMITIVE_RETURN (v);
+	PRIMITIVE_RETURN (string);
       }
   }
 }
 
 DEFINE_PRIMITIVE ("C-PEEK-BYTES", Prim_peek_bytes, 5, 5, 0)
 {
-  /* Copy, from ALIEN+OFFSET, COUNT bytes to BYTEVECTOR[START]. */
+  /* Copy, from ALIEN+OFFSET, COUNT bytes to STRING[START..]. */
 
   PRIMITIVE_HEADER (5);
   {
-    const void * src = (ALIEN_ADDRESS_LOC (void));
+    const void * src = (ALIEN_ADDRESS_LOC (void *));
     int count = (UNSIGNED_FIXNUM_ARG (3));
-    unsigned long length;
-    uint8_t * dst = (arg_bytevector (4, (&length)));
-    int index = (arg_index_integer (5, (length - (count - 1))));
-    memcpy ((dst + index), src, count);
+    SCM string = (ARG_REF (4));
+    int index = arg_index_integer (5, (STRING_LENGTH (string)));
+    void * dest = STRING_LOC (string, index);
+    memcpy (dest, src, count);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -289,9 +281,9 @@ DEFINE_PRIMITIVE ("C-POKE-POINTER", Prim_poke_pointer, 3, 3, 0)
 
 DEFINE_PRIMITIVE ("C-POKE-POINTER!", Prim_poke_pointer_bang, 3, 3, 0)
 {
-  /* Set the pointer at address ALIEN+OFFSET to ADDRESS (an alien, or
-     0 for NULL).  Set ALIEN to the address of the pointer after
-     ALIEN+OFFSET. */
+  /* Set the pointer at address ALIEN+OFFSET to ADDRESS (an alien,
+     string, or 0 for NULL).  Set ALIEN to the address of the
+     pointer after ALIEN+OFFSET. */
 
   PRIMITIVE_HEADER (3);
   {
@@ -304,52 +296,51 @@ DEFINE_PRIMITIVE ("C-POKE-POINTER!", Prim_poke_pointer_bang, 3, 3, 0)
 
 DEFINE_PRIMITIVE ("C-POKE-STRING", Prim_poke_string, 3, 3, 0)
 {
-  /* Copy into the C string at address ALIEN+OFFSET the Scheme
-     BYTEVECTOR.  Assume BYTEVECTOR fits.  Null terminate the C
-     string. */
+  /* Copy into the C string at address ALIEN+OFFSET the Scheme STRING.
+    Assume STRING fits.  Null terminate the C string. */
 
   PRIMITIVE_HEADER (3);
+  CHECK_ARG (3, STRING_P);
   {
-    char * dst = (ALIEN_ADDRESS_LOC (char));
-    unsigned long len;
-    uint8_t * src = (arg_bytevector (3, (&len)));
-    memcpy (dst, src, len);
-    dst[len] = '\0';
+    SCM string = (ARG_REF (3));
+    strncpy ((ALIEN_ADDRESS_LOC (char)),
+	     (STRING_POINTER (string)),
+	     ((STRING_LENGTH (string)) + 1));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("C-POKE-STRING!", Prim_poke_string_bang, 3, 3, 0)
 {
-  /* Copy into the C string at address ALIEN+OFFSET the Scheme
-     BYTEVECTOR.  Assume BYTEVECTOR fits.  Null terminate the C
-     string.  Set ALIEN to the address of the C char following the
-     NULL terminator. */
+  /* Copy into the C string at address ALIEN+OFFSET the Scheme STRING.
+     Assume STRING fits.  Null terminate the C string.  Set ALIEN to
+     the address of the C char following the NULL terminator. */
 
   PRIMITIVE_HEADER (3);
+  CHECK_ARG (3, STRING_P);
   {
-    uint8_t * dst = (ALIEN_ADDRESS_LOC (uint8_t));
-    unsigned long len;
-    uint8_t * src = (arg_bytevector (3, (&len)));
-    memcpy (dst, src, len);
-    dst[len] = '\0';
-    set_alien_address ((ARG_REF (1)), (dst + len + 1));
+    char * ptr = (ALIEN_ADDRESS_LOC (char));
+    SCM string = (ARG_REF (3));
+    unsigned long n_chars = ((STRING_LENGTH (string)) + 1);
+    strncpy (ptr, (STRING_POINTER (string)), n_chars);
+    set_alien_address ((ARG_REF (1)), (ptr + n_chars));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("C-POKE-BYTES", Prim_poke_bytes, 5, 5, 0)
 {
-  /* Copy to ALIEN+OFFSET COUNT bytes from BYTEVECTOR[START]. */
+  /* Copy to ALIEN+OFFSET COUNT bytes from STRING[START]. */
 
   PRIMITIVE_HEADER (5);
+  CHECK_ARG (4, STRING_P);
   {
-    uint8_t * dst = (ALIEN_ADDRESS_LOC (uint8_t));
+    void * dest = (ALIEN_ADDRESS_LOC (void *));
     int count = (UNSIGNED_FIXNUM_ARG (3));
-    unsigned long length;
-    uint8_t * src = (arg_bytevector (4, (&length)));
-    int index = (arg_index_integer (5, (length - (count - 1))));
-    memcpy ((dst + index), src, count);
+    SCM string = (ARG_REF (4));
+    int index = arg_index_integer (5, (STRING_LENGTH (string)));
+    const void * src = STRING_LOC (string, index);
+    memcpy (dest, src, count);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -835,15 +826,19 @@ arg_alien_entry (int argn)
 void *
 arg_pointer (int argn)
 {
-  /* Accept an alien, bytevector, flovec, or zero (for a NULL pointer). */
+  /* Accept an alien, string, flovec, or zero (for a NULL pointer). */
 
   SCM arg = ARG_REF (argn);
   if ((INTEGER_P (arg)) && (integer_zero_p (arg)))
     return ((void *)0);
-  if (BYTEVECTOR_P (arg))
+  if (STRING_P (arg))
+    return ((void *) (STRING_POINTER (arg)));
+  if ((INTEGER_P (arg)) && (integer_to_ulong_p (arg)))
     {
-      unsigned long len;
-      return ((void *) (arg_bytevector (argn, (&len))));
+      unsigned char * result = lookup_external_string (arg, NULL);
+      if (result == 0)
+	error_wrong_type_arg (argn);
+      return ((void *) result);
     }
   if (is_alien (arg))
     return (alien_address (arg));
@@ -1060,10 +1055,17 @@ DEFINE_PRIMITIVE ("OUTF-ERROR", Prim_outf_error, 1, 1, 0)
 
   PRIMITIVE_HEADER (1);
   { 
-    unsigned long length;
-    char * string = ((char *)(arg_bytevector (1, (&length))));
-    outf_error ("%.*s", ((int)length), string);
-    outf_flush_error ();
+    SCM arg = ARG_REF (1);
+    if (STRING_P (arg))
+      {
+	char * string = ((char *) STRING_LOC (arg, 0));
+	outf_error ("%s", string);
+	outf_flush_error ();
+      }
+    else
+      {
+	error_wrong_type_arg (1);
+      }
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
