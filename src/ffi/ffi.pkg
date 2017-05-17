@@ -41,5 +41,5 @@ FFI System Packaging |#
   (parent ())
   (files "build")
   (export (ffi)
-	  update-optiondb
-	  update-html-index))
+	  add-plugin
+	  remove-plugin))

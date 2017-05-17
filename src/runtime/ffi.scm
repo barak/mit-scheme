@@ -593,14 +593,15 @@ USA.
   (load-option-quietly 'ffi)
   ((environment-lookup (->environment '(ffi)) 'c-generate) library prefix))
 
-(define (update-optiondb directory)
+(define (add-plugin name project infodir scmlibdir scmdocdir)
   (load-option-quietly 'ffi)
-  ((environment-lookup (->environment '(ffi)) 'update-optiondb) directory))
+  ((environment-lookup (->environment '(ffi)) 'add-plugin)
+   name project infodir scmlibdir scmdocdir))
 
-(define (update-html-index directory)
+(define (remove-plugin name project infodir scmlibdir scmdocdir)
   (load-option-quietly 'ffi)
-  (load-option-quietly 'regular-expression)
-  ((environment-lookup (->environment '(ffi)) 'update-html-index) directory))
+  ((environment-lookup (->environment '(ffi)) 'remove-plugin)
+   name project infodir scmlibdir scmdocdir))
 
 (define (load-option-quietly name)
   (if (not (option-loaded? name))

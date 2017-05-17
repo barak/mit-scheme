@@ -934,6 +934,7 @@ install-standard: install-auxdir-top
 install-auxdir-top:
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
 	$(INSTALL_DATA) $(top_srcdir)/etc/optiondb.scm $(DESTDIR)$(AUXDIR)/.
+	$(INSTALL_DATA) $(top_srcdir)/etc/plugins.scm $(DESTDIR)$(AUXDIR)/.
 	$(INSTALL_DATA) lib/*.com $(DESTDIR)$(AUXDIR)/.
 
 .PHONY: default-target all all-native all-liarc macosx-app

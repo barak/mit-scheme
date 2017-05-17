@@ -3650,8 +3650,8 @@ USA.
 	  plugin-available?
 	  register-c-callback
 	  set-alien/ctype!
-	  update-html-index
-	  update-optiondb)
+	  add-plugin
+	  remove-plugin)
   (initialization (initialize-package!)))
 
 (define-package (runtime program-copier)
