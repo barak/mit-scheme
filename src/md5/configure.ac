@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
 AC_INIT([MIT/GNU Scheme md5 plugin],
-        [0.1],
+        [0.2],
         [bug-mit-scheme@gnu.org],
         [mit-scheme-md5])
 AC_CONFIG_SRCDIR([md5.pkg])
@@ -122,6 +122,7 @@ if test "${with_openssl}" != no; then
     fi
 fi
 
+MIT_SCHEME_PROJECT=mit-scheme
 : ${MIT_SCHEME_EXE=mit-scheme}
 MIT_SCHEME_LIBDIR=`( echo "(display (->namestring" ;\
 		     echo "          (system-library-directory-pathname)))" ) \
@@ -158,6 +159,7 @@ done
 MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
 ${MIT_SCHEME_PKD}: stamp-scheme"
 
+AC_SUBST([MIT_SCHEME_PROJECT])
 AC_SUBST([MIT_CFLAGS])
 AC_SUBST([MIT_SCHEME_EXE])
 AC_SUBST([MIT_SCHEME_LIBDIR])

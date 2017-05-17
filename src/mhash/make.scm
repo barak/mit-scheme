@@ -6,4 +6,4 @@
   (lambda ()
     (load-package-set "mhash")))
 
-(add-subsystem-identification! "mhash" '(0 1))
+(add-subsystem-identification! "mhash" '(0 2))

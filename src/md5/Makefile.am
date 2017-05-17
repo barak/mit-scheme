@@ -28,6 +28,7 @@ EXTRA_DIST = autogen.sh
 MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)md5
+scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
 
 scmlib_LTLIBRARIES = md5-shim.la
 scmlib_DATA = md5-types.bin md5-const.bin
@@ -41,13 +42,7 @@ scmlib_sub_DATA = $(sources) $(binaries)
 scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@
 
 #info_TEXINFOS = mit-scheme-md5.texi
-AM_MAKEINFOHTMLFLAGS = --no-split
-
-# Set these to the defaults used by Scheme.
-infodir = $(datarootdir)/info
-htmldir = $(libdir)/mit-scheme/doc
-dvidir = $(libdir)/mit-scheme/doc
-pdfdir = $(libdir)/mit-scheme/doc
+#AM_MAKEINFOHTMLFLAGS = --no-split
 
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
 AM_CFLAGS = @MIT_CFLAGS@
@@ -100,18 +95,28 @@ EXTRA_DIST += md5-check.scm md5-check.sh
 EXTRA_DIST += make.scm optiondb.scm tags-fix.sh
 
 install-data-hook:
-	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)")' \
+	( echo '(add-plugin "md5" "@MIT_SCHEME_PROJECT@"'; \
+	  echo '            ""'; \
+	  echo '            "$(DESTDIR)$(scmlibdir)"'; \
+	  echo '            "$(DESTDIR)$(scmdocdir)")' ) \
 	| $(MIT_SCHEME_EXE) --batch-mode
 
-#install-html: install-html-am
-#	echo '(update-html-index "$(DESTDIR)$(htmldir)/")' \
-#	| $(MIT_SCHEME_EXE) --batch-mode
+install-html: install-html-am
+	( echo '(add-plugin "md5" "@MIT_SCHEME_PROJECT@"'; \
+	  echo '            ""'; \
+	  echo '            "$(DESTDIR)$(scmlibdir)"'; \
+	  echo '            "$(DESTDIR)$(scmdocdir)")' ) \
+	| $(MIT_SCHEME_EXE) --batch-mode
+
+install-info-am:
+
+uninstall-info-am:
 
 uninstall-hook:
-	echo '(update-optiondb "$(DESTDIR)$(scmlibdir)")' \
+	( echo '(remove-plugin "md5" "@MIT_SCHEME_PROJECT@"'; \
+	  echo '               ""'; \
+	  echo '               "$(DESTDIR)$(scmlibdir)"'; \
+	  echo '               "$(DESTDIR)$(scmdocdir)")' ) \
 	| $(MIT_SCHEME_EXE) --batch-mode
 	[ -d "$(DESTDIR)$(scmlib_subdir)" ] \
 	&& rmdir "$(DESTDIR)$(scmlib_subdir)"
-#	[ -d "$(DESTDIR)$(htmldir)" ]					\
-#	&& ( echo  '(update-html-index "$(DESTDIR)$(htmldir)/")'	\
-#	     | $(MIT_SCHEME_EXE) --batch-mode )

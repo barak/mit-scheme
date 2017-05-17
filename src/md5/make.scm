@@ -6,4 +6,4 @@
   (lambda ()
     (load-package-set "md5")))
 
-(add-subsystem-identification! "MD5" '(0 1))
+(add-subsystem-identification! "MD5" '(0 2))

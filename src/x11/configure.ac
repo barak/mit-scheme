@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
 AC_INIT([MIT/GNU Scheme x11 plugin],
-        [0.1],
+        [0.2],
         [bug-mit-scheme@gnu.org],
         [mit-scheme-x11])
 AC_CONFIG_SRCDIR([x11.pkg])
@@ -16,19 +16,20 @@ AC_COPYRIGHT(
 
 This file is part of an x11 plugin for MIT/GNU Scheme.
 
-This plugin is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License as published by the
-Free Software Foundation; either version 2 of the License, or (at your
-option) any later version.
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
 
-This plugin is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this plugin; if not, write to the Free Software Foundation,
-Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
+USA.
 ])
 
 AM_INIT_AUTOMAKE
@@ -77,6 +78,7 @@ if ! pkg-config --exists x11 2>/dev/null; then
     AC_MSG_ERROR([X11 not found.])
 fi
 
+MIT_SCHEME_PROJECT=mit-scheme
 : ${MIT_SCHEME_EXE=mit-scheme}
 MIT_SCHEME_LIBDIR=`( echo "(display (->namestring" ;\
 		     echo "          (system-library-directory-pathname)))" ) \
@@ -114,6 +116,7 @@ MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
 ${MIT_SCHEME_PKD}: stamp-scheme"
 
 AC_SUBST([MIT_CFLAGS])
+AC_SUBST([MIT_SCHEME_PROJECT])
 AC_SUBST([MIT_SCHEME_EXE])
 AC_SUBST([MIT_SCHEME_LIBDIR])
 AC_SUBST([MIT_SCHEME_INCLUDEDIR])

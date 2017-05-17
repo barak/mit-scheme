@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
 AC_INIT([MIT/GNU Scheme mcrypt plugin],
-        [0.1],
+        [0.2],
         [bug-mit-scheme@gnu.org],
         [mit-scheme-mcrypt])
 AC_CONFIG_SRCDIR([mcrypt.pkg])
@@ -107,6 +107,7 @@ MCRYPT_LIBS=`libmcrypt-config --libs`
 CFLAGS="${MCRYPT_CFLAGS} ${CFLAGS}"
 LIBS="${LIBS} ${MCRYPT_LIBS}"
 
+MIT_SCHEME_PROJECT=mit-scheme
 : ${MIT_SCHEME_EXE=mit-scheme}
 MIT_SCHEME_LIBDIR=`( echo "(display (->namestring" ;\
 		     echo "          (system-library-directory-pathname)))" ) \
@@ -143,6 +144,7 @@ done
 MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
 ${MIT_SCHEME_PKD}: stamp-scheme"
 
+AC_SUBST([MIT_SCHEME_PROJECT])
 AC_SUBST([MIT_CFLAGS])
 AC_SUBST([MIT_SCHEME_EXE])
 AC_SUBST([MIT_SCHEME_LIBDIR])
