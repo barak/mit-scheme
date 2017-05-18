@@ -103,7 +103,7 @@ USA.
 	(write-size "Heap:     " 6 4) ; heap_alloc_limit - heap_start
 	(newline port)
 	(write-size "Free:     " 6 5) ; heap_alloc_limit - Free
-	(write-string "  ")
+	(write-string "  " port)
 	(write-free-bar status 32 port)
 	(newline port)
 	(let loop ((i 0)
