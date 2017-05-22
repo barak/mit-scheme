@@ -241,56 +241,6 @@ USA.
 		     string)
     (builder)))
 
-;;;; Char-Set Compiler
-
-;;; Special characters:
-;;; #\] must appear as first character.
-;;; #\- must appear as first or last character, or it may appear
-;;;     immediately after a range.
-;;; #\^ must appear anywhere except as the first character in the set.
-
-(define (re-compile-char-set pattern negate?)
-  (receive (scalar-values negate?*)
-      (re-char-pattern->code-points pattern)
-    (let ((char-set (char-set* scalar-values)))
-      (if (if negate? (not negate?*) negate?*)
-	  (char-set-invert char-set)
-	  char-set))))
-
-(define (re-char-pattern->code-points pattern)
-  (define (loop pattern scalar-values)
-    (if (pair? pattern)
-	(if (and (pair? (cdr pattern))
-		 (char=? (cadr pattern) #\-)
-		 (pair? (cddr pattern)))
-	    (loop (cdddr pattern)
-		  (cons (cons (char->integer (car pattern))
-			      (fix:+ (char->integer (caddr pattern)) 1))
-			scalar-values))
-	    (loop (cdr pattern)
-		  (cons (char->integer (car pattern))
-			scalar-values)))
-	scalar-values))
-
-  (let ((pattern (string->list pattern)))
-    (if (and (pair? pattern)
-	     (char=? (car pattern) #\^))
-	(values (loop (cdr pattern) '()) #t)
-	(values (loop pattern '()) #f))))
-
-;;;; Translation Tables
-
-(define re-translation-table
-  (let ((normal-table (make-bytevector #x100))
-	(upcase-table (make-bytevector #x100)))
-    (do ((i 0 (fix:+ i 1)))
-	((not (fix:< i #x100)))
-      (bytevector-u8-set! normal-table i i)
-      (bytevector-u8-set! upcase-table i
-			  (char->integer (char-upcase (integer->char i)))))
-    (lambda (case-fold?)
-      (if case-fold? upcase-table normal-table))))
-
 ;;;; Pattern Compiler
 
 (define re-number-of-registers
@@ -317,6 +267,17 @@ USA.
   (byte-stream #f read-only #t)
   (translation-table #f read-only #t))
 
+(define re-translation-table
+  (let ((normal-table (make-bytevector #x100))
+	(upcase-table (make-bytevector #x100)))
+    (do ((i 0 (fix:+ i 1)))
+	((not (fix:< i #x100)))
+      (bytevector-u8-set! normal-table i i)
+      (bytevector-u8-set! upcase-table i
+			  (char->integer (char-upcase (integer->char i)))))
+    (lambda (case-fold?)
+      (if case-fold? upcase-table normal-table))))
+
 (define (make-compiled-regexp bytes case-fold?)
   (%make-compiled-regexp bytes (re-translation-table case-fold?)))
 

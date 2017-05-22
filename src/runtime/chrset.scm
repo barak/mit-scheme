@@ -523,6 +523,43 @@ USA.
 (define inversion-list-difference
   (make-inversion-list-combiner (lambda (a b) (and a (not b)))))
 
+;;;; Char-Set Compiler
+
+;;; Special characters:
+;;; #\] must appear as first character.
+;;; #\- must appear as first or last character, or it may appear
+;;;     immediately after a range.
+;;; #\^ must appear anywhere except as the first character in the set.
+
+(define (re-compile-char-set pattern negate?)
+  (receive (scalar-values negate?*)
+      (re-char-pattern->code-points pattern)
+    (let ((char-set (char-set* scalar-values)))
+      (if (if negate? (not negate?*) negate?*)
+	  (char-set-invert char-set)
+	  char-set))))
+
+(define (re-char-pattern->code-points pattern)
+  (define (loop pattern scalar-values)
+    (if (pair? pattern)
+	(if (and (pair? (cdr pattern))
+		 (char=? (cadr pattern) #\-)
+		 (pair? (cddr pattern)))
+	    (loop (cdddr pattern)
+		  (cons (cons (char->integer (car pattern))
+			      (fix:+ (char->integer (caddr pattern)) 1))
+			scalar-values))
+	    (loop (cdr pattern)
+		  (cons (char->integer (car pattern))
+			scalar-values)))
+	scalar-values))
+
+  (let ((pattern (string->list pattern)))
+    (if (and (pair? pattern)
+	     (char=? (car pattern) #\^))
+	(values (loop (cdr pattern) '()) #t)
+	(values (loop pattern '()) #f))))
+
 ;;;; Miscellaneous character sets
 
 (define char-ctl?)

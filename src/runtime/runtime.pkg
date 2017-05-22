@@ -1405,6 +1405,8 @@ USA.
 	  char-set*
 	  code-point-in-char-set?
 	  compute-char-set
+	  re-char-pattern->code-points
+	  re-compile-char-set
 	  string->char-set)
   (export (runtime regular-sexpression)
 	  normalize-ranges)
@@ -5283,9 +5285,7 @@ USA.
 	  compiled-regexp/byte-stream
 	  compiled-regexp/translation-table
 	  condition-type:re-compile-pattern
-	  re-char-pattern->code-points
 	  re-compile-char
-	  re-compile-char-set
 	  re-compile-pattern
 	  re-compile-string
 	  re-disassemble-pattern
