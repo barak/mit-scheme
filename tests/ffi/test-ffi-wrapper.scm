@@ -37,7 +37,9 @@
 					   bytevector struct))))
 			 (new (c-peek-cstring alien)))
 		    (free alien)
-		    (utf8->string new)))
+		    (if (string? new)
+			new
+			(utf8->string new))))
     (let ((a (C-call "test_struct" struct struct)))
       (assert-equal a struct)
       (assert-equal (C-> a "TestStruct second")
