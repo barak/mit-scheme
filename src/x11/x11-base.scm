@@ -51,16 +51,31 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
   (if (not (zero? (C-call "x_window_set_input_hint" window (if hint? 1 0))))
       (error "XAllocWMHints failed.")))
 
-(define-integrable ->utf8 string->utf8)
+(define (->bytes string)
+  (if (and (or (bytevector? string)
+	       (and (ustring? string)
+		    (fix:= 1 (ustring-cp-size string))))
+	   (let ((end (string-length string)))
+	     (every-loop (lambda (cp) (fix:< cp #x80))
+			 cp1-ref string 0 end)))
+      string
+      (string->iso8859-1 string)))
+
+(define-integrable (every-loop proc ref string start end)
+  (let loop ((i start))
+    (if (fix:< i end)
+	(and (proc (ref string i))
+	     (loop (fix:+ i 1)))
+	#t)))
 
 (define (x-window-set-name window name)
   (guarantee-xwindow window 'x-window-set-name)
-  (if (not (zero? (C-call "x_window_set_name" window (->utf8 name))))
+  (if (not (zero? (C-call "x_window_set_name" window (->bytes name))))
       (error "XStringListToTextProperty failed.")))
 
 (define (x-window-set-icon-name window name)
   (guarantee-xwindow window 'x-window-set-icon-name)
-  (if (not (zero? (C-call "x_window_set_icon_name" window (->utf8 name))))
+  (if (not (zero? (C-call "x_window_set_icon_name" window (->bytes name))))
       (error "XStringListToTextProperty failed.")))
 
 ;;; Open/Close
@@ -69,7 +84,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
   (let ((alien (make-alien '(struct |xdisplay|))))
     (C-call "x_open_display" alien (if (eq? #f display-name)
 				       0
-				       (->utf8 display-name)))
+				       (->bytes display-name)))
     (if (alien-null? alien)
 	(error "Could not open display:" display-name)
 	alien)))
@@ -89,7 +104,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 (define (x-set-default-font display font-name)
   (guarantee-xdisplay display 'x-set-default-font)
-  (if (not (zero? (c-call "x_set_default_font" display (->utf8 font-name))))
+  (if (not (zero? (c-call "x_set_default_font" display (->bytes font-name))))
       (error "Could not load font:" font-name)))
 
 ;;; Event Processing
@@ -284,7 +299,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 				       ((> nbytes 0)
 					(let ((bv (make-bytevector nbytes)))
 					  (c-peek-bytes buffer 0 nbytes bv 0)
-					  (utf8->string bv)))
+					  (iso8859-1->string bv)))
 				       (else ""))
 				 ;; Create Scheme bucky bits (kept independent
 				 ;; of the character).  X has already
@@ -418,9 +433,9 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-display-get-default display resource-name class-name)
   (guarantee-xdisplay display 'x-display-get-default)
   (let ((alien (C-call "x_display_get_default" (make-alien 'char)
-		       display (->utf8 resource-name) (->utf8 class-name))))
+		       display (->bytes resource-name) (->bytes class-name))))
     (and (not (alien-null? alien))
-	 (utf8->string (c-peek-cstring alien)))))
+	 (c-peek-cstring alien))))
 
 (define (x-window-query-pointer window)
   (guarantee-xwindow window 'x-window-query-pointer)
@@ -472,7 +487,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-window-set-foreground-color window color)
   (guarantee-xwindow window 'x-window-set-foreground-color)
   (cond ((string? color)
-	 (C-call "x_window_set_foreground_color_name" window (->utf8 color)))
+	 (C-call "x_window_set_foreground_color_name" window (->bytes color)))
 	((integer? color)
 	 (C-call "x_window_set_foreground_color_pixel" window color))
 	(else
@@ -482,7 +497,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-window-set-background-color window color)
   (guarantee-xwindow window 'x-window-set-background-color)
   (cond ((string? color)
-	 (C-call "x_window_set_background_color_name" window (->utf8 color)))
+	 (C-call "x_window_set_background_color_name" window (->bytes color)))
 	((integer? color)
 	 (C-call "x_window_set_background_color_pixel" window color))
 	(else
@@ -492,7 +507,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-window-set-border-color window color)
   (guarantee-xwindow window 'x-window-set-border-color)
   (cond ((string? color)
-	 (C-call "x_window_set_border_color_name" window (->utf8 color)))
+	 (C-call "x_window_set_border_color_name" window (->bytes color)))
 	((integer? color)
 	 (C-call "x_window_set_border_color_pixel" window color))
 	(else
@@ -502,7 +517,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-window-set-cursor-color window color)
   (guarantee-xwindow window 'x-window-set-cursor-color)
   (cond ((string? color)
-	 (C-call "x_window_set_cursor_color_name" window (->utf8 color)))
+	 (C-call "x_window_set_cursor_color_name" window (->bytes color)))
 	((integer? color)
 	 (C-call "x_window_set_cursor_color_pixel" window color))
 	(else
@@ -512,7 +527,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-window-set-mouse-color window color)
   (guarantee-xwindow window 'x-window-set-mouse-color)
   (cond ((string? color)
-	 (C-call "x_window_set_mouse_color_name" window (->utf8 color)))
+	 (C-call "x_window_set_mouse_color_name" window (->bytes color)))
 	((integer? color)
 	 (C-call "x_window_set_mouse_color_pixel" window color))
 	(else
@@ -527,7 +542,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-window-set-font window font)
   (guarantee-xwindow window 'x-window-set-font)
   (guarantee string? font 'x-window-set-font)
-  (not (zero? (C-call "x_window_set_font" window (->utf8 font)))))
+  (not (zero? (C-call "x_window_set_font" window (->bytes font)))))
 
 (define (x-window-set-border-width window width)
   (guarantee-xwindow window 'x-window-set-border-width)
@@ -605,7 +620,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
   (guarantee-xdisplay display 'x-font-structure)
   (let ((font-struct (make-alien '(struct |XFontStruct|))))
     (cond ((string? name/id)
-	   (let ((name (->utf8 name/id)))
+	   (let ((name (->bytes name/id)))
 	     (add-alien-cleanup!
 	      font-struct
 	      (named-lambda (font-struct-init-by-name! copy)
@@ -710,8 +725,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	      (let loop ((i 0))
 		(if (< i actual-count)
 		    (begin
-		      (vector-set! result i (utf8->string
-					     (c-peek-cstringp! scan 0)))
+		      (vector-set! result i (c-peek-cstringp! scan 0))
 		      (loop (1+ i)))))
 	      (cleanup-alien! names)
 	      (free actual-count-return)
@@ -721,7 +735,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 (define (x-intern-atom display name soft?)
   (guarantee-xdisplay display 'x-intern-atom)
-  (c-call "x_intern_atom" display (->utf8 name) (if soft? 1 0)))
+  (c-call "x_intern_atom" display (->bytes name) (if soft? 1 0)))
 
 (define (x-get-atom-name display atom)
 
@@ -743,7 +757,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
     (add-alien-cleanup! name-return cleanup-name-return! init-name-return!)
     (let ((code (c-call "x_get_atom_name" display atom name-return)))
       (if (zero? code)
-	  (let ((name (utf8->string (c-peek-cstringp name-return))))
+	  (let ((name (c-peek-cstringp name-return)))
 	    (cleanup-alien! name-return)
 	    name)
 	  (error "XGetAtomName failed:" code)))))
@@ -836,9 +850,10 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
     result))
 
 (define (char-ptr-to-prop-data-8 data length)
-  (let ((bytevector (make-bytevector length)))
-    (c-peek-bytes data 0 length bytevector 0)
-    (utf8->string bytevector)))
+  (let ((string ((ucode-primitive string-allocate 1) length)))
+    (if (> length 0)
+	(c-peek-bytes data 0 length string 0))
+    string))
 
 (define (x-change-property display window property type format mode data)
   (guarantee-xdisplay display 'x-change-property)
@@ -899,7 +914,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
     (cons bytes length)))
 
 (define (prop-data-8->bytes.length string)
-  (let* ((bytevector (->utf8 string))
+  (let* ((bytevector (->bytes string))
 	 (length (bytevector-length bytevector))
 	 (bytes (malloc length 'uchar)))
     (c-poke-bytes bytes 0 length bytevector 0)

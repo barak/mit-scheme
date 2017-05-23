@@ -33,6 +33,10 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define-package (x11 base)
   (files "x11-base")
   (parent (x11))
+  (import (runtime ustring)
+	  cp1-ref
+	  ustring-cp-size
+	  ustring?)
   (export (x11)
 	  x-visual-deallocate
 	  x-close-display
@@ -137,6 +141,10 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define-package (x11 graphics)
   (files "x11-graphics")
   (parent (x11))
+  (import (runtime ustring)
+	  cp1-ref
+	  ustring-cp-size
+	  ustring?)
   (export (x11)
 	  x-graphics-set-vdc-extent
 	  x-graphics-vdc-extent

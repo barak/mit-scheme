@@ -5,7 +5,7 @@ Load the X11 option. |#
 (with-loader-base-uri (system-library-uri "x11/")
   (lambda ()
     (load-package-set "x11")))
-(add-subsystem-identification! "X11" '(0 1))
+(add-subsystem-identification! "X11" '(0 2))
 
 ;; Until the microcode module based X Graphics system is removed,
 ;; reassign the define-primitives bindings in (runtime x-graphics) to
