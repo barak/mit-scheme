@@ -1,17 +1,18 @@
 The X11-SCREEN option.
 
-This is a drop-in replacement for Edwin's X screen-type that uses the
-X11 plugin rather than the x11 microcode module.  This plugin is not
-part of the core build and can be built outside the core build tree in
-the customary way:
+This plugin creates an (edwin screen x11-screen) package that
+registers an Edwin display type named X11, an exact replacement for
+the microcode module based X screen type.  The plugin is built in the
+customary GNU way:
 
     ./configure ...
     make all check install
 
-The install target copies a shared library shim and compiled Scheme
-files into the system library path, and re-writes the optiondb.scm
-found there.  You can override the default command name "mit-scheme"
-(and thus the system library path) by setting MIT_SCHEME_EXE.
+To load:
 
-To use: (load-option 'X11-SCREEN).  Edwin will then create X11 type
-screens rather than X type screens.
+    (load-option 'x11-screen)
+
+Loading this plugin re-assigns bindings in (edwin) and (edwin
+x-commands); any existing Edwin screens will stop working.  You must
+load this option before starting Edwin.  If the DISPLAY environment
+variable is set, Edwin will create X11 screens.

@@ -7,7 +7,7 @@ Load the X11-Screen option. |#
 (with-loader-base-uri (system-library-uri "x11-screen/")
   (lambda ()
     (load-package-set "x11-screen")))
-(add-subsystem-identification! "X11-Screen" '(0 1))
+(add-subsystem-identification! "X11-Screen" '(0 2))
 
 ;; Reassign (edwin x-commands) bindings created by the define-
 ;; primitives form.  Reassign them to their replacements in the (x11)

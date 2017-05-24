@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme Edwin X11 Screen plugin],
-        [0.1],
+        [0.2],
         [bug-mit-scheme@gnu.org],
         [mit-scheme-x11-screen])
 AC_CONFIG_SRCDIR([x11-screen.pkg])
