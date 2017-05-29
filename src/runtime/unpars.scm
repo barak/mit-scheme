@@ -346,7 +346,7 @@ USA.
 (define (*unparse-with-brackets name object context procedure)
   (if (or (and (get-param:unparse-with-maximum-readability?) object)
           (context-in-brackets? context))
-      (*unparse-readable-hash object)
+      (*unparse-readable-hash object context)
       (begin
 	(*unparse-string "#[" context)
 	(let ((context* (context-in-brackets context)))
