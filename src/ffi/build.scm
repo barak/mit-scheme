@@ -99,7 +99,6 @@ USA.
 	    (warn "Scheme Info index not found:" filename)))))
 
 (define (write-direntry project plugin scmdocdir out)
-  (load-option-quietly 'regular-expression)
   (let ((filename (string scmdocdir"info/"plugin".info")))
     (if (file-exists-or-compressed? filename)
 	(call-with-input-file-uncompressed
@@ -108,13 +107,14 @@ USA.
 	   (skip-to-line "START-INFO-DIR-ENTRY" in)
 	   (transform-to-line
 	    "END-INFO-DIR-ENTRY" in out #f
-	    (let ((project-dir-patt (string "("project"/")))
+	    (let* ((str (string "("project"/"))
+		   (str-len (string-length str)))
 	      (lambda (line)
-		(let ((regs (re-string-search-forward project-dir-patt line)))
-		  (if regs
-		      (string (substring line 0 (re-match-start-index 0 regs))
+		(let ((index (string-search-forward str line)))
+		  (if index
+		      (string (substring line 0 index)
 			      "("scmdocdir"info/"
-			      (substring line (re-match-end-index 0 regs)))
+			      (substring line (fix:+ index str-len)))
 		      line))))))))))
 
 (define (update-html-index plugins scmdocdir)
@@ -171,17 +171,25 @@ USA.
 	       plugins))
 
 (define (read-html-title filename)
-  (load-option-quietly 'regular-expression)
-  (call-with-input-file filename
-    (lambda (in)
-      (let loop ()
-	(let ((line (read-line in)))
-	  (if (eof-object? line)
-	      (error "Could not find HTML title:" filename)
-	      (let ((regs (re-string-match "<title>\\(.*\\)</title>" line)))
-		(if (not regs)
-		    (loop)
-		    (re-match-extract line regs 1)))))))))
+  (let ((patt (compile-regsexp '(seq "<title>"
+				     (group title (* (any-char)))
+				     "</title>"))))
+    (call-with-input-file filename
+      (lambda (in)
+	(let loop ()
+	  (let ((line (read-line in)))
+	    (if (eof-object? line)
+		(error "Could not find HTML title:" filename)
+		(let ((match (regsexp-match-string patt line)))
+		  (if (not match)
+		      (loop)
+		      (match-ref match 'title))))))))))
+
+(define (match-ref match key)
+  (let ((entry (assq key (cddr match))))
+    (if entry
+	(cdr entry)
+	(error "Match group not found:" key match))))
 
 (define (copy-to+line prefix in out)
   (transform-to-line prefix in out #t #f))
@@ -290,7 +298,7 @@ USA.
 	compressed-file-suffixes.progs))
 
 (define (un/compress-file program infile outfile)
-  (load-option 'synchronous-subprocess)
+  (load-option-quietly 'synchronous-subprocess)
   (let ((cmdline (string program" < "infile" > "outfile)))
     (if (not (zero? (run-shell-command cmdline)))
 	(error "File un/compress failed:" cmdline))))
