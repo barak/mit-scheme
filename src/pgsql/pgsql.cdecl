@@ -1,0 +1,161 @@
+#| -*-Scheme-*-
+
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
+USA.
+
+|#
+
+;;;; C declarations for pgsql-shim.so.
+
+
+(typedef ConnStatusType
+	 (enum (CONNECTION_OK)
+	       (CONNECTION_BAD)
+	       (CONNECTION_STARTED)
+	       (CONNECTION_MADE)
+	       (CONNECTION_AWAITING_RESPONSE)
+	       (CONNECTION_AUTH_OK)
+	       (CONNECTION_SETENV)
+	       (CONNECTION_SSL_STARTUP)
+	       (CONNECTION_NEEDED)))
+
+(typedef ExecStatusType
+	 (enum (PGRES_EMPTY_QUERY)
+	       (PGRES_COMMAND_OK)
+	       (PGRES_TUPLES_OK)
+	       (PGRES_COPY_OUT)
+	       (PGRES_COPY_IN)
+	       (PGRES_BAD_RESPONSE)
+	       (PGRES_NONFATAL_ERROR)
+	       (PGRES_FATAL_ERROR)
+	       (PGRES_COPY_BOTH)
+	       (PGRES_SINGLE_TUPLE)))
+
+(typedef PostgresPollingStatusType
+	 (enum (PGRES_POLLING_FAILED)	; = 0
+	       (PGRES_POLLING_READING)	; These two indicate that one may
+	       (PGRES_POLLING_WRITING)	; use select before polling again.
+	       (PGRES_POLLING_OK)
+	       (PGRES_POLLING_ACTIVE)))	; unused
+
+(typedef size_t uint)
+
+(extern void PQclear (res (* PGresult)))
+
+(extern (* char) PQcmdStatus (res (* PGresult)))
+
+(extern (* char) PQcmdTuples (res (* PGresult)))
+
+(extern (* PGconn) PQconnectdb (conninfo (* (const char))))
+
+(extern uint PQconnectPoll (conn (* PGconn)))
+
+(extern (* PGconn) PQconnectStart (conninfo (* (const char))))
+
+(extern (* char) PQdb (conn (* (const PGconn))))
+
+(extern int PQendcopy (conn (* PGconn)))
+
+(extern (* char) PQerrorMessage (conn (* (const PGconn))))
+
+(extern (* uchar) PQescapeBytea
+	(from (* (const uchar)))
+	(from_length size_t)	
+	(to_length (* size_t)))
+
+(extern size_t PQescapeString
+	(to (* char))
+	(from (* (const char)))
+	(length size_t))
+
+(extern (* PGresult) PQexec (conn (* PGconn))
+	(query (* (const char))))
+
+(extern void PQfinish (conn (* PGconn)))
+
+(extern (* char) PQfname
+	(res (* (const PGresult)))
+	(column_number int))
+
+(extern int PQgetisnull
+	(res (* (const PGresult)))
+	(tup_num int)
+	(field_num int))
+
+(extern int PQgetline
+	(conn (* PGconn))
+	(buffer (* char))
+	(length int))
+
+(extern void PQfreemem
+	(ptr (* void)))
+
+(extern (* char) PQgetvalue
+	(res (* (const PGresult)))
+	(tup_num int)
+	(field_num int))
+
+(extern (* char) PQhost (conn (* (const PGconn))))
+
+(extern (* (const PGresult))
+	PQmakeEmptyPGresult
+	(conn (* PGconn))
+	(status ExecStatusType))
+
+(extern int PQnfields (res (* (const PGresult))))
+
+(extern int PQntuples (res (* (const PGresult))))
+
+(extern (* char) PQoptions (conn (* (const PGconn))))
+
+(extern (* char) PQpass (conn (* (const PGconn))))
+
+(extern (* char) PQport (conn (* (const PGconn))))
+
+(extern int PQputline
+	(conn (* PGconn))
+	(string (* (const char))))
+
+(extern void PQreset (conn (* PGconn)))
+
+(extern PostgresPollingStatusType
+	PQresetPoll (conn (* PGconn)))
+
+(extern int PQresetStart (conn (* PGconn)))
+
+(extern (* char) PQresStatus (status ExecStatusType))
+
+(extern (* char) PQresultErrorMessage (res (* (const PGresult))))
+
+(extern ExecStatusType
+	PQresultStatus (res (* (const PGresult))))
+
+(extern ConnStatusType
+	PQstatus (res (* (const PGconn))))
+
+(extern (* char) PQtty (conn (* (const PGconn))))
+
+(extern (* uchar) PQunescapeBytea
+	(from (* (const uchar)))
+	(to_length (* size_t)))
+
+(extern (* char) PQuser (conn (* (const PGconn))))

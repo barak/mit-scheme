@@ -1,0 +1,5 @@
+-*-Text-*-
+
+Please see the git commit log:
+
+$ git log origin/master -- src/pgsql/ | more
