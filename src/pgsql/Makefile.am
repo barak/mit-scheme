@@ -93,7 +93,7 @@ TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 
 EXTRA_DIST += $(all_sources) $(cdecls) compile.scm pgsql.pkg
 EXTRA_DIST += pgsql-check.scm pgsql-check.sh
-EXTRA_DIST += make.scm optiondb.scm tags-fix.sh debian
+EXTRA_DIST += make.scm optiondb.scm tags-fix.sh
 
 install-data-hook:
 	( echo '(add-plugin "pgsql" "@MIT_SCHEME_PROJECT@"'; \

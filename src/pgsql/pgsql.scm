@@ -122,9 +122,6 @@ USA.
       (bytevector-length bytes)
       (string-length bytes)))
 
-;(define-primitives
-;  (pq-clear 1)
-
 (define-integrable (pq-clear handle)
   (C-call "PQclear" handle))
 
@@ -134,49 +131,31 @@ USA.
 	(utf8->string bv)
 	bv)))
 
-;  (pq-cmd-status 1)
-
 (define-integrable (pq-cmd-status handle)
   (peek-cstring (C-call "PQcmdStatus" (make-alien 'char) handle)))
 
-;  (pq-cmd-tuples 1)
-
 (define-integrable (pq-cmd-tuples handle)
   (peek-cstring (C-call "PQcmdTuples" (make-alien 'char) handle)))
-
-;  (pq-connect-db 2)
 
 (define-integrable (pq-connect-db conninfo weak-pair)
   (weak-set-cdr! weak-pair
 		 (C-call "PQconnectdb" (make-alien '|PGconn|) conninfo)))
 
-;  (pq-connect-poll 1)
-
 (define-integrable (pq-connect-poll handle)
   (C-call "PQconnectPoll" handle))
-
-;  (pq-connect-start 2)
 
 (define-integrable (pq-connect-start conninfo weak-pair)
   (weak-set-cdr! weak-pair
 		 (C-call "PQconnectStart" (make-alien '|PGconn|) conninfo)))
 
-;  (pq-db 1)
-
 (define-integrable (pq-db handle)
   (peek-cstring (C-call "PQdb" handle)))
-
-;  (pq-end-copy 1)
 
 (define-integrable (pq-end-copy handle)
   (C-call "PQendcopy" handle))
 
-;  (pq-error-message 1)
-
 (define-integrable (pq-error-message conn)
   (peek-cstring (C-call "PQerrorMessage" (make-alien 'char) conn)))
-
-;  (pq-escape-bytea 1)
 
 (define (pq-escape-bytea string)
   (peek-memory string
@@ -209,24 +188,16 @@ USA.
    (lambda (alien)
      (make-memory alien))))
 
-;  (pq-escape-string 2)
-
 (declare (integrate-operator pq-escape-string))
 (define (pq-escape-string bytes escaped)
   (C-call "PQescapeString" escaped bytes (bytes-length bytes)))
-
-;  (pq-exec 3)
 
 (define-integrable (pq-exec handle query weak-pair)
   (weak-set-cdr! weak-pair
 		 (C-call "PQexec" (make-alien '|PQresult|) handle query)))
 
-;  (pq-field-name 2)
-
 (define-integrable (pq-field-name handle index)
   (peek-cstring (C-call "PQfname" (make-alien 'char) handle index)))
-
-;  (pq-finish 1)
 
 (define-integrable (pq-finish handle)
   (C-call "PQfinish" handle))
@@ -238,113 +209,71 @@ USA.
 	 (C-call "PQfreemem" handle)
 	 (alien-null! handle)))))
 
-;  (pq-get-is-null? 3)
-
 (define-integrable (pq-get-is-null? result tup-num field-num)
   (= 1 (C-call "PQgetisnull" result tup-num field-num)))
 
-;  (pq-get-line 2)
-
 (define-integrable (pq-get-line conn buffer length)
   (C-call "PQgetline" conn buffer length))
-
-;  (pq-get-value 3)
 
 (define-integrable (pq-get-value handle tup-num field-num)
   (peek-cstring (C-call "PQgetvalue" (make-alien 'char)
 			handle tup-num field-num)))
 
-;  (pq-host 1)
-
 (define-integrable (pq-host handle)
   (peek-cstring (C-call "PQhost" handle)))
-
-;  (pq-make-empty-pg-result 3)
 
 (define-integrable (pq-make-empty-pg-result handle status weak-pair)
   (weak-set-cdr! weak-pair
 		 (C-call "PQmakeEmptyPGresult" (make-alien '|PQresult|)
 			 handle status)))
 
-;  (pq-n-fields 1)
-
 (define-integrable (pq-n-fields handle)
   (C-call "PQnfields" handle))
-
-;  (pq-n-tuples 1)
 
 (define-integrable (pq-n-tuples handle)
   (C-call "PQntuples" handle))
 
-;  (pq-options 1)
-
 (define-integrable (pq-options handle)
   (peek-cstring (C-call "PQoptions" (make-alien 'char) handle)))
-
-;  (pq-pass 1)
 
 (define-integrable (pq-pass handle)
   (peek-cstring (C-call "PQpass" (make-alien 'char) handle)))
 
-;  (pq-port 1)
-
 (define-integrable (pq-port handle)
   (peek-cstring (C-call "PQport" (make-alien 'char) handle)))
-
-;  (pq-put-line 2)
 
 (define-integrable (pq-put-line handle buffer)
   (C-call "PQputline" handle buffer))
 
-;  (pq-res-status 1)
-
 (define-integrable (pq-res-status status)
   (peek-cstring (C-call "PQresStatus" (make-alien 'char) status)))
-
-;  (pq-reset 1)
 
 (define-integrable (pq-reset handle)
   (C-call "PQreset" handle))
 
-;  (pq-reset-poll 1)
-
 (define-integrable (pq-reset-poll handle)
   (C-call "PQresetPoll" handle))
-
-;  (pq-reset-start 1)
 
 (define-integrable (pq-reset-start handle)
   (C-call "PQresetStart" handle))
 
-;  (pq-result-error-message 1)
-
 (define-integrable (pq-result-error-message handle)
   (peek-cstring (C-call "PQresultErrorMessage" (make-alien 'char) handle)))
-
-;  (pq-result-status 1)
 
 (define-integrable (pq-result-status handle)
   (C-call "PQresultStatus" handle))
 
-;  (pq-status 1)
-
 (define-integrable (pq-status handle)
   (C-call "PQstatus" handle))
 
-;  (pq-tty 1)
-
 (define-integrable (pq-tty handle)
   (peek-cstring (C-call "PQtty" (make-alien 'char) handle)))
-
-;  (pq-unescape-bytea 1)
 
 (define (pq-unescape-bytea string)
   (peek-memory string
 	       (lambda (memory bytes length)
 		 (C-call "PQunescapeBytea" (memory-alien memory)
 			 bytes length))))
-
-;  (pq-user 1))
 
 (define-integrable (pq-user handle)
   (peek-cstring (C-call "PQuser" (make-alien 'char) handle)))
@@ -449,10 +378,6 @@ USA.
 				 memory-alien
 				 set-memory-alien!))
 	(set! pgsql-initialized? #t))))
-
-#;(define (guarantee-pgsql-available)
-  (if (not (pgsql-available?))
-      (error "This Scheme system was built without PostgreSQL support.")))
 
 (define condition-type:pgsql-error
   (make-condition-type 'PGSQL-ERROR condition-type:error '()
@@ -509,7 +434,6 @@ USA.
 	 (string-end))))
 
 (define (open-pgsql-conn parameters #!optional wait?)
-  #;(guarantee-pgsql-available)
   (let ((wait? (if (default-object? wait?) #t wait?)))
     (make-gc-finalized-object
      connections
@@ -591,7 +515,6 @@ USA.
   (pq-end-copy (connection->handle connection)))
 
 (define (escape-pgsql-string string)
-  ;;(guarantee-pgsql-available)
   (let* ((bytes (->bytes string))
 	 (length (bytes-length bytes))
 	 (escaped-bytes (malloc (fix:1+ (fix:* 2 length)) 'char))
@@ -602,11 +525,9 @@ USA.
     escaped-string))
 
 (define (encode-pgsql-bytea bytes)
-  (guarantee-pgsql-available)
   (pq-escape-bytea bytes))
 
 (define (decode-pgsql-bytea string)
-  (guarantee-pgsql-available)
   (pq-unescape-bytea string))
 
 (define (exec-pgsql-query connection query)

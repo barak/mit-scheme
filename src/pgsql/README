@@ -1,4 +1,4 @@
-The POSTGRES option.
+The PGSQL option.
 
 This plugin creates a (pgsql) package, a drop-in replacement for the
 microcode module based (runtime postgresql) package.  It is built in the

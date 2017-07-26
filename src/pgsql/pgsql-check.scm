@@ -26,7 +26,7 @@ USA.
 
 ;;;; Test the PGSQL option.
 
-(let ((conn (open-pgsql-conn "")))
+(let ((conn (ignore-errors (lambda () (open-pgsql-conn "")))))
 
   (define (query . strings)
     (let ((query (string-append* strings)))
@@ -38,35 +38,37 @@ USA.
 	(pgsql-clear result)
 	status)))
 
-  (if (not (pgsql-conn-open? conn))
-      (error "could not connect:" conn))
-  (ignore-errors (lambda ()
-		   (cmd "DROP TABLE monkey_business;")))
-  (cmd "CREATE TABLE monkey_business ( name varchar (10) PRIMARY KEY );")
-  (cmd "INSERT INTO monkey_business (name) VALUES ('apple');")
-  (cmd "INSERT INTO monkey_business (name) VALUES ('banana');")
-  (cmd "INSERT INTO monkey_business (name) VALUES ('cherry');")
-  (let* ((result (query "SELECT * FROM monkey_business;"))
-	 (n (pgsql-n-tuples result))
-	 (fruits
-	  (do ((i 0 (+ i 1))
-	       (fruits '()
-		       (cons (pgsql-get-value result i 0) fruits)))
-	      ((= i n)
-	       (pgsql-clear result)
-	       (reverse! fruits)))))
-    (if (not (equal? fruits '("apple" "banana" "cherry")))
-	(error "wrong fruits")))
-  (close-pgsql-conn conn)
-  (if (pgsql-conn-open? conn)
-      (error "could not pgsql close:" conn))
-  (if (not (condition?
-	    (ignore-errors
-	     (lambda ()
-	       (exec-pgsql-query conn "SELECT * FROM monkey_business;")))))
-      (error "not signaling an error when closed:" conn))
-  (let* ((sample    " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~")
-	 (escaped (escape-pgsql-string sample))
-	 (expected " !\"#$%&''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"))
-    (if (not (equal? escaped expected))
-	(error "not escaped properly:" escaped))))
+  (if (and (not (condition? conn))
+	   (pgsql-conn-open? conn))
+      (begin
+	(ignore-errors
+	 (lambda () (cmd "DROP TABLE test_table;")))
+	(cmd "CREATE TABLE test_table ( name varchar (10) PRIMARY KEY );")
+	(cmd "INSERT INTO test_table (name) VALUES ('apple');")
+	(cmd "INSERT INTO test_table (name) VALUES ('banana');")
+	(cmd "INSERT INTO test_table (name) VALUES ('cherry');")
+	(let* ((result (query "SELECT * FROM test_table;"))
+	       (n (pgsql-n-tuples result))
+	       (fruits
+		(do ((i 0 (+ i 1))
+		     (fruits '()
+			     (cons (pgsql-get-value result i 0) fruits)))
+		    ((= i n)
+		     (pgsql-clear result)
+		     (reverse! fruits)))))
+	  (if (not (equal? fruits '("apple" "banana" "cherry")))
+	      (error "wrong fruits")))
+	(close-pgsql-conn conn)
+	(if (pgsql-conn-open? conn)
+	    (error "could not pgsql close:" conn))
+	(if (not (condition?
+		  (ignore-errors
+		   (lambda ()
+		     (exec-pgsql-query conn "SELECT * FROM test_table;")))))
+	    (error "not signaling an error when closed:" conn))
+	(let* ((sample    " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~")
+	       (escaped (escape-pgsql-string sample))
+	       (expected " !\"#$%&''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"))
+	  (if (not (equal? escaped expected))
+	      (error "not escaped properly:" escaped))))
+      (warn "could not connect to the default Postgres database")))
