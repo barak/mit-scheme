@@ -97,10 +97,12 @@ USA.
     (let ((string* (istate-string ss))
 	  (start* (istate-next ss))
 	  (end* (istate-end ss)))
-      (let ((n (fix:min (fix:- end start) (fix:- end* start*))))
-	(string-copy! string* start* string start (fix:+ start n))
-	(set-istate-next! ss (fix:+ start* n))
-	n))))
+      (if (fix:= start* end*)
+	  0
+	  (let ((n (fix:min (fix:- end start) (fix:- end* start*))))
+	    (string-copy! string start string* start* (fix:+ start* n))
+	    (set-istate-next! ss (fix:+ start* n))
+	    n)))))
 
 (define (string-in/unread-char port char)
   (let ((ss (textual-port-state port)))
