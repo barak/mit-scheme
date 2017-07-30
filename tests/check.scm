@@ -72,6 +72,7 @@ USA.
     "runtime/test-string"
     "runtime/test-string-normalization"
     "runtime/test-string-search"
+    "runtime/test-syncproc"
     "runtime/test-thread-queue"
     "runtime/test-url"
     ("runtime/test-wttree" (runtime wt-tree))

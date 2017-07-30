@@ -52,3 +52,31 @@ USA.
        ;; case Scheme fails the test.
        (shell "pid=$$; (sleep 2; kill -CONT $pid) & sleep 1; kill -STOP $pid"))
      (list condition-type:subprocess-stopped))))
+
+(define-test 'SUBPROCESS-INPUT
+  (lambda ()
+    (let ((sample "Lorem ipsum dolor sit amet, consectetur adipiscing elit"))
+      (call-with-input-string sample
+	(lambda (in)
+	  (run-shell-command "cat" 'input in 'output #f)
+	  (assert-true (eof-object? (read-char in))))))))
+
+(define-test 'SUBPROCESS-OUTPUT
+  (lambda ()
+    (let* ((reply (call-with-output-string
+		   (lambda (out)
+		     (run-shell-command
+		      "if read; then echo \"Lose\"; else echo \"Win\"; fi"
+		      'input #f 'output out)))))
+      (assert-string= reply "Win\n"))))
+
+(define-test 'SUBPROCESS-IO
+  (lambda ()
+    (let* ((sample "Lorem ipsum dolor sit amet, consectetur adipiscing elit")
+	   (copy
+	    (call-with-input-string sample
+	      (lambda (in)
+		(call-with-output-string
+		 (lambda (out)
+		   (run-shell-command "cat" 'input in 'output out)))))))
+      (assert-string= copy sample))))
