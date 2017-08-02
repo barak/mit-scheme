@@ -256,7 +256,7 @@ USA.
 	       (let ((ob (port-output-buffer port)))
 		 (or (not ob)
 		     (not (eqv? ic (buffer-channel ob)))
-		     (not (buffer-marked-closed? ob)))))
+		     (buffer-marked-closed? ob))))
 	  (channel-close ic)))))
 
 (define (close-binary-output-port port)
@@ -267,7 +267,7 @@ USA.
 	       (let ((ib (port-input-buffer port)))
 		 (or (not ib)
 		     (not (eqv? oc (buffer-channel ib)))
-		     (not (buffer-marked-closed? ib)))))
+		     (buffer-marked-closed? ib))))
 	  (channel-close oc)))))
 
 ;;;; Positioning
