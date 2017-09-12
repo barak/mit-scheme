@@ -45,6 +45,7 @@ USA.
     "microcode/test-flonum-casts"
     "microcode/test-flonum-casts.scm"
     "microcode/test-flonum-casts.com"
+    "microcode/test-keccak"
     "microcode/test-lookup"
     "runtime/test-arith"
     "runtime/test-bytevector"

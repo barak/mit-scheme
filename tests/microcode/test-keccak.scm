@@ -24,62 +24,18 @@ USA.
 
 |#
 
-;;;; Core C files used on all platforms.
+;;;; Tests of Keccak primitives
 
-"artutl"
-"avltree"
-"bkpt"
-"bignum"
-"bigprm"
-"bitstr"
-"boot"
-"bytevector"
-"char"
-"daemon"
-"debug"
-"dfloat"
-"error"
-"extern"
-"fasdump"
-"fasl"
-"fasload"
-"fixnum"
-"floenv"
-"flonum"
-"gcloop"
-"generic"
-"hooks"
-"hunk"
-"intern"
-"interp"
-"intprm"
-"keccak"
-"list"
-"lookprm"
-"lookup"
-"memmag"
-"missing"
-"obstack"
-"option"
-"osscheme"
-"ostty"
-"outf"
-"prim"
-"primutl"
-"prkeccak"
-"ptrvec"
-"purify"
-"purutl"
-"regex"
-"rgxprim"
-"step"
-"storage"
-"string"
-"syntax"
-"sysprim"
-"term"
-"transact"
-"utabmd"
-"utils"
-"vector"
-"wind"
+(define-test 'SHA3-256-EMPTY
+  (lambda ()
+    (let ((s (make-bytevector 200 0)))
+      (bytevector-u8-set! s 0 #x06)
+      (bytevector-u8-set! s #x87 #x80)
+      ((make-primitive-procedure 'BYTEVECTOR-KECCAK-F1600) s)
+      (assert-equal (bytevector-copy s 0 32)
+                    #u8(                ;SHA3-256("")
+                        #xa7 #xff #xc6 #xf8 #xbf #x1e #xd7 #x66
+                        #x51 #xc1 #x47 #x56 #xa0 #x61 #xd6 #x62
+                        #xf5 #x80 #xff #x4d #xe4 #x3b #x49 #xfa
+                        #x82 #xd8 #x0a #x4b #x80 #xf8 #x43 #x4a
+                        )))))
