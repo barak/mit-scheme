@@ -66,7 +66,7 @@ USA.
     (let* ((reply (call-with-output-string
 		   (lambda (out)
 		     (run-shell-command
-		      "if read; then echo \"Lose\"; else echo \"Win\"; fi"
+		      "if read x; then echo \"Lose\"; else echo \"Win\"; fi"
 		      'input #f 'output out)))))
       (assert-string= reply "Win\n"))))
 
