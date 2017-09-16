@@ -4174,6 +4174,8 @@ USA.
     ((load) "syncproc")
     (else))
   (parent (runtime))
+  (import (runtime primitive-io)
+	  channel-descriptor-for-select)
   (export ()
 	  condition-type:subprocess-abnormal-termination
 	  condition-type:subprocess-signalled
