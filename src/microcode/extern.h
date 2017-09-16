@@ -371,7 +371,7 @@ extern void preserve_interrupt_mask (void);
 extern void canonicalize_primitive_context (void);
 extern void back_out_of_primitive (void);
 
-extern void Interpret (int pop_return_p);
+extern void Interpret (void);
 extern void Do_Micro_Error (long, bool);
 extern void Stack_Death (void) NORETURN;
 extern SCHEME_OBJECT * control_point_start (SCHEME_OBJECT);

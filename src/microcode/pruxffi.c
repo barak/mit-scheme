@@ -215,7 +215,7 @@ DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP!", Prim_peek_cstringp_bang, 2, 2, 0)
     else
       {
 	SCM string = char_pointer_to_string (*ptr);
-	set_alien_address ((ARG_REF (1)), (ptr + 1)); /* No more aborts! */
+	set_alien_address ((ARG_REF (1)), (ptr + 1));
 	PRIMITIVE_RETURN (string);
       }
   }
@@ -413,7 +413,6 @@ DEFINE_PRIMITIVE ("C-CALL", Prim_c_call, 1, LEXPR, 0)
   /* All the smarts are in the trampolines. */
 
   PRIMITIVE_HEADER (LEXPR);
-  canonicalize_primitive_context ();
   {
     CalloutTrampOut tramp;
 
@@ -456,11 +455,7 @@ void
 callout_seal (CalloutTrampIn tramp)
 {
   /* Used in a callout part1 trampoline.  Arrange for subsequent
-     aborts to start part2.
-
-     Seal the CStack, substitute the C-CALL-CONTINUE primitive for
-     the C-CALL primitive, and back out.  The tramp can then execute
-     the toolkit function safely, even if there is a callback. */
+     aborts to start part2. */
 
   if (c_call_continue == SHARP_F)
     {
@@ -477,9 +472,7 @@ callout_seal (CalloutTrampIn tramp)
   CSTACK_PUSH (int, cstack_depth);
   CSTACK_PUSH (CalloutTrampIn, tramp);
 
-  /* Back out of C-CALL-CONTINUE. */
   SET_PRIMITIVE (c_call_continue);
-  back_out_of_primitive ();
   alienate_float_environment ();
 }
 
@@ -508,34 +501,16 @@ SCM
 callout_continue (CalloutTrampIn tramp)
 {
   /* Re-seal the CStack frame over the C results (again, pushing the
-     cstack_depth and callout-part2) and abort.  Restart as
-     C-CALL-CONTINUE and run callout-part2. */
+     cstack_depth and callout-part2) and call the restartable tramp.
+     If it aborts, it restarts as C-CALL-CONTINUE and retries
+     part2. */
+  SCM val;
+
   CSTACK_PUSH (int, cstack_depth);
   CSTACK_PUSH (CalloutTrampIn, tramp);
 
-#if 1
-  PRIMITIVE_ABORT (PRIM_POP_RETURN);
-  /* NOTREACHED */
-#else
-  /* Just call; do not actually abort. */
-
-  /* This is fubared by a GC during a callback.  callback_run_kernel
-     probably needs to use something like apply_compiled_from_
-     primitive for this to work... */
-
-  /* Remove stack sealant created by callout_seal (which used
-     back_out_of_primitive), as if removed by pop_return in Interp()
-     after the abort. */
-  SET_PRIMITIVE (SHARP_F); /* PROCEED_AFTER_PRIMITIVE (); */
-  RESTORE_CONT ();
-  assert (RC_INTERNAL_APPLY == (OBJECT_DATUM(GET_RET)));
-  SET_LEXPR_ACTUALS (APPLY_FRAME_N_ARGS ());
-  stack_pointer = (APPLY_FRAME_ARGS ());
-  SET_EXP (APPLY_FRAME_PROCEDURE ());
-  /* APPLY_PRIMITIVE_FROM_INTERPRETER (Function); */
-  /* Prim_c_call_continue(); */
-  return (tramp ());
-#endif
+  val = tramp ();
+  return (val);
 }
 
 DEFINE_PRIMITIVE ("C-CALL-CONTINUE", Prim_c_call_continue, 1, LEXPR, 0)
@@ -595,53 +570,88 @@ callout_pop (char * tos)
 /* Callbacks */
 
 static SCM run_callback = SHARP_F;
-static SCM return_to_c = SHARP_F;
+extern SCHEME_OBJECT Re_Enter_Interpreter (void);
 
 void
 callback_run_kernel (long callback_id, CallbackKernel kernel)
 {
-  /* Used by callback trampolines.
-
-     Expect the args on the CStack.  Push a couple primitive apply
-     frames on the Scheme stack and seal the CStack.  Then call
-     Interpret().  Cannot abort. */
+  /* Used by callback trampolines after saving the callback args on
+     the CStack. */
+  SCM * saved_stack_pointer, * saved_last_return_code;
+  unsigned long saved_prev_restore_history_offset;
+  unsigned long nargs = GET_LEXPR_ACTUALS;
 
   if (run_callback == SHARP_F)
     {
       run_callback = find_primitive_cname ("RUN-CALLBACK", false, false, 0);
-      return_to_c = find_primitive_cname ("RETURN-TO-C", false, false, 0);
-      if (run_callback == SHARP_F || return_to_c == SHARP_F)
+      if (run_callback == SHARP_F)
 	{
 	  outf_error_line
-	    ("\nWarning: punted callback #%ld.  Missing primitives!",
+	    ("\nWarning: punted callback #%ld.  Missing primitive!",
 	     callback_id);
 	  SET_VAL (FIXNUM_ZERO);
 	  return;
 	}
     }
 
-  /* Need to push 2 each of prim+header+continuation. */
-  if (! CAN_PUSH_P (2 * (1 + 1 + CONTINUATION_SIZE)))
-    {
-      outf_error_line
-	("\nWarning: punted callback #%ld.  No room on stack!", callback_id);
-      SET_VAL (FIXNUM_ZERO);
-      return;
-    }
+  if (GET_PRIMITIVE != c_call_continue)
+    abort_to_interpreter (ERR_CANNOT_RECURSE);
+    /*NOTREACHED*/
 
   cstack_depth += 1;
   CSTACK_PUSH (int, cstack_depth);
   CSTACK_PUSH (CallbackKernel, kernel);
 
-  STACK_PUSH (return_to_c);
-  PUSH_APPLY_FRAME_HEADER (0);
+  /* For a traceable stack... */
+  STACK_PUSH (c_call_continue);
+  PUSH_APPLY_FRAME_HEADER (nargs);
   SET_RC (RC_INTERNAL_APPLY);
-  SAVE_CONT();
+  SET_EXP (c_call_continue);
+  SAVE_CONT ();
+
+  saved_stack_pointer = stack_pointer;
+  saved_last_return_code = last_return_code;
+  saved_prev_restore_history_offset = prev_restore_history_offset;
+ Will_Push ((2 * CONTINUATION_SIZE) + STACK_ENV_EXTRA_SLOTS + 1);
+  SET_RC (RC_END_OF_COMPUTATION);
+  SET_EXP (run_callback);
+  SAVE_CONT ();
   STACK_PUSH (run_callback);
   PUSH_APPLY_FRAME_HEADER (0);
-  SAVE_CONT();
-  Interpret (1);
-  alienate_float_environment ();
+  SET_RC (RC_INTERNAL_APPLY);
+  SET_EXP (run_callback);
+  SAVE_CONT ();
+ Pushed ();
+  last_return_code = stack_pointer;
+  SET_EXP (SHARP_F);
+  Re_Enter_Interpreter ();
+
+  if (stack_pointer != saved_stack_pointer
+#ifdef ENABLE_DEBUGGING_TOOLS
+      || ((STACK_REF (0)) != (MAKE_RETURN_CODE (RC_INTERNAL_APPLY)))
+      || ((STACK_REF (1)) != c_call_continue)
+      || ((STACK_REF (2)) != (MAKE_OBJECT (0, nargs+1)))
+      || ((STACK_REF (3)) != c_call_continue)
+#endif
+      )
+    {
+      SET_PRIMITIVE (c_call_continue);
+      SET_LEXPR_ACTUALS (0);
+      outf_error_line ("\nWarning: stack slipped in callback.");
+      signal_error_from_primitive (ERR_STACK_HAS_SLIPPED);
+      /*NOTREACHED*/
+    }
+
+  stack_pointer = STACK_LOC (4);
+  last_return_code = saved_last_return_code;
+  if (prev_restore_history_offset != saved_prev_restore_history_offset)
+    {
+      outf_error_line ("Warning: restoring prev_restore_history_offset.");
+      prev_restore_history_offset = saved_prev_restore_history_offset;
+    }
+  SET_PRIMITIVE (c_call_continue);
+  SET_LEXPR_ACTUALS (nargs);
+
   cstack_depth -= 1;
 }
 
@@ -665,40 +675,10 @@ DEFINE_PRIMITIVE ("RUN-CALLBACK", Prim_run_callback, 0, 0, 0)
       }
 
     kernel ();
-    /* NOTREACHED */
+    /* This primitive is only run by the re-entered interpreter and,
+       with zero arguments, its apply frame is already gone. */
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
-}
-
-DEFINE_PRIMITIVE ("RETURN-TO-C", Prim_return_to_c, 0, 0, 0)
-{
-  /* Callbacks are possible while stopped.  The PRIM_RETURN_TO_C abort
-     expects this primitive to clean up its stack frame. */
-
-  PRIMITIVE_HEADER (0);
-  canonicalize_primitive_context ();
-  {
-    SCM primitive;
-    long nargs;
-
-    primitive = GET_PRIMITIVE;
-    assert (PRIMITIVE_P (primitive));
-    nargs = (PRIMITIVE_N_ARGUMENTS (primitive));
-    POP_PRIMITIVE_FRAME (nargs);
-    SET_EXP (SHARP_F);
-    PRIMITIVE_ABORT (PRIM_RETURN_TO_C);
-    /* NOTREACHED */
-    PRIMITIVE_RETURN (UNSPECIFIC);
-  }
-}
-
-/* This is mainly for src/glib/glibio.c, so it does not need to include
-   prim.h, scheme.h and everything. */
-void
-abort_to_c (void)
-{
-  PRIMITIVE_ABORT (PRIM_RETURN_TO_C);
-  /* NOTREACHED */
 }
 
 char *
@@ -731,23 +711,22 @@ callback_run_handler (long callback_id, SCM arglist)
   /* Used by callback kernels, inside the interpreter.  Thus it MAY GC
      abort.
 
-     Push a Scheme callback handler apply frame.  This leaves the
-     interpreter ready to tail-call the Scheme procedure.  (The
-     RUN-CALLBACK primitive apply frame is already gone.)  The
-     trampoline should abort with PRIM_APPLY. */
+     Push a Scheme callback handler apply frame.  (The RUN-CALLBACK
+     primitive apply frame is already gone.) */
 
   SCM handler, fixnum_id;
 
   handler = valid_callback_handler ();
   fixnum_id = valid_callback_id (callback_id);
 
-  stop_history ();
-
-  Will_Push (STACK_ENV_EXTRA_SLOTS + 3);
+  Will_Push (3 + STACK_ENV_EXTRA_SLOTS + CONTINUATION_SIZE);
   STACK_PUSH (arglist);
   STACK_PUSH (fixnum_id);
   STACK_PUSH (handler);
   PUSH_APPLY_FRAME_HEADER (2);
+  SET_RC (RC_INTERNAL_APPLY);
+  SET_EXP (run_callback);
+  SAVE_CONT ();
   Pushed ();
 }
 
@@ -786,7 +765,6 @@ void
 callback_return (char * tos)
 {
   cstack_pop (tos);
-  PRIMITIVE_ABORT (PRIM_APPLY);
 }
 
 /* Converters */
@@ -1051,7 +1029,7 @@ flovec_length (double *first)
 
 DEFINE_PRIMITIVE ("OUTF-ERROR", Prim_outf_error, 1, 1, 0)
 {
-  /* To avoid the normal i/o system when debugging a callback. */
+  /* To avoid the normal IO system when debugging a callback. */
 
   PRIMITIVE_HEADER (1);
   { 
@@ -1069,13 +1047,49 @@ DEFINE_PRIMITIVE ("OUTF-ERROR", Prim_outf_error, 1, 1, 0)
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
+
+/* Re-Entering the Interpreter
+
+   These functions are used by the glib plugin to (re)enter the
+   interpreter in a GSource dispatch method, and to throw out again to
+   return from the method. */
+
+void
+re_enter_scheme (void)
+{
+  assert (GET_PRIMITIVE == c_call_continue);
+  back_out_of_primitive ();
+  Re_Enter_Interpreter ();
+
+  assert (GET_PRIMITIVE == SHARP_F);
+  assert (GET_EXP == SHARP_F);
+  assert ((STACK_REF (0)) == (MAKE_RETURN_CODE (RC_INTERNAL_APPLY)));
+  assert ((STACK_REF (1)) == SHARP_F);
+  assert ((OBJECT_TYPE (STACK_REF (2))) == TC_FALSE);
+  assert ((STACK_REF (3)) == c_call_continue);
+
+  SET_PRIMITIVE (c_call_continue);
+  SET_LEXPR_ACTUALS (APPLY_FRAME_HEADER_N_ARGS (STACK_REF (2)));
+  stack_pointer = STACK_LOC (4);
+  alienate_float_environment ();
+}
+
+void
+abort_to_c (void)
+{
+  assert (GET_PRIMITIVE == c_call_continue);
+  back_out_of_primitive ();
+  PRIMITIVE_ABORT (PRIM_RETURN_TO_C);
+  /* NOTREACHED */
+}
 
 int
 interrupts_p (void)
 {
-  /* Just the pending interrupts bitmap, ignoring the INT_MASK. */
-  /* This is mainly for src/glib/glibio.c, which finds pending_
-     interrupts_p() useless; it is always /gc-ok. */
+  /* Just the interrupts bitmap, ignoring the INT_MASK, which often is
+     /gc-ok while a toolkit is running (making pending_interrupts_p()
+     useless).  This function allows the toolkit to see if the Scheme
+     machine has received an interrupt and needs to run. */
 
   return (GET_INT_CODE);
 }

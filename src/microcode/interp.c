@@ -253,7 +253,7 @@ abort_to_interpreter_argument (void)
 long prim_apply_error_code;
 
 void
-Interpret (int pop_return_p)
+Interpret (void)
 {
   long dispatch_code;
   struct interpreter_state_s new_state;
@@ -274,10 +274,7 @@ Interpret (int pop_return_p)
   switch (dispatch_code)
     {
     case 0:			/* first time */
-      if (pop_return_p)
-	goto pop_return;	/* continue */
-      else
-	break;			/* fall into eval */
+      break;			/* fall into eval */
 
     case PRIM_APPLY:
       PROCEED_AFTER_PRIMITIVE ();

@@ -199,7 +199,7 @@ start_scheme (void)
 static void
 Do_Enter_Interpreter (void)
 {
-  Interpret (0);
+  Interpret ();
   outf_fatal ("\nThe interpreter returned to top level!\n");
   Microcode_Termination (TERM_EXIT);
 }
@@ -215,7 +215,7 @@ Enter_Interpreter (void)
 SCHEME_OBJECT
 Re_Enter_Interpreter (void)
 {
-  Interpret (0);
+  Interpret ();
   return (GET_VAL);
 }
 
