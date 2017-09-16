@@ -37,56 +37,55 @@
 ###
 ###	1) All registers and stack locations hold a C long object.
 ###
-###	2) The C compiler divides registers into three groups:
+###	2) The AMD64 Unix ABI divides registers into three groups:
+###
 ###	- Linkage registers, used for procedure calls and global
 ###	references.  On AMD64 Unix ABI: %rbp, %rsp.
-###	- super temporaries, not preserved accross procedure calls and
+###
+###	- super temporaries, not preserved across procedure calls and
 ###	always usable. On AMD64 Unix ABI: everything but what is
 ###	listed below.
+###
 ###	- preserved registers saved by the callee if they are written.
 ###	On AMD64 Unix ABI: %rbp, %rbx, %r12-%r15, MXCSR, x87 control
 ###	word.
 ###
-###	3) Arguments, if passed on a stack, are popped by the caller
-###	or by the procedure return instruction (as on the VAX).  Thus
-###	most "leaf" procedures need not worry about them.  On x86-64,
-###	arguments beyond the sixth are passed on the stack; the first
-###	through sixth are passed in %rdi, %rsi, %rdx, %rcx, %r8, or
-###	%r9.  (Non-integer arguments are passed in other ways.)
+###	3) Arguments beyond the sixth are passed on the stack; the
+###	first through sixth are passed in %rdi, %rsi, %rdx, %rcx, %r8,
+###	or %r9.  (Non-integer arguments are passed in other ways.)
 ###
-###	4) There is a hardware or software maintained stack for
-###	control.  The procedure calling sequence may leave return
-###	addresses in registers, but they must be saved somewhere for
-###	nested calls and recursive procedures.  On x86-64: saved on
-###	the stack by the CALL instruction.
+###	4) The C function calling sequence saves a return address on
+###	the stack using the CALL instruction.
 ###
-###	5) C procedures return long values in a super temporary
-###	register.  Two word structures are returned in super temporary
-###	registers as well in the AMD64 Unix ABI: %rax and %rdi.
+###	5) One and two word structures are returned in %rax and %rdi.
 ###
-###	6) Floating point registers are not preserved by this
-###	interface.  The interface is only called from the Scheme
-###	interpreter, which does not use floating point data.  Thus
-###	although the calling convention would require us to preserve
-###	them, they contain garbage.
+###	6) Floating point arguments are passed in the floating point
+###	registers.  The ABI requires callees to preserve these UNLESS
+###	it is known that no caller could be using them, which is the
+###	case here.  The only C functions calling compiled Scheme are
+###	in the interpreter which does not do floating point.
 ###
 ### Compiled Scheme code uses the following register convention:
+###
 ###	- %rsp contains the Scheme stack pointer, not the C stack
 ###	pointer.
+###
 ###	- %rsi contains a pointer to the Scheme interpreter's "register"
 ###	block.  This block contains the compiler's copy of MemTop,
 ###	the interpreter's registers (val, env, exp, etc.),
 ###	temporary locations for compiled code, and the addresses
 ###	of various hooks defined in this file.
+###
 ###	- %rdi contains the Scheme free pointer.
+###
 ###	- %rbp contains the Scheme datum mask.
 ###	The dynamic link (when needed) is in Registers[REGBLOCK_COMPILER_TEMP]
 ###	Values are returned in Registers[REGBLOCK_VAL]
 ###	[TRC 20091025: Later, we ought to use machine registers for
 ###	these.]
 ###
-###	All other registers are available to the compiler.  A
-###	caller-saves convention is used, so the registers need not be
+###	All other registers are available to the compiler.  A caller-
+###	saves convention is used, so the registers need not be
 ###	preserved by subprocedures.
 
 ### The following m4 macros can be defined to change how this file is
@@ -104,16 +103,14 @@
 ### SUPPRESS_LEADING_UNDERSCORE
 ###	If defined, external symbol names are generated as written;
 ###	otherwise, they have an underscore prepended to them.
-### WCC386
-###	Should be defined when using Watcom assembler.
+###
 ### WCC386R
 ###	Should be defined when using Watcom assembler and generating
 ###	code to use the Watcom register-based argument conventions.
+###
 ### TYPE_CODE_LENGTH
 ###	Normally defined to be 6.  Don't change this unless you know
 ###	what you're doing.
-### VALGRIND_MODE
-###	If defined, modify code to make it work with valgrind.
 
 ####	Utility macros and definitions
 
@@ -122,7 +119,6 @@ ifdef(`WIN32',
       `define(IF_WIN32,`')')
 
 IF_WIN32(`define(DASM,1)')
-ifdef(`WCC386R',`define(WCC386,1)')
 
 ifdef(`DASM',
       `define(IFDASM,`$1')',
