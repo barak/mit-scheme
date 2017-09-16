@@ -476,11 +476,14 @@ ifdef(`WIN32',						# Register block = %rsi
 `	OP(lea,q)	TW(ABS(EVR(Registers)),regs)')
 	OP(mov,q)	TW(ABS(EVR(Free)),rfree)	# Free pointer = %rdi
 	OP(mov,q)	TW(QOF(REGBLOCK_VAL(),regs),REG(rax)) # Value/dynamic link
-	OP(mov,q)	TW(IMM(ADDRESS_MASK),rmask)	# = %rbp
 	# Restore the C stack pointer, which we zeroed back in
 	# scheme_to_interface, for within_c_stack.
+	# Restore the C frame pointer too; the interface may have called
+	# Re_Enter_Interpreter which probably clobbered both.
 	OP(mov,q)	TW(REG(rsp),ABS(EVR(C_Stack_Pointer)))
 	OP(mov,q)	TW(ABS(EVR(stack_pointer)),REG(rsp))
+	OP(mov,q)	TW(REG(rbp),ABS(EVR(C_Frame_Pointer)))
+	OP(mov,q)	TW(IMM(ADDRESS_MASK),rmask)	# = %rbp
 	OP(mov,q)	TW(REG(rax),REG(rcx))		# Preserve if used
 	OP(and,q)	TW(rmask,REG(rcx))		# Restore potential dynamic link
 	OP(mov,q)	TW(REG(rcx),QOF(REGBLOCK_DLINK(),regs))
