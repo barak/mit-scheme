@@ -63,6 +63,7 @@ USA.
 #define CHECK_RETURN_CODE(code, offset)					\
   ((CONT_RET (offset)) == (MAKE_RETURN_CODE (code)))
 
+#if 0
 /* Saving history is required for C_call_scheme to work correctly
    because the recursive call to Interpret() can rotate the history.  */
 
@@ -72,6 +73,15 @@ USA.
   PRIMITIVE_APPLY (primitive);						\
   history_register = APFI_saved_history;				\
 } while (0)
+
+#else
+/* C_call_scheme must save/restore history_register on/from the stack
+   so that it will be relocated if the call to Interpret() causes a
+   garbage collection. */
+
+#define APPLY_PRIMITIVE_FROM_INTERPRETER PRIMITIVE_APPLY
+
+#endif
 
 /* Stack manipulation */
 
