@@ -683,7 +683,7 @@ interface_to_scheme_proceed:
 	# Re_Enter_Interpreter which probably clobbered both.
 	OP(mov,l)	TW(REG(esp),EVR(C_Stack_Pointer))
 	OP(mov,l)	TW(EVR(stack_pointer),REG(esp))
-	OP(mov,l)	TW(REG(ebp),EVT(C_Frame_Pointer))
+	OP(mov,l)	TW(REG(ebp),EVR(C_Frame_Pointer))
 	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)	# = %ebp
 	OP(mov,l)	TW(REG(eax),REG(ecx))		# Preserve if used
 	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential dynamic link
