@@ -75,9 +75,9 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
     (let ((window
 	   (c-call "xterm_open_window" (make-alien '(struct |xwindow|))
 		   display
-		   (string->utf8 geometry)
-		   (string->utf8 name)
-		   (string->utf8 class)
+		   (->cstring geometry)
+		   (->cstring name)
+		   (->cstring class)
 		   (if map? 1 0))))
       (if (alien-null? window)
 	  (error "Could not open xterm:" geometry))
@@ -109,23 +109,14 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
       ((2) (error:bad-range-argument y 'xterm-write-char!))
       ((3) (error:bad-range-argument highlight 'xterm-write-char!)))))
 
-(define (all-ascii? string)
-  (let ((len (string-length string)))
-    (let loop ((i 0))
-      (if (fix:< i len)
-	  (and (char-ascii? (string-ref string i))
-	       (loop (fix:+ i 1)))
-	  #t))))
-
-(define (guarantee-all-ascii string operator)
-  (if (not (all-ascii? string))
-      (error:wrong-type-argument string "an ASCII string" operator))
-  string)
-
 (define (xterm-write-substring! xterm x y string start end highlight)
-  (guarantee-all-ascii string 'xterm-write-substring!)
-  (let ((code (c-call "xterm_write_substring"
-		      xterm x y (string->utf8 string) start end highlight)))
+  (let ((code (if (bytevector? string)
+		  (c-call "xterm_write_substring"
+			  xterm x y string start end highlight)
+		  (c-call "xterm_write_substring"
+			  xterm x y
+			  (string->iso8859-1 string start end)
+			  0 (fix:- end start) highlight))))
     (case code
       ((1) (error:bad-range-argument x 'xterm-write-substring!))
       ((2) (error:bad-range-argument y 'xterm-write-substring!))

@@ -52,6 +52,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
       (error "XAllocWMHints failed.")))
 
 (define (->bytes string)
+  ;; NOT null terminated
   (if (and (or (bytevector? string)
 	       (and (ustring? string)
 		    (fix:= 1 (ustring-cp-size string))))
@@ -68,14 +69,33 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	     (loop (fix:+ i 1)))
 	#t)))
 
+(define (->cstring string)
+  (if (bytevector? string)
+      (if (let ((end (bytevector-length string)))
+	    (let loop ((i 0))
+	      (if (fix:< i end)
+		  (or (fix:zero? (bytevector-u8-ref string i))
+		      (loop (fix:1+ i)))
+		  #f)))
+	  string
+	  (error "C string not null terminated:" string))
+      ;; String->iso8859-1 would be incorrect here; it does not null terminate.
+      (let* ((end (string-length string))
+	     (result (make-bytevector (fix:1+ end))))
+	(do ((i 0 (fix:1+ i)))
+	    ((not (fix:< i end))
+	     (bytevector-u8-set! result i #x00))
+	  (bytevector-u8-set! result i (char->integer (string-ref string i))))
+	result)))
+
 (define (x-window-set-name window name)
   (guarantee-xwindow window 'x-window-set-name)
-  (if (not (zero? (C-call "x_window_set_name" window (->bytes name))))
+  (if (not (zero? (C-call "x_window_set_name" window (->cstring name))))
       (error "XStringListToTextProperty failed.")))
 
 (define (x-window-set-icon-name window name)
   (guarantee-xwindow window 'x-window-set-icon-name)
-  (if (not (zero? (C-call "x_window_set_icon_name" window (->bytes name))))
+  (if (not (zero? (C-call "x_window_set_icon_name" window (->cstring name))))
       (error "XStringListToTextProperty failed.")))
 
 ;;; Open/Close
@@ -84,7 +104,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
   (let ((alien (make-alien '(struct |xdisplay|))))
     (C-call "x_open_display" alien (if (eq? #f display-name)
 				       0
-				       (->bytes display-name)))
+				       (->cstring display-name)))
     (if (alien-null? alien)
 	(error "Could not open display:" display-name)
 	alien)))
@@ -104,7 +124,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 (define (x-set-default-font display font-name)
   (guarantee-xdisplay display 'x-set-default-font)
-  (if (not (zero? (c-call "x_set_default_font" display (->bytes font-name))))
+  (if (not (zero? (c-call "x_set_default_font" display (->cstring font-name))))
       (error "Could not load font:" font-name)))
 
 ;;; Event Processing
@@ -432,8 +452,8 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 (define (x-display-get-default display resource-name class-name)
   (guarantee-xdisplay display 'x-display-get-default)
-  (let ((alien (C-call "x_display_get_default" (make-alien 'char)
-		       display (->bytes resource-name) (->bytes class-name))))
+  (let ((alien (C-call "x_display_get_default" (make-alien 'char) display
+		       (->cstring resource-name) (->cstring class-name))))
     (and (not (alien-null? alien))
 	 (c-peek-cstring alien))))
 
@@ -487,7 +507,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-window-set-foreground-color window color)
   (guarantee-xwindow window 'x-window-set-foreground-color)
   (cond ((string? color)
-	 (C-call "x_window_set_foreground_color_name" window (->bytes color)))
+	 (C-call "x_window_set_foreground_color_name" window (->cstring color)))
 	((integer? color)
 	 (C-call "x_window_set_foreground_color_pixel" window color))
 	(else
@@ -497,7 +517,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-window-set-background-color window color)
   (guarantee-xwindow window 'x-window-set-background-color)
   (cond ((string? color)
-	 (C-call "x_window_set_background_color_name" window (->bytes color)))
+	 (C-call "x_window_set_background_color_name" window (->cstring color)))
 	((integer? color)
 	 (C-call "x_window_set_background_color_pixel" window color))
 	(else
@@ -507,7 +527,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-window-set-border-color window color)
   (guarantee-xwindow window 'x-window-set-border-color)
   (cond ((string? color)
-	 (C-call "x_window_set_border_color_name" window (->bytes color)))
+	 (C-call "x_window_set_border_color_name" window (->cstring color)))
 	((integer? color)
 	 (C-call "x_window_set_border_color_pixel" window color))
 	(else
@@ -517,7 +537,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-window-set-cursor-color window color)
   (guarantee-xwindow window 'x-window-set-cursor-color)
   (cond ((string? color)
-	 (C-call "x_window_set_cursor_color_name" window (->bytes color)))
+	 (C-call "x_window_set_cursor_color_name" window (->cstring color)))
 	((integer? color)
 	 (C-call "x_window_set_cursor_color_pixel" window color))
 	(else
@@ -527,7 +547,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-window-set-mouse-color window color)
   (guarantee-xwindow window 'x-window-set-mouse-color)
   (cond ((string? color)
-	 (C-call "x_window_set_mouse_color_name" window (->bytes color)))
+	 (C-call "x_window_set_mouse_color_name" window (->cstring color)))
 	((integer? color)
 	 (C-call "x_window_set_mouse_color_pixel" window color))
 	(else
@@ -542,7 +562,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-window-set-font window font)
   (guarantee-xwindow window 'x-window-set-font)
   (guarantee string? font 'x-window-set-font)
-  (not (zero? (C-call "x_window_set_font" window (->bytes font)))))
+  (not (zero? (C-call "x_window_set_font" window (->cstring font)))))
 
 (define (x-window-set-border-width window width)
   (guarantee-xwindow window 'x-window-set-border-width)
@@ -620,7 +640,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
   (guarantee-xdisplay display 'x-font-structure)
   (let ((font-struct (make-alien '(struct |XFontStruct|))))
     (cond ((string? name/id)
-	   (let ((name (->bytes name/id)))
+	   (let ((name (->cstring name/id)))
 	     (add-alien-cleanup!
 	      font-struct
 	      (named-lambda (font-struct-init-by-name! copy)
@@ -735,7 +755,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 (define (x-intern-atom display name soft?)
   (guarantee-xdisplay display 'x-intern-atom)
-  (c-call "x_intern_atom" display (->bytes name) (if soft? 1 0)))
+  (c-call "x_intern_atom" display (->cstring name) (if soft? 1 0)))
 
 (define (x-get-atom-name display atom)
 

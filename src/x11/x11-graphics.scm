@@ -58,23 +58,6 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-graphics-reconfigure window width height)
   (C-call "x_graphics_reconfigure" window width height))
 
-(define (->bytes string)
-  (if (and (or (bytevector? string)
-	       (and (ustring? string)
-		    (fix:= 1 (ustring-cp-size string))))
-	   (let ((end (string-length string)))
-	     (every-loop (lambda (cp) (fix:< cp #x80))
-			 cp1-ref string 0 end)))
-      string
-      (string->iso8859-1 string)))
-
-(define-integrable (every-loop proc ref string start end)
-  (let loop ((i start))
-    (if (fix:< i end)
-	(and (proc (ref string i))
-	     (loop (fix:+ i 1)))
-	#t)))
-
 (define (x-graphics-open-window display geometry suppress-map)
   ;; Open a window on DISPLAY using GEOMETRY.  If GEOMETRY is false
   ;; map window interactively.  If third argument SUPPRESS-MAP? is
@@ -99,9 +82,9 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
     (let ((window
 	   (c-call "x_graphics_open_window" (make-alien '(struct |xwindow|))
 		   display
-		   (->bytes geometry)
-		   (->bytes name)
-		   (->bytes class)
+		   (->cstring geometry)
+		   (->cstring name)
+		   (->cstring class)
 		   (if map? 1 0))))
       (if (alien-null? window)
 	  (error "Could not open window:" geometry))
@@ -137,12 +120,12 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-graphics-draw-string window x y string)
   ;; Draw characters in the current font at the given coordinates, with
   ;; transparent background.
-  (C-call "x_graphics_draw_string" window x y (->bytes string)))
+  (C-call "x_graphics_draw_string" window x y (->cstring string)))
 
 (define (x-graphics-draw-image-string window x y string)
   ;; Draw characters in the current font at the given coordinates, with
   ;; solid background.
-  (C-call "x_graphics_draw_image_string" window x y (->bytes string)))
+  (C-call "x_graphics_draw_image_string" window x y (->cstring string)))
 
 (define (x-graphics-set-function window function)
   (if (not (zero? (C-call "x_graphics_set_function" window function)))
