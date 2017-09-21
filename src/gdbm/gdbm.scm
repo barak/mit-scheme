@@ -67,6 +67,7 @@ USA.
 	#t)))
 
 (define (->bytes string)
+  ;; NOT necessarily null terminated
   (if (and (or (bytevector? string)
 	       (and (ustring? string)
 		    (fix:= 1 (ustring-cp-size string))))
@@ -102,7 +103,7 @@ USA.
        gdbf
        (lambda ()
 	 (C-call "do_gdbm_open"
-		 args (->bytes filename) block-size flagsnum mode)
+		 args (string->utf8 filename) block-size flagsnum mode)
 	 (if (alien-null? args)
 	     (error "gdbm_open failed: malloc failed")
 	     (if (alien-null? (C-> args "gdbm_args dbf"))
