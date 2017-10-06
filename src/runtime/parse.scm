@@ -335,7 +335,7 @@ USA.
 (define (string-maybe-ci=? db s1 s2)
   (if (db-fold-case? db)
       (string-ci=? s1 s2)
-      (string-maybe-ci=? db s1 s2)))
+      (string=? s1 s2)))
 
 (define (handler:whitespace db ctx char)
   db ctx char
