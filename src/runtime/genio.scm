@@ -219,9 +219,7 @@ USA.
 	    char)
 	  (let ((char ((input-buffer-normalizer ib) ib)))
 	    (if (eq? char #\newline)
-		(let ((line (input-buffer-line ib)))
-		  (if line
-		      (set-input-buffer-line! ib (fix:+ line 1)))))
+		(set-input-buffer-line! ib (fix:+ (input-buffer-line ib) 1)))
 	    char)))))
 
 (define (generic-io/unread-char port char)
