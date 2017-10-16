@@ -2607,7 +2607,7 @@ USA.
 	  (port/set-input-terminal-mode set-input-port-terminal-mode!)
 	  (port/set-output-blocking-mode set-output-port-blocking-mode!)
 	  (port/set-output-terminal-mode set-output-port-terminal-mode!)
-	  (port/state textual-port-type)
+	  (port/state textual-port-state)
 	  (port/type textual-port-type)
 	  (port/with-input-blocking-mode with-input-port-blocking-mode)
 	  (port/with-input-terminal-mode with-input-port-terminal-mode)
