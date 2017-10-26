@@ -413,3 +413,52 @@ USA.
 
 (define-per-bit-test 'EXTRACT-BIT
   (lambda (n i) (assert-eqv (zero? (extract-bit i n)) (bit-clear? i n))))
+
+(define-test 'FFS:0 (lambda () (assert-= 0 (ffs 0))))
+(define-test 'FFS:1 (lambda () (assert-= 1 (ffs 1))))
+(define-test 'FFS:2 (lambda () (assert-= 2 (ffs 2))))
+(define-test 'FFS:3 (lambda () (assert-= 1 (ffs 3))))
+(define-test 'FFS:-1 (lambda () (assert-= 1 (ffs -1))))
+(define-test 'FFS:-2 (lambda () (assert-= 2 (ffs -2))))
+(define-test 'FFS:-3 (lambda () (assert-= 1 (ffs -3))))
+
+(define-per-bit-test 'FFS
+  (lambda (n i)
+    (assert-= (ffs n) (bit-count (bitwise-xor n (- n 1)))
+              'EXPRESSION `(FFS ,n))
+    (assert-= (ffs n) (+ 1 (first-set-bit n)) 'EXPRESSION `(FFS ,n))
+    (assert-= (ffs n) (+ 1 (first-set-bit n)) 'EXPRESSION `(FFS ,n))
+    (assert-= (ffs (- 0 n)) (ffs n) 'EXPRESSION `(FFS (- 0 ,n)))
+    ;; Clear the low i bits of n.
+    (let ((n (bitwise-andc2 n (bit-mask i 0))))
+      (assert-= (ffs n) (bit-count (bitwise-xor n (- n 1)))
+                'EXPRESSION `(FFS ,n))
+      (assert-= (ffs n) (+ 1 (first-set-bit n)) 'EXPRESSION `(FFS ,n))
+      (assert-= (ffs (- 0 n)) (ffs n) 'EXPRESSION `(FFS (- 0 ,n)))
+      (assert->= (ffs n) (+ i 1) 'EXPRESSION `(FFS ,n))
+      ;; Set the ith bit of n and make equality hold exactly.
+      (assert-= (ffs (bitwise-ior n (shift-left 1 i))) (+ i 1)
+                'EXPRESSION `(FFS (BITWISE-IOR ,n (SHIFT-LEFT 1 ,i))))
+      (assert-= (ffs (- 0 (bitwise-ior n (shift-left 1 i)))) (+ i 1)
+                'EXPRESSION `(FFS (- 0 (BITWISE-IOR ,N (SHIFT-LEFT 1 ,i))))))))
+
+(define-test 'CLZ:8:0 (lambda () (assert-= 8 ((clz 8) 0))))
+(define-test 'CLZ:8:1 (lambda () (assert-= 7 ((clz 8) 1))))
+(define-test 'CLZ:8:2 (lambda () (assert-= 6 ((clz 8) 2))))
+(define-test 'CLZ:8:3 (lambda () (assert-= 6 ((clz 8) 3))))
+(define-test 'CLZ:8:FF (lambda () (assert-= 0 ((clz 8) #xff))))
+
+;;; Number of octets in a UTF-8 sequence given the initial octet.
+
+(define (utf8-n o)
+  (max 1 ((clz 8) (bitwise-andc1 o #xff))))
+
+(define-test 'UTF8-N:1 (lambda () (assert-= 1 (utf8-n #b01101101))))
+(define-test 'UTF8-N:2 (lambda () (assert-= 2 (utf8-n #b11001101))))
+(define-test 'UTF8-N:3 (lambda () (assert-= 3 (utf8-n #b11101101))))
+(define-test 'UTF8-N:4 (lambda () (assert-= 4 (utf8-n #b11110011))))
+
+;;; Not real UTF-8, but the arithmetic works out the same!
+
+(define-test 'UTF8-N:5 (lambda () (assert-= 5 (utf8-n #b11111001))))
+(define-test 'UTF8-N:6 (lambda () (assert-= 6 (utf8-n #b11111101))))

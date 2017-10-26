@@ -216,3 +216,39 @@ USA.
 (define (shiftin x mask)
   ;; (bitwise-and ... mask)?
   (shift-left x (first-set-bit mask)))
+
+;;; Other standardish bit operations
+
+;;; Find First Set, 1-indexed; (ffs 0) = 0
+;;;
+;;; (Note some authors use 0-indexed ffs, and fail or return -1 for 0.)
+
+(define-integrable (ffs x)
+  (+ 1 (first-set-bit x)))
+
+;;; Find Last Set, 1-indexed; (fls 0) = 0
+;;;
+;;; For negative inputs, we find last clear, a.k.a. find last set of
+;;; complement.
+;;;
+;;; (Note some authors use 0-indexed fls, and fail or return -1 for 0.)
+
+(define-integrable (fls x)
+  (integer-length x))
+
+;;; Count Trailing Zeros; (ctz 0) = 0
+
+(define-integrable (ctz x)
+  (ffs x))
+
+;;; Count Leading Zeros in an n-bit word
+
+(declare (integrate clz))
+(define ((clz n) x)
+  ;; Round up to a power of two minus 1, at most 2^n; count the
+  ;; low-order one bits; subtract from n to get the zero bits
+  (assert (< x (shift-left 1 n)))
+  (let loop ((i 1) (x x))
+    (if (< i n)
+        (loop (* i 2) (bitwise-ior x (shift-right x i)))
+        (- n (bit-count x)))))

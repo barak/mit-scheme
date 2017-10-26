@@ -374,10 +374,14 @@ USA.
 	  bitwise-merge
 	  bitwise-not
 	  clear-bit
+	  clz
+	  ctz
 	  edit-bit-field
 	  extract-bit
 	  extract-bit-field
+	  ffs
 	  first-set-bit
+	  fls
 	  hamming-distance
 	  integer-length
 	  replace-bit-field
