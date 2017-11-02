@@ -70,23 +70,29 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	#t)))
 
 (define (->cstring string)
-  (if (bytevector? string)
-      (if (let ((end (bytevector-length string)))
-	    (let loop ((i 0))
-	      (if (fix:< i end)
-		  (or (fix:zero? (bytevector-u8-ref string i))
-		      (loop (fix:1+ i)))
-		  #f)))
-	  string
-	  (error "C string not null terminated:" string))
-      ;; String->iso8859-1 would be incorrect here; it does not null terminate.
-      (let* ((end (string-length string))
-	     (result (make-bytevector (fix:1+ end))))
-	(do ((i 0 (fix:1+ i)))
-	    ((not (fix:< i end))
-	     (bytevector-u8-set! result i #x00))
-	  (bytevector-u8-set! result i (char->integer (string-ref string i))))
-	result)))
+  (cond ((and (integer? string) (zero? string))
+	 0)
+	((bytevector? string)
+	 (if (let ((end (bytevector-length string)))
+	       (let loop ((i 0))
+		 (if (fix:< i end)
+		     (or (fix:zero? (bytevector-u8-ref string i))
+			 (loop (fix:1+ i)))
+		     #f)))
+	     string
+	     (error "C string not null terminated:" string)))
+	((string? string)
+	 ;; String->iso8859-1 would be incorrect; it does not null terminate.
+	 (let* ((end (string-length string))
+		(result (make-bytevector (fix:1+ end))))
+	   (do ((i 0 (fix:1+ i)))
+	       ((not (fix:< i end))
+		(bytevector-u8-set! result i #x00))
+	     (bytevector-u8-set! result i (char->integer
+					   (string-ref string i))))
+	   result))
+	(else
+	 (error:wrong-type-argument string "a string or 0" '->cstring))))
 
 (define (x-window-set-name window name)
   (guarantee-xwindow window 'x-window-set-name)
