@@ -49,9 +49,6 @@ USA.
 (C-include "blowfish")
 
 (define (blowfish-set-key bytes)
-  ;; Generate a Blowfish key from BYTES.
-  ;; BYTES must be 72 bytes or less in length.
-  ;; For text-string keys, use MD5 on the text, and pass the digest here.
   (guarantee bytevector? bytes 'blowfish-set-key)
   (let ((len (bytevector-length bytes)))
     (if (> len 72)
@@ -61,24 +58,12 @@ USA.
       key)))
 
 (define (blowfish-ecb input output key encrypt?)
-  ;; Apply Blowfish in Electronic Code Book mode.
-  ;; INPUT is an 8-byte bytevector.
-  ;; OUTPUT is an 8-byte bytevector.
-  ;; KEY is a Blowfish key.
-  ;; ENCRYPT? says whether to encrypt (#T) or decrypt (#F).
   (guarantee-bfkey key 'blowfish-ecb)
   (guarantee-8byte-arg input 'blowfish-ecb)
   (guarantee-8byte-arg output 'blowfish-ecb)
   (C-call "BF_ecb_encrypt" input output key (bf-de/encrypt encrypt?)))
 
 (define (blowfish-cbc input output key init-vector encrypt?)
-  ;; Apply Blowfish in Cipher Block Chaining mode.
-  ;; INPUT is a bytevector whose length is a multiple of 8 bytes.
-  ;; OUTPUT is a bytevector whose length is the same as INPUT.
-  ;; KEY is a Blowfish key.
-  ;; INIT-VECTOR is an 8-byte bytevector; it is modified after each call.
-  ;;   The value from any call may be passed in to a later call.
-  ;; ENCRYPT? says whether to encrypt (#T) or decrypt (#F).
   (guarantee-init-vector init-vector 'blowfish-cbc)
   (guarantee-bfkey key 'blowfish-cbc)
   (guarantee-8Xbyte-arg input 'blowfish-cbc)
@@ -92,18 +77,6 @@ USA.
 
 (define (blowfish-cfb64 input istart iend output ostart
 			key init-vector num encrypt?)
-  ;; Apply Blowfish in Cipher Feed-Back mode.
-  ;; (INPUT,ISTART,IEND) is an arbitrary bytevector range.
-  ;; OUTPUT is a bytevector.
-  ;; OSTART says where to start writing in OUTPUT.
-  ;; KEY is a Blowfish key.
-  ;; INIT-VECTOR is an 8-byte bytevector; it is modified after each call.
-  ;;   The value from any call may be passed in to a later call.
-  ;;   The initial value must be unique for each message/key pair.
-  ;; NUM is a digit from 0 to 7 inclusive; it is the low 3 bits of the
-  ;;   number of bytes that have previously been processed in this stream.
-  ;; ENCRYPT? says whether to encrypt (#T) or decrypt (#F). 
-  ;; Returned value is the new value of NUM.
   (guarantee-bfkey key 'blowfish-cfb64)
   (guarantee-init-vector init-vector 'blowfish-cfb64)
   (guarantee-subbytevector input istart iend 'blowfish-cfb64)
@@ -123,17 +96,6 @@ USA.
 
 (define (blowfish-ofb64 input istart iend output ostart
 			key init-vector num)
-  ;; Apply Blowfish in Output Feed-Back mode.
-  ;; (INPUT,ISTART,IEND) is an arbitrary bytevector range.
-  ;; OUTPUT is a bytevector.
-  ;; OSTART says where to start writing in OUTPUT.
-  ;; KEY is a Blowfish key.
-  ;; INIT-VECTOR is an 8-byte bytevector; it is modified after each call.
-  ;;   The value from any call may be passed in to a later call.
-  ;;   The initial value must be unique for each message/key pair.
-  ;; NUM is a digit from 0 to 7 inclusive; it is the low 3 bits of the
-  ;;   number of bytes that have previously been processed in this stream.
-  ;; Returned value is the new value of NUM.
   (guarantee-bfkey key 'blowfish-ofb64)
   (guarantee-init-vector init-vector 'blowfish-ofb64)
   (guarantee-subbytevector input istart iend 'blowfish-ofb64)
@@ -221,9 +183,6 @@ USA.
        (bytevector-fill! output-buffer 0)))))
 
 (define (compute-blowfish-init-vector)
-  ;; This init vector includes a timestamp with a resolution of
-  ;; milliseconds, plus 20 random bits.  This should make it very
-  ;; difficult to generate two identical vectors.
   (let ((iv (make-bytevector 8)))
     (do ((i 0 (fix:+ i 1))
 	 (t (+ (* (+ (* (get-universal-time) 1000)

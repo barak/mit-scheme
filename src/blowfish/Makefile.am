@@ -41,8 +41,8 @@ binaries = @MIT_SCHEME_BCIs@ @MIT_SCHEME_COMs@
 scmlib_sub_DATA = $(sources) $(binaries)
 scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@
 
-#info_TEXINFOS = mit-scheme-blowfish.texi
-#AM_MAKEINFOHTMLFLAGS = --no-split
+info_TEXINFOS = mit-scheme-blowfish.texi
+AM_MAKEINFOHTMLFLAGS = --no-split
 
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
 AM_CFLAGS = @MIT_CFLAGS@
