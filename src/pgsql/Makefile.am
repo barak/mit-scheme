@@ -29,7 +29,6 @@ MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)pgsql
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
-#scminfodir = $(scmdocdir)/info
 
 scmlib_LTLIBRARIES = pgsql-shim.la
 scmlib_DATA = pgsql-types.bin pgsql-const.bin
@@ -42,7 +41,7 @@ binaries = @MIT_SCHEME_BCIs@ @MIT_SCHEME_COMs@
 scmlib_sub_DATA = $(sources) $(binaries)
 scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@
 
-#scminfo_DATA = pgsql.info
+#info_TEXINFOS = mit-scheme-pgsql.texi
 #AM_MAKEINFOHTMLFLAGS = --no-split
 
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
