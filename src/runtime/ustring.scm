@@ -1962,23 +1962,23 @@ USA.
     (let ((predicate (char-matcher->predicate to-trim 'string-trimmer))
 	  (get-trimmed (if copy? substring string-slice)))
       (lambda (string)
-	(let ((end (string-length string)))
-	  (get-trimmed
-	   string
-	   (if (eq? where 'trailing)
-	       0
-	       (let loop ((index 0))
-		 (if (and (fix:< index end)
-			  (predicate (string-ref string index)))
-		     (loop (fix:+ index 1))
-		     index)))
-	   (if (eq? where 'leading)
-	       end
-	       (let loop ((index end))
-		 (if (and (fix:> index 0)
-			  (predicate (string-ref string (fix:- index 1))))
-		     (loop (fix:- index 1))
-		     index)))))))))
+	(let* ((end (string-length string))
+	       (start (if (eq? where 'trailing)
+			  0
+			  (let loop ((index 0))
+			    (if (and (fix:< index end)
+				     (predicate (string-ref string index)))
+				(loop (fix:+ index 1))
+				index))))
+	       (end (if (eq? where 'leading)
+			end
+			(let loop ((index end))
+			  (if (and (fix:> index 0)
+				   (predicate
+				    (string-ref string (fix:- index 1))))
+			      (loop (fix:- index 1))
+			      index)))))
+	  (get-trimmed string (min start end) end))))))
 
 (define-deferred string-trimmer-options
   (keyword-option-parser

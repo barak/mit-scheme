@@ -3076,3 +3076,18 @@ USA.
 	 (#t #\x0061 #t #\x002C #t #\x002C #t #\x0061 #t)
 	 (#t #\x0061 #f #\x005F #f #\x0031 #t #\x002C #t #\x002C #t #\x0061 #t)
 	 (#t #\x0061 #f #\x005F #f #\x0061 #t #\x002C #t #\x002C #t #\x0061 #t))))
+
+(define-test 'string-trim
+  (lambda ()
+    (define-integrable = assert-string=)
+    (= "foo" (string-trim "foo   "))
+    (= "foo" (string-trim "   foo"))
+    (= "foo" (string-trim "   foo   "))
+    (= "foo   " (string-trim-left "   foo   "))
+    (= "   foo" (string-trim-right "   foo   "))
+    (= "" (string-trim "\"\"" (char-set-invert (char-set #\"))))
+    (= "" (string-trim-left "\"\"" (char-set-invert (char-set #\"))))
+    (= "" (string-trim-right "\"\"" (char-set-invert (char-set #\"))))
+    (= "foo" (string-trim "aaafooaaa" (char-set #\f #\o)))
+    (= "fooaaa" (string-trim-left "aaafooaaa" (char-set #\f #\o)))
+    (= "aaafoo" (string-trim-right "aaafooaaa" (char-set #\f #\o)))))
