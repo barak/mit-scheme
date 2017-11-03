@@ -70,6 +70,7 @@ USA.
     "runtime/test-readwrite"
     "runtime/test-regsexp"
     "runtime/test-rgxcmp"
+    "runtime/test-sha3"
     "runtime/test-string"
     "runtime/test-string-normalization"
     "runtime/test-string-search"

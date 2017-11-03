@@ -589,6 +589,15 @@ USA.
 	  quick-sort
 	  quick-sort!))
 
+(define-package (runtime sha3)
+  (files "sha3")
+  (parent (runtime))
+  (export ()
+	  sha3256
+	  sha3256-final
+	  sha3256-init
+	  sha3256-update))
+
 (define-package (runtime simple-queue)
   (files "queue")
   (parent (runtime))
