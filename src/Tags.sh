@@ -37,7 +37,6 @@ DEFAULT_SUBDIRS=( \
     gdbm \
     imail \
     mcrypt \
-    md5 \
     mhash \
     microcode \
     runtime \

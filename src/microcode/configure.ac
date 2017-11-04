@@ -135,11 +135,6 @@ AC_ARG_WITH([openssl],
 	[Use OpenSSL crypto library if available [[yes]]]))
 : ${with_openssl='yes'}
 
-AC_ARG_WITH([mhash],
-    AS_HELP_STRING([--with-mhash],
-	[Use mhash library if available [[yes]]]))
-: ${with_mhash='yes'}
-
 AC_ARG_WITH([mcrypt],
     AS_HELP_STRING([--with-mcrypt],
 	[Use mcrypt library if available [[yes]]]))
@@ -182,7 +177,6 @@ OPTIONAL_BASES=
 OPTIONAL_SOURCES=
 OPTIONAL_OBJECTS=
 PRBFISH_LIBS=
-PRMD5_LIBS=
 SCHEME_DEFS=-DMIT_SCHEME
 SCHEME_LDFLAGS=
 MODULE_BASES=
@@ -844,45 +838,16 @@ if test "${with_openssl}" != no; then
 	])
     if test -n "${FOUND}"; then
 	MODULE_LIBS="-lcrypto ${MODULE_LIBS}"
-	MODULE_BASES="${MODULE_BASES} prbfish prmd5"
+	MODULE_BASES="${MODULE_BASES} prbfish"
 	PRBFISH_LIBS="-lcrypto"
-	PRMD5_LIBS="-lcrypto"
     fi
 fi
 
 dnl These libraries might not be installed, so take care generating
 dnl file dependencies using "makegen/makegen.scm" when called on
-dnl "makegen/files-optional.scm".  To wit, "prmhash.c" & "prmcrypt.c"
-dnl must conditionalize their dependencies on <mhash.h> & <mcrypt.h>,
-dnl respectively, to avoid warnings in "Makefile.deps" and its embeds.
-dnl Finally, note that "prmd5.c" is similarly conditionalized as well.
-
-dnl The mhash library provides MD5 support.  It can be loaded in addition
-dnl to other MD5 libraries and provides a rich set of hashes.
-if test "${with_mhash}" != no; then
-    if test "${with_mhash}" != yes; then
-	CPPFLAGS="${CPPFLAGS} -I${with_mhash}/include"
-	LDFLAGS="${LDFLAGS} -L${with_mhash}/lib"
-    fi
-    AC_CHECK_HEADER([mhash.h],
-	[
-	AC_DEFINE([HAVE_MHASH_H], [1],
-	    [Define to 1 if you have the <mhash.h> header file.])
-	AC_CHECK_LIB([mhash], [mhash_count],
-	    [
-	    AC_DEFINE([HAVE_LIBMHASH], [1],
-		[Define to 1 if you have the `mhash' library (-lmhash).])
-	    if test ${enable_debugging} != no; then
-	       LIBS="-lmhash ${LIBS}"
-	    fi
-	    MODULE_LIBS="-lmhash ${MODULE_LIBS}"
-	    MODULE_BASES="${MODULE_BASES} prmhash"
-	    if test "x${PRMD5_LIBS}" = x; then
-		PRMD5_LIBS="-lmhash"
-	    fi
-	    ])
-	])
-fi
+dnl "makegen/files-optional.scm".  To wit, "prmcrypt.c" must
+dnl conditionalize its dependencies on <mcrypt.h>, respectively, to
+dnl avoid warnings in "Makefile.deps" and its embeds.
 
 dnl The mcrypt library provides blowfish, but its CFB mode is 8 bit.
 dnl We have been using 64-bit CFB, so this isn't really compatible.
@@ -1108,7 +1073,6 @@ AC_SUBST([M4])
 AC_SUBST([OPTIONAL_SOURCES])
 AC_SUBST([OPTIONAL_OBJECTS])
 AC_SUBST([PRBFISH_LIBS])
-AC_SUBST([PRMD5_LIBS])
 AC_SUBST([SCHEME_DEFS])
 AC_SUBST([SCHEME_LDFLAGS])
 AC_SUBST([MODULE_TARGETS])

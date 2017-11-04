@@ -102,7 +102,6 @@ GC_HEAD_FILES = @GC_HEAD_FILES@
 OPTIONAL_SOURCES = @OPTIONAL_SOURCES@
 OPTIONAL_OBJECTS = @OPTIONAL_OBJECTS@
 PRBFISH_LIBS = @PRBFISH_LIBS@
-PRMD5_LIBS = @PRMD5_LIBS@
 
 MODULE_TARGETS = @MODULE_TARGETS@
 MODULE_CFLAGS = @MODULE_CFLAGS@
@@ -194,12 +193,6 @@ macosx-starter: macosx-starter.o
 
 prbfish.so: prbfish.o @MODULE_LOADER@
 	$(LINK_MODULE) prbfish.o $(PRBFISH_LIBS) $(MODULE_LIBS)
-
-prmd5.so: prmd5.o @MODULE_LOADER@
-	$(LINK_MODULE) prmd5.o $(PRMD5_LIBS) $(MODULE_LIBS)
-
-prmhash.so: prmhash.o @MODULE_LOADER@
-	$(LINK_MODULE) prmhash.o -lmhash $(MODULE_LIBS)
 
 prmcrypt.so: prmcrypt.o @MODULE_LOADER@
 	$(LINK_MODULE) prmcrypt.o -lmcrypt $(MODULE_LIBS)

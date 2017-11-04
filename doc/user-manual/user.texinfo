@@ -242,12 +242,11 @@ may need super-user privileges to do the installation step.
 
 @emph{After} you have installed Scheme, you can install a few
 dynamically loadable options.  These are configured, built and
-installed in the customary way.  To install the @code{GDBM2} and
-@code{MHASH} options:
+installed in the customary way.  To install the @code{GDBM2}
+option:
 
 @smallexample
 (cd gdbm && make && make install)
-(cd mhash && ./configure && make && make install)
 @end smallexample
 
 The @code{make install} command will attempt to create a subdirectory
@@ -283,10 +282,6 @@ for more information.
 libssl-dev (-lcrypto)
 @item GDBM2
 libgdbm-dev (-lgdbm)
-@item MD5
-libssl-dev (-lcrypto)
-@item MHASH
-libmhash-dev (-lmhash)
 @end table
 
 After installing the software and any options, you can delete the

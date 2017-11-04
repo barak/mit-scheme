@@ -5207,7 +5207,6 @@ USA.
   (files "crypto")
   (parent (runtime))
   (export ()
-	  make-mhash-keygen-type
 	  mcrypt-algorithm-name
 	  mcrypt-algorithm-names
 	  mcrypt-available?
@@ -5231,28 +5230,7 @@ USA.
 	  md5-available?
 	  md5-bytevector
 	  md5-file
-	  md5-string
-	  mhash-available?
-	  mhash-bytevector
-	  mhash-context?
-	  mhash-end
-	  mhash-file
-	  mhash-get-block-size
-	  mhash-hmac-end
-	  mhash-hmac-init
-	  mhash-hmac-update
-	  mhash-init
-	  mhash-keygen
-	  mhash-keygen-max-key-size
-	  mhash-keygen-salt-size
-	  mhash-keygen-type-names
-	  mhash-keygen-type?
-	  mhash-keygen-uses-count?
-	  mhash-keygen-uses-hash-algorithm
-	  mhash-keygen-uses-salt?
-	  mhash-string
-	  mhash-type-names
-	  mhash-update)
+	  md5-string)
   (initialization (initialize-package!)))
 
 (define-package (runtime regular-sexpression)

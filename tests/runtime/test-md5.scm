@@ -24,29 +24,21 @@ USA.
 
 |#
 
-;;;; C declarations for md5-shim.so.
-
-(enum (MD5_DIGEST_LENGTH))
+;;;; Tests of MD5
 
-(typedef MD5_CTX
-	 (struct MD5state_st
-		 ;; mumble
-		 (num uint)))
-
-(extern int MD5_INIT
-	(c (* MD5_CTX)))
-
-(extern void do_MD5
-	(string (* uchar))
-	(length int)
-	(result (* uchar)))
-
-(extern void do_MD5_UPDATE
-	(context (* MD5_CTX))
-	(string (* uchar))
-	(start int)
-	(end int))
-
-(extern void do_MD5_FINAL
-	(context (* MD5_CTX))
-	(result (* uchar)))
+(define-test 'MD5
+  (lambda ()
+    (let ((bv (make-bytevector 256)))
+      (do ((i 0 (+ i 1))) ((>= i 256))
+        (bytevector-u8-set! bv i i))
+      (let ((h (make-bytevector (* 16 256))))
+        (let loop ((i 0))
+          (if (< i 256)
+              (let ((hi (md5-bytevector bv 0 i)))
+                (bytevector-copy! h (* 16 i) hi)
+                (loop (+ i 1)))
+              (assert-equal (md5-bytevector h)
+                            #u8(
+                                #xbf #xd5 #x08 #x30 #xba #x3e #xbc #x1d
+                                #xf2 #x78 #xc0 #x26 #x97 #x79 #xa0 #x3e
+                                ))))))))
