@@ -283,8 +283,6 @@ for more information.
 libssl-dev (-lcrypto)
 @item GDBM2
 libgdbm-dev (-lgdbm)
-@item MD5
-libssl-dev (-lcrypto)
 @item MHASH
 libmhash-dev (-lmhash)
 @end table
