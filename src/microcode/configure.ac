@@ -333,6 +333,8 @@ darwin*)
     fi
     MACOSX_CFLAGS="${MACOSX_CFLAGS} -fconstant-cfstrings"
     MACOSX_CFLAGS="${MACOSX_CFLAGS} -DSIGNAL_HANDLERS_CAN_USE_SCHEME_STACK"
+    dnl needed for lgamma_r:
+    MACOSX_CFLAGS="${MACOSX_CFLAGS} -D_REENTRANT"
     AC_MSG_NOTICE([Compiling for MacOSX version ${MACOSX}])
     case ${mit_scheme_native_code} in
     i386)
@@ -345,7 +347,11 @@ darwin*)
 	AS_FLAGS="-arch x86_64 ${AS_FLAGS}"
     	;;
     esac
-    CFLAGS="${CFLAGS} ${MACOSX_CFLAGS} -frounding-math"
+    if ! cc --version | grep -q clang; then
+        dnl -frounding-math not supported by clang.
+        MACOSX_CFLAGS="${MACOSX_CFLAGS} -frounding-math"
+    fi
+    CFLAGS="${CFLAGS} ${MACOSX_CFLAGS}"
     LDFLAGS="${LDFLAGS} ${MACOSX_CFLAGS} -Wl,-syslibroot,${MACOSX_SYSROOT}"
     LDFLAGS="${LDFLAGS} -framework CoreFoundation"
     MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle"
