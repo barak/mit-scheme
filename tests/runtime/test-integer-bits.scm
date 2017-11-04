@@ -435,7 +435,8 @@ USA.
                 'EXPRESSION `(FFS ,n))
       (assert-= (ffs n) (+ 1 (first-set-bit n)) 'EXPRESSION `(FFS ,n))
       (assert-= (ffs (- 0 n)) (ffs n) 'EXPRESSION `(FFS (- 0 ,n)))
-      (assert->= (ffs n) (+ i 1) 'EXPRESSION `(FFS ,n))
+      (if (not (zero? n))
+          (assert->= (ffs n) (+ i 1) 'EXPRESSION `(FFS ,n)))
       ;; Set the ith bit of n and make equality hold exactly.
       (assert-= (ffs (bitwise-ior n (shift-left 1 i))) (+ i 1)
                 'EXPRESSION `(FFS (BITWISE-IOR ,n (SHIFT-LEFT 1 ,i))))
