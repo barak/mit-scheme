@@ -35,21 +35,6 @@ USA.
 (define (zero)
   (identity-procedure 0.))
 
-(define (nan)
-  (flo:with-exceptions-untrapped (flo:exception:invalid-operation)
-    (lambda ()
-      (flo:/ (zero) (zero)))))
-
-(define (inf+)
-  (flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
-    (lambda ()
-      (flo:/ +1. (zero)))))
-
-(define (inf-)
-  (flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
-    (lambda ()
-      (flo:/ -1. (zero)))))
-
 (define (assert-nan object)
   (assert-true (flo:flonum? object))
   (assert-false (flo:= object object)))
@@ -81,61 +66,78 @@ USA.
 
 (define-enumerated^2-test 'ZEROS-ARE-EQUAL (vector -0. 0 +0.) =)
 
-(define-enumerated^2-test* 'ORDER-WITH-INFINITIES
-  (vector (inf-) -2. -1 -0.5 0 +0.5 +1 +2. (inf+))
-  (lambda (i vi j vj)
-    (if (< i j)
-        (assert-true (< vi vj))
-        (assert-false (< vi vj)))))
+(if (flo:have-trap-enable/disable?)
+    (let ()
 
-(let ((elements (vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))))
-  (define-enumerated-test '!NAN<X elements
-    (lambda (v) (assert-false (< (nan) v))))
-  (define-enumerated-test '!X<NAN elements
-    (lambda (v) (assert-false (< v (nan))))))
+      (define (nan)
+	(flo:with-exceptions-untrapped (flo:exception:invalid-operation)
+	  (lambda ()
+	    (flo:/ (zero) (zero)))))
 
-(let ((elements (vector -2. -1 -0. 0 +0. +1 +2.)))
+      (define (inf+)
+	(flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
+	  (lambda ()
+	    (flo:/ +1. (zero)))))
 
-  (define-enumerated-test 'MIN-INF-/X elements
-    (lambda (v) (assert-= (min (inf-) v) (inf-))))
-  (define-enumerated-test 'MIN-INF+/X elements
-    (lambda (v) (assert-= (min (inf+) v) v)))
-  (define-enumerated-test 'MIN-X/INF- elements
-    (lambda (v) (assert-= (min v (inf-)) (inf-))))
-  (define-enumerated-test 'MIN-X/INF+ elements
-    (lambda (v) (assert-= (min v (inf+)) v)))
+      (define (inf-)
+	(flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
+	  (lambda ()
+	    (flo:/ -1. (zero)))))
 
-  (define-enumerated-test 'MAX-INF-/X elements
-    (lambda (v) (assert-= (max (inf-) v) v)))
-  (define-enumerated-test 'MAX-INF+/X elements
-    (lambda (v) (assert-= (max (inf+) v) (inf+))))
-  (define-enumerated-test 'MAX-X/INF- elements
-    (lambda (v) (assert-= (max v (inf-)) v)))
-  (define-enumerated-test 'MAX-X/INF+ elements
-    (lambda (v) (assert-= (max v (inf+)) (inf+)))))
+      (define-enumerated^2-test* 'ORDER-WITH-INFINITIES
+	(vector (inf-) -2. -1 -0.5 0 +0.5 +1 +2. (inf+))
+	(lambda (i vi j vj)
+	  (if (< i j)
+	      (assert-true (< vi vj))
+	      (assert-false (< vi vj)))))
 
-(let ((elements (vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))))
-  (define-enumerated-test 'MIN-NAN/X elements
-    (lambda (v) (assert-= (min (nan) v) v)))
-  (define-enumerated-test 'MIN-X/NAN elements
-    (lambda (v) (assert-= (min v (nan)) v)))
-  (define-enumerated-test 'MAX-NAN/X elements
-    (lambda (v) (assert-= (max (nan) v) v)))
-  (define-enumerated-test 'MAX-X/NAN elements
-    (lambda (v) (assert-= (max v (nan)) v))))
+      (let ((elements (vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))))
+	(define-enumerated-test '!NAN<X elements
+	  (lambda (v) (assert-false (< (nan) v))))
+	(define-enumerated-test '!X<NAN elements
+	  (lambda (v) (assert-false (< v (nan))))))
+      (let ((elements (vector -2. -1 -0. 0 +0. +1 +2.)))
 
-(define-enumerated-test 'NAN*X
-  (vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))
-  (lambda (v) (assert-nan (* (nan) v))))
+	(define-enumerated-test 'MIN-INF-/X elements
+	  (lambda (v) (assert-= (min (inf-) v) (inf-))))
+	(define-enumerated-test 'MIN-INF+/X elements
+	  (lambda (v) (assert-= (min (inf+) v) v)))
+	(define-enumerated-test 'MIN-X/INF- elements
+	  (lambda (v) (assert-= (min v (inf-)) (inf-))))
+	(define-enumerated-test 'MIN-X/INF+ elements
+	  (lambda (v) (assert-= (min v (inf+)) v)))
 
-(define-enumerated-test 'X*NAN
-  (vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))
-  (lambda (v) (assert-nan (* v (nan)))))
+	(define-enumerated-test 'MAX-INF-/X elements
+	  (lambda (v) (assert-= (max (inf-) v) v)))
+	(define-enumerated-test 'MAX-INF+/X elements
+	  (lambda (v) (assert-= (max (inf+) v) (inf+))))
+	(define-enumerated-test 'MAX-X/INF- elements
+	  (lambda (v) (assert-= (max v (inf-)) v)))
+	(define-enumerated-test 'MAX-X/INF+ elements
+	  (lambda (v) (assert-= (max v (inf+)) (inf+)))))
 
-(define-enumerated-test 'NAN/X
-  (vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))
-  (lambda (v) (assert-nan (/ (nan) v))))
+      (let ((elements (vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))))
+	(define-enumerated-test 'MIN-NAN/X elements
+	  (lambda (v) (assert-= (min (nan) v) v)))
+	(define-enumerated-test 'MIN-X/NAN elements
+	  (lambda (v) (assert-= (min v (nan)) v)))
+	(define-enumerated-test 'MAX-NAN/X elements
+	  (lambda (v) (assert-= (max (nan) v) v)))
+	(define-enumerated-test 'MAX-X/NAN elements
+	  (lambda (v) (assert-= (max v (nan)) v))))
 
-(define-enumerated-test 'X/NAN
-  (vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))
-  (lambda (v) (assert-nan (/ v (nan)))))
+      (define-enumerated-test 'NAN*X
+	(vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))
+	(lambda (v) (assert-nan (* (nan) v))))
+
+      (define-enumerated-test 'X*NAN
+	(vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))
+	(lambda (v) (assert-nan (* v (nan)))))
+
+      (define-enumerated-test 'NAN/X
+	(vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))
+	(lambda (v) (assert-nan (/ (nan) v))))
+
+      (define-enumerated-test 'X/NAN
+	(vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))
+	(lambda (v) (assert-nan (/ v (nan)))))))

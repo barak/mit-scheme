@@ -135,7 +135,7 @@ USA.
 (define (for-each-trappable-exception receiver)
   (for-each-exception
    (lambda (name exception condition-type trappable? elicitors)
-     (if trappable?
+     (if (and trappable? (flo:have-trap-enable/disable?))
 	 (receiver name exception condition-type elicitors)))))
 
 (define (for-each-exception-elicitor receiver)
@@ -224,7 +224,8 @@ USA.
 (define (for-each-trappable-exception receiver)
   (for-each-exception
    (lambda (name exception condition-type trappable? elicitors)
-     (if trappable? (receiver name exception condition-type elicitors)))))
+     (if (and trappable? (flo:have-trap-enable/disable?))
+	 (receiver name exception condition-type elicitors)))))
 
 (for-each-exception
  (lambda (name exception condition-type trappable? elicitors)
@@ -271,22 +272,24 @@ USA.
     (flo:trapped-exceptions)))
 
 (define (define-set-trapped-exceptions-test name to-trap)
-  (define-test (symbol 'FLO:SET-TRAPPED-EXCEPTIONS! ': name)
-    (lambda ()
-      (let ((exceptions (to-trap))
-	    (trapped (flo:trapped-exceptions)))
-        (flo:preserving-environment
-         (lambda ()
-	   (assert-eqv (flo:set-trapped-exceptions! exceptions) trapped)
-	   (assert-eqv (flo:trapped-exceptions) exceptions)))))))
+  (if (flo:have-trap-enable/disable?)
+      (define-test (symbol 'FLO:SET-TRAPPED-EXCEPTIONS! ': name)
+	(lambda ()
+	  (let ((exceptions (to-trap))
+		(trapped (flo:trapped-exceptions)))
+	    (flo:preserving-environment
+	     (lambda ()
+	       (assert-eqv (flo:set-trapped-exceptions! exceptions) trapped)
+	       (assert-eqv (flo:trapped-exceptions) exceptions))))))))
 
 (define (define-with-trapped-exceptions-test name to-trap)
-  (define-test (symbol 'FLO:WITH-TRAPPED-EXCEPTIONS ': name)
-    (lambda ()
-      (let ((exceptions (to-trap)))
-	(flo:with-trapped-exceptions exceptions
-	  (lambda ()
-	    (assert-eqv (flo:trapped-exceptions) exceptions)))))))
+  (if (flo:have-trap-enable/disable?)
+      (define-test (symbol 'FLO:WITH-TRAPPED-EXCEPTIONS ': name)
+	(lambda ()
+	  (let ((exceptions (to-trap)))
+	    (flo:with-trapped-exceptions exceptions
+	      (lambda ()
+		(assert-eqv (flo:trapped-exceptions) exceptions))))))))
 
 (define-set-trapped-exceptions-test 'ALL (lambda () 0))
 (define-set-trapped-exceptions-test 'NONE flo:trappable-exceptions)
@@ -448,6 +451,8 @@ USA.
   (lambda ()
     (assert-eqv (flo:rounding-mode) (flo:default-rounding-mode))))
 
-(define-default-environment-test 'TRAPPED-EXCEPTIONS
-  (lambda ()
-    (assert-eqv (flo:trapped-exceptions) (flo:default-trapped-exceptions))))
+(if (flo:have-trap-enable/disable?)
+    (define-default-environment-test 'TRAPPED-EXCEPTIONS
+      (lambda ()
+	(assert-eqv (flo:trapped-exceptions)
+		    (flo:default-trapped-exceptions)))))

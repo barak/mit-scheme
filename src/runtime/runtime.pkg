@@ -326,6 +326,8 @@ USA.
 	  flo:exception:overflow
 	  flo:exception:underflow
 	  flo:exceptions->names
+	  flo:have-environment?
+	  flo:have-trap-enable/disable?
 	  flo:ignoring-exception-traps
 	  flo:names->exceptions
 	  flo:preserving-environment

@@ -228,6 +228,8 @@ USA.
 ;;;; Floating-point exceptions and trapping
 
 (define-primitives
+  (flo:have-environment? have-float-environment? 0)
+  (flo:have-trap-enable/disable? have-float-trap-enable/disable? 0)
   (flo:supported-exceptions float-exceptions 0)
   (flo:exception:divide-by-zero float-divide-by-zero-exception 0)
   (flo:exception:invalid-operation float-invalid-operation-exception 0)

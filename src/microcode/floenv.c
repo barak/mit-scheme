@@ -540,3 +540,23 @@ DEFINE_PRIMITIVE ("TRAP-FLOAT-EXCEPTIONS", Prim_trap_float_exceptions, 1, 1, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 #endif
 }
+
+DEFINE_PRIMITIVE ("HAVE-FLOAT-ENVIRONMENT?", Prim_have_float_environment, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+#ifdef HAVE_FENV_H
+  PRIMITIVE_RETURN (SHARP_T);
+#else
+  PRIMITIVE_RETURN (SHARP_F);
+#endif
+}
+
+DEFINE_PRIMITIVE ("HAVE-FLOAT-TRAP-ENABLE/DISABLE?", Prim_have_float_trap_enable_disable, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+#if ((defined (HAVE_FEENABLEEXCEPT)) && (defined (HAVE_FEDISABLEEXCEPT)))
+  PRIMITIVE_RETURN (SHARP_T);
+#else
+  PRIMITIVE_RETURN (SHARP_F);
+#endif
+}
