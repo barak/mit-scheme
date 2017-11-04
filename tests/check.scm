@@ -62,6 +62,7 @@ USA.
     "runtime/test-genmult"
     "runtime/test-hash-table"
     "runtime/test-integer-bits"
+    "runtime/test-md5"
     "runtime/test-mime-codec"
     ("runtime/test-parametric-predicate" (runtime parametric-predicate))
     ("runtime/test-predicate-lattice" (runtime))

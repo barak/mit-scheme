@@ -24,24 +24,21 @@ USA.
 
 |#
 
-;;;; Optional C files that are conditionally linked in.
+;;;; Tests of MD5
 
-"cmpint"
-"comutl"
-"prbfish"
-"prgdbm"
-"prmcrypt"
-"prmhash"
-"prpgsql"
-"pruxdld"
-"pruxffi"
-"prx11"
-"svm1-interp"
-"tterm"
-"termcap"
-"terminfo"
-"tparam"
-"x11base"
-"x11color"
-"x11graph"
-"x11term"
+(define-test 'MD5
+  (lambda ()
+    (let ((bv (make-bytevector 256)))
+      (do ((i 0 (+ i 1))) ((>= i 256))
+        (bytevector-u8-set! bv i i))
+      (let ((h (make-bytevector (* 16 256))))
+        (let loop ((i 0))
+          (if (< i 256)
+              (let ((hi (md5-bytevector bv 0 i)))
+                (bytevector-copy! h (* 16 i) hi)
+                (loop (+ i 1)))
+              (assert-equal (md5-bytevector h)
+                            #u8(
+                                #xbf #xd5 #x08 #x30 #xba #x3e #xbc #x1d
+                                #xf2 #x78 #xc0 #x26 #x97 #x79 #xa0 #x3e
+                                ))))))))

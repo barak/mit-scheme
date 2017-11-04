@@ -256,19 +256,9 @@ USA.
 ;;;; MD5
 
 (define (md5-available?)
-  (or (mhash-available?)
-      (%md5-available?)))
-
-(define (%md5-available?)
-  (load-library-object-file "prmd5" #f)
-  (implemented-primitive-procedure? (ucode-primitive md5-init 0)))
+  #t)
 
 (define (md5-file filename)
-  (cond ((mhash-available?) (mhash-file 'md5 filename))
-	((%md5-available?) (%md5-file filename))
-	(else (error "This Scheme system was built without MD5 support."))))
-
-(define (%md5-file filename)
   (call-with-binary-input-file filename
     (port-consumer (ucode-primitive md5-init 0)
 		   (ucode-primitive md5-update 4)
@@ -278,11 +268,6 @@ USA.
   (md5-bytevector (string->utf8 string start end)))
 
 (define (md5-bytevector bytes #!optional start end)
-  (cond ((mhash-available?) (mhash-bytevector 'md5 bytes start end))
-	((%md5-available?) (%md5-bytevector bytes start end))
-	(else (error "This Scheme system was built without MD5 support."))))
-
-(define (%md5-bytevector bytes #!optional start end)
   (let ((end (fix:end-index end (bytevector-length bytes) 'md5-bytevector))
 	(start (fix:start-index start end 'md5-bytevector))
 	(context ((ucode-primitive md5-init 0))))
