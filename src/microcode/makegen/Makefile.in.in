@@ -194,9 +194,6 @@ macosx-starter: macosx-starter.o
 prbfish.so: prbfish.o @MODULE_LOADER@
 	$(LINK_MODULE) prbfish.o $(PRBFISH_LIBS) $(MODULE_LIBS)
 
-prmhash.so: prmhash.o @MODULE_LOADER@
-	$(LINK_MODULE) prmhash.o -lmhash $(MODULE_LIBS)
-
 prmcrypt.so: prmcrypt.o @MODULE_LOADER@
 	$(LINK_MODULE) prmcrypt.o -lmcrypt $(MODULE_LIBS)
 

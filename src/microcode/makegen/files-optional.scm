@@ -31,7 +31,6 @@ USA.
 "prbfish"
 "prgdbm"
 "prmcrypt"
-"prmhash"
 "prpgsql"
 "pruxdld"
 "pruxffi"
