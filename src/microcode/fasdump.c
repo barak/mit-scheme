@@ -44,14 +44,12 @@ USA.
    static void save_gc_vars (void);
 #  define COMPARE_GC_VARS compare_gc_vars
    static void compare_gc_vars (void);
-#  ifdef HAVE_MHASH_H
-#    include <mhash.h>
-#    define SAVE_MEMORY_CHECKSUM save_memory_checksum
-     static void save_memory_checksum (void);
-#    define COMPARE_MEMORY_CHECKSUM compare_memory_checksum
-     static void compare_memory_checksum (void);
-     static void * compute_memory_checksum (void);
-#  endif
+#  include <md5.h>
+#  define SAVE_MEMORY_CHECKSUM save_memory_checksum
+   static void save_memory_checksum (void);
+#  define COMPARE_MEMORY_CHECKSUM compare_memory_checksum
+   static void compare_memory_checksum (void);
+   static void * compute_memory_checksum (void);
 #else
 #  define SAVE_GC_VARS() do {} while (false)
 #  define COMPARE_GC_VARS() do {} while (false)
@@ -267,8 +265,6 @@ compare_gc_vars (void)
   COMPARE_GC_VAR (constant_end);
 }
 
-#ifdef HAVE_MHASH_H
-
 static void * fasdump_original_digest;
 
 static void
@@ -289,10 +285,7 @@ compare_memory_checksum (void)
 	outf_error ("Unable to recompute fasdump memory checksum.");
       else
 	{
-	  if ((memcmp (digest,
-		       fasdump_original_digest,
-		       (mhash_get_block_size (MHASH_MD5))))
-	      != 0)
+	  if ((memcmp (digest, fasdump_original_digest, MD5_HASHLEN)) != 0)
 	    outf_error ("Memory mismatch after fasdump.");
 	  free (digest);
 	}
@@ -303,22 +296,25 @@ compare_memory_checksum (void)
 static void *
 compute_memory_checksum (void)
 {
-  MHASH ctx = (mhash_init (MHASH_MD5));
-  if (ctx == MHASH_FAILED)
-    return (0);
-  (void) mhash (ctx,
-		fasdump_saved_constant_start,
-		((fasdump_saved_constant_alloc_next
-		  - fasdump_saved_constant_start)
-		 * SIZEOF_SCHEME_OBJECT));
-  (void) mhash (ctx,
-		fasdump_saved_heap_start,
-		((fasdump_saved_Free - fasdump_saved_heap_start)
-		 * SIZEOF_SCHEME_OBJECT));
-  return (mhash_end (ctx));
+  struct md5 ctx;
+  void * hash;
+  md5_init (&ctx);
+  md5_update ((&ctx),
+	      fasdump_saved_constant_start,
+	      ((fasdump_saved_constant_alloc_next
+		- fasdump_saved_constant_start)
+	       * SIZEOF_SCHEME_OBJECT));
+  md5_update ((&ctx),
+	      fasdump_saved_heap_start,
+	      ((fasdump_saved_Free - fasdump_saved_heap_start)
+	       * SIZEOF_SCHEME_OBJECT));
+  hash = (malloc (MD5_HASHLEN));
+  if (hash == NULL)
+    return NULL;
+  md5_final ((&ctx), hash);
+  return hash;
 }
 
-#endif /* HAVE_MHASH_H */
 #endif /* ENABLE_GC_DEBUGGING_TOOLS */
 
 static gc_table_t *
