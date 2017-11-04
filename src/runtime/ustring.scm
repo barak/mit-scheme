@@ -1963,22 +1963,24 @@ USA.
 	  (get-trimmed (if copy? substring string-slice)))
       (lambda (string)
 	(let* ((end (string-length string))
-	       (start (if (eq? where 'trailing)
-			  0
-			  (let loop ((index 0))
-			    (if (and (fix:< index end)
-				     (predicate (string-ref string index)))
-				(loop (fix:+ index 1))
-				index))))
-	       (end (if (eq? where 'leading)
-			end
-			(let loop ((index end))
-			  (if (and (fix:> index 0)
-				   (predicate
-				    (string-ref string (fix:- index 1))))
-			      (loop (fix:- index 1))
-			      index)))))
-	  (get-trimmed string (min start end) end))))))
+	       (start
+		(if (eq? where 'trailing)
+		    0
+		    (let loop ((index 0))
+		      (if (and (fix:< index end)
+			       (predicate (string-ref string index)))
+			  (loop (fix:+ index 1))
+			  index)))))
+	  (get-trimmed string
+		       start
+		       (if (eq? where 'leading)
+			   end
+			   (let loop ((index end))
+			     (if (and (fix:> index start)
+				      (predicate
+				       (string-ref string (fix:- index 1))))
+				 (loop (fix:- index 1))
+				 index)))))))))
 
 (define-deferred string-trimmer-options
   (keyword-option-parser
