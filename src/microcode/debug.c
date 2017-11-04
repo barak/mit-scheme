@@ -260,8 +260,8 @@ print_ustring (outf_channel stream, SCHEME_OBJECT string)
   long_enough = (length < 100 ? length : 90);
   next = (STRING_LOC (string, 0));
 
-  cp_size = ((OBJECT_TYPE (MEMORY_REF (string, BYTEVECTOR_LENGTH_INDEX)))
-	     && 0x03);
+  cp_size
+    = ((OBJECT_TYPE (MEMORY_REF (string, BYTEVECTOR_LENGTH_INDEX))) & 0x03);
   if (cp_size == 0)
     {
       print_simple (stream, string);

@@ -40,7 +40,7 @@ string_p (SCHEME_OBJECT object)
               // one byte per code point.  This must be kept in sync
               // with "runtime/ustring.scm".
               && (((OBJECT_TYPE (MEMORY_REF (object, BYTEVECTOR_LENGTH_INDEX)))
-                   && 0x03)
+                   & 0x03)
                   == 0x01)));
 }
 
