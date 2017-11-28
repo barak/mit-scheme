@@ -193,3 +193,37 @@ USA.
    #u8(#xF2 #x1E #x9A #x77 #xB7 #x1C #x49 #xBC)
    #u8(#x24 #x59 #x46 #x88 #x57 #x54 #x36 #x9A)
    #u8(#x6B #x5C #x5A #x9C #x5D #x9E #x0A #x5A)))
+
+(define (define-cbc-test i c)
+  (define k #u8(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15))
+  (define iv #u8(7 6 5 4 3 2 1 0))
+  (define p #u8(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23))
+  (let ((p (bytevector-copy p 0 i)))
+    (define-bf-test (symbol 'CBC:ENCRYPT ': i)
+      (lambda ()
+        (let ((bf (blowfish-set-key k))
+              (iv (bytevector-copy iv))
+              (buf (make-bytevector i)))
+          (blowfish-cbc p buf bf iv #t)
+          (assert-equal buf c)
+          (assert-equal iv (bytevector-copy buf (- i 8) i)))))
+    (define-bf-test (symbol 'CBC:DECRYPT ': i)
+      (lambda ()
+        (let ((bf (blowfish-set-key k))
+              (iv (bytevector-copy iv))
+              (buf (make-bytevector i)))
+          (blowfish-cbc c buf bf iv #f)
+          (assert-equal buf p)
+          (assert-equal iv (bytevector-copy c (- i 8) i)))))))
+
+(define-cbc-test 8
+  #u8(#x90 #x6a #xb9 #x17 #xb0 #x9f #xcd #x3a))
+
+(define-cbc-test 16
+  #u8(#x90 #x6a #xb9 #x17 #xb0 #x9f #xcd #x3a
+      #x2b #x41 #x4d #x69 #xbb #xa0 #xc0 #xdf))
+
+(define-cbc-test 24
+  #u8(#x90 #x6a #xb9 #x17 #xb0 #x9f #xcd #x3a
+      #x2b #x41 #x4d #x69 #xbb #xa0 #xc0 #xdf
+      #xed #x69 #x9e #xca #x55 #x13 #xc2 #x7e))
