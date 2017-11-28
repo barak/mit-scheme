@@ -48,6 +48,7 @@ USA.
     "microcode/test-keccak"
     "microcode/test-lookup"
     "runtime/test-arith"
+    "runtime/test-blowfish"
     "runtime/test-bytevector"
     ("runtime/test-char" (runtime))
     ("runtime/test-char-set" (runtime character-set))
