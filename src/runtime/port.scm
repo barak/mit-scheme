@@ -439,8 +439,8 @@ USA.
     (if close
 	(close port)
 	(begin
-	  (close-output-port port)
-	  (close-input-port port)))))
+	  (close-textual-output-port port)
+	  (close-textual-input-port port)))))
 
 (define (close-textual-input-port port)
   (let ((close-input (textual-port-operation port 'CLOSE-INPUT)))
