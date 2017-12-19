@@ -682,7 +682,6 @@ UX_initialize_signals (void)
   bind_handler (SIGALRM,	sighnd_timer);
   bind_handler (SIGVTALRM,	sighnd_timer);
   bind_handler (SIGTERM,	sighnd_control_g);
-  bind_handler (SIGQUIT,	sighnd_control_g);
   bind_handler (SIGHUP,		sighnd_control_g);
   bind_handler (SIGUSR1,	sighnd_save_then_terminate);
 #ifdef HAVE_NICE
