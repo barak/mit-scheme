@@ -2680,12 +2680,15 @@ USA.
 (define (process-queued-responses connection command)
   (with-modification-events-deferred
     (lambda ()
-      (let loop ((responses (dequeue-imap-responses connection)))
+      (let loop
+	  ((responses (dequeue-imap-responses connection))
+	   (returned '()))
 	(if (pair? responses)
-	    (if (process-response connection command (car responses))
-		(cons (car responses) (loop (cdr responses)))
-		(loop (cdr responses)))
-	    '())))))
+	    (loop (cdr responses)
+		  (if (process-response connection command (car responses))
+		      (cons (car responses) returned)
+		      returned))
+	    (reverse! returned))))))
 
 (define (process-response connection command response)
   (cond ((imap:response:status-response? response)
