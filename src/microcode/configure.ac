@@ -324,12 +324,17 @@ darwin*)
     if test -z "${MACOSX_SDKS}"; then
 	AC_MSG_WARN([Can't find SDKs directory, not checking for SDK])
     else
-	MACOSX_SYSROOT=${MACOSX_SDKS}/${SDK}.sdk
-	if test -d "${MACOSX_SYSROOT}"; then
-	    MACOSX_CFLAGS="${MACOSX_CFLAGS} -isysroot ${MACOSX_SYSROOT}"
-	else
-	    AC_MSG_ERROR([No MacOSX SDK for version: ${MACOSX}])
-	fi
+        MACOSX_SYSROOT=
+        for sysroot in ${MACOSX_SDKS}/${SDK}.sdk ${MACOSX_SDKS}/MacOSX.sdk; do
+            if test -d "${sysroot}"; then
+                MACOSX_SYSROOT=${sysroot}
+                MACOSX_CFLAGS="${MACOSX_CFLAGS} -isysroot ${sysroot}"
+                break
+            fi
+        done
+        if test -z "${MACOSX_SYSROOT}"; then
+            AC_MSG_ERROR([No MacOSX SDK for version: ${MACOSX}])
+        fi
     fi
     MACOSX_CFLAGS="${MACOSX_CFLAGS} -fconstant-cfstrings"
     MACOSX_CFLAGS="${MACOSX_CFLAGS} -DSIGNAL_HANDLERS_CAN_USE_SCHEME_STACK"
