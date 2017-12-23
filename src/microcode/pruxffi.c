@@ -154,35 +154,84 @@ DEFINE_PRIMITIVE ("C-PEEK-POINTER", Prim_peek_pointer, 3, 3, 0)
   }
 }
 
-DEFINE_PRIMITIVE ("C-PEEK-CSTRING", Prim_peek_cstring, 2, 2, 0)
+int
+max_code_point (unsigned char * cp, int n_bytes)
 {
-  /* Return a string containing the characters in a C (null-terminated)
-     string that starts at the address ALIEN+OFFSET. */
-
-  PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN (char_pointer_to_string (ALIEN_ADDRESS_LOC (char)));
+  unsigned char *scan = cp;
+  unsigned char *end = cp + n_bytes;
+  int max = 0;
+  while (scan < end)
+    {
+      unsigned char c = *scan++;
+      if (max < c) max = c;
+    }
+  return max;
 }
 
-DEFINE_PRIMITIVE ("C-PEEK-CSTRING!", Prim_peek_cstring_bang, 2, 2, 0)
+SCM
+bytes_to_ustring (char * bytes, int n_bytes)
 {
-  /* Return a Scheme string containing the characters in a C string
-     that starts at the address ALIEN+OFFSET.  Set ALIEN to the
-     address of the C char after the string's null terminator. */
+  int max_cp = max_code_point ((unsigned char *)bytes, n_bytes);
+  if (max_cp < 0x80)
+    {
+      SCM result = (allocate_non_marked_vector
+		    (TC_UNICODE_STRING,
+		     ((BYTES_TO_WORDS (n_bytes + 1)) + BYTEVECTOR_LENGTH_SIZE),
+		     true));
+      unsigned char * dest = (BYTEVECTOR_POINTER (result));
+      /* 0x1d sets the cp-size to 1 and the nfc, nfc-set and nfd flags
+	 to true.  This must be kept in sync with "runtime/ustring.scm". */
+      MEMORY_SET (result, BYTEVECTOR_LENGTH_INDEX,
+		  (MAKE_OBJECT (0x1d, n_bytes)));
+      memcpy (dest, bytes, n_bytes + 1);
+      return (result);
+    }
+  else
+    {
+      SCM result = (allocate_bytevector (n_bytes + 1));
+      unsigned char * dest = (BYTEVECTOR_POINTER (result));
+      memcpy (dest, bytes, n_bytes + 1);
+      return (result);
+    }
+}
+
+DEFINE_PRIMITIVE ("C-PEEK-CSTRING", Prim_peek_cstring, 2, 2, 0)
+{
+  /* Return a string containing the characters in the C string (ASCII,
+     null-terminated) at ALIEN+OFFSET.  If any of the bytes are not
+     ASCII, return a bytevector instead. */
 
   PRIMITIVE_HEADER (2);
   {
     char * ptr = (ALIEN_ADDRESS_LOC (char));
-    SCM string = (char_pointer_to_string (ptr));
-    set_alien_address ((ARG_REF (1)), (ptr + strlen (ptr) + 1));
+    int count = strlen (ptr);
+    PRIMITIVE_RETURN (bytes_to_ustring (ptr, count));
+  }
+}
+
+DEFINE_PRIMITIVE ("C-PEEK-CSTRING!", Prim_peek_cstring_bang, 2, 2, 0)
+{
+  /* Return a string containing the characters in the C string (ASCII,
+     null-terminated) at ALIEN+OFFSET.  If any of the bytes are not
+     ASCII, return a bytevector instead.  Set ALIEN to the address of
+     the C char after the string's null terminator. */
+
+  PRIMITIVE_HEADER (2);
+  {
+    char * ptr = (ALIEN_ADDRESS_LOC (char));
+    int count = strlen (ptr);
+    SCM string = (bytes_to_ustring (ptr, count));
+    set_alien_address ((ARG_REF (1)), (ptr + count + 1));
     PRIMITIVE_RETURN (string);
   }
 }
 
 DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP", Prim_peek_cstringp, 2, 2, 0)
 {
-  /* Follow the pointer at the address ALIEN+OFFSET to a C string.
-     Copy the C string into the heap and return the new Scheme
-     string.  If the pointer is null, return (). */
+  /* Return a string containing the characters in the C string (ASCII,
+     null-terminated) in the pointer at ALIEN+OFFSET.  If any of the
+     bytes are not ASCII, return a bytevector instead.  If the pointer
+     is NULL, return (). */
 
   PRIMITIVE_HEADER (2);
   {
@@ -193,17 +242,19 @@ DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP", Prim_peek_cstringp, 2, 2, 0)
       }
     else
       {
-	PRIMITIVE_RETURN (char_pointer_to_string (*ptr));
+	int count = strlen (*ptr);
+	PRIMITIVE_RETURN (bytes_to_ustring (*ptr, count));
       }
   }
 }
 
 DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP!", Prim_peek_cstringp_bang, 2, 2, 0)
 {
-  /* Follow the pointer at the address ALIEN+OFFSET to a C string.
-     Set ALIEN to the address of the char pointer after ALIEN+OFFSET.
-     Copy the C string into the heap and return the new Scheme
-     string.  If the pointer is null, return (). */
+  /* Return a string containing the characters in the C string (ASCII,
+     null-terminated) in the pointer at ALIEN+OFFSET.  If any of the
+     bytes are not ASCII, return a bytevector instead.  If the pointer
+     is NULL, return ().  If the pointer is not NULL, set ALIEN to the
+     next pointer (i.e. ((char *)ALIEN+OFFSET) + 1). */
 
   PRIMITIVE_HEADER (2);
   {
@@ -214,24 +265,39 @@ DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP!", Prim_peek_cstringp_bang, 2, 2, 0)
       }
     else
       {
-	SCM string = char_pointer_to_string (*ptr);
+	int count = strlen (*ptr);
+	SCM string = bytes_to_ustring (*ptr, count);
 	set_alien_address ((ARG_REF (1)), (ptr + 1));
 	PRIMITIVE_RETURN (string);
       }
   }
 }
 
+DEFINE_PRIMITIVE ("C-PEEK-CSUBSTRING", Prim_peek_csubstring, 3, 3, 0)
+{
+  /* Return a string containing the COUNT ASCII characters at
+     ALIEN+OFFSET.  If any of the bytes are not ASCII, return a
+     bytevector instead. */
+
+  PRIMITIVE_HEADER (3);
+  {
+    char * ptr = (ALIEN_ADDRESS_LOC (char));
+    int count = (UNSIGNED_FIXNUM_ARG (3));
+    PRIMITIVE_RETURN (bytes_to_ustring (ptr, count));
+  }
+}
+
 DEFINE_PRIMITIVE ("C-PEEK-BYTES", Prim_peek_bytes, 5, 5, 0)
 {
-  /* Copy, from ALIEN+OFFSET, COUNT bytes to STRING[START..]. */
+  /* Copy, from ALIEN+OFFSET, COUNT bytes to BYTEVECTOR[START..]. */
 
   PRIMITIVE_HEADER (5);
   {
     const void * src = (ALIEN_ADDRESS_LOC (void *));
     int count = (UNSIGNED_FIXNUM_ARG (3));
-    SCM string = (ARG_REF (4));
-    int index = arg_index_integer (5, (STRING_LENGTH (string)));
-    void * dest = STRING_LOC (string, index);
+    SCM bytevector = (ARG_REF (4));
+    int index = arg_index_integer (5, (BYTEVECTOR_LENGTH (bytevector)));
+    void * dest = BYTEVECTOR_LOC (bytevector, index);
     memcpy (dest, src, count);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
