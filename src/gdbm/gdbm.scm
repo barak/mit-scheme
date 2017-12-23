@@ -352,18 +352,24 @@ USA.
     (if (alien-null? data)
 	#f
 	(let* ((size (C-> args "gdbm_args key dsize"))
-	       (string ((ucode-primitive string-allocate 1) size)))
-	  (c-peek-bytes data 0 size string 0)
-	  string))))
+	       (bytes ((ucode-primitive c-peek-csubstring 3) data 0 size)))
+	  (if (string? bytes)
+	      bytes
+	      (let ((s (utf8->string bytes)))
+		(outf-error ";got a utf8 key: "s"\n")
+		s))))))
 
 (define (gdbf-args-get-content args)
   (let ((data (C-> args "gdbm_args content dptr")))
     (if (alien-null? data)
 	#f
 	(let* ((size (C-> args "gdbm_args content dsize"))
-	       (string ((ucode-primitive string-allocate 1) size)))
-	  (c-peek-bytes data 0 size string 0)
-	  string))))
+	       (bytes ((ucode-primitive c-peek-csubstring 3) data 0 size)))
+	  (if (string? bytes)
+	      bytes
+	      (let ((s (utf8->string bytes)))
+		(outf-error ";got utf8 content: "s"\n")
+		s))))))
 
 (define open-gdbfs '())
 (define open-gdbfs-mutex)
