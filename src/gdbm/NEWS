@@ -22,6 +22,12 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 02110-1301, USA.
 
+mit-scheme-gdbm 0.3 - Matt Birkholz, 2017-12-23
+===============================================
+
+Use new FFI Unicode support.  Include the gdbm manual, translated into
+Scheme.
+
 mit-scheme-gdbm 0.2 - Matt Birkholz, 2017-05-18
 ===============================================
 

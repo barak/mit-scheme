@@ -311,6 +311,9 @@ USA.
 (define-integrable (c-peek-cstringp! alien)
   ((ucode-primitive c-peek-cstringp! 2) alien 0))
 
+(define-integrable (c-peek-csubstring alien start end)
+  ((ucode-primitive c-peek-csubstring 3) alien start (- end start)))
+
 (define-integrable (c-peek-bytes alien offset count buffer start)
   ((ucode-primitive c-peek-bytes 5) alien offset count buffer start))
 

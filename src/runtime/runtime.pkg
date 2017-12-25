@@ -3644,6 +3644,7 @@ USA.
 	  c-peek-cstring!
 	  c-peek-cstringp
 	  c-peek-cstringp!
+	  c-peek-csubstring
 	  c-poke-bytes
 	  c-poke-pointer
 	  c-poke-pointer!
