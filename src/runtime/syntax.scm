@@ -54,8 +54,7 @@ USA.
 	(output/post-process-expression
 	 (if (syntactic-environment/top-level? senv)
 	     (compile-body-item/top-level
-	      (let ((senv (make-top-level-syntactic-environment senv)))
-		(classify/body forms senv senv)))
+	      (classify/body forms (make-top-level-syntactic-environment senv)))
 	     (output/sequence (compile/expressions forms senv))))))))
 
 (define (compile/expression expression environment)
@@ -182,11 +181,10 @@ USA.
 
 (define (capture-syntactic-environment expander)
   `(,(classifier->keyword
-      (lambda (form environment definition-environment)
+      (lambda (form environment)
 	form				;ignore
 	(classify/form (expander environment)
-		       environment
-		       definition-environment)))))
+		       environment)))))
 
 (define (reverse-syntactic-environments environment procedure)
   (capture-syntactic-environment
