@@ -782,13 +782,9 @@ differences:
 		(close (structure/tag-expression structure) context)))
 	  (case (structure/physical-type structure)
 	    ((RECORD)
-	     (let ((tag-name (make-synthetic-identifier 'TAG)))
-	       `((DEFINE ,tag-name
-		   (,(absolute 'RECORD-TYPE-DISPATCH-TAG context)
-		    ,tag-expression))
-		 (DEFINE ,predicate-name
-		   (,(absolute 'RECORD-PREDICATE context)
-		    ,(close (structure/type-descriptor structure) context))))))
+	     `((DEFINE ,predicate-name
+		 (,(absolute 'RECORD-PREDICATE context)
+		  ,(close (structure/type-descriptor structure) context)))))
 	    ((VECTOR)
 	     `((DEFINE (,predicate-name OBJECT)
 		 (AND (,(absolute 'VECTOR? context) OBJECT)
