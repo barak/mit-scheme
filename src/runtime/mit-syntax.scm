@@ -59,10 +59,6 @@ USA.
   ;; "Explicit Renaming" transformer
   (transformer-keyword 'ER-MACRO-TRANSFORMER->EXPANDER
 		       er-macro-transformer->expander))
-
-(define classifier:non-hygienic-macro-transformer
-  (transformer-keyword 'NON-HYGIENIC-MACRO-TRANSFORMER->EXPANDER
-		       non-hygienic-macro-transformer->expander))
 
 ;;;; Core primitives
 
