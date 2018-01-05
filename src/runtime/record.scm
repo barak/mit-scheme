@@ -122,8 +122,10 @@ USA.
 	%set-record-type-default-inits!/after-boot)
   (set! set-record-type-unparser-method!
 	set-record-type-unparser-method!/after-boot)
-  (for-each (lambda (t.m)
-	      (set-record-type-unparser-method! (car t.m) (cdr t.m)))
+  (set! set-record-type-entity-unparser-method!
+	set-record-type-entity-unparser-method!/after-boot)
+  (for-each (lambda (deferral)
+	      ((car deferral) (car (cdr deferral)) (cdr (cdr deferral))))
 	    deferred-unparser-methods)
   (set! deferred-unparser-methods)
   (set! record-description (make-generic-procedure 1 'RECORD-DESCRIPTION))
@@ -299,8 +301,8 @@ USA.
 
 ;;;; Unparser Methods
 
-(define set-record-type-unparser-method!
-  (named-lambda (set-record-type-unparser-method!/booting record-type method)
+(define (unparser-method-deferral handler)
+  (lambda (record-type method)
     (let loop ((ms deferred-unparser-methods))
       (if (pair? ms)
 	  (if (eq? (caar ms) record-type)
@@ -308,7 +310,8 @@ USA.
 	      (loop (cdr ms)))
 	  (begin
 	    (set! deferred-unparser-methods
-		  (cons (cons record-type method) deferred-unparser-methods))
+		  (cons (cons handler (cons record-type method))
+			deferred-unparser-methods))
 	    unspecific)))))
 
 (define deferred-unparser-methods '())
@@ -328,21 +331,27 @@ USA.
 	      generic
 	      (and (eq? (cadr tags) tag) method)))))))
 
-;; It's not kosher to use this during the cold load.
-(define (set-record-type-entity-unparser-method! record-type method)
-  (guarantee-record-type record-type 'SET-RECORD-TYPE-ENTITY-UNPARSER-METHOD!)
-  (if (and method (not (unparser-method? method)))
-      (error:not-a unparser-method? method
-		   'SET-RECORD-TYPE-ENTITY-UNPARSER-METHOD!))
-  (let ((tag (%record-type-dispatch-tag record-type)))
-    (remove-generic-procedure-generators record-entity-unparser (list tag))
-    (if method
-	;; Kludge to make generic dispatch work.
-	(let ((method (lambda (extra) extra method)))
-	  (add-generic-procedure-generator record-entity-unparser
-	    (lambda (generic tags)
-	      generic
-	      (and (eq? (car tags) tag) method)))))))
+(define set-record-type-unparser-method!
+  (unparser-method-deferral set-record-type-unparser-method!/after-boot))
+
+(define set-record-type-entity-unparser-method!/after-boot
+  (named-lambda (set-record-type-entity-unparser-method! record-type method)
+    (guarantee-record-type record-type 'SET-RECORD-TYPE-ENTITY-UNPARSER-METHOD!)
+    (if (and method (not (unparser-method? method)))
+	(error:not-a unparser-method? method
+		     'SET-RECORD-TYPE-ENTITY-UNPARSER-METHOD!))
+    (let ((tag (%record-type-dispatch-tag record-type)))
+      (remove-generic-procedure-generators record-entity-unparser (list tag))
+      (if method
+	  ;; Kludge to make generic dispatch work.
+	  (let ((method (lambda (extra) extra method)))
+	    (add-generic-procedure-generator record-entity-unparser
+	      (lambda (generic tags)
+		generic
+		(and (eq? (car tags) tag) method))))))))
+
+(define set-record-type-entity-unparser-method!
+  (unparser-method-deferral set-record-type-entity-unparser-method!/after-boot))
 
 ;;; To mimic UNPARSE-RECORD.  Dunno whether anyone cares.
 
