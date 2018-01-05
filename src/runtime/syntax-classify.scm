@@ -28,7 +28,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define (classify/form form environment definition-environment)
+(define (classify/form form environment)
   (cond ((identifier? form)
 	 (let ((item (lookup-identifier form environment)))
 	   (if (keyword-item? item)
@@ -49,16 +49,13 @@ USA.
 	   (classify/form form
 			  (make-partial-syntactic-environment free-names
 							      environment
-							      closing-env)
-			  definition-environment)))
+							      closing-env))))
 	((pair? form)
 	 (let ((item
 		(strip-keyword-value-item
 		 (classify/expression (car form) environment))))
 	   (cond ((classifier-item? item)
-		  ((classifier-item/classifier item) form
-						     environment
-						     definition-environment))
+		  ((classifier-item/classifier item) form environment))
 		 ((compiler-item? item)
 		  (make-expression-item
 		   (let ((compiler (compiler-item/compiler item)))
@@ -67,8 +64,7 @@ USA.
 		 ((expander-item? item)
 		  (classify/form ((expander-item/expander item) form
 								environment)
-				 environment
-				 definition-environment))
+				 environment))
 		 (else
 		  (if (not (list? (cdr form)))
 		      (syntax-error "Combination must be a proper list:" form))
@@ -86,29 +82,25 @@ USA.
       (keyword-value-item/item item)
       item))
 
-(define (classify/forms forms environment definition-environment)
+(define (classify/forms forms environment)
   (map (lambda (form)
-	 (classify/form form environment definition-environment))
+	 (classify/form form environment))
        forms))
 
 (define (classify/expression expression environment)
-  (classify/form expression environment null-syntactic-environment))
+  (classify/form expression environment))
 
 (define (classify/expressions expressions environment)
-  (classify/forms expressions environment null-syntactic-environment))
+  (classify/forms expressions environment))
 
-(define (classify/body forms environment definition-environment)
+(define (classify/body forms environment)
   ;; Top-level syntactic definitions affect all forms that appear
   ;; after them, so classify FORMS in order.
   (make-body-item
    (let forms-loop ((forms forms) (body-items '()))
      (if (pair? forms)
 	 (let items-loop
-	     ((items
-	       (item->list
-		(classify/form (car forms)
-			       environment
-			       definition-environment)))
+	     ((items (item->list (classify/form (car forms) environment)))
 	      (body-items body-items))
 	   (if (pair? items)
 	       (items-loop (cdr items)

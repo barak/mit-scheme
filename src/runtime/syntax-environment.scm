@@ -117,11 +117,7 @@ USA.
      (if (interpreter-environment? env) 'runtime-top-level 'runtime))
    (lambda (env name)
      (and (symbol? name)
-	  (let ((item (environment-lookup-macro env name)))
-	    (if (procedure? item)
-		;; **** Kludge to support bootstrapping.
-		(non-hygienic-macro-transformer->expander item env)
-		item))))
+	  (environment-lookup-macro env name)))
    (lambda (env name item)
      (environment-define-macro env name item))
    (lambda (env name)

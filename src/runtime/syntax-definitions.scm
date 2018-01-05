@@ -46,8 +46,6 @@ USA.
   (define-classifier 'ER-MACRO-TRANSFORMER classifier:er-macro-transformer)
   (define-classifier 'LET-SYNTAX classifier:let-syntax)
   (define-classifier 'LETREC-SYNTAX classifier:letrec-syntax)
-  (define-classifier 'NON-HYGIENIC-MACRO-TRANSFORMER
-    classifier:non-hygienic-macro-transformer)
   (define-classifier 'RSC-MACRO-TRANSFORMER classifier:rsc-macro-transformer)
   (define-classifier 'SC-MACRO-TRANSFORMER classifier:sc-macro-transformer)
 

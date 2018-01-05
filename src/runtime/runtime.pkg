@@ -4671,7 +4671,6 @@ USA.
   (parent (runtime syntax))
   (export ()
 	  er-macro-transformer->expander
-	  non-hygienic-macro-transformer->expander
 	  rsc-macro-transformer->expander
 	  sc-macro-transformer->expander
 	  syntactic-keyword->item))
@@ -4686,7 +4685,6 @@ USA.
 	  classifier:er-macro-transformer
 	  classifier:let-syntax
 	  classifier:letrec-syntax
-	  classifier:non-hygienic-macro-transformer
 	  classifier:rsc-macro-transformer
 	  classifier:sc-macro-transformer
 	  compiler:delay

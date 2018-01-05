@@ -68,14 +68,6 @@ USA.
     (identifier=? use-environment x
 		  use-environment y)))
 
-(define (non-hygienic-macro-transformer->expander transformer
-						  closing-environment)
-  closing-environment
-  (make-expander-item
-   (lambda (form use-environment)
-     (close-syntax (apply transformer (cdr form))
-		   use-environment))))
-
 (define (syntactic-keyword->item keyword environment)
   (let ((item (environment-lookup-macro environment keyword)))
     (if (not item)

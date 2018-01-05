@@ -32,8 +32,7 @@ USA.
 ;;;; Macro transformers
 
 (define (transformer-keyword name transformer->expander)
-  (lambda (form environment definition-environment)
-    definition-environment		;ignore
+  (lambda (form environment)
     (syntax-check '(KEYWORD EXPRESSION) form)
     (let ((item (classify/expression (cadr form) environment)))
       (make-keyword-value-item
@@ -60,10 +59,6 @@ USA.
   ;; "Explicit Renaming" transformer
   (transformer-keyword 'ER-MACRO-TRANSFORMER->EXPANDER
 		       er-macro-transformer->expander))
-
-(define classifier:non-hygienic-macro-transformer
-  (transformer-keyword 'NON-HYGIENIC-MACRO-TRANSFORMER->EXPANDER
-		       non-hygienic-macro-transformer->expander))
 
 ;;;; Core primitives
 
@@ -88,13 +83,11 @@ USA.
 				bvl)))
       (values bvl
 	      (compile-body-item
-	       (classify/body body
-			      environment
-			      environment))))))
+	       (classify/body body environment))))))
 
-(define (classifier:begin form environment definition-environment)
+(define (classifier:begin form environment)
   (syntax-check '(KEYWORD * FORM) form)
-  (classify/body (cdr form) environment definition-environment))
+  (classify/body (cdr form) environment))
 
 (define (compiler:if form environment)
   (syntax-check '(KEYWORD EXPRESSION EXPRESSION ? EXPRESSION) form)
@@ -142,22 +135,19 @@ USA.
 
 (define keyword:define
   (classifier->keyword
-   (lambda (form environment definition-environment)
-     (classify/define form environment definition-environment
-		      variable-binding-theory))))
+   (lambda (form environment)
+     (classify/define form environment variable-binding-theory))))
 
-(define (classifier:define-syntax form environment definition-environment)
+(define (classifier:define-syntax form environment)
   (syntax-check '(KEYWORD IDENTIFIER EXPRESSION) form)
-  (classify/define form environment definition-environment
-		   syntactic-binding-theory))
+  (classify/define form environment syntactic-binding-theory))
 
-(define (classify/define form environment definition-environment
-			 binding-theory)
-  (if (not (syntactic-environment/top-level? definition-environment))
-      (syntactic-environment/define definition-environment
+(define (classify/define form environment binding-theory)
+  (if (not (syntactic-environment/top-level? environment))
+      (syntactic-environment/define environment
 				    (cadr form)
 				    (make-reserved-name-item)))
-  (binding-theory definition-environment
+  (binding-theory environment
 		  (cadr form)
 		  (classify/expression (caddr form) environment)))
 
@@ -180,8 +170,7 @@ USA.
 
 (define keyword:let
   (classifier->keyword
-   (lambda (form environment definition-environment)
-     definition-environment
+   (lambda (form environment)
      (let* ((binding-environment
 	     (make-internal-syntactic-environment environment))
 	    (body-environment
@@ -194,8 +183,7 @@ USA.
 			  output/let)))))
 
 
-(define (classifier:let-syntax form environment definition-environment)
-  definition-environment
+(define (classifier:let-syntax form environment)
   (syntax-check '(KEYWORD (* (IDENTIFIER EXPRESSION)) + FORM) form)
   (let* ((binding-environment
 	  (make-internal-syntactic-environment environment))
@@ -211,8 +199,7 @@ USA.
 (define keyword:let-syntax
   (classifier->keyword classifier:let-syntax))
 
-(define (classifier:letrec-syntax form environment definition-environment)
-  definition-environment
+(define (classifier:letrec-syntax form environment)
   (syntax-check '(KEYWORD (* (IDENTIFIER EXPRESSION)) + FORM) form)
   (let* ((binding-environment
 	  (make-internal-syntactic-environment environment))
@@ -250,10 +237,7 @@ USA.
 			       (classify/expression (cadr binding)
 						    value-environment))
 			     (cadr form)))))
-	 (body
-	  (classify/body (cddr form)
-			 body-environment
-			 body-environment)))
+	 (body (classify/body (cddr form) body-environment)))
     (if (eq? binding-theory syntactic-binding-theory)
 	body
 	(make-expression-item
@@ -294,8 +278,7 @@ USA.
 
 (define keyword:access
   (classifier->keyword
-   (lambda (form environment definition-environment)
-     definition-environment
+   (lambda (form environment)
      (make-access-item (cadr form)
 		       (classify/expression (caddr form) environment)))))
 
@@ -325,8 +308,7 @@ USA.
 
 ;;;; Declarations
 
-(define (classifier:declare form environment definition-environment)
-  definition-environment
+(define (classifier:declare form environment)
   (syntax-check '(KEYWORD * (IDENTIFIER * DATUM)) form)
   (make-declaration-item
    (lambda ()

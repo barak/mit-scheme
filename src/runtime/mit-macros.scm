@@ -229,9 +229,11 @@ USA.
 		  ((fixed-point)
 		   (let ((iter (make-synthetic-identifier 'ITER))
 			 (kernel (make-synthetic-identifier 'KERNEL))
-			 (temps (map (lambda (b)
-				       (declare (ignore b))
-				       (make-synthetic-identifier 'TEMP)) bindings))
+			 (temps
+			  (map (lambda (b)
+				 (declare (ignore b))
+				 (make-synthetic-identifier 'TEMP))
+			       bindings))
 			 (r-lambda (rename 'LAMBDA))
 			 (r-declare (rename 'DECLARE)))
 		     `((,r-lambda (,kernel)
@@ -260,7 +262,9 @@ USA.
 			       ,@body)))
 		      ,name)
 		     ,@vals))
-		  (else (error "Unrecognized named-let-strategy: " named-let-strategy))))))
+		  (else
+		   (error "Unrecognized named-let-strategy:"
+			  named-let-strategy))))))
 	   ((syntax-match? '((* (IDENTIFIER ? EXPRESSION)) + FORM) (cdr form))
 	    `(,keyword:let ,@(cdr (normalize-let-bindings form))))
 	   (else
@@ -306,13 +310,18 @@ USA.
 	   (r-lambda (rename 'LAMBDA))
 	   (r-named-lambda (rename 'NAMED-LAMBDA))
 	   (r-set!   (rename 'SET!)))
-       (let ((temps (map (lambda (binding)
-			   (make-synthetic-identifier
-			    (identifier->symbol (car binding)))) bindings)))
+       (let ((temps
+	      (map (lambda (binding)
+		     (make-synthetic-identifier
+		      (identifier->symbol (car binding))))
+		   bindings)))
 	 `((,r-named-lambda (,lambda-tag:unnamed ,@(map car bindings))
 			    ((,r-lambda ,temps
 					,@(map (lambda (binding temp)
-						 `(,r-set! ,(car binding) ,temp)) bindings temps))
+						 `(,r-set! ,(car binding)
+							   ,temp))
+					       bindings
+					       temps))
 			     ,@(map cadr bindings))
 			    ((,r-lambda () ,@(cddr form))))
 	   ,@(map (lambda (binding)
