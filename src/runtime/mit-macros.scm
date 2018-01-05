@@ -765,36 +765,33 @@ USA.
      (if (not condition)
 	 (begin form ...)))))
 
-(define-syntax :define-interface
+(define-syntax :define-bundle-interface
   (er-macro-transformer
    (lambda (form rename compare)
      (declare (ignore compare))
-     (syntax-check '(_ identifier identifier
-		       * (or symbol (symbol * (symbol * datum))))
+     (syntax-check '(_ symbol * (or symbol (symbol * (symbol * datum))))
 		   form)
-     (define-interface-helper rename
-       (cadr form)
-       (caddr form)
-       (cdddr form)))))
+     (make-interface-helper rename (cadr form) (cddr form)))))
 
-(define (define-interface-helper rename constructor interface clauses)
+(define (make-interface-helper rename name clauses)
   (rename-generated-expression
    rename
-   `(begin
-      ,(make-interface-definition constructor interface clauses)
-      ,(make-constructor-definition constructor interface
-				    (map (lambda (clause)
-					   (if (symbol? clause)
-					       clause
-					       (car clause)))
-					 clauses)))))
+   (let ((interface (symbol name '?)))
+     `(begin
+	,(make-interface-definition name interface clauses)
+	,(make-constructor-definition name interface
+				      (map (lambda (clause)
+					     (if (symbol? clause)
+						 clause
+						 (car clause)))
+					   clauses))))))
 
-(define (make-interface-definition constructor interface clauses)
+(define (make-interface-definition name interface clauses)
   `(define ,interface
-     (make-bundle-interface ',constructor ',clauses)))
+     (make-bundle-interface ',name ',clauses)))
 
-(define (make-constructor-definition constructor interface names)
-  `(define-syntax ,constructor
+(define (make-constructor-definition name interface names)
+  `(define-syntax ,(symbol 'capture- name)
      (sc-macro-transformer
       (lambda (form use-environment)
 	(if (not (null? (cdr form)))

@@ -4721,7 +4721,7 @@ USA.
 	  (cons-stream* :cons-stream*)
 	  (define :define)
 	  (define-integrable :define-integrable)
-	  (define-interface :define-interface)
+	  (define-bundle-interface :define-bundle-interface)
 	  (define-record-type :define-record-type)
 	  (do :do)
 	  (fluid-let :fluid-let)

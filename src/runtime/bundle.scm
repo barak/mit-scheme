@@ -32,10 +32,6 @@ USA.
 ;;; procedure.  If the specified named object isn't a procedure, an error is
 ;;; signaled.
 
-;;; Each bundle also carries a predicate that can be used to identify it.
-;;; Normally the predicate is shared between bundles with the same general
-;;; structure.  New bundle types are typically defined using define-interface.
-
 (declare (usual-integrations))
 
 (define (make-bundle-interface name clauses)
