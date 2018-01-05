@@ -755,3 +755,72 @@ USA.
     ((unless condition form ...)
      (if (not condition)
 	 (begin form ...)))))
+
+(define-syntax :define-interface
+  (er-macro-transformer
+   (lambda (form rename compare)
+     (declare (ignore compare))
+     (syntax-check '(_ identifier identifier
+		       * (or symbol (symbol * (symbol * datum))))
+		   form)
+     (define-interface-helper rename
+       (cadr form)
+       (caddr form)
+       (cdddr form)))))
+
+(define (define-interface-helper rename constructor interface clauses)
+  (rename-generated-expression
+   rename
+   `(begin
+      ,(make-interface-definition constructor interface clauses)
+      ,(make-constructor-definition constructor interface
+				    (map (lambda (clause)
+					   (if (symbol? clause)
+					       clause
+					       (car clause)))
+					 clauses)))))
+
+(define (make-interface-definition constructor interface clauses)
+  `(define ,interface
+     (make-bundle-interface ',constructor ',clauses)))
+
+(define (make-constructor-definition constructor interface names)
+  `(define-syntax ,constructor
+     (sc-macro-transformer
+      (lambda (form use-environment)
+	(if (not (null? (cdr form)))
+	    (syntax-error "Ill-formed special form:" form))
+	(list 'capture-bundle
+	      ',interface
+	      ,@(map (lambda (name)
+		       `(close-syntax ',name use-environment))
+		     names))))))
+
+(define (rename-generated-expression rename expr)
+  (let loop ((expr expr))
+    (cond ((identifier? expr)
+	   (rename expr))
+	  ((and (pair? expr)
+		(eq? 'quote (car expr))
+		(pair? (cdr expr))
+		(null? (cddr expr)))
+	   (list (rename 'quote)
+		 (cadr expr)))
+	  ((and (pair? expr)
+		(list? (cdr expr)))
+	   (cons (rename (car expr))
+		 (let ((rest (cdr expr)))
+		   (case (car expr)
+		     ((quote)
+		      rest)
+		     ((define define-syntax)
+		      (cons (car rest) (loop (cdr rest))))
+		     (else
+		      (map loop rest))))))
+	  (else expr))))
+
+(define-syntax :capture-bundle
+  (syntax-rules ()
+    ((_ predicate name ...)
+     (make-bundle predicate
+                  (list (cons 'name name) ...)))))

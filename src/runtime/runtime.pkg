@@ -1938,6 +1938,21 @@ USA.
   (export (runtime)
 	  simple-predicate-dispatcher))
 
+(define-package (runtime bundle)
+  (files "bundle")
+  (parent (runtime))
+  (export ()
+	  bundle-alist
+	  bundle-interface
+	  bundle-interface-clauses
+	  bundle-interface-name
+	  bundle-interface?
+	  bundle-names
+	  bundle-ref
+	  bundle?
+	  make-bundle
+	  make-bundle-interface))
+
 (define-package (runtime environment)
   (files "uenvir")
   (parent (runtime))
@@ -4699,6 +4714,7 @@ USA.
 	  (and-let* :and-let*)
 	  (assert :assert)
 	  (begin0 :begin0)
+	  (capture-bundle :capture-bundle)
 	  (case :case)
 	  (circular-stream :circular-stream)
 	  (cond :cond)
@@ -4707,6 +4723,7 @@ USA.
 	  (cons-stream* :cons-stream*)
 	  (define :define)
 	  (define-integrable :define-integrable)
+	  (define-interface :define-interface)
 	  (define-record-type :define-record-type)
 	  (do :do)
 	  (fluid-let :fluid-let)
