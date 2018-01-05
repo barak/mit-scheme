@@ -178,42 +178,43 @@ USA.
 
 (define (emacs/gc-start port)
   (output-port/flush-output port)
-  (cwb (output-port-channel port) "\033b" 0 2))
+  (cwb (output-port-channel port) gc-start-bytes))
 
 (define (emacs/gc-finish port)
-  (cwb (output-port-channel port) "\033e" 0 2))
+  (cwb (output-port-channel port) gc-end-bytes))
 
 (define (transmit-signal port type)
   (let ((channel (output-port-channel port))
-	(buffer (string #\altmode type)))
+	(buffer (string->utf8 (string #\esc type))))
     (output-port/flush-output port)
     (with-absolutely-no-interrupts
      (lambda ()
-       (cwb channel buffer 0 2)))))
+       (cwb channel buffer)))))
 
 (define (transmit-signal-with-argument port type string)
   (let ((channel (output-port-channel port))
-	(length (string-length string)))
-    (let ((buffer-length (+ length 3)))
-      (let ((buffer (make-string buffer-length)))
-	(string-set! buffer 0 #\altmode)
-	(string-set! buffer 1 type)
-	(string-copy! buffer 2 string 0 length)
-	(string-set! buffer (- buffer-length 1) #\altmode)
-	(output-port/flush-output port)
-	(with-absolutely-no-interrupts
-	 (lambda ()
-	   (cwb channel buffer 0 buffer-length)))))))
+	(buffer
+	 (let ((builder (bytevector-builder)))
+	   (builder (char->integer #\esc))
+	   (builder (char->integer type))
+	   (builder (string->utf8 string))
+	   (builder (char->integer #\esc))
+	   (builder))))
+    (output-port/flush-output port)
+    (with-absolutely-no-interrupts
+     (lambda ()
+       (cwb channel buffer)))))
 
-(define (cwb channel string start end)
+(define (cwb channel bytes)
   ;; This is a private copy of CHANNEL-WRITE-BLOCK that bypasses all
   ;; the threading hair in that procedure.
-  (let loop ((start start) (n-left (fix:- end start)))
-    (let ((n
-	   ((ucode-primitive channel-write 4) (channel-descriptor channel)
-					      string start end)))
-      (cond ((not n) (loop start n-left))
-	    ((fix:< n n-left) (loop (fix:+ start n) (fix:- n-left n)))))))
+  (let ((end (bytevector-length bytes)))
+    (let loop ((start 0) (n-left end))
+      (let ((n
+	     ((ucode-primitive channel-write 4) (channel-descriptor channel)
+						bytes start end)))
+	(cond ((not n) (loop start n-left))
+	      ((fix:< n n-left) (loop (fix:+ start n) (fix:- n-left n))))))))
 
 (define (emacs-typeout port message)
   (emacs-eval port "(message \"%s\" " (write-to-string message) ")"))
@@ -223,10 +224,18 @@ USA.
 
 ;;;; Initialization
 
+(define gc-start-bytes)
+(define gc-end-bytes)
 (define vanilla-console-port-type)
 (define emacs-console-port-type)
 
 (define (initialize-package!)
+  (set! gc-start-bytes
+	(bytevector (char->integer #\esc)
+		    (char->integer #\b)))
+  (set! gc-end-bytes
+	(bytevector (char->integer #\esc)
+		    (char->integer #\e)))
   (set! vanilla-console-port-type (textual-port-type the-console-port))
   (set! emacs-console-port-type
 	(make-textual-port-type
