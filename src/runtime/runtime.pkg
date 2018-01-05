@@ -1950,6 +1950,7 @@ USA.
 	  bundle-names
 	  bundle-ref
 	  bundle?
+	  define-bundle-printer
 	  make-bundle
 	  make-bundle-interface))
 

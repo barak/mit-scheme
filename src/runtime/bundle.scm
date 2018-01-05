@@ -131,15 +131,18 @@ USA.
   (tag bundle-metadata-tag)
   (alist bundle-metadata-alist))
 
+(define (define-bundle-printer interface printer)
+  (hash-table-set! bundle-printers (predicate->tag interface) printer))
+
 (set-record-type-entity-unparser-method! <bundle-metadata>
-  (bracketed-unparser-method
+  (standard-unparser-method
+   (lambda (bundle)
+     (bim-name (tag-extra (bundle-tag bundle))))
    (lambda (bundle port)
-     (write (bim-name (tag-extra (bundle-tag bundle))) port)
-     (write-string " " port)
-     (write (object-hash bundle) port)
-     (let ((handler (bundle-ref bundle 'write-self #f)))
-       (if handler
-	   (handler port))))))
+     (let ((printer
+	    (hash-table-ref/default bundle-printers (bundle-tag bundle) #f)))
+       (if printer
+	   (printer bundle port))))))
 
 (define (bundle? object)
   (and (entity? object)
@@ -170,9 +173,11 @@ USA.
           default))))
 
 (define the-bundle-tag)
+(define bundle-printers)
 (add-boot-init!
  (lambda ()
    (register-predicate! bundle? 'bundle '<= entity?)
    (set! the-bundle-tag (predicate->tag bundle?))
+   (set! bundle-printers (make-key-weak-eqv-hash-table))
    (register-predicate! bundle-interface? 'bundle-interface '<= predicate?)
    (register-predicate! clauses? 'interface-clauses)))
