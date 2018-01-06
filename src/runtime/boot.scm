@@ -24,90 +24,36 @@ USA.
 
 |#
 
-;;;; Boot Time Definitions
+;;;; Boot-time definitions
 ;;; package: (runtime boot-definitions)
 
 (declare (usual-integrations))
 
-(define (standard-unparser-method name unparser)
-  (make-method name unparser))
+;;;; Interrupt control
 
-(define (simple-unparser-method name method)
-  (standard-unparser-method name
-    (and method
-	 (lambda (object port)
-	   (for-each (lambda (object)
-		       (write-char #\space port)
-		       (write object port))
-		     (method object))))))
-
-(define (simple-parser-method procedure)
-  (lambda (objects lose)
-    (or (and (pair? (cdr objects))
-	     (procedure (cddr objects)))
-	(lose))))
-
-(define (make-method name unparser)
-  (general-unparser-method
-   (lambda (object port)
-     (let ((hash-string (number->string (hash object))))
-       (if (get-param:unparse-with-maximum-readability?)
-	   (begin
-	     (write-string "#@" port)
-	     (write-string hash-string port))
-	   (begin
-	     (write-string "#[" port)
-	     (let loop ((name name))
-	       (cond ((string? name) (write-string name port))
-		     ((procedure? name) (loop (name object)))
-		     (else (write name port))))
-	     (write-char #\space port)
-	     (write-string hash-string port)
-	     (if unparser (unparser object port))
-	     (write-char #\] port)))))))
-
-(define (general-unparser-method unparser)
-  (lambda (state object)
-    (with-current-unparser-state state
-      (lambda (port)
-	(unparser object port)))))
-
-(define (bracketed-unparser-method unparser)
-  (general-unparser-method
-   (lambda (object port)
-     (write-string "#[" port)
-     (unparser object port)
-     (write-char #\] port))))
-
-(define (unparser-method? object)
-  (and (procedure? object)
-       (procedure-arity-valid? object 2)))
-
-(define-guarantee unparser-method "unparser method")
-
-(define-integrable interrupt-bit/stack     #x0001)
-(define-integrable interrupt-bit/global-gc #x0002)
-(define-integrable interrupt-bit/gc        #x0004)
-(define-integrable interrupt-bit/global-1  #x0008)
-(define-integrable interrupt-bit/kbd       #x0010)
-(define-integrable interrupt-bit/after-gc  #x0020)
-(define-integrable interrupt-bit/timer     #x0040)
-(define-integrable interrupt-bit/global-3  #x0080)
-(define-integrable interrupt-bit/suspend   #x0100)
+(define interrupt-bit/stack     #x0001)
+(define interrupt-bit/global-gc #x0002)
+(define interrupt-bit/gc        #x0004)
+(define interrupt-bit/global-1  #x0008)
+(define interrupt-bit/kbd       #x0010)
+(define interrupt-bit/after-gc  #x0020)
+(define interrupt-bit/timer     #x0040)
+(define interrupt-bit/global-3  #x0080)
+(define interrupt-bit/suspend   #x0100)
 ;; Interrupt bits #x0200 through #x4000 inclusive are reserved
 ;; for the Descartes PC sampler.
 
 ;; GC & stack overflow only
-(define-integrable interrupt-mask/gc-ok    #x0007)
+(define interrupt-mask/gc-ok    #x0007)
 
 ;; GC, stack overflow, and timer only
-(define-integrable interrupt-mask/timer-ok #x0047)
+(define interrupt-mask/timer-ok #x0047)
 
 ;; Absolutely everything off
-(define-integrable interrupt-mask/none     #x0000)
+(define interrupt-mask/none     #x0000)
 
 ;; Normal: all enabled
-(define-integrable interrupt-mask/all      #xFFFF)
+(define interrupt-mask/all      #xFFFF)
 
 (define (with-absolutely-no-interrupts thunk)
   ((ucode-primitive with-interrupt-mask)
@@ -127,24 +73,56 @@ USA.
    (fix:and limit-mask (get-interrupt-enables))
    procedure))
 
-(define (object-constant? object)
-  ((ucode-primitive constant?) object))
+;;;; Printing
 
-(define-integrable (gc-space-status)
-  ((ucode-primitive gc-space-status)))
+(define (unparser-method? object)
+  (and (procedure? object)
+       (procedure-arity-valid? object 2)))
 
-(define (bytes-per-object)
-  (vector-ref (gc-space-status) 0))
+(define (general-unparser-method procedure)
+  (lambda (state object)
+    (with-current-unparser-state state
+      (lambda (port)
+	(if (get-param:unparse-with-maximum-readability?)
+	    (begin
+	      (write-string "#@" port)
+	      (write (object-hash object) port))
+	    (procedure object port))))))
 
-(define (object-pure? object)
-  object
-  #f)
+(define (bracketed-unparser-method procedure)
+  (general-unparser-method
+   (lambda (object port)
+     (write-string "#[" port)
+     (procedure object port)
+     (write-char #\] port))))
 
-(define-integrable (default-object? object)
-  (eq? object (default-object)))
+(define (standard-unparser-method name procedure)
+  (bracketed-unparser-method
+   (lambda (object port)
+     (display (if (procedure? name)
+		  (name object)
+		  name)
+	      port)
+     (write-char #\space port)
+     (write (object-hash object) port)
+     (if procedure (procedure object port)))))
 
-(define-integrable (default-object)
-  ((ucode-primitive object-set-type) (ucode-type constant) 7))
+(define (simple-unparser-method name get-parts)
+  (standard-unparser-method name
+    (and get-parts
+	 (lambda (object port)
+	   (for-each (lambda (object)
+		       (write-char #\space port)
+		       (write object port))
+		     (get-parts object))))))
+
+(define (simple-parser-method procedure)
+  (lambda (objects lose)
+    (or (and (pair? (cdr objects))
+	     (procedure (cddr objects)))
+	(lose))))
+
+;;;; Boot initializers
 
 (define (init-boot-inits!)
   (set! boot-inits '())
@@ -180,3 +158,24 @@ USA.
 
 (define boot-inits #f)
 (define saved-boot-inits '())
+
+;;;; Miscellany
+
+(define (object-constant? object)
+  ((ucode-primitive constant?) object))
+
+(define (object-pure? object)
+  object
+  #f)
+
+(define (default-object? object)
+  (eq? object (default-object)))
+
+(define (default-object)
+  ((ucode-primitive object-set-type) (ucode-type constant) 7))
+
+(define (gc-space-status)
+  ((ucode-primitive gc-space-status)))
+
+(define (bytes-per-object)
+  (vector-ref (gc-space-status) 0))
