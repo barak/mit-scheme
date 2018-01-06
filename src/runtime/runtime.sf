@@ -26,6 +26,7 @@ USA.
 
 (load-option '*PARSER)			;for url.scm
 (fluid-let ((sf/default-syntax-table (->environment '(RUNTIME))))
+  (load "host-adapter")
   (sf-conditionally "char")
   (sf-conditionally "chrset")
   (sf-conditionally "gentag")
