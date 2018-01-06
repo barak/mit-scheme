@@ -1946,8 +1946,10 @@ USA.
   (export ()
 	  bundle-alist
 	  bundle-interface
-	  bundle-interface-clauses
+	  bundle-interface-element-names
+	  bundle-interface-element-properties
 	  bundle-interface-name
+	  bundle-interface-predicate
 	  bundle-interface?
 	  bundle-names
 	  bundle-ref

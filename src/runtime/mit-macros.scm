@@ -769,38 +769,46 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      (declare (ignore compare))
-     (syntax-check '(_ symbol * (or symbol (symbol * (symbol * datum))))
+     (syntax-check '(_ identifier identifier identifier
+		       * (or symbol (symbol * (symbol * expression))))
 		   form)
-     (make-interface-helper rename (cadr form) (cddr form)))))
+     (make-interface-helper rename
+			    (cadr form)
+			    (caddr form)
+			    (cadddr form)
+			    (cddddr form)))))
 
-(define (make-interface-helper rename name clauses)
+(define (make-interface-helper rename interface capturer predicate elements)
   (rename-generated-expression
    rename
-   (let ((interface (symbol name '?)))
-     `(begin
-	,(make-interface-definition name interface clauses)
-	,(make-constructor-definition name interface
-				      (map (lambda (clause)
-					     (if (symbol? clause)
-						 clause
-						 (car clause)))
-					   clauses))))))
-
-(define (make-interface-definition name interface clauses)
-  `(define ,interface
-     (make-bundle-interface ',name ',clauses)))
-
-(define (make-constructor-definition name interface names)
-  `(define-syntax ,(symbol 'capture- name)
-     (sc-macro-transformer
-      (lambda (form use-environment)
-	(if (not (null? (cdr form)))
-	    (syntax-error "Ill-formed special form:" form))
-	(list 'capture-bundle
-	      ',interface
-	      ,@(map (lambda (name)
-		       `(close-syntax ',name use-environment))
-		     names))))))
+   `(begin
+      (define ,interface
+	(make-bundle-interface
+	 ',(string->symbol (strip-angle-brackets (symbol->string interface)))
+	 (list ,@(map (lambda (element)
+			(if (symbol? element)
+			    `(list ',element)
+			    `(list ',(car element)
+				   ,@(map (lambda (p)
+					    `(list ',(car p)
+						   ,@(cdr p)))
+					  (cdr element)))))
+		      elements))))
+      (define ,predicate
+	(bundle-interface-predicate ,interface))
+      (define-syntax ,capturer
+	(sc-macro-transformer
+	 (lambda (form use-environment)
+	   (if (not (null? (cdr form)))
+	       (syntax-error "Ill-formed special form:" form))
+	   (list 'capture-bundle
+		 ',interface
+		 ,@(map (lambda (element)
+			  `(close-syntax ',(if (symbol? element)
+					       element
+					       (car element))
+					 use-environment))
+			elements))))))))
 
 (define (rename-generated-expression rename expr)
   (let loop ((expr expr))
@@ -827,6 +835,6 @@ USA.
 
 (define-syntax :capture-bundle
   (syntax-rules ()
-    ((_ predicate name ...)
-     (make-bundle predicate
+    ((_ interface name ...)
+     (make-bundle interface
                   (list (cons 'name name) ...)))))
