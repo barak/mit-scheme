@@ -4772,7 +4772,8 @@ USA.
 	  select-on-bytes-per-word
 	  ucode-primitive
 	  ucode-return-address
-	  ucode-type))
+	  ucode-type
+	  variable-setter))
 
 (define-package (runtime system)
   (files "system")

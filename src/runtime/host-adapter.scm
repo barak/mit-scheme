@@ -74,6 +74,14 @@ USA.
 			((4) (cadr form))
 			((8) (caddr form))
 			(else (error "Unsupported bytes-per-object:" bpo)))))))
+	      env))
+    (if (unbound? env 'variable-setter)
+	(eval '(define-syntax variable-setter
+		 (syntax-rules ()
+		   ((_ identifier)
+		    (lambda (value)
+		      (set! identifier value)
+		      unspecific))))
 	      env)))
 
   (let ((env (->environment '(runtime microcode-tables))))

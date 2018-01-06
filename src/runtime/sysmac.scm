@@ -32,7 +32,7 @@ USA.
 (define-syntax define-primitives
   (sc-macro-transformer
    (lambda (form environment)
-     environment
+     (declare (ignore environment))
      (let ((primitive-definition
 	    (lambda (variable-name primitive-args)
 	      (let ((primitive
@@ -59,19 +59,19 @@ USA.
 (define-syntax ucode-type
   (sc-macro-transformer
    (lambda (form environment)
-     environment
+     (declare (ignore environment))
      (apply microcode-type (cdr form)))))
 
 (define-syntax ucode-primitive
   (sc-macro-transformer
    (lambda (form environment)
-     environment
+     (declare (ignore environment))
      (apply make-primitive-procedure (cdr form)))))
 
 (define-syntax ucode-return-address
   (sc-macro-transformer
    (lambda (form environment)
-     environment
+     (declare (ignore environment))
      (make-return-address (apply microcode-return (cdr form))))))
 
 (define-syntax define-guarantee
@@ -96,7 +96,7 @@ USA.
 (define-syntax define-deferred
   (er-macro-transformer
    (lambda (form rename compare)
-     compare
+     (declare (ignore compare))
      (receive (name value)
 	 (parse-define-form form rename)
        `(,(rename 'BEGIN)
@@ -109,10 +109,17 @@ USA.
 (define-syntax select-on-bytes-per-word
   (er-macro-transformer
    (lambda (form rename compare)
-     rename compare
-     (syntax-check '(KEYWORD EXPRESSION EXPRESSION) form)
+     (declare (ignore rename compare))
+     (syntax-check '(_ expression expression) form)
      (let ((bpo (bytes-per-object)))
        (case bpo
 	 ((4) (cadr form))
 	 ((8) (caddr form))
 	 (else (error "Unsupported bytes-per-object:" bpo)))))))
+
+(define-syntax variable-setter
+  (syntax-rules ()
+    ((_ identifier)
+     (lambda (value)
+       (set! identifier value)
+       unspecific))))
