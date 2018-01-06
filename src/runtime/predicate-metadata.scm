@@ -61,6 +61,7 @@ USA.
          (make-tag name
                    predicate
 		   predicate-tagging-strategy:never
+		   'register-predicate!
                    (get-keyword-value keylist 'extra)
                    (get-keyword-value keylist 'description))))
     (for-each (lambda (superset)
