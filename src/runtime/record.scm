@@ -294,9 +294,7 @@ USA.
 
 (define unparse-record)
 (defer-generic-init 2 'unparse-record
-  (lambda (generic)
-    (set! unparse-record generic)
-    unspecific)
+  (variable-setter unparse-record)
   (lambda (generic tags)
     (declare (ignore generic))
     (let ((tag (cadr tags)))
@@ -319,9 +317,7 @@ USA.
 
 (define set-record-type-unparser-method!
   (deferred-property-recorder
-    (lambda (real-recorder)
-      (set! set-record-type-unparser-method! real-recorder)
-      unspecific)
+    (variable-setter set-record-type-unparser-method!)
     (named-lambda (set-record-type-unparser-method! record-type method)
       (guarantee-record-type record-type 'set-record-type-unparser-method!)
       (if (and method (not (unparser-method? method)))
@@ -340,9 +336,7 @@ USA.
 
 (define record-entity-unparser)
 (defer-generic-init 1 'record-entity-unparser
-  (lambda (generic)
-    (set! record-entity-unparser generic)
-    unspecific)
+  (variable-setter record-entity-unparser)
   (lambda (generic tags)
     (declare (ignore generic tags))
     (lambda (extra)
@@ -351,9 +345,7 @@ USA.
 
 (define set-record-type-entity-unparser-method!
   (deferred-property-recorder
-    (lambda (real-recorder)
-      (set! set-record-type-entity-unparser-method! real-recorder)
-      unspecific)
+    (variable-setter set-record-type-entity-unparser-method!)
     (named-lambda (set-record-type-entity-unparser-method! record-type method)
       (guarantee-record-type record-type
 			     'set-record-type-entity-unparser-method!)
@@ -372,9 +364,7 @@ USA.
 
 (define record-description)
 (defer-generic-init 1 'record-description
-  (lambda (generic)
-    (set! record-description generic)
-    unspecific)
+  (variable-setter record-description)
   (lambda (generic tags)
     (declare (ignore generic))
     (if (record-type? (dispatch-tag-contents (car tags)))
@@ -393,9 +383,7 @@ USA.
 
 (define set-record-type-describer!
   (deferred-property-recorder
-    (lambda (real-recorder)
-      (set! set-record-type-describer! real-recorder)
-      unspecific)
+    (variable-setter set-record-type-describer!)
     (named-lambda (set-record-type-describer! record-type describer)
       (guarantee-record-type record-type 'SET-RECORD-TYPE-DESCRIBER!)
       (if describer
@@ -404,9 +392,7 @@ USA.
 
 (define record-entity-describer)
 (defer-generic-init 1 'record-entity-describer
-  (lambda (generic)
-    (set! record-entity-describer generic)
-    unspecific)
+  (variable-setter record-entity-describer)
   (lambda (generic tags)
     (declare (ignore generic tags))
     (lambda (extra)
@@ -417,9 +403,7 @@ USA.
 
 (define set-record-type-entity-describer!
   (deferred-property-recorder
-    (lambda (real-recorder)
-      (set! set-record-type-entity-describer! real-recorder)
-      unspecific)
+    (variable-setter set-record-type-entity-describer!)
     (named-lambda (set-record-type-entity-describer! record-type describer)
       (guarantee-record-type record-type 'SET-RECORD-TYPE-ENTITY-DESCRIBER!)
       (if describer
