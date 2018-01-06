@@ -164,11 +164,11 @@ USA.
 	  with-limited-interrupts
 	  without-interrupts)
   (export (runtime)
-	  add-boot-init!)
-  (export (runtime options)
-	  get-boot-init-runner
-	  init-boot-inits!
-	  save-boot-inits!))
+	  add-boot-init!
+	  defer-boot-action
+	  run-deferred-boot-actions)
+  (export (runtime rep)
+	  finished-booting!))
 
 (define-package (runtime equality)
   (files "equals")

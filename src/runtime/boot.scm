@@ -122,20 +122,20 @@ USA.
 	     (procedure (cddr objects)))
 	(lose))))
 
-;;;; Boot initializers
+;;;; Boot-time initializers
 
 (define (init-boot-inits!)
   (set! boot-inits '())
   unspecific)
 
 (define (add-boot-init! thunk)
-  (if boot-inits
+  (if (and booting? boot-inits)
       (set! boot-inits (cons thunk boot-inits))
       (thunk))
   unspecific)
 
 (define (save-boot-inits! environment)
-  (if boot-inits
+  (if (pair? boot-inits)
       (let ((inits (reverse! boot-inits)))
 	(set! boot-inits #f)
 	(let ((p (assq environment saved-boot-inits)))
@@ -156,6 +156,14 @@ USA.
 	     (for-each (lambda (init) (init))
 		       inits))))))
 
+(define (finished-booting!)
+  (set! booting? #f)
+  (if (pair? boot-inits)
+      (warn "boot-inits not saved:" boot-inits))
+  (if (pair? saved-boot-inits)
+      (warn "saved-boot-inits not run:" saved-boot-inits)))
+
+(define booting? #t)
 (define boot-inits #f)
 (define saved-boot-inits '())
 
