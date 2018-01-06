@@ -1772,7 +1772,6 @@ USA.
 		    (builder
 		     (cond ((bitless-char? object) object)
 			   ((string? object) object)
-			   ;; Needed during boot load:
 			   ((symbol? object) (symbol->string object))
 			   (else
 			    (call-with-output-string
