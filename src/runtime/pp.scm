@@ -189,7 +189,7 @@ USA.
 		     (cons (list i (%record-ref object i)) d)))))
         ((and (entity? object)
               (record? (entity-extra object)))
-         (record-entity-description object))
+	 ((record-entity-describer (entity-extra object)) object))
 	((weak-pair? object)
 	 `((WEAK-CAR ,(weak-car object))
 	   (WEAK-CDR ,(weak-cdr object))))
