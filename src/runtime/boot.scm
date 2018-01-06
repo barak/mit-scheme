@@ -156,16 +156,48 @@ USA.
 	     (for-each (lambda (init) (init))
 		       inits))))))
 
+(define (defer-boot-action group-name thunk)
+  (if booting?
+      (let ((group (%get-boot-action-group group-name)))
+	(set-cdr! group
+		  (cons thunk
+			(cdr group))))
+      (thunk)))
+
+(define (run-deferred-boot-actions group-name)
+  (let ((group (%find-boot-action-group group-name)))
+    (if group
+	(begin
+	  (set! boot-action-groups (delq! group boot-action-groups))
+	  (for-each (lambda (thunk) (thunk))
+		    (reverse! (cdr group)))))))
+
+(define (%get-boot-action-group group-name)
+  (or (%find-boot-action-group group-name)
+      (let ((group (cons group-name '())))
+	(set! boot-action-groups (cons group boot-action-groups))
+	group)))
+
+(define (%find-boot-action-group group-name)
+  (let loop ((groups boot-action-groups))
+    (and (pair? groups)
+	 (if (eq? group-name (caar groups))
+	     (car groups)
+	     (loop (cdr groups))))))
+
 (define (finished-booting!)
   (set! booting? #f)
   (if (pair? boot-inits)
       (warn "boot-inits not saved:" boot-inits))
   (if (pair? saved-boot-inits)
-      (warn "saved-boot-inits not run:" saved-boot-inits)))
+      (warn "saved-boot-inits not run:" saved-boot-inits))
+  (if (pair? boot-action-groups)
+      (warn "boot-action-groups not run:" boot-action-groups)))
 
 (define booting? #t)
 (define boot-inits #f)
 (define saved-boot-inits '())
+(define boot-action-groups '())
 
 ;;;; Miscellany
 

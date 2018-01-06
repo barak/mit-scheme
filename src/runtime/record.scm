@@ -83,49 +83,23 @@ USA.
 (define (initialize-record-procedures!)
   (set! %set-record-type-default-inits!
 	%set-record-type-default-inits!/after-boot)
-  (process-deferred-generic-inits!)
-  (process-deferred-property-recordings!))
+  (run-deferred-boot-actions 'record/procedures))
 
 (define (defer-generic-init arity name setter default)
-  (set! deferred-generic-inits
-	(cons (cons (cons arity name) (cons setter default))
-	      deferred-generic-inits))
-  unspecific)
+  (defer-boot-action 'record/procedures
+    (lambda ()
+      (let ((g (make-generic-procedure arity name)))
+	(set-generic-procedure-default-generator! g default)
+	(setter g)))))
 
-(define (process-deferred-generic-inits!)
-  (for-each (lambda (p)
-	      (let ((g (make-generic-procedure (car (car p)) (cdr (car p)))))
-		(set-generic-procedure-default-generator! g (cdr (cdr p)))
-		((car (cdr p)) g)))
-	    deferred-generic-inits)
-  (set! deferred-generic-inits)
-  unspecific)
-
-(define deferred-generic-inits '())
-
-(define (deferred-property-recorder setter handler)
-  (set! deferred-procedure-settings
-	(cons (cons setter handler)
-	      deferred-procedure-settings))
+(define (deferred-property-setter setter handler)
+  (defer-boot-action 'record/procedures
+    (lambda ()
+      (setter handler)))
   (lambda args
-    (set! deferred-property-recordings
-	  (cons (cons handler args)
-		deferred-property-recordings))
-    unspecific))
-
-(define (process-deferred-property-recordings!)
-  (for-each (lambda (p)
-	      ((car p) (cdr p)))
-	    deferred-procedure-settings)
-  (set! deferred-procedure-settings)
-  (for-each (lambda (p)
-	      ((ucode-primitive apply) (car p) (cdr p)))
-	    deferred-property-recordings)
-  (set! deferred-property-recordings)
-  unspecific)
-
-(define deferred-procedure-settings '())
-(define deferred-property-recordings '())
+    (defer-boot-action 'record/procedures
+      (lambda ()
+	((ucode-primitive apply) handler args)))))
 
 (define (make-record-type type-name field-names
 			  #!optional
@@ -316,7 +290,7 @@ USA.
 	     (standard-unparser-method 'record #f))))))
 
 (define set-record-type-unparser-method!
-  (deferred-property-recorder
+  (deferred-property-setter
     (variable-setter set-record-type-unparser-method!)
     (named-lambda (set-record-type-unparser-method! record-type method)
       (guarantee-record-type record-type 'set-record-type-unparser-method!)
@@ -344,7 +318,7 @@ USA.
       (standard-unparser-method 'entity #f))))
 
 (define set-record-type-entity-unparser-method!
-  (deferred-property-recorder
+  (deferred-property-setter
     (variable-setter set-record-type-entity-unparser-method!)
     (named-lambda (set-record-type-entity-unparser-method! record-type method)
       (guarantee-record-type record-type
@@ -382,12 +356,12 @@ USA.
 		      (cons (list i (%record-ref record i)) d))))))))
 
 (define set-record-type-describer!
-  (deferred-property-recorder
+  (deferred-property-setter
     (variable-setter set-record-type-describer!)
     (named-lambda (set-record-type-describer! record-type describer)
-      (guarantee-record-type record-type 'SET-RECORD-TYPE-DESCRIBER!)
+      (guarantee-record-type record-type 'set-record-type-describer!)
       (if describer
-	  (guarantee unary-procedure? describer 'SET-RECORD-TYPE-DESCRIBER!))
+	  (guarantee unary-procedure? describer 'set-record-type-describer!))
       (define-unary-generic-handler record-description record-type describer))))
 
 (define record-entity-describer)
@@ -402,13 +376,13 @@ USA.
 	#f))))
 
 (define set-record-type-entity-describer!
-  (deferred-property-recorder
+  (deferred-property-setter
     (variable-setter set-record-type-entity-describer!)
     (named-lambda (set-record-type-entity-describer! record-type describer)
-      (guarantee-record-type record-type 'SET-RECORD-TYPE-ENTITY-DESCRIBER!)
+      (guarantee-record-type record-type 'set-record-type-entity-describer!)
       (if describer
 	  (guarantee unary-procedure? describer
-		     'SET-RECORD-TYPE-ENTITY-DESCRIBER!))
+		     'set-record-type-entity-describer!))
       (define-unary-generic-handler record-entity-describer record-type
 	;; Kludge to make generic dispatch work.
 	(lambda (extra)
