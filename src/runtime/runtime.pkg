@@ -3755,6 +3755,8 @@ USA.
 	  record-accessor
 	  record-constructor
 	  record-copy
+	  record-entity?
+	  record-entity-predicate
 	  record-keyword-constructor
 	  record-modifier
 	  record-predicate
@@ -3775,12 +3777,9 @@ USA.
 	  set-record-type-entity-unparser-method!
 	  set-record-type-extension!
 	  set-record-type-unparser-method!)
-  (export (runtime pretty-printer)
-	  record-entity-describer)
   (export (runtime record-slot-access)
 	  record-type-field-index)
   (export (runtime unparser)
-	  record-entity-unparser
 	  structure-tag/entity-unparser-method
 	  structure-tag/unparser-method)
   (export (runtime predicate-metadata)

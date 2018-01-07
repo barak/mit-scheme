@@ -180,10 +180,8 @@ USA.
 
    (define-predicate-dispatch-default-handler pp-description
      (lambda (object)
-       (cond ((and (entity? object)
-		   (record? (entity-extra object)))
-	      ((record-entity-describer (entity-extra object)) object))
-	     (else #f))))
+       (declare (ignore object))
+       #f))
 
    (set! define-pp-describer
 	 (named-lambda (define-pp-describer predicate describer)

@@ -928,13 +928,6 @@ USA.
                  (else (plain 'ARITY-DISPATCHED-PROCEDURE)))))
         ((get-param:unparse-with-maximum-readability?)
          (*unparse-readable-hash entity context))
-        ((record? (%entity-extra entity))
-         ;; Kludge to make the generic dispatch mechanism work.
-         (invoke-user-method
-          (lambda (state entity)
-            ((record-entity-unparser (%entity-extra entity)) state entity))
-          entity
-	  context))
         ((or (and (vector? (%entity-extra entity))
                   (unparse-vector/entity-unparser (%entity-extra entity)))
              (and (pair? (%entity-extra entity))
