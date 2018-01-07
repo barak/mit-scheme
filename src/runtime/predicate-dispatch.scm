@@ -214,7 +214,7 @@ USA.
 (define most-specific-handler-set
   (make-subsetting-handler-set
    (lambda (handlers get-default-handler)
-     get-default-handler
+     (declare (ignore get-default-handler))
      (car handlers))))
 
 (define chaining-handler-set
