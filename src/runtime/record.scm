@@ -175,7 +175,7 @@ USA.
 
 (define (record-type-name record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-NAME)
-  (string-copy (%record-type-name record-type)))
+  (%record-type-name record-type))
 
 (define (record-type-field-names record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-FIELD-NAMES)
@@ -488,7 +488,7 @@ USA.
 					error?))))))
 
 (define (->type-name object)
-  (cond ((string? object) object)
+  (cond ((string? object) (string->immutable object))
 	((symbol? object) (symbol->string object))
 	(else (error:wrong-type-argument object "type name" #f))))
 
