@@ -41,56 +41,52 @@ USA.
 (define param:pp-save-vertical-space?)
 (define param:pp-uninterned-symbols-by-name?)
 
-(define (initialize-package!)
-  ;; Controls the appearance of procedures in the CASE statement used
-  ;; to describe an arity dispatched procedure:
-  ;;  FULL:  full bodies of procedures
-  ;;  NAMED: just name if the procedure is a named lambda, like FULL if unnamed
-  ;;  SHORT: procedures appear in #[...] unparser syntax
-  (set! param:pp-arity-dispatched-procedure-style
-	(make-settable-parameter 'FULL))
-  (set! param:pp-auto-highlighter (make-settable-parameter #f))
-  (set! param:pp-avoid-circularity? (make-settable-parameter #f))
-  (set! param:pp-default-as-code? (make-settable-parameter #t))
-  (set! param:pp-forced-x-size (make-settable-parameter #f))
-  (set! param:pp-lists-as-tables? (make-settable-parameter #t))
-  (set! param:pp-named-lambda->define? (make-settable-parameter #f))
-  (set! param:pp-no-highlights? (make-settable-parameter #t))
-  (set! param:pp-primitives-by-name? (make-settable-parameter #t))
-  (set! param:pp-save-vertical-space? (make-settable-parameter #f))
-  (set! param:pp-uninterned-symbols-by-name? (make-settable-parameter #t))
+(add-boot-init!
+ (lambda ()
+   ;; Controls the appearance of procedures in the CASE statement used
+   ;; to describe an arity dispatched procedure:
+   ;;  FULL:  full bodies of procedures
+   ;;  NAMED: just name if the procedure is a named lambda, like FULL if unnamed
+   ;;  SHORT: procedures appear in #[...] unparser syntax
+   (set! param:pp-arity-dispatched-procedure-style
+	 (make-settable-parameter 'FULL))
+   (set! param:pp-auto-highlighter (make-settable-parameter #f))
+   (set! param:pp-avoid-circularity? (make-settable-parameter #f))
+   (set! param:pp-default-as-code? (make-settable-parameter #t))
+   (set! param:pp-forced-x-size (make-settable-parameter #f))
+   (set! param:pp-lists-as-tables? (make-settable-parameter #t))
+   (set! param:pp-named-lambda->define? (make-settable-parameter #f))
+   (set! param:pp-no-highlights? (make-settable-parameter #t))
+   (set! param:pp-primitives-by-name? (make-settable-parameter #t))
+   (set! param:pp-save-vertical-space? (make-settable-parameter #f))
+   (set! param:pp-uninterned-symbols-by-name? (make-settable-parameter #t))
 
-  (set! x-size (make-unsettable-parameter #f))
-  (set! output-port (make-unsettable-parameter #f))
-  (set! pp-description (make-generic-procedure 1 'PP-DESCRIPTION))
-  (set-generic-procedure-default-generator! pp-description
-    (lambda (generic tags)
-      generic tags
-      pp-description/default))
-  (set! forced-indentation (special-printer kernel/forced-indentation))
-  (set! pressured-indentation (special-printer kernel/pressured-indentation))
-  (set! print-procedure (special-printer kernel/print-procedure))
-  (set! print-let-expression (special-printer kernel/print-let-expression))
-  (set! print-case-expression (special-printer kernel/print-case-expression))
-  (set! code-dispatch-list
-	(make-unsettable-parameter
-	 `((COND . ,forced-indentation)
-	   (CASE . ,print-case-expression)
-	   (IF . ,forced-indentation)
-	   (OR . ,forced-indentation)
-	   (AND . ,forced-indentation)
-	   (LET . ,print-let-expression)
-	   (LET* . ,print-let-expression)
-	   (LETREC . ,print-let-expression)
-	   (FLUID-LET . ,print-let-expression)
-	   (DEFINE . ,print-procedure)
-	   (DEFINE-INTEGRABLE . ,print-procedure)
-	   (LAMBDA . ,print-procedure)
-	   (NAMED-LAMBDA . ,print-procedure))))
-  (set! dispatch-list (make-unsettable-parameter (code-dispatch-list)))
-  (set! dispatch-default (make-unsettable-parameter print-combination))
-  (set! cocked-object (generate-uninterned-symbol))
-  unspecific)
+   (set! x-size (make-unsettable-parameter #f))
+   (set! output-port (make-unsettable-parameter #f))
+   (set! forced-indentation (special-printer kernel/forced-indentation))
+   (set! pressured-indentation (special-printer kernel/pressured-indentation))
+   (set! print-procedure (special-printer kernel/print-procedure))
+   (set! print-let-expression (special-printer kernel/print-let-expression))
+   (set! print-case-expression (special-printer kernel/print-case-expression))
+   (set! code-dispatch-list
+	 (make-unsettable-parameter
+	  `((COND . ,forced-indentation)
+	    (CASE . ,print-case-expression)
+	    (IF . ,forced-indentation)
+	    (OR . ,forced-indentation)
+	    (AND . ,forced-indentation)
+	    (LET . ,print-let-expression)
+	    (LET* . ,print-let-expression)
+	    (LETREC . ,print-let-expression)
+	    (FLUID-LET . ,print-let-expression)
+	    (DEFINE . ,print-procedure)
+	    (DEFINE-INTEGRABLE . ,print-procedure)
+	    (LAMBDA . ,print-procedure)
+	    (NAMED-LAMBDA . ,print-procedure))))
+   (set! dispatch-list (make-unsettable-parameter (code-dispatch-list)))
+   (set! dispatch-default (make-unsettable-parameter print-combination))
+   (set! cocked-object (generate-uninterned-symbol))
+   unspecific))
 
 (define *pp-arity-dispatched-procedure-style* #!default)
 (define *pp-auto-highlighter* #!default)
@@ -177,26 +173,42 @@ USA.
 	     (pretty-print object))))))
 
 (define pp-description)
+(add-boot-init!
+ (lambda ()
+   (set! pp-description
+	 (standard-predicate-dispatcher 'pp-description 1))
 
-(define (pp-description/default object)
-  (cond ((named-structure? object)
-	 (named-structure/description object))
-	((%record? object)		; unnamed record
-	 (let loop ((i (- (%record-length object) 1)) (d '()))
-	   (if (< i 0)
-	       d
-	       (loop (- i 1)
-		     (cons (list i (%record-ref object i)) d)))))
-        ((and (entity? object)
-              (record? (entity-extra object)))
-	 ((record-entity-describer (entity-extra object)) object))
-	((weak-pair? object)
-	 `((WEAK-CAR ,(weak-car object))
-	   (WEAK-CDR ,(weak-cdr object))))
-	((cell? object)
-	 `((CONTENTS ,(cell-contents object))))
-	(else
-	 #f)))
+   (define-predicate-dispatch-default-handler pp-description
+     (lambda (object)
+       (cond ((named-structure? object)
+	      (named-structure/description object))
+	     ((%record? object)		; unnamed record
+	      (let loop ((i (- (%record-length object) 1)) (d '()))
+		(if (< i 0)
+		    d
+		    (loop (- i 1)
+			  (cons (list i (%record-ref object i)) d)))))
+	     ((and (entity? object)
+		   (record? (entity-extra object)))
+	      ((record-entity-describer (entity-extra object)) object))
+	     (else #f))))
+
+   (set! define-pp-describer
+	 (named-lambda (define-pp-describer predicate describer)
+	   (define-predicate-dispatch-handler pp-description
+	     (list predicate)
+	     describer)))
+
+   (run-deferred-boot-actions 'pp-describers)
+
+   (define-pp-describer weak-pair?
+     (lambda (wp)
+       `((WEAK-CAR ,(weak-car wp))
+	 (WEAK-CDR ,(weak-cdr wp)))))
+
+   (define-pp-describer cell?
+     (lambda (cell)
+       `((CONTENTS ,(cell-contents cell)))))))
 
 (define (unsyntax-entity object)
   (define (unsyntax-entry procedure)

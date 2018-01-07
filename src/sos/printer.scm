@@ -101,17 +101,8 @@ USA.
       (thunk))
   (write-char #\] port))
 
-(define-predicate-dispatch-handler unparse-record
-  (list any-object? instance?)
+(define-unparser-method instance?
   (general-unparser-method write-instance))
-
-(add-generic-procedure-generator pp-description
-  (lambda (generic tags)
-    generic
-    (and (let ((class (dispatch-tag-contents (car tags))))
-	   (and (class? class)
-		(subclass? class <instance>)))
-	 instance-description)))
 
 (define (instance-description instance)
   (map (lambda (slot)
@@ -121,3 +112,6 @@ USA.
 		     (list (slot-value instance name))
 		     '()))))
        (class-slots (instance-class instance))))
+
+(define-pp-describer instance?
+  instance-description)
