@@ -29,36 +29,30 @@ USA.
 
 (declare (usual-integrations))
 
-(define predicate-dispatcher?)
-(define maybe-get-metadata)
-(define set-metadata!)
-(define delete-metadata!)
+(define (predicate-dispatcher? object)
+  (and (entity? object)
+       (metadata? (entity-extra object))))
+
 (add-boot-init!
  (lambda ()
-   (let ((table (make-hashed-metadata-table)))
-     (set! predicate-dispatcher? (table 'has?))
-     (set! maybe-get-metadata (table 'get-if-available))
-     (set! set-metadata! (table 'put!))
-     (set! delete-metadata! (table 'delete!)))
    (register-predicate! predicate-dispatcher? 'predicate-dispatcher
-			'<= procedure?)))
+			'<= entity?)))
 
 (define (get-metadata procedure caller)
-  (let ((metadata (maybe-get-metadata procedure #f)))
-    (if (not metadata)
+  (let ((metadata (entity-extra procedure)))
+    (if (not (metadata? metadata))
         (error:not-a predicate-dispatcher? procedure caller))
     metadata))
 
 (define (make-predicate-dispatcher name arity make-handler-set)
   (if (not (> (procedure-arity-min arity) 0))
       (error:bad-range-argument arity 'make-predicate-dispatcher))
-  (let* ((metadata
-	  (make-metadata name
-			 arity
-			 (make-handler-set (make-default-handler name))))
-         (procedure (make-procedure arity metadata)))
-    (set-metadata! procedure metadata)
-    procedure))
+  (let ((metadata
+	 (make-metadata name
+			arity
+			(make-handler-set (make-default-handler name)))))
+    (make-entity (make-procedure arity metadata)
+		 metadata)))
 
 (define (make-default-handler name)
   (lambda args
@@ -69,19 +63,24 @@ USA.
     (case (and (eqv? (procedure-arity-min arity) (procedure-arity-max arity))
 	       (procedure-arity-min arity))
       ((1)
-       (lambda (arg)
+       (lambda (self arg)
+	 (declare (ignore self))
 	 ((get-handler (list arg)) arg)))
       ((2)
-       (lambda (arg1 arg2)
+       (lambda (self arg1 arg2)
+	 (declare (ignore self))
 	 ((get-handler (list arg1 arg2)) arg1 arg2)))
       ((3)
-       (lambda (arg1 arg2 arg3)
+       (lambda (self arg1 arg2 arg3)
+	 (declare (ignore self))
 	 ((get-handler (list arg1 arg2 arg3)) arg1 arg2 arg3)))
       ((4)
-       (lambda (arg1 arg2 arg3 arg4)
+       (lambda (self arg1 arg2 arg3 arg4)
+	 (declare (ignore self))
 	 ((get-handler (list arg1 arg2 arg3 arg4)) arg1 arg2 arg3 arg4)))
       (else
-       (lambda args
+       (lambda (self . args)
+	 (declare (ignore self))
 	 (apply (get-handler args) args))))))
 
 (define (simple-predicate-dispatcher name arity)
