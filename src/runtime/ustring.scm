@@ -534,7 +534,7 @@ USA.
     ((2) (max-loop cp2-ref))
     (else (max-loop cp3-ref))))
 
-(define (%string->immutable string)
+(define (string->immutable string)
   (if (and (ustring? string) (%ustring-immutable? string))
       string
       (unpack-slice string
@@ -908,7 +908,7 @@ USA.
 	    nfc))
       (let ((nfc
 	     (if (eq? #t (string-nfc-qc string 'string->nfc))
-		 (%string->immutable string)
+		 (string->immutable string)
 		 (%string->nfc string))))
 	(ustring-in-nfc! nfc #t)
 	nfc)))
@@ -986,7 +986,7 @@ USA.
 
 (define (string->nfd string)
   (if (string-in-nfd? string)
-      (let ((result (%string->immutable string)))
+      (let ((result (string->immutable string)))
 	(ustring-in-nfd! result #t)
 	result)
       (canonical-decomposition&ordering string

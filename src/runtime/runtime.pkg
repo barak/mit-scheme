@@ -1001,6 +1001,7 @@ USA.
 	  nfc-string?
 	  string
 	  string*
+	  string->immutable
 	  string->list
 	  string->nfc
 	  string->nfd
