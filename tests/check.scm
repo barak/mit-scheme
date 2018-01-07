@@ -48,14 +48,15 @@ USA.
     "microcode/test-keccak"
     "microcode/test-lookup"
     "runtime/test-arith"
+    "runtime/test-binary-port"
     "runtime/test-blowfish"
     "runtime/test-bytevector"
     ("runtime/test-char" (runtime))
     ("runtime/test-char-set" (runtime character-set))
     ("runtime/test-compound-predicate" (runtime))
+    "runtime/test-division"
     "runtime/test-dragon4"
     "runtime/test-dynamic-env"
-    "runtime/test-division"
     "runtime/test-entity"
     "runtime/test-ephemeron"
     ("runtime/test-file-attributes" (runtime))
@@ -66,6 +67,7 @@ USA.
     "runtime/test-md5"
     "runtime/test-mime-codec"
     ("runtime/test-parametric-predicate" (runtime parametric-predicate))
+    ("runtime/test-predicate-dispatch" (runtime))
     ("runtime/test-predicate-lattice" (runtime))
     ("runtime/test-predicate-metadata" (runtime))
     "runtime/test-process"
