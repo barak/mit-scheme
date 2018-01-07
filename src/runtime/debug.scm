@@ -825,7 +825,7 @@ USA.
       (for-each (lambda (element)
 		  (newline port)
 		  (debugger-pp element 0 port))
-		(named-structure/description (dstate/subproblem dstate))))))
+		(pp-description (dstate/subproblem dstate))))))
 
 (define-command (command/print-frame-elements dstate port)
   (debugger-presentation

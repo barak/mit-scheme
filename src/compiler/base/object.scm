@@ -142,7 +142,7 @@ USA.
 
 (define (tagged-vector/description object)
   (cond ((named-structure? object)
-	 named-structure/description)
+	 pp-description)
 	((tagged-vector? object)
 	 (vector-tag-description (tagged-vector/tag object)))
 	(else

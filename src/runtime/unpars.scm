@@ -642,7 +642,8 @@ USA.
 	((uri? record) (unparse/uri record context))
 	((get-param:unparse-with-maximum-readability?)
 	 (*unparse-readable-hash record context))
-	(else (invoke-user-method unparse-record record context))))
+	(else
+	 (*unparse-with-brackets 'record record context #f))))
 
 (define (unparse/uri uri context)
   (*unparse-string "#<" context)

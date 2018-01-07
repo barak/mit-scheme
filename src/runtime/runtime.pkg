@@ -3749,8 +3749,9 @@ USA.
 	  list-of-unique-symbols?
 	  make-define-structure-type
 	  make-record-type
-	  named-structure/description
+	  named-list?
 	  named-structure?
+	  named-vector?
 	  record-accessor
 	  record-constructor
 	  record-copy
@@ -3773,8 +3774,7 @@ USA.
 	  set-record-type-entity-describer!
 	  set-record-type-entity-unparser-method!
 	  set-record-type-extension!
-	  set-record-type-unparser-method!
-	  unparse-record)
+	  set-record-type-unparser-method!)
   (export (runtime pretty-printer)
 	  record-entity-describer)
   (export (runtime record-slot-access)

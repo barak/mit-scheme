@@ -180,15 +180,7 @@ USA.
 
    (define-predicate-dispatch-default-handler pp-description
      (lambda (object)
-       (cond ((named-structure? object)
-	      (named-structure/description object))
-	     ((%record? object)		; unnamed record
-	      (let loop ((i (- (%record-length object) 1)) (d '()))
-		(if (< i 0)
-		    d
-		    (loop (- i 1)
-			  (cons (list i (%record-ref object i)) d)))))
-	     ((and (entity? object)
+       (cond ((and (entity? object)
 		   (record? (entity-extra object)))
 	      ((record-entity-describer (entity-extra object)) object))
 	     (else #f))))

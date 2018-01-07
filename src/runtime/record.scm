@@ -259,120 +259,6 @@ USA.
   (set! boot-time-record-types)
   unspecific)
 
-;;;; Unparser Methods
-
-(define unparse-record)
-(defer-boot-action 'record/procedures
-  (lambda ()
-    (set! unparse-record
-	  (standard-predicate-dispatcher 'unparse-record 2))
-
-    (define-predicate-dispatch-default-handler unparse-record
-      (standard-unparser-method 'record #f))
-
-    (define-predicate-dispatch-handler unparse-record
-      (list any-object? record?)
-      (standard-unparser-method
-       (lambda (record)
-	 (strip-angle-brackets
-	  (%record-type-name (%record-type-descriptor record))))
-       #f))
-
-    (define-predicate-dispatch-handler unparse-record
-      (list any-object? record-type?)
-      (standard-unparser-method 'record-type
-	(lambda (type port)
-	  (write-char #\space port)
-	  (display (%record-type-name type) port))))
-
-    (define-predicate-dispatch-handler unparse-record
-      (list any-object? dispatch-tag?)
-      (simple-unparser-method 'dispatch-tag
-	(lambda (tag)
-	  (list (dispatch-tag-contents tag)))))))
-
-(define set-record-type-unparser-method!
-  (deferred-property-setter
-    (variable-setter set-record-type-unparser-method!)
-    (named-lambda (set-record-type-unparser-method! record-type method)
-      (guarantee unparser-method? method 'set-record-type-unparser-method!)
-      (define-predicate-dispatch-handler unparse-record
-	(list any-object? (record-predicate record-type))
-	method))))
-
-(define record-entity-unparser)
-(defer-boot-action 'record/procedures
-  (lambda ()
-    (set! record-entity-unparser
-	  (standard-predicate-dispatcher 'record-entity-unparser 1))
-
-    (define-predicate-dispatch-default-handler record-entity-unparser
-      (standard-unparser-method 'entity #f))))
-
-(define set-record-type-entity-unparser-method!
-  (deferred-property-setter
-    (variable-setter set-record-type-entity-unparser-method!)
-    (named-lambda (set-record-type-entity-unparser-method! record-type method)
-      (guarantee unparser-method? method
-		 'set-record-type-entity-unparser-method!)
-      (define-predicate-dispatch-handler record-entity-unparser
-	(list (record-predicate record-type))
-	(lambda (record)
-	  (declare (ignore record))
-	  method)))))
-
-(define record-description)
-(defer-boot-action 'record/procedures
-  (lambda ()
-    (set! record-description
-	  (standard-predicate-dispatcher 'record-description 1))
-
-    (define-predicate-dispatch-default-handler record-description
-      (lambda (record)
-	(let loop ((i (fix:- (%record-length record) 1)) (d '()))
-	  (if (fix:< i 0)
-	      d
-	      (loop (fix:- i 1)
-		    (cons (list i (%record-ref record i)) d))))))
-
-    (define-predicate-dispatch-handler record-description
-      (list record?)
-      (lambda (record)
-	(let ((type (%record-type-descriptor record)))
-	  (map (lambda (field-name)
-		 `(,field-name
-		   ,((record-accessor type field-name) record)))
-	       (record-type-field-names type)))))))
-
-(define set-record-type-describer!
-  (deferred-property-setter
-    (variable-setter set-record-type-describer!)
-    (named-lambda (set-record-type-describer! record-type describer)
-      (guarantee unary-procedure? describer 'set-record-type-describer!)
-      (define-predicate-dispatch-handler record-description
-	(list (record-predicate record-type))
-	describer))))
-
-(define record-entity-describer)
-(defer-boot-action 'record/procedures
-  (lambda ()
-    (set! record-entity-describer
-	  (standard-predicate-dispatcher 'record-entity-describer 1))
-
-    (define-predicate-dispatch-default-handler record-entity-describer
-      (lambda (entity)
-	(declare (ignore entity))
-	#f))))
-
-(define set-record-type-entity-describer!
-  (deferred-property-setter
-    (variable-setter set-record-type-entity-describer!)
-    (named-lambda (set-record-type-entity-describer! record-type describer)
-      (guarantee unary-procedure? describer 'set-record-type-entity-describer!)
-      (define-predicate-dispatch-handler record-entity-describer
-	(list (record-predicate record-type))
-	describer))))
-
 ;;;; Constructors
 
 (define (record-constructor record-type #!optional field-names)
@@ -590,6 +476,91 @@ USA.
 (define-guarantee record-type "record type")
 (define-guarantee record "record")
 
+;;;; Printing
+
+(define-unparser-method record?
+  (standard-unparser-method
+   (lambda (record)
+     (strip-angle-brackets
+      (%record-type-name (%record-type-descriptor record))))
+   #f))
+
+(define-unparser-method record-type?
+  (standard-unparser-method 'record-type
+    (lambda (type port)
+      (write-char #\space port)
+      (display (%record-type-name type) port))))
+
+(define-unparser-method dispatch-tag?
+  (simple-unparser-method 'dispatch-tag
+    (lambda (tag)
+      (list (dispatch-tag-contents tag)))))
+
+(define (set-record-type-unparser-method! record-type method)
+  (define-unparser-method (record-predicate record-type)
+    method))
+
+(define-pp-describer %record?
+  (lambda (record)
+    (let loop ((i (fix:- (%record-length record) 1)) (d '()))
+      (if (fix:< i 0)
+	  d
+	  (loop (fix:- i 1)
+		(cons (list i (%record-ref record i)) d))))))
+
+(define-pp-describer record?
+  (lambda (record)
+    (let ((type (%record-type-descriptor record)))
+      (map (lambda (field-name)
+	     `(,field-name
+	       ,((record-accessor type field-name) record)))
+	   (record-type-field-names type)))))
+
+(define (set-record-type-describer! record-type describer)
+  (define-pp-describer (record-predicate record-type)
+    describer))
+
+(define record-entity-unparser)
+(defer-boot-action 'record/procedures
+  (lambda ()
+    (set! record-entity-unparser
+	  (standard-predicate-dispatcher 'record-entity-unparser 1))
+
+    (define-predicate-dispatch-default-handler record-entity-unparser
+      (standard-unparser-method 'entity #f))))
+
+(define set-record-type-entity-unparser-method!
+  (deferred-property-setter
+    (variable-setter set-record-type-entity-unparser-method!)
+    (named-lambda (set-record-type-entity-unparser-method! record-type method)
+      (guarantee unparser-method? method
+		 'set-record-type-entity-unparser-method!)
+      (define-predicate-dispatch-handler record-entity-unparser
+	(list (record-predicate record-type))
+	(lambda (record)
+	  (declare (ignore record))
+	  method)))))
+
+(define record-entity-describer)
+(defer-boot-action 'record/procedures
+  (lambda ()
+    (set! record-entity-describer
+	  (standard-predicate-dispatcher 'record-entity-describer 1))
+
+    (define-predicate-dispatch-default-handler record-entity-describer
+      (lambda (entity)
+	(declare (ignore entity))
+	#f))))
+
+(define set-record-type-entity-describer!
+  (deferred-property-setter
+    (variable-setter set-record-type-entity-describer!)
+    (named-lambda (set-record-type-entity-describer! record-type describer)
+      (guarantee unary-procedure? describer 'set-record-type-entity-describer!)
+      (define-predicate-dispatch-handler record-entity-describer
+	(list (record-predicate record-type))
+	describer))))
+
 ;;;; Runtime support for DEFINE-STRUCTURE
 
 (define (initialize-structure-type-type!)
@@ -678,45 +649,55 @@ USA.
 	    (loop (fix:+ i 1)))))))
 
 (define (structure-tag/unparser-method tag physical-type)
-  (let ((type (tag->structure-type tag physical-type)))
-    (and type
-	 (structure-type/unparser-method type))))
+  (and (structure-type-tag? tag physical-type)
+       (structure-type/unparser-method (tag->structure-type tag))))
 
 (define (structure-tag/entity-unparser-method tag physical-type)
-  (let ((type (tag->structure-type tag physical-type)))
-    (and type
-	 (structure-type/entity-unparser-method type))))
+  (and (structure-type-tag? tag physical-type)
+       (structure-type/entity-unparser-method (tag->structure-type tag))))
 
 (define (named-structure? object)
-  (cond ((record? object) #t)
-	((vector? object)
-	 (and (not (fix:= (vector-length object) 0))
-	      (tag->structure-type (vector-ref object 0) 'VECTOR)))
-	((pair? object) (tag->structure-type (car object) 'LIST))
-	(else #f)))
+  (or (named-list? object)
+      (named-vector? object)
+      (record? object)))
 
-(define (tag->structure-type tag physical-type)
+(define (named-list? object)
+  (and (pair? object)
+       (structure-type-tag? (car object) 'list)
+       (list? (cdr object))))
+
+(define (named-vector? object)
+  (and (vector? object)
+       (fix:> (vector-length object) 0)
+       (structure-type-tag? (vector-ref object 0) 'vector)))
+
+(define (structure-type-tag? tag physical-type)
+  (let ((type (tag->structure-type tag)))
+    (and type
+	 (eq? (structure-type/physical-type type) physical-type))))
+
+(define (tag->structure-type tag)
   (if (structure-type? tag)
-      (and (eq? (structure-type/physical-type tag) physical-type)
-	   tag)
+      tag
       (let ((type (named-structure/get-tag-description tag)))
 	(and (structure-type? type)
-	     (eq? (structure-type/physical-type type) physical-type)
 	     type))))
 
-(define (named-structure/description structure)
-  (cond ((record? structure)
-	 (record-description structure))
-	((named-structure? structure)
-	 => (lambda (type)
-	      (let ((accessor (if (pair? structure) list-ref vector-ref)))
-		(map (lambda (field-name index)
-		       `(,field-name ,(accessor structure index)))
-		     (vector->list (structure-type/field-names type))
-		     (vector->list (structure-type/field-indexes type))))))
-	(else
-	 (error:wrong-type-argument structure "named structure"
-				    'NAMED-STRUCTURE/DESCRIPTION))))
+(define-pp-describer named-list?
+  (lambda (pair)
+    (let ((type (tag->structure-type (car pair))))
+      (map (lambda (field-name index)
+	     `(,field-name ,(list-ref pair index)))
+	   (vector->list (structure-type/field-names type))
+	   (vector->list (structure-type/field-indexes type))))))
+
+(define-pp-describer named-vector?
+  (lambda (vector)
+    (let ((type (tag->structure-type (vector-ref vector 0))))
+      (map (lambda (field-name index)
+	     `(,field-name ,(vector-ref vector index)))
+	   (vector->list (structure-type/field-names type))
+	   (vector->list (structure-type/field-indexes type))))))
 
 (define (define-structure/default-value type field-name)
   ((structure-type/default-init type field-name)))

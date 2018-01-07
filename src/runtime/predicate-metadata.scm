@@ -214,10 +214,7 @@ USA.
 (add-boot-init!
  (lambda ()
    (register-predicate! predicate? 'predicate)
-   (register-predicate! tag-name? 'tag-name)
-   (register-predicate! %record? '%record)
-   (register-predicate! record? 'record '<= %record?)
-   (cleanup-boot-time-record-predicates!)))
+   (register-predicate! tag-name? 'tag-name)))
 
 ;;; Registration of standard predicates
 (add-boot-init!
@@ -325,8 +322,18 @@ USA.
    (register-predicate! keyword? 'keyword '<= symbol?)
    (register-predicate! lambda-tag? 'lambda-tag)
    (register-predicate! named-structure? 'named-structure)
+   (register-predicate! named-list? 'named-list
+			'<= non-empty-list?
+			'<= named-structure?)
+   (register-predicate! named-vector? 'named-vector
+			'<= vector?
+			'<= named-structure?)
    (register-predicate! population? 'population)
    (register-predicate! promise? 'promise)
+   (register-predicate! %record? '%record)
+   (register-predicate! record? 'record
+			'<= %record?
+			'<= named-structure?)
    (register-predicate! record-type? 'record-type '<= record?)
    (register-predicate! stack-address? 'stack-address)
    (register-predicate! thread-mutex? 'thread-mutex)
@@ -340,7 +347,9 @@ USA.
    (register-predicate! weak-list? 'weak-list)
    (register-predicate! weak-pair? 'weak-pair)
 
-   (register-ustring-predicates!)))
+   (register-ustring-predicates!)
+
+   (cleanup-boot-time-record-predicates!)))
 
 (add-boot-init!
  (lambda ()
