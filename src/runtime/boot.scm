@@ -73,55 +73,6 @@ USA.
    (fix:and limit-mask (get-interrupt-enables))
    procedure))
 
-;;;; Printing
-
-(define (unparser-method? object)
-  (and (procedure? object)
-       (procedure-arity-valid? object 2)))
-
-(define (general-unparser-method procedure)
-  (lambda (state object)
-    (with-current-unparser-state state
-      (lambda (port)
-	(if (get-param:unparse-with-maximum-readability?)
-	    (begin
-	      (write-string "#@" port)
-	      (write (object-hash object) port))
-	    (procedure object port))))))
-
-(define (bracketed-unparser-method procedure)
-  (general-unparser-method
-   (lambda (object port)
-     (write-string "#[" port)
-     (procedure object port)
-     (write-char #\] port))))
-
-(define (standard-unparser-method name procedure)
-  (bracketed-unparser-method
-   (lambda (object port)
-     (display (if (procedure? name)
-		  (name object)
-		  name)
-	      port)
-     (write-char #\space port)
-     (write (object-hash object) port)
-     (if procedure (procedure object port)))))
-
-(define (simple-unparser-method name get-parts)
-  (standard-unparser-method name
-    (and get-parts
-	 (lambda (object port)
-	   (for-each (lambda (object)
-		       (write-char #\space port)
-		       (write object port))
-		     (get-parts object))))))
-
-(define (simple-parser-method procedure)
-  (lambda (objects lose)
-    (or (and (pair? (cdr objects))
-	     (procedure (cddr objects)))
-	(lose))))
-
 ;;;; Boot-time initializers
 
 (define (init-boot-inits!)
@@ -198,6 +149,65 @@ USA.
 (define boot-inits #f)
 (define saved-boot-inits '())
 (define boot-action-groups '())
+
+;;;; Printing
+
+(define (define-unparser-method predicate unparser)
+  (defer-boot-action 'unparser-methods
+    (lambda ()
+      (define-unparser-method predicate unparser))))
+
+(define (define-pp-describer predicate describer)
+  (defer-boot-action 'pp-describers
+    (lambda ()
+      (define-pp-describer predicate describer))))
+
+(define (unparser-method? object)
+  (and (procedure? object)
+       (procedure-arity-valid? object 2)))
+
+(define (general-unparser-method procedure)
+  (lambda (state object)
+    (with-current-unparser-state state
+      (lambda (port)
+	(if (get-param:unparse-with-maximum-readability?)
+	    (begin
+	      (write-string "#@" port)
+	      (write (object-hash object) port))
+	    (procedure object port))))))
+
+(define (bracketed-unparser-method procedure)
+  (general-unparser-method
+   (lambda (object port)
+     (write-string "#[" port)
+     (procedure object port)
+     (write-char #\] port))))
+
+(define (standard-unparser-method name procedure)
+  (bracketed-unparser-method
+   (lambda (object port)
+     (display (if (procedure? name)
+		  (name object)
+		  name)
+	      port)
+     (write-char #\space port)
+     (write (object-hash object) port)
+     (if procedure (procedure object port)))))
+
+(define (simple-unparser-method name get-parts)
+  (standard-unparser-method name
+    (and get-parts
+	 (lambda (object port)
+	   (for-each (lambda (object)
+		       (write-char #\space port)
+		       (write object port))
+		     (get-parts object))))))
+
+(define (simple-parser-method procedure)
+  (lambda (objects lose)
+    (or (and (pair? (cdr objects))
+	     (procedure (cddr objects)))
+	(lose))))
 
 ;;;; Miscellany
 

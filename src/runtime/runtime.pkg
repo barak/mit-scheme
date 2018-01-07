@@ -139,6 +139,8 @@ USA.
 	  bytes-per-object
 	  default-object
 	  default-object?
+	  define-pp-describer
+	  define-unparser-method
 	  gc-space-status
 	  general-unparser-method
 	  interrupt-bit/after-gc
