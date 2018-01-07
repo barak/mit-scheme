@@ -223,10 +223,10 @@ USA.
   (guarantee output-port? port)
   (if (not (default-object? environment))
       (guarantee environment? environment))
-  (*unparse-object object
-		   (top-level-context port
-				      (if slashify? 'normal 'display)
-				      environment)))
+  (unparse-object (top-level-context port
+				     (if slashify? 'normal 'display)
+				     environment)
+		  object))
 
 (define (top-level-context port mode environment)
   (let ((context (initial-context)))
@@ -262,15 +262,28 @@ USA.
   (guarantee context? context 'unparse-string)
   (write-string string (context-port context)))
 
-(define (unparse-object context object)
-  (guarantee context? context 'unparse-object)
-  (*unparse-object object context))
+(define unparse-object)
+(add-boot-init!
+ (lambda ()
+   (set! unparse-object
+	 (standard-predicate-dispatcher 'unparse-object 2))
 
-(define (*unparse-object object context)
-  ((vector-ref dispatch-table
-               ((ucode-primitive primitive-object-type 1) object))
-   object
-   context))
+   (define-predicate-dispatch-default-handler unparse-object
+     (lambda (context object)
+       ((vector-ref dispatch-table
+		    ((ucode-primitive primitive-object-type 1) object))
+	object
+	context)))
+
+   (set! define-unparser-method
+	 (named-lambda (define-unparser-method predicate unparser)
+	   (define-predicate-dispatch-handler unparse-object
+	     (list context? predicate)
+	     unparser)))
+   (run-deferred-boot-actions 'unparser-methods)))
+
+(define-integrable (*unparse-object object context)
+  (unparse-object context object))
 
 (define-integrable (invoke-user-method method object context)
   (method context object))
