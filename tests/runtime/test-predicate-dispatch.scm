@@ -37,6 +37,7 @@ USA.
 
     (define-predicate-dispatch-handler foo (list any-object?)
       (lambda (arg)
+	(declare (ignore arg))
         'foobar))
 
     (assert-equal (foo #f) 'foobar)))
