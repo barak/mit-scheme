@@ -327,7 +327,7 @@ USA.
    (register-predicate! named-structure? 'named-structure)
    (register-predicate! population? 'population)
    (register-predicate! promise? 'promise)
-   (register-predicate! record-type? 'record-type)
+   (register-predicate! record-type? 'record-type '<= record?)
    (register-predicate! stack-address? 'stack-address)
    (register-predicate! thread-mutex? 'thread-mutex)
    (register-predicate! undefined-value? 'undefined-value)

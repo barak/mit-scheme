@@ -85,13 +85,6 @@ USA.
 	%set-record-type-default-inits!/after-boot)
   (run-deferred-boot-actions 'record/procedures))
 
-(define (defer-generic-init arity name setter default)
-  (defer-boot-action 'record/procedures
-    (lambda ()
-      (let ((g (make-generic-procedure arity name)))
-	(set-generic-procedure-default-generator! g default)
-	(setter g)))))
-
 (define (deferred-property-setter setter handler)
   (defer-boot-action 'record/procedures
     (lambda ()
@@ -124,9 +117,11 @@ USA.
       (%set-record-type-predicate! record-type
 				   (lambda (object)
 				     (%tagged-record? tag object)))
-      (if (not (default-object? unparser-method))
+      (if (and unparser-method
+	       (not (default-object? unparser-method)))
 	  (set-record-type-unparser-method! record-type unparser-method))
-      (if (not (default-object? entity-unparser-method))
+      (if (and entity-unparser-method
+	       (not (default-object? entity-unparser-method)))
 	  (set-record-type-entity-unparser-method! record-type
 						   entity-unparser-method))
       record-type)))
@@ -267,110 +262,104 @@ USA.
 ;;;; Unparser Methods
 
 (define unparse-record)
-(defer-generic-init 2 'unparse-record
-  (variable-setter unparse-record)
-  (lambda (generic tags)
-    (declare (ignore generic))
-    (let ((tag (cadr tags)))
-      (cond ((record-type? (dispatch-tag-contents tag))
-	     (standard-unparser-method
-	      (strip-angle-brackets
-	       (%record-type-name (dispatch-tag-contents tag)))
-	      #f))
-	    ((eq? tag record-type-type-tag)
-	     (standard-unparser-method 'record-type
-	       (lambda (type port)
-		 (write-char #\space port)
-		 (display (%record-type-name type) port))))
-	    ((eq? tag (built-in-dispatch-tag 'dispatch-tag))
-	     (simple-unparser-method 'dispatch-tag
-	       (lambda (tag)
-		 (list (dispatch-tag-contents tag)))))
-	    (else
-	     (standard-unparser-method 'record #f))))))
+(defer-boot-action 'record/procedures
+  (lambda ()
+    (set! unparse-record
+	  (standard-predicate-dispatcher 'unparse-record 2))
+
+    (define-predicate-dispatch-default-handler unparse-record
+      (standard-unparser-method 'record #f))
+
+    (define-predicate-dispatch-handler unparse-record
+      (list any-object? record?)
+      (standard-unparser-method
+       (lambda (record)
+	 (strip-angle-brackets
+	  (%record-type-name (%record-type-descriptor record))))
+       #f))
+
+    (define-predicate-dispatch-handler unparse-record
+      (list any-object? record-type?)
+      (standard-unparser-method 'record-type
+	(lambda (type port)
+	  (write-char #\space port)
+	  (display (%record-type-name type) port))))
+
+    (define-predicate-dispatch-handler unparse-record
+      (list any-object? dispatch-tag?)
+      (simple-unparser-method 'dispatch-tag
+	(lambda (tag)
+	  (list (dispatch-tag-contents tag)))))))
 
 (define set-record-type-unparser-method!
   (deferred-property-setter
     (variable-setter set-record-type-unparser-method!)
     (named-lambda (set-record-type-unparser-method! record-type method)
-      (guarantee-record-type record-type 'set-record-type-unparser-method!)
-      (if (and method (not (unparser-method? method)))
-	  (error:not-a unparser-method? method
-		       'set-record-type-unparser-method!))
-      (let ((tag (%record-type-dispatch-tag record-type)))
-	(remove-generic-procedure-generators
-	 unparse-record
-	 (list (record-type-dispatch-tag rtd:unparser-state) tag))
-	(if method
-	    (add-generic-procedure-generator unparse-record
-	      (lambda (generic tags)
-		(declare (ignore generic))
-		(and (eq? (cadr tags) tag)
-		     method))))))))
+      (guarantee unparser-method? method 'set-record-type-unparser-method!)
+      (define-predicate-dispatch-handler unparse-record
+	(list any-object? (record-predicate record-type))
+	method))))
 
 (define record-entity-unparser)
-(defer-generic-init 1 'record-entity-unparser
-  (variable-setter record-entity-unparser)
-  (lambda (generic tags)
-    (declare (ignore generic tags))
-    (lambda (extra)
-      (declare (ignore extra))
+(defer-boot-action 'record/procedures
+  (lambda ()
+    (set! record-entity-unparser
+	  (standard-predicate-dispatcher 'record-entity-unparser 1))
+
+    (define-predicate-dispatch-default-handler record-entity-unparser
       (standard-unparser-method 'entity #f))))
 
 (define set-record-type-entity-unparser-method!
   (deferred-property-setter
     (variable-setter set-record-type-entity-unparser-method!)
     (named-lambda (set-record-type-entity-unparser-method! record-type method)
-      (guarantee-record-type record-type
-			     'set-record-type-entity-unparser-method!)
-      (if (and method (not (unparser-method? method)))
-	  (error:not-a unparser-method? method
-		       'set-record-type-entity-unparser-method!))
-      (let ((tag (%record-type-dispatch-tag record-type)))
-	(remove-generic-procedure-generators record-entity-unparser (list tag))
-	(if method
-	    ;; Kludge to make generic dispatch work.
-	    (let ((method (lambda (extra) extra method)))
-	      (add-generic-procedure-generator record-entity-unparser
-		(lambda (generic tags)
-		  generic
-		  (and (eq? (car tags) tag) method)))))))))
+      (guarantee unparser-method? method
+		 'set-record-type-entity-unparser-method!)
+      (define-predicate-dispatch-handler record-entity-unparser
+	(list (record-predicate record-type))
+	(lambda (record)
+	  (declare (ignore record))
+	  method)))))
 
 (define record-description)
-(defer-generic-init 1 'record-description
-  (variable-setter record-description)
-  (lambda (generic tags)
-    (declare (ignore generic))
-    (if (record-type? (dispatch-tag-contents (car tags)))
-	(lambda (record)
-	  (let ((type (%record-type-descriptor record)))
-	    (map (lambda (field-name)
-		   `(,field-name
-		     ,((record-accessor type field-name) record)))
-		 (record-type-field-names type))))
-	(lambda (record)
-	  (let loop ((i (fix:- (%record-length record) 1)) (d '()))
-	    (if (fix:< i 0)
-		d
-		(loop (fix:- i 1)
-		      (cons (list i (%record-ref record i)) d))))))))
+(defer-boot-action 'record/procedures
+  (lambda ()
+    (set! record-description
+	  (standard-predicate-dispatcher 'record-description 1))
+
+    (define-predicate-dispatch-default-handler record-description
+      (lambda (record)
+	(let loop ((i (fix:- (%record-length record) 1)) (d '()))
+	  (if (fix:< i 0)
+	      d
+	      (loop (fix:- i 1)
+		    (cons (list i (%record-ref record i)) d))))))
+
+    (define-predicate-dispatch-handler record-description
+      (list record?)
+      (lambda (record)
+	(let ((type (%record-type-descriptor record)))
+	  (map (lambda (field-name)
+		 `(,field-name
+		   ,((record-accessor type field-name) record)))
+	       (record-type-field-names type)))))))
 
 (define set-record-type-describer!
   (deferred-property-setter
     (variable-setter set-record-type-describer!)
     (named-lambda (set-record-type-describer! record-type describer)
-      (guarantee-record-type record-type 'set-record-type-describer!)
-      (if describer
-	  (guarantee unary-procedure? describer 'set-record-type-describer!))
-      (define-unary-generic-handler record-description record-type describer))))
+      (guarantee unary-procedure? describer 'set-record-type-describer!)
+      (define-predicate-dispatch-handler record-description
+	(list (record-predicate record-type))
+	describer))))
 
 (define record-entity-describer)
-(defer-generic-init 1 'record-entity-describer
-  (variable-setter record-entity-describer)
-  (lambda (generic tags)
-    (declare (ignore generic tags))
-    (lambda (extra)
-      (declare (ignore extra))
+(defer-boot-action 'record/procedures
+  (lambda ()
+    (set! record-entity-describer
+	  (standard-predicate-dispatcher 'record-entity-describer 1))
+
+    (define-predicate-dispatch-default-handler record-entity-describer
       (lambda (entity)
 	(declare (ignore entity))
 	#f))))
@@ -379,24 +368,10 @@ USA.
   (deferred-property-setter
     (variable-setter set-record-type-entity-describer!)
     (named-lambda (set-record-type-entity-describer! record-type describer)
-      (guarantee-record-type record-type 'set-record-type-entity-describer!)
-      (if describer
-	  (guarantee unary-procedure? describer
-		     'set-record-type-entity-describer!))
-      (define-unary-generic-handler record-entity-describer record-type
-	;; Kludge to make generic dispatch work.
-	(lambda (extra)
-	  extra
-	  describer)))))
-
-(define (define-unary-generic-handler generic record-type handler)
-  (let ((tag (%record-type-dispatch-tag record-type)))
-    (remove-generic-procedure-generators generic (list tag))
-    (if handler
-        (add-generic-procedure-generator generic
-          (lambda (generic tags)
-            generic
-            (and (eq? (car tags) tag) handler))))))
+      (guarantee unary-procedure? describer 'set-record-type-entity-describer!)
+      (define-predicate-dispatch-handler record-entity-describer
+	(list (record-predicate record-type))
+	describer))))
 
 ;;;; Constructors
 

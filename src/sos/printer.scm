@@ -101,13 +101,9 @@ USA.
       (thunk))
   (write-char #\] port))
 
-(add-generic-procedure-generator unparse-record
-  (lambda (generic tags)
-    generic
-    (and (let ((class (dispatch-tag-contents (cadr tags))))
-	   (and (class? class)
-		(subclass? class <instance>)))
-	 (general-unparser-method write-instance))))
+(define-predicate-dispatch-handler unparse-record
+  (list any-object? instance?)
+  (general-unparser-method write-instance))
 
 (add-generic-procedure-generator pp-description
   (lambda (generic tags)
