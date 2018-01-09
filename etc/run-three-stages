@@ -94,6 +94,7 @@ find_stage ()
         fi
         find_build_stage stage0 && return 0
 	find_dist_stage $(pwd)/stage0 && return 0
+        find_build_stage build && return 0
 	find_dist_stage /usr/local && return 0
     else
         find_build_stage "${1}" && return 0
