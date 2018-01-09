@@ -34,14 +34,10 @@ USA.
 (declare (usual-integrations))
 
 (define (make-dispatch-tag contents)
-  (let ((tag
-	 ((ucode-primitive object-set-type)
-	  (ucode-type record)
-	  ((ucode-primitive vector-cons) dispatch-tag-index-end #f))))
-    (%record-set! tag 0 dispatch-tag-marker)
+  (let ((tag (%make-record dispatch-tag-marker dispatch-tag-index-end)))
     (%record-set! tag 1 contents)
     (do ((i dispatch-tag-index-start (fix:+ i 1)))
-	((fix:= i dispatch-tag-index-end))
+	((not (fix:< i dispatch-tag-index-end)))
       (%record-set! tag i (get-dispatch-tag-cache-number)))
     tag))
 
@@ -54,9 +50,7 @@ USA.
     (lambda (tag)
       (list (dispatch-tag-contents tag)))))
 
-(define-integrable dispatch-tag-marker
-  ((ucode-primitive string->symbol) "#[dispatch-tag]"))
-
+(define-integrable dispatch-tag-marker '|#[dispatch-tag]|)
 (define-integrable dispatch-tag-index-start 2)
 (define-integrable dispatch-tag-index-end 10)
 
