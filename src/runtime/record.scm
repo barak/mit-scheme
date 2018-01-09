@@ -524,7 +524,7 @@ USA.
 ;;;; Printing
 
 (define-unparser-method %record?
- (standard-unparser-method 'record #f))
+  (standard-unparser-method 'record #f))
 
 (define-unparser-method record?
   (standard-unparser-method
@@ -538,15 +538,6 @@ USA.
     (lambda (type port)
       (write-char #\space port)
       (display (%record-type-name type) port))))
-
-(define-unparser-method dispatch-tag?
-  (simple-unparser-method 'dispatch-tag
-    (lambda (tag)
-      (list (dispatch-tag-contents tag)))))
-
-(define (set-record-type-unparser-method! record-type method)
-  (define-unparser-method (record-predicate record-type)
-    method))
 
 (define-pp-describer %record?
   (lambda (record)
@@ -564,10 +555,16 @@ USA.
 	       ,((record-accessor type field-name) record)))
 	   (record-type-field-names type)))))
 
+;;; These are for backwards compatibility:
+
+(define (set-record-type-unparser-method! record-type method)
+  (define-unparser-method (record-predicate record-type)
+    method))
+
 (define (set-record-type-describer! record-type describer)
   (define-pp-describer (record-predicate record-type)
     describer))
-
+
 (define (set-record-type-entity-unparser-method! record-type method)
   (define-unparser-method (record-entity-predicate record-type)
     method))

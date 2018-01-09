@@ -49,6 +49,11 @@ USA.
   (and (%record? object)
        (eq? dispatch-tag-marker (%record-ref object 0))))
 
+(define-unparser-method dispatch-tag?
+  (simple-unparser-method 'dispatch-tag
+    (lambda (tag)
+      (list (dispatch-tag-contents tag)))))
+
 (define-integrable dispatch-tag-marker
   ((ucode-primitive string->symbol) "#[dispatch-tag]"))
 
