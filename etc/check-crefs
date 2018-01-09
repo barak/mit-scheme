@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -e
+
+cd "$(pwd)"/"$(dirname "${0}")"/../build
+for f in $(find * -type f -name \*-unx.crf); do
+    echo '>>>>' "${f}"
+    cat "${f}"
+    echo
+done
