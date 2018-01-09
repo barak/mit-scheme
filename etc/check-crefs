@@ -1,8 +1,15 @@
 #!/bin/bash
 
+# Usage: check-crefs [BUILD-DIR]
+# If no BUILD-DIR, uses dir named "build" in root.
+
 set -e
 
-cd "$(pwd)"/"$(dirname "${0}")"/../build
+if (( ${#} > 0 )); then
+    cd "${1}"
+else
+    cd "$(dirname "${0}")"/../build
+fi
 for f in $(find * -type f -name \*-unx.crf); do
     echo '>>>>' "${f}"
     cat "${f}"
