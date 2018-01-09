@@ -3769,17 +3769,14 @@ USA.
 	  record-type-default-value-by-index
 	  record-type-descriptor
 	  record-type-dispatch-tag
-	  record-type-extension
 	  record-type-field-names
 	  record-type-name
 	  record-type?
 	  record-updater
 	  record?
-	  set-record-type-default-inits!
 	  set-record-type-describer!
 	  set-record-type-entity-describer!
 	  set-record-type-entity-unparser-method!
-	  set-record-type-extension!
 	  set-record-type-unparser-method!)
   (export (runtime)
 	  error:no-such-slot

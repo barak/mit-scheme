@@ -76,14 +76,14 @@ USA.
 (define record-type-type-tag)
 
 (define (initialize-record-type-type!)
-  (let* ((type
+  (let* ((field-names
+	  '#(dispatch-tag name field-names default-inits tag entity-tag))
+	 (type
 	  (%record #f
 		   #f
 		   "record-type"
-		   '#(dispatch-tag name field-names default-inits
-				   extension tag entity-tag)
-		   (vector-cons 7 #f)
-		   #f
+		   field-names
+		   (vector-cons (vector-length field-names) #f)
 		   #f
 		   #f)))
     (set! record-type-type-tag (make-dispatch-tag type))
@@ -91,50 +91,49 @@ USA.
     (%record-set! type 1 record-type-type-tag))
   (initialize-structure-type-type!))
 
-(define (initialize-record-procedures!)
-  (set! %set-record-type-default-inits!
-	%set-record-type-default-inits!/after-boot)
-  unspecific)
-
 (define (make-record-type type-name field-names
 			  #!optional
 			  default-inits unparser-method entity-unparser-method)
   ;; The unparser-method and entity-unparser-method arguments should be removed
   ;; after the 9.3 release.
-  (let ((caller 'MAKE-RECORD-TYPE))
+  (let ((caller 'make-record-type))
     (if (not (list-of-unique-symbols? field-names))
 	(error:not-a list-of-unique-symbols? field-names caller))
-    (let* ((names ((ucode-primitive list->vector) field-names))
-	   (n (vector-length names))
-	   (record-type
-	    (%record record-type-type-tag
-		     #f
-		     (->type-name type-name)
-		     names
-		     (vector-cons n #f)
-		     #f
-		     #f
-		     #f))
-	   (tag (make-dispatch-tag record-type)))
-      (%record-set! record-type 1 tag)
-      (if (not (default-object? default-inits))
-	  (%set-record-type-default-inits! record-type default-inits caller))
-      (let ((predicate
-	     (lambda (object)
-	       (%tagged-record? tag object)))
-	    (entity-predicate
-	     (lambda (object)
-	       (%tagged-record-entity? tag object))))
-	(%set-record-type-predicate! record-type predicate)
-	(%set-record-type-entity-predicate! record-type entity-predicate)
-	(if (and unparser-method
-		 (not (default-object? unparser-method)))
-	    (define-unparser-method predicate unparser-method))
-	(if (and entity-unparser-method
-		 (not (default-object? entity-unparser-method)))
-	    (define-unparser-method entity-predicate entity-unparser-method)))
-      record-type)))
-
+    (let* ((names (list->vector field-names))
+	   (n (vector-length names)))
+      (if (not (or (default-object? default-inits)
+		   (%valid-default-inits? default-inits n)))
+	  (error:wrong-type-argument default-inits
+				     "default initializers"
+				     caller))
+      (let* ((record-type
+	      (%record record-type-type-tag
+		       #f
+		       (->type-name type-name)
+		       names
+		       (if (default-object? default-inits)
+			   (vector-cons n #f)
+			   (list->vector default-inits))
+		       #f
+		       #f))
+	     (tag (make-dispatch-tag record-type)))
+	(%record-set! record-type 1 tag)
+	(let ((predicate
+	       (lambda (object)
+		 (%tagged-record? tag object)))
+	      (entity-predicate
+	       (lambda (object)
+		 (%tagged-record-entity? tag object))))
+	  (%set-record-type-predicate! record-type predicate)
+	  (%set-record-type-entity-predicate! record-type entity-predicate)
+	  (if (and unparser-method
+		   (not (default-object? unparser-method)))
+	      (define-unparser-method predicate unparser-method))
+	  (if (and entity-unparser-method
+		   (not (default-object? entity-unparser-method)))
+	      (define-unparser-method entity-predicate entity-unparser-method)))
+	record-type))))
+
 (define (record-type? object)
   (%tagged-record? record-type-type-tag object))
 
@@ -153,23 +152,17 @@ USA.
 (define-integrable (%record-type-default-inits record-type)
   (%record-ref record-type 4))
 
-(define-integrable (%record-type-extension record-type)
+(define-integrable (%record-type-tag record-type)
   (%record-ref record-type 5))
 
-(define-integrable (%set-record-type-extension! record-type extension)
-  (%record-set! record-type 5 extension))
-
-(define-integrable (%record-type-tag record-type)
-  (%record-ref record-type 6))
-
 (define-integrable (%set-record-type-tag! record-type tag)
-  (%record-set! record-type 6 tag))
+  (%record-set! record-type 5 tag))
 
 (define-integrable (%record-type-entity-tag record-type)
-  (%record-ref record-type 7))
+  (%record-ref record-type 6))
 
 (define-integrable (%set-record-type-entity-tag! record-type tag)
-  (%record-set! record-type 7 tag))
+  (%record-set! record-type 6 tag))
 
 (define-integrable (%record-type-n-fields record-type)
   (vector-length (%record-type-field-names record-type)))
@@ -180,7 +173,7 @@ USA.
 (define-integrable (%record-type-field-name record-type index)
   (vector-ref (%record-type-field-names record-type)
 	      (fix:- index 1)))
-
+
 (define (record-type-dispatch-tag record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-DISPATCH-TAG)
   (%record-type-dispatch-tag record-type))
@@ -199,34 +192,22 @@ USA.
   (guarantee-record-type record-type 'RECORD-TYPE-DEFAULT-INITS)
   (vector->list (%record-type-default-inits record-type)))
 
-(define (set-record-type-default-inits! record-type default-inits)
-  (let ((caller 'SET-RECORD-TYPE-DEFAULT-INITS!))
-    (guarantee-record-type record-type caller)
-    (%set-record-type-default-inits! record-type default-inits caller)))
+(define (%valid-default-inits? default-inits n-fields)
+  (fix:= n-fields (length default-inits)))
 
-(define %set-record-type-default-inits!
-  (lambda (record-type default-inits caller)
-    caller
-    (let ((v (%record-type-default-inits record-type)))
-      (do ((values default-inits (cdr values))
-	   (i 0 (fix:+ i 1)))
-	  ((not (pair? values)))
-	(vector-set! v i (car values))))))
+(defer-boot-action 'record-procedures
+  (lambda ()
+    (set! %valid-default-inits?
+	  (named-lambda (%valid-default-inits? default-inits n-fields)
+	    (and (fix:= n-fields (length default-inits))
+		 (every (lambda (init)
+			  (or (not init)
+			      (thunk? init)))
+			default-inits))))
+    unspecific))
 
-(define %set-record-type-default-inits!/after-boot
-  (named-lambda (%set-record-type-default-inits! record-type default-inits
-						 caller)
-    (let ((v (%record-type-default-inits record-type)))
-      (if (not (fix:= (guarantee-list-of-type->length
-		       default-inits
-		       (lambda (init) (or (not init) (thunk? init)))
-		       "default initializer" caller)
-		      (vector-length v)))
-	  (error:bad-range-argument default-inits caller))
-      (do ((values default-inits (cdr values))
-	   (i 0 (fix:+ i 1)))
-	  ((not (pair? values)))
-	(vector-set! v i (car values))))))
+(define (initialize-record-procedures!)
+  (run-deferred-boot-actions 'record-type-predicates))
 
 (define (record-type-default-value record-type field-name)
   (record-type-default-value-by-index
@@ -237,14 +218,6 @@ USA.
   (let ((init (vector-ref (%record-type-default-inits record-type)
 			  (fix:- field-name-index 1))))
     (and init (init))))
-
-(define (record-type-extension record-type)
-  (guarantee-record-type record-type 'RECORD-TYPE-EXTENSION)
-  (%record-type-extension record-type))
-
-(define (set-record-type-extension! record-type extension)
-  (guarantee-record-type record-type 'SET-RECORD-TYPE-EXTENSION!)
-  (%set-record-type-extension! record-type extension))
 
 (define %record-type-predicate
   %record-type-tag)
