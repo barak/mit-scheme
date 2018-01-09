@@ -57,9 +57,6 @@ differences:
   a procedure of two arguments (the unparser state and the structure
   instance) rather than three as in Common Lisp.
 
-* There is an additional option PRINT-ENTITY-PROCEDURE, used to print
-  an entity whose extra object is a structure instance.
-
 * By default, named structures are tagged with a unique object of some
   kind.  In Common Lisp, the structures are tagged with symbols, but
   that depends on the Common Lisp package system to help generate
@@ -105,7 +102,8 @@ differences:
 		  ,@(accessor-definitions structure)
 		  ,@(modifier-definitions structure)
 		  ,@(predicate-definitions structure)
-		  ,@(copier-definitions structure))))))))
+		  ,@(copier-definitions structure)
+		  ,@(printer-definitions structure))))))))
 
 ;;;; Parse options
 
@@ -118,8 +116,6 @@ differences:
 	  (copier-option (find-option 'COPIER options))
 	  (predicate-option (find-option 'PREDICATE options))
 	  (print-procedure-option (find-option 'PRINT-PROCEDURE options))
-	  (print-entity-procedure-option
-	   (find-option 'PRINT-ENTITY-PROCEDURE options))
 	  (type-option (find-option 'TYPE options))
 	  (type-descriptor-option (find-option 'TYPE-DESCRIPTOR options))
 	  (named-option (find-option 'NAMED options))
@@ -138,8 +134,7 @@ differences:
 	    (check-for-illegal-untyped named-option initial-offset-option))
 	(if (not tagged?)
 	    (check-for-illegal-untagged predicate-option
-					print-procedure-option
-					print-entity-procedure-option))
+					print-procedure-option))
 	(do ((slots slots (cdr slots))
 	     (index (if tagged? (+ offset 1) offset) (+ index 1)))
 	    ((not (pair? slots)))
@@ -166,9 +161,6 @@ differences:
 				(option/argument print-procedure-option)
 				(and type-option
 				     (default-unparser-text context)))
-			    (if print-entity-procedure-option
-				(option/argument print-entity-procedure-option)
-				#f)
 			    (if type-option
 				(option/argument type-option)
 				'RECORD)
@@ -222,8 +214,7 @@ differences:
 	(lose initial-offset-option))))
 
 (define (check-for-illegal-untagged predicate-option
-				    print-procedure-option
-				    print-entity-procedure-option)
+				    print-procedure-option)
   (let ((test
 	 (lambda (option)
 	   (if (and option
@@ -233,8 +224,7 @@ differences:
 	       (error "Structure option illegal for unnamed structure:"
 		      (option/original option))))))
     (test predicate-option)
-    (test print-procedure-option)
-    (test print-entity-procedure-option)))
+    (test print-procedure-option)))
 
 (define (compute-constructors constructor-options
 			      keyword-constructor-options
@@ -438,13 +428,6 @@ differences:
       (lambda (arg)
 	`(PRINT-PROCEDURE ,(if (false-expression? arg context) #f arg))))))
 
-(define-option 'PRINT-ENTITY-PROCEDURE #f
-  (lambda (option context)
-    (one-required-argument option
-      (lambda (arg)
-	`(PRINT-ENTITY-PROCEDURE
-	  ,(if (false-expression? arg context) #f arg))))))
-
 (define-option 'TYPE #f
   (lambda (option context)
     context
@@ -558,9 +541,8 @@ differences:
 
 (define-record-type <structure>
     (make-structure context conc-name constructors keyword-constructors copier
-		    predicate print-procedure print-entity-procedure
-		    physical-type named? type-descriptor tag-expression
-		    safe-accessors? offset slots)
+		    predicate print-procedure physical-type named?
+		    type-descriptor tag-expression safe-accessors? offset slots)
     structure?
   (context structure/context)
   (conc-name structure/conc-name)
@@ -569,7 +551,6 @@ differences:
   (copier structure/copier)
   (predicate structure/predicate)
   (print-procedure structure/print-procedure)
-  (print-entity-procedure structure/print-entity-procedure)
   (physical-type structure/physical-type)
   (named? structure/tagged?)
   (type-descriptor structure/type-descriptor)
@@ -806,9 +787,7 @@ differences:
   (let ((type-name (structure/type-descriptor structure))
 	(tag-expression (structure/tag-expression structure))
 	(slots (structure/slots structure))
-	(context (structure/context structure))
-	(print-procedure (structure/print-procedure structure))
-	(print-entity-procedure (structure/print-entity-procedure structure)))
+	(context (structure/context structure)))
     (let ((name (symbol->string (parser-context/name context)))
 	  (field-names (map slot/name slots))
 	  (inits
@@ -823,34 +802,36 @@ differences:
 	       `(,(absolute 'MAKE-RECORD-TYPE context)
 		 ',name
 		 ',field-names
-		 (LIST ,@inits)
-		 ,(close print-procedure context)
-		 ,@(if print-entity-procedure
-		       (list (close print-entity-procedure context))
-		       '()))
+		 (LIST ,@inits))
 	       `(,(absolute 'MAKE-DEFINE-STRUCTURE-TYPE context)
 		 ',(structure/physical-type structure)
 		 ',name
 		 '#(,@field-names)
 		 '#(,@(map slot/index slots))
 		 (VECTOR ,@inits)
-		 ,(if (structure/tagged? structure)
-		      (close print-procedure context)
-		      '#F)
+		 ;; This field was the print-procedure, no longer used.
+		 ;; It should be removed after 9.3 is released.
+		 #f
 		 ,(if (and tag-expression
 			   (not (eq? tag-expression type-name)))
 		      (close tag-expression context)
 		      '#F)
 		 ',(+ (if (structure/tagged? structure) 1 0)
 		      (structure/offset structure)
-		      (length slots))
-		 ,@(if (and (structure/tagged? structure)
-			    print-entity-procedure)
-		       (list (close print-entity-procedure context))
-		       '()))))
+		      (length slots)))))
 	,@(if (and tag-expression
 		   (not (eq? tag-expression type-name)))
 	      `((,(absolute 'NAMED-STRUCTURE/SET-TAG-DESCRIPTION! context)
 		 ,(close tag-expression context)
 		 ,type-name))
 	      '())))))
+
+(define (printer-definitions structure)
+  (if (and (structure/predicate structure)
+	   (or (structure/record-type? structure)
+	       (structure/tagged? structure)))
+      (let ((context (structure/context structure)))
+	`((define-unparser-method
+	    ,(close (structure/predicate structure) context)
+	    ,(close (structure/print-procedure structure) context))))
+      '()))

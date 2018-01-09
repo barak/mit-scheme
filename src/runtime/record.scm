@@ -99,6 +99,8 @@ USA.
 (define (make-record-type type-name field-names
 			  #!optional
 			  default-inits unparser-method entity-unparser-method)
+  ;; The unparser-method and entity-unparser-method arguments should be removed
+  ;; after the 9.3 release.
   (let ((caller 'MAKE-RECORD-TYPE))
     (if (not (list-of-unique-symbols? field-names))
 	(error:not-a list-of-unique-symbols? field-names caller))
@@ -117,19 +119,20 @@ USA.
       (%record-set! record-type 1 tag)
       (if (not (default-object? default-inits))
 	  (%set-record-type-default-inits! record-type default-inits caller))
-      (%set-record-type-predicate! record-type
-	(lambda (object)
-	  (%tagged-record? tag object)))
-      (%set-record-type-entity-predicate! record-type
-	(lambda (object)
-	  (%tagged-record-entity? tag object)))
-      (if (and unparser-method
-	       (not (default-object? unparser-method)))
-	  (set-record-type-unparser-method! record-type unparser-method))
-      (if (and entity-unparser-method
-	       (not (default-object? entity-unparser-method)))
-	  (set-record-type-entity-unparser-method! record-type
-						   entity-unparser-method))
+      (let ((predicate
+	     (lambda (object)
+	       (%tagged-record? tag object)))
+	    (entity-predicate
+	     (lambda (object)
+	       (%tagged-record-entity? tag object))))
+	(%set-record-type-predicate! record-type predicate)
+	(%set-record-type-entity-predicate! record-type entity-predicate)
+	(if (and unparser-method
+		 (not (default-object? unparser-method)))
+	    (define-unparser-method predicate unparser-method))
+	(if (and entity-unparser-method
+		 (not (default-object? entity-unparser-method)))
+	    (define-unparser-method entity-predicate entity-unparser-method)))
       record-type)))
 
 (define (record-type? object)
@@ -564,7 +567,7 @@ USA.
 (define (set-record-type-describer! record-type describer)
   (define-pp-describer (record-predicate record-type)
     describer))
-
+
 (define (set-record-type-entity-unparser-method! record-type method)
   (define-unparser-method (record-entity-predicate record-type)
     method))
@@ -579,24 +582,20 @@ USA.
   (set! rtd:structure-type
 	(make-record-type "structure-type"
 			  '(PHYSICAL-TYPE NAME FIELD-NAMES FIELD-INDEXES
-					  DEFAULT-INITS UNPARSER-METHOD TAG
-					  LENGTH ENTITY-UNPARSER-METHOD)))
+					  DEFAULT-INITS TAG LENGTH)))
   (set! make-define-structure-type
 	(let ((constructor (record-constructor rtd:structure-type)))
 	  (lambda (physical-type name field-names field-indexes default-inits
-				 unparser-method tag length
-				 #!optional entity-unparser-method)
+				 unparser-method tag length)
+	    ;; unparser-method arg should be removed after 9.3 is released.
+	    (declare (ignore unparser-method))
 	    (constructor physical-type
 			 name
 			 field-names
 			 field-indexes
 			 default-inits
-			 unparser-method
 			 tag
-			 length
-			 (if (default-object? entity-unparser-method)
-			     #f
-			     entity-unparser-method)))))
+			 length))))
   (set! structure-type?
 	(record-predicate rtd:structure-type))
   (set! structure-type/physical-type
@@ -609,18 +608,10 @@ USA.
 	(record-accessor rtd:structure-type 'FIELD-INDEXES))
   (set! structure-type/default-inits
 	(record-accessor rtd:structure-type 'DEFAULT-INITS))
-  (set! structure-type/unparser-method
-	(record-accessor rtd:structure-type 'UNPARSER-METHOD))
-  (set! set-structure-type/unparser-method!
-	(record-modifier rtd:structure-type 'UNPARSER-METHOD))
   (set! structure-type/tag
 	(record-accessor rtd:structure-type 'TAG))
   (set! structure-type/length
 	(record-accessor rtd:structure-type 'LENGTH))
-  (set! structure-type/entity-unparser-method
-	(record-accessor rtd:structure-type 'ENTITY-UNPARSER-METHOD))
-  (set! set-structure-type/entity-unparser-method!
-	(record-modifier rtd:structure-type 'ENTITY-UNPARSER-METHOD))
   unspecific)
 
 (define rtd:structure-type)
@@ -635,8 +626,6 @@ USA.
 (define set-structure-type/unparser-method!)
 (define structure-type/tag)
 (define structure-type/length)
-(define structure-type/entity-unparser-method)
-(define set-structure-type/entity-unparser-method!)
 
 (define-integrable (structure-type/field-index type field-name)
   (vector-ref (structure-type/field-indexes type)
@@ -660,14 +649,6 @@ USA.
 	    i
 	    (loop (fix:+ i 1)))))))
 
-(define (structure-tag/unparser-method tag physical-type)
-  (and (structure-type-tag? tag physical-type)
-       (structure-type/unparser-method (tag->structure-type tag))))
-
-(define (structure-tag/entity-unparser-method tag physical-type)
-  (and (structure-type-tag? tag physical-type)
-       (structure-type/entity-unparser-method (tag->structure-type tag))))
-
 (define (named-structure? object)
   (or (named-list? object)
       (named-vector? object)

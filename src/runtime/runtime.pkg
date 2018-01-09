@@ -3785,9 +3785,6 @@ USA.
 	  error:no-such-slot
 	  error:uninitialized-slot
 	  record-type-field-index)
-  (export (runtime unparser)
-	  structure-tag/entity-unparser-method
-	  structure-tag/unparser-method)
   (export (runtime predicate-metadata)
 	  cleanup-boot-time-record-predicates!)
   (export (runtime predicate-tagging)
@@ -4852,9 +4849,7 @@ USA.
 	  get-param:unparser-list-breadth-limit
 	  get-param:unparser-list-depth-limit
 	  make-unparser-state
-	  unparse-list/prefix-pair?
-	  unparse-list/unparser
-	  unparse-vector/unparser)
+	  unparse-list/prefix-pair?)
   (export (runtime record)
 	  (rtd:unparser-state <context>)))
 

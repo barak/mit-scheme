@@ -737,10 +737,7 @@ USA.
 		 (make-prefix-node prefix
 				   (numerical-walk (cadr object)
 						   list-depth))
-		 (let ((unparser (unparse-list/unparser object)))
-		   (if unparser
-		       (walk-custom unparser object list-depth)
-		       (walk-pair object list-depth))))))
+		 (walk-pair object list-depth))))
 	  ((symbol? object)
 	   (if (or (get-param:pp-uninterned-symbols-by-name?)
 		   (interned-symbol? object))
@@ -759,12 +756,9 @@ USA.
 	  ((vector? object)
 	   (if (zero? (vector-length object))
 	       (walk-custom unparse-object object list-depth)
-	       (let ((unparser (unparse-vector/unparser object)))
-		 (if unparser
-		     (walk-custom unparser object list-depth)
-		     (make-prefix-node "#"
-				       (walk-pair (vector->list object)
-						  list-depth))))))
+	       (make-prefix-node "#"
+				 (walk-pair (vector->list object)
+					    list-depth))))
 	  ((primitive-procedure? object)
 	   (if (get-param:pp-primitives-by-name?)
 	       (primitive-procedure-name object)
@@ -817,8 +811,7 @@ USA.
 		 (make-list-node
 		  (numerical-walk (car pair) list-depth)
 		  (let ((list-breadth (+ list-breadth 1)))
-		    (if (and (pair? (cdr pair))
-			     (not (unparse-list/unparser (cdr pair))))
+		    (if (pair? (cdr pair))
 			(loop (cdr pair) list-breadth)
 			(make-list-node
 			 "."
@@ -902,11 +895,8 @@ USA.
 		 (cadr object)
 		 (advance half-pointer (update-queue queue '(CDR CAR)))
 		 list-depth))
-	       (let ((unparser (unparse-list/unparser object)))
-		 (if unparser
-		     (walk-custom unparser object list-depth)
-		     (walk-pair-terminating object half-pointer/queue
-					    list-depth))))))
+	       (walk-pair-terminating object half-pointer/queue
+				      list-depth))))
 	((symbol? object)
 	 (if (or (get-param:pp-uninterned-symbols-by-name?)
 		 (interned-symbol? object))
@@ -922,14 +912,11 @@ USA.
 	((vector? object)
 	 (if (zero? (vector-length object))
 	     (walk-custom unparse-object object list-depth)
-	     (let ((unparser (unparse-vector/unparser object)))
-	       (if unparser
-		   (walk-custom unparser object list-depth)
-		   (make-prefix-node
-		    "#"
-		    (walk-vector-terminating
-		     (vector->list object)
-		     half-pointer/queue list-depth))))))
+	     (make-prefix-node
+	      "#"
+	      (walk-vector-terminating
+	       (vector->list object)
+	       half-pointer/queue list-depth))))
 	((primitive-procedure? object)
 	 (if (get-param:pp-primitives-by-name?)
 	     (primitive-procedure-name object)
@@ -975,8 +962,7 @@ USA.
 			 (car pair) half-pointer/queue list-depth)))
 		  (let ((list-breadth (+ list-breadth 1)))
 		    (if
-		     (and (pair? (cdr pair))
-			  (not (unparse-list/unparser (cdr pair))))
+		     (pair? (cdr pair))
 		     (let ((half-pointer/queue
 			    (advance
 			     (car half-pointer/queue)
@@ -1041,21 +1027,7 @@ USA.
 			(circularity-string (cdr half-pointer/queue))
 			(numerical-walk-terminating
 			 (car pair) half-pointer/queue list-depth)))
-		  (let ((list-breadth (+ list-breadth 1)))
-		    (if (not (unparse-list/unparser (cdr pair)))
-			(loop (cdr pair) list-breadth)
-			(make-list-node
-			 "."
-			 (make-singleton-list-node
-			  (if (let ((limit
-				     (get-param:unparser-list-breadth-limit)))
-				(and limit
-				     (>= list-breadth limit)
-				     (no-highlights? pair)))
-			      "..."
-			      (numerical-walk-terminating
-			       (cdr pair)
-			       half-pointer/queue list-depth)))))))))))))
+		  (loop (cdr pair) (+ list-breadth 1)))))))))
 
 ;;;; These procedures allow the walkers to interact with the queue.
 

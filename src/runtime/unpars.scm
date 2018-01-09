@@ -568,24 +568,6 @@ USA.
           (loop (fix:- index 1))))))
 
 (define (unparse/vector vector context)
-  (let ((method (unparse-vector/unparser vector)))
-    (if method
-        (invoke-user-method method vector context)
-        (unparse-vector/normal vector context))))
-
-(define (unparse-vector/unparser vector)
-  (and (fix:> (vector-length vector) 0)
-       (let ((tag (safe-vector-ref vector 0)))
-         (or (structure-tag/unparser-method tag 'VECTOR)
-             ;; Check the global tagging table too.
-             (unparser/tagged-vector-method tag)))))
-
-(define (unparse-vector/entity-unparser vector)
-  (and (fix:> (vector-length vector) 0)
-       (structure-tag/entity-unparser-method (safe-vector-ref vector 0)
-                                             'VECTOR)))
-
-(define (unparse-vector/normal vector context)
   (limit-unparse-depth context
     (lambda (context*)
       (let ((end (vector-length vector)))
@@ -653,8 +635,6 @@ USA.
 (define (unparse/pair pair context)
   (cond ((unparse-list/prefix-pair? pair)
          => (lambda (prefix) (unparse-list/prefix-pair prefix pair context)))
-        ((unparse-list/unparser pair)
-         => (lambda (method) (invoke-user-method method pair context)))
         ((and (get-param:unparse-streams?) (stream-pair? pair))
          (unparse-list/stream-pair pair context))
         (else
@@ -678,33 +658,18 @@ USA.
 
 (define (unparse-tail l n context)
   (cond ((pair? l)
-         (let ((method (unparse-list/unparser l)))
-           (if method
-               (begin
-                 (*unparse-string " . " context)
-                 (invoke-user-method method l context))
-               (begin
-                 (*unparse-char #\space context)
-                 (*unparse-object (safe-car l) context)
-                 (if (let ((limit (context-list-breadth-limit context)))
-                       (and limit
-                            (>= n limit)
-                            (pair? (safe-cdr l))))
-                     (*unparse-string " ..." context)
-                     (unparse-tail (safe-cdr l) (+ n 1) context))))))
+	 (*unparse-char #\space context)
+	 (*unparse-object (safe-car l) context)
+	 (if (let ((limit (context-list-breadth-limit context)))
+	       (and limit
+		    (>= n limit)
+		    (pair? (safe-cdr l))))
+	     (*unparse-string " ..." context)
+	     (unparse-tail (safe-cdr l) (+ n 1) context)))
         ((not (null? l))
          (*unparse-string " . " context)
          (*unparse-object l context))))
-
-(define (unparse-list/unparser pair)
-  (let ((tag (safe-car pair)))
-    (or (structure-tag/unparser-method tag 'LIST)
-        ;; Check the global tagging table too.
-        (unparser/tagged-pair-method tag))))
 
-(define (unparse-list/entity-unparser pair)
-  (structure-tag/entity-unparser-method (safe-car pair) 'LIST))
-
 (define (unparse-list/prefix-pair prefix pair context)
   (*unparse-string prefix context)
   (*unparse-object (safe-car (safe-cdr pair)) context))
@@ -910,12 +875,6 @@ USA.
                  (else (plain 'ARITY-DISPATCHED-PROCEDURE)))))
         ((get-param:unparse-with-maximum-readability?)
          (*unparse-readable-hash entity context))
-        ((or (and (vector? (%entity-extra entity))
-                  (unparse-vector/entity-unparser (%entity-extra entity)))
-             (and (pair? (%entity-extra entity))
-                  (unparse-list/entity-unparser (%entity-extra entity))))
-         => (lambda (method)
-              (invoke-user-method method entity context)))
         (else (plain 'ENTITY))))
 
 (define (unparse/promise promise context)
