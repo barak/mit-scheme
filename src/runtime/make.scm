@@ -360,6 +360,7 @@ USA.
 	 ("queue" . (RUNTIME SIMPLE-QUEUE))
 	 ("equals" . (RUNTIME EQUALITY))
 	 ("list" . (RUNTIME LIST))
+	 ("srfi-1" . (runtime srfi-1))
 	 ("vector" . (RUNTIME VECTOR))))
       (files1
        '(("ustring" . (RUNTIME USTRING))
