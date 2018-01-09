@@ -28,6 +28,8 @@ USA.
 
 (declare (usual-integrations))
 
+(load-option 'sos)
+
 (define-test 'REGRESSION:REMOVE-GENERIC-PROCEDURE-GENERATOR
   (lambda ()
     (define generic (make-generic-procedure 1))

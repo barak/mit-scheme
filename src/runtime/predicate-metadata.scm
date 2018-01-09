@@ -292,7 +292,6 @@ USA.
    (register-predicate! compiled-procedure? 'compiled-procedure '<= procedure?)
    (register-predicate! entity? 'entity '<= procedure?)
    (register-predicate! record-entity? 'record-entity '<= entity?)
-   (register-predicate! generic-procedure? 'generic-procedure '<= procedure?)
    (register-predicate! memoizer? 'memoizer '<= apply-hook?)
    (register-predicate! primitive-procedure? 'primitive-procedure
 			'<= procedure?)

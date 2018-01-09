@@ -61,7 +61,6 @@ USA.
     "runtime/test-ephemeron"
     ("runtime/test-file-attributes" (runtime))
     "runtime/test-floenv"
-    "runtime/test-genmult"
     "runtime/test-hash-table"
     "runtime/test-integer-bits"
     "runtime/test-md5"
@@ -83,6 +82,7 @@ USA.
     "runtime/test-url"
     ("runtime/test-wttree" (runtime wt-tree))
     ;;"ffi/test-ffi"
+    "sos/test-genmult"
     ))
 
 (with-working-directory-pathname

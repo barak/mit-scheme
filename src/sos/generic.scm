@@ -25,10 +25,9 @@ USA.
 |#
 
 ;;;; Generic Procedures
-;;; package: (runtime generic-procedure)
+;;; package: (sos generic-procedure)
 
-(declare (usual-integrations)
-	 (integrate-external "gentag" "gencache"))
+(declare (usual-integrations))
 
 ;;;; Generic Procedures
 
@@ -289,169 +288,22 @@ USA.
 	  (fill-cache (generic-record/cache record) tags procedure))))
       (apply procedure args))))
 
-;;;; Object Tags
+(define standard-generic-procedure-tag
+  (make-dispatch-tag 'standard-generic-procedure))
+(define generic-procedure-records (make-eqht))
+(define generic-procedure-records-mutex (make-thread-mutex))
 
-;;; We assume that most new data types will be constructed from tagged
-;;; vectors, and therefore we should optimize the path for such
-;;; structures as much as possible.
+(define condition-type:no-applicable-methods
+  (make-condition-type 'NO-APPLICABLE-METHODS condition-type:error
+		       '(OPERATOR OPERANDS)
+    (lambda (condition port)
+      (write-string "No applicable methods for " port)
+      (write (access-condition condition 'OPERATOR) port)
+      (write-string " with these arguments: " port)
+      (write (access-condition condition 'OPERANDS) port)
+      (write-string "." port))))
 
-(define (dispatch-tag object)
-  (declare (integrate object))
-  (declare (ignore-reference-traps (set microcode-type-tag-table
-					microcode-type-method-table)))
-  (if (and (%record? object)
-	   (%record? (%record-ref object 0))
-	   (eq? dispatch-tag-marker (%record-ref (%record-ref object 0) 0)))
-      (%record-ref object 0)
-      (if (vector-ref microcode-type-tag-table (object-type object))
-	  (vector-ref microcode-type-tag-table (object-type object))
-	  ((vector-ref microcode-type-method-table (object-type object))
-	   object))))
-
-(define (make-built-in-tag names)
-  (let ((tags (map built-in-dispatch-tag names)))
-    (if (any (lambda (tag) tag) tags)
-	(let ((tag (car tags)))
-	  (if (not (and (every (lambda (tag*)
-				 (eq? tag* tag))
-			       (cdr tags))
-			(let ((names* (dispatch-tag-contents tag)))
-			  (and (every (lambda (name)
-					(memq name names*))
-				      names)
-			       (every (lambda (name)
-					(memq name names))
-				      names*)))))
-	      (error "Illegal built-in tag redefinition:" names))
-	  tag)
-	(let ((tag (make-dispatch-tag (list-copy names))))
-	  (set! built-in-tags (cons tag built-in-tags))
-	  tag))))
-
-(define (built-in-dispatch-tags)
-  (list-copy built-in-tags))
-
-(define (built-in-dispatch-tag name)
-  (find-matching-item built-in-tags
-    (lambda (tag)
-      (memq name (dispatch-tag-contents tag)))))
-
-(define condition-type:no-applicable-methods)
-(define error:no-applicable-methods)
-
-(define (initialize-conditions!)
-  (set! condition-type:no-applicable-methods
-	(make-condition-type 'NO-APPLICABLE-METHODS condition-type:error
-	    '(OPERATOR OPERANDS)
-	  (lambda (condition port)
-	    (write-string "No applicable methods for " port)
-	    (write (access-condition condition 'OPERATOR) port)
-	    (write-string " with these arguments: " port)
-	    (write (access-condition condition 'OPERANDS) port)
-	    (write-string "." port))))
-  (set! error:no-applicable-methods
-	(condition-signaller condition-type:no-applicable-methods
-			     '(OPERATOR OPERANDS)
-			     standard-error-handler))
-  unspecific)
-
-;;;; Initialization
-
-(define standard-generic-procedure-tag)
-(define generic-procedure-records)
-(define generic-procedure-records-mutex)
-(define built-in-tags)
-(define microcode-type-tag-table)
-(define microcode-type-method-table)
-
-(define (initialize-generic-procedures!)
-  (set! standard-generic-procedure-tag
-	(make-dispatch-tag 'STANDARD-GENERIC-PROCEDURE))
-  (set! generic-procedure-records (make-eqht))
-  (set! generic-procedure-records-mutex (make-thread-mutex))
-
-  ;; Initialize the built-in tag tables.
-  (set! built-in-tags '())
-  (set! microcode-type-tag-table
-	(make-initialized-vector (microcode-type/code-limit)
-	  (lambda (code)
-	    (make-built-in-tag
-	     (let ((names (microcode-type/code->names code)))
-	       (if (pair? names)
-		   names
-		   '(OBJECT)))))))
-  (set! microcode-type-method-table
-	(make-vector (microcode-type/code-limit) #f))
-  (let ((assign-type
-	 (lambda (name get-method)
-	   (let ((code (microcode-type/name->code name)))
-	     (vector-set! microcode-type-method-table code
-			  (get-method
-			   (vector-ref microcode-type-tag-table code)))
-	     (vector-set! microcode-type-tag-table code #f)))))
-    (define-integrable (maybe-generic object default-tag)
-      (let ((record (with-thread-mutex-lock generic-procedure-records-mutex
-		      (lambda ()
-			(eqht/get generic-procedure-records object #f)))))
-	(if record
-	    (generic-record/tag record)
-	    default-tag)))
-    (let ((procedure-type
-	   (lambda (default-tag)
-	     (lambda (object)
-	       (maybe-generic object default-tag)))))
-      (assign-type 'EXTENDED-PROCEDURE procedure-type)
-      (assign-type 'PROCEDURE procedure-type))
-    (assign-type
-     'COMPILED-ENTRY
-     (let ((procedure-tag (make-built-in-tag '(COMPILED-PROCEDURE)))
-	   (return-address-tag (make-built-in-tag '(COMPILED-RETURN-ADDRESS)))
-	   (expression-tag (make-built-in-tag '(COMPILED-EXPRESSION))))
-       (lambda (default-tag)
-	 (lambda (object)
-	   (case (system-hunk3-cxr0
-		  ((ucode-primitive compiled-entry-kind 1) object))
-	     ((0) (maybe-generic object procedure-tag))
-	     ((1) return-address-tag)
-	     ((2) expression-tag)
-	     (else default-tag))))))
-    (let ((boolean-tag (make-built-in-tag '(BOOLEAN))))
-      (assign-type 'FALSE
-		   (lambda (default-tag)
-		     (lambda (object)
-		       (if (eq? object #f)
-			   boolean-tag
-			   default-tag))))
-      (assign-type 'CONSTANT
-		   (let ((null-tag (make-built-in-tag '(NULL)))
-			 (eof-tag (make-built-in-tag '(EOF)))
-			 (default-tag (make-built-in-tag '(DEFAULT)))
-			 (keyword-tag (make-built-in-tag '(LAMBDA-KEYWORD))))
-		     (lambda (constant-tag)
-		       (lambda (object)
-			 (cond ((eq? object #t) boolean-tag)
-			       ((null? object) null-tag)
-			       ((eof-object? object) eof-tag)
-			       ((default-object? object) default-tag)
-			       ((memq object '(#!optional #!rest #!key #!aux))
-				keyword-tag)
-			       (else constant-tag)))))))
-
-    ;; Flonum length can change size on different architectures, so we
-    ;; measure one.
-    (let ((flonum-length (system-vector-length microcode-id/floating-epsilon)))
-      (assign-type 'FLONUM
-		   (let ((flonum-vector-tag
-			  (make-built-in-tag '(FLONUM-VECTOR))))
-		     (lambda (default-tag)
-		       (lambda (object)
-			 (if (fix:= flonum-length (system-vector-length object))
-			     default-tag
-			     flonum-vector-tag))))))
-    (assign-type 'RECORD
-		 (let ((dt-tag (make-built-in-tag '(DISPATCH-TAG))))
-		   (lambda (default-tag)
-		     (lambda (object)
-		       (if (eq? dispatch-tag-marker (%record-ref object 0))
-			   dt-tag
-			   default-tag)))))))
+(define error:no-applicable-methods
+  (condition-signaller condition-type:no-applicable-methods
+		       '(OPERATOR OPERANDS)
+		       standard-error-handler))

@@ -29,7 +29,89 @@ USA.
 (global-definitions "../runtime/runtime")
 
 (define-package (sos)
-  (parent ()))
+  (parent (runtime)))
+
+(define-package (sos generic-procedure eqht)
+  (files "geneqht")
+  (parent (sos))
+  (export (sos generic-procedure)
+	  eqht/for-each
+	  eqht/get
+	  eqht/put!
+	  make-eqht))
+
+(define-package (sos generic-procedure)
+  (files "generic")
+  (parent (sos))
+  (export ()
+	  generic-procedure-applicable?
+	  generic-procedure-arity
+	  generic-procedure-arity-max
+	  generic-procedure-arity-min
+	  generic-procedure-name
+	  generic-procedure?
+	  guarantee-generic-procedure
+	  make-generic-procedure
+	  purge-generic-procedure-cache
+	  standard-generic-procedure-tag)
+  (export (sos)
+	  condition-type:no-applicable-methods
+	  error:no-applicable-methods)
+  (export (sos generic-procedure multiplexer)
+	  generic-procedure-generator
+	  set-generic-procedure-generator!)
+  (import (runtime tagged-dispatch)
+	  fill-cache
+	  new-cache
+	  probe-cache
+	  probe-cache-1
+	  probe-cache-2
+	  probe-cache-3
+	  probe-cache-4
+	  purge-cache-entries))
+
+(define-package (sos generic-procedure multiplexer)
+  (files "genmult")
+  (parent (sos))
+  (export ()
+	  add-generic-procedure-generator
+	  condition-type:extra-applicable-methods
+	  error:extra-applicable-methods
+	  generic-procedure-default-generator
+	  generic-procedure-generator-list
+	  remove-generic-procedure-generator
+	  remove-generic-procedure-generators
+	  set-generic-procedure-default-generator!))
+
+(define-package (sos tagged-vector)
+  (files "tvector")
+  (parent (sos))
+  (export (sos)
+	  guarantee-tagged-vector
+	  make-tagged-vector
+	  record-slot-uninitialized
+	  set-tagged-vector-element!
+	  set-tagged-vector-tag!
+	  tagged-vector
+	  tagged-vector-element
+	  tagged-vector-element-initialized?
+	  tagged-vector-length
+	  tagged-vector-tag
+	  tagged-vector?))
+
+(define-package (sos record-slot-access)
+  (files "recslot")
+  (parent (sos))
+  (export (sos)
+	  %record-accessor
+	  %record-accessor-generator
+	  %record-initpred
+	  %record-initpred-generator
+	  %record-modifier
+	  %record-modifier-generator
+	  %record-slot-index
+	  %record-slot-name
+	  %record-slot-names))
 
 (define-package (sos slot)
   (files "slot")
@@ -56,9 +138,7 @@ USA.
   (export (sos class)
 	  canonicalize-slot-argument
 	  compute-slot-descriptor
-	  install-slot-accessor-methods)
-  (import (runtime record-slot-access)
-	  error:no-such-slot))
+	  install-slot-accessor-methods))
 
 (define-package (sos class)
   (files "class")
@@ -117,9 +197,7 @@ USA.
 	  subclass?)
   (import (runtime microcode-tables)
 	  microcode-type/code->name
-	  microcode-type/name->code)
-  (import (runtime record-slot-access)
-	  error:no-such-slot))
+	  microcode-type/name->code))
 
 (define-package (sos instance)
   (files "instance")

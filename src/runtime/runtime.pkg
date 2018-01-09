@@ -3739,6 +3739,9 @@ USA.
 	  %record-set!
 	  %record-tag
 	  %record?
+	  condition-type:no-such-slot
+	  condition-type:slot-error
+	  condition-type:uninitialized-slot
 	  copy-record
 	  define-structure/default-value
 	  define-structure/default-value-by-index
@@ -3778,7 +3781,9 @@ USA.
 	  set-record-type-entity-unparser-method!
 	  set-record-type-extension!
 	  set-record-type-unparser-method!)
-  (export (runtime record-slot-access)
+  (export (runtime)
+	  error:no-such-slot
+	  error:uninitialized-slot
 	  record-type-field-index)
   (export (runtime unparser)
 	  structure-tag/entity-unparser-method
@@ -5143,90 +5148,15 @@ USA.
 	  gdbm_wrcreat
 	  gdbm_writer))
 
-(define-package (runtime generic-procedure)
-  (files "gentag" "gencache" "generic")
+(define-package (runtime tagged-dispatch)
+  (files "gentag" "gencache")
   (parent (runtime))
   (export ()
+	  built-in-dispatch-tag
+	  dispatch-tag
 	  dispatch-tag-contents
 	  dispatch-tag?
-	  make-dispatch-tag
-
-	  ;; generic.scm:
-	  built-in-dispatch-tag
-	  built-in-dispatch-tags
-	  condition-type:no-applicable-methods
-	  dispatch-tag
-	  error:no-applicable-methods
-	  generic-procedure-applicable?
-	  generic-procedure-arity
-	  generic-procedure-arity-max
-	  generic-procedure-arity-min
-	  generic-procedure-name
-	  generic-procedure?
-	  guarantee-generic-procedure
-	  make-generic-procedure
-	  purge-generic-procedure-cache
-	  standard-generic-procedure-tag)
-  (export (runtime generic-procedure multiplexer)
-	  generic-procedure-generator
-	  set-generic-procedure-generator!))
-
-(define-package (runtime generic-procedure multiplexer)
-  (files "genmult")
-  (parent (runtime))
-  (export ()
-	  add-generic-procedure-generator
-	  condition-type:extra-applicable-methods
-	  error:extra-applicable-methods
-	  generic-procedure-default-generator
-	  generic-procedure-generator-list
-	  remove-generic-procedure-generator
-	  remove-generic-procedure-generators
-	  set-generic-procedure-default-generator!))
-
-(define-package (runtime tagged-vector)
-  (files "tvector")
-  (parent (runtime))
-  (export ()
-	  guarantee-tagged-vector
-	  make-tagged-vector
-	  record-slot-uninitialized
-	  set-tagged-vector-element!
-	  set-tagged-vector-tag!
-	  tagged-vector
-	  tagged-vector-element
-	  tagged-vector-element-initialized?
-	  tagged-vector-length
-	  tagged-vector-tag
-	  tagged-vector?))
-
-(define-package (runtime record-slot-access)
-  (files "recslot")
-  (parent (runtime))
-  (export ()
-	  condition-type:no-such-slot
-	  condition-type:slot-error
-	  condition-type:uninitialized-slot
-	  %record-accessor
-	  %record-accessor-generator
-	  %record-initpred
-	  %record-initpred-generator
-	  %record-modifier
-	  %record-modifier-generator
-	  %record-slot-index
-	  %record-slot-name
-	  %record-slot-names)
-  (export (runtime record)
-	  error:no-such-slot))
-
-(define-package (runtime generic-procedure eqht)
-  (files "geneqht")
-  (parent (runtime))
-  (export (runtime generic-procedure)
-	  eqht/for-each
-	  eqht/get
-	  eqht/put!
-	  make-eqht))
+	  make-dispatch-tag))
 
 (define-package (runtime crypto)
   (files "crypto")

@@ -166,26 +166,20 @@ USA.
 	  (and default
 	       (default generic tags))))))
 
-(define multiplexer-tag)
-(define condition-type:extra-applicable-methods)
-(define error:extra-applicable-methods)
+(define multiplexer-tag
+  (list 'generic-procedure-multiplexer))
 
-(define (initialize-multiplexer!)
-  (set! multiplexer-tag (list 'GENERIC-PROCEDURE-MULTIPLEXER))
-  unspecific)
+(define condition-type:extra-applicable-methods
+  (make-condition-type 'extra-applicable-methods condition-type:error
+      '(OPERATOR OPERANDS)
+    (lambda (condition port)
+      (write-string "Too many applicable methods for " port)
+      (write (access-condition condition 'operator) port)
+      (write-string " with these arguments: " port)
+      (write (access-condition condition 'operands) port)
+      (write-string "." port))))
 
-(define (initialize-conditions!)
-  (set! condition-type:extra-applicable-methods
-	(make-condition-type 'EXTRA-APPLICABLE-METHODS condition-type:error
-	    '(OPERATOR OPERANDS)
-	  (lambda (condition port)
-	    (write-string "Too many applicable methods for " port)
-	    (write (access-condition condition 'OPERATOR) port)
-	    (write-string " with these arguments: " port)
-	    (write (access-condition condition 'OPERANDS) port)
-	    (write-string "." port))))
-  (set! error:extra-applicable-methods
-	(condition-signaller condition-type:extra-applicable-methods
-			     '(OPERATOR OPERANDS)
-			     standard-error-handler))
-  unspecific)
+(define error:extra-applicable-methods
+  (condition-signaller condition-type:extra-applicable-methods
+		       '(operator operands)
+		       standard-error-handler))

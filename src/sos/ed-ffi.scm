@@ -29,8 +29,13 @@ USA.
 (standard-scheme-find-file-initialization
  '#(
     ("class"	(sos class))
+    ("geneqht"	(sos generic-procedure eqht))
+    ("generic"	(sos generic-procedure))
+    ("genmult"	(sos generic-procedure multiplexer))
     ("instance"	(sos instance))
     ("macros"	(sos macros))
     ("method"	(sos method))
     ("printer"	(sos printer))
-    ("slot"	(sos slot))))
+    ("recslot"	(sos record-slot-access))
+    ("slot"	(sos slot))
+    ("tvector"	(sos tagged-vector))))

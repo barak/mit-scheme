@@ -43,9 +43,14 @@ USA.
   (primitive-object-set-type 2)
   (vector-cons 2))
 
-(define-integrable (%make-record tag length)
-  (let ((record ((ucode-primitive object-set-type)
-		 (ucode-type record) (vector-cons length #f))))
+(define (%make-record tag length #!optional init-value)
+  (let ((record
+	 ((ucode-primitive object-set-type)
+	  (ucode-type record)
+	  (vector-cons length
+		       (if (default-object? init-value)
+			   #f
+			   init-value)))))
     (%record-set! record 0 tag)
     record))
 
@@ -169,6 +174,10 @@ USA.
 (define-integrable (%record-type-length record-type)
   (fix:+ 1 (%record-type-n-fields record-type)))
 
+(define-integrable (%record-type-field-name record-type index)
+  (vector-ref (%record-type-field-names record-type)
+	      (fix:- index 1)))
+
 (define (record-type-dispatch-tag record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-DISPATCH-TAG)
   (%record-type-dispatch-tag record-type))
@@ -182,7 +191,7 @@ USA.
   ;; Can't use VECTOR->LIST here because it isn't available at cold load.
   (let ((v (%record-type-field-names record-type)))
     ((ucode-primitive subvector->list) v 0 (vector-length v))))
-
+
 (define (record-type-default-inits record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-DEFAULT-INITS)
   (vector->list (%record-type-default-inits record-type)))
@@ -810,3 +819,105 @@ USA.
 (define-integrable (check-list-untagged structure type)
   (if (not (eq? (list?->length structure) (structure-type/length type)))
       (error:wrong-type-argument structure type #f)))
+
+;;;; Conditions
+
+(define condition-type:slot-error)
+(define condition-type:uninitialized-slot)
+(define condition-type:no-such-slot)
+(define error:uninitialized-slot)
+(define error:no-such-slot)
+
+(define (initialize-conditions!)
+  (set! condition-type:slot-error
+	(make-condition-type 'SLOT-ERROR condition-type:cell-error
+	    '()
+	  (lambda (condition port)
+	    (write-string "Anonymous error for slot " port)
+	    (write (access-condition condition 'LOCATION) port)
+	    (write-string "." port))))
+  (set! condition-type:uninitialized-slot
+	(make-condition-type 'UNINITIALIZED-SLOT condition-type:slot-error
+	    '(RECORD)
+	  (lambda (condition port)
+	    (write-string "Attempt to reference slot " port)
+	    (write (access-condition condition 'LOCATION) port)
+	    (write-string " in record " port)
+	    (write (access-condition condition 'RECORD) port)
+	    (write-string " failed because the slot is not initialized."
+			  port))))
+  (set! condition-type:no-such-slot
+	(make-condition-type 'NO-SUCH-SLOT condition-type:slot-error
+	    '(RECORD-TYPE)
+	  (lambda (condition port)
+	    (write-string "No slot named " port)
+	    (write (access-condition condition 'LOCATION) port)
+	    (write-string " in records of type " port)
+	    (write (access-condition condition 'RECORD-TYPE) port)
+	    (write-string "." port))))
+  (set! error:uninitialized-slot
+	(let ((signal
+	       (condition-signaller condition-type:uninitialized-slot
+				    '(RECORD LOCATION)
+				    standard-error-handler)))
+	  (lambda (record index)
+	    (let* ((location (%record-field-name record index))
+		   (ls (write-to-string location)))
+	      (call-with-current-continuation
+	       (lambda (k)
+		 (store-value-restart ls
+				      (lambda (value)
+					(%record-set! record index value)
+					(k value))
+		   (lambda ()
+		     (use-value-restart
+		      (string-append
+		       "value to use instead of the contents of slot "
+		       ls)
+		      k
+		      (lambda () (signal record location)))))))))))
+  (set! error:no-such-slot
+	(let ((signal
+	       (condition-signaller condition-type:no-such-slot
+				    '(RECORD-TYPE LOCATION)
+				    standard-error-handler)))
+	  (lambda (record-type name)
+	    (call-with-current-continuation
+	     (lambda (k)
+	       (use-value-restart
+		(string-append "slot name to use instead of "
+			       (write-to-string name))
+		k
+		(lambda () (signal record-type name))))))))
+  unspecific)
+
+(define (%record-field-name record index)
+  (or (and (fix:> index 0)
+	   (record? record)
+	   (let ((names
+		  (%record-type-field-names (%record-type-descriptor record))))
+	     (and (fix:<= index (vector-length names))
+		  (vector-ref names (fix:- index 1)))))
+      index))
+
+(define (record-type-field-name record-type index)
+  (guarantee record-type? record-type 'record-type-field-name)
+  (%record-type-field-name record-type index))
+
+(define (store-value-restart location k thunk)
+  (let ((location (write-to-string location)))
+    (with-restart 'store-value
+	(string-append "Initialize slot " location " to a given value.")
+	k
+	(string->interactor (string-append "Set " location " to"))
+      thunk)))
+
+(define (use-value-restart noun-phrase k thunk)
+  (with-restart 'use-value
+      (string-append "Specify a " noun-phrase ".")
+      k
+      (string->interactor (string-titlecase noun-phrase))
+    thunk))
+
+(define ((string->interactor string))
+  (values (prompt-for-evaluated-expression string)))

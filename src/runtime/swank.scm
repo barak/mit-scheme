@@ -883,8 +883,7 @@ swank:xref
 		 ((MACRO) `((:macro nil)))
 		 (else
 		  (let ((v (environment-lookup env symbol)))
-		    `((,(cond ((generic-procedure? v) ':generic-function)
-			      ((procedure? v) ':function)
+		    `((,(cond ((procedure? v) ':function)
 			      (else ':variable))
 		       ,v)))))))
 	 (apropos-list text env #t))))

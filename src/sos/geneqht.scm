@@ -86,16 +86,6 @@ USA.
 	    (without-interruption (lambda () (rehash-table! table)))
 	    (loop))))))
 
-(define-integrable (eq-hash-mod key modulus)
-  (fix:remainder (let ((n
-			((ucode-primitive primitive-object-set-type)
-			 (ucode-type positive-fixnum)
-			 key)))
-		   (if (fix:< n 0)
-		       (fix:not n)
-		       n))
-		 modulus))
-
 (define (record-address-hash-table! table)
   (add-to-population! address-hash-tables table))
 
@@ -104,11 +94,8 @@ USA.
 		       (lambda (table)
 			 (set-table-needs-rehash?! table #t))))
 
-(define address-hash-tables)
-
-(define (initialize-address-hashing!)
-  (set! address-hash-tables (make-serial-population))
-  (add-primitive-gc-daemon! mark-address-hash-tables!))
+(define address-hash-tables (make-serial-population))
+(add-primitive-gc-daemon! mark-address-hash-tables!)
 
 ;;;; Resizing
 
@@ -230,6 +217,3 @@ USA.
   (needs-rehash? #f))
 
 (define-integrable minimum-size 4)
-
-(define-integrable (weak-cons car cdr)
-  (system-pair-cons (ucode-type weak-cons) car cdr))

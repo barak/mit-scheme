@@ -35,16 +35,11 @@ USA.
 (define (make-tagged-vector tag length)
   (guarantee dispatch-tag? tag 'MAKE-TAGGED-VECTOR)
   (guarantee-index-integer length 'MAKE-TAGGED-VECTOR)
-  (let ((result
-	 (object-new-type (ucode-type record)
-			  (make-vector (fix:+ length 1)
-				       record-slot-uninitialized))))
-    (%record-set! result 0 tag)
-    result))
+  (%make-record tag (fix:+ length 1) record-slot-uninitialized))
 
 (define (tagged-vector tag . elements)
   (guarantee dispatch-tag? tag 'MAKE-TAGGED-VECTOR)
-  (object-new-type (ucode-type record) (apply vector tag elements)))
+  (apply %record tag elements))
 
 (define (tagged-vector? object)
   (and (%record? object)
@@ -90,8 +85,5 @@ USA.
   (if (not (and (fix:fixnum? index) (fix:>= index 0)))
       (error:wrong-type-argument vector "non-negative fixnum" caller)))
 
-(define record-slot-uninitialized)
-
-(define (initialize-tagged-vector!)
-  (set! record-slot-uninitialized (intern "#[record-slot-uninitialized]"))
-  unspecific)
+(define record-slot-uninitialized
+  (intern "#[record-slot-uninitialized]"))

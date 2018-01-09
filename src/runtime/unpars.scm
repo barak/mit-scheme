@@ -757,40 +757,27 @@ USA.
 
 ;;;; Procedures
 
-(define (unparse-procedure procedure context usual-method)
-  (if (generic-procedure? procedure)
-      (*unparse-with-brackets 'GENERIC-PROCEDURE procedure context
-	(let ((name (generic-procedure-name procedure)))
-	  (and name
-	       (lambda (context*)
-		 (*unparse-object name context*)))))
-      (usual-method)))
-
 (define (unparse/compound-procedure procedure context)
-  (unparse-procedure procedure context
-    (lambda ()
-      (*unparse-with-brackets 'COMPOUND-PROCEDURE procedure context
-        (and (get-param:unparse-compound-procedure-names?)
-             (lambda-components* (procedure-lambda procedure)
-               (lambda (name required optional rest body)
-                 required optional rest body
-                 (and (not (eq? name lambda-tag:unnamed))
-                      (lambda (context*)
-			(*unparse-object name context*))))))))))
+  (*unparse-with-brackets 'COMPOUND-PROCEDURE procedure context
+    (and (get-param:unparse-compound-procedure-names?)
+	 (lambda-components* (procedure-lambda procedure)
+	   (lambda (name required optional rest body)
+	     required optional rest body
+	     (and (not (eq? name lambda-tag:unnamed))
+		  (lambda (context*)
+		    (*unparse-object name context*))))))))
 
 (define (unparse/primitive-procedure procedure context)
-  (unparse-procedure procedure context
-    (lambda ()
-      (let ((unparse-name
-             (lambda (context)
-               (*unparse-object (primitive-procedure-name procedure) context))))
-        (cond ((get-param:unparse-primitives-by-name?)
-               (unparse-name context))
-              ((get-param:unparse-with-maximum-readability?)
-               (*unparse-readable-hash procedure context))
-              (else
-               (*unparse-with-brackets 'PRIMITIVE-PROCEDURE #f context
-				       unparse-name)))))))
+  (let ((unparse-name
+	 (lambda (context)
+	   (*unparse-object (primitive-procedure-name procedure) context))))
+    (cond ((get-param:unparse-primitives-by-name?)
+	   (unparse-name context))
+	  ((get-param:unparse-with-maximum-readability?)
+	   (*unparse-readable-hash procedure context))
+	  (else
+	   (*unparse-with-brackets 'PRIMITIVE-PROCEDURE #f context
+				   unparse-name)))))
 
 (define (unparse/compiled-entry entry context)
   (let* ((type (compiled-entry-type entry))
@@ -798,41 +785,36 @@ USA.
          (closure?
           (and procedure?
                (compiled-code-block/manifest-closure?
-                (compiled-code-address->block entry))))
-         (usual-method
-          (lambda ()
-            (*unparse-with-brackets (if closure? 'COMPILED-CLOSURE type)
-                                    entry
-				    context
-              (lambda (context*)
-                (let ((name (and procedure? (compiled-procedure/name entry))))
-		  (receive (filename block-number)
-		      (compiled-entry/filename-and-index entry)
-		    (*unparse-char #\( context*)
-		    (if name
-			(*unparse-string name context*))
-		    (if filename
-			(begin
-			  (if name
-			      (*unparse-char #\space context*))
-			  (*unparse-object (pathname-name filename) context*)
-			  (if block-number
-			      (begin
-				(*unparse-char #\space context*)
-				(*unparse-hex block-number context*)))))
-		    (*unparse-char #\) context*)))
-                (*unparse-char #\space context*)
-                (*unparse-hex (compiled-entry/offset entry) context*)
-                (if closure?
-                    (begin
-                      (*unparse-char #\space context*)
-                      (*unparse-datum (compiled-closure->entry entry)
-				      context*)))
-                (*unparse-char #\space context*)
-                (*unparse-datum entry context*))))))
-    (if procedure?
-        (unparse-procedure entry context usual-method)
-        (usual-method))))
+                (compiled-code-address->block entry)))))
+    (*unparse-with-brackets (if closure? 'COMPILED-CLOSURE type)
+			    entry
+			    context
+      (lambda (context*)
+	(let ((name (and procedure? (compiled-procedure/name entry))))
+	  (receive (filename block-number)
+	      (compiled-entry/filename-and-index entry)
+	    (*unparse-char #\( context*)
+	    (if name
+		(*unparse-string name context*))
+	    (if filename
+		(begin
+		  (if name
+		      (*unparse-char #\space context*))
+		  (*unparse-object (pathname-name filename) context*)
+		  (if block-number
+		      (begin
+			(*unparse-char #\space context*)
+			(*unparse-hex block-number context*)))))
+	    (*unparse-char #\) context*)))
+	(*unparse-char #\space context*)
+	(*unparse-hex (compiled-entry/offset entry) context*)
+	(if closure?
+	    (begin
+	      (*unparse-char #\space context*)
+	      (*unparse-datum (compiled-closure->entry entry)
+			      context*)))
+	(*unparse-char #\space context*)
+	(*unparse-datum entry context*)))))
 
 ;;;; Miscellaneous
 
