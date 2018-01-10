@@ -828,6 +828,7 @@ differences:
 
 (define (printer-definitions structure)
   (if (and (structure/predicate structure)
+	   (structure/print-procedure structure)
 	   (or (structure/record-type? structure)
 	       (structure/tagged? structure)))
       (let ((context (structure/context structure)))
