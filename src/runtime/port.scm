@@ -60,7 +60,7 @@ USA.
   (flush-output port-type-operation:flush-output)
   (discretionary-flush-output port-type-operation:discretionary-flush-output))
 
-(set-record-type-unparser-method! <textual-port-type>
+(define-unparser-method textual-port-type?
   (standard-unparser-method
    (lambda (type)
      (if (port-type-supports-input? type)
@@ -422,7 +422,7 @@ USA.
    (register-predicate! textual-i/o-port? 'textual-i/o-port
 			'<= textual-port?)))
 
-(set-record-type-unparser-method! <textual-port>
+(define-unparser-method textual-port?
   (standard-unparser-method
    (lambda (port)
      (cond ((textual-i/o-port? port) 'TEXTUAL-I/O-PORT)

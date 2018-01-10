@@ -45,7 +45,7 @@ USA.
 ;; two digits representing a larger number, then RADIX is their base.
 (define %radix)
 
-(set-record-type-unparser-method! rtd:alien
+(define-unparser-method alien?
   (standard-unparser-method
    'alien
    (lambda (alien port)

@@ -129,7 +129,7 @@ USA.
 (define (button-name button)
   (symbol->string (button-symbol button)))
 
-(set-record-type-unparser-method! <button>
+(define-unparser-method button?
   (simple-unparser-method (record-type-name <button>)
     (lambda (button)
       (list (button-symbol button)))))

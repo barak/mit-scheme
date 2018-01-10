@@ -186,7 +186,7 @@ USA.
 (define (define-bundle-printer interface printer)
   (hash-table-set! bundle-printers interface printer))
 
-(set-record-type-entity-unparser-method! <bundle-metadata>
+(define-unparser-method bundle?
   (standard-unparser-method
    (lambda (bundle)
      (bundle-interface-name (bundle-interface bundle)))
@@ -198,7 +198,7 @@ USA.
        (if printer
 	   (printer bundle port))))))
 
-(set-record-type-entity-describer! <bundle-metadata>
+(define-pp-describer bundle?
   (lambda (bundle)
     (map (lambda (name)
 	   (list name (bundle-ref bundle name)))

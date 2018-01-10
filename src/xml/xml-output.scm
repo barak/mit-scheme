@@ -90,7 +90,7 @@ USA.
   (indent-attributes? ctx-indent-attributes?)
   (indent-dtd? ctx-indent-dtd?))
 
-(set-record-type-unparser-method! <ctx>
+(define-unparser-method ctx?
   (standard-unparser-method 'xml-output-context #f))
 
 (define (emit-char char ctx)

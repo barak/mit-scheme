@@ -151,7 +151,7 @@ USA.
 
 (define-guarantee rdf-bnode "RDF bnode")
 
-(set-record-type-unparser-method! <rdf-bnode>
+(define-unparser-method rdf-bnode?
   (standard-unparser-method 'RDF-BNODE
     (lambda (bnode port)
       (write-char #\space port)
@@ -225,7 +225,7 @@ USA.
     (and (not (absolute-uri? type))
 	 type)))
 
-(set-record-type-unparser-method! <rdf-literal>
+(define-unparser-method rdf-literal?
   (standard-unparser-method 'RDF-LITERAL
     (lambda (literal port)
       (write-char #\space port)

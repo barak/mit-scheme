@@ -115,8 +115,8 @@ USA.
   (host uri-authority-host)
   (port uri-authority-port))
 
-(set-record-type-unparser-method! <uri-authority>
-  (simple-unparser-method 'URI-AUTHORITY
+(define-unparser-method uri-authority?
+  (simple-unparser-method 'uri-authority
     (lambda (authority)
       (list (call-with-output-string
 	      (lambda (port)
@@ -952,7 +952,7 @@ USA.
   (fragment partial-uri-fragment set-partial-uri-fragment!)
   (extra partial-uri-extra set-partial-uri-extra!))
 
-(set-record-type-unparser-method! <partial-uri>
+(define-unparser-method partial-uri?
   (standard-unparser-method 'PARTIAL-URI
     (lambda (puri port)
       (write-char #\space port)

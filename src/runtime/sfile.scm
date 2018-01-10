@@ -327,7 +327,7 @@ USA.
 (define top-level-mime-types
   '#(TEXT IMAGE AUDIO VIDEO APPLICATION MULTIPART MESSAGE))
 
-(set-record-type-unparser-method! <mime-type>
+(define-unparser-method mime-type?
   (standard-unparser-method 'MIME-TYPE
     (lambda (mime-type port)
       (write-char #\space port)

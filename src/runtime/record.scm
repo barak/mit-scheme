@@ -534,23 +534,10 @@ USA.
 	       ,((record-accessor type field-name) record)))
 	   (record-type-field-names type)))))
 
-;;; These are for backwards compatibility:
-
+;;; For backwards compatibility:
 (define (set-record-type-unparser-method! record-type method)
   (define-unparser-method (record-predicate record-type)
     method))
-
-(define (set-record-type-describer! record-type describer)
-  (define-pp-describer (record-predicate record-type)
-    describer))
-
-(define (set-record-type-entity-unparser-method! record-type method)
-  (define-unparser-method (record-entity-predicate record-type)
-    method))
-
-(define (set-record-type-entity-describer! record-type describer)
-  (define-pp-describer (record-entity-predicate record-type)
-    describer))
 
 ;;;; Runtime support for DEFINE-STRUCTURE
 

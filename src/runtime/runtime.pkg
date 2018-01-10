@@ -3723,6 +3723,8 @@ USA.
 (define-package (runtime record)
   (files "record")
   (parent (runtime))
+  (export () deprecated:record
+	  set-record-type-unparser-method!)
   (export ()
 	  %copy-record
 	  %make-record
@@ -3766,11 +3768,7 @@ USA.
 	  record-type-name
 	  record-type?
 	  record-updater
-	  record?
-	  set-record-type-describer!
-	  set-record-type-entity-describer!
-	  set-record-type-entity-unparser-method!
-	  set-record-type-unparser-method!)
+	  record?)
   (export (runtime)
 	  error:no-such-slot
 	  error:uninitialized-slot

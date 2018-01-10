@@ -49,7 +49,7 @@ USA.
       (guarantee-headers&body headers body 'MAKE-HTTP-REQUEST)
     (%make-http-request method uri version headers body)))
 
-(set-record-type-unparser-method! <http-request>
+(define-unparser-method http-request?
   (simple-unparser-method 'HTTP-REQUEST
     (lambda (request)
       (list (http-request-method request)
@@ -72,7 +72,7 @@ USA.
       (guarantee-headers&body headers body 'MAKE-HTTP-RESPONSE)
     (%make-http-response version status reason headers body)))
 
-(set-record-type-unparser-method! <http-response>
+(define-unparser-method http-response?
   (simple-unparser-method 'HTTP-RESPONSE
     (lambda (response)
       (list (http-response-status response)))))

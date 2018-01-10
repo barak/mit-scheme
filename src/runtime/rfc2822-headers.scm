@@ -42,7 +42,7 @@ USA.
 
 (define-guarantee rfc2822-header "RFC 2822 header field")
 
-(set-record-type-unparser-method! <rfc2822-header>
+(define-unparser-method rfc2822-header?
   (simple-unparser-method 'rfc2822-header
     (lambda (header)
       (list (rfc2822-header-name header)))))
