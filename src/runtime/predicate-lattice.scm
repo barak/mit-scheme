@@ -76,6 +76,14 @@ USA.
 	(cons (vector test1 test2 handler)
 	      tag<=-overrides))
   unspecific)
+
+(define (any-object? object)
+  (declare (ignore object))
+  #t)
+
+(define (no-object? object)
+  (declare (ignore object))
+  #f)
 
 (define (top-tag) the-top-tag)
 (define (bottom-tag) the-bottom-tag)
@@ -83,9 +91,11 @@ USA.
 (define-integrable (tag-is-top? tag) (eq? the-top-tag tag))
 (define-integrable (tag-is-bottom? tag) (eq? the-bottom-tag tag))
 
-;; These definitions will be overwritten when the tags are created:
-(define the-top-tag #f)
-(define the-bottom-tag #f)
+(define-deferred the-top-tag
+  (make-compound-tag any-object? 'conjoin '()))
+
+(define-deferred the-bottom-tag
+  (make-compound-tag no-object? 'disjoin '()))
 
 (define tag<=-cache)
 (define tag<=-overrides)

@@ -164,13 +164,3 @@ USA.
 
    (define-compound-operator 'conjoin
      (make-joinish-memoizer tag-is-bottom?))))
-
-(define any-object?)
-(define no-object?)
-(add-boot-init!
- (lambda ()
-   (set! any-object? (conjoin))
-   (set! no-object? (disjoin))
-   (set! the-top-tag (predicate->tag any-object?))
-   (set! the-bottom-tag (predicate->tag no-object?))
-   unspecific))

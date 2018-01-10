@@ -1846,8 +1846,10 @@ USA.
   (files "predicate-lattice")
   (parent (runtime))
   (export ()
+	  any-object?
 	  predicate<=
-	  predicate>=)
+	  predicate>=
+	  no-object?)
   (export (runtime)
 	  bottom-tag
 	  define-tag<=
@@ -1856,28 +1858,25 @@ USA.
 	  tag<=
 	  tag=
 	  tag>=
-	  top-tag)
-  (export (runtime compound-predicate)
-	  the-bottom-tag
-	  the-top-tag))
+	  top-tag))
 
 (define-package (runtime compound-predicate)
   (files "compound-predicate")
   (parent (runtime))
   (export ()
-	  any-object?
 	  compound-predicate-operands
 	  compound-predicate-operator
 	  compound-predicate?
 	  conjoin
 	  conjoin*
 	  disjoin
-	  disjoin*
-	  no-object?)
+	  disjoin*)
   (export (runtime)
 	  compound-tag-operands
 	  compound-tag-operator
-	  tag-is-compound?))
+	  tag-is-compound?)
+  (export (runtime predicate-lattice)
+	  make-compound-tag))
 
 (define-package (runtime parametric-predicate)
   (files "parametric-predicate")
