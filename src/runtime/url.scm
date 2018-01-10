@@ -70,10 +70,12 @@ USA.
 (define (absolute-uri? object)
   (and (uri? object)
        (uri-absolute? object)))
+(register-predicate! absolute-uri? 'absolute-uri '<= uri?)
 
 (define (relative-uri? object)
   (and (uri? object)
        (uri-relative? object)))
+(register-predicate! relative-uri? 'relative-uri '<= uri?)
 
 (define-guarantee uri "URI")
 (define-guarantee absolute-uri "absolute URI")
@@ -900,8 +902,7 @@ USA.
 			 (string->char-set ";/?:@&=")))
 
    (set! uri-merge-defaults (make-uri-merge-defaults))
-   (register-predicate! absolute-uri? 'absolute-uri '<= uri?)
-   (register-predicate! relative-uri? 'relative-uri '<= uri?)))
+   unspecific))
 
 ;;;; Partial URIs
 

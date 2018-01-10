@@ -151,10 +151,7 @@ USA.
        (pair? (cdr object))
        (procedure? (cadr object))
        (null? (cddr object))))
-
-(add-boot-init!
- (lambda ()
-   (register-predicate! textual-port-type-operation? 'port-type-operation)))
+(register-predicate! textual-port-type-operation? 'port-type-operation)
 
 (define (parse-operations-list operations parent-type)
   (parse-operations-list-1
@@ -400,11 +397,15 @@ USA.
   (and (textual-port? object)
        (port-type-supports-input? (textual-port-type object))
        #t))
+(register-predicate! textual-input-port? 'textual-input-port
+		     '<= textual-port?)
 
 (define (textual-output-port? object)
   (and (textual-port? object)
        (port-type-supports-output? (textual-port-type object))
        #t))
+(register-predicate! textual-output-port? 'textual-output-port
+		     '<= textual-port?)
 
 (define (textual-i/o-port? object)
   (and (textual-port? object)
@@ -412,15 +413,8 @@ USA.
 	 (and (port-type-supports-input? type)
 	      (port-type-supports-output? type)
 	      #t))))
-
-(add-boot-init!
- (lambda ()
-   (register-predicate! textual-input-port? 'textual-input-port
-			'<= textual-port?)
-   (register-predicate! textual-output-port? 'textual-output-port
-			'<= textual-port?)
-   (register-predicate! textual-i/o-port? 'textual-i/o-port
-			'<= textual-port?)))
+(register-predicate! textual-i/o-port? 'textual-i/o-port
+		     '<= textual-port?)
 
 (define-unparser-method textual-port?
   (standard-unparser-method
@@ -710,6 +704,7 @@ USA.
 (define (blocking-mode? object)
   (or (eq? 'blocking object)
       (eq? 'nonblocking object)))
+(register-predicate! blocking-mode? 'blocking-mode)
 
 (define (channel-blocking-mode channel)
   (if channel
@@ -747,6 +742,7 @@ USA.
 (define (terminal-mode? object)
   (or (eq? 'cooked object)
       (eq? 'raw object)))
+(register-predicate! terminal-mode? 'terminal-mode)
 
 (define (channel-terminal-mode channel)
   (if (and channel (channel-type=terminal? channel))
@@ -764,11 +760,6 @@ USA.
 			 (and channel (channel-type=terminal? channel)))
 		       channel-terminal-mode
 		       set-channel-terminal-mode!))
-
-(add-boot-init!
- (lambda ()
-   (register-predicate! blocking-mode? 'blocking-mode)
-   (register-predicate! terminal-mode? 'terminal-mode)))
 
 ;;;; Standard Ports
 

@@ -29,26 +29,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define (predicate? object)
-  (any (lambda (reg)
-	 (eqv? (car reg) object))
-       boot-registrations))
-
-(define (register-predicate! predicate name . keylist)
-  (set! boot-registrations
-	(cons (cons* predicate name keylist)
-	      boot-registrations))
-  unspecific)
-
-(define (run-deferred-predicate-registrations!)
-  (for-each (lambda (reg)
-	      (apply register-predicate! reg))
-	    (reverse! boot-registrations))
-  (set! boot-registrations)
-  unspecific)
-
-(define boot-registrations '())
-
 (define get-predicate-tag)
 (define set-predicate-tag!)
 (add-boot-init!
@@ -74,7 +54,7 @@ USA.
 		  (set-tag<=! tag (predicate->tag superset)))
 		(get-keyword-values keylist '<=))
       tag)))
-
+
 (define (predicate-name predicate)
   (tag-name (predicate->tag predicate 'predicate-name)))
 
@@ -171,7 +151,7 @@ USA.
   (simple-unparser-method 'tag
     (lambda (tag)
       (list (tag-name tag)))))
-
+
 (define (tag-description tag)
   (or (%tag-description tag)
       (object->description (tag-name tag))))
@@ -332,5 +312,3 @@ USA.
    (register-predicate! weak-pair? 'weak-pair)
 
    (run-deferred-boot-actions 'predicate-registrations)))
-
-(add-boot-init! run-deferred-predicate-registrations!)

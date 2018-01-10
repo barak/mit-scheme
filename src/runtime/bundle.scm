@@ -77,6 +77,7 @@ USA.
 			    (cdr p))))
 	      object)
        (alist-has-unique-keys? object)))
+(register-predicate! elements? 'interface-elements)
 
 (define-record-type <bundle-interface>
     (%make-bundle-interface tag name element-names element-properties)
@@ -136,6 +137,7 @@ USA.
 		(symbol? (car p)))
 	      object)
        (alist-has-unique-keys? object)))
+(register-predicate! bundle-alist? 'bundle-alist '<= alist?)
 
 (define-record-type <bundle-metadata>
     (make-bundle-metadata interface values)
@@ -146,6 +148,10 @@ USA.
 (define (bundle? object)
   (and (entity? object)
        (bundle-metadata? (entity-extra object))))
+
+(defer-boot-action 'predicate-registrations
+  (lambda ()
+    (register-predicate! bundle? 'bundle '<= entity?)))
 
 (define (bundle-interface bundle)
   (bundle-metadata-interface (entity-extra bundle)))
@@ -204,11 +210,5 @@ USA.
 	   (list name (bundle-ref bundle name)))
 	 (bundle-names bundle))))
 
-(define bundle-printers)
-(add-boot-init!
- (lambda ()
-   (set! bundle-printers (make-key-weak-eqv-hash-table))
-   (register-predicate! bundle-interface? 'bundle-interface '<= predicate?)
-   (register-predicate! elements? 'interface-elements)
-   (register-predicate! bundle? 'bundle '<= entity?)
-   (register-predicate! bundle-alist? 'bundle-alist '<= alist?)))
+(define-deferred bundle-printers
+  (make-key-weak-eqv-hash-table))

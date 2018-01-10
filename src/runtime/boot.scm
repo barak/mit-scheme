@@ -209,6 +209,23 @@ USA.
 	     (procedure (cddr objects)))
 	(lose))))
 
+;;;; Predicate registrations
+
+(define predicate?)
+(define register-predicate!)
+(let ((predicates '()))
+  (set! predicate?
+	(lambda (object)
+	  (if (memq object predicates) #t #f)))
+  (set! register-predicate!
+	(lambda (predicate name . keylist)
+	  (defer-boot-action 'predicate-registrations
+	    (lambda ()
+	      (apply register-predicate! predicate name keylist)))
+	  (set! predicates (cons predicate predicates))
+	  unspecific))
+  unspecific)
+
 ;;;; Miscellany
 
 (define (object-constant? object)

@@ -158,6 +158,8 @@ USA.
 	  interrupt-mask/timer-ok
 	  object-constant?
 	  object-pure?
+	  predicate?
+	  register-predicate!
 	  simple-parser-method
 	  simple-unparser-method
 	  standard-unparser-method
@@ -1817,8 +1819,6 @@ USA.
 	  predicate-tagger
 	  predicate-tagging-strategy
 	  predicate-untagger
-	  predicate?
-	  register-predicate!
 	  set-predicate<=!)
   (export (runtime)
 	  event:predicate-metadata

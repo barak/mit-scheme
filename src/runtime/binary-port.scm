@@ -63,27 +63,24 @@ USA.
   (and (binary-port? object)
        (port-input-buffer object)
        #t))
+(register-predicate! binary-input-port? 'binary-input-port
+		     '<= binary-port?)
 
 (define (binary-output-port? object)
   (and (binary-port? object)
        (port-output-buffer object)
        #t))
+(register-predicate! binary-output-port? 'binary-output-port
+		     '<= binary-port?)
 
 (define (binary-i/o-port? object)
   (and (binary-port? object)
        (port-input-buffer object)
        (port-output-buffer object)
        #t))
-
-(add-boot-init!
- (lambda ()
-   (register-predicate! binary-input-port? 'binary-input-port
-			'<= binary-port?)
-   (register-predicate! binary-output-port? 'binary-output-port
-			'<= binary-port?)
-   (register-predicate! binary-i/o-port? 'binary-i/o-port
-			'<= binary-input-port?
-			'<= binary-output-port?)))
+(register-predicate! binary-i/o-port? 'binary-i/o-port
+		     '<= binary-input-port?
+		     '<= binary-output-port?)
 
 (define-unparser-method binary-port?
   (standard-unparser-method
@@ -175,14 +172,11 @@ USA.
 	 (and (fix:= (output-sink-custom-length sink) 2)
 	      (eq? bytevector-output-port-tag
 		   (output-sink-custom-ref sink 0))))))
+(register-predicate! bytevector-output-port? 'bytevector-output-port
+		     '<= binary-output-port?)
 
 (define bytevector-output-port-tag
   (list 'bytevector-output-port-tag))
-
-(add-boot-init!
- (lambda ()
-   (register-predicate! bytevector-output-port? 'bytevector-output-port
-			'<= binary-output-port?)))
 
 (define (call-with-output-bytevector procedure)
   (let ((port (open-output-bytevector)))
@@ -275,6 +269,8 @@ USA.
 (define (positionable-binary-port? object)
   (and (binary-port? object)
        (binary-port-positionable? object)))
+(register-predicate! positionable-binary-port? 'positionable-binary-port
+		     '<= binary-port?)
 
 (define (binary-port-positionable? port)
   (let ((ib (port-input-buffer port))
@@ -286,11 +282,6 @@ USA.
 	       (and (eq? ic oc)
 		    (channel-type=file? ic))
 	       (channel-type=file? (or ic oc)))))))
-
-(add-boot-init!
- (lambda ()
-   (register-predicate! positionable-binary-port? 'positionable-binary-port
-			'<= binary-port?)))
 
 (define (binary-port-length port)
   (guarantee positionable-binary-port? port 'port-length)
@@ -811,10 +802,7 @@ USA.
 (define (input-source? object)
   (and (source/sink? object)
        (eq? 'source (source/sink-flavor object))))
-
-(add-boot-init!
- (lambda ()
-   (register-predicate! input-source? 'input-source '<= source/sink?)))
+(register-predicate! input-source? 'input-source '<= source/sink?)
 
 (define input-source-channel source/sink-channel)
 (define input-source-port source/sink-port)
@@ -848,10 +836,7 @@ USA.
 (define (output-sink? object)
   (and (source/sink? object)
        (eq? 'sink (source/sink-flavor object))))
-
-(add-boot-init!
- (lambda ()
-   (register-predicate! output-sink? 'output-sink '<= source/sink?)))
+(register-predicate! output-sink? 'output-sink '<= source/sink?)
 
 (define output-sink-channel source/sink-channel)
 (define output-sink-port source/sink-port)

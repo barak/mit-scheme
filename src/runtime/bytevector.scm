@@ -29,17 +29,10 @@ USA.
 
 (declare (usual-integrations))
 
-(defer-boot-action 'predicate-registrations
-  (lambda ()
-    (register-predicate! u8? 'u8 '<= index-fixnum?)
-    (register-predicate! u16? 'u16 '<= index-fixnum?)
-    (register-predicate! u32? 'u32 '<= (if (fix:fixnum? #xFFFFFFFF)
-					   index-fixnum?
-					   exact-nonnegative-integer?))))
-
 (define (u8? object)
   (and (index-fixnum? object)
        (fix:< object #x100)))
+(register-predicate! u8? 'u8 '<= index-fixnum?)
 
 (define-primitives
   (allocate-bytevector 1)
@@ -173,6 +166,7 @@ USA.
 (define (u16? object)
   (and (index-fixnum? object)
        (fix:< object #x10000)))
+(register-predicate! u16? 'u16 '<= index-fixnum?)
 
 (define (bytevector-u16be-ref bytevector index)
   (if (not (fix:< (fix:+ index 1) (bytevector-length bytevector)))
@@ -239,7 +233,8 @@ USA.
 
    (define (u32? object)
      (and (index-fixnum? object)
-	  (fix:<= object #xFFFFFFFF))))
+	  (fix:<= object #xFFFFFFFF)))
+   (register-predicate! u32? 'u32 '<= index-fixnum?))
  ;; Must use bignums:
  (begin
    (define-integrable (bytes->u32be b0 b1 b2 b3)
@@ -262,7 +257,12 @@ USA.
 
    (define (u32? object)
      (and (exact-nonnegative-integer? object)
-	  (int:<= object #xFFFFFFFF)))))
+	  (int:<= object #xFFFFFFFF)))
+
+   (add-boot-init!
+    (lambda ()
+      (register-predicate! u32? 'u32 '<= exact-nonnegative-integer?)))))
+
 
 (define-integrable (bytes->u32le b0 b1 b2 b3) (bytes->u32be b3 b2 b1 b0))
 (define-integrable u32le-byte0 u32be-byte3)

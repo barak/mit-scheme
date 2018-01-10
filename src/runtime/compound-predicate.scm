@@ -128,8 +128,7 @@ USA.
    (let ((table (make-hashed-metadata-table)))
      (set! compound-operator? (table 'has?))
      (set! compound-operator-builder (table 'get))
-     (set! define-compound-operator (table 'put!))
-     unspecific)
+     (set! define-compound-operator (table 'put!)))
    (register-predicate! compound-operator? 'compound-predicate '<= symbol?)))
 
 (add-boot-init!

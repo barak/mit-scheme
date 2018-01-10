@@ -31,6 +31,7 @@ USA.
 
 (define-integrable (tagged-object? object)
   (object-type? (ucode-type tagged-object) object))
+(register-predicate! tagged-object? 'tagged-object)
 
 (define (object-tagger predicate)
   (let ((tag (predicate->tag predicate)))
@@ -57,7 +58,6 @@ USA.
 (define unparser-methods)
 (add-boot-init!
  (lambda ()
-   (register-predicate! tagged-object? 'tagged-object)
    (set! unparser-methods (make-key-weak-eqv-hash-table))
    unspecific))
 
