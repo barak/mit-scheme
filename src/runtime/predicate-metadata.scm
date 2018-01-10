@@ -130,8 +130,8 @@ USA.
 			(if (default-object? extra) #f extra)
 			(if (default-object? description) #f description)
 			tagging-strategy
-			(make-strong-eq-hash-table)
-			(make-strong-eq-hash-table))))
+			(make-key-weak-eq-hash-table)
+			(make-key-weak-eq-hash-table))))
 	(set-predicate-tag! predicate tag)
 	tag))))
 
