@@ -44,14 +44,12 @@ USA.
 
 (define get-predicate-tag)
 (define set-predicate-tag!)
-(define delete-predicate-tag!)
 (add-boot-init!
  (lambda ()
    (let ((table (make-hashed-metadata-table)))
      (set! predicate? (table 'has?))
      (set! get-predicate-tag (table 'get))
      (set! set-predicate-tag! (table 'put!))
-     (set! delete-predicate-tag! (table 'delete!))
      (set! register-predicate! register-predicate!/after-boot)
      unspecific)))
 
@@ -90,9 +88,6 @@ USA.
 (define (set-predicate<=! predicate superset)
   (set-tag<=! (predicate->tag predicate 'set-predicate<=!)
               (predicate->tag superset 'set-predicate<=!)))
-
-(define (unregister-predicate! predicate)
-  (delete-tag! (predicate->tag predicate)))
 
 (define (predicate->tag predicate #!optional caller)
   (let ((tag (get-predicate-tag predicate #f)))
@@ -164,7 +159,7 @@ USA.
   (subsets tag-subsets)
   (supersets tag-supersets))
 
-(set-record-type-unparser-method! <tag>
+(define-unparser-method tag?
   (simple-unparser-method 'tag
     (lambda (tag)
       (list (tag-name tag)))))
@@ -187,23 +182,6 @@ USA.
 (define (set-tag<=! tag superset)
   (event-distributor/invoke! event:predicate-metadata 'set-tag<=! tag superset)
   (%link! tag superset))
-
-(define (delete-tag! tag)
-  (event-distributor/invoke! event:predicate-metadata 'delete-tag! tag)
-  ;; Directly link subsets to supersets.
-  (for-each (lambda (subset)
-	      (for-each (lambda (superset)
-			  (%link! subset superset))
-			(get-tag-supersets tag)))
-	    (get-tag-subsets tag))
-  ;; Delete this tag from subsets and supersets.
-  (for-each (lambda (subset)
-	      (hash-table-delete! (tag-supersets subset) tag))
-	    (get-tag-subsets tag))
-  (for-each (lambda (superset)
-	      (hash-table-delete! (tag-subsets superset) tag))
-	    (get-tag-supersets tag))
-  (delete-predicate-tag! tag))
 
 (define (%link! subset superset)
   (hash-table-set! (tag-subsets superset) subset subset)
