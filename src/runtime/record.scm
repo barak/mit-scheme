@@ -207,7 +207,7 @@ USA.
     unspecific))
 
 (define (initialize-record-procedures!)
-  (run-deferred-boot-actions 'record-type-predicates))
+  (run-deferred-boot-actions 'record-procedures))
 
 (define (record-type-default-value record-type field-name)
   (record-type-default-value-by-index
@@ -223,10 +223,21 @@ USA.
   %record-type-tag)
 
 (define (%set-record-type-predicate! record-type predicate)
-  (defer-boot-action 'record-type-predicates
+  (defer-boot-action 'predicate-registrations
     (lambda ()
       (%set-record-type-predicate! record-type predicate)))
   (%set-record-type-tag! record-type predicate))
+
+(defer-boot-action 'predicate-registrations
+  (lambda ()
+    (set! %record-type-predicate
+	  (named-lambda (%record-type-predicate record-type)
+	    (tag->predicate (%record-type-tag record-type))))
+    (set! %set-record-type-predicate!
+	  (named-lambda (%set-record-type-predicate! record-type predicate)
+	    (%register-record-predicate! predicate record-type)
+	    (%set-record-type-tag! record-type (predicate->tag predicate))))
+    unspecific))
 
 (define (%register-record-predicate! predicate record-type)
   (register-predicate! predicate
@@ -238,10 +249,23 @@ USA.
   %record-type-entity-tag)
 
 (define (%set-record-type-entity-predicate! record-type predicate)
-  (defer-boot-action 'record-type-predicates
+  (defer-boot-action 'predicate-registrations
     (lambda ()
       (%set-record-type-entity-predicate! record-type predicate)))
   (%set-record-type-entity-tag! record-type predicate))
+
+(defer-boot-action 'predicate-registrations
+  (lambda ()
+    (set! %record-type-entity-predicate
+	  (named-lambda (%record-type-entity-predicate record-type)
+	    (tag->predicate (%record-type-entity-tag record-type))))
+    (set! %set-record-type-entity-predicate!
+	  (named-lambda (%set-record-type-entity-predicate! record-type
+							    predicate)
+	    (%register-record-entity-predicate! predicate record-type)
+	    (%set-record-type-entity-tag! record-type
+					  (predicate->tag predicate))))
+    unspecific))
 
 (define (%register-record-entity-predicate! predicate record-type)
   (register-predicate! predicate
@@ -250,24 +274,6 @@ USA.
 			 (strip-angle-brackets (%record-type-name record-type))
 			 "-entity"))
 		       '<= record-entity?))
-
-(define (cleanup-boot-time-record-predicates!)
-  (set! %record-type-predicate
-	(named-lambda (%record-type-predicate record-type)
-	  (tag->predicate (%record-type-tag record-type))))
-  (set! %set-record-type-predicate!
-	(named-lambda (%set-record-type-predicate! record-type predicate)
-	  (%register-record-predicate! predicate record-type)
-	  (%set-record-type-tag! record-type (predicate->tag predicate))))
-  (set! %record-type-entity-predicate
-	(named-lambda (%record-type-entity-predicate record-type)
-	  (tag->predicate (%record-type-entity-tag record-type))))
-  (set! %set-record-type-entity-predicate!
-	(named-lambda (%set-record-type-entity-predicate! record-type predicate)
-	  (%register-record-entity-predicate! predicate record-type)
-	  (%set-record-type-entity-tag! record-type
-					(predicate->tag predicate))))
-  (run-deferred-boot-actions 'record-type-predicates))
 
 ;;;; Constructors
 

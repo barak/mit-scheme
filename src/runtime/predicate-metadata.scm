@@ -29,8 +29,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define boot-registrations '())
-
 (define (predicate? object)
   (any (lambda (reg)
 	 (eqv? (car reg) object))
@@ -41,6 +39,15 @@ USA.
 	(cons (cons* predicate name keylist)
 	      boot-registrations))
   unspecific)
+
+(define (run-deferred-predicate-registrations!)
+  (for-each (lambda (reg)
+	      (apply register-predicate! reg))
+	    (reverse! boot-registrations))
+  (set! boot-registrations)
+  unspecific)
+
+(define boot-registrations '())
 
 (define get-predicate-tag)
 (define set-predicate-tag!)
@@ -53,19 +60,20 @@ USA.
      (set! register-predicate! register-predicate!/after-boot)
      unspecific)))
 
-(define (register-predicate!/after-boot predicate name . keylist)
-  (guarantee keyword-list? keylist 'register-predicate!)
-  (let ((tag
-         (make-tag name
-                   predicate
-		   predicate-tagging-strategy:never
-		   'register-predicate!
-                   (get-keyword-value keylist 'extra)
-                   (get-keyword-value keylist 'description))))
-    (for-each (lambda (superset)
-		(set-tag<=! tag (predicate->tag superset)))
-	      (get-keyword-values keylist '<=))
-    tag))
+(define register-predicate!/after-boot
+  (named-lambda (register-predicate! predicate name . keylist)
+    (guarantee keyword-list? keylist 'register-predicate!)
+    (let ((tag
+	   (make-tag name
+		     predicate
+		     predicate-tagging-strategy:never
+		     'register-predicate!
+		     (get-keyword-value keylist 'extra)
+		     (get-keyword-value keylist 'description))))
+      (for-each (lambda (superset)
+		  (set-tag<=! tag (predicate->tag superset)))
+		(get-keyword-values keylist '<=))
+      tag)))
 
 (define (predicate-name predicate)
   (tag-name (predicate->tag predicate 'predicate-name)))
@@ -251,8 +259,6 @@ USA.
 
    (register-predicate! flo:flonum? 'flonum '<= real?)
 
-   (register-mit-bytevector-predicates!)
-
    ;; MIT/GNU Scheme: lists
    (register-predicate! alist? 'association-list '<= list?)
    (register-predicate! keyword-list? 'keyword-list '<= list?)
@@ -325,14 +331,6 @@ USA.
    (register-predicate! weak-list? 'weak-list)
    (register-predicate! weak-pair? 'weak-pair)
 
-   (register-ustring-predicates!)
+   (run-deferred-boot-actions 'predicate-registrations)))
 
-   (cleanup-boot-time-record-predicates!)))
-
-(add-boot-init!
- (lambda ()
-   (for-each (lambda (reg)
-	       (apply register-predicate! reg))
-	     (reverse! boot-registrations))
-   (set! boot-registrations)
-   unspecific))
+(add-boot-init! run-deferred-predicate-registrations!)

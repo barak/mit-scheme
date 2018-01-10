@@ -75,17 +75,17 @@ USA.
 	((slice? string) (not (slice-mutable? string)))
 	(else (fail))))
 
-(define (register-ustring-predicates!)
-  (register-predicate! string? 'string)
-  (register-predicate! mutable-string? 'mutable-string '<= string?)
-  (register-predicate! immutable-string? 'immutable-string '<= string?)
-  (register-predicate! nfc-string? 'nfc-string '<= string?)
-  (register-predicate! legacy-string? 'legacy-string
-		       '<= string?
-		       '<= mutable-string?)
-  (register-predicate! ustring? 'unicode-string '<= string?)
-  (register-predicate! slice? 'string-slice '<= string?)
-  (register-predicate! 8-bit-string? '8-bit-string '<= string?))
+(defer-boot-action 'predicate-registrations
+  (lambda ()
+    (register-predicate! mutable-string? 'mutable-string '<= string?)
+    (register-predicate! immutable-string? 'immutable-string '<= string?)
+    (register-predicate! nfc-string? 'nfc-string '<= string?)
+    (register-predicate! legacy-string? 'legacy-string
+			 '<= string?
+			 '<= mutable-string?)
+    (register-predicate! ustring? 'unicode-string '<= string?)
+    (register-predicate! slice? 'string-slice '<= string?)
+    (register-predicate! 8-bit-string? '8-bit-string '<= string?)))
 
 ;;;; Unicode string layout
 

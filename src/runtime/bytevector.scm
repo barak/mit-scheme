@@ -29,12 +29,13 @@ USA.
 
 (declare (usual-integrations))
 
-(define (register-mit-bytevector-predicates!)
-  (register-predicate! u8? 'u8 '<= index-fixnum?)
-  (register-predicate! u16? 'u16 '<= index-fixnum?)
-  (register-predicate! u32? 'u32 '<= (if (fix:fixnum? #xFFFFFFFF)
-					 index-fixnum?
-					 exact-nonnegative-integer?)))
+(defer-boot-action 'predicate-registrations
+  (lambda ()
+    (register-predicate! u8? 'u8 '<= index-fixnum?)
+    (register-predicate! u16? 'u16 '<= index-fixnum?)
+    (register-predicate! u32? 'u32 '<= (if (fix:fixnum? #xFFFFFFFF)
+					   index-fixnum?
+					   exact-nonnegative-integer?))))
 
 (define (u8? object)
   (and (index-fixnum? object)
