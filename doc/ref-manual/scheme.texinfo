@@ -304,13 +304,6 @@ Procedures
 * Primitive Procedures::
 * Continuations::
 * Application Hooks::
-* Generic Dispatch::
-
-Generic Dispatch
-
-* Generic Procedures::
-* Method Generators::
-* Dispatch Tags::
 
 Environments
 
