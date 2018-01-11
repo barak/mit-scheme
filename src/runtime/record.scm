@@ -370,32 +370,54 @@ USA.
   (%record-type-predicate record-type))
 
 (define (record-accessor record-type field-name)
-  (guarantee-record-type record-type 'RECORD-ACCESSOR)
-  (let ((tag (record-type-dispatch-tag record-type))
+  (guarantee-record-type record-type 'record-accessor)
+  (let ((tag (%record-type-dispatch-tag record-type))
+	(predicate (%record-type-predicate record-type))
 	(index (record-type-field-index record-type field-name #t)))
-    (letrec ((accessor
-	      (lambda (record)
-		(if (not (%tagged-record? tag record))
-		    (error:not-tagged-record record record-type accessor))
-		(%record-ref record index))))
-      accessor)))
+    (let-syntax
+	((expand-cases
+	  (sc-macro-transformer
+	   (lambda (form use-env)
+	     (declare (ignore use-env))
+	     (let ((limit (cadr form))
+		   (gen-accessor
+		    (lambda (i)
+		      `(lambda (record)
+			 (if (not (%tagged-record? tag record))
+			     (error:not-a predicate record))
+			 (%record-ref record ,i)))))
+	       (let loop ((i 1))
+		 (if (fix:<= i limit)
+		     `(if (fix:= index ,i)
+			  ,(gen-accessor i)
+			  ,(loop (fix:+ i 1)))
+		     (gen-accessor 'index))))))))
+      (expand-cases 16))))
 
 (define (record-modifier record-type field-name)
-  (guarantee-record-type record-type 'RECORD-MODIFIER)
-  (let ((tag (record-type-dispatch-tag record-type))
+  (guarantee-record-type record-type 'record-modifier)
+  (let ((tag (%record-type-dispatch-tag record-type))
+	(predicate (%record-type-predicate record-type))
 	(index (record-type-field-index record-type field-name #t)))
-    (letrec ((modifier
-	      (lambda (record field-value)
-		(if (not (%tagged-record? tag record))
-		    (error:not-tagged-record record record-type modifier))
-		(%record-set! record index field-value))))
-      modifier)))
-
-(define (error:not-tagged-record record record-type modifier)
-  (error:wrong-type-argument record
-			     (string-append "record of type "
-					    (%record-type-name record-type))
-			     modifier))
+    (let-syntax
+	((expand-cases
+	  (sc-macro-transformer
+	   (lambda (form use-env)
+	     (declare (ignore use-env))
+	     (let ((limit (cadr form))
+		   (gen-accessor
+		    (lambda (i)
+		      `(lambda (record field-value)
+			 (if (not (%tagged-record? tag record))
+			     (error:not-a predicate record))
+			 (%record-set! record ,i field-value)))))
+	       (let loop ((i 1))
+		 (if (fix:<= i limit)
+		     `(if (fix:= index ,i)
+			  ,(gen-accessor i)
+			  ,(loop (fix:+ i 1)))
+		     (gen-accessor 'index))))))))
+      (expand-cases 16))))
 
 (define record-copy copy-record)
 (define record-updater record-modifier)
