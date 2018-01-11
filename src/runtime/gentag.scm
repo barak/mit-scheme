@@ -90,22 +90,22 @@ USA.
 
 ;;;; Object Tags
 
-;;; We assume that most new data types will be constructed from tagged
-;;; vectors, and therefore we should optimize the path for such
-;;; structures as much as possible.
+;;; We assume that most new data types will be constructed from records, and
+;;; therefore we should optimize the path for such structures as much as
+;;; possible.
 
 (define (dispatch-tag object)
   (declare (integrate object))
   (declare (ignore-reference-traps (set microcode-type-tag-table
 					microcode-type-method-table)))
-  (if (and (%record? object)
-	   (%record? (%record-ref object 0))
-	   (eq? dispatch-tag-marker (%record-ref (%record-ref object 0) 0)))
-      (%record-ref object 0)
-      (if (vector-ref microcode-type-tag-table (object-type object))
-	  (vector-ref microcode-type-tag-table (object-type object))
-	  ((vector-ref microcode-type-method-table (object-type object))
-	   object))))
+  (cond ((and (%record? object)
+	      (dispatch-tag? (%record-ref object 0)))
+	 (%record-ref object 0))
+	((vector-ref microcode-type-tag-table (object-type object))
+	 (vector-ref microcode-type-tag-table (object-type object)))
+	(else
+	 ((vector-ref microcode-type-method-table (object-type object))
+	  object))))
 
 (define (make-built-in-tag names)
   (let ((tags (map built-in-dispatch-tag names)))
