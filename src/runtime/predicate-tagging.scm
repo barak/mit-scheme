@@ -33,44 +33,36 @@ USA.
   (object-type? (ucode-type tagged-object) object))
 (register-predicate! tagged-object? 'tagged-object)
 
-(define (object-tagger predicate)
-  (let ((tag (predicate->tag predicate)))
-    (lambda (datum)
-      (make-tagged-object tag datum))))
-
-(define (tag-object predicate datum)
-  (make-tagged-object (predicate->tag predicate) datum))
-
-(define (tagged-object-predicate object)
-  (tag->predicate (tagged-object-tag object)))
-
-(define-integrable (make-tagged-object tag datum)
+(define-integrable (%make-tagged-object tag datum)
   (system-pair-cons (ucode-type tagged-object) tag datum))
+
+(define-integrable (%tagged-object-tag object)
+  (system-pair-car object))
+
+(define-integrable (%tagged-object-datum object)
+  (system-pair-cdr object))
 
 (define (tagged-object-tag object)
   (guarantee tagged-object? object 'tagged-object-tag)
-  (system-pair-car object))
+  (%tagged-object-tag object))
 
 (define (tagged-object-datum object)
   (guarantee tagged-object? object 'tagged-object-datum)
-  (system-pair-cdr object))
+  (%tagged-object-datum object))
 
-(define unparser-methods)
-(add-boot-init!
- (lambda ()
-   (set! unparser-methods (make-key-weak-eqv-hash-table))
-   unspecific))
+(define (object->predicate object)
+  (tag->predicate (object->tag object)))
 
-(define (get-tagged-object-unparser-method object)
-  (hash-table-ref/default unparser-methods (tagged-object-tag object) #f))
+(define (object->tag object)
+  (let ((code (object-type object)))
+    (or (vector-ref primitive-tags code)
+	((vector-ref primitive-tag-methods code) object)
+	(error "Unknown type code:" code))))
 
-(define (set-tagged-object-unparser-method! tag unparser)
-  (if unparser
-      (begin
-	(guarantee unparser-method? unparser
-		   'set-tagged-object-unparser-method!)
-	(hash-table-set! unparser-methods tag unparser))
-      (hash-table-delete! unparser-methods tag)))
+(define (object->datum object)
+  (if (tagged-object? object)
+      (%tagged-object-datum object)
+      object))
 
 ;;;; Tagging strategies
 
@@ -94,18 +86,18 @@ USA.
 
   (define (predicate object)
     (and (tagged-object? object)
-         (tag<= (tagged-object-tag object) tag)
-         (datum-test (tagged-object-datum object))))
+         (tag<= (%tagged-object-tag object) tag)
+         (datum-test (%tagged-object-datum object))))
 
   (define (tagger datum #!optional tagger-name)
     (if (not (datum-test datum))
 	(error:wrong-type-argument datum (string "datum for " name)
 				   tagger-name))
-    (make-tagged-object tag datum))
+    (%make-tagged-object tag datum))
 
   (define (untagger object #!optional untagger-name)
     (guarantee predicate object untagger-name)
-    (tagged-object-datum object))
+    (%tagged-object-datum object))
 
   (define tag
     (make-tag predicate tagger untagger))
@@ -120,8 +112,8 @@ USA.
 
   (define (tagged-object-test object)
     (and (tagged-object? object)
-	 (tag<= (tagged-object-tag object) tag)
-	 (datum-test (tagged-object-datum object))))
+	 (tag<= (%tagged-object-tag object) tag)
+	 (datum-test (%tagged-object-datum object))))
 
   (define (tagger datum #!optional tagger-name)
     (if (not (datum-test datum))
@@ -129,10 +121,10 @@ USA.
 				   tagger-name))
     (if (tag<= (object->tag datum) tag)
         datum
-        (make-tagged-object tag datum)))
+        (%make-tagged-object tag datum)))
 
   (define (untagger object #!optional untagger-name)
-    (cond ((tagged-object-test object) (tagged-object-datum object))
+    (cond ((tagged-object-test object) (%tagged-object-datum object))
 	  ((datum-test object) object)
 	  (else (error:not-a predicate object untagger-name))))
 
@@ -141,19 +133,6 @@ USA.
 
   tag)
 
-(define (object->predicate object)
-  (tag->predicate (object->tag object)))
-
-(define (object->tag object)
-  (let ((code (object-type object)))
-    (or (vector-ref primitive-tags code)
-	((vector-ref primitive-tag-methods code) object)
-	(error "Unknown type code:" code))))
-
-(define (object->datum object)
-  (cond ((tagged-object? object) (system-pair-cdr object))
-        (else object)))
-
 (define primitive-tags)
 (define primitive-tag-methods)
 (add-boot-init!
@@ -205,7 +184,7 @@ USA.
        (vector-set! primitive-tag-methods type-code method)))
 
    (define-primitive-predicate-method 'tagged-object
-     system-pair-car)
+     %tagged-object-tag)
 
    (define-primitive-predicate-method 'constant
      (let* ((constant-tags

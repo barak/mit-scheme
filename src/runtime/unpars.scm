@@ -284,9 +284,6 @@ USA.
 
 (define-integrable (*unparse-object object context)
   (unparse-object context object))
-
-(define-integrable (invoke-user-method method object context)
-  (method context object))
 
 (define dispatch-table)
 (add-boot-init!
@@ -891,10 +888,8 @@ USA.
 		(*unparse-datum promise context*)))))))
 
 (define (unparse/tagged-object object context)
-  (cond ((get-tagged-object-unparser-method object)
-	 => (lambda (method)
-	      (invoke-user-method method object context)))
-	(else
-	 (*unparse-with-brackets 'tagged-object object context
-	   (lambda (context*)
-	     (*unparse-object (tagged-object-tag object) context*))))))
+  (*unparse-with-brackets 'tagged-object object context
+    (lambda (context*)
+      (*unparse-object (tag-name (tagged-object-tag object)) context*)
+      (*unparse-string " " context*)
+      (*unparse-object (tagged-object-datum object) context*))))

@@ -1908,18 +1908,11 @@ USA.
 	  predicate-tagging-strategy:never
 	  predicate-tagging-strategy:optional
 	  object->datum
-	  object->predicate
-	  object-tagger
-	  set-tagged-object-unparser-method!
-	  tag-object
-	  tagged-object-datum
-	  tagged-object-predicate
-	  tagged-object?)
+	  object->predicate)
   (export (runtime)
 	  object->tag
-	  tagged-object-tag)
-  (export (runtime unparser)
-	  get-tagged-object-unparser-method))
+	  tagged-object-datum
+	  tagged-object-tag))
 
 (define-package (runtime predicate-dispatch)
   (files "predicate-dispatch")
