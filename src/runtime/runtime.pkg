@@ -3753,8 +3753,6 @@ USA.
 	  record-accessor
 	  record-constructor
 	  record-copy
-	  record-entity?
-	  record-entity-predicate
 	  record-keyword-constructor
 	  record-modifier
 	  record-predicate

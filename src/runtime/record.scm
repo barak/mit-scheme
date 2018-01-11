@@ -61,10 +61,6 @@ USA.
   (and (%record? object)
        (eq? (%record-tag object) tag)))
 
-(define (%tagged-record-entity? tag object)
-  (and (entity? object)
-       (%tagged-record? tag (entity-extra object))))
-
 (define (%copy-record record)
   (let ((length (%record-length record)))
     (let ((result (%make-record (%record-tag record) length)))
@@ -77,14 +73,13 @@ USA.
 
 (define (initialize-record-type-type!)
   (let* ((field-names
-	  '#(dispatch-tag name field-names default-inits tag entity-tag))
+	  '#(dispatch-tag name field-names default-inits tag))
 	 (type
 	  (%record #f
 		   #f
 		   "record-type"
 		   field-names
 		   (vector-cons (vector-length field-names) #f)
-		   #f
 		   #f)))
     (set! record-type-type-tag (make-dispatch-tag type))
     (%record-set! type 0 record-type-type-tag)
@@ -96,6 +91,7 @@ USA.
 			  default-inits unparser-method entity-unparser-method)
   ;; The unparser-method and entity-unparser-method arguments should be removed
   ;; after the 9.3 release.
+  (declare (ignore entity-unparser-method))
   (let ((caller 'make-record-type))
     (if (not (list-of-unique-symbols? field-names))
 	(error:not-a list-of-unique-symbols? field-names caller))
@@ -114,25 +110,34 @@ USA.
 		       (if (default-object? default-inits)
 			   (vector-cons n #f)
 			   (list->vector default-inits))
-		       #f
 		       #f))
 	     (tag (make-dispatch-tag record-type)))
 	(%record-set! record-type 1 tag)
 	(let ((predicate
 	       (lambda (object)
-		 (%tagged-record? tag object)))
-	      (entity-predicate
-	       (lambda (object)
-		 (%tagged-record-entity? tag object))))
+		 (%tagged-record? tag object))))
 	  (%set-record-type-predicate! record-type predicate)
-	  (%set-record-type-entity-predicate! record-type entity-predicate)
 	  (if (and unparser-method
 		   (not (default-object? unparser-method)))
-	      (define-unparser-method predicate unparser-method))
-	  (if (and entity-unparser-method
-		   (not (default-object? entity-unparser-method)))
-	      (define-unparser-method entity-predicate entity-unparser-method)))
+	      (define-unparser-method predicate unparser-method)))
 	record-type))))
+
+(define (%valid-default-inits? default-inits n-fields)
+  (fix:= n-fields (length default-inits)))
+
+(defer-boot-action 'record-procedures
+  (lambda ()
+    (set! %valid-default-inits?
+	  (named-lambda (%valid-default-inits? default-inits n-fields)
+	    (and (fix:= n-fields (length default-inits))
+		 (every (lambda (init)
+			  (or (not init)
+			      (thunk? init)))
+			default-inits))))
+    unspecific))
+
+(define (initialize-record-procedures!)
+  (run-deferred-boot-actions 'record-procedures))
 
 (define (record-type? object)
   (%tagged-record? record-type-type-tag object))
@@ -158,12 +163,6 @@ USA.
 (define-integrable (%set-record-type-tag! record-type tag)
   (%record-set! record-type 5 tag))
 
-(define-integrable (%record-type-entity-tag record-type)
-  (%record-ref record-type 6))
-
-(define-integrable (%set-record-type-entity-tag! record-type tag)
-  (%record-set! record-type 6 tag))
-
 (define-integrable (%record-type-n-fields record-type)
   (vector-length (%record-type-field-names record-type)))
 
@@ -188,32 +187,14 @@ USA.
   (let ((v (%record-type-field-names record-type)))
     ((ucode-primitive subvector->list) v 0 (vector-length v))))
 
-(define (%valid-default-inits? default-inits n-fields)
-  (fix:= n-fields (length default-inits)))
-
-(defer-boot-action 'record-procedures
-  (lambda ()
-    (set! %valid-default-inits?
-	  (named-lambda (%valid-default-inits? default-inits n-fields)
-	    (and (fix:= n-fields (length default-inits))
-		 (every (lambda (init)
-			  (or (not init)
-			      (thunk? init)))
-			default-inits))))
-    unspecific))
-
-(define (initialize-record-procedures!)
-  (run-deferred-boot-actions 'record-procedures))
-
 (define (record-type-default-value-by-index record-type field-index)
   (let ((init
 	 (vector-ref (%record-type-default-inits record-type)
 		     (fix:- field-index 1))))
     (and init
 	 (init))))
-
-(define %record-type-predicate
-  %record-type-tag)
+
+(define %record-type-predicate %record-type-tag)
 
 (define (%set-record-type-predicate! record-type predicate)
   (defer-boot-action 'predicate-registrations
@@ -237,36 +218,6 @@ USA.
 		       (string->symbol
 			(strip-angle-brackets (%record-type-name record-type)))
 		       '<= record?))
-
-(define %record-type-entity-predicate
-  %record-type-entity-tag)
-
-(define (%set-record-type-entity-predicate! record-type predicate)
-  (defer-boot-action 'predicate-registrations
-    (lambda ()
-      (%set-record-type-entity-predicate! record-type predicate)))
-  (%set-record-type-entity-tag! record-type predicate))
-
-(defer-boot-action 'predicate-registrations
-  (lambda ()
-    (set! %record-type-entity-predicate
-	  (named-lambda (%record-type-entity-predicate record-type)
-	    (tag->predicate (%record-type-entity-tag record-type))))
-    (set! %set-record-type-entity-predicate!
-	  (named-lambda (%set-record-type-entity-predicate! record-type
-							    predicate)
-	    (%register-record-entity-predicate! predicate record-type)
-	    (%set-record-type-entity-tag! record-type
-					  (predicate->tag predicate))))
-    unspecific))
-
-(define (%register-record-entity-predicate! predicate record-type)
-  (register-predicate! predicate
-		       (string->symbol
-			(string-append
-			 (strip-angle-brackets (%record-type-name record-type))
-			 "-entity"))
-		       '<= record-entity?))
 
 ;;;; Constructors
 
@@ -406,10 +357,6 @@ USA.
        (dispatch-tag? (%record-tag object))
        (record-type? (dispatch-tag-contents (%record-tag object)))))
 
-(define (record-entity? object)
-  (and (entity? object)
-       (record? (entity-extra object))))
-
 (define (record-type-descriptor record)
   (guarantee-record record 'RECORD-TYPE-DESCRIPTOR)
   (%record-type-descriptor record))
@@ -421,10 +368,6 @@ USA.
 (define (record-predicate record-type)
   (guarantee-record-type record-type 'RECORD-PREDICATE)
   (%record-type-predicate record-type))
-
-(define (record-entity-predicate record-type)
-  (guarantee-record-type record-type 'record-entity-predicate)
-  (%record-type-entity-predicate record-type))
 
 (define (record-accessor record-type field-name)
   (guarantee-record-type record-type 'RECORD-ACCESSOR)
