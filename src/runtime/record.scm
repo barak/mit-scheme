@@ -188,10 +188,6 @@ USA.
   (let ((v (%record-type-field-names record-type)))
     ((ucode-primitive subvector->list) v 0 (vector-length v))))
 
-(define (record-type-default-inits record-type)
-  (guarantee-record-type record-type 'RECORD-TYPE-DEFAULT-INITS)
-  (vector->list (%record-type-default-inits record-type)))
-
 (define (%valid-default-inits? default-inits n-fields)
   (fix:= n-fields (length default-inits)))
 
@@ -209,15 +205,12 @@ USA.
 (define (initialize-record-procedures!)
   (run-deferred-boot-actions 'record-procedures))
 
-(define (record-type-default-value record-type field-name)
-  (record-type-default-value-by-index
-   record-type
-   (record-type-field-index record-type field-name #t)))
-
-(define (record-type-default-value-by-index record-type field-name-index)
-  (let ((init (vector-ref (%record-type-default-inits record-type)
-			  (fix:- field-name-index 1))))
-    (and init (init))))
+(define (record-type-default-value-by-index record-type field-index)
+  (let ((init
+	 (vector-ref (%record-type-default-inits record-type)
+		     (fix:- field-index 1))))
+    (and init
+	 (init))))
 
 (define %record-type-predicate
   %record-type-tag)
@@ -513,10 +506,9 @@ USA.
    #f))
 
 (define-unparser-method record-type?
-  (standard-unparser-method 'record-type
-    (lambda (type port)
-      (write-char #\space port)
-      (display (%record-type-name type) port))))
+  (simple-unparser-method 'record-type
+    (lambda (type)
+      (list (%record-type-name type)))))
 
 (define-pp-describer %record?
   (lambda (record)
@@ -654,9 +646,6 @@ USA.
 	     `(,field-name ,(vector-ref vector index)))
 	   (vector->list (structure-type/field-names type))
 	   (vector->list (structure-type/field-indexes type))))))
-
-(define (define-structure/default-value type field-name)
-  ((structure-type/default-init type field-name)))
 
 (define (define-structure/default-value-by-index type field-name-index)
   ((structure-type/default-init-by-index type field-name-index)))
