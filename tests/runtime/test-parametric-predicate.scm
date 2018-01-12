@@ -29,9 +29,7 @@ USA.
 (declare (usual-integrations))
 
 (define (make-template name pattern)
-  (make-predicate-template name pattern
-			   predicate-tagging-strategy:always
-			   (lambda args args any-object?)))
+  (make-predicate-template name pattern (lambda args args any-object?)))
 
 (define-test 'parametric-predicate-one-parameter
   (lambda ()

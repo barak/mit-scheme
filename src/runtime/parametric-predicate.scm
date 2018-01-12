@@ -39,12 +39,11 @@ USA.
 (define (parametric-predicate-bindings predicate)
   (parametric-tag-bindings (predicate->tag predicate)))
 
-(define (make-parametric-tag name datum-test tagging-strategy template bindings)
-  (make-tag name
-            datum-test
-	    tagging-strategy
-	    'make-predicate-template
-            (make-parametric-tag-extra template bindings)))
+(define (make-parametric-tag name datum-test template bindings)
+  (tagging-strategy:optional datum-test
+    (lambda (predicate tagger)
+      (make-tag name predicate tagger 'make-predicate-template
+		(make-parametric-tag-extra template bindings)))))
 
 (define (tag-is-parametric? tag)
   (parametric-tag-extra? (tag-extra tag)))
@@ -63,12 +62,11 @@ USA.
 
 ;;;; Templates
 
-(define (make-predicate-template name pattern tagging-strategy make-data-test)
+(define (make-predicate-template name pattern make-data-test)
   (guarantee template-pattern? pattern 'make-predicate-template)
   (letrec*
       ((instantiator
-        (make-instantiator name pattern make-data-test tagging-strategy
-			   (lambda () template)))
+        (make-instantiator name pattern make-data-test (lambda () template)))
        (template
         (%make-predicate-template name
 				  pattern
@@ -94,8 +92,7 @@ USA.
   (instantiator template-instantiator)
   (predicate predicate-template-predicate))
 
-(define (make-instantiator name pattern make-data-test tagging-strategy
-			   get-template)
+(define (make-instantiator name pattern make-data-test get-template)
   (lambda (patterned-tags caller)
     (letrec ((tag
 	      (make-parametric-tag
@@ -109,7 +106,6 @@ USA.
 					    patterned-tags
 					    tag->predicate
 					    caller))
-	       tagging-strategy
 	       (get-template)
 	       (match-template-pattern pattern
 				       patterned-tags
@@ -284,7 +280,6 @@ USA.
 	 (predicate-template-constructor
 	  (make-predicate-template 'is-list-of
 				   '((? elt-predicate))
-				   predicate-tagging-strategy:optional
 				   (lambda (elt-predicate)
 				     (lambda (object)
 				       (list-of-type? object elt-predicate))))))
@@ -292,7 +287,6 @@ USA.
 	 (predicate-template-constructor
 	  (make-predicate-template 'is-non-empty-list-of
 				   '((? elt-predicate))
-				   predicate-tagging-strategy:optional
 				   (lambda (elt-predicate)
 				     (lambda (object)
 				       (and (pair? object)
@@ -302,7 +296,6 @@ USA.
 	 (predicate-template-constructor
 	  (make-predicate-template 'is-non-empty-list-of
 				   '((? car-predicate) (? cdr-predicate))
-				   predicate-tagging-strategy:optional
 				   (lambda (car-predicate cdr-predicate)
 				     (lambda (object)
 				       (and (pair? object)

@@ -92,10 +92,10 @@ USA.
 (define-integrable (tag-is-bottom? tag) (eq? the-bottom-tag tag))
 
 (define-deferred the-top-tag
-  (make-compound-tag any-object? 'conjoin '()))
+  (%make-compound-tag tagging-strategy:never any-object? 'conjoin '()))
 
 (define-deferred the-bottom-tag
-  (make-compound-tag no-object? 'disjoin '()))
+  (%make-compound-tag tagging-strategy:never no-object? 'disjoin '()))
 
 (define tag<=-cache)
 (define tag<=-overrides)

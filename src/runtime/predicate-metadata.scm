@@ -44,12 +44,11 @@ USA.
   (named-lambda (register-predicate! predicate name . keylist)
     (guarantee keyword-list? keylist 'register-predicate!)
     (let ((tag
-	   (make-tag name
-		     predicate
-		     predicate-tagging-strategy:never
-		     'register-predicate!
-		     (get-keyword-value keylist 'extra)
-		     (get-keyword-value keylist 'description))))
+	   (tagging-strategy:never predicate
+	     (lambda (predicate tagger)
+	       (make-tag name predicate tagger 'register-predicate!
+			 (get-keyword-value keylist 'extra)
+			 (get-keyword-value keylist 'description))))))
       (for-each (lambda (superset)
 		  (set-tag<=! tag (predicate->tag superset)))
 		(get-keyword-values keylist '<=))
@@ -60,12 +59,6 @@ USA.
 
 (define (predicate-tagger predicate)
   (tag-tagger (predicate->tag predicate 'predicate-tagger)))
-
-(define (predicate-untagger predicate)
-  (tag-untagger (predicate->tag predicate 'predicate-untagger)))
-
-(define (predicate-tagging-strategy predicate)
-  (tag-tagging-strategy (predicate->tag predicate 'predicate-tagging-strategy)))
 
 (define (predicate-description predicate)
   (let ((tag (get-predicate-tag predicate #f)))
@@ -102,26 +95,23 @@ USA.
                                             (predicate-description predicate))
                              caller))
 
-(define (make-tag name datum-test tagging-strategy caller
-		  #!optional extra description)
+(define (make-tag name predicate tagger caller #!optional extra description)
   (guarantee tag-name? name caller)
-  (guarantee unary-procedure? datum-test caller)
+  (guarantee unary-procedure? predicate caller)
   (if (not (default-object? description))
       (guarantee string? description caller))
-  (tagging-strategy name datum-test
-    (lambda (predicate tagger untagger)
-      (let ((tag
-	     (%make-tag name
-			predicate
-			tagger
-			untagger
-			(if (default-object? extra) #f extra)
-			(if (default-object? description) #f description)
-			tagging-strategy
-			(make-key-weak-eq-hash-table)
-			(make-key-weak-eq-hash-table))))
-	(set-predicate-tag! predicate tag)
-	tag))))
+  (let ((tag
+	 (%make-tag name
+		    predicate
+		    tagger
+		    (if (default-object? extra) #f extra)
+		    (if (default-object? description)
+			(delay (object->description name))
+			(delay description))
+		    (make-key-weak-eq-hash-table)
+		    (make-key-weak-eq-hash-table))))
+    (set-predicate-tag! predicate tag)
+    tag))
 
 (define (tag-name? object)
   (or (symbol? object)
@@ -133,17 +123,19 @@ USA.
 			(tag-name? elt)))
 		  (cdr object)))))
 
+(define (object->description object)
+  (call-with-output-string
+    (lambda (port)
+      (write object port))))
+
 (define-record-type <tag>
-    (%make-tag name predicate tagger untagger extra description
-	       tagging-strategy subsets supersets)
+    (%make-tag name predicate tagger extra description subsets supersets)
     tag?
   (name tag-name)
   (predicate tag->predicate)
   (tagger tag-tagger)
-  (untagger tag-untagger)
   (extra tag-extra)
   (description %tag-description)
-  (tagging-strategy tag-tagging-strategy)
   (subsets tag-subsets)
   (supersets tag-supersets))
 
@@ -153,13 +145,7 @@ USA.
       (list (tag-name tag)))))
 
 (define (tag-description tag)
-  (or (%tag-description tag)
-      (object->description (tag-name tag))))
-
-(define (object->description object)
-  (call-with-output-string
-    (lambda (port)
-      (write object port))))
+  (force (%tag-description tag)))
 
 (define (get-tag-subsets tag)
   (hash-table-keys (tag-subsets tag)))

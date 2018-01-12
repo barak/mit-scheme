@@ -66,45 +66,18 @@ USA.
 
 ;;;; Tagging strategies
 
-(define (predicate-tagging-strategy:never name predicate make-tag)
-  (declare (ignore name))
+(define (tagging-strategy:never predicate make-tag)
 
   (define (tagger object #!optional tagger-name)
     (guarantee predicate object tagger-name)
     object)
 
-  (define (untagger object #!optional untagger-name)
-    (guarantee predicate object untagger-name)
-    object)
-
   (define tag
-    (make-tag predicate tagger untagger))
+    (make-tag predicate tagger))
 
   tag)
 
-(define (predicate-tagging-strategy:always name datum-test make-tag)
-
-  (define (predicate object)
-    (and (tagged-object? object)
-         (tag<= (%tagged-object-tag object) tag)
-         (datum-test (%tagged-object-datum object))))
-
-  (define (tagger datum #!optional tagger-name)
-    (if (not (datum-test datum))
-	(error:wrong-type-argument datum (string "datum for " name)
-				   tagger-name))
-    (%make-tagged-object tag datum))
-
-  (define (untagger object #!optional untagger-name)
-    (guarantee predicate object untagger-name)
-    (%tagged-object-datum object))
-
-  (define tag
-    (make-tag predicate tagger untagger))
-
-  tag)
-
-(define (predicate-tagging-strategy:optional name datum-test make-tag)
+(define (tagging-strategy:optional datum-test make-tag)
 
   (define (predicate object)
     (or (tagged-object-test object)
@@ -116,20 +89,13 @@ USA.
 	 (datum-test (%tagged-object-datum object))))
 
   (define (tagger datum #!optional tagger-name)
-    (if (not (datum-test datum))
-	(error:wrong-type-argument datum (string "datum for " name)
-				   tagger-name))
+    (guarantee datum-test datum tagger-name)
     (if (tag<= (object->tag datum) tag)
         datum
         (%make-tagged-object tag datum)))
 
-  (define (untagger object #!optional untagger-name)
-    (cond ((tagged-object-test object) (%tagged-object-datum object))
-	  ((datum-test object) object)
-	  (else (error:not-a predicate object untagger-name))))
-
   (define tag
-    (make-tag predicate tagger untagger))
+    (make-tag predicate tagger))
 
   tag)
 
