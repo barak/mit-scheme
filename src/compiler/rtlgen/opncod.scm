@@ -934,10 +934,10 @@ USA.
 		false)
 	(values false false false))))
 
-(define-open-coder/value '%RECORD
+(define-open-coder/value '%record
   (lambda (operands primitive block)
     primitive block			;ignore
-    (if (< 1 (length operands) 32)
+    (if (< (length operands) 32)
 	(values (lambda (combination expressions finish)
 		  combination
 		  (finish
