@@ -438,13 +438,9 @@ it returns @code{#f}.
 @end deffn
 
 @deffn procedure unicode-char? object
-Returns @code{#t} if @var{object} is a character corresponding to a
-Unicode scalar value, otherwise it returns @code{#f}.  In other words,
-it is true for any character for which @code{char->integer} returns a
-value satisfying @code{unicode-scalar-value?}.
-
-Note that this is a bit of a misnomer since characters corresponding
-to Unicode ``noncharacter'' scalar values satisfy this predicate.
+Returns @code{#t} if @var{object} is any ``bitless'' character
+corresponding to a Unicode code point, except for those with general
+category @code{other:surrogate} or @code{other:not-assigned}.
 @end deffn
 
 @deffn procedure char-general-category char

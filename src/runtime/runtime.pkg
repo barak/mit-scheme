@@ -1226,8 +1226,7 @@ USA.
   (files "char")
   (parent (runtime))
   (export () deprecated:character
-	  (code->char integer->char)
-	  (wide-char? unicode-char?))
+	  (code->char integer->char))
   (export ()
 	  8-bit-char?
 	  ascii-char?

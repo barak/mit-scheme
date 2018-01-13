@@ -54,7 +54,8 @@ USA.
 		   (lambda (char)
 		     (and (bitless-char? char)
 			  (char-in-set? char char-set)))))
-	      (register-predicate! predicate 'char-set-predicate '<= char?)
+	      (register-predicate! predicate 'char-set-predicate
+				   '<= bitless-char?)
 	      predicate)))))
     char-set))
 
