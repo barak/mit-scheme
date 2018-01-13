@@ -29,6 +29,28 @@ USA.
 
 (declare (usual-integrations))
 
+;;; These primitives are the building blocks for many other types.
+(define-primitives
+  (%make-tagged-object 2)
+  (%record -1)
+  (%record-length 1)
+  (%record-ref 2)
+  (%record-set! 3)
+  (%record? 1)
+  (%tagged-object-datum 1)
+  (%tagged-object-tag 1)
+  (%tagged-object? 1))
+
+(define (%make-record tag length #!optional init-value)
+  (let ((record
+	 ((ucode-primitive %make-record 2)
+	  length
+	  (if (default-object? init-value)
+	      #f
+	      init-value))))
+    (%record-set! record 0 tag)
+    record))
+
 ;;;; Interrupt control
 
 (define interrupt-bit/stack     #x0001)

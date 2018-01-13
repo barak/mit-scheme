@@ -135,6 +135,16 @@ USA.
   (files "boot")
   (parent (runtime))
   (export ()
+	  %make-record
+	  %make-tagged-object
+	  %record
+	  %record-length
+	  %record-ref
+	  %record-set!
+	  %record?
+	  %tagged-object-datum
+	  %tagged-object-tag
+	  %tagged-object?
 	  bracketed-unparser-method
 	  bytes-per-object
 	  default-object
@@ -3715,13 +3725,7 @@ USA.
 	  set-record-type-unparser-method!)
   (export ()
 	  %copy-record
-	  %make-record
-	  %record
-	  %record-length
-	  %record-ref
-	  %record-set!
 	  %record-tag
-	  %record?
 	  condition-type:no-such-slot
 	  condition-type:slot-error
 	  condition-type:uninitialized-slot

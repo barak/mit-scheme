@@ -29,25 +29,12 @@ USA.
 
 (declare (usual-integrations))
 
-(define-integrable (tagged-object? object)
-  (object-type? (ucode-type tagged-object) object))
-(register-predicate! tagged-object? 'tagged-object)
-
-(define-integrable (%make-tagged-object tag datum)
-  (system-pair-cons (ucode-type tagged-object) tag datum))
-
-(define-integrable (%tagged-object-tag object)
-  (system-pair-car object))
-
-(define-integrable (%tagged-object-datum object)
-  (system-pair-cdr object))
-
 (define (tagged-object-tag object)
-  (guarantee tagged-object? object 'tagged-object-tag)
+  (guarantee %tagged-object? object 'tagged-object-tag)
   (%tagged-object-tag object))
 
 (define (tagged-object-datum object)
-  (guarantee tagged-object? object 'tagged-object-datum)
+  (guarantee %tagged-object? object 'tagged-object-datum)
   (%tagged-object-datum object))
 
 (define (object->predicate object)
@@ -60,10 +47,10 @@ USA.
 	(error "Unknown type code:" code))))
 
 (define (object->datum object)
-  (if (tagged-object? object)
+  (if (%tagged-object? object)
       (%tagged-object-datum object)
       object))
-
+
 ;;;; Tagging strategies
 
 (define (tagging-strategy:never predicate make-tag)
@@ -80,19 +67,16 @@ USA.
 (define (tagging-strategy:optional datum-test make-tag)
 
   (define (predicate object)
-    (or (tagged-object-test object)
+    (if (%tagged-object? object)
+	(tag<= (%tagged-object-tag object) tag)
         (datum-test object)))
 
-  (define (tagged-object-test object)
-    (and (tagged-object? object)
-	 (tag<= (%tagged-object-tag object) tag)
-	 (datum-test (%tagged-object-datum object))))
-
   (define (tagger datum #!optional tagger-name)
-    (guarantee datum-test datum tagger-name)
     (if (tag<= (object->tag datum) tag)
         datum
-        (%make-tagged-object tag datum)))
+	(begin
+	  (guarantee datum-test datum tagger-name)
+	  (%make-tagged-object tag datum))))
 
   (define tag
     (make-tag predicate tagger))

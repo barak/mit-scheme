@@ -283,10 +283,12 @@ USA.
 
 (define boolean-valued-function-primitives
   (list (ucode-primitive %record?)
+	(ucode-primitive %tagged-vector? 1)
 	(ucode-primitive &<)
 	(ucode-primitive &=)
 	(ucode-primitive &>)
 	(ucode-primitive bit-string?)
+	(ucode-primitive bytevector? 1)
 	(ucode-primitive char?)
 	(ucode-primitive eq?)
 	(ucode-primitive equal-fixnum?)
@@ -320,7 +322,10 @@ USA.
 	(ucode-primitive zero?)))
 
 (define additional-side-effect-free-primitives
-  (list (ucode-primitive %record)
+  (list (ucode-primitive %make-record 2)
+	(ucode-primitive %make-tagged-vector 2)
+	(ucode-primitive %record)
+	(ucode-primitive allocate-bytevector 1)
 	(ucode-primitive cons)
 	(ucode-primitive floating-vector-cons)
 	(ucode-primitive get-interrupt-enables)
@@ -333,6 +338,8 @@ USA.
 (define additional-function-primitives
   (list (ucode-primitive %record-length)
 	(ucode-primitive %record-ref)
+	(ucode-primitive %tagged-vector-datum 1)
+	(ucode-primitive %tagged-vector-tag 1)
 	(ucode-primitive &*)
 	(ucode-primitive &+)
 	(ucode-primitive &-)
@@ -340,6 +347,9 @@ USA.
 	(ucode-primitive -1+)
 	(ucode-primitive 1+)
 	(ucode-primitive bit-string-length)
+	(ucode-primitive bit-string-length)
+	(ucode-primitive bytevector-length 1)
+	(ucode-primitive bytevector-u8-ref 2)
 	(ucode-primitive car)
 	(ucode-primitive cdr)
 	(ucode-primitive char->integer)

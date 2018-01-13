@@ -80,26 +80,34 @@ allocate_marked_vector (unsigned int type,
 }
 
 SCHEME_OBJECT
-make_vector (unsigned long length, SCHEME_OBJECT contents, bool gc_check_p)
+make_marked_vector (unsigned int type,
+		    unsigned long length,
+		    SCHEME_OBJECT fill_value,
+		    bool gc_check_p)
 {
   if (gc_check_p)
     Primitive_GC_If_Needed (length + 1);
-  {
-    SCHEME_OBJECT result = (MAKE_POINTER_OBJECT (TC_VECTOR, Free));
-    (*Free++) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, length));
-    while ((length--) > 0)
-      (*Free++) = contents;
-    return (result);
-  }
+  SCHEME_OBJECT result = (MAKE_POINTER_OBJECT (type, Free));
+  (*Free++) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, length));
+  while ((length--) > 0)
+    (*Free++) = fill_value;
+  return (result);
+}
+
+SCHEME_OBJECT
+make_vector (unsigned long length, SCHEME_OBJECT filler, bool gc_check_p)
+{
+  return (make_marked_vector (TC_VECTOR, length, filler, gc_check_p));
 }
 
 DEFINE_PRIMITIVE ("ALLOCATE-NM-VECTOR", Prim_allocate_nm_vector, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   PRIMITIVE_RETURN
-    (allocate_non_marked_vector ((arg_ulong_index_integer (1, N_TYPE_CODES)),
-                                 (arg_ulong_index_integer (2, (1UL << DATUM_LENGTH))),
-                                 true));
+    (allocate_non_marked_vector
+     ((arg_ulong_index_integer (1, N_TYPE_CODES)),
+      (arg_ulong_index_integer (2, (1UL << DATUM_LENGTH))),
+      true));
 }
 
 DEFINE_PRIMITIVE ("VECTOR-CONS", Prim_vector_cons, 2, 2, 0)
@@ -122,6 +130,16 @@ DEFINE_PRIMITIVE ("VECTOR", Prim_vector, 0, LEXPR, 0)
       (*result_scan++) = (STACK_LOCATIVE_POP (argument_scan));
     PRIMITIVE_RETURN (result);
   }
+}
+
+DEFINE_PRIMITIVE ("%MAKE-RECORD", Prim_make_record, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (make_marked_vector (TC_RECORD,
+			 (arg_ulong_index_integer (1, (1UL << DATUM_LENGTH))),
+			 (ARG_REF (2)),
+			 true));
 }
 
 DEFINE_PRIMITIVE ("%RECORD", Prim_record, 0, LEXPR, 0)

@@ -682,15 +682,16 @@ USA.
 	 (lambda (name type)
 	   (define-open-coder/predicate name
 	     (simple-open-coder (open-code/type-test type) '(0) false)))))
-    (simple-type-test 'CHAR?    (ucode-type character))
-    (simple-type-test 'PAIR?    (ucode-type pair))
-    (simple-type-test 'STRING?  (ucode-type string))
-    (simple-type-test 'VECTOR?  (ucode-type vector))
-    (simple-type-test '%RECORD? (ucode-type record))
-    (simple-type-test 'FIXNUM?  (ucode-type fixnum))
-    (simple-type-test 'FLONUM?  (ucode-type flonum))
-    (simple-type-test 'BIT-STRING? (ucode-type vector-1b))
-    (simple-type-test 'BYTEVECTOR? (ucode-type bytevector))))
+    (simple-type-test '%record?        (ucode-type record))
+    (simple-type-test '%tagged-object? (ucode-type tagged-object))
+    (simple-type-test 'bit-string?     (ucode-type vector-1b))
+    (simple-type-test 'bytevector?     (ucode-type bytevector))
+    (simple-type-test 'char?           (ucode-type character))
+    (simple-type-test 'fixnum?         (ucode-type fixnum))
+    (simple-type-test 'flonum?         (ucode-type flonum))
+    (simple-type-test 'pair?           (ucode-type pair))
+    (simple-type-test 'string?         (ucode-type string))
+    (simple-type-test 'vector?         (ucode-type vector))))
 
 (define-open-coder/predicate 'EQ?
   (simple-open-coder
@@ -912,7 +913,12 @@ USA.
     (simple-open-coder (open-code/pair-cons (ucode-type pair)) '(0 1) false))
 
   (define-open-coder/value 'SYSTEM-PAIR-CONS
-    (filter/type-code open-code/pair-cons 0 '(1 2) false)))
+    (filter/type-code open-code/pair-cons 0 '(1 2) false))
+
+  (define-open-coder/value '%make-tagged-object
+    (simple-open-coder (open-code/pair-cons (ucode-type tagged-object))
+		       '(0 1)
+		       false)))
 
 (define-open-coder/value 'VECTOR
   (lambda (operands primitive block)
@@ -1032,7 +1038,9 @@ USA.
 	    (ucode-type flonum)
 	    0)
   (user-ref 'CAR rtl:make-fetch (ucode-type pair) 0)
-  (user-ref 'CDR rtl:make-fetch (ucode-type pair) 1))
+  (user-ref 'CDR rtl:make-fetch (ucode-type pair) 1)
+  (user-ref '%tagged-object-tag rtl:make-fetch (ucode-type tagged-object) 0)
+  (user-ref '%tagged-object-datum rtl:make-fetch (ucode-type tagged-object) 1))
 
 (let ((system-ref
        (lambda (name make-fetch index)

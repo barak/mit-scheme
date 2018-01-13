@@ -182,6 +182,7 @@ extern SCHEME_OBJECT * memory_base;
 #define CELL_P(object) ((OBJECT_TYPE (object)) == TC_CELL)
 #define PAIR_P(object) ((OBJECT_TYPE (object)) == TC_LIST)
 #define WEAK_PAIR_P(object) ((OBJECT_TYPE (object)) == TC_WEAK_CONS)
+#define TAGGED_OBJECT_P(object) ((OBJECT_TYPE (object)) == TC_TAGGED_OBJECT)
 #define VECTOR_P(object) ((OBJECT_TYPE (object)) == TC_VECTOR)
 #define RECORD_P(object) ((OBJECT_TYPE (object)) == TC_RECORD)
 #define BOOLEAN_P(object) (((object) == SHARP_T) || ((object) == SHARP_F))
@@ -280,7 +281,8 @@ extern bool string_p (SCHEME_OBJECT);
    except that they have a zero byte at the end that isn't included in
    the string's length. */
 
-#define STRING_LENGTH_TO_GC_LENGTH(n_chars) (BYTEVECTOR_LENGTH_TO_GC_LENGTH ((n_chars) + 1))
+#define STRING_LENGTH_TO_GC_LENGTH(n_chars)				\
+  (BYTEVECTOR_LENGTH_TO_GC_LENGTH ((n_chars) + 1))
 #define STRING_LENGTH BYTEVECTOR_LENGTH
 
 #define SET_STRING_LENGTH(s, n_chars) do                                \
@@ -310,8 +312,8 @@ extern bool string_p (SCHEME_OBJECT);
 #define BITS_LENGTH 4
 #define MIT_ASCII_LENGTH 25
 
-#define CHAR_BITS_META 		0x1
-#define CHAR_BITS_CONTROL 	0x2
+#define CHAR_BITS_META		0x1
+#define CHAR_BITS_CONTROL	0x2
 #define CHAR_BITS_SUPER		0x4
 #define CHAR_BITS_HYPER		0x8
 

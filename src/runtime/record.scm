@@ -31,28 +31,9 @@ USA.
 ;;; conforms to R4RS proposal
 
 (declare (usual-integrations))
-
+
 (define-primitives
-  (%record -1)
-  (%record? 1)
-  (%record-length 1)
-  (%record-ref 2)
-  (%record-set! 3)
-  (primitive-object-ref 2)
-  (primitive-object-set! 3)
-  (primitive-object-set-type 2)
   (vector-cons 2))
-
-(define (%make-record tag length #!optional init-value)
-  (let ((record
-	 ((ucode-primitive object-set-type)
-	  (ucode-type record)
-	  (vector-cons length
-		       (if (default-object? init-value)
-			   #f
-			   init-value)))))
-    (%record-set! record 0 tag)
-    record))
 
 (define-integrable (%record-tag record)
   (%record-ref record 0))
@@ -68,7 +49,7 @@ USA.
 	  ((fix:= index length))
 	(%record-set! result index (%record-ref record index)))
       result)))
-
+
 (define record-type-type-tag)
 
 (define (initialize-record-type-type!)
@@ -85,7 +66,7 @@ USA.
     (%record-set! type 0 record-type-type-tag)
     (%record-set! type 1 record-type-type-tag))
   (initialize-structure-type-type!))
-
+
 (define (make-record-type type-name field-names
 			  #!optional
 			  default-inits unparser-method entity-unparser-method)

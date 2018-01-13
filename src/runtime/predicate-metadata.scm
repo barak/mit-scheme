@@ -166,7 +166,9 @@ USA.
 (add-boot-init!
  (lambda ()
    (register-predicate! predicate? 'predicate)
-   (register-predicate! tag-name? 'tag-name)))
+   (register-predicate! tag-name? 'tag-name)
+   (register-predicate! %record? '%record)
+   (register-predicate! %tagged-object? 'tagged-object)))
 
 ;;; Registration of standard predicates
 (add-boot-init!
@@ -279,7 +281,6 @@ USA.
 			'<= named-structure?)
    (register-predicate! population? 'population)
    (register-predicate! promise? 'promise)
-   (register-predicate! %record? '%record)
    (register-predicate! record? 'record
 			'<= %record?
 			'<= named-structure?)
