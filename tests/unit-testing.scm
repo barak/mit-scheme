@@ -241,6 +241,12 @@ USA.
 	      (failure-alist failure))))
 
 (define (report-failure failure port)
+  (let ((p (failure-property 'assertion-index failure)))
+    (if p
+	(begin
+	  (write-string "assertion " port)
+	  (write (cdr p) port)
+	  (write-string ": " port))))
   (cond ((failure-property 'CONDITION failure)
 	 => (lambda (p)
 	      (let ((expr (failure-property 'EXPRESSION failure)))
@@ -314,20 +320,22 @@ USA.
 (define-for-tests (run-sub-test thunk . properties)
   (call-with-current-continuation
    (lambda (k)
-     (bind-condition-handlers
-      (list condition-type:failure
-	    (lambda (condition)
-	      (k (extend-failure (condition-failure condition)
-				 properties)))
-	    condition-type:error
-	    (lambda (condition)
-	      (if (not (throw-test-errors?))
-		  (k (apply make-failure
-			    'CONDITION condition
-			    properties)))))
-      (lambda ()
-	(thunk)
-	#f)))))
+     (parameterize ((assertion-index 1))
+       (bind-condition-handlers
+	(list condition-type:failure
+	      (lambda (condition)
+		(k (extend-failure (condition-failure condition)
+				   properties)))
+	      condition-type:error
+	      (lambda (condition)
+		(if (not (throw-test-errors?))
+		    (k (apply make-failure
+			      'condition condition
+			      'assertion-index (assertion-index)
+			      properties)))))
+	(lambda ()
+	  (thunk)
+	  #f))))))
 
 (define-for-tests (with-test-properties thunk . properties)
   (bind-condition-handlers
@@ -359,7 +367,9 @@ USA.
    (lambda (continuation)
      (error
       (make-failure-condition continuation
-			      (apply make-failure plist))))))
+			      (apply make-failure
+				     'assertion-index (assertion-index)
+				     plist))))))
 
 (define (make-failure-condition continuation failure)
   (make-condition condition-type:failure
@@ -380,12 +390,15 @@ USA.
   (lambda (value . properties)
     (%assert predicate value description properties)))
 
+(define assertion-index (make-settable-parameter #f))
+
 (define (%assert predicate value description properties)
   (if (not (predicate value))
       (apply fail
-	     'RESULT-OBJECT value
-	     'EXPECTATION-DESCRIPTION description
-	     properties)))
+	     'result-object value
+	     'expectation-description description
+	     properties))
+  (assertion-index (+ (assertion-index) 1)))
 
 (define-for-tests assert-true
   (predicate-assertion (lambda (x) x) "true"))
