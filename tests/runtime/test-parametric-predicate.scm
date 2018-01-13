@@ -28,13 +28,11 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-template name pattern)
-  (make-predicate-template name pattern (lambda args args any-object?)))
-
 (define-test 'parametric-predicate-one-parameter
   (lambda ()
     (let ((pattern '((? base))))
-      (let* ((template (make-template 'template pattern))
+      (let* ((template
+	      (make-predicate-template 'template pattern make-flat-test))
              (constructor (predicate-template-constructor template)))
         (test-template-operations template 'template pattern)
 
@@ -50,7 +48,9 @@ USA.
 (define-test 'parametric-predicate-two-parameters
   (lambda ()
     (let ((pattern '((?* domains -) (? base))))
-      (let* ((template (make-template 'template pattern))
+      (let* ((template
+	      (make-predicate-template 'template pattern
+				       make-function-like-test))
              (constructor (predicate-template-constructor template)))
         (test-template-operations template 'template pattern)
 
@@ -65,7 +65,8 @@ USA.
 
 (define-test 'covariant-ordering
   (lambda ()
-    (let* ((template (make-template 'foo '((? a))))
+    (let* ((template
+	    (make-predicate-template 'template '((? a)) make-flat-test))
            (constructor (predicate-template-constructor template)))
       (let ((p1 (constructor (disjoin string? symbol?)))
             (p2 (constructor string?))
@@ -87,7 +88,8 @@ USA.
 
 (define-test 'contravariant-ordering
   (lambda ()
-    (let* ((template (make-template 'foo '((? a -))))
+    (let* ((template
+	    (make-predicate-template 'template '((? a -)) make-flat-test))
            (constructor (predicate-template-constructor template)))
       (let ((p1 (constructor (disjoin string? symbol?)))
             (p2 (constructor string?))
@@ -109,7 +111,8 @@ USA.
 
 (define-test 'mixed-ordering
   (lambda ()
-    (let* ((template (make-template 'foo '((? a -) (? b))))
+    (let* ((template
+	    (make-predicate-template 'template '((? a -) (? b)) make-flat-test))
            (constructor (predicate-template-constructor template)))
       (let ((p1 (constructor (disjoin string? symbol?)
 			     (disjoin string? symbol?)))
@@ -200,11 +203,31 @@ USA.
     (assert-simple-error (lambda () (match-numbers '((?* a) (? b -)) '(1 2))))
     (assert-simple-error (lambda () (match-numbers '((?+ a -) (? b)) '(1 2))))))
 
+(define (make-flat-test . predicates)
+  (lambda (object)
+    (and (list? object)
+	 (= (length predicates) (length object))
+	 (every (lambda (predicate object)
+		  (predicate object))
+		predicates
+		objects))))
+
+(define (make-function-like-test domains codomain)
+  (lambda (object)
+    (and (pair? object)
+	 (codomain (car object))
+	 (list? (cdr object))
+	 (= (length domains) (length (cdr object)))
+	 (every (lambda (domain object)
+		  (domain object))
+		domains
+		objects))))
+
 (define (test-template-operations template name pattern)
   (assert-true (predicate-template? template))
   (assert-false (predicate? template))
   (assert-eqv (predicate-template-name template) name)
-  (assert-equal pattern (predicate-template-pattern template))
+  (assert-equal (predicate-template-pattern template) pattern)
   (assert-lset= eq?
                 (predicate-template-parameter-names template)
                 (map template-pattern-element-name pattern))
