@@ -39,11 +39,9 @@ USA.
 (define (parametric-predicate-bindings predicate)
   (parametric-tag-bindings (predicate->tag predicate)))
 
-(define (make-parametric-tag name datum-test template bindings)
-  (tagging-strategy:optional datum-test
-    (lambda (predicate tagger)
-      (make-tag name predicate tagger 'make-predicate-template
-		(make-parametric-tag-extra template bindings)))))
+(define (make-parametric-tag name predicate template bindings)
+  (make-tag name predicate 'make-predicate-template
+	    (make-parametric-tag-extra template bindings)))
 
 (define (tag-is-parametric? tag)
   (parametric-tag-extra? (tag-extra tag)))

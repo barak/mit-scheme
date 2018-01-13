@@ -1825,7 +1825,6 @@ USA.
 	  guarantee-list-of
 	  predicate-description
 	  predicate-name
-	  predicate-tagger
 	  set-predicate<=!)
   (export (runtime)
 	  event:predicate-metadata
@@ -1838,7 +1837,6 @@ USA.
 	  tag-description
 	  tag-extra
 	  tag-name
-	  tag-tagger
 	  tag?))
 
 (define-package (runtime predicate-lattice)
@@ -1875,7 +1873,7 @@ USA.
 	  compound-tag-operator
 	  tag-is-compound?)
   (export (runtime predicate-lattice)
-	  %make-compound-tag))
+	  make-compound-tag))
 
 (define-package (runtime parametric-predicate)
   (files "parametric-predicate")
@@ -1910,11 +1908,11 @@ USA.
   (parent (runtime))
   (export ()
 	  object->datum
-	  object->predicate)
+	  object->predicate
+	  predicate-tagger)
   (export (runtime)
 	  object->tag
-	  tagging-strategy:never
-	  tagging-strategy:optional))
+	  tag-tagger))
 
 (define-package (runtime predicate-dispatch)
   (files "predicate-dispatch")

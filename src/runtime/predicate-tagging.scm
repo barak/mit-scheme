@@ -43,38 +43,20 @@ USA.
       (%tagged-object-datum object)
       object))
 
-;;;; Tagging strategies
+(define (predicate-tagger predicate)
+  (%tag-tagger (predicate->tag predicate 'predicate-tagger) predicate))
 
-(define (tagging-strategy:never predicate make-tag)
+(define (tag-tagger tag)
+  (%tag-tagger tag (tag->predicate tag)))
 
-  (define (tagger object #!optional tagger-name)
-    (guarantee predicate object tagger-name)
-    object)
-
-  (define tag
-    (make-tag predicate tagger))
-
-  tag)
-
-(define (tagging-strategy:optional datum-test make-tag)
-
-  (define (predicate object)
-    (if (%tagged-object? object)
-	(tag<= (%tagged-object-tag object) tag)
-        (datum-test object)))
-
-  (define (tagger datum #!optional tagger-name)
+(define (%tag-tagger tag predicate)
+  (lambda (datum #!optional tagger-name)
     (if (tag<= (object->tag datum) tag)
-        datum
+	datum
 	(begin
-	  (guarantee datum-test datum tagger-name)
-	  (%make-tagged-object tag datum))))
+	  (guarantee predicate datum tagger-name)
+	  (%make-tagged-object tag datum)))))
 
-  (define tag
-    (make-tag predicate tagger))
-
-  tag)
-
 (define primitive-tags)
 (define primitive-tag-methods)
 (add-boot-init!

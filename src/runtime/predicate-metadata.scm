@@ -44,11 +44,9 @@ USA.
   (named-lambda (register-predicate! predicate name . keylist)
     (guarantee keyword-list? keylist 'register-predicate!)
     (let ((tag
-	   (tagging-strategy:never predicate
-	     (lambda (predicate tagger)
-	       (make-tag name predicate tagger 'register-predicate!
-			 (get-keyword-value keylist 'extra)
-			 (get-keyword-value keylist 'description))))))
+	   (make-tag name predicate 'register-predicate!
+		     (get-keyword-value keylist 'extra)
+		     (get-keyword-value keylist 'description))))
       (for-each (lambda (superset)
 		  (set-tag<=! tag (predicate->tag superset)))
 		(get-keyword-values keylist '<=))
@@ -56,9 +54,6 @@ USA.
 
 (define (predicate-name predicate)
   (tag-name (predicate->tag predicate 'predicate-name)))
-
-(define (predicate-tagger predicate)
-  (tag-tagger (predicate->tag predicate 'predicate-tagger)))
 
 (define (predicate-description predicate)
   (let ((tag (get-predicate-tag predicate #f)))
@@ -95,15 +90,16 @@ USA.
                                             (predicate-description predicate))
                              caller))
 
-(define (make-tag name predicate tagger caller #!optional extra description)
+(define (make-tag name predicate caller #!optional extra description)
   (guarantee tag-name? name caller)
   (guarantee unary-procedure? predicate caller)
+  (if (predicate? predicate)
+      (error "Can't assign multiple tags to the same predicate:" predicate))
   (if (not (default-object? description))
       (guarantee string? description caller))
   (let ((tag
 	 (%make-tag name
 		    predicate
-		    tagger
 		    (if (default-object? extra) #f extra)
 		    (if (default-object? description)
 			(delay (object->description name))
@@ -129,11 +125,10 @@ USA.
       (write object port))))
 
 (define-record-type <tag>
-    (%make-tag name predicate tagger extra description subsets supersets)
+    (%make-tag name predicate extra description subsets supersets)
     tag?
   (name tag-name)
   (predicate tag->predicate)
-  (tagger tag-tagger)
   (extra tag-extra)
   (description %tag-description)
   (subsets tag-subsets)
@@ -288,7 +283,6 @@ USA.
    (register-predicate! stack-address? 'stack-address)
    (register-predicate! thread-mutex? 'thread-mutex)
    (register-predicate! undefined-value? 'undefined-value)
-   (register-predicate! unicode-char? 'unicode-char '<= bitless-char?)
    (register-predicate! unicode-code-point? 'unicode-code-point
 			'<= index-fixnum?)
    (register-predicate! unicode-scalar-value? 'unicode-scalar-value
