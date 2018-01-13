@@ -54,11 +54,31 @@ USA.
   (if (not (fix:<= end (vector-length vector)))
       (error:bad-range-argument end procedure)))
 
-(define (make-vector size #!optional fill)
-  (if (not (index-fixnum? size))
-      (error:wrong-type-argument size "vector index" 'MAKE-VECTOR))
-  ((ucode-primitive vector-cons) size (if (default-object? fill) #f fill)))
+(define (make-vector length #!optional fill)
+  (vector-cons length (if (default-object? fill) #f fill)))
 
+(define (vector-cons length fill)
+  (let-syntax
+      ((expand-cases
+	(sc-macro-transformer
+	 (lambda (form use-env)
+	   (declare (ignore use-env))
+	   (let ((limit (cadr form))	;must be a power of 2
+		 (gen-accessor
+		  (lambda (i)
+		    `(vector ,@(make-list i 'fill)))))
+	     `(if (and (index-fixnum? length)
+		       (fix:< length ,limit))
+		  ,(let loop ((low 0) (high limit))
+		     (if (> (- high low) 1)
+			 (let ((mid (quotient (+ high low) 2)))
+			   `(if (fix:< length ,mid)
+				,(loop low mid)
+				,(loop mid high)))
+			 (gen-accessor low)))
+		  ((ucode-primitive vector-cons) length fill)))))))
+    (expand-cases 16)))
+
 (define (vector-builder #!optional buffer-length)
   (make-sequence-builder any-object? vector? make-vector vector-length
 			 vector-set! vector-copy!
@@ -131,7 +151,7 @@ USA.
       (error:wrong-type-argument length "vector length" 'VECTOR-GROW))
   (if (fix:< length (vector-length vector))
       (error:bad-range-argument length 'VECTOR-GROW))
-  (let ((vector* (make-vector length (if (default-object? value) #f value))))
+  (let ((vector* (make-vector length value)))
     (subvector-move-right! vector 0 (vector-length vector) vector* 0)
     vector*))
 

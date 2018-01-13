@@ -29,7 +29,8 @@ USA.
 
 (declare (usual-integrations))
 
-;;; These primitives are the building blocks for many other types.
+;;;; Low-level structure primitives.
+
 (define-primitives
   (%make-tagged-object 2)
   (%record -1)
@@ -41,16 +42,33 @@ USA.
   (%tagged-object-tag 1)
   (%tagged-object? 1))
 
-(define (%make-record tag length #!optional init-value)
-  (let ((record
-	 ((ucode-primitive %make-record 2)
-	  length
-	  (if (default-object? init-value)
-	      #f
-	      init-value))))
-    (%record-set! record 0 tag)
-    record))
-
+(define (%make-record tag length #!optional fill)
+  (let ((fill (if (default-object? fill) #f fill)))
+    (let-syntax
+	((expand-cases
+	  (sc-macro-transformer
+	   (lambda (form use-env)
+	     (declare (ignore use-env))
+	     (let ((limit (cadr form))	;must be a power of 2
+		   (gen-accessor
+		    (lambda (i)
+		      `(%record tag ,@(make-list (- i 1) 'fill)))))
+	       `(if (and (fix:fixnum? length)
+			 (fix:> length 0)
+			 (fix:<= length ,limit))
+		    ,(let loop ((low 1) (high limit))
+		       (if (< low high)
+			   (let ((mid (quotient (- (+ high low) 1) 2)))
+			     `(if (fix:<= length ,mid)
+				  ,(loop low mid)
+				  ,(loop (+ mid 1) high)))
+			   (gen-accessor low)))
+		    (let ((record
+			   ((ucode-primitive %make-record 2) length fill)))
+		      (%record-set! record 0 tag)
+		      record)))))))
+      (expand-cases 16))))
+
 ;;;; Interrupt control
 
 (define interrupt-bit/stack     #x0001)
