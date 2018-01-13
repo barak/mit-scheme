@@ -258,10 +258,10 @@ USA.
   #f)
 
 (define (default-object? object)
-  (eq? object (default-object)))
+  (eq? object #!default))
 
 (define (default-object)
-  ((ucode-primitive object-set-type) (ucode-type constant) 7))
+  #!default)
 
 (define (gc-space-status)
   ((ucode-primitive gc-space-status)))

@@ -641,7 +641,7 @@ USA.
 	   (null? (cdr operands)))
       (make-combination expr block (ucode-primitive eq?)
 			(list (car operands)
-			      (constant/make #f (default-object))))
+			      (constant/make #f #!default)))
       #f))
 
 (define (make-disjunction expr . clauses)
