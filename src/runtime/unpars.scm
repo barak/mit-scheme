@@ -890,6 +890,10 @@ USA.
 (define (unparse/tagged-object object context)
   (*unparse-with-brackets 'tagged-object object context
     (lambda (context*)
-      (*unparse-object (tag-name (tagged-object-tag object)) context*)
+      (*unparse-object (let ((tag (%tagged-object-tag object)))
+			 (if (tag? tag)
+			     (tag-name tag)
+			     tag))
+		       context*)
       (*unparse-string " " context*)
-      (*unparse-object (tagged-object-datum object) context*))))
+      (*unparse-object (%tagged-object-datum object) context*))))

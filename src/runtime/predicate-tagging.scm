@@ -29,14 +29,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define (tagged-object-tag object)
-  (guarantee %tagged-object? object 'tagged-object-tag)
-  (%tagged-object-tag object))
-
-(define (tagged-object-datum object)
-  (guarantee %tagged-object? object 'tagged-object-datum)
-  (%tagged-object-datum object))
-
 (define (object->predicate object)
   (tag->predicate (object->tag object)))
 
