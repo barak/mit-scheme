@@ -104,8 +104,7 @@ USA.
 		    (if (default-object? description)
 			(delay (object->description name))
 			(delay description))
-		    (make-key-weak-eq-hash-table)
-		    (make-key-weak-eq-hash-table))))
+		    (%make-weak-set))))
     (set-predicate-tag! predicate tag)
     tag))
 
@@ -125,14 +124,13 @@ USA.
       (write object port))))
 
 (define-record-type <tag>
-    (%make-tag name predicate extra description subsets supersets)
+    (%make-tag name predicate extra description supersets)
     tag?
   (name tag-name)
   (predicate tag->predicate)
   (extra tag-extra)
   (description %tag-description)
-  (subsets tag-subsets)
-  (supersets tag-supersets))
+  (supersets %tag-supersets))
 
 (define-unparser-method tag?
   (simple-unparser-method 'tag
@@ -142,19 +140,58 @@ USA.
 (define (tag-description tag)
   (force (%tag-description tag)))
 
-(define (get-tag-subsets tag)
-  (hash-table-keys (tag-subsets tag)))
+(define (tag-supersets tag)
+  (%weak-set->list (%tag-supersets tag)))
 
-(define (get-tag-supersets tag)
-  (hash-table-keys (tag-supersets tag)))
+(define (any-tag-superset predicate tag)
+  (%weak-set-any predicate (%tag-supersets tag)))
 
 (define (set-tag<=! tag superset)
-  (event-distributor/invoke! event:predicate-metadata 'set-tag<=! tag superset)
-  (%link! tag superset))
+  (guarantee tag? superset 'set-tag<=!)
+  (if (%add-to-weak-set superset (%tag-supersets tag))
+      (event-distributor/invoke! event:predicate-metadata
+				 'set-tag<=! tag superset)
+      (error "Tag already has this superset:" tag superset)))
+
+(define (%make-weak-set)
+  (%weak-cons 'weak-set '()))
 
-(define (%link! subset superset)
-  (hash-table-set! (tag-subsets superset) subset subset)
-  (hash-table-set! (tag-supersets subset) superset superset))
+(define (%weak-set->list weak-set)
+  (weak-list->list (weak-cdr weak-set)))
+
+(define (%add-to-weak-set item weak-set)
+  (let loop
+      ((this (weak-cdr weak-set))
+       (prev weak-set))
+    (if (weak-pair? this)
+	(let ((item* (%weak-car this))
+	      (next (weak-cdr this)))
+	  (cond ((not item*)
+		 (weak-set-cdr! prev next)
+		 (loop next prev))
+		((eq? item item*)
+		 #f)
+		(else
+		 (loop next this))))
+	(begin
+	  (weak-set-cdr! prev (%weak-cons item '()))
+	  #t))))
+
+(define (%weak-set-any predicate weak-set)
+  (let loop
+      ((this (weak-cdr weak-set))
+       (prev weak-set))
+    (if (weak-pair? this)
+	(let ((item (%weak-car this))
+	      (next (weak-cdr this)))
+	  (cond ((not item)
+		 (weak-set-cdr! prev next)
+		 (loop next prev))
+		((predicate item)
+		 #t)
+		(else
+		 (loop next this))))
+	#f)))
 
 (define event:predicate-metadata (make-event-distributor))
 

@@ -67,9 +67,9 @@ USA.
 			tag<=-overrides)))
 	     (if v
 		 ((vector-ref v 2) tag1 tag2)
-		 (any (lambda (tag)
-			(cached-tag<= tag tag2))
-		      (get-tag-supersets tag1)))))))
+		 (any-tag-superset (lambda (tag)
+				     (cached-tag<= tag tag2))
+				   tag1))))))
 
 (define (define-tag<= test1 test2 handler)
   (set! tag<=-overrides
@@ -111,8 +111,6 @@ USA.
   (if (and (eq? operator 'set-tag<=!)
            (pair? rest))
       (let ((superset (car rest)))
-        (if (tag<= tag superset)
-            (error "Tag already has this superset:" tag superset))
         (if (tag>= tag superset)
             (error "Not allowed to create a superset loop:" tag superset))))
   (hash-table-clear! tag<=-cache))

@@ -1840,9 +1840,8 @@ USA.
 	  predicate-name
 	  set-predicate<=!)
   (export (runtime)
+	  any-tag-superset
 	  event:predicate-metadata
-	  get-tag-subsets
-	  get-tag-supersets
 	  make-tag
 	  predicate->tag
 	  set-tag<=!
@@ -1850,6 +1849,7 @@ USA.
 	  tag-description
 	  tag-extra
 	  tag-name
+	  tag-supersets
 	  tag?))
 
 (define-package (runtime predicate-lattice)
