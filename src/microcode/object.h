@@ -499,6 +499,7 @@ extern bool string_p (SCHEME_OBJECT);
    7 #!default
    8 #!aux
    9 '()
+   10 weak #f
  */
 
 #define SHARP_F			MAKE_OBJECT (TC_FALSE, 0)

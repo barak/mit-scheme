@@ -40,7 +40,14 @@ USA.
   (%record? 1)
   (%tagged-object-datum 1)
   (%tagged-object-tag 1)
-  (%tagged-object? 1))
+  (%tagged-object? 1)
+  (%weak-cons weak-cons 2)
+  (%weak-car weak-car 1)
+  (%weak-set-car! weak-set-car! 2)
+  (weak-cdr 1)
+  (weak-pair? 1)
+  (weak-pair/car? weak-car 1)
+  (weak-set-cdr! 2))
 
 (define (%make-record tag length #!optional fill)
   (let ((fill (if (default-object? fill) #f fill)))
@@ -68,6 +75,34 @@ USA.
 		      (%record-set! record 0 tag)
 		      record)))))))
       (expand-cases 16))))
+
+(define (weak-cons car cdr)
+  (%weak-cons (%false->weak-false car) cdr))
+
+(define (weak-car weak-pair)
+  (%weak-false->false (%weak-car weak-pair)))
+
+(define (weak-set-car! weak-pair object)
+  (%weak-set-car! weak-pair (%false->weak-false object)))
+
+(define-integrable (%false->weak-false object)
+  (if object object %weak-false))
+
+(declare (integrate-operator %weak-false->false))
+(define (%weak-false->false object)
+  (if (%weak-false? object) #f object))
+
+(define-integrable (%weak-false? object)
+  (eq? object %weak-false))
+
+(define-integrable %weak-false
+  (let-syntax
+      ((ugh
+	(sc-macro-transformer
+	 (lambda (form use-env)
+	   (declare (ignore form use-env))
+	   (object-new-type (ucode-type constant) 10)))))
+    (ugh)))
 
 ;;;; Interrupt control
 

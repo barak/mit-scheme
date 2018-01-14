@@ -377,43 +377,19 @@ USA.
 (define (car+cdr pair)
   (values (car pair) (cdr pair)))
 
-;;;; Weak Pairs
-
-(define-integrable (weak-cons car cdr)
-  (system-pair-cons (ucode-type weak-cons) (or car weak-pair/false) cdr))
-
-(define-integrable (weak-pair? object)
-  (object-type? (ucode-type weak-cons) object))
-
-(define-integrable (weak-pair/car? weak-pair)
-  (system-pair-car weak-pair))
-
-(define (weak-car weak-pair)
-  (let ((car (system-pair-car weak-pair)))
-    (and (not (eq? car weak-pair/false))
-	 car)))
-
-(define-integrable (weak-set-car! weak-pair object)
-  (system-pair-set-car! weak-pair (or object weak-pair/false)))
-
-(define-integrable (weak-cdr weak-pair)
-  (system-pair-cdr weak-pair))
-
-(define-integrable (weak-set-cdr! weak-pair object)
-  (system-pair-set-cdr! weak-pair object))
+;;;; Weak lists
 
 (define (weak-list->list items)
   (let loop ((items* items) (result '()))
     (if (weak-pair? items*)
-	(loop (system-pair-cdr items*)
-	      (let ((item (system-pair-car items*)))
-		(if (not item)
-		    result
-		    (cons (if (eq? item weak-pair/false) #f item)
-			  result))))
+	(loop (weak-cdr items*)
+	      (let ((item (%weak-car items*)))
+		(if item
+		    (cons (%weak-false->false item) result)
+		    result)))
 	(begin
 	  (if (not (null? items*))
-	      (error:not-a weak-list? items 'WEAK-LIST->LIST))
+	      (error:not-a weak-list? items 'weak-list->list))
 	  (reverse! result)))))
 
 (define (list->weak-list items)
@@ -423,11 +399,8 @@ USA.
 	      (weak-cons (car items*) result))
 	(begin
 	  (if (not (null? items*))
-	      (error:not-a list? items 'LIST->WEAK-LIST))
+	      (error:not-a list? items 'list->weak-list))
 	  result))))
-
-(define weak-pair/false
-  "weak-pair/false")
 
 (define (weak-list? object)
   (let loop ((l1 object) (l2 object))
@@ -438,45 +411,44 @@ USA.
 		   (loop (weak-cdr l1) (weak-cdr l2))
 		   (null? l1))))
 	(null? l1))))
-
-(define (weak-memq object items)
-  (let ((object (or object weak-pair/false)))
+
+(define (weak-memq item items)
+  (let ((item (%false->weak-false item)))
     (let loop ((items* items))
       (if (weak-pair? items*)
-	  (if (eq? object (system-pair-car items*))
+	  (if (eq? item (%weak-car items*))
 	      items*
-	      (loop (system-pair-cdr items*)))
+	      (loop (weak-cdr items*)))
 	  (begin
 	    (if (not (null? items*))
-		(error:not-a weak-list? items 'WEAK-MEMQ))
+		(error:not-a weak-list? items 'weak-memq))
 	    #f)))))
 
 (define (weak-delq! item items)
-  (letrec ((trim-initial-segment
-	    (lambda (items*)
-	      (if (weak-pair? items*)
-		  (if (or (eq? item (system-pair-car items*))
-			  (eq? #f (system-pair-car items*)))
-		      (trim-initial-segment (system-pair-cdr items*))
-		      (begin
-			(locate-initial-segment items*
-						(system-pair-cdr items*))
-			items*))
-		  (begin
-		    (if (not (null? items*))
-			(error:not-a weak-list? items 'WEAK-DELQ!))
-		    '()))))
-	   (locate-initial-segment
-	    (lambda (last this)
-	      (if (weak-pair? this)
-		  (if (or (eq? item (system-pair-car this))
-			  (eq? #f (system-pair-car this)))
-		      (set-cdr! last
-				(trim-initial-segment (system-pair-cdr this)))
-		      (locate-initial-segment this (system-pair-cdr this)))
-		  (if (not (null? this))
-		      (error:not-a weak-list? items 'WEAK-DELQ!))))))
-    (trim-initial-segment items)))
+  (let ((item (%false->weak-false item)))
+    (letrec ((trim-initial-segment
+	      (lambda (items*)
+		(if (weak-pair? items*)
+		    (if (or (eq? item (%weak-car items*))
+			    (eq? #f (%weak-car items*)))
+			(trim-initial-segment (weak-cdr items*))
+			(begin
+			  (locate-initial-segment items* (weak-cdr items*))
+			  items*))
+		    (begin
+		      (if (not (null? items*))
+			  (error:not-a weak-list? items 'weak-delq!))
+		      '()))))
+	     (locate-initial-segment
+	      (lambda (last this)
+		(if (weak-pair? this)
+		    (if (or (eq? item (%weak-car this))
+			    (eq? #f (%weak-car this)))
+			(set-cdr! last (trim-initial-segment (weak-cdr this)))
+			(locate-initial-segment this (weak-cdr this)))
+		    (if (not (null? this))
+			(error:not-a weak-list? items 'weak-delq!))))))
+      (trim-initial-segment items))))
 
 ;;;; General CAR CDR
 

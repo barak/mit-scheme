@@ -691,7 +691,8 @@ USA.
     (simple-type-test 'flonum?         (ucode-type flonum))
     (simple-type-test 'pair?           (ucode-type pair))
     (simple-type-test 'string?         (ucode-type string))
-    (simple-type-test 'vector?         (ucode-type vector))))
+    (simple-type-test 'vector?         (ucode-type vector))
+    (simple-type-test 'weak-pair?      (ucode-type weak-cons))))
 
 (define-open-coder/predicate 'EQ?
   (simple-open-coder
@@ -912,6 +913,11 @@ USA.
   (define-open-coder/value 'CONS
     (simple-open-coder (open-code/pair-cons (ucode-type pair)) '(0 1) false))
 
+  (define-open-coder/value 'weak-cons
+    (simple-open-coder (open-code/pair-cons (ucode-type weak-cons))
+		       '(0 1)
+		       false))
+
   (define-open-coder/value 'SYSTEM-PAIR-CONS
     (filter/type-code open-code/pair-cons 0 '(1 2) false))
 
@@ -1039,6 +1045,8 @@ USA.
 	    0)
   (user-ref 'CAR rtl:make-fetch (ucode-type pair) 0)
   (user-ref 'CDR rtl:make-fetch (ucode-type pair) 1)
+  (user-ref 'weak-car rtl:make-fetch (ucode-type weak-cons) 0)
+  (user-ref 'weak-cdr rtl:make-fetch (ucode-type weak-cons) 1)
   (user-ref '%tagged-object-tag rtl:make-fetch (ucode-type tagged-object) 0)
   (user-ref '%tagged-object-datum rtl:make-fetch (ucode-type tagged-object) 1))
 
@@ -1095,7 +1103,9 @@ USA.
 	    '(0 1)
 	    internal-close-coding-for-type-checks)))))
   (fixed-assignment 'SET-CAR! (ucode-type pair) 0)
-  (fixed-assignment 'SET-CDR! (ucode-type pair) 1))
+  (fixed-assignment 'SET-CDR! (ucode-type pair) 1)
+  (fixed-assignment 'weak-set-car! (ucode-type weak-cons) 0)
+  (fixed-assignment 'weak-set-cdr! (ucode-type weak-cons) 1))
 
 (let ((make-assignment
        (lambda (name type)

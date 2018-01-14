@@ -318,6 +318,7 @@ USA.
 	(ucode-primitive positive?)
 	(ucode-primitive string?)
 	(ucode-primitive vector?)
+	(ucode-primitive weak-pair? 1)
 	(ucode-primitive zero-fixnum?)
 	(ucode-primitive zero?)))
 
@@ -333,7 +334,8 @@ USA.
 	(ucode-primitive string-allocate)
 	(ucode-primitive system-pair-cons)
 	(ucode-primitive vector)
-	(ucode-primitive vector-cons)))
+	(ucode-primitive vector-cons)
+	(ucode-primitive weak-cons 2)))
 
 (define additional-function-primitives
   (list (ucode-primitive %record-length)
@@ -414,7 +416,9 @@ USA.
 	(ucode-primitive system-vector-size)
 	(ucode-primitive vector-8b-ref)
 	(ucode-primitive vector-length)
-	(ucode-primitive vector-ref)))
+	(ucode-primitive vector-ref)
+	(ucode-primitive weak-car 1)
+	(ucode-primitive weak-cdr 1)))
 
 ;;;; "Foldable" and side-effect-free operators
 
