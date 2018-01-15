@@ -9,7 +9,7 @@
 @copying
 This manual documents MIT/GNU Scheme GDBM @value{VERSION}.
 
-Copyright @copyright{} 2017 Matthew Birkholz
+Copyright @copyright{} 2017 Massachusetts Institute of Technology
 Copyright @copyright{} 1993-99 Free Software Foundation, Inc.
 
 @quotation
@@ -224,7 +224,7 @@ The parameter is:
 The object returned by @code{gdbm-open}.
 @end table
 
-Closes the gdbm file and frees all memory associated with @var{dbf}. 
+Closes the gdbm file and frees all memory associated with @var{dbf}.
 @end deffn
 
 
@@ -382,6 +382,7 @@ the same name as the old file and @code{dbf} is updated to contain all the
 correct information about the new file.
 @end deffn
 
+
 @node Sync
 @chapter Database Synchronization
 
@@ -399,7 +400,7 @@ made to the database and before some long waiting time.
 
 
 @node Options
-@chapter Seting options.
+@chapter Setting options.
 
 Gdbm supports the ability to set certain options on an already
 open database.
