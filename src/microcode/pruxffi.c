@@ -644,7 +644,6 @@ callback_run_kernel (long callback_id, CallbackKernel kernel)
   /* Used by callback trampolines after saving the callback args on
      the CStack. */
   SCM * saved_stack_pointer, * saved_last_return_code;
-  unsigned long saved_prev_restore_history_offset;
   unsigned long nargs = GET_LEXPR_ACTUALS;
 
   if (run_callback == SHARP_F)
@@ -677,7 +676,6 @@ callback_run_kernel (long callback_id, CallbackKernel kernel)
 
   saved_stack_pointer = stack_pointer;
   saved_last_return_code = last_return_code;
-  saved_prev_restore_history_offset = prev_restore_history_offset;
  Will_Push ((2 * CONTINUATION_SIZE) + STACK_ENV_EXTRA_SLOTS + 1);
   SET_RC (RC_END_OF_COMPUTATION);
   SET_EXP (run_callback);
@@ -710,15 +708,11 @@ callback_run_kernel (long callback_id, CallbackKernel kernel)
 
   stack_pointer = STACK_LOC (4);
   last_return_code = saved_last_return_code;
-  if (prev_restore_history_offset != saved_prev_restore_history_offset)
-    {
-      outf_error_line ("Warning: restoring prev_restore_history_offset.");
-      prev_restore_history_offset = saved_prev_restore_history_offset;
-    }
   SET_PRIMITIVE (c_call_continue);
   SET_LEXPR_ACTUALS (nargs);
 
   cstack_depth -= 1;
+  alienate_float_environment ();
 }
 
 DEFINE_PRIMITIVE ("RUN-CALLBACK", Prim_run_callback, 0, 0, 0)
@@ -726,7 +720,7 @@ DEFINE_PRIMITIVE ("RUN-CALLBACK", Prim_run_callback, 0, 0, 0)
   /* All the smarts are in the kernel. */
 
   PRIMITIVE_HEADER (0);
-  { 
+  {
     char * tos;
     CallbackKernel kernel;
     int depth;
@@ -1098,7 +1092,7 @@ DEFINE_PRIMITIVE ("OUTF-ERROR", Prim_outf_error, 1, 1, 0)
   /* To avoid the normal IO system when debugging a callback. */
 
   PRIMITIVE_HEADER (1);
-  { 
+  {
     SCM arg = ARG_REF (1);
     if (STRING_P (arg))
       {
