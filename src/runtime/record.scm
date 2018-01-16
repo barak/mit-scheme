@@ -64,7 +64,8 @@ USA.
 		   #f)))
     (set! record-type-type-tag (make-dispatch-tag type))
     (%record-set! type 0 record-type-type-tag)
-    (%record-set! type 1 record-type-type-tag))
+    (%record-set! type 1 record-type-type-tag)
+    (%set-record-type-predicate! type record-type?))
   (initialize-structure-type-type!))
 
 (define (make-record-type type-name field-names
