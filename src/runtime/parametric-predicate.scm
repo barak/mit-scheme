@@ -41,21 +41,13 @@ USA.
     unspecific))
 
 (define (make-parametric-tag name predicate template bindings)
-  (%make-parametric-tag name
-			predicate
-			(make-parametric-tag-extra template bindings)))
+  (%make-parametric-tag name predicate template bindings))
 
-(define (parametric-tag-template tag)
-  (parametric-tag-extra-template (tag-extra tag)))
+(define-integrable (parametric-tag-template tag)
+  (tag-extra tag 0))
 
-(define (parametric-tag-bindings tag)
-  (parametric-tag-extra-bindings (tag-extra tag)))
-
-(define-record-type <parametric-tag-extra>
-    (make-parametric-tag-extra template bindings)
-    parametric-tag-extra?
-  (template parametric-tag-extra-template)
-  (bindings parametric-tag-extra-bindings))
+(define-integrable (parametric-tag-bindings tag)
+  (tag-extra tag 1))
 
 (define (parametric-predicate? object)
   (and (predicate? object)

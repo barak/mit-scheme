@@ -43,19 +43,14 @@ USA.
 (define (make-compound-tag predicate operator operands)
   (%make-compound-tag (cons operator (map tag-name operands))
 		      predicate
-		      (make-compound-tag-extra operator operands)))
+		      operator
+		      operands))
 
-(define (compound-tag-operator tag)
-  (compound-tag-extra-operator (tag-extra tag)))
+(define-integrable (compound-tag-operator tag)
+  (tag-extra tag 0))
 
-(define (compound-tag-operands tag)
-  (compound-tag-extra-operands (tag-extra tag)))
-
-(define-record-type <compound-tag-extra>
-    (make-compound-tag-extra operator operands)
-    compound-tag-extra?
-  (operator compound-tag-extra-operator)
-  (operands compound-tag-extra-operands))
+(define-integrable (compound-tag-operands tag)
+  (tag-extra tag 1))
 
 (define (tag-is-disjoin? object)
   (and (compound-tag? object)

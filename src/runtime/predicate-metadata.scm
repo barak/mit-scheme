@@ -55,18 +55,18 @@ USA.
 	(lambda (object)
 	  (and (%record? object)
 	       (eq? metatag (%record-ref object 0)))))
-       (metatag (%make-tag metatag-tag name predicate #f)))
+       (metatag (%make-tag metatag-tag name predicate '#())))
     (set-tag<=! metatag metatag-tag)
     metatag))
 
 (define (metatag-constructor metatag #!optional caller)
   (guarantee metatag? metatag 'metatag-constructor)
-  (lambda (name predicate extra)
+  (lambda (name predicate . extra)
     (guarantee tag-name? name caller)
     (guarantee unary-procedure? predicate caller)
     (if (predicate? predicate)
 	(error "Can't assign multiple tags to the same predicate:" predicate))
-    (%make-tag metatag name predicate extra)))
+    (%make-tag metatag name predicate (list->vector extra))))
 
 (define (metatag? object)
   (and (%record? object)
@@ -87,7 +87,7 @@ USA.
 (define %make-simple-tag)
 (add-boot-init!
  (lambda ()
-   (set! metatag-tag (%make-tag #f 'metatag metatag? #f))
+   (set! metatag-tag (%make-tag #f 'metatag metatag? '#()))
    (%record-set! metatag-tag 0 metatag-tag)
    (set! simple-tag-metatag
 	 (make-metatag 'simple-tag))
@@ -148,9 +148,9 @@ USA.
   (guarantee tag? tag 'tag->predicate)
   (%tag->predicate tag))
 
-(define (tag-extra tag)
+(define (tag-extra tag index)
   (guarantee tag? tag 'tag-extra)
-  (%tag-extra tag))
+  (vector-ref (%tag-extra tag) index))
 
 (define (any-tag-superset procedure tag)
   (guarantee tag? tag 'any-tag-superset)
