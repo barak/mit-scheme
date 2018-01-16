@@ -112,46 +112,6 @@ USA.
       (event-distributor/invoke! event:predicate-metadata
 				 'set-tag<=! tag superset)
       (error "Tag already has this superset:" tag superset)))
-
-(define (%make-weak-set)
-  (%weak-cons 'weak-set '()))
-
-(define (%weak-set->list weak-set)
-  (weak-list->list (weak-cdr weak-set)))
-
-(define (%add-to-weak-set item weak-set)
-  (let loop
-      ((this (weak-cdr weak-set))
-       (prev weak-set))
-    (if (weak-pair? this)
-	(let ((item* (%weak-car this))
-	      (next (weak-cdr this)))
-	  (cond ((not item*)
-		 (weak-set-cdr! prev next)
-		 (loop next prev))
-		((eq? item item*)
-		 #f)
-		(else
-		 (loop next this))))
-	(begin
-	  (weak-set-cdr! prev (%weak-cons item '()))
-	  #t))))
-
-(define (%weak-set-any predicate weak-set)
-  (let loop
-      ((this (weak-cdr weak-set))
-       (prev weak-set))
-    (if (weak-pair? this)
-	(let ((item (%weak-car this))
-	      (next (weak-cdr this)))
-	  (cond ((not item)
-		 (weak-set-cdr! prev next)
-		 (loop next prev))
-		((predicate item)
-		 #t)
-		(else
-		 (loop next this))))
-	#f)))
 
 (define event:predicate-metadata (make-event-distributor))
 
