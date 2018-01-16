@@ -29,22 +29,21 @@ USA.
 
 (declare (usual-integrations))
 
-(define (parametric-predicate? object)
-  (and (predicate? object)
-       (tag-is-parametric? (predicate->tag object))))
-
-(define (parametric-predicate-template predicate)
-  (parametric-tag-template (predicate->tag predicate)))
-
-(define (parametric-predicate-bindings predicate)
-  (parametric-tag-bindings (predicate->tag predicate)))
+(define parametric-tag-metatag)
+(define parametric-tag?)
+(define %make-parametric-tag)
+(defer-boot-action 'make-metatag
+  (lambda ()
+    (set! parametric-tag-metatag (make-metatag 'parametric-tag))
+    (set! parametric-tag? (tag->predicate parametric-tag-metatag))
+    (set! %make-parametric-tag
+	  (metatag-constructor parametric-tag-metatag 'make-parametric-tag))
+    unspecific))
 
 (define (make-parametric-tag name predicate template bindings)
-  (make-tag name predicate 'make-predicate-template
-	    (make-parametric-tag-extra template bindings)))
-
-(define (tag-is-parametric? tag)
-  (parametric-tag-extra? (tag-extra tag)))
+  (%make-parametric-tag name
+			predicate
+			(make-parametric-tag-extra template bindings)))
 
 (define (parametric-tag-template tag)
   (parametric-tag-extra-template (tag-extra tag)))
@@ -57,6 +56,16 @@ USA.
     parametric-tag-extra?
   (template parametric-tag-extra-template)
   (bindings parametric-tag-extra-bindings))
+
+(define (parametric-predicate? object)
+  (and (predicate? object)
+       (parametric-tag? (predicate->tag object))))
+
+(define (parametric-predicate-template predicate)
+  (parametric-tag-template (predicate->tag predicate)))
+
+(define (parametric-predicate-bindings predicate)
+  (parametric-tag-bindings (predicate->tag predicate)))
 
 ;;;; Templates
 
@@ -251,7 +260,7 @@ USA.
 
 (add-boot-init!
  (lambda ()
-   (define-tag<= tag-is-parametric? tag-is-parametric?
+   (define-tag<= parametric-tag? parametric-tag?
      (lambda (tag1 tag2)
        (and (eqv? (parametric-tag-template tag1)
 		  (parametric-tag-template tag2))

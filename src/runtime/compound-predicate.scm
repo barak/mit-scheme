@@ -29,14 +29,21 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-compound-tag predicate operator operands)
-  (make-tag (cons operator (map tag-name operands))
-	    predicate
-	    operator
-	    (make-compound-tag-extra operator operands)))
+(define compound-tag-metatag)
+(define compound-tag?)
+(define %make-compound-tag)
+(defer-boot-action 'make-metatag
+  (lambda ()
+    (set! compound-tag-metatag (make-metatag 'compound-tag))
+    (set! compound-tag? (tag->predicate compound-tag-metatag))
+    (set! %make-compound-tag
+	  (metatag-constructor compound-tag-metatag 'make-compound-tag))
+    unspecific))
 
-(define (tag-is-compound? tag)
-  (compound-tag-extra? (tag-extra tag)))
+(define (make-compound-tag predicate operator operands)
+  (%make-compound-tag (cons operator (map tag-name operands))
+		      predicate
+		      (make-compound-tag-extra operator operands)))
 
 (define (compound-tag-operator tag)
   (compound-tag-extra-operator (tag-extra tag)))
@@ -51,11 +58,11 @@ USA.
   (operands compound-tag-extra-operands))
 
 (define (tag-is-disjoin? object)
-  (and (tag-is-compound? object)
+  (and (compound-tag? object)
        (eq? 'disjoin (compound-tag-operator object))))
 
 (define (tag-is-conjoin? object)
-  (and (tag-is-compound? object)
+  (and (compound-tag? object)
        (eq? 'conjoin (compound-tag-operator object))))
 
 (add-boot-init!
@@ -75,7 +82,7 @@ USA.
 
 (define (compound-predicate? object)
   (and (predicate? object)
-       (tag-is-compound? (predicate->tag object))))
+       (compound-tag? (predicate->tag object))))
 
 (add-boot-init!
  (lambda ()
@@ -119,16 +126,14 @@ USA.
 	(map predicate->tag operands)))
       datum-test))
 
-(define compound-operator?)
 (define compound-operator-builder)
 (define define-compound-operator)
 (add-boot-init!
  (lambda ()
-   (let ((table (make-hashed-metadata-table)))
-     (set! compound-operator? (table 'has?))
+   (let ((table (make-alist-metadata-table)))
      (set! compound-operator-builder (table 'get))
-     (set! define-compound-operator (table 'put!)))
-   (register-predicate! compound-operator? 'compound-predicate '<= symbol?)))
+     (set! define-compound-operator (table 'put!))
+     unspecific)))
 
 (add-boot-init!
  (lambda ()
@@ -145,7 +150,7 @@ USA.
 		(delete-duplicates
 		 (append-map
 		  (lambda (tag)
-		    (if (and (tag-is-compound? tag)
+		    (if (and (compound-tag? tag)
 			     (eq? operator
 				  (compound-tag-operator tag)))
 			(compound-tag-operands tag)

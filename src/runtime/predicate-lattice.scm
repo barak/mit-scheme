@@ -36,6 +36,10 @@ USA.
 (define (predicate>= predicate1 predicate2)
   (predicate<= predicate2 predicate1))
 
+(define (set-predicate<=! predicate superset)
+  (set-tag<=! (predicate->tag predicate 'set-predicate<=!)
+              (predicate->tag superset 'set-predicate<=!)))
+
 (define (tag= tag1 tag2)
   (guarantee tag? tag1 'tag=)
   (guarantee tag? tag2 'tag=)
@@ -48,6 +52,11 @@ USA.
 
 (define (tag>= tag1 tag2)
   (tag<= tag2 tag1))
+
+(define (set-tag<=! tag superset)
+  (defer-boot-action 'predicate-relations
+    (lambda ()
+      (set-tag<=! tag superset))))
 
 (define (cached-tag<= tag1 tag2)
   (hash-table-intern! tag<=-cache
@@ -105,12 +114,11 @@ USA.
    ;; weak compound keys.
    (set! tag<=-cache (make-equal-hash-table))
    (set! tag<=-overrides '())
-   (add-event-receiver! event:predicate-metadata metadata-event!)))
-
-(define (metadata-event! operator tag . rest)
-  (if (and (eq? operator 'set-tag<=!)
-           (pair? rest))
-      (let ((superset (car rest)))
-        (if (tag>= tag superset)
-            (error "Not allowed to create a superset loop:" tag superset))))
-  (hash-table-clear! tag<=-cache))
+   (set! set-tag<=!
+	 (named-lambda (set-tag<=! tag superset)
+	   (if (not (add-tag-superset tag superset))
+	       (error "Tag already has this superset:" tag superset))
+	   (if (tag>= tag superset)
+	       (error "Not allowed to create a superset loop:" tag superset))
+	   (hash-table-clear! tag<=-cache)))
+   (run-deferred-boot-actions 'predicate-relations)))

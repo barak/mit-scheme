@@ -1842,19 +1842,20 @@ USA.
   (files "predicate-metadata")
   (parent (runtime))
   (export ()
-	  predicate-name
-	  set-predicate<=!)
+	  make-metatag
+	  metatag-constructor
+	  metatag?
+	  predicate-name)
   (export (runtime)
-	  any-tag-superset
-	  event:predicate-metadata
-	  make-tag
 	  predicate->tag
-	  set-tag<=!
 	  tag->predicate
 	  tag-extra
 	  tag-name
-	  tag-supersets
-	  tag?))
+	  tag-metatag
+	  tag?)
+  (export (runtime predicate-lattice)
+	  any-tag-superset
+	  add-tag-superset))
 
 (define-package (runtime predicate-lattice)
   (files "predicate-lattice")
@@ -1863,10 +1864,12 @@ USA.
 	  any-object?
 	  predicate<=
 	  predicate>=
-	  no-object?)
+	  no-object?
+	  set-predicate<=!)
   (export (runtime)
 	  bottom-tag
 	  define-tag<=
+	  set-tag<=!
 	  tag-is-bottom?
 	  tag-is-top?
 	  tag<=
@@ -1878,17 +1881,10 @@ USA.
   (files "compound-predicate")
   (parent (runtime))
   (export ()
-	  compound-predicate-operands
-	  compound-predicate-operator
-	  compound-predicate?
 	  conjoin
 	  conjoin*
 	  disjoin
 	  disjoin*)
-  (export (runtime)
-	  compound-tag-operands
-	  compound-tag-operator
-	  tag-is-compound?)
   (export (runtime predicate-lattice)
 	  make-compound-tag))
 
@@ -1914,11 +1910,7 @@ USA.
           predicate-template-parameter-names
           predicate-template-pattern
           predicate-template-predicate
-          predicate-template?)
-  (export (runtime)
-	  parametric-tag-bindings
-	  parametric-tag-template
-	  tag-is-parametric?))
+          predicate-template?))
 
 (define-package (runtime predicate-tagging)
   (files "predicate-tagging")
