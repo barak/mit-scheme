@@ -157,8 +157,12 @@ USA.
 	  default-object?
 	  define-pp-describer
 	  define-unparser-method
+	  error:not-a
+	  error:not-a-list-of
 	  gc-space-status
 	  general-unparser-method
+	  guarantee
+	  guarantee-list-of
 	  interrupt-bit/after-gc
 	  interrupt-bit/gc
 	  interrupt-bit/global-1
@@ -1838,10 +1842,6 @@ USA.
   (files "predicate-metadata")
   (parent (runtime))
   (export ()
-	  error:not-a
-	  error:not-a-list-of
-	  guarantee
-	  guarantee-list-of
 	  predicate-description
 	  predicate-name
 	  set-predicate<=!)

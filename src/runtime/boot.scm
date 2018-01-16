@@ -377,6 +377,25 @@ USA.
 	  unspecific))
   unspecific)
 
+(define (guarantee predicate object #!optional caller)
+  (if (predicate object)
+      object
+      (error:not-a predicate object caller)))
+
+(define (error:not-a predicate object #!optional caller)
+  (error:wrong-type-argument object (predicate-description predicate) caller))
+
+(define (guarantee-list-of predicate object #!optional caller)
+  (if (not (list-of-type? object predicate))
+      (error:not-a-list-of predicate object caller))
+  object)
+
+(define (error:not-a-list-of predicate object #!optional caller)
+  (error:wrong-type-argument object
+                             (string-append "list of "
+                                            (predicate-description predicate))
+                             caller))
+
 ;;;; Miscellany
 
 (define (object-constant? object)
