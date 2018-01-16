@@ -396,6 +396,14 @@ USA.
                                             (predicate-description predicate))
                              caller))
 
+(define (predicate-description predicate)
+  (if (predicate? predicate)
+      (predicate-name predicate)
+      (call-with-output-string
+	(lambda (port)
+	  (write-string "object satisfying " port)
+	  (write predicate port)))))
+
 ;;;; Miscellany
 
 (define (object-constant? object)

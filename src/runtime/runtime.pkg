@@ -1842,7 +1842,6 @@ USA.
   (files "predicate-metadata")
   (parent (runtime))
   (export ()
-	  predicate-description
 	  predicate-name
 	  set-predicate<=!)
   (export (runtime)
@@ -1852,7 +1851,6 @@ USA.
 	  predicate->tag
 	  set-tag<=!
 	  tag->predicate
-	  tag-description
 	  tag-extra
 	  tag-name
 	  tag-supersets

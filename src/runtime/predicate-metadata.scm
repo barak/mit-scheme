@@ -45,8 +45,7 @@ USA.
     (guarantee keyword-list? keylist 'register-predicate!)
     (let ((tag
 	   (make-tag name predicate 'register-predicate!
-		     (get-keyword-value keylist 'extra)
-		     (get-keyword-value keylist 'description))))
+		     (get-keyword-value keylist 'extra))))
       (for-each (lambda (superset)
 		  (set-tag<=! tag (predicate->tag superset)))
 		(get-keyword-values keylist '<=))
@@ -54,12 +53,6 @@ USA.
 
 (define (predicate-name predicate)
   (tag-name (predicate->tag predicate 'predicate-name)))
-
-(define (predicate-description predicate)
-  (let ((tag (get-predicate-tag predicate #f)))
-    (if tag
-        (tag-description tag)
-        (string-append "object satisfying " (object->description predicate)))))
 
 (define (set-predicate<=! predicate superset)
   (set-tag<=! (predicate->tag predicate 'set-predicate<=!)
@@ -71,20 +64,15 @@ USA.
         (error:not-a predicate? predicate caller))
     tag))
 
-(define (make-tag name predicate caller #!optional extra description)
+(define (make-tag name predicate caller #!optional extra)
   (guarantee tag-name? name caller)
   (guarantee unary-procedure? predicate caller)
   (if (predicate? predicate)
       (error "Can't assign multiple tags to the same predicate:" predicate))
-  (if (not (default-object? description))
-      (guarantee string? description caller))
   (let ((tag
 	 (%make-tag name
 		    predicate
 		    (if (default-object? extra) #f extra)
-		    (if (default-object? description)
-			(delay (object->description name))
-			(delay description))
 		    (%make-weak-set))))
     (set-predicate-tag! predicate tag)
     tag))
@@ -99,27 +87,18 @@ USA.
 			(tag-name? elt)))
 		  (cdr object)))))
 
-(define (object->description object)
-  (call-with-output-string
-    (lambda (port)
-      (write object port))))
-
 (define-record-type <tag>
-    (%make-tag name predicate extra description supersets)
+    (%make-tag name predicate extra supersets)
     tag?
   (name tag-name)
   (predicate tag->predicate)
   (extra tag-extra)
-  (description %tag-description)
   (supersets %tag-supersets))
 
 (define-unparser-method tag?
   (simple-unparser-method 'tag
     (lambda (tag)
       (list (tag-name tag)))))
-
-(define (tag-description tag)
-  (force (%tag-description tag)))
 
 (define (tag-supersets tag)
   (%weak-set->list (%tag-supersets tag)))
