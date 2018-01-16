@@ -104,6 +104,82 @@ USA.
 	   (object-new-type (ucode-type constant) 10)))))
     (ugh)))
 
+;;;; Simple weak-set implementation
+
+;;; Does not support #f as an item of the set.
+
+(define (%make-weak-set)
+  (%weak-cons 'weak-set '()))
+
+(define (%weak-set->list weak-set)
+  (weak-list->list (weak-cdr weak-set)))
+
+(define (%add-to-weak-set item weak-set)
+  (let loop
+      ((this (weak-cdr weak-set))
+       (prev weak-set))
+    (if (weak-pair? this)
+	(let ((item* (%weak-car this))
+	      (next (weak-cdr this)))
+	  (cond ((not item*)
+		 (weak-set-cdr! prev next)
+		 (loop next prev))
+		((eq? item item*)
+		 #f)
+		(else
+		 (loop next this))))
+	(begin
+	  (weak-set-cdr! prev (%weak-cons item '()))
+	  #t))))
+
+(define (%remove-from-weak-set item weak-set)
+  (let loop
+      ((this (weak-cdr weak-set))
+       (prev weak-set))
+    (if (weak-pair? this)
+	(let ((item* (%weak-car this))
+	      (next (weak-cdr this)))
+	  (cond ((not item*)
+		 (weak-set-cdr! prev next)
+		 (loop next prev))
+		((eq? item item*)
+		 (weak-set-cdr! prev next)
+		 #t)
+		(else
+		 (loop next this))))
+	#f)))
+
+(define (%weak-set-any predicate weak-set)
+  (let loop
+      ((this (weak-cdr weak-set))
+       (prev weak-set))
+    (if (weak-pair? this)
+	(let ((item (%weak-car this))
+	      (next (weak-cdr this)))
+	  (cond ((not item)
+		 (weak-set-cdr! prev next)
+		 (loop next prev))
+		((predicate item)
+		 #t)
+		(else
+		 (loop next this))))
+	#f)))
+
+(define (%weak-set-for-each procedure weak-set)
+  (let loop
+      ((this (weak-cdr weak-set))
+       (prev weak-set))
+    (if (weak-pair? this)
+	(let ((item (%weak-car this))
+	      (next (weak-cdr this)))
+	  (if item
+	      (begin
+		(procedure item)
+		(loop next this))
+	      (begin
+		(weak-set-cdr! prev next)
+		(loop next prev)))))))
+
 ;;;; Interrupt control
 
 (define interrupt-bit/stack     #x0001)

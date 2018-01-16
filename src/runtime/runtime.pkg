@@ -191,6 +191,12 @@ USA.
 	  with-limited-interrupts
 	  without-interrupts)
   (export (runtime)
+	  %add-to-weak-set
+	  %make-weak-set
+	  %remove-from-weak-set
+	  %weak-set->list
+	  %weak-set-any
+	  %weak-set-for-each
 	  add-boot-init!
 	  defer-boot-action
 	  run-deferred-boot-actions)
