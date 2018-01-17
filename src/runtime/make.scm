@@ -495,6 +495,7 @@ USA.
    ;; Condition System
    (RUNTIME ERROR-HANDLER)
    (RUNTIME MICROCODE-ERRORS)
+   ((runtime record) initialize-conditions!)
    ((RUNTIME STREAM) INITIALIZE-CONDITIONS!)
    ((RUNTIME REGULAR-SEXPRESSION) INITIALIZE-CONDITIONS!)
    ;; System dependent stuff
