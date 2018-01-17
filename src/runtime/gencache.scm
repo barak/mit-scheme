@@ -31,9 +31,12 @@ USA.
 ;;; Functional Programming.  Parts of this code are based on the
 ;;; September 16, 1992 PCL implementation.
 
-(declare (usual-integrations)
-	 (integrate-external "gentag"))
+(declare (usual-integrations))
 
+(define-integrable dispatch-tag-ref %record-ref)
+(define-integrable dispatch-tag-index-start 1)
+(define-integrable dispatch-tag-index-end 9)
+
 (define-structure (cache (constructor %make-cache))
   (tag-index 0)
   (mask 0 read-only #t)
@@ -342,9 +345,8 @@ USA.
 		  (fill-cache-if-possible new-cache tags* value))))
 	   (try-next-tag-index
 	    (lambda ()
-	      (let ((index
-		     (next-dispatch-tag-index (cache-tag-index new-cache))))
-		(and index
+	      (let ((index (fix:+ (cache-tag-index new-cache) 1)))
+		(and (fix:< index dispatch-tag-index-end)
 		     (begin
 		       (set-cache-tag-index! new-cache index)
 		       (fill-lines 0)))))))

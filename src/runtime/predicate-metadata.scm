@@ -30,14 +30,13 @@ USA.
 (declare (usual-integrations))
 
 (define get-predicate-tag)
-(define set-predicate-tag!)
 (add-boot-init!
  (lambda ()
    (let ((table (make-hashed-metadata-table)))
      (set! predicate? (table 'has?))
      (set! get-predicate-tag (table 'get))
      (set! set-predicate-tag! (table 'put!))
-     unspecific)))
+     (run-deferred-boot-actions 'set-predicate-tag!))))
 
 (define (predicate-name predicate)
   (tag-name (predicate->tag predicate 'predicate-name)))
@@ -48,47 +47,10 @@ USA.
         (error:not-a predicate? predicate caller))
     tag))
 
-(define (make-metatag name)
-  (guarantee tag-name? name 'make-metatag)
-  (letrec*
-      ((predicate
-	(lambda (object)
-	  (and (%record? object)
-	       (eq? metatag (%record-ref object 0)))))
-       (metatag (%make-tag metatag-tag name predicate '#())))
-    (set-tag<=! metatag metatag-tag)
-    metatag))
-
-(define (metatag-constructor metatag #!optional caller)
-  (guarantee metatag? metatag 'metatag-constructor)
-  (lambda (name predicate . extra)
-    (guarantee tag-name? name caller)
-    (guarantee unary-procedure? predicate caller)
-    (if (predicate? predicate)
-	(error "Can't assign multiple tags to the same predicate:" predicate))
-    (%make-tag metatag name predicate (list->vector extra))))
-
-(define (metatag? object)
-  (and (%record? object)
-       (eq? metatag-tag (%record-ref object 0))))
-
-(define (tag-name? object)
-  (or (symbol? object)
-      (and (pair? object)
-	   (symbol? (car object))
-	   (list? (cdr object))
-	   (every (lambda (elt)
-		    (or (object-non-pointer? elt)
-			(tag-name? elt)))
-		  (cdr object)))))
-
-(define metatag-tag)
 (define simple-tag-metatag)
 (define %make-simple-tag)
 (add-boot-init!
  (lambda ()
-   (set! metatag-tag (%make-tag #f 'metatag metatag? '#()))
-   (%record-set! metatag-tag 0 metatag-tag)
    (set! simple-tag-metatag
 	 (make-metatag 'simple-tag))
    (set! %make-simple-tag
@@ -103,71 +65,12 @@ USA.
 		       (get-keyword-values keylist '<=))
 	     tag)))
    unspecific))
-
-(defer-boot-action 'predicate-relations
-  (lambda ()
-    (set-predicate<=! metatag? tag?)))
-
-(define (%make-tag metatag name predicate extra)
-  (let ((tag (%record metatag name predicate extra (%make-weak-set))))
-    (set-predicate-tag! predicate tag)
-    tag))
-
-(define (tag? object)
-  (and (%record? object)
-       (metatag? (%record-ref object 0))))
-
-(define-unparser-method tag?
-  (simple-unparser-method
-   (lambda (tag)
-     (if (metatag? tag) 'metatag 'tag))
-   (lambda (tag)
-     (list (tag-name tag)))))
-
-(define-integrable (%tag-name tag)
-  (%record-ref tag 1))
-
-(define-integrable (%tag->predicate tag)
-  (%record-ref tag 2))
-
-(define-integrable (%tag-extra tag)
-  (%record-ref tag 3))
-
-(define-integrable (%tag-supersets tag)
-  (%record-ref tag 4))
-
-(define (tag-metatag tag)
-  (guarantee tag? tag 'tag-metatag)
-  (%record-ref tag 0))
-
-(define (tag-name tag)
-  (guarantee tag? tag 'tag-name)
-  (%record-ref tag 1))
-
-(define (tag->predicate tag)
-  (guarantee tag? tag 'tag->predicate)
-  (%tag->predicate tag))
-
-(define (tag-extra tag index)
-  (guarantee tag? tag 'tag-extra)
-  (vector-ref (%tag-extra tag) index))
-
-(define (any-tag-superset procedure tag)
-  (guarantee tag? tag 'any-tag-superset)
-  (%weak-set-any procedure (%tag-supersets tag)))
-
-(define (add-tag-superset tag superset)
-  (guarantee tag? tag 'add-tag-superset)
-  (guarantee tag? superset 'add-tag-superset)
-  (%add-to-weak-set superset (%tag-supersets tag)))
 
 (add-boot-init!
  (lambda ()
    (register-predicate! %record? '%record)
    (register-predicate! %tagged-object? 'tagged-object)
-   (register-predicate! predicate? 'predicate)
-   (register-predicate! tag-name? 'tag-name)
-   (register-predicate! tag? 'tag '<= %record?)))
+   (register-predicate! predicate? 'predicate)))
 
 ;;; Registration of standard predicates
 (add-boot-init!
@@ -263,7 +166,6 @@ USA.
    (register-predicate! compiled-code-block? 'compiled-code-block)
    (register-predicate! compiled-expression? 'compiled-expression)
    (register-predicate! compiled-return-address? 'compiled-return-address)
-   (register-predicate! dispatch-tag? 'dispatch-tag)
    (register-predicate! ephemeron? 'ephemeron)
    (register-predicate! environment? 'environment)
    (register-predicate! equality-predicate? 'equality-predicate

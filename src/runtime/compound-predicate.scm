@@ -29,16 +29,11 @@ USA.
 
 (declare (usual-integrations))
 
-(define compound-tag-metatag)
-(define compound-tag?)
-(define %make-compound-tag)
-(defer-boot-action 'make-metatag
-  (lambda ()
-    (set! compound-tag-metatag (make-metatag 'compound-tag))
-    (set! compound-tag? (tag->predicate compound-tag-metatag))
-    (set! %make-compound-tag
-	  (metatag-constructor compound-tag-metatag 'make-compound-tag))
-    unspecific))
+(define compound-tag-metatag (make-metatag 'compound-tag))
+(define compound-tag? (tag->predicate compound-tag-metatag))
+
+(define %make-compound-tag
+  (metatag-constructor compound-tag-metatag 'make-compound-tag))
 
 (define (make-compound-tag predicate operator operands)
   (%make-compound-tag (cons operator (map tag-name operands))

@@ -29,16 +29,11 @@ USA.
 
 (declare (usual-integrations))
 
-(define parametric-tag-metatag)
-(define parametric-tag?)
-(define %make-parametric-tag)
-(defer-boot-action 'make-metatag
-  (lambda ()
-    (set! parametric-tag-metatag (make-metatag 'parametric-tag))
-    (set! parametric-tag? (tag->predicate parametric-tag-metatag))
-    (set! %make-parametric-tag
-	  (metatag-constructor parametric-tag-metatag 'make-parametric-tag))
-    unspecific))
+(define parametric-tag-metatag (make-metatag 'parametric-tag))
+(define parametric-tag? (tag->predicate parametric-tag-metatag))
+
+(define %make-parametric-tag
+  (metatag-constructor parametric-tag-metatag 'make-parametric-tag))
 
 (define (make-parametric-tag name predicate template bindings)
   (%make-parametric-tag name predicate template bindings))

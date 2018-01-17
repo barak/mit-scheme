@@ -27,8 +27,8 @@ USA.
 ;;;; Compiled Code Information: Utilities
 ;;; package: (runtime compiler-info)
 
-(declare (usual-integrations))
-(declare (integrate-external "infstr" "char"))
+(declare (usual-integrations)
+	 (integrate-external "infstr"))
 
 (define (compiled-code-block/dbg-info block demand-load?)
   (let ((wrapper (compiled-code-block/debugging-wrapper block)))

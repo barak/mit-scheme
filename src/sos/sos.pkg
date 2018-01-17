@@ -52,8 +52,7 @@ USA.
 	  generic-procedure?
 	  guarantee-generic-procedure
 	  make-generic-procedure
-	  purge-generic-procedure-cache
-	  standard-generic-procedure-tag)
+	  purge-generic-procedure-cache)
   (export (sos)
 	  condition-type:no-applicable-methods
 	  error:no-applicable-methods)
@@ -144,13 +143,11 @@ USA.
   (files "class")
   (parent (sos))
   (export ()
-	  <%record>
 	  <bignum>
 	  <boolean>
 	  <char>
 	  <class>
 	  <complex>
-	  <dispatch-tag>
 	  <entity>
 	  <exact-complex>
 	  <exact-integer>
@@ -195,6 +192,8 @@ USA.
 	  record-class
 	  record-type-class
 	  subclass?)
+  (export (sos)
+	  class-tag?)
   (import (runtime microcode-tables)
 	  microcode-type/code->name
 	  microcode-type/name->code))

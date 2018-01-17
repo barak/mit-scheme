@@ -408,7 +408,7 @@ USA.
   (package-initialize '(RUNTIME RANDOM-NUMBER) #f #t)
   (package-initialize '(runtime tagged-dispatch) #f #t)
   (package-initialize '(RUNTIME POPULATION) #f #t)
-  (package-initialize '(RUNTIME RECORD) 'INITIALIZE-RECORD-TYPE-TYPE! #t)
+  (package-initialize '(runtime record) #f #t)
 
   (load-files-with-boot-inits files2)
   (package-initialize '(RUNTIME 1D-PROPERTY) #f #t)	     ;First population.
@@ -488,7 +488,6 @@ USA.
    (RUNTIME CONTINUATION-PARSER)
    (RUNTIME PROGRAM-COPIER)
    ;; Finish records
-   ((runtime tagged-dispatch) initialize-tag-tables!)
    ((RUNTIME RECORD) INITIALIZE-RECORD-PROCEDURES!)
    ((PACKAGE) FINALIZE-PACKAGE-RECORD-TYPE!)
    ((RUNTIME RANDOM-NUMBER) FINALIZE-RANDOM-STATE-TYPE!)

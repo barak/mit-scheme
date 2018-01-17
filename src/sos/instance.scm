@@ -330,10 +330,10 @@ USA.
 
 (define (instance? object)
   (and (tagged-vector? object)
-       (class? (dispatch-tag-contents (tagged-vector-tag object)))))
+       (class-tag? (tagged-vector-tag object))))
 
 (define (instance-class instance)
-  (dispatch-tag-contents (tagged-vector-tag instance)))
+  (dispatch-tag->class (tagged-vector-tag instance)))
 
 (define (instance-predicate specializer)
   (if (not (specializer? specializer))

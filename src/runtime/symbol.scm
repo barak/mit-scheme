@@ -50,7 +50,14 @@ USA.
 				      (make-unmapped-unbound-reference-trap)))
 
 (define (string->symbol string #!optional start end)
-  ((ucode-primitive string->symbol) (string->utf8 string start end)))
+  ((ucode-primitive string->symbol)
+   ;; Needed during cold load.
+   (if (and (%ustring1? string)
+	    (ustring-ascii? string)
+	    (default-object? start)
+	    (default-object? end))
+       (->bytes string)
+       (string->utf8 string start end))))
 
 (define (symbol->string symbol)
   (if (not (symbol? symbol))

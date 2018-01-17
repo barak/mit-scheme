@@ -50,24 +50,6 @@ USA.
 	(%record-set! result index (%record-ref record index)))
       result)))
 
-(define record-type-type-tag)
-
-(define (initialize-record-type-type!)
-  (let* ((field-names
-	  '#(dispatch-tag name field-names default-inits tag))
-	 (type
-	  (%record #f
-		   #f
-		   "record-type"
-		   field-names
-		   (vector-cons (vector-length field-names) #f)
-		   #f)))
-    (set! record-type-type-tag (make-dispatch-tag type))
-    (%record-set! type 0 record-type-type-tag)
-    (%record-set! type 1 record-type-type-tag)
-    (%set-record-type-predicate! type record-type?))
-  (initialize-structure-type-type!))
-
 (define (make-record-type type-name field-names
 			  #!optional
 			  default-inits unparser-method entity-unparser-method)
@@ -84,21 +66,23 @@ USA.
 	  (error:wrong-type-argument default-inits
 				     "default initializers"
 				     caller))
-      (let* ((record-type
-	      (%record record-type-type-tag
-		       #f
-		       (->type-name type-name)
-		       names
-		       (if (default-object? default-inits)
-			   (vector-cons n #f)
-			   (list->vector default-inits))
-		       #f))
-	     (tag (make-dispatch-tag record-type)))
-	(%record-set! record-type 1 tag)
-	(let ((predicate
-	       (lambda (object)
-		 (%tagged-record? tag object))))
-	  (%set-record-type-predicate! record-type predicate)
+      (let ((record-type
+	     (%record record-type-type-tag
+		      #f
+		      (->type-name type-name)
+		      names
+		      (if (default-object? default-inits)
+			  (vector-cons n #f)
+			  (list->vector default-inits)))))
+	(letrec*
+	    ((predicate
+	      (lambda (object)
+		(%tagged-record? tag object)))
+	     (tag
+	      (%make-record-tag (string->symbol (%record-type-name record-type))
+				predicate
+				record-type)))
+	  (%record-set! record-type 1 tag)
 	  (if (and unparser-method
 		   (not (default-object? unparser-method)))
 	      (define-unparser-method predicate unparser-method)))
@@ -107,25 +91,48 @@ USA.
 (define (%valid-default-inits? default-inits n-fields)
   (fix:= n-fields (length default-inits)))
 
-(defer-boot-action 'record-procedures
-  (lambda ()
-    (set! %valid-default-inits?
-	  (named-lambda (%valid-default-inits? default-inits n-fields)
-	    (and (fix:= n-fields (length default-inits))
-		 (every (lambda (init)
-			  (or (not init)
-			      (thunk? init)))
-			default-inits))))
-    unspecific))
-
 (define (initialize-record-procedures!)
-  (run-deferred-boot-actions 'record-procedures))
+  (set! %valid-default-inits?
+	(named-lambda (%valid-default-inits? default-inits n-fields)
+	  (and (fix:= n-fields (length default-inits))
+	       (every (lambda (init)
+			(or (not init)
+			    (thunk? init)))
+		      default-inits))))
+  unspecific)
 
+(define record-tag-metatag)
+(define record-tag?)
+(define %make-record-tag)
+(define record-type-type-tag)
+(add-boot-init!
+ (lambda ()
+   (set! record-tag-metatag (make-metatag 'record-tag))
+   (set! record-tag? (tag->predicate record-tag-metatag))
+   (set! %make-record-tag
+	 (metatag-constructor record-tag-metatag 'make-record-type))
+   (let* ((field-names
+	   '#(dispatch-tag name field-names default-inits tag))
+	  (type
+	   (%record #f
+		    #f
+		    "record-type"
+		    field-names
+		    (vector-cons (vector-length field-names) #f))))
+     (set! record-type-type-tag
+	   (%make-record-tag 'record-type record-type? type))
+     (%record-set! type 0 record-type-type-tag)
+     (%record-set! type 1 record-type-type-tag))))
+
+(define (record-tag->type-descriptor tag)
+  (guarantee record-tag? tag 'record-tag->type-descriptor)
+  (tag-extra tag 0))
+
 (define (record-type? object)
   (%tagged-record? record-type-type-tag object))
 
 (define-integrable (%record-type-descriptor record)
-  (dispatch-tag-contents (%record-tag record)))
+  (tag-extra (%record-tag record) 0))
 
 (define-integrable (%record-type-dispatch-tag record-type)
   (%record-ref record-type 1))
@@ -139,11 +146,8 @@ USA.
 (define-integrable (%record-type-default-inits record-type)
   (%record-ref record-type 4))
 
-(define-integrable (%record-type-tag record-type)
-  (%record-ref record-type 5))
-
-(define-integrable (%set-record-type-tag! record-type tag)
-  (%record-set! record-type 5 tag))
+(define-integrable (%record-type-predicate record-type)
+  (tag->predicate (%record-type-dispatch-tag record-type)))
 
 (define-integrable (%record-type-n-fields record-type)
   (vector-length (%record-type-field-names record-type)))
@@ -156,18 +160,16 @@ USA.
 	      (fix:- index 1)))
 
 (define (record-type-dispatch-tag record-type)
-  (guarantee-record-type record-type 'RECORD-TYPE-DISPATCH-TAG)
+  (guarantee record-type? record-type 'record-type-dispatch-tag)
   (%record-type-dispatch-tag record-type))
 
 (define (record-type-name record-type)
-  (guarantee-record-type record-type 'RECORD-TYPE-NAME)
+  (guarantee record-type? record-type 'record-type-name)
   (%record-type-name record-type))
 
 (define (record-type-field-names record-type)
-  (guarantee-record-type record-type 'RECORD-TYPE-FIELD-NAMES)
-  ;; Can't use VECTOR->LIST here because it isn't available at cold load.
-  (let ((v (%record-type-field-names record-type)))
-    ((ucode-primitive subvector->list) v 0 (vector-length v))))
+  (guarantee record-type? record-type 'record-type-field-names)
+  (vector->list (%record-type-field-names record-type)))
 
 (define (record-type-default-value-by-index record-type field-index)
   (let ((init
@@ -175,42 +177,17 @@ USA.
 		     (fix:- field-index 1))))
     (and init
 	 (init))))
-
-(define %record-type-predicate %record-type-tag)
-
-(define (%set-record-type-predicate! record-type predicate)
-  (defer-boot-action 'predicate-registrations
-    (lambda ()
-      (%set-record-type-predicate! record-type predicate)))
-  (%set-record-type-tag! record-type predicate))
-
-(defer-boot-action 'predicate-registrations
-  (lambda ()
-    (set! %record-type-predicate
-	  (named-lambda (%record-type-predicate record-type)
-	    (tag->predicate (%record-type-tag record-type))))
-    (set! %set-record-type-predicate!
-	  (named-lambda (%set-record-type-predicate! record-type predicate)
-	    (%register-record-predicate! predicate record-type)
-	    (%set-record-type-tag! record-type (predicate->tag predicate))))
-    unspecific))
-
-(define (%register-record-predicate! predicate record-type)
-  (register-predicate! predicate
-		       (string->symbol
-			(strip-angle-brackets (%record-type-name record-type)))
-		       '<= record?))
 
 ;;;; Constructors
 
 (define (record-constructor record-type #!optional field-names)
-  (guarantee-record-type record-type 'RECORD-CONSTRUCTOR)
+  (guarantee record-type? record-type 'record-constructor)
   (if (or (default-object? field-names)
 	  (equal? field-names (record-type-field-names record-type)))
       (%record-constructor-default-names record-type)
       (begin
 	(if (not (list? field-names))
-	    (error:not-a list? field-names 'RECORD-CONSTRUCTOR))
+	    (error:not-a list? field-names 'record-constructor))
 	(%record-constructor-given-names record-type field-names))))
 
 (define %record-constructor-default-names
@@ -336,23 +313,22 @@ USA.
 
 (define (record? object)
   (and (%record? object)
-       (dispatch-tag? (%record-tag object))
-       (record-type? (dispatch-tag-contents (%record-tag object)))))
+       (record-tag? (%record-tag object))))
 
 (define (record-type-descriptor record)
-  (guarantee-record record 'RECORD-TYPE-DESCRIPTOR)
+  (guarantee record? record 'record-type-descriptor)
   (%record-type-descriptor record))
 
 (define (copy-record record)
-  (guarantee-record record 'COPY-RECORD)
+  (guarantee record? record 'copy-record)
   (%copy-record record))
 
 (define (record-predicate record-type)
-  (guarantee-record-type record-type 'RECORD-PREDICATE)
+  (guarantee record-type? record-type 'record-predicate)
   (%record-type-predicate record-type))
 
 (define (record-accessor record-type field-name)
-  (guarantee-record-type record-type 'record-accessor)
+  (guarantee record-type? record-type 'record-accessor)
   (let ((tag (%record-type-dispatch-tag record-type))
 	(predicate (%record-type-predicate record-type))
 	(index (record-type-field-index record-type field-name #t)))
@@ -377,7 +353,7 @@ USA.
       (expand-cases 16))))
 
 (define (record-modifier record-type field-name)
-  (guarantee-record-type record-type 'record-modifier)
+  (guarantee record-type? record-type 'record-modifier)
   (let ((tag (%record-type-dispatch-tag record-type))
 	(predicate (%record-type-predicate record-type))
 	(index (record-type-field-index record-type field-name #t)))
@@ -405,7 +381,6 @@ USA.
 (define record-updater record-modifier)
 
 (define (record-type-field-index record-type name error?)
-  ;; Can't use VECTOR->LIST here because it isn't available at cold load.
   (let* ((names (%record-type-field-names record-type))
 	 (n (vector-length names)))
     (let loop ((i 0))
@@ -427,14 +402,7 @@ USA.
   (and (list-of-type? object symbol?)
        (let loop ((elements object))
 	 (if (pair? elements)
-	     ;; No memq in the cold load.
-	     (let memq ((item (car elements))
-			(tail (cdr elements)))
-	       (cond ((pair? tail) (if (eq? item (car tail))
-				       #f
-				       (memq item (cdr tail))))
-		     ((null? tail) (loop (cdr elements)))
-		     (else (error "Improper list."))))
+	     (not (memq (car elements) (cdr elements)))
 	     #t))))
 
 (define-guarantee record-type "record type")
@@ -443,7 +411,7 @@ USA.
 ;;;; Printing
 
 (define-unparser-method %record?
-  (standard-unparser-method 'record #f))
+  (standard-unparser-method '%record #f))
 
 (define-unparser-method record?
   (standard-unparser-method
@@ -480,42 +448,6 @@ USA.
 
 ;;;; Runtime support for DEFINE-STRUCTURE
 
-(define (initialize-structure-type-type!)
-  (set! rtd:structure-type
-	(make-record-type "structure-type"
-			  '(PHYSICAL-TYPE NAME FIELD-NAMES FIELD-INDEXES
-					  DEFAULT-INITS TAG LENGTH)))
-  (set! make-define-structure-type
-	(let ((constructor (record-constructor rtd:structure-type)))
-	  (lambda (physical-type name field-names field-indexes default-inits
-				 unparser-method tag length)
-	    ;; unparser-method arg should be removed after 9.3 is released.
-	    (declare (ignore unparser-method))
-	    (constructor physical-type
-			 name
-			 field-names
-			 field-indexes
-			 default-inits
-			 tag
-			 length))))
-  (set! structure-type?
-	(record-predicate rtd:structure-type))
-  (set! structure-type/physical-type
-	(record-accessor rtd:structure-type 'PHYSICAL-TYPE))
-  (set! structure-type/name
-	(record-accessor rtd:structure-type 'NAME))
-  (set! structure-type/field-names
-	(record-accessor rtd:structure-type 'FIELD-NAMES))
-  (set! structure-type/field-indexes
-	(record-accessor rtd:structure-type 'FIELD-INDEXES))
-  (set! structure-type/default-inits
-	(record-accessor rtd:structure-type 'DEFAULT-INITS))
-  (set! structure-type/tag
-	(record-accessor rtd:structure-type 'TAG))
-  (set! structure-type/length
-	(record-accessor rtd:structure-type 'LENGTH))
-  unspecific)
-
 (define rtd:structure-type)
 (define make-define-structure-type)
 (define structure-type?)
@@ -528,6 +460,42 @@ USA.
 (define set-structure-type/unparser-method!)
 (define structure-type/tag)
 (define structure-type/length)
+(add-boot-init!
+ (lambda ()
+   (set! rtd:structure-type
+	 (make-record-type "structure-type"
+			   '(PHYSICAL-TYPE NAME FIELD-NAMES FIELD-INDEXES
+					   DEFAULT-INITS TAG LENGTH)))
+   (set! make-define-structure-type
+	 (let ((constructor (record-constructor rtd:structure-type)))
+	   (lambda (physical-type name field-names field-indexes default-inits
+				  unparser-method tag length)
+	     ;; unparser-method arg should be removed after 9.3 is released.
+	     (declare (ignore unparser-method))
+	     (constructor physical-type
+			  name
+			  field-names
+			  field-indexes
+			  default-inits
+			  tag
+			  length))))
+   (set! structure-type?
+	 (record-predicate rtd:structure-type))
+   (set! structure-type/physical-type
+	 (record-accessor rtd:structure-type 'PHYSICAL-TYPE))
+   (set! structure-type/name
+	 (record-accessor rtd:structure-type 'NAME))
+   (set! structure-type/field-names
+	 (record-accessor rtd:structure-type 'FIELD-NAMES))
+   (set! structure-type/field-indexes
+	 (record-accessor rtd:structure-type 'FIELD-INDEXES))
+   (set! structure-type/default-inits
+	 (record-accessor rtd:structure-type 'DEFAULT-INITS))
+   (set! structure-type/tag
+	 (record-accessor rtd:structure-type 'TAG))
+   (set! structure-type/length
+	 (record-accessor rtd:structure-type 'LENGTH))
+   unspecific))
 
 (define-integrable (structure-type/field-index type field-name)
   (vector-ref (structure-type/field-indexes type)

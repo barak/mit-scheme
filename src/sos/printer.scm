@@ -73,22 +73,13 @@ USA.
   (install <method> 'METHOD)
   (install <chained-method> 'CHAINED-METHOD)
   (install <computed-method> 'COMPUTED-METHOD)
-  (install <computed-emp> 'COMPUTED-EMP)
-  (install <%record> '%RECORD))
+  (install <computed-emp> 'COMPUTED-EMP))
 
 (add-method write-instance
   (make-method (list <record>)
     (lambda (record port)
       (write-instance-helper (record-type-name (record-type-descriptor record))
 			     record port #f))))
-
-(add-method write-instance
-  (make-method (list <dispatch-tag>)
-    (lambda (tag port)
-      (write-instance-helper 'DISPATCH-TAG tag port
-	(lambda ()
-	  (write-char #\space port)
-	  (write (dispatch-tag-contents tag) port))))))
 
 (define (write-instance-helper name object port thunk)
   (write-string "#[" port)

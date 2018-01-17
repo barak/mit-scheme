@@ -1842,20 +1842,8 @@ USA.
   (files "predicate-metadata")
   (parent (runtime))
   (export ()
-	  make-metatag
-	  metatag-constructor
-	  metatag?
-	  predicate-name)
-  (export (runtime)
 	  predicate->tag
-	  tag->predicate
-	  tag-extra
-	  tag-name
-	  tag-metatag
-	  tag?)
-  (export (runtime predicate-lattice)
-	  any-tag-superset
-	  add-tag-superset))
+	  predicate-name))
 
 (define-package (runtime predicate-lattice)
   (files "predicate-lattice")
@@ -1869,7 +1857,6 @@ USA.
   (export (runtime)
 	  bottom-tag
 	  define-tag<=
-	  set-tag<=!
 	  tag-is-bottom?
 	  tag-is-top?
 	  tag<=
@@ -3721,8 +3708,6 @@ USA.
   (export () deprecated:record
 	  set-record-type-unparser-method!)
   (export ()
-	  %copy-record
-	  %record-tag
 	  condition-type:no-such-slot
 	  condition-type:slot-error
 	  condition-type:uninitialized-slot
@@ -3756,10 +3741,9 @@ USA.
   (export (runtime)
 	  error:no-such-slot
 	  error:uninitialized-slot
+	  record-tag->type-descriptor
+	  record-tag?
 	  record-type-field-index)
-  (export (runtime predicate-tagging)
-	  %record-type-descriptor
-	  %record-type-tag)
   (initialization (initialize-package!)))
 
 (define-package (runtime reference-trap)
@@ -5117,11 +5101,21 @@ USA.
   (files "gentag" "gencache")
   (parent (runtime))
   (export ()
-	  built-in-dispatch-tag
-	  dispatch-tag
-	  dispatch-tag-contents
-	  dispatch-tag?
-	  make-dispatch-tag))
+	  make-metatag
+	  metatag-constructor
+	  metatag?)
+  (export (runtime)
+	  set-tag<=!
+	  tag->predicate
+	  tag-extra
+	  tag-metatag
+	  tag-name
+	  tag?)
+  (export (runtime predicate-lattice)
+	  add-tag-superset
+	  any-tag-superset)
+  (export (runtime predicate-metadata)
+	  set-predicate-tag!))
 
 (define-package (runtime crypto)
   (files "crypto")

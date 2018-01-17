@@ -33,43 +33,58 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-dispatch-tag contents)
-  (let ((tag (%make-record dispatch-tag-marker dispatch-tag-index-end)))
-    (%record-set! tag 1 contents)
-    (do ((i dispatch-tag-index-start (fix:+ i 1)))
-	((not (fix:< i dispatch-tag-index-end)))
-      (%record-set! tag i (get-dispatch-tag-cache-number)))
+(define (%make-tag metatag name predicate extra)
+  (let ((tag
+	 (%record metatag
+		  (get-tag-cache-number)
+		  (get-tag-cache-number)
+		  (get-tag-cache-number)
+		  (get-tag-cache-number)
+		  (get-tag-cache-number)
+		  (get-tag-cache-number)
+		  (get-tag-cache-number)
+		  (get-tag-cache-number)
+		  name
+		  predicate
+		  extra
+		  (%make-weak-set))))
+    (set-predicate-tag! predicate tag)
     tag))
 
-(define-integrable (dispatch-tag? object)
+(define (tag-name? object)
+  (or (symbol? object)
+      (and (pair? object)
+	   (symbol? (car object))
+	   (list? (cdr object))
+	   (every (lambda (elt)
+		    (or (object-non-pointer? elt)
+			(tag-name? elt)))
+		  (cdr object)))))
+(register-predicate! tag-name? 'tag-name)
+
+(define (set-predicate-tag! predicate tag)
+  (defer-boot-action 'set-predicate-tag!
+    (lambda ()
+      (set-predicate-tag! predicate tag))))
+
+(define (tag? object)
   (and (%record? object)
-       (eq? dispatch-tag-marker (%record-ref object 0))))
+       (metatag? (%record-ref object 0))))
+(register-predicate! tag? 'tag '<= %record?)
 
-(define-unparser-method dispatch-tag?
-  (simple-unparser-method 'dispatch-tag
-    (lambda (tag)
-      (list (dispatch-tag-contents tag)))))
+(define-integrable (%tag-name tag)
+  (%record-ref tag 9))
 
-(define-integrable dispatch-tag-marker '|#[dispatch-tag]|)
-(define-integrable dispatch-tag-index-start 2)
-(define-integrable dispatch-tag-index-end 10)
+(define-integrable (%tag->predicate tag)
+  (%record-ref tag 10))
 
-(define-integrable (dispatch-tag-ref t i)
-  (%record-ref t i))
+(define-integrable (%tag-extra tag)
+  (%record-ref tag 11))
 
-(define-integrable (dispatch-tag-set! t i x)
-  (%record-set! t i x))
+(define-integrable (%tag-supersets tag)
+  (%record-ref tag 12))
 
-(define (dispatch-tag-contents tag)
-  (guarantee dispatch-tag? tag 'DISPATCH-TAG-CONTENTS)
-  (%record-ref tag 1))
-
-(declare (integrate-operator next-dispatch-tag-index))
-(define (next-dispatch-tag-index index)
-  (and (fix:< (fix:+ index 1) dispatch-tag-index-end)
-       (fix:+ index 1)))
-
-(define-integrable dispatch-tag-cache-number-adds-ok
+(define-integrable tag-cache-number-adds-ok
   ;; This constant controls the number of non-zero bits tag cache
   ;; numbers will have.
   ;;
@@ -79,138 +94,89 @@ USA.
   ;; primary cache locations from multiple tags.
   4)
 
-(define-deferred get-dispatch-tag-cache-number
+(define-deferred get-tag-cache-number
   (let ((modulus
 	 (int:quotient
 	  (let loop ((n 2)) (if (fix:fixnum? n) (loop (int:* n 2)) n))
-	  dispatch-tag-cache-number-adds-ok))
+	  tag-cache-number-adds-ok))
 	(state (make-random-state)))
     (lambda ()
       (random modulus state))))
 
-;;;; Object Tags
+(define (make-metatag name)
+  (guarantee tag-name? name 'make-metatag)
+  (letrec*
+      ((predicate
+	(lambda (object)
+	  (and (%record? object)
+	       (eq? metatag (%record-ref object 0)))))
+       (metatag (%make-tag metatag-tag name predicate '#())))
+    (set-tag<=! metatag metatag-tag)
+    metatag))
 
-;;; We assume that most new data types will be constructed from records, and
-;;; therefore we should optimize the path for such structures as much as
-;;; possible.
+(define (metatag-constructor metatag #!optional caller)
+  (guarantee metatag? metatag 'metatag-constructor)
+  (lambda (name predicate . extra)
+    (guarantee tag-name? name caller)
+    (guarantee unary-procedure? predicate caller)
+    (if (predicate? predicate)
+	(error "Can't assign multiple tags to the same predicate:" name))
+    (%make-tag metatag name predicate (list->vector extra))))
 
-(define (dispatch-tag object)
-  (declare (integrate object))
-  (declare (ignore-reference-traps (set microcode-type-tag-table
-					microcode-type-method-table)))
-  (cond ((and (%record? object)
-	      (dispatch-tag? (%record-ref object 0)))
-	 (%record-ref object 0))
-	((vector-ref microcode-type-tag-table (object-type object))
-	 (vector-ref microcode-type-tag-table (object-type object)))
-	(else
-	 ((vector-ref microcode-type-method-table (object-type object))
-	  object))))
+(define (metatag? object)
+  (and (%record? object)
+       (eq? metatag-tag (%record-ref object 0))))
 
-(define (make-built-in-tag names)
-  (let ((tags (map built-in-dispatch-tag names)))
-    (if (any (lambda (tag) tag) tags)
-	(let ((tag (car tags)))
-	  (if (not (and (every (lambda (tag*)
-				 (eq? tag* tag))
-			       (cdr tags))
-			(let ((names* (dispatch-tag-contents tag)))
-			  (and (every (lambda (name)
-					(memq name names*))
-				      names)
-			       (every (lambda (name)
-					(memq name names))
-				      names*)))))
-	      (error "Illegal built-in tag redefinition:" names))
-	  tag)
-	(let ((tag (make-dispatch-tag (list-copy names))))
-	  (set! built-in-tags (cons tag built-in-tags))
-	  tag))))
+(define metatag-tag)
+(add-boot-init!
+ (lambda ()
+   (set! metatag-tag (%make-tag #f 'metatag metatag? '#()))
+   (%record-set! metatag-tag 0 metatag-tag)))
 
-(define (built-in-dispatch-tags)
-  (list-copy built-in-tags))
-
-(define (built-in-dispatch-tag name)
-  (find (lambda (tag)
-	  (memq name (dispatch-tag-contents tag)))
-	built-in-tags))
+(define (set-tag<=! t1 t2)
+  (defer-boot-action 'predicate-relations
+    (lambda ()
+      (set-tag<=! t1 t2))))
 
-;;;; Initialization
+(define (tag-metatag tag)
+  (guarantee tag? tag 'tag-metatag)
+  (%record-ref tag 0))
 
-(define built-in-tags)
-(define microcode-type-tag-table)
-(define microcode-type-method-table)
+(define (tag-name tag)
+  (guarantee tag? tag 'tag-name)
+  (%tag-name tag))
 
-(define (initialize-tag-tables!)
-  (set! built-in-tags '())
-  (set! microcode-type-tag-table
-	(make-initialized-vector (microcode-type/code-limit)
-	  (lambda (code)
-	    (make-built-in-tag
-	     (let ((names (microcode-type/code->names code)))
-	       (if (pair? names)
-		   names
-		   '(object)))))))
-  (set! microcode-type-method-table
-	(make-vector (microcode-type/code-limit) #f))
+(define (tag->predicate tag)
+  (guarantee tag? tag 'tag->predicate)
+  (%tag->predicate tag))
 
-  (let ((defmethod
-	 (lambda (name get-method)
-	   (let ((code (microcode-type/name->code name)))
-	     (vector-set! microcode-type-method-table code
-			  (get-method
-			   (vector-ref microcode-type-tag-table code)))
-	     (vector-set! microcode-type-tag-table code #f)))))
-    (defmethod 'compiled-entry
-      (lambda (default-tag)
-	(let ((procedure-tag (make-built-in-tag '(compiled-procedure)))
-	      (return-tag (make-built-in-tag '(compiled-return-address)))
-	      (expression-tag (make-built-in-tag '(compiled-expression))))
-	  (lambda (object)
-	    (case (system-hunk3-cxr0
-		   ((ucode-primitive compiled-entry-kind 1) object))
-	      ((0) procedure-tag)
-	      ((1) return-tag)
-	      ((2) expression-tag)
-	      (else default-tag))))))
-    (defmethod 'false
-      (lambda (default-tag)
-	(let ((boolean-tag (make-built-in-tag '(boolean))))
-	  (lambda (object)
-	    (if (eq? object #f)
-		boolean-tag
-		default-tag)))))
-    (defmethod 'constant
-      (lambda (default-tag)
-	(let ((boolean-tag (make-built-in-tag '(boolean)))
-	      (null-tag (make-built-in-tag '(null)))
-	      (eof-tag (make-built-in-tag '(eof)))
-	      (default-object-tag (make-built-in-tag '(default)))
-	      (keyword-tag (make-built-in-tag '(lambda-keyword))))
-	  (lambda (object)
-	    (if (eof-object? object)
-		eof-tag
-		(case object
-		  ((#t) boolean-tag)
-		  ((()) null-tag)
-		  ((#!default) default-object-tag)
-		  ((#!optional #!rest #!key #!aux) keyword-tag)
-		  (else default-tag)))))))
-    (defmethod 'record
-      (lambda (default-tag)
-	(let ((dt-tag (make-built-in-tag '(dispatch-tag))))
-	  (lambda (object)
-	    (if (eq? dispatch-tag-marker (%record-ref object 0))
-		dt-tag
-		default-tag)))))
+(define (tag-extra tag index)
+  (guarantee tag? tag 'tag-extra)
+  (vector-ref (%tag-extra tag) index))
 
-    ;; Flonum length can change size on different architectures, so we
-    ;; measure one.
-    (let ((flonum-length (system-vector-length microcode-id/floating-epsilon)))
-      (defmethod 'flonum
-	(lambda (default-tag)
-	  (let ((flonum-vector-tag (make-built-in-tag '(flonum-vector))))
-	    (lambda (object)
-	      (if (fix:= flonum-length (system-vector-length object))
-		  default-tag
-		  flonum-vector-tag))))))))
+(define (any-tag-superset procedure tag)
+  (guarantee tag? tag 'any-tag-superset)
+  (%weak-set-any procedure (%tag-supersets tag)))
+
+(define (add-tag-superset tag superset)
+  (guarantee tag? tag 'add-tag-superset)
+  (guarantee tag? superset 'add-tag-superset)
+  (%add-to-weak-set superset (%tag-supersets tag)))
+
+(defer-boot-action 'predicate-relations
+  (lambda ()
+    (set-predicate<=! metatag? tag?)))
+
+(define-unparser-method tag?
+  (simple-unparser-method
+   (lambda (tag)
+     (if (metatag? tag) 'metatag 'tag))
+   (lambda (tag)
+     (list (tag-name tag)))))
+
+(define-pp-describer tag?
+  (lambda (tag)
+    (list (list 'metatag (tag-metatag tag))
+	  (list 'name (tag-name tag))
+	  (list 'predicate (tag->predicate tag))
+	  (cons 'extra (vector->list (%tag-extra tag))))))

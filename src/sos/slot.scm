@@ -71,16 +71,16 @@ USA.
 (add-generic-procedure-generator %record-slot-index
   (lambda (generic tags)
     generic
-    (and (class? (dispatch-tag-contents (car tags)))
+    (and (class-tag? (car tags))
 	 (lambda (instance name)
-	   (let ((slot (class-slot (object-class instance) name #f)))
+	   (let ((slot (class-slot (instance-class instance) name #f)))
 	     (and slot
 		  (slot-index slot)))))))
 
 (add-generic-procedure-generator %record-slot-names
   (lambda (generic tags)
     generic
-    (and (class? (dispatch-tag-contents (car tags)))
+    (and (class-tag? (car tags))
 	 (lambda (instance)
 	   (map slot-name (class-slots (object-class instance)))))))
 

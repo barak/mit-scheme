@@ -53,11 +53,6 @@ USA.
 (define (tag>= tag1 tag2)
   (tag<= tag2 tag1))
 
-(define (set-tag<=! tag superset)
-  (defer-boot-action 'predicate-relations
-    (lambda ()
-      (set-tag<=! tag superset))))
-
 (define (cached-tag<= tag1 tag2)
   (hash-table-intern! tag<=-cache
 		      (cons tag1 tag2)
