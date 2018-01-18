@@ -62,3 +62,47 @@ USA.
     (assert-equal (foo 1 'a) '(+ 1 a))
     (assert-equal (foo 'a 2) '(+ a 2))
     (assert-equal (foo 'a 'b) '(+ a b))))
+
+(define-test 'complex-relationships
+  (lambda ()
+    (test-complex-relationships most-specific-handler-set)
+    (test-complex-relationships cached-most-specific-handler-set)))
+
+(define (test-complex-relationships make-handler-set)
+  (define tester
+    (make-predicate-dispatcher 'tester 1 make-handler-set))
+
+  (define-predicate-dispatch-default-handler tester
+    (lambda (x) (declare (ignore x)) #f))
+
+  (define-predicate-dispatch-handler tester
+    (list %record?)
+    (lambda (x) (declare (ignore x)) '%record))
+
+  (define-predicate-dispatch-handler tester
+    (list record?)
+    (lambda (x) (declare (ignore x)) 'record))
+
+  (define-predicate-dispatch-handler tester
+    (list uri?)
+    (lambda (x) (declare (ignore x)) 'uri))
+
+  (define-predicate-dispatch-handler tester
+    (list record-type?)
+    (lambda (x) (declare (ignore x)) 'record-type))
+
+  (define-predicate-dispatch-handler tester
+    (list dispatch-tag?)
+    (lambda (x) (declare (ignore x)) 'dispatch-tag))
+
+  (define-predicate-dispatch-handler tester
+    (list dispatch-metatag?)
+    (lambda (x) (declare (ignore x)) 'dispatch-metatag))
+
+  (let ((uri (string->uri "foo")))
+    (assert-eqv (tester (predicate->dispatch-tag dispatch-tag?)) 'dispatch-tag)
+    (assert-eqv (tester uri) 'uri)
+    (assert-eqv (tester (record-type-descriptor uri)) 'record-type)
+    (assert-eqv (tester (dispatch-tag-metatag (record-type-descriptor uri)))
+		'dispatch-metatag)
+    (assert-eqv (tester (%record 'a 'b)) '%record)))
