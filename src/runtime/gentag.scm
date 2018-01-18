@@ -170,9 +170,12 @@ USA.
 (define-unparser-method dispatch-tag?
   (simple-unparser-method
    (lambda (tag)
-     (if (dispatch-metatag? tag) 'metatag 'tag))
+     (if (dispatch-metatag? tag) 'dispatch-metatag 'dispatch-tag))
    (lambda (tag)
-     (list (dispatch-tag-name tag)))))
+     (list (let ((name (dispatch-tag-name tag)))
+	     (if (symbol? name)
+		 (strip-angle-brackets name)
+		 name))))))
 
 (define-pp-describer dispatch-tag?
   (lambda (tag)
