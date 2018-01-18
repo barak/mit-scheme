@@ -35,16 +35,13 @@ USA.
 (define-primitives
   (vector-cons 2))
 
-(define-integrable (%record-tag record)
-  (%record-ref record 0))
-
 (define-integrable (%tagged-record? tag object)
   (and (%record? object)
-       (eq? (%record-tag object) tag)))
+       (eq? tag (%record-ref object 0))))
 
 (define (%copy-record record)
   (let ((length (%record-length record)))
-    (let ((result (%make-record (%record-tag record) length)))
+    (let ((result (%make-record (%record-ref record 0) length)))
       (do ((index 1 (fix:+ index 1)))
 	  ((fix:= index length))
 	(%record-set! result index (%record-ref record index)))
@@ -71,12 +68,12 @@ USA.
 	    (lambda (object)
 	      (%tagged-record? tag object)))
 	   (tag
-	    (%make-record-tag (string->symbol (->type-name type-name))
-			      predicate
-			      names
-			      (if (default-object? default-inits)
-				  (vector-cons n #f)
-				  (list->vector default-inits)))))
+	    (%make-record-type (->type-name type-name)
+			       predicate
+			       names
+			       (if (default-object? default-inits)
+				   (vector-cons n #f)
+				   (list->vector default-inits)))))
 	(if (and unparser-method
 		 (not (default-object? unparser-method)))
 	    (define-unparser-method predicate unparser-method))
@@ -95,33 +92,19 @@ USA.
 		      default-inits))))
   unspecific)
 
-(define record-tag-metatag)
-(define record-tag?)
-(define %make-record-tag)
-(define record-type-type-tag)
+(define record-type?)
+(define %make-record-type)
 (add-boot-init!
  (lambda ()
-   (set! record-tag-metatag (make-dispatch-metatag 'record-tag))
-   (set! record-tag? (dispatch-tag->predicate record-tag-metatag))
-   (set! %make-record-tag
-	 (dispatch-metatag-constructor record-tag-metatag 'make-record-type))
-   unspecific))
+   (let ((metatag (make-dispatch-metatag 'record-tag)))
+     (set! record-type? (dispatch-tag->predicate metatag))
+     (set! %make-record-type
+	   (dispatch-metatag-constructor metatag 'make-record-type))
+     unspecific)))
 
-(define (record-tag->type-descriptor tag)
-  (guarantee record-tag? tag 'record-tag->type-descriptor)
-  tag)
-
-(define (record-type? object)
-  (record-tag? object))
-
-(define-integrable (%record-type-descriptor record)
-  (%record-tag record))
-
-(define-integrable (%record-type-dispatch-tag record-type)
+;; Can be deleted after 9.3 release:
+(define (record-type-dispatch-tag record-type)
   record-type)
-
-(define-integrable (%record-type-name record-type)
-  (symbol->string (dispatch-tag-name record-type)))
 
 (define-integrable (%record-type-field-names record-type)
   (dispatch-tag-extra record-type 0))
@@ -129,26 +112,15 @@ USA.
 (define-integrable (%record-type-default-inits record-type)
   (dispatch-tag-extra record-type 1))
 
-(define-integrable (%record-type-predicate record-type)
-  (dispatch-tag->predicate (%record-type-dispatch-tag record-type)))
-
 (define-integrable (%record-type-n-fields record-type)
   (vector-length (%record-type-field-names record-type)))
 
 (define-integrable (%record-type-length record-type)
   (fix:+ 1 (%record-type-n-fields record-type)))
 
-(define-integrable (%record-type-field-name record-type index)
-  (vector-ref (%record-type-field-names record-type)
-	      (fix:- index 1)))
-
-(define (record-type-dispatch-tag record-type)
-  (guarantee record-type? record-type 'record-type-dispatch-tag)
-  (%record-type-dispatch-tag record-type))
-
 (define (record-type-name record-type)
   (guarantee record-type? record-type 'record-type-name)
-  (%record-type-name record-type))
+  (symbol->string (dispatch-tag-name record-type)))
 
 (define (record-type-field-names record-type)
   (guarantee record-type? record-type 'record-type-field-names)
@@ -193,14 +165,13 @@ USA.
 			       (append names (list (make-name i)))))
 		   default)))))))
     (lambda (record-type)
-      (let ((tag (%record-type-dispatch-tag record-type))
-	    (n-fields (%record-type-n-fields record-type)))
-	(expand-cases tag n-fields 16
+      (let ((n-fields (%record-type-n-fields record-type)))
+	(expand-cases record-type n-fields 16
 	  (let ((reclen (fix:+ 1 n-fields)))
 	    (letrec
 		((constructor
 		  (lambda field-values
-		    (let ((record (%make-record tag reclen))
+		    (let ((record (%make-record record-type reclen))
 			  (lose
 			   (lambda ()
 			     (error:wrong-number-of-arguments constructor
@@ -248,7 +219,7 @@ USA.
 						      (length indexes)
 						      field-values))))
 	      (let ((record
-		     (%make-record (%record-type-dispatch-tag record-type)
+		     (%make-record record-type
 				   (%record-type-length record-type))))
 		(do ((indexes indexes (cdr indexes))
 		     (values field-values (cdr values)))
@@ -271,8 +242,7 @@ USA.
       ((constructor
 	(lambda keyword-list
 	  (let ((n (%record-type-length record-type)))
-	    (let ((record
-                   (%make-record (%record-type-dispatch-tag record-type) n))
+	    (let ((record (%make-record record-type n))
 		  (seen? (vector-cons n #f)))
 	      (do ((kl keyword-list (cddr kl)))
 		  ((not (and (pair? kl)
@@ -296,11 +266,11 @@ USA.
 
 (define (record? object)
   (and (%record? object)
-       (record-tag? (%record-tag object))))
+       (record-type? (%record-ref object 0))))
 
 (define (record-type-descriptor record)
   (guarantee record? record 'record-type-descriptor)
-  (%record-type-descriptor record))
+  (%record-ref record 0))
 
 (define (copy-record record)
   (guarantee record? record 'copy-record)
@@ -308,12 +278,11 @@ USA.
 
 (define (record-predicate record-type)
   (guarantee record-type? record-type 'record-predicate)
-  (%record-type-predicate record-type))
+  (dispatch-tag->predicate record-type))
 
 (define (record-accessor record-type field-name)
   (guarantee record-type? record-type 'record-accessor)
-  (let ((tag (%record-type-dispatch-tag record-type))
-	(predicate (%record-type-predicate record-type))
+  (let ((predicate (record-predicate record-type))
 	(index (record-type-field-index record-type field-name #t)))
     (let-syntax
 	((expand-cases
@@ -324,7 +293,7 @@ USA.
 		   (gen-accessor
 		    (lambda (i)
 		      `(lambda (record)
-			 (if (not (%tagged-record? tag record))
+			 (if (not (%tagged-record? record-type record))
 			     (error:not-a predicate record))
 			 (%record-ref record ,i)))))
 	       (let loop ((i 1))
@@ -337,8 +306,7 @@ USA.
 
 (define (record-modifier record-type field-name)
   (guarantee record-type? record-type 'record-modifier)
-  (let ((tag (%record-type-dispatch-tag record-type))
-	(predicate (%record-type-predicate record-type))
+  (let ((predicate (record-predicate record-type))
 	(index (record-type-field-index record-type field-name #t)))
     (let-syntax
 	((expand-cases
@@ -349,7 +317,7 @@ USA.
 		   (gen-accessor
 		    (lambda (i)
 		      `(lambda (record field-value)
-			 (if (not (%tagged-record? tag record))
+			 (if (not (%tagged-record? record-type record))
 			     (error:not-a predicate record))
 			 (%record-set! record ,i field-value)))))
 	       (let loop ((i 1))
@@ -377,8 +345,8 @@ USA.
 					error?))))))
 
 (define (->type-name object)
-  (cond ((string? object) (string->immutable object))
-	((symbol? object) (symbol->string object))
+  (cond ((string? object) (string->symbol object))
+	((symbol? object) object)
 	(else (error:wrong-type-argument object "type name" #f))))
 
 (define (list-of-unique-symbols? object)
@@ -401,13 +369,15 @@ USA.
   (standard-unparser-method
    (lambda (record)
      (strip-angle-brackets
-      (%record-type-name (%record-type-descriptor record))))
+      (dispatch-tag-name (record-type-descriptor record))))
    #f))
 
-(define-unparser-method record-type?
-  (simple-unparser-method 'record-type
-    (lambda (type)
-      (list (%record-type-name type)))))
+(add-boot-init!
+ (lambda ()
+   (define-unparser-method record-type?
+     (simple-unparser-method 'record-type
+       (lambda (type)
+	 (list (dispatch-tag-name type)))))))
 
 (define-pp-describer %record?
   (lambda (record)
@@ -419,7 +389,7 @@ USA.
 
 (define-pp-describer record?
   (lambda (record)
-    (let ((type (%record-type-descriptor record)))
+    (let ((type (record-type-descriptor record)))
       (map (lambda (field-name)
 	     `(,field-name
 	       ,((record-accessor type field-name) record)))
@@ -727,14 +697,20 @@ USA.
   (or (and (fix:> index 0)
 	   (record? record)
 	   (let ((names
-		  (%record-type-field-names (%record-type-descriptor record))))
+		  (%record-type-field-names (record-type-descriptor record))))
 	     (and (fix:<= index (vector-length names))
 		  (vector-ref names (fix:- index 1)))))
       index))
 
 (define (record-type-field-name record-type index)
   (guarantee record-type? record-type 'record-type-field-name)
-  (%record-type-field-name record-type index))
+  (guarantee fix:fixnum? index 'record-type-field-name)
+  (let ((names (%record-type-field-names record-type))
+	(index* (fix:- index 1)))
+    (if (not (fix:>= index* 0)
+	     (fix:< index* (vector-length names)))
+	(error:bad-range-argument index 'record-type-field-name))
+    (vector-ref names index*)))
 
 (define (store-value-restart location k thunk)
   (let ((location (write-to-string location)))

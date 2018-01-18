@@ -714,9 +714,7 @@ differences:
 	(tag-expression (close (structure/tag-expression structure) context)))
     (if (structure/record-type? structure)
 	`(DEFINE ,name
-	   (LET ((TAG
-		  (,(absolute 'RECORD-TYPE-DISPATCH-TAG context)
-		   ,tag-expression)))
+	   (LET ((TAG ,tag-expression))
 	     ,(capture-syntactic-environment
 	       (lambda (environment)
 		 `(NAMED-LAMBDA (,name ,@lambda-list)

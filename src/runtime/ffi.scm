@@ -514,13 +514,12 @@ USA.
 (define (normalize-aliens! args)
   ;; Any vectors among ARGS are assumed to be freshly-consed aliens
   ;; without their record-type.  Fix them.
-  (let ((tag (record-type-dispatch-tag rtd:alien)))
-    (let loop ((args args))
-      (if (null? args)
-	  unspecific
-	  (let ((arg (car args)))
-	    (if (%record? arg) (%record-set! arg 0 tag))
-	    (loop (cdr args)))))))
+  (let loop ((args args))
+    (if (null? args)
+	unspecific
+	(let ((arg (car args)))
+	  (if (%record? arg) (%record-set! arg 0 rtd:alien))
+	  (loop (cdr args))))))
 
 (define (callback-handler id args)
   ;; Installed in the fixed-objects-vector, this procedure is called

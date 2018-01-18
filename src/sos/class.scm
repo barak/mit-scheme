@@ -341,7 +341,7 @@ USA.
   (dispatch-tag->class (object->dispatch-tag object)))
 
 (define (record-type-class type)
-  (dispatch-tag->class (record-type-dispatch-tag type)))
+  (dispatch-tag->class type))
 
 (define (record-class record)
   (record-type-class (record-type-descriptor record)))
@@ -349,9 +349,8 @@ USA.
 (define (dispatch-tag->class tag)
   (cond ((class-tag? tag) (dispatch-tag-extra tag 0))
 	((hash-table/get built-in-class-table tag #f))
-	((record-tag? tag)
-	 (let ((class
-		(make-record-type-class (record-tag->type-descriptor tag))))
+	((record-type? tag)
+	 (let ((class (make-record-type-class tag)))
 	   (hash-table/put! built-in-class-table tag class)
 	   class))
 	(else <object>)))
@@ -362,7 +361,7 @@ USA.
 		      (string-append "<" (record-type-name type) ">"))
 		     (list <record>)
 		     (record-type-field-names type))))
-    (set-class/dispatch-tag! class (record-type-dispatch-tag type))
+    (set-class/dispatch-tag! class type)
     class))
 
 (define built-in-class-table

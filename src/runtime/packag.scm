@@ -71,9 +71,8 @@ USA.
 (define (finalize-package-record-type!)
   (let ((rtd
 	 (make-record-type "package" '(PARENT CHILDREN NAME ENVIRONMENT))))
-    (let ((tag (record-type-dispatch-tag rtd)))
-      (set! package-tag tag)
-      (for-each (lambda (p) (%record-set! p 0 tag)) *packages*))
+    (set! package-tag rtd)
+    (for-each (lambda (p) (%record-set! p 0 rtd)) *packages*)
     (define-unparser-method (record-predicate rtd)
       (simple-unparser-method 'package
 	(lambda (package)

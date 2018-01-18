@@ -106,7 +106,7 @@ USA.
 (add-generic-procedure-generator %record-slot-index
   (lambda (generic tags)
     generic
-    (and (record-tag? (car tags))
+    (and (record-type? (car tags))
 	 (lambda (record name)
 	   (record-type-field-index (record-type-descriptor record)
 				    name
@@ -117,6 +117,6 @@ USA.
 (add-generic-procedure-generator %record-slot-names
   (lambda (generic tags)
     generic
-    (and (record-tag? (car tags))
+    (and (record-type? (car tags))
 	 (lambda (record)
 	   (record-type-field-names (record-type-descriptor record))))))
