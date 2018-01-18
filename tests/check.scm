@@ -66,9 +66,8 @@ USA.
     "runtime/test-md5"
     "runtime/test-mime-codec"
     ("runtime/test-parametric-predicate" (runtime parametric-predicate))
+    "runtime/test-predicate"
     ("runtime/test-predicate-dispatch" (runtime predicate-dispatch))
-    ("runtime/test-predicate-lattice" (runtime))
-    ("runtime/test-predicate-metadata" (runtime))
     "runtime/test-process"
     "runtime/test-readwrite"
     "runtime/test-regsexp"

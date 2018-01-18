@@ -1840,15 +1840,8 @@ USA.
   (export (runtime predicate-tagging)
 	  %entity-is-apply-hook?))
 
-(define-package (runtime predicate-metadata)
-  (files "predicate-metadata")
-  (parent (runtime))
-  (export ()
-	  predicate->dispatch-tag
-	  predicate-name))
-
-(define-package (runtime predicate-lattice)
-  (files "predicate-lattice")
+(define-package (runtime predicate)
+  (files "predicate")
   (parent (runtime))
   (export ()
 	  any-object?
@@ -1859,6 +1852,8 @@ USA.
 	  dispatch-tag=
 	  dispatch-tag>=
 	  no-object?
+	  predicate->dispatch-tag
+	  predicate-name
 	  predicate<=
 	  predicate>=
 	  top-dispatch-tag)
@@ -1873,7 +1868,7 @@ USA.
 	  conjoin*
 	  disjoin
 	  disjoin*)
-  (export (runtime predicate-lattice)
+  (export (runtime predicate)
 	  make-compound-tag))
 
 (define-package (runtime parametric-predicate)
@@ -5107,10 +5102,9 @@ USA.
 	  dispatch-tag-name
 	  dispatch-tag?
 	  make-dispatch-metatag)
-  (export (runtime predicate-lattice)
+  (export (runtime predicate)
 	  add-dispatch-tag-superset
-	  any-dispatch-tag-superset)
-  (export (runtime predicate-metadata)
+	  any-dispatch-tag-superset
 	  set-predicate-tag!))
 
 (define-package (runtime crypto)

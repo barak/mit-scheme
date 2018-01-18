@@ -24,11 +24,96 @@ USA.
 
 |#
 
-;;;; Predicates: metadata
-;;; package: (runtime predicate-metadata)
+;;;; Predicates
+;;; package: (runtime predicate)
 
 (declare (usual-integrations))
 
+(define (predicate->dispatch-tag predicate)
+  (let ((tag (get-predicate-tag predicate #f)))
+    (if (not tag)
+        (error:not-a predicate? predicate))
+    tag))
+
+(define (predicate-name predicate)
+  (dispatch-tag-name (predicate->dispatch-tag predicate)))
+
+(define (predicate<= predicate1 predicate2)
+  (dispatch-tag<= (predicate->dispatch-tag predicate1)
+		  (predicate->dispatch-tag predicate2)))
+
+(define (predicate>= predicate1 predicate2)
+  (predicate<= predicate2 predicate1))
+
+(define (dispatch-tag= tag1 tag2)
+  (guarantee dispatch-tag? tag1 'dispatch-tag=)
+  (guarantee dispatch-tag? tag2 'dispatch-tag=)
+  (eq? tag1 tag2))
+
+(define (dispatch-tag<= tag1 tag2)
+  (guarantee dispatch-tag? tag1 'dispatch-tag<=)
+  (guarantee dispatch-tag? tag2 'dispatch-tag<=)
+  (cached-dispatch-tag<= tag1 tag2))
+
+(define (dispatch-tag>= tag1 tag2)
+  (dispatch-tag<= tag2 tag1))
+
+(define (cached-dispatch-tag<= tag1 tag2)
+  (hash-table-intern! dispatch-tag<=-cache
+		      (cons tag1 tag2)
+		      (lambda () (uncached-dispatch-tag<= tag1 tag2))))
+
+(define (uncached-dispatch-tag<= tag1 tag2)
+  (or (eq? tag1 tag2)
+      (dispatch-tag-is-bottom? tag1)
+      (dispatch-tag-is-top? tag2)
+      (and (not (dispatch-tag-is-top? tag1))
+	   (not (dispatch-tag-is-bottom? tag2))
+	   (let ((v
+		  (find (lambda (v)
+			  (and ((vector-ref v 0) tag1)
+			       ((vector-ref v 1) tag2)))
+			dispatch-tag<=-overrides)))
+	     (if v
+		 ((vector-ref v 2) tag1 tag2)
+		 (any-dispatch-tag-superset (lambda (tag)
+					      (cached-dispatch-tag<= tag tag2))
+					    tag1))))))
+
+(define (define-dispatch-tag<= test1 test2 handler)
+  (set! dispatch-tag<=-overrides
+	(cons (vector test1 test2 handler)
+	      dispatch-tag<=-overrides))
+  unspecific)
+
+;; TODO(cph): should be a weak-key table, but we don't have tables that have
+;; weak compound keys.
+(define-deferred dispatch-tag<=-cache (make-equal-hash-table))
+(define dispatch-tag<=-overrides '())
+
+(define (any-object? object)
+  (declare (ignore object))
+  #t)
+
+(define (no-object? object)
+  (declare (ignore object))
+  #f)
+
+(define (top-dispatch-tag) the-top-dispatch-tag)
+(define (bottom-dispatch-tag) the-bottom-dispatch-tag)
+
+(define-integrable (dispatch-tag-is-top? tag)
+  (eq? the-top-dispatch-tag tag))
+
+(define-integrable (dispatch-tag-is-bottom? tag)
+  (eq? the-bottom-dispatch-tag tag))
+
+(define-deferred the-top-dispatch-tag
+  (make-compound-tag any-object? 'conjoin '()))
+
+(define-deferred the-bottom-dispatch-tag
+  (make-compound-tag no-object? 'disjoin '()))
+
 (define get-predicate-tag)
 (add-boot-init!
  (lambda ()
@@ -36,36 +121,30 @@ USA.
      (set! predicate? (table 'has?))
      (set! get-predicate-tag (table 'get))
      (set! set-predicate-tag! (table 'put!))
-     (run-deferred-boot-actions 'set-predicate-tag!))))
-
-(define (predicate-name predicate)
-  (dispatch-tag-name (predicate->dispatch-tag predicate)))
-
-(define (predicate->dispatch-tag predicate)
-  (let ((tag (get-predicate-tag predicate #f)))
-    (if (not tag)
-        (error:not-a predicate? predicate))
-    tag))
-
-(define simple-tag-metatag)
-(define %make-simple-tag)
-(add-boot-init!
- (lambda ()
-   (set! simple-tag-metatag
-	 (make-dispatch-metatag 'simple-tag))
-   (set! %make-simple-tag
-	 (dispatch-metatag-constructor simple-tag-metatag 'register-predicate!))
-   (run-deferred-boot-actions 'make-dispatch-metatag)
+     (run-deferred-boot-actions 'set-predicate-tag!))
    (set! register-predicate!
-	 (named-lambda (register-predicate! predicate name . keylist)
-	   (guarantee keyword-list? keylist 'register-predicate!)
-	   (let ((tag (%make-simple-tag name predicate #f)))
-	     (for-each (lambda (superset)
-			 (set-dispatch-tag<=!
-			  tag
-			  (predicate->dispatch-tag superset)))
-		       (get-keyword-values keylist '<=))
-	     tag)))
+	 (let ((make-simple-tag
+		(dispatch-metatag-constructor
+		 (make-dispatch-metatag 'simple-tag)
+		 'register-predicate!)))
+	   (named-lambda (register-predicate! predicate name . keylist)
+	     (guarantee keyword-list? keylist 'register-predicate!)
+	     (let ((tag (make-simple-tag name predicate)))
+	       (for-each (lambda (superset)
+			   (set-predicate<=! predicate superset))
+			 (get-keyword-values keylist '<=))
+	       tag))))
+   (set! set-dispatch-tag<=!
+	 (named-lambda (set-dispatch-tag<=! tag superset)
+	   (if (not (add-dispatch-tag-superset tag superset))
+	       (error "Tag already has this superset:" tag superset))
+	   (if (dispatch-tag>= tag superset)
+	       (error "Not allowed to create a superset loop:" tag superset))
+	   (hash-table-clear! dispatch-tag<=-cache)))
+   (set! set-predicate<=!
+	 (named-lambda (set-predicate<=! predicate superset)
+	   (set-dispatch-tag<=! (predicate->dispatch-tag predicate)
+				(predicate->dispatch-tag superset))))
    unspecific))
 
 (add-boot-init!
@@ -198,4 +277,5 @@ USA.
    (register-predicate! weak-list? 'weak-list)
    (register-predicate! weak-pair? 'weak-pair)
 
-   (run-deferred-boot-actions 'predicate-registrations)))
+   (run-deferred-boot-actions 'predicate-registrations)
+   (run-deferred-boot-actions 'predicate-relations)))

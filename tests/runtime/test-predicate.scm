@@ -24,9 +24,47 @@ USA.
 
 |#
 
-;;;; Tests for predicate lattice
+;;;; Tests for predicates
 
 (declare (usual-integrations))
+
+(define-test 'non-predicate
+  (lambda ()
+    (let ((np (lambda (object) object #f)))
+      (assert-false (predicate? np))
+      (assert-type-error (lambda () (predicate->dispatch-tag np)))
+      (assert-type-error (lambda () (predicate-name np))))))
+
+(define-test 'simple-predicate
+  (lambda ()
+    (test-predicate-operations number? 'number)
+    (test-predicate-operations boolean? 'boolean)
+    (test-predicate-operations string? 'string)))
+
+(define (test-predicate-operations predicate name)
+  (assert-true (predicate? predicate))
+  (let ((tag (predicate->dispatch-tag predicate)))
+    (assert-true (dispatch-tag? tag))
+    (assert-eqv (dispatch-tag->predicate tag) predicate)
+    (assert-equal (predicate-name predicate) name)
+    (assert-equal (dispatch-tag-name tag) name)))
+
+(define-test 'simple-predicate-tagging
+  (lambda ()
+    (test-tagging number? '(41) '(foo))
+    (test-tagging boolean? '(#t) '(foo))
+    (test-tagging string? '("41") '(foo))))
+
+(define (test-tagging predicate data non-data)
+  (let ((tagger (predicate-tagger predicate)))
+    (for-each (lambda (datum)
+		(let ((object (tagger datum)))
+		  (assert-true (predicate object))
+		  (assert-eq datum (object->datum object))))
+	      data)
+    (for-each (lambda (non-datum)
+		(assert-type-error (lambda () (tagger non-datum))))
+	      non-data)))
 
 (define-test 'ordering
   (lambda ()
