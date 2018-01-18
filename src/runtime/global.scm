@@ -342,10 +342,17 @@ USA.
   (object-new-type (ucode-type constant) 1))
 
 (define (strip-angle-brackets name)
-  (if (and (string-prefix? "<" name)
-	   (string-suffix? ">" name))
-      (substring name 1 (fix:- (string-length name) 1))
-      name))
+  (let ((maybe-strip
+	 (lambda (s)
+	   (and (string-prefix? "<" s)
+		(string-suffix? ">" s)
+		(substring s 1 (fix:- (string-length s) 1))))))
+    (if (string? name)
+	(or (maybe-strip name) name)
+	(let ((s (maybe-strip (symbol->string name))))
+	  (if s
+	      (string->symbol s)
+	      name)))))
 
 (define (for-each-interned-symbol procedure)
   (with-obarray-lock
