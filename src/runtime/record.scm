@@ -74,6 +74,7 @@ USA.
 			       (if (default-object? default-inits)
 				   (vector-cons n #f)
 				   (list->vector default-inits)))))
+	(set-predicate<=! predicate record?)
 	(if (and unparser-method
 		 (not (default-object? unparser-method)))
 	    (define-unparser-method predicate unparser-method))

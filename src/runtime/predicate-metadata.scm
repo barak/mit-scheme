@@ -39,12 +39,12 @@ USA.
      (run-deferred-boot-actions 'set-predicate-tag!))))
 
 (define (predicate-name predicate)
-  (dispatch-tag-name (predicate->dispatch-tag predicate 'predicate-name)))
+  (dispatch-tag-name (predicate->dispatch-tag predicate)))
 
-(define (predicate->dispatch-tag predicate #!optional caller)
+(define (predicate->dispatch-tag predicate)
   (let ((tag (get-predicate-tag predicate #f)))
     (if (not tag)
-        (error:not-a predicate? predicate caller))
+        (error:not-a predicate? predicate))
     tag))
 
 (define simple-tag-metatag)

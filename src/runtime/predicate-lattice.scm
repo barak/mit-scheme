@@ -36,10 +36,6 @@ USA.
 (define (predicate>= predicate1 predicate2)
   (predicate<= predicate2 predicate1))
 
-(define (set-predicate<=! predicate superset)
-  (set-dispatch-tag<=! (predicate->dispatch-tag predicate 'set-predicate<=!)
-		       (predicate->dispatch-tag superset 'set-predicate<=!)))
-
 (define (dispatch-tag= tag1 tag2)
   (guarantee dispatch-tag? tag1 'dispatch-tag=)
   (guarantee dispatch-tag? tag2 'dispatch-tag=)
@@ -119,4 +115,8 @@ USA.
 	   (if (dispatch-tag>= tag superset)
 	       (error "Not allowed to create a superset loop:" tag superset))
 	   (hash-table-clear! dispatch-tag<=-cache)))
+   (set! set-predicate<=!
+	 (named-lambda (set-predicate<=! predicate superset)
+	   (set-dispatch-tag<=! (predicate->dispatch-tag predicate)
+				(predicate->dispatch-tag superset))))
    (run-deferred-boot-actions 'predicate-relations)))

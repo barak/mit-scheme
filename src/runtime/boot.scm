@@ -377,6 +377,16 @@ USA.
 	  unspecific))
   unspecific)
 
+(define (set-dispatch-tag<=! t1 t2)
+  (defer-boot-action 'predicate-relations
+    (lambda ()
+      (set-dispatch-tag<=! t1 t2))))
+
+(define (set-predicate<=! p1 p2)
+  (defer-boot-action 'predicate-relations
+    (lambda ()
+      (set-predicate<=! p1 p2))))
+
 (define (guarantee predicate object #!optional caller)
   (if (predicate object)
       object

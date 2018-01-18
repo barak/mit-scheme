@@ -44,7 +44,7 @@ USA.
       object))
 
 (define (predicate-tagger predicate)
-  (%tag-tagger (predicate->dispatch-tag predicate 'predicate-tagger) predicate))
+  (%tag-tagger (predicate->dispatch-tag predicate) predicate))
 
 (define (dispatch-tag-tagger tag)
   (%tag-tagger tag (dispatch-tag->predicate tag)))

@@ -180,6 +180,8 @@ USA.
 	  object-pure?
 	  predicate?
 	  register-predicate!
+	  set-dispatch-tag<=!
+	  set-predicate<=!
 	  simple-parser-method
 	  simple-unparser-method
 	  standard-unparser-method
@@ -1859,7 +1861,6 @@ USA.
 	  no-object?
 	  predicate<=
 	  predicate>=
-	  set-predicate<=!
 	  top-dispatch-tag)
   (export (runtime)
 	  define-dispatch-tag<=))
@@ -5105,8 +5106,7 @@ USA.
 	  dispatch-tag-metatag
 	  dispatch-tag-name
 	  dispatch-tag?
-	  make-dispatch-metatag
-	  set-dispatch-tag<=!)
+	  make-dispatch-metatag)
   (export (runtime predicate-lattice)
 	  add-dispatch-tag-superset
 	  any-dispatch-tag-superset)

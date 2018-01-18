@@ -132,11 +132,6 @@ USA.
  (lambda ()
    (set! metatag-tag (%make-tag #f 'metatag dispatch-metatag? '#()))
    (%record-set! metatag-tag 0 metatag-tag)))
-
-(define (set-dispatch-tag<=! t1 t2)
-  (defer-boot-action 'predicate-relations
-    (lambda ()
-      (set-dispatch-tag<=! t1 t2))))
 
 (define (dispatch-tag-metatag tag)
   (guarantee dispatch-tag? tag 'dispatch-tag-metatag)
