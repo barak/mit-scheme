@@ -57,11 +57,12 @@ USA.
       ((predicate
 	(lambda (datum)
 	  (and (bundle? datum)
-	       (tag<= (bundle-interface-tag (bundle-interface datum)) tag))))
+	       (dispatch-tag<= (bundle-interface-tag (bundle-interface datum))
+			       tag))))
        (tag
 	(begin
 	  (register-predicate! predicate name '<= bundle?)
-	  (predicate->tag predicate))))
+	  (predicate->dispatch-tag predicate))))
     tag))
 
 (define (elements? object)
@@ -88,7 +89,7 @@ USA.
   (element-properties %bundle-interface-element-properties))
 
 (define (bundle-interface-predicate interface)
-  (tag->predicate (bundle-interface-tag interface)))
+  (dispatch-tag->predicate (bundle-interface-tag interface)))
 
 (define (bundle-interface-element-names interface)
   (vector->list (%bundle-interface-element-names interface)))

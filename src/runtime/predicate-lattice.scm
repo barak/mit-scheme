@@ -30,55 +30,55 @@ USA.
 (declare (usual-integrations))
 
 (define (predicate<= predicate1 predicate2)
-  (tag<= (predicate->tag predicate1)
-         (predicate->tag predicate2)))
+  (dispatch-tag<= (predicate->dispatch-tag predicate1)
+		  (predicate->dispatch-tag predicate2)))
 
 (define (predicate>= predicate1 predicate2)
   (predicate<= predicate2 predicate1))
 
 (define (set-predicate<=! predicate superset)
-  (set-tag<=! (predicate->tag predicate 'set-predicate<=!)
-              (predicate->tag superset 'set-predicate<=!)))
+  (set-dispatch-tag<=! (predicate->dispatch-tag predicate 'set-predicate<=!)
+		       (predicate->dispatch-tag superset 'set-predicate<=!)))
 
-(define (tag= tag1 tag2)
-  (guarantee tag? tag1 'tag=)
-  (guarantee tag? tag2 'tag=)
+(define (dispatch-tag= tag1 tag2)
+  (guarantee dispatch-tag? tag1 'dispatch-tag=)
+  (guarantee dispatch-tag? tag2 'dispatch-tag=)
   (eq? tag1 tag2))
 
-(define (tag<= tag1 tag2)
-  (guarantee tag? tag1 'tag<=)
-  (guarantee tag? tag2 'tag<=)
-  (cached-tag<= tag1 tag2))
+(define (dispatch-tag<= tag1 tag2)
+  (guarantee dispatch-tag? tag1 'dispatch-tag<=)
+  (guarantee dispatch-tag? tag2 'dispatch-tag<=)
+  (cached-dispatch-tag<= tag1 tag2))
 
-(define (tag>= tag1 tag2)
-  (tag<= tag2 tag1))
+(define (dispatch-tag>= tag1 tag2)
+  (dispatch-tag<= tag2 tag1))
 
-(define (cached-tag<= tag1 tag2)
-  (hash-table-intern! tag<=-cache
+(define (cached-dispatch-tag<= tag1 tag2)
+  (hash-table-intern! dispatch-tag<=-cache
 		      (cons tag1 tag2)
-		      (lambda () (uncached-tag<= tag1 tag2))))
+		      (lambda () (uncached-dispatch-tag<= tag1 tag2))))
 
-(define (uncached-tag<= tag1 tag2)
+(define (uncached-dispatch-tag<= tag1 tag2)
   (or (eq? tag1 tag2)
-      (tag-is-bottom? tag1)
-      (tag-is-top? tag2)
-      (and (not (tag-is-top? tag1))
-	   (not (tag-is-bottom? tag2))
+      (dispatch-tag-is-bottom? tag1)
+      (dispatch-tag-is-top? tag2)
+      (and (not (dispatch-tag-is-top? tag1))
+	   (not (dispatch-tag-is-bottom? tag2))
 	   (let ((v
 		  (find (lambda (v)
 			  (and ((vector-ref v 0) tag1)
 			       ((vector-ref v 1) tag2)))
-			tag<=-overrides)))
+			dispatch-tag<=-overrides)))
 	     (if v
 		 ((vector-ref v 2) tag1 tag2)
-		 (any-tag-superset (lambda (tag)
-				     (cached-tag<= tag tag2))
-				   tag1))))))
+		 (any-dispatch-tag-superset (lambda (tag)
+					      (cached-dispatch-tag<= tag tag2))
+					    tag1))))))
 
-(define (define-tag<= test1 test2 handler)
-  (set! tag<=-overrides
+(define (define-dispatch-tag<= test1 test2 handler)
+  (set! dispatch-tag<=-overrides
 	(cons (vector test1 test2 handler)
-	      tag<=-overrides))
+	      dispatch-tag<=-overrides))
   unspecific)
 
 (define (any-object? object)
@@ -89,31 +89,34 @@ USA.
   (declare (ignore object))
   #f)
 
-(define (top-tag) the-top-tag)
-(define (bottom-tag) the-bottom-tag)
+(define (top-dispatch-tag) the-top-dispatch-tag)
+(define (bottom-dispatch-tag) the-bottom-dispatch-tag)
 
-(define-integrable (tag-is-top? tag) (eq? the-top-tag tag))
-(define-integrable (tag-is-bottom? tag) (eq? the-bottom-tag tag))
+(define-integrable (dispatch-tag-is-top? tag)
+  (eq? the-top-dispatch-tag tag))
 
-(define-deferred the-top-tag
+(define-integrable (dispatch-tag-is-bottom? tag)
+  (eq? the-bottom-dispatch-tag tag))
+
+(define-deferred the-top-dispatch-tag
   (make-compound-tag any-object? 'conjoin '()))
 
-(define-deferred the-bottom-tag
+(define-deferred the-bottom-dispatch-tag
   (make-compound-tag no-object? 'disjoin '()))
 
-(define tag<=-cache)
-(define tag<=-overrides)
+(define dispatch-tag<=-cache)
+(define dispatch-tag<=-overrides)
 (add-boot-init!
  (lambda ()
    ;; TODO(cph): should be a weak-key table, but we don't have tables that have
    ;; weak compound keys.
-   (set! tag<=-cache (make-equal-hash-table))
-   (set! tag<=-overrides '())
-   (set! set-tag<=!
-	 (named-lambda (set-tag<=! tag superset)
-	   (if (not (add-tag-superset tag superset))
+   (set! dispatch-tag<=-cache (make-equal-hash-table))
+   (set! dispatch-tag<=-overrides '())
+   (set! set-dispatch-tag<=!
+	 (named-lambda (set-dispatch-tag<=! tag superset)
+	   (if (not (add-dispatch-tag-superset tag superset))
 	       (error "Tag already has this superset:" tag superset))
-	   (if (tag>= tag superset)
+	   (if (dispatch-tag>= tag superset)
 	       (error "Not allowed to create a superset loop:" tag superset))
-	   (hash-table-clear! tag<=-cache)))
+	   (hash-table-clear! dispatch-tag<=-cache)))
    (run-deferred-boot-actions 'predicate-relations)))

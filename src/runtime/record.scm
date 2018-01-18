@@ -107,10 +107,10 @@ USA.
 (define record-type-type-tag)
 (add-boot-init!
  (lambda ()
-   (set! record-tag-metatag (make-metatag 'record-tag))
-   (set! record-tag? (tag->predicate record-tag-metatag))
+   (set! record-tag-metatag (make-dispatch-metatag 'record-tag))
+   (set! record-tag? (dispatch-tag->predicate record-tag-metatag))
    (set! %make-record-tag
-	 (metatag-constructor record-tag-metatag 'make-record-type))
+	 (dispatch-metatag-constructor record-tag-metatag 'make-record-type))
    (let* ((field-names
 	   '#(dispatch-tag name field-names default-inits tag))
 	  (type
@@ -126,13 +126,13 @@ USA.
 
 (define (record-tag->type-descriptor tag)
   (guarantee record-tag? tag 'record-tag->type-descriptor)
-  (tag-extra tag 0))
+  (dispatch-tag-extra tag 0))
 
 (define (record-type? object)
   (%tagged-record? record-type-type-tag object))
 
 (define-integrable (%record-type-descriptor record)
-  (tag-extra (%record-tag record) 0))
+  (dispatch-tag-extra (%record-tag record) 0))
 
 (define-integrable (%record-type-dispatch-tag record-type)
   (%record-ref record-type 1))
@@ -147,7 +147,7 @@ USA.
   (%record-ref record-type 4))
 
 (define-integrable (%record-type-predicate record-type)
-  (tag->predicate (%record-type-dispatch-tag record-type)))
+  (dispatch-tag->predicate (%record-type-dispatch-tag record-type)))
 
 (define-integrable (%record-type-n-fields record-type)
   (vector-length (%record-type-field-names record-type)))

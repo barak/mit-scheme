@@ -30,9 +30,9 @@ USA.
 (declare (usual-integrations))
 
 (define (object->predicate object)
-  (tag->predicate (object->tag object)))
+  (dispatch-tag->predicate (object->dispatch-tag object)))
 
-(define (object->tag object)
+(define (object->dispatch-tag object)
   (let ((code (object-type object)))
     (or (vector-ref primitive-tags code)
 	((vector-ref primitive-tag-methods code) object)
@@ -44,14 +44,14 @@ USA.
       object))
 
 (define (predicate-tagger predicate)
-  (%tag-tagger (predicate->tag predicate 'predicate-tagger) predicate))
+  (%tag-tagger (predicate->dispatch-tag predicate 'predicate-tagger) predicate))
 
-(define (tag-tagger tag)
-  (%tag-tagger tag (tag->predicate tag)))
+(define (dispatch-tag-tagger tag)
+  (%tag-tagger tag (dispatch-tag->predicate tag)))
 
 (define (%tag-tagger tag predicate)
   (lambda (datum #!optional tagger-name)
-    (if (tag<= (object->tag datum) tag)
+    (if (dispatch-tag<= (object->dispatch-tag datum) tag)
 	datum
 	(begin
 	  (guarantee predicate datum tagger-name)
@@ -63,7 +63,7 @@ USA.
  (lambda ()
    (set! primitive-tags
 	 (make-vector (microcode-type/code-limit)
-		      (top-tag)))
+		      (top-dispatch-tag)))
    (set! primitive-tag-methods
 	 (make-vector (microcode-type/code-limit) #f))
    unspecific))
@@ -73,7 +73,7 @@ USA.
    (define (define-primitive-predicate type-name predicate)
      (vector-set! primitive-tags
 		  (microcode-type/name->code type-name)
-		  (predicate->tag predicate)))
+		  (predicate->dispatch-tag predicate)))
 
    (define-primitive-predicate 'bignum exact-integer?)
    (define-primitive-predicate 'bytevector bytevector?)
@@ -113,7 +113,7 @@ USA.
    (define-primitive-predicate-method 'constant
      (let* ((constant-tags
 	     (list->vector
-	      (map predicate->tag
+	      (map predicate->dispatch-tag
 		   (list boolean?
 			 undefined-value?
 			 undefined-value?
@@ -129,21 +129,21 @@ USA.
 	 (let ((datum (object-datum object)))
 	   (if (and (fix:fixnum? datum) (fix:< datum n-tags))
 	       (vector-ref constant-tags datum)
-	       (top-tag))))))
+	       (top-dispatch-tag))))))
 
    (define-primitive-predicate-method 'entity
-     (let ((apply-hook-tag (predicate->tag apply-hook?))
-	   (entity-tag (predicate->tag entity?)))
+     (let ((apply-hook-tag (predicate->dispatch-tag apply-hook?))
+	   (entity-tag (predicate->dispatch-tag entity?)))
        (lambda (object)
 	 (if (%entity-is-apply-hook? object)
 	     apply-hook-tag
 	     entity-tag))))
 
    (define-primitive-predicate-method 'compiled-entry
-     (let ((procedure-tag (predicate->tag compiled-procedure?))
-	   (return-tag (predicate->tag compiled-return-address?))
-	   (expression-tag (predicate->tag compiled-expression?))
-	   (default-tag (predicate->tag compiled-code-address?)))
+     (let ((procedure-tag (predicate->dispatch-tag compiled-procedure?))
+	   (return-tag (predicate->dispatch-tag compiled-return-address?))
+	   (expression-tag (predicate->dispatch-tag compiled-expression?))
+	   (default-tag (predicate->dispatch-tag compiled-code-address?)))
        (lambda (entry)
 	 (case (system-hunk3-cxr0
 		((ucode-primitive compiled-entry-kind 1) entry))
@@ -153,8 +153,8 @@ USA.
 	   (else default-tag)))))
 
    (define-primitive-predicate-method 'record
-     (let ((default-tag (predicate->tag %record?)))
+     (let ((default-tag (predicate->dispatch-tag %record?)))
        (lambda (object)
-	 (if (tag? (%record-ref object 0))
+	 (if (dispatch-tag? (%record-ref object 0))
 	     (%record-ref object 0)
 	     default-tag))))))

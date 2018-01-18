@@ -32,7 +32,7 @@ USA.
   (lambda ()
     (let ((np (lambda (object) object #f)))
       (assert-false (predicate? np))
-      (assert-type-error (lambda () (predicate->tag np)))
+      (assert-type-error (lambda () (predicate->dispatch-tag np)))
       (assert-type-error (lambda () (predicate-name np))))))
 
 (define-test 'simple-predicate
@@ -43,11 +43,11 @@ USA.
 
 (define (test-predicate-operations predicate name)
   (assert-true (predicate? predicate))
-  (let ((tag (predicate->tag predicate)))
-    (assert-true (tag? tag))
-    (assert-eqv (tag->predicate tag) predicate)
+  (let ((tag (predicate->dispatch-tag predicate)))
+    (assert-true (dispatch-tag? tag))
+    (assert-eqv (dispatch-tag->predicate tag) predicate)
     (assert-equal (predicate-name predicate) name)
-    (assert-equal (tag-name tag) name)))
+    (assert-equal (dispatch-tag-name tag) name)))
 
 (define-test 'simple-predicate-tagging
   (lambda ()

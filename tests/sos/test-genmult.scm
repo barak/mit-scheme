@@ -41,14 +41,14 @@ USA.
     ;; Add some named generators (for easier removal).
     (define (bool-generator p tags)
       p                                 ;ignore
-      (if (equal? tags (list (predicate->tag boolean?)))
+      (if (equal? tags (list (predicate->dispatch-tag boolean?)))
           (lambda (x) (cons 'boolean x))
           #f))
     (add-generic-procedure-generator generic bool-generator)
     (assert-equal (generic #t) '(boolean . #t))
     (define (fixnum-generator p tags)
       p                                 ;ignore
-      (if (equal? tags (list (predicate->tag fix:fixnum?)))
+      (if (equal? tags (list (predicate->dispatch-tag fix:fixnum?)))
           (lambda (x) (cons 'fixnum x))
           #f))
     (add-generic-procedure-generator generic fixnum-generator)

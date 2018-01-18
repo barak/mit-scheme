@@ -33,17 +33,17 @@ USA.
 ;;; calls to construct and access tagged vectors.
 
 (define (make-tagged-vector tag length)
-  (guarantee tag? tag 'MAKE-TAGGED-VECTOR)
+  (guarantee dispatch-tag? tag 'MAKE-TAGGED-VECTOR)
   (guarantee-index-integer length 'MAKE-TAGGED-VECTOR)
   (%make-record tag (fix:+ length 1) record-slot-uninitialized))
 
 (define (tagged-vector tag . elements)
-  (guarantee tag? tag 'MAKE-TAGGED-VECTOR)
+  (guarantee dispatch-tag? tag 'MAKE-TAGGED-VECTOR)
   (apply %record tag elements))
 
 (define (tagged-vector? object)
   (and (%record? object)
-       (tag? (%record-ref object 0))))
+       (dispatch-tag? (%record-ref object 0))))
 
 (define (tagged-vector-tag vector)
   (guarantee-tagged-vector vector 'TAGGED-VECTOR-TAG)
@@ -51,7 +51,7 @@ USA.
 
 (define (set-tagged-vector-tag! vector tag)
   (guarantee-tagged-vector vector 'SET-TAGGED-VECTOR-TAG!)
-  (guarantee tag? tag 'SET-TAGGED-VECTOR-TAG!)
+  (guarantee dispatch-tag? tag 'SET-TAGGED-VECTOR-TAG!)
   (%record-set! vector 0 tag))
 
 (define (tagged-vector-length vector)

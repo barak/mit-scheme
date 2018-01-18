@@ -29,23 +29,23 @@ USA.
 
 (declare (usual-integrations))
 
-(define compound-tag-metatag (make-metatag 'compound-tag))
-(define compound-tag? (tag->predicate compound-tag-metatag))
+(define compound-tag-metatag (make-dispatch-metatag 'compound-tag))
+(define compound-tag? (dispatch-tag->predicate compound-tag-metatag))
 
 (define %make-compound-tag
-  (metatag-constructor compound-tag-metatag 'make-compound-tag))
+  (dispatch-metatag-constructor compound-tag-metatag 'make-compound-tag))
 
 (define (make-compound-tag predicate operator operands)
-  (%make-compound-tag (cons operator (map tag-name operands))
+  (%make-compound-tag (cons operator (map dispatch-tag-name operands))
 		      predicate
 		      operator
 		      operands))
 
 (define-integrable (compound-tag-operator tag)
-  (tag-extra tag 0))
+  (dispatch-tag-extra tag 0))
 
 (define-integrable (compound-tag-operands tag)
-  (tag-extra tag 1))
+  (dispatch-tag-extra tag 1))
 
 (define (tag-is-disjoin? object)
   (and (compound-tag? object)
@@ -58,21 +58,21 @@ USA.
 (add-boot-init!
  (lambda ()
 
-   (define-tag<= tag? tag-is-disjoin?
+   (define-dispatch-tag<= dispatch-tag? tag-is-disjoin?
      (lambda (tag1 tag2)
        (any (lambda (component2)
-	      (tag<= tag1 component2))
+	      (dispatch-tag<= tag1 component2))
 	    (compound-tag-operands tag2))))
 
-   (define-tag<= tag-is-conjoin? tag?
+   (define-dispatch-tag<= tag-is-conjoin? dispatch-tag?
      (lambda (tag1 tag2)
        (any (lambda (component1)
-	      (tag<= component1 tag2))
+	      (dispatch-tag<= component1 tag2))
 	    (compound-tag-operands tag1))))))
 
 (define (compound-predicate? object)
   (and (predicate? object)
-       (compound-tag? (predicate->tag object))))
+       (compound-tag? (predicate->dispatch-tag object))))
 
 (add-boot-init!
  (lambda ()
@@ -80,10 +80,11 @@ USA.
 			'<= predicate?)))
 
 (define (compound-predicate-operator predicate)
-  (compound-tag-operator (predicate->tag predicate)))
+  (compound-tag-operator (predicate->dispatch-tag predicate)))
 
 (define (compound-predicate-operands predicate)
-  (map tag->predicate (compound-tag-operands (predicate->tag predicate))))
+  (map dispatch-tag->predicate
+       (compound-tag-operands (predicate->dispatch-tag predicate))))
 
 (define (disjoin . predicates)
   (disjoin* predicates))
@@ -109,11 +110,11 @@ USA.
 
 (define (make-predicate datum-test operator operands)
   (if (every predicate? operands)
-      (tag->predicate
+      (dispatch-tag->predicate
        ((compound-operator-builder operator)
 	datum-test
 	operator
-	(map predicate->tag operands)))
+	(map predicate->dispatch-tag operands)))
       datum-test))
 
 (define compound-operator-builder)
@@ -153,7 +154,7 @@ USA.
 		   (memoizer datum-test operator tags)))))))
 
    (define-compound-operator 'disjoin
-     (make-joinish-memoizer tag-is-top?))
+     (make-joinish-memoizer dispatch-tag-is-top?))
 
    (define-compound-operator 'conjoin
-     (make-joinish-memoizer tag-is-bottom?))))
+     (make-joinish-memoizer dispatch-tag-is-bottom?))))

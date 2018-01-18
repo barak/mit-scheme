@@ -60,25 +60,25 @@ USA.
 		    (or (object-non-pointer? elt)
 			(tag-name? elt)))
 		  (cdr object)))))
-(register-predicate! tag-name? 'tag-name)
+(register-predicate! tag-name? 'dispatch-tag-name)
 
 (define (set-predicate-tag! predicate tag)
   (defer-boot-action 'set-predicate-tag!
     (lambda ()
       (set-predicate-tag! predicate tag))))
 
-(define (tag? object)
+(define (dispatch-tag? object)
   (and (%record? object)
-       (metatag? (%record-ref object 0))))
-(register-predicate! tag? 'tag '<= %record?)
+       (dispatch-metatag? (%record-ref object 0))))
+(register-predicate! dispatch-tag? 'tag '<= %record?)
 
-(define-integrable (%tag-name tag)
+(define-integrable (%dispatch-tag-name tag)
   (%record-ref tag 9))
 
-(define-integrable (%tag->predicate tag)
+(define-integrable (%dispatch-tag->predicate tag)
   (%record-ref tag 10))
 
-(define-integrable (%tag-extra tag)
+(define-integrable (%dispatch-tag-extra tag)
   (%record-ref tag 11))
 
 (define-integrable (%tag-supersets tag)
@@ -103,19 +103,19 @@ USA.
     (lambda ()
       (random modulus state))))
 
-(define (make-metatag name)
-  (guarantee tag-name? name 'make-metatag)
+(define (make-dispatch-metatag name)
+  (guarantee tag-name? name 'make-dispatch-metatag)
   (letrec*
       ((predicate
 	(lambda (object)
 	  (and (%record? object)
 	       (eq? metatag (%record-ref object 0)))))
        (metatag (%make-tag metatag-tag name predicate '#())))
-    (set-tag<=! metatag metatag-tag)
+    (set-dispatch-tag<=! metatag metatag-tag)
     metatag))
 
-(define (metatag-constructor metatag #!optional caller)
-  (guarantee metatag? metatag 'metatag-constructor)
+(define (dispatch-metatag-constructor metatag #!optional caller)
+  (guarantee dispatch-metatag? metatag 'dispatch-metatag-constructor)
   (lambda (name predicate . extra)
     (guarantee tag-name? name caller)
     (guarantee unary-procedure? predicate caller)
@@ -123,60 +123,60 @@ USA.
 	(error "Can't assign multiple tags to the same predicate:" name))
     (%make-tag metatag name predicate (list->vector extra))))
 
-(define (metatag? object)
+(define (dispatch-metatag? object)
   (and (%record? object)
        (eq? metatag-tag (%record-ref object 0))))
 
 (define metatag-tag)
 (add-boot-init!
  (lambda ()
-   (set! metatag-tag (%make-tag #f 'metatag metatag? '#()))
+   (set! metatag-tag (%make-tag #f 'metatag dispatch-metatag? '#()))
    (%record-set! metatag-tag 0 metatag-tag)))
 
-(define (set-tag<=! t1 t2)
+(define (set-dispatch-tag<=! t1 t2)
   (defer-boot-action 'predicate-relations
     (lambda ()
-      (set-tag<=! t1 t2))))
+      (set-dispatch-tag<=! t1 t2))))
 
-(define (tag-metatag tag)
-  (guarantee tag? tag 'tag-metatag)
+(define (dispatch-tag-metatag tag)
+  (guarantee dispatch-tag? tag 'dispatch-tag-metatag)
   (%record-ref tag 0))
 
-(define (tag-name tag)
-  (guarantee tag? tag 'tag-name)
-  (%tag-name tag))
+(define (dispatch-tag-name tag)
+  (guarantee dispatch-tag? tag 'dispatch-tag-name)
+  (%dispatch-tag-name tag))
 
-(define (tag->predicate tag)
-  (guarantee tag? tag 'tag->predicate)
-  (%tag->predicate tag))
+(define (dispatch-tag->predicate tag)
+  (guarantee dispatch-tag? tag 'dispatch-tag->predicate)
+  (%dispatch-tag->predicate tag))
 
-(define (tag-extra tag index)
-  (guarantee tag? tag 'tag-extra)
-  (vector-ref (%tag-extra tag) index))
+(define (dispatch-tag-extra tag index)
+  (guarantee dispatch-tag? tag 'dispatch-tag-extra)
+  (vector-ref (%dispatch-tag-extra tag) index))
 
-(define (any-tag-superset procedure tag)
-  (guarantee tag? tag 'any-tag-superset)
+(define (any-dispatch-tag-superset procedure tag)
+  (guarantee dispatch-tag? tag 'any-dispatch-tag-superset)
   (%weak-set-any procedure (%tag-supersets tag)))
 
-(define (add-tag-superset tag superset)
-  (guarantee tag? tag 'add-tag-superset)
-  (guarantee tag? superset 'add-tag-superset)
+(define (add-dispatch-tag-superset tag superset)
+  (guarantee dispatch-tag? tag 'add-dispatch-tag-superset)
+  (guarantee dispatch-tag? superset 'add-dispatch-tag-superset)
   (%add-to-weak-set superset (%tag-supersets tag)))
 
 (defer-boot-action 'predicate-relations
   (lambda ()
-    (set-predicate<=! metatag? tag?)))
+    (set-predicate<=! dispatch-metatag? dispatch-tag?)))
 
-(define-unparser-method tag?
+(define-unparser-method dispatch-tag?
   (simple-unparser-method
    (lambda (tag)
-     (if (metatag? tag) 'metatag 'tag))
+     (if (dispatch-metatag? tag) 'metatag 'tag))
    (lambda (tag)
-     (list (tag-name tag)))))
+     (list (dispatch-tag-name tag)))))
 
-(define-pp-describer tag?
+(define-pp-describer dispatch-tag?
   (lambda (tag)
-    (list (list 'metatag (tag-metatag tag))
-	  (list 'name (tag-name tag))
-	  (list 'predicate (tag->predicate tag))
-	  (cons 'extra (vector->list (%tag-extra tag))))))
+    (list (list 'metatag (dispatch-tag-metatag tag))
+	  (list 'name (dispatch-tag-name tag))
+	  (list 'predicate (dispatch-tag->predicate tag))
+	  (cons 'extra (vector->list (%dispatch-tag-extra tag))))))

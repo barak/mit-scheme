@@ -891,8 +891,8 @@ USA.
   (*unparse-with-brackets 'tagged-object object context
     (lambda (context*)
       (*unparse-object (let ((tag (%tagged-object-tag object)))
-			 (if (tag? tag)
-			     (tag-name tag)
+			 (if (dispatch-tag? tag)
+			     (dispatch-tag-name tag)
 			     tag))
 		       context*)
       (*unparse-string " " context*)

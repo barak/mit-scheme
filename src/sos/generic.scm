@@ -37,13 +37,13 @@ USA.
 	(generator (if (default-object? generator) #f generator)))
     (if (and name (not (symbol? name)))
 	(error:wrong-type-argument name "symbol" 'MAKE-GENERIC-PROCEDURE))
-    (if tag (guarantee tag? tag 'MAKE-GENERIC-PROCEDURE))
+    (if tag (guarantee dispatch-tag? tag 'MAKE-GENERIC-PROCEDURE))
     (guarantee procedure-arity? arity 'MAKE-GENERIC-PROCEDURE)
     (if (not (fix:> (procedure-arity-min arity) 0))
 	(error:bad-range-argument arity 'MAKE-GENERIC-PROCEDURE))
     (guarantee-generator generator 'MAKE-GENERIC-PROCEDURE)
     (let ((record
-	   (make-generic-record (predicate->tag generic-procedure?)
+	   (make-generic-record (predicate->dispatch-tag generic-procedure?)
 				(procedure-arity-min arity)
 				(procedure-arity-max arity)
 				generator
@@ -197,7 +197,7 @@ USA.
 			  (wna args))
 		      (loop (cdr args*)
 			    (fix:- n 1)
-			    (cons (object->tag (car args*)) tags)))))))
+			    (cons (object->dispatch-tag (car args*)) tags)))))))
 	   (wna
 	    (lambda (args)
 	      (error:wrong-number-of-arguments generic
@@ -209,7 +209,7 @@ USA.
   (let ((record
 	 (guarantee-generic-procedure procedure
 				      'GENERIC-PROCEDURE-APPLICABLE?))
-	(tags (map object->tag arguments)))
+	(tags (map object->dispatch-tag arguments)))
     (let ((generator (generic-record/generator record))
 	  (arity-min (generic-record/arity-min record))
 	  (arity-max (generic-record/arity-max record))
@@ -226,7 +226,7 @@ USA.
   (lambda (a1)
     (let ((procedure
 	   (probe-cache-1 (generic-record/cache record)
-			  (object->tag a1))))
+			  (object->dispatch-tag a1))))
       (if procedure
 	  (procedure a1)
 	  (compute-method-and-store record (list a1))))))
@@ -235,8 +235,8 @@ USA.
   (lambda (a1 a2)
     (let ((procedure
 	   (probe-cache-2 (generic-record/cache record)
-			  (object->tag a1)
-			  (object->tag a2))))
+			  (object->dispatch-tag a1)
+			  (object->dispatch-tag a2))))
       (if procedure
 	  (procedure a1 a2)
 	  (compute-method-and-store record (list a1 a2))))))
@@ -245,9 +245,9 @@ USA.
   (lambda (a1 a2 a3)
     (let ((procedure
 	   (probe-cache-3 (generic-record/cache record)
-			  (object->tag a1)
-			  (object->tag a2)
-			  (object->tag a3))))
+			  (object->dispatch-tag a1)
+			  (object->dispatch-tag a2)
+			  (object->dispatch-tag a3))))
       (if procedure
 	  (procedure a1 a2 a3)
 	  (compute-method-and-store record (list a1 a2 a3))))))
@@ -256,10 +256,10 @@ USA.
   (lambda (a1 a2 a3 a4)
     (let ((procedure
 	   (probe-cache-4 (generic-record/cache record)
-			  (object->tag a1)
-			  (object->tag a2)
-			  (object->tag a3)
-			  (object->tag a4))))
+			  (object->dispatch-tag a1)
+			  (object->dispatch-tag a2)
+			  (object->dispatch-tag a3)
+			  (object->dispatch-tag a4))))
       (if procedure
 	  (procedure a1 a2 a3 a4)
 	  (compute-method-and-store record (list a1 a2 a3 a4))))))
@@ -271,7 +271,7 @@ USA.
 		(p p (cdr p))
 		(i (generic-record/arity-min record) (fix:- i 1)))
 	       ((not (fix:> i 0)))
-	     (set-cdr! p (list (object->tag (car args)))))
+	     (set-cdr! p (list (object->dispatch-tag (car args)))))
 	   (cdr p))))
     (let ((procedure
 	   (let ((generator (generic-record/generator record))

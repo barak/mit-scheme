@@ -29,30 +29,30 @@ USA.
 
 (declare (usual-integrations))
 
-(define parametric-tag-metatag (make-metatag 'parametric-tag))
-(define parametric-tag? (tag->predicate parametric-tag-metatag))
+(define parametric-tag-metatag (make-dispatch-metatag 'parametric-tag))
+(define parametric-tag? (dispatch-tag->predicate parametric-tag-metatag))
 
 (define %make-parametric-tag
-  (metatag-constructor parametric-tag-metatag 'make-parametric-tag))
+  (dispatch-metatag-constructor parametric-tag-metatag 'make-parametric-tag))
 
 (define (make-parametric-tag name predicate template bindings)
   (%make-parametric-tag name predicate template bindings))
 
 (define-integrable (parametric-tag-template tag)
-  (tag-extra tag 0))
+  (dispatch-tag-extra tag 0))
 
 (define-integrable (parametric-tag-bindings tag)
-  (tag-extra tag 1))
+  (dispatch-tag-extra tag 1))
 
 (define (parametric-predicate? object)
   (and (predicate? object)
-       (parametric-tag? (predicate->tag object))))
+       (parametric-tag? (predicate->dispatch-tag object))))
 
 (define (parametric-predicate-template predicate)
-  (parametric-tag-template (predicate->tag predicate)))
+  (parametric-tag-template (predicate->dispatch-tag predicate)))
 
 (define (parametric-predicate-bindings predicate)
-  (parametric-tag-bindings (predicate->tag predicate)))
+  (parametric-tag-bindings (predicate->dispatch-tag predicate)))
 
 ;;;; Templates
 
@@ -93,17 +93,17 @@ USA.
 	       (cons name
 		     (map-template-pattern pattern
 					   patterned-tags
-					   tag-name
+					   dispatch-tag-name
 					   caller))
 	       (apply make-data-test
 		      (map-template-pattern pattern
 					    patterned-tags
-					    tag->predicate
+					    dispatch-tag->predicate
 					    caller))
 	       (get-template)
 	       (match-template-pattern pattern
 				       patterned-tags
-				       tag?
+				       dispatch-tag?
 				       caller))))
       tag)))
 
@@ -111,10 +111,10 @@ USA.
   (let ((instantiator (template-instantiator template))
         (pattern (predicate-template-pattern template)))
     (lambda patterned-predicates
-      (tag->predicate
+      (dispatch-tag->predicate
        (instantiator (map-template-pattern pattern
 					   patterned-predicates
-					   predicate->tag
+					   predicate->dispatch-tag
 					   caller)
 		     caller)))))
 
@@ -131,15 +131,16 @@ USA.
     (let ((valid? (predicate-template-predicate template))
           (convert
            (if (template-pattern-element-single-valued? elt)
-               tag->predicate
-	       (lambda (tags) (map tag->predicate tags)))))
+               dispatch-tag->predicate
+	       (lambda (tags) (map dispatch-tag->predicate tags)))))
       (lambda (predicate)
 	(guarantee valid? predicate caller)
         (convert
          (parameter-binding-value
           (find (lambda (binding)
                   (eqv? name (parameter-binding-name binding)))
-                (parametric-tag-bindings (predicate->tag predicate)))))))))
+                (parametric-tag-bindings
+		 (predicate->dispatch-tag predicate)))))))))
 
 ;;;; Template patterns
 
@@ -247,7 +248,7 @@ USA.
 
 (add-boot-init!
  (lambda ()
-   (define-tag<= parametric-tag? parametric-tag?
+   (define-dispatch-tag<= parametric-tag? parametric-tag?
      (lambda (tag1 tag2)
        (and (eqv? (parametric-tag-template tag1)
 		  (parametric-tag-template tag2))
@@ -257,9 +258,9 @@ USA.
 		       (and (= (length tags1) (length tags2))
 			    (every (case (parameter-binding-polarity
 					  bind1)
-				     ((+) tag<=)
-				     ((-) tag>=)
-				     (else tag=))
+				     ((+) dispatch-tag<=)
+				     ((-) dispatch-tag>=)
+				     (else dispatch-tag=))
 				   tags1
 				   tags2))))
 		   (parametric-tag-bindings tag1)

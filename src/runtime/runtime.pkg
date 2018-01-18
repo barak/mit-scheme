@@ -1842,7 +1842,7 @@ USA.
   (files "predicate-metadata")
   (parent (runtime))
   (export ()
-	  predicate->tag
+	  predicate->dispatch-tag
 	  predicate-name))
 
 (define-package (runtime predicate-lattice)
@@ -1850,19 +1850,19 @@ USA.
   (parent (runtime))
   (export ()
 	  any-object?
+	  bottom-dispatch-tag
+	  dispatch-tag-is-bottom?
+	  dispatch-tag-is-top?
+	  dispatch-tag<=
+	  dispatch-tag=
+	  dispatch-tag>=
+	  no-object?
 	  predicate<=
 	  predicate>=
-	  no-object?
-	  set-predicate<=!)
+	  set-predicate<=!
+	  top-dispatch-tag)
   (export (runtime)
-	  bottom-tag
-	  define-tag<=
-	  tag-is-bottom?
-	  tag-is-top?
-	  tag<=
-	  tag=
-	  tag>=
-	  top-tag))
+	  define-dispatch-tag<=))
 
 (define-package (runtime compound-predicate)
   (files "compound-predicate")
@@ -1903,12 +1903,11 @@ USA.
   (files "predicate-tagging")
   (parent (runtime))
   (export ()
+	  dispatch-tag-tagger
 	  object->datum
+	  object->dispatch-tag
 	  object->predicate
-	  predicate-tagger)
-  (export (runtime)
-	  object->tag
-	  tag-tagger))
+	  predicate-tagger))
 
 (define-package (runtime predicate-dispatch)
   (files "predicate-dispatch")
@@ -5101,19 +5100,18 @@ USA.
   (files "gentag" "gencache")
   (parent (runtime))
   (export ()
-	  make-metatag
-	  metatag-constructor
-	  metatag?)
-  (export (runtime)
-	  set-tag<=!
-	  tag->predicate
-	  tag-extra
-	  tag-metatag
-	  tag-name
-	  tag?)
+	  dispatch-metatag-constructor
+	  dispatch-metatag?
+	  dispatch-tag->predicate
+	  dispatch-tag-extra
+	  dispatch-tag-metatag
+	  dispatch-tag-name
+	  dispatch-tag?
+	  make-dispatch-metatag
+	  set-dispatch-tag<=!)
   (export (runtime predicate-lattice)
-	  add-tag-superset
-	  any-tag-superset)
+	  add-dispatch-tag-superset
+	  any-dispatch-tag-superset)
   (export (runtime predicate-metadata)
 	  set-predicate-tag!))
 

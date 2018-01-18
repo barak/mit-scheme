@@ -74,13 +74,13 @@ USA.
     class))
 
 (define class-metatag
-  (make-metatag 'class-tag))
+  (make-dispatch-metatag 'class-tag))
 
 (define class-tag?
-  (tag->predicate class-metatag))
+  (dispatch-tag->predicate class-metatag))
 
 (define make-class-tag
-  (metatag-constructor class-metatag 'make-class))
+  (dispatch-metatag-constructor class-metatag 'make-class))
 
 (define (make-trivial-subclass superclass . superclasses)
   (make-class (class-name superclass) (cons superclass superclasses) '()))
@@ -338,7 +338,7 @@ USA.
 (define-primitive-class <entity> <procedure>)
 
 (define (object-class object)
-  (dispatch-tag->class (object->tag object)))
+  (dispatch-tag->class (object->dispatch-tag object)))
 
 (define (record-type-class type)
   (dispatch-tag->class (record-type-dispatch-tag type)))
@@ -347,7 +347,7 @@ USA.
   (record-type-class (record-type-descriptor record)))
 
 (define (dispatch-tag->class tag)
-  (cond ((class-tag? tag) (tag-extra tag 0))
+  (cond ((class-tag? tag) (dispatch-tag-extra tag 0))
 	((hash-table/get built-in-class-table tag #f))
 	((record-tag? tag)
 	 (let ((class
@@ -383,7 +383,7 @@ USA.
 (let ((assign-type
        (lambda (predicate class)
 	 (hash-table/put! built-in-class-table
-			  (predicate->tag predicate)
+			  (predicate->dispatch-tag predicate)
 			  class))))
   (assign-type boolean? <boolean>)
   (assign-type char? <char>)

@@ -39,9 +39,9 @@ USA.
      (run-deferred-boot-actions 'set-predicate-tag!))))
 
 (define (predicate-name predicate)
-  (tag-name (predicate->tag predicate 'predicate-name)))
+  (dispatch-tag-name (predicate->dispatch-tag predicate 'predicate-name)))
 
-(define (predicate->tag predicate #!optional caller)
+(define (predicate->dispatch-tag predicate #!optional caller)
   (let ((tag (get-predicate-tag predicate #f)))
     (if (not tag)
         (error:not-a predicate? predicate caller))
@@ -52,16 +52,18 @@ USA.
 (add-boot-init!
  (lambda ()
    (set! simple-tag-metatag
-	 (make-metatag 'simple-tag))
+	 (make-dispatch-metatag 'simple-tag))
    (set! %make-simple-tag
-	 (metatag-constructor simple-tag-metatag 'register-predicate!))
-   (run-deferred-boot-actions 'make-metatag)
+	 (dispatch-metatag-constructor simple-tag-metatag 'register-predicate!))
+   (run-deferred-boot-actions 'make-dispatch-metatag)
    (set! register-predicate!
 	 (named-lambda (register-predicate! predicate name . keylist)
 	   (guarantee keyword-list? keylist 'register-predicate!)
 	   (let ((tag (%make-simple-tag name predicate #f)))
 	     (for-each (lambda (superset)
-			 (set-tag<=! tag (predicate->tag superset)))
+			 (set-dispatch-tag<=!
+			  tag
+			  (predicate->dispatch-tag superset)))
 		       (get-keyword-values keylist '<=))
 	     tag)))
    unspecific))
