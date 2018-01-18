@@ -66,27 +66,21 @@ USA.
 	  (error:wrong-type-argument default-inits
 				     "default initializers"
 				     caller))
-      (let ((record-type
-	     (%record record-type-type-tag
-		      #f
-		      (->type-name type-name)
-		      names
-		      (if (default-object? default-inits)
-			  (vector-cons n #f)
-			  (list->vector default-inits)))))
-	(letrec*
-	    ((predicate
-	      (lambda (object)
-		(%tagged-record? tag object)))
-	     (tag
-	      (%make-record-tag (string->symbol (%record-type-name record-type))
-				predicate
-				record-type)))
-	  (%record-set! record-type 1 tag)
-	  (if (and unparser-method
-		   (not (default-object? unparser-method)))
-	      (define-unparser-method predicate unparser-method)))
-	record-type))))
+      (letrec*
+	  ((predicate
+	    (lambda (object)
+	      (%tagged-record? tag object)))
+	   (tag
+	    (%make-record-tag (string->symbol (->type-name type-name))
+			      predicate
+			      names
+			      (if (default-object? default-inits)
+				  (vector-cons n #f)
+				  (list->vector default-inits)))))
+	(if (and unparser-method
+		 (not (default-object? unparser-method)))
+	    (define-unparser-method predicate unparser-method))
+	tag))))
 
 (define (%valid-default-inits? default-inits n-fields)
   (fix:= n-fields (length default-inits)))
@@ -111,40 +105,29 @@ USA.
    (set! record-tag? (dispatch-tag->predicate record-tag-metatag))
    (set! %make-record-tag
 	 (dispatch-metatag-constructor record-tag-metatag 'make-record-type))
-   (let* ((field-names
-	   '#(dispatch-tag name field-names default-inits tag))
-	  (type
-	   (%record #f
-		    #f
-		    "record-type"
-		    field-names
-		    (vector-cons (vector-length field-names) #f))))
-     (set! record-type-type-tag
-	   (%make-record-tag 'record-type record-type? type))
-     (%record-set! type 0 record-type-type-tag)
-     (%record-set! type 1 record-type-type-tag))))
+   unspecific))
 
 (define (record-tag->type-descriptor tag)
   (guarantee record-tag? tag 'record-tag->type-descriptor)
-  (dispatch-tag-extra tag 0))
+  tag)
 
 (define (record-type? object)
-  (%tagged-record? record-type-type-tag object))
+  (record-tag? object))
 
 (define-integrable (%record-type-descriptor record)
-  (dispatch-tag-extra (%record-tag record) 0))
+  (%record-tag record))
 
 (define-integrable (%record-type-dispatch-tag record-type)
-  (%record-ref record-type 1))
+  record-type)
 
 (define-integrable (%record-type-name record-type)
-  (%record-ref record-type 2))
+  (symbol->string (dispatch-tag-name record-type)))
 
 (define-integrable (%record-type-field-names record-type)
-  (%record-ref record-type 3))
+  (dispatch-tag-extra record-type 0))
 
 (define-integrable (%record-type-default-inits record-type)
-  (%record-ref record-type 4))
+  (dispatch-tag-extra record-type 1))
 
 (define-integrable (%record-type-predicate record-type)
   (dispatch-tag->predicate (%record-type-dispatch-tag record-type)))
