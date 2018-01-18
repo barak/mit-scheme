@@ -142,32 +142,57 @@ USA.
           (names '(a b c))
           (polarities '(+ = -)))
 
-      (assert-false (template-pattern? '()))
-      (assert-false (template-pattern-element? '()))
-      (assert-false (template-pattern? '(())))
+      (assert-false (template-pattern? '())
+		    'expression '(template-pattern? '()))
+      (assert-false (template-pattern-element? '())
+		    'expression '(template-pattern-element? '()))
+      (assert-false (template-pattern? '(()))
+		    'expression '(template-pattern? '(())))
       (for-each (lambda (symbol)
-                  (assert-false (template-pattern? symbol))
-                  (assert-false (template-pattern-element? symbol))
-                  (assert-false (template-pattern? (list symbol)))
-                  (assert-false (template-pattern-element? (list symbol)))
-                  (assert-false (template-pattern? (list (list symbol)))))
+                  (assert-false (template-pattern? symbol)
+				'expression `
+				(template-pattern? ,symbol))
+                  (assert-false (template-pattern-element? symbol)
+				'expression
+				`(template-pattern-element? ,symbol))
+                  (assert-false (template-pattern? (list symbol))
+				'expression
+				`(template-pattern? ,(list symbol)))
+                  (assert-false (template-pattern-element? (list symbol))
+				'expression
+				`(template-pattern-element? ,(list symbol)))
+                  (assert-false (template-pattern? (list (list symbol)))
+				'expression
+				`(template-pattern? ,(list (list symbol)))))
                 (append operators names polarities))
 
       (let ((elements (elementwise-lists-of (list operators names polarities))))
         (for-each
          (lambda (element)
-           (assert-true (template-pattern? (list element)))
-           (assert-false (template-pattern? element))
+           (assert-true (template-pattern? (list element))
+			'expression
+			`(template-pattern? ,(list element)))
+           (assert-false (template-pattern? element)
+			 'expression
+			 `(template-pattern? ,element))
            (for-each
             (lambda (permutation)
               (let ((assertion
                      (if (equal? permutation element)
                          assert-true
                          assert-false)))
-                (assertion (template-pattern-element? permutation))
-                (assertion (template-pattern? (list permutation)))
-                (assertion (template-pattern-element? (take permutation 2)))
-                (assertion (template-pattern? (list (take permutation 2))))))
+                (assertion (template-pattern-element? permutation)
+			   'expression
+			   `(template-pattern-element? ,permutation))
+                (assertion (template-pattern? (list permutation))
+			   'expression
+			   `(template-pattern? ,(list permutation)))
+                (assertion (template-pattern-element? (take permutation 2))
+			   'expression
+			   `(template-pattern-element? ,(take permutation 2)))
+                (assertion (template-pattern? (list (take permutation 2)))
+			   'expression
+			   `(template-pattern? ,(list (take permutation 2))))))
             (all-permutations-of element)))
          elements)
 
@@ -177,7 +202,9 @@ USA.
                    (length (delete-duplicates (map cadr elements) eqv?)))
                 assert-true
                 assert-false)
-            (template-pattern? elements)))
+            (template-pattern? elements)
+	    'expression
+	    `(template-pattern? ,elements)))
          (append
           (elementwise-lists-of (list elements elements))
           (elementwise-lists-of (list elements elements elements))))))))
@@ -224,28 +251,36 @@ USA.
 		objects))))
 
 (define (test-template-operations template name pattern)
-  (assert-true (predicate-template? template))
-  (assert-false (predicate? template))
+  (assert-true (predicate-template? template)
+	       'expression `(predicate-template? ,template))
+  (assert-false (predicate? template)
+	       'expression `(predicate? ,template))
   (assert-eqv (predicate-template-name template) name)
   (assert-equal (predicate-template-pattern template) pattern)
   (assert-lset= eq?
                 (predicate-template-parameter-names template)
                 (map template-pattern-element-name pattern))
   (let ((predicate (predicate-template-predicate template)))
-    (assert-true (predicate? predicate))
-    (assert-true (predicate<= predicate parametric-predicate?))
-    (assert-false (predicate<= parametric-predicate? predicate))))
+    (assert-true (predicate? predicate)
+		 'expression `(predicate? ,predicate))
+    (assert-true (predicate<= predicate parametric-predicate?)
+		 'expression `(predicate<= ,predicate ,parametric-predicate?))
+    (assert-false (predicate<= parametric-predicate? predicate)
+		  'expression
+		  `(predicate<= ,parametric-predicate? ,predicate))))
 
 (define (test-predicate-operations predicate name)
   (assert-true (predicate? predicate))
   (let ((tag (predicate->dispatch-tag predicate)))
-    (assert-true (dispatch-tag? tag))
+    (assert-true (dispatch-tag? tag)
+		 'expression `(dispatch-tag? ,tag))
     (assert-eqv (dispatch-tag->predicate tag) predicate)
     (assert-equal (predicate-name predicate) name)
     (assert-equal (dispatch-tag-name tag) name)))
 
 (define (test-parametric-predicate-operations predicate template parameters)
-  (assert-true (parametric-predicate? predicate))
+  (assert-true (parametric-predicate? predicate)
+	       'expression `(parametric-predicate? ,predicate))
   (assert-eqv (parametric-predicate-template predicate) template)
   (assert-lset= eq?
                 (parametric-predicate-names predicate)
