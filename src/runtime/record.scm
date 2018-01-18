@@ -402,7 +402,8 @@ USA.
   (and (list-of-type? object symbol?)
        (let loop ((elements object))
 	 (if (pair? elements)
-	     (not (memq (car elements) (cdr elements)))
+	     (and (not (memq (car elements) (cdr elements)))
+		  (loop (cdr elements)))
 	     #t))))
 
 (define-guarantee record-type "record type")
