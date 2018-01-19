@@ -43,26 +43,20 @@ USA.
 (define (make-bundle-interface name elements)
   (guarantee symbol? name 'make-bundle-interface)
   (guarantee elements? elements 'make-bundle-interface)
-  (let ((elements (sort-alist elements)))
-    (%make-bundle-interface (make-bundle-tag name)
-			    name
-			    (list->vector (map car elements))
-			    (list->vector (map (lambda (element)
-						 (map list-copy
-						      (cdr element)))
-					       elements)))))
-
-(define (make-bundle-tag name)
   (letrec*
       ((predicate
-	(lambda (datum)
-	  (and (bundle? datum)
-	       (dispatch-tag<= (bundle-interface-tag (bundle-interface datum))
-			       tag))))
+	(lambda (object)
+	  (and (bundle? object)
+	       (dispatch-tag<= (bundle-interface object) tag))))
        (tag
-	(begin
-	  (register-predicate! predicate name '<= bundle?)
-	  (predicate->dispatch-tag predicate))))
+	(let ((elements (sort-alist elements)))
+	  (%make-bundle-interface name
+				  predicate
+				  (list->vector (map car elements))
+				  (list->vector (map (lambda (element)
+						       (map list-copy
+							    (cdr element)))
+						     elements))))))
     tag))
 
 (define (elements? object)
@@ -80,16 +74,21 @@ USA.
        (alist-has-unique-keys? object)))
 (register-predicate! elements? 'interface-elements)
 
-(define-record-type <bundle-interface>
-    (%make-bundle-interface tag name element-names element-properties)
-    bundle-interface?
-  (tag bundle-interface-tag)
-  (name bundle-interface-name)
-  (element-names %bundle-interface-element-names)
-  (element-properties %bundle-interface-element-properties))
+(define bundle-interface?)
+(define %make-bundle-interface)
+(add-boot-init!
+ (lambda ()
+   (let ((metatag (make-dispatch-metatag 'bundle-interface)))
+     (set! bundle-interface? (dispatch-tag->predicate metatag))
+     (set! %make-bundle-interface
+	   (dispatch-metatag-constructor metatag 'make-bundle-interface))
+     unspecific)))
 
-(define (bundle-interface-predicate interface)
-  (dispatch-tag->predicate (bundle-interface-tag interface)))
+(define-integrable (%bundle-interface-element-names interface)
+  (dispatch-tag-extra interface 0))
+
+(define-integrable (%bundle-interface-element-properties interface)
+  (dispatch-tag-extra interface 1))
 
 (define (bundle-interface-element-names interface)
   (vector->list (%bundle-interface-element-names interface)))
@@ -113,7 +112,12 @@ USA.
 	(error "Unknown element name:" name interface))
     index))
 
+(define (bundle? object)
+  (and (entity? object)
+       (bundle-metadata? (entity-extra object))))
+
 (define (make-bundle interface alist)
+  (guarantee bundle-interface? interface 'make-bundle)
   (guarantee bundle-alist? alist 'make-bundle)
   (make-entity (lambda (self operator . args)
 		 (apply (bundle-ref self operator) args))
@@ -146,13 +150,9 @@ USA.
   (interface bundle-metadata-interface)
   (values bundle-metadata-values))
 
-(define (bundle? object)
-  (and (entity? object)
-       (bundle-metadata? (entity-extra object))))
-
-(defer-boot-action 'predicate-registrations
-  (lambda ()
-    (register-predicate! bundle? 'bundle '<= entity?)))
+(add-boot-init!
+ (lambda ()
+   (register-predicate! bundle? 'bundle '<= entity?)))
 
 (define (bundle-interface bundle)
   (bundle-metadata-interface (entity-extra bundle)))
@@ -190,26 +190,14 @@ USA.
 	(lambda (a b)
 	  (symbol<? (car a) (car b)))))
 
-(define (define-bundle-printer interface printer)
-  (hash-table-set! bundle-printers interface printer))
-
 (define-unparser-method bundle?
   (standard-unparser-method
    (lambda (bundle)
-     (bundle-interface-name (bundle-interface bundle)))
-   (lambda (bundle port)
-     (let ((printer
-	    (hash-table-ref/default bundle-printers
-				    (bundle-interface bundle)
-				    #f)))
-       (if printer
-	   (printer bundle port))))))
+     (dispatch-tag-name (bundle-interface bundle)))
+   #f))
 
 (define-pp-describer bundle?
   (lambda (bundle)
     (map (lambda (name)
 	   (list name (bundle-ref bundle name)))
 	 (bundle-names bundle))))
-
-(define-deferred bundle-printers
-  (make-key-weak-eqv-hash-table))

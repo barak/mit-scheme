@@ -1928,13 +1928,10 @@ USA.
 	  bundle-interface
 	  bundle-interface-element-names
 	  bundle-interface-element-properties
-	  bundle-interface-name
-	  bundle-interface-predicate
 	  bundle-interface?
 	  bundle-names
 	  bundle-ref
 	  bundle?
-	  define-bundle-printer
 	  make-bundle
 	  make-bundle-interface))
 
