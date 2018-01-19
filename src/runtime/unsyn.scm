@@ -172,23 +172,26 @@ USA.
 
 (define (unexpand-definition environment name value)
   (cond ((macro-reference-trap-expression? value)
-	 `(DEFINE-SYNTAX ,name
-	    ,(unsyntax-object
-	      environment
-	      (macro-reference-trap-expression-transformer value))))
+	 `(define ,name
+	    (make-macro-reference-trap-expression
+	     ,(unsyntax-object
+	       environment
+	       (macro-reference-trap-expression-transformer value)))))
 	((and (eq? #t unsyntaxer:macroize?)
 	      (lambda? value)
 	      (not (has-substitution? value)))
 	 (lambda-components* value
 	   (lambda (lambda-name required optional rest body)
 	     (if (eq? lambda-name name)
-		 `(DEFINE (,name . ,(make-lambda-list required optional rest '()))
+		 `(define (,name
+			   . ,(make-lambda-list required optional rest '()))
 		    ,@(with-bindings environment value
-				     (lambda (environment*)
-				       (unsyntax-lambda-body environment* body))))
-		 `(DEFINE ,name ,@(unexpand-binding-value environment value))))))
+			(lambda (environment*)
+			  (unsyntax-lambda-body environment* body))))
+		 `(define ,name
+		    ,@(unexpand-binding-value environment value))))))
 	(else
-	 `(DEFINE ,name ,@(unexpand-binding-value environment value)))))
+	 `(define ,name ,@(unexpand-binding-value environment value)))))
 
 (define (unexpand-binding-value environment value)
   (if (unassigned-reference-trap? value)
