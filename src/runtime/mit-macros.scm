@@ -784,7 +784,7 @@ USA.
    `(begin
       (define ,interface
 	(make-bundle-interface
-	 ',(string->symbol (strip-angle-brackets (symbol->string interface)))
+	 ',(strip-angle-brackets interface)
 	 (list ,@(map (lambda (element)
 			(if (symbol? element)
 			    `(list ',element)
@@ -795,7 +795,7 @@ USA.
 					  (cdr element)))))
 		      elements))))
       (define ,predicate
-	(bundle-interface-predicate ,interface))
+	(dispatch-tag->predicate ,interface))
       (define-syntax ,capturer
 	(sc-macro-transformer
 	 (lambda (form use-environment)
@@ -815,20 +815,14 @@ USA.
     (cond ((identifier? expr)
 	   (rename expr))
 	  ((and (pair? expr)
-		(eq? 'quote (car expr))
-		(pair? (cdr expr))
-		(null? (cddr expr)))
-	   (list (rename 'quote)
-		 (cadr expr)))
-	  ((and (pair? expr)
 		(list? (cdr expr)))
 	   (cons (rename (car expr))
 		 (let ((rest (cdr expr)))
 		   (case (car expr)
-		     ((quote)
+		     ((quote dispatch-tag->predicate)
 		      rest)
 		     ((define define-syntax)
-		      (cons (car rest) (loop (cdr rest))))
+		      (cons (car rest) (map loop (cdr rest))))
 		     (else
 		      (map loop rest))))))
 	  (else expr))))
