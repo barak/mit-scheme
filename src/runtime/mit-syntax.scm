@@ -85,6 +85,12 @@ USA.
 	      (compile-body-item
 	       (classify/body body environment))))))
 
+(define (compile-body-item item)
+  (receive (declaration-items items)
+      (extract-declarations-from-body (body-item/components item))
+    (output/body (map declaration-item/text declaration-items)
+		 (compile-body-items items))))
+
 (define (classifier:begin form environment)
   (syntax-check '(KEYWORD * FORM) form)
   (classify/body (cdr form) environment))
@@ -136,123 +142,96 @@ USA.
 (define keyword:define
   (classifier->keyword
    (lambda (form environment)
-     (classify/define form environment variable-binding-theory))))
+     (let ((name (cadr form)))
+       (if (not (syntactic-environment/top-level? environment))
+	   (syntactic-environment/define environment
+					 name
+					 (make-reserved-name-item)))
+       (value-binder environment name
+		     (classify/expression (caddr form) environment))))))
 
 (define (classifier:define-syntax form environment)
-  (syntax-check '(KEYWORD IDENTIFIER EXPRESSION) form)
-  (classify/define form environment syntactic-binding-theory))
+  (syntax-check '(keyword identifier expression) form)
+  (let ((name (cadr form))
+	(item (classify/expression (caddr form) environment)))
+    (keyword-binder environment name item)
+    ;; User-defined macros at top level are preserved in the output.
+    (if (and (keyword-value-item? item)
+	     (syntactic-environment/top-level? environment))
+	(make-binding-item (rename-top-level-identifier name) item)
+	(make-body-item '()))))
 
-(define (classify/define form environment binding-theory)
-  (if (not (syntactic-environment/top-level? environment))
-      (syntactic-environment/define environment
-				    (cadr form)
-				    (make-reserved-name-item)))
-  (binding-theory environment
-		  (cadr form)
-		  (classify/expression (caddr form) environment)))
-
-(define (syntactic-binding-theory environment name item)
+(define (keyword-binder environment name item)
   (if (not (keyword-item? item))
       (syntax-error "Syntactic binding value must be a keyword:" name))
-  (syntactic-environment/define environment name item)
-  ;; User-defined macros at top level are preserved in the output.
-  (if (and (keyword-value-item? item)
-           (syntactic-environment/top-level? environment))
-      (make-binding-item (rename-top-level-identifier name) item)
-      (make-null-binding-item)))
+  (syntactic-environment/define environment name item))
 
-(define (variable-binding-theory environment name item)
+(define (value-binder environment name item)
   (if (keyword-item? item)
-      (syntax-error "Binding value may not be a keyword:" name))
+      (syntax-error "Normal binding value must not be a keyword:" name))
   (make-binding-item (bind-variable! environment name) item))
 
 ;;;; LET-like
 
 (define keyword:let
   (classifier->keyword
-   (lambda (form environment)
-     (let* ((binding-environment
-	     (make-internal-syntactic-environment environment))
-	    (body-environment
-	     (make-internal-syntactic-environment binding-environment)))
-       (classify/let-like form
-			  environment
-			  binding-environment
-			  body-environment
-			  variable-binding-theory
-			  output/let)))))
+   (lambda (form env)
+     (let ((bindings (cadr form))
+	   (body (cddr form))
+	   (binding-env (make-internal-syntactic-environment env)))
+       (let ((binding-items
+	      (map (lambda (binding)
+		     (value-binder binding-env
+				   (car binding)
+				   (classify/expression (cadr binding) env)))
+		   bindings)))
+	 (make-expression-item
+	  (let ((names (map binding-item/name binding-items))
+		(values (map binding-item/value binding-items))
+		(body-item
+		 (classify/body (cddr form)
+				(make-internal-syntactic-environment
+				 binding-env))))
+	    (lambda ()
+	      (output/let names
+			  (map compile-item/expression values)
+			  (compile-body-item body-item))))))))))
 
-
-(define (classifier:let-syntax form environment)
-  (syntax-check '(KEYWORD (* (IDENTIFIER EXPRESSION)) + FORM) form)
-  (let* ((binding-environment
-	  (make-internal-syntactic-environment environment))
-	 (body-environment
-	  (make-internal-syntactic-environment binding-environment)))
-    (classify/let-like form
-		       environment
-		       binding-environment
-		       body-environment
-		       syntactic-binding-theory
-		       output/let)))
+(define (classifier:let-syntax form env)
+  (syntax-check '(keyword (* (identifier expression)) + form) form)
+  (let ((bindings (cadr form))
+	(body (cddr form))
+	(binding-env (make-internal-syntactic-environment env)))
+    (for-each (lambda (binding)
+		(keyword-binder binding-env
+				(car binding)
+				(classify/expression (cadr binding) env)))
+	      bindings)
+    (classify/body body (make-internal-syntactic-environment binding-env))))
 
 (define keyword:let-syntax
   (classifier->keyword classifier:let-syntax))
 
-(define (classifier:letrec-syntax form environment)
-  (syntax-check '(KEYWORD (* (IDENTIFIER EXPRESSION)) + FORM) form)
-  (let* ((binding-environment
-	  (make-internal-syntactic-environment environment))
-	 (body-environment
-	  (make-internal-syntactic-environment binding-environment)))
+(define (classifier:letrec-syntax form env)
+  (syntax-check '(keyword (* (identifier expression)) + form) form)
+  (let ((bindings (cadr form))
+	(body (cddr form))
+	(binding-env (make-internal-syntactic-environment env)))
     (for-each (let ((item (make-reserved-name-item)))
 		(lambda (binding)
-		  (syntactic-environment/define binding-environment
+		  (syntactic-environment/define binding-env
 						(car binding)
 						item)))
-	      (cadr form))
-    (classify/let-like form
-		       binding-environment
-		       binding-environment
-		       body-environment
-		       syntactic-binding-theory
-		       output/letrec)))
-
-(define (classify/let-like form
-			   value-environment
-			   binding-environment
-			   body-environment
-			   binding-theory
-			   output/let)
-  ;; Classify right-hand sides first, in order to catch references to
-  ;; reserved names.  Then bind names prior to classifying body.
-  (let* ((bindings
-	  (remove! null-binding-item?
-		   (map (lambda (binding item)
-			  (binding-theory binding-environment
-					  (car binding)
-					  item))
-			(cadr form)
-			(map (lambda (binding)
-			       (classify/expression (cadr binding)
-						    value-environment))
-			     (cadr form)))))
-	 (body (classify/body (cddr form) body-environment)))
-    (if (eq? binding-theory syntactic-binding-theory)
-	body
-	(make-expression-item
-	 (let ((names (map binding-item/name bindings))
-	       (values (map binding-item/value bindings)))
-	   (lambda ()
-	     (output/let names
-			 (map compile-item/expression values)
-			 (compile-body-item body))))))))
-
-(define (compile-body-item item)
-  (receive (declaration-items items)
-      (extract-declarations-from-body (body-item/components item))
-    (output/body (map declaration-item/text declaration-items)
-		 (compile-body-items items))))
+	      bindings)
+    ;; Classify right-hand sides first, in order to catch references to
+    ;; reserved names.  Then bind names prior to classifying body.
+    (for-each (lambda (binding item)
+		(keyword-binder binding-env (car binding) item))
+	      bindings
+	      (map (lambda (binding)
+		     (classify/expression (cadr binding) binding-env))
+		   bindings))
+    (classify/body body (make-internal-syntactic-environment binding-env))))
 
 ;; TODO: this is a compiler rather than a macro because it uses the
 ;; special OUTPUT/DISJUNCTION.  Unfortunately something downstream in
