@@ -259,9 +259,9 @@ USA.
 	(write-truncated
 	 (lambda (object width)
 	   (let ((output (write-to-string object width)))
+	     (write-string (cdr output) port)
 	     (if (car output)
-		 (string-fill! (cdr output) #\. (- width 3) width))
-	     (write-string (cdr output) port)))))
+		 (write-string "..." port))))))
     (if (default-object? result)
 	(write-string "[Entering " port)
 	(begin
