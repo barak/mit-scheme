@@ -82,32 +82,23 @@ USA.
       (keyword-value-item/item item)
       item))
 
-(define (classify/forms forms environment)
-  (map (lambda (form)
-	 (classify/form form environment))
-       forms))
-
 (define (classify/expression expression environment)
   (classify/form expression environment))
 
 (define (classify/expressions expressions environment)
-  (classify/forms expressions environment))
+  (map (lambda (expression)
+	 (classify/expression expression environment))
+       expressions))
 
 (define (classify/body forms environment)
-  ;; Top-level syntactic definitions affect all forms that appear
-  ;; after them, so classify FORMS in order.
+  ;; Syntactic definitions affect all forms that appear after them, so classify
+  ;; FORMS in order.
   (make-body-item
-   (let forms-loop ((forms forms) (body-items '()))
+   (let loop ((forms forms) (body-items '()))
      (if (pair? forms)
-	 (let items-loop
-	     ((items (item->list (classify/form (car forms) environment)))
-	      (body-items body-items))
-	   (if (pair? items)
-	       (items-loop (cdr items)
-			   (if (null-binding-item? (car items))
-			       body-items
-			       (cons (car items) body-items)))
-	       (forms-loop (cdr forms) body-items)))
+	 (loop (cdr forms)
+	       (reverse* (item->list (classify/form (car forms) environment))
+			 body-items))
 	 (reverse! body-items)))))
 
 (define (extract-declarations-from-body items)
