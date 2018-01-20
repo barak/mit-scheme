@@ -47,17 +47,16 @@ USA.
       ((predicate
 	(lambda (object)
 	  (and (bundle? object)
-	       (dispatch-tag<= (bundle-interface object) tag))))
+	       (dispatch-tag<= (%bundle-tag object) tag))))
        (tag
-	(let ((elements (sort-alist elements)))
-	  (%make-bundle-interface name
-				  predicate
-				  (list->vector (map car elements))
-				  (list->vector (map (lambda (element)
-						       (map list-copy
-							    (cdr element)))
-						     elements))))))
-    tag))
+	(make-bundle-interface-tag name
+				   predicate
+				   (list->vector (map car elements))
+				   (list->vector (map (lambda (element)
+							(map list-copy
+							     (cdr element)))
+						      elements)))))
+    predicate))
 
 (define (elements? object)
   (and (list? object)
@@ -74,67 +73,165 @@ USA.
        (alist-has-unique-keys? object)))
 (register-predicate! elements? 'interface-elements)
 
-(define bundle-interface?)
-(define %make-bundle-interface)
+(define bundle-interface-tag?)
+(define make-bundle-interface-tag)
 (add-boot-init!
  (lambda ()
    (let ((metatag (make-dispatch-metatag 'bundle-interface)))
-     (set! bundle-interface? (dispatch-tag->predicate metatag))
-     (set! %make-bundle-interface
+     (set! bundle-interface-tag? (dispatch-tag->predicate metatag))
+     (set! make-bundle-interface-tag
 	   (dispatch-metatag-constructor metatag 'make-bundle-interface))
      unspecific)))
 
-(define-integrable (%bundle-interface-element-names interface)
-  (dispatch-tag-extra interface 0))
+(define (bundle-interface? object)
+  (and (predicate? object)
+       (bundle-interface-tag? (predicate->dispatch-tag object))))
 
-(define-integrable (%bundle-interface-element-properties interface)
-  (dispatch-tag-extra interface 1))
+(define-integrable (tag-element-names tag)
+  (dispatch-tag-extra tag 0))
+
+(define-integrable (tag-element-properties tag)
+  (dispatch-tag-extra tag 1))
+
+(define (bundle-interface-name interface)
+  (guarantee bundle-interface? interface 'bundle-interface-name)
+  (dispatch-tag-name (predicate->dispatch-tag interface)))
 
 (define (bundle-interface-element-names interface)
-  (vector->list (%bundle-interface-element-names interface)))
+  (guarantee bundle-interface? interface 'bundle-interface-element-names)
+  (vector->list (tag-element-names (predicate->dispatch-tag interface))))
 
 (define (bundle-interface-element-properties interface name)
-  (map list-copy
-       (vector-ref (%bundle-interface-element-properties interface)
-		   (element-index interface name #t))))
+  (guarantee bundle-interface? interface 'bundle-interface-element-properties)
+  (let ((tag (predicate->dispatch-tag interface)))
+    (map list-copy
+	 (vector-ref (tag-element-properties tag)
+		     (element-index tag name #t)))))
 
-(define (element-index interface name required?)
+(define (element-index tag name required?)
   (let ((index
-	 (let ((v (%bundle-interface-element-names interface)))
-	   (let loop ((start 0) (end (vector-length v)))
-	     (and (fix:< start end)
-		  (let* ((midpoint (fix:quotient (fix:+ start end) 2))
-			 (name* (vector-ref v midpoint)))
-		    (cond ((symbol<? name name*) (loop start midpoint))
-			  ((symbol<? name* name) (loop (fix:+ midpoint 1) end))
-			  (else midpoint))))))))
+	 (let* ((v (tag-element-names tag))
+		(end (vector-length v)))
+	   (let loop ((i 0))
+	     (and (fix:< i end)
+		  (if (eq? name (vector-ref v i))
+		      i
+		      (loop (fix:+ i 1))))))))
     (if (not (or index (not required?)))
-	(error "Unknown element name:" name interface))
+	(error "Unknown element name:" name (dispatch-tag->predicate tag)))
     index))
 
 (define (bundle? object)
   (and (entity? object)
        (bundle-metadata? (entity-extra object))))
 
-(define (make-bundle interface alist)
-  (guarantee bundle-interface? interface 'make-bundle)
-  (guarantee bundle-alist? alist 'make-bundle)
+(add-boot-init!
+ (lambda ()
+   (register-predicate! bundle? 'bundle '<= entity?)))
+
+(define (%make-bundle tag values)
   (make-entity (lambda (self operator . args)
 		 (apply (bundle-ref self operator) args))
-	       (make-bundle-metadata interface
-				     (bundle-alist->values interface alist))))
+	       (make-bundle-metadata tag values)))
 
-(define (bundle-alist->values interface alist)
-  (let ((n (vector-length (%bundle-interface-element-names interface))))
+(define-record-type <bundle-metadata>
+    (make-bundle-metadata tag values)
+    bundle-metadata?
+  (tag bundle-metadata-tag)
+  (values bundle-metadata-values))
+
+(define (%bundle-tag bundle)
+  (bundle-metadata-tag (entity-extra bundle)))
+
+(define (%bundle-values bundle)
+  (bundle-metadata-values (entity-extra bundle)))
+
+(define (bundle-interface bundle)
+  (guarantee bundle? bundle 'bundle-interface)
+  (dispatch-tag->predicate (%bundle-tag bundle)))
+
+(define (bundle-names bundle)
+  (guarantee bundle? bundle 'bundle-names)
+  (vector->list (tag-element-names (%bundle-tag bundle))))
+
+(define (bundle->alist bundle)
+  (guarantee bundle? bundle 'bundle->alist)
+  (map cons
+       (vector->list (tag-element-names (%bundle-tag bundle)))
+       (vector->list (%bundle-values bundle))))
+
+(define (bundle-ref bundle operator #!optional default)
+  (guarantee bundle? bundle 'bundle-ref)
+  (let ((index
+	 (element-index (%bundle-tag bundle)
+			operator
+			(default-object? default))))
+    (if index
+	(vector-ref (%bundle-values bundle) index)
+        default)))
+
+(define-unparser-method bundle?
+  (standard-unparser-method
+   (lambda (bundle)
+     (dispatch-tag-name (%bundle-tag bundle)))
+   #f))
+
+(define-pp-describer bundle?
+  (lambda (bundle)
+    (map (lambda (name)
+	   (list name (bundle-ref bundle name)))
+	 (bundle-names bundle))))
+
+(define (bundle-constructor interface)
+  (guarantee bundle-interface? interface 'bundle-constructor)
+  (let* ((tag (predicate->dispatch-tag interface))
+	 (n (vector-length (tag-element-names tag))))
+    (let-syntax
+	((expand-cases
+	  (sc-macro-transformer
+	   (lambda (form environment)
+	     (let ((limit (cadr form))
+		   (default (caddr form))
+		   (make-name
+		    (lambda (i)
+		      (intern (string-append "v" (number->string i))))))
+	       (let loop ((i 0) (names '()))
+		 (if (fix:< i limit)
+		     `(if (fix:= n ,i)
+			  (lambda (,@names) (%make-bundle tag (vector ,@names)))
+			  ,(loop (fix:+ i 1)
+				 (append names (list (make-name i)))))
+		     default)))))))
+      (expand-cases 16
+	(letrec
+	    ((constructor
+	      (lambda args
+		(if (not (fix:= n (length args)))
+		    (error:wrong-number-of-arguments constructor n args))
+		(%make-bundle interface (list->vector args)))))
+	  constructor)))))
+
+(define (bundle-accessor interface name)
+  (guarantee bundle-interface? interface 'bundle-accessor)
+  (let ((index (element-index (predicate->dispatch-tag interface) name #t)))
+    (lambda (bundle)
+      (guarantee interface bundle)
+      (vector-ref (%bundle-values bundle) index))))
+
+(define (alist->bundle interface alist)
+  (guarantee bundle-interface? interface 'alist->bundle)
+  (guarantee bundle-alist? alist 'alist->bundle)
+  (let* ((tag (predicate->dispatch-tag interface))
+	 (n (vector-length (tag-element-names tag))))
     (if (not (fix:= (length alist) n))
 	(error "Bundle alist doesn't match its elements:" alist interface))
     (let ((values (make-vector n)))
       (for-each (lambda (p)
 		  (vector-set! values
-			       (element-index interface (car p) #t)
+			       (element-index tag (car p) #t)
 			       (cdr p)))
 		alist)
-      values)))
+      (%make-bundle tag values))))
 
 (define (bundle-alist? object)
   (and (alist? object)
@@ -144,39 +241,6 @@ USA.
        (alist-has-unique-keys? object)))
 (register-predicate! bundle-alist? 'bundle-alist '<= alist?)
 
-(define-record-type <bundle-metadata>
-    (make-bundle-metadata interface values)
-    bundle-metadata?
-  (interface bundle-metadata-interface)
-  (values bundle-metadata-values))
-
-(add-boot-init!
- (lambda ()
-   (register-predicate! bundle? 'bundle '<= entity?)))
-
-(define (bundle-interface bundle)
-  (bundle-metadata-interface (entity-extra bundle)))
-
-(define (%bundle-values bundle)
-  (bundle-metadata-values (entity-extra bundle)))
-
-(define (bundle-names bundle)
-  (bundle-interface-element-names (bundle-interface bundle)))
-
-(define (bundle-alist bundle)
-  (map cons
-       (bundle-names bundle)
-       (vector->list (%bundle-values bundle))))
-
-(define (bundle-ref bundle operator #!optional default)
-  (let ((index
-	 (element-index (bundle-interface bundle)
-			operator
-			(default-object? default))))
-    (if index
-	(vector-ref (%bundle-values bundle) index)
-        default)))
-
 (define (alist-has-unique-keys? alist)
   (or (null? alist)
       (and (not (any (let ((name (caar alist)))
@@ -184,20 +248,3 @@ USA.
 			 (eq? name (car p))))
 		     (cdr alist)))
 	   (alist-has-unique-keys? (cdr alist)))))
-
-(define (sort-alist alist)
-  (sort alist
-	(lambda (a b)
-	  (symbol<? (car a) (car b)))))
-
-(define-unparser-method bundle?
-  (standard-unparser-method
-   (lambda (bundle)
-     (dispatch-tag-name (bundle-interface bundle)))
-   #f))
-
-(define-pp-describer bundle?
-  (lambda (bundle)
-    (map (lambda (name)
-	   (list name (bundle-ref bundle name)))
-	 (bundle-names bundle))))

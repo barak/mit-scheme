@@ -778,24 +778,28 @@ USA.
 			    (cadddr form)
 			    (cddddr form)))))
 
-(define (make-interface-helper rename interface capturer predicate elements)
+(define (make-interface-helper rename interface constructor capturer elements)
   (let ((rlist (rename 'list)))
     `(,(rename 'begin)
       (,(rename 'define)
        ,interface
-	(,(rename 'make-bundle-interface)
-	 ',(strip-angle-brackets interface)
-	 (,rlist ,@(map (lambda (element)
-			  (if (symbol? element)
-			      `(,rlist ',element)
-			      `(,rlist ',(car element)
-				       ,@(map (lambda (p)
-						`(,rlist ',(car p) ,@(cdr p)))
-					      (cdr element)))))
-			elements))))
+       (,(rename 'make-bundle-interface)
+	',(let* ((name (identifier->symbol interface))
+		 (s (symbol->string name)))
+	    (if (string-suffix? "?" s)
+		(string->symbol (string-head s (fix:- (string-length s) 1)))
+		name))
+	(,rlist ,@(map (lambda (element)
+			 (if (symbol? element)
+			     `(,rlist ',element)
+			     `(,rlist ',(car element)
+				      ,@(map (lambda (p)
+					       `(,rlist ',(car p) ,@(cdr p)))
+					     (cdr element)))))
+		       elements))))
       (,(rename 'define)
-       ,predicate
-	(,(rename 'dispatch-tag->predicate) ,interface))
+       ,constructor
+	(,(rename 'bundle-constructor) ,interface))
       (,(rename 'define-syntax)
        ,capturer
        (,(rename 'sc-macro-transformer)
@@ -803,8 +807,7 @@ USA.
 	 (form use-env)
 	 (if (,(rename 'not) (,(rename 'null?) (,(rename 'cdr) form)))
 	     (,(rename 'syntax-error) "Ill-formed special form:" form))
-	 (,rlist 'capture-bundle
-		 ',interface
+	 (,rlist ',constructor
 		 ,@(map (lambda (element)
 			  `(,(rename 'close-syntax)
 			    ',(if (symbol? element)
@@ -812,9 +815,3 @@ USA.
 				  (car element))
 			    use-env))
 			elements))))))))
-
-(define-syntax :capture-bundle
-  (syntax-rules ()
-    ((_ interface name ...)
-     (make-bundle interface
-                  (list (cons 'name name) ...)))))

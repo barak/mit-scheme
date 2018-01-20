@@ -1924,15 +1924,18 @@ USA.
   (files "bundle")
   (parent (runtime))
   (export ()
-	  bundle-alist
+	  alist->bundle
+	  bundle->alist
+	  bundle-accessor
+	  bundle-constructor
 	  bundle-interface
 	  bundle-interface-element-names
 	  bundle-interface-element-properties
+	  bundle-interface-name
 	  bundle-interface?
 	  bundle-names
 	  bundle-ref
 	  bundle?
-	  make-bundle
 	  make-bundle-interface))
 
 (define-package (runtime environment)
@@ -4661,7 +4664,6 @@ USA.
 	  (and-let* :and-let*)
 	  (assert :assert)
 	  (begin0 :begin0)
-	  (capture-bundle :capture-bundle)
 	  (case :case)
 	  (circular-stream :circular-stream)
 	  (cond :cond)
