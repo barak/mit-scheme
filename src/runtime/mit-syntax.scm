@@ -189,9 +189,9 @@ USA.
 	  (let ((names (map binding-item/name binding-items))
 		(values (map binding-item/value binding-items))
 		(body-item
-		 (classify/body (cddr form)
-				(make-internal-syntactic-environment
-				 binding-env))))
+		 (classify/body
+		  body
+		  (make-internal-syntactic-environment binding-env))))
 	    (lambda ()
 	      (output/let names
 			  (map compile-item/expression values)
