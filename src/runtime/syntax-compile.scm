@@ -52,15 +52,16 @@ USA.
     (if (not (pair? items))
 	(syntax-error "Empty body"))
     (output/sequence
-     (map (lambda (item)
-	    (if (binding-item? item)
-		(let ((value (binding-item/value item)))
-		  (if (keyword-value-item? value)
-		      (output/sequence '())
-		      (output/definition (binding-item/name item)
-					 (compile-item/expression value))))
-		(compile-item/expression item)))
-	  items))))
+     (append-map
+      (lambda (item)
+	(if (binding-item? item)
+	    (let ((value (binding-item/value item)))
+	      (if (keyword-value-item? value)
+		  '()
+		  (list (output/definition (binding-item/name item)
+					   (compile-item/expression value)))))
+	    (list (compile-item/expression item))))
+      items))))
 
 (define (compile-item/expression item)
   (let ((compiler (get-item-compiler item)))
@@ -113,7 +114,4 @@ USA.
   (illegal-expression-compiler "Declaration"))
 
 (define-item-compiler <binding-item>
-  (illegal-expression-compiler "Definition"))
-
-(define-item-compiler <null-binding-item>
   (illegal-expression-compiler "Definition"))
