@@ -30,35 +30,48 @@ USA.
 
 (define-test 'simple
   (lambda ()
-    (define-bundle-interface <foo> capture-foo foo? a b c)
+    (define-bundle-interface foo? make-foo capture-foo a b c)
 
-    (assert-true (bundle-interface? <foo>))
-    (assert-equal (bundle-interface-element-names <foo>)
+    (assert-true (bundle-interface? foo?))
+    (assert-equal (bundle-interface-element-names foo?)
 		  '(a b c))
     (for-each (lambda (name)
-		(assert-equal (bundle-interface-element-properties <foo> name)
+		(assert-equal (bundle-interface-element-properties foo? name)
 			      '()))
-	      (bundle-interface-element-names <foo>))
+	      (bundle-interface-element-names foo?))
 
-    (define foo
-      (let ((a 0)
-	    (b 1)
-	    (c 3))
-	(capture-foo)))
+    (define bundle-a (bundle-accessor foo? 'a))
+    (define bundle-b (bundle-accessor foo? 'b))
+    (define bundle-c (bundle-accessor foo? 'c))
+    (assert-error (lambda () (bundle-accessor foo 'd)))
 
-    (assert-true (foo? foo))
-    (assert-eqv (bundle-ref foo 'a) 0)
-    (assert-eqv (bundle-ref foo 'b) 1)
-    (assert-eqv (bundle-ref foo 'c) 3)
-    (assert-eqv (bundle-ref foo 'd #f) #f)
-    (assert-error (lambda () (bundle-ref foo 'd)))))
+    (define (test-bundle bundle av bv cv)
+      (assert-true (foo? bundle))
+      (assert-eqv (bundle-ref bundle 'a) av)
+      (assert-eqv (bundle-ref bundle 'b) bv)
+      (assert-eqv (bundle-ref bundle 'c) cv)
+      (assert-eqv (bundle-ref bundle 'd #f) #f)
+      (assert-error (lambda () (bundle-ref foo 'd)))
+      (assert-eqv (bundle-a bundle) av)
+      (assert-eqv (bundle-b bundle) bv)
+      (assert-eqv (bundle-c bundle) cv))
+
+    (let ((a 10)
+	  (b 20)
+	  (c 40))
+      (test-bundle (make-foo a b c) a b c))
+
+    (let ((a 0)
+	  (b 1)
+	  (c 3))
+      (test-bundle (capture-foo) a b c))))
 
 (define-test 'metadata-table
   (lambda ()
 
-    (define-bundle-interface <metadata-table>
+    (define-bundle-interface metadata-table?
+      make-metadata-table
       capture-metadata-table
-      metadata-table?
       has?
       get
       put!

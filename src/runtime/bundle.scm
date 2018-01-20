@@ -109,14 +109,7 @@ USA.
 		     (element-index tag name #t)))))
 
 (define (element-index tag name required?)
-  (let ((index
-	 (let* ((v (tag-element-names tag))
-		(end (vector-length v)))
-	   (let loop ((i 0))
-	     (and (fix:< i end)
-		  (if (eq? name (vector-ref v i))
-		      i
-		      (loop (fix:+ i 1))))))))
+  (let ((index (vector-find-next-element (tag-element-names tag) name)))
     (if (not (or index (not required?)))
 	(error "Unknown element name:" name (dispatch-tag->predicate tag)))
     index))
