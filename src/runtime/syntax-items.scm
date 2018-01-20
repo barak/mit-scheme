@@ -110,16 +110,11 @@ USA.
 (define (declaration-item/text item)
   ((declaration-item/get-text item)))
 
-;;; Binding items represent definitions, whether top-level or
-;;; internal, keyword or variable.  Null binding items are for
-;;; definitions that don't emit code.
+;;; Binding items represent definitions, whether top-level or internal, keyword
+;;; or variable.
 
 (define-record-type <binding-item>
     (make-binding-item name value)
     binding-item?
   (name binding-item/name)
   (value binding-item/value))
-
-(define-record-type <null-binding-item>
-    (make-null-binding-item)
-    null-binding-item?)

@@ -4486,7 +4486,6 @@ USA.
 	  <expander-item>
 	  <expression-item>
 	  <keyword-value-item>
-	  <null-binding-item>
 	  <reserved-name-item>
 	  <variable-item>
 	  binding-item/name
@@ -4516,10 +4515,8 @@ USA.
 	  make-expander-item
 	  make-expression-item
 	  make-keyword-value-item
-	  make-null-binding-item
 	  make-reserved-name-item
 	  make-variable-item
-	  null-binding-item?
 	  reserved-name-item?
 	  variable-item/name
 	  variable-item?))
