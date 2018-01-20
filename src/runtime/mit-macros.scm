@@ -779,53 +779,39 @@ USA.
 			    (cddddr form)))))
 
 (define (make-interface-helper rename interface capturer predicate elements)
-  (rename-generated-expression
-   rename
-   `(begin
-      (define ,interface
-	(make-bundle-interface
+  (let ((rlist (rename 'list)))
+    `(,(rename 'begin)
+      (,(rename 'define)
+       ,interface
+	(,(rename 'make-bundle-interface)
 	 ',(strip-angle-brackets interface)
-	 (list ,@(map (lambda (element)
-			(if (symbol? element)
-			    `(list ',element)
-			    `(list ',(car element)
-				   ,@(map (lambda (p)
-					    `(list ',(car p)
-						   ,@(cdr p)))
-					  (cdr element)))))
-		      elements))))
-      (define ,predicate
-	(dispatch-tag->predicate ,interface))
-      (define-syntax ,capturer
-	(sc-macro-transformer
-	 (lambda (form use-environment)
-	   (if (not (null? (cdr form)))
-	       (syntax-error "Ill-formed special form:" form))
-	   (list 'capture-bundle
+	 (,rlist ,@(map (lambda (element)
+			  (if (symbol? element)
+			      `(,rlist ',element)
+			      `(,rlist ',(car element)
+				       ,@(map (lambda (p)
+						`(,rlist ',(car p) ,@(cdr p)))
+					      (cdr element)))))
+			elements))))
+      (,(rename 'define)
+       ,predicate
+	(,(rename 'dispatch-tag->predicate) ,interface))
+      (,(rename 'define-syntax)
+       ,capturer
+       (,(rename 'sc-macro-transformer)
+	(,(rename 'lambda)
+	 (form use-env)
+	 (if (,(rename 'not) (,(rename 'null?) (,(rename 'cdr) form)))
+	     (,(rename 'syntax-error) "Ill-formed special form:" form))
+	 (,rlist 'capture-bundle
 		 ',interface
 		 ,@(map (lambda (element)
-			  `(close-syntax ',(if (symbol? element)
-					       element
-					       (car element))
-					 use-environment))
+			  `(,(rename 'close-syntax)
+			    ',(if (symbol? element)
+				  element
+				  (car element))
+			    use-env))
 			elements))))))))
-
-(define (rename-generated-expression rename expr)
-  (let loop ((expr expr))
-    (cond ((identifier? expr)
-	   (rename expr))
-	  ((and (pair? expr)
-		(list? (cdr expr)))
-	   (cons (rename (car expr))
-		 (let ((rest (cdr expr)))
-		   (case (car expr)
-		     ((quote dispatch-tag->predicate)
-		      rest)
-		     ((define define-syntax)
-		      (cons (car rest) (map loop (cdr rest))))
-		     (else
-		      (map loop rest))))))
-	  (else expr))))
 
 (define-syntax :capture-bundle
   (syntax-rules ()
