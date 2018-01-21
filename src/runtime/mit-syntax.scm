@@ -147,8 +147,8 @@ USA.
 	   (syntactic-environment/define environment
 					 name
 					 (make-reserved-name-item)))
-       (value-binder environment name
-		     (classify/expression (caddr form) environment))))))
+       (variable-binder environment name
+			(classify/expression (caddr form) environment))))))
 
 (define (classifier:define-syntax form environment)
   (syntax-check '(keyword identifier expression) form)
@@ -166,9 +166,9 @@ USA.
       (syntax-error "Syntactic binding value must be a keyword:" name))
   (syntactic-environment/define environment name item))
 
-(define (value-binder environment name item)
+(define (variable-binder environment name item)
   (if (keyword-item? item)
-      (syntax-error "Normal binding value must not be a keyword:" name))
+      (syntax-error "Variable binding value must not be a keyword:" name))
   (make-binding-item (bind-variable! environment name) item))
 
 ;;;; LET-like
@@ -181,9 +181,9 @@ USA.
 	   (binding-env (make-internal-syntactic-environment env)))
        (let ((binding-items
 	      (map (lambda (binding)
-		     (value-binder binding-env
-				   (car binding)
-				   (classify/expression (cadr binding) env)))
+		     (variable-binder binding-env
+				      (car binding)
+				      (classify/expression (cadr binding) env)))
 		   bindings)))
 	 (make-expression-item
 	  (let ((names (map binding-item/name binding-items))
