@@ -47,7 +47,7 @@ USA.
       ((predicate
 	(lambda (object)
 	  (and (bundle? object)
-	       (dispatch-tag<= (%bundle-tag object) tag))))
+	       (eq? tag (%bundle-tag object)))))
        (tag
 	(make-bundle-interface-tag name
 				   predicate
