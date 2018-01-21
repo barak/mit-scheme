@@ -62,11 +62,6 @@ USA.
 		  (cdr object)))))
 (register-predicate! tag-name? 'dispatch-tag-name)
 
-(define (set-predicate-tag! predicate tag)
-  (defer-boot-action 'set-predicate-tag!
-    (lambda ()
-      (set-predicate-tag! predicate tag))))
-
 (define (dispatch-tag? object)
   (and (%record? object)
        (dispatch-metatag? (%record-ref object 0))))
@@ -126,13 +121,14 @@ USA.
 (define (dispatch-metatag? object)
   (and (%record? object)
        (eq? metatag-tag (%record-ref object 0))))
+(set-predicate<=! dispatch-metatag? dispatch-tag?)
 
 (define metatag-tag)
 (add-boot-init!
  (lambda ()
    (set! metatag-tag (%make-tag #f 'metatag dispatch-metatag? '#()))
    (%record-set! metatag-tag 0 metatag-tag)))
-
+
 (define (dispatch-tag-metatag tag)
   (guarantee dispatch-tag? tag 'dispatch-tag-metatag)
   (%record-ref tag 0))
@@ -157,10 +153,6 @@ USA.
   (guarantee dispatch-tag? tag 'add-dispatch-tag-superset)
   (guarantee dispatch-tag? superset 'add-dispatch-tag-superset)
   (%add-to-weak-set superset (%tag-supersets tag)))
-
-(defer-boot-action 'predicate-relations
-  (lambda ()
-    (set-predicate<=! dispatch-metatag? dispatch-tag?)))
 
 (define-unparser-method dispatch-tag?
   (simple-unparser-method

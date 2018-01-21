@@ -29,12 +29,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define (predicate->dispatch-tag predicate)
-  (let ((tag (get-predicate-tag predicate #f)))
-    (if (not tag)
-        (error:not-a predicate? predicate))
-    tag))
-
 (define (predicate-name predicate)
   (dispatch-tag-name (predicate->dispatch-tag predicate)))
 
@@ -120,8 +114,14 @@ USA.
    (let ((table (make-hashed-metadata-table)))
      (set! predicate? (table 'has?))
      (set! get-predicate-tag (table 'get))
-     (set! set-predicate-tag! (table 'put!))
-     (run-deferred-boot-actions 'set-predicate-tag!))
+     (set! set-predicate-tag! (table 'put!)))
+   (set! predicate->dispatch-tag
+	 (named-lambda (predicate->dispatch-tag predicate)
+	   (let ((tag (get-predicate-tag predicate #f)))
+	     (if (not tag)
+		 (error:not-a predicate? predicate))
+	     tag)))
+   (run-deferred-boot-actions 'set-predicate-tag!)
    (set! register-predicate!
 	 (let ((make-simple-tag
 		(dispatch-metatag-constructor

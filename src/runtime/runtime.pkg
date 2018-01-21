@@ -178,6 +178,7 @@ USA.
 	  interrupt-mask/timer-ok
 	  object-constant?
 	  object-pure?
+	  predicate->dispatch-tag
 	  predicate?
 	  register-predicate!
 	  set-dispatch-tag<=!
@@ -206,8 +207,12 @@ USA.
 	  add-boot-init!
 	  defer-boot-action
 	  run-deferred-boot-actions)
+  (export (runtime predicate)
+	  set-predicate-tag!)
   (export (runtime rep)
-	  finished-booting!))
+	  finished-booting!)
+  (export (runtime tagged-dispatch)
+	  set-predicate-tag!))
 
 (define-package (runtime equality)
   (files "equals")
@@ -1852,7 +1857,6 @@ USA.
 	  dispatch-tag=
 	  dispatch-tag>=
 	  no-object?
-	  predicate->dispatch-tag
 	  predicate-name
 	  predicate<=
 	  predicate>=
@@ -5100,8 +5104,7 @@ USA.
 	  make-dispatch-metatag)
   (export (runtime predicate)
 	  add-dispatch-tag-superset
-	  any-dispatch-tag-superset
-	  set-predicate-tag!))
+	  any-dispatch-tag-superset))
 
 (define-package (runtime crypto)
   (files "crypto")

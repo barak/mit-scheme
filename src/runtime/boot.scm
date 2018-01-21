@@ -364,10 +364,16 @@ USA.
 
 (define predicate?)
 (define register-predicate!)
-(let ((predicates '()))
+(define predicate->dispatch-tag)
+(define set-predicate-tag!)
+(let ((predicates '())
+      (associations '()))
   (set! predicate?
 	(lambda (object)
-	  (if (memq object predicates) #t #f)))
+	  (if (or (memq object predicates)
+		  (assq object associations))
+	      #t
+	      #f)))
   (set! register-predicate!
 	(lambda (predicate name . keylist)
 	  (defer-boot-action 'predicate-registrations
@@ -375,6 +381,15 @@ USA.
 	      (apply register-predicate! predicate name keylist)))
 	  (set! predicates (cons predicate predicates))
 	  unspecific))
+  (set! predicate->dispatch-tag
+	(lambda (predicate)
+	  (cdr (assq predicate associations))))
+  (set! set-predicate-tag!
+	(lambda (predicate tag)
+	  (set! associations (cons (cons predicate tag) associations))
+	  (defer-boot-action 'set-predicate-tag!
+	    (lambda ()
+	      (set-predicate-tag! predicate tag)))))
   unspecific)
 
 (define (set-dispatch-tag<=! t1 t2)
@@ -413,7 +428,7 @@ USA.
 	(lambda (port)
 	  (write-string "object satisfying " port)
 	  (write predicate port)))))
-
+
 ;;;; Miscellany
 
 (define (object-constant? object)
