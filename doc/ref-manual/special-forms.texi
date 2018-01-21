@@ -2619,9 +2619,6 @@ Creates and returns and new synthetic identifier (alias) that is
 guaranteed to be different from all existing identifiers.
 @var{Identifier} is any existing identifier, which is used in deriving
 the name of the new identifier.
-
-This is implemented by syntactically closing @var{identifier} in a
-special empty environment.
 @end deffn
 
 @node Explicit Renaming,  , Syntactic Closures, Macros
