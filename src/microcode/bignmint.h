@@ -118,7 +118,8 @@ extern void abort ();
   ((BIGNUM_RADIX / BIGNUM_DIGIT_LENGTH) - BIGNUM_DIGIT_LENGTH)
 
 #define BIGNUM_DIGIT(c) ((bignum_digit_type) (c))
-#define BIGNUM_DIGIT_ONES(n) (~ ((~ (BIGNUM_DIGIT (0))) << (n)))
+#define BIGNUM_DIGIT_ONES(n)						\
+  ((bignum_digit_type) (~ ((~ ((uintmax_t) (0))) << (n))))
 
 #define BIGNUM_START_PTR(bignum)					\
   ((BIGNUM_TO_POINTER (bignum)) + 1)
