@@ -566,7 +566,9 @@ USA.
    (RUNTIME SAVE/RESTORE)
    (RUNTIME STRUCTURE-PARSER)
    (RUNTIME SWANK)
-   (RUNTIME STACK-SAMPLER)))
+   (RUNTIME STACK-SAMPLER)
+   ;; Last since it turns on runtime handling of microcode errors.
+   ((runtime microcode-errors) initialize-error-hooks!)))
 
 (let ((obj (file->object "site" #t #f)))
   (if obj

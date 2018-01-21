@@ -85,6 +85,14 @@ USA.
 		    (cons* continuation
 			   'BOUND-RESTARTS
 			   field-values))))))
+
+(define (initialize-error-hooks!)
+  (set-fixed-objects-item! 'system-error-vector error-handler-vector)
+  (set-fixed-objects-item! 'error-procedure
+			   (lambda (datum arguments environment)
+			     environment
+			     (apply error (cons* datum arguments))))
+  (set-fixed-objects-item! 'compiler-error-procedure error))
 
 ;;;; Restart Bindings
 
@@ -457,13 +465,6 @@ USA.
 	 default-error-handler)
      continuation
      argument)))
-
-(set-fixed-objects-item! 'system-error-vector error-handler-vector)
-(set-fixed-objects-item! 'error-procedure
-			 (lambda (datum arguments environment)
-			   environment
-			   (apply error (cons* datum arguments))))
-(set-fixed-objects-item! 'compiler-error-procedure error)
 
 ;;;; Variable Errors
 
