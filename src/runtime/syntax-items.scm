@@ -75,6 +75,11 @@ USA.
     (make-variable-item name)
     variable-item?
   (name variable-item/name))
+
+(define-unparser-method variable-item?
+  (simple-unparser-method 'variable-item?
+    (lambda (item)
+      (list (variable-item/name item)))))
 
 ;;; Expression items represent any kind of expression other than a
 ;;; run-time variable or a sequence.
