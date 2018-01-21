@@ -371,7 +371,8 @@ USA.
 	 ("gentag" . (runtime tagged-dispatch))
 	 ("thread-low" . (RUNTIME THREAD))
 	 ("poplat" . (RUNTIME POPULATION))
-	 ("record" . (RUNTIME RECORD))))
+	 ("record" . (RUNTIME RECORD))
+	 ("bundle" . (runtime bundle))))
       (files2
        '(("syntax-items" . (RUNTIME SYNTAX ITEMS))
 	 ("syntax-transforms" . (RUNTIME SYNTAX TRANSFORMS))
@@ -409,6 +410,7 @@ USA.
   (package-initialize '(runtime tagged-dispatch) #f #t)
   (package-initialize '(RUNTIME POPULATION) #f #t)
   (package-initialize '(runtime record) #f #t)
+  (package-initialize '(runtime bundle) #f #t)
 
   (load-files-with-boot-inits files2)
   (package-initialize '(RUNTIME 1D-PROPERTY) #f #t)	     ;First population.
@@ -479,7 +481,6 @@ USA.
    (RUNTIME HASH)
    (RUNTIME DYNAMIC)
    (RUNTIME REGULAR-SEXPRESSION)
-   (RUNTIME BUNDLE)
    ;; Microcode data structures
    (RUNTIME HISTORY)
    (RUNTIME SCODE)

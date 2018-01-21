@@ -116,28 +116,21 @@ USA.
 
 (define (bundle? object)
   (and (entity? object)
-       (bundle-metadata? (entity-extra object))))
-
-(add-boot-init!
- (lambda ()
-   (register-predicate! bundle? 'bundle '<= entity?)))
+       (let ((extra (entity-extra object)))
+	 (and (vector? extra)
+	      (fix:= 2 (vector-length extra))
+	      (bundle-interface-tag? (vector-ref extra 0))))))
 
 (define (%make-bundle tag values)
   (make-entity (lambda (self operator . args)
 		 (apply (bundle-ref self operator) args))
-	       (make-bundle-metadata tag values)))
+	       (vector tag values)))
 
-(define-record-type <bundle-metadata>
-    (make-bundle-metadata tag values)
-    bundle-metadata?
-  (tag bundle-metadata-tag)
-  (values bundle-metadata-values))
+(define-integrable (%bundle-tag bundle)
+  (vector-ref (entity-extra bundle) 0))
 
-(define (%bundle-tag bundle)
-  (bundle-metadata-tag (entity-extra bundle)))
-
-(define (%bundle-values bundle)
-  (bundle-metadata-values (entity-extra bundle)))
+(define-integrable (%bundle-values bundle)
+  (vector-ref (entity-extra bundle) 1))
 
 (define (bundle-interface bundle)
   (guarantee bundle? bundle 'bundle-interface)
