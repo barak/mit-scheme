@@ -51,28 +51,40 @@ USA.
        (tag
 	(make-bundle-interface-tag name
 				   predicate
-				   (list->vector (map car elements))
-				   (list->vector (map (lambda (element)
-							(map list-copy
-							     (cdr element)))
-						      elements)))))
+				   (list->vector (map element-name elements))
+				   (list->vector
+				    (map (lambda (element)
+					   (map list-copy
+						(element-properties element)))
+					 elements)))))
     predicate))
 
 (define (elements? object)
   (and (list? object)
        (every (lambda (p)
-		(and (pair? p)
-		     (symbol? (car p))
-		     (list? (cdr p))
-		     (every (lambda (r)
-			      (and (pair? r)
-				   (symbol? (car r))
-				   (list? (cdr r))))
-			    (cdr p))))
+		(or (symbol? p)
+		    (and (pair? p)
+			 (symbol? (car p))
+			 (list? (cdr p))
+			 (every (lambda (r)
+				  (and (pair? r)
+				       (symbol? (car r))
+				       (list? (cdr r))))
+				(cdr p)))))
 	      object)
-       (alist-has-unique-keys? object)))
+       (no-duplicate-keys? object element-name)))
 (register-predicate! elements? 'interface-elements)
 
+(define (element-name element)
+  (if (symbol? element)
+      element
+      (car element)))
+
+(define (element-properties element)
+  (if (symbol? element)
+      '()
+      (cdr element)))
+
 (define bundle-interface-tag?)
 (define make-bundle-interface-tag)
 (add-boot-init!
@@ -224,13 +236,16 @@ USA.
        (every (lambda (p)
 		(symbol? (car p)))
 	      object)
-       (alist-has-unique-keys? object)))
+       (no-duplicate-keys? object car)))
 (register-predicate! bundle-alist? 'bundle-alist '<= alist?)
 
 (define (alist-has-unique-keys? alist)
-  (or (null? alist)
-      (and (not (any (let ((name (caar alist)))
-		       (lambda (p)
-			 (eq? name (car p))))
-		     (cdr alist)))
-	   (alist-has-unique-keys? (cdr alist)))))
+  (no-duplicate-keys? alist car))
+
+(define (no-duplicate-keys? items get-key)
+  (or (null? items)
+      (and (not (any (let ((key (get-key (car items))))
+		       (lambda (item)
+			 (eq? key (get-key item))))
+		     (cdr items)))
+	   (no-duplicate-keys? (cdr items) get-key))))
