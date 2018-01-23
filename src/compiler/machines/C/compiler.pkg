@@ -727,8 +727,6 @@ USA.
 	  permanent-register-list
 	  stringify
 	  stringify-data)
-  (import (runtime string)
-	  %string-append)
   (import (scode-optimizer expansion)
 	  scode->scode-expander))
 
