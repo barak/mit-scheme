@@ -148,7 +148,6 @@ USA.
     ("socket"	(runtime socket))
     ("srfi-1"	(runtime srfi-1))
     ("stack-sample" (runtime stack-sampler))
-    ("starbase"	(runtime starbase-graphics))
     ("stream"	(runtime stream))
     ("string"	(runtime string))
     ("stringio"	(runtime string-i/o-port))

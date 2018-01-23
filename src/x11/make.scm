@@ -48,7 +48,6 @@ Load the X11 option. |#
 	      x-window-set-name
 	      x-window-set-position
 	      x-window-set-size
-	      ;; x-window-starbase-filename No such primitive!
 	      x-window-visual
 	      x-window-withdraw
 	      x-window-x-size

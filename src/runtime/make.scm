@@ -552,7 +552,6 @@ USA.
    ;; Graphics.  The last type initialized is the default for
    ;; MAKE-GRAPHICS-DEVICE, only the types that are valid for the
    ;; operating system are actually loaded and initialized.
-   (OPTIONAL (RUNTIME STARBASE-GRAPHICS))
    (OPTIONAL (RUNTIME X-GRAPHICS))
    ;; Emacs -- last because it installs hooks everywhere which must be initted.
    (RUNTIME EMACS-INTERFACE)

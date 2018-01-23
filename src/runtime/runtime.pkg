@@ -4315,7 +4315,6 @@ USA.
 	  x-graphics/set-mouse-color
 	  x-graphics/set-mouse-shape
 	  x-graphics/set-window-name
-	  x-graphics/starbase-filename
 	  x-graphics/visual-info
 	  x-graphics/window-id
 	  x-graphics/withdraw-window
@@ -4345,15 +4344,6 @@ USA.
 	  x-visual-info/screen
 	  x-visual-info/visual
 	  x-visual-info/visual-id)
-  (initialization (initialize-package!)))
-
-(define-package (runtime starbase-graphics)
-  (file-case os-type
-    ((unix) "starbase")
-    (else))
-  (parent (runtime))
-  (export ()
-	  starbase-graphics-device-type)
   (initialization (initialize-package!)))
 
 (define-package (runtime state-space)

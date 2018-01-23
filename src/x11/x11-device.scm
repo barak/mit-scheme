@@ -103,7 +103,6 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	   (set-mouse-color ,x-graphics/set-mouse-color)
 	   (set-mouse-shape ,x-graphics/set-mouse-shape)
 	   (set-window-name ,x-graphics/set-window-name)
-	   (starbase-filename ,x-graphics/starbase-filename)
 	   (visual-info ,x-graphics/visual-info)
 	   (withdraw-window ,x-graphics/withdraw-window))))
   (set! display-finalizer
@@ -627,13 +626,6 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-graphics/get-default device resource-name class-name)
   (x-display-get-default (x-graphics-device/xd device)
 			 resource-name class-name))
-
-(define (x-graphics/starbase-filename device)
-  (x-window-starbase-filename (x-graphics-device/xw device)))
-
-(define (x-window-starbase-filename window)
-  window
-  (error "Unimplemented."))
 
 (define (x-graphics/window-id device)
   (x-window-id (x-graphics-device/xw device)))

@@ -265,7 +265,6 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	  x-graphics/set-mouse-color
 	  x-graphics/set-mouse-shape
 	  x-graphics/set-window-name
-	  x-graphics/starbase-filename
 	  x-graphics/visual-info
 	  x-graphics/window-id
 	  x-graphics/withdraw-window
