@@ -25,7 +25,7 @@ USA.
 |#
 
 ;;;; Low-level arithmetic
-;;; package: (runtime fixnum-arithmetic)
+;;; package: (runtime primitive-arithmetic)
 
 (declare (usual-integrations))
 

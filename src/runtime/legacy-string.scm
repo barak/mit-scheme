@@ -24,20 +24,28 @@ USA.
 
 |#
 
-;;;; Switzerland site specific stuff
+;;;; Legacy Strings
+;;; package: (runtime legacy-string)
 
 (declare (usual-integrations))
 
-;;; Local hacks
+(define-primitives
+  (string-allocate 1)
+  (legacy-string? string? 1)
+  (vector-8b-length string-length 1)
+  (vector-8b-ref 2)
+  (vector-8b-set! 3))
 
-(define (call/cc . args)
-  (warn "call/cc: Invoking the C compiler:" args)
-  (warn "Segmentation fault (core dumped)"))
+(define (make-legacy-string k #!optional char)
+  (let ((string (string-allocate k)))
+    (if (not (default-object? char))
+	(begin
+	  (guarantee 8-bit-char? char 'make-legacy-string)
+	  (string-fill! string char)))
+    string))
 
-(set-environment-variable-default! "MITSCHEME_INF_DIRECTORY" "\\scheme")
-(set-environment-variable-default!
- "TERM"
- (lambda ()
-   (if (string-ci=? microcode-id/operating-system-name "NT")
-       "ansi.sys"
-       "ibm_pc_bios")))
+(define (make-vector-8b length #!optional ascii)
+  (make-legacy-string length
+		      (if (default-object? ascii)
+			  ascii
+			  (integer->char ascii))))

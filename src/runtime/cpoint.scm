@@ -55,7 +55,7 @@ USA.
 
 #|
 
-;;; Disabled because some procedures in conpar.scm and uenvir.scm
+;;; Disabled because some procedures in conpar.scm and environment.scm
 ;;; depend on the actual length for finding compiled code variables,
 ;;; etc.
 

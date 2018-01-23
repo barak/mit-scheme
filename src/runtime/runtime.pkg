@@ -221,10 +221,10 @@ USA.
 	  equal?
 	  eqv?))
 
-(define-package (runtime fixnum-arithmetic)
-  (files "fixart")
+(define-package (runtime primitive-arithmetic)
+  (files "primitive-arithmetic")
   (parent (runtime))
-  (export () deprecated:fixnum-arithmetic
+  (export () deprecated:primitive-arithmetic
 	  (largest-fixnum fix:largest-value)
 	  (smallest-fixnum fix:smallest-value))
   (export ()
@@ -767,7 +767,7 @@ USA.
 	  uninterned-symbol?))
 
 (define-package (runtime microcode-data)
-  (files "udata")
+  (files "microcode-data")
   (parent (runtime))
   (export ()
 	  compiled-code-address->block
@@ -986,10 +986,10 @@ USA.
 	    set-environment-variable!
 	    set-environment-variable-default!))))
 
-(define-package (runtime string)
-  (files "string")
+(define-package (runtime legacy-string)
+  (files "legacy-string")
   (parent (runtime))
-  (export () deprecated:string
+  (export () deprecated:legacy-string
 	  (vector-8b? legacy-string?)
 	  legacy-string?
 	  make-legacy-string
@@ -1001,7 +1001,7 @@ USA.
 (define-package (runtime ustring)
   (files "ustring")
   (parent (runtime))
-  (export () deprecated:ustring
+  (export () deprecated:string
 	  (string-ci-hash string-hash-ci)
 	  (string-hash-mod string-hash)
 	  (substring->list string->list)
@@ -1420,7 +1420,7 @@ USA.
 	  char-set:symbol-initial))
 
 (define-package (runtime character-set)
-  (files "chrset")
+  (files "char-set")
   (parent (runtime))
   (export () deprecated:character-set
 	  (char-set->scalar-values char-set->code-points)
@@ -1468,7 +1468,7 @@ USA.
 	  string->char-set)
   (export (runtime regular-sexpression)
 	  normalize-ranges)
-  (export (runtime string)
+  (export (runtime legacy-string)
 	  (char-set-table %char-set-table)))
 
 (define-package (runtime compiler-info)
@@ -1540,7 +1540,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime console-i/o-port)
-  (files "ttyio")
+  (files "console-io")
   (parent (runtime))
   (import (runtime primitive-io)
 	  tty-input-channel
@@ -1794,7 +1794,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime procedure)
-  (files "uproc")
+  (files "procedure")
   (parent (runtime))
   (export ()
 	  %entity-extra
@@ -1944,7 +1944,7 @@ USA.
 	  make-bundle-interface))
 
 (define-package (runtime environment)
-  (files "uenvir")
+  (files "environment")
   (parent (runtime))
   (export ()
 	  compiled-procedure/environment
@@ -2148,7 +2148,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime file-i/o-port)
-  (files "fileio")
+  (files "file-io")
   (parent (runtime))
   (export () deprecated:file-i/o-port
 	  call-with-exclusive-legacy-binary-output-file
@@ -2185,7 +2185,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime transcript)
-  (files "tscript")
+  (files "transcript")
   (parent (runtime))
   (export ()
 	  transcript-off
@@ -2290,7 +2290,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime generic-i/o-port)
-  (files "genio")
+  (files "generic-io")
   (parent (runtime))
   (export ()
 	  binary->textual-port
@@ -2375,7 +2375,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime hash-table)
-  (files "hashtb")
+  (files "hash-table")
   (parent (runtime))
   (import (runtime population)
 	  add-to-population!/unsafe)
@@ -2597,7 +2597,7 @@ USA.
 	  synchronize-binary-output-port))
 
 (define-package (runtime port)
-  (files "port")
+  (files "textual-port")
   (parent (runtime))
   (export () deprecated:port
 	  (i/o-port-type? textual-i/o-port-type?)
@@ -2725,7 +2725,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime input-port)
-  (files "input")
+  (files "input-port")
   (parent (runtime))
   (export () deprecated:input-port
 	  make-eof-object
@@ -2759,7 +2759,7 @@ USA.
 	  unread-char))
 
 (define-package (runtime output-port)
-  (files "output")
+  (files "output-port")
   (parent (runtime))
   (export () deprecated:output-port
 	  (flush-output flush-output-port)
@@ -2797,7 +2797,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime interrupt-handler)
-  (files "intrpt")
+  (files "interrupt")
   (parent (runtime))
   (export ()
 	  event:console-resize)
@@ -3138,7 +3138,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime microcode-errors)
-  (files "uerror")
+  (files "microcode-errors")
   (parent (runtime error-handler))
   (export ()
 	  condition-type:anomalous-microcode-error
@@ -3163,7 +3163,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime microcode-tables)
-  (files "utabs")
+  (files "microcode-tables")
   (parent (runtime))
   (export ()
 	  microcode-id/compiled-code-type
@@ -3358,7 +3358,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime parser)
-  (files "parse")
+  (files "parser")
   (parent (runtime))
   (export () deprecated:parser
 	  (param:parser-canonicalize-symbols? param:parser-fold-case?)
@@ -3387,7 +3387,7 @@ USA.
 	  parse-file-attributes-string))
 
 (define-package (runtime pathname)
-  (files "pathnm")
+  (files "pathname")
   (parent (runtime))
   (export ()
 	  *default-pathname-defaults*
@@ -3446,12 +3446,12 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime pathname unix)
-  (files "unxpth")
+  (files "unix-pathname")
   (parent (runtime pathname))
   (initialization (initialize-package!)))
 
 (define-package (runtime pathname dos)
-  (files "dospth")
+  (files "dos-pathname")
   (parent (runtime pathname))
   (initialization (initialize-package!)))
 
@@ -3506,7 +3506,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime primitive-io)
-  (files "io")
+  (files "primitive-io")
   (parent (runtime))
   (export ()
 	  all-dld-handles
@@ -4414,7 +4414,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime string-i/o-port)
-  (files "stringio")
+  (files "string-io")
   (parent (runtime))
   (export () deprecated:string-i/o-port
 	  (get-output-from-accumulator get-output-string!)
@@ -5075,7 +5075,7 @@ USA.
 	  gdbm_writer))
 
 (define-package (runtime tagged-dispatch)
-  (files "gentag" "gencache")
+  (files "dispatch-tag" "dispatch-cache")
   (parent (runtime))
   (export ()
 	  dispatch-metatag-constructor
@@ -5490,7 +5490,7 @@ USA.
 	  write-http-headers))
 
 (define-package (runtime http-i/o)
-  (files "httpio")
+  (files "http-io")
   (parent (runtime))
   (export ()
 	  http-message-body
