@@ -446,7 +446,7 @@ USA.
 			      (read-prop-file "canonical-dm")))))
 
 (define char-full-composition-exclusion?
-  (access char-full-composition-exclusion? (->environment '(runtime ustring))))
+  (access char-full-composition-exclusion? (->environment '(runtime string))))
 
 ;;;; Code-point ranges
 

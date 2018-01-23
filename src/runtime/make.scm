@@ -365,7 +365,7 @@ USA.
 	 ("thread-low" . (runtime thread))
 	 ("vector" . (RUNTIME VECTOR))))
       (files1
-       '(("ustring" . (RUNTIME USTRING))
+       '(("string" . (runtime string))
 	 ("symbol" . (RUNTIME SYMBOL))
 	 ("procedure" . (runtime procedure))
 	 ("random" . (RUNTIME RANDOM-NUMBER))
@@ -464,7 +464,7 @@ USA.
    (RUNTIME BYTEVECTOR)
    (RUNTIME CHARACTER-SET)
    (RUNTIME LAMBDA-ABSTRACTION)
-   (RUNTIME USTRING)
+   (runtime string)
    (RUNTIME STREAM)
    (RUNTIME 2D-PROPERTY)
    (RUNTIME HASH-TABLE)

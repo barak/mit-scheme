@@ -25,7 +25,7 @@ USA.
 |#
 
 ;;;; Unicode strings
-;;; package: (runtime ustring)
+;;; package: (runtime string)
 
 ;;; For simplicity, the implementation uses a 24-bit encoding for non-8-bit
 ;;; strings.  This is not a good long-term approach and should be revisited once
@@ -294,7 +294,7 @@ USA.
   (%record %slice-tag string start length))
 
 (define-integrable %slice-tag
-  '|#[(runtime ustring)slice]|)
+  '|#[(runtime string)slice]|)
 
 (define-integrable (slice-string slice) (%record-ref slice 1))
 (define-integrable (slice-start slice) (%record-ref slice 2))

@@ -998,8 +998,8 @@ USA.
 	  vector-8b-ref
 	  vector-8b-set!))
 
-(define-package (runtime ustring)
-  (files "ustring")
+(define-package (runtime string)
+  (files "string")
   (parent (runtime))
   (export () deprecated:string
 	  (string-ci-hash string-hash-ci)
@@ -1377,7 +1377,7 @@ USA.
   (export (runtime ucd-glue)
 	  char-set:changes-when-case-folded
 	  ucd-nt-value)
-  (export (runtime ustring)
+  (export (runtime string)
 	  char-changes-when-case-folded?
 	  char-changes-when-lower-cased?
 	  char-changes-when-upper-cased?

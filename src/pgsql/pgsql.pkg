@@ -30,7 +30,7 @@ USA.
   (files "pgsql")
   (parent ())
   (initialization (initialize-package!))
-  (import (runtime ustring)
+  (import (runtime string)
 	  cp1-ref
 	  ustring-cp-size
 	  ustring?)
