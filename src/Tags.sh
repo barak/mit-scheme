@@ -39,12 +39,15 @@ DEFAULT_SUBDIRS=( \
     mcrypt \
     mhash \
     microcode \
+    pgsql \
     runtime \
     sf \
     sos \
     ssp \
     star-parser \
     win32 \
+    x11 \
+    x11-screen \
     xdoc \
     xml \
 )
