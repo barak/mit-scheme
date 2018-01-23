@@ -79,7 +79,6 @@ USA.
     ("gdbm"	(runtime gdbm))
     ("gencache"	(runtime tagged-dispatch))
     ("genio"	(runtime generic-i/o-port))
-    ("gensym"	(runtime gensym))
     ("gentag"	(runtime tagged-dispatch))
     ("global"	(runtime miscellaneous-global))
     ("graphics"	(runtime graphics))

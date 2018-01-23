@@ -755,6 +755,7 @@ USA.
 	  intern
 	  intern-soft
 	  interned-symbol?
+	  generate-uninterned-symbol
 	  string->symbol
 	  string->uninterned-symbol
 	  symbol
@@ -2341,13 +2342,6 @@ USA.
 	  make-generic-i/o-port)
   (export (runtime subprocess)
 	  make-generic-i/o-port))
-
-(define-package (runtime gensym)
-  (files "gensym")
-  (parent (runtime))
-  (export ()
-	  generate-uninterned-symbol)
-  (initialization (initialize-package!)))
 
 (define-package (runtime global-database)
   (files "gdatab")

@@ -87,6 +87,37 @@ USA.
 (define (symbol>? x y)
   (string<? (symbol-name y) (symbol-name x)))
 
+(define generate-uninterned-symbol
+  (let ((mutex (make-thread-mutex))
+	(counter 0)
+	(default-prefix "G"))
+    (named-lambda (generate-uninterned-symbol #!optional argument)
+      (let ((finish
+	     (lambda (prefix)
+	       (string->uninterned-symbol
+		(string-append prefix
+			       (number->string
+				(with-thread-mutex-lock mutex
+				  (lambda ()
+				    (let ((n counter))
+				      (set! counter (+ counter 1))
+				      n)))))))))
+	(cond ((or (default-object? argument) (not argument))
+	       (finish default-prefix))
+	      ((string? argument)
+	       (finish argument))
+	      ((symbol? argument)
+	       (finish (symbol->string argument)))
+	      ((exact-nonnegative-integer? argument)
+	       (with-thread-mutex-lock mutex
+		 (lambda ()
+		   (set! counter argument)
+		   unspecific))
+	       (finish default-prefix))
+	      (else
+	       (error "Invalid argument to generate-uninterned-symbol:"
+		      argument)))))))
+
 (define-integrable (->bytes maybe-string)
   (object-new-type (ucode-type bytevector) maybe-string))
 
