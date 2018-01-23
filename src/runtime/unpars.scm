@@ -444,10 +444,10 @@ USA.
 
 (define (unparse/uninterned-symbol symbol context)
   (if (get-param:unparse-uninterned-symbols-by-name?)
-      (unparse-symbol symbol context)
+      (unparse-symbol-name (symbol->string symbol) context)
       (*unparse-with-brackets 'UNINTERNED-SYMBOL symbol context
         (lambda (context*)
-          (unparse-symbol symbol context*)))))
+	  (*unparse-string (symbol->string symbol) context)))))
 
 (define (unparse-symbol symbol context)
   (if (keyword? symbol)
