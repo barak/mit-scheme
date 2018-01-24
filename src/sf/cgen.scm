@@ -60,7 +60,7 @@ USA.
   (let ((declarations (maybe-flush-declarations declarations)))
     (if (null? declarations)
 	expression
-	(make-declaration declarations expression))))
+	(make-scode-declaration declarations expression))))
 
 (define flush-declarations?)
 
@@ -123,30 +123,32 @@ USA.
 (define (cgen/variable interns variable)
   (cdr (or (assq variable (cdr interns))
 	   (let ((association
-		  (cons variable (make-variable (variable/name variable)))))
+		  (cons variable
+			(make-scode-variable (variable/name variable)))))
 	     (set-cdr! interns (cons association (cdr interns)))
 	     association))))
 
 (define-method/cgen 'ACCESS
   (lambda (interns expression)
-    (make-access (cgen/expression interns (access/environment expression))
-		 (access/name expression))))
+    (make-scode-access (cgen/expression interns (access/environment expression))
+		       (access/name expression))))
 
 (define-method/cgen 'ASSIGNMENT
   (lambda (interns expression)
-    (make-assignment-from-variable
-     (cgen/variable interns (assignment/variable expression))
+    (make-scode-assignment
+     (scode-variable-name
+      (cgen/variable interns (assignment/variable expression)))
      (cgen/expression interns (assignment/value expression)))))
 
 (define-method/cgen 'COMBINATION
   (lambda (interns expression)
-    (make-combination
+    (make-scode-combination
      (cgen/expression interns (combination/operator expression))
      (cgen/expressions interns (combination/operands expression)))))
 
 (define-method/cgen 'CONDITIONAL
   (lambda (interns expression)
-    (make-conditional
+    (make-scode-conditional
      (cgen/expression interns (conditional/predicate expression))
      (cgen/expression interns (conditional/consequent expression))
      (cgen/expression interns (conditional/alternative expression)))))
@@ -164,11 +166,11 @@ USA.
 
 (define-method/cgen 'DELAY
   (lambda (interns expression)
-    (make-delay (cgen/expression interns (delay/expression expression)))))
+    (make-scode-delay (cgen/expression interns (delay/expression expression)))))
 
 (define-method/cgen 'DISJUNCTION
   (lambda (interns expression)
-    (make-disjunction
+    (make-scode-disjunction
      (cgen/expression interns (disjunction/predicate expression))
      (cgen/expression interns (disjunction/alternative expression)))))
 
@@ -194,7 +196,7 @@ USA.
     (make-open-block
      (map variable/name (open-block/variables expression))
      (maybe-flush-declarations (block/declarations block))
-     (make-sequence
+     (make-scode-sequence
       (let loop
 	  ((variables (open-block/variables expression))
 	   (values (open-block/values expression))
@@ -202,8 +204,8 @@ USA.
 	(cond ((null? variables) (cgen/expressions (list block) actions))
 	      ((null? actions) (error "Extraneous auxiliaries"))
 	      ((eq? (car actions) open-block/value-marker)
-	       (cons (make-assignment (variable/name (car variables))
-				      (cgen/expression (list block) (car values)))
+	       (cons (make-scode-assignment (variable/name (car variables))
+					    (cgen/expression (list block) (car values)))
 		     (loop (cdr variables) (cdr values) (cdr actions))))
 	      (else
 	       (cons (cgen/expression (list block) (car actions))
@@ -212,7 +214,7 @@ USA.
 (define-method/cgen 'QUOTATION
   (lambda (interns expression)
     interns ; ignored
-    (make-quotation (cgen/top-level expression))))
+    (make-scode-quotation (cgen/top-level expression))))
 
 (define-method/cgen 'REFERENCE
   (lambda (interns expression)
@@ -226,7 +228,7 @@ USA.
 	       (sequence/actions expression))))
       (if (null? (cdr actions))
 	  (cgen/expression interns (car actions))
-	  (make-sequence (cgen/expressions interns actions))))))
+	  (make-scode-sequence (cgen/expressions interns actions))))))
 
 (define (remove-references actions)
   (if (null? (cdr actions))
@@ -239,7 +241,7 @@ USA.
 (define-method/cgen 'THE-ENVIRONMENT
   (lambda (interns expression)
     interns expression ; ignored
-    (make-the-environment)))
+    (make-scode-the-environment)))
 
 ;;; Debugging utility
 (define (pp-expression form #!optional port)

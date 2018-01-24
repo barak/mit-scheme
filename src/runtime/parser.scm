@@ -586,7 +586,7 @@ USA.
     ;; result of the evaluation to be the object she was referring
     ;; to.  If the quotation isn't there, the user just gets
     ;; confused.
-    (make-quotation object)))
+    (make-scode-quotation object)))
 
 (define (parse-unhash object)
   (if (not (exact-nonnegative-integer? object))

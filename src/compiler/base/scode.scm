@@ -101,24 +101,22 @@ USA.
 	   (eq? (scode/absolute-combination-name object) 'ERROR-PROCEDURE))))
 
 (define (scode/error-combination-components combination receiver)
-  (scode/combination-components combination
-    (lambda (operator operands)
-      operator
-      (receiver
-       (car operands)
-       (let loop ((irritants (cadr operands)))
-	 (cond ((null? irritants) '())
-	       ((and (scode/absolute-combination? irritants)
-		     (eq? (scode/absolute-combination-name irritants) 'LIST))
-		(scode/absolute-combination-operands irritants))
-	       ((and (scode/combination? irritants)
-		     (eq? (scode/combination-operator irritants)
-			  (ucode-primitive cons)))
-		(let ((operands (scode/combination-operands irritants)))
-		  (cons (car operands)
-			(loop (cadr operands)))))
-	       (else
-		(cadr operands))))))))
+  (let ((operands (scode/combination-operands combination)))
+    (receiver
+     (car operands)
+     (let loop ((irritants (cadr operands)))
+       (cond ((null? irritants) '())
+	     ((and (scode/absolute-combination? irritants)
+		   (eq? (scode/absolute-combination-name irritants) 'LIST))
+	      (scode/absolute-combination-operands irritants))
+	     ((and (scode/combination? irritants)
+		   (eq? (scode/combination-operator irritants)
+			(ucode-primitive cons)))
+	      (let ((operands (scode/combination-operands irritants)))
+		(cons (car operands)
+		      (loop (cadr operands)))))
+	     (else
+	      (cadr operands)))))))
 
 (define (scode/make-error-combination message operand)
   (scode/make-absolute-combination

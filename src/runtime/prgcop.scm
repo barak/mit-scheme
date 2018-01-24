@@ -232,9 +232,9 @@ USA.
       (error "copy-SEQUENCE-object: Unknown type" obj)))
 
 (define (copy-COMBINATION-object obj)
-  (make-combination
-   (copy-object (combination-operator obj))
-   (map copy-object (combination-operands obj))))
+  (make-scode-combination
+   (copy-object (scode-combination-operator obj))
+   (map copy-object (scode-combination-operands obj))))
 
 (define (copy-LAMBDA-object obj)
   (cond ((object-type? (ucode-type lambda) obj)
@@ -247,12 +247,12 @@ USA.
 	 (error "COPY-LAMBDA-object: Unknown type" obj))))
 
 (define (copy-VARIABLE-object obj)
-  (let ((var (make-variable (variable-name obj))))
+  (let ((var (make-scode-variable (scode-variable-name obj))))
     (add-association! obj var)
     var))
 
 (define (copy-COMMENT-object obj)
-  (let ((the-text (comment-text obj)))
+  (let ((the-text (scode-comment-text obj)))
     (if (not (dbg-info-vector? the-text))
 	(%%copy-pair (ucode-type COMMENT) obj)
 	(let ((the-car (system-pair-car obj))

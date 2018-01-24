@@ -293,10 +293,7 @@ USA.
   (files "xform")
   (parent (edwin class-macros))
   (export (edwin class-macros)
-	  transform-instance-variables)
-  (import ()
-	  (make-scode-variable make-variable)
-	  (scode-variable-name variable-name)))
+	  transform-instance-variables))
 
 (define-package (edwin class-constructor)
   (files "clscon")

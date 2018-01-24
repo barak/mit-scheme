@@ -33,38 +33,38 @@ USA.
   (eval output (syntactic-environment->environment environment)))
 
 (define (output/variable name)
-  (make-variable name))
+  (make-scode-variable name))
 
 (define (output/constant datum)
   datum)
 
 (define (output/assignment name value)
-  (make-assignment name value))
+  (make-scode-assignment name value))
 
 (define (output/top-level-definition name value)
-  (make-definition name
-		   (if (lambda? value)
-		       (lambda-components* value
-			 (lambda (name* required optional rest body)
-			   (if (eq? name* lambda-tag:unnamed)
-			       (make-lambda* name required optional rest body)
-			       value)))
-		       value)))
+  (make-scode-definition name
+    (if (scode-lambda? value)
+	(lambda-components* value
+	  (lambda (name* required optional rest body)
+	    (if (eq? name* lambda-tag:unnamed)
+		(make-lambda* name required optional rest body)
+		value)))
+	value)))
 
 (define (output/top-level-syntax-definition name value)
-  (make-definition name (make-macro-reference-trap-expression value)))
+  (make-scode-definition name (make-macro-reference-trap-expression value)))
 
 (define (output/conditional predicate consequent alternative)
-  (make-conditional predicate consequent alternative))
+  (make-scode-conditional predicate consequent alternative))
 
 (define (output/disjunction predicate alternative)
-  (make-disjunction predicate alternative))
+  (make-scode-disjunction predicate alternative))
 
 (define (output/sequence expressions)
-  (make-sequence expressions))
+  (make-scode-sequence expressions))
 
 (define (output/combination operator operands)
-  (make-combination operator operands))
+  (make-scode-combination operator operands))
 
 (define (output/lambda lambda-list body)
   (output/named-lambda lambda-tag:unnamed lambda-list body))
@@ -75,10 +75,10 @@ USA.
       (make-lambda* name required optional rest body))))
 
 (define (output/delay expression)
-  (make-delay expression))
+  (make-scode-delay expression))
 
 (define (output/unassigned-test name)
-  (make-unassigned? name))
+  (make-scode-unassigned? name))
 
 (define (output/unassigned)
   (make-unassigned-reference-trap))
@@ -96,12 +96,14 @@ USA.
 				      "-value"))) names)))
     (output/let
      names (map (lambda (name) name (output/unassigned)) names)
-     (make-sequence
+     (make-scode-sequence
       (cons (output/let
 	     temps values
-	     (make-sequence (map (lambda (name temp)
-				   (make-assignment name (make-variable temp)))
-				 names temps)))
+	     (make-scode-sequence
+	      (map (lambda (name temp)
+		     (make-scode-assignment name (make-scode-variable temp)))
+		   names
+		   temps)))
 	    (list
 	     (let ((body (scan-defines body make-open-block)))
 	       (if (open-block? body)
@@ -111,20 +113,20 @@ USA.
 (define (output/body declarations body)
   (scan-defines (let ((declarations (apply append declarations)))
 		  (if (pair? declarations)
-		      (make-sequence
+		      (make-scode-sequence
 		       (list (make-block-declaration declarations)
 			     body))
 		      body))
 		make-open-block))
 
 (define (output/definition name value)
-  (make-definition name value))
+  (make-scode-definition name value))
 
 (define (output/top-level-sequence declarations expressions)
   (let ((declarations (apply append declarations))
 	(make-open-block
 	 (lambda (expressions)
-	   (scan-defines (make-sequence expressions) make-open-block))))
+	   (scan-defines (make-scode-sequence expressions) make-open-block))))
     (if (pair? declarations)
 	(make-open-block
 	 (cons (make-block-declaration declarations)
@@ -138,13 +140,13 @@ USA.
 	    (output/unspecific)))))
 
 (define (output/the-environment)
-  (make-the-environment))
+  (make-scode-the-environment))
 
 (define (output/access-reference name environment)
-  (make-access environment name))
+  (make-scode-access environment name))
 
 (define (output/access-assignment name environment value)
-  (make-combination (ucode-primitive lexical-assignment)
+  (make-scode-combination (ucode-primitive lexical-assignment)
 		    (list environment name value)))
 
 (define (output/runtime-reference name)
@@ -178,16 +180,17 @@ USA.
 
 (define (compute-substitution/variable expression unmapping)
   unmapping
-  (singleton-reference-set (variable-name expression)))
+  (singleton-reference-set (scode-variable-name expression)))
 
 (define (compute-substitution/assignment expression unmapping)
-  (add-to-reference-set (assignment-name expression)
-			(compute-substitution (assignment-value expression)
-					      unmapping)))
+  (add-to-reference-set
+   (scode-assignment-name expression)
+   (compute-substitution (scode-assignment-value expression)
+			 unmapping)))
 
 (define (compute-substitution/unassigned? expression unmapping)
   unmapping
-  (singleton-reference-set (unassigned?-name expression)))
+  (singleton-reference-set (scode-unassigned?-name expression)))
 
 (define (compute-substitution/lambda expression unmapping)
   (lambda-components** expression
@@ -237,28 +240,38 @@ USA.
 	  (null-reference-set)))))
 
 (define compute-substitution/access
-  (compute-substitution/subexpression access-environment))
+  (compute-substitution/subexpression scode-access-environment))
 
 (define compute-substitution/combination
-  (compute-substitution/subexpressions combination-subexpressions))
+  (compute-substitution/subexpressions
+   (lambda (expr)
+     (cons (scode-combination-operator expr)
+	   (scode-combination-operands expr)))))
 
 (define compute-substitution/comment
-  (compute-substitution/subexpression comment-expression))
+  (compute-substitution/subexpression scode-comment-expression))
 
 (define compute-substitution/conditional
-  (compute-substitution/subexpressions conditional-subexpressions))
+  (compute-substitution/subexpressions
+   (lambda (expr)
+     (list (scode-conditional-predicate expr)
+	   (scode-conditional-consequent expr)
+	   (scode-conditional-alternative expr)))))
 
 (define compute-substitution/definition
-  (compute-substitution/subexpression definition-value))
+  (compute-substitution/subexpression scode-definition-value))
 
 (define compute-substitution/delay
-  (compute-substitution/subexpression delay-expression))
+  (compute-substitution/subexpression scode-delay-expression))
 
 (define compute-substitution/disjunction
-  (compute-substitution/subexpressions disjunction-subexpressions))
+  (compute-substitution/subexpressions
+   (lambda (expr)
+     (list (scode-disjunction-predicate expr)
+	   (scode-disjunction-alternative expr)))))
 
 (define compute-substitution/sequence
-  (compute-substitution/subexpressions sequence-actions))
+  (compute-substitution/subexpressions scode-sequence-actions))
 
 (define (compute-substitution/default expression unmapping)
   expression unmapping
@@ -286,15 +299,15 @@ USA.
   ((scode-walk alpha-substitute-walker expression) substitution expression))
 
 (define (alpha-substitute/variable substitution expression)
-  (make-variable (substitution (variable-name expression))))
+  (make-scode-variable (substitution (scode-variable-name expression))))
 
 (define (alpha-substitute/assignment substitution expression)
-  (make-assignment (substitution (assignment-name expression))
-		   (alpha-substitute substitution
-				     (assignment-value expression))))
+  (make-scode-assignment
+   (substitution (scode-assignment-name expression))
+   (alpha-substitute substitution (scode-assignment-value expression))))
 
 (define (alpha-substitute/unassigned? substitution expression)
-  (make-unassigned? (substitution (unassigned?-name expression))))
+  (make-scode-unassigned? (substitution (scode-unassigned?-name expression))))
 
 (define (alpha-substitute/lambda substitution expression)
   (lambda-components** expression
@@ -311,10 +324,9 @@ USA.
 		       (alpha-substitute substitution body)))))
 
 (define (alpha-substitute/declaration substitution expression)
-  (make-declaration (substitute-in-declarations substitution
-						(declaration-text expression))
-		    (alpha-substitute substitution
-				      (declaration-expression expression))))
+  (make-scode-declaration
+   (substitute-in-declarations substitution (scode-declaration-text expression))
+   (alpha-substitute substitution (scode-declaration-expression expression))))
 
 (define (substitute-in-declarations substitution declarations)
   (map (lambda (declaration)
@@ -325,11 +337,22 @@ USA.
   substitution
   expression)
 
-(define (simple-substitution reconstruct get-subexpression)
+(define (simple-substitution reconstruct . parts)
   (lambda (substitution expression)
-    (reconstruct expression
-		 (alpha-substitute substitution
-				   (get-subexpression expression)))))
+    (apply reconstruct
+	   (map (lambda (part)
+		  (alpha-substitute substitution (part expression)))
+		parts))))
+
+(define (partial-substitution selector reconstruct . parts)
+  (lambda (substitution expression)
+    (apply reconstruct
+	   (map (lambda (substitute? part)
+		  (if substitute?
+		      (alpha-substitute substitution (part expression))
+		      (part expression)))
+		selector
+		parts))))
 
 (define (combinator-substitution reconstruct get-subexpressions)
   (lambda (substitution expression)
@@ -339,48 +362,48 @@ USA.
 	  (get-subexpressions expression)))))
 
 (define alpha-substitute/access
-  (simple-substitution (lambda (expression environment)
-			 (make-access environment (access-name expression)))
-		       access-environment))
+  (partial-substitution '(#t #f)
+			make-scode-access
+			scode-access-environment
+			scode-access-name))
 
 (define alpha-substitute/combination
   (combinator-substitution (lambda (subexpressions)
-			     (make-combination (car subexpressions)
-					       (cdr subexpressions)))
-			   combination-subexpressions))
+			     (make-scode-combination (car subexpressions)
+						     (cdr subexpressions)))
+			   (lambda (expression)
+			     (cons (scode-combination-operator expression)
+				   (scode-combination-operands expression)))))
 
 (define alpha-substitute/comment
-  (simple-substitution (lambda (expression subexpression)
-			 (make-comment (comment-text expression)
-				       subexpression))
-		       comment-expression))
+  (partial-substitution '(#f #t)
+			make-scode-comment
+			scode-comment-text
+			scode-comment-expression))
 
 (define alpha-substitute/conditional
-  (combinator-substitution (lambda (subexpressions)
-			     (make-conditional (car subexpressions)
-					       (cadr subexpressions)
-					       (caddr subexpressions)))
-			   conditional-subexpressions))
+  (simple-substitution make-scode-conditional
+		       scode-conditional-predicate
+		       scode-conditional-consequent
+		       scode-conditional-alternative))
 
 (define alpha-substitute/definition
-  (simple-substitution (lambda (expression value)
-			 (make-definition (definition-name expression) value))
-		       definition-value))
+  (partial-substitution '(#f #t)
+			make-scode-definition
+			scode-definition-name
+			scode-definition-value))
 
 (define alpha-substitute/delay
-  (simple-substitution (lambda (expression subexpression)
-			 expression
-			 (make-delay subexpression))
-		       delay-expression))
+  (simple-substitution make-scode-delay
+		       scode-delay-expression))
 
 (define alpha-substitute/disjunction
-  (combinator-substitution (lambda (subexpressions)
-			     (make-disjunction (car subexpressions)
-					       (cadr subexpressions)))
-			   disjunction-subexpressions))
+  (simple-substitution make-scode-disjunction
+		       scode-disjunction-predicate
+		       scode-disjunction-alternative))
 
 (define alpha-substitute/sequence
-  (combinator-substitution make-sequence sequence-actions))
+  (combinator-substitution make-scode-sequence scode-sequence-actions))
 
 (define alpha-substitute-walker
   (make-scode-walker alpha-substitute/default

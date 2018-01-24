@@ -483,7 +483,7 @@ USA.
 			     (cons value values)
 			     auxiliary
 			     (if (null? actions*)
-				 (list undefined-conditional-branch)
+				 (list undefined-scode-conditional-branch)
 				 actions*)))
 		 (lambda (names* values auxiliary actions*)
 		   (return-4 names*
@@ -514,94 +514,98 @@ USA.
 	 first-action
 	 (generate/expression
 	  block continuation context
-	  (make-sequence (cdr (scode/sequence-actions expression))))))
+	  (scode/make-sequence (cdr (scode/sequence-actions expression))))))
       (error "Not a sequence" expression)))
 
 (define (generate/conditional block continuation context expression)
-  (scode/conditional-components expression
-    (lambda (predicate consequent alternative)
-      (let ((predicate
-	     (generate/subproblem/predicate
-	      block continuation context
-	      predicate 'CONDITIONAL-DECIDE expression)))
-	(let ((simple
-	       (lambda (hooks branch)
-		 ((scfg*ctype->ctype! continuation)
-		  (make-scfg (cfg-entry-node predicate) hooks)
-		  (generate/expression block continuation context branch)))))
-	  (cond ((hooks-null? (pcfg-consequent-hooks predicate))
-		 (simple (pcfg-alternative-hooks predicate) alternative))
-		((hooks-null? (pcfg-alternative-hooks predicate))
-		 (simple (pcfg-consequent-hooks predicate) consequent))
-		(else
-		 (let ((finish
-			(lambda (continuation combiner)
-			  (combiner
-			   predicate
-			   (generate/expression block continuation
-						(context/conditional context)
-						consequent)
-			   (generate/expression block continuation
-						(context/conditional context)
-						alternative)))))
-		   ((continuation/case continuation
-		      (lambda () (finish continuation pcfg*scfg->scfg!))
-		      (lambda () (finish continuation pcfg*scfg->scfg!))
-		      (lambda () (finish continuation pcfg*pcfg->pcfg!))
-		      (lambda ()
-			(with-reified-continuation block
-						   continuation
-						   scfg*subproblem->subproblem!
-			  (lambda (push continuation)
-			    push	;ignore
-			    (finish continuation
-			      (lambda (predicate consequent alternative)
-				(make-subproblem/canonical
-				 (pcfg*scfg->scfg!
-				  predicate
-				  (subproblem-prefix consequent)
-				  (subproblem-prefix alternative))
-				 continuation))))))))))))))))
+  (let ((predicate (scode/conditional-predicate expression))
+	(consequent (scode/conditional-consequent expression))
+	(alternative (scode/conditional-alternative expression)))
+    (let ((predicate
+	   (generate/subproblem/predicate
+	    block continuation context
+	    predicate 'CONDITIONAL-DECIDE expression)))
+      (let ((simple
+	     (lambda (hooks branch)
+	       ((scfg*ctype->ctype! continuation)
+		(make-scfg (cfg-entry-node predicate) hooks)
+		(generate/expression block continuation context branch)))))
+	(cond ((hooks-null? (pcfg-consequent-hooks predicate))
+	       (simple (pcfg-alternative-hooks predicate) alternative))
+	      ((hooks-null? (pcfg-alternative-hooks predicate))
+	       (simple (pcfg-consequent-hooks predicate) consequent))
+	      (else
+	       (let ((finish
+		      (lambda (continuation combiner)
+			(combiner
+			 predicate
+			 (generate/expression block continuation
+					      (context/conditional context)
+					      consequent)
+			 (generate/expression block continuation
+					      (context/conditional context)
+					      alternative)))))
+		 ((continuation/case continuation
+		    (lambda () (finish continuation pcfg*scfg->scfg!))
+		    (lambda () (finish continuation pcfg*scfg->scfg!))
+		    (lambda () (finish continuation pcfg*pcfg->pcfg!))
+		    (lambda ()
+		      (with-reified-continuation block
+						 continuation
+						 scfg*subproblem->subproblem!
+			(lambda (push continuation)
+			  push	;ignore
+			  (finish continuation
+			    (lambda (predicate consequent alternative)
+			      (make-subproblem/canonical
+			       (pcfg*scfg->scfg!
+				predicate
+				(subproblem-prefix consequent)
+				(subproblem-prefix alternative))
+			       continuation)))))))))))))))
 
 (define (generate/combination block continuation context expression)
-  (scode/combination-components expression
-    (lambda (operator operands)
-      (cond ((eq? (ucode-primitive not) operator)
-	     (generate/conditional block continuation context
-				   (scode/make-conditional (car operands)
-							   #F #T)))
-	    ((and (eq? (ucode-primitive general-car-cdr) operator)
-		  (let ((n (cadr operands)))
-		    (and (exact-integer? n)
-			 (positive? n))))
-	     (generate/expression
-	      block continuation context
-	      (let loop ((expression (car operands)) (n (cadr operands)))
-		(if (= n 1)
-		    expression
-		    (loop (scode/make-combination
-			   (if (= (remainder n 2) 1)
-			       (ucode-primitive car)
-			       (ucode-primitive cdr))
-			   (list expression))
-			  (quotient n 2))))))
-	    (else
-	     (generate/operator
-	      block continuation context expression operator
-	      (generate/operands expression operands block continuation context 1)))))))
+  (let ((operator (scode/combination-operator expression))
+	(operands (scode/combination-operands expression)))
+    (cond ((eq? (ucode-primitive not) operator)
+	   (generate/conditional block continuation context
+				 (scode/make-conditional (car operands)
+							 #F #T)))
+	  ((and (eq? (ucode-primitive general-car-cdr) operator)
+		(let ((n (cadr operands)))
+		  (and (exact-integer? n)
+		       (positive? n))))
+	   (generate/expression
+	    block continuation context
+	    (let loop ((expression (car operands)) (n (cadr operands)))
+	      (if (= n 1)
+		  expression
+		  (loop (scode/make-combination
+			 (if (= (remainder n 2) 1)
+			     (ucode-primitive car)
+			     (ucode-primitive cdr))
+			 (list expression))
+			(quotient n 2))))))
+	  (else
+	   (generate/operator
+	    block continuation context expression operator
+	    (generate/operands expression operands block continuation context
+			       1))))))
 
 (define (generate/operands expression operands block continuation context index)
   (let walk ((operands operands) (index index))
     (if (pair? operands)
 	;; This forces the order of evaluation
-	(let ((next (generate/subproblem/value block continuation context
-					       (car operands) 'COMBINATION-OPERAND
-					       expression index)))
+	(let ((next
+	       (generate/subproblem/value block continuation context
+					  (car operands) 'COMBINATION-OPERAND
+					  expression index)))
 	  (cons next
 		(walk (cdr operands) (1+ index))))
 	'())))
 
-(define (generate/operator block continuation context expression operator operands*)
+(define (generate/operator block continuation context expression operator
+			   operands*)
   (let ((make-combination
 	 (lambda (push continuation)
 	   (make-combination
@@ -680,34 +684,34 @@ USA.
      (continue/effect block continuation #f))))
 
 (define (generate/assignment block continuation context expression)
-  (scode/assignment-components expression
-    (lambda (name value)
-      (if (continuation/effect? continuation)
-	  (generate/assignment* make-assignment find-name 'ASSIGNMENT-CONTINUE
-				block continuation context
-				expression name value)
-	  (generate/combination
-	   block continuation context
-	   (let ((old-value (generate-uninterned-symbol "set-old-"))
-		 (new-value (generate-uninterned-symbol "set-new-")))
-	     (scode/make-let (list new-value)
-			     (list value)
-	       (scode/make-let (list old-value)
-			       (list (scode/make-safe-variable name))
-		 (scode/make-assignment name (scode/make-variable new-value))
-		 (scode/make-variable old-value)))))))))
+  (let ((name (scode/assignment-name expression))
+	(value (scode/assignment-value expression)))
+    (if (continuation/effect? continuation)
+	(generate/assignment* make-assignment find-name 'ASSIGNMENT-CONTINUE
+			      block continuation context
+			      expression name value)
+	(generate/combination
+	 block continuation context
+	 (let ((old-value (generate-uninterned-symbol "set-old-"))
+	       (new-value (generate-uninterned-symbol "set-new-")))
+	   (scode/make-let (list new-value)
+			   (list value)
+	     (scode/make-let (list old-value)
+			     (list (scode/make-safe-variable name))
+	       (scode/make-assignment name (scode/make-variable new-value))
+	       (scode/make-variable old-value))))))))
 
 (define (generate/definition block continuation context expression)
-  (scode/definition-components expression
-    (lambda (name value)
-      (if (continuation/effect? continuation)
-	  (generate/assignment* make-definition make-definition-variable
-				'DEFINITION-CONTINUE block continuation
-				context expression name
-				(insert-letrec name value))
-	  (generate/expression
-	   block continuation context
-	   (scode/make-sequence (list expression name)))))))
+  (let ((name (scode/definition-name expression))
+	(value (scode/definition-value expression)))
+    (if (continuation/effect? continuation)
+	(generate/assignment* make-definition make-definition-variable
+			      'DEFINITION-CONTINUE block continuation
+			      context expression name
+			      (insert-letrec name value))
+	(generate/expression
+	 block continuation context
+	 (scode/make-sequence (list expression name))))))
 
 (define (make-definition-variable block name)
   (let ((bound (block-bound-variables block)))
@@ -735,30 +739,30 @@ USA.
    block continuation context expression))
 
 (define (generate/disjunction/control block continuation context expression)
-  (scode/disjunction-components expression
-    (lambda (predicate alternative)
-      (generate/conditional
-       block continuation context
-       (scode/make-conditional predicate #t alternative)))))
+  (let ((predicate (scode/disjunction-predicate expression))
+	(alternative (scode/disjunction-alternative expression)))
+    (generate/conditional
+     block continuation context
+     (scode/make-conditional predicate #t alternative))))
 
 (define (generate/disjunction/value block continuation context expression)
-  (scode/disjunction-components expression
-    (lambda (predicate alternative)
-      (if (and (scode/combination? predicate)
-	       (boolean-valued-operator?
-		(scode/combination-operator predicate)))
-	  (generate/conditional
-	   block continuation context
-	   (scode/make-conditional predicate #t alternative))
-	  (generate/combination
-	   block continuation context
-	   (let ((temp (generate-uninterned-symbol "or-predicate-")))
-	     (scode/make-let (list temp)
-			     (list predicate)
-			     (let ((predicate (scode/make-variable temp)))
-			       (scode/make-conditional predicate
-						       predicate
-						       alternative)))))))))
+  (let ((predicate (scode/disjunction-predicate expression))
+	(alternative (scode/disjunction-alternative expression)))
+    (if (and (scode/combination? predicate)
+	     (boolean-valued-operator?
+	      (scode/combination-operator predicate)))
+	(generate/conditional
+	 block continuation context
+	 (scode/make-conditional predicate #t alternative))
+	(generate/combination
+	 block continuation context
+	 (let ((temp (generate-uninterned-symbol "or-predicate-")))
+	   (scode/make-let (list temp)
+			   (list predicate)
+			   (let ((predicate (scode/make-variable temp)))
+			     (scode/make-conditional predicate
+						     predicate
+						     alternative))))))))
 
 (define (boolean-valued-operator? operator)
   (cond ((scode/primitive-procedure? operator)
@@ -770,65 +774,64 @@ USA.
 	 #f)))
 
 (define (generate/access block continuation context expression)
-  (scode/access-components expression
-    (lambda (environment name)
-      (generate/combination
-       block continuation context
-       (scode/make-combination (ucode-primitive lexical-reference)
-			       (list environment name))))))
+  (generate/combination
+   block continuation context
+   (scode/make-combination (ucode-primitive lexical-reference)
+			   (list (scode/access-environment expression)
+				 (scode/access-name expression)))))
 
 ;; Handle directives inserted by the canonicalizer
 
 (define (generate/comment block continuation context comment)
-  (scode/comment-components comment
-   (lambda (text expression)
-     (if (not (scode/comment-directive? text))
-	 (generate/expression block continuation context expression)
-	 (case (caadr text)
-	   ((PROCESSED)
-	    (generate/expression block continuation context expression))
-	   ((COMPILE)
-	    (if (not (scode/quotation? expression))
-		(error "Bad COMPILE directive" comment))
-	    (continue/rvalue-constant
-	     block continuation
-	     (make-constant
-	      (compile-recursively
-	       (scode/quotation-expression expression)
-	       #f
-	       #f))))
-	   ((COMPILE-PROCEDURE)
-	    (let ((process
-		   (lambda (name)
-		     (if compiler:compile-by-procedures?
-			 (continue/rvalue-constant
-			  block continuation
-			  (make-constant
-			   (compile-recursively expression #t name)))
-			 (generate/expression block continuation
-					      context expression))))
-		  (fail
-		   (lambda ()
-		     (error "Bad COMPILE-PROCEDURE directive" comment))))
-	      (cond ((scode/lambda? expression)
-		     (process (lambda-name expression)))
-		    ((scode/open-block? expression)
-		     (scode/open-block-components
-		      expression
-		      (lambda (names decls body)
-			decls		; ignored
-			(if (and (null? names) (scode/lambda? body))
-			    (process (lambda-name body))
-			    (fail)))))
-		    (else
-		     (fail)))))
-	   ((ENCLOSE)
-	    (generate/enclose block continuation context expression))
-	   ((CONSTANTIFY)
-	    (generate/constantify block continuation context comment expression))
-	   (else
-	    (warn "generate/comment: Unknown directive" (cadr text) comment)
-	    (generate/expression block continuation context expression)))))))
+  (let ((text (scode/comment-text comment))
+	(expression (scode/comment-expression comment)))
+    (if (not (scode/comment-directive? text))
+	(generate/expression block continuation context expression)
+	(case (caadr text)
+	  ((PROCESSED)
+	   (generate/expression block continuation context expression))
+	  ((COMPILE)
+	   (if (not (scode/quotation? expression))
+	       (error "Bad COMPILE directive" comment))
+	   (continue/rvalue-constant
+	    block continuation
+	    (make-constant
+	     (compile-recursively
+	      (scode/quotation-expression expression)
+	      #f
+	      #f))))
+	  ((COMPILE-PROCEDURE)
+	   (let ((process
+		  (lambda (name)
+		    (if compiler:compile-by-procedures?
+			(continue/rvalue-constant
+			 block continuation
+			 (make-constant
+			  (compile-recursively expression #t name)))
+			(generate/expression block continuation
+					     context expression))))
+		 (fail
+		  (lambda ()
+		    (error "Bad COMPILE-PROCEDURE directive" comment))))
+	     (cond ((scode/lambda? expression)
+		    (process (scode/lambda-name expression)))
+		   ((scode/open-block? expression)
+		    (scode/open-block-components
+		     expression
+		     (lambda (names decls body)
+		       decls		; ignored
+		       (if (and (null? names) (scode/lambda? body))
+			   (process (scode/lambda-name body))
+			   (fail)))))
+		   (else
+		    (fail)))))
+	  ((ENCLOSE)
+	   (generate/enclose block continuation context expression))
+	  ((CONSTANTIFY)
+	   (generate/constantify block continuation context comment expression))
+	  (else
+	   (warn "generate/comment: Unknown directive" (cadr text) comment)
+	   (generate/expression block continuation context expression))))))
 
 ;; CONSTANTIFY directives are generated when an expression is introduced by
 ;; the canonicalizer.  It instructs fggen that the expression may be constant
@@ -868,19 +871,16 @@ USA.
 ;; for some more information.
 
 (define (generate/enclose block continuation context expression)
-  (scode/combination-components
-   expression
-   (lambda (operator operands)
-     operator ;; ignored
-     (generate/lambda*
-      (block-parent block) continuation
-      context (context/make-internal)
-      (scode/quotation-expression (car operands))
-      #f
-      (make-reference block
-		      (find-name block
-				 (scode/variable-name (cadr operands)))
-		      #f)))))
+  (let ((operands (scode/combination-operands expression)))
+    (generate/lambda*
+     (block-parent block) continuation
+     context (context/make-internal)
+     (scode/quotation-expression (car operands))
+     #f
+     (make-reference block
+		     (find-name block
+				(scode/variable-name (cadr operands)))
+		     #f))))
 
 (define (generate/delay block continuation context expression)
   (generate/combination

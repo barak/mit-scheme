@@ -63,26 +63,26 @@ USA.
   (let ((entry (assq (scode-variable-name variable) transforms)))
     (if (not entry)
 	variable
-	(make-combination (make-primitive-procedure 'VECTOR-REF)
-			  (list name-of-self (cdr entry))))))
+	(make-scode-combination (make-primitive-procedure 'vector-ref)
+				(list name-of-self (cdr entry))))))
 
 (define (transform-assignment transforms assignment)
-  (assignment-components assignment
-    (lambda (name value)
-      (let ((entry (assq name transforms))
-	    (value (transform-expression transforms value)))
-	(if (not entry)
-	    (make-assignment name value)
-	    (make-combination (make-primitive-procedure 'VECTOR-SET!)
-			      (list name-of-self
-				    (cdr entry)
-				    value)))))))
+  (let ((name (scode-assignment-name assignment))
+	(value (scode-assignment-value assignment)))
+    (let ((entry (assq name transforms))
+	  (value (transform-expression transforms value)))
+      (if (not entry)
+	  (make-scode-assignment name value)
+	  (make-scode-combination (make-primitive-procedure 'vector-set!)
+				  (list name-of-self
+					(cdr entry)
+					value))))))
 
 (define (transform-combination transforms combination)
-  (combination-components combination
-    (lambda (operator operands)
-      (make-combination (transform-expression transforms operator)
-			(transform-expressions transforms operands)))))
+  (let ((operator (scode-combination-operator combination))
+	(operands (scode-combination-operands combination)))
+    (make-scode-combination (transform-expression transforms operator)
+			    (transform-expressions transforms operands))))
 
 (define (transform-lambda transforms expression)
   (lambda-components** expression
@@ -100,35 +100,36 @@ USA.
 					     body)))))
 
 (define (transform-definition transforms definition)
-  (definition-components definition
-    (lambda (name value)
-      (error "Free definition encountered:" name)
-      (make-definition name (transform-expression transforms value)))))
+  (let ((name (scode-definition-name definition))
+	(value (scode-definition-value definition)))
+    (error "Free definition encountered:" name)
+    (make-scode-definition name (transform-expression transforms value))))
 
 (define (transform-sequence transforms expression)
-  (make-sequence (transform-expressions transforms
-					(sequence-actions expression))))
+  (make-scode-sequence
+   (transform-expressions transforms (scode-sequence-actions expression))))
 
 (define (transform-conditional transforms conditional)
-  (conditional-components conditional
-    (lambda (predicate consequent alternative)
-      (make-conditional (transform-expression transforms predicate)
-			(transform-expression transforms consequent)
-			(transform-expression transforms alternative)))))
+  (make-scode-conditional
+   (transform-expression transforms (scode-conditional-predicate conditional))
+   (transform-expression transforms (scode-conditional-consequent conditional))
+   (transform-expression transforms
+			 (scode-conditional-alternative conditional))))
 
 (define (transform-disjunction transforms disjunction)
-  (disjunction-components disjunction
-    (lambda (predicate alternative)
-      (make-disjunction (transform-expression transforms predicate)
-			(transform-expression transforms alternative)))))
+  (make-scode-disjunction
+   (transform-expression transforms (scode-disjunction-predicate disjunction))
+   (transform-expression transforms
+			 (scode-disjunction-alternative disjunction))))
 
 (define (transform-comment transforms comment)
-  (comment-components comment
-    (lambda (text expression)
-      (make-comment text (transform-expression transforms expression)))))
+  (make-scode-comment
+   (scode-comment-text comment)
+   (transform-expression transforms (scode-comment-expression comment))))
 
 (define (transform-delay transforms expression)
-  (make-delay (transform-expression transforms (delay-expression expression))))
+  (make-scode-delay
+   (transform-expression transforms (scode-delay-expression expression))))
 
 (define scode-walker
   (make-scode-walker transform-constant

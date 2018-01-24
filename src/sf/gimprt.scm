@@ -29,6 +29,4 @@ USA.
 
 (declare (usual-integrations))
 
-(define scode-assignment? assignment?)
 (define scode-open-block? open-block?)
-(define scode-sequence? sequence?)

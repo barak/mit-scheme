@@ -110,7 +110,7 @@ USA.
 (define (environment-procedure-name environment)
   (let ((scode-lambda (environment-lambda environment)))
     (and scode-lambda
-	 (lambda-name scode-lambda))))
+	 (scode-lambda-name scode-lambda))))
 
 (define (environment-lambda environment)
   (cond ((system-global-environment? environment)

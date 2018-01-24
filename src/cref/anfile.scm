@@ -38,7 +38,7 @@ USA.
       (if (pair? others)
 	  (cons (vector false
 			'EXPRESSION
-			(analyze-and-compress (make-sequence others)))
+			(analyze-and-compress (make-scode-sequence others)))
 		definition-analysis)
 	  definition-analysis))))
 
@@ -49,29 +49,29 @@ USA.
 	(if (block-declaration? (car expressions))
 	    (rest)
 	    (receive (definitions others) (rest)
-	      (if (definition? (car expressions))
+	      (if (scode-definition? (car expressions))
 		  (values (cons (car expressions) definitions) others)
 		  (values definitions (cons (car expressions) others))))))))
 
 (define (process-top-level expression)
-  (cond ((comment? expression)
-	 (process-top-level (comment-expression expression)))
-	((sequence? expression)
-	 (append-map! process-top-level (sequence-actions expression)))
+  (cond ((scode-comment? expression)
+	 (process-top-level (scode-comment-expression expression)))
+	((scode-sequence? expression)
+	 (append-map! process-top-level (scode-sequence-actions expression)))
 	(else
 	 (list expression))))
 
 (define (analyze/top-level/definition definition)
-  (let ((name (definition-name definition))
-	(expression (definition-value definition)))
+  (let ((name (scode-definition-name definition))
+	(expression (scode-definition-value definition)))
     (cond ((unassigned-reference-trap? expression)
 	   (vector name 'UNASSIGNED '#()))
 	  ((scode-constant? expression)
 	   (vector name 'CONSTANT '#()))
 	  (else
 	   (vector name
-		   (cond ((lambda? expression) 'LAMBDA)
-			 ((delay? expression) 'DELAY)
+		   (cond ((scode-lambda? expression) 'LAMBDA)
+			 ((scode-delay? expression) 'DELAY)
 			 (else 'EXPRESSION))
 		   (analyze-and-compress expression))))))
 
@@ -94,23 +94,23 @@ USA.
   (error "Illegal expression" expression))
 
 (define (analyze/access expression)
-  (if (access-environment expression)
+  (if (scode-access-environment expression)
       (warn "Access to non-global environment:" (unsyntax expression)))
   (list expression))
 
 (define (analyze/variable expression)
-  (list (variable-name expression)))
+  (list (scode-variable-name expression)))
 
 (define (analyze/assignment expression)
-  (eq-set-adjoin (assignment-name expression)
-		 (analyze/expression (assignment-value expression))))
+  (eq-set-adjoin (scode-assignment-name expression)
+		 (analyze/expression (scode-assignment-value expression))))
 
 (define (analyze/combination expression)
-  (eq-set-union (analyze/expression (combination-operator expression))
-		(analyze/expressions (combination-operands expression))))
+  (eq-set-union (analyze/expression (scode-combination-operator expression))
+		(analyze/expressions (scode-combination-operands expression))))
 
 (define (analyze/lambda expression)
-  (lambda-components expression
+  (scode-lambda-components expression
     (lambda (name required optional rest auxiliary declarations body)
       name declarations
       (eq-set-difference (analyze/expression body)
@@ -120,24 +120,29 @@ USA.
 				 auxiliary)))))
 
 (define (analyze/error-combination expression)
-  (combination-components expression
-    (lambda (operator operands)
-      (analyze/expressions (list operator (car operands) (cadr operands))))))
+  (let ((operator (scode-combination-operator expression))
+	(operands (scode-combination-operands expression)))
+    (analyze/expressions (list operator (car operands) (cadr operands)))))
 
 (define (analyze/delay expression)
-  (analyze/expression (delay-expression expression)))
+  (analyze/expression (scode-delay-expression expression)))
 
 (define (analyze/sequence expression)
-  (analyze/expressions (sequence-actions expression)))
+  (analyze/expressions (scode-sequence-actions expression)))
 
 (define (analyze/conditional expression)
-  (analyze/expressions (conditional-components expression list)))
+  (analyze/expressions
+   (list (scode-conditional-predicate expression)
+	 (scode-conditional-consequent expression)
+	 (scode-conditional-alternative expression))))
 
 (define (analyze/disjunction expression)
-  (analyze/expressions (disjunction-components expression list)))
+  (analyze/expressions
+   (list (scode-disjunction-predicate expression)
+	 (scode-disjunction-alternative expression))))
 
 (define (analyze/comment expression)
-  (analyze/expression (comment-expression expression)))
+  (analyze/expression (scode-comment-expression expression)))
 
 (define analyze/dispatch
   (make-scode-walker

@@ -53,21 +53,21 @@ USA.
 	     (open-block-components expression unscan-defines)
 	     expression)))
     (if (eq? context 'REPL-BUFFER)
-	(make-sequence
+	(make-scode-sequence
 	 (map (lambda (expression)
-		(if (definition? expression)
-		    (let ((name (definition-name expression))
-			  (value (definition-value expression)))
-		      (make-sequence
+		(if (scode-definition? expression)
+		    (let ((name (scode-definition-name expression))
+			  (value (scode-definition-value expression)))
+		      (make-scode-sequence
 		       (list expression
-			     (make-combination
-			      (make-quotation write-definition-value)
+			     (make-scode-combination
+			      (make-scode-quotation write-definition-value)
 			      (cons name
 				    (if (unassigned-reference-trap? value)
 					'()
-					(list (make-variable name))))))))
+					(list (make-scode-variable name))))))))
 		    expression))
-	      (sequence-actions expression)))
+	      (scode-sequence-actions expression)))
 	expression)))
 
 (define (write-definition-value name #!optional value)

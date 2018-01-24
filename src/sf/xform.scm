@@ -132,7 +132,7 @@ USA.
 		     (transform/expression block environment subexpression))))
 	      (let loop
 		  ((variables variables)
-		   (actions (sequence-actions body)))
+		   (actions (scode-sequence-actions body)))
 		(cond ((null? variables)
 		       (values '() (map transform actions)))
 		      ((null? actions)
@@ -142,13 +142,14 @@ USA.
 		      ;; encounter them in that same order when
 		      ;; looking through the body's actions.
 		      ((and (scode-assignment? (car actions))
-			    (eq? (assignment-name (car actions))
+			    (eq? (scode-assignment-name (car actions))
 				 (variable/name (car variables))))
 		       (call-with-values
 			   (lambda () (loop (cdr variables) (cdr actions)))
 			 (lambda (vals actions*)
 			   (values
-			    (cons (transform (assignment-value (car actions)))
+			    (cons (transform
+				   (scode-assignment-value (car actions)))
 				  vals)
 			    (cons open-block/value-marker actions*)))))
 		      (else
@@ -165,17 +166,17 @@ USA.
   (reference/make expression
 		  block
 		  (environment/lookup environment
-				      (variable-name expression))))
+				      (scode-variable-name expression))))
 
 (define (transform/assignment block environment expression)
-  (assignment-components expression
-    (lambda (name value)
-      (let ((variable (environment/lookup environment name)))
-	(variable/side-effect! variable)
-	(assignment/make expression
-			 block
-			 variable
-			 (transform/expression block environment value))))))
+  (let ((name (scode-assignment-name expression))
+	(value (scode-assignment-value expression)))
+    (let ((variable (environment/lookup environment name)))
+      (variable/side-effect! variable)
+      (assignment/make expression
+		       block
+		       variable
+		       (transform/expression block environment value)))))
 
 (define (transform/lambda block environment expression)
   (lambda-components* expression
@@ -193,14 +194,17 @@ USA.
 		   (environment/bind environment
 				     (block/bound-variables block))))
 	      (build-procedure expression block name required optional rest
-			       (transform/procedure-body block environment body)))))))))
+			       (transform/procedure-body block environment
+							 body)))))))))
 
 ;; If procedure body is a sequence, scan the first elements and turn variable
 ;; references into IGNORE declarations.
 (define (build-procedure expression block name required optional rest body)
-  (if (sequence? body)
+  (if (scode-sequence? body)
       (do ((actions (sequence/actions body) (cdr actions))
-	   (ignores '() (cons (variable/name (reference/variable (car actions))) ignores)))
+	   (ignores '()
+		    (cons (variable/name (reference/variable (car actions)))
+			  ignores)))
 	  ((or (null? (cdr actions))
 	       (not (reference? (car actions))))
 	   (let ((final-body (if (null? (cdr actions))
@@ -210,11 +214,11 @@ USA.
 	      expression block name required optional rest
 	      (if (null? ignores)
 		  final-body
-		  (declaration/make #f (declarations/parse block `((ignore ,@ignores)))
+		  (declaration/make #f
+				    (declarations/parse block
+							`((ignore ,@ignores)))
 				    final-body))))))
-      (procedure/make
-       expression block name required optional rest
-       body)))
+      (procedure/make expression block name required optional rest body)))
 
 (define (transform/procedure-body block environment expression)
   (if (scode-open-block? expression)
@@ -229,74 +233,77 @@ USA.
       (transform/expression block environment expression)))
 
 (define (transform/definition block environment expression)
-  (definition-components expression
-    (lambda (name value)
-      (if (not (eq? block top-level-block))
-	  (error "Unscanned definition encountered (unable to proceed):" name))
-      (transform/combination*
-       expression block environment
-       (make-combination (make-primitive-procedure 'LOCAL-ASSIGNMENT)
-			 (list (make-the-environment) name value))))))
+  (let ((name (scode-definition-name expression))
+	(value (scode-definition-value expression)))
+    (if (not (eq? block top-level-block))
+	(error "Unscanned definition encountered (unable to proceed):" name))
+    (transform/combination*
+     expression block environment
+     (make-scode-combination
+      (make-primitive-procedure 'local-assignment)
+      (list (make-scode-the-environment) name value)))))
 
 (define (transform/access block environment expression)
-  (access-components expression
-    (lambda (environment* name)
-      (access/make expression
-		   block
-		   (transform/expression block environment environment*)
-		   name))))
+  (access/make expression
+	       block
+	       (transform/expression block
+				     environment
+				     (scode-access-environment expression))
+	       (scode-access-name expression)))
 
 (define (transform/combination block environment expression)
   (transform/combination* expression block environment expression))
 
 (define (transform/combination* expression block environment expression*)
-  (combination-components expression*
-    (lambda (operator operands)
-      (combination/%make expression
-			 block
-			 (transform/expression block environment operator)
-			 (transform/expressions block environment operands)))))
+  (let ((operator (scode-combination-operator expression*))
+	(operands (scode-combination-operands expression*)))
+    (combination/%make expression
+		       block
+		       (transform/expression block environment operator)
+		       (transform/expressions block environment operands))))
 
 (define (transform/comment block environment expression)
-  (transform/expression block environment (comment-expression expression)))
+  (transform/expression block environment
+			(scode-comment-expression expression)))
 
 (define (transform/conditional block environment expression)
-  (conditional-components expression
-    (lambda (predicate consequent alternative)
-      (conditional/make
-       expression
-       (transform/expression block environment predicate)
-       (transform/expression block environment consequent)
-       (transform/expression block environment alternative)))))
+  (let ((predicate (scode-conditional-predicate expression))
+	(consequent (scode-conditional-consequent expression))
+	(alternative (scode-conditional-alternative expression)))
+    (conditional/make
+     expression
+     (transform/expression block environment predicate)
+     (transform/expression block environment consequent)
+     (transform/expression block environment alternative))))
 
 (define (transform/constant block environment expression)
   block environment ; ignored
   (constant/make expression expression))
 
 (define (transform/declaration block environment expression)
-  (declaration-components expression
-    (lambda (declarations expression*)
-      (declaration/make expression
-			(declarations/parse block declarations)
-			(transform/expression block environment
-					      expression*)))))
+  (declaration/make
+   expression
+   (declarations/parse block (scode-declaration-text expression))
+   (transform/expression block environment
+			 (scode-declaration-expression expression))))
 
 (define (transform/delay block environment expression)
   (delay/make
    expression
-   (transform/expression block environment (delay-expression expression))))
+   (transform/expression block environment
+			 (scode-delay-expression expression))))
 
 (define (transform/disjunction block environment expression)
-  (disjunction-components expression
-    (lambda (predicate alternative)
-      (disjunction/make
-       expression
-       (transform/expression block environment predicate)
-       (transform/expression block environment alternative)))))
+  (disjunction/make
+   expression
+   (transform/expression block environment
+			 (scode-disjunction-predicate expression))
+   (transform/expression block environment
+			 (scode-disjunction-alternative expression))))
 
 (define (transform/quotation block environment expression)
   block environment			;ignored
-  (transform/quotation* expression (quotation-expression expression)))
+  (transform/quotation* expression (scode-quotation-expression expression)))
 
 (define (transform/quotation* expression expression*)
   (call-with-values (lambda () (transform/top-level expression* '()))
@@ -308,7 +315,8 @@ USA.
   ;; to signal ignored variables.
   (sequence/%make
    expression
-   (transform/expressions block environment (sequence-actions expression))))
+   (transform/expressions block environment
+			  (scode-sequence-actions expression))))
 
 (define (transform/the-environment block environment expression)
   environment ; ignored

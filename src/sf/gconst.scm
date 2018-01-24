@@ -37,7 +37,7 @@ USA.
     SYSTEM-GLOBAL-ENVIRONMENT		;suppresses warnings about (access ...)
     THE-EMPTY-STREAM
     TRUE
-    UNDEFINED-CONDITIONAL-BRANCH
+    UNDEFINED-SCODE-CONDITIONAL-BRANCH
     UNSPECIFIC))
 
 (define global-primitives

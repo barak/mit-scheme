@@ -46,9 +46,7 @@ USA.
   (files "gimprt")
   (parent ())
   (export (scode-optimizer)
-          scode-assignment?
-          scode-open-block?
-          scode-sequence?))
+          scode-open-block?))
 
 (define-package (scode-optimizer top-level)
   (files "toplev")

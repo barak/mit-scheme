@@ -130,8 +130,8 @@ USA.
 
 (define (method/force-snap-thunk frame)
   (let ((promise (stack-frame/ref frame 1)))
-    (values (make-combination (ucode-primitive force 1)
-			      (list (make-evaluated-object promise)))
+    (values (make-scode-combination (ucode-primitive force 1)
+				    (list (make-evaluated-object promise)))
 	    undefined-environment
 	    (cond ((promise-forced? promise) undefined-expression)
 		  ((promise-non-expression? promise) unknown-expression)
@@ -140,7 +140,7 @@ USA.
 					   (promise-expression promise)))))))
 
 (define ((method/application-frame index) frame)
-  (values (make-combination
+  (values (make-scode-combination
 	   (make-evaluated-object (stack-frame/ref frame index))
 	   (stack-frame-list frame (1+ index)))
 	  undefined-environment
@@ -158,17 +158,18 @@ USA.
 	  undefined-expression))
 
 (define (method/compiler-lookup-apply-trap-restart frame)
-  (values (make-combination (make-variable (stack-frame/ref frame 2))
-			    (stack-frame-list frame 6))
+  (values (make-scode-combination
+	   (make-scode-variable (stack-frame/ref frame 2))
+	   (stack-frame-list frame 6))
 	  (stack-frame/ref frame 3)
 	  undefined-expression))
 
 (define (method/compiler-error-restart frame)
   (let ((primitive (stack-frame/ref frame 2)))
     (if (primitive-procedure? primitive)
-	(values (make-combination (make-variable 'apply)
-				  (list primitive
-					unknown-expression))
+	(values (make-scode-combination (make-scode-variable 'apply)
+					(list primitive
+					      unknown-expression))
 		undefined-environment
 		undefined-expression)
 	(stack-frame/debugging-info/default frame))))
@@ -234,8 +235,8 @@ USA.
 			 (validate-subexpression
 			  frame
 			  (if (zero? (vector-ref source-code 2))
-			      (combination-operator expression)
-			      (list-ref (combination-operands expression)
+			      (scode-combination-operator expression)
+			      (list-ref (scode-combination-operands expression)
 					(-1+ (vector-ref source-code 2)))))))
 		       ((COMBINATION-ELEMENT)
 			(win2 undefined-environment
@@ -250,7 +251,7 @@ USA.
 			(lose))))
 		   (lose))))
 	    ((dbg-procedure? object)
-	     (values (lambda-body (dbg-procedure/source-code object))
+	     (values (scode-lambda-body (dbg-procedure/source-code object))
 		     (and (dbg-procedure/block object)
 			  (get-environment))
 		     undefined-expression))
@@ -283,13 +284,13 @@ USA.
   (let ((method (method/application-frame 3)))
     (record-method 'INTERNAL-APPLY method)
     (record-method 'INTERNAL-APPLY-VAL method))
-  (let ((method (method/compiler-reference-trap make-variable)))
+  (let ((method (method/compiler-reference-trap make-scode-variable)))
     (record-method 'COMPILER-REFERENCE-TRAP-RESTART method)
     (record-method 'COMPILER-SAFE-REFERENCE-TRAP-RESTART method))
   (record-method 'COMPILER-UNASSIGNED?-TRAP-RESTART
-		 (method/compiler-reference-trap make-unassigned?))
+		 (method/compiler-reference-trap make-scode-unassigned?))
   (record-method 'COMPILER-ASSIGNMENT-TRAP-RESTART
-		 (method/compiler-assignment-trap make-assignment))
+		 (method/compiler-assignment-trap make-scode-assignment))
   (record-method 'COMPILER-LOOKUP-APPLY-TRAP-RESTART
 		 method/compiler-lookup-apply-trap-restart)
   (record-method 'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART

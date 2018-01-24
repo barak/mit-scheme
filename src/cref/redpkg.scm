@@ -217,11 +217,11 @@ USA.
 		    (make-reference primitive-package
 				    (primitive-procedure-name name)
 				    expression))
-		   ((access? name)
-		    (if (eq? (access-environment name)
+		   ((scode-access? name)
+		    (if (eq? (scode-access-environment name)
 			     system-global-environment)
 			(make-reference root-package
-					(access-name name)
+					(scode-access-name name)
 					expression)
 			(warn "Non-root access" (unsyntax name))))
 		   (else

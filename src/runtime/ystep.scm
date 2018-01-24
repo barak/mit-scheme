@@ -280,11 +280,11 @@ USA.
 
 (define (reduction? f1 f2)
   ;; Args are SCode expressions.  True if F2 is a reduction of F1.
-  (cond ((conditional? f2)
-	 (or (eq? f1 (conditional-consequent f2))
-	     (eq? f1 (conditional-alternative f2))))
-	((sequence? f2)
-	 (eq? f1 (car (last-pair (sequence-actions f2)))))
+  (cond ((scode-conditional? f2)
+	 (or (eq? f1 (scode-conditional-consequent f2))
+	     (eq? f1 (scode-conditional-alternative f2))))
+	((scode-sequence? f2)
+	 (eq? f1 (car (last-pair (scode-sequence-actions f2)))))
 	(else #f)))
 
 ;;;; Stepper nodes

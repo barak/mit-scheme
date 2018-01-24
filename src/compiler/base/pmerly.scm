@@ -383,18 +383,14 @@ USA.
       (scode/merge-tests (scode/make-absolute-combination 'PAIR?
 							  (list expression))
 			 (scode/merge-tests car-test cdr-test))
-      (combination-components car-test
-	(lambda (car-operator car-operands)
-	  car-operator
-	  (combination-components cdr-test
-	    (lambda (cdr-operator cdr-operands)
-	      cdr-operator
-	      (scode/make-absolute-combination 'EQUAL?
-	       (list
-		(scode/make-constant
-		 (cons (scode/constant-value (car car-operands))
-		       (scode/constant-value (car cdr-operands))))
-	       expression))))))))
+      (scode/make-absolute-combination 'equal?
+       (list
+	(scode/make-constant
+	 (cons (scode/constant-value
+		(car (scode/combination-operands car-test)))
+	       (scode/constant-value
+		(car (scode/combination-operands cdr-test)))))
+	expression))))
 
 ;;;; car/cdr path compression
 
@@ -460,7 +456,7 @@ USA.
 	     (lambda (exp)
 	       (scode/make-combination (scode/make-variable transformer)
 				       (list exp))))))
-      
+
 (define (transformer-bindings name rename expression mapper)
   (if (eq? rename name)
       (list (make-outer-binding name (mapper expression)))
@@ -500,7 +496,7 @@ USA.
 			  make-outer-binding))
 	       ((can-integrate? code)
 		(possible true make-early-binding))
-	       (else		
+	       (else
 		(possible true make-late-binding))))))))
 
 ;; Mega kludge!
@@ -623,20 +619,13 @@ USA.
 	(else (scode/make-conjunction t1 t2))))
 
 (define (scode/make-thunk body)
-  (scode/make-lambda lambda-tag:unnamed '() '() false '() '() body))  
+  (scode/make-lambda lambda-tag:unnamed '() '() false '() '() body))
 
 (define (scode/let? obj)
   (and (scode/combination? obj)
-       (scode/combination-components
-	obj
-	(lambda (operator operands)
-	  operands
-	  (and (scode/lambda? operator)
-	       (scode/lambda-components
-		operator
-		(lambda (name . ignore)
-		  ignore
-		  (eq? name lambda-tag:let))))))))
+       (let ((operator (scode/combination-operator obj)))
+	 (and (scode/lambda? operator)
+	      (eq? lambda-tag:let (scode/lambda-name operator))))))
 
 (define (scode/make-let names values declarations body)
   (scode/make-combination
@@ -650,12 +639,12 @@ USA.
    values))
 
 (define (scode/let-components lcomb receiver)
-  (scode/combination-components lcomb
-   (lambda (operator values)
-     (scode/lambda-components operator
-      (lambda (tag names opt rest aux decls body)
-	tag opt rest aux
-	(receiver names values decls body))))))				     
+  (let ((operator (scode/combination-operator lcomb))
+	(values (scode/combination-operands lcomb)))
+    (scode/lambda-components operator
+     (lambda (tag names opt rest aux decls body)
+       tag opt rest aux
+       (receiver names values decls body)))))
 
 ;;;; Scode utilities (continued)
 

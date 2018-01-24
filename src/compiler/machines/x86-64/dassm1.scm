@@ -174,8 +174,8 @@ USA.
 
 (define (write-constant block symbol-table constant)
   (write-string (cdr (write-to-string constant 60)))
-  (cond ((lambda? constant)
-	 (let ((expression (lambda-body constant)))
+  (cond ((scode/lambda? constant)
+	 (let ((expression (scode/lambda-body constant)))
 	   (if (and (compiled-code-address? expression)
 		    (eq? (compiled-code-address->block expression) block))
 	       (begin

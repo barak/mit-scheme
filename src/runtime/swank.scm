@@ -1104,9 +1104,10 @@ swank:xref
        scode-predicates))
 
 (define scode-predicates
-  (list access? assignment? combination? comment?
-	conditional? definition? delay? disjunction? lambda?
-	quotation? sequence? the-environment? variable?))
+  (list scode-access? scode-assignment? scode-combination? scode-comment?
+	scode-conditional? scode-definition? scode-delay? scode-disjunction?
+	scode-lambda? scode-quotation? scode-sequence? scode-the-environment?
+	scode-variable?))
 
 (define (inspect-system-pair o)
   (stream (iline "car" (system-pair-car o))

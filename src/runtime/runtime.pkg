@@ -606,21 +606,6 @@ USA.
 	  with-obarray-lock)
   (initialization (initialize-package!)))
 
-(define-package (runtime alternative-lambda)
-  (files "lambdx")
-  (parent (runtime))
-  (export ()
-	  lambda-components*
-	  lambda-components**
-	  lambda-pattern/name
-	  lambda-pattern/optional
-	  lambda-pattern/required
-	  lambda-pattern/rest
-	  lambda-pattern?
-	  make-lambda*
-	  make-lambda**
-	  make-lambda-pattern))
-
 (define-package (runtime merge-sort)
   (files "msort")
   (parent (runtime))
@@ -2816,18 +2801,18 @@ USA.
   (files "lambda")
   (parent (runtime))
   (export ()
-	  block-declaration?
 	  block-declaration-text
-	  lambda?
-	  lambda-body
-	  lambda-bound
-	  lambda-bound?
-	  lambda-components
-	  lambda-interface
-	  lambda-name
+	  block-declaration?
 	  make-block-declaration
-	  make-lambda
-	  set-lambda-body!)
+	  make-scode-lambda
+	  scode-lambda-body
+	  scode-lambda-bound
+	  scode-lambda-bound?
+	  scode-lambda-components
+	  scode-lambda-interface
+	  scode-lambda-name
+	  scode-lambda?
+	  set-scode-lambda-body!)
   (export (runtime advice)
 	  lambda-unwrap-body!
 	  lambda-wrap-body!
@@ -2843,6 +2828,21 @@ USA.
   (export (runtime unsyntaxer)
 	  lambda-immediate-body)
   (initialization (initialize-package!)))
+
+(define-package (runtime alternative-lambda)
+  (files "lambdx")
+  (parent (runtime))
+  (export ()
+	  lambda-components*
+	  lambda-components**
+	  lambda-pattern/name
+	  lambda-pattern/optional
+	  lambda-pattern/required
+	  lambda-pattern/rest
+	  lambda-pattern?
+	  make-lambda*
+	  make-lambda**
+	  make-lambda-pattern))
 
 (define-package (runtime list)
   (files "list")
@@ -3888,97 +3888,64 @@ USA.
   (files "scode")
   (parent (runtime))
   (export ()
-	  absolute-reference-name
-	  absolute-reference-to?
-	  absolute-reference?
-	  access-components
-	  access-environment
-	  access-name
-	  access?
-	  assignment-components
-	  assignment-components-with-variable
-	  assignment-name
-	  assignment-value
-	  assignment-variable
-	  assignment?
-	  comment-components
-	  comment-expression
-	  comment-text
-	  comment?
-	  declaration-components
-	  declaration-expression
-	  declaration-text
-	  declaration?
-	  definition-components
-	  definition-name
-	  definition-value
-	  definition?
-	  delay-components
-	  delay-expression
-	  delay?
-	  make-absolute-reference
-	  make-access
-	  make-assignment
-	  make-assignment-from-variable
-	  make-comment
-	  make-declaration
-	  make-definition
-	  make-delay
-	  make-quotation
-	  make-the-environment
-	  make-variable
-	  quotation-expression
-	  quotation?
+	  make-scode-absolute-reference
+	  make-scode-access
+	  make-scode-assignment
+	  make-scode-combination
+	  make-scode-comment
+	  make-scode-conditional
+	  make-scode-declaration
+	  make-scode-definition
+	  make-scode-delay
+	  make-scode-disjunction
+	  make-scode-quotation
+	  make-scode-sequence
+	  make-scode-the-environment
+	  make-scode-unassigned?
+	  make-scode-variable
+	  scode-absolute-reference-name
+	  scode-absolute-reference-to?
+	  scode-absolute-reference?
+	  scode-access-environment
+	  scode-access-name
+	  scode-access?
+	  scode-assignment-name
+	  scode-assignment-value
+	  scode-assignment?
+	  scode-combination-operands
+	  scode-combination-operator
+	  scode-combination?
+	  scode-comment-expression
+	  scode-comment-text
+	  scode-comment?
+	  scode-conditional-alternative
+	  scode-conditional-consequent
+	  scode-conditional-predicate
+	  scode-conditional?
 	  scode-constant?
-	  set-comment-expression!
-	  set-comment-text!
-	  set-declaration-expression!
-	  set-declaration-text!
-	  the-environment?
-	  variable-components
-	  variable-name
-	  variable?)
-  (initialization (initialize-package!)))
-
-(define-package (runtime scode-combinator)
-  (files "scomb")
-  (parent (runtime))
-  (export ()
-	  combination-components
-	  combination-operands
-	  combination-operator
-	  combination-size
-	  combination-subexpressions
-	  combination?
-	  conditional-alternative
-	  conditional-components
-	  conditional-consequent
-	  conditional-predicate
-	  conditional-subexpressions
-	  conditional?
-	  disjunction-alternative
-	  disjunction-components
-	  disjunction-predicate
-	  disjunction-subexpressions
-	  disjunction?
-	  make-combination
-	  make-conditional
-	  make-disjunction
-	  make-sequence
-	  make-unassigned?
-	  sequence-actions
-	  sequence-components
-	  sequence-immediate-actions
-	  sequence-immediate-first
-	  sequence-immediate-second
-	  sequence-first
-	  sequence-second
-	  sequence?
-	  unassigned?-components
-	  unassigned?-name
-	  unassigned??
-	  undefined-conditional-branch)
-  (initialization (initialize-package!)))
+	  scode-declaration-expression
+	  scode-declaration-text
+	  scode-declaration?
+	  scode-definition-name
+	  scode-definition-value
+	  scode-definition?
+	  scode-delay-expression
+	  scode-delay?
+	  scode-disjunction-alternative
+	  scode-disjunction-predicate
+	  scode-disjunction?
+	  scode-quotation-expression
+	  scode-quotation?
+	  scode-sequence-actions
+	  scode-sequence?
+	  scode-the-environment?
+	  scode-unassigned?-name
+	  scode-unassigned??
+	  scode-variable-name
+	  scode-variable?
+	  undefined-scode-conditional-branch)
+  (export (runtime lambda-abstraction)
+	  set-scode-comment-expression!))
 
 (define-package (runtime scode-data)
   (files "sdata")
@@ -3996,31 +3963,6 @@ USA.
 	  &triple-third
 	  &typed-pair-cons
 	  &typed-triple-cons)
-  (export (runtime scode)
-	  &pair-car
-	  &pair-cdr
-	  &pair-set-car!
-	  &pair-set-cdr!
-	  &singleton-element
-	  &typed-pair-cons
-	  &typed-singleton-cons)
-  (export (runtime scode-combinator)
-	  &pair-car
-	  &pair-cdr
-	  &pair-set-car!
-	  &pair-set-cdr!
-	  &subvector->list
-	  &triple-first
-	  &triple-second
-	  &triple-set-first!
-	  &triple-set-second!
-	  &triple-set-third!
-	  &triple-third
-	  &typed-pair-cons
-	  &typed-triple-cons
-	  &typed-vector-cons
-	  &vector-length
-	  &vector-ref)
   (export (runtime scode-scan)
 	  &pair-car
 	  &pair-cdr
@@ -4050,7 +3992,6 @@ USA.
 	  open-block-actions
 	  open-block-components
 	  open-block-declarations
-	  open-block-definitions
 	  open-block-names
 	  open-block?
 	  scan-defines

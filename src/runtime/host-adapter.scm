@@ -41,6 +41,11 @@ USA.
     (eq? 'unbound (environment-reference-type env name)))
 
   (let ((env (->environment '())))
+
+    (define (provide-rename new-name old-name)
+      (if (unbound? env new-name)
+	  (eval `(define ,new-name ,old-name) env)))
+
     (if (unbound? env 'guarantee)
 	(eval `(define (guarantee predicate object #!optional caller)
 		 (if (predicate object)
@@ -57,10 +62,72 @@ USA.
 	(eval '(define (bytes-per-object)
 		 (vector-ref (gc-space-status) 0))
 	      env))
-    (if (unbound? env 'random-bytevector)
-	(eval '(define random-bytevector random-byte-vector) env))
-    (if (unbound? env 'string-foldcase)
-	(eval '(define string-foldcase string-downcase) env)))
+
+    (provide-rename 'random-bytevector 'random-byte-vector)
+    (provide-rename 'string-foldcase 'string-downcase)
+
+    (for-each (lambda (old-name)
+		(provide-rename (symbol 'scode- old-name) old-name))
+	      '(access-environment
+		access-name
+		access?
+		assignment-name
+		assignment-value
+		assignment?
+		combination-operands
+		combination-operator
+		combination?
+		comment-expression
+		comment-text
+		comment?
+		conditional-alternative
+		conditional-consequent
+		conditional-predicate
+		conditional?
+		constant?
+		declaration-expression
+		declaration-text
+		declaration?
+		definition-name
+		definition-value
+		definition?
+		delay-expression
+		delay?
+		disjunction-alternative
+		disjunction-predicate
+		disjunction?
+		lambda-components
+		lambda-body
+		lambda-name
+		lambda?
+		quotation-expression
+		quotation?
+		sequence-actions
+		sequence?
+		the-environment?
+		unassigned?-name
+		unassigned??
+		variable-name
+		variable?))
+    (for-each (lambda (root)
+		(provide-rename (symbol 'make-scode- root)
+				(symbol 'make- root)))
+	      '(access
+		assignment
+		combination
+		comment
+		conditional
+		declaration
+		definition
+		delay
+		disjunction
+		lambda
+		quotation
+		sequence
+		the-environment
+		unassigned?
+		variable))
+    (provide-rename 'set-scode-lambda-body! 'set-lambda-body!))
 
   (let ((env (->environment '(runtime))))
     (if (unbound? env 'select-on-bytes-per-word)

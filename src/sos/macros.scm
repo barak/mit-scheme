@@ -443,8 +443,8 @@ USA.
 				 (CALL-NEXT-METHOD)
 				 ,@body)
 			       instance-environment)))
-		  (free-variable? (car (lambda-bound l))
-				  (lambda-body l)))))
+		  (free-variable? (car (scode-lambda-bound l))
+				  (scode-lambda-body l)))))
       (values body #f)))
 
 (define free-variable?
@@ -463,43 +463,46 @@ USA.
 	 `((ACCESS
 	    ,(lambda (name expr)
 	       name
-	       (if (access-environment expr)
+	       (if (scode-access-environment expr)
 		   (illegal expr)
 		   #f)))
 	   (ASSIGNMENT
 	    ,(lambda (name expr)
-	       (or (eq? name (assignment-name expr))
-		   (do-expr name (assignment-value expr)))))
+	       (or (eq? name (scode-assignment-name expr))
+		   (do-expr name (scode-assignment-value expr)))))
 	   (COMBINATION
 	    ,(lambda (name expr)
-	       (or (do-expr name (combination-operator expr))
-		   (do-exprs name (combination-operands expr)))))
+	       (or (do-expr name (scode-combination-operator expr))
+		   (do-exprs name (scode-combination-operands expr)))))
 	   (COMMENT
 	    ,(lambda (name expr)
-	       (do-expr name (comment-expression expr))))
+	       (do-expr name (scode-comment-expression expr))))
 	   (CONDITIONAL
 	    ,(lambda (name expr)
-	       (do-exprs name (conditional-components expr list))))
+	       (or (do-expr name (scode-conditional-predicate expr))
+		   (do-expr name (scode-conditional-consequent expr))
+		   (do-expr name (scode-conditional-alternative expr)))))
 	   (DELAY
 	    ,(lambda (name expr)
-	       (do-expr name (delay-expression expr))))
+	       (do-expr name (scode-delay-expression expr))))
 	   (DISJUNCTION
 	    ,(lambda (name expr)
-	       (do-exprs name (disjunction-components expr list))))
+	       (or (do-expr name (scode-disjunction-predicate expr))
+		   (do-expr name (scode-disjunction-alternative expr)))))
 	   (DEFINITION
 	    ,(lambda (name expr)
-	       (and (not (eq? name (definition-name expr)))
-		    (do-expr name (definition-value expr)))))
+	       (and (not (eq? name (scode-definition-name expr)))
+		    (do-expr name (scode-definition-value expr)))))
 	   (LAMBDA
 	    ,(lambda (name expr)
-	       (and (not (memq name (lambda-bound expr)))
-		    (do-expr name (lambda-body expr)))))
+	       (and (not (memq name (scode-lambda-bound expr)))
+		    (do-expr name (scode-lambda-body expr)))))
 	   (SEQUENCE
 	    ,(lambda (name expr)
-	       (do-exprs name (sequence-actions expr))))
+	       (do-exprs name (scode-sequence-actions expr))))
 	   (VARIABLE
 	    ,(lambda (name expr)
-	       (eq? name (variable-name expr)))))))
+	       (eq? name (scode-variable-name expr)))))))
        (illegal (lambda (expr) (error "Illegal expression:" expr))))
     do-expr))
 

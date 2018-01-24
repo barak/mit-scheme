@@ -29,19 +29,19 @@ USA.
 
 (declare (usual-integrations))
 
-(define lambda-body)
-(define set-lambda-body!)
-(define lambda-bound)
-(define lambda-bound?)
-(define lambda-interface)
-(define lambda-name)
+(define scode-lambda-body)
+(define set-scode-lambda-body!)
+(define scode-lambda-bound)
+(define scode-lambda-bound?)
+(define scode-lambda-interface)
+(define scode-lambda-name)
 
 ;;; A lambda is an abstract 7-tuple consisting of these elements:
 ;;;  name          name of the lambda
-;;;  required      list of symbols, required arguments in order (null if no required)
-;;;  optional      list of symbols, optional arguments in order, (null if no optionals)
+;;;  required      list of symbols, required arguments in order
+;;;  optional      list of symbols, optional arguments in order
 ;;;  rest          symbol, rest argument, #F if no rest argument
-;;;  auxiliary     list of auxiliaries to be bound to unassigned, (null if no auxiliaries)
+;;;  auxiliary     list of auxiliaries to be bound to unassigned
 ;;;  declarations  list of declarations for the lexical block
 ;;;  body          an expression.  If there are auxiliaries, the body typically
 ;;;                begins with the appropriate assignments.
@@ -92,28 +92,28 @@ USA.
 	(dispatch-1 'LAMBDA-ARITY
 		    slambda-arity
 		    xlambda-arity))
-  (set! lambda-body
-	(dispatch-0 'LAMBDA-BODY
+  (set! scode-lambda-body
+	(dispatch-0 'scode-lambda-body
 		    clambda-unwrapped-body
 		    xlambda-unwrapped-body))
-  (set! lambda-bound
-	(dispatch-0 'LAMBDA-BOUND
+  (set! scode-lambda-bound
+	(dispatch-0 'scode-lambda-bound
 		    clambda-bound
 		    xlambda-bound))
-  (set! lambda-bound?
-	(dispatch-1 'LAMBDA-BOUND?
+  (set! scode-lambda-bound?
+	(dispatch-1 'scode-lambda-bound?
 		    clambda-bound?
 		    xlambda-bound?))
   (set! lambda-immediate-body
 	(dispatch-0 'LAMBDA-IMMEDIATE-BODY
 		    slambda-body
 		    xlambda-body))
-  (set! lambda-interface
-	(dispatch-0 'LAMBDA-INTERFACE
+  (set! scode-lambda-interface
+	(dispatch-0 'scode-lambda-interface
 		    slambda-interface
 		    xlambda-interface))
-  (set! lambda-name
-	(dispatch-0 'LAMBDA-NAME
+  (set! scode-lambda-name
+	(dispatch-0 'scode-lambda-name
 		    slambda-name
 		    xlambda-name))
   (set! lambda-names-vector
@@ -132,8 +132,8 @@ USA.
 	(dispatch-1 'LAMBDA-WRAPPER-COMPONENTS
 		    clambda-wrapper-components
 		    xlambda-wrapper-components))
-  (set! set-lambda-body!
-	(dispatch-1 'SET-LAMBDA-BODY!
+  (set! set-scode-lambda-body!
+	(dispatch-1 'set-scode-lambda-body!
 		    set-clambda-unwrapped-body!
 		    set-xlambda-unwrapped-body!)))
 
@@ -185,11 +185,11 @@ USA.
 	 (set-physical-body! *lambda new-body)))))
 
 (define-integrable (make-wrapper original-body new-body state)
-  (make-comment (vector wrapper-tag original-body state) new-body))
+  (make-scode-comment (vector wrapper-tag original-body state) new-body))
 
 (define (wrapper? object)
-  (and (comment? object)
-       (let ((text (comment-text object)))
+  (and (scode-comment? object)
+       (let ((text (scode-comment-text object)))
 	 (and (vector? text)
 	      (not (zero? (vector-length text)))
 	      (eq? (vector-ref text 0) wrapper-tag)))))
@@ -198,22 +198,22 @@ USA.
   '(LAMBDA-WRAPPER))
 
 (define-integrable (wrapper-body wrapper)
-  (comment-expression wrapper))
+  (scode-comment-expression wrapper))
 
 (define-integrable (set-wrapper-body! wrapper body)
-  (set-comment-expression! wrapper body))
+  (set-scode-comment-expression! wrapper body))
 
 (define-integrable (wrapper-state wrapper)
-  (vector-ref (comment-text wrapper) 2))
+  (vector-ref (scode-comment-text wrapper) 2))
 
 (define-integrable (set-wrapper-state! wrapper new-state)
-  (vector-set! (comment-text wrapper) 2 new-state))
+  (vector-set! (scode-comment-text wrapper) 2 new-state))
 
 (define-integrable (wrapper-original-body wrapper)
-  (vector-ref (comment-text wrapper) 1))
+  (vector-ref (scode-comment-text wrapper) 1))
 
 (define-integrable (set-wrapper-original-body! wrapper body)
-  (vector-set! (comment-text wrapper) 1 body))
+  (vector-set! (scode-comment-text wrapper) 1 body))
 
 ;;;; Compound Lambda
 
@@ -241,22 +241,22 @@ USA.
   (lambda-body-has-internal-lambda? (slambda-body clambda)))
 
 (define (lambda-body-auxiliary body)
-  (if (combination? body)
-      (let ((operator (combination-operator body)))
+  (if (scode-combination? body)
+      (let ((operator (scode-combination-operator body)))
 	(if (internal-lambda? operator)
 	    (slambda-auxiliary operator)
 	    '()))
       '()))
 
 (define (lambda-body-has-internal-lambda? body)
-  (and (combination? body)
-       (let ((operator (combination-operator body)))
+  (and (scode-combination? body)
+       (let ((operator (scode-combination-operator body)))
 	 (and (internal-lambda? operator)
 	      operator))))
 
 (define (auxiliary-bound? body symbol)
-  (and (combination? body)
-       (let ((operator (combination-operator body)))
+  (and (scode-combination? body)
+       (let ((operator (scode-combination-operator body)))
 	 (and (internal-lambda? operator)
 	      (internal-lambda-bound? operator symbol)))))
 
@@ -402,11 +402,12 @@ USA.
 
 ;;;; Generic Lambda
 
-(define (lambda? object)
+(define (scode-lambda? object)
   (or (slambda? object)
       (xlambda? object)))
 
-(define (make-lambda name required optional rest auxiliary declarations body)
+(define (make-scode-lambda name required optional rest auxiliary declarations
+			   body)
   (let ((interface (append required optional (if rest (list rest) '()))))
     (let ((dup-interface (find-list-duplicates interface))
 	  (dup-auxiliary (find-list-duplicates auxiliary)))
@@ -421,8 +422,8 @@ USA.
   (let ((body*
 	 (if (null? declarations)
 	     body
-	     (make-sequence (list (make-block-declaration declarations)
-				  body)))))
+	     (make-scode-sequence (list (make-block-declaration declarations)
+					body)))))
     (cond ((and (< (length required) 256)
 		(< (length optional) 256)
 		(or (not (null? optional))
@@ -435,14 +436,16 @@ USA.
 	  (else
 	   (make-clambda name required auxiliary body*)))))
 
-(define (lambda-components *lambda receiver)
+(define (scode-lambda-components *lambda receiver)
   (&lambda-components *lambda
     (lambda (name required optional rest auxiliary body)
-      (let ((actions (and (sequence? body) (sequence-actions body))))
+      (let ((actions
+	     (and (scode-sequence? body)
+		  (scode-sequence-actions body))))
 	(if (and actions (block-declaration? (car actions)))
 	    (receiver name required optional rest auxiliary
 		      (block-declaration-text (car actions))
-		      (make-sequence (cdr actions)))
+		      (make-scode-sequence (cdr actions)))
 	    (receiver name required optional rest auxiliary '() body))))))
 
 (define (find-list-duplicates items)
@@ -565,8 +568,8 @@ USA.
 (define (make-auxiliary-lambda auxiliary body)
   (if (null? auxiliary)
       body
-      (make-combination (%make-internal-lambda auxiliary body)
-			(make-unassigned auxiliary))))
+      (make-scode-combination (%make-internal-lambda auxiliary body)
+			      (make-unassigned auxiliary))))
 
 (define (internal-lambda? *lambda)
   (and (slambda? *lambda)

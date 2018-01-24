@@ -78,31 +78,30 @@ USA.
 
 (define (scode/unquasiquote exp)
   (cond ((scode/combination? exp)
-	 (scode/combination-components
-	  exp
-	  (lambda (operator operands)
-	    (define (kernel operator-name)
-	      (case operator-name
-		((CONS)
-		 (cons (scode/unquasiquote (car operands))
-		       (scode/unquasiquote (cadr operands))))
-		((LIST)
-		 (apply list (map scode/unquasiquote operands)))
-		((CONS*)
-		 (apply cons* (map scode/unquasiquote operands)))
-		((APPEND)
-		 (append-map (lambda (component)
-			       (if (scode/constant? component)
-				   (scode/constant-value component)
-				   (list (list 'UNQUOTE-SPLICING component))))
-			     operands))
-		(else (list 'UNQUOTE exp))))
-	    (cond ((eq? operator (ucode-primitive cons))
-		   ;; integrations
-		   (kernel 'CONS))
-		  ((scode/absolute-reference? operator)
-		   (kernel (scode/absolute-reference-name operator)))
-		  (else (list 'UNQUOTE exp))))))
+	 (let ((operator (scode/combination-operator exp))
+	       (operands (scode/combination-operands exp)))
+	   (define (kernel operator-name)
+	     (case operator-name
+	       ((CONS)
+		(cons (scode/unquasiquote (car operands))
+		      (scode/unquasiquote (cadr operands))))
+	       ((LIST)
+		(apply list (map scode/unquasiquote operands)))
+	       ((CONS*)
+		(apply cons* (map scode/unquasiquote operands)))
+	       ((APPEND)
+		(append-map (lambda (component)
+			      (if (scode/constant? component)
+				  (scode/constant-value component)
+				  (list (list 'UNQUOTE-SPLICING component))))
+			    operands))
+	       (else (list 'UNQUOTE exp))))
+	   (cond ((eq? operator (ucode-primitive cons))
+		  ;; integrations
+		  (kernel 'CONS))
+		 ((scode/absolute-reference? operator)
+		  (kernel (scode/absolute-reference-name operator)))
+		 (else (list 'UNQUOTE exp)))))
 	((scode/constant? exp)
 	 (scode/constant-value exp))
 	(else (list 'UNQUOTE exp))))
@@ -172,25 +171,25 @@ USA.
        (if (and (scode/constant? (car operands))
 		(bit-string? (scode/constant-value (car operands)))
 		(scode/combination? (cadr operands)))
-	   (scode/combination-components (cadr operands)
-	     (lambda (operator inner-operands)
-	       (if (and (or (is-operator? operator 'CONS-SYNTAX false)
-			    (is-operator? operator
-					  'CONS
-					  (ucode-primitive cons)))
-			(scode/constant? (car inner-operands))
-			(bit-string?
-			 (scode/constant-value (car inner-operands))))
-		   (if-expanded
-		    (scode/make-combination
-		     (if (scode/constant? (cadr inner-operands))
-			 (ucode-primitive cons)
-			 operator)
-		     (cons (instruction-append
-			    (scode/constant-value (car operands))
-			    (scode/constant-value (car inner-operands)))
-			   (cdr inner-operands))))
-		   (default))))
+	   (let ((operator (scode/combination-operator (cadr operands)))
+		 (inner-operands (scode/combination-operands (cadr operands))))
+	     (if (and (or (is-operator? operator 'CONS-SYNTAX false)
+			  (is-operator? operator
+					'CONS
+					(ucode-primitive cons)))
+		      (scode/constant? (car inner-operands))
+		      (bit-string?
+		       (scode/constant-value (car inner-operands))))
+		 (if-expanded
+		  (scode/make-combination
+		   (if (scode/constant? (cadr inner-operands))
+		       (ucode-primitive cons)
+		       operator)
+		   (cons (instruction-append
+			  (scode/constant-value (car operands))
+			  (scode/constant-value (car inner-operands)))
+			 (cdr inner-operands))))
+		 (default)))
 	   (default))))))
 
 ;;;; INSTRUCTION->INSTRUCTION-SEQUENCE expander
@@ -200,31 +199,31 @@ USA.
     (define (parse expression receiver)
       (if (not (scode/combination? expression))
 	  (receiver false false false)
-	  (scode/combination-components expression
-	    (lambda (operator operands)
-	      (cond ((and (not (is-operator? operator
-					     'CONS
-					     (ucode-primitive cons)))
-			  (not (is-operator? operator 'CONS-SYNTAX false)))
-		     (receiver false false false))
-		    ((scode/constant? (cadr operands))
-		     (if (not (null? (scode/constant-value (cadr operands))))
-			 (error "INST->INST-SEQ-EXPANDER: bad CONS-SYNTAX tail"
-				(scode/constant-value (cadr operands))))
-		     (let ((name
-			    (generate-uninterned-symbol 'INSTRUCTION-TAIL-)))
-		       (receiver true
-				 (cons name expression)
-				 (scode/make-variable name))))
-		    (else
-		     (parse (cadr operands)
-		       (lambda (mode info rest)
-			 (if (not mode)
-			     (receiver false false false)
-			     (receiver true info
-				       (scode/make-combination
-					operator
-					(list (car operands) rest))))))))))))
+	  (let ((operator (scode/combination-operator expression))
+		(operands (scode/combination-operands expression)))
+	    (cond ((and (not (is-operator? operator
+					   'CONS
+					   (ucode-primitive cons)))
+			(not (is-operator? operator 'CONS-SYNTAX false)))
+		   (receiver false false false))
+		  ((scode/constant? (cadr operands))
+		   (if (not (null? (scode/constant-value (cadr operands))))
+		       (error "INST->INST-SEQ-EXPANDER: bad CONS-SYNTAX tail"
+			      (scode/constant-value (cadr operands))))
+		   (let ((name
+			  (generate-uninterned-symbol 'INSTRUCTION-TAIL-)))
+		     (receiver true
+			       (cons name expression)
+			       (scode/make-variable name))))
+		  (else
+		   (parse (cadr operands)
+		     (lambda (mode info rest)
+		       (if (not mode)
+			   (receiver false false false)
+			   (receiver true info
+				     (scode/make-combination
+				      operator
+				      (list (car operands) rest)))))))))))
     (scode->scode-expander
      (lambda (operands if-expanded if-not-expanded)
        (if (not (scode/combination? (car operands)))

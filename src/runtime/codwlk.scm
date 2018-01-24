@@ -126,21 +126,22 @@ USA.
 	  table)))
 
 (define (walk/combination walker expression)
-  (let ((operator (combination-operator expression)))
+  (let ((operator (scode-combination-operator expression)))
     (cond ((and (or (eq? operator (ucode-primitive lexical-unassigned?))
-		    (absolute-reference-to? operator 'LEXICAL-UNASSIGNED?))
-		(let ((operands (combination-operands expression)))
-		  (and (the-environment? (car operands))
+		    (scode-absolute-reference-to? operator
+						  'lexical-unassigned?))
+		(let ((operands (scode-combination-operands expression)))
+		  (and (scode-the-environment? (car operands))
 		       (symbol? (cadr operands)))))
 	   (scode-walker/unassigned? walker))
 	  ((or (eq? operator (ucode-primitive error-procedure))
-	       (absolute-reference-to? operator 'ERROR-PROCEDURE))
+	       (scode-absolute-reference-to? operator 'error-procedure))
 	   (scode-walker/error-combination walker))
 	  (else
 	   (scode-walker/combination walker)))))
 
 (define (walk/comment walker expression)
-  (if (declaration? expression)
+  (if (scode-declaration? expression)
       (scode-walker/declaration walker)
       (scode-walker/comment walker)))
 

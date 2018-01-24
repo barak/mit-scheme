@@ -447,7 +447,7 @@ USA.
       (unparse-symbol-name (symbol->string symbol) context)
       (*unparse-with-brackets 'UNINTERNED-SYMBOL symbol context
         (lambda (context*)
-	  (*unparse-string (symbol->string symbol) context)))))
+	  (*unparse-string (symbol->string symbol) context*)))))
 
 (define (unparse-symbol symbol context)
   (if (keyword? symbol)
@@ -788,22 +788,22 @@ USA.
 (define (unparse/assignment assignment context)
   (*unparse-with-brackets 'ASSIGNMENT assignment context
     (lambda (context*)
-      (*unparse-object (assignment-name assignment) context*))))
+      (*unparse-object (scode-assignment-name assignment) context*))))
 
 (define (unparse/definition definition context)
   (*unparse-with-brackets 'DEFINITION definition context
     (lambda (context*)
-      (*unparse-object (definition-name definition) context*))))
+      (*unparse-object (scode-definition-name definition) context*))))
 
 (define (unparse/lambda lambda-object context)
   (*unparse-with-brackets 'LAMBDA lambda-object context
     (lambda (context*)
-      (*unparse-object (lambda-name lambda-object) context*))))
+      (*unparse-object (scode-lambda-name lambda-object) context*))))
 
 (define (unparse/variable variable context)
   (*unparse-with-brackets 'VARIABLE variable context
     (lambda (context*)
-      (*unparse-object (variable-name variable) context*))))
+      (*unparse-object (scode-variable-name variable) context*))))
 
 (define (unparse/number object context)
   (*unparse-string (number->string

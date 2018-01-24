@@ -67,10 +67,10 @@ USA.
 
 (define (make-advice-hook)
   ;; This inserts the actual procedure in a constant list.
-  (make-combination
-   (make-combination (ucode-primitive car)
+  (make-scode-combination
+   (make-scode-combination (ucode-primitive car)
 		     (list (list hook/advised-procedure-wrapper)))
-   (list (make-the-environment))))
+   (list (make-scode-the-environment))))
 
 (define (hook/advised-procedure-wrapper environment)
   (advised-procedure-wrapper environment))

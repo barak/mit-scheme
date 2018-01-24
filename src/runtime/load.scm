@@ -221,8 +221,8 @@ USA.
        (file-regular? pathname)))
 
 (define (load/purification-root object)
-  (or (and (comment? object)
-	   (let ((text (comment-text object)))
+  (or (and (scode-comment? object)
+	   (let ((text (scode-comment-text object)))
 	     (and (dbg-info-vector? text)
 		  (dbg-info-vector/purification-root text))))
       (and (object-type? (ucode-type compiled-entry) object)

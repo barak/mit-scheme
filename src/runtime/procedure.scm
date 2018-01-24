@@ -102,7 +102,7 @@ USA.
 		   (else
 		    (error "Illegal arity for entity:" procedure)))))
 	  ((%compound-procedure? p)
-	   (lambda-components (%compound-procedure-lambda p)
+	   (scode-lambda-components (%compound-procedure-lambda p)
 	     (lambda (name required optional rest auxiliary decl body)
 	       name auxiliary decl body
 	       (let ((r (fix:- (length required) e)))

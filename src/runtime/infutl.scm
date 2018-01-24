@@ -169,9 +169,10 @@ USA.
 					 blocks))
 				  0
 				  com-pathname))
-	((and (comment? value)
-	      (dbg-info-vector? (comment-text value)))
-	 (let ((blocks (dbg-info-vector/blocks-vector (comment-text value))))
+	((and (scode-comment? value)
+	      (dbg-info-vector? (scode-comment-text value)))
+	 (let ((blocks
+		(dbg-info-vector/blocks-vector (scode-comment-text value))))
 	   (fasload-update-internal (vector-ref blocks 0)
 				    blocks
 				    1
@@ -362,7 +363,7 @@ USA.
     (or (and (dbg-procedure? object)
 	     (let ((scode (dbg-procedure/source-code object)))
 	       (and scode
-		    (lambda-body scode))))
+		    (scode-lambda-body scode))))
 	entry)))
 
 ;;; Support of BSM files

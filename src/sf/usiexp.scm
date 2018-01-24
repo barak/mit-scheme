@@ -383,17 +383,17 @@ USA.
 ;;;; General CAR/CDR Encodings
 
 (define (call-to-car? expression)
-  (and (combination? expression)
+  (and (scode-combination? expression)
        (constant-eq? (combination/operator expression) (ucode-primitive car))
        (length=? (combination/operands expression) 1)))
 
 (define (call-to-cdr? expression)
-  (and (combination? expression)
+  (and (scode-combination? expression)
        (constant-eq? (combination/operator expression) (ucode-primitive cdr))
        (length=? (combination/operands expression) 1)))
 
 (define (call-to-general-car-cdr? expression)
-  (and (combination? expression)
+  (and (scode-combination? expression)
        (constant-eq? (combination/operator expression)
 		     (ucode-primitive general-car-cdr))
        (length=? (combination/operands expression) 2)

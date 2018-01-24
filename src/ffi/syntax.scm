@@ -74,7 +74,7 @@ USA.
 		   (string-append library "-const.bin"))
 		  (not c-include-noisily?))))
       (let ((enums.struct-values
-	     (if (comment? comment) (comment-expression comment)
+	     (if (scode-comment? comment) (scode-comment-expression comment)
 		 (error:wrong-type-datum comment "a fasl comment"))))
 	(warn-new-cdecls includes)
 	(set-c-includes/enum-values! includes (car enums.struct-values))

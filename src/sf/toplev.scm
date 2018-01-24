@@ -128,7 +128,7 @@ USA.
       (let ((do-it
 	     (let ((start-date (get-decoded-time)))
 	       (lambda ()
-		 (fasdump (make-comment
+		 (fasdump (make-scode-comment
 			   `((SOURCE-FILE . ,(->namestring input-pathname))
 			     (DATE ,(decoded-time/year start-date)
 				   ,(decoded-time/month start-date)

@@ -146,7 +146,6 @@ USA.
     ("savres"	(runtime save/restore))
     ("scan"	(runtime scode-scan))
     ("scode"	(runtime scode))
-    ("scomb"	(runtime scode-combinator))
     ("sdata"	(runtime scode-data))
     ("sfile"	(runtime simple-file-ops))
     ("socket"	(runtime socket))
