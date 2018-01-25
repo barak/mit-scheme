@@ -127,7 +127,9 @@ USA.
 		the-environment
 		unassigned?
 		variable))
-    (provide-rename 'set-scode-lambda-body! 'set-lambda-body!))
+    (provide-rename 'set-scode-lambda-body! 'set-lambda-body!)
+    (provide-rename 'undefined-scode-conditional-branch
+		    'undefined-conditional-branch))
 
   (let ((env (->environment '(runtime))))
     (if (unbound? env 'select-on-bytes-per-word)
