@@ -252,7 +252,7 @@ differences:
   (or (let loop ((object object))
 	(or (not object)
 	    (and (syntactic-closure? object)
-		 (loop (syntactic-closure/form object)))))
+		 (loop (syntactic-closure-form object)))))
       (and (identifier? object)
 	   (any (lambda (name)
 		  (identifier=? (parser-context/use-environment context)

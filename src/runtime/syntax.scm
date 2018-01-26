@@ -68,13 +68,11 @@ USA.
 ;;;; Syntactic closures
 
 (define-record-type <syntactic-closure>
-    (%make-syntactic-closure environment free-names form)
+    (%make-syntactic-closure senv free form)
     syntactic-closure?
-  (environment syntactic-closure/environment)
-  (free-names syntactic-closure/free-names)
-  (form syntactic-closure/form))
-
-(define-guarantee syntactic-closure "syntactic closure")
+  (senv syntactic-closure-senv)
+  (free syntactic-closure-free)
+  (form syntactic-closure-form))
 
 (define (make-syntactic-closure environment free-names form)
   (let ((senv (->syntactic-environment environment 'MAKE-SYNTACTIC-CLOSURE)))
@@ -82,8 +80,8 @@ USA.
 			    "list of identifiers" 'MAKE-SYNTACTIC-CLOSURE)
     (if (or (memq form free-names)	;LOOKUP-IDENTIFIER assumes this.
 	    (and (syntactic-closure? form)
-		 (null? (syntactic-closure/free-names form))
-		 (not (identifier? (syntactic-closure/form form))))
+		 (null? (syntactic-closure-free form))
+		 (not (identifier? (syntactic-closure-form form))))
 	    (not (or (syntactic-closure? form)
 		     (pair? form)
 		     (symbol? form))))
@@ -101,7 +99,7 @@ USA.
 	    (cons (loop (car object))
 		  (loop (cdr object)))
 	    (if (syntactic-closure? object)
-		(loop (syntactic-closure/form object))
+		(loop (syntactic-closure-form object))
 		object)))
       object))
 
@@ -118,10 +116,7 @@ USA.
 
 (define (synthetic-identifier? object)
   (and (syntactic-closure? object)
-       (identifier? (syntactic-closure/form object))))
-
-(define-guarantee identifier "identifier")
-(define-guarantee synthetic-identifier "synthetic identifier")
+       (identifier? (syntactic-closure-form object))))
 
 (define (make-synthetic-identifier identifier)
   (close-syntax identifier null-syntactic-environment))
@@ -129,7 +124,7 @@ USA.
 (define (identifier->symbol identifier)
   (or (let loop ((identifier identifier))
 	(if (syntactic-closure? identifier)
-	    (loop (syntactic-closure/form identifier))
+	    (loop (syntactic-closure-form identifier))
 	    (and (symbol? identifier)
 		 identifier)))
       (error:not-a identifier? identifier 'IDENTIFIER->SYMBOL)))
@@ -157,8 +152,8 @@ USA.
 	  ((symbol? identifier)
 	   (make-variable-item identifier))
 	  ((syntactic-closure? identifier)
-	   (lookup-identifier (syntactic-closure/form identifier)
-			      (syntactic-closure/environment identifier)))
+	   (lookup-identifier (syntactic-closure-form identifier)
+			      (syntactic-closure-senv identifier)))
 	  (else
 	   (error:not-a identifier? identifier 'LOOKUP-IDENTIFIER)))))
 

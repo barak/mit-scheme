@@ -43,9 +43,9 @@ USA.
 			    (output/the-environment)))))))
 	       item)))
 	((syntactic-closure? form)
-	 (let ((form (syntactic-closure/form form))
-	       (free-names (syntactic-closure/free-names form))
-	       (closing-env (syntactic-closure/environment form)))
+	 (let ((form (syntactic-closure-form form))
+	       (free-names (syntactic-closure-free form))
+	       (closing-env (syntactic-closure-senv form)))
 	   (classify/form form
 			  (make-partial-syntactic-environment free-names
 							      environment

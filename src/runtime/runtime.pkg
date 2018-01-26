@@ -4395,9 +4395,9 @@ USA.
 	  make-synthetic-identifier
 	  reverse-syntactic-environments
 	  strip-syntactic-closures
-	  syntactic-closure/environment
-	  syntactic-closure/form
-	  syntactic-closure/free-names
+	  syntactic-closure-form
+	  syntactic-closure-free
+	  syntactic-closure-senv
 	  syntactic-closure?
 	  syntax
 	  syntax*
