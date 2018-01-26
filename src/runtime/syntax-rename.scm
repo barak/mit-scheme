@@ -48,6 +48,72 @@ USA.
 
 (declare (usual-integrations))
 
+(define (make-name-generator)
+  (let ((id (make-rename-id)))
+    (lambda (identifier)
+      (rename-identifier identifier id))))
+
+(define-deferred *rename-database*
+  (make-unsettable-parameter 'unbound))
+
+(define-structure (rename-database (constructor initial-rename-database ())
+				   (conc-name rename-database/))
+  (frame-number 0)
+  (mapping-table (make-equal-hash-table) read-only #t)
+  (unmapping-table (make-strong-eq-hash-table) read-only #t)
+  (id-table (make-strong-eq-hash-table) read-only #t))
+
+(define (make-rename-id)
+  (delay
+    (let* ((renames (*rename-database*))
+	   (n (+ (rename-database/frame-number renames) 1)))
+      (set-rename-database/frame-number! renames n)
+      n)))
+
+(define (rename-identifier identifier rename-id)
+  (let ((key (cons identifier rename-id))
+	(renames (*rename-database*)))
+    (let ((mapping-table (rename-database/mapping-table renames)))
+      (or (hash-table/get mapping-table key #f)
+	  (let ((mapped-identifier
+		 (string->uninterned-symbol
+		  (symbol->string (identifier->symbol identifier)))))
+	    (hash-table/put! mapping-table key mapped-identifier)
+	    (hash-table/put! (rename-database/unmapping-table renames)
+			     mapped-identifier
+			     key)
+	    mapped-identifier)))))
+
+(define (rename-top-level-identifier identifier)
+  (if (symbol? identifier)
+      identifier
+      ;; Generate an uninterned symbol here and now, rather than
+      ;; storing anything in the rename database, because we are
+      ;; creating a top-level binding for a synthetic name, which must
+      ;; be globally unique.  Using the rename database causes the
+      ;; substitution logic above to try to use an interned symbol
+      ;; with a nicer name.  The decorations on this name are just
+      ;; that -- decorations, for human legibility.  It is the use of
+      ;; an uninterned symbol that guarantees uniqueness.
+      (string->uninterned-symbol
+       (string-append "."
+		      (symbol->string (identifier->symbol identifier))
+		      "."
+		      (number->string (force (make-rename-id)))))))
+
+(define (rename->original identifier)
+  (let ((entry
+	 (hash-table/get (rename-database/unmapping-table
+			  (*rename-database*))
+			 identifier
+			 #f)))
+    (if entry
+	(identifier->symbol (car entry))
+	(begin
+	  (if (not (symbol? identifier))
+	      (error:bad-range-argument identifier 'RENAME->ORIGINAL))
+	  identifier))))
+
 ;;;; Post processing
 
 (define (output/post-process-expression expression)
@@ -74,6 +140,55 @@ USA.
 		      (mark-safe! rename original))))
 	      bound)
     free))
+
+(define (finalize-mapped-identifier identifier)
+  (let ((entry
+	 (hash-table/get (rename-database/unmapping-table
+			  (*rename-database*))
+			 identifier
+			 #f)))
+    (if entry
+	(let ((identifier (car entry))
+	      (frame-number (force (cdr entry))))
+	  (if (interned-symbol? identifier)
+	      (map-interned-symbol identifier frame-number)
+	      (map-uninterned-identifier identifier frame-number)))
+	(begin
+	  (if (not (symbol? identifier))
+	      (error:bad-range-argument identifier
+					'FINALIZE-MAPPED-IDENTIFIER))
+	  identifier))))
+
+(define (map-interned-symbol symbol-to-map frame-number)
+  (symbol "." symbol-to-map "." frame-number))
+
+(define (map-uninterned-identifier identifier frame-number)
+  (let ((table (rename-database/id-table (*rename-database*)))
+	(symbol (identifier->symbol identifier)))
+    (let ((alist (hash-table/get table symbol '())))
+      (let ((entry (assv frame-number alist)))
+	(if entry
+	    (let ((entry* (assq identifier (cdr entry))))
+	      (if entry*
+		  (cdr entry*)
+		  (let ((mapped-symbol
+			 (map-indexed-symbol symbol
+					     frame-number
+					     (length (cdr entry)))))
+		    (set-cdr! entry
+			      (cons (cons identifier mapped-symbol)
+				    (cdr entry)))
+		    mapped-symbol)))
+	    (let ((mapped-symbol (map-indexed-symbol symbol frame-number 0)))
+	      (hash-table/put! table
+			       symbol
+			       (cons (list frame-number
+					   (cons identifier mapped-symbol))
+				     alist))
+	      mapped-symbol))))))
+
+(define (map-indexed-symbol symbol-to-map frame-number index-number)
+  (symbol "." symbol-to-map "." frame-number "-" index-number))
 
 ;;;; Compute substitution
 
@@ -301,120 +416,3 @@ USA.
      (combinator-substitution make-scode-sequence scode-sequence-actions))
 
    ))
-
-;;;; Identifiers
-
-(define-deferred *rename-database*
-  (make-unsettable-parameter 'UNBOUND))
-
-(define-structure (rename-database (constructor initial-rename-database ())
-				   (conc-name rename-database/))
-  (frame-number 0)
-  (mapping-table (make-equal-hash-table) read-only #t)
-  (unmapping-table (make-strong-eq-hash-table) read-only #t)
-  (id-table (make-strong-eq-hash-table) read-only #t))
-
-(define (make-rename-id)
-  (delay
-    (let* ((renames (*rename-database*))
-	   (n (+ (rename-database/frame-number renames) 1)))
-      (set-rename-database/frame-number! renames n)
-      n)))
-
-(define (rename-identifier identifier rename-id)
-  (let ((key (cons identifier rename-id))
-	(renames (*rename-database*)))
-    (let ((mapping-table (rename-database/mapping-table renames)))
-      (or (hash-table/get mapping-table key #f)
-	  (let ((mapped-identifier
-		 (string->uninterned-symbol
-		  (symbol->string (identifier->symbol identifier)))))
-	    (hash-table/put! mapping-table key mapped-identifier)
-	    (hash-table/put! (rename-database/unmapping-table renames)
-			     mapped-identifier
-			     key)
-	    mapped-identifier)))))
-
-(define (rename-top-level-identifier identifier)
-  (if (symbol? identifier)
-      identifier
-      ;; Generate an uninterned symbol here and now, rather than
-      ;; storing anything in the rename database, because we are
-      ;; creating a top-level binding for a synthetic name, which must
-      ;; be globally unique.  Using the rename database causes the
-      ;; substitution logic above to try to use an interned symbol
-      ;; with a nicer name.  The decorations on this name are just
-      ;; that -- decorations, for human legibility.  It is the use of
-      ;; an uninterned symbol that guarantees uniqueness.
-      (string->uninterned-symbol
-       (string-append "."
-		      (symbol->string (identifier->symbol identifier))
-		      "."
-		      (number->string (force (make-rename-id)))))))
-
-(define (make-name-generator)
-  (let ((id (make-rename-id)))
-    (lambda (identifier)
-      (rename-identifier identifier id))))
-
-(define (rename->original identifier)
-  (let ((entry
-	 (hash-table/get (rename-database/unmapping-table
-			  (*rename-database*))
-			 identifier
-			 #f)))
-    (if entry
-	(identifier->symbol (car entry))
-	(begin
-	  (if (not (symbol? identifier))
-	      (error:bad-range-argument identifier 'RENAME->ORIGINAL))
-	  identifier))))
-
-(define (finalize-mapped-identifier identifier)
-  (let ((entry
-	 (hash-table/get (rename-database/unmapping-table
-			  (*rename-database*))
-			 identifier
-			 #f)))
-    (if entry
-	(let ((identifier (car entry))
-	      (frame-number (force (cdr entry))))
-	  (if (interned-symbol? identifier)
-	      (map-interned-symbol identifier frame-number)
-	      (map-uninterned-identifier identifier frame-number)))
-	(begin
-	  (if (not (symbol? identifier))
-	      (error:bad-range-argument identifier
-					'FINALIZE-MAPPED-IDENTIFIER))
-	  identifier))))
-
-(define (map-interned-symbol symbol-to-map frame-number)
-  (symbol "." symbol-to-map "." frame-number))
-
-(define (map-uninterned-identifier identifier frame-number)
-  (let ((table (rename-database/id-table (*rename-database*)))
-	(symbol (identifier->symbol identifier)))
-    (let ((alist (hash-table/get table symbol '())))
-      (let ((entry (assv frame-number alist)))
-	(if entry
-	    (let ((entry* (assq identifier (cdr entry))))
-	      (if entry*
-		  (cdr entry*)
-		  (let ((mapped-symbol
-			 (map-indexed-symbol symbol
-					     frame-number
-					     (length (cdr entry)))))
-		    (set-cdr! entry
-			      (cons (cons identifier mapped-symbol)
-				    (cdr entry)))
-		    mapped-symbol)))
-	    (let ((mapped-symbol (map-indexed-symbol symbol frame-number 0)))
-	      (hash-table/put! table
-			       symbol
-			       (cons (list frame-number
-					   (cons identifier mapped-symbol))
-				     alist))
-	      mapped-symbol))))))
-
-(define (map-indexed-symbol symbol-to-map frame-number index-number)
-  (symbol "." symbol-to-map "." frame-number "-" index-number))
