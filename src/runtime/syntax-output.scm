@@ -159,275 +159,264 @@ USA.
 ;;;; Post processing
 
 (define (output/post-process-expression expression)
-  (let ((unmapping (empty-unmapping)))
-    (compute-substitution expression unmapping)
-    (alpha-substitute (unmapping->substitution unmapping) expression)))
+  (let ((safe-set (make-strong-eq-hash-table)))
+    (compute-substitution expression
+			  (lambda (rename original)
+			    (hash-table/put! safe-set rename original)))
+    (alpha-substitute (unmapping->substitution safe-set) expression)))
 
-(define (empty-unmapping)
-  (make-strong-eq-hash-table))
+(define ((unmapping->substitution safe-set) rename)
+  (or (hash-table/get safe-set rename #f)
+      (finalize-mapped-identifier rename)))
 
-(define (store-unmapping-entry! identifier unmapped-identifier unmapping)
-  (hash-table/put! unmapping identifier unmapped-identifier))
-
-(define ((unmapping->substitution unmapping) identifier)
-  (or (hash-table/get unmapping identifier #f)
-      (finalize-mapped-identifier identifier)))
+(define (mark-local-bindings bound body mark-safe!)
+  (let ((free
+	 (lset-difference eq?
+			  (compute-substitution body mark-safe!)
+			  bound)))
+    (for-each (lambda (rename)
+		(let ((original (rename->original rename)))
+		  (if (not (any (lambda (rename*)
+				  (eq? original (rename->original rename*)))
+				free))
+		      (mark-safe! rename original))))
+	      bound)
+    free))
 
 ;;;; Compute substitution
 
-(define (compute-substitution expression unmapping)
-  ((scode-walk compute-substitution-walker expression) expression unmapping))
+(define compute-substitution)
+(add-boot-init!
+ (lambda ()
+   (define (define-cs-handler predicate handler)
+     (define-predicate-dispatch-handler compute-substitution
+       (list predicate any-object?)
+       handler))
 
-(define (compute-substitution/variable expression unmapping)
-  unmapping
-  (singleton-reference-set (scode-variable-name expression)))
+   (define (simple-subexpression get-subexpression)
+     (lambda (expression mark-safe!)
+       (compute-substitution (get-subexpression expression) mark-safe!)))
 
-(define (compute-substitution/assignment expression unmapping)
-  (add-to-reference-set
-   (scode-assignment-name expression)
-   (compute-substitution (scode-assignment-value expression)
-			 unmapping)))
+   (define (simple-subexpressions get-subexpressions)
+     (lambda (expression mark-safe!)
+       (reduce (lambda (s1 s2)
+		 (lset-union eq? s1 s2))
+	       '()
+	       (map (lambda (expression)
+		      (compute-substitution expression mark-safe!))
+		    (get-subexpressions expression)))))
 
-(define (compute-substitution/unassigned? expression unmapping)
-  unmapping
-  (singleton-reference-set (scode-unassigned?-name expression)))
+   (set! compute-substitution
+	 (standard-predicate-dispatcher 'compute-substitution 2))
 
-(define (compute-substitution/lambda expression unmapping)
-  (lambda-components** expression
-    (lambda (pattern bound body)
-      pattern
-      (compute-substitution/binder bound body unmapping))))
+   (define-predicate-dispatch-default-handler compute-substitution
+     (lambda (expression mark-safe!)
+       (declare (ignore expression mark-safe!))
+       '()))
 
-(define (compute-substitution/open-block expression unmapping)
-  (open-block-components expression
-    (lambda (bound declarations body)
-      declarations
-      (compute-substitution/binder bound body unmapping))))
+   (define-cs-handler scode-variable?
+     (lambda (expression mark-safe!)
+       (declare (ignore mark-safe!))
+       (list (scode-variable-name expression))))
 
-(define (compute-substitution/binder bound body unmapping)
-  (let ((free-references
-	 (remove-from-reference-set bound
-				    (compute-substitution body unmapping))))
-    (let loop
-	((identifiers bound)
-	 (unmapped (map unmap-identifier bound)))
-      (if (pair? identifiers)
-	  (begin
-	    (if (not (or (unmapping-collision? (car identifiers)
-					       (car unmapped)
-					       free-references)
-			 (memq (car unmapped) (cdr unmapped))))
-		(store-unmapping-entry! (car identifiers)
-					(car unmapped)
-					unmapping))
-	    (loop (cdr identifiers) (cdr unmapped)))))
-    free-references))
-
-(define (compute-substitution/subexpression get-subexpression)
-  (lambda (expression unmapping)
-    (compute-substitution (get-subexpression expression) unmapping)))
+   (define-cs-handler scode-assignment?
+     (lambda (expression mark-safe!)
+       (lset-adjoin eq?
+		    (compute-substitution (scode-assignment-value expression)
+					  mark-safe!)
+		    (scode-assignment-name expression))))
 
-(define (compute-substitution/subexpressions get-subexpressions)
-  (lambda (expression unmapping)
-    (let ((expressions (get-subexpressions expression)))
-      (if (pair? expressions)
-	  (let loop ((expressions expressions))
-	    (if (pair? (cdr expressions))
-		(reference-set-union (compute-substitution (car expressions)
-							   unmapping)
-				     (loop (cdr expressions)))
-		(compute-substitution (car expressions) unmapping)))
-	  (null-reference-set)))))
+   (define-cs-handler scode-unassigned??
+     (lambda (expression mark-safe!)
+       (declare (ignore mark-safe!))
+       (list (scode-unassigned?-name expression))))
 
-(define compute-substitution/access
-  (compute-substitution/subexpression scode-access-environment))
+   (define-cs-handler scode-lambda?
+     (lambda (expression mark-safe!)
+       (lambda-components** expression
+	 (lambda (pattern bound body)
+	   (declare (ignore pattern))
+	   (mark-local-bindings bound body mark-safe!)))))
 
-(define compute-substitution/combination
-  (compute-substitution/subexpressions
-   (lambda (expr)
-     (cons (scode-combination-operator expr)
-	   (scode-combination-operands expr)))))
+   (define-cs-handler open-block?
+     (lambda (expression mark-safe!)
+       (open-block-components expression
+	 (lambda (bound declarations body)
+	   (declare (ignore declarations))
+	   (mark-local-bindings bound body mark-safe!)))))
 
-(define compute-substitution/comment
-  (compute-substitution/subexpression scode-comment-expression))
+   (define-cs-handler scode-access?
+     (simple-subexpression scode-access-environment))
 
-(define compute-substitution/conditional
-  (compute-substitution/subexpressions
-   (lambda (expr)
-     (list (scode-conditional-predicate expr)
-	   (scode-conditional-consequent expr)
-	   (scode-conditional-alternative expr)))))
+   (define-cs-handler scode-combination?
+     (simple-subexpressions
+      (lambda (expr)
+	(cons (scode-combination-operator expr)
+	      (scode-combination-operands expr)))))
 
-(define compute-substitution/definition
-  (compute-substitution/subexpression scode-definition-value))
+   (define-cs-handler scode-comment?
+     (simple-subexpression scode-comment-expression))
 
-(define compute-substitution/delay
-  (compute-substitution/subexpression scode-delay-expression))
+   (define-cs-handler scode-conditional?
+     (simple-subexpressions
+      (lambda (expr)
+	(list (scode-conditional-predicate expr)
+	      (scode-conditional-consequent expr)
+	      (scode-conditional-alternative expr)))))
 
-(define compute-substitution/disjunction
-  (compute-substitution/subexpressions
-   (lambda (expr)
-     (list (scode-disjunction-predicate expr)
-	   (scode-disjunction-alternative expr)))))
+   (define-cs-handler scode-definition?
+     (simple-subexpression scode-definition-value))
 
-(define compute-substitution/sequence
-  (compute-substitution/subexpressions scode-sequence-actions))
+   (define-cs-handler scode-delay?
+     (simple-subexpression scode-delay-expression))
 
-(define (compute-substitution/default expression unmapping)
-  expression unmapping
-  (null-reference-set))
+   (define-cs-handler scode-disjunction?
+     (simple-subexpressions
+      (lambda (expr)
+	(list (scode-disjunction-predicate expr)
+	      (scode-disjunction-alternative expr)))))
 
-(define compute-substitution-walker
-  (make-scode-walker compute-substitution/default
-		     `((ACCESS ,compute-substitution/access)
-		       (ASSIGNMENT ,compute-substitution/assignment)
-		       (COMBINATION ,compute-substitution/combination)
-		       (COMMENT ,compute-substitution/comment)
-		       (CONDITIONAL ,compute-substitution/conditional)
-		       (DEFINITION ,compute-substitution/definition)
-		       (DELAY ,compute-substitution/delay)
-		       (DISJUNCTION ,compute-substitution/disjunction)
-		       (LAMBDA ,compute-substitution/lambda)
-		       (OPEN-BLOCK ,compute-substitution/open-block)
-		       (SEQUENCE ,compute-substitution/sequence)
-		       (UNASSIGNED? ,compute-substitution/unassigned?)
-		       (VARIABLE ,compute-substitution/variable))))
+   (define-cs-handler scode-sequence?
+     (simple-subexpressions scode-sequence-actions))
+
+   ))
 
 ;;;; Alpha substitution
 
-(define (alpha-substitute substitution expression)
-  ((scode-walk alpha-substitute-walker expression) substitution expression))
+(define alpha-substitute)
+(add-boot-init!
+ (lambda ()
 
-(define (alpha-substitute/variable substitution expression)
-  (make-scode-variable (substitution (scode-variable-name expression))))
+   (define (define-as-handler predicate handler)
+     (define-predicate-dispatch-handler alpha-substitute
+       (list any-object? predicate)
+       handler))
 
-(define (alpha-substitute/assignment substitution expression)
-  (make-scode-assignment
-   (substitution (scode-assignment-name expression))
-   (alpha-substitute substitution (scode-assignment-value expression))))
+   (define (simple-substitution reconstruct . parts)
+     (lambda (substitution expression)
+       (apply reconstruct
+	      (map (lambda (part)
+		     (alpha-substitute substitution (part expression)))
+		   parts))))
 
-(define (alpha-substitute/unassigned? substitution expression)
-  (make-scode-unassigned? (substitution (scode-unassigned?-name expression))))
+   (define (partial-substitution selector reconstruct . parts)
+     (lambda (substitution expression)
+       (apply reconstruct
+	      (map (lambda (substitute? part)
+		     (if substitute?
+			 (alpha-substitute substitution (part expression))
+			 (part expression)))
+		   selector
+		   parts))))
 
-(define (alpha-substitute/lambda substitution expression)
-  (lambda-components** expression
-    (lambda (pattern bound body)
-      (make-lambda** pattern
-		     (map substitution bound)
-		     (alpha-substitute substitution body)))))
+   (define (combinator-substitution reconstruct get-subexpressions)
+     (lambda (substitution expression)
+       (reconstruct
+	(map (lambda (expression)
+	       (alpha-substitute substitution expression))
+	     (get-subexpressions expression)))))
 
-(define (alpha-substitute/open-block substitution expression)
-  (open-block-components expression
-    (lambda (bound declarations body)
-      (make-open-block (map substitution bound)
-		       (substitute-in-declarations substitution declarations)
-		       (alpha-substitute substitution body)))))
+   (set! alpha-substitute
+	 (standard-predicate-dispatcher 'alpha-substitute 2))
 
-(define (alpha-substitute/declaration substitution expression)
-  (make-scode-declaration
-   (substitute-in-declarations substitution (scode-declaration-text expression))
-   (alpha-substitute substitution (scode-declaration-expression expression))))
+   (define-predicate-dispatch-default-handler alpha-substitute
+     (lambda (substitution expression)
+       (declare (ignore substitution))
+       expression))
 
-(define (substitute-in-declarations substitution declarations)
-  (map (lambda (declaration)
-	 (map-declaration-identifiers substitution declaration))
-       declarations))
+   (define-as-handler scode-variable?
+     (lambda (substitution expression)
+       (make-scode-variable (substitution (scode-variable-name expression)))))
 
-(define (alpha-substitute/default substitution expression)
-  substitution
-  expression)
+   (define-as-handler scode-assignment?
+     (lambda (substitution expression)
+       (make-scode-assignment
+	(substitution (scode-assignment-name expression))
+	(alpha-substitute substitution (scode-assignment-value expression)))))
 
-(define (simple-substitution reconstruct . parts)
-  (lambda (substitution expression)
-    (apply reconstruct
-	   (map (lambda (part)
-		  (alpha-substitute substitution (part expression)))
-		parts))))
+   (define-as-handler scode-unassigned??
+     (lambda (substitution expression)
+       (make-scode-unassigned?
+	(substitution (scode-unassigned?-name expression)))))
 
-(define (partial-substitution selector reconstruct . parts)
-  (lambda (substitution expression)
-    (apply reconstruct
-	   (map (lambda (substitute? part)
-		  (if substitute?
-		      (alpha-substitute substitution (part expression))
-		      (part expression)))
-		selector
-		parts))))
+   (define-as-handler scode-lambda?
+     (lambda (substitution expression)
+       (lambda-components** expression
+	 (lambda (pattern bound body)
+	   (make-lambda** pattern
+			  (map substitution bound)
+			  (alpha-substitute substitution body))))))
 
-(define (combinator-substitution reconstruct get-subexpressions)
-  (lambda (substitution expression)
-    (reconstruct
-     (map (lambda (expression)
-	    (alpha-substitute substitution expression))
-	  (get-subexpressions expression)))))
-
-(define alpha-substitute/access
-  (partial-substitution '(#t #f)
-			make-scode-access
-			scode-access-environment
-			scode-access-name))
+   (define-as-handler open-block?
+     (lambda (substitution expression)
+       (open-block-components expression
+	 (lambda (bound declarations body)
+	   (make-open-block (map substitution bound)
+			    (map (lambda (declaration)
+				   (map-declaration-identifiers substitution
+								declaration))
+				 declarations)
+			    (alpha-substitute substitution body))))))
 
-(define alpha-substitute/combination
-  (combinator-substitution (lambda (subexpressions)
-			     (make-scode-combination (car subexpressions)
-						     (cdr subexpressions)))
-			   (lambda (expression)
-			     (cons (scode-combination-operator expression)
-				   (scode-combination-operands expression)))))
+   (define-as-handler scode-declaration?
+     (lambda (substitution expression)
+       (make-scode-declaration
+	(map (lambda (declaration)
+	       (map-declaration-identifiers substitution declaration))
+	     (scode-declaration-text expression))
+	(alpha-substitute substitution
+			  (scode-declaration-expression expression)))))
 
-(define alpha-substitute/comment
-  (partial-substitution '(#f #t)
-			make-scode-comment
-			scode-comment-text
-			scode-comment-expression))
+   (define-as-handler scode-access?
+     (partial-substitution '(#t #f)
+			   make-scode-access
+			   scode-access-environment
+			   scode-access-name))
 
-(define alpha-substitute/conditional
-  (simple-substitution make-scode-conditional
-		       scode-conditional-predicate
-		       scode-conditional-consequent
-		       scode-conditional-alternative))
+   (define-as-handler scode-combination?
+     (combinator-substitution
+      (lambda (subexpressions)
+	(make-scode-combination (car subexpressions) (cdr subexpressions)))
+      (lambda (expression)
+	(cons (scode-combination-operator expression)
+	      (scode-combination-operands expression)))))
 
-(define alpha-substitute/definition
-  (partial-substitution '(#f #t)
-			make-scode-definition
-			scode-definition-name
-			scode-definition-value))
+   (define-as-handler scode-comment?
+     (partial-substitution '(#f #t)
+			   make-scode-comment
+			   scode-comment-text
+			   scode-comment-expression))
 
-(define alpha-substitute/delay
-  (simple-substitution make-scode-delay
-		       scode-delay-expression))
+   (define-as-handler scode-conditional?
+     (simple-substitution make-scode-conditional
+			  scode-conditional-predicate
+			  scode-conditional-consequent
+			  scode-conditional-alternative))
 
-(define alpha-substitute/disjunction
-  (simple-substitution make-scode-disjunction
-		       scode-disjunction-predicate
-		       scode-disjunction-alternative))
+   (define-as-handler scode-definition?
+     (partial-substitution '(#f #t)
+			   make-scode-definition
+			   scode-definition-name
+			   scode-definition-value))
 
-(define alpha-substitute/sequence
-  (combinator-substitution make-scode-sequence scode-sequence-actions))
+   (define-as-handler scode-delay?
+     (simple-substitution make-scode-delay
+			  scode-delay-expression))
 
-(define alpha-substitute-walker
-  (make-scode-walker alpha-substitute/default
-		     `((ACCESS ,alpha-substitute/access)
-		       (ASSIGNMENT ,alpha-substitute/assignment)
-		       (COMBINATION ,alpha-substitute/combination)
-		       (COMMENT ,alpha-substitute/comment)
-		       (CONDITIONAL ,alpha-substitute/conditional)
-		       (DECLARATION ,alpha-substitute/declaration)
-		       (DEFINITION ,alpha-substitute/definition)
-		       (DELAY ,alpha-substitute/delay)
-		       (DISJUNCTION ,alpha-substitute/disjunction)
-		       (LAMBDA ,alpha-substitute/lambda)
-		       (OPEN-BLOCK ,alpha-substitute/open-block)
-		       (SEQUENCE ,alpha-substitute/sequence)
-		       (UNASSIGNED? ,alpha-substitute/unassigned?)
-		       (VARIABLE ,alpha-substitute/variable))))
+   (define-as-handler scode-disjunction?
+     (simple-substitution make-scode-disjunction
+			  scode-disjunction-predicate
+			  scode-disjunction-alternative))
+
+   (define-as-handler scode-sequence?
+     (combinator-substitution make-scode-sequence scode-sequence-actions))
+
+   ))
 
 ;;;; Identifiers
 
-(define *rename-database*)
-
-(define (initialize-package!)
-  (set! *rename-database* (make-unsettable-parameter 'UNBOUND)))
+(define-deferred *rename-database*
+  (make-unsettable-parameter 'UNBOUND))
 
 (define-structure (rename-database (constructor initial-rename-database ())
 				   (conc-name rename-database/))
@@ -479,7 +468,7 @@ USA.
     (lambda (identifier)
       (rename-identifier identifier id))))
 
-(define (unmap-identifier identifier)
+(define (rename->original identifier)
   (let ((entry
 	 (hash-table/get (rename-database/unmapping-table
 			  (*rename-database*))
@@ -489,7 +478,7 @@ USA.
 	(identifier->symbol (car entry))
 	(begin
 	  (if (not (symbol? identifier))
-	      (error:bad-range-argument identifier 'UNMAP-IDENTIFIER))
+	      (error:bad-range-argument identifier 'RENAME->ORIGINAL))
 	  identifier))))
 
 (define (finalize-mapped-identifier identifier)
@@ -540,34 +529,3 @@ USA.
 
 (define (map-indexed-symbol symbol-to-map frame-number index-number)
   (symbol "." symbol-to-map "." frame-number "-" index-number))
-
-;;;; Reference Set
-
-(define (null-reference-set)
-  '())
-
-(define (singleton-reference-set identifier)
-  (list (cons identifier (unmap-identifier identifier))))
-
-(define (reference-set-union s1 s2)
-  (if (pair? s1)
-      (if (assq (caar s1) s2)
-	  (reference-set-union (cdr s1) s2)
-	  (cons (car s1) (reference-set-union (cdr s1) s2)))
-      s2))
-
-(define (add-to-reference-set identifier reference-set)
-  (if (assq identifier reference-set)
-      reference-set
-      (cons (cons identifier (unmap-identifier identifier)) reference-set)))
-
-(define (remove-from-reference-set identifiers reference-set)
-  (delete-matching-items reference-set
-    (lambda (item)
-      (memq (car item) identifiers))))
-
-(define (unmapping-collision? identifier unmapped-identifier reference-set)
-  (find-matching-item reference-set
-    (lambda (item)
-      (and (eq? unmapped-identifier (cdr item))
-	   (not (eq? identifier (car item)))))))
