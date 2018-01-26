@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; Syntaxer Output Interface
+;;;; Syntaxer output interface
 ;;; package: (runtime syntax output)
 
 (declare (usual-integrations))
@@ -90,10 +90,12 @@ USA.
   (output/combination (output/named-lambda lambda-tag:let names body) values))
 
 (define (output/letrec names values body)
-  (let ((temps (map (lambda (name)
-		      (string->uninterned-symbol
-		       (string-append (symbol->string (identifier->symbol name))
-				      "-value"))) names)))
+  (let ((temps
+	 (map (lambda (name)
+		(string->uninterned-symbol
+		 (string-append (symbol->string (identifier->symbol name))
+				"-value")))
+	      names)))
     (output/let
      names (map (lambda (name) name (output/unassigned)) names)
      (make-scode-sequence

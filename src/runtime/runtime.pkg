@@ -4384,7 +4384,6 @@ USA.
   (files "syntax")
   (parent (runtime syntax))
   (export ()
-	  <syntactic-closure>
 	  capture-syntactic-environment
 	  close-syntax
 	  identifier->symbol
@@ -4412,20 +4411,11 @@ USA.
   (files "syntax-items")
   (parent (runtime syntax))
   (export (runtime syntax)
-	  <binding-item>
-	  <body-item>
-	  <classifier-item>
-	  <compiler-item>
-	  <declaration-item>
-	  <expander-item>
-	  <expression-item>
-	  <keyword-value-item>
-	  <reserved-name-item>
-	  <variable-item>
 	  binding-item/name
 	  binding-item/value
 	  binding-item?
 	  body-item/components
+	  body-item?
 	  classifier-item/classifier
 	  classifier-item?
 	  compiler-item/compiler
@@ -4435,6 +4425,8 @@ USA.
 	  expander-item/expander
 	  expander-item?
 	  expression-item/compiler
+	  expression-item?
+	  extract-declarations-from-body
 	  flatten-body-items
 	  item->list
 	  keyword-item?
@@ -4490,8 +4482,7 @@ USA.
   (export (runtime syntax)
 	  classify/body
 	  classify/expression
-	  classify/form
-	  extract-declarations-from-body))
+	  classify/form))
 
 (define-package (runtime syntax compile)
   (files "syntax-compile")
@@ -4499,7 +4490,6 @@ USA.
   (export (runtime syntax)
 	  compile-body-item/top-level
 	  compile-body-items
-	  compile-item/expression
 	  compile-item/expression
 	  define-item-compiler))
 

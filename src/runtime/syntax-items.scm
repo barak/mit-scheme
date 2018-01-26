@@ -28,16 +28,7 @@ USA.
 
 (declare (usual-integrations))
 
-;;; Reserved name items do not represent any form, but instead are
-;;; used to reserve a particular name in a syntactic environment.  If
-;;; the classifier refers to a reserved name, a syntax error is
-;;; signalled.  This is used in the implementation of LETREC-SYNTAX
-;;; to signal a meaningful error when one of the <init>s refers to
-;;; one of the names being bound.
-
-(define-record-type <reserved-name-item>
-    (make-reserved-name-item)
-    reserved-name-item?)
+;;; These items can be stored in a syntactic environment.
 
 ;;; Keyword items represent macro keywords.  There are several flavors
 ;;; of keyword item.
@@ -63,31 +54,71 @@ USA.
   (item keyword-value-item/item)
   (expression keyword-value-item/expression))
 
-(define (keyword-item? item)
-  (or (classifier-item? item)
-      (compiler-item? item)
-      (expander-item? item)
-      (keyword-value-item? item)))
+(define (keyword-item? object)
+  (or (classifier-item? object)
+      (compiler-item? object)
+      (expander-item? object)
+      (keyword-value-item? object)))
+
+(register-predicate! keyword-item? 'keyword-item)
+(set-predicate<=! classifier-item? keyword-item?)
+(set-predicate<=! compiler-item? keyword-item?)
+(set-predicate<=! expander-item? keyword-item?)
+(set-predicate<=! keyword-value-item? keyword-item?)
 
 ;;; Variable items represent run-time variables.
 
+(define (make-variable-item name)
+  (guarantee identifier? name 'make-variable-item)
+  (%make-variable-item name))
+
 (define-record-type <variable-item>
-    (make-variable-item name)
+    (%make-variable-item name)
     variable-item?
   (name variable-item/name))
 
 (define-unparser-method variable-item?
-  (simple-unparser-method 'variable-item?
+  (simple-unparser-method 'variable-item
     (lambda (item)
       (list (variable-item/name item)))))
-
-;;; Expression items represent any kind of expression other than a
-;;; run-time variable or a sequence.
 
-(define-record-type <expression-item>
-    (make-expression-item compiler)
-    expression-item?
-  (compiler expression-item/compiler))
+;;; Reserved name items do not represent any form, but instead are
+;;; used to reserve a particular name in a syntactic environment.  If
+;;; the classifier refers to a reserved name, a syntax error is
+;;; signalled.  This is used in the implementation of LETREC-SYNTAX
+;;; to signal a meaningful error when one of the <init>s refers to
+;;; one of the names being bound.
+
+(define-record-type <reserved-name-item>
+    (make-reserved-name-item)
+    reserved-name-item?)
+
+;;; These items can't be stored in a syntactic environment.
+
+;;; Binding items represent definitions, whether top-level or internal, keyword
+;;; or variable.
+
+(define (make-binding-item name value)
+  (guarantee identifier? name 'make-binding-item)
+  (guarantee binding-item-value? value 'make-binding-item)
+  (%make-binding-item name value))
+
+(define (binding-item-value? object)
+  (not (or (reserved-name-item? object)
+	   (declaration-item? object))))
+(register-predicate! binding-item-value? 'binding-item-value)
+
+(define-record-type <binding-item>
+    (%make-binding-item name value)
+    binding-item?
+  (name binding-item/name)
+  (value binding-item/value))
+
+(define-unparser-method binding-item?
+  (simple-unparser-method 'binding-item
+    (lambda (item)
+      (list (binding-item/name item)
+	    (binding-item/value item)))))
 
 ;;; Body items represent sequences (e.g. BEGIN).
 
@@ -96,6 +127,9 @@ USA.
     body-item?
   (components body-item/components))
 
+(define (extract-declarations-from-body body-item)
+  (partition declaration-item? (body-item/components body-item)))
+
 (define (flatten-body-items items)
   (append-map item->list items))
 
@@ -103,6 +137,14 @@ USA.
   (if (body-item? item)
       (flatten-body-items (body-item/components item))
       (list item)))
+
+;;; Expression items represent any kind of expression other than a
+;;; run-time variable or a sequence.
+
+(define-record-type <expression-item>
+    (make-expression-item compiler)
+    expression-item?
+  (compiler expression-item/compiler))
 
 ;;; Declaration items represent block-scoped declarations that are to
 ;;; be passed through to the compiler.
@@ -114,12 +156,3 @@ USA.
 
 (define (declaration-item/text item)
   ((declaration-item/get-text item)))
-
-;;; Binding items represent definitions, whether top-level or internal, keyword
-;;; or variable.
-
-(define-record-type <binding-item>
-    (make-binding-item name value)
-    binding-item?
-  (name binding-item/name)
-  (value binding-item/value))

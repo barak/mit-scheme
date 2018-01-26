@@ -43,7 +43,7 @@ USA.
 
 (define (compile-body-item/top-level body-item)
   (receive (declaration-items body-items)
-      (extract-declarations-from-body (body-item/components body-item))
+      (extract-declarations-from-body body-item)
     (output/top-level-sequence (map declaration-item/text declaration-items)
 			       (map compile-item/top-level body-items))))
 
@@ -63,55 +63,45 @@ USA.
 	    (list (compile-item/expression item))))
       items))))
 
-(define (compile-item/expression item)
-  (let ((compiler (get-item-compiler item)))
-    (if (not compiler)
-	(error:bad-range-argument item 'COMPILE-ITEM/EXPRESSION))
-    (compiler item)))
+(define compile-item/expression)
+(add-boot-init!
+ (lambda ()
+   (set! compile-item/expression
+	 (standard-predicate-dispatcher 'compile-item/expression 1))
+   (run-deferred-boot-actions 'define-item-compiler)))
 
-(define (get-item-compiler item)
-  (let ((entry (assq (record-type-descriptor item) item-compilers)))
-    (and entry
-	 (cdr entry))))
+(define (define-item-compiler predicate compiler)
+  (defer-boot-action 'define-item-compiler
+    (lambda ()
+      (define-predicate-dispatch-handler compile-item/expression
+	(list predicate)
+	compiler))))
 
-(define (define-item-compiler rtd compiler)
-  (let ((entry (assq rtd item-compilers)))
-    (if entry
-	(set-cdr! entry compiler)
-	(begin
-	  (set! item-compilers (cons (cons rtd compiler) item-compilers))
-	  unspecific))))
+(define-item-compiler variable-item?
+  (lambda (item)
+    (output/variable (variable-item/name item))))
 
-(define item-compilers '())
-
+(define-item-compiler expression-item?
+  (lambda (item)
+    ((expression-item/compiler item))))
+
+(define-item-compiler body-item?
+  (lambda (item)
+    (compile-body-items (body-item/components item))))
+
 (define (illegal-expression-compiler description)
   (lambda (item)
     (syntax-error (string description " may not be used as an expression:")
 		  item)))
 
-(define-item-compiler <reserved-name-item>
+(define-item-compiler reserved-name-item?
   (illegal-expression-compiler "Reserved name"))
 
-(let ((compiler (illegal-expression-compiler "Syntactic keyword")))
-  (define-item-compiler <classifier-item> compiler)
-  (define-item-compiler <compiler-item> compiler)
-  (define-item-compiler <expander-item> compiler)
-  (define-item-compiler <keyword-value-item> compiler))
+(define-item-compiler keyword-item?
+  (illegal-expression-compiler "Syntactic keyword"))
 
-(define-item-compiler <variable-item>
-  (lambda (item)
-    (output/variable (variable-item/name item))))
-
-(define-item-compiler <expression-item>
-  (lambda (item)
-    ((expression-item/compiler item))))
-
-(define-item-compiler <body-item>
-  (lambda (item)
-    (compile-body-items (body-item/components item))))
-
-(define-item-compiler <declaration-item>
+(define-item-compiler declaration-item?
   (illegal-expression-compiler "Declaration"))
 
-(define-item-compiler <binding-item>
+(define-item-compiler binding-item?
   (illegal-expression-compiler "Definition"))

@@ -66,26 +66,31 @@ USA.
 
 ;;;; Syntactic closures
 
+(define (close-syntax form senv)
+  (make-syntactic-closure senv '() form))
+
+(define (make-syntactic-closure senv free form)
+  (let ((senv (->syntactic-environment senv 'make-syntactic-closure)))
+    (guarantee-list-of identifier? free 'make-syntactic-closure)
+    (if (or (memq form free)	;LOOKUP-IDENTIFIER assumes this.
+	    (constant-form? form)
+	    (and (syntactic-closure? form)
+		 (null? (syntactic-closure-free form))
+		 (not (identifier? (syntactic-closure-form form)))))
+	form
+	(%make-syntactic-closure senv free form))))
+
+(define (constant-form? form)
+  (not (or (syntactic-closure? form)
+	   (pair? form)
+	   (identifier? form))))
+
 (define-record-type <syntactic-closure>
     (%make-syntactic-closure senv free form)
     syntactic-closure?
   (senv syntactic-closure-senv)
   (free syntactic-closure-free)
   (form syntactic-closure-form))
-
-(define (make-syntactic-closure environment free-names form)
-  (let ((senv (->syntactic-environment environment 'MAKE-SYNTACTIC-CLOSURE)))
-    (guarantee-list-of-type free-names identifier?
-			    "list of identifiers" 'MAKE-SYNTACTIC-CLOSURE)
-    (if (or (memq form free-names)	;LOOKUP-IDENTIFIER assumes this.
-	    (and (syntactic-closure? form)
-		 (null? (syntactic-closure-free form))
-		 (not (identifier? (syntactic-closure-form form))))
-	    (not (or (syntactic-closure? form)
-		     (pair? form)
-		     (symbol? form))))
-	form
-	(%make-syntactic-closure senv free-names form))))
 
 (define (strip-syntactic-closures object)
   (if (let loop ((object object))
@@ -101,9 +106,6 @@ USA.
 		(loop (syntactic-closure-form object))
 		object)))
       object))
-
-(define (close-syntax form environment)
-  (make-syntactic-closure environment '() form))
 
 ;;;; Identifiers
 
@@ -112,6 +114,7 @@ USA.
 	   ;; This makes `:keyword' objects be self-evaluating.
 	   (not (keyword? object)))
       (synthetic-identifier? object)))
+(register-predicate! identifier? 'identifier)
 
 (define (synthetic-identifier? object)
   (and (syntactic-closure? object)
@@ -126,7 +129,7 @@ USA.
 	    (loop (syntactic-closure-form identifier))
 	    (and (symbol? identifier)
 		 identifier)))
-      (error:not-a identifier? identifier 'IDENTIFIER->SYMBOL)))
+      (error:not-a identifier? identifier 'identifier->symbol)))
 
 (define (identifier=? environment-1 identifier-1 environment-2 identifier-2)
   (let ((item-1 (lookup-identifier identifier-1 environment-1))
@@ -154,7 +157,7 @@ USA.
 	   (lookup-identifier (syntactic-closure-form identifier)
 			      (syntactic-closure-senv identifier)))
 	  (else
-	   (error:not-a identifier? identifier 'LOOKUP-IDENTIFIER)))))
+	   (error:not-a identifier? identifier 'lookup-identifier)))))
 
 ;;;; Utilities
 

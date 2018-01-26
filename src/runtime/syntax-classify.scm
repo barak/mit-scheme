@@ -38,18 +38,16 @@ USA.
 		 (let ((name (identifier->symbol form)))
 		   (lambda ()
 		     (output/combination
-		      (output/runtime-reference 'SYNTACTIC-KEYWORD->ITEM)
+		      (output/runtime-reference 'syntactic-keyword->item)
 		      (list (output/constant name)
 			    (output/the-environment)))))))
 	       item)))
 	((syntactic-closure? form)
-	 (let ((form (syntactic-closure-form form))
-	       (free-names (syntactic-closure-free form))
-	       (closing-env (syntactic-closure-senv form)))
-	   (classify/form form
-			  (make-partial-syntactic-environment free-names
-							      environment
-							      closing-env))))
+	 (classify/form
+	  (syntactic-closure-form form)
+	  (make-partial-syntactic-environment (syntactic-closure-free form)
+					      environment
+					      (syntactic-closure-senv form))))
 	((pair? form)
 	 (let ((item
 		(strip-keyword-value-item
@@ -81,7 +79,7 @@ USA.
   (if (keyword-value-item? item)
       (keyword-value-item/item item)
       item))
-
+
 (define (classify/expression expression environment)
   (classify/form expression environment))
 
@@ -100,15 +98,3 @@ USA.
 	       (reverse* (item->list (classify/form (car forms) environment))
 			 body-items))
 	 (reverse! body-items)))))
-
-(define (extract-declarations-from-body items)
-  (let loop ((items items) (declarations '()) (items* '()))
-    (if (pair? items)
-	(if (declaration-item? (car items))
-	    (loop (cdr items)
-		  (cons (car items) declarations)
-		  items*)
-	    (loop (cdr items)
-		  declarations
-		  (cons (car items) items*)))
-	(values (reverse! declarations) (reverse! items*)))))

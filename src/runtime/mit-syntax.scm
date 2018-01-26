@@ -86,8 +86,7 @@ USA.
 	       (classify/body body environment))))))
 
 (define (compile-body-item item)
-  (receive (declaration-items items)
-      (extract-declarations-from-body (body-item/components item))
+  (receive (declaration-items items) (extract-declarations-from-body item)
     (output/body (map declaration-item/text declaration-items)
 		 (compile-body-items items))))
 
@@ -256,7 +255,7 @@ USA.
      (make-access-item (cadr form)
 		       (classify/expression (caddr form) environment)))))
 
-(define-item-compiler <access-item>
+(define-item-compiler access-item?
   (lambda (item)
     (output/access-reference
      (access-item/name item)

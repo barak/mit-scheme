@@ -71,51 +71,7 @@ USA.
   (cond ((syntactic-environment? object) object)
 	((environment? object) (%make-runtime-syntactic-environment object))
 	(else (error "Unable to convert to a syntactic environment:" object))))
-
-;;; Null environments are used only for synthetic identifiers.
 
-(define null-syntactic-environment
-  (let ()
-
-    (define (get-type)
-      'null)
-
-    (define (get-runtime)
-      (error "Can't evaluate in null environment."))
-
-    (define (lookup identifier)
-      (error "Can't lookup in null environment:" identifier))
-
-    (define (store identifier item)
-      (error "Can't bind in null environment:" identifier item))
-
-    (define (rename identifier)
-      (error "Can't rename in null environment:" identifier))
-
-    (make-senv get-type get-runtime lookup store rename)))
-
-;;; Keyword environments are used to make keywords that represent items.
-
-(define (make-keyword-syntactic-environment name item)
-
-  (define (get-type)
-    'keyword)
-
-  (define (get-runtime)
-    (error "Can't evaluate in keyword environment."))
-
-  (define (lookup identifier)
-    (and (eq? name identifier)
-	 item))
-
-  (define (store identifier item)
-    (error "Can't bind in keyword environment:" identifier item))
-
-  (define (rename identifier)
-    (error "Can't rename in keyword environment:" identifier))
-
-  (make-senv get-type get-runtime lookup store rename))
-
 ;;; Runtime syntactic environments are wrappers around runtime environments.
 ;;; They maintain their own bindings, but can defer lookups of syntactic
 ;;; keywords to the given runtime environment.
@@ -138,6 +94,52 @@ USA.
   (define (rename identifier)
     (rename-top-level-identifier identifier))
 
+  (make-senv get-type get-runtime lookup store rename))
+
+;;; Null environments are used only for synthetic identifiers.
+
+(define null-syntactic-environment
+  (let ()
+
+    (define (get-type)
+      'null)
+
+    (define (get-runtime)
+      (error "Can't evaluate in null environment."))
+
+    (define (lookup identifier)
+      (error "Can't lookup in null environment:" identifier))
+
+    (define (store identifier item)
+      (error "Can't bind in null environment:" identifier item))
+
+    (define (rename identifier)
+      (error "Can't rename in null environment:" identifier))
+
+    (make-senv get-type get-runtime lookup store rename)))
+
+;;; Keyword environments are used to make keywords that represent items.
+
+(define (make-keyword-syntactic-environment name item)
+
+  (define (get-type)
+    'keyword)
+
+  (define (get-runtime)
+    (error "Can't evaluate in keyword environment."))
+
+  (define (lookup identifier)
+    (and (eq? name identifier)
+	 item))
+
+  (define (store identifier item)
+    (error "Can't bind in keyword environment:" identifier item))
+
+  (define (rename identifier)
+    (error "Can't rename in keyword environment:" identifier))
+
+  (guarantee identifier? name 'make-keyword-environment)
+  (guarantee keyword-item? item 'make-keyword-environment)
   (make-senv get-type get-runtime lookup store rename))
 
 ;;; Top-level syntactic environments represent top-level environments.
