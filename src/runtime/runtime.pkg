@@ -4503,6 +4503,18 @@ USA.
 	  compile-item/expression
 	  define-item-compiler))
 
+(define-package (runtime syntax rename)
+  (files "syntax-rename")
+  (parent (runtime syntax))
+  (export (runtime syntax)
+	  *rename-database*
+	  initial-rename-database
+	  make-name-generator
+	  make-rename-id
+	  output/post-process-expression
+	  rename-identifier
+	  rename-top-level-identifier))
+
 (define-package (runtime syntax output)
   (files "syntax-output")
   (parent (runtime syntax))
@@ -4511,10 +4523,6 @@ USA.
 	  lambda-tag:let
 	  lambda-tag:unnamed)
   (export (runtime syntax)
-	  *rename-database*
-	  initial-rename-database
-	  make-name-generator
-	  make-rename-id
 	  output/access-assignment
 	  output/access-reference
 	  output/assignment
@@ -4529,7 +4537,6 @@ USA.
 	  output/let
 	  output/letrec
 	  output/named-lambda
-	  output/post-process-expression
 	  output/runtime-reference
 	  output/sequence
 	  output/the-environment
@@ -4540,10 +4547,7 @@ USA.
 	  output/unassigned-test
 	  output/unspecific
 	  output/variable
-	  rename-identifier
-	  rename-top-level-identifier
-	  transformer-eval)
-  (initialization (initialize-package!)))
+	  transformer-eval))
 
 (define-package (runtime syntax declaration)
   (files "syntax-declaration")
