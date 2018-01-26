@@ -144,9 +144,7 @@ USA.
    (lambda (form environment)
      (let ((name (cadr form)))
        (if (not (syntactic-environment/top-level? environment))
-	   (syntactic-environment/define environment
-					 name
-					 (make-reserved-name-item)))
+	   (syntactic-environment/reserve environment name))
        (variable-binder environment name
 			(classify/expression (caddr form) environment))))))
 
@@ -217,11 +215,8 @@ USA.
   (let ((bindings (cadr form))
 	(body (cddr form))
 	(binding-env (make-internal-syntactic-environment env)))
-    (for-each (let ((item (make-reserved-name-item)))
-		(lambda (binding)
-		  (syntactic-environment/define binding-env
-						(car binding)
-						item)))
+    (for-each (lambda (binding)
+		(syntactic-environment/reserve binding-env (car binding)))
 	      bindings)
     ;; Classify right-hand sides first, in order to catch references to
     ;; reserved names.  Then bind names prior to classifying body.

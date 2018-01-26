@@ -4471,6 +4471,7 @@ USA.
 	  syntactic-environment->environment
 	  syntactic-environment/define
 	  syntactic-environment/lookup
+	  syntactic-environment/reserve
 	  syntactic-environment/top-level?
 	  syntactic-environment?))
 

@@ -51,20 +51,14 @@ USA.
   (guarantee identifier? identifier 'syntactic-environment/lookup)
   ((senv-lookup senv) identifier))
 
+(define (syntactic-environment/reserve senv identifier)
+  (guarantee identifier? identifier 'syntactic-environment/reserve)
+  ((senv-store senv) identifier (make-reserved-name-item)))
+
 (define (syntactic-environment/define senv identifier item)
   (guarantee identifier? identifier 'syntactic-environment/define)
-  (guarantee senv-value-item? item 'syntactic-environment/define)
+  (guarantee keyword-item? item 'syntactic-environment/define)
   ((senv-store senv) identifier item))
-
-(define (senv-value-item? object)
-  (or (reserved-name-item? object)
-      (keyword-item? object)
-      (variable-item? object)))
-(register-predicate! senv-value-item? 'syntactic-environment-value-item)
-
-(define (syntactic-environment/rename senv identifier)
-  (guarantee identifier? identifier 'syntactic-environment/rename)
-  ((senv-rename senv) identifier))
 
 (define (bind-variable! senv identifier)
   (guarantee identifier? identifier 'bind-variable!)
