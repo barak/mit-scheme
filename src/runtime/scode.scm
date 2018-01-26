@@ -47,6 +47,7 @@ USA.
 
 (define (scode-constant? object)
   (not (scode-expression? object)))
+(register-predicate! scode-constant? 'scode-constant)
 
 ;;;; Quotation
 
@@ -57,6 +58,7 @@ USA.
 
 (define (scode-quotation? object)
   (object-type? (ucode-type quotation) object))
+(register-predicate! scode-quotation? 'scode-quotation)
 
 (define (scode-quotation-expression quotation)
   (guarantee scode-quotation? quotation 'scode-quotation-expression)
@@ -70,6 +72,7 @@ USA.
 
 (define (scode-variable? object)
   (object-type? (ucode-type variable) object))
+(register-predicate! scode-variable? 'scode-variable)
 
 (define (scode-variable-name variable)
   (guarantee scode-variable? variable 'scode-variable-name)
@@ -85,6 +88,7 @@ USA.
 
 (define (scode-definition? object)
   (object-type? (ucode-type definition) object))
+(register-predicate! scode-definition? 'scode-definition)
 
 (define (scode-definition-name definition)
   (guarantee scode-definition? definition 'scode-definition-name)
@@ -104,6 +108,7 @@ USA.
 
 (define (scode-assignment? object)
   (object-type? (ucode-type assignment) object))
+(register-predicate! scode-assignment? 'scode-assignment)
 
 (define (scode-assignment-name assignment)
   (guarantee scode-assignment? assignment 'scode-assignment-name)
@@ -122,6 +127,7 @@ USA.
 
 (define (scode-comment? object)
   (object-type? (ucode-type comment) object))
+(register-predicate! scode-comment? 'scode-comment)
 
 (define (scode-comment-text comment)
   (guarantee scode-comment? comment 'scode-comment-text)
@@ -145,6 +151,7 @@ USA.
        (let ((text (scode-comment-text object)))
 	 (and (pair? text)
 	      (eq? (car text) declaration-tag)))))
+(register-predicate! scode-declaration? 'scode-declaration '<= scode-comment?)
 
 (define declaration-tag
   ((ucode-primitive string->symbol) "#[declaration]"))
@@ -164,6 +171,7 @@ USA.
 
 (define (scode-the-environment? object)
   (object-type? (ucode-type the-environment) object))
+(register-predicate! scode-the-environment? 'scode-the-environment)
 
 ;;;; Access
 
@@ -175,6 +183,7 @@ USA.
 
 (define (scode-access? object)
   (object-type? (ucode-type access) object))
+(register-predicate! scode-access? 'scode-access)
 
 (define (scode-access-environment access)
   (guarantee scode-access? access 'scode-access-environment)
@@ -192,6 +201,8 @@ USA.
 (define (scode-absolute-reference? object)
   (and (scode-access? object)
        (system-global-environment? (scode-access-environment object))))
+(register-predicate! scode-absolute-reference? 'scode-absolute-reference
+		     '<= scode-access?)
 
 (define (scode-absolute-reference-name reference)
   (guarantee scode-absolute-reference? reference 'scode-absolute-reference-name)
@@ -210,6 +221,7 @@ USA.
 
 (define (scode-delay? object)
   (object-type? (ucode-type delay) object))
+(register-predicate! scode-delay? 'scode-delay)
 
 (define (scode-delay-expression delay)
   (guarantee scode-delay? delay 'scode-delay-expression)
@@ -228,6 +240,7 @@ USA.
 
 (define (scode-sequence? object)
   (object-type? (ucode-type sequence) object))
+(register-predicate! scode-sequence? 'scode-sequence)
 
 (define (scode-sequence-actions expression)
   (if (scode-sequence? expression)
@@ -254,6 +267,7 @@ USA.
 
 (define (scode-combination? object)
   (object-type? (ucode-type combination) object))
+(register-predicate! scode-combination? 'scode-combination)
 
 (define (scode-combination-operator combination)
   (guarantee scode-combination? combination 'scode-combination-operator)
@@ -285,6 +299,8 @@ USA.
 	 (and (= 2 (length operands))
 	      (scode-the-environment? (car operands))
 	      (symbol? (cadr operands))))))
+(register-predicate! scode-unassigned?? 'scode-unassigned?
+		     '<= scode-combination?)
 
 (define (scode-unassigned?-name expression)
   (guarantee scode-unassigned?? expression 'scode-unassigned?-name)
@@ -300,6 +316,7 @@ USA.
 
 (define (scode-conditional? object)
   (object-type? (ucode-type conditional) object))
+(register-predicate! scode-conditional? 'scode-conditional)
 
 (define undefined-scode-conditional-branch unspecific)
 
@@ -324,6 +341,7 @@ USA.
 
 (define (scode-disjunction? object)
   (object-type? (ucode-type disjunction) object))
+(register-predicate! scode-disjunction? 'scode-disjunction)
 
 (define (scode-disjunction-predicate disjunction)
   (guarantee scode-disjunction? disjunction 'scode-disjunction-predicate)
@@ -353,6 +371,7 @@ USA.
 (define (scode-lambda? object)
   (or (slambda? object)
       (xlambda? object)))
+(register-predicate! scode-lambda? 'scode-lambda)
 
 (define (scode-lambda-name lambda)
   (cond ((slambda? lambda) (slambda-name lambda))

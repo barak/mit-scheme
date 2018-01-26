@@ -75,30 +75,44 @@ USA.
 		  (microcode-type/name->code type-name)
 		  (predicate->dispatch-tag predicate)))
 
+   (define-primitive-predicate 'assignment scode-assignment?)
    (define-primitive-predicate 'bignum exact-integer?)
    (define-primitive-predicate 'bytevector bytevector?)
    (define-primitive-predicate 'cell cell?)
    (define-primitive-predicate 'character char?)
    (define-primitive-predicate 'compiled-code-block compiled-code-block?)
+   (define-primitive-predicate 'conditional scode-conditional?)
+   (define-primitive-predicate 'control-point control-point?)
+   (define-primitive-predicate 'definition scode-definition?)
+   (define-primitive-predicate 'delay scode-delay?)
+   (define-primitive-predicate 'disjunction scode-disjunction?)
+   (define-primitive-predicate 'environment ic-environment?)
    (define-primitive-predicate 'ephemeron ephemeron?)
+   (define-primitive-predicate 'extended-lambda scode-lambda?)
    (define-primitive-predicate 'extended-procedure procedure?)
    (define-primitive-predicate 'false boolean?)
    (define-primitive-predicate 'fixnum fix:fixnum?)
    (define-primitive-predicate 'flonum flo:flonum?)
    (define-primitive-predicate 'interned-symbol interned-symbol?)
+   (define-primitive-predicate 'lambda scode-lambda?)
    (define-primitive-predicate 'pair pair?)
    (define-primitive-predicate 'primitive primitive-procedure?)
    (define-primitive-predicate 'procedure procedure?)
    (define-primitive-predicate 'promise promise?)
+   (define-primitive-predicate 'quotation scode-quotation?)
    (define-primitive-predicate 'ratnum exact-rational?)
    (define-primitive-predicate 'recnum number?)
+   (define-primitive-predicate 'sequence scode-sequence?)
    (define-primitive-predicate 'stack-environment stack-address?)
    (define-primitive-predicate 'string string?)
+   (define-primitive-predicate 'the-environment scode-the-environment?)
    (define-primitive-predicate 'unicode-string string?)
    (define-primitive-predicate 'uninterned-symbol uninterned-symbol?)
+   (define-primitive-predicate 'variable scode-variable?)
    (define-primitive-predicate 'vector vector?)
    (define-primitive-predicate 'vector-1b bit-string?)
-   (define-primitive-predicate 'weak-cons weak-pair?)))
+   (define-primitive-predicate 'weak-cons weak-pair?)
+   ))
 
 (add-boot-init!
  (lambda ()
@@ -107,8 +121,35 @@ USA.
        (vector-set! primitive-tags type-code #f)
        (vector-set! primitive-tag-methods type-code method)))
 
-   (define-primitive-predicate-method 'tagged-object
-     %tagged-object-tag)
+   (define (simple-alternative primary alternative)
+     (let ((primary-tag (predicate->dispatch-tag primary))
+	   (alternative-tag (predicate->dispatch-tag alternative)))
+       (lambda (object)
+	 (if (alternative object)
+	     alternative-tag
+	     primary-tag))))
+
+   (define-primitive-predicate-method 'access
+     (simple-alternative scode-access? scode-absolute-reference?))
+
+   (define-primitive-predicate-method 'combination
+     (simple-alternative scode-combination? scode-unassigned??))
+
+   (define-primitive-predicate-method 'comment
+     (simple-alternative scode-comment? scode-declaration?))
+
+   (define-primitive-predicate-method 'compiled-entry
+     (let ((procedure-tag (predicate->dispatch-tag compiled-procedure?))
+	   (return-tag (predicate->dispatch-tag compiled-return-address?))
+	   (expression-tag (predicate->dispatch-tag compiled-expression?))
+	   (default-tag (predicate->dispatch-tag compiled-code-address?)))
+       (lambda (entry)
+	 (case (system-hunk3-cxr0
+		((ucode-primitive compiled-entry-kind 1) entry))
+	   ((0) procedure-tag)
+	   ((1) return-tag)
+	   ((2) expression-tag)
+	   (else default-tag)))))
 
    (define-primitive-predicate-method 'constant
      (let* ((constant-tags
@@ -139,22 +180,12 @@ USA.
 	     apply-hook-tag
 	     entity-tag))))
 
-   (define-primitive-predicate-method 'compiled-entry
-     (let ((procedure-tag (predicate->dispatch-tag compiled-procedure?))
-	   (return-tag (predicate->dispatch-tag compiled-return-address?))
-	   (expression-tag (predicate->dispatch-tag compiled-expression?))
-	   (default-tag (predicate->dispatch-tag compiled-code-address?)))
-       (lambda (entry)
-	 (case (system-hunk3-cxr0
-		((ucode-primitive compiled-entry-kind 1) entry))
-	   ((0) procedure-tag)
-	   ((1) return-tag)
-	   ((2) expression-tag)
-	   (else default-tag)))))
-
    (define-primitive-predicate-method 'record
      (let ((default-tag (predicate->dispatch-tag %record?)))
        (lambda (object)
 	 (if (dispatch-tag? (%record-ref object 0))
 	     (%record-ref object 0)
-	     default-tag))))))
+	     default-tag))))
+
+   (define-primitive-predicate-method 'tagged-object
+     %tagged-object-tag)))

@@ -233,7 +233,20 @@ USA.
    (register-predicate! thunk? 'thunk '<= procedure?)
    (register-predicate! unary-procedure? 'unary-procedure '<= procedure?)
    (register-predicate! unparser-method? 'unparser-method '<= procedure?)
-   (register-predicate! bundle? 'bundle '<= entity?)))
+   (register-predicate! bundle? 'bundle '<= entity?)
+
+   ;; MIT/GNU Scheme: environments
+   (register-predicate! environment? 'environment)
+   (register-predicate! top-level-environment? 'top-level-environment
+			'<= environment?)
+   (register-predicate! system-global-environment? 'system-global-environment
+			'<= top-level-environment?)
+   (register-predicate! ic-environment? 'ic-environment
+			'<= top-level-environment?)
+   (register-predicate! closure-ccenv? 'compiled-code-closure-environment
+			'<= environment?)
+   (register-predicate! stack-ccenv? 'compiled-code-stack-environment
+			'<= environment?)))
 
 (add-boot-init!
  (lambda ()
@@ -248,8 +261,8 @@ USA.
    (register-predicate! compiled-code-block? 'compiled-code-block)
    (register-predicate! compiled-expression? 'compiled-expression)
    (register-predicate! compiled-return-address? 'compiled-return-address)
+   (register-predicate! control-point? 'control-point)
    (register-predicate! ephemeron? 'ephemeron)
-   (register-predicate! environment? 'environment)
    (register-predicate! equality-predicate? 'equality-predicate
 			'<= binary-procedure?)
    (register-predicate! interned-symbol? 'interned-symbol '<= symbol?)

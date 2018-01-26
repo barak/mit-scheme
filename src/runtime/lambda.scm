@@ -405,6 +405,7 @@ USA.
 (define (scode-lambda? object)
   (or (slambda? object)
       (xlambda? object)))
+(register-predicate! scode-lambda? 'scode-lambda)
 
 (define (make-scode-lambda name required optional rest auxiliary declarations
 			   body)
