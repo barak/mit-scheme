@@ -102,7 +102,6 @@ USA.
    (define-primitive-predicate 'quotation scode-quotation?)
    (define-primitive-predicate 'ratnum exact-rational?)
    (define-primitive-predicate 'recnum number?)
-   (define-primitive-predicate 'sequence scode-sequence?)
    (define-primitive-predicate 'stack-environment stack-address?)
    (define-primitive-predicate 'string string?)
    (define-primitive-predicate 'the-environment scode-the-environment?)
@@ -186,6 +185,9 @@ USA.
 	 (if (dispatch-tag? (%record-ref object 0))
 	     (%record-ref object 0)
 	     default-tag))))
+
+   (define-primitive-predicate-method 'sequence
+     (simple-alternative scode-sequence? open-block?))
 
    (define-primitive-predicate-method 'tagged-object
      %tagged-object-tag)))

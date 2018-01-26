@@ -172,6 +172,7 @@ USA.
 		     (every %open-block-definition-named?
 			    names
 			    (cdr actions))))))))
+(register-predicate! open-block? 'open-block '<= scode-sequence?)
 
 (define (%open-block-definition-named? name expr)
   (and (scode-definition? expr)
