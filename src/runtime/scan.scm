@@ -39,11 +39,8 @@ USA.
 ;;; of those names, and a new sequence in which those definitions are
 ;;; replaced by assignments.  UNSCAN-DEFINES will invert that.
 
-;;; The Open Block abstraction can be used to store scanned
-;;; definitions in code, which is extremely useful for code analysis
-;;; and transformation.  The supplied procedures, MAKE-OPEN-BLOCK and
-;;; OPEN-BLOCK-COMPONENTS, will connect directly to SCAN-DEFINES and
-;;; UNSCAN-DEFINES, respectively.
+;;; The Open Block abstraction can be used to store scanned definitions in code,
+;;; which is extremely useful for code analysis and transformation.
 
 (define-integrable sequence-type
   (ucode-type sequence))
@@ -67,7 +64,7 @@ USA.
   ((scan-loop expression receiver) '() '() null-sequence))
 
 (define (scan-loop expression receiver)
-  (cond ((open-block? expression)      ; must come before SCODE-SEQUENCE? clause
+  (cond ((scode-open-block? expression)      ; must come before SCODE-SEQUENCE? clause
 	 (scan-loop
 	  (%open-block-actions expression)
 	  (lambda (names declarations body)
@@ -151,7 +148,7 @@ USA.
 
 ;;;; Open Block
 
-(define (make-open-block names declarations actions)
+(define (make-scode-open-block names declarations actions)
   (if (and (null? names)
 	   (null? declarations))
       actions
@@ -163,7 +160,7 @@ USA.
 (define (%make-open-block-definition name)
   (make-scode-definition name (make-unassigned-reference-trap)))
 
-(define (open-block? object)
+(define (scode-open-block? object)
   (and (scode-sequence? object)
        (let ((actions (scode-sequence-actions object)))
 	 (and (open-block-descriptor? (car actions))
@@ -172,30 +169,24 @@ USA.
 		     (every %open-block-definition-named?
 			    names
 			    (cdr actions))))))))
-(register-predicate! open-block? 'open-block '<= scode-sequence?)
+(register-predicate! scode-open-block? 'open-block '<= scode-sequence?)
 
 (define (%open-block-definition-named? name expr)
   (and (scode-definition? expr)
        (eq? name (scode-definition-name expr))
        (unassigned-reference-trap? (scode-definition-value expr))))
 
-(define (open-block-names open-block)
-  (guarantee open-block? open-block 'open-block-names)
+(define (scode-open-block-names open-block)
+  (guarantee scode-open-block? open-block 'scode-open-block-names)
   (%open-block-names open-block))
 
-(define (open-block-declarations open-block)
-  (guarantee open-block? open-block 'open-block-declarations)
+(define (scode-open-block-declarations open-block)
+  (guarantee scode-open-block? open-block 'scode-open-block-declarations)
   (%open-block-declarations open-block))
 
-(define (open-block-actions open-block)
-  (guarantee open-block? open-block 'open-block-actions)
+(define (scode-open-block-actions open-block)
+  (guarantee scode-open-block? open-block 'scode-open-block-actions)
   (%open-block-actions open-block))
-
-(define (open-block-components open-block receiver)
-  (guarantee open-block? open-block 'open-block-components)
-  (receiver (%open-block-names open-block)
-	    (%open-block-declarations open-block)
-	    (%open-block-actions open-block)))
 
 (define (%open-block-descriptor open-block)
   (car (scode-sequence-actions open-block)))

@@ -317,9 +317,9 @@ ARBITRARY:	The expression may be executed more than once.  It
 	 (scode/make-directive
 	  (if (null? *top-level-declarations*)
 	      (canout-expr canout)
-	      (make-open-block '()
-			       *top-level-declarations*
-			       (canout-expr canout)))
+	      (scode/make-open-block '()
+				     *top-level-declarations*
+				     (canout-expr canout)))
 	  '(COMPILE-PROCEDURE)
 	  expr)
 	 true
@@ -340,20 +340,20 @@ ARBITRARY:	The expression may be executed more than once.  It
 	 (error "canonicalize/sequence: open block in bad context"
 		expr context))
 	(else
-	 (scode/open-block-components
-	  expr
-	  (lambda (names decls body)
-	    (fluid-let ((*top-level-declarations*
-			 (append decls *top-level-declarations*)))
-	      (let ((body (unscan-defines names decls body)))
-		((if (and (eq? context 'TOP-LEVEL)
-			  compiler:compress-top-level?
-			  (> (length names) 1))
-		     canonicalize/compressing
-		     canonicalize/expression)
-		 body
-		 bound
-		 context))))))))
+	 (let ((names (scode/open-block-names expr))
+	       (decls (scode/open-block-declarations expr))
+	       (body (scode/open-block-actions expr)))
+	   (fluid-let ((*top-level-declarations*
+			(append decls *top-level-declarations*)))
+	     (let ((body (unscan-defines names decls body)))
+	       ((if (and (eq? context 'TOP-LEVEL)
+			 compiler:compress-top-level?
+			 (> (length names) 1))
+		    canonicalize/compressing
+		    canonicalize/expression)
+		body
+		bound
+		context)))))))
 
 (define (%single-definition name value)
   (scode/make-combination

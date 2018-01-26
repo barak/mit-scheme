@@ -42,12 +42,6 @@ USA.
   (import (runtime microcode-tables)
 	  microcode-type/code->name))
 
-(define-package (scode-optimizer global-imports)
-  (files "gimprt")
-  (parent ())
-  (export (scode-optimizer)
-          scode-open-block?))
-
 (define-package (scode-optimizer top-level)
   (files "toplev")
   (parent (scode-optimizer))

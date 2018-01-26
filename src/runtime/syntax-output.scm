@@ -105,8 +105,8 @@ USA.
 		   names
 		   temps)))
 	    (list
-	     (let ((body (scan-defines body make-open-block)))
-	       (if (open-block? body)
+	     (let ((body (scan-defines body make-scode-open-block)))
+	       (if (scode-open-block? body)
 		   (output/let '() '() body)
 		   body))))))))
 
@@ -117,25 +117,26 @@ USA.
 		       (list (make-block-declaration declarations)
 			     body))
 		      body))
-		make-open-block))
+		make-scode-open-block))
 
 (define (output/definition name value)
   (make-scode-definition name value))
 
 (define (output/top-level-sequence declarations expressions)
   (let ((declarations (apply append declarations))
-	(make-open-block
+	(make-scode-open-block
 	 (lambda (expressions)
-	   (scan-defines (make-scode-sequence expressions) make-open-block))))
+	   (scan-defines (make-scode-sequence expressions)
+			 make-scode-open-block))))
     (if (pair? declarations)
-	(make-open-block
+	(make-scode-open-block
 	 (cons (make-block-declaration declarations)
 	       (if (pair? expressions)
 		   expressions
 		   (list (output/unspecific)))))
 	(if (pair? expressions)
 	    (if (pair? (cdr expressions))
-		(make-open-block expressions)
+		(make-scode-open-block expressions)
 		(car expressions))
 	    (output/unspecific)))))
 
@@ -238,12 +239,11 @@ USA.
 	   (declare (ignore pattern))
 	   (mark-local-bindings bound body mark-safe!)))))
 
-   (define-cs-handler open-block?
+   (define-cs-handler scode-open-block?
      (lambda (expression mark-safe!)
-       (open-block-components expression
-	 (lambda (bound declarations body)
-	   (declare (ignore declarations))
-	   (mark-local-bindings bound body mark-safe!)))))
+       (mark-local-bindings (scode-open-block-names expression)
+			    (scode-open-block-actions expression)
+			    mark-safe!)))
 
    (define-cs-handler scode-access?
      (simple-subexpression scode-access-environment))
@@ -347,16 +347,14 @@ USA.
 			  (map substitution bound)
 			  (alpha-substitute substitution body))))))
 
-   (define-as-handler open-block?
+   (define-as-handler scode-open-block?
      (lambda (substitution expression)
-       (open-block-components expression
-	 (lambda (bound declarations body)
-	   (make-open-block (map substitution bound)
-			    (map (lambda (declaration)
-				   (map-declaration-identifiers substitution
-								declaration))
-				 declarations)
-			    (alpha-substitute substitution body))))))
+       (make-scode-open-block
+	(map substitution (scode-open-block-names expression))
+	(map (lambda (declaration)
+	       (map-declaration-identifiers substitution declaration))
+	     (scode-open-block-declarations expression))
+	(alpha-substitute substitution (scode-open-block-actions expression)))))
 
    (define-as-handler scode-declaration?
      (lambda (substitution expression)

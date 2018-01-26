@@ -46,11 +46,8 @@ USA.
 	      (cond ((null? bound-names)
 		     expression)
 		    ((or (scode-definition? expression)
-			 (and (open-block? expression)
-			      (open-block-components expression
-				(lambda (names declarations body)
-				  declarations body
-				  (pair? names)))))
+			 (and (scode-open-block? expression)
+			      (pair? (scode-open-block-names expression))))
 		     (error
 		      "Can't perform definition in compiled-code environment:"
 		      (unsyntax expression)))

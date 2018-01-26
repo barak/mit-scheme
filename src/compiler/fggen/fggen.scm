@@ -72,7 +72,9 @@ USA.
 				       declarations
 				       (unscan-defines names '() body)))))
 			(if (scode/open-block? scode)
-			    (scode/open-block-components scode collect)
+			    (collect (scode/open-block-names scode)
+				     (scode/open-block-declarations scode)
+				     (scode/open-block-actions scode))
 			    (scan-defines scode collect))))
 		  (lambda (variables declarations scode)
 		    (set-block-bound-variables! block variables)
@@ -816,13 +818,11 @@ USA.
 	     (cond ((scode/lambda? expression)
 		    (process (scode/lambda-name expression)))
 		   ((scode/open-block? expression)
-		    (scode/open-block-components
-		     expression
-		     (lambda (names decls body)
-		       decls		; ignored
-		       (if (and (null? names) (scode/lambda? body))
-			   (process (scode/lambda-name body))
-			   (fail)))))
+		    (let ((body (scode/open-block-actions expression)))
+		      (if (and (null? (scode/open-block-names expression))
+			       (scode/lambda? body))
+			  (process (scode/lambda-name body))
+			  (fail))))
 		   (else
 		    (fail)))))
 	  ((ENCLOSE)

@@ -100,6 +100,10 @@ USA.
 		lambda-body
 		lambda-name
 		lambda?
+		open-block-actions
+		open-block-declarations
+		open-block-names
+		open-block?
 		quotation-expression
 		quotation?
 		sequence-actions
@@ -122,6 +126,7 @@ USA.
 		delay
 		disjunction
 		lambda
+		open-block
 		quotation
 		sequence
 		the-environment

@@ -92,12 +92,12 @@ USA.
 					   body)))))
 
 (define (transform-open-block transforms open-block)
-  (open-block-components open-block
-    (lambda (names declarations body)
-      (make-open-block names declarations
-		       (transform-expression (remove-transforms transforms
-								names)
-					     body)))))
+  (let ((names (scode-open-block-names open-block)))
+    (make-scode-open-block
+     names
+     (scode-open-block-declarations open-block)
+     (transform-expression (remove-transforms transforms names)
+			   (scode-open-block-actions open-block)))))
 
 (define (transform-definition transforms definition)
   (let ((name (scode-definition-name definition))

@@ -57,17 +57,15 @@ USA.
 	  (begin
 	    (if (not top-level?)
 		(error "Open blocks allowed only at top level:" expression))
-	    (call-with-values
-		(lambda () (open-block-components expression values))
-	      (lambda (auxiliary declarations body)
-		(if (not (assq 'USUAL-INTEGRATIONS declarations))
-		    (ui-warning))
-		(transform/open-block* expression
-				       block
-				       environment
-				       auxiliary
-				       declarations
-				       body))))
+	    (let ((declarations (scode-open-block-declarations expression)))
+	      (if (not (assq 'USUAL-INTEGRATIONS declarations))
+		  (ui-warning))
+	      (transform/open-block* expression
+				     block
+				     environment
+				     (scode-open-block-names expression)
+				     declarations
+				     (scode-open-block-actions expression))))
 	  (transform/expression block environment expression)))))
 
 (define (ui-warning)
@@ -109,14 +107,12 @@ USA.
 	variables))
 
 (define (transform/open-block block environment expression)
-  (call-with-values (lambda () (open-block-components expression values))
-    (lambda (auxiliary declarations body)
-      (transform/open-block* expression
-			     (block/make block true '())
-			     environment
-			     auxiliary
-			     declarations
-			     body))))
+  (transform/open-block* expression
+			 (block/make block true '())
+			 environment
+			 (scode-open-block-names expression)
+			 (scode-open-block-declarations expression)
+			 (scode-open-block-actions expression)))
 
 (define (transform/open-block* expression block environment auxiliary
 			       declarations body)
@@ -222,14 +218,16 @@ USA.
 
 (define (transform/procedure-body block environment expression)
   (if (scode-open-block? expression)
-      (open-block-components expression
-	(lambda (auxiliary declarations body)
-	  (if (null? auxiliary)
-	      (begin (set-block/declarations!
-		      block
-		      (declarations/parse block declarations))
-		     (transform/expression block environment body))
-	      (transform/open-block block environment expression))))
+      (if (null? (scode-open-block-names expression))
+	  (begin
+	    (set-block/declarations!
+	     block
+	     (declarations/parse block
+				 (scode-open-block-declarations expression)))
+	    (transform/expression block
+				  environment
+				  (scode-open-block-actions expression)))
+	  (transform/open-block block environment expression))
       (transform/expression block environment expression)))
 
 (define (transform/definition block environment expression)

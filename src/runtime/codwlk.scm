@@ -146,7 +146,7 @@ USA.
       (scode-walker/comment walker)))
 
 (define (walk/sequence walker expression)
-  (if (open-block? expression)
+  (if (scode-open-block? expression)
       (scode-walker/open-block walker)
       (scode-walker/sequence walker)))
 

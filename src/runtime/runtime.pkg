@@ -3991,13 +3991,12 @@ USA.
   (files "scan")
   (parent (runtime))
   (export ()
-	  make-open-block
-	  open-block-actions
-	  open-block-components
-	  open-block-declarations
-	  open-block-names
-	  open-block?
+	  make-scode-open-block
 	  scan-defines
+	  scode-open-block-actions
+	  scode-open-block-declarations
+	  scode-open-block-names
+	  scode-open-block?
 	  unscan-defines))
 
 (define-package (runtime scode-walker)

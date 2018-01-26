@@ -187,7 +187,7 @@ USA.
 	     default-tag))))
 
    (define-primitive-predicate-method 'sequence
-     (simple-alternative scode-sequence? open-block?))
+     (simple-alternative scode-sequence? scode-open-block?))
 
    (define-primitive-predicate-method 'tagged-object
      %tagged-object-tag)))

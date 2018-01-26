@@ -49,8 +49,10 @@ USA.
 
 (define (rewrite-scode expression context)
   (let ((expression
-	 (if (open-block? expression)
-	     (open-block-components expression unscan-defines)
+	 (if (scode-open-block? expression)
+	     (unscan-defines (scode-open-block-names expression)
+			     (scode-open-block-declarations expression)
+			     (scode-open-block-actions expression))
 	     expression)))
     (if (eq? context 'REPL-BUFFER)
 	(make-scode-sequence

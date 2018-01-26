@@ -186,14 +186,14 @@ USA.
 			(body  (procedure/body procedure)))
 		    (if (open-block? body)
 			(cgen-open-block body)
-			(make-open-block
+			(make-scode-open-block
 			 '()
 			 (maybe-flush-declarations (block/declarations block))
 			 (cgen/expression (list block) body)))))))
 
 (define (cgen-open-block expression)
   (let ((block (open-block/block expression)))
-    (make-open-block
+    (make-scode-open-block
      (map variable/name (open-block/variables expression))
      (maybe-flush-declarations (block/declarations block))
      (make-scode-sequence
@@ -205,7 +205,8 @@ USA.
 	      ((null? actions) (error "Extraneous auxiliaries"))
 	      ((eq? (car actions) open-block/value-marker)
 	       (cons (make-scode-assignment (variable/name (car variables))
-					    (cgen/expression (list block) (car values)))
+					    (cgen/expression (list block)
+							     (car values)))
 		     (loop (cdr variables) (cdr values) (cdr actions))))
 	      (else
 	       (cons (cgen/expression (list block) (car actions))

@@ -221,19 +221,19 @@ USA.
     (cond ((scode/constant? scode)
 	   scode)
 	  ((scode/open-block? scode)
-	   (scode/open-block-components
-	    scode
-	    (lambda (names declarations body)
-	      (if (null? names)
-		  (scan-defines
-		   body
-		   (lambda (names declarations* body)
-		     (make-open-block names
-				      (append declarations declarations*)
-				      body)))
-		  scode))))
+	   (let ((names (scode/open-block-names scode))
+		 (declarations (scode/open-block-declarations scode))
+		 (body (scode/open-block-actions scode)))
+	     (if (null? names)
+		 (scan-defines body
+			       (lambda (names declarations* body)
+				 (scode/make-open-block names
+							(append declarations
+								declarations*)
+							body)))
+		 scode)))
 	  (else
-	   (scan-defines scode make-open-block)))))
+	   (scan-defines scode make-scode-open-block)))))
 
 ;;;; Alternate Entry Points
 

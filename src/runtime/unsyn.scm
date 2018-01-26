@@ -237,12 +237,13 @@ USA.
 	      (loop (cdr actions)))
 	'())))
 
-(define (unsyntax-OPEN-BLOCK-object environment open-block)
+(define (unsyntax-open-block-object environment open-block)
   (if (eq? #t unsyntaxer:macroize?)
-      (open-block-components open-block
-	(lambda (auxiliary declarations expression)
-	  (unsyntax-object environment
-			   (unscan-defines auxiliary declarations expression))))
+      (unsyntax-object
+       environment
+       (unscan-defines (scode-open-block-names open-block)
+		       (scode-open-block-declarations open-block)
+		       (scode-open-block-actions open-block)))
       (unsyntax-SEQUENCE-object environment open-block)))
 
 (define (unsyntax-DELAY-object environment object)
@@ -387,11 +388,12 @@ USA.
       (make-lambda-list required optional rest '()))))
 
 (define (unsyntax-lambda-body environment body)
-  (if (open-block? body)
-      (open-block-components body
-	(lambda (names declarations open-block-body)
-	  (unsyntax-lambda-body-sequence environment
-	   (unscan-defines names declarations open-block-body))))
+  (if (scode-open-block? body)
+      (unsyntax-lambda-body-sequence
+       environment
+       (unscan-defines (scode-open-block-names body)
+		       (scode-open-block-declarations body)
+		       (scode-open-block-actions body)))
       (unsyntax-lambda-body-sequence environment body)))
 
 (define (unsyntax-lambda-body-sequence environment body)

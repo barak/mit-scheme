@@ -40,7 +40,7 @@ USA.
   (scode-lambda-components *lambda
     (lambda (name required optional rest auxiliary declarations body)
       (receiver name required optional rest
-		(make-open-block auxiliary declarations body)))))
+		(make-scode-open-block auxiliary declarations body)))))
 
 (define (lambda-components** *lambda receiver)
   (lambda-components* *lambda
