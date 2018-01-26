@@ -83,7 +83,7 @@ USA.
 	  ((and (or (zero-or-more? pattern rename compare)
 		    (at-least-one? pattern rename compare))
 		(null? (cddr pattern)))
-	   (let ((variable ((make-name-generator) 'CONTROL)))
+	   (let ((variable ((make-local-identifier-renamer) 'CONTROL)))
 	     (loop (car pattern)
 		   variable
 		   sids

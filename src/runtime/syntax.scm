@@ -47,15 +47,14 @@ USA.
   (syntax* (list form) environment))
 
 (define (syntax* forms environment)
-  (guarantee list? forms 'SYNTAX*)
-  (let ((senv (->syntactic-environment environment 'SYNTAX*)))
-    (parameterize* (list (cons *rename-database* (initial-rename-database)))
-      (lambda ()
-	(output/post-process-expression
-	 (if (syntactic-environment/top-level? senv)
-	     (compile-body-item/top-level
-	      (classify/body forms (make-top-level-syntactic-environment senv)))
-	     (output/sequence (compile/expressions forms senv))))))))
+  (guarantee list? forms 'syntax*)
+  (let ((senv (->syntactic-environment environment 'syntax*)))
+    (with-identifier-renaming
+     (lambda ()
+       (if (syntactic-environment/top-level? senv)
+	   (compile-body-item/top-level
+	    (classify/body forms (make-top-level-syntactic-environment senv)))
+	   (output/sequence (compile/expressions forms senv)))))))
 
 (define (compile/expression expression environment)
   (compile-item/expression (classify/expression expression environment)))

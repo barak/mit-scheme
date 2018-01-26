@@ -181,7 +181,7 @@ USA.
   (let ((bound '())
 	(free '())
 	(get-runtime (senv-get-runtime parent))
-	(rename (make-name-generator)))
+	(rename (make-local-identifier-renamer)))
 
     (define (get-type)
       'internal)

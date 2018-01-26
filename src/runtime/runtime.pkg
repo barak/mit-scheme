@@ -4507,13 +4507,9 @@ USA.
   (files "syntax-rename")
   (parent (runtime syntax))
   (export (runtime syntax)
-	  *rename-database*
-	  initial-rename-database
-	  make-name-generator
-	  make-rename-id
-	  output/post-process-expression
-	  rename-identifier
-	  rename-top-level-identifier))
+	  make-local-identifier-renamer
+	  rename-top-level-identifier
+	  with-identifier-renaming))
 
 (define-package (runtime syntax output)
   (files "syntax-output")

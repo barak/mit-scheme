@@ -48,12 +48,16 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-name-generator)
+(define (make-local-identifier-renamer)
   (let ((id (make-rename-id)))
     (lambda (identifier)
       (rename-identifier identifier id))))
 
-(define-deferred *rename-database*
+(define (with-identifier-renaming thunk)
+  (parameterize* (list (cons rename-db (initial-rename-database)))
+		 (lambda () (post-process-output (thunk)))))
+
+(define-deferred rename-db
   (make-unsettable-parameter 'unbound))
 
 (define-structure (rename-database (constructor initial-rename-database ())
@@ -65,14 +69,14 @@ USA.
 
 (define (make-rename-id)
   (delay
-    (let* ((renames (*rename-database*))
+    (let* ((renames (rename-db))
 	   (n (+ (rename-database/frame-number renames) 1)))
       (set-rename-database/frame-number! renames n)
       n)))
 
 (define (rename-identifier identifier rename-id)
   (let ((key (cons identifier rename-id))
-	(renames (*rename-database*)))
+	(renames (rename-db)))
     (let ((mapping-table (rename-database/mapping-table renames)))
       (or (hash-table/get mapping-table key #f)
 	  (let ((mapped-identifier
@@ -104,7 +108,7 @@ USA.
 (define (rename->original identifier)
   (let ((entry
 	 (hash-table/get (rename-database/unmapping-table
-			  (*rename-database*))
+			  (rename-db))
 			 identifier
 			 #f)))
     (if entry
@@ -116,7 +120,7 @@ USA.
 
 ;;;; Post processing
 
-(define (output/post-process-expression expression)
+(define (post-process-output expression)
   (let ((safe-set (make-strong-eq-hash-table)))
     (compute-substitution expression
 			  (lambda (rename original)
@@ -144,7 +148,7 @@ USA.
 (define (finalize-mapped-identifier identifier)
   (let ((entry
 	 (hash-table/get (rename-database/unmapping-table
-			  (*rename-database*))
+			  (rename-db))
 			 identifier
 			 #f)))
     (if entry
@@ -163,7 +167,7 @@ USA.
   (symbol "." symbol-to-map "." frame-number))
 
 (define (map-uninterned-identifier identifier frame-number)
-  (let ((table (rename-database/id-table (*rename-database*)))
+  (let ((table (rename-database/id-table (rename-db)))
 	(symbol (identifier->symbol identifier)))
     (let ((alist (hash-table/get table symbol '())))
       (let ((entry (assv frame-number alist)))
