@@ -96,7 +96,7 @@ USA.
 
 ;;; Keyword environments are used to make keywords that represent items.
 
-(define (make-keyword-environment name item)
+(define (make-keyword-syntactic-environment name item)
 
   (define (get-type)
     'keyword)

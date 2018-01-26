@@ -169,10 +169,7 @@ USA.
   (item->keyword (make-compiler-item compiler)))
 
 (define (item->keyword item)
-  (let ((environment
-	 (make-internal-syntactic-environment null-syntactic-environment)))
-    (syntactic-environment/define environment 'KEYWORD item)
-    (close-syntax 'KEYWORD environment)))
+  (close-syntax 'keyword (make-keyword-syntactic-environment 'keyword item)))
 
 (define (capture-syntactic-environment expander)
   `(,(classifier->keyword

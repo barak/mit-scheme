@@ -4465,6 +4465,7 @@ USA.
 	  ->syntactic-environment
 	  bind-variable!
 	  make-internal-syntactic-environment
+	  make-keyword-syntactic-environment
 	  make-partial-syntactic-environment
 	  make-top-level-syntactic-environment
 	  null-syntactic-environment
