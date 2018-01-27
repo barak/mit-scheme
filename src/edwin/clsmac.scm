@@ -100,7 +100,9 @@ USA.
 	 (compile/expression self environment)
 	 free-names
 	 (compile/expression
-	  `(,(close-syntax 'BEGIN system-global-environment) ,@body)
+	  `(,(close-syntax 'begin
+			   (->syntactic-environment system-global-environment))
+	    ,@body)
 	  environment)))))))
 
 (define-syntax ==>

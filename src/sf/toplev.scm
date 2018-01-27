@@ -284,8 +284,9 @@ USA.
     (lambda ()
       (syntax* (if (null? declarations)
 		   s-expressions
-		   (cons (cons (close-syntax 'DECLARE
-					     system-global-environment)
+		   (cons (cons (close-syntax 'declare
+					     (->syntactic-environment
+					      system-global-environment))
 			       declarations)
 			 s-expressions))
 	       environment))))

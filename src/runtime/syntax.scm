@@ -70,14 +70,14 @@ USA.
   (make-syntactic-closure senv '() form))
 
 (define (make-syntactic-closure senv free form)
-  (let ((senv (->syntactic-environment senv 'make-syntactic-closure)))
-    (guarantee-list-of identifier? free 'make-syntactic-closure)
-    (if (or (memq form free)	;LOOKUP-IDENTIFIER assumes this.
-	    (constant-form? form)
-	    (and (syntactic-closure? form)
-		 (null? (syntactic-closure-free form))))
-	form
-	(%make-syntactic-closure senv free form))))
+  (guarantee syntactic-environment? senv 'make-syntactic-closure)
+  (guarantee-list-of identifier? free 'make-syntactic-closure)
+  (if (or (memq form free)		;LOOKUP-IDENTIFIER assumes this.
+	  (constant-form? form)
+	  (and (syntactic-closure? form)
+	       (null? (syntactic-closure-free form))))
+      form
+      (%make-syntactic-closure senv free form)))
 
 (define (constant-form? form)
   (not (or (syntactic-closure? form)

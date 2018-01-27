@@ -63,6 +63,11 @@ USA.
 		 (vector-ref (gc-space-status) 0))
 	      env))
 
+    (if (unbound? env '->syntactic-environment)
+	(eval '(define (->syntactic-environment object)
+		 object)
+	      env))
+
     (provide-rename 'random-bytevector 'random-byte-vector)
     (provide-rename 'string-foldcase 'string-downcase)
 

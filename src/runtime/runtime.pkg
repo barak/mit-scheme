@@ -4455,9 +4455,9 @@ USA.
   (files "syntax-environment")
   (parent (runtime syntax))
   (export ()
+	  ->syntactic-environment
 	  syntactic-environment?)
   (export (runtime syntax)
-	  ->syntactic-environment
 	  make-internal-syntactic-environment
 	  make-keyword-syntactic-environment
 	  make-partial-syntactic-environment
