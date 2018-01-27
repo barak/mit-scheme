@@ -49,48 +49,58 @@ USA.
 (declare (usual-integrations))
 
 (define (make-local-identifier-renamer)
-  (let ((id (make-rename-id)))
-    (lambda (identifier)
-      (rename-identifier identifier id))))
+  ((rdb:identifier-renamer (rename-db)) new-identifier))
 
 (define (with-identifier-renaming thunk)
-  (parameterize* (list (cons rename-db (initial-rename-database)))
+  (parameterize* (list (cons rename-db (initial-rename-db)))
 		 (lambda () (post-process-output (thunk)))))
 
 (define-deferred rename-db
   (make-unsettable-parameter 'unbound))
 
-(define-structure (rename-database (constructor initial-rename-database ())
-				   (conc-name rename-database/))
-  (frame-number 0)
-  (mapping-table (make-equal-hash-table) read-only #t)
-  (unmapping-table (make-strong-eq-hash-table) read-only #t))
+(define-record-type <rename-db>
+    (make-rename-db identifier-renamer lookup-rename)
+    rename-db?
+  (identifier-renamer rdb:identifier-renamer)
+  (lookup-rename rdb:lookup-rename))
 
-(define (make-rename-id)
-  (delay
-    (let* ((renames (rename-db))
-	   (n (+ (rename-database/frame-number renames) 1)))
-      (set-rename-database/frame-number! renames n)
-      n)))
+(define (initial-rename-db)
+  (let ((frame-id 0)
+	(mapping-table (make-strong-eq-hash-table))
+	(unmapping-table (make-strong-eq-hash-table)))
 
-(define (rename-identifier identifier rename-id)
-  (let ((key (cons identifier rename-id))
-	(renames (rename-db)))
-    (let ((mapping-table (rename-database/mapping-table renames)))
-      (or (hash-table/get mapping-table key #f)
-	  (let ((mapped-identifier
-		 (string->uninterned-symbol (symbol->string identifier))))
-	    (hash-table/put! mapping-table key mapped-identifier)
-	    (hash-table/put! (rename-database/unmapping-table renames)
-			     mapped-identifier
-			     key)
-	    mapped-identifier)))))
+    (define (identifier-renamer get-rename)
+      (let ((delayed-frame-id (delay (new-frame-id))))
+	(lambda (identifier)
+	  (guarantee identifier? identifier)
+	  (let ((bucket
+		 (hash-table-intern! mapping-table
+				     identifier
+				     (lambda () (list 'bucket)))))
+	    (let ((entry (assq delayed-frame-id (cdr bucket))))
+	      (if entry
+		  (cdr entry)
+		  (let ((rename (get-rename identifier)))
+		    (set-cdr! bucket
+			      (cons (cons delayed-frame-id rename)
+				    (cdr bucket)))
+		    (hash-table-set! unmapping-table
+				     rename
+				     (cons identifier delayed-frame-id))
+		    rename)))))))
+
+    (define (new-frame-id)
+      (let ((n (+ frame-id 1)))
+	(set! frame-id n)
+	n))
+
+    (define (lookup-rename rename)
+      (hash-table/get unmapping-table rename #f))
+
+    (make-rename-db identifier-renamer lookup-rename)))
 
 (define (rename->original rename)
-  (let ((entry
-	 (hash-table/get (rename-database/unmapping-table (rename-db))
-			 rename
-			 #f)))
+  (let ((entry ((rdb:lookup-rename (rename-db)) rename)))
     (if entry
 	(car entry)
 	rename)))
@@ -119,14 +129,12 @@ USA.
     free))
 
 (define (make-final-substitution safe-set)
-  (let ((uninterned-table (make-strong-eq-hash-table)))
+  (let ((lookup-rename (rdb:lookup-rename (rename-db)))
+	(uninterned-table (make-strong-eq-hash-table)))
 
     (define (finalize-renamed-identifier rename)
       (guarantee identifier? rename 'finalize-renamed-identifier)
-      (let ((entry
-	     (hash-table/get (rename-database/unmapping-table (rename-db))
-			     rename
-			     #f)))
+      (let ((entry (lookup-rename rename)))
 	(if entry
 	    (let ((original (car entry))
 		  (frame-id (force (cdr entry))))

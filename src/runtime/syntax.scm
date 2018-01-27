@@ -126,7 +126,7 @@ USA.
 (register-predicate! raw-identifier? 'raw-identifier '<= identifier?)
 (register-predicate! closed-identifier? 'closed-identifier '<= identifier?)
 
-(define (make-synthetic-identifier identifier)
+(define (new-identifier identifier)
   (string->uninterned-symbol (symbol->string (identifier->symbol identifier))))
 
 (define (identifier->symbol identifier)

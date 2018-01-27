@@ -4384,13 +4384,14 @@ USA.
   (files "syntax")
   (parent (runtime syntax))
   (export ()
+	  (make-synthetic-identifier new-identifier)
 	  capture-syntactic-environment
 	  close-syntax
 	  identifier->symbol
 	  identifier=?
 	  identifier?
 	  make-syntactic-closure
-	  make-synthetic-identifier
+	  new-identifier
 	  reverse-syntactic-environments
 	  strip-syntactic-closures
 	  syntactic-closure-form
