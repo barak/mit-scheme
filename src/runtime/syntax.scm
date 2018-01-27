@@ -75,8 +75,7 @@ USA.
     (if (or (memq form free)	;LOOKUP-IDENTIFIER assumes this.
 	    (constant-form? form)
 	    (and (syntactic-closure? form)
-		 (null? (syntactic-closure-free form))
-		 (not (identifier? (syntactic-closure-form form)))))
+		 (null? (syntactic-closure-free form))))
 	form
 	(%make-syntactic-closure senv free form))))
 
@@ -110,26 +109,46 @@ USA.
 ;;;; Identifiers
 
 (define (identifier? object)
-  (or (and (symbol? object)
-	   ;; This makes `:keyword' objects be self-evaluating.
-	   (not (keyword? object)))
-      (synthetic-identifier? object)))
-(register-predicate! identifier? 'identifier)
+  (or (raw-identifier? object)
+      (closed-identifier? object)))
 
-(define (synthetic-identifier? object)
+(define (raw-identifier? object)
+  (and (symbol? object)
+       ;; This makes `:keyword' objects be self-evaluating.
+       (not (keyword? object))))
+
+(define (closed-identifier? object)
   (and (syntactic-closure? object)
-       (identifier? (syntactic-closure-form object))))
+       (null? (syntactic-closure-free object))
+       (raw-identifier? (syntactic-closure-form object))))
+
+(register-predicate! identifier? 'identifier)
+(register-predicate! raw-identifier? 'raw-identifier '<= identifier?)
+(register-predicate! closed-identifier? 'closed-identifier '<= identifier?)
 
 (define (make-synthetic-identifier identifier)
-  (close-syntax identifier null-syntactic-environment))
+  (string->uninterned-symbol (symbol->string (identifier->symbol identifier))))
 
 (define (identifier->symbol identifier)
-  (or (let loop ((identifier identifier))
-	(if (syntactic-closure? identifier)
-	    (loop (syntactic-closure-form identifier))
-	    (and (symbol? identifier)
-		 identifier)))
-      (error:not-a identifier? identifier 'identifier->symbol)))
+  (cond ((raw-identifier? identifier) identifier)
+	((closed-identifier? identifier) (syntactic-closure-form identifier))
+	(else (error:not-a identifier? identifier 'identifier->symbol))))
+
+(define (lookup-identifier identifier senv)
+  (cond ((raw-identifier? identifier)
+	 (%lookup-raw-identifier identifier senv))
+	((closed-identifier? identifier)
+	 (%lookup-raw-identifier (syntactic-closure-form identifier)
+				 (syntactic-closure-senv identifier)))
+	(else
+	 (error:not-a identifier? identifier 'lookup-identifier))))
+
+(define (%lookup-raw-identifier identifier senv)
+  (let ((item (syntactic-environment/lookup senv identifier)))
+    (if (reserved-name-item? item)
+	(syntax-error "Premature reference to reserved name:" identifier))
+    (or item
+	(make-variable-item identifier))))
 
 (define (identifier=? environment-1 identifier-1 environment-2 identifier-2)
   (let ((item-1 (lookup-identifier identifier-1 environment-1))
@@ -145,19 +164,35 @@ USA.
 	     (eq? (variable-item/name item-1)
 		  (variable-item/name item-2))))))
 
-(define (lookup-identifier identifier environment)
-  (let ((item (syntactic-environment/lookup environment identifier)))
-    (cond (item
-	   (if (reserved-name-item? item)
-	       (syntax-error "Premature reference to reserved name:" identifier)
-	       item))
-	  ((symbol? identifier)
-	   (make-variable-item identifier))
-	  ((syntactic-closure? identifier)
-	   (lookup-identifier (syntactic-closure-form identifier)
-			      (syntactic-closure-senv identifier)))
-	  (else
-	   (error:not-a identifier? identifier 'lookup-identifier)))))
+(define (reserve-identifier senv identifier)
+  (cond ((raw-identifier? identifier)
+	 (syntactic-environment/reserve senv identifier))
+	((closed-identifier? identifier)
+	 (syntactic-environment/reserve (syntactic-closure-senv identifier)
+					(syntactic-closure-form identifier)))
+	(else
+	 (error:not-a identifier? identifier 'reserve-identifier))))
+
+(define (bind-keyword senv identifier item)
+  (cond ((raw-identifier? identifier)
+	 (syntactic-environment/bind-keyword senv identifier item))
+	((closed-identifier? identifier)
+	 (syntactic-environment/bind-keyword
+	  (syntactic-closure-senv identifier)
+	  (syntactic-closure-form identifier)
+	  item))
+	(else
+	 (error:not-a identifier? identifier 'bind-keyword))))
+
+(define (bind-variable senv identifier)
+  (cond ((raw-identifier? identifier)
+	 (syntactic-environment/bind-variable senv identifier))
+	((closed-identifier? identifier)
+	 (syntactic-environment/bind-variable
+	  (syntactic-closure-senv identifier)
+	  (syntactic-closure-form identifier)))
+	(else
+	 (error:not-a identifier? identifier 'bind-variable))))
 
 ;;;; Utilities
 

@@ -48,20 +48,20 @@ USA.
   ((senv-get-runtime senv)))
 
 (define (syntactic-environment/lookup senv identifier)
-  (guarantee identifier? identifier 'syntactic-environment/lookup)
+  (guarantee raw-identifier? identifier 'syntactic-environment/lookup)
   ((senv-lookup senv) identifier))
 
 (define (syntactic-environment/reserve senv identifier)
-  (guarantee identifier? identifier 'syntactic-environment/reserve)
+  (guarantee raw-identifier? identifier 'syntactic-environment/reserve)
   ((senv-store senv) identifier (make-reserved-name-item)))
 
-(define (syntactic-environment/define senv identifier item)
-  (guarantee identifier? identifier 'syntactic-environment/define)
-  (guarantee keyword-item? item 'syntactic-environment/define)
+(define (syntactic-environment/bind-keyword senv identifier item)
+  (guarantee raw-identifier? identifier 'syntactic-environment/bind-keyword)
+  (guarantee keyword-item? item 'syntactic-environment/bind-keyword)
   ((senv-store senv) identifier item))
 
-(define (bind-variable! senv identifier)
-  (guarantee identifier? identifier 'bind-variable!)
+(define (syntactic-environment/bind-variable senv identifier)
+  (guarantee raw-identifier? identifier 'syntactic-environment/bind-variable)
   (let ((rename ((senv-rename senv) identifier)))
     ((senv-store senv) identifier (make-variable-item rename))
     rename))
@@ -92,31 +92,9 @@ USA.
     (environment-define-macro env identifier item))
 
   (define (rename identifier)
-    (rename-top-level-identifier identifier))
+    identifier)
 
   (make-senv get-type get-runtime lookup store rename))
-
-;;; Null environments are used only for synthetic identifiers.
-
-(define null-syntactic-environment
-  (let ()
-
-    (define (get-type)
-      'null)
-
-    (define (get-runtime)
-      (error "Can't evaluate in null environment."))
-
-    (define (lookup identifier)
-      (error "Can't lookup in null environment:" identifier))
-
-    (define (store identifier item)
-      (error "Can't bind in null environment:" identifier item))
-
-    (define (rename identifier)
-      (error "Can't rename in null environment:" identifier))
-
-    (make-senv get-type get-runtime lookup store rename)))
 
 ;;; Keyword environments are used to make keywords that represent items.
 
@@ -138,7 +116,7 @@ USA.
   (define (rename identifier)
     (error "Can't rename in keyword environment:" identifier))
 
-  (guarantee identifier? name 'make-keyword-environment)
+  (guarantee raw-identifier? name 'make-keyword-environment)
   (guarantee keyword-item? item 'make-keyword-environment)
   (make-senv get-type get-runtime lookup store rename))
 
@@ -171,7 +149,7 @@ USA.
 	      unspecific))))
 
     (define (rename identifier)
-      (rename-top-level-identifier identifier))
+      identifier)
 
     (make-senv get-type get-runtime lookup store rename)))
 

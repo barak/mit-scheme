@@ -35,7 +35,7 @@ USA.
 (define (create-bindings senv)
 
   (define (def name item)
-    (syntactic-environment/define senv name item))
+    (bind-keyword senv name item))
 
   (define (define-classifier name classifier)
     (def name (make-classifier-item classifier)))

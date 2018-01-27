@@ -79,7 +79,7 @@ USA.
     ;; Force order -- bind names before classifying body.
     (let ((bvl
 	   (map-mit-lambda-list (lambda (identifier)
-				  (bind-variable! environment identifier))
+				  (bind-variable environment identifier))
 				bvl)))
       (values bvl
 	      (compile-body-item
@@ -143,7 +143,7 @@ USA.
    (lambda (form environment)
      (let ((name (cadr form)))
        (if (not (syntactic-environment/top-level? environment))
-	   (syntactic-environment/reserve environment name))
+	   (reserve-identifier environment name))
        (variable-binder environment name
 			(classify/expression (caddr form) environment))))))
 
@@ -155,18 +155,18 @@ USA.
     ;; User-defined macros at top level are preserved in the output.
     (if (and (keyword-value-item? item)
 	     (syntactic-environment/top-level? environment))
-	(make-binding-item (rename-top-level-identifier name) item)
+	(make-binding-item name item)
 	(make-body-item '()))))
 
 (define (keyword-binder environment name item)
   (if (not (keyword-item? item))
       (syntax-error "Syntactic binding value must be a keyword:" name))
-  (syntactic-environment/define environment name item))
+  (bind-keyword environment name item))
 
 (define (variable-binder environment name item)
   (if (keyword-item? item)
       (syntax-error "Variable binding value must not be a keyword:" name))
-  (make-binding-item (bind-variable! environment name) item))
+  (make-binding-item (bind-variable environment name) item))
 
 ;;;; LET-like
 
@@ -215,7 +215,7 @@ USA.
 	(body (cddr form))
 	(binding-env (make-internal-syntactic-environment env)))
     (for-each (lambda (binding)
-		(syntactic-environment/reserve binding-env (car binding)))
+		(reserve-identifier binding-env (car binding)))
 	      bindings)
     ;; Classify right-hand sides first, in order to catch references to
     ;; reserved names.  Then bind names prior to classifying body.

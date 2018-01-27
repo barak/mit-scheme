@@ -4399,13 +4399,16 @@ USA.
 	  syntactic-closure?
 	  syntax
 	  syntax*
-	  syntax-error
-	  synthetic-identifier?)
+	  syntax-error)
   (export (runtime syntax)
+	  bind-keyword
+	  bind-variable
 	  classifier->keyword
 	  compile/expression
 	  compiler->keyword
-	  lookup-identifier))
+	  lookup-identifier
+	  raw-identifier?
+	  reserve-identifier))
 
 (define-package (runtime syntax items)
   (files "syntax-items")
@@ -4454,14 +4457,13 @@ USA.
 	  syntactic-environment?)
   (export (runtime syntax)
 	  ->syntactic-environment
-	  bind-variable!
 	  make-internal-syntactic-environment
 	  make-keyword-syntactic-environment
 	  make-partial-syntactic-environment
 	  make-top-level-syntactic-environment
-	  null-syntactic-environment
 	  syntactic-environment->environment
-	  syntactic-environment/define
+	  syntactic-environment/bind-keyword
+	  syntactic-environment/bind-variable
 	  syntactic-environment/lookup
 	  syntactic-environment/reserve
 	  syntactic-environment/top-level?
@@ -4498,7 +4500,6 @@ USA.
   (parent (runtime syntax))
   (export (runtime syntax)
 	  make-local-identifier-renamer
-	  rename-top-level-identifier
 	  with-identifier-renaming))
 
 (define-package (runtime syntax output)
