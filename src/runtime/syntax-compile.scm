@@ -30,7 +30,7 @@ USA.
 
 (define (compile-item/top-level item)
   (if (binding-item? item)
-      (let ((name (binding-item/name item))
+      (let ((name (identifier->symbol (binding-item/name item)))
 	    (value (binding-item/value item)))
 	(if (keyword-value-item? value)
 	    (output/top-level-syntax-definition
