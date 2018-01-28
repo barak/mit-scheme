@@ -38,6 +38,11 @@ USA.
 (define (output/constant datum)
   datum)
 
+(define-record-type <quoted-identifier>
+    (output/quoted-identifier identifier)
+    quoted-identifier?
+  (identifier quoted-identifier-identifier))
+
 (define (output/assignment name value)
   (make-scode-assignment name value))
 

@@ -58,5 +58,6 @@ USA.
   (define-compiler 'NAMED-LAMBDA compiler:named-lambda)
   (define-compiler 'OR compiler:or)
   (define-compiler 'QUOTE compiler:quote)
+  (define-compiler 'quote-identifier compiler:quote-identifier)
   (define-compiler 'SET! compiler:set!)
   (define-compiler 'THE-ENVIRONMENT compiler:the-environment))

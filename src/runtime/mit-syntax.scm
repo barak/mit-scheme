@@ -104,9 +104,16 @@ USA.
        (output/unspecific))))
 
 (define (compiler:quote form environment)
-  environment				;ignore
-  (syntax-check '(KEYWORD DATUM) form)
+  (declare (ignore environment))
+  (syntax-check '(keyword datum) form)
   (output/constant (strip-syntactic-closures (cadr form))))
+
+(define (compiler:quote-identifier form environment)
+  (syntax-check '(keyword identifier) form)
+  (let ((item (lookup-identifier (cadr form) environment)))
+    (if (not (variable-item? item))
+	(syntax-error "Can't quote a keyword identifier:" form))
+    (output/quoted-identifier (variable-item/name item))))
 
 (define (compiler:set! form environment)
   (syntax-check '(KEYWORD FORM ? EXPRESSION) form)

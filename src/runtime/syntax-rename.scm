@@ -225,6 +225,9 @@ USA.
 			    (scode-open-block-actions expression)
 			    mark-safe!)))
 
+   (define-cs-handler quoted-identifier?
+     (simple-subexpression quoted-identifier-identifier))
+
    (define-cs-handler scode-access?
      (simple-subexpression scode-access-environment))
 
@@ -307,6 +310,10 @@ USA.
    (define-as-handler scode-variable?
      (lambda (substitution expression)
        (make-scode-variable (substitution (scode-variable-name expression)))))
+
+   (define-as-handler quoted-identifier?
+     (lambda (substitution expression)
+       (substitution (quoted-identifier-identifier expression))))
 
    (define-as-handler scode-assignment?
      (lambda (substitution expression)

@@ -4525,6 +4525,7 @@ USA.
 	  output/let
 	  output/letrec
 	  output/named-lambda
+	  output/quoted-identifier
 	  output/runtime-reference
 	  output/sequence
 	  output/the-environment
@@ -4535,6 +4536,8 @@ USA.
 	  output/unassigned-test
 	  output/unspecific
 	  output/variable
+	  quoted-identifier-identifier
+	  quoted-identifier?
 	  transformer-eval))
 
 (define-package (runtime syntax declaration)
@@ -4570,6 +4573,7 @@ USA.
 	  compiler:named-lambda
 	  compiler:or
 	  compiler:quote
+	  compiler:quote-identifier
 	  compiler:set!
 	  compiler:the-environment)
   (export (runtime mit-macros)
