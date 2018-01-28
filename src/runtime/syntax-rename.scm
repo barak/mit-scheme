@@ -289,7 +289,7 @@ USA.
 		   selector
 		   parts))))
 
-   (define (combinator-substitution reconstruct get-subexpressions)
+   (define (list-substitution reconstruct get-subexpressions)
      (lambda (substitution expression)
        (reconstruct
 	(map (lambda (expression)
@@ -352,7 +352,7 @@ USA.
 			   scode-access-name))
 
    (define-as-handler scode-combination?
-     (combinator-substitution
+     (list-substitution
       (lambda (subexpressions)
 	(make-scode-combination (car subexpressions) (cdr subexpressions)))
       (lambda (expression)
@@ -387,6 +387,6 @@ USA.
 			  scode-disjunction-alternative))
 
    (define-as-handler scode-sequence?
-     (combinator-substitution make-scode-sequence scode-sequence-actions))
+     (list-substitution make-scode-sequence scode-sequence-actions))
 
    ))
