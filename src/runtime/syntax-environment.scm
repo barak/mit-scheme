@@ -28,15 +28,14 @@ USA.
 
 (declare (usual-integrations))
 
-(define syntactic-environment?
-  (make-bundle-interface 'syntactic-environment
-			 '(get-type get-runtime lookup store rename)))
-(define make-senv (bundle-constructor syntactic-environment?))
-(define senv-get-type (bundle-accessor syntactic-environment? 'get-type))
-(define senv-get-runtime (bundle-accessor syntactic-environment? 'get-runtime))
-(define senv-lookup (bundle-accessor syntactic-environment? 'lookup))
-(define senv-store (bundle-accessor syntactic-environment? 'store))
-(define senv-rename (bundle-accessor syntactic-environment? 'rename))
+(define-record-type <syntactic-environment>
+    (make-senv get-type get-runtime lookup store rename)
+    syntactic-environment?
+  (get-type senv-get-type)
+  (get-runtime senv-get-runtime)
+  (lookup senv-lookup)
+  (store senv-store)
+  (rename senv-rename))
 
 (define (senv-type senv)
   ((senv-get-type senv)))
