@@ -766,52 +766,44 @@ USA.
 	 (begin form ...)))))
 
 (define-syntax :define-bundle-interface
-  (er-macro-transformer
-   (lambda (form rename compare)
-     (declare (ignore compare))
+  (sc-macro-transformer
+   (lambda (form use-env)
      (syntax-check '(_ identifier identifier identifier
 		       * (or symbol (symbol * (symbol * expression))))
 		   form)
-     (make-interface-helper rename
-			    (cadr form)
-			    (caddr form)
-			    (cadddr form)
+     (make-interface-helper (close-syntax (cadr form) use-env)
+			    (close-syntax (caddr form) use-env)
+			    (close-syntax (cadddr form) use-env)
 			    (cddddr form)))))
 
-(define (make-interface-helper rename interface constructor capturer elements)
-  (let ((rlist (rename 'list)))
-    `(,(rename 'begin)
-      (,(rename 'define)
-       ,interface
-       (,(rename 'make-bundle-interface)
+(define (make-interface-helper interface constructor capturer elements)
+  `(begin
+     (define ,interface
+       (make-bundle-interface
 	',(let* ((name (identifier->symbol interface))
 		 (s (symbol->string name)))
 	    (if (string-suffix? "?" s)
 		(string->symbol (string-head s (fix:- (string-length s) 1)))
 		name))
-	(,rlist ,@(map (lambda (element)
-			 (if (symbol? element)
-			     `(,rlist ',element)
-			     `(,rlist ',(car element)
-				      ,@(map (lambda (p)
-					       `(,rlist ',(car p) ,@(cdr p)))
-					     (cdr element)))))
-		       elements))))
-      (,(rename 'define)
-       ,constructor
-	(,(rename 'bundle-constructor) ,interface))
-      (,(rename 'define-syntax)
-       ,capturer
-       (,(rename 'sc-macro-transformer)
-	(,(rename 'lambda)
-	 (form use-env)
-	 (if (,(rename 'not) (,(rename 'null?) (,(rename 'cdr) form)))
-	     (,(rename 'syntax-error) "Ill-formed special form:" form))
-	 (,rlist ',constructor
-		 ,@(map (lambda (element)
-			  `(,(rename 'close-syntax)
-			    ',(if (symbol? element)
-				  element
-				  (car element))
-			    use-env))
-			elements))))))))
+	(list ,@(map (lambda (element)
+		       (if (symbol? element)
+			   `',element
+			   `(list ',(car element)
+				  ,@(map (lambda (p)
+					   `(list ',(car p) ,@(cdr p)))
+					 (cdr element)))))
+		     elements))))
+     (define ,constructor
+       (bundle-constructor ,interface))
+     (define-syntax ,capturer
+       (sc-macro-transformer
+	(lambda (form use-env)
+	  (syntax-check '(_) form)
+	  (list (quote-identifier ,constructor)
+		,@(map (lambda (element)
+			 `(close-syntax
+			   ',(if (symbol? element)
+				 element
+				 (car element))
+			   use-env))
+		       elements)))))))
