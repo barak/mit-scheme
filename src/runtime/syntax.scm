@@ -154,11 +154,10 @@ USA.
   (let ((item-1 (lookup-identifier identifier-1 environment-1))
 	(item-2 (lookup-identifier identifier-2 environment-2)))
     (or (eq? item-1 item-2)
-	;; This is necessary because an identifier that is not
-	;; explicitly bound by an environment is mapped to a variable
-	;; item, and the variable items are not cached.  Therefore
-	;; two references to the same variable result in two
-	;; different variable items.
+	;; This is necessary because an identifier that is not explicitly bound
+	;; by an environment is mapped to a variable item, and the variable
+	;; items are not hash-consed.  Therefore two references to the same
+	;; variable result in two different variable items.
 	(and (var-item? item-1)
 	     (var-item? item-2)
 	     (eq? (var-item-id item-1)

@@ -4434,7 +4434,6 @@ USA.
 	  expr-item
 	  expr-item-compiler
 	  expr-item?
-	  extract-declarations-from-body
 	  flatten-items
 	  item->list
 	  keyword-item?
@@ -4518,6 +4517,7 @@ USA.
 	  output/combination
 	  output/conditional
 	  output/constant
+	  output/declaration
 	  output/definition
 	  output/delay
 	  output/disjunction

@@ -122,15 +122,16 @@ USA.
 ;;; Sequence items.
 
 (define (seq-item elements)
-  (%seq-item (flatten-items elements)))
+  (let ((elements (flatten-items elements)))
+    (if (and (pair? elements)
+	     (null? (cdr elements)))
+	(car elements)
+	(%seq-item elements))))
 
 (define-record-type <seq-item>
     (%seq-item elements)
     seq-item?
   (elements seq-item-elements))
-
-(define (extract-declarations-from-body seq-item)
-  (partition decl-item? (seq-item-elements seq-item)))
 
 (define (flatten-items items)
   (append-map item->list items))

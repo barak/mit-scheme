@@ -41,11 +41,8 @@ USA.
 	     (compile-item/expression value))))
       (compile-item/expression item)))
 
-(define (compile-body-item/top-level seq-item)
-  (receive (decl-items body-items)
-      (extract-declarations-from-body seq-item)
-    (output/top-level-sequence (map decl-item-text decl-items)
-			       (map compile-item/top-level body-items))))
+(define (compile-body-item/top-level item)
+  (output/top-level-sequence (map compile-item/top-level (item->list item))))
 
 (define (compile-body-items items)
   (let ((items (flatten-items items)))
@@ -89,19 +86,20 @@ USA.
   (lambda (item)
     (compile-body-items (seq-item-elements item))))
 
-(define (illegal-expression-compiler description)
+(define-item-compiler decl-item?
   (lambda (item)
-    (syntax-error (string description " may not be used as an expression:")
-		  item)))
+    (output/declaration (decl-item-text item))))
+
+(define (illegal-expression-compiler description)
+  (let ((message (string description " may not be used as an expression:")))
+    (lambda (item)
+      (syntax-error message item))))
 
 (define-item-compiler reserved-name-item?
   (illegal-expression-compiler "Reserved name"))
 
 (define-item-compiler keyword-item?
   (illegal-expression-compiler "Syntactic keyword"))
-
-(define-item-compiler decl-item?
-  (illegal-expression-compiler "Declaration"))
 
 (define-item-compiler defn-item?
   (illegal-expression-compiler "Definition"))

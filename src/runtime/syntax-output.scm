@@ -117,35 +117,22 @@ USA.
 		   (output/let '() '() body)
 		   body))))))))
 
-(define (output/body declarations body)
-  (scan-defines (let ((declarations (apply append declarations)))
-		  (if (pair? declarations)
-		      (make-scode-sequence
-		       (list (make-scode-block-declaration declarations)
-			     body))
-		      body))
-		make-scode-open-block))
+(define (output/body body)
+  (scan-defines body make-scode-open-block))
+
+(define (output/declaration text)
+  (make-scode-block-declaration text))
 
 (define (output/definition name value)
   (make-scode-definition name value))
 
-(define (output/top-level-sequence declarations expressions)
-  (let ((declarations (apply append declarations))
-	(make-scode-open-block
-	 (lambda (expressions)
-	   (scan-defines (make-scode-sequence expressions)
-			 make-scode-open-block))))
-    (if (pair? declarations)
-	(make-scode-open-block
-	 (cons (make-scode-block-declaration declarations)
-	       (if (pair? expressions)
-		   expressions
-		   (list (output/unspecific)))))
-	(if (pair? expressions)
-	    (if (pair? (cdr expressions))
-		(make-scode-open-block expressions)
-		(car expressions))
-	    (output/unspecific)))))
+(define (output/top-level-sequence expressions)
+  (if (pair? expressions)
+      (if (pair? (cdr expressions))
+	  (scan-defines (make-scode-sequence expressions)
+			make-scode-open-block)
+	  (car expressions))
+      (output/unspecific)))
 
 (define (output/the-environment)
   (make-scode-the-environment))
@@ -155,7 +142,7 @@ USA.
 
 (define (output/access-assignment name environment value)
   (make-scode-combination (ucode-primitive lexical-assignment)
-		    (list environment name value)))
+			  (list environment name value)))
 
 (define (output/runtime-reference name)
   (output/access-reference name system-global-environment))

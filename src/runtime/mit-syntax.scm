@@ -86,9 +86,7 @@ USA.
 	       (classify/body body environment))))))
 
 (define (compile-body-item item)
-  (receive (decl-items items) (extract-declarations-from-body item)
-    (output/body (map decl-item-text decl-items)
-		 (compile-body-items items))))
+  (output/body (compile-body-items (item->list item))))
 
 (define (classifier:begin form environment)
   (syntax-check '(KEYWORD * FORM) form)
@@ -279,19 +277,19 @@ USA.
 (define keyword:unspecific
   (compiler->keyword
    (lambda (form environment)
-     form environment			;ignore
+     (declare (ignore form environment))
      (output/unspecific))))
 
 (define keyword:unassigned
   (compiler->keyword
    (lambda (form environment)
-     form environment			;ignore
+     (declare (ignore form environment))
      (output/unassigned))))
 
 ;;;; Declarations
 
 (define (classifier:declare form environment)
-  (syntax-check '(KEYWORD * (IDENTIFIER * DATUM)) form)
+  (syntax-check '(keyword * (identifier * datum)) form)
   (decl-item
    (lambda ()
      (classify/declarations (cdr form) environment))))
