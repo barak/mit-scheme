@@ -48,7 +48,7 @@ USA.
 			       (map compile-item/top-level body-items))))
 
 (define (compile-body-items items)
-  (let ((items (flatten-seq-items items)))
+  (let ((items (flatten-items items)))
     (if (not (pair? items))
 	(syntax-error "Empty body"))
     (output/sequence

@@ -4435,7 +4435,7 @@ USA.
 	  expr-item-compiler
 	  expr-item?
 	  extract-declarations-from-body
-	  flatten-seq-items
+	  flatten-items
 	  item->list
 	  keyword-item?
 	  keyword-value-item

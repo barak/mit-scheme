@@ -121,20 +121,23 @@ USA.
 
 ;;; Sequence items.
 
+(define (seq-item elements)
+  (%seq-item (flatten-items elements)))
+
 (define-record-type <seq-item>
-    (seq-item elements)
+    (%seq-item elements)
     seq-item?
   (elements seq-item-elements))
 
 (define (extract-declarations-from-body seq-item)
   (partition decl-item? (seq-item-elements seq-item)))
 
-(define (flatten-seq-items items)
+(define (flatten-items items)
   (append-map item->list items))
 
 (define (item->list item)
   (if (seq-item? item)
-      (flatten-seq-items (seq-item-elements item))
+      (seq-item-elements item)
       (list item)))
 
 ;;; Expression items represent any kind of expression other than a
