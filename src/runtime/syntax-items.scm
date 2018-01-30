@@ -34,25 +34,25 @@ USA.
 ;;; of keyword item.
 
 (define-record-type <classifier-item>
-    (make-classifier-item classifier)
+    (classifier-item impl)
     classifier-item?
-  (classifier classifier-item/classifier))
+  (impl classifier-item-impl))
 
 (define-record-type <compiler-item>
-    (make-compiler-item compiler)
+    (compiler-item impl)
     compiler-item?
-  (compiler compiler-item/compiler))
+  (impl compiler-item-impl))
 
 (define-record-type <expander-item>
-    (make-expander-item expander)
+    (expander-item impl)
     expander-item?
-  (expander expander-item/expander))
+  (impl expander-item-impl))
 
 (define-record-type <keyword-value-item>
-    (make-keyword-value-item item expression)
+    (keyword-value-item keyword expr)
     keyword-value-item?
-  (item keyword-value-item/item)
-  (expression keyword-value-item/expression))
+  (keyword keyword-value-item-keyword)
+  (expr keyword-value-item-expr))
 
 (define (keyword-item? object)
   (or (classifier-item? object)
@@ -68,19 +68,19 @@ USA.
 
 ;;; Variable items represent run-time variables.
 
-(define (make-variable-item name)
-  (guarantee identifier? name 'make-variable-item)
-  (%make-variable-item name))
+(define (var-item id)
+  (guarantee identifier? id 'var-item)
+  (%var-item id))
 
-(define-record-type <variable-item>
-    (%make-variable-item name)
-    variable-item?
-  (name variable-item/name))
+(define-record-type <var-item>
+    (%var-item id)
+    var-item?
+  (id var-item-id))
 
-(define-unparser-method variable-item?
-  (simple-unparser-method 'variable-item
+(define-unparser-method var-item?
+  (simple-unparser-method 'var-item
     (lambda (item)
-      (list (variable-item/name item)))))
+      (list (var-item-id item)))))
 
 ;;; Reserved name items do not represent any form, but instead are
 ;;; used to reserve a particular name in a syntactic environment.  If
@@ -90,69 +90,68 @@ USA.
 ;;; one of the names being bound.
 
 (define-record-type <reserved-name-item>
-    (make-reserved-name-item)
+    (reserved-name-item)
     reserved-name-item?)
 
 ;;; These items can't be stored in a syntactic environment.
 
-;;; Binding items represent definitions, whether top-level or internal, keyword
-;;; or variable.
+;;; Definition items, whether top-level or internal, keyword or variable.
 
-(define (make-binding-item name value)
-  (guarantee identifier? name 'make-binding-item)
-  (guarantee binding-item-value? value 'make-binding-item)
-  (%make-binding-item name value))
+(define (defn-item id value)
+  (guarantee identifier? id 'defn-item)
+  (guarantee defn-item-value? value 'defn-item)
+  (%defn-item id value))
 
-(define (binding-item-value? object)
+(define (defn-item-value? object)
   (not (or (reserved-name-item? object)
-	   (declaration-item? object))))
-(register-predicate! binding-item-value? 'binding-item-value)
+	   (decl-item? object))))
+(register-predicate! defn-item-value? 'defn-item-value)
 
-(define-record-type <binding-item>
-    (%make-binding-item name value)
-    binding-item?
-  (name binding-item/name)
-  (value binding-item/value))
+(define-record-type <defn-item>
+    (%defn-item id value)
+    defn-item?
+  (id defn-item-id)
+  (value defn-item-value))
 
-(define-unparser-method binding-item?
-  (simple-unparser-method 'binding-item
+(define-unparser-method defn-item?
+  (simple-unparser-method 'defn-item
     (lambda (item)
-      (list (binding-item/name item)
-	    (binding-item/value item)))))
+      (list (defn-item-id item)
+	    (defn-item-value item)))))
 
-;;; Body items represent sequences (e.g. BEGIN).
+;;; Sequence items.
 
-(define-record-type <body-item>
-    (make-body-item components)
-    body-item?
-  (components body-item/components))
+(define-record-type <seq-item>
+    (seq-item elements)
+    seq-item?
+  (elements seq-item-elements))
 
-(define (extract-declarations-from-body body-item)
-  (partition declaration-item? (body-item/components body-item)))
+(define (extract-declarations-from-body seq-item)
+  (partition decl-item? (seq-item-elements seq-item)))
 
-(define (flatten-body-items items)
+(define (flatten-seq-items items)
   (append-map item->list items))
 
 (define (item->list item)
-  (if (body-item? item)
-      (flatten-body-items (body-item/components item))
+  (if (seq-item? item)
+      (flatten-seq-items (seq-item-elements item))
       (list item)))
 
 ;;; Expression items represent any kind of expression other than a
 ;;; run-time variable or a sequence.
 
-(define-record-type <expression-item>
-    (make-expression-item compiler)
-    expression-item?
-  (compiler expression-item/compiler))
+(define-record-type <expr-item>
+    (expr-item compiler)
+    expr-item?
+  (compiler expr-item-compiler))
 
 ;;; Declaration items represent block-scoped declarations that are to
 ;;; be passed through to the compiler.
 
-(define-record-type <declaration-item>
-    (make-declaration-item get-text)
-    declaration-item?
-  (get-text declaration-item/get-text))
+(define-record-type <decl-item>
+    (decl-item text-getter)
+    decl-item?
+  (text-getter decl-item-text-getter))
 
-(define (declaration-item/text item)
-  ((declaration-item/get-text item)))
+(define (decl-item-text item)
+  ((decl-item-text-getter item)))

@@ -35,11 +35,11 @@ USA.
   (lambda (form environment)
     (syntax-check '(KEYWORD EXPRESSION) form)
     (let ((item (classify/expression (cadr form) environment)))
-      (make-keyword-value-item
+      (keyword-value-item
        (transformer->expander (transformer-eval (compile-item/expression item)
 						environment)
 			      environment)
-       (make-expression-item
+       (expr-item
 	(lambda ()
 	  (output/combination (output/runtime-reference name)
 			      (list (compile-item/expression item)
@@ -86,8 +86,8 @@ USA.
 	       (classify/body body environment))))))
 
 (define (compile-body-item item)
-  (receive (declaration-items items) (extract-declarations-from-body item)
-    (output/body (map declaration-item/text declaration-items)
+  (receive (decl-items items) (extract-declarations-from-body item)
+    (output/body (map decl-item-text decl-items)
 		 (compile-body-items items))))
 
 (define (classifier:begin form environment)
@@ -111,9 +111,9 @@ USA.
 (define (compiler:quote-identifier form environment)
   (syntax-check '(keyword identifier) form)
   (let ((item (lookup-identifier (cadr form) environment)))
-    (if (not (variable-item? item))
+    (if (not (var-item? item))
 	(syntax-error "Can't quote a keyword identifier:" form))
-    (output/quoted-identifier (variable-item/name item))))
+    (output/quoted-identifier (var-item-id item))))
 
 (define (compiler:set! form environment)
   (syntax-check '(KEYWORD FORM ? EXPRESSION) form)
@@ -132,8 +132,8 @@ USA.
 
 (define (classify/location form environment)
   (let ((item (classify/expression form environment)))
-    (cond ((variable-item? item)
-	   (values (variable-item/name item) #f))
+    (cond ((var-item? item)
+	   (values (var-item-id item) #f))
 	  ((access-item? item)
 	   (values (access-item/name item) (access-item/environment item)))
 	  (else
@@ -150,7 +150,7 @@ USA.
    (lambda (form environment)
      (let ((name (cadr form)))
        (reserve-identifier environment name)
-       (variable-binder make-binding-item
+       (variable-binder defn-item
 			environment
 			name
 			(classify/expression (caddr form) environment))))))
@@ -163,8 +163,8 @@ USA.
     ;; User-defined macros at top level are preserved in the output.
     (if (and (keyword-value-item? item)
 	     (syntactic-environment/top-level? environment))
-	(make-binding-item name item)
-	(make-body-item '()))))
+	(defn-item name item)
+	(seq-item '()))))
 
 (define (keyword-binder environment name item)
   (if (not (keyword-item? item))
@@ -191,17 +191,17 @@ USA.
 				      (car binding)
 				      (classify/expression (cadr binding) env)))
 		   bindings)))
-	 (make-expression-item
+	 (expr-item
 	  (let ((names (map car bindings))
 		(values (map cdr bindings))
-		(body-item
+		(seq-item
 		 (classify/body
 		  body
 		  (make-internal-syntactic-environment binding-env))))
 	    (lambda ()
 	      (output/let names
 			  (map compile-item/expression values)
-			  (compile-body-item body-item))))))))))
+			  (compile-body-item seq-item))))))))))
 
 (define (classifier:let-syntax form env)
   (syntax-check '(keyword (* (identifier expression)) + form) form)
@@ -292,7 +292,7 @@ USA.
 
 (define (classifier:declare form environment)
   (syntax-check '(KEYWORD * (IDENTIFIER * DATUM)) form)
-  (make-declaration-item
+  (decl-item
    (lambda ()
      (classify/declarations (cdr form) environment))))
 
@@ -303,13 +303,13 @@ USA.
 
 (define (classify/declaration declaration environment)
   (map-declaration-identifiers (lambda (identifier)
-				 (variable-item/name
+				 (var-item-id
 				  (classify/variable-reference identifier
 							       environment)))
 			       declaration))
 
 (define (classify/variable-reference identifier environment)
   (let ((item (classify/expression identifier environment)))
-    (if (not (variable-item? item))
+    (if (not (var-item? item))
 	(syntax-error "Variable required in this context:" identifier))
     item))

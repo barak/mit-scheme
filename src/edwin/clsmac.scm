@@ -86,7 +86,7 @@ USA.
 
 (define with-instance-variables
   (make-unmapped-macro-reference-trap
-   (make-compiler-item
+   (compiler-item
     (lambda (form environment)
       (syntax-check '(KEYWORD IDENTIFIER EXPRESSION (* IDENTIFIER) + EXPRESSION)
 		    form)

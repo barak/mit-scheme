@@ -38,7 +38,7 @@ USA.
     (bind-keyword senv name item))
 
   (define (define-classifier name classifier)
-    (def name (make-classifier-item classifier)))
+    (def name (classifier-item classifier)))
 
   (define-classifier 'BEGIN classifier:begin)
   (define-classifier 'DECLARE classifier:declare)
@@ -50,7 +50,7 @@ USA.
   (define-classifier 'SC-MACRO-TRANSFORMER classifier:sc-macro-transformer)
 
   (define (define-compiler name compiler)
-    (def name (make-compiler-item compiler)))
+    (def name (compiler-item compiler)))
 
   (define-compiler 'DELAY compiler:delay)
   (define-compiler 'IF compiler:if)

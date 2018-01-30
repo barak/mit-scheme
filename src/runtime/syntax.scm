@@ -148,7 +148,7 @@ USA.
     (if (reserved-name-item? item)
 	(syntax-error "Premature reference to reserved name:" identifier))
     (or item
-	(make-variable-item identifier))))
+	(var-item identifier))))
 
 (define (identifier=? environment-1 identifier-1 environment-2 identifier-2)
   (let ((item-1 (lookup-identifier identifier-1 environment-1))
@@ -159,10 +159,10 @@ USA.
 	;; item, and the variable items are not cached.  Therefore
 	;; two references to the same variable result in two
 	;; different variable items.
-	(and (variable-item? item-1)
-	     (variable-item? item-2)
-	     (eq? (variable-item/name item-1)
-		  (variable-item/name item-2))))))
+	(and (var-item? item-1)
+	     (var-item? item-2)
+	     (eq? (var-item-id item-1)
+		  (var-item-id item-2))))))
 
 (define (reserve-identifier senv identifier)
   (cond ((raw-identifier? identifier)
@@ -200,10 +200,10 @@ USA.
   (apply error rest))
 
 (define (classifier->keyword classifier)
-  (item->keyword (make-classifier-item classifier)))
+  (item->keyword (classifier-item classifier)))
 
 (define (compiler->keyword compiler)
-  (item->keyword (make-compiler-item compiler)))
+  (item->keyword (compiler-item compiler)))
 
 (define (item->keyword item)
   (close-syntax 'keyword (make-keyword-syntactic-environment 'keyword item)))

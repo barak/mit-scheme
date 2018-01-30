@@ -52,7 +52,7 @@ USA.
 
 (define (syntactic-environment/reserve senv identifier)
   (guarantee raw-identifier? identifier 'syntactic-environment/reserve)
-  ((senv-store senv) identifier (make-reserved-name-item)))
+  ((senv-store senv) identifier (reserved-name-item)))
 
 (define (syntactic-environment/bind-keyword senv identifier item)
   (guarantee raw-identifier? identifier 'syntactic-environment/bind-keyword)
@@ -62,7 +62,7 @@ USA.
 (define (syntactic-environment/bind-variable senv identifier)
   (guarantee raw-identifier? identifier 'syntactic-environment/bind-variable)
   (let ((rename ((senv-rename senv) identifier)))
-    ((senv-store senv) identifier (make-variable-item rename))
+    ((senv-store senv) identifier (var-item rename))
     rename))
 
 (define (->syntactic-environment object #!optional caller)

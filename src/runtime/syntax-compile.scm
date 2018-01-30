@@ -29,36 +29,36 @@ USA.
 (declare (usual-integrations))
 
 (define (compile-item/top-level item)
-  (if (binding-item? item)
-      (let ((name (identifier->symbol (binding-item/name item)))
-	    (value (binding-item/value item)))
+  (if (defn-item? item)
+      (let ((name (identifier->symbol (defn-item-id item)))
+	    (value (defn-item-value item)))
 	(if (keyword-value-item? value)
 	    (output/top-level-syntax-definition
 	     name
-	     (compile-item/expression (keyword-value-item/expression value)))
+	     (compile-item/expression (keyword-value-item-expr value)))
 	    (output/top-level-definition
 	     name
 	     (compile-item/expression value))))
       (compile-item/expression item)))
 
-(define (compile-body-item/top-level body-item)
-  (receive (declaration-items body-items)
-      (extract-declarations-from-body body-item)
-    (output/top-level-sequence (map declaration-item/text declaration-items)
+(define (compile-body-item/top-level seq-item)
+  (receive (decl-items body-items)
+      (extract-declarations-from-body seq-item)
+    (output/top-level-sequence (map decl-item-text decl-items)
 			       (map compile-item/top-level body-items))))
 
 (define (compile-body-items items)
-  (let ((items (flatten-body-items items)))
+  (let ((items (flatten-seq-items items)))
     (if (not (pair? items))
 	(syntax-error "Empty body"))
     (output/sequence
      (append-map
       (lambda (item)
-	(if (binding-item? item)
-	    (let ((value (binding-item/value item)))
+	(if (defn-item? item)
+	    (let ((value (defn-item-value item)))
 	      (if (keyword-value-item? value)
 		  '()
-		  (list (output/definition (binding-item/name item)
+		  (list (output/definition (defn-item-id item)
 					   (compile-item/expression value)))))
 	    (list (compile-item/expression item))))
       items))))
@@ -77,17 +77,17 @@ USA.
 	(list predicate)
 	compiler))))
 
-(define-item-compiler variable-item?
+(define-item-compiler var-item?
   (lambda (item)
-    (output/variable (variable-item/name item))))
+    (output/variable (var-item-id item))))
 
-(define-item-compiler expression-item?
+(define-item-compiler expr-item?
   (lambda (item)
-    ((expression-item/compiler item))))
+    ((expr-item-compiler item))))
 
-(define-item-compiler body-item?
+(define-item-compiler seq-item?
   (lambda (item)
-    (compile-body-items (body-item/components item))))
+    (compile-body-items (seq-item-elements item))))
 
 (define (illegal-expression-compiler description)
   (lambda (item)
@@ -100,8 +100,8 @@ USA.
 (define-item-compiler keyword-item?
   (illegal-expression-compiler "Syntactic keyword"))
 
-(define-item-compiler declaration-item?
+(define-item-compiler decl-item?
   (illegal-expression-compiler "Declaration"))
 
-(define-item-compiler binding-item?
+(define-item-compiler defn-item?
   (illegal-expression-compiler "Definition"))

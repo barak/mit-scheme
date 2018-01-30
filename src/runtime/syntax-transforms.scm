@@ -32,20 +32,20 @@ USA.
 (declare (usual-integrations))
 
 (define (sc-macro-transformer->expander transformer closing-environment)
-  (make-expander-item
+  (expander-item
    (lambda (form use-environment)
      (close-syntax (transformer form use-environment)
 		   (->syntactic-environment closing-environment)))))
 
 (define (rsc-macro-transformer->expander transformer closing-environment)
-  (make-expander-item
+  (expander-item
    (lambda (form use-environment)
      (close-syntax (transformer form
 				(->syntactic-environment closing-environment))
 		   use-environment))))
 
 (define (er-macro-transformer->expander transformer closing-environment)
-  (make-expander-item
+  (expander-item
    (lambda (form use-environment)
      (close-syntax (transformer form
 				(make-er-rename

@@ -40,11 +40,11 @@ USA.
   (define (unbound? env name)
     (eq? 'unbound (environment-reference-type env name)))
 
-  (let ((env (->environment '())))
+  (define (provide-rename env old-name new-name)
+    (if (unbound? env new-name)
+	(eval `(define ,new-name ,old-name) env)))
 
-    (define (provide-rename new-name old-name)
-      (if (unbound? env new-name)
-	  (eval `(define ,new-name ,old-name) env)))
+  (let ((env (->environment '())))
 
     (if (unbound? env 'guarantee)
 	(eval `(define (guarantee predicate object #!optional caller)
@@ -68,11 +68,11 @@ USA.
 		 object)
 	      env))
 
-    (provide-rename 'random-bytevector 'random-byte-vector)
-    (provide-rename 'string-foldcase 'string-downcase)
+    (provide-rename env 'random-byte-vector 'random-bytevector)
+    (provide-rename env 'string-downcase 'string-foldcase)
 
     (for-each (lambda (old-name)
-		(provide-rename (symbol 'scode- old-name) old-name))
+		(provide-rename env old-name (symbol 'scode- old-name)))
 	      '(access-environment
 		access-name
 		access?
@@ -119,8 +119,9 @@ USA.
 		variable-name
 		variable?))
     (for-each (lambda (root)
-		(provide-rename (symbol 'make-scode- root)
-				(symbol 'make- root)))
+		(provide-rename env
+				(symbol 'make- root)
+				(symbol 'make-scode- root)))
 	      '(access
 		assignment
 		combination
@@ -137,9 +138,10 @@ USA.
 		the-environment
 		unassigned?
 		variable))
-    (provide-rename 'set-scode-lambda-body! 'set-lambda-body!)
-    (provide-rename 'undefined-scode-conditional-branch
-		    'undefined-conditional-branch))
+    (provide-rename env 'set-lambda-body! 'set-scode-lambda-body!)
+    (provide-rename env
+		    'undefined-conditional-branch
+		    'undefined-scode-conditional-branch))
 
   (let ((env (->environment '(runtime))))
     (if (unbound? env 'select-on-bytes-per-word)
@@ -147,7 +149,7 @@ USA.
 		 (er-macro-transformer
 		  (lambda (form rename compare)
 		    rename compare
-		    (syntax-check '(KEYWORD EXPRESSION EXPRESSION) form)
+		    (syntax-check '(keyword expression expression) form)
 		    (let ((bpo (bytes-per-object)))
 		      (case bpo
 			((4) (cadr form))
@@ -179,6 +181,9 @@ USA.
                 env)
           (link-variables system-global-environment 'microcode-type
                           env 'microcode-type))))
+
+  (let ((env (->environment '(runtime syntax))))
+    (provide-rename env 'make-compiler-item 'compiler-item))
 
   (let ((env (->environment '(package))))
     (if (eval '(not (link-description? '#(name1 (package name) name2 #f)))

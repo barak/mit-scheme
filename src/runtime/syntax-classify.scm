@@ -32,9 +32,9 @@ USA.
   (cond ((identifier? form)
 	 (let ((item (lookup-identifier form environment)))
 	   (if (keyword-item? item)
-	       (make-keyword-value-item
+	       (keyword-value-item
 		(strip-keyword-value-item item)
-		(make-expression-item
+		(expr-item
 		 (let ((name (identifier->symbol form)))
 		   (lambda ()
 		     (output/combination
@@ -53,31 +53,30 @@ USA.
 		(strip-keyword-value-item
 		 (classify/expression (car form) environment))))
 	   (cond ((classifier-item? item)
-		  ((classifier-item/classifier item) form environment))
+		  ((classifier-item-impl item) form environment))
 		 ((compiler-item? item)
-		  (make-expression-item
-		   (let ((compiler (compiler-item/compiler item)))
+		  (expr-item
+		   (let ((compiler (compiler-item-impl item)))
 		     (lambda ()
 		       (compiler form environment)))))
 		 ((expander-item? item)
-		  (classify/form ((expander-item/expander item) form
-								environment)
+		  (classify/form ((expander-item-impl item) form environment)
 				 environment))
 		 (else
 		  (if (not (list? (cdr form)))
 		      (syntax-error "Combination must be a proper list:" form))
-		  (make-expression-item
+		  (expr-item
 		   (let ((items (classify/expressions (cdr form) environment)))
 		     (lambda ()
 		       (output/combination
 			(compile-item/expression item)
 			(map compile-item/expression items)))))))))
 	(else
-	 (make-expression-item (lambda () (output/constant form))))))
+	 (expr-item (lambda () (output/constant form))))))
 
 (define (strip-keyword-value-item item)
   (if (keyword-value-item? item)
-      (keyword-value-item/item item)
+      (keyword-value-item-keyword item)
       item))
 
 (define (classify/expression expression environment)
@@ -91,10 +90,10 @@ USA.
 (define (classify/body forms environment)
   ;; Syntactic definitions affect all forms that appear after them, so classify
   ;; FORMS in order.
-  (make-body-item
-   (let loop ((forms forms) (body-items '()))
+  (seq-item
+   (let loop ((forms forms) (items '()))
      (if (pair? forms)
 	 (loop (cdr forms)
 	       (reverse* (item->list (classify/form (car forms) environment))
-			 body-items))
-	 (reverse! body-items)))))
+			 items))
+	 (reverse! items)))))

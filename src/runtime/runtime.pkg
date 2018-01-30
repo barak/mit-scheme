@@ -4415,41 +4415,41 @@ USA.
   (files "syntax-items")
   (parent (runtime syntax))
   (export (runtime syntax)
-	  binding-item/name
-	  binding-item/value
-	  binding-item?
-	  body-item/components
-	  body-item?
-	  classifier-item/classifier
+	  classifier-item
+	  classifier-item-impl
 	  classifier-item?
-	  compiler-item/compiler
+	  compiler-item
+	  compiler-item-impl
 	  compiler-item?
-	  declaration-item/text
-	  declaration-item?
-	  expander-item/expander
+	  decl-item
+	  decl-item-text
+	  decl-item?
+	  defn-item
+	  defn-item-id
+	  defn-item-value
+	  defn-item?
+	  expander-item
+	  expander-item-impl
 	  expander-item?
-	  expression-item/compiler
-	  expression-item?
+	  expr-item
+	  expr-item-compiler
+	  expr-item?
 	  extract-declarations-from-body
-	  flatten-body-items
+	  flatten-seq-items
 	  item->list
 	  keyword-item?
-	  keyword-value-item/expression
-	  keyword-value-item/item
+	  keyword-value-item
+	  keyword-value-item-expr
+	  keyword-value-item-keyword
 	  keyword-value-item?
-	  make-binding-item
-	  make-body-item
-	  make-classifier-item
-	  make-compiler-item
-	  make-declaration-item
-	  make-expander-item
-	  make-expression-item
-	  make-keyword-value-item
-	  make-reserved-name-item
-	  make-variable-item
+	  reserved-name-item
 	  reserved-name-item?
-	  variable-item/name
-	  variable-item?))
+	  seq-item
+	  seq-item-elements
+	  seq-item?
+	  var-item
+	  var-item-id
+	  var-item?))
 
 (define-package (runtime syntax environment)
   (files "syntax-environment")
