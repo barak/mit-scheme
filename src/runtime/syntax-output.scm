@@ -121,7 +121,7 @@ USA.
   (scan-defines (let ((declarations (apply append declarations)))
 		  (if (pair? declarations)
 		      (make-scode-sequence
-		       (list (make-block-declaration declarations)
+		       (list (make-scode-block-declaration declarations)
 			     body))
 		      body))
 		make-scode-open-block))
@@ -137,7 +137,7 @@ USA.
 			 make-scode-open-block))))
     (if (pair? declarations)
 	(make-scode-open-block
-	 (cons (make-block-declaration declarations)
+	 (cons (make-scode-block-declaration declarations)
 	       (if (pair? expressions)
 		   expressions
 		   (list (output/unspecific)))))

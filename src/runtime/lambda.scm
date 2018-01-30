@@ -423,7 +423,7 @@ USA.
   (let ((body*
 	 (if (null? declarations)
 	     body
-	     (make-scode-sequence (list (make-block-declaration declarations)
+	     (make-scode-sequence (list (make-scode-block-declaration declarations)
 					body)))))
     (cond ((and (< (length required) 256)
 		(< (length optional) 256)
@@ -443,9 +443,9 @@ USA.
       (let ((actions
 	     (and (scode-sequence? body)
 		  (scode-sequence-actions body))))
-	(if (and actions (block-declaration? (car actions)))
+	(if (and actions (scode-block-declaration? (car actions)))
 	    (receiver name required optional rest auxiliary
-		      (block-declaration-text (car actions))
+		      (scode-block-declaration-text (car actions))
 		      (make-scode-sequence (cdr actions)))
 	    (receiver name required optional rest auxiliary '() body))))))
 
@@ -469,12 +469,6 @@ USA.
 (define lambda-unwrap-body!)
 (define lambda-immediate-body)
 (define lambda-names-vector)
-
-(define-structure (block-declaration
-		   (type vector)
-		   (named ((ucode-primitive string->symbol)
-			   "#[Block Declaration]")))
-  (text #f read-only #t))
 
 ;;;; Simple Lambda
 (define (slambda-arity slambda offset)

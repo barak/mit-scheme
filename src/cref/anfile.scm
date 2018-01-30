@@ -46,7 +46,7 @@ USA.
   (if (null? expressions)
       (values '() '())
       (let ((rest (lambda () (sort-expressions (cdr expressions)))))
-	(if (block-declaration? (car expressions))
+	(if (scode-block-declaration? (car expressions))
 	    (rest)
 	    (receive (definitions others) (rest)
 	      (if (scode-definition? (car expressions))

@@ -91,10 +91,10 @@ USA.
 		       declarations
 		       (cons-sequence (make-scode-assignment name value)
 				      body)))))
-	((block-declaration? expression)
+	((scode-block-declaration? expression)
 	 (lambda (names declarations body)
 	   (receiver names
-		     (append (block-declaration-text expression)
+		     (append (scode-block-declaration-text expression)
 			     declarations)
 		     body)))
 	(else
@@ -141,10 +141,9 @@ USA.
 
     (if (null? declarations)
 	body*
-	(&typed-pair-cons
-	 sequence-type
-	 (make-block-declaration declarations)
-	 body*))))
+	(&typed-pair-cons sequence-type
+			  (make-scode-block-declaration declarations)
+			  body*))))
 
 ;;;; Open Block
 

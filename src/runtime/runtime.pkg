@@ -2804,9 +2804,6 @@ USA.
   (files "lambda")
   (parent (runtime))
   (export ()
-	  block-declaration-text
-	  block-declaration?
-	  make-block-declaration
 	  make-scode-lambda
 	  scode-lambda-body
 	  scode-lambda-bound
@@ -3894,6 +3891,7 @@ USA.
 	  make-scode-absolute-reference
 	  make-scode-access
 	  make-scode-assignment
+	  make-scode-block-declaration
 	  make-scode-combination
 	  make-scode-comment
 	  make-scode-conditional
@@ -3915,6 +3913,8 @@ USA.
 	  scode-assignment-name
 	  scode-assignment-value
 	  scode-assignment?
+	  scode-block-declaration-text
+	  scode-block-declaration?
 	  scode-combination-operands
 	  scode-combination-operator
 	  scode-combination?

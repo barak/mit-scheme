@@ -212,10 +212,10 @@ USA.
 
 (define (unsyntax-sequence-object environment seq)
   (let loop ((actions (scode-sequence-actions seq)))
-    (if (and (block-declaration? (car actions))
+    (if (and (scode-block-declaration? (car actions))
 	     (pair? (cdr actions)))
 	`(BEGIN
-	  (DECLARE ,@(block-declaration-text (car actions)))
+	  (DECLARE ,@(scode-block-declaration-text (car actions)))
 	  ,@(loop (cdr actions)))
 	`(BEGIN
 	  ,@(unsyntax-sequence-actions environment seq)))))
@@ -399,9 +399,9 @@ USA.
 (define (unsyntax-lambda-body-sequence environment body)
   (if (scode-sequence? body)
       (let ((actions (scode-sequence-actions body)))
-	(if (and (block-declaration? (car actions))
+	(if (and (scode-block-declaration? (car actions))
 		 (pair? (cdr actions)))
-	    `((DECLARE ,@(block-declaration-text (car actions)))
+	    `((DECLARE ,@(scode-block-declaration-text (car actions)))
 	      ,@(unsyntax-sequence environment
 				   (make-scode-sequence (cdr actions))))
 	    (unsyntax-sequence environment body)))

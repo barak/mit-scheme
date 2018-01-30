@@ -350,6 +350,23 @@ USA.
 (define (scode-disjunction-alternative disjunction)
   (guarantee scode-disjunction? disjunction 'scode-disjunction-alternative)
   (map-reference-trap (lambda () (system-pair-cdr disjunction))))
+
+;;;; Declaration
+
+(define (make-scode-block-declaration text)
+  (vector block-declaration-marker text))
+
+(define (scode-block-declaration? object)
+  (and (vector? object)
+       (fix:= 2 (vector-length object))
+       (eq? block-declaration-marker (vector-ref object 0))))
+
+(define (scode-block-declaration-text declaration)
+  (guarantee scode-block-declaration? declaration 'scode-block-declaration-text)
+  (vector-ref declaration 1))
+
+(define block-declaration-marker
+  '|#[Block Declaration]|)
 
 ;;;; Lambda
 
