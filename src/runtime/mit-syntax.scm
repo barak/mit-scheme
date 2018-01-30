@@ -149,8 +149,7 @@ USA.
   (classifier->keyword
    (lambda (form environment)
      (let ((name (cadr form)))
-       (if (not (syntactic-environment/top-level? environment))
-	   (reserve-identifier environment name))
+       (reserve-identifier environment name)
        (variable-binder make-binding-item
 			environment
 			name
