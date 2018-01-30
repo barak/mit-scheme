@@ -79,6 +79,8 @@ USA.
 		assignment-name
 		assignment-value
 		assignment?
+		block-declaration-text
+		block-declaration?
 		combination-operands
 		combination-operator
 		combination?
@@ -124,6 +126,7 @@ USA.
 				(symbol 'make-scode- root)))
 	      '(access
 		assignment
+		block-declaration
 		combination
 		comment
 		conditional
