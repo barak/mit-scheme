@@ -98,7 +98,6 @@ USA.
 	      "termcap"
 	      "utils"
 	      "win32"
-	      "winren"
 	      "xform"
 	      "xterm"))
   (sf-edwin "tterm" "termcap")

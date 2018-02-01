@@ -184,7 +184,6 @@ USA.
     ("wincom"	(edwin))
     ("window"	(edwin window))
     ("winout"	(edwin window-output-port))
-    ("winren"	(edwin))
     ("xcom"	(edwin x-commands))
     ("xform"	(edwin class-macros transform-instance-variables))
     ("xmodef"	(edwin))

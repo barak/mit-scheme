@@ -111,7 +111,6 @@ USA.
 	(load "bufset" environment)
 	(load "display" (->environment '(EDWIN DISPLAY-TYPE)))
 	(load "screen" (->environment '(EDWIN SCREEN)))
-	(load "winren" environment)
 
 	(let ((environment (->environment '(EDWIN WINDOW))))
 	  (load "window" environment)

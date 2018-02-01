@@ -49,7 +49,6 @@ USA.
 	 "modes"			; editor mode abstraction
 	 "buffer"			; buffer abstraction
 	 "bufset"			; buffer-set abstraction
-	 "winren"			; window-system rename targets
 
 	 "edtstr"			; editor abstraction
 	 "editor"			; editor top level
