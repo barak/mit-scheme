@@ -90,7 +90,6 @@ USA.
 	      "nvector"
 	      "paths"
 	      "rcsparse"
-	      "rename"
 	      "rfc822"
 	      "ring"
 	      "string"

@@ -251,7 +251,6 @@ USA.
 	(load "wincom" environment)
 	(load "scrcom" environment)
 	(load "modefs" environment)
-	(load "rename" environment)
 	(load "loadef" environment)
 	#|
 	(load-set-and-initialize! '("bochser" "bochsmod")

@@ -136,7 +136,6 @@ USA.
     ("regcom"	(edwin register-command))
     ("regexp"	(edwin regular-expression))
     ("regops"	(edwin))
-    ("rename"	())
     ("replaz"	(edwin))
     ("rfc822"	(edwin rfc822))
     ("ring"	(edwin))
