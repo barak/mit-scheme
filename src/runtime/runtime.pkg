@@ -4460,7 +4460,6 @@ USA.
 	  make-internal-syntactic-environment
 	  make-keyword-syntactic-environment
 	  make-partial-syntactic-environment
-	  make-top-level-syntactic-environment
 	  syntactic-environment->environment
 	  syntactic-environment/bind-keyword
 	  syntactic-environment/bind-variable

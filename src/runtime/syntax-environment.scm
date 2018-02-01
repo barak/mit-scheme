@@ -41,7 +41,7 @@ USA.
   ((senv-get-type senv)))
 
 (define (syntactic-environment/top-level? senv)
-  (memq (senv-type senv) '(top-level runtime-top-level)))
+  (eq? 'top-level (senv-type senv)))
 
 (define (syntactic-environment->environment senv)
   ((senv-get-runtime senv)))
@@ -68,32 +68,61 @@ USA.
 (define (->syntactic-environment object #!optional caller)
   (declare (ignore caller))
   (cond ((syntactic-environment? object) object)
-	((environment? object) (%make-runtime-syntactic-environment object))
+	((interpreter-environment? object) (%top-level-runtime-senv object))
+	((environment? object) (%internal-runtime-senv object))
 	(else (error "Unable to convert to a syntactic environment:" object))))
-
+
 ;;; Runtime syntactic environments are wrappers around runtime environments.
-;;; They maintain their own bindings, but can defer lookups of syntactic
-;;; keywords to the given runtime environment.
 
-(define (%make-runtime-syntactic-environment env)
+(define (%internal-runtime-senv env)
 
   (define (get-type)
-    (if (interpreter-environment? env) 'runtime-top-level 'runtime))
+    'runtime)
 
   (define (get-runtime)
     env)
 
   (define (lookup identifier)
-    (and (symbol? identifier)
-	 (environment-lookup-macro env identifier)))
+    (environment-lookup-macro env identifier))
 
   (define (store identifier item)
-    (environment-define-macro env identifier item))
+    (error "Can't bind in non-top-level runtime environment:" identifier item))
 
   (define (rename identifier)
-    identifier)
+    (error "Can't rename in non-top-level runtime environment:" identifier))
 
   (make-senv get-type get-runtime lookup store rename))
+
+;;; Top-level syntactic environments represent top-level environments.
+;;; They are always associated with a given runtime environment.
+
+(define (%top-level-runtime-senv env)
+  (let ((bound '()))
+
+    (define (get-type)
+      'top-level)
+
+    (define (get-runtime)
+      env)
+
+    (define (lookup identifier)
+      (let ((binding (assq identifier bound)))
+	(if binding
+	    (cdr binding)
+	    (environment-lookup-macro env identifier))))
+
+    (define (store identifier item)
+      (let ((binding (assq identifier bound)))
+	(if binding
+	    (set-cdr! binding item)
+	    (begin
+	      (set! bound (cons (cons identifier item) bound))
+	      unspecific))))
+
+    (define (rename identifier)
+      identifier)
+
+    (make-senv get-type get-runtime lookup store rename)))
 
 ;;; Keyword environments are used to make keywords that represent items.
 
@@ -119,39 +148,6 @@ USA.
   (guarantee keyword-item? item 'make-keyword-environment)
   (make-senv get-type get-runtime lookup store rename))
 
-;;; Top-level syntactic environments represent top-level environments.
-;;; They are always layered over a runtime syntactic environment.
-
-(define (make-top-level-syntactic-environment parent)
-  (guarantee syntactic-environment? parent
-	     'make-top-level-syntactic-environment)
-  (if (not (memq (senv-type parent) '(runtime-top-level top-level)))
-      (error:bad-range-argument parent 'make-top-level-syntactic-environment))
-  (let ((bound '())
-	(get-runtime (senv-get-runtime parent)))
-
-    (define (get-type)
-      'top-level)
-
-    (define (lookup identifier)
-      (let ((binding (assq identifier bound)))
-	(if binding
-	    (cdr binding)
-	    ((senv-lookup parent) identifier))))
-
-    (define (store identifier item)
-      (let ((binding (assq identifier bound)))
-	(if binding
-	    (set-cdr! binding item)
-	    (begin
-	      (set! bound (cons (cons identifier item) bound))
-	      unspecific))))
-
-    (define (rename identifier)
-      identifier)
-
-    (make-senv get-type get-runtime lookup store rename)))
-
 ;;; Internal syntactic environments represent environments created by
 ;;; procedure application.
 
@@ -189,7 +185,7 @@ USA.
 	     unspecific)))
 
     (make-senv get-type get-runtime lookup store rename)))
-
+
 ;;; Partial syntactic environments are used to implement syntactic
 ;;; closures that have free names.
 

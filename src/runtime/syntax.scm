@@ -52,8 +52,7 @@ USA.
     (with-identifier-renaming
      (lambda ()
        (if (syntactic-environment/top-level? senv)
-	   (compile-body-item/top-level
-	    (classify/body forms (make-top-level-syntactic-environment senv)))
+	   (compile-body-item/top-level (classify/body forms senv))
 	   (output/sequence (compile/expressions forms senv)))))))
 
 (define (compile/expression expression environment)
