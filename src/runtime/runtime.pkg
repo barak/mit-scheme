@@ -4531,6 +4531,7 @@ USA.
 	  output/top-level-definition
 	  output/top-level-sequence
 	  output/top-level-syntax-definition
+	  output/top-level-syntax-expander
 	  output/unassigned
 	  output/unassigned-test
 	  output/unspecific

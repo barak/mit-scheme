@@ -59,6 +59,11 @@ USA.
 (define (output/top-level-syntax-definition name value)
   (make-scode-definition name (make-macro-reference-trap-expression value)))
 
+(define (output/top-level-syntax-expander procedure-name transformer)
+  (output/combination (output/runtime-reference procedure-name)
+		      (list transformer
+			    (output/the-environment))))
+
 (define (output/conditional predicate consequent alternative)
   (make-scode-conditional predicate consequent alternative))
 

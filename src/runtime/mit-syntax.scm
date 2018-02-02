@@ -31,33 +31,36 @@ USA.
 
 ;;;; Macro transformers
 
-(define (transformer-keyword name transformer->expander)
-  (lambda (form environment)
+(define (transformer-keyword procedure-name transformer->expander)
+  (lambda (form senv)
     (syntax-check '(KEYWORD EXPRESSION) form)
-    (let ((item (classify/expression (cadr form) environment)))
-      (keyword-value-item
-       (transformer->expander (transformer-eval (compile-item/expression item)
-						environment)
-			      environment)
-       (expr-item
-	(lambda ()
-	  (output/combination (output/runtime-reference name)
-			      (list (compile-item/expression item)
-				    (output/the-environment)))))))))
+    (let ((transformer
+	   (compile-item/expression
+	    (classify/expression (cadr form) senv))))
+      (let ((item
+	     (transformer->expander (transformer-eval transformer senv)
+				    senv)))
+	(if (syntactic-environment/top-level? senv)
+	    (keyword-value-item
+	     item
+	     (expr-item
+	      (lambda ()
+		(output/top-level-syntax-expander procedure-name transformer))))
+	    item)))))
 
 (define classifier:sc-macro-transformer
   ;; "Syntactic Closures" transformer
-  (transformer-keyword 'SC-MACRO-TRANSFORMER->EXPANDER
+  (transformer-keyword 'sc-macro-transformer->expander
 		       sc-macro-transformer->expander))
 
 (define classifier:rsc-macro-transformer
   ;; "Reversed Syntactic Closures" transformer
-  (transformer-keyword 'RSC-MACRO-TRANSFORMER->EXPANDER
+  (transformer-keyword 'rsc-macro-transformer->expander
 		       rsc-macro-transformer->expander))
 
 (define classifier:er-macro-transformer
   ;; "Explicit Renaming" transformer
-  (transformer-keyword 'ER-MACRO-TRANSFORMER->EXPANDER
+  (transformer-keyword 'er-macro-transformer->expander
 		       er-macro-transformer->expander))
 
 ;;;; Core primitives
