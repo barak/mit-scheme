@@ -159,24 +159,20 @@ USA.
 	  ,@(loop (scode-access-environment object)
 		  (eq? #t unsyntaxer:macroize?)))
 	`(,(unsyntax-object environment object)))))
-
+
 (define (unsyntax-definition-object environment definition)
   (unexpand-definition environment
 		       (scode-definition-name definition)
 		       (scode-definition-value definition)))
 
-(define (unsyntax-assignment-object environment assignment)
-  `(SET! ,(scode-assignment-name assignment)
-	 ,@(unexpand-binding-value environment
-				   (scode-assignment-value assignment))))
-
 (define (unexpand-definition environment name value)
-  (cond ((macro-reference-trap-expression? value)
-	 `(define ,name
-	    (make-macro-reference-trap-expression
-	     ,(unsyntax-object
-	       environment
-	       (macro-reference-trap-expression-transformer value)))))
+  (cond ((and (eq? #t unsyntaxer:macroize?)
+	      (macro-reference-trap-expression? value))
+	 (or (rewrite-macro-defn
+	      environment
+	      name
+	      (macro-reference-trap-expression-transformer value))
+	     `(define ,name ,(unsyntax-object environment value))))
 	((and (eq? #t unsyntaxer:macroize?)
 	      (scode-lambda? value)
 	      (not (has-substitution? value)))
@@ -192,6 +188,32 @@ USA.
 		    ,@(unexpand-binding-value environment value))))))
 	(else
 	 `(define ,name ,@(unexpand-binding-value environment value)))))
+
+(define (rewrite-macro-defn environment name transformer)
+  (and (scode-combination? transformer)
+       (let ((operator (scode-combination-operator transformer))
+	     (operands (scode-combination-operands transformer)))
+	 (and (scode-access? operator)
+	      (eq? system-global-environment
+		   (scode-access-environment operator))
+	      (= 2 (length operands))
+	      (scode-lambda? (car operands))
+	      (scode-the-environment? (cadr operands))
+	      (let ((go
+		     (lambda (keyword)
+		       `(define-syntax ,name
+			  (,keyword
+			   ,(unsyntax-object environment (car operands)))))))
+		(case (scode-access-name operator)
+		  ((sc-macro-transformer->expander) (go 'sc-macro-transformer))
+		  ((rsc-macro-transformer->expander) (go 'rsc-macro-transformer))
+		  ((er-macro-transformer->expander) (go 'er-macro-transformer))
+		  (else #f)))))))
+
+(define (unsyntax-assignment-object environment assignment)
+  `(SET! ,(scode-assignment-name assignment)
+	 ,@(unexpand-binding-value environment
+				   (scode-assignment-value assignment))))
 
 (define (unexpand-binding-value environment value)
   (if (unassigned-reference-trap? value)
