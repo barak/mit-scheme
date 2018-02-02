@@ -29,13 +29,14 @@ USA.
 (declare (usual-integrations))
 
 (define-record-type <syntactic-environment>
-    (make-senv get-type get-runtime lookup store rename)
+    (make-senv get-type get-runtime lookup store rename describe)
     syntactic-environment?
   (get-type senv-get-type)
   (get-runtime senv-get-runtime)
   (lookup senv-lookup)
   (store senv-store)
-  (rename senv-rename))
+  (rename senv-rename)
+  (describe senv-describe))
 
 (define (senv-type senv)
   ((senv-get-type senv)))
@@ -65,37 +66,21 @@ USA.
     ((senv-store senv) identifier (var-item rename))
     rename))
 
+(define-pp-describer syntactic-environment?
+  (lambda (senv)
+    (cons `(type ,((senv-get-type senv)))
+	  ((senv-describe senv)))))
+
 (define (->syntactic-environment object #!optional caller)
   (declare (ignore caller))
   (cond ((syntactic-environment? object) object)
 	((interpreter-environment? object) (%top-level-runtime-senv object))
 	((environment? object) (%internal-runtime-senv object))
 	(else (error "Unable to convert to a syntactic environment:" object))))
-
+
 ;;; Runtime syntactic environments are wrappers around runtime environments.
 
-(define (%internal-runtime-senv env)
-
-  (define (get-type)
-    'runtime)
-
-  (define (get-runtime)
-    env)
-
-  (define (lookup identifier)
-    (environment-lookup-macro env identifier))
-
-  (define (store identifier item)
-    (error "Can't bind in non-top-level runtime environment:" identifier item))
-
-  (define (rename identifier)
-    (error "Can't rename in non-top-level runtime environment:" identifier))
-
-  (make-senv get-type get-runtime lookup store rename))
-
-;;; Top-level syntactic environments represent top-level environments.
-;;; They are always associated with a given runtime environment.
-
+;;; Wrappers around top-level runtime environments.
 (define (%top-level-runtime-senv env)
   (let ((bound '()))
 
@@ -122,7 +107,34 @@ USA.
     (define (rename identifier)
       identifier)
 
-    (make-senv get-type get-runtime lookup store rename)))
+    (define (describe)
+      `((env ,env)
+	(bound ,bound)))
+
+    (make-senv get-type get-runtime lookup store rename describe)))
+
+;;; Wrappers around internal runtime environments.
+(define (%internal-runtime-senv env)
+
+  (define (get-type)
+    'runtime)
+
+  (define (get-runtime)
+    env)
+
+  (define (lookup identifier)
+    (environment-lookup-macro env identifier))
+
+  (define (store identifier item)
+    (error "Can't bind in non-top-level runtime environment:" identifier item))
+
+  (define (rename identifier)
+    (error "Can't rename in non-top-level runtime environment:" identifier))
+
+  (define (describe)
+    `((env ,env)))
+
+  (make-senv get-type get-runtime lookup store rename describe))
 
 ;;; Keyword environments are used to make keywords that represent items.
 
@@ -144,9 +156,13 @@ USA.
   (define (rename identifier)
     (error "Can't rename in keyword environment:" identifier))
 
+  (define (describe)
+    `((name ,name)
+      (item ,item)))
+
   (guarantee raw-identifier? name 'make-keyword-environment)
   (guarantee keyword-item? item 'make-keyword-environment)
-  (make-senv get-type get-runtime lookup store rename))
+  (make-senv get-type get-runtime lookup store rename describe))
 
 ;;; Internal syntactic environments represent environments created by
 ;;; procedure application.
@@ -184,7 +200,12 @@ USA.
 	     (set! bound (cons (cons identifier item) bound))
 	     unspecific)))
 
-    (make-senv get-type get-runtime lookup store rename)))
+    (define (describe)
+      `((bound ,bound)
+	(free ,free)
+	(parent ,parent)))
+
+    (make-senv get-type get-runtime lookup store rename describe)))
 
 ;;; Partial syntactic environments are used to implement syntactic
 ;;; closures that have free names.
@@ -221,4 +242,9 @@ USA.
 	(define (select-env identifier)
 	  (if (memq identifier free-ids) free-senv bound-senv))
 
-	(make-senv get-type get-runtime lookup store rename))))
+	(define (describe)
+	  `((free-ids ,free-ids)
+	    (free-senv ,free-senv)
+	    (bound-senv ,bound-senv)))
+
+	(make-senv get-type get-runtime lookup store rename describe))))
