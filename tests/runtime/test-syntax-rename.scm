@@ -37,7 +37,7 @@ USA.
      (syntax-check '(keyword identifier) form)
      (let* ((raw (cadr form))
 	    (closed (close-syntax raw use-env)))
-       `(define-syntax inner
+       `(define-syntax ,(close-syntax 'inner use-env)
 	  (sc-macro-transformer
 	   (lambda (form use-env)
 	     (syntax-check '(keyword) form)
