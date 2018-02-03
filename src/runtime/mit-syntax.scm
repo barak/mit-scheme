@@ -40,7 +40,7 @@ USA.
       (let ((item
 	     (transformer->expander (transformer-eval transformer senv)
 				    senv)))
-	(if (syntactic-environment/top-level? senv)
+	(if (top-level-syntactic-environment? senv)
 	    (keyword-value-item
 	     item
 	     (expr-item
@@ -82,7 +82,7 @@ USA.
     ;; Force order -- bind names before classifying body.
     (let ((bvl
 	   (map-mit-lambda-list (lambda (identifier)
-				  (bind-variable environment identifier))
+				  (bind-variable identifier environment))
 				bvl)))
       (values bvl
 	      (compile-body-item
@@ -150,7 +150,7 @@ USA.
   (classifier->keyword
    (lambda (form environment)
      (let ((name (cadr form)))
-       (reserve-identifier environment name)
+       (reserve-identifier name environment)
        (variable-binder defn-item
 			environment
 			name
@@ -163,19 +163,19 @@ USA.
     (keyword-binder environment name item)
     ;; User-defined macros at top level are preserved in the output.
     (if (and (keyword-value-item? item)
-	     (syntactic-environment/top-level? environment))
+	     (top-level-syntactic-environment? environment))
 	(defn-item name item)
 	(seq-item '()))))
 
 (define (keyword-binder environment name item)
   (if (not (keyword-item? item))
       (syntax-error "Keyword binding value must be a keyword:" name))
-  (bind-keyword environment name item))
+  (bind-keyword name environment item))
 
 (define (variable-binder k environment name item)
   (if (keyword-item? item)
       (syntax-error "Variable binding value must not be a keyword:" name))
-  (k (bind-variable environment name) item))
+  (k (bind-variable name environment) item))
 
 ;;;; LET-like
 
@@ -225,7 +225,7 @@ USA.
 	(body (cddr form))
 	(binding-env (make-internal-syntactic-environment env)))
     (for-each (lambda (binding)
-		(reserve-identifier binding-env (car binding)))
+		(reserve-identifier (car binding) binding-env))
 	      bindings)
     ;; Classify right-hand sides first, in order to catch references to
     ;; reserved names.  Then bind names prior to classifying body.
@@ -273,7 +273,7 @@ USA.
 
 (define (compiler:the-environment form environment)
   (syntax-check '(KEYWORD) form)
-  (if (not (syntactic-environment/top-level? environment))
+  (if (not (top-level-syntactic-environment? environment))
       (syntax-error "This form allowed only at top level:" form))
   (output/the-environment))
 

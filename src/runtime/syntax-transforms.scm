@@ -31,45 +31,41 @@ USA.
 
 (declare (usual-integrations))
 
-(define (sc-macro-transformer->expander transformer closing-environment)
+(define (sc-macro-transformer->expander transformer closing-env)
   (expander-item
-   (lambda (form use-environment)
-     (close-syntax (transformer form use-environment)
-		   (->syntactic-environment closing-environment)))))
+   (lambda (form use-senv)
+     (close-syntax (transformer form use-senv)
+		   (->senv closing-env)))))
 
-(define (rsc-macro-transformer->expander transformer closing-environment)
+(define (rsc-macro-transformer->expander transformer closing-env)
   (expander-item
-   (lambda (form use-environment)
+   (lambda (form use-senv)
+     (close-syntax (transformer form (->senv closing-env))
+		   use-senv))))
+
+(define (er-macro-transformer->expander transformer closing-env)
+  (expander-item
+   (lambda (form use-senv)
      (close-syntax (transformer form
-				(->syntactic-environment closing-environment))
-		   use-environment))))
+				(make-er-rename (->senv closing-env))
+				(make-er-compare use-senv))
+		   use-senv))))
 
-(define (er-macro-transformer->expander transformer closing-environment)
-  (expander-item
-   (lambda (form use-environment)
-     (close-syntax (transformer form
-				(make-er-rename
-				 (->syntactic-environment closing-environment))
-				(make-er-compare use-environment))
-		   use-environment))))
+(define (->senv env)
+  (if (syntactic-environment? env)
+      env
+      (runtime-environment->syntactic env)))
 
-(define (make-er-rename closing-environment)
-  (let ((renames '()))
-    (lambda (identifier)
-      (let ((p (assq identifier renames)))
-	(if p
-	    (cdr p)
-	    (let ((rename (close-syntax identifier closing-environment)))
-	      (set! renames (cons (cons identifier rename) renames))
-	      rename))))))
+(define (make-er-rename closing-senv)
+  (lambda (identifier)
+    (close-syntax identifier closing-senv)))
 
-(define (make-er-compare use-environment)
+(define (make-er-compare use-senv)
   (lambda (x y)
-    (identifier=? use-environment x
-		  use-environment y)))
+    (identifier=? use-senv x use-senv y)))
 
 (define (syntactic-keyword->item keyword environment)
   (let ((item (environment-lookup-macro environment keyword)))
     (if (not item)
-	(error:bad-range-argument keyword 'SYNTACTIC-KEYWORD->ITEM))
+	(error:bad-range-argument keyword 'syntactic-keyword->item))
     item))

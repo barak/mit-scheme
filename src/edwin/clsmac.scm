@@ -101,7 +101,8 @@ USA.
 	 free-names
 	 (compile/expression
 	  `(,(close-syntax 'begin
-			   (->syntactic-environment system-global-environment))
+			   (runtime-environment->syntactic
+			    system-global-environment))
 	    ,@body)
 	  environment)))))))
 

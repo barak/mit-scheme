@@ -37,7 +37,7 @@ USA.
      (call-with-destructured-c-include-form
       form
       (lambda (library)
-	(let ((ienv (syntactic-environment->environment usage-env)))
+	(let ((ienv (syntactic-environment->runtime usage-env)))
 	  (if (and (environment-bound? ienv 'C-INCLUDES)
 		   (environment-assigned? ienv 'C-INCLUDES))
 	      (let ((value (environment-lookup ienv 'C-INCLUDES))
@@ -504,7 +504,7 @@ USA.
 (define (find-c-includes env)
   ;; Returns the c-includes structure bound to 'C-INCLUDES in ENV.
   (guarantee syntactic-environment? env 'find-c-includes)
-  (let ((ienv (syntactic-environment->environment env)))
+  (let ((ienv (syntactic-environment->runtime env)))
     (if (and (environment-bound? ienv 'C-INCLUDES)
 	     (environment-assigned? ienv 'C-INCLUDES))
 	(let ((includes (environment-lookup ienv 'C-INCLUDES)))

@@ -63,8 +63,8 @@ USA.
 		 (vector-ref (gc-space-status) 0))
 	      env))
 
-    (if (unbound? env '->syntactic-environment)
-	(eval '(define (->syntactic-environment object)
+    (if (unbound? env 'runtime-environment->syntactic)
+	(eval '(define (runtime-environment->syntactic object)
 		 object)
 	      env))
 

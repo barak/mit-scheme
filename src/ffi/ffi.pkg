@@ -12,8 +12,8 @@ FFI System Packaging |#
   (import (runtime ffi)
 	  make-alien-function
 	  alien-function/filename)
-  (import (runtime syntax environment)
-	  syntactic-environment->environment)
+  (import (runtime syntax)
+	  syntactic-environment->runtime)
   (export ()
 	  c-include
 	  load-c-includes

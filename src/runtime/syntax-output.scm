@@ -30,7 +30,7 @@ USA.
 (declare (usual-integrations))
 
 (define (transformer-eval output environment)
-  (eval output (syntactic-environment->environment environment)))
+  (eval output (syntactic-environment->runtime environment)))
 
 (define (output/variable name)
   (make-scode-variable name))

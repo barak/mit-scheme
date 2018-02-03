@@ -28,6 +28,56 @@ USA.
 
 (declare (usual-integrations))
 
+(define (runtime-environment->syntactic env)
+  (cond ((interpreter-environment? env) (%top-level-runtime-senv env))
+	((environment? env) (%internal-runtime-senv env))
+	(else (error:not-a environment? env 'runtime-environment->syntactic))))
+
+(define (syntactic-environment->runtime senv)
+  ((senv-get-runtime senv)))
+
+(define (top-level-syntactic-environment? senv)
+  (eq? 'top-level ((senv-get-type senv))))
+
+(define ((id-dispatcher handle-raw caller) identifier senv)
+  (cond ((raw-identifier? identifier)
+	 (handle-raw identifier senv))
+	((closed-identifier? identifier)
+	 (handle-raw (syntactic-closure-form identifier)
+		     (syntactic-closure-senv identifier)))
+	(else
+	 (error:not-a identifier? identifier caller))))
+
+(define lookup-identifier
+  (id-dispatcher (lambda (identifier senv)
+		   (let ((item ((senv-lookup senv) identifier)))
+		     (if (reserved-name-item? item)
+			 (syntax-error "Premature reference to reserved name:"
+				       identifier))
+		     (or item
+			 (var-item identifier))))
+		 'lookup-identifier))
+
+(define reserve-identifier
+  (id-dispatcher (lambda (identifier senv)
+		   ((senv-store senv) identifier (reserved-name-item)))
+		 'reserve-identifier))
+
+(define (bind-keyword identifier senv item)
+  (guarantee keyword-item? item 'bind-keyword)
+  ((id-dispatcher (lambda (identifier senv)
+		    ((senv-store senv) identifier item))
+		  'bind-keyword)
+   identifier
+   senv))
+
+(define bind-variable
+  (id-dispatcher (lambda (identifier senv)
+		   (let ((rename ((senv-rename senv) identifier)))
+		     ((senv-store senv) identifier (var-item rename))
+		     rename))
+		 'bind-variable))
+
 (define-record-type <syntactic-environment>
     (make-senv get-type get-runtime lookup store rename describe)
     syntactic-environment?
@@ -38,46 +88,15 @@ USA.
   (rename senv-rename)
   (describe senv-describe))
 
-(define (senv-type senv)
-  ((senv-get-type senv)))
-
-(define (syntactic-environment/top-level? senv)
-  (eq? 'top-level (senv-type senv)))
-
-(define (syntactic-environment->environment senv)
-  ((senv-get-runtime senv)))
-
-(define (syntactic-environment/lookup senv identifier)
-  (guarantee raw-identifier? identifier 'syntactic-environment/lookup)
-  ((senv-lookup senv) identifier))
-
-(define (syntactic-environment/reserve senv identifier)
-  (guarantee raw-identifier? identifier 'syntactic-environment/reserve)
-  ((senv-store senv) identifier (reserved-name-item)))
-
-(define (syntactic-environment/bind-keyword senv identifier item)
-  (guarantee raw-identifier? identifier 'syntactic-environment/bind-keyword)
-  (guarantee keyword-item? item 'syntactic-environment/bind-keyword)
-  ((senv-store senv) identifier item))
-
-(define (syntactic-environment/bind-variable senv identifier)
-  (guarantee raw-identifier? identifier 'syntactic-environment/bind-variable)
-  (let ((rename ((senv-rename senv) identifier)))
-    ((senv-store senv) identifier (var-item rename))
-    rename))
+(define-unparser-method syntactic-environment?
+  (simple-unparser-method 'syntactic-environment
+    (lambda (senv)
+      (list ((senv-get-type senv))))))
 
 (define-pp-describer syntactic-environment?
   (lambda (senv)
-    (cons `(type ,((senv-get-type senv)))
-	  ((senv-describe senv)))))
+    ((senv-describe senv))))
 
-(define (->syntactic-environment object #!optional caller)
-  (declare (ignore caller))
-  (cond ((syntactic-environment? object) object)
-	((interpreter-environment? object) (%top-level-runtime-senv object))
-	((environment? object) (%internal-runtime-senv object))
-	(else (error "Unable to convert to a syntactic environment:" object))))
-
 ;;; Runtime syntactic environments are wrappers around runtime environments.
 
 ;;; Wrappers around top-level runtime environments.
@@ -117,7 +136,7 @@ USA.
 (define (%internal-runtime-senv env)
 
   (define (get-type)
-    'runtime)
+    'internal-runtime)
 
   (define (get-runtime)
     env)

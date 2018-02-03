@@ -82,7 +82,8 @@ USA.
 
   (define (car-constant? components)
     (and (identifier=? environment (caar components)
-		       (->syntactic-environment system-global-environment)
+		       (runtime-environment->syntactic
+			system-global-environment)
 		       'quote)
 	 (bit-string? (cadar components))))
 

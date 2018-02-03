@@ -4387,6 +4387,7 @@ USA.
 	  (make-synthetic-identifier new-identifier)
 	  capture-syntactic-environment
 	  close-syntax
+	  closed-identifier?
 	  identifier->symbol
 	  identifier=?
 	  identifier?
@@ -4402,14 +4403,10 @@ USA.
 	  syntax*
 	  syntax-error)
   (export (runtime syntax)
-	  bind-keyword
-	  bind-variable
 	  classifier->keyword
 	  compile/expression
 	  compiler->keyword
-	  lookup-identifier
-	  raw-identifier?
-	  reserve-identifier))
+	  raw-identifier?))
 
 (define-package (runtime syntax items)
   (files "syntax-items")
@@ -4454,18 +4451,18 @@ USA.
   (files "syntax-environment")
   (parent (runtime syntax))
   (export ()
-	  ->syntactic-environment
+	  runtime-environment->syntactic
 	  syntactic-environment?)
   (export (runtime syntax)
+	  bind-keyword
+	  bind-variable
+	  lookup-identifier
 	  make-internal-syntactic-environment
 	  make-keyword-syntactic-environment
 	  make-partial-syntactic-environment
-	  syntactic-environment->environment
-	  syntactic-environment/bind-keyword
-	  syntactic-environment/bind-variable
-	  syntactic-environment/lookup
-	  syntactic-environment/reserve
-	  syntactic-environment/top-level?
+	  reserve-identifier
+	  syntactic-environment->runtime
+	  top-level-syntactic-environment?
 	  syntactic-environment?))
 
 (define-package (runtime syntax check)

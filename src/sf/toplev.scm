@@ -285,7 +285,7 @@ USA.
       (syntax* (if (null? declarations)
 		   s-expressions
 		   (cons (cons (close-syntax 'declare
-					     (->syntactic-environment
+					     (runtime-environment->syntactic
 					      system-global-environment))
 			       declarations)
 			 s-expressions))

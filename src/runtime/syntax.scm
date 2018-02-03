@@ -48,10 +48,13 @@ USA.
 
 (define (syntax* forms environment)
   (guarantee list? forms 'syntax*)
-  (let ((senv (->syntactic-environment environment 'syntax*)))
+  (let ((senv
+	 (if (syntactic-environment? environment)
+	     environment
+	     (runtime-environment->syntactic environment))))
     (with-identifier-renaming
      (lambda ()
-       (if (syntactic-environment/top-level? senv)
+       (if (top-level-syntactic-environment? senv)
 	   (compile-body-item/top-level (classify/body forms senv))
 	   (output/sequence (compile/expressions forms senv)))))))
 
@@ -133,22 +136,6 @@ USA.
 	((closed-identifier? identifier) (syntactic-closure-form identifier))
 	(else (error:not-a identifier? identifier 'identifier->symbol))))
 
-(define (lookup-identifier identifier senv)
-  (cond ((raw-identifier? identifier)
-	 (%lookup-raw-identifier identifier senv))
-	((closed-identifier? identifier)
-	 (%lookup-raw-identifier (syntactic-closure-form identifier)
-				 (syntactic-closure-senv identifier)))
-	(else
-	 (error:not-a identifier? identifier 'lookup-identifier))))
-
-(define (%lookup-raw-identifier identifier senv)
-  (let ((item (syntactic-environment/lookup senv identifier)))
-    (if (reserved-name-item? item)
-	(syntax-error "Premature reference to reserved name:" identifier))
-    (or item
-	(var-item identifier))))
-
 (define (identifier=? environment-1 identifier-1 environment-2 identifier-2)
   (let ((item-1 (lookup-identifier identifier-1 environment-1))
 	(item-2 (lookup-identifier identifier-2 environment-2)))
@@ -161,36 +148,6 @@ USA.
 	     (var-item? item-2)
 	     (eq? (var-item-id item-1)
 		  (var-item-id item-2))))))
-
-(define (reserve-identifier senv identifier)
-  (cond ((raw-identifier? identifier)
-	 (syntactic-environment/reserve senv identifier))
-	((closed-identifier? identifier)
-	 (syntactic-environment/reserve (syntactic-closure-senv identifier)
-					(syntactic-closure-form identifier)))
-	(else
-	 (error:not-a identifier? identifier 'reserve-identifier))))
-
-(define (bind-keyword senv identifier item)
-  (cond ((raw-identifier? identifier)
-	 (syntactic-environment/bind-keyword senv identifier item))
-	((closed-identifier? identifier)
-	 (syntactic-environment/bind-keyword
-	  (syntactic-closure-senv identifier)
-	  (syntactic-closure-form identifier)
-	  item))
-	(else
-	 (error:not-a identifier? identifier 'bind-keyword))))
-
-(define (bind-variable senv identifier)
-  (cond ((raw-identifier? identifier)
-	 (syntactic-environment/bind-variable senv identifier))
-	((closed-identifier? identifier)
-	 (syntactic-environment/bind-variable
-	  (syntactic-closure-senv identifier)
-	  (syntactic-closure-form identifier)))
-	(else
-	 (error:not-a identifier? identifier 'bind-variable))))
 
 ;;;; Utilities
 
