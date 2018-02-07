@@ -160,8 +160,6 @@ USA.
     ("syncproc"	(runtime synchronous-subprocess))
     ("syntax"	(runtime syntax top-level))
     ("syntax-check" (runtime syntax check))
-    ("syntax-classify" (runtime syntax classify))
-    ("syntax-compile" (runtime syntax compile))
     ("syntax-declaration" (runtime syntax declaration))
     ("syntax-definitions" (runtime syntax definitions))
     ("syntax-environment" (runtime syntax environment))

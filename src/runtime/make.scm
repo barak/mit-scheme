@@ -530,7 +530,7 @@ USA.
    (RUNTIME UNSYNTAXER)
    (RUNTIME PRETTY-PRINTER)
    (RUNTIME EXTENDED-SCODE-EVAL)
-   (runtime syntax compile)
+   (runtime syntax top-level)
    (RUNTIME SYNTAX DEFINITIONS)
    (runtime syntax rename)
    ;; REP Loops

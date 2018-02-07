@@ -4404,8 +4404,15 @@ USA.
 	  syntax-error)
   (export (runtime syntax)
 	  classifier->keyword
+	  classify/body
+	  classify/expression
+	  classify/form
+	  compile-body-item/top-level
+	  compile-body-items
+	  compile-item/expression
 	  compile/expression
 	  compiler->keyword
+	  define-item-compiler
 	  raw-identifier?))
 
 (define-package (runtime syntax items)
@@ -4473,23 +4480,6 @@ USA.
 	  syntax-check
 	  syntax-match?
 	  syntax-match?*))
-
-(define-package (runtime syntax classify)
-  (files "syntax-classify")
-  (parent (runtime syntax))
-  (export (runtime syntax)
-	  classify/body
-	  classify/expression
-	  classify/form))
-
-(define-package (runtime syntax compile)
-  (files "syntax-compile")
-  (parent (runtime syntax))
-  (export (runtime syntax)
-	  compile-body-item/top-level
-	  compile-body-items
-	  compile-item/expression
-	  define-item-compiler))
 
 (define-package (runtime syntax rename)
   (files "syntax-rename")

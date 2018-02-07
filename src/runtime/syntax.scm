@@ -66,6 +66,156 @@ USA.
 	 (compile/expression expression environment))
        expressions))
 
+;;;; Classifier
+
+(define (classify/form form environment)
+  (cond ((identifier? form)
+	 (let ((item (lookup-identifier form environment)))
+	   (if (keyword-item? item)
+	       (keyword-value-item
+		(strip-keyword-value-item item)
+		(expr-item
+		 (let ((name (identifier->symbol form)))
+		   (lambda ()
+		     (output/combination
+		      (output/runtime-reference 'syntactic-keyword->item)
+		      (list (output/constant name)
+			    (output/the-environment)))))))
+	       item)))
+	((syntactic-closure? form)
+	 (classify/form
+	  (syntactic-closure-form form)
+	  (make-partial-syntactic-environment (syntactic-closure-free form)
+					      environment
+					      (syntactic-closure-senv form))))
+	((pair? form)
+	 (let ((item
+		(strip-keyword-value-item
+		 (classify/expression (car form) environment))))
+	   (cond ((classifier-item? item)
+		  ((classifier-item-impl item) form environment))
+		 ((compiler-item? item)
+		  (expr-item
+		   (let ((compiler (compiler-item-impl item)))
+		     (lambda ()
+		       (compiler form environment)))))
+		 ((expander-item? item)
+		  (classify/form ((expander-item-impl item) form environment)
+				 environment))
+		 (else
+		  (if (not (list? (cdr form)))
+		      (syntax-error "Combination must be a proper list:" form))
+		  (expr-item
+		   (let ((items (classify/expressions (cdr form) environment)))
+		     (lambda ()
+		       (output/combination
+			(compile-item/expression item)
+			(map compile-item/expression items)))))))))
+	(else
+	 (expr-item (lambda () (output/constant form))))))
+
+(define (strip-keyword-value-item item)
+  (if (keyword-value-item? item)
+      (keyword-value-item-keyword item)
+      item))
+
+(define (classify/expression expression environment)
+  (classify/form expression environment))
+
+(define (classify/expressions expressions environment)
+  (map (lambda (expression)
+	 (classify/expression expression environment))
+       expressions))
+
+(define (classify/body forms environment)
+  ;; Syntactic definitions affect all forms that appear after them, so classify
+  ;; FORMS in order.
+  (seq-item
+   (let loop ((forms forms) (items '()))
+     (if (pair? forms)
+	 (loop (cdr forms)
+	       (reverse* (item->list (classify/form (car forms) environment))
+			 items))
+	 (reverse! items)))))
+
+;;;; Compiler
+
+(define (compile-item/top-level item)
+  (if (defn-item? item)
+      (let ((name (identifier->symbol (defn-item-id item)))
+	    (value (defn-item-value item)))
+	(if (keyword-value-item? value)
+	    (output/top-level-syntax-definition
+	     name
+	     (compile-item/expression (keyword-value-item-expr value)))
+	    (output/top-level-definition
+	     name
+	     (compile-item/expression value))))
+      (compile-item/expression item)))
+
+(define (compile-body-item/top-level item)
+  (output/top-level-sequence (map compile-item/top-level (item->list item))))
+
+(define (compile-body-items items)
+  (let ((items (flatten-items items)))
+    (if (not (pair? items))
+	(syntax-error "Empty body"))
+    (output/sequence
+     (append-map
+      (lambda (item)
+	(if (defn-item? item)
+	    (let ((value (defn-item-value item)))
+	      (if (keyword-value-item? value)
+		  '()
+		  (list (output/definition (defn-item-id item)
+					   (compile-item/expression value)))))
+	    (list (compile-item/expression item))))
+      items))))
+
+(define compile-item/expression)
+(add-boot-init!
+ (lambda ()
+   (set! compile-item/expression
+	 (standard-predicate-dispatcher 'compile-item/expression 1))
+   (run-deferred-boot-actions 'define-item-compiler)))
+
+(define (define-item-compiler predicate compiler)
+  (defer-boot-action 'define-item-compiler
+    (lambda ()
+      (define-predicate-dispatch-handler compile-item/expression
+	(list predicate)
+	compiler))))
+
+(define-item-compiler var-item?
+  (lambda (item)
+    (output/variable (var-item-id item))))
+
+(define-item-compiler expr-item?
+  (lambda (item)
+    ((expr-item-compiler item))))
+
+(define-item-compiler seq-item?
+  (lambda (item)
+    (compile-body-items (seq-item-elements item))))
+
+(define-item-compiler decl-item?
+  (lambda (item)
+    (output/declaration (decl-item-text item))))
+
+(define (illegal-expression-compiler description)
+  (let ((message (string description " may not be used as an expression:")))
+    (lambda (item)
+      (syntax-error message item))))
+
+(define-item-compiler reserved-name-item?
+  (illegal-expression-compiler "Reserved name"))
+
+(define-item-compiler keyword-item?
+  (illegal-expression-compiler "Syntactic keyword"))
+
+(define-item-compiler defn-item?
+  (illegal-expression-compiler "Definition"))
+
 ;;;; Syntactic closures
 
 (define (close-syntax form senv)
