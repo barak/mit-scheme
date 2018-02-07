@@ -55,20 +55,18 @@ USA.
     (with-identifier-renaming
      (lambda ()
        (if (top-level-syntactic-environment? senv)
-	   (compile-body-item/top-level (classify/body forms senv))
-	   (output/sequence (compile/expressions forms senv)))))))
+	   (compile-top-level-body (classify-body forms senv))
+	   (output/sequence
+	    (map (lambda (expr)
+		   (compile-expr expr senv))
+		 forms)))))))
 
-(define (compile/expression expression environment)
-  (compile-item/expression (classify/expression expression environment)))
-
-(define (compile/expressions expressions environment)
-  (map (lambda (expression)
-	 (compile/expression expression environment))
-       expressions))
+(define (compile-expr expression environment)
+  (compile-expr-item (classify-form expression environment)))
 
 ;;;; Classifier
 
-(define (classify/form form environment)
+(define (classify-form form environment)
   (cond ((identifier? form)
 	 (let ((item (lookup-identifier form environment)))
 	   (if (keyword-item? item)
@@ -83,7 +81,7 @@ USA.
 			    (output/the-environment)))))))
 	       item)))
 	((syntactic-closure? form)
-	 (classify/form
+	 (classify-form
 	  (syntactic-closure-form form)
 	  (make-partial-syntactic-environment (syntactic-closure-free form)
 					      environment
@@ -91,7 +89,7 @@ USA.
 	((pair? form)
 	 (let ((item
 		(strip-keyword-value-item
-		 (classify/expression (car form) environment))))
+		 (classify-form (car form) environment))))
 	   (cond ((classifier-item? item)
 		  ((classifier-item-impl item) form environment))
 		 ((compiler-item? item)
@@ -100,17 +98,20 @@ USA.
 		     (lambda ()
 		       (compiler form environment)))))
 		 ((expander-item? item)
-		  (classify/form ((expander-item-impl item) form environment)
+		  (classify-form ((expander-item-impl item) form environment)
 				 environment))
 		 (else
 		  (if (not (list? (cdr form)))
 		      (syntax-error "Combination must be a proper list:" form))
 		  (expr-item
-		   (let ((items (classify/expressions (cdr form) environment)))
+		   (let ((items
+			  (map (lambda (expr)
+				 (classify-form expr environment))
+			       (cdr form))))
 		     (lambda ()
 		       (output/combination
-			(compile-item/expression item)
-			(map compile-item/expression items)))))))))
+			(compile-expr-item item)
+			(map compile-expr-item items)))))))))
 	(else
 	 (expr-item (lambda () (output/constant form))))))
 
@@ -119,42 +120,34 @@ USA.
       (keyword-value-item-keyword item)
       item))
 
-(define (classify/expression expression environment)
-  (classify/form expression environment))
-
-(define (classify/expressions expressions environment)
-  (map (lambda (expression)
-	 (classify/expression expression environment))
-       expressions))
-
-(define (classify/body forms environment)
+(define (classify-body forms environment)
   ;; Syntactic definitions affect all forms that appear after them, so classify
   ;; FORMS in order.
   (seq-item
    (let loop ((forms forms) (items '()))
      (if (pair? forms)
 	 (loop (cdr forms)
-	       (reverse* (item->list (classify/form (car forms) environment))
+	       (reverse* (item->list (classify-form (car forms) environment))
 			 items))
 	 (reverse! items)))))
 
 ;;;; Compiler
 
-(define (compile-item/top-level item)
-  (if (defn-item? item)
-      (let ((name (identifier->symbol (defn-item-id item)))
-	    (value (defn-item-value item)))
-	(if (keyword-value-item? value)
-	    (output/top-level-syntax-definition
-	     name
-	     (compile-item/expression (keyword-value-item-expr value)))
-	    (output/top-level-definition
-	     name
-	     (compile-item/expression value))))
-      (compile-item/expression item)))
-
-(define (compile-body-item/top-level item)
-  (output/top-level-sequence (map compile-item/top-level (item->list item))))
+(define (compile-top-level-body item)
+  (output/top-level-sequence
+   (map (lambda (item)
+	  (if (defn-item? item)
+	      (let ((name (defn-item-id item))
+		    (value (defn-item-value item)))
+		(if (keyword-value-item? value)
+		    (output/top-level-syntax-definition
+		     name
+		     (compile-expr-item (keyword-value-item-expr value)))
+		    (output/top-level-definition
+		     name
+		     (compile-expr-item value))))
+	      (compile-expr-item item)))
+	(item->list item))))
 
 (define (compile-body-items items)
   (let ((items (flatten-items items)))
@@ -168,21 +161,21 @@ USA.
 	      (if (keyword-value-item? value)
 		  '()
 		  (list (output/definition (defn-item-id item)
-					   (compile-item/expression value)))))
-	    (list (compile-item/expression item))))
+					   (compile-expr-item value)))))
+	    (list (compile-expr-item item))))
       items))))
 
-(define compile-item/expression)
+(define compile-expr-item)
 (add-boot-init!
  (lambda ()
-   (set! compile-item/expression
-	 (standard-predicate-dispatcher 'compile-item/expression 1))
+   (set! compile-expr-item
+	 (standard-predicate-dispatcher 'compile-expr-item 1))
    (run-deferred-boot-actions 'define-item-compiler)))
 
 (define (define-item-compiler predicate compiler)
   (defer-boot-action 'define-item-compiler
     (lambda ()
-      (define-predicate-dispatch-handler compile-item/expression
+      (define-predicate-dispatch-handler compile-expr-item
 	(list predicate)
 	compiler))))
 
@@ -286,9 +279,9 @@ USA.
 	((closed-identifier? identifier) (syntactic-closure-form identifier))
 	(else (error:not-a identifier? identifier 'identifier->symbol))))
 
-(define (identifier=? environment-1 identifier-1 environment-2 identifier-2)
-  (let ((item-1 (lookup-identifier identifier-1 environment-1))
-	(item-2 (lookup-identifier identifier-2 environment-2)))
+(define (identifier=? senv-1 identifier-1 senv-2 identifier-2)
+  (let ((item-1 (lookup-identifier identifier-1 senv-1))
+	(item-2 (lookup-identifier identifier-2 senv-2)))
     (or (eq? item-1 item-2)
 	;; This is necessary because an identifier that is not explicitly bound
 	;; by an environment is mapped to a variable item, and the variable
@@ -317,12 +310,11 @@ USA.
 
 (define (capture-syntactic-environment expander)
   `(,(classifier->keyword
-      (lambda (form environment)
-	form				;ignore
-	(classify/form (expander environment)
-		       environment)))))
+      (lambda (form senv)
+	(declare (ignore form))
+	(classify-form (expander senv) senv)))))
 
-(define (reverse-syntactic-environments environment procedure)
+(define (reverse-syntactic-environments senv procedure)
   (capture-syntactic-environment
-   (lambda (closing-environment)
-     (close-syntax (procedure closing-environment) environment))))
+   (lambda (closing-senv)
+     (close-syntax (procedure closing-senv) senv))))

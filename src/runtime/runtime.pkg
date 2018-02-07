@@ -4404,13 +4404,11 @@ USA.
 	  syntax-error)
   (export (runtime syntax)
 	  classifier->keyword
-	  classify/body
-	  classify/expression
-	  classify/form
-	  compile-body-item/top-level
+	  classify-body
+	  classify-form
 	  compile-body-items
-	  compile-item/expression
-	  compile/expression
+	  compile-expr-item
+	  compile-expr
 	  compiler->keyword
 	  define-item-compiler
 	  raw-identifier?))

@@ -97,9 +97,9 @@ USA.
 	(transform-instance-variables
 	 (class-instance-transforms
 	  (name->class (identifier->symbol class-name)))
-	 (compile/expression self environment)
+	 (compile-expr self environment)
 	 free-names
-	 (compile/expression
+	 (compile-expr
 	  `(,(close-syntax 'begin
 			   (runtime-environment->syntactic
 			    system-global-environment))

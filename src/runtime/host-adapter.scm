@@ -186,7 +186,8 @@ USA.
                           env 'microcode-type))))
 
   (let ((env (->environment '(runtime syntax))))
-    (provide-rename env 'make-compiler-item 'compiler-item))
+    (provide-rename env 'make-compiler-item 'compiler-item)
+    (provide-rename env 'compile/expression 'compile-expr))
 
   (let ((env (->environment '(package))))
     (if (eval '(not (link-description? '#(name1 (package name) name2 #f)))

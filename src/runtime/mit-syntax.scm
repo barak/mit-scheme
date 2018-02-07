@@ -34,9 +34,7 @@ USA.
 (define (transformer-keyword procedure-name transformer->expander)
   (lambda (form senv)
     (syntax-check '(KEYWORD EXPRESSION) form)
-    (let ((transformer
-	   (compile-item/expression
-	    (classify/expression (cadr form) senv))))
+    (let ((transformer (compile-expr (cadr form) senv)))
       (let ((item
 	     (transformer->expander (transformer-eval transformer senv)
 				    senv)))
@@ -86,22 +84,22 @@ USA.
 				bvl)))
       (values bvl
 	      (compile-body-item
-	       (classify/body body environment))))))
+	       (classify-body body environment))))))
 
 (define (compile-body-item item)
   (output/body (compile-body-items (item->list item))))
 
 (define (classifier:begin form environment)
   (syntax-check '(KEYWORD * FORM) form)
-  (classify/body (cdr form) environment))
+  (classify-body (cdr form) environment))
 
 (define (compiler:if form environment)
   (syntax-check '(KEYWORD EXPRESSION EXPRESSION ? EXPRESSION) form)
   (output/conditional
-   (compile/expression (cadr form) environment)
-   (compile/expression (caddr form) environment)
+   (compile-expr (cadr form) environment)
+   (compile-expr (caddr form) environment)
    (if (pair? (cdddr form))
-       (compile/expression (cadddr form) environment)
+       (compile-expr (cadddr form) environment)
        (output/unspecific))))
 
 (define (compiler:quote form environment)
@@ -122,17 +120,17 @@ USA.
       (classify/location (cadr form) environment)
     (let ((value
 	   (if (pair? (cddr form))
-	       (compile/expression (caddr form) environment)
+	       (compile-expr (caddr form) environment)
 	       (output/unassigned))))
       (if environment-item
 	  (output/access-assignment
 	   name
-	   (compile-item/expression environment-item)
+	   (compile-expr-item environment-item)
 	   value)
 	  (output/assignment name value)))))
 
 (define (classify/location form environment)
-  (let ((item (classify/expression form environment)))
+  (let ((item (classify-form form environment)))
     (cond ((var-item? item)
 	   (values (var-item-id item) #f))
 	  ((access-item? item)
@@ -142,7 +140,7 @@ USA.
 
 (define (compiler:delay form environment)
   (syntax-check '(KEYWORD EXPRESSION) form)
-  (output/delay (compile/expression (cadr form) environment)))
+  (output/delay (compile-expr (cadr form) environment)))
 
 ;;;; Definitions
 
@@ -154,12 +152,12 @@ USA.
        (variable-binder defn-item
 			environment
 			name
-			(classify/expression (caddr form) environment))))))
+			(classify-form (caddr form) environment))))))
 
 (define (classifier:define-syntax form environment)
   (syntax-check '(keyword identifier expression) form)
   (let ((name (cadr form))
-	(item (classify/expression (caddr form) environment)))
+	(item (classify-form (caddr form) environment)))
     (keyword-binder environment name item)
     ;; User-defined macros at top level are preserved in the output.
     (if (and (keyword-value-item? item)
@@ -190,18 +188,18 @@ USA.
 		     (variable-binder cons
 				      binding-env
 				      (car binding)
-				      (classify/expression (cadr binding) env)))
+				      (classify-form (cadr binding) env)))
 		   bindings)))
 	 (expr-item
 	  (let ((names (map car bindings))
 		(values (map cdr bindings))
 		(seq-item
-		 (classify/body
+		 (classify-body
 		  body
 		  (make-internal-syntactic-environment binding-env))))
 	    (lambda ()
 	      (output/let names
-			  (map compile-item/expression values)
+			  (map compile-expr-item values)
 			  (compile-body-item seq-item))))))))))
 
 (define (classifier:let-syntax form env)
@@ -212,9 +210,9 @@ USA.
     (for-each (lambda (binding)
 		(keyword-binder binding-env
 				(car binding)
-				(classify/expression (cadr binding) env)))
+				(classify-form (cadr binding) env)))
 	      bindings)
-    (classify/body body (make-internal-syntactic-environment binding-env))))
+    (classify-body body (make-internal-syntactic-environment binding-env))))
 
 (define keyword:let-syntax
   (classifier->keyword classifier:let-syntax))
@@ -233,9 +231,9 @@ USA.
 		(keyword-binder binding-env (car binding) item))
 	      bindings
 	      (map (lambda (binding)
-		     (classify/expression (cadr binding) binding-env))
+		     (classify-form (cadr binding) binding-env))
 		   bindings))
-    (classify/body body (make-internal-syntactic-environment binding-env))))
+    (classify-body body (make-internal-syntactic-environment binding-env))))
 
 ;; TODO: this is a compiler rather than a macro because it uses the
 ;; special OUTPUT/DISJUNCTION.  Unfortunately something downstream in
@@ -245,7 +243,7 @@ USA.
   (syntax-check '(KEYWORD * EXPRESSION) form)
   (if (pair? (cdr form))
       (let loop ((expressions (cdr form)))
-	(let ((compiled (compile/expression (car expressions) environment)))
+	(let ((compiled (compile-expr (car expressions) environment)))
 	  (if (pair? (cdr expressions))
 	      (output/disjunction compiled (loop (cdr expressions)))
 	      compiled)))
@@ -263,13 +261,13 @@ USA.
   (classifier->keyword
    (lambda (form environment)
      (make-access-item (cadr form)
-		       (classify/expression (caddr form) environment)))))
+		       (classify-form (caddr form) environment)))))
 
 (define-item-compiler access-item?
   (lambda (item)
     (output/access-reference
      (access-item/name item)
-     (compile-item/expression (access-item/environment item)))))
+     (compile-expr-item (access-item/environment item)))))
 
 (define (compiler:the-environment form environment)
   (syntax-check '(KEYWORD) form)
@@ -310,7 +308,7 @@ USA.
 			       declaration))
 
 (define (classify/variable-reference identifier environment)
-  (let ((item (classify/expression identifier environment)))
+  (let ((item (classify-form identifier environment)))
     (if (not (var-item? item))
 	(syntax-error "Variable required in this context:" identifier))
     item))
