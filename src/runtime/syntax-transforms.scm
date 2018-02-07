@@ -31,25 +31,30 @@ USA.
 
 (declare (usual-integrations))
 
-(define (sc-macro-transformer->expander transformer closing-env)
-  (expander-item
-   (lambda (form use-senv)
-     (close-syntax (transformer form use-senv)
-		   (->senv closing-env)))))
+;;; These optional arguments are needed for cross-compiling 9.2->9.3.
+;;; They can become required after 9.3 release.
 
-(define (rsc-macro-transformer->expander transformer closing-env)
-  (expander-item
-   (lambda (form use-senv)
-     (close-syntax (transformer form (->senv closing-env))
-		   use-senv))))
+(define (sc-macro-transformer->expander transformer closing-env #!optional expr)
+  (expander-item (lambda (form use-senv)
+		   (close-syntax (transformer form use-senv)
+				 (->senv closing-env)))
+		 expr))
 
-(define (er-macro-transformer->expander transformer closing-env)
-  (expander-item
-   (lambda (form use-senv)
-     (close-syntax (transformer form
-				(make-er-rename (->senv closing-env))
-				(make-er-compare use-senv))
-		   use-senv))))
+(define (rsc-macro-transformer->expander transformer closing-env
+					 #!optional expr)
+  (expander-item (lambda (form use-senv)
+		   (close-syntax (transformer form (->senv closing-env))
+				 use-senv))
+		 expr))
+
+(define (er-macro-transformer->expander transformer closing-env #!optional expr)
+  (expander-item (lambda (form use-senv)
+		   (close-syntax (transformer form
+					      (make-er-rename
+					       (->senv closing-env))
+					      (make-er-compare use-senv))
+				 use-senv))
+		 expr))
 
 (define (->senv env)
   (if (syntactic-environment? env)

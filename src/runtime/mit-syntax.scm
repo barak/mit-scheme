@@ -35,16 +35,12 @@ USA.
   (lambda (form senv)
     (syntax-check '(KEYWORD EXPRESSION) form)
     (let ((transformer (compile-expr (cadr form) senv)))
-      (let ((item
-	     (transformer->expander (transformer-eval transformer senv)
-				    senv)))
-	(if (top-level-syntactic-environment? senv)
-	    (keyword-value-item
-	     item
-	     (expr-item
-	      (lambda ()
-		(output/top-level-syntax-expander procedure-name transformer))))
-	    item)))))
+      (transformer->expander (transformer-eval transformer senv)
+			     senv
+			     (expr-item
+			      (lambda ()
+				(output/top-level-syntax-expander
+				 procedure-name transformer)))))))
 
 (define classifier:sc-macro-transformer
   ;; "Syntactic Closures" transformer
@@ -160,9 +156,9 @@ USA.
 	(item (classify-form (caddr form) environment)))
     (keyword-binder environment name item)
     ;; User-defined macros at top level are preserved in the output.
-    (if (and (keyword-value-item? item)
-	     (top-level-syntactic-environment? environment))
-	(defn-item name item)
+    (if (and (top-level-syntactic-environment? environment)
+	     (expander-item? item))
+	(syntax-defn-item name (expander-item-expr item))
 	(seq-item '()))))
 
 (define (keyword-binder environment name item)

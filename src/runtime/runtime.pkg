@@ -4428,9 +4428,11 @@ USA.
 	  decl-item?
 	  defn-item
 	  defn-item-id
+	  defn-item-syntax?
 	  defn-item-value
 	  defn-item?
 	  expander-item
+	  expander-item-expr
 	  expander-item-impl
 	  expander-item?
 	  expr-item
@@ -4439,15 +4441,12 @@ USA.
 	  flatten-items
 	  item->list
 	  keyword-item?
-	  keyword-value-item
-	  keyword-value-item-expr
-	  keyword-value-item-keyword
-	  keyword-value-item?
 	  reserved-name-item
 	  reserved-name-item?
 	  seq-item
 	  seq-item-elements
 	  seq-item?
+	  syntax-defn-item
 	  var-item
 	  var-item-id
 	  var-item?))

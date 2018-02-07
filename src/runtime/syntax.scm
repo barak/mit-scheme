@@ -68,18 +68,7 @@ USA.
 
 (define (classify-form form environment)
   (cond ((identifier? form)
-	 (let ((item (lookup-identifier form environment)))
-	   (if (keyword-item? item)
-	       (keyword-value-item
-		(strip-keyword-value-item item)
-		(expr-item
-		 (let ((name (identifier->symbol form)))
-		   (lambda ()
-		     (output/combination
-		      (output/runtime-reference 'syntactic-keyword->item)
-		      (list (output/constant name)
-			    (output/the-environment)))))))
-	       item)))
+	 (lookup-identifier form environment))
 	((syntactic-closure? form)
 	 (classify-form
 	  (syntactic-closure-form form)
@@ -87,9 +76,7 @@ USA.
 					      environment
 					      (syntactic-closure-senv form))))
 	((pair? form)
-	 (let ((item
-		(strip-keyword-value-item
-		 (classify-form (car form) environment))))
+	 (let ((item (classify-form (car form) environment)))
 	   (cond ((classifier-item? item)
 		  ((classifier-item-impl item) form environment))
 		 ((compiler-item? item)
@@ -115,11 +102,6 @@ USA.
 	(else
 	 (expr-item (lambda () (output/constant form))))))
 
-(define (strip-keyword-value-item item)
-  (if (keyword-value-item? item)
-      (keyword-value-item-keyword item)
-      item))
-
 (define (classify-body forms environment)
   ;; Syntactic definitions affect all forms that appear after them, so classify
   ;; FORMS in order.
@@ -138,14 +120,10 @@ USA.
    (map (lambda (item)
 	  (if (defn-item? item)
 	      (let ((name (defn-item-id item))
-		    (value (defn-item-value item)))
-		(if (keyword-value-item? value)
-		    (output/top-level-syntax-definition
-		     name
-		     (compile-expr-item (keyword-value-item-expr value)))
-		    (output/top-level-definition
-		     name
-		     (compile-expr-item value))))
+		    (value (compile-expr-item (defn-item-value item))))
+		(if (defn-item-syntax? item)
+		    (output/top-level-syntax-definition name value)
+		    (output/top-level-definition name value)))
 	      (compile-expr-item item)))
 	(item->list item))))
 
@@ -157,11 +135,11 @@ USA.
      (append-map
       (lambda (item)
 	(if (defn-item? item)
-	    (let ((value (defn-item-value item)))
-	      (if (keyword-value-item? value)
-		  '()
-		  (list (output/definition (defn-item-id item)
-					   (compile-expr-item value)))))
+	    (if (defn-item-syntax? item)
+		'()
+		(list (output/definition
+		       (defn-item-id item)
+		       (compile-expr-item (defn-item-value item)))))
 	    (list (compile-expr-item item))))
       items))))
 

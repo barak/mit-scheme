@@ -44,27 +44,20 @@ USA.
   (impl compiler-item-impl))
 
 (define-record-type <expander-item>
-    (expander-item impl)
+    (expander-item impl expr)
     expander-item?
-  (impl expander-item-impl))
-
-(define-record-type <keyword-value-item>
-    (keyword-value-item keyword expr)
-    keyword-value-item?
-  (keyword keyword-value-item-keyword)
-  (expr keyword-value-item-expr))
+  (impl expander-item-impl)
+  (expr expander-item-expr))
 
 (define (keyword-item? object)
   (or (classifier-item? object)
       (compiler-item? object)
-      (expander-item? object)
-      (keyword-value-item? object)))
+      (expander-item? object)))
 
 (register-predicate! keyword-item? 'keyword-item)
 (set-predicate<=! classifier-item? keyword-item?)
 (set-predicate<=! compiler-item? keyword-item?)
 (set-predicate<=! expander-item? keyword-item?)
-(set-predicate<=! keyword-value-item? keyword-item?)
 
 ;;; Variable items represent run-time variables.
 
@@ -97,10 +90,15 @@ USA.
 
 ;;; Definition items, whether top-level or internal, keyword or variable.
 
+(define (syntax-defn-item id value)
+  (guarantee identifier? id 'syntax-defn-item)
+  (guarantee defn-item-value? value 'syntax-defn-item)
+  (%defn-item id value #t))
+
 (define (defn-item id value)
   (guarantee identifier? id 'defn-item)
   (guarantee defn-item-value? value 'defn-item)
-  (%defn-item id value))
+  (%defn-item id value #f))
 
 (define (defn-item-value? object)
   (not (or (reserved-name-item? object)
@@ -108,10 +106,11 @@ USA.
 (register-predicate! defn-item-value? 'defn-item-value)
 
 (define-record-type <defn-item>
-    (%defn-item id value)
+    (%defn-item id value syntax?)
     defn-item?
   (id defn-item-id)
-  (value defn-item-value))
+  (value defn-item-value)
+  (syntax? defn-item-syntax?))
 
 (define-unparser-method defn-item?
   (simple-unparser-method 'defn-item

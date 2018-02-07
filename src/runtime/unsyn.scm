@@ -196,7 +196,10 @@ USA.
 	 (and (scode-access? operator)
 	      (eq? system-global-environment
 		   (scode-access-environment operator))
-	      (= 2 (length operands))
+	      ;; Two args for legacy; three for new.
+	      ;; Erase legacy support after 9.3 release.
+	      (or (= 2 (length operands))
+		  (= 3 (length operands)))
 	      (scode-lambda? (car operands))
 	      (scode-the-environment? (cadr operands))
 	      (let ((go
