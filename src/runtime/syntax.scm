@@ -142,8 +142,10 @@ USA.
     (or (eq? item-1 item-2)
 	;; This is necessary because an identifier that is not explicitly bound
 	;; by an environment is mapped to a variable item, and the variable
-	;; items are not hash-consed.  Therefore two references to the same
-	;; variable result in two different variable items.
+	;; items are not memoized by the runtime syntactic environments.  Fixing
+	;; this would require doing that memoizing, and also ensuring that
+	;; runtime-environment->syntactic memoized its result as well.  Avoiding
+	;; that complexity requires this small tweak.
 	(and (var-item? item-1)
 	     (var-item? item-2)
 	     (eq? (var-item-id item-1)
