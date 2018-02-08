@@ -5013,7 +5013,15 @@ USA.
 	  make-dispatch-metatag)
   (export (runtime predicate)
 	  add-dispatch-tag-superset
-	  any-dispatch-tag-superset))
+	  any-dispatch-tag-superset)
+  (export (runtime predicate-dispatch)
+	  fill-cache
+	  new-cache
+	  probe-cache
+	  probe-cache-1
+	  probe-cache-2
+	  probe-cache-3
+	  probe-cache-4))
 
 (define-package (runtime crypto)
   (files "crypto")

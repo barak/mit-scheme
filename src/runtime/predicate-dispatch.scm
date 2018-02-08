@@ -50,7 +50,7 @@ USA.
   (let ((metadata
 	 (make-metadata name
 			arity
-			(make-handler-set (make-default-handler name)))))
+			(make-handler-set arity (make-default-handler name)))))
     (make-entity (make-procedure arity metadata)
 		 metadata)))
 
@@ -65,23 +65,23 @@ USA.
       ((1)
        (lambda (self arg)
 	 (declare (ignore self))
-	 ((get-handler (list arg)) arg)))
+	 ((get-handler arg) arg)))
       ((2)
        (lambda (self arg1 arg2)
 	 (declare (ignore self))
-	 ((get-handler (list arg1 arg2)) arg1 arg2)))
+	 ((get-handler arg1 arg2) arg1 arg2)))
       ((3)
        (lambda (self arg1 arg2 arg3)
 	 (declare (ignore self))
-	 ((get-handler (list arg1 arg2 arg3)) arg1 arg2 arg3)))
+	 ((get-handler arg1 arg2 arg3) arg1 arg2 arg3)))
       ((4)
        (lambda (self arg1 arg2 arg3 arg4)
 	 (declare (ignore self))
-	 ((get-handler (list arg1 arg2 arg3 arg4)) arg1 arg2 arg3 arg4)))
+	 ((get-handler arg1 arg2 arg3 arg4) arg1 arg2 arg3 arg4)))
       (else
        (lambda (self . args)
 	 (declare (ignore self))
-	 (apply (get-handler args) args))))))
+	 (apply (apply get-handler args) args))))))
 
 (define (simple-predicate-dispatcher name arity)
   (make-predicate-dispatcher name arity simple-handler-set))
@@ -127,10 +127,11 @@ USA.
 
 ;;;; Handler set implementations
 
-(define (simple-handler-set default-handler)
+(define (simple-handler-set arity default-handler)
+  (declare (ignore arity))
   (let ((rules '()))
 
-    (define (get-handler args)
+    (define (get-handler . args)
       (let loop ((rules rules))
 	(if (pair? rules)
 	    (if (predicates-match? (cdar rules) args)
@@ -179,12 +180,12 @@ USA.
 	     (loop (cdr predicates) (cdr args))))))
 
 (define (make-subsetting-handler-set make-effective-handler)
-  (lambda (default-handler)
-    (let* ((delegate (simple-handler-set default-handler))
+  (lambda (arity default-handler)
+    (let* ((delegate (simple-handler-set arity default-handler))
 	   (delegate-get-rules (delegate 'get-rules))
 	   (delegate-get-default-handler (delegate 'get-default-handler)))
 
-      (define (get-handler args)
+      (define (get-handler . args)
         (let ((matching
 	       (let loop ((rules (delegate-get-rules)) (matching '()))
 		 (if (pair? rules)
@@ -193,10 +194,8 @@ USA.
 			       (cons (car rules) matching)
 			       matching))
 		     matching))))
-          (if (pair? matching)
-	      (make-effective-handler (map car (sort matching rule<?))
-				      delegate-get-default-handler)
-	      (delegate-get-default-handler))))
+	  (make-effective-handler (map car (sort matching rule<?))
+				  delegate-get-default-handler)))
 
       (lambda (operator)
         (case operator
@@ -214,8 +213,9 @@ USA.
 (define most-specific-handler-set
   (make-subsetting-handler-set
    (lambda (handlers get-default-handler)
-     (declare (ignore get-default-handler))
-     (car handlers))))
+     (if (pair? handlers)
+	 (car handlers)
+	 (get-default-handler)))))
 
 (define chaining-handler-set
   (make-subsetting-handler-set
@@ -227,22 +227,82 @@ USA.
                     (loop (cdr handlers))
                     args))
            (get-default-handler))))))
+
+(define (cached-most-specific-handler-set arity default-handler)
+  (cached-handler-set arity
+		      (most-specific-handler-set arity default-handler)
+		      object->dispatch-tag))
+
+(define (cached-chaining-handler-set arity default-handler)
+  (cached-handler-set arity
+		      (chaining-handler-set arity default-handler)
+		      object->dispatch-tag))
 
-(define (cached-handler-set delegate get-key)
-  (let ((get-handler
-	 (all-args-memoizer eqv?
-			    (lambda (args) (map get-key args))
-			    (delegate 'get-handler)))
+(define (cached-handler-set arity delegate get-key)
+  (let ((cache (new-cache (procedure-arity-min arity)))
+	(nmin (procedure-arity-min arity))
+	(delegate-get-handler (delegate 'get-handler))
 	(delegate-set-handler! (delegate 'set-handler!))
 	(delegate-set-default-handler! (delegate 'set-default-handler!)))
 
+    (define get-handler
+      (case (and (eqv? nmin (procedure-arity-max arity)) nmin)
+	((1)
+	 (lambda (a1)
+	   (or (probe-cache-1 cache (get-key a1))
+	       (handle-cache-miss (list a1)))))
+	((2)
+	 (lambda (a1 a2)
+	   (or (probe-cache-2 cache (get-key a1) (get-key a2))
+	       (handle-cache-miss (list a1 a2)))))
+	((3)
+	 (lambda (a1 a2 a3)
+	   (or (probe-cache-3 cache (get-key a1) (get-key a2) (get-key a3))
+	       (handle-cache-miss (list a1 a2 a3)))))
+	((4)
+	 (lambda (a1 a2 a3 a4)
+	   (or (probe-cache-4 cache (get-key a1) (get-key a2) (get-key a3)
+			      (get-key a4))
+	       (handle-cache-miss (list a1 a2 a3 a4)))))
+	(else
+	 (lambda args
+	   (or (probe-cache cache (compute-tags args))
+	       (handle-cache-miss args))))))
+
     (define (set-handler! predicates handler)
-      (clear-memoizer! get-handler)
+      (clear-cache!)
       (delegate-set-handler! predicates handler))
 
     (define (set-default-handler! handler)
-      (clear-memoizer! get-handler)
+      (clear-cache!)
       (delegate-set-default-handler! handler))
+
+    (define (handle-cache-miss args)
+      (let ((tags (compute-tags args))
+	    (handler (apply delegate-get-handler args)))
+	(without-interruption
+	 (lambda ()
+	   (set! cache (fill-cache cache tags handler))
+	   unspecific))
+	handler))
+
+    (define (compute-tags args)
+      (let ((p (list 'tags)))
+	(let loop ((n nmin) (args* args) (p p))
+	  (if (fix:> n 0)
+	      (begin
+		(if (not (pair? args*))
+		    (error:wrong-number-of-arguments get-handler arity args))
+		(let ((p* (list (get-key (car args*)))))
+		  (set-cdr! p p*)
+		  (loop (fix:- n 1) (cdr args*) p*)))))
+	(cdr p)))
+
+    (define (clear-cache!)
+      (without-interruption
+       (lambda ()
+	 (set! cache (new-cache nmin))
+	 unspecific)))
 
     (lambda (operator)
       (case operator
@@ -250,11 +310,3 @@ USA.
 	((set-handler!) set-handler!)
 	((set-default-handler!) set-default-handler!)
         (else (delegate operator))))))
-
-(define (cached-most-specific-handler-set default-handler)
-  (cached-handler-set (most-specific-handler-set default-handler)
-		      object->dispatch-tag))
-
-(define (cached-chaining-handler-set default-handler)
-  (cached-handler-set (chaining-handler-set default-handler)
-		      object->dispatch-tag))
