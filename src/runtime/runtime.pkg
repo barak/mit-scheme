@@ -2821,10 +2821,6 @@ USA.
 	  internal-lambda?
 	  lambda-names-vector
 	  make-slambda)
-  (export (runtime compiler-info)
-	  lambda-tag:internal-lambda)
-  (export (runtime lambda-list)
-	  lambda-tag:internal-lambda)
   (export (runtime unsyntaxer)
 	  lambda-immediate-body)
   (initialization (initialize-package!)))
@@ -3937,6 +3933,10 @@ USA.
 	  scode-disjunction-alternative
 	  scode-disjunction-predicate
 	  scode-disjunction?
+	  scode-lambda-name:fluid-let
+	  scode-lambda-name:internal-lambda
+	  scode-lambda-name:let
+	  scode-lambda-name:unnamed
 	  scode-quotation-expression
 	  scode-quotation?
 	  scode-sequence-actions
@@ -4461,13 +4461,12 @@ USA.
 	  bind-keyword
 	  bind-variable
 	  lookup-identifier
-	  make-internal-syntactic-environment
-	  make-keyword-syntactic-environment
-	  make-partial-syntactic-environment
+	  make-internal-senv
+	  make-keyword-senv
+	  make-partial-senv
 	  reserve-identifier
-	  syntactic-environment->runtime
-	  top-level-syntactic-environment?
-	  syntactic-environment?))
+	  senv->runtime
+	  senv-top-level?))
 
 (define-package (runtime syntax check)
   (files "syntax-check")
@@ -4488,10 +4487,6 @@ USA.
 (define-package (runtime syntax output)
   (files "syntax-output")
   (parent (runtime syntax))
-  (export ()
-	  lambda-tag:fluid-let
-	  lambda-tag:let
-	  lambda-tag:unnamed)
   (export (runtime syntax)
 	  output/access-assignment
 	  output/access-reference

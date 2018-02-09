@@ -30,7 +30,7 @@ USA.
 (declare (usual-integrations))
 
 (define (transformer-eval output environment)
-  (eval output (syntactic-environment->runtime environment)))
+  (eval output (senv->runtime environment)))
 
 (define (output/variable name)
   (make-scode-variable name))
@@ -51,7 +51,7 @@ USA.
     (if (scode-lambda? value)
 	(lambda-components* value
 	  (lambda (name* required optional rest body)
-	    (if (eq? name* lambda-tag:unnamed)
+	    (if (eq? name* scode-lambda-name:unnamed)
 		(make-lambda* name required optional rest body)
 		value)))
 	value)))
@@ -77,7 +77,7 @@ USA.
   (make-scode-combination operator operands))
 
 (define (output/lambda lambda-list body)
-  (output/named-lambda lambda-tag:unnamed lambda-list body))
+  (output/named-lambda scode-lambda-name:unnamed lambda-list body))
 
 (define (output/named-lambda name lambda-list body)
   (call-with-values (lambda () (parse-mit-lambda-list lambda-list))
@@ -97,7 +97,8 @@ USA.
   unspecific)
 
 (define (output/let names values body)
-  (output/combination (output/named-lambda lambda-tag:let names body) values))
+  (output/combination (output/named-lambda scode-lambda-name:let names body)
+		      values))
 
 (define (output/letrec names values body)
   (let ((temps
@@ -151,7 +152,3 @@ USA.
 
 (define (output/runtime-reference name)
   (output/access-reference name system-global-environment))
-
-(define lambda-tag:unnamed '|#[unnamed-procedure]|)
-(define lambda-tag:let '|#[let-procedure]|)
-(define lambda-tag:fluid-let '|#[fluid-let-procedure]|)

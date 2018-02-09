@@ -399,7 +399,7 @@ USA.
 				       (unsyntax-lambda-body environment* body)))))))
 
 (define (collect-lambda name bvl body)
-  (if (eq? name lambda-tag:unnamed)
+  (if (eq? name scode-lambda-name:unnamed)
       `(LAMBDA ,bvl ,@body)
       `(NAMED-LAMBDA (,name . ,bvl) ,@body)))
 
@@ -461,8 +461,8 @@ USA.
 		  (if (and (null? optional)
 			   (not rest)
 			   (= (length required) (length operands)))
-		      (if (or (eq? name lambda-tag:unnamed)
-			      (eq? name lambda-tag:let))
+		      (if (or (eq? name scode-lambda-name:unnamed)
+			      (eq? name scode-lambda-name:let))
 			  `(LET ,(unsyntax-let-bindings environment required operands)
 			     ,@(with-bindings environment operator
 					      (lambda (environment*)

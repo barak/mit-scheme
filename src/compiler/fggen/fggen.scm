@@ -453,7 +453,7 @@ USA.
 	  (return-3 '() '()
 		    (scode/make-combination
 		     (scode/make-lambda
-		      lambda-tag:let auxiliary '() #f names '()
+		      scode-lambda-name:let auxiliary '() #f names '()
 		      (scode/make-sequence
 		       (map* actions scode/make-assignment names values)))
 		     (map (lambda (name)
@@ -889,7 +889,7 @@ USA.
     (ucode-primitive system-pair-cons)
     (list (ucode-type delayed)
 	  0
-	  (scode/make-lambda lambda-tag:unnamed '() '() #f '() '()
+	  (scode/make-lambda scode-lambda-name:unnamed '() '() #f '() '()
 			     (scode/delay-expression expression))))))
 
 (define (generate/error-combination block continuation context expression)

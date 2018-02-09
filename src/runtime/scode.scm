@@ -414,6 +414,11 @@ USA.
   (cond ((slambda? lambda) (slambda-body lambda))
 	((xlambda? lambda) (xlambda-body lambda))
 	(else (error:not-a scode-lambda? lambda 'scode-lambda-body))))
+
+(define scode-lambda-name:unnamed '|#[unnamed-procedure]|)
+(define scode-lambda-name:let '|#[let-procedure]|)
+(define scode-lambda-name:fluid-let '|#[fluid-let-procedure]|)
+(define scode-lambda-name:internal-lambda '|#[internal-lambda]|)
 
 ;;; Simple representation
 

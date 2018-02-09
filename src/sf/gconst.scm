@@ -33,7 +33,7 @@ USA.
   '(CHAR-BITS-LIMIT
     CHAR-CODE-LIMIT
     FALSE
-    LAMBDA-TAG:UNNAMED			;needed for cold load
+    scode-lambda-name:unnamed		;needed for cold load
     SYSTEM-GLOBAL-ENVIRONMENT		;suppresses warnings about (access ...)
     THE-EMPTY-STREAM
     TRUE

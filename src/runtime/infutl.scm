@@ -348,10 +348,10 @@ USA.
 	 (symbol->string (cdr association)))))
 
 (define-deferred special-form-procedure-names
-  `((,lambda-tag:unnamed . LAMBDA)
-    (,lambda-tag:internal-lambda . LAMBDA)
-    (,lambda-tag:let . LET)
-    (,lambda-tag:fluid-let . FLUID-LET)))
+  `((,scode-lambda-name:unnamed . lambda)
+    (,scode-lambda-name:internal-lambda . lambda)
+    (,scode-lambda-name:let . let)
+    (,scode-lambda-name:fluid-let . fluid-let)))
 
 (define (compiled-procedure/lambda entry)
   (let ((procedure (compiled-entry/dbg-object entry)))

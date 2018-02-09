@@ -60,7 +60,7 @@ USA.
   (scan-defines (scode/make-sequence body)
     (lambda (auxiliary declarations body)
       (scode/make-combination
-       (scode/make-lambda lambda-tag:let names '() false
+       (scode/make-lambda scode-lambda-name:let names '() false
 			  auxiliary declarations body)
        values))))
 

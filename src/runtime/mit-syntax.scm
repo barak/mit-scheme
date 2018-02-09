@@ -72,7 +72,7 @@ USA.
     (output/named-lambda (identifier->symbol (caadr form)) bvl body)))
 
 (define (compile/lambda bvl body environment)
-  (let ((environment (make-internal-syntactic-environment environment)))
+  (let ((environment (make-internal-senv environment)))
     ;; Force order -- bind names before classifying body.
     (let ((bvl
 	   (map-mit-lambda-list (lambda (identifier)
@@ -156,7 +156,7 @@ USA.
 	(item (classify-form (caddr form) environment)))
     (keyword-binder environment name item)
     ;; User-defined macros at top level are preserved in the output.
-    (if (and (top-level-syntactic-environment? environment)
+    (if (and (senv-top-level? environment)
 	     (expander-item? item))
 	(syntax-defn-item name (expander-item-expr item))
 	(seq-item '()))))
@@ -178,7 +178,7 @@ USA.
    (lambda (form env)
      (let ((bindings (cadr form))
 	   (body (cddr form))
-	   (binding-env (make-internal-syntactic-environment env)))
+	   (binding-env (make-internal-senv env)))
        (let ((bindings
 	      (map (lambda (binding)
 		     (variable-binder cons
@@ -192,7 +192,7 @@ USA.
 		(seq-item
 		 (classify-body
 		  body
-		  (make-internal-syntactic-environment binding-env))))
+		  (make-internal-senv binding-env))))
 	    (lambda ()
 	      (output/let names
 			  (map compile-expr-item values)
@@ -202,13 +202,13 @@ USA.
   (syntax-check '(keyword (* (identifier expression)) + form) form)
   (let ((bindings (cadr form))
 	(body (cddr form))
-	(binding-env (make-internal-syntactic-environment env)))
+	(binding-env (make-internal-senv env)))
     (for-each (lambda (binding)
 		(keyword-binder binding-env
 				(car binding)
 				(classify-form (cadr binding) env)))
 	      bindings)
-    (classify-body body (make-internal-syntactic-environment binding-env))))
+    (classify-body body (make-internal-senv binding-env))))
 
 (define keyword:let-syntax
   (classifier->keyword classifier:let-syntax))
@@ -217,7 +217,7 @@ USA.
   (syntax-check '(keyword (* (identifier expression)) + form) form)
   (let ((bindings (cadr form))
 	(body (cddr form))
-	(binding-env (make-internal-syntactic-environment env)))
+	(binding-env (make-internal-senv env)))
     (for-each (lambda (binding)
 		(reserve-identifier (car binding) binding-env))
 	      bindings)
@@ -229,7 +229,7 @@ USA.
 	      (map (lambda (binding)
 		     (classify-form (cadr binding) binding-env))
 		   bindings))
-    (classify-body body (make-internal-syntactic-environment binding-env))))
+    (classify-body body (make-internal-senv binding-env))))
 
 ;; TODO: this is a compiler rather than a macro because it uses the
 ;; special OUTPUT/DISJUNCTION.  Unfortunately something downstream in
@@ -267,7 +267,7 @@ USA.
 
 (define (compiler:the-environment form environment)
   (syntax-check '(KEYWORD) form)
-  (if (not (top-level-syntactic-environment? environment))
+  (if (not (senv-top-level? environment))
       (syntax-error "This form allowed only at top level:" form))
   (output/the-environment))
 

@@ -60,14 +60,14 @@ USA.
 	   (loop (cdr items) passed (cons (car items) failed))))))
 
 (define (generate-label #!optional prefix)
-  (if (default-object? prefix) (set! prefix 'LABEL))
+  (if (default-object? prefix) (set! prefix 'label))
   (string->uninterned-symbol
    (canonicalize-label-name
     (string-append
      (symbol->string
-      (cond ((eq? prefix lambda-tag:unnamed) 'LAMBDA)
-	    ((eq? prefix lambda-tag:let) 'LET)
-	    ((eq? prefix lambda-tag:fluid-let) 'FLUID-LET)
+      (cond ((eq? prefix scode-lambda-name:unnamed) 'lambda)
+	    ((eq? prefix scode-lambda-name:let) 'let)
+	    ((eq? prefix scode-lambda-name:fluid-let) 'fluid-let)
 	    (else prefix)))
      "-"
      (number->string (generate-label-number))))))

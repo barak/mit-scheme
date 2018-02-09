@@ -184,7 +184,7 @@ ARBITRARY:	The expression may be executed more than once.  It
   (define (normal)
     (scode/make-directive
      (scode/make-combination
-      (scode/make-lambda lambda-tag:let
+      (scode/make-lambda scode-lambda-name:let
 			 (list environment-variable) '() false '()
 			 '()
 			 body)
@@ -723,7 +723,8 @@ ARBITRARY:	The expression may be executed more than once.  It
 		     (let* ((env-code (scode/make-the-environment))
 			    (nbody
 			     (canonicalize/expression
-			      (unscan-defines auxiliary decls (canout-expr nbody))
+			      (unscan-defines auxiliary decls
+					      (canout-expr nbody))
 			      '()
 			      (if (canonicalize/optimization-low? context)
 				  'FIRST-CLASS
@@ -757,13 +758,15 @@ ARBITRARY:	The expression may be executed more than once.  It
 			   (scode/make-absolute-reference '*MAKE-ENVIRONMENT)
 			   (cons* (scode/make-variable environment-variable)
 				  (list->vector
-				   (cons lambda-tag:unnamed names))
+				   (cons scode-lambda-name:unnamed names))
 				  (map scode/make-variable names)))))
 
 		    (if (and (scode/the-environment? body)
 			     (null? auxiliary))
 			env-code
-			(let* ((uexpr (unscan-defines auxiliary decls (canout-expr nbody)))
+			(let* ((uexpr
+				(unscan-defines auxiliary decls
+						(canout-expr nbody)))
 			       (nexpr
 				(canout-expr
 				 (canonicalize/expression
@@ -774,7 +777,8 @@ ARBITRARY:	The expression may be executed more than once.  It
 				      'TOP-LEVEL)))))
 
 			   (if (canonicalize/optimization-low? context)
-			       (canonicalize/bind-environment nexpr env-code uexpr)
+			       (canonicalize/bind-environment nexpr env-code
+							      uexpr)
 			       (scode/make-evaluation
 				(canonicalize/bind-environment
 				 nexpr

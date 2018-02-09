@@ -70,6 +70,9 @@ USA.
 
     (provide-rename env 'random-byte-vector 'random-bytevector)
     (provide-rename env 'string-downcase 'string-foldcase)
+    (provide-rename env 'lambda-tag:unnamed 'scode-lambda-name:unnamed)
+    (provide-rename env 'lambda-tag:let 'scode-lambda-name:let)
+    (provide-rename env 'lambda-tag:fluid-let 'scode-lambda-name:fluid-let)
 
     (for-each (lambda (old-name)
 		(provide-rename env old-name (symbol 'scode- old-name)))

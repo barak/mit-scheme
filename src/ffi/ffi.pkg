@@ -13,7 +13,7 @@ FFI System Packaging |#
 	  make-alien-function
 	  alien-function/filename)
   (import (runtime syntax)
-	  syntactic-environment->runtime)
+	  senv->runtime)
   (export ()
 	  c-include
 	  load-c-includes

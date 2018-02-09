@@ -132,12 +132,12 @@ USA.
       ;; This should be fixed some day.
 
       ;; From lambda.scm
-      (eq? object lambda-tag:internal-lambda)
+      (eq? object scode-lambda-name:internal-lambda)
 
       ;; From syntax-output.scm
-      (eq? object lambda-tag:fluid-let)
-      (eq? object lambda-tag:let)
-      (eq? object lambda-tag:unnamed)
+      (eq? object scode-lambda-name:fluid-let)
+      (eq? object scode-lambda-name:let)
+      (eq? object scode-lambda-name:unnamed)
       ))
 
 (define (parse-mit-lambda-list lambda-list)

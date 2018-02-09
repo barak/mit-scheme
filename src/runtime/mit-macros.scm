@@ -315,7 +315,7 @@ USA.
 		     (make-synthetic-identifier
 		      (identifier->symbol (car binding))))
 		   bindings)))
-	 `((,r-named-lambda (,lambda-tag:unnamed ,@(map car bindings))
+	 `((,r-named-lambda (,scode-lambda-name:unnamed ,@(map car bindings))
 			    ((,r-lambda ,temps
 					,@(map (lambda (binding temp)
 						 `(,r-set! ,(car binding)
@@ -337,7 +337,7 @@ USA.
 	   (r-lambda (rename 'LAMBDA))
 	   (r-named-lambda (rename 'NAMED-LAMBDA))
 	   (r-set!   (rename 'SET!)))
-       `((,r-named-lambda (,lambda-tag:unnamed ,@(map car bindings))
+       `((,r-named-lambda (,scode-lambda-name:unnamed ,@(map car bindings))
 			  ,@(map (lambda (binding)
 				   `(,r-set! ,@binding)) bindings)
 			  ((,r-lambda () ,@(cddr form))))

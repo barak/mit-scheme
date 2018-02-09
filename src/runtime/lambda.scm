@@ -554,11 +554,8 @@ USA.
 
 ;;;; Internal Lambda
 
-(define-integrable lambda-tag:internal-lambda
-  ((ucode-primitive string->symbol) "#[internal-lambda]"))
-
 (define-integrable (%make-internal-lambda names body)
-  (make-slambda lambda-tag:internal-lambda names body))
+  (make-slambda scode-lambda-name:internal-lambda names body))
 
 (define (make-auxiliary-lambda auxiliary body)
   (if (null? auxiliary)
@@ -568,7 +565,7 @@ USA.
 
 (define (internal-lambda? *lambda)
   (and (slambda? *lambda)
-       (eq? (slambda-name *lambda) lambda-tag:internal-lambda)))
+       (eq? (slambda-name *lambda) scode-lambda-name:internal-lambda)))
 
 (define (internal-lambda-bound? *lambda symbol)
   (and (slambda? *lambda)

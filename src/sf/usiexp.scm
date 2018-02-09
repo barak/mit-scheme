@@ -46,7 +46,7 @@ USA.
 		      (let ((variable (variable/make&bind! block name)))
 			(procedure/make
 			 #f
-			 block lambda-tag:let (list variable) '() #f
+			 block scode-lambda-name:let (list variable) '() #f
 			 (make-body block
 				    (reference/make #f block variable)))))
 		    (list operand)))
@@ -350,11 +350,11 @@ USA.
        block
        (procedure/make
 	#f
-	block lambda-tag:let variables '() #f
+	block scode-lambda-name:let variables '() #f
 	(let ((block (block/make block #t '())))
 	  (let ((variable (variable/make&bind! block 'RECEIVER)))
 	    (procedure/make
-	     #f block lambda-tag:unnamed (list variable) '() #f
+	     #f block scode-lambda-name:unnamed (list variable) '() #f
 	     (declaration/make
 	      #f
 	      ;; The receiver is used only once, and all its operand

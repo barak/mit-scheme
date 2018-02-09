@@ -619,17 +619,17 @@ USA.
 	(else (scode/make-conjunction t1 t2))))
 
 (define (scode/make-thunk body)
-  (scode/make-lambda lambda-tag:unnamed '() '() false '() '() body))
+  (scode/make-lambda scode-lambda-name:unnamed '() '() false '() '() body))
 
 (define (scode/let? obj)
   (and (scode/combination? obj)
        (let ((operator (scode/combination-operator obj)))
 	 (and (scode/lambda? operator)
-	      (eq? lambda-tag:let (scode/lambda-name operator))))))
+	      (eq? scode-lambda-name:let (scode/lambda-name operator))))))
 
 (define (scode/make-let names values declarations body)
   (scode/make-combination
-   (scode/make-lambda lambda-tag:let
+   (scode/make-lambda scode-lambda-name:let
 		      names
 		      '()
 		      false

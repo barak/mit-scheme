@@ -71,7 +71,7 @@ USA.
 
 (let ((environment-for-package
        (*make-environment system-global-environment
-			  (vector lambda-tag:unnamed))))
+			  (vector scode-lambda-name:unnamed))))
 
 (define-integrable + (ucode-primitive integer-add))
 (define-integrable - (ucode-primitive integer-subtract))

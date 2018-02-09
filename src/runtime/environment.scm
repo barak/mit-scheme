@@ -432,7 +432,9 @@ USA.
   (system-list->vector
    (ucode-type environment)
    (cons (system-pair-cons (ucode-type procedure)
-			   (make-slambda lambda-tag:unnamed names unspecific)
+			   (make-slambda scode-lambda-name:unnamed
+					 names
+					 unspecific)
 			   environment)
 	 (if (eq? values 'DEFAULT)
 	     (let ((values (make-list (length names))))

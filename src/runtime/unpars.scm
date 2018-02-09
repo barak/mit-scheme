@@ -725,7 +725,7 @@ USA.
 	 (lambda-components* (procedure-lambda procedure)
 	   (lambda (name required optional rest body)
 	     required optional rest body
-	     (and (not (eq? name lambda-tag:unnamed))
+	     (and (not (eq? name scode-lambda-name:unnamed))
 		  (lambda (context*)
 		    (*unparse-object name context*))))))))
 

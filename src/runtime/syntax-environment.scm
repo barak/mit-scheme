@@ -33,10 +33,10 @@ USA.
 	((environment? env) (%internal-runtime-senv env))
 	(else (error:not-a environment? env 'runtime-environment->syntactic))))
 
-(define (syntactic-environment->runtime senv)
+(define (senv->runtime senv)
   ((senv-get-runtime senv)))
 
-(define (top-level-syntactic-environment? senv)
+(define (senv-top-level? senv)
   (eq? 'top-level ((senv-get-type senv))))
 
 (define ((id-dispatcher handle-raw caller) identifier senv)
@@ -157,7 +157,7 @@ USA.
 
 ;;; Keyword environments are used to make keywords that represent items.
 
-(define (make-keyword-syntactic-environment name item)
+(define (make-keyword-senv name item)
 
   (define (get-type)
     'keyword)
@@ -186,8 +186,8 @@ USA.
 ;;; Internal syntactic environments represent environments created by
 ;;; procedure application.
 
-(define (make-internal-syntactic-environment parent)
-  (guarantee syntactic-environment? parent 'make-internal-syntactic-environment)
+(define (make-internal-senv parent)
+  (guarantee syntactic-environment? parent 'make-internal-senv)
   (let ((bound '())
 	(free '())
 	(get-runtime (senv-get-runtime parent))
@@ -229,8 +229,8 @@ USA.
 ;;; Partial syntactic environments are used to implement syntactic
 ;;; closures that have free names.
 
-(define (make-partial-syntactic-environment free-ids free-senv bound-senv)
-  (let ((caller 'make-partial-syntactic-environment))
+(define (make-partial-senv free-ids free-senv bound-senv)
+  (let ((caller 'make-partial-senv))
     (guarantee list-of-unique-symbols? free-ids caller)
     (guarantee syntactic-environment? free-senv caller)
     (guarantee syntactic-environment? bound-senv caller))

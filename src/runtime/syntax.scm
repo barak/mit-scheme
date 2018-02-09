@@ -54,46 +54,46 @@ USA.
 	     (runtime-environment->syntactic environment))))
     (with-identifier-renaming
      (lambda ()
-       (if (top-level-syntactic-environment? senv)
+       (if (senv-top-level? senv)
 	   (compile-top-level-body (classify-body forms senv))
 	   (output/sequence
 	    (map (lambda (expr)
 		   (compile-expr expr senv))
 		 forms)))))))
 
-(define (compile-expr expression environment)
-  (compile-expr-item (classify-form expression environment)))
+(define (compile-expr expr senv)
+  (compile-expr-item (classify-form expr senv)))
 
 ;;;; Classifier
 
-(define (classify-form form environment)
+(define (classify-form form senv)
   (cond ((identifier? form)
-	 (lookup-identifier form environment))
+	 (lookup-identifier form senv))
 	((syntactic-closure? form)
 	 (classify-form
 	  (syntactic-closure-form form)
-	  (make-partial-syntactic-environment (syntactic-closure-free form)
-					      environment
-					      (syntactic-closure-senv form))))
+	  (make-partial-senv (syntactic-closure-free form)
+			     senv
+			     (syntactic-closure-senv form))))
 	((pair? form)
-	 (let ((item (classify-form (car form) environment)))
+	 (let ((item (classify-form (car form) senv)))
 	   (cond ((classifier-item? item)
-		  ((classifier-item-impl item) form environment))
+		  ((classifier-item-impl item) form senv))
 		 ((compiler-item? item)
 		  (expr-item
 		   (let ((compiler (compiler-item-impl item)))
 		     (lambda ()
-		       (compiler form environment)))))
+		       (compiler form senv)))))
 		 ((expander-item? item)
-		  (classify-form ((expander-item-impl item) form environment)
-				 environment))
+		  (classify-form ((expander-item-impl item) form senv)
+				 senv))
 		 (else
 		  (if (not (list? (cdr form)))
 		      (syntax-error "Combination must be a proper list:" form))
 		  (expr-item
 		   (let ((items
 			  (map (lambda (expr)
-				 (classify-form expr environment))
+				 (classify-form expr senv))
 			       (cdr form))))
 		     (lambda ()
 		       (output/combination
@@ -102,14 +102,14 @@ USA.
 	(else
 	 (expr-item (lambda () (output/constant form))))))
 
-(define (classify-body forms environment)
+(define (classify-body forms senv)
   ;; Syntactic definitions affect all forms that appear after them, so classify
   ;; FORMS in order.
   (seq-item
    (let loop ((forms forms) (items '()))
      (if (pair? forms)
 	 (loop (cdr forms)
-	       (reverse* (item->list (classify-form (car forms) environment))
+	       (reverse* (item->list (classify-form (car forms) senv))
 			 items))
 	 (reverse! items)))))
 
@@ -284,7 +284,7 @@ USA.
   (item->keyword (compiler-item compiler)))
 
 (define (item->keyword item)
-  (close-syntax 'keyword (make-keyword-syntactic-environment 'keyword item)))
+  (close-syntax 'keyword (make-keyword-senv 'keyword item)))
 
 (define (capture-syntactic-environment expander)
   `(,(classifier->keyword

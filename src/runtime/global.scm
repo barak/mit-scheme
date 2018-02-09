@@ -261,7 +261,7 @@ USA.
 
 (define user-initial-environment
   (*make-environment system-global-environment
-		     (vector lambda-tag:unnamed)))
+		     (vector scode-lambda-name:unnamed)))
 
 (define user-initial-prompt
   "]=>")
