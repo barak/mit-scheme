@@ -4406,6 +4406,10 @@ USA.
 	  classifier->keyword
 	  classify-body
 	  classify-form
+	  classify-form-car
+	  classify-form-cadr
+	  classify-form-caddr
+	  classify-form-cadddr
 	  compile-body-items
 	  compile-expr-item
 	  compiler->keyword

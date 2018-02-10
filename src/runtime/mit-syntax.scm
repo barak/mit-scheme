@@ -34,7 +34,7 @@ USA.
 (define (transformer-keyword procedure-name transformer->expander)
   (lambda (form senv)
     (syntax-check '(KEYWORD EXPRESSION) form)
-    (let ((transformer (compile-expr-item (classify-form (cadr form) senv))))
+    (let ((transformer (compile-expr-item (classify-form-cadr form senv))))
       (transformer->expander (transformer-eval transformer senv)
 			     senv
 			     (expr-item
@@ -92,10 +92,10 @@ USA.
 (define (compiler:if form senv)
   (syntax-check '(KEYWORD EXPRESSION EXPRESSION ? EXPRESSION) form)
   (output/conditional
-   (compile-expr-item (classify-form (cadr form) senv))
-   (compile-expr-item (classify-form (caddr form) senv))
+   (compile-expr-item (classify-form-cadr form senv))
+   (compile-expr-item (classify-form-caddr form senv))
    (if (pair? (cdddr form))
-       (compile-expr-item (classify-form (cadddr form) senv))
+       (compile-expr-item (classify-form-cadddr form senv))
        (output/unspecific))))
 
 (define (compiler:quote form senv)
@@ -116,7 +116,7 @@ USA.
       (classify/location (cadr form) senv)
     (let ((value
 	   (if (pair? (cddr form))
-	       (compile-expr-item (classify-form (caddr form) senv))
+	       (compile-expr-item (classify-form-caddr form senv))
 	       (output/unassigned))))
       (if environment-item
 	  (output/access-assignment
@@ -136,7 +136,7 @@ USA.
 
 (define (compiler:delay form senv)
   (syntax-check '(KEYWORD EXPRESSION) form)
-  (output/delay (compile-expr-item (classify-form (cadr form) senv))))
+  (output/delay (compile-expr-item (classify-form-cadr form senv))))
 
 ;;;; Definitions
 
@@ -148,12 +148,12 @@ USA.
        (variable-binder defn-item
 			senv
 			name
-			(classify-form (caddr form) senv))))))
+			(classify-form-caddr form senv))))))
 
 (define (classifier:define-syntax form senv)
   (syntax-check '(keyword identifier expression) form)
   (let ((name (cadr form))
-	(item (classify-form (caddr form) senv)))
+	(item (classify-form-caddr form senv)))
     (keyword-binder senv name item)
     ;; User-defined macros at top level are preserved in the output.
     (if (and (senv-top-level? senv)
@@ -184,7 +184,7 @@ USA.
 		     (variable-binder cons
 				      binding-env
 				      (car binding)
-				      (classify-form (cadr binding) env)))
+				      (classify-form-cadr binding env)))
 		   bindings)))
 	 (expr-item
 	  (let ((names (map car bindings))
@@ -206,7 +206,7 @@ USA.
     (for-each (lambda (binding)
 		(keyword-binder binding-env
 				(car binding)
-				(classify-form (cadr binding) env)))
+				(classify-form-cadr binding env)))
 	      bindings)
     (classify-body body (make-internal-senv binding-env))))
 
@@ -227,7 +227,7 @@ USA.
 		(keyword-binder binding-env (car binding) item))
 	      bindings
 	      (map (lambda (binding)
-		     (classify-form (cadr binding) binding-env))
+		     (classify-form-cadr binding binding-env))
 		   bindings))
     (classify-body body (make-internal-senv binding-env))))
 
@@ -239,7 +239,8 @@ USA.
   (syntax-check '(KEYWORD * EXPRESSION) form)
   (if (pair? (cdr form))
       (let loop ((expressions (cdr form)))
-	(let ((compiled (compile-expr-item (classify-form (car expressions) senv))))
+	(let ((compiled
+	       (compile-expr-item (classify-form-car expressions senv))))
 	  (if (pair? (cdr expressions))
 	      (output/disjunction compiled (loop (cdr expressions)))
 	      compiled)))
@@ -257,7 +258,7 @@ USA.
   (classifier->keyword
    (lambda (form senv)
      (make-access-item (cadr form)
-		       (classify-form (caddr form) senv)))))
+		       (classify-form-caddr form senv)))))
 
 (define-item-compiler access-item?
   (lambda (item)

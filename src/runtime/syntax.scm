@@ -73,7 +73,7 @@ USA.
 			     senv
 			     (syntactic-closure-senv form))))
 	((pair? form)
-	 (let ((item (classify-form (car form) senv)))
+	 (let ((item (classify-form-car form senv)))
 	   (cond ((classifier-item? item)
 		  ((classifier-item-impl item) form senv))
 		 ((compiler-item? item)
@@ -106,9 +106,21 @@ USA.
    (let loop ((forms forms) (items '()))
      (if (pair? forms)
 	 (loop (cdr forms)
-	       (reverse* (item->list (classify-form (car forms) senv))
+	       (reverse* (item->list (classify-form-car forms senv))
 			 items))
 	 (reverse! items)))))
+
+(define (classify-form-car form senv)
+  (classify-form (car form) senv))
+
+(define (classify-form-cadr form senv)
+  (classify-form (cadr form) senv))
+
+(define (classify-form-caddr form senv)
+  (classify-form (caddr form) senv))
+
+(define (classify-form-cadddr form senv)
+  (classify-form (cadddr form) senv))
 
 ;;;; Compiler
 
