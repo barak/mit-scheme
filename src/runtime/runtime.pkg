@@ -4505,7 +4505,6 @@ USA.
 	  output/lambda
 	  output/let
 	  output/letrec
-	  output/named-lambda
 	  output/quoted-identifier
 	  output/runtime-reference
 	  output/sequence

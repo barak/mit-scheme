@@ -74,9 +74,9 @@ USA.
 	   (map-mit-lambda-list (lambda (identifier)
 				  (bind-variable identifier senv))
 				bvl)))
-      (output/named-lambda name
-			   bvl
-			   (compile-body-item (classify-body body senv))))))
+      (output/lambda name
+		     bvl
+		     (compile-body-item (classify-body body senv))))))
 
 (define (compile-body-item item)
   (output/body (compile-body-items (item->list item))))

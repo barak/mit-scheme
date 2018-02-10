@@ -76,10 +76,7 @@ USA.
 (define (output/combination operator operands)
   (make-scode-combination operator operands))
 
-(define (output/lambda lambda-list body)
-  (output/named-lambda scode-lambda-name:unnamed lambda-list body))
-
-(define (output/named-lambda name lambda-list body)
+(define (output/lambda name lambda-list body)
   (call-with-values (lambda () (parse-mit-lambda-list lambda-list))
     (lambda (required optional rest)
       (make-lambda* name required optional rest body))))
@@ -97,7 +94,7 @@ USA.
   unspecific)
 
 (define (output/let names values body)
-  (output/combination (output/named-lambda scode-lambda-name:let names body)
+  (output/combination (output/lambda scode-lambda-name:let names body)
 		      values))
 
 (define (output/letrec names values body)
