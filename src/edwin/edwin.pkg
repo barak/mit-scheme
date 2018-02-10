@@ -285,7 +285,8 @@ USA.
 	  usual==>
 	  with-instance-variables)
   (import (runtime syntax)
-	  compile-expr
+	  classify-form
+	  compile-expr-item
 	  compiler-item))
 
 (define-package (edwin class-macros transform-instance-variables)

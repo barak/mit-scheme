@@ -34,7 +34,7 @@ USA.
 (define (transformer-keyword procedure-name transformer->expander)
   (lambda (form senv)
     (syntax-check '(KEYWORD EXPRESSION) form)
-    (let ((transformer (compile-expr (cadr form) senv)))
+    (let ((transformer (compile-expr-item (classify-form (cadr form) senv))))
       (transformer->expander (transformer-eval transformer senv)
 			     senv
 			     (expr-item
@@ -92,10 +92,10 @@ USA.
 (define (compiler:if form environment)
   (syntax-check '(KEYWORD EXPRESSION EXPRESSION ? EXPRESSION) form)
   (output/conditional
-   (compile-expr (cadr form) environment)
-   (compile-expr (caddr form) environment)
+   (compile-expr-item (classify-form (cadr form) environment))
+   (compile-expr-item (classify-form (caddr form) environment))
    (if (pair? (cdddr form))
-       (compile-expr (cadddr form) environment)
+       (compile-expr-item (classify-form (cadddr form) environment))
        (output/unspecific))))
 
 (define (compiler:quote form environment)
@@ -116,7 +116,7 @@ USA.
       (classify/location (cadr form) environment)
     (let ((value
 	   (if (pair? (cddr form))
-	       (compile-expr (caddr form) environment)
+	       (compile-expr-item (classify-form (caddr form) environment))
 	       (output/unassigned))))
       (if environment-item
 	  (output/access-assignment
@@ -136,7 +136,7 @@ USA.
 
 (define (compiler:delay form environment)
   (syntax-check '(KEYWORD EXPRESSION) form)
-  (output/delay (compile-expr (cadr form) environment)))
+  (output/delay (compile-expr-item (classify-form (cadr form) environment))))
 
 ;;;; Definitions
 
@@ -239,7 +239,7 @@ USA.
   (syntax-check '(KEYWORD * EXPRESSION) form)
   (if (pair? (cdr form))
       (let loop ((expressions (cdr form)))
-	(let ((compiled (compile-expr (car expressions) environment)))
+	(let ((compiled (compile-expr-item (classify-form (car expressions) environment))))
 	  (if (pair? (cdr expressions))
 	      (output/disjunction compiled (loop (cdr expressions)))
 	      compiled)))

@@ -190,7 +190,11 @@ USA.
 
   (let ((env (->environment '(runtime syntax))))
     (provide-rename env 'make-compiler-item 'compiler-item)
-    (provide-rename env 'compile/expression 'compile-expr))
+    (provide-rename env 'compile-item/expression 'compile-expr-item)
+    (if (unbound? env 'classify-form)
+	(eval '(define (classify-form form env)
+		 (classify/form form env env))
+	      env)))
 
   (let ((env (->environment '(package))))
     (if (eval '(not (link-description? '#(name1 (package name) name2 #f)))

@@ -97,14 +97,15 @@ USA.
 	(transform-instance-variables
 	 (class-instance-transforms
 	  (name->class (identifier->symbol class-name)))
-	 (compile-expr self environment)
+	 (compile-expr-item (classify-form self environment))
 	 free-names
-	 (compile-expr
-	  `(,(close-syntax 'begin
-			   (runtime-environment->syntactic
-			    system-global-environment))
-	    ,@body)
-	  environment)))))))
+	 (compile-expr-item
+	  (classify-form
+	   `(,(close-syntax 'begin
+			    (runtime-environment->syntactic
+			     system-global-environment))
+	     ,@body)
+	   environment))))))))
 
 (define-syntax ==>
   (syntax-rules ()

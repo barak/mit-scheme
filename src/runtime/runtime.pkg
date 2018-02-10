@@ -4408,7 +4408,6 @@ USA.
 	  classify-form
 	  compile-body-items
 	  compile-expr-item
-	  compile-expr
 	  compiler->keyword
 	  define-item-compiler
 	  raw-identifier?))

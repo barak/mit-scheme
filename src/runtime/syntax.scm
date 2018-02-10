@@ -58,11 +58,8 @@ USA.
 	   (compile-top-level-body (classify-body forms senv))
 	   (output/sequence
 	    (map (lambda (expr)
-		   (compile-expr expr senv))
+		   (compile-expr-item (classify-form expr senv)))
 		 forms)))))))
-
-(define (compile-expr expr senv)
-  (compile-expr-item (classify-form expr senv)))
 
 ;;;; Classifier
 
