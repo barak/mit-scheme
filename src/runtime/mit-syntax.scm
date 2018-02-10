@@ -277,22 +277,20 @@ USA.
   (syntax-check '(_ * (identifier * datum)) form)
   (decl-item
    (lambda ()
-     (classify/declarations (cdr form) senv))))
+     (classify-decls (cdr form) senv))))
 
-(define (classify/declarations declarations senv)
-  (map (lambda (declaration)
-	 (classify/declaration declaration senv))
-       declarations))
+(define (classify-decls decls senv)
+  (map (lambda (decl)
+	 (classify-decl decl senv))
+       decls))
 
-(define (classify/declaration declaration senv)
-  (map-declaration-identifiers (lambda (identifier)
-				 (var-item-id
-				  (classify/variable-reference identifier
-							       senv)))
-			       declaration))
+(define (classify-decl decl senv)
+  (map-decl-ids (lambda (id)
+		  (classify-id id senv))
+		decl))
 
-(define (classify/variable-reference identifier senv)
-  (let ((item (classify-form identifier senv)))
+(define (classify-id id senv)
+  (let ((item (classify-form id senv)))
     (if (not (var-item? item))
-	(syntax-error "Variable required in this context:" identifier))
-    item))
+	(syntax-error "Variable required in this context:" id))
+    (var-item-id item)))

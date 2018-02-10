@@ -39,7 +39,7 @@ USA.
 		      known-declarations))
 	  unspecific))))
 
-(define (map-declaration-identifiers procedure declaration)
+(define (map-decl-ids procedure declaration)
   (if (not (pair? declaration))
       (error "Ill-formed declaration:" declaration))
   (let* ((declaration

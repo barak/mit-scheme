@@ -4525,7 +4525,7 @@ USA.
   (files "syntax-declaration")
   (parent (runtime syntax))
   (export (runtime syntax)
-	  map-declaration-identifiers))
+	  map-decl-ids))
 
 (define-package (runtime syntax transforms)
   (files "syntax-transforms")

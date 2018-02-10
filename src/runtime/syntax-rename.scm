@@ -339,7 +339,7 @@ USA.
        (make-scode-open-block
 	(map substitution (scode-open-block-names expression))
 	(map (lambda (declaration)
-	       (map-declaration-identifiers substitution declaration))
+	       (map-decl-ids substitution declaration))
 	     (scode-open-block-declarations expression))
 	(alpha-substitute substitution (scode-open-block-actions expression)))))
 
@@ -347,7 +347,7 @@ USA.
      (lambda (substitution expression)
        (make-scode-declaration
 	(map (lambda (declaration)
-	       (map-declaration-identifiers substitution declaration))
+	       (map-decl-ids substitution declaration))
 	     (scode-declaration-text expression))
 	(alpha-substitute substitution
 			  (scode-declaration-expression expression)))))
