@@ -61,26 +61,22 @@ USA.
 
 (define (compiler:lambda form senv)
   (syntax-check '(_ mit-bvl + form) form)
-  (receive (bvl body)
-      (compile/lambda (cadr form) (cddr form) senv)
-    (output/lambda bvl body)))
+  (compile-lambda scode-lambda-name:unnamed (cadr form) (cddr form) senv))
 
 (define (compiler:named-lambda form senv)
-  (syntax-check '(_ (identifier . mit-bvl) + form) form)
-  (receive (bvl body)
-      (compile/lambda (cdadr form) (cddr form) senv)
-    (output/named-lambda (identifier->symbol (caadr form)) bvl body)))
+  (syntax-check '(_ (symbol . mit-bvl) + form) form)
+  (compile-lambda (caadr form) (cdadr form) (cddr form) senv))
 
-(define (compile/lambda bvl body senv)
+(define (compile-lambda name bvl body senv)
   (let ((senv (make-internal-senv senv)))
     ;; Force order -- bind names before classifying body.
     (let ((bvl
 	   (map-mit-lambda-list (lambda (identifier)
 				  (bind-variable identifier senv))
 				bvl)))
-      (values bvl
-	      (compile-body-item
-	       (classify-body body senv))))))
+      (output/named-lambda name
+			   bvl
+			   (compile-body-item (classify-body body senv))))))
 
 (define (compile-body-item item)
   (output/body (compile-body-items (item->list item))))
@@ -112,27 +108,19 @@ USA.
 
 (define (compiler:set! form senv)
   (syntax-check '(_ form ? expression) form)
-  (receive (name environment-item)
-      (classify/location (cadr form) senv)
-    (let ((value
-	   (if (pair? (cddr form))
-	       (compile-expr-item (classify-form-caddr form senv))
-	       (output/unassigned))))
-      (if environment-item
-	  (output/access-assignment
-	   name
-	   (compile-expr-item environment-item)
-	   value)
-	  (output/assignment name value)))))
-
-(define (classify/location form senv)
-  (let ((item (classify-form form senv)))
-    (cond ((var-item? item)
-	   (values (var-item-id item) #f))
-	  ((access-item? item)
-	   (values (access-item/name item) (access-item/environment item)))
+  (let ((lhs (classify-form-cadr form senv))
+	(rhs
+	 (if (pair? (cddr form))
+	     (compile-expr-item (classify-form-caddr form senv))
+	     (output/unassigned))))
+    (cond ((var-item? lhs)
+	   (output/assignment (var-item-id lhs) rhs))
+	  ((access-item? lhs)
+	   (output/access-assignment (access-item-name lhs)
+				     (compile-expr-item (access-item-env lhs))
+				     rhs))
 	  (else
-	   (syntax-error "Variable required in this context:" form)))))
+	   (syntax-error "Variable required in this context:" (cadr form))))))
 
 (define (compiler:delay form senv)
   (syntax-check '(_ expression) form)
@@ -249,22 +237,21 @@ USA.
 ;;;; MIT-specific syntax
 
 (define-record-type <access-item>
-    (make-access-item name environment)
+    (access-item name env)
     access-item?
-  (name access-item/name)
-  (environment access-item/environment))
+  (name access-item-name)
+  (env access-item-env))
 
 (define keyword:access
   (classifier->keyword
    (lambda (form senv)
-     (make-access-item (cadr form)
-		       (classify-form-caddr form senv)))))
+     (access-item (cadr form)
+		  (classify-form-caddr form senv)))))
 
 (define-item-compiler access-item?
   (lambda (item)
-    (output/access-reference
-     (access-item/name item)
-     (compile-expr-item (access-item/environment item)))))
+    (output/access-reference (access-item-name item)
+			     (compile-expr-item (access-item-env item)))))
 
 (define (compiler:the-environment form senv)
   (syntax-check '(_) form)
