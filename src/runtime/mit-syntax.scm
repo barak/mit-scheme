@@ -64,8 +64,9 @@ USA.
   (compile-lambda scode-lambda-name:unnamed (cadr form) (cddr form) senv))
 
 (define (compiler:named-lambda form senv)
-  (syntax-check '(_ (symbol . mit-bvl) + form) form)
-  (compile-lambda (caadr form) (cdadr form) (cddr form) senv))
+  (syntax-check '(_ (identifier . mit-bvl) + form) form)
+  (compile-lambda (identifier->symbol (caadr form)) (cdadr form) (cddr form)
+		  senv))
 
 (define (compile-lambda name bvl body senv)
   (let ((senv (make-internal-senv senv)))
