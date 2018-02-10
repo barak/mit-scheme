@@ -59,64 +59,64 @@ USA.
 
 ;;;; Core primitives
 
-(define (compiler:lambda form environment)
+(define (compiler:lambda form senv)
   (syntax-check '(KEYWORD MIT-BVL + FORM) form)
   (receive (bvl body)
-      (compile/lambda (cadr form) (cddr form) environment)
+      (compile/lambda (cadr form) (cddr form) senv)
     (output/lambda bvl body)))
 
-(define (compiler:named-lambda form environment)
+(define (compiler:named-lambda form senv)
   (syntax-check '(KEYWORD (IDENTIFIER . MIT-BVL) + FORM) form)
   (receive (bvl body)
-      (compile/lambda (cdadr form) (cddr form) environment)
+      (compile/lambda (cdadr form) (cddr form) senv)
     (output/named-lambda (identifier->symbol (caadr form)) bvl body)))
 
-(define (compile/lambda bvl body environment)
-  (let ((environment (make-internal-senv environment)))
+(define (compile/lambda bvl body senv)
+  (let ((senv (make-internal-senv senv)))
     ;; Force order -- bind names before classifying body.
     (let ((bvl
 	   (map-mit-lambda-list (lambda (identifier)
-				  (bind-variable identifier environment))
+				  (bind-variable identifier senv))
 				bvl)))
       (values bvl
 	      (compile-body-item
-	       (classify-body body environment))))))
+	       (classify-body body senv))))))
 
 (define (compile-body-item item)
   (output/body (compile-body-items (item->list item))))
 
-(define (classifier:begin form environment)
+(define (classifier:begin form senv)
   (syntax-check '(KEYWORD * FORM) form)
-  (classify-body (cdr form) environment))
+  (classify-body (cdr form) senv))
 
-(define (compiler:if form environment)
+(define (compiler:if form senv)
   (syntax-check '(KEYWORD EXPRESSION EXPRESSION ? EXPRESSION) form)
   (output/conditional
-   (compile-expr-item (classify-form (cadr form) environment))
-   (compile-expr-item (classify-form (caddr form) environment))
+   (compile-expr-item (classify-form (cadr form) senv))
+   (compile-expr-item (classify-form (caddr form) senv))
    (if (pair? (cdddr form))
-       (compile-expr-item (classify-form (cadddr form) environment))
+       (compile-expr-item (classify-form (cadddr form) senv))
        (output/unspecific))))
 
-(define (compiler:quote form environment)
-  (declare (ignore environment))
+(define (compiler:quote form senv)
+  (declare (ignore senv))
   (syntax-check '(keyword datum) form)
   (output/constant (strip-syntactic-closures (cadr form))))
 
-(define (compiler:quote-identifier form environment)
+(define (compiler:quote-identifier form senv)
   (syntax-check '(keyword identifier) form)
-  (let ((item (lookup-identifier (cadr form) environment)))
+  (let ((item (lookup-identifier (cadr form) senv)))
     (if (not (var-item? item))
 	(syntax-error "Can't quote a keyword identifier:" form))
     (output/quoted-identifier (var-item-id item))))
 
-(define (compiler:set! form environment)
+(define (compiler:set! form senv)
   (syntax-check '(KEYWORD FORM ? EXPRESSION) form)
   (receive (name environment-item)
-      (classify/location (cadr form) environment)
+      (classify/location (cadr form) senv)
     (let ((value
 	   (if (pair? (cddr form))
-	       (compile-expr-item (classify-form (caddr form) environment))
+	       (compile-expr-item (classify-form (caddr form) senv))
 	       (output/unassigned))))
       (if environment-item
 	  (output/access-assignment
@@ -125,8 +125,8 @@ USA.
 	   value)
 	  (output/assignment name value)))))
 
-(define (classify/location form environment)
-  (let ((item (classify-form form environment)))
+(define (classify/location form senv)
+  (let ((item (classify-form form senv)))
     (cond ((var-item? item)
 	   (values (var-item-id item) #f))
 	  ((access-item? item)
@@ -134,42 +134,42 @@ USA.
 	  (else
 	   (syntax-error "Variable required in this context:" form)))))
 
-(define (compiler:delay form environment)
+(define (compiler:delay form senv)
   (syntax-check '(KEYWORD EXPRESSION) form)
-  (output/delay (compile-expr-item (classify-form (cadr form) environment))))
+  (output/delay (compile-expr-item (classify-form (cadr form) senv))))
 
 ;;;; Definitions
 
 (define keyword:define
   (classifier->keyword
-   (lambda (form environment)
+   (lambda (form senv)
      (let ((name (cadr form)))
-       (reserve-identifier name environment)
+       (reserve-identifier name senv)
        (variable-binder defn-item
-			environment
+			senv
 			name
-			(classify-form (caddr form) environment))))))
+			(classify-form (caddr form) senv))))))
 
-(define (classifier:define-syntax form environment)
+(define (classifier:define-syntax form senv)
   (syntax-check '(keyword identifier expression) form)
   (let ((name (cadr form))
-	(item (classify-form (caddr form) environment)))
-    (keyword-binder environment name item)
+	(item (classify-form (caddr form) senv)))
+    (keyword-binder senv name item)
     ;; User-defined macros at top level are preserved in the output.
-    (if (and (senv-top-level? environment)
+    (if (and (senv-top-level? senv)
 	     (expander-item? item))
 	(syntax-defn-item name (expander-item-expr item))
 	(seq-item '()))))
 
-(define (keyword-binder environment name item)
+(define (keyword-binder senv name item)
   (if (not (keyword-item? item))
       (syntax-error "Keyword binding value must be a keyword:" name))
-  (bind-keyword name environment item))
+  (bind-keyword name senv item))
 
-(define (variable-binder k environment name item)
+(define (variable-binder k senv name item)
   (if (keyword-item? item)
       (syntax-error "Variable binding value must not be a keyword:" name))
-  (k (bind-variable name environment) item))
+  (k (bind-variable name senv) item))
 
 ;;;; LET-like
 
@@ -235,11 +235,11 @@ USA.
 ;; special OUTPUT/DISJUNCTION.  Unfortunately something downstream in
 ;; the compiler wants this, but it would be nice to eliminate this
 ;; hack.
-(define (compiler:or form environment)
+(define (compiler:or form senv)
   (syntax-check '(KEYWORD * EXPRESSION) form)
   (if (pair? (cdr form))
       (let loop ((expressions (cdr form)))
-	(let ((compiled (compile-expr-item (classify-form (car expressions) environment))))
+	(let ((compiled (compile-expr-item (classify-form (car expressions) senv))))
 	  (if (pair? (cdr expressions))
 	      (output/disjunction compiled (loop (cdr expressions)))
 	      compiled)))
@@ -255,9 +255,9 @@ USA.
 
 (define keyword:access
   (classifier->keyword
-   (lambda (form environment)
+   (lambda (form senv)
      (make-access-item (cadr form)
-		       (classify-form (caddr form) environment)))))
+		       (classify-form (caddr form) senv)))))
 
 (define-item-compiler access-item?
   (lambda (item)
@@ -265,46 +265,46 @@ USA.
      (access-item/name item)
      (compile-expr-item (access-item/environment item)))))
 
-(define (compiler:the-environment form environment)
+(define (compiler:the-environment form senv)
   (syntax-check '(KEYWORD) form)
-  (if (not (senv-top-level? environment))
+  (if (not (senv-top-level? senv))
       (syntax-error "This form allowed only at top level:" form))
   (output/the-environment))
 
 (define keyword:unspecific
   (compiler->keyword
-   (lambda (form environment)
-     (declare (ignore form environment))
+   (lambda (form senv)
+     (declare (ignore form senv))
      (output/unspecific))))
 
 (define keyword:unassigned
   (compiler->keyword
-   (lambda (form environment)
-     (declare (ignore form environment))
+   (lambda (form senv)
+     (declare (ignore form senv))
      (output/unassigned))))
 
 ;;;; Declarations
 
-(define (classifier:declare form environment)
+(define (classifier:declare form senv)
   (syntax-check '(keyword * (identifier * datum)) form)
   (decl-item
    (lambda ()
-     (classify/declarations (cdr form) environment))))
+     (classify/declarations (cdr form) senv))))
 
-(define (classify/declarations declarations environment)
+(define (classify/declarations declarations senv)
   (map (lambda (declaration)
-	 (classify/declaration declaration environment))
+	 (classify/declaration declaration senv))
        declarations))
 
-(define (classify/declaration declaration environment)
+(define (classify/declaration declaration senv)
   (map-declaration-identifiers (lambda (identifier)
 				 (var-item-id
 				  (classify/variable-reference identifier
-							       environment)))
+							       senv)))
 			       declaration))
 
-(define (classify/variable-reference identifier environment)
-  (let ((item (classify-form identifier environment)))
+(define (classify/variable-reference identifier senv)
+  (let ((item (classify-form identifier senv)))
     (if (not (var-item? item))
 	(syntax-error "Variable required in this context:" identifier))
     item))
