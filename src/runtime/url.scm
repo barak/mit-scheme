@@ -1044,21 +1044,21 @@ USA.
 		 '((PPU-FINISH BUFFER PURI #F))
 		 '()))))
 
-     (define (action:push? action) (syntax-match? '('PUSH ? SYMBOL) action))
+     (define (action:push? action) (syntax-match? '('push ? symbol) action))
      (define (expand:push action)
        `(WRITE-CHAR ,(if (pair? (cdr action))
 			 (string-ref (symbol->string (cadr action)) 0)
 			 'CHAR)
 		    BUFFER))
 
-     (define (action:set? action) (syntax-match? '('SET SYMBOL) action))
+     (define (action:set? action) (syntax-match? '('set symbol) action))
      (define (expand:set action)
        `(,(symbol 'BUFFER-> (cadr action)) BUFFER PURI))
 
      (define (action:go? action) (symbol? action))
      (define (expand:go action) `(,(symbol 'PPU: action) PORT BUFFER PURI))
 
-     (if (syntax-match? '(SYMBOL + (SYMBOL * DATUM)) (cdr form))
+     (if (syntax-match? '(symbol + (symbol * datum)) (cdr form))
 	 (let ((state-name (cadr form))
 	       (clauses (cddr form)))
 	   (let ((name (symbol 'PPU: state-name)))

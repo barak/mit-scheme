@@ -77,7 +77,7 @@ differences:
 (define-syntax define-structure
   (sc-macro-transformer
    (lambda (form use-environment)
-     (syntax-check '(KEYWORD + DATUM) form)
+     (syntax-check '(_ + datum) form)
      (capture-syntactic-environment
       (lambda (closing-environment)
 	(let ((structure

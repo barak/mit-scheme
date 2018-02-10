@@ -83,11 +83,11 @@ USA.
    (lambda (form environment)
      (let ((r-dpe (close-syntax 'DEFINE-*PARSER-EXPANDER environment))
 	   (r-lambda (close-syntax 'LAMBDA environment)))
-       (cond ((syntax-match? '(SYMBOL EXPRESSION) (cdr form))
+       (cond ((syntax-match? '(symbol expression) (cdr form))
 	      `(,r-dpe ',(cadr form)
 		       (,r-lambda ()
 				  ,(caddr form))))
-	     ((syntax-match? '((SYMBOL . MIT-BVL) + EXPRESSION) (cdr form))
+	     ((syntax-match? '((symbol . mit-bvl) + expression) (cdr form))
 	      `(,r-dpe ',(car (cadr form))
 		       (,r-lambda ,(cdr (cadr form))
 				  ,@(cddr form))))
@@ -207,7 +207,7 @@ USA.
 (define-syntax *parser
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(EXPRESSION) (cdr form))
+     (if (syntax-match? '(expression) (cdr form))
 	 (generate-parser-code (cadr form) environment)
 	 (ill-formed-syntax form)))))
 
@@ -256,7 +256,7 @@ USA.
 (define-syntax define-parser
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '((SYMBOL . MIT-BVL) + EXPRESSION) (cdr form))
+     (if (syntax-match? '((symbol . mit-bvl) + expression) (cdr form))
 	 (let ((name (car (cadr form)))
 	       (parameters (cdr (cadr form)))
 	       (compiler-body (cddr form))

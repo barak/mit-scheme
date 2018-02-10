@@ -212,7 +212,7 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      rename compare
-     (syntax-check '(KEYWORD EXPRESSION EXPRESSION) form)
+     (syntax-check '(_ expression expression) form)
      (if (fix:fixnum? #xFFFFFFFF)
 	 (cadr form)
 	 (caddr form)))))

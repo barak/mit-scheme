@@ -34,7 +34,7 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      (let ((if-error (lambda () (ill-formed-syntax form))))
-       (if (syntax-match? '(+ (DATUM * FORM)) (cdr form))
+       (if (syntax-match? '(+ (datum * form)) (cdr form))
 	   (let loop ((clauses (cdr form)))
 	     (let ((req (caar clauses))
 		   (if-true (lambda () `(,(rename 'BEGIN) ,@(cdar clauses)))))
@@ -59,12 +59,12 @@ USA.
 			      (if (and p ((cdr p)))
 				  (if-true)
 				  (if-false))))
-			   ((and (syntax-match? '(IDENTIFIER DATUM) req)
+			   ((and (syntax-match? '(identifier datum) req)
 				 (compare (rename 'NOT) (car req)))
 			    (req-loop (cadr req)
 				      if-false
 				      if-true))
-			   ((and (syntax-match? '(IDENTIFIER * DATUM) req)
+			   ((and (syntax-match? '(identifier * datum) req)
 				 (compare (rename 'AND) (car req)))
 			    (let and-loop ((reqs (cdr req)))
 			      (if (pair? reqs)
@@ -72,7 +72,7 @@ USA.
 					    (lambda () (and-loop (cdr reqs)))
 					    if-false)
 				  (if-true))))
-			   ((and (syntax-match? '(IDENTIFIER * DATUM) req)
+			   ((and (syntax-match? '(identifier * datum) req)
 				 (compare (rename 'OR) (car req)))
 			    (let or-loop ((reqs (cdr req)))
 			      (if (pair? reqs)
@@ -147,7 +147,7 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      compare				;ignore
-     (if (syntax-match? '(R4RS-BVL FORM + FORM) (cdr form))
+     (if (syntax-match? '(r4rs-bvl form + form) (cdr form))
 	 (let ((r-lambda (rename 'LAMBDA)))
 	   `(,(rename 'CALL-WITH-VALUES)
 	     (,r-lambda () ,(caddr form))
@@ -158,10 +158,10 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      compare				;ignore
-     (if (syntax-match? '(IDENTIFIER
-			  (IDENTIFIER * IDENTIFIER)
-			  IDENTIFIER
-			  * (IDENTIFIER IDENTIFIER ? IDENTIFIER))
+     (if (syntax-match? '(identifier
+			  (identifier * identifier)
+			  identifier
+			  * (identifier identifier ? identifier))
 			(cdr form))
 	 (let ((type (cadr form))
 	       (constructor (car (caddr form)))
@@ -193,14 +193,14 @@ USA.
        `(,keyword:define ,name ,value)))))
 
 (define (parse-define-form form rename)
-  (cond ((syntax-match? '((DATUM . MIT-BVL) + FORM) (cdr form))
+  (cond ((syntax-match? '((datum . mit-bvl) + form) (cdr form))
 	 (parse-define-form
 	  `(,(car form) ,(caadr form)
 			,(if (identifier? (caadr form))
 			     `(,(rename 'NAMED-LAMBDA) ,@(cdr form))
 			     `(,(rename 'LAMBDA) ,(cdadr form) ,@(cddr form))))
 	  rename))
-	((syntax-match? '(IDENTIFIER ? EXPRESSION) (cdr form))
+	((syntax-match? '(identifier ? expression) (cdr form))
 	 (values (cadr form)
 		 (if (pair? (cddr form))
 		     (caddr form)
@@ -214,7 +214,7 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      compare				;ignore
-     (cond ((syntax-match? '(IDENTIFIER (* (IDENTIFIER ? EXPRESSION)) + FORM)
+     (cond ((syntax-match? '(identifier (* (identifier ? expression)) + form)
 			   (cdr form))
 	    (let ((name (cadr form))
 		  (bindings (caddr form))
@@ -265,7 +265,7 @@ USA.
 		  (else
 		   (error "Unrecognized named-let-strategy:"
 			  named-let-strategy))))))
-	   ((syntax-match? '((* (IDENTIFIER ? EXPRESSION)) + FORM) (cdr form))
+	   ((syntax-match? '((* (identifier ? expression)) + form) (cdr form))
 	    `(,keyword:let ,@(cdr (normalize-let-bindings form))))
 	   (else
 	    (ill-formed-syntax form))))))
@@ -291,7 +291,7 @@ USA.
      (expand/let* form (rename 'LET-SYNTAX)))))
 
 (define (expand/let* form let-keyword)
-  (syntax-check '(KEYWORD (* DATUM) + FORM) form)
+  (syntax-check '(_ (* datum) + form) form)
   (let ((bindings (cadr form))
 	(body (cddr form)))
     (if (pair? bindings)
@@ -305,7 +305,7 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      (declare (ignore compare))
-     (syntax-check '(KEYWORD (* (IDENTIFIER ? EXPRESSION)) + FORM) form)
+     (syntax-check '(_ (* (identifier ? expression)) + form) form)
      (let ((bindings (cadr form))
 	   (r-lambda (rename 'LAMBDA))
 	   (r-named-lambda (rename 'NAMED-LAMBDA))
@@ -332,7 +332,7 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      (declare (ignore compare))
-     (syntax-check '(KEYWORD (* (IDENTIFIER ? EXPRESSION)) + FORM) form)
+     (syntax-check '(_ (* (identifier ? expression)) + form) form)
      (let ((bindings (cadr form))
 	   (r-lambda (rename 'LAMBDA))
 	   (r-named-lambda (rename 'NAMED-LAMBDA))
@@ -349,7 +349,7 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      compare				;ignore
-     (syntax-check '(KEYWORD * EXPRESSION) form)
+     (syntax-check '(_ * expression) form)
      (let ((operands (cdr form)))
        (if (pair? operands)
 	   (let ((if-keyword (rename 'IF)))
@@ -364,7 +364,7 @@ USA.
 (define-syntax :case
   (er-macro-transformer
    (lambda (form rename compare)
-     (syntax-check '(KEYWORD EXPRESSION + (DATUM * EXPRESSION)) form)
+     (syntax-check '(_ expression + (datum * expression)) form)
      (letrec
 	 ((process-clause
 	   (lambda (clause rest)
@@ -438,9 +438,9 @@ USA.
 (define-syntax :do
   (er-macro-transformer
    (lambda (form rename compare)
-     (syntax-check '(KEYWORD (* (IDENTIFIER EXPRESSION ? EXPRESSION))
-			     (+ FORM)
-			     * FORM)
+     (syntax-check '(_ (* (identifier expression ? expression))
+		       (+ form)
+		       * form)
 		   form)
      (let ((bindings (cadr form))
 	   (r-loop (rename 'DO-LOOP)))
@@ -563,7 +563,7 @@ USA.
 	 ((UNQUOTE-SPLICING) (syntax-error ",@ in illegal context:" arg))
 	 (else `(,(rename mode) ,@arg))))
 
-     (syntax-check '(KEYWORD EXPRESSION) form)
+     (syntax-check '(_ expression) form)
      (descend-quasiquote (cadr form) 0 finalize-quasiquote))))
 
 ;;;; SRFI 2: AND-LET*
@@ -582,17 +582,17 @@ USA.
      (let ((%and (rename 'AND))
 	   (%let (rename 'LET))
 	   (%begin (rename 'BEGIN)))
-       (cond ((syntax-match? '(() * FORM) (cdr form))
+       (cond ((syntax-match? '(() * form) (cdr form))
 	      `(,%begin #T ,@(cddr form)))
-	     ((syntax-match? '((* DATUM) * FORM) (cdr form))
+	     ((syntax-match? '((* datum) * form) (cdr form))
 	      (let ((clauses (cadr form))
 		    (body (cddr form)))
 		(define (expand clause recur)
-		  (cond ((syntax-match? 'IDENTIFIER clause)
+		  (cond ((syntax-match? 'identifier clause)
 			 (recur clause))
-			((syntax-match? '(EXPRESSION) clause)
+			((syntax-match? '(expression) clause)
 			 (recur (car clause)))
-			((syntax-match? '(IDENTIFIER EXPRESSION) clause)
+			((syntax-match? '(identifier expression) clause)
 			 (let ((tail (recur (car clause))))
 			   (and tail `(,%let (,clause) ,tail))))
 			(else #f)))
@@ -617,9 +617,9 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      rename compare			;ignore
-     (cond ((syntax-match? '(IDENTIFIER EXPRESSION) (cdr form))
+     (cond ((syntax-match? '(identifier expression) (cdr form))
 	    `(,keyword:access ,@(cdr form)))
-	   ((syntax-match? '(IDENTIFIER IDENTIFIER + FORM) (cdr form))
+	   ((syntax-match? '(identifier identifier + form) (cdr form))
 	    `(,keyword:access ,(cadr form) (,(car form) ,@(cddr form))))
 	   (else
 	    (ill-formed-syntax form))))))
@@ -628,7 +628,7 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      compare				;ignore
-     (syntax-check '(KEYWORD EXPRESSION * EXPRESSION) form)
+     (syntax-check '(_ expression * expression) form)
      (let ((self (make-synthetic-identifier 'SELF)))
        `(,(rename 'LETREC) ((,self (,(rename 'CONS-STREAM*)
 				    ,@(cdr form)
@@ -639,7 +639,7 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      compare				;ignore
-     (syntax-check '(KEYWORD EXPRESSION EXPRESSION) form)
+     (syntax-check '(_ expression expression) form)
      `(,(rename 'CONS) ,(cadr form)
 		       (,(rename 'DELAY) ,(caddr form))))))
 
@@ -647,9 +647,9 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      compare				;ignore
-     (cond ((syntax-match? '(EXPRESSION EXPRESSION) (cdr form))
+     (cond ((syntax-match? '(expression expression) (cdr form))
 	    `(,(rename 'CONS-STREAM) ,(cadr form) ,(caddr form)))
-	   ((syntax-match? '(EXPRESSION * EXPRESSION) (cdr form))
+	   ((syntax-match? '(expression * expression) (cdr form))
 	    `(,(rename 'CONS-STREAM) ,(cadr form)
 	      (,(rename 'CONS-STREAM*) ,@(cddr form))))
 	   (else
@@ -662,11 +662,11 @@ USA.
      (let ((r-begin (rename 'BEGIN))
 	   (r-declare (rename 'DECLARE))
 	   (r-define (rename 'DEFINE)))
-       (cond ((syntax-match? '(IDENTIFIER EXPRESSION) (cdr form))
+       (cond ((syntax-match? '(identifier expression) (cdr form))
 	      `(,r-begin
 		(,r-declare (INTEGRATE ,(cadr form)))
 		(,r-define ,@(cdr form))))
-	     ((syntax-match? '((IDENTIFIER * IDENTIFIER) + FORM) (cdr form))
+	     ((syntax-match? '((identifier * identifier) + form) (cdr form))
 	      `(,r-begin
 		(,r-declare (INTEGRATE-OPERATOR ,(caadr form)))
 		(,r-define ,(cadr form)
@@ -682,7 +682,7 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      compare
-     (syntax-check '(KEYWORD (* (FORM ? EXPRESSION)) + FORM) form)
+     (syntax-check '(_ (* (form ? expression)) + form) form)
      (let ((left-hand-sides (map car (cadr form)))
 	   (right-hand-sides (map cdr (cadr form)))
 	   (r-define (rename 'DEFINE))
@@ -711,7 +711,7 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      compare
-     (syntax-check '(KEYWORD (* (EXPRESSION EXPRESSION)) + FORM) form)
+     (syntax-check '(_ (* (expression expression)) + form) form)
      (let ((r-parameterize* (rename 'parameterize*))
 	   (r-list (rename 'list))
 	   (r-cons (rename 'cons))
@@ -727,7 +727,7 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      compare
-     (syntax-check '(KEYWORD (* (IDENTIFIER * DATUM)) + FORM) form)
+     (syntax-check '(_ (* (identifier * datum)) + form) form)
      (let ((r-let (rename 'LET))
 	   (r-declare (rename 'DECLARE)))
        `(,r-let ()

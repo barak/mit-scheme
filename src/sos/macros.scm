@@ -34,7 +34,7 @@ USA.
 	  (lambda (s a)
 	    (error (string-append "Malformed " s ":") a))))
      (lambda (form environment)
-       (if (syntax-match? '(DATUM (* EXPRESSION) * DATUM) (cdr form))
+       (if (syntax-match? '(datum (* expression) * datum) (cdr form))
 	   (let ((name (cadr form))
 		 (superclasses (caddr form))
 		 (slot-arguments
@@ -158,9 +158,9 @@ USA.
 	(else (lose "class name" name))))
 
 (define (parse-constructor-option class-name lose option)
-  (cond ((syntax-match? `(SYMBOL (* SYMBOL) . ,optional?) (cdr option))
+  (cond ((syntax-match? `(symbol (* symbol) . ,optional?) (cdr option))
 	 (values (cadr option) (caddr option) (cdddr option)))
-	((syntax-match? `((* SYMBOL) . ,optional?) (cdr option))
+	((syntax-match? `((* symbol) . ,optional?) (cdr option))
 	 (values (default-constructor-name class-name)
 		 (cadr option)
 		 (cddr option)))
@@ -273,7 +273,7 @@ USA.
 (define-syntax define-generic
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(IDENTIFIER MIT-BVL) (cdr form))
+     (if (syntax-match? '(identifier mit-bvl) (cdr form))
 	 (call-with-values (lambda () (parse-mit-lambda-list (caddr form)))
 	   (lambda (required optional rest)
 	     `(,(close-syntax 'DEFINE environment)
@@ -292,7 +292,7 @@ USA.
 (define-syntax define-method
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(IDENTIFIER DATUM + EXPRESSION) (cdr form))
+     (if (syntax-match? '(identifier datum + expression) (cdr form))
 	 (call-with-values
 	     (lambda () (parse-specialized-lambda-list (caddr form)))
 	   (lambda (required specializers optional rest)
@@ -310,7 +310,7 @@ USA.
 (define-syntax define-computed-method
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(IDENTIFIER DATUM + EXPRESSION) (cdr form))
+     (if (syntax-match? '(identifier datum + expression) (cdr form))
 	 (call-with-values
 	     (lambda () (parse-specialized-lambda-list (caddr form)))
 	   (lambda (required specializers optional rest)
@@ -326,7 +326,7 @@ USA.
 (define-syntax define-computed-emp
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(IDENTIFIER EXPRESSION DATUM + EXPRESSION) (cdr form))
+     (if (syntax-match? '(identifier expression datum + expression) (cdr form))
 	 (call-with-values
 	     (lambda () (parse-specialized-lambda-list (cadddr form)))
 	   (lambda (required specializers optional rest)
@@ -343,7 +343,7 @@ USA.
 (define-syntax method
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(DATUM + EXPRESSION) (cdr form))
+     (if (syntax-match? '(datum + expression) (cdr form))
 	 (call-with-values
 	     (lambda () (parse-specialized-lambda-list (cadr form)))
 	   (lambda (required specializers optional rest)

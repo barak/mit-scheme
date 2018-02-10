@@ -86,11 +86,11 @@ USA.
    (lambda (form environment)
      (let ((r-dme (close-syntax 'DEFINE-*MATCHER-EXPANDER environment))
 	   (r-lambda (close-syntax 'LAMBDA environment)))
-       (cond ((syntax-match? '(SYMBOL EXPRESSION) (cdr form))
+       (cond ((syntax-match? '(symbol expression) (cdr form))
 	      `(,r-dme ',(cadr form)
 		       (,r-lambda ()
 				  ,(caddr form))))
-	     ((syntax-match? '((SYMBOL . MIT-BVL) + EXPRESSION) (cdr form))
+	     ((syntax-match? '((symbol . mit-bvl) + expression) (cdr form))
 	      `(,r-dme ',(car (cadr form))
 		       (,r-lambda ,(cdr (cadr form))
 				  ,@(cddr form))))
@@ -225,7 +225,7 @@ USA.
 (define-syntax *matcher
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(EXPRESSION) (cdr form))
+     (if (syntax-match? '(expression) (cdr form))
 	 (generate-matcher-code (cadr form) environment)
 	 (ill-formed-syntax form)))))
 
@@ -272,7 +272,7 @@ USA.
 (define-syntax define-matcher
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '((SYMBOL . MIT-BVL) + EXPRESSION) (cdr form))
+     (if (syntax-match? '((symbol . mit-bvl) + expression) (cdr form))
 	 (let ((name (car (cadr form)))
 	       (parameters (cdr (cadr form)))
 	       (compiler-body (cddr form))
@@ -294,7 +294,7 @@ USA.
 (define-syntax define-atomic-matcher
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(DATUM + EXPRESSION) (cdr form))
+     (if (syntax-match? '(datum + expression) (cdr form))
 	 (let ((r-dm (close-syntax 'DEFINE-MATCHER environment))
 	       (r-wem (close-syntax 'WRAP-EXTERNAL-MATCHER environment)))
 	   `(,r-dm ,(cadr form)

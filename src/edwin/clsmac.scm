@@ -37,7 +37,7 @@ USA.
 (define-syntax define-class
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (and (syntax-match? '(IDENTIFIER DATUM (* SYMBOL)) (cdr form))
+     (if (and (syntax-match? '(identifier datum (* symbol)) (cdr form))
 	      (or (identifier? (caddr form))
 		  (null? (caddr form))))
 	 (let ((name (cadr form))
@@ -66,9 +66,9 @@ USA.
 		,name
 		',operation
 		,expression))))
-       (cond ((syntax-match? '(IDENTIFIER SYMBOL EXPRESSION) (cdr form))
+       (cond ((syntax-match? '(identifier symbol expression) (cdr form))
 	      (finish (cadr form) (caddr form) (cadddr form)))
-	     ((and (syntax-match? '(IDENTIFIER (SYMBOL . MIT-BVL) + EXPRESSION)
+	     ((and (syntax-match? '(identifier (symbol . mit-bvl) + expression)
 				  (cdr form))
 		   (pair? (cdr (caddr form)))
 		   (identifier? (cadr (caddr form))))
@@ -88,8 +88,7 @@ USA.
   (make-unmapped-macro-reference-trap
    (compiler-item
     (lambda (form environment)
-      (syntax-check '(KEYWORD IDENTIFIER EXPRESSION (* IDENTIFIER) + EXPRESSION)
-		    form)
+      (syntax-check '(_ identifier expression (* identifier) + expression) form)
       (let ((class-name (cadr form))
 	    (self (caddr form))
 	    (free-names (cadddr form))

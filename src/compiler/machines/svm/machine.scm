@@ -70,7 +70,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(SYMBOL * SYMBOL) (cdr form))
+     (if (syntax-match? '(symbol * symbol) (cdr form))
 	 (let ((tag (cadr form))
 	       (params (cddr form)))
 	   (let ((name (symbol 'INST: tag)))
@@ -85,7 +85,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(* SYMBOL) (cdr form))
+     (if (syntax-match? '(* symbol) (cdr form))
 	 `(BEGIN
 	    ,@(let loop ((names (cdr form)))
 		(if (pair? names)
@@ -98,7 +98,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(* SYMBOL) (cdr form))
+     (if (syntax-match? '(* symbol) (cdr form))
 	 `(BEGIN
 	    ,@(let loop ((names (cdr form)))
 		(if (pair? names)
@@ -175,7 +175,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(SYMBOL * SYMBOL) (cdr form))
+     (if (syntax-match? '(symbol * symbol) (cdr form))
 	 (let ((tag (cadr form))
 	       (params (cddr form)))
 	   (let ((name (symbol 'EA: tag)))
@@ -322,7 +322,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(* SYMBOL) (cdr form))
+     (if (syntax-match? '(* symbol) (cdr form))
 	 (let ((alist
 		(let loop ((names (cdr form)) (index 0))
 		  (if (pair? names)
@@ -402,19 +402,19 @@ USA.
 
 (define (interpreter-register:unbound?)
   (rtl:make-machine-register regnum:value))
-  
+
 (define-syntax define-machine-register
   (sc-macro-transformer
    (lambda (form environment)
      (if (syntax-match? '(symbol identifier) (cdr form))
-	 (let ((name (symbol 'INTERPRETER- (cadr form)))
+	 (let ((name (symbol 'interpreter- (cadr form)))
 	       (regnum (close-syntax (caddr form) environment)))
-	   `(BEGIN
-	      (DEFINE (,name)
-		(RTL:MAKE-MACHINE-REGISTER ,regnum))
-	      (DEFINE (,(symbol name '?) EXPRESSION)
-		(AND (RTL:REGISTER? EXPRESSION)
-		     (FIX:= (RTL:REGISTER-NUMBER EXPRESSION) ,regnum)))))
+	   `(begin
+	      (define (,name)
+		(rtl:make-machine-register ,regnum))
+	      (define (,(symbol name '?) expression)
+		(and (rtl:register? expression)
+		     (fix:= (rtl:register-number expression) ,regnum)))))
 	 (ill-formed-syntax form)))))
 
 (define-machine-register stack-pointer regnum:stack-pointer)

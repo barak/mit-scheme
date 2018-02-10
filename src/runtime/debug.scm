@@ -229,7 +229,7 @@ USA.
 (define-syntax define-command
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '((IDENTIFIER IDENTIFIER IDENTIFIER) + EXPRESSION)
+     (if (syntax-match? '((identifier identifier identifier) + expression)
 			(cdr form))
 	 (let ((dstate (cadr (cadr form)))
 	       (port (caddr (cadr form))))

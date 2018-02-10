@@ -77,7 +77,7 @@ USA.
 (define-syntax define-guarantee
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(SYMBOL EXPRESSION) (cdr form))
+     (if (syntax-match? '(symbol expression) (cdr form))
 	 (let ((root (cadr form))
 	       (desc (close-syntax (caddr form) environment)))
 	   (let ((p-name (symbol root '?))

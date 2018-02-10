@@ -81,7 +81,7 @@ USA.
 (let-syntax
     ((->label
       (sc-macro-transformer
-       (let ((pattern `(EXPRESSION IDENTIFIER ? ,string?)))
+       (let ((pattern `(expression identifier ? ,string?)))
 	 (lambda (form environment)
 	   (if (syntax-match? pattern (cdr form))
 	       (let ((find (close-syntax (cadr form) environment))

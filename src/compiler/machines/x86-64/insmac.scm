@@ -31,7 +31,7 @@ USA.
 (define-syntax define-trivial-instruction
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(IDENTIFIER DATUM * DATUM) (cdr form))
+     (if (syntax-match? '(identifier datum * datum) (cdr form))
 	 `(DEFINE-INSTRUCTION ,(cadr form)
 	    (()
 	     (BITS (8 ,(close-syntax (caddr form) environment)))
@@ -75,7 +75,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(IDENTIFIER * SYMBOL) (cdr form))
+     (if (syntax-match? '(identifier * symbol) (cdr form))
 	 `(DEFINE (,(cadr form) EXPRESSION)
 	    (LET ((MATCH-RESULT (PATTERN-LOOKUP ,ea-database-name EXPRESSION)))
 	      (AND MATCH-RESULT

@@ -861,8 +861,8 @@ USA.
   (sc-macro-transformer
    (lambda (form env)
      env
-     (if (and (syntax-match? '(SYMBOL ('EOF + DATUM)
-				      + (EXPRESSION + DATUM))
+     (if (and (syntax-match? '(symbol ('eof + datum)
+				      + (expression + datum))
 			     (cdr form))
 	      (let loop ((clauses (cddr form)))
 		(and (pair? clauses)

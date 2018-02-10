@@ -35,7 +35,7 @@ USA.
   (sc-macro-transformer
    (lambda (form env)
      env
-     (if (syntax-match? '(SYMBOL SYMBOL SYMBOL) (cdr form))
+     (if (syntax-match? '(symbol symbol symbol) (cdr form))
 	 (let ((type (cadr form))
 	       (new (caddr form))
 	       (old (cadddr form)))
@@ -61,7 +61,7 @@ USA.
    (lambda (form environment)
      (capture-syntactic-environment
       (lambda (instance-environment)
-	(if (syntax-match? '(SYMBOL EXPRESSION EXPRESSION EXPRESSION)
+	(if (syntax-match? '(symbol expression expression expression)
 			   (cdr form))
 	    (let ((name (list-ref form 1))
 		  (description (list-ref form 2))
@@ -88,7 +88,7 @@ USA.
 (define-syntax ref-command-object
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(SYMBOL) (cdr form))
+     (if (syntax-match? '(symbol) (cdr form))
 	 (close-syntax (command-name->scheme-name (cadr form)) environment)
 	 (ill-formed-syntax form)))))
 
@@ -99,7 +99,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(SYMBOL) (cdr form))
+     (if (syntax-match? '(symbol) (cdr form))
 	 `(COMMAND-PROCEDURE (REF-COMMAND-OBJECT ,(cadr form)))
 	 (ill-formed-syntax form)))))
 
@@ -107,7 +107,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(SYMBOL) (cdr form))
+     (if (syntax-match? '(symbol) (cdr form))
 	 (let ((variable-name (command-name->scheme-name (cadr form))))
 	   `(LET ((_ENV (->ENVIRONMENT '(EDWIN))))
 	      (AND (ENVIRONMENT-BOUND? _ENV ',variable-name)
@@ -125,7 +125,7 @@ USA.
      (expand-variable-definition form environment `#T))))
 
 (define (expand-variable-definition form environment buffer-local?)
-  (if (and (syntax-match? '(SYMBOL + EXPRESSION) (cdr form))
+  (if (and (syntax-match? '(symbol + expression) (cdr form))
 	   (<= (length form) 6))
       `(,(close-syntax 'DEFINE environment)
 	,(variable-name->scheme-name (list-ref form 1))
@@ -141,7 +141,7 @@ USA.
 (define-syntax ref-variable-object
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(SYMBOL) (cdr form))
+     (if (syntax-match? '(symbol) (cdr form))
 	 (close-syntax (variable-name->scheme-name (cadr form)) environment)
 	 (ill-formed-syntax form)))))
 
@@ -151,7 +151,7 @@ USA.
 (define-syntax ref-variable
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(SYMBOL ? EXPRESSION) (cdr form))
+     (if (syntax-match? '(symbol ? expression) (cdr form))
 	 (let ((name `(REF-VARIABLE-OBJECT ,(cadr form))))
 	   (if (pair? (cddr form))
 	       `(VARIABLE-LOCAL-VALUE ,(close-syntax (caddr form) environment)
@@ -177,7 +177,7 @@ USA.
 	    ,value))))))
 
 (define (expand-variable-assignment form environment generator)
-  (if (and (syntax-match? '(SYMBOL * EXPRESSION) (cdr form))
+  (if (and (syntax-match? '(symbol * expression) (cdr form))
 	   (<= (length form) 4))
       (generator `(REF-VARIABLE-OBJECT ,(list-ref form 1))
 		 (if (> (length form) 2)
@@ -191,10 +191,10 @@ USA.
 (define-syntax define-major-mode
   (sc-macro-transformer
    (let ((pattern
-	  `(SYMBOL ,(lambda (x) (or (not x) (symbol? x)))
+	  `(symbol ,(lambda (x) (or (not x) (symbol? x)))
 		   ,(lambda (x) (or (not x) (string? x)))
-		   EXPRESSION
-		   ? EXPRESSION)))
+		   expression
+		   ? expression)))
      (lambda (form environment)
        (if (syntax-match? pattern (cdr form))
 	   (let ((name (list-ref form 1))
@@ -234,9 +234,9 @@ USA.
 (define-syntax define-minor-mode
   (sc-macro-transformer
    (let ((pattern
-	  `(SYMBOL ,(lambda (x) (or (not x) (string? x)))
-		   EXPRESSION
-		   ? EXPRESSION)))
+	  `(symbol ,(lambda (x) (or (not x) (string? x)))
+		   expression
+		   ? expression)))
      (lambda (form environment)
        (if (syntax-match? pattern (cdr form))
 	   (let ((name (list-ref form 1)))
@@ -256,7 +256,7 @@ USA.
 (define-syntax ref-mode-object
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(SYMBOL) (cdr form))
+     (if (syntax-match? '(symbol) (cdr form))
 	 (close-syntax (mode-name->scheme-name (cadr form)) environment)
 	 (ill-formed-syntax form)))))
 

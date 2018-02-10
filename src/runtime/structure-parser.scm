@@ -32,7 +32,7 @@ USA.
 (define-syntax object-parser
   (sc-macro-transformer
    (lambda (form env)
-     (if (syntax-match? '(FORM) (cdr form))
+     (if (syntax-match? '(form) (cdr form))
 	 (compile-top-level (cadr form) 'OBJECT env)
 	 (ill-formed-syntax form)))))
 
@@ -47,7 +47,7 @@ USA.
 (define-syntax list-parser
   (sc-macro-transformer
    (lambda (form env)
-     (if (syntax-match? '(* FORM) (cdr form))
+     (if (syntax-match? '(* form) (cdr form))
 	 (compile-top-level `(SEQ ,@(cdr form)) 'LIST env)
 	 (ill-formed-syntax form)))))
 
@@ -63,7 +63,7 @@ USA.
 (define-syntax vector-parser
   (sc-macro-transformer
    (lambda (form env)
-     (if (syntax-match? '(* FORM) (cdr form))
+     (if (syntax-match? '(* form) (cdr form))
 	 (compile-top-level `(SEQ ,@(cdr form)) 'VECTOR env)
 	 (ill-formed-syntax form)))))
 
@@ -124,9 +124,9 @@ USA.
 	     (boolean? pattern)
 	     (null? pattern))
 	 (rewrite-pattern `(QUOTE ,pattern)))
-	((syntax-match? '('+ * FORM) pattern)
+	((syntax-match? '('+ * form) pattern)
 	 (rewrite-pattern `(SEQ ,@(cdr pattern) (* ,@(cdr pattern)))))
-	((syntax-match? '('? * FORM) pattern)
+	((syntax-match? '('? * form) pattern)
 	 (rewrite-pattern `(ALT (SEQ ,@(cdr pattern)) (VALUES))))
 	(else pattern)))
 
@@ -809,7 +809,7 @@ USA.
 	     rewrite-loop
 	     (lambda (expr loop)
 	       (let ((expr (rewrite-form expr loop)))
-		 (if (syntax-match? '('LAMBDA (* SYMBOL) EXPRESSION)
+		 (if (syntax-match? '('lambda (* symbol) expression)
 				    (car expr))
 		     (optimize-let (cadar expr)
 				   (cdr expr)
@@ -845,13 +845,13 @@ USA.
 (define (substitutable? expr)
   (or (symbol? expr)
       (number? expr)
-      (syntax-match? `('CAR ,substitutable?) expr)
-      (syntax-match? `('CDR ,substitutable?) expr)
-      (syntax-match? `('VECTOR-LENGTH ,substitutable?) expr)
-      (syntax-match? `('FIX:+ ,substitutable? ,substitutable?) expr)
-      (syntax-match? `('FIX:< ,substitutable? ,substitutable?) expr)
-      (syntax-match? `('FIX:= ,substitutable? ,substitutable?) expr)
-      (syntax-match? `('VECTOR-REF ,substitutable? ,substitutable?) expr)))
+      (syntax-match? `('car ,substitutable?) expr)
+      (syntax-match? `('cdr ,substitutable?) expr)
+      (syntax-match? `('vector-length ,substitutable?) expr)
+      (syntax-match? `('fix:+ ,substitutable? ,substitutable?) expr)
+      (syntax-match? `('fix:< ,substitutable? ,substitutable?) expr)
+      (syntax-match? `('fix:= ,substitutable? ,substitutable?) expr)
+      (syntax-match? `('vector-ref ,substitutable? ,substitutable?) expr)))
 
 (define (count-refs-in name expr)
   (walk-expr expr
@@ -995,11 +995,11 @@ USA.
 	  ((memq '#F (cdr expr))
 	   (win '#F))
 	  ((any (lambda (expr)
-		  (syntax-match? '('AND * EXPRESSION) expr))
+		  (syntax-match? '('and * expression) expr))
 		(cdr expr))
 	   (win `(AND
 		  ,@(append-map (lambda (expr)
-				  (if (syntax-match? '('AND * EXPRESSION) expr)
+				  (if (syntax-match? '('and * expression) expr)
 				      (cdr expr)
 				      (list expr)))
 				(cdr expr)))))
@@ -1009,16 +1009,16 @@ USA.
 		   if-constant if-quote if-reference
 		   if-lambda if-loop if-form)
   (let loop ((expr expr))
-    (cond ((syntax-match? '('LAMBDA (* SYMBOL) EXPRESSION) expr)
+    (cond ((syntax-match? '('lambda (* symbol) expression) expr)
 	   (if-lambda expr loop))
-	  ((syntax-match? '('LET SYMBOL (* (SYMBOL EXPRESSION)) EXPRESSION)
+	  ((syntax-match? '('let symbol (* (symbol expression)) expression)
 			  expr)
 	   (if-loop expr loop))
-	  ((syntax-match? '('QUOTE EXPRESSION) expr)
+	  ((syntax-match? '('quote expression) expr)
 	   (if-quote expr))
-	  ((syntax-match? '(+ EXPRESSION) expr)
+	  ((syntax-match? '(+ expression) expr)
 	   (if-form expr loop))
-	  ((syntax-match? 'IDENTIFIER expr)
+	  ((syntax-match? 'identifier expr)
 	   (if-reference expr))
 	  (else
 	   (if-constant expr)))))

@@ -38,8 +38,7 @@ USA.
 (define-syntax syntax-rules
   (er-macro-transformer
    (lambda (form rename compare)
-     (syntax-check '(KEYWORD (* IDENTIFIER) * ((IDENTIFIER . DATUM) EXPRESSION))
-		   form)
+     (syntax-check '(_ (* identifier) * ((identifier . datum) expression)) form)
      (let ((keywords (cadr form))
 	   (clauses (cddr form)))
        (if (let loop ((keywords keywords))
@@ -254,7 +253,7 @@ USA.
   `(,(compiler->keyword
       (lambda (form environment)
 	environment			;ignore
-	(syntax-check '(KEYWORD DATUM) form)
+	(syntax-check '(_ datum) form)
 	(output/constant (cadr form))))
     ,expression))
 

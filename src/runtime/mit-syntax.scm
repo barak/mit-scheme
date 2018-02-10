@@ -33,7 +33,7 @@ USA.
 
 (define (transformer-keyword procedure-name transformer->expander)
   (lambda (form senv)
-    (syntax-check '(KEYWORD EXPRESSION) form)
+    (syntax-check '(_ expression) form)
     (let ((transformer (compile-expr-item (classify-form-cadr form senv))))
       (transformer->expander (transformer-eval transformer senv)
 			     senv
@@ -60,13 +60,13 @@ USA.
 ;;;; Core primitives
 
 (define (compiler:lambda form senv)
-  (syntax-check '(KEYWORD MIT-BVL + FORM) form)
+  (syntax-check '(_ mit-bvl + form) form)
   (receive (bvl body)
       (compile/lambda (cadr form) (cddr form) senv)
     (output/lambda bvl body)))
 
 (define (compiler:named-lambda form senv)
-  (syntax-check '(KEYWORD (IDENTIFIER . MIT-BVL) + FORM) form)
+  (syntax-check '(_ (identifier . mit-bvl) + form) form)
   (receive (bvl body)
       (compile/lambda (cdadr form) (cddr form) senv)
     (output/named-lambda (identifier->symbol (caadr form)) bvl body)))
@@ -86,11 +86,11 @@ USA.
   (output/body (compile-body-items (item->list item))))
 
 (define (classifier:begin form senv)
-  (syntax-check '(KEYWORD * FORM) form)
+  (syntax-check '(_ * form) form)
   (classify-body (cdr form) senv))
 
 (define (compiler:if form senv)
-  (syntax-check '(KEYWORD EXPRESSION EXPRESSION ? EXPRESSION) form)
+  (syntax-check '(_ expression expression ? expression) form)
   (output/conditional
    (compile-expr-item (classify-form-cadr form senv))
    (compile-expr-item (classify-form-caddr form senv))
@@ -100,18 +100,18 @@ USA.
 
 (define (compiler:quote form senv)
   (declare (ignore senv))
-  (syntax-check '(keyword datum) form)
+  (syntax-check '(_ datum) form)
   (output/constant (strip-syntactic-closures (cadr form))))
 
 (define (compiler:quote-identifier form senv)
-  (syntax-check '(keyword identifier) form)
+  (syntax-check '(_ identifier) form)
   (let ((item (lookup-identifier (cadr form) senv)))
     (if (not (var-item? item))
 	(syntax-error "Can't quote a keyword identifier:" form))
     (output/quoted-identifier (var-item-id item))))
 
 (define (compiler:set! form senv)
-  (syntax-check '(KEYWORD FORM ? EXPRESSION) form)
+  (syntax-check '(_ form ? expression) form)
   (receive (name environment-item)
       (classify/location (cadr form) senv)
     (let ((value
@@ -135,7 +135,7 @@ USA.
 	   (syntax-error "Variable required in this context:" form)))))
 
 (define (compiler:delay form senv)
-  (syntax-check '(KEYWORD EXPRESSION) form)
+  (syntax-check '(_ expression) form)
   (output/delay (compile-expr-item (classify-form-cadr form senv))))
 
 ;;;; Definitions
@@ -151,7 +151,7 @@ USA.
 			(classify-form-caddr form senv))))))
 
 (define (classifier:define-syntax form senv)
-  (syntax-check '(keyword identifier expression) form)
+  (syntax-check '(_ identifier expression) form)
   (let ((name (cadr form))
 	(item (classify-form-caddr form senv)))
     (keyword-binder senv name item)
@@ -199,7 +199,7 @@ USA.
 			  (compile-body-item seq-item))))))))))
 
 (define (classifier:let-syntax form env)
-  (syntax-check '(keyword (* (identifier expression)) + form) form)
+  (syntax-check '(_ (* (identifier expression)) + form) form)
   (let ((bindings (cadr form))
 	(body (cddr form))
 	(binding-env (make-internal-senv env)))
@@ -214,7 +214,7 @@ USA.
   (classifier->keyword classifier:let-syntax))
 
 (define (classifier:letrec-syntax form env)
-  (syntax-check '(keyword (* (identifier expression)) + form) form)
+  (syntax-check '(_ (* (identifier expression)) + form) form)
   (let ((bindings (cadr form))
 	(body (cddr form))
 	(binding-env (make-internal-senv env)))
@@ -236,7 +236,7 @@ USA.
 ;; the compiler wants this, but it would be nice to eliminate this
 ;; hack.
 (define (compiler:or form senv)
-  (syntax-check '(KEYWORD * EXPRESSION) form)
+  (syntax-check '(_ * expression) form)
   (if (pair? (cdr form))
       (let loop ((expressions (cdr form)))
 	(let ((compiled
@@ -267,7 +267,7 @@ USA.
      (compile-expr-item (access-item/environment item)))))
 
 (define (compiler:the-environment form senv)
-  (syntax-check '(KEYWORD) form)
+  (syntax-check '(_) form)
   (if (not (senv-top-level? senv))
       (syntax-error "This form allowed only at top level:" form))
   (output/the-environment))
@@ -287,7 +287,7 @@ USA.
 ;;;; Declarations
 
 (define (classifier:declare form senv)
-  (syntax-check '(keyword * (identifier * datum)) form)
+  (syntax-check '(_ * (identifier * datum)) form)
   (decl-item
    (lambda ()
      (classify/declarations (cdr form) senv))))

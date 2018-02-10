@@ -423,7 +423,7 @@ USA.
 (define-syntax define-xml-printer
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(IDENTIFIER EXPRESSION) (cdr form))
+     (if (syntax-match? '(identifier expression) (cdr form))
 	 (let ((name (cadr form))
 	       (accessor (caddr form)))
 	   (let ((root (symbol 'XML- name)))

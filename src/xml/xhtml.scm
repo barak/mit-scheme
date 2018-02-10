@@ -57,7 +57,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(DATUM DATUM DATUM) (cdr form))
+     (if (syntax-match? '(datum datum datum) (cdr form))
 	 (let ((version (cadr form))
 	       (public-id (caddr form))
 	       (system-id (cadddr form)))
@@ -134,7 +134,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(SYMBOL SYMBOL ? 'EMPTY) (cdr form))
+     (if (syntax-match? '(symbol symbol ? 'empty) (cdr form))
 	 (let ((name (cadr form))
 	       (context (caddr form))
 	       (empty? (pair? (cdddr form))))

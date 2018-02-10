@@ -31,7 +31,7 @@ USA.
 (define-syntax define-instruction
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(SYMBOL * (DATUM + DATUM)) (cdr form))
+     (if (syntax-match? '(symbol * (datum + datum)) (cdr form))
 	 `(,(close-syntax 'ADD-INSTRUCTION! environment)
 	   ',(cadr form)
 	   ,(compile-database (cddr form) environment

@@ -221,7 +221,7 @@ USA.
 (define-syntax define-simple-content
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(IDENTIFIER EXPRESSION) (cdr form))
+     (if (syntax-match? '(identifier expression) (cdr form))
 	 (let ((node-type (close-syntax (cadr form) environment))
 	       (item-type (close-syntax (caddr form) environment)))
 	   `(BEGIN

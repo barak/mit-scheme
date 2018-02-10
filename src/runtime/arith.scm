@@ -34,7 +34,7 @@ USA.
 (define-syntax copy
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(IDENTIFIER) (cdr form))
+     (if (syntax-match? '(identifier) (cdr form))
 	 (let ((identifier (close-syntax (cadr form) environment)))
 	   `(LOCAL-DECLARE ((INTEGRATE ,identifier)) ,identifier))
 	 (ill-formed-syntax form)))))

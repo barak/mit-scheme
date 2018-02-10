@@ -39,7 +39,7 @@ USA.
 (define (syntax-match? pattern object)
   (let ((match-error
 	 (lambda ()
-	   (error:bad-range-argument pattern 'SYNTAX-MATCH?))))
+	   (error:bad-range-argument pattern 'syntax-match?))))
     (cond ((procedure? pattern)
 	   (pattern object))
 	  ((symbol? pattern)

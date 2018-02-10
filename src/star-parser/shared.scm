@@ -595,9 +595,9 @@ USA.
 	     (or (boolean? body)
 		 (symbol? body)
 		 (and (syntax-match?
-		       '('BEGIN
-			  ('SET-PARSER-BUFFER-POINTER! EXPRESSION IDENTIFIER)
-			  EXPRESSION)
+		       '('begin
+			  ('set-parser-buffer-pointer! expression identifier)
+			  expression)
 		       body)
 		      (or (boolean? (caddr body))
 			  (symbol? (caddr body)))))))
@@ -1004,7 +1004,7 @@ USA.
 				 EXPRESSION)
     (lambda (expression)
       (let ((expression* (car (last-pair (caddr expression)))))
-	(and (syntax-match? '('IF EXPRESSION EXPRESSION EXPRESSION)
+	(and (syntax-match? '('if expression expression expression)
 			    expression*)
 	     (equal? (cadddr expression*)
 		     (cadddr expression)))))
@@ -1021,7 +1021,7 @@ USA.
 				 ('BEGIN . (+ EXPRESSION)))
     (lambda (expression)
       (let ((expression* (car (last-pair (cadddr expression)))))
-	(and (syntax-match? '('IF EXPRESSION EXPRESSION EXPRESSION)
+	(and (syntax-match? '('if expression expression expression)
 			    expression*)
 	     (equal? (caddr expression*)
 		     (caddr expression)))))

@@ -281,7 +281,7 @@ USA.
 	(values (reverse! true) (reverse! false)))))
 
 (define (abbrev-def? input)
-  (syntax-match? '('DEFINE-ABBREVIATION (SYMBOL * DATUM) EXPRESSION)
+  (syntax-match? '('define-abbreviation (symbol * datum) expression)
 		 input))
 
 (define (define-parser keyword pattern parser)
@@ -331,7 +331,7 @@ USA.
   (set-coding-type-defns!
    coding-type
    (map (lambda (input)
-	  (if (not (syntax-match? '('DEFINE-CODE-SEQUENCE DATUM * DATUM)
+	  (if (not (syntax-match? '('define-code-sequence datum * datum)
 				  input))
 	      (error "Illegal sequence definition:" input))
 	  (parse-code-sequence coding-type (cadr input) (cddr input)))

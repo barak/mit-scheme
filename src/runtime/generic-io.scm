@@ -600,7 +600,7 @@ USA.
 	   (sc-macro-transformer
 	    (lambda (form environment)
 	      environment
-	      (if (syntax-match? '(SYMBOL) (cdr form))
+	      (if (syntax-match? '(symbol) (cdr form))
 		  (let ((root (cadr form)))
 		    (let ((aliases (symbol root '-ALIASES))
 			  (proc (symbol 'DEFINE- root '-ALIAS)))
@@ -844,7 +844,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(SYMBOL + DATUM) (cdr form))
+     (if (syntax-match? '(symbol + datum) (cdr form))
 	 (let ((name (cadr form))
 	       (start (caddr form))
 	       (code-points (cdddr form)))

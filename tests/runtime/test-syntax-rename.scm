@@ -34,13 +34,13 @@ USA.
 (define-syntax outer
   (sc-macro-transformer
    (lambda (form use-env)
-     (syntax-check '(keyword identifier) form)
+     (syntax-check '(_ identifier) form)
      (let* ((raw (cadr form))
 	    (closed (close-syntax raw use-env)))
        `(define-syntax ,(close-syntax 'inner use-env)
 	  (sc-macro-transformer
 	   (lambda (form use-env)
-	     (syntax-check '(keyword) form)
+	     (syntax-check '(_) form)
 	     `(,(quote-identifier ,raw)
 	       ,(quote ,raw)
 	       ,(quote-identifier ,closed)

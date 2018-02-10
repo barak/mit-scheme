@@ -155,7 +155,7 @@ USA.
 		 (er-macro-transformer
 		  (lambda (form rename compare)
 		    rename compare
-		    (syntax-check '(keyword expression expression) form)
+		    (syntax-check '(_ expression expression) form)
 		    (let ((bpo (bytes-per-object)))
 		      (case bpo
 			((4) (cadr form))

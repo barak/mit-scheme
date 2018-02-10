@@ -70,7 +70,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(IDENTIFIER * IDENTIFIER) (cdr form))
+     (if (syntax-match? '(identifier * identifier) (cdr form))
 	 `(BEGIN
 	    ,@(let loop ((names (cddr form)) (index 0))
 		(if (pair? names)
@@ -123,7 +123,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(SYMBOL EXPRESSION) (cdr form))
+     (if (syntax-match? '(symbol expression) (cdr form))
 	 (let ((type (cadr form)))
 	   (let ((type? (symbol type '?))
 		 (guarantee-type (symbol 'GUARANTEE- type))
@@ -274,7 +274,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(SYMBOL) (cdr form))
+     (if (syntax-match? '(symbol) (cdr form))
 	 (let ((field (cadr form)))
 	   `(DEFINE (,(symbol 'PGSQL-CONN- field) OBJECT)
 	      (,(symbol 'PQ- field) (CONNECTION->HANDLE OBJECT))))
@@ -354,7 +354,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(SYMBOL) (cdr form))
+     (if (syntax-match? '(symbol) (cdr form))
 	 (let ((field (cadr form)))
 	   `(DEFINE (,(symbol 'PGSQL- field) OBJECT)
 	      (,(symbol 'PQ- field) (RESULT->HANDLE OBJECT))))
