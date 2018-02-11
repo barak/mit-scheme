@@ -126,6 +126,7 @@ tools/compiler.com: cross-compiler
 tools/compiler.com: cross-cref
 tools/compiler.com: cross-sf
 tools/compiler.com: kludgerous-star-parser
+tools/compiler.com: runtime/host-adapter.scm
 	(echo '(begin' && \
 	 echo '  (with-working-directory-pathname "cref"' && \
 	 echo '    (lambda () (load "make")))' && \
@@ -141,6 +142,7 @@ tools/compiler.com: kludgerous-star-parser
 tools/syntaxer.com: cross-cref
 tools/syntaxer.com: cross-sf
 tools/syntaxer.com: kludgerous-star-parser
+tools/syntaxer.com: runtime/host-adapter.scm
 	(echo '(begin' && \
 	 echo '  (with-working-directory-pathname "cref"' && \
 	 echo '    (lambda () (load "make")))' && \

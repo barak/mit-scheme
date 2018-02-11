@@ -26,7 +26,7 @@ USA.
 
 (load-option '*parser)			;for url.scm
 (fluid-let ((sf/default-syntax-table (->environment '(runtime))))
-  (load "host-adapter")
+  (load "host-adapter.scm")
   (sf-conditionally "graphics")
   (sf-conditionally "infstr")
   (sf-directory "."))
