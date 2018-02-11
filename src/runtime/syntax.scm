@@ -89,11 +89,11 @@ USA.
   (cond ((identifier? form)
 	 (lookup-identifier form senv))
 	((syntactic-closure? form)
-	 (classify-form (syntactic-closure-form form)
-			(make-partial-senv (syntactic-closure-free form)
-					   senv
-					   (syntactic-closure-senv form))
-			hist))
+	 (reclassify (syntactic-closure-form form)
+		     (make-partial-senv (syntactic-closure-free form)
+					senv
+					(syntactic-closure-senv form))
+		     hist))
 	((pair? form)
 	 (let ((item (classify-form-car form senv hist)))
 	   (cond ((classifier-item? item)
