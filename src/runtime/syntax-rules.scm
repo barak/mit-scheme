@@ -251,8 +251,8 @@ USA.
 
 (define (syntax-quote expression)
   `(,(compiler->keyword
-      (lambda (form environment)
-	environment			;ignore
+      (lambda (form senv hist)
+	(declare (ignore senv hist))
 	(syntax-check '(_ datum) form)
 	(output/constant (cadr form))))
     ,expression))

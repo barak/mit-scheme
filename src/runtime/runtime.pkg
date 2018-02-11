@@ -4403,18 +4403,42 @@ USA.
 	  syntax*
 	  syntax-error)
   (export (runtime syntax)
+	  biselect-car
+	  biselect-cdr
+	  biselect-subform
+	  biselector:cadddr
+	  biselector:caddr
+	  biselector:cadr
+	  biselector:car
+	  biselector:cddddr
+	  biselector:cdddr
+	  biselector:cddr
+	  biselector:cdr
+	  biselector:cr
 	  classifier->keyword
 	  classify-body
+	  classify-body-cddr
+	  classify-body-cdr
 	  classify-form
-	  classify-form-car
-	  classify-form-cadr
-	  classify-form-caddr
 	  classify-form-cadddr
+	  classify-form-caddr
+	  classify-form-cadr
+	  classify-form-car
+	  classify-forms
 	  compile-body-items
 	  compile-expr-item
 	  compiler->keyword
 	  define-item-compiler
-	  raw-identifier?))
+	  hist-caddr
+	  hist-cadr
+	  hist-car
+	  hist-cddr
+	  hist-cdr
+	  hist-reduce
+	  hist-select
+	  initial-hist
+	  raw-identifier?
+	  subform-hists))
 
 (define-package (runtime syntax items)
   (files "syntax-items")

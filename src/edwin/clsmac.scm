@@ -87,7 +87,7 @@ USA.
 (define with-instance-variables
   (make-unmapped-macro-reference-trap
    (compiler-item
-    (lambda (form environment)
+    (lambda (form environment . rest)
       (syntax-check '(_ identifier expression (* identifier) + expression) form)
       (let ((class-name (cadr form))
 	    (self (caddr form))
@@ -96,15 +96,16 @@ USA.
 	(transform-instance-variables
 	 (class-instance-transforms
 	  (name->class (identifier->symbol class-name)))
-	 (compile-expr-item (classify-form self environment))
+	 (compile-expr-item (apply classify-form self environment rest))
 	 free-names
 	 (compile-expr-item
-	  (classify-form
-	   `(,(close-syntax 'begin
-			    (runtime-environment->syntactic
-			     system-global-environment))
-	     ,@body)
-	   environment))))))))
+	  (apply classify-form
+		 `(,(close-syntax 'begin
+				  (runtime-environment->syntactic
+				   system-global-environment))
+		   ,@body)
+		 environment
+		 rest))))))))
 
 (define-syntax ==>
   (syntax-rules ()

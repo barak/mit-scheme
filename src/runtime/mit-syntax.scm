@@ -32,9 +32,9 @@ USA.
 ;;;; Macro transformers
 
 (define (transformer-keyword procedure-name transformer->expander)
-  (lambda (form senv)
+  (lambda (form senv hist)
     (syntax-check '(_ expression) form)
-    (let ((transformer (compile-expr-item (classify-form-cadr form senv))))
+    (let ((transformer (compile-expr-item (classify-form-cadr form senv hist))))
       (transformer->expander (transformer-eval transformer senv)
 			     senv
 			     (expr-item
@@ -59,16 +59,19 @@ USA.
 
 ;;;; Core primitives
 
-(define (compiler:lambda form senv)
+(define (compiler:lambda form senv hist)
   (syntax-check '(_ mit-bvl + form) form)
-  (compile-lambda scode-lambda-name:unnamed (cadr form) (cddr form) senv))
+  (compile-lambda scode-lambda-name:unnamed
+		  (cadr form)
+		  form senv hist))
 
-(define (compiler:named-lambda form senv)
+(define (compiler:named-lambda form senv hist)
   (syntax-check '(_ (identifier . mit-bvl) + form) form)
-  (compile-lambda (identifier->symbol (caadr form)) (cdadr form) (cddr form)
-		  senv))
+  (compile-lambda (identifier->symbol (caadr form))
+		  (cdadr form)
+		  form senv hist))
 
-(define (compile-lambda name bvl body senv)
+(define (compile-lambda name bvl form senv hist)
   (let ((senv (make-internal-senv senv)))
     ;; Force order -- bind names before classifying body.
     (let ((bvl
@@ -77,42 +80,43 @@ USA.
 				bvl)))
       (output/lambda name
 		     bvl
-		     (compile-body-item (classify-body body senv))))))
+		     (compile-body-item (classify-body-cddr form senv hist))))))
 
 (define (compile-body-item item)
   (output/body (compile-body-items (item->list item))))
 
-(define (classifier:begin form senv)
+(define (classifier:begin form senv hist)
   (syntax-check '(_ * form) form)
-  (classify-body (cdr form) senv))
+  (classify-body-cdr form senv hist))
 
-(define (compiler:if form senv)
+(define (compiler:if form senv hist)
   (syntax-check '(_ expression expression ? expression) form)
   (output/conditional
-   (compile-expr-item (classify-form-cadr form senv))
-   (compile-expr-item (classify-form-caddr form senv))
+   (compile-expr-item (classify-form-cadr form senv hist))
+   (compile-expr-item (classify-form-caddr form senv hist))
    (if (pair? (cdddr form))
-       (compile-expr-item (classify-form-cadddr form senv))
+       (compile-expr-item (classify-form-cadddr form senv hist))
        (output/unspecific))))
 
-(define (compiler:quote form senv)
-  (declare (ignore senv))
+(define (compiler:quote form senv hist)
+  (declare (ignore senv hist))
   (syntax-check '(_ datum) form)
   (output/constant (strip-syntactic-closures (cadr form))))
 
-(define (compiler:quote-identifier form senv)
+(define (compiler:quote-identifier form senv hist)
+  (declare (ignore hist))
   (syntax-check '(_ identifier) form)
   (let ((item (lookup-identifier (cadr form) senv)))
     (if (not (var-item? item))
 	(syntax-error "Can't quote a keyword identifier:" form))
     (output/quoted-identifier (var-item-id item))))
 
-(define (compiler:set! form senv)
+(define (compiler:set! form senv hist)
   (syntax-check '(_ form ? expression) form)
-  (let ((lhs (classify-form-cadr form senv))
+  (let ((lhs (classify-form-cadr form senv hist))
 	(rhs
 	 (if (pair? (cddr form))
-	     (compile-expr-item (classify-form-caddr form senv))
+	     (compile-expr-item (classify-form-caddr form senv hist))
 	     (output/unassigned))))
     (cond ((var-item? lhs)
 	   (output/assignment (var-item-id lhs) rhs))
@@ -123,26 +127,26 @@ USA.
 	  (else
 	   (syntax-error "Variable required in this context:" (cadr form))))))
 
-(define (compiler:delay form senv)
+(define (compiler:delay form senv hist)
   (syntax-check '(_ expression) form)
-  (output/delay (compile-expr-item (classify-form-cadr form senv))))
+  (output/delay (compile-expr-item (classify-form-cadr form senv hist))))
 
 ;;;; Definitions
 
 (define keyword:define
   (classifier->keyword
-   (lambda (form senv)
+   (lambda (form senv hist)
      (let ((name (cadr form)))
        (reserve-identifier name senv)
        (variable-binder defn-item
 			senv
 			name
-			(classify-form-caddr form senv))))))
+			(classify-form-caddr form senv hist))))))
 
-(define (classifier:define-syntax form senv)
+(define (classifier:define-syntax form senv hist)
   (syntax-check '(_ identifier expression) form)
   (let ((name (cadr form))
-	(item (classify-form-caddr form senv)))
+	(item (classify-form-caddr form senv hist)))
     (keyword-binder senv name item)
     ;; User-defined macros at top level are preserved in the output.
     (if (and (senv-top-level? senv)
@@ -164,76 +168,72 @@ USA.
 
 (define keyword:let
   (classifier->keyword
-   (lambda (form env)
-     (let ((bindings (cadr form))
-	   (body (cddr form))
-	   (binding-env (make-internal-senv env)))
-       (let ((bindings
-	      (map (lambda (binding)
-		     (variable-binder cons
-				      binding-env
-				      (car binding)
-				      (classify-form-cadr binding env)))
-		   bindings)))
-	 (expr-item
-	  (let ((names (map car bindings))
-		(values (map cdr bindings))
-		(seq-item
-		 (classify-body
-		  body
-		  (make-internal-senv binding-env))))
-	    (lambda ()
-	      (output/let names
-			  (map compile-expr-item values)
-			  (compile-body-item seq-item))))))))))
+   (lambda (form senv hist)
+     (let* ((binding-senv (make-internal-senv senv))
+	    (bindings
+	     (map (lambda (binding hist)
+		    (variable-binder cons
+				     binding-senv
+				     (car binding)
+				     (classify-form-cadr binding senv hist)))
+		  (cadr form)
+		  (subform-hists (cadr form) (hist-cadr hist))))
+	    (body-item
+	     (classify-body-cddr form
+				 (make-internal-senv binding-senv)
+				 hist)))
+       (expr-item
+	(let ((names (map car bindings))
+	      (values (map cdr bindings)))
+	  (lambda ()
+	    (output/let names
+			(map compile-expr-item values)
+			(compile-body-item body-item)))))))))
 
-(define (classifier:let-syntax form env)
+(define (classifier:let-syntax form senv hist)
   (syntax-check '(_ (* (identifier expression)) + form) form)
-  (let ((bindings (cadr form))
-	(body (cddr form))
-	(binding-env (make-internal-senv env)))
-    (for-each (lambda (binding)
-		(keyword-binder binding-env
+  (let ((binding-senv (make-internal-senv senv)))
+    (for-each (lambda (binding hist)
+		(keyword-binder binding-senv
 				(car binding)
-				(classify-form-cadr binding env)))
-	      bindings)
-    (classify-body body (make-internal-senv binding-env))))
+				(classify-form-cadr binding senv hist)))
+	      (cadr form)
+	      (subform-hists (cadr form) (hist-cadr hist)))
+    (classify-body-cddr form
+			(make-internal-senv binding-senv)
+			hist)))
 
 (define keyword:let-syntax
   (classifier->keyword classifier:let-syntax))
 
-(define (classifier:letrec-syntax form env)
+(define (classifier:letrec-syntax form senv hist)
   (syntax-check '(_ (* (identifier expression)) + form) form)
-  (let ((bindings (cadr form))
-	(body (cddr form))
-	(binding-env (make-internal-senv env)))
-    (for-each (lambda (binding)
-		(reserve-identifier (car binding) binding-env))
-	      bindings)
-    ;; Classify right-hand sides first, in order to catch references to
-    ;; reserved names.  Then bind names prior to classifying body.
-    (for-each (lambda (binding item)
-		(keyword-binder binding-env (car binding) item))
-	      bindings
-	      (map (lambda (binding)
-		     (classify-form-cadr binding binding-env))
-		   bindings))
-    (classify-body body (make-internal-senv binding-env))))
+  (let ((binding-senv (make-internal-senv senv)))
+    (let ((bindings (cadr form)))
+      (for-each (lambda (binding)
+		  (reserve-identifier (car binding) binding-senv))
+		bindings)
+      ;; Classify right-hand sides first, in order to catch references to
+      ;; reserved names.  Then bind names prior to classifying body.
+      (for-each (lambda (binding item)
+		  (keyword-binder binding-senv (car binding) item))
+		bindings
+		(map (lambda (binding hist)
+		       (classify-form-cadr binding binding-senv hist))
+		     bindings
+		     (subform-hists bindings (hist-cadr hist)))))
+    (classify-body-cddr form (make-internal-senv binding-senv) hist)))
 
 ;; TODO: this is a compiler rather than a macro because it uses the
 ;; special OUTPUT/DISJUNCTION.  Unfortunately something downstream in
 ;; the compiler wants this, but it would be nice to eliminate this
 ;; hack.
-(define (compiler:or form senv)
+(define (compiler:or form senv hist)
   (syntax-check '(_ * expression) form)
-  (if (pair? (cdr form))
-      (let loop ((expressions (cdr form)))
-	(let ((compiled
-	       (compile-expr-item (classify-form-car expressions senv))))
-	  (if (pair? (cdr expressions))
-	      (output/disjunction compiled (loop (cdr expressions)))
-	      compiled)))
-      `#F))
+  (reduce-right output/disjunction
+		'#f
+		(map compile-expr-item
+		     (classify-forms (cdr form) senv (hist-cdr hist)))))
 
 ;;;; MIT-specific syntax
 
@@ -245,16 +245,17 @@ USA.
 
 (define keyword:access
   (classifier->keyword
-   (lambda (form senv)
+   (lambda (form senv hist)
      (access-item (cadr form)
-		  (classify-form-caddr form senv)))))
+		  (classify-form-caddr form senv hist)))))
 
 (define-item-compiler access-item?
   (lambda (item)
     (output/access-reference (access-item-name item)
 			     (compile-expr-item (access-item-env item)))))
 
-(define (compiler:the-environment form senv)
+(define (compiler:the-environment form senv hist)
+  (declare (ignore hist))
   (syntax-check '(_) form)
   (if (not (senv-top-level? senv))
       (syntax-error "This form allowed only at top level:" form))
@@ -262,36 +263,38 @@ USA.
 
 (define keyword:unspecific
   (compiler->keyword
-   (lambda (form senv)
-     (declare (ignore form senv))
+   (lambda (form senv hist)
+     (declare (ignore form senv hist))
      (output/unspecific))))
 
 (define keyword:unassigned
   (compiler->keyword
-   (lambda (form senv)
-     (declare (ignore form senv))
+   (lambda (form senv hist)
+     (declare (ignore form senv hist))
      (output/unassigned))))
 
 ;;;; Declarations
 
-(define (classifier:declare form senv)
+(define (classifier:declare form senv hist)
   (syntax-check '(_ * (identifier * datum)) form)
   (decl-item
    (lambda ()
-     (classify-decls (cdr form) senv))))
+     (classify-decls (cdr form) senv (hist-cdr hist)))))
 
-(define (classify-decls decls senv)
-  (map (lambda (decl)
-	 (classify-decl decl senv))
-       decls))
+(define (classify-decls decls senv hist)
+  (map (lambda (decl hist)
+	 (classify-decl decl senv hist))
+       decls
+       (subform-hists decls hist)))
 
-(define (classify-decl decl senv)
+(define (classify-decl decl senv hist)
   (map-decl-ids (lambda (id)
-		  (classify-id id senv))
+		  ;; Need to get the right hist here.
+		  (classify-id id senv hist))
 		decl))
 
-(define (classify-id id senv)
-  (let ((item (classify-form id senv)))
+(define (classify-id id senv hist)
+  (let ((item (classify-form id senv hist)))
     (if (not (var-item? item))
 	(syntax-error "Variable required in this context:" id))
     (var-item-id item)))

@@ -55,76 +55,23 @@ USA.
     (with-identifier-renaming
      (lambda ()
        (if (senv-top-level? senv)
-	   (compile-top-level-body (classify-body forms senv))
+	   (%compile-top-level-body (%classify-body-top-level forms senv))
 	   (output/sequence
-	    (map (lambda (expr)
-		   (compile-expr-item (classify-form expr senv)))
+	    (map (lambda (form)
+		   (compile-expr-item
+		    (%classify-form-top-level form senv)))
 		 forms)))))))
-
-;;;; Classifier
 
-(define (classify-form form senv)
-  (cond ((identifier? form)
-	 (lookup-identifier form senv))
-	((syntactic-closure? form)
-	 (classify-form
-	  (syntactic-closure-form form)
-	  (make-partial-senv (syntactic-closure-free form)
-			     senv
-			     (syntactic-closure-senv form))))
-	((pair? form)
-	 (let ((item (classify-form-car form senv)))
-	   (cond ((classifier-item? item)
-		  ((classifier-item-impl item) form senv))
-		 ((compiler-item? item)
-		  (expr-item
-		   (let ((compiler (compiler-item-impl item)))
-		     (lambda ()
-		       (compiler form senv)))))
-		 ((expander-item? item)
-		  (classify-form ((expander-item-impl item) form senv)
-				 senv))
-		 (else
-		  (if (not (list? (cdr form)))
-		      (syntax-error "Combination must be a proper list:" form))
-		  (expr-item
-		   (let ((items
-			  (map (lambda (expr)
-				 (classify-form expr senv))
-			       (cdr form))))
-		     (lambda ()
-		       (output/combination
-			(compile-expr-item item)
-			(map compile-expr-item items)))))))))
-	(else
-	 (expr-item (lambda () (output/constant form))))))
+(define (%classify-form-top-level form senv)
+  (classify-form form senv (initial-hist form)))
 
-(define (classify-body forms senv)
-  ;; Syntactic definitions affect all forms that appear after them, so classify
-  ;; FORMS in order.
+(define (%classify-body-top-level forms senv)
   (seq-item
-   (let loop ((forms forms) (items '()))
-     (if (pair? forms)
-	 (loop (cdr forms)
-	       (reverse* (item->list (classify-form-car forms senv))
-			 items))
-	 (reverse! items)))))
+   (map-in-order (lambda (form)
+		   (%classify-form-top-level form senv))
+		 forms)))
 
-(define (classify-form-car form senv)
-  (classify-form (car form) senv))
-
-(define (classify-form-cadr form senv)
-  (classify-form (cadr form) senv))
-
-(define (classify-form-caddr form senv)
-  (classify-form (caddr form) senv))
-
-(define (classify-form-cadddr form senv)
-  (classify-form (cadddr form) senv))
-
-;;;; Compiler
-
-(define (compile-top-level-body item)
+(define (%compile-top-level-body item)
   (output/top-level-sequence
    (map (lambda (item)
 	  (if (defn-item? item)
@@ -135,6 +82,83 @@ USA.
 		    (output/top-level-definition name value)))
 	      (compile-expr-item item)))
 	(item->list item))))
+
+;;;; Classifier
+
+(define (classify-form form senv hist)
+  (cond ((identifier? form)
+	 (lookup-identifier form senv))
+	((syntactic-closure? form)
+	 (classify-form (syntactic-closure-form form)
+			(make-partial-senv (syntactic-closure-free form)
+					   senv
+					   (syntactic-closure-senv form))
+			hist))
+	((pair? form)
+	 (let ((item (classify-form-car form senv hist)))
+	   (cond ((classifier-item? item)
+		  ((classifier-item-impl item) form senv hist))
+		 ((compiler-item? item)
+		  (expr-item
+		   (let ((compiler (compiler-item-impl item)))
+		     (lambda ()
+		       (compiler form senv hist)))))
+		 ((expander-item? item)
+		  (reclassify ((expander-item-impl item) form senv)
+			      senv
+			      hist))
+		 (else
+		  (if (not (list? (cdr form)))
+		      (syntax-error "Combination must be a proper list:" form))
+		  (expr-item
+		   (let ((items
+			  (classify-forms (cdr form)
+					  senv
+					  (hist-cdr hist))))
+		     (lambda ()
+		       (output/combination
+			(compile-expr-item item)
+			(map compile-expr-item items)))))))))
+	(else
+	 (expr-item (lambda () (output/constant form))))))
+
+(define (classify-form-car form senv hist)
+  (classify-form (car form) senv (hist-car hist)))
+
+(define (classify-form-cadr form senv hist)
+  (classify-form (cadr form) senv (hist-cadr hist)))
+
+(define (classify-form-caddr form senv hist)
+  (classify-form (caddr form) senv (hist-caddr hist)))
+
+(define (classify-form-cadddr form senv hist)
+  (classify-form (cadddr form) senv (hist-cadddr hist)))
+
+(define (classify-forms forms senv hist)
+  (map (lambda (expr hist)
+	 (classify-form expr senv hist))
+       forms
+       (subform-hists forms hist)))
+
+(define (reclassify form env hist)
+  (classify-form form env (hist-reduce form hist)))
+
+(define (classify-body forms senv hist)
+  ;; Syntactic definitions affect all forms that appear after them, so classify
+  ;; FORMS in order.
+  (seq-item
+   (map-in-order (lambda (form hist)
+		   (classify-form form senv hist))
+		 forms
+		 (subform-hists forms hist))))
+
+(define (classify-body-cdr form senv hist)
+  (classify-body (cdr form) senv (hist-cdr hist)))
+
+(define (classify-body-cddr form senv hist)
+  (classify-body (cddr form) senv (hist-cddr hist)))
+
+;;;; Compiler
 
 (define (compile-body-items items)
   (let ((items (flatten-items items)))
@@ -281,6 +305,94 @@ USA.
 	     (eq? (var-item-id item-1)
 		  (var-item-id item-2))))))
 
+;;;; History
+
+(define-record-type <history>
+    (%history records)
+    history?
+  (records %history-records))
+
+(define (initial-hist form)
+  (%history (list form)))
+
+(define (hist-select selector hist)
+  (%history
+   (let ((records (%history-records hist)))
+     (if (and (pair? records)
+	      (eq? 'select (caar records)))
+	 (cons (cons 'select (biselect-append selector (cdar records)))
+	       (cdr records))
+	 (cons (cons 'select selector)
+	       records)))))
+
+(define (hist-reduce form hist)
+  (%history (cons (cons 'reduce form) (%history-records hist))))
+
+(define (hist-car hist)
+  (hist-select biselector:car hist))
+
+(define (hist-cdr hist)
+  (hist-select biselector:cdr hist))
+
+(define (hist-cadr hist)
+  (hist-select biselector:cadr hist))
+
+(define (hist-cddr hist)
+  (hist-select biselector:cddr hist))
+
+(define (hist-caddr hist)
+  (hist-select biselector:caddr hist))
+
+(define (hist-cdddr hist)
+  (hist-select biselector:cdddr hist))
+
+(define (hist-cadddr hist)
+  (hist-select biselector:cadddr hist))
+
+(define (subform-hists forms hist)
+  (let loop ((forms forms) (hist hist))
+    (if (pair? forms)
+	(cons (hist-car hist)
+	      (loop (cdr forms) (hist-cdr hist)))
+	'())))
+
+;;;; Binary selectors
+
+(define (biselect-car selector)
+  (let ((n (integer-length selector)))
+    (+ (shift-left 1 n)
+       (- selector (shift-left 1 (- n 1))))))
+
+(define (biselect-cdr selector)
+  (+ (shift-left 1 (integer-length selector))
+     selector))
+
+(define (biselect-subform selector form)
+  (if (> selector 1)
+      (biselect-subform (quotient selector 2)
+			(if (even? selector) (car form) (cdr form)))
+      form))
+
+;; Selector order is:
+;; (= biselector:cadr (biselect-append biselector:car biselector:cdr))
+(define (biselect-append . selectors)
+  (reduce (lambda (s1 s2)
+	    (let ((n (- (integer-length s1) 1)))
+	      (+ (shift-left s2 n)
+		 (- s1 (shift-left 1 n)))))
+	  biselector:cr
+	  selectors))
+
+(define-integrable biselector:cr     #b00001)
+(define-integrable biselector:car    #b00010)
+(define-integrable biselector:cdr    #b00011)
+(define-integrable biselector:cadr   #b00101)
+(define-integrable biselector:cddr   #b00111)
+(define-integrable biselector:caddr  #b01011)
+(define-integrable biselector:cdddr  #b01111)
+(define-integrable biselector:cadddr #b10111)
+(define-integrable biselector:cddddr #b11111)
+
 ;;;; Utilities
 
 (define (syntax-error . rest)
@@ -297,11 +409,18 @@ USA.
 
 (define (capture-syntactic-environment expander)
   `(,(classifier->keyword
-      (lambda (form senv)
+      (lambda (form senv hist)
 	(declare (ignore form))
-	(classify-form (expander senv) senv)))))
+	(classify-form (expander senv) senv hist)))))
 
 (define (reverse-syntactic-environments senv procedure)
   (capture-syntactic-environment
    (lambda (closing-senv)
      (close-syntax (procedure closing-senv) senv))))
+
+(define (map-in-order procedure . lists)
+  (let loop ((lists lists) (values '()))
+    (if (pair? (car lists))
+	(loop (map cdr lists)
+	      (cons (apply procedure (map car lists)) values))
+	(reverse! values))))

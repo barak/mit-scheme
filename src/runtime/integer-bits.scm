@@ -60,8 +60,8 @@ USA.
 
 ;; (define (shift number amount)
 ;;   (cond ((exact-integer? number) (arithmetic-shift number amount))
-;; 	((flonum? number) (flonum-denormalize number amount))
-;; 	...))
+;;	   ((flonum? number) (flonum-denormalize number amount))
+;;	   ...))
 
 ;;; Eventually the next two should be primitives with nice definitions
 ;;; on bignums requiring only a single copy and nice open-codings for
