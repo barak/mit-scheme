@@ -61,17 +61,17 @@ USA.
 
 (define (classifier:lambda form senv hist)
   (syntax-check '(_ mit-bvl + form) form)
-  (compile-lambda scode-lambda-name:unnamed
-		  (cadr form)
-		  form senv hist))
+  (classify-lambda scode-lambda-name:unnamed
+		   (cadr form)
+		   form senv hist))
 
 (define (classifier:named-lambda form senv hist)
   (syntax-check '(_ (identifier . mit-bvl) + form) form)
-  (compile-lambda (identifier->symbol (caadr form))
-		  (cdadr form)
-		  form senv hist))
+  (classify-lambda (identifier->symbol (caadr form))
+		   (cdadr form)
+		   form senv hist))
 
-(define (compile-lambda name bvl form senv hist)
+(define (classify-lambda name bvl form senv hist)
   (let ((senv (make-internal-senv senv)))
     ;; Force order -- bind names before classifying body.
     (let ((bvl

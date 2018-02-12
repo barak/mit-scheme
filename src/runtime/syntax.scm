@@ -105,17 +105,12 @@ USA.
 		 (else
 		  (if (not (list? (cdr form)))
 		      (syntax-error "Combination must be a proper list:" form))
-		  (expr-item
-		   (let ((items
-			  (classify-forms (cdr form)
-					  senv
-					  (hist-cdr hist))))
-		     (lambda ()
-		       (output/combination
-			(compile-expr-item item)
-			(map compile-expr-item items)))))))))
+		  (combination-item item
+				    (classify-forms (cdr form)
+						    senv
+						    (hist-cdr hist)))))))
 	(else
-	 (expr-item (lambda () (output/constant form))))))
+	 (constant-item form))))
 
 (define (classify-form-car form senv hist)
   (classify-form (car form) senv (hist-car hist)))
