@@ -67,8 +67,8 @@ USA.
 (define (output/conditional predicate consequent alternative)
   (make-scode-conditional predicate consequent alternative))
 
-(define (output/disjunction predicate alternative)
-  (make-scode-disjunction predicate alternative))
+(define (output/disjunction exprs)
+  (reduce-right make-scode-disjunction '#f exprs))
 
 (define (output/sequence expressions)
   (make-scode-sequence expressions))

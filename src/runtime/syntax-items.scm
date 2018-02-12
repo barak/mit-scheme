@@ -158,3 +158,76 @@ USA.
 
 (define (decl-item-text item)
   ((decl-item-text-getter item)))
+
+;;;; Specific expression items
+
+(define (combination-item operator operands)
+  (expr-item
+   (lambda ()
+     (output/combination (compile-expr-item operator)
+			 (map compile-expr-item operands)))))
+
+(define (constant-item datum)
+  (expr-item
+   (lambda ()
+     (output/constant datum))))
+
+(define (lambda-item name bvl body-item)
+  (expr-item
+   (lambda ()
+     (output/lambda name bvl (compile-expr-item body-item)))))
+
+(define (let-item names value-items body-item)
+  (expr-item
+   (lambda ()
+     (output/let names
+		 (map compile-expr-item value-items)
+		 (compile-expr-item body-item)))))
+
+(define (body-item items)
+  (expr-item
+   (lambda ()
+     (output/body (compile-body-items items)))))
+
+(define (if-item predicate consequent alternative)
+  (expr-item
+   (lambda ()
+     (output/conditional (compile-expr-item predicate)
+			 (compile-expr-item consequent)
+			 (compile-expr-item alternative)))))
+
+(define (quoted-id-item var-item)
+  (expr-item
+   (lambda ()
+     (output/quoted-identifier (var-item-id var-item)))))
+
+(define (assignment-item id rhs-item)
+  (expr-item
+   (lambda ()
+     (output/assignment id (compile-expr-item rhs-item)))))
+
+(define (access-assignment-item name env-item rhs-item)
+  (expr-item
+   (lambda ()
+     (output/access-assignment name
+			       (compile-expr-item env-item)
+			       (compile-expr-item rhs-item)))))
+
+(define (delay-item item)
+  (expr-item
+   (lambda ()
+     (output/delay (compile-expr-item item)))))
+
+(define (or-item items)
+  (expr-item
+   (lambda ()
+     (output/disjunction (map compile-expr-item items)))))
+
+(define (the-environment-item)
+  (expr-item output/the-environment))
+
+(define (unspecific-item)
+  (expr-item output/unspecific))
+
+(define (unassigned-item)
+  (expr-item output/unassigned))

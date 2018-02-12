@@ -4444,12 +4444,17 @@ USA.
   (files "syntax-items")
   (parent (runtime syntax))
   (export (runtime syntax)
+	  access-assignment-item
+	  assignment-item
+	  body-item
 	  classifier-item
 	  classifier-item-impl
 	  classifier-item?
 	  compiler-item
 	  compiler-item-impl
 	  compiler-item?
+	  combination-item
+	  constant-item
 	  decl-item
 	  decl-item-text
 	  decl-item?
@@ -4458,6 +4463,7 @@ USA.
 	  defn-item-syntax?
 	  defn-item-value
 	  defn-item?
+	  delay-item
 	  expander-item
 	  expander-item-expr
 	  expander-item-impl
@@ -4466,14 +4472,22 @@ USA.
 	  expr-item-compiler
 	  expr-item?
 	  flatten-items
+	  if-item
 	  item->list
 	  keyword-item?
+	  lambda-item
+	  let-item
+	  or-item
+	  quoted-id-item
 	  reserved-name-item
 	  reserved-name-item?
 	  seq-item
 	  seq-item-elements
 	  seq-item?
 	  syntax-defn-item
+	  the-environment-item
+	  unassigned-item
+	  unspecific-item
 	  var-item
 	  var-item-id
 	  var-item?))
@@ -4568,19 +4582,19 @@ USA.
 	  classifier:declare
 	  classifier:define-syntax
 	  classifier:er-macro-transformer
+	  classifier:if
 	  classifier:let-syntax
 	  classifier:letrec-syntax
+	  classifier:or
+	  classifier:quote
+	  classifier:quote-identifier
 	  classifier:rsc-macro-transformer
 	  classifier:sc-macro-transformer
+	  classifier:set!
+	  classifier:the-environment
 	  compiler:delay
-	  compiler:if
 	  compiler:lambda
-	  compiler:named-lambda
-	  compiler:or
-	  compiler:quote
-	  compiler:quote-identifier
-	  compiler:set!
-	  compiler:the-environment)
+	  compiler:named-lambda)
   (export (runtime mit-macros)
 	  keyword:access
 	  keyword:define
