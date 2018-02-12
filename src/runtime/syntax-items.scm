@@ -172,10 +172,10 @@ USA.
    (lambda ()
      (output/constant datum))))
 
-(define (lambda-item name bvl body-item)
+(define (lambda-item name bvl classify-body)
   (expr-item
    (lambda ()
-     (output/lambda name bvl (compile-expr-item body-item)))))
+     (output/lambda name bvl (compile-expr-item (classify-body))))))
 
 (define (let-item names value-items body-item)
   (expr-item
@@ -213,10 +213,10 @@ USA.
 			       (compile-expr-item env-item)
 			       (compile-expr-item rhs-item)))))
 
-(define (delay-item item)
+(define (delay-item classify)
   (expr-item
    (lambda ()
-     (output/delay (compile-expr-item item)))))
+     (output/delay (compile-expr-item (classify))))))
 
 (define (or-item items)
   (expr-item

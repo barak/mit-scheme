@@ -32,11 +32,10 @@ USA.
 (add-boot-init!
  (lambda ()
 
-   (define (def name item)
-     (environment-define-macro system-global-environment name item))
-
    (define (define-classifier name classifier)
-     (def name (classifier-item classifier)))
+     (environment-define-macro system-global-environment
+			       name
+			       (classifier-item classifier)))
 
    (define-classifier 'begin classifier:begin)
    (define-classifier 'declare classifier:declare)
@@ -52,10 +51,6 @@ USA.
    (define-classifier 'sc-macro-transformer classifier:sc-macro-transformer)
    (define-classifier 'set! classifier:set!)
    (define-classifier 'the-environment classifier:the-environment)
-
-   (define (define-compiler name compiler)
-     (def name (compiler-item compiler)))
-
-   (define-compiler 'delay compiler:delay)
-   (define-compiler 'lambda compiler:lambda)
-   (define-compiler 'named-lambda compiler:named-lambda)))
+   (define-classifier 'delay classifier:delay)
+   (define-classifier 'lambda classifier:lambda)
+   (define-classifier 'named-lambda classifier:named-lambda)))

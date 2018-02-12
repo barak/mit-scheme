@@ -4581,20 +4581,20 @@ USA.
 	  classifier:begin
 	  classifier:declare
 	  classifier:define-syntax
+	  classifier:delay
 	  classifier:er-macro-transformer
 	  classifier:if
+	  classifier:lambda
 	  classifier:let-syntax
 	  classifier:letrec-syntax
+	  classifier:named-lambda
 	  classifier:or
 	  classifier:quote
 	  classifier:quote-identifier
 	  classifier:rsc-macro-transformer
 	  classifier:sc-macro-transformer
 	  classifier:set!
-	  classifier:the-environment
-	  compiler:delay
-	  compiler:lambda
-	  compiler:named-lambda)
+	  classifier:the-environment)
   (export (runtime mit-macros)
 	  keyword:access
 	  keyword:define

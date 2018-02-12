@@ -59,13 +59,13 @@ USA.
 
 ;;;; Core primitives
 
-(define (compiler:lambda form senv hist)
+(define (classifier:lambda form senv hist)
   (syntax-check '(_ mit-bvl + form) form)
   (compile-lambda scode-lambda-name:unnamed
 		  (cadr form)
 		  form senv hist))
 
-(define (compiler:named-lambda form senv hist)
+(define (classifier:named-lambda form senv hist)
   (syntax-check '(_ (identifier . mit-bvl) + form) form)
   (compile-lambda (identifier->symbol (caadr form))
 		  (cdadr form)
@@ -78,9 +78,9 @@ USA.
 	   (map-mit-lambda-list (lambda (identifier)
 				  (bind-variable identifier senv))
 				bvl)))
-      (output/lambda name
-		     bvl
-		     (compile-body-item (classify-body-cddr form senv hist))))))
+      (lambda-item name
+		   bvl
+		   (lambda () (classify-body-cddr form senv hist))))))
 
 (define (compile-body-item item)
   (output/body (compile-body-items (item->list item))))
@@ -126,9 +126,9 @@ USA.
 	  (else
 	   (syntax-error "Variable required in this context:" (cadr form))))))
 
-(define (compiler:delay form senv hist)
+(define (classifier:delay form senv hist)
   (syntax-check '(_ expression) form)
-  (output/delay (compile-expr-item (classify-form-cadr form senv hist))))
+  (delay-item (lambda () (classify-form-cadr form senv hist))))
 
 ;;;; Definitions
 
