@@ -134,12 +134,8 @@ USA.
 (define keyword:define
   (classifier->keyword
    (lambda (form senv hist)
-     (let ((name (cadr form)))
-       (reserve-identifier name senv)
-       (variable-binder defn-item
-			senv
-			name
-			(classify-form-caddr form senv hist))))))
+     (let ((id (bind-variable (cadr form) senv)))
+       (defn-item id (classify-form-caddr form senv hist))))))
 
 (define (classifier:define-syntax form senv hist)
   (syntax-check '(_ identifier expression) form)
@@ -156,11 +152,6 @@ USA.
   (if (not (keyword-item? item))
       (syntax-error "Keyword binding value must be a keyword:" name))
   (bind-keyword name senv item))
-
-(define (variable-binder k senv name item)
-  (if (keyword-item? item)
-      (syntax-error "Variable binding value must not be a keyword:" name))
-  (k (bind-variable name senv) item))
 
 ;;;; LET-like
 
@@ -170,10 +161,8 @@ USA.
      (let* ((body-senv (make-internal-senv senv))
 	    (bindings
 	     (map (lambda (binding hist)
-		    (variable-binder cons
-				     body-senv
-				     (car binding)
-				     (classify-form-cadr binding senv hist)))
+		    (cons (bind-variable (car binding) body-senv)
+			  (classify-form-cadr binding senv hist)))
 		  (cadr form)
 		  (subform-hists (cadr form) (hist-cadr hist)))))
        (let-item (map car bindings)
@@ -185,17 +174,15 @@ USA.
 
 (define (classifier:let-syntax form senv hist)
   (syntax-check '(_ (* (identifier expression)) + form) form)
-  (let ((binding-senv (make-internal-senv senv)))
+  (let ((body-senv (make-internal-senv senv)))
     (for-each (lambda (binding hist)
-		(keyword-binder binding-senv
+		(keyword-binder body-senv
 				(car binding)
 				(classify-form-cadr binding senv hist)))
 	      (cadr form)
 	      (subform-hists (cadr form) (hist-cadr hist)))
     (seq-item
-     (classify-forms-in-order-cddr form
-				   (make-internal-senv binding-senv)
-				   hist))))
+     (classify-forms-in-order-cddr form body-senv hist))))
 
 (define keyword:let-syntax
   (classifier->keyword classifier:let-syntax))
