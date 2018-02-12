@@ -4427,7 +4427,6 @@ USA.
 	  classify-forms
 	  compile-body-items
 	  compile-expr-item
-	  compiler->keyword
 	  define-item-compiler
 	  hist-caddr
 	  hist-cadr

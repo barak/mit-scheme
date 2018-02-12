@@ -250,11 +250,11 @@ USA.
   #f)
 
 (define (syntax-quote expression)
-  `(,(compiler->keyword
+  `(,(classifier->keyword
       (lambda (form senv hist)
 	(declare (ignore senv hist))
 	(syntax-check '(_ datum) form)
-	(output/constant (cadr form))))
+	(constant-item (cadr form))))
     ,expression))
 
 (define (optimized-cons rename compare a d)

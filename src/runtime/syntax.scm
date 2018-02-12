@@ -399,13 +399,9 @@ USA.
   (apply error rest))
 
 (define (classifier->keyword classifier)
-  (item->keyword (classifier-item classifier)))
-
-(define (compiler->keyword compiler)
-  (item->keyword (compiler-item compiler)))
-
-(define (item->keyword item)
-  (close-syntax 'keyword (make-keyword-senv 'keyword item)))
+  (close-syntax 'keyword
+		(make-keyword-senv 'keyword
+				   (classifier-item classifier))))
 
 (define (capture-syntactic-environment expander)
   `(,(classifier->keyword
