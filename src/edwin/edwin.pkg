@@ -285,9 +285,10 @@ USA.
 	  usual==>
 	  with-instance-variables)
   (import (runtime syntax)
+	  classifier-item
 	  classify-form
 	  compile-expr-item
-	  compiler-item))
+	  expr-item))
 
 (define-package (edwin class-macros transform-instance-variables)
   (files "xform")

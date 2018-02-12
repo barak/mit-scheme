@@ -38,11 +38,6 @@ USA.
     classifier-item?
   (impl classifier-item-impl))
 
-(define-record-type <compiler-item>
-    (compiler-item impl)
-    compiler-item?
-  (impl compiler-item-impl))
-
 (define-record-type <expander-item>
     (expander-item impl expr)
     expander-item?
@@ -51,12 +46,10 @@ USA.
 
 (define (keyword-item? object)
   (or (classifier-item? object)
-      (compiler-item? object)
       (expander-item? object)))
 
 (register-predicate! keyword-item? 'keyword-item)
 (set-predicate<=! classifier-item? keyword-item?)
-(set-predicate<=! compiler-item? keyword-item?)
 (set-predicate<=! expander-item? keyword-item?)
 
 ;;; Variable items represent run-time variables.

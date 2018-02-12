@@ -98,11 +98,6 @@ USA.
 	 (let ((item (classify-form-car form senv hist)))
 	   (cond ((classifier-item? item)
 		  ((classifier-item-impl item) form senv hist))
-		 ((compiler-item? item)
-		  (expr-item
-		   (let ((compiler (compiler-item-impl item)))
-		     (lambda ()
-		       (compiler form senv hist)))))
 		 ((expander-item? item)
 		  (reclassify ((expander-item-impl item) form senv)
 			      senv

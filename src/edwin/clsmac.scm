@@ -86,26 +86,30 @@ USA.
 
 (define with-instance-variables
   (make-unmapped-macro-reference-trap
-   (compiler-item
-    (lambda (form environment . rest)
+   (classifier-item
+    ;; Rest arg facilitates cross-compiling from 9.2.
+    ;; It should be removed after 9.3 release.
+    (lambda (form senv . rest)
       (syntax-check '(_ identifier expression (* identifier) + expression) form)
       (let ((class-name (cadr form))
-	    (self (caddr form))
+	    (self-item (apply classify-form (caddr form) senv rest))
 	    (free-names (cadddr form))
-	    (body (cddddr form)))
-	(transform-instance-variables
-	 (class-instance-transforms
-	  (name->class (identifier->symbol class-name)))
-	 (compile-expr-item (apply classify-form self environment rest))
-	 free-names
-	 (compile-expr-item
-	  (apply classify-form
-		 `(,(close-syntax 'begin
-				  (runtime-environment->syntactic
-				   system-global-environment))
-		   ,@body)
-		 environment
-		 rest))))))))
+	    (body-item
+	     (apply classify-form
+		    `(,(close-syntax 'begin
+				     (runtime-environment->syntactic
+				      system-global-environment))
+		      ,@(cddddr form))
+		    senv
+		    rest)))
+	(expr-item
+	 (lambda ()
+	   (transform-instance-variables
+	    (class-instance-transforms
+	     (name->class (identifier->symbol class-name)))
+	    (compile-expr-item self-item)
+	    free-names
+	    (compile-expr-item body-item)))))))))
 
 (define-syntax ==>
   (syntax-rules ()

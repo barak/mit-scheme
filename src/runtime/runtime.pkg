@@ -4449,9 +4449,6 @@ USA.
 	  classifier-item
 	  classifier-item-impl
 	  classifier-item?
-	  compiler-item
-	  compiler-item-impl
-	  compiler-item?
 	  combination-item
 	  constant-item
 	  decl-item
