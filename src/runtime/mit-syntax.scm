@@ -80,14 +80,13 @@ USA.
 				bvl)))
       (lambda-item name
 		   bvl
-		   (lambda () (classify-body-cddr form senv hist))))))
-
-(define (compile-body-item item)
-  (output/body (compile-body-items (item->list item))))
+		   (lambda ()
+		     (body-item
+		      (classify-forms-in-order-cddr form senv hist)))))))
 
 (define (classifier:begin form senv hist)
   (syntax-check '(_ * form) form)
-  (classify-body-cdr form senv hist))
+  (seq-item (classify-forms-in-order-cdr form senv hist)))
 
 (define (classifier:if form senv hist)
   (syntax-check '(_ expression expression ? expression) form)
@@ -168,20 +167,21 @@ USA.
 (define keyword:let
   (classifier->keyword
    (lambda (form senv hist)
-     (let* ((binding-senv (make-internal-senv senv))
+     (let* ((body-senv (make-internal-senv senv))
 	    (bindings
 	     (map (lambda (binding hist)
 		    (variable-binder cons
-				     binding-senv
+				     body-senv
 				     (car binding)
 				     (classify-form-cadr binding senv hist)))
 		  (cadr form)
 		  (subform-hists (cadr form) (hist-cadr hist)))))
        (let-item (map car bindings)
 		 (map cdr bindings)
-		 (classify-body-cddr form
-				     (make-internal-senv binding-senv)
-				     hist))))))
+		 (body-item
+		  (classify-forms-in-order-cddr form
+						(make-internal-senv body-senv)
+						hist)))))))
 
 (define (classifier:let-syntax form senv hist)
   (syntax-check '(_ (* (identifier expression)) + form) form)
@@ -192,9 +192,10 @@ USA.
 				(classify-form-cadr binding senv hist)))
 	      (cadr form)
 	      (subform-hists (cadr form) (hist-cadr hist)))
-    (classify-body-cddr form
-			(make-internal-senv binding-senv)
-			hist)))
+    (seq-item
+     (classify-forms-in-order-cddr form
+				   (make-internal-senv binding-senv)
+				   hist))))
 
 (define keyword:let-syntax
   (classifier->keyword classifier:let-syntax))
@@ -215,7 +216,10 @@ USA.
 		       (classify-form-cadr binding binding-senv hist))
 		     bindings
 		     (subform-hists bindings (hist-cadr hist)))))
-    (classify-body-cddr form (make-internal-senv binding-senv) hist)))
+    (seq-item
+     (classify-forms-in-order-cddr form
+				   (make-internal-senv binding-senv)
+				   hist))))
 
 ;; TODO: this is a classifier rather than a macro because it uses the
 ;; special OUTPUT/DISJUNCTION.  Unfortunately something downstream in
@@ -223,7 +227,7 @@ USA.
 ;; hack.
 (define (classifier:or form senv hist)
   (syntax-check '(_ * expression) form)
-  (or-item (classify-forms (cdr form) senv (hist-cdr hist))))
+  (or-item (classify-forms-cdr form senv hist)))
 
 ;;;; MIT-specific syntax
 

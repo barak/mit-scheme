@@ -106,9 +106,7 @@ USA.
 		  (if (not (list? (cdr form)))
 		      (syntax-error "Combination must be a proper list:" form))
 		  (combination-item item
-				    (classify-forms (cdr form)
-						    senv
-						    (hist-cdr hist)))))))
+				    (classify-forms-cdr form senv hist))))))
 	(else
 	 (constant-item form))))
 
@@ -124,29 +122,29 @@ USA.
 (define (classify-form-cadddr form senv hist)
   (classify-form (cadddr form) senv (hist-cadddr hist)))
 
+(define (reclassify form env hist)
+  (classify-form form env (hist-reduce form hist)))
+
 (define (classify-forms forms senv hist)
   (map (lambda (expr hist)
 	 (classify-form expr senv hist))
        forms
        (subform-hists forms hist)))
 
-(define (reclassify form env hist)
-  (classify-form form env (hist-reduce form hist)))
+(define (classify-forms-cdr form senv hist)
+  (classify-forms (cdr form) senv (hist-cdr hist)))
 
-(define (classify-body forms senv hist)
-  ;; Syntactic definitions affect all forms that appear after them, so classify
-  ;; FORMS in order.
-  (seq-item
-   (map-in-order (lambda (form hist)
-		   (classify-form form senv hist))
-		 forms
-		 (subform-hists forms hist))))
+(define (classify-forms-in-order forms senv hist)
+  (map-in-order (lambda (form hist)
+		  (classify-form form senv hist))
+		forms
+		(subform-hists forms hist)))
 
-(define (classify-body-cdr form senv hist)
-  (classify-body (cdr form) senv (hist-cdr hist)))
+(define (classify-forms-in-order-cdr form senv hist)
+  (classify-forms-in-order (cdr form) senv (hist-cdr hist)))
 
-(define (classify-body-cddr form senv hist)
-  (classify-body (cddr form) senv (hist-cddr hist)))
+(define (classify-forms-in-order-cddr form senv hist)
+  (classify-forms-in-order (cddr form) senv (hist-cddr hist)))
 
 ;;;; Compiler
 
