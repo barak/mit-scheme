@@ -4424,7 +4424,6 @@ USA.
 	  classify-forms-cdr
 	  classify-forms-in-order-cddr
 	  classify-forms-in-order-cdr
-	  compile-body-items
 	  compile-expr-item
 	  define-item-compiler
 	  hist-caddr
@@ -4541,10 +4540,8 @@ USA.
 	  output/quoted-identifier
 	  output/runtime-reference
 	  output/sequence
+	  output/syntax-definition
 	  output/the-environment
-	  output/top-level-definition
-	  output/top-level-sequence
-	  output/top-level-syntax-definition
 	  output/top-level-syntax-expander
 	  output/unassigned
 	  output/unassigned-test

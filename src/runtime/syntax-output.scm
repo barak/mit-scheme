@@ -46,7 +46,7 @@ USA.
 (define (output/assignment name value)
   (make-scode-assignment name value))
 
-(define (output/top-level-definition name value)
+(define (output/definition name value)
   (make-scode-definition name
     (if (scode-lambda? value)
 	(lambda-components* value
@@ -56,7 +56,7 @@ USA.
 		value)))
 	value)))
 
-(define (output/top-level-syntax-definition name value)
+(define (output/syntax-definition name value)
   (make-scode-definition name (make-macro-reference-trap-expression value)))
 
 (define (output/top-level-syntax-expander procedure-name transformer)
@@ -70,16 +70,17 @@ USA.
 (define (output/disjunction exprs)
   (reduce-right make-scode-disjunction '#f exprs))
 
-(define (output/sequence expressions)
-  (make-scode-sequence expressions))
+(define (output/sequence exprs)
+  (if (pair? exprs)
+      (make-scode-sequence exprs)
+      (output/unspecific)))
 
 (define (output/combination operator operands)
   (make-scode-combination operator operands))
 
 (define (output/lambda name lambda-list body)
-  (call-with-values (lambda () (parse-mit-lambda-list lambda-list))
-    (lambda (required optional rest)
-      (make-lambda* name required optional rest body))))
+  (receive (required optional rest) (parse-mit-lambda-list lambda-list)
+    (make-lambda* name required optional rest body)))
 
 (define (output/delay expression)
   (make-scode-delay expression))
@@ -120,22 +121,11 @@ USA.
 		   (output/let '() '() body)
 		   body))))))))
 
-(define (output/body body)
-  (scan-defines body make-scode-open-block))
+(define (output/body exprs)
+  (scan-defines (output/sequence exprs) make-scode-open-block))
 
 (define (output/declaration text)
   (make-scode-block-declaration text))
-
-(define (output/definition name value)
-  (make-scode-definition name value))
-
-(define (output/top-level-sequence expressions)
-  (if (pair? expressions)
-      (if (pair? (cdr expressions))
-	  (scan-defines (make-scode-sequence expressions)
-			make-scode-open-block)
-	  (car expressions))
-      (output/unspecific)))
 
 (define (output/the-environment)
   (make-scode-the-environment))

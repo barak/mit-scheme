@@ -180,7 +180,7 @@ USA.
 (define (body-item items)
   (expr-item
    (lambda ()
-     (output/body (compile-body-items items)))))
+     (output/body (map compile-expr-item items)))))
 
 (define (if-item predicate consequent alternative)
   (expr-item

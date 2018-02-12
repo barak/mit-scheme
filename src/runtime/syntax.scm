@@ -54,34 +54,11 @@ USA.
 	     (runtime-environment->syntactic environment))))
     (with-identifier-renaming
      (lambda ()
-       (if (senv-top-level? senv)
-	   (%compile-top-level-body (%classify-body-top-level forms senv))
-	   (output/sequence
-	    (map (lambda (form)
-		   (compile-expr-item
-		    (%classify-form-top-level form senv)))
-		 forms)))))))
-
-(define (%classify-form-top-level form senv)
-  (classify-form form senv (initial-hist form)))
-
-(define (%classify-body-top-level forms senv)
-  (seq-item
-   (map-in-order (lambda (form)
-		   (%classify-form-top-level form senv))
-		 forms)))
-
-(define (%compile-top-level-body item)
-  (output/top-level-sequence
-   (map (lambda (item)
-	  (if (defn-item? item)
-	      (let ((name (defn-item-id item))
-		    (value (compile-expr-item (defn-item-value item))))
-		(if (defn-item-syntax? item)
-		    (output/top-level-syntax-definition name value)
-		    (output/top-level-definition name value)))
-	      (compile-expr-item item)))
-	(item->list item))))
+       (compile-expr-item
+	(body-item
+	 (map-in-order (lambda (form)
+			 (classify-form form senv (initial-hist form)))
+		       forms)))))))
 
 ;;;; Classifier
 
@@ -148,22 +125,6 @@ USA.
 
 ;;;; Compiler
 
-(define (compile-body-items items)
-  (let ((items (flatten-items items)))
-    (if (not (pair? items))
-	(syntax-error "Empty body"))
-    (output/sequence
-     (append-map
-      (lambda (item)
-	(if (defn-item? item)
-	    (if (defn-item-syntax? item)
-		'()
-		(list (output/definition
-		       (defn-item-id item)
-		       (compile-expr-item (defn-item-value item)))))
-	    (list (compile-expr-item item))))
-      items))))
-
 (define compile-expr-item)
 (add-boot-init!
  (lambda ()
@@ -188,11 +149,21 @@ USA.
 
 (define-item-compiler seq-item?
   (lambda (item)
-    (compile-body-items (seq-item-elements item))))
+    (output/sequence (map compile-expr-item (seq-item-elements item)))))
 
 (define-item-compiler decl-item?
   (lambda (item)
     (output/declaration (decl-item-text item))))
+
+(define-item-compiler defn-item?
+  (lambda (item)
+    (if (defn-item? item)
+	(let ((name (defn-item-id item))
+	      (value (compile-expr-item (defn-item-value item))))
+	  (if (defn-item-syntax? item)
+	      (output/syntax-definition name value)
+	      (output/definition name value)))
+	(compile-expr-item item))))
 
 (define (illegal-expression-compiler description)
   (let ((message (string description " may not be used as an expression:")))
@@ -204,9 +175,6 @@ USA.
 
 (define-item-compiler keyword-item?
   (illegal-expression-compiler "Syntactic keyword"))
-
-(define-item-compiler defn-item?
-  (illegal-expression-compiler "Definition"))
 
 ;;;; Syntactic closures
 
