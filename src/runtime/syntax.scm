@@ -123,59 +123,6 @@ USA.
 (define (classify-forms-in-order-cddr form senv hist)
   (classify-forms-in-order (cddr form) senv (hist-cddr hist)))
 
-;;;; Compiler
-
-(define compile-expr-item)
-(add-boot-init!
- (lambda ()
-   (set! compile-expr-item
-	 (standard-predicate-dispatcher 'compile-expr-item 1))
-   (run-deferred-boot-actions 'define-item-compiler)))
-
-(define (define-item-compiler predicate compiler)
-  (defer-boot-action 'define-item-compiler
-    (lambda ()
-      (define-predicate-dispatch-handler compile-expr-item
-	(list predicate)
-	compiler))))
-
-(define-item-compiler var-item?
-  (lambda (item)
-    (output/variable (var-item-id item))))
-
-(define-item-compiler expr-item?
-  (lambda (item)
-    ((expr-item-compiler item))))
-
-(define-item-compiler seq-item?
-  (lambda (item)
-    (output/sequence (map compile-expr-item (seq-item-elements item)))))
-
-(define-item-compiler decl-item?
-  (lambda (item)
-    (output/declaration (decl-item-text item))))
-
-(define-item-compiler defn-item?
-  (lambda (item)
-    (if (defn-item? item)
-	(let ((name (defn-item-id item))
-	      (value (compile-expr-item (defn-item-value item))))
-	  (if (defn-item-syntax? item)
-	      (output/syntax-definition name value)
-	      (output/definition name value)))
-	(compile-expr-item item))))
-
-(define (illegal-expression-compiler description)
-  (let ((message (string description " may not be used as an expression:")))
-    (lambda (item)
-      (syntax-error message item))))
-
-(define-item-compiler reserved-name-item?
-  (illegal-expression-compiler "Reserved name"))
-
-(define-item-compiler keyword-item?
-  (illegal-expression-compiler "Syntactic keyword"))
-
 ;;;; Syntactic closures
 
 (define (close-syntax form senv)

@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; MIT/GNU Scheme syntax
+;;;; Syntax -- cold-load support
 
 ;;; Procedures to convert transformers to internal form.  Required
 ;;; during cold load, so must be loaded very early in the sequence.
@@ -55,6 +55,12 @@ USA.
 					      (make-er-compare use-senv))
 				 use-senv))
 		 expr))
+
+(define-record-type <expander-item>
+    (expander-item impl expr)
+    expander-item?
+  (impl expander-item-impl)
+  (expr expander-item-expr))
 
 (define (->senv env)
   (if (syntactic-environment? env)

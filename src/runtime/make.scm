@@ -374,8 +374,7 @@ USA.
 	 ("record" . (RUNTIME RECORD))
 	 ("bundle" . (runtime bundle))))
       (files2
-       '(("syntax-items" . (RUNTIME SYNTAX ITEMS))
-	 ("syntax-transforms" . (RUNTIME SYNTAX TRANSFORMS))
+       '(("syntax-low" . (runtime syntax low))
 	 ("thread" . (RUNTIME THREAD))
 	 ("wind" . (RUNTIME STATE-SPACE))
 	 ("prop1d" . (RUNTIME 1D-PROPERTY))
@@ -530,7 +529,7 @@ USA.
    (RUNTIME UNSYNTAXER)
    (RUNTIME PRETTY-PRINTER)
    (RUNTIME EXTENDED-SCODE-EVAL)
-   (runtime syntax top-level)
+   (runtime syntax items)
    (runtime syntax rename)
    ;; REP Loops
    (RUNTIME INTERRUPT-HANDLER)

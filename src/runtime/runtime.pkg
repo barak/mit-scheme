@@ -4424,8 +4424,6 @@ USA.
 	  classify-forms-cdr
 	  classify-forms-in-order-cddr
 	  classify-forms-in-order-cdr
-	  compile-expr-item
-	  define-item-compiler
 	  hist-caddr
 	  hist-cadr
 	  hist-car
@@ -4448,20 +4446,18 @@ USA.
 	  classifier-item-impl
 	  classifier-item?
 	  combination-item
+	  compile-expr-item
 	  constant-item
 	  decl-item
 	  decl-item-text
 	  decl-item?
+	  define-item-compiler
 	  defn-item
 	  defn-item-id
 	  defn-item-syntax?
 	  defn-item-value
 	  defn-item?
 	  delay-item
-	  expander-item
-	  expander-item-expr
-	  expander-item-impl
-	  expander-item?
 	  expr-item
 	  expr-item-compiler
 	  expr-item?
@@ -4485,6 +4481,20 @@ USA.
 	  var-item
 	  var-item-id
 	  var-item?))
+
+(define-package (runtime syntax low)
+  (files "syntax-low")
+  (parent (runtime syntax))
+  (export ()
+	  er-macro-transformer->expander
+	  rsc-macro-transformer->expander
+	  sc-macro-transformer->expander
+	  syntactic-keyword->item)
+  (export (runtime syntax)
+	  expander-item
+	  expander-item-expr
+	  expander-item-impl
+	  expander-item?))
 
 (define-package (runtime syntax environment)
   (files "syntax-environment")
@@ -4556,15 +4566,6 @@ USA.
   (parent (runtime syntax))
   (export (runtime syntax)
 	  map-decl-ids))
-
-(define-package (runtime syntax transforms)
-  (files "syntax-transforms")
-  (parent (runtime syntax))
-  (export ()
-	  er-macro-transformer->expander
-	  rsc-macro-transformer->expander
-	  sc-macro-transformer->expander
-	  syntactic-keyword->item))
 
 (define-package (runtime syntax mit)
   (files "mit-syntax")
