@@ -161,7 +161,6 @@ USA.
     ("syntax"	(runtime syntax top-level))
     ("syntax-check" (runtime syntax check))
     ("syntax-declaration" (runtime syntax declaration))
-    ("syntax-definitions" (runtime syntax definitions))
     ("syntax-environment" (runtime syntax environment))
     ("syntax-items" (runtime syntax items))
     ("syntax-output" (runtime syntax output))

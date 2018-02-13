@@ -42,34 +42,44 @@ USA.
 				(output/top-level-syntax-expander
 				 procedure-name transformer)))))))
 
-(define classifier:sc-macro-transformer
+(define (classifier->runtime classifier)
+  (make-unmapped-macro-reference-trap (classifier-item classifier)))
+
+(define :sc-macro-transformer
   ;; "Syntactic Closures" transformer
-  (transformer-keyword 'sc-macro-transformer->expander
-		       sc-macro-transformer->expander))
+  (classifier->runtime
+   (transformer-keyword 'sc-macro-transformer->expander
+			sc-macro-transformer->expander)))
 
-(define classifier:rsc-macro-transformer
+(define :rsc-macro-transformer
   ;; "Reversed Syntactic Closures" transformer
-  (transformer-keyword 'rsc-macro-transformer->expander
-		       rsc-macro-transformer->expander))
+  (classifier->runtime
+   (transformer-keyword 'rsc-macro-transformer->expander
+			rsc-macro-transformer->expander)))
 
-(define classifier:er-macro-transformer
+(define :er-macro-transformer
   ;; "Explicit Renaming" transformer
-  (transformer-keyword 'er-macro-transformer->expander
-		       er-macro-transformer->expander))
+  (classifier->runtime
+   (transformer-keyword 'er-macro-transformer->expander
+			er-macro-transformer->expander)))
 
 ;;;; Core primitives
 
-(define (classifier:lambda form senv hist)
-  (syntax-check '(_ mit-bvl + form) form)
-  (classify-lambda scode-lambda-name:unnamed
-		   (cadr form)
-		   form senv hist))
+(define :lambda
+  (classifier->runtime
+   (lambda (form senv hist)
+     (syntax-check '(_ mit-bvl + form) form)
+     (classify-lambda scode-lambda-name:unnamed
+		      (cadr form)
+		      form senv hist))))
 
-(define (classifier:named-lambda form senv hist)
-  (syntax-check '(_ (identifier . mit-bvl) + form) form)
-  (classify-lambda (identifier->symbol (caadr form))
-		   (cdadr form)
-		   form senv hist))
+(define :named-lambda
+  (classifier->runtime
+   (lambda (form senv hist)
+     (syntax-check '(_ (identifier . mit-bvl) + form) form)
+     (classify-lambda (identifier->symbol (caadr form))
+		      (cdadr form)
+		      form senv hist))))
 
 (define (classify-lambda name bvl form senv hist)
   (let ((senv (make-internal-senv senv)))
@@ -84,51 +94,74 @@ USA.
 		     (body-item
 		      (classify-forms-in-order-cddr form senv hist)))))))
 
-(define (classifier:begin form senv hist)
-  (syntax-check '(_ * form) form)
-  (seq-item (classify-forms-in-order-cdr form senv hist)))
+(define :delay
+  (classifier->runtime
+   (lambda (form senv hist)
+     (syntax-check '(_ expression) form)
+     (delay-item (lambda () (classify-form-cadr form senv hist))))))
 
-(define (classifier:if form senv hist)
-  (syntax-check '(_ expression expression ? expression) form)
-  (if-item (classify-form-cadr form senv hist)
-	   (classify-form-caddr form senv hist)
-	   (if (pair? (cdddr form))
-	       (classify-form-cadddr form senv hist)
-	       (unspecific-item))))
+(define :begin
+  (classifier->runtime
+   (lambda (form senv hist)
+     (syntax-check '(_ * form) form)
+     (seq-item (classify-forms-in-order-cdr form senv hist)))))
 
-(define (classifier:quote form senv hist)
-  (declare (ignore senv hist))
-  (syntax-check '(_ datum) form)
-  (constant-item (strip-syntactic-closures (cadr form))))
+(define :if
+  (classifier->runtime
+   (lambda (form senv hist)
+     (syntax-check '(_ expression expression ? expression) form)
+     (if-item (classify-form-cadr form senv hist)
+	      (classify-form-caddr form senv hist)
+	      (if (pair? (cdddr form))
+		  (classify-form-cadddr form senv hist)
+		  (unspecific-item))))))
 
-(define (classifier:quote-identifier form senv hist)
-  (declare (ignore hist))
-  (syntax-check '(_ identifier) form)
-  (let ((item (lookup-identifier (cadr form) senv)))
-    (if (not (var-item? item))
-	(syntax-error "Can't quote a keyword identifier:" form))
-    (quoted-id-item item)))
+(define :quote
+  (classifier->runtime
+   (lambda (form senv hist)
+     (declare (ignore senv hist))
+     (syntax-check '(_ datum) form)
+     (constant-item (strip-syntactic-closures (cadr form))))))
 
-(define (classifier:set! form senv hist)
-  (syntax-check '(_ form ? expression) form)
-  (let ((lhs-item (classify-form-cadr form senv hist))
-	(rhs-item
-	 (if (pair? (cddr form))
-	     (classify-form-caddr form senv hist)
-	     (unassigned-item))))
-    (cond ((var-item? lhs-item)
-	   (assignment-item (var-item-id lhs-item) rhs-item))
-	  ((access-item? lhs-item)
-	   (access-assignment-item (access-item-name lhs-item)
-				   (access-item-env lhs-item)
-				   rhs-item))
-	  (else
-	   (syntax-error "Variable required in this context:" (cadr form))))))
-
-(define (classifier:delay form senv hist)
-  (syntax-check '(_ expression) form)
-  (delay-item (lambda () (classify-form-cadr form senv hist))))
+(define :quote-identifier
+  (classifier->runtime
+   (lambda (form senv hist)
+     (declare (ignore hist))
+     (syntax-check '(_ identifier) form)
+     (let ((item (lookup-identifier (cadr form) senv)))
+       (if (not (var-item? item))
+	   (syntax-error "Can't quote a keyword identifier:" form))
+       (quoted-id-item item)))))
 
+(define :set!
+  (classifier->runtime
+   (lambda (form senv hist)
+     (syntax-check '(_ form ? expression) form)
+     (let ((lhs-item (classify-form-cadr form senv hist))
+	   (rhs-item
+	    (if (pair? (cddr form))
+		(classify-form-caddr form senv hist)
+		(unassigned-item))))
+       (cond ((var-item? lhs-item)
+	      (assignment-item (var-item-id lhs-item) rhs-item))
+	     ((access-item? lhs-item)
+	      (access-assignment-item (access-item-name lhs-item)
+				      (access-item-env lhs-item)
+				      rhs-item))
+	     (else
+	      (syntax-error "Variable required in this context:"
+			    (cadr form))))))))
+
+;; TODO: this is a classifier rather than a macro because it uses the
+;; special OUTPUT/DISJUNCTION.  Unfortunately something downstream in
+;; the compiler wants this, but it would be nice to eliminate this
+;; hack.
+(define :or
+  (classifier->runtime
+   (lambda (form senv hist)
+     (syntax-check '(_ * expression) form)
+     (or-item (classify-forms-cdr form senv hist)))))
+
 ;;;; Definitions
 
 (define keyword:define
@@ -137,16 +170,18 @@ USA.
      (let ((id (bind-variable (cadr form) senv)))
        (defn-item id (classify-form-caddr form senv hist))))))
 
-(define (classifier:define-syntax form senv hist)
-  (syntax-check '(_ identifier expression) form)
-  (let ((name (cadr form))
-	(item (classify-form-caddr form senv hist)))
-    (keyword-binder senv name item)
-    ;; User-defined macros at top level are preserved in the output.
-    (if (and (senv-top-level? senv)
-	     (expander-item? item))
-	(syntax-defn-item name (expander-item-expr item))
-	(seq-item '()))))
+(define :define-syntax
+  (classifier->runtime
+   (lambda (form senv hist)
+     (syntax-check '(_ identifier expression) form)
+     (let ((name (cadr form))
+	   (item (classify-form-caddr form senv hist)))
+       (keyword-binder senv name item)
+       ;; User-defined macros at top level are preserved in the output.
+       (if (and (senv-top-level? senv)
+		(expander-item? item))
+	   (syntax-defn-item name (expander-item-expr item))
+	   (seq-item '()))))))
 
 (define (keyword-binder senv name item)
   (if (not (keyword-item? item))
@@ -184,37 +219,34 @@ USA.
     (seq-item
      (classify-forms-in-order-cddr form body-senv hist))))
 
+(define :let-syntax
+  (classifier->runtime classifier:let-syntax))
+
 (define keyword:let-syntax
   (classifier->keyword classifier:let-syntax))
 
-(define (classifier:letrec-syntax form senv hist)
-  (syntax-check '(_ (* (identifier expression)) + form) form)
-  (let ((binding-senv (make-internal-senv senv)))
-    (let ((bindings (cadr form)))
-      (for-each (lambda (binding)
-		  (reserve-identifier (car binding) binding-senv))
-		bindings)
-      ;; Classify right-hand sides first, in order to catch references to
-      ;; reserved names.  Then bind names prior to classifying body.
-      (for-each (lambda (binding item)
-		  (keyword-binder binding-senv (car binding) item))
-		bindings
-		(map (lambda (binding hist)
-		       (classify-form-cadr binding binding-senv hist))
-		     bindings
-		     (subform-hists bindings (hist-cadr hist)))))
-    (seq-item
-     (classify-forms-in-order-cddr form
-				   (make-internal-senv binding-senv)
-				   hist))))
-
-;; TODO: this is a classifier rather than a macro because it uses the
-;; special OUTPUT/DISJUNCTION.  Unfortunately something downstream in
-;; the compiler wants this, but it would be nice to eliminate this
-;; hack.
-(define (classifier:or form senv hist)
-  (syntax-check '(_ * expression) form)
-  (or-item (classify-forms-cdr form senv hist)))
+(define :letrec-syntax
+  (classifier->runtime
+   (lambda (form senv hist)
+     (syntax-check '(_ (* (identifier expression)) + form) form)
+     (let ((binding-senv (make-internal-senv senv)))
+       (let ((bindings (cadr form)))
+	 (for-each (lambda (binding)
+		     (reserve-identifier (car binding) binding-senv))
+		   bindings)
+	 ;; Classify right-hand sides first, in order to catch references to
+	 ;; reserved names.  Then bind names prior to classifying body.
+	 (for-each (lambda (binding item)
+		     (keyword-binder binding-senv (car binding) item))
+		   bindings
+		   (map (lambda (binding hist)
+			  (classify-form-cadr binding binding-senv hist))
+			bindings
+			(subform-hists bindings (hist-cadr hist)))))
+       (seq-item
+	(classify-forms-in-order-cddr form
+				      (make-internal-senv binding-senv)
+				      hist))))))
 
 ;;;; MIT-specific syntax
 
@@ -235,12 +267,14 @@ USA.
     (output/access-reference (access-item-name item)
 			     (compile-expr-item (access-item-env item)))))
 
-(define (classifier:the-environment form senv hist)
-  (declare (ignore hist))
-  (syntax-check '(_) form)
-  (if (not (senv-top-level? senv))
-      (syntax-error "This form allowed only at top level:" form))
-  (the-environment-item))
+(define :the-environment
+  (classifier->runtime
+   (lambda (form senv hist)
+     (declare (ignore hist))
+     (syntax-check '(_) form)
+     (if (not (senv-top-level? senv))
+	 (syntax-error "This form allowed only at top level:" form))
+     (the-environment-item))))
 
 (define keyword:unspecific
   (classifier->keyword
@@ -253,14 +287,16 @@ USA.
    (lambda (form senv hist)
      (declare (ignore form senv hist))
      (unassigned-item))))
-
+
 ;;;; Declarations
 
-(define (classifier:declare form senv hist)
-  (syntax-check '(_ * (identifier * datum)) form)
-  (decl-item
-   (lambda ()
-     (classify-decls (cdr form) senv (hist-cdr hist)))))
+(define :declare
+  (classifier->runtime
+   (lambda (form senv hist)
+     (syntax-check '(_ * (identifier * datum)) form)
+     (decl-item
+      (lambda ()
+	(classify-decls (cdr form) senv (hist-cdr hist)))))))
 
 (define (classify-decls decls senv hist)
   (map (lambda (decl hist)

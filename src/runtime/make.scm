@@ -531,7 +531,6 @@ USA.
    (RUNTIME PRETTY-PRINTER)
    (RUNTIME EXTENDED-SCODE-EVAL)
    (runtime syntax top-level)
-   (RUNTIME SYNTAX DEFINITIONS)
    (runtime syntax rename)
    ;; REP Loops
    (RUNTIME INTERRUPT-HANDLER)
