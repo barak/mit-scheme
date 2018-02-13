@@ -305,9 +305,8 @@ USA.
        (subform-hists decls hist)))
 
 (define (classify-decl decl senv hist)
-  (map-decl-ids (lambda (id)
-		  ;; Need to get the right hist here.
-		  (classify-id id senv hist))
+  (map-decl-ids (lambda (id selector)
+		  (classify-id id senv (hist-select selector hist)))
 		decl))
 
 (define (classify-id id senv hist)

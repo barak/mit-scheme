@@ -262,19 +262,16 @@ USA.
 ;;;; Binary selectors
 
 (define (biselect-car selector)
-  (let ((n (integer-length selector)))
-    (+ (shift-left 1 n)
-       (- selector (shift-left 1 (- n 1))))))
+  (biselect-append biselector:car selector))
 
 (define (biselect-cdr selector)
-  (+ (shift-left 1 (integer-length selector))
-     selector))
+  (biselect-append biselector:cdr selector))
 
-(define (biselect-subform selector form)
-  (if (> selector 1)
-      (biselect-subform (quotient selector 2)
-			(if (even? selector) (car form) (cdr form)))
-      form))
+(define (biselect-cadr selector)
+  (biselect-append biselector:cadr selector))
+
+(define (biselect-cddr selector)
+  (biselect-append biselector:cddr selector))
 
 ;; Selector order is:
 ;; (= biselector:cadr (biselect-append biselector:car biselector:cdr))
@@ -285,6 +282,18 @@ USA.
 		 (- s1 (shift-left 1 n)))))
 	  biselector:cr
 	  selectors))
+
+(define (biselect-list-elts list selector)
+  (if (pair? list)
+      (cons (biselect-car selector)
+	    (biselect-list-elts (cdr list) (biselect-cdr selector)))
+      '()))
+
+(define (biselect-subform selector form)
+  (if (> selector 1)
+      (biselect-subform (quotient selector 2)
+			(if (even? selector) (car form) (cdr form)))
+      form))
 
 (define-integrable biselector:cr     #b00001)
 (define-integrable biselector:car    #b00010)

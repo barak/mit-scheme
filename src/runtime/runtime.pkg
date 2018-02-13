@@ -4403,8 +4403,11 @@ USA.
 	  syntax*
 	  syntax-error)
   (export (runtime syntax)
+	  biselect-cadr
 	  biselect-car
+	  biselect-cddr
 	  biselect-cdr
+	  biselect-list-elts
 	  biselect-subform
 	  biselector:cadddr
 	  biselector:caddr
