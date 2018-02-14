@@ -4452,8 +4452,6 @@ USA.
 	  compile-expr-item
 	  constant-item
 	  decl-item
-	  decl-item-text
-	  decl-item?
 	  define-item-compiler
 	  defn-item
 	  defn-item-id

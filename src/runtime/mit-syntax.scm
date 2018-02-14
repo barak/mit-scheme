@@ -294,9 +294,7 @@ USA.
   (classifier->runtime
    (lambda (form senv hist)
      (syntax-check '(_ * (identifier * datum)) form)
-     (decl-item
-      (lambda ()
-	(classify-decls (cdr form) senv (hist-cdr hist)))))))
+     (decl-item (lambda () (classify-decls (cdr form) senv (hist-cdr hist)))))))
 
 (define (classify-decls decls senv hist)
   (map (lambda (decl hist)

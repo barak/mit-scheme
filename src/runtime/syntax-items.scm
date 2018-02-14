@@ -88,8 +88,7 @@ USA.
   (%defn-item id value #f))
 
 (define (defn-item-value? object)
-  (not (or (reserved-name-item? object)
-	   (decl-item? object))))
+  (not (reserved-name-item? object)))
 (register-predicate! defn-item-value? 'defn-item-value)
 
 (define-record-type <defn-item>
@@ -134,17 +133,6 @@ USA.
     (expr-item compiler)
     expr-item?
   (compiler expr-item-compiler))
-
-;;; Declaration items represent block-scoped declarations that are to
-;;; be passed through to the compiler.
-
-(define-record-type <decl-item>
-    (decl-item text-getter)
-    decl-item?
-  (text-getter decl-item-text-getter))
-
-(define (decl-item-text item)
-  ((decl-item-text-getter item)))
 
 ;;;; Specific expression items
 
@@ -210,6 +198,11 @@ USA.
    (lambda ()
      (output/disjunction (map compile-expr-item items)))))
 
+(define (decl-item classify)
+  (expr-item
+   (lambda ()
+     (output/declaration (classify)))))
+
 (define (the-environment-item)
   (expr-item output/the-environment))
 
@@ -246,10 +239,6 @@ USA.
 (define-item-compiler seq-item?
   (lambda (item)
     (output/sequence (map compile-expr-item (seq-item-elements item)))))
-
-(define-item-compiler decl-item?
-  (lambda (item)
-    (output/declaration (decl-item-text item))))
 
 (define-item-compiler defn-item?
   (lambda (item)
