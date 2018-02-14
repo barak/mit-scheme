@@ -103,19 +103,19 @@ USA.
   (classify-form form env (hist-reduce form hist)))
 
 (define (classify-forms forms senv hist)
-  (map (lambda (expr hist)
-	 (classify-form expr senv hist))
-       forms
-       (subform-hists forms hist)))
+  (smap (lambda (expr hist)
+	  (classify-form expr senv hist))
+	forms
+	hist))
 
 (define (classify-forms-cdr form senv hist)
   (classify-forms (cdr form) senv (hist-cdr hist)))
 
 (define (classify-forms-in-order forms senv hist)
-  (map-in-order (lambda (form hist)
-		  (classify-form form senv hist))
-		forms
-		(subform-hists forms hist)))
+  (smap-in-order (lambda (form hist)
+		   (classify-form form senv hist))
+		 forms
+		 hist))
 
 (define (classify-forms-in-order-cdr form senv hist)
   (classify-forms-in-order (cdr form) senv (hist-cdr hist)))
@@ -332,3 +332,12 @@ USA.
 	(loop (map cdr lists)
 	      (cons (apply procedure (map car lists)) values))
 	(reverse! values))))
+
+(define (smap procedure forms hist)
+  (map procedure forms (subform-hists forms hist)))
+
+(define (smap-in-order procedure forms hist)
+  (map-in-order procedure forms (subform-hists forms hist)))
+
+(define (sfor-each procedure forms hist)
+  (for-each procedure forms (subform-hists forms hist)))

@@ -195,11 +195,11 @@ USA.
    (lambda (form senv hist)
      (let* ((body-senv (make-internal-senv senv))
 	    (bindings
-	     (map (lambda (binding hist)
-		    (cons (bind-variable (car binding) body-senv)
-			  (classify-form-cadr binding senv hist)))
-		  (cadr form)
-		  (subform-hists (cadr form) (hist-cadr hist)))))
+	     (smap (lambda (binding hist)
+		     (cons (bind-variable (car binding) body-senv)
+			   (classify-form-cadr binding senv hist)))
+		   (cadr form)
+		   (hist-cadr hist))))
        (let-item (map car bindings)
 		 (map cdr bindings)
 		 (body-item
@@ -210,12 +210,12 @@ USA.
 (define (classifier:let-syntax form senv hist)
   (syntax-check '(_ (* (identifier expression)) + form) form)
   (let ((body-senv (make-internal-senv senv)))
-    (for-each (lambda (binding hist)
-		(keyword-binder body-senv
-				(car binding)
-				(classify-form-cadr binding senv hist)))
-	      (cadr form)
-	      (subform-hists (cadr form) (hist-cadr hist)))
+    (sfor-each (lambda (binding hist)
+		 (keyword-binder body-senv
+				 (car binding)
+				 (classify-form-cadr binding senv hist)))
+	       (cadr form)
+	       (hist-cadr hist))
     (seq-item
      (classify-forms-in-order-cddr form body-senv hist))))
 
@@ -239,10 +239,10 @@ USA.
 	 (for-each (lambda (binding item)
 		     (keyword-binder binding-senv (car binding) item))
 		   bindings
-		   (map (lambda (binding hist)
+		   (smap (lambda (binding hist)
 			  (classify-form-cadr binding binding-senv hist))
 			bindings
-			(subform-hists bindings (hist-cadr hist)))))
+			(hist-cadr hist))))
        (seq-item
 	(classify-forms-in-order-cddr form
 				      (make-internal-senv binding-senv)
@@ -294,18 +294,16 @@ USA.
   (classifier->runtime
    (lambda (form senv hist)
      (syntax-check '(_ * (identifier * datum)) form)
-     (decl-item (lambda () (classify-decls (cdr form) senv (hist-cdr hist)))))))
-
-(define (classify-decls decls senv hist)
-  (map (lambda (decl hist)
-	 (classify-decl decl senv hist))
-       decls
-       (subform-hists decls hist)))
-
-(define (classify-decl decl senv hist)
-  (map-decl-ids (lambda (id selector)
-		  (classify-id id senv (hist-select selector hist)))
-		decl))
+     (decl-item
+      (lambda ()
+	(smap (lambda (decl hist)
+		(map-decl-ids (lambda (id selector)
+				(classify-id id
+					     senv
+					     (hist-select selector hist)))
+			      decl))
+	      (cdr form)
+	      (hist-cdr hist)))))))
 
 (define (classify-id id senv hist)
   (let ((item (classify-form id senv hist)))

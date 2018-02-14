@@ -4436,7 +4436,8 @@ USA.
 	  hist-select
 	  initial-hist
 	  raw-identifier?
-	  subform-hists))
+	  sfor-each
+	  smap))
 
 (define-package (runtime syntax items)
   (files "syntax-items")
