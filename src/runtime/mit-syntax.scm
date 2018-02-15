@@ -175,18 +175,25 @@ USA.
    (lambda (form senv hist)
      (syntax-check '(_ identifier expression) form)
      (let ((name (cadr form))
-	   (item (classify-form-caddr form senv hist)))
-       (keyword-binder senv name item)
+	   (item (classify-keyword-value-caddr form senv hist)))
+       (bind-keyword name senv item)
        ;; User-defined macros at top level are preserved in the output.
        (if (and (senv-top-level? senv)
 		(expander-item? item))
 	   (syntax-defn-item name (expander-item-expr item))
 	   (seq-item '()))))))
 
-(define (keyword-binder senv name item)
-  (if (not (keyword-item? item))
-      (syntax-error "Keyword binding value must be a keyword:" name))
-  (bind-keyword name senv item))
+(define (classify-keyword-value form senv hist)
+  (let ((item (classify-form form senv hist)))
+    (if (not (keyword-item? item))
+	(syntax-error "Keyword binding value must be a keyword:" form))
+    item))
+
+(define (classify-keyword-value-cadr form senv hist)
+  (classify-keyword-value (cadr form) senv (hist-cadr hist)))
+
+(define (classify-keyword-value-caddr form senv hist)
+  (classify-keyword-value (caddr form) senv (hist-caddr hist)))
 
 ;;;; LET-like
 
@@ -211,9 +218,9 @@ USA.
   (syntax-check '(_ (* (identifier expression)) + form) form)
   (let ((body-senv (make-internal-senv senv)))
     (sfor-each (lambda (binding hist)
-		 (keyword-binder body-senv
-				 (car binding)
-				 (classify-form-cadr binding senv hist)))
+		 (bind-keyword (car binding)
+			       body-senv
+			       (classify-keyword-value-cadr binding senv hist)))
 	       (cadr form)
 	       (hist-cadr hist))
     (seq-item
@@ -229,23 +236,24 @@ USA.
   (classifier->runtime
    (lambda (form senv hist)
      (syntax-check '(_ (* (identifier expression)) + form) form)
-     (let ((binding-senv (make-internal-senv senv)))
-       (let ((bindings (cadr form)))
+     (let ((vals-senv (make-internal-senv senv)))
+       (let ((bindings (cadr form))
+	     (hist (hist-cadr hist)))
 	 (for-each (lambda (binding)
-		     (reserve-identifier (car binding) binding-senv))
+		     (reserve-identifier (car binding) vals-senv))
 		   bindings)
 	 ;; Classify right-hand sides first, in order to catch references to
 	 ;; reserved names.  Then bind names prior to classifying body.
 	 (for-each (lambda (binding item)
-		     (keyword-binder binding-senv (car binding) item))
+		     (bind-keyword (car binding) vals-senv item))
 		   bindings
 		   (smap (lambda (binding hist)
-			  (classify-form-cadr binding binding-senv hist))
-			bindings
-			(hist-cadr hist))))
+			   (classify-keyword-value-cadr binding vals-senv hist))
+			 bindings
+			 hist)))
        (seq-item
 	(classify-forms-in-order-cddr form
-				      (make-internal-senv binding-senv)
+				      (make-internal-senv vals-senv)
 				      hist))))))
 
 ;;;; MIT-specific syntax
