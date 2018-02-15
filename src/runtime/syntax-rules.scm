@@ -252,8 +252,7 @@ USA.
 (define (syntax-quote expression)
   `(,(classifier->keyword
       (lambda (form senv hist)
-	(declare (ignore senv hist))
-	(syntax-check '(_ datum) form)
+	(scheck '(_ datum) form senv hist)
 	(constant-item (cadr form))))
     ,expression))
 

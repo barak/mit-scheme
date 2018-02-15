@@ -50,12 +50,8 @@ USA.
 
 (define lookup-identifier
   (id-dispatcher (lambda (identifier senv)
-		   (let ((item ((senv-lookup senv) identifier)))
-		     (if (reserved-name-item? item)
-			 (syntax-error "Premature reference to reserved name:"
-				       identifier))
-		     (or item
-			 (var-item identifier))))
+		   (or ((senv-lookup senv) identifier)
+		       (var-item identifier)))
 		 'lookup-identifier))
 
 (define reserve-identifier
@@ -211,10 +207,7 @@ USA.
 	     => (lambda (binding)
 		  (set-cdr! binding item)))
 	    ((assq identifier free)
-	     (if (reserved-name-item? item)
-		 (syntax-error "Premature reference to reserved name:"
-			       identifier)
-		 (error "Can't define name; already free:" identifier)))
+	     (error "Can't define name; already free:" identifier))
 	    (else
 	     (set! bound (cons (cons identifier item) bound))
 	     unspecific)))

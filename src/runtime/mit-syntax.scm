@@ -33,7 +33,7 @@ USA.
 
 (define (transformer-keyword procedure-name transformer->expander)
   (lambda (form senv hist)
-    (syntax-check '(_ expression) form)
+    (scheck '(_ expression) form senv hist)
     (let ((transformer (compile-expr-item (classify-form-cadr form senv hist))))
       (transformer->expander (transformer-eval transformer senv)
 			     senv
@@ -68,7 +68,7 @@ USA.
 (define :lambda
   (classifier->runtime
    (lambda (form senv hist)
-     (syntax-check '(_ mit-bvl + form) form)
+     (scheck '(_ mit-bvl + form) form senv hist)
      (classify-lambda scode-lambda-name:unnamed
 		      (cadr form)
 		      form senv hist))))
@@ -76,7 +76,7 @@ USA.
 (define :named-lambda
   (classifier->runtime
    (lambda (form senv hist)
-     (syntax-check '(_ (identifier . mit-bvl) + form) form)
+     (scheck '(_ (identifier . mit-bvl) + form) form senv hist)
      (classify-lambda (identifier->symbol (caadr form))
 		      (cdadr form)
 		      form senv hist))))
@@ -97,19 +97,19 @@ USA.
 (define :delay
   (classifier->runtime
    (lambda (form senv hist)
-     (syntax-check '(_ expression) form)
+     (scheck '(_ expression) form senv hist)
      (delay-item (lambda () (classify-form-cadr form senv hist))))))
 
 (define :begin
   (classifier->runtime
    (lambda (form senv hist)
-     (syntax-check '(_ * form) form)
+     (scheck '(_ * form) form senv hist)
      (seq-item (classify-forms-in-order-cdr form senv hist)))))
 
 (define :if
   (classifier->runtime
    (lambda (form senv hist)
-     (syntax-check '(_ expression expression ? expression) form)
+     (scheck '(_ expression expression ? expression) form senv hist)
      (if-item (classify-form-cadr form senv hist)
 	      (classify-form-caddr form senv hist)
 	      (if (pair? (cdddr form))
@@ -119,24 +119,22 @@ USA.
 (define :quote
   (classifier->runtime
    (lambda (form senv hist)
-     (declare (ignore senv hist))
-     (syntax-check '(_ datum) form)
+     (scheck '(_ datum) form senv hist)
      (constant-item (strip-syntactic-closures (cadr form))))))
 
 (define :quote-identifier
   (classifier->runtime
    (lambda (form senv hist)
-     (declare (ignore hist))
-     (syntax-check '(_ identifier) form)
+     (scheck '(_ identifier) form senv hist)
      (let ((item (lookup-identifier (cadr form) senv)))
        (if (not (var-item? item))
-	   (syntax-error "Can't quote a keyword identifier:" form))
+	   (serror form senv hist "Can't quote a keyword identifier:" form))
        (quoted-id-item item)))))
 
 (define :set!
   (classifier->runtime
    (lambda (form senv hist)
-     (syntax-check '(_ form ? expression) form)
+     (scheck '(_ form ? expression) form senv hist)
      (let ((lhs-item (classify-form-cadr form senv hist))
 	   (rhs-item
 	    (if (pair? (cddr form))
@@ -149,8 +147,8 @@ USA.
 				      (access-item-env lhs-item)
 				      rhs-item))
 	     (else
-	      (syntax-error "Variable required in this context:"
-			    (cadr form))))))))
+	      (serror form senv hist "Variable required in this context:"
+		      (cadr form))))))))
 
 ;; TODO: this is a classifier rather than a macro because it uses the
 ;; special OUTPUT/DISJUNCTION.  Unfortunately something downstream in
@@ -159,7 +157,7 @@ USA.
 (define :or
   (classifier->runtime
    (lambda (form senv hist)
-     (syntax-check '(_ * expression) form)
+     (scheck '(_ * expression) form senv hist)
      (or-item (classify-forms-cdr form senv hist)))))
 
 ;;;; Definitions
@@ -173,7 +171,7 @@ USA.
 (define :define-syntax
   (classifier->runtime
    (lambda (form senv hist)
-     (syntax-check '(_ identifier expression) form)
+     (scheck '(_ identifier expression) form senv hist)
      (let ((name (cadr form))
 	   (item (classify-keyword-value-caddr form senv hist)))
        (bind-keyword name senv item)
@@ -186,7 +184,7 @@ USA.
 (define (classify-keyword-value form senv hist)
   (let ((item (classify-form form senv hist)))
     (if (not (keyword-item? item))
-	(syntax-error "Keyword binding value must be a keyword:" form))
+	(serror form senv hist "Keyword binding value must be a keyword:" form))
     item))
 
 (define (classify-keyword-value-cadr form senv hist)
@@ -215,7 +213,7 @@ USA.
 						hist)))))))
 
 (define (classifier:let-syntax form senv hist)
-  (syntax-check '(_ (* (identifier expression)) + form) form)
+  (scheck '(_ (* (identifier expression)) + form) form senv hist)
   (let ((body-senv (make-internal-senv senv)))
     (sfor-each (lambda (binding hist)
 		 (bind-keyword (car binding)
@@ -223,8 +221,7 @@ USA.
 			       (classify-keyword-value-cadr binding senv hist)))
 	       (cadr form)
 	       (hist-cadr hist))
-    (seq-item
-     (classify-forms-in-order-cddr form body-senv hist))))
+    (seq-item (classify-forms-in-order-cddr form body-senv hist))))
 
 (define :let-syntax
   (classifier->runtime classifier:let-syntax))
@@ -235,7 +232,7 @@ USA.
 (define :letrec-syntax
   (classifier->runtime
    (lambda (form senv hist)
-     (syntax-check '(_ (* (identifier expression)) + form) form)
+     (scheck '(_ (* (identifier expression)) + form) form senv hist)
      (let ((vals-senv (make-internal-senv senv)))
        (let ((bindings (cadr form))
 	     (hist (hist-cadr hist)))
@@ -278,10 +275,9 @@ USA.
 (define :the-environment
   (classifier->runtime
    (lambda (form senv hist)
-     (declare (ignore hist))
-     (syntax-check '(_) form)
+     (scheck '(_) form senv hist)
      (if (not (senv-top-level? senv))
-	 (syntax-error "This form allowed only at top level:" form))
+	 (serror form senv hist "This form allowed only at top level:" form))
      (the-environment-item))))
 
 (define keyword:unspecific
@@ -301,7 +297,7 @@ USA.
 (define :declare
   (classifier->runtime
    (lambda (form senv hist)
-     (syntax-check '(_ * (identifier * datum)) form)
+     (scheck '(_ * (identifier * datum)) form senv hist)
      (decl-item
       (lambda ()
 	(smap (lambda (decl hist)
@@ -316,5 +312,5 @@ USA.
 (define (classify-id id senv hist)
   (let ((item (classify-form id senv hist)))
     (if (not (var-item? item))
-	(syntax-error "Variable required in this context:" id))
+	(serror id senv hist "Variable required in this context:" id))
     (var-item-id item)))

@@ -76,28 +76,35 @@ USA.
 	   (cond ((classifier-item? item)
 		  ((classifier-item-impl item) form senv hist))
 		 ((expander-item? item)
-		  (reclassify ((expander-item-impl item) form senv)
+		  (reclassify (with-error-context form senv hist
+				(lambda ()
+				  ((expander-item-impl item) form senv)))
 			      senv
 			      hist))
 		 (else
 		  (if (not (list? (cdr form)))
-		      (syntax-error "Combination must be a proper list:" form))
+		      (serror form senv hist "Combination must be a proper list:" form))
 		  (combination-item item
 				    (classify-forms-cdr form senv hist))))))
 	(else
 	 (constant-item form))))
 
+(define (classify-subform selector form senv hist)
+  (classify-form (subform-select selector form)
+		 senv
+		 (hist-select selector hist)))
+
 (define (classify-form-car form senv hist)
-  (classify-form (car form) senv (hist-car hist)))
+  (classify-subform biselector:car form senv hist))
 
 (define (classify-form-cadr form senv hist)
-  (classify-form (cadr form) senv (hist-cadr hist)))
+  (classify-subform biselector:cadr form senv hist))
 
 (define (classify-form-caddr form senv hist)
-  (classify-form (caddr form) senv (hist-caddr hist)))
+  (classify-subform biselector:caddr form senv hist))
 
 (define (classify-form-cadddr form senv hist)
-  (classify-form (cadddr form) senv (hist-cadddr hist)))
+  (classify-subform biselector:cadddr form senv hist))
 
 (define (reclassify form env hist)
   (classify-form form env (hist-reduce form hist)))
@@ -289,10 +296,10 @@ USA.
 	    (biselect-list-elts (cdr list) (biselect-cdr selector)))
       '()))
 
-(define (biselect-subform selector form)
+(define (subform-select selector form)
   (if (> selector 1)
-      (biselect-subform (quotient selector 2)
-			(if (even? selector) (car form) (cdr form)))
+      (subform-select (quotient selector 2)
+		      (if (even? selector) (car form) (cdr form)))
       form))
 
 (define-integrable biselector:cr     #b00001)
@@ -305,10 +312,40 @@ USA.
 (define-integrable biselector:cadddr #b10111)
 (define-integrable biselector:cddddr #b11111)
 
-;;;; Utilities
+;;;; Errors
 
-(define (syntax-error . rest)
-  (apply error rest))
+(define-deferred condition-type:syntax-error
+  (make-condition-type 'syntax-error
+      condition-type:simple-error
+      '(form senv hist message irritants)
+    (lambda (condition port)
+      (format-error-message (access-condition condition 'message)
+			    (access-condition condition 'irritants)
+			    port))))
+
+(define-deferred error:syntax
+  (condition-signaller condition-type:syntax-error
+		       (default-object)
+		       standard-error-handler))
+
+;;; Internal signaller for classifiers.
+(define (serror form senv hist message . irritants)
+  (error:syntax form senv hist message irritants))
+
+(define-deferred error-context
+  (make-unsettable-parameter unspecific))
+
+(define (with-error-context form senv hist thunk)
+  (parameterize* (list (cons error-context (list form senv hist)))
+		 thunk))
+
+;;; External signaller for macros.
+(define (syntax-error message . irritants)
+  (let ((context (error-context)))
+    (error:syntax (car context) (cadr context) (caddr context)
+		  message irritants)))
+
+;;;; Utilities
 
 (define (classifier->keyword classifier)
   (close-syntax 'keyword

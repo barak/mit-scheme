@@ -4408,7 +4408,6 @@ USA.
 	  biselect-cddr
 	  biselect-cdr
 	  biselect-list-elts
-	  biselect-subform
 	  biselector:cadddr
 	  biselector:caddr
 	  biselector:cadr
@@ -4427,6 +4426,8 @@ USA.
 	  classify-forms-cdr
 	  classify-forms-in-order-cddr
 	  classify-forms-in-order-cdr
+	  classify-subform
+	  error:syntax
 	  hist-caddr
 	  hist-cadr
 	  hist-car
@@ -4436,8 +4437,10 @@ USA.
 	  hist-select
 	  initial-hist
 	  raw-identifier?
+	  serror
 	  sfor-each
-	  smap))
+	  smap
+	  subform-select))
 
 (define-package (runtime syntax items)
   (files "syntax-items")
@@ -4522,7 +4525,9 @@ USA.
 	  ill-formed-syntax
 	  syntax-check
 	  syntax-match?
-	  syntax-match?*))
+	  syntax-match?*)
+  (export (runtime syntax)
+	  scheck))
 
 (define-package (runtime syntax rename)
   (files "syntax-rename")

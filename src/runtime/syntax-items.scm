@@ -253,7 +253,7 @@ USA.
 (define (illegal-expression-compiler description)
   (let ((message (string description " may not be used as an expression:")))
     (lambda (item)
-      (syntax-error message item))))
+      (error message item))))
 
 (define-item-compiler reserved-name-item?
   (illegal-expression-compiler "Reserved name"))

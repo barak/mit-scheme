@@ -531,6 +531,7 @@ USA.
    (RUNTIME EXTENDED-SCODE-EVAL)
    (runtime syntax items)
    (runtime syntax rename)
+   (runtime syntax top-level)
    ;; REP Loops
    (RUNTIME INTERRUPT-HANDLER)
    (RUNTIME GC-STATISTICS)

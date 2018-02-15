@@ -29,6 +29,12 @@ USA.
 
 (declare (usual-integrations))
 
+;;; Internal checker for classifiers.
+(define (scheck pattern form senv hist)
+  (if (not (syntax-match? (cdr pattern) (cdr form)))
+      (serror form senv hist "Ill-formed special form:" form)))
+
+;;; External checker for macros.
 (define (syntax-check pattern form)
   (if (not (syntax-match? (cdr pattern) (cdr form)))
       (ill-formed-syntax form)))
