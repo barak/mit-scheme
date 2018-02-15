@@ -193,35 +193,36 @@ USA.
 		     (cadr alist))))
     condition))
 
-(define (condition-constructor type field-names)
-  (guarantee-condition-type type 'CONDITION-CONSTRUCTOR)
-  (guarantee list-of-unique-symbols? field-names 'CONDITION-CONSTRUCTOR)
-  (let ((indexes
-	 (map (lambda (field-name)
-		(%condition-type/field-index type field-name
-					     'CONDITION-CONSTRUCTOR))
-	      field-names)))
-    (letrec
-	((constructor
-	  (lambda (continuation restarts . field-values)
-	    (guarantee continuation? continuation constructor)
-	    (let ((condition
-		   (%make-condition type
-				    continuation
-				    (%restarts-argument restarts
-							constructor))))
-	      (let ((values (%condition/field-values condition)))
-		(do ((i indexes (cdr i))
-		     (v field-values (cdr v)))
-		    ((not (and (pair? i) (pair? v)))
-		     (if (or (pair? i) (pair? v))
-			 (error:wrong-number-of-arguments
-			  constructor
-			  (fix:+ (length indexes) 2)
-			  (cons* continuation restarts field-values))))
-		  (vector-set! values (car i) (car v))))
-	      condition))))
-      constructor)))
+(define (condition-constructor type #!optional field-names)
+  (let ((caller 'condition-constructor))
+    (guarantee-condition-type type caller)
+    (let ((indexes
+	   (map (lambda (field-name)
+		  (%condition-type/field-index type field-name caller))
+		(if (default-object? field-names)
+		    (condition-type/field-names type)
+		    (guarantee list-of-unique-symbols? field-names caller)))))
+      (letrec
+	  ((constructor
+	    (lambda (continuation restarts . field-values)
+	      (guarantee continuation? continuation constructor)
+	      (let ((condition
+		     (%make-condition type
+				      continuation
+				      (%restarts-argument restarts
+							  constructor))))
+		(let ((values (%condition/field-values condition)))
+		  (do ((i indexes (cdr i))
+		       (v field-values (cdr v)))
+		      ((not (and (pair? i) (pair? v)))
+		       (if (or (pair? i) (pair? v))
+			   (error:wrong-number-of-arguments
+			    constructor
+			    (fix:+ (length indexes) 2)
+			    (cons* continuation restarts field-values))))
+		    (vector-set! values (car i) (car v))))
+		condition))))
+	constructor))))
 
 (define-integrable (%restarts-argument restarts operator)
   (cond ((eq? 'BOUND-RESTARTS restarts)
