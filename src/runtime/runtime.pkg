@@ -4529,6 +4529,42 @@ USA.
   (export (runtime syntax)
 	  scheck))
 
+(define-package (runtime syntax parser)
+  (files "syntax-parser")
+  (parent (runtime syntax))
+  (export ()
+	  spar*
+	  spar+
+	  spar-alt
+	  spar-append-map-value
+	  spar-call-with-values
+	  spar-call-with-values-of
+	  spar-discard-elt
+	  spar-discard-input
+	  spar-elt
+	  spar-fail
+	  spar-guard-form
+	  spar-guard-full
+	  spar-guard-senv
+	  spar-guard-value
+	  spar-map-senv
+	  spar-map-value
+	  spar-map-values
+	  spar-opt
+	  spar-push-form
+	  spar-push-mapped-form
+	  spar-push-mapped-full
+	  spar-push-value
+	  spar-push-value-of
+	  spar-repeat
+	  spar-seq
+	  spar-succeed
+	  spar-transform-values
+	  spar-with-mapped-senv)
+  (export (runtime syntax)
+	  spar->classifier
+	  spar-push-classified))
+
 (define-package (runtime syntax rename)
   (files "syntax-rename")
   (parent (runtime syntax))

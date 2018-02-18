@@ -165,6 +165,7 @@ USA.
     ("syntax-items" (runtime syntax items))
     ("syntax-low" (runtime syntax low))
     ("syntax-output" (runtime syntax output))
+    ("syntax-parser" (runtime syntax parser))
     ("syntax-rules" (runtime syntax syntax-rules))
     ("sysclk"	(runtime system-clock))
     ("sysmac"	(runtime system-macros))
