@@ -56,11 +56,31 @@ USA.
 				 use-senv))
 		 expr))
 
-(define-record-type <expander-item>
-    (expander-item impl expr)
-    expander-item?
-  (impl expander-item-impl)
-  (expr expander-item-expr))
+;;; Keyword items represent syntactic keywords.
+
+(define (keyword-item impl #!optional expr)
+  (%keyword-item impl expr))
+
+(define (keyword-item-has-expr? item)
+  (not (default-object? (keyword-item-expr item))))
+
+(define-record-type <keyword-item>
+    (%keyword-item impl expr)
+    keyword-item?
+  (impl keyword-item-impl)
+  (expr keyword-item-expr))
+
+(define (expander-item impl expr)
+  (keyword-item (lambda (form senv hist)
+		  (reclassify (with-error-context form senv hist
+				(lambda ()
+				  (impl form senv)))
+			      senv
+			      hist))
+		expr))
+
+(define (classifier->runtime classifier)
+  (make-unmapped-macro-reference-trap (keyword-item classifier)))
 
 (define (->senv env)
   (if (syntactic-environment? env)

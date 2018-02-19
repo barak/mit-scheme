@@ -30,22 +30,6 @@ USA.
 
 ;;; These items can be stored in a syntactic environment.
 
-;;; Keyword items represent macro keywords.  There are several flavors
-;;; of keyword item.
-
-(define-record-type <classifier-item>
-    (classifier-item impl)
-    classifier-item?
-  (impl classifier-item-impl))
-
-(define (keyword-item? object)
-  (or (classifier-item? object)
-      (expander-item? object)))
-
-(register-predicate! keyword-item? 'keyword-item)
-(set-predicate<=! classifier-item? keyword-item?)
-(set-predicate<=! expander-item? keyword-item?)
-
 ;;; Variable items represent run-time variables.
 
 (define (var-item id)

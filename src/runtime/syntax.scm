@@ -73,17 +73,12 @@ USA.
 		     hist))
 	((pair? form)
 	 (let ((item (classify-form-car form senv hist)))
-	   (cond ((classifier-item? item)
-		  ((classifier-item-impl item) form senv hist))
-		 ((expander-item? item)
-		  (reclassify (with-error-context form senv hist
-				(lambda ()
-				  ((expander-item-impl item) form senv)))
-			      senv
-			      hist))
-		 (else
+	   (if (keyword-item? item)
+	       ((keyword-item-impl item) form senv hist)
+	       (begin
 		  (if (not (list? (cdr form)))
-		      (serror form senv hist "Combination must be a proper list:" form))
+		      (serror form senv hist
+			      "Combination must be a proper list:" form))
 		  (combination-item item
 				    (classify-forms-cdr form senv hist))))))
 	(else
@@ -350,7 +345,7 @@ USA.
 (define (classifier->keyword classifier)
   (close-syntax 'keyword
 		(make-keyword-senv 'keyword
-				   (classifier-item classifier))))
+				   (keyword-item classifier))))
 
 (define (capture-syntactic-environment expander)
   `(,(classifier->keyword

@@ -31,7 +31,7 @@ USA.
 
 ;;;; Macro transformers
 
-(define (transformer-keyword procedure-name transformer->expander)
+(define (transformer-classifier procedure-name transformer->expander)
   (lambda (form senv hist)
     (scheck '(_ expression) form senv hist)
     (let ((transformer (compile-expr-item (classify-form-cadr form senv hist))))
@@ -42,26 +42,23 @@ USA.
 				(output/top-level-syntax-expander
 				 procedure-name transformer)))))))
 
-(define (classifier->runtime classifier)
-  (make-unmapped-macro-reference-trap (classifier-item classifier)))
-
 (define :sc-macro-transformer
   ;; "Syntactic Closures" transformer
   (classifier->runtime
-   (transformer-keyword 'sc-macro-transformer->expander
-			sc-macro-transformer->expander)))
+   (transformer-classifier 'sc-macro-transformer->expander
+			   sc-macro-transformer->expander)))
 
 (define :rsc-macro-transformer
   ;; "Reversed Syntactic Closures" transformer
   (classifier->runtime
-   (transformer-keyword 'rsc-macro-transformer->expander
-			rsc-macro-transformer->expander)))
+   (transformer-classifier 'rsc-macro-transformer->expander
+			   rsc-macro-transformer->expander)))
 
 (define :er-macro-transformer
   ;; "Explicit Renaming" transformer
   (classifier->runtime
-   (transformer-keyword 'er-macro-transformer->expander
-			er-macro-transformer->expander)))
+   (transformer-classifier 'er-macro-transformer->expander
+			   er-macro-transformer->expander)))
 
 ;;;; Core primitives
 
@@ -177,8 +174,9 @@ USA.
        (bind-keyword name senv item)
        ;; User-defined macros at top level are preserved in the output.
        (if (and (senv-top-level? senv)
-		(expander-item? item))
-	   (syntax-defn-item name (expander-item-expr item))
+		(keyword-item? item)
+		(keyword-item-has-expr? item))
+	   (syntax-defn-item name (keyword-item-expr item))
 	   (seq-item '()))))))
 
 (define (classify-keyword-value form senv hist)

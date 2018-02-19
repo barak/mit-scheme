@@ -4440,7 +4440,26 @@ USA.
 	  serror
 	  sfor-each
 	  smap
-	  subform-select))
+	  subform-select)
+  (export (runtime syntax low)
+	  reclassify
+	  with-error-context))
+
+(define-package (runtime syntax low)
+  (files "syntax-low")
+  (parent (runtime syntax))
+  (export ()
+	  er-macro-transformer->expander
+	  rsc-macro-transformer->expander
+	  sc-macro-transformer->expander
+	  syntactic-keyword->item)
+  (export (runtime syntax)
+	  classifier->runtime
+	  keyword-item
+	  keyword-item-expr
+	  keyword-item-has-expr?
+	  keyword-item-impl
+	  keyword-item?))
 
 (define-package (runtime syntax items)
   (files "syntax-items")
@@ -4449,9 +4468,6 @@ USA.
 	  access-assignment-item
 	  assignment-item
 	  body-item
-	  classifier-item
-	  classifier-item-impl
-	  classifier-item?
 	  combination-item
 	  compile-expr-item
 	  constant-item
@@ -4469,7 +4485,6 @@ USA.
 	  flatten-items
 	  if-item
 	  item->list
-	  keyword-item?
 	  lambda-item
 	  let-item
 	  or-item
@@ -4486,20 +4501,6 @@ USA.
 	  var-item
 	  var-item-id
 	  var-item?))
-
-(define-package (runtime syntax low)
-  (files "syntax-low")
-  (parent (runtime syntax))
-  (export ()
-	  er-macro-transformer->expander
-	  rsc-macro-transformer->expander
-	  sc-macro-transformer->expander
-	  syntactic-keyword->item)
-  (export (runtime syntax)
-	  expander-item
-	  expander-item-expr
-	  expander-item-impl
-	  expander-item?))
 
 (define-package (runtime syntax environment)
   (files "syntax-environment")

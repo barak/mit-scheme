@@ -65,7 +65,7 @@ USA.
 ;;;     (failure)
 
 (define (spar->classifier spar)
-  (classifier-item
+  (keyword-item
    (lambda (form senv hist)
      (spar (%new-input form hist)
 	   senv

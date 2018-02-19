@@ -285,7 +285,7 @@ USA.
 	  usual==>
 	  with-instance-variables)
   (import (runtime syntax)
-	  classifier-item
+	  classifier->runtime
 	  classify-form
 	  compile-expr-item
 	  expr-item))

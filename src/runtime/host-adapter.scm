@@ -189,12 +189,16 @@ USA.
                           env 'microcode-type))))
 
   (let ((env (->environment '(runtime syntax))))
-    (provide-rename env 'make-classifier-item 'classifier-item)
     (provide-rename env 'make-expression-item 'expr-item)
     (provide-rename env 'compile-item/expression 'compile-expr-item)
     (if (unbound? env 'classify-form)
 	(eval '(define (classify-form form senv #!optional hist)
 		 (classify/form form senv senv))
+	      env))
+    (if (unbound? env 'classifier->runtime)
+	(eval '(define (classifier->runtime classifier)
+		 (make-unmapped-macro-reference-trap
+		  (make-classifier-item classifier)))
 	      env)))
 
   (let ((env (->environment '(package))))
