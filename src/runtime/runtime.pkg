@@ -4452,6 +4452,7 @@ USA.
 	  er-macro-transformer->expander
 	  rsc-macro-transformer->expander
 	  sc-macro-transformer->expander
+	  spar-macro-transformer->expander
 	  syntactic-keyword->item)
   (export (runtime syntax)
 	  classifier->runtime
@@ -4462,7 +4463,8 @@ USA.
 	  keyword-item-impl
 	  keyword-item?
 	  rsc-macro-transformer->keyword-item
-	  sc-macro-transformer->keyword-item))
+	  sc-macro-transformer->keyword-item
+	  spar-macro-transformer->keyword-item))
 
 (define-package (runtime syntax items)
   (files "syntax-items")
@@ -4639,6 +4641,7 @@ USA.
 	  (rsc-macro-transformer :rsc-macro-transformer)
 	  (sc-macro-transformer :sc-macro-transformer)
 	  (set! :set!)
+	  (spar-macro-transformer :spar-macro-transformer)
 	  (the-environment :the-environment))
   (export (runtime mit-macros)
 	  keyword:access

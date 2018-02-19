@@ -65,18 +65,17 @@ USA.
 ;;;     (failure)
 
 (define (spar->classifier spar)
-  (keyword-item
-   (lambda (form senv hist)
-     (spar (%new-input form hist)
-	   senv
-	   (%new-output)
-	   (lambda (input senv output failure)
-	     (declare (ignore senv failure))
-	     (if (%input-null? input)
-		 (error "Rule failed to match entire form."))
-	     (output 'get-only))
-	   (lambda ()
-	     (serror form senv hist "Ill-formed syntax:" form))))))
+  (lambda (form senv hist)
+    (spar (%new-input form hist)
+	  senv
+	  (%new-output)
+	  (lambda (input senv output failure)
+	    (declare (ignore senv failure))
+	    (if (%input-null? input)
+		(error "Rule failed to match entire form."))
+	    (output 'get-only))
+	  (lambda ()
+	    (serror form senv hist "Ill-formed syntax:" form)))))
 
 ;;;; Inputs and outputs
 

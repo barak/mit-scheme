@@ -61,6 +61,12 @@ USA.
   (classifier->runtime
    (transformer-classifier er-macro-transformer->keyword-item
 			   'er-macro-transformer->expander)))
+
+(define :spar-macro-transformer
+  ;; "Syntax PARser" transformer
+  (classifier->runtime
+   (transformer-classifier spar-macro-transformer->keyword-item
+			   'spar-macro-transformer->expander)))
 
 ;;;; Core primitives
 
