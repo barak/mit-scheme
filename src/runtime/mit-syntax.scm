@@ -31,34 +31,36 @@ USA.
 
 ;;;; Macro transformers
 
-(define (transformer-classifier procedure-name transformer->expander)
+(define (transformer-classifier transformer->keyword-item
+				transformer->expander-name)
   (lambda (form senv hist)
     (scheck '(_ expression) form senv hist)
     (let ((transformer (compile-expr-item (classify-form-cadr form senv hist))))
-      (transformer->expander (transformer-eval transformer senv)
-			     senv
-			     (expr-item
-			      (lambda ()
-				(output/top-level-syntax-expander
-				 procedure-name transformer)))))))
+      (transformer->keyword-item
+       (transformer-eval transformer senv)
+       senv
+       (expr-item
+	(lambda ()
+	  (output/top-level-syntax-expander transformer->expander-name
+					    transformer)))))))
 
 (define :sc-macro-transformer
   ;; "Syntactic Closures" transformer
   (classifier->runtime
-   (transformer-classifier 'sc-macro-transformer->expander
-			   sc-macro-transformer->expander)))
+   (transformer-classifier sc-macro-transformer->keyword-item
+			   'sc-macro-transformer->expander)))
 
 (define :rsc-macro-transformer
   ;; "Reversed Syntactic Closures" transformer
   (classifier->runtime
-   (transformer-classifier 'rsc-macro-transformer->expander
-			   rsc-macro-transformer->expander)))
+   (transformer-classifier rsc-macro-transformer->keyword-item
+			   'rsc-macro-transformer->expander)))
 
 (define :er-macro-transformer
   ;; "Explicit Renaming" transformer
   (classifier->runtime
-   (transformer-classifier 'er-macro-transformer->expander
-			   er-macro-transformer->expander)))
+   (transformer-classifier er-macro-transformer->keyword-item
+			   'er-macro-transformer->expander)))
 
 ;;;; Core primitives
 

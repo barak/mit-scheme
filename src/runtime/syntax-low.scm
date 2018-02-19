@@ -34,58 +34,50 @@ USA.
 ;;; These optional arguments are needed for cross-compiling 9.2->9.3.
 ;;; They can become required after 9.3 release.
 
-(define (sc-macro-transformer->expander transformer closing-env #!optional expr)
-  (expander-item (lambda (form use-senv)
-		   (close-syntax (transformer form use-senv)
-				 (->senv closing-env)))
+(define (sc-macro-transformer->expander transformer env #!optional expr)
+  (expander-item (sc-wrapper transformer (runtime-getter env))
 		 expr))
 
-(define (rsc-macro-transformer->expander transformer closing-env
-					 #!optional expr)
-  (expander-item (lambda (form use-senv)
-		   (close-syntax (transformer form (->senv closing-env))
-				 use-senv))
+(define (rsc-macro-transformer->expander transformer env #!optional expr)
+  (expander-item (rsc-wrapper transformer (runtime-getter env))
 		 expr))
 
-(define (er-macro-transformer->expander transformer closing-env #!optional expr)
-  (expander-item (lambda (form use-senv)
-		   (close-syntax (transformer form
-					      (make-er-rename
-					       (->senv closing-env))
-					      (make-er-compare use-senv))
-				 use-senv))
+(define (er-macro-transformer->expander transformer env #!optional expr)
+  (expander-item (er-wrapper transformer (runtime-getter env))
 		 expr))
 
-;;; Keyword items represent syntactic keywords.
+(define (sc-macro-transformer->keyword-item transformer closing-senv expr)
+  (expander-item (sc-wrapper transformer (lambda () closing-senv))
+		 expr))
 
-(define (keyword-item impl #!optional expr)
-  (%keyword-item impl expr))
+(define (rsc-macro-transformer->keyword-item transformer closing-senv expr)
+  (expander-item (rsc-wrapper transformer (lambda () closing-senv))
+		 expr))
 
-(define (keyword-item-has-expr? item)
-  (not (default-object? (keyword-item-expr item))))
+(define (er-macro-transformer->keyword-item transformer closing-senv expr)
+  (expander-item (er-wrapper transformer (lambda () closing-senv))
+		 expr))
 
-(define-record-type <keyword-item>
-    (%keyword-item impl expr)
-    keyword-item?
-  (impl keyword-item-impl)
-  (expr keyword-item-expr))
+(define (runtime-getter env)
+  (lambda ()
+    (runtime-environment->syntactic env)))
 
-(define (expander-item impl expr)
-  (keyword-item (lambda (form senv hist)
-		  (reclassify (with-error-context form senv hist
-				(lambda ()
-				  (impl form senv)))
-			      senv
-			      hist))
-		expr))
+(define (sc-wrapper transformer get-closing-senv)
+  (lambda (form use-senv)
+    (close-syntax (transformer form use-senv)
+		  (get-closing-senv))))
 
-(define (classifier->runtime classifier)
-  (make-unmapped-macro-reference-trap (keyword-item classifier)))
+(define (rsc-wrapper transformer get-closing-senv)
+  (lambda (form use-senv)
+    (close-syntax (transformer form (get-closing-senv))
+		  use-senv)))
 
-(define (->senv env)
-  (if (syntactic-environment? env)
-      env
-      (runtime-environment->syntactic env)))
+(define (er-wrapper transformer get-closing-env)
+  (lambda (form use-senv)
+    (close-syntax (transformer form
+			       (make-er-rename (get-closing-env))
+			       (make-er-compare use-senv))
+		  use-senv)))
 
 (define (make-er-rename closing-senv)
   (lambda (identifier)
@@ -94,6 +86,32 @@ USA.
 (define (make-er-compare use-senv)
   (lambda (x y)
     (identifier=? use-senv x use-senv y)))
+
+;;; Keyword items represent syntactic keywords.
+
+(define (keyword-item impl #!optional expr)
+  (%keyword-item impl expr))
+
+(define (expander-item impl expr)
+  (%keyword-item (lambda (form senv hist)
+		   (reclassify (with-error-context form senv hist
+				 (lambda ()
+				   (impl form senv)))
+			       senv
+			       hist))
+		 expr))
+
+(define-record-type <keyword-item>
+    (%keyword-item impl expr)
+    keyword-item?
+  (impl keyword-item-impl)
+  (expr keyword-item-expr))
+
+(define (keyword-item-has-expr? item)
+  (not (default-object? (keyword-item-expr item))))
+
+(define (classifier->runtime classifier)
+  (make-unmapped-macro-reference-trap (keyword-item classifier)))
 
 (define (syntactic-keyword->item keyword environment)
   (let ((item (environment-lookup-macro environment keyword)))

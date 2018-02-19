@@ -4455,11 +4455,14 @@ USA.
 	  syntactic-keyword->item)
   (export (runtime syntax)
 	  classifier->runtime
+	  er-macro-transformer->keyword-item
 	  keyword-item
 	  keyword-item-expr
 	  keyword-item-has-expr?
 	  keyword-item-impl
-	  keyword-item?))
+	  keyword-item?
+	  rsc-macro-transformer->keyword-item
+	  sc-macro-transformer->keyword-item))
 
 (define-package (runtime syntax items)
   (files "syntax-items")
