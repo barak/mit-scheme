@@ -144,106 +144,35 @@ USA.
 (define (%output-push output object) (output 'push object))
 (define (%output-push-all output objects) (output 'push-all objects))
 
-;;;; Guards
+;;;; Primitives
 
-(define (spar-guard-form predicate)
+(define (spar-require-form predicate)
   (lambda (input senv output success failure)
     (if (predicate (%input-form input))
 	(success input senv output failure)
 	(failure))))
 
-(define (spar-guard-senv predicate)
+(define (spar-require-senv predicate)
   (lambda (input senv output success failure)
     (if (predicate senv)
 	(success input senv output failure)
 	(failure))))
 
-(define (spar-guard-full predicate)
+(define (spar-require-full predicate)
   (lambda (input senv output success failure)
     (if (predicate (%input-form input) senv)
 	(success input senv output failure)
 	(failure))))
 
-(define (spar-guard-value predicate)
+(define (spar-require-value predicate)
   (lambda (input senv output success failure)
     (if (predicate (%output-top output))
 	(success input senv output failure)
 	(failure))))
-
-;;;; Transforms
 
-(define (spar-map-senv procedure)
-  (lambda (input senv output success failure)
-    (success input (procedure senv) output failure)))
-
-(define (%transform-output procedure)
-  (lambda (input senv output success failure)
-    (success input senv (procedure output) failure)))
-
-(define (spar-map-value procedure)
-  (%transform-output
-   (lambda (output)
-     (%output-push (%output-pop output)
-		   (procedure (%output-top output))))))
-
-(define (spar-append-map-value procedure)
-  (%transform-output
-   (lambda (output)
-     (%output-push-all (%output-pop output)
-		       (procedure (%output-top output))))))
-
-(define (spar-call-with-values procedure)
-  (%transform-output
-   (lambda (output)
-     (%output-push (%output-pop-all output)
-		   (apply procedure (%output-all output))))))
-
-(define (spar-transform-values procedure)
-  (%transform-output
-   (lambda (output)
-     (%output-push-all (%output-pop-all output)
-		       (procedure (%output-all output))))))
-
-(define (spar-map-values procedure)
-  (spar-transform-values
-   (lambda (values)
-     (map procedure values))))
-
-(define (%with-input procedure spar)
-  (lambda (input senv output success failure)
-    (spar (procedure input)
-	  senv
-	  output
-	  (lambda (input* senv* output* failure*)
-	    (declare (ignore input*))
-	    (success input senv* output* failure*))
-	  failure)))
-
-(define (%with-senv procedure spar)
-  (lambda (input senv output success failure)
-    (spar input
-	  (procedure senv)
-	  output
-	  (lambda (input* senv* output* failure*)
-	    (declare (ignore senv*))
-	    (success input* senv output* failure*))
-	  failure)))
-
-(define (%with-output procedure spar)
-  (lambda (input senv output success failure)
-    (spar input
-	  senv
-	  (%output-pop-all output)
-	  (lambda (input* senv* output* failure*)
-	    (success input* senv* (procedure output output*) failure*))
-	  failure)))
-
-(define (spar-discard-input input senv output success failure)
+(define (spar-discard-form input senv output success failure)
   (declare (ignore input))
   (success (%null-input) senv output failure))
-
-(define (spar-discard-elt input senv output success failure)
-  (success (%input-cdr input) senv output failure))
 
 (define (spar-push-form input senv output success failure)
   (success (%null-input)
@@ -259,7 +188,7 @@ USA.
 	     (%output-push output object)
 	     failure)))
 
-(define (spar-push-value-of procedure)
+(define (spar-push-thunk-value procedure)
   (lambda (input senv output success failure)
     (declare (ignore input))
     (success (%null-input)
@@ -293,50 +222,54 @@ USA.
 
 ;;;; Repeat combinators
 
-(define (spar-opt spar)
-  (lambda (input senv output success failure)
-    (spar input senv output success
-	  (lambda ()
-	    (success input senv output failure)))))
+(define (spar-opt . spars)
+  (let ((spar (%seq spars)))
+    (lambda (input senv output success failure)
+      (spar input senv output success
+	    (lambda ()
+	      (success input senv output failure))))))
 
-(define (spar* spar)
-  (lambda (input senv output success failure)
-    (letrec
-	((loop
-	  (lambda (input senv output failure)
-	    (spar input senv output loop
-		  (lambda ()
-		    (success input senv output failure))))))
-      (loop input senv output failure))))
+(define (spar* . spars)
+  (let ((spar (%seq spars)))
+    (lambda (input senv output success failure)
+      (letrec
+	  ((loop
+	    (lambda (input senv output failure)
+	      (spar input senv output loop
+		    (lambda ()
+		      (success input senv output failure))))))
+	(loop input senv output failure)))))
 
-(define (spar+ spar)
-  (spar-seq spar (spar* spar)))
+(define (spar+ . spars)
+  (let ((spar (%seq spars)))
+    (spar-seq spar (spar* spar))))
 
-(define (spar-repeat spar n-min n-max)
+(define (spar-repeat n-min n-max . spars)
   (guarantee exact-nonnegative-integer? n-min 'spar-repeat)
   (if n-max
       (begin
 	(guarantee exact-nonnegative-integer? n-max 'spar-repeat)
 	(if (not (>= n-max n-min))
 	    (error:bad-range-argument n-max 'spar-repeat))))
-  (let ((s1
-	 (case n-min
-	   ((0) #f)
-	   ((1) spar)
-	   (else (repeat-exact spar n-min))))
-	(s2
-	 (if n-max
-	     (let ((delta (- n-max n-min)))
-	       (case delta
-		 ((0) #f)
-		 ((1) spar)
-		 (else (repeat-up-to spar delta))))
-	     (spar* spar))))
-    (cond ((and s1 s2) (spar-seq s1 s2))
-	  ((or s1 s2))
-	  (else spar-succeed))))
+  (let ((spar (%seq spars)))
+    (let ((s1
+	   (case n-min
+	     ((0) #f)
+	     ((1) spar)
+	     (else (%repeat-exact spar n-min))))
+	  (s2
+	   (if n-max
+	       (let ((delta (- n-max n-min)))
+		 (case delta
+		   ((0) #f)
+		   ((1) spar)
+		   (else (%repeat-up-to spar delta))))
+	       (spar* spar))))
+      (cond ((and s1 s2) (spar-seq s1 s2))
+	    ((or s1 s2))
+	    (else spar-succeed)))))
 
-(define (repeat-exact spar n)
+(define (%repeat-exact spar n)
   (lambda (input senv output success failure)
     (letrec
 	((loop
@@ -349,7 +282,7 @@ USA.
 		(success input senv output failure)))))
       (loop n input senv output failure))))
 
-(define (repeat-up-to spar n)
+(define (%repeat-up-to spar n)
   (lambda (input senv output success failure)
     (letrec
 	((loop
@@ -398,18 +331,107 @@ USA.
   (declare (ignore input senv output success))
   (failure))
 
-;;;; Misc combinators
+;;;; Element combinators
 
 (define (spar-elt . spars)
-  (spar-seq (%with-input %input-car (%seq spars))
-	    spar-discard-elt))
+  (let ((spar (%seq spars)))
+    (lambda (input senv output success failure)
+      (if (%input-pair? input)
+	  (spar (%input-car input)
+		senv
+		output
+		(lambda (input* senv* output* failure*)
+		  (declare (ignore input*))
+		  (success (%input-cdr input) senv* output* failure*))
+		failure)
+	  (failure)))))
+
+(define spar-discard-elt
+  (spar-elt spar-discard-form))
+
+(define spar-push-elt
+  (spar-elt spar-push-form))
+
+(define spar-push-closed-form
+  (spar-push-mapped-full
+   (lambda (form senv)
+     (make-syntactic-closure senv '() form))))
+
+(define spar-push-partially-closed-form
+  (spar-push-mapped-full
+   (lambda (form senv)
+     (lambda (free)
+       (make-syntactic-closure senv free form)))))
+
+(define spar-push-closed-elt
+  (spar-elt spar-push-closed-form))
+
+(define spar-push-partially-closed-elt
+  (spar-elt spar-push-partially-closed-form))
+
+(define (spar-classify-elt procedure)
+  (spar-elt (spar-push-classified procedure)))
+
+(define (spar-match-elt predicate)
+  (spar-elt (spar-require-form predicate)
+	    spar-push-form))
+
+(define (spar-match-elt-full predicate)
+  (spar-elt (spar-require-full predicate)
+	    spar-push-form))
+
+;;;; Environment combinators
 
 (define (spar-with-mapped-senv procedure . spars)
-  (%with-senv procedure (%seq spars)))
+  (let ((spar (%seq spars)))
+    (lambda (input senv output success failure)
+      (spar input
+	    (procedure senv)
+	    output
+	    (lambda (input* senv* output* failure*)
+	      (declare (ignore senv*))
+	      (success input* senv output* failure*))
+	    failure))))
+
+;;;; Value combinators
 
-(define (spar-call-with-values-of procedure . spars)
+(define (spar-encapsulate-values procedure . spars)
+  (%encapsulate procedure spars))
+
+(define (spar-call-with-values procedure . spars)
+  (%encapsulate (lambda (values) (apply procedure values)) spars))
+
+(define (%encapsulate procedure spars)
   (%with-output (lambda (output output*)
-		  (%output-push output
-				(apply procedure
-				       (%output-all output*))))
-		(%seq spars)))
+		  (%output-push output (procedure (%output-all output*))))
+		spars))
+
+(define (spar-transform-values procedure . spars)
+  (%transform procedure spars))
+
+(define (spar-map-values procedure . spars)
+  (%transform (lambda (values) (map procedure values)) spars))
+
+(define (spar-append-map-values procedure . spars)
+  (%transform (lambda (values) (append-map procedure values)) spars))
+
+(define (spar-filter-map-values procedure . spars)
+  (%transform (lambda (values) (filter-map procedure values)) spars))
+
+(define (%transform procedure spars)
+  (%with-output (lambda (output output*)
+		  (%output-push-all output (procedure (%output-all output*))))
+		spars))
+
+(define (%with-output procedure spars)
+  (let ((spar (%seq spars)))
+    (lambda (input senv output success failure)
+      (spar input
+	    senv
+	    (%output-pop-all output)
+	    (lambda (input* senv* output* failure*)
+	      (success input*
+		       senv*
+		       (procedure output output*)
+		       failure*))
+	    failure))))

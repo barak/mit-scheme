@@ -4536,33 +4536,38 @@ USA.
 	  spar*
 	  spar+
 	  spar-alt
-	  spar-append-map-value
+	  spar-append-map-values
 	  spar-call-with-values
-	  spar-call-with-values-of
 	  spar-discard-elt
-	  spar-discard-input
+	  spar-discard-form
+	  spar-encapsulate-values
 	  spar-elt
 	  spar-fail
-	  spar-guard-form
-	  spar-guard-full
-	  spar-guard-senv
-	  spar-guard-value
-	  spar-map-senv
-	  spar-map-value
+	  spar-filter-map-values
 	  spar-map-values
+	  spar-match-elt
+	  spar-match-elt-full
 	  spar-opt
+	  spar-push-closed-elt
+	  spar-push-closed-form
+	  spar-push-elt
 	  spar-push-form
 	  spar-push-mapped-form
 	  spar-push-mapped-full
+	  spar-push-thunk-value
 	  spar-push-value
-	  spar-push-value-of
 	  spar-repeat
+	  spar-require-form
+	  spar-require-full
+	  spar-require-senv
+	  spar-require-value
 	  spar-seq
 	  spar-succeed
 	  spar-transform-values
 	  spar-with-mapped-senv)
   (export (runtime syntax)
 	  spar->classifier
+	  spar-classify-elt
 	  spar-push-classified))
 
 (define-package (runtime syntax rename)
