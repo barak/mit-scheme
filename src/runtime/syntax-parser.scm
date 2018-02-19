@@ -71,7 +71,7 @@ USA.
 	  (%new-output)
 	  (lambda (input senv output failure)
 	    (declare (ignore senv failure))
-	    (if (%input-null? input)
+	    (if (not (%input-null? input))
 		(error "Rule failed to match entire form."))
 	    (output 'get-only))
 	  (lambda ()
