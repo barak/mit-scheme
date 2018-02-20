@@ -128,6 +128,14 @@ USA.
 (define (classifier->runtime classifier)
   (make-unmapped-macro-reference-trap (keyword-item classifier)))
 
+(define (spar-promise->runtime promise)
+  (make-unmapped-macro-reference-trap
+   (keyword-item (spar-promise->classifier promise))))
+
+(define (spar-promise->classifier promise)
+  (lambda (form senv hist)
+    ((spar->classifier (force promise)) form senv hist)))
+
 (define (syntactic-keyword->item keyword environment)
   (let ((item (environment-lookup-macro environment keyword)))
     (if (not item)

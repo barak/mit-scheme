@@ -532,6 +532,7 @@ USA.
    (runtime syntax items)
    (runtime syntax rename)
    (runtime syntax top-level)
+   (runtime syntax parser)
    ;; REP Loops
    (RUNTIME INTERRUPT-HANDLER)
    (RUNTIME GC-STATISTICS)

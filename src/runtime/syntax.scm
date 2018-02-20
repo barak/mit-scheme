@@ -347,6 +347,9 @@ USA.
 		(make-keyword-senv 'keyword
 				   (keyword-item classifier))))
 
+(define (spar-promise->keyword promise)
+  (classifier->keyword (spar-promise->classifier promise)))
+
 (define (capture-syntactic-environment expander)
   `(,(classifier->keyword
       (lambda (form senv hist)

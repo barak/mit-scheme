@@ -4440,6 +4440,7 @@ USA.
 	  serror
 	  sfor-each
 	  smap
+	  spar-promise->keyword
 	  subform-select)
   (export (runtime syntax low)
 	  reclassify
@@ -4464,7 +4465,9 @@ USA.
 	  keyword-item?
 	  rsc-macro-transformer->keyword-item
 	  sc-macro-transformer->keyword-item
-	  spar-macro-transformer->keyword-item))
+	  spar-macro-transformer->keyword-item
+	  spar-promise->classifier
+	  spar-promise->runtime))
 
 (define-package (runtime syntax items)
   (files "syntax-items")
@@ -4550,21 +4553,26 @@ USA.
 	  spar-elt
 	  spar-fail
 	  spar-filter-map-values
+	  spar-push-id-elt
+	  spar-push-id-elt=
 	  spar-map-values
-	  spar-match-elt
-	  spar-match-elt-full
 	  spar-opt
+	  spar-push-body
 	  spar-push-closed-elt
 	  spar-push-closed-form
+	  spar-push-datum
 	  spar-push-elt
 	  spar-push-form
+	  spar-push-hist
 	  spar-push-mapped-form
 	  spar-push-mapped-full
+	  spar-push-senv
 	  spar-push-thunk-value
-	  spar-push-value
+	  spar-push-values
 	  spar-repeat
 	  spar-require-form
 	  spar-require-full
+	  spar-require-null
 	  spar-require-senv
 	  spar-require-value
 	  spar-seq
@@ -4573,8 +4581,12 @@ USA.
 	  spar-with-mapped-senv)
   (export (runtime syntax)
 	  spar->classifier
-	  spar-classify-elt
-	  spar-push-classified))
+	  spar-push-classified-elt
+	  spar-push-classified-form
+	  spar-push-deferred-classified-elt
+	  spar-push-deferred-classified-form
+	  spar-push-open-classified-elt
+	  spar-push-open-classified-form))
 
 (define-package (runtime syntax rename)
   (files "syntax-rename")

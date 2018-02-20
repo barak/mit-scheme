@@ -179,18 +179,28 @@ USA.
 	   (%output-push output (%input-form input))
 	   failure))
 
-(define (spar-push-value object)
+(define (spar-push-hist input senv output success failure)
+  (success (%null-input)
+	   senv
+	   (%output-push output (%input-hist input))
+	   failure))
+
+(define (spar-push-senv input senv output success failure)
+  (success input
+	   senv
+	   (%output-push output senv)
+	   failure))
+
+(define (spar-push-datum object)
   (lambda (input senv output success failure)
-    (declare (ignore input))
-    (success (%null-input)
+    (success input
 	     senv
 	     (%output-push output object)
 	     failure)))
 
 (define (spar-push-thunk-value procedure)
   (lambda (input senv output success failure)
-    (declare (ignore input))
-    (success (%null-input)
+    (success input
 	     senv
 	     (%output-push output (procedure))
 	     failure)))
@@ -209,7 +219,7 @@ USA.
 	     (%output-push output (procedure (%input-form input) senv))
 	     failure)))
 
-(define (spar-push-classified procedure)
+(define (%push-classified procedure)
   (lambda (input senv output success failure)
     (success (%null-input)
 	     senv
@@ -348,36 +358,11 @@ USA.
 (define spar-discard-elt
   (spar-elt spar-discard-form))
 
+(define spar-require-null
+  (spar-require-form null?))
+
 (define spar-push-elt
   (spar-elt spar-push-form))
-
-(define spar-push-closed-form
-  (spar-push-mapped-full
-   (lambda (form senv)
-     (make-syntactic-closure senv '() form))))
-
-(define spar-push-partially-closed-form
-  (spar-push-mapped-full
-   (lambda (form senv)
-     (lambda (free)
-       (make-syntactic-closure senv free form)))))
-
-(define spar-push-closed-elt
-  (spar-elt spar-push-closed-form))
-
-(define spar-push-partially-closed-elt
-  (spar-elt spar-push-partially-closed-form))
-
-(define (spar-classify-elt procedure)
-  (spar-elt (spar-push-classified procedure)))
-
-(define (spar-match-elt predicate)
-  (spar-elt (spar-require-form predicate)
-	    spar-push-form))
-
-(define (spar-match-elt-full predicate)
-  (spar-elt (spar-require-full predicate)
-	    spar-push-form))
 
 ;;;; Environment combinators
 
@@ -392,7 +377,65 @@ USA.
 	      (success input* senv output* failure*))
 	    failure))))
 
+(define spar-push-closed-form
+  (spar-push-mapped-full
+   (lambda (form senv)
+     (make-syntactic-closure senv '() form))))
+
+(define spar-push-closed-elt
+  (spar-elt spar-push-closed-form))
+
+(define spar-push-partially-closed-form
+  (spar-push-mapped-full
+   (lambda (form senv)
+     (lambda (free)
+       (make-syntactic-closure senv free form)))))
+
+(define spar-push-partially-closed-elt
+  (spar-elt spar-push-partially-closed-form))
+
+(define-deferred spar-push-classified-form
+  (%push-classified classify-form))
+
+(define-deferred spar-push-classified-elt
+  (spar-elt spar-push-classified-form))
+
+(define spar-push-deferred-classified-form
+  (%push-classified
+   (lambda (form senv hist)
+     (lambda ()
+       (classify-form form senv hist)))))
+
+(define spar-push-deferred-classified-elt
+  (spar-elt spar-push-deferred-classified-form))
+
+(define spar-push-open-classified-form
+  (%push-classified
+   (lambda (form senv hist)
+     (declare (ignore senv))
+     (lambda (senv*)
+       (classify-form form senv* hist)))))
+
+(define spar-push-open-classified-elt
+  (spar-elt spar-push-open-classified-form))
+
+(define-deferred spar-push-id-elt
+  (spar-elt (spar-require-form identifier?)
+	    spar-push-form))
+
+(define (spar-push-id-elt= id)
+  (spar-elt (spar-require-full
+	     (lambda (form senv)
+	       (and (identifier? form)
+		    (identifier=? senv form senv id))))
+	    spar-push-form))
+
 ;;;; Value combinators
+
+(define (spar-push-values . spars)
+  (%with-output (lambda (output output*)
+		  (%output-push output (%output-all output*)))
+		spars))
 
 (define (spar-encapsulate-values procedure . spars)
   (%encapsulate procedure spars))
@@ -434,3 +477,13 @@ USA.
 		       (procedure output output*)
 		       failure*))
 	    failure))))
+
+(define spar-push-body
+  (spar-encapsulate-values
+      (lambda (elts)
+	(lambda (frame-senv)
+	  (let ((body-senv (make-internal-senv frame-senv)))
+	    (map-in-order (lambda (elt) (elt body-senv))
+			  elts))))
+    (spar+ spar-push-open-classified-elt)
+    spar-require-null))
