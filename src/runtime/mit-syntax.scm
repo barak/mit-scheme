@@ -70,194 +70,239 @@ USA.
 
 ;;;; Core primitives
 
-(define :lambda
-  (classifier->runtime
-   (lambda (form senv hist)
-     (scheck '(_ mit-bvl + form) form senv hist)
-     (classify-lambda scode-lambda-name:unnamed
-		      (cadr form)
-		      form senv hist))))
-
-(define :named-lambda
-  (classifier->runtime
-   (lambda (form senv hist)
-     (scheck '(_ (identifier . mit-bvl) + form) form senv hist)
-     (classify-lambda (identifier->symbol (caadr form))
-		      (cdadr form)
-		      form senv hist))))
-
-(define (classify-lambda name bvl form senv hist)
-  (let ((senv (make-internal-senv senv)))
-    ;; Force order -- bind names before classifying body.
-    (let ((bvl
-	   (map-mit-lambda-list (lambda (identifier)
-				  (bind-variable identifier senv))
-				bvl)))
-      (lambda-item name
-		   bvl
-		   (lambda ()
-		     (body-item
-		      (classify-forms-in-order-cddr form senv hist)))))))
-
-(define :delay
-  (classifier->runtime
-   (lambda (form senv hist)
-     (scheck '(_ expression) form senv hist)
-     (delay-item (lambda () (classify-form-cadr form senv hist))))))
-
 (define :begin
-  (classifier->runtime
-   (lambda (form senv hist)
-     (scheck '(_ * form) form senv hist)
-     (seq-item (classify-forms-in-order-cdr form senv hist)))))
+  (spar-promise->runtime
+   (delay
+     (spar-encapsulate-values
+	 (lambda (deferred-items)
+	   (seq-item
+	    (map-in-order (lambda (p) (p))
+			  deferred-items)))
+       spar-discard-elt
+       (spar* spar-push-deferred-classified-elt)
+       spar-require-null))))
 
 (define :if
-  (classifier->runtime
-   (lambda (form senv hist)
-     (scheck '(_ expression expression ? expression) form senv hist)
-     (if-item (classify-form-cadr form senv hist)
-	      (classify-form-caddr form senv hist)
-	      (if (pair? (cdddr form))
-		  (classify-form-cadddr form senv hist)
-		  (unspecific-item))))))
+  (spar-promise->runtime
+   (delay
+     (spar-call-with-values if-item
+       spar-discard-elt
+       spar-push-classified-elt
+       spar-push-classified-elt
+       (spar-alt spar-push-classified-elt
+		 (spar-push-thunk-value unspecific-item))
+       spar-require-null))))
 
 (define :quote
-  (classifier->runtime
-   (lambda (form senv hist)
-     (scheck '(_ datum) form senv hist)
-     (constant-item (strip-syntactic-closures (cadr form))))))
+  (spar-promise->runtime
+   (delay
+     (spar-call-with-values constant-item
+       spar-discard-elt
+       (spar-elt (spar-push-mapped-form strip-syntactic-closures))
+       spar-require-null))))
 
 (define :quote-identifier
-  (classifier->runtime
-   (lambda (form senv hist)
-     (scheck '(_ identifier) form senv hist)
-     (let ((item (lookup-identifier (cadr form) senv)))
-       (if (not (var-item? item))
-	   (serror form senv hist "Can't quote a keyword identifier:" form))
-       (quoted-id-item item)))))
-
+  (spar-promise->runtime
+   (delay
+     (spar-call-with-values quoted-id-item
+       spar-discard-elt
+       (spar-elt (spar-push-mapped-full lookup-identifier))
+       spar-require-null))))
+
 (define :set!
-  (classifier->runtime
-   (lambda (form senv hist)
-     (scheck '(_ form ? expression) form senv hist)
-     (let ((lhs-item (classify-form-cadr form senv hist))
-	   (rhs-item
-	    (if (pair? (cddr form))
-		(classify-form-caddr form senv hist)
-		(unassigned-item))))
-       (cond ((var-item? lhs-item)
-	      (assignment-item (var-item-id lhs-item) rhs-item))
-	     ((access-item? lhs-item)
-	      (access-assignment-item (access-item-name lhs-item)
-				      (access-item-env lhs-item)
-				      rhs-item))
-	     (else
-	      (serror form senv hist "Variable required in this context:"
-		      (cadr form))))))))
+  (spar-promise->runtime
+   (delay
+     (spar-call-with-values
+	 (lambda (lhs-item rhs-item)
+	   (if (var-item? lhs-item)
+	       (assignment-item (var-item-id lhs-item) rhs-item)
+	       (access-assignment-item (access-item-name lhs-item)
+				       (access-item-env lhs-item)
+				       rhs-item)))
+       spar-discard-elt
+       spar-push-classified-elt
+       (spar-require-value
+	(lambda (lhs-item)
+	  (or (var-item? lhs-item)
+	      (access-item? lhs-item))))
+       (spar-alt spar-push-classified-elt
+		 (spar-push-thunk-value unassigned-item))
+       spar-require-null))))
 
 ;; TODO: this is a classifier rather than a macro because it uses the
 ;; special OUTPUT/DISJUNCTION.  Unfortunately something downstream in
 ;; the compiler wants this, but it would be nice to eliminate this
 ;; hack.
 (define :or
-  (classifier->runtime
-   (lambda (form senv hist)
-     (scheck '(_ * expression) form senv hist)
-     (or-item (classify-forms-cdr form senv hist)))))
-
+  (spar-promise->runtime
+   (delay
+     (spar-encapsulate-values or-item
+       spar-discard-elt
+       (spar* spar-push-classified-elt)
+       spar-require-null))))
+
 ;;;; Definitions
 
 (define keyword:define
-  (classifier->keyword
-   (lambda (form senv hist)
-     (let ((id (bind-variable (cadr form) senv)))
-       (defn-item id (classify-form-caddr form senv hist))))))
+  (spar-promise->keyword
+   (delay
+     (spar-call-with-values defn-item
+       spar-discard-elt
+       (spar-elt
+	 (spar-require-form identifier?)
+	 (spar-push-mapped-full bind-variable))
+       spar-push-classified-elt
+       spar-require-null))))
 
 (define :define-syntax
-  (classifier->runtime
-   (lambda (form senv hist)
-     (scheck '(_ identifier expression) form senv hist)
-     (let ((name (cadr form))
-	   (item (classify-keyword-value-caddr form senv hist)))
-       (bind-keyword name senv item)
-       ;; User-defined macros at top level are preserved in the output.
-       (if (and (senv-top-level? senv)
-		(keyword-item? item)
-		(keyword-item-has-expr? item))
-	   (syntax-defn-item name (keyword-item-expr item))
-	   (seq-item '()))))))
+  (spar-promise->runtime
+   (delay
+     (spar-call-with-values
+	 (lambda (id senv item)
+	   (receive (id senv)
+	       (if (closed-identifier? id)
+		   (values (syntactic-closure-form id)
+			   (syntactic-closure-senv id))
+		   (values id senv))
+	     (bind-keyword id senv item)
+	     ;; User-defined macros at top level are preserved in the output.
+	     (if (and (keyword-item-has-expr? item)
+		      (senv-top-level? senv))
+		 (syntax-defn-item id (keyword-item-expr item))
+		 (seq-item '()))))
+       spar-discard-elt
+       spar-push-id-elt
+       spar-push-senv
+       spar-push-classified-elt
+       (spar-require-value keyword-item?)
+       spar-require-null))))
 
-(define (classify-keyword-value form senv hist)
-  (let ((item (classify-form form senv hist)))
-    (if (not (keyword-item? item))
-	(serror form senv hist "Keyword binding value must be a keyword:" form))
-    item))
+;;;; Lambdas
 
-(define (classify-keyword-value-cadr form senv hist)
-  (classify-keyword-value (cadr form) senv (hist-cadr hist)))
+(define :lambda
+  (spar-promise->runtime
+   (delay
+     (spar-call-with-values
+	 (lambda (bvl body senv)
+	   (assemble-lambda-item scode-lambda-name:unnamed bvl body senv))
+       spar-discard-elt
+       (spar-elt (spar-require-form mit-lambda-list?)
+		 spar-push-form)
+       spar-push-body
+       spar-push-senv))))
 
-(define (classify-keyword-value-caddr form senv hist)
-  (classify-keyword-value (caddr form) senv (hist-caddr hist)))
+(define :named-lambda
+  (spar-promise->runtime
+   (delay
+     (spar-call-with-values
+	 (lambda (name bvl body senv)
+	   (assemble-lambda-item (identifier->symbol name) bvl body senv))
+       spar-discard-elt
+       (spar-elt spar-push-id-elt
+		 (spar-require-form mit-lambda-list?)
+		 spar-push-form)
+       spar-push-body
+       spar-push-senv))))
+
+(define (assemble-lambda-item name bvl body senv)
+  (let ((frame-senv (make-internal-senv senv)))
+    (lambda-item name
+		 (map-mit-lambda-list (lambda (id)
+					(bind-variable id frame-senv))
+				      bvl)
+		 (lambda ()
+		   (body-item (body frame-senv))))))
+
+(define :delay
+  (spar-promise->runtime
+   (delay
+     (spar-call-with-values delay-item
+       spar-discard-elt
+       spar-push-deferred-classified-elt
+       spar-require-null))))
 
 ;;;; LET-like
 
 (define keyword:let
-  (classifier->keyword
-   (lambda (form senv hist)
-     (let* ((body-senv (make-internal-senv senv))
-	    (bindings
-	     (smap (lambda (binding hist)
-		     (cons (bind-variable (car binding) body-senv)
-			   (classify-form-cadr binding senv hist)))
-		   (cadr form)
-		   (hist-cadr hist))))
-       (let-item (map car bindings)
-		 (map cdr bindings)
-		 (body-item
-		  (classify-forms-in-order-cddr form
-						(make-internal-senv body-senv)
-						hist)))))))
+  (spar-promise->keyword
+   (delay
+     (spar-call-with-values
+	 (lambda (bindings body senv)
+	   (let* ((frame-senv (make-internal-senv senv))
+		  (ids
+		   (map (lambda (b)
+			  (bind-variable (car b) frame-senv))
+			bindings)))
+	     (let-item ids
+		       (map cdr bindings)
+		       (body-item (body frame-senv)))))
+       spar-discard-elt
+       (spar-elt
+	 (spar-push-values
+	   (spar*
+	     (spar-call-with-values cons
+	       (spar-elt spar-push-id-elt
+			 spar-push-classified-elt
+			 spar-require-null))))
+	 spar-require-null)
+       spar-push-body
+       spar-push-senv))))
 
-(define (classifier:let-syntax form senv hist)
-  (scheck '(_ (* (identifier expression)) + form) form senv hist)
-  (let ((body-senv (make-internal-senv senv)))
-    (sfor-each (lambda (binding hist)
-		 (bind-keyword (car binding)
-			       body-senv
-			       (classify-keyword-value-cadr binding senv hist)))
-	       (cadr form)
-	       (hist-cadr hist))
-    (seq-item (classify-forms-in-order-cddr form body-senv hist))))
+(define spar-promise:let-syntax
+  (delay
+    (spar-call-with-values
+	(lambda (bindings body senv)
+	  (let ((frame-senv (make-internal-senv senv)))
+	    (for-each (lambda (binding)
+			(bind-keyword (car binding) frame-senv (cdr binding)))
+		      bindings)
+	    (seq-item (body frame-senv))))
+      spar-discard-elt
+      (spar-elt
+	 (spar-push-values
+	   (spar*
+	     (spar-call-with-values cons
+	       (spar-elt spar-push-id-elt
+			 spar-push-classified-elt
+			 spar-require-null))))
+	 spar-require-null)
+       spar-push-body
+       spar-push-senv)))
 
 (define :let-syntax
-  (classifier->runtime classifier:let-syntax))
+  (spar-promise->runtime spar-promise:let-syntax))
 
 (define keyword:let-syntax
-  (classifier->keyword classifier:let-syntax))
+  (spar-promise->keyword spar-promise:let-syntax))
 
 (define :letrec-syntax
-  (classifier->runtime
-   (lambda (form senv hist)
-     (scheck '(_ (* (identifier expression)) + form) form senv hist)
-     (let ((vals-senv (make-internal-senv senv)))
-       (let ((bindings (cadr form))
-	     (hist (hist-cadr hist)))
-	 (for-each (lambda (binding)
-		     (reserve-identifier (car binding) vals-senv))
-		   bindings)
-	 ;; Classify right-hand sides first, in order to catch references to
-	 ;; reserved names.  Then bind names prior to classifying body.
-	 (for-each (lambda (binding item)
-		     (bind-keyword (car binding) vals-senv item))
-		   bindings
-		   (smap (lambda (binding hist)
-			   (classify-keyword-value-cadr binding vals-senv hist))
-			 bindings
-			 hist)))
-       (seq-item
-	(classify-forms-in-order-cddr form
-				      (make-internal-senv vals-senv)
-				      hist))))))
+  (spar-promise->runtime
+   (delay
+     (spar-call-with-values
+	(lambda (bindings body senv)
+	  (let ((frame-senv (make-internal-senv senv))
+		(ids (map car bindings)))
+	    (for-each (lambda (id)
+			(reserve-identifier id frame-senv))
+		      ids)
+	    (for-each (lambda (id item)
+			(bind-keyword id frame-senv item))
+		      ids
+		      (map (lambda (binding)
+			     ((cdr binding) frame-senv))
+			   bindings))
+	    (seq-item (body frame-senv))))
+      spar-discard-elt
+      (spar-elt
+	 (spar-push-values
+	   (spar*
+	     (spar-call-with-values cons
+	       (spar-elt spar-push-id-elt
+			 spar-push-open-classified-elt
+			 spar-require-null))))
+	 spar-require-null)
+       spar-push-body
+       spar-push-senv))))
 
 ;;;; MIT-specific syntax
 
@@ -268,10 +313,13 @@ USA.
   (env access-item-env))
 
 (define keyword:access
-  (classifier->keyword
-   (lambda (form senv hist)
-     (access-item (cadr form)
-		  (classify-form-caddr form senv hist)))))
+  (spar-promise->keyword
+   (delay
+     (spar-call-with-values access-item
+       spar-discard-elt
+       spar-push-id-elt
+       spar-push-classified-elt
+       spar-require-null))))
 
 (define-item-compiler access-item?
   (lambda (item)
@@ -279,41 +327,60 @@ USA.
 			     (compile-expr-item (access-item-env item)))))
 
 (define :the-environment
-  (classifier->runtime
-   (lambda (form senv hist)
-     (scheck '(_) form senv hist)
-     (if (not (senv-top-level? senv))
-	 (serror form senv hist "This form allowed only at top level:" form))
-     (the-environment-item))))
+  (spar-promise->runtime
+   (delay
+     (spar-seq
+       (spar-require-senv senv-top-level?)
+       spar-discard-elt
+       spar-require-null
+       (spar-push-thunk-value the-environment-item)))))
 
 (define keyword:unspecific
-  (classifier->keyword
-   (lambda (form senv hist)
-     (declare (ignore form senv hist))
-     (unspecific-item))))
+  (spar-promise->keyword
+   (delay
+     (spar-seq
+       spar-discard-elt
+       spar-require-null
+       (spar-push-thunk-value unspecific-item)))))
 
 (define keyword:unassigned
-  (classifier->keyword
-   (lambda (form senv hist)
-     (declare (ignore form senv hist))
-     (unassigned-item))))
+  (spar-promise->keyword
+   (delay
+     (spar-seq
+       spar-discard-elt
+       spar-require-null
+       (spar-push-thunk-value unassigned-item)))))
 
 ;;;; Declarations
 
 (define :declare
-  (classifier->runtime
-   (lambda (form senv hist)
-     (scheck '(_ * (identifier * datum)) form senv hist)
-     (decl-item
-      (lambda ()
-	(smap (lambda (decl hist)
-		(map-decl-ids (lambda (id selector)
-				(classify-id id
-					     senv
-					     (hist-select selector hist)))
-			      decl))
-	      (cdr form)
-	      (hist-cdr hist)))))))
+  (spar-promise->runtime
+   (delay
+     (spar-call-with-values
+	 (lambda (decls senv hist)
+	   (decl-item
+	    (lambda ()
+	      (smap (lambda (decl hist)
+		      (map-decl-ids (lambda (id selector)
+				      (classify-id id
+						   senv
+						   (hist-select selector hist)))
+				    decl))
+		    decls
+		    (hist-cadr hist)))))
+       spar-discard-elt
+       (spar-push-values
+	(spar*
+	  (spar-elt
+	    (spar-require-form
+	     (lambda (form)
+	       (and (pair? form)
+		    (identifier? (car form))
+		    (list? (cdr form)))))
+	    spar-push-form)))
+       spar-require-null
+       spar-push-senv
+       spar-push-hist))))
 
 (define (classify-id id senv hist)
   (let ((item (classify-form id senv hist)))
