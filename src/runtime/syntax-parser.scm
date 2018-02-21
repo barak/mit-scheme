@@ -145,89 +145,60 @@ USA.
 
 ;;;; Primitives
 
-(define (spar-match-form predicate)
+(define (%subst-args input senv output args)
+  (map (lambda (arg)
+	 (%subst-arg input senv output arg))
+       args))
+
+(define (%subst-arg input senv output arg)
+  (cond ((eq? arg spar-arg:form) (%input-form input))
+	((eq? arg spar-arg:hist) (%input-hist input))
+	((eq? arg spar-arg:senv) senv)
+	((eq? arg spar-arg:value) (%output-top output))
+	((eq? arg spar-arg:values) (%output-all output))
+	(else arg)))
+
+(define-deferred spar-arg:form (string->uninterned-symbol ".form."))
+(define-deferred spar-arg:hist (string->uninterned-symbol ".hist."))
+(define-deferred spar-arg:senv (string->uninterned-symbol ".senv."))
+(define-deferred spar-arg:value (string->uninterned-symbol ".value."))
+(define-deferred spar-arg:values (string->uninterned-symbol ".values."))
+
+(define (spar-match predicate . args)
   (lambda (input senv output success failure)
-    (if (predicate (%input-form input))
+    (if (apply predicate (%subst-args input senv output args))
 	(success input senv output failure)
 	(failure))))
 
-(define (spar-match-senv predicate)
+(define (spar-push . args)
   (lambda (input senv output success failure)
-    (if (predicate senv)
-	(success input senv output failure)
-	(failure))))
+    (success input
+	     senv
+	     (%output-push-all output (%subst-args input senv output args))
+	     failure)))
 
-(define (spar-match-full predicate)
+(define (spar-push-value procedure . args)
   (lambda (input senv output success failure)
-    (if (predicate (%input-form input) senv)
-	(success input senv output failure)
-	(failure))))
+    (success input
+	     senv
+	     (%output-push output
+			   (apply procedure
+				  (%subst-args input senv output args)))
+	     failure)))
 
-(define (spar-match-value predicate)
+(define (spar-error message . irritants)
   (lambda (input senv output success failure)
-    (if (predicate (%output-top output))
-	(success input senv output failure)
-	(failure))))
+    (declare (ignore success failure))
+    (apply serror
+	   (%input-form input)
+	   senv
+	   (%input-hist input)
+	   message
+	   (%subst-args input senv output irritants))))
 
 (define (spar-discard-form input senv output success failure)
   (declare (ignore input))
   (success (%null-input) senv output failure))
-
-(define (spar-push-form input senv output success failure)
-  (success (%null-input)
-	   senv
-	   (%output-push output (%input-form input))
-	   failure))
-
-(define (spar-push-hist input senv output success failure)
-  (success (%null-input)
-	   senv
-	   (%output-push output (%input-hist input))
-	   failure))
-
-(define (spar-push-senv input senv output success failure)
-  (success input
-	   senv
-	   (%output-push output senv)
-	   failure))
-
-(define (spar-push-datum object)
-  (lambda (input senv output success failure)
-    (success input
-	     senv
-	     (%output-push output object)
-	     failure)))
-
-(define (spar-push-thunk-value procedure)
-  (lambda (input senv output success failure)
-    (success input
-	     senv
-	     (%output-push output (procedure))
-	     failure)))
-
-(define (spar-push-mapped-form procedure)
-  (lambda (input senv output success failure)
-    (success (%null-input)
-	     senv
-	     (%output-push output (procedure (%input-form input)))
-	     failure)))
-
-(define (spar-push-mapped-full procedure)
-  (lambda (input senv output success failure)
-    (success (%null-input)
-	     senv
-	     (%output-push output (procedure (%input-form input) senv))
-	     failure)))
-
-(define (%push-classified procedure)
-  (lambda (input senv output success failure)
-    (success (%null-input)
-	     senv
-	     (%output-push output
-			   (procedure (%input-form input)
-				      senv
-				      (%input-hist input)))
-	     failure)))
 
 ;;;; Repeat combinators
 
@@ -322,12 +293,12 @@ USA.
 	  (s2 input* senv* output* success failure*))
 	failure)))
 
-(define (spar-alt . spars)
+(define (spar-or . spars)
   (cond ((not (pair? spars)) spar-fail)
         ((not (pair? (cdr spars))) (car spars))
-        (else (reduce-right %alt-combiner #f spars))))
+        (else (reduce-right %or-combiner #f spars))))
 
-(define (%alt-combiner s1 s2)
+(define (%or-combiner s1 s2)
   (lambda (input senv output success failure)
     (s1 input senv output success
 	(lambda ()
@@ -355,14 +326,8 @@ USA.
 		failure)
 	  (failure)))))
 
-(define spar-discard-elt
-  (spar-elt spar-discard-form))
-
-(define spar-match-null
-  (spar-match-form null?))
-
-(define spar-push-elt
-  (spar-elt spar-push-form))
+(define-deferred spar-match-null
+  (spar-match null? spar-arg:form))
 
 ;;;; Environment combinators
 
@@ -377,58 +342,57 @@ USA.
 	      (success input* senv output* failure*))
 	    failure))))
 
-(define spar-push-closed-form
-  (spar-push-mapped-full
-   (lambda (form senv)
-     (make-syntactic-closure senv '() form))))
+(define-deferred spar-push-closed
+  (spar-push-value make-syntactic-closure
+		   spar-arg:senv
+		   '()
+		   spar-arg:form))
 
-(define spar-push-closed-elt
-  (spar-elt spar-push-closed-form))
+(define-deferred spar-push-partially-closed
+  (spar-push-value (lambda (senv form)
+		     (lambda (free)
+		       (make-syntactic-closure senv free form)))
+		   spar-arg:senv
+		   spar-arg:form))
 
-(define spar-push-partially-closed-form
-  (spar-push-mapped-full
-   (lambda (form senv)
-     (lambda (free)
-       (make-syntactic-closure senv free form)))))
+(define-deferred spar-push-classified
+  (spar-push-value classify-form
+		   spar-arg:form
+		   spar-arg:senv
+		   spar-arg:hist))
 
-(define spar-push-partially-closed-elt
-  (spar-elt spar-push-partially-closed-form))
+(define-deferred spar-push-deferred-classified
+  (spar-push-value (lambda (form senv hist)
+		     (lambda ()
+		       (classify-form form senv hist)))
+		   spar-arg:form
+		   spar-arg:senv
+		   spar-arg:hist))
 
-(define-deferred spar-push-classified-form
-  (%push-classified classify-form))
+(define-deferred spar-push-open-classified
+  (spar-push-value (lambda (form senv hist)
+		     (declare (ignore senv))
+		     (lambda (senv*)
+		       (classify-form form senv* hist)))
+		   spar-arg:form
+		   spar-arg:senv
+		   spar-arg:hist))
 
-(define-deferred spar-push-classified-elt
-  (spar-elt spar-push-classified-form))
+(define-deferred spar-push-id
+  (spar-seq
+    (spar-match identifier? spar-arg:form)
+    (spar-push spar-arg:form)
+    spar-discard-form))
 
-(define spar-push-deferred-classified-form
-  (%push-classified
-   (lambda (form senv hist)
-     (lambda ()
-       (classify-form form senv hist)))))
-
-(define spar-push-deferred-classified-elt
-  (spar-elt spar-push-deferred-classified-form))
-
-(define spar-push-open-classified-form
-  (%push-classified
-   (lambda (form senv hist)
-     (declare (ignore senv))
-     (lambda (senv*)
-       (classify-form form senv* hist)))))
-
-(define spar-push-open-classified-elt
-  (spar-elt spar-push-open-classified-form))
-
-(define-deferred spar-push-id-elt
-  (spar-elt (spar-match-form identifier?)
-	    spar-push-form))
-
-(define (spar-push-id-elt= id)
-  (spar-elt (spar-match-full
-	     (lambda (form senv)
-	       (and (identifier? form)
-		    (identifier=? senv form senv id))))
-	    spar-push-form))
+(define (spar-push-id= id)
+  (spar-seq
+    (spar-match (lambda (form senv)
+		  (and (identifier? form)
+		       (identifier=? senv form senv id)))
+		spar-arg:form
+		spar-arg:senv)
+    (spar-push spar-arg:form)
+    spar-discard-form))
 
 ;;;; Value combinators
 
@@ -478,12 +442,14 @@ USA.
 		       failure*))
 	    failure))))
 
-(define spar-push-body
-  (spar-encapsulate-values
-      (lambda (elts)
-	(lambda (frame-senv)
-	  (let ((body-senv (make-internal-senv frame-senv)))
-	    (map-in-order (lambda (elt) (elt body-senv))
-			  elts))))
-    (spar+ spar-push-open-classified-elt)
-    spar-match-null))
+(define-deferred spar-push-body
+  (spar-seq
+    (spar-encapsulate-values
+	(lambda (elts)
+	  (lambda (frame-senv)
+	    (let ((body-senv (make-internal-senv frame-senv)))
+	      (map-in-order (lambda (elt) (elt body-senv))
+			    elts))))
+      (spar+ (spar-elt spar-push-open-classified))
+      spar-match-null)
+    (spar-push spar-arg:senv)))

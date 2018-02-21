@@ -78,37 +78,42 @@ USA.
 	   (seq-item
 	    (map-in-order (lambda (p) (p))
 			  deferred-items)))
-       spar-discard-elt
-       (spar* spar-push-deferred-classified-elt)
+       (spar-elt)
+       (spar* (spar-elt spar-push-deferred-classified))
        spar-match-null))))
 
 (define :if
   (spar-promise->runtime
    (delay
      (spar-call-with-values if-item
-       spar-discard-elt
-       spar-push-classified-elt
-       spar-push-classified-elt
-       (spar-alt spar-push-classified-elt
-		 (spar-push-thunk-value unspecific-item))
+       (spar-elt)
+       (spar-elt spar-push-classified)
+       (spar-elt spar-push-classified)
+       (spar-or (spar-elt spar-push-classified)
+		(spar-push-value unspecific-item))
        spar-match-null))))
 
 (define :quote
   (spar-promise->runtime
    (delay
      (spar-call-with-values constant-item
-       spar-discard-elt
-       (spar-elt (spar-push-mapped-form strip-syntactic-closures))
+       (spar-elt)
+       (spar-elt (spar-push-value strip-syntactic-closures spar-arg:form))
        spar-match-null))))
 
 (define :quote-identifier
   (spar-promise->runtime
    (delay
      (spar-call-with-values quoted-id-item
-       spar-discard-elt
-       (spar-elt (spar-push-mapped-full lookup-identifier))
+       (spar-elt)
+       (spar-elt
+	 (spar-match identifier? spar-arg:form)
+	 (spar-push-value lookup-identifier spar-arg:form spar-arg:senv)
+	 (spar-or (spar-match var-item? spar-arg:value)
+		  (spar-error "Can't quote a keyword identifier:"
+			      spar-arg:form)))
        spar-match-null))))
-
+
 (define :set!
   (spar-promise->runtime
    (delay
@@ -119,14 +124,17 @@ USA.
 	       (access-assignment-item (access-item-name lhs-item)
 				       (access-item-env lhs-item)
 				       rhs-item)))
-       spar-discard-elt
-       spar-push-classified-elt
-       (spar-match-value
-	(lambda (lhs-item)
-	  (or (var-item? lhs-item)
-	      (access-item? lhs-item))))
-       (spar-alt spar-push-classified-elt
-		 (spar-push-thunk-value unassigned-item))
+       (spar-elt)
+       (spar-elt
+	 spar-push-classified
+	 (spar-or (spar-match (lambda (lhs-item)
+				(or (var-item? lhs-item)
+				    (access-item? lhs-item)))
+			      spar-arg:value)
+		  (spar-error "Variable required in this context:"
+			      spar-arg:form)))
+       (spar-or (spar-elt spar-push-classified)
+		(spar-push-value unassigned-item))
        spar-match-null))))
 
 ;; TODO: this is a classifier rather than a macro because it uses the
@@ -137,8 +145,16 @@ USA.
   (spar-promise->runtime
    (delay
      (spar-encapsulate-values or-item
-       spar-discard-elt
-       (spar* spar-push-classified-elt)
+       (spar-elt)
+       (spar* (spar-elt spar-push-classified))
+       spar-match-null))))
+
+(define :delay
+  (spar-promise->runtime
+   (delay
+     (spar-call-with-values delay-item
+       (spar-elt)
+       (spar-elt spar-push-deferred-classified)
        spar-match-null))))
 
 ;;;; Definitions
@@ -147,11 +163,11 @@ USA.
   (spar-promise->keyword
    (delay
      (spar-call-with-values defn-item
-       spar-discard-elt
+       (spar-elt)
        (spar-elt
-	 (spar-match-form identifier?)
-	 (spar-push-mapped-full bind-variable))
-       spar-push-classified-elt
+	 (spar-match identifier? spar-arg:form)
+	 (spar-push-value bind-variable spar-arg:form spar-arg:senv))
+       (spar-elt spar-push-classified)
        spar-match-null))))
 
 (define :define-syntax
@@ -170,11 +186,14 @@ USA.
 		      (senv-top-level? senv))
 		 (syntax-defn-item id (keyword-item-expr item))
 		 (seq-item '()))))
-       spar-discard-elt
-       spar-push-id-elt
-       spar-push-senv
-       spar-push-classified-elt
-       (spar-match-value keyword-item?)
+       (spar-elt)
+       (spar-elt spar-push-id)
+       (spar-push spar-arg:senv)
+       (spar-elt
+	 spar-push-classified
+	 (spar-or (spar-match keyword-item? spar-arg:value)
+		  (spar-error "Keyword binding value must be a keyword:"
+			      spar-arg:form)))
        spar-match-null))))
 
 ;;;; Lambdas
@@ -185,11 +204,11 @@ USA.
      (spar-call-with-values
 	 (lambda (bvl body senv)
 	   (assemble-lambda-item scode-lambda-name:unnamed bvl body senv))
-       spar-discard-elt
-       (spar-elt (spar-match-form mit-lambda-list?)
-		 spar-push-form)
-       spar-push-body
-       spar-push-senv))))
+       (spar-elt)
+       (spar-elt
+	 (spar-match mit-lambda-list? spar-arg:form)
+	 (spar-push spar-arg:form))
+       spar-push-body))))
 
 (define :named-lambda
   (spar-promise->runtime
@@ -197,12 +216,12 @@ USA.
      (spar-call-with-values
 	 (lambda (name bvl body senv)
 	   (assemble-lambda-item (identifier->symbol name) bvl body senv))
-       spar-discard-elt
-       (spar-elt spar-push-id-elt
-		 (spar-match-form mit-lambda-list?)
-		 spar-push-form)
-       spar-push-body
-       spar-push-senv))))
+       (spar-elt)
+       (spar-elt
+	 (spar-elt spar-push-id)
+	 (spar-match mit-lambda-list? spar-arg:form)
+	 (spar-push spar-arg:form))
+       spar-push-body))))
 
 (define (assemble-lambda-item name bvl body senv)
   (let ((frame-senv (make-internal-senv senv)))
@@ -212,14 +231,6 @@ USA.
 				      bvl)
 		 (lambda ()
 		   (body-item (body frame-senv))))))
-
-(define :delay
-  (spar-promise->runtime
-   (delay
-     (spar-call-with-values delay-item
-       spar-discard-elt
-       spar-push-deferred-classified-elt
-       spar-match-null))))
 
 ;;;; LET-like
 
@@ -236,17 +247,16 @@ USA.
 	     (let-item ids
 		       (map cdr bindings)
 		       (body-item (body frame-senv)))))
-       spar-discard-elt
+       (spar-elt)
        (spar-elt
 	 (spar-push-values
 	   (spar*
 	     (spar-call-with-values cons
-	       (spar-elt spar-push-id-elt
-			 spar-push-classified-elt
+	       (spar-elt (spar-elt spar-push-id)
+			 (spar-elt spar-push-classified)
 			 spar-match-null))))
 	 spar-match-null)
-       spar-push-body
-       spar-push-senv))))
+       spar-push-body))))
 
 (define spar-promise:let-syntax
   (delay
@@ -257,17 +267,16 @@ USA.
 			(bind-keyword (car binding) frame-senv (cdr binding)))
 		      bindings)
 	    (seq-item (body frame-senv))))
-      spar-discard-elt
+      (spar-elt)
       (spar-elt
-	 (spar-push-values
-	   (spar*
-	     (spar-call-with-values cons
-	       (spar-elt spar-push-id-elt
-			 spar-push-classified-elt
-			 spar-match-null))))
-	 spar-match-null)
-       spar-push-body
-       spar-push-senv)))
+	(spar-push-values
+	 (spar*
+	   (spar-call-with-values cons
+	     (spar-elt (spar-elt spar-push-id)
+		       (spar-elt spar-push-classified)
+		       spar-match-null))))
+	spar-match-null)
+       spar-push-body)))
 
 (define :let-syntax
   (spar-promise->runtime spar-promise:let-syntax))
@@ -292,17 +301,16 @@ USA.
 			     ((cdr binding) frame-senv))
 			   bindings))
 	    (seq-item (body frame-senv))))
-      spar-discard-elt
+      (spar-elt)
       (spar-elt
 	 (spar-push-values
 	   (spar*
 	     (spar-call-with-values cons
-	       (spar-elt spar-push-id-elt
-			 spar-push-open-classified-elt
+	       (spar-elt (spar-elt spar-push-id)
+			 (spar-elt spar-push-open-classified)
 			 spar-match-null))))
 	 spar-match-null)
-       spar-push-body
-       spar-push-senv))))
+       spar-push-body))))
 
 ;;;; MIT-specific syntax
 
@@ -316,9 +324,9 @@ USA.
   (spar-promise->keyword
    (delay
      (spar-call-with-values access-item
-       spar-discard-elt
-       spar-push-id-elt
-       spar-push-classified-elt
+       (spar-elt)
+       (spar-elt spar-push-id)
+       (spar-elt spar-push-classified)
        spar-match-null))))
 
 (define-item-compiler access-item?
@@ -330,34 +338,36 @@ USA.
   (spar-promise->runtime
    (delay
      (spar-seq
-       (spar-match-senv senv-top-level?)
-       spar-discard-elt
+       (spar-or (spar-match senv-top-level? spar-arg:senv)
+		(spar-error "This form allowed only at top level:"
+			    spar-arg:form spar-arg:senv))
+       (spar-elt)
        spar-match-null
-       (spar-push-thunk-value the-environment-item)))))
+       (spar-push-value the-environment-item)))))
 
 (define keyword:unspecific
   (spar-promise->keyword
    (delay
      (spar-seq
-       spar-discard-elt
+       (spar-elt)
        spar-match-null
-       (spar-push-thunk-value unspecific-item)))))
+       (spar-push-value unspecific-item)))))
 
 (define keyword:unassigned
   (spar-promise->keyword
    (delay
      (spar-seq
-       spar-discard-elt
+       (spar-elt)
        spar-match-null
-       (spar-push-thunk-value unassigned-item)))))
-
+       (spar-push-value unassigned-item)))))
+
 ;;;; Declarations
 
 (define :declare
   (spar-promise->runtime
    (delay
      (spar-call-with-values
-	 (lambda (decls senv hist)
+	 (lambda (senv hist decls)
 	   (decl-item
 	    (lambda ()
 	      (smap (lambda (decl hist)
@@ -368,19 +378,19 @@ USA.
 				    decl))
 		    decls
 		    (hist-cadr hist)))))
-       spar-discard-elt
+       (spar-elt)
+       (spar-push spar-arg:senv)
+       (spar-push spar-arg:hist)
        (spar-push-values
 	(spar*
 	  (spar-elt
-	    (spar-match-form
-	     (lambda (form)
-	       (and (pair? form)
-		    (identifier? (car form))
-		    (list? (cdr form)))))
-	    spar-push-form)))
-       spar-match-null
-       spar-push-senv
-       spar-push-hist))))
+	    (spar-match (lambda (form)
+			  (and (pair? form)
+			       (identifier? (car form))
+			       (list? (cdr form))))
+			spar-arg:form)
+	    (spar-push spar-arg:form))))
+       spar-match-null))))
 
 (define (classify-id id senv hist)
   (let ((item (classify-form id senv hist)))
