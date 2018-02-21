@@ -146,7 +146,7 @@ USA.
 (define (body-item items)
   (expr-item
    (lambda ()
-     (output/body (map compile-expr-item items)))))
+     (output/body (map compile-expr-item (flatten-items items))))))
 
 (define (if-item predicate consequent alternative)
   (expr-item
