@@ -80,7 +80,7 @@ USA.
 			  deferred-items)))
        spar-discard-elt
        (spar* spar-push-deferred-classified-elt)
-       spar-require-null))))
+       spar-match-null))))
 
 (define :if
   (spar-promise->runtime
@@ -91,7 +91,7 @@ USA.
        spar-push-classified-elt
        (spar-alt spar-push-classified-elt
 		 (spar-push-thunk-value unspecific-item))
-       spar-require-null))))
+       spar-match-null))))
 
 (define :quote
   (spar-promise->runtime
@@ -99,7 +99,7 @@ USA.
      (spar-call-with-values constant-item
        spar-discard-elt
        (spar-elt (spar-push-mapped-form strip-syntactic-closures))
-       spar-require-null))))
+       spar-match-null))))
 
 (define :quote-identifier
   (spar-promise->runtime
@@ -107,7 +107,7 @@ USA.
      (spar-call-with-values quoted-id-item
        spar-discard-elt
        (spar-elt (spar-push-mapped-full lookup-identifier))
-       spar-require-null))))
+       spar-match-null))))
 
 (define :set!
   (spar-promise->runtime
@@ -121,13 +121,13 @@ USA.
 				       rhs-item)))
        spar-discard-elt
        spar-push-classified-elt
-       (spar-require-value
+       (spar-match-value
 	(lambda (lhs-item)
 	  (or (var-item? lhs-item)
 	      (access-item? lhs-item))))
        (spar-alt spar-push-classified-elt
 		 (spar-push-thunk-value unassigned-item))
-       spar-require-null))))
+       spar-match-null))))
 
 ;; TODO: this is a classifier rather than a macro because it uses the
 ;; special OUTPUT/DISJUNCTION.  Unfortunately something downstream in
@@ -139,7 +139,7 @@ USA.
      (spar-encapsulate-values or-item
        spar-discard-elt
        (spar* spar-push-classified-elt)
-       spar-require-null))))
+       spar-match-null))))
 
 ;;;; Definitions
 
@@ -149,10 +149,10 @@ USA.
      (spar-call-with-values defn-item
        spar-discard-elt
        (spar-elt
-	 (spar-require-form identifier?)
+	 (spar-match-form identifier?)
 	 (spar-push-mapped-full bind-variable))
        spar-push-classified-elt
-       spar-require-null))))
+       spar-match-null))))
 
 (define :define-syntax
   (spar-promise->runtime
@@ -174,8 +174,8 @@ USA.
        spar-push-id-elt
        spar-push-senv
        spar-push-classified-elt
-       (spar-require-value keyword-item?)
-       spar-require-null))))
+       (spar-match-value keyword-item?)
+       spar-match-null))))
 
 ;;;; Lambdas
 
@@ -186,7 +186,7 @@ USA.
 	 (lambda (bvl body senv)
 	   (assemble-lambda-item scode-lambda-name:unnamed bvl body senv))
        spar-discard-elt
-       (spar-elt (spar-require-form mit-lambda-list?)
+       (spar-elt (spar-match-form mit-lambda-list?)
 		 spar-push-form)
        spar-push-body
        spar-push-senv))))
@@ -199,7 +199,7 @@ USA.
 	   (assemble-lambda-item (identifier->symbol name) bvl body senv))
        spar-discard-elt
        (spar-elt spar-push-id-elt
-		 (spar-require-form mit-lambda-list?)
+		 (spar-match-form mit-lambda-list?)
 		 spar-push-form)
        spar-push-body
        spar-push-senv))))
@@ -219,7 +219,7 @@ USA.
      (spar-call-with-values delay-item
        spar-discard-elt
        spar-push-deferred-classified-elt
-       spar-require-null))))
+       spar-match-null))))
 
 ;;;; LET-like
 
@@ -243,8 +243,8 @@ USA.
 	     (spar-call-with-values cons
 	       (spar-elt spar-push-id-elt
 			 spar-push-classified-elt
-			 spar-require-null))))
-	 spar-require-null)
+			 spar-match-null))))
+	 spar-match-null)
        spar-push-body
        spar-push-senv))))
 
@@ -264,8 +264,8 @@ USA.
 	     (spar-call-with-values cons
 	       (spar-elt spar-push-id-elt
 			 spar-push-classified-elt
-			 spar-require-null))))
-	 spar-require-null)
+			 spar-match-null))))
+	 spar-match-null)
        spar-push-body
        spar-push-senv)))
 
@@ -299,8 +299,8 @@ USA.
 	     (spar-call-with-values cons
 	       (spar-elt spar-push-id-elt
 			 spar-push-open-classified-elt
-			 spar-require-null))))
-	 spar-require-null)
+			 spar-match-null))))
+	 spar-match-null)
        spar-push-body
        spar-push-senv))))
 
@@ -319,7 +319,7 @@ USA.
        spar-discard-elt
        spar-push-id-elt
        spar-push-classified-elt
-       spar-require-null))))
+       spar-match-null))))
 
 (define-item-compiler access-item?
   (lambda (item)
@@ -330,9 +330,9 @@ USA.
   (spar-promise->runtime
    (delay
      (spar-seq
-       (spar-require-senv senv-top-level?)
+       (spar-match-senv senv-top-level?)
        spar-discard-elt
-       spar-require-null
+       spar-match-null
        (spar-push-thunk-value the-environment-item)))))
 
 (define keyword:unspecific
@@ -340,7 +340,7 @@ USA.
    (delay
      (spar-seq
        spar-discard-elt
-       spar-require-null
+       spar-match-null
        (spar-push-thunk-value unspecific-item)))))
 
 (define keyword:unassigned
@@ -348,7 +348,7 @@ USA.
    (delay
      (spar-seq
        spar-discard-elt
-       spar-require-null
+       spar-match-null
        (spar-push-thunk-value unassigned-item)))))
 
 ;;;; Declarations
@@ -372,13 +372,13 @@ USA.
        (spar-push-values
 	(spar*
 	  (spar-elt
-	    (spar-require-form
+	    (spar-match-form
 	     (lambda (form)
 	       (and (pair? form)
 		    (identifier? (car form))
 		    (list? (cdr form)))))
 	    spar-push-form)))
-       spar-require-null
+       spar-match-null
        spar-push-senv
        spar-push-hist))))
 

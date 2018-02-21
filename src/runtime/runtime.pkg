@@ -4556,6 +4556,11 @@ USA.
 	  spar-push-id-elt
 	  spar-push-id-elt=
 	  spar-map-values
+	  spar-match-form
+	  spar-match-full
+	  spar-match-null
+	  spar-match-senv
+	  spar-match-value
 	  spar-opt
 	  spar-push-body
 	  spar-push-closed-elt
@@ -4570,11 +4575,6 @@ USA.
 	  spar-push-thunk-value
 	  spar-push-values
 	  spar-repeat
-	  spar-require-form
-	  spar-require-full
-	  spar-require-null
-	  spar-require-senv
-	  spar-require-value
 	  spar-seq
 	  spar-succeed
 	  spar-transform-values

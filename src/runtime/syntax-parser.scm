@@ -145,25 +145,25 @@ USA.
 
 ;;;; Primitives
 
-(define (spar-require-form predicate)
+(define (spar-match-form predicate)
   (lambda (input senv output success failure)
     (if (predicate (%input-form input))
 	(success input senv output failure)
 	(failure))))
 
-(define (spar-require-senv predicate)
+(define (spar-match-senv predicate)
   (lambda (input senv output success failure)
     (if (predicate senv)
 	(success input senv output failure)
 	(failure))))
 
-(define (spar-require-full predicate)
+(define (spar-match-full predicate)
   (lambda (input senv output success failure)
     (if (predicate (%input-form input) senv)
 	(success input senv output failure)
 	(failure))))
 
-(define (spar-require-value predicate)
+(define (spar-match-value predicate)
   (lambda (input senv output success failure)
     (if (predicate (%output-top output))
 	(success input senv output failure)
@@ -358,8 +358,8 @@ USA.
 (define spar-discard-elt
   (spar-elt spar-discard-form))
 
-(define spar-require-null
-  (spar-require-form null?))
+(define spar-match-null
+  (spar-match-form null?))
 
 (define spar-push-elt
   (spar-elt spar-push-form))
@@ -420,11 +420,11 @@ USA.
   (spar-elt spar-push-open-classified-form))
 
 (define-deferred spar-push-id-elt
-  (spar-elt (spar-require-form identifier?)
+  (spar-elt (spar-match-form identifier?)
 	    spar-push-form))
 
 (define (spar-push-id-elt= id)
-  (spar-elt (spar-require-full
+  (spar-elt (spar-match-full
 	     (lambda (form senv)
 	       (and (identifier? form)
 		    (identifier=? senv form senv id))))
@@ -486,4 +486,4 @@ USA.
 	    (map-in-order (lambda (elt) (elt body-senv))
 			  elts))))
     (spar+ spar-push-open-classified-elt)
-    spar-require-null))
+    spar-match-null))
