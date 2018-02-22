@@ -1968,9 +1968,6 @@ USA.
 	  ic-environment/procedure)
   (export (runtime debugging-info)
 	  stack-frame/environment)
-  (export (runtime predicate)
-	  closure-ccenv?
-	  stack-ccenv?)
   (initialization (initialize-package!)))
 
 (define-package (runtime environment-inspector)

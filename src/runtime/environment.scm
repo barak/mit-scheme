@@ -34,6 +34,7 @@ USA.
       (ic-environment? object)
       (stack-ccenv? object)
       (closure-ccenv? object)))
+(register-predicate! environment? 'environment)
 
 (define (environment-has-parent? environment)
   (cond ((system-global-environment? environment)
@@ -265,6 +266,13 @@ USA.
 (define-integrable (ic-environment? object)
   (object-type? (ucode-type environment) object))
 
+(register-predicate! interpreter-environment? 'top-level-environment
+		     '<= environment?)
+(register-predicate! system-global-environment? 'system-global-environment
+		     '<= top-level-environment?)
+(register-predicate! ic-environment? 'ic-environment
+		     '<= top-level-environment?)
+
 (define (guarantee-interpreter-environment object)
   (if (not (interpreter-environment? object))
       (error:wrong-type-datum object "interpreter environment"))
@@ -452,14 +460,13 @@ USA.
 
 ;;;; Compiled Code Environments
 
-(define-structure (stack-ccenv (type vector)
-			       (named
-				((ucode-primitive string->symbol)
-				 "#[(runtime environment)stack-ccenv]"))
-			       (conc-name stack-ccenv/))
-  (block #f read-only #t)
-  (frame #f read-only #t)
-  (start-index #f read-only #t))
+(define-record-type <stack-ccenv>
+    (make-stack-ccenv block frame start-index)
+    stack-ccenv?
+  (block stack-ccenv/block)
+  (frame stack-ccenv/frame)
+  (start-index stack-ccenv/start-index))
+(set-predicate<=! stack-ccenv? environment?)
 
 (define (stack-frame/environment frame default)
   (let* ((ret-add (stack-frame/return-address frame))
@@ -721,15 +728,13 @@ USA.
 (define-integrable (dbg-block/length block)
   (vector-length (dbg-block/layout-vector block)))
 
-(define-structure (closure-ccenv
-		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime environment)closure-ccenv]"))
-		   (conc-name closure-ccenv/))
-  (stack-block #f read-only #t)
-  (closure-block #f read-only #t)
-  (closure #f read-only #t))
+(define-record-type <closure-ccenv>
+    (make-closure-ccenv stack-block closure-block closure)
+    closure-ccenv?
+  (stack-block closure-ccenv/stack-block)
+  (closure-block closure-ccenv/closure-block)
+  (closure closure-ccenv/closure))
+(set-predicate<=! closure-ccenv? environment?)
 
 (define (closure-ccenv/bound-names environment)
   (map dbg-variable/name
