@@ -565,26 +565,30 @@ USA.
           (loop (fix:- index 1))))))
 
 (define (unparse/vector vector context)
-  (limit-unparse-depth context
-    (lambda (context*)
-      (let ((end (vector-length vector)))
-	(if (fix:> end 0)
-	    (begin
-	      (*unparse-string "#(" context*)
-	      (*unparse-object (safe-vector-ref vector 0) context*)
-	      (let loop ((index 1))
-		(if (fix:< index end)
-		    (if (let ((limit (context-list-breadth-limit context*)))
-			  (and limit
-			       (>= index limit)))
-			(*unparse-string " ...)" context*)
-			(begin
-			  (*unparse-char #\space context*)
-			  (*unparse-object (safe-vector-ref vector index)
-					   context*)
-			  (loop (fix:+ index 1))))))
-	      (*unparse-char #\) context*))
-	    (*unparse-string "#()" context*))))))
+  (let ((unparser (named-vector-with-unparser? vector)))
+    (if unparser
+	(unparser context vector)
+	(limit-unparse-depth context
+	  (lambda (context*)
+	    (let ((end (vector-length vector)))
+	      (if (fix:> end 0)
+		  (begin
+		    (*unparse-string "#(" context*)
+		    (*unparse-object (safe-vector-ref vector 0) context*)
+		    (let loop ((index 1))
+		      (if (fix:< index end)
+			  (if (let ((limit
+				     (context-list-breadth-limit context*)))
+				(and limit
+				     (>= index limit)))
+			      (*unparse-string " ...)" context*)
+			      (begin
+				(*unparse-char #\space context*)
+				(*unparse-object (safe-vector-ref vector index)
+						 context*)
+				(loop (fix:+ index 1))))))
+		    (*unparse-char #\) context*))
+		  (*unparse-string "#()" context*))))))))
 
 (define (safe-vector-ref vector index)
   (if (with-absolutely-no-interrupts
@@ -634,6 +638,8 @@ USA.
          => (lambda (prefix) (unparse-list/prefix-pair prefix pair context)))
         ((and (get-param:unparse-streams?) (stream-pair? pair))
          (unparse-list/stream-pair pair context))
+	((named-list-with-unparser? pair)
+	 => (lambda (unparser) (unparser context pair)))
         (else
          (unparse-list pair context))))
 

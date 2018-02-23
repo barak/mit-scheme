@@ -412,44 +412,36 @@ USA.
 (define structure-type/field-indexes)
 (define structure-type/default-inits)
 (define structure-type/unparser-method)
-(define set-structure-type/unparser-method!)
 (define structure-type/tag)
 (define structure-type/length)
 (add-boot-init!
  (lambda ()
+   ;; unparser-method arg should be removed after 9.3 is released.
    (set! rtd:structure-type
 	 (make-record-type "structure-type"
-			   '(PHYSICAL-TYPE NAME FIELD-NAMES FIELD-INDEXES
-					   DEFAULT-INITS TAG LENGTH)))
+			   '(physical-type name field-names field-indexes
+					   default-inits unparser-method tag
+					   length)))
    (set! make-define-structure-type
-	 (let ((constructor (record-constructor rtd:structure-type)))
-	   (lambda (physical-type name field-names field-indexes default-inits
-				  unparser-method tag length)
-	     ;; unparser-method arg should be removed after 9.3 is released.
-	     (declare (ignore unparser-method))
-	     (constructor physical-type
-			  name
-			  field-names
-			  field-indexes
-			  default-inits
-			  tag
-			  length))))
+	 (record-constructor rtd:structure-type))
    (set! structure-type?
 	 (record-predicate rtd:structure-type))
    (set! structure-type/physical-type
-	 (record-accessor rtd:structure-type 'PHYSICAL-TYPE))
+	 (record-accessor rtd:structure-type 'physical-type))
    (set! structure-type/name
-	 (record-accessor rtd:structure-type 'NAME))
+	 (record-accessor rtd:structure-type 'name))
    (set! structure-type/field-names
-	 (record-accessor rtd:structure-type 'FIELD-NAMES))
+	 (record-accessor rtd:structure-type 'field-names))
    (set! structure-type/field-indexes
-	 (record-accessor rtd:structure-type 'FIELD-INDEXES))
+	 (record-accessor rtd:structure-type 'field-indexes))
    (set! structure-type/default-inits
-	 (record-accessor rtd:structure-type 'DEFAULT-INITS))
+	 (record-accessor rtd:structure-type 'default-inits))
+   (set! structure-type/unparser-method
+	 (record-accessor rtd:structure-type 'unparser-method))
    (set! structure-type/tag
-	 (record-accessor rtd:structure-type 'TAG))
+	 (record-accessor rtd:structure-type 'tag))
    (set! structure-type/length
-	 (record-accessor rtd:structure-type 'LENGTH))
+	 (record-accessor rtd:structure-type 'length))
    unspecific))
 
 (define-integrable (structure-type/field-index type field-name)
@@ -500,6 +492,21 @@ USA.
       (let ((type (named-structure/get-tag-description tag)))
 	(and (structure-type? type)
 	     type))))
+
+;;; Starting here can be removed after 9.3 release...
+
+(define (named-list-with-unparser? object)
+  (and (named-list? object)
+       (tag->unparser-method (car object))))
+
+(define (named-vector-with-unparser? object)
+  (and (named-vector? object)
+       (tag->unparser-method (vector-ref object 0))))
+
+(define (tag->unparser-method tag)
+  (structure-type/unparser-method (tag->structure-type tag)))
+
+;;; ...and ending here.
 
 (define-pp-describer named-list?
   (lambda (pair)
