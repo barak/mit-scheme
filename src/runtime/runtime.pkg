@@ -1544,6 +1544,7 @@ USA.
   (files "contin")
   (parent (runtime))
   (export ()
+	  (call/cc call-with-current-continuation)
 	  call-with-current-continuation
 	  continuation/block-thread-events?
 	  continuation/control-point
