@@ -129,17 +129,24 @@ USA.
 		 'register-predicate!)))
 	   (named-lambda (register-predicate! predicate name . keylist)
 	     (guarantee keyword-list? keylist 'register-predicate!)
-	     (let ((tag (make-simple-tag name predicate)))
+	     (let ((tag
+		    (let ((tag (get-predicate-tag predicate #f)))
+		      (if tag
+			  (begin
+			    (if (not (eq? name (dispatch-tag-name tag)))
+				(error "Can't re-register predicate:"
+				       predicate name))
+			    tag)
+			  (make-simple-tag name predicate)))))
 	       (for-each (lambda (superset)
 			   (set-predicate<=! predicate superset))
 			 (get-keyword-values keylist '<=))
 	       tag))))
    (set! set-dispatch-tag<=!
 	 (named-lambda (set-dispatch-tag<=! tag superset)
-	   (if (not (add-dispatch-tag-superset tag superset))
-	       (error "Tag already has this superset:" tag superset))
 	   (if (dispatch-tag>= tag superset)
 	       (error "Not allowed to create a superset loop:" tag superset))
+	   (add-dispatch-tag-superset tag superset)
 	   (hash-table-clear! dispatch-tag<=-cache)))
    (set! set-predicate<=!
 	 (named-lambda (set-predicate<=! predicate superset)
