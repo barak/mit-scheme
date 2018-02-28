@@ -207,6 +207,8 @@ USA.
 	  add-boot-init!
 	  defer-boot-action
 	  run-deferred-boot-actions)
+  (export (runtime equality)
+	  %weak-car)
   (export (runtime predicate)
 	  set-predicate-tag!)
   (export (runtime rep)
