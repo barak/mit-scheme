@@ -134,19 +134,19 @@ USA.
 (define (lambda-item name bvl classify-body)
   (expr-item
    (lambda ()
-     (output/lambda name bvl (compile-expr-item (classify-body))))))
+     (output/lambda name bvl (compile-item (classify-body))))))
 
 (define (let-item names value-items body-item)
   (expr-item
    (lambda ()
      (output/let names
 		 (map compile-expr-item value-items)
-		 (compile-expr-item body-item)))))
+		 (compile-item body-item)))))
 
 (define (body-item items)
   (expr-item
    (lambda ()
-     (output/body (map compile-expr-item (flatten-items items))))))
+     (output/body (map compile-item (flatten-items items))))))
 
 (define (if-item predicate consequent alternative)
   (expr-item
@@ -198,14 +198,28 @@ USA.
 
 ;;;; Compiler
 
+(define compile-item)
 (define compile-expr-item)
 (add-boot-init!
  (lambda ()
+   (set! compile-item
+	 (standard-predicate-dispatcher 'compile-item 1))
    (set! compile-expr-item
 	 (standard-predicate-dispatcher 'compile-expr-item 1))
    (run-deferred-boot-actions 'define-item-compiler)))
 
-(define (define-item-compiler predicate compiler)
+(define (define-item-compiler predicate compiler #!optional expr-compiler)
+  (defer-boot-action 'define-item-compiler
+    (lambda ()
+      (define-predicate-dispatch-handler compile-item
+	(list predicate)
+	compiler)
+      (if expr-compiler
+	  (define-predicate-dispatch-handler compile-expr-item
+	    (list predicate)
+	    (if (default-object? expr-compiler) compiler expr-compiler))))))
+
+(define (define-expr-item-compiler predicate compiler)
   (defer-boot-action 'define-item-compiler
     (lambda ()
       (define-predicate-dispatch-handler compile-expr-item
@@ -222,22 +236,26 @@ USA.
 
 (define-item-compiler seq-item?
   (lambda (item)
+    (output/sequence (map compile-item (seq-item-elements item))))
+  (lambda (item)
     (output/sequence (map compile-expr-item (seq-item-elements item)))))
 
 (define-item-compiler defn-item?
   (lambda (item)
-    (if (defn-item? item)
-	(let ((name (defn-item-id item))
-	      (value (compile-expr-item (defn-item-value item))))
-	  (if (defn-item-syntax? item)
-	      (output/syntax-definition name value)
-	      (output/definition name value)))
-	(compile-expr-item item))))
+    (let ((name (defn-item-id item))
+	  (value (compile-expr-item (defn-item-value item))))
+      (if (defn-item-syntax? item)
+	  (output/syntax-definition name value)
+	  (output/definition name value))))
+  #f)
 
 (define (illegal-expression-compiler description)
   (let ((message (string description " may not be used as an expression:")))
     (lambda (item)
       (error message item))))
+
+(define-expr-item-compiler defn-item?
+  (illegal-expression-compiler "Definition"))
 
 (define-item-compiler reserved-name-item?
   (illegal-expression-compiler "Reserved name"))

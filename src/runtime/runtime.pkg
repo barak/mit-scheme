@@ -4481,9 +4481,10 @@ USA.
 	  body-item
 	  combination-item
 	  compile-expr-item
+	  compile-item
 	  constant-item
 	  decl-item
-	  define-item-compiler
+	  define-expr-item-compiler
 	  defn-item
 	  defn-item-id
 	  defn-item-syntax?

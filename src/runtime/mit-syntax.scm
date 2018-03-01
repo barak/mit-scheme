@@ -329,7 +329,7 @@ USA.
        (spar-elt spar-push-classified)
        spar-match-null))))
 
-(define-item-compiler access-item?
+(define-expr-item-compiler access-item?
   (lambda (item)
     (output/access-reference (access-item-name item)
 			     (compile-expr-item (access-item-env item)))))

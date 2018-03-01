@@ -108,7 +108,7 @@ USA.
 	    (name->class (identifier->symbol class-name)))
 	   (compile-expr-item self-item)
 	   free-names
-	   (compile-expr-item body-item))))))))
+	   (compile-item body-item))))))))
 
 (define-syntax ==>
   (syntax-rules ()

@@ -288,6 +288,7 @@ USA.
 	  classifier->runtime
 	  classify-form
 	  compile-expr-item
+	  compile-item
 	  expr-item))
 
 (define-package (edwin class-macros transform-instance-variables)

@@ -54,7 +54,7 @@ USA.
 	     (runtime-environment->syntactic environment))))
     (with-identifier-renaming
      (lambda ()
-       (compile-expr-item
+       (compile-item
 	(body-item
 	 (map-in-order (lambda (form)
 			 (classify-form form senv (initial-hist form)))
