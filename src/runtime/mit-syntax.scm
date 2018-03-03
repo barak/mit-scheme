@@ -35,7 +35,10 @@ USA.
 				transformer->expander-name)
   (lambda (form senv hist)
     (scheck '(_ expression) form senv hist)
-    (let ((transformer (compile-expr-item (classify-form-cadr form senv hist))))
+    (let ((transformer
+	   (compile-expr-item (classify-form (cadr form)
+					     senv
+					     (hist-cadr hist)))))
       (transformer->keyword-item
        (transformer-eval transformer senv)
        senv

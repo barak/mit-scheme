@@ -4422,16 +4422,7 @@ USA.
 	  biselector:cr
 	  classifier->keyword
 	  classify-form
-	  classify-form-cadddr
-	  classify-form-caddr
-	  classify-form-cadr
-	  classify-form-car
-	  classify-forms-cdr
-	  classify-forms-in-order-cddr
-	  classify-forms-in-order-cdr
-	  classify-subform
 	  error:syntax
-	  hist-caddr
 	  hist-cadr
 	  hist-car
 	  hist-cddr

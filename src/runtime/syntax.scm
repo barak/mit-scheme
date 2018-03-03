@@ -64,7 +64,11 @@ USA.
 
 (define (classify-form form senv hist)
   (cond ((identifier? form)
-	 (lookup-identifier form senv))
+	 (let ((item (lookup-identifier form senv)))
+	   (if (reserved-name-item? item)
+	       (serror form senv hist
+		       "Premature reference to reserved name:" form))
+	   item))
 	((syntactic-closure? form)
 	 (reclassify (syntactic-closure-form form)
 		     (make-partial-senv (syntactic-closure-free form)
@@ -72,7 +76,7 @@ USA.
 					(syntactic-closure-senv form))
 		     hist))
 	((pair? form)
-	 (let ((item (classify-form-car form senv hist)))
+	 (let ((item (classify-form (car form) senv (hist-car hist))))
 	   (if (keyword-item? item)
 	       ((keyword-item-impl item) form senv hist)
 	       (begin
@@ -80,26 +84,11 @@ USA.
 		      (serror form senv hist
 			      "Combination must be a proper list:" form))
 		  (combination-item item
-				    (classify-forms-cdr form senv hist))))))
+				    (classify-forms (cdr form)
+						    senv
+						    (hist-cdr hist)))))))
 	(else
 	 (constant-item form))))
-
-(define (classify-subform selector form senv hist)
-  (classify-form (subform-select selector form)
-		 senv
-		 (hist-select selector hist)))
-
-(define (classify-form-car form senv hist)
-  (classify-subform biselector:car form senv hist))
-
-(define (classify-form-cadr form senv hist)
-  (classify-subform biselector:cadr form senv hist))
-
-(define (classify-form-caddr form senv hist)
-  (classify-subform biselector:caddr form senv hist))
-
-(define (classify-form-cadddr form senv hist)
-  (classify-subform biselector:cadddr form senv hist))
 
 (define (reclassify form env hist)
   (classify-form form env (hist-reduce form hist)))
@@ -109,21 +98,6 @@ USA.
 	  (classify-form expr senv hist))
 	forms
 	hist))
-
-(define (classify-forms-cdr form senv hist)
-  (classify-forms (cdr form) senv (hist-cdr hist)))
-
-(define (classify-forms-in-order forms senv hist)
-  (smap-in-order (lambda (form hist)
-		   (classify-form form senv hist))
-		 forms
-		 hist))
-
-(define (classify-forms-in-order-cdr form senv hist)
-  (classify-forms-in-order (cdr form) senv (hist-cdr hist)))
-
-(define (classify-forms-in-order-cddr form senv hist)
-  (classify-forms-in-order (cddr form) senv (hist-cddr hist)))
 
 ;;;; Syntactic closures
 
@@ -244,15 +218,6 @@ USA.
 
 (define (hist-cddr hist)
   (hist-select biselector:cddr hist))
-
-(define (hist-caddr hist)
-  (hist-select biselector:caddr hist))
-
-(define (hist-cdddr hist)
-  (hist-select biselector:cdddr hist))
-
-(define (hist-cadddr hist)
-  (hist-select biselector:cadddr hist))
 
 (define (subform-hists forms hist)
   (let loop ((forms forms) (hist hist))
