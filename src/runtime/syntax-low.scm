@@ -43,9 +43,10 @@ USA.
 		 expr))
 
 (define (sc-wrapper transformer get-closing-senv)
-  (lambda (form use-senv)
-    (close-syntax (transformer form use-senv)
-		  (get-closing-senv))))
+  (wrap-no-hist
+   (lambda (form use-senv)
+     (close-syntax (transformer form use-senv)
+		   (get-closing-senv)))))
 
 (define (rsc-macro-transformer->expander transformer env #!optional expr)
   (expander-item (rsc-wrapper transformer (runtime-getter env))
@@ -56,9 +57,10 @@ USA.
 		 expr))
 
 (define (rsc-wrapper transformer get-closing-senv)
-  (lambda (form use-senv)
-    (close-syntax (transformer form (get-closing-senv))
-		  use-senv)))
+  (wrap-no-hist
+   (lambda (form use-senv)
+     (close-syntax (transformer form (get-closing-senv))
+		   use-senv))))
 
 (define (er-macro-transformer->expander transformer env #!optional expr)
   (expander-item (er-wrapper transformer (runtime-getter env))
@@ -69,11 +71,12 @@ USA.
 		 expr))
 
 (define (er-wrapper transformer get-closing-senv)
-  (lambda (form use-senv)
-    (close-syntax (transformer form
-			       (make-er-rename (get-closing-senv))
-			       (make-er-compare use-senv))
-		  use-senv)))
+  (wrap-no-hist
+   (lambda (form use-senv)
+     (close-syntax (transformer form
+				(make-er-rename (get-closing-senv))
+				(make-er-compare use-senv))
+		   use-senv))))
 
 (define (make-er-rename closing-senv)
   (lambda (identifier)
@@ -84,19 +87,17 @@ USA.
     (identifier=? use-senv x use-senv y)))
 
 (define (spar-macro-transformer->expander spar env expr)
-  (keyword-item (spar-wrapper spar (runtime-getter env))
-		expr))
+  (expander-item (spar-wrapper spar (runtime-getter env))
+		 expr))
 
 (define (spar-macro-transformer->keyword-item spar closing-senv expr)
-  (keyword-item (spar-wrapper spar (lambda () closing-senv))
+  (expander-item (spar-wrapper spar (lambda () closing-senv))
 		expr))
 
 (define (spar-wrapper spar get-closing-senv)
   (lambda (form senv hist)
-    (reclassify (close-syntax ((spar->classifier spar) form senv hist)
-			      (get-closing-senv))
-		senv
-		hist)))
+    (close-syntax (spar-call spar form senv hist)
+		  (get-closing-senv))))
 
 (define (runtime-getter env)
   (lambda ()
@@ -107,15 +108,6 @@ USA.
 (define (keyword-item impl #!optional expr)
   (%keyword-item impl expr))
 
-(define (expander-item impl expr)
-  (%keyword-item (lambda (form senv hist)
-		   (reclassify (with-error-context form senv hist
-				 (lambda ()
-				   (impl form senv)))
-			       senv
-			       hist))
-		 expr))
-
 (define-record-type <keyword-item>
     (%keyword-item impl expr)
     keyword-item?
@@ -125,16 +117,42 @@ USA.
 (define (keyword-item-has-expr? item)
   (not (default-object? (keyword-item-expr item))))
 
+(define (expander-item transformer expr)
+  (keyword-item (transformer->classifier transformer)
+		expr))
+
+(define (transformer->classifier transformer)
+  (lambda (form senv hist)
+    (reclassify (transformer form senv hist)
+		senv
+		hist)))
+
+(define (wrap-no-hist transformer)
+  (lambda (form senv hist)
+    (with-error-context form senv hist
+      (lambda ()
+	(transformer form senv)))))
+
 (define (classifier->runtime classifier)
   (make-unmapped-macro-reference-trap (keyword-item classifier)))
 
-(define (spar-promise->runtime promise)
-  (make-unmapped-macro-reference-trap
-   (keyword-item (spar-promise->classifier promise))))
+(define (classifier->keyword classifier)
+  (close-syntax 'keyword
+		(make-keyword-senv 'keyword
+				   (keyword-item classifier))))
 
-(define (spar-promise->classifier promise)
+(define (spar-classifier->runtime promise)
+  (classifier->runtime (spar-promise-caller promise)))
+
+(define (spar-transformer->runtime promise)
+  (classifier->runtime (transformer->classifier (spar-promise-caller promise))))
+
+(define (spar-classifier->keyword promise)
+  (classifier->keyword (spar-promise-caller promise)))
+
+(define (spar-promise-caller promise)
   (lambda (form senv hist)
-    ((spar->classifier (force promise)) form senv hist)))
+    (spar-call (force promise) form senv hist)))
 
 (define (syntactic-keyword->item keyword environment)
   (let ((item (environment-lookup-macro environment keyword)))

@@ -74,7 +74,7 @@ USA.
 ;;;; Core primitives
 
 (define :begin
-  (spar-promise->runtime
+  (spar-classifier->runtime
    (delay
      (spar-encapsulate-values
 	 (lambda (deferred-items)
@@ -86,7 +86,7 @@ USA.
        spar-match-null))))
 
 (define :if
-  (spar-promise->runtime
+  (spar-classifier->runtime
    (delay
      (spar-call-with-values if-item
        (spar-elt)
@@ -97,7 +97,7 @@ USA.
        spar-match-null))))
 
 (define :quote
-  (spar-promise->runtime
+  (spar-classifier->runtime
    (delay
      (spar-call-with-values constant-item
        (spar-elt)
@@ -105,7 +105,7 @@ USA.
        spar-match-null))))
 
 (define :quote-identifier
-  (spar-promise->runtime
+  (spar-classifier->runtime
    (delay
      (spar-call-with-values quoted-id-item
        (spar-elt)
@@ -118,7 +118,7 @@ USA.
        spar-match-null))))
 
 (define :set!
-  (spar-promise->runtime
+  (spar-classifier->runtime
    (delay
      (spar-call-with-values
 	 (lambda (lhs-item rhs-item)
@@ -145,7 +145,7 @@ USA.
 ;; the compiler wants this, but it would be nice to eliminate this
 ;; hack.
 (define :or
-  (spar-promise->runtime
+  (spar-classifier->runtime
    (delay
      (spar-encapsulate-values or-item
        (spar-elt)
@@ -153,7 +153,7 @@ USA.
        spar-match-null))))
 
 (define :delay
-  (spar-promise->runtime
+  (spar-classifier->runtime
    (delay
      (spar-call-with-values delay-item
        (spar-elt)
@@ -163,7 +163,7 @@ USA.
 ;;;; Definitions
 
 (define keyword:define
-  (spar-promise->keyword
+  (spar-classifier->keyword
    (delay
      (spar-call-with-values defn-item
        (spar-elt)
@@ -174,7 +174,7 @@ USA.
        spar-match-null))))
 
 (define :define-syntax
-  (spar-promise->runtime
+  (spar-classifier->runtime
    (delay
      (spar-call-with-values
 	 (lambda (id senv item)
@@ -202,7 +202,7 @@ USA.
 ;;;; Lambdas
 
 (define :lambda
-  (spar-promise->runtime
+  (spar-classifier->runtime
    (delay
      (spar-call-with-values
 	 (lambda (bvl body senv)
@@ -214,7 +214,7 @@ USA.
        spar-push-body))))
 
 (define :named-lambda
-  (spar-promise->runtime
+  (spar-classifier->runtime
    (delay
      (spar-call-with-values
 	 (lambda (name bvl body senv)
@@ -238,7 +238,7 @@ USA.
 ;;;; LET-like
 
 (define keyword:let
-  (spar-promise->keyword
+  (spar-classifier->keyword
    (delay
      (spar-call-with-values
 	 (lambda (bindings body senv)
@@ -282,13 +282,13 @@ USA.
        spar-push-body)))
 
 (define :let-syntax
-  (spar-promise->runtime spar-promise:let-syntax))
+  (spar-classifier->runtime spar-promise:let-syntax))
 
 (define keyword:let-syntax
-  (spar-promise->keyword spar-promise:let-syntax))
+  (spar-classifier->keyword spar-promise:let-syntax))
 
 (define :letrec-syntax
-  (spar-promise->runtime
+  (spar-classifier->runtime
    (delay
      (spar-call-with-values
 	(lambda (bindings body senv)
@@ -324,7 +324,7 @@ USA.
   (env access-item-env))
 
 (define keyword:access
-  (spar-promise->keyword
+  (spar-classifier->keyword
    (delay
      (spar-call-with-values access-item
        (spar-elt)
@@ -338,7 +338,7 @@ USA.
 			     (compile-expr-item (access-item-env item)))))
 
 (define :the-environment
-  (spar-promise->runtime
+  (spar-classifier->runtime
    (delay
      (spar-seq
        (spar-or (spar-match senv-top-level? spar-arg:senv)
@@ -349,7 +349,7 @@ USA.
        (spar-push-value the-environment-item)))))
 
 (define keyword:unspecific
-  (spar-promise->keyword
+  (spar-classifier->keyword
    (delay
      (spar-seq
        (spar-elt)
@@ -357,7 +357,7 @@ USA.
        (spar-push-value unspecific-item)))))
 
 (define keyword:unassigned
-  (spar-promise->keyword
+  (spar-classifier->keyword
    (delay
      (spar-seq
        (spar-elt)
@@ -367,7 +367,7 @@ USA.
 ;;;; Declarations
 
 (define :declare
-  (spar-promise->runtime
+  (spar-classifier->runtime
    (delay
      (spar-call-with-values
 	 (lambda (senv hist decls)

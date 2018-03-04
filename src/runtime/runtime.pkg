@@ -4420,7 +4420,6 @@ USA.
 	  biselector:cddr
 	  biselector:cdr
 	  biselector:cr
-	  classifier->keyword
 	  classify-form
 	  error:syntax
 	  hist-cadr
@@ -4434,7 +4433,6 @@ USA.
 	  serror
 	  sfor-each
 	  smap
-	  spar-promise->keyword
 	  subform-select)
   (export (runtime syntax low)
 	  reclassify
@@ -4450,6 +4448,7 @@ USA.
 	  spar-macro-transformer->expander
 	  syntactic-keyword->item)
   (export (runtime syntax)
+	  classifier->keyword
 	  classifier->runtime
 	  er-macro-transformer->keyword-item
 	  keyword-item
@@ -4459,9 +4458,11 @@ USA.
 	  keyword-item?
 	  rsc-macro-transformer->keyword-item
 	  sc-macro-transformer->keyword-item
+	  spar-classifier->keyword
+	  spar-classifier->runtime
+	  spar-transformer->runtime
 	  spar-macro-transformer->keyword-item
-	  spar-promise->classifier
-	  spar-promise->runtime))
+	  spar-promise-caller))
 
 (define-package (runtime syntax items)
   (files "syntax-items")
@@ -4571,7 +4572,7 @@ USA.
 	  spar-transform-values
 	  spar-with-mapped-senv)
   (export (runtime syntax)
-	  spar->classifier
+	  spar-call
 	  spar-push-classified
 	  spar-push-deferred-classified
 	  spar-push-open-classified))
