@@ -296,22 +296,28 @@ USA.
   (make-unsettable-parameter unspecific))
 
 (define (with-error-context form senv hist thunk)
-  (parameterize* (list (cons error-context (list form senv hist)))
+  (parameterize* (list (cons error-context (vector form senv hist)))
 		 thunk))
 
 ;;; External signaller for macros.
 (define (syntax-error message . irritants)
   (let ((context (error-context)))
-    (error:syntax (car context) (cadr context) (caddr context)
-		  message irritants)))
+    (error:syntax (vector-ref context 0)
+		  (vector-ref context 1)
+		  (vector-ref context 2)
+		  message
+		  irritants)))
 
 ;;;; Utilities
 
-(define (capture-syntactic-environment expander)
+(define (capture-syntactic-environment procedure)
   `(,(classifier->keyword
       (lambda (form senv hist)
-	(declare (ignore form))
-	(classify-form (expander senv) senv hist)))))
+	(classify-form (with-error-context form senv hist
+			 (lambda ()
+			   (procedure senv)))
+		       senv
+		       hist)))))
 
 (define (reverse-syntactic-environments senv procedure)
   (capture-syntactic-environment
