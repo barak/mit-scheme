@@ -184,6 +184,10 @@ USA.
 	     (%output-push-all output (%subst-args input senv output args))
 	     failure)))
 
+(define (spar-push-if predicate . args)
+  (spar-seq (apply spar-match predicate args)
+	    (apply spar-push args)))
+
 (define (spar-push-value procedure . args)
   (lambda (input senv output success failure)
     (success input
@@ -332,6 +336,12 @@ USA.
 		failure)
 	  (failure)))))
 
+(define (spar-push-elt . args)
+  (spar-elt (apply spar-push args)))
+
+(define (spar-push-elt-if . args)
+  (spar-elt (apply spar-push-if args)))
+
 (define-deferred spar-match-null
   (spar-match null? spar-arg:form))
 
@@ -374,16 +384,6 @@ USA.
 (define-deferred spar-push-id
   (spar-seq
     (spar-match identifier? spar-arg:form)
-    (spar-push spar-arg:form)
-    spar-discard-form))
-
-(define (spar-push-id= id)
-  (spar-seq
-    (spar-match (lambda (form senv)
-		  (and (identifier? form)
-		       (identifier=? senv form senv id)))
-		spar-arg:form
-		spar-arg:senv)
     (spar-push spar-arg:form)
     spar-discard-form))
 

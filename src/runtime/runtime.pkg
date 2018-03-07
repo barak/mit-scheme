@@ -4560,8 +4560,10 @@ USA.
 	  spar-or
 	  spar-push
 	  spar-push-body
+	  spar-push-elt
+	  spar-push-elt-if
 	  spar-push-id
-	  spar-push-id=
+	  spar-push-if
 	  spar-push-value
 	  spar-push-values
 	  spar-repeat
