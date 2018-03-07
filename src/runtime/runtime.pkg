@@ -4431,7 +4431,6 @@ USA.
 	  initial-hist
 	  raw-identifier?
 	  serror
-	  sfor-each
 	  smap
 	  subform-select)
   (export (runtime syntax low)

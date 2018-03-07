@@ -333,9 +333,3 @@ USA.
 
 (define (smap procedure forms hist)
   (map procedure forms (subform-hists forms hist)))
-
-(define (smap-in-order procedure forms hist)
-  (map-in-order procedure forms (subform-hists forms hist)))
-
-(define (sfor-each procedure forms hist)
-  (for-each procedure forms (subform-hists forms hist)))
