@@ -4446,6 +4446,7 @@ USA.
 	  rsc-macro-transformer->expander
 	  sc-macro-transformer->expander
 	  spar-macro-transformer->expander
+	  spar-transformer->runtime
 	  syntactic-keyword->item)
   (export (runtime syntax)
 	  classifier->keyword
@@ -4460,9 +4461,7 @@ USA.
 	  sc-macro-transformer->keyword-item
 	  spar-classifier->keyword
 	  spar-classifier->runtime
-	  spar-transformer->runtime
-	  spar-macro-transformer->keyword-item
-	  spar-promise-caller))
+	  spar-macro-transformer->keyword-item))
 
 (define-package (runtime syntax items)
   (files "syntax-items")
@@ -4541,6 +4540,7 @@ USA.
 	  spar*
 	  spar+
 	  spar-append-map-values
+	  spar-arg:close
 	  spar-arg:form
 	  spar-arg:hist
 	  spar-arg:senv
@@ -4560,10 +4560,8 @@ USA.
 	  spar-or
 	  spar-push
 	  spar-push-body
-	  spar-push-closed
 	  spar-push-id
 	  spar-push-id=
-	  spar-push-partially-closed
 	  spar-push-value
 	  spar-push-values
 	  spar-repeat

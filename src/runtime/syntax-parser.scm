@@ -64,9 +64,9 @@ USA.
 ;;;
 ;;;     (failure)
 
-(define (spar-call spar form senv hist)
-  (spar (%new-input form hist)
-	senv
+(define (spar-call spar form use-senv hist closing-senv)
+  (spar (%new-input form hist closing-senv)
+	use-senv
 	(%new-output)
 	(lambda (input senv output failure)
 	  (declare (ignore senv failure))
@@ -74,26 +74,28 @@ USA.
 	      (error "Rule failed to match entire form."))
 	  (output 'get-only))
 	(lambda ()
-	  (serror form senv hist "Ill-formed syntax:" form))))
+	  (serror form use-senv hist "Ill-formed syntax:" form))))
 
 ;;;; Inputs and outputs
 
-(define (%new-input form hist)
-  (lambda (operator)
-    (case operator
-      ((form) form)
-      ((hist) hist)
-      ((car) (%new-input (car form) (hist-car hist)))
-      ((cdr) (%new-input (cdr form) (hist-cdr hist)))
-      (else (error "Unknown operator:" operator)))))
-
-(define (%null-input)
-  (%new-input '() (initial-hist '())))
+(define (%new-input form hist closing-senv)
+  (let loop ((form form) (hist hist))
+    (lambda (operator)
+      (case operator
+	((form) form)
+	((hist) hist)
+	((closing-senv) closing-senv)
+	((car) (loop (car form) (hist-car hist)))
+	((cdr) (loop (cdr form) (hist-cdr hist)))
+	((discard) (loop '() (initial-hist '())))
+	(else (error "Unknown operator:" operator))))))
 
 (define (%input-form input) (input 'form))
 (define (%input-hist input) (input 'hist))
+(define (%input-closing-senv input) (input 'closing-senv))
 (define (%input-car input) (input 'car))
 (define (%input-cdr input) (input 'cdr))
+(define (%input-discard input) (input 'discard))
 
 (define (%input-pair? input) (pair? (%input-form input)))
 (define (%input-null? input) (null? (%input-form input)))
@@ -152,13 +154,19 @@ USA.
 (define (%subst-arg input senv output arg)
   (cond ((eq? arg spar-arg:form) (%input-form input))
 	((eq? arg spar-arg:hist) (%input-hist input))
+	((eq? arg spar-arg:close) (make-closer (%input-closing-senv input)))
 	((eq? arg spar-arg:senv) senv)
 	((eq? arg spar-arg:value) (%output-top output))
 	((eq? arg spar-arg:values) (%output-all output))
 	(else arg)))
 
+(define (make-closer senv)
+  (lambda (expr)
+    (close-syntax expr senv)))
+
 (define-deferred spar-arg:form (string->uninterned-symbol ".form."))
 (define-deferred spar-arg:hist (string->uninterned-symbol ".hist."))
+(define-deferred spar-arg:close (string->uninterned-symbol ".close."))
 (define-deferred spar-arg:senv (string->uninterned-symbol ".senv."))
 (define-deferred spar-arg:value (string->uninterned-symbol ".value."))
 (define-deferred spar-arg:values (string->uninterned-symbol ".values."))
@@ -196,8 +204,7 @@ USA.
 	   (%subst-args input senv output irritants))))
 
 (define (spar-discard-form input senv output success failure)
-  (declare (ignore input))
-  (success (%null-input) senv output failure))
+  (success (%input-discard input) senv output failure))
 
 ;;;; Repeat combinators
 
@@ -341,19 +348,6 @@ USA.
 	      (success input* senv output* failure*))
 	    failure))))
 
-(define-deferred spar-push-closed
-  (spar-push-value make-syntactic-closure
-		   spar-arg:senv
-		   '()
-		   spar-arg:form))
-
-(define-deferred spar-push-partially-closed
-  (spar-push-value (lambda (senv form)
-		     (lambda (free)
-		       (make-syntactic-closure senv free form)))
-		   spar-arg:senv
-		   spar-arg:form))
-
 (define-deferred spar-push-classified
   (spar-push-value classify-form
 		   spar-arg:form

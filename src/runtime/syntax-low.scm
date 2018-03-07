@@ -92,12 +92,10 @@ USA.
 
 (define (spar-macro-transformer->keyword-item spar closing-senv expr)
   (expander-item (spar-wrapper spar (lambda () closing-senv))
-		expr))
+		 expr))
 
 (define (spar-wrapper spar get-closing-senv)
-  (lambda (form senv hist)
-    (close-syntax (spar-call spar form senv hist)
-		  (get-closing-senv))))
+  (spar-transformer-promise-caller (delay spar) get-closing-senv))
 
 (define (runtime-getter env)
   (lambda ()
@@ -142,17 +140,23 @@ USA.
 				   (keyword-item classifier))))
 
 (define (spar-classifier->runtime promise)
-  (classifier->runtime (spar-promise-caller promise)))
-
-(define (spar-transformer->runtime promise)
-  (classifier->runtime (transformer->classifier (spar-promise-caller promise))))
+  (classifier->runtime (spar-classifier-promise-caller promise)))
 
 (define (spar-classifier->keyword promise)
-  (classifier->keyword (spar-promise-caller promise)))
+  (classifier->keyword (spar-classifier-promise-caller promise)))
 
-(define (spar-promise-caller promise)
+(define (spar-classifier-promise-caller promise)
   (lambda (form senv hist)
-    (spar-call (force promise) form senv hist)))
+    (spar-call (force promise) form senv hist senv)))
+
+(define (spar-transformer->runtime promise get-closing-senv)
+  (classifier->runtime
+   (transformer->classifier
+    (spar-transformer-promise-caller promise get-closing-senv))))
+
+(define (spar-transformer-promise-caller promise get-closing-senv)
+  (lambda (form use-senv hist)
+    (spar-call (force promise) form use-senv hist (get-closing-senv))))
 
 (define (syntactic-keyword->item keyword environment)
   (let ((item (environment-lookup-macro environment keyword)))
