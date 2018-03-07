@@ -237,30 +237,6 @@ USA.
 
 ;;;; LET-like
 
-(define keyword:let
-  (spar-classifier->keyword
-   (delay
-     (spar-call-with-values
-	 (lambda (bindings body senv)
-	   (let* ((frame-senv (make-internal-senv senv))
-		  (ids
-		   (map (lambda (b)
-			  (bind-variable (car b) frame-senv))
-			bindings)))
-	     (let-item ids
-		       (map cdr bindings)
-		       (body-item (body frame-senv)))))
-       (spar-elt)
-       (spar-elt
-	 (spar-push-values
-	   (spar*
-	     (spar-call-with-values cons
-	       (spar-elt (spar-elt spar-push-id)
-			 (spar-elt spar-push-classified)
-			 spar-match-null))))
-	 spar-match-null)
-       spar-push-body))))
-
 (define spar-promise:let-syntax
   (delay
     (spar-call-with-values

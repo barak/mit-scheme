@@ -143,16 +143,25 @@ USA.
 		     (car p)))
 	      supported-features))
 
-(define-syntax :receive
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare				;ignore
-     (if (syntax-match? '(r4rs-bvl form + form) (cdr form))
-	 (let ((r-lambda (rename 'LAMBDA)))
-	   `(,(rename 'CALL-WITH-VALUES)
-	     (,r-lambda () ,(caddr form))
-	     (,r-lambda ,(cadr form) ,@(cdddr form))))
-	 (ill-formed-syntax form)))))
+(define (get-closing-env)
+  (runtime-environment->syntactic system-global-environment))
+
+(define :receive
+  (spar-transformer->runtime
+   (delay
+     (spar-call-with-values
+	 (lambda (close identifiers expr . body-forms)
+	   (let ((r-cwv (close 'call-with-values))
+		 (r-lambda (close 'lambda)))
+	     `(,r-cwv (,r-lambda () ,expr)
+		      (,r-lambda (,@identifiers) ,@body-forms))))
+       (spar-elt)
+       (spar-push spar-arg:close)
+       (spar-push-elt-if r4rs-lambda-list? spar-arg:form)
+       (spar-push-elt spar-arg:form)
+       (spar+ (spar-push-elt spar-arg:form))
+       spar-match-null))
+   get-closing-env))
 
 (define-syntax :define-record-type
   (er-macro-transformer
@@ -208,76 +217,70 @@ USA.
 	(else
 	 (ill-formed-syntax form))))
 
+(define :let
+  (spar-transformer->runtime
+   (delay
+     (spar-call-with-values
+	 (lambda (close name bindings . body-forms)
+	   (let ((ids (map car bindings))
+		 (vals (map cdr bindings)))
+	     (if name
+		 (generate-named-let close name ids vals body-forms)
+		 `((,(close 'named-lambda)
+		    (,scode-lambda-name:let ,@ids)
+		    ,@body-forms)
+		   ,@vals))))
+       (spar-elt)
+       (spar-push spar-arg:close)
+       (spar-or (spar-elt spar-push-id)
+		(spar-push '#f))
+       (spar-elt
+	 (spar-push-values
+	  (spar* (spar-elt
+		   (spar-call-with-values cons
+		     (spar-elt spar-push-id)
+		     (spar-or (spar-push-elt spar-arg:form)
+			      (spar-push-value unassigned-expression)))
+		   spar-match-null))
+	  spar-match-null))
+       (spar+ (spar-push-elt spar-arg:form))
+       spar-match-null))
+   get-closing-env))
+
 (define named-let-strategy 'internal-definition)
 
-(define-syntax :let
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare				;ignore
-     (cond ((syntax-match? '(identifier (* (identifier ? expression)) + form)
-			   (cdr form))
-	    (let ((name (cadr form))
-		  (bindings (caddr form))
-		  (body (cdddr form)))
-	      (let ((vars (map car bindings))
-		    (vals (map (lambda (binding)
-				 (if (pair? (cdr binding))
-				     (cadr binding)
-				     (unassigned-expression)))
-			       bindings)))
-		(case named-let-strategy
-		  ((fixed-point)
-		   (let ((iter (make-synthetic-identifier 'ITER))
-			 (kernel (make-synthetic-identifier 'KERNEL))
-			 (temps
-			  (map (lambda (b)
-				 (declare (ignore b))
-				 (make-synthetic-identifier 'TEMP))
-			       bindings))
-			 (r-lambda (rename 'LAMBDA))
-			 (r-declare (rename 'DECLARE)))
-		     `((,r-lambda (,kernel)
-			  (,kernel ,kernel ,@vals))
-		       (,r-lambda (,iter ,@vars)
-			  ((,r-lambda (,name)
-			      (,r-declare (INTEGRATE-OPERATOR ,name))
-			      ,@body)
-			   (,r-lambda ,temps
-			      (,r-declare (INTEGRATE ,@temps))
-			      (,iter ,iter ,@temps)))))))
-		  ((internal-definition)
-		   `((,(rename 'LET) ()
-		      (,(rename 'DEFINE) (,name ,@vars) ,@body)
-		      ,name)
-		     ,@vals))
-		  ((letrec)
-		   `((,(rename 'LETREC)
-		      ((,name (,(rename 'NAMED-LAMBDA) (,name ,@vars)
-			       ,@body)))
-		      ,name)
-		     ,@vals))
-		  ((letrec*)
-		   `((,(rename 'LETREC*)
-		      ((,name (,(rename 'NAMED-LAMBDA) (,name ,@vars)
-			       ,@body)))
-		      ,name)
-		     ,@vals))
-		  (else
-		   (error "Unrecognized named-let-strategy:"
-			  named-let-strategy))))))
-	   ((syntax-match? '((* (identifier ? expression)) + form) (cdr form))
-	    `(,keyword:let ,@(cdr (normalize-let-bindings form))))
-	   (else
-	    (ill-formed-syntax form))))))
-
-(define (normalize-let-bindings form)
-  `(,(car form) ,(map (lambda (binding)
-			(if (pair? (cdr binding))
-			    binding
-			    (list (car binding) (unassigned-expression))))
-		      (cadr form))
-		,@(cddr form)))
-
+(define (generate-named-let close name ids vals body-forms)
+  (let ((proc `(,(close 'named-lambda) (,name ,@ids) ,@body-forms)))
+    (case named-let-strategy
+      ((internal-definition)
+       `((,(close 'let) ()
+	  (,(close 'define) ,name ,proc)
+	  ,name)
+	 ,@vals))
+      ((letrec)
+       `((,(close 'letrec) ((,name ,proc)) ,name)
+	 ,@vals))
+      ((letrec*)
+       `((,(close 'letrec*) ((,name ,proc)) ,name)
+	 ,@vals))
+      ((fixed-point)
+       (let ((iter (new-identifier 'iter))
+	     (kernel (new-identifier 'kernel))
+	     (temps (map new-identifier ids))
+	     (r-lambda (close 'lambda))
+	     (r-declare (close 'declare)))
+	 `((,r-lambda (,kernel)
+		      (,kernel ,kernel ,@vals))
+	   (,r-lambda (,iter ,@ids)
+		      ((,r-lambda (,name)
+				  (,r-declare (integrate-operator ,name))
+				  ,@body-forms)
+		       (,r-lambda ,temps
+				  (,r-declare (integrate ,@temps))
+				  (,iter ,iter ,@temps)))))))
+      (else
+       (error "Unrecognized strategy:" named-let-strategy)))))
+
 (define-syntax :let*
   (er-macro-transformer
    (lambda (form rename compare)

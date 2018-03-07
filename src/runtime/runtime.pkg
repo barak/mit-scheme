@@ -4647,7 +4647,6 @@ USA.
   (export (runtime mit-macros)
 	  keyword:access
 	  keyword:define
-	  keyword:let
 	  keyword:let-syntax
 	  keyword:unassigned
 	  keyword:unspecific))
