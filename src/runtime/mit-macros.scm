@@ -143,9 +143,6 @@ USA.
 		     (car p)))
 	      supported-features))
 
-(define (get-closing-env)
-  (runtime-environment->syntactic system-global-environment))
-
 (define :receive
   (spar-transformer->runtime
    (delay
@@ -161,7 +158,7 @@ USA.
        (spar-push-elt spar-arg:form)
        (spar+ (spar-push-elt spar-arg:form))
        spar-match-null))
-   get-closing-env))
+   system-global-environment))
 
 (define-syntax :define-record-type
   (er-macro-transformer
@@ -245,7 +242,7 @@ USA.
 	  spar-match-null))
        (spar+ (spar-push-elt spar-arg:form))
        spar-match-null))
-   get-closing-env))
+   system-global-environment))
 
 (define named-let-strategy 'internal-definition)
 
