@@ -5084,6 +5084,8 @@ USA.
 	  dispatch-metatag?
 	  dispatch-tag->predicate
 	  dispatch-tag-extra
+	  dispatch-tag-extra-length
+	  dispatch-tag-extra-ref
 	  dispatch-tag-metatag
 	  dispatch-tag-name
 	  dispatch-tag?

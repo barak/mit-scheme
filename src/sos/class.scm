@@ -347,7 +347,7 @@ USA.
   (record-type-class (record-type-descriptor record)))
 
 (define (dispatch-tag->class tag)
-  (cond ((class-tag? tag) (dispatch-tag-extra tag 0))
+  (cond ((class-tag? tag) (dispatch-tag-extra-ref tag 0))
 	((hash-table/get built-in-class-table tag #f))
 	((record-type? tag)
 	 (let ((class (make-record-type-class tag)))

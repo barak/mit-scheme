@@ -108,10 +108,10 @@ USA.
   record-type)
 
 (define-integrable (%record-type-field-names record-type)
-  (dispatch-tag-extra record-type 0))
+  (dispatch-tag-extra-ref record-type 0))
 
 (define-integrable (%record-type-default-inits record-type)
-  (dispatch-tag-extra record-type 1))
+  (dispatch-tag-extra-ref record-type 1))
 
 (define-integrable (%record-type-n-fields record-type)
   (vector-length (%record-type-field-names record-type)))

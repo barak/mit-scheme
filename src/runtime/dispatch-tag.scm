@@ -35,19 +35,20 @@ USA.
 
 (define (%make-tag metatag name predicate extra)
   (let ((tag
-	 (%record metatag
-		  (get-tag-cache-number)
-		  (get-tag-cache-number)
-		  (get-tag-cache-number)
-		  (get-tag-cache-number)
-		  (get-tag-cache-number)
-		  (get-tag-cache-number)
-		  (get-tag-cache-number)
-		  (get-tag-cache-number)
-		  name
-		  predicate
-		  extra
-		  (%make-weak-set))))
+	 (apply %record
+		metatag
+		(get-tag-cache-number)
+		(get-tag-cache-number)
+		(get-tag-cache-number)
+		(get-tag-cache-number)
+		(get-tag-cache-number)
+		(get-tag-cache-number)
+		(get-tag-cache-number)
+		(get-tag-cache-number)
+		name
+		predicate
+		(%make-weak-set)
+		extra)))
     (set-predicate-tag! predicate tag)
     tag))
 
@@ -73,11 +74,14 @@ USA.
 (define-integrable (%dispatch-tag->predicate tag)
   (%record-ref tag 10))
 
-(define-integrable (%dispatch-tag-extra tag)
+(define-integrable (%tag-supersets tag)
   (%record-ref tag 11))
 
-(define-integrable (%tag-supersets tag)
-  (%record-ref tag 12))
+(define-integrable (%dispatch-tag-extra-ref tag index)
+  (%record-ref tag (fix:+ 12 index)))
+
+(define-integrable (%dispatch-tag-extra-length tag)
+  (fix:- (%record-length tag) 12))
 
 (define-integrable tag-cache-number-adds-ok
   ;; This constant controls the number of non-zero bits tag cache
@@ -105,7 +109,7 @@ USA.
 	(lambda (object)
 	  (and (%record? object)
 	       (eq? metatag (%record-ref object 0)))))
-       (metatag (%make-tag metatag-tag name predicate '#())))
+       (metatag (%make-tag metatag-tag name predicate '())))
     (set-dispatch-tag<=! metatag metatag-tag)
     metatag))
 
@@ -116,7 +120,7 @@ USA.
     (guarantee unary-procedure? predicate caller)
     (if (predicate? predicate)
 	(error "Can't assign multiple tags to the same predicate:" name))
-    (%make-tag metatag name predicate (list->vector extra))))
+    (%make-tag metatag name predicate extra)))
 
 (define (dispatch-metatag? object)
   (and (%record? object)
@@ -126,9 +130,9 @@ USA.
 (define metatag-tag)
 (add-boot-init!
  (lambda ()
-   (set! metatag-tag (%make-tag #f 'metatag dispatch-metatag? '#()))
+   (set! metatag-tag (%make-tag #f 'metatag dispatch-metatag? '()))
    (%record-set! metatag-tag 0 metatag-tag)))
-
+
 (define (dispatch-tag-metatag tag)
   (guarantee dispatch-tag? tag 'dispatch-tag-metatag)
   (%record-ref tag 0))
@@ -141,9 +145,18 @@ USA.
   (guarantee dispatch-tag? tag 'dispatch-tag->predicate)
   (%dispatch-tag->predicate tag))
 
-(define (dispatch-tag-extra tag index)
-  (guarantee dispatch-tag? tag 'dispatch-tag-extra)
-  (vector-ref (%dispatch-tag-extra tag) index))
+(define (dispatch-tag-extra-ref tag index)
+  (guarantee dispatch-tag? tag 'dispatch-tag-extra-ref)
+  (%dispatch-tag-extra-ref tag index))
+
+(define (dispatch-tag-extra-length tag)
+  (guarantee dispatch-tag? tag 'dispatch-tag-extra-length)
+  (%dispatch-tag-extra-length tag))
+
+(define (dispatch-tag-extra tag)
+  (do ((i (fix:- (dispatch-tag-extra-length tag) 1) (fix:- i 1))
+       (elts '() (cons (%dispatch-tag-extra-ref tag i) elts)))
+      ((fix:< i 0) elts)))
 
 (define (any-dispatch-tag-superset procedure tag)
   (guarantee dispatch-tag? tag 'any-dispatch-tag-superset)
@@ -169,4 +182,4 @@ USA.
     (list (list 'metatag (dispatch-tag-metatag tag))
 	  (list 'name (dispatch-tag-name tag))
 	  (list 'predicate (dispatch-tag->predicate tag))
-	  (cons 'extra (vector->list (%dispatch-tag-extra tag))))))
+	  (cons 'extra (dispatch-tag-extra tag)))))

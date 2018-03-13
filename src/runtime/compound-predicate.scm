@@ -42,10 +42,10 @@ USA.
 		      operands))
 
 (define-integrable (compound-tag-operator tag)
-  (dispatch-tag-extra tag 0))
+  (dispatch-tag-extra-ref tag 0))
 
 (define-integrable (compound-tag-operands tag)
-  (dispatch-tag-extra tag 1))
+  (dispatch-tag-extra-ref tag 1))
 
 (define (tag-is-disjoin? object)
   (and (compound-tag? object)

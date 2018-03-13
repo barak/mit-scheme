@@ -63,7 +63,7 @@ USA.
 /* #define UNUSED		0x1E */
 /* #define UNUSED		0x1F */
 #define CC_ERROR_PROCEDURE	0x20	/* Error handler for compiled code. */
-/* #define UNUSED	 	0x21 */
+/* #define UNUSED		0x21 */
 /* #define UNUSED		0x22 */
 #define Primitive_Profiling_Table 0x23	/* Table of profile counts for
 					   primitives. */

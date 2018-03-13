@@ -39,10 +39,10 @@ USA.
   (%make-parametric-tag name predicate template bindings))
 
 (define-integrable (parametric-tag-template tag)
-  (dispatch-tag-extra tag 0))
+  (dispatch-tag-extra-ref tag 0))
 
 (define-integrable (parametric-tag-bindings tag)
-  (dispatch-tag-extra tag 1))
+  (dispatch-tag-extra-ref tag 1))
 
 (define (parametric-predicate? object)
   (and (predicate? object)

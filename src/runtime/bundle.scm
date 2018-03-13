@@ -100,10 +100,10 @@ USA.
        (bundle-interface-tag? (predicate->dispatch-tag object))))
 
 (define-integrable (tag-element-names tag)
-  (dispatch-tag-extra tag 0))
+  (dispatch-tag-extra-ref tag 0))
 
 (define-integrable (tag-element-properties tag)
-  (dispatch-tag-extra tag 1))
+  (dispatch-tag-extra-ref tag 1))
 
 (define (bundle-interface-name interface)
   (guarantee bundle-interface? interface 'bundle-interface-name)
