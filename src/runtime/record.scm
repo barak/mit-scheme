@@ -73,7 +73,8 @@ USA.
 			       names
 			       (if (default-object? default-inits)
 				   (vector-cons n #f)
-				   (list->vector default-inits)))))
+				   (list->vector default-inits))
+			       #f)))
 	(set-predicate<=! predicate record?)
 	(if (and unparser-method
 		 (not (default-object? unparser-method)))
@@ -91,17 +92,18 @@ USA.
 			(or (not init)
 			    (thunk? init)))
 		      default-inits))))
-  unspecific)
+  (%initialize-applicator-context!))
 
+(define %record-metatag)
 (define record-type?)
 (define %make-record-type)
 (add-boot-init!
  (lambda ()
-   (let ((metatag (make-dispatch-metatag 'record-tag)))
-     (set! record-type? (dispatch-tag->predicate metatag))
-     (set! %make-record-type
-	   (dispatch-metatag-constructor metatag 'make-record-type))
-     unspecific)))
+   (set! %record-metatag (make-dispatch-metatag 'record-tag))
+   (set! record-type? (dispatch-tag->predicate %record-metatag))
+   (set! %make-record-type
+	 (dispatch-metatag-constructor %record-metatag 'make-record-type))
+   unspecific))
 
 ;; Can be deleted after 9.3 release:
 (define (record-type-dispatch-tag record-type)
@@ -112,6 +114,17 @@ USA.
 
 (define-integrable (%record-type-default-inits record-type)
   (dispatch-tag-extra-ref record-type 1))
+
+(define-integrable (%record-type-applicator record-type)
+  (dispatch-tag-extra-ref record-type 2))
+
+(define-integrable (%set-record-type-applicator! record-type applicator)
+  (%dispatch-tag-extra-set! record-type 2 applicator))
+
+(define (%initialize-applicator-context!)
+  (set-fixed-objects-item! 'record-dispatch-tag %record-metatag)
+  (set-fixed-objects-item! 'record-applicator-index
+			   (%dispatch-tag-extra-index 2)))
 
 (define-integrable (%record-type-n-fields record-type)
   (vector-length (%record-type-field-names record-type)))
@@ -133,6 +146,16 @@ USA.
 		     (fix:- field-index 1))))
     (and init
 	 (init))))
+
+(define (record-type-applicator record-type)
+  (guarantee record-type? record-type 'record-type-applicator)
+  (%record-type-applicator record-type))
+
+(define (set-record-type-applicator! record-type applicator)
+  (guarantee record-type? record-type 'set-record-type-applicator!)
+  (if applicator
+      (guarantee procedure? applicator 'set-record-type-applicator!))
+  (%set-record-type-applicator! record-type applicator))
 
 ;;;; Constructors
 

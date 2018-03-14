@@ -450,7 +450,6 @@ extern void declare_builtin (unsigned long, const char *);
 extern utility_proc_t comutil_return_to_interpreter;
 extern utility_proc_t comutil_operator_apply_trap;
 extern utility_proc_t comutil_operator_arity_trap;
-extern utility_proc_t comutil_operator_entity_trap;
 extern utility_proc_t comutil_operator_interpreted_trap;
 extern utility_proc_t comutil_operator_lexpr_trap;
 extern utility_proc_t comutil_operator_primitive_trap;

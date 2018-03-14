@@ -426,6 +426,7 @@ Interpret (void)
     case TC_PROCEDURE:
     case TC_QUAD:
     case TC_RATNUM:
+    case TC_RECORD:
     case TC_REFERENCE_TRAP:
     case TC_RETURN_CODE:
     case TC_UNICODE_STRING:
@@ -875,6 +876,7 @@ Interpret (void)
 
 	      (STACK_REF (0)) = (MEMORY_REF (Function, ENTITY_OPERATOR));
 	      PUSH_APPLY_FRAME_HEADER (frame_size);
+	    entity_apply:
 	      /* This must be done to prevent an infinite push loop by
 		 an entity whose handler is the entity itself or some
 		 other such loop.  Of course, it will die if stack overflow
@@ -883,190 +885,201 @@ Interpret (void)
 	      goto internal_apply;
 	    }
 
-	  case TC_PROCEDURE:
+	  case TC_RECORD:
 	    {
+	      SCHEME_OBJECT applicator = record_applicator(Function);
+	      if (applicator == SHARP_F)
+		APPLICATION_ERROR (ERR_INAPPLICABLE_OBJECT);
 	      unsigned long frame_size = (APPLY_FRAME_SIZE ());
-	      Function = (MEMORY_REF (Function, PROCEDURE_LAMBDA_EXPR));
-	      {
-		SCHEME_OBJECT formals
-		  = (MEMORY_REF (Function, LAMBDA_FORMALS));
-
-		if ((frame_size != (VECTOR_LENGTH (formals)))
-		    && (((OBJECT_TYPE (Function)) != TC_LEXPR)
-			|| (frame_size < (VECTOR_LENGTH (formals)))))
-		  APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
-	      }
-	      if (GC_NEEDED_P (frame_size + 1))
-		{
-		  PREPARE_APPLY_INTERRUPT ();
-		  IMMEDIATE_GC (frame_size + 1);
-		}
-	      {
-		SCHEME_OBJECT * end = (Free + 1 + frame_size);
-		SCHEME_OBJECT env
-		  = (MAKE_POINTER_OBJECT (TC_ENVIRONMENT, Free));
-		(*Free++) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, frame_size));
-		(void) STACK_POP ();
-		while (Free < end)
-		  (*Free++) = (STACK_POP ());
-		SET_ENV (env);
-		REDUCES_TO (MEMORY_REF (Function, LAMBDA_SCODE));
-	      }
+	      (STACK_REF (0)) = applicator;
+	      PUSH_APPLY_FRAME_HEADER (frame_size);
+	      goto entity_apply;
 	    }
 
-	  case TC_CONTROL_POINT:
-	    if ((APPLY_FRAME_SIZE ()) != 2)
-	      APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
-	    SET_VAL (* (APPLY_FRAME_ARGS ()));
-	    unpack_control_point (Function);
-	    RESET_HISTORY ();
-	    goto pop_return;
-
-	    /* After checking the number of arguments, remove the
-	       frame header since primitives do not expect it. */
-
-	  case TC_PRIMITIVE:
-	    if (!IMPLEMENTED_PRIMITIVE_P (Function))
-	      APPLICATION_ERROR (ERR_UNIMPLEMENTED_PRIMITIVE);
-	    {
-	      unsigned long n_args = (APPLY_FRAME_N_ARGS ());
-
-	      /* Note that the first test below will fail for lexpr
-		 primitives.  */
-
-	      if (n_args != (PRIMITIVE_ARITY (Function)))
+	    case TC_PROCEDURE:
+	      {
+		unsigned long frame_size = (APPLY_FRAME_SIZE ());
+		Function = (MEMORY_REF (Function, PROCEDURE_LAMBDA_EXPR));
 		{
-		  if ((PRIMITIVE_ARITY (Function)) != LEXPR_PRIMITIVE_ARITY)
+		  SCHEME_OBJECT formals
+		    = (MEMORY_REF (Function, LAMBDA_FORMALS));
+
+		  if ((frame_size != (VECTOR_LENGTH (formals)))
+		      && (((OBJECT_TYPE (Function)) != TC_LEXPR)
+			  || (frame_size < (VECTOR_LENGTH (formals)))))
 		    APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
-		  SET_LEXPR_ACTUALS (n_args);
 		}
-	      stack_pointer = (APPLY_FRAME_ARGS ());
-	      SET_EXP (Function);
-	      APPLY_PRIMITIVE_FROM_INTERPRETER (Function);
-	      POP_PRIMITIVE_FRAME (n_args);
+		if (GC_NEEDED_P (frame_size + 1))
+		  {
+		    PREPARE_APPLY_INTERRUPT ();
+		    IMMEDIATE_GC (frame_size + 1);
+		  }
+		{
+		  SCHEME_OBJECT * end = (Free + 1 + frame_size);
+		  SCHEME_OBJECT env
+		    = (MAKE_POINTER_OBJECT (TC_ENVIRONMENT, Free));
+		  (*Free++) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, frame_size));
+		  (void) STACK_POP ();
+		  while (Free < end)
+		    (*Free++) = (STACK_POP ());
+		  SET_ENV (env);
+		  REDUCES_TO (MEMORY_REF (Function, LAMBDA_SCODE));
+		}
+	      }
+
+	    case TC_CONTROL_POINT:
+	      if ((APPLY_FRAME_SIZE ()) != 2)
+		APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+	      SET_VAL (* (APPLY_FRAME_ARGS ()));
+	      unpack_control_point (Function);
+	      RESET_HISTORY ();
 	      goto pop_return;
-	    }
 
-	  case TC_EXTENDED_PROCEDURE:
-	    {
-	      SCHEME_OBJECT lambda;
-	      SCHEME_OBJECT temp;
-	      unsigned long nargs;
-	      unsigned long nparams;
-	      unsigned long formals;
-	      unsigned long params;
-	      unsigned long auxes;
-	      long rest_flag;
-	      long size;
-	      long i;
-	      SCHEME_OBJECT * scan;
+	      /* After checking the number of arguments, remove the
+		 frame header since primitives do not expect it. */
 
-	      nargs = (POP_APPLY_FRAME_HEADER ());
-	      lambda = (MEMORY_REF (Function, PROCEDURE_LAMBDA_EXPR));
-	      Function = (MEMORY_REF (lambda, ELAMBDA_NAMES));
-	      nparams = ((VECTOR_LENGTH (Function)) - 1);
-	      Function = (Get_Count_Elambda (lambda));
-	      formals = (Elambda_Formals_Count (Function));
-	      params = ((Elambda_Opts_Count (Function)) + formals);
-	      rest_flag = (Elambda_Rest_Flag (Function));
-	      auxes = (nparams - (params + rest_flag));
+	    case TC_PRIMITIVE:
+	      if (!IMPLEMENTED_PRIMITIVE_P (Function))
+		APPLICATION_ERROR (ERR_UNIMPLEMENTED_PRIMITIVE);
+	      {
+		unsigned long n_args = (APPLY_FRAME_N_ARGS ());
 
-	      if ((nargs < formals) || (!rest_flag && (nargs > params)))
-		{
-		  PUSH_APPLY_FRAME_HEADER (nargs);
-		  APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
-		}
-	      /* size includes the procedure slot, but not the header.  */
-	      size = (params + rest_flag + auxes + 1);
-	      if (GC_NEEDED_P
-		  (size + 1
-		   + ((nargs > params)
-		      ? (2 * (nargs - params))
-		      : 0)))
-		{
-		  PUSH_APPLY_FRAME_HEADER (nargs);
-		  PREPARE_APPLY_INTERRUPT ();
-		  IMMEDIATE_GC
+		/* Note that the first test below will fail for lexpr
+		   primitives.  */
+
+		if (n_args != (PRIMITIVE_ARITY (Function)))
+		  {
+		    if ((PRIMITIVE_ARITY (Function)) != LEXPR_PRIMITIVE_ARITY)
+		      APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+		    SET_LEXPR_ACTUALS (n_args);
+		  }
+		stack_pointer = (APPLY_FRAME_ARGS ());
+		SET_EXP (Function);
+		APPLY_PRIMITIVE_FROM_INTERPRETER (Function);
+		POP_PRIMITIVE_FRAME (n_args);
+		goto pop_return;
+	      }
+
+	    case TC_EXTENDED_PROCEDURE:
+	      {
+		SCHEME_OBJECT lambda;
+		SCHEME_OBJECT temp;
+		unsigned long nargs;
+		unsigned long nparams;
+		unsigned long formals;
+		unsigned long params;
+		unsigned long auxes;
+		long rest_flag;
+		long size;
+		long i;
+		SCHEME_OBJECT * scan;
+
+		nargs = (POP_APPLY_FRAME_HEADER ());
+		lambda = (MEMORY_REF (Function, PROCEDURE_LAMBDA_EXPR));
+		Function = (MEMORY_REF (lambda, ELAMBDA_NAMES));
+		nparams = ((VECTOR_LENGTH (Function)) - 1);
+		Function = (Get_Count_Elambda (lambda));
+		formals = (Elambda_Formals_Count (Function));
+		params = ((Elambda_Opts_Count (Function)) + formals);
+		rest_flag = (Elambda_Rest_Flag (Function));
+		auxes = (nparams - (params + rest_flag));
+
+		if ((nargs < formals) || (!rest_flag && (nargs > params)))
+		  {
+		    PUSH_APPLY_FRAME_HEADER (nargs);
+		    APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
+		  }
+		/* size includes the procedure slot, but not the header.  */
+		size = (params + rest_flag + auxes + 1);
+		if (GC_NEEDED_P
 		    (size + 1
 		     + ((nargs > params)
 			? (2 * (nargs - params))
-			: 0));
-		}
-	      scan = Free;
-	      temp = (MAKE_POINTER_OBJECT (TC_ENVIRONMENT, scan));
-	      (*scan++) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, size));
-	      if (nargs <= params)
-		{
-		  for (i = (nargs + 1); (--i) >= 0; )
-		    (*scan++) = (STACK_POP ());
-		  for (i = (params - nargs); (--i) >= 0; )
-		    (*scan++) = DEFAULT_OBJECT;
-		  if (rest_flag)
-		    (*scan++) = EMPTY_LIST;
-		  for (i = auxes; (--i) >= 0; )
-		    (*scan++) = UNASSIGNED_OBJECT;
-		}
-	      else
-		{
-		  /* rest_flag must be true. */
-		  SCHEME_OBJECT list
-		    = (MAKE_POINTER_OBJECT (TC_LIST, (scan + size)));
-		  for (i = (params + 1); (--i) >= 0; )
-		    (*scan++) = (STACK_POP ());
-		  (*scan++) = list;
-		  for (i = auxes; (--i) >= 0; )
-		    (*scan++) = UNASSIGNED_OBJECT;
-		  /* Now scan == OBJECT_ADDRESS (list) */
-		  for (i = (nargs - params); (--i) >= 0; )
-		    {
+			: 0)))
+		  {
+		    PUSH_APPLY_FRAME_HEADER (nargs);
+		    PREPARE_APPLY_INTERRUPT ();
+		    IMMEDIATE_GC
+		      (size + 1
+		       + ((nargs > params)
+			  ? (2 * (nargs - params))
+			  : 0));
+		  }
+		scan = Free;
+		temp = (MAKE_POINTER_OBJECT (TC_ENVIRONMENT, scan));
+		(*scan++) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, size));
+		if (nargs <= params)
+		  {
+		    for (i = (nargs + 1); (--i) >= 0; )
 		      (*scan++) = (STACK_POP ());
-		      (*scan) = MAKE_POINTER_OBJECT (TC_LIST, (scan + 1));
-		      scan += 1;
-		    }
-		  (scan[-1]) = EMPTY_LIST;
-		}
+		    for (i = (params - nargs); (--i) >= 0; )
+		      (*scan++) = DEFAULT_OBJECT;
+		    if (rest_flag)
+		      (*scan++) = EMPTY_LIST;
+		    for (i = auxes; (--i) >= 0; )
+		      (*scan++) = UNASSIGNED_OBJECT;
+		  }
+		else
+		  {
+		    /* rest_flag must be true. */
+		    SCHEME_OBJECT list
+		      = (MAKE_POINTER_OBJECT (TC_LIST, (scan + size)));
+		    for (i = (params + 1); (--i) >= 0; )
+		      (*scan++) = (STACK_POP ());
+		    (*scan++) = list;
+		    for (i = auxes; (--i) >= 0; )
+		      (*scan++) = UNASSIGNED_OBJECT;
+		    /* Now scan == OBJECT_ADDRESS (list) */
+		    for (i = (nargs - params); (--i) >= 0; )
+		      {
+			(*scan++) = (STACK_POP ());
+			(*scan) = MAKE_POINTER_OBJECT (TC_LIST, (scan + 1));
+			scan += 1;
+		      }
+		    (scan[-1]) = EMPTY_LIST;
+		  }
 
-	      Free = scan;
-	      SET_ENV (temp);
-	      REDUCES_TO (Get_Body_Elambda (lambda));
-	    }
+		Free = scan;
+		SET_ENV (temp);
+		REDUCES_TO (Get_Body_Elambda (lambda));
+	      }
 
 #ifdef CC_SUPPORT_P
-	  case TC_COMPILED_ENTRY:
-	    {
-	      guarantee_cc_return (1 + (APPLY_FRAME_SIZE ()));
-	      dispatch_code = (apply_compiled_procedure ());
+	    case TC_COMPILED_ENTRY:
+	      {
+		guarantee_cc_return (1 + (APPLY_FRAME_SIZE ()));
+		dispatch_code = (apply_compiled_procedure ());
 
-	    return_from_compiled_code:
-	      switch (dispatch_code)
-		{
-		case PRIM_DONE:
-		  goto pop_return;
+	      return_from_compiled_code:
+		switch (dispatch_code)
+		  {
+		  case PRIM_DONE:
+		    goto pop_return;
 
-		case PRIM_APPLY:
-		  goto internal_apply;
+		  case PRIM_APPLY:
+		    goto internal_apply;
 
-		case PRIM_INTERRUPT:
-		  SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+		  case PRIM_INTERRUPT:
+		    SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
 
-		case PRIM_APPLY_INTERRUPT:
-		  PREPARE_APPLY_INTERRUPT ();
-		  SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+		  case PRIM_APPLY_INTERRUPT:
+		    PREPARE_APPLY_INTERRUPT ();
+		    SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
 
-		case ERR_INAPPLICABLE_OBJECT:
-		case ERR_WRONG_NUMBER_OF_ARGUMENTS:
-		  APPLICATION_ERROR (dispatch_code);
+		  case ERR_INAPPLICABLE_OBJECT:
+		  case ERR_WRONG_NUMBER_OF_ARGUMENTS:
+		    APPLICATION_ERROR (dispatch_code);
 
-		default:
-		  Do_Micro_Error (dispatch_code, true);
-		  goto internal_apply;
-		}
-	    }
+		  default:
+		    Do_Micro_Error (dispatch_code, true);
+		    goto internal_apply;
+		  }
+	      }
 #endif
 
-	  default:
-	    APPLICATION_ERROR (ERR_INAPPLICABLE_OBJECT);
-	  }
+	    default:
+	      APPLICATION_ERROR (ERR_INAPPLICABLE_OBJECT);
+	    }
       }
 
     case RC_JOIN_STACKLETS:

@@ -47,8 +47,8 @@ USA.
 #define STEPPER_STATE		0x0E
 #define FIXED_OBJECTS_SLOTS	0x0F	/* Names of these slots. */
 #define FIXOBJ_FILES_TO_DELETE	0x10	/* Temporary files to delete. */
-/* #define UNUSED		0x11 */
-/* #define UNUSED		0x12 */
+#define FIXOBJ_RECORD_TAG       0x11	/* Tag identifying standard record. */
+#define FIXOBJ_RECORD_APP_INDEX 0x12	/* Index of record applicator. */
 #define DUMMY_HISTORY		0x13	/* Empty history structure. */
 #define Bignum_One              0x14    /* Cache for bignum one. */
 /* #define UNUSED		0x15 */
@@ -137,8 +137,8 @@ USA.
   /* 0x0E */	"stepper-state",					\
   /* 0x0F */	"microcode-fixed-objects-slots",			\
   /* 0x10 */	"files-to-delete",					\
-  /* 0x11 */	0,							\
-  /* 0x12 */	0,							\
+  /* 0x11 */	"record-dispatch-tag",					\
+  /* 0x12 */	"record-applicator-index",				\
   /* 0x13 */	"dummy-history",					\
   /* 0x14 */	"bignum-one",						\
   /* 0x15 */	0,							\

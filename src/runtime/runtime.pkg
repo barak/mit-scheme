@@ -3719,6 +3719,7 @@ USA.
 	  record-keyword-constructor
 	  record-modifier
 	  record-predicate
+	  record-type-applicator
 	  record-type-default-value-by-index
 	  record-type-descriptor
 	  record-type-dispatch-tag	;can be deleted after 9.3 release
@@ -3726,7 +3727,8 @@ USA.
 	  record-type-name
 	  record-type?
 	  record-updater
-	  record?)
+	  record?
+	  set-record-type-applicator!)
   (export (runtime)
 	  error:no-such-slot
 	  error:uninitialized-slot
@@ -5100,7 +5102,10 @@ USA.
 	  probe-cache-1
 	  probe-cache-2
 	  probe-cache-3
-	  probe-cache-4))
+	  probe-cache-4)
+  (export (runtime record)
+	  %dispatch-tag-extra-index
+	  %dispatch-tag-extra-set!))
 
 (define-package (runtime crypto)
   (files "crypto")

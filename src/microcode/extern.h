@@ -291,6 +291,7 @@ extern SCHEME_OBJECT allocate_non_marked_vector
 extern SCHEME_OBJECT allocate_marked_vector
   (unsigned int, unsigned long, bool);
 extern SCHEME_OBJECT make_vector (unsigned long, SCHEME_OBJECT, bool);
+extern SCHEME_OBJECT record_applicator (SCHEME_OBJECT);
 extern SCHEME_OBJECT allocate_string (unsigned long);
 extern SCHEME_OBJECT allocate_string_no_gc (unsigned long);
 extern SCHEME_OBJECT memory_to_string (unsigned long, const void *);

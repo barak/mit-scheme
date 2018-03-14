@@ -506,6 +506,16 @@ interpreter_applicable_p (SCHEME_OBJECT object)
 	object = (MEMORY_REF (object, ENTITY_OPERATOR));
 	goto tail_recurse;
       }
+
+    case TC_RECORD:
+      {
+	SCHEME_OBJECT applicator = record_applicator(object);
+	if (applicator == SHARP_F)
+	  return (false);
+	object = applicator;
+	goto tail_recurse;
+      }
+
 #ifdef CC_SUPPORT_P
     case TC_COMPILED_ENTRY:
       {

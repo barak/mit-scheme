@@ -77,11 +77,17 @@ USA.
 (define-integrable (%tag-supersets tag)
   (%record-ref tag 11))
 
-(define-integrable (%dispatch-tag-extra-ref tag index)
-  (%record-ref tag (fix:+ 12 index)))
-
 (define-integrable (%dispatch-tag-extra-length tag)
   (fix:- (%record-length tag) 12))
+
+(define-integrable (%dispatch-tag-extra-ref tag index)
+  (%record-ref tag (%dispatch-tag-extra-index index)))
+
+(define-integrable (%dispatch-tag-extra-set! tag index value)
+  (%record-set! tag (%dispatch-tag-extra-index index) value))
+
+(define-integrable (%dispatch-tag-extra-index index)
+  (fix:+ 12 index))
 
 (define-integrable tag-cache-number-adds-ok
   ;; This constant controls the number of non-zero bits tag cache
