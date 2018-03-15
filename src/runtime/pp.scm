@@ -731,7 +731,8 @@ USA.
 
 (define (numerical-walk object list-depth)
   (define (numerical-walk-no-auto-highlight object list-depth)
-    (cond ((pair? object)
+    (cond ((and (pair? object)
+		(not (named-list? object)))
 	   (let ((prefix (unparse-list/prefix-pair? object)))
 	     (if prefix
 		 (make-prefix-node prefix
@@ -753,7 +754,8 @@ USA.
 				       (node-size rest))
 				    object
 				    rest)))
-	  ((vector? object)
+	  ((and (vector? object)
+		(not (named-vector? object)))
 	   (if (zero? (vector-length object))
 	       (walk-custom unparse-object object list-depth)
 	       (make-prefix-node "#"
