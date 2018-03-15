@@ -1902,6 +1902,8 @@ USA.
   (files "predicate-dispatch")
   (parent (runtime))
   (export ()
+	  cached-chaining-predicate-dispatcher
+	  cached-standard-predicate-dispatcher
 	  chaining-predicate-dispatcher
 	  define-predicate-dispatch-default-handler
 	  define-predicate-dispatch-handler

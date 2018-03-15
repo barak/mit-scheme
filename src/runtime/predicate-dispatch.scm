@@ -87,9 +87,15 @@ USA.
   (make-predicate-dispatcher name arity simple-handler-set))
 
 (define (standard-predicate-dispatcher name arity)
-  (make-predicate-dispatcher name arity cached-most-specific-handler-set))
+  (make-predicate-dispatcher name arity most-specific-handler-set))
 
 (define (chaining-predicate-dispatcher name arity)
+  (make-predicate-dispatcher name arity chaining-handler-set))
+
+(define (cached-standard-predicate-dispatcher name arity)
+  (make-predicate-dispatcher name arity cached-most-specific-handler-set))
+
+(define (cached-chaining-predicate-dispatcher name arity)
   (make-predicate-dispatcher name arity cached-chaining-handler-set))
 
 (define-record-type <metadata>

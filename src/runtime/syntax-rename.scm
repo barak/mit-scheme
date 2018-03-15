@@ -188,7 +188,7 @@ USA.
 		    (get-subexpressions expression)))))
 
    (set! compute-substitution
-	 (standard-predicate-dispatcher 'compute-substitution 2))
+	 (cached-standard-predicate-dispatcher 'compute-substitution 2))
 
    (define-predicate-dispatch-default-handler compute-substitution
      (lambda (expression mark-safe!)
@@ -300,7 +300,7 @@ USA.
 	     (get-subexpressions expression)))))
 
    (set! alpha-substitute
-	 (standard-predicate-dispatcher 'alpha-substitute 2))
+	 (cached-standard-predicate-dispatcher 'alpha-substitute 2))
 
    (define-predicate-dispatch-default-handler alpha-substitute
      (lambda (substitution expression)

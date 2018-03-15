@@ -122,7 +122,7 @@ USA.
        (ctx-start-col ctx)))
 
 (define %write-xml
-  (standard-predicate-dispatcher '%write-xml 2))
+  (cached-standard-predicate-dispatcher '%write-xml 2))
 
 (define-predicate-dispatch-handler %write-xml (list xml-document? ctx?)
   (lambda (document ctx)

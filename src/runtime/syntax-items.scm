@@ -203,9 +203,9 @@ USA.
 (add-boot-init!
  (lambda ()
    (set! compile-item
-	 (standard-predicate-dispatcher 'compile-item 1))
+	 (cached-standard-predicate-dispatcher 'compile-item 1))
    (set! compile-expr-item
-	 (standard-predicate-dispatcher 'compile-expr-item 1))
+	 (cached-standard-predicate-dispatcher 'compile-expr-item 1))
    (run-deferred-boot-actions 'define-item-compiler)))
 
 (define (define-item-compiler predicate compiler #!optional expr-compiler)
