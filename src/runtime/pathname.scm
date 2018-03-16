@@ -97,23 +97,23 @@ these rules:
 
 |#
 
-(define-structure (pathname
-		   (type vector)
-		   (named '|#[(runtime pathname)pathname]|)
-		   (constructor %make-pathname)
-		   (conc-name %pathname-)
-		   (print-procedure
-		    (simple-unparser-method 'PATHNAME
-		      (lambda (pathname)
-			(list (->namestring pathname))))))
-  (host #f read-only #t)
-  (device #f read-only #t)
-  (directory #f read-only #t)
-  (name #f read-only #t)
-  (type #f read-only #t)
-  (version #f read-only #t))
+(define-record-type <pathname>
+    (%make-pathname host device directory name type version)
+    pathname?
+  (host %pathname-host)
+  (device %pathname-device)
+  (directory %pathname-directory)
+  (name %pathname-name)
+  (type %pathname-type)
+  (version %pathname-version))
+(set-record-type-fasdumpable! <pathname> record-type-proxy:pathname)
 
 (define-guarantee pathname "pathname")
+
+(define-unparser-method pathname?
+  (simple-unparser-method 'pathname
+    (lambda (pathname)
+      (list (->namestring pathname)))))
 
 (define pathname-parser-method
   (simple-parser-method
@@ -561,13 +561,12 @@ these rules:
   (operation/init-file-pathname #f read-only #t)
   (operation/pathname-simplify #f read-only #t))
 
-(define-structure (host (type vector)
-			(named ((ucode-primitive string->symbol)
-				"#[(runtime pathname)host]"))
-			(constructor %make-host)
-			(conc-name host/))
-  (type-index #f read-only #t)
-  (name #f read-only #t))
+(define-record-type <host>
+    (%make-host type-index name)
+    host?
+  (type-index host/type-index)
+  (name host/name))
+(set-record-type-fasdumpable! <host> record-type-proxy:host)
 
 (define (make-host type name)
   (%make-host (host-type/index type) name))
