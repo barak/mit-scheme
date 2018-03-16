@@ -35,10 +35,6 @@ USA.
 (define-primitives
   (vector-cons 2))
 
-(define-integrable (%tagged-record? tag object)
-  (and (%record? object)
-       (eq? tag (%record-ref object 0))))
-
 (define (%copy-record record)
   (let ((length (%record-length record)))
     (let ((result (%make-record (%record-ref record 0) length)))
@@ -66,7 +62,7 @@ USA.
       (letrec*
 	  ((predicate
 	    (lambda (object)
-	      (%tagged-record? tag object)))
+	      (%record-type-instance? tag object)))
 	   (tag
 	    (%make-record-type (->type-name type-name)
 			       predicate
@@ -74,7 +70,9 @@ USA.
 			       (if (default-object? default-inits)
 				   (vector-cons n #f)
 				   (list->vector default-inits))
+			       #f
 			       #f)))
+	(%set-record-type-instance-marker! tag tag)
 	(set-predicate<=! predicate record?)
 	(if (and unparser-method
 		 (not (default-object? unparser-method)))
@@ -121,6 +119,12 @@ USA.
 (define-integrable (%set-record-type-applicator! record-type applicator)
   (%dispatch-tag-extra-set! record-type 2 applicator))
 
+(define-integrable (%record-type-instance-marker record-type)
+  (dispatch-tag-extra-ref record-type 2))
+
+(define-integrable (%set-record-type-instance-marker! record-type marker)
+  (%dispatch-tag-extra-set! record-type 2 marker))
+
 (define (%initialize-applicator-context!)
   (set-fixed-objects-item! 'record-dispatch-tag %record-metatag)
   (set-fixed-objects-item! 'record-applicator-index
@@ -155,7 +159,70 @@ USA.
   (guarantee record-type? record-type 'set-record-type-applicator!)
   (if applicator
       (guarantee procedure? applicator 'set-record-type-applicator!))
+  (if (%record-type-fasdumpable? record-type)
+      (error "Record types can't be applicable and fasdumpable:" record-type))
   (%set-record-type-applicator! record-type applicator))
+
+(define (record? object)
+  (and (%record? object)
+       (let ((marker (%record-ref object 0)))
+	 (or (record-type? marker)
+	     (%record-type-proxy? marker)))))
+
+(define (%record-type-instance? type object)
+  (and (%record? object)
+       (eq? (%record-ref object 0)
+	    (%record-type-instance-marker type))))
+
+(define (record-type-descriptor record)
+  (let ((marker (%record-ref record 0)))
+    (cond ((record-type? marker) marker)
+	  ((%record-type-proxy? marker) (%proxy->record-type marker))
+	  (else (error:not-a record? record 'record-type-descriptor)))))
+
+(define (%record-type-fasdumpable? type)
+  (%record-type-proxy? (%record-type-instance-marker type)))
+
+(define (%record-type-proxy? object)
+  (and (object-type? (ucode-type constant) object)
+       (let ((v (object-new-type (ucode-type fixnum) object)))
+	 (and (fix:>= v #x100)
+	      (fix:< v #x200)))))
+
+(define (set-record-type-fasdumpable! type index)
+  (guarantee record-type? type 'set-record-type-fasdumpable!)
+  (guarantee index-fixnum? index 'set-record-type-fasdumpable!)
+  (if (not (fix:< index #x100))
+      (error:bad-range-argument index 'set-record-type-fasdumpable!))
+  (if (%record-type-applicator type)
+      (error "Record types can't be applicable and fasdumpable:" type))
+  (let ((proxy (%index->record-type-proxy index)))
+    (cond ((%record-type-fasdumpable? type)
+	   (if (not (eq? proxy (%record-type-instance-marker type)))
+	       (error "Can't re-register record type:" type)))
+	  ((vector-ref %proxied-record-types index)
+	   => (lambda (rt)
+		(if (not (eq? rt type))
+		    (error "Registered record-type index already in use:"
+			   index))))
+	  (else
+	   (vector-set! %proxied-record-types index type)
+	   (%set-record-type-instance-marker! type proxy)))))
+
+(define-integrable (%record-type-proxy->index marker)
+  (fix:- (object-new-type (ucode-type fixnum) marker) #x100))
+
+(define-integrable (%index->record-type-proxy index)
+  (object-new-type (ucode-type constant) (fix:+ index #x100)))
+
+(define-integrable (%proxy->record-type proxy)
+  (vector-ref %proxied-record-types (%record-type-proxy->index proxy)))
+
+(define %proxied-record-types)
+(add-boot-init!
+ (lambda ()
+   (set! %proxied-record-types (make-vector #x100 #f))
+   unspecific))
 
 ;;;; Constructors
 
@@ -183,8 +250,9 @@ USA.
 		    (intern (string-append "v" (number->string i))))))
 	     (let loop ((i 0) (names '()))
 	       (if (fix:< i limit)
-		   `(IF (FIX:= ,n-fields ,i)
-			(LAMBDA (,@names) (%RECORD ,tag ,@names))
+		   `(if (fix:= ,n-fields ,i)
+			(lambda (,@names)
+			  (%record (%record-type-instance-marker ,tag) ,@names))
 			,(loop (fix:+ i 1)
 			       (append names (list (make-name i)))))
 		   default)))))))
@@ -195,7 +263,10 @@ USA.
 	    (letrec
 		((constructor
 		  (lambda field-values
-		    (let ((record (%make-record record-type reclen))
+		    (let ((record
+			   (%make-record
+			    (%record-type-instance-marker record-type)
+			    reclen))
 			  (lose
 			   (lambda ()
 			     (error:wrong-number-of-arguments constructor
@@ -243,8 +314,9 @@ USA.
 						      (length indexes)
 						      field-values))))
 	      (let ((record
-		     (%make-record record-type
-				   (%record-type-length record-type))))
+		     (%make-record
+		      (%record-type-instance-marker record-type)
+		      (%record-type-length record-type))))
 		(do ((indexes indexes (cdr indexes))
 		     (values field-values (cdr values)))
 		    ((not (pair? indexes))
@@ -266,7 +338,8 @@ USA.
       ((constructor
 	(lambda keyword-list
 	  (let ((n (%record-type-length record-type)))
-	    (let ((record (%make-record record-type n))
+	    (let ((record
+		   (%make-record (%record-type-instance-marker record-type) n))
 		  (seen? (vector-cons n #f)))
 	      (do ((kl keyword-list (cddr kl)))
 		  ((not (and (pair? kl)
@@ -288,14 +361,6 @@ USA.
 	      record)))))
     constructor))
 
-(define (record? object)
-  (and (%record? object)
-       (record-type? (%record-ref object 0))))
-
-(define (record-type-descriptor record)
-  (guarantee record? record 'record-type-descriptor)
-  (%record-ref record 0))
-
 (define (copy-record record)
   (guarantee record? record 'copy-record)
   (%copy-record record))
@@ -317,7 +382,7 @@ USA.
 		   (gen-accessor
 		    (lambda (i)
 		      `(lambda (record)
-			 (if (not (%tagged-record? record-type record))
+			 (if (not (%record-type-instance? record-type record))
 			     (error:not-a predicate record))
 			 (%record-ref record ,i)))))
 	       (let loop ((i 1))
@@ -341,7 +406,7 @@ USA.
 		   (gen-accessor
 		    (lambda (i)
 		      `(lambda (record field-value)
-			 (if (not (%tagged-record? record-type record))
+			 (if (not (%record-type-instance? record-type record))
 			     (error:not-a predicate record))
 			 (%record-set! record ,i field-value)))))
 	       (let loop ((i 1))

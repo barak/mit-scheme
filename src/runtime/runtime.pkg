@@ -3734,7 +3734,8 @@ USA.
   (export (runtime)
 	  error:no-such-slot
 	  error:uninitialized-slot
-	  record-type-field-index)
+	  record-type-field-index
+	  set-record-type-fasdumpable!)
   (export (runtime unparser)
 	  named-list-with-unparser?
 	  named-vector-with-unparser?)
