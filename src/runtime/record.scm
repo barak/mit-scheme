@@ -188,26 +188,21 @@ USA.
        (let ((v (object-new-type (ucode-type fixnum) object)))
 	 (and (fix:>= v #x100)
 	      (fix:< v #x200)))))
+(register-predicate! %record-type-proxy? 'record-type-proxy)
 
-(define (set-record-type-fasdumpable! type index)
+(define (set-record-type-fasdumpable! type proxy)
   (guarantee record-type? type 'set-record-type-fasdumpable!)
-  (guarantee index-fixnum? index 'set-record-type-fasdumpable!)
-  (if (not (fix:< index #x100))
-      (error:bad-range-argument index 'set-record-type-fasdumpable!))
+  (guarantee %record-type-proxy? proxy 'set-record-type-fasdumpable!)
   (if (%record-type-applicator type)
       (error "Record types can't be applicable and fasdumpable:" type))
-  (let ((proxy (%index->record-type-proxy index)))
-    (cond ((%record-type-fasdumpable? type)
-	   (if (not (eq? proxy (%record-type-instance-marker type)))
-	       (error "Can't re-register record type:" type)))
-	  ((vector-ref %proxied-record-types index)
-	   => (lambda (rt)
-		(if (not (eq? rt type))
-		    (error "Registered record-type index already in use:"
-			   index))))
-	  (else
-	   (vector-set! %proxied-record-types index type)
-	   (%set-record-type-instance-marker! type proxy)))))
+  (without-interrupts
+   (lambda ()
+     (if (%record-type-fasdumpable? type)
+	 (error "Record type already fasdumpable:" type))
+     (if (%proxy->record-type proxy)
+	 (error "Record-type proxy already in use:" proxy))
+     (%set-proxied-record-type! proxy type)
+     (%set-record-type-instance-marker! type proxy))))
 
 (define-integrable (%record-type-proxy->index marker)
   (fix:- (object-new-type (ucode-type fixnum) marker) #x100))
@@ -218,11 +213,17 @@ USA.
 (define-integrable (%proxy->record-type proxy)
   (vector-ref %proxied-record-types (%record-type-proxy->index proxy)))
 
+(define-integrable (%set-proxied-record-type! proxy type)
+  (vector-set! %proxied-record-types (%record-type-proxy->index proxy) type))
+
 (define %proxied-record-types)
 (add-boot-init!
  (lambda ()
    (set! %proxied-record-types (make-vector #x100 #f))
    unspecific))
+
+(define record-type-proxy:pathname (%index->record-type-proxy 0))
+(define record-type-proxy:host (%index->record-type-proxy 1))
 
 ;;;; Constructors
 
