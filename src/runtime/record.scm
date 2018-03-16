@@ -120,10 +120,10 @@ USA.
   (%dispatch-tag-extra-set! record-type 2 applicator))
 
 (define-integrable (%record-type-instance-marker record-type)
-  (dispatch-tag-extra-ref record-type 2))
+  (dispatch-tag-extra-ref record-type 3))
 
 (define-integrable (%set-record-type-instance-marker! record-type marker)
-  (%dispatch-tag-extra-set! record-type 2 marker))
+  (%dispatch-tag-extra-set! record-type 3 marker))
 
 (define (%initialize-applicator-context!)
   (set-fixed-objects-item! 'record-dispatch-tag %record-metatag)
