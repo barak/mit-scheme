@@ -82,15 +82,19 @@ USA.
 (define (%valid-default-inits? default-inits n-fields)
   (fix:= n-fields (length default-inits)))
 
+(defer-boot-action 'record-procedures
+  (lambda ()
+    (set! %valid-default-inits?
+	  (named-lambda (%valid-default-inits? default-inits n-fields)
+	    (and (fix:= n-fields (length default-inits))
+		 (every (lambda (init)
+			  (or (not init)
+			      (thunk? init)))
+			default-inits))))
+    unspecific))
+
 (define (initialize-record-procedures!)
-  (set! %valid-default-inits?
-	(named-lambda (%valid-default-inits? default-inits n-fields)
-	  (and (fix:= n-fields (length default-inits))
-	       (every (lambda (init)
-			(or (not init)
-			    (thunk? init)))
-		      default-inits))))
-  (%initialize-applicator-context!))
+  (run-deferred-boot-actions 'record-procedures))
 
 (define %record-metatag)
 (define record-type?)
@@ -159,8 +163,6 @@ USA.
   (guarantee record-type? record-type 'set-record-type-applicator!)
   (if applicator
       (guarantee procedure? applicator 'set-record-type-applicator!))
-  (if (%record-type-fasdumpable? record-type)
-      (error "Record types can't be applicable and fasdumpable:" record-type))
   (%set-record-type-applicator! record-type applicator))
 
 (define (record? object)
@@ -191,18 +193,25 @@ USA.
 (register-predicate! %record-type-proxy? 'record-type-proxy)
 
 (define (set-record-type-fasdumpable! type proxy)
-  (guarantee record-type? type 'set-record-type-fasdumpable!)
-  (guarantee %record-type-proxy? proxy 'set-record-type-fasdumpable!)
-  (if (%record-type-applicator type)
-      (error "Record types can't be applicable and fasdumpable:" type))
-  (without-interrupts
-   (lambda ()
-     (if (%record-type-fasdumpable? type)
-	 (error "Record type already fasdumpable:" type))
-     (if (%proxy->record-type proxy)
-	 (error "Record-type proxy already in use:" proxy))
-     (%set-proxied-record-type! proxy type)
-     (%set-record-type-instance-marker! type proxy))))
+  (defer-boot-action 'record-procedures
+    (lambda ()
+      (set-record-type-fasdumpable! type proxy))))
+
+(defer-boot-action 'record-procedures
+  (lambda ()
+    (set! set-record-type-fasdumpable!
+	  (named-lambda (set-record-type-fasdumpable! type proxy)
+	    (guarantee record-type? type 'set-record-type-fasdumpable!)
+	    (guarantee %record-type-proxy? proxy 'set-record-type-fasdumpable!)
+	    (without-interrupts
+	     (lambda ()
+	       (if (%record-type-fasdumpable? type)
+		   (error "Record type already fasdumpable:" type))
+	       (if (%proxy->record-type proxy)
+		   (error "Record-type proxy already in use:" proxy))
+	       (%set-proxied-record-type! proxy type)
+	       (%set-record-type-instance-marker! type proxy)))))
+    unspecific))
 
 (define-integrable (%record-type-proxy->index marker)
   (fix:- (object-new-type (ucode-type fixnum) marker) #x100))
@@ -217,10 +226,10 @@ USA.
   (vector-set! %proxied-record-types (%record-type-proxy->index proxy) type))
 
 (define %proxied-record-types)
-(add-boot-init!
- (lambda ()
-   (set! %proxied-record-types (make-vector #x100 #f))
-   unspecific))
+(defer-boot-action 'record-procedures
+  (lambda ()
+    (set! %proxied-record-types (fixed-objects-item 'proxied-record-types))
+    unspecific))
 
 (define record-type-proxy:pathname (%index->record-type-proxy 0))
 (define record-type-proxy:host (%index->record-type-proxy 1))

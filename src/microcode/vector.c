@@ -393,6 +393,8 @@ DEFINE_PRIMITIVE ("SUBVECTOR-FILL!", Prim_vector_fill, 4, 4, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
+static SCHEME_OBJECT record_marker (SCHEME_OBJECT);
+
 /* An applicable record is one whose tag is FIXOBJ_RECORD_TAG and
    which has an applicator at FIXOBJ_RECORD_APP_INDEX within that tag.
    It is applied just like an entity: the record is passed as the
@@ -402,21 +404,24 @@ DEFINE_PRIMITIVE ("SUBVECTOR-FILL!", Prim_vector_fill, 4, 4, 0)
 SCHEME_OBJECT
 record_applicator (SCHEME_OBJECT record)
 {
-  SCHEME_OBJECT metatag = (VECTOR_REF (fixed_objects, FIXOBJ_RECORD_TAG));
-  SCHEME_OBJECT index_object
-    = (VECTOR_REF (fixed_objects, FIXOBJ_RECORD_APP_INDEX));
+  SCHEME_OBJECT marker = (record_marker (record));
+  return ((RECORD_P (marker))
+	  && ((VECTOR_REF (marker, 0))
+	      == (VECTOR_REF (fixed_objects, FIXOBJ_RECORD_TAG))))
+    ? (VECTOR_REF (marker,
+		   (FIXNUM_TO_ULONG (VECTOR_REF (fixed_objects,
+						 FIXOBJ_RECORD_APP_INDEX)))))
+    : SHARP_F;
+}
 
-  if ((RECORD_P (metatag))
-      && (FIXNUM_P (index_object))
-      && (FIXNUM_TO_ULONG_P (index_object)))
-    {
-      unsigned long index = (FIXNUM_TO_ULONG (index_object));
-      SCHEME_OBJECT tag = (VECTOR_REF (record, 0));
-      if (RECORD_P (tag)
-	  && ((VECTOR_REF (tag, 0)) == metatag)
-	  && (index < (VECTOR_LENGTH (tag)))) {
-	return (VECTOR_REF (tag, index));
-      }
-    }
-  return SHARP_F;
+static SCHEME_OBJECT
+record_marker (SCHEME_OBJECT record)
+{
+  SCHEME_OBJECT marker = (VECTOR_REF (record, 0));
+  return (((OBJECT_TYPE (marker)) == TC_CONSTANT)
+	  && ((OBJECT_DATUM (marker)) >= FASDUMP_RECORD_MARKER_START)
+	  && ((OBJECT_DATUM (marker)) < FASDUMP_RECORD_MARKER_END))
+    ? (VECTOR_REF ((VECTOR_REF (fixed_objects, FIXOBJ_PROXIED_RECORD_TYPES)),
+		   ((OBJECT_DATUM (marker)) - FASDUMP_RECORD_MARKER_START)))
+    : marker;
 }

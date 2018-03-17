@@ -51,7 +51,7 @@ USA.
 #define FIXOBJ_RECORD_APP_INDEX 0x12	/* Index of record applicator. */
 #define DUMMY_HISTORY		0x13	/* Empty history structure. */
 #define Bignum_One              0x14    /* Cache for bignum one. */
-/* #define UNUSED		0x15 */
+#define FIXOBJ_PROXIED_RECORD_TYPES	0x15
 #define Termination_Vector	0x16    /* Names for terminations. */
 #define Termination_Proc_Vector	0x17	/* Handlers for terminations. */
 /* #define UNUSED		0x18 */
@@ -141,7 +141,7 @@ USA.
   /* 0x12 */	"record-applicator-index",				\
   /* 0x13 */	"dummy-history",					\
   /* 0x14 */	"bignum-one",						\
-  /* 0x15 */	0,							\
+  /* 0x15 */	"proxied-record-types",					\
   /* 0x16 */	"microcode-terminations-vector",			\
   /* 0x17 */	"microcode-terminations-procedures",			\
   /* 0x18 */	0,							\
@@ -184,7 +184,7 @@ USA.
   /* 0x3D */	"pc-sample/prob-comp-table",				\
   /* 0x3E */	"pc-sample/ufo-table",					\
   /* 0x3F */	"compiled-code-bkpt-handler",				\
-  /* 0x40 */	0		,					\
+  /* 0x40 */	0,							\
   /* 0x41 */	"callback-handler",					\
   /* 0x42 */	0,							\
   /* 0x43 */	0,							\

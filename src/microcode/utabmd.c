@@ -175,6 +175,11 @@ initialize_fixed_objects_vector (void)
   STORE_FIXOBJ (ARITY_DISPATCHER_TAG,
 		(char_pointer_to_symbol
 		 ("#[(microcode)arity-dispatcher-tag]")));
+  STORE_FIXOBJ (FIXOBJ_PROXIED_RECORD_TYPES,
+		(make_vector ((FASDUMP_RECORD_MARKER_END
+			       - FASDUMP_RECORD_MARKER_START),
+			      SHARP_F,
+			      false)));
 
 #ifdef __WIN32__
   NT_initialize_fov (fixed_objects);
