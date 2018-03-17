@@ -231,8 +231,18 @@ USA.
     (set! %proxied-record-types (fixed-objects-item 'proxied-record-types))
     unspecific))
 
-(define record-type-proxy:pathname (%index->record-type-proxy 0))
-(define record-type-proxy:host (%index->record-type-proxy 1))
+(let-syntax
+    ((enumerate-proxies
+      (sc-macro-transformer
+       (lambda (form use-env)
+	 (syntax-check '(_ * symbol) form)
+	 `(begin
+	    ,@(map (lambda (name index)
+		     `(define ,(symbol 'record-type-proxy: name)
+			(%index->record-type-proxy ,index)))
+		   (cdr form)
+		   (iota (length (cdr form)))))))))
+  (enumerate-proxies pathname host))
 
 ;;;; Constructors
 
