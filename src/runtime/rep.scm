@@ -30,7 +30,7 @@ USA.
 (declare (usual-integrations))
 
 (define repl:allow-restart-notifications? #t)
-(define repl:write-result-hash-numbers? #t)
+(define repl:write-result-hash-numbers? #f)
 
 (define (initialize-package!)
   (set! param:nearest-cmdl (make-unsettable-parameter #f))
