@@ -800,33 +800,37 @@ differences:
 		  (let ((default (slot/default slot)))
 		    (if (false-marker? default)
 			#f
-			`(LAMBDA () ,(close default context)))))
+			`(lambda () ,(close default context)))))
 		slots)))
-      `((DEFINE ,type-name
+      `((define ,type-name
 	  ,(if (structure/record-type? structure)
-	       `(,(absolute 'MAKE-RECORD-TYPE context)
+	       `(,(absolute 'make-record-type context)
 		 ',name
-		 ',field-names
-		 (LIST ,@inits))
-	       `(,(absolute 'MAKE-DEFINE-STRUCTURE-TYPE context)
+		 (list ,@(map (lambda (name init)
+				(if init
+				    `(list ',name ,init)
+				    `',name))
+			      field-names
+			      inits)))
+	       `(,(absolute 'make-define-structure-type context)
 		 ',(structure/physical-type structure)
 		 ',name
 		 '#(,@field-names)
 		 '#(,@(map slot/index slots))
-		 (VECTOR ,@inits)
+		 (vector ,@inits)
 		 ;; This field was the print-procedure, no longer used.
 		 ;; It should be removed after 9.3 is released.
 		 #f
 		 ,(if (and tag-expression
 			   (not (eq? tag-expression type-name)))
 		      (close tag-expression context)
-		      '#F)
+		      '#f)
 		 ',(+ (if (structure/tagged? structure) 1 0)
 		      (structure/offset structure)
 		      (length slots)))))
 	,@(if (and tag-expression
 		   (not (eq? tag-expression type-name)))
-	      `((,(absolute 'NAMED-STRUCTURE/SET-TAG-DESCRIPTION! context)
+	      `((,(absolute 'named-structure/set-tag-description! context)
 		 ,(close tag-expression context)
 		 ,type-name))
 	      '())))))

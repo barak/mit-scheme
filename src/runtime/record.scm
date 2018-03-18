@@ -43,22 +43,24 @@ USA.
 	(%record-set! result index (%record-ref record index)))
       result)))
 
-(define (make-record-type type-name field-names
+(define (make-record-type type-name field-specs
 			  #!optional
 			  default-inits unparser-method entity-unparser-method)
-  ;; The unparser-method and entity-unparser-method arguments should be removed
-  ;; after the 9.3 release.
+  ;; The optional arguments should be removed after the 9.3 release.
   (declare (ignore entity-unparser-method))
   (let ((caller 'make-record-type))
-    (if (not (list-of-unique-symbols? field-names))
-	(error:not-a list-of-unique-symbols? field-names caller))
-    (let* ((names (list->vector field-names))
-	   (n (vector-length names)))
-      (if (not (or (default-object? default-inits)
-		   (%valid-default-inits? default-inits n)))
-	  (error:wrong-type-argument default-inits
-				     "default initializers"
-				     caller))
+    (let ((field-specs
+	   (if (default-object? default-inits)
+	       (begin
+		 (guarantee valid-field-specs? field-specs caller)
+		 field-specs)
+	       (begin
+		 (if (not (list-of-unique-symbols? field-specs))
+		     (error:not-a list-of-unique-symbols? field-specs caller))
+		 (guarantee list? default-inits caller)
+		 (if (not (fix:= (length field-specs) (length default-inits)))
+		     (error:bad-range-argument default-inits caller))
+		 (map make-field-spec field-specs default-inits)))))
       (letrec*
 	  ((predicate
 	    (lambda (object)
@@ -66,10 +68,8 @@ USA.
 	   (tag
 	    (%make-record-type (->type-name type-name)
 			       predicate
-			       names
-			       (if (default-object? default-inits)
-				   (vector-cons n #f)
-				   (list->vector default-inits))
+			       (list->vector (map field-spec-name field-specs))
+			       (list->vector (map field-spec-init field-specs))
 			       #f
 			       #f)))
 	(%set-record-type-instance-marker! tag tag)
@@ -78,23 +78,66 @@ USA.
 		 (not (default-object? unparser-method)))
 	    (define-unparser-method predicate unparser-method))
 	tag))))
+
+(define (valid-field-specs? object)
+  (and (list? object)
+       (every field-spec? object)
+       (let loop ((field-specs object))
+	 (if (pair? field-specs)
+	     (if (any (let ((name (field-spec-name (car field-specs))))
+			(lambda (field-spec)
+			  (eq? name (field-spec-name field-spec))))
+		      (cdr field-specs))
+		 #f
+		 (loop (cdr field-specs)))
+	     #t))))
+(register-predicate! valid-field-specs? 'valid-field-specs '<= list?)
 
-(define (%valid-default-inits? default-inits n-fields)
-  (fix:= n-fields (length default-inits)))
+(define (field-spec? object)
+  (or (symbol? object)
+      (and (pair? object)
+	   (symbol? (car object))
+	   (pair? (cdr object))
+	   (%valid-default-init? (cadr object))
+	   (null? (cddr object)))))
+
+(define (make-field-spec name init)
+  (if init
+      (list name init)
+      name))
+
+(define (field-spec-name spec)
+  (if (pair? spec) (car spec) spec))
+
+(define (field-spec-init spec)
+  (if (pair? spec) (cadr spec) #f))
+
+(define (%valid-default-init? object)
+  (declare (ignore object))
+  #t)
 
 (defer-boot-action 'record-procedures
   (lambda ()
-    (set! %valid-default-inits?
-	  (named-lambda (%valid-default-inits? default-inits n-fields)
-	    (and (fix:= n-fields (length default-inits))
-		 (every (lambda (init)
-			  (or (not init)
-			      (thunk? init)))
-			default-inits))))
+    (set! %valid-default-init?
+	  (named-lambda (%valid-default-init? object)
+	    (or (not object)
+		(thunk? object))))
     unspecific))
 
 (define (initialize-record-procedures!)
   (run-deferred-boot-actions 'record-procedures))
+
+(define (list-of-unique-symbols? object)
+  (and (list-of-type? object symbol?)
+       (let loop ((elements object))
+	 (if (pair? elements)
+	     (and (not (memq (car elements) (cdr elements)))
+		  (loop (cdr elements)))
+	     #t))))
+
+(define (%valid-default-inits? default-inits n-fields)
+  (and (fix:= n-fields (length default-inits))
+       (every %valid-default-init? default-inits)))
 
 (define %record-metatag)
 (define record-type?)
@@ -457,14 +500,6 @@ USA.
   (cond ((string? object) (string->symbol object))
 	((symbol? object) object)
 	(else (error:wrong-type-argument object "type name" #f))))
-
-(define (list-of-unique-symbols? object)
-  (and (list-of-type? object symbol?)
-       (let loop ((elements object))
-	 (if (pair? elements)
-	     (and (not (memq (car elements) (cdr elements)))
-		  (loop (cdr elements)))
-	     #t))))
 
 (define-guarantee record-type "record type")
 (define-guarantee record "record")
