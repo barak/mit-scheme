@@ -238,13 +238,13 @@ USA.
 		   ,@vals))))
        (spar-elt)
        (spar-push spar-arg:close)
-       (spar-or (spar-elt spar-push-id)
+       (spar-or (spar-push-elt-if identifier? spar-arg:form)
 		(spar-push '#f))
        (spar-elt
-	 (spar-push-values
+	 (spar-call-with-values list
 	  (spar* (spar-elt
 		   (spar-call-with-values cons
-		     (spar-elt spar-push-id)
+		     (spar-push-elt-if identifier? spar-arg:form)
 		     (spar-or (spar-push-elt spar-arg:form)
 			      (spar-push-value unassigned-expression)))
 		   spar-match-null))

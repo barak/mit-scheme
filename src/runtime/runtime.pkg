@@ -4572,10 +4572,8 @@ USA.
 	  spar-push-body
 	  spar-push-elt
 	  spar-push-elt-if
-	  spar-push-id
 	  spar-push-if
 	  spar-push-value
-	  spar-push-values
 	  spar-repeat
 	  spar-seq
 	  spar-succeed

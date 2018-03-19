@@ -336,11 +336,14 @@ USA.
 		failure)
 	  (failure)))))
 
+(define (spar-match-elt predicate . args)
+  (spar-elt (apply spar-match predicate args)))
+
 (define (spar-push-elt . args)
   (spar-elt (apply spar-push args)))
 
-(define (spar-push-elt-if . args)
-  (spar-elt (apply spar-push-if args)))
+(define (spar-push-elt-if predicate . args)
+  (spar-elt (apply spar-push-if predicate args)))
 
 (define-deferred spar-match-null
   (spar-match null? spar-arg:form))
@@ -380,19 +383,8 @@ USA.
 		   spar-arg:form
 		   spar-arg:senv
 		   spar-arg:hist))
-
-(define-deferred spar-push-id
-  (spar-seq
-    (spar-match identifier? spar-arg:form)
-    (spar-push spar-arg:form)
-    spar-discard-form))
 
 ;;;; Value combinators
-
-(define (spar-push-values . spars)
-  (%with-output (lambda (output output*)
-		  (%output-push output (%output-all output*)))
-		spars))
 
 (define (spar-encapsulate-values procedure . spars)
   (%encapsulate procedure spars))

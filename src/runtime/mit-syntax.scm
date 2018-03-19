@@ -190,7 +190,7 @@ USA.
 		 (syntax-defn-item id (keyword-item-expr item))
 		 (seq-item '()))))
        (spar-elt)
-       (spar-elt spar-push-id)
+       (spar-push-elt-if identifier? spar-arg:form)
        (spar-push spar-arg:senv)
        (spar-elt
 	 spar-push-classified
@@ -208,9 +208,7 @@ USA.
 	 (lambda (bvl body senv)
 	   (assemble-lambda-item scode-lambda-name:unnamed bvl body senv))
        (spar-elt)
-       (spar-elt
-	 (spar-match mit-lambda-list? spar-arg:form)
-	 (spar-push spar-arg:form))
+       (spar-push-elt-if mit-lambda-list? spar-arg:form)
        spar-push-body))))
 
 (define :named-lambda
@@ -221,9 +219,8 @@ USA.
 	   (assemble-lambda-item (identifier->symbol name) bvl body senv))
        (spar-elt)
        (spar-elt
-	 (spar-elt spar-push-id)
-	 (spar-match mit-lambda-list? spar-arg:form)
-	 (spar-push spar-arg:form))
+	 (spar-push-elt-if identifier? spar-arg:form)
+	 (spar-push-if mit-lambda-list? spar-arg:form))
        spar-push-body))))
 
 (define (assemble-lambda-item name bvl body senv)
@@ -248,10 +245,10 @@ USA.
 	    (seq-item (body frame-senv))))
       (spar-elt)
       (spar-elt
-	(spar-push-values
+	(spar-call-with-values list
 	 (spar*
 	   (spar-call-with-values cons
-	     (spar-elt (spar-elt spar-push-id)
+	     (spar-elt (spar-push-elt-if identifier? spar-arg:form)
 		       (spar-elt spar-push-classified)
 		       spar-match-null))))
 	spar-match-null)
@@ -282,10 +279,10 @@ USA.
 	    (seq-item (body frame-senv))))
       (spar-elt)
       (spar-elt
-	 (spar-push-values
+	 (spar-call-with-values list
 	   (spar*
 	     (spar-call-with-values cons
-	       (spar-elt (spar-elt spar-push-id)
+	       (spar-elt (spar-push-elt-if identifier? spar-arg:form)
 			 (spar-elt spar-push-open-classified)
 			 spar-match-null))))
 	 spar-match-null)
@@ -304,7 +301,7 @@ USA.
    (delay
      (spar-call-with-values access-item
        (spar-elt)
-       (spar-elt spar-push-id)
+       (spar-push-elt-if identifier? spar-arg:form)
        (spar-elt spar-push-classified)
        spar-match-null))))
 
@@ -360,15 +357,13 @@ USA.
        (spar-elt)
        (spar-push spar-arg:senv)
        (spar-push spar-arg:hist)
-       (spar-push-values
-	(spar*
-	  (spar-elt
-	    (spar-match (lambda (form)
-			  (and (pair? form)
-			       (identifier? (car form))
-			       (list? (cdr form))))
-			spar-arg:form)
-	    (spar-push spar-arg:form))))
+       (spar-call-with-values list
+	 (spar*
+	   (spar-push-elt-if (lambda (form)
+			       (and (pair? form)
+				    (identifier? (car form))
+				    (list? (cdr form))))
+			     spar-arg:form)))
        spar-match-null))))
 
 (define (classify-id id senv hist)
