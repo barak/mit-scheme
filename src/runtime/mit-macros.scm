@@ -164,31 +164,40 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      compare				;ignore
-     (if (syntax-match? '(identifier
+     (if (syntax-match? '((or identifier
+			      (identifier expression))
 			  (identifier * identifier)
 			  identifier
 			  * (identifier identifier ? identifier))
 			(cdr form))
-	 (let ((type (cadr form))
+	 (let ((type-spec (cadr form))
 	       (constructor (car (caddr form)))
 	       (c-tags (cdr (caddr form)))
 	       (predicate (cadddr form))
 	       (fields (cddddr form))
-	       (de (rename 'DEFINE)))
-	   `(,(rename 'BEGIN)
-	     (,de ,type (,(rename 'MAKE-RECORD-TYPE) ',type ',(map car fields)))
-	     (,de ,constructor (,(rename 'RECORD-CONSTRUCTOR) ,type ',c-tags))
-	     (,de ,predicate (,(rename 'RECORD-PREDICATE) ,type))
-	     ,@(append-map
-		(lambda (field)
-		  (let ((name (car field)))
-		    (cons `(,de ,(cadr field)
-				(,(rename 'RECORD-ACCESSOR) ,type ',name))
-			  (if (pair? (cddr field))
-			      `((,de ,(caddr field)
-				     (,(rename 'RECORD-MODIFIER) ,type ',name)))
-			      '()))))
-		fields)))
+	       (de (rename 'define)))
+	   (let ((type (if (pair? type-spec) (car type-spec) type-spec)))
+	     `(,(rename 'begin)
+	       (,de ,type
+		    (,(rename 'new-make-record-type)
+		     ',type
+		     ',(map car fields)
+		     ,@(if (pair? type-spec)
+			   (list (cadr type-spec))
+			   '())))
+	       (,de ,constructor (,(rename 'record-constructor) ,type ',c-tags))
+	       (,de ,predicate (,(rename 'record-predicate) ,type))
+	       ,@(append-map
+		  (lambda (field)
+		    (let ((name (car field)))
+		      (cons `(,de ,(cadr field)
+				  (,(rename 'record-accessor) ,type ',name))
+			    (if (pair? (cddr field))
+				`((,de ,(caddr field)
+				       (,(rename 'record-modifier)
+					,type ',name)))
+				'()))))
+		  fields))))
 	 (ill-formed-syntax form)))))
 
 (define-syntax :define

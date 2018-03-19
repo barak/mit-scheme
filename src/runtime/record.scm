@@ -43,13 +43,16 @@ USA.
 	(%record-set! result index (%record-ref record index)))
       result)))
 
+;; Replace this with new-make-record-type after the 9.3 release.
 (define (make-record-type type-name field-specs
 			  #!optional
 			  default-inits unparser-method entity-unparser-method)
   ;; The optional arguments should be removed after the 9.3 release.
   (declare (ignore entity-unparser-method))
-  (let ((caller 'make-record-type))
-    (let ((field-specs
+  (let* ((caller 'make-record-type)
+	 (type
+	  (%make-record-type
+	   (->type-name type-name caller)
 	   (if (default-object? default-inits)
 	       (begin
 		 (guarantee valid-field-specs? field-specs caller)
@@ -60,38 +63,61 @@ USA.
 		 (guarantee list? default-inits caller)
 		 (if (not (fix:= (length field-specs) (length default-inits)))
 		     (error:bad-range-argument default-inits caller))
-		 (map make-field-spec field-specs default-inits)))))
-      (letrec*
-	  ((predicate
-	    (lambda (object)
-	      (%record-type-instance? tag object)))
-	   (tag
-	    (%make-record-type (->type-name type-name)
-			       predicate
-			       (list->vector (map field-spec-name field-specs))
-			       (list->vector (map field-spec-init field-specs))
-			       #f
-			       #f)))
-	(%set-record-type-instance-marker! tag tag)
-	(set-predicate<=! predicate record?)
-	(if (and unparser-method
-		 (not (default-object? unparser-method)))
-	    (define-unparser-method predicate unparser-method))
-	tag))))
+		 (map make-field-spec field-specs default-inits)))
+	   #f)))
+    (if (and unparser-method
+	     (not (default-object? unparser-method)))
+	(define-unparser-method (record-predicate type) unparser-method))
+    type))
+
+(define (new-make-record-type type-name field-specs #!optional parent-type)
+  (guarantee valid-field-specs? field-specs 'new-make-record-type)
+  (let ((type-name (->type-name type-name 'new-make-record-type)))
+    (if (default-object? parent-type)
+	(%make-record-type type-name field-specs #f)
+	(begin
+	  (guarantee record-type? parent-type 'new-make-record-type)
+	  (let ((field-specs
+		 (append (record-type-field-specs parent-type)
+			 field-specs)))
+	    (if (duplicate-fields? field-specs)
+		(error "Overlap between child and parent fields:"
+		       field-specs))
+	    (%make-record-type type-name field-specs parent-type))))))
+
+(define (%make-record-type type-name field-specs parent-type)
+  (letrec*
+      ((predicate
+	(lambda (object)
+	  (%record-type-instance? type object)))
+       (type
+	(%%make-record-type type-name
+			    predicate
+			    (list->vector (map field-spec-name field-specs))
+			    (list->vector (map field-spec-init field-specs))
+			    parent-type
+			    #f
+			    #f)))
+    (%set-record-type-instance-marker! type type)
+    (set-predicate<=! predicate
+		      (if parent-type
+			  (record-predicate parent-type)
+			  record?))
+    type))
 
 (define (valid-field-specs? object)
   (and (list? object)
        (every field-spec? object)
-       (let loop ((field-specs object))
-	 (if (pair? field-specs)
-	     (if (any (let ((name (field-spec-name (car field-specs))))
-			(lambda (field-spec)
-			  (eq? name (field-spec-name field-spec))))
-		      (cdr field-specs))
-		 #f
-		 (loop (cdr field-specs)))
-	     #t))))
+       (not (duplicate-fields? object))))
 (register-predicate! valid-field-specs? 'valid-field-specs '<= list?)
+
+(define (duplicate-fields? field-specs)
+  (and (pair? field-specs)
+       (or (any (let ((name (field-spec-name (car field-specs))))
+		  (lambda (field-spec)
+		    (eq? name (field-spec-name field-spec))))
+		(cdr field-specs))
+	   (duplicate-fields? (cdr field-specs)))))
 
 (define (field-spec? object)
   (or (symbol? object)
@@ -141,12 +167,12 @@ USA.
 
 (define %record-metatag)
 (define record-type?)
-(define %make-record-type)
+(define %%make-record-type)
 (add-boot-init!
  (lambda ()
    (set! %record-metatag (make-dispatch-metatag 'record-tag))
    (set! record-type? (dispatch-tag->predicate %record-metatag))
-   (set! %make-record-type
+   (set! %%make-record-type
 	 (dispatch-metatag-constructor %record-metatag 'make-record-type))
    unspecific))
 
@@ -160,11 +186,8 @@ USA.
 (define-integrable (%record-type-default-inits record-type)
   (dispatch-tag-extra-ref record-type 1))
 
-(define-integrable (%record-type-applicator record-type)
+(define-integrable (%record-type-parent record-type)
   (dispatch-tag-extra-ref record-type 2))
-
-(define-integrable (%set-record-type-applicator! record-type applicator)
-  (%dispatch-tag-extra-set! record-type 2 applicator))
 
 (define-integrable (%record-type-instance-marker record-type)
   (dispatch-tag-extra-ref record-type 3))
@@ -172,10 +195,16 @@ USA.
 (define-integrable (%set-record-type-instance-marker! record-type marker)
   (%dispatch-tag-extra-set! record-type 3 marker))
 
+(define-integrable (%record-type-applicator record-type)
+  (dispatch-tag-extra-ref record-type 4))
+
+(define-integrable (%set-record-type-applicator! record-type applicator)
+  (%dispatch-tag-extra-set! record-type 4 applicator))
+
 (define (%initialize-applicator-context!)
   (set-fixed-objects-item! 'record-dispatch-tag %record-metatag)
   (set-fixed-objects-item! 'record-applicator-index
-			   (%dispatch-tag-extra-index 2)))
+			   (%dispatch-tag-extra-index 4)))
 
 (define-integrable (%record-type-n-fields record-type)
   (vector-length (%record-type-field-names record-type)))
@@ -191,12 +220,15 @@ USA.
   (guarantee record-type? record-type 'record-type-field-names)
   (vector->list (%record-type-field-names record-type)))
 
-(define (record-type-default-value-by-index record-type field-index)
-  (let ((init
-	 (vector-ref (%record-type-default-inits record-type)
-		     (fix:- field-index 1))))
-    (and init
-	 (init))))
+(define (record-type-field-specs record-type)
+  (guarantee record-type? record-type 'record-type-field-specs)
+  (map make-field-spec
+       (vector->list (%record-type-field-names record-type))
+       (vector->list (%record-type-default-inits record-type))))
+
+(define (record-type-parent record-type)
+  (guarantee record-type? record-type 'record-type-parent)
+  (%record-type-parent record-type))
 
 (define (record-type-applicator record-type)
   (guarantee record-type? record-type 'record-type-applicator)
@@ -295,8 +327,7 @@ USA.
 	  (equal? field-names (record-type-field-names record-type)))
       (%record-constructor-default-names record-type)
       (begin
-	(if (not (list? field-names))
-	    (error:not-a list? field-names 'record-constructor))
+	(guarantee list? field-names 'record-constructor)
 	(%record-constructor-given-names record-type field-names))))
 
 (define %record-constructor-default-names
@@ -496,10 +527,10 @@ USA.
 					(error:no-such-slot record-type name)
 					error?))))))
 
-(define (->type-name object)
+(define (->type-name object caller)
   (cond ((string? object) (string->symbol object))
 	((symbol? object) object)
-	(else (error:wrong-type-argument object "type name" #f))))
+	(else (error:wrong-type-argument object "type name" caller))))
 
 (define-guarantee record-type "record type")
 (define-guarantee record "record")
@@ -669,6 +700,13 @@ USA.
 
 (define (define-structure/default-value-by-index type field-name-index)
   ((structure-type/default-init-by-index type field-name-index)))
+
+(define (record-type-default-value-by-index record-type field-index)
+  (let ((init
+	 (vector-ref (%record-type-default-inits record-type)
+		     (fix:- field-index 1))))
+    (and init
+	 (init))))
 
 (define (define-structure/keyword-constructor type)
   (let ((names (structure-type/field-names type))
@@ -852,16 +890,6 @@ USA.
 	     (and (fix:<= index (vector-length names))
 		  (vector-ref names (fix:- index 1)))))
       index))
-
-(define (record-type-field-name record-type index)
-  (guarantee record-type? record-type 'record-type-field-name)
-  (guarantee fix:fixnum? index 'record-type-field-name)
-  (let ((names (%record-type-field-names record-type))
-	(index* (fix:- index 1)))
-    (if (not (fix:>= index* 0)
-	     (fix:< index* (vector-length names)))
-	(error:bad-range-argument index 'record-type-field-name))
-    (vector-ref names index*)))
 
 (define (store-value-restart location k thunk)
   (let ((location (write-to-string location)))

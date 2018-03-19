@@ -3715,6 +3715,7 @@ USA.
 	  named-list?
 	  named-structure?
 	  named-vector?
+	  new-make-record-type
 	  record-accessor
 	  record-constructor
 	  record-copy
@@ -3726,7 +3727,9 @@ USA.
 	  record-type-descriptor
 	  record-type-dispatch-tag	;can be deleted after 9.3 release
 	  record-type-field-names
+	  record-type-field-specs
 	  record-type-name
+	  record-type-parent
 	  record-type?
 	  record-updater
 	  record?
