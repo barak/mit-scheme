@@ -83,7 +83,7 @@ USA.
 			  deferred-items)))
        (spar-elt)
        (spar* (spar-elt spar-push-deferred-classified))
-       spar-match-null))))
+       (spar-match-null)))))
 
 (define :if
   (spar-classifier->runtime
@@ -94,7 +94,7 @@ USA.
        (spar-elt spar-push-classified)
        (spar-or (spar-elt spar-push-classified)
 		(spar-push-value unspecific-item))
-       spar-match-null))))
+       (spar-match-null)))))
 
 (define :quote
   (spar-classifier->runtime
@@ -102,7 +102,7 @@ USA.
      (spar-call-with-values constant-item
        (spar-elt)
        (spar-elt (spar-push-value strip-syntactic-closures spar-arg:form))
-       spar-match-null))))
+       (spar-match-null)))))
 
 (define :quote-identifier
   (spar-classifier->runtime
@@ -115,7 +115,7 @@ USA.
 	 (spar-or (spar-match var-item? spar-arg:value)
 		  (spar-error "Can't quote a keyword identifier:"
 			      spar-arg:form)))
-       spar-match-null))))
+       (spar-match-null)))))
 
 (define :set!
   (spar-classifier->runtime
@@ -138,7 +138,7 @@ USA.
 			      spar-arg:form)))
        (spar-or (spar-elt spar-push-classified)
 		(spar-push-value unassigned-item))
-       spar-match-null))))
+       (spar-match-null)))))
 
 ;; TODO: this is a classifier rather than a macro because it uses the
 ;; special OUTPUT/DISJUNCTION.  Unfortunately something downstream in
@@ -150,7 +150,7 @@ USA.
      (spar-encapsulate-values or-item
        (spar-elt)
        (spar* (spar-elt spar-push-classified))
-       spar-match-null))))
+       (spar-match-null)))))
 
 (define :delay
   (spar-classifier->runtime
@@ -158,7 +158,7 @@ USA.
      (spar-call-with-values delay-item
        (spar-elt)
        (spar-elt spar-push-deferred-classified)
-       spar-match-null))))
+       (spar-match-null)))))
 
 ;;;; Definitions
 
@@ -171,7 +171,7 @@ USA.
 	 (spar-match identifier? spar-arg:form)
 	 (spar-push-value bind-variable spar-arg:form spar-arg:senv))
        (spar-elt spar-push-classified)
-       spar-match-null))))
+       (spar-match-null)))))
 
 (define :define-syntax
   (spar-classifier->runtime
@@ -197,7 +197,7 @@ USA.
 	 (spar-or (spar-match keyword-item? spar-arg:value)
 		  (spar-error "Keyword binding value must be a keyword:"
 			      spar-arg:form)))
-       spar-match-null))))
+       (spar-match-null)))))
 
 ;;;; Lambdas
 
@@ -250,8 +250,8 @@ USA.
 	   (spar-call-with-values cons
 	     (spar-elt (spar-push-elt-if identifier? spar-arg:form)
 		       (spar-elt spar-push-classified)
-		       spar-match-null))))
-	spar-match-null)
+		       (spar-match-null)))))
+	(spar-match-null))
        spar-push-body)))
 
 (define :let-syntax
@@ -284,8 +284,8 @@ USA.
 	     (spar-call-with-values cons
 	       (spar-elt (spar-push-elt-if identifier? spar-arg:form)
 			 (spar-elt spar-push-open-classified)
-			 spar-match-null))))
-	 spar-match-null)
+			 (spar-match-null)))))
+	 (spar-match-null))
        spar-push-body))))
 
 ;;;; MIT-specific syntax
@@ -303,7 +303,7 @@ USA.
        (spar-elt)
        (spar-push-elt-if identifier? spar-arg:form)
        (spar-elt spar-push-classified)
-       spar-match-null))))
+       (spar-match-null)))))
 
 (define-expr-item-compiler access-item?
   (lambda (item)
@@ -318,7 +318,7 @@ USA.
 		(spar-error "This form allowed only at top level:"
 			    spar-arg:form spar-arg:senv))
        (spar-elt)
-       spar-match-null
+       (spar-match-null)
        (spar-push-value the-environment-item)))))
 
 (define keyword:unspecific
@@ -326,7 +326,7 @@ USA.
    (delay
      (spar-seq
        (spar-elt)
-       spar-match-null
+       (spar-match-null)
        (spar-push-value unspecific-item)))))
 
 (define keyword:unassigned
@@ -334,7 +334,7 @@ USA.
    (delay
      (spar-seq
        (spar-elt)
-       spar-match-null
+       (spar-match-null)
        (spar-push-value unassigned-item)))))
 
 ;;;; Declarations
@@ -364,7 +364,7 @@ USA.
 				    (identifier? (car form))
 				    (list? (cdr form))))
 			     spar-arg:form)))
-       spar-match-null))))
+       (spar-match-null)))))
 
 (define (classify-id id senv hist)
   (let ((item (classify-form id senv hist)))

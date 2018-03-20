@@ -157,7 +157,7 @@ USA.
        (spar-push-elt-if r4rs-lambda-list? spar-arg:form)
        (spar-push-elt spar-arg:form)
        (spar+ (spar-push-elt spar-arg:form))
-       spar-match-null))
+       (spar-match-null)))
    system-global-environment))
 
 (define-syntax :define-record-type
@@ -247,10 +247,10 @@ USA.
 		     (spar-push-elt-if identifier? spar-arg:form)
 		     (spar-or (spar-push-elt spar-arg:form)
 			      (spar-push-value unassigned-expression)))
-		   spar-match-null))
-	  spar-match-null))
+		   (spar-match-null)))
+	  (spar-match-null)))
        (spar+ (spar-push-elt spar-arg:form))
-       spar-match-null))
+       (spar-match-null)))
    system-global-environment))
 
 (define named-let-strategy 'internal-definition)

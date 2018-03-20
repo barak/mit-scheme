@@ -345,7 +345,7 @@ USA.
 (define (spar-push-elt-if predicate . args)
   (spar-elt (apply spar-push-if predicate args)))
 
-(define-deferred spar-match-null
+(define (spar-match-null)
   (spar-match null? spar-arg:form))
 
 ;;;; Environment combinators
@@ -436,5 +436,5 @@ USA.
 	      (map-in-order (lambda (elt) (elt body-senv))
 			    elts))))
       (spar+ (spar-elt spar-push-open-classified))
-      spar-match-null)
+      (spar-match-null))
     (spar-push spar-arg:senv)))
