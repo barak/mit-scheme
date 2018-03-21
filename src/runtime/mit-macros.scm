@@ -114,6 +114,7 @@ USA.
 (define-feature 'srfi-39 always) ;Parameter objects
 (define-feature 'srfi-62 always) ;S-expression comments
 (define-feature 'srfi-69 always) ;Basic Hash Tables
+(define-feature 'srfi-131 always) ;ERR5RS Record Syntax (reduced)
 
 (define ((os? value))
   (eq? value microcode-id/operating-system))

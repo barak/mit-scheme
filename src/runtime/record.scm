@@ -77,13 +77,10 @@ USA.
 	(%make-record-type type-name field-specs #f)
 	(begin
 	  (guarantee record-type? parent-type 'new-make-record-type)
-	  (let ((field-specs
-		 (append (record-type-field-specs parent-type)
-			 field-specs)))
-	    (if (duplicate-fields? field-specs)
-		(error "Overlap between child and parent fields:"
-		       field-specs))
-	    (%make-record-type type-name field-specs parent-type))))))
+	  (%make-record-type type-name
+			     (append (record-type-field-specs parent-type)
+				     field-specs)
+			     parent-type)))))
 
 (define (%make-record-type type-name field-specs parent-type)
   (letrec*
@@ -515,13 +512,14 @@ USA.
 (define record-updater record-modifier)
 
 (define (record-type-field-index record-type name error?)
-  (let* ((names (%record-type-field-names record-type))
-	 (n (vector-length names)))
-    (let loop ((i 0))
-      (if (fix:< i n)
+  (let ((names (%record-type-field-names record-type)))
+    ;; Search from end because a child field must override an ancestor field of
+    ;; the same name.
+    (let loop ((i (fix:- (vector-length names) 1)))
+      (if (fix:>= i 0)
 	  (if (eq? (vector-ref names i) name)
 	      (fix:+ i 1)
-	      (loop (fix:+ i 1)))
+	      (loop (fix:- i 1)))
 	  (and error?
 	       (record-type-field-index record-type
 					(error:no-such-slot record-type name)
