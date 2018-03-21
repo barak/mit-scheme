@@ -438,3 +438,128 @@ USA.
       (spar+ (spar-elt spar-push-open-classified))
       (spar-match-null))
     (spar-push spar-arg:senv)))
+
+;;;; Shorthand
+
+(define (make-pattern-compiler expr? caller)
+  (call-with-constructors expr?
+    (lambda (:* :+ :call :close :cons :elt :eqv? :form :hist :identifier? :list
+		:match-elt :match-null :mit-bvl? :opt :or :push :push-elt
+		:push-elt-if :push-value :r4rs-bvl? :senv :seq :symbol? :value)
+
+      (define (loop pattern)
+	(cond ((symbol? pattern)
+	       (case pattern
+		 ((symbol) (:push-elt-if (:symbol?) (:form)))
+		 ((identifier id) (:push-elt-if (:identifier?) (:form)))
+		 ((form expr) (:push-elt (:form)))
+		 ((r4rs-bvl) (:push-elt-if (:r4rs-bvl?) (:form)))
+		 ((mit-bvl) (:push-elt-if (:mit-bvl?) (:form)))
+		 ((ignore) (:elt))
+		 (else (bad-pattern pattern))))
+	      ((procedure? pattern)
+	       (:push-elt-if pattern (:form)))
+	      ((and (pair? pattern)
+		    (list? (cdr pattern)))
+	       (case (car pattern)
+		 ((*) (apply :* (map loop (cdr pattern))))
+		 ((+) (apply :+ (map loop (cdr pattern))))
+		 ((?) (apply :opt (map loop (cdr pattern))))
+		 ((or) (apply :or (map loop (cdr pattern))))
+		 ((seq) (apply :seq (map loop (cdr pattern))))
+		 ((quote)
+		  (if (not (and (pair? (cdr pattern))
+				(null? (cddr pattern))))
+		      (bad-pattern pattern))
+		  (:match-elt (:eqv?) (cadr pattern) (:form)))
+		 ((push) (apply :push (map convert-spar-arg (cdr pattern))))
+		 ((push-value)
+		  (apply :push-value
+			 (cadr pattern)
+			 (map convert-spar-arg (cddr pattern))))
+		 ((list) (apply :call (:list) (map loop (cdr pattern))))
+		 ((cons) (apply :call (:cons) (map loop (cdr pattern))))
+		 ((call) (apply :call (cadr pattern) (map loop (cddr pattern))))
+		 ((spar) (apply :seq (cdr pattern)))
+		 ((elt)
+		  (:elt (apply :seq (map loop (cdr pattern)))
+			(:match-null)))
+		 (else
+		  (bad-pattern pattern))))
+	      (else
+	       (bad-pattern pattern))))
+
+      (define (convert-spar-arg arg)
+	(case arg
+	  ((form) (:form))
+	  ((hist) (:hist))
+	  ((close) (:close))
+	  ((senv) (:senv))
+	  ((value) (:value))
+	  (else arg)))
+
+      (define (bad-pattern pattern)
+	(error:wrong-type-argument pattern "syntax-parser pattern" caller))
+
+      (lambda (pattern)
+	(if (not (list? pattern))
+	    (bad-pattern pattern))
+	(:seq (apply :seq (map loop pattern))
+	      (:match-null))))))
+
+(define (call-with-constructors expr? procedure)
+
+  (define (proc name procedure)
+    (if expr?
+	(lambda args (cons name args))
+	(lambda args (apply procedure args))))
+
+  (define (flat-proc name procedure)
+    (if expr?
+	(lambda args (cons name (elide-seqs args)))
+	(lambda args (apply procedure args))))
+
+  (define (elide-seqs exprs)
+    (append-map (lambda (expr)
+		  (if (and (pair? expr)
+			   (eq? 'spar-seq (car expr)))
+		      (cdr expr)
+		      (list expr)))
+		exprs))
+
+  (define (const name value)
+    (if expr?
+	(lambda () name)
+	(lambda () value)))
+
+  (procedure (flat-proc 'spar* spar*)
+	     (flat-proc 'spar+ spar+)
+	     (flat-proc 'spar-call-with-values spar-call-with-values)
+	     (const 'spar-arg:close spar-arg:close)
+	     (const 'cons cons)
+	     (flat-proc 'spar-elt spar-elt)
+	     (const 'eqv? eqv?)
+	     (const 'spar-arg:form spar-arg:form)
+	     (const 'spar-arg:hist spar-arg:hist)
+	     (const 'identifier? identifier?)
+	     (const 'list list)
+	     (proc 'spar-match-elt spar-match-elt)
+	     (proc 'spar-match-null spar-match-null)
+	     (const 'mit-lambda-list? mit-lambda-list?)
+	     (flat-proc 'spar-opt spar-opt)
+	     (proc 'spar-or spar-or)
+	     (proc 'spar-push spar-push)
+	     (proc 'spar-push-elt spar-push-elt)
+	     (proc 'spar-push-elt-if spar-push-elt-if)
+	     (proc 'spar-push-value spar-push-value)
+	     (const 'r4rs-lambda-list? r4rs-lambda-list?)
+	     (const 'spar-arg:senv spar-arg:senv)
+	     (flat-proc 'spar-seq spar-seq)
+	     (const 'symbol? symbol?)
+	     (const 'spar-arg:value spar-arg:value)))
+
+(define-deferred pattern->spar
+  (make-pattern-compiler #f 'pattern->spar))
+
+(define-deferred pattern->spar-expr
+  (make-pattern-compiler #t 'pattern->spar-expr))

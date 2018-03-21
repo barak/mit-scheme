@@ -147,59 +147,65 @@ USA.
   (spar-transformer->runtime
    (delay
      (spar-call-with-values
-	 (lambda (close identifiers expr . body-forms)
+	 (lambda (close bvl expr . body-forms)
 	   (let ((r-cwv (close 'call-with-values))
 		 (r-lambda (close 'lambda)))
 	     `(,r-cwv (,r-lambda () ,expr)
-		      (,r-lambda (,@identifiers) ,@body-forms))))
-       (spar-elt)
-       (spar-push spar-arg:close)
-       (spar-push-elt-if r4rs-lambda-list? spar-arg:form)
-       (spar-push-elt spar-arg:form)
-       (spar+ (spar-push-elt spar-arg:form))
-       (spar-match-null)))
+		      (,r-lambda ,bvl ,@body-forms))))
+       (pattern->spar '(ignore (push close) r4rs-bvl expr (+ form)))))
    system-global-environment))
 
-(define-syntax :define-record-type
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare				;ignore
-     (if (syntax-match? '((or identifier
-			      (identifier expression))
-			  (identifier * identifier)
-			  identifier
-			  * (identifier identifier ? identifier))
-			(cdr form))
-	 (let ((type-spec (cadr form))
-	       (constructor (car (caddr form)))
-	       (c-tags (cdr (caddr form)))
-	       (predicate (cadddr form))
-	       (fields (cddddr form))
-	       (de (rename 'define)))
-	   (let ((type (if (pair? type-spec) (car type-spec) type-spec)))
-	     `(,(rename 'begin)
-	       (,de ,type
-		    (,(rename 'new-make-record-type)
-		     ',type
-		     ',(map car fields)
-		     ,@(if (pair? type-spec)
-			   (list (cadr type-spec))
-			   '())))
-	       (,de ,constructor (,(rename 'record-constructor) ,type ',c-tags))
-	       (,de ,predicate (,(rename 'record-predicate) ,type))
-	       ,@(append-map
-		  (lambda (field)
-		    (let ((name (car field)))
-		      (cons `(,de ,(cadr field)
-				  (,(rename 'record-accessor) ,type ',name))
-			    (if (pair? (cddr field))
-				`((,de ,(caddr field)
-				       (,(rename 'record-modifier)
-					,type ',name)))
-				'()))))
-		  fields))))
-	 (ill-formed-syntax form)))))
-
+(define :define-record-type
+  (spar-transformer->runtime
+   (delay
+     (spar-call-with-values
+	 (lambda (close type-name parent maker-name maker-args pred-name
+			field-specs)
+	   (let ((beg (close 'begin))
+		 (de (close 'define))
+		 (mrt (close 'new-make-record-type))
+		 (rc (close 'record-constructor))
+		 (rp (close 'record-predicate))
+		 (ra (close 'record-accessor))
+		 (rm (close 'record-modifier)))
+	     `(,beg
+	       (,de ,type-name
+		    (,mrt ',type-name
+			  ',(map car field-specs)
+			  ,@(if parent
+				(list parent)
+				'())))
+	       ,@(if maker-name
+		     `((,de ,maker-name
+			    (,rc ,type-name
+				 ,@(if maker-args
+				       (list `',maker-args)
+				       '()))))
+		     '())
+	       ,@(if pred-name
+		     `((,de ,pred-name (,rp ,type-name)))
+		     '())
+	       ,@(append-map (lambda (field)
+			       (let ((field-name (car field)))
+				 `((,de ,(cadr field)
+					(,ra ,type-name ',field-name))
+				   ,@(if (caddr field)
+					 `((,de ,(caddr field)
+						(,rm ,type-name ',field-name)))
+					 '()))))
+			     field-specs))))
+       (pattern->spar
+	'(ignore (push close)
+		 (or (seq id (push #f))
+		     (elt id expr))
+		 (or (seq '#f (push #f #f))
+		     (seq id (push #f))
+		     (elt id (list (* symbol))))
+		 (or (seq '#f (push #f))
+		     id)
+		 (list (* (list (elt symbol id (or id (push #f))))))))))
+   system-global-environment))
+
 (define-syntax :define
   (er-macro-transformer
    (lambda (form rename compare)
@@ -236,21 +242,17 @@ USA.
 		    (,scode-lambda-name:let ,@ids)
 		    ,@body-forms)
 		   ,@vals))))
-       (spar-elt)
-       (spar-push spar-arg:close)
-       (spar-or (spar-push-elt-if identifier? spar-arg:form)
-		(spar-push '#f))
-       (spar-elt
-	 (spar-call-with-values list
-	  (spar* (spar-elt
-		   (spar-call-with-values cons
-		     (spar-push-elt-if identifier? spar-arg:form)
-		     (spar-or (spar-push-elt spar-arg:form)
-			      (spar-push-value unassigned-expression)))
-		   (spar-match-null)))
-	  (spar-match-null)))
-       (spar+ (spar-push-elt spar-arg:form))
-       (spar-match-null)))
+       (pattern->spar
+	`(ignore (push close)
+		 (or id (push #f))
+		 (elt
+		  (list
+		   (*
+		    (elt
+		     (cons id
+			   (or expr
+			       (push-value ,unassigned-expression)))))))
+		 (+ form)))))
    system-global-environment))
 
 (define named-let-strategy 'internal-definition)

@@ -4547,6 +4547,8 @@ USA.
   (files "syntax-parser")
   (parent (runtime syntax))
   (export ()
+	  pattern->spar
+	  pattern->spar-expr
 	  spar*
 	  spar+
 	  spar-append-map-values
