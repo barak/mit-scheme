@@ -31,45 +31,10 @@ USA.
 ;;; conforms to R4RS proposal
 
 (declare (usual-integrations))
-
+
 (define-primitives
   (vector-cons 2))
-
-(define (%copy-record record)
-  (let ((length (%record-length record)))
-    (let ((result (%make-record (%record-ref record 0) length)))
-      (do ((index 1 (fix:+ index 1)))
-	  ((fix:= index length))
-	(%record-set! result index (%record-ref record index)))
-      result)))
-
-;; Replace this with new-make-record-type after the 9.3 release.
-(define (make-record-type type-name field-specs
-			  #!optional
-			  default-inits unparser-method entity-unparser-method)
-  ;; The optional arguments should be removed after the 9.3 release.
-  (declare (ignore entity-unparser-method))
-  (let* ((caller 'make-record-type)
-	 (type
-	  (%make-record-type
-	   (->type-name type-name caller)
-	   (if (default-object? default-inits)
-	       (begin
-		 (guarantee valid-field-specs? field-specs caller)
-		 field-specs)
-	       (begin
-		 (if (not (list-of-unique-symbols? field-specs))
-		     (error:not-a list-of-unique-symbols? field-specs caller))
-		 (guarantee list? default-inits caller)
-		 (if (not (fix:= (length field-specs) (length default-inits)))
-		     (error:bad-range-argument default-inits caller))
-		 (map make-field-spec field-specs default-inits)))
-	   #f)))
-    (if (and unparser-method
-	     (not (default-object? unparser-method)))
-	(define-unparser-method (record-predicate type) unparser-method))
-    type))
-
+
 (define (new-make-record-type type-name field-specs #!optional parent-type)
   (guarantee valid-field-specs? field-specs 'new-make-record-type)
   (let ((type-name (->type-name type-name 'new-make-record-type)))
@@ -82,26 +47,6 @@ USA.
 				     field-specs)
 			     parent-type)))))
 
-(define (%make-record-type type-name field-specs parent-type)
-  (letrec*
-      ((predicate
-	(lambda (object)
-	  (%record-type-instance? type object)))
-       (type
-	(%%make-record-type type-name
-			    predicate
-			    (list->vector (map field-spec-name field-specs))
-			    (list->vector (map field-spec-init field-specs))
-			    parent-type
-			    #f
-			    #f)))
-    (%set-record-type-instance-marker! type type)
-    (set-predicate<=! predicate
-		      (if parent-type
-			  (record-predicate parent-type)
-			  record?))
-    type))
-
 (define (valid-field-specs? object)
   (and (list? object)
        (every field-spec? object)
@@ -124,11 +69,6 @@ USA.
 	   (%valid-default-init? (cadr object))
 	   (null? (cddr object)))))
 
-(define (make-field-spec name init)
-  (if init
-      (list name init)
-      name))
-
 (define (field-spec-name spec)
   (if (pair? spec) (car spec) spec))
 
@@ -149,6 +89,32 @@ USA.
 
 (define (initialize-record-procedures!)
   (run-deferred-boot-actions 'record-procedures))
+
+;; Replace this with new-make-record-type after the 9.3 release.
+(define (make-record-type type-name field-specs
+			  #!optional
+			  default-inits unparser-method entity-unparser-method)
+  (declare (ignore entity-unparser-method))
+  (let* ((caller 'make-record-type)
+	 (type
+	  (%make-record-type
+	   (->type-name type-name caller)
+	   (if (default-object? default-inits)
+	       (begin
+		 (guarantee valid-field-specs? field-specs caller)
+		 field-specs)
+	       (begin
+		 (if (not (list-of-unique-symbols? field-specs))
+		     (error:not-a list-of-unique-symbols? field-specs caller))
+		 (guarantee list? default-inits caller)
+		 (if (not (fix:= (length field-specs) (length default-inits)))
+		     (error:bad-range-argument default-inits caller))
+		 (map make-field-spec field-specs default-inits)))
+	   #f)))
+    (if (and unparser-method
+	     (not (default-object? unparser-method)))
+	(define-unparser-method (record-predicate type) unparser-method))
+    type))
 
 (define (list-of-unique-symbols? object)
   (and (list-of-type? object symbol?)
@@ -158,9 +124,41 @@ USA.
 		  (loop (cdr elements)))
 	     #t))))
 
-(define (%valid-default-inits? default-inits n-fields)
-  (and (fix:= n-fields (length default-inits))
-       (every %valid-default-init? default-inits)))
+(define (make-field-spec name init)
+  (if init
+      (list name init)
+      name))
+
+(define (%make-record-type type-name field-specs parent-type)
+  (letrec*
+      ((predicate
+	(lambda (object)
+	  (and (%record? object)
+	       (or (eq? (%record-type-instance-marker type)
+			(%record-ref object 0))
+		   (let ((type* (%marker->type (%record-ref object 0))))
+		     (and type*
+			  (%record-type< type* type)))))))
+       (type
+	(%%make-record-type type-name
+			    predicate
+			    (list->vector (map field-spec-name field-specs))
+			    (list->vector (map field-spec-init field-specs))
+			    parent-type
+			    #f
+			    #f)))
+    (%set-record-type-instance-marker! type type)
+    (set-predicate<=! predicate
+		      (if parent-type
+			  (record-predicate parent-type)
+			  record?))
+    type))
+
+(define (%record-type< t1 t2)
+  (let ((parent (%record-type-parent t1)))
+    (and parent
+	 (or (eq? parent t2)
+	     (%record-type< parent t2)))))
 
 (define %record-metatag)
 (define record-type?)
@@ -239,20 +237,16 @@ USA.
 
 (define (record? object)
   (and (%record? object)
-       (let ((marker (%record-ref object 0)))
-	 (or (record-type? marker)
-	     (%record-type-proxy? marker)))))
-
-(define (%record-type-instance? type object)
-  (and (%record? object)
-       (eq? (%record-ref object 0)
-	    (%record-type-instance-marker type))))
+       (%marker->type (%record-ref object 0))))
 
 (define (record-type-descriptor record)
-  (let ((marker (%record-ref record 0)))
-    (cond ((record-type? marker) marker)
-	  ((%record-type-proxy? marker) (%proxy->record-type marker))
-	  (else (error:not-a record? record 'record-type-descriptor)))))
+  (or (%marker->type (%record-ref record 0))
+      (error:not-a record? record 'record-type-descriptor)))
+
+(define (%marker->type marker)
+  (cond ((record-type? marker) marker)
+	((%record-type-proxy? marker) (%proxy->record-type marker))
+	(else #f)))
 
 (define (%record-type-fasdumpable? type)
   (%record-type-proxy? (%record-type-instance-marker type)))
@@ -456,6 +450,14 @@ USA.
   (guarantee record? record 'copy-record)
   (%copy-record record))
 
+(define (%copy-record record)
+  (let ((length (%record-length record)))
+    (let ((result (%make-record (%record-ref record 0) length)))
+      (do ((index 1 (fix:+ index 1)))
+	  ((fix:= index length))
+	(%record-set! result index (%record-ref record index)))
+      result)))
+
 (define (record-predicate record-type)
   (guarantee record-type? record-type 'record-predicate)
   (dispatch-tag->predicate record-type))
@@ -473,8 +475,7 @@ USA.
 		   (gen-accessor
 		    (lambda (i)
 		      `(lambda (record)
-			 (if (not (%record-type-instance? record-type record))
-			     (error:not-a predicate record))
+			 (guarantee predicate record)
 			 (%record-ref record ,i)))))
 	       (let loop ((i 1))
 		 (if (fix:<= i limit)
@@ -497,8 +498,7 @@ USA.
 		   (gen-accessor
 		    (lambda (i)
 		      `(lambda (record field-value)
-			 (if (not (%record-type-instance? record-type record))
-			     (error:not-a predicate record))
+			 (guarantee predicate record)
 			 (%record-set! record ,i field-value)))))
 	       (let loop ((i 1))
 		 (if (fix:<= i limit)
