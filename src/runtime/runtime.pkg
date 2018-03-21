@@ -4565,6 +4565,7 @@ USA.
 	  spar-filter-map-values
 	  spar-map-values
 	  spar-match
+	  spar-match-elt
 	  spar-match-null
 	  spar-opt
 	  spar-or
