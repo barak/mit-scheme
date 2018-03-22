@@ -4580,6 +4580,7 @@ USA.
 	  spar-repeat
 	  spar-seq
 	  spar-succeed
+	  spar-top-level
 	  spar-transform-values
 	  spar-with-mapped-senv)
   (export (runtime syntax)

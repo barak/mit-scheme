@@ -348,7 +348,7 @@ USA.
 (define (spar-match-null)
   (spar-match null? spar-arg:form))
 
-;;;; Environment combinators
+;;;; Classifier support
 
 (define (spar-with-mapped-senv procedure . spars)
   (let ((spar (%seq spars)))
@@ -360,7 +360,7 @@ USA.
 	      (declare (ignore senv*))
 	      (success input* senv output* failure*))
 	    failure))))
-
+
 (define-deferred spar-push-classified
   (spar-push-value classify-form
 		   spar-arg:form
@@ -383,6 +383,18 @@ USA.
 		   spar-arg:form
 		   spar-arg:senv
 		   spar-arg:hist))
+
+(define-deferred spar-push-body
+  (spar-seq
+    (spar-encapsulate-values
+	(lambda (elts)
+	  (lambda (frame-senv)
+	    (let ((body-senv (make-internal-senv frame-senv)))
+	      (map-in-order (lambda (elt) (elt body-senv))
+			    elts))))
+      (spar+ (spar-elt spar-push-open-classified))
+      (spar-match-null))
+    (spar-push spar-arg:senv)))
 
 ;;;; Value combinators
 
@@ -426,20 +438,14 @@ USA.
 		       (procedure output output*)
 		       failure*))
 	    failure))))
-
-(define-deferred spar-push-body
-  (spar-seq
-    (spar-encapsulate-values
-	(lambda (elts)
-	  (lambda (frame-senv)
-	    (let ((body-senv (make-internal-senv frame-senv)))
-	      (map-in-order (lambda (elt) (elt body-senv))
-			    elts))))
-      (spar+ (spar-elt spar-push-open-classified))
-      (spar-match-null))
-    (spar-push spar-arg:senv)))
 
 ;;;; Shorthand
+
+(define (spar-top-level pattern procedure)
+  (spar-call-with-values procedure
+    (spar-elt)
+    (spar-push spar-arg:close)
+    (pattern->spar pattern)))
 
 (define (make-pattern-compiler expr? caller)
   (call-with-constructors expr?
