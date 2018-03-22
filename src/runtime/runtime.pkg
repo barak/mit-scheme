@@ -4604,6 +4604,7 @@ USA.
 	  scons-if
 	  scons-lambda
 	  scons-let
+	  scons-let-syntax
 	  scons-letrec
 	  scons-letrec*
 	  scons-named-lambda
@@ -4611,8 +4612,8 @@ USA.
 	  scons-or
 	  scons-quote
 	  scons-quote-identifier
-	  scons-set!
-	  spar-top-level))
+	  scons-rule
+	  scons-set!))
 
 (define-package (runtime syntax rename)
   (files "syntax-rename")

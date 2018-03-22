@@ -29,7 +29,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define (spar-top-level pattern procedure)
+(define (scons-rule pattern procedure)
   (spar-call-with-values
       (lambda (close . args)
 	(close-part close (apply procedure args)))
@@ -37,9 +37,14 @@ USA.
     (spar-push spar-arg:close)
     (pattern->spar pattern)))
 
+(define-record-type <open-expr>
+    (make-open-expr procedure)
+    open-expr?
+  (procedure open-expr-procedure))
+
 (define (close-part close part)
-  (if (procedure? part)
-      (part close)
+  (if (open-expr? part)
+      ((open-expr-procedure part) close)
       part))
 
 (define (close-parts close parts)
@@ -47,82 +52,96 @@ USA.
        parts))
 
 (define (scons-and . exprs)
-  (lambda (close)
-    (cons (close 'and)
-	  (close-parts close exprs))))
+  (make-open-expr
+   (lambda (close)
+     (cons (close 'and)
+	   (close-parts close exprs)))))
 
 (define (scons-begin . exprs)
-  (lambda (close)
-    (cons (close 'begin)
-	  (close-parts close (remove default-object? exprs)))))
+  (make-open-expr
+   (lambda (close)
+     (cons (close 'begin)
+	   (close-parts close (remove default-object? exprs))))))
 
 (define (scons-call operator . operands)
-  (lambda (close)
-    (cons (if (identifier? operator)
-	      (close operator)
-	      (close-part close operator))
-	  (close-parts close operands))))
+  (make-open-expr
+   (lambda (close)
+     (cons (if (identifier? operator)
+	       (close operator)
+	       (close-part close operator))
+	   (close-parts close operands)))))
 
 (define (scons-declare . decls)
-  (lambda (close)
-    (cons (close 'declare)
-	  decls)))
+  (make-open-expr
+   (lambda (close)
+     (cons (close 'declare)
+	   decls))))
 
 (define (scons-define name value)
-  (lambda (close)
-    (list (close 'define)
-	  name
-	  (close-part close value))))
+  (make-open-expr
+   (lambda (close)
+     (list (close 'define)
+	   name
+	   (close-part close value)))))
 
 (define (scons-delay expr)
-  (lambda (close)
-    (list (close 'delay)
-	  (close-part close expr))))
+  (make-open-expr
+   (lambda (close)
+     (list (close 'delay)
+	   (close-part close expr)))))
 
 (define (scons-if predicate consequent alternative)
-  (lambda (close)
-    (list (close 'if)
-	  (close-part close predicate)
-	  (close-part close consequent)
-	  (close-part close alternative))))
+  (make-open-expr
+   (lambda (close)
+     (list (close 'if)
+	   (close-part close predicate)
+	   (close-part close consequent)
+	   (close-part close alternative)))))
 
 (define (scons-lambda bvl . body-forms)
-  (lambda (close)
-    (cons* (close 'lambda)
-	   bvl
-	   (close-parts close body-forms))))
+  (make-open-expr
+   (lambda (close)
+     (cons* (close 'lambda)
+	    bvl
+	    (close-parts close body-forms)))))
 
 (define (scons-named-lambda bvl . body-forms)
-  (lambda (close)
-    (cons* (close 'named-lambda)
-	   bvl
-	   (close-parts close body-forms))))
+  (make-open-expr
+   (lambda (close)
+     (cons* (close 'named-lambda)
+	    bvl
+	    (close-parts close body-forms)))))
 
 (define (scons-or . exprs)
-  (lambda (close)
-    (cons (close 'or)
-	  (close-parts close exprs))))
+  (make-open-expr
+   (lambda (close)
+     (cons (close 'or)
+	   (close-parts close exprs)))))
 
 (define (scons-quote datum)
-  (lambda (close)
-    (list (close 'quote) datum)))
+  (make-open-expr
+   (lambda (close)
+     (list (close 'quote) datum))))
 
 (define (scons-quote-identifier id)
-  (lambda (close)
-    (list (close 'quote-identifier) id)))
+  (make-open-expr
+   (lambda (close)
+     (list (close 'quote-identifier) id))))
 
 (define (scons-set! name value)
-  (lambda (close)
-    (list (close 'set!)
-	  name
-	  (close-part close value))))
+  (make-open-expr
+   (lambda (close)
+     (list (close 'set!)
+	   name
+	   (close-part close value)))))
 
 (define (let-like keyword)
   (lambda (bindings . body-forms)
-    (lambda (close)
-      (cons* (close keyword)
-	     (close-bindings close bindings)
-	     (close-parts close body-forms)))))
+    (make-open-expr
+     (lambda (close)
+       (cons* (close keyword)
+	      (close-bindings close bindings)
+	      (close-parts close body-forms))))))
 
 (define (close-bindings close bindings)
   (map (lambda (b)
@@ -130,12 +149,14 @@ USA.
        bindings))
 
 (define scons-let (let-like 'let))
+(define scons-let-syntax (let-like 'let-syntax))
 (define scons-letrec (let-like 'letrec))
 (define scons-letrec* (let-like 'letrec*))
 
 (define (scons-named-let name bindings . body-forms)
-  (lambda (close)
-    (cons* (close 'let)
-	   name
-	   (close-bindings close bindings)
-	   (close-parts close body-forms))))
+  (make-open-expr
+   (lambda (close)
+     (cons* (close 'let)
+	    name
+	    (close-bindings close bindings)
+	    (close-parts close body-forms)))))

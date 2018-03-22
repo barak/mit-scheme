@@ -147,7 +147,7 @@ USA.
 (define :receive
   (spar-transformer->runtime
    (delay
-     (spar-top-level '(r4rs-bvl expr (list (+ form)))
+     (scons-rule '(r4rs-bvl expr (list (+ form)))
        (lambda (bvl expr body-forms)
 	 (scons-call 'call-with-values
 		     (scons-lambda '() expr)
@@ -157,15 +157,14 @@ USA.
 (define :define-record-type
   (spar-transformer->runtime
    (delay
-     (spar-top-level
-	 '((or (seq id (push #f))
+     (scons-rule
+	 '((or (seq id (values #f))
 	       (elt id expr))
-	   (or (seq '#f (push #f #f))
-	       (seq id (push #f))
+	   (or (seq #f (values #f))
+	       (seq id (values #f))
 	       (elt id (list (* symbol))))
-	   (or (seq '#f (push #f))
-	       id)
-	   (list (* (list (elt symbol id (or id (push #f)))))))
+	   (or #f id)
+	   (list (* (list (elt symbol id (or id (values #f)))))))
        (lambda (type-name parent maker-name maker-args pred-name field-specs)
 	 (apply scons-begin
 		(scons-define type-name
@@ -202,12 +201,35 @@ USA.
 			    field-specs)))))
    system-global-environment))
 
-(define-syntax :define
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare				;ignore
-     (receive (name value) (parse-define-form form rename)
-       `(,keyword:define ,name ,value)))))
+(define :define
+  (spar-transformer->runtime
+   (delay
+     (spar-or
+       (scons-rule
+	   `(id
+	     (or expr
+		 (value-of ,unassigned-expression)))
+	 (lambda (name value)
+	   (scons-call keyword:define name value)))
+       (scons-rule
+	   `((spar
+	      ,(spar-elt
+		 (spar-push-elt-if identifier? spar-arg:form)
+		 (spar-push-if mit-lambda-list? spar-arg:form)))
+	     (list (+ form)))
+	 (lambda (name bvl body-forms)
+	   (scons-define name
+	     (apply scons-named-lambda (cons name bvl) body-forms))))
+       (scons-rule
+	   `((spar
+	      ,(spar-elt
+		 (spar-push-elt spar-arg:form)
+		 (spar-push-if mit-lambda-list? spar-arg:form)))
+	     (list (+ form)))
+	 (lambda (nested bvl body-forms)
+	   (scons-define nested
+	     (apply scons-lambda bvl body-forms))))))
+   system-global-environment))
 
 (define (parse-define-form form rename)
   (cond ((syntax-match? '((datum . mit-bvl) + form) (cdr form))
@@ -228,19 +250,13 @@ USA.
 (define :let
   (spar-transformer->runtime
    (delay
-     (spar-top-level
-	 `((or id (push #f))
-	   (elt
-	    (list
-	     (*
-	      (elt
-	       (cons id
-		     (or expr
-			 (push-value ,unassigned-expression)))))))
+     (scons-rule
+	 `((or id (values #f))
+	   ,(let-bindings-pattern)
 	   (list (+ form)))
        (lambda (name bindings body-forms)
 	 (let ((ids (map car bindings))
-	       (vals (map cdr bindings)))
+	       (vals (map cadr bindings)))
 	   (if name
 	       (generate-named-let name ids vals body-forms)
 	       (apply scons-call
@@ -249,6 +265,12 @@ USA.
 			     body-forms)
 		      vals))))))
    system-global-environment))
+
+(define (let-bindings-pattern)
+  `(elt (list
+	 (* (elt (list id
+		       (or expr
+			   (value-of ,unassigned-expression))))))))
 
 (define named-let-strategy 'internal-definition)
 
@@ -285,88 +307,83 @@ USA.
       (else
        (error "Unrecognized strategy:" named-let-strategy)))))
 
-(define-syntax :let*
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare			;ignore
-     (expand/let* form (rename 'LET)))))
+(define :let*
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `(,(let-bindings-pattern)
+	   (list (+ form)))
+       (lambda (bindings body-forms)
+	 (expand-let* scons-let bindings body-forms))))
+   system-global-environment))
 
-(define-syntax :let*-syntax
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare			;ignore
-     (expand/let* form (rename 'LET-SYNTAX)))))
+(define :let*-syntax
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 '((elt (list (* (elt (list id expr)))))
+	   (list (+ form)))
+       (lambda (bindings body-forms)
+	 (expand-let* scons-let-syntax bindings body-forms))))
+   system-global-environment))
 
-(define (expand/let* form let-keyword)
-  (syntax-check '(_ (* datum) + form) form)
-  (let ((bindings (cadr form))
-	(body (cddr form)))
-    (if (pair? bindings)
-	(let loop ((bindings bindings))
-	  (if (pair? (cdr bindings))
-	      `(,let-keyword (,(car bindings)) ,(loop (cdr bindings)))
-	      `(,let-keyword ,bindings ,@body)))
-	`(,let-keyword ,bindings ,@body))))
+(define (expand-let* scons-let bindings body-forms)
+  (if (pair? bindings)
+      (let loop ((bindings bindings))
+	(if (pair? (cdr bindings))
+	    (scons-let (list (car bindings)) (loop (cdr bindings)))
+	    (apply scons-let (list (car bindings)) body-forms)))
+      (apply scons-let '() body-forms)))
 
-(define-syntax :letrec
-  (er-macro-transformer
-   (lambda (form rename compare)
-     (declare (ignore compare))
-     (syntax-check '(_ (* (identifier ? expression)) + form) form)
-     (let ((bindings (cadr form))
-	   (r-lambda (rename 'LAMBDA))
-	   (r-named-lambda (rename 'NAMED-LAMBDA))
-	   (r-set!   (rename 'SET!)))
-       (let ((temps
-	      (map (lambda (binding)
-		     (make-synthetic-identifier
-		      (identifier->symbol (car binding))))
-		   bindings)))
-	 `((,r-named-lambda (,scode-lambda-name:unnamed ,@(map car bindings))
-			    ((,r-lambda ,temps
-					,@(map (lambda (binding temp)
-						 `(,r-set! ,(car binding)
-							   ,temp))
-					       bindings
-					       temps))
-			     ,@(map cadr bindings))
-			    ((,r-lambda () ,@(cddr form))))
-	   ,@(map (lambda (binding)
-		    (declare (ignore binding))
-		    (unassigned-expression)) bindings)))))))
+(define :letrec
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `(,(let-bindings-pattern)
+	   (list (+ form)))
+       (lambda (bindings body-forms)
+	 (let* ((ids (map car bindings))
+		(vals (map cadr bindings))
+		(temps (map new-identifier ids)))
+	   (scons-let (map (lambda (id)
+			     (list id (unassigned-expression)))
+			   ids)
+	     (apply scons-let
+		    (map list temps vals)
+		    (map scons-set! ids temps))
+	     (scons-call (apply scons-lambda '() body-forms)))))))
+   system-global-environment))
 
-(define-syntax :letrec*
-  (er-macro-transformer
-   (lambda (form rename compare)
-     (declare (ignore compare))
-     (syntax-check '(_ (* (identifier ? expression)) + form) form)
-     (let ((bindings (cadr form))
-	   (r-lambda (rename 'LAMBDA))
-	   (r-named-lambda (rename 'NAMED-LAMBDA))
-	   (r-set!   (rename 'SET!)))
-       `((,r-named-lambda (,scode-lambda-name:unnamed ,@(map car bindings))
-			  ,@(map (lambda (binding)
-				   `(,r-set! ,@binding)) bindings)
-			  ((,r-lambda () ,@(cddr form))))
-	 ,@(map (lambda (binding)
-		  (declare (ignore binding))
-		  (unassigned-expression)) bindings))))))
+(define :letrec*
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `(,(let-bindings-pattern)
+	   (list (+ form)))
+       (lambda (bindings body-forms)
+	 (let ((ids (map car bindings))
+	       (vals (map cadr bindings)))
+	   (scons-let (map (lambda (id)
+			     (list id (unassigned-expression)))
+			   ids)
+	     (apply scons-begin (map scons-set! ids vals))
+	     (scons-call (apply scons-lambda '() body-forms)))))))
+   system-global-environment))
 
-(define-syntax :and
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare				;ignore
-     (syntax-check '(_ * expression) form)
-     (let ((operands (cdr form)))
-       (if (pair? operands)
-	   (let ((if-keyword (rename 'IF)))
-	     (let loop ((operands operands))
-	       (if (pair? (cdr operands))
-		   `(,if-keyword ,(car operands)
-				 ,(loop (cdr operands))
-				 #F)
-		   (car operands))))
-	   `#T)))))
+(define :and
+  (spar-transformer->runtime
+   (delay
+     (scons-rule '((list (* expr)))
+       (lambda (exprs)
+	 (if (pair? exprs)
+	     (let loop ((exprs exprs))
+	       (if (pair? (cdr exprs))
+		   (scons-if (car exprs)
+			     (loop (cdr exprs))
+			     #f)
+		   (car exprs)))
+	     #t))))
+   system-global-environment))
 
 (define-syntax :case
   (er-macro-transformer

@@ -444,11 +444,13 @@ USA.
 (define (make-pattern-compiler expr? caller)
   (call-with-constructors expr?
     (lambda (:* :+ :call :close :cons :elt :eqv? :form :hist :identifier? :list
-		:match-elt :match-null :mit-bvl? :opt :or :push :push-elt
+		:match-elt :match-null :mit-bvl? :not :opt :or :push :push-elt
 		:push-elt-if :push-value :r4rs-bvl? :senv :seq :symbol? :value)
 
       (define (loop pattern)
-	(cond ((symbol? pattern)
+	(cond ((not pattern)
+	       (:push-elt-if (:not) (:form)))
+	      ((symbol? pattern)
 	       (case pattern
 		 ((symbol) (:push-elt-if (:symbol?) (:form)))
 		 ((identifier id) (:push-elt-if (:identifier?) (:form)))
@@ -472,15 +474,19 @@ USA.
 				(null? (cddr pattern))))
 		      (bad-pattern pattern))
 		  (:match-elt (:eqv?) (cadr pattern) (:form)))
-		 ((push) (apply :push (map convert-spar-arg (cdr pattern))))
-		 ((push-value)
+		 ((values) (apply :push (map convert-spar-arg (cdr pattern))))
+		 ((value-of)
 		  (apply :push-value
 			 (cadr pattern)
 			 (map convert-spar-arg (cddr pattern))))
 		 ((list) (apply :call (:list) (map loop (cdr pattern))))
 		 ((cons) (apply :call (:cons) (map loop (cdr pattern))))
 		 ((call) (apply :call (cadr pattern) (map loop (cddr pattern))))
-		 ((spar) (apply :seq (cdr pattern)))
+		 ((spar)
+		  (if (not (and (pair? (cdr pattern))
+				(null? (cddr pattern))))
+		      (bad-pattern pattern))
+		  (cadr pattern))
 		 ((elt)
 		  (:elt (apply :seq (map loop (cdr pattern)))
 			(:match-null)))
@@ -546,6 +552,7 @@ USA.
 	     (proc 'spar-match-elt spar-match-elt)
 	     (proc 'spar-match-null spar-match-null)
 	     (const 'mit-lambda-list? mit-lambda-list?)
+	     (const 'not not)
 	     (flat-proc 'spar-opt spar-opt)
 	     (proc 'spar-or spar-or)
 	     (proc 'spar-push spar-push)
