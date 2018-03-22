@@ -259,7 +259,9 @@ USA.
 		(vector 'DEBUGGING-INFO-WRAPPER
 			2
 			*debugging-key*
-			*info-output-filename*
+			(if (pathname? *info-output-filename*)
+			    (->namestring *info-output-filename*)
+			    *info-output-filename*)
 			*recursive-compilation-number*
 			#f))
 	       (else
@@ -275,7 +277,9 @@ USA.
 		(vector 'DEBUGGING-INFO-WRAPPER
 			2
 			*debugging-key*
-			*info-output-filename*
+			(if (pathname? *info-output-filename*)
+			    (->namestring *info-output-filename*)
+			    *info-output-filename*)
 			0
 			#f))))))))
 
