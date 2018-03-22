@@ -4583,7 +4583,6 @@ USA.
 	  spar-repeat
 	  spar-seq
 	  spar-succeed
-	  spar-top-level
 	  spar-transform-values
 	  spar-with-mapped-senv)
   (export (runtime syntax)
@@ -4591,6 +4590,29 @@ USA.
 	  spar-push-classified
 	  spar-push-deferred-classified
 	  spar-push-open-classified))
+
+(define-package (runtime syntax constructor)
+  (files "syntax-constructor")
+  (parent (runtime syntax))
+  (export ()
+	  scons-and
+	  scons-begin
+	  scons-call
+	  scons-declare
+	  scons-define
+	  scons-delay
+	  scons-if
+	  scons-lambda
+	  scons-let
+	  scons-letrec
+	  scons-letrec*
+	  scons-named-lambda
+	  scons-named-let
+	  scons-or
+	  scons-quote
+	  scons-quote-identifier
+	  scons-set!
+	  spar-top-level))
 
 (define-package (runtime syntax rename)
   (files "syntax-rename")

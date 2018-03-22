@@ -441,12 +441,6 @@ USA.
 
 ;;;; Shorthand
 
-(define (spar-top-level pattern procedure)
-  (spar-call-with-values procedure
-    (spar-elt)
-    (spar-push spar-arg:close)
-    (pattern->spar pattern)))
-
 (define (make-pattern-compiler expr? caller)
   (call-with-constructors expr?
     (lambda (:* :+ :call :close :cons :elt :eqv? :form :hist :identifier? :list

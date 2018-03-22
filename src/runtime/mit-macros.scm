@@ -148,11 +148,10 @@ USA.
   (spar-transformer->runtime
    (delay
      (spar-top-level '(r4rs-bvl expr (list (+ form)))
-       (lambda (close bvl expr body-forms)
-	 (let ((r-cwv (close 'call-with-values))
-	       (r-lambda (close 'lambda)))
-	   `(,r-cwv (,r-lambda () ,expr)
-		    (,r-lambda ,bvl ,@body-forms))))))
+       (lambda (bvl expr body-forms)
+	 (scons-call 'call-with-values
+		     (scons-lambda '() expr)
+		     (apply scons-lambda bvl body-forms)))))
    system-global-environment))
 
 (define :define-record-type
@@ -167,41 +166,40 @@ USA.
 	   (or (seq '#f (push #f))
 	       id)
 	   (list (* (list (elt symbol id (or id (push #f)))))))
-       (lambda (close type-name parent maker-name maker-args pred-name
-		      field-specs)
-	 (let ((beg (close 'begin))
-	       (de (close 'define))
-	       (mrt (close 'new-make-record-type))
-	       (rc (close 'record-constructor))
-	       (rp (close 'record-predicate))
-	       (ra (close 'record-accessor))
-	       (rm (close 'record-modifier)))
-	   `(,beg
-	     (,de ,type-name
-		  (,mrt ',type-name
-			',(map car field-specs)
-			,@(if parent
-			      (list parent)
-			      '())))
-	     ,@(if maker-name
-		   `((,de ,maker-name
-			  (,rc ,type-name
-			       ,@(if maker-args
-				     (list `',maker-args)
-				     '()))))
-		   '())
-	     ,@(if pred-name
-		   `((,de ,pred-name (,rp ,type-name)))
-		   '())
-	     ,@(append-map (lambda (field)
-			     (let ((field-name (car field)))
-			       `((,de ,(cadr field)
-				      (,ra ,type-name ',field-name))
-				 ,@(if (caddr field)
-				       `((,de ,(caddr field)
-					      (,rm ,type-name ',field-name)))
-				       '()))))
-			   field-specs))))))
+       (lambda (type-name parent maker-name maker-args pred-name field-specs)
+	 (apply scons-begin
+		(scons-define type-name
+		  (scons-call 'new-make-record-type
+			      (scons-quote type-name)
+			      (scons-quote (map car field-specs))
+			      (or parent (default-object))))
+		(if maker-name
+		    (scons-define maker-name
+		      (scons-call 'record-constructor
+				  type-name
+				  (if maker-args
+				      (scons-quote maker-args)
+				      (default-object))))
+		    (default-object))
+		(if pred-name
+		    (scons-define pred-name
+		      (scons-call 'record-predicate type-name))
+		    (default-object))
+		(append-map (lambda (field-spec)
+			      (let ((name (car field-spec))
+				    (accessor (cadr field-spec))
+				    (modifier (caddr field-spec)))
+				(list (scons-define accessor
+					(scons-call 'record-accessor
+						    type-name
+						    (scons-quote name)))
+				      (if modifier
+					  (scons-define modifier
+					    (scons-call 'record-modifier
+							type-name
+							(scons-quote name)))
+					  (default-object)))))
+			    field-specs)))))
    system-global-environment))
 
 (define-syntax :define
@@ -240,45 +238,50 @@ USA.
 		     (or expr
 			 (push-value ,unassigned-expression)))))))
 	   (list (+ form)))
-       (lambda (close name bindings body-forms)
+       (lambda (name bindings body-forms)
 	 (let ((ids (map car bindings))
 	       (vals (map cdr bindings)))
 	   (if name
-	       (generate-named-let close name ids vals body-forms)
-	       `((,(close 'named-lambda)
-		  (,scode-lambda-name:let ,@ids)
-		  ,@body-forms)
-		 ,@vals))))))
+	       (generate-named-let name ids vals body-forms)
+	       (apply scons-call
+		      (apply scons-named-lambda
+			     (cons scode-lambda-name:let ids)
+			     body-forms)
+		      vals))))))
    system-global-environment))
 
 (define named-let-strategy 'internal-definition)
 
-(define (generate-named-let close name ids vals body-forms)
-  (let ((proc `(,(close 'named-lambda) (,name ,@ids) ,@body-forms)))
+(define (generate-named-let name ids vals body-forms)
+  (let ((proc (apply scons-named-lambda (cons name ids) body-forms)))
     (case named-let-strategy
       ((internal-definition)
-       `((,(close 'let) ()
-	  (,(close 'define) ,name ,proc)
-	  ,name)
-	 ,@vals))
-      ((letrec letrec*)
-       `((,(close named-let-strategy) ((,name ,proc)) ,name)
-	 ,@vals))
+       (apply scons-call
+	      (scons-let '() (scons-define name proc) name)
+	      vals))
+      ((letrec)
+       (apply scons-call
+	      (scons-letrec (list (list name proc)) name)
+	      vals))
+      ((letrec*)
+       (apply scons-call
+	      (scons-letrec* (list (list name proc)) name)
+	      vals))
       ((fixed-point)
        (let ((iter (new-identifier 'iter))
 	     (kernel (new-identifier 'kernel))
-	     (temps (map new-identifier ids))
-	     (r-lambda (close 'lambda))
-	     (r-declare (close 'declare)))
-	 `((,r-lambda (,kernel)
-		      (,kernel ,kernel ,@vals))
-	   (,r-lambda (,iter ,@ids)
-		      ((,r-lambda (,name)
-				  (,r-declare (integrate-operator ,name))
-				  ,@body-forms)
-		       (,r-lambda ,temps
-				  (,r-declare (integrate ,@temps))
-				  (,iter ,iter ,@temps)))))))
+	     (temps (map new-identifier ids)))
+	 (scons-call (scons-lambda (list kernel)
+		       (apply scons-call kernel kernel vals))
+		     (scons-lambda (cons iter ids)
+		       (scons-call (apply scons-lambda
+					  (list name)
+					  (scons-declare
+					   (list 'integrate-operator name))
+					  body-forms)
+				   (scons-lambda temps
+				     (scons-declare (cons 'integrate temps))
+				     (apply scons-call iter iter temps)))))))
       (else
        (error "Unrecognized strategy:" named-let-strategy)))))
 
