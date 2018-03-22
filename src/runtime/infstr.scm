@@ -247,7 +247,7 @@ USA.
 (define (debugging-wrapper? wrapper)
   (and (vector? wrapper)
        (fix:= (vector-length wrapper) 6)
-       (eq? (vector-ref wrapper 0) 'DEBUGGING-INFO-WRAPPER)
+       (eq? (vector-ref wrapper 0) 'debugging-info-wrapper)
        (or (fix:= (vector-ref wrapper 1) 1)
 	   (fix:= (vector-ref wrapper 1) 2))
        (or (and (not (vector-ref wrapper 2))
@@ -269,7 +269,7 @@ USA.
   (vector-ref wrapper 2))
 
 (define (debugging-wrapper/pathname wrapper)
-  (vector-ref wrapper 3))
+  (convert-old-style-pathname (vector-ref wrapper 3)))
 
 (define (set-debugging-wrapper/pathname! wrapper pathname)
   (vector-set! wrapper 3 pathname))
@@ -286,7 +286,9 @@ USA.
 (define (convert-old-debugging-wrapper wrapper)
   (let ((make-wrapper
 	 (lambda (pathname index info)
-	   (vector 'DEBUGGING-INFO-WRAPPER 1 #f pathname index info))))
+	   (vector 'DEBUGGING-INFO-WRAPPER 1 #f
+		   (convert-old-style-pathname pathname)
+		   index info))))
     (cond ((dbg-info? wrapper)
 	   (make-wrapper #f #f wrapper))
 	  ((debug-info-pathname? wrapper)
@@ -367,7 +369,31 @@ USA.
 
 (define (dbg-info-key=? a b)
   (equal? a b))
-
+
 (define (debug-info-pathname? object)
-  (or (pathname? object)
-      (string? object)))
+  (or (string? object)
+      (old-style-pathname? object)))
+
+;; This can be removed after the 9.3 release.
+(define (old-style-pathname? object)
+  (and (vector? object)
+       (fix:= 7 (vector-length object))
+       (eq? '|#[(runtime pathname)pathname]| (vector-ref object 0))))
+
+;; This can be removed after the 9.3 release.
+(define (convert-old-style-pathname object)
+  (if (old-style-pathname? object)
+      (%make-pathname (let ((host (vector-ref object 1)))
+			(if (and (vector? host)
+				 (fix:= 3 (vector-length host))
+				 (eq? '|#[(runtime pathname)host]|
+				      (vector-ref host 0)))
+			    (%make-host (vector-ref host 1)
+					(vector-ref host 2))
+			    host))
+		      (vector-ref object 2)
+		      (vector-ref object 3)
+		      (vector-ref object 4)
+		      (vector-ref object 5)
+		      (vector-ref object 6))
+      object))

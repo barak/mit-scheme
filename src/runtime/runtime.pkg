@@ -3439,6 +3439,9 @@ USA.
 	  system-library-pathname
 	  uri->pathname
 	  user-homedir-pathname)
+  (export (runtime compiler-info)
+	  %make-host
+	  %make-pathname)
   (export (runtime load)
 	  library-directory-path)
   (initialization (initialize-package!)))
