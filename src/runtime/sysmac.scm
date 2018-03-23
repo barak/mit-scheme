@@ -97,14 +97,15 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      (declare (ignore compare))
-     (receive (name value)
-	 (parse-define-form form rename)
-       `(,(rename 'BEGIN)
-	  (,(rename 'DEFINE) ,name)
-	  (,(rename 'ADD-BOOT-INIT!)
-	   (,(rename 'LAMBDA) ()
-	     (,(rename 'SET!) ,name ,value)
-	     ,(rename 'UNSPECIFIC))))))))
+     (syntax-check '(_ identifier expression) form)
+     (let ((name (cadr form))
+	   (value (caddr form)))
+       `(,(rename 'begin)
+	  (,(rename 'define) ,name)
+	  (,(rename 'add-boot-init!)
+	   (,(rename 'lambda) ()
+	     (,(rename 'set!) ,name ,value)
+	     ,(rename 'unspecific))))))))
 
 (define-syntax select-on-bytes-per-word
   (er-macro-transformer

@@ -4722,9 +4722,7 @@ USA.
 	  (receive :receive)
 	  (unless :unless)
 	  (when :when)
-	  get-supported-features)
-  (export (runtime)
-	  parse-define-form))
+	  get-supported-features))
 
 (define-package (runtime syntax syntax-rules)
   (files "syntax-rules")

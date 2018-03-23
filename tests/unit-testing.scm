@@ -78,12 +78,15 @@ USA.
 (define-syntax define-for-tests
   (er-macro-transformer
    (lambda (form rename compare)
-     compare
-     (receive (name value)
-	 (parse-define-form form rename)
-       `(,(rename 'BEGIN)
-	 (,(rename 'DEFINE) ,name ,value)
-	 (,(rename 'ADD-TEST-DEFINITION) ',name ,name))))))
+     (declare (ignore compare))
+     (let ((name
+	    (let loop ((p (cadr form)))
+	      (cond ((pair? p) (loop (car p)))
+		    ((identifier? p) p)
+		    (else (ill-formed-syntax form))))))
+       `(,(rename 'begin)
+	 (,(rename 'define) ,@(cdr form))
+	 (,(rename 'add-test-definition) ',name ,name))))))
 
 (define (add-test-definition name value)
   (let ((p (assq name test-definitions)))

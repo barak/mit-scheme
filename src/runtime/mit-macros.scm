@@ -230,22 +230,6 @@ USA.
 	   (scons-define nested
 	     (apply scons-lambda bvl body-forms))))))
    system-global-environment))
-
-(define (parse-define-form form rename)
-  (cond ((syntax-match? '((datum . mit-bvl) + form) (cdr form))
-	 (parse-define-form
-	  `(,(car form) ,(caadr form)
-			,(if (identifier? (caadr form))
-			     `(,(rename 'NAMED-LAMBDA) ,@(cdr form))
-			     `(,(rename 'LAMBDA) ,(cdadr form) ,@(cddr form))))
-	  rename))
-	((syntax-match? '(identifier ? expression) (cdr form))
-	 (values (cadr form)
-		 (if (pair? (cddr form))
-		     (caddr form)
-		     (unassigned-expression))))
-	(else
-	 (ill-formed-syntax form))))
 
 (define :let
   (spar-transformer->runtime

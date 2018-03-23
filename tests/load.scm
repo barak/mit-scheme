@@ -25,7 +25,6 @@ USA.
 |#
 
 (let ((environment (make-top-level-environment)))
-  (environment-link-name environment '(runtime mit-macros) 'parse-define-form)
   (load (merge-pathnames "unit-testing" (current-load-pathname))
 	environment)
   (for-each (lambda (name)
