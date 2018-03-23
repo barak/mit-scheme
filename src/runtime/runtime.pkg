@@ -4556,6 +4556,7 @@ USA.
 	  spar+
 	  spar-append-map-values
 	  spar-arg:close
+	  spar-arg:compare
 	  spar-arg:form
 	  spar-arg:hist
 	  spar-arg:senv

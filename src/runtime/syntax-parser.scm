@@ -155,25 +155,34 @@ USA.
   (cond ((eq? arg spar-arg:form) (%input-form input))
 	((eq? arg spar-arg:hist) (%input-hist input))
 	((eq? arg spar-arg:close) (make-closer (%input-closing-senv input)))
+	((eq? arg spar-arg:compare)
+	 (make-comparer (%input-closing-senv input) senv))
 	((eq? arg spar-arg:senv) senv)
 	((eq? arg spar-arg:value) (%output-top output))
 	((eq? arg spar-arg:values) (%output-all output))
 	(else arg)))
 
-(define (make-closer senv)
+(define (make-closer closing-senv)
   (lambda (expr)
-    (close-syntax expr senv)))
+    (close-syntax expr closing-senv)))
+
+(define (make-comparer closing-senv use-senv)
+  (lambda (reference form)
+    (and (identifier? form)
+	 (identifier=? closing-senv reference use-senv form))))
 
 (define-deferred spar-arg:form (string->uninterned-symbol ".form."))
 (define-deferred spar-arg:hist (string->uninterned-symbol ".hist."))
 (define-deferred spar-arg:close (string->uninterned-symbol ".close."))
+(define-deferred spar-arg:compare (string->uninterned-symbol ".compare."))
 (define-deferred spar-arg:senv (string->uninterned-symbol ".senv."))
 (define-deferred spar-arg:value (string->uninterned-symbol ".value."))
 (define-deferred spar-arg:values (string->uninterned-symbol ".values."))
 
 (define (spar-match predicate . args)
   (lambda (input senv output success failure)
-    (if (apply predicate (%subst-args input senv output args))
+    (if (apply (%subst-arg input senv output predicate)
+	       (%subst-args input senv output args))
 	(success input senv output failure)
 	(failure))))
 
@@ -443,7 +452,7 @@ USA.
 
 (define (make-pattern-compiler expr? caller)
   (call-with-constructors expr?
-    (lambda (:* :+ :call :close :cons :elt :eqv? :form :hist :identifier? :list
+    (lambda (:* :+ :call :close :compare :cons :elt :eqv? :form :hist :id? :list
 		:match-elt :match-null :mit-bvl? :not :opt :or :push :push-elt
 		:push-elt-if :push-value :r4rs-bvl? :senv :seq :symbol? :value)
 
@@ -453,7 +462,7 @@ USA.
 	      ((symbol? pattern)
 	       (case pattern
 		 ((symbol) (:push-elt-if (:symbol?) (:form)))
-		 ((identifier id) (:push-elt-if (:identifier?) (:form)))
+		 ((identifier id) (:push-elt-if (:id?) (:form)))
 		 ((form expr) (:push-elt (:form)))
 		 ((r4rs-bvl) (:push-elt-if (:r4rs-bvl?) (:form)))
 		 ((mit-bvl) (:push-elt-if (:mit-bvl?) (:form)))
@@ -474,6 +483,12 @@ USA.
 				(null? (cddr pattern))))
 		      (bad-pattern pattern))
 		  (:match-elt (:eqv?) (cadr pattern) (:form)))
+		 ((keyword)
+		  (if (not (and (pair? (cdr pattern))
+				(identifier? (cadr pattern))
+				(null? (cddr pattern))))
+		      (bad-pattern pattern))
+		  (:match-elt (:compare) (cadr pattern) (:form)))
 		 ((values) (apply :push (map convert-spar-arg (cdr pattern))))
 		 ((value-of)
 		  (apply :push-value
@@ -490,16 +505,15 @@ USA.
 		 ((elt)
 		  (:elt (apply :seq (map loop (cdr pattern)))
 			(:match-null)))
-		 (else
-		  (bad-pattern pattern))))
-	      (else
-	       (bad-pattern pattern))))
+		 (else (bad-pattern pattern))))
+	      (else (bad-pattern pattern))))
 
       (define (convert-spar-arg arg)
 	(case arg
 	  ((form) (:form))
 	  ((hist) (:hist))
 	  ((close) (:close))
+	  ((compare) (:compare))
 	  ((senv) (:senv))
 	  ((value) (:value))
 	  (else arg)))
@@ -542,6 +556,7 @@ USA.
 	     (flat-proc 'spar+ spar+)
 	     (flat-proc 'spar-call-with-values spar-call-with-values)
 	     (const 'spar-arg:close spar-arg:close)
+	     (const 'spar-arg:compare spar-arg:compare)
 	     (const 'cons cons)
 	     (flat-proc 'spar-elt spar-elt)
 	     (const 'eqv? eqv?)
