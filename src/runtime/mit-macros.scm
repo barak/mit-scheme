@@ -366,67 +366,63 @@ USA.
 	     #t))))
    system-global-environment))
 
-(define-syntax :case
-  (er-macro-transformer
-   (lambda (form rename compare)
-     (syntax-check '(_ expression + (datum * expression)) form)
-     (letrec
-	 ((process-clause
-	   (lambda (clause rest)
-	     (cond ((null? (car clause))
-		    (process-rest rest))
-		   ((and (identifier? (car clause))
-			 (compare (rename 'ELSE) (car clause))
-			 (null? rest))
-		    `(,(rename 'BEGIN) ,@(cdr clause)))
-		   ((list? (car clause))
-		    `(,(rename 'IF) ,(process-predicate (car clause))
-				    (,(rename 'BEGIN) ,@(cdr clause))
-				    ,(process-rest rest)))
+(define :case
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 (let ((action-pattern
+		'(if (keyword =>)
+		     (and (values apply)
+			  any)
+		     (and (values eval)
+			  (+ any)))))
+	   `(any
+	     (list (* (list (elt (list (elt (* any)))
+				 ,action-pattern))))
+	     (or (list (elt (keyword else)
+			    ,action-pattern))
+		 (values #f))))
+       (lambda (expr clauses else-clause)
+	 (let ((temp (new-identifier 'key)))
+
+	   (define (process-clauses clauses)
+	     (cond ((pair? clauses)
+		    (process-clause (car clauses)
+				    (process-clauses (cdr clauses))))
+		   (else-clause
+		    (process-action (car else-clause) (cdr else-clause)))
 		   (else
-		    (syntax-error "Ill-formed clause:" clause)))))
-	  (process-rest
-	   (lambda (rest)
-	     (if (pair? rest)
-		 (process-clause (car rest) (cdr rest))
-		 (unspecific-expression))))
-	  (process-predicate
-	   (lambda (items)
-	     ;; Optimize predicate for speed in compiled code.
-	     (cond ((null? (cdr items))
-		    (single-test (car items)))
-		   ((null? (cddr items))
-		    `(,(rename 'OR) ,(single-test (car items))
-				    ,(single-test (cadr items))))
-		   ((null? (cdddr items))
-		    `(,(rename 'OR) ,(single-test (car items))
-				    ,(single-test (cadr items))
-				    ,(single-test (caddr items))))
-		   ((null? (cddddr items))
-		    `(,(rename 'OR) ,(single-test (car items))
-				    ,(single-test (cadr items))
-				    ,(single-test (caddr items))
-				    ,(single-test (cadddr items))))
-		   (else
-		    `(,(rename
-			(if (every eq-testable? items) 'MEMQ 'MEMV))
-		      ,(rename 'TEMP)
-		      ',items)))))
-	  (single-test
-	   (lambda (item)
-	     `(,(rename (if (eq-testable? item) 'EQ? 'EQV?))
-	       ,(rename 'TEMP)
-	       ',item)))
-	  (eq-testable?
-	   (lambda (item)
-	     (or (symbol? item)
-		 (boolean? item)
-		 ;; remainder are implementation dependent:
-		 (char? item)
-		 (fix:fixnum? item)))))
-       `(,(rename 'LET) ((,(rename 'TEMP) ,(cadr form)))
-			,(process-clause (caddr form)
-					 (cdddr form)))))))
+		    (unspecific-expression))))
+
+	   (define (process-clause clause rest)
+	     (if (pair? (car clause))
+		 (scons-if (process-predicate (car clause))
+			   (process-action (cadr clause) (cddr clause))
+			   rest)
+		 rest))
+
+	   (define (process-predicate items)
+	     (apply scons-or
+		    (map (lambda (item)
+			   (scons-call (if (or (symbol? item)
+					       (boolean? item)
+					       ;; implementation dependent:
+					       (char? item)
+					       (fix:fixnum? item))
+					   'eq?
+					   'eqv?)
+				       (scons-quote item)
+				       temp))
+			 items)))
+
+	   (define (process-action type exprs)
+	     (cond ((eq? type 'eval) (apply scons-begin exprs))
+		   ((eq? type 'apply) (scons-call (car exprs) temp))
+		   (else (error "Unrecognized action type:" type))))
+
+	   (scons-let (list (list temp expr))
+	     (process-clauses clauses))))))
+   system-global-environment))
 
 (define-syntax :cond
   (er-macro-transformer
