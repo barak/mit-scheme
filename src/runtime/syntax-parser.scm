@@ -329,6 +329,15 @@ USA.
 (define (spar-fail input senv output success failure)
   (declare (ignore input senv output success))
   (failure))
+
+(define (spar-if s1 s2 s3)
+  (lambda (input senv output success failure)
+    (s1 input senv output
+	(lambda (input* senv* output* failure*)
+	  (declare (ignore failure*))
+	  (s2 input* senv* output* success failure))
+	(lambda ()
+	  (s3 input senv output success failure)))))
 
 ;;;; Element combinators
 
@@ -452,9 +461,9 @@ USA.
 
 (define (make-pattern-compiler expr? caller)
   (call-with-constructors expr?
-    (lambda (:* :+ :call :close :compare :cons :elt :eqv? :form :hist :id? :list
-		:match-elt :match-null :opt :or :push :push-elt :push-elt-if
-		:push-value :senv :seq :symbol? :value)
+    (lambda (:* :+ :call :close :compare :cons :elt :eqv? :form :hist :id? :if
+		:list :match-elt :match-null :opt :or :push :push-elt
+		:push-elt-if :push-value :senv :seq :symbol? :value)
 
       (define (loop pattern)
 	(let-syntax
@@ -476,6 +485,7 @@ USA.
 		 ('('* * form) (apply :* (map loop (cdr pattern))))
 		 ('('+ * form) (apply :+ (map loop (cdr pattern))))
 		 ('('? * form) (apply :opt (map loop (cdr pattern))))
+		 ('('if form form form) (apply :if (map loop (cdr pattern))))
 		 ('('or * form) (apply :or (map loop (cdr pattern))))
 		 ('('and * form) (apply :seq (map loop (cdr pattern))))
 		 ('('quote form) (:match-elt (:eqv?) (cadr pattern) (:form)))
@@ -550,6 +560,7 @@ USA.
 	     (const 'spar-arg:form spar-arg:form)
 	     (const 'spar-arg:hist spar-arg:hist)
 	     (const 'identifier? identifier?)
+	     (proc 'spar-if spar-if)
 	     (const 'list list)
 	     (proc 'spar-match-elt spar-match-elt)
 	     (proc 'spar-match-null spar-match-null)
