@@ -147,7 +147,7 @@ USA.
 (define :receive
   (spar-transformer->runtime
    (delay
-     (scons-rule '(r4rs-bvl expr (list (+ form)))
+     (scons-rule `(,r4rs-lambda-list? any (list (+ any)))
        (lambda (bvl expr body-forms)
 	 (scons-call 'call-with-values
 		     (scons-lambda '() expr)
@@ -158,12 +158,12 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 '((or (seq id (values #f))
-	       (elt id expr))
-	   (or (seq #f (values #f))
-	       (seq id (values #f))
+	 `((or (and id (values #f))
+	       (elt id any))
+	   (or (and id (values #f))
+	       (and ,not (values #f))
 	       (elt id (list (* symbol))))
-	   (or #f id)
+	   (or id ,not)
 	   (list (* (list (elt symbol id (or id (values #f)))))))
        (lambda (type-name parent maker-name maker-args pred-name field-specs)
 	 (apply scons-begin
@@ -205,10 +205,7 @@ USA.
   (spar-transformer->runtime
    (delay
      (spar-or
-       (scons-rule
-	   `(id
-	     (or expr
-		 (value-of ,unassigned-expression)))
+       (scons-rule `(id ,(optional-value-pattern))
 	 (lambda (name value)
 	   (scons-call keyword:define name value)))
        (scons-rule
@@ -216,7 +213,7 @@ USA.
 	      ,(spar-elt
 		 (spar-push-elt-if identifier? spar-arg:form)
 		 (spar-push-if mit-lambda-list? spar-arg:form)))
-	     (list (+ form)))
+	     (list (+ any)))
 	 (lambda (name bvl body-forms)
 	   (scons-define name
 	     (apply scons-named-lambda (cons name bvl) body-forms))))
@@ -225,11 +222,14 @@ USA.
 	      ,(spar-elt
 		 (spar-push-elt spar-arg:form)
 		 (spar-push-if mit-lambda-list? spar-arg:form)))
-	     (list (+ form)))
+	     (list (+ any)))
 	 (lambda (nested bvl body-forms)
 	   (scons-define nested
 	     (apply scons-lambda bvl body-forms))))))
    system-global-environment))
+
+(define (optional-value-pattern)
+  `(or any (value-of ,unassigned-expression)))
 
 (define :let
   (spar-transformer->runtime
@@ -237,7 +237,7 @@ USA.
      (scons-rule
 	 `((or id (values #f))
 	   ,(let-bindings-pattern)
-	   (list (+ form)))
+	   (list (+ any)))
        (lambda (name bindings body-forms)
 	 (let ((ids (map car bindings))
 	       (vals (map cadr bindings)))
@@ -251,10 +251,7 @@ USA.
    system-global-environment))
 
 (define (let-bindings-pattern)
-  `(elt (list
-	 (* (elt (list id
-		       (or expr
-			   (value-of ,unassigned-expression))))))))
+  `(elt (list (* (elt (list id ,(optional-value-pattern)))))))
 
 (define named-let-strategy 'internal-definition)
 
@@ -296,7 +293,7 @@ USA.
    (delay
      (scons-rule
 	 `(,(let-bindings-pattern)
-	   (list (+ form)))
+	   (list (+ any)))
        (lambda (bindings body-forms)
 	 (expand-let* scons-let bindings body-forms))))
    system-global-environment))
@@ -305,8 +302,8 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 '((elt (list (* (elt (list id expr)))))
-	   (list (+ form)))
+	 '((elt (list (* (elt (list id any)))))
+	   (list (+ any)))
        (lambda (bindings body-forms)
 	 (expand-let* scons-let-syntax bindings body-forms))))
    system-global-environment))
@@ -324,7 +321,7 @@ USA.
    (delay
      (scons-rule
 	 `(,(let-bindings-pattern)
-	   (list (+ form)))
+	   (list (+ any)))
        (lambda (bindings body-forms)
 	 (let* ((ids (map car bindings))
 		(vals (map cadr bindings))
@@ -343,7 +340,7 @@ USA.
    (delay
      (scons-rule
 	 `(,(let-bindings-pattern)
-	   (list (+ form)))
+	   (list (+ any)))
        (lambda (bindings body-forms)
 	 (let ((ids (map car bindings))
 	       (vals (map cadr bindings)))
@@ -357,7 +354,7 @@ USA.
 (define :and
   (spar-transformer->runtime
    (delay
-     (scons-rule '((list (* expr)))
+     (scons-rule '((list (* any)))
        (lambda (exprs)
 	 (if (pair? exprs)
 	     (let loop ((exprs exprs))
