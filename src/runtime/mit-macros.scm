@@ -371,10 +371,9 @@ USA.
    (delay
      (scons-rule
 	 (let ((action-pattern
-		'(if (noise-keyword =>)
-		     (and (values apply)
-			  any)
-		     (and (values eval)
+		'(if (keyword =>)
+		     any
+		     (and (values begin)
 			  (+ any)))))
 	   `(any
 	     (list (* (list (elt (list (elt (* any)))
@@ -416,8 +415,8 @@ USA.
 			 items)))
 
 	   (define (process-action type exprs)
-	     (cond ((eq? type 'eval) (apply scons-begin exprs))
-		   ((eq? type 'apply) (scons-call (car exprs) temp))
+	     (cond ((eq? type 'begin) (apply scons-begin exprs))
+		   ((eq? type '=>) (scons-call (car exprs) temp))
 		   (else (error "Unrecognized action type:" type))))
 
 	   (scons-let (list (list temp expr))
