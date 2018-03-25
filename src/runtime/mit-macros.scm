@@ -371,7 +371,7 @@ USA.
    (delay
      (scons-rule
 	 (let ((action-pattern
-		'(if (keyword =>)
+		'(if (noise-keyword =>)
 		     (and (values apply)
 			  any)
 		     (and (values eval)
@@ -379,7 +379,7 @@ USA.
 	   `(any
 	     (list (* (list (elt (list (elt (* any)))
 				 ,action-pattern))))
-	     (or (list (elt (keyword else)
+	     (or (list (elt (noise-keyword else)
 			    ,action-pattern))
 		 (values #f))))
        (lambda (expr clauses else-clause)
