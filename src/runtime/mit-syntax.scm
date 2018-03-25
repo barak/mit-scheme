@@ -220,7 +220,7 @@ USA.
        (spar-elt)
        (spar-elt
 	 (spar-push-elt-if identifier? spar-arg:form)
-	 (spar-push-if mit-lambda-list? spar-arg:form))
+	 (spar-push-form-if mit-lambda-list? spar-arg:form))
        spar-push-body))))
 
 (define (assemble-lambda-item name bvl body senv)

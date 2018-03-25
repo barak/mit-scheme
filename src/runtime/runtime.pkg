@@ -4580,7 +4580,7 @@ USA.
 	  spar-push-body
 	  spar-push-elt
 	  spar-push-elt-if
-	  spar-push-if
+	  spar-push-form-if
 	  spar-push-value
 	  spar-repeat
 	  spar-seq

@@ -212,7 +212,7 @@ USA.
 	   `((spar
 	      ,(spar-elt
 		 (spar-push-elt-if identifier? spar-arg:form)
-		 (spar-push-if mit-lambda-list? spar-arg:form)))
+		 (spar-push-form-if mit-lambda-list? spar-arg:form)))
 	     (list (+ any)))
 	 (lambda (name bvl body-forms)
 	   (scons-define name
@@ -220,8 +220,8 @@ USA.
        (scons-rule
 	   `((spar
 	      ,(spar-elt
-		 (spar-push-elt spar-arg:form)
-		 (spar-push-if mit-lambda-list? spar-arg:form)))
+		 (spar-push-elt)
+		 (spar-push-form-if mit-lambda-list? spar-arg:form)))
 	     (list (+ any)))
 	 (lambda (nested bvl body-forms)
 	   (scons-define nested
