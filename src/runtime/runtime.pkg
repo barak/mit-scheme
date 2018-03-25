@@ -4583,7 +4583,7 @@ USA.
 	  spar-push-form-if
 	  spar-push-value
 	  spar-repeat
-	  spar-seq
+	  spar-and
 	  spar-succeed
 	  spar-transform-values
 	  spar-with-mapped-senv)

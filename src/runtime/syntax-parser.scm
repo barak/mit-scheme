@@ -194,7 +194,7 @@ USA.
 	     failure)))
 
 (define (spar-push-form-if predicate . args)
-  (spar-seq (apply spar-match predicate args)
+  (spar-and (apply spar-match predicate args)
 	    (spar-push spar-arg:form)))
 
 (define (spar-push-value procedure . args)
@@ -222,14 +222,14 @@ USA.
 ;;;; Repeat combinators
 
 (define (spar-opt . spars)
-  (let ((spar (%seq spars)))
+  (let ((spar (%and spars)))
     (lambda (input senv output success failure)
       (spar input senv output success
 	    (lambda ()
 	      (success input senv output failure))))))
 
 (define (spar* . spars)
-  (let ((spar (%seq spars)))
+  (let ((spar (%and spars)))
     (lambda (input senv output success failure)
       (letrec
 	  ((loop
@@ -240,8 +240,8 @@ USA.
 	(loop input senv output failure)))))
 
 (define (spar+ . spars)
-  (let ((spar (%seq spars)))
-    (spar-seq spar (spar* spar))))
+  (let ((spar (%and spars)))
+    (spar-and spar (spar* spar))))
 
 (define (spar-repeat n-min n-max . spars)
   (guarantee exact-nonnegative-integer? n-min 'spar-repeat)
@@ -250,7 +250,7 @@ USA.
 	(guarantee exact-nonnegative-integer? n-max 'spar-repeat)
 	(if (not (>= n-max n-min))
 	    (error:bad-range-argument n-max 'spar-repeat))))
-  (let ((spar (%seq spars)))
+  (let ((spar (%and spars)))
     (let ((s1
 	   (case n-min
 	     ((0) #f)
@@ -264,7 +264,7 @@ USA.
 		   ((1) spar)
 		   (else (%repeat-up-to spar delta))))
 	       (spar* spar))))
-      (cond ((and s1 s2) (spar-seq s1 s2))
+      (cond ((and s1 s2) (spar-and s1 s2))
 	    ((or s1 s2))
 	    (else spar-succeed)))))
 
@@ -295,17 +295,17 @@ USA.
 		(success input senv output failure)))))
       (loop n input senv output failure))))
 
-;;;; Sequence and alternative
+;;;; Conditionals
 
-(define (spar-seq . spars)
-  (%seq spars))
+(define (spar-and . spars)
+  (%and spars))
 
-(define (%seq spars)
+(define (%and spars)
   (cond ((not (pair? spars)) spar-succeed)
         ((not (pair? (cdr spars))) (car spars))
-        (else (reduce-right %seq-combiner #f spars))))
+        (else (reduce-right %and-combiner #f spars))))
 
-(define (%seq-combiner s1 s2)
+(define (%and-combiner s1 s2)
   (lambda (input senv output success failure)
     (s1 input senv output
 	(lambda (input* senv* output* failure*)
@@ -342,7 +342,7 @@ USA.
 ;;;; Element combinators
 
 (define (spar-elt . spars)
-  (let ((spar (%seq spars)))
+  (let ((spar (%and spars)))
     (lambda (input senv output success failure)
       (if (%input-pair? input)
 	  (spar (%input-car input)
@@ -369,7 +369,7 @@ USA.
 ;;;; Classifier support
 
 (define (spar-with-mapped-senv procedure . spars)
-  (let ((spar (%seq spars)))
+  (let ((spar (%and spars)))
     (lambda (input senv output success failure)
       (spar input
 	    (procedure senv)
@@ -403,7 +403,7 @@ USA.
 		   spar-arg:hist))
 
 (define-deferred spar-push-body
-  (spar-seq
+  (spar-and
     (spar-encapsulate-values
 	(lambda (elts)
 	  (lambda (frame-senv)
@@ -445,7 +445,7 @@ USA.
 		spars))
 
 (define (%with-output procedure spars)
-  (let ((spar (%seq spars)))
+  (let ((spar (%and spars)))
     (lambda (input senv output success failure)
       (spar input
 	    senv
@@ -461,9 +461,9 @@ USA.
 
 (define (make-pattern-compiler expr? caller)
   (call-with-constructors expr?
-    (lambda (:* :+ :call :close :compare :cons :elt :eqv? :form :hist :id? :if
-		:list :match-elt :match-null :opt :or :push :push-elt
-		:push-elt-if :push-value :senv :seq :symbol? :value)
+    (lambda (:* :+ :and :call :close :compare :cons :elt :eqv? :form :hist :id?
+		:if :list :match-elt :match-null :opt :or :push :push-elt
+		:push-elt-if :push-value :senv :symbol? :value)
 
       (define (loop pattern)
 	(let-syntax
@@ -487,12 +487,12 @@ USA.
 		 ('('? * form) (apply :opt (map loop (cdr pattern))))
 		 ('('if form form form) (apply :if (map loop (cdr pattern))))
 		 ('('or * form) (apply :or (map loop (cdr pattern))))
-		 ('('and * form) (apply :seq (map loop (cdr pattern))))
+		 ('('and * form) (apply :and (map loop (cdr pattern))))
 		 ('('noise form) (:match-elt (:eqv?) (cadr pattern) (:form)))
 		 ('('noise-keyword identifier)
 		  (:match-elt (:compare) (cadr pattern) (:form)))
 		 ('('keyword identifier)
-		  (:seq (:match-elt (:compare) (cadr pattern) (:form))
+		  (:and (:match-elt (:compare) (cadr pattern) (:form))
 			(:push (cadr pattern))))
 		 ('('values * form)
 		  (apply :push (map convert-spar-arg (cdr pattern))))
@@ -505,7 +505,7 @@ USA.
 		 ('('call + form)
 		  (apply :call (cadr pattern) (map loop (cddr pattern))))
 		 ('('elt * form)
-		  (:elt (apply :seq (map loop (cdr pattern)))
+		  (:elt (apply :and (map loop (cdr pattern)))
 			(:match-null))))))
 
       (define (convert-spar-arg arg)
@@ -524,7 +524,7 @@ USA.
       (lambda (pattern)
 	(if (not (list? pattern))
 	    (bad-pattern pattern))
-	(:seq (apply :seq (map loop pattern))
+	(:and (apply :and (map loop pattern))
 	      (:match-null))))))
 
 (define (call-with-constructors expr? procedure)
@@ -536,13 +536,13 @@ USA.
 
   (define (flat-proc name procedure)
     (if expr?
-	(lambda args (cons name (elide-seqs args)))
+	(lambda args (cons name (elide-ands args)))
 	(lambda args (apply procedure args))))
 
-  (define (elide-seqs exprs)
+  (define (elide-ands exprs)
     (append-map (lambda (expr)
 		  (if (and (pair? expr)
-			   (eq? 'spar-seq (car expr)))
+			   (eq? 'spar-and (car expr)))
 		      (cdr expr)
 		      (list expr)))
 		exprs))
@@ -554,6 +554,7 @@ USA.
 
   (procedure (flat-proc 'spar* spar*)
 	     (flat-proc 'spar+ spar+)
+	     (flat-proc 'spar-and spar-and)
 	     (flat-proc 'spar-call-with-values spar-call-with-values)
 	     (const 'spar-arg:close spar-arg:close)
 	     (const 'spar-arg:compare spar-arg:compare)
@@ -574,7 +575,6 @@ USA.
 	     (proc 'spar-push-elt-if spar-push-elt-if)
 	     (proc 'spar-push-value spar-push-value)
 	     (const 'spar-arg:senv spar-arg:senv)
-	     (flat-proc 'spar-seq spar-seq)
 	     (const 'symbol? symbol?)
 	     (const 'spar-arg:value spar-arg:value)))
 

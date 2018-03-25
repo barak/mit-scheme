@@ -313,7 +313,7 @@ USA.
 (define :the-environment
   (spar-classifier->runtime
    (delay
-     (spar-seq
+     (spar-and
        (spar-or (spar-match senv-top-level? spar-arg:senv)
 		(spar-error "This form allowed only at top level:"
 			    spar-arg:form spar-arg:senv))
@@ -324,7 +324,7 @@ USA.
 (define keyword:unspecific
   (spar-classifier->keyword
    (delay
-     (spar-seq
+     (spar-and
        (spar-elt)
        (spar-match-null)
        (spar-push-value unspecific-item)))))
@@ -332,7 +332,7 @@ USA.
 (define keyword:unassigned
   (spar-classifier->keyword
    (delay
-     (spar-seq
+     (spar-and
        (spar-elt)
        (spar-match-null)
        (spar-push-value unassigned-item)))))
