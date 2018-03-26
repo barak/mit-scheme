@@ -202,7 +202,8 @@ USA.
     (success input
 	     senv
 	     (%output-push output
-			   (apply procedure
+			   (apply %call-out input senv
+				  procedure
 				  (%subst-args input senv output args)))
 	     failure)))
 
@@ -372,35 +373,38 @@ USA.
   (let ((spar (%and spars)))
     (lambda (input senv output success failure)
       (spar input
-	    (procedure senv)
+	    (%call-out input senv procedure senv)
 	    output
 	    (lambda (input* senv* output* failure*)
 	      (declare (ignore senv*))
 	      (success input* senv output* failure*))
 	    failure))))
 
+(define (%push-classified classifier)
+  (lambda (input senv output success failure)
+    (success input
+	     senv
+	     (%output-push output
+			   (classifier (%input-form input)
+				       senv
+				       (%input-hist input)))
+	     failure)))
+
 (define-deferred spar-push-classified
-  (spar-push-value classify-form
-		   spar-arg:form
-		   spar-arg:senv
-		   spar-arg:hist))
+  (%push-classified classify-form))
 
-(define-deferred spar-push-deferred-classified
-  (spar-push-value (lambda (form senv hist)
-		     (lambda ()
-		       (classify-form form senv hist)))
-		   spar-arg:form
-		   spar-arg:senv
-		   spar-arg:hist))
+(define spar-push-deferred-classified
+  (%push-classified
+   (lambda (form senv hist)
+     (lambda ()
+       (classify-form form senv hist)))))
 
-(define-deferred spar-push-open-classified
-  (spar-push-value (lambda (form senv hist)
-		     (declare (ignore senv))
-		     (lambda (senv*)
-		       (classify-form form senv* hist)))
-		   spar-arg:form
-		   spar-arg:senv
-		   spar-arg:hist))
+(define spar-push-open-classified
+  (%push-classified
+   (lambda (form senv hist)
+     (declare (ignore senv))
+     (lambda (senv*)
+       (classify-form form senv* hist)))))
 
 (define-deferred spar-push-body
   (spar-and
@@ -453,9 +457,14 @@ USA.
 	    (lambda (input* senv* output* failure*)
 	      (success input*
 		       senv*
-		       (procedure output output*)
+		       (%call-out input senv procedure output output*)
 		       failure*))
 	    failure))))
+
+(define (%call-out input senv procedure . args)
+  (with-error-context (%input-form input) senv (%input-hist input)
+    (lambda ()
+      (apply procedure args))))
 
 ;;;; Shorthand
 

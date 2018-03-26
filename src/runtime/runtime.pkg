@@ -4449,6 +4449,8 @@ USA.
 	  subform-select)
   (export (runtime syntax low)
 	  reclassify
+	  with-error-context)
+  (export (runtime syntax parser)
 	  with-error-context))
 
 (define-package (runtime syntax low)
