@@ -30,66 +30,90 @@ USA.
 
 ;;;; SRFI features
 
-(define-syntax :cond-expand
-  (er-macro-transformer
-   (lambda (form rename compare)
-     (let ((if-error (lambda () (ill-formed-syntax form))))
-       (if (syntax-match? '(+ (datum * form)) (cdr form))
-	   (let loop ((clauses (cdr form)))
-	     (let ((req (caar clauses))
-		   (if-true (lambda () `(,(rename 'BEGIN) ,@(cdar clauses)))))
-	       (if (and (identifier? req)
-			(compare (rename 'ELSE) req))
-		   (if (null? (cdr clauses))
-		       (if-true)
-		       (if-error))
-		   (let req-loop
-		       ((req req)
-			(if-true if-true)
-			(if-false
-			 (lambda ()
-			   (if (null? (cdr clauses))
-			       (if-error)
-			       (loop (cdr clauses))))))
-		     (cond ((identifier? req)
-			    (let ((p
-				   (find (lambda (p)
-					   (compare (rename (car p)) req))
-					 supported-features)))
-			      (if (and p ((cdr p)))
-				  (if-true)
-				  (if-false))))
-			   ((and (syntax-match? '(identifier datum) req)
-				 (compare (rename 'NOT) (car req)))
-			    (req-loop (cadr req)
-				      if-false
-				      if-true))
-			   ((and (syntax-match? '(identifier * datum) req)
-				 (compare (rename 'AND) (car req)))
-			    (let and-loop ((reqs (cdr req)))
-			      (if (pair? reqs)
-				  (req-loop (car reqs)
-					    (lambda () (and-loop (cdr reqs)))
-					    if-false)
-				  (if-true))))
-			   ((and (syntax-match? '(identifier * datum) req)
-				 (compare (rename 'OR) (car req)))
-			    (let or-loop ((reqs (cdr req)))
-			      (if (pair? reqs)
-				  (req-loop (car reqs)
-					    if-true
-					    (lambda () (or-loop (cdr reqs))))
-				  (if-false))))
-			   (else
-			    (if-error)))))))
-	   (if-error))))))
+(define :cond-expand
+  (spar-transformer->runtime
+   (delay (scons-rule (cond-expand-pattern) generate-cond-expand))
+   system-global-environment))
 
-(define supported-features '())
+(define (cond-expand-pattern)
+  (define clause-pattern
+    (let ((clause-pattern* (lambda args (apply clause-pattern args))))
+      (spar-or
+	(spar-push-elt-if identifier? spar-arg:form)
+	(spar-call-with-values list
+	  (spar-elt
+	    (spar-or
+	      (spar-and (spar-push-elt-if spar-arg:compare 'or spar-arg:form)
+			(spar* clause-pattern*)
+			(spar-match-null))
+	      (spar-and (spar-push-elt-if spar-arg:compare 'and spar-arg:form)
+			(spar* clause-pattern*)
+			(spar-match-null))
+	      (spar-and (spar-push-elt-if spar-arg:compare 'not spar-arg:form)
+			clause-pattern*
+			(spar-match-null))))))))
+  `((values compare)
+    (list (+ (list (elt (spar ,clause-pattern)
+			(* any)))))))
 
+(define (generate-cond-expand compare clauses)
+
+  (define (process-clauses clauses)
+    (cond ((not (pair? clauses))
+	   (generate '()))
+	  ((compare 'else (caar clauses))
+	   (if (pair? (cdr clauses))
+	       (syntax-error "ELSE clause must be last:" clauses))
+	   (generate (cdar clauses)))
+	  (else
+	   (process-clause (car clauses)
+			   (lambda () (process-clauses (cdr clauses)))))))
+
+  (define (process-clause clause failure)
+    (eval-req (car clause)
+	      (lambda () (generate (cdr clause)))
+	      failure))
+
+  (define (eval-req req success failure)
+    (cond ((identifier? req) (if (supported-feature? req) (success) (failure)))
+	  ((compare 'or (car req)) (eval-or (cdr req) success failure))
+	  ((compare 'and (car req)) (eval-and (cdr req) success failure))
+	  ((compare 'not (car req)) (eval-req (cadr req) failure success))
+	  (else (error "Unknown requirement:" req))))
+
+  (define (supported-feature? req)
+    (let ((p
+	   (find (lambda (p)
+		   (compare (car p) req))
+		 supported-features)))
+      (and p
+	   ((cdr p)))))
+
+  (define (eval-or reqs success failure)
+    (if (pair? reqs)
+	(eval-req (car reqs)
+		  success
+		  (lambda () (eval-or (cdr reqs) success failure)))
+	(failure)))
+
+  (define (eval-and reqs success failure)
+    (if (pair? reqs)
+	(eval-req (car reqs)
+		  (lambda () (eval-and (cdr reqs) success failure))
+		  failure)
+	(success)))
+
+  (define (generate forms)
+    (apply scons-begin forms))
+
+  (process-clauses clauses))
+
 (define (define-feature name procedure)
   (set! supported-features (cons (cons name procedure) supported-features))
   name)
-
+
+(define supported-features '())
+
 (define (always) #t)
 
 (define-feature 'mit always)
