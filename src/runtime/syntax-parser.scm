@@ -324,6 +324,15 @@ USA.
 	(lambda ()
 	  (s2 input senv output success failure)))))
 
+(define (spar-not spar)
+  (lambda (input senv output success failure)
+    (spar input senv output
+	  (lambda (input* senv* output* failure*)
+	    (declare (ignore input* senv* output* failure*))
+	    (failure))
+	  (lambda ()
+	    (success input senv output failure)))))
+
 (define (spar-succeed input senv output success failure)
   (success input senv output failure))
 
@@ -471,7 +480,7 @@ USA.
 (define (make-pattern-compiler expr? caller)
   (call-with-constructors expr?
     (lambda (:* :+ :and :call :close :compare :cons :elt :eqv? :form :hist :id?
-		:if :list :match-elt :match-null :opt :or :push :push-elt
+		:if :list :match-elt :match-null :not :opt :or :push :push-elt
 		:push-elt-if :push-value :senv :symbol? :value)
 
       (define (loop pattern)
@@ -497,6 +506,7 @@ USA.
 		 ('('if form form form) (apply :if (map loop (cdr pattern))))
 		 ('('or * form) (apply :or (map loop (cdr pattern))))
 		 ('('and * form) (apply :and (map loop (cdr pattern))))
+		 ('('not form) (:not (loop (cadr pattern))))
 		 ('('noise form) (:match-elt (:eqv?) (cadr pattern) (:form)))
 		 ('('noise-keyword identifier)
 		  (:match-elt (:compare) (cadr pattern) (:form)))
@@ -577,6 +587,7 @@ USA.
 	     (const 'list list)
 	     (proc 'spar-match-elt spar-match-elt)
 	     (proc 'spar-match-null spar-match-null)
+	     (proc 'spar-not spar-not)
 	     (flat-proc 'spar-opt spar-opt)
 	     (proc 'spar-or spar-or)
 	     (proc 'spar-push spar-push)

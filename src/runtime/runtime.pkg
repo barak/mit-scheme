@@ -4576,6 +4576,7 @@ USA.
 	  spar-match
 	  spar-match-elt
 	  spar-match-null
+	  spar-not
 	  spar-opt
 	  spar-or
 	  spar-push
