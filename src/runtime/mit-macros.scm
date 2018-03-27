@@ -450,69 +450,76 @@ USA.
 	     (process-clauses clauses))))))
    system-global-environment))
 
-(define-syntax :cond
-  (er-macro-transformer
-   (lambda (form rename compare)
-     (let ((clauses (cdr form)))
-       (if (not (pair? clauses))
-	   (syntax-error "Form must have at least one clause:" form))
-       (let loop ((clause (car clauses)) (rest (cdr clauses)))
-	 (expand/cond-clause clause rename compare (null? rest)
-			     (if (pair? rest)
-				 (loop (car rest) (cdr rest))
-				 (unspecific-expression))))))))
+(define :cond
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `((list (* ,cons-clause-pattern))
+	   (or (list (elt (noise-keyword else)
+			  (+ any)))
+	       (values #f)))
+       (lambda (clauses else-actions)
+	 (let loop ((clauses clauses))
+	   (cond ((pair? clauses)
+		  (expand-cond-clause (car clauses)
+				      (loop (cdr clauses))))
+		 (else-actions (apply scons-begin else-actions))
+		 (else (unspecific-expression)))))))
+   system-global-environment))
 
-(define-syntax :do
-  (er-macro-transformer
-   (lambda (form rename compare)
-     (syntax-check '(_ (* (identifier expression ? expression))
-		       (+ form)
-		       * form)
-		   form)
-     (let ((bindings (cadr form))
-	   (r-loop (rename 'DO-LOOP)))
-       `(,(rename 'LET)
-	 ,r-loop
-	 ,(map (lambda (binding)
-		 (list (car binding) (cadr binding)))
-	       bindings)
-	 ,(expand/cond-clause (caddr form) rename compare #f
-			      `(,(rename 'BEGIN)
-				,@(cdddr form)
-				(,r-loop ,@(map (lambda (binding)
-						  (if (pair? (cddr binding))
-						      (caddr binding)
-						      (car binding)))
-						bindings)))))))))
+(define cons-clause-pattern
+  '(list (elt (and (not (noise-keyword else))
+		   any)
+	      (if (keyword =>)
+		  any
+		  (and (values begin)
+		       (* any))))))
 
-(define (expand/cond-clause clause rename compare else-allowed? alternative)
-  (if (not (and (pair? clause) (list? (cdr clause))))
-      (syntax-error "Ill-formed clause:" clause))
-  (cond ((and (identifier? (car clause))
-	      (compare (rename 'ELSE) (car clause)))
-	 (if (not else-allowed?)
-	     (syntax-error "Misplaced ELSE clause:" clause))
-	 (if (or (not (pair? (cdr clause)))
-		 (and (identifier? (cadr clause))
-		      (compare (rename '=>) (cadr clause))))
-	     (syntax-error "Ill-formed ELSE clause:" clause))
-	 `(,(rename 'BEGIN) ,@(cdr clause)))
-	((not (pair? (cdr clause)))
-	 `(,(rename 'OR) ,(car clause) ,alternative))
-	((and (identifier? (cadr clause))
-	      (compare (rename '=>) (cadr clause)))
-	 (if (not (and (pair? (cddr clause))
-		       (null? (cdddr clause))))
-	     (syntax-error "Ill-formed => clause:" clause))
-	 (let ((r-temp (rename 'TEMP)))
-	   `(,(rename 'LET) ((,r-temp ,(car clause)))
-			    (,(rename 'IF) ,r-temp
-					   (,(caddr clause) ,r-temp)
-					   ,alternative))))
-	(else
-	 `(,(rename 'IF) ,(car clause)
-			 (,(rename 'BEGIN) ,@(cdr clause))
-			 ,alternative))))
+(define (expand-cond-clause clause rest)
+  (let ((predicate (car clause))
+	(type (cadr clause))
+	(actions (cddr clause)))
+    (case type
+      ((=>)
+       (let ((temp (new-identifier 'temp)))
+	 (scons-let (list (list temp predicate))
+	   (scons-if temp
+		     (scons-call (car actions) temp)
+		     rest))))
+      ((begin)
+       (if (pair? actions)
+	   (scons-if predicate
+		     (apply scons-begin actions)
+		     rest)
+	   (scons-or predicate rest)))
+      (else
+       (error "Unknown clause type:" type)))))
+
+(define :do
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `((list (elt (* (list (elt id any (? any))))))
+	   ,cons-clause-pattern
+	   (list (* any)))
+       (lambda (bindings test-clause actions)
+	 (let ((loop-name (new-identifier 'do-loop)))
+	   (scons-named-let loop-name
+	       (map (lambda (binding)
+		      (list (car binding)
+			    (cadr binding)))
+		    bindings)
+	     (expand-cond-clause test-clause
+				 (scons-begin
+				   (apply scons-begin actions)
+				   (apply scons-call
+					  loop-name
+					  (map (lambda (binding)
+						 (if (pair? (cddr binding))
+						     (caddr binding)
+						     (car binding)))
+					       bindings)))))))))
+   system-global-environment))
 
 (define-syntax :quasiquote
   (er-macro-transformer
