@@ -66,7 +66,7 @@ USA.
   (cond ((identifier? form)
 	 (let ((item (lookup-identifier form senv)))
 	   (if (reserved-name-item? item)
-	       (serror form senv hist
+	       (serror (serror-ctx form senv hist)
 		       "Premature reference to reserved name:" form))
 	   item))
 	((syntactic-closure? form)
@@ -81,7 +81,7 @@ USA.
 	       ((keyword-item-impl item) form senv hist)
 	       (begin
 		  (if (not (list? (cdr form)))
-		      (serror form senv hist
+		      (serror (serror-ctx form senv hist)
 			      "Combination must be a proper list:" form))
 		  (combination-item item
 				    (classify-forms (cdr form)
@@ -274,10 +274,17 @@ USA.
 
 ;;;; Errors
 
+(define-record-type <serror-ctx>
+    (serror-ctx form senv hist)
+    serror-ctx?
+  (form serror-ctx-form)
+  (senv serror-ctx-senv)
+  (hist serror-ctx-hist))
+
 (define-deferred condition-type:syntax-error
   (make-condition-type 'syntax-error
       condition-type:simple-error
-      '(form senv hist message irritants)
+      '(context message irritants)
     (lambda (condition port)
       (format-error-message (access-condition condition 'message)
 			    (access-condition condition 'irritants)
@@ -289,24 +296,19 @@ USA.
 		       standard-error-handler))
 
 ;;; Internal signaller for classifiers.
-(define (serror form senv hist message . irritants)
-  (error:syntax form senv hist message irritants))
+(define (serror ctx message . irritants)
+  (error:syntax ctx message irritants))
 
 (define-deferred error-context
   (make-unsettable-parameter unspecific))
 
 (define (with-error-context form senv hist thunk)
-  (parameterize* (list (cons error-context (vector form senv hist)))
+  (parameterize* (list (cons error-context (serror-ctx form senv hist)))
 		 thunk))
 
 ;;; External signaller for macros.
 (define (syntax-error message . irritants)
-  (let ((context (error-context)))
-    (error:syntax (vector-ref context 0)
-		  (vector-ref context 1)
-		  (vector-ref context 2)
-		  message
-		  irritants)))
+  (error:syntax (error-context) message irritants))
 
 ;;;; Utilities
 

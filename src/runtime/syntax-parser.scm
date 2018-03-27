@@ -74,7 +74,7 @@ USA.
 	      (error "Rule failed to match entire form."))
 	  (output 'get-only))
 	(lambda ()
-	  (serror form use-senv hist "Ill-formed syntax:" form))))
+	  (serror (serror-ctx form use-senv hist) "Ill-formed syntax:" form))))
 
 ;;;; Inputs and outputs
 
@@ -211,9 +211,7 @@ USA.
   (lambda (input senv output success failure)
     (declare (ignore success failure))
     (apply serror
-	   (%input-form input)
-	   senv
-	   (%input-hist input)
+	   (serror-ctx (%input-form input) senv (%input-hist input))
 	   message
 	   (%subst-args input senv output irritants))))
 

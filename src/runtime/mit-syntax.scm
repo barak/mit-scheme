@@ -369,5 +369,6 @@ USA.
 (define (classify-id id senv hist)
   (let ((item (classify-form id senv hist)))
     (if (not (var-item? item))
-	(serror id senv hist "Variable required in this context:" id))
+	(serror (serror-ctx id senv hist)
+		"Variable required in this context:" id))
     (var-item-id item)))

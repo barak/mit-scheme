@@ -32,7 +32,7 @@ USA.
 ;;; Internal checker for classifiers.
 (define (scheck pattern form senv hist)
   (if (not (syntax-match? (cdr pattern) (cdr form)))
-      (serror form senv hist "Ill-formed special form:" form)))
+      (serror (serror-ctx form senv hist) "Ill-formed special form:" form)))
 
 ;;; External checker for macros.
 (define (syntax-check pattern form)

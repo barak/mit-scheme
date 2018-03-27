@@ -4435,7 +4435,6 @@ USA.
 	  biselector:cdr
 	  biselector:cr
 	  classify-form
-	  error:syntax
 	  hist-cadr
 	  hist-car
 	  hist-cddr
@@ -4445,6 +4444,11 @@ USA.
 	  initial-hist
 	  raw-identifier?
 	  serror
+	  serror-ctx
+	  serror-ctx-form
+	  serror-ctx-hist
+	  serror-ctx-senv
+	  serror-ctx?
 	  smap
 	  subform-select)
   (export (runtime syntax low)
