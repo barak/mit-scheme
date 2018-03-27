@@ -173,7 +173,7 @@ USA.
    (delay
      (scons-rule `(,r4rs-lambda-list? any (list (+ any)))
        (lambda (bvl expr body-forms)
-	 (scons-call 'call-with-values
+	 (scons-call (scons-close 'call-with-values)
 		     (scons-lambda '() expr)
 		     (apply scons-lambda bvl body-forms)))))
    system-global-environment))
@@ -192,13 +192,13 @@ USA.
        (lambda (type-name parent maker-name maker-args pred-name field-specs)
 	 (apply scons-begin
 		(scons-define type-name
-		  (scons-call 'new-make-record-type
+		  (scons-call (scons-close 'new-make-record-type)
 			      (scons-quote type-name)
 			      (scons-quote (map car field-specs))
 			      (or parent (default-object))))
 		(if maker-name
 		    (scons-define maker-name
-		      (scons-call 'record-constructor
+		      (scons-call (scons-close 'record-constructor)
 				  type-name
 				  (if maker-args
 				      (scons-quote maker-args)
@@ -206,21 +206,23 @@ USA.
 		    (default-object))
 		(if pred-name
 		    (scons-define pred-name
-		      (scons-call 'record-predicate type-name))
+		      (scons-call (scons-close 'record-predicate) type-name))
 		    (default-object))
 		(append-map (lambda (field-spec)
 			      (let ((name (car field-spec))
 				    (accessor (cadr field-spec))
 				    (modifier (caddr field-spec)))
 				(list (scons-define accessor
-					(scons-call 'record-accessor
-						    type-name
-						    (scons-quote name)))
+					(scons-call
+					 (scons-close 'record-accessor)
+					 type-name
+					 (scons-quote name)))
 				      (if modifier
 					  (scons-define modifier
-					    (scons-call 'record-modifier
-							type-name
-							(scons-quote name)))
+					    (scons-call
+					     (scons-close 'record-modifier)
+					     type-name
+					     (scons-quote name)))
 					  (default-object)))))
 			    field-specs)))))
    system-global-environment))
@@ -427,13 +429,14 @@ USA.
 	   (define (process-predicate items)
 	     (apply scons-or
 		    (map (lambda (item)
-			   (scons-call (if (or (symbol? item)
-					       (boolean? item)
-					       ;; implementation dependent:
-					       (char? item)
-					       (fix:fixnum? item))
-					   'eq?
-					   'eqv?)
+			   (scons-call (scons-close
+					(if (or (symbol? item)
+						(boolean? item)
+						;; implementation dependent:
+						(char? item)
+						(fix:fixnum? item))
+					    'eq?
+					    'eqv?))
 				       (scons-quote item)
 				       temp))
 			 items)))

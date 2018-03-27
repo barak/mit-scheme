@@ -51,6 +51,10 @@ USA.
   (map (lambda (part) (close-part close part))
        parts))
 
+(define (scons-close identifier)
+  (guarantee identifier? identifier 'scons-close)
+  (make-open-expr (lambda (close) (close identifier))))
+
 (define (scons-and . exprs)
   (make-open-expr
    (lambda (close)
@@ -66,9 +70,7 @@ USA.
 (define (scons-call operator . operands)
   (make-open-expr
    (lambda (close)
-     (cons (if (identifier? operator)
-	       (close operator)
-	       (close-part close operator))
+     (cons (close-part close operator)
 	   (close-parts close operands)))))
 
 (define (scons-declare . decls)
