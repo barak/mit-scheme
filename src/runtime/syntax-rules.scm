@@ -253,7 +253,7 @@ USA.
   `(,(classifier->keyword
       (lambda (form senv hist)
 	(scheck '(_ datum) form senv hist)
-	(constant-item (cadr form))))
+	(constant-item (serror-ctx form senv hist) (cadr form))))
     ,expression))
 
 (define (optimized-cons rename compare a d)

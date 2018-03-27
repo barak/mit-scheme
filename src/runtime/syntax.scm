@@ -55,10 +55,10 @@ USA.
     (with-identifier-renaming
      (lambda ()
        (compile-item
-	(body-item
-	 (map-in-order (lambda (form)
-			 (classify-form form senv (initial-hist form)))
-		       forms)))))))
+	(body-item #f
+	  (map-in-order (lambda (form)
+			  (classify-form form senv (initial-hist form)))
+			forms)))))))
 
 ;;;; Classifier
 
@@ -79,16 +79,16 @@ USA.
 	 (let ((item (classify-form (car form) senv (hist-car hist))))
 	   (if (keyword-item? item)
 	       ((keyword-item-impl item) form senv hist)
-	       (begin
+	       (let ((ctx (serror-ctx form senv hist)))
 		  (if (not (list? (cdr form)))
-		      (serror (serror-ctx form senv hist)
-			      "Combination must be a proper list:" form))
-		  (combination-item item
+		      (serror ctx "Combination must be a proper list:" form))
+		  (combination-item ctx
+				    item
 				    (classify-forms (cdr form)
 						    senv
 						    (hist-cdr hist)))))))
 	(else
-	 (constant-item form))))
+	 (constant-item (serror-ctx form senv hist) form))))
 
 (define (reclassify form env hist)
   (classify-form form env (hist-reduce form hist)))

@@ -189,8 +189,11 @@ USA.
                           env 'microcode-type))))
 
   (let ((env (->environment '(runtime syntax))))
-    (provide-rename env 'make-expression-item 'expr-item)
     (provide-rename env 'compile-item/expression 'compile-expr-item)
+    (if (unbound? env 'expr-item)
+	(eval '(define (expr-item ctx compiler)
+		 (make-expression-item compiler))
+	      env))
     (if (unbound? env 'compile-item)
 	(eval '(define (compile-item body-item)
 		 (compile-body-items (item->list body-item)))

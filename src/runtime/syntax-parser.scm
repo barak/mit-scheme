@@ -157,6 +157,8 @@ USA.
 	((eq? arg spar-arg:close) (make-closer (%input-closing-senv input)))
 	((eq? arg spar-arg:compare)
 	 (make-comparer (%input-closing-senv input) senv))
+	((eq? arg spar-arg:ctx)
+	 (serror-ctx (%input-form input) senv (%input-hist input)))
 	((eq? arg spar-arg:senv) senv)
 	((eq? arg spar-arg:value) (%output-top output))
 	((eq? arg spar-arg:values) (%output-all output))
@@ -175,6 +177,7 @@ USA.
 (define-deferred spar-arg:hist (string->uninterned-symbol ".hist."))
 (define-deferred spar-arg:close (string->uninterned-symbol ".close."))
 (define-deferred spar-arg:compare (string->uninterned-symbol ".compare."))
+(define-deferred spar-arg:ctx (string->uninterned-symbol ".ctx."))
 (define-deferred spar-arg:senv (string->uninterned-symbol ".senv."))
 (define-deferred spar-arg:value (string->uninterned-symbol ".value."))
 (define-deferred spar-arg:values (string->uninterned-symbol ".values."))
@@ -412,18 +415,6 @@ USA.
      (declare (ignore senv))
      (lambda (senv*)
        (classify-form form senv* hist)))))
-
-(define-deferred spar-push-body
-  (spar-and
-    (spar-encapsulate-values
-	(lambda (elts)
-	  (lambda (frame-senv)
-	    (let ((body-senv (make-internal-senv frame-senv)))
-	      (map-in-order (lambda (elt) (elt body-senv))
-			    elts))))
-      (spar+ (spar-elt spar-push-open-classified))
-      (spar-match-null))
-    (spar-push spar-arg:senv)))
 
 ;;;; Value combinators
 

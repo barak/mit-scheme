@@ -28,7 +28,7 @@ USA.
 
 (declare (usual-integrations))
 
-;;; These items can be stored in a syntactic environment.
+;;; These items (and keyword-item) can be stored in a syntactic environment.
 
 ;;; Variable items represent run-time variables.
 
@@ -61,23 +61,24 @@ USA.
 
 ;;; Definition items, whether top-level or internal, keyword or variable.
 
-(define (syntax-defn-item id value)
+(define (syntax-defn-item ctx id value)
   (guarantee identifier? id 'syntax-defn-item)
   (guarantee defn-item-value? value 'syntax-defn-item)
-  (%defn-item id value #t))
+  (%defn-item ctx id value #t))
 
-(define (defn-item id value)
+(define (defn-item ctx id value)
   (guarantee identifier? id 'defn-item)
   (guarantee defn-item-value? value 'defn-item)
-  (%defn-item id value #f))
+  (%defn-item ctx id value #f))
 
 (define (defn-item-value? object)
   (not (reserved-name-item? object)))
 (register-predicate! defn-item-value? 'defn-item-value)
 
 (define-record-type <defn-item>
-    (%defn-item id value syntax?)
+    (%defn-item ctx id value syntax?)
     defn-item?
+  (ctx defn-item-ctx)
   (id defn-item-id)
   (value defn-item-value)
   (syntax? defn-item-syntax?))
@@ -90,16 +91,17 @@ USA.
 
 ;;; Sequence items.
 
-(define (seq-item elements)
+(define (seq-item ctx elements)
   (let ((elements (flatten-items elements)))
     (if (and (pair? elements)
 	     (null? (cdr elements)))
 	(car elements)
-	(%seq-item elements))))
+	(%seq-item ctx elements))))
 
 (define-record-type <seq-item>
-    (%seq-item elements)
+    (%seq-item ctx elements)
     seq-item?
+  (ctx seq-item-ctx)
   (elements seq-item-elements))
 
 (define (flatten-items items)
@@ -114,87 +116,26 @@ USA.
 ;;; run-time variable or a sequence.
 
 (define-record-type <expr-item>
-    (expr-item compiler)
+    (expr-item ctx compiler)
     expr-item?
+  (ctx expr-item-ctx)
   (compiler expr-item-compiler))
-
-;;;; Specific expression items
 
-(define (combination-item operator operands)
-  (expr-item
-   (lambda ()
-     (output/combination (compile-expr-item operator)
-			 (map compile-expr-item operands)))))
+(define (body-item ctx items)
+  (expr-item ctx
+    (lambda ()
+      (output/body (map compile-item (flatten-items items))))))
 
-(define (constant-item datum)
-  (expr-item
-   (lambda ()
-     (output/constant datum))))
+(define (combination-item ctx operator operands)
+  (expr-item ctx
+    (lambda ()
+      (output/combination (compile-expr-item operator)
+			  (map compile-expr-item operands)))))
 
-(define (lambda-item name bvl classify-body)
-  (expr-item
-   (lambda ()
-     (output/lambda name bvl (compile-item (classify-body))))))
-
-(define (let-item names value-items body-item)
-  (expr-item
-   (lambda ()
-     (output/let names
-		 (map compile-expr-item value-items)
-		 (compile-item body-item)))))
-
-(define (body-item items)
-  (expr-item
-   (lambda ()
-     (output/body (map compile-item (flatten-items items))))))
-
-(define (if-item predicate consequent alternative)
-  (expr-item
-   (lambda ()
-     (output/conditional (compile-expr-item predicate)
-			 (compile-expr-item consequent)
-			 (compile-expr-item alternative)))))
-
-(define (quoted-id-item var-item)
-  (expr-item
-   (lambda ()
-     (output/quoted-identifier (var-item-id var-item)))))
-
-(define (assignment-item id rhs-item)
-  (expr-item
-   (lambda ()
-     (output/assignment id (compile-expr-item rhs-item)))))
-
-(define (access-assignment-item name env-item rhs-item)
-  (expr-item
-   (lambda ()
-     (output/access-assignment name
-			       (compile-expr-item env-item)
-			       (compile-expr-item rhs-item)))))
-
-(define (delay-item classify)
-  (expr-item
-   (lambda ()
-     (output/delay (compile-expr-item (classify))))))
-
-(define (or-item items)
-  (expr-item
-   (lambda ()
-     (output/disjunction (map compile-expr-item items)))))
-
-(define (decl-item classify)
-  (expr-item
-   (lambda ()
-     (output/declaration (classify)))))
-
-(define (the-environment-item)
-  (expr-item output/the-environment))
-
-(define (unspecific-item)
-  (expr-item output/unspecific))
-
-(define (unassigned-item)
-  (expr-item output/unassigned))
+(define (constant-item ctx datum)
+  (expr-item ctx
+    (lambda ()
+      (output/constant datum))))
 
 ;;;; Compiler
 

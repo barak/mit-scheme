@@ -4486,40 +4486,29 @@ USA.
   (files "syntax-items")
   (parent (runtime syntax))
   (export (runtime syntax)
-	  access-assignment-item
-	  assignment-item
 	  body-item
 	  combination-item
 	  compile-expr-item
 	  compile-item
 	  constant-item
-	  decl-item
 	  define-expr-item-compiler
 	  defn-item
 	  defn-item-id
 	  defn-item-syntax?
 	  defn-item-value
 	  defn-item?
-	  delay-item
 	  expr-item
 	  expr-item-compiler
+	  expr-item-ctx
 	  expr-item?
 	  flatten-items
-	  if-item
 	  item->list
-	  lambda-item
-	  let-item
-	  or-item
-	  quoted-id-item
 	  reserved-name-item
 	  reserved-name-item?
 	  seq-item
 	  seq-item-elements
 	  seq-item?
 	  syntax-defn-item
-	  the-environment-item
-	  unassigned-item
-	  unspecific-item
 	  var-item
 	  var-item-id
 	  var-item?))
@@ -4584,7 +4573,6 @@ USA.
 	  spar-opt
 	  spar-or
 	  spar-push
-	  spar-push-body
 	  spar-push-elt
 	  spar-push-elt-if
 	  spar-push-form-if
@@ -4595,6 +4583,7 @@ USA.
 	  spar-transform-values
 	  spar-with-mapped-senv)
   (export (runtime syntax)
+	  spar-arg:ctx
 	  spar-call
 	  spar-push-classified
 	  spar-push-deferred-classified
@@ -4607,6 +4596,7 @@ USA.
 	  scons-and
 	  scons-begin
 	  scons-call
+	  scons-close
 	  scons-declare
 	  scons-define
 	  scons-delay

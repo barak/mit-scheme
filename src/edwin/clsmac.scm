@@ -101,14 +101,14 @@ USA.
 		     ,@(cddddr form))
 		   senv
 		   rest)))
-       (expr-item
-	(lambda ()
-	  (transform-instance-variables
-	   (class-instance-transforms
-	    (name->class (identifier->symbol class-name)))
-	   (compile-expr-item self-item)
-	   free-names
-	   (compile-item body-item))))))))
+       (expr-item #f
+	 (lambda ()
+	   (transform-instance-variables
+	    (class-instance-transforms
+	     (name->class (identifier->symbol class-name)))
+	    (compile-expr-item self-item)
+	    free-names
+	    (compile-item body-item))))))))
 
 (define-syntax ==>
   (syntax-rules ()
