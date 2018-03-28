@@ -40,8 +40,8 @@ USA.
     (let ((clause-pattern* (lambda args (apply clause-pattern args))))
       (spar-or
 	(spar-push-elt-if identifier? spar-arg:form)
-	(spar-call-with-values list
-	  (spar-elt
+	(spar-elt
+	  (spar-call-with-values list
 	    (spar-or
 	      (spar-and (spar-push-elt-if spar-arg:compare 'or spar-arg:form)
 			(spar* clause-pattern*)
@@ -53,7 +53,7 @@ USA.
 			clause-pattern*
 			(spar-match-null))))))))
   `((values compare)
-    (list (+ (list (elt (spar ,clause-pattern)
+    (list (+ (elt (list (spar ,clause-pattern)
 			(* any)))))))
 
 (define (generate-cond-expand compare clauses)
@@ -188,7 +188,7 @@ USA.
 	       (and ,not (values #f))
 	       (elt id (list (* symbol))))
 	   (or id ,not)
-	   (list (* (list (elt symbol id (or id (values #f)))))))
+	   (list (* (elt (list symbol id (or id (values #f)))))))
        (lambda (type-name parent maker-name maker-args pred-name field-specs)
 	 (apply scons-begin
 		(scons-define type-name
@@ -391,12 +391,13 @@ USA.
    (delay
      (scons-rule
 	 (let ((action-pattern
-		'(if (keyword =>)
-		     any
+		'(if (noise-keyword =>)
+		     (and (values =>)
+			  any)
 		     (and (values begin)
 			  (+ any)))))
 	   `(any
-	     (list (* (list (elt (list (elt (* any)))
+	     (list (* (list (elt (elt (list (* any)))
 				 ,action-pattern))))
 	     (or (list (elt (noise-keyword else)
 			    ,action-pattern))
@@ -444,9 +445,9 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 `((list (* ,cons-clause-pattern))
-	   (or (list (elt (noise-keyword else)
-			  (+ any)))
+	 `((list (* ,cond-clause-pattern))
+	   (or (elt (noise-keyword else)
+		    (list (+ any)))
 	       (values #f)))
        (lambda (clauses else-actions)
 	 (fold-right expand-cond-clause
@@ -456,11 +457,12 @@ USA.
 		     clauses))))
    system-global-environment))
 
-(define cons-clause-pattern
-  '(list (elt (and (not (noise-keyword else))
+(define cond-clause-pattern
+  '(elt (list (and (not (noise-keyword else))
 		   any)
-	      (if (keyword =>)
-		  any
+	      (if (noise-keyword =>)
+		  (and (values =>)
+		       any)
 		  (and (values begin)
 		       (* any))))))
 
@@ -488,8 +490,8 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 `((list (elt (* (list (elt id any (? any))))))
-	   ,cons-clause-pattern
+	 `((elt (list (* (elt (list id any (? any))))))
+	   ,cond-clause-pattern
 	   (list (* any)))
        (lambda (bindings test-clause actions)
 	 (let ((loop-name (new-identifier 'do-loop)))
@@ -602,7 +604,7 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 `((list (elt (* (list (or id (elt any) (elt id any))))))
+	 `((elt (list (* (list (or id (elt any) (elt id any))))))
 	   (list (* any)))
        (lambda (clauses body-exprs)
 	 (let recur1 ((conjunct #t) (clauses clauses))
