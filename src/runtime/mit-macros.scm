@@ -53,8 +53,8 @@ USA.
 			clause-pattern*
 			(spar-match-null))))))))
   `((values compare)
-    (list (+ (elt (list (spar ,clause-pattern)
-			(* any)))))))
+    (+ (elt (cons (spar ,clause-pattern)
+		  (* any))))))
 
 (define (generate-cond-expand compare clauses)
 
@@ -171,7 +171,7 @@ USA.
 (define :receive
   (spar-transformer->runtime
    (delay
-     (scons-rule `(,r4rs-lambda-list? any (list (+ any)))
+     (scons-rule `(,r4rs-lambda-list? any (+ any))
        (lambda (bvl expr body-forms)
 	 (scons-call (scons-close 'call-with-values)
 		     (scons-lambda '() expr)
@@ -186,9 +186,9 @@ USA.
 	       (elt id any))
 	   (or (and id (values #f))
 	       (and ,not (values #f))
-	       (elt id (list (* symbol))))
+	       (elt id (* symbol)))
 	   (or id ,not)
-	   (list (* (elt (list symbol id (or id (values #f)))))))
+	   (* (elt (list symbol id (or id (values #f))))))
        (lambda (type-name parent maker-name maker-args pred-name field-specs)
 	 (apply scons-begin
 		(scons-define type-name
@@ -239,7 +239,7 @@ USA.
 	      ,(spar-elt
 		 (spar-push-elt-if identifier? spar-arg:form)
 		 (spar-push-form-if mit-lambda-list? spar-arg:form)))
-	     (list (+ any)))
+	     (+ any))
 	 (lambda (name bvl body-forms)
 	   (scons-define name
 	     (apply scons-named-lambda (cons name bvl) body-forms))))
@@ -248,7 +248,7 @@ USA.
 	      ,(spar-elt
 		 (spar-push-elt)
 		 (spar-push-form-if mit-lambda-list? spar-arg:form)))
-	     (list (+ any)))
+	     (+ any))
 	 (lambda (nested bvl body-forms)
 	   (scons-define nested
 	     (apply scons-lambda bvl body-forms))))))
@@ -263,7 +263,7 @@ USA.
      (scons-rule
 	 `((or id (values #f))
 	   ,(let-bindings-pattern)
-	   (list (+ any)))
+	   (+ any))
        (lambda (name bindings body-forms)
 	 (let ((ids (map car bindings))
 	       (vals (map cadr bindings)))
@@ -277,7 +277,7 @@ USA.
    system-global-environment))
 
 (define (let-bindings-pattern)
-  `(elt (list (* (elt (list id ,(optional-value-pattern)))))))
+  `(elt (* (elt (list id ,(optional-value-pattern))))))
 
 (define named-let-strategy 'internal-definition)
 
@@ -319,7 +319,7 @@ USA.
    (delay
      (scons-rule
 	 `(,(let-bindings-pattern)
-	   (list (+ any)))
+	   (+ any))
        (lambda (bindings body-forms)
 	 (expand-let* scons-let bindings body-forms))))
    system-global-environment))
@@ -328,8 +328,8 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 '((elt (list (* (elt (list id any)))))
-	   (list (+ any)))
+	 '((elt (* (elt (list id any))))
+	   (+ any))
        (lambda (bindings body-forms)
 	 (expand-let* scons-let-syntax bindings body-forms))))
    system-global-environment))
@@ -345,7 +345,7 @@ USA.
    (delay
      (scons-rule
 	 `(,(let-bindings-pattern)
-	   (list (+ any)))
+	   (+ any))
        (lambda (bindings body-forms)
 	 (let* ((ids (map car bindings))
 		(vals (map cadr bindings))
@@ -364,7 +364,7 @@ USA.
    (delay
      (scons-rule
 	 `(,(let-bindings-pattern)
-	   (list (+ any)))
+	   (+ any))
        (lambda (bindings body-forms)
 	 (let ((ids (map car bindings))
 	       (vals (map cadr bindings)))
@@ -378,7 +378,7 @@ USA.
 (define :and
   (spar-transformer->runtime
    (delay
-     (scons-rule '((list (* any)))
+     (scons-rule '((* any))
        (lambda (exprs)
 	 (reduce-right (lambda (expr1 expr2)
 			 (scons-if expr1 expr2 #f))
@@ -392,15 +392,15 @@ USA.
      (scons-rule
 	 (let ((action-pattern
 		'(if (noise-keyword =>)
-		     (and (values =>)
-			  any)
-		     (and (values begin)
-			  (+ any)))))
+		     (list (values =>)
+			   any)
+		     (cons (values begin)
+			   (+ any)))))
 	   `(any
-	     (list (* (list (elt (elt (list (* any)))
-				 ,action-pattern))))
-	     (or (list (elt (noise-keyword else)
-			    ,action-pattern))
+	     (* (elt (cons (elt (* any))
+			   ,action-pattern)))
+	     (or (elt (noise-keyword else)
+		      ,action-pattern)
 		 (values #f))))
        (lambda (expr clauses else-clause)
 	 (let ((temp (new-identifier 'key)))
@@ -445,9 +445,9 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 `((list (* ,cond-clause-pattern))
+	 `((* ,cond-clause-pattern)
 	   (or (elt (noise-keyword else)
-		    (list (+ any)))
+		    (+ any))
 	       (values #f)))
        (lambda (clauses else-actions)
 	 (fold-right expand-cond-clause
@@ -458,13 +458,13 @@ USA.
    system-global-environment))
 
 (define cond-clause-pattern
-  '(elt (list (and (not (noise-keyword else))
+  '(elt (cons (and (not (noise-keyword else))
 		   any)
 	      (if (noise-keyword =>)
-		  (and (values =>)
-		       any)
-		  (and (values begin)
-		       (* any))))))
+		  (list (values =>)
+			any)
+		  (cons (values begin)
+			(* any))))))
 
 (define (expand-cond-clause clause rest)
   (let ((predicate (car clause))
@@ -490,9 +490,9 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 `((elt (list (* (elt (list id any (? any))))))
+	 `((elt (* (elt (list id any (? any)))))
 	   ,cond-clause-pattern
-	   (list (* any)))
+	   (* any))
        (lambda (bindings test-clause actions)
 	 (let ((loop-name (new-identifier 'do-loop)))
 	   (scons-named-let loop-name
@@ -604,8 +604,8 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 `((elt (list (* (list (or id (elt any) (elt id any))))))
-	   (list (* any)))
+	 `((elt (* (list (or id (elt any) (elt id any)))))
+	   (* any))
        (lambda (clauses body-exprs)
 	 (let recur1 ((conjunct #t) (clauses clauses))
 	   (cond ((pair? clauses)
@@ -625,7 +625,7 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 `((list (+ symbol))
+	 `((+ symbol)
 	   any)
        (lambda (names expr)
 	 (fold-right (lambda (name expr)
@@ -642,9 +642,11 @@ USA.
 (define :cons-stream*
   (spar-transformer->runtime
    (delay
-     (scons-rule `((list any (+ any)))
+     (scons-rule `((+ any))
        (lambda (exprs)
-	 (reduce-right scons-stream unspecific exprs))))
+	 (if (pair? (cdr exprs))
+	     (car exprs)
+	     (reduce-right scons-stream unspecific exprs)))))
    system-global-environment))
 
 (define (scons-stream expr1 expr2)
@@ -655,7 +657,7 @@ USA.
 (define :circular-stream
   (spar-transformer->runtime
    (delay
-     (scons-rule `((list (+ any)))
+     (scons-rule `((+ any))
        (lambda (exprs)
 	 (let ((self (new-identifier 'self)))
 	   (scons-letrec
