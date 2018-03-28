@@ -598,43 +598,26 @@ USA.
 ;;; follow.  This passes all of the tests except for the one that
 ;;; detects duplicate bound variables, though.
 
-(define-syntax :and-let*
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare
-     (let ((%and (rename 'AND))
-	   (%let (rename 'LET))
-	   (%begin (rename 'BEGIN)))
-       (cond ((syntax-match? '(() * form) (cdr form))
-	      `(,%begin #T ,@(cddr form)))
-	     ((syntax-match? '((* datum) * form) (cdr form))
-	      (let ((clauses (cadr form))
-		    (body (cddr form)))
-		(define (expand clause recur)
-		  (cond ((syntax-match? 'identifier clause)
-			 (recur clause))
-			((syntax-match? '(expression) clause)
-			 (recur (car clause)))
-			((syntax-match? '(identifier expression) clause)
-			 (let ((tail (recur (car clause))))
-			   (and tail `(,%let (,clause) ,tail))))
-			(else #f)))
-		(define (recur clauses make-body)
-		  (expand (car clauses)
-			  (let ((clauses (cdr clauses)))
-			    (if (null? clauses)
-				make-body
-				(lambda (conjunct)
-				  `(,%and ,conjunct
-					  ,(recur clauses make-body)))))))
-		(or (recur clauses
-			   (if (null? body)
-			       (lambda (conjunct) conjunct)
-			       (lambda (conjunct)
-				 `(,%and ,conjunct (,%begin ,@body)))))
-		    (ill-formed-syntax form))))
-	     (else
-	      (ill-formed-syntax form)))))))
+(define :and-let*
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `((list (elt (* (list (or id (elt any) (elt id any))))))
+	   (list (* any)))
+       (lambda (clauses body-exprs)
+	 (let recur1 ((conjunct #t) (clauses clauses))
+	   (cond ((pair? clauses)
+		  (scons-and conjunct
+			     (let ((clause (car clauses)))
+			       (let ((rest (recur1 (car clause) (cdr clauses))))
+				 (if (pair? (cdr clause))
+				     (scons-let (list clause) rest)
+				     rest)))))
+		 ((pair? body-exprs)
+		  (scons-and conjunct (apply scons-begin body-exprs)))
+		 (else
+		  conjunct))))))
+   system-global-environment))
 
 (define :access
   (spar-transformer->runtime
