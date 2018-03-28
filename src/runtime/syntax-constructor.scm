@@ -58,14 +58,19 @@ USA.
 (define (scons-and . exprs)
   (make-open-expr
    (lambda (close)
-     (cons (close 'and)
-	   (close-parts close exprs)))))
+     (let ((closed (close-parts close (delq #t exprs))))
+       (case (length closed)
+	 ((0) #t)
+	 ((1) (car closed))
+	 (else (cons (close 'and) closed)))))))
 
 (define (scons-begin . exprs)
   (make-open-expr
    (lambda (close)
-     (cons (close 'begin)
-	   (close-parts close (remove default-object? exprs))))))
+     (let ((closed (close-parts close (remove default-object? exprs))))
+       (case (length closed)
+	 ((1) (car closed))
+	 (else (cons (close 'begin) closed)))))))
 
 (define (scons-call operator . operands)
   (make-open-expr
@@ -117,8 +122,11 @@ USA.
 (define (scons-or . exprs)
   (make-open-expr
    (lambda (close)
-     (cons (close 'or)
-	   (close-parts close exprs)))))
+     (let ((closed (close-parts close (delq #f exprs))))
+       (case (length closed)
+	 ((0) #f)
+	 ((1) (car closed))
+	 (else (cons (close 'or) closed)))))))
 
 (define (scons-quote datum)
   (make-open-expr
