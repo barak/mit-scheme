@@ -335,12 +335,10 @@ USA.
    system-global-environment))
 
 (define (expand-let* scons-let bindings body-forms)
-  (if (pair? bindings)
-      (let loop ((bindings bindings))
-	(if (pair? (cdr bindings))
-	    (scons-let (list (car bindings)) (loop (cdr bindings)))
-	    (apply scons-let (list (car bindings)) body-forms)))
-      (apply scons-let '() body-forms)))
+  (fold-right (lambda (binding expr)
+		(scons-let (list binding) expr))
+	      (apply scons-let '() body-forms)
+	      bindings))
 
 (define :letrec
   (spar-transformer->runtime
@@ -382,14 +380,10 @@ USA.
    (delay
      (scons-rule '((list (* any)))
        (lambda (exprs)
-	 (if (pair? exprs)
-	     (let loop ((exprs exprs))
-	       (if (pair? (cdr exprs))
-		   (scons-if (car exprs)
-			     (loop (cdr exprs))
-			     #f)
-		   (car exprs)))
-	     #t))))
+	 (reduce-right (lambda (expr1 expr2)
+			 (scons-if expr1 expr2 #f))
+		       #t
+		       exprs))))
    system-global-environment))
 
 (define :case
@@ -409,15 +403,6 @@ USA.
 		 (values #f))))
        (lambda (expr clauses else-clause)
 	 (let ((temp (new-identifier 'key)))
-
-	   (define (process-clauses clauses)
-	     (cond ((pair? clauses)
-		    (process-clause (car clauses)
-				    (process-clauses (cdr clauses))))
-		   (else-clause
-		    (process-action (car else-clause) (cdr else-clause)))
-		   (else
-		    (unspecific-expression))))
 
 	   (define (process-clause clause rest)
 	     (if (pair? (car clause))
@@ -447,7 +432,12 @@ USA.
 		   (else (error "Unrecognized action type:" type))))
 
 	   (scons-let (list (list temp expr))
-	     (process-clauses clauses))))))
+	     (fold-right process-clause
+			 (if else-clause
+			     (process-action (car else-clause)
+					     (cdr else-clause))
+			     (unspecific-expression))
+			 clauses))))))
    system-global-environment))
 
 (define :cond
@@ -459,12 +449,11 @@ USA.
 			  (+ any)))
 	       (values #f)))
        (lambda (clauses else-actions)
-	 (let loop ((clauses clauses))
-	   (cond ((pair? clauses)
-		  (expand-cond-clause (car clauses)
-				      (loop (cdr clauses))))
-		 (else-actions (apply scons-begin else-actions))
-		 (else (unspecific-expression)))))))
+	 (fold-right expand-cond-clause
+		     (if else-actions
+			 (apply scons-begin else-actions)
+			 (unspecific-expression))
+		     clauses))))
    system-global-environment))
 
 (define cons-clause-pattern
