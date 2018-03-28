@@ -385,7 +385,7 @@ USA.
 		       #t
 		       exprs))))
    system-global-environment))
-
+
 (define :case
   (spar-transformer->runtime
    (delay
@@ -636,47 +636,50 @@ USA.
 	     (else
 	      (ill-formed-syntax form)))))))
 
-(define-syntax :access
-  (er-macro-transformer
-   (lambda (form rename compare)
-     rename compare			;ignore
-     (cond ((syntax-match? '(identifier expression) (cdr form))
-	    `(,keyword:access ,@(cdr form)))
-	   ((syntax-match? '(identifier identifier + form) (cdr form))
-	    `(,keyword:access ,(cadr form) (,(car form) ,@(cddr form))))
-	   (else
-	    (ill-formed-syntax form))))))
+(define :access
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `((list (+ symbol))
+	   any)
+       (lambda (names expr)
+	 (fold-right (lambda (name expr)
+		       (scons-call keyword:access name expr))
+		     expr
+		     names))))
+   system-global-environment))
 
-(define-syntax :circular-stream
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare				;ignore
-     (syntax-check '(_ expression * expression) form)
-     (let ((self (make-synthetic-identifier 'SELF)))
-       `(,(rename 'LETREC) ((,self (,(rename 'CONS-STREAM*)
-				    ,@(cdr form)
-				    ,self)))
-	 ,self)))))
+(define :cons-stream
+  (spar-transformer->runtime
+   (delay (scons-rule `(any any) scons-stream))
+   system-global-environment))
 
-(define-syntax :cons-stream
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare				;ignore
-     (syntax-check '(_ expression expression) form)
-     `(,(rename 'CONS) ,(cadr form)
-		       (,(rename 'DELAY) ,(caddr form))))))
+(define :cons-stream*
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `((list any (+ any)))
+       (lambda (exprs)
+	 (reduce-right scons-stream unspecific exprs))))
+   system-global-environment))
 
-(define-syntax :cons-stream*
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare				;ignore
-     (cond ((syntax-match? '(expression expression) (cdr form))
-	    `(,(rename 'CONS-STREAM) ,(cadr form) ,(caddr form)))
-	   ((syntax-match? '(expression * expression) (cdr form))
-	    `(,(rename 'CONS-STREAM) ,(cadr form)
-	      (,(rename 'CONS-STREAM*) ,@(cddr form))))
-	   (else
-	    (ill-formed-syntax form))))))
+(define (scons-stream expr1 expr2)
+  (scons-call (scons-close 'cons)
+	      expr1
+	      (scons-delay expr2)))
+
+(define :circular-stream
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `((list (+ any)))
+       (lambda (exprs)
+	 (let ((self (new-identifier 'self)))
+	   (scons-letrec
+	       (list (list self
+			   (fold-right scons-stream
+				       self
+				       exprs)))
+	     self)))))
+   system-global-environment))
 
 (define-syntax :define-integrable
   (er-macro-transformer
