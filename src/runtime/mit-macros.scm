@@ -668,73 +668,77 @@ USA.
 	     self)))))
    system-global-environment))
 
-(define-syntax :define-integrable
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare				;ignore
-     (let ((r-begin (rename 'BEGIN))
-	   (r-declare (rename 'DECLARE))
-	   (r-define (rename 'DEFINE)))
-       (cond ((syntax-match? '(identifier expression) (cdr form))
-	      `(,r-begin
-		(,r-declare (INTEGRATE ,(cadr form)))
-		(,r-define ,@(cdr form))))
-	     ((syntax-match? '((identifier * identifier) + form) (cdr form))
-	      `(,r-begin
-		(,r-declare (INTEGRATE-OPERATOR ,(caadr form)))
-		(,r-define ,(cadr form)
-			   ,@(let ((arguments (cdadr form)))
-			       (if (null? arguments)
-				   '()
-				   `((,r-declare (INTEGRATE ,@arguments)))))
-			   ,@(cddr form))))
-	     (else
-	      (ill-formed-syntax form)))))))
+(define :define-integrable
+  (spar-transformer->runtime
+   (delay
+     (spar-or
+       (scons-rule `(id any)
+	 (lambda (name expr)
+	   (scons-begin
+	     (scons-declare (list 'integrate name))
+	     (scons-define name expr))))
+       (scons-rule `((subform id (* id)) (+ any))
+	 (lambda (name bvl body-forms)
+	   (scons-begin
+	     (scons-declare (list 'integrate-operator name))
+	     (scons-define name
+	       (apply scons-named-lambda
+		      (cons name bvl)
+		      (if (null? bvl)
+			  body-forms
+			  (cons (scons-declare (cons 'integrate bvl))
+				body-forms)))))))))
+   system-global-environment))
 
-(define-syntax :fluid-let
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare
-     (syntax-check '(_ (* (form ? expression)) + form) form)
-     (let ((left-hand-sides (map car (cadr form)))
-	   (right-hand-sides (map cdr (cadr form)))
-	   (r-define (rename 'DEFINE))
-	   (r-lambda (rename 'LAMBDA))
-	   (r-let (rename 'LET))
-	   (r-set! (rename 'SET!))
-	   (r-shallow-fluid-bind (rename 'SHALLOW-FLUID-BIND))
-	   (r-unspecific (rename 'UNSPECIFIC)))
-       (let ((temporaries
-	      (map (lambda (lhs)
-		     (make-synthetic-identifier
-		      (if (identifier? lhs) lhs 'TEMPORARY)))
-		   left-hand-sides))
-	     (swap! (make-synthetic-identifier 'SWAP!))
-	     (body `(,r-lambda () ,@(cddr form))))
-	 `(,r-let ,(map cons temporaries right-hand-sides)
-	    (,r-define (,swap!)
-	      ,@(map (lambda (lhs temporary)
-		       `(,r-set! ,lhs (,r-set! ,temporary (,r-set! ,lhs))))
-		     left-hand-sides
-		     temporaries)
-	      ,r-unspecific)
-	    (,r-shallow-fluid-bind ,swap! ,body ,swap!)))))))
+(define :fluid-let
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `(,(let-bindings-pattern)
+	   (+ any))
+       (lambda (bindings body-forms)
+	 (let ((ids (map car bindings))
+	       (vals (map cadr bindings)))
+	   (let ((temps
+		  (map (lambda (id)
+			 (new-identifier (symbol 'temp- id)))
+		       ids))
+		 (swap! (new-identifier 'swap!)))
+	     (scons-let (map list temps vals)
+	       (scons-define swap!
+		 (scons-lambda '()
+		   (apply scons-begin
+			  (map (lambda (id temp)
+				 (scons-set! id
+					     (scons-set! temp
+							 (scons-set! id))))
+			       ids
+			       temps))
+		   #f))
+	       (scons-call (scons-close 'shallow-fluid-bind)
+			   swap!
+			   (apply scons-lambda '() body-forms)
+			   swap!)))))))
+   system-global-environment))
 
-(define-syntax :parameterize
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare
-     (syntax-check '(_ (* (expression expression)) + form) form)
-     (let ((r-parameterize* (rename 'parameterize*))
-	   (r-list (rename 'list))
-	   (r-cons (rename 'cons))
-	   (r-lambda (rename 'lambda)))
-       `(,r-parameterize*
-	 (,r-list
-	  ,@(map (lambda (binding)
-		   `(,r-cons ,(car binding) ,(cadr binding)))
-		 (cadr form)))
-	 (,r-lambda () ,@(cddr form)))))))
+(define :parameterize
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `((subform (* (subform (list id any))))
+	   (+ any))
+       (lambda (bindings body-forms)
+	 (let ((ids (map car bindings))
+	       (vals (map cadr bindings)))
+	   (scons-call (scons-close 'parameterize*)
+		       (apply scons-call
+			      (scons-close 'list)
+			      (map (lambda (id val)
+				     (scons-call (scons-close 'cons) id val))
+				   ids
+				   vals))
+		       (apply scons-lambda '() body-forms))))))
+   system-global-environment))
 
 (define-syntax :local-declare
   (er-macro-transformer
