@@ -741,15 +741,11 @@ USA.
    system-global-environment))
 
 (define-syntax :local-declare
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare
-     (syntax-check '(_ (* (identifier * datum)) + form) form)
-     (let ((r-let (rename 'LET))
-	   (r-declare (rename 'DECLARE)))
-       `(,r-let ()
-		(,r-declare ,@(cadr form))
-		,@(cddr form))))))
+  (syntax-rules ()
+    ((_ ((directive datum ...) ...) form0 form1+ ...)
+     (let ()
+       (declare (directive datum ...) ...)
+       form0 form1+ ...))))
 
 (define (unspecific-expression)
   `(,keyword:unspecific))
@@ -759,26 +755,26 @@ USA.
 
 (define-syntax :begin0
   (syntax-rules ()
-    ((BEGIN0 form0 form1+ ...)
-     (LET ((RESULT form0))
+    ((_ form0 form1+ ...)
+     (let ((result form0))
        form1+ ...
-       RESULT))))
+       result))))
 
 (define-syntax :assert
   (syntax-rules ()
-    ((ASSERT condition . extra)
-     (IF (NOT condition)
-         (ERROR "Assertion failed:" 'condition . extra)))))
+    ((_ condition . extra)
+     (if (not condition)
+         (error "Assertion failed:" 'condition . extra)))))
 
 (define-syntax :when
   (syntax-rules ()
-    ((when condition form ...)
+    ((_ condition form ...)
      (if condition
 	 (begin form ...)))))
 
 (define-syntax :unless
   (syntax-rules ()
-    ((unless condition form ...)
+    ((_ condition form ...)
      (if (not condition)
 	 (begin form ...)))))
 
