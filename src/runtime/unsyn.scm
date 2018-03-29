@@ -202,15 +202,18 @@ USA.
 		  (= 3 (length operands)))
 	      (scode-lambda? (car operands))
 	      (scode-the-environment? (cadr operands))
-	      (let ((go
+	      (let ((rewrite
 		     (lambda (keyword)
 		       `(define-syntax ,name
 			  (,keyword
 			   ,(unsyntax-object environment (car operands)))))))
 		(case (scode-access-name operator)
-		  ((sc-macro-transformer->expander) (go 'sc-macro-transformer))
-		  ((rsc-macro-transformer->expander) (go 'rsc-macro-transformer))
-		  ((er-macro-transformer->expander) (go 'er-macro-transformer))
+		  ((sc-macro-transformer->expander)
+		   (rewrite 'sc-macro-transformer))
+		  ((rsc-macro-transformer->expander)
+		   (rewrite 'rsc-macro-transformer))
+		  ((er-macro-transformer->expander)
+		   (rewrite 'er-macro-transformer))
 		  (else #f)))))))
 
 (define (unsyntax-assignment-object environment assignment)
@@ -236,31 +239,31 @@ USA.
     ,(unsyntax-object environment (scode-declaration-expression declaration))))
 
 (define (unsyntax-sequence-object environment seq)
-  (let loop ((actions (scode-sequence-actions seq)))
+  (let ((actions (scode-sequence-actions seq)))
     (if (and (scode-block-declaration? (car actions))
 	     (pair? (cdr actions)))
 	`(BEGIN
 	  (DECLARE ,@(scode-block-declaration-text (car actions)))
-	  ,@(loop (cdr actions)))
+	  ,@(unsyntax-sequence-actions environment (cdr actions)))
 	`(BEGIN
-	  ,@(unsyntax-sequence-actions environment seq)))))
+	  ,@(unsyntax-sequence-actions environment actions)))))
 
-(define (unsyntax-sequence environment seq)
+(define (unsyntax-sequence-for-splicing environment seq)
   (if (scode-sequence? seq)
-      (if (eq? #t unsyntaxer:macroize?)
-	  (unsyntax-sequence-actions environment seq)
-	  `((BEGIN ,@(unsyntax-sequence-actions environment seq))))
+      (let ((actions
+	     (unsyntax-sequence-actions environment
+					(scode-sequence-actions seq))))
+	(if (eq? #t unsyntaxer:macroize?)
+	    actions
+	    `((BEGIN ,@actions))))
       (list (unsyntax-object environment seq))))
 
-(define (unsyntax-sequence-actions environment seq)
-  (let loop ((actions (scode-sequence-actions seq)))
-    (if (pair? actions)
-	(cons (let ((substitution (has-substitution? (car actions))))
-		(if substitution
-		    (cdr substitution)
-		    (unsyntax-object environment (car actions))))
-	      (loop (cdr actions)))
-	'())))
+(define (unsyntax-sequence-actions environment actions)
+  (map (lambda (action)
+	 (maybe-substitute action
+			   (lambda ()
+			     (unsyntax-object environment action))))
+       actions))
 
 (define (unsyntax-open-block-object environment open-block)
   (if (eq? #t unsyntaxer:macroize?)
@@ -330,7 +333,7 @@ USA.
 (define (unsyntax-cond-conditional environment
 				   predicate consequent alternative)
   `((,(unsyntax-object environment predicate)
-     ,@(unsyntax-sequence environment consequent))
+     ,@(unsyntax-sequence-for-splicing environment consequent))
     ,@(unsyntax-cond-alternative environment alternative)))
 
 (define (unsyntax-cond-disjunction environment predicate alternative)
@@ -356,7 +359,7 @@ USA.
 	  (scode-conditional-consequent alternative)
 	  (scode-conditional-alternative alternative)))
 	(else
-	 `((ELSE ,@(unsyntax-sequence environment alternative))))))
+	 `((ELSE ,@(unsyntax-sequence-for-splicing environment alternative))))))
 
 (define (unexpand-conjunction environment predicate consequent)
   (if (and (scode-conditional? consequent)
@@ -378,8 +381,10 @@ USA.
 (define (unsyntax-EXTENDED-LAMBDA-object environment expression)
   (if unsyntaxer:macroize?
       (unsyntax-lambda environment expression)
-      `(&XLAMBDA (,(scode-lambda-name expression) ,@(scode-lambda-interface expression))
-		 ,(unsyntax-object environment (lambda-immediate-body expression)))))
+      `(&XLAMBDA (,(scode-lambda-name expression)
+		  ,@(scode-lambda-interface expression))
+		 ,(unsyntax-object environment
+				   (lambda-immediate-body expression)))))
 
 (define (unsyntax-LAMBDA-object environment expression)
   (if unsyntaxer:macroize?
@@ -395,8 +400,8 @@ USA.
       (collect-lambda name
 		      (make-lambda-list required optional rest '())
 		      (with-bindings environment expression
-				     (lambda (environment*)
-				       (unsyntax-lambda-body environment* body)))))))
+			(lambda (environment*)
+			  (unsyntax-lambda-body environment* body)))))))
 
 (define (collect-lambda name bvl body)
   (if (eq? name scode-lambda-name:unnamed)
@@ -427,9 +432,10 @@ USA.
 	(if (and (scode-block-declaration? (car actions))
 		 (pair? (cdr actions)))
 	    `((DECLARE ,@(scode-block-declaration-text (car actions)))
-	      ,@(unsyntax-sequence environment
-				   (make-scode-sequence (cdr actions))))
-	    (unsyntax-sequence environment body)))
+	      ,@(unsyntax-sequence-for-splicing
+		 environment
+		 (make-scode-sequence (cdr actions))))
+	    (unsyntax-sequence-for-splicing environment body)))
       (list (unsyntax-object environment body))))
 
 ;;;; Combinations
@@ -463,10 +469,12 @@ USA.
 			   (= (length required) (length operands)))
 		      (if (or (eq? name scode-lambda-name:unnamed)
 			      (eq? name scode-lambda-name:let))
-			  `(LET ,(unsyntax-let-bindings environment required operands)
+			  `(LET ,(unsyntax-let-bindings environment
+							required
+							operands)
 			     ,@(with-bindings environment operator
-					      (lambda (environment*)
-						(unsyntax-lambda-body environment* body))))
+				 (lambda (environment*)
+				   (unsyntax-lambda-body environment* body))))
 			  (ordinary-combination))
 		      (ordinary-combination)))))
 	     (else
