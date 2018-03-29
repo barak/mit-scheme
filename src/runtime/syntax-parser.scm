@@ -516,7 +516,7 @@ USA.
 		  (apply $call cons (map loop (cdr pattern))))
 		 ('('call + form)
 		  (apply $call (cadr pattern) (map loop (cddr pattern))))
-		 ('('elt * form)
+		 ('('subform * form)
 		  ($subform (apply $and (map loop (cdr pattern)))
 			    ($match-null))))))
 

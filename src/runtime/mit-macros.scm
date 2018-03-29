@@ -53,8 +53,8 @@ USA.
 			clause-pattern*
 			(spar-match-null))))))))
   `((values compare)
-    (+ (elt (cons (spar ,clause-pattern)
-		  (* any))))))
+    (+ (subform (cons (spar ,clause-pattern)
+		      (* any))))))
 
 (define (generate-cond-expand compare clauses)
 
@@ -183,12 +183,12 @@ USA.
    (delay
      (scons-rule
 	 `((or (and id (values #f))
-	       (elt id any))
+	       (subform id any))
 	   (or (and id (values #f))
 	       (and ,not (values #f))
-	       (elt id (* symbol)))
+	       (subform id (* symbol)))
 	   (or id ,not)
-	   (* (elt (list symbol id (or id (values #f))))))
+	   (* (subform (list symbol id (or id (values #f))))))
        (lambda (type-name parent maker-name maker-args pred-name field-specs)
 	 (apply scons-begin
 		(scons-define type-name
@@ -277,7 +277,7 @@ USA.
    system-global-environment))
 
 (define (let-bindings-pattern)
-  `(elt (* (elt (list id ,(optional-value-pattern))))))
+  `(subform (* (subform (list id ,(optional-value-pattern))))))
 
 (define named-let-strategy 'internal-definition)
 
@@ -328,7 +328,7 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 '((elt (* (elt (list id any))))
+	 '((subform (* (subform (list id any))))
 	   (+ any))
        (lambda (bindings body-forms)
 	 (expand-let* scons-let-syntax bindings body-forms))))
@@ -397,10 +397,10 @@ USA.
 		     (cons (values begin)
 			   (+ any)))))
 	   `(any
-	     (* (elt (cons (elt (* any))
-			   ,action-pattern)))
-	     (or (elt (noise-keyword else)
-		      ,action-pattern)
+	     (* (subform (cons (subform (* any))
+			       ,action-pattern)))
+	     (or (subform (noise-keyword else)
+			  ,action-pattern)
 		 (values #f))))
        (lambda (expr clauses else-clause)
 	 (let ((temp (new-identifier 'key)))
@@ -446,8 +446,8 @@ USA.
    (delay
      (scons-rule
 	 `((* ,cond-clause-pattern)
-	   (or (elt (noise-keyword else)
-		    (+ any))
+	   (or (subform (noise-keyword else)
+			(+ any))
 	       (values #f)))
        (lambda (clauses else-actions)
 	 (fold-right expand-cond-clause
@@ -458,13 +458,13 @@ USA.
    system-global-environment))
 
 (define cond-clause-pattern
-  '(elt (cons (and (not (noise-keyword else))
-		   any)
-	      (if (noise-keyword =>)
-		  (list (values =>)
-			any)
-		  (cons (values begin)
-			(* any))))))
+  '(subform (cons (and (not (noise-keyword else))
+		       any)
+		  (if (noise-keyword =>)
+		      (list (values =>)
+			    any)
+		      (cons (values begin)
+			    (* any))))))
 
 (define (expand-cond-clause clause rest)
   (let ((predicate (car clause))
@@ -490,7 +490,7 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 `((elt (* (elt (list id any (? any)))))
+	 `((subform (* (subform (list id any (? any)))))
 	   ,cond-clause-pattern
 	   (* any))
        (lambda (bindings test-clause actions)
@@ -604,7 +604,7 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 `((elt (* (list (or id (elt any) (elt id any)))))
+	 `((subform (* (list (or id (subform any) (subform id any)))))
 	   (* any))
        (lambda (clauses body-exprs)
 	 (let recur1 ((conjunct #t) (clauses clauses))
