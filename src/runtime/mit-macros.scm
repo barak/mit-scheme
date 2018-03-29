@@ -43,25 +43,25 @@ USA.
 	(spar-subform
 	  (spar-call-with-values list
 	    (spar-or
-	      (spar-and (spar-push-subform-if spar-arg:compare 'or spar-arg:form)
+	      (spar-and (spar-push-subform-if spar-arg:id=? 'or)
 			(spar* clause-pattern*)
 			(spar-match-null))
-	      (spar-and (spar-push-subform-if spar-arg:compare 'and spar-arg:form)
+	      (spar-and (spar-push-subform-if spar-arg:id=? 'and)
 			(spar* clause-pattern*)
 			(spar-match-null))
-	      (spar-and (spar-push-subform-if spar-arg:compare 'not spar-arg:form)
+	      (spar-and (spar-push-subform-if spar-arg:id=? 'not)
 			clause-pattern*
 			(spar-match-null))))))))
-  `((values compare)
+  `((value id=?)
     (+ (subform (cons (spar ,clause-pattern)
 		      (* any))))))
 
-(define (generate-cond-expand compare clauses)
+(define (generate-cond-expand id=? clauses)
 
   (define (process-clauses clauses)
     (cond ((not (pair? clauses))
 	   (generate '()))
-	  ((compare 'else (caar clauses))
+	  ((id=? 'else (caar clauses))
 	   (if (pair? (cdr clauses))
 	       (syntax-error "ELSE clause must be last:" clauses))
 	   (generate (cdar clauses)))
@@ -76,15 +76,15 @@ USA.
 
   (define (eval-req req success failure)
     (cond ((identifier? req) (if (supported-feature? req) (success) (failure)))
-	  ((compare 'or (car req)) (eval-or (cdr req) success failure))
-	  ((compare 'and (car req)) (eval-and (cdr req) success failure))
-	  ((compare 'not (car req)) (eval-req (cadr req) failure success))
+	  ((id=? 'or (car req)) (eval-or (cdr req) success failure))
+	  ((id=? 'and (car req)) (eval-and (cdr req) success failure))
+	  ((id=? 'not (car req)) (eval-req (cadr req) failure success))
 	  (else (error "Unknown requirement:" req))))
 
   (define (supported-feature? req)
     (let ((p
 	   (find (lambda (p)
-		   (compare (car p) req))
+		   (id=? (car p) req))
 		 supported-features)))
       (and p
 	   ((cdr p)))))
@@ -182,13 +182,13 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 `((or (and id (values #f))
+	 `((or (and id (value #f))
 	       (subform id any))
-	   (or (and id (values #f))
-	       (and ,not (values #f))
+	   (or (and id (value #f))
+	       (and ,not (value #f))
 	       (subform id (* symbol)))
 	   (or id ,not)
-	   (* (subform (list symbol id (or id (values #f))))))
+	   (* (subform (list symbol id (or id (value #f))))))
        (lambda (type-name parent maker-name maker-args pred-name field-specs)
 	 (apply scons-begin
 		(scons-define type-name
@@ -261,7 +261,7 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule
-	 `((or id (values #f))
+	 `((or id (value #f))
 	   ,(let-bindings-pattern)
 	   (+ any))
        (lambda (name bindings body-forms)
@@ -391,17 +391,17 @@ USA.
    (delay
      (scons-rule
 	 (let ((action-pattern
-		'(if (noise-keyword =>)
-		     (list (values =>)
+		'(if (ignore-if id=? =>)
+		     (list (value =>)
 			   any)
-		     (cons (values begin)
+		     (cons (value begin)
 			   (+ any)))))
 	   `(any
 	     (* (subform (cons (subform (* any))
 			       ,action-pattern)))
-	     (or (subform (noise-keyword else)
+	     (or (subform (ignore-if id=? else)
 			  ,action-pattern)
-		 (values #f))))
+		 (value #f))))
        (lambda (expr clauses else-clause)
 	 (let ((temp (new-identifier 'key)))
 
@@ -446,9 +446,9 @@ USA.
    (delay
      (scons-rule
 	 `((* ,cond-clause-pattern)
-	   (or (subform (noise-keyword else)
+	   (or (subform (ignore-if id=? else)
 			(+ any))
-	       (values #f)))
+	       (value #f)))
        (lambda (clauses else-actions)
 	 (fold-right expand-cond-clause
 		     (if else-actions
@@ -458,12 +458,12 @@ USA.
    system-global-environment))
 
 (define cond-clause-pattern
-  '(subform (cons (and (not (noise-keyword else))
+  '(subform (cons (and (not (ignore-if id=? else))
 		       any)
-		  (if (noise-keyword =>)
-		      (list (values =>)
+		  (if (ignore-if id=? =>)
+		      (list (value =>)
 			    any)
-		      (cons (values begin)
+		      (cons (value begin)
 			    (* any))))))
 
 (define (expand-cond-clause clause rest)
