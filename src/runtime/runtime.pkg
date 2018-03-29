@@ -4828,8 +4828,10 @@ USA.
   (export ()
 	  unsyntax
 	  unsyntax-lambda-list
-	  unsyntax-with-substitutions)
-  (initialization (initialize-package!)))
+	  unsyntax-with-substitutions
+	  unsyntaxer:elide-global-accesses?
+	  unsyntaxer:macroize?
+	  unsyntaxer:show-comments?))
 
 (define-package (runtime working-directory)
   (files "wrkdir")

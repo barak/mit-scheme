@@ -29,41 +29,18 @@ USA.
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (set! substitutions (make-unsettable-parameter '()))
-  (set! unsyntaxer/scode-walker
-	(make-scode-walker unsyntax-constant
-			   `((ACCESS ,unsyntax-ACCESS-object)
-			     (ASSIGNMENT ,unsyntax-ASSIGNMENT-object)
-			     (COMBINATION ,unsyntax-COMBINATION-object)
-			     (COMMENT ,unsyntax-COMMENT-object)
-			     (CONDITIONAL ,unsyntax-CONDITIONAL-object)
-			     (DECLARATION ,unsyntax-DECLARATION-object)
-			     (DEFINITION ,unsyntax-DEFINITION-object)
-			     (DELAY ,unsyntax-DELAY-object)
-			     (DISJUNCTION ,unsyntax-DISJUNCTION-object)
-			     (EXTENDED-LAMBDA ,unsyntax-EXTENDED-LAMBDA-object)
-			     (LAMBDA ,unsyntax-LAMBDA-object)
-			     (OPEN-BLOCK ,unsyntax-OPEN-BLOCK-object)
-			     (QUOTATION ,unsyntax-QUOTATION)
-			     (SEQUENCE ,unsyntax-SEQUENCE-object)
-			     (THE-ENVIRONMENT ,unsyntax-THE-ENVIRONMENT-object)
-			     (VARIABLE ,unsyntax-VARIABLE-object))))
-  unspecific)
-
 ;;; If UNSYNTAXER:MACROIZE? is #f, then the unsyntaxed output will
 ;;; closely match the concrete structure that is given to SCODE-EVAL.
 ;;; If it is #t, then the unsyntaxed output will more closely match
 ;;; the abstract structure of the SCODE (as output by syntax and sf).
 
-(define unsyntaxer:macroize? #t)
-
-(define unsyntaxer:elide-global-accesses? #t)
-(define unsyntaxer:show-comments? #f)
+(define-deferred unsyntaxer:macroize? (make-settable-parameter #t))
+(define-deferred unsyntaxer:elide-global-accesses? (make-settable-parameter #t))
+(define-deferred unsyntaxer:show-comments? (make-settable-parameter #f))
 
 ;;; The substitutions mechanism is for putting the '### marker in
 ;;; debugger output.
-(define substitutions)
+(define-deferred substitutions (make-unsettable-parameter '()))
 
 (define (unsyntax-with-substitutions scode alist)
   (if (not (alist? alist))
@@ -83,8 +60,8 @@ USA.
     (and (pair? substs) (assq object substs))))
 
 (define (with-bindings environment lambda receiver)
-  (if (and unsyntaxer:elide-global-accesses?
-	   unsyntaxer:macroize?)
+  (if (and (unsyntaxer:elide-global-accesses?)
+	   (unsyntaxer:macroize?))
       (receiver (cons lambda environment))
       (receiver environment)))
 
@@ -103,8 +80,24 @@ USA.
    (lambda ()
      ((scode-walk unsyntaxer/scode-walker object) environment object))))
 
-(define unsyntaxer/scode-walker)
-
+(define-deferred unsyntaxer/scode-walker
+  (make-scode-walker unsyntax-constant
+		     `((access ,unsyntax-access-object)
+		       (assignment ,unsyntax-assignment-object)
+		       (combination ,unsyntax-combination-object)
+		       (comment ,unsyntax-comment-object)
+		       (conditional ,unsyntax-conditional-object)
+		       (declaration ,unsyntax-declaration-object)
+		       (definition ,unsyntax-definition-object)
+		       (delay ,unsyntax-delay-object)
+		       (disjunction ,unsyntax-disjunction-object)
+		       (extended-lambda ,unsyntax-extended-lambda-object)
+		       (lambda ,unsyntax-lambda-object)
+		       (open-block ,unsyntax-open-block-object)
+		       (quotation ,unsyntax-quotation)
+		       (sequence ,unsyntax-sequence-object)
+		       (the-environment ,unsyntax-the-environment-object)
+		       (variable ,unsyntax-variable-object))))
 
 ;;;; Unsyntax Quanta
 
@@ -138,8 +131,8 @@ USA.
   (scode-variable-name object))
 
 (define (unsyntax-ACCESS-object environment object)
-  (or (and unsyntaxer:elide-global-accesses?
-	   unsyntaxer:macroize?
+  (or (and (unsyntaxer:elide-global-accesses?)
+	   (unsyntaxer:macroize?)
 	   (let ((access-environment (scode-access-environment object))
 		 (name (scode-access-name object)))
 	     (and (or (eq? access-environment system-global-environment)
@@ -157,7 +150,7 @@ USA.
 	     (not (has-substitution? object)))
 	`(,(scode-access-name object)
 	  ,@(loop (scode-access-environment object)
-		  (eq? #t unsyntaxer:macroize?)))
+		  (eq? #t (unsyntaxer:macroize?))))
 	`(,(unsyntax-object environment object)))))
 
 (define (unsyntax-definition-object environment definition)
@@ -166,14 +159,14 @@ USA.
 		       (scode-definition-value definition)))
 
 (define (unexpand-definition environment name value)
-  (cond ((and (eq? #t unsyntaxer:macroize?)
+  (cond ((and (eq? #t (unsyntaxer:macroize?))
 	      (macro-reference-trap-expression? value))
 	 (or (rewrite-macro-defn
 	      environment
 	      name
 	      (macro-reference-trap-expression-transformer value))
 	     `(define ,name ,(unsyntax-object environment value))))
-	((and (eq? #t unsyntaxer:macroize?)
+	((and (eq? #t (unsyntaxer:macroize?))
 	      (scode-lambda? value)
 	      (not (has-substitution? value)))
 	 (lambda-components* value
@@ -229,7 +222,7 @@ USA.
 (define (unsyntax-COMMENT-object environment comment)
   (let ((expression
 	 (unsyntax-object environment (scode-comment-expression comment))))
-    (if unsyntaxer:show-comments?
+    (if (unsyntaxer:show-comments?)
 	`(COMMENT ,(scode-comment-text comment) ,expression)
 	expression)))
 
@@ -253,7 +246,7 @@ USA.
       (let ((actions
 	     (unsyntax-sequence-actions environment
 					(scode-sequence-actions seq))))
-	(if (eq? #t unsyntaxer:macroize?)
+	(if (eq? #t (unsyntaxer:macroize?))
 	    actions
 	    `((BEGIN ,@actions))))
       (list (unsyntax-object environment seq))))
@@ -266,7 +259,7 @@ USA.
        actions))
 
 (define (unsyntax-open-block-object environment open-block)
-  (if (eq? #t unsyntaxer:macroize?)
+  (if (eq? #t (unsyntaxer:macroize?))
       (unsyntax-object
        environment
        (unscan-defines (scode-open-block-names open-block)
@@ -284,7 +277,7 @@ USA.
 (define (unsyntax-disjunction-object environment object)
   `(or ,@(let ((predicate (scode-disjunction-predicate object))
 	       (alternative (scode-disjunction-alternative object)))
-	   (if (eq? #t unsyntaxer:macroize?)
+	   (if (eq? #t (unsyntaxer:macroize?))
 	       (unexpand-disjunction environment predicate alternative)
 	       (list (unsyntax-object environment predicate)
 		     (unsyntax-object environment alternative))))))
@@ -301,7 +294,7 @@ USA.
   (let ((predicate (scode-conditional-predicate conditional))
 	(consequent (scode-conditional-consequent conditional))
 	(alternative (scode-conditional-alternative conditional)))
-    (if (eq? #t unsyntaxer:macroize?)
+    (if (eq? #t (unsyntaxer:macroize?))
 	(unsyntax-conditional environment predicate consequent alternative)
 	(unsyntax-conditional/default
 	 environment predicate consequent alternative))))
@@ -379,7 +372,7 @@ USA.
 ;;;; Lambdas
 
 (define (unsyntax-EXTENDED-LAMBDA-object environment expression)
-  (if unsyntaxer:macroize?
+  (if (unsyntaxer:macroize?)
       (unsyntax-lambda environment expression)
       `(&XLAMBDA (,(scode-lambda-name expression)
 		  ,@(scode-lambda-interface expression))
@@ -387,7 +380,7 @@ USA.
 				   (lambda-immediate-body expression)))))
 
 (define (unsyntax-LAMBDA-object environment expression)
-  (if unsyntaxer:macroize?
+  (if (unsyntaxer:macroize?)
       (unsyntax-lambda environment expression)
       (collect-lambda (scode-lambda-name expression)
 		      (scode-lambda-interface expression)
@@ -450,7 +443,7 @@ USA.
 		,@(map (lambda (operand)
 			 (unsyntax-object environment operand))
 		       operands)))))
-       (cond ((or (not (eq? #t unsyntaxer:macroize?))
+       (cond ((or (not (eq? #t (unsyntaxer:macroize?)))
 		  (has-substitution? operator))
 	      (ordinary-combination))
 	     ((and (or (eq? operator (ucode-primitive cons))
