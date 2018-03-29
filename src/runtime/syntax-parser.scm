@@ -352,7 +352,7 @@ USA.
 
 ;;;; Element combinators
 
-(define (spar-elt . spars)
+(define (spar-subform . spars)
   (let ((spar (%and spars)))
     (lambda (input senv output success failure)
       (if (%input-pair? input)
@@ -365,14 +365,14 @@ USA.
 		failure)
 	  (failure)))))
 
-(define (spar-match-elt predicate . args)
-  (spar-elt (apply spar-match predicate args)))
+(define (spar-match-subform predicate . args)
+  (spar-subform (apply spar-match predicate args)))
 
-(define (spar-push-elt)
-  (spar-elt (spar-push spar-arg:form)))
+(define (spar-push-subform)
+  (spar-subform (spar-push spar-arg:form)))
 
-(define (spar-push-elt-if predicate . args)
-  (spar-elt (apply spar-push-form-if predicate args)))
+(define (spar-push-subform-if predicate . args)
+  (spar-subform (apply spar-push-form-if predicate args)))
 
 (define (spar-match-null)
   (spar-match null? spar-arg:form))
@@ -468,8 +468,8 @@ USA.
 
 (define (make-pattern-compiler expr? caller)
   (call-with-constructors expr?
-    (lambda ($* $+ $and $call $elt $if $match-elt $match-null $not $opt $or
-		$push $push-elt $push-elt-if $push-value)
+    (lambda ($* $+ $and $call $if $match-null $match-subform $not $opt $or $push
+		$push-subform $push-subform-if $push-value $subform)
 
       (define (loop pattern)
 	(let-syntax
@@ -482,11 +482,11 @@ USA.
 				   ,@(cdr rule)))
 			       (cdr form))
 			(else (bad-pattern pattern)))))))
-	  (rules (''ignore ($elt))
-		 (''any ($push-elt))
-		 (''id ($push-elt-if identifier? spar-arg:form))
-		 (''symbol ($push-elt-if symbol? spar-arg:form))
-		 (procedure? ($push-elt-if pattern spar-arg:form))
+	  (rules (''ignore ($subform))
+		 (''any ($push-subform))
+		 (''id ($push-subform-if identifier? spar-arg:form))
+		 (''symbol ($push-subform-if symbol? spar-arg:form))
+		 (procedure? ($push-subform-if pattern spar-arg:form))
 		 ('('spar form) (cadr pattern))
 		 ('('* * form) ($call list (apply $* (map loop (cdr pattern)))))
 		 ('('+ * form) ($call list (apply $+ (map loop (cdr pattern)))))
@@ -496,13 +496,15 @@ USA.
 		 ('('and * form) (apply $and (map loop (cdr pattern))))
 		 ('('not form) ($not (loop (cadr pattern))))
 		 ('('noise form)
-		  ($match-elt eqv? (cadr pattern) spar-arg:form))
+		  ($match-subform eqv? (cadr pattern) spar-arg:form))
 		 ('('noise-keyword identifier)
-		  ($match-elt spar-arg:compare (cadr pattern) spar-arg:form))
+		  ($match-subform spar-arg:compare
+				  (cadr pattern)
+				  spar-arg:form))
 		 ('('keyword identifier)
-		  ($and ($match-elt spar-arg:compare
-				    (cadr pattern)
-				    spar-arg:form)
+		  ($and ($match-subform spar-arg:compare
+					(cadr pattern)
+					spar-arg:form)
 			($push (cadr pattern))))
 		 ('('values * form)
 		  (apply $push (map convert-spar-arg (cdr pattern))))
@@ -515,8 +517,8 @@ USA.
 		 ('('call + form)
 		  (apply $call (cadr pattern) (map loop (cddr pattern))))
 		 ('('elt * form)
-		  ($elt (apply $and (map loop (cdr pattern)))
-			($match-null))))))
+		  ($subform (apply $and (map loop (cdr pattern)))
+			    ($match-null))))))
 
       (define (convert-spar-arg arg)
 	(case arg
@@ -561,17 +563,17 @@ USA.
 	     (flat-proc 'spar+ spar+)
 	     (flat-proc 'spar-and spar-and)
 	     (flat-proc 'spar-call-with-values spar-call-with-values)
-	     (flat-proc 'spar-elt spar-elt)
 	     (proc 'spar-if spar-if)
-	     (proc 'spar-match-elt spar-match-elt)
 	     (proc 'spar-match-null spar-match-null)
+	     (proc 'spar-match-subform spar-match-subform)
 	     (proc 'spar-not spar-not)
 	     (flat-proc 'spar-opt spar-opt)
 	     (proc 'spar-or spar-or)
 	     (proc 'spar-push spar-push)
-	     (proc 'spar-push-elt spar-push-elt)
-	     (proc 'spar-push-elt-if spar-push-elt-if)
-	     (proc 'spar-push-value spar-push-value)))
+	     (proc 'spar-push-subform spar-push-subform)
+	     (proc 'spar-push-subform-if spar-push-subform-if)
+	     (proc 'spar-push-value spar-push-value)
+	     (flat-proc 'spar-subform spar-subform)))
 
 (define-deferred pattern->spar
   (make-pattern-compiler #f 'pattern->spar))

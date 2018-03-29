@@ -39,17 +39,17 @@ USA.
   (define clause-pattern
     (let ((clause-pattern* (lambda args (apply clause-pattern args))))
       (spar-or
-	(spar-push-elt-if identifier? spar-arg:form)
-	(spar-elt
+	(spar-push-subform-if identifier? spar-arg:form)
+	(spar-subform
 	  (spar-call-with-values list
 	    (spar-or
-	      (spar-and (spar-push-elt-if spar-arg:compare 'or spar-arg:form)
+	      (spar-and (spar-push-subform-if spar-arg:compare 'or spar-arg:form)
 			(spar* clause-pattern*)
 			(spar-match-null))
-	      (spar-and (spar-push-elt-if spar-arg:compare 'and spar-arg:form)
+	      (spar-and (spar-push-subform-if spar-arg:compare 'and spar-arg:form)
 			(spar* clause-pattern*)
 			(spar-match-null))
-	      (spar-and (spar-push-elt-if spar-arg:compare 'not spar-arg:form)
+	      (spar-and (spar-push-subform-if spar-arg:compare 'not spar-arg:form)
 			clause-pattern*
 			(spar-match-null))))))))
   `((values compare)
@@ -236,8 +236,8 @@ USA.
 	   (scons-call keyword:define name value)))
        (scons-rule
 	   `((spar
-	      ,(spar-elt
-		 (spar-push-elt-if identifier? spar-arg:form)
+	      ,(spar-subform
+		 (spar-push-subform-if identifier? spar-arg:form)
 		 (spar-push-form-if mit-lambda-list? spar-arg:form)))
 	     (+ any))
 	 (lambda (name bvl body-forms)
@@ -245,8 +245,8 @@ USA.
 	     (apply scons-named-lambda (cons name bvl) body-forms))))
        (scons-rule
 	   `((spar
-	      ,(spar-elt
-		 (spar-push-elt)
+	      ,(spar-subform
+		 (spar-push-subform)
 		 (spar-push-form-if mit-lambda-list? spar-arg:form)))
 	     (+ any))
 	 (lambda (nested bvl body-forms)

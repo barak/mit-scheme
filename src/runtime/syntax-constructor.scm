@@ -33,7 +33,7 @@ USA.
   (spar-call-with-values
       (lambda (close . args)
 	(close-part close (apply procedure args)))
-    (spar-elt)
+    (spar-subform)
     (spar-push spar-arg:close)
     (pattern->spar pattern)))
 

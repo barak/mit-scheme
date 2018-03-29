@@ -4559,7 +4559,6 @@ USA.
 	  spar-arg:values
 	  spar-call-with-values
 	  spar-discard-form
-	  spar-elt
 	  spar-encapsulate-values
 	  spar-error
 	  spar-fail
@@ -4567,18 +4566,19 @@ USA.
 	  spar-if
 	  spar-map-values
 	  spar-match
-	  spar-match-elt
 	  spar-match-null
+	  spar-match-subform
 	  spar-not
 	  spar-opt
 	  spar-or
 	  spar-push
-	  spar-push-elt
-	  spar-push-elt-if
 	  spar-push-form-if
+	  spar-push-subform
+	  spar-push-subform-if
 	  spar-push-value
 	  spar-repeat
 	  spar-and
+	  spar-subform
 	  spar-succeed
 	  spar-transform-values
 	  spar-with-mapped-senv)

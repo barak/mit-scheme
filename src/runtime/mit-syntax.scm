@@ -81,20 +81,20 @@ USA.
 	   (seq-item ctx
 	     (map-in-order (lambda (p) (p))
 			   deferred-items)))
-       (spar-elt)
+       (spar-subform)
        (spar-push spar-arg:ctx)
-       (spar* (spar-elt spar-push-deferred-classified))
+       (spar* (spar-subform spar-push-deferred-classified))
        (spar-match-null)))))
 
 (define :if
   (spar-classifier->runtime
    (delay
      (spar-call-with-values if-item
-       (spar-elt)
+       (spar-subform)
        (spar-push spar-arg:ctx)
-       (spar-elt spar-push-classified)
-       (spar-elt spar-push-classified)
-       (spar-or (spar-elt spar-push-classified)
+       (spar-subform spar-push-classified)
+       (spar-subform spar-push-classified)
+       (spar-or (spar-subform spar-push-classified)
 		(spar-push-value unspecific-item spar-arg:ctx))
        (spar-match-null)))))
 
@@ -102,18 +102,18 @@ USA.
   (spar-classifier->runtime
    (delay
      (spar-call-with-values constant-item
-       (spar-elt)
+       (spar-subform)
        (spar-push spar-arg:ctx)
-       (spar-elt (spar-push-value strip-syntactic-closures spar-arg:form))
+       (spar-subform (spar-push-value strip-syntactic-closures spar-arg:form))
        (spar-match-null)))))
 
 (define :quote-identifier
   (spar-classifier->runtime
    (delay
      (spar-call-with-values quoted-id-item
-       (spar-elt)
+       (spar-subform)
        (spar-push spar-arg:ctx)
-       (spar-elt
+       (spar-subform
 	 (spar-match identifier? spar-arg:form)
 	 (spar-push-value lookup-identifier spar-arg:form spar-arg:senv)
 	 (spar-or (spar-match var-item? spar-arg:value)
@@ -132,9 +132,9 @@ USA.
 				       (access-item-name lhs-item)
 				       (access-item-env lhs-item)
 				       rhs-item)))
-       (spar-elt)
+       (spar-subform)
        (spar-push spar-arg:ctx)
-       (spar-elt
+       (spar-subform
 	 spar-push-classified
 	 (spar-or (spar-match (lambda (lhs-item)
 				(or (var-item? lhs-item)
@@ -142,7 +142,7 @@ USA.
 			      spar-arg:value)
 		  (spar-error "Variable required in this context:"
 			      spar-arg:form)))
-       (spar-or (spar-elt spar-push-classified)
+       (spar-or (spar-subform spar-push-classified)
 		(spar-push-value unassigned-item spar-arg:ctx))
        (spar-match-null)))))
 
@@ -154,18 +154,18 @@ USA.
   (spar-classifier->runtime
    (delay
      (spar-call-with-values or-item
-       (spar-elt)
+       (spar-subform)
        (spar-push spar-arg:ctx)
-       (spar* (spar-elt spar-push-classified))
+       (spar* (spar-subform spar-push-classified))
        (spar-match-null)))))
 
 (define :delay
   (spar-classifier->runtime
    (delay
      (spar-call-with-values delay-item
-       (spar-elt)
+       (spar-subform)
        (spar-push spar-arg:ctx)
-       (spar-elt spar-push-deferred-classified)
+       (spar-subform spar-push-deferred-classified)
        (spar-match-null)))))
 
 ;;;; Definitions
@@ -174,12 +174,12 @@ USA.
   (spar-classifier->keyword
    (delay
      (spar-call-with-values defn-item
-       (spar-elt)
+       (spar-subform)
        (spar-push spar-arg:ctx)
-       (spar-elt
+       (spar-subform
 	 (spar-match identifier? spar-arg:form)
 	 (spar-push-value bind-variable spar-arg:form spar-arg:senv))
-       (spar-elt spar-push-classified)
+       (spar-subform spar-push-classified)
        (spar-match-null)))))
 
 (define :define-syntax
@@ -198,10 +198,10 @@ USA.
 		      (senv-top-level? senv))
 		 (syntax-defn-item ctx id (keyword-item-expr item))
 		 (seq-item ctx '()))))
-       (spar-elt)
+       (spar-subform)
        (spar-push spar-arg:ctx)
-       (spar-push-elt-if identifier? spar-arg:form)
-       (spar-elt
+       (spar-push-subform-if identifier? spar-arg:form)
+       (spar-subform
 	 spar-push-classified
 	 (spar-or (spar-match keyword-item? spar-arg:value)
 		  (spar-error "Keyword binding value must be a keyword:"
@@ -217,9 +217,9 @@ USA.
 	 (lambda (ctx bvl body-ctx body)
 	   (assemble-lambda-item ctx scode-lambda-name:unnamed bvl
 				 body-ctx body))
-       (spar-elt)
+       (spar-subform)
        (spar-push spar-arg:ctx)
-       (spar-push-elt-if mit-lambda-list? spar-arg:form)
+       (spar-push-subform-if mit-lambda-list? spar-arg:form)
        (spar-push-body)))))
 
 (define :named-lambda
@@ -229,10 +229,10 @@ USA.
 	 (lambda (ctx name bvl body-ctx body)
 	   (assemble-lambda-item ctx (identifier->symbol name) bvl
 				 body-ctx body))
-       (spar-elt)
+       (spar-subform)
        (spar-push spar-arg:ctx)
-       (spar-elt
-	 (spar-push-elt-if identifier? spar-arg:form)
+       (spar-subform
+	 (spar-push-subform-if identifier? spar-arg:form)
 	 (spar-push-form-if mit-lambda-list? spar-arg:form))
        (spar-push-body)))))
 
@@ -245,7 +245,7 @@ USA.
 	    (let ((body-senv (make-internal-senv frame-senv)))
 	      (map-in-order (lambda (elt) (elt body-senv))
 			    elts))))
-      (spar+ (spar-elt spar-push-open-classified))
+      (spar+ (spar-subform spar-push-open-classified))
       (spar-match-null))))
 
 (define (assemble-lambda-item ctx name bvl body-ctx body)
@@ -269,15 +269,15 @@ USA.
 			(bind-keyword (car binding) frame-senv (cdr binding)))
 		      bindings)
 	    (seq-item body-ctx (body frame-senv))))
-      (spar-elt)
+      (spar-subform)
       (spar-push spar-arg:ctx)
-      (spar-elt
+      (spar-subform
 	(spar-call-with-values list
 	 (spar*
 	   (spar-call-with-values cons
-	     (spar-elt (spar-push-elt-if identifier? spar-arg:form)
-		       (spar-elt spar-push-classified)
-		       (spar-match-null)))))
+	     (spar-subform (spar-push-subform-if identifier? spar-arg:form)
+			   (spar-subform spar-push-classified)
+			   (spar-match-null)))))
 	(spar-match-null))
        (spar-push-body))))
 
@@ -304,15 +304,15 @@ USA.
 			     ((cdr binding) frame-senv))
 			   bindings))
 	    (seq-item body-ctx (body frame-senv))))
-      (spar-elt)
+      (spar-subform)
       (spar-push spar-arg:ctx)
-      (spar-elt
+      (spar-subform
 	 (spar-call-with-values list
 	   (spar*
 	     (spar-call-with-values cons
-	       (spar-elt (spar-push-elt-if identifier? spar-arg:form)
-			 (spar-elt spar-push-open-classified)
-			 (spar-match-null)))))
+	       (spar-subform (spar-push-subform-if identifier? spar-arg:form)
+			     (spar-subform spar-push-open-classified)
+			     (spar-match-null)))))
 	 (spar-match-null))
        (spar-push-body)))))
 
@@ -329,10 +329,10 @@ USA.
   (spar-classifier->keyword
    (delay
      (spar-call-with-values access-item
-       (spar-elt)
+       (spar-subform)
        (spar-push spar-arg:ctx)
-       (spar-push-elt-if identifier? spar-arg:form)
-       (spar-elt spar-push-classified)
+       (spar-push-subform-if identifier? spar-arg:form)
+       (spar-subform spar-push-classified)
        (spar-match-null)))))
 
 (define-expr-item-compiler access-item?
@@ -347,7 +347,7 @@ USA.
        (spar-or (spar-match senv-top-level? spar-arg:senv)
 		(spar-error "This form allowed only at top level:"
 			    spar-arg:form spar-arg:senv))
-       (spar-elt)
+       (spar-subform)
        (spar-match-null)
        (spar-push-value the-environment-item spar-arg:ctx)))))
 
@@ -355,7 +355,7 @@ USA.
   (spar-classifier->keyword
    (delay
      (spar-and
-       (spar-elt)
+       (spar-subform)
        (spar-match-null)
        (spar-push-value unspecific-item spar-arg:ctx)))))
 
@@ -363,7 +363,7 @@ USA.
   (spar-classifier->keyword
    (delay
      (spar-and
-       (spar-elt)
+       (spar-subform)
        (spar-match-null)
        (spar-push-value unassigned-item spar-arg:ctx)))))
 
@@ -387,15 +387,15 @@ USA.
 				       decl))
 		       decls
 		       (hist-cadr hist))))))
-       (spar-elt)
+       (spar-subform)
        (spar-push spar-arg:ctx)
        (spar-call-with-values list
 	 (spar*
-	   (spar-push-elt-if (lambda (form)
-			       (and (pair? form)
-				    (identifier? (car form))
-				    (list? (cdr form))))
-			     spar-arg:form)))
+	   (spar-push-subform-if (lambda (form)
+				   (and (pair? form)
+					(identifier? (car form))
+					(list? (cdr form))))
+				 spar-arg:form)))
        (spar-match-null)))))
 
 (define (classify-id id senv hist)
