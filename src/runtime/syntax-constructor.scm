@@ -138,12 +138,14 @@ USA.
    (lambda (close)
      (list (close 'quote-identifier) id))))
 
-(define (scons-set! name value)
+(define (scons-set! name #!optional value)
   (make-open-expr
    (lambda (close)
-     (list (close 'set!)
-	   name
-	   (close-part close value)))))
+     (if (default-object? value)
+	 (list (close 'set!) name)
+	 (list (close 'set!)
+	       name
+	       (close-part close value))))))
 
 (define (let-like keyword)
   (lambda (bindings . body-forms)
