@@ -506,80 +506,77 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
 
-     (define (descend-quasiquote x level return)
-       (cond ((pair? x) (descend-quasiquote-pair x level return))
-	     ((vector? x) (descend-quasiquote-vector x level return))
-	     (else (return 'QUOTE x))))
+     (define (descend x level return)
+       (cond ((pair? x) (descend-pair x level return))
+	     ((vector? x) (descend-vector x level return))
+	     (else (return 'quote x))))
 
-     (define (descend-quasiquote-pair x level return)
-       (cond ((not (and (pair? x)
-			(identifier? (car x))
-			(pair? (cdr x))
-			(null? (cddr x))))
-	      (descend-quasiquote-pair* x level return))
-	     ((compare (rename 'QUASIQUOTE) (car x))
-	      (descend-quasiquote-pair* x (+ level 1) return))
-	     ((compare (rename 'UNQUOTE) (car x))
-	      (if (zero? level)
-		  (return 'UNQUOTE (cadr x))
-		  (descend-quasiquote-pair* x (- level 1) return)))
-	     ((compare (rename 'UNQUOTE-SPLICING) (car x))
-	      (if (zero? level)
-		  (return 'UNQUOTE-SPLICING (cadr x))
-		  (descend-quasiquote-pair* x (- level 1) return)))
+     (define (descend-pair x level return)
+       (cond ((quotation? 'quasiquote x)
+	      (descend-pair* x (+ level 1) return))
+	     ((quotation? 'unquote x)
+	      (if (= level 0)
+		  (return 'unquote (cadr x))
+		  (descend-pair* x (- level 1) return)))
+	     ((quotation? 'unquote-splicing x)
+	      (if (= level 0)
+		  (return 'unquote-splicing (cadr x))
+		  (descend-pair* x (- level 1) return)))
 	     (else
-	      (descend-quasiquote-pair* x level return))))
+	      (descend-pair* x level return))))
 
-     (define (descend-quasiquote-pair* x level return)
-       (descend-quasiquote (car x) level
+     (define (quotation? name x)
+       (and (pair? x)
+	    (identifier? (car x))
+	    (compare (rename name) (car x))
+	    (pair? (cdr x))
+	    (null? (cddr x))))
+
+     (define (descend-pair* x level return)
+       (descend (car x) level
 	 (lambda (car-mode car-arg)
-	   (descend-quasiquote (cdr x) level
+	   (descend (cdr x) level
 	     (lambda (cdr-mode cdr-arg)
-	       (cond ((and (eq? car-mode 'QUOTE) (eq? cdr-mode 'QUOTE))
-		      (return 'QUOTE x))
-		     ((eq? car-mode 'UNQUOTE-SPLICING)
-		      (if (and (eq? cdr-mode 'QUOTE) (null? cdr-arg))
-			  (return 'UNQUOTE car-arg)
-			  (return 'APPEND
+	       (cond ((and (eq? car-mode 'quote) (eq? cdr-mode 'quote))
+		      (return 'quote x))
+		     ((eq? car-mode 'unquote-splicing)
+		      (if (and (eq? cdr-mode 'quote) (null? cdr-arg))
+			  (return 'unquote car-arg)
+			  (return 'append
 				  (list car-arg
-					(finalize-quasiquote cdr-mode
-							     cdr-arg)))))
-		     ((and (eq? cdr-mode 'QUOTE) (list? cdr-arg))
-		      (return 'LIST
-			      (cons (finalize-quasiquote car-mode car-arg)
+					(finalize cdr-mode cdr-arg)))))
+		     ((and (eq? cdr-mode 'quote) (list? cdr-arg))
+		      (return 'list
+			      (cons (finalize car-mode car-arg)
 				    (map (lambda (element)
-					   (finalize-quasiquote 'QUOTE
-								element))
+					   (finalize 'quote element))
 					 cdr-arg))))
-		     ((eq? cdr-mode 'LIST)
-		      (return 'LIST
-			      (cons (finalize-quasiquote car-mode car-arg)
+		     ((eq? cdr-mode 'list)
+		      (return 'list
+			      (cons (finalize car-mode car-arg)
 				    cdr-arg)))
 		     (else
-		      (return
-		       'CONS
-		       (list (finalize-quasiquote car-mode car-arg)
-			     (finalize-quasiquote cdr-mode cdr-arg))))))))))
+		      (return 'cons
+			      (list (finalize car-mode car-arg)
+				    (finalize cdr-mode cdr-arg))))))))))
 
-     (define (descend-quasiquote-vector x level return)
-       (descend-quasiquote (vector->list x) level
+     (define (descend-vector x level return)
+       (descend (vector->list x) level
 	 (lambda (mode arg)
 	   (case mode
-	     ((QUOTE) (return 'QUOTE x))
-	     ((LIST) (return 'VECTOR arg))
-	     (else
-	      (return 'LIST->VECTOR
-		      (list (finalize-quasiquote mode arg))))))))
+	     ((quote) (return 'quote x))
+	     ((list) (return 'vector arg))
+	     (else (return 'list->vector (list (finalize mode arg))))))))
 
-     (define (finalize-quasiquote mode arg)
+     (define (finalize mode arg)
        (case mode
-	 ((QUOTE) `(,(rename 'QUOTE) ,arg))
-	 ((UNQUOTE) arg)
-	 ((UNQUOTE-SPLICING) (syntax-error ",@ in illegal context:" arg))
+	 ((quote) `(,(rename 'quote) ,arg))
+	 ((unquote) arg)
+	 ((unquote-splicing) (syntax-error ",@ in illegal context:" arg))
 	 (else `(,(rename mode) ,@arg))))
 
      (syntax-check '(_ expression) form)
-     (descend-quasiquote (cadr form) 0 finalize-quasiquote))))
+     (descend (cadr form) 0 finalize))))
 
 ;;;; SRFI 2: AND-LET*
 
