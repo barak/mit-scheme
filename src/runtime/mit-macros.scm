@@ -123,6 +123,7 @@ USA.
 (define-feature 'exact-closed always)
 (define-feature 'exact-complex always)
 (define-feature 'ieee-float always)
+(define-feature 'full-unicode always)
 (define-feature 'ratio always)
 
 (define-feature 'swank always)   ;Provides SWANK module for SLIME
@@ -375,17 +376,6 @@ USA.
 	     (scons-call (apply scons-lambda '() body-forms)))))))
    system-global-environment))
 
-(define :and
-  (spar-transformer->runtime
-   (delay
-     (scons-rule '((* any))
-       (lambda (exprs)
-	 (reduce-right (lambda (expr1 expr2)
-			 (scons-if expr1 expr2 #f))
-		       #t
-		       exprs))))
-   system-global-environment))
-
 (define :case
   (spar-transformer->runtime
    (delay
@@ -742,7 +732,7 @@ USA.
 
 (define-syntax :local-declare
   (syntax-rules ()
-    ((_ ((directive datum ...) ...) form0 form1+ ...)
+    ((local-declare ((directive datum ...) ...) form0 form1+ ...)
      (let ()
        (declare (directive datum ...) ...)
        form0 form1+ ...))))
@@ -755,26 +745,32 @@ USA.
 
 (define-syntax :begin0
   (syntax-rules ()
-    ((_ form0 form1+ ...)
+    ((begin0 form0 form1+ ...)
      (let ((result form0))
        form1+ ...
        result))))
 
 (define-syntax :assert
   (syntax-rules ()
-    ((_ condition . extra)
+    ((assert condition . extra)
      (if (not condition)
          (error "Assertion failed:" 'condition . extra)))))
 
+(define-syntax :and
+  (syntax-rules ()
+    ((and) #t)
+    ((and expr0) expr0)
+    ((and expr0 expr1+ ...) (if expr0 (and expr1+ ...) #f))))
+
 (define-syntax :when
   (syntax-rules ()
-    ((_ condition form ...)
+    ((when condition form ...)
      (if condition
 	 (begin form ...)))))
 
 (define-syntax :unless
   (syntax-rules ()
-    ((_ condition form ...)
+    ((unless condition form ...)
      (if (not condition)
 	 (begin form ...)))))
 
