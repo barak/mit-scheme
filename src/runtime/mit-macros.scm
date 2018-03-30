@@ -660,9 +660,7 @@ USA.
    (delay
      (scons-rule `((+ any))
        (lambda (exprs)
-	 (if (pair? (cdr exprs))
-	     (car exprs)
-	     (reduce-right scons-stream unspecific exprs)))))))
+	 (reduce-right scons-stream unspecific exprs))))))
 
 (define (scons-stream expr1 expr2)
   (scons-call (scons-close 'cons)
