@@ -142,14 +142,17 @@ USA.
   (lambda (form senv hist)
     (spar-call (force promise) form senv hist senv)))
 
-(define (spar-transformer->runtime promise env)
+(define (spar-transformer->runtime promise #!optional env)
   (classifier->runtime
    (lambda (form use-senv hist)
      (reclassify (spar-call (force promise)
 			    form
 			    use-senv
 			    hist
-			    (runtime-environment->syntactic env))
+			    (runtime-environment->syntactic
+			     (if (default-object? env)
+				 system-global-environment
+				 env)))
 		 use-senv
 		 hist))))
 

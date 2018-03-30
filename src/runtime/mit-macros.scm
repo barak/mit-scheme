@@ -32,8 +32,7 @@ USA.
 
 (define $cond-expand
   (spar-transformer->runtime
-   (delay (scons-rule (cond-expand-pattern) generate-cond-expand))
-   system-global-environment))
+   (delay (scons-rule (cond-expand-pattern) generate-cond-expand))))
 
 (define (cond-expand-pattern)
   (define clause-pattern
@@ -176,8 +175,7 @@ USA.
        (lambda (bvl expr body-forms)
 	 (scons-call (scons-close 'call-with-values)
 		     (scons-lambda '() expr)
-		     (apply scons-lambda bvl body-forms)))))
-   system-global-environment))
+		     (apply scons-lambda bvl body-forms)))))))
 
 (define $define-record-type
   (spar-transformer->runtime
@@ -225,8 +223,7 @@ USA.
 					     type-name
 					     (scons-quote name)))
 					  (default-object)))))
-			    field-specs)))))
-   system-global-environment))
+			    field-specs)))))))
 
 (define $define
   (spar-transformer->runtime
@@ -252,8 +249,7 @@ USA.
 	     (+ any))
 	 (lambda (nested bvl body-forms)
 	   (scons-define nested
-	     (apply scons-lambda bvl body-forms))))))
-   system-global-environment))
+	     (apply scons-lambda bvl body-forms))))))))
 
 (define (optional-value-pattern)
   `(or any (value-of ,unassigned-expression)))
@@ -274,8 +270,7 @@ USA.
 		      (apply scons-named-lambda
 			     (cons scode-lambda-name:let ids)
 			     body-forms)
-		      vals))))))
-   system-global-environment))
+		      vals))))))))
 
 (define (let-bindings-pattern)
   `(subform (* (subform (list id ,(optional-value-pattern))))))
@@ -322,8 +317,7 @@ USA.
 	 `(,(let-bindings-pattern)
 	   (+ any))
        (lambda (bindings body-forms)
-	 (expand-let* scons-let bindings body-forms))))
-   system-global-environment))
+	 (expand-let* scons-let bindings body-forms))))))
 
 (define $let*-syntax
   (spar-transformer->runtime
@@ -332,8 +326,7 @@ USA.
 	 '((subform (* (subform (list id any))))
 	   (+ any))
        (lambda (bindings body-forms)
-	 (expand-let* scons-let-syntax bindings body-forms))))
-   system-global-environment))
+	 (expand-let* scons-let-syntax bindings body-forms))))))
 
 (define (expand-let* scons-let bindings body-forms)
   (fold-right (lambda (binding expr)
@@ -357,8 +350,7 @@ USA.
 	     (apply scons-let
 		    (map list temps vals)
 		    (map scons-set! ids temps))
-	     (scons-call (apply scons-lambda '() body-forms)))))))
-   system-global-environment))
+	     (scons-call (apply scons-lambda '() body-forms)))))))))
 
 (define $letrec*
   (spar-transformer->runtime
@@ -373,8 +365,7 @@ USA.
 			     (list id (unassigned-expression)))
 			   ids)
 	     (apply scons-begin (map scons-set! ids vals))
-	     (scons-call (apply scons-lambda '() body-forms)))))))
-   system-global-environment))
+	     (scons-call (apply scons-lambda '() body-forms)))))))))
 
 (define $case
   (spar-transformer->runtime
@@ -428,8 +419,7 @@ USA.
 			     (process-action (car else-clause)
 					     (cdr else-clause))
 			     (unspecific-expression))
-			 clauses))))))
-   system-global-environment))
+			 clauses))))))))
 
 (define $cond
   (spar-transformer->runtime
@@ -444,8 +434,7 @@ USA.
 		     (if else-actions
 			 (apply scons-begin else-actions)
 			 (unspecific-expression))
-		     clauses))))
-   system-global-environment))
+		     clauses))))))
 
 (define cond-clause-pattern
   '(subform (cons (and (not (ignore-if id=? else))
@@ -499,8 +488,7 @@ USA.
 						 (if (pair? (cddr binding))
 						     (caddr binding)
 						     (car binding)))
-					       bindings)))))))))
-   system-global-environment))
+					       bindings)))))))))))
 
 (define-syntax $quasiquote
   (er-macro-transformer
@@ -605,8 +593,7 @@ USA.
 		 ((pair? body-exprs)
 		  (scons-and conjunct (apply scons-begin body-exprs)))
 		 (else
-		  conjunct))))))
-   system-global-environment))
+		  conjunct))))))))
 
 (define $access
   (spar-transformer->runtime
@@ -618,13 +605,11 @@ USA.
 	 (fold-right (lambda (name expr)
 		       (scons-call keyword:access name expr))
 		     expr
-		     names))))
-   system-global-environment))
+		     names))))))
 
 (define $cons-stream
   (spar-transformer->runtime
-   (delay (scons-rule `(any any) scons-stream))
-   system-global-environment))
+   (delay (scons-rule `(any any) scons-stream))))
 
 (define $cons-stream*
   (spar-transformer->runtime
@@ -633,8 +618,7 @@ USA.
        (lambda (exprs)
 	 (if (pair? (cdr exprs))
 	     (car exprs)
-	     (reduce-right scons-stream unspecific exprs)))))
-   system-global-environment))
+	     (reduce-right scons-stream unspecific exprs)))))))
 
 (define (scons-stream expr1 expr2)
   (scons-call (scons-close 'cons)
@@ -652,8 +636,7 @@ USA.
 			   (fold-right scons-stream
 				       self
 				       exprs)))
-	     self)))))
-   system-global-environment))
+	     self)))))))
 
 (define $define-integrable
   (spar-transformer->runtime
@@ -674,8 +657,7 @@ USA.
 		      (if (null? bvl)
 			  body-forms
 			  (cons (scons-declare (cons 'integrate bvl))
-				body-forms)))))))))
-   system-global-environment))
+				body-forms)))))))))))
 
 (define $fluid-let
   (spar-transformer->runtime
@@ -705,8 +687,7 @@ USA.
 	       (scons-call (scons-close 'shallow-fluid-bind)
 			   swap!
 			   (apply scons-lambda '() body-forms)
-			   swap!)))))))
-   system-global-environment))
+			   swap!)))))))))
 
 (define $parameterize
   (spar-transformer->runtime
@@ -724,8 +705,7 @@ USA.
 				     (scons-call (scons-close 'cons) id val))
 				   ids
 				   vals))
-		       (apply scons-lambda '() body-forms))))))
-   system-global-environment))
+		       (apply scons-lambda '() body-forms))))))))
 
 (define-syntax $local-declare
   (syntax-rules ()
