@@ -47,25 +47,25 @@ USA.
 	   (output/top-level-syntax-expander transformer->expander-name
 					     transformer)))))))
 
-(define :sc-macro-transformer
+(define $sc-macro-transformer
   ;; "Syntactic Closures" transformer
   (classifier->runtime
    (transformer-classifier sc-macro-transformer->keyword-item
 			   'sc-macro-transformer->expander)))
 
-(define :rsc-macro-transformer
+(define $rsc-macro-transformer
   ;; "Reversed Syntactic Closures" transformer
   (classifier->runtime
    (transformer-classifier rsc-macro-transformer->keyword-item
 			   'rsc-macro-transformer->expander)))
 
-(define :er-macro-transformer
+(define $er-macro-transformer
   ;; "Explicit Renaming" transformer
   (classifier->runtime
    (transformer-classifier er-macro-transformer->keyword-item
 			   'er-macro-transformer->expander)))
 
-(define :spar-macro-transformer
+(define $spar-macro-transformer
   ;; "Syntax PARser" transformer
   (classifier->runtime
    (transformer-classifier spar-macro-transformer->keyword-item
@@ -73,7 +73,7 @@ USA.
 
 ;;;; Core primitives
 
-(define :begin
+(define $begin
   (spar-classifier->runtime
    (delay
      (spar-call-with-values
@@ -86,7 +86,7 @@ USA.
        (spar* (spar-subform spar-push-deferred-classified))
        (spar-match-null)))))
 
-(define :if
+(define $if
   (spar-classifier->runtime
    (delay
      (spar-call-with-values if-item
@@ -98,7 +98,7 @@ USA.
 		(spar-push-value unspecific-item spar-arg:ctx))
        (spar-match-null)))))
 
-(define :quote
+(define $quote
   (spar-classifier->runtime
    (delay
      (spar-call-with-values constant-item
@@ -107,7 +107,7 @@ USA.
        (spar-subform (spar-push-value strip-syntactic-closures spar-arg:form))
        (spar-match-null)))))
 
-(define :quote-identifier
+(define $quote-identifier
   (spar-classifier->runtime
    (delay
      (spar-call-with-values quoted-id-item
@@ -121,7 +121,7 @@ USA.
 			      spar-arg:form)))
        (spar-match-null)))))
 
-(define :set!
+(define $set!
   (spar-classifier->runtime
    (delay
      (spar-call-with-values
@@ -150,7 +150,7 @@ USA.
 ;; special OUTPUT/DISJUNCTION.  Unfortunately something downstream in
 ;; the compiler wants this, but it would be nice to eliminate this
 ;; hack.
-(define :or
+(define $or
   (spar-classifier->runtime
    (delay
      (spar-call-with-values or-item
@@ -159,7 +159,7 @@ USA.
        (spar* (spar-subform spar-push-classified))
        (spar-match-null)))))
 
-(define :delay
+(define $delay
   (spar-classifier->runtime
    (delay
      (spar-call-with-values delay-item
@@ -182,7 +182,7 @@ USA.
        (spar-subform spar-push-classified)
        (spar-match-null)))))
 
-(define :define-syntax
+(define $define-syntax
   (spar-classifier->runtime
    (delay
      (spar-call-with-values
@@ -210,7 +210,7 @@ USA.
 
 ;;;; Lambdas
 
-(define :lambda
+(define $lambda
   (spar-classifier->runtime
    (delay
      (spar-call-with-values
@@ -222,7 +222,7 @@ USA.
        (spar-push-subform-if mit-lambda-list? spar-arg:form)
        (spar-push-body)))))
 
-(define :named-lambda
+(define $named-lambda
   (spar-classifier->runtime
    (delay
      (spar-call-with-values
@@ -281,13 +281,13 @@ USA.
 	(spar-match-null))
        (spar-push-body))))
 
-(define :let-syntax
+(define $let-syntax
   (spar-classifier->runtime spar-promise:let-syntax))
 
 (define keyword:let-syntax
   (spar-classifier->keyword spar-promise:let-syntax))
 
-(define :letrec-syntax
+(define $letrec-syntax
   (spar-classifier->runtime
    (delay
      (spar-call-with-values
@@ -340,7 +340,7 @@ USA.
     (output/access-reference (access-item-name item)
 			     (compile-expr-item (access-item-env item)))))
 
-(define :the-environment
+(define $the-environment
   (spar-classifier->runtime
    (delay
      (spar-and
@@ -369,7 +369,7 @@ USA.
 
 ;;;; Declarations
 
-(define :declare
+(define $declare
   (spar-classifier->runtime
    (delay
      (spar-call-with-values

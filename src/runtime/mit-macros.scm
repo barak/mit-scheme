@@ -1,4 +1,4 @@
-#| -*- Mode: Scheme; keyword-style: none -*-
+#| -*-Scheme-*-
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,7 +30,7 @@ USA.
 
 ;;;; SRFI features
 
-(define :cond-expand
+(define $cond-expand
   (spar-transformer->runtime
    (delay (scons-rule (cond-expand-pattern) generate-cond-expand))
    system-global-environment))
@@ -169,7 +169,7 @@ USA.
 		     (car p)))
 	      supported-features))
 
-(define :receive
+(define $receive
   (spar-transformer->runtime
    (delay
      (scons-rule `(,r4rs-lambda-list? any (+ any))
@@ -179,7 +179,7 @@ USA.
 		     (apply scons-lambda bvl body-forms)))))
    system-global-environment))
 
-(define :define-record-type
+(define $define-record-type
   (spar-transformer->runtime
    (delay
      (scons-rule
@@ -228,7 +228,7 @@ USA.
 			    field-specs)))))
    system-global-environment))
 
-(define :define
+(define $define
   (spar-transformer->runtime
    (delay
      (spar-or
@@ -258,7 +258,7 @@ USA.
 (define (optional-value-pattern)
   `(or any (value-of ,unassigned-expression)))
 
-(define :let
+(define $let
   (spar-transformer->runtime
    (delay
      (scons-rule
@@ -315,7 +315,7 @@ USA.
       (else
        (error "Unrecognized strategy:" named-let-strategy)))))
 
-(define :let*
+(define $let*
   (spar-transformer->runtime
    (delay
      (scons-rule
@@ -325,7 +325,7 @@ USA.
 	 (expand-let* scons-let bindings body-forms))))
    system-global-environment))
 
-(define :let*-syntax
+(define $let*-syntax
   (spar-transformer->runtime
    (delay
      (scons-rule
@@ -341,7 +341,7 @@ USA.
 	      (apply scons-let '() body-forms)
 	      bindings))
 
-(define :letrec
+(define $letrec
   (spar-transformer->runtime
    (delay
      (scons-rule
@@ -360,7 +360,7 @@ USA.
 	     (scons-call (apply scons-lambda '() body-forms)))))))
    system-global-environment))
 
-(define :letrec*
+(define $letrec*
   (spar-transformer->runtime
    (delay
      (scons-rule
@@ -376,7 +376,7 @@ USA.
 	     (scons-call (apply scons-lambda '() body-forms)))))))
    system-global-environment))
 
-(define :case
+(define $case
   (spar-transformer->runtime
    (delay
      (scons-rule
@@ -431,7 +431,7 @@ USA.
 			 clauses))))))
    system-global-environment))
 
-(define :cond
+(define $cond
   (spar-transformer->runtime
    (delay
      (scons-rule
@@ -476,7 +476,7 @@ USA.
       (else
        (error "Unknown clause type:" type)))))
 
-(define :do
+(define $do
   (spar-transformer->runtime
    (delay
      (scons-rule
@@ -502,7 +502,7 @@ USA.
 					       bindings)))))))))
    system-global-environment))
 
-(define-syntax :quasiquote
+(define-syntax $quasiquote
   (er-macro-transformer
    (lambda (form rename compare)
 
@@ -587,7 +587,7 @@ USA.
 ;;; follow.  This passes all of the tests except for the one that
 ;;; detects duplicate bound variables, though.
 
-(define :and-let*
+(define $and-let*
   (spar-transformer->runtime
    (delay
      (scons-rule
@@ -608,7 +608,7 @@ USA.
 		  conjunct))))))
    system-global-environment))
 
-(define :access
+(define $access
   (spar-transformer->runtime
    (delay
      (scons-rule
@@ -621,12 +621,12 @@ USA.
 		     names))))
    system-global-environment))
 
-(define :cons-stream
+(define $cons-stream
   (spar-transformer->runtime
    (delay (scons-rule `(any any) scons-stream))
    system-global-environment))
 
-(define :cons-stream*
+(define $cons-stream*
   (spar-transformer->runtime
    (delay
      (scons-rule `((+ any))
@@ -641,7 +641,7 @@ USA.
 	      expr1
 	      (scons-delay expr2)))
 
-(define :circular-stream
+(define $circular-stream
   (spar-transformer->runtime
    (delay
      (scons-rule `((+ any))
@@ -655,7 +655,7 @@ USA.
 	     self)))))
    system-global-environment))
 
-(define :define-integrable
+(define $define-integrable
   (spar-transformer->runtime
    (delay
      (spar-or
@@ -677,7 +677,7 @@ USA.
 				body-forms)))))))))
    system-global-environment))
 
-(define :fluid-let
+(define $fluid-let
   (spar-transformer->runtime
    (delay
      (scons-rule
@@ -708,7 +708,7 @@ USA.
 			   swap!)))))))
    system-global-environment))
 
-(define :parameterize
+(define $parameterize
   (spar-transformer->runtime
    (delay
      (scons-rule
@@ -727,7 +727,7 @@ USA.
 		       (apply scons-lambda '() body-forms))))))
    system-global-environment))
 
-(define-syntax :local-declare
+(define-syntax $local-declare
   (syntax-rules ()
     ((local-declare ((directive datum ...) ...) form0 form1+ ...)
      (let ()
@@ -740,38 +740,38 @@ USA.
 (define (unassigned-expression)
   `(,keyword:unassigned))
 
-(define-syntax :begin0
+(define-syntax $begin0
   (syntax-rules ()
     ((begin0 form0 form1+ ...)
      (let ((result form0))
        form1+ ...
        result))))
 
-(define-syntax :assert
+(define-syntax $assert
   (syntax-rules ()
     ((assert condition . extra)
      (if (not condition)
          (error "Assertion failed:" 'condition . extra)))))
 
-(define-syntax :and
+(define-syntax $and
   (syntax-rules ()
     ((and) #t)
     ((and expr0) expr0)
     ((and expr0 expr1+ ...) (if expr0 (and expr1+ ...) #f))))
 
-(define-syntax :when
+(define-syntax $when
   (syntax-rules ()
     ((when condition form ...)
      (if condition
 	 (begin form ...)))))
 
-(define-syntax :unless
+(define-syntax $unless
   (syntax-rules ()
     ((unless condition form ...)
      (if (not condition)
 	 (begin form ...)))))
 
-(define-syntax :define-bundle-interface
+(define-syntax $define-bundle-interface
   (sc-macro-transformer
    (lambda (form use-env)
      (syntax-check '(_ identifier identifier identifier
