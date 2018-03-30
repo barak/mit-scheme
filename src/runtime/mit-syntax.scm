@@ -318,22 +318,28 @@ USA.
 
 ;;;; MIT-specific syntax
 
+(define $access
+  (spar-classifier->runtime
+   (delay
+     (spar-call-with-values
+	 (lambda (ctx names env)
+	   (fold-right (lambda (name env*)
+			 (access-item ctx name env*))
+		       env
+		       names))
+       (spar-subform)
+       (spar-push spar-arg:ctx)
+       (spar-call-with-values list
+	 (spar+ (spar-push-subform-if symbol? spar-arg:form)))
+       (spar-subform spar-push-classified)
+       (spar-match-null)))))
+
 (define-record-type <access-item>
     (access-item ctx name env)
     access-item?
   (ctx access-item-ctx)
   (name access-item-name)
   (env access-item-env))
-
-(define keyword:access
-  (spar-classifier->keyword
-   (delay
-     (spar-call-with-values access-item
-       (spar-subform)
-       (spar-push spar-arg:ctx)
-       (spar-push-subform-if identifier? spar-arg:form)
-       (spar-subform spar-push-classified)
-       (spar-match-null)))))
 
 (define-expr-item-compiler access-item?
   (lambda (item)

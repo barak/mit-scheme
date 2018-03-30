@@ -4663,6 +4663,7 @@ USA.
   (files "mit-syntax")
   (parent (runtime syntax))
   (export ()
+	  (access $access)
 	  (begin $begin)
 	  (declare $declare)
 	  (define-syntax $define-syntax)
@@ -4682,7 +4683,6 @@ USA.
 	  (spar-macro-transformer $spar-macro-transformer)
 	  (the-environment $the-environment))
   (export (runtime mit-macros)
-	  keyword:access
 	  keyword:define
 	  keyword:let-syntax
 	  keyword:unassigned
@@ -4692,7 +4692,6 @@ USA.
   (files "mit-macros")
   (parent (runtime))
   (export ()
-	  (access $access)
 	  (and $and)
 	  (and-let* $and-let*)
 	  (assert $assert)

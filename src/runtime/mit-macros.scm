@@ -680,18 +680,6 @@ USA.
 				       exprs)))
 	     self)))))))
 
-(define $access
-  (spar-transformer->runtime
-   (delay
-     (scons-rule
-	 `((+ symbol)
-	   any)
-       (lambda (names expr)
-	 (fold-right (lambda (name expr)
-		       (scons-call keyword:access name expr))
-		     expr
-		     names))))))
-
 (define-syntax $local-declare
   (syntax-rules ()
     ((local-declare ((directive datum ...) ...) form0 form1+ ...)
