@@ -4491,7 +4491,7 @@ USA.
 	  compile-expr-item
 	  compile-item
 	  constant-item
-	  define-expr-item-compiler
+	  define-item-compiler
 	  defn-item
 	  defn-item-id
 	  defn-item-syntax?

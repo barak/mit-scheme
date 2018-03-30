@@ -160,13 +160,6 @@ USA.
 	    (list predicate)
 	    (if (default-object? expr-compiler) compiler expr-compiler))))))
 
-(define (define-expr-item-compiler predicate compiler)
-  (defer-boot-action 'define-item-compiler
-    (lambda ()
-      (define-predicate-dispatch-handler compile-expr-item
-	(list predicate)
-	compiler))))
-
 (define-item-compiler var-item?
   (lambda (item)
     (output/variable (var-item-id item))))
@@ -181,6 +174,11 @@ USA.
   (lambda (item)
     (output/sequence (map compile-expr-item (seq-item-elements item)))))
 
+(define (illegal-expression-compiler description)
+  (let ((message (string description " may not be used as an expression:")))
+    (lambda (item)
+      (error message item))))
+
 (define-item-compiler defn-item?
   (lambda (item)
     (let ((name (defn-item-id item))
@@ -188,14 +186,6 @@ USA.
       (if (defn-item-syntax? item)
 	  (output/syntax-definition name value)
 	  (output/definition name value))))
-  #f)
-
-(define (illegal-expression-compiler description)
-  (let ((message (string description " may not be used as an expression:")))
-    (lambda (item)
-      (error message item))))
-
-(define-expr-item-compiler defn-item?
   (illegal-expression-compiler "Definition"))
 
 (define-item-compiler reserved-name-item?

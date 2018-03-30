@@ -341,7 +341,7 @@ USA.
   (name access-item-name)
   (env access-item-env))
 
-(define-expr-item-compiler access-item?
+(define-item-compiler access-item?
   (lambda (item)
     (output/access-reference (access-item-name item)
 			     (compile-expr-item (access-item-env item)))))
