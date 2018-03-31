@@ -611,7 +611,7 @@ USA.
   (define (write-bytes bv start end)
     (do ((i start (fix:+ i 1)))
 	((not (fix:< i end)))
-      (write-char (bytevector-u8-ref bv i) textual-port)))
+      (write-char (integer->char (bytevector-u8-ref bv i)) textual-port)))
 
   (define (close)
     (close-port textual-port))
