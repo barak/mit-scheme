@@ -55,29 +55,29 @@ USA.
 
 ;; Standard load options are defined like this:
 
-(define-load-option 'ARITHMETIC-INTERFACE
-  (standard-option-loader '(RUNTIME NUMBER INTERFACE) #F "numint"))
+(define-load-option 'arithmetic-interface
+  (standard-option-loader '(runtime number interface) #f "numint"))
 
 ;; We can use programming to make the definitions less noisy and tedious:
 
 (for-each
  (lambda (spec)
    (define-load-option (car spec) (apply standard-option-loader (cdr spec))))
- '((COMPRESS	(RUNTIME COMPRESS)	#F			"cpress")
-   (DOSPROCESS	()			#F			"dosproc")
-   (FORMAT	(RUNTIME FORMAT)	(INITIALIZE-PACKAGE!)	"format")
-   (GDBM	(RUNTIME GDBM)		#F			"gdbm")
-   (MIME-CODEC	(RUNTIME MIME-CODEC)	#F			"mime-codec")
-   (ORDERED-VECTOR (RUNTIME ORDERED-VECTOR) #F			"ordvec")
-   (POSTGRESQL	(RUNTIME POSTGRESQL)	#F			"pgsql")
-   (RB-TREE	(RUNTIME RB-TREE)	#F			"rbtree")
-   (STEPPER	(RUNTIME STEPPER)	#F			"ystep")
-   (SUBPROCESS	(RUNTIME SUBPROCESS)	(INITIALIZE-PACKAGE!)	"process")
-   (SYNCHRONOUS-SUBPROCESS (RUNTIME SYNCHRONOUS-SUBPROCESS) #F	"syncproc")
-   (WT-TREE	(RUNTIME WT-TREE)	#F			"wttree")
+ '((compress	(runtime compress)	#f			"cpress")
+   (dosprocess	()			#f			"dosproc")
+   (format	(runtime format)	(initialize-package!)	"format")
+   (gdbm	(runtime gdbm)		#f			"gdbm")
+   (mime-codec	(runtime mime-codec)	#f			"mime-codec")
+   (ordered-vector (runtime ordered-vector) #f			"ordvec")
+   (postgresql	(runtime postgresql)	#f			"pgsql")
+   (rb-tree	(runtime rb-tree)	#f			"rbtree")
+   (stepper	(runtime stepper)	#f			"ystep")
+   (subprocess	(runtime subprocess)	(initialize-package!)	"process")
+   (synchronous-subprocess (runtime synchronous-subprocess) #f	"syncproc")
+   (wt-tree	(runtime wt-tree)	#f			"wttree")
    ))
 
-(define-load-option 'REGULAR-EXPRESSION
+(define-load-option 'regular-expression
   (standard-option-loader '(runtime regular-expression-compiler)
 			  #f
 			  "rgxcmp")
@@ -92,4 +92,4 @@ USA.
 			  "rexp"))
 
 ;; HASH-TABLE is now always loaded.
-(define-load-option 'HASH-TABLE dummy-option-loader)
+(define-load-option 'hash-table dummy-option-loader)
