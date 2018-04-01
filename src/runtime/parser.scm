@@ -67,7 +67,7 @@ USA.
 (define (get-param:parser-fold-case?)
   (if (default-object? *parser-canonicalize-symbols?*)
       (param:parser-fold-case?)
-      *parser-canonicalize-symbols?*))
+      (and *parser-canonicalize-symbols?* 'symbols-only)))
 
 (define (get-param:parser-radix)
   (if (default-object? *parser-radix*)
@@ -333,7 +333,7 @@ USA.
       (string->symbol string)))
 
 (define (string-maybe-ci=? db s1 s2)
-  (if (db-fold-case? db)
+  (if (eq? #t (db-fold-case? db))
       (string-ci=? s1 s2)
       (string=? s1 s2)))
 
@@ -436,14 +436,14 @@ USA.
 	(make-symbol db string))))
 
 (define (maybe-keyword db string)
-  (cond ((and (eq? 'SUFFIX (db-keyword-style db))
+  (cond ((and (eq? 'suffix (db-keyword-style db))
 	      (string-suffix? ":" string)
 	      (fix:> (string-length string) 1))
 	 (string->keyword (string-slice string
 					0
 					(fix:- (string-length string) 1))
 			  (db-fold-case? db)))
-	((and (eq? 'PREFIX (db-keyword-style db))
+	((and (eq? 'prefix (db-keyword-style db))
 	      (string-prefix? ":" string)
 	      (fix:> (string-length string) 1))
 	 (string->keyword (string-slice string 1) (db-fold-case? db)))
@@ -752,7 +752,7 @@ USA.
 			    char)))
 		     (loop))))
 	     (name->char (builder)
-			 (db-fold-case? db)))))))
+			 (eq? #t (db-fold-case? db))))))))
 
 (define (handler:named-constant db ctx char1 char2)
   ctx char1 char2
@@ -935,9 +935,10 @@ USA.
 	(let ((value (cdr mode-entry)))
 	  (if (or (not (symbol? value))
 		  (not (string-ci=? (symbol->string value) "scheme")))
-	      (warn "Unexpected file mode:" (if (symbol? value)
-						(symbol->string value)
-						value)))))))
+	      (warn "Unexpected file mode:"
+		    (if (symbol? value)
+			(symbol->string value)
+			value)))))))
 
 ;; If you want to turn on studly case, then the attribute must be
 ;; exactly "sTuDly-case" and the value must be exactly "True".  After
