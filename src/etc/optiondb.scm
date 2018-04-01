@@ -83,47 +83,47 @@ USA.
 		      (lose))
 		  (finish dir pathname))))))))
 
-(define-load-option 'EDWIN
+(define-load-option 'edwin
   (guarded-system-loader '(edwin) "edwin"))
 
-(define-load-option 'COMPILER
-  (lambda () (load-option 'SF))
+(define-load-option 'compiler
+  (lambda () (load-option 'sf))
   (guarded-system-loader '(compiler) "compiler"
 			 (if (eq? microcode-id/compiled-code-type 'C)
 			     "machines/C/make"
 			     "make")))
 
-(define-load-option 'CREF
+(define-load-option 'cref
   (guarded-system-loader '(cross-reference) "cref"))
 
-(define-load-option 'FFI
+(define-load-option 'ffi
   (guarded-system-loader '(ffi) "ffi"))
 
-(define-load-option 'IMAIL
+(define-load-option 'imail
   (guarded-system-loader '(edwin imail) "imail"))
 
-(define-load-option '*PARSER
+(define-load-option '*parser
   (guarded-system-loader '(runtime *parser) "star-parser"))
 
-(define-load-option 'SF
+(define-load-option 'sf
   (guarded-system-loader '(scode-optimizer) "sf"))
 
-(define-load-option 'SOS
+(define-load-option 'sos
   (guarded-system-loader '(sos) "sos"))
 
-(define-load-option 'SSP
+(define-load-option 'ssp
   (guarded-system-loader '(runtime ssp) "ssp"))
 
-(define-load-option 'STUDENT
+(define-load-option 'student
   (guarded-system-loader '(student) "6001"))
 
-(define-load-option 'WIN32
+(define-load-option 'win32
   (guarded-system-loader '(win32) "win32"))
 
-(define-load-option 'XDOC
+(define-load-option 'xdoc
   (guarded-system-loader '(runtime ssp xdoc) "xdoc"))
 
-(define-load-option 'XML
+(define-load-option 'xml
   (guarded-system-loader '(runtime xml) "xml"))
 
 (further-load-options standard-load-options)
