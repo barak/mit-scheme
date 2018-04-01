@@ -40,10 +40,10 @@ USA.
 	(error:allocation-failure n-words operator))))
 
 (define condition-type:allocation-failure
-  (make-condition-type 'ALLOCATION-FAILURE condition-type:error
-      '(OPERATOR N-WORDS)
+  (make-condition-type 'allocation-failure condition-type:error
+      '(operator n-words)
     (lambda (condition port)
-      (let ((operator (access-condition condition 'OPERATOR)))
+      (let ((operator (access-condition condition 'operator)))
 	(if operator
 	    (begin
 	      (write-string "The procedure " port)
@@ -51,7 +51,7 @@ USA.
 	      (write-string " is unable" port))
 	    (write-string "Unable" port)))
       (write-string " to allocate " port)
-      (write (access-condition condition 'N-WORDS) port)
+      (write (access-condition condition 'n-words) port)
       (write-string " words of storage." port))))
 
 (define error:allocation-failure
@@ -63,7 +63,7 @@ USA.
   ;; Too much of Edwin relies on fixnum-specific arithmetic for this
   ;; to be safe.  Unfortunately, this means that Edwin can't edit
   ;; files >32MB.
-  (guarantee index-fixnum? n-chars 'ALLOCATE-BUFFER-STORAGE)
+  (guarantee index-fixnum? n-chars 'allocate-buffer-storage)
   (make-string n-chars))
 
 (define-syntax chars-to-words-shift
@@ -86,9 +86,9 @@ USA.
 
 (define (edwin-string-allocate n-chars)
   (if (not (fix:fixnum? n-chars))
-      (error:wrong-type-argument n-chars "fixnum" 'STRING-ALLOCATE))
+      (error:wrong-type-argument n-chars "fixnum" 'string-allocate))
   (if (not (fix:>= n-chars 0))
-      (error:bad-range-argument n-chars 'STRING-ALLOCATE))
+      (error:bad-range-argument n-chars 'string-allocate))
   (with-interrupt-mask interrupt-mask/none
     (lambda (mask)
       (let ((n-words			;Add two, for manifest & length.
@@ -97,7 +97,7 @@ USA.
 	    (with-interrupt-mask interrupt-mask/gc-normal
 	      (lambda (ignore)
 		ignore			; ignored
-		(guarantee-heap-available n-words 'STRING-ALLOCATE mask))))
+		(guarantee-heap-available n-words 'string-allocate mask))))
 	(let ((result ((ucode-primitive primitive-get-free 1)
 		       (ucode-type string))))
 	  ((ucode-primitive primitive-object-set! 3)
@@ -219,15 +219,15 @@ USA.
 
 (define (y-or-n? . strings)
   (define (loop)
-    (let ((char (char-upcase (read-char))))
-      (cond ((or (char=? char #\Y)
-		 (char=? char #\Space))
+    (let ((char (read-char)))
+      (cond ((or (char-ci=? char #\y)
+		 (char=? char #\space))
 	     (write-string "Yes")
-	     true)
-	    ((or (char=? char #\N)
-		 (char=? char #\Rubout))
+	     #t)
+	    ((or (char-ci=? char #\n)
+		 (char=? char #\rubout))
 	     (write-string "No")
-	     false)
+	     #f)
 	    (else
 	     (if (not (char=? char #\newline))
 		 (beep))

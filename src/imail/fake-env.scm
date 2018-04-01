@@ -5,9 +5,9 @@
 			       name
 			       (extend-top-level-environment
 				(package/environment package)))))))
-  (new-child '(EDWIN) 'IMAIL)
-  (new-child '(EDWIN IMAIL) 'IMAP-RESPONSE)
-  (new-child '(EDWIN IMAIL) 'IMAP-SYNTAX)
-  (new-child '(EDWIN IMAIL) 'PARSER)
-  (new-child '(EDWIN IMAIL) 'REXP)
-  (new-child '(EDWIN IMAIL) 'URL))
+  (new-child '(edwin) 'imail)
+  (new-child '(edwin imail) 'imap-response)
+  (new-child '(edwin imail) 'imap-syntax)
+  (new-child '(edwin imail) 'parser)
+  (new-child '(edwin imail) 'rexp)
+  (new-child '(edwin imail) 'url))

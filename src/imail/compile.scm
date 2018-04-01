@@ -26,13 +26,13 @@ USA.
 
 ;;;; IMAIL mail reader: compilation
 
-(load-option 'CREF)
-(load-option 'SOS)
-(load-option '*PARSER)
+(load-option 'cref)
+(load-option 'sos)
+(load-option '*parser)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (for-each (lambda (filename)
-		(compile-file filename '() (->environment '(EDWIN))))
+		(compile-file filename '() (->environment '(edwin))))
 	      '("imail-browser"
 		"imail-core"
 		"imail-file"
@@ -45,4 +45,4 @@ USA.
 		"imail-util"
 		"imap-response"
 		"imap-syntax"))
-    (cref/generate-constructors "imail" 'ALL)))
+    (cref/generate-constructors "imail" 'all)))

@@ -49,9 +49,9 @@ USA.
 			    (name->class (identifier->symbol superclass)))
 		       variables)
 	   ;; Load-time definition.
-	   `(,(close-syntax 'DEFINE environment)
+	   `(,(close-syntax 'define environment)
 	     ,name
-	     (,(close-syntax 'MAKE-CLASS environment)
+	     (,(close-syntax 'make-class environment)
 	      ',(identifier->symbol name)
 	      ,superclass
 	      ',variables)))
@@ -62,7 +62,7 @@ USA.
    (lambda (form environment)
      (let ((finish
 	    (lambda (name operation expression)
-	      `(,(close-syntax 'CLASS-METHOD-DEFINE environment)
+	      `(,(close-syntax 'class-method-define environment)
 		,name
 		',operation
 		,expression))))
@@ -74,9 +74,9 @@ USA.
 		   (identifier? (cadr (caddr form))))
 	      (finish (cadr form)
 		      (car (caddr form))
-		      `(,(close-syntax 'NAMED-LAMBDA environment)
+		      `(,(close-syntax 'named-lambda environment)
 			,(caddr form)
-			(,(close-syntax 'WITH-INSTANCE-VARIABLES environment)
+			(,(close-syntax 'with-instance-variables environment)
 			 ,(cadr form)
 			 ,(cadr (caddr form))
 			 ()

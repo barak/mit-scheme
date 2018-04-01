@@ -26,9 +26,9 @@ USA.
 
 ;;;; IMAIL mail reader: loader
 
-(load-option 'REGULAR-EXPRESSION)
-(load-option 'SOS)
-(load-option 'WT-TREE)
+(load-option 'regular-expression)
+(load-option 'sos)
+(load-option 'wt-tree)
 (with-loader-base-uri (system-library-uri "imail/")
   (lambda ()
     (fluid-let ((*allow-package-redefinition?* #t))

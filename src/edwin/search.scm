@@ -33,34 +33,34 @@ USA.
    (lambda (form environment)
      (let ((name (cadr form))
 	   (find-next (close-syntax (caddr form) environment)))
-       `(DEFINE (,name GROUP START END CHAR)
+       `(define (,name group start end char)
 	  ;; Assume (FIX:<= START END)
-	  (AND (NOT (FIX:= START END))
-	       (COND ((FIX:<= END (GROUP-GAP-START GROUP))
-		      (,find-next (GROUP-TEXT GROUP) START END CHAR))
-		     ((FIX:<= (GROUP-GAP-START GROUP) START)
-		      (LET ((POSITION
+	  (and (not (fix:= start end))
+	       (cond ((fix:<= end (group-gap-start group))
+		      (,find-next (group-text group) start end char))
+		     ((fix:<= (group-gap-start group) start)
+		      (let ((position
 			     (,find-next
-			      (GROUP-TEXT GROUP)
-			      (FIX:+ START (GROUP-GAP-LENGTH GROUP))
-			      (FIX:+ END (GROUP-GAP-LENGTH GROUP))
-			      CHAR)))
-			(AND POSITION
-			     (FIX:- POSITION (GROUP-GAP-LENGTH GROUP)))))
-		     ((,find-next (GROUP-TEXT GROUP)
-				  START
-				  (GROUP-GAP-START GROUP)
-				  CHAR))
-		     (ELSE
-		      (LET ((POSITION
-			     (,find-next (GROUP-TEXT GROUP)
-					 (GROUP-GAP-END GROUP)
-					 (FIX:+ END
-						(GROUP-GAP-LENGTH GROUP))
-					 CHAR)))
-			(AND POSITION
-			     (FIX:- POSITION
-				    (GROUP-GAP-LENGTH GROUP))))))))))))
+			      (group-text group)
+			      (fix:+ start (group-gap-length group))
+			      (fix:+ end (group-gap-length group))
+			      char)))
+			(and position
+			     (fix:- position (group-gap-length group)))))
+		     ((,find-next (group-text group)
+				  start
+				  (group-gap-start group)
+				  char))
+		     (else
+		      (let ((position
+			     (,find-next (group-text group)
+					 (group-gap-end group)
+					 (fix:+ end
+						(group-gap-length group))
+					 char)))
+			(and position
+			     (fix:- position
+				    (group-gap-length group))))))))))))
 
 (define-next-char-search group-find-next-char
   substring-find-next-char)
@@ -74,31 +74,31 @@ USA.
    (lambda (form environment)
      (let ((name (cadr form))
 	   (find-previous (close-syntax (caddr form) environment)))
-       `(DEFINE (,name GROUP START END CHAR)
+       `(define (,name group start end char)
 	  ;; Assume (FIX:<= START END)
-	  (AND (NOT (FIX:= START END))
-	       (COND ((FIX:<= END (GROUP-GAP-START GROUP))
-		      (,find-previous (GROUP-TEXT GROUP) START END CHAR))
-		     ((FIX:<= (GROUP-GAP-START GROUP) START)
-		      (LET ((POSITION
+	  (and (not (fix:= start end))
+	       (cond ((fix:<= end (group-gap-start group))
+		      (,find-previous (group-text group) start end char))
+		     ((fix:<= (group-gap-start group) start)
+		      (let ((position
 			     (,find-previous
-			      (GROUP-TEXT GROUP)
-			      (FIX:+ START (GROUP-GAP-LENGTH GROUP))
-			      (FIX:+ END (GROUP-GAP-LENGTH GROUP))
-			      CHAR)))
-			(AND POSITION
-			     (FIX:- POSITION (GROUP-GAP-LENGTH GROUP)))))
-		     ((,find-previous (GROUP-TEXT GROUP)
-				      (GROUP-GAP-END GROUP)
-				      (FIX:+ END (GROUP-GAP-LENGTH GROUP))
-				      CHAR)
-		      => (LAMBDA (POSITION)
-			   (FIX:- POSITION (GROUP-GAP-LENGTH GROUP))))
+			      (group-text group)
+			      (fix:+ start (group-gap-length group))
+			      (fix:+ end (group-gap-length group))
+			      char)))
+			(and position
+			     (fix:- position (group-gap-length group)))))
+		     ((,find-previous (group-text group)
+				      (group-gap-end group)
+				      (fix:+ end (group-gap-length group))
+				      char)
+		      => (lambda (position)
+			   (fix:- position (group-gap-length group))))
 		     (else
-		      (,find-previous (GROUP-TEXT GROUP)
-				      START
-				      (GROUP-GAP-START GROUP)
-				      CHAR)))))))))
+		      (,find-previous (group-text group)
+				      start
+				      (group-gap-start group)
+				      char)))))))))
 
 (define-prev-char-search group-find-previous-char
   substring-find-previous-char)
@@ -313,7 +313,7 @@ USA.
 
 (define (skip-chars-forward pattern #!optional start end limit?)
   (let ((start (if (default-object? start) (current-point) start))
-	(limit? (if (default-object? limit?) 'LIMIT limit?)))
+	(limit? (if (default-object? limit?) 'limit limit?)))
     (let ((end (default-end-mark start end)))
       (let ((index
 	     (group-find-next-char-in-set (mark-group start)
@@ -326,7 +326,7 @@ USA.
 
 (define (skip-chars-backward pattern #!optional end start limit?)
   (let ((end (if (default-object? end) (current-point) end))
-	(limit? (if (default-object? limit?) 'LIMIT limit?)))
+	(limit? (if (default-object? limit?) 'limit limit?)))
     (let ((start (default-start-mark start end)))
       (let ((index
 	     (group-find-previous-char-in-set (mark-group start)

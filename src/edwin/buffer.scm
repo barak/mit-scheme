@@ -53,8 +53,8 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      (let ((slot-name (cadr form)))
-       `(DEFINE-INTEGRABLE ,(symbol 'BUFFER- slot-name)
-	  ,(close-syntax (symbol 'BUFFER-% slot-name)
+       `(define-integrable ,(symbol 'buffer- slot-name)
+	  ,(close-syntax (symbol 'buffer-% slot-name)
 			 environment))))))
 
 (rename-buffer-accessor name)
@@ -134,11 +134,11 @@ The buffer is guaranteed to be deselected at that time."
       buffer
       (variable-default-value (ref-variable-object editor-default-mode)))
      (event-distributor/invoke! event:set-buffer-pathname buffer)
-     (buffer-modeline-event! buffer 'BUFFER-RESET))))
+     (buffer-modeline-event! buffer 'buffer-reset))))
 
 (define (set-buffer-name! buffer name)
   (set-buffer-%name! buffer name)
-  (buffer-modeline-event! buffer 'BUFFER-NAME))
+  (buffer-modeline-event! buffer 'buffer-name))
 
 (define (set-buffer-default-directory! buffer directory)
   (set-buffer-%default-directory! buffer (pathname-simplify directory)))
@@ -148,14 +148,14 @@ The buffer is guaranteed to be deselected at that time."
   (if pathname
       (set-buffer-default-directory! buffer (directory-pathname pathname)))
   (event-distributor/invoke! event:set-buffer-pathname buffer)
-  (buffer-modeline-event! buffer 'BUFFER-PATHNAME))
+  (buffer-modeline-event! buffer 'buffer-pathname))
 
 (define event:set-buffer-pathname
   (make-event-distributor))
 
 (define (set-buffer-truename! buffer truename)
   (set-buffer-%truename! buffer truename)
-  (buffer-modeline-event! buffer 'BUFFER-TRUENAME))
+  (buffer-modeline-event! buffer 'buffer-truename))
 
 (define-integrable (set-buffer-save-length! buffer)
   (set-buffer-%save-length! buffer (buffer-length buffer)))
@@ -178,7 +178,7 @@ The buffer is guaranteed to be deselected at that time."
   (set-group-point-index! (buffer-group buffer) index))
 
 (define-integrable (minibuffer? buffer)
-  (char=? (string-ref (buffer-name buffer) 0) #\Space))
+  (char=? (string-ref (buffer-name buffer) 0) #\space))
 
 (define-integrable (buffer-region buffer)
   (group-region (buffer-group buffer)))
@@ -251,8 +251,8 @@ The buffer is guaranteed to be deselected at that time."
 	    ((group? object) (group-buffer object))
 	    ((region? object) (mark-buffer (region-start object)))
 	    ((window? object) (window-buffer object))
-	    (else (error:wrong-type-argument object "buffer" '->BUFFER)))
-      (error:bad-range-argument object '->BUFFER)))
+	    (else (error:wrong-type-argument object "buffer" '->buffer)))
+      (error:bad-range-argument object '->buffer)))
 
 ;;;; Modification Flags
 
@@ -266,7 +266,7 @@ The buffer is guaranteed to be deselected at that time."
        (if (group-modified? group)
 	   (begin
 	     (set-group-modified?! group #f)
-	     (buffer-modeline-event! buffer 'BUFFER-MODIFIED)
+	     (buffer-modeline-event! buffer 'buffer-modified)
 	     (set-buffer-auto-saved?! buffer #f)))))))
 
 (define (buffer-modified! buffer)
@@ -276,7 +276,7 @@ The buffer is guaranteed to be deselected at that time."
        (if (not (group-modified? group))
 	   (begin
 	     (set-group-modified?! group #t)
-	     (buffer-modeline-event! buffer 'BUFFER-MODIFIED)))))))
+	     (buffer-modeline-event! buffer 'buffer-modified)))))))
 
 (define (verify-visited-file-modification-time? buffer)
   (let ((truename (buffer-truename buffer))
@@ -291,7 +291,7 @@ The buffer is guaranteed to be deselected at that time."
 
 (define (set-buffer-auto-saved! buffer)
   (set-buffer-auto-saved?! buffer #t)
-  (set-group-modified?! (buffer-group buffer) 'AUTO-SAVED))
+  (set-group-modified?! (buffer-group buffer) 'auto-saved))
 
 (define-integrable (buffer-auto-save-modified? buffer)
   (eq? #t (group-modified? (buffer-group buffer))))
@@ -299,7 +299,7 @@ The buffer is guaranteed to be deselected at that time."
 (define (buffer-clip-daemon buffer)
   (lambda (group start end)
     group start end			;ignore
-    (buffer-modeline-event! buffer 'CLIPPING-CHANGED)))
+    (buffer-modeline-event! buffer 'clipping-changed)))
 
 (define-integrable (buffer-read-only? buffer)
   (group-read-only? (buffer-group buffer)))
@@ -309,16 +309,16 @@ The buffer is guaranteed to be deselected at that time."
 
 (define (set-buffer-writeable! buffer)
   (set-group-writeable! (buffer-group buffer))
-  (buffer-modeline-event! buffer 'BUFFER-MODIFIABLE))
+  (buffer-modeline-event! buffer 'buffer-modifiable))
 
 (define (set-buffer-read-only! buffer)
   (set-group-read-only! (buffer-group buffer))
-  (buffer-modeline-event! buffer 'BUFFER-MODIFIABLE))
+  (buffer-modeline-event! buffer 'buffer-modifiable))
 
 (define (with-read-only-defeated object thunk)
   (let ((group (buffer-group (->buffer object)))
 	(outside)
-	(inside 'FULLY))
+	(inside 'fully))
     (dynamic-wind (lambda ()
 		    (set! outside (group-writeable? group))
 		    (set-group-writeable?! group inside))
@@ -499,15 +499,15 @@ The buffer is guaranteed to be deselected at that time."
 
 (define (set-buffer-major-mode! buffer mode)
   (if (not (and (mode? mode) (mode-major? mode)))
-      (error:wrong-type-argument mode "major mode" 'SET-BUFFER-MAJOR-MODE!))
-  (if (buffer-get buffer 'MAJOR-MODE-LOCKED)
+      (error:wrong-type-argument mode "major mode" 'set-buffer-major-mode!))
+  (if (buffer-get buffer 'major-mode-locked)
       (editor-error "The major mode of this buffer is locked: " buffer))
   ;; The very first buffer is created before the editor
   (without-editor-interrupts
    (lambda ()
      (undo-local-bindings! buffer #f)
      (%set-buffer-major-mode! buffer mode)
-     (buffer-modeline-event! buffer 'BUFFER-MODES))))
+     (buffer-modeline-event! buffer 'buffer-modes))))
 
 (define (%set-buffer-major-mode! buffer mode)
   (set-buffer-modes! buffer (list mode))
@@ -526,12 +526,12 @@ The buffer is guaranteed to be deselected at that time."
 
 (define (buffer-minor-mode? buffer mode)
   (if (not (and (mode? mode) (not (mode-major? mode))))
-      (error:wrong-type-argument mode "minor mode" 'BUFFER-MINOR-MODE?))
+      (error:wrong-type-argument mode "minor mode" 'buffer-minor-mode?))
   (memq mode (cdr (buffer-modes buffer))))
 
 (define (enable-buffer-minor-mode! buffer mode)
   (if (not (minor-mode? mode))
-      (error:wrong-type-argument mode "minor mode" 'ENABLE-BUFFER-MINOR-MODE!))
+      (error:wrong-type-argument mode "minor mode" 'enable-buffer-minor-mode!))
   (without-editor-interrupts
    (lambda ()
      (let ((modes (buffer-modes buffer)))
@@ -543,12 +543,12 @@ The buffer is guaranteed to be deselected at that time."
 					(buffer-comtabs buffer)))
 	     (add-minor-mode-line-entry! buffer mode)
 	     ((mode-initialization mode) buffer)
-	     (buffer-modeline-event! buffer 'BUFFER-MODES)))))))
+	     (buffer-modeline-event! buffer 'buffer-modes)))))))
 
 (define (disable-buffer-minor-mode! buffer mode)
   (if (not (minor-mode? mode))
       (error:wrong-type-argument mode "minor mode"
-				 'DISABLE-BUFFER-MINOR-MODE!))
+				 'disable-buffer-minor-mode!))
   (without-editor-interrupts
    (lambda ()
      (let ((modes (buffer-modes buffer)))
@@ -559,4 +559,4 @@ The buffer is guaranteed to be deselected at that time."
 				  (delq! (minor-mode-comtab mode)
 					 (buffer-comtabs buffer)))
 	     (remove-minor-mode-line-entry! buffer mode)
-	     (buffer-modeline-event! buffer 'BUFFER-MODES)))))))
+	     (buffer-modeline-event! buffer 'buffer-modes)))))))

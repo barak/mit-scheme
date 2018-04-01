@@ -295,8 +295,8 @@ When called interactively, completion is available on the input."
   (sc-macro-transformer
    (lambda (form environment)
      (let ((name (cadr form)))
-       `(DEFINE ,(symbol 'EDWIN-COMMAND$X- name)
-	  ,(close-syntax (symbol 'EDWIN-COMMAND$ name)
+       `(define ,(symbol 'edwin-command$x- name)
+	  ,(close-syntax (symbol 'edwin-command$ name)
 			 environment))))))
 
 (define-old-mouse-command set-foreground-color)
@@ -327,8 +327,8 @@ When called interactively, completion is available on the input."
   (sc-macro-transformer
    (lambda (form environment)
      (let ((name (cadr form)))
-       `(DEFINE ,(symbol 'EDWIN-VARIABLE$X-SCREEN- name)
-	  ,(close-syntax (symbol 'EDWIN-VARIABLE$FRAME- name)
+       `(define ,(symbol 'edwin-variable$x-screen- name)
+	  ,(close-syntax (symbol 'edwin-variable$frame- name)
 			 environment))))))
 
 (define-old-screen-command icon-name-format)

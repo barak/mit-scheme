@@ -97,7 +97,7 @@ USA.
 	 (terminal-output-baud-rate channel))))
 
 (define (output-port/buffered-bytes port)
-  (let ((operation (textual-port-operation port 'BUFFERED-OUTPUT-BYTES)))
+  (let ((operation (textual-port-operation port 'buffered-output-bytes)))
     (if operation
 	(operation port)
 	0)))
@@ -109,7 +109,7 @@ USA.
 	 (no-undesirable-characteristics? description))))
 
 (define (console-termcap-description)
-  (if (eq? console-description 'UNKNOWN)
+  (if (eq? console-description 'unknown)
       (set! console-description
 	    (let ((term (get-environment-variable "TERM")))
 	      (and term
@@ -191,16 +191,16 @@ USA.
 		 (let ((n-chars (fix:- end start)))
 		   (let find
 		       ((key-pairs (terminal-state/key-table terminal-state))
-			(possible-pending? #F))
+			(possible-pending? #f))
 		     (if (null? key-pairs)
 			 (begin
 			   (if (number? incomplete-pending)
 			       (if (or (not possible-pending?)
 				       (> (real-time-clock)
 					  incomplete-pending))
-				   (set! incomplete-pending #T)))
+				   (set! incomplete-pending #t)))
 			   (if (number? incomplete-pending)
-			       #F
+			       #f
 			       (vector-8b-ref buffer start)))
 			 (let* ((key-seq  (caar key-pairs))
 				(n-seq    (string-length key-seq)))
@@ -224,14 +224,14 @@ USA.
 	 (read-more?			; -> #F or #T if some octets were read
 	  (named-lambda (read-more?)
 	    (let ((n (%channel-read channel buffer end input-buffer-size)))
-	      (cond ((not n)  #F)
-		    ((eq? n #T) #F)
+	      (cond ((not n)  #f)
+		    ((eq? n #t) #f)
 		    ((fix:> n 0)
 		     (set! end (fix:+ end n))
-		     #T)
+		     #t)
 		    ((fix:= n 0)
 		     ;;(error "Reached EOF in keyboard input.")
-		     #F)))))
+		     #f)))))
 	 (match-event	; -> #F or match (char or pair) or input event
 	  (named-lambda (match-event block?)
 	    (let loop ()
@@ -263,7 +263,7 @@ USA.
 	  (named-lambda (->update-event redisplay?)
 	    (and redisplay?
 		 (make-input-event
-		  (if (eq? redisplay? 'FORCE-RETURN) 'RETURN 'UPDATE)
+		  (if (eq? redisplay? 'force-return) 'return 'update)
 		  update-screens! #f))))
 	 (consume-match!
 	  (named-lambda (consume-match! match)
@@ -311,7 +311,7 @@ USA.
 		   (set! registrations
 			 (cons
 			  (register-io-thread-event
-			   (channel-descriptor-for-select channel) 'READ
+			   (channel-descriptor-for-select channel) 'read
 			   thread (lambda (mode)
 				    mode
 				    (set! input-available? #t)))
@@ -381,7 +381,7 @@ USA.
 
 (define (initialize-package!)
   (set! console-display-type
-	(make-display-type 'CONSOLE
+	(make-display-type 'console
 			   false
 			   console-available?
 			   make-console-screen
@@ -391,7 +391,7 @@ USA.
 			   with-console-grabbed
 			   with-console-interrupts-enabled
 			   with-console-interrupts-disabled))
-  (set! console-description 'UNKNOWN)
+  (set! console-description 'unknown)
   unspecific)
 
 (define (with-console-grabbed receiver)
@@ -490,22 +490,22 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      (let ((name (cadr form)))
-       `(DEFINE-INTEGRABLE (,(symbol 'SCREEN- name) SCREEN)
-	  (,(close-syntax (symbol 'TERMINAL-STATE/ name)
+       `(define-integrable (,(symbol 'screen- name) screen)
+	  (,(close-syntax (symbol 'terminal-state/ name)
 			  environment)
-	   (SCREEN-STATE SCREEN)))))))
+	   (screen-state screen)))))))
 
 (define-syntax define-ts-modifier
   (sc-macro-transformer
    (lambda (form environment)
      (let ((name (cadr form)))
        (let ((param (make-synthetic-identifier name)))
-	 `(DEFINE-INTEGRABLE
-	    (,(symbol 'SET-SCREEN- name '!) SCREEN ,param)
+	 `(define-integrable
+	    (,(symbol 'set-screen- name '!) screen ,param)
 	    (,(close-syntax
-	       (symbol 'SET-TERMINAL-STATE/ name '!)
+	       (symbol 'set-terminal-state/ name '!)
 	       environment)
-	     (SCREEN-STATE SCREEN)
+	     (screen-state screen)
 	     ,param)))))))
 
 (define-ts-accessor description)
@@ -533,7 +533,7 @@ USA.
 
 (define (console-discard! screen)
   screen
-  (set! console-description 'UNKNOWN)
+  (set! console-description 'unknown)
   unspecific)
 
 (define (console-enter! screen)
@@ -661,7 +661,7 @@ USA.
 		 (and (fix:< (insert-lines-cost screen yl yu amount) draw-cost)
 		      (begin
 			(insert-lines screen yl yu amount)
-			'CLEARED))
+			'cleared))
 		 (and (fix:<
 		       (fix:+ (delete-lines-cost screen yu* y-size amount)
 			      (insert-lines-cost screen yl y-size amount))
@@ -669,7 +669,7 @@ USA.
 		      (begin
 			(delete-lines screen yu* y-size amount)
 			(insert-lines screen yl y-size amount)
-			'CLEARED))))))))
+			'cleared))))))))
 
 (define (console-scroll-lines-up! screen xl xu yl yu amount)
   (let ((description (screen-description screen)))
@@ -683,7 +683,7 @@ USA.
 	       (and (fix:< (delete-lines-cost screen yl yu amount) draw-cost)
 		    (begin
 		      (delete-lines screen yl yu amount)
-		      'CLEARED))
+		      'cleared))
 	       (let ((yu* (fix:- yu amount)))
 		 (and (fix:<
 		       (fix:+ (delete-lines-cost screen yl y-size amount)
@@ -692,7 +692,7 @@ USA.
 		      (begin
 			(delete-lines screen yl y-size amount)
 			(insert-lines screen yu* y-size amount)
-			'CLEARED))))))))
+			'cleared))))))))
 
 (define (scroll-draw-cost screen yl yu)
   (do ((yl yl (fix:+ yl 1))
@@ -1199,7 +1199,7 @@ compute this as INSERT-LINE-COST[line]+INSERT-LINE-NEXT-COST[line], we
 add INSERT-LINE-NEXT-COST into INSERT-LINE-COST.  This is reasonable
 because of the particular algorithm used.
 
-Deletion is essentially the same as insertion. 
+Deletion is essentially the same as insertion.
 
 Note that the multiply factors are in tenths of characters.  |#
 
