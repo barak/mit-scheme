@@ -42,11 +42,11 @@ USA.
 	   (receive (table name-map)
 	       (case type
 		 ((MODE)
-		  (values 'EDITOR-MODES mode-name->scheme-name))
-		 ((COMMAND)
-		  (values 'EDITOR-COMMANDS command-name->scheme-name))
-		 ((VARIABLE)
-		  (values 'EDITOR-VARIABLES variable-name->scheme-name))
+		  (values 'editor-modes mode-name->scheme-name))
+		 ((command)
+		  (values 'editor-commands command-name->scheme-name))
+		 ((variable)
+		  (values 'editor-variables variable-name->scheme-name))
 		 (else
 		  (error "Unknown alias type:" type)))
 	   `(BEGIN
@@ -68,18 +68,18 @@ USA.
 		  (interactive (list-ref form 3))
 		  (procedure (list-ref form 4)))
 	      (let ((scheme-name (command-name->scheme-name name)))
-		`(,(close-syntax 'DEFINE environment)
+		`(,(close-syntax 'define environment)
 		  ,scheme-name
-		   (,(close-syntax 'MAKE-COMMAND environment)
+		   (,(close-syntax 'make-command environment)
 		    ',name
 		    ,description
 		    ,interactive
 		    ,(if (and (pair? procedure)
 			      (identifier=?
 			       instance-environment (car procedure)
-			       environment 'LAMBDA)
+			       environment 'lambda)
 			      (pair? (cdr procedure)))
-			 `(,(close-syntax 'NAMED-LAMBDA environment)
+			 `(,(close-syntax 'named-lambda environment)
 			   (,scheme-name ,@(cadr procedure))
 			   ,@(cddr procedure))
 			 procedure)))))
@@ -93,7 +93,7 @@ USA.
 	 (ill-formed-syntax form)))))
 
 (define (command-name->scheme-name name)
-  (symbol 'EDWIN-COMMAND$ name))
+  (symbol 'edwin-command$ name))
 
 (define-syntax ref-command
   (sc-macro-transformer
@@ -117,25 +117,25 @@ USA.
 (define-syntax define-variable
   (rsc-macro-transformer
    (lambda (form environment)
-     (expand-variable-definition form environment `#F))))
+     (expand-variable-definition form environment `#f))))
 
 (define-syntax define-variable-per-buffer
   (rsc-macro-transformer
    (lambda (form environment)
-     (expand-variable-definition form environment `#T))))
+     (expand-variable-definition form environment `#t))))
 
 (define (expand-variable-definition form environment buffer-local?)
   (if (and (syntax-match? '(symbol + expression) (cdr form))
 	   (<= (length form) 6))
-      `(,(close-syntax 'DEFINE environment)
+      `(,(close-syntax 'define environment)
 	,(variable-name->scheme-name (list-ref form 1))
-	(,(close-syntax 'MAKE-VARIABLE environment)
+	(,(close-syntax 'make-variable environment)
 	 ',(list-ref form 1)
-	 ,(if (> (length form) 2) (list-ref form 2) '#F)
-	 ,(if (> (length form) 3) (list-ref form 3) '#F)
+	 ,(if (> (length form) 2) (list-ref form 2) '#f)
+	 ,(if (> (length form) 3) (list-ref form 3) '#f)
 	 ,buffer-local?
-	 ,(if (> (length form) 4) (list-ref form 4) '#F)
-	 ,(if (> (length form) 5) (list-ref form 5) '#F)))
+	 ,(if (> (length form) 4) (list-ref form 4) '#f)
+	 ,(if (> (length form) 5) (list-ref form 5) '#f)))
       (ill-formed-syntax form)))
 
 (define-syntax ref-variable-object
@@ -146,17 +146,17 @@ USA.
 	 (ill-formed-syntax form)))))
 
 (define (variable-name->scheme-name name)
-  (symbol 'EDWIN-VARIABLE$ name))
+  (symbol 'edwin-variable$ name))
 
 (define-syntax ref-variable
   (sc-macro-transformer
    (lambda (form environment)
      (if (syntax-match? '(symbol ? expression) (cdr form))
-	 (let ((name `(REF-VARIABLE-OBJECT ,(cadr form))))
+	 (let ((name `(ref-variable-object ,(cadr form))))
 	   (if (pair? (cddr form))
-	       `(VARIABLE-LOCAL-VALUE ,(close-syntax (caddr form) environment)
+	       `(variable-local-value ,(close-syntax (caddr form) environment)
 				      ,name)
-	       `(VARIABLE-VALUE ,name)))
+	       `(variable-value ,name)))
 	 (ill-formed-syntax form)))))
 
 (define-syntax set-variable!
@@ -165,24 +165,24 @@ USA.
      (expand-variable-assignment form environment
        (lambda (name value buffer)
 	 (if buffer
-	     `(SET-VARIABLE-LOCAL-VALUE! ,buffer ,name ,value)
-	     `(SET-VARIABLE-VALUE! ,name ,value)))))))
+	     `(set-variable-local-value! ,buffer ,name ,value)
+	     `(set-variable-value! ,name ,value)))))))
 
 (define-syntax local-set-variable!
   (sc-macro-transformer
    (lambda (form environment)
      (expand-variable-assignment form environment
        (lambda (name value buffer)
-	 `(DEFINE-VARIABLE-LOCAL-VALUE! ,(or buffer `(CURRENT-BUFFER)) ,name
+	 `(define-variable-local-value! ,(or buffer `(current-buffer)) ,name
 	    ,value))))))
 
 (define (expand-variable-assignment form environment generator)
   (if (and (syntax-match? '(symbol * expression) (cdr form))
 	   (<= (length form) 4))
-      (generator `(REF-VARIABLE-OBJECT ,(list-ref form 1))
+      (generator `(ref-variable-object ,(list-ref form 1))
 		 (if (> (length form) 2)
 		     (close-syntax (list-ref form 2) environment)
-		     `#F)
+		     `#f)
 		 (if (> (length form) 3)
 		     (close-syntax (list-ref form 3) environment)
 		     #f))
@@ -200,14 +200,14 @@ USA.
 	   (let ((name (list-ref form 1))
 		 (super-mode-name (list-ref form 2)))
 	     (let ((scheme-name (mode-name->scheme-name name)))
-	       `(DEFINE ,scheme-name
-		  (MAKE-MODE ',name
-			     #T
+	       `(define ,scheme-name
+		  (make-mode ',name
+			     #t
 			     ',(or (list-ref form 3)
 				   (symbol->string name))
 			     ,(if super-mode-name
-				  `(->MODE ',super-mode-name)
-				  `#F)
+				  `(->mode ',super-mode-name)
+				  `#f)
 			     ,(close-syntax (list-ref form 4) environment)
 			     ,(let ((initialization
 				     (if (and (> (length form) 5)
@@ -216,19 +216,19 @@ USA.
 						       environment)
 					 #f)))
 				(if super-mode-name
-				    `(LAMBDA (BUFFER)
-				       ((MODE-INITIALIZATION
-					 (MODE-SUPER-MODE
+				    `(lambda (buffer)
+				       ((mode-initialization
+					 (mode-super-mode
 					  ,(close-syntax scheme-name
 							 environment)))
-					BUFFER)
+					buffer)
 				       ,@(if initialization
-					     `((,initialization BUFFER))
+					     `((,initialization buffer))
 					     `()))
 				    (or initialization
-					`(LAMBDA (BUFFER)
-					   BUFFER
-					   UNSPECIFIC))))))))
+					`(lambda (buffer)
+					   buffer
+					   unspecific))))))))
 	   (ill-formed-syntax form))))))
 
 (define-syntax define-minor-mode
@@ -240,17 +240,17 @@ USA.
      (lambda (form environment)
        (if (syntax-match? pattern (cdr form))
 	   (let ((name (list-ref form 1)))
-	     `(DEFINE ,(mode-name->scheme-name name)
-		(MAKE-MODE ',name
-			   #F
+	     `(define ,(mode-name->scheme-name name)
+		(make-mode ',name
+			   #f
 			   ',(or (list-ref form 2)
 				 (symbol->string name))
-			   #F
+			   #f
 			   ,(close-syntax (list-ref form 3) environment)
 			   ,(if (and (> (length form) 4)
 				     (list-ref form 4))
 				(close-syntax (list-ref form 4) environment)
-				`(LAMBDA (BUFFER) BUFFER UNSPECIFIC)))))
+				`(lambda (buffer) buffer unspecific)))))
 	   (ill-formed-syntax form))))))
 
 (define-syntax ref-mode-object
@@ -261,4 +261,4 @@ USA.
 	 (ill-formed-syntax form)))))
 
 (define (mode-name->scheme-name name)
-  (symbol 'EDWIN-MODE$ name))
+  (symbol 'edwin-mode$ name))
