@@ -34,7 +34,7 @@ USA.
 ;;; Any kind of object can be a MIME entity, provided that it
 ;;; implements MIME-ENTITY-BODY-STRUCTURE.  A default method is
 ;;; provided if it instead implements MIME-ENTITY-HEADER-FIELDS and
-;;; either MIME-ENTITY-BODY-SUBSTRING or WRITE-ENTITY-MIME-BODY, which
+;;; either MIME-ENTITY-BODY-SUBSTRING or WRITE-MIME-ENTITY-BODY, which
 ;;; yield the literal text of the entity's body without decoding or
 ;;; interpretation.  MIME-ENTITY-BODY-STRUCTURE should return a
 ;;; <MIME-BODY> instance.
@@ -765,7 +765,6 @@ USA.
   (decoder-initializer           #f read-only #t)
   (decoder-finalizer             #f read-only #t)
   (decoder-updater               #f read-only #t)
-  (decoding-port-maker           #f read-only #t)
   (caller-with-decoding-port     #f read-only #t))
 
 (define-guarantee mime-encoding "MIME codec")
@@ -776,14 +775,14 @@ USA.
 (define (define-mime-encoding name
           encode:initialize encode:finalize encode:update
           decode:initialize decode:finalize decode:update
-          make-port call-with-port)
+	  call-with-port)
   (hash-table/put!
    mime-encodings
    name
    (%make-mime-encoding name #f
                         encode:initialize encode:finalize encode:update
                         decode:initialize decode:finalize decode:update
-                        make-port call-with-port))
+                        call-with-port))
   name)
 
 (define (define-identity-mime-encoding name)
@@ -796,7 +795,6 @@ USA.
                                         (lambda (port text?) text? port)
                                         output-port/flush-output
                                         output-port/write-string
-                                        (lambda (port text?) text? port)
                                         (lambda (port text? generator)
                                           text?
                                           (generator port)))))
@@ -813,7 +811,7 @@ USA.
 
 (define (make-unknown-mime-encoding name)
   (let ((lose (lambda args args (error "Unknown MIME encoding name:" name))))
-    (%make-mime-encoding name #f lose lose lose lose lose lose lose lose)))
+    (%make-mime-encoding name #f lose lose lose lose lose lose lose)))
 
 (define (call-with-mime-decoding-output-port encoding port text? generator)
   ((mime-encoding/caller-with-decoding-port
@@ -849,17 +847,19 @@ USA.
   decode-quoted-printable:initialize
   decode-quoted-printable:finalize
   decode-quoted-printable:update
-  make-decode-quoted-printable-port
   call-with-decode-quoted-printable-output-port)
 
 (define (make-decode-base64-port* textual-port text?)
-  (make-decode-base64-port (textual-output-port->binary textual-port) text?))
+  (make-decode-base64-port (textual->binary-port textual-port 'iso-8859-1)
+			   text?))
 
 (define (call-with-decode-base64-port* textual-port text? procedure)
-  (let ((port (make-decode-base64-port* textual-port text?)))
-    (let ((value (procedure port)))
-      (close-port port)
-      value)))
+  (let ((binary-port (textual->binary-port textual-port 'iso-8859-1)))
+    (let ((decoding-port (make-decode-base64-port binary-port text?)))
+      (let ((value (procedure decoding-port)))
+	(close-port decoding-port)
+	(flush-output-port binary-port)
+	value))))
 
 (define-mime-encoding 'BASE64
   encode-base64:initialize
@@ -868,22 +868,19 @@ USA.
   decode-base64:initialize
   decode-base64:finalize
   decode-base64:update
-  make-decode-base64-port*
   call-with-decode-base64-port*)
 
-(define (make-decode-binhex40-port* textual-port text?)
-  (make-decode-binhex40-port (textual-output-port->binary textual-port) text?))
-
 (define (call-with-decode-binhex40-port* textual-port text? procedure)
-  (let ((port (make-decode-binhex40-port* textual-port text?)))
-    (let ((value (procedure port)))
-      (close-port port)
-      value)))
+  (let ((binary-port (textual->binary-port textual-port 'iso-8859-1)))
+    (let ((decoding-port (make-decode-binhex40-port binary-port text?)))
+      (let ((value (procedure decoding-port)))
+	(close-port decoding-port)
+	(flush-output-port binary-port)
+	value))))
 
 (define-mime-encoding 'BINHEX40
   #f #f #f                              ;No BinHex encoder.
   decode-binhex40:initialize
   decode-binhex40:finalize
   decode-binhex40:update
-  make-decode-binhex40-port*
   call-with-decode-binhex40-port*)

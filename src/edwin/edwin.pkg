@@ -264,8 +264,6 @@ USA.
 	  substring<?
 	  substring=?
 	  substring?
-	  textual-input-port->binary
-	  textual-output-port->binary
 	  vector-8b-fill!
 	  vector-8b-find-next-char
 	  vector-8b-find-next-char-ci

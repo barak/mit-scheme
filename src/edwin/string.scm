@@ -583,40 +583,6 @@ USA.
 	((not (fix:< i end)))
       (string-set! string j (integer->char (bytevector-u8-ref bv i))))
     string))
-
-(define (textual-input-port->binary textual-port)
-
-  (define (has-bytes?)
-    (char-ready? textual-port))
-
-  (define (read-bytes! bv start end)
-    (let ((string (read-string (fix:- end start) textual-port)))
-      (if (or (not string) (eof-object? string))
-	  string
-	  (let ((n (string-length string)))
-	    (do ((i 0 (fix:+ i 1))
-		 (j start (fix:+ j 1)))
-		((not (fix:< i n)))
-	      (bytevector-u8-set! bv j (char->integer (string-ref string i))))
-	    n))))
-
-  (define (close)
-    (close-port textual-port))
-
-  (make-binary-port (make-non-channel-input-source has-bytes? read-bytes! close)
-		    #f))
-
-(define (textual-output-port->binary textual-port)
-
-  (define (write-bytes bv start end)
-    (do ((i start (fix:+ i 1)))
-	((not (fix:< i end)))
-      (write-char (integer->char (bytevector-u8-ref bv i)) textual-port)))
-
-  (define (close)
-    (close-port textual-port))
-
-  (make-binary-port #f (make-non-channel-output-sink write-bytes close)))
 
 (define (decorated-string-append prefix infix suffix strings)
   (let ((infix (string-append suffix infix prefix)))
