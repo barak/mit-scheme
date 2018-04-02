@@ -26,7 +26,7 @@ USA.
 
 ;;;; SSP compilation
 
-(load-option 'CREF)
+(load-option 'cref)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (for-each compile-file
@@ -34,4 +34,4 @@ USA.
 		"mod-lisp"
 		"xhtml-expander"
 		"xmlrpc"))
-    (cref/generate-constructors "ssp" 'ALL)))
+    (cref/generate-constructors "ssp" 'all)))

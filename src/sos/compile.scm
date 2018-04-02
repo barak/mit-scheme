@@ -24,7 +24,7 @@ USA.
 
 |#
 
-(load-option 'CREF)
+(load-option 'cref)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (compile-file "class")
@@ -38,4 +38,4 @@ USA.
     (compile-file "recslot")
     (compile-file "slot")
     (compile-file "tvector")
-    (cref/generate-constructors "sos" 'ALL)))
+    (cref/generate-constructors "sos" 'all)))

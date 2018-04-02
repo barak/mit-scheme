@@ -31,6 +31,6 @@ USA.
 (with-loader-base-uri (system-library-uri "sf/")
   (lambda ()
     (load-package-set "sf")
-    ((package/reference (find-package '(SCODE-OPTIMIZER))
-			'USUAL-INTEGRATIONS/CACHE!))))
+    ((package/reference (find-package '(scode-optimizer))
+			'usual-integrations/cache!))))
 (add-subsystem-identification! "SF" '(4 41))

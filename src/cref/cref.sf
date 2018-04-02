@@ -34,6 +34,6 @@ USA.
 
 (if (file-exists? (package-set-pathname "../runtime/runtime"))
     (begin
-      (if (not (name->package '(CROSS-REFERENCE)))
+      (if (not (name->package '(cross-reference)))
 	  (load "make"))
-      (cref/generate-constructors "cref" 'ALL)))
+      (cref/generate-constructors "cref" 'all)))

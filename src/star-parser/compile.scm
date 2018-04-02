@@ -26,11 +26,11 @@ USA.
 
 ;;;; Parser language: compilation
 
-(load-option 'CREF)
+(load-option 'cref)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (for-each compile-file
 	      '("matcher"
 		"parser"
 		"shared"))
-    (cref/generate-constructors "parser" 'ALL)))
+    (cref/generate-constructors "parser" 'all)))

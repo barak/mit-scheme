@@ -24,23 +24,23 @@ USA.
 
 |#
 
-(fluid-let ((sf/default-syntax-table (->environment '(RUNTIME)))
-	    (sf/top-level-definitions 
-	     '(ACCESS?
-	       ASSIGNMENT?
-	       COMBINATION?
-	       CONDITIONAL?
-	       DECLARATION?
-	       DELAY?
-	       DISJUNCTION?
-	       OPEN-BLOCK?
-	       PROCEDURE?
-	       QUOTATION?
-	       SEQUENCE?
-	       THE-ENVIRONMENT?
-	       VARIABLE?)))
+(fluid-let ((sf/default-syntax-table (->environment '(runtime)))
+	    (sf/top-level-definitions
+	     '(access?
+	       assignment?
+	       combination?
+	       conditional?
+	       declaration?
+	       delay?
+	       disjunction?
+	       open-block?
+	       procedure?
+	       quotation?
+	       sequence?
+	       the-environment?
+	       variable?)))
   (sf-conditionally "object")
   (sf-directory "."))
 
-(load-option 'CREF)
-(cref/generate-constructors "sf" 'ALL)
+(load-option 'cref)
+(cref/generate-constructors "sf" 'all)

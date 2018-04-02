@@ -24,8 +24,8 @@ USA.
 
 |#
 
-(load-option 'REGULAR-EXPRESSION)
-(load-option 'SOS)
+(load-option 'regular-expression)
+(load-option 'sos)
 (with-loader-base-uri (system-library-uri "xml/")
   (lambda ()
     (load-package-set "xml")))

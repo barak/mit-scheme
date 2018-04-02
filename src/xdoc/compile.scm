@@ -26,10 +26,10 @@ USA.
 
 ;;;; XDOC compilation
 
-(load-option 'CREF)
+(load-option 'cref)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (for-each compile-file
 	      '("db"
 		"xdoc"))
-    (cref/generate-constructors "xdoc" 'ALL)))
+    (cref/generate-constructors "xdoc" 'all)))

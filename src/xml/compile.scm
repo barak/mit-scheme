@@ -24,13 +24,13 @@ USA.
 
 |#
 
-(load-option 'CREF)
-(load-option '*PARSER)
-(load-option 'SOS)
+(load-option 'cref)
+(load-option '*parser)
+(load-option 'sos)
 
-(if (not (environment-bound? system-global-environment 'XML-PARSER-MACROS))
+(if (not (environment-bound? system-global-environment 'xml-parser-macros))
     (environment-define system-global-environment
-			'XML-PARSER-MACROS
+			'xml-parser-macros
 			(make-parser-macros #f)))
 
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
@@ -50,4 +50,4 @@ USA.
 		    "rdf-struct"
 		    "rdf-nt"
 		    "turtle"))))
-    (cref/generate-constructors "xml" 'ALL)))
+    (cref/generate-constructors "xml" 'all)))
