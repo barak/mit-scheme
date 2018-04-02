@@ -1346,14 +1346,20 @@ USA.
   (export ()
 	  char-alphabetic?
 	  char-cased?
+	  char-changes-when-case-folded?
+	  char-changes-when-lower-cased?
+	  char-changes-when-upper-cased?
 	  char-lower-case?
-	  char-upper-case?
-	  char-whitespace?
 	  char-set:alphabetic
 	  char-set:cased
+	  char-set:changes-when-case-folded
+	  char-set:changes-when-lower-cased
+	  char-set:changes-when-upper-cased
 	  char-set:lower-case
 	  char-set:upper-case
-	  char-set:whitespace)
+	  char-set:whitespace
+	  char-upper-case?
+	  char-whitespace?)
   (export (runtime character)
 	  ucd-gc-value
 	  ucd-nt-value
@@ -1362,12 +1368,8 @@ USA.
 	  ucd-slc-value
 	  ucd-suc-value)
   (export (runtime ucd-glue)
-	  char-set:changes-when-case-folded
 	  ucd-nt-value)
   (export (runtime string)
-	  char-changes-when-case-folded?
-	  char-changes-when-lower-cased?
-	  char-changes-when-upper-cased?
 	  char-full-composition-exclusion?
 	  char-nfd-quick-check?
 	  ucd-canonical-cm-second-keys
