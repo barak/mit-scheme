@@ -81,15 +81,15 @@ USA.
       (set! xlambda-unwrapped-body unwrapped-body)
       (set! set-xlambda-unwrapped-body! set-unwrapped-body!)))
   (set! &lambda-components
-	(dispatch-1 'LAMBDA-COMPONENTS
+	(dispatch-1 'lambda-components
 		    clambda-components
 		    xlambda-components))
   (set! has-internal-lambda?
-	(dispatch-0 'HAS-INTERNAL-LAMBDA?
+	(dispatch-0 'has-internal-lambda?
 		    clambda-has-internal-lambda?
 		    xlambda-has-internal-lambda?))
   (set! lambda-arity
-	(dispatch-1 'LAMBDA-ARITY
+	(dispatch-1 'lambda-arity
 		    slambda-arity
 		    xlambda-arity))
   (set! scode-lambda-body
@@ -105,7 +105,7 @@ USA.
 		    clambda-bound?
 		    xlambda-bound?))
   (set! lambda-immediate-body
-	(dispatch-0 'LAMBDA-IMMEDIATE-BODY
+	(dispatch-0 'lambda-immediate-body
 		    slambda-body
 		    xlambda-body))
   (set! scode-lambda-interface
@@ -117,19 +117,19 @@ USA.
 		    slambda-name
 		    xlambda-name))
   (set! lambda-names-vector
-	(dispatch-0 'LAMBDA-NAMES-VECTOR
+	(dispatch-0 'lambda-names-vector
 		    slambda-names-vector
 		    xlambda-names-vector))
   (set! lambda-unwrap-body!
-	(dispatch-0 'LAMBDA-UNWRAP-BODY!
+	(dispatch-0 'lambda-unwrap-body!
 		    clambda-unwrap-body!
 		    xlambda-unwrap-body!))
   (set! lambda-wrap-body!
-	(dispatch-1 'LAMBDA-WRAP-BODY!
+	(dispatch-1 'lambda-wrap-body!
 		    clambda-wrap-body!
 		    xlambda-wrap-body!))
   (set! lambda-wrapper-components
-	(dispatch-1 'LAMBDA-WRAPPER-COMPONENTS
+	(dispatch-1 'lambda-wrapper-components
 		    clambda-wrapper-components
 		    xlambda-wrapper-components))
   (set! set-scode-lambda-body!
@@ -223,7 +223,7 @@ USA.
 (define (clambda-components clambda receiver)
   (slambda-components clambda
     (lambda (name required body)
-      (receiver name required '() '#F  ;;! '()
+      (receiver name required '() '#f
 		(lambda-body-auxiliary body)
 		(clambda-unwrapped-body clambda)))))
 
@@ -333,7 +333,7 @@ USA.
 		      (subvector->list bound ostart rstart)
 		      (if rest?
 			  (vector-ref bound rstart)
-			  #F) ;;!'()
+			  #f)
 		      (append
 		       (subvector->list bound astart (vector-length bound))
 		       (lambda-body-auxiliary (&triple-first xlambda)))
@@ -423,15 +423,16 @@ USA.
   (let ((body*
 	 (if (null? declarations)
 	     body
-	     (make-scode-sequence (list (make-scode-block-declaration declarations)
-					body)))))
+	     (make-scode-sequence
+	      (list (make-scode-block-declaration declarations)
+		    body)))))
     (cond ((and (< (length required) 256)
 		(< (length optional) 256)
 		(or (not (null? optional))
 		    rest))
 	   (make-xlambda name required optional rest auxiliary body*))
 	  ((not (null? optional))
-	   (error "Optionals not implemented" 'MAKE-LAMBDA))
+	   (error "Optionals not implemented" 'make-lambda))
 	  (rest
 	   (error "You want how many arguments?  AND a rest arg?"))
 	  (else

@@ -80,7 +80,7 @@ USA.
 	      (let ((description (car descriptions))
 		    (descriptions (cdr descriptions)))
 		(case (car description)
-		  ((DEFINE-PACKAGE)
+		  ((define-package)
 		   (loop descriptions
 			 (cons (cdr description) packages)
 			 extensions
@@ -88,7 +88,7 @@ USA.
 			     (cons (cdr description) loads)
 			     loads)
 			 globals))
-		  ((EXTEND-PACKAGE)
+		  ((extend-package)
 		   (loop descriptions
 			 packages
 			 (cons (cdr description) extensions)
@@ -96,13 +96,13 @@ USA.
 			     (cons (cdr description) loads)
 			     loads)
 			 globals))
-		  ((GLOBAL-DEFINITIONS)
+		  ((global-definitions)
 		   (loop descriptions
 			 packages
 			 extensions
 			 loads
 			 (append! (reverse (cdr description)) globals)))
-		  ((NESTED-DESCRIPTIONS)
+		  ((nested-descriptions)
 		   (receive (packages extensions loads globals)
 		       (loop (cdr description)
 			     packages
@@ -269,41 +269,41 @@ USA.
 		  (list? (cdr expression))))
 	(lose))
     (case (car expression)
-      ((DEFINE-PACKAGE)
-       (cons 'DEFINE-PACKAGE
+      ((define-package)
+       (cons 'define-package
 	     (parse-package-definition (parse-name (cadr expression))
 				       (cddr expression))))
-      ((EXTEND-PACKAGE)
-       (cons 'EXTEND-PACKAGE
+      ((extend-package)
+       (cons 'extend-package
 	     (parse-package-extension (parse-name (cadr expression))
 				      (cddr expression))))
-      ((GLOBAL-DEFINITIONS)
+      ((global-definitions)
        (let ((filenames (cdr expression)))
 	 (if (not (every (lambda (f) (or (string? f) (symbol? f))) filenames))
 	     (lose))
-	 (cons 'GLOBAL-DEFINITIONS filenames)))
-      ((OS-TYPE-CASE)
+	 (cons 'global-definitions filenames)))
+      ((os-type-case)
        (if (not (and (list? (cdr expression))
 		     (every (lambda (clause)
-			      (and (or (eq? 'ELSE (car clause))
+			      (and (or (eq? 'else (car clause))
 				       (and (list? (car clause))
 					    (every symbol? (car clause))))
 				   (list? (cdr clause))))
 			    (cdr expression))))
 	   (lose))
-       (cons 'NESTED-DESCRIPTIONS
+       (cons 'nested-descriptions
 	     (let loop ((clauses (cdr expression)))
 	       (cond ((null? clauses)
 		      '())
-		     ((or (eq? 'ELSE (caar clauses))
+		     ((or (eq? 'else (caar clauses))
 			  (memq os-type (caar clauses)))
 		      (parse-package-expressions (cdar clauses)
 						 pathname
 						 os-type))
 		     (else
 		      (loop (cdr clauses)))))))
-      ((INCLUDE)
-       (cons 'NESTED-DESCRIPTIONS
+      ((include)
+       (cons 'nested-descriptions
 	     (let ((filenames (cdr expression)))
 	       (if (not (every string? filenames))
 		   (lose))
@@ -319,28 +319,28 @@ USA.
 (define (parse-package-definition name options)
   (check-package-options options)
   (receive (parent options)
-      (let ((option (assq 'PARENT options)))
+      (let ((option (assq 'parent options)))
 	(if option
 	    (let ((options (delq option options)))
 	      (if (not (and (pair? (cdr option))
 			    (null? (cddr option))))
 		  (error "Ill-formed PARENT option:" option))
-	      (if (assq 'PARENT options)
+	      (if (assq 'parent options)
 		  (error "Multiple PARENT options."))
 	      (values (and (cadr option)
 			   (parse-name (cadr option)))
 		      options))
-	    (values 'NONE options)))
+	    (values 'none options)))
     (let ((package (make-package-description name parent)))
       (process-package-options package options)
       package)))
 
 (define (parse-package-extension name options)
   (check-package-options options)
-  (let ((option (assq 'PARENT options)))
+  (let ((option (assq 'parent options)))
     (if option
 	(error "PARENT option illegal in package extension:" option)))
-  (let ((package (make-package-description name 'NONE)))
+  (let ((package (make-package-description name 'none)))
     (process-package-options package options)
     package))
 
@@ -357,20 +357,20 @@ USA.
 (define (process-package-options package options)
   (for-each (lambda (option)
 	      (case (car option)
-		((FILES)
+		((files)
 		 (set-package-description/file-cases!
 		  package
 		  (append! (package-description/file-cases package)
 			   (list (parse-filenames (cdr option))))))
-		((FILE-CASE)
+		((file-case)
 		 (set-package-description/file-cases!
 		  package
 		  (append! (package-description/file-cases package)
 			   (list (parse-file-case (cdr option))))))
-		((EXPORT)
+		((export)
 		 (let ((export
 			(cond ((and (pair? (cdr option))
-				    (eq? 'DEPRECATED (cadr option)))
+				    (eq? 'deprecated (cadr option)))
 			       (parse-import/export (cddr option) #t))
 			      ;; 9.2 compatibility
 			      ((and (pair? (cdr option))
@@ -388,24 +388,24 @@ USA.
 		    package
 		    (append! (package-description/exports package)
 			     (list export)))))
-		((EXPORT-DEPRECATED)
+		((export-deprecated)
 		 (set-package-description/exports!
 		  package
 		  (append! (package-description/exports package)
 			   (list (parse-import/export (cdr option) #t)))))
-		((IMPORT)
+		((import)
 		 (set-package-description/imports!
 		  package
 		  (append! (package-description/imports package)
 			   (list (parse-import/export (cdr option) #f)))))
-		((INITIALIZATION)
+		((initialization)
 		 (let ((initialization (parse-initialization (cdr option))))
 		   (if initialization
 		       (set-package-description/initializations!
 			package
 			(append! (package-description/initializations package)
 				 (list initialization))))))
-		((FINALIZATION)
+		((finalization)
 		 (let ((finalization (parse-initialization (cdr option))))
 		   (if finalization
 		       (set-package-description/finalizations!
@@ -424,7 +424,7 @@ USA.
 (define (parse-filenames filenames)
   (if (not (check-list filenames string?))
       (error "illegal filenames" filenames))
-  (list #F (cons 'ELSE (map parse-filename filenames))))
+  (list #f (cons 'else (map parse-filename filenames))))
 
 (define (parse-file-case file-case)
   (if (not (and (pair? file-case)
@@ -432,7 +432,7 @@ USA.
 		(check-list (cdr file-case)
 		  (lambda (clause)
 		    (and (pair? clause)
-			 (or (eq? 'ELSE (car clause))
+			 (or (eq? 'else (car clause))
 			     (check-list (car clause) symbol?))
 			 (check-list (cdr clause) string?))))))
       (error "Illegal file-case" file-case))
@@ -479,7 +479,7 @@ USA.
 (define (descriptions->pmodel descriptions extensions loads globals pathname)
   (let ((packages
 	 (map (lambda (description)
-		(make-package (package-description/name description) 'UNKNOWN))
+		(make-package (package-description/name description) 'unknown))
 	      descriptions))
 	(extra-packages '()))
     (let ((root-package
@@ -494,7 +494,7 @@ USA.
 		       (begin
 			 (if (not intern?)
 			     (warn "Unknown package name:" name))
-			 (let ((package (make-package name 'UNKNOWN)))
+			 (let ((package (make-package name 'unknown)))
 			   (set! extra-packages
 				 (cons package extra-packages))
 			   package)))))))
@@ -510,7 +510,7 @@ USA.
 	   (let ((parent
 		  (let ((parent-name (package-description/parent description)))
 		    (and parent-name
-			 (not (eq? parent-name 'NONE))
+			 (not (eq? parent-name 'none))
 			 (get-package parent-name #t)))))
 	     (set-package/parent! package parent)
 	     (if parent
@@ -546,7 +546,7 @@ USA.
 	(let loop
 	    ((package package)
 	     (ancestors (vector-ref desc 1)))
-	  (if (eq? 'UNKNOWN (package/parent package))
+	  (if (eq? 'unknown (package/parent package))
 	      (if (pair? ancestors)
 		  (let ((parent (get-package (car ancestors) #t)))
 		    (set-package/parent! package parent)
@@ -579,7 +579,7 @@ USA.
 	  (for-each-vector-element (vector-ref desc 4)
 	    (lambda (entry)
 	      (let ((external-package (get-package (vector-ref entry 1) #t))
-		    (external-name 
+		    (external-name
 		     (if (fix:= (vector-length entry) 2)
 			 (vector-ref entry 0)
 			 (vector-ref entry 2))))

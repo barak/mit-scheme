@@ -30,7 +30,7 @@ USA.
 	 (integrate-external "object"))
 
 (define (construct-external-descriptions pmodel)
-  (vector 'PACKAGE-DESCRIPTIONS		;tag
+  (vector 'package-descriptions		;tag
 	  2				;version
 	  (list->vector
 	   (map cdr

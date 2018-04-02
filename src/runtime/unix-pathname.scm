@@ -31,7 +31,7 @@ USA.
 
 (define (make-unix-host-type index)
   (make-host-type index
-		  'UNIX
+		  'unix
 		  unix/parse-namestring
 		  unix/pathname->namestring
 		  unix/make-pathname
@@ -47,7 +47,7 @@ USA.
 		  unix/pathname-simplify))
 
 (define (initialize-package!)
-  (add-pathname-host-type! 'UNIX make-unix-host-type))
+  (add-pathname-host-type! 'unix make-unix-host-type))
 
 ;;;; Pathname Parser
 
@@ -59,21 +59,21 @@ USA.
       (parse-name (car (last-pair components))
 	(lambda (name type)
 	  (%make-pathname host
-			  'UNSPECIFIC
+			  'unspecific
 			  (let ((components (except-last-pair components)))
 			    (and (pair? components)
 				 (simplify-directory
 				  (if (fix:= 0
 					     (string-length (car components)))
-				      (cons 'ABSOLUTE
+				      (cons 'absolute
 					    (parse-directory-components
 					     (cdr components)))
-				      (cons 'RELATIVE
+				      (cons 'relative
 					    (parse-directory-components
 					     components))))))
 			  name
 			  type
-			  'UNSPECIFIC))))))
+			  'unspecific))))))
 
 (define (expand-directory-prefixes components)
   (let ((string (car components))
@@ -107,7 +107,7 @@ USA.
 	    (else components))))))
 
 (define (simplify-directory directory)
-  (if (and (eq? (car directory) 'RELATIVE) (null? (cdr directory)))
+  (if (and (eq? (car directory) 'relative) (null? (cdr directory)))
       #f
       directory))
 
@@ -118,8 +118,8 @@ USA.
 	       components)))
 
 (define (parse-directory-component component)
-  (cond ((string=? ".." component) 'UP)
-	((string=? "." component) 'HERE)
+  (cond ((string=? ".." component) 'up)
+	((string=? "." component) 'here)
 	(else component)))
 
 (define (string-components string delimiter)
@@ -140,7 +140,7 @@ USA.
 	      (fix:= dot (fix:- end 1))
 	      (char=? #\. (string-ref string (fix:- dot 1))))
 	  (receiver (cond ((fix:= end 0) #f)
-			  ((string=? "*" string) 'WILD)
+			  ((string=? "*" string) 'wild)
 			  (else string))
 		    #f)
 	  (receiver (extract string 0 dot)
@@ -149,7 +149,7 @@ USA.
 (define (extract string start end)
   (if (and (fix:= 1 (fix:- end start))
 	   (char=? #\* (string-ref string start)))
-      'WILD
+      'wild
       (substring string start end)))
 
 ;;;; Pathname Unparser
@@ -164,7 +164,7 @@ USA.
 	 "")
 	((pair? directory)
 	 (string-append
-	  (if (eq? (car directory) 'ABSOLUTE) "/" "")
+	  (if (eq? (car directory) 'absolute) "/" "")
 	  (let loop ((directory (cdr directory)))
 	    (if (not (pair? directory))
 		""
@@ -175,8 +175,8 @@ USA.
 	 (error:illegal-pathname-component directory "directory"))))
 
 (define (unparse-directory-component component)
-  (cond ((eq? component 'UP) "..")
-	((eq? component 'HERE) ".")
+  (cond ((eq? component 'up) "..")
+	((eq? component 'here) ".")
 	((string? component) component)
 	(else
 	 (error:illegal-pathname-component component "directory component"))))
@@ -190,7 +190,7 @@ USA.
 
 (define (unparse-component component)
   (cond ((or (not component) (string? component)) component)
-	((eq? component 'WILD) "*")
+	((eq? component 'wild) "*")
 	(else (error:illegal-pathname-component component "component"))))
 
 ;;;; Pathname Constructors
@@ -198,31 +198,31 @@ USA.
 (define (unix/make-pathname host device directory name type version)
   (%make-pathname
    host
-   (if (memq device '(#F UNSPECIFIC))
-       'UNSPECIFIC
+   (if (memq device '(#f unspecific))
+       'unspecific
        (error:illegal-pathname-component device "device"))
    (cond ((not directory)
 	  directory)
 	 ((and (pair? directory)
-	       (memq (car directory) '(RELATIVE ABSOLUTE))
+	       (memq (car directory) '(relative absolute))
 	       (list-of-type? (cdr directory)
 		 (lambda (element)
 		   (if (string? element)
 		       (not (fix:= 0 (string-length element)))
-		       (memq element '(UP HERE))))))
+		       (memq element '(up here))))))
 	  (simplify-directory directory))
 	 (else
 	  (error:illegal-pathname-component directory "directory")))
-   (if (or (memq name '(#F WILD))
+   (if (or (memq name '(#f wild))
 	   (and (string? name) (not (fix:= 0 (string-length name)))))
        name
        (error:illegal-pathname-component name "name"))
-   (if (or (memq type '(#F WILD))
+   (if (or (memq type '(#f wild))
 	   (and (string? type) (not (fix:= 0 (string-length type)))))
        type
        (error:illegal-pathname-component type "type"))
-   (if (memq version '(#F UNSPECIFIC WILD NEWEST))
-       'UNSPECIFIC
+   (if (memq version '(#f unspecific wild newest))
+       'unspecific
        (error:illegal-pathname-component version "version"))))
 
 (define (unix/directory-pathname? pathname)
@@ -235,11 +235,11 @@ USA.
 		  (%pathname-directory pathname)
 		  #f
 		  #f
-		  'UNSPECIFIC))
+		  'unspecific))
 
 (define (unix/file-pathname pathname)
   (%make-pathname (%pathname-host pathname)
-		  'UNSPECIFIC
+		  'unspecific
 		  #f
 		  (%pathname-name pathname)
 		  (%pathname-type pathname)
@@ -251,27 +251,27 @@ USA.
     (if (or name type)
 	(%make-pathname
 	 (%pathname-host pathname)
-	 'UNSPECIFIC
+	 'unspecific
 	 (let ((directory (%pathname-directory pathname))
 	       (component
 		(parse-directory-component (unparse-name name type))))
 	   (cond ((not (pair? directory))
-		  (list 'RELATIVE component))
+		  (list 'relative component))
 		 ((equal? component ".")
 		  directory)
 		 (else
 		  (append directory (list component)))))
 	 #f
 	 #f
-	 'UNSPECIFIC)
+	 'unspecific)
 	pathname)))
 
 (define (unix/directory-pathname-as-file pathname)
   (let ((directory (%pathname-directory pathname)))
     (if (not (and (pair? directory)
-		  (or (eq? 'ABSOLUTE (car directory))
+		  (or (eq? 'absolute (car directory))
 		      (pair? (cdr directory)))))
-	(error:bad-range-argument pathname 'DIRECTORY-PATHNAME-AS-FILE))
+	(error:bad-range-argument pathname 'directory-pathname-as-file))
     (if (or (%pathname-name pathname)
 	    (%pathname-type pathname)
 	    (not (pair? (cdr directory))))
@@ -284,17 +284,17 @@ USA.
 	(parse-name (unparse-directory-component (car (last-pair directory)))
 	  (lambda (name type)
 	    (%make-pathname (%pathname-host pathname)
-			    'UNSPECIFIC
+			    'unspecific
 			    (simplify-directory (except-last-pair directory))
 			    name
 			    type
-			    'UNSPECIFIC))))))
+			    'unspecific))))))
 
 ;;;; Miscellaneous
 
 (define (unix/pathname-wild? pathname)
-  (or (eq? 'WILD (%pathname-name pathname))
-      (eq? 'WILD (%pathname-type pathname))))
+  (or (eq? 'wild (%pathname-name pathname))
+      (eq? 'wild (%pathname-type pathname))))
 
 (define (unix/pathname->truename pathname)
   (if (file-exists-direct? pathname)
@@ -319,9 +319,9 @@ USA.
 	(let ((directory (pathname-directory pathname)))
 	  (let scan ((p (list-tail directory np)) (np np))
 	    (if (pair? p)
-		(cond ((and (not (eq? (car p) 'UP))
+		(cond ((and (not (eq? (car p) 'up))
 			    (pair? (cdr p))
-			    (eq? (cadr p) 'UP))
+			    (eq? (cadr p) 'up))
 		       (let ((pathname*
 			      (pathname-new-directory pathname
 						      (delete-up directory p))))
@@ -329,7 +329,7 @@ USA.
 				       (directory-pathname pathname*))
 			     (loop pathname* np)
 			     (scan (cddr p) (+ np 2)))))
-		      ((eq? (car p) 'HERE)
+		      ((eq? (car p) 'here)
 		       (let ((pathname*
 			      (pathname-new-directory pathname
 						      (delete-here directory p))))

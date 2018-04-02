@@ -73,11 +73,11 @@ USA.
 
 (define (compiled-expression? object)
   (and (compiled-code-address? object)
-       (eq? (compiled-entry-type object) 'COMPILED-EXPRESSION)))
+       (eq? (compiled-entry-type object) 'compiled-expression)))
 
 (define (compiled-return-address? object)
   (and (compiled-code-address? object)
-       (eq? (compiled-entry-type object) 'COMPILED-RETURN-ADDRESS)))
+       (eq? (compiled-entry-type object) 'compiled-return-address)))
 
 (define-primitives
   (stack-address-offset 1)
@@ -97,10 +97,10 @@ USA.
 
 (define (compiled-entry-type entry)
   (case (system-hunk3-cxr0 ((ucode-primitive compiled-entry-kind 1) entry))
-    ((0) 'COMPILED-PROCEDURE)
-    ((1) 'COMPILED-RETURN-ADDRESS)
-    ((2) 'COMPILED-EXPRESSION)
-    (else 'COMPILED-ENTRY)))
+    ((0) 'compiled-procedure)
+    ((1) 'compiled-return-address)
+    ((2) 'compiled-expression)
+    (else 'compiled-entry)))
 
 (define (compiled-continuation/next-continuation-offset entry)
   (let ((offset
@@ -215,7 +215,7 @@ contains constants derived from the source program.
   (- (system-vector-length block) 2))
 
 (define (compiled-code-block/debugging-info? block)
-  (not (memq (compiled-code-block/debugging-info block) '(#F DEBUGGING-INFO))))
+  (not (memq (compiled-code-block/debugging-info block) '(#f debugging-info))))
 
 (define (compiled-code-block/debugging-info block)
   (system-vector-ref block (- (system-vector-length block) 2)))
@@ -291,9 +291,9 @@ contains constants derived from the source program.
   (system-pair-car promise))
 
 (define (force promise)
-  (guarantee promise? promise 'FORCE)
+  (guarantee promise? promise 'force)
   (case (system-pair-car promise)
-    ((#T)
+    ((#t)
      (system-pair-cdr promise))
     ((0)				;compiled promise
      (let ((result ((system-pair-cdr promise))))

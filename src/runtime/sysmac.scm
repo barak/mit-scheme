@@ -43,11 +43,11 @@ USA.
 		      (let ((names
 			     (map (lambda (n) (symbol 'a n))
 				  (iota (procedure-arity-min arity) 1))))
-			`(DEFINE-INTEGRABLE (,variable-name ,@names)
+			`(define-integrable (,variable-name ,@names)
 			   (,primitive ,@names)))
-		      `(DEFINE-INTEGRABLE ,variable-name
+		      `(define-integrable ,variable-name
 			 ,primitive)))))))
-       `(BEGIN ,@(map (lambda (name)
+       `(begin ,@(map (lambda (name)
 			(cond ((not (pair? name))
 			       (primitive-definition name (list name)))
 			      ((not (symbol? (cadr name)))
@@ -83,14 +83,14 @@ USA.
 	   (let ((p-name (symbol root '?))
 		 (g-name (symbol 'guarantee- root))
 		 (e-name (symbol 'error:not- root)))
-	     `(BEGIN
-		(DEFINE (,g-name OBJECT #!OPTIONAL CALLER)
-		  (DECLARE (INTEGRATE CALLER))
-		  (IF (NOT (,(close-syntax p-name environment) OBJECT))
-		      (,(close-syntax e-name environment) OBJECT CALLER))
-		  OBJECT)
-		(DEFINE (,e-name OBJECT #!OPTIONAL CALLER)
-		  (ERROR:WRONG-TYPE-ARGUMENT OBJECT ,desc CALLER)))))
+	     `(begin
+		(define (,g-name object #!optional caller)
+		  (declare (integrate caller))
+		  (if (not (,(close-syntax p-name environment) object))
+		      (,(close-syntax e-name environment) object caller))
+		  object)
+		(define (,e-name object #!optional caller)
+		  (error:wrong-type-argument object ,desc caller)))))
 	 (ill-formed-syntax form)))))
 
 (define-syntax define-deferred

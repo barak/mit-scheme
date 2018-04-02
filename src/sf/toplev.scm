@@ -122,18 +122,18 @@ USA.
 (define (sf/internal input-pathname bin-pathname spec-pathname
 		     environment declarations)
   spec-pathname				;ignored
-  (with-simple-restart 'CONTINUE
+  (with-simple-restart 'continue
       (string-append "Skip processing file " (->namestring input-pathname))
     (lambda ()
       (let ((do-it
 	     (let ((start-date (get-decoded-time)))
 	       (lambda ()
 		 (fasdump (make-scode-comment
-			   `((SOURCE-FILE . ,(->namestring input-pathname))
-			     (DATE ,(decoded-time/year start-date)
+			   `((source-file . ,(->namestring input-pathname))
+			     (date ,(decoded-time/year start-date)
 				   ,(decoded-time/month start-date)
 				   ,(decoded-time/day start-date))
-			     (TIME ,(decoded-time/hour start-date)
+			     (time ,(decoded-time/hour start-date)
 				   ,(decoded-time/minute start-date)
 				   ,(decoded-time/second start-date)))
 			   (sf/file->scode input-pathname bin-pathname
@@ -170,7 +170,7 @@ USA.
 			      (pathname-directory input-pathname)
 			      #f
 			      externs-pathname-type
-			      'NEWEST)))
+			      'newest)))
     (receive (expression externs-block externs)
 	(integrate/file input-pathname
 			(and output-pathname
@@ -195,7 +195,7 @@ USA.
   "ext")
 
 (define sf/default-externs-pathname
-  (make-pathname #f #f #f #f externs-pathname-type 'NEWEST))
+  (make-pathname #f #f #f #f externs-pathname-type 'newest))
 
 (define (read-externs-file pathname)
   (let ((pathname (merge-pathnames pathname sf/default-externs-pathname)))

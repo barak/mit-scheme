@@ -172,21 +172,21 @@ USA.
 	(sc-macro-transformer
 	 (lambda (form environment)
 	   (let ((name (list-ref form 1)))
-	     `(SET! ,(close-syntax name environment)
-		    (MAKE-ENTITY
-		     (NAMED-LAMBDA (,name SELF Z1 . ZS)
-		       SELF		; ignored
+	     `(set! ,(close-syntax name environment)
+		    (make-entity
+		     (named-lambda (,name self z1 . zs)
+		       self		; ignored
 		       (,(close-syntax (list-ref form 3) environment)
-			Z1
-			(REDUCE ,(close-syntax (list-ref form 4) environment)
+			z1
+			(reduce ,(close-syntax (list-ref form 4) environment)
 				,(close-syntax (list-ref form 5) environment)
-				ZS)))
-		     (VECTOR
-		      (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
-		      #F
+				zs)))
+		     (vector
+		      (fixed-objects-item 'arity-dispatcher-tag)
+		      #f
 		      ,(close-syntax (list-ref form 2) environment)
-		      (NAMED-LAMBDA (,(symbol 'BINARY- name) Z1 Z2)
-			((UCODE-PRIMITIVE ,(list-ref form 6)) Z1 Z2))))))))))
+		      (named-lambda (,(symbol 'binary- name) z1 z2)
+			((ucode-primitive ,(list-ref form 6)) z1 z2))))))))))
     (non-commutative - complex:negate complex:- complex:+ 0 &-)
     (non-commutative / complex:invert complex:/ complex:* 1 &/))
 
@@ -196,33 +196,33 @@ USA.
 	 (lambda (form environment)
 	   (let ((name (list-ref form 1))
 		 (type (list-ref form 4)))
-	     `(SET! ,(close-syntax name environment)
-		    (MAKE-ENTITY
-		     (NAMED-LAMBDA (,name SELF . ZS)
-		       SELF		; ignored
-		       (REDUCE-COMPARATOR
+	     `(set! ,(close-syntax name environment)
+		    (make-entity
+		     (named-lambda (,name self . zs)
+		       self		; ignored
+		       (reduce-comparator
 			,(close-syntax (list-ref form 2) environment)
-			ZS ',name))
-		     (VECTOR
-		      (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
-		      (NAMED-LAMBDA (,(symbol 'NULLARY- name)) #T)
-		      (NAMED-LAMBDA (,(symbol 'UNARY- name) Z)
-			(IF (NOT (,(intern (string-append "complex:" type "?"))
-				  Z))
-			    (ERROR:WRONG-TYPE-ARGUMENT
-			     Z ,(string-append type " number") ',name))
-			#T)
-		      (NAMED-LAMBDA (,(symbol 'BINARY- name) Z1 Z2)
+			zs ',name))
+		     (vector
+		      (fixed-objects-item 'arity-dispatcher-tag)
+		      (named-lambda (,(symbol 'nullary- name)) #t)
+		      (named-lambda (,(symbol 'unary- name) z)
+			(if (not (,(intern (string-append "complex:" type "?"))
+				  z))
+			    (error:wrong-type-argument
+			     z ,(string-append type " number") ',name))
+			#t)
+		      (named-lambda (,(symbol 'binary- name) z1 z2)
 			,(let ((p
-				`((UCODE-PRIMITIVE ,(list-ref form 3)) Z1 Z2)))
+				`((ucode-primitive ,(list-ref form 3)) z1 z2)))
 			   (if (list-ref form 5)
-			       `(NOT ,p)
+			       `(not ,p)
 			       p)))))))))))
-    (relational = complex:= &= "complex" #F)
-    (relational < complex:< &< "real" #F)
-    (relational > complex:> &> "real" #F)
-    (relational <= (lambda (x y) (not (complex:< y x))) &> "real" #T)
-    (relational >= (lambda (x y) (not (complex:< x y))) &< "real" #T))
+    (relational = complex:= &= "complex" #f)
+    (relational < complex:< &< "real" #f)
+    (relational > complex:> &> "real" #f)
+    (relational <= (lambda (x y) (not (complex:< y x))) &> "real" #t)
+    (relational >= (lambda (x y) (not (complex:< x y))) &< "real" #t))
 
   (let-syntax
       ((max/min
@@ -230,18 +230,18 @@ USA.
 	 (lambda (form environment)
 	   (let ((name (list-ref form 1))
 		 (generic-binary (close-syntax (list-ref form 2) environment)))
-	     `(SET! ,(close-syntax name environment)
-		    (MAKE-ENTITY
-		     (NAMED-LAMBDA (,name SELF X . XS)
-		       SELF		; ignored
-		       (REDUCE-MAX/MIN ,generic-binary X XS ',name))
-		     (VECTOR
-		      (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
-		      #F
-		      (NAMED-LAMBDA (,(symbol 'UNARY- name) X)
-			(IF (NOT (COMPLEX:REAL? X))
-			    (ERROR:WRONG-TYPE-ARGUMENT X "real number" ',name))
-			X)
+	     `(set! ,(close-syntax name environment)
+		    (make-entity
+		     (named-lambda (,name self x . xs)
+		       self		; ignored
+		       (reduce-max/min ,generic-binary x xs ',name))
+		     (vector
+		      (fixed-objects-item 'arity-dispatcher-tag)
+		      #f
+		      (named-lambda (,(symbol 'unary- name) x)
+			(if (not (complex:real? x))
+			    (error:wrong-type-argument x "real number" ',name))
+			x)
 		      ,generic-binary))))))))
     (max/min max complex:max)
     (max/min min complex:min))
@@ -2044,5 +2044,5 @@ USA.
 	(case radix
 	  ((B) 2)
 	  ((O) 8)
-	  ((D #F) 10)
+	  ((D #f) 10)
 	  ((X) 16)))))

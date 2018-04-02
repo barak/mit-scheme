@@ -47,8 +47,8 @@ USA.
 	       (make-pathname (pathname-host pattern)
 			      (pathname-device pattern)
 			      (pathname-directory pattern)
-			      'WILD
-			      'WILD
+			      'wild
+			      'wild
 			      (pathname-version pattern))
 	       pattern))))
     (let ((directory-path (directory-pathname pattern)))
@@ -60,8 +60,8 @@ USA.
 		     (list (cons *expand-directory-prefixes?* false))
 		     (lambda ()
 		       (map ->pathname fnames))))))
-	     (if (and (eq? (pathname-name pattern) 'WILD)
-		      (eq? (pathname-type pattern) 'WILD))
+	     (if (and (eq? (pathname-name pattern) 'wild)
+		      (eq? (pathname-type pattern) 'wild))
 		 pathnames
 		 (list-transform-positive pathnames
 		   (lambda (instance)
@@ -81,8 +81,8 @@ USA.
 	      result))))))
 
 (define (match-component pattern instance)
-  (or (eq? pattern 'WILD)
-      (eq? pattern #F)
+  (or (eq? pattern 'wild)
+      (eq? pattern #f)
       (equal? pattern instance)))
 
 (define (pathname<? x y)

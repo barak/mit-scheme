@@ -81,15 +81,15 @@ USA.
   (false? (channel-type channel)))
 
 (define-integrable (channel-type=file? channel)
-  (eq? 'FILE (channel-type channel)))
+  (eq? 'file (channel-type channel)))
 
 (define-integrable (channel-type=directory? channel)
-  (eq? 'DIRECTORY (channel-type channel)))
+  (eq? 'directory (channel-type channel)))
 
 (define (channel-type=terminal? channel)
   (let ((type (channel-type channel)))
-    (or (eq? 'TERMINAL type)
-	(eq? 'UNIX-PTY-MASTER type))))
+    (or (eq? 'terminal type)
+	(eq? 'unix-pty-master type))))
 
 (define (channel-close channel)
   (with-gc-finalizer-lock open-channels
@@ -189,12 +189,12 @@ USA.
 	    end))))
     (declare (integrate-operator do-read))
     (if (and have-select? (not (channel-type=file? channel)))
-	(let ((result (test-for-io-on-channel channel 'READ
+	(let ((result (test-for-io-on-channel channel 'read
 					      (channel-blocking? channel))))
 	  (case result
-	    ((READ HANGUP ERROR) (do-read))
-	    ((#F) #f)
-	    ((PROCESS-STATUS-CHANGE INTERRUPT) #t)
+	    ((read hangup error) (do-read))
+	    ((#f) #f)
+	    ((process-status-change interrupt) #t)
 	    (else (error "Unexpected test-for-io-on-channel value:" result))))
 	(do-read))))
 
@@ -217,12 +217,12 @@ USA.
 	    end))))
     (declare (integrate-operator do-write))
     (if (and have-select? (not (channel-type=file? channel)))
-	(let ((result (test-for-io-on-channel channel 'WRITE
+	(let ((result (test-for-io-on-channel channel 'write
 					      (channel-blocking? channel))))
 	  (case result
-	    ((WRITE HANGUP ERROR) (do-write))
-	    ((#F) 0)
-	    ((PROCESS-STATUS-CHANGE INTERRUPT) #t)
+	    ((write hangup error) (do-write))
+	    ((#f) 0)
+	    ((process-status-change interrupt) #t)
 	    (else (error "Unexpected test-for-io-on-channel value:" result))))
 	(do-write))))
 
@@ -529,10 +529,10 @@ USA.
 (define (channel-has-input? channel)
   (let loop ()
     (let ((mode (test-select-descriptor (channel-descriptor-for-select channel)
-					'READ)))
+					'read)))
       (if (pair? mode)
-	  (or (eq? (car mode) 'READ)
-	      (eq? (car mode) 'READ/WRITE))
+	  (or (eq? (car mode) 'read)
+	      (eq? (car mode) 'read/write))
 	  (loop)))))
 
 (define-integrable (channel-descriptor-for-select channel)
@@ -553,10 +553,10 @@ USA.
 	  #f
 	  (encode-select-registry-mode mode))))
     (cond ((>= result 0) (decode-select-registry-mode result))
-	  ((= result -1) 'INTERRUPT)
+	  ((= result -1) 'interrupt)
 	  ((= result -2)
 	   (handle-subprocess-status-change)
-	   'PROCESS-STATUS-CHANGE)
+	   'process-status-change)
 	  (else
 	   (error "Illegal result from TEST-SELECT-DESCRIPTOR:" result)))))
 
@@ -565,23 +565,23 @@ USA.
     ((READ) 1)
     ((WRITE) 2)
     ((READ/WRITE) 3)
-    (else (error:bad-range-argument mode 'ENCODE-SELECT-REGISTRY-MODE))))
+    (else (error:bad-range-argument mode 'encode-select-registry-mode))))
 
 (define (decode-select-registry-mode mode)
   (cons (if (select-registry-mode-read? mode)
-	    (if (select-registry-mode-write? mode) 'READ/WRITE 'READ)
-	    (if (select-registry-mode-write? mode) 'WRITE #f))
+	    (if (select-registry-mode-write? mode) 'read/write 'read)
+	    (if (select-registry-mode-write? mode) 'write #f))
 	(let ((tail
 	       (if (select-registry-mode-hangup? mode)
-		   (list 'HANGUP)
+		   (list 'hangup)
 		   '())))
 	  (if (select-registry-mode-error? mode)
-	      (cons 'ERROR tail)
+	      (cons 'error tail)
 	      tail))))
 
 (define (simplify-select-registry-mode mode)
-  (cond ((memq 'HANGUP (cdr mode)) 'HANGUP)
-	((memq 'ERROR (cdr mode)) 'ERROR)
+  (cond ((memq 'hangup (cdr mode)) 'hangup)
+	((memq 'error (cdr mode)) 'error)
 	(else (car mode))))
 
 (define-integrable (select-registry-mode-read? mode)
@@ -616,8 +616,8 @@ USA.
 	  (begin
 	    (deallocate-select-registry-result-vectors vfd vmode)
 	    (cond ((= 0 result) #f)
-		  ((= -1 result) 'INTERRUPT)
-		  ((= -2 result) 'PROCESS-STATUS-CHANGE)
+		  ((= -1 result) 'interrupt)
+		  ((= -2 result) 'process-status-change)
 		  (else
 		   (error "Illegal result from TEST-SELECT-REGISTRY:"
 			  result))))))))
@@ -671,7 +671,7 @@ USA.
 (define-guarantee dld-handle "dynamic-loader handle")
 
 (define (dld-handle-valid? handle)
-  (guarantee-dld-handle handle 'DLD-HANDLE-VALID?)
+  (guarantee-dld-handle handle 'dld-handle-valid?)
   (if (dld-handle-address handle) #t #f))
 
 (define (guarantee-valid-dld-handle object #!optional caller)
@@ -713,7 +713,7 @@ USA.
   unspecific)
 
 (define (dld-unload-file handle)
-  (guarantee-dld-handle handle 'DLD-UNLOAD-FILE)
+  (guarantee-dld-handle handle 'dld-unload-file)
   (with-thread-mutex-lock dld-handles-mutex
    (lambda ()
      (%dld-unload-file handle)
@@ -728,8 +728,8 @@ USA.
 	  (set-dld-handle-address! handle #f)))))
 
 (define (dld-lookup-symbol handle name)
-  (guarantee-dld-handle handle 'DLD-LOOKUP-SYMBOL)
-  (guarantee string? name 'DLD-LOOKUP-SYMBOL)
+  (guarantee-dld-handle handle 'dld-lookup-symbol)
+  (guarantee string? name 'dld-lookup-symbol)
   ((ucode-primitive dld-lookup-symbol 2)
    (dld-handle-address handle)
    (string-for-primitive name)))

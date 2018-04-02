@@ -48,7 +48,7 @@ USA.
 
 (define (debug-internal object)
   (let ((dstate (make-initial-dstate object)))
-    (with-simple-restart 'CONTINUE "Return from DEBUG."
+    (with-simple-restart 'continue "Return from DEBUG."
       (lambda ()
 	(letter-commands
 	 command-set
@@ -105,9 +105,9 @@ USA.
 	   (let ((dstate (allocate-dstate)))
 	     (set-dstate/history-state!
 	      dstate
-	      (cond (debugger:use-history? 'ALWAYS)
-		    (debugger:auto-toggle? 'ENABLED)
-		    (else 'DISABLED)))
+	      (cond (debugger:use-history? 'always)
+		    (debugger:auto-toggle? 'enabled)
+		    (else 'disabled)))
 	     (set-dstate/condition! dstate condition)
 	     (set-current-subproblem!
 	      dstate
@@ -132,7 +132,7 @@ USA.
 	  (else
 	   (error:wrong-type-argument object
 				      "condition or continuation"
-				      'DEBUG)))))
+				      'debug)))))
 
 (define (count-subproblems dstate)
   (do ((i 0 (1+ i))
@@ -162,12 +162,12 @@ USA.
   (stack-frame/reductions (dstate/subproblem dstate)))
 
 (define (initialize-package!)
-  (set! *dstate* (make-unsettable-parameter 'UNBOUND))
-  (set! *port* (make-unsettable-parameter 'UNBOUND))
+  (set! *dstate* (make-unsettable-parameter 'unbound))
+  (set! *port* (make-unsettable-parameter 'unbound))
   (set!
    command-set
    (make-command-set
-    'DEBUG-COMMANDS
+    'debug-commands
     `((#\? ,standard-help-command
 	   "help, list command letters")
       (#\A ,command/show-all-frames
@@ -233,11 +233,11 @@ USA.
 			(cdr form))
 	 (let ((dstate (cadr (cadr form)))
 	       (port (caddr (cadr form))))
-	   `(DEFINE (,(car (cadr form)) #!OPTIONAL ,dstate ,port)
-	      (LET ((,dstate (IF (DEFAULT-OBJECT? ,dstate)
-				 (*DSTATE*)
+	   `(define (,(car (cadr form)) #!optional ,dstate ,port)
+	      (let ((,dstate (if (default-object? ,dstate)
+				 (*dstate*)
 				 ,dstate))
-		    (,port (IF (DEFAULT-OBJECT? ,port) (*PORT*) ,port)))
+		    (,port (if (default-object? ,port) (*port*) ,port)))
 		,@(map (let ((free (list dstate port)))
 			 (lambda (expression)
 			   (make-syntactic-closure environment free
@@ -414,7 +414,7 @@ USA.
       (begin
 	(newline port)
 	(let ((arguments (environment-arguments environment)))
-	  (if (eq? arguments 'UNKNOWN)
+	  (if (eq? arguments 'unknown)
 	      (show-environment-bindings environment true port)
 	      (begin
 		(write-string " applied to: " port)
@@ -791,7 +791,7 @@ USA.
 	      (if (not thread)
 		  ((stack-frame->continuation subproblem) value)
 		  (begin
-		    (restart-thread thread 'ASK
+		    (restart-thread thread 'ask
 		      (lambda ()
 			((stack-frame->continuation subproblem) value)))
 		    (continue-from-derived-thread-error
@@ -813,7 +813,7 @@ USA.
   (parameterize* (list (cons *dstate* dstate)
 		       (cons *port* port))
     (lambda ()
-      (debug/read-eval-print (->environment '(RUNTIME DEBUGGER))
+      (debug/read-eval-print (->environment '(runtime debugger))
 			     "the debugger"
 			     "the debugger environment"))))
 
@@ -841,29 +841,29 @@ USA.
 ;;;; Low-level Side-effects
 
 (define (maybe-start-using-history! dstate port)
-  (if (eq? 'ENABLED (dstate/history-state dstate))
+  (if (eq? 'enabled (dstate/history-state dstate))
       (begin
-	(set-dstate/history-state! dstate 'NOW)
+	(set-dstate/history-state! dstate 'now)
 	(if (not (zero? (dstate/number-of-reductions dstate)))
 	    (debugger-message
 	     port
 	     "Now using information from the execution history.")))))
 
 (define (maybe-stop-using-history! dstate port)
-  (if (eq? 'NOW (dstate/history-state dstate))
+  (if (eq? 'now (dstate/history-state dstate))
       (begin
-	(set-dstate/history-state! dstate 'ENABLED)
+	(set-dstate/history-state! dstate 'enabled)
 	(if (not (zero? (dstate/number-of-reductions dstate)))
 	    (debugger-message
 	     port
 	     "Now ignoring information from the execution history.")))))
 
 (define (dstate/using-history? dstate)
-  (or (eq? 'ALWAYS (dstate/history-state dstate))
-      (eq? 'NOW (dstate/history-state dstate))))
+  (or (eq? 'always (dstate/history-state dstate))
+      (eq? 'now (dstate/history-state dstate))))
 
 (define (dstate/auto-toggle? dstate)
-  (not (eq? 'DISABLED (dstate/history-state dstate))))
+  (not (eq? 'disabled (dstate/history-state dstate))))
 
 (define (set-current-subproblem! dstate stack-frame previous-frames)
   (set-dstate/subproblem! dstate stack-frame)
@@ -923,9 +923,9 @@ USA.
   (cadr reduction))
 
 (define (wrap-around-in-reductions? reductions)
-  (or (eq? 'WRAP-AROUND reductions)
+  (or (eq? 'wrap-around reductions)
       (and (pair? reductions)
-	   (eq? 'WRAP-AROUND (cdr (last-pair reductions))))))
+	   (eq? 'wrap-around (cdr (last-pair reductions))))))
 
 (define (invalid-expression? expression)
   (or (debugging-info/undefined-expression? expression)

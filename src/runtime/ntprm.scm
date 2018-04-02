@@ -122,7 +122,7 @@ USA.
 	     (win32-registry/get-value key "Content Type")
 	   (and type
 		(begin
-		  (if (not (eq? type 'REG_SZ))
+		  (if (not (eq? type 'reg_sz))
 		      (error "Wrong value type in registry entry:"
 			     name))
 		  value))))))
@@ -154,7 +154,7 @@ USA.
   (set! get-environment-variable
 	(lambda (variable)
 	  (if (not (string? variable))
-	      (env-error 'GET-ENVIRONMENT-VARIABLE variable))
+	      (env-error 'get-environment-variable variable))
 	  (let ((variable (string-upcase variable)))
 	    (cond ((assoc variable environment-variables)
 		   => cdr)
@@ -165,7 +165,7 @@ USA.
   (set! set-environment-variable!
 	(lambda (variable value)
 	  (if (not (string? variable))
-	      (env-error 'SET-ENVIRONMENT-VARIABLE! variable))
+	      (env-error 'set-environment-variable! variable))
 	  (let ((variable (string-upcase variable)))
 	    (cond ((assoc variable environment-variables)
 		   => (lambda (pair) (set-cdr! pair value)))
@@ -177,7 +177,7 @@ USA.
   (set! delete-environment-variable!
 	(lambda (variable)
 	  (if (not (string? variable))
-	      (env-error 'DELETE-ENVIRONMENT-VARIABLE! variable))
+	      (env-error 'delete-environment-variable! variable))
 	  (set-environment-variable! variable *variable-deleted*)))
 
   (set! reset-environment-variables!
@@ -189,7 +189,7 @@ USA.
   (set! set-environment-variable-default!
 	(lambda (var val)
 	  (if (not (string? var))
-	      (env-error 'SET-ENVIRONMENT-VARIABLE-DEFAULT! var))
+	      (env-error 'set-environment-variable-default! var))
 	  (let ((var (string-upcase var)))
 	    (cond ((assoc var environment-defaults)
 		   => (lambda (pair) (set-cdr! pair val)))
@@ -332,18 +332,18 @@ USA.
 	       (trydir (get-environment-variable "winbootdir")))))
       (if (not sysroot)
 	  (error "Unable to find Windows system root."))
-      (pathname-new-directory (pathname-as-directory sysroot) '(ABSOLUTE)))))
+      (pathname-new-directory (pathname-as-directory sysroot) '(absolute)))))
 
 (define (file-line-ending pathname)
   (if (let ((type (dos/fs-drive-type pathname)))
 	(or (string=? "NFS" (car type))
 	    (string=? "NtNfs" (car type))
 	    (string=? "Samba" (car type))))
-      'LF
-      'CRLF))
+      'lf
+      'crlf))
 
 (define (default-line-ending)
-  'CRLF)
+  'crlf)
 
 (define (dos/fs-drive-type pathname)
   ;; (system-name . [nfs-]mount-point)
@@ -367,19 +367,19 @@ USA.
 	 (fs-type     (nt-volume-info/file-system-name volume-info)))
     (cond ((or (string-ci=? fs-type "VFAT")
 	       (string-ci=? fs-type "FAT32"))
-	   'VFAT)			; ``kind of''
+	   'vfat)			; ``kind of''
 	  ((string-ci=? fs-type "FAT")
-	   #F)
+	   #f)
 	  ((> (nt-volume-info/max-component-length volume-info) 32)
 	   ;; 32 is random -- FAT is 12 and everything else is much larger.
-	   #T)				; NTFS HPFS
-	  (else #F))))			; FAT
+	   #t)				; NTFS HPFS
+	  (else #f))))			; FAT
 
 (define (nt-volume-info pathname)
   (let ((root
 	 (pathname-new-directory
 	  (directory-pathname (merge-pathnames pathname))
-	  '(ABSOLUTE))))
+	  '(absolute))))
     (let ((info
 	   ((ucode-primitive nt-get-volume-information 1)
 	    (string-for-primitive (->namestring root)))))
@@ -427,7 +427,7 @@ USA.
 	    (loop (+ index 1))
 	    filename))))
 
-  (guarantee init-file-specifier? specifier 'INIT-FILE-SPECIFIER->PATHNAME)
+  (guarantee init-file-specifier? specifier 'init-file-specifier->pathname)
   (let ((long-base (merge-pathnames ".mit-scheme/" (user-homedir-pathname))))
     (if (dos/fs-long-filenames? long-base)
 	(if (pair? specifier)
@@ -526,7 +526,7 @@ USA.
 	    (let ((n (string-length (car strings))))
 	      (substring-move! (car strings) 0 n result index)
 	      (let ((index* (fix:+ index n)))
-		(string-set! result index* #\NUL)
+		(string-set! result index* #\nul)
 		(loop (cdr strings) (fix:+ index* 1))))))
       result)))
 
@@ -694,7 +694,7 @@ USA.
 	   ((access get-module-handle env)
 	    (file-namestring
 	     (pathname-default-type
-	      ((make-primitive-procedure 'SCHEME-PROGRAM-NAME))
+	      ((make-primitive-procedure 'scheme-program-name))
 	      "exe"))))
 	  (buf (make-legacy-string 256)))
       (substring buf 0 ((access get-module-file-name env) handle buf 256)))))
@@ -702,20 +702,20 @@ USA.
 (define (os/shell-file-name)
   (or (get-environment-variable "SHELL")
       (get-environment-variable "COMSPEC")
-      (if (eq? 'WINNT (nt/windows-type))
+      (if (eq? 'winnt (nt/windows-type))
 	  "cmd.exe"
 	  "command.com")))
 
 (define (nt/windows-type)
   (cond ((string-prefix? "Microsoft Windows NT"
 			 microcode-id/operating-system-variant)
-	 'WINNT)
+	 'winnt)
 	((string-prefix? "Microsoft Windows 9"
 			 microcode-id/operating-system-variant)
-	 'WIN9X)
+	 'win9x)
 	((string-prefix? "Microsoft Windows"
 			 microcode-id/operating-system-variant)
-	 'WIN3X)
+	 'win3x)
 	(else #f)))
 
 (define (os/form-shell-command command)

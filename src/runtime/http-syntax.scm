@@ -152,7 +152,7 @@ USA.
 
 (define (opt-writer? object)
   (and (pair? object)
-       (eq? (car object) 'OPT-WRITER)))
+       (eq? (car object) 'opt-writer)))
 
 (define ((alt-writer predicate consequent alternative) value port)
   ((if (predicate value) consequent alternative) value port))
@@ -235,12 +235,12 @@ USA.
 (define-guarantee http-header "HTTP header field")
 
 (define-unparser-method http-header?
-  (simple-unparser-method 'HTTP-HEADER
+  (simple-unparser-method 'http-header
     (lambda (header)
       (list (http-header-name header)))))
 
 (define (make-http-header name value)
-  (guarantee http-token? name 'MAKE-HTTP-HEADER)
+  (guarantee http-token? name 'make-http-header)
   (let ((defn (header-value-defn name)))
     (if defn
 	(if ((hvdefn-predicate defn) value)
@@ -250,11 +250,11 @@ USA.
 			      ((hvdefn-writer defn) value port)))
 			  value)
 	    (begin
-	      (guarantee http-text? value 'MAKE-HTTP-HEADER)
+	      (guarantee http-text? value 'make-http-header)
 	      (%make-header name value
 			    (%call-parser (hvdefn-parser defn) value #t))))
 	(begin
-	  (guarantee http-text? value 'MAKE-HTTP-HEADER)
+	  (guarantee http-text? value 'make-http-header)
 	  (%make-header name value (%unparsed-value))))))
 
 (define (convert-http-headers headers #!optional caller)
@@ -282,7 +282,7 @@ USA.
 		 (eq? (http-header-name header) name))
 	       headers)))
     (if (and (not h) error?)
-	(error:bad-range-argument name 'HTTP-HEADER))
+	(error:bad-range-argument name 'http-header))
     h))
 
 ;;;; Tokens and text
@@ -393,7 +393,7 @@ USA.
   (default-object))
 
 (define (write-http-headers headers port)
-  (guarantee-list-of http-header? headers 'WRITE-HTTP-HEADERS)
+  (guarantee-list-of http-header? headers 'write-http-headers)
   (for-each (lambda (header)
 	      (let ((name (http-header-name header)))
 		(let ((defn (header-value-defn name)))
@@ -697,10 +697,10 @@ USA.
   (list-parser (qualify bytes-unit? lp:token)))
 
 (define bytes-unit?
-  (token-predicate 'BYTES))
+  (token-predicate 'bytes))
 
 (define write-bytes-unit
-  (token-writer 'BYTES))
+  (token-writer 'bytes))
 
 (define byte-range-spec?
   (joined-predicate (pair-predicate (opt-predicate exact-nonnegative-integer?)
@@ -844,14 +844,14 @@ USA.
   token)
 
 (define quoted-string-token?
-  (pair-predicate (token-predicate 'QUOTED-STRING)
+  (pair-predicate (token-predicate 'quoted-string)
 		  string?))
 
 (define (quoted-string-token->string token)
   (cdr token))
 
 (define comment-token?
-  (pair-predicate (token-predicate 'COMMENT)
+  (pair-predicate (token-predicate 'comment)
 		  string?))
 
 (define (comment-token->string token)
@@ -866,7 +866,7 @@ USA.
 			     (cdr form))
 	      (let loop ((clauses (cddr form)))
 		(and (pair? clauses)
-		     (if (eq? (caar clauses) 'ELSE)
+		     (if (eq? (caar clauses) 'else)
 			 (null? (cdr clauses))
 			 (loop (cdr clauses))))))
 	 (let ((state (cadr form))
@@ -876,32 +876,32 @@ USA.
 
 	   (define (compile-rhs clause vars)
 	     (let ((rhs (cdr clause)))
-	       `(LAMBDA (,@vars PORT EMIT FIFO)
-		  (DECLARE (IGNORABLE ,@vars PORT EMIT FIFO))
+	       `(lambda (,@vars port emit fifo)
+		  (declare (ignorable ,@vars port emit fifo))
 		  ,@(map compile-action (except-last-pair rhs))
 		  ,(let ((ns (last rhs)))
-		     (cond ((eq? ns 'DONE)
-			    '(EMIT))
+		     (cond ((eq? ns 'done)
+			    '(emit))
 			   ((symbol? ns)
-			    `(,(state->name ns) PORT EMIT FIFO))
+			    `(,(state->name ns) port emit fifo))
 			   (else ns))))))
 
 	   (define (compile-action action)
-	     (cond ((eq? action 'SAVE-CHAR) '(FIFO CHAR))
-		   ((eq? action 'UNREAD-CHAR) '(UNREAD-CHAR CHAR PORT))
+	     (cond ((eq? action 'save-char) '(fifo char))
+		   ((eq? action 'unread-char) '(unread-char char port))
 		   (else action)))
 
 	   (define (state->name name)
-	     (symbol 'TOKENIZER-STATE: name))
+	     (symbol 'tokenizer-state: name))
 
-	   `(DEFINE-DEFERRED ,(state->name state)
-	      (MAKE-STATE ,(if eof-clause
+	   `(define-deferred ,(state->name state)
+	      (make-state ,(if eof-clause
 			       (compile-rhs eof-clause '())
-			       `#F)
-			  ,(compile-rhs else-clause '(CHAR))
+			       `#f)
+			  ,(compile-rhs else-clause '(char))
 			  ,@(append-map (lambda (clause)
 					  `(,(car clause)
-					    ,(compile-rhs clause '(CHAR))))
+					    ,(compile-rhs clause '(char))))
 					normal-clauses))))
 	 (ill-formed-syntax form)))))
 
@@ -950,7 +950,7 @@ USA.
   (eof (error "Premature EOF in quoted string."))
   (char-set:http-qdtext save-char in-quoted-string)
   (#\\ in-quoted-string-quotation)
-  (#\" (emit (cons 'QUOTED-STRING (fifo))) tokenize)
+  (#\" (emit (cons 'quoted-string (fifo))) tokenize)
   (else (error "Illegal char in quoted string:" char)))
 
 (define-tokenizer-state in-quoted-string-quotation
@@ -973,7 +973,7 @@ USA.
 	      ((char=? char #\))
 	       (if (= level 1)
 		   (begin
-		     (emit (cons 'COMMENT (fifo)))
+		     (emit (cons 'comment (fifo)))
 		     (tokenizer-state:tokenize port emit fifo))
 		   (begin
 		     (fifo char)
@@ -1286,14 +1286,14 @@ USA.
 
 (define-header "Accept-Ranges"
   (tokenized-parser
-   (let ((none? (token-predicate 'NONE)))
+   (let ((none? (token-predicate 'none)))
      (list-parser
       (alt (encapsulate (lambda (none) none '())
 	     (qualify none? lp:token))
 	   lp:token+))))
   (list-predicate http-token?)
   (alt-writer null?
-	      (token-writer 'NONE)
+	      (token-writer 'none)
 	      write-tokens))
 
 (define-header "Age"

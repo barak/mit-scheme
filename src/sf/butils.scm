@@ -32,7 +32,7 @@ USA.
 (define (directory-processor input-type output-type process-file)
   (let ((directory-read
 	 (let ((input-pattern
-		(make-pathname #f #f #f 'WILD input-type 'NEWEST)))
+		(make-pathname #f #f #f 'wild input-type 'newest)))
 	   (lambda (directory)
 	     (directory-read
 	      (merge-pathnames

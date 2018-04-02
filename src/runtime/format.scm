@@ -169,14 +169,14 @@ USA.
   modifiers				;ignore
   (format-loop port
 	       (substring string
-			  (1+ (string-find-next-char string #\Newline))
+			  (1+ (string-find-next-char string #\newline))
 			  (string-length string))
 	       arguments))
 
 (define ((format-ignore-whitespace modifiers) port string arguments)
   (format-loop port
 	       (cond ((null? modifiers) (eliminate-whitespace string))
-		     ((memq 'AT modifiers)
+		     ((memq 'at modifiers)
 		      (string-append "\n" (eliminate-whitespace string)))
 		     (else string))
 	       arguments))
@@ -187,7 +187,7 @@ USA.
       (cond ((= n limit) "")
 	    ((let ((char (string-ref string n)))
 	       (and (char-whitespace? char)
-		    (not (char=? char #\Newline))))
+		    (not (char=? char #\newline))))
 	     (loop (1+ n)))
 	    (else
 	     (substring string n limit))))))
@@ -199,7 +199,7 @@ USA.
   (if (default-object? n-columns)
       (write (car arguments) port)
       (output-port/write-string port
-				((if (memq 'AT modifiers)
+				((if (memq 'at modifiers)
 				     string-pad-left
 				     string-pad-right)
 				 (call-with-output-string
@@ -235,8 +235,8 @@ USA.
 			(#\# ,parse-arity)
 			(#\V ,parse-argument)
 			(#\v ,parse-argument)
-			(#\@ ,(parse-modifier 'AT))
-			(#\: ,(parse-modifier 'COLON))
+			(#\@ ,(parse-modifier 'at))
+			(#\: ,(parse-modifier 'colon))
 			(#\%
 			 ,(format-wrapper (format-insert-character #\newline)))
 			(#\~ ,(format-wrapper (format-insert-character #\~)))

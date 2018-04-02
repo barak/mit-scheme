@@ -72,12 +72,12 @@ USA.
    (lambda (form environment)
      (let ((enumeration-name (cadr form))
            (enumerand-names (caddr form)))
-       `(BEGIN
-          (DEFINE ,enumeration-name
-            (ENUMERATION/MAKE ',enumerand-names))
+       `(begin
+          (define ,enumeration-name
+            (enumeration/make ',enumerand-names))
           ,@(map (lambda (enumerand-name)
-                   `(DEFINE ,(symbol enumerand-name '/ENUMERAND)
-                      (ENUMERATION/NAME->ENUMERAND
+                   `(define ,(symbol enumerand-name '/enumerand)
+                      (enumeration/name->enumerand
                        ,(close-syntax enumeration-name environment)
                        ',enumerand-name)))
                  enumerand-names))))))
@@ -117,19 +117,19 @@ USA.
      (let ((name (second form))
            (constructor-name (third form))  ;; symbol or #F
            (slots (fourth form)))
-       `(BEGIN
-          (DEFINE-STRUCTURE
+       `(begin
+          (define-structure
               (,name
-               (TYPE VECTOR)
-               (NAMED
-                ,(close-syntax (symbol name '/ENUMERAND) environment))
-               (TYPE-DESCRIPTOR ,(symbol 'RTD: name))
-               (CONC-NAME ,(symbol name '/))
-               (CONSTRUCTOR ,(or constructor-name
-                                 (symbol name '/MAKE))))
+               (type vector)
+               (named
+                ,(close-syntax (symbol name '/enumerand) environment))
+               (type-descriptor ,(symbol 'rtd: name))
+               (conc-name ,(symbol name '/))
+               (constructor ,(or constructor-name
+                                 (symbol name '/make))))
             (scode #f read-only #t)
             ,@slots)
-         (DEFINE-GUARANTEE ,name ,(symbol->string name)))))))
+         (define-guarantee ,name ,(symbol->string name)))))))
 
 ;;; These accessors apply to all the record types.
 (define-integrable (object/enumerand object)
@@ -172,7 +172,7 @@ USA.
                    (named delayed-integration/enumerand)
                    (conc-name delayed-integration/)
                    (constructor delayed-integration/make (operations value)))
-  (state 'NOT-INTEGRATED)
+  (state 'not-integrated)
   (environment #f)
   operations
   value)
@@ -221,44 +221,44 @@ USA.
   (map (lambda (name)
          (make-primitive-procedure name #t))
        '(
-         %RECORD?
+         %record?
          &<
          &=
          &>
-         BIT-STRING?
-         CELL?
-         CHAR?
-         EQ?
-         EQUAL-FIXNUM?
-         FIXNUM?
-         FLONUM-EQUAL?
-         FLONUM-GREATER?
-         FLONUM-LESS?
-         FLONUM-NEGATIVE?
-         FLONUM-POSITIVE?
-         FLONUM-ZERO?
-         FLONUM?
-         GREATER-THAN-FIXNUM?
-         INDEX-FIXNUM?
-         INTEGER-EQUAL?
-         INTEGER-GREATER?
-         INTEGER-LESS?
-         INTEGER-NEGATIVE?
-         INTEGER-POSITIVE?
-         INTEGER-ZERO?
-         LESS-THAN-FIXNUM?
-         NEGATIVE-FIXNUM?
-         NEGATIVE?
-         NOT
-         NULL?
-         OBJECT-TYPE?
-         PAIR?
-         POSITIVE-FIXNUM?
-         POSITIVE?
-         STRING?
-         VECTOR?
-         ZERO-FIXNUM?
-         ZERO?
+         bit-string?
+         cell?
+         char?
+         eq?
+         equal-fixnum?
+         fixnum?
+         flonum-equal?
+         flonum-greater?
+         flonum-less?
+         flonum-negative?
+         flonum-positive?
+         flonum-zero?
+         flonum?
+         greater-than-fixnum?
+         index-fixnum?
+         integer-equal?
+         integer-greater?
+         integer-less?
+         integer-negative?
+         integer-positive?
+         integer-zero?
+         less-than-fixnum?
+         negative-fixnum?
+         negative?
+         not
+         null?
+         object-type?
+         pair?
+         positive-fixnum?
+         positive?
+         string?
+         vector?
+         zero-fixnum?
+         zero?
          )))
 
 ;; True if expression is a call to one of the primitive-boolean-predicates.
@@ -278,20 +278,20 @@ USA.
   (map (lambda (name)
          (make-primitive-procedure name #t))
        '(
-         %RECORD?
-         BIT-STRING?
-         CELL?
-         CHAR?
-         EQ?
-         FIXNUM?
-         FLONUM?
-         NOT
-         NULL?
-         OBJECT-TYPE
-         OBJECT-TYPE?
-         PAIR?
-         STRING?
-         VECTOR?
+         %record?
+         bit-string?
+         cell?
+         char?
+         eq?
+         fixnum?
+         flonum?
+         not
+         null?
+         object-type
+         object-type?
+         pair?
+         string?
+         vector?
          )))
 
 ;; True if expression is a call to one of the effect-free-primitives.
@@ -357,85 +357,85 @@ USA.
 	 &/
 	 -1+
 	 1+
-	 CELL?
-	 CHAR->INTEGER
-	 CHAR-BITS
-	 CHAR-CODE
-	 CHAR-DOWNCASE
-	 CHAR-UPCASE
-	 COMPILED-CODE-ADDRESS->BLOCK
-	 COMPILED-CODE-ADDRESS->OFFSET
-	 DIVIDE-FIXNUM
-	 EQ?
-	 EQUAL-FIXNUM?
-	 FIXNUM-AND
-	 FIXNUM-ANDC
-	 FIXNUM-LSH
-	 FIXNUM-NOT
-	 FIXNUM-OR
-	 FIXNUM-QUOTIENT
-	 FIXNUM-REMAINDER
-	 FIXNUM-XOR
-	 FLONUM-ABS
-	 FLONUM-ACOS
-	 FLONUM-ADD
-	 FLONUM-ASIN
-	 FLONUM-ATAN
-	 FLONUM-ATAN2
-	 FLONUM-CEILING
-	 FLONUM-CEILING->EXACT
-	 FLONUM-COS
-	 FLONUM-DIVIDE
-	 FLONUM-EQUAL?
-	 FLONUM-EXP
-	 FLONUM-EXPT
-	 FLONUM-FLOOR
-	 FLONUM-FLOOR->EXACT
-	 FLONUM-GREATER?
-	 FLONUM-LESS?
-	 FLONUM-LOG
-	 FLONUM-MULTIPLY
-	 FLONUM-NEGATE
-	 FLONUM-NEGATIVE?
-	 FLONUM-POSITIVE?
-	 FLONUM-ROUND
-	 FLONUM-ROUND->EXACT
-	 FLONUM-SIN
-	 FLONUM-SQRT
-	 FLONUM-SUBTRACT
-	 FLONUM-TAN
-	 FLONUM-TRUNCATE
-	 FLONUM-TRUNCATE->EXACT
-	 FLONUM-ZERO?
-	 GCD-FIXNUM
-	 GREATER-THAN-FIXNUM?
-	 INDEX-FIXNUM?
-	 INTEGER->CHAR
-	 LESS-THAN-FIXNUM?
-	 MAKE-CHAR
-	 MAKE-NON-POINTER-OBJECT
-	 MINUS-FIXNUM
-	 MINUS-ONE-PLUS-FIXNUM
-	 MULTIPLY-FIXNUM
-	 NEGATIVE-FIXNUM?
-	 NEGATIVE?
-	 NOT
-	 NULL?
-	 OBJECT-TYPE
-	 OBJECT-TYPE?
-	 ONE-PLUS-FIXNUM
-	 PAIR?
-	 PLUS-FIXNUM
-	 POSITIVE-FIXNUM?
-	 POSITIVE?
-	 PRIMITIVE-PROCEDURE-ARITY
+	 cell?
+	 char->integer
+	 char-bits
+	 char-code
+	 char-downcase
+	 char-upcase
+	 compiled-code-address->block
+	 compiled-code-address->offset
+	 divide-fixnum
+	 eq?
+	 equal-fixnum?
+	 fixnum-and
+	 fixnum-andc
+	 fixnum-lsh
+	 fixnum-not
+	 fixnum-or
+	 fixnum-quotient
+	 fixnum-remainder
+	 fixnum-xor
+	 flonum-abs
+	 flonum-acos
+	 flonum-add
+	 flonum-asin
+	 flonum-atan
+	 flonum-atan2
+	 flonum-ceiling
+	 flonum-ceiling->exact
+	 flonum-cos
+	 flonum-divide
+	 flonum-equal?
+	 flonum-exp
+	 flonum-expt
+	 flonum-floor
+	 flonum-floor->exact
+	 flonum-greater?
+	 flonum-less?
+	 flonum-log
+	 flonum-multiply
+	 flonum-negate
+	 flonum-negative?
+	 flonum-positive?
+	 flonum-round
+	 flonum-round->exact
+	 flonum-sin
+	 flonum-sqrt
+	 flonum-subtract
+	 flonum-tan
+	 flonum-truncate
+	 flonum-truncate->exact
+	 flonum-zero?
+	 gcd-fixnum
+	 greater-than-fixnum?
+	 index-fixnum?
+	 integer->char
+	 less-than-fixnum?
+	 make-char
+	 make-non-pointer-object
+	 minus-fixnum
+	 minus-one-plus-fixnum
+	 multiply-fixnum
+	 negative-fixnum?
+	 negative?
+	 not
+	 null?
+	 object-type
+	 object-type?
+	 one-plus-fixnum
+	 pair?
+	 plus-fixnum
+	 positive-fixnum?
+	 positive?
+	 primitive-procedure-arity
 	 ;; STRING->SYMBOL is a special case.  Strings can
 	 ;; be side-effected, but it is useful to be able to
 	 ;; constant fold this primitive anyway.
-	 STRING->SYMBOL
-	 STRING-LENGTH
-	 ZERO-FIXNUM?
-	 ZERO?
+	 string->symbol
+	 string-length
+	 zero-fixnum?
+	 zero?
 	 )))
 
 (define (foldable-combination? operator operands)
@@ -613,20 +613,20 @@ USA.
      (let ((name (cadr form))
            (tester (caddr form))
            (setter (cadddr form)))
-       `(BEGIN
-          (DEFINE (,tester VARIABLE)
-            (MEMQ ',name (VARIABLE/FLAGS VARIABLE)))
-          (DEFINE (,setter VARIABLE)
-            (IF (NOT (MEMQ ',name (VARIABLE/FLAGS VARIABLE)))
-                (SET-VARIABLE/FLAGS!
-                 VARIABLE
-                 (CONS ',name (VARIABLE/FLAGS VARIABLE))))))))))
+       `(begin
+          (define (,tester variable)
+            (memq ',name (variable/flags variable)))
+          (define (,setter variable)
+            (if (not (memq ',name (variable/flags variable)))
+                (set-variable/flags!
+                 variable
+                 (cons ',name (variable/flags variable))))))))))
 
-(define-flag SIDE-EFFECTED variable/side-effected variable/side-effect!)
-(define-flag REFERENCED    variable/referenced    variable/reference!)
-(define-flag INTEGRATED    variable/integrated    variable/integrated!)
-(define-flag MAY-IGNORE    variable/may-ignore?   variable/may-ignore!)
-(define-flag MUST-IGNORE   variable/must-ignore?  variable/must-ignore!)
+(define-flag side-effected variable/side-effected variable/side-effect!)
+(define-flag referenced    variable/referenced    variable/reference!)
+(define-flag integrated    variable/integrated    variable/integrated!)
+(define-flag may-ignore    variable/may-ignore?   variable/may-ignore!)
+(define-flag must-ignore   variable/must-ignore?  variable/must-ignore!)
 
 (define open-block/value-marker
   ;; This must be an interned object because we will fasdump it and

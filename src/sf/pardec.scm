@@ -40,20 +40,20 @@ USA.
 				      declarations))))
 
 (define (merge-usual-integrations declarations)
-  (let loop ((declarations declarations) (exclusions 'NONE) (other '()))
+  (let loop ((declarations declarations) (exclusions 'none) (other '()))
     (if (pair? declarations)
-	(if (eq? (caar declarations) 'USUAL-INTEGRATIONS)
+	(if (eq? (caar declarations) 'usual-integrations)
 	    (loop (cdr declarations)
-		  (if (eq? exclusions 'NONE)
+		  (if (eq? exclusions 'none)
 		      (cdar declarations)
 		      (append exclusions (cdar declarations)))
 		  other)
 	    (loop (cdr declarations)
 		  exclusions
 		  (cons (car declarations) other)))
-	(if (eq? exclusions 'NONE)
+	(if (eq? exclusions 'none)
 	    (reverse! other)
-	    (cons `(USUAL-INTEGRATIONS ,@exclusions)
+	    (cons `(usual-integrations ,@exclusions)
 		  (reverse! other))))))
 
 (define (declarations/make-null)
@@ -70,9 +70,9 @@ USA.
 	operations
 	(loop (let ((declaration (car declarations)))
 		((case (declaration/binding-level declaration)
-		   ((LOCAL)     operations/bind)
-		   ((TOP-LEVEL) operations/bind-top-level)
-		   ((GLOBAL)    operations/bind-global)
+		   ((local)     operations/bind)
+		   ((top-level) operations/bind-top-level)
+		   ((global)    operations/bind-global)
 		   (else
 		    (error "Unrecognized binding level"
 			   (declaration/binding-level declaration))))
@@ -138,7 +138,7 @@ USA.
   (binding-level #f read-only #t))
 
 (define (make-declarations operation variables values binding-level)
-  (if (eq? values 'NO-VALUES)
+  (if (eq? values 'no-values)
       (map (lambda (variable)
 	     (make-declaration operation variable #f binding-level))
 	   variables)
@@ -166,12 +166,12 @@ USA.
   '())
 
 (define (known-declaration? operation)
-  (or (eq? operation 'EXPAND) ; this one is special
+  (or (eq? operation 'expand) ; this one is special
       (assq operation known-declarations)))
 
 ;;;; Integration Declarations
 
-(define-declaration 'USUAL-INTEGRATIONS
+(define-declaration 'usual-integrations
   ;; This is written in a strange way because the obvious way to write
   ;; it is quadratic in the number of names being declared.  Since
   ;; there are typically over 300 names, this matters some.  I believe
@@ -211,7 +211,7 @@ USA.
 			     (cons (make-declaration operation
 						     variable
 						     value
-						     'GLOBAL)
+						     'global)
 				   declarations))
 		       (set! remaining
 			     (cons (vector operation name value)
@@ -220,13 +220,13 @@ USA.
 	(receive (expansion-names expansion-values)
 	    (do-deletions usual-integrations/expansion-names
 			  usual-integrations/expansion-values)
-	  (for-each (constructor 'EXPAND)
+	  (for-each (constructor 'expand)
 		    expansion-names
 		    expansion-values))
 	(receive (constant-names constant-values)
 	    (do-deletions usual-integrations/constant-names
 			  usual-integrations/constant-values)
-	  (for-each (constructor 'INTEGRATE)
+	  (for-each (constructor 'integrate)
 		    constant-names
 		    constant-values)))
       (map* declarations
@@ -240,7 +240,7 @@ USA.
 		 (vector-ref remaining 0)
 		 (variable/make&bind! top-level-block (vector-ref remaining 1))
 		 (vector-ref remaining 2)
-		 'GLOBAL)))
+		 'global)))
 	    remaining))))
 
 (define (define-integration-declaration operation)
@@ -248,13 +248,13 @@ USA.
     (lambda (block names)
       (make-declarations operation
 			 (block/lookup-names block names #t)
-			 'NO-VALUES
-			 'LOCAL))))
+			 'no-values
+			 'local))))
 
-(define-integration-declaration 'INTEGRATE)
-(define-integration-declaration 'INTEGRATE-OPERATOR)
+(define-integration-declaration 'integrate)
+(define-integration-declaration 'integrate-operator)
 
-(define-declaration 'INTEGRATE-EXTERNAL
+(define-declaration 'integrate-external
   (lambda (block specifications)
     (append-map
      (lambda (pathname)
@@ -267,7 +267,7 @@ USA.
 	      (let ((operation (vector-ref extern 0))
 		    (name (vector-ref extern 1))
 		    (value (vector-ref extern 2)))
-		(if (and (eq? 'EXPAND operation)
+		(if (and (eq? 'expand operation)
 			 (dumped-expander? value))
 		    (parse-declaration block
 				       (dumped-expander/declaration value))
@@ -280,7 +280,7 @@ USA.
 					     name)
 					 (make-integration-info
 					  (copy/expression/extern block value))
-					 'TOP-LEVEL))))))
+					 'top-level))))))
 	    externs))))
      (append-map (lambda (specification)
 		   (let ((value
@@ -323,7 +323,7 @@ USA.
 ;; IGNORABLE suppresses warnings about the variable not being used.
 ;; This is useful in macros that bind variables that the body may
 ;; not actually use.
-(define-declaration 'IGNORABLE
+(define-declaration 'ignorable
   (lambda (block names)
     (for-each (lambda (name)
 		(let ((variable (block/lookup-name block name #f)))
@@ -337,7 +337,7 @@ USA.
 ;; IGNORE causes warnings if an ignored variable actually ends
 ;; up being used.  Mentioning the variable in a sequence will
 ;; have the effect of marking it IGNORED.
-(define-declaration 'IGNORE
+(define-declaration 'ignore
   (lambda (block names)
     (let ((variables
 	   (let loop
@@ -355,23 +355,23 @@ USA.
 			       name)
 			 (loop (cdr names) variables))))
 		 variables))))
-      (make-declarations 'IGNORE
+      (make-declarations 'ignore
 			 variables
-			 'NO-VALUES
-			 'LOCAL))))
+			 'no-values
+			 'local))))
 
 ;;;; Reductions and Expansions
 ;;; See "reduct.scm" for description of REDUCE-OPERATOR and REPLACE-OPERATOR.
 
-(define-declaration 'REDUCE-OPERATOR
+(define-declaration 'reduce-operator
   (lambda (block reduction-rules)
-    (check-declaration-syntax 'REDUCE-OPERATOR reduction-rules)
+    (check-declaration-syntax 'reduce-operator reduction-rules)
     (map (lambda (rule)
-	   (make-declaration 'EXPAND
+	   (make-declaration 'expand
 			     (block/lookup-name block (car rule) #t)
 			     (make-dumpable-expander (reducer/make rule block)
-						     `(REDUCE-OPERATOR ,rule))
-			     'LOCAL))
+						     `(reduce-operator ,rule))
+			     'local))
 	 reduction-rules)))
 
 (define (check-declaration-syntax kind declarations)
@@ -383,14 +383,14 @@ USA.
 		       declarations)))
       (error "Bad declaration:" kind declarations)))
 
-(define-declaration 'REPLACE-OPERATOR
+(define-declaration 'replace-operator
   (lambda (block replacements)
     (if (not (and (list? replacements)
 		  (every (lambda (replacement)
 			   (and (pair? replacement)
 				(or (symbol? (car replacement))
 				    (and (pair? (car replacement))
-					 (eq? 'PRIMITIVE (caar replacement))
+					 (eq? 'primitive (caar replacement))
 					 (pair? (cdar replacement))
 					 (symbol? (cadar replacement))
 					 (or (null? (cddar replacement))
@@ -399,15 +399,15 @@ USA.
 						   (cdddar replacement))))))
 				(list? (cdr replacement))))
 			 replacements)))
-	(error "Bad declaration:" 'REPLACE-OPERATOR replacements))
+	(error "Bad declaration:" 'replace-operator replacements))
     (map (lambda (replacement)
 	   (make-declaration
-	    'EXPAND
+	    'expand
 	    (let ((name (car replacement)))
 	      (cond ((symbol? name)
 		     (block/lookup-name block name #t))
 		    ((and (pair? name)
-			  (eq? (car name) 'PRIMITIVE))
+			  (eq? (car name) 'primitive))
 		     (make-primitive-procedure (cadr name)
 					       (and (not (null? (cddr name)))
 						    (caddr name))))
@@ -415,21 +415,21 @@ USA.
 		     (error "Illegal name in replacement:" name))))
 	    (make-dumpable-expander
 	     (replacement/make replacement block)
-	     `(REPLACE-OPERATOR ,replacement))
-	    'LOCAL))
+	     `(replace-operator ,replacement))
+	    'local))
 	 replacements)))
 
 (define (make-dumpable-expander expander declaration)
   (make-entity (lambda (self expr operands block)
 		 self			; ignored
 		 (expander expr operands block))
-	       (cons '*DUMPABLE-EXPANDER* declaration)))
+	       (cons '*dumpable-expander* declaration)))
 
 (define (dumpable-expander? object)
   (and (entity? object)
        (let ((extra (entity-extra object)))
 	 (and (pair? extra)
-	      (eq? '*DUMPABLE-EXPANDER* (car extra))))))
+	      (eq? '*dumpable-expander* (car extra))))))
 
 (define (dumpable-expander->dumped-expander expander)
   (cons dumped-expander-tag (cdr (entity-extra expander))))
@@ -448,12 +448,12 @@ USA.
 ;;; knowing a fair amount about the internals of sf.  This declaration
 ;;; is purely a hook, with no convenience.
 
-(define-declaration 'EXPAND-OPERATOR
+(define-declaration 'expand-operator
   (lambda (block expanders)
     (map (lambda (expander)
-	   (make-declaration 'EXPAND
+	   (make-declaration 'expand
 			     (block/lookup-name block (car expander) #t)
 			     (eval (cadr expander)
 				   expander-evaluation-environment)
-			     'LOCAL))
+			     'local))
 	 expanders)))

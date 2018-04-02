@@ -352,7 +352,7 @@ USA.
 	#f
 	block scode-lambda-name:let variables '() #f
 	(let ((block (block/make block #t '())))
-	  (let ((variable (variable/make&bind! block 'RECEIVER)))
+	  (let ((variable (variable/make&bind! block 'receiver)))
 	    (procedure/make
 	     #f block scode-lambda-name:unnamed (list variable) '() #f
 	     (declaration/make
@@ -360,7 +360,7 @@ USA.
 	      ;; The receiver is used only once, and all its operand
 	      ;; expressions are effect-free, so integrating here is
 	      ;; safe.
-	      (declarations/parse block '((INTEGRATE-OPERATOR RECEIVER)))
+	      (declarations/parse block '((integrate-operator receiver)))
 	      (combination/make #f
 				block
 				(reference/make #f block variable)
@@ -889,4 +889,4 @@ USA.
 
 ;;; Kludge for EXPAND-OPERATOR declaration.
 (define expander-evaluation-environment
-  (->environment '(SCODE-OPTIMIZER EXPANSION)))
+  (->environment '(scode-optimizer expansion)))

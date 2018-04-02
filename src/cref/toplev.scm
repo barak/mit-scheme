@@ -38,7 +38,7 @@ USA.
 		   (resolve-references! pmodel)
 		   (kernel pathname pmodel changes? os-type)))))))
       (cond ((default-object? os-type) (do-type microcode-id/operating-system))
-	    ((eq? os-type 'ALL) (for-each do-type os-types))
+	    ((eq? os-type 'all) (for-each do-type os-types))
 	    ((memq os-type os-types) (do-type os-type))
 	    (else (error:bad-range-argument os-type #f))))))
 
@@ -52,7 +52,7 @@ USA.
 	     #f
 	     os-type))))
     (cond ((or (default-object? os-type)
-	       (eq? os-type 'ALL))
+	       (eq? os-type 'all))
 	   (for-each do-type os-types))
 	  ((eq? os-type #f)
 	   (do-type microcode-id/operating-system))
@@ -71,7 +71,7 @@ USA.
 		   (read-package-model filename os-type))))))
 
 (define os-types
-  '(NT UNIX))
+  '(nt unix))
 
 (define cref/generate-cref
   (generate/common

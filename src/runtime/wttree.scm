@@ -73,38 +73,37 @@ we adopt here, described in
 ;;;  relation.
 
 (define-structure
-  (tree-type
-   (conc-name tree-type/)
-   (constructor %make-tree-type))
-  (key<?       #F read-only true)
-  (alist->tree #F read-only true)
-  (add         #F read-only true)
-  (insert!     #F read-only true)
-  (delete      #F read-only true)
-  (delete!     #F read-only true)
-  (member?     #F read-only true)
-  (lookup      #F read-only true)
-  ;;;min        ; ?  also delmin, max, delmax, delmin!, delmax!
-  (split-lt    #F read-only true)
-  (split-gt    #F read-only true)
-  (union       #F read-only true)
-  (union-merge #F read-only true)
-  (intersection #F read-only true)
-  (difference  #F read-only true)
-  (subset?     #F read-only true)
-  (rank        #F read-only true)
-)
+    (tree-type
+     (conc-name tree-type/)
+     (constructor %make-tree-type))
+  (key<?       #f read-only #t)
+  (alist->tree #f read-only #t)
+  (add         #f read-only #t)
+  (insert!     #f read-only #t)
+  (delete      #f read-only #t)
+  (delete!     #f read-only #t)
+  (member?     #f read-only #t)
+  (lookup      #f read-only #t)
+  ;;min        ; ?  also delmin, max, delmax, delmin!, delmax!
+  (split-lt    #f read-only #t)
+  (split-gt    #f read-only #t)
+  (union       #f read-only #t)
+  (union-merge #f read-only #t)
+  (intersection #f read-only #t)
+  (difference  #f read-only #t)
+  (subset?     #f read-only #t)
+  (rank        #f read-only #t))
 
 ;;;  Tree representation
 ;;;
 ;;;  WT-TREE is a wrapper for trees of nodes
 ;;;
 (define-structure
-  (wt-tree
-   (conc-name tree/)
-   (constructor %make-wt-tree))
-  (type  #F read-only true)
-  (root  #F read-only false))
+    (wt-tree
+     (conc-name tree/)
+     (constructor %make-wt-tree))
+  (type #f read-only #t)
+  (root #f read-only #f))
 
 ;;;  Nodes are the thing from which the real trees are built.
 

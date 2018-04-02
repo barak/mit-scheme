@@ -48,22 +48,22 @@ USA.
 			(clause clause)
 			(clauses clauses)
 			(free '()))
-		     `(COND ((PAIR? ,lv)
+		     `(cond ((pair? ,lv)
 			     ,(if (pair? (cdr clauses))
 				  (let ((av (car clause))
-					(lv* (make-synthetic-identifier 'L)))
-				    `(LET ((,av (CAR ,lv))
-					   (,lv* (CDR ,lv)))
+					(lv* (make-synthetic-identifier 'l)))
+				    `(let ((,av (car ,lv))
+					   (,lv* (cdr ,lv)))
 				       ,(walk lv*
 					      (car clauses)
 					      (cdr clauses)
 					      (cons av free))))
 				  (make-syntactic-closure environment free
 				    (cadr (car clauses)))))
-			    ((NULL? ,lv)
+			    ((null? ,lv)
 			     ,(make-syntactic-closure environment free
 				(cadr clause)))
-			    (ELSE (FAIL))))
+			    (else (fail))))
 		   (make-syntactic-closure environment '() (cadr clause))))))))
       (apply-dispatch&bind a0
 			   (v0 (f))
@@ -98,9 +98,9 @@ USA.
   (set! apply
 	(make-entity
 	 apply-entity-procedure
-	 (vector (fixed-objects-item 'ARITY-DISPATCHER-TAG)
+	 (vector (fixed-objects-item 'arity-dispatcher-tag)
 		 (lambda ()
-		   (error:wrong-number-of-arguments apply '(1 . #F) '()))
+		   (error:wrong-number-of-arguments apply '(1 . #f) '()))
 		 (lambda (f) (f))
 		 apply-2)))
   unspecific)

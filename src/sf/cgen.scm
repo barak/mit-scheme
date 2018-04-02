@@ -83,17 +83,17 @@ USA.
   ;; Declarations which are not handled by SF but are known to be handled
   ;; by the compiler so SF ignores then silently.
   '(
-    CONSTANT
-    IGNORE-ASSIGNMENT-TRAPS
-    IGNORE-REFERENCE-TRAPS
-    NO-RANGE-CHECKS
-    NO-TYPE-CHECKS
-    PURE-FUNCTION
-    RANGE-CHECKS
-    SIDE-EFFECT-FREE
-    TYPE-CHECKS
-    USUAL-DEFINITION
-    UUO-LINK
+    constant
+    ignore-assignment-traps
+    ignore-reference-traps
+    no-range-checks
+    no-type-checks
+    pure-function
+    range-checks
+    side-effect-free
+    type-checks
+    usual-definition
+    uuo-link
     ))
 
 (define (known-compiler-declaration? declaration)
@@ -128,53 +128,53 @@ USA.
 	     (set-cdr! interns (cons association (cdr interns)))
 	     association))))
 
-(define-method/cgen 'ACCESS
+(define-method/cgen 'access
   (lambda (interns expression)
     (make-scode-access (cgen/expression interns (access/environment expression))
 		       (access/name expression))))
 
-(define-method/cgen 'ASSIGNMENT
+(define-method/cgen 'assignment
   (lambda (interns expression)
     (make-scode-assignment
      (scode-variable-name
       (cgen/variable interns (assignment/variable expression)))
      (cgen/expression interns (assignment/value expression)))))
 
-(define-method/cgen 'COMBINATION
+(define-method/cgen 'combination
   (lambda (interns expression)
     (make-scode-combination
      (cgen/expression interns (combination/operator expression))
      (cgen/expressions interns (combination/operands expression)))))
 
-(define-method/cgen 'CONDITIONAL
+(define-method/cgen 'conditional
   (lambda (interns expression)
     (make-scode-conditional
      (cgen/expression interns (conditional/predicate expression))
      (cgen/expression interns (conditional/consequent expression))
      (cgen/expression interns (conditional/alternative expression)))))
 
-(define-method/cgen 'CONSTANT
+(define-method/cgen 'constant
   (lambda (interns expression)
     interns ; is ignored
     (constant/value expression)))
 
-(define-method/cgen 'DECLARATION
+(define-method/cgen 'declaration
   (lambda (interns expression)
     (cgen/declaration (declaration/declarations expression)
 		      (cgen/expression interns
 				       (declaration/expression expression)))))
 
-(define-method/cgen 'DELAY
+(define-method/cgen 'delay
   (lambda (interns expression)
     (make-scode-delay (cgen/expression interns (delay/expression expression)))))
 
-(define-method/cgen 'DISJUNCTION
+(define-method/cgen 'disjunction
   (lambda (interns expression)
     (make-scode-disjunction
      (cgen/expression interns (disjunction/predicate expression))
      (cgen/expression interns (disjunction/alternative expression)))))
 
-(define-method/cgen 'PROCEDURE
+(define-method/cgen 'procedure
   (lambda (interns procedure)
     interns ; ignored
     (make-lambda* (procedure/name procedure)
@@ -212,16 +212,16 @@ USA.
 	       (cons (cgen/expression (list block) (car actions))
 		     (loop variables values (cdr actions))))))))))
 
-(define-method/cgen 'QUOTATION
+(define-method/cgen 'quotation
   (lambda (interns expression)
     interns ; ignored
     (make-scode-quotation (cgen/top-level expression))))
 
-(define-method/cgen 'REFERENCE
+(define-method/cgen 'reference
   (lambda (interns expression)
     (cgen/variable interns (reference/variable expression))))
 
-(define-method/cgen 'SEQUENCE
+(define-method/cgen 'sequence
   (lambda (interns expression)
     (let ((actions
 	   (if flush-declarations?
@@ -239,7 +239,7 @@ USA.
 	    rest
 	    (cons (car actions) rest)))))
 
-(define-method/cgen 'THE-ENVIRONMENT
+(define-method/cgen 'the-environment
   (lambda (interns expression)
     interns expression ; ignored
     (make-scode-the-environment)))

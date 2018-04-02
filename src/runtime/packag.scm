@@ -70,7 +70,7 @@ USA.
 
 (define (finalize-package-record-type!)
   (let ((rtd
-	 (make-record-type "package" '(PARENT CHILDREN NAME ENVIRONMENT))))
+	 (make-record-type "package" '(parent children name environment))))
     (set! package-tag rtd)
     (for-each (lambda (p) (%record-set! p 0 rtd)) *packages*)
     (define-unparser-method (record-predicate rtd)
@@ -152,7 +152,7 @@ USA.
     (let ((dir (directory-pathname pathname))
 	  (pkg (package-set-pathname pathname os-type))
 	  (options
-	   (cons (cons 'OS-TYPE os-type)
+	   (cons (cons 'os-type os-type)
 		 (if (default-object? options) '() options))))
       (with-working-directory-pathname dir
 	(lambda ()
@@ -161,10 +161,10 @@ USA.
 		(error "Malformed package-description file:" pkg))
 	    (construct-packages-from-file file)
 	    (let ((alternate-loader
-		   (lookup-option 'ALTERNATE-PACKAGE-LOADER options))
+		   (lookup-option 'alternate-package-loader options))
 		  (load-component
 		   (lambda (name environment)
-		     (load name environment 'DEFAULT #t))))
+		     (load name environment 'default #t))))
 	      (if alternate-loader
 		  (alternate-loader load-component options)
 		  (begin
@@ -227,7 +227,7 @@ USA.
 (define (package-file? object)
   (and (vector? object)
        (fix:= (vector-length object) 4)
-       (eq? (package-file/tag object) 'PACKAGE-DESCRIPTIONS)
+       (eq? (package-file/tag object) 'package-descriptions)
        (and (index-fixnum? (package-file/version object))
 	    (fix:= (package-file/version object) 2))
        (vector-of-type? (package-file/descriptions object)
@@ -273,7 +273,7 @@ USA.
 		    (vector-of-type? (cdr file-case)
 		      (lambda (clause)
 			(and (pair? clause)
-			     (or (eq? (car clause) 'ELSE)
+			     (or (eq? (car clause) 'else)
 				 (vector-of-type? (car clause) symbol?))
 			     (vector-of-type? (cdr clause) string?)))))
 	       (vector-of-type? file-case string?))))
@@ -290,7 +290,7 @@ USA.
 	 (lambda (name)
 	   (or (null? name)
 	       (and (pair? name)
-		    (eq? (car name) 'PACKAGE)
+		    (eq? (car name) 'package)
 		    (null? (cdr name)))))))
     (let ((n (vector-length descriptions)))
       (do ((i 0 (fix:+ i 1)))
@@ -392,7 +392,7 @@ USA.
 	     ((ucode-primitive vector-cons)
 	      n
 	      (make-unmapped-unassigned-reference-trap))))
-	(vector-set! vn 0 'DUMMY-PROCEDURE)
+	(vector-set! vn 0 'dummy-procedure)
 	(do ((names names (cdr names))
 	     (j 1 (fix:+ j 1)))
 	    ((not (pair? names)))
@@ -408,7 +408,7 @@ USA.
 (define null-environment
   ((ucode-primitive object-set-type)
    ((ucode-primitive object-type) #f)
-   (fix:xor ((ucode-primitive object-datum) #F) 1)))
+   (fix:xor ((ucode-primitive object-datum) #f) 1)))
 
 (define (find-package-environment name)
   (package/environment (find-package name)))
@@ -468,7 +468,7 @@ USA.
 			  ((fix:= i n))
 			(let ((clause (vector-ref clauses i)))
 			  (if (let ((keys (car clause)))
-				(or (eq? keys 'ELSE)
+				(or (eq? keys 'else)
 				    (let ((n (vector-length keys)))
 				      (let loop ((i 0))
 					(and (fix:< i n)

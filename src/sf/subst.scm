@@ -93,8 +93,7 @@ USA.
 (define define-method/integrate
   (expression/make-method-definer dispatch-vector))
 
-;;;; ACCESS
-(define-method/integrate 'ACCESS
+(define-method/integrate 'access
   (lambda (operations environment expression)
     (let ((environment* (integrate/expression operations environment
                                               (access/environment expression)))
@@ -111,18 +110,18 @@ USA.
            operations name
            (lambda (operation info)
              (case operation
-               ((#F EXPAND) (dont-integrate))
+               ((#f expand) (dont-integrate))
 
-               ((IGNORE)
+               ((ignore)
                 (ignored-variable-warning name)
                 (dont-integrate))
 
-               ((INTEGRATE)
+               ((integrate)
                 (reassign name (copy/expression/intern
                                 (access/block expression)
                                 (integration-info/expression info))))
 
-	       ((INTEGRATE-OPERATOR)
+	       ((integrate-operator)
 		(warn "Not integrating operator in access: " name)
 		(dont-integrate))
 
@@ -130,17 +129,16 @@ USA.
                 (error "Unknown operation" operation))))
            dont-integrate)))))
 
-;;;; ASSIGNMENT
-(define-method/integrate 'ASSIGNMENT
+(define-method/integrate 'assignment
   (lambda (operations environment assignment)
     (let ((variable (assignment/variable assignment)))
       (operations/lookup operations variable
        (lambda (operation info)
          info                           ;ignore
          (case operation
-           ((IGNORE)
+           ((ignore)
             (ignored-variable-warning (variable/name variable)))
-           ((EXPAND INTEGRATE INTEGRATE-OPERATOR)
+           ((expand integrate integrate-operator)
             (warn "Attempt to assign integrated name"
                   (variable/name variable)))
            (else (error "Unknown operation" operation))))
@@ -154,8 +152,7 @@ USA.
                                              environment
                                              (assignment/value assignment))))))
 
-;;;; COMBINATION
-(define-method/integrate 'COMBINATION
+(define-method/integrate 'combination
   (lambda (operations environment combination)
     (integrate/combination
      combination operations environment
@@ -164,9 +161,8 @@ USA.
      (integrate/expressions operations
                             environment
                             (combination/operands combination)))))
-
-;;;; CONDITIONAL
-(define-method/integrate 'CONDITIONAL
+
+(define-method/integrate 'conditional
   (lambda (operations environment expression)
     (integrate/conditional operations environment expression
                            (integrate/expression
@@ -208,19 +204,18 @@ USA.
                 (integrate/expression operations environment alternative))))
 
         (else
-         (conditional/make (and expression (conditional/scode expression))
-                           integrated-predicate
-                           (integrate/expression operations environment consequent)
-                           (integrate/expression operations environment alternative)))))
+         (conditional/make
+	  (and expression (conditional/scode expression))
+	  integrated-predicate
+	  (integrate/expression operations environment consequent)
+	  (integrate/expression operations environment alternative)))))
 
-;;; CONSTANT
-(define-method/integrate 'CONSTANT
+(define-method/integrate 'constant
   (lambda (operations environment expression)
     (declare (ignore operations environment))
     expression))
 
-;;; DECLARATION
-(define-method/integrate 'DECLARATION
+(define-method/integrate 'declaration
   (lambda (operations environment declaration)
     (let ((answer
            (integrate/expression
@@ -234,17 +229,14 @@ USA.
            (declaration/declarations declaration)
            answer)))))
 
-;;; DELAY
-(define-method/integrate 'DELAY
+(define-method/integrate 'delay
   (lambda (operations environment expression)
     (delay/make
      (delay/scode expression)
      (integrate/expression operations environment
                            (delay/expression expression)))))
-
-
-;;; DISJUNCTION
-(define-method/integrate 'DISJUNCTION
+
+(define-method/integrate 'disjunction
   (lambda (operations environment expression)
     (integrate/disjunction
      operations environment expression
@@ -289,7 +281,7 @@ USA.
                             environment alternative)))))
 
 ;;; OPEN-BLOCK
-(define-method/integrate 'OPEN-BLOCK
+(define-method/integrate 'open-block
   (lambda (operations environment expression)
     (call-with-values
         (lambda () (integrate/open-block operations environment expression))
@@ -297,15 +289,13 @@ USA.
         (declare (ignore operations environment))
         expression))))
 
-;;; PROCEDURE
-(define-method/integrate 'PROCEDURE
+(define-method/integrate 'procedure
   (lambda (operations environment procedure)
     (integrate/procedure operations
                          (simulate-unknown-application environment procedure)
                          procedure)))
 
-;;;; Quotation
-(define-method/integrate 'QUOTATION
+(define-method/integrate 'quotation
   (lambda (operations environment expression)
     (declare (ignore operations environment))
     (integrate/quotation expression)))
@@ -319,11 +309,10 @@ USA.
     (lambda (operations environment expression)
       operations environment            ;ignore
       expression)))
-
-;;;; Reference
+
 (define sf:warn-on-unintegrated-argument #f)
 
-(define-method/integrate 'REFERENCE
+(define-method/integrate 'reference
   (lambda (operations environment expression)
     (let ((variable (reference/variable expression)))
       (define (dont-integrate)
@@ -334,14 +323,14 @@ USA.
        operations variable
        (lambda (operation info)
          (case operation
-           ((IGNORE)
+           ((ignore)
             (ignored-variable-warning (variable/name variable))
             (dont-integrate))
 
-           ((EXPAND)
+           ((expand)
             (dont-integrate))
 
-           ((INTEGRATE)
+           ((integrate)
             (let ((new-expression
                    (integrate/name expression expression info environment)))
               (if new-expression
@@ -349,9 +338,10 @@ USA.
                          new-expression)
                   (dont-integrate))))
 
-	   ((INTEGRATE-OPERATOR)
+	   ((integrate-operator)
 	    (if sf:warn-on-unintegrated-argument
-		(warn "Not integrating operator in argument position: " variable))
+		(warn "Not integrating operator in argument position: "
+		      variable))
 	    (dont-integrate))
 
            (else
@@ -364,16 +354,14 @@ USA.
       (with-new-scode (object/scode expr) object)
       object))
 
-;;; SEQUENCE
-(define-method/integrate 'SEQUENCE
+(define-method/integrate 'sequence
   (lambda (operations environment expression)
     (sequence/make
      (and expression (object/scode expression))
      (integrate/actions operations environment
                         (sequence/actions expression)))))
 
-;;; THE-ENVIRONMENT
-(define-method/integrate 'THE-ENVIRONMENT
+(define-method/integrate 'the-environment
   (lambda (operations environment expression)
     operations
     environment
@@ -435,7 +423,7 @@ USA.
        (not (variable/referenced variable))
        (not (variable/may-ignore? variable))
        (not (variable/must-ignore? variable))))
-
+
 (define (integrate/procedure operations environment procedure)
   (let ((block (procedure/block procedure))
         (name  (procedure/name procedure))
@@ -473,8 +461,6 @@ USA.
                            rest
                            body)))))))
 
-
-;;; INTEGRATE-COMBINATION
 (define integrate-combination-dispatch-vector
   (expression/make-dispatch-vector))
 
@@ -486,16 +472,17 @@ USA.
   ((expression/method integrate-combination-dispatch-vector operator)
    expression operations environment block operator operands))
 
-;;;; access-operator
-(define-method/integrate-combination 'ACCESS
+(define-method/integrate-combination 'access
   (lambda (expression operations environment block operator operands)
     (integrate/access-operator expression operations environment
                                block operator operands)))
 
-(define (integrate/access-operator expression operations environment block operator operands)
+(define (integrate/access-operator expression operations environment block
+				   operator operands)
   (let ((name (access/name operator))
         (environment*
-         (integrate/expression operations environment (access/environment operator))))
+         (integrate/expression operations environment
+			       (access/environment operator))))
 
     (define (dont-integrate)
       (combination/make
@@ -510,30 +497,33 @@ USA.
          operations name
          (lambda (operation info)
            (case operation
-             ((#F) (dont-integrate))
+             ((#f) (dont-integrate))
 
-             ((EXPAND)
+             ((expand)
               (cond ((info expression operands (reference/block operator))
                      => (lambda (new-expression)
-                          (integrate/expression operations environment new-expression)))
+                          (integrate/expression operations environment
+						new-expression)))
                     (else (dont-integrate))))
 
-             ((IGNORE)
+             ((ignore)
               (ignored-variable-warning (variable/name name))
               (dont-integrate))
 
-             ((INTEGRATE INTEGRATE-OPERATOR)
+             ((integrate integrate-operator)
               (let ((new-operator
                      (reassign operator
-                               (copy/expression/intern block (integration-info/expression info)))))
-                (integrate/combination expression operations environment block new-operator operands)))
+                               (copy/expression/intern
+				block
+				(integration-info/expression info)))))
+                (integrate/combination expression operations environment block
+				       new-operator operands)))
 
              (else
               (error "unknown operation" operation))))
          dont-integrate))))
 
-;;; assignment-operator
-(define-method/integrate-combination 'ASSIGNMENT
+(define-method/integrate-combination 'assignment
   (lambda (expression operations environment block operator operands)
     (warn "Value of assignment used as an operator.")
     ;; We don't try to make sense of this, we just
@@ -543,20 +533,19 @@ USA.
                       (integrate/expression operations environment operator)
                       operands)))
 
-;;; combination-operator
-(define-method/integrate-combination 'COMBINATION
+(define-method/integrate-combination 'combination
   (lambda (expression operations environment block operator operands)
-    (integrate-combination/default expression operations environment block operator operands)))
-
-;;; conditional-operator
-(define-method/integrate-combination 'CONDITIONAL
+    (integrate-combination/default expression operations environment block
+				   operator operands)))
+
+(define-method/integrate-combination 'conditional
   (lambda (expression operations environment block operator operands)
-    (integrate-combination/default expression operations environment block operator operands)))
+    (integrate-combination/default expression operations environment block
+				   operator operands)))
 
-;;; constant-operator
 (define sf:enable-elide-double-negatives? #t)
 
-(define-method/integrate-combination 'CONSTANT
+(define-method/integrate-combination 'constant
   (lambda (expression operations environment block operator operands)
     ;; Elide a double negative only if it doesn't change the type of the answer.
     (cond ((and (expression/constant-eq? operator (ucode-primitive not))
@@ -588,36 +577,33 @@ USA.
   (declare (ignore operations environment))
   (combination/make expression block operator operands))
 
-;;; declaration-operator
-(define-method/integrate-combination 'DECLARATION
+(define-method/integrate-combination 'declaration
   (lambda (expression operations environment block operator operands)
-    (integrate-combination/default expression operations environment block operator operands)))
+    (integrate-combination/default expression operations environment block
+				   operator operands)))
 
-;;; delay-operator
-(define-method/integrate-combination 'DELAY
+(define-method/integrate-combination 'delay
   (lambda (expression operations environment block operator operands)
     ;; Nonsense - generate a warning.
-    (warn "Delayed object in operator position.  This will cause a runtime error.")
+    (warn
+     "Delayed object in operator position.  This will cause a runtime error.")
     (combination/make expression
                       block
                       (integrate/expression operations environment operator)
                       operands)))
 
-;;; disjunction-operator
-(define-method/integrate-combination 'DISJUNCTION
+(define-method/integrate-combination 'disjunction
   (lambda (expression operations environment block operator operands)
     (integrate-combination/default expression operations environment
                                    block operator operands)))
 
-;;; open-block-operator
-(define-method/integrate-combination 'OPEN-BLOCK
+(define-method/integrate-combination 'open-block
   (lambda (expression operations environment block operator operands)
     (declare (ignore expression operations environment block operator operands))
     ;; This shouldn't be possible.
     (error "INTERNAL-ERROR: integrate-combination 'open-block")))
 
-;;; procedure-operator (let)
-(define-method/integrate-combination 'PROCEDURE
+(define-method/integrate-combination 'procedure
   (lambda (expression operations environment block operator operands)
     (integrate-combination/default expression operations environment
                                    block operator operands)))
@@ -628,15 +614,13 @@ USA.
                        (simulate-application environment block
                                              procedure operands)
                        procedure))
-
-;;; quotation-operator
-(define-method/integrate-combination 'QUOTATION
+
+(define-method/integrate-combination 'quotation
   (lambda (expression operations environment block operator operands)
     (integrate-combination/default expression operations environment
                                    block operator operands)))
 
-;;; reference-operator
-(define-method/integrate-combination 'REFERENCE
+(define-method/integrate-combination 'reference
   (lambda (expression operations environment block operator operands)
     (integrate/reference-operator expression operations environment
                                   block operator operands)))
@@ -651,21 +635,23 @@ USA.
       (operations/lookup operations variable
         (lambda (operation info)
           (case operation
-            ((#F) (integration-failure))
+            ((#f) (integration-failure))
 
-            ((EXPAND)
-             (let ((new-expression (info expression operands (reference/block operator))))
+            ((expand)
+             (let ((new-expression
+		    (info expression operands (reference/block operator))))
                (if new-expression
                    (begin
                      (variable/integrated! variable)
-                     (integrate/expression operations environment new-expression))
+                     (integrate/expression operations environment
+					   new-expression))
                    (integration-failure))))
 
-            ((IGNORE)
+            ((ignore)
              (ignored-variable-warning (variable/name variable))
              (integration-failure))
 
-            ((INTEGRATE INTEGRATE-OPERATOR)
+            ((integrate integrate-operator)
              (let ((new-expression (integrate/name expression
                                                    operator info environment)))
                (if new-expression
@@ -679,20 +665,18 @@ USA.
              (error "Unknown operation" operation))))
 	integration-failure))))
 
-;;; sequence-operator
-(define-method/integrate-combination 'SEQUENCE
+(define-method/integrate-combination 'sequence
   (lambda (expression operations environment block operator operands)
     (integrate-combination/default expression operations environment
                                    block operator operands)))
 
-;;; the-environment-operator
-(define-method/integrate-combination 'THE-ENVIRONMENT
+(define-method/integrate-combination 'the-environment
   (lambda (expression operations environment block operator operands)
     (warn "(THE-ENVIRONMENT) used as an operator.  Will cause a runtime error.")
     (combination/make expression block
                       (integrate/expression operations environment operator)
                       operands)))
-
+
 (define (integrate-combination/default expression operations environment
                                        block operator operands)
   (combination/make
@@ -722,9 +706,9 @@ USA.
     (cond ((constant? operand)
            (if (null? (constant/value operand))
                '()
-               'FAIL))
+               'fail))
           ((not (scode-combination? operand))
-           'FAIL)
+           'fail)
           (else
            (let ((rator (combination/operator operand)))
              (if (or (and (constant? rator)
@@ -733,14 +717,14 @@ USA.
                      (eq? 'cons (global-ref? rator)))
                  (let* ((rands (combination/operands operand))
                         (next (check (cadr rands))))
-                   (if (eq? next 'FAIL)
-                       'FAIL
+                   (if (eq? next 'fail)
+                       'fail
                        (cons (car rands) next)))
-                 'FAIL)))))
+                 'fail)))))
 
   (and (not (null? operands))
        (let ((tail (check (car (last-pair operands)))))
-         (and (not (eq? tail 'FAIL))
+         (and (not (eq? tail 'fail))
               (append (except-last-pair operands)
                       tail)))))
 
@@ -923,11 +907,11 @@ USA.
 
 
 (define (delayed-integration/in-progress? delayed-integration)
-  (eq? (delayed-integration/state delayed-integration) 'BEING-INTEGRATED))
+  (eq? (delayed-integration/state delayed-integration) 'being-integrated))
 
 (define (delayed-integration/force delayed-integration)
   (case (delayed-integration/state delayed-integration)
-    ((NOT-INTEGRATED)
+    ((not-integrated)
      (let ((value
             (let ((environment
                    (delayed-integration/environment delayed-integration))
@@ -935,15 +919,15 @@ USA.
                    (delayed-integration/operations delayed-integration))
                   (expression (delayed-integration/value delayed-integration)))
               (set-delayed-integration/state! delayed-integration
-                                              'BEING-INTEGRATED)
+                                              'being-integrated)
               (set-delayed-integration/environment! delayed-integration #f)
               (set-delayed-integration/operations! delayed-integration #f)
               (set-delayed-integration/value! delayed-integration #f)
               (integrate/expression operations environment expression))))
-       (set-delayed-integration/state! delayed-integration 'INTEGRATED)
+       (set-delayed-integration/state! delayed-integration 'integrated)
        (set-delayed-integration/value! delayed-integration value)))
-    ((INTEGRATED) 'DONE)
-    ((BEING-INTEGRATED)
+    ((integrated) 'done)
+    ((being-integrated)
      (error "Attempt to re-force delayed integration"
             delayed-integration))
     (else

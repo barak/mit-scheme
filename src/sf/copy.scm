@@ -170,7 +170,7 @@ USA.
 	(lambda (expression)
 	  (copy/expression block environment expression)))))
 
-(define-method/copy 'ACCESS
+(define-method/copy 'access
   (lambda (block environment expression)
     (call-with-values
 	(lambda ()
@@ -183,7 +183,7 @@ USA.
 				      (access/environment expression))
 		     (access/name expression))))))
 
-(define-method/copy 'ASSIGNMENT
+(define-method/copy 'assignment
   (lambda (block environment expression)
     (assignment/make
      (assignment/scode expression)
@@ -191,7 +191,7 @@ USA.
      (copy/variable block environment (assignment/variable expression))
      (copy/expression block environment (assignment/value expression)))))
 
-(define-method/copy 'COMBINATION
+(define-method/copy 'combination
   (lambda (block environment expression)
     (combination/%make
      (combination/scode expression)
@@ -199,7 +199,7 @@ USA.
      (copy/expression block environment (combination/operator expression))
      (copy/expressions block environment (combination/operands expression)))))
 
-(define-method/copy 'CONDITIONAL
+(define-method/copy 'conditional
   (lambda (block environment expression)
     (conditional/make
      (conditional/scode expression)
@@ -207,12 +207,12 @@ USA.
      (copy/expression block environment (conditional/consequent expression))
      (copy/expression block environment (conditional/alternative expression)))))
 
-(define-method/copy 'CONSTANT
+(define-method/copy 'constant
   (lambda (block environment expression)
     (declare (ignore block environment))
     expression))
 
-(define-method/copy 'DECLARATION
+(define-method/copy 'declaration
   (lambda (block environment expression)
     (declaration/make
      (declaration/scode expression)
@@ -221,13 +221,13 @@ USA.
 			(declaration/declarations expression))
      (copy/expression block environment (declaration/expression expression)))))
 
-(define-method/copy 'DELAY
+(define-method/copy 'delay
   (lambda (block environment expression)
     (delay/make
      (delay/scode expression)
      (copy/expression block environment (delay/expression expression)))))
 
-(define-method/copy 'DISJUNCTION
+(define-method/copy 'disjunction
   (lambda (block environment expression)
     (disjunction/make
      (disjunction/scode expression)
@@ -236,7 +236,7 @@ USA.
 		      environment
 		      (disjunction/alternative expression)))))
 
-(define-method/copy 'PROCEDURE
+(define-method/copy 'procedure
   (lambda (block environment procedure)
     (call-with-values
 	(lambda ()
@@ -255,7 +255,7 @@ USA.
 					   environment
 					   (procedure/body procedure))))))))
 
-(define-method/copy 'OPEN-BLOCK
+(define-method/copy 'open-block
   (lambda (block environment expression)
     (call-with-values
 	(lambda ()
@@ -272,25 +272,25 @@ USA.
 		    (copy/expression block environment action)))
 	      (open-block/actions expression)))))))
 
-(define-method/copy 'QUOTATION
+(define-method/copy 'quotation
   (lambda (block environment expression)
     (declare (ignore block environment))
     (copy/quotation expression)))
 
-(define-method/copy 'REFERENCE
+(define-method/copy 'reference
   (lambda (block environment expression)
     (reference/make (reference/scode expression)
 		    block
 		    (copy/variable block environment
 				   (reference/variable expression)))))
 
-(define-method/copy 'SEQUENCE
+(define-method/copy 'sequence
   (lambda (block environment expression)
     (sequence/make
      (sequence/scode expression)
      (copy/expressions block environment (sequence/actions expression)))))
 
-(define-method/copy 'THE-ENVIRONMENT
+(define-method/copy 'the-environment
   (lambda (block environment expression)
     (declare (ignore block environment expression))
     (error "Attempt to integrate expression containing (THE-ENVIRONMENT)")))

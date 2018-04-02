@@ -35,7 +35,7 @@ USA.
 (define-structure (thread
 		   (constructor %make-thread (properties))
 		   (conc-name thread/))
-  (execution-state 'RUNNING)
+  (execution-state 'running)
   ;; One of:
   ;; RUNNING
   ;; RUNNING-WITHOUT-PREEMPTION
@@ -94,11 +94,11 @@ USA.
   (properties #f read-only #t))
 
 (define no-exit-value-marker
-  (list 'NO-EXIT-VALUE-MARKER))
+  (list 'no-exit-value-marker))
 
 (define (thread-dead? thread)
-  (guarantee thread? thread 'THREAD-DEAD?)
-  (eq? 'DEAD (thread/execution-state thread)))
+  (guarantee thread? thread 'thread-dead?)
+  (eq? 'dead (thread/execution-state thread)))
 
 (define thread-population)
 (define first-running-thread)
@@ -131,21 +131,21 @@ USA.
   (add-event-receiver! event:after-restore reset-threads!)
   (add-event-receiver! event:before-exit stop-thread-timer)
   (named-structure/set-tag-description! thread-mutex-tag
-    (make-define-structure-type 'VECTOR
+    (make-define-structure-type 'vector
 				"thread-mutex"
-				'#(WAITING-THREADS OWNER)
+				'#(waiting-threads owner)
 				'#(1 2)
 				(vector 2 (lambda () #f))
-				(standard-unparser-method 'THREAD-MUTEX #f)
+				(standard-unparser-method 'thread-mutex #f)
 				thread-mutex-tag
 				3))
   (named-structure/set-tag-description! link-tag
-    (make-define-structure-type 'VECTOR
+    (make-define-structure-type 'vector
 				"link"
-				'#(PREV NEXT ITEM)
+				'#(prev next item)
 				'#(1 2 3)
 				(vector 3 (lambda () #f))
-				(standard-unparser-method 'LINK #f)
+				(standard-unparser-method 'link #f)
 				link-tag
 				4)))
 
@@ -155,7 +155,7 @@ USA.
 
 (define (reset-threads-low!)
   (set! enable-smp?
-	(and ((ucode-primitive get-primitive-address 2) 'SMP-COUNT #f)
+	(and ((ucode-primitive get-primitive-address 2) 'smp-count #f)
 	     ((ucode-primitive smp-count 0)))))
 
 (define (reset-threads-high!)
@@ -196,7 +196,7 @@ USA.
   (map-over-population thread-population (lambda (thread) thread)))
 
 (define (thread-execution-state thread)
-  (guarantee thread? thread 'THREAD-EXECUTION-STATE)
+  (guarantee thread? thread 'thread-execution-state)
   (thread/execution-state thread))
 
 (define (create-thread root-continuation thunk)
@@ -251,7 +251,7 @@ USA.
 	       (let ((condition
 		      (make-condition condition-type:no-current-thread
 				      continuation
-				      'BOUND-RESTARTS
+				      'bound-restarts
 				      '())))
 		 (signal-thread-event thread
 		   (lambda ()
@@ -270,10 +270,10 @@ USA.
   (thread/next (current-thread)))
 
 (define (thread-continuation thread)
-  (guarantee thread? thread 'THREAD-CONTINUATION)
+  (guarantee thread? thread 'thread-continuation)
   (without-interrupts
    (lambda ()
-     (and (eq? 'WAITING (thread/execution-state thread))
+     (and (eq? 'waiting (thread/execution-state thread))
 	  (thread/continuation thread)))))
 
 (define (thread-running thread)
@@ -281,7 +281,7 @@ USA.
   (%maybe-toggle-thread-timer))
 
 (define (%thread-running thread)
-  (set-thread/execution-state! thread 'RUNNING)
+  (set-thread/execution-state! thread 'running)
   (let ((prev last-running-thread))
     (if prev
 	(set-thread/next! prev thread)
@@ -341,7 +341,7 @@ USA.
 		 (set-thread/continuation! thread continuation)
 		 (maybe-save-thread-float-environment! thread)
 		 (account-for-times thread (get-system-times))
-		 (thread-not-running thread 'WAITING)))))))))
+		 (thread-not-running thread 'waiting)))))))))
 
 (define (stop-current-thread)
   (without-interrupts
@@ -353,28 +353,28 @@ USA.
 	    (set-thread/continuation! thread continuation)
 	    (maybe-save-thread-float-environment! thread)
 	    (account-for-times thread (get-system-times))
-	    (thread-not-running thread 'STOPPED))))))))
+	    (thread-not-running thread 'stopped))))))))
 
 (define (restart-thread thread discard-events? event)
-  (guarantee thread? thread 'RESTART-THREAD)
+  (guarantee thread? thread 'restart-thread)
   (let ((discard-events?
-	 (if (eq? discard-events? 'ASK)
+	 (if (eq? discard-events? 'ask)
 	     (prompt-for-confirmation
 	      "Restarting other thread; discard events in its queue")
 	     discard-events?)))
     (without-interrupts
      (lambda ()
-       (if (not (eq? 'STOPPED (thread/execution-state thread)))
+       (if (not (eq? 'stopped (thread/execution-state thread)))
 	   (error:bad-range-argument thread restart-thread))
        (if discard-events? (ring/discard-all (thread/pending-events thread)))
        (if event (%signal-thread-event thread event))
        (thread-running thread)))))
 
 (define (disallow-preempt-current-thread)
-  (set-thread/execution-state! (current-thread) 'RUNNING-WITHOUT-PREEMPTION))
+  (set-thread/execution-state! (current-thread) 'running-without-preemption))
 
 (define (allow-preempt-current-thread)
-  (set-thread/execution-state! (current-thread) 'RUNNING))
+  (set-thread/execution-state! (current-thread) 'running))
 
 (define (thread-timer-interrupt-handler)
   ;; Preserve the floating-point environment here to guarantee that the
@@ -392,7 +392,7 @@ USA.
 	     (%maybe-toggle-thread-timer))
 	    ((thread/continuation thread)
 	     (run-thread thread))
-	    ((not (eq? 'RUNNING-WITHOUT-PREEMPTION
+	    ((not (eq? 'running-without-preemption
 		       (thread/execution-state thread)))
 	     (yield-thread thread fp-env))
 	    (else
@@ -436,7 +436,7 @@ USA.
 	 (account-for-times thread (get-system-times))
 	 ;; Allow preemption now, since the current thread has
 	 ;; volunteered to yield control.
-	 (set-thread/execution-state! thread 'RUNNING)
+	 (set-thread/execution-state! thread 'running)
 	 (maybe-signal-io-thread-events)
 	 (yield-thread thread))))))
 
@@ -477,10 +477,10 @@ USA.
     (%disassociate-thread-mutexes thread)
     (if (eq? no-exit-value-marker (thread/exit-value thread))
 	(release-joined-threads thread value))
-    (thread-not-running thread 'DEAD)))
+    (thread-not-running thread 'dead)))
 
 (define (join-thread thread event-constructor)
-  (guarantee thread? thread 'JOIN-THREAD)
+  (guarantee thread? thread 'join-thread)
   (let ((self (current-thread)))
     (if (eq? thread self)
 	(signal-thread-deadlock self "join thread" join-thread thread)
@@ -503,7 +503,7 @@ USA.
 		     (event-constructor thread value))))))))))
 
 (define (detach-thread thread)
-  (guarantee thread? thread 'DETACH-THREAD)
+  (guarantee thread? thread 'detach-thread)
   (without-interrupts
    (lambda ()
      (if (eq? (thread/exit-value thread) detached-thread-marker)
@@ -511,7 +511,7 @@ USA.
      (release-joined-threads thread detached-thread-marker))))
 
 (define detached-thread-marker
-  (list 'DETACHED-THREAD-MARKER))
+  (list 'detached-thread-marker))
 
 (define (release-joined-threads thread value)
   (set-thread/exit-value! thread value)
@@ -616,7 +616,7 @@ USA.
 	 (signal-io-thread-events (vector-ref result 0)
 				  (vector-ref result 1)
 				  (vector-ref result 2)))
-	((eq? 'PROCESS-STATUS-CHANGE result)
+	((eq? 'process-status-change result)
 	 (%handle-subprocess-status-change))))
 
 (define (maybe-signal-io-thread-events)
@@ -625,7 +625,7 @@ USA.
       (signal-select-result (test-select-registry io-registry #f))))
 
 (define (block-on-io-descriptor descriptor mode)
-  (let ((result 'INTERRUPT)
+  (let ((result 'interrupt)
 	(registration #f))
     (dynamic-wind
      (lambda ()
@@ -637,7 +637,7 @@ USA.
      (lambda ()
        (with-thread-events-blocked
 	(lambda ()
-	  (if (eq? result 'INTERRUPT)
+	  (if (eq? result 'interrupt)
 	      (suspend-current-thread)))))
      (lambda ()
        (if (and registration
@@ -655,7 +655,7 @@ USA.
 	      (named-lambda (permanent-io-event mode*)
 		(if (not stop?)
 		    (event mode*))
-		(if (not (or stop? (memq mode* '(ERROR HANGUP #F))))
+		(if (not (or stop? (memq mode* '(error hangup #f))))
 		    (register))))
 	     (register
 	      (lambda ()
@@ -671,14 +671,14 @@ USA.
 		      (deregister-io-thread-event registration)
 		      (set! registration #f))))))
       (register)
-      (cons 'DEREGISTER-PERMANENT-IO-EVENT
+      (cons 'deregister-permanent-io-event
 	    (lambda ()
 	      (set! stop? #t)
 	      (deregister))))))
 
 (define (register-io-thread-event descriptor mode thread event)
-  (guarantee-select-mode mode 'REGISTER-IO-THREAD-EVENT)
-  (guarantee thread? thread 'REGISTER-IO-THREAD-EVENT)
+  (guarantee-select-mode mode 'register-io-thread-event)
+  (guarantee thread? thread 'register-io-thread-event)
   (without-interrupts
    (lambda ()
      (let ((registration
@@ -718,21 +718,21 @@ USA.
 
 (define (deregister-io-thread-event registration)
   (if (and (pair? registration)
-	   (eq? (car registration) 'DEREGISTER-PERMANENT-IO-EVENT))
+	   (eq? (car registration) 'deregister-permanent-io-event))
       ((cdr registration))
       (deregister-io-thread-event* registration)))
 
 (define (deregister-io-thread-event* tentry)
   (if (not (tentry? tentry))
       (error:wrong-type-argument tentry "IO thread event registration"
-				 'DEREGISTER-IO-THREAD-EVENT))
+				 'deregister-io-thread-event))
   (without-interrupts
    (lambda ()
      (%deregister-io-thread-event tentry)
      (%maybe-toggle-thread-timer))))
 
 (define (deregister-io-descriptor-events descriptor mode)
-  (guarantee-select-mode mode 'DEREGISTER-IO-DESCRIPTOR-EVENTS)
+  (guarantee-select-mode mode 'deregister-io-descriptor-events)
   (without-interrupts
    (lambda ()
      (let loop ((dentry io-registrations))
@@ -801,7 +801,7 @@ USA.
 			      tentries))))))))
 
 (define (guarantee-select-mode mode procedure)
-  (if (not (memq mode '(READ WRITE READ-WRITE)))
+  (if (not (memq mode '(read write read-write)))
       (error:wrong-type-argument mode "select mode" procedure)))
 
 (define (signal-io-thread-events n vfd vmode)
@@ -821,8 +821,8 @@ USA.
 		   (search
 		    descriptor
 		    (case mode
-		      ((READ) (lambda (mode) (memq mode '(READ READ/WRITE))))
-		      ((WRITE) (lambda (mode) (memq mode '(WRITE READ/WRITE))))
+		      ((READ) (lambda (mode) (memq mode '(read read/write))))
+		      ((WRITE) (lambda (mode) (memq mode '(write read/write))))
 		      ((READ/WRITE) (lambda (mode) mode))
 		      ((ERROR HANGUP) (lambda (mode) mode #t))
 		      (else (error "Illegal mode:" mode))))))
@@ -874,7 +874,7 @@ USA.
 		      (let ((value (thunk)))
 			(set-interrupt-enables! interrupt-mask/gc-ok)
 			value))
-		    'WITH-THREAD-EVENTS-BLOCKED
+		    'with-thread-events-blocked
 		    block-events?)))
 	      (let ((thread first-running-thread))
 		(if thread
@@ -902,7 +902,7 @@ USA.
      unspecific)))
 
 (define (signal-thread-event thread event #!optional no-error?)
-  (guarantee thread? thread 'SIGNAL-THREAD-EVENT)
+  (guarantee thread? thread 'signal-thread-event)
   (let ((self first-running-thread)
 	(noerr? (and (not (default-object? no-error?))
 		     no-error?)))
@@ -913,7 +913,7 @@ USA.
 	      (unblock-thread-events)))
 	(without-interrupts
 	 (lambda ()
-	   (if (eq? 'DEAD (thread/execution-state thread))
+	   (if (eq? 'dead (thread/execution-state thread))
 	       (if (not noerr?)
 		   (signal-thread-dead thread "signal event to"
 				       signal-thread-event thread event))
@@ -926,7 +926,7 @@ USA.
 (define (%signal-thread-event thread event)
   (%add-pending-event thread event)
   (if (and (not (eq? #t (thread/block-events? thread)))
-	   (eq? 'WAITING (thread/execution-state thread)))
+	   (eq? 'waiting (thread/execution-state thread)))
       (%thread-running thread)))
 
 (define (%add-pending-event thread event)
@@ -1045,7 +1045,7 @@ USA.
 (define (deregister-time-event registration)
   (if (not (timer-record? registration))
       (error:wrong-type-argument registration "timer event registration"
-				 'DEREGISTER-TIMER-EVENT))
+				 'deregister-timer-event))
   (without-interrupts
    (lambda ()
      (let loop ((record timer-records) (prev #f))
@@ -1094,7 +1094,7 @@ USA.
 
 (define (set-thread-timer-interval! interval)
   (if interval
-      (guarantee exact-positive-integer? interval 'SET-THREAD-TIMER-INTERVAL!))
+      (guarantee exact-positive-integer? interval 'set-thread-timer-interval!))
   (without-interrupts
     (lambda ()
       (set! timer-interval interval)
@@ -1164,7 +1164,7 @@ USA.
       (error:wrong-type-argument mutex "thread-mutex" procedure)))
 
 (define (assert-thread-mutex-owned mutex #!optional caller)
-  (guarantee-thread-mutex mutex 'ASSERT-THREAD-MUTEX-OWNED)
+  (guarantee-thread-mutex mutex 'assert-thread-mutex-owned)
   (if (not (eq? (current-thread) (thread-mutex/owner mutex)))
       (if (default-object? caller)
 	  (error "Don't own mutex:" mutex)
@@ -1177,11 +1177,11 @@ USA.
 ;;; own a mutex so you're less tempted to call THREAD-MUTEX-OWNER ever.
 
 (define (thread-mutex-owner mutex)
-  (guarantee-thread-mutex mutex 'THREAD-MUTEX-OWNER)
+  (guarantee-thread-mutex mutex 'thread-mutex-owner)
   (thread-mutex/owner mutex))
 
 (define (lock-thread-mutex mutex)
-  (guarantee-thread-mutex mutex 'LOCK-THREAD-MUTEX)
+  (guarantee-thread-mutex mutex 'lock-thread-mutex)
   (without-interrupts
    (lambda ()
      (let ((thread (current-thread))
@@ -1201,7 +1201,7 @@ USA.
       (set-thread-mutex/owner! mutex thread)))
 
 (define (unlock-thread-mutex mutex)
-  (guarantee-thread-mutex mutex 'UNLOCK-THREAD-MUTEX)
+  (guarantee-thread-mutex mutex 'unlock-thread-mutex)
   (without-interrupts
    (lambda ()
      (let ((owner (thread-mutex/owner mutex)))
@@ -1221,7 +1221,7 @@ USA.
     thread))
 
 (define (try-lock-thread-mutex mutex)
-  (guarantee-thread-mutex mutex 'TRY-LOCK-THREAD-MUTEX)
+  (guarantee-thread-mutex mutex 'try-lock-thread-mutex)
   (without-interrupts
    (lambda ()
      (and (not (thread-mutex/owner mutex))
@@ -1234,19 +1234,19 @@ USA.
 		   #t)))))))
 
 (define (with-thread-mutex-lock mutex thunk)
-  (guarantee-thread-mutex mutex 'WITH-THREAD-MUTEX-LOCK)
+  (guarantee-thread-mutex mutex 'with-thread-mutex-lock)
   (dynamic-wind (lambda () (lock-thread-mutex mutex))
 		thunk
 		(lambda () (unlock-thread-mutex mutex))))
 
 (define (without-thread-mutex-lock mutex thunk)
-  (guarantee-thread-mutex mutex 'WITH-THREAD-MUTEX-LOCK)
+  (guarantee-thread-mutex mutex 'with-thread-mutex-lock)
   (dynamic-wind (lambda () (unlock-thread-mutex mutex))
 		thunk
 		(lambda () (lock-thread-mutex mutex))))
 
 (define (with-thread-mutex-try-lock mutex locked not-locked)
-  (guarantee-thread-mutex mutex 'WITH-THREAD-MUTEX-TRY-LOCK)
+  (guarantee-thread-mutex mutex 'with-thread-mutex-try-lock)
   (let ((locked?))
     (dynamic-wind (lambda ()
 		    (set! locked? (try-lock-thread-mutex mutex)))
@@ -1263,7 +1263,7 @@ USA.
 ;;; mistakes.
 
 (define (with-thread-mutex-locked mutex thunk)
-  (guarantee-thread-mutex mutex 'WITH-THREAD-MUTEX-LOCKED)
+  (guarantee-thread-mutex mutex 'with-thread-mutex-locked)
   (let ((thread (current-thread))
 	(grabbed-lock?))
     (dynamic-wind
@@ -1280,7 +1280,7 @@ USA.
 	   (%unlock-thread-mutex mutex thread))))))
 
 (define (with-thread-mutex-unlocked mutex thunk)
-  (guarantee-thread-mutex mutex 'WITH-THREAD-MUTEX-UNLOCKED)
+  (guarantee-thread-mutex mutex 'with-thread-mutex-unlocked)
   (let ((thread (current-thread))
 	(released-lock?))
     (dynamic-wind
@@ -1331,19 +1331,19 @@ USA.
 
 (define (initialize-error-conditions!)
   (set! condition-type:thread-control-error
-	(make-condition-type 'THREAD-CONTROL-ERROR condition-type:control-error
-	    '(THREAD)
+	(make-condition-type 'thread-control-error condition-type:control-error
+	    '(thread)
 	  (lambda (condition port)
 	    (write-string "Anonymous error associated with " port)
 	    (write (thread-control-error/thread condition) port)
 	    (write-string "." port))))
   (set! thread-control-error/thread
-	(condition-accessor condition-type:thread-control-error 'THREAD))
+	(condition-accessor condition-type:thread-control-error 'thread))
 
   (set! condition-type:thread-deadlock
-	(make-condition-type 'THREAD-DEADLOCK
+	(make-condition-type 'thread-deadlock
 	    condition-type:thread-control-error
-	    '(DESCRIPTION OPERATOR OPERAND)
+	    '(description operator operand)
 	  (lambda (condition port)
 	    (write-string "Deadlock detected while trying to " port)
 	    (write-string (thread-deadlock/description condition) port)
@@ -1352,17 +1352,17 @@ USA.
 	    (write-string "." port))))
   (set! signal-thread-deadlock
 	(condition-signaller condition-type:thread-deadlock
-			     '(THREAD DESCRIPTION OPERATOR OPERAND)
+			     '(thread description operator operand)
 			     standard-error-handler))
   (set! thread-deadlock/description
-	(condition-accessor condition-type:thread-deadlock 'DESCRIPTION))
+	(condition-accessor condition-type:thread-deadlock 'description))
   (set! thread-deadlock/operator
-	(condition-accessor condition-type:thread-deadlock 'OPERATOR))
+	(condition-accessor condition-type:thread-deadlock 'operator))
   (set! thread-deadlock/operand
-	(condition-accessor condition-type:thread-deadlock 'OPERAND))
+	(condition-accessor condition-type:thread-deadlock 'operand))
 
   (set! condition-type:thread-detached
-	(make-condition-type 'THREAD-DETACHED
+	(make-condition-type 'thread-detached
 	    condition-type:thread-control-error
 	    '()
 	  (lambda (condition port)
@@ -1371,12 +1371,12 @@ USA.
 	    (write-string "." port))))
   (set! signal-thread-detached
 	(condition-signaller condition-type:thread-detached
-			     '(THREAD)
+			     '(thread)
 			     standard-error-handler))
 
   (set! condition-type:thread-dead
-	(make-condition-type 'THREAD-DEAD condition-type:thread-control-error
-	    '(VERB OPERATOR OPERANDS)
+	(make-condition-type 'thread-dead condition-type:thread-control-error
+	    '(verb operator operands)
 	  (lambda (condition port)
 	    (write-string "Unable to " port)
 	    (write-string (thread-dead/verb condition) port)
@@ -1386,15 +1386,15 @@ USA.
   (set! signal-thread-dead
 	(let ((signaller
 	       (condition-signaller condition-type:thread-dead
-				    '(THREAD VERB OPERATOR OPERANDS)
+				    '(thread verb operator operands)
 				    standard-error-handler)))
 	  (lambda (thread verb operator . operands)
 	    (signaller thread verb operator operands))))
   (set! thread-dead/verb
-	(condition-accessor condition-type:thread-dead 'VERB))
+	(condition-accessor condition-type:thread-dead 'verb))
 
   (set! condition-type:no-current-thread
-	(make-condition-type 'NO-CURRENT-THREAD condition-type:control-error
+	(make-condition-type 'no-current-thread condition-type:control-error
 	    '()
 	  (lambda (condition port)
 	    condition

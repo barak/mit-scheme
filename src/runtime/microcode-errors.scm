@@ -83,7 +83,7 @@ USA.
     (lambda (continuation . field-values)
       (error (apply make-condition
 		    (cons* continuation
-			   'BOUND-RESTARTS
+			   'bound-restarts
 			   field-values))))))
 
 (define (initialize-error-hooks!)
@@ -97,7 +97,7 @@ USA.
 ;;;; Restart Bindings
 
 (define (unbound-variable/store-value continuation environment name thunk)
-  (with-restart 'STORE-VALUE
+  (with-restart 'store-value
       (lambda (port)
 	(write-string "Define " port)
 	(write name port)
@@ -111,7 +111,7 @@ USA.
     thunk))
 
 (define (unassigned-variable/store-value continuation environment name thunk)
-  (with-restart 'STORE-VALUE
+  (with-restart 'store-value
       (lambda (port)
 	(write-string "Set " port)
 	(write name port)
@@ -127,7 +127,7 @@ USA.
 (define (variable/use-value continuation environment name thunk)
   (let ((continuation (continuation/next-continuation continuation)))
     (if (continuation-restartable? continuation)
-	(with-restart 'USE-VALUE
+	(with-restart 'use-value
 	    (lambda (port)
 	      (write-string "Specify a value to use instead of " port)
 	      (write name port)
@@ -145,7 +145,7 @@ USA.
 (define (inapplicable-object/use-value continuation operands thunk)
   (let ((continuation (continuation/next-continuation continuation)))
     (if (continuation-restartable? continuation)
-	(with-restart 'USE-VALUE "Specify a procedure to use in its place."
+	(with-restart 'use-value "Specify a procedure to use in its place."
 	    (lambda (operator)
 	      (within-continuation continuation
 		(lambda ()
@@ -156,7 +156,7 @@ USA.
 	(thunk))))
 
 (define (illegal-arg-signaller type)
-  (let ((signal (condition-signaller type '(DATUM OPERATOR OPERAND))))
+  (let ((signal (condition-signaller type '(datum operator operand))))
     (lambda (continuation operator operands index)
       (illegal-argument/use-value continuation operator operands index
 	(lambda ()
@@ -166,7 +166,7 @@ USA.
   (let ((continuation
 	 (continuation/next-continuation/no-compiled-code continuation)))
     (if (continuation-restartable? continuation)
-	(with-restart 'USE-VALUE "Specify an argument to use in its place."
+	(with-restart 'use-value "Specify an argument to use in its place."
 	    (lambda (operand)
 	      (within-continuation continuation
 		(lambda ()
@@ -180,7 +180,7 @@ USA.
 (define (file-operation-signaller)
   (let ((signal
 	 (condition-signaller condition-type:file-operation-error
-			      '(FILENAME VERB NOUN REASON OPERATOR OPERANDS))))
+			      '(filename verb noun reason operator operands))))
     (lambda (continuation operator operands index verb noun reason)
       (file-operation/use-value continuation operator operands index verb noun
 	(lambda ()
@@ -193,7 +193,7 @@ USA.
 				  verb noun thunk)
   (let ((continuation (continuation/next-continuation continuation)))
     (if (continuation-restartable? continuation)
-	(with-restart 'USE-VALUE
+	(with-restart 'use-value
 	    (string-append "Try to " verb " a different " noun ".")
 	    (lambda (operand)
 	      (within-continuation continuation
@@ -212,7 +212,7 @@ USA.
 (define (file-operation/retry continuation operator operands verb noun thunk)
   (let ((continuation (continuation/next-continuation continuation)))
     (if (continuation-restartable? continuation)
-	(with-restart 'RETRY
+	(with-restart 'retry
 	    (string-append "Try to " verb " the same " noun " again.")
 	    (lambda ()
 	      (within-continuation continuation
@@ -253,7 +253,7 @@ USA.
 			 (let ((further-subproblem
 				(stack-frame/next next-subproblem)))
 			   (stack-frame/compiled-code? further-subproblem)))
-		    #F
+		    #f
 		    (stack-frame->continuation next-subproblem)))))))
 
 (define (continuation-restartable? continuation)
@@ -333,26 +333,26 @@ USA.
 (define (normalize-trap-code-name name)
   (cond ((or (string-prefix-ci? "integer divide by 0" name)
 	     (string-prefix-ci? "integer divide by zero" name))
-	 'INTEGER-DIVIDE-BY-ZERO)
+	 'integer-divide-by-zero)
 	((or (string-prefix-ci? "floating-point divide by 0" name)
 	     (string-prefix-ci? "floating-point divide by zero" name))
-	 'FLOATING-POINT-DIVIDE-BY-ZERO)
+	 'floating-point-divide-by-zero)
 	((or (string-prefix-ci? "divide by 0" name)
 	     (string-prefix-ci? "divide by zero" name))
-	 'DIVIDE-BY-ZERO)
+	 'divide-by-zero)
 	((or (string-prefix-ci? "inexact result" name)
 	     (string-prefix-ci? "inexact operation" name)
 	     (string-prefix-ci? "floating-point inexact result" name))
-	 'INEXACT-RESULT)
+	 'inexact-result)
 	((or (string-prefix-ci? "invalid operation" name)
 	     (string-prefix-ci? "invalid floating-point operation" name))
-	 'INVALID-OPERATION)
+	 'invalid-operation)
 	((or (string-prefix-ci? "overflow" name)
 	     (string-prefix-ci? "floating-point overflow" name))
-	 'OVERFLOW)
+	 'overflow)
 	((or (string-prefix-ci? "underflow" name)
 	     (string-prefix-ci? "floating-point underflow" name))
-	 'UNDERFLOW)
+	 'underflow)
 	(else #f)))
 
 (define (file-primitive-description primitive)
@@ -409,16 +409,16 @@ USA.
 (define (initialize-package!)
 
 (set! return-code:internal-apply
-  (microcode-return/name->code 'INTERNAL-APPLY))
+  (microcode-return/name->code 'internal-apply))
 
 (set! return-code:internal-apply-val
-  (microcode-return/name->code 'INTERNAL-APPLY-VAL))
+  (microcode-return/name->code 'internal-apply-val))
 
 (set! return-code:pop-return-error
-  (microcode-return/name->code 'POP-RETURN-ERROR))
+  (microcode-return/name->code 'pop-return-error))
 
 (set! return-code:compiler-error-restart
-  (microcode-return/name->code 'COMPILER-ERROR-RESTART))
+  (microcode-return/name->code 'compiler-error-restart))
 
 (set! error-handler-vector
   (make-vector (microcode-error/code-limit)
@@ -429,17 +429,17 @@ USA.
 		    (default-error-handler continuation error-code))))))
 
 (set! condition-type:anomalous-microcode-error
-  (make-condition-type 'ANOMALOUS-MICROCODE-ERROR condition-type:error
-      '(ERROR-CODE EXTRA)
+  (make-condition-type 'anomalous-microcode-error condition-type:error
+      '(error-code extra)
     (lambda (condition port)
       (write-string "Anomalous microcode error " port)
-      (write (access-condition condition 'ERROR-CODE) port)
+      (write (access-condition condition 'error-code) port)
       (write-string " -- get a wizard." port))))
 
 (set! default-error-handler
   (let ((signal
 	 (condition-signaller condition-type:anomalous-microcode-error
-			      '(ERROR-CODE EXTRA))))
+			      '(error-code extra))))
     (lambda (continuation error-code)
       (let ((doit
 	     (lambda (error-code extra)
@@ -455,12 +455,12 @@ USA.
 
 (set! unknown-error-names '())
 
-(define-low-level-handler 'ERROR-WITH-ARGUMENT
+(define-low-level-handler 'error-with-argument
   (lambda (continuation argument)
     ((if (and (vector? argument)
 	      (fix:>= (vector-length argument) 1)
 	      (eqv? (vector-ref argument 0)
-		    (microcode-error/name->code 'SYSTEM-CALL)))
+		    (microcode-error/name->code 'system-call)))
 	 system-call-error-handler
 	 default-error-handler)
      continuation
@@ -468,10 +468,10 @@ USA.
 
 ;;;; Variable Errors
 
-(define-error-handler 'UNBOUND-VARIABLE
+(define-error-handler 'unbound-variable
   (let ((signal
 	 (condition-signaller condition-type:unbound-variable
-			      '(ENVIRONMENT LOCATION))))
+			      '(environment location))))
     (lambda (continuation)
       (signal-variable-error
        continuation
@@ -486,10 +486,10 @@ USA.
 	   (lambda ()
 	     (signal continuation environment name))))))))
 
-(define-error-handler 'UNASSIGNED-VARIABLE
+(define-error-handler 'unassigned-variable
   (let ((signal
 	 (condition-signaller condition-type:unassigned-variable
-			      '(ENVIRONMENT LOCATION))))
+			      '(environment location))))
     (lambda (continuation)
       (signal-variable-error
        continuation
@@ -503,10 +503,10 @@ USA.
 	 environment name
 	 unspecific)))))
 
-(define-error-handler 'MACRO-BINDING
+(define-error-handler 'macro-binding
   (let ((signal
 	 (condition-signaller condition-type:macro-binding
-			      '(ENVIRONMENT LOCATION))))
+			      '(environment location))))
     (lambda (continuation)
       (signal-variable-error
        continuation
@@ -579,33 +579,33 @@ USA.
 		    (apply-frame/operands frame)
 		    n))))))
 
-(define-arg-error 'BAD-RANGE-ARGUMENT-0 0 signal-bad-range-argument)
-(define-arg-error 'BAD-RANGE-ARGUMENT-1 1 signal-bad-range-argument)
-(define-arg-error 'BAD-RANGE-ARGUMENT-2 2 signal-bad-range-argument)
-(define-arg-error 'BAD-RANGE-ARGUMENT-3 3 signal-bad-range-argument)
-(define-arg-error 'BAD-RANGE-ARGUMENT-4 4 signal-bad-range-argument)
-(define-arg-error 'BAD-RANGE-ARGUMENT-5 5 signal-bad-range-argument)
-(define-arg-error 'BAD-RANGE-ARGUMENT-6 6 signal-bad-range-argument)
-(define-arg-error 'BAD-RANGE-ARGUMENT-7 7 signal-bad-range-argument)
-(define-arg-error 'BAD-RANGE-ARGUMENT-8 8 signal-bad-range-argument)
-(define-arg-error 'BAD-RANGE-ARGUMENT-9 9 signal-bad-range-argument)
+(define-arg-error 'bad-range-argument-0 0 signal-bad-range-argument)
+(define-arg-error 'bad-range-argument-1 1 signal-bad-range-argument)
+(define-arg-error 'bad-range-argument-2 2 signal-bad-range-argument)
+(define-arg-error 'bad-range-argument-3 3 signal-bad-range-argument)
+(define-arg-error 'bad-range-argument-4 4 signal-bad-range-argument)
+(define-arg-error 'bad-range-argument-5 5 signal-bad-range-argument)
+(define-arg-error 'bad-range-argument-6 6 signal-bad-range-argument)
+(define-arg-error 'bad-range-argument-7 7 signal-bad-range-argument)
+(define-arg-error 'bad-range-argument-8 8 signal-bad-range-argument)
+(define-arg-error 'bad-range-argument-9 9 signal-bad-range-argument)
 
-(define-arg-error 'WRONG-TYPE-ARGUMENT-0 0 signal-wrong-type-argument)
-(define-arg-error 'WRONG-TYPE-ARGUMENT-1 1 signal-wrong-type-argument)
-(define-arg-error 'WRONG-TYPE-ARGUMENT-2 2 signal-wrong-type-argument)
-(define-arg-error 'WRONG-TYPE-ARGUMENT-3 3 signal-wrong-type-argument)
-(define-arg-error 'WRONG-TYPE-ARGUMENT-4 4 signal-wrong-type-argument)
-(define-arg-error 'WRONG-TYPE-ARGUMENT-5 5 signal-wrong-type-argument)
-(define-arg-error 'WRONG-TYPE-ARGUMENT-6 6 signal-wrong-type-argument)
-(define-arg-error 'WRONG-TYPE-ARGUMENT-7 7 signal-wrong-type-argument)
-(define-arg-error 'WRONG-TYPE-ARGUMENT-8 8 signal-wrong-type-argument)
-(define-arg-error 'WRONG-TYPE-ARGUMENT-9 9 signal-wrong-type-argument)
+(define-arg-error 'wrong-type-argument-0 0 signal-wrong-type-argument)
+(define-arg-error 'wrong-type-argument-1 1 signal-wrong-type-argument)
+(define-arg-error 'wrong-type-argument-2 2 signal-wrong-type-argument)
+(define-arg-error 'wrong-type-argument-3 3 signal-wrong-type-argument)
+(define-arg-error 'wrong-type-argument-4 4 signal-wrong-type-argument)
+(define-arg-error 'wrong-type-argument-5 5 signal-wrong-type-argument)
+(define-arg-error 'wrong-type-argument-6 6 signal-wrong-type-argument)
+(define-arg-error 'wrong-type-argument-7 7 signal-wrong-type-argument)
+(define-arg-error 'wrong-type-argument-8 8 signal-wrong-type-argument)
+(define-arg-error 'wrong-type-argument-9 9 signal-wrong-type-argument)
 
 ;;;; Primitive Errors
 
 (define (define-primitive-error error-name type)
   (define-error-handler error-name
-    (let ((signal (condition-signaller type '(OPERATOR OPERANDS))))
+    (let ((signal (condition-signaller type '(operator operands))))
       (lambda (continuation)
 	(let ((frame (continuation/first-subproblem continuation)))
 	  (if (apply-frame? frame)
@@ -616,84 +616,84 @@ USA.
 			    (apply-frame/operands frame))))))))))
 
 (set! condition-type:primitive-procedure-error
-  (make-condition-type 'PRIMITIVE-PROCEDURE-ERROR condition-type:error
-      '(OPERATOR OPERANDS)
+  (make-condition-type 'primitive-procedure-error condition-type:error
+      '(operator operands)
     (lambda (condition port)
       (write-string "The primitive " port)
-      (write-operator (access-condition condition 'OPERATOR) port)
+      (write-operator (access-condition condition 'operator) port)
       (write-string " signalled an anonymous error." port))))
 
-(define-primitive-error 'EXTERNAL-RETURN
+(define-primitive-error 'external-return
   condition-type:primitive-procedure-error)
 
 (set! condition-type:unimplemented-primitive
-  (make-condition-type 'UNIMPLEMENTED-PRIMITIVE
+  (make-condition-type 'unimplemented-primitive
       condition-type:primitive-procedure-error
       '()
     (lambda (condition port)
       (write-string "The primitive " port)
-      (write-operator (access-condition condition 'OPERATOR) port)
+      (write-operator (access-condition condition 'operator) port)
       (write-string " is not implemented in this version of Scheme." port))))
 
-(define-primitive-error 'UNIMPLEMENTED-PRIMITIVE
+(define-primitive-error 'unimplemented-primitive
   condition-type:unimplemented-primitive)
 
 (set! condition-type:unimplemented-primitive-for-os
-  (make-condition-type 'UNIMPLEMENTED-PRIMITIVE-FOR-OS
+  (make-condition-type 'unimplemented-primitive-for-os
       condition-type:unimplemented-primitive
       '()
     (lambda (condition port)
       (write-string "The primitive " port)
-      (write-operator (access-condition condition 'OPERATOR) port)
+      (write-operator (access-condition condition 'operator) port)
       (write-string " is not implemented for this operating system." port))))
 
 (define-primitive-error 'UNDEFINED-PRIMITIVE-OPERATION
   condition-type:unimplemented-primitive-for-os)
 
 (set! condition-type:compiled-code-error
-  (make-condition-type 'COMPILED-CODE-ERROR
+  (make-condition-type 'compiled-code-error
       condition-type:primitive-procedure-error
       '()
     (lambda (condition port)
       (write-string "The open-coded primitive " port)
-      (write-operator (access-condition condition 'OPERATOR) port)
+      (write-operator (access-condition condition 'operator) port)
       (write-string " was called with an inappropriate argument." port))))
 
-(define-error-handler 'COMPILED-CODE-ERROR
+(define-error-handler 'compiled-code-error
   (let ((signal
 	 (condition-signaller condition-type:compiled-code-error
-			      '(OPERATOR OPERANDS))))
+			      '(operator operands))))
     (lambda (continuation)
       (let ((frame (continuation/first-subproblem continuation)))
 	(if (compiled-code-error-frame? frame)
 	    (let ((irritant (compiled-code-error-frame/irritant frame)))
 	      (if (primitive-procedure? irritant)
-		  (signal continuation irritant 'UNKNOWN))))))))
+		  (signal continuation irritant 'unknown))))))))
 
 (set! condition-type:primitive-io-error
   ;; Primitives that signal this error should be changed to signal a
   ;; system-call error instead, since that is more descriptive.
-  (make-condition-type 'PRIMITIVE-IO-ERROR
+  (make-condition-type 'primitive-io-error
       condition-type:primitive-procedure-error
       '()
     (lambda (condition port)
       (write-string "The primitive " port)
-      (write-operator (access-condition condition 'OPERATOR) port)
+      (write-operator (access-condition condition 'operator) port)
       (write-string " signalled an anonymous I/O error." port))))
 
 (set! condition-type:out-of-file-handles
-  (make-condition-type 'OUT-OF-FILE-HANDLES
+  (make-condition-type 'out-of-file-handles
       condition-type:primitive-procedure-error
       '()
     (lambda (condition port)
       (write-string "The primitive " port)
-      (write-operator (access-condition condition 'OPERATOR) port)
+      (write-operator (access-condition condition 'operator) port)
       (write-string " could not allocate a channel or subprocess." port))))
 
-(define-error-handler 'OUT-OF-FILE-HANDLES
+(define-error-handler 'out-of-file-handles
   (let ((signal
 	 (condition-signaller condition-type:out-of-file-handles
-			      '(OPERATOR OPERANDS)))
+			      '(operator operands)))
 	(signal-file-operation (file-operation-signaller)))
     (lambda (continuation)
       (let ((frame (continuation/first-subproblem continuation)))
@@ -720,26 +720,26 @@ USA.
 ;++ in the subprocess GC finalizer, and I'm lazy.
 
 (set! condition-type:process-terminated-error
-  (make-condition-type 'PROCESS-TERMINATED
+  (make-condition-type 'process-terminated
       condition-type:primitive-procedure-error
       '()
     (lambda (condition port)
       (write-string "The primitive " port)
-      (write-operator (access-condition condition 'OPERATOR) port)
+      (write-operator (access-condition condition 'operator) port)
       (write-string " was given a process that has terminated."))))
 
-(define-primitive-error 'PROCESS-TERMINATED
+(define-primitive-error 'process-terminated
   condition-type:process-terminated-error)
 
 (set! condition-type:system-call-error
-  (make-condition-type 'SYSTEM-CALL-ERROR
+  (make-condition-type 'system-call-error
       condition-type:primitive-procedure-error
-      '(SYSTEM-CALL ERROR-TYPE)
+      '(system-call error-type)
     (lambda (condition port)
       (write-string "The primitive " port)
-      (write-operator (access-condition condition 'OPERATOR) port)
+      (write-operator (access-condition condition 'operator) port)
       (write-string ", while executing " port)
-      (let ((system-call (access-condition condition 'SYSTEM-CALL)))
+      (let ((system-call (access-condition condition 'system-call)))
 	(if (symbol? system-call)
 	    (begin
 	      (write-string "the " port)
@@ -749,7 +749,7 @@ USA.
 	      (write-string "system call " port)
 	      (write system-call port))))
       (write-string ", received " port)
-      (let ((error-type (access-condition condition 'ERROR-TYPE)))
+      (let ((error-type (access-condition condition 'error-type)))
 	(if (or (symbol? error-type) (string? error-type))
 	    (write-string "the error: " port))
 	(write-string (error-type->string error-type) port))
@@ -758,7 +758,7 @@ USA.
 (define system-call-error-handler
   (let ((make-condition
 	 (condition-constructor condition-type:system-call-error
-				'(OPERATOR OPERANDS SYSTEM-CALL ERROR-TYPE)))
+				'(operator operands system-call error-type)))
 	(signal-file-operation (file-operation-signaller)))
     (lambda (continuation error-code)
       (let ((frame (continuation/first-subproblem continuation)))
@@ -785,7 +785,7 @@ USA.
 			     error-type)))))
 	      (let ((make-condition
 		     (lambda ()
-		       (make-condition continuation 'BOUND-RESTARTS
+		       (make-condition continuation 'bound-restarts
 				       operator operands
 				       system-call error-type))))
 		(cond ((port-error-test operator operands)
@@ -804,13 +804,13 @@ USA.
 		      (else
 		       (error (make-condition)))))))))))
 
-(define-low-level-handler 'SYSTEM-CALL system-call-error-handler)
+(define-low-level-handler 'system-call system-call-error-handler)
 
 ;;;; FASLOAD Errors
 
 (define (define-fasload-error error-code type)
   (define-error-handler error-code
-    (let ((signal (condition-signaller type '(FILENAME OPERATOR OPERANDS))))
+    (let ((signal (condition-signaller type '(filename operator operands))))
       (lambda (continuation)
 	(let ((frame (continuation/first-subproblem continuation)))
 	  (if (apply-frame? frame)
@@ -823,59 +823,59 @@ USA.
 			    (apply-frame/operands frame))))))))))
 
 (set! condition-type:fasload-error
-  (make-condition-type 'FASLOAD-ERROR condition-type:file-error
-      '(OPERATOR OPERANDS)
+  (make-condition-type 'fasload-error condition-type:file-error
+      '(operator operands)
     false))
 
 (set! condition-type:fasl-file-bad-data
-  (make-condition-type 'FASL-FILE-BAD-DATA condition-type:fasload-error '()
+  (make-condition-type 'fasl-file-bad-data condition-type:fasload-error '()
     (lambda (condition port)
       (write-string "Attempt to read binary file " port)
-      (write (access-condition condition 'FILENAME) port)
+      (write (access-condition condition 'filename) port)
       (write-string " failed: either it's not binary or the wrong version."
 		    port))))
 
-(define-fasload-error 'FASL-FILE-BAD-DATA
+(define-fasload-error 'fasl-file-bad-data
   condition-type:fasl-file-bad-data)
 
 (set! condition-type:fasl-file-compiled-mismatch
-  (make-condition-type 'FASL-FILE-COMPILED-MISMATCH
+  (make-condition-type 'fasl-file-compiled-mismatch
       condition-type:fasl-file-bad-data
       '()
     false))
 
-(define-fasload-error 'FASLOAD-COMPILED-MISMATCH
+(define-fasload-error 'fasload-compiled-mismatch
   condition-type:fasl-file-compiled-mismatch)
 
 (set! condition-type:fasl-file-too-big
-  (make-condition-type 'FASL-FILE-TOO-BIG condition-type:fasload-error '()
+  (make-condition-type 'fasl-file-too-big condition-type:fasload-error '()
     (lambda (condition port)
       (write-string "Attempt to read binary file " port)
-      (write (access-condition condition 'FILENAME) port)
+      (write (access-condition condition 'filename) port)
       (write-string " failed: it's too large to fit in the heap." port))))
 
-(define-fasload-error 'FASL-FILE-TOO-BIG
+(define-fasload-error 'fasl-file-too-big
   condition-type:fasl-file-too-big)
 
 (set! condition-type:wrong-arity-primitives
-  (make-condition-type 'WRONG-ARITY-PRIMITIVES condition-type:fasload-error '()
+  (make-condition-type 'wrong-arity-primitives condition-type:fasload-error '()
     (lambda (condition port)
       (write-string "Attempt to read binary file " port)
-      (write (access-condition condition 'FILENAME) port)
+      (write (access-condition condition 'filename) port)
       (write-string " failed: it contains primitives with incorrect arity."
 		    port))))
 
-(define-fasload-error 'WRONG-ARITY-PRIMITIVES
+(define-fasload-error 'wrong-arity-primitives
   condition-type:wrong-arity-primitives)
 
 (set! condition-type:fasload-band
-  (make-condition-type 'FASLOAD-BAND condition-type:fasl-file-bad-data '()
+  (make-condition-type 'fasload-band condition-type:fasl-file-bad-data '()
     false))
 
-(define-error-handler 'FASLOAD-BAND
+(define-error-handler 'fasload-band
   (let ((signal
 	 (condition-signaller condition-type:fasload-band
-			      '(FILENAME OPERATOR OPERANDS))))
+			      '(filename operator operands))))
     (lambda (continuation)
       (let ((frame (continuation/first-subproblem continuation)))
 	(if (apply-frame? frame)
@@ -889,17 +889,17 @@ USA.
 ;;;; Miscellaneous Errors
 
 (set! condition-type:inapplicable-object
-  (make-condition-type 'INAPPLICABLE-OBJECT condition-type:illegal-datum
-      '(OPERANDS)
+  (make-condition-type 'inapplicable-object condition-type:illegal-datum
+      '(operands)
     (lambda (condition port)
       (write-string "The object " port)
-      (write (access-condition condition 'DATUM) port)
+      (write (access-condition condition 'datum) port)
       (write-string " is not applicable." port))))
 
-(define-error-handler 'UNDEFINED-PROCEDURE
+(define-error-handler 'undefined-procedure
   (let ((signal
 	 (condition-signaller condition-type:inapplicable-object
-			      '(DATUM OPERANDS))))
+			      '(datum operands))))
     (lambda (continuation)
       (let ((frame (continuation/first-subproblem continuation)))
 	(if (apply-frame? frame)
@@ -909,10 +909,10 @@ USA.
 		(lambda ()
 		  (signal continuation operator operands)))))))))
 
-(define-error-handler 'WRONG-NUMBER-OF-ARGUMENTS
+(define-error-handler 'wrong-number-of-arguments
   (let ((signal
 	 (condition-signaller condition-type:wrong-number-of-arguments
-			      '(DATUM TYPE OPERANDS))))
+			      '(datum type operands))))
     (lambda (continuation)
       (let ((frame (continuation/first-subproblem continuation)))
 	(if (apply-frame? frame)
@@ -931,10 +931,10 @@ USA.
 		  (let ((arity (procedure-arity operator)))
 		    (signal continuation operator arity operands)))))))))
 
-(define-error-handler 'FLOATING-OVERFLOW
+(define-error-handler 'floating-overflow
   (let ((signal
 	 (condition-signaller condition-type:floating-point-overflow
-			      '(OPERATOR OPERANDS))))
+			      '(operator operands))))
     (lambda (continuation)
       (let ((frame (continuation/first-subproblem continuation)))
 	(if (apply-frame? frame)
@@ -943,18 +943,18 @@ USA.
 		    (apply-frame/operands frame)))))))
 
 (set! condition-type:fasdump-environment
-  (make-condition-type 'FASDUMP-ENVIRONMENT condition-type:bad-range-argument
+  (make-condition-type 'fasdump-environment condition-type:bad-range-argument
       '()
     (lambda (condition port)
       (write-string
        "Object cannot be dumped because it contains an environment: "
        port)
-      (write (access-condition condition 'DATUM) port))))
+      (write (access-condition condition 'datum) port))))
 
-(define-error-handler 'FASDUMP-ENVIRONMENT
+(define-error-handler 'fasdump-environment
   (let ((signal
 	 (condition-signaller condition-type:fasdump-environment
-			      '(DATUM OPERATOR OPERAND))))
+			      '(datum operator operand))))
     (lambda (continuation)
       (let ((frame (continuation/first-subproblem continuation)))
 	(if (apply-frame? frame)
@@ -968,49 +968,49 @@ USA.
 ;;;; Asynchronous Microcode Errors
 
 (set! condition-type:hardware-trap
-  (make-condition-type 'HARDWARE-TRAP condition-type:error '(NAME CODE)
+  (make-condition-type 'hardware-trap condition-type:error '(name code)
     (lambda (condition port)
       (write-string "Hardware trap " port)
-      (display (access-condition condition 'NAME) port)
-      (let ((code (access-condition condition 'CODE)))
+      (display (access-condition condition 'name) port)
+      (let ((code (access-condition condition 'code)))
 	(if code
 	    (begin
 	      (write-string ": " port)
 	      (write code port)))))))
 
 (set! condition-type:user-microcode-reset
-  (make-condition-type 'USER-MICROCODE-RESET condition-type:serious-condition
+  (make-condition-type 'user-microcode-reset condition-type:serious-condition
       '()
     "User microcode reset"))
 
 (set! hook/hardware-trap
       (let ((signal-arithmetic-error
 	     (condition-signaller condition-type:arithmetic-error
-				  '(OPERATOR OPERANDS)))
+				  '(operator operands)))
 	    (signal-divide-by-zero
 	     (condition-signaller condition-type:divide-by-zero
-				  '(OPERATOR OPERANDS)))
+				  '(operator operands)))
 	    (signal-floating-point-divide-by-zero
 	     (condition-signaller condition-type:floating-point-divide-by-zero
-				  '(OPERATOR OPERANDS)))
+				  '(operator operands)))
 	    (signal-floating-point-overflow
 	     (condition-signaller condition-type:floating-point-overflow
-				  '(OPERATOR OPERANDS)))
+				  '(operator operands)))
 	    (signal-floating-point-underflow
 	     (condition-signaller condition-type:floating-point-underflow
-				  '(OPERATOR OPERANDS)))
+				  '(operator operands)))
 	    (signal-hardware-trap
-	     (condition-signaller condition-type:hardware-trap '(NAME CODE)))
+	     (condition-signaller condition-type:hardware-trap '(name code)))
 	    (signal-inexact-floating-point-result
 	     (condition-signaller condition-type:inexact-floating-point-result
-				  '(OPERATOR OPERANDS)))
+				  '(operator operands)))
 	    (signal-integer-divide-by-zero
 	     (condition-signaller condition-type:integer-divide-by-zero
-				  '(OPERATOR OPERANDS)))
+				  '(operator operands)))
 	    (signal-invalid-floating-point-operation
 	     (condition-signaller
 	      condition-type:invalid-floating-point-operation
-	      '(OPERATOR OPERANDS)))
+	      '(operator operands)))
 	    (signal-user-microcode-reset
 	     (condition-signaller condition-type:user-microcode-reset '())))
 	(lambda (name)

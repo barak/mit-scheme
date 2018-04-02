@@ -62,7 +62,7 @@ USA.
     (lambda (original-body state)
       original-body
       (if (not (pair? state))
-	  (error:bad-range-argument *lambda 'LAMBDA-ADVICE))
+	  (error:bad-range-argument *lambda 'lambda-advice))
       (values (car state) (cdr state)))))
 
 (define (make-advice-hook)
@@ -86,21 +86,21 @@ USA.
 	 (lambda (continuation)
 	   (parameterize* (list (cons advice-continuation continuation))
 	     (lambda ()
-	       (with-restart 'USE-VALUE
+	       (with-restart 'use-value
 		   "Return a value from the advised procedure."
 		   continuation
 		   (lambda ()
 		     (prompt-for-evaluated-expression "Procedure value"))
 		 (lambda ()
 		   (for-each (lambda (advice)
-			       (with-simple-restart 'CONTINUE
+			       (with-simple-restart 'continue
 				   "Continue with advised procedure."
 				 (lambda ()
 				   (advice procedure arguments environment))))
 			     (car state))
 		   (let ((value (scode-eval original-body environment)))
 		     (for-each (lambda (advice)
-				 (with-simple-restart 'CONTINUE
+				 (with-simple-restart 'continue
 				     "Return from advised procedure."
 				   (lambda ()
 				     (advice procedure

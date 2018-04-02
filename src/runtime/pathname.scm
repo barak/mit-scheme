@@ -122,7 +122,7 @@ these rules:
 	  (->pathname (car objects))))))
 
 (define (->pathname object)
-  (pathname-arg object #f '->PATHNAME))
+  (pathname-arg object #f '->pathname))
 
 (define (pathname-arg object defaults operator)
   (cond ((pathname? object) object)
@@ -130,7 +130,7 @@ these rules:
 	(else (error:not-a pathname? object operator))))
 
 (define (make-pathname host device directory name type version)
-  (let ((host (if host (guarantee-host host 'MAKE-PATHNAME) local-host)))
+  (let ((host (if host (guarantee-host host 'make-pathname) local-host)))
     ((host-type/operation/make-pathname (host/type host))
      host device directory name type version)))
 
@@ -165,12 +165,12 @@ these rules:
 (define (pathname-absolute? pathname)
   (let ((directory (pathname-directory pathname)))
     (and (pair? directory)
-	 (eq? (car directory) 'ABSOLUTE))))
+	 (eq? (car directory) 'absolute))))
 
 (define (pathname-relative? pathname)
   (let ((directory (pathname-directory pathname)))
     (and (pair? directory)
-	 (eq? (car directory) 'RELATIVE))))
+	 (eq? (car directory) 'relative))))
 
 (define (pathname-wild? pathname)
   (let ((pathname (->pathname pathname)))
@@ -303,9 +303,9 @@ these rules:
     (make-uri (if (pathname-absolute? pathname) 'file #f)
 	      #f
 	      (map (lambda (x)
-		     (cond ((eq? x 'WILD) "*")
-			   ((eq? x 'UP) "..")
-			   ((eq? x 'HERE) ".")
+		     (cond ((eq? x 'wild) "*")
+			   ((eq? x 'up) "..")
+			   ((eq? x 'here) ".")
 			   (else x)))
 		   (append (if (pathname-absolute? pathname)
 			       (list "")
@@ -327,7 +327,7 @@ these rules:
 	      #f)))
 
 (define (uri->pathname uri #!optional error?)
-  (let ((uri (->uri uri (and error? 'URI->PATHNAME)))
+  (let ((uri (->uri uri (and error? 'uri->pathname)))
 	(defaults (param:default-pathname-defaults))
 	(finish
 	 (lambda (device path keyword)
@@ -346,14 +346,14 @@ these rules:
     (let ((scheme (uri-scheme uri))
 	  (path
 	   (map (lambda (x)
-		  (cond ((string=? x "*") 'WILD)
-			((string=? x "..") 'UP)
-			((string=? x ".") 'HERE)
+		  (cond ((string=? x "*") 'wild)
+			((string=? x "..") 'up)
+			((string=? x ".") 'here)
 			(else x)))
 		(uri-path uri)))
 	  (lose
 	   (lambda ()
-	     (if error? (error:bad-range-argument uri 'URI->PATHNAME))
+	     (if error? (error:bad-range-argument uri 'uri->pathname))
 	     #f)))
       (case scheme
 	((file)
@@ -367,22 +367,22 @@ these rules:
 			 (values (car path) (cdr path))
 			 (values device path)))
 		 (if (pair? path)
-		     (finish device path 'ABSOLUTE)
+		     (finish device path 'absolute)
 		     (lose))))
 	     (lose)))
-	((#f) (finish #f path 'RELATIVE))
+	((#f) (finish #f path 'relative))
 	(else (lose))))))
 
 (define (missing-component? x)
   (or (not x)
-      (eq? x 'UNSPECIFIC)))
+      (eq? x 'unspecific)))
 
 ;;;; Pathname Syntax
 
 (define (parse-namestring namestring #!optional host defaults)
   (let ((host
 	 (if (and (not (default-object? host)) host)
-	     (guarantee-host host 'PARSE-NAMESTRING)
+	     (guarantee-host host 'parse-namestring)
 	     (pathname-host
 	      (if (and (not (default-object? defaults)) defaults)
 		  defaults
@@ -392,11 +392,11 @@ these rules:
 	    namestring host))
 	  ((pathname? namestring)
 	   (if (not (host=? host (pathname-host namestring)))
-	       (error:bad-range-argument namestring 'PARSE-NAMESTRING))
+	       (error:bad-range-argument namestring 'parse-namestring))
 	   namestring)
 	  (else
 	   (error:wrong-type-argument namestring "namestring"
-				      'PARSE-NAMESTRING)))))
+				      'parse-namestring)))))
 
 (define (->namestring pathname)
   (let ((pathname (->pathname pathname)))
@@ -459,7 +459,7 @@ these rules:
 	   (if (and (not (default-object? defaults)) defaults)
 	       (->pathname defaults)
 	       (param:default-pathname-defaults)))
-	 (pathname (pathname-arg pathname defaults 'MERGE-PATHNAMES)))
+	 (pathname (pathname-arg pathname defaults 'merge-pathnames)))
     (make-pathname
      (or (%pathname-host pathname) (%pathname-host defaults))
      (or (%pathname-device pathname)
@@ -471,7 +471,7 @@ these rules:
        (cond ((not directory)
 	      default)
 	     ((and (pair? directory)
-		   (eq? (car directory) 'RELATIVE)
+		   (eq? (car directory) 'relative)
 		   (pair? default))
 	      (append default (cdr directory)))
 	     (else
@@ -481,7 +481,7 @@ these rules:
      (or (%pathname-version pathname)
 	 (and (not (%pathname-name pathname)) (%pathname-version defaults))
 	 (if (default-object? default-version)
-	     'NEWEST
+	     'newest
 	     default-version)))))
 
 (define (enough-pathname pathname #!optional defaults)
@@ -489,7 +489,7 @@ these rules:
 	   (if (and (not (default-object? defaults)) defaults)
 	       (->pathname defaults)
 	       (param:default-pathname-defaults)))
-	 (pathname (pathname-arg pathname defaults 'ENOUGH-PATHNAME)))
+	 (pathname (pathname-arg pathname defaults 'enough-pathname)))
     (let ((usual
 	   (lambda (component default)
 	     (and (or (symbol? component)
@@ -515,7 +515,7 @@ these rules:
 		 ;; and default does not, or vice versa.  This is a
 		 ;; kludge to make network devices work properly in
 		 ;; DOS-like pathnames.
-		 (and (eq? (car directory) 'ABSOLUTE)
+		 (and (eq? (car directory) 'absolute)
 		      (not (boolean=? (and (pair? (cdr directory))
 					   (equal? (cadr directory) ""))
 				      (and (pair? (cdr default))
@@ -524,7 +524,7 @@ these rules:
 	     (let loop
 		 ((components (cdr directory)) (components* (cdr default)))
 	       (cond ((null? components*)
-		      (cons 'RELATIVE components))
+		      (cons 'relative components))
 		     ((and (not (null? components))
 			   (equal? (car components) (car components*)))
 		      (loop (cdr components) (cdr components*)))
@@ -596,14 +596,14 @@ these rules:
 (define (user-homedir-pathname #!optional host)
   (let ((host
 	 (if (and (not (default-object? host)) host)
-	     (guarantee-host host 'USER-HOMEDIR-PATHNAME)
+	     (guarantee-host host 'user-homedir-pathname)
 	     local-host)))
     ((host-type/operation/user-homedir-pathname (host/type host)) host)))
 
 (define (init-file-pathname #!optional host)
   (let ((host
 	 (if (and (not (default-object? host)) host)
-	     (guarantee-host host 'INIT-FILE-PATHNAME)
+	     (guarantee-host host 'init-file-pathname)
 	     local-host)))
     ((host-type/operation/init-file-pathname (host/type host)) host)))
 
@@ -654,8 +654,8 @@ these rules:
 (define library-directory-path)
 
 (define known-host-types
-  '((0 UNIX)
-    (1 DOS NT)))
+  '((0 unix)
+    (1 dos nt)))
 
 (define (host-name->index name)
   (let loop ((entries known-host-types))
@@ -695,7 +695,7 @@ these rules:
 	    unspecific)))))
 
 (define (make-unimplemented-host-type index)
-  (let ((name (or (host-index->name index) 'UNKNOWN)))
+  (let ((name (or (host-index->name index) 'unknown)))
     (let ((fail
 	   (lambda arguments
 	     (error "Unimplemented host type:" name arguments))))
@@ -726,4 +726,4 @@ these rules:
   (add-event-receiver! event:after-restore reset-package!))
 
 (define (initialize-parser-method!)
-  (define-bracketed-object-parser-method 'PATHNAME pathname-parser-method))
+  (define-bracketed-object-parser-method 'pathname pathname-parser-method))

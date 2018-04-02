@@ -39,7 +39,7 @@ USA.
   unspecific)
 
 (define (set-gc-notification! #!optional on?)
-  (let ((on? (if (default-object? on?) #T on?)))
+  (let ((on? (if (default-object? on?) #t on?)))
     (if on?
 	(register-gc-event gc-notification)
 	(deregister-gc-event))
@@ -100,7 +100,7 @@ USA.
 		   (let ((thread (weak-car weak)))
 		     (and thread
 			  (weak-cdr weak) ;not cleared by %deregister...
-			  (not (eq? 'DEAD (thread-execution-state thread))))))
+			  (not (eq? 'dead (thread-execution-state thread))))))
 		 gc-events)))
 
 (define (registered-gc-event)
@@ -112,7 +112,7 @@ USA.
 	(signaled? #f))
 
     (define (signal-event thread event)
-      (if (and thread (not (eq? 'DEAD (thread-execution-state thread))))
+      (if (and thread (not (eq? 'dead (thread-execution-state thread))))
 	  (begin
 	    (%signal-thread-event thread event)
 	    (set! signaled? #t))))

@@ -37,7 +37,7 @@ USA.
     (let ((definition-analysis (map analyze/top-level/definition definitions)))
       (if (pair? others)
 	  (cons (vector false
-			'EXPRESSION
+			'expression
 			(analyze-and-compress (make-scode-sequence others)))
 		definition-analysis)
 	  definition-analysis))))
@@ -65,14 +65,14 @@ USA.
   (let ((name (scode-definition-name definition))
 	(expression (scode-definition-value definition)))
     (cond ((unassigned-reference-trap? expression)
-	   (vector name 'UNASSIGNED '#()))
+	   (vector name 'unassigned '#()))
 	  ((scode-constant? expression)
-	   (vector name 'CONSTANT '#()))
+	   (vector name 'constant '#()))
 	  (else
 	   (vector name
-		   (cond ((scode-lambda? expression) 'LAMBDA)
-			 ((scode-delay? expression) 'DELAY)
-			 (else 'EXPRESSION))
+		   (cond ((scode-lambda? expression) 'lambda)
+			 ((scode-delay? expression) 'delay)
+			 (else 'expression))
 		   (analyze-and-compress expression))))))
 
 (define (analyze-and-compress expression)
@@ -147,18 +147,18 @@ USA.
 (define analyze/dispatch
   (make-scode-walker
    analyze/uninteresting
-   `((ACCESS ,analyze/access)
-     (ASSIGNMENT ,analyze/assignment)
-     (COMBINATION ,analyze/combination)
-     (COMMENT ,analyze/comment)
-     (CONDITIONAL ,analyze/conditional)
-     (DEFINITION ,analyze/error)
-     (DELAY ,analyze/delay)
-     (DISJUNCTION ,analyze/disjunction)
-     (ERROR-COMBINATION ,analyze/error-combination)
-     (LAMBDA ,analyze/lambda)
-     (SEQUENCE ,analyze/sequence)
-     (VARIABLE ,analyze/variable))))
+   `((access ,analyze/access)
+     (assignment ,analyze/assignment)
+     (combination ,analyze/combination)
+     (comment ,analyze/comment)
+     (conditional ,analyze/conditional)
+     (definition ,analyze/error)
+     (delay ,analyze/delay)
+     (disjunction ,analyze/disjunction)
+     (error-combination ,analyze/error-combination)
+     (lambda ,analyze/lambda)
+     (sequence ,analyze/sequence)
+     (variable ,analyze/variable))))
 
 (define (eq-set-adjoin x y)
   (if (memq x y)

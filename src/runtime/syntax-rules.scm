@@ -46,28 +46,28 @@ USA.
 		  (or (memq (car keywords) (cdr keywords))
 		      (loop (cdr keywords)))))
 	   (syntax-error "Keywords list contains duplicates:" keywords)
-	   (let ((r-form (rename 'FORM))
-		 (r-rename (rename 'RENAME))
-		 (r-compare (rename 'COMPARE)))
-	     `(,(rename 'ER-MACRO-TRANSFORMER)
-	       (,(rename 'LAMBDA)
+	   (let ((r-form (rename 'form))
+		 (r-rename (rename 'rename))
+		 (r-compare (rename 'compare)))
+	     `(,(rename 'er-macro-transformer)
+	       (,(rename 'lambda)
 		(,r-form ,r-rename ,r-compare)
-		(,(rename 'DECLARE) (IGNORABLE ,r-rename ,r-compare))
+		(,(rename 'declare) (ignorable ,r-rename ,r-compare))
 		,(let loop ((clauses clauses))
 		   (if (pair? clauses)
 		       (let ((pattern (caar clauses)))
 			 (let ((sids
 				(parse-pattern rename compare keywords
 					       pattern r-form)))
-			   `(,(rename 'IF)
+			   `(,(rename 'if)
 			     ,(generate-match rename compare keywords
 					      r-rename r-compare
 					      pattern r-form)
 			     ,(generate-output rename compare r-rename
 					       sids (cadar clauses))
 			     ,(loop (cdr clauses)))))
-		       `(,(rename 'BEGIN)
-			 (,(rename 'ILL-FORMED-SYNTAX) ,r-form))))))))))))
+		       `(,(rename 'begin)
+			 (,(rename 'ill-formed-syntax) ,r-form))))))))))))
 
 (define (parse-pattern rename compare keywords pattern expression)
   (let loop
@@ -82,16 +82,16 @@ USA.
 	  ((and (or (zero-or-more? pattern rename compare)
 		    (at-least-one? pattern rename compare))
 		(null? (cddr pattern)))
-	   (let ((variable ((make-local-identifier-renamer) 'CONTROL)))
+	   (let ((variable ((make-local-identifier-renamer) 'control)))
 	     (loop (car pattern)
 		   variable
 		   sids
 		   (make-sid variable expression control))))
 	  ((pair? pattern)
 	   (loop (car pattern)
-		 `(,(rename 'CAR) ,expression)
+		 `(,(rename 'car) ,expression)
 		 (loop (cdr pattern)
-		       `(,(rename 'CDR) ,expression)
+		       `(,(rename 'cdr) ,expression)
 		       sids
 		       control)
 		 control))
@@ -104,11 +104,11 @@ USA.
 	(lambda (pattern expression)
 	  (cond ((identifier? pattern)
 		 (if (memq pattern keywords)
-		     (let ((temp (rename 'TEMP)))
-		       `((,(rename 'LAMBDA)
+		     (let ((temp (rename 'temp)))
+		       `((,(rename 'lambda)
 			  (,temp)
-			  (,(rename 'IF)
-			   (,(rename 'IDENTIFIER?) ,temp)
+			  (,(rename 'if)
+			   (,(rename 'identifier?) ,temp)
 			   (,r-compare ,temp
 				       (,r-rename ,(syntax-quote pattern)))
 			   #f))
@@ -119,54 +119,54 @@ USA.
 		 (do-list (car pattern) expression))
 		((and (at-least-one? pattern rename compare)
 		      (null? (cddr pattern)))
-		 `(,(rename 'IF) (,(rename 'NULL?) ,expression)
-				 #F
+		 `(,(rename 'if) (,(rename 'null?) ,expression)
+				 #f
 				 ,(do-list (car pattern) expression)))
 		((pair? pattern)
 		 (let ((generate-pair
 			(lambda (expression)
 			  (conjunction
-			   `(,(rename 'PAIR?) ,expression)
+			   `(,(rename 'pair?) ,expression)
 			   (conjunction
 			    (loop (car pattern)
-				  `(,(rename 'CAR) ,expression))
+				  `(,(rename 'car) ,expression))
 			    (loop (cdr pattern)
-				  `(,(rename 'CDR) ,expression)))))))
+				  `(,(rename 'cdr) ,expression)))))))
 		   (if (identifier? expression)
 		       (generate-pair expression)
-		       (let ((temp (rename 'TEMP)))
-			 `((,(rename 'LAMBDA) (,temp) ,(generate-pair temp))
+		       (let ((temp (rename 'temp)))
+			 `((,(rename 'lambda) (,temp) ,(generate-pair temp))
 			   ,expression)))))
 		((null? pattern)
-		 `(,(rename 'NULL?) ,expression))
+		 `(,(rename 'null?) ,expression))
 		(else
-		 `(,(rename 'EQUAL?) ,expression
-				     (,(rename 'QUOTE) ,pattern))))))
+		 `(,(rename 'equal?) ,expression
+				     (,(rename 'quote) ,pattern))))))
        (do-list
 	(lambda (pattern expression)
-	  (let ((r-loop (rename 'LOOP))
-		(r-l (rename 'L))
-		(r-lambda (rename 'LAMBDA)))
+	  (let ((r-loop (rename 'loop))
+		(r-l (rename 'l))
+		(r-lambda (rename 'lambda)))
 	    `(((,r-lambda
 		()
-		(,(rename 'DEFINE)
+		(,(rename 'define)
 		 ,r-loop
 		 (,r-lambda
 		  (,r-l)
-		  (,(rename 'IF)
-		   (,(rename 'NULL?) ,r-l)
-		   #T
+		  (,(rename 'if)
+		   (,(rename 'null?) ,r-l)
+		   #t
 		   ,(conjunction
-		     `(,(rename 'PAIR?) ,r-l)
-		     (conjunction (loop pattern `(,(rename 'CAR) ,r-l))
-				  `(,r-loop (,(rename 'CDR) ,r-l)))))))
+		     `(,(rename 'pair?) ,r-l)
+		     (conjunction (loop pattern `(,(rename 'car) ,r-l))
+				  `(,r-loop (,(rename 'cdr) ,r-l)))))))
 		,r-loop))
 	      ,expression))))
        (conjunction
 	(lambda (predicate consequent)
-	  (cond ((eq? predicate #T) consequent)
-		((eq? consequent #T) predicate)
-		(else `(,(rename 'IF) ,predicate ,consequent #F))))))
+	  (cond ((eq? predicate #t) consequent)
+		((eq? consequent #t) predicate)
+		(else `(,(rename 'if) ,predicate ,consequent #f))))))
     (loop pattern expression)))
 
 (define (generate-output rename compare r-rename sids template)
@@ -198,7 +198,7 @@ USA.
 			   (loop (car template) ellipses)
 			   (loop (cdr template) ellipses)))
 	  (else
-	   `(,(rename 'QUOTE) ,template)))))
+	   `(,(rename 'quote) ,template)))))
 
 (define (add-control! sid ellipses)
   (let loop ((sid sid) (ellipses ellipses))
@@ -228,9 +228,9 @@ USA.
 		      (pair? (cdr body))
 		      (eq? (cadr body) name)
 		      (null? (cddr body)))
-		 `(,(rename 'MAP) ,(car body) ,expression))
+		 `(,(rename 'map) ,(car body) ,expression))
 		(else
-		 `(,(rename 'MAP) (,(rename 'LAMBDA) ,(map sid-name sids)
+		 `(,(rename 'map) (,(rename 'lambda) ,(map sid-name sids)
 						     ,body)
 				  ,@(map sid-expression sids)))))
 	(syntax-error "Missing ellipsis in expansion." #f))))
@@ -258,26 +258,26 @@ USA.
 
 (define (optimized-cons rename compare a d)
   (cond ((and (pair? d)
-	      (compare (car d) (rename 'QUOTE))
+	      (compare (car d) (rename 'quote))
 	      (pair? (cdr d))
 	      (null? (cadr d))
 	      (null? (cddr d)))
-	 `(,(rename 'LIST) ,a))
+	 `(,(rename 'list) ,a))
 	((and (pair? d)
-	      (compare (car d) (rename 'LIST))
+	      (compare (car d) (rename 'list))
 	      (list? (cdr d)))
 	 `(,(car d) ,a ,@(cdr d)))
 	(else
-	 `(,(rename 'CONS) ,a ,d))))
+	 `(,(rename 'cons) ,a ,d))))
 
 (define (optimized-append rename compare x y)
   (if (and (pair? y)
-	   (compare (car y) (rename 'QUOTE))
+	   (compare (car y) (rename 'quote))
 	   (pair? (cdr y))
 	   (null? (cadr y))
 	   (null? (cddr y)))
       x
-      `(,(rename 'APPEND) ,x ,y)))
+      `(,(rename 'append) ,x ,y)))
 
 (define-record-type <sid>
     (make-sid name expression control)
