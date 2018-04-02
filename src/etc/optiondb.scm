@@ -57,7 +57,7 @@ USA.
 	   (lambda (dir pathname)
 	     (with-working-directory-pathname dir
 	       (lambda ()
-		 (load pathname '(RUNTIME))))))
+		 (load pathname '(runtime))))))
 	  (lose (lambda () (error "Unable to find package directory:" place))))
       (lambda ()
 	(if (not (name->package package-name))
