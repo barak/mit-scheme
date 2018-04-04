@@ -425,8 +425,8 @@ USA.
 	   (known-input-line-ending? name)
 	   (not (known-output-line-ending? name)))
       (if (and channel
-	       (eq? (channel-type channel) 'TCP-STREAM-SOCKET))
-	  'CRLF
+	       (eq? (channel-type channel) 'tcp-stream-socket))
+	  'crlf
 	  (default-line-ending))
       name))
 
@@ -602,18 +602,18 @@ USA.
 	      environment
 	      (if (syntax-match? '(symbol) (cdr form))
 		  (let ((root (cadr form)))
-		    (let ((aliases (symbol root '-ALIASES))
-			  (proc (symbol 'DEFINE- root '-ALIAS)))
-		      `(BEGIN
-			 (SET! ,aliases (CONVERT-FORWARD ,aliases))
-			 (SET! ,proc ,(symbol proc '/POST-BOOT)))))
+		    (let ((aliases (symbol root '-aliases))
+			  (proc (symbol 'define- root '-alias)))
+		      `(begin
+			 (set! ,aliases (convert-forward ,aliases))
+			 (set! ,proc ,(symbol proc '/post-boot)))))
 		  (ill-formed-syntax form))))))
        (initialize-name-map coding)
        (initialize-name-map line-ending)))
-   (set! binary-decoder (name->decoder 'BINARY))
-   (set! binary-encoder (name->encoder 'BINARY))
-   (set! binary-normalizer (name->normalizer 'BINARY))
-   (set! binary-denormalizer (name->denormalizer 'BINARY))
+   (set! binary-decoder (name->decoder 'binary))
+   (set! binary-encoder (name->encoder 'binary))
+   (set! binary-normalizer (name->normalizer 'binary))
+   (set! binary-denormalizer (name->denormalizer 'binary))
    unspecific))
 
 (define (define-coding-aliases name aliases)
@@ -622,10 +622,10 @@ USA.
 	    aliases))
 
 (define (primary-input-port-codings)
-  (cons 'US-ASCII (hash-table-keys decoders)))
+  (cons 'us-ascii (hash-table-keys decoders)))
 
 (define (primary-output-port-codings)
-  (cons 'US-ASCII (hash-table-keys encoders)))
+  (cons 'us-ascii (hash-table-keys encoders)))
 
 (define max-char-bytes 4)
 
@@ -811,14 +811,14 @@ USA.
 
 ;;;; 8-bit codecs
 
-(define-decoder 'ISO-8859-1
+(define-decoder 'iso-8859-1
   (lambda (ib)
     (let ((sv (read-byte ib)))
       (if (fix:fixnum? sv)
 	  (integer->char sv)
 	  sv))))
 
-(define-encoder 'ISO-8859-1
+(define-encoder 'iso-8859-1
   (lambda (ob char)
     (let ((cp (char->integer char)))
       (if (not (fix:< cp #x100))
@@ -829,16 +829,16 @@ USA.
 (define-deferred char-set:iso-8859-1
   (char-set* (iota #x100)))
 
-(define-coding-aliases 'ISO-8859-1
-  '(ISO_8859-1:1987 ISO-IR-100 ISO_8859-1 LATIN1 L1 IBM819 CP819 CSISOLATIN1))
+(define-coding-aliases 'iso-8859-1
+  '(iso_8859-1:1987 iso-ir-100 iso_8859-1 latin1 l1 ibm819 cp819 csisolatin1))
 
-(define-coding-aliases 'ISO-8859-1
-  '(BINARY TEXT))
+(define-coding-aliases 'iso-8859-1
+  '(binary text))
 
-(define-coding-aliases 'ISO-8859-1
+(define-coding-aliases 'iso-8859-1
   ;; Treat US-ASCII like ISO-8859-1.
-  '(US-ASCII ANSI_X3.4-1968 ISO-IR-6 ANSI_X3.4-1986 ISO_646.IRV:1991 ASCII
-	     ISO646-US US IBM367 CP367 CSASCII))
+  '(us-ascii ansi_x3.4-1968 iso-ir-6 ansi_x3.4-1986 iso_646.irv:1991 ascii
+	     iso646-us us ibm367 cp367 csascii))
 
 (define-syntax define-8-bit-codecs
   (sc-macro-transformer
@@ -858,9 +858,9 @@ USA.
 			  (fix:< (car a) (car b))))))
 	     (let ((lhs (list->vector (map car alist)))
 		   (rhs (map cdr alist)))
-	       `(BEGIN
-		  (DEFINE-DECODER ',name
-		    (LET ((TABLE
+	       `(begin
+		  (define-decoder ',name
+		    (let ((table
 			   #(,@(map (lambda (cp)
 				      (and cp
 					   (integer->char cp)))
@@ -868,15 +868,15 @@ USA.
 				      (if (fix:< i start)
 					  (cons i (loop (fix:+ i 1)))
 					  code-points))))))
-		      (LAMBDA (IB)
-			(DECODE-8-BIT IB TABLE))))
-		  (DEFINE-ENCODER ',name
-		    (LET ((LHS ',lhs)
-			  (RHS (APPLY BYTEVECTOR ',rhs)))
-		      (LAMBDA (OB CHAR)
-			(ENCODE-8-BIT OB CHAR ,start LHS RHS))))
-		  (DEFINE-DEFERRED ,(symbol 'CHAR-SET: name)
-		    (CHAR-SET* ',(append (iota #x80)
+		      (lambda (ib)
+			(decode-8-bit ib table))))
+		  (define-encoder ',name
+		    (let ((lhs ',lhs)
+			  (rhs (apply bytevector ',rhs)))
+		      (lambda (ob char)
+			(encode-8-bit ob char ,start lhs rhs))))
+		  (define-deferred ,(symbol 'char-set: name)
+		    (char-set* ',(append (iota #x80)
 					 (filter (lambda (cp) cp)
 						 code-points))))))))
 	 (ill-formed-syntax form)))))
@@ -922,8 +922,8 @@ USA.
   #x0144 #x0148 #x00F3 #x00F4 #x0151 #x00F6 #x00F7 #x0159
   #x016F #x00FA #x0171 #x00FC #x00FD #x0163 #x02D9)
 
-(define-coding-aliases 'ISO-8859-2
-  '(ISO_8859-2:1987 ISO-IR-101 ISO_8859-2 LATIN2 L2 CSISOLATIN2))
+(define-coding-aliases 'iso-8859-2
+  '(iso_8859-2:1987 iso-ir-101 iso_8859-2 latin2 l2 csisolatin2))
 
 (define-8-bit-codecs iso-8859-3 #xA1
   #x0126 #x02D8 #x00A3 #x00A4 #f     #x0124 #x00A7 #x00A8
@@ -939,8 +939,8 @@ USA.
   #x00F1 #x00F2 #x00F3 #x00F4 #x0121 #x00F6 #x00F7 #x011D
   #x00F9 #x00FA #x00FB #x00FC #x016D #x015D #x02D9)
 
-(define-coding-aliases 'ISO-8859-3
-  '(ISO_8859-3:1988 ISO-IR-109 ISO_8859-3 LATIN3 L3 CSISOLATIN3))
+(define-coding-aliases 'iso-8859-3
+  '(iso_8859-3:1988 iso-ir-109 iso_8859-3 latin3 l3 csisolatin3))
 
 (define-8-bit-codecs iso-8859-4 #xA1
   #x0104 #x0138 #x0156 #x00A4 #x0128 #x013B #x00A7 #x00A8
@@ -956,8 +956,8 @@ USA.
   #x0146 #x014D #x0137 #x00F4 #x00F5 #x00F6 #x00F7 #x00F8
   #x0173 #x00FA #x00FB #x00FC #x0169 #x016B #x02D9)
 
-(define-coding-aliases 'ISO-8859-4
-  '(ISO_8859-4:1988 ISO-IR-110 ISO_8859-4 LATIN4 L4 CSISOLATIN4))
+(define-coding-aliases 'iso-8859-4
+  '(iso_8859-4:1988 iso-ir-110 iso_8859-4 latin4 l4 csisolatin4))
 
 (define-8-bit-codecs iso-8859-5 #xA1
   #x0401 #x0402 #x0403 #x0404 #x0405 #x0406 #x0407 #x0408
@@ -973,8 +973,8 @@ USA.
   #x0451 #x0452 #x0453 #x0454 #x0455 #x0456 #x0457 #x0458
   #x0459 #x045A #x045B #x045C #x00A7 #x045E #x045F)
 
-(define-coding-aliases 'ISO-8859-5
-  '(ISO_8859-5:1988 ISO-IR-144 ISO_8859-5 CYRILLIC CSISOLATINCYRILLIC))
+(define-coding-aliases 'iso-8859-5
+  '(iso_8859-5:1988 iso-ir-144 iso_8859-5 cyrillic csisolatincyrillic))
 
 (define-8-bit-codecs iso-8859-6 #xA1
   #f     #f     #f     #x00A4 #f     #f     #f     #f
@@ -990,9 +990,9 @@ USA.
   #x0651 #x0652 #f     #f     #f     #f     #f     #f
   #f     #f     #f     #f     #f     #f     #f)
 
-(define-coding-aliases 'ISO-8859-6
-  '(ISO_8859-6:1987 ISO-IR-127 ISO_8859-6 ECMA-114 ASMO-708 ARABIC
-		    CSISOLATINARABIC))
+(define-coding-aliases 'iso-8859-6
+  '(iso_8859-6:1987 iso-ir-127 iso_8859-6 ecma-114 asmo-708 arabic
+		    csisolatinarabic))
 
 (define-8-bit-codecs iso-8859-7 #xA1
   #x2018 #x2019 #x00A3 #f     #f     #x00A6 #x00A7 #x00A8
@@ -1008,9 +1008,9 @@ USA.
   #x03C1 #x03C2 #x03C3 #x03C4 #x03C5 #x03C6 #x03C7 #x03C8
   #x03C9 #x03CA #x03CB #x03CC #x03CD #x03CE #f)
 
-(define-coding-aliases 'ISO-8859-7
-  '(ISO_8859-7:1987 ISO-IR-126 ISO_8859-7 ELOT_928 ECMA-118 GREEK GREEK8
-		    CSISOLATINGREEK))
+(define-coding-aliases 'iso-8859-7
+  '(iso_8859-7:1987 iso-ir-126 iso_8859-7 elot_928 ecma-118 greek greek8
+		    csisolatingreek))
 
 (define-8-bit-codecs iso-8859-8 #xA1
   #f     #x00A2 #x00A3 #x00A4 #x00A5 #x00A6 #x00A7 #x00A8
@@ -1026,8 +1026,8 @@ USA.
   #x05E1 #x05E2 #x05E3 #x05E4 #x05E5 #x05E6 #x05E7 #x05E8
   #x05E9 #x05EA #f     #f     #x200E #x200F #f)
 
-(define-coding-aliases 'ISO-8859-8
-  '(ISO_8859-8:1988 ISO-IR-138 ISO_8859-8 HEBREW CSISOLATINHEBREW))
+(define-coding-aliases 'iso-8859-8
+  '(iso_8859-8:1988 iso-ir-138 iso_8859-8 hebrew csisolatinhebrew))
 
 (define-8-bit-codecs iso-8859-9 #xA1
   #x00A1 #x00A2 #x00A3 #x00A4 #x00A5 #x00A6 #x00A7 #x00A8
@@ -1043,8 +1043,8 @@ USA.
   #x00F1 #x00F2 #x00F3 #x00F4 #x00F5 #x00F6 #x00F7 #x00F8
   #x00F9 #x00FA #x00FB #x00FC #x0131 #x015F #x00FF)
 
-(define-coding-aliases 'ISO-8859-9
-  '(ISO_8859-9:1989 ISO-IR-148 ISO_8859-9 LATIN5 L5 CSISOLATIN5))
+(define-coding-aliases 'iso-8859-9
+  '(iso_8859-9:1989 iso-ir-148 iso_8859-9 latin5 l5 csisolatin5))
 
 (define-8-bit-codecs iso-8859-10 #xA1
   #x0104 #x0112 #x0122 #x012A #x0128 #x0136 #x00A7 #x013B
@@ -1060,8 +1060,8 @@ USA.
   #x0146 #x014D #x00F3 #x00F4 #x00F5 #x00F6 #x0169 #x00F8
   #x0173 #x00FA #x00FB #x00FC #x00FD #x00FE #x0138)
 
-(define-coding-aliases 'ISO-8859-10
-  '(ISO-IR-157 L6 ISO_8859-10:1992 CSISOLATIN6 LATIN6))
+(define-coding-aliases 'iso-8859-10
+  '(iso-ir-157 l6 iso_8859-10:1992 csisolatin6 latin6))
 
 (define-8-bit-codecs iso-8859-11 #xA1
   #x0E01 #x0E02 #x0E03 #x0E04 #x0E05 #x0E06 #x0E07 #x0E08
@@ -1105,8 +1105,8 @@ USA.
   #x00F1 #x00F2 #x00F3 #x00F4 #x00F5 #x00F6 #x1E6B #x00F8
   #x00F9 #x00FA #x00FB #x00FC #x00FD #x0177 #x00FF)
 
-(define-coding-aliases 'ISO-8859-14
-  '(ISO-IR-199 ISO_8859-14:1998 ISO_8859-14 LATIN8 ISO-CELTIC L8))
+(define-coding-aliases 'iso-8859-14
+  '(iso-ir-199 iso_8859-14:1998 iso_8859-14 latin8 iso-celtic l8))
 
 (define-8-bit-codecs iso-8859-15 #xA1
   #x00A1 #x00A2 #x00A3 #x20AC #x00A5 #x0160 #x00A7 #x0161
@@ -1122,8 +1122,8 @@ USA.
   #x00F1 #x00F2 #x00F3 #x00F4 #x00F5 #x00F6 #x00F7 #x00F8
   #x00F9 #x00FA #x00FB #x00FC #x00FD #x00FE #x00FF)
 
-(define-coding-aliases 'ISO-8859-15
-  '(ISO_8859-15 LATIN-9))
+(define-coding-aliases 'iso-8859-15
+  '(iso_8859-15 latin-9))
 
 (define-8-bit-codecs iso-8859-16 #xA1
   #x0104 #x0105 #x0141 #x20AC #x201E #x0160 #x00A7 #x0161
@@ -1139,8 +1139,8 @@ USA.
   #x0144 #x00F2 #x00F3 #x00F4 #x0151 #x00F6 #x015B #x0171
   #x00F9 #x00FA #x00FB #x00FC #x0119 #x021B #x00FF)
 
-(define-coding-aliases 'ISO-8859-16
-  '(ISO-IR-226 ISO_8859-16:2001 ISO_8859-16 LATIN10 L10))
+(define-coding-aliases 'iso-8859-16
+  '(iso-ir-226 iso_8859-16:2001 iso_8859-16 latin10 l10))
 
 (define-8-bit-codecs windows-1250 #x80
   #x20ac #f     #x201a #f     #x201e #x2026 #x2020 #x2021
@@ -1324,19 +1324,19 @@ USA.
 
 ;;;; Unicode codecs
 
-(define-decoder 'UTF-8
+(define-decoder 'utf-8
   (lambda (ib)
     (let ((n (initial-byte->utf8-char-length (peek-byte ib))))
       (read-bytes! ib 0 n)
       (decode-utf8-char (input-buffer-bytes ib) 0))))
 
-(define-encoder 'UTF-8
+(define-encoder 'utf-8
   (lambda (ob char)
     (encode-utf8-char! (output-buffer-bytes ob) 0 char)))
 
-(define-coding-alias 'UTF-16
+(define-coding-alias 'utf-16
   (lambda ()
-    (if (host-big-endian?) 'UTF-16BE 'UTF-16LE)))
+    (if (host-big-endian?) 'utf-16be 'utf-16le)))
 
 (define-decoder 'utf-16be
   (lambda (ib)
@@ -1358,17 +1358,17 @@ USA.
 	  (read-bytes! ib 2 n))
       (decode-utf16le-char (input-buffer-bytes ib) 0))))
 
-(define-encoder 'UTF-16BE
+(define-encoder 'utf-16be
   (lambda (ob char)
     (encode-utf16be-char! (output-buffer-bytes ob) 0 char)))
 
-(define-encoder 'UTF-16LE
+(define-encoder 'utf-16le
   (lambda (ob char)
     (encode-utf16le-char! (output-buffer-bytes ob) 0 char)))
 
-(define-coding-alias 'UTF-32
+(define-coding-alias 'utf-32
   (lambda ()
-    (if (host-big-endian?) 'UTF-32BE 'UTF-32LE)))
+    (if (host-big-endian?) 'utf-32be 'utf-32le)))
 
 (define-decoder 'utf-32be
   (lambda (ib)
@@ -1380,43 +1380,43 @@ USA.
     (read-bytes! ib 0 4)
     (decode-utf32le-char (input-buffer-bytes ib) 0)))
 
-(define-encoder 'UTF-32BE
+(define-encoder 'utf-32be
   (lambda (ob char)
     (encode-utf32be-char! (output-buffer-bytes ob) 0 char)))
 
-(define-encoder 'UTF-32LE
+(define-encoder 'utf-32le
   (lambda (ob char)
     (encode-utf32le-char! (output-buffer-bytes ob) 0 char)))
 
 ;;;; Normalizers
 
-(define-normalizer 'NEWLINE
+(define-normalizer 'newline
   (lambda (ib)
     (decode-char ib)))
 
-(define-denormalizer 'NEWLINE
+(define-denormalizer 'newline
   (lambda (ob char)
     (encode-char ob char)))
 
-(define-normalizer 'CR
+(define-normalizer 'cr
   (lambda (ib)
     (let ((c0 (decode-char ib)))
-      (if (eq? c0 #\U+000D)
+      (if (eq? c0 #\u+000D)
 	  #\newline
 	  c0))))
 
-(define-denormalizer 'CR
+(define-denormalizer 'cr
   (lambda (ob char)
-    (encode-char ob (if (char=? char #\newline) #\U+000D char))))
+    (encode-char ob (if (char=? char #\newline) #\u+000D char))))
 
-(define-normalizer 'CRLF
+(define-normalizer 'crlf
   (lambda (ib)
     (let ((c0 (decode-char ib)))
       (case c0
-	((#\U+000D)
+	((#\u+000D)
 	 (let ((c1 (decode-char ib)))
 	   (case c1
-	     ((#\U+000A)
+	     ((#\u+000A)
 	      #\newline)
 	     ((#f)
 	      (unread-decoded-char ib c1)
@@ -1427,26 +1427,26 @@ USA.
 	      c0))))
 	(else c0)))))
 
-(define-denormalizer 'CRLF
+(define-denormalizer 'crlf
   (lambda (ob char)
     (if (char=? char #\newline)
-	(let ((n1 (encode-char ob #\U+000D)))
+	(let ((n1 (encode-char ob #\u+000D)))
 	  (if (eq? n1 1)
-	      (let ((n2 (encode-char ob #\U+000A)))
+	      (let ((n2 (encode-char ob #\u+000A)))
 		(if (not (eq? n2 1))
 		    (error:char-encoding ob char))
 		2)
 	      n1))
 	(encode-char ob char))))
 
-(define-normalizer 'XML-1.0
+(define-normalizer 'xml-1.0
   (lambda (ib)
     (let ((c0 (decode-char ib)))
       (case c0
-	((#\U+000D)
+	((#\u+000D)
 	 (let ((c1 (decode-char ib)))
 	   (case c1
-	     ((#\U+000A)
+	     ((#\u+000A)
 	      #\newline)
 	     ((#f)
 	      (unread-decoded-char ib c1)
@@ -1457,18 +1457,18 @@ USA.
 	      #\newline))))
 	(else c0)))))
 
-(define-denormalizer 'XML-1.0
+(define-denormalizer 'xml-1.0
   (lambda (ob char)
     (encode-char ob char)))
 
-(define-normalizer 'XML-1.1
+(define-normalizer 'xml-1.1
   (lambda (ib)
     (let ((c0 (decode-char ib)))
       (case c0
-	((#\U+000D)
+	((#\u+000D)
 	 (let ((c1 (decode-char ib)))
 	   (case c1
-	     ((#\U+000A #\U+0085)
+	     ((#\u+000A #\u+0085)
 	      #\newline)
 	     ((#f)
 	      (unread-decoded-char ib c1)
@@ -1477,17 +1477,17 @@ USA.
 	     (else
 	      (unread-decoded-char ib c1)
 	      #\newline))))
-	((#\U+0085 #\U+2028) #\newline)
+	((#\u+0085 #\u+2028) #\newline)
 	(else c0)))))
 
-(define-denormalizer 'XML-1.1
+(define-denormalizer 'xml-1.1
   (lambda (ob char)
     (encode-char ob char)))
 
-(define-line-ending-alias 'TEXT 'XML-1.0)
-(define-line-ending-alias 'LF 'NEWLINE)
-(define-line-ending-alias 'BINARY 'NEWLINE)
-(define-line-ending-alias 'HTTP 'XML-1.0)
+(define-line-ending-alias 'text 'xml-1.0)
+(define-line-ending-alias 'lf 'newline)
+(define-line-ending-alias 'binary 'newline)
+(define-line-ending-alias 'http 'xml-1.0)
 
 ;;;; Conditions
 
@@ -1504,27 +1504,27 @@ USA.
 (add-boot-init!
  (lambda ()
    (set! condition-type:char-decoding-error
-	 (make-condition-type 'CHAR-DECODING-ERROR condition-type:port-error '()
+	 (make-condition-type 'char-decoding-error condition-type:port-error '()
 	   (lambda (condition port)
 	     (write-string "The input port " port)
-	     (write (access-condition condition 'PORT) port)
+	     (write (access-condition condition 'port) port)
 	     (write-string " was unable to decode a character." port)
 	     (newline port))))
    (set! %error:char-decoding
 	 (condition-signaller condition-type:char-decoding-error
-			      '(PORT)
+			      '(port)
 			      standard-error-handler))
    (set! condition-type:char-encoding-error
-	 (make-condition-type 'CHAR-ENCODING-ERROR condition-type:port-error
-	     '(CHAR)
+	 (make-condition-type 'char-encoding-error condition-type:port-error
+	     '(char)
 	   (lambda (condition port)
 	     (write-string "The output port " port)
-	     (write (access-condition condition 'PORT) port)
+	     (write (access-condition condition 'port) port)
 	     (write-string " was unable to encode the character " port)
-	     (write (access-condition condition 'CHAR) port)
+	     (write (access-condition condition 'char) port)
 	     (newline port))))
    (set! %error:char-encoding
 	 (condition-signaller condition-type:char-encoding-error
-			      '(PORT CHAR)
+			      '(port char)
 			      standard-error-handler))
    unspecific))

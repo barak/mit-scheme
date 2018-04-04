@@ -148,7 +148,7 @@ USA.
 	    (loop (cddr args) (+ i 1)))))))
 
 (define (opt-writer elt-writer)
-  (cons 'OPT-WRITER elt-writer))
+  (cons 'opt-writer elt-writer))
 
 (define (opt-writer? object)
   (and (pair? object)
@@ -518,7 +518,7 @@ USA.
 
 (define (qparam? object)
   (and (parameter? object)
-       (eq? (car object) 'Q)))
+       (eq? (car object) 'q)))
 
 (define lp:token+qparam
   (list-parser

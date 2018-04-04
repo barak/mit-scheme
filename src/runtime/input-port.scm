@@ -52,7 +52,7 @@ USA.
       0))
 
 (define (input-port/read-line port)
-  (with-input-port-blocking-mode port 'BLOCKING
+  (with-input-port-blocking-mode port 'blocking
     (lambda ()
       (let ((read-char (textual-port-operation/read-char port))
 	    (builder (string-builder)))
@@ -69,7 +69,7 @@ USA.
 		   (loop)))))))))
 
 (define (input-port/read-string port delimiters)
-  (with-input-port-blocking-mode port 'BLOCKING
+  (with-input-port-blocking-mode port 'blocking
     (lambda ()
       (let ((read-char (textual-port-operation/read-char port))
 	    (builder (string-builder)))
@@ -87,7 +87,7 @@ USA.
 		   (loop)))))))))
 
 (define (input-port/discard-chars port delimiters)
-  (with-input-port-blocking-mode port 'BLOCKING
+  (with-input-port-blocking-mode port 'blocking
     (lambda ()
       (let ((read-char (textual-port-operation/read-char port)))
 	(let loop ()
@@ -110,24 +110,24 @@ USA.
   (eq? object (eof-object)))
 
 (define (input-port/eof? port)
-  (let ((eof? (textual-port-operation port 'EOF?)))
+  (let ((eof? (textual-port-operation port 'eof?)))
     (and eof?
 	 (eof? port))))
 
 (define (input-port/line port)
-  (let ((operation (textual-port-operation port 'INPUT-LINE)))
+  (let ((operation (textual-port-operation port 'input-line)))
     (and operation
 	 (operation port))))
 
 ;;;; High level
 
 (define (char-ready? #!optional port interval)
-  (let ((port (optional-input-port port 'CHAR-READY?))
+  (let ((port (optional-input-port port 'char-ready?))
 	(interval
 	 (if (default-object? interval)
 	     0
 	     (begin
-	       (guarantee exact-nonnegative-integer? interval 'CHAR-READY?)
+	       (guarantee exact-nonnegative-integer? interval 'char-ready?)
 	       interval))))
     (if (positive? interval)
 	(let ((timeout (+ (real-time-clock) interval)))
@@ -138,23 +138,23 @@ USA.
 	(input-port/char-ready? port))))
 
 (define (read-char #!optional port)
-  (let ((port (optional-input-port port 'READ-CHAR)))
+  (let ((port (optional-input-port port 'read-char)))
     (let loop ()
       (or (input-port/read-char port)
 	  (loop)))))
 
 (define (unread-char char #!optional port)
-  (guarantee char? char 'UNREAD-CHAR)
-  (input-port/unread-char (optional-input-port port 'UNREAD-CHAR) char))
+  (guarantee char? char 'unread-char)
+  (input-port/unread-char (optional-input-port port 'unread-char) char))
 
 (define (peek-char #!optional port)
-  (let ((port (optional-input-port port 'READ-CHAR)))
+  (let ((port (optional-input-port port 'read-char)))
     (let loop ()
       (or (input-port/peek-char port)
 	  (loop)))))
 
 (define (read-char-no-hang #!optional port)
-  (let ((port (optional-input-port port 'READ-CHAR-NO-HANG)))
+  (let ((port (optional-input-port port 'read-char-no-hang)))
     (and (input-port/char-ready? port)
 	 (if (input-port/eof? port)
 	     (eof-object)
@@ -166,7 +166,7 @@ USA.
       (r7rs-read-string k port)))
 
 (define (read-delimited-string delimiters #!optional port)
-  (input-port/read-string (optional-input-port port 'READ-STRING) delimiters))
+  (input-port/read-string (optional-input-port port 'read-string) delimiters))
 
 (define (r7rs-read-string k #!optional port)
   (guarantee index-fixnum? k 'read-string)
@@ -181,11 +181,11 @@ USA.
 
 (define (read #!optional port environment)
   (declare (ignore environment))
-  (parse-object (optional-input-port port 'READ)))
+  (parse-object (optional-input-port port 'read)))
 
 (define (read-file pathname #!optional environment)
   (declare (ignore environment))
-  (call-with-input-file (pathname-default-version pathname 'NEWEST)
+  (call-with-input-file (pathname-default-version pathname 'newest)
     (lambda (port)
       (let loop ((sexps '()))
 	(let ((sexp (read port)))
@@ -194,7 +194,7 @@ USA.
 	      (loop (cons sexp sexps))))))))
 
 (define (read-line #!optional port)
-  (input-port/read-line (optional-input-port port 'READ-LINE)))
+  (input-port/read-line (optional-input-port port 'read-line)))
 
 (define (read-string! string #!optional port start end)
   (let ((port (optional-input-port port 'read-string!))

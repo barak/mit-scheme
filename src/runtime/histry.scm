@@ -188,7 +188,7 @@ USA.
 (define the-empty-history)
 
 (define (unfold-and-reverse-rib rib)
-  (let loop ((current (next-reduction rib)) (output 'WRAP-AROUND))
+  (let loop ((current (next-reduction rib)) (output 'wrap-around))
     (let ((step
 	   (let ((tail
 		  (if (marked-reduction? current)
@@ -229,6 +229,6 @@ USA.
 
 (define (initialize-package!)
   (set! the-empty-history
-	(cons (fixed-objects-item 'DUMMY-HISTORY)
+	(cons (fixed-objects-item 'dummy-history)
 	      '()))
   unspecific)

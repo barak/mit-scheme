@@ -30,8 +30,8 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! add-event-receiver! (make-receiver-modifier 'ADD-RECEIVER))
-  (set! remove-event-receiver! (make-receiver-modifier 'REMOVE-RECEIVER))
+  (set! add-event-receiver! (make-receiver-modifier 'add-receiver))
+  (set! remove-event-receiver! (make-receiver-modifier 'remove-receiver))
   unspecific)
 
 (define-structure (event-distributor
@@ -43,7 +43,7 @@ USA.
 
 (define (event-distributor/invoke! event-distributor . arguments)
   (enqueue! (event-distributor/events event-distributor)
-	    (cons 'INVOKE-RECEIVERS arguments))
+	    (cons 'invoke-receivers arguments))
   (process-events! event-distributor))
 
 (define (make-receiver-modifier keyword)
@@ -70,13 +70,13 @@ USA.
 	   (queue-map! (event-distributor/events event-distributor)
 	     (lambda (event)
 	       (case (car event)
-		 ((INVOKE-RECEIVERS)
+		 ((invoke-receivers)
 		  (do ((receivers
 			(event-distributor/receivers event-distributor)
 			(cdr receivers)))
 		      ((null? receivers))
 		    (apply (car receivers) (cdr event))))
-		 ((ADD-RECEIVER)
+		 ((add-receiver)
 		  (let ((receiver (cdr event))
 			(receivers
 			 (event-distributor/receivers event-distributor)))
@@ -84,7 +84,7 @@ USA.
 			(set-event-distributor/receivers!
 			 event-distributor
 			 (append! receivers (list receiver))))))
-		 ((REMOVE-RECEIVER)
+		 ((remove-receiver)
 		  (set-event-distributor/receivers!
 		   event-distributor
 		   (delv! (cdr event)

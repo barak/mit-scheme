@@ -53,7 +53,7 @@ USA.
 		     operation/set-line-style
 		     custom-operations))
 		   (print-procedure
-		    (simple-unparser-method 'GRAPHICS-TYPE
+		    (simple-unparser-method 'graphics-type
 		      (lambda (type)
 			(list (graphics-device-type/name type))))))
   (name false read-only true)
@@ -224,11 +224,11 @@ USA.
   ((graphics-device-type/operation/available? type)))
 
 (define (graphics-type-name type)
-  (guarantee-graphics-type type 'GRAPHICS-TYPE-NAME)
+  (guarantee-graphics-type type 'graphics-type-name)
   (graphics-device-type/name type))
 
 (define (graphics-type-properties type)
-  (guarantee-graphics-type type 'GRAPHICS-TYPE-PROPERTIES)
+  (guarantee-graphics-type type 'graphics-type-properties)
   (graphics-device-type/properties type))
 
 (define (guarantee-graphics-type type name)
@@ -258,12 +258,12 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      (let ((name (cadr form)))
-       `(DEFINE-INTEGRABLE
-	  (,(symbol 'GRAPHICS-DEVICE/OPERATION/ name) DEVICE)
-	  (,(close-syntax (symbol 'GRAPHICS-DEVICE-TYPE/OPERATION/
+       `(define-integrable
+	  (,(symbol 'graphics-device/operation/ name) device)
+	  (,(close-syntax (symbol 'graphics-device-type/operation/
 					 name)
 			  environment)
-	   (GRAPHICS-DEVICE/TYPE DEVICE)))))))
+	   (graphics-device/type device)))))))
 
 (define-graphics-operation clear)
 (define-graphics-operation close)
@@ -419,7 +419,7 @@ USA.
 	(let ((type (graphics-type object error?)))
 	  (and type
 	       (or (1d-table/get (graphics-type-properties type)
-				 'IMAGE-TYPE
+				 'image-type
 				 #f)
 		   (and error?
 			(error "Graphics type has no associated image type:"

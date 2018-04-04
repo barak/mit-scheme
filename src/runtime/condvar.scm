@@ -34,7 +34,7 @@ USA.
 		   (constructor %make-condition-variable
 				(name waiter-head waiter-tail))
 		   (print-procedure
-		    (simple-unparser-method 'CONDITION-VARIABLE
+		    (simple-unparser-method 'condition-variable
 		      (lambda (condvar)
 			(cond ((condition-variable-name condvar) => list)
 			      (else '()))))))
@@ -55,25 +55,25 @@ USA.
     (%make-condition-variable name waiter-head waiter-tail)))
 
 (define (condition-variable-name condvar)
-  (guarantee-condition-variable condvar 'CONDITION-VARIABLE-NAME)
+  (guarantee-condition-variable condvar 'condition-variable-name)
   (condition-variable.name condvar))
 
 (define (condition-variable-specific condvar)
-  (guarantee-condition-variable condvar 'CONDITION-VARIABLE-SPECIFIC)
+  (guarantee-condition-variable condvar 'condition-variable-specific)
   (condition-variable.specific condvar))
 
 (define (condition-variable-specific-set! condvar specific)
-  (guarantee-condition-variable condvar 'SET-CONDITION-VARIABLE-SPECIFIC!)
+  (guarantee-condition-variable condvar 'set-condition-variable-specific!)
   (set-condition-variable.specific! condvar specific))
 
 (define (unlock-thread-mutex-and-wait thread-mutex condvar #!optional timeout)
-  (guarantee-condition-variable condvar 'CONDITION-VARIABLE-WAIT!/UNLOCK)
-  (guarantee-thread-mutex thread-mutex 'CONDITION-VARIABLE-WAIT!/UNLOCK)
+  (guarantee-condition-variable condvar 'condition-variable-wait!/unlock)
+  (guarantee-thread-mutex thread-mutex 'condition-variable-wait!/unlock)
   (%condition-variable-wait!/unlock condvar thread-mutex timeout))
 
 (define (condition-variable-wait! condvar thread-mutex #!optional timeout)
-  (guarantee-condition-variable condvar 'CONDITION-VARIABLE-WAIT!)
-  (guarantee-thread-mutex thread-mutex 'CONDITION-VARIABLE-WAIT!)
+  (guarantee-condition-variable condvar 'condition-variable-wait!)
+  (guarantee-thread-mutex thread-mutex 'condition-variable-wait!)
   (begin0 (%condition-variable-wait!/unlock condvar thread-mutex timeout)
     (lock-thread-mutex thread-mutex)))
 
@@ -111,7 +111,7 @@ USA.
 	      (unblock-thread-events)))))))
 
 (define (condition-variable-signal! condvar)
-  (guarantee-condition-variable condvar 'CONDITION-VARIABLE-SIGNAL!)
+  (guarantee-condition-variable condvar 'condition-variable-signal!)
   (with-thread-mutex-lock (condition-variable.lock condvar)
     (lambda ()
       (let ((head (condition-variable.waiter-head condvar))
@@ -142,7 +142,7 @@ USA.
   unspecific)
 
 (define (condition-variable-broadcast! condvar)
-  (guarantee-condition-variable condvar 'CONDITION-VARIABLE-BROADCAST!)
+  (guarantee-condition-variable condvar 'condition-variable-broadcast!)
   (with-thread-mutex-lock (condition-variable.lock condvar)
     (lambda ()
       (let ((head (condition-variable.waiter-head condvar))

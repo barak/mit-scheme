@@ -40,8 +40,8 @@ USA.
 (define-guarantee char "character")
 
 (define (make-char code bits)
-  (guarantee-limited-index-fixnum code char-code-limit 'MAKE-CHAR)
-  (guarantee-limited-index-fixnum bits char-bits-limit 'MAKE-CHAR)
+  (guarantee-limited-index-fixnum code char-code-limit 'make-char)
+  (guarantee-limited-index-fixnum bits char-bits-limit 'make-char)
   (%make-char code bits))
 
 (define-integrable (%make-char code bits)
@@ -58,20 +58,20 @@ USA.
        (fix:< (char->integer object) char-code-limit)))
 
 (define (char-bits-set? bits char)
-  (guarantee-limited-index-fixnum bits char-bits-limit 'CHAR-BITS-SET?)
+  (guarantee-limited-index-fixnum bits char-bits-limit 'char-bits-set?)
   (fix:= bits (fix:and (char-bits char) bits)))
 
 (define (char-bits-clear? bits char)
-  (guarantee-limited-index-fixnum bits char-bits-limit 'CHAR-BITS-CLEAR?)
+  (guarantee-limited-index-fixnum bits char-bits-limit 'char-bits-clear?)
   (fix:= 0 (fix:and (char-bits char) bits)))
 
 (define (set-char-bits bits char)
-  (guarantee-limited-index-fixnum bits char-bits-limit 'SET-CHAR-BITS)
+  (guarantee-limited-index-fixnum bits char-bits-limit 'set-char-bits)
   (%make-char (char-code char)
 	      (fix:or (char-bits char) bits)))
 
 (define (clear-char-bits bits char)
-  (guarantee-limited-index-fixnum bits char-bits-limit 'CLEAR-CHAR-BITS)
+  (guarantee-limited-index-fixnum bits char-bits-limit 'clear-char-bits)
   (%make-char (char-code char)
 	      (fix:andc (char-bits char) bits)))
 
@@ -197,7 +197,7 @@ USA.
 	 (if (default-object? radix)
 	     10
 	     (begin
-	       (guarantee radix? radix 'CHAR->DIGIT)
+	       (guarantee radix? radix 'char->digit)
 	       radix)))
 	(digit (digit-value char)))
     (if digit
@@ -564,7 +564,7 @@ USA.
 ;; U+000080..U+0007FF  C2..DF  80..BF
 (define-integrable (valid-utf8-sequence-2? b0 b1)
   (and (utf8-initial-byte-2? b0)
-       (u8:80..BF? b1)))
+       (u8:80..bf? b1)))
 
 ;;  code-point range     b0      b1      b2
 ;; ------------------  ------  ------  ------
@@ -574,11 +574,11 @@ USA.
 ;; U+00E000..U+00FFFF  EE..EF  80..BF  80..BF
 (define-integrable (valid-utf8-sequence-3? b0 b1 b2)
   (and (utf8-initial-byte-3? b0)
-       (cond ((fix:= b0 #xE0) (u8:A0..BF? b1))
-	     ((fix:< b0 #xED) (u8:80..BF? b1))
-	     ((fix:= b0 #xED) (u8:80..9F? b1))
-	     (else            (u8:80..BF? b1)))
-       (u8:80..BF? b2)))
+       (cond ((fix:= b0 #xE0) (u8:a0..bf? b1))
+	     ((fix:< b0 #xED) (u8:80..bf? b1))
+	     ((fix:= b0 #xED) (u8:80..9f? b1))
+	     (else            (u8:80..bf? b1)))
+       (u8:80..bf? b2)))
 
 ;;  code-point range     b0      b1      b2      b3
 ;; ------------------  ------  ------  ------  ------
@@ -587,27 +587,27 @@ USA.
 ;; U+100000..U+10FFFF  F4      80..8F  80..BF  80..BF
 (define-integrable (valid-utf8-sequence-4? b0 b1 b2 b3)
   (and (utf8-initial-byte-4? b0)
-       (cond ((fix:= b0 #xF0) (u8:90..BF? b1))
-	     ((fix:< b0 #xF4) (u8:80..BF? b1))
-	     (else            (u8:80..8F? b1)))
-       (u8:80..BF? b2)
-       (u8:80..BF? b3)))
+       (cond ((fix:= b0 #xF0) (u8:90..bf? b1))
+	     ((fix:< b0 #xF4) (u8:80..bf? b1))
+	     (else            (u8:80..8f? b1)))
+       (u8:80..bf? b2)
+       (u8:80..bf? b3)))
 
 ;; Trailing bytes:
 
-(define-integrable (u8:80..8F? byte)
+(define-integrable (u8:80..8f? byte)
   (fix:= #x80 (fix:and #xF0 byte)))
 
-(define-integrable (u8:80..9F? byte)
+(define-integrable (u8:80..9f? byte)
   (fix:= #x80 (fix:and #xE0 byte)))
 
-(define-integrable (u8:80..BF? byte)
+(define-integrable (u8:80..bf? byte)
   (fix:= #x80 (fix:and #xC0 byte)))
 
-(define-integrable (u8:90..BF? byte)
+(define-integrable (u8:90..bf? byte)
   (and (fix:>= byte #x90) (fix:<= byte #xBF)))
 
-(define-integrable (u8:A0..BF? byte)
+(define-integrable (u8:a0..bf? byte)
   (and (fix:>= byte #xA0) (fix:<= byte #xBF)))
 
 (define (initial-u16->utf16-char-length u16)

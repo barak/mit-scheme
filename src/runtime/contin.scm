@@ -39,7 +39,7 @@ USA.
        (%within-continuation k #f (lambda () (receiver k)))))))
 
 (define (within-continuation k thunk)
-  (guarantee continuation? k 'WITHIN-CONTINUATION)
+  (guarantee continuation? k 'within-continuation)
   (%within-continuation k #f thunk))
 
 (define (make-continuation control-point dynamic-state block-thread-events?)

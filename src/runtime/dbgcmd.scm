@@ -78,7 +78,7 @@ USA.
 	       (let loop ()
 		 (let ((entry
 			(assv (char-upcase
-			       (prompt-for-command-char (cons 'STANDARD prompt)
+			       (prompt-for-command-char (cons 'standard prompt)
 							port))
 			      (cdr command-set))))
 		   (if entry
@@ -120,7 +120,7 @@ USA.
 (define (debug/read-eval-print environment from to)
   (leaving-command-loop
    (lambda ()
-     (with-simple-restart 'CONTINUE
+     (with-simple-restart 'continue
 	 (lambda (port)
 	   (write-string "Return to " port)
 	   (write-string from port)

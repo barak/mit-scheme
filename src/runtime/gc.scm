@@ -75,7 +75,7 @@ USA.
 
 (define (default/purify item pure-space? queue?)
   pure-space?
-  (if (and (not (eq? 'NON-POINTER (object-gc-type item)))
+  (if (and (not (eq? 'non-pointer (object-gc-type item)))
 	   (not (object-constant? item)))
       (if queue?
 	  (with-thread-mutex-lock constant-space-queue-mutex

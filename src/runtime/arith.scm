@@ -36,7 +36,7 @@ USA.
    (lambda (form environment)
      (if (syntax-match? '(identifier) (cdr form))
 	 (let ((identifier (close-syntax (cadr form) environment)))
-	   `(LOCAL-DECLARE ((INTEGRATE ,identifier)) ,identifier))
+	   `(local-declare ((integrate ,identifier)) ,identifier))
 	 (ill-formed-syntax form)))))
 
 ;;;; Primitives
@@ -117,21 +117,21 @@ USA.
   (initialize-microcode-dependencies!)
   (add-event-receiver! event:after-restore initialize-microcode-dependencies!)
   (initialize-*maximum-fixnum-radix-powers*!)
-  (set-fixed-objects-item! 'GENERIC-TRAMPOLINE-ZERO? complex:zero?)
-  (set-fixed-objects-item! 'GENERIC-TRAMPOLINE-POSITIVE? complex:positive?)
-  (set-fixed-objects-item! 'GENERIC-TRAMPOLINE-NEGATIVE? complex:negative?)
-  (set-fixed-objects-item! 'GENERIC-TRAMPOLINE-ADD-1 complex:1+)
-  (set-fixed-objects-item! 'GENERIC-TRAMPOLINE-SUBTRACT-1 complex:-1+)
-  (set-fixed-objects-item! 'GENERIC-TRAMPOLINE-EQUAL? complex:=)
-  (set-fixed-objects-item! 'GENERIC-TRAMPOLINE-LESS? complex:<)
-  (set-fixed-objects-item! 'GENERIC-TRAMPOLINE-GREATER? complex:>)
-  (set-fixed-objects-item! 'GENERIC-TRAMPOLINE-ADD complex:+)
-  (set-fixed-objects-item! 'GENERIC-TRAMPOLINE-SUBTRACT complex:-)
-  (set-fixed-objects-item! 'GENERIC-TRAMPOLINE-MULTIPLY complex:*)
-  (set-fixed-objects-item! 'GENERIC-TRAMPOLINE-DIVIDE complex:/)
-  (set-fixed-objects-item! 'GENERIC-TRAMPOLINE-QUOTIENT complex:quotient)
-  (set-fixed-objects-item! 'GENERIC-TRAMPOLINE-REMAINDER complex:remainder)
-  (set-fixed-objects-item! 'GENERIC-TRAMPOLINE-MODULO complex:modulo)
+  (set-fixed-objects-item! 'generic-trampoline-zero? complex:zero?)
+  (set-fixed-objects-item! 'generic-trampoline-positive? complex:positive?)
+  (set-fixed-objects-item! 'generic-trampoline-negative? complex:negative?)
+  (set-fixed-objects-item! 'generic-trampoline-add-1 complex:1+)
+  (set-fixed-objects-item! 'generic-trampoline-subtract-1 complex:-1+)
+  (set-fixed-objects-item! 'generic-trampoline-equal? complex:=)
+  (set-fixed-objects-item! 'generic-trampoline-less? complex:<)
+  (set-fixed-objects-item! 'generic-trampoline-greater? complex:>)
+  (set-fixed-objects-item! 'generic-trampoline-add complex:+)
+  (set-fixed-objects-item! 'generic-trampoline-subtract complex:-)
+  (set-fixed-objects-item! 'generic-trampoline-multiply complex:*)
+  (set-fixed-objects-item! 'generic-trampoline-divide complex:/)
+  (set-fixed-objects-item! 'generic-trampoline-quotient complex:quotient)
+  (set-fixed-objects-item! 'generic-trampoline-remainder complex:remainder)
+  (set-fixed-objects-item! 'generic-trampoline-modulo complex:modulo)
 
   ;; The binary cases for the following operators rely on the fact that the
   ;; &<mumble> operators, either interpreted or open-coded by the
@@ -147,23 +147,23 @@ USA.
 	 (lambda (form environment)
 	   (let ((name (list-ref form 1))
 		 (identity (close-syntax (list-ref form 3) environment)))
-	     `(SET! ,(close-syntax name environment)
-		    (MAKE-ENTITY
-		     (NAMED-LAMBDA (,name SELF . ZS)
-		       SELF		; ignored
-		       (REDUCE ,(close-syntax (list-ref form 2) environment)
+	     `(set! ,(close-syntax name environment)
+		    (make-entity
+		     (named-lambda (,name self . zs)
+		       self		; ignored
+		       (reduce ,(close-syntax (list-ref form 2) environment)
 			       ,identity
-			       ZS))
-		     (VECTOR
-		      (FIXED-OBJECTS-ITEM 'arity-dispatcher-tag)
-		      (NAMED-LAMBDA (,(symbol 'NULLARY- name))
+			       zs))
+		     (vector
+		      (fixed-objects-item 'arity-dispatcher-tag)
+		      (named-lambda (,(symbol 'nullary- name))
 			,identity)
-		      (NAMED-LAMBDA (,(symbol 'UNARY- name) Z)
-			(IF (NOT (COMPLEX:COMPLEX? Z))
-			    (ERROR:WRONG-TYPE-ARGUMENT Z "number" ',name))
-			Z)
-		      (NAMED-LAMBDA (,(symbol 'BINARY- name) Z1 Z2)
-			((UCODE-PRIMITIVE ,(list-ref form 4)) Z1 Z2))))))))))
+		      (named-lambda (,(symbol 'unary- name) z)
+			(if (not (complex:complex? z))
+			    (error:wrong-type-argument z "number" ',name))
+			z)
+		      (named-lambda (,(symbol 'binary- name) z1 z2)
+			((ucode-primitive ,(list-ref form 4)) z1 z2))))))))))
     (commutative + complex:+ 0 &+)
     (commutative * complex:* 1 &*))
 
@@ -344,7 +344,7 @@ USA.
 			  (int:* answer b)
 			  (loop b e answer))))))))
 	((int:zero? e) 1)
-	(else (error:bad-range-argument e 'EXPT))))
+	(else (error:bad-range-argument e 'expt))))
 
 ;; A vector indexed by radix of pairs of the form (N . (expt RADIX N))
 ;; where N is the maximum value for which the cdr is a fixnum.  Used
@@ -466,7 +466,7 @@ USA.
 	      (make-power-stack value split-factor '() split-digits)))))
 
   (cond ((not (int:integer? number))
-	 (error:wrong-type-argument number #f 'NUMBER->STRING))
+	 (error:wrong-type-argument number #f 'number->string))
 	((int:negative? number)
 	 (list->string (cons #\- (n>0 (int:negate number)))))
 	(else
@@ -536,29 +536,29 @@ USA.
    (lambda (form environment)
      (let ((name (list-ref form 1))
 	   (int:op (close-syntax (list-ref form 2) environment)))
-       `(DEFINE (,name U/U* V/V*)
-	  (RAT:BINARY-OPERATOR U/U* V/V*
+       `(define (,name u/u* v/v*)
+	  (rat:binary-operator u/u* v/v*
 	    ,int:op
-	    (LAMBDA (U V V*)
-	      (MAKE-RATIONAL (,int:op (INT:* U V*) V) V*))
-	    (LAMBDA (U U* V)
-	      (MAKE-RATIONAL (,int:op U (INT:* V U*)) U*))
-	    (LAMBDA (U U* V V*)
-	      (LET ((D1 (INT:GCD U* V*)))
-		(IF (INT:= D1 1)
-		    (MAKE-RATIONAL (,int:op (INT:* U V*) (INT:* V U*))
-				   (INT:* U* V*))
-		    (LET* ((U*/D1 (INT:QUOTIENT U* D1))
-			   (T
-			    (,int:op (INT:* U (INT:QUOTIENT V* D1))
-				     (INT:* V U*/D1))))
-		      (IF (INT:ZERO? T)
-			  0	;(MAKE-RATIONAL 0 1)
-			  (LET ((D2 (INT:GCD T D1)))
-			    (MAKE-RATIONAL
-			     (INT:QUOTIENT T D2)
-			     (INT:* U*/D1
-				    (INT:QUOTIENT V* D2)))))))))))))))
+	    (lambda (u v v*)
+	      (make-rational (,int:op (int:* u v*) v) v*))
+	    (lambda (u u* v)
+	      (make-rational (,int:op u (int:* v u*)) u*))
+	    (lambda (u u* v v*)
+	      (let ((d1 (int:gcd u* v*)))
+		(if (int:= d1 1)
+		    (make-rational (,int:op (int:* u v*) (int:* v u*))
+				   (int:* u* v*))
+		    (let* ((u*/d1 (int:quotient u* d1))
+			   (t
+			    (,int:op (int:* u (int:quotient v* d1))
+				     (int:* v u*/d1))))
+		      (if (int:zero? t)
+			  0	;(make-rational 0 1)
+			  (let ((d2 (int:gcd t d1)))
+			    (make-rational
+			     (int:quotient t d2)
+			     (int:* u*/d1
+				    (int:quotient v* d2)))))))))))))))
 
 (define-addition-operator rat:+ int:+)
 (define-addition-operator rat:- int:-)
@@ -693,24 +693,24 @@ USA.
 (define (rat:numerator q)
   (cond ((ratnum? q) (ratnum-numerator q))
 	((int:integer? q) q)
-	(else (error:wrong-type-argument q #f 'NUMERATOR))))
+	(else (error:wrong-type-argument q #f 'numerator))))
 
 (define (rat:denominator q)
   (cond ((ratnum? q) (ratnum-denominator q))
 	((int:integer? q) 1)
-	(else (error:wrong-type-argument q #f 'DENOMINATOR))))
+	(else (error:wrong-type-argument q #f 'denominator))))
 
 (define-syntax define-integer-coercion
   (sc-macro-transformer
    (lambda (form environment)
-     `(DEFINE (,(list-ref form 1) Q)
-	(COND ((RATNUM? Q)
+     `(define (,(list-ref form 1) q)
+	(cond ((ratnum? q)
 	       (,(close-syntax (list-ref form 3) environment)
-		(RATNUM-NUMERATOR Q)
-		(RATNUM-DENOMINATOR Q)))
-	      ((INT:INTEGER? Q) Q)
-	      (ELSE
-	       (ERROR:WRONG-TYPE-ARGUMENT Q
+		(ratnum-numerator q)
+		(ratnum-denominator q)))
+	      ((int:integer? q) q)
+	      (else
+	       (error:wrong-type-argument q
 					  "real number"
 					  ',(list-ref form 2))))))))
 
@@ -780,7 +780,7 @@ USA.
 		  ((int:positive? e)
 		   (exact-method e))
 		  (else 1))))
-      (error:bad-range-argument e 'EXPT)))
+      (error:bad-range-argument e 'expt)))
 
 (define (rat:->string q radix)
   (if (ratnum? q)
@@ -947,7 +947,7 @@ USA.
 (define (real:exact? x)
   (and (not (flonum? x))
        (or (rat:rational? x)
-	   (error:wrong-type-argument x #f 'EXACT?))))
+	   (error:wrong-type-argument x #f 'exact?))))
 
 (define (real:zero? x)
   (if (flonum? x) (flo:zero? x) ((copy rat:zero?) x)))
@@ -964,10 +964,10 @@ USA.
 (define-syntax define-standard-unary
   (sc-macro-transformer
    (lambda (form environment)
-     `(DEFINE (,(list-ref form 1) X)
-	(IF (FLONUM? X)
-	    (,(close-syntax (list-ref form 2) environment) X)
-	    (,(close-syntax (list-ref form 3) environment) X))))))
+     `(define (,(list-ref form 1) x)
+	(if (flonum? x)
+	    (,(close-syntax (list-ref form 2) environment) x)
+	    (,(close-syntax (list-ref form 3) environment) x))))))
 
 (define-standard-unary real:1+ (lambda (x) (flo:+ x flo:1)) (copy rat:1+))
 (define-standard-unary real:-1+ (lambda (x) (flo:- x flo:1)) (copy rat:-1+))
@@ -989,21 +989,21 @@ USA.
   (lambda (q)
     (if (rat:rational? q)
 	q
-	(error:wrong-type-argument q #f 'INEXACT->EXACT))))
+	(error:wrong-type-argument q #f 'inexact->exact))))
 
 (define-syntax define-standard-binary
   (sc-macro-transformer
    (lambda (form environment)
      (let ((flo:op (close-syntax (list-ref form 2) environment))
 	   (rat:op (close-syntax (list-ref form 3) environment)))
-       `(DEFINE (,(list-ref form 1) X Y)
-	  (IF (FLONUM? X)
-	      (IF (FLONUM? Y)
-		  (,flo:op X Y)
-		  (,flo:op X (RAT:->INEXACT Y)))
-	      (IF (FLONUM? Y)
-		  (,flo:op (RAT:->INEXACT X) Y)
-		  (,rat:op X Y))))))))
+       `(define (,(list-ref form 1) x y)
+	  (if (flonum? x)
+	      (if (flonum? y)
+		  (,flo:op x y)
+		  (,flo:op x (rat:->inexact y)))
+	      (if (flonum? y)
+		  (,flo:op (rat:->inexact x) y)
+		  (,rat:op x y))))))))
 
 (define-standard-binary real:+ flo:+ (copy rat:+))
 (define-standard-binary real:- flo:- (copy rat:-))
@@ -1117,7 +1117,7 @@ USA.
    (if (flonum? n)
        (if (flo:integer? n)
 	   (flo:->integer n)
-	   (error:wrong-type-argument n #f 'EVEN?))
+	   (error:wrong-type-argument n #f 'even?))
        n)))
 
 (define-syntax define-integer-binary
@@ -1126,20 +1126,20 @@ USA.
      (let ((operator (close-syntax (list-ref form 3) environment))
 	   (flo->int
 	    (lambda (n)
-	      `(IF (FLO:INTEGER? ,n)
-		   (FLO:->INTEGER ,n)
-		   (ERROR:WRONG-TYPE-ARGUMENT ,n "integer"
+	      `(if (flo:integer? ,n)
+		   (flo:->integer ,n)
+		   (error:wrong-type-argument ,n "integer"
 					      ',(list-ref form 2))))))
-       `(DEFINE (,(list-ref form 1) N M)
-	  (IF (FLONUM? N)
-	      (INT:->INEXACT
-	       (,operator ,(flo->int 'N)
-			  (IF (FLONUM? M)
-			      ,(flo->int 'M)
-			      M)))
-	      (IF (FLONUM? M)
-		  (INT:->INEXACT (,operator N ,(flo->int 'M)))
-		  (,operator N M))))))))
+       `(define (,(list-ref form 1) n m)
+	  (if (flonum? n)
+	      (int:->inexact
+	       (,operator ,(flo->int 'n)
+			  (if (flonum? m)
+			      ,(flo->int 'm)
+			      m)))
+	      (if (flonum? m)
+		  (int:->inexact (,operator n ,(flo->int 'm)))
+		  (,operator n m))))))))
 
 (define-integer-binary real:quotient quotient int:quotient)
 (define-integer-binary real:remainder remainder int:remainder)
@@ -1155,10 +1155,10 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      (let ((operator (close-syntax (list-ref form 2) environment)))
-       `(DEFINE (,(list-ref form 1) Q)
-	  (IF (FLONUM? Q)
-	      (RAT:->INEXACT (,operator (FLO:->RATIONAL Q)))
-	      (,operator Q)))))))
+       `(define (,(list-ref form 1) q)
+	  (if (flonum? q)
+	      (rat:->inexact (,operator (flo:->rational q)))
+	      (,operator q)))))))
 
 (define-rational-unary real:numerator rat:numerator)
 (define-rational-unary real:denominator rat:denominator)
@@ -1167,10 +1167,10 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      (let ((operator (close-syntax (list-ref form 2) environment)))
-       `(DEFINE (,(list-ref form 1) Q)
-	  (IF (FLONUM? Q)
-	      (,operator (FLO:->RATIONAL Q))
-	      (,operator Q)))))))
+       `(define (,(list-ref form 1) q)
+	  (if (flonum? q)
+	      (,operator (flo:->rational q))
+	      (,operator q)))))))
 
 (define-rational-exact-unary real:numerator->exact rat:numerator)
 (define-rational-exact-unary real:denominator->exact rat:denominator)
@@ -1178,11 +1178,11 @@ USA.
 (define-syntax define-transcendental-unary
   (sc-macro-transformer
    (lambda (form environment)
-     `(DEFINE (,(list-ref form 1) X)
-	(IF (,(close-syntax (list-ref form 2) environment) X)
+     `(define (,(list-ref form 1) x)
+	(if (,(close-syntax (list-ref form 2) environment) x)
 	    ,(close-syntax (list-ref form 3) environment)
 	    (,(close-syntax (list-ref form 4) environment)
-	     (REAL:->INEXACT X)))))))
+	     (real:->inexact x)))))))
 
 (define-transcendental-unary real:exp real:exact0= 1 flo:exp)
 (define-transcendental-unary real:log real:exact1= 0 flo:log)
@@ -1231,10 +1231,10 @@ USA.
 		 ((flo:zero? x)
 		  (if (flo:positive? y)
 		      x
-		      (error:divide-by-zero 'EXPT (list x y))))
+		      (error:divide-by-zero 'expt (list x y))))
 		 ((and (flo:negative? x)
 		       (not (flo:integer? y)))
-		  (error:bad-range-argument x 'EXPT))
+		  (error:bad-range-argument x 'expt))
 		 (else
 		  (flo:expt x y))))))
     (if (flonum? x)
@@ -1365,33 +1365,33 @@ USA.
 
 (define (complex:positive? x)
   (if (recnum? x)
-      (real:positive? (rec:real-arg 'POSITIVE? x))
+      (real:positive? (rec:real-arg 'positive? x))
       ((copy real:positive?) x)))
 
 (define (complex:negative? x)
   (if (recnum? x)
-      (real:negative? (rec:real-arg 'NEGATIVE? x))
+      (real:negative? (rec:real-arg 'negative? x))
       ((copy real:negative?) x)))
 
 (define (complex:even? x)
-  (if (recnum? x) (real:even? (rec:real-arg 'EVEN? x)) ((copy real:even?) x)))
+  (if (recnum? x) (real:even? (rec:real-arg 'even? x)) ((copy real:even?) x)))
 
 (define (complex:max x y)
   (if (recnum? x)
       (if (recnum? y)
-	  (real:max (rec:real-arg 'MAX x) (rec:real-arg 'MAX y))
-	  (real:max (rec:real-arg 'MAX x) y))
+	  (real:max (rec:real-arg 'max x) (rec:real-arg 'max y))
+	  (real:max (rec:real-arg 'max x) y))
       (if (recnum? y)
-	  (real:max x (rec:real-arg 'MAX y))
+	  (real:max x (rec:real-arg 'max y))
 	  ((copy real:max) x y))))
 
 (define (complex:min x y)
   (if (recnum? x)
       (if (recnum? y)
-	  (real:min (rec:real-arg 'MIN x) (rec:real-arg 'MIN y))
-	  (real:min (rec:real-arg 'MIN x) y))
+	  (real:min (rec:real-arg 'min x) (rec:real-arg 'min y))
+	  (real:min (rec:real-arg 'min x) y))
       (if (recnum? y)
-	  (real:min x (rec:real-arg 'MIN y))
+	  (real:min x (rec:real-arg 'min y))
 	  ((copy real:min) x y))))
 
 (define (complex:+ z1 z2)
@@ -1472,7 +1472,7 @@ USA.
 	((real:real? z)
 	 z)
 	(else
-	 (error:wrong-type-argument z #f 'CONJUGATE))))
+	 (error:wrong-type-argument z #f 'conjugate))))
 
 (define (complex:/ z1 z2)
   (if (recnum? z1)
@@ -1506,111 +1506,111 @@ USA.
       ((copy real:invert) z)))
 
 (define (complex:abs x)
-  (if (recnum? x) (real:abs (rec:real-arg 'ABS x)) ((copy real:abs) x)))
+  (if (recnum? x) (real:abs (rec:real-arg 'abs x)) ((copy real:abs) x)))
 
 (define (complex:quotient n d)
-  (real:quotient (complex:real-arg 'QUOTIENT n)
-		 (complex:real-arg 'QUOTIENT d)))
+  (real:quotient (complex:real-arg 'quotient n)
+		 (complex:real-arg 'quotient d)))
 
 (define (complex:remainder n d)
-  (real:remainder (complex:real-arg 'REMAINDER n)
-		  (complex:real-arg 'REMAINDER d)))
+  (real:remainder (complex:real-arg 'remainder n)
+		  (complex:real-arg 'remainder d)))
 
 (define (complex:modulo n d)
-  (real:modulo (complex:real-arg 'MODULO n)
-	       (complex:real-arg 'MODULO d)))
+  (real:modulo (complex:real-arg 'modulo n)
+	       (complex:real-arg 'modulo d)))
 
 (define (complex:integer-floor n d)
-  (real:integer-floor (complex:real-arg 'INTEGER-FLOOR n)
-		      (complex:real-arg 'INTEGER-FLOOR d)))
+  (real:integer-floor (complex:real-arg 'integer-floor n)
+		      (complex:real-arg 'integer-floor d)))
 
 (define (complex:integer-ceiling n d)
-  (real:integer-ceiling (complex:real-arg 'INTEGER-CEILING n)
-			(complex:real-arg 'INTEGER-CEILING d)))
+  (real:integer-ceiling (complex:real-arg 'integer-ceiling n)
+			(complex:real-arg 'integer-ceiling d)))
 
 (define (complex:integer-round n d)
-  (real:integer-round (complex:real-arg 'INTEGER-ROUND n)
-		      (complex:real-arg 'INTEGER-ROUND d)))
+  (real:integer-round (complex:real-arg 'integer-round n)
+		      (complex:real-arg 'integer-round d)))
 
 (define (complex:divide n d)
-  (real:divide (complex:real-arg 'DIVIDE n)
-	       (complex:real-arg 'DIVIDE d)))
+  (real:divide (complex:real-arg 'divide n)
+	       (complex:real-arg 'divide d)))
 
 (define (complex:gcd n m)
-  (real:gcd (complex:real-arg 'GCD n)
-	    (complex:real-arg 'GCD m)))
+  (real:gcd (complex:real-arg 'gcd n)
+	    (complex:real-arg 'gcd m)))
 
 (define (complex:lcm n m)
-  (real:lcm (complex:real-arg 'LCM n)
-	    (complex:real-arg 'LCM m)))
+  (real:lcm (complex:real-arg 'lcm n)
+	    (complex:real-arg 'lcm m)))
 
 (define (complex:numerator q)
-  (real:numerator (complex:real-arg 'NUMERATOR q)))
+  (real:numerator (complex:real-arg 'numerator q)))
 
 (define (complex:denominator q)
-  (real:denominator (complex:real-arg 'DENOMINATOR q)))
+  (real:denominator (complex:real-arg 'denominator q)))
 
 (define (complex:numerator->exact q)
-  (real:numerator->exact (complex:real-arg 'NUMERATOR->EXACT q)))
+  (real:numerator->exact (complex:real-arg 'numerator->exact q)))
 
 (define (complex:denominator->exact q)
-  (real:denominator->exact (complex:real-arg 'DENOMINATOR->EXACT q)))
+  (real:denominator->exact (complex:real-arg 'denominator->exact q)))
 
 (define (complex:floor x)
   (if (recnum? x)
-      (real:floor (rec:real-arg 'FLOOR x))
+      (real:floor (rec:real-arg 'floor x))
       ((copy real:floor) x)))
 
 (define (complex:ceiling x)
   (if (recnum? x)
-      (real:ceiling (rec:real-arg 'CEILING x))
+      (real:ceiling (rec:real-arg 'ceiling x))
       ((copy real:ceiling) x)))
 
 (define (complex:truncate x)
   (if (recnum? x)
-      (real:truncate (rec:real-arg 'TRUNCATE x))
+      (real:truncate (rec:real-arg 'truncate x))
       ((copy real:truncate) x)))
 
 (define (complex:round x)
   (if (recnum? x)
-      (real:round (rec:real-arg 'ROUND x))
+      (real:round (rec:real-arg 'round x))
       ((copy real:round) x)))
 
 (define (complex:floor->exact x)
   (if (recnum? x)
-      (real:floor->exact (rec:real-arg 'FLOOR->EXACT x))
+      (real:floor->exact (rec:real-arg 'floor->exact x))
       ((copy real:floor->exact) x)))
 
 (define (complex:ceiling->exact x)
   (if (recnum? x)
-      (real:ceiling->exact (rec:real-arg 'CEILING->EXACT x))
+      (real:ceiling->exact (rec:real-arg 'ceiling->exact x))
       ((copy real:ceiling->exact) x)))
 
 (define (complex:truncate->exact x)
   (if (recnum? x)
-      (real:truncate->exact (rec:real-arg 'TRUNCATE->EXACT x))
+      (real:truncate->exact (rec:real-arg 'truncate->exact x))
       ((copy real:truncate->exact) x)))
 
 (define (complex:round->exact x)
   (if (recnum? x)
-      (real:round->exact (rec:real-arg 'ROUND->EXACT x))
+      (real:round->exact (rec:real-arg 'round->exact x))
       ((copy real:round->exact) x)))
 
 (define (complex:rationalize x e)
-  (real:rationalize (complex:real-arg 'RATIONALIZE x)
-		    (complex:real-arg 'RATIONALIZE e)))
+  (real:rationalize (complex:real-arg 'rationalize x)
+		    (complex:real-arg 'rationalize e)))
 
 (define (complex:rationalize->exact x e)
-  (real:rationalize->exact (complex:real-arg 'RATIONALIZE x)
-			   (complex:real-arg 'RATIONALIZE e)))
+  (real:rationalize->exact (complex:real-arg 'rationalize x)
+			   (complex:real-arg 'rationalize e)))
 
 (define (complex:simplest-rational x y)
-  (real:simplest-rational (complex:real-arg 'SIMPLEST-RATIONAL x)
-			  (complex:real-arg 'SIMPLEST-RATIONAL y)))
+  (real:simplest-rational (complex:real-arg 'simplest-rational x)
+			  (complex:real-arg 'simplest-rational y)))
 
 (define (complex:simplest-exact-rational x y)
-  (real:simplest-exact-rational (complex:real-arg 'SIMPLEST-RATIONAL x)
-				(complex:real-arg 'SIMPLEST-RATIONAL y)))
+  (real:simplest-exact-rational (complex:real-arg 'simplest-rational x)
+				(complex:real-arg 'simplest-rational y)))
 
 (define (complex:exp z)
   (if (recnum? z)
@@ -1708,9 +1708,9 @@ USA.
 	   (rec:atan (make-recnum (real:exact->inexact x)
 				  (real:exact->inexact y))))))
     (cond ((recnum? y)
-	   (rec-case (rec:real-arg 'ATAN y) (complex:real-arg 'ATAN x)))
+	   (rec-case (rec:real-arg 'atan y) (complex:real-arg 'atan x)))
 	  ((recnum? x)
-	   (rec-case y (rec:real-arg 'ATAN x)))
+	   (rec-case y (rec:real-arg 'atan x)))
 	  (else
 	   ((copy real:atan2) y x)))))
 
@@ -1756,9 +1756,9 @@ USA.
 	       ((real:positive? (complex:real-part z2))
 		(real:0 (complex:exact? z1)))
 	       ((real:zero? (complex:real-part z2))
-		(error:bad-range-argument z2 'EXPT))
+		(error:bad-range-argument z2 'expt))
 	       (else
-		(error:divide-by-zero 'EXPT (list z1 z2)))))
+		(error:divide-by-zero 'expt (list z1 z2)))))
 	((and (recnum? z1)
 	      (int:integer? z2))
 	 (let ((exact-method
@@ -1793,16 +1793,16 @@ USA.
   (let ((check-arg
 	 (lambda (x)
 	   (if (recnum? x)
-	       (rec:real-arg 'MAKE-RECTANGULAR x)
+	       (rec:real-arg 'make-rectangular x)
 	       (begin
 		 (if (not (real:real? x))
-		     (error:wrong-type-argument x #f 'MAKE-RECTANGULAR))
+		     (error:wrong-type-argument x #f 'make-rectangular))
 		 x)))))
     ((copy complex:%make-rectangular) (check-arg real) (check-arg imag))))
 
 (define (complex:make-polar real imag)
-  ((copy complex:%make-polar) (complex:real-arg 'MAKE-POLAR real)
-			      (complex:real-arg 'MAKE-POLAR imag)))
+  ((copy complex:%make-polar) (complex:real-arg 'make-polar real)
+			      (complex:real-arg 'make-polar imag)))
 
 (define (complex:%make-rectangular real imag)
   (if (real:exact0= imag)
@@ -1816,12 +1816,12 @@ USA.
 (define (complex:real-part z)
   (cond ((recnum? z) (rec:real-part z))
 	((real:real? z) z)
-	(else (error:wrong-type-argument z #f 'REAL-PART))))
+	(else (error:wrong-type-argument z #f 'real-part))))
 
 (define (complex:imag-part z)
   (cond ((recnum? z) (rec:imag-part z))
 	((real:real? z) 0)
-	(else (error:wrong-type-argument z #f 'IMAG-PART))))
+	(else (error:wrong-type-argument z #f 'imag-part))))
 
 (define (complex:exact->inexact z)
   (if (recnum? z)
@@ -1989,11 +1989,11 @@ USA.
 	       (<= 2 radix 36))
 	  radix)
 	 ((and (pair? radix)
-	       (eq? (car radix) 'HEUR)
+	       (eq? (car radix) 'heur)
 	       (list? radix))
 	  (parse-format-tail (cdr radix)))
 	 (else
-	  (error:bad-range-argument radix 'NUMBER->STRING)))))
+	  (error:bad-range-argument radix 'number->string)))))
 
 (define (parse-format-tail tail)
   (let loop
@@ -2011,11 +2011,11 @@ USA.
 			      (cadr modifier)))
 		   (cadr modifier))))
 	    (cond ((and (pair? modifier)
-			(eq? (car modifier) 'EXACTNESS)
+			(eq? (car modifier) 'exactness)
 			(pair? (cdr modifier))
-			(memq (cadr modifier) '(E S))
+			(memq (cadr modifier) '(e s))
 			(null? (cddr modifier)))
-		   (if (eq? (cadr modifier) 'E)
+		   (if (eq? (cadr modifier) 'e)
 		       (warn "NUMBER->STRING: ignoring exactness modifier"
 			     modifier))
 		   (loop tail
@@ -2023,26 +2023,26 @@ USA.
 			 radix
 			 radix-expressed))
 		  ((and (pair? modifier)
-			(eq? (car modifier) 'RADIX)
+			(eq? (car modifier) 'radix)
 			(pair? (cdr modifier))
-			(memq (cadr modifier) '(B O D X))
+			(memq (cadr modifier) '(b o d x))
 			(or (null? (cddr modifier))
 			    (and (pair? (cddr modifier))
-				 (memq (caddr modifier) '(E S))
+				 (memq (caddr modifier) '(e s))
 				 (null? (cdddr modifier)))))
 		   (if (and (pair? (cddr modifier))
-			    (eq? (caddr modifier) 'E))
+			    (eq? (caddr modifier) 'e))
 		       (warn
 			"NUMBER->STRING: ignoring radix expression modifier"
 			modifier))
 		   (loop tail
 			 exactness-expressed
 			 (specify-modifier radix)
-			 (if (pair? (cddr modifier)) (caddr modifier) 'E)))
+			 (if (pair? (cddr modifier)) (caddr modifier) 'e)))
 		  (else
 		   (error "Illegal format modifier" modifier)))))
 	(case radix
-	  ((B) 2)
-	  ((O) 8)
-	  ((D #f) 10)
-	  ((X) 16)))))
+	  ((b) 2)
+	  ((o) 8)
+	  ((d #f) 10)
+	  ((x) 16)))))

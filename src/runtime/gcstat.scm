@@ -31,10 +31,10 @@ USA.
 
 (define (initialize-package!)
   (set! history-modes
-	`((NONE . ,none:install-history!)
-	  (BOUNDED . ,bounded:install-history!)
-	  (UNBOUNDED . ,unbounded:install-history!)))
-  (set-history-mode! 'BOUNDED)
+	`((none . ,none:install-history!)
+	  (bounded . ,bounded:install-history!)
+	  (unbounded . ,unbounded:install-history!)))
+  (set-history-mode! 'bounded)
   (set! timestamp (cons 0 0))
   (statistics-reset!)
   (add-event-receiver! event:after-restore statistics-reset!)
@@ -156,7 +156,7 @@ USA.
 (define (set-history-mode! mode)
   (let ((entry (assq mode history-modes)))
     (if (not entry)
-	(error "Bad mode name" 'SET-HISTORY-MODE! mode))
+	(error "Bad mode name" 'set-history-mode! mode))
     ((cdr entry))
     (set! history-mode (car entry))))
 
@@ -175,7 +175,7 @@ USA.
 
 (define (none:record-in-history! item)
   item
-  'DONE)
+  'done)
 
 (define (none:get-history)
   '())

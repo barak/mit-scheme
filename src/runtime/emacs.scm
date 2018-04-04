@@ -49,7 +49,7 @@ USA.
    (string-append (number->string level)
 		  " "
 		  (if (and (pair? prompt)
-			   (eq? 'STANDARD (car prompt)))
+			   (eq? 'standard (car prompt)))
 		      (let ((entry (assoc (cdr prompt) cmdl-prompt-alist)))
 			(if entry
 			    (cadr entry)
@@ -118,7 +118,7 @@ USA.
 	(loop)))
   #t)
 
-(define (emacs/^G-interrupt)
+(define (emacs/^g-interrupt)
   (transmit-signal the-console-port #\g))
 
 ;;;; Miscellaneous Hooks
@@ -161,12 +161,12 @@ USA.
 
 (define (emacs/read-start port)
   (transmit-signal port #\s)
-  (let ((operation (deferred-operation 'READ-START)))
+  (let ((operation (deferred-operation 'read-start)))
     (if operation
 	(operation port))))
 
 (define (emacs/read-finish port)
-  (let ((operation (deferred-operation 'READ-FINISH)))
+  (let ((operation (deferred-operation 'read-finish)))
     (if operation
 	(operation port)))
   (transmit-signal port #\f))
@@ -239,19 +239,19 @@ USA.
   (set! vanilla-console-port-type (textual-port-type the-console-port))
   (set! emacs-console-port-type
 	(make-textual-port-type
-	 `((PROMPT-FOR-EXPRESSION ,emacs/prompt-for-expression)
-	   (PROMPT-FOR-COMMAND-CHAR ,emacs/prompt-for-command-char)
-	   (PROMPT-FOR-COMMAND-EXPRESSION ,emacs/prompt-for-command-expression)
-	   (PROMPT-FOR-CONFIRMATION ,emacs/prompt-for-confirmation)
-	   (DEBUGGER-FAILURE ,emacs/debugger-failure)
-	   (DEBUGGER-MESSAGE ,emacs/debugger-message)
-	   (DEBUGGER-PRESENTATION ,emacs/debugger-presentation)
-	   (WRITE-RESULT ,emacs/write-result)
-	   (SET-DEFAULT-DIRECTORY ,emacs/set-default-directory)
-	   (READ-START ,emacs/read-start)
-	   (READ-FINISH ,emacs/read-finish)
-	   (GC-START ,emacs/gc-start)
-	   (GC-FINISH ,emacs/gc-finish))
+	 `((prompt-for-expression ,emacs/prompt-for-expression)
+	   (prompt-for-command-char ,emacs/prompt-for-command-char)
+	   (prompt-for-command-expression ,emacs/prompt-for-command-expression)
+	   (prompt-for-confirmation ,emacs/prompt-for-confirmation)
+	   (debugger-failure ,emacs/debugger-failure)
+	   (debugger-message ,emacs/debugger-message)
+	   (debugger-presentation ,emacs/debugger-presentation)
+	   (write-result ,emacs/write-result)
+	   (set-default-directory ,emacs/set-default-directory)
+	   (read-start ,emacs/read-start)
+	   (read-finish ,emacs/read-finish)
+	   (gc-start ,emacs/gc-start)
+	   (gc-finish ,emacs/gc-finish))
 	 vanilla-console-port-type))
   (add-event-receiver! event:after-restore
     (lambda ()
@@ -266,12 +266,12 @@ USA.
       (begin
 	(set! hook/clean-input/flush-typeahead
 	      emacs/clean-input/flush-typeahead)
-	(set! hook/^G-interrupt emacs/^G-interrupt)
+	(set! hook/^g-interrupt emacs/^g-interrupt)
 	(set! hook/error-decision emacs/error-decision)
 	emacs-console-port-type)
       (begin
 	(set! hook/clean-input/flush-typeahead #f)
-	(set! hook/^G-interrupt #f)
+	(set! hook/^g-interrupt #f)
 	(set! hook/error-decision #f)
 	vanilla-console-port-type)))
 

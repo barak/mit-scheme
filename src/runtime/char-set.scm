@@ -624,13 +624,13 @@ USA.
 
 (define (ascii-range->char-set start end)
   (if (not (index-fixnum? start))
-      (error:wrong-type-argument start "index fixnum" 'ASCII-RANGE->CHAR-SET))
+      (error:wrong-type-argument start "index fixnum" 'ascii-range->char-set))
   (if (not (index-fixnum? end))
-      (error:wrong-type-argument end "index fixnum" 'ASCII-RANGE->CHAR-SET))
+      (error:wrong-type-argument end "index fixnum" 'ascii-range->char-set))
   (if (not (fix:<= start end))
-      (error:bad-range-argument start 'ASCII-RANGE->CHAR-SET))
+      (error:bad-range-argument start 'ascii-range->char-set))
   (if (not (fix:<= end #x100))
-      (error:bad-range-argument end 'ASCII-RANGE->CHAR-SET))
+      (error:bad-range-argument end 'ascii-range->char-set))
   (char-set (cons start end)))
 
 (define (%char-set-table char-set)

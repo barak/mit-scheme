@@ -114,9 +114,9 @@ USA.
              (if (zero? trailing-significand)
                  (compose-ieee754-infinity sign base emax precision)
                  (let ((p-1 (- precision 1))
-                       (T trailing-significand))
-                   (let ((quiet   (extract-bit-field 1 p-1 T))
-                         (payload (extract-bit-field p-1 0 T)))
+                       (t trailing-significand))
+                   (let ((quiet   (extract-bit-field 1 p-1 t))
+                         (payload (extract-bit-field p-1 0 t)))
                      (compose-ieee754-nan sign quiet payload
                                           base emax precision)))))
             (else

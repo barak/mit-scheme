@@ -55,7 +55,7 @@ USA.
   (let ((lose
 	 (lambda ()
 	   (error:wrong-type-argument info "dbg-info-vector"
-				      'DBG-INFO-VECTOR/BLOCKS-VECTOR))))
+				      'dbg-info-vector/blocks-vector))))
     (cond ((new-dbg-info-vector? info)
 	   (vector-append (vector (dbg-info-vector/root-block info))
 			  (dbg-info-vector/other-blocks info)))
@@ -70,7 +70,7 @@ USA.
   (let ((lose
 	 (lambda ()
 	   (error:wrong-type-argument info "dbg-info-vector"
-				      'DBG-INFO-VECTOR/PURIFICATION-ROOT))))
+				      'dbg-info-vector/purification-root))))
     (cond ((new-dbg-info-vector? info)
 	   (dbg-info-vector/other-blocks info))
 	  ((old-dbg-info-vector? info)
@@ -82,7 +82,7 @@ USA.
 
 (define (%compound-items? items)
   (and (pair? items)
-       (eq? (car items) 'COMPILED-BY-PROCEDURES)
+       (eq? (car items) 'compiled-by-procedures)
        (pair? (cdr items))
        (vector? (cadr items))
        (pair? (cddr items))
@@ -205,8 +205,8 @@ USA.
     ((dbg-block-name
       (sc-macro-transformer
        (lambda (form environment)
-	 (let ((symbol (symbol 'DBG-BLOCK-NAME/ (cadr form))))
-	   `(DEFINE-INTEGRABLE ,symbol
+	 (let ((symbol (symbol 'dbg-block-name/ (cadr form))))
+	   `(define-integrable ,symbol
 	      ',((ucode-primitive string->symbol)
 		 (string-append "#[(runtime compiler-info)"
 				(string-downcase (symbol->string symbol))
@@ -286,7 +286,7 @@ USA.
 (define (convert-old-debugging-wrapper wrapper)
   (let ((make-wrapper
 	 (lambda (pathname index info)
-	   (vector 'DEBUGGING-INFO-WRAPPER 1 #f
+	   (vector 'debugging-info-wrapper 1 #f
 		   (convert-old-style-pathname pathname)
 		   index info))))
     (cond ((dbg-info? wrapper)
@@ -314,7 +314,7 @@ USA.
 (define (debugging-file-wrapper? wrapper)
   (and (vector? wrapper)
        (fix:= (vector-length wrapper) 4)
-       (eq? (vector-ref wrapper 0) 'DEBUGGING-FILE-WRAPPER)
+       (eq? (vector-ref wrapper 0) 'debugging-file-wrapper)
        (or (and (fix:= (vector-ref wrapper 1) 1)
 		(not (vector-ref wrapper 2)))
 	   (and (fix:= (vector-ref wrapper 1) 2)
@@ -340,7 +340,7 @@ USA.
   (cond ((debugging-file-wrapper? wrapper)
 	 wrapper)
 	((dbg-info? wrapper)
-	 (vector 'DEBUGGING-FILE-WRAPPER 1 #f (vector wrapper)))
+	 (vector 'debugging-file-wrapper 1 #f (vector wrapper)))
 	((and (vector? wrapper)
 	      (let ((n (vector-length wrapper)))
 		(and (fix:>= n 1)
@@ -348,7 +348,7 @@ USA.
 		       (or (fix:= i n)
 			   (and (dbg-info? (vector-ref wrapper i))
 				(loop (fix:+ i 1))))))))
-	 (vector 'DEBUGGING-FILE-WRAPPER 1 #f wrapper))
+	 (vector 'debugging-file-wrapper 1 #f wrapper))
 	(else #f)))
 
 (define (get-wrapped-dbg-info file-wrapper wrapper)

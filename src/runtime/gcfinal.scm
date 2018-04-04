@@ -49,9 +49,9 @@ USA.
 			   object-context
 			   set-object-context!)
   (if (not (procedure? procedure))
-      (error:wrong-type-argument procedure "procedure" 'MAKE-GC-FINALIZER))
+      (error:wrong-type-argument procedure "procedure" 'make-gc-finalizer))
   (if (not (procedure-arity-valid? procedure 1))
-      (error:bad-range-argument procedure 'MAKE-GC-FINALIZER))
+      (error:bad-range-argument procedure 'make-gc-finalizer))
   (let ((finalizer
 	 (%make-gc-finalizer procedure
 			     object?
@@ -65,28 +65,28 @@ USA.
     finalizer))
 
 (define (add-to-gc-finalizer! finalizer object)
-  (guarantee-gc-finalizer finalizer 'ADD-TO-GC-FINALIZER!)
+  (guarantee-gc-finalizer finalizer 'add-to-gc-finalizer!)
   (if (not ((gc-finalizer-object? finalizer) object))
       (error:wrong-type-argument object
 				 "finalized object"
-				 'ADD-TO-GC-FINALIZER!))
+				 'add-to-gc-finalizer!))
   (with-finalizer-lock finalizer
     (lambda ()
       (let ((context ((gc-finalizer-object-context finalizer) object)))
 	(if (not context)
-	    (error:bad-range-argument object 'ADD-TO-GC-FINALIZER!))
+	    (error:bad-range-argument object 'add-to-gc-finalizer!))
 	(set-gc-finalizer-items! finalizer
 				 (cons (weak-cons object context)
 				       (gc-finalizer-items finalizer))))))
   object)
 
 (define (remove-from-gc-finalizer! finalizer object)
-  (guarantee-gc-finalizer finalizer 'REMOVE-FROM-GC-FINALIZER!)
+  (guarantee-gc-finalizer finalizer 'remove-from-gc-finalizer!)
   (let ((object? (gc-finalizer-object? finalizer)))
     (if (not (object? object))
 	(error:wrong-type-argument object
 				   "finalized object"
-				   'REMOVE-FROM-GC-FINALIZER!)))
+				   'remove-from-gc-finalizer!)))
   (with-finalizer-lock finalizer
     (lambda ()
       (remove-from-locked-gc-finalizer! finalizer object))))
@@ -97,10 +97,10 @@ USA.
 	(set-object-context! (gc-finalizer-set-object-context! finalizer)))
     (let ((context (object-context object)))
       (if (not context)
-	  (error:bad-range-argument object 'REMOVE-FROM-GC-FINALIZER!))
+	  (error:bad-range-argument object 'remove-from-gc-finalizer!))
       (let loop ((items (gc-finalizer-items finalizer)) (prev #f))
 	(if (not (pair? items))
-	    (error:bad-range-argument object 'REMOVE-FROM-GC-FINALIZER!))
+	    (error:bad-range-argument object 'remove-from-gc-finalizer!))
 	(if (eq? object (weak-car (car items)))
 	    (let ((next (cdr items)))
 	      (if prev
@@ -117,11 +117,11 @@ USA.
       (without-interruption thunk))))
 
 (define (with-gc-finalizer-lock finalizer thunk)
-  (guarantee-gc-finalizer finalizer 'WITH-GC-FINALIZER-LOCK)
+  (guarantee-gc-finalizer finalizer 'with-gc-finalizer-lock)
   (with-finalizer-lock finalizer thunk))
 
 (define (remove-all-from-gc-finalizer! finalizer)
-  (guarantee-gc-finalizer finalizer 'REMOVE-ALL-FROM-GC-FINALIZER!)
+  (guarantee-gc-finalizer finalizer 'remove-all-from-gc-finalizer!)
   (let ((procedure (gc-finalizer-procedure finalizer))
 	(object-context (gc-finalizer-object-context finalizer))
 	(set-object-context! (gc-finalizer-set-object-context! finalizer)))
@@ -142,7 +142,7 @@ USA.
 		  (loop)))))))))
 
 (define (search-gc-finalizer finalizer predicate)
-  (guarantee-gc-finalizer finalizer 'SEARCH-GC-FINALIZER)
+  (guarantee-gc-finalizer finalizer 'search-gc-finalizer)
   (with-thread-mutex-lock (gc-finalizer-mutex finalizer)
     (lambda ()
       (let loop ((items (gc-finalizer-items finalizer)))
@@ -153,7 +153,7 @@ USA.
 		   (loop (cdr items)))))))))
 
 (define (gc-finalizer-elements finalizer)
-  (guarantee-gc-finalizer finalizer 'GC-FINALIZER-ELEMENTS)
+  (guarantee-gc-finalizer finalizer 'gc-finalizer-elements)
   (with-thread-mutex-lock (gc-finalizer-mutex finalizer)
     (lambda ()
       (let loop ((items (gc-finalizer-items finalizer)) (objects '()))
@@ -170,7 +170,7 @@ USA.
   ;; interrupts turned on, yet not leave a dangling descriptor around
   ;; if the open is interrupted before the runtime system's data
   ;; structures are updated.
-  (guarantee-gc-finalizer finalizer 'MAKE-GC-FINALIZED-OBJECT)
+  (guarantee-gc-finalizer finalizer 'make-gc-finalized-object)
   (let ((p (weak-cons #f #f)))
     (dynamic-wind
      (lambda () unspecific)

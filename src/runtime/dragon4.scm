@@ -51,7 +51,7 @@ not much different to numbers within a few orders of magnitude of 1.
 
 (define (initialize-dragon4!)
   (set! param:flonum-unparser-cutoff
-	(make-settable-parameter 'NORMAL
+	(make-settable-parameter 'normal
 				 (lambda (cutoff)
 				   (guarantee-cutoff-spec cutoff)
 				   cutoff)))
@@ -152,8 +152,8 @@ not much different to numbers within a few orders of magnitude of 1.
 	 (if (default-object? flonum-unparser-cutoff)
 	     (param:flonum-unparser-cutoff)
 	     flonum-unparser-cutoff)))
-    (cond ((eq? 'NORMAL cutoff)
-	   (values 'NORMAL 0 flonum-unparser:normal-output))
+    (cond ((eq? 'normal cutoff)
+	   (values 'normal 0 flonum-unparser:normal-output))
 	  ((compound-cutoff-spec? cutoff)
 	   (values (car cutoff)
 		   (- (cadr cutoff))
@@ -164,10 +164,10 @@ not much different to numbers within a few orders of magnitude of 1.
 	  (else
 	   (warn "illegal flonum unparser cutoff parameter"
 		 cutoff)
-	   (values 'NORMAL 0 flonum-unparser:normal-output)))))
+	   (values 'normal 0 flonum-unparser:normal-output)))))
 
 (define (cutoff-spec? cutoff)
-  (or (eq? 'NORMAL cutoff)
+  (or (eq? 'normal cutoff)
       (compound-cutoff-spec? cutoff)))
 
 (define (compound-cutoff-spec? cutoff)
@@ -175,15 +175,15 @@ not much different to numbers within a few orders of magnitude of 1.
        (pair? (cdr cutoff))
        (let ((mode (car cutoff))
 	     (place (cadr cutoff)))
-	 (and (memq mode '(ABSOLUTE RELATIVE NORMAL))
+	 (and (memq mode '(absolute relative normal))
 	      (exact-integer? place)
-	      (or (not (eq? 'RELATIVE mode))
+	      (or (not (eq? 'relative mode))
 		  (positive? place))))
        (or (null? (cddr cutoff))
 	   (and (pair? (cddr cutoff))
 		(null? (cdddr cutoff))
 		(let ((mode (caddr cutoff)))
-		  (or (memq mode '(NORMAL SCIENTIFIC ENGINEERING))
+		  (or (memq mode '(normal scientific engineering))
 		      (and (procedure? mode)
 			   (procedure-arity-valid? mode 3))))))))
 
@@ -191,9 +191,9 @@ not much different to numbers within a few orders of magnitude of 1.
 
 (define (lookup-symbolic-display-mode mode)
   (case mode
-    ((ENGINEERING) flonum-unparser:engineering-output)
-    ((SCIENTIFIC) flonum-unparser:scientific-output)
-    ((NORMAL) flonum-unparser:normal-output)
+    ((engineering) flonum-unparser:engineering-output)
+    ((scientific) flonum-unparser:scientific-output)
+    ((normal) flonum-unparser:normal-output)
     (else mode)))
 
 (define (dragon4-normalize x precision)
@@ -270,12 +270,12 @@ not much different to numbers within a few orders of magnitude of 1.
 			(loop k s m- m+ round-up?)
 			(values k r s m- m+ cutoff round-up?)))))))
 	  (case cutoff-mode
-	    ((NORMAL)
+	    ((normal)
 	     (values k r s m- m+
 		     (- k (flo:significand-digits radix) 2) ; i.e. ignore cutoff
 		     round-up?))
-	    ((ABSOLUTE) (cutoff-adjust cutoff))
-	    ((RELATIVE) (cutoff-adjust (+ k cutoff)))
+	    ((absolute) (cutoff-adjust cutoff))
+	    ((relative) (cutoff-adjust (+ k cutoff)))
 	    (else (error:wrong-type-datum cutoff-mode #f))))
 
 	(let ((2r+m+ (int:+ 2r m+)))

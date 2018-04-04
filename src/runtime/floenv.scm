@@ -64,14 +64,14 @@ USA.
 	 (if interrupted-thread
 	     (let ((fp-env (thread-float-environment interrupted-thread)))
 	       (if (eqv? fp-env #t)
-		   (let ((fp-env ((ucode-primitive FLOAT-ENVIRONMENT 0))))
+		   (let ((fp-env ((ucode-primitive float-environment 0))))
 		     (set-thread-float-environment! interrupted-thread fp-env)
 		     fp-env)
 		   fp-env))
 	     ;; No idea what environment we're in.  Assume the worst.
-	     ((ucode-primitive FLOAT-ENVIRONMENT 0)))))
+	     ((ucode-primitive float-environment 0)))))
     (if fp-env
-	((ucode-primitive SET-FLOAT-ENVIRONMENT 1) default-environment))
+	((ucode-primitive set-float-environment 1) default-environment))
     fp-env))
 
 ;;; Restore the environment saved by ENTER-DEFAULT-FLOAT-ENVIRONMENT
@@ -80,12 +80,12 @@ USA.
 
 (define (restore-float-environment-from-default fp-env)
   (if fp-env
-      ((ucode-primitive SET-FLOAT-ENVIRONMENT 1) fp-env)))
+      ((ucode-primitive set-float-environment 1) fp-env)))
 
 ;;; Enter a floating-point environment for switching to a thread.
 
 (define (enter-float-environment fp-env)
-  ((ucode-primitive SET-FLOAT-ENVIRONMENT 1) (or fp-env default-environment)))
+  ((ucode-primitive set-float-environment 1) (or fp-env default-environment)))
 
 ;;; Save a floating-point environment when a thread yields or is
 ;;; preempted and must let another thread run.  FP-ENV is absent when
@@ -99,7 +99,7 @@ USA.
        thread
        (if (or (default-object? fp-env)
 	       (eqv? #t fp-env))
-	   ((ucode-primitive FLOAT-ENVIRONMENT 0))
+	   ((ucode-primitive float-environment 0))
 	   fp-env))))
 
 (define (use-floating-point-environment!)
@@ -108,7 +108,7 @@ USA.
 (define (flo:environment)
   (let ((fp-env (thread-float-environment (current-thread))))
     (if (eqv? fp-env #t)
-	(let ((fp-env ((ucode-primitive FLOAT-ENVIRONMENT 0))))
+	(let ((fp-env ((ucode-primitive float-environment 0))))
 	  ;; Cache it now so we don't need to ask the machine again
 	  ;; when we next switch threads.  There is a harmless race
 	  ;; here if we are preempted.
@@ -125,7 +125,7 @@ USA.
 	  ;; updating the thread cache, and the thread starts running
 	  ;; again, there would be nothing to set the machine straight.
 	  (set-thread-float-environment! (current-thread) fp-env)
-	  ((ucode-primitive SET-FLOAT-ENVIRONMENT 1)
+	  ((ucode-primitive set-float-environment 1)
 	   (or fp-env default-environment))))))
 
 (define (flo:update-environment! fp-env)
@@ -143,7 +143,7 @@ USA.
 	(without-interrupts
 	 (lambda ()
 	   (set-thread-float-environment! (current-thread) fp-env)
-	   ((ucode-primitive UPDATE-FLOAT-ENVIRONMENT 1)
+	   ((ucode-primitive update-float-environment 1)
 	    (or fp-env default-environment)))))))
 
 (define default-environment)
@@ -155,17 +155,17 @@ USA.
   (set! default-environment
 	(without-interrupts
 	 (lambda ()
-	   (let ((fp-env ((ucode-primitive FLOAT-ENVIRONMENT 0))))
-	     ((ucode-primitive SET-FLOAT-ROUNDING-MODE 1)
+	   (let ((fp-env ((ucode-primitive float-environment 0))))
+	     ((ucode-primitive set-float-rounding-mode 1)
 	      (%mode-name->number
 	       (flo:default-rounding-mode)
 	       '|#[(runtime floating-point-environment)reset-package!]|))
-	     ((ucode-primitive CLEAR-FLOAT-EXCEPTIONS 1)
+	     ((ucode-primitive clear-float-exceptions 1)
 	      (flo:supported-exceptions))
-	     ((ucode-primitive SET-TRAPPED-FLOAT-EXCEPTIONS 1)
+	     ((ucode-primitive set-trapped-float-exceptions 1)
 	      (flo:default-trapped-exceptions))
-	     (let ((fp-env* ((ucode-primitive FLOAT-ENVIRONMENT 0))))
-	       ((ucode-primitive SET-FLOAT-ENVIRONMENT 1) fp-env)
+	     (let ((fp-env* ((ucode-primitive float-environment 0))))
+	       ((ucode-primitive set-float-environment 1) fp-env)
 	       fp-env*)))))
   unspecific)
 
@@ -181,7 +181,7 @@ USA.
   (set-float-rounding-mode 1))
 
 (define float-rounding-mode-names
-  '#(TO-NEAREST TOWARD-ZERO DOWNWARD UPWARD))
+  '#(to-nearest toward-zero downward upward))
 
 (define (flo:rounding-modes)
   (let ((n (vector-length float-rounding-mode-names))
@@ -195,7 +195,7 @@ USA.
 	  names))))
 
 (define (flo:default-rounding-mode)
-  'TO-NEAREST)
+  'to-nearest)
 
 (define (flo:rounding-mode)
   (let ((m (get-float-rounding-mode)))
@@ -205,10 +205,10 @@ USA.
 
 (define (flo:set-rounding-mode! mode)
   (use-floating-point-environment!)
-  (set-float-rounding-mode (%mode-name->number mode 'FLO:SET-ROUNDING-MODE!)))
+  (set-float-rounding-mode (%mode-name->number mode 'flo:set-rounding-mode!)))
 
 (define (flo:with-rounding-mode mode thunk)
-  (let ((mode (%mode-name->number mode 'FLO:WITH-ROUNDING-MODE)))
+  (let ((mode (%mode-name->number mode 'flo:with-rounding-mode)))
     (flo:preserving-environment
      (lambda ()
        (use-floating-point-environment!)
@@ -244,31 +244,31 @@ USA.
 
 (define (flo:clear-exceptions! exceptions)
   (use-floating-point-environment!)
-  ((ucode-primitive CLEAR-FLOAT-EXCEPTIONS 1) exceptions))
+  ((ucode-primitive clear-float-exceptions 1) exceptions))
 
 (define (flo:raise-exceptions! exceptions)
   (use-floating-point-environment!)
-  ((ucode-primitive RAISE-FLOAT-EXCEPTIONS 1) exceptions))
+  ((ucode-primitive raise-float-exceptions 1) exceptions))
 
 (define (flo:restore-exception-flags! fexcept exceptions)
   (use-floating-point-environment!)
-  ((ucode-primitive RESTORE-FLOAT-EXCEPTION-FLAGS 2) fexcept exceptions))
+  ((ucode-primitive restore-float-exception-flags 2) fexcept exceptions))
 
 (define (flo:set-trapped-exceptions! exceptions)
   (use-floating-point-environment!)
-  ((ucode-primitive SET-TRAPPED-FLOAT-EXCEPTIONS 1) exceptions))
+  ((ucode-primitive set-trapped-float-exceptions 1) exceptions))
 
 (define (flo:trap-exceptions! exceptions)
   (use-floating-point-environment!)
-  ((ucode-primitive TRAP-FLOAT-EXCEPTIONS 1) exceptions))
+  ((ucode-primitive trap-float-exceptions 1) exceptions))
 
 (define (flo:untrap-exceptions! exceptions)
   (use-floating-point-environment!)
-  ((ucode-primitive UNTRAP-FLOAT-EXCEPTIONS 1) exceptions))
+  ((ucode-primitive untrap-float-exceptions 1) exceptions))
 
 (define (flo:defer-exception-traps!)
   (use-floating-point-environment!)
-  ((ucode-primitive DEFER-FLOAT-EXCEPTION-TRAPS 0)))
+  ((ucode-primitive defer-float-exception-traps 0)))
 
 (define (flo:default-trapped-exceptions)
   ;; By default, we trap the standard IEEE 754 exceptions that Scheme
@@ -294,26 +294,26 @@ USA.
     (if (fix:zero? (fix:and bits exceptions))
 	tail
 	(cons name tail)))
-  (guarantee index-fixnum? exceptions 'FLO:EXCEPTIONS->NAMES)
+  (guarantee index-fixnum? exceptions 'flo:exceptions->names)
   (if (not (fix:zero? (fix:andc exceptions (flo:supported-exceptions))))
-      (error:bad-range-argument exceptions 'FLO:EXCEPTIONS->NAMES))
-  (n 'DIVIDE-BY-ZERO (flo:exception:divide-by-zero)
-     (n 'INEXACT-RESULT (flo:exception:inexact-result)
-	(n 'INVALID-OPERATION (flo:exception:invalid-operation)
-	   (n 'OVERFLOW (flo:exception:overflow)
-	      (n 'UNDERFLOW (flo:exception:underflow)
+      (error:bad-range-argument exceptions 'flo:exceptions->names))
+  (n 'divide-by-zero (flo:exception:divide-by-zero)
+     (n 'inexact-result (flo:exception:inexact-result)
+	(n 'invalid-operation (flo:exception:invalid-operation)
+	   (n 'overflow (flo:exception:overflow)
+	      (n 'underflow (flo:exception:underflow)
 		 '()))))))
 
 (define (flo:names->exceptions names)
   (define (name->exceptions name)
     (case name
-      ((DIVIDE-BY-ZERO) (flo:exception:divide-by-zero))
-      ((INEXACT-RESULT) (flo:exception:inexact-result))
-      ((INVALID-OPERATION) (flo:exception:invalid-operation))
-      ((OVERFLOW) (flo:exception:overflow))
-      ((UNDERFLOW) (flo:exception:underflow))
-      (else (error:bad-range-argument names 'FLO:NAMES->EXCEPTIONS))))
-  (guarantee list-of-unique-symbols? names 'FLO:NAMES->EXCEPTIONS)
+      ((divide-by-zero) (flo:exception:divide-by-zero))
+      ((inexact-result) (flo:exception:inexact-result))
+      ((invalid-operation) (flo:exception:invalid-operation))
+      ((overflow) (flo:exception:overflow))
+      ((underflow) (flo:exception:underflow))
+      (else (error:bad-range-argument names 'flo:names->exceptions))))
+  (guarantee list-of-unique-symbols? names 'flo:names->exceptions)
   (reduce fix:or 0 (map name->exceptions names)))
 
 ;;;; Floating-point environment utilities

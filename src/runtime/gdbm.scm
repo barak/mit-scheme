@@ -48,11 +48,11 @@ USA.
 
 ;; Parameters to gdbm_open for READERS, WRITERS, and WRITERS who can
 ;; create the database.
-(define GDBM_READER  0)		;A reader.
-(define GDBM_WRITER  1)		;A writer.
-(define GDBM_WRCREAT 2)		;A writer.  Create the db if needed.
-(define GDBM_NEWDB   3)		;A writer.  Always create a new db.
-(define GDBM_FAST    16)	;Write fast! => No fsyncs.
+(define gdbm_reader  0)		;A reader.
+(define gdbm_writer  1)		;A writer.
+(define gdbm_wrcreat 2)		;A writer.  Create the db if needed.
+(define gdbm_newdb   3)		;A writer.  Always create a new db.
+(define gdbm_fast    16)	;Write fast! => No fsyncs.
 
 (define (gdbm-open filename block-size flags mode)
   (if (not (gdbm-available?))
@@ -68,57 +68,57 @@ USA.
 
 (define (gdbm-close gdbf)
   (if (not (gdbf? gdbf))
-      (error:wrong-type-argument gdbf "gdbm handle" 'GDBM-CLOSE))
+      (error:wrong-type-argument gdbf "gdbm handle" 'gdbm-close))
   (remove-from-gc-finalizer! gdbf-finalizer gdbf))
 
 ;; Parameters to gdbm_store for simple insertion or replacement in the
 ;; case that the key is already in the database.
-(define GDBM_INSERT  0)		;Never replace old data with new.
-(define GDBM_REPLACE 1)		;Always replace old data with new.
+(define gdbm_insert  0)		;Never replace old data with new.
+(define gdbm_replace 1)		;Always replace old data with new.
 
 (define (gdbm-store gdbf key datum flags)
   (gdbm-error
-   ((ucode-primitive gdbm-store 4) (guarantee-gdbf gdbf 'GDBM-STORE)
+   ((ucode-primitive gdbm-store 4) (guarantee-gdbf gdbf 'gdbm-store)
 				   key datum flags)))
 
 (define (gdbm-fetch gdbf key)
-  ((ucode-primitive gdbm-fetch 2) (guarantee-gdbf gdbf 'GDBM-FETCH) key))
+  ((ucode-primitive gdbm-fetch 2) (guarantee-gdbf gdbf 'gdbm-fetch) key))
 
 (define (gdbm-exists? gdbf key)
-  ((ucode-primitive gdbm-exists 2) (guarantee-gdbf gdbf 'GDBM-EXISTS?) key))
+  ((ucode-primitive gdbm-exists 2) (guarantee-gdbf gdbf 'gdbm-exists?) key))
 
 (define (gdbm-delete gdbf key)
   (gdbm-error
-   ((ucode-primitive gdbm-delete 2) (guarantee-gdbf gdbf 'GDBM-DELETE) key)))
+   ((ucode-primitive gdbm-delete 2) (guarantee-gdbf gdbf 'gdbm-delete) key)))
 
 (define (gdbm-firstkey gdbf)
-  ((ucode-primitive gdbm-firstkey 1) (guarantee-gdbf gdbf 'GDBM-FIRSTKEY)))
+  ((ucode-primitive gdbm-firstkey 1) (guarantee-gdbf gdbf 'gdbm-firstkey)))
 
 (define (gdbm-nextkey gdbf key)
-  ((ucode-primitive gdbm-nextkey 2) (guarantee-gdbf gdbf 'GDBM-NEXTKEY) key))
+  ((ucode-primitive gdbm-nextkey 2) (guarantee-gdbf gdbf 'gdbm-nextkey) key))
 
 (define (gdbm-reorganize gdbf)
   (gdbm-error
    ((ucode-primitive gdbm-reorganize 1)
-    (guarantee-gdbf gdbf 'GDBM-REORGANIZE))))
+    (guarantee-gdbf gdbf 'gdbm-reorganize))))
 
 (define (gdbm-sync gdbf)
-  ((ucode-primitive gdbm-sync 1) (guarantee-gdbf gdbf 'GDBM-SYNC)))
+  ((ucode-primitive gdbm-sync 1) (guarantee-gdbf gdbf 'gdbm-sync)))
 
 (define (gdbm-version)
   ((ucode-primitive gdbm-version 0)))
 
 ;; Parameters to gdbm_setopt, specifing the type of operation to perform.
-(define GDBM_CACHESIZE 1)       ;Set the cache size.
-(define GDBM_FASTMODE  2)       ;Toggle fast mode.
+(define gdbm_cachesize 1)       ;Set the cache size.
+(define gdbm_fastmode  2)       ;Toggle fast mode.
 
 (define (gdbm-setopt gdbf opt val)
   (gdbm-error
-   ((ucode-primitive gdbm-setopt 3) (guarantee-gdbf gdbf 'GDBM-SETOPT)
+   ((ucode-primitive gdbm-setopt 3) (guarantee-gdbf gdbf 'gdbm-setopt)
 				    opt val)))
 
 (define-structure (gdbf
-		   (print-procedure (simple-unparser-method 'GDBF
+		   (print-procedure (simple-unparser-method 'gdbf
 				      (lambda (gdbf)
 					(list (gdbf-filename gdbf))))))
   descriptor

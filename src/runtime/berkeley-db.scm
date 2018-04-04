@@ -62,86 +62,86 @@ USA.
   (db4:sizeof-db-lock 0)
   (db4:sizeof-dbt 0))
 
-(define-integrable DB_CXX_NO_EXCEPTIONS	#x00000002)
-(define-integrable DB_FORCE		#x00000004)
-(define-integrable DB_NOMMAP		#x00000008)
-(define-integrable DB_RDONLY		#x00000010)
-(define-integrable DB_RECOVER		#x00000020)
-(define-integrable DB_THREAD		#x00000040)
-(define-integrable DB_TRUNCATE		#x00000080)
-(define-integrable DB_TXN_NOSYNC	#x00000100)
-(define-integrable DB_TXN_NOT_DURABLE	#x00000200)
-(define-integrable DB_USE_ENVIRON	#x00000400)
-(define-integrable DB_USE_ENVIRON_ROOT	#x00000800)
-(define-integrable DB_AUTO_COMMIT	#x01000000)
-(define-integrable DB_DIRTY_READ	#x02000000)
-(define-integrable DB_NO_AUTO_COMMIT	#x04000000)
+(define-integrable db_cxx_no_exceptions	#x00000002)
+(define-integrable db_force		#x00000004)
+(define-integrable db_nommap		#x00000008)
+(define-integrable db_rdonly		#x00000010)
+(define-integrable db_recover		#x00000020)
+(define-integrable db_thread		#x00000040)
+(define-integrable db_truncate		#x00000080)
+(define-integrable db_txn_nosync	#x00000100)
+(define-integrable db_txn_not_durable	#x00000200)
+(define-integrable db_use_environ	#x00000400)
+(define-integrable db_use_environ_root	#x00000800)
+(define-integrable db_auto_commit	#x01000000)
+(define-integrable db_dirty_read	#x02000000)
+(define-integrable db_no_auto_commit	#x04000000)
 
 ;; Flags for DB4:DB-ENV-CREATE
-(define-integrable DB_RPCCLIENT		#x00000001)
+(define-integrable db_rpcclient		#x00000001)
 
 ;; Flags for DB4:DB-CREATE
-(define-integrable DB_REP_CREATE	#x00000001)
-(define-integrable DB_XA_CREATE		#x00000002)
+(define-integrable db_rep_create	#x00000001)
+(define-integrable db_xa_create		#x00000002)
 
 ;; Flags for DB4:DB-ENV-OPEN
-(define-integrable DB_INIT_CDB		#x00001000)
-(define-integrable DB_INIT_LOCK		#x00002000)
-(define-integrable DB_INIT_LOG		#x00004000)
-(define-integrable DB_INIT_MPOOL	#x00008000)
-(define-integrable DB_INIT_REP		#x00010000)
-(define-integrable DB_INIT_TXN		#x00020000)
-(define-integrable DB_JOINENV		#x00040000)
-(define-integrable DB_LOCKDOWN		#x00080000)
-(define-integrable DB_PRIVATE		#x00100000)
-(define-integrable DB_RECOVER_FATAL	#x00200000)
-(define-integrable DB_SYSTEM_MEM	#x00400000)
+(define-integrable db_init_cdb		#x00001000)
+(define-integrable db_init_lock		#x00002000)
+(define-integrable db_init_log		#x00004000)
+(define-integrable db_init_mpool	#x00008000)
+(define-integrable db_init_rep		#x00010000)
+(define-integrable db_init_txn		#x00020000)
+(define-integrable db_joinenv		#x00040000)
+(define-integrable db_lockdown		#x00080000)
+(define-integrable db_private		#x00100000)
+(define-integrable db_recover_fatal	#x00200000)
+(define-integrable db_system_mem	#x00400000)
 
 ;; Flags for DB4:DB-OPEN
-(define-integrable DB_EXCL		#x00001000)
-(define-integrable DB_FCNTL_LOCKING	#x00002000)
-(define-integrable DB_RDWRMASTER	#x00004000)
-(define-integrable DB_WRITEOPEN		#x00008000)
+(define-integrable db_excl		#x00001000)
+(define-integrable db_fcntl_locking	#x00002000)
+(define-integrable db_rdwrmaster	#x00004000)
+(define-integrable db_writeopen		#x00008000)
 
 ;; Flags for DB4:DB-ENV-TXN-BEGIN
-(define-integrable DB_TXN_NOWAIT	#x00001000)
-(define-integrable DB_TXN_SYNC		#x00002000)
+(define-integrable db_txn_nowait	#x00001000)
+(define-integrable db_txn_sync		#x00002000)
 
 ;; Flags for DB4:DB-GET, DB4:DB-PUT, DB4:DB-DEL
-#;(define-integrable DB_DIRTY_READ	#x02000000)
-(define-integrable DB_MULTIPLE		#x04000000)
-(define-integrable DB_MULTIPLE_KEY	#x08000000)
-(define-integrable DB_RMW		#x10000000)
+#;(define-integrable db_dirty_read	#x02000000)
+(define-integrable db_multiple		#x04000000)
+(define-integrable db_multiple_key	#x08000000)
+(define-integrable db_rmw		#x10000000)
 
 ;; db_locktype_t enumeration:
-(define-integrable DB_LOCK_NG 0)
-(define-integrable DB_LOCK_READ 1)
-(define-integrable DB_LOCK_WRITE 2)
-(define-integrable DB_LOCK_WAIT 3)
-(define-integrable DB_LOCK_IWRITE 4)
-(define-integrable DB_LOCK_IREAD 5)
-(define-integrable DB_LOCK_IWR 6)
-(define-integrable DB_LOCK_DIRTY 7)
-(define-integrable DB_LOCK_WWRITE 8)
+(define-integrable db_lock_ng 0)
+(define-integrable db_lock_read 1)
+(define-integrable db_lock_write 2)
+(define-integrable db_lock_wait 3)
+(define-integrable db_lock_iwrite 4)
+(define-integrable db_lock_iread 5)
+(define-integrable db_lock_iwr 6)
+(define-integrable db_lock_dirty 7)
+(define-integrable db_lock_wwrite 8)
 
 (define-syntax pcall
   (sc-macro-transformer
    (lambda (form environment)
      (if (syntax-match? '(identifier * expression) (cdr form))
-	 `(LET ((RC
+	 `(let ((rc
 		 (,(close-syntax (cadr form) environment)
 		  ,@(map (lambda (expr)
 			   (close-syntax expr environment))
 			 (cddr form)))))
-	    (IF (NOT (= RC 0))
-		(BDB-ERROR RC ',(cadr form))))))))
+	    (if (not (= rc 0))
+		(bdb-error rc ',(cadr form))))))))
 
 (define condition-type:bdb-error
-  (make-condition-type 'BDB-ERROR condition-type:error '(RC PRIMITIVE)
+  (make-condition-type 'bdb-error condition-type:error '(rc primitive)
     (lambda (condition port)
-      (let ((rc (access-condition condition 'RC)))
+      (let ((rc (access-condition condition 'rc)))
 	(write-string "Berkeley DB error in primitive " port)
-	(write (access-condition condition 'PRIMITIVE) port)
+	(write (access-condition condition 'primitive) port)
 	(write-string ": " port)
 	(write-string (db4:db-strerror rc) port)
 	(write-string " (" port)
@@ -150,7 +150,7 @@ USA.
 
 (define bdb-error
   (condition-signaller condition-type:bdb-error
-		       '(RC PRIMITIVE)
+		       '(rc primitive)
 		       standard-error-handler))
 
 (define-record-type <bdb>

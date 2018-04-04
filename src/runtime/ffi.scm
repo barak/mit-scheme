@@ -639,27 +639,27 @@ USA.
 
 #;(define-syntax %assert
   (syntax-rules ()
-    ((_ TEST . MSG)
+    ((_ test . msg)
      #f)))
 
 (define-syntax %assert
   (syntax-rules ()
-    ((_ TEST . MSG)
-     (if (not TEST)
-	 (error . MSG)))))
+    ((_ test . msg)
+     (if (not test)
+	 (error . msg)))))
 
 ;; Use this definition to avoid frequently checking %trace?.
 #;(define-syntax %trace
   (syntax-rules ()
-    ((_ . MSG)
+    ((_ . msg)
      #f)))
 
 (define %trace? #f)
 
 (define-syntax %trace
   (syntax-rules ()
-    ((_ . MSG)
-     (if %trace? (%outf-error . MSG)))))
+    ((_ . msg)
+     (if %trace? (%outf-error . msg)))))
 
 (define (tindent)
   (make-string (* 2 (length calloutback-stack)) #\space))

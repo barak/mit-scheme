@@ -173,7 +173,7 @@ USA.
 	   (bits '() (cons (odd? integer) bits)))
 	  ((zero? integer) bits))
       (begin
-	(guarantee index-fixnum? length 'INTEGER->LIST)
+	(guarantee index-fixnum? length 'integer->list)
 	(do ((length length (- length 1))
 	     (integer integer (shift-right integer 1))
 	     (bits '() (cons (odd? integer) bits)))

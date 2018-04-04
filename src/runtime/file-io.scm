@@ -34,19 +34,19 @@ USA.
 (define i/o-file-type)
 (define (initialize-package!)
   (let ((other-operations
-	 `((LENGTH ,operation/length)
-	   (PATHNAME ,operation/pathname)
-	   (POSITION ,operation/position)
-	   (SET-POSITION! ,operation/set-position!)
-	   (TRUENAME ,operation/pathname)
-	   (WRITE-SELF ,operation/write-self))))
+	 `((length ,operation/length)
+	   (pathname ,operation/pathname)
+	   (position ,operation/position)
+	   (set-position! ,operation/set-position!)
+	   (truename ,operation/pathname)
+	   (write-self ,operation/write-self))))
     (let ((make-type
 	   (lambda (source sink)
 	     (make-textual-port-type other-operations
 				     (generic-i/o-port-type source sink)))))
-      (set! input-file-type (make-type 'CHANNEL #f))
-      (set! output-file-type (make-type #f 'CHANNEL))
-      (set! i/o-file-type (make-type 'CHANNEL 'CHANNEL))))
+      (set! input-file-type (make-type 'channel #f))
+      (set! output-file-type (make-type #f 'channel))
+      (set! i/o-file-type (make-type 'channel 'channel))))
   unspecific)
 
 (define (operation/pathname port)
@@ -109,8 +109,8 @@ USA.
   (let ((port
 	 (%make-textual-file-port input-channel output-channel pathname
 				  caller)))
-    (port/set-coding port 'BINARY)
-    (port/set-line-ending port 'BINARY)
+    (port/set-coding port 'binary)
+    (port/set-line-ending port 'binary)
     port))
 
 (define (%make-textual-file-port input-channel output-channel pathname caller)

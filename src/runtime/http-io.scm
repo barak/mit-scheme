@@ -42,15 +42,15 @@ USA.
   (body http-request-body))
 
 (define (make-http-request method uri version headers body)
-  (guarantee http-token-string? method 'MAKE-HTTP-REQUEST)
-  (guarantee http-request-uri? uri 'MAKE-HTTP-REQUEST)
-  (guarantee http-version? version 'MAKE-HTTP-REQUEST)
+  (guarantee http-token-string? method 'make-http-request)
+  (guarantee http-request-uri? uri 'make-http-request)
+  (guarantee http-version? version 'make-http-request)
   (receive (headers body)
-      (guarantee-headers&body headers body 'MAKE-HTTP-REQUEST)
+      (guarantee-headers&body headers body 'make-http-request)
     (%make-http-request method uri version headers body)))
 
 (define-unparser-method http-request?
-  (simple-unparser-method 'HTTP-REQUEST
+  (simple-unparser-method 'http-request
     (lambda (request)
       (list (http-request-method request)
 	    (uri->string (http-request-uri request))))))
@@ -65,15 +65,15 @@ USA.
   (body http-response-body))
 
 (define (make-http-response version status reason headers body)
-  (guarantee http-version? version 'MAKE-HTTP-RESPONSE)
-  (guarantee http-status? status 'MAKE-HTTP-RESPONSE)
-  (guarantee http-text? reason 'MAKE-HTTP-RESPONSE)
+  (guarantee http-version? version 'make-http-response)
+  (guarantee http-status? status 'make-http-response)
+  (guarantee http-text? reason 'make-http-response)
   (receive (headers body)
-      (guarantee-headers&body headers body 'MAKE-HTTP-RESPONSE)
+      (guarantee-headers&body headers body 'make-http-response)
     (%make-http-response version status reason headers body)))
 
 (define-unparser-method http-response?
-  (simple-unparser-method 'HTTP-RESPONSE
+  (simple-unparser-method 'http-response
     (lambda (response)
       (list (http-response-status response)))))
 
@@ -89,7 +89,7 @@ USA.
 		(if (not (= n m))
 		    (error:bad-range-argument body caller))
 		(values headers body))
-	      (values (cons (make-http-header 'CONTENT-LENGTH
+	      (values (cons (make-http-header 'content-length
 					      (number->string m))
 			    headers)
 		      body))))
@@ -102,7 +102,7 @@ USA.
 (define-guarantee simple-http-request "simple HTTP request")
 
 (define (make-simple-http-request uri)
-  (guarantee simple-http-request-uri? uri 'MAKE-HTTP-REQUEST)
+  (guarantee simple-http-request-uri? uri 'make-http-request)
   (%make-http-request '|GET| uri #f '() ""))
 
 (define (simple-http-response? object)
@@ -124,12 +124,12 @@ USA.
 (define (http-message-headers message)
   (cond ((http-request? message) (http-request-headers message))
 	((http-response? message) (http-response-headers message))
-	(else (error:not-http-message message 'HTTP-MESSAGE-HEADERS))))
+	(else (error:not-http-message message 'http-message-headers))))
 
 (define (http-message-body message)
   (cond ((http-request? message) (http-request-body message))
 	((http-response? message) (http-response-body message))
-	(else (error:not-http-message message 'HTTP-MESSAGE-BODY))))
+	(else (error:not-http-message message 'http-message-body))))
 
 (define (http-request-uri? object)
   (or (simple-http-request-uri? object)
@@ -150,12 +150,12 @@ USA.
 ;;;; Output
 
 (define (%text-mode port)
-  (port/set-coding port 'ISO-8859-1)
-  (port/set-line-ending port 'CRLF))
+  (port/set-coding port 'iso-8859-1)
+  (port/set-line-ending port 'crlf))
 
 (define (%binary-mode port)
-  (port/set-coding port 'BINARY)
-  (port/set-line-ending port 'BINARY))
+  (port/set-coding port 'binary)
+  (port/set-line-ending port 'binary))
 
 (define (write-http-request request port)
   (%text-mode port)
@@ -253,11 +253,11 @@ USA.
 				  (car b.t))))))))
 
 (define (%read-chunked-body headers port)
-  (let ((h (http-header 'TRANSFER-ENCODING headers #f)))
+  (let ((h (http-header 'transfer-encoding headers #f)))
     (and h
 	 (let ((v (http-header-parsed-value h)))
 	   (and (not (default-object? v))
-		(assq 'CHUNKED v)))
+		(assq 'chunked v)))
 	 (let ((output (open-output-bytevector))
 	       (buffer (make-string #x1000)))
 	   (let loop ()
@@ -305,11 +305,11 @@ USA.
 	     (%read-chunk n (make-string #x1000) port output)))))))
 
 (define (%read-terminal-body headers port)
-  (and (let ((h (http-header 'CONNECTION headers #f)))
+  (and (let ((h (http-header 'connection headers #f)))
 	 (and h
 	      (let ((v (http-header-parsed-value h)))
 		(and (not (default-object? v))
-		     (memq 'CLOSE v)))))
+		     (memq 'close v)))))
        (list (%read-all port))))
 
 (define (%read-all port)
@@ -368,7 +368,7 @@ USA.
 ;;;; Status descriptions
 
 (define (http-status-description code)
-  (guarantee http-status? code 'HTTP-STATUS-DESCRIPTION)
+  (guarantee http-status? code 'http-status-description)
   (let loop ((low 0) (high (vector-length known-status-codes)))
     (if (< low high)
 	(let ((index (quotient (+ low high) 2)))
@@ -445,38 +445,38 @@ USA.
 	 (binary->textual-port
 	  (open-input-bytevector (http-message-body message)))))
     (receive (type coding) (%get-content-type message)
-      (cond ((eq? (mime-type/top-level type) 'TEXT)
-	     (port/set-coding port (or coding 'TEXT))
-	     (port/set-line-ending port 'TEXT))
-	    ((and (eq? (mime-type/top-level type) 'APPLICATION)
+      (cond ((eq? (mime-type/top-level type) 'text)
+	     (port/set-coding port (or coding 'text))
+	     (port/set-line-ending port 'text))
+	    ((and (eq? (mime-type/top-level type) 'application)
 		  (let ((sub (mime-type/subtype type)))
-		    (or (eq? sub 'XML)
+		    (or (eq? sub 'xml)
 			(string-suffix-ci? "+xml" (symbol->string sub)))))
-	     (port/set-coding port (or coding 'UTF-8))
-	     (port/set-line-ending port 'XML-1.0))
+	     (port/set-coding port (or coding 'utf-8))
+	     (port/set-line-ending port 'xml-1.0))
 	    (coding
 	     (port/set-coding port coding)
-	     (port/set-line-ending port 'TEXT))
+	     (port/set-line-ending port 'text))
 	    (else
-	     (port/set-coding port 'BINARY)
-	     (port/set-line-ending port 'BINARY))))
+	     (port/set-coding port 'binary)
+	     (port/set-line-ending port 'binary))))
     port))
 
 (define (%get-content-type message)
-  (optional-header (http-message-header 'CONTENT-TYPE message #f)
+  (optional-header (http-message-header 'content-type message #f)
 		   (lambda (v)
 		     (values (car v)
-			     (let ((p (assq 'CHARSET (cdr v))))
+			     (let ((p (assq 'charset (cdr v))))
 			       (and p
 				    (let ((coding (intern (cdr p))))
 				      (and (known-input-port-coding? coding)
 					   coding))))))
 		   (lambda ()
-		     (values (make-mime-type 'APPLICATION 'OCTET-STREAM)
+		     (values (make-mime-type 'application 'octet-stream)
 			     #f))))
 
 (define (%get-content-length headers)
-  (optional-header (http-header 'CONTENT-LENGTH headers #f)
+  (optional-header (http-header 'content-length headers #f)
 		   (lambda (n) n)
 		   (lambda () #f)))
 

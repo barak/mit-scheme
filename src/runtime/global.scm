@@ -99,7 +99,7 @@ USA.
   (set! param:quit-hook (make-settable-parameter default/quit))
   ;; Kludge until the next released version, to avoid a bootstrapping
   ;; failure.
-  (set! ephemeron-type (microcode-type 'EPHEMERON))
+  (set! ephemeron-type (microcode-type 'ephemeron))
   unspecific)
 
 ;;;; Potpourri
@@ -157,7 +157,7 @@ USA.
        (lambda (port) (write object port)))))
 
 (define (pa procedure)
-  (guarantee procedure? procedure 'PA)
+  (guarantee procedure? procedure 'pa)
   (cond ((procedure-lambda procedure)
 	 => (lambda (scode)
 	      (pp (unsyntax-lambda-list scode))))
@@ -297,14 +297,14 @@ USA.
 		(fix:>= t -4)
 		(fix:<= t 4)))
       (error "Illegal GC-type value:" t))
-  (vector-ref '#(COMPILED-ENTRY VECTOR GC-INTERNAL UNDEFINED NON-POINTER
-				CELL PAIR TRIPLE QUADRUPLE)
+  (vector-ref '#(compiled-entry vector gc-internal undefined non-pointer
+				cell pair triple quadruple)
 	      (fix:+ t 4)))
 
 (define (object-non-pointer? object)
   (case (object-gc-type object)
-    ((NON-POINTER) #t)
-    ((GC-INTERNAL)
+    ((non-pointer) #t)
+    ((gc-internal)
      (or (object-type? (ucode-type manifest-nm-vector) object)
 	 (and (object-type? (ucode-type reference-trap) object)
 	      (<= (object-datum object) trap-max-immediate))))
@@ -312,8 +312,8 @@ USA.
 
 (define (object-pointer? object)
   (case (object-gc-type object)
-    ((CELL PAIR TRIPLE QUADRUPLE VECTOR COMPILED-ENTRY) #t)
-    ((GC-INTERNAL)
+    ((cell pair triple quadruple vector compiled-entry) #t)
+    ((gc-internal)
      (or (object-type? (ucode-type broken-heart) object)
 	 (and (object-type? (ucode-type reference-trap) object)
 	      (> (object-datum object) trap-max-immediate))))
@@ -321,14 +321,14 @@ USA.
 
 (define (non-pointer-type-code? code)
   (case (type-code->gc-type code)
-    ((NON-POINTER) #t)
-    ((GC-INTERNAL) (fix:= (ucode-type manifest-nm-vector) code))
+    ((non-pointer) #t)
+    ((gc-internal) (fix:= (ucode-type manifest-nm-vector) code))
     (else #f)))
 
 (define (pointer-type-code? code)
   (case (type-code->gc-type code)
-    ((CELL PAIR TRIPLE QUADRUPLE VECTOR COMPILED-ENTRY) #t)
-    ((GC-INTERNAL) (fix:= (ucode-type broken-heart) code))
+    ((cell pair triple quadruple vector compiled-entry) #t)
+    ((gc-internal) (fix:= (ucode-type broken-heart) code))
     (else #f)))
 
 (define (undefined-value? object)
@@ -357,7 +357,7 @@ USA.
 (define (for-each-interned-symbol procedure)
   (with-obarray-lock
     (lambda ()
-      (for-each-symbol-in-obarray (fixed-objects-item 'OBARRAY) procedure))))
+      (for-each-symbol-in-obarray (fixed-objects-item 'obarray) procedure))))
 
 (define (for-each-symbol-in-obarray obarray procedure)
   (let per-bucket ((index (vector-length obarray)))
@@ -388,7 +388,7 @@ USA.
 (define (clean-obarray)
   (with-obarray-lock
    (lambda ()
-     (let ((obarray (fixed-objects-item 'OBARRAY)))
+     (let ((obarray (fixed-objects-item 'obarray)))
        (let loop ((index (vector-length obarray)))
 	 (if (fix:> index 0)
 	     (let ((index (fix:- index 1)))
@@ -432,7 +432,7 @@ USA.
 	       (if (not ((ucode-primitive primitive-fasdump)
 			 object (string-for-primitive filename) dump-option))
 		   (begin
-		     (with-simple-restart 'RETRY "Try again."
+		     (with-simple-restart 'retry "Try again."
 		       (lambda ()
 			 (error "FASDUMP: Object is too large to be dumped:"
 				object)))
@@ -455,7 +455,7 @@ USA.
   (%make-hook-list '()))
 
 (define (append-hook-to-list hook-list key hook)
-  (guarantee hook-list? hook-list 'APPEND-HOOK-TO-LIST)
+  (guarantee hook-list? hook-list 'append-hook-to-list)
   (let loop ((alist (hook-list-hooks hook-list)) (prev #f))
     (if (pair? alist)
 	(loop (cdr alist)
@@ -472,7 +472,7 @@ USA.
 	      (set-hook-list-hooks! hook-list tail))))))
 
 (define (remove-hook-from-list hook-list key)
-  (guarantee hook-list? hook-list 'REMOVE-HOOK-FROM-LIST)
+  (guarantee hook-list? hook-list 'remove-hook-from-list)
   (let loop ((alist (hook-list-hooks hook-list)) (prev #f))
     (if (pair? alist)
 	(loop (cdr alist)
@@ -485,11 +485,11 @@ USA.
 		  alist)))))
 
 (define (hook-in-list? hook-list key)
-  (guarantee hook-list? hook-list 'HOOK-IN-LIST?)
+  (guarantee hook-list? hook-list 'hook-in-list?)
   (if (assq key (hook-list-hooks hook-list)) #t #f))
 
 (define (run-hooks-in-list hook-list . arguments)
-  (guarantee hook-list? hook-list 'RUN-HOOKS-IN-LIST)
+  (guarantee hook-list? hook-list 'run-hooks-in-list)
   (for-each (lambda (p)
 	      (apply (cdr p) arguments))
 	    (hook-list-hooks hook-list)))
@@ -679,7 +679,7 @@ USA.
 ;;;   .    for
 ;;;   .      GC
 
-(define canonical-false (list 'FALSE))
+(define canonical-false (list 'false))
 
 (define (canonicalize object)
   (if (eq? object #f)
@@ -692,7 +692,7 @@ USA.
       object))
 
 (define (make-ephemeron key datum)
-  ((ucode-primitive MAKE-EPHEMERON 2) (canonicalize key) (canonicalize datum)))
+  ((ucode-primitive make-ephemeron 2) (canonicalize key) (canonicalize datum)))
 
 (define (ephemeron? object)
   (object-type? ephemeron-type object))
@@ -700,27 +700,27 @@ USA.
 (define-guarantee ephemeron "ephemeron")
 
 (define (ephemeron-key ephemeron)
-  (guarantee-ephemeron ephemeron 'EPHEMERON-KEY)
+  (guarantee-ephemeron ephemeron 'ephemeron-key)
   (decanonicalize (primitive-object-ref ephemeron 1)))
 
 (define (ephemeron-datum ephemeron)
-  (guarantee-ephemeron ephemeron 'EPHEMERON-DATUM)
+  (guarantee-ephemeron ephemeron 'ephemeron-datum)
   (decanonicalize (primitive-object-ref ephemeron 2)))
 
 (define (set-ephemeron-key! ephemeron key)
-  (guarantee-ephemeron ephemeron 'SET-EPHEMERON-KEY!)
+  (guarantee-ephemeron ephemeron 'set-ephemeron-key!)
   (let ((key* (primitive-object-ref ephemeron 1)))
     (if key* (primitive-object-set! ephemeron 1 (canonicalize key)))
     (reference-barrier key*))
   unspecific)
 
 (define (set-ephemeron-datum! ephemeron datum)
-  (guarantee-ephemeron ephemeron 'SET-EPHEMERON-DATUM!)
+  (guarantee-ephemeron ephemeron 'set-ephemeron-datum!)
   (let ((key (primitive-object-ref ephemeron 1)))
     (if key (primitive-object-set! ephemeron 2 (canonicalize datum)))
     (reference-barrier key))
   unspecific)
 
 (define (ephemeron-broken? ephemeron)
-  (guarantee-ephemeron ephemeron 'EPHEMERON-BROKEN?)
+  (guarantee-ephemeron ephemeron 'ephemeron-broken?)
   (not (primitive-object-ref ephemeron 1)))

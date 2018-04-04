@@ -87,13 +87,13 @@ USA.
   (%make-hash-table type initial-size))
 
 (define (%make-hash-table type #!optional initial-size)
-  (guarantee hash-table-type? type '%MAKE-HASH-TABLE)
+  (guarantee hash-table-type? type '%make-hash-table)
   (let ((initial-size
 	 (if (or (default-object? initial-size) (not initial-size))
 	     #f
 	     (begin
 	       (guarantee exact-nonnegative-integer? initial-size
-			  '%MAKE-HASH-TABLE)
+			  '%make-hash-table)
 	       initial-size))))
     (let ((table (make-table type)))
       (if (and initial-size (> initial-size minimum-size))
@@ -129,19 +129,19 @@ USA.
 			 (set-table-needs-rehash?! table #t))))
 
 (define (hash-table/type table)
-  (guarantee hash-table? table 'HASH-TABLE/TYPE)
+  (guarantee hash-table? table 'hash-table/type)
   (table-type table))
 
 (define (hash-table/key-hash table)
-  (guarantee hash-table? table 'HASH-TABLE/KEY-HASH)
+  (guarantee hash-table? table 'hash-table/key-hash)
   (table-type-key-hash (table-type table)))
 
 (define (hash-table/key=? table)
-  (guarantee hash-table? table 'HASH-TABLE/KEY=?)
+  (guarantee hash-table? table 'hash-table/key=?)
   (table-type-key=? (table-type table)))
 
 (define (hash-table/get table key default)
-  (guarantee hash-table? table 'HASH-TABLE/GET)
+  (guarantee hash-table? table 'hash-table/get)
   ((table-type-method:get (table-type table)) table key default))
 
 (define (hash-table/lookup table key if-found if-not-found)
@@ -151,11 +151,11 @@ USA.
 	(if-found datum))))
 
 (define (hash-table/put! table key datum)
-  (guarantee hash-table? table 'HASH-TABLE/PUT!)
+  (guarantee hash-table? table 'hash-table/put!)
   ((table-type-method:put! (table-type table)) table key datum))
 
 (define (hash-table/modify! table key default procedure)
-  (guarantee hash-table? table 'HASH-TABLE/MODIFY!)
+  (guarantee hash-table? table 'hash-table/modify!)
   ((table-type-method:modify! (table-type table)) table key default procedure))
 
 (define (hash-table/intern! table key generator)
@@ -164,11 +164,11 @@ USA.
       (if (eq? datum default-marker) (generator) datum))))
 
 (define (hash-table/remove! table key)
-  (guarantee hash-table? table 'HASH-TABLE/REMOVE!)
+  (guarantee hash-table? table 'hash-table/remove!)
   ((table-type-method:remove! (table-type table)) table key))
 
 (define (hash-table/clean! table)
-  (guarantee hash-table? table 'HASH-TABLE/CLEAN!)
+  (guarantee hash-table? table 'hash-table/clean!)
   (without-interruption
     (lambda ()
       ((table-type-method:clean! (table-type table)) table)
@@ -182,19 +182,19 @@ USA.
 	    (hash-table->alist table)))
 
 (define (hash-table->alist table)
-  (guarantee hash-table? table 'HASH-TABLE->ALIST)
+  (guarantee hash-table? table 'hash-table->alist)
   (%hash-table-fold table
 		    (lambda (key datum alist) (cons (cons key datum) alist))
 		    '()))
 
 (define (hash-table/key-list table)
-  (guarantee hash-table? table 'HASH-TABLE/KEY-LIST)
+  (guarantee hash-table? table 'hash-table/key-list)
   (%hash-table-fold table
 		    (lambda (key datum alist) datum (cons key alist))
 		    '()))
 
 (define (hash-table/datum-list table)
-  (guarantee hash-table? table 'HASH-TABLE/DATUM-LIST)
+  (guarantee hash-table? table 'hash-table/datum-list)
   (%hash-table-fold table
 		    (lambda (key datum alist) key (cons datum alist))
 		    '()))
@@ -203,11 +203,11 @@ USA.
   ((table-type-method:fold (table-type table)) table procedure initial-value))
 
 (define (hash-table/rehash-threshold table)
-  (guarantee hash-table? table 'HASH-TABLE/REHASH-THRESHOLD)
+  (guarantee hash-table? table 'hash-table/rehash-threshold)
   (table-rehash-threshold table))
 
 (define (set-hash-table/rehash-threshold! table threshold)
-  (guarantee hash-table? table 'SET-HASH-TABLE/REHASH-THRESHOLD!)
+  (guarantee hash-table? table 'set-hash-table/rehash-threshold!)
   (let ((threshold
 	 (check-arg threshold
 		    default-rehash-threshold
@@ -216,18 +216,18 @@ USA.
 			   (< 0 x)
 			   (<= x 1)))
 		    "real number between 0 (exclusive) and 1 (inclusive)"
-		    'SET-HASH-TABLE/REHASH-THRESHOLD!)))
+		    'set-hash-table/rehash-threshold!)))
     (without-interruption
       (lambda ()
 	(set-table-rehash-threshold! table threshold)
 	(new-size! table (table-grow-size table))))))
 
 (define (hash-table/rehash-size table)
-  (guarantee hash-table? table 'HASH-TABLE/REHASH-SIZE)
+  (guarantee hash-table? table 'hash-table/rehash-size)
   (table-rehash-size table))
 
 (define (set-hash-table/rehash-size! table size)
-  (guarantee hash-table? table 'SET-HASH-TABLE/REHASH-SIZE!)
+  (guarantee hash-table? table 'set-hash-table/rehash-size!)
   (let ((size
 	 (check-arg size
 		    default-rehash-size
@@ -236,7 +236,7 @@ USA.
 			    ((real? x) (< 1 x))
 			    (else #f)))
 		    "real number > 1 or exact integer >= 1"
-		    'SET-HASH-TABLE/REHASH-SIZE!)))
+		    'set-hash-table/rehash-size!)))
     (without-interruption
       (lambda ()
 	(set-table-rehash-size! table size)
@@ -244,7 +244,7 @@ USA.
 	(maybe-shrink-table! table)))))
 
 (define (hash-table/count table)
-  (guarantee hash-table? table 'HASH-TABLE/COUNT)
+  (guarantee hash-table? table 'hash-table/count)
   (let loop ()
     (let ((count (table-count table)))
       (if (table-needs-rehash? table)
@@ -254,11 +254,11 @@ USA.
 	  count))))
 
 (define (hash-table/size table)
-  (guarantee hash-table? table 'HASH-TABLE/SIZE)
+  (guarantee hash-table? table 'hash-table/size)
   (table-grow-size table))
 
 (define (hash-table/clear! table)
-  (guarantee hash-table? table 'HASH-TABLE/CLEAR!)
+  (guarantee hash-table? table 'hash-table/clear!)
   (without-interruption
     (lambda ()
       (if (not (table-initial-size-in-effect? table))
@@ -342,7 +342,7 @@ USA.
 (define-integrable (maybe-weak-cons a d)
   (if (non-weak? a)
       (cons a d)
-      (system-pair-cons (ucode-type WEAK-CONS) a d)))
+      (system-pair-cons (ucode-type weak-cons) a d)))
 
 ;;;; Entries of various flavours
 
@@ -1140,15 +1140,15 @@ USA.
      (let ((name (caadr form))
 	   (parameters (cdadr form))
 	   (body (cddr form)))
-       `(DEFINE-SYNTAX ,name
-	  (SC-MACRO-TRANSFORMER
-	   (LAMBDA (FORM ENVIRONMENT)
-	     (CONS '(NAMED-LAMBDA (,name ,@parameters)
-		      (DECLARE (INTEGRATE ,@parameters))
+       `(define-syntax ,name
+	  (sc-macro-transformer
+	   (lambda (form environment)
+	     (cons '(named-lambda (,name ,@parameters)
+		      (declare (integrate ,@parameters))
 		      ,@body)
-		   (MAP (LAMBDA (SUBFORM)
-			  (CLOSE-SYNTAX SUBFORM ENVIRONMENT))
-			(CDR FORM))))))))))
+		   (map (lambda (subform)
+			  (close-syntax subform environment))
+			(cdr form))))))))))
 
 (define-integrableish (open-type-constructor entry-type)
   (declare (integrate-operator %make-hash-table-type make-table-type))
@@ -1255,8 +1255,8 @@ USA.
  (lambda ()
    (let-syntax ((init
 		 (syntax-rules ()
-		   ((INIT constructor type)
-		    (SET! constructor (HASH-TABLE-CONSTRUCTOR type))))))
+		   ((init constructor type)
+		    (set! constructor (hash-table-constructor type))))))
      (init make-equal-hash-table equal-hash-table-type)
      ;; This is done above.
      ;; (init make-key-ephemeral-eq-hash-table key-ephemeral-eq-hash-table-type)
@@ -1308,7 +1308,7 @@ USA.
 			hash-table-entry-type:strong))
 
 (define (alist->hash-table alist #!optional key=? key-hash)
-  (guarantee alist? alist 'ALIST->HASH-TABLE)
+  (guarantee alist? alist 'alist->hash-table)
   (let ((table (make-hash-table key=? key-hash)))
     (for-each (lambda (p)
 		(hash-table/put! table (car p) (cdr p)))
@@ -1338,7 +1338,7 @@ USA.
     (if (eq? datum default-marker)
 	(begin
 	  (if (default-object? get-default)
-	      (error:bad-range-argument key 'HASH-TABLE-REF))
+	      (error:bad-range-argument key 'hash-table-ref))
 	  (get-default))
 	datum)))
 
@@ -1351,14 +1351,14 @@ USA.
 		    key
 		    (if (default-object? get-default)
 			(lambda ()
-			  (error:bad-range-argument key 'HASH-TABLE-UPDATE!))
+			  (error:bad-range-argument key 'hash-table-update!))
 			get-default)))))
 
 (define (hash-table-update!/default table key procedure default)
   (hash-table-update! table key procedure (lambda () default)))
 
 (define (hash-table-copy table)
-  (guarantee hash-table? table 'HASH-TABLE-COPY)
+  (guarantee hash-table? table 'hash-table-copy)
   (without-interruption
     (lambda ()
       (let ((table* (copy-table table))
@@ -1371,8 +1371,8 @@ USA.
 	table*))))
 
 (define (hash-table-merge! table1 table2)
-  (guarantee hash-table? table1 'HASH-TABLE-MERGE!)
-  (guarantee hash-table? table2 'HASH-TABLE-MERGE!)
+  (guarantee hash-table? table1 'hash-table-merge!)
+  (guarantee hash-table? table2 'hash-table-merge!)
   (if (not (eq? table2 table1))
       (%hash-table-fold table2
 			(lambda (key datum ignore)
@@ -1396,7 +1396,7 @@ USA.
 (define-integrable without-interruption with-thread-events-blocked)
 
 (define default-marker
-  (list 'DEFAULT-MARKER))
+  (list 'default-marker))
 
 (define equality-predicate?)
 (define maybe-get-equality-predicate-hasher)

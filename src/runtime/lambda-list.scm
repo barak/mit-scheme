@@ -183,7 +183,7 @@ USA.
 	(values required optional rest)))
 
     (define (bad-lambda-list pattern)
-      (error:not-a mit-lambda-list? pattern 'PARSE-MIT-LAMBDA-LIST))
+      (error:not-a mit-lambda-list? pattern 'parse-mit-lambda-list))
 
     (parse-parameters required lambda-list)))
 

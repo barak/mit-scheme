@@ -31,28 +31,28 @@ USA.
 
 (define (initialize-package!)
   (set! index:interrupt-vector
-	(fixed-objects-vector-slot 'SYSTEM-INTERRUPT-VECTOR))
+	(fixed-objects-vector-slot 'system-interrupt-vector))
   (set! index:interrupt-mask-vector
-	(fixed-objects-vector-slot 'INTERRUPT-MASK-VECTOR))
+	(fixed-objects-vector-slot 'interrupt-mask-vector))
   (set! index:termination-vector
-	(fixed-objects-vector-slot 'MICROCODE-TERMINATIONS-PROCEDURES))
+	(fixed-objects-vector-slot 'microcode-terminations-procedures))
   (set! event:console-resize (make-event-distributor))
   (set! hook/clean-input/flush-typeahead false)
   (set! hook/clean-input/keep-typeahead false)
-  (set! hook/^B-interrupt false)
-  (set! hook/^G-interrupt false)
-  (set! hook/^U-interrupt false)
-  (set! hook/^X-interrupt false)
+  (set! hook/^b-interrupt false)
+  (set! hook/^g-interrupt false)
+  (set! hook/^u-interrupt false)
+  (set! hook/^x-interrupt false)
   (set! keyboard-interrupt-vector
 	(let ((table (make-vector 256 false)))
 	  (for-each (lambda (entry)
 		      (vector-set! table
 				   (char->integer (car entry))
 				   (cadr entry)))
-		    `((#\B ,^B-interrupt-handler)
-		      (#\G ,^G-interrupt-handler)
-		      (#\U ,^U-interrupt-handler)
-		      (#\X ,^X-interrupt-handler)))
+		    `((#\B ,^b-interrupt-handler)
+		      (#\G ,^g-interrupt-handler)
+		      (#\U ,^u-interrupt-handler)
+		      (#\X ,^x-interrupt-handler)))
 	  table))
   (install))
 
@@ -151,10 +151,10 @@ USA.
 (define keyboard-interrupt-vector)
 (define hook/clean-input/flush-typeahead)
 (define hook/clean-input/keep-typeahead)
-(define hook/^B-interrupt)
-(define hook/^G-interrupt)
-(define hook/^U-interrupt)
-(define hook/^X-interrupt)
+(define hook/^b-interrupt)
+(define hook/^g-interrupt)
+(define hook/^u-interrupt)
+(define hook/^x-interrupt)
 
 (define (external-interrupt-handler interrupt-code interrupt-mask)
   interrupt-code interrupt-mask
@@ -165,26 +165,26 @@ USA.
 	  (error "Bad interrupt character:" char))
       (handler char))))
 
-(define (^B-interrupt-handler char)
-  (signal-interrupt hook/^B-interrupt
+(define (^b-interrupt-handler char)
+  (signal-interrupt hook/^b-interrupt
 		    hook/clean-input/keep-typeahead
 		    char
 		    cmdl-interrupt/breakpoint))
 
-(define (^G-interrupt-handler char)
-  (signal-interrupt hook/^G-interrupt
+(define (^g-interrupt-handler char)
+  (signal-interrupt hook/^g-interrupt
 		    hook/clean-input/flush-typeahead
 		    char
 		    cmdl-interrupt/abort-top-level))
 
-(define (^U-interrupt-handler char)
-  (signal-interrupt hook/^U-interrupt
+(define (^u-interrupt-handler char)
+  (signal-interrupt hook/^u-interrupt
 		    hook/clean-input/flush-typeahead
 		    char
 		    cmdl-interrupt/abort-previous))
 
-(define (^X-interrupt-handler char)
-  (signal-interrupt hook/^X-interrupt
+(define (^x-interrupt-handler char)
+  (signal-interrupt hook/^x-interrupt
 		    hook/clean-input/flush-typeahead
 		    char
 		    cmdl-interrupt/abort-nearest))
@@ -264,7 +264,7 @@ USA.
 		     interrupt-mask/all)
 
 	(vector-set! termination-vector
-		     (microcode-termination 'GC-OUT-OF-SPACE)
+		     (microcode-termination 'gc-out-of-space)
 		     gc-out-of-space-handler)
 
 	(vector-set! fov index:interrupt-mask-vector interrupt-mask-vector)

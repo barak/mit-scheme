@@ -78,10 +78,10 @@ USA.
 
 (define (make-decoded-time second minute hour day month year #!optional zone)
   (check-decoded-time-args second minute hour day month year
-			   'MAKE-DECODED-TIME)
+			   'make-decoded-time)
   (let ((zone (if (default-object? zone) #f zone)))
     (if zone
-	(guarantee time-zone? zone 'MAKE-DECODED-TIME))
+	(guarantee time-zone? zone 'make-decoded-time))
     (if zone
 	(%make-decoded-time second minute hour day month year
 			    (compute-day-of-week day month year)
@@ -273,7 +273,7 @@ USA.
 (define (rfc2822-string->decoded-time string)
   (let ((v (*parse-string parser:rfc2822-time string)))
     (if (not v)
-	(error:bad-range-argument string 'STRING->DECODED-TIME))
+	(error:bad-range-argument string 'string->decoded-time))
     (vector-ref v 0)))
 
 (define (string->universal-time string)
@@ -349,7 +349,7 @@ USA.
       (write-time-zone tz port))))
 
 (define (write-time-zone tz port)
-  (guarantee time-zone? tz 'WRITE-TIME-ZONE)
+  (guarantee time-zone? tz 'write-time-zone)
   (let ((minutes (round (* 60 (- tz)))))
     (let ((qr (integer-divide (abs minutes) 60)))
       (write-char (if (< minutes 0) #\- #\+) port)
@@ -359,7 +359,7 @@ USA.
 (define (string->time-zone string)
   (let ((v (*parse-string parser:time-zone string)))
     (if (not v)
-	(error:bad-range-argument string 'STRING->TIME-ZONE))
+	(error:bad-range-argument string 'string->time-zone))
     (vector-ref v 0)))
 
 (define parser:time-zone
@@ -458,7 +458,7 @@ USA.
 	 (*parse-string (parser:ctime (if (default-object? zone) #f zone))
 			string)))
     (if (not v)
-	(error:bad-range-argument string 'CTIME-STRING->DECODED-TIME))
+	(error:bad-range-argument string 'ctime-string->decoded-time))
     (vector-ref v 0)))
 
 (define (universal-time->local-ctime-string time)
@@ -481,7 +481,7 @@ USA.
 
 (define (parser:ctime zone)
   (if zone
-      (guarantee time-zone? zone 'PARSER:CTIME))
+      (guarantee time-zone? zone 'parser:ctime))
   (*parser
    (encapsulate (lambda (v)
 		  (make-decoded-time (vector-ref v 5)
@@ -524,14 +524,14 @@ USA.
 (define (iso8601-string->decoded-time string #!optional start end)
   (let ((v (*parse-string parser:iso8601-date/time string start end)))
     (if (not v)
-	(error:bad-range-argument string 'ISO8601-STRING->DECODED-TIME))
+	(error:bad-range-argument string 'iso8601-string->decoded-time))
     (vector-ref v 0)))
 
 (define (xml-rpc-iso8601-string->decoded-time string #!optional start end)
   (let ((v (*parse-string parser:xml-rpc-iso8601-date/time string start end)))
     (if (not v)
 	(error:bad-range-argument string
-				  'XML-RPC-ISO8601-STRING->DECODED-TIME))
+				  'xml-rpc-iso8601-string->decoded-time))
     (vector-ref v 0)))
 
 (define (decoded-time->iso8601-string dt)
@@ -870,15 +870,15 @@ USA.
 ;;;; Utilities
 
 (define (month/max-days month)
-  (guarantee-month month 'MONTH/MAX-DAYS)
+  (guarantee-month month 'month/max-days)
   (vector-ref '#(31 29 31 30 31 30 31 31 30 31 30 31) (- month 1)))
 
 (define (month/short-string month)
-  (guarantee-month month 'MONTH/SHORT-STRING)
+  (guarantee-month month 'month/short-string)
   (vector-ref month/short-strings (- month 1)))
 
 (define (month/long-string month)
-  (guarantee-month month 'MONTH/LONG-STRING)
+  (guarantee-month month 'month/long-string)
   (vector-ref month/long-strings (- month 1)))
 
 (define (guarantee-month month name)
@@ -894,11 +894,11 @@ USA.
 	     (error "Unknown month designation:" string))))
 
 (define (day-of-week/short-string day)
-  (guarantee-day-of-week day 'DAY-OF-WEEK/SHORT-STRING)
+  (guarantee-day-of-week day 'day-of-week/short-string)
   (vector-ref days-of-week/short-strings day))
 
 (define (day-of-week/long-string day)
-  (guarantee-day-of-week day 'DAY-OF-WEEK/LONG-STRING)
+  (guarantee-day-of-week day 'day-of-week/long-string)
   (vector-ref days-of-week/long-strings day))
 
 (define (guarantee-day-of-week day name)
@@ -922,7 +922,7 @@ USA.
 (define (string->year string)
   (let ((n (string->number string)))
     (if (not (exact-nonnegative-integer? n))
-	(error:bad-range-argument string 'STRING->YEAR))
+	(error:bad-range-argument string 'string->year))
     (cond ((< n 70) (+ 2000 n))
 	  ((< n 100) (+ 1900 n))
 	  (else n))))

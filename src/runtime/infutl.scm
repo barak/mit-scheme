@@ -250,7 +250,7 @@ USA.
 	 (merge-pathnames
 	  (pathname-new-directory
 	   (file-pathname pathname)
-	   (cons 'RELATIVE
+	   (cons 'relative
 		 (list-tail (pathname-directory pathname)
 			    (length (pathname-directory (car rule))))))
 	  (cdr rule))
@@ -281,7 +281,7 @@ USA.
 (define (%find-library-directory pathname)
   (let ((dir (pathname-directory pathname)))
     (or (and (pair? dir)
-	     (eq? 'RELATIVE (car dir))
+	     (eq? 'relative (car dir))
 	     (pair? (cdr dir))
 	     (string? (cadr dir))
 	     (let ((libdir (system-library-directory-pathname (cadr dir))))

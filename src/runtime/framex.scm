@@ -221,14 +221,14 @@ USA.
 			       frame
 			       (select-subexp expression))))))
 		     (case (vector-ref source-code 0)
-		       ((SEQUENCE-CONTINUE)
+		       ((sequence-continue)
 			(win &pair-car))
-		       ((ASSIGNMENT-CONTINUE
-			 DEFINITION-CONTINUE)
+		       ((assignment-continue
+			 definition-continue)
 			(win &pair-cdr))
-		       ((CONDITIONAL-DECIDE)
+		       ((conditional-decide)
 			(win &triple-first))
-		       ((COMBINATION-OPERAND)
+		       ((combination-operand)
 			(values
 			 expression
 			 (get-environment)
@@ -238,13 +238,13 @@ USA.
 			      (scode-combination-operator expression)
 			      (list-ref (scode-combination-operands expression)
 					(-1+ (vector-ref source-code 2)))))))
-		       ((COMBINATION-ELEMENT)
+		       ((combination-element)
 			(win2 undefined-environment
 			      (vector-ref source-code 2)))
-		       ((SEQUENCE-ELEMENT)
+		       ((sequence-element)
 			(win2 undefined-environment
 			      (vector-ref source-code 2)))
-		       ((CONDITIONAL-PREDICATE)
+		       ((conditional-predicate)
 			(win2 undefined-environment
 			      (vector-ref source-code 2)))
 		       (else
@@ -265,39 +265,39 @@ USA.
 
 (define (initialize-package!)
   (set! stack-frame-type/pop-return-error
-	(microcode-return/name->type 'POP-RETURN-ERROR))
-  (record-method 'COMBINATION-APPLY method/null)
-  (record-method 'REENTER-COMPILED-CODE method/null)
+	(microcode-return/name->type 'pop-return-error))
+  (record-method 'combination-apply method/null)
+  (record-method 'reenter-compiled-code method/null)
   (let ((method (method/standard &pair-car)))
-    (record-method 'DISJUNCTION-DECIDE method)
-    (record-method 'SEQUENCE-CONTINUE method))
+    (record-method 'disjunction-decide method)
+    (record-method 'sequence-continue method))
   (let ((method (method/standard &pair-cdr)))
-    (record-method 'ASSIGNMENT-CONTINUE method)
-    (record-method 'DEFINITION-CONTINUE method))
+    (record-method 'assignment-continue method)
+    (record-method 'definition-continue method))
   (let ((method (method/standard &triple-first)))
-    (record-method 'CONDITIONAL-DECIDE method))
+    (record-method 'conditional-decide method))
   (let ((method (method/expression-only &pair-car)))
-    (record-method 'ACCESS-CONTINUE method))
-  (record-method 'COMBINATION-SAVE-VALUE method/combination-save-value)
-  (record-method 'EVAL-ERROR method/eval-error)
-  (record-method 'FORCE-SNAP-THUNK method/force-snap-thunk)
+    (record-method 'access-continue method))
+  (record-method 'combination-save-value method/combination-save-value)
+  (record-method 'eval-error method/eval-error)
+  (record-method 'force-snap-thunk method/force-snap-thunk)
   (let ((method (method/application-frame 3)))
-    (record-method 'INTERNAL-APPLY method)
-    (record-method 'INTERNAL-APPLY-VAL method))
+    (record-method 'internal-apply method)
+    (record-method 'internal-apply-val method))
   (let ((method (method/compiler-reference-trap make-scode-variable)))
-    (record-method 'COMPILER-REFERENCE-TRAP-RESTART method)
-    (record-method 'COMPILER-SAFE-REFERENCE-TRAP-RESTART method))
-  (record-method 'COMPILER-UNASSIGNED?-TRAP-RESTART
+    (record-method 'compiler-reference-trap-restart method)
+    (record-method 'compiler-safe-reference-trap-restart method))
+  (record-method 'compiler-unassigned?-trap-restart
 		 (method/compiler-reference-trap make-scode-unassigned?))
-  (record-method 'COMPILER-ASSIGNMENT-TRAP-RESTART
+  (record-method 'compiler-assignment-trap-restart
 		 (method/compiler-assignment-trap make-scode-assignment))
-  (record-method 'COMPILER-LOOKUP-APPLY-TRAP-RESTART
+  (record-method 'compiler-lookup-apply-trap-restart
 		 method/compiler-lookup-apply-trap-restart)
-  (record-method 'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART
+  (record-method 'compiler-operator-lookup-trap-restart
 		 method/compiler-lookup-apply-trap-restart)
-  (record-method 'COMPILER-ERROR-RESTART
+  (record-method 'compiler-error-restart
 		 method/compiler-error-restart)
-  (record-method 'HARDWARE-TRAP method/hardware-trap)
+  (record-method 'hardware-trap method/hardware-trap)
   (set-stack-frame-type/debugging-info-method!
    stack-frame-type/compiled-return-address
    method/compiled-code)

@@ -195,7 +195,7 @@ USA.
 	      (eq? (vector-ref text 0) wrapper-tag)))))
 
 (define wrapper-tag
-  '(LAMBDA-WRAPPER))
+  '(lambda-wrapper))
 
 (define-integrable (wrapper-body wrapper)
   (scode-comment-expression wrapper))

@@ -46,11 +46,11 @@ USA.
 	((closure-ccenv? environment)
 	 (closure-ccenv/has-parent? environment))
 	(else
-	 (error:not-a environment? environment 'ENVIRONMENT-HAS-PARENT?))))
+	 (error:not-a environment? environment 'environment-has-parent?))))
 
 (define (environment-parent environment)
   (cond ((system-global-environment? environment)
-	 (error:bad-range-argument environment 'ENVIRONMENT-PARENT))
+	 (error:bad-range-argument environment 'environment-parent))
 	((ic-environment? environment)
 	 (ic-environment/parent environment))
 	((stack-ccenv? environment)
@@ -58,7 +58,7 @@ USA.
 	((closure-ccenv? environment)
 	 (closure-ccenv/parent environment))
 	(else
-	 (error:not-a environment? environment 'ENVIRONMENT-PARENT))))
+	 (error:not-a environment? environment 'environment-parent))))
 
 (define (environment-bound-names environment)
   (cond ((system-global-environment? environment)
@@ -70,7 +70,7 @@ USA.
 	((closure-ccenv? environment)
 	 (closure-ccenv/bound-names environment))
 	(else
-	 (error:not-a environment? environment 'ENVIRONMENT-BOUND-NAMES))))
+	 (error:not-a environment? environment 'environment-bound-names))))
 
 (define (environment-macro-names environment)
   (cond ((system-global-environment? environment)
@@ -81,7 +81,7 @@ USA.
 	     (closure-ccenv? environment))
 	 '())
 	(else
-	 (error:not-a environment? environment 'ENVIRONMENT-MACRO-NAMES))))
+	 (error:not-a environment? environment 'environment-macro-names))))
 
 (define (environment-bindings environment)
   (let ((items (environment-bound-names environment)))
@@ -104,9 +104,9 @@ USA.
 	 (stack-ccenv/arguments environment))
 	((or (system-global-environment? environment)
 	     (closure-ccenv? environment))
-	 'UNKNOWN)
+	 'unknown)
 	(else
-	 (error:not-a environment? environment 'ENVIRONMENT-ARGUMENTS))))
+	 (error:not-a environment? environment 'environment-arguments))))
 
 (define (environment-procedure-name environment)
   (let ((scode-lambda (environment-lambda environment)))
@@ -123,10 +123,10 @@ USA.
 	((closure-ccenv? environment)
 	 (closure-ccenv/lambda environment))
 	(else
-	 (error:not-a environment? environment 'ENVIRONMENT-LAMBDA))))
+	 (error:not-a environment? environment 'environment-lambda))))
 
 (define (environment-bound? environment name)
-  (not (eq? 'UNBOUND (environment-reference-type environment name))))
+  (not (eq? 'unbound (environment-reference-type environment name))))
 
 (define (environment-reference-type environment name)
   (cond ((interpreter-environment? environment)
@@ -136,13 +136,13 @@ USA.
 	((closure-ccenv? environment)
 	 (closure-ccenv/reference-type environment name))
 	(else
-	 (error:not-a environment? environment 'ENVIRONMENT-REFERENCE-TYPE))))
+	 (error:not-a environment? environment 'environment-reference-type))))
 
 (define (environment-assigned? environment name)
   (case (environment-reference-type environment name)
-    ((UNBOUND) (error:unbound-variable environment name))
-    ((MACRO) (error:macro-binding environment name))
-    ((UNASSIGNED) #f)
+    ((unbound) (error:unbound-variable environment name))
+    ((macro) (error:macro-binding environment name))
+    ((unassigned) #f)
     (else #t)))
 
 (define (environment-lookup environment name)
@@ -155,12 +155,12 @@ USA.
 
 (define (environment-lookup-or environment name no-value)
   (case (environment-reference-type environment name)
-    ((UNBOUND UNASSIGNED) (no-value))
-    ((MACRO) (error:macro-binding environment name))
+    ((unbound unassigned) (no-value))
+    ((macro) (error:macro-binding environment name))
     (else (environment-lookup environment name))))
 
 (define (environment-lookup-macro environment name)
-  (and (eq? 'MACRO (environment-reference-type environment name))
+  (and (eq? 'macro (environment-reference-type environment name))
        (let ((value (environment-safe-lookup environment name)))
 	 (and (macro-reference-trap? value)
 	      (macro-reference-trap-transformer value)))))
@@ -173,7 +173,7 @@ USA.
 	((closure-ccenv? environment)
 	 (closure-ccenv/safe-lookup environment name))
 	(else
-	 (error:not-a environment? environment 'ENVIRONMENT-SAFE-LOOKUP))))
+	 (error:not-a environment? environment 'environment-safe-lookup))))
 
 (define (environment-assignable? environment name)
   (cond ((interpreter-environment? environment)
@@ -183,7 +183,7 @@ USA.
 	((closure-ccenv? environment)
 	 (closure-ccenv/assignable? environment name))
 	(else
-	 (error:not-a environment? environment 'ENVIRONMENT-ASSIGNABLE?))))
+	 (error:not-a environment? environment 'environment-assignable?))))
 
 (define (environment-assign! environment name value)
   (cond ((interpreter-environment? environment)
@@ -193,31 +193,31 @@ USA.
 	((closure-ccenv? environment)
 	 (closure-ccenv/assign! environment name value))
 	(else
-	 (error:not-a environment? environment 'ENVIRONMENT-ASSIGN!))))
+	 (error:not-a environment? environment 'environment-assign!))))
 
 (define (environment-definable? environment name)
   name
   (cond ((interpreter-environment? environment) #t)
 	((or (stack-ccenv? environment) (closure-ccenv? environment)) #f)
-	(else (error:not-a environment? environment 'ENVIRONMENT-DEFINABLE?))))
+	(else (error:not-a environment? environment 'environment-definable?))))
 
 (define (environment-define environment name value)
   (cond ((interpreter-environment? environment)
 	 (interpreter-environment/define environment name value))
 	((or (stack-ccenv? environment)
 	     (closure-ccenv? environment))
-	 (error:bad-range-argument environment 'ENVIRONMENT-DEFINE))
+	 (error:bad-range-argument environment 'environment-define))
 	(else
-	 (error:not-a environment? environment 'ENVIRONMENT-DEFINE))))
+	 (error:not-a environment? environment 'environment-define))))
 
 (define (environment-define-macro environment name value)
   (cond ((interpreter-environment? environment)
 	 (interpreter-environment/define-macro environment name value))
 	((or (stack-ccenv? environment)
 	     (closure-ccenv? environment))
-	 (error:bad-range-argument environment 'ENVIRONMENT-DEFINE-MACRO))
+	 (error:bad-range-argument environment 'environment-define-macro))
 	(else
-	 (error:not-a environment? environment 'ENVIRONMENT-DEFINE-MACRO))))
+	 (error:not-a environment? environment 'environment-define-macro))))
 
 ;;;; Global environment
 
@@ -280,9 +280,9 @@ USA.
 
 (define (interpreter-environment/reference-type environment name)
   (let ((i ((ucode-primitive lexical-reference-type 2) environment name))
-	(v '#(UNBOUND UNASSIGNED NORMAL MACRO)))
+	(v '#(unbound unassigned normal macro)))
     (if (not (fix:< i (vector-length v)))
-	(error "Unknown reference type:" i 'ENVIRONMENT-REFERENCE-TYPE))
+	(error "Unknown reference type:" i 'environment-reference-type))
     (vector-ref v i)))
 
 (define (interpreter-environment/safe-lookup environment name)
@@ -293,8 +293,8 @@ USA.
 
 (define (interpreter-environment/assignable? environment name)
   (case (interpreter-environment/reference-type environment name)
-    ((UNBOUND) (error:unbound-variable environment name))
-    ((MACRO) (error:macro-binding environment name))
+    ((unbound) (error:unbound-variable environment name))
+    ((macro) (error:macro-binding environment name))
     (else #t)))
 
 (define (interpreter-environment/assign! environment name value)
@@ -377,7 +377,7 @@ USA.
 (define (ic-environment/parent environment)
   (let ((parent (ic-frame-parent environment)))
     (if (not (interpreter-environment? parent))
-	(error:bad-range-argument environment 'ENVIRONMENT-PARENT))
+	(error:bad-range-argument environment 'environment-parent))
     parent))
 
 (define (ic-frame-parent environment)
@@ -414,25 +414,25 @@ USA.
 
 (define (extend-top-level-environment environment #!optional names values)
   (if (not (interpreter-environment? environment))
-      (error:not-a environment? environment 'EXTEND-TOP-LEVEL-ENVIRONMENT))
+      (error:not-a environment? environment 'extend-top-level-environment))
   (%extend-top-level-environment environment
 				 (if (default-object? names) '() names)
-				 (if (default-object? values) 'DEFAULT values)
-				 'EXTEND-TOP-LEVEL-ENVIRONMENT))
+				 (if (default-object? values) 'default values)
+				 'extend-top-level-environment))
 
 (define (make-top-level-environment #!optional names values)
   (%extend-top-level-environment system-global-environment
 				 (if (default-object? names) '() names)
-				 (if (default-object? values) 'DEFAULT values)
-				 'MAKE-TOP-LEVEL-ENVIRONMENT))
+				 (if (default-object? values) 'default values)
+				 'make-top-level-environment))
 
 (define (make-root-top-level-environment #!optional names values)
   (%extend-top-level-environment (object-new-type (object-type #f)
 						  (fix:xor (object-datum #f)
 							   1))
 				 (if (default-object? names) '() names)
-				 (if (default-object? values) 'DEFAULT values)
-				 'MAKE-ROOT-TOP-LEVEL-ENVIRONMENT))
+				 (if (default-object? values) 'default values)
+				 'make-root-top-level-environment))
 
 (define (%extend-top-level-environment environment names values procedure)
   (if (not (list-of-type? names symbol?))
@@ -444,7 +444,7 @@ USA.
 					 names
 					 unspecific)
 			   environment)
-	 (if (eq? values 'DEFAULT)
+	 (if (eq? values 'default)
 	     (let ((values (make-list (length names))))
 	       (do ((values values (cdr values)))
 		   ((not (pair? values)))
@@ -477,12 +477,12 @@ USA.
 	   (let ((block (dbg-continuation/block object)))
 	     (let ((parent (dbg-block/parent block)))
 	       (case (dbg-block/type parent)
-		 ((STACK)
+		 ((stack)
 		  (make-stack-ccenv parent
 				    frame
 				    (+ (dbg-continuation/offset object)
 				       (dbg-block/length block))))
-		 ((IC)
+		 ((ic)
 		  (let ((index (dbg-block/ic-parent-index block)))
 		    (if index
 			(guarantee-interpreter-environment
@@ -493,7 +493,7 @@ USA.
 	  ((dbg-procedure? object)
 	   (let ((block (dbg-procedure/block object)))
 	     (case (dbg-block/type block)
-	       ((STACK)
+	       ((stack)
 		(make-stack-ccenv block
 				  frame
 				  (if (compiled-closure? ret-add) 0 1)))
@@ -509,7 +509,7 @@ USA.
 
 (define (compiled-procedure/environment entry)
   (if (not (compiled-procedure? entry))
-      (error "Not a compiled procedure" entry 'COMPILED-PROCEDURE/ENVIRONMENT))
+      (error "Not a compiled procedure" entry 'compiled-procedure/environment))
   (let ((procedure (compiled-entry/dbg-object entry)))
     (if (not procedure)
 	(error "Unable to obtain closing environment" entry))
@@ -524,11 +524,11 @@ USA.
 	    (compiled-code-address->block entry))))
 	(if parent
 	    (case (dbg-block/type parent)
-	      ((CLOSURE)
+	      ((closure)
 	       (make-closure-ccenv (dbg-block/original-parent block)
 				   parent
 				   entry))
-	      ((IC)
+	      ((ic)
 	       (use-compile-code-block-environment))
 	      (else
 	       (error "Illegal procedure parent block" parent)))
@@ -538,14 +538,14 @@ USA.
 (define (stack-ccenv/has-parent? environment)
   (if (dbg-block/parent (stack-ccenv/block environment))
       #t
-      'SIMULATED))
+      'simulated))
 
 (define (stack-ccenv/parent environment)
   (let ((block (stack-ccenv/block environment)))
     (let ((parent (dbg-block/parent block)))
       (if parent
 	  (case (dbg-block/type parent)
-	    ((STACK)
+	    ((stack)
 	     (let loop
 		 ((block block)
 		  (frame (stack-ccenv/frame environment))
@@ -572,20 +572,20 @@ USA.
 			      (+ (vector-length
 				  (dbg-block/layout-vector stack-link))
 				 (case (dbg-block/type stack-link)
-				   ((STACK)
+				   ((stack)
 				    0)
-				   ((CONTINUATION)
+				   ((continuation)
 				    (dbg-continuation/offset
 				     (dbg-block/procedure stack-link)))
 				   (else
 				    (error "illegal stack-link type"
 					   stack-link)))
 				 index)))))))
-	    ((CLOSURE)
+	    ((closure)
 	     (make-closure-ccenv (dbg-block/original-parent block)
 				 parent
 				 (stack-ccenv/normal-closure environment)))
-	    ((IC)
+	    ((ic)
 	     (guarantee-interpreter-environment
 	      (if (dbg-block/static-link-index block)
 		  (stack-ccenv/static-link environment)
@@ -613,9 +613,9 @@ USA.
 	(letrec ((lookup
 		  (lambda (variable)
 		    (case (dbg-variable/type variable)
-		      ((INTEGRATED)
+		      ((integrated)
 		       (dbg-variable/value variable))
-		      ((INDIRECTED)
+		      ((indirected)
 		       (lookup (dbg-variable/value variable)))
 		      (else
 		       (stack-ccenv/safe-lookup
@@ -627,7 +627,7 @@ USA.
 		      (dbg-procedure/optional procedure))
 		lookup
 		(dbg-procedure/required procedure)))
-	'UNKNOWN)))
+	'unknown)))
 
 (define (stack-ccenv/bound-names environment)
   (map dbg-variable/name
@@ -743,7 +743,7 @@ USA.
 	    (dbg-block/layout-vector (closure-ccenv/stack-block environment)))
 	 (lambda (variable)
 	   (and (dbg-variable? variable)
-		(or (eq? (dbg-variable/type variable) 'INTEGRATED)
+		(or (eq? (dbg-variable/type variable) 'integrated)
 		    (vector-find-next-element
 		     (dbg-block/layout-vector
 		      (closure-ccenv/closure-block environment))
@@ -798,10 +798,10 @@ USA.
 	(let ((parent (dbg-block/parent stack-block)))
 	  (and parent
 	       (case (dbg-block/type parent)
-		 ((CLOSURE) (and (dbg-block/original-parent stack-block) #t))
-		 ((STACK IC) #t)
+		 ((closure) (and (dbg-block/original-parent stack-block) #t))
+		 ((stack ic) #t)
 		 (else (error "Illegal parent block" parent))))))
-      'SIMULATED))
+      'simulated))
 
 (define (closure-ccenv/parent environment)
   (let ((stack-block (closure-ccenv/stack-block environment))
@@ -820,14 +820,14 @@ USA.
 		 system-global-environment))))
       (if parent
 	  (case (dbg-block/type parent)
-	    ((STACK)
+	    ((stack)
 	     (make-closure-ccenv parent closure-block closure))
-	    ((CLOSURE)
+	    ((closure)
 	     (let ((parent (dbg-block/original-parent stack-block)))
 	       (if parent
 		   (make-closure-ccenv parent closure-block closure)
 		   (use-simulation))))
-	    ((IC)
+	    ((ic)
 	     (guarantee-interpreter-environment
 	      (let ((index (dbg-block/ic-parent-index closure-block)))
 		(if index
@@ -846,17 +846,17 @@ USA.
       (if index
 	  (let ((variable (vector-ref (dbg-block/layout-vector block) index)))
 	    (case (dbg-variable/type variable)
-	      ((NORMAL)
+	      ((normal)
 	       (get-value index))
-	      ((CELL)
+	      ((cell)
 	       (let ((value (get-value index)))
 		 (if (not (cell? value))
 		     (error "Value of variable should be in cell:"
 			    variable value))
 		 (cell-contents value)))
-	      ((INTEGRATED)
+	      ((integrated)
 	       (dbg-variable/value variable))
-	      ((INDIRECTED)
+	      ((indirected)
 	       (loop (dbg-variable/name (dbg-variable/value variable))))
 	      (else
 	       (error "Unknown variable type:" variable))))
@@ -865,26 +865,26 @@ USA.
 (define (dbg-variable-reference-type block name get-value not-found)
   (let ((value->reference-type
 	 (lambda (value)
-	   (cond ((unassigned-reference-trap? value) 'UNASSIGNED)
-		 ((macro-reference-trap? value) 'MACRO)
-		 (else 'NORMAL)))))
+	   (cond ((unassigned-reference-trap? value) 'unassigned)
+		 ((macro-reference-trap? value) 'macro)
+		 (else 'normal)))))
     (let loop ((name name))
       (let ((index (dbg-block/find-name block name)))
 	(if index
 	    (let ((variable
 		   (vector-ref (dbg-block/layout-vector block) index)))
 	      (case (dbg-variable/type variable)
-		((NORMAL)
+		((normal)
 		 (value->reference-type (get-value index)))
-		((CELL)
+		((cell)
 		 (let ((value (get-value index)))
 		   (if (not (cell? value))
 		       (error "Value of variable should be in cell"
 			      variable value))
 		   (value->reference-type (cell-contents value))))
-		((INTEGRATED)
+		((integrated)
 		 (value->reference-type (dbg-variable/value variable)))
-		((INDIRECTED)
+		((indirected)
 		 (loop (dbg-variable/name (dbg-variable/value variable))))
 		(else
 		 (error "Unknown variable type:" variable))))
@@ -893,7 +893,7 @@ USA.
 (define (assignable-dbg-variable? block name not-found)
   (let ((index (dbg-block/find-name block name)))
     (if index
-	(eq? 'CELL
+	(eq? 'cell
 	     (dbg-variable/type
 	      (vector-ref (dbg-block/layout-vector block)
 			  index)))
@@ -904,13 +904,13 @@ USA.
     (if index
 	(let ((variable (vector-ref (dbg-block/layout-vector block) index)))
 	  (case (dbg-variable/type variable)
-	    ((CELL)
+	    ((cell)
 	     (let ((cell (get-value index)))
 	       (if (not (cell? cell))
 		   (error "Value of variable should be in cell:" name cell))
 	       (set-cell-contents! cell value)
 	       unspecific))
-	    ((NORMAL INTEGRATED INDIRECTED)
+	    ((normal integrated indirected)
 	     (error "Variable cannot be modified:" variable))
 	    (else
 	     (error "Unknown variable type:" variable))))

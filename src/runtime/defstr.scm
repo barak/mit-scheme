@@ -296,7 +296,7 @@ differences:
     #f))
 
 (define (default-type-name context)
-  (symbol 'RTD: (parser-context/name context)))
+  (symbol 'rtd: (parser-context/name context)))
 
 (define (apply-option-transformers options context)
   (let loop ((options options))
@@ -523,12 +523,12 @@ differences:
 		    (error "Duplicate slot option:" previous option)))
 	      (set! options-seen (cons option options-seen))
 	      (case keyword
-		((TYPE)
+		((type)
 		 (set! type
 		       (cond ((true-marker? argument) #t)
 			     ((symbol? argument) argument)
 			     (else (error "Illegal slot option:" option)))))
-		((READ-ONLY)
+		((read-only)
 		 (set! read-only?
 		       (cond ((false-marker? argument) #f)
 			     ((true-marker? argument) #t)
@@ -591,7 +591,7 @@ differences:
 ;;;; Code Generation
 
 (define (absolute name context)
-  (close-syntax `(ACCESS ,name SYSTEM-GLOBAL-ENVIRONMENT)
+  (close-syntax `(access ,name system-global-environment)
 		(parser-context/closing-environment context)))
 
 (define (close name context)

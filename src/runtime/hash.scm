@@ -90,7 +90,7 @@ USA.
 				default-hash-table
 				table))))
 	(if (not object)
-	    (error:bad-range-argument n 'UNHASH))
+	    (error:bad-range-argument n 'unhash))
 	object)))
 
 (define (valid-hash-number? n #!optional table)
@@ -111,7 +111,7 @@ USA.
 	       (if (not (hash-table? table))
 		   (error:wrong-type-argument table
 					      "object-hash table"
-					      'OBJECT-HASH))
+					      'object-hash))
 	       table)))
 	(insert? (or (default-object? insert?) insert?)))
     (with-thread-mutex-lock (hash-table/mutex table)
@@ -137,7 +137,7 @@ USA.
 	       (if (not (hash-table? table))
 		   (error:wrong-type-argument table
 					      "object-hash table"
-					      'OBJECT-UNHASH))
+					      'object-unhash))
 	       table))))
     (with-thread-mutex-lock (hash-table/mutex table)
       (lambda ()

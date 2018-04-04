@@ -43,14 +43,14 @@ USA.
    (vector-copy
     (if (or (default-object? table) (not table))
 	(char-syntax-table/entries standard-char-syntax-table)
-	(guarantee-char-syntax-table table 'MAKE-CHAR-SYNTAX-TABLE)))))
+	(guarantee-char-syntax-table table 'make-char-syntax-table)))))
 
 (define (get-char-syntax table char)
-  (vector-ref (guarantee-char-syntax-table table 'GET-CHAR-SYNTAX)
+  (vector-ref (guarantee-char-syntax-table table 'get-char-syntax)
 	      (char->integer char)))
 
 (define (set-char-syntax! table char string)
-  (let ((entries (guarantee-char-syntax-table table 'SET-CHAR-SYNTAX!))
+  (let ((entries (guarantee-char-syntax-table table 'set-char-syntax!))
 	(entry (string->char-syntax string)))
     (cond ((char? char)
 	   (vector-set! entries (char->integer char) entry))
@@ -59,7 +59,7 @@ USA.
 		       (vector-set! entries (char->integer char) entry))
 		     (char-set-members char)))
 	  (else
-	   (error:wrong-type-argument char "character" 'SET-CHAR-SYNTAX!)))))
+	   (error:wrong-type-argument char "character" 'set-char-syntax!)))))
 
 (define standard-char-syntax-table)
 
@@ -110,7 +110,7 @@ USA.
   (string->char-syntax string->syntax-entry))
 
 (define (char-syntax->string entry)
-  (guarantee-char-syntax entry 'CHAR-SYNTAX->STRING)
+  (guarantee-char-syntax entry 'char-syntax->string)
   (let ((code (fix:and #xf entry)))
     (string-append
      (vector-ref char-syntax-codes code)
