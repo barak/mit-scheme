@@ -524,18 +524,18 @@ USA.
 (define (signal-variable-error continuation signal-reference signal-other)
   (let ((frame (continuation/first-subproblem continuation)))
     (case (frame/type frame)
-      ((EVAL-ERROR)
+      ((eval-error)
        (let ((expression (eval-frame/expression frame)))
 	 (if (scode-variable? expression)
 	     (signal-reference (eval-frame/environment frame)
 			       (scode-variable-name expression)))))
-      ((ASSIGNMENT-CONTINUE)
+      ((assignment-continue)
        (signal-other (eval-frame/environment frame)
 		     (scode-assignment-name (eval-frame/expression frame))))
-      ((ACCESS-CONTINUE)
+      ((access-continue)
        (signal-reference (pop-return-frame/value continuation)
 			 (scode-access-name (eval-frame/expression frame))))
-      ((INTERNAL-APPLY INTERNAL-APPLY-VAL)
+      ((internal-apply internal-apply-val)
        (let ((operator (apply-frame/operator frame)))
 	 (cond ((or (eq? (ucode-primitive lexical-reference) operator)
 		    (eq? (ucode-primitive safe-lexical-reference 2)
@@ -551,13 +551,13 @@ USA.
 	       ((eq? (ucode-primitive lexical-unassigned?) operator)
 		(signal-other (apply-frame/operand frame 0)
 			      (apply-frame/operand frame 1))))))
-      ((COMPILER-REFERENCE-TRAP-RESTART
-	COMPILER-SAFE-REFERENCE-TRAP-RESTART)
+      ((compiler-reference-trap-restart
+	compiler-safe-reference-trap-restart)
        (signal-reference (reference-trap-frame/environment frame)
 			 (reference-trap-frame/name frame)))
-      ((COMPILER-ASSIGNMENT-TRAP-RESTART
-	COMPILER-UNASSIGNED?-TRAP-RESTART
-	COMPILER-OPERATOR-LOOKUP-TRAP-RESTART)
+      ((compiler-assignment-trap-restart
+	compiler-unassigned?-trap-restart
+	compiler-operator-lookup-trap-restart)
        (signal-other (reference-trap-frame/environment frame)
 		     (reference-trap-frame/name frame))))))
 
@@ -647,7 +647,7 @@ USA.
       (write-operator (access-condition condition 'operator) port)
       (write-string " is not implemented for this operating system." port))))
 
-(define-primitive-error 'UNDEFINED-PRIMITIVE-OPERATION
+(define-primitive-error 'undefined-primitive-operation
   condition-type:unimplemented-primitive-for-os)
 
 (set! condition-type:compiled-code-error
@@ -1025,17 +1025,17 @@ USA.
 		   (if (string=? "SIGFPE" name)
 		       ((case (and (string? code)
 				   (normalize-trap-code-name code))
-			  ((DIVIDE-BY-ZERO) signal-divide-by-zero)
-			  ((FLOATING-POINT-DIVIDE-BY-ZERO)
+			  ((divide-by-zero) signal-divide-by-zero)
+			  ((floating-point-divide-by-zero)
 			   signal-floating-point-divide-by-zero)
-			  ((INEXACT-RESULT)
+			  ((inexact-result)
 			   signal-inexact-floating-point-result)
-			  ((INTEGER-DIVIDE-BY-ZERO)
+			  ((integer-divide-by-zero)
 			   signal-integer-divide-by-zero)
-			  ((INVALID-OPERATION)
+			  ((invalid-operation)
 			   signal-invalid-floating-point-operation)
-			  ((OVERFLOW) signal-floating-point-overflow)
-			  ((UNDERFLOW) signal-floating-point-underflow)
+			  ((overflow) signal-floating-point-overflow)
+			  ((underflow) signal-floating-point-underflow)
 			  (else signal-arithmetic-error))
 			k #f '())
 		       (signal-hardware-trap k name code)))))))))

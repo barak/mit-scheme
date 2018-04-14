@@ -32,7 +32,7 @@ USA.
 (define (initialize-package!)
   (set! *purification-root-marker* (intern "#[PURIFICATION-ROOT]"))
   (set! condition-type:not-loading
-	(make-condition-type 'NOT-LOADING condition-type:error '()
+	(make-condition-type 'not-loading condition-type:error '()
 	  "No file being loaded."))
 
   (set! param:after-load-hooks (make-settable-parameter '()))
@@ -266,7 +266,7 @@ USA.
 
 (define (with-eval-unit uri thunk)
   (parameterize*
-   (list (cons param:eval-unit (->absolute-uri uri 'WITH-EVAL-UNIT)))
+   (list (cons param:eval-unit (->absolute-uri uri 'with-eval-unit)))
    thunk))
 
 (define (current-eval-unit #!optional error?)
@@ -287,12 +287,12 @@ USA.
 	env)))
 
 (define (set-load-environment! environment)
-  (guarantee environment? environment 'SET-LOAD-ENVIRONMENT!)
+  (guarantee environment? environment 'set-load-environment!)
   (if (not (default-object? (param:current-load-environment)))
       (param:current-load-environment environment)))
 
 (define (with-load-environment environment thunk)
-  (guarantee environment? environment 'WITH-LOAD-ENVIRONMENT)
+  (guarantee environment? environment 'with-load-environment)
   (parameterize* (list (cons param:current-load-environment environment))
     thunk))
 
@@ -426,7 +426,7 @@ USA.
 			    (and (pair? pu)
 				 (string=? (car pu) (car pl))
 				 (loop (cdr pu) (cdr pl)))
-			    (make-pathname #f #f (cons 'RELATIVE pu)
+			    (make-pathname #f #f (cons 'relative pu)
 					   #f #f #f)))))))
 	  (if path
 	      (with-directory-rewriting-rule directory path thunk)
@@ -454,12 +454,12 @@ USA.
       (begin
 	(set! system-base-uri (string->uri system-base-uri))
 	unspecific))
-  (maybe-merge rel-uri system-base-uri 'SYSTEM-URI))
+  (maybe-merge rel-uri system-base-uri 'system-uri))
 
 (define system-base-uri "http://www.gnu.org/software/mit-scheme/")
 
 (define (system-library-uri #!optional rel-uri)
-  (maybe-merge rel-uri (system-uri "lib/") 'SYSTEM-LIBRARY-URI))
+  (maybe-merge rel-uri (system-uri "lib/") 'system-library-uri))
 
 (define (maybe-merge rel-uri base-uri caller)
   (if (default-object? rel-uri)
@@ -549,12 +549,12 @@ USA.
   unspecific)
 
 (define (set-command-line-parser! keyword proc #!optional description)
-  (guarantee string? keyword 'SET-COMMAND-LINE-PARSER!)
+  (guarantee string? keyword 'set-command-line-parser!)
   (let ((keyword (strip-leading-hyphens keyword))
 	(desc (if (default-object? description)
 		  ""
 		  (begin
-		    (guarantee string? description 'SET-COMMAND-LINE-PARSER!)
+		    (guarantee string? description 'set-command-line-parser!)
 		    description))))
 
     (let ((place (assoc keyword *command-line-parsers*)))
@@ -593,14 +593,14 @@ USA.
       (string-append keyword-line "\n  (No description.)")))
 
 (define (simple-command-line-parser keyword thunk . description-lines)
-  (guarantee string? keyword 'SIMPLE-COMMAND-LINE-PARSER)
+  (guarantee string? keyword 'simple-command-line-parser)
   (set-command-line-parser! keyword
     (lambda (command-line)
       (values (cdr command-line) thunk))
     (command-line-option-description
      (string-append "--" keyword)
      description-lines
-     'SIMPLE-COMMAND-LINE-PARSER)))
+     'simple-command-line-parser)))
 
 ;; Upwards compatibility.
 (define simple-option-parser simple-command-line-parser)
@@ -622,7 +622,7 @@ USA.
     (command-line-option-description
      (string-append "--" keyword " ARG" (if multiple? " ..." ""))
      description-lines
-     'ARGUMENT-COMMAND-LINE-PARSER)))
+     'argument-command-line-parser)))
 
 (define (for-each-non-keyword command-line processor)
   (let ((end

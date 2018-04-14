@@ -127,8 +127,8 @@ USA.
 		(parser-buffer-base-offset buffer))))
 	(if (<= (parser-buffer-start buffer) p* (parser-buffer-index buffer))
 	    p*
-	    (error:bad-range-argument p 'POINTER->INDEX)))
-      (error:wrong-type-argument p "parser-buffer pointer" 'POINTER->INDEX)))
+	    (error:bad-range-argument p 'pointer->index)))
+      (error:wrong-type-argument p "parser-buffer pointer" 'pointer->index)))
 
 (define (parser-buffer-position-string object)
   (let ((pointer
@@ -171,7 +171,7 @@ USA.
 
 (define (parser-buffer-ref buffer index)
   (if (not (index-fixnum? index))
-      (error:wrong-type-argument index "index" 'PARSER-BUFFER-REF))
+      (error:wrong-type-argument index "index" 'parser-buffer-ref))
   (and (guarantee-buffer-chars buffer (fix:+ index 1))
        (string-ref (parser-buffer-string buffer)
 		   (fix:+ (parser-buffer-index buffer) index))))
@@ -361,7 +361,7 @@ USA.
 					  (%grow-buffer string end min-end))))
 	 (let ((port (parser-buffer-port buffer))
 	       (string (parser-buffer-string buffer)))
-	   (with-input-port-blocking-mode port 'BLOCKING
+	   (with-input-port-blocking-mode port 'blocking
 	     (lambda ()
 	       (let loop ((end end))
 		 (if (fix:< end min-end)

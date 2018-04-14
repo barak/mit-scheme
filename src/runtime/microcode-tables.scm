@@ -31,43 +31,43 @@ USA.
 
 (define (read-microcode-tables!)
   (set! identification-vector ((ucode-primitive microcode-identify)))
-  (set! errors-slot (fixed-object/name->code 'MICROCODE-ERRORS-VECTOR))
+  (set! errors-slot (fixed-object/name->code 'microcode-errors-vector))
   (set! identifications-slot
-	(fixed-object/name->code 'MICROCODE-IDENTIFICATION-VECTOR))
-  (set! returns-slot (fixed-object/name->code 'MICROCODE-RETURNS-VECTOR))
+	(fixed-object/name->code 'microcode-identification-vector))
+  (set! returns-slot (fixed-object/name->code 'microcode-returns-vector))
   (set! terminations-slot
-	(fixed-object/name->code 'MICROCODE-TERMINATIONS-VECTOR))
-  (set! types-slot (fixed-object/name->code 'MICROCODE-TYPES-VECTOR))
-  (set! non-object-slot (fixed-object/name->code 'NON-OBJECT))
-  (set! system-call-names-slot (fixed-object/name->code 'SYSTEM-CALL-NAMES))
-  (set! system-call-errors-slot (fixed-object/name->code 'SYSTEM-CALL-ERRORS))
+	(fixed-object/name->code 'microcode-terminations-vector))
+  (set! types-slot (fixed-object/name->code 'microcode-types-vector))
+  (set! non-object-slot (fixed-object/name->code 'non-object))
+  (set! system-call-names-slot (fixed-object/name->code 'system-call-names))
+  (set! system-call-errors-slot (fixed-object/name->code 'system-call-errors))
   (set! microcode-version-string
-	(microcode-identification-item 'MICROCODE-VERSION))
-  (set! char:newline (microcode-identification-item 'NEWLINE-CHAR))
+	(microcode-identification-item 'microcode-version))
+  (set! char:newline (microcode-identification-item 'newline-char))
   (set! microcode-id/floating-mantissa-bits
-	(microcode-identification-item 'FLONUM-MANTISSA-LENGTH))
+	(microcode-identification-item 'flonum-mantissa-length))
   (set! microcode-id/floating-epsilon
-	(microcode-identification-item 'FLONUM-EPSILON))
-  (let ((name (microcode-identification-item 'OS-NAME-STRING)))
+	(microcode-identification-item 'flonum-epsilon))
+  (let ((name (microcode-identification-item 'os-name-string)))
     (set! microcode-id/operating-system (intern name))
     (set! microcode-id/operating-system-name name))
   (set! microcode-id/operating-system-variant
-	(microcode-identification-item 'OS-VARIANT-STRING))
+	(microcode-identification-item 'os-variant-string))
   (set! microcode-id/stack-type
-	(let ((string (microcode-identification-item 'STACK-TYPE-STRING)))
+	(let ((string (microcode-identification-item 'stack-type-string)))
 	  (cond ((string? string) (intern string))
-		((not string) 'STANDARD)
+		((not string) 'standard)
 		(else (error "Illegal stack type:" string)))))
   (set! microcode-id/machine-type
-	(or (microcode-identification-item 'MACHINE-TYPE-STRING #f)
+	(or (microcode-identification-item 'machine-type-string #f)
 	    "unknown-machine"))
   (set! microcode-id/compiled-code-type
-	(intern (or (microcode-identification-item 'CC-ARCH-STRING #f)
+	(intern (or (microcode-identification-item 'cc-arch-string #f)
 		    "unknown")))
   (set! microcode-id/tty-x-size
-	(microcode-identification-item 'CONSOLE-WIDTH))
+	(microcode-identification-item 'console-width))
   (set! microcode-id/tty-y-size
-	(microcode-identification-item 'CONSOLE-HEIGHT))
+	(microcode-identification-item 'console-height))
 
   unspecific)
 
@@ -103,8 +103,8 @@ USA.
   (case (if (default-object? os-type)
 	    microcode-id/operating-system
 	    os-type)
-    ((NT) "w32")
-    ((UNIX) "unx")
+    ((nt) "w32")
+    ((unix) "unx")
     (else (error "Unknown operating system:" os-type))))
 
 (define-integrable fixed-objects-slot 15)
@@ -229,7 +229,7 @@ USA.
 (define (microcode-identification-vector-slot name #!optional error?)
   (let ((v (microcode-table-search identifications-slot name)))
     (if (and (not v) (if (default-object? error?) #t error?))
-	(error:bad-range-argument name 'MICROCODE-IDENTIFICATION-VECTOR-SLOT))
+	(error:bad-range-argument name 'microcode-identification-vector-slot))
     v))
 
 (define (microcode-identification-item name #!optional error?)
@@ -279,16 +279,16 @@ USA.
   (vector-length (vector-ref (get-fixed-objects-vector) types-slot)))
 
 (define type-aliases
-  '((FALSE MANIFEST-VECTOR GLOBAL-ENVIRONMENT)
-    (PAIR LIST)
-    (FLONUM BIG-FLONUM)
-    (CONSTANT TRUE)
-    (RETURN-CODE RETURN-ADDRESS)
-    (BIGNUM BIG-FIXNUM)
-    (PROMISE DELAYED)
-    (FIXNUM ADDRESS POSITIVE-FIXNUM NEGATIVE-FIXNUM)
-    (STRING CHARACTER-STRING VECTOR-8B)
-    (HUNK3-A UNMARKED-HISTORY)
-    (TRIPLE HUNK3 HUNK3-B MARKED-HISTORY)
-    (REFERENCE-TRAP UNASSIGNED)
-    (RECNUM COMPLEX)))
+  '((false manifest-vector global-environment)
+    (pair list)
+    (flonum big-flonum)
+    (constant true)
+    (return-code return-address)
+    (bignum big-fixnum)
+    (promise delayed)
+    (fixnum address positive-fixnum negative-fixnum)
+    (string character-string vector-8b)
+    (hunk3-a unmarked-history)
+    (triple hunk3 hunk3-b marked-history)
+    (reference-trap unassigned)
+    (recnum complex)))

@@ -79,9 +79,9 @@
 ;;;; Miscellaneous Kludgerosity
 
 (define (compiled-entry? object)
-  (object-type? (ucode-type COMPILED-ENTRY) object))
+  (object-type? (ucode-type compiled-entry) object))
 
-(define event-return-address 'UNINITIALIZED)
+(define event-return-address 'uninitialized)
 
 (define (initialize-package!)
   (set! stack-sampling-return-address (make-unsettable-parameter #f))
@@ -106,7 +106,7 @@
                     (and (eq? stack-frame-type/compiled-return-address
                               (stack-frame/type stack-frame))
                          (stack-frame/return-address stack-frame))))))))
-    (do () ((not (eq? event-return-address 'UNINITIALIZED)))
+    (do () ((not (eq? event-return-address 'uninitialized)))
       (suspend-current-thread))
     (if (not blocked?)
         (unblock-thread-events))))
@@ -130,7 +130,7 @@
     (define (deregister-event)
       (deregister-timer-event timer-registration)
       (set! timer-registration #f))
-    (values (with-simple-restart 'ABORT "Abort stack sampling."
+    (values (with-simple-restart 'abort "Abort stack sampling."
               (lambda ()
                 (dynamic-wind
                  register-event
@@ -139,7 +139,7 @@
             profile)))
 
 (define (carefully-record-sample profile continuation)
-  (with-simple-restart 'CONTINUE "Ignore the sample."
+  (with-simple-restart 'continue "Ignore the sample."
     (lambda ()
       (let ((ignore (first-bound-restart))) ;silly
         (define (go) (record-sample profile continuation))

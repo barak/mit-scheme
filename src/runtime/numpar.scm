@@ -71,9 +71,9 @@ USA.
 			      ((or (char=? #\x char) (char=? #\X char))
 			       (do-radix 16))
 			      ((or (char=? #\e char) (char=? #\E char))
-			       (do-exactness 'EXACT))
+			       (do-exactness 'exact))
 			      ((or (char=? #\i char) (char=? #\I char))
-			       (do-exactness 'INEXACT))
+			       (do-exactness 'inexact))
 			      (else #f))))))
 	     (parse-top-level string start end exactness
 			      (or radix default-radix))))))
@@ -89,7 +89,7 @@ USA.
 	       ((char=? #\. char)
 		(and (or (not radix) (fix:= 10 radix))
 		     (parse-decimal-1 string start end
-				      (or exactness 'IMPLICIT-INEXACT) #f)))
+				      (or exactness 'implicit-inexact) #f)))
 	       ((char->digit char (or radix 10))
 		=> (lambda (digit)
 		     (parse-integer string start end digit
@@ -108,7 +108,7 @@ USA.
 	       ((char=? #\. char)
 		(and (fix:= 10 radix)
 		     (parse-decimal-1 string start end
-				      (or exactness 'IMPLICIT-INEXACT) sign)))
+				      (or exactness 'implicit-inexact) sign)))
 	       ((i? char)
 		(and (fix:= start end)
 		     (make-rectangular 0 (if (eq? #\- sign) -1 1))))
@@ -131,13 +131,13 @@ USA.
 					     integer 0 exactness sign)
 			    (parse-decimal-2 string start+1 end
 					     integer 0
-					     (or exactness 'IMPLICIT-INEXACT)
+					     (or exactness 'implicit-inexact)
 					     sign))))
 		  ((exponent-marker? char)
 		   (and (fix:= radix 10)
 			(parse-exponent-1 string start+1 end
 					  integer 0
-					  (or exactness 'IMPLICIT-INEXACT)
+					  (or exactness 'implicit-inexact)
 					  sign)))
 		  (else
 		   (parse-complex string start end
@@ -158,7 +158,7 @@ USA.
 		      (integer (* integer radix) (* integer radix)))
 		     ((not (and (fix:< start end)
 				(char=? #\# (string-ref string start))))
-		      (k start integer (or exactness 'IMPLICIT-INEXACT) #t))))
+		      (k start integer (or exactness 'implicit-inexact) #t))))
 		(else
 		 (k start integer exactness #f))))
 	(k start integer exactness #f))))
@@ -259,7 +259,7 @@ USA.
   (if (fix:< start end)
       (let ((char (string-ref string start))
 	    (start+1 (fix:+ start 1))
-	    (exactness (if (eq? 'IMPLICIT-INEXACT exactness) #f exactness)))
+	    (exactness (if (eq? 'implicit-inexact exactness) #f exactness)))
 	(cond ((sign? char)
 	       (let ((imaginary
 		      (parse-top-level string start end exactness radix)))
@@ -334,7 +334,7 @@ USA.
 		     (* (apply-sign sign integer)
 			(expt 10 exponent))))
 
-  (if (or (eq? 'INEXACT exactness) (eq? 'IMPLICIT-INEXACT exactness))
+  (if (or (eq? 'inexact exactness) (eq? 'implicit-inexact exactness))
       (let ((abs-exponent (if (< exponent 0) (- exponent) exponent))
 	    (powers-of-10 exact-flonum-powers-of-10))
 	(define-integrable (finish-flonum x power-of-10)
@@ -372,7 +372,7 @@ USA.
       number))
 
 (define (apply-exactness exactness number)
-  (if (or (eq? 'INEXACT exactness) (eq? 'IMPLICIT-INEXACT exactness))
+  (if (or (eq? 'inexact exactness) (eq? 'implicit-inexact exactness))
       (exact->inexact number)
       number))
 

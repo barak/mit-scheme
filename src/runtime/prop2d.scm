@@ -25,7 +25,7 @@ USA.
 |#
 
 ;;;; Two Dimensional Property Tables
-;;; package: (runtime 2D-property)
+;;; package: (runtime 2d-property)
 
 (declare (usual-integrations))
 
@@ -37,7 +37,7 @@ USA.
 
 (define system-properties)
 
-(define (2D-put! x y value)
+(define (2d-put! x y value)
   (let ((x-hash (object-hash x))
 	(y-hash (object-hash y)))
     (let ((bucket (assq x-hash system-properties)))
@@ -54,7 +54,7 @@ USA.
 				  '()))
 		      system-properties))))))
 
-(define (2D-get x y)
+(define (2d-get x y)
   (let ((bucket (assq (object-hash x) system-properties)))
     (and bucket
 	 (let ((entry (assq (object-hash y) (cdr bucket))))
@@ -64,7 +64,7 @@ USA.
 ;;; Returns TRUE iff an entry was removed.
 ;;; Removes the bucket if the entry removed was the only entry.
 
-(define (2D-remove! x y)
+(define (2d-remove! x y)
   (let ((bucket (assq (object-hash x) system-properties)))
     (and bucket
 	 (begin (set-cdr! bucket
@@ -93,7 +93,7 @@ USA.
 (define delete-invalid-hash-numbers!)
 (define delete-invalid-y!)
 
-(define (2D-get-alist-x x)
+(define (2d-get-alist-x x)
   (let ((bucket (assq (object-hash x) system-properties)))
     (if bucket
 	(let loop ((rest (cdr bucket)))
@@ -105,7 +105,7 @@ USA.
 		(else (loop (cdr rest)))))
 	'())))
 
-(define (2D-get-alist-y y)
+(define (2d-get-alist-y y)
   (let ((y-hash (object-hash y)))
     (let loop ((rest system-properties))
       (cond ((null? rest) '())

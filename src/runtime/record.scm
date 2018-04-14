@@ -739,7 +739,7 @@ USA.
 	      (if (not (vector-ref seen? i))
 		  (let ((init (vector-ref inits i)))
 		    (and init (vector-set! v (vector-ref indexes i) (init)))))))
-	  (if (eq? (structure-type/physical-type type) 'LIST)
+	  (if (eq? (structure-type/physical-type type) 'list)
 	      (do ((i (fix:- len 1) (fix:- i 1))
 		   (list '() (cons (vector-ref v i) list)))
 		  ((not (fix:>= i 0)) list))
@@ -819,35 +819,35 @@ USA.
 
 (define (initialize-conditions!)
   (set! condition-type:slot-error
-	(make-condition-type 'SLOT-ERROR condition-type:cell-error
+	(make-condition-type 'slot-error condition-type:cell-error
 	    '()
 	  (lambda (condition port)
 	    (write-string "Anonymous error for slot " port)
-	    (write (access-condition condition 'LOCATION) port)
+	    (write (access-condition condition 'location) port)
 	    (write-string "." port))))
   (set! condition-type:uninitialized-slot
-	(make-condition-type 'UNINITIALIZED-SLOT condition-type:slot-error
-	    '(RECORD)
+	(make-condition-type 'uninitialized-slot condition-type:slot-error
+	    '(record)
 	  (lambda (condition port)
 	    (write-string "Attempt to reference slot " port)
-	    (write (access-condition condition 'LOCATION) port)
+	    (write (access-condition condition 'location) port)
 	    (write-string " in record " port)
-	    (write (access-condition condition 'RECORD) port)
+	    (write (access-condition condition 'record) port)
 	    (write-string " failed because the slot is not initialized."
 			  port))))
   (set! condition-type:no-such-slot
-	(make-condition-type 'NO-SUCH-SLOT condition-type:slot-error
-	    '(RECORD-TYPE)
+	(make-condition-type 'no-such-slot condition-type:slot-error
+	    '(record-type)
 	  (lambda (condition port)
 	    (write-string "No slot named " port)
-	    (write (access-condition condition 'LOCATION) port)
+	    (write (access-condition condition 'location) port)
 	    (write-string " in records of type " port)
-	    (write (access-condition condition 'RECORD-TYPE) port)
+	    (write (access-condition condition 'record-type) port)
 	    (write-string "." port))))
   (set! error:uninitialized-slot
 	(let ((signal
 	       (condition-signaller condition-type:uninitialized-slot
-				    '(RECORD LOCATION)
+				    '(record location)
 				    standard-error-handler)))
 	  (lambda (record index)
 	    (let* ((location (%record-field-name record index))
@@ -868,7 +868,7 @@ USA.
   (set! error:no-such-slot
 	(let ((signal
 	       (condition-signaller condition-type:no-such-slot
-				    '(RECORD-TYPE LOCATION)
+				    '(record-type location)
 				    standard-error-handler)))
 	  (lambda (record-type name)
 	    (call-with-current-continuation

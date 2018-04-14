@@ -221,13 +221,13 @@ USA.
   (cond ((flo:< x y) x)
 	((flo:> x y) y)
 	((flo:= x y) x)
-	(else (error:bad-range-argument (if (flo:finite? x) x y) 'FLO:MIN))))
+	(else (error:bad-range-argument (if (flo:finite? x) x y) 'flo:min))))
 
 (define (flo:max x y)
   (cond ((flo:< x y) y)
 	((flo:> x y) x)
 	((flo:= x y) y)
-	(else (error:bad-range-argument (if (flo:finite? x) x y) 'FLO:MAX))))
+	(else (error:bad-range-argument (if (flo:finite? x) x y) 'flo:max))))
 
 ;;; XXX FLO:FINITE?, FLO:NAN?, FLO:EQV?, &c., are cute, but should be
 ;;; replaced by primitives.
@@ -250,7 +250,7 @@ USA.
   ((ucode-primitive integer->flonum 2) n #b10))
 
 (define (->flonum x)
-  (guarantee real? x '->FLONUM)
+  (guarantee real? x '->flonum)
   (exact->inexact (real-part x)))
 
 ;;;; Exact integers

@@ -84,7 +84,7 @@ USA.
 	  unspecific))))
 
 (define (serve socket)
-  (with-simple-restart 'DISCONNECT "Close connection."
+  (with-simple-restart 'disconnect "Close connection."
     (lambda ()
       (with-keyboard-interrupt-handler
        (lambda ()
@@ -95,7 +95,7 @@ USA.
 	(new-handler
 	 (lambda (char)
 	   char
-	   (with-simple-restart 'CONTINUE "Continue from interrupt."
+	   (with-simple-restart 'continue "Continue from interrupt."
 	     (lambda ()
 	       (error "Keyboard Interrupt.")))))
 	(old-handler))
@@ -111,13 +111,13 @@ USA.
 	  unspecific))))
 
 (define (disconnect)
-  (invoke-restart (find-restart 'DISCONNECT)))
+  (invoke-restart (find-restart 'disconnect)))
 
 (define (main-loop socket)
   (do () (#f)
-    (with-simple-restart 'ABORT "Return to SLIME top-level."
+    (with-simple-restart 'abort "Return to SLIME top-level."
       (lambda ()
-	(parameterize* (list (cons *top-level-restart* (find-restart 'ABORT)))
+	(parameterize* (list (cons *top-level-restart* (find-restart 'abort)))
 	  (lambda ()
 	    (process-one-message socket 0)))))))
 
@@ -277,7 +277,7 @@ USA.
 						    #t)
 				 :repl-result)
 		 socket)
-  'NIL)
+  'nil)
 
 (define (interactive-eval sexp socket nl?)
   (let ((value (repl-eval sexp socket)))
@@ -298,7 +298,7 @@ USA.
 (define (repl-eval sexp socket)
   (with-output-to-repl socket
     (lambda ()
-      (with-repl-eval-boundary 'SWANK
+      (with-repl-eval-boundary 'swank
 	(lambda ()
 	  (eval sexp (buffer-env)))))))
 
@@ -317,12 +317,12 @@ USA.
   (set! *buffer-pstring* (make-unsettable-parameter unspecific))
   (set! repl-port-type
 	(make-textual-port-type
-	 `((WRITE-CHAR
+	 `((write-char
 	    ,(lambda (port char)
 	       (write-message `(:write-string ,(string char))
 			      (textual-port-state port))
 	       1))
-	   (WRITE-SUBSTRING
+	   (write-substring
 	    ,(lambda (port string start end)
 	       (if (< start end)
 		   (write-message `(:write-string ,(substring string start end))
@@ -364,7 +364,7 @@ USA.
 	run-time gc-time
 	(set! time real-time)
 	unspecific))
-    (list 'NIL (string (internal-time/ticks->seconds time)))))
+    (list 'nil (string (internal-time/ticks->seconds time)))))
 
 (define (swank:compile-file-for-emacs socket file load?)
   (call-compiler
@@ -501,7 +501,7 @@ USA.
 		      (carefully-pa
 		       (eval (read-from-string name)
 			     (pstring->env pstring)))))))))))
-    (if (condition? v) 'NIL v)))
+    (if (condition? v) 'nil v)))
 
 (define (carefully-pa o)
   (cond ((arity-dispatched-procedure? o)
@@ -591,12 +591,12 @@ USA.
 
 (define (swank:buffer-first-change socket filename)
   socket filename
-  'NIL)
+  'nil)
 
 ;; M-. is beyond my capabilities.
 (define (swank:find-definitions-for-emacs socket name)
   socket name
-  'NIL)
+  'nil)
 
 #|
 ;;; List of names obtained by grepping through "slime.el" and
@@ -680,11 +680,11 @@ swank:xref
 		       socket)
 	(sldb-loop level socket))
       (lambda ()
-	(write-message `(:debug-return 0 ,(- level 1) 'NIL) socket))))))
+	(write-message `(:debug-return 0 ,(- level 1) 'nil) socket))))))
 
 (define (sldb-loop level socket)
   (write-message `(:debug-activate 0 ,level) socket)
-  (with-simple-restart 'ABORT (string "Return to SLDB level " level ".")
+  (with-simple-restart 'abort (string "Return to SLDB level " level ".")
     (lambda ()
       (process-one-message socket level)))
   (sldb-loop level socket))
@@ -694,7 +694,7 @@ swank:xref
 	(rs (sldb-state.restarts state)))
     (list (list (condition/report-string c)
 		(string "  [" (condition-type/name (condition/type c)) "]")
-		'NIL)
+		'nil)
 	  (sldb-restarts rs)
 	  (sldb-backtrace c start end)
 	  ;;'((0 "dummy frame"))
@@ -878,9 +878,9 @@ swank:xref
     (map (lambda (symbol)
 	   `((:designator ,(string symbol " " pstring))
 	     ,@(case (environment-reference-type env symbol)
-		 ((UNBOUND) '())
-		 ((UNASSIGNED) `((:variable nil)))
-		 ((MACRO) `((:macro nil)))
+		 ((unbound) '())
+		 ((unassigned) `((:variable nil)))
+		 ((macro) `((:macro nil)))
 		 (else
 		  (let ((v (environment-lookup env symbol)))
 		    `((,(cond ((procedure? v) ':function)
@@ -972,14 +972,14 @@ swank:xref
   (cond ((istate-previous istate)
 	 (set! istate (istate-previous istate))
 	 (istate->elisp istate))
-	(else 'NIL)))
+	(else 'nil)))
 
 (define (swank:inspector-next socket)
   socket
   (cond ((istate-next istate)
 	 (set! istate (istate-next istate))
 	 (istate->elisp istate))
-	(else 'NIL)))
+	(else 'nil)))
 
 (define (swank:inspector-range socket from to)
   socket
@@ -988,7 +988,7 @@ swank:xref
 		 from to))
 
 (define (iline label value)
-  `(LINE ,label ,value))
+  `(line ,label ,value))
 
 (define (inspect o)
   (cond ((environment? o) (inspect-environment o))
@@ -1115,7 +1115,7 @@ swank:xref
 
 ;;;; Auxilary functions
 
-(define (elisp-false? o) (or (null? o) (eq? o 'NIL)))
+(define (elisp-false? o) (or (null? o) (eq? o 'nil)))
 (define (elisp-true? o) (not (elisp-false? o)))
 
 (define (->line o)

@@ -71,7 +71,7 @@ USA.
 			    (((ucode-primitive dump-band)
 			      restart
 			      (string-for-primitive filename)))
-			  (with-simple-restart 'RETRY "Try again."
+			  (with-simple-restart 'retry "Try again."
 			    (lambda ()
 			      (error "Disk save failed:" filename))))
 			(continuation
@@ -130,7 +130,7 @@ USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee textual-output-port? port 'IDENTIFY-WORLD))))
+	     (guarantee textual-output-port? port 'identify-world))))
     (write-mit-scheme-copyright port #!default #!default #t)
     (newline port)
     (write-mit-scheme-license port #!default #t)

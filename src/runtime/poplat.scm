@@ -38,10 +38,10 @@ USA.
 
 (define (initialize-unparser!)
   (unparser/set-tagged-pair-method! population-tag
-				    (standard-unparser-method 'POPULATION #f)))
+				    (standard-unparser-method 'population #f)))
 
-(define bogus-false '(BOGUS-FALSE))
-(define population-tag '(POPULATION))
+(define bogus-false '(bogus-false))
+(define population-tag '(population))
 
 (define-integrable (canonicalize object)
   (if (eq? object false) bogus-false object))

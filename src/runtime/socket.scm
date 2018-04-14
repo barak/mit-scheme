@@ -97,10 +97,10 @@ USA.
 		    (lambda (k)
 		      (let ((result
 			     (test-for-io-on-channel server-socket
-						     'READ
+						     'read
 						     block?)))
 			(case result
-			  ((READ)
+			  ((read)
 			   (open-channel
 			    (lambda (p)
 			      (with-thread-timer-stopped
@@ -109,7 +109,7 @@ USA.
 				   (channel-descriptor server-socket)
 				   peer-address
 				   p))))))
-			  ((PROCESS-STATUS-CHANGE)
+			  ((process-status-change)
 			   (handle-subprocess-status-change)
 			   (if (channel-closed? server-socket) #f (k)))
 			  (else
@@ -160,9 +160,9 @@ USA.
 (define socket-port-type)
 (define (initialize-package!)
   (set! socket-port-type
-	(make-textual-port-type `((CLOSE-INPUT ,socket/close-input)
-				  (CLOSE-OUTPUT ,socket/close-output))
-				(generic-i/o-port-type 'CHANNEL 'CHANNEL)))
+	(make-textual-port-type `((close-input ,socket/close-input)
+				  (close-output ,socket/close-output))
+				(generic-i/o-port-type 'channel 'channel)))
   unspecific)
 
 (define (socket/close-input port)

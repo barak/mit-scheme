@@ -128,7 +128,7 @@ USA.
 			  (lambda ()
 			    (load pathname
 				  environment
-				  'DEFAULT
+				  'default
 				  #t))))))))))
        files)
       (flush-purification-queue!)

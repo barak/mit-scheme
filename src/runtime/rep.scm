@@ -49,7 +49,7 @@ USA.
 			    console-i/o-port
 			    user-initial-environment
 			    #f
-			    `((SET-DEFAULT-DIRECTORY
+			    `((set-default-directory
 			       ,top-level-repl/set-default-directory))
 			    user-initial-prompt)
 		 (cmdl-message/append
@@ -83,19 +83,19 @@ USA.
 
 (define (make-cmdl parent port driver state operations)
   (if (not (or (not parent) (cmdl? parent)))
-      (error:wrong-type-argument parent "cmdl" 'MAKE-CMDL))
+      (error:wrong-type-argument parent "cmdl" 'make-cmdl))
   (if (not (or parent port))
-      (error:bad-range-argument port 'MAKE-CMDL))
+      (error:bad-range-argument port 'make-cmdl))
   (%make-cmdl (if parent (+ (cmdl/level parent) 1) 1)
 	      parent
 	      (or port (and parent (cmdl/child-port parent)))
 	      driver
 	      state
-	      (parse-operations-list operations 'MAKE-CMDL)
+	      (parse-operations-list operations 'make-cmdl)
 	      (make-1d-table)))
 
 (define (cmdl/child-port cmdl)
-  (or (let ((operation (cmdl/local-operation cmdl 'CHILD-PORT)))
+  (or (let ((operation (cmdl/local-operation cmdl 'child-port)))
 	(and operation
 	     (operation cmdl)))
       (cmdl/port cmdl)))
@@ -110,7 +110,7 @@ USA.
 	cmdl)))
 
 (define (cmdl/set-default-directory cmdl pathname)
-  (let ((operation (cmdl/local-operation cmdl 'SET-DEFAULT-DIRECTORY)))
+  (let ((operation (cmdl/local-operation cmdl 'set-default-directory)))
     (if operation
 	(operation cmdl pathname)))
   (port/set-default-directory (cmdl/port cmdl) pathname))
@@ -160,7 +160,7 @@ USA.
 	(cond ((and owner (not (eq? thread owner)))
 	       (signal-thread-event owner
 		 (let ((signaller
-			(or (cmdl/local-operation cmdl 'START-NON-OWNED)
+			(or (cmdl/local-operation cmdl 'start-non-owned)
 			    (lambda (cmdl thread)
 			      cmdl
 			      (error "Non-owner thread can't start CMDL:"
@@ -171,7 +171,7 @@ USA.
 	       (stop-current-thread))
 	      ((let ((parent (cmdl/parent cmdl)))
 		 (and parent
-		      (cmdl/local-operation parent 'START-CHILD)))
+		      (cmdl/local-operation parent 'start-child)))
 	       => (lambda (operation) (operation cmdl thunk)))
 	      (else
 	       (with-thread-mutex-locked mutex thunk)))))))
@@ -179,7 +179,7 @@ USA.
 (define (bind-abort-restart cmdl thunk)
   (call-with-current-continuation
    (lambda (continuation)
-     (with-restart 'ABORT
+     (with-restart 'abort
 	 (string-append "Return to "
 			(if (repl? cmdl)
 			    "read-eval-print"
@@ -285,7 +285,7 @@ USA.
 
 (define ((cmdl-message/strings . strings) cmdl)
   (let ((port (cmdl/port cmdl)))
-    (with-output-port-terminal-mode port 'COOKED
+    (with-output-port-terminal-mode port 'cooked
       (lambda ()
 	(for-each (lambda (string)
 		    (fresh-line port)
@@ -295,7 +295,7 @@ USA.
 
 (define ((cmdl-message/active actor) cmdl)
   (let ((port (cmdl/port cmdl)))
-    (with-output-port-terminal-mode port 'COOKED
+    (with-output-port-terminal-mode port 'cooked
       (lambda ()
 	(actor port)))))
 
@@ -321,42 +321,42 @@ USA.
 ;;;; Interrupts
 
 (define (cmdl-interrupt/breakpoint)
-  ((or (cmdl/operation (nearest-cmdl) 'INTERRUPT/BREAKPOINT)
+  ((or (cmdl/operation (nearest-cmdl) 'interrupt/breakpoint)
        breakpoint)))
 
 (define (cmdl-interrupt/abort-nearest)
-  ((or (cmdl/operation (nearest-cmdl) 'INTERRUPT/ABORT-NEAREST)
+  ((or (cmdl/operation (nearest-cmdl) 'interrupt/abort-nearest)
        abort->nearest)))
 
 (define (cmdl-interrupt/abort-previous)
-  ((or (cmdl/operation (nearest-cmdl) 'INTERRUPT/ABORT-PREVIOUS)
+  ((or (cmdl/operation (nearest-cmdl) 'interrupt/abort-previous)
        abort->previous)))
 
 (define (cmdl-interrupt/abort-top-level)
-  ((or (cmdl/operation (nearest-cmdl) 'INTERRUPT/ABORT-TOP-LEVEL)
+  ((or (cmdl/operation (nearest-cmdl) 'interrupt/abort-top-level)
        abort->top-level)))
 
 (define (abort->nearest #!optional message)
-  (invoke-abort (let ((restart (find-restart 'ABORT)))
+  (invoke-abort (let ((restart (find-restart 'abort)))
 		  (if (not restart)
-		      (error:no-such-restart 'ABORT))
+		      (error:no-such-restart 'abort))
 		  restart)
 		(if (default-object? message) "Abort!" message)))
 
 (define (abort->previous #!optional message)
-  (invoke-abort (let ((restarts (find-restarts 'ABORT (bound-restarts))))
-		  (let ((next (find-restarts 'ABORT (cdr restarts))))
+  (invoke-abort (let ((restarts (find-restarts 'abort (bound-restarts))))
+		  (let ((next (find-restarts 'abort (cdr restarts))))
 		    (cond ((pair? next) (car next))
 			  ((pair? restarts) (car restarts))
-			  (else (error:no-such-restart 'ABORT)))))
+			  (else (error:no-such-restart 'abort)))))
 		(if (default-object? message) "Up!" message)))
 
 (define (abort->top-level #!optional message)
-  (invoke-abort (let loop ((restarts (find-restarts 'ABORT (bound-restarts))))
-		  (let ((next (find-restarts 'ABORT (cdr restarts))))
+  (invoke-abort (let loop ((restarts (find-restarts 'abort (bound-restarts))))
+		  (let ((next (find-restarts 'abort (cdr restarts))))
 		    (cond ((pair? next) (loop next))
 			  ((pair? restarts) (car restarts))
-			  (else (error:no-such-restart 'ABORT)))))
+			  (else (error:no-such-restart 'abort)))))
 		(if (default-object? message) "Quit!" message)))
 
 (define (find-restarts name restarts)
@@ -373,7 +373,7 @@ USA.
 	(effector))))
 
 (define cmdl-abort-restart-tag
-  (list 'CMDL-ABORT-RESTART-TAG))
+  (list 'cmdl-abort-restart-tag))
 
 ;;;; REP Loops
 
@@ -385,17 +385,17 @@ USA.
 	     (let ((inherit
 		    (let ((repl (and parent (skip-non-repls parent))))
 		      (lambda (argument default name check-arg)
-			(if (eq? 'INHERIT argument)
+			(if (eq? 'inherit argument)
 			    (begin
 			      (if (not repl)
 				  (error "Can't inherit -- no REPL ancestor:"
 					 name))
 			      (default repl))
-			    (check-arg argument 'MAKE-REPL))))))
+			    (check-arg argument 'make-repl))))))
 	       (make-repl-state
-		(inherit (if (default-object? prompt) 'INHERIT prompt)
+		(inherit (if (default-object? prompt) 'inherit prompt)
 			 repl/prompt
-			 'PROMPT
+			 'prompt
 			 (lambda (object procedure)
 			   (if (not (string? object))
 			       (error:wrong-type-argument object
@@ -404,15 +404,15 @@ USA.
 			   object))
 		(inherit environment
 			 repl/environment
-			 'ENVIRONMENT
+			 'environment
 			 ->environment)
 		(if (default-object? condition) #f condition)))
 	     (append (if (default-object? operations) '() operations)
 		     default-repl-operations)))
 
 (define default-repl-operations
-  `((START-CHILD ,(lambda (cmdl thunk) cmdl (with-history-disabled thunk)))
-    (START-NON-OWNED
+  `((start-child ,(lambda (cmdl thunk) cmdl (with-history-disabled thunk)))
+    (start-non-owned
      ,(lambda (repl thread)
 	(let ((condition (repl/condition repl)))
 	  (if condition
@@ -427,12 +427,12 @@ USA.
 	       environment
 	       (if (default-object? condition) #f condition)
 	       (if (default-object? operations) '() operations)
-	       (if (default-object? prompt) 'INHERIT prompt))))
+	       (if (default-object? prompt) 'inherit prompt))))
 
 (define (repl-driver repl)
   (let ((condition (repl/condition repl)))
     (if (and condition (condition/error? condition))
-	(cond ((cmdl/operation repl 'ERROR-DECISION)
+	(cond ((cmdl/operation repl 'error-decision)
 	       => (lambda (operation)
 		    (operation repl condition)))
 	      (hook/error-decision
@@ -452,17 +452,17 @@ USA.
   (enqueue! (repl/input-queue (nearest-repl)) procedure))
 
 (define (repl-read #!optional environment repl)
-  (receive (environment repl) (optional-er environment repl 'REPL-READ)
+  (receive (environment repl) (optional-er environment repl 'repl-read)
     (hook/repl-read environment repl)))
 
 (define hook/repl-read)
 (define (default/repl-read environment repl)
-  (prompt-for-command-expression (cons 'STANDARD (repl/prompt repl))
+  (prompt-for-command-expression (cons 'standard (repl/prompt repl))
 				 (cmdl/port repl)
 				 environment))
 
 (define (repl-eval s-expression #!optional environment repl)
-  (receive (environment repl) (optional-er environment repl 'REPL-EVAL)
+  (receive (environment repl) (optional-er environment repl 'repl-eval)
     (%repl-eval s-expression environment repl)))
 
 (define (%repl-eval s-expression environment repl)
@@ -474,13 +474,13 @@ USA.
 (define hook/repl-eval)
 (define (default/repl-eval s-expression environment repl)
   (if (and (pair? s-expression)
-	   (eq? 'UNQUOTE (car s-expression)))
+	   (eq? 'unquote (car s-expression)))
       (let ((env (->environment '(user))))
 	(%repl-scode-eval (syntax (cadr s-expression) env) env repl))
       (%repl-scode-eval (syntax s-expression environment) environment repl)))
 
 (define (repl-scode-eval scode #!optional environment repl)
-  (receive (environment repl) (optional-er environment repl 'REPL-SCODE-EVAL)
+  (receive (environment repl) (optional-er environment repl 'repl-scode-eval)
     (%repl-scode-eval scode environment repl)))
 
 (define (%repl-scode-eval scode environment repl)
@@ -495,7 +495,7 @@ USA.
    repl))
 
 (define (repl-write value s-expression #!optional environment repl)
-  (receive (environment repl) (optional-er environment repl 'REPL-WRITE)
+  (receive (environment repl) (optional-er environment repl 'repl-write)
     (hook/repl-write value s-expression environment repl)))
 
 (define hook/repl-write)
@@ -511,7 +511,7 @@ USA.
 		     environment))
 
 (define (repl-eval/write s-expression #!optional environment repl)
-  (receive (environment repl) (optional-er environment repl 'REPL-EVAL/WRITE)
+  (receive (environment repl) (optional-er environment repl 'repl-eval/write)
     (%repl-eval/write s-expression environment repl)))
 
 (define (%repl-eval/write s-expression environment repl)
@@ -564,7 +564,7 @@ USA.
     (if (not (and parent
 		  (repl? parent)
 		  (eq? (repl/environment parent) environment)))
-	(let ((operation (cmdl/operation repl 'SET-DEFAULT-ENVIRONMENT)))
+	(let ((operation (cmdl/operation repl 'set-default-environment)))
 	  (if operation
 	      (operation repl environment)
 	      (hook/set-default-environment repl environment))))))
@@ -572,7 +572,7 @@ USA.
 (define hook/set-default-environment)
 (define (default/set-default-environment port environment)
   (let ((port (cmdl/port port)))
-    (with-output-port-terminal-mode port 'COOKED
+    (with-output-port-terminal-mode port 'cooked
       (lambda ()
 	(if (not (interpreter-environment? environment))
 	    (begin
@@ -632,9 +632,9 @@ USA.
 			     (loop))))))
 		 (begin
 		   (if (not (exact-integer? n))
-		       (error:wrong-type-argument n "exact integer" 'RESTART))
+		       (error:wrong-type-argument n "exact integer" 'restart))
 		   (if (not (<= 1 n n-restarts))
-		       (error:bad-range-argument n 'RESTART))
+		       (error:bad-range-argument n 'restart))
 		   n))))
 	 condition)))))
 
@@ -774,7 +774,7 @@ USA.
 (define (repl-history/read history n)
   (if (not (and (exact-nonnegative-integer? n)
 		(< n (repl-history/size history))))
-      (error:wrong-type-argument n "history index" 'REPL-HISTORY/READ))
+      (error:wrong-type-argument n "history index" 'repl-history/read))
   (list-ref (repl-history/elements history)
 	    (- (- (repl-history/size history) 1) n)))
 
@@ -788,13 +788,13 @@ USA.
 	  environment))))
 
 (define (ge environment)
-  (let ((environment (->environment environment 'GE)))
+  (let ((environment (->environment environment 'ge)))
     (set-repl/environment! (nearest-repl) environment)
     (set-load-environment! environment)
     environment))
 
 (define (->environment object #!optional caller)
-  (let ((caller (if (default-object? caller) '->ENVIRONMENT caller)))
+  (let ((caller (if (default-object? caller) '->environment caller)))
     (cond ((environment? object) object)
 	  ((package? object) (package/environment object))
 	  ((procedure? object) (procedure-environment object))
@@ -827,7 +827,7 @@ USA.
   (repl/start (push-repl environment #f '() prompt) message))
 
 (define (ve environment)
-  (read-eval-print (->environment environment 'VE) #f 'INHERIT))
+  (read-eval-print (->environment environment 've) #f 'inherit))
 
 (define (proceed #!optional value)
   (if (default-object? value)
@@ -840,7 +840,7 @@ USA.
 ;;;; Breakpoints
 
 (define (bkpt datum . arguments)
-  (apply breakpoint-procedure 'CONTINUATION-ENVIRONMENT datum arguments))
+  (apply breakpoint-procedure 'continuation-environment datum arguments))
 
 (define (breakpoint-procedure environment datum . arguments)
   (signal-breakpoint-1 #f
@@ -874,7 +874,7 @@ USA.
   (call-with-current-continuation
    (lambda (restart-continuation)
      (let ((continuation (or continuation restart-continuation)))
-       (with-restart 'CONTINUE reporter
+       (with-restart 'continue reporter
 	   (lambda () (restart-continuation unspecific))
 	   values
 	 (lambda ()
@@ -889,10 +889,10 @@ USA.
 
 (define (get-breakpoint-environment continuation environment message)
   (let ((environment
-	 (if (eq? 'CONTINUATION-ENVIRONMENT environment)
+	 (if (eq? 'continuation-environment environment)
 	     (continuation/first-subproblem-environment continuation)
 	     environment)))
-    (if (eq? 'NO-ENVIRONMENT environment)
+    (if (eq? 'no-environment environment)
 	(values (nearest-repl/environment)
 		(cmdl-message/append
 		 message
@@ -908,9 +908,9 @@ USA.
 	  (lambda (expression environment subexpression)
 	    expression subexpression
 	    (if (debugging-info/undefined-environment? environment)
-		'NO-ENVIRONMENT
+		'no-environment
 		environment)))
-	'NO-ENVIRONMENT)))
+	'no-environment)))
 
 (define condition-type:breakpoint)
 (define condition/breakpoint?)
@@ -923,26 +923,26 @@ USA.
 
 (define (initialize-breakpoint-condition!)
   (set! condition-type:breakpoint
-	(make-condition-type 'BREAKPOINT #f '(ENVIRONMENT MESSAGE PROMPT)
+	(make-condition-type 'breakpoint #f '(environment message prompt)
 	  (lambda (condition port)
 	    condition
 	    (write-string "Breakpoint." port))))
   (set! condition/breakpoint?
 	(condition-predicate condition-type:breakpoint))
   (set! breakpoint/environment
-	(condition-accessor condition-type:breakpoint 'ENVIRONMENT))
+	(condition-accessor condition-type:breakpoint 'environment))
   (set! breakpoint/message
-	(condition-accessor condition-type:breakpoint 'MESSAGE))
+	(condition-accessor condition-type:breakpoint 'message))
   (set! breakpoint/prompt
-	(condition-accessor condition-type:breakpoint 'PROMPT))
+	(condition-accessor condition-type:breakpoint 'prompt))
   (set! %signal-breakpoint
 	(let ((make-condition
 	       (condition-constructor condition-type:breakpoint
-				      '(ENVIRONMENT MESSAGE PROMPT))))
+				      '(environment message prompt))))
 	  (lambda (continuation environment message prompt)
 	    (let ((condition
 		   (make-condition continuation
-				   'BOUND-RESTARTS
+				   'bound-restarts
 				   environment
 				   message
 				   prompt)))

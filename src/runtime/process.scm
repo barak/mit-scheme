@@ -139,22 +139,22 @@ USA.
 	 (let ((ctty-allowed? (string? ctty)))
 	   (define-integrable (convert-stdio-arg stdio)
 	     (cond ((not stdio) #f)
-		   ((eq? stdio 'INHERIT) -1)
-		   ((and ctty-allowed? (eq? stdio 'CTTY)) -2)
+		   ((eq? stdio 'inherit) -1)
+		   ((and ctty-allowed? (eq? stdio 'ctty)) -2)
 		   ((channel? stdio) (channel-descriptor stdio))
 		   (else
 		    (error:wrong-type-argument stdio "process I/O channel"
-					       'MAKE-SUBPROCESS))))
+					       'make-subprocess))))
 	   (let ((working-directory #f)
 		 (ctty
-		  (cond ((eq? ctty 'BACKGROUND) -1)
-			((eq? ctty 'FOREGROUND) -2)
+		  (cond ((eq? ctty 'background) -1)
+			((eq? ctty 'foreground) -2)
 			((or (not ctty) (string? ctty)) ctty)
 			(else
 			 (error:wrong-type-argument
 			  ctty
 			  "process controlling terminal"
-			  'MAKE-SUBPROCESS))))
+			  'make-subprocess))))
 		 (stdin (convert-stdio-arg stdin))
 		 (stdout (convert-stdio-arg stdout))
 		 (stderr (convert-stdio-arg stderr)))
@@ -185,8 +185,8 @@ USA.
 		    (add-to-gc-finalizer! subprocess-finalizer process)
 		    (poll-subprocess-status process)
 		    process))))))))
-    (if (and (eq? ctty 'FOREGROUND)
-	     (eq? (subprocess-status process) 'RUNNING))
+    (if (and (eq? ctty 'foreground)
+	     (eq? (subprocess-status process) 'running))
 	(subprocess-continue-foreground process))
     process))
 
@@ -205,7 +205,7 @@ USA.
      (lambda ()
        (set! registration
 	     (register-subprocess-event
-	      process 'RUNNING (current-thread)
+	      process 'running (current-thread)
 	      (named-lambda (subprocess-wait-event status)
 		(set! result status)))))
      (lambda ()
@@ -214,7 +214,7 @@ USA.
 	  (lambda ()
 	    (if (eq? result '#f)
 		(suspend-current-thread))
-	    (if (eq? result 'RUNNING)
+	    (if (eq? result 'running)
 		(set! result #f))))
 	 (if (not result)
 	     (loop)
@@ -227,7 +227,7 @@ USA.
     ((ucode-primitive process-continue-foreground 1)
      (subprocess-index process))
     (let ((status (subprocess-status process)))
-      (if (eq? status 'RUNNING)
+      (if (eq? status 'running)
 	  (loop)
 	  status))))
 
@@ -245,10 +245,10 @@ USA.
 
 (define (convert-subprocess-status status)
   (case status
-    ((0) 'RUNNING)
-    ((1) 'STOPPED)
-    ((2) 'EXITED)
-    ((3) 'SIGNALLED)
+    ((0) 'running)
+    ((1) 'stopped)
+    ((2) 'exited)
+    ((3) 'signalled)
     (else (error "Illegal process status:" status))))
 
 (define (subprocess-job-control-status process)
@@ -256,10 +256,10 @@ USA.
 	 ((ucode-primitive process-job-control-status 1)
 	  (subprocess-index process))))
     (case n
-      ((0) 'NO-CTTY)
-      ((1) 'UNRELATED-CTTY)
-      ((2) 'NO-JOB-CONTROL)
-      ((3) 'JOB-CONTROL)
+      ((0) 'no-ctty)
+      ((1) 'unrelated-ctty)
+      ((2) 'no-job-control)
+      ((3) 'job-control)
       (else (error "Illegal process job-control status:" n)))))
 
 ;;;; Subprocess Events
@@ -302,7 +302,7 @@ USA.
 
 (define (deregister-subprocess-event registration)
   (guarantee-subprocess-registration registration
-				     'DEREGISTER-SUBPROCESS-EVENT)
+				     'deregister-subprocess-event)
   (without-interrupts
    (lambda ()
      (set! subprocess-registrations
@@ -327,9 +327,9 @@ USA.
 
 (define (handle-subprocess-status-change)
   (without-interrupts %handle-subprocess-status-change)
-  (if (eq? 'NT microcode-id/operating-system)
+  (if (eq? 'nt microcode-id/operating-system)
       (for-each (lambda (process)
-		  (if (memq (subprocess-status process) '(EXITED SIGNALLED))
+		  (if (memq (subprocess-status process) '(exited signalled))
 		      (close-subprocess-i/o process)))
 		(subprocess-list))))
 
@@ -361,8 +361,8 @@ USA.
 	      (filter! (lambda (registration)
 			 (let ((status
 				(subprocess-registration/status registration)))
-			   (not (or (eq? status 'EXITED)
-				    (eq? status 'SIGNALLED)))))
+			   (not (or (eq? status 'exited)
+				    (eq? status 'signalled)))))
 		       subprocess-registrations))
 	(if signaled? (%maybe-toggle-thread-timer)))))
 
@@ -390,7 +390,7 @@ USA.
   (maybe-close-subprocess-i/o process))
 
 (define (maybe-close-subprocess-i/o process)
-  (if (eq? 'NT microcode-id/operating-system)
+  (if (eq? 'nt microcode-id/operating-system)
       (close-subprocess-i/o process)))
 
 (define (subprocess-stop process)
@@ -403,12 +403,12 @@ USA.
 
 (define (start-subprocess-in-background filename arguments environment)
   (make-subprocess filename arguments environment
-		   'BACKGROUND 'INHERIT 'INHERIT 'INHERIT
+		   'background 'inherit 'inherit 'inherit
 		   #f #f #f))
 
 (define (run-subprocess-in-foreground filename arguments environment)
   (make-subprocess filename arguments environment
-		   'FOREGROUND 'INHERIT 'INHERIT 'INHERIT
+		   'foreground 'inherit 'inherit 'inherit
 		   #f #f #f))
 
 (define (start-pipe-subprocess filename arguments environment)
@@ -429,7 +429,7 @@ USA.
     (lambda (master-channel master-name slave-name)
       master-name
       (make-subprocess filename arguments environment
-		       slave-name 'CTTY 'CTTY 'CTTY
+		       slave-name 'ctty 'ctty 'ctty
 		       master-channel master-channel master-channel))))
 
 ;;;; Environment Bindings

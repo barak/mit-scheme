@@ -91,7 +91,7 @@ USA.
   (with-queue-lock queue (lambda () (dequeue!/unsafe queue))))
 
 (define (queue-map! queue procedure)
-  (let ((empty (list 'EMPTY)))
+  (let ((empty (list 'empty)))
     (let loop ()
       (let ((item
 	     (with-queue-lock queue

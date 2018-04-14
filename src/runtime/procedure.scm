@@ -47,22 +47,22 @@ USA.
 			  (lambda (procedure) procedure #f)
 			  %compound-procedure-lambda
 			  compiled-procedure/lambda
-			  'PROCEDURE-LAMBDA))
+			  'procedure-lambda))
 
 (define (procedure-environment procedure)
   (discriminate-procedure procedure
 			  (lambda (procedure)
 			    (error:bad-range-argument procedure
-						      'PROCEDURE-ENVIRONMENT))
+						      'procedure-environment))
 			  %compound-procedure-environment
 			  compiled-procedure/environment
-			  'PROCEDURE-ENVIRONMENT))
+			  'procedure-environment))
 
 (define (procedure-components procedure receiver)
   (discriminate-procedure procedure
 			  (lambda (procedure)
 			    (error:bad-range-argument procedure
-						      'PROCEDURE-COMPONENTS))
+						      'procedure-components))
 			  (lambda (procedure)
 			    (receiver
 			     (%compound-procedure-lambda procedure)
@@ -71,7 +71,7 @@ USA.
 			    (receiver
 			     (compiled-procedure/lambda procedure)
 			     (compiled-procedure/environment procedure)))
-			  'PROCEDURE-COMPONENTS))
+			  'procedure-components))
 
 (declare (integrate-operator discriminate-procedure))
 (define (discriminate-procedure procedure if-primitive if-compound if-compiled
@@ -131,7 +131,7 @@ USA.
 	       (loop (entity-procedure p) (fix:+ e 1))))
 	  (else
 	   (error:wrong-type-argument procedure "procedure"
-				      'PROCEDURE-ARITY)))))
+				      'procedure-arity)))))
 
 (define (procedure-arity-valid? procedure arity)
   (procedure-arity<= arity (procedure-arity procedure)))
@@ -160,17 +160,17 @@ USA.
       (error:bad-range-argument object caller)))
 
 (define (make-procedure-arity min #!optional max simple-ok?)
-  (guarantee index-fixnum? min 'MAKE-PROCEDURE-ARITY)
+  (guarantee index-fixnum? min 'make-procedure-arity)
   (let ((max
 	 (if (default-object? max)
 	     min
 	     (begin
 	       (if max
 		   (begin
-		     (guarantee index-fixnum? max 'MAKE-PROCEDURE-ARITY)
+		     (guarantee index-fixnum? max 'make-procedure-arity)
 		     (if (not (fix:>= max min))
 			 (error:bad-range-argument max
-						   'MAKE-PROCEDURE-ARITY))))
+						   'make-procedure-arity))))
 	       max))))
     (if (and (eqv? min max)
 	     (if (default-object? simple-ok?) #f simple-ok?))
@@ -187,12 +187,12 @@ USA.
 (define (procedure-arity-min arity)
   (cond ((simple-arity? arity) arity)
 	((general-arity? arity) (car arity))
-	(else (error:not-a procedure-arity? arity 'PROCEDURE-ARITY-MIN))))
+	(else (error:not-a procedure-arity? arity 'procedure-arity-min))))
 
 (define (procedure-arity-max arity)
   (cond ((simple-arity? arity) arity)
 	((general-arity? arity) (cdr arity))
-	(else (error:not-a procedure-arity? arity 'PROCEDURE-ARITY-MAX))))
+	(else (error:not-a procedure-arity? arity 'procedure-arity-max))))
 
 (define (procedure-arity<= arity1 arity2)
   (and (fix:<= (procedure-arity-min arity2)
@@ -243,11 +243,11 @@ USA.
 
 (define (primitive-procedure-name procedure)
   (%primitive-procedure-name
-   (%primitive-procedure-arg procedure 'PRIMITIVE-PROCEDURE-NAME)))
+   (%primitive-procedure-arg procedure 'primitive-procedure-name)))
 
 (define (implemented-primitive-procedure? procedure)
   (%primitive-procedure-implemented?
-   (%primitive-procedure-arg procedure 'IMPLEMENTED-PRIMITIVE-PROCEDURE?)))
+   (%primitive-procedure-arg procedure 'implemented-primitive-procedure?)))
 
 (define (%primitive-procedure-arg procedure caller)
   (let ((procedure* (skip-entities procedure)))
@@ -296,7 +296,7 @@ USA.
 	       (+ (loop (entity-procedure p)) 1)))
 	  (else
 	   (error:wrong-type-argument procedure "compiled procedure"
-				      'COMPILED-PROCEDURE-FRAME-SIZE)))))
+				      'compiled-procedure-frame-size)))))
 
 (define (%compiled-closure? object)
   (and (%compiled-procedure? object)
@@ -315,7 +315,7 @@ USA.
    (let ((closure* (skip-entities closure)))
      (if (not (%compiled-closure? closure*))
 	 (error:wrong-type-argument closure "compiled closure"
-				    'COMPILED-CLOSURE->ENTRY))
+				    'compiled-closure->entry))
      closure*)))
 
 ;; In the following two procedures, offset can be #f to support
@@ -372,21 +372,21 @@ USA.
   (%make-entity procedure extra))
 
 (define (entity-procedure entity)
-  (guarantee-entity entity 'ENTITY-PROCEDURE)
+  (guarantee-entity entity 'entity-procedure)
   (%entity-procedure entity))
 
 (define (entity-extra entity)
-  (guarantee-entity entity 'ENTITY-EXTRA)
+  (guarantee-entity entity 'entity-extra)
   (%entity-extra entity))
 
 (define (set-entity-procedure! entity procedure)
-  (guarantee-entity entity 'SET-ENTITY-PROCEDURE!)
+  (guarantee-entity entity 'set-entity-procedure!)
   (if (procedure-chains-to procedure entity)
-      (error:bad-range-argument procedure 'SET-ENTITY-PROCEDURE!))
+      (error:bad-range-argument procedure 'set-entity-procedure!))
   (%set-entity-procedure! entity procedure))
 
 (define (set-entity-extra! entity extra)
-  (guarantee-entity entity 'SET-ENTITY-EXTRA!)
+  (guarantee-entity entity 'set-entity-extra!)
   (%set-entity-extra! entity extra))
 
 (define (make-apply-hook procedure extra)
@@ -411,21 +411,21 @@ USA.
   "apply-hook-tag")
 
 (define (apply-hook-procedure apply-hook)
-  (guarantee-apply-hook apply-hook 'APPLY-HOOK-PROCEDURE)
+  (guarantee-apply-hook apply-hook 'apply-hook-procedure)
   (system-hunk3-cxr1 (%entity-extra apply-hook)))
 
 (define (apply-hook-extra apply-hook)
-  (guarantee-apply-hook apply-hook 'APPLY-HOOK-EXTRA)
+  (guarantee-apply-hook apply-hook 'apply-hook-extra)
   (system-hunk3-cxr2 (%entity-extra apply-hook)))
 
 (define (set-apply-hook-procedure! apply-hook procedure)
-  (guarantee-apply-hook apply-hook 'SET-APPLY-HOOK-PROCEDURE!)
+  (guarantee-apply-hook apply-hook 'set-apply-hook-procedure!)
   (if (procedure-chains-to procedure apply-hook)
-      (error:bad-range-argument procedure 'SET-APPLY-HOOK-PROCEDURE!))
+      (error:bad-range-argument procedure 'set-apply-hook-procedure!))
   (system-hunk3-set-cxr1! (%entity-extra apply-hook) procedure))
 
 (define (set-apply-hook-extra! apply-hook procedure)
-  (guarantee-apply-hook apply-hook 'SET-APPLY-HOOK-EXTRA!)
+  (guarantee-apply-hook apply-hook 'set-apply-hook-extra!)
   (system-hunk3-set-cxr2! (%entity-extra apply-hook) procedure))
 
 ;;;; Arity dispatched entities
@@ -436,7 +436,7 @@ USA.
   ;; SELF argument.
   (make-entity default
 	       (list->vector
-		(cons (fixed-objects-item 'ARITY-DISPATCHER-TAG)
+		(cons (fixed-objects-item 'arity-dispatcher-tag)
 		      dispatched-cases))))
 
 (define (arity-dispatched-procedure? object)
@@ -444,7 +444,7 @@ USA.
        (vector? (entity-extra object))
        (fix:< 0 (vector-length (entity-extra object)))
        (eq? (vector-ref (entity-extra object) 0)
-	    (fixed-objects-item 'ARITY-DISPATCHER-TAG))))
+	    (fixed-objects-item 'arity-dispatcher-tag))))
 
 (define (procedure-chains-to p1 p2)
   (let loop ((p1 p1))

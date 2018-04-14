@@ -69,13 +69,13 @@ USA.
 	  #t))))
 
 (define (first-rfc2822-header name headers)
-  (guarantee-list-of rfc2822-header? headers 'FIRST-RFC2822-HEADER)
+  (guarantee-list-of rfc2822-header? headers 'first-rfc2822-header)
   (find (lambda (header)
 	  (eq? (rfc2822-header-name header) name))
 	headers))
 
 (define (all-rfc2822-headers name headers)
-  (guarantee-list-of rfc2822-header? headers 'ALL-RFC2822-HEADERS)
+  (guarantee-list-of rfc2822-header? headers 'all-rfc2822-headers)
   (filter (lambda (header)
 	    (eq? (rfc2822-header-name header) name))
 	  headers))
@@ -88,7 +88,7 @@ USA.
       (write-rfc2822-headers headers port))))
 
 (define (write-rfc2822-headers headers port)
-  (guarantee-list-of rfc2822-header? headers 'WRITE-RFC2822-HEADERS)
+  (guarantee-list-of rfc2822-header? headers 'write-rfc2822-headers)
   (for-each (lambda (header)
               (write-header header port))
             headers)
@@ -158,7 +158,7 @@ USA.
 	  ((char-wsp? (string-ref line 0))
 	   (parse-error port
 			"Unmatched continuation line:"
-			'READ-RFC2822-FOLDED-LINE))
+			'read-rfc2822-folded-line))
 	  (else
 	   (call-with-output-string
 	     (lambda (out)
@@ -169,7 +169,7 @@ USA.
 		       (if (eof-object? char)
 			   (parse-error port
 					"Premature EOF:"
-					'READ-RFC2822-FOLDED-LINE))
+					'read-rfc2822-folded-line))
 		       (char-wsp? char))
 		     (begin
 		       (write-char #\space out)
@@ -253,18 +253,18 @@ USA.
 	(char-set-difference char-set:rfc2822-text
 			     (char-set #\tab #\space #\delete #\\ #\")))
   (set! condition-type:rfc2822-parse-error
-	(make-condition-type 'RFC2822-PARSE-ERROR
+	(make-condition-type 'rfc2822-parse-error
 	    condition-type:port-error
-	    '(MESSAGE IRRITANTS)
+	    '(message irritants)
 	  (lambda (condition port)
 	    (write-string "Error while parsing RFC 2822 headers: " port)
-	    (format-error-message (access-condition condition 'MESSAGE)
-				  (access-condition condition 'IRRITANTS)
+	    (format-error-message (access-condition condition 'message)
+				  (access-condition condition 'irritants)
 				  port))))
   (set! parse-error
 	(let ((signal
 	       (condition-signaller condition-type:rfc2822-parse-error
-				    '(PORT MESSAGE IRRITANTS)
+				    '(port message irritants)
 				    standard-error-handler)))
 	  (lambda (port message . irritants)
 	    (signal port message irritants))))

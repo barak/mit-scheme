@@ -29,7 +29,7 @@ USA.
 
 (declare (usual-integrations))
 
-(load-option 'SUBPROCESS)
+(load-option 'subprocess)
 
 (define-structure (subprocess-context
 		   (keyword-constructor make-subprocess-context)
@@ -85,16 +85,16 @@ USA.
        (let loop ()
 	 (receive (status reason) (synchronous-subprocess-wait process context)
 	   (case status
-	     ((EXITED) reason)
-	     ((SIGNALLED) (error:subprocess-signalled process reason))
+	     ((exited) reason)
+	     ((signalled) (error:subprocess-signalled process reason))
 	     ;++ Give a restart to continue the process and loop?
-	     ((STOPPED) (error:subprocess-stopped process reason))
+	     ((stopped) (error:subprocess-stopped process reason))
 	     (else
 	      (error "Invalid synchronous subprocess status:" status))))))
      (lambda ()
        (if (and process
 		;++ Need a predicate SUBPROCESS-LIVE? or something.
-		(not (memq (subprocess-status process) '(EXITED SIGNALLED))))
+		(not (memq (subprocess-status process) '(exited signalled))))
 	   (ignore-errors (lambda () (subprocess-kill process))))))))
 
 (define (start-subprocess program arguments directory context)
@@ -110,8 +110,8 @@ USA.
 	 environment))))
 
 (define condition-type:subprocess-abnormal-termination
-  (make-condition-type 'SUBPROCESS-ABNORMAL-TERMINATION condition-type:error
-      '(SUBPROCESS REASON)
+  (make-condition-type 'subprocess-abnormal-termination condition-type:error
+      '(subprocess reason)
     #f))
 
 (define (abnormal-termination-type name message)
@@ -120,27 +120,27 @@ USA.
       '()
     (lambda (condition port)
       (write-string "Subprocess " port)
-      (write (access-condition condition 'SUBPROCESS) port)
+      (write (access-condition condition 'subprocess) port)
       (write-string " " port)
       (write-string message port)
       (write-string " " port)
-      (write (access-condition condition 'REASON) port)
+      (write (access-condition condition 'reason) port)
       (write-string "." port))))
 
 (define condition-type:subprocess-stopped
-  (abnormal-termination-type 'SUBPROCESS-STOPPED "stopped with signal"))
+  (abnormal-termination-type 'subprocess-stopped "stopped with signal"))
 
 (define error:subprocess-stopped
   (condition-signaller condition-type:subprocess-stopped
-		       '(SUBPROCESS REASON)
+		       '(subprocess reason)
 		       standard-error-handler))
 
 (define condition-type:subprocess-signalled
-  (abnormal-termination-type 'SUBPROCESS-SIGNALLED "terminated with signal"))
+  (abnormal-termination-type 'subprocess-signalled "terminated with signal"))
 
 (define error:subprocess-signalled
   (condition-signaller condition-type:subprocess-signalled
-		       '(SUBPROCESS REASON)
+		       '(subprocess reason)
 		       standard-error-handler))
 
 (define (synchronous-subprocess-wait process context)

@@ -76,6 +76,6 @@ USA.
       (vector-set! vector j ith-element)))
 
   (if (not (vector? vector))
-      (error:wrong-type-argument vector "vector" 'QUICK-SORT!))
+      (error:wrong-type-argument vector "vector" 'quick-sort!))
   (outer-loop 0 (fix:- (vector-length vector) 1))
   vector)

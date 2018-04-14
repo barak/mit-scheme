@@ -58,28 +58,28 @@ USA.
 		    (->namestring (merge-pathnames filename))))))
 	     (and n
 		  (let ((types
-			 '#(REGULAR
-			    DIRECTORY
-			    UNIX-SYMBOLIC-LINK
-			    UNIX-CHARACTER-DEVICE
-			    UNIX-BLOCK-DEVICE
-			    UNIX-NAMED-PIPE
-			    UNIX-SOCKET
-			    UNKNOWN
-			    WIN32-NAMED-PIPE)))
+			 '#(regular
+			    directory
+			    unix-symbolic-link
+			    unix-character-device
+			    unix-block-device
+			    unix-named-pipe
+			    unix-socket
+			    unknown
+			    win32-named-pipe)))
 		    (if (fix:< n (vector-length types))
 			(vector-ref types n)
-			'UNKNOWN))))))))
+			'unknown))))))))
   (set! file-type-direct
 	(make-file-type (ucode-primitive file-type-direct 1)))
   (set! file-type-indirect
 	(make-file-type (ucode-primitive file-type-indirect 1))))
 
 (define (file-regular? filename)
-  (eq? 'REGULAR (file-type-indirect filename)))
+  (eq? 'regular (file-type-indirect filename)))
 
 (define (file-directory? filename)
-  (eq? 'DIRECTORY (file-type-indirect filename)))
+  (eq? 'directory (file-type-indirect filename)))
 
 (define (file-symbolic-link? filename)
   ((ucode-primitive file-symlink? 1)
@@ -291,13 +291,13 @@ USA.
 		    (string->mime-type string)))))))
 
 (define (associate-pathname-type-with-mime-type type mime-type)
-  (guarantee string? type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
-  (guarantee mime-type? mime-type 'ASSOCIATE-PATHNAME-TYPE-WITH-MIME-TYPE)
+  (guarantee string? type 'associate-pathname-type-with-mime-type)
+  (guarantee mime-type? mime-type 'associate-pathname-type-with-mime-type)
   (hash-table/put! local-type-map type mime-type))
 
 (define (disassociate-pathname-type-from-mime-type type)
-  (guarantee string? type 'DISASSOCIATE-PATHNAME-TYPE-FROM-MIME-TYPE)
-  (hash-table/put! local-type-map type 'DISASSOCIATED))
+  (guarantee string? type 'disassociate-pathname-type-from-mime-type)
+  (hash-table/put! local-type-map type 'disassociated))
 
 (define-record-type <mime-type>
     (%%make-mime-type top-level subtype)
@@ -306,8 +306,8 @@ USA.
   (subtype mime-type/subtype))
 
 (define (make-mime-type top-level subtype)
-  (guarantee mime-token? top-level 'MAKE-MIME-TYPE)
-  (guarantee mime-token? subtype 'MAKE-MIME-TYPE)
+  (guarantee mime-token? top-level 'make-mime-type)
+  (guarantee mime-token? subtype 'make-mime-type)
   (%make-mime-type top-level subtype))
 
 (define (%make-mime-type top-level subtype)
@@ -325,10 +325,10 @@ USA.
 			      new)))))
 
 (define top-level-mime-types
-  '#(TEXT IMAGE AUDIO VIDEO APPLICATION MULTIPART MESSAGE))
+  '#(text image audio video application multipart message))
 
 (define-unparser-method mime-type?
-  (standard-unparser-method 'MIME-TYPE
+  (standard-unparser-method 'mime-type
     (lambda (mime-type port)
       (write-char #\space port)
       (write-string (mime-type->string mime-type) port))))
@@ -353,7 +353,7 @@ USA.
 			     (string->char-set "()<>@,;:\\\"/[]?=")))
   (set! local-type-map (make-string-hash-table))
   (associate-pathname-type-with-mime-type "scm"
-					  (make-mime-type 'TEXT 'X-SCHEME))
+					  (make-mime-type 'text 'x-scheme))
   unspecific)
 
 (define (mime-type->string mime-type)
@@ -362,14 +362,14 @@ USA.
       (write-mime-type mime-type port))))
 
 (define (write-mime-type mime-type port)
-  (guarantee mime-type? mime-type 'WRITE-MIME-TYPE)
+  (guarantee mime-type? mime-type 'write-mime-type)
   (write-string (symbol->string (mime-type/top-level mime-type)) port)
   (write-string "/" port)
   (write-string (symbol->string (mime-type/subtype mime-type)) port))
 
 (define (string->mime-type string #!optional start end)
   (vector-ref (or (*parse-string parser:mime-type string start end)
-		  (error:not-a mime-type-string? string 'STRING->MIME-TYPE))
+		  (error:not-a mime-type-string? string 'string->mime-type))
 	      0))
 
 (define (mime-type-string? object)

@@ -56,35 +56,35 @@ USA.
   (unparse-object/top-level object port #t environment))
 
 (define (output-port/x-size port)
-  (or (let ((operation (textual-port-operation port 'X-SIZE)))
+  (or (let ((operation (textual-port-operation port 'x-size)))
 	(and operation
 	     (operation port)))
       80))
 
 (define (output-port/y-size port)
-  (let ((operation (textual-port-operation port 'Y-SIZE)))
+  (let ((operation (textual-port-operation port 'y-size)))
     (and operation
 	 (operation port))))
 
 (define (output-port/column port)
-  (let ((operation (textual-port-operation port 'OUTPUT-COLUMN)))
+  (let ((operation (textual-port-operation port 'output-column)))
     (and operation
 	 (operation port))))
 
 (define (output-port/bytes-written port)
-  (let ((operation (textual-port-operation port 'BYTES-WRITTEN)))
+  (let ((operation (textual-port-operation port 'bytes-written)))
     (and operation
 	 (operation port))))
 
 (define (output-port/synchronize-output port)
-  (let ((operation (textual-port-operation port 'SYNCHRONIZE-OUTPUT)))
+  (let ((operation (textual-port-operation port 'synchronize-output)))
     (if operation
 	(operation port))))
 
 ;;;; High level
 
 (define (write-char char #!optional port)
-  (let ((port (optional-output-port port 'WRITE-CHAR)))
+  (let ((port (optional-output-port port 'write-char)))
     (if (let ((n (output-port/write-char port char)))
 	  (and n
 	       (fix:> n 0)))
@@ -125,24 +125,24 @@ USA.
    (optional-output-port port 'synchronize-output-port)))
 
 (define (fresh-line #!optional port)
-  (let ((port (optional-output-port port 'FRESH-LINE)))
+  (let ((port (optional-output-port port 'fresh-line)))
     (if (let ((n (output-port/fresh-line port)))
 	  (and n
 	       (fix:> n 0)))
 	(output-port/discretionary-flush port))))
 
 (define (display object #!optional port environment)
-  (let ((port (optional-output-port port 'DISPLAY)))
+  (let ((port (optional-output-port port 'display)))
     (unparse-object/top-level object port #f environment)
     (output-port/discretionary-flush port)))
 
 (define (write object #!optional port environment)
-  (let ((port (optional-output-port port 'WRITE)))
+  (let ((port (optional-output-port port 'write)))
     (output-port/write-object port object environment)
     (output-port/discretionary-flush port)))
 
 (define (write-line object #!optional port environment)
-  (let ((port (optional-output-port port 'WRITE-LINE)))
+  (let ((port (optional-output-port port 'write-line)))
     (output-port/write-object port object environment)
     (output-port/write-char port #\newline)
     (output-port/discretionary-flush port)))
@@ -156,8 +156,8 @@ USA.
 	      (operation port)
 	      (output-port/discretionary-flush port)))))))
 
-(define beep (wrap-custom-operation-0 'BEEP))
-(define clear (wrap-custom-operation-0 'CLEAR))
+(define beep (wrap-custom-operation-0 'beep))
+(define clear (wrap-custom-operation-0 'clear))
 
 (define (optional-output-port port caller)
   (let ((port (if (default-object? port) (current-output-port) port)))
@@ -172,12 +172,12 @@ USA.
 				  left-margin col-sep right-margin)
   (if (not (list-of-type? strings string?))
       (error:wrong-type-argument strings "list of strings"
-				 'WRITE-STRINGS-IN-COLUMNS))
-  (guarantee textual-output-port? port 'WRITE-STRINGS-IN-COLUMNS)
-  (guarantee exact-positive-integer? min-minor 'WRITE-STRINGS-IN-COLUMNS)
-  (guarantee string? left-margin 'WRITE-STRINGS-IN-COLUMNS)
-  (guarantee string? col-sep 'WRITE-STRINGS-IN-COLUMNS)
-  (guarantee string? right-margin 'WRITE-STRINGS-IN-COLUMNS)
+				 'write-strings-in-columns))
+  (guarantee textual-output-port? port 'write-strings-in-columns)
+  (guarantee exact-positive-integer? min-minor 'write-strings-in-columns)
+  (guarantee string? left-margin 'write-strings-in-columns)
+  (guarantee string? col-sep 'write-strings-in-columns)
+  (guarantee string? right-margin 'write-strings-in-columns)
   (let ((n-strings (length strings))
 	(max-width (output-port/x-size port))
 	(lm-width (string-length left-margin))
@@ -297,13 +297,13 @@ USA.
   (if (and (not (list-of-type? strings string?))
 	   (pair? strings))
       (error:wrong-type-argument strings "non-empty list of strings"
-				 'WRITE-STRINGS-IN-PARAGRAPH))
-  (guarantee textual-output-port? port 'WRITE-STRINGS-IN-PARAGRAPH)
-  (guarantee exact-positive-integer? width 'WRITE-STRINGS-IN-PARAGRAPH)
-  (guarantee exact-nonnegative-integer? indent 'WRITE-STRINGS-IN-PARAGRAPH)
-  (guarantee exact-nonnegative-integer? first 'WRITE-STRINGS-IN-PARAGRAPH)
+				 'write-strings-in-paragraph))
+  (guarantee textual-output-port? port 'write-strings-in-paragraph)
+  (guarantee exact-positive-integer? width 'write-strings-in-paragraph)
+  (guarantee exact-nonnegative-integer? indent 'write-strings-in-paragraph)
+  (guarantee exact-nonnegative-integer? first 'write-strings-in-paragraph)
   (if (< width (+ indent first (string-length (car strings))))
-      (error:bad-range-argument width 'WRITE-STRINGS-IN-PARAGRAPH))
+      (error:bad-range-argument width 'write-strings-in-paragraph))
 
   (fresh-line port)
   (write-spaces indent port)

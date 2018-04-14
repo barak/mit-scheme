@@ -38,7 +38,7 @@ USA.
 
 (define (merge-sort! v pred)
   (if (not (vector? v))
-      (error:wrong-type-argument v "vector" 'MERGE-SORT!))
+      (error:wrong-type-argument v "vector" 'merge-sort!))
   (let sort-subvector
       ((v v)
        (temp (vector-copy v))

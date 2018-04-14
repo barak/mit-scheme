@@ -32,7 +32,7 @@ USA.
 (define (add-subsystem-identification! name version)
   (if (not (and (string? name) (not (string-null? name))))
       (error:wrong-type-argument name "non-null string"
-				 'ADD-SUBSYSTEM-IDENTIFICATION!))
+				 'add-subsystem-identification!))
   (let ((version
 	 (let loop ((version version))
 	   (append-map (lambda (version)

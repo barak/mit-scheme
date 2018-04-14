@@ -910,7 +910,7 @@ USA.
 ;;; Look for keyword-style: prefix or keyword-style: suffix
 (define (process-keyword-attribute file-attribute-alist db)
   (let ((keyword-entry
-	 (lookup-file-attribute file-attribute-alist 'KEYWORD-STYLE)))
+	 (lookup-file-attribute file-attribute-alist 'keyword-style)))
     (if (pair? keyword-entry)
 	(let ((value (cdr keyword-entry)))
 	  (cond ((and (symbol? value)
@@ -930,7 +930,7 @@ USA.
 (define (process-mode-attribute file-attribute-alist db)
   (declare (ignore db))
   (let ((mode-entry
-	 (lookup-file-attribute file-attribute-alist 'MODE)))
+	 (lookup-file-attribute file-attribute-alist 'mode)))
     (if (pair? mode-entry)
 	(let ((value (cdr mode-entry)))
 	  (if (or (not (symbol? value))
@@ -946,7 +946,7 @@ USA.
 ;; the attribute and the value don't matter.
 (define (process-studly-case-attribute file-attribute-alist db)
   (let ((studly-case-entry
-	 (lookup-file-attribute file-attribute-alist 'STUDLY-CASE)))
+	 (lookup-file-attribute file-attribute-alist 'studly-case)))
     (if (pair? studly-case-entry)
 	(let ((value (cdr studly-case-entry)))
 	  (cond ((or (eq? value #t)
@@ -971,7 +971,7 @@ USA.
 		 (warn "Unrecognized value for sTuDly-case" value)))))))
 
 (define-deferred condition-type:parse-error
-  (make-condition-type 'PARSE-ERROR condition-type:error '()
+  (make-condition-type 'parse-error condition-type:error '()
     (lambda (condition port)
       condition
       (write-string "Anonymous parsing error." port))))

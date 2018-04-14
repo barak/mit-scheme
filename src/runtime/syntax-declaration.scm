@@ -64,7 +64,7 @@ USA.
 (define known-declarations '())
 
 (for-each (lambda (keyword)
-	    (define-declaration keyword '(* IDENTIFIER)
+	    (define-declaration keyword '(* identifier)
 	      (lambda (procedure declaration selector)
 		(cons (car declaration)
 		      (map+ procedure

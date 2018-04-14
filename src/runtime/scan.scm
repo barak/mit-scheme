@@ -46,7 +46,7 @@ USA.
   (ucode-type sequence))
 
 (define null-sequence
-  '(NULL-SEQUENCE))
+  '(null-sequence))
 
 (define (cons-sequence action seq)
   (if (eq? seq null-sequence)
@@ -64,7 +64,7 @@ USA.
   ((scan-loop expression receiver) '() '() null-sequence))
 
 (define (scan-loop expression receiver)
-  (cond ((scode-open-block? expression)      ; must come before SCODE-SEQUENCE? clause
+  (cond ((scode-open-block? expression)	;must come before SCODE-SEQUENCE? clause
 	 (scan-loop
 	  (%open-block-actions expression)
 	  (lambda (names declarations body)
@@ -136,7 +136,7 @@ USA.
   (receive (names* body*) (unscan-loop names body)
     (if (not (null? names*))
 	(error "Extraneous auxiliaries -- get a wizard"
-	       'UNSCAN-DEFINES
+	       'unscan-defines
 	       names*))
 
     (if (null? declarations)

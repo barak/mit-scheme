@@ -49,7 +49,7 @@ USA.
    ;;  NAMED: just name if the procedure is a named lambda, like FULL if unnamed
    ;;  SHORT: procedures appear in #[...] unparser syntax
    (set! param:pp-arity-dispatched-procedure-style
-	 (make-settable-parameter 'FULL))
+	 (make-settable-parameter 'full))
    (set! param:pp-auto-highlighter (make-settable-parameter #f))
    (set! param:pp-avoid-circularity? (make-settable-parameter #f))
    (set! param:pp-default-as-code? (make-settable-parameter #t))
@@ -70,19 +70,19 @@ USA.
    (set! print-case-expression (special-printer kernel/print-case-expression))
    (set! code-dispatch-list
 	 (make-unsettable-parameter
-	  `((COND . ,forced-indentation)
-	    (CASE . ,print-case-expression)
-	    (IF . ,forced-indentation)
-	    (OR . ,forced-indentation)
-	    (AND . ,forced-indentation)
-	    (LET . ,print-let-expression)
-	    (LET* . ,print-let-expression)
-	    (LETREC . ,print-let-expression)
-	    (FLUID-LET . ,print-let-expression)
-	    (DEFINE . ,print-procedure)
-	    (DEFINE-INTEGRABLE . ,print-procedure)
-	    (LAMBDA . ,print-procedure)
-	    (NAMED-LAMBDA . ,print-procedure))))
+	  `((cond . ,forced-indentation)
+	    (case . ,print-case-expression)
+	    (if . ,forced-indentation)
+	    (or . ,forced-indentation)
+	    (and . ,forced-indentation)
+	    (let . ,print-let-expression)
+	    (let* . ,print-let-expression)
+	    (letrec . ,print-let-expression)
+	    (fluid-let . ,print-let-expression)
+	    (define . ,print-procedure)
+	    (define-integrable . ,print-procedure)
+	    (lambda . ,print-procedure)
+	    (named-lambda . ,print-procedure))))
    (set! dispatch-list (make-unsettable-parameter (code-dispatch-list)))
    (set! dispatch-default (make-unsettable-parameter print-combination))
    (set! cocked-object (generate-uninterned-symbol))
@@ -193,18 +193,18 @@ USA.
 
    (define-pp-describer weak-pair?
      (lambda (wp)
-       `((WEAK-CAR ,(weak-car wp))
-	 (WEAK-CDR ,(weak-cdr wp)))))
+       `((weak-car ,(weak-car wp))
+	 (weak-cdr ,(weak-cdr wp)))))
 
    (define-pp-describer cell?
      (lambda (cell)
-       `((CONTENTS ,(cell-contents cell)))))))
+       `((contents ,(cell-contents cell)))))))
 
 (define (unsyntax-entity object)
   (define (unsyntax-entry procedure)
     (case (get-param:pp-arity-dispatched-procedure-style)
-      ((FULL)  (unsyntax-entity procedure))
-      ((NAMED)
+      ((full)  (unsyntax-entity procedure))
+      ((named)
        (let ((text (unsyntax-entity procedure)))
 	 (if (and (pair? text)
 		  (eq? (car text) 'named-lambda)
@@ -212,7 +212,7 @@ USA.
 		  (pair? (cadr text)))
 	     (caadr text)
 	     text)))
-      ((SHORT) procedure)
+      ((short) procedure)
       (else procedure)))
   (cond ((arity-dispatched-procedure? object)
 	 (let* ((default  (entity-procedure  object))
@@ -227,9 +227,9 @@ USA.
 				(cdr cases)))
 			 (else
 			  (loop (+ i 1) tests (cdr cases)))))))
-	   `(CASE NUMBER-OF-ARGUMENTS
+	   `(case number-of-arguments
 	      ,@cases*
-	      (ELSE
+	      (else
 	       ,(unsyntax-entry default)))))
 	((and (procedure? object) (procedure-lambda object))
 	 => unsyntax)
@@ -250,14 +250,14 @@ USA.
 			     (unsyntax object))))
 		    (if (and as-code?
 			     (pair? sexp)
-			     (eq? (car sexp) 'NAMED-LAMBDA)
+			     (eq? (car sexp) 'named-lambda)
 			     (get-param:pp-named-lambda->define?))
-			(if (and (eq? 'LAMBDA
+			(if (and (eq? 'lambda
 				      (get-param:pp-named-lambda->define?))
 				 (pair? (cdr sexp))
 				 (pair? (cadr sexp)))
-			    `(LAMBDA ,(cdadr sexp) ,@(cddr sexp))
-			    `(DEFINE ,@(cdr sexp)))
+			    `(lambda ,(cdadr sexp) ,@(cddr sexp))
+			    `(define ,@(cdr sexp)))
 			sexp))
 		  (if (default-object? port) (current-output-port) port)
 		  as-code?
@@ -276,9 +276,9 @@ USA.
   (object #f read-only #t)
   (start-string "*=>" read-only #t)
   (end-string   "<=*" read-only #t)
-  (as-code? 'DEFAULT read-only #t)
-  (depth-limit 'DEFAULT read-only #t)
-  (breadth-limit 'DEFAULT read-only #t))
+  (as-code? 'default read-only #t)
+  (depth-limit 'default read-only #t)
+  (breadth-limit 'default read-only #t))
 
 (define (with-highlight-strings-printed pph thunk)
   (let ((print-string
@@ -392,7 +392,7 @@ USA.
 	       (let ((handler
 		      (let ((as-code? (pph/as-code? highlight))
 			    (currently-as-code? (not (null? (dispatch-list)))))
-			(cond ((or (eq? as-code? 'DEFAULT)
+			(cond ((or (eq? as-code? 'default)
 				   (eq? as-code? currently-as-code?))
 			       print-node)
 			      (as-code?
@@ -846,16 +846,16 @@ USA.
   (let ((dl (pph/depth-limit object)))
     (parameterize* (list (cons param:unparser-list-breadth-limit
 			       (let ((bl (pph/breadth-limit object)))
-				 (if (eq? bl 'DEFAULT)
+				 (if (eq? bl 'default)
 				     (param:unparser-list-breadth-limit)
 				     bl)))
 			 (cons param:unparser-list-depth-limit
-			       (if (eq? dl 'DEFAULT)
+			       (if (eq? dl 'default)
 				   (param:unparser-list-depth-limit)
 				   dl)))
       (lambda ()
 	(numerical-walk (pph/object object)
-			(if (eq? dl 'DEFAULT)
+			(if (eq? dl 'default)
 			    list-depth
 			    0))))))
 
@@ -895,7 +895,7 @@ USA.
 		prefix
 		(numerical-walk-terminating
 		 (cadr object)
-		 (advance half-pointer (update-queue queue '(CDR CAR)))
+		 (advance half-pointer (update-queue queue '(cdr car)))
 		 list-depth))
 	       (walk-pair-terminating object half-pointer/queue
 				      list-depth))))
@@ -947,7 +947,7 @@ USA.
 		  (let ((half-pointer/queue
 			 (advance
 			  (car half-pointer/queue)
-			  (update-queue (cdr half-pointer/queue) '(CAR)))))
+			  (update-queue (cdr half-pointer/queue) '(car)))))
 		    (if (eq? (car half-pointer/queue) (car pair))
 			(circularity-string (cdr half-pointer/queue))
 			(numerical-walk-terminating
@@ -957,7 +957,7 @@ USA.
 		  (let ((half-pointer/queue
 			 (advance
 			  (car half-pointer/queue)
-			  (update-queue (cdr half-pointer/queue) '(CAR)))))
+			  (update-queue (cdr half-pointer/queue) '(car)))))
 		    (if (eq? (car half-pointer/queue) (car pair))
 			(circularity-string (cdr half-pointer/queue))
 			(numerical-walk-terminating
@@ -968,7 +968,7 @@ USA.
 		     (let ((half-pointer/queue
 			    (advance
 			     (car half-pointer/queue)
-			     (update-queue (cdr half-pointer/queue) '(CDR)))))
+			     (update-queue (cdr half-pointer/queue) '(cdr)))))
 		       (if (eq? (car half-pointer/queue) (cdr pair))
 			   (make-singleton-list-node
 			    (string-append
@@ -988,7 +988,7 @@ USA.
 			       (advance
 				(car half-pointer/queue)
 				(update-queue
-				 (cdr half-pointer/queue) '(CDR)))))
+				 (cdr half-pointer/queue) '(cdr)))))
 			  (if (eq? (car half-pointer/queue) (cdr pair))
 			      (circularity-string (cdr half-pointer/queue))
 			      (numerical-walk-terminating
@@ -1055,9 +1055,9 @@ USA.
 (define (update-queue queue command-list)
   (define (uq-iter queue command-list)
     (cond ((null? command-list) queue)
-	  ((eq? (car command-list) 'CAR)
+	  ((eq? (car command-list) 'car)
 	   (uq-iter (add-car queue) (cdr command-list)))
-	  ((eq? (car command-list) 'CDR)
+	  ((eq? (car command-list) 'cdr)
 	   (uq-iter (add-cdr queue) (cdr command-list)))
 	  (else
 	   (uq-iter (add-vector-ref (car command-list) queue)

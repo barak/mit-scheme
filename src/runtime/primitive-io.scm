@@ -562,9 +562,9 @@ USA.
 
 (define (encode-select-registry-mode mode)
   (case mode
-    ((READ) 1)
-    ((WRITE) 2)
-    ((READ/WRITE) 3)
+    ((read) 1)
+    ((write) 2)
+    ((read/write) 3)
     (else (error:bad-range-argument mode 'encode-select-registry-mode))))
 
 (define (decode-select-registry-mode mode)
