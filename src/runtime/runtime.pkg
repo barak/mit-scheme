@@ -2844,27 +2844,34 @@ USA.
 (define-package (runtime list)
   (files "list")
   (parent (runtime))
-  (export ()
-	  (improper-list? dotted-list?)
-	  (list-search-negative find-non-matching-item)
-	  (list-search-positive find-matching-item)
-	  (list-tabulate make-initialized-list)	;SRFI-1
+  (export () deprecated:list
 	  (list-transform-negative delete-matching-items)
 	  (list-transform-positive keep-matching-items)
 	  (mapcan append-map!)
 	  (mapcan* append-map*!)
+	  count-matching-items
+	  count-non-matching-items
+	  delete-matching-items
+	  delete-matching-items!
+	  find-matching-item
+	  find-non-matching-item
+	  keep-matching-items
+	  keep-matching-items!)
+  (export ()
+	  (improper-list? dotted-list?)
+	  (list-tabulate make-initialized-list)	;SRFI-1
 	  (proper-list? list?)		;SRFI-1
 	  add-member-procedure
 	  alist->keyword-list
-	  alist-cons
-	  alist-copy
-	  alist-delete
-	  alist-delete!
+	  alist-cons			;SRFI-1
+	  alist-copy			;SRFI-1
+	  alist-delete			;SRFI-1
+	  alist-delete!			;SRFI-1
 	  alist?
 	  append
-	  append!
-	  append-map
-	  append-map!
+	  append!			;SRFI-1
+	  append-map			;SRFI-1
+	  append-map!			;SRFI-1
 	  append-map*
 	  append-map*!
 	  assoc
@@ -2902,12 +2909,10 @@ USA.
 	  cdddr
 	  cddr
 	  cdr
-	  circular-list
+	  circular-list			;SRFI-1
 	  circular-list?		;SRFI-1
 	  cons
-	  cons*
-	  count-matching-items
-	  count-non-matching-items
+	  cons*				;SRFI-1
 	  decode-general-car-cdr
 	  del-assoc
 	  del-assoc!
@@ -2915,11 +2920,9 @@ USA.
 	  del-assq!
 	  del-assv
 	  del-assv!
-	  delete
-	  delete!
+	  delete			;SRFI-1
+	  delete!			;SRFI-1
 	  delete-association-procedure
-	  delete-matching-items
-	  delete-matching-items!
 	  delete-member-procedure
 	  delq
 	  delq!
@@ -2932,14 +2935,10 @@ USA.
 	  except-last-pair
 	  except-last-pair!
 	  fifth
-	  find-matching-item
-	  find-non-matching-item
-	  find-unique-matching-item
-	  find-unique-non-matching-item
 	  first
-	  fold
+	  fold				;SRFI-1
 	  fold-left
-	  fold-right
+	  fold-right			;SRFI-1
 	  for-each
 	  fourth
 	  general-car-cdr
@@ -2950,18 +2949,16 @@ USA.
 	  guarantee-list-of-type->length
 	  guarantee-restricted-keyword-list
 	  iota				;SRFI-1
-	  keep-matching-items
-	  keep-matching-items!
 	  keyword-list->alist
 	  keyword-list?
 	  keyword-option-parser
 	  last				;SRFI-1
-	  last-pair
+	  last-pair			;SRFI-1
 	  length
 	  length=?
 	  list
 	  list->weak-list
-	  list-copy
+	  list-copy			;SRFI-1
 	  list-deletor
 	  list-deletor!
 	  list-head
@@ -2969,13 +2966,13 @@ USA.
 	  list-of-type?->length
 	  list-ref
 	  list-set!
-	  list-tail
+	  list-tail			;use SRFI-1 drop
 	  list=				;SRFI-1
 	  list?
 	  list?->length
 	  make-circular-list
 	  make-initialized-list
-	  make-list
+	  make-list			;SRFI-1
 	  map
 	  map*
 	  member
@@ -2988,12 +2985,12 @@ USA.
 	  null-list?			;SRFI-1
 	  null?
 	  pair?
-	  reduce
+	  reduce			;SRFI-1
 	  reduce-left
-	  reduce-right
+	  reduce-right			;SRFI-1
 	  restricted-keyword-list?
 	  reverse
-	  reverse!
+	  reverse!			;SRFI-1
 	  reverse*
 	  reverse*!
 	  second
@@ -3004,13 +3001,14 @@ USA.
 	  sublist
 	  tenth
 	  third
-	  tree-copy
+	  tree-copy			;SRFI-1
 	  unique-keyword-list?
 	  weak-delq!
 	  weak-list->list
 	  weak-list?
 	  weak-memq
-	  xcons))
+	  xcons				;SRFI-1
+	  ))
 
 (define-package (runtime lambda-list)
   (files "lambda-list")
