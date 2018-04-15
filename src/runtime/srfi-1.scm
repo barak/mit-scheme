@@ -703,7 +703,8 @@ USA.
 (define (find-tail pred list)
   (let lp ((list list))
     (and (not (null-list? list 'find-tail))
-	 (if (pred (car list)) list
+	 (if (pred (car list))
+	     list
 	     (lp (cdr list))))))
 
 (define (take-while pred lis)
