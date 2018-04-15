@@ -156,10 +156,8 @@ USA.
 ;;; is difficult to determine how to make it work well.
 
 (define (identify-closure-limits! procs&conts applications lvalues)
-  (let ((procedures
-	 (delete-matching-items procs&conts procedure-continuation?))
-	(combinations
-	 (keep-matching-items applications application/combination?)))
+  (let ((procedures (remove procedure-continuation? procs&conts))
+	(combinations (filter application/combination? applications)))
     (for-each (lambda (procedure)
 		(set-procedure-variables! procedure '()))
 	      procedures)
@@ -531,28 +529,31 @@ USA.
   unspecific)
 
 (define (remove-condition-1 procedure constraints)
-  (delete-matching-items! constraints
-    (lambda (entry)
-      (let ((tail
-	     (delete-matching-items! (cdr entry)
-	       (lambda (entry*)
-		 (let ((conditions
-			(delete-matching-items! (cdr entry*)
-			  (lambda (condition)
-			    (and condition
-				 (or (eq? procedure
-					  (condition-procedure condition))
-				     (memq procedure
-					   (condition-dependencies condition)))
-				 (begin
-				   (debug:remove-condition (car entry)
-							   (car entry*)
-							   condition)
-				   #t))))))
-		   (set-cdr! entry* conditions)
-		   (null? conditions))))))
-	(set-cdr! entry tail)
-	(null? tail)))))
+  (remove!
+   (lambda (entry)
+     (let ((tail
+	    (remove!
+	     (lambda (entry*)
+	       (let ((conditions
+		      (remove! (lambda (condition)
+				 (and condition
+				      (or (eq? procedure
+					       (condition-procedure condition))
+					  (memq procedure
+						(condition-dependencies
+						 condition)))
+				      (begin
+					(debug:remove-condition (car entry)
+								(car entry*)
+								condition)
+					#t)))
+			       (cdr entry*))))
+		 (set-cdr! entry* conditions)
+		 (null? conditions)))
+	     (cdr entry))))
+       (set-cdr! entry tail)
+       (null? tail)))
+   constraints))
 
 (define (debug:remove-condition block block* condition)
   (if debug:trace-constraints?

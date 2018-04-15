@@ -428,9 +428,9 @@ USA.
 
 (let ((global-valued
        (lambda (names)
-	 (list-transform-negative names
-	   (lambda (name)
-	     (lexical-unreferenceable? system-global-environment name)))))
+	 (remove (lambda (name)
+		   (lexical-unreferenceable? system-global-environment name))
+		 names)))
       (global-value
        (lambda (name)
 	 (lexical-reference system-global-environment name))))

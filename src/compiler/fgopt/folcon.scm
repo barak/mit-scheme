@@ -39,10 +39,9 @@ USA.
   (for-each (lambda (lvalue)
 	      (set-lvalue-source-links!
 	       lvalue
-	       (list-transform-negative
-		   (lvalue-backward-links lvalue)
-		 (lambda (lvalue*)
-		   (memq lvalue (lvalue-backward-links lvalue*))))))
+	       (remove (lambda (lvalue*)
+			 (memq lvalue (lvalue-backward-links lvalue*)))
+		       (lvalue-backward-links lvalue))))
 	    lvalues)
   ;; b. Remove nop nodes
   (transitive-closure false delete-if-nop! lvalues)
@@ -51,7 +50,7 @@ USA.
   (let loop
       ((lvalues lvalues)
        (combinations
-	(list-transform-positive applications application/combination?)))
+	(filter application/combination? applications)))
     (let ((unknown-lvalues (eliminate-known-nodes lvalues)))
       (transmit-values (fold-combinations combinations)
 	(lambda (any-folded? not-folded)
@@ -76,23 +75,24 @@ USA.
 #|
 (define (eliminate-known-nodes lvalues)
   (let ((knowable-nodes
-	 (list-transform-positive lvalues
-	   (lambda (lvalue)
-	     (and (not (or (lvalue-passed-in? lvalue)
-			   (and (variable? lvalue)
-				(variable-assigned? lvalue)
-				(not (memq 'CONSTANT
-					   (variable-declarations lvalue))))))
-		  (let ((values (lvalue-values lvalue)))
-		    (and (not (null? values))
-			 (null? (cdr values))
-			 (or (rvalue/procedure? (car values))
-			     (rvalue/constant? (car values))))))))))
+	 (filter (lambda (lvalue)
+		   (and (not (or (lvalue-passed-in? lvalue)
+				 (and (variable? lvalue)
+				      (variable-assigned? lvalue)
+				      (not (memq 'CONSTANT
+						 (variable-declarations
+						  lvalue))))))
+			(let ((values (lvalue-values lvalue)))
+			  (and (not (null? values))
+			       (null? (cdr values))
+			       (or (rvalue/procedure? (car values))
+				   (rvalue/constant? (car values)))))))
+		 lvalues)))
     (with-new-lvalue-marks
      (lambda ()
        (for-each lvalue-mark! knowable-nodes)
        (transitive-closure false delete-if-known! knowable-nodes))))
-  (list-transform-negative lvalues lvalue-known-value))
+  (remove lvalue-known-value lvalues))
 
 (define (delete-if-known! lvalue)
   (if (and (not (lvalue-known-value lvalue))
@@ -106,22 +106,22 @@ USA.
 |#
 
 (define (eliminate-known-nodes lvalues)
-  (list-transform-negative lvalues
-    (lambda (lvalue)
-      (and (not (or (lvalue-passed-in? lvalue)
-		    (and (variable? lvalue)
-			 (variable-assigned? lvalue)
-			 (not (memq 'CONSTANT
-				    (variable-declarations lvalue))))))
-	   (let ((values (lvalue-values lvalue)))
-	     (and (not (null? values))
-		  (null? (cdr values))
-		  (let ((value (car values)))
-		    (and (or (rvalue/procedure? value)
-			     (rvalue/constant? value))
-			 (begin
-			   (set-lvalue-known-value! lvalue value)
-			   true)))))))))
+  (remove (lambda (lvalue)
+	    (and (not (or (lvalue-passed-in? lvalue)
+			  (and (variable? lvalue)
+			       (variable-assigned? lvalue)
+			       (not (memq 'CONSTANT
+					  (variable-declarations lvalue))))))
+		 (let ((values (lvalue-values lvalue)))
+		   (and (not (null? values))
+			(null? (cdr values))
+			(let ((value (car values)))
+			  (and (or (rvalue/procedure? value)
+				   (rvalue/constant? value))
+			       (begin
+				 (set-lvalue-known-value! lvalue value)
+				 true)))))))
+	  lvalues))
 
 #|
 (define (fold-combinations combinations)

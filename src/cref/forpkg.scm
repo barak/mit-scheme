@@ -51,9 +51,8 @@ USA.
 	(output? #f))
     (let ((free-references
 	   (append-map! (lambda (package)
-			  (delete-matching-items
-			      (package/references package)
-			    reference/binding))
+			  (remove reference/binding
+				  (package/references package)))
 			packages)))
       (if (pair? free-references)
 	  (begin
@@ -139,14 +138,14 @@ USA.
 
 (define (get-value-cells/unusual packages)
   (receive (unlinked linked) (get-value-cells packages)
-    (values (delete-matching-items linked
-	      (lambda (value-cell)
-		(pair? (value-cell/expressions value-cell))))
-	    (keep-matching-items (append unlinked linked)
-	      (lambda (value-cell)
-		(let ((expressions (value-cell/expressions value-cell)))
-		  (and (pair? expressions)
-		       (pair? (cdr expressions)))))))))
+    (values (remove (lambda (value-cell)
+		      (pair? (value-cell/expressions value-cell)))
+		    linked)
+	    (filter (lambda (value-cell)
+		      (let ((expressions (value-cell/expressions value-cell)))
+			(and (pair? expressions)
+			     (pair? (cdr expressions)))))
+		    (append unlinked linked)))))
 
 (define (get-value-cells packages)
   (let ((unlinked '())

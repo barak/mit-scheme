@@ -70,9 +70,9 @@ USA.
 			(make-root-top-level-environment))))))))
 
 (define (difference items items*)
-  (list-transform-negative items
-    (lambda (item)
-      (memq item items*))))
+  (remove (lambda (item)
+	    (memq item items*))
+	  items))
 
 (define (environment-that-binds environment name)
   (let loop ((environment environment))
@@ -169,12 +169,13 @@ USA.
 		     (scode-access-name expression)))
 
 (define (rewrite/combination expression environment bound-names)
-  (make-scode-combination (rewrite/expression (scode-combination-operator expression)
-					      environment
-					      bound-names)
-			  (rewrite/expressions (scode-combination-operands expression)
-					       environment
-					       bound-names)))
+  (make-scode-combination
+   (rewrite/expression (scode-combination-operator expression)
+		       environment
+		       bound-names)
+   (rewrite/expressions (scode-combination-operands expression)
+			environment
+			bound-names)))
 
 (define (rewrite/comment expression environment bound-names)
   (make-scode-comment (scode-comment-text expression)
@@ -183,15 +184,16 @@ USA.
 					  bound-names)))
 
 (define (rewrite/conditional expression environment bound-names)
-  (make-scode-conditional (rewrite/expression (scode-conditional-predicate expression)
-					      environment
-					      bound-names)
-			  (rewrite/expression (scode-conditional-consequent expression)
-					      environment
-					      bound-names)
-			  (rewrite/expression (scode-conditional-alternative expression)
-					      environment
-					      bound-names)))
+  (make-scode-conditional
+   (rewrite/expression (scode-conditional-predicate expression)
+		       environment
+		       bound-names)
+   (rewrite/expression (scode-conditional-consequent expression)
+		       environment
+		       bound-names)
+   (rewrite/expression (scode-conditional-alternative expression)
+		       environment
+		       bound-names)))
 
 (define (rewrite/delay expression environment bound-names)
   (make-scode-delay (rewrite/expression (scode-delay-expression expression)
@@ -199,12 +201,13 @@ USA.
 					bound-names)))
 
 (define (rewrite/disjunction expression environment bound-names)
-  (make-scode-disjunction (rewrite/expression (scode-disjunction-predicate expression)
-					      environment
-					      bound-names)
-			  (rewrite/expression (scode-disjunction-alternative expression)
-					      environment
-					      bound-names)))
+  (make-scode-disjunction
+   (rewrite/expression (scode-disjunction-predicate expression)
+		       environment
+		       bound-names)
+   (rewrite/expression (scode-disjunction-alternative expression)
+		       environment
+		       bound-names)))
 
 (define (rewrite/sequence expression environment bound-names)
   (make-scode-sequence (rewrite/expressions (scode-sequence-actions expression)

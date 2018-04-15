@@ -97,8 +97,8 @@ USA.
 		    (add-pblock-to-classes! pblock-classes bblock)))
 	      (rgraph-bblocks rgraph))
     (let ((singleton? (lambda (x) (null? (cdr x)))))
-      (append! (list-transform-negative (cdr sblock-classes) singleton?)
-	       (list-transform-negative (cdr pblock-classes) singleton?)))))
+      (append! (remove singleton? (cdr sblock-classes))
+	       (remove singleton? (cdr pblock-classes))))))
 
 (define (add-sblock-to-classes! classes sblock)
   (let ((next (snode-next sblock)))

@@ -58,6 +58,6 @@ USA.
 (define *current-rgraph*)
 
 (define (rgraph-initial-edges rgraph)
-  (list-transform-positive (rgraph-entry-edges rgraph)
-    (lambda (edge)
-      (node-previous=0? (edge-right-node edge)))))
+  (filter (lambda (edge)
+	    (node-previous=0? (edge-right-node edge)))
+	  (rgraph-entry-edges rgraph)))

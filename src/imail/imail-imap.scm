@@ -1401,9 +1401,9 @@ USA.
 	       #t)))))
 
 (define (select-uncached-keywords message keywords)
-  (delete-matching-items keywords
-    (lambda (keyword)
-      (imap-message-keyword-cached? message keyword))))
+  (remove (lambda (keyword)
+	    (imap-message-keyword-cached? message keyword))
+	  keywords))
 
 ;;;; MIME support
 
@@ -1861,9 +1861,9 @@ USA.
 					'())))))
 		      keywords)))
 	    (let ((uncached
-		   (list-transform-positive alist
-		     (lambda (entry)
-		       (null? (cdr entry))))))
+		   (filter (lambda (entry)
+			     (null? (cdr entry)))
+			   alist)))
 	      (if (pair? uncached)
 		  (let ((response
 			 (fetch-message-items-1 message

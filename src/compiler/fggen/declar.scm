@@ -121,10 +121,9 @@ USA.
     (cond ((eq? specification 'BOUND) (block-bound-variables block))
 	  ((eq? specification 'FREE) (block-free-variables block))
 	  ((eq? specification 'ASSIGNED)
-	   (list-transform-positive
-	       (append (block-bound-variables block)
-		       (block-free-variables block))
-	     variable-assigned?))
+	   (filter variable-assigned?
+		   (append (block-bound-variables block)
+			   (block-free-variables block))))
 	  ((eq? specification 'NONE) '())
 	  ((eq? specification 'ALL)
 	   (append (block-bound-variables block)

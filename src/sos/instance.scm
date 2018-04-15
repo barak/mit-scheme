@@ -306,15 +306,15 @@ USA.
 
 (define (make-initialization class arg-slots)
   (let ((if-slots
-	 (list-transform-positive (class-slots class)
-	   (lambda (slot)
-	     (and (slot-initializer slot)
-		  (not (memq slot arg-slots))))))
+	 (filter (lambda (slot)
+		   (and (slot-initializer slot)
+			(not (memq slot arg-slots))))
+		 (class-slots class)))
 	(iv-slots
-	 (list-transform-positive (class-slots class)
-	   (lambda (slot)
-	     (and (slot-initial-value? slot)
-		  (not (memq slot arg-slots)))))))
+	 (filter (lambda (slot)
+		   (and (slot-initial-value? slot)
+			(not (memq slot arg-slots))))
+		 (class-slots class))))
     (let ((if-n (length if-slots))
 	  (iv-n (length iv-slots))
 	  (if-indexes (map slot-index if-slots))

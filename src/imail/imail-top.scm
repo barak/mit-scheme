@@ -1019,10 +1019,9 @@ With prefix argument, prompt even when point is on an attachment."
 		(map (lambda (i.m)
 		       (cons (mime-attachment-name (car i.m) #t)
 			     i.m))
-		     (list-transform-positive
-			 (buffer-mime-info (mark-buffer mark))
-		       (lambda (i.m)
-			 (predicate (car i.m))))))))
+		     (filter (lambda (i.m)
+			       (predicate (car i.m)))
+			     (buffer-mime-info (mark-buffer mark)))))))
 	  (if (pair? alist)
 	      (if (or (pair? (cdr alist)) always-prompt?)
 		  (prompt-for-alist-value
@@ -1269,9 +1268,9 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 	       `(("Resent-Bcc" ,(mail-from-string buffer)))
 	       '())
 	 ,@(map header-field->mail-header
-		(list-transform-negative (message-header-fields message)
-		  (lambda (header)
-		    (string-ci=? (header-field-name header) "sender")))))
+		(remove (lambda (header)
+			  (string-ci=? (header-field-name header) "sender"))
+			(message-header-fields message))))
        #f
        (lambda (mail-buffer)
 	 (initialize-imail-mail-buffer mail-buffer)
@@ -2295,11 +2294,12 @@ WARNING: With a prefix argument, this command may take a very long
 	 (let ((mime-headers
 		(lambda ()
 		  (if keep-mime?
-		      (list-transform-positive headers
-			(lambda (header)
-			  (re-string-match "^\\(mime-version$\\|content-\\)"
-					   (header-field-name header)
-					   #t)))
+		      (filter (lambda (header)
+				(re-string-match
+				 "^\\(mime-version$\\|content-\\)"
+				 (header-field-name header)
+				 #t))
+			      headers)
 		      '()))))
 	   (cond ((ref-variable imail-kept-headers context)
 		  => (lambda (regexps)
@@ -2307,29 +2307,28 @@ WARNING: With a prefix argument, this command may take a very long
 			(append-map*!
 			 (mime-headers)
 			 (lambda (regexp)
-			   (list-transform-positive headers
-			     (lambda (header)
-			       (re-string-match regexp
-						(header-field-name header)
-						#t))))
+			   (filter (lambda (header)
+				     (re-string-match regexp
+						      (header-field-name header)
+						      #t))
+				   headers))
 			 regexps)
 			(lambda (a b) (eq? a b)))))
 		 ((ref-variable imail-ignored-headers context)
 		  => (lambda (regexp)
 		       (remove-duplicates!
 			(append!
-			 (list-transform-negative headers
-			   (lambda (header)
-			     (re-string-match regexp
-					      (header-field-name header)
-					      #t)))
+			 (remove (lambda (header)
+				   (re-string-match regexp
+						    (header-field-name header)
+						    #t))
+				 headers)
 			 (mime-headers))
 			(lambda (a b) (eq? a b)))))
 		 (else headers))))
 	(filter (ref-variable imail-message-filter context)))
     (if filter
-	(map (lambda (n.v)
-	       (make-header-field (car n.v) (cdr n.v)))
+	(map (lambda (n.v) (make-header-field (car n.v) (cdr n.v)))
 	     (filter (map (lambda (header)
 			    (cons (header-field-name header)
 				  (header-field-value header)))

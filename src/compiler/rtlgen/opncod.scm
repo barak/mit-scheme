@@ -295,10 +295,10 @@ USA.
 (define (open-code:with-checks combination checks non-error-cfg error-finish
 			       primitive-name expressions)
   (let ((checks
-	 (list-transform-negative checks
-	   (lambda (cfg)
-	     (or (cfg-null? cfg)
-		 (pcfg-true? cfg))))))
+	 (remove (lambda (cfg)
+		   (or (cfg-null? cfg)
+		       (pcfg-true? cfg)))
+		 checks)))
     (if (null? checks)
 	non-error-cfg
 	;; Don't generate `error-cfg' unless it is needed.  Otherwise

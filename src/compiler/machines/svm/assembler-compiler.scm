@@ -39,7 +39,7 @@ USA.
       (check-coding-types coding-types)
       (expand-implicit-coding-types coding-types)
       (let ((explicit
-	     (keep-matching-items coding-types coding-type-explicit?)))
+	     (filter coding-type-explicit? coding-types)))
 	(check-coding-types explicit)
 	(check-code-allocations explicit)
 	(for-each (lambda (coding-type)
@@ -195,9 +195,9 @@ USA.
 	      nodes)
     ;; Check for single root.
     (let ((roots
-	   (keep-matching-items nodes
-	     (lambda (node)
-	       (null? (vector-ref node 2))))))
+	   (filter (lambda (node)
+		     (null? (vector-ref node 2)))
+		   nodes)))
       (if (not (pair? roots))
 	  (error "No roots in coding-type graph."))
       (if (pair? (cdr roots))
@@ -400,8 +400,7 @@ USA.
 	(assign-defn-codes type)))))
 
 (define (independent-coding-type? type coding-types)
-  (let ((implicit-types
-	 (delete-matching-items coding-types coding-type-explicit?)))
+  (let ((implicit-types (remove coding-type-explicit? coding-types)))
     (every (lambda (defn)
 	     (not (any (lambda (pv)
 			 (find-coding-type (pvar-type pv) implicit-types #f))
@@ -533,8 +532,8 @@ USA.
 		    (let ((defn (car defns)))
 		      (set-defn-name!
 		       defn
-		       (delete-matching-items! (defn-name defn)
-			 deleteable-name-item?)))))
+		       (remove! deleteable-name-item?
+				(defn-name defn))))))
 	      (group-defns-by-prefix defns))
     ;; Join name items into hyphen-separated symbols.
     (for-each (lambda (defn)
@@ -791,8 +790,8 @@ USA.
 			(write-string ", " port)
 			(write-c-name (defn-name defn) #f port)
 			(write-string ")" port))
-		      (keep-matching-items (coding-type-defns coding-type)
-			defn-has-code?)
+		      (filter defn-has-code?
+			      (coding-type-defns coding-type))
 		      port))
 
 (define (write-c-opcode+decoder prefix defn port)

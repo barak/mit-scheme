@@ -73,8 +73,8 @@ parameters in registers.
 (define (parameter-analysis procedure)
   (fluid-let ((*inlined-procedures* '()))
     (let ((interesting-parameters
-	   (list-transform-positive (procedure-required procedure)
-	     interesting-variable?)))
+	   (filter interesting-variable?
+		   (procedure-required procedure))))
       (if interesting-parameters
 	  (let ((registerizable-parameters
 		 (with-new-node-marks
@@ -214,13 +214,13 @@ parameters in registers.
 	 (interesting-variable? lvalue)
 	 (list lvalue)))
    (map->eq-set (lambda (rvalue) (reference-lvalue rvalue))
-		(list-transform-positive rvalues
-		  (lambda (rvalue)
-		    (and (rvalue/reference? rvalue)
-			 (let ((lvalue (reference-lvalue rvalue)))
-			   (and lvalue
-				(lvalue/variable? lvalue)
-				(interesting-variable? lvalue)))))))))
+		(filter (lambda (rvalue)
+			  (and (rvalue/reference? rvalue)
+			       (let ((lvalue (reference-lvalue rvalue)))
+				 (and lvalue
+				      (lvalue/variable? lvalue)
+				      (interesting-variable? lvalue)))))
+			rvalues))))
 
 (define (complex-parallel-constraints subproblems vars-referenced-later)
   (with-values (lambda () (discriminate-items subproblems subproblem-simple?))
@@ -256,10 +256,10 @@ parameters in registers.
 
 (define (bad-free-variables procedure)
   (append-map block-variables-nontransitively-free
-	      (list-transform-negative
-		  (cdr (linearize-block-tree (procedure-block procedure)))
-		(lambda (block)
-		  (memq (block-procedure block) *inlined-procedures*)))))
+	      (remove (lambda (block)
+			(memq (block-procedure block) *inlined-procedures*))
+		      (cdr (linearize-block-tree
+			    (procedure-block procedure))))))
 
 ;;; Since the order of this linearization is not important we could
 ;;; make this routine more efficient. I'm not sure that it is worth
@@ -277,7 +277,7 @@ parameters in registers.
   ;;; variables that will be in cells are eliminated from
   ;;; being put in registers because I couldn't figure out
   ;;; how to get the right code generated for them. Oh well,
-  ;;; sigh! 
+  ;;; sigh!
   (not (or (variable-assigned? variable)
 	   (variable-stack-overwrite-target? variable)
 	   (variable/continuation-variable? variable)

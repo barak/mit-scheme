@@ -66,9 +66,7 @@ USA.
 
 (define (walk-procedure proc)
   (define (default)
-    (list-transform-negative
-	(block-free-variables (procedure-block proc))
-      lvalue-integrated?))
+    (remove lvalue-integrated? (block-free-variables (procedure-block proc))))
 
   (define (closure)
     (eq-set-union

@@ -929,116 +929,30 @@ USA.
 	  #f))))
 
 (define (count-matching-items items predicate)
-  (do ((items* items (cdr items*))
-       (n 0 (if (predicate (car items*)) (fix:+ n 1) n)))
-      ((not (pair? items*))
-       (if (not (null? items*))
-	   (error:not-a list? items 'count-matching-items))
-       n)))
+  (count predicate items))
 
 (define (count-non-matching-items items predicate)
-  (do ((items* items (cdr items*))
-       (n 0 (if (predicate (car items*)) n (fix:+ n 1))))
-      ((not (pair? items*))
-       (if (not (null? items*))
-	   (error:not-a list? items 'count-non-matching-items))
-       n)))
+  (count (lambda (item)
+	   (not (predicate item)))
+	 items))
 
 (define (keep-matching-items items predicate)
-  (let ((lose (lambda () (error:not-a list? items 'keep-matching-items))))
-    (cond ((pair? items)
-	   (let ((head (cons (car items) '())))
-	     (let loop ((items* (cdr items)) (previous head))
-	       (cond ((pair? items*)
-		      (if (predicate (car items*))
-			  (let ((new (cons (car items*) '())))
-			    (set-cdr! previous new)
-			    (loop (cdr items*) new))
-			  (loop (cdr items*) previous)))
-		     ((not (null? items*)) (lose))))
-	     (if (predicate (car items))
-		 head
-		 (cdr head))))
-	  ((null? items) items)
-	  (else (lose)))))
+  (filter predicate items))
 
 (define (delete-matching-items items predicate)
-  (let ((lose (lambda () (error:not-a list? items 'delete-matching-items))))
-    (cond ((pair? items)
-	   (let ((head (cons (car items) '())))
-	     (let loop ((items* (cdr items)) (previous head))
-	       (cond ((pair? items*)
-		      (if (predicate (car items*))
-			  (loop (cdr items*) previous)
-			  (let ((new (cons (car items*) '())))
-			    (set-cdr! previous new)
-			    (loop (cdr items*) new))))
-		     ((not (null? items*)) (lose))))
-	     (if (predicate (car items))
-		 (cdr head)
-		 head)))
-	  ((null? items) items)
-	  (else (lose)))))
-
+  (remove predicate items))
+
 (define (delete-matching-items! items predicate)
-  (letrec
-      ((trim-initial-segment
-	(lambda (items*)
-	  (if (pair? items*)
-	      (if (predicate (car items*))
-		  (trim-initial-segment (cdr items*))
-		  (begin
-		    (locate-initial-segment items* (cdr items*))
-		    items*))
-	      (begin
-		(if (not (null? items*))
-		    (lose))
-		'()))))
-       (locate-initial-segment
-	(lambda (last this)
-	  (if (pair? this)
-	      (if (predicate (car this))
-		  (set-cdr! last (trim-initial-segment (cdr this)))
-		  (locate-initial-segment this (cdr this)))
-	      (if (not (null? this))
-		  (lose)))))
-       (lose
-	(lambda ()
-	  (error:not-a list? items 'delete-matching-items!))))
-    (trim-initial-segment items)))
+  (remove! predicate items))
 
 (define (keep-matching-items! items predicate)
-  (letrec
-      ((trim-initial-segment
-	(lambda (items*)
-	  (if (pair? items*)
-	      (if (predicate (car items*))
-		  (begin
-		    (locate-initial-segment items* (cdr items*))
-		    items*)
-		  (trim-initial-segment (cdr items*)))
-	      (begin
-		(if (not (null? items*))
-		    (lose))
-		'()))))
-       (locate-initial-segment
-	(lambda (last this)
-	  (if (pair? this)
-	      (if (predicate (car this))
-		  (locate-initial-segment this (cdr this))
-		  (set-cdr! last (trim-initial-segment (cdr this))))
-	      (if (not (null? this))
-		  (lose)))))
-       (lose
-	(lambda ()
-	  (error:not-a list? items 'keep-matching-items!))))
-    (trim-initial-segment items)))
+  (filter! predicate items))
 
 (define ((list-deletor predicate) items)
-  (delete-matching-items items predicate))
+  (remove predicate items))
 
 (define ((list-deletor! predicate) items)
-  (delete-matching-items! items predicate))
+  (remove! predicate items))
 
 ;;;; Membership lists
 

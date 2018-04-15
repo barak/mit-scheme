@@ -47,17 +47,17 @@ USA.
 			(package-ancestry<? (car a) (car b))))))
 	  (list->vector
 	   (map package-load->external
-		(list-transform-positive (pmodel/loads pmodel)
-		  (lambda (load)
-		    (or (pair? (package-load/file-cases load))
-			(pair? (package-load/initializations load))
-			(pair? (package-load/finalizations load)))))))))
+		(filter (lambda (load)
+			  (or (pair? (package-load/file-cases load))
+			      (pair? (package-load/initializations load))
+			      (pair? (package-load/finalizations load))))
+			(pmodel/loads pmodel))))))
 
 (define (new-extension-packages pmodel)
-  (list-transform-positive (pmodel/extra-packages pmodel)
-    (lambda (package)
-      (or (any link/new? (package/links package))
-	  (any new-internal-binding? (package/bindings package))))))
+  (filter (lambda (package)
+	    (or (any link/new? (package/links package))
+		(any new-internal-binding? (package/bindings package))))
+	  (pmodel/extra-packages pmodel)))
 
 (define (new-internal-binding? binding)
   (and (binding/new? binding)
@@ -93,8 +93,8 @@ USA.
 		      '())))
 	      (list->vector
 	       (map binding/name
-		    (list-transform-positive (package/bindings package)
-		      new-internal-binding?)))
+		    (filter new-internal-binding?
+			    (package/bindings package))))
 	      (list->vector
 	       (map (lambda (link)
 		      (let ((source (link/source link))

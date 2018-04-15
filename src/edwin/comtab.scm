@@ -67,17 +67,18 @@ USA.
 				(set-comtab-alist! comtab alist)))
 			     (let* ((vector (make-vector 256 false))
 				    (alist
-				     (list-transform-negative alist
-				       (lambda (entry)
-					 (let ((key (car entry)))
-					   (and (char? key)
-						(< (char->integer key) 256)
-						(begin
-						  (vector-set!
-						   vector
-						   (char->integer key)
-						   (cdr entry))
-						  true)))))))
+				     (remove (lambda (entry)
+					       (let ((key (car entry)))
+						 (and (char? key)
+						      (< (char->integer key)
+							 256)
+						      (begin
+							(vector-set!
+							 vector
+							 (char->integer key)
+							 (cdr entry))
+							true))))
+					     alist)))
 			       (without-interrupts
 				(lambda ()
 				  (set-comtab-vector! comtab vector)

@@ -51,14 +51,15 @@ USA.
       ;; Keep only the aliases with the maximum weights.  Furthermore,
       ;; keep only one alias of a given type.
       (vector-set! entry 2
-		   (list-transform-positive alias-weights
-		     (let ((types '()))
-		       (lambda (alias-weight)
-			 (and (= (cdr alias-weight) maximum)
-			      (let ((type (register-type (car alias-weight))))
-				(and (not (memq type types))
-				     (begin (set! types (cons type types))
-					    true)))))))))))
+		   (filter (let ((types '()))
+			     (lambda (alias-weight)
+			       (and (= (cdr alias-weight) maximum)
+				    (let ((type
+					   (register-type (car alias-weight))))
+				      (and (not (memq type types))
+					   (begin (set! types (cons type types))
+						  true))))))
+			   alias-weights)))))
 
 (define (eliminate-conflicting-aliases! entries)
   (for-each (lambda (conflicting-alias)
@@ -94,9 +95,9 @@ USA.
 			(cons (list (car alias-weight) element) alist)))))
 	  (vector-ref entry 2))))
      entries)
-    (list-transform-negative alist
-      (lambda (alist-entry)
-	(null? (cddr alist-entry))))))
+    (remove (lambda (alist-entry)
+	      (null? (cddr alist-entry)))
+	    alist)))
 
 (define (map->weighted-entries register-map weight)
   (map (lambda (entry)

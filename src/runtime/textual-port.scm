@@ -157,18 +157,18 @@ USA.
   (parse-operations-list-1
    (if parent-type
        (append operations
-	       (delete-matching-items (textual-port-type-operations parent-type)
-		 (let ((excluded
-			(append
-			 (if (assq 'READ-CHAR operations)
-			     standard-input-operation-names
-			     '())
-			 (if (assq 'WRITE-CHAR operations)
-			     standard-output-operation-names
-			     '()))))
-		   (lambda (p)
-		     (or (assq (car p) operations)
-			 (memq (car p) excluded))))))
+	       (remove (let ((excluded
+			      (append
+			       (if (assq 'READ-CHAR operations)
+				   standard-input-operation-names
+				   '())
+			       (if (assq 'WRITE-CHAR operations)
+				   standard-output-operation-names
+				   '()))))
+			 (lambda (p)
+			   (or (assq (car p) operations)
+			       (memq (car p) excluded))))
+		       (textual-port-type-operations parent-type)))
        operations)))
 
 (define (parse-operations-list-1 operations)

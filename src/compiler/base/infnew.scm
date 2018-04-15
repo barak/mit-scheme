@@ -333,10 +333,10 @@ USA.
   (if (null? (cdr names))
       (car names)
       (let ((distinguished
-	     (list-transform-negative names
-	       (lambda (name)
-		 (or (standard-name? name "label")
-		     (standard-name? name "end-label"))))))
+	     (remove (lambda (name)
+		       (or (standard-name? name "label")
+			   (standard-name? name "end-label")))
+		     names)))
 	(cond ((null? distinguished)
 	       (min-suffix names))
 	      ((null? (cdr distinguished))

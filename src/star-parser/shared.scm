@@ -437,9 +437,9 @@ USA.
 		 ((LAMBDA)
 		  `(LAMBDA ,(cadr expression)
 		     ,(loop (caddr expression)
-			    (delete-matching-items substitutions
-			      (lambda (s)
-				(memq (car s) (cadr expression)))))))
+			    (remove (lambda (s)
+				      (memq (car s) (cadr expression)))
+				    substitutions))))
 		 ((LET)
 		  `(LET ,(cadr expression)
 		     ,(map (lambda (binding)
@@ -447,10 +447,10 @@ USA.
 			       ,(loop (cadr binding) substitutions)))
 			   (caddr expression))
 		     ,(loop (cadddr expression)
-			    (delete-matching-items substitutions
-			      (lambda (s)
-				(or (eq? (car s) (cadr expression))
-				    (assq (car s) (caddr expression))))))))
+			    (remove (lambda (s)
+				      (or (eq? (car s) (cadr expression))
+					  (assq (car s) (caddr expression))))
+				    substitutions))))
 		 ((PROTECT)
 		  expression)
 		 (else
@@ -637,18 +637,18 @@ USA.
 	     (case (car expression)
 	       ((LAMBDA)
 		(loop (caddr expression)
-		      (delete-matching-items alist
-			(lambda (entry)
-			  (memq (car entry) (cadr expression))))))
+		      (remove (lambda (entry)
+				(memq (car entry) (cadr expression)))
+			      alist)))
 	       ((LET)
 		(for-each (lambda (binding)
 			    (loop (cadr binding) alist))
 			  (caddr expression))
 		(loop (cadddr expression)
-		      (delete-matching-items alist
-			(lambda (entry)
-			  (or (eq? (car entry) (cadr expression))
-			      (assq (car entry) (caddr expression)))))))
+		      (remove (lambda (entry)
+				(or (eq? (car entry) (cadr expression))
+				    (assq (car entry) (caddr expression))))
+			      alist)))
 	       ((PROTECT)
 		unspecific)
 	       (else
@@ -772,9 +772,9 @@ USA.
 (define (%drop-pointer-refs identifiers pointers)
   (cons #f
 	(map (lambda (ids)
-	       (delete-matching-items ids
-		 (lambda (id)
-		   (memq id identifiers))))
+	       (remove (lambda (id)
+			 (memq id identifiers))
+		       ids))
 	     (cdr pointers))))
 
 (define (%current-pointers pointers)

@@ -307,10 +307,9 @@ USA.
 			   (map (lambda (block)
 				  (block-procedure
 				   (car (block-children block))))
-				(list-transform-negative
-				    (block-grafted-blocks block*)
-				  (lambda (block)
-				    (zero? (block-entry-number block))))))))
+				(remove (lambda (block)
+					  (zero? (block-entry-number block)))
+					(block-grafted-blocks block*))))))
 		     ;; Official entry point.
 		     (cons procedure children)))
 		  (entries

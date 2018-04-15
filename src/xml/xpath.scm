@@ -139,10 +139,10 @@ USA.
 		(lambda (item)
 		  (or (xml-comment? item)
 		      (xml-processing-instructions? item)))))
-	   (append! (keep-matching-items (xml-document-misc-1 doc) p)
-		    (keep-matching-items (xml-document-misc-2 doc) p)
+	   (append! (filter p (xml-document-misc-1 doc))
+		    (filter p (xml-document-misc-2 doc))
 		    (list (xml-document-root doc))
-		    (keep-matching-items (xml-document-misc-3 doc) p)))
+		    (filter p (xml-document-misc-3 doc))))
 	 node)
 	node))))
 

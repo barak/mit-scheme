@@ -171,11 +171,10 @@ USA.
 	      (closure-procedure-needs-operator? procedure))
 	 (list block)
 	 '())
-     (list-transform-negative
-	 (cdr (procedure-required procedure))
-       (lambda (variable)
-	 (or (lvalue-integrated? variable)
-	     (variable-register variable))))
+     (remove (lambda (variable)
+	       (or (lvalue-integrated? variable)
+		   (variable-register variable)))
+	     (cdr (procedure-required procedure)))
      (procedure-optional procedure)
      (if (procedure-rest procedure) (list (procedure-rest procedure)) '())
      (if (and (not (procedure/closure? procedure))
@@ -187,9 +186,9 @@ USA.
   (let ((block (and (memq overwritten-block targets) overwritten-block)))
     (if (not block)
 	(lambda (subproblem)
-	  (list-transform-positive (subproblem-free-variables subproblem)
-	    (lambda (variable)
-	      (memq variable targets))))
+	  (filter (lambda (variable)
+		    (memq variable targets))
+		  (subproblem-free-variables subproblem)))
 	(lambda (subproblem)
 	  (let loop
 	      ((variables (subproblem-free-variables subproblem))
@@ -257,9 +256,8 @@ USA.
 		(add-reference-context/adjacent-parents! context blocks)))))
       (values node
 	      (map node-value
-		   (list-transform-negative
-		       (append terminal-nodes reordered-non-terms)
-		     node/noop?)))))
+		   (remove node/noop?
+			   (append terminal-nodes reordered-non-terms))))))
 
 (define (generate-assignments nodes rest)
   (cond ((null? nodes)

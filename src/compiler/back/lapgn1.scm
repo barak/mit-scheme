@@ -68,7 +68,7 @@ USA.
 					(vector-ref remote-link 0)))
 			  unspecific)
 			remote-links))
-	    
+
 	  (with-values prepare-constants-block
 	    (or process-constants-block
 		(lambda (constants-code environment-label free-ref-label
@@ -139,9 +139,7 @@ USA.
 			  (or (assq next *pending-bblocks*)
 			      (let ((entry
 				     (cons next
-					   (list-transform-positive
-					       previous
-					     edge-left-node))))
+					   (filter edge-left-node previous))))
 				(set! *pending-bblocks*
 				      (cons entry
 					    *pending-bblocks*))
@@ -194,9 +192,7 @@ USA.
 		   (loop)))))))
 
 (define (adjust-maps-at-merge! bblock)
-  (let ((edges
-	 (list-transform-positive (node-previous-edges bblock)
-	   edge-left-node)))
+  (let ((edges (filter edge-left-node (node-previous-edges bblock))))
     (let ((maps
 	   (map
 	    (let ((live-registers (bblock-live-at-entry bblock)))

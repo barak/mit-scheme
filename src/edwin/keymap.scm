@@ -152,9 +152,9 @@ Previous contents of that buffer are killed first."
   (map (lambda (element)
 	 (cons (xkey->name (car element))
 	       (command-name-string (cdr element))))
-       (sort (list-transform-negative elements
-	       (lambda (element)
-		 (button? (car element))))
+       (sort (remove (lambda (element)
+		       (button? (car element)))
+		     elements)
 	     (lambda (a b) (xkey<? (car a) (car b))))))
 
 (define (sort-by-prefix elements)

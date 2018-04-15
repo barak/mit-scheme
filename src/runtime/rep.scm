@@ -653,7 +653,7 @@ USA.
     (if (pair? restarts)
 	(let ((rest
 	       (if (cmdl-abort-restart? (car restarts))
-		   (list-transform-positive (cdr restarts) cmdl-abort-restart?)
+		   (filter cmdl-abort-restart? (cdr restarts))
 		   (loop (cdr restarts)))))
 	  (if (restart/interactor (car restarts))
 	      (cons (car restarts) rest)

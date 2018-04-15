@@ -165,13 +165,12 @@ USA.
 (define (try-computed-emps generic classes methods)
   (let loop
       ((generators
-	(sort-methods (list-transform-positive
-			  (append-map enumerate-union-specializers
-				      (list-transform-positive
-					  (generic-procedure-methods generic)
-					computed-emp?))
-			(lambda (method)
-			  (method-applicable? method classes)))
+	(sort-methods (filter (lambda (method)
+				(method-applicable? method classes))
+			      (append-map enumerate-union-specializers
+					  (filter computed-emp?
+						  (generic-procedure-methods
+						   generic))))
 		      classes)))
     (and (not (null? generators))
 	 (let ((result (apply (method-procedure (car generators)) classes)))
@@ -196,11 +195,11 @@ USA.
 
 (define (compute-methods-1 generic classes)
   (let ((methods
-	 (list-transform-positive (generic-procedure-methods generic)
-	   (lambda (method)
-	     (and (not (computed-emp? method))
-		  (method-applicable? method classes))))))
-    (let ((results (list-transform-negative methods computed-method?)))
+	 (filter (lambda (method)
+		   (and (not (computed-emp? method))
+			(method-applicable? method classes)))
+		 (generic-procedure-methods generic))))
+    (let ((results (remove computed-method? methods)))
       (for-each
        (lambda (method)
 	 (let ((result (apply (method-procedure method) classes)))
@@ -224,7 +223,7 @@ USA.
 				     result method)))
 			     results))
 		 unspecific))))
-       (list-transform-positive methods computed-method?))
+       (filter computed-method? methods))
       results)))
 
 (define (method-applicable? method classes)

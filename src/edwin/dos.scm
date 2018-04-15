@@ -68,12 +68,13 @@ USA.
        (let ((entries (directory-read file #f #t)))
 	 (if all-files?
 	     entries
-	     (list-transform-positive entries
-	       (let ((mask
-		      (fix:or nt-file-mode/hidden nt-file-mode/system)))
-		 (lambda (entry)
-		   (fix:= (fix:and (file-attributes/modes (cdr entry)) mask)
-			  0))))))))
+	     (filter (let ((mask
+			    (fix:or nt-file-mode/hidden nt-file-mode/system)))
+		       (lambda (entry)
+			 (fix:= (fix:and (file-attributes/modes (cdr entry))
+					 mask)
+				0)))
+		     entries)))))
 
 ;;;; Win32 Clipboard Interface
 

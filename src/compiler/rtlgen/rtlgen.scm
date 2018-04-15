@@ -50,9 +50,9 @@ USA.
        (let ((expression (generate/expression expression)))
 	 (queue-map!/unsafe *generation-queue* (lambda (thunk) (thunk)))
 	 (let ((rgraphs
-		(list-transform-positive (reverse! *rgraphs*)
-		  (lambda (rgraph)
-		    (not (null? (rgraph-entry-edges rgraph)))))))
+		(filter (lambda (rgraph)
+			  (not (null? (rgraph-entry-edges rgraph))))
+			(reverse! *rgraphs*))))
 	   (for-each (lambda (rgraph)
 		       (rgraph/compress! rgraph)
 		       (rgraph/postcompress! rgraph))

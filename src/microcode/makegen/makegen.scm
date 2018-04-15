@@ -40,10 +40,10 @@ USA.
 	 (map (lambda (pathname)
 		(cons (pathname-name pathname)
 		      (read-file pathname)))
-	      (keep-matching-items (directory-read "makegen/")
-		(lambda (pathname)
-		  (re-string-match "^files-.+\\.scm$"
-				   (file-namestring pathname)))))))
+	      (filter (lambda (pathname)
+			(re-string-match "^files-.+\\.scm$"
+					 (file-namestring pathname)))
+		      (directory-read "makegen/")))))
     (call-with-input-file "makegen/Makefile.in.in"
       (lambda (input)
 	(call-with-output-file "Makefile.in"
@@ -121,10 +121,10 @@ USA.
        (append-map (lambda (spec)
 		     (let ((dir (pathname-as-directory (car spec))))
 		       (if (file-directory? dir)
-			   (delete-matching-items
-			       (directory-read (merge-pathnames "*.scm" dir))
-			     (lambda (path)
-			       (member (pathname-name path) (cdr spec))))
+			   (remove (lambda (path)
+				     (member (pathname-name path) (cdr spec)))
+				   (directory-read
+				    (merge-pathnames "*.scm" dir)))
 			   (begin
 			     (warn "Can't read directory:" dir)
 			     '()))))
@@ -233,5 +233,5 @@ USA.
 	(error "Missing rule target:" rule))
     (cons* (string-head (car items) (- (string-length (car items)) 1))
 	   (cadr items)
-	   (sort (delete-matching-items (cddr items) pathname-absolute?)
+	   (sort (remove pathname-absolute? (cddr items))
 		 string<?))))

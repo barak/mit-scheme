@@ -52,15 +52,16 @@ USA.
 	       (let ((output-time (file-modification-time output-file)))
 		 (if (not output-time)
 		     (list input-file)
-		     (list-transform-positive (cons input-file dependencies)
-		       (lambda (dependency)
-			 (let ((dep-time (file-modification-time dependency)))
-			   (if dep-time
-			       (> dep-time output-time)
-			       (begin
-				 (warn "Missing dependency:"
-				       (->namestring dependency))
-				 #f)))))))))
+		     (filter (lambda (dependency)
+			       (let ((dep-time
+				      (file-modification-time dependency)))
+				 (if dep-time
+				     (> dep-time output-time)
+				     (begin
+				       (warn "Missing dependency:"
+					     (->namestring dependency))
+				       #f))))
+			     (cons input-file dependencies))))))
 	  (if (pair? reasons)
 	      (begin
 		(write-notification-line
@@ -95,8 +96,7 @@ USA.
 			  (sf/default-declarations
 			   `((USUAL-INTEGRATIONS
 			      ,@compile-file:override-usual-integrations)
-			     ,@(let ((deps (keep-matching-items
-					    dependencies ext-pathname?)))
+			     ,@(let ((deps (filter ext-pathname? dependencies)))
 				 (if (null? deps)
 				     '()
 				     `((INTEGRATE-EXTERNAL ,@deps)))))))

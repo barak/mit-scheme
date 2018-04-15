@@ -33,8 +33,7 @@ USA.
   ;; Does this really have to ignore continuations?
   ;; Is this only because we implement continuations differently?
   (let ((procedures
-	 (list-transform-negative procedures&continuations
-	   procedure-continuation?)))
+	 (remove procedure-continuation? procedures&continuations)))
     (if compiler:optimize-environments?
 	(begin
 	  (for-each initialize-target-block! procedures)

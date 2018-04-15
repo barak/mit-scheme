@@ -289,8 +289,8 @@
 (define (display-profile profile output-port)
   (let ((entries (hash-table/datum-list (profile.entries profile))))
     (define (sortem entry.count)
-      (sort (delete-matching-items entries
-              (lambda (e) (zero? (entry.count e))))
+      (sort (remove (lambda (e) (zero? (entry.count e)))
+		    entries)
             (lambda (a b) (< (entry.count a) (entry.count b)))))
     (let ((sampled (sortem entry.sampled-count))
           (waiting (sortem entry.waiting-count)))

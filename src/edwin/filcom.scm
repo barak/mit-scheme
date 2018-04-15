@@ -439,13 +439,13 @@ With argument, saves all with no questions."
 (define (save-some-buffers no-confirmation? exiting?)
   (let ((buffers
 	 (let ((exiting? (and (not (default-object? exiting?)) exiting?)))
-	   (list-transform-positive (buffer-list)
-	     (lambda (buffer)
-	       (and (buffer-modified? buffer)
-		    (or (buffer-pathname buffer)
-			(and exiting?
-			     (ref-variable buffer-offer-save buffer)
-			     (> (buffer-length buffer) 0)))))))))
+	   (filter (lambda (buffer)
+		     (and (buffer-modified? buffer)
+			  (or (buffer-pathname buffer)
+			      (and exiting?
+				   (ref-variable buffer-offer-save buffer)
+				   (> (buffer-length buffer) 0)))))
+		   (buffer-list)))))
     (for-each (if (and (not (default-object? no-confirmation?))
 		       no-confirmation?)
 		  (lambda (buffer)
@@ -852,19 +852,19 @@ Prefix arg means treat the plaintext file as binary data."
 		       (lambda ()
 			 (canonicalize-filename-completions
 			  directory
-			  (list-transform-positive filenames
-			    (lambda (filename)
-			      (string-prefix? string filename))))))))))
+			  (filter (lambda (filename)
+				    (string-prefix? string filename))
+				  filenames))))))))
 	     (cond ((null? filenames)
 		    (if-not-found))
 		   ((null? (cdr filenames))
 		    (unique-case (car filenames)))
 		   (else
 		    (let ((filtered-filenames
-			   (list-transform-negative filenames
-			     (lambda (filename)
-			       (completion-ignore-filename?
-				(merge-pathnames filename directory))))))
+			   (remove (lambda (filename)
+				     (completion-ignore-filename?
+				      (merge-pathnames filename directory)))
+				   filenames)))
 		      (cond ((null? filtered-filenames)
 			     (non-unique-case filenames filenames))
 			    ((null? (cdr filtered-filenames))

@@ -86,7 +86,7 @@ USA.
   ((display-type/operation/with-interrupts-disabled display-type) thunk))
 
 (define (editor-display-types)
-  (list-transform-positive display-types display-type/available?))
+  (filter display-type/available? display-types))
 
 (define (name->display-type name)
   (let ((display-type

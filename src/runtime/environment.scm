@@ -631,10 +631,9 @@ USA.
 
 (define (stack-ccenv/bound-names environment)
   (map dbg-variable/name
-       (list-transform-positive
-	   (vector->list
-	    (dbg-block/layout-vector (stack-ccenv/block environment)))
-	 dbg-variable?)))
+       (filter dbg-variable?
+	       (vector->list
+		(dbg-block/layout-vector (stack-ccenv/block environment))))))
 
 (define (stack-ccenv/reference-type environment name)
   (dbg-variable-reference-type (stack-ccenv/block environment)
@@ -738,16 +737,16 @@ USA.
 
 (define (closure-ccenv/bound-names environment)
   (map dbg-variable/name
-       (list-transform-positive
-	   (vector->list
-	    (dbg-block/layout-vector (closure-ccenv/stack-block environment)))
-	 (lambda (variable)
-	   (and (dbg-variable? variable)
-		(or (eq? (dbg-variable/type variable) 'integrated)
-		    (vector-find-next-element
-		     (dbg-block/layout-vector
-		      (closure-ccenv/closure-block environment))
-		     variable)))))))
+       (filter (lambda (variable)
+		 (and (dbg-variable? variable)
+		      (or (eq? (dbg-variable/type variable) 'integrated)
+			  (vector-find-next-element
+			   (dbg-block/layout-vector
+			    (closure-ccenv/closure-block environment))
+			   variable))))
+	       (vector->list
+		(dbg-block/layout-vector
+		 (closure-ccenv/stack-block environment))))))
 
 (define (closure-ccenv/reference-type environment name)
   (dbg-variable-reference-type (closure-ccenv/closure-block environment)

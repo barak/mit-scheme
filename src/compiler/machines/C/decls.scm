@@ -148,14 +148,14 @@ USA.
   (for-each (lambda (node)
 	      (set-source-node/dependencies!
 	       node
-	       (list-transform-negative (source-node/backward-closure node)
-		 (lambda (node*)
-		   (memq node (source-node/backward-closure node*)))))
+	       (remove (lambda (node*)
+			 (memq node (source-node/backward-closure node*)))
+		       (source-node/backward-closure node)))
 	      (set-source-node/dependents!
 	       node
-	       (list-transform-negative (source-node/forward-closure node)
-		 (lambda (node*)
-		   (memq node (source-node/forward-closure node*))))))
+	       (remove (lambda (node*)
+			 (memq node (source-node/forward-closure node*)))
+		       (source-node/forward-closure node))))
 	    nodes))
 
 (define (compute-ranks! nodes)
@@ -314,8 +314,7 @@ USA.
      ((if compiler:enable-integration-declarations?
 	  identity-procedure
 	  (lambda (declarations)
-	    (list-transform-negative declarations
-	      integration-declaration?)))
+	    (remove integration-declaration? declarations)))
       (source-node/declarations node)))))
 
 (define (modification-time node type)

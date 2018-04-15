@@ -505,13 +505,12 @@ otherwise answer \"no\" to leave these files on your floppy.
 		(make-file-record
 		 (file-namestring pathname)
 		 (* (quotient (file-modification-time pathname) 60) 60)))
-	      (list-transform-negative (directory-read student-work-directory)
-		file-directory?)))
+	      (remove file-directory? (directory-read student-work-directory))))
 	(valid-dos-record?
 	 (lambda (record)
 	   (valid-dos-filename? (file-record/name record)))))
     (append-string "done")
-    (let ((non-dos (list-transform-negative result valid-dos-record?)))
+    (let ((non-dos (remove valid-dos-record? result)))
       (if (null? non-dos)
 	  result
 	  (begin
@@ -549,7 +548,7 @@ M-x rename-file, or use the `r' command in Dired.")
 		  (append-string
 		   "
 ----------------------------------------------------------------------")
-		  (list-transform-positive result valid-dos-record?))))))))
+		  (filter valid-dos-record? result))))))))
 
 (define-command describe-dos-filenames
   "Describe the format of DOS filenames."

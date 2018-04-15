@@ -63,12 +63,12 @@ USA.
 	     (if (and (eq? (pathname-name pattern) 'wild)
 		      (eq? (pathname-type pattern) 'wild))
 		 pathnames
-		 (list-transform-positive pathnames
-		   (lambda (instance)
-		     (and (match-component (pathname-name pattern)
-					   (pathname-name instance))
-			  (match-component (pathname-type pattern)
-					   (pathname-type instance)))))))))))
+		 (filter (lambda (instance)
+			   (and (match-component (pathname-name pattern)
+						 (pathname-name instance))
+				(match-component (pathname-type pattern)
+						 (pathname-type instance))))
+			 pathnames)))))))
 
 (define (generate-directory-pathnames pathname)
   (let ((channel (directory-channel-open (->namestring pathname))))

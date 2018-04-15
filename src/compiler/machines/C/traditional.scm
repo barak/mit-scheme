@@ -50,13 +50,13 @@ USA.
 (define (build-table nodes)
   (map cdr
        (sort (sort/enumerate
-	      (keep-matching-items
-		  (let loop ((nodes nodes) (table '()))
-		    (if (pair? nodes)
-			(loop (cdr nodes)
-			      (insert-in-table (car nodes) 0 table))
-			table))
-		cdr))
+	      (filter
+	       cdr
+	       (let loop ((nodes nodes) (table '()))
+		 (if (pair? nodes)
+		     (loop (cdr nodes)
+			   (insert-in-table (car nodes) 0 table))
+		     table))))
 	     (lambda (entry1 entry2)
 	       (let ((obj1 (cadr entry1))
 		     (obj2 (cadr entry2)))

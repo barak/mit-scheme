@@ -373,10 +373,10 @@ USA.
       tokens))
 
 (define (rfc822:strip-comments tokens)
-  (list-transform-negative tokens
-    (lambda (token)
-      (and (string? token)
-	   (char=? #\( (string-ref token 0))))))
+  (remove (lambda (token)
+	    (and (string? token)
+		 (char=? #\( (string-ref token 0))))
+	  tokens))
 
 ;;;; Tokenizer
 

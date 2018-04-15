@@ -372,7 +372,12 @@ USA.
 		      (if (apply pred (car list1) as)
 			  (fix:+ i 1)
 			  i))))))
-      (count-matching-items list1 pred)))
+      (do ((items list1 (cdr items))
+	   (n 0 (if (pred (car items)) (fix:+ n 1) n)))
+	  ((not (pair? items))
+	   (if (not (null? items))
+	       (error:not-a list? list1 'count))
+	   n))))
 
 (define (zip list1 . more-lists)
   (apply map list list1 more-lists))
@@ -548,22 +553,11 @@ USA.
 ;;; FILTER, REMOVE, PARTITION and their destructive counterparts do not
 ;;; disorder the elements of their argument.
 
-;; This FILTER shares the longest tail of L that has no deleted elements.
-;; If Scheme had multi-continuation calls, they could be made more efficient.
-
-;; Sleazing with EQ? makes this one faster.
-
 (define (filter pred lis)
   (let recur ((lis lis))
-    (if (null-list? lis 'filter)
-	lis
-	(let ((head (car lis))
-	      (tail (cdr lis)))
-	  (if (pred head)
-	      (let ((new-tail (recur tail)))	; Replicate the RECUR call so
-		(if (eq? tail new-tail) lis
-		    (cons head new-tail)))
-	      (recur tail))))))			; this one can be a tail call.
+    (cond ((null-list? lis 'filter) lis)
+	  ((pred (car lis)) (cons (car lis) (recur (cdr lis))))
+	  (else (recur (cdr lis))))))
 
 ;;; This implementation of FILTER!
 ;;; - doesn't cons, and uses no stack;

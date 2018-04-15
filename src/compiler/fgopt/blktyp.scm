@@ -50,7 +50,7 @@ USA.
   (define (block-type! block type)
     (set-block-type! block type)
     (for-each loop (block-children block)))
-  
+
   (loop root-block)
   (if compiler:use-multiclosures?
       (merge-closure-blocks! root-block)))
@@ -72,7 +72,7 @@ USA.
       (examine-children block update?))
      (else
       (error "Illegal block type" block))))
-  
+
   (define (examine-children block update?)
     (for-each (lambda (child)
 		(loop child update?))
@@ -82,10 +82,9 @@ USA.
 
 (define (original-block-children block)
   (append (block-disowned-children block)
-	  (list-transform-positive
-	      (block-children block)
-	    (lambda (block*)
-	      (eq? block (original-block-parent block*))))))
+	  (filter (lambda (block*)
+		    (eq? block (original-block-parent block*)))
+		  (block-children block))))
 
 (define (maybe-close-procedure! procedure)
   (if (eq? true (procedure-closure-context procedure))
@@ -109,16 +108,15 @@ USA.
 					      value)))))))))
 		  (find-closure-bindings
 		   original-parent
-		   (list-transform-negative (block-free-variables block)
-		     (lambda (lvalue)
-		       (or (uninteresting-variable? lvalue)
-			   (begin
-			     (set-variable-closed-over?! lvalue true)
-			     false))))
+		   (remove (lambda (lvalue)
+			     (or (uninteresting-variable? lvalue)
+				 (begin
+				   (set-variable-closed-over?! lvalue true)
+				   false)))
+			   (block-free-variables block))
 		   '()
-		   (list-transform-negative
-		       (block-variables-nontransitively-free block)
-		     uninteresting-variable?))))
+		   (remove uninteresting-variable?
+			   (block-variables-nontransitively-free block)))))
 	    (lambda (closure-block closure-block?)
 	      (transfer-block-child! block parent closure-block)
 	      (set-procedure-closure-size!
@@ -246,12 +244,11 @@ USA.
 
 (define (attempt-children-merge block procedure update?)
   (let ((closure-children
-	 (list-transform-positive
-	     (original-block-children block)
-	   (lambda (block*)
-	     (let ((procedure* (block-procedure block*)))
-	       (and procedure*
-		    (procedure/full-closure? procedure*)))))))
+	 (filter (lambda (block*)
+		   (let ((procedure* (block-procedure block*)))
+		     (and procedure*
+			  (procedure/full-closure? procedure*))))
+		 (original-block-children block))))
     (and (not (null? closure-children))
 	 (list-split
 	  closure-children

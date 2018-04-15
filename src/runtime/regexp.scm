@@ -125,7 +125,7 @@ USA.
 
 (define (regexp-group . alternatives)
   (let ((alternatives
-	 (list-transform-positive alternatives identity-procedure)))
+	 (filter identity-procedure alternatives)))
     (if (null? alternatives)
 	"\\(\\)"
 	(apply string-append

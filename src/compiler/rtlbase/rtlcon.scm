@@ -433,7 +433,7 @@ USA.
 (define-expression-method 'ADDRESS
   (address-method
    (lambda (receiver scfg-append!)
-     scfg-append!			;ignore
+     (declare (ignore scfg-append!))
      (lambda (address offset granularity)
        (receiver
 	(case granularity
@@ -548,8 +548,9 @@ USA.
 	    (lambda (type)
 	      (if use-pre/post-increment?
 		  (assign-to-temporary
-		   (rtl:make-offset-address free
-					    (rtl:make-machine-constant (- nelements)))
+		   (rtl:make-offset-address
+		    free
+		    (rtl:make-machine-constant (- nelements)))
 		   scfg-append!
 		   (lambda (temporary)
 		     (receiver (rtl:make-cons-pointer type temporary))))
@@ -600,11 +601,11 @@ USA.
 	(begin
 	  (set! reg-list available-machine-registers)
 	  (set! value
-		(length (list-transform-positive reg-list
-			  (lambda (reg)
-			    (value-class/ancestor-or-self?
-			     (machine-register-value-class reg)
-			     value-class=word)))))
+		(length (filter (lambda (reg)
+				  (value-class/ancestor-or-self?
+				   (machine-register-value-class reg)
+				   value-class=word))
+				reg-list)))
 	  value)))))
 
 (define-expression-method 'TYPED-CONS:PROCEDURE

@@ -178,9 +178,9 @@ differences:
       (eq? (option/keyword option) keyword))))
 
 (define (find-options keyword options)
-  (keep-matching-items options
-    (lambda (option)
-      (eq? (option/keyword option) keyword))))
+  (filter (lambda (option)
+	    (eq? (option/keyword option) keyword))
+	  options))
 
 (define (check-for-duplicate-constructors constructor-options
 					  keyword-constructor-options)
@@ -658,7 +658,7 @@ differences:
 			  (,(absolute 'list-tail context) structure
 							  ,(slot/index slot))
 			  value)))))))
-	 (delete-matching-items (structure/slots structure) slot/read-only?))))
+	 (remove slot/read-only? (structure/slots structure)))))
 
 (define (constructor-definitions structure)
   `(,@(map (lambda (constructor)

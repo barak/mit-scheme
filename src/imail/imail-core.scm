@@ -1073,9 +1073,9 @@ USA.
 	  (else winner))))
 
 (define (get-all-header-fields headers name)
-  (list-transform-positive (->header-fields headers)
-    (lambda (header)
-      (string-ci=? name (header-field-name header)))))
+  (filter (lambda (header)
+	    (string-ci=? name (header-field-name header)))
+	  (->header-fields headers)))
 
 (define (get-first-header-field-value headers name error?)
   (let ((header (get-first-header-field headers name error?)))

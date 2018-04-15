@@ -285,14 +285,12 @@ USA.
 	 (car source-set))))
 
 (define (lvalue/source-set lvalue)
-  (list-transform-positive
-      (eq-set-adjoin lvalue (lvalue-backward-links lvalue))
-    lvalue/source?))
+  (filter lvalue/source?
+	  (eq-set-adjoin lvalue (lvalue-backward-links lvalue))))
 
 (define (lvalue/external-source-set lvalue)
-  (list-transform-positive
-      (eq-set-adjoin lvalue (lvalue-backward-links lvalue))
-    lvalue/external-source?))
+  (filter lvalue/external-source?
+	  (eq-set-adjoin lvalue (lvalue-backward-links lvalue))))
 
 (define (lvalue/source? lvalue)
   (or (lvalue/external-source? lvalue)

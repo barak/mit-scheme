@@ -41,19 +41,17 @@ USA.
       return-class))
    (append-map
     (lambda (source)
-      (list-transform-positive
-	  (node-equivalence-classes
-	   (gmap
-	    (eq-set-adjoin
-	     source
-	     (list-transform-positive (lvalue-forward-links source)
-	       lvalue/unique-source))
-	    lvalue-applications
-	    eq-set-union)
-	   return=?)
-	(lambda (class)
-	  (not (null? (cdr class))))))
-    (gmap (list-transform-positive lvalues continuation-variable?)
+      (filter (lambda (class)
+		(not (null? (cdr class))))
+	      (node-equivalence-classes
+	       (gmap
+		(eq-set-adjoin
+		 source
+		 (filter lvalue/unique-source (lvalue-forward-links source)))
+		lvalue-applications
+		eq-set-union)
+	       return=?)))
+    (gmap (filter continuation-variable? lvalues)
       lvalue/unique-source
       (lambda (source sources)
 	(if (and source (not (memq source sources)))

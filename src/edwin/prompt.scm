@@ -730,15 +730,16 @@ a repetition of this command will exit."
 		(let ((try-suffix
 		       (lambda (suffix if-not-found)
 			 (let ((completions
-				(list-transform-positive completions
-				  (let ((prefix (string-append string suffix)))
-				    (if (case-insensitive-completion?)
-					(lambda (completion)
-					  (string-prefix-ci? prefix
-							     completion))
-					(lambda (completion)
-					  (string-prefix? prefix
-							  completion)))))))
+				(filter (let ((prefix
+					       (string-append string suffix)))
+					  (if (case-insensitive-completion?)
+					      (lambda (completion)
+						(string-prefix-ci? prefix
+								   completion))
+					      (lambda (completion)
+						(string-prefix? prefix
+								completion))))
+					completions)))
 			   (cond ((null? completions)
 				  (if-not-found))
 				 ((null? (cdr completions))
@@ -978,7 +979,8 @@ it is added to the front of the command history."
     (set-prompt-history-strings!
      'REPEAT-COMPLEX-COMMAND
      (map (lambda (command)
-	    (parameterize* (list (cons param:unparse-with-maximum-readability? #t))
+	    (parameterize* (list (cons param:unparse-with-maximum-readability?
+				       #t))
 	      (lambda ()
 		(write-to-string command))))
 	  (command-history-list)))

@@ -2249,8 +2249,8 @@ This command has no effect if the variable
 		(update-subsequent-news-header-lines (buffer-start buffer))
 		(buffer-put! buffer 'NEWS-THREADS
 			     (list->vector
-			      (list-transform-negative threads
-				news-thread:all-articles-deleted?)))
+			      (remove news-thread:all-articles-deleted?
+				      threads)))
 		(if (and on-header?
 			 (not (region-get (current-point) 'NEWS-HEADER #f)))
 		    (let ((ls
@@ -2838,11 +2838,11 @@ While composing the reply, use \\[mail-yank-original] to yank the
 	   select-buffer-other-window)))))
 
 (define (merge-header-alists x y)
-  (append (list-transform-negative x
-	    (lambda (entry)
-	      (list-search-positive y
-		(lambda (entry*)
-		  (string-ci=? (car entry) (car entry*))))))
+  (append (remove (lambda (entry)
+		    (find (lambda (entry*)
+			    (string-ci=? (car entry) (car entry*)))
+			  y))
+		  x)
 	  y))
 
 (define (news-article-buffer:rfc822-reply-headers article-buffer)
@@ -4154,8 +4154,8 @@ With prefix arg, replaces the file with the list information."
        (if (or (command-argument-multiplier-only? argument)
 	       (ref-variable news-group-show-seen-headers buffer))
 	   threads
-	   (list-transform-negative threads
-	     news-thread:all-articles-deleted?))))))
+	   (remove news-thread:all-articles-deleted?
+		   threads))))))
 
 (define (news-group:get-headers group argument buffer)
   (let ((connection (news-group:connection group))

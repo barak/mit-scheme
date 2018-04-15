@@ -123,10 +123,10 @@ USA.
   (let ((strip!
 	 (lambda (object accessor modifier)
 	   (modifier object
-		     (delete-matching-items! (accessor object) xml-comment?))
+		     (remove! xml-comment? (accessor object)))
 	   (modifier object
-		     (delete-matching-items! (accessor object)
-		       xml-whitespace-string?)))))
+		     (remove! xml-whitespace-string?
+			      (accessor object))))))
     (strip! document xml-document-misc-1 set-xml-document-misc-1!)
     (set-xml-document-dtd! document #f)
     (strip! document xml-document-misc-2 set-xml-document-misc-2!)
@@ -497,10 +497,10 @@ USA.
 				      (http-request-url)))
 	       (generate-container-items
 		(if (confirming-submission? elt)
-		    (keep-matching-items (xml-element-contents elt)
-		      (lambda (item)
-			(or (xd:page-frame? item)
-			    (xd:when? item))))
+		    (filter (lambda (item)
+			      (or (xd:page-frame? item)
+				  (xd:when? item)))
+			    (xml-element-contents elt))
 		    (xml-element-contents elt))
 		(lambda (elt)
 		  (or (xd:head? elt)
@@ -1270,12 +1270,12 @@ USA.
 		    (preserved-attributes elt)))
 
 (define (preserved-attributes elt)
-  (keep-matching-items (xml-element-attributes elt) preserved-attribute?))
+  (filter preserved-attribute? (xml-element-attributes elt)))
 
 (define (merge-attributes attrs defaults)
-  (map* (delete-matching-items defaults
-	  (lambda (attr)
-	    (%find-attribute (xml-attribute-name attr) attrs)))
+  (map* (remove (lambda (attr)
+		  (%find-attribute (xml-attribute-name attr) attrs))
+		defaults)
 	(lambda (attr)
 	  (let ((attr*
 		 (and (merged-attribute? attr)

@@ -218,7 +218,7 @@ USA.
   (graphics-type type #f))
 
 (define (enumerate-graphics-types)
-  (list-transform-positive graphics-types graphics-device-type/available?))
+  (filter graphics-device-type/available? graphics-types))
 
 (define (graphics-device-type/available? type)
   ((graphics-device-type/operation/available? type)))

@@ -194,10 +194,10 @@ registers into some interesting sorting order.
 	   (not (memv alias needed-registers))))))
 
 (define (map-entry:aliases entry type needed-registers)
-  (list-transform-positive (map-entry-aliases entry)
-    (lambda (alias)
-      (and (register-type? alias type)
-	   (not (memv alias needed-registers))))))
+  (filter (lambda (alias)
+	    (and (register-type? alias type)
+		 (not (memv alias needed-registers))))
+	  (map-entry-aliases entry)))
 
 (define (map-entry:add-alias entry alias)
   (make-map-entry (map-entry-home entry)
@@ -338,7 +338,7 @@ registers into some interesting sorting order.
 (define (map-equal? x y)
   (let loop
       ((x-entries (map-entries x))
-       (y-entries (list-transform-positive (map-entries y) map-entry-home)))
+       (y-entries (filter map-entry-home (map-entries y))))
     (cond ((null? x-entries)
 	   (null? y-entries))
 	  ((not (map-entry-home (car x-entries)))

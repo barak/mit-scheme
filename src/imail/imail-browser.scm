@@ -197,10 +197,10 @@ USA.
    (find-browsers-for container)))
 
 (define (find-browsers-for container)
-  (list-transform-positive (buffer-list)
-    (lambda (buffer)
-      (or (eq? (selected-container #f buffer) container)
-	  (memq container (browser-expanded-containers buffer))))))
+  (filter (lambda (buffer)
+	    (or (eq? (selected-container #f buffer) container)
+		(memq container (browser-expanded-containers buffer))))
+	  (buffer-list)))
 
 (define (browser-expanded-containers buffer)
   (buffer-get buffer 'IMAIL-BROWSER-EXPANDED-CONTAINERS '()))

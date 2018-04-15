@@ -283,8 +283,8 @@ USA.
 	(loop (+ j 1) (* k 10)))))
 
 (define (burst-comma-list-string string)
-  (list-transform-negative (map string-trim (burst-string string #\, #f))
-    string-null?))
+  (remove string-null?
+	  (map string-trim (burst-string string #\, #f))))
 
 (define (string-greatest-common-prefix strings)
   (let loop

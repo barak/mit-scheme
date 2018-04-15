@@ -700,7 +700,8 @@ USA.
 				 (max summary-minimum-columns
 				      (- columns indentation 4))
 				 (lambda (port)
-				   (parameterize* (list (cons current-output-port port))
+				   (parameterize*
+				       (list (cons current-output-port port))
 				     (lambda ()
 				       ((bline-type/write-summary
 					 (bline/type bline))
@@ -1060,10 +1061,10 @@ The buffer below shows the current subproblem or reduction.
       buffer)))
 
 (define (find-debugger-buffers)
-  (list-transform-positive (buffer-list)
-    (let ((debugger-mode (ref-mode-object continuation-browser)))
-      (lambda (buffer)
-	(eq? (buffer-major-mode buffer) debugger-mode)))))
+  (filter (let ((debugger-mode (ref-mode-object continuation-browser)))
+	    (lambda (buffer)
+	      (eq? (buffer-major-mode buffer) debugger-mode)))
+	  (buffer-list)))
 
 ;;;; Continuation Browser Mode
 
