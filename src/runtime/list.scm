@@ -878,56 +878,14 @@ USA.
 		  (error:not-a list? first 'fold-right))
 	      initial)))))
 
-;;;; Generalized list operations
+;;;; Generalized list operations -- mostly deprecated in favor of SRFI-1
 
 (define (find-matching-item items predicate)
-  (let loop ((items* items))
-    (if (pair? items*)
-	(if (predicate (car items*))
-	    (car items*)
-	    (loop (cdr items*)))
-	(begin
-	  (if (not (null? items*))
-	      (error:not-a list? items 'find-matching-item))
-	  #f))))
+  (find predicate items))
 
 (define (find-non-matching-item items predicate)
-  (let loop ((items* items))
-    (if (pair? items*)
-	(if (predicate (car items*))
-	    (loop (cdr items*))
-	    (car items*))
-	(begin
-	  (if (not (null? items*))
-	      (error:not-a list? items 'find-matching-item))
-	  #f))))
+  (find (lambda (item) (not (predicate item))) items))
 
-(define (find-unique-matching-item items predicate)
-  (let loop ((items* items))
-    (if (pair? items*)
-	(if (predicate (car items*))
-	    (if (any predicate (cdr items*))
-		#f
-		(car items*))
-	    (loop (cdr items*)))
-	(begin
-	  (if (not (null? items*))
-	      (error:not-a list? items 'find-unique-matching-item))
-	  #f))))
-
-(define (find-unique-non-matching-item items predicate)
-  (let loop ((items* items))
-    (if (pair? items*)
-	(if (predicate (car items*))
-	    (loop (cdr items*))
-	    (if (every predicate (cdr items*))
-		(car items*)
-		#f))
-	(begin
-	  (if (not (null? items*))
-	      (error:not-a list? items 'find-unique-non-matching-item))
-	  #f))))
-
 (define (count-matching-items items predicate)
   (count predicate items))
 
