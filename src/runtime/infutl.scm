@@ -228,10 +228,10 @@ USA.
 (define (add-directory-rewriting-rule! match replace)
   (let ((match (pathname-as-directory (merge-pathnames match))))
     (let ((rule
-	   (list-search-positive (directory-rewriting-rules)
-	     (lambda (rule)
-	       (equal? (pathname-directory (car rule))
-		       (pathname-directory match))))))
+	   (find (lambda (rule)
+		   (equal? (pathname-directory (car rule))
+			   (pathname-directory match)))
+		 (directory-rewriting-rules))))
       (if rule
 	  (set-cdr! rule replace)
 	  (directory-rewriting-rules
@@ -241,10 +241,10 @@ USA.
 
 (define (rewrite-directory pathname)
   (let ((rule
-	 (list-search-positive (directory-rewriting-rules)
-	   (lambda (rule)
-	     (directory-prefix? (pathname-directory pathname)
-				(pathname-directory (car rule)))))))
+	 (find (lambda (rule)
+		 (directory-prefix? (pathname-directory pathname)
+				    (pathname-directory (car rule))))
+	       (directory-rewriting-rules))))
     (->namestring
      (if rule
 	 (merge-pathnames

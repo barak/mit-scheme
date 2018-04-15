@@ -200,15 +200,14 @@ USA.
 	    ((graphics-device? object)
 	     (test-type (graphics-device/type object)))
 	    ((not object)
-	     (or (list-search-positive graphics-types
-		   graphics-device-type/available?)
+	     (or (find graphics-device-type/available? graphics-types)
 		 (and error?
 		      (error "No graphics types supported."))))
 	    (else
 	     (let ((type
-		    (list-search-positive graphics-types
-		      (lambda (type)
-			(eq? object (graphics-device-type/name type))))))
+		    (find (lambda (type)
+			    (eq? object (graphics-device-type/name type)))
+			  graphics-types)))
 	       (if type
 		   (test-type type)
 		   (and error?

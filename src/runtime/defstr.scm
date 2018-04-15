@@ -173,9 +173,9 @@ differences:
 			    slots)))))))
 
 (define (find-option keyword options)
-  (find-matching-item options
-    (lambda (option)
-      (eq? (option/keyword option) keyword))))
+  (find (lambda (option)
+	  (eq? (option/keyword option) keyword))
+	options))
 
 (define (find-options keyword options)
   (filter (lambda (option)
@@ -192,9 +192,9 @@ differences:
 	  (let ((conflict
 		 (let ((name (option/argument option)))
 		   (and name
-			(find-matching-item options
-			  (lambda (option*)
-			    (eq? (option/argument option*) name)))))))
+			(find (lambda (option*)
+				(eq? (option/argument option*) name))
+			      options)))))
 	    (if conflict
 		(error "Conflicting constructor definitions:"
 		       (option/original option)
@@ -322,13 +322,13 @@ differences:
 		    (transformer (cddr entry)))
 		(let ((option*
 		       (and (not can-be-duplicated?)
-			    (find-matching-item options
-			      (let ((keyword (car normal-option)))
-				(lambda (option*)
-				  (eq? (if (pair? option*)
-					   (car option*)
-					   option*)
-				       keyword)))))))
+			    (find (let ((keyword (car normal-option)))
+				    (lambda (option*)
+				      (eq? (if (pair? option*)
+					       (car option*)
+					       option*)
+					   keyword)))
+				  options))))
 		  (if option*
 		      (error "Duplicate structure option:" option option*)))
 		(cons (let ((option* (transformer normal-option context)))
@@ -486,9 +486,9 @@ differences:
 	((not (pair? slots)))
       (let ((name (slot/name (caar slots))))
 	(let ((slot*
-	       (find-matching-item (cdr slots)
-		 (lambda (slot)
-		   (eq? (slot/name (car slot)) name)))))
+	       (find (lambda (slot)
+		       (eq? (slot/name (car slot)) name))
+		     (cdr slots))))
 	  (if slot*
 	      (error "Structure slots must not have duplicate names:"
 		     (cdar slots)

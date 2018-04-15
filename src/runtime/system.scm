@@ -112,9 +112,9 @@ USA.
       ""))
 
 (define (find-entry name)
-  (find-matching-item subsystem-identifications
-    (lambda (entry)
-      (match-entry? name entry))))
+  (find (lambda (entry)
+	  (match-entry? name entry))
+	subsystem-identifications))
 
 (define (match-entry? name entry)
   (let ((s (car entry)))

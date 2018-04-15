@@ -640,7 +640,7 @@ these rules:
 
 (define (%find-library-directory)
   (pathname-simplify
-   (or (find-matching-item library-directory-path file-directory?)
+   (or (find file-directory? library-directory-path)
        (error "Can't find library directory."))))
 
 (define (%find-library-file pathname)

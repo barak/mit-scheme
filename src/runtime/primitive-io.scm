@@ -744,7 +744,7 @@ USA.
 (define (find-dld-handle predicate)
   (with-thread-mutex-lock dld-handles-mutex
     (lambda ()
-      (find-matching-item dld-handles predicate))))
+      (find predicate dld-handles))))
 
 (define (all-dld-handles)
   (with-thread-mutex-lock dld-handles-mutex
