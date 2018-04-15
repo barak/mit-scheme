@@ -2845,6 +2845,8 @@ USA.
   (files "list")
   (parent (runtime))
   (export () deprecated:list
+	  (list-search-negative find-non-matching-item)
+	  (list-search-positive find-matching-item)
 	  (list-transform-negative delete-matching-items)
 	  (list-transform-positive keep-matching-items)
 	  (mapcan append-map!)
