@@ -142,10 +142,12 @@ USA.
 	 (expand-let* scons-let-syntax bindings body-forms))))))
 
 (define (expand-let* scons-let bindings body-forms)
-  (fold-right (lambda (binding expr)
-		(scons-let (list binding) expr))
-	      (apply scons-let '() body-forms)
-	      bindings))
+  (if (pair? bindings)
+      (fold-right (lambda (binding expr)
+		    (scons-let (list binding) expr))
+		  (apply scons-begin body-forms)
+		  bindings)
+      (apply scons-let '() body-forms)))
 
 (define $letrec
   (spar-transformer->runtime
@@ -160,9 +162,14 @@ USA.
 	   (scons-let (map (lambda (id)
 			     (list id (unassigned-expression)))
 			   ids)
-	     (apply scons-let
-		    (map list temps vals)
-		    (map scons-set! ids temps))
+	     (cond ((not (pair? ids))
+		    (default-object))
+		   ((not (pair? (cdr ids)))
+		    (scons-set! (car ids) (car vals)))
+		   (else
+		    (apply scons-let
+			   (map list temps vals)
+			   (map scons-set! ids temps))))
 	     (scons-call (apply scons-lambda '() body-forms)))))))))
 
 (define $letrec*
