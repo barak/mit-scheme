@@ -403,9 +403,9 @@ USA.
       (set-predicate<=! p1 p2))))
 
 (define (guarantee predicate object #!optional caller)
-  (if (predicate object)
-      object
-      (error:not-a predicate object caller)))
+  (if (not (predicate object))
+      (error:not-a predicate object caller))
+  object)
 
 (define (error:not-a predicate object #!optional caller)
   (error:wrong-type-argument object (predicate-description predicate) caller))
