@@ -1825,6 +1825,7 @@ USA.
 	  procedure-lambda
 	  procedure-of-arity?
 	  procedure?
+	  scode-lambda-arity
 	  set-apply-hook-extra!
 	  set-apply-hook-procedure!
 	  set-entity-extra!
