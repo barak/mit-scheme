@@ -188,6 +188,16 @@ USA.
           (link-variables system-global-environment 'microcode-type
                           env 'microcode-type))))
 
+  (let ((env (->environment '(runtime srfi-1))))
+    (if (let ((items '(-1 -2)))
+	  (eq? items (filter negative? items)))
+	(eval '(define (filter pred lis)
+		 (let recur ((lis lis))
+		   (cond ((null-list? lis 'filter) lis)
+			 ((pred (car lis)) (cons (car lis) (recur (cdr lis))))
+			 (else (recur (cdr lis))))))
+	      env)))
+
   (let ((env (->environment '(runtime syntax))))
     (provide-rename env 'compile-item/expression 'compile-expr-item)
     (if (unbound? env 'expr-item)
