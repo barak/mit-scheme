@@ -692,15 +692,24 @@ DEFINE_INST (ijump_u32)
 static inline void
 push_object (SCHEME_OBJECT object)
 {
-  stack_pointer = ((SCHEME_OBJECT *) (WREG_REF (SVM1_REG_STACK_POINTER)));
-  STACK_PUSH (object);
-  WREG_SET (SVM1_REG_STACK_POINTER, ((SCHEME_OBJECT) stack_pointer));
+  SCHEME_OBJECT * sp = ((SCHEME_OBJECT *) (WREG_REF (SVM1_REG_STACK_POINTER)));
+  (STACK_LOCATIVE_PUSH (sp)) = object;
+  WREG_SET (SVM1_REG_STACK_POINTER, ((word_t) sp));
 }
 
 static inline void
 push_entry (uint8_t * PC)
 {
   push_object (MAKE_CC_ENTRY (PC + CC_ENTRY_HEADER_SIZE));
+}
+
+static inline SCHEME_OBJECT
+pop_object ()
+{
+  SCHEME_OBJECT * sp = ((SCHEME_OBJECT *) (WREG_REF (SVM1_REG_STACK_POINTER)));
+  SCHEME_OBJECT object = (STACK_LOCATIVE_POP (sp));
+  WREG_SET (SVM1_REG_STACK_POINTER, ((word_t) sp));
+  return (object);
 }
 
 DEFINE_INST (icall_u8)
@@ -1083,6 +1092,11 @@ DEFINE_INTERRUPT_TEST (continuation, 0, GET_VAL)
 DEFINE_INTERRUPT_TEST (dynamic_link,
 		       (PC - 1),
 		       (MAKE_CC_STACK_ENV (WREG_REF (SVM1_REG_DYNAMIC_LINK))))
+
+DEFINE_INST (pop_return)
+{
+  return (BYTE_ADDR (OBJECT_ADDRESS (pop_object ())));
+}
 
 DEFINE_INST (enter_closure)
 {

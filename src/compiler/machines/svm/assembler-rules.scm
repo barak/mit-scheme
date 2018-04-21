@@ -441,6 +441,7 @@ USA.
 (define-code-sequence instruction (interrupt-test-dynamic-link))
 (define-code-sequence instruction (interrupt-test-ic-procedure))
 (define-code-sequence instruction (interrupt-test-continuation))
+(define-code-sequence instruction (pop-return))
 
 (define-code-sequence instruction
   (flonum-header (_ target word-register)
