@@ -2073,9 +2073,9 @@ WARNING: With a prefix argument, this command may take a very long
       (and error? (error:bad-range-argument folder 'IMAIL-FOLDER->BUFFER))))
 
 (define (imail-message->buffer message error?)
-  (or (list-search-positive (buffer-list)
-	(lambda (buffer)
-	  (eq? (buffer-get buffer 'IMAIL-MESSAGE #f) message)))
+  (or (find (lambda (buffer)
+	      (eq? (buffer-get buffer 'IMAIL-MESSAGE #f) message))
+	    (buffer-list))
       (and error? (error:bad-range-argument message 'IMAIL-MESSAGE->BUFFER))))
 
 (define (associate-buffer-with-imail-buffer folder-buffer buffer)

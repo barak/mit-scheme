@@ -1161,9 +1161,9 @@ USA.
 
 (define (imail-flag->imap-flag flag)
   (let ((entry
-	 (list-search-positive standard-imap-flags
-	   (lambda (entry)
-	     (string-ci=? flag (cdr entry))))))
+	 (find (lambda (entry)
+		 (string-ci=? flag (cdr entry)))
+	       standard-imap-flags)))
     (if entry
 	(car entry)
 	(intern flag))))

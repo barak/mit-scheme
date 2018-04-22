@@ -32,9 +32,9 @@ USA.
   (select-buffer (get-imail-browser-buffer url)))
 
 (define (get-imail-browser-buffer url)
-  (or (list-search-positive (buffer-list)
-	(lambda (buffer)
-	  (eq? (selected-container-url #f buffer) url)))
+  (or (find (lambda (buffer)
+	      (eq? (selected-container-url #f buffer) url))
+	    (buffer-list))
       (let ((container (open-resource url))
 	    (buffer
 	     (new-buffer

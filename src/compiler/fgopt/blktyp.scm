@@ -265,9 +265,9 @@ USA.
 (define (merge-children! block procedure unconditional conditional update?)
   (let ((ic-parent
 	 (let ((block
-		(list-search-positive unconditional
-		  (lambda (block*)
-		    (block-parent (block-parent block*))))))
+		(find (lambda (block*)
+			(block-parent (block-parent block*)))
+		      unconditional)))
 	   (and block
 		(block-parent (block-parent block)))))
 	(closed-over-variables

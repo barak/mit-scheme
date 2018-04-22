@@ -114,9 +114,9 @@ USA.
   (class/slots (guarantee-class class 'CLASS-SLOTS)))
 
 (define (class-slot class name error?)
-  (or (list-search-positive (class/slots (guarantee-class class 'CLASS-SLOT))
-	(lambda (slot)
-	  (eq? name (slot-name slot))))
+  (or (find (lambda (slot)
+	      (eq? name (slot-name slot)))
+	    (class/slots (guarantee-class class 'CLASS-SLOT)))
       (and error?
 	   (class-slot class (error:no-such-slot class name) error?))))
 

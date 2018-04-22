@@ -73,9 +73,9 @@ USA.
 		    (+ code (if (<= #x01 code #x1A) #x60 #x40)))
 		  (fix:or (char-bits key) char-bit:control)))
       (let ((entry
-	     (list-search-positive alias-keys
-	       (lambda (entry)
-		 (eqv? (cdr entry) key)))))
+	     (find (lambda (entry)
+		     (eqv? (cdr entry) key))
+		   alias-keys)))
 	(if entry
 	    (unmap-alias-key (car entry))
 	    key))))

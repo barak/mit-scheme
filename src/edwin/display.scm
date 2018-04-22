@@ -90,7 +90,7 @@ USA.
 
 (define (name->display-type name)
   (let ((display-type
-	 (list-search-positive display-types
-	   (lambda (display-type)
-	     (eq? name (display-type/name display-type))))))
+	 (find (lambda (display-type)
+		 (eq? name (display-type/name display-type)))
+	       display-types)))
     display-type))

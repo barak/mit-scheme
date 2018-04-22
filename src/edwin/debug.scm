@@ -512,10 +512,10 @@ USA.
   (let ((environment (bline/evaluation-environment bline)))
     (bline/attached-buffer bline 'ENVIRONMENT-BROWSER
       (lambda ()
-	(or (list-search-positive (buffer-list)
-	      (lambda (buffer)
-		(let ((browser (buffer-get buffer 'BROWSER)))
-		  (and browser (eq? environment (browser/object browser))))))
+	(or (find (lambda (buffer)
+		    (let ((browser (buffer-get buffer 'BROWSER)))
+		      (and browser (eq? environment (browser/object browser)))))
+		  (buffer-list))
 	    (environment-browser-buffer environment))))))
 
 (define (bline/attached-buffer bline type make-buffer)

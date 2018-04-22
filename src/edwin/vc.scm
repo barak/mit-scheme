@@ -921,11 +921,11 @@ Normally shows only locked files; prefix arg says to show all files."
     buffer))
 
 (define (get-vc-dired-buffer directory)
-  (or (list-search-positive (buffer-list)
-	(lambda (buffer)
-	  (let ((spec (buffer-get buffer 'VC-DIRECTORY-SPEC #f)))
-	    (and spec
-		 (pathname=? (car spec) directory)))))
+  (or (find (lambda (buffer)
+	      (let ((spec (buffer-get buffer 'VC-DIRECTORY-SPEC #f)))
+		(and spec
+		     (pathname=? (car spec) directory))))
+	    (buffer-list))
       (new-buffer (pathname->buffer-name directory))))
 
 (define (fill-vc-dired-buffer! buffer directory all-files?)

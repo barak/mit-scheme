@@ -134,22 +134,22 @@ USA.
   (let ((classes '())
 	(class-member?
 	 (lambda (class suffix)
-	   (list-search-positive class
-	     (lambda (suffix*)
-	       (and (eq? (car suffix) (car suffix*))
-		    (eq? (cdr suffix) (cdr suffix*))))))))
+	   (find (lambda (suffix*)
+		   (and (eq? (car suffix) (car suffix*))
+			(eq? (cdr suffix) (cdr suffix*))))
+		 class))))
     (for-each (lambda (entry)
 		(let ((class
-		       (list-search-positive classes
-			 (lambda (class)
-			   (class-member? class (car entry))))))
+		       (find (lambda (class)
+			       (class-member? class (car entry)))
+			     classes)))
 		  (if class
 		      (if (not (class-member? class (cdr entry)))
 			  (set-cdr! class (cons (cdr entry) (cdr class))))
 		      (let ((class
-			     (list-search-positive classes
-			       (lambda (class)
-				 (class-member? class (cdr entry))))))
+			     (find (lambda (class)
+				     (class-member? class (cdr entry)))
+				   classes)))
 			(if class
 			    (set-cdr! class (cons (car entry) (cdr class)))
 			    (set! classes

@@ -74,9 +74,9 @@ USA.
 		       (begin
 			 (node-mark! node)
 			 (let ((class
-				(list-search-positive classes
-				  (lambda (class)
-				    (node=? node (car class))))))
+				(find (lambda (class)
+					(node=? node (car class)))
+				      classes)))
 			   (if class
 			       (set-cdr! class (cons node (cdr class)))
 			       (begin

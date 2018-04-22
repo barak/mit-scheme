@@ -188,10 +188,10 @@ registers into some interesting sorting order.
   (car (map-entry-aliases entry)))
 
 (define (map-entry:find-alias entry type needed-registers)
-  (list-search-positive (map-entry-aliases entry)
-    (lambda (alias)
-      (and (register-type? alias type)
-	   (not (memv alias needed-registers))))))
+  (find (lambda (alias)
+	  (and (register-type? alias type)
+	       (not (memv alias needed-registers))))
+	(map-entry-aliases entry)))
 
 (define (map-entry:aliases entry type needed-registers)
   (filter (lambda (alias)
@@ -346,10 +346,10 @@ registers into some interesting sorting order.
 	  (else
 	   (and (not (null? y-entries))
 		(let ((y-entry
-		       (list-search-positive y-entries
-			 (let ((home (map-entry-home (car x-entries))))
-			   (lambda (entry)
-			     (eqv? (map-entry-home entry) home))))))
+		       (find (let ((home (map-entry-home (car x-entries))))
+			       (lambda (entry)
+				 (eqv? (map-entry-home entry) home)))
+			     y-entries)))
 		  (and y-entry
 		       (boolean=? (map-entry-saved-into-home? (car x-entries))
 				  (map-entry-saved-into-home? y-entry))
@@ -428,10 +428,10 @@ registers into some interesting sorting order.
 			     (LAP)))))
   ;; First see if there is an unused register of the given type.
   (or (let ((register
-	     (list-search-positive (map-registers map)
-	       (lambda (alias)
-		 (and (register-type? alias type)
-		      (not (memv alias needed-registers)))))))
+	     (find (lambda (alias)
+		     (and (register-type? alias type)
+			  (not (memv alias needed-registers))))
+		   (map-registers map))))
 	(and register (allocator-values register map (LAP))))
       ;; There are no free registers available, so must reallocate
       ;; one.  First look for a temporary register that is no longer
@@ -480,10 +480,10 @@ registers into some interesting sorting order.
 (define (allocate-register-without-unload? map type needed-registers)
   ;; True iff a register of `type' can be allocated without displacing
   ;; any pseudo-registers from the register map.
-  (or (list-search-positive (map-registers map)
-	(lambda (alias)
-	  (and (register-type? alias type)
-	       (not (memv alias needed-registers)))))
+  (or (find (lambda (alias)
+	      (and (register-type? alias type)
+		   (not (memv alias needed-registers))))
+	    (map-registers map))
       (map-entries:search map
 	(lambda (entry)
 	  (and (map-entry:find-alias entry type needed-registers)
@@ -497,8 +497,8 @@ registers into some interesting sorting order.
   ;; contents into that register.
   (or (let ((entry (map-entries:find-home map home)))
 	(and entry
-	     (let ((alias (list-search-positive (map-entry-aliases entry)
-			    (register-type-predicate type))))
+	     (let ((alias (find (register-type-predicate type)
+				(map-entry-aliases entry))))
 	       (and alias
 		    (allocator-values alias map (LAP))))))
       (bind-allocator-values (make-free-register map type needed-registers)
@@ -556,18 +556,18 @@ registers into some interesting sorting order.
 the same value as REGISTER.  If no such register exists, returns #F."
   (let ((entry (map-entries:find-alias map register)))
     (and entry
-	 (list-search-positive (map-entry-aliases entry)
-	   (lambda (register*)
-	     (and (not (eq? register register*))
-		  (register-type? type register*)))))))
+	 (find (lambda (register*)
+		 (and (not (eq? register register*))
+		      (register-type? type register*)))
+	       (map-entry-aliases entry)))))
 
 (define (pseudo-register-alias map type register)
   "Returns a machine register, of the given TYPE, which is an alias
 for REGISTER.  If no such register exists, returns #F."
   (let ((entry (map-entries:find-home map register)))
     (and entry
-	 (list-search-positive (map-entry-aliases entry)
-	   (register-type-predicate type)))))
+	 (find (register-type-predicate type)
+	       (map-entry-aliases entry)))))
 
 (define (machine-register-is-unique? map register)
   "True if REGISTER has no other aliases."
@@ -585,9 +585,9 @@ for REGISTER.  If no such register exists, returns #F."
 (define (is-pseudo-register-alias? map maybe-alias register)
   (let ((entry (map-entries:find-home map register)))
     (and entry
-	 (list-search-positive (map-entry-aliases entry)
-	   (lambda (alias)
-	     (eqv? maybe-alias alias))))))
+	 (find (lambda (alias)
+		 (eqv? maybe-alias alias))
+	       (map-entry-aliases entry)))))
 
 (define (save-machine-register map register receiver)
   (let ((entry (map-entries:find-alias map register)))

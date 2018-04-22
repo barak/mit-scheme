@@ -479,9 +479,9 @@ all buffers."
 
 (define (pathname->buffer pathname)
   (let ((pathname (->pathname pathname)))
-    (list-search-positive (buffer-list)
-      (lambda (buffer)
-	(equal? pathname (buffer-pathname buffer))))))
+    (find (lambda (buffer)
+	    (equal? pathname (buffer-pathname buffer)))
+	  (buffer-list))))
 
 (define-command set-visited-file-name
   "Change name of file visited in current buffer.

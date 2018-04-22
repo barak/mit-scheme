@@ -183,9 +183,9 @@ USA.
 	 (for-each
 	  (lambda (x)
 	    (let ((names
-		   (or (list-search-positive interacting-options
-			 (lambda (names)
-			   (memq (car x) names)))
+		   (or (find (lambda (names)
+			       (memq (car x) names))
+			     interacting-options)
 		       (list (car x)))))
 	      (let ((entry
 		     (let loop ((names names))

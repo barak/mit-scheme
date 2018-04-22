@@ -398,10 +398,10 @@ Only one News reader may be open per server; if a previous News reader
 ;;;; News-Server Buffer
 
 (define (find-news-server-buffer server)
-  (list-search-positive (buffer-list)
-    (lambda (buffer)
-      (and (news-server-buffer? buffer)
-	   (string-ci=? (news-server-buffer:server buffer) server)))))
+  (find (lambda (buffer)
+	  (and (news-server-buffer? buffer)
+	       (string-ci=? (news-server-buffer:server buffer) server)))
+	(buffer-list)))
 
 (define (make-news-server-buffer server)
   (create-news-buffer (news-buffer-name server "subscribed-groups")

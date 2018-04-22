@@ -657,9 +657,8 @@ option, instead taking -P <filename>."
   set-file-modes!)
 
 (define (os/rmail-spool-directory)
-  (or (list-search-positive
-	  '("/var/spool/mail/" "/var/mail/" "/usr/spool/mail/" "/usr/mail/")
-	file-directory?)
+  (or (find file-directory?
+	    '("/var/spool/mail/" "/var/mail/" "/usr/spool/mail/" "/usr/mail/"))
       "/usr/spool/mail/"))
 
 (define (os/rmail-primary-inbox-list system-mailboxes)

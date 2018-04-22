@@ -396,9 +396,9 @@ USA.
 
 (define (object-label-value label)
   (let ((entry
-	 (list-search-positive (table->list-of-entries objects)
-	   (lambda (entry)
-	     (string=? label (entry-label entry))))))
+	 (find (lambda (entry)
+		 (string=? label (entry-label entry)))
+	       (table->list-of-entries objects))))
     (if (not entry)
 	(error "object-label-value: Unknown" label)
 	(entry-value entry))))

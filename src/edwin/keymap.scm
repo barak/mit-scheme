@@ -162,9 +162,9 @@ Previous contents of that buffer are killed first."
     (let ((make-entry
 	   (lambda (prefix element)
 	     (let ((entry
-		    (list-search-positive prefix-alist
-		      (lambda (entry)
-			(string=? (car entry) prefix)))))
+		    (find (lambda (entry)
+			    (string=? (car entry) prefix))
+			  prefix-alist)))
 	       (if entry
 		   (set-cdr! entry (cons element (cdr entry)))
 		   (set! prefix-alist

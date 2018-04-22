@@ -105,8 +105,8 @@ USA.
 
 (define (method-combinator-record generic intern?)
   (let ((combinator
-	 (or (list-search-positive (generic-procedure-generator-list generic)
-	       method-combinator?)
+	 (or (find method-combinator?
+		   (generic-procedure-generator-list generic))
 	     (and intern?
 		  (let ((combinator (make-method-combinator)))
 		    (add-generic-procedure-generator generic combinator)

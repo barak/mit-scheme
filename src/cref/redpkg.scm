@@ -614,9 +614,9 @@ USA.
 	     (package-loop (package/parent package))))))
 
 (define (name->package packages name)
-  (list-search-positive packages
-    (lambda (package)
-      (symbol-list=? name (package/name package)))))
+  (find (lambda (package)
+	  (symbol-list=? name (package/name package)))
+	packages))
 
 (define (process-package-description package description get-package)
   (let ((file-cases (package-description/file-cases description)))

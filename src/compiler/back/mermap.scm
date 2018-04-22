@@ -66,9 +66,9 @@ USA.
 	      (let ((homes (cdr conflicting-alias)))
 		(let ((maximum (apply max (map cdr homes))))
 		  (let ((winner
-			 (list-search-positive homes
-			   (lambda (home)
-			     (= (cdr home) maximum)))))
+			 (find (lambda (home)
+				 (= (cdr home) maximum))
+			       homes)))
 		    (for-each
 		     (lambda (home)
 		       (if (not (eq? home winner))
@@ -111,10 +111,10 @@ USA.
 (define (add-weighted-entries x-entries y-entries)
   (merge-entries x-entries y-entries
     (lambda (entry entries)
-      (list-search-positive entries
-	(let ((home (vector-ref entry 0)))
-	  (lambda (entry)
-	    (eqv? home (vector-ref entry 0))))))
+      (find (let ((home (vector-ref entry 0)))
+	      (lambda (entry)
+		(eqv? home (vector-ref entry 0))))
+	    entries))
     (lambda (x-entry y-entry)
       (vector (vector-ref x-entry 0)
 	      (min (vector-ref x-entry 1) (vector-ref y-entry 1))
