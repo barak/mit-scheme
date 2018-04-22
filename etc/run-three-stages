@@ -146,7 +146,7 @@ find_stage0_default ()
             fi
         done
     done
-    for candidate in svm1 svm; do
+    for candidate in build svm1 svm; do
         if [[ -d ${candidate} ]]; then
             echo "${candidate}"
             return
