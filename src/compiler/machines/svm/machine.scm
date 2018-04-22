@@ -285,6 +285,7 @@ USA.
 	      (cdr form))))))
 
 (define-interrupt-tests dynamic-link procedure continuation ic-procedure)
+(define-inst pop-return)
 
 ;;;; Machine registers, register references.
 

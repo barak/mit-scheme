@@ -600,9 +600,7 @@ USA.
   (let ((checks (get-exit-interrupt-checks)))
     (LAP ,@(clear-map!)
 	 ,@(if (null? checks) '() (inst:interrupt-test-continuation))
-	 ,@(inst:load 'WORD rref:word-0 (ea:stack-pop))
-	 ,@(inst:object-address rref:word-0 rref:word-0)
-	 ,@(inst:jump (ea:indirect rref:word-0)))))
+	 ,@(inst:pop-return))))
 
 (define-rule statement
   (INVOCATION:APPLY (? frame-size) (? continuation))
