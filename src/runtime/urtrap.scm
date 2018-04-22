@@ -33,7 +33,7 @@ USA.
 		   (type vector)
 		   (named '|#[(runtime reference-trap)reference-trap]|)
 		   (print-procedure
-		    (simple-unparser-method 'REFERENCE-TRAP
+		    (simple-unparser-method 'reference-trap
 		      (lambda (trap)
 			(list (let ((kind (reference-trap-kind trap)))
 				 (or (reference-trap-kind-name kind)
@@ -70,11 +70,11 @@ USA.
 
 (define (reference-trap-kind-name kind)
   (case kind
-    ((0) 'UNASSIGNED)
-    ((2) 'UNBOUND)
-    ((6) 'EXPENSIVE)
-    ((14) 'COMPILER-CACHED)
-    ((15) 'MACRO)
+    ((0) 'unassigned)
+    ((2) 'unbound)
+    ((6) 'expensive)
+    ((14) 'compiler-cached)
+    ((15) 'macro)
     (else #f)))
 
 (define (make-immediate-reference-trap kind)
@@ -121,7 +121,7 @@ USA.
 (define (cached-reference-trap-value trap)
   (if (not (cached-reference-trap? trap))
       (error:wrong-type-argument trap "cached reference trap"
-				 'CACHED-REFERENCE-TRAP-VALUE))
+				 'cached-reference-trap-value))
   (map-reference-trap
    (let ((cache (reference-trap-extra trap)))
      (lambda ()
@@ -143,7 +143,7 @@ USA.
 (define (macro-reference-trap-transformer trap)
   (if (not (macro-reference-trap? trap))
       (error:wrong-type-argument trap "macro reference trap"
-				 'MACRO-REFERENCE-TRAP-TRANSFORMER))
+				 'macro-reference-trap-transformer))
   (reference-trap-extra trap))
 
 (define (make-unmapped-macro-reference-trap transformer)

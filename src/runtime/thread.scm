@@ -51,7 +51,7 @@ USA.
 
   (block-events? #f)
   ;; If #t, events may not run in this thread and should be queued.
-  ;; If 'SUSPENDED, events were blocked when the thread suspended.
+  ;; If 'suspended, events were blocked when the thread suspended.
   ;; Events should wake the thread and %resume-current-thread should
   ;; run them but then it should continue with events blocked (#t).
 
@@ -821,10 +821,10 @@ USA.
 		   (search
 		    descriptor
 		    (case mode
-		      ((READ) (lambda (mode) (memq mode '(read read/write))))
-		      ((WRITE) (lambda (mode) (memq mode '(write read/write))))
-		      ((READ/WRITE) (lambda (mode) mode))
-		      ((ERROR HANGUP) (lambda (mode) mode #t))
+		      ((read) (lambda (mode) (memq mode '(read read/write))))
+		      ((write) (lambda (mode) (memq mode '(write read/write))))
+		      ((read/write) (lambda (mode) mode))
+		      ((error hangup) (lambda (mode) mode #t))
 		      (else (error "Illegal mode:" mode))))))
 	      (if (not dentry)
 		  (loop (fix:+ i 1) events)

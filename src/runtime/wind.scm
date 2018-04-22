@@ -113,7 +113,7 @@ USA.
 		      (set-state-point/from-nearer! new-root #f)
 		      (set-state-space/nearest-point! space new-root)
 		      (with-stack-marker from-nearer
-			'SET-INTERRUPT-ENABLES! interrupt-mask))
+			'set-interrupt-enables! interrupt-mask))
 		    ;; Disable interrupts again in case FROM-NEARER
 		    ;; re-enabled them.
 		    ((ucode-primitive set-interrupt-enables! 1) interrupt-mask)
@@ -142,19 +142,19 @@ USA.
       (procedure (fix:and interrupt-mask interrupt-mask/gc-ok)))))
 
 (define (current-state-point space)
-  (guarantee-state-space space 'CURRENT-STATE-POINT)
+  (guarantee-state-space space 'current-state-point)
   (state-space/nearest-point space))
 
 (define (execute-at-new-state-point space before during after)
-  (guarantee-state-space space 'EXECUTE-AT-NEW-STATE-POINT)
+  (guarantee-state-space space 'execute-at-new-state-point)
   (%execute-at-new-state-point space before during after))
 
 (define (translate-to-state-point point)
-  (guarantee-state-point point 'TRANSLATE-TO-STATE-POINT)
+  (guarantee-state-point point 'translate-to-state-point)
   (%translate-to-state-point point))
 
 (define (state-point/space point)
-  (guarantee-state-point point 'STATE-POINT/SPACE)
+  (guarantee-state-point point 'state-point/space)
   (let ((interrupt-mask (limit-interrupts! interrupt-mask/gc-ok)))
     (let loop ((point point))
       (let ((nearer-point (state-point/nearer-point point)))
@@ -202,7 +202,7 @@ USA.
 
 (define (set-dynamic-state! state global-only?)
   (if (not (dynamic-state? state))
-      (error:wrong-type-argument state "dynamic state" 'SET-DYNAMIC-STATE!))
+      (error:wrong-type-argument state "dynamic state" 'set-dynamic-state!))
   (if (not global-only?)
       (%translate-to-state-point (dynamic-state/local state)))
   (%translate-to-state-point (dynamic-state/global state)))

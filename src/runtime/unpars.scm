@@ -294,36 +294,36 @@ USA.
 	       (vector-set! dispatch-table
 			    (microcode-type (car entry))
 			    (cadr entry)))
-	     `((ASSIGNMENT ,unparse/assignment)
-	       (BIGNUM ,unparse/number)
-	       (BYTEVECTOR ,unparse/bytevector)
-	       (CHARACTER ,unparse/character)
-	       (COMPILED-ENTRY ,unparse/compiled-entry)
-	       (COMPLEX ,unparse/number)
-	       (CONSTANT ,unparse/constant)
-	       (DEFINITION ,unparse/definition)
-	       (ENTITY ,unparse/entity)
-	       (EXTENDED-PROCEDURE ,unparse/compound-procedure)
-	       (FLONUM ,unparse/flonum)
-	       (INTERNED-SYMBOL ,unparse/interned-symbol)
-	       (LAMBDA ,unparse/lambda)
-	       (LIST ,unparse/pair)
-	       (NEGATIVE-FIXNUM ,unparse/number)
-	       (FALSE ,unparse/false)
-	       (POSITIVE-FIXNUM ,unparse/number)
-	       (PRIMITIVE ,unparse/primitive-procedure)
-	       (PROCEDURE ,unparse/compound-procedure)
-	       (PROMISE ,unparse/promise)
-	       (RATNUM ,unparse/number)
-	       (RECORD ,unparse/record)
-	       (RETURN-ADDRESS ,unparse/return-address)
-	       (STRING ,unparse/string)
-	       (TAGGED-OBJECT ,unparse/tagged-object)
-	       (UNICODE-STRING ,unparse/string)
-	       (UNINTERNED-SYMBOL ,unparse/uninterned-symbol)
-	       (VARIABLE ,unparse/variable)
-	       (VECTOR ,unparse/vector)
-	       (VECTOR-1B ,unparse/bit-string)))))
+	     `((assignment ,unparse/assignment)
+	       (bignum ,unparse/number)
+	       (bytevector ,unparse/bytevector)
+	       (character ,unparse/character)
+	       (compiled-entry ,unparse/compiled-entry)
+	       (complex ,unparse/number)
+	       (constant ,unparse/constant)
+	       (definition ,unparse/definition)
+	       (entity ,unparse/entity)
+	       (extended-procedure ,unparse/compound-procedure)
+	       (flonum ,unparse/flonum)
+	       (interned-symbol ,unparse/interned-symbol)
+	       (lambda ,unparse/lambda)
+	       (list ,unparse/pair)
+	       (negative-fixnum ,unparse/number)
+	       (false ,unparse/false)
+	       (positive-fixnum ,unparse/number)
+	       (primitive ,unparse/primitive-procedure)
+	       (procedure ,unparse/compound-procedure)
+	       (promise ,unparse/promise)
+	       (ratnum ,unparse/number)
+	       (record ,unparse/record)
+	       (return-address ,unparse/return-address)
+	       (string ,unparse/string)
+	       (tagged-object ,unparse/tagged-object)
+	       (unicode-string ,unparse/string)
+	       (uninterned-symbol ,unparse/uninterned-symbol)
+	       (variable ,unparse/variable)
+	       (vector ,unparse/vector)
+	       (vector-1b ,unparse/bit-string)))))
 
 ;;;; Low Level Operations
 
@@ -380,9 +380,9 @@ USA.
 (define (unparse/default object context)
   (let ((type (user-object-type object)))
     (case (object-gc-type object)
-      ((CELL PAIR TRIPLE QUADRUPLE VECTOR COMPILED-ENTRY)
+      ((cell pair triple quadruple vector compiled-entry)
        (*unparse-with-brackets type object context #f))
-      ((NON-POINTER)
+      ((non-pointer)
        (*unparse-with-brackets type object context
          (lambda (context*)
            (*unparse-datum object context*))))
@@ -406,17 +406,17 @@ USA.
         type-name)))
 
 (define renamed-user-object-types
-  '((NEGATIVE-FIXNUM . NUMBER)
-    (POSITIVE-FIXNUM . NUMBER)
-    (BIGNUM . NUMBER)
-    (FLONUM . NUMBER)
-    (COMPLEX . NUMBER)
-    (INTERNED-SYMBOL . SYMBOL)
-    (UNINTERNED-SYMBOL . SYMBOL)
-    (EXTENDED-PROCEDURE . PROCEDURE)
-    (PRIMITIVE . PRIMITIVE-PROCEDURE)
-    (LEXPR . LAMBDA)
-    (EXTENDED-LAMBDA . LAMBDA)))
+  '((negative-fixnum . number)
+    (positive-fixnum . number)
+    (bignum . number)
+    (flonum . number)
+    (complex . number)
+    (interned-symbol . symbol)
+    (uninterned-symbol . symbol)
+    (extended-procedure . procedure)
+    (primitive . primitive-procedure)
+    (lexpr . lambda)
+    (extended-lambda . lambda)))
 
 (define (unparse/false object context)
   (if (eq? object #f)
@@ -445,7 +445,7 @@ USA.
 (define (unparse/uninterned-symbol symbol context)
   (if (get-param:unparse-uninterned-symbols-by-name?)
       (unparse-symbol-name (symbol->string symbol) context)
-      (*unparse-with-brackets 'UNINTERNED-SYMBOL symbol context
+      (*unparse-with-brackets 'uninterned-symbol symbol context
         (lambda (context*)
 	  (*unparse-string (symbol->string symbol) context*)))))
 
@@ -456,10 +456,10 @@ USA.
 
 (define (unparse-keyword-name s context)
   (case (param:parser-keyword-style)
-    ((PREFIX)
+    ((prefix)
      (*unparse-char #\: context)
      (unparse-symbol-name s context))
-    ((SUFFIX)
+    ((suffix)
      (unparse-symbol-name s context)
      (*unparse-char #\: context))
     (else
@@ -474,8 +474,8 @@ USA.
 	   (char-in-set? (string-ref s 0) char-set:symbol-initial)
 	   (string-every (symbol-name-no-quoting-predicate context) s)
 	   (not (case (param:parser-keyword-style)
-		  ((PREFIX) (string-prefix? ":" s))
-		  ((SUFFIX) (string-suffix? ":" s))
+		  ((prefix) (string-prefix? ":" s))
+		  ((suffix) (string-suffix? ":" s))
 		  (else #f)))
 	   (not (string->number s)))
       (*unparse-string s context)
@@ -682,10 +682,10 @@ USA.
        (pair? (safe-cdr object))
        (null? (safe-cdr (safe-cdr object)))
        (case (safe-car object)
-         ((QUOTE) "'")
-         ((QUASIQUOTE) "`")
-         ((UNQUOTE) ",")
-         ((UNQUOTE-SPLICING) ",@")
+         ((quote) "'")
+         ((quasiquote) "`")
+         ((unquote) ",")
+         ((unquote-splicing) ",@")
          (else #f))))
 
 (define (unparse-list/stream-pair stream-pair context)
@@ -726,7 +726,7 @@ USA.
 ;;;; Procedures
 
 (define (unparse/compound-procedure procedure context)
-  (*unparse-with-brackets 'COMPOUND-PROCEDURE procedure context
+  (*unparse-with-brackets 'compound-procedure procedure context
     (and (get-param:unparse-compound-procedure-names?)
 	 (lambda-components* (procedure-lambda procedure)
 	   (lambda (name required optional rest body)
@@ -744,17 +744,17 @@ USA.
 	  ((get-param:unparse-with-maximum-readability?)
 	   (*unparse-readable-hash procedure context))
 	  (else
-	   (*unparse-with-brackets 'PRIMITIVE-PROCEDURE #f context
+	   (*unparse-with-brackets 'primitive-procedure #f context
 				   unparse-name)))))
 
 (define (unparse/compiled-entry entry context)
   (let* ((type (compiled-entry-type entry))
-         (procedure? (eq? type 'COMPILED-PROCEDURE))
+         (procedure? (eq? type 'compiled-procedure))
          (closure?
           (and procedure?
                (compiled-code-block/manifest-closure?
                 (compiled-code-address->block entry)))))
-    (*unparse-with-brackets (if closure? 'COMPILED-CLOSURE type)
+    (*unparse-with-brackets (if closure? 'compiled-closure type)
 			    entry
 			    context
       (lambda (context*)
@@ -787,27 +787,27 @@ USA.
 ;;;; Miscellaneous
 
 (define (unparse/return-address return-address context)
-  (*unparse-with-brackets 'RETURN-ADDRESS return-address context
+  (*unparse-with-brackets 'return-address return-address context
     (lambda (context*)
       (*unparse-object (return-address/name return-address) context*))))
 
 (define (unparse/assignment assignment context)
-  (*unparse-with-brackets 'ASSIGNMENT assignment context
+  (*unparse-with-brackets 'assignment assignment context
     (lambda (context*)
       (*unparse-object (scode-assignment-name assignment) context*))))
 
 (define (unparse/definition definition context)
-  (*unparse-with-brackets 'DEFINITION definition context
+  (*unparse-with-brackets 'definition definition context
     (lambda (context*)
       (*unparse-object (scode-definition-name definition) context*))))
 
 (define (unparse/lambda lambda-object context)
-  (*unparse-with-brackets 'LAMBDA lambda-object context
+  (*unparse-with-brackets 'lambda lambda-object context
     (lambda (context*)
       (*unparse-object (scode-lambda-name lambda-object) context*))))
 
 (define (unparse/variable variable context)
-  (*unparse-with-brackets 'VARIABLE variable context
+  (*unparse-with-brackets 'variable variable context
     (lambda (context*)
       (*unparse-object (scode-variable-name variable) context*))))
 
@@ -861,27 +861,27 @@ USA.
     (*unparse-with-brackets name entity context #f))
 
   (define (named-arity-dispatched-procedure name)
-    (*unparse-with-brackets 'ARITY-DISPATCHED-PROCEDURE entity context
+    (*unparse-with-brackets 'arity-dispatched-procedure entity context
       (lambda (context*)
         (*unparse-string name context*))))
 
   (cond ((continuation? entity)
-         (plain 'CONTINUATION))
+         (plain 'continuation))
         ((apply-hook? entity)
-         (plain 'APPLY-HOOK))
+         (plain 'apply-hook))
         ((arity-dispatched-procedure? entity)
          (let ((proc  (%entity-procedure entity)))
            (cond ((and (compiled-code-address? proc)
                        (compiled-procedure? proc)
                        (compiled-procedure/name proc))
                   => named-arity-dispatched-procedure)
-                 (else (plain 'ARITY-DISPATCHED-PROCEDURE)))))
+                 (else (plain 'arity-dispatched-procedure)))))
         ((get-param:unparse-with-maximum-readability?)
          (*unparse-readable-hash entity context))
-        (else (plain 'ENTITY))))
+        (else (plain 'entity))))
 
 (define (unparse/promise promise context)
-  (*unparse-with-brackets 'PROMISE promise context
+  (*unparse-with-brackets 'promise promise context
     (if (promise-forced? promise)
 	(lambda (context*)
 	  (*unparse-string "(evaluated) " context*)

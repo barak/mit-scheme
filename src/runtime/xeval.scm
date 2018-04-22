@@ -97,18 +97,18 @@ USA.
   (set! rewrite-walker
 	(make-scode-walker
 	 rewrite/constant
-	 `((ACCESS ,rewrite/access)
-	   (ASSIGNMENT ,rewrite/assignment)
-	   (COMBINATION ,rewrite/combination)
-	   (COMMENT ,rewrite/comment)
-	   (CONDITIONAL ,rewrite/conditional)
-	   (DELAY ,rewrite/delay)
-	   (DISJUNCTION ,rewrite/disjunction)
-	   (LAMBDA ,rewrite/lambda)
-	   (SEQUENCE ,rewrite/sequence)
-	   (THE-ENVIRONMENT ,rewrite/the-environment)
-	   (UNASSIGNED? ,rewrite/unassigned?)
-	   (VARIABLE ,rewrite/variable))))
+	 `((access ,rewrite/access)
+	   (assignment ,rewrite/assignment)
+	   (combination ,rewrite/combination)
+	   (comment ,rewrite/comment)
+	   (conditional ,rewrite/conditional)
+	   (delay ,rewrite/delay)
+	   (disjunction ,rewrite/disjunction)
+	   (lambda ,rewrite/lambda)
+	   (sequence ,rewrite/sequence)
+	   (the-environment ,rewrite/the-environment)
+	   (unassigned? ,rewrite/unassigned?)
+	   (variable ,rewrite/variable))))
   (set! hook/extended-scode-eval default/extended-scode-eval)
   unspecific)
 

@@ -967,10 +967,10 @@ USA.
 (define (partial-uri-state-name puri)
   (let ((name (%partial-uri-state-name puri)))
     (case name
-      ((START-REFERENCE START-ABSOLUTE) 'start)
-      ((SCHEME-REFERENCE SCHEME-ABSOLUTE) 'scheme)
-      ((SEGMENT-NZ-NC) 'path)
-      ((HIER-PART INIT-SLASH)
+      ((start-reference start-absolute) 'start)
+      ((scheme-reference scheme-absolute) 'scheme)
+      ((segment-nz-nc) 'path)
+      ((hier-part init-slash)
        (if (partial-uri-scheme puri) 'hier-part 'relative-part))
       (else name))))
 
@@ -1079,7 +1079,7 @@ USA.
   (segment-nc (push) segment-nz-nc)
   (? (set path) query)
   (|#| (set path) fragment)
-  (EOF))
+  (eof))
 
 (define-ppu-state scheme-reference
   (scheme (push) scheme-reference)
@@ -1088,57 +1088,57 @@ USA.
   (/ (push) path)
   (? (set path) query)
   (|#| (set path) fragment)
-  (EOF))
+  (eof))
 
 (define-ppu-state segment-nz-nc
   (segment-nc (push) segment-nz-nc)
   (/ (push) path)
   (? (set path) query)
   (|#| (set path) fragment)
-  (EOF (set path)))
+  (eof (set path)))
 
 (define-ppu-state start-absolute
   (alpha (push) scheme-absolute)
-  (EOF))
+  (eof))
 
 (define-ppu-state scheme-absolute
   (scheme (push) scheme-absolute)
   (: (set scheme) hier-part)
-  (EOF))
+  (eof))
 
 (define-ppu-state hier-part
   (segment (push) path)
   (/ init-slash)
   (? (set path) query)
   (|#| (set path) fragment)
-  (EOF))
+  (eof))
 
 (define-ppu-state init-slash
   (segment (push /) (push) path)
   (/ authority)
   (? (push /) (set path) query)
   (|#| (push /) (set path) fragment)
-  (EOF))
+  (eof))
 
 (define-ppu-state authority
   (sloppy-auth (push) authority)
   (/ (set authority) (push) path)
   (? (set authority) query)
   (|#| (set authority) fragment)
-  (EOF (set authority)))
+  (eof (set authority)))
 
 (define-ppu-state path
   (segment (push) path)
   (/ (push) path)
   (? (set path) query)
   (|#| (set path) fragment)
-  (EOF (set path)))
+  (eof (set path)))
 
 (define-ppu-state query
   (query (push) query)
   (|#| (set query) fragment)
-  (EOF (set query)))
+  (eof (set query)))
 
 (define-ppu-state fragment
   (fragment (push) fragment)
-  (EOF (set fragment)))
+  (eof (set fragment)))

@@ -33,7 +33,7 @@ USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee textual-output-port? port 'WORLD-REPORT)))
+	     (guarantee textual-output-port? port 'world-report)))
 	(flags (cons (cons (console-thread) "console")
 		     (if (default-object? thread-flags)
 			 '()
@@ -175,11 +175,11 @@ USA.
 
 (define (write-state thread port)
   (write-string (case (thread-execution-state thread)
-		  ((RUNNING)	"running")
-		  ((DEAD)	"  dead ")
-		  ((WAITING)	"waiting")
-		  ((STOPPED)	"stopped")
-		  ((RUNNING-WITHOUT-PREEMPTION) "RUNNING")
+		  ((running)	"running")
+		  ((dead)	"  dead ")
+		  ((waiting)	"waiting")
+		  ((stopped)	"stopped")
+		  ((running-without-preemption) "RUNNING")
 		  (else "   ????"))
 		port))
 

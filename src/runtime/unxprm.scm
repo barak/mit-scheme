@@ -54,7 +54,7 @@ USA.
 	 (if (or (default-object? transformer) (not transformer))
 	     identity-procedure
 	     (begin
-	       (guarantee unary-procedure? transformer 'TEMPORARY-FILE-PATHNAME)
+	       (guarantee unary-procedure? transformer 'temporary-file-pathname)
 	       transformer))))
     (let loop ((ext 0))
       (let ((pathname
@@ -125,7 +125,7 @@ USA.
 (define (file-length filename)
   (let ((attrs (file-attributes-direct filename)))
     (if (not attrs)
-	(error:bad-range-argument filename 'FILE-LENGTH))
+	(error:bad-range-argument filename 'file-length))
     (file-attributes/length attrs)))
 
 (define (file-modification-time-direct filename)
@@ -163,9 +163,9 @@ USA.
 (define environment-variables)
 
 (define (get-environment-variable name)
-  (guarantee string? name 'GET-ENVIRONMENT-VARIABLE)
-  (let ((value (hash-table/get environment-variables name 'NONE)))
-    (if (eq? value 'NONE)
+  (guarantee string? name 'get-environment-variable)
+  (let ((value (hash-table/get environment-variables name 'none)))
+    (if (eq? value 'none)
 	(let ((value
 	       ((ucode-primitive get-environment-variable 1)
 		(string-for-primitive name))))
@@ -174,13 +174,13 @@ USA.
 	value)))
 
 (define (set-environment-variable! name value)
-  (guarantee string? name 'SET-ENVIRONMENT-VARIABLE!)
+  (guarantee string? name 'set-environment-variable!)
   (if value
-      (guarantee string? value 'SET-ENVIRONMENT-VARIABLE!))
+      (guarantee string? value 'set-environment-variable!))
   (hash-table/put! environment-variables name value))
 
 (define (delete-environment-variable! name)
-  (guarantee string? name 'DELETE-ENVIRONMENT-VARIABLE!)
+  (guarantee string? name 'delete-environment-variable!)
   (hash-table/remove! environment-variables name))
 
 (define (reset-environment-variables!)
@@ -358,11 +358,11 @@ USA.
 	    (string-ci=? "iso9660" type)
 	    (string-ci=? "ntfs" type)
 	    (string-ci=? "smb" type))
-	'CRLF
-	'LF)))
+	'crlf
+	'lf)))
 
 (define (default-line-ending)
-  'LF)
+  'lf)
 
 (define (copy-file from to)
   (let ((input-filename (->namestring (merge-pathnames from)))
@@ -410,7 +410,7 @@ USA.
     (set-file-modes! output-filename (file-modes input-filename))))
 
 (define (init-file-specifier->pathname specifier)
-  (guarantee init-file-specifier? specifier 'INIT-FILE-SPECIFIER->PATHNAME)
+  (guarantee init-file-specifier? specifier 'init-file-specifier->pathname)
   (merge-pathnames (apply string-append
 			  (cons ".mit-scheme"
 				(append-map (lambda (string) (list "/" string))

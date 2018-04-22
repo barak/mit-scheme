@@ -52,7 +52,7 @@ USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee textual-output-port? port 'WRITE-MIT-SCHEME-COPYRIGHT)))
+	     (guarantee textual-output-port? port 'write-mit-scheme-copyright)))
 	(cmark (if (default-object? cmark) "(C)" cmark))
 	(line-prefix (if (default-object? line-prefix) "" line-prefix)))
     (write-words (let ((years (map number->string copyright-years)))
@@ -75,7 +75,7 @@ USA.
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
-	     (guarantee textual-output-port? port 'WRITE-MIT-SCHEME-LICENSE)))
+	     (guarantee textual-output-port? port 'write-mit-scheme-license)))
 	(line-prefix (if (default-object? line-prefix) "" line-prefix))
 	(short? (if (default-object? short?) #f short?)))
     (let loop

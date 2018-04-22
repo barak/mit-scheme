@@ -65,11 +65,11 @@ USA.
    (lambda (type)
      (if (port-type-supports-input? type)
 	(if (port-type-supports-output? type)
-	    'TEXTUAL-I/O-PORT-TYPE
-	    'TEXTUAL-INPUT-PORT-TYPE)
+	    'textual-i/o-port-type
+	    'textual-input-port-type)
 	(if (port-type-supports-output? type)
-	    'TEXTUAL-OUTPUT-PORT-TYPE
-	    'TEXTUAL-PORT-TYPE)))
+	    'textual-output-port-type
+	    'textual-port-type)))
    #f))
 
 (define (port-type-supports-input? type)
@@ -159,10 +159,10 @@ USA.
        (append operations
 	       (remove (let ((excluded
 			      (append
-			       (if (assq 'READ-CHAR operations)
+			       (if (assq 'read-char operations)
 				   standard-input-operation-names
 				   '())
-			       (if (assq 'WRITE-CHAR operations)
+			       (if (assq 'write-char operations)
 				   standard-output-operation-names
 				   '()))))
 			 (lambda (p)
@@ -182,17 +182,17 @@ USA.
 	(values (reverse! standard) (reverse! custom)))))
 
 (define standard-input-operation-names
-  '(CHAR-READY?
-    PEEK-CHAR
-    READ-CHAR
-    READ-SUBSTRING
-    UNREAD-CHAR))
+  '(char-ready?
+    peek-char
+    read-char
+    read-substring
+    unread-char))
 
 (define standard-output-operation-names
-  '(WRITE-CHAR
-    WRITE-SUBSTRING
-    FLUSH-OUTPUT
-    DISCRETIONARY-FLUSH-OUTPUT))
+  '(write-char
+    write-substring
+    flush-output
+    discretionary-flush-output))
 
 ;;;; Default I/O operations
 
@@ -201,22 +201,22 @@ USA.
       (error "Missing required operation:" name)))
 
 (define (provide-default-input-operations op)
-  (required-operation op 'READ-CHAR)
-  (if (and (or (op 'UNREAD-CHAR)
-	       (op 'PEEK-CHAR))
-	   (not (and (op 'UNREAD-CHAR)
-		     (op 'PEEK-CHAR))))
+  (required-operation op 'read-char)
+  (if (and (or (op 'unread-char)
+	       (op 'peek-char))
+	   (not (and (op 'unread-char)
+		     (op 'peek-char))))
       (error "Must provide both UNREAD-CHAR and PEEK-CHAR operations."))
   (let ((char-ready?
-	 (or (op 'CHAR-READY?)
+	 (or (op 'char-ready?)
 	     (lambda (port) port #t)))
 	(read-substring
-	 (or (op 'READ-SUBSTRING)
+	 (or (op 'read-substring)
 	     generic-port-operation:read-substring)))
     (lambda (name)
       (case name
-	((CHAR-READY?) char-ready?)
-	((READ-SUBSTRING) read-substring)
+	((char-ready?) char-ready?)
+	((read-substring) read-substring)
 	(else (op name))))))
 
 (define (generic-port-operation:read-substring port string start end)
@@ -239,21 +239,21 @@ USA.
 		   (- index start))))))))
 
 (define (provide-default-output-operations op)
-  (required-operation op 'WRITE-CHAR)
+  (required-operation op 'write-char)
   (let ((write-substring
-	 (or (op 'WRITE-SUBSTRING)
+	 (or (op 'write-substring)
 	     generic-port-operation:write-substring))
 	(flush-output
-	 (or (op 'FLUSH-OUTPUT)
+	 (or (op 'flush-output)
 	     no-flush))
 	(discretionary-flush-output
-	 (or (op 'DISCRETIONARY-FLUSH-OUTPUT)
+	 (or (op 'discretionary-flush-output)
 	     no-flush)))
     (lambda (name)
       (case name
-	((WRITE-SUBSTRING) write-substring)
-	((FLUSH-OUTPUT) flush-output)
-	((DISCRETIONARY-FLUSH-OUTPUT) discretionary-flush-output)
+	((write-substring) write-substring)
+	((flush-output) flush-output)
+	((discretionary-flush-output) discretionary-flush-output)
 	(else (op name))))))
 
 (define (no-flush port)
@@ -274,20 +274,20 @@ USA.
 
 (define (provide-input-features op)
   (let ((read-char
-	 (let ((defer (op 'READ-CHAR)))
+	 (let ((defer (op 'read-char)))
 	   (lambda (port)
 	     (let ((char (defer port)))
 	       (transcribe-input-char char port)
 	       (set-textual-port-unread?! port #f)
 	       char))))
 	(unread-char
-	 (let ((defer (op 'UNREAD-CHAR)))
+	 (let ((defer (op 'unread-char)))
 	   (and defer
 		(lambda (port char)
 		  (defer port char)
 		  (set-textual-port-unread?! port #t)))))
 	(peek-char
-	 (let ((defer (op 'PEEK-CHAR)))
+	 (let ((defer (op 'peek-char)))
 	   (and defer
 		(lambda (port)
 		  (let ((char (defer port)))
@@ -295,7 +295,7 @@ USA.
 		    (set-textual-port-unread?! port #t)
 		    char)))))
 	(read-substring
-	 (let ((defer (op 'READ-SUBSTRING)))
+	 (let ((defer (op 'read-substring)))
 	   (lambda (port string start end)
 	     (let ((n (defer port string start end)))
 	       (transcribe-input-substring string start n port)
@@ -303,10 +303,10 @@ USA.
 	       n)))))
     (lambda (name)
       (case name
-	((READ-CHAR) read-char)
-	((UNREAD-CHAR) unread-char)
-	((PEEK-CHAR) peek-char)
-	((READ-SUBSTRING) read-substring)
+	((read-char) read-char)
+	((unread-char) unread-char)
+	((peek-char) peek-char)
+	((read-substring) read-substring)
 	(else (op name))))))
 
 (define (transcribe-input-char char port)
@@ -325,7 +325,7 @@ USA.
 
 (define (provide-output-features op)
   (let ((write-char
-	 (let ((defer (op 'WRITE-CHAR)))
+	 (let ((defer (op 'write-char)))
 	   (lambda (port char)
 	     (let ((n (defer port char)))
 	       (if (and n (fix:> n 0))
@@ -334,7 +334,7 @@ USA.
 		     (transcribe-char char port)))
 	       n))))
 	(write-substring
-	 (let ((defer (op 'WRITE-SUBSTRING)))
+	 (let ((defer (op 'write-substring)))
 	   (lambda (port string start end)
 	     (let ((n (defer port string start end)))
 	       (if (and n (> n 0))
@@ -344,12 +344,12 @@ USA.
 		     (transcribe-substring string start end port)))
 	       n))))
 	(flush-output
-	 (let ((defer (op 'FLUSH-OUTPUT)))
+	 (let ((defer (op 'flush-output)))
 	   (lambda (port)
 	     (defer port)
 	     (flush-transcript port))))
 	(discretionary-flush-output
-	 (let ((defer (op 'DISCRETIONARY-FLUSH-OUTPUT)))
+	 (let ((defer (op 'discretionary-flush-output)))
 	   (lambda (port)
 	     (defer port)
 	     (discretionary-flush-transcript port))))
@@ -357,7 +357,7 @@ USA.
 	 (lambda (port)
 	   (if (textual-port-previous port)
 	       (char=? (textual-port-previous port) #\newline)
-	       'UNKNOWN))))
+	       'unknown))))
     (let ((fresh-line
 	   (lambda (port)
 	     (if (and (textual-port-previous port)
@@ -366,12 +366,12 @@ USA.
 		 0))))
       (lambda (name)
 	(case name
-	  ((WRITE-CHAR) write-char)
-	  ((WRITE-SUBSTRING) write-substring)
-	  ((FRESH-LINE) fresh-line)
-	  ((LINE-START?) line-start?)
-	  ((FLUSH-OUTPUT) flush-output)
-	  ((DISCRETIONARY-FLUSH-OUTPUT) discretionary-flush-output)
+	  ((write-char) write-char)
+	  ((write-substring) write-substring)
+	  ((fresh-line) fresh-line)
+	  ((line-start?) line-start?)
+	  ((flush-output) flush-output)
+	  ((discretionary-flush-output) discretionary-flush-output)
 	  (else (op name)))))))
 
 ;;;; Textual ports
@@ -419,17 +419,17 @@ USA.
 (define-unparser-method textual-port?
   (standard-unparser-method
    (lambda (port)
-     (cond ((textual-i/o-port? port) 'TEXTUAL-I/O-PORT)
-	   ((textual-input-port? port) 'TEXTUAL-INPUT-PORT)
-	   ((textual-output-port? port) 'TEXTUAL-OUTPUT-PORT)
-	   (else 'TEXTUAL-PORT)))
+     (cond ((textual-i/o-port? port) 'textual-i/o-port)
+	   ((textual-input-port? port) 'textual-input-port)
+	   ((textual-output-port? port) 'textual-output-port)
+	   (else 'textual-port)))
    (lambda (port output-port)
-     (cond ((textual-port-operation port 'WRITE-SELF)
+     (cond ((textual-port-operation port 'write-self)
 	    => (lambda (operation)
 		 (operation port output-port)))))))
 
 (define (close-textual-port port)
-  (let ((close (textual-port-operation port 'CLOSE)))
+  (let ((close (textual-port-operation port 'close)))
     (if close
 	(close port)
 	(begin
@@ -437,17 +437,17 @@ USA.
 	  (close-textual-input-port port)))))
 
 (define (close-textual-input-port port)
-  (let ((close-input (textual-port-operation port 'CLOSE-INPUT)))
+  (let ((close-input (textual-port-operation port 'close-input)))
     (if close-input
 	(close-input port))))
 
 (define (close-textual-output-port port)
-  (let ((close-output (textual-port-operation port 'CLOSE-OUTPUT)))
+  (let ((close-output (textual-port-operation port 'close-output)))
     (if close-output
 	(close-output port))))
 
 (define (textual-port-open? port)
-  (let ((open? (textual-port-operation port 'OPEN?)))
+  (let ((open? (textual-port-operation port 'open?)))
     (if open?
 	(open? port)
 	(and (if (textual-input-port? port)
@@ -458,13 +458,13 @@ USA.
 		 #t)))))
 
 (define (textual-input-port-open? port)
-  (let ((open? (textual-port-operation port 'INPUT-OPEN?)))
+  (let ((open? (textual-port-operation port 'input-open?)))
     (if open?
 	(open? port)
 	#t)))
 
 (define (textual-output-port-open? port)
-  (let ((open? (textual-port-operation port 'OUTPUT-OPEN?)))
+  (let ((open? (textual-port-operation port 'output-open?)))
     (if open?
 	(open? port)
 	#t)))
@@ -489,9 +489,9 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      (let ((name (cadr form)))
-       `(DEFINE (,(symbol 'TEXTUAL-PORT-OPERATION/ name) PORT)
-	  (,(close-syntax (symbol 'PORT-TYPE-OPERATION: name) environment)
-	   (TEXTUAL-PORT-TYPE PORT)))))))
+       `(define (,(symbol 'textual-port-operation/ name) port)
+	  (,(close-syntax (symbol 'port-type-operation: name) environment)
+	   (textual-port-type port)))))))
 
 (define-port-operation char-ready?)
 (define-port-operation read-char)
@@ -545,55 +545,55 @@ USA.
 	(output-port/discretionary-flush tport))))
 
 (define (textual-port-char-set port)
-  (let ((operation (textual-port-operation port 'CHAR-SET)))
+  (let ((operation (textual-port-operation port 'char-set)))
     (if operation
 	(operation port)
 	char-set:iso-8859-1)))
 
 (define (port/supports-coding? port)
-  (let ((operation (textual-port-operation port 'SUPPORTS-CODING?)))
+  (let ((operation (textual-port-operation port 'supports-coding?)))
     (if operation
 	(operation port)
 	#f)))
 
 (define (port/coding port)
-  ((or (textual-port-operation port 'CODING)
-       (error:bad-range-argument port 'PORT/CODING))
+  ((or (textual-port-operation port 'coding)
+       (error:bad-range-argument port 'port/coding))
    port))
 
 (define (port/set-coding port name)
-  ((or (textual-port-operation port 'SET-CODING)
-       (error:bad-range-argument port 'PORT/SET-CODING))
+  ((or (textual-port-operation port 'set-coding)
+       (error:bad-range-argument port 'port/set-coding))
    port name))
 
 (define (port/known-coding? port name)
-  ((or (textual-port-operation port 'KNOWN-CODING?)
-       (error:bad-range-argument port 'PORT/KNOWN-CODING?))
+  ((or (textual-port-operation port 'known-coding?)
+       (error:bad-range-argument port 'port/known-coding?))
    port name))
 
 (define (port/known-codings port)
-  ((or (textual-port-operation port 'KNOWN-CODINGS)
-       (error:bad-range-argument port 'PORT/KNOWN-CODINGS))
+  ((or (textual-port-operation port 'known-codings)
+       (error:bad-range-argument port 'port/known-codings))
    port))
 
 (define (port/line-ending port)
-  ((or (textual-port-operation port 'LINE-ENDING)
-       (error:bad-range-argument port 'PORT/LINE-ENDING))
+  ((or (textual-port-operation port 'line-ending)
+       (error:bad-range-argument port 'port/line-ending))
    port))
 
 (define (port/set-line-ending port name)
-  ((or (textual-port-operation port 'SET-LINE-ENDING)
-       (error:bad-range-argument port 'PORT/SET-LINE-ENDING))
+  ((or (textual-port-operation port 'set-line-ending)
+       (error:bad-range-argument port 'port/set-line-ending))
    port name))
 
 (define (port/known-line-ending? port name)
-  ((or (textual-port-operation port 'KNOWN-LINE-ENDING?)
-       (error:bad-range-argument port 'PORT/KNOWN-LINE-ENDING?))
+  ((or (textual-port-operation port 'known-line-ending?)
+       (error:bad-range-argument port 'port/known-line-ending?))
    port name))
 
 (define (port/known-line-endings port)
-  ((or (textual-port-operation port 'KNOWN-LINE-ENDINGS)
-       (error:bad-range-argument port 'PORT/KNOWN-LINE-ENDINGS))
+  ((or (textual-port-operation port 'known-line-endings)
+       (error:bad-range-argument port 'port/known-line-endings))
    port))
 
 ;;;; Generic ports

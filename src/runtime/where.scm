@@ -30,7 +30,7 @@ USA.
 (declare (usual-integrations))
 
 (define (where #!optional environment)
-  (with-simple-restart 'CONTINUE "Return from WHERE."
+  (with-simple-restart 'continue "Return from WHERE."
     (lambda ()
       (let ((wstate
 	     (make-wstate
@@ -57,7 +57,7 @@ USA.
   (set!
    command-set
    (make-command-set
-    'WHERE-COMMANDS
+    'where-commands
     `((#\? ,standard-help-command
 	   "help, list command letters")
       (#\A ,show-all

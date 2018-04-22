@@ -44,7 +44,7 @@ USA.
 
 (define (unsyntax-with-substitutions scode alist)
   (if (not (alist? alist))
-      (error:wrong-type-argument alist "alist" 'UNSYNTAX-WITH-SUBSTITUTIONS))
+      (error:wrong-type-argument alist "alist" 'unsyntax-with-substitutions))
   (parameterize* (list (cons substitutions alist))
     (lambda ()
       (unsyntax scode))))
@@ -113,24 +113,24 @@ USA.
 	     (symbol? object)
 	     (vector? object))
 	 ;; R4RS quoted data (in addition to above)
-	 `(QUOTE ,object))
+	 `(quote ,object))
 	((compiled-expression? object)
 	 (let ((scode (compiled-expression/scode object)))
 	   (if (eq? scode object)
-	       `(SCODE-QUOTE ,object)
+	       `(scode-quote ,object)
 	       (unsyntax-object environment scode))))
 	(else
 	 object)))
 
-(define (unsyntax-QUOTATION environment quotation)
-  `(SCODE-QUOTE
+(define (unsyntax-quotation environment quotation)
+  `(scode-quote
     ,(unsyntax-object environment (scode-quotation-expression quotation))))
 
 (define (unsyntax-variable-object environment object)
   (declare (ignore environment))
   (scode-variable-name object))
 
-(define (unsyntax-ACCESS-object environment object)
+(define (unsyntax-access-object environment object)
   (or (and (unsyntaxer:elide-global-accesses?)
 	   (unsyntaxer:macroize?)
 	   (let ((access-environment (scode-access-environment object))
@@ -141,7 +141,7 @@ USA.
 				'system-global-environment)))
 		  (not (is-bound? name environment))
 		  name)))
-      `(ACCESS ,@(unexpand-access environment object))))
+      `(access ,@(unexpand-access environment object))))
 
 (define (unexpand-access environment object)
   (let loop ((object object) (separate? #t))
@@ -210,7 +210,7 @@ USA.
 		  (else #f)))))))
 
 (define (unsyntax-assignment-object environment assignment)
-  `(SET! ,(scode-assignment-name assignment)
+  `(set! ,(scode-assignment-name assignment)
 	 ,@(unexpand-binding-value environment
 				   (scode-assignment-value assignment))))
 
@@ -219,15 +219,15 @@ USA.
       '()
       `(,(unsyntax-object environment value))))
 
-(define (unsyntax-COMMENT-object environment comment)
+(define (unsyntax-comment-object environment comment)
   (let ((expression
 	 (unsyntax-object environment (scode-comment-expression comment))))
     (if (unsyntaxer:show-comments?)
-	`(COMMENT ,(scode-comment-text comment) ,expression)
+	`(comment ,(scode-comment-text comment) ,expression)
 	expression)))
 
-(define (unsyntax-DECLARATION-object environment declaration)
-  `(LOCAL-DECLARE
+(define (unsyntax-declaration-object environment declaration)
+  `(local-declare
     ,(scode-declaration-text declaration)
     ,(unsyntax-object environment (scode-declaration-expression declaration))))
 
@@ -235,10 +235,10 @@ USA.
   (let ((actions (scode-sequence-actions seq)))
     (if (and (scode-block-declaration? (car actions))
 	     (pair? (cdr actions)))
-	`(BEGIN
-	  (DECLARE ,@(scode-block-declaration-text (car actions)))
+	`(begin
+	  (declare ,@(scode-block-declaration-text (car actions)))
 	  ,@(unsyntax-sequence-actions environment (cdr actions)))
-	`(BEGIN
+	`(begin
 	  ,@(unsyntax-sequence-actions environment actions)))))
 
 (define (unsyntax-sequence-for-splicing environment seq)
@@ -248,7 +248,7 @@ USA.
 					(scode-sequence-actions seq))))
 	(if (eq? #t (unsyntaxer:macroize?))
 	    actions
-	    `((BEGIN ,@actions))))
+	    `((begin ,@actions))))
       (list (unsyntax-object environment seq))))
 
 (define (unsyntax-sequence-actions environment actions)
@@ -265,14 +265,14 @@ USA.
        (unscan-defines (scode-open-block-names open-block)
 		       (scode-open-block-declarations open-block)
 		       (scode-open-block-actions open-block)))
-      (unsyntax-SEQUENCE-object environment open-block)))
+      (unsyntax-sequence-object environment open-block)))
 
-(define (unsyntax-DELAY-object environment object)
-  `(DELAY ,(unsyntax-object environment (scode-delay-expression object))))
+(define (unsyntax-delay-object environment object)
+  `(delay ,(unsyntax-object environment (scode-delay-expression object))))
 
-(define (unsyntax-THE-ENVIRONMENT-object environment object)
+(define (unsyntax-the-environment-object environment object)
   (declare (ignore environment object))
-  `(THE-ENVIRONMENT))
+  `(the-environment))
 
 (define (unsyntax-disjunction-object environment object)
   `(or ,@(let ((predicate (scode-disjunction-predicate object))
@@ -301,22 +301,22 @@ USA.
 
 (define (unsyntax-conditional/default environment
 				      predicate consequent alternative)
-  `(IF ,(unsyntax-object environment predicate)
+  `(if ,(unsyntax-object environment predicate)
        ,(unsyntax-object environment consequent)
        ,(unsyntax-object environment alternative)))
 
 (define (unsyntax-conditional environment predicate consequent alternative)
   (cond ((not alternative)
-	 `(AND ,@(unexpand-conjunction environment predicate consequent)))
+	 `(and ,@(unexpand-conjunction environment predicate consequent)))
 	((eq? alternative undefined-scode-conditional-branch)
-	 `(IF ,(unsyntax-object environment predicate)
+	 `(if ,(unsyntax-object environment predicate)
 	      ,(unsyntax-object environment consequent)))
 	((eq? consequent undefined-scode-conditional-branch)
-	 `(IF (,(ucode-primitive not) ,(unsyntax-object environment predicate))
+	 `(if (,(ucode-primitive not) ,(unsyntax-object environment predicate))
 	      ,(unsyntax-object environment alternative)))
 	((and (scode-conditional? alternative)
 	      (not (has-substitution? alternative)))
-	 `(COND ,@(unsyntax-cond-conditional environment predicate
+	 `(cond ,@(unsyntax-cond-conditional environment predicate
 					     consequent
 					     alternative)))
 	(else
@@ -339,7 +339,7 @@ USA.
 	((has-substitution? alternative)
 	 =>
 	 (lambda (substitution)
-	   `((ELSE ,substitution))))
+	   `((else ,substitution))))
 	((scode-disjunction? alternative)
 	 (unsyntax-cond-disjunction
 	  environment
@@ -352,7 +352,7 @@ USA.
 	  (scode-conditional-consequent alternative)
 	  (scode-conditional-alternative alternative)))
 	(else
-	 `((ELSE ,@(unsyntax-sequence-for-splicing environment alternative))))))
+	 `((else ,@(unsyntax-sequence-for-splicing environment alternative))))))
 
 (define (unexpand-conjunction environment predicate consequent)
   (if (and (scode-conditional? consequent)
@@ -371,15 +371,15 @@ USA.
 
 ;;;; Lambdas
 
-(define (unsyntax-EXTENDED-LAMBDA-object environment expression)
+(define (unsyntax-extended-lambda-object environment expression)
   (if (unsyntaxer:macroize?)
       (unsyntax-lambda environment expression)
-      `(&XLAMBDA (,(scode-lambda-name expression)
+      `(&xlambda (,(scode-lambda-name expression)
 		  ,@(scode-lambda-interface expression))
 		 ,(unsyntax-object environment
 				   (lambda-immediate-body expression)))))
 
-(define (unsyntax-LAMBDA-object environment expression)
+(define (unsyntax-lambda-object environment expression)
   (if (unsyntaxer:macroize?)
       (unsyntax-lambda environment expression)
       (collect-lambda (scode-lambda-name expression)
@@ -398,13 +398,13 @@ USA.
 
 (define (collect-lambda name bvl body)
   (if (eq? name scode-lambda-name:unnamed)
-      `(LAMBDA ,bvl ,@body)
-      `(NAMED-LAMBDA (,name . ,bvl) ,@body)))
+      `(lambda ,bvl ,@body)
+      `(named-lambda (,name . ,bvl) ,@body)))
 
 (define (unsyntax-lambda-list expression)
   (if (not (scode-lambda? expression))
       (error:wrong-type-argument expression "SCode lambda"
-				 'UNSYNTAX-LAMBDA-LIST))
+				 'unsyntax-lambda-list))
   (lambda-components* expression
     (lambda (name required optional rest body)
       name body
@@ -424,7 +424,7 @@ USA.
       (let ((actions (scode-sequence-actions body)))
 	(if (and (scode-block-declaration? (car actions))
 		 (pair? (cdr actions)))
-	    `((DECLARE ,@(scode-block-declaration-text (car actions)))
+	    `((declare ,@(scode-block-declaration-text (car actions)))
 	      ,@(unsyntax-sequence-for-splicing
 		 environment
 		 (make-scode-sequence (cdr actions))))
@@ -451,7 +451,7 @@ USA.
 		   (= (length operands) 2)
 		   (scode-delay? (cadr operands))
 		   (not (has-substitution? (cadr operands))))
-	      `(CONS-STREAM ,(unsyntax-object environment (car operands))
+	      `(cons-stream ,(unsyntax-object environment (car operands))
 			    ,(unsyntax-object environment
 			      (scode-delay-expression (cadr operands)))))
 	     ((scode-lambda? operator)
@@ -462,7 +462,7 @@ USA.
 			   (= (length required) (length operands)))
 		      (if (or (eq? name scode-lambda-name:unnamed)
 			      (eq? name scode-lambda-name:let))
-			  `(LET ,(unsyntax-let-bindings environment
+			  `(let ,(unsyntax-let-bindings environment
 							required
 							operands)
 			     ,@(with-bindings environment operator
@@ -486,17 +486,17 @@ USA.
 	   (let ((expression (car expression)))
 	     (and (list? expression)
 		  (= 4 (length expression))
-		  (eq? 'LET (car expression))
+		  (eq? 'let (car expression))
 		  (eq? '() (cadr expression))
 		  (symbol? (cadddr expression))
 		  (let ((definition (caddr expression)))
 		    (and (pair? definition)
-			 (eq? 'DEFINE (car definition))
+			 (eq? 'define (car definition))
 			 (pair? (cadr definition))
 			 (eq? (caadr definition) (cadddr expression))
 			 (list? (cdadr definition))
 			 (every symbol? (cdadr definition)))))))
-      `(LET ,(cadddr (car expression))
+      `(let ,(cadddr (car expression))
 	 ,(map (lambda (name value)
 		 `(,name
 		   ,@(if (unassigned-reference-trap? value)

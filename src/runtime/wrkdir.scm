@@ -66,7 +66,7 @@ USA.
 				   (directory-pathname-as-file pathname))
 				  "not a directory"
 				  "no such directory")
-			      'SET-WORKING-DIRECTORY-PATHNAME!
+			      'set-working-directory-pathname!
 			      (list name)))
     (working-directory-pathname pathname)
     (cmdl/set-default-directory (nearest-cmdl) pathname)

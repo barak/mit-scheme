@@ -61,14 +61,14 @@ USA.
 
 (define-syntax %assert
   (syntax-rules ()
-    ((_ CONDITION)
+    ((_ condition)
      #f)))
 
 #;(define-syntax %assert
   (syntax-rules ()
-    ((_ CONDITION)
-     (if (not CONDITION)
-	 (error "Assertion failed:" 'CONDITION)))))
+    ((_ condition)
+     (if (not condition)
+	 (error "Assertion failed:" 'condition)))))
 
 (define-integrable (%locked? queue)
   (thread-mutex-owner (%thread-queue/mutex queue)))
