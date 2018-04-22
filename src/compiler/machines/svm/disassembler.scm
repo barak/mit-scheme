@@ -313,13 +313,12 @@ USA.
 		 (system-vector-ref block index)))
 	 (refs (system-hunk3-cxr2 cache))
 	 (entry
-	  (find-matching-item
-	   (case kind
-	     ((1) (system-hunk3-cxr0 refs))
-	     ((2) (system-hunk3-cxr1 refs))
-	     (else (error "Not a kind of variable cache:" kind)))
-	   (lambda (e)
-	     (weak-assq block (cdr e))))))
+	  (find (lambda (e)
+		  (weak-assq block (cdr e)))
+		(case kind
+		  ((1) (system-hunk3-cxr0 refs))
+		  ((2) (system-hunk3-cxr1 refs))
+		  (else (error "Not a kind of variable cache:" kind))))))
     (write-string "variable cache for ")
     (if (pair? entry)
 	(write (car entry))

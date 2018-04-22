@@ -72,9 +72,9 @@ USA.
 	    (queue->list defns))))
 
 (define (find-coding-type name coding-types #!optional error?)
-  (or (find-matching-item coding-types
-	(lambda (type)
-	  (eq? (coding-type-name type) name)))
+  (or (find (lambda (type)
+	      (eq? (coding-type-name type) name))
+	    coding-types)
       (and (if (default-object? error?) #t error?)
 	   (error "Unknown coding-type name:" name))))
 
@@ -164,9 +164,9 @@ USA.
     ;; Compute initial references.
     (let ((find-node
 	   (lambda (coding-type)
-	     (find-matching-item nodes
-	       (lambda (node)
-		 (eq? (vector-ref node 0) coding-type))))))
+	     (find (lambda (node)
+		     (eq? (vector-ref node 0) coding-type))
+		   nodes))))
       (for-each (lambda (coding-type from)
 		  (for-each (lambda (to)
 			      (enqueue! queue (cons from (find-node to))))
@@ -259,9 +259,9 @@ USA.
       (let ((outputs
 	     (append-map (lambda (input)
 			   (let ((abbrev
-				  (find-matching-item abbrevs
-				    (lambda (abbrev)
-				      (syntax-match? (car abbrev) input)))))
+				  (find (lambda (abbrev)
+					  (syntax-match? (car abbrev) input))
+					abbrevs)))
 			     (if abbrev
 				 (begin
 				   (set! any-expansions? #t)
@@ -366,9 +366,9 @@ USA.
 		  has-code?
 		  (map (lambda (item)
 			 (guarantee symbol? item #f)
-			 (or (find-matching-item pvars
-			       (lambda (pv)
-				 (eq? (pvar-name pv) item)))
+			 (or (find (lambda (pv)
+				     (eq? (pvar-name pv) item))
+				   pvars)
 			     (error "Missing name reference:" item)))
 		       coding)))))
 
@@ -415,9 +415,9 @@ USA.
 	 to-expand
 	 (append-map! (lambda (defn)
 			(let ((pv
-			       (find-matching-item (defn-pvars defn)
-				 (lambda (pv)
-				   (eq? (pvar-type pv) type-name)))))
+			       (find (lambda (pv)
+				       (eq? (pvar-type pv) type-name))
+				     (defn-pvars defn))))
 			  (if pv
 			      (begin
 				(set! any-changes? #t)
@@ -562,9 +562,9 @@ USA.
 
 (define (map-key-abbrevs keyword key-abbrevs)
   (let ((key-abbrev
-	 (find-matching-item key-abbrevs
-	   (lambda (key-abbrev)
-	     (eq? (key-abbrev-keyword key-abbrev) keyword)))))
+	 (find (lambda (key-abbrev)
+		 (eq? (key-abbrev-keyword key-abbrev) keyword))
+	       key-abbrevs)))
     (if key-abbrev
 	(key-abbrev-abbreviation key-abbrev)
 	keyword)))

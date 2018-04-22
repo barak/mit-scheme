@@ -292,11 +292,11 @@ USA.
 		  (registry-bindings
 		   (check-registry registry 'URI->RDF-PREFIX)))
 		 (filter (lambda (p) (string-prefix? (cdr p) s))))
-	     (or (find-matching-item alist
-		   (lambda (p)
-		     (and (not (eq? (car p) ':))
-			  (filter p))))
-		 (find-matching-item alist filter)))))
+	     (or (find (lambda (p)
+			 (and (not (eq? (car p) ':))
+			      (filter p)))
+		       alist)
+		 (find filter alist)))))
       (if p
 	  (values (car p) (cdr p))
 	  (begin

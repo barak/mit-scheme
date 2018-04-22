@@ -50,9 +50,9 @@ USA.
 	    (and intern? (%variable/make&bind! block name))))))
 
 (define (%block/lookup-name block name)
-  (find-matching-item (block/bound-variables block)
-		      (lambda (variable)
-			(eq? (variable/name variable) name))))
+  (find (lambda (variable)
+	  (eq? (variable/name variable) name))
+	(block/bound-variables block)))
 
 (define (block/limited-lookup block name limit)
   (guarantee symbol? name 'block/limited-lookup)

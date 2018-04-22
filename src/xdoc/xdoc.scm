@@ -723,9 +723,9 @@ USA.
     (let per-elt ((elt elt) (containers (xdoc-element-containers elt)))
       (let* ((id (xdoc-db-id elt))
 	     (suffix (string-append "-" (symbol->string id))))
-	(cond ((find-matching-item bindings
-		 (lambda (binding)
-		   (string-suffix? suffix (symbol->string (car binding)))))
+	(cond ((find (lambda (binding)
+		       (string-suffix? suffix (symbol->string (car binding))))
+		     bindings)
 	       => (lambda (binding)
 		    (values (let ((name (symbol->string (car binding))))
 			      (substring->symbol
@@ -1178,9 +1178,9 @@ USA.
 	  #f))))
 
 (define (%find-attribute name attrs)
-  (find-matching-item attrs
-    (lambda (attr)
-      (xml-name=? (xml-attribute-name attr) name))))
+  (find (lambda (attr)
+	  (xml-name=? (xml-attribute-name attr) name))
+	attrs))
 
 (define (symbol-attribute name elt error?)
   (let ((string (find-attribute name elt error?)))
@@ -1336,10 +1336,10 @@ USA.
   (%find-result (%find-child elt predicate) error?))
 
 (define (%find-child elt predicate)
-  (find-matching-item (xml-element-contents elt)
-    (lambda (item)
-      (and (xml-element? item)
-	   (predicate item)))))
+  (find (lambda (item)
+	  (and (xml-element? item)
+	       (predicate item)))
+	(xml-element-contents elt)))
 
 (define (%find-result elt error?)
   (if (and (not elt) error?)

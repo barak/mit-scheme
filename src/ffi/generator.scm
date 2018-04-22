@@ -147,8 +147,8 @@ Scm_"name" (void)
 "))))))
 
 (define (matching-param? string params)
-  (find-matching-item params
-    (lambda (param) (string=? string (symbol->string (car param))))))
+  (find (lambda (param) (string=? string (symbol->string (car param))))
+	params))
 
 (define (new-variable root-name params)
   ;; Returns a name (string) for a variable that must be distinct from

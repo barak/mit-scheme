@@ -770,9 +770,9 @@ USA.
 (define (define-url-bindings url . klist)
   (guarantee keyword-list? klist 'define-url-bindings)
   (let* ((binding
-	  (find-matching-item url-bindings
-	    (lambda (binding)
-	      (string=? (car binding) url)))))
+	  (find (lambda (binding)
+		  (string=? (car binding) url))
+		url-bindings)))
     (if binding
 	(do ((klist klist (cddr klist)))
 	    ((not (pair? klist)))

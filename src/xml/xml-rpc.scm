@@ -199,10 +199,10 @@ USA.
     child))
 
 (define (%named-child name elt)
-  (find-matching-item (xml-element-contents elt)
-    (lambda (item)
-      (and (xml-element? item)
-	   (xml-name=? (xml-element-name item) name)))))
+  (find (lambda (item)
+	  (and (xml-element? item)
+	       (xml-name=? (xml-element-name item) name)))
+	(xml-element-contents elt)))
 
 (define (single-child elt)
   (let ((children (all-children elt)))

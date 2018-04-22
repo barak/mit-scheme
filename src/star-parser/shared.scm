@@ -675,12 +675,12 @@ USA.
   (pp pointers)
   (newline)
   |#
-  (cond ((or (find-matching-item pointer-optimizations
-	       (lambda (p)
-		 (syntax-match? (car p) expression)))
-	     (find-matching-item default-pointer-optimizations
-	       (lambda (p)
-		 (syntax-match? (car p) expression))))
+  (cond ((or (find (lambda (p)
+		     (syntax-match? (car p) expression))
+		   pointer-optimizations)
+	     (find (lambda (p)
+		     (syntax-match? (car p) expression))
+		   default-pointer-optimizations))
 	 => (lambda (p)
 	      (let ((expression* ((cdr p) expression pointers)))
 		(if (equal? expression* expression)
@@ -779,15 +779,15 @@ USA.
 
 (define (%current-pointers pointers)
   (if (car pointers)
-      (find-matching-item (cdr pointers)
-	(lambda (identifiers)
-	  (memq (car pointers) identifiers)))
+      (find (lambda (identifiers)
+	      (memq (car pointers) identifiers))
+	    (cdr pointers))
       '()))
 
 (define (%id-pointers identifier pointers)
-  (or (find-matching-item (cdr pointers)
-	(lambda (ids)
-	  (memq identifier ids)))
+  (or (find (lambda (ids)
+	      (memq identifier ids))
+	    (cdr pointers))
       '()))
 
 (define-pointer-optimization

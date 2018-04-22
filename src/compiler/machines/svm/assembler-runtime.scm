@@ -45,9 +45,9 @@ USA.
 (define rt-coding-types '())
 
 (define (make-rt-coding-type name defns)
-  (if (find-matching-item rt-coding-types
-	(lambda (rt-coding-type)
-	  (eq? (rt-coding-type-name rt-coding-type) name)))
+  (if (find (lambda (rt-coding-type)
+	      (eq? (rt-coding-type-name rt-coding-type) name))
+	    rt-coding-types)
       (error "Coding type already exists" name)
       (set! rt-coding-types
 	    (cons (%make-rt-coding-type name defns) rt-coding-types))))
@@ -387,18 +387,18 @@ USA.
   (let ((type (rt-coding-type name))
 	(code (read-byte)))
     (let ((defn
-	    (find-matching-item (rt-coding-type-defns type)
-	     (lambda (defn)
-	       (eqv? (rt-defn-code defn) code)))))
+	    (find (lambda (defn)
+		    (eqv? (rt-defn-code defn) code))
+		  (rt-coding-type-defns type))))
       (if defn
 	  (cons (rt-defn-name defn)
 		((rt-defn-decoder defn) read-byte))
 	  (coding-error code type)))))
 
 (define (rt-coding-type name)
-  (or (find-matching-item rt-coding-types
-	(lambda (rt-coding-type)
-	  (eq? (rt-coding-type-name rt-coding-type) name)))
+  (or (find (lambda (rt-coding-type)
+	      (eq? (rt-coding-type-name rt-coding-type) name))
+	    rt-coding-types)
       (error:bad-range-argument name 'RT-CODING-TYPE)))
 
 (define condition-type:coding-error

@@ -300,9 +300,9 @@ USA.
 	(value-cell (expression/value-cell expression)))
     (let ((binding
 	   (and value-cell
-		(find-matching-item (value-cell/bindings value-cell)
-		  (lambda (binding)
-		    (eq? package* (binding/package binding)))))))
+		(find (lambda (binding)
+			(eq? package* (binding/package binding)))
+		      (value-cell/bindings value-cell)))))
       (if binding
 	  (let ((name (binding/name binding)))
 	    (if (and package

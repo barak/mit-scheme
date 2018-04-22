@@ -363,9 +363,9 @@ is inserted."
     (let ((given-header?
 	   (lambda (name null-true?)
 	     (let ((header
-		    (find-matching-item headers
-		      (lambda (header)
-			(string-ci=? (car header) name)))))
+		    (find (lambda (header)
+			    (string-ci=? (car header) name))
+			  headers)))
 	       (and header
 		    (cadr header)
 		    (if null-true?
@@ -1786,15 +1786,14 @@ Otherwise, the MIME type is determined from the file's suffix;
 	     (if prompt?
 		 (do-mime)
 		 (let ((entry
-			(find-matching-item
-			    (ref-variable file-type-to-mime-type buffer)
-			  (lambda (entry)
-			    (cond ((string? type)
-				   (string-ci=? (car entry) type))
-				  ((not type)
-				   (not (car entry)))
-				  (else
-				   (eq? type 'WILD)))))))
+			(find (lambda (entry)
+				(cond ((string? type)
+				       (string-ci=? (car entry) type))
+				      ((not type)
+				       (not (car entry)))
+				      (else
+				       (eq? type 'WILD))))
+			      (ref-variable file-type-to-mime-type buffer))))
 		   (cond (entry (make-mime-type (cadr entry) (caddr entry)))
 			 ((pathname-mime-type pathname))
 			 (else

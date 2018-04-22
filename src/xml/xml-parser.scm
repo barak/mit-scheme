@@ -430,9 +430,9 @@ USA.
 (define (process-attr-decls name attrs p)
   (let ((decl
 	 (and (or *standalone?* *internal-dtd?*)
-	      (find-matching-item *att-decls*
-		(lambda (decl)
-		  (xml-name=? (xml-!attlist-name decl) name))))))
+	      (find (lambda (decl)
+		      (xml-name=? (xml-!attlist-name decl) name))
+		    *att-decls*))))
     (if decl
 	(do ((defns (xml-!attlist-definitions decl) (cdr defns))
 	     (attrs attrs (process-attr-defn (car defns) attrs p)))
@@ -444,9 +444,9 @@ USA.
 	(type (cadr defn))
 	(default (caddr defn)))
     (let ((attr
-	   (find-matching-item attrs
-	     (lambda (attr)
-	       (xml-name=? (car (xml-attribute-name attr)) name)))))
+	   (find (lambda (attr)
+		   (xml-name=? (car (xml-attribute-name attr)) name))
+		 attrs)))
       (if attr
 	  (let ((av (xml-attribute-value attr)))
 	    (if (and (pair? default)
@@ -946,9 +946,9 @@ USA.
 	  (make-xml-parameter-entity-ref name)))))
 
 (define (find-parameter-entity name)
-  (find-matching-item *parameter-entities*
-    (lambda (entity)
-      (eq? name (xml-parameter-!entity-name entity)))))
+  (find (lambda (entity)
+	  (eq? name (xml-parameter-!entity-name entity)))
+	*parameter-entities*))
 
 (define *parameter-entities*)
 

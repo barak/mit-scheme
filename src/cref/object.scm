@@ -69,16 +69,16 @@ USA.
   (null? (package/name package)))
 
 (define-integrable (package/find-reference package name)
-  (find-matching-item (package/references package)
-		      (lambda (ref) (eq? (reference/name ref) name))))
+  (find (lambda (ref) (eq? (reference/name ref) name))
+	(package/references package)))
 
 (define-integrable (package/put-reference! package reference)
   (set-package/references! package
 			   (cons reference (package/references package))))
 
 (define-integrable (package/find-binding package name)
-  (find-matching-item (package/bindings package)
-		      (lambda (ref) (eq? (binding/name ref) name))))
+  (find (lambda (ref) (eq? (binding/name ref) name))
+	(package/bindings package)))
 
 (define-integrable (package/put-binding! package binding)
   (set-package/bindings! package

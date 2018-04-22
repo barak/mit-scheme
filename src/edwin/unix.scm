@@ -192,11 +192,11 @@ Includes the new backup.  Must be > 0."
 
 (define (os/newest-backup pathname)
   (or (os/newest-numeric-backup pathname)
-      (find-matching-item
-          (os/directory-list-completions
-           (directory-namestring pathname)
-           (string-append (file-namestring pathname) "~"))
-        os/backup-filename?)))
+      (find
+       os/backup-filename?
+       (os/directory-list-completions
+	(directory-namestring pathname)
+	(string-append (file-namestring pathname) "~")))))
 
 (define (os/buffer-backup-pathname truename buffer)
   (call-with-values
@@ -666,9 +666,8 @@ option, instead taking -P <filename>."
 
 (define (os/sendmail-program)
   (or (os/find-program "sendmail" #f (ref-variable exec-path) #f)
-      (find-matching-item
-	  '("/usr/sbin/sendmail" "/usr/lib/sendmail" "/usr/ucblib/sendmail")
-	file-executable?)
+      (find file-executable?
+	    '("/usr/sbin/sendmail" "/usr/lib/sendmail" "/usr/ucblib/sendmail"))
       "fakemail"))
 
 (define (os/newsrc-file-name server)
