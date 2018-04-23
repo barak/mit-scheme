@@ -136,19 +136,19 @@ USA.
   (let ((modifier (slot-modifier <url> 'CONTAINER)))
     (lambda (url compute-container)
       (let ((string (url->string url)))
-	(or (hash-table/get interned-urls string #f)
+	(or (hash-table-ref/default interned-urls string #f)
 	    (begin
 	      (let ((finished? #f))
 		(dynamic-wind
 		 (lambda ()
-		   (hash-table/put! interned-urls string url))
+		   (hash-table-set! interned-urls string url))
 		 (lambda ()
 		   (modifier url (compute-container url))
 		   (set! finished? #t)
 		   unspecific)
 		 (lambda ()
 		   (if (not finished?)
-		       (hash-table/remove! interned-urls string)))))
+		       (hash-table-delete! interned-urls string)))))
 	      url))))))
 
 (define interned-urls
@@ -156,10 +156,10 @@ USA.
 
 (define (define-url-protocol name class)
   (define-method url-protocol ((url class)) url name)
-  (hash-table/put! url-protocols (string-downcase name) class))
+  (hash-table-set! url-protocols (string-downcase name) class))
 
 (define (url-protocol-name? name)
-  (hash-table/get url-protocols (string-downcase name) #f))
+  (hash-table-ref/default url-protocols (string-downcase name) #f))
 
 (define url-protocols
   (make-string-hash-table))
@@ -369,7 +369,7 @@ USA.
       (memoize-resource (constructor url))))
 
 (define (get-memoized-resource url #!optional error?)
-  (or (let ((resource (hash-table/get memoized-resources url #f)))
+  (or (let ((resource (hash-table-ref/default memoized-resources url #f)))
 	(and resource
 	     (let ((resource (weak-car resource)))
 	       ;; Delete memoization _only_ if URL-EXISTS?
@@ -378,13 +378,13 @@ USA.
 	       (if (and resource (ignore-errors (lambda () (url-exists? url))))
 		   resource
 		   (begin
-		     (hash-table/remove! memoized-resources url)
+		     (hash-table-delete! memoized-resources url)
 		     #f)))))
       (and (if (default-object? error?) #f error?)
 	   (error "URL has no associated resource:" url))))
 
 (define (memoize-resource resource)
-  (hash-table/put! memoized-resources
+  (hash-table-set! memoized-resources
 		   (resource-locator resource)
 		   (weak-cons resource
 			      (lambda (resource)
@@ -392,7 +392,7 @@ USA.
   resource)
 
 (define (unmemoize-resource url)
-  (let ((r.c (hash-table/get memoized-resources url #f)))
+  (let ((r.c (hash-table-ref/default memoized-resources url #f)))
     (if r.c
 	(let ((resource (weak-car r.c)))
 	  (if resource
@@ -400,10 +400,10 @@ USA.
 		(let ((close (weak-cdr r.c)))
 		  (if close
 		      (close resource)))
-		(hash-table/remove! memoized-resources url)))))))
+		(hash-table-delete! memoized-resources url)))))))
 
 (define (%unmemoize-resource url)
-  (hash-table/remove! memoized-resources url))
+  (hash-table-delete! memoized-resources url))
 
 (define memoized-resources
   (make-weak-eq-hash-table))
@@ -751,7 +751,7 @@ USA.
 (define (reset-folder-order! order)
   (set-folder-order-tree! order #f)
   (let ((cache (folder-order-cache order)))
-    (if cache (hash-table/clear! cache))))
+    (if cache (hash-table-clear! cache))))
 
 (define (map-folder-index folder index)
   (let ((order (folder-order folder)))
@@ -783,14 +783,15 @@ USA.
                (< (cdr a) (cdr b))))))))
 
 (define make-integer-hash-table
-  (strong-hash-table/constructor int:remainder int:=))
+  (hash-table-constructor
+   (make-hash-table-type int:remainder int:= #f hash-table-entry-type:strong)))
 
 (define (%message-order-key message order index)
   (let ((compute-key
 	 (lambda () (cons ((folder-order-selector order) message) index)))
 	(cache (folder-order-cache order)))
     (if cache
-	(hash-table/intern! cache index compute-key)
+	(hash-table-intern! cache index compute-key)
 	(compute-key))))
 
 (define (index-order-key folder order index)
@@ -830,7 +831,7 @@ USA.
        (let ((compute-key
 	      (if cache
 		  (lambda (message index)
-		    (hash-table/intern! cache index
+		    (hash-table-intern! cache index
 		      (lambda () (cons (selector message) index))))
 		  (lambda (message index)
 		    (cons (selector message) index)))))

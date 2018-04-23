@@ -115,10 +115,10 @@ USA.
   (get-sabbr (intern (string-trim text))))
 
 (define (define-sabbr name expansion)
-  (hash-table/put! *sabbr-table* name (flatten expansion)))
+  (hash-table-set! *sabbr-table* name (flatten expansion)))
 
 (define (get-sabbr name)
-  (let ((expansion (hash-table/get *sabbr-table* name 'NO-EXPANSION)))
+  (let ((expansion (hash-table-ref/default *sabbr-table* name 'NO-EXPANSION)))
     (if (eq? expansion 'NO-EXPANSION)
 	(error "Invalid sabbr name:" name))
     expansion))

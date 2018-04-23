@@ -836,28 +836,28 @@ USA.
      WM_TRANSIENT_FOR))
 
 (define (symbol->x-atom display name soft?)
-  (or (hash-table/get built-in-atoms-table name #f)
+  (or (hash-table-ref/default built-in-atoms-table name #f)
       (let ((table (car (display/cached-atoms-tables display))))
-	(or (hash-table/get table name #f)
+	(or (hash-table-ref/default table name #f)
 	    (let ((atom
 		   (x-intern-atom display
 				  (string-upcase (symbol->string name))
 				  soft?)))
 	      (if (not (= atom 0))
-		  (hash-table/put! table name atom))
+		  (hash-table-set! table name atom))
 	      atom)))))
 
 (define (x-atom->symbol display atom)
   (if (< atom (vector-length built-in-atoms))
       (vector-ref built-in-atoms atom)
       (let ((table (cdr (display/cached-atoms-tables display))))
-	(or (hash-table/get table atom #f)
+	(or (hash-table-ref/default table atom #f)
 	    (let ((symbol
 		   (let ((string (x-get-atom-name display atom)))
 		     (if (not (string? string))
 			 (error "X error (XGetAtomName):" string atom))
 		     (intern string))))
-	      (hash-table/put! table atom symbol)
+	      (hash-table-set! table atom symbol)
 	      symbol)))))
 
 (define built-in-atoms-table
@@ -865,7 +865,7 @@ USA.
     (let ((table (make-strong-eq-hash-table n)))
       (do ((i 0 (fix:+ i 1)))
 	  ((fix:= i n))
-	(hash-table/put! table (vector-ref built-in-atoms i) i))
+	(hash-table-set! table (vector-ref built-in-atoms i) i))
       table)))
 
 (define display/cached-atoms-tables
@@ -873,10 +873,10 @@ USA.
   (let ((table (make-weak-eq-hash-table)))
     (lambda (display)
       (let ((key (intern (alien/address-string display))))
-	(or (hash-table/get table key #f)
+	(or (hash-table-ref/default table key #f)
 	    (let ((result (cons (make-strong-eq-hash-table)
 				(make-strong-eqv-hash-table))))
-	      (hash-table/put! table key result)
+	      (hash-table-set! table key result)
 	      result))))))
 
 ;;;; Properties
@@ -1046,7 +1046,7 @@ In either case, it is copied to the primary selection."
 	       (x-set-selection-owner display selection window time)
 	       (x-get-selection-owner display selection)))
        (begin
-	 (hash-table/put! (display/selection-records display)
+	 (hash-table-set! (display/selection-records display)
 			  selection
 			  (make-selection-record window time value))
 	 #t)))
@@ -1056,9 +1056,9 @@ In either case, it is copied to the primary selection."
   (let ((table (make-weak-eq-hash-table)))
     (lambda (display)
       (let ((key (intern (alien/address-string display))))
-	(or (hash-table/get table key #f)
+	(or (hash-table-ref/default table key #f)
 	    (let ((result (make-strong-eq-hash-table)))
-	      (hash-table/put! table key result)
+	      (hash-table-set! table key result)
 	      result))))))
 
 ;;; In the next two procedures, we must allow TIME to be 0, even
@@ -1066,17 +1066,18 @@ In either case, it is copied to the primary selection."
 ;;; value.  An example of a broken client is GTK+ version 1.2.6.
 
 (define (display/selection-record display name time)
-  (let ((record (hash-table/get (display/selection-records display) name #f)))
+  (let ((record
+	 (hash-table-ref/default (display/selection-records display) name #f)))
     (and record
 	 (or (= 0 time) (<= (selection-record/time record) time))
 	 record)))
 
 (define (display/delete-selection-record! display name time)
   (let ((records (display/selection-records display)))
-    (if (let ((record (hash-table/get records name #f)))
+    (if (let ((record (hash-table-ref/default records name #f)))
 	  (and record
 	       (or (= 0 time) (<= (selection-record/time record) time))))
-	(hash-table/remove! records name))))
+	(hash-table-delete! records name))))
 
 (define-structure (selection-record (conc-name selection-record/))
   (window #f read-only #t)

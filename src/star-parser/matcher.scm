@@ -78,7 +78,7 @@ USA.
   (if (pair? name)
       (for-each (lambda (name) (define-matcher-preprocessor name procedure))
 		name)
-      (hash-table/put! matcher-preprocessors name procedure))
+      (hash-table-set! matcher-preprocessors name procedure))
   name)
 
 (define-syntax define-*matcher-macro
@@ -108,7 +108,7 @@ USA.
 
 (define (matcher-preprocessor name)
   (or (lookup-matcher-macro name)
-      (hash-table/get matcher-preprocessors name #f)))
+      (hash-table-ref/default matcher-preprocessors name #f)))
 
 (define matcher-preprocessors
   (make-strong-eq-hash-table))
@@ -245,7 +245,7 @@ USA.
   (cond ((and (pair? expression)
 	      (symbol? (car expression))
 	      (list? (cdr expression))
-	      (hash-table/get matcher-compilers (car expression) #f))
+	      (hash-table-ref/default matcher-compilers (car expression) #f))
 	 => (lambda (entry)
 	      (let ((arity (car entry))
 		    (compiler (cdr entry)))
@@ -285,7 +285,7 @@ USA.
 	 (ill-formed-syntax form)))))
 
 (define (define-matcher-compiler keyword arity compiler)
-  (hash-table/put! matcher-compilers keyword (cons arity compiler))
+  (hash-table-set! matcher-compilers keyword (cons arity compiler))
   keyword)
 
 (define matcher-compilers

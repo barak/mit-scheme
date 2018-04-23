@@ -30,18 +30,18 @@ USA.
 (declare (usual-integrations))
 
 (define make-symbol-table
-  (strong-hash-table/constructor eq-hash-mod eq? #t))
+  (hash-table-constructor strong-eq-hash-table-type))
 
 (define (symbol-table-define! table key value)
-  (let ((binding (hash-table/get table key #f)))
+  (let ((binding (hash-table-ref/default table key #f)))
     (if binding
 	(begin
 	  (error "Redefining symbol:" key)
 	  (set-binding-value! binding value))
-	(hash-table/put! table key (make-binding value)))))
+	(hash-table-set! table key (make-binding value)))))
 
 (define (symbol-table-value table key)
-  (let ((binding (hash-table/get table key #f)))
+  (let ((binding (hash-table-ref/default table key #f)))
     (if (not binding)
 	(error "Undefined key:" key))
     (let ((value (binding-value binding)))

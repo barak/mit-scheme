@@ -65,7 +65,7 @@ USA.
   (set! source-nodes
 	(map (lambda (filename)
 	       (let ((node (make/source-node filename)))
-		 (hash-table/put! source-hash filename node)
+		 (hash-table-set! source-hash filename node)
 		 node))
 	     source-filenames))
   (initialize/syntax-dependencies!)
@@ -101,7 +101,7 @@ USA.
   (%make/source-node filename (->pathname filename)))
 
 (define (filename->source-node filename)
-  (let ((node (hash-table/get source-hash filename #f)))
+  (let ((node (hash-table-ref/default source-hash filename #f)))
     (if (not node)
 	(error "Unknown source file:" filename))
     node))

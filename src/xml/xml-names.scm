@@ -54,12 +54,12 @@ USA.
 (define (%make-xml-name qname uri)
   (let ((uname
 	 (let ((local (xml-qname-local qname)))
-	   (hash-table/intern! (hash-table/intern! expanded-names uri
+	   (hash-table-intern! (hash-table-intern! expanded-names uri
 				 make-strong-eq-hash-table)
 	       local
 	     (lambda ()
 	       (make-expanded-name uri local (make-strong-eq-hash-table)))))))
-    (hash-table/intern! (expanded-name-combos uname) qname
+    (hash-table-intern! (expanded-name-combos uname) qname
       (lambda ()
 	(make-combo-name qname uname)))))
 

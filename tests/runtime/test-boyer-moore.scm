@@ -55,9 +55,9 @@ USA.
 	(table (make-string-hash-table)))
     (define (record! s die)
       (let ((entry
-	     (or (hash-table/get table die #f)
+	     (or (hash-table-ref/default table die #f)
 		 (let ((entry (list 'ENTRY)))
-		   (hash-table/put! table die entry)
+		   (hash-table-set! table die entry)
 		   entry))))
 	(set-cdr! entry (cons s (cdr entry)))))
     (let loop ((s 0))

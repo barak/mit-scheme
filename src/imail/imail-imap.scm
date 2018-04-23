@@ -444,7 +444,7 @@ USA.
   (let* ((slash (string-find-next-char mailbox #\/))
 	 (root (if slash (string-head mailbox slash) mailbox))
 	 (key (make-imap-url-string url root)))
-    (hash-table/intern! imap-delimiters-table key
+    (hash-table-intern! imap-delimiters-table key
       (lambda ()
 	(let ((delimiter
 	       (imap:response:list-delimiter
@@ -1328,7 +1328,7 @@ USA.
 	      (count 0))
 	  ((imail-ui:message-wrapper "Reading message data")
 	   (lambda ()
-	     (hash-table/for-each message-sets
+	     (hash-table-walk message-sets
 	       (lambda (keywords messages)
 		 (imap:command:fetch-set/for-each
 		  (lambda (response)
@@ -1384,8 +1384,11 @@ USA.
 	      (let ((keywords (select-uncached-keywords message keywords)))
 		(if (pair? keywords)
 		    (begin
-		      (hash-table/modify! message-sets keywords '()
-			(lambda (messages) (cons message messages)))
+		      (hash-table-update!/default message-sets
+						  keywords
+						  (lambda (messages)
+						    (cons message messages))
+						  '())
 		      (set! count (+ count 1)))))))))))
     (values message-sets count)))
 

@@ -422,7 +422,7 @@ USA.
 	(else (error "Illegal change event:" event))))
 
 (define (process-special-event event)
-  (let ((handler (hash-table/get event-handlers (event-type event) #f))
+  (let ((handler (hash-table-ref/default event-handlers (event-type event) #f))
 	(screen (handle->win32-screen (event-handle event))))
     (and handler
 	 screen
@@ -432,7 +432,7 @@ USA.
   (make-strong-eqv-hash-table))
 
 (define (define-event-handler event-type handler)
-  (hash-table/put! event-handlers event-type handler))
+  (hash-table-set! event-handlers event-type handler))
 
 ;;;; Events
 

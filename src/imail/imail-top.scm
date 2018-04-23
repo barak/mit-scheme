@@ -2693,7 +2693,7 @@ WARNING: With a prefix argument, this command may take a very long
 	(key (cons (mime-info-entity info) (mime-info-selector info)))
 	(inline? (mime-info-inline? info)))
     (if expansions
-	(hash-table/get expansions key inline?)
+	(hash-table-ref/default expansions key inline?)
 	inline?)))
 
 (define (set-mime-info-expanded?! info mark expanded?)
@@ -2702,10 +2702,10 @@ WARNING: With a prefix argument, this command may take a very long
     (if (if (mime-info-inline? info) expanded? (not expanded?))
 	(cond ((buffer-get buffer 'IMAIL-MIME-EXPANSIONS #f)
 	       => (lambda (expansions)
-		    (hash-table/remove! expansions key)
-		    (if (zero? (hash-table/count expansions))
+		    (hash-table-delete! expansions key)
+		    (if (zero? (hash-table-size expansions))
 			(buffer-remove! buffer 'IMAIL-MIME-EXPANSIONS)))))
-	(hash-table/put!
+	(hash-table-set!
 	 (or (buffer-get buffer 'IMAIL-MIME-EXPANSIONS #f)
 	     (let ((expansions (make-equal-hash-table)))
 	       (buffer-put! buffer 'IMAIL-MIME-EXPANSIONS expansions)

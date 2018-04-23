@@ -167,21 +167,21 @@ USA.
 		       (make-strong-eq-hash-table)))
 
 (define (define-matcher-macro name expander)
-  (hash-table/put! (matcher-macros-table *parser-macros*) name expander))
+  (hash-table-set! (matcher-macros-table *parser-macros*) name expander))
 
 (define (lookup-matcher-macro name)
   (let loop ((environment *parser-macros*))
     (and environment
-	 (or (hash-table/get (matcher-macros-table environment) name #f)
+	 (or (hash-table-ref/default (matcher-macros-table environment) name #f)
 	     (loop (parent-macros environment))))))
 
 (define (define-parser-macro name expander)
-  (hash-table/put! (parser-macros-table *parser-macros*) name expander))
+  (hash-table-set! (parser-macros-table *parser-macros*) name expander))
 
 (define (lookup-parser-macro name)
   (let loop ((environment *parser-macros*))
     (and environment
-	 (or (hash-table/get (parser-macros-table environment) name #f)
+	 (or (hash-table-ref/default (parser-macros-table environment) name #f)
 	     (loop (parent-macros environment))))))
 
 (define (with-current-parser-macros macros thunk)

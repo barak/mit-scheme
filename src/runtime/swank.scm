@@ -932,8 +932,8 @@ swank:xref
 			     0 500)))
 
 (define (assign-index o parts)
-  (let ((i (hash-table/count parts)))
-    (hash-table/put! parts i o)
+  (let ((i (hash-table-size parts)))
+    (hash-table-set! parts i o)
     i))
 
 (define (prepare-range parts content from to)
@@ -961,7 +961,8 @@ swank:xref
 
 (define (swank:inspect-nth-part socket index)
   socket
-  (inspect-object (hash-table/get (istate-parts istate) index 'no-such-part)))
+  (inspect-object
+   (hash-table-ref/default (istate-parts istate) index 'no-such-part)))
 
 (define (swank:quit-inspector socket)
   socket

@@ -35,7 +35,7 @@ USA.
   (predicate define accessor))
 
 (define (define-file-folder-type class name predicate)
-  (hash-table/put! file-folder-types
+  (hash-table-set! file-folder-types
 		   class
 		   ((instance-constructor class '(NAME PREDICATE))
 		    name predicate)))
@@ -48,14 +48,14 @@ USA.
    (string-append "File type for " (url->string url))
    (map (lambda (type)
 	  (cons (file-folder-type-name type) type))
-	(hash-table/datum-list file-folder-types))))
+	(hash-table-values file-folder-types))))
 
 (define (url-file-folder-type url)
   (or (file-folder-type (pathname-url-pathname url))
       (error "Unknown folder type:" url)))
 
 (define (file-folder-type pathname)
-  (let loop ((types (hash-table/datum-list file-folder-types)))
+  (let loop ((types (hash-table-values file-folder-types)))
     (and (pair? types)
 	 (if ((file-folder-type-predicate (car types)) pathname)
 	     (car types)

@@ -47,7 +47,7 @@ USA.
   (let ((subject (canonicalize-rdf-subject subject 'MAKE-RDF-TRIPLE))
 	(predicate (canonicalize-rdf-predicate predicate 'MAKE-RDF-TRIPLE))
 	(object (canonicalize-rdf-object object 'MAKE-RDF-TRIPLE)))
-    (hash-table/intern! rdf-triples (vector subject predicate object)
+    (hash-table-intern! rdf-triples (vector subject predicate object)
       (lambda ()
 	(let ((triple
 	       (%make-rdf-triple subject predicate object (next-index))))
@@ -56,7 +56,7 @@ USA.
 
 (define (for-each-rdf-triple procedure)
   (for-each procedure
-	    (hash-table/datum-list rdf-triples)))
+	    (hash-table-values rdf-triples)))
 
 (define next-index
   (let ((counter 0))
@@ -134,7 +134,7 @@ USA.
 			   (loop next this)))))
 	       (cdr head))
 	     '())))
-    (hash-table/intern! rdf-graphs triples
+    (hash-table-intern! rdf-graphs triples
       (lambda ()
 	(let ((graph (%make-rdf-graph triples)))
 	  (event-distributor/invoke! event:new-rdf-graph graph)
@@ -162,7 +162,7 @@ USA.
       (%make-rdf-bnode)
       (begin
 	(guarantee string? name 'MAKE-RDF-BNODE)
-	(hash-table/intern! *rdf-bnode-registry* name %make-rdf-bnode))))
+	(hash-table-intern! *rdf-bnode-registry* name %make-rdf-bnode))))
 
 (define (rdf-bnode-name bnode)
   (string-append "B" (number->string (hash bnode))))
@@ -208,7 +208,7 @@ USA.
 		 (language? type))
 	     type
 	     (->absolute-uri type 'MAKE-RDF-LITERAL))))
-    (hash-table/intern! rdf-literals (cons text type)
+    (hash-table-intern! rdf-literals (cons text type)
       (lambda ()
 	(%make-rdf-literal text type)))))
 

@@ -776,7 +776,7 @@ USA.
           encode:initialize encode:finalize encode:update
           decode:initialize decode:finalize decode:update
 	  call-with-port)
-  (hash-table/put!
+  (hash-table-set!
    mime-encodings
    name
    (%make-mime-encoding name #f
@@ -786,7 +786,7 @@ USA.
   name)
 
 (define (define-identity-mime-encoding name)
-  (hash-table/put! mime-encodings
+  (hash-table-set! mime-encodings
                    name
                    (%make-mime-encoding name #t
                                         (lambda (port text?) text? port)
@@ -800,13 +800,13 @@ USA.
                                           (generator port)))))
 
 (define (known-mime-encoding? name)
-  (and (hash-table/get mime-encodings name #f)
+  (and (hash-table-ref/default mime-encodings name #f)
        #t))
 
 (define (named-mime-encoding name)
-  (or (hash-table/get mime-encodings name #f)
+  (or (hash-table-ref/default mime-encodings name #f)
       (let ((encoding (make-unknown-mime-encoding name)))
-        (hash-table/put! mime-encodings name encoding)
+        (hash-table-set! mime-encodings name encoding)
         encoding)))
 
 (define (make-unknown-mime-encoding name)

@@ -282,7 +282,7 @@ USA.
 
 (define (pathname-type->mime-type type)
   (and (string? type)
-       (let ((mime-type (hash-table/get local-type-map type #f)))
+       (let ((mime-type (hash-table-ref/default local-type-map type #f)))
 	 (if mime-type
 	     (and (mime-type? mime-type)
 		  mime-type)
@@ -293,11 +293,11 @@ USA.
 (define (associate-pathname-type-with-mime-type type mime-type)
   (guarantee string? type 'associate-pathname-type-with-mime-type)
   (guarantee mime-type? mime-type 'associate-pathname-type-with-mime-type)
-  (hash-table/put! local-type-map type mime-type))
+  (hash-table-set! local-type-map type mime-type))
 
 (define (disassociate-pathname-type-from-mime-type type)
   (guarantee string? type 'disassociate-pathname-type-from-mime-type)
-  (hash-table/put! local-type-map type 'disassociated))
+  (hash-table-set! local-type-map type 'disassociated))
 
 (define-record-type <mime-type>
     (%%make-mime-type top-level subtype)
@@ -316,11 +316,11 @@ USA.
     (let loop ((i 0))
       (if (fix:< i e)
 	  (if (eq? (vector-ref top-level-mime-types i) top-level)
-	      (hash-table/intern! (vector-ref interned-mime-types i)
+	      (hash-table-intern! (vector-ref interned-mime-types i)
 				  subtype
 				  new)
 	      (loop (fix:+ i 1)))
-	  (hash-table/intern! unusual-interned-mime-types
+	  (hash-table-intern! unusual-interned-mime-types
 			      (cons top-level subtype)
 			      new)))))
 

@@ -50,8 +50,9 @@ USA.
 
 (define (initialize-package!)
   (set! make-datum-weak-eq-hash-table
-	(hash-table/constructor eq-hash-mod eq? #f
-				hash-table-entry-type:datum-weak))
+	(hash-table-constructor
+	 (make-hash-table-type eq-hash-mod eq? #f
+			       hash-table-entry-type:datum-weak)))
   (set! default-hash-table (hash-table/make)))
 
 (define-structure (hash-table
@@ -116,15 +117,18 @@ USA.
 	(insert? (or (default-object? insert?) insert?)))
     (with-thread-mutex-lock (hash-table/mutex table)
       (lambda ()
-	(let ((number (hash-table/get (hash-table/hash-table table) object #f)))
+	(let ((number
+	       (hash-table-ref/default (hash-table/hash-table table)
+				       object
+				       #f)))
 	  (if (not number)
 	      (if insert?
 		  (let ((hashtb (hash-table/hash-table table))
 			(unhashtb (hash-table/unhash-table table))
 			(next (hash-table/next-number table)))
 		    (set-hash-table/next-number! table (1+ next))
-		    (hash-table/put! unhashtb next object)
-		    (hash-table/put! hashtb object next)
+		    (hash-table-set! unhashtb next object)
+		    (hash-table-set! hashtb object next)
 		    next)
 		  number)
 	      number))))))
@@ -141,4 +145,4 @@ USA.
 	       table))))
     (with-thread-mutex-lock (hash-table/mutex table)
       (lambda ()
-	(hash-table/get (hash-table/unhash-table table) number #f)))))
+	(hash-table-ref/default (hash-table/unhash-table table) number #f)))))

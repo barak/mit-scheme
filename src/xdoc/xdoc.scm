@@ -215,7 +215,7 @@ USA.
 (define (save-container-props elt containers prefix count offset)
   (let ((number (+ count offset)))
     (let ((db-id (string-append prefix (number->string number))))
-      (hash-table/put! *xdoc-element-properties* elt
+      (hash-table-set! *xdoc-element-properties* elt
 		       (vector (string->symbol db-id)
 			       containers
 			       prefix
@@ -225,20 +225,20 @@ USA.
       (string-append db-id "."))))
 
 (define (save-element-props elt containers db-id)
-  (hash-table/put! *xdoc-element-properties* elt (vector db-id containers))
+  (hash-table-set! *xdoc-element-properties* elt (vector db-id containers))
   (save-xdoc-id elt)
   (cond ((xdoc-input? elt)
-	 (hash-table/put! *xdoc-inputs* elt #f))
+	 (hash-table-set! *xdoc-inputs* elt #f))
 	((xdoc-output? elt)
-	 (hash-table/put! *xdoc-outputs* elt #f))))
+	 (hash-table-set! *xdoc-outputs* elt #f))))
 
 (define (save-xdoc-id elt)
   (let ((id (id-attribute 'id elt #f)))
     (if id
 	(begin
-	  (if (hash-table/get *xdoc-id-map* id #f)
+	  (if (hash-table-ref/default *xdoc-id-map* id #f)
 	      (error "ID attribute not unique:" id))
-	  (hash-table/put! *xdoc-id-map* id elt)))))
+	  (hash-table-set! *xdoc-id-map* id elt)))))
 
 (define (xdoc-db-id elt)
   (vector-ref (%xdoc-element-properties elt) 0))
@@ -254,7 +254,7 @@ USA.
 	    (vector-ref v 4))))
 
 (define (%xdoc-element-properties elt)
-  (let ((v (hash-table/get *xdoc-element-properties* elt #f)))
+  (let ((v (hash-table-ref/default *xdoc-element-properties* elt #f)))
     (if (not v)
 	(error:wrong-type-argument elt "XDOC element"
 				   'xdoc-element-properties))
@@ -267,15 +267,15 @@ USA.
     (car containers)))
 
 (define (named-element id)
-  (or (hash-table/get *xdoc-id-map* id #f)
+  (or (hash-table-ref/default *xdoc-id-map* id #f)
       (error:bad-range-argument id 'named-element)))
 
 ;;;; I/O memoization
 
 (define (memoize-xdoc-inputs)
   (for-each (lambda (elt)
-	      (hash-table/put! *xdoc-inputs* elt (memoize-xdoc-input elt)))
-	    (hash-table/key-list *xdoc-inputs*)))
+	      (hash-table-set! *xdoc-inputs* elt (memoize-xdoc-input elt)))
+	    (hash-table-keys *xdoc-inputs*)))
 
 (define (memoize-xdoc-input elt)
   (let ((id (xdoc-db-id elt)))
@@ -292,9 +292,9 @@ USA.
 (define (memoize-xdoc-outputs)
   (for-each (lambda (elt)
 	      (receive (correctness submitter) (memoize-xdoc-output elt)
-		(hash-table/put! *xdoc-outputs* elt
+		(hash-table-set! *xdoc-outputs* elt
 				 (cons correctness submitter))))
-	    (hash-table/key-list *xdoc-outputs*)))
+	    (hash-table-keys *xdoc-outputs*)))
 
 (define (memoize-xdoc-output elt)
   (let ((id (xdoc-db-id elt)))
@@ -319,7 +319,7 @@ USA.
   (and (cdr (%current-input-status elt)) #t))
 
 (define (%current-input-status elt)
-  (or (hash-table/get *xdoc-inputs* elt #f)
+  (or (hash-table-ref/default *xdoc-inputs* elt #f)
       (error:wrong-type-argument elt
 				 "XDOC input element"
 				 'current-input-status)))
@@ -345,7 +345,7 @@ USA.
   (and (cdr (%current-output-status elt)) #t))
 
 (define (%current-output-status elt)
-  (or (hash-table/get *xdoc-outputs* elt #f)
+  (or (hash-table-ref/default *xdoc-outputs* elt #f)
       (error:wrong-type-argument elt
 				 "XDOC output element"
 				 'current-output-status)))
@@ -370,10 +370,10 @@ USA.
 	     "\n"))
 
 (define (define-html-generator name handler)
-  (hash-table/put! html-generators name handler))
+  (hash-table-set! html-generators name handler))
 
 (define (xdoc-html-generator item)
-  (hash-table/get html-generators (xdoc-element-name item) #f))
+  (hash-table-ref/default html-generators (xdoc-element-name item) #f))
 
 (define html-generators
   (make-strong-eq-hash-table))
@@ -707,7 +707,7 @@ USA.
 ;;;; Inputs
 
 (define (define-xdoc-input local canonicalizer generator)
-  (hash-table/put! xdoc-input-canonicalizers local canonicalizer)
+  (hash-table-set! xdoc-input-canonicalizers local canonicalizer)
   (define-html-generator local generator))
 
 (define (xdoc-active-input-status elt)
@@ -744,7 +744,7 @@ USA.
     (if (eq? local 'checkbox)
 	(if (and (not value) request) "false" value)
 	(and value
-	     ((or (hash-table/get xdoc-input-canonicalizers local #f)
+	     ((or (hash-table-ref/default xdoc-input-canonicalizers local #f)
 		  (error:wrong-type-argument elt
 					     "XDOC input element"
 					     'canonicalize-xdoc-input-value))
@@ -841,7 +841,7 @@ USA.
 ;;;; Outputs
 
 (define (define-unary-xdoc-output local checkable? expected-value procedure)
-  (hash-table/put! xdoc-output-definitions local
+  (hash-table-set! xdoc-output-definitions local
     (vector checkable?
 	    expected-value
 	    (lambda (elt)
@@ -858,7 +858,7 @@ USA.
       (find-child (nearest-container elt) #t xdoc-input?)))
 
 (define (define-n-ary-xdoc-output local checkable? expected-value procedure)
-  (hash-table/put! xdoc-output-definitions local
+  (hash-table-set! xdoc-output-definitions local
     (vector checkable?
 	    expected-value
 	    (lambda (elt)
@@ -874,7 +874,7 @@ USA.
   (define-html-generator local (lambda (elt) elt '())))
 
 (define (define-0-ary-xdoc-output local checkable? expected-value procedure)
-  (hash-table/put! xdoc-output-definitions local
+  (hash-table-set! xdoc-output-definitions local
     (vector checkable?
 	    expected-value
 	    procedure))
@@ -898,7 +898,9 @@ USA.
     (values correctness submitter)))
 
 (define (%xdoc-output-definition elt)
-  (or (hash-table/get xdoc-output-definitions (xdoc-element-name elt) #f)
+  (or (hash-table-ref/default xdoc-output-definitions
+			      (xdoc-element-name elt)
+			      #f)
       (error:bad-range-argument elt 'xdoc-output-definition)))
 
 (define xdoc-output-definitions
@@ -1041,7 +1043,7 @@ USA.
 (define-html-generator 'when
   (lambda (elt)
     (and ((let ((condition (symbol-attribute 'condition elt #t)))
-	    (or (hash-table/get when-conditions condition #f)
+	    (or (hash-table-ref/default when-conditions condition #f)
 		(error "Unknown <xd:when> condition:" condition)))
 	  (content-selector-source elt))
 	 (html:div (xdoc-attributes elt)
@@ -1050,7 +1052,7 @@ USA.
 			(xml-element-contents elt))))))
 
 (define (define-when-condition name procedure)
-  (hash-table/put! when-conditions name procedure))
+  (hash-table-set! when-conditions name procedure))
 
 (define when-conditions
   (make-strong-eq-hash-table))
@@ -1431,7 +1433,7 @@ USA.
 (define (xdoc-content-type elt)
   (let ((local (xdoc-element-name elt)))
     (and local
-	 (or (hash-table/get xdoc-content-types local #f)
+	 (or (hash-table-ref/default xdoc-content-types local #f)
 	     (error "Unknown XDOC element name:" local)))))
 
 (define xdoc-content-types
@@ -1440,7 +1442,7 @@ USA.
 (define (xdoc-element-type elt)
   (let ((local (xdoc-element-name elt)))
     (and local
-	 (or (hash-table/get xdoc-element-types local #f)
+	 (or (hash-table-ref/default xdoc-element-types local #f)
 	     (error "Unknown XDOC element name:" local)))))
 
 (define xdoc-element-types
@@ -1483,8 +1485,8 @@ USA.
 		(LAMBDA (OBJECT)
 		  (AND (XML-ELEMENT? OBJECT)
 		       (XML-NAME=? (XML-ELEMENT-NAME OBJECT) NAME)))))
-	    (HASH-TABLE/PUT! XDOC-CONTENT-TYPES ',local ',content-type)
-	    (HASH-TABLE/PUT! XDOC-ELEMENT-TYPES ',local ',elt-type)))))))
+	    (HASH-TABLE-SET! XDOC-CONTENT-TYPES ',local ',content-type)
+	    (HASH-TABLE-SET! XDOC-ELEMENT-TYPES ',local ',elt-type)))))))
 
 (define-element xdoc mixed top-level-container)
 (define-element head mixed internal)

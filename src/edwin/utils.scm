@@ -271,12 +271,6 @@ USA.
 	    (loop (cdr elements) satisfied (cons (car elements) unsatisfied)))
 	(values satisfied unsatisfied))))
 
-(define make-strong-eq-hash-table
-  (strong-hash-table/constructor eq-hash-mod eq? #t))
-
-(define make-weak-equal-hash-table
-  (weak-hash-table/constructor equal-hash-mod equal? #t))
-
 (define (weak-assq item alist)
   (let loop ((alist alist))
     (and (not (null? alist))

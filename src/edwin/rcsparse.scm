@@ -102,10 +102,10 @@ USA.
   (let ((table (make-string-hash-table)))
     (for-each (lambda (delta)
 		(let ((key (vector-ref delta 0)))
-		  (let ((entry (hash-table/get table key #f)))
+		  (let ((entry (hash-table-ref/default table key #f)))
 		    (if entry
 			(error "duplicate delta entry" delta entry)))
-		  (hash-table/put! table key
+		  (hash-table-set! table key
 				   (make-rcs-delta key
 						   (vector-ref delta 1)
 						   (vector-ref delta 2)
@@ -115,11 +115,11 @@ USA.
 	      deltas)
     (let ((num->delta
 	   (lambda (key)
-	     (let ((delta (hash-table/get table key #f)))
+	     (let ((delta (hash-table-ref/default table key #f)))
 	       (if (not delta)
 		   (error "unknown delta number" key))
 	       delta))))
-      (hash-table/for-each table
+      (hash-table-walk table
 	(lambda (key delta)
 	  key
 	  (do ((branches (rcs-delta/branches delta) (cdr branches)))

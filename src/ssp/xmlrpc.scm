@@ -62,8 +62,8 @@ USA.
     (let ((environment (make-expansion-environment pathname)))
       (environment-define environment 'define-xmlrpc-method
 	(lambda (name handler)
-	  (hash-table/put! methods name handler)))
+	  (hash-table-set! methods name handler)))
       (parameterize* (list (cons param:suppress-loading-message? #t))
 	(lambda ()
 	  (load pathname environment))))
-    (hash-table/get methods name #f)))
+    (hash-table-ref/default methods name #f)))

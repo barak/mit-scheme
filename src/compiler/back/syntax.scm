@@ -69,13 +69,13 @@ USA.
 	(match-result))))
 
 (define (instruction-lookup instruction)
-  (let ((pattern (hash-table/get instructions (car instruction) #f)))
+  (let ((pattern (hash-table-ref/default instructions (car instruction) #f)))
     (if pattern
 	(pattern-lookup pattern (cdr instruction))
 	(error "INSTRUCTION-LOOKUP: Unknown keyword" (car instruction)))))
 
 (define (add-instruction! keyword lookup)
-  (hash-table/put! instructions keyword lookup)
+  (hash-table-set! instructions keyword lookup)
   keyword)
 
 (define instructions

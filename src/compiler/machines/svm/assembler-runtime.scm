@@ -115,27 +115,29 @@ USA.
   (make-strong-eq-hash-table))
 
 (define (define-symbol name type value symbol-table)
-  (hash-table/get symbol-table name (make-symbol-binding name type value)))
+  (hash-table-ref/default symbol-table
+			  name
+			  (make-symbol-binding name type value)))
 
 (define (lookup-symbol name symbol-table)
-  (hash-table/get symbol-table name #f))
+  (hash-table-ref/default symbol-table name #f))
 
 ;;;; Top level
 
 ;;(define-import instructions (compiler lap-syntaxer))
 
 (define (add-instruction! keyword assemblers)
-  (hash-table/put! instructions keyword assemblers)
+  (hash-table-set! instructions keyword assemblers)
   keyword)
 
 (define (add-instruction-assembler! keyword assembler)
-  (let ((assemblers (hash-table/get instructions keyword #f)))
+  (let ((assemblers (hash-table-ref/default instructions keyword #f)))
     (if assemblers
-	(hash-table/put! instructions keyword (cons assembler assemblers))
-	(hash-table/put! instructions keyword (list assembler)))))
+	(hash-table-set! instructions keyword (cons assembler assemblers))
+	(hash-table-set! instructions keyword (list assembler)))))
 
 (define (clear-instructions!)
-  (hash-table/clear! instructions))
+  (hash-table-clear! instructions))
 
 (define (init-assembler-instructions!)
   ;; Initialize the assembler's instruction database using the
@@ -595,16 +597,16 @@ USA.
   (decoder pvt-decoder))
 
 (define (lookup-pvar-type keyword)
-  (hash-table/get pvar-type-table keyword #f))
+  (hash-table-ref/default pvar-type-table keyword #f))
 
 (define (pvar-types)
-  (hash-table/datum-list pvar-type-table))
+  (hash-table-values pvar-type-table))
 
 (define pvar-type-table
   (make-strong-eq-hash-table))
 
 (define (define-pvt name abbreviation sb-type predicate encoder decoder)
-  (hash-table/put! pvar-type-table
+  (hash-table-set! pvar-type-table
 		   name
 		   (make-pvt name abbreviation sb-type
 			     predicate encoder decoder))

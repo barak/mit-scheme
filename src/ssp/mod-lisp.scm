@@ -634,7 +634,7 @@ USA.
 (define (file-content-type pathname)
   (or (let ((extension (pathname-type pathname)))
 	(and (string? extension)
-	     (hash-table/get mime-extensions extension #f)))
+	     (hash-table-ref/default mime-extensions extension #f)))
       (let ((t (pathname-mime-type pathname)))
 	(and t
 	     (symbol (mime-type/top-level t)
@@ -642,17 +642,17 @@ USA.
 		     (mime-type/subtype t))))))
 
 (define (get-mime-handler type)
-  (hash-table/get mime-handlers type #f))
+  (hash-table-ref/default mime-handlers type #f))
 
 (define (define-mime-handler type handle-request)
   (cond ((symbol? type)
-	 (hash-table/put! mime-handlers type handle-request))
+	 (hash-table-set! mime-handlers type handle-request))
 	((and (pair? type)
 	      (symbol? (car type))
 	      (every string? (cdr type)))
-	 (hash-table/put! mime-handlers (car type) handle-request)
+	 (hash-table-set! mime-handlers (car type) handle-request)
 	 (for-each (lambda (extension)
-		     (hash-table/put! mime-extensions extension (car type)))
+		     (hash-table-set! mime-extensions extension (car type)))
 		   (cdr type)))
 	(else
 	 (error:wrong-type-argument type "MIME type" 'DEFINE-MIME-HANDLER))))

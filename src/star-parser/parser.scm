@@ -75,7 +75,7 @@ USA.
   (if (pair? name)
       (for-each (lambda (name) (define-parser-preprocessor name procedure))
 		name)
-      (hash-table/put! parser-preprocessors name procedure))
+      (hash-table-set! parser-preprocessors name procedure))
   name)
 
 (define-syntax define-*parser-macro
@@ -105,7 +105,7 @@ USA.
 
 (define (parser-preprocessor name)
   (or (lookup-parser-macro name)
-      (hash-table/get parser-preprocessors name #f)))
+      (hash-table-ref/default parser-preprocessors name #f)))
 
 (define parser-preprocessors
   (make-strong-eq-hash-table))
@@ -227,7 +227,7 @@ USA.
   (cond ((and (pair? expression)
 	      (symbol? (car expression))
 	      (list? (cdr expression))
-	      (hash-table/get parser-compilers (car expression) #f))
+	      (hash-table-ref/default parser-compilers (car expression) #f))
 	 => (lambda (entry)
 	      (let ((arity (car entry))
 		    (compiler (cdr entry)))
@@ -269,7 +269,7 @@ USA.
 	 (ill-formed-syntax form)))))
 
 (define (define-parser-compiler keyword arity compiler)
-  (hash-table/put! parser-compilers keyword (cons arity compiler))
+  (hash-table-set! parser-compilers keyword (cons arity compiler))
   keyword)
 
 (define parser-compilers

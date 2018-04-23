@@ -55,7 +55,7 @@ USA.
 	    (call-with-output-string
 	      (lambda (port)
 		(%write-uri scheme authority path query fragment port)))))
-      (hash-table/intern! interned-uris string
+      (hash-table-intern! interned-uris string
 	(lambda ()
 	  (%make-uri scheme authority path query fragment string))))))
 
@@ -128,7 +128,7 @@ USA.
   (if userinfo (guarantee uri-userinfo? userinfo 'make-uri-authority))
   (guarantee uri-host? host 'make-uri-authority)
   (if port (guarantee uri-port? port 'make-uri-authority))
-  (hash-table/intern! interned-uri-authorities
+  (hash-table-intern! interned-uri-authorities
       (call-with-output-string
 	(lambda (output)
 	  (%write-authority userinfo host port output)))
@@ -307,7 +307,7 @@ USA.
 		    #f)))))
 	 (do-string
 	  (lambda (string)
-	    (or (hash-table/get interned-uris string #f)
+	    (or (hash-table-ref/default interned-uris string #f)
 		(do-parse string)))))
     (cond ((uri? object)
 	   (if (predicate object)
@@ -336,7 +336,7 @@ USA.
   (or (and (string? string)
 	   (default-object? start)
 	   (default-object? end)
-	   (hash-table/get interned-uris string #f))
+	   (hash-table-ref/default interned-uris string #f))
       (let ((v (*parse-string parser string start end)))
 	(and v
 	     (vector-ref v 0)))

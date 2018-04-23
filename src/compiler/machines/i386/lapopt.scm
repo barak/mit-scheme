@@ -102,13 +102,14 @@ USA.
 	  (error "Illegal LAPOPT pattern - must end with opcode"
 		 (reverse pattern)))
       (let ((key (caar pattern)))
-	(hash-table/put! *rules* key
-			 (cons rule (hash-table/get *rules* key '()))))))
+	(hash-table-set! *rules* key
+			 (cons rule
+			       (hash-table-ref/default *rules* key '()))))))
   name)
 
 (define (find-rules instruction)
-  (hash-table/get *rules* (car instruction) '()))
-  
+  (hash-table-ref/default *rules* (car instruction) '()))
+
 ;; Rules are tried in the reverse order in which they are defined.
 ;;
 ;; Rules are matched against the LAP from the bottom up.

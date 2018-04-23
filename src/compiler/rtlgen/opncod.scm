@@ -67,9 +67,9 @@ USA.
 	 (let ((value (constant-value callee)))
 	   (and (scode/primitive-procedure? value)
 		(let ((entry
-		       (hash-table/get name->open-coders
-				       (primitive-procedure-name value)
-				       #f)))
+		       (hash-table-ref/default name->open-coders
+					       (primitive-procedure-name value)
+					       #f)))
 		  (and entry
 		       (try-handler combination value entry))))))))
 
@@ -211,7 +211,7 @@ USA.
 	 (lambda (name handler)
 	   (if (available-primitive? name)
 	       (let ((item (vector handler ->effect ->predicate ->value)))
-		 (hash-table/put! name->open-coders name item))))))
+		 (hash-table-set! name->open-coders name item))))))
     (lambda (name handler)
       (if (list? name)
 	  (for-each (lambda (name)

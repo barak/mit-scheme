@@ -348,10 +348,10 @@ USA.
 
 (define (dispatch-tag->class tag)
   (cond ((class-tag? tag) (dispatch-tag-extra-ref tag 0))
-	((hash-table/get built-in-class-table tag #f))
+	((hash-table-ref/default built-in-class-table tag #f))
 	((record-type? tag)
 	 (let ((class (make-record-type-class tag)))
-	   (hash-table/put! built-in-class-table tag class)
+	   (hash-table-set! built-in-class-table tag class)
 	   class))
 	(else <object>)))
 
@@ -381,7 +381,7 @@ USA.
 
 (let ((assign-type
        (lambda (predicate class)
-	 (hash-table/put! built-in-class-table
+	 (hash-table-set! built-in-class-table
 			  (predicate->dispatch-tag predicate)
 			  class))))
   (assign-type boolean? <boolean>)

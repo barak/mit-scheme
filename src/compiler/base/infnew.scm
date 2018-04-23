@@ -262,10 +262,11 @@ USA.
       (for-each (lambda (label-binding)
 		  (for-each (lambda (key)
 			      (let ((datum
-				     (hash-table/get labels key no-datum)))
+				     (hash-table-ref/default labels key
+							     no-datum)))
 				(if (not (eq? datum no-datum))
 				    (error "Redefining label:" key datum)))
-			      (hash-table/put! labels
+			      (hash-table-set! labels
 					       key
 					       (cdr label-binding)))
 			    (car label-binding)))
@@ -273,13 +274,13 @@ USA.
       (let ((map-label/fail
 	     (lambda (label)
 	       (let ((key (symbol->string label)))
-		 (let ((datum (hash-table/get labels key no-datum)))
+		 (let ((datum (hash-table-ref/default labels key no-datum)))
 		   (if (eq? datum no-datum)
 		       (error "Missing label:" key))
 		   datum))))
 	    (map-label/false
 	     (lambda (label)
-	       (hash-table/get labels (symbol->string label) #f))))
+	       (hash-table-ref/default labels (symbol->string label) #f))))
 	(for-each (lambda (label)
 		    (set-dbg-label/external?! (map-label/fail label) true))
 		  external-labels)

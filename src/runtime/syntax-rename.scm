@@ -95,7 +95,7 @@ USA.
 	n))
 
     (define (lookup-rename rename)
-      (hash-table/get unmapping-table rename #f))
+      (hash-table-ref/default unmapping-table rename #f))
 
     (make-rename-db identifier-renamer lookup-rename)))
 
@@ -111,7 +111,7 @@ USA.
   (let ((safe-set (make-strong-eq-hash-table)))
     (compute-substitution expression
 			  (lambda (rename original)
-			    (hash-table/put! safe-set rename original)))
+			    (hash-table-set! safe-set rename original)))
     (alpha-substitute (make-final-substitution safe-set) expression)))
 
 (define (mark-local-bindings bound body mark-safe!)
@@ -161,7 +161,7 @@ USA.
 		finalized)))))
 
     (lambda (rename)
-      (or (hash-table/get safe-set rename #f)
+      (or (hash-table-ref/default safe-set rename #f)
 	  (finalize-renamed-identifier rename)))))
 
 ;;;; Compute substitution

@@ -226,7 +226,7 @@ USA.
   (expression-simplify expression scfg*pcfg->pcfg! receiver))
 
 (define-export (expression-simplify-for-pseudo-assignment expression receiver)
-  (let ((entry (hash-table/get expression-methods (car expression) #f)))
+  (let ((entry (hash-table-ref/default expression-methods (car expression) #f)))
     (if entry
 	(apply entry receiver scfg*scfg->scfg! (cdr expression))
 	(receiver expression))))
@@ -234,7 +234,7 @@ USA.
 (define (expression-simplify expression scfg-append! receiver)
   (if (rtl:register? expression)
       (receiver expression)
-      (let ((entry (hash-table/get expression-methods (car expression) #f)))
+      (let ((entry (hash-table-ref/default expression-methods (car expression) #f)))
 	(if entry
 	    (apply entry
 		   (lambda (expression)
@@ -409,7 +409,7 @@ USA.
      (receiver pseudo))))
 
 (define (define-expression-method name method)
-  (hash-table/put! expression-methods name method)
+  (hash-table-set! expression-methods name method)
   name)
 
 (define expression-methods

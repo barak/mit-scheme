@@ -290,7 +290,7 @@ USA.
 
 (define html-char->name-map
   (let ((table (make-strong-eqv-hash-table)))
-    (for-each (lambda (b) (hash-table/put! table (cadr b) (car b)))
+    (for-each (lambda (b) (hash-table-set! table (cadr b) (car b)))
 	      html-entity-alist)
     (lambda (char)
-      (hash-table/get table char #f))))
+      (hash-table-ref/default table char #f))))

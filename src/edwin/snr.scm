@@ -3366,7 +3366,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 	#f
 	(let ((table (make-string-hash-table (length entries))))
 	  (for-each (lambda (entry)
-		      (hash-table/put! table (car entry) (cadr entry)))
+		      (hash-table-set! table (car entry) (cadr entry)))
 		    entries)
 	  table))))
 
@@ -3394,7 +3394,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 				     (cond ((null? entries)
 					    result)
 					   ((< (cdar entries) t)
-					    (hash-table/remove! table
+					    (hash-table-delete! table
 								(caar entries))
 					    (loop (cdr entries) result))
 					   (else
@@ -4499,9 +4499,9 @@ With prefix arg, replaces the file with the list information."
 (define (news-header:ignore?! header table t)
   (let ((subject (canonicalize-subject (news-header:subject header))))
     (and (not (fix:= 0 (string-length subject)))
-	 (hash-table/get table subject #f)
+	 (hash-table-ref/default table subject #f)
 	 (let ((group (news-header:group header)))
-	   (hash-table/put! table subject t)
+	   (hash-table-set! table subject t)
 	   (news-group:ignored-subjects-modified! group)
 	   (news-group:process-cross-posts header
 					   (ignore-subject-marker subject t))
@@ -4513,7 +4513,7 @@ With prefix arg, replaces the file with the list information."
     (and table
 	 (let ((subject (canonicalize-subject (news-header:subject header))))
 	   (and (not (fix:= 0 (string-length subject)))
-		(hash-table/get table subject #f))))))
+		(hash-table-ref/default table subject #f))))))
 
 (define (news-group:article-ignored! header buffer)
   (let ((subject (canonicalize-subject (news-header:subject header))))
@@ -4527,7 +4527,7 @@ With prefix arg, replaces the file with the list information."
 
 (define ((ignore-subject-marker subject t) group number)
   number
-  (hash-table/put! (news-group:get-ignored-subjects group #t) subject t)
+  (hash-table-set! (news-group:get-ignored-subjects group #t) subject t)
   (news-group:ignored-subjects-modified! group))
 
 (define (news-group:article-not-ignored! header buffer)
@@ -4538,9 +4538,9 @@ With prefix arg, replaces the file with the list information."
 	       (lambda (group number)
 		 number
 		 (let ((table (news-group:get-ignored-subjects group #f)))
-		   (if (and table (hash-table/get table subject #f))
+		   (if (and table (hash-table-ref/default table subject #f))
 		       (begin
-			 (hash-table/remove! table subject)
+			 (hash-table-delete! table subject)
 			 (news-group:ignored-subjects-modified! group)))))))
 	  (process-header (news-header:group header)
 			  (news-header:number header))

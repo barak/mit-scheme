@@ -164,12 +164,12 @@ USA.
 
 (define (get-environment-variable name)
   (guarantee string? name 'get-environment-variable)
-  (let ((value (hash-table/get environment-variables name 'none)))
+  (let ((value (hash-table-ref/default environment-variables name 'none)))
     (if (eq? value 'none)
 	(let ((value
 	       ((ucode-primitive get-environment-variable 1)
 		(string-for-primitive name))))
-	  (hash-table/put! environment-variables name value)
+	  (hash-table-set! environment-variables name value)
 	  value)
 	value)))
 
@@ -177,14 +177,14 @@ USA.
   (guarantee string? name 'set-environment-variable!)
   (if value
       (guarantee string? value 'set-environment-variable!))
-  (hash-table/put! environment-variables name value))
+  (hash-table-set! environment-variables name value))
 
 (define (delete-environment-variable! name)
   (guarantee string? name 'delete-environment-variable!)
-  (hash-table/remove! environment-variables name))
+  (hash-table-delete! environment-variables name))
 
 (define (reset-environment-variables!)
-  (hash-table/clear! environment-variables))
+  (hash-table-clear! environment-variables))
 
 (define (initialize-system-primitives!)
   (set! environment-variables (make-string-hash-table))
@@ -194,7 +194,7 @@ USA.
 
 (define (os/suffix-mime-type suffix)
   (import-mime-types)
-  (hash-table/get mime-types suffix #f))
+  (hash-table-ref/default mime-types suffix #f))
 
 (define (initialize-mime-types!)
   (set! mime-types (make-string-hash-table))
@@ -217,13 +217,13 @@ USA.
 	    changed?))
       (with-thread-events-blocked
 	(lambda ()
-	  (hash-table/clear! mime-types)
+	  (hash-table-clear! mime-types)
 	  (for-each-vector-element mime.types-files
 	    (lambda (p)
 	      (for-each (lambda (entry)
 			  (let ((type (car entry)))
 			    (for-each (lambda (suffix)
-					(hash-table/put! mime-types
+					(hash-table-set! mime-types
 							 suffix
 							 type))
 				      (cdr entry))))

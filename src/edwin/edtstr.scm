@@ -111,7 +111,7 @@ USA.
 		   'BUTTON-
 		   number
 		   (if down? '-DOWN '-UP))))
-      (hash-table/intern! buttons-table name
+      (hash-table-intern! buttons-table name
 	(lambda ()
 	  (%%make-button number bits down? name))))))
 

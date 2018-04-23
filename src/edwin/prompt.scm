@@ -453,9 +453,9 @@ USA.
   (if (not (or (not name) (symbol? name)))
       (error:wrong-type-argument name "symbol" 'NAME->HISTORY))
   (let ((name (or name 'MINIBUFFER-DEFAULT)))
-    (or (hash-table/get prompt-histories name #f)
+    (or (hash-table-ref/default prompt-histories name #f)
 	(let ((history (list 'PROMPT-HISTORY)))
-	  (hash-table/put! prompt-histories name history)
+	  (hash-table-set! prompt-histories name history)
 	  history))))
 
 (define (prompt-history-strings name)
@@ -1060,7 +1060,7 @@ Set this to zero if you don't want pass-phrase retention."
 
 (define (call-with-stored-pass-phrase key receiver)
   (let ((retention-time (ref-variable pass-phrase-retention-time #f)))
-    (let ((entry (hash-table/get stored-pass-phrases key #f)))
+    (let ((entry (hash-table-ref/default stored-pass-phrases key #f)))
       (if entry
 	  (begin
 	    (without-interrupts
@@ -1072,7 +1072,7 @@ Set this to zero if you don't want pass-phrase retention."
 	   (string-append "Pass phrase for " key)
 	   (lambda (pass-phrase)
 	     (if (> retention-time 0)
-		 (hash-table/put!
+		 (hash-table-set!
 		  stored-pass-phrases
 		  key
 		  (let ((entry
@@ -1082,7 +1082,7 @@ Set this to zero if you don't want pass-phrase retention."
 	     (receiver pass-phrase)))))))
 
 (define (delete-stored-pass-phrase key)
-  (hash-table/remove! stored-pass-phrases key))
+  (hash-table-delete! stored-pass-phrases key))
 
 (define (set-up-pass-phrase-timer! entry key retention-time)
   ;; A race condition can occur when the timer event is re-registered.
@@ -1097,9 +1097,9 @@ Set this to zero if you don't want pass-phrase retention."
 	(lambda ()
 	  (without-interrupts
 	   (lambda ()
-	     (let ((entry (hash-table/get stored-pass-phrases key #f)))
+	     (let ((entry (hash-table-ref/default stored-pass-phrases key #f)))
 	       (if (and entry (eq? (vector-ref entry 2) id))
-		   (hash-table/remove! stored-pass-phrases key))))))))))
+		   (hash-table-delete! stored-pass-phrases key))))))))))
 
 (define stored-pass-phrases
   (make-string-hash-table))

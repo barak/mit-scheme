@@ -989,7 +989,7 @@ USA.
   (files "string")
   (parent (runtime))
   (export () deprecated:string
-	  (string-ci-hash string-hash-ci)
+	  (string-hash-ci string-ci-hash)
 	  (string-hash-mod string-hash)
 	  (substring->list string->list)
 	  (substring-move-left! substring-move!)
@@ -1064,8 +1064,8 @@ USA.
 	  string-foldcase
 	  string-for-each
 	  string-for-primitive		;export to (runtime) after 9.3
-	  string-hash
-	  string-hash-ci
+	  string-hash			;SRFI-69
+	  string-ci-hash		;SRFI-69
 	  string-head
 	  string-immutable?
 	  string-in-nfc?
@@ -2372,20 +2372,32 @@ USA.
   (parent (runtime))
   (import (runtime population)
 	  add-to-population!/unsafe)
+  (export () deprecated:hash-table
+	  (hash-table/clear! hash-table-clear!)
+	  (hash-table/clean! hash-table-clean!)
+	  (hash-table/count hash-table-size)
+	  (hash-table/datum-list hash-table-values)
+	  (hash-table/for-each hash-table-walk)
+	  (hash-table/get hash-table-ref/default)
+	  (hash-table/intern! hash-table-intern!)
+	  (hash-table/key-hash hash-table-hash-function)
+	  (hash-table/key-list hash-table-keys)
+	  (hash-table/key=? hash-table-equivalence-function)
+	  (hash-table/put! hash-table-set!)
+	  (hash-table/rehash-size hash-table-rehash-size)
+	  (hash-table/rehash-threshold hash-table-rehash-threshold)
+	  (hash-table/remove! hash-table-delete!)
+	  (hash-table/size! hash-table-grow-size)
+	  (hash-table/type hash-table-type)
+	  (set-hash-table/rehash-size! set-hash-table-rehash-size!)
+	  (set-hash-table/rehash-threshold! set-hash-table-rehash-threshold!)
+	  hash-table/constructor
+	  hash-table/modify!
+	  strong-hash-table/constructor
+	  weak-hash-table/constructor)
   (export ()
 	  (eq-hash-table-type key-weak-eq-hash-table-type)
 	  (eqv-hash-table-type key-weak-eqv-hash-table-type)
-	  (hash-table-clear! hash-table/clear!)
-	  (hash-table-delete! hash-table/remove!)
-	  (hash-table-equivalence-function hash-table/key=?)
-	  (hash-table-hash-function hash-table/key-hash)
-	  (hash-table-intern! hash-table/intern!)
-	  (hash-table-keys hash-table/key-list)
-	  (hash-table-ref/default hash-table/get)
-	  (hash-table-set! hash-table/put!)
-	  (hash-table-size hash-table/count)
-	  (hash-table-values hash-table/datum-list)
-	  (hash-table-walk hash-table/for-each)
 	  (make-eq-hash-table make-key-weak-eq-hash-table)
 	  (make-eqv-hash-table make-key-weak-eqv-hash-table)
 	  (make-object-hash-table make-key-weak-eqv-hash-table)
@@ -2394,7 +2406,7 @@ USA.
 	  (make-weak-eqv-hash-table make-key-weak-eqv-hash-table)
 	  (weak-eq-hash-table-type key-weak-eq-hash-table-type)
 	  (weak-eqv-hash-table-type key-weak-eqv-hash-table-type)
-	  alist->hash-table
+	  alist->hash-table		;SRFI-69
 	  eq-hash
 	  eq-hash-mod
 	  equal-hash
@@ -2404,9 +2416,13 @@ USA.
 	  equality-predicate?
 	  eqv-hash
 	  eqv-hash-mod
-	  hash-by-identity
-	  hash-table->alist
-	  hash-table-copy
+	  hash-by-identity		;SRFI-69
+	  hash-table->alist		;SRFI-69
+	  hash-table-clean!
+	  hash-table-clear!		;SRFI-69
+	  hash-table-constructor
+	  hash-table-copy		;SRFI-69
+	  hash-table-delete!		;SRFI-69
 	  hash-table-entry-type:datum-ephemeral
 	  hash-table-entry-type:datum-weak
 	  hash-table-entry-type:key&datum-ephemeral
@@ -2414,33 +2430,29 @@ USA.
 	  hash-table-entry-type:key-weak
 	  hash-table-entry-type:key/datum-weak
 	  hash-table-entry-type:strong
-	  hash-table-exists?
-	  hash-table-fold
-	  hash-table-merge!
-	  hash-table-ref
+	  hash-table-equivalence-function ;SRFI-69
+	  hash-table-exists?		;SRFI-69
+	  hash-table-fold		;SRFI-69
+	  hash-table-grow-size
+	  hash-table-hash-function	;SRFI-69
+	  hash-table-intern!
+	  hash-table-keys		;SRFI-69
+	  hash-table-merge!		;SRFI-69
+	  hash-table-ref		;SRFI-69
+	  hash-table-ref/default	;SRFI-69
+	  hash-table-rehash-size
+	  hash-table-rehash-threshold
+	  hash-table-set!		;SRFI-69
+	  hash-table-shrink-size
+	  hash-table-size		;SRFI-69
+	  hash-table-type
 	  hash-table-type?
-	  hash-table-update!
-	  hash-table-update!/default
-	  hash-table/clean!
-	  hash-table/clear!
-	  hash-table/constructor
-	  hash-table/count
-	  hash-table/datum-list
-	  hash-table/for-each
-	  hash-table/get
-	  hash-table/intern!
-	  hash-table/key-hash
-	  hash-table/key-list
-	  hash-table/key=?
+	  hash-table-update!		;SRFI-69
+	  hash-table-update!/default	;SRFI-69
+	  hash-table-values		;SRFI-69
+	  hash-table-walk		;SRFI-69
 	  hash-table/lookup
-	  hash-table/modify!
-	  hash-table/put!
-	  hash-table/rehash-size
-	  hash-table/rehash-threshold
-	  hash-table/remove!
-	  hash-table/size
-	  hash-table/type
-	  hash-table?
+	  hash-table?			;SRFI-69
 	  key-ephemeral-eq-hash-table-type
 	  key-ephemeral-eqv-hash-table-type
 	  key-weak-eq-hash-table-type
@@ -2459,13 +2471,11 @@ USA.
 	  make-strong-eqv-hash-table
 	  non-pointer-hash-table-type
 	  set-equality-predicate-hasher!
-	  set-hash-table/rehash-size!
-	  set-hash-table/rehash-threshold!
+	  set-hash-table-rehash-size!
+	  set-hash-table-rehash-threshold!
 	  string-hash-table-type
 	  strong-eq-hash-table-type
-	  strong-eqv-hash-table-type
-	  strong-hash-table/constructor
-	  weak-hash-table/constructor))
+	  strong-eqv-hash-table-type))
 
 (define-package (runtime memoizer)
   (files "memoizer")

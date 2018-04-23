@@ -260,7 +260,7 @@
                (if (compiled-closure? return-address)
                    (compiled-closure->entry return-address)
                    return-address)))
-          (hash-table/intern! (profile.entries profile) return-address
+          (hash-table-intern! (profile.entries profile) return-address
             (lambda ()
               (receive (expression environment subexpression)
                        (stack-frame/debugging-info stack-frame)
@@ -287,7 +287,7 @@
     value))
 
 (define (display-profile profile output-port)
-  (let ((entries (hash-table/datum-list (profile.entries profile))))
+  (let ((entries (hash-table-values (profile.entries profile))))
     (define (sortem entry.count)
       (sort (remove (lambda (e) (zero? (entry.count e)))
 		    entries)

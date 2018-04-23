@@ -147,21 +147,21 @@ USA.
 	 (ill-formed-syntax form)))))
 
 (define (define-html-element-context qname context)
-  (hash-table/put! element-context-map
+  (hash-table-set! element-context-map
 		   (make-xml-name qname html-uri)
 		   context)
   qname)
 
 (define (html-element-context elt)
   (guarantee-html-element elt 'HTML-ELEMENT-CONTEXT)
-  (hash-table/get element-context-map (xml-element-name elt) #f))
+  (hash-table-ref/default element-context-map (xml-element-name elt) #f))
 
 (define (html-element-name-context name)
   (guarantee-html-element-name name 'HTML-ELEMENT-NAME-CONTEXT)
-  (hash-table/get element-context-map name #f))
+  (hash-table-ref/default element-context-map name #f))
 
 (define (html-element-names)
-  (hash-table/key-list element-context-map))
+  (hash-table-keys element-context-map))
 
 (define element-context-map
   (make-strong-eq-hash-table))

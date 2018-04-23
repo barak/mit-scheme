@@ -43,7 +43,7 @@ USA.
 	(check-element root 'xdoc)))))
 
 (define (check-element elt local)
-  (let ((v (hash-table/get element-checkers local #f)))
+  (let ((v (hash-table-ref/default element-checkers local #f)))
     (if (not v)
 	(error "Missing element definition:" local))
     (let ((valid-attrs? (vector-ref v 0))
@@ -92,7 +92,7 @@ USA.
     (if (and (memq type '(element mixed))
 	     (not valid-local?))
 	(error "Must supply a name predicate with this content type:" type))
-    (hash-table/put! element-checkers
+    (hash-table-set! element-checkers
 		     local
 		     (vector valid-attrs? type valid-local? procedure))))
 

@@ -77,9 +77,9 @@ USA.
 	    s
 	    (loop (fix:+ n 1)
 		  (cons (cons (let ((x (random 1. state)))
-				(cond ((< x insert-fraction) 'INSERT)
-				      ((< x delete-break) 'DELETE)
-				      (else 'LOOKUP)))
+				(cond ((< x insert-fraction) 'insert)
+				      ((< x delete-break) 'delete)
+				      (else 'lookup)))
 			      (let ((key (random key-radix state)))
 				(or (rb-tree/lookup tree key #f)
 				    (let ((pointer (cons key '())))
@@ -94,9 +94,9 @@ USA.
 	(lookup (implementation/lookup implementation)))
     (do ((s s (cdr s)))
 	((null? s))
-      (cond ((eq? 'INSERT (caar s))
+      (cond ((eq? 'insert (caar s))
 	     (insert! table (cdar s) #f))
-	    ((eq? 'DELETE (caar s))
+	    ((eq? 'delete (caar s))
 	     (delete! table (cdar s)))
 	    (else
 	     (lookup table (cdar s) #f))))
@@ -116,7 +116,7 @@ USA.
    (lambda (table key default) table key default unspecific)
    (lambda (table) table '())))
 
-(load-option 'RB-TREE)
+(load-option 'rb-tree)
 
 (define (make-pointer-tree)
   (make-rb-tree (lambda (x y) (fix:= (car x) (car y)))
@@ -129,13 +129,13 @@ USA.
 		       rb-tree/lookup
 		       rb-tree->alist))
 
-(load-option 'HASH-TABLE)
+(load-option 'hash-table)
 
 (define (make-hash-table-implementation constructor)
   (make-implementation constructor
-		       hash-table/put!
-		       hash-table/remove!
-		       hash-table/get
+		       hash-table-set!
+		       hash-table-delete!
+		       hash-table-ref/default
 		       (lambda (table)
 			 (sort (hash-table->alist table)
 			       (lambda (x y) (fix:< (caar x) (caar y)))))))
@@ -150,10 +150,10 @@ USA.
 	((null? s))
       (let ((operation (caar s))
 	    (key (cdar s)))
-	(cond ((eq? 'INSERT operation)
+	(cond ((eq? 'insert operation)
 	       (rb-tree/insert! tree key #t)
 	       (insert! table key #t))
-	      ((eq? 'DELETE operation)
+	      ((eq? 'delete operation)
 	       (rb-tree/delete! tree key)
 	       (delete! table key))
 	      (else
@@ -190,35 +190,36 @@ USA.
   (int:remainder (if (int:< integer 0) (int:- 0 integer) integer) modulus))
 
 (let ((hash-parameters
-       (list (list 'EQ eq-hash-mod eq? #t)
-	     (list 'EQV eqv-hash-mod eqv? #t)
-	     (list 'EQUAL equal-hash-mod equal? #t)
-	     (list 'INTEGER
+       (list (list 'eq eq-hash-mod eq? #t)
+	     (list 'eqv eqv-hash-mod eqv? #t)
+	     (list 'equal equal-hash-mod equal? #t)
+	     (list 'integer
 		   (lambda (x modulus) (integer-hash-mod (car x) modulus))
 		   (lambda (x y) (int:= (car x) (car y)))
 		   #f)))
       (entry-types
-       (list (list 'STRONG hash-table-entry-type:strong)
-	     (list 'KEY-WEAK hash-table-entry-type:key-weak)
-	     (list 'DATUM-WEAK hash-table-entry-type:datum-weak)
-	     (list 'KEY/DATUM-WEAK hash-table-entry-type:key/datum-weak)
-	     (list 'KEY-EPHEMERAL hash-table-entry-type:key-ephemeral)
-	     (list 'DATUM-EPHEMERAL hash-table-entry-type:datum-ephemeral)
-	     (list 'KEY&DATUM-EPHEMERAL
+       (list (list 'strong hash-table-entry-type:strong)
+	     (list 'key-weak hash-table-entry-type:key-weak)
+	     (list 'datum-weak hash-table-entry-type:datum-weak)
+	     (list 'key/datum-weak hash-table-entry-type:key/datum-weak)
+	     (list 'key-ephemeral hash-table-entry-type:key-ephemeral)
+	     (list 'datum-ephemeral hash-table-entry-type:datum-ephemeral)
+	     (list 'key&datum-ephemeral
 		   hash-table-entry-type:key&datum-ephemeral))))
   (for-each (lambda (hash-parameters)
 	      (for-each (lambda (entry-type)
 			  (define-test
-			    (symbol 'CORRECTNESS-VS-RB:
+			    (symbol 'correctness-vs-rb:
 				    (car entry-type)
 				    '-
 				    (car hash-parameters))
 			    (lambda ()
 			      (check
 			       (make-hash-table-implementation
-				(apply hash-table/constructor
-				       (append (cdr hash-parameters)
-					       (cdr entry-type))))))))
+				(hash-table-constructor
+				 (apply make-hash-table-type
+					(append (cdr hash-parameters)
+						(cdr entry-type)))))))))
 			entry-types))
 	    hash-parameters))
 
@@ -229,72 +230,69 @@ USA.
 ;;; big, hairy, complicated statistical test that guarantees the
 ;;; desired behaviour with high probability.
 
-(define-test 'REGRESSION:FALSE-KEY-OF-BROKEN-WEAK-ENTRY
-  (lambda ()
-    (let ((hash-table
-	   ((weak-hash-table/constructor (lambda (k m) k m 0) eqv?))))
-      (hash-table/put! hash-table (cons 0 0) 'LOSE)
-      (gc-flip)
-      (assert-eqv (hash-table/get hash-table #f 'WIN) 'WIN))))
+(define (regression-make-table entry-type)
+  ((hash-table-constructor
+    (make-hash-table-type (lambda (k m) k m 0) eqv? #f entry-type))))
 
-(define-test 'REGRESSION:MODIFICATION-DURING-SRFI-69-UPDATE
+(define-test 'regression:false-key-of-broken-weak-entry
   (lambda ()
-    (let ((hash-table
-	   ((strong-hash-table/constructor (lambda (k m) k m 0) eqv?))))
-      (hash-table/put! hash-table 0 'LOSE-0)
+    (let ((hash-table (regression-make-table hash-table-entry-type:key-weak)))
+      (hash-table-set! hash-table (cons 0 0) 'lose)
+      (gc-flip)
+      (assert-eqv (hash-table-ref/default hash-table #f 'win) 'win))))
+
+(define-test 'regression:modification-during-srfi-69-update
+  (lambda ()
+    (let ((hash-table (regression-make-table hash-table-entry-type:strong)))
+      (hash-table-set! hash-table 0 'lose-0)
       (hash-table-update! hash-table 0
 	(lambda (datum)
-	  datum				;ignore
+	  (declare (ignore datum))
 	  ;; Force consing a new entry.
-	  (hash-table/remove! hash-table 0)
-	  (hash-table/put! hash-table 0 'LOSE-1)
-	  'WIN))
-      (assert-eqv (hash-table/get hash-table 0 'LOSE-2) 'WIN))))
+	  (hash-table-delete! hash-table 0)
+	  (hash-table-set! hash-table 0 'lose-1)
+	  'win))
+      (assert-eqv (hash-table-ref/default hash-table 0 'lose-2) 'win))))
 
-(define-test 'REGRESSION:MODIFICATION-DURING-SRFI-69-UPDATE/DEFAULT/0
+(define-test 'regression:modification-during-srfi-69-update/default/0
   (lambda ()
-    (let ((hash-table
-	   ((strong-hash-table/constructor (lambda (k m) k m 0) eqv?))))
-      (hash-table/put! hash-table 0 'LOSE-0)
+    (let ((hash-table (regression-make-table hash-table-entry-type:strong)))
+      (hash-table-set! hash-table 0 'lose-0)
       (hash-table-update!/default hash-table 0
         (lambda (datum)
-          datum				;ignore
+          (declare (ignore datum))
           ;; Force consing a new entry.
-          (hash-table/remove! hash-table 0)
-          (hash-table/put! hash-table 0 'LOSE-1)
-          'WIN)
-        'LOSE-2)
-      (assert-eqv (hash-table/get hash-table 0 'LOSE-3) 'WIN))))
+          (hash-table-delete! hash-table 0)
+          (hash-table-set! hash-table 0 'lose-1)
+          'win)
+        'lose-2)
+      (assert-eqv (hash-table-ref/default hash-table 0 'lose-3) 'win))))
 
-(define-test 'REGRESSION:MODIFICATION-DURING-SRFI-69-UPDATE/DEFAULT/1
+(define-test 'regression:modification-during-srfi-69-update/default/1
   (lambda ()
-    (let ((hash-table
-	   ((strong-hash-table/constructor (lambda (k m) k m 0) eqv?))))
+    (let ((hash-table (regression-make-table hash-table-entry-type:strong)))
       (hash-table-update!/default hash-table 0
 	(lambda (datum)
-	  datum				;ignore
-	  (hash-table/put! hash-table 1 'WIN-1)
-	  'WIN-0)
-        'LOSE-0A)
-      (assert-eqv (hash-table/get hash-table 0 'LOSE-0B) 'WIN-0)
-      (assert-eqv (hash-table/get hash-table 1 'LOSE-1) 'WIN-1))))
+	  (declare (ignore datum))
+	  (hash-table-set! hash-table 1 'win-1)
+	  'win-0)
+        'lose-0a)
+      (assert-eqv (hash-table-ref/default hash-table 0 'lose-0b) 'win-0)
+      (assert-eqv (hash-table-ref/default hash-table 1 'lose-1) 'win-1))))
 
-(define-test 'REGRESSION:MODIFICATION-DURING-SRFI-69-FOLD
+(define-test 'regression:modification-during-srfi-69-fold
   (lambda ()
     (let* ((index 1)
-	   (hash-table
-	    ((strong-hash-table/constructor (lambda (k m) k m index)
-					    eqv?
-					    #t))))
-      (hash-table/put! hash-table 0 0)
-      (hash-table/put! hash-table 1 1)
+	   (hash-table (regression-make-table hash-table-entry-type:strong)))
+      (hash-table-set! hash-table 0 0)
+      (hash-table-set! hash-table 1 1)
       (assert-eqv (hash-table-fold hash-table
 				   (lambda (key datum count)
 				     key datum ;ignore
 				     (set! index 0)
 				     ;; Force a rehash.
 				     (gc-flip)
-				     (hash-table/get hash-table 0 #f)
+				     (hash-table-ref/default hash-table 0 #f)
 				     (+ count 1))
 				   0)
 		  2))))

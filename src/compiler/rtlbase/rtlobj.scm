@@ -106,21 +106,21 @@ USA.
 	     (length procedures)
 	     (length continuations)))))
     (if expression
-	(hash-table/put! hash-table
+	(hash-table-set! hash-table
 			 (rtl-expr/label expression)
 			 expression))
     (for-each (lambda (procedure)
-		(hash-table/put! hash-table
+		(hash-table-set! hash-table
 				 (rtl-procedure/label procedure)
 				 procedure))
 	      procedures)
     (for-each (lambda (continuation)
-		(hash-table/put! hash-table
+		(hash-table-set! hash-table
 				 (rtl-continuation/label continuation)
 				 continuation))
 	      continuations)
     (lambda (label)
-      (let ((datum (hash-table/get hash-table label #f)))
+      (let ((datum (hash-table-ref/default hash-table label #f)))
 	(if (not datum)
 	    (error "Undefined label:" label))
 	datum))))

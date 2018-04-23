@@ -73,10 +73,10 @@ USA.
   (make-strong-eq-hash-table))
 
 (define-integrable (stackify/table/lookup key)
-  (hash-table/get *stackify/table* key #f))
+  (hash-table-ref/default *stackify/table* key #f))
 
 (define-integrable (stackify/table/associate! key val)
-  (hash-table/put! *stackify/table* key val))
+  (hash-table-set! *stackify/table* key val))
 
 ;; An value in the table looks like
 ;;

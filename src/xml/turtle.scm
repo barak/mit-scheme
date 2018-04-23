@@ -602,8 +602,8 @@ USA.
       (cond ((uri? o)
 	     (receive (prefix expansion)
 		 (uri->rdf-prefix o (port/rdf-prefix-registry port) #f)
-	       (if (and prefix (not (hash-table/get table prefix #f)))
-		   (hash-table/put! table prefix expansion))))
+	       (if (and prefix (not (hash-table-ref/default table prefix #f)))
+		   (hash-table-set! table prefix expansion))))
 	    ((rdf-graph? o)
 	     (check-graph o))))
 

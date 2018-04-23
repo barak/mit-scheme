@@ -54,14 +54,14 @@ USA.
   (%memoizer-metadata-procedure (apply-hook-extra memoizer)))
 
 (define (clear-memoizer! memoizer)
-  (hash-table/clear! (memoizer-table memoizer)))
+  (hash-table-clear! (memoizer-table memoizer)))
 
 (define (weak-eqv-memoizer get-key get-datum)
   (let ((table (make-key-weak-eqv-hash-table)))
     (make-memoizer table
                    get-datum
                    (lambda args
-                     (hash-table/intern! table
+                     (hash-table-intern! table
                                          (apply get-key args)
                                          (lambda () (apply get-datum args)))))))
 
@@ -88,7 +88,7 @@ USA.
                   (if dedup?
                       (delete-duplicates list elt=)
                       list)))
-             (hash-table/intern! table
+             (hash-table-intern! table
                                  (get-key list)
                                  (lambda () (get-datum list))))))))))
 

@@ -146,7 +146,8 @@ USA.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define make-integer-hash-table
-  (strong-hash-table/constructor modulo int:= #f))
+  (hash-table-constructor
+   (make-hash-table-type modulo int:= #f hash-table-entry-type:strong)))
 
 (define (initialize-wndproc-registry)
   (set! wndproc-registry (make-integer-hash-table)))
@@ -162,10 +163,10 @@ USA.
     (cond (newproc
 	   => (lambda (theproc)
 		(set! newproc #F)
-		(hash-table/put! wndproc-registry hwnd theproc)
+		(hash-table-set! wndproc-registry hwnd theproc)
 		(set-interrupt-enables! mask)
 		(theproc hwnd message wparam lparam)))
-	  ((hash-table/get wndproc-registry hwnd #f)
+	  ((hash-table-ref/default wndproc-registry hwnd #f)
 	   => (lambda (wndproc)
 		(wndproc hwnd message wparam lparam)))
 	  (else
@@ -191,11 +192,11 @@ USA.
 ;; As a temporary measure we check to see if the windows still exist every GC
 
 (define (wndproc-registry-cleaner)
-  (hash-table/for-each wndproc-registry
+  (hash-table-walk wndproc-registry
     (lambda (hwnd wndproc)
       wndproc                         ; ignored
       (if (not (is-window? hwnd))
-	  (hash-table/remove! wndproc-registry hwnd)))))
+	  (hash-table-delete! wndproc-registry hwnd)))))
 
 ;; Applications should use DEFAULT-SCHEME-WNDPROC rather than DEF-WINDOW-PROC
 ;; so that we can hook in behaviour for all scheme windows.
@@ -209,12 +210,12 @@ USA.
          (C-proc    (get-window-long hwnd GWL_WNDPROC))
          (scheme?   (= C-proc scheme-wndproc))
 	 (old-proc  (if scheme?
-			(or (hash-table/get wndproc-registry hwnd #f)
+			(or (hash-table-ref/default wndproc-registry hwnd #f)
 			    default-scheme-wndproc)
 			(lambda (hw m w l)
 			  (%call-foreign-function c-proc hw m w l)))))
     (set-window-long hwnd GWL_WNDPROC scheme-wndproc)
-    (hash-table/put! wndproc-registry hwnd (subclass-behaviour old-proc))
+    (hash-table-set! wndproc-registry hwnd (subclass-behaviour old-proc))
     unspecific))
 
 

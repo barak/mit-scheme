@@ -2050,7 +2050,7 @@ USA.
 	((ucode-primitive string-hash) string*)
 	((ucode-primitive string-hash-mod) string* modulus))))
 
-(define (string-hash-ci string #!optional modulus)
+(define (string-ci-hash string #!optional modulus)
   (string-hash (string-foldcase string) modulus))
 
 (define (8-bit-string? object)
