@@ -260,15 +260,6 @@ USA.
 (define (int:even? n)
   (int:zero? (int:remainder n 2)))
 
-(define (int:modulo n d)
-  (let ((r (int:remainder n d)))
-    (if (or (int:zero? r)
-	    (if (int:negative? n)
-		(int:negative? d)
-		(not (int:negative? d))))
-	r
-	(int:+ r d))))
-
 (define (int:gcd n m)
   (let loop ((n n) (m m))
     (cond ((not (int:zero? m)) (loop m (int:remainder n m)))

@@ -344,6 +344,7 @@ USA.
 	  int:>=
 	  int:divide
 	  int:integer?
+	  int:modulo
 	  int:negate
 	  int:negative?
 	  int:positive?

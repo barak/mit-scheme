@@ -275,3 +275,12 @@ USA.
 
 (define-integrable (int:<= n m) (not (int:> n m)))
 (define-integrable (int:>= n m) (not (int:< n m)))
+
+(define (int:modulo n d)
+  (let ((r (int:remainder n d)))
+    (if (or (int:zero? r)
+	    (if (int:negative? n)
+		(int:negative? d)
+		(not (int:negative? d))))
+	r
+	(int:+ r d))))
