@@ -1268,17 +1268,17 @@ USA.
     (guarantee keyword-list? options caller)
     (apply values
 	   (map (lambda (spec)
-		  (receive (name predicate default-value)
+		  (receive (name predicate get-default)
 		      (keyword-option-spec-parts spec)
 		    (let ((value (get-keyword-value options name)))
 		      (if (default-object? value)
 			  (begin
-			    (if (default-object? default-value)
+			    (if (default-object? get-default)
 				(error (string "Missing required option '"
 					       name
 					       "':")
 				       options))
-			    default-value)
+			    (get-default))
 			  (guarantee predicate value caller)))))
 		keyword-option-specs))))
 
@@ -1286,20 +1286,22 @@ USA.
   (and (list? object)
        (memv (length object) '(2 3))
        (interned-symbol? (car object))
-       (or (unary-procedure? (cadr object))
-	   (and (pair? (cadr object))
-		(list-of-type? (cadr object) interned-symbol?)
+       (or (and (unary-procedure? (cadr object))
 		(or (null? (cddr object))
-		    (memq (caddr object) (cadr object)))))))
+		    (thunk? (caddr object))))
+	   (and (list-of-type? (cadr object) interned-symbol?)
+		(or (null? (cddr object))
+		    (memq (caddr object) (cadr object))
+		    (thunk? (caddr object)))))))
 
 (define (keyword-option-spec-parts spec)
   (values (car spec)
 	  (if (pair? (cadr spec))
 	      (lambda (object) (memq object (cadr spec)))
 	      (cadr spec))
-	  (if (null? (cddr spec))
-	      (default-object)
-	      (caddr spec))))
+	  (cond ((null? (cddr spec)) (default-object))
+		((interned-symbol? (caddr spec)) (lambda () (caddr spec)))
+		(else (caddr spec)))))
 
 ;;;; Last pair
 

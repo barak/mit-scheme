@@ -1899,9 +1899,9 @@ USA.
 
 (define-deferred string-joiner-options
   (keyword-option-parser
-   (list (list 'infix string? "")
-	 (list 'prefix string? "")
-	 (list 'suffix string? ""))))
+   (list (list 'infix string? (lambda () ""))
+	 (list 'prefix string? (lambda () ""))
+	 (list 'suffix string? (lambda () "")))))
 
 ;;;; Splitter
 
@@ -1938,9 +1938,9 @@ USA.
 
 (define-deferred string-splitter-options
   (keyword-option-parser
-   (list (list 'delimiter char-matcher? char-whitespace?)
-	 (list 'allow-runs? boolean? #t)
-	 (list 'copy? boolean? #f))))
+   (list (list 'delimiter char-matcher? (lambda () char-whitespace?))
+	 (list 'allow-runs? boolean? (lambda () #t))
+	 (list 'copy? boolean? (lambda () #f)))))
 
 (define (char-matcher->predicate matcher caller)
   (cond ((char? matcher) (char=-predicate matcher))
@@ -1984,8 +1984,8 @@ USA.
 (define-deferred string-trimmer-options
   (keyword-option-parser
    (list (list 'where '(leading trailing both) 'both)
-	 (list 'to-trim char-matcher? char-whitespace?)
-	 (list 'copy? boolean? #f))))
+	 (list 'to-trim char-matcher? (lambda () char-whitespace?))
+	 (list 'copy? boolean? (lambda () #f)))))
 
 (define (string-padder . options)
   (receive (where fill-with clip?)
@@ -2021,8 +2021,8 @@ USA.
 (define-deferred string-padder-options
   (keyword-option-parser
    (list (list 'where '(leading trailing) 'leading)
-	 (list 'fill-with grapheme-cluster-string? " ")
-	 (list 'clip? boolean? #t))))
+	 (list 'fill-with grapheme-cluster-string? (lambda () " "))
+	 (list 'clip? boolean? (lambda () #t)))))
 
 ;;;; Miscellaneous
 
