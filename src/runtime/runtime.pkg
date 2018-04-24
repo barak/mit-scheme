@@ -2414,6 +2414,9 @@ USA.
 	  equal-hash-mod
 	  equal-hash-table-type
 	  equality-predicate-hasher
+	  equality-predicate-property
+	  equality-predicate-property-names
+	  equality-predicate-rehash-after-gc?
 	  equality-predicate?
 	  eqv-hash
 	  eqv-hash-mod
@@ -2471,7 +2474,7 @@ USA.
 	  make-strong-eq-hash-table
 	  make-strong-eqv-hash-table
 	  non-pointer-hash-table-type
-	  set-equality-predicate-hasher!
+	  set-equality-predicate-properties!
 	  set-hash-table-rehash-size!
 	  set-hash-table-rehash-threshold!
 	  string-hash-table-type

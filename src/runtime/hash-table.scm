@@ -1403,33 +1403,50 @@ USA.
   (list 'default-marker))
 
 (define equality-predicate?)
-(define get-equality-predicate-hasher)
-(define %set-equality-predicate-hasher!)
+(define %equality-predicate-properties)
+(define %set-equality-predicate-properties!)
 (add-boot-init!
  (lambda ()
    (let ((table (make-hashed-metadata-table)))
      (set! equality-predicate? (table 'has?))
-     (set! get-equality-predicate-hasher (table 'get))
-     (set! %set-equality-predicate-hasher! (table 'put!)))
-   (set-equality-predicate-hasher! eq? hash-by-identity)
-   (set-equality-predicate-hasher! eqv? hash-by-eqv)
-   (set-equality-predicate-hasher! equal? hash-by-equal)
-   (set-equality-predicate-hasher! string=? string-hash)
-   (set-equality-predicate-hasher! string-ci=? string-ci-hash)))
+     (set! %equality-predicate-properties (table 'get))
+     (set! %set-equality-predicate-properties! (table 'put!)))
+   (set-equality-predicate-properties! eq? hash-by-identity #t)
+   (set-equality-predicate-properties! eqv? hash-by-eqv #t)
+   (set-equality-predicate-properties! equal? hash-by-equal #t)
+   (set-equality-predicate-properties! string=? string-hash #f)
+   (set-equality-predicate-properties! string-ci=? string-ci-hash #f)
+   (set-equality-predicate-properties! int:= int:modulo #f)))
+
+(define (equality-predicate-keylist equality-predicate)
+  (let ((props (%equality-predicate-properties equality-predicate #f)))
+    (if (not props)
+        (error:not-a equality-predicate? equality-predicate
+		     'equality-predicate-keylist))
+    props))
+
+(define (equality-predicate-property-names equality-predicate)
+  (let loop ((keylist (equality-predicate-keylist equality-predicate)))
+    (if (pair? keylist)
+	(cons (car keylist) (loop (cddr keylist)))
+	'())))
+
+(define (equality-predicate-property equality-predicate name)
+  (get-keyword-value (equality-predicate-keylist equality-predicate) name))
 
 (define (equality-predicate-hasher equality-predicate)
-  (let ((hasher (get-equality-predicate-hasher equality-predicate #f)))
-    (if (not hasher)
-        (error:not-a equality-predicate?
-		     equality-predicate
-		     'equality-predicate-hasher))
-    hasher))
+  (equality-predicate-property equality-predicate 'hasher))
 
-(define (set-equality-predicate-hasher! equality-predicate hasher)
+(define (equality-predicate-rehash-after-gc? equality-predicate)
+  (equality-predicate-property equality-predicate 'rehash-after-gc?))
+
+(define (set-equality-predicate-properties! equality-predicate hasher
+					    rehash-after-gc? . keylist)
   (guarantee binary-procedure? equality-predicate
-	     'set-equality-predicate-hasher!)
-  (guarantee hasher? hasher 'set-equality-predicate-hasher!)
-  (%set-equality-predicate-hasher! equality-predicate hasher))
-
-(define (hasher? object)
-  (procedure-of-arity? object (make-procedure-arity 1 2)))
+	     'set-equality-predicate-properties!)
+  (guarantee binary-procedure? hasher 'set-equality-predicate-properties!)
+  (guarantee keyword-list? keylist 'set-equality-predicate-properties!)
+  (%set-equality-predicate-properties! equality-predicate
+				       (cons* 'hasher hasher
+					      'rehash-after-gc? rehash-after-gc?
+					      keylist)))

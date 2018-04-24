@@ -96,14 +96,20 @@ USA.
   (let ((compare
          (lambda (a b)
            (list= elt= a b))))
-    (set-equality-predicate-hasher! compare (%make-list-hash elt=))
+    (set-equality-predicate-properties!
+     compare
+     (%make-list-hash elt=)
+     (equality-predicate-rehash-after-gc? elt=))
     compare))
 
 (define (make-lset= elt=)
   (let ((compare
          (lambda (a b)
            (lset= elt= a b))))
-    (set-equality-predicate-hasher! compare (%make-list-hash elt=))
+    (set-equality-predicate-properties!
+     compare
+     (%make-list-hash elt=)
+     (equality-predicate-rehash-after-gc? elt=))
     compare))
 
 (define (%make-list-hash elt=)
