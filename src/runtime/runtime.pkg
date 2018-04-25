@@ -2408,6 +2408,8 @@ USA.
 	  (weak-eq-hash-table-type key-weak-eq-hash-table-type)
 	  (weak-eqv-hash-table-type key-weak-eqv-hash-table-type)
 	  alist->hash-table		;SRFI-69
+	  datum-weak-eq-hash-table-type
+	  datum-weak-eqv-hash-table-type
 	  eq-hash
 	  eq-hash-mod
 	  equal-hash
@@ -2462,6 +2464,8 @@ USA.
 	  key-ephemeral-eqv-hash-table-type
 	  key-weak-eq-hash-table-type
 	  key-weak-eqv-hash-table-type
+	  make-datum-weak-eq-hash-table
+	  make-datum-weak-eqv-hash-table
 	  make-equal-hash-table
 	  make-hash-table
 	  make-hash-table*
