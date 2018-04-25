@@ -83,17 +83,21 @@ USA.
 
 ;;;; Table operations
 
-(define ((hash-table-constructor type) #!optional initial-size)
-  (%make-hash-table type initial-size))
+(define (hash-table-constructor type)
+  (guarantee hash-table-type? type 'hash-table-constructor)
+  (lambda (#!optional initial-size)
+    (%make-hash-table type initial-size 'hash-table-constructor)))
 
-(define (%make-hash-table type #!optional initial-size)
-  (guarantee hash-table-type? type '%make-hash-table)
+(define (make-hash-table* type #!optional initial-size)
+  (guarantee hash-table-type? type 'make-hash-table*)
+  (%make-hash-table type initial-size 'make-hash-table*))
+
+(define (%make-hash-table type initial-size caller)
   (let ((initial-size
 	 (if (or (default-object? initial-size) (not initial-size))
 	     #f
 	     (begin
-	       (guarantee exact-nonnegative-integer? initial-size
-			  '%make-hash-table)
+	       (guarantee exact-nonnegative-integer? initial-size caller)
 	       initial-size))))
     (let ((table (make-table type)))
       (if (and initial-size (> initial-size minimum-size))
@@ -370,6 +374,23 @@ USA.
 
 ;;;; Entries of various flavours
 
+(define all-entry-types '())
+
+(define (register-entry-type! name type)
+  (set! all-entry-types
+	(cons (cons name type)
+	      all-entry-types))
+  unspecific)
+
+(define (entry-type-name? name)
+  (and (assq name all-entry-types) #t))
+
+(define (get-entry-type name)
+  (cdr (assq name all-entry-types)))
+
+(define (hash-table-entry-type-names)
+  (map car all-entry-types))
+
 ;;; Strong
 
 (define-integrable make-strong-entry cons)
@@ -395,7 +416,8 @@ USA.
 		   call-with-strong-entry-key
 		   call-with-strong-entry-key&datum
 		   set-strong-entry-datum!))
-
+(register-entry-type! 'strong hash-table-entry-type:strong)
+
 ;;; Key-weak -- if the key is GC'd, the entry is dropped, but the datum
 ;;; may be retained arbitrarily long.
 
@@ -436,6 +458,7 @@ USA.
 		   call-with-key-weak-entry-key
 		   call-with-key-weak-entry-key&datum
 		   set-key-weak-entry-datum!))
+(register-entry-type! 'key-weak hash-table-entry-type:key-weak)
 
 ;;; Datum-weak -- if the datum is GC'd, the entry is dropped, but the
 ;;; key may be retained arbitrarily long.
@@ -473,6 +496,7 @@ USA.
 		   call-with-datum-weak-entry-key
 		   call-with-datum-weak-entry-key&datum
 		   set-datum-weak-entry-datum!))
+(register-entry-type! 'datum-weak hash-table-entry-type:datum-weak)
 
 ;;; Key-or-datum-weak -- if either is GC'd, the entry is dropped.
 
@@ -513,6 +537,7 @@ USA.
 		   call-with-key/datum-weak-entry-key
 		   call-with-key/datum-weak-entry-key&datum
 		   set-key/datum-weak-entry-datum!))
+(register-entry-type! 'key/datum-weak hash-table-entry-type:key/datum-weak)
 
 ;;; Key-ephemeral -- if the key is GC'd, the entry is dropped.
 
@@ -551,6 +576,7 @@ USA.
 		   call-with-key-ephemeral-entry-key
 		   call-with-key-ephemeral-entry-key&datum
 		   set-key-ephemeral-entry-datum!))
+(register-entry-type! 'key-ephemeral hash-table-entry-type:key-ephemeral)
 
 ;;; Datum-ephemeral -- if the datum is GC'd, the entry is dropped
 
@@ -585,6 +611,7 @@ USA.
 		   call-with-datum-ephemeral-entry-key
 		   call-with-datum-ephemeral-entry-key&datum
 		   set-datum-ephemeral-entry-datum!))
+(register-entry-type! 'datum-ephemeral hash-table-entry-type:datum-ephemeral)
 
 ;;; Key-and-datum-ephemeral -- the entry is dropped iff both key and
 ;;; datum are GC'd.
@@ -635,6 +662,8 @@ USA.
 		   call-with-key&datum-ephemeral-entry-key
 		   call-with-key&datum-ephemeral-entry-key&datum
 		   set-key&datum-ephemeral-entry-datum!))
+(register-entry-type! 'key&datum-ephemeral
+		      hash-table-entry-type:key&datum-ephemeral)
 
 ;;;; Methods
 
@@ -1098,14 +1127,26 @@ USA.
 
 ;;;; Constructing and Open-Coding Types and Constructors
 
-(define (make-hash-table* key-hash key=? rehash-after-gc? entry-type
-			  #!optional initial-size)
-  ((hash-table-constructor
-    (make-hash-table-type key-hash key=? rehash-after-gc? entry-type))
-   initial-size))
+(define (make-hash-table-type* key=? . options)
+  (receive (key-hash rehash-after-gc? entry-type-name)
+      (hash-table-type-options options 'make-hash-table-type*)
+    (make-hash-table-type (if (default-object? key-hash)
+			      (equality-predicate-hasher key=?)
+			      key-hash)
+			  key=?
+			  (if (default-object? rehash-after-gc?)
+			      (equality-predicate-rehash-after-gc? key=?)
+			      rehash-after-gc?)
+			  (get-entry-type entry-type-name))))
+
+(define-deferred hash-table-type-options
+  (keyword-option-parser
+   (list (list 'hash-function unary-procedure? default-object)
+	 (list 'rehash-after-gc? boolean? default-object)
+	 (list 'entry-type entry-type-name? (lambda () 'strong)))))
 
 (define (make-hash-table-type key-hash key=? rehash-after-gc? entry-type)
-  (hash-table-intern! (follow-memo-crap key-hash key=? rehash-after-gc?)
+  (hash-table-intern! (hash-metadata key=? key-hash rehash-after-gc?)
 		      entry-type
     (lambda ()
       (let ((constructor
@@ -1117,27 +1158,31 @@ USA.
 	    (%make-hash-table-type key-hash key=? rehash-after-gc?
 				   entry-type))))))
 
+(define (hash-metadata key-hash key=? rehash-after-gc?)
+  (let ((lookup
+	 (lambda (get set)
+	   (let ((pair
+		  (hash-table-intern!
+		   (hash-table-intern! hash-metadata-table
+				       key-hash
+				       make-key-ephemeral-eq-hash-table)
+		   key=?
+		   (lambda () (cons #f #f)))))
+	     (or (get pair)
+		 (let ((v (make-key-ephemeral-eq-hash-table)))
+		   (set pair v)
+		   v))))))
+    (if rehash-after-gc?
+	(lookup car set-car!)
+	(lookup cdr set-cdr!))))
+
 (define (memoize-hash-table-type! key-hash key=? rehash-after-gc? entry-type
 				  type)
-  (let ((crap (follow-memo-crap key-hash key=? rehash-after-gc?)))
+  (let ((crap (hash-metadata key-hash key=? rehash-after-gc?)))
     (cond ((hash-table-ref/default crap entry-type #f)
 	   => (lambda (type*)
 		(warn "Replacing memoized hash table type:" type type*))))
     (hash-table-set! crap entry-type type)))
-
-(define (follow-memo-crap key-hash key=? rehash-after-gc?)
-  (define (intern-car! pair generator)
-    (or (car pair) (let ((v (generator))) (set-car! pair v) v)))
-  (define (intern-cdr! pair generator)
-    (or (cdr pair) (let ((v (generator))) (set-cdr! pair v) v)))
-  ((if rehash-after-gc? intern-car! intern-cdr!)
-   (hash-table-intern!
-    (hash-table-intern! memoized-hash-table-types
-			key-hash
-			make-key-ephemeral-eq-hash-table)
-    key=?
-    (lambda () (cons #f #f)))
-   make-key-ephemeral-eq-hash-table))
 
 (define (%make-hash-table-type key-hash key=? rehash-after-gc? entry-type)
   (let ((compute-hash!
@@ -1225,7 +1270,7 @@ USA.
 (define strong-eqv-hash-table-type)
 
 (define hash-table-type-constructors)
-(define memoized-hash-table-types)
+(define hash-metadata-table)
 
 (add-boot-init!
  (lambda ()
@@ -1234,7 +1279,7 @@ USA.
    (set! make-key-ephemeral-eq-hash-table
 	 (hash-table-constructor key-ephemeral-eq-hash-table-type))
    (set! hash-table-type-constructors (make-key-ephemeral-eq-hash-table))
-   (set! memoized-hash-table-types (make-key-ephemeral-eq-hash-table))
+   (set! hash-metadata-table (make-key-ephemeral-eq-hash-table))
    (memoize-hash-table-type! eq-hash-mod eq? #t
 			     hash-table-entry-type:key-ephemeral
 			     key-ephemeral-eq-hash-table-type)
@@ -1317,22 +1362,12 @@ USA.
 			  hash-table-entry-type:key-weak))
 
 (define (make-hash-table #!optional key=? key-hash . args)
-  (declare (ignore args))
-  (%make-hash-table
-   (custom-table-type (if (default-object? key=?) equal? key=?)
-		      key-hash)
-   (default-object)))
-
-(define (custom-table-type key=? key-hash)
-  (make-hash-table-type (if (default-object? key-hash)
-			    (equality-predicate-hasher key=?)
-			    key-hash)
-			key=?
-			(if (or (eq? key=? string=?)
-				(eq? key=? string-ci=?))
-			    #f		;No rehash needed after GC
-			    #t)		;Rehash needed after GC
-			hash-table-entry-type:strong))
+  (make-hash-table*
+   (apply make-hash-table-type*
+	  (if (default-object? key=?) equal? key=?)
+	  (if (default-object? key-hash)
+	      args
+	      (cons* 'hash-function key-hash args)))))
 
 (define (alist->hash-table alist #!optional key=? key-hash . args)
   (guarantee alist? alist 'alist->hash-table)

@@ -2427,6 +2427,7 @@ USA.
 	  hash-table-constructor
 	  hash-table-copy		;SRFI-69
 	  hash-table-delete!		;SRFI-69
+	  hash-table-entry-type-names
 	  hash-table-entry-type:datum-ephemeral
 	  hash-table-entry-type:datum-weak
 	  hash-table-entry-type:key&datum-ephemeral
@@ -2465,6 +2466,7 @@ USA.
 	  make-hash-table
 	  make-hash-table*
 	  make-hash-table-type
+	  make-hash-table-type*
 	  make-key-ephemeral-eq-hash-table
 	  make-key-ephemeral-eqv-hash-table
 	  make-key-weak-eq-hash-table
