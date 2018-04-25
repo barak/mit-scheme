@@ -119,7 +119,7 @@ USA.
 (define (->tagged-vector object)
   (let ((object
 	 (if (exact-nonnegative-integer? object)
-	     (unhash object)
+	     (unhash-object object)
 	     object)))
     (and (or (tagged-vector? object)
 	     (named-structure? object))

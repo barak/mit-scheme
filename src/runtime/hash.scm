@@ -27,122 +27,84 @@ USA.
 ;;;; Object Hashing
 ;;; package: (runtime hash)
 
-(declare (usual-integrations))
-
-;;;; Object hashing
-
 ;;; How this works:
 
-;;; There are two tables, the hash table and the unhash table:
+;;; There are two tables:
 
-;;; - The hash table associates objects to their hash numbers.  The
-;;; entries are keyed according to the address (datum) of the object.
+;;; * The hash table associates objects (as compared by eqv?) to their hash
+;;;   numbers.
 
-;;; - The unhash table associates the hash numbers with the
-;;; corresponding objects.  It is keyed according to the numbers
-;;; themselves.
+;;; * The unhash table associates the hash numbers back to the hashed objects.
 
-;;; Both tables hold the objects weakly.  Thus the hash table holds
-;;; its keys weakly, and the unhash table holds its values weakly.
+;;; Both tables hold the objects weakly; the hash table holds its keys weakly,
+;;; and the unhash table holds its values weakly.
+
+(declare (usual-integrations))
 
-(define default/hash-table-size 313)
-(define default-hash-table)
+(define (hash-object object #!optional hasher)
+  ((get-operation hasher 'hash-object) object))
 
-(define (initialize-package!)
-  (set! make-datum-weak-eq-hash-table
-	(hash-table-constructor
-	 (make-hash-table-type eq-hash-mod eq? #f
-			       hash-table-entry-type:datum-weak)))
-  (set! default-hash-table (hash-table/make)))
+(define (object-hashed? object #!optional hasher)
+  ((get-operation hasher 'object-hashed?) object))
 
-(define-structure (hash-table
-		   (conc-name hash-table/)
-		   (constructor %hash-table/make))
-  (mutex)
-  (next-number)
-  (hash-table)
-  (unhash-table))
+(define (unhash-object hash #!optional hasher)
+  ((get-operation hasher 'unhash-object) hash))
 
-(define make-datum-weak-eq-hash-table)
+(define (valid-object-hash? hash #!optional hasher)
+  ((get-operation hasher 'valid-object-hash?) hash))
 
-(define (hash-table/make #!optional size)
-  (let ((size (if (default-object? size)
-		  default/hash-table-size
-		  size)))
-    (%hash-table/make
-     (make-thread-mutex)
-     1
-     (make-key-weak-eq-hash-table size)
-     (make-datum-weak-eq-hash-table size))))
+(define (get-operation hasher operator)
+  ((if (default-object? hasher)
+       default-object-hasher
+       hasher)
+   operator))
 
-(define (hash x #!optional table)
-  (if (eq? x #f)
-      0
-      (object-hash x
-		   (if (default-object? table) default-hash-table table)
-		   #t)))
+(define-deferred default-object-hasher
+  (make-object-hasher 313))
 
-(define (unhash n #!optional table)
-  (if (= n 0)
-      #f
-      (let ((object
-	     (object-unhash n
-			    (if (default-object? table)
-				default-hash-table
-				table))))
-	(if (not object)
-	    (error:bad-range-argument n 'unhash))
-	object)))
+(define (make-object-hasher #!optional initial-size)
+  (let ((mutex (make-thread-mutex))
+	(next-hash 1)
+	(hash-table (make-key-weak-eqv-hash-table initial-size))
+	(unhash-table (make-datum-weak-eqv-hash-table initial-size)))
 
-(define (valid-hash-number? n #!optional table)
-  (or (= n 0)
-      (object-unhash n (if (default-object? table) default-hash-table table))))
+    (define (hash-object object)
+      (if (eq? object #f)
+	  0
+	  (with-thread-mutex-lock mutex
+	    (lambda ()
+	      (hash-table-intern! hash-table object
+				  (lambda ()
+				    (let ((hash next-hash))
+				      (set! next-hash (+ next-hash 1))
+				      (hash-table-set! unhash-table hash object)
+				      hash)))))))
 
-(define (object-hashed? x #!optional table)
-  (or (eq? x #f)
-      (object-hash x
-		   (if (default-object? table) default-hash-table table)
-		   #f)))
-
-(define (object-hash object #!optional table insert?)
-  (let ((table
-	 (if (default-object? table)
-	     default-hash-table
-	     (begin
-	       (if (not (hash-table? table))
-		   (error:wrong-type-argument table
-					      "object-hash table"
-					      'object-hash))
-	       table)))
-	(insert? (or (default-object? insert?) insert?)))
-    (with-thread-mutex-lock (hash-table/mutex table)
-      (lambda ()
-	(let ((number
-	       (hash-table-ref/default (hash-table/hash-table table)
-				       object
-				       #f)))
-	  (if (not number)
-	      (if insert?
-		  (let ((hashtb (hash-table/hash-table table))
-			(unhashtb (hash-table/unhash-table table))
-			(next (hash-table/next-number table)))
-		    (set-hash-table/next-number! table (1+ next))
-		    (hash-table-set! unhashtb next object)
-		    (hash-table-set! hashtb object next)
-		    next)
-		  number)
-	      number))))))
+    (define (object-hashed? object)
+      (or (eq? object #f)
+	  (with-thread-mutex-lock mutex
+	    (lambda ()
+	      (hash-table-exists? hash-table object)))))
 
-(define (object-unhash number #!optional table)
-  (let ((table
-	 (if (default-object? table)
-	     default-hash-table
-	     (begin
-	       (if (not (hash-table? table))
-		   (error:wrong-type-argument table
-					      "object-hash table"
-					      'object-unhash))
-	       table))))
-    (with-thread-mutex-lock (hash-table/mutex table)
-      (lambda ()
-	(hash-table-ref/default (hash-table/unhash-table table) number #f)))))
+    (define (unhash-object hash)
+      (guarantee exact-nonnegative-integer? hash 'unhash-object)
+      (if (= hash 0)
+	  #f
+	  (with-thread-mutex-lock mutex
+	    (lambda ()
+	      (hash-table-ref unhash-table hash)))))
+
+    (define (valid-object-hash? hash)
+      (guarantee exact-nonnegative-integer? hash 'valid-object-hash?)
+      (or (= hash 0)
+	  (with-thread-mutex-lock mutex
+	    (lambda ()
+	      (hash-table-exists? unhash-table hash)))))
+
+    (lambda (operator)
+      (case operator
+	((hash-object) hash-object)
+	((object-hashed?) object-hashed?)
+	((unhash-object) unhash-object)
+	((valid-object-hash?) valid-object-hash?)
+	(else (error "Unknown operator:" operator))))))

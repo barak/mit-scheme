@@ -165,7 +165,7 @@ USA.
 	(hash-table-intern! *rdf-bnode-registry* name %make-rdf-bnode))))
 
 (define (rdf-bnode-name bnode)
-  (string-append "B" (number->string (hash bnode))))
+  (string-append "B" (number->string (hash-object bnode))))
 
 (define (%decode-bnode-uri uri)
   (let ((v
@@ -173,7 +173,7 @@ USA.
 	       ((symbol? uri) (*parse-symbol parse-bnode uri))
 	       (else #f))))
     (and v
-	 (unhash (vector-ref v 0)))))
+	 (unhash-object (vector-ref v 0)))))
 
 (define parse-bnode
   (let ((digits (ascii-range->char-set #x30 #x3A)))

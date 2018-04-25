@@ -170,7 +170,7 @@ USA.
 			     '()))
 		       flags))
 	(newline port)))
-    (sort (map (lambda (t) (cons (hash t) t)) (threads-list))
+    (sort (map (lambda (t) (cons (hash-object t) t)) (threads-list))
 	  (lambda (a b) (< (car a) (car b))))))
 
 (define (write-state thread port)

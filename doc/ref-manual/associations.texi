@@ -1032,31 +1032,31 @@ but it may be used for other things as well.  In particular, it is used
 in the generation of the written representation for many objects
 (@pxref{Custom Output}).
 
-All of these procedures accept an optional argument called @var{table};
-this table contains the object-integer associations.  If given, this
-argument must be an object-hash table as constructed by
-@code{hash-table/make} (see below).  If not given, a default table is
-used.
+All of these procedures accept an optional argument called
+@var{hasher} which contains the object-integer associations.  If
+given, this argument must be an object hasher as constructed by
+@code{make-object-hasher} (see below).  If not given, a default table
+is used.
 
-@deffn procedure hash object [table]
+@deffn procedure hash-object object [hasher]
 @findex eq?
-@code{hash} associates an exact non-negative integer with @var{object}
-and returns that integer.  If @code{hash} was previously called with
-@var{object} as its argument, the integer returned is the same as was
-returned by the previous call.  @code{hash} guarantees that distinct
-objects (in the sense of @code{eq?}) are associated with distinct
-integers.
+@code{hash-object} associates an exact non-negative integer with
+@var{object} and returns that integer.  If @code{hash-object} was
+previously called with @var{object} as its argument, the integer
+returned is the same as was returned by the previous call.
+@code{hash-object} guarantees that distinct objects (in the sense of
+@code{eqv?}) are associated with distinct integers.
 @end deffn
 
-@deffn procedure unhash k [table]
-@code{unhash} takes an exact non-negative integer @var{k} and returns
-the object associated with that integer.  If there is no object
-associated with @var{k}, or if the object previously associated with
-@var{k} has been reclaimed by the garbage collector, an error of type
-@code{condition-type:bad-range-argument} is signalled.  In other words,
-if @code{hash} previously returned @var{k} for some object, and that
-object has not been reclaimed, it is the value of the call to
-@code{unhash}.
+@deffn procedure unhash-object k [hasher]
+@code{unhash-object} takes an exact non-negative integer @var{k} and
+returns the object associated with that integer.  If there is no
+object associated with @var{k}, or if the object previously associated
+with @var{k} has been reclaimed by the garbage collector, an error of
+type @code{condition-type:bad-range-argument} is signalled.  In other
+words, if @code{hash-object} previously returned @var{k} for some
+object, and that object has not been reclaimed, it is the value of the
+call to @code{unhash-object}.
 @findex condition-type:bad-range-argument
 @end deffn
 
@@ -1069,60 +1069,30 @@ reclaimed) object will signal an error.
 @example
 @group
 (define x (cons 0 0))           @result{}  @r{unspecified}
-(hash x)                        @result{}  77
-(eqv? (hash x) (hash x))        @result{}  #t
+(hash-object x)                 @result{}  77
+(eqv? (hash-object x)
+      (hash-object x))          @result{}  #t
 (define x 0)                    @result{}  @r{unspecified}
 (gc-flip)                       @r{;force a garbage collection}
-(unhash 77)                     @error{}
+(unhash-object 77)              @error{}
 @end group
 @end example
 
-@deffn procedure object-hashed? object [table]
-This predicate is true if @var{object} has an associated hash number.
-Otherwise it is false.
+@deffn procedure object-hashed? object [hasher]
+This predicate is true iff @var{object} has an associated hash number.
 @end deffn
 
-@deffn procedure valid-hash-number? k [table]
-This predicate is true if @var{k} is the hash number associated with
-some object.  Otherwise it is false.
+@deffn procedure valid-object-hash? k [hasher]
+This predicate is true iff @var{k} is the hash number associated with
+some object.
 @end deffn
 
-The following two procedures provide a lower-level interface to the
-object-hashing mechanism.
+Finally, this procedure makes new object hashers:
 
-@deffn procedure object-hash object [table [insert?]]
-@findex eq?
-@code{object-hash} is like @code{hash}, except that it accepts an
-additional optional argument, @var{insert?}.  If @var{insert?}@: is
-supplied and is @code{#f}, @code{object-hash} will return an integer for
-@var{object} only if there is already an association in the table;
-otherwise, it will return @code{#f}.  If @var{insert?} is not supplied,
-or is not @code{#f}, @code{object-hash} always returns an integer,
-creating an association in the table if necessary.
-
-@code{object-hash} additionally treats @code{#f} differently than does
-@code{hash}.  Calling @code{object-hash} with @code{#f} as its argument
-will return an integer that, when passed to @code{unhash}, will signal
-an error rather than returning @code{#f}.  Likewise,
-@code{valid-hash-number?} will return @code{#f} for this integer.
-@end deffn
-
-@deffn procedure object-unhash k [table]
-@code{object-unhash} is like @code{unhash}, except that when @var{k} is
-not associated with any object or was previously associated with an
-object that has been reclaimed, @code{object-unhash} returns @code{#f}.
-This means that there is an ambiguity in the value returned by
-@code{object-unhash}: if @code{#f} is returned, there is no way to
-tell if @var{k} is associated with @code{#f} or is not associated with
-any object at all.
-@end deffn
-
-Finally, this procedure makes new object-hash tables:
-
-@deffn procedure hash-table/make
-This procedure creates and returns a new, empty object-hash table that
-is suitable for use as the optional @var{table} argument to the above
-procedures.  The returned table contains no associations.
+@deffn procedure make-object-hasher
+This procedure creates and returns a new, empty object hasher that
+is suitable for use as the optional @var{hasher} argument to the above
+procedures.  The returned hasher contains no associations.
 @end deffn
 
 @node Red-Black Trees, Weight-Balanced Trees, Object Hashing, Associations

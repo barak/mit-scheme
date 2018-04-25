@@ -593,7 +593,7 @@ USA.
       (error:illegal-unhash object))
   (if (eq? object 0)
       #f
-      (or (object-unhash object)
+      (or (unhash-object object)
 	  (error:undefined-hash object))))
 
 (define (handler:quote db ctx char)

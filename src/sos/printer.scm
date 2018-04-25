@@ -87,7 +87,7 @@ USA.
   (if object
       (begin
 	(write-char #\space port)
-	(write (hash object) port)))
+	(write (hash-object object) port)))
   (if thunk
       (thunk))
   (write-char #\] port))

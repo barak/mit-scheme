@@ -50,7 +50,7 @@ USA.
 			       (write-string "; multiple blocks")))
 			  (bblock
 			   (write-string "; block ")
-			   (write (unhash bblock)))
+			   (write (unhash-object bblock)))
 			  (else
 			   (write-string "; no block!"))))))))))
 

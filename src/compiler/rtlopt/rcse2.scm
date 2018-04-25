@@ -129,7 +129,7 @@ USA.
 	  (cond ((integer? object) (inexact->exact object))
 		((symbol? object) (symbol-hash object))
 		((string? object) (string-hash object))
-		(else (hash object))))))
+		(else (hash-object object))))))
 
     (let ((hash (loop expression)))
       (receiver (modulo hash (rcse-ht-size))

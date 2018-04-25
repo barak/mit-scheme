@@ -2358,15 +2358,19 @@ USA.
 (define-package (runtime hash)
   (files "hash")
   (parent (runtime))
+  (export () deprecated:hash
+	  (hash hash-object)
+	  (hash-table/make make-object-hasher)
+	  (object-hash hash-object)
+	  (object-unhash unhash-object)
+	  (unhash unhash-object)
+	  (valid-hash-number? valid-object-hash?))
   (export ()
-	  hash
-	  hash-table/make
-	  object-hash
+	  hash-object
+	  make-object-hasher
 	  object-hashed?
-	  object-unhash
-	  unhash
-	  valid-hash-number?)
-  (initialization (initialize-package!)))
+	  unhash-object
+	  valid-object-hash?))
 
 (define-package (runtime hash-table)
   (files "hash-table")

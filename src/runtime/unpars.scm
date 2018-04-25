@@ -344,7 +344,7 @@ USA.
   (*unparse-string (number->string number 16) context))
 
 (define-integrable (*unparse-hash object context)
-  (*unparse-string (number->string (hash object)) context))
+  (*unparse-string (number->string (hash-object object)) context))
 
 (define (*unparse-readable-hash object context)
   (*unparse-string "#@" context)

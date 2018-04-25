@@ -528,7 +528,7 @@ Set by Scheme evaluation code to update the mode line."
 		(not (number? value)))
 	   (string-append
 	    " "
-	    (write-to-string (object-hash value)))
+	    (write-to-string (hash-object value)))
 	   "")
        ": ")))
 

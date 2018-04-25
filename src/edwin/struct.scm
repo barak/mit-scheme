@@ -192,7 +192,7 @@ USA.
 
 (define (group-hash-number group)
   (or (group-%hash-number group)
-      (let ((n (object-hash group)))
+      (let ((n (hash-object group)))
 	(set-group-%hash-number! group n)
 	n)))
 

@@ -241,7 +241,7 @@ USA.
 	 (get-current-environment))
 	((string-prefix? anonymous-package-prefix pstring)
 	 (let ((object
-		(object-unhash
+		(unhash-object
 		 (string->number (string-tail pstring
 					      (string-length
 					       anonymous-package-prefix))
@@ -257,7 +257,7 @@ USA.
   (let ((package (environment->package env)))
     (if package
 	(write-to-string (package/name package))
-	(string anonymous-package-prefix (object-hash env)))))
+	(string anonymous-package-prefix (hash-object env)))))
 
 (define anonymous-package-prefix
   "environment-")
@@ -283,7 +283,7 @@ USA.
   (let ((value (repl-eval sexp socket)))
     (call-with-output-string
       (lambda (port)
-	(port/write-result port sexp value (object-hash value) (buffer-env))
+	(port/write-result port sexp value (hash-object value) (buffer-env))
 	(if nl? (newline port))))))
 
 (define (for-each-sexp procedure string)

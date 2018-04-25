@@ -507,7 +507,7 @@ USA.
 			  (object-pointer? object)
 			  (not (interned-symbol? object))
 			  (not (number? object))
-			  (object-hash object))
+			  (hash-object object))
 		     environment))
 
 (define (repl-eval/write s-expression #!optional environment repl)

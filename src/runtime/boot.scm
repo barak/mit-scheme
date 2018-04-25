@@ -324,7 +324,7 @@ USA.
 	(if (get-param:unparse-with-maximum-readability?)
 	    (begin
 	      (write-string "#@" port)
-	      (write (object-hash object) port))
+	      (write (hash-object object) port))
 	    (procedure object port))))))
 
 (define (bracketed-unparser-method procedure)
@@ -342,7 +342,7 @@ USA.
 		  name)
 	      port)
      (write-char #\space port)
-     (write (object-hash object) port)
+     (write (hash-object object) port)
      (if procedure (procedure object port)))))
 
 (define (simple-unparser-method name get-parts)
