@@ -251,9 +251,9 @@ The Unicode Standard prescribes special treatment of the Greek letter
 @math{\Sigma}, whose normal lower-case form is @math{\sigma} but which
 becomes @math{\varsigma} at the end of a word.  See
 @uref{http://www.unicode.org/reports/tr44/, UAX #44} (part of the
-Unicode Standard) for details.  However, implementations of @code
-{string-downcase} are not required to provide this behavior, and may
-choose to change @math{\Sigma} to @math{\sigma} in all cases.
+Unicode Standard) for details.  However, implementations of
+@code{string-downcase} are not required to provide this behavior, and
+may choose to change @math{\Sigma} to @math{\sigma} in all cases.
 @end deffn
 
 @deffn procedure string-upper-case? string
