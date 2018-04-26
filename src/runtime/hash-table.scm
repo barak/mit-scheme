@@ -164,7 +164,7 @@ USA.
   ((table-type-method:put! (table-type table)) table key datum))
 
 (define (hash-table-update! table key procedure #!optional get-default)
-  (guarantee hash-table? table 'hash-table/modify!)
+  (guarantee hash-table? table 'hash-table-update!)
   ((table-type-method:modify! (table-type table))
    table
    key
