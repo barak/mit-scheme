@@ -500,44 +500,44 @@ USA.
 
 ;;; Key-or-datum-weak -- if either is GC'd, the entry is dropped.
 
-(define-integrable (make-key/datum-weak-entry key datum)
+(define-integrable (make-key&datum-weak-entry key datum)
   (maybe-weak-cons key (maybe-weak-cons datum '())))
 
-(define-integrable (key/datum-weak-entry-valid? entry)
+(define-integrable (key&datum-weak-entry-valid? entry)
   (and (system-pair-car entry)
        (system-pair-car (system-pair-cdr entry))))
 
-(define-integrable key/datum-weak-entry-key system-pair-car)
-(define-integrable (key/datum-weak-entry-datum entry)
+(define-integrable key&datum-weak-entry-key system-pair-car)
+(define-integrable (key&datum-weak-entry-datum entry)
   (system-pair-car (system-pair-cdr entry)))
 
-(define-integrable (set-key/datum-weak-entry-datum! entry object)
+(define-integrable (set-key&datum-weak-entry-datum! entry object)
   (system-pair-set-car! (system-pair-cdr entry) object))
 
-(define-integrable (call-with-key/datum-weak-entry-key entry if-valid if-not)
-  (call-with-key/datum-weak-entry-key&datum entry
+(define-integrable (call-with-key&datum-weak-entry-key entry if-valid if-not)
+  (call-with-key&datum-weak-entry-key&datum entry
     (lambda (k d barrier) d (if-valid k barrier))
     if-not))
 
-(define-integrable (call-with-key/datum-weak-entry-key&datum entry
+(define-integrable (call-with-key&datum-weak-entry-key&datum entry
 		     if-valid
 		     if-not)
-  (let ((k (key/datum-weak-entry-key entry))
-	(d (key/datum-weak-entry-datum entry)))
+  (let ((k (key&datum-weak-entry-key entry))
+	(d (key&datum-weak-entry-datum entry)))
     (if (and (or (pair? entry) k)
 	     (or (pair? (system-pair-cdr entry))
 		 d))
 	(if-valid k d (lambda () (reference-barrier k) (reference-barrier d)))
 	(if-not))))
 
-(declare (integrate-operator hash-table-entry-type:key/datum-weak))
-(define hash-table-entry-type:key/datum-weak
-  (make-entry-type make-key/datum-weak-entry
-		   key/datum-weak-entry-valid?
-		   call-with-key/datum-weak-entry-key
-		   call-with-key/datum-weak-entry-key&datum
-		   set-key/datum-weak-entry-datum!))
-(register-entry-type! 'key/datum-weak hash-table-entry-type:key/datum-weak)
+(declare (integrate-operator hash-table-entry-type:key&datum-weak))
+(define hash-table-entry-type:key&datum-weak
+  (make-entry-type make-key&datum-weak-entry
+		   key&datum-weak-entry-valid?
+		   call-with-key&datum-weak-entry-key
+		   call-with-key&datum-weak-entry-key&datum
+		   set-key&datum-weak-entry-datum!))
+(register-entry-type! 'key&datum-weak hash-table-entry-type:key&datum-weak)
 
 ;;; Key-ephemeral -- if the key is GC'd, the entry is dropped.
 
@@ -1288,7 +1288,7 @@ USA.
    (open-type-constructor! hash-table-entry-type:strong)
    (open-type-constructor! hash-table-entry-type:key-weak)
    (open-type-constructor! hash-table-entry-type:datum-weak)
-   (open-type-constructor! hash-table-entry-type:key/datum-weak)
+   (open-type-constructor! hash-table-entry-type:key&datum-weak)
    (open-type-constructor! hash-table-entry-type:key-ephemeral)
    (open-type-constructor! hash-table-entry-type:datum-ephemeral)
    (open-type-constructor! hash-table-entry-type:key&datum-ephemeral)

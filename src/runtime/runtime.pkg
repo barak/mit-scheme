@@ -2378,8 +2378,9 @@ USA.
   (import (runtime population)
 	  add-to-population!/unsafe)
   (export () deprecated:hash-table
-	  (hash-table/clear! hash-table-clear!)
+	  (hash-table-entry-type:key/datum-weak hash-table-entry-type:key&datum-weak)
 	  (hash-table/clean! hash-table-clean!)
+	  (hash-table/clear! hash-table-clear!)
 	  (hash-table/count hash-table-size)
 	  (hash-table/datum-list hash-table-values)
 	  (hash-table/for-each hash-table-walk)
@@ -2439,7 +2440,7 @@ USA.
 	  hash-table-entry-type:key&datum-ephemeral
 	  hash-table-entry-type:key-ephemeral
 	  hash-table-entry-type:key-weak
-	  hash-table-entry-type:key/datum-weak
+	  hash-table-entry-type:key&datum-weak
 	  hash-table-entry-type:strong
 	  hash-table-equivalence-function ;SRFI-69
 	  hash-table-exists?		;SRFI-69

@@ -201,7 +201,7 @@ USA.
        (list (list 'strong hash-table-entry-type:strong)
 	     (list 'key-weak hash-table-entry-type:key-weak)
 	     (list 'datum-weak hash-table-entry-type:datum-weak)
-	     (list 'key/datum-weak hash-table-entry-type:key/datum-weak)
+	     (list 'key&datum-weak hash-table-entry-type:key&datum-weak)
 	     (list 'key-ephemeral hash-table-entry-type:key-ephemeral)
 	     (list 'datum-ephemeral hash-table-entry-type:datum-ephemeral)
 	     (list 'key&datum-ephemeral
