@@ -381,28 +381,24 @@ is proportional to the number of associations in the table; the
 constant of proportionality is described below (@pxref{Resizing of Hash
 Tables}).
 
-In addition to the hash table interface described in the following,
-MIT Scheme implements @usrfi{69}: ``Basic hash tables''.  The reason
-for supporting two interfaces is partly historical---MIT Scheme
-supported hash tables prior to the existence of @asrfi{69}---and partly
-technical---SFRI 69 fails to specify certain optimization-enabling
-exceptions to its semantics, forcing a correct implementation to pay
-the non-negligible performance cost of completely safe behavior.
-@footnote{@asrfi{69} does not give hash functions the flexibility to
-return new hash values after a garbage collection, which prevents a
-system whose garbage collector may relocate objects from hashing based
-on the addresses of objects in memory (@pxref{Address Hashing}).
-@asrfi{69} also does not specify circumstances when procedures passed
-as arguments to hash table operations may not themselves modify the
-hash table, which requires defensive copying and defensive repetitions
-of lookups.}  The MIT Scheme native hash table interface, in contrast,
-specifies the minor exceptions it needs, and is therefore implemented
-more efficiently.  We do not describe the @asrfi{69}-compliant interface
-here, as that would be redundant with the SRFI document.
+The hash table interface described below is a superset of @usrfi{69}:
+``Basic hash tables''.  The reason for supporting the extra
+functionality is that @asrfi{69} fails to specify certain
+optimization-enabling exceptions to its semantics, forcing a correct
+implementation to pay the non-negligible performance cost of
+completely safe behavior.  @footnote{@asrfi{69} does not give hash
+functions the flexibility to return new hash values after a garbage
+collection, which prevents a system whose garbage collector may
+relocate objects from hashing based on the addresses of objects in
+memory (@pxref{Address Hashing}).  @asrfi{69} also does not specify
+circumstances when procedures passed as arguments to hash table
+operations may not themselves modify the hash table, which requires
+defensive copying and defensive repetitions of lookups.}  The MIT/GNU
+Scheme native hash table interface, in contrast, specifies the minor
+exceptions it needs, and is therefore implemented more efficiently.
 
-(Previously, the hash-table implementation was a run-time-loadable
-option, but as of release 7.7.0 it is loaded by default.  It's no longer
-necessary to call @code{load-option} prior to using hash tables.)
+We do not describe the @asrfi{69}-compliant interface here, as that
+would be redundant with the SRFI document.
 
 @menu
 * Construction of Hash Tables::
@@ -438,6 +434,7 @@ arrangements are possible, where a table may hold keys or data
 @dfn{weakly} or @dfn{ephemerally} (@pxref{Weak References}).
 
 @deffn procedure make-strong-eq-hash-table [initial-size]
+@deffnx {obsolete procedure} make-symbol-hash-table [initial-size]
 @findex eq?
 Returns a newly allocated hash table that accepts arbitrary objects as
 keys, and compares those keys with @code{eq?}.  The keys and data are held
@@ -445,11 +442,21 @@ strongly.  These are the fastest of the standard hash tables.
 @end deffn
 
 @deffn procedure make-key-weak-eq-hash-table [initial-size]
+@deffnx {obsolete procedure} make-weak-eq-hash-table [initial-size]
+@deffnx {obsolete procedure} make-eq-hash-table [initial-size]
 @findex eq?
 Returns a newly allocated hash table that accepts arbitrary objects as
 keys, and compares those keys with @code{eq?}.  The keys are held
-weakly, but the data are held strongly.  Note that if a datum holds a
+weakly and the data are held strongly.  Note that if a datum holds a
 key strongly, the table will effectively hold that key strongly.
+@end deffn
+
+@deffn procedure make-datum-weak-eq-hash-table [initial-size]
+@findex eq?
+Returns a newly allocated hash table that accepts arbitrary objects as
+keys, and compares those keys with @code{eq?}.  The keys are held
+strongly and the data are held weakly.  Note that if a key holds a
+datum strongly, the table will effectively hold that datum strongly.
 @end deffn
 
 @deffn procedure make-key-ephemeral-eq-hash-table [initial-size]
@@ -469,6 +476,9 @@ strongly.  These hash tables are a little slower than those made by
 @end deffn
 
 @deffn procedure make-key-weak-eqv-hash-table [initial-size]
+@deffnx {obsolete procedure} make-weak-eqv-hash-table [initial-size]
+@deffnx {obsolete procedure} make-eqv-hash-table [initial-size]
+@deffnx {obsolete procedure} make-object-hash-table [initial-size]
 @findex eqv?
 Returns a newly allocated hash table that accepts arbitrary objects as
 keys, and compares those keys with @code{eqv?}.  The keys are held
@@ -476,6 +486,14 @@ weakly, except that booleans, characters, numbers, and interned
 symbols are held strongly.  The data are held strongly.  Note that if
 a datum holds a key strongly, the table will effectively hold that key
 strongly.
+@end deffn
+
+@deffn procedure make-datum-weak-eqv-hash-table [initial-size]
+@findex eqv?
+Returns a newly allocated hash table that accepts arbitrary objects as
+keys, and compares those keys with @code{eqv?}.  The keys are held
+strongly and the data are held weakly.  Note that if a key holds a
+datum strongly, the table will effectively hold that datum strongly.
 @end deffn
 
 @deffn procedure make-key-ephemeral-eqv-hash-table [initial-size]
@@ -502,37 +520,94 @@ keys, and compares them with @code{string=?}.  The keys and data are held
 strongly.
 @end deffn
 
-The next procedure is used to create new hash-table constructors.  All
-of the above hash table constructors could have been created by calls
-to this ``constructor-constructor''; see the examples below.
+All of the above are highly optimized table implementations.  Next are
+some general constructors that allow for more flexible table
+definitions.
 
-@deffn procedure hash-table/constructor key-hash key=? rehash-after-gc? entry-type
+@deffn procedure make-hash-table [key=? [hash-function [arg @dots{}]]]
+@deffnx procedure alist->hash-table alist [key=? [hash-function [arg @dots{}]]]
+These are the @asrfi{69} constructors.  The @var{key=?} argument
+specifies how keys are compared and defaults to @code{equal?}.  The
+@var{hash-function} argument specifies the hash function to use. If
+@var{hash-function} is not specified, it defaults to a standard value that
+depends on @var{key=?}; an error is signaled if there's no standard
+value.  The @var{arg} arguments are allowed but are implementation
+dependent; do not provide them.
+
+The procedure @code{alist->hash-table} creates a new hash table, as
+with @code{make-hash-table}, and then fills it with the contents of
+@var{alist}.
+@end deffn
+
+The remaining constructors use @dfn{hash-table types} to encapsulate
+the hashing parameters.
+
+@deffn procedure make-hash-table* type [initial-size]
+Constructs a new hash table using the hashing parameters in
+@var{type}.
+@end deffn
+
+@deffn procedure hash-table-constructor type
+Returns a procedure that, when called, constructs a new hash table
+using the hashing parameters in @var{type}.  The returned procedure
+accepts an optional @var{initial-size}.
+
+This is equivalent to
+@lisp
+(lambda (#!optional initial-size)
+  (make-hash-table* @var{type} initial-size))
+@end lisp
+@end deffn
+
+The next two procedures are used to create hash-table types.  The
+procedures are equivalent in power; they differ only in how the types
+are described.
+
+@deffn procedure make-hash-table-type hash-function key=? rehash-after-gc? entry-type
 @cindex hashing, of key in hash table
 @cindex modulus, of hashing procedure
-This procedure accepts four arguments and returns a hash-table
-constructor.  The @var{key=?} argument is an equivalence predicate for
-the keys of the hash table.  The @var{key-hash} argument is a procedure
-that computes a hash number.  Specifically, @var{key-hash} accepts two
-arguments, a key and an exact positive integer (the @dfn{modulus}), and
-returns an exact non-negative integer that is less than the modulus.
+This procedure accepts four arguments and returns a hash-table type,
+which can be used to make hash tables of that type.  The @var{key=?}
+argument is an equivalence predicate for the keys of the hash table.
+The @var{hash-function} argument is a procedure that computes a hash
+number.  Specifically, @var{hash-function} accepts two arguments, a key and
+an exact positive integer (the @dfn{modulus}), and returns an exact
+non-negative integer that is less than the modulus.
 
 The argument @var{rehash-after-gc?}, if true, says that the
-values returned by @var{key-hash} might change after a garbage
+values returned by @var{hash-function} might change after a garbage
 collection.  If so, the hash-table implementation arranges for the table
 to be rehashed when necessary.  (@xref{Address Hashing}, for
 information about hash procedures that have this property.)  Otherwise,
-it is assumed that @var{key-hash} always returns the same value for the
+it is assumed that @var{hash-function} always returns the same value for the
 same arguments.
 
 The argument @var{entry-type} determines the strength with which the
-hash table will hold its keys and values.  It must be one of
-@code{hash-table-entry-type:strong},
-@code{hash-table-entry-type:key-weak},
-@code{hash-table-entry-type:datum-weak},
-@code{hash-table-entry-type:key/datum-weak},
-@code{hash-table-entry-type:key-ephemeral},
-@code{hash-table-entry-type:datum-ephemeral}, or
-@code{hash-table-entry-type:key&datum-ephemeral}.
+hash table will hold its keys and values.  It must be one of the
+entry-type variables described below, which all start with
+@code{hash-table-entry-type:}.
+@end deffn
+
+@deffn procedure make-hash-table-type* key=? hash-function rehash-after-gc? entry-type
+This procedure's arguments, except for @var{key=?}, are keyword
+arguments; that is, each argument is a symbol of the same name
+followed by its value.  Aside from how they are passed, the arguments
+have the same meaning as those for @code{make-hash-table-type}.  Note
+that all of the keyword arguments are optional, while @var{key=?} is
+required.
+
+The argument @var{entry-type} specifies @emph{the name of} an entry
+type.  It must be a symbol corresponding to one of the entry-type
+variables described below.  The name of an entry type is the symbol
+composed of the suffix of the corresponding variable; for example the
+type @code{hash-table-entry-type:key-weak} has the name
+@code{key-weak}.
+
+The default values for the keyword arguments are as follows.  The
+arguments @var{hash-function} and @var{rehash-after-gc?} default to
+standard values that depend on @var{key=?}; an error is signaled if
+@var{key=?} has no standard values.  The argument @var{entry-type}
+defaults to @var{strong}.
 @end deffn
 
 @defvr variable hash-table-entry-type:strong
@@ -559,7 +634,8 @@ if some key holds some datum strongly, the table will effectively hold
 that datum strongly.
 @end defvr
 
-@defvr variable hash-table-entry-type:key/datum-weak
+@defvr variable hash-table-entry-type:key&datum-weak
+@defvrx {obsolete variable} hash-table-entry-type:key/datum-weak
 The entry type for hash tables that hold both keys and data weakly.
 An entry of this type is a weak list, holding both the key and the
 datum in the weak (car) slot of weak pairs (@pxref{Weak Pairs}).  If
@@ -609,59 +685,46 @@ been defined:
 @example
 @group
 (define make-weak-eq-hash-table
-  (hash-table/constructor eq-hash-mod eq? #t
-    hash-table-entry-type:key-weak))
+  (hash-table-constructor
+    (make-hash-table-type eq-hash-mod eq? #t
+      hash-table-entry-type:key-weak)))
 
 (define make-equal-hash-table
-  (hash-table/constructor equal-hash-mod equal? #t
-    hash-table-entry-type:strong))
+  (hash-table-constructor
+    (make-hash-table-type equal-hash-mod equal? #t
+      hash-table-entry-type:strong)))
 
 (define make-string-hash-table
-  (hash-table/constructor string-hash-mod string=? #f
-    hash-table-entry-type:strong))
+  (hash-table-constructor
+    (make-hash-table-type string-hash-mod string=? #f
+      hash-table-entry-type:strong)))
 @end group
 @end example
-
-The following procedure is sometimes useful in conjunction with weak
-and ephemeral hash tables.  Normally it is not needed, because such
-hash tables clean themselves automatically as they are used.
-
-@deffn procedure hash-table/clean! hash-table
-If @var{hash-table} is a type of hash table that holds its keys or
-data weakly or ephemerally, this procedure recovers any space that was
-being used to record associations for objects that have been reclaimed
-by the garbage collector.  Otherwise, this procedure does nothing.  In
-either case, it returns an unspecified result.
-@end deffn
 
 The following procedures are provided only for backward compatibility.
 They should be considered @strong{deprecated} and should not be used
 in new programs.
 
-@deffn procedure make-weak-eq-hash-table [initial-size]
-@deffnx procedure make-eq-hash-table [initial-size]
-@findex eq?
-These are aliases of @code{make-key-weak-eq-hash-table}.
+@deffn {obsolete procedure} hash-table/constructor hash-function key=? rehash-after-gc? entry-type
+This procedure is @strong{deprecated}. Instead use the equivalent
+@lisp
+(hash-table-constructor
+  (make-hash-table-type @var{hash-function} @var{key=?} @var{rehash-after-gc?}
+                        @var{entry-type}))
+@end lisp
 @end deffn
 
-@deffn procedure make-weak-eqv-hash-table [initial-size]
-@deffnx procedure make-eqv-hash-table [initial-size]
-@findex eq?
-These are aliases of @code{make-key-weak-eqv-hash-table}.
-@end deffn
-
-@deffn procedure strong-hash-table/constructor key-hash key=? [rehash-after-gc?]
+@deffn {obsolete procedure} strong-hash-table/constructor hash-function key=? [rehash-after-gc?]
 Like @code{hash-table/constructor} but always uses
 @code{hash-table-entry-type:strong}.  If @var{rehash-after-gc?}  is
 omitted, it defaults to @code{#f}.
 @end deffn
 
-@deffn procedure weak-hash-table/constructor key-hash key=? [rehash-after-gc?]
+@deffn {obsolete procedure} weak-hash-table/constructor hash-function key=? [rehash-after-gc?]
 Like @code{hash-table/constructor} but always uses
 @code{hash-table-entry-type:key-weak}.  If @var{rehash-after-gc?}  is
 omitted, it defaults to @code{#f}.
 @end deffn
-
 
 @node Basic Hash Table Operations, Resizing of Hash Tables, Construction of Hash Tables, Hash Tables
 @subsection Basic Hash Table Operations
@@ -677,75 +740,101 @@ Returns @code{#t} if @var{object} is a hash table, otherwise returns
 @code{#f}.
 @end deffn
 
-@deffn procedure hash-table/put! hash-table key datum
+@deffn procedure hash-table-set! hash-table key datum
+@deffnx {obsolete procedure} hash-table/put! hash-table key datum
 Associates @var{datum} with @var{key} in @var{hash-table} and returns an
-unspecified result.  The average time required by this operation is
-bounded by a constant.
+unspecified result.
+
+The average time required by this operation is bounded by a constant.
 @end deffn
 
-@deffn procedure hash-table/get hash-table key default
+@deffn procedure hash-table-ref hash-table key [get-default]
 Returns the datum associated with @var{key} in @var{hash-table}.  If
-there is no association for @var{key}, @var{default} is returned.  The
-average time required by this operation is bounded by a constant.
+there is no association for @var{key}, and @var{get-default} is
+provided, it is called with no arguments and the value it yields is
+returned; if @var{get-default} is not provided, an error is signaled.
+
+The average time required by this operation is bounded by a constant.
 @end deffn
 
-@deffn procedure hash-table/remove! hash-table key
+@deffn procedure hash-table-ref/default hash-table key default
+@deffnx {obsolete procedure} hash-table/get hash-table key default
+Equivalent to
+@lisp
+(hash-table-ref @var{hash-table} @var{key} (lambda () @var{default}))
+@end lisp
+@end deffn
+
+@deffn procedure hash-table-delete! hash-table key
+@deffnx {obsolete procedure} hash-table/remove! hash-table key
 If @var{hash-table} has an association for @var{key}, removes it.
-Returns an unspecified result.  The average time required by this
-operation is bounded by a constant.
+Returns an unspecified result.
+
+The average time required by this operation is bounded by a constant.
 @end deffn
 
-@deffn procedure hash-table/clear! hash-table
+@deffn procedure hash-table-clear! hash-table
+@deffnx {obsolete procedure} hash-table/clear! hash-table
 Removes all associations in @var{hash-table} and returns an unspecified
-result.  The average and worst-case times required by this operation are
+result.
+
+The average and worst-case times required by this operation are
 bounded by a constant.
 @end deffn
 
-@deffn procedure hash-table/count hash-table
+@deffn procedure hash-table-size hash-table
+@deffnx {obsolete procedure} hash-table/count hash-table
 Returns the number of associations in @var{hash-table} as an exact
-non-negative integer.  If @var{hash-table}
-does not hold its keys and data strongly, this
-is a conservative upper bound that may count some associations whose
-keys or data have recently been reclaimed by the garbage collector.  The average
-and worst-case times required by this operation are bounded by a
-constant.
+non-negative integer.  If @var{hash-table} does not hold its keys and
+data strongly, this is a conservative upper bound that may count some
+associations whose keys or data have recently been reclaimed by the
+garbage collector.
+
+The average and worst-case times required by this operation are
+bounded by a constant.
 @end deffn
 
 @deffn procedure hash-table->alist hash-table
 Returns the contents of @var{hash-table} as a newly allocated alist.
 Each element of the alist is a pair @code{(@var{key} . @var{datum})}
 where @var{key} is one of the keys of @var{hash-table}, and @var{datum}
-is its associated datum.  The average and worst-case times required by
-this operation are linear in the number of associations
-in the table.
+is its associated datum.
+
+The average and worst-case times required by this operation are linear
+in the number of associations in the table.
 @end deffn
 
-@deffn procedure hash-table/key-list hash-table
-Returns a newly allocated list of the keys in @var{hash-table}.  The
-average and worst-case times required by this operation are linear in
-the number of associations in the table.
+@deffn procedure hash-table-keys hash-table
+@deffnx {obsolete procedure} hash-table/key-list hash-table
+Returns a newly allocated list of the keys in @var{hash-table}.
+
+The average and worst-case times required by this operation are linear
+in the number of associations in the table.
 @end deffn
 
-@deffn procedure hash-table/datum-list hash-table
+@deffn procedure hash-table-values hash-table
+@deffnx {obsolete procedure} hash-table/datum-list hash-table
 Returns a newly allocated list of the datums in @var{hash-table}.  Each
 element of the list corresponds to one of the associations in
 @var{hash-table}; if the table contains multiple associations with the
-same datum, so will this list.  The average and worst-case times
-required by this operation are linear in the number of associations in
-the table.
+same datum, so will this list.
+
+The average and worst-case times required by this operation are linear
+in the number of associations in the table.
 @end deffn
 
-@deffn procedure hash-table/for-each hash-table procedure
+@deffn procedure hash-table-walk hash-table procedure
+@deffnx {obsolete procedure} hash-table/for-each hash-table procedure
 @var{Procedure} must be a procedure of two arguments.  Invokes
 @var{procedure} once for each association in @var{hash-table}, passing
 the association's @var{key} and @var{datum} as arguments, in that order.
 Returns an unspecified result.  @var{Procedure} must not modify
 @var{hash-table}, with one exception: it is permitted to call
-@code{hash-table/remove!} to remove the association being processed.
+@code{hash-table-delete!} to remove the association being processed.
 @end deffn
 
 The following procedure is useful when there is no sensible default
-value for @code{hash-table/get} and the caller must choose between
+value for @code{hash-table-ref} and the caller must choose between
 different actions depending on whether there is a datum associated
 with the key.
 
@@ -757,45 +846,75 @@ is invoked on the datum of the association.  Otherwise,
 @var{if-not-found} is invoked with no arguments.  In either case, the
 result yielded by the invoked procedure is returned as the result of
 @code{hash-table/lookup} (@code{hash-table/lookup} @emph{reduces} into
-the invoked procedure, i.e.@: calls it tail-recursively).  The average
-time required by this operation is bounded by a constant.
+the invoked procedure, i.e.@: calls it tail-recursively).
+
+The average time required by this operation is bounded by a constant.
 @end deffn
 
-@deffn procedure hash-table/modify! hash-table key default procedure
-@var{Procedure} must be a procedure of one argument.  Applies
-@var{procedure} to the datum associated with @var{key} in
-@var{hash-table} or to @var{default} if there is no association for
-@var{key}, associates the result with @var{key}, and returns that
-same result.  @var{Procedure} must not use @var{hash-table}.  The average
-time required by this operation is bounded by a constant.
+@deffn procedure hash-table-update! hash-table key procedure [get-default]
+@var{Procedure} must be a procedure of one argument and
+@var{get-default}, if supplied, must be a procedure of zero arguments.
+Applies @var{procedure} to the datum associated with @var{key} in
+@var{hash-table} or to the value of calling @var{get-default} if there
+is no association for @var{key}, associates the result with @var{key},
+and returns that same result.  If @var{get-default} is not supplied
+and there's no association for @var{key}, an error is signaled.
+
+Neither @var{procedure} nor @var{get-default} may use @var{hash-table}.
+
+The average time required by this operation is bounded by a constant.
 @end deffn
 
-@c The reason that the procedure passed to hash-table/modify!  may not
-@c even use the hash table is that, e.g., hash-table/get may actually
+@deffn procedure hash-table-update!/default hash-table key procedure default
+@deffnx {obsolete procedure} hash-table/modify! hash-table key default procedure
+Equivalent to
+@lisp
+(hash-table-update! @var{hash-table} @var{key} @var{procedure} (lambda () @var{default}))
+@end lisp
+@end deffn
+
+@c The reason that the procedure passed to hash-table-update!  may not
+@c even use the hash table is that, e.g., hash-table-ref may actually
 @c mutate the underlying table, because it may perform some deferred
 @c cleanup.  Specifically, if the table needs to be rehashed on GC, it
 @c is not actually rehashed when the garbage collector runs, but on
 @c the next access thereafter.  If the procedure given to
-@c hash-table/modify! accesses the hash table, and a garbage
+@c hash-table-update! accesses the hash table, and a garbage
 @c collection occurs after this procedure is invoked but before the
 @c (last) access it makes, the table may be rehashed, which may cause
-@c hash-table/modify! to insert the returned datum into the wrong
+@c hash-table-update! to insert the returned datum into the wrong
 @c bucket or into a dead hash table entry.  An analagous problem
 @c plagues weak and ephemeral tables; in this case, even if the table
 @c is not rehashed, accessing it after a GC may trigger a cleanup of
 @c entries whose keys or data have been garbage collected, which may
-@c trigger a resizing of the table and cause hash-table/modify!  to
+@c trigger a resizing of the table and cause hash-table-update!  to
 @c put its datum into the wrong place.  The same considerations apply
-@c to hash-table/intern!.
+@c to hash-table-intern!.
 
-@deffn procedure hash-table/intern! hash-table key get-default
-@var{Get-default} must be a procedure of no arguments.  Ensures that
+@deffn procedure hash-table-intern! hash-table key get-default
+@deffnx {obsolete procedure} hash-table/intern! hash-table key get-default
+@var{Get-default} must be a procedure of zero arguments.  Ensures that
 @var{hash-table} has an association for @var{key} and returns the
 associated datum.  If @var{hash-table} did not have a datum associated
-with @var{key}, @code{hash-table/intern!} applies @var{get-default} to
-zero arguments to generate one.  As with @code{hash-table/modify!},
-@var{get-default} must not use @var{hash-table}.  The average time
-required by this operation is bounded by a constant.
+with @var{key}, @var{get-default} is called and its value is used to
+create a new association for @var{key}.
+
+The @var{get-default} procedure must not use @var{hash-table}.
+
+The average time required by this operation is bounded by a constant.
+@end deffn
+
+The following procedure is sometimes useful in conjunction with weak
+and ephemeral hash tables.  Normally it is not needed, because such
+hash tables clean themselves automatically as they are used.
+
+@deffn procedure hash-table-clean! hash-table
+@deffnx {obsolete procedure} hash-table/clean! hash-table
+If @var{hash-table} is a type of hash table that holds its keys or
+data weakly or ephemerally, this procedure recovers any space that was
+being used to record associations for objects that have been reclaimed
+by the garbage collector.  Otherwise, this procedure does nothing.  In
+either case, it returns an unspecified result.
 @end deffn
 
 @node Resizing of Hash Tables, Address Hashing, Basic Hash Table Operations, Hash Tables
@@ -939,17 +1058,25 @@ times, but increases the physical size of the table for a given usable
 size.  The default rehash threshold of a newly constructed hash table is
 @code{1}.
 
-@deffn procedure hash-table/size hash-table
+@deffn procedure hash-table-grow-size hash-table
+@deffnx {obsolete procedure} hash-table/size hash-table
 Returns the usable size of @var{hash-table} as an exact positive
-integer.  This is the number of associations that @var{hash-table} can
-hold before it will grow.
+integer.  This is the maximum number of associations that
+@var{hash-table} can hold before it will grow.
 @end deffn
 
-@deffn procedure hash-table/rehash-size hash-table
+@deffn procedure hash-table-shrink-size hash-table
+Returns the minimum number of associations that @var{hash-table} can
+hold before it will shrink.
+@end deffn
+
+@deffn procedure hash-table-rehash-size hash-table
+@deffnx {obsolete procedure} hash-table/rehash-size hash-table
 Returns the rehash size of @var{hash-table}.
 @end deffn
 
-@deffn procedure set-hash-table/rehash-size! hash-table x
+@deffn procedure set-hash-table-rehash-size! hash-table x
+@deffnx {obsolete procedure} set-hash-table/rehash-size! hash-table x
 @var{X} must be either an exact positive integer, or a real number that
 is greater than one.  Sets the rehash size of @var{hash-table} to
 @var{x} and returns an unspecified result.  This operation adjusts the
@@ -957,11 +1084,13 @@ is greater than one.  Sets the rehash size of @var{hash-table} to
 of associations is less than the new threshold.
 @end deffn
 
-@deffn procedure hash-table/rehash-threshold hash-table
+@deffn procedure hash-table-rehash-threshold hash-table
+@deffnx {obsolete procedure} hash-table/rehash-threshold hash-table
 Returns the rehash threshold of @var{hash-table}.
 @end deffn
 
-@deffn procedure set-hash-table/rehash-threshold! hash-table x
+@deffn procedure set-hash-table-rehash-threshold! hash-table x
+@deffnx {obsolete procedure} set-hash-table/rehash-threshold! hash-table x
 @var{X} must be a real number between zero exclusive and one inclusive.
 Sets the rehash threshold of @var{hash-table} to @var{x} and returns an
 unspecified result.  This operation does not change the usable size of
@@ -982,13 +1111,13 @@ and takes the same amount of time for any object.
 
 The disadvantage of address hashing is that the garbage collector
 changes the addresses of most objects.  The hash-table implementation
-compensates for this disadvantage by automatically rehashing tables that
-use address hashing when garbage collections occur.  Thus, in order to
-use these procedures for key hashing, it is necessary to tell the
-hash-table implementation (by means of the @var{rehash-after-gc?}
-argument to the ``constructor-constructor'' procedure) that the hash
-numbers computed by your key-hashing procedure must be recomputed after
-a garbage collection.
+compensates for this disadvantage by automatically rehashing tables
+that use address hashing when garbage collections occur.  Thus, in
+order to use these procedures for key hashing, it is necessary to tell
+the hash-table implementation (by means of the @var{rehash-after-gc?}
+argument to the hash-table type constructors) that the hash numbers
+computed by your key-hashing procedure must be recomputed after a
+garbage collection.
 
 @deffn procedure eq-hash object
 @deffnx procedure eqv-hash object
@@ -1001,8 +1130,33 @@ same hash number when passed as arguments to these procedures, provided
 that the garbage collector does not run during or between the two calls.
 @end deffn
 
+The following procedures are the hash functions specified by
+@asrfi{69}.
+
+@deffn procedure hash-by-identity key [modulus]
+This procedure returns the same value as @code{eq-hash}, optionally
+limited by @var{modulus}.
+@end deffn
+
+@deffn procedure hash-by-eqv key [modulus]
+This procedure returns the same value as @code{eqv-hash}, optionally
+limited by @var{modulus}.
+
+This procedure is not specified by @asrfi{69}.
+@end deffn
+
+@deffn procedure hash-by-equal key [modulus]
+This procedure returns the same value as @code{equal-hash}, optionally
+limited by @var{modulus}.
+
+This procedure is called @code{hash} by @asrfi{69}, but that name was
+used for a different purpose by MIT/GNU Scheme long before @asrfi{69}
+was written.  The previous use of @code{hash} has been deprecated, but
+it will be some time until it can be removed.
+@end deffn
+
 The following procedures are the key-hashing procedures used by the
-standard address-hash-based hash tables.
+standard address-hash-based hash tables.  They are 
 
 @deffn procedure eq-hash-mod object modulus
 This procedure is the key-hashing procedure used by
@@ -1026,19 +1180,21 @@ This procedure is the key-hashing procedure used by
 @cindex hashing, of object
 The MIT/GNU Scheme object-hashing facility provides a mechanism for
 generating a unique hash number for an arbitrary object.  This hash
-number, unlike an object's address, is unchanged by garbage collection.
-The object-hashing facility is useful in conjunction with hash tables,
-but it may be used for other things as well.  In particular, it is used
-in the generation of the written representation for many objects
-(@pxref{Custom Output}).
+number, unlike an object's address, is unchanged by garbage
+collection.  The object-hashing facility is used in the generation of
+the written representation for many objects (@pxref{Custom Output}),
+but it can be used for anything that needs a stable identifier for an
+arbitrary object.
 
 All of these procedures accept an optional argument called
 @var{hasher} which contains the object-integer associations.  If
 given, this argument must be an object hasher as constructed by
-@code{make-object-hasher} (see below).  If not given, a default table
+@code{make-object-hasher} (see below).  If not given, a default hasher
 is used.
 
 @deffn procedure hash-object object [hasher]
+@deffnx {obsolete procedure} hash object [hasher]
+@deffnx {obsolete procedure} object-hash object [hasher]
 @findex eq?
 @code{hash-object} associates an exact non-negative integer with
 @var{object} and returns that integer.  If @code{hash-object} was
@@ -1049,6 +1205,8 @@ returned is the same as was returned by the previous call.
 @end deffn
 
 @deffn procedure unhash-object k [hasher]
+@deffnx {obsolete procedure} unhash k [hasher]
+@deffnx {obsolete procedure} object-unhash k [hasher]
 @code{unhash-object} takes an exact non-negative integer @var{k} and
 returns the object associated with that integer.  If there is no
 object associated with @var{k}, or if the object previously associated
@@ -1060,11 +1218,11 @@ call to @code{unhash-object}.
 @findex condition-type:bad-range-argument
 @end deffn
 
-An object that is passed to @code{hash} as an argument is not protected
-from being reclaimed by the garbage collector.  If all other references
-to that object are eliminated, the object will be reclaimed.
-Subsequently calling @code{unhash} with the hash number of the (now
-reclaimed) object will signal an error.
+An object that is passed to @code{hash-object} as an argument is not
+protected from being reclaimed by the garbage collector.  If all other
+references to that object are eliminated, the object will be
+reclaimed.  Subsequently calling @code{unhash-object} with the hash
+number of the (now reclaimed) object will signal an error.
 
 @example
 @group
@@ -1083,6 +1241,7 @@ This predicate is true iff @var{object} has an associated hash number.
 @end deffn
 
 @deffn procedure valid-object-hash? k [hasher]
+@deffnx {obsolete procedure} valid-hash-number? k [hasher]
 This predicate is true iff @var{k} is the hash number associated with
 some object.
 @end deffn
@@ -1090,6 +1249,7 @@ some object.
 Finally, this procedure makes new object hashers:
 
 @deffn procedure make-object-hasher
+@deffnx {obsolete procedure} hash-table/make
 This procedure creates and returns a new, empty object hasher that
 is suitable for use as the optional @var{hasher} argument to the above
 procedures.  The returned hasher contains no associations.
