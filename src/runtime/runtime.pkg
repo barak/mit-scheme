@@ -2378,6 +2378,8 @@ USA.
   (import (runtime population)
 	  add-to-population!/unsafe)
   (export () deprecated:hash-table
+	  (eq-hash-table-type key-weak-eq-hash-table-type)
+	  (eqv-hash-table-type key-weak-eqv-hash-table-type)
 	  (hash-table-entry-type:key/datum-weak hash-table-entry-type:key&datum-weak)
 	  (hash-table/clean! hash-table-clean!)
 	  (hash-table/clear! hash-table-clear!)
@@ -2395,23 +2397,21 @@ USA.
 	  (hash-table/remove! hash-table-delete!)
 	  (hash-table/size! hash-table-grow-size)
 	  (hash-table/type hash-table-type)
-	  (set-hash-table/rehash-size! set-hash-table-rehash-size!)
-	  (set-hash-table/rehash-threshold! set-hash-table-rehash-threshold!)
-	  hash-table/constructor
-	  hash-table/modify!
-	  strong-hash-table/constructor
-	  weak-hash-table/constructor)
-  (export ()
-	  (eq-hash-table-type key-weak-eq-hash-table-type)
-	  (eqv-hash-table-type key-weak-eqv-hash-table-type)
 	  (make-eq-hash-table make-key-weak-eq-hash-table)
 	  (make-eqv-hash-table make-key-weak-eqv-hash-table)
 	  (make-object-hash-table make-key-weak-eqv-hash-table)
 	  (make-symbol-hash-table make-strong-eq-hash-table)
 	  (make-weak-eq-hash-table make-key-weak-eq-hash-table)
 	  (make-weak-eqv-hash-table make-key-weak-eqv-hash-table)
+	  (set-hash-table/rehash-size! set-hash-table-rehash-size!)
+	  (set-hash-table/rehash-threshold! set-hash-table-rehash-threshold!)
 	  (weak-eq-hash-table-type key-weak-eq-hash-table-type)
 	  (weak-eqv-hash-table-type key-weak-eqv-hash-table-type)
+	  hash-table/constructor
+	  hash-table/modify!
+	  strong-hash-table/constructor
+	  weak-hash-table/constructor)
+  (export ()
 	  alist->hash-table		;SRFI-69
 	  datum-weak-eq-hash-table-type
 	  datum-weak-eqv-hash-table-type
