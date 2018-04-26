@@ -58,7 +58,7 @@ USA.
 		  (apply handler params)))))))))))
 
 (define (get-xmlrpc-method-handler pathname name)
-  (let ((methods (make-weak-eq-hash-table)))
+  (let ((methods (make-key-weak-eq-hash-table)))
     (let ((environment (make-expansion-environment pathname)))
       (environment-define environment 'define-xmlrpc-method
 	(lambda (name handler)

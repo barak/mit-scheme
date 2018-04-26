@@ -870,7 +870,7 @@ USA.
 
 (define display/cached-atoms-tables
   ;; This table needs replacing.  It holds interned symbols strongly!
-  (let ((table (make-weak-eq-hash-table)))
+  (let ((table (make-key-weak-eq-hash-table)))
     (lambda (display)
       (let ((key (intern (alien/address-string display))))
 	(or (hash-table-ref/default table key #f)
@@ -1053,7 +1053,7 @@ In either case, it is copied to the primary selection."
 
 (define display/selection-records
   ;; This table needs replacing.  It holds interned symbols strongly.
-  (let ((table (make-weak-eq-hash-table)))
+  (let ((table (make-key-weak-eq-hash-table)))
     (lambda (display)
       (let ((key (intern (alien/address-string display))))
 	(or (hash-table-ref/default table key #f)

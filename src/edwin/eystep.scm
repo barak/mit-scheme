@@ -172,7 +172,7 @@ c	contract the step under the cursor")
       (get-stepper-buffer state)))
 
 (define stepper-buffers
-  (make-weak-eq-hash-table))
+  (make-key-weak-eq-hash-table))
 
 (define (current-stepper-state)
   (buffer->stepper-state (current-buffer)))
@@ -193,7 +193,7 @@ c	contract the step under the cursor")
 
 (define (get-buffer-ynode-regions buffer)
   (or (buffer-get buffer 'YNODE-REGIONS)
-      (let ((table (make-weak-eq-hash-table)))
+      (let ((table (make-key-weak-eq-hash-table)))
 	(buffer-put! buffer 'YNODE-REGIONS table)
 	table)))
 

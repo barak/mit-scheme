@@ -622,7 +622,7 @@ The buffer is guaranteed to be selected at that time."
 
 (add-event-receiver! editor-initializations
   (lambda ()
-    (set! screen-buffer-layouts (make-weak-eq-hash-table))
+    (set! screen-buffer-layouts (make-key-weak-eq-hash-table))
     unspecific))
 
 ;;;; Point

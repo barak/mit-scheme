@@ -931,7 +931,7 @@ USA.
       table)))
 
 (define display/cached-atoms-tables
-  (let ((table (make-weak-eq-hash-table)))
+  (let ((table (make-key-weak-eq-hash-table)))
     (lambda (display)
       (or (hash-table-ref/default table display #f)
 	  (let ((result
@@ -1111,7 +1111,7 @@ In either case, it is copied to the primary selection."
 	 #t)))
 
 (define display/selection-records
-  (let ((table (make-weak-eq-hash-table)))
+  (let ((table (make-key-weak-eq-hash-table)))
     (lambda (display)
       (or (hash-table-ref/default table display #f)
 	  (let ((result (make-strong-eq-hash-table)))

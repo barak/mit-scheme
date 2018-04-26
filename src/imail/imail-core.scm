@@ -406,7 +406,7 @@ USA.
   (hash-table-delete! memoized-resources url))
 
 (define memoized-resources
-  (make-weak-eq-hash-table))
+  (make-key-weak-eq-hash-table))
 
 ;;;; Folder operations
 
