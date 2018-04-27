@@ -3776,7 +3776,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime reference-trap)
-  (files "urtrap")
+  (files "reference-trap")
   (parent (runtime))
   (export ()
 	  cached-reference-trap-value
