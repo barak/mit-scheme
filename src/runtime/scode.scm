@@ -35,6 +35,7 @@ USA.
   (or (vector-ref scode-type-vector (object-type object))
       (and (compiled-code-address? object)
 	   (eq? 'compiled-expression (compiled-entry-type object)))))
+(register-predicate! scode-expression? 'scode-expression)
 
 (define-deferred scode-type-vector
   (let ((type-vector (make-vector (microcode-type/code-limit) #f)))

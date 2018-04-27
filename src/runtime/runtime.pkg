@@ -3975,6 +3975,7 @@ USA.
 	  scode-disjunction-alternative
 	  scode-disjunction-predicate
 	  scode-disjunction?
+	  scode-expression?
 	  scode-lambda-name:fluid-let
 	  scode-lambda-name:internal-lambda
 	  scode-lambda-name:let
