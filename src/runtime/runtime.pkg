@@ -487,6 +487,8 @@ USA.
 (define-package (runtime miscellaneous-global)
   (files "global")
   (parent (runtime))
+  (export () deprecated:miscellaneous-global
+	  (with-values call-with-values))
   (export ()
 	  %exit
 	  %quit
@@ -601,7 +603,6 @@ USA.
 	  wait-interval
 	  with-history-disabled
 	  with-interrupt-mask
-	  with-values
 	  write-to-string)
   (export (runtime)
 	  strip-angle-brackets)

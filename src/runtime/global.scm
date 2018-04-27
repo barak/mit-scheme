@@ -146,8 +146,6 @@ USA.
 (define (call-with-values thunk receiver)
   ((thunk) receiver))
 
-(define with-values call-with-values)
-
 (define (write-to-string object #!optional max)
   (if (or (default-object? max) (not max))
       (call-with-output-string
