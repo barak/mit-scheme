@@ -31,44 +31,53 @@ USA.
 
 ;;;; Structures
 
-(define-structure (hash-table-type
-		   (type-descriptor <hash-table-type>)
-		   (constructor %make-table-type)
-		   (conc-name table-type-))
-  (key-hash #f read-only #t)
-  (key=? #f read-only #t)
-  (rehash-after-gc? #f read-only #t)
-  (method:get #f read-only #t)
-  (method:put! #f read-only #t)
-  (method:remove! #f read-only #t)
-  (method:clean! #f read-only #t)
-  (method:rehash! #f read-only #t)
-  (method:fold #f read-only #t)
-  (method:copy-bucket #f read-only #t))
+(define-record-type <hash-table-type>
+    (%make-table-type key-hash key=? rehash-after-gc? method:get method:put!
+		      method:remove! method:clean! method:rehash! method:fold
+		      method:copy-bucket)
+    hash-table-type?
+  (key-hash table-type-key-hash)
+  (key=? table-type-key=?)
+  (rehash-after-gc? table-type-rehash-after-gc?)
+  (method:get table-type-method:get)
+  (method:put! table-type-method:put!)
+  (method:remove! table-type-method:remove!)
+  (method:clean! table-type-method:clean!)
+  (method:rehash! table-type-method:rehash!)
+  (method:fold table-type-method:fold)
+  (method:copy-bucket table-type-method:copy-bucket))
 
-(define-guarantee hash-table-type "hash-table type")
+(define (make-table type)
+  (%make-table type
+	       default-rehash-threshold
+	       default-rehash-size
+	       0
+	       minimum-size
+	       0
+	       #f
+	       prime-numbers-stream
+	       #f
+	       #f))
 
-(define-structure (hash-table
-		   (type-descriptor <hash-table>)
-		   (constructor make-table (type))
-		   (conc-name table-)
-		   (copier copy-table))
-  (type #f read-only #t)
+(define-record-type <hash-table>
+    (%make-table type rehash-threshold rehash-size count grow-size shrink-size
+		 buckets primes needs-rehash? initial-size-in-effect?)
+    hash-table?
+  (type hash-table-type)
 
   ;; Parameters of the hash table.
-  (rehash-threshold default-rehash-threshold)
-  (rehash-size default-rehash-size)
+  (rehash-threshold hash-table-rehash-threshold set-table-rehash-threshold!)
+  (rehash-size hash-table-rehash-size set-table-rehash-size!)
 
   ;; Internal state variables.
-  (count 0)
-  (grow-size minimum-size)
-  (shrink-size 0)
-  buckets
-  (primes prime-numbers-stream)
-  (needs-rehash? #f)
-  (initial-size-in-effect? #f))
-
-(define-guarantee hash-table "hash table")
+  (count table-count set-table-count!)
+  (grow-size hash-table-grow-size set-table-grow-size!)
+  (shrink-size hash-table-shrink-size set-table-shrink-size!)
+  (buckets table-buckets set-table-buckets!)
+  (primes table-primes set-table-primes!)
+  (needs-rehash? table-needs-rehash? set-table-needs-rehash?!)
+  (initial-size-in-effect? table-initial-size-in-effect?
+			   set-table-initial-size-in-effect?!))
 
 (define-integrable (increment-table-count! table)
   (set-table-count! table (fix:+ (table-count table) 1)))
@@ -131,24 +140,17 @@ USA.
 		       (lambda (table)
 			 (set-table-needs-rehash?! table #t))))
 
-(define (hash-table-type table)
-  (guarantee hash-table? table 'hash-table-type)
-  (table-type table))
-
 (define (hash-table-hash-function table)
-  (guarantee hash-table? table 'hash-table-hash-function)
-  (table-type-key-hash (table-type table)))
+  (table-type-key-hash (hash-table-type table)))
 
 (define (hash-table-equivalence-function table)
-  (guarantee hash-table? table 'hash-table-equivalence-function)
-  (table-type-key=? (table-type table)))
+  (table-type-key=? (hash-table-type table)))
 
 (define (hash-table-exists? table key)
   (not (eq? (hash-table-ref/default table key default-marker) default-marker)))
 
 (define (hash-table-ref table key #!optional get-default)
-  (guarantee hash-table? table 'hash-table-ref)
-  ((table-type-method:get (table-type table))
+  ((table-type-method:get (hash-table-type table))
    table
    key
    (if (default-object? get-default)
@@ -159,8 +161,7 @@ USA.
   (hash-table-ref table key (lambda () default)))
 
 (define (hash-table-set! table key datum)
-  (guarantee hash-table? table 'hash-table-set!)
-  ((table-type-method:put! (table-type table)) table key datum))
+  ((table-type-method:put! (hash-table-type table)) table key datum))
 
 (define (hash-table-update! table key procedure #!optional get-default)
   (hash-table-set! table key
@@ -179,14 +180,12 @@ USA.
     datum))
 
 (define (hash-table-delete! table key)
-  (guarantee hash-table? table 'hash-table-delete!)
-  ((table-type-method:remove! (table-type table)) table key))
+  ((table-type-method:remove! (hash-table-type table)) table key))
 
 (define (hash-table-clean! table)
-  (guarantee hash-table? table 'hash-table-clean!)
   (without-interruption
     (lambda ()
-      ((table-type-method:clean! (table-type table)) table)
+      ((table-type-method:clean! (hash-table-type table)) table)
       (maybe-shrink-table! table))))
 
 (define (hash-table-walk table procedure)
@@ -197,14 +196,12 @@ USA.
 	    (hash-table->alist table)))
 
 (define (hash-table->alist table)
-  (guarantee hash-table? table 'hash-table->alist)
   (hash-table-fold table
 		   (lambda (key datum alist)
 		     (cons (cons key datum) alist))
 		   '()))
 
 (define (hash-table-keys table)
-  (guarantee hash-table? table 'hash-table-keys)
   (hash-table-fold table
 		   (lambda (key datum keys)
 		     (declare (ignore datum))
@@ -212,7 +209,6 @@ USA.
 		   '()))
 
 (define (hash-table-values table)
-  (guarantee hash-table? table 'hash-table-values)
   (hash-table-fold table
 		   (lambda (key datum values)
 		     (declare (ignore key))
@@ -220,14 +216,10 @@ USA.
 		   '()))
 
 (define (hash-table-fold table procedure initial-value)
-  ((table-type-method:fold (table-type table)) table procedure initial-value))
+  ((table-type-method:fold (hash-table-type table))
+   table procedure initial-value))
 
-(define (hash-table-rehash-threshold table)
-  (guarantee hash-table? table 'hash-table-rehash-threshold)
-  (table-rehash-threshold table))
-
 (define (set-hash-table-rehash-threshold! table threshold)
-  (guarantee hash-table? table 'set-hash-table-rehash-threshold!)
   (let ((threshold
 	 (check-arg threshold
 		    default-rehash-threshold
@@ -240,14 +232,9 @@ USA.
     (without-interruption
       (lambda ()
 	(set-table-rehash-threshold! table threshold)
-	(new-size! table (table-grow-size table))))))
-
-(define (hash-table-rehash-size table)
-  (guarantee hash-table? table 'hash-table-rehash-size)
-  (table-rehash-size table))
+	(new-size! table (hash-table-grow-size table))))))
 
 (define (set-hash-table-rehash-size! table size)
-  (guarantee hash-table? table 'set-hash-table-rehash-size!)
   (let ((size
 	 (check-arg size
 		    default-rehash-size
@@ -264,7 +251,6 @@ USA.
 	(maybe-shrink-table! table)))))
 
 (define (hash-table-size table)
-  (guarantee hash-table? table 'hash-table-size)
   (let loop ()
     (let ((count (table-count table)))
       (if (table-needs-rehash? table)
@@ -273,16 +259,7 @@ USA.
 	    (loop))
 	  count))))
 
-(define (hash-table-grow-size table)
-  (guarantee hash-table? table 'hash-table-grow-size)
-  (table-grow-size table))
-
-(define (hash-table-shrink-size table)
-  (guarantee hash-table? table 'hash-table-shrink-size)
-  (table-shrink-size table))
-
 (define (hash-table-clear! table)
-  (guarantee hash-table? table 'hash-table-clear!)
   (without-interruption
     (lambda ()
       (if (not (table-initial-size-in-effect? table))
@@ -831,18 +808,18 @@ USA.
 ;;;; Resizing
 
 (define (maybe-grow-table! table)
-  (if (> (table-count table) (table-grow-size table))
+  (if (> (table-count table) (hash-table-grow-size table))
       (begin
-	(let loop ((size (table-grow-size table)))
+	(let loop ((size (hash-table-grow-size table)))
 	  (if (> (table-count table) size)
 	      (loop (increment-size table size))
 	      (new-size! table size)))
 	(set-table-initial-size-in-effect?! table #f))))
 
 (define (maybe-shrink-table! table)
-  (if (and (< (table-count table) (table-shrink-size table))
+  (if (and (< (table-count table) (hash-table-shrink-size table))
 	   (not (table-initial-size-in-effect? table)))
-      (let loop ((size (table-grow-size table)))
+      (let loop ((size (hash-table-grow-size table)))
 	(cond ((<= size minimum-size)
 	       (new-size! table minimum-size))
 	      ((< (table-count table) (compute-shrink-size table size))
@@ -855,7 +832,7 @@ USA.
   (let ((old-buckets (table-buckets table)))
     (reset-table! table)
     (let ((n-buckets (vector-length old-buckets))
-	  (method (table-type-method:rehash! (table-type table))))
+	  (method (table-type-method:rehash! (hash-table-type table))))
       (set-table-needs-rehash?! table #f)
       (do ((i 0 (fix:+ i 1)))
 	  ((not (fix:< i n-buckets)))
@@ -866,8 +843,8 @@ USA.
   (reset-shrink-size! table)
   (let ((primes
 	 (let ((size
-		(round->exact (/ (table-grow-size table)
-				 (table-rehash-threshold table)))))
+		(round->exact (/ (hash-table-grow-size table)
+				 (hash-table-rehash-threshold table)))))
 	   (let loop
 	       ((primes
 		 (if (< size (stream-car (table-primes table)))
@@ -881,7 +858,8 @@ USA.
 
 (define (reset-shrink-size! table)
   (set-table-shrink-size! table
-			  (compute-shrink-size table (table-grow-size table))))
+			  (compute-shrink-size table
+					       (hash-table-grow-size table))))
 
 (define (compute-shrink-size table size)
   (if (<= size minimum-size)
@@ -889,7 +867,7 @@ USA.
       (max 0 (decrement-size table (decrement-size table size)))))
 
 (define (increment-size table size)
-  (let ((rehash-size (table-rehash-size table)))
+  (let ((rehash-size (hash-table-rehash-size table)))
     (if (exact-integer? rehash-size)
 	(+ size rehash-size)
 	(let ((size* (round->exact (* size rehash-size))))
@@ -898,7 +876,7 @@ USA.
 	      (+ size 1))))))
 
 (define (decrement-size table size)
-  (let ((rehash-size (table-rehash-size table)))
+  (let ((rehash-size (hash-table-rehash-size table)))
     (if (exact-integer? rehash-size)
 	(- size rehash-size)
 	(let ((size* (round->exact (/ size rehash-size))))
@@ -988,7 +966,7 @@ USA.
     (lambda ()
       (let ((entries (extract-table-entries! table)))
 	(set-table-needs-rehash?! table #f)
-	((table-type-method:rehash! (table-type table)) table entries))
+	((table-type-method:rehash! (hash-table-type table)) table entries))
       (maybe-shrink-table! table))))
 
 (define (extract-table-entries! table)
@@ -1371,11 +1349,10 @@ USA.
     datum))
 
 (define (hash-table-copy table)
-  (guarantee hash-table? table 'hash-table-copy)
   (without-interruption
     (lambda ()
-      (let ((table* (copy-table table))
-	    (type (table-type table)))
+      (let ((table* (copy-record table))
+	    (type (hash-table-type table)))
 	(set-table-buckets! table*
 			    (vector-map (table-type-method:copy-bucket type)
 					(table-buckets table)))
@@ -1384,8 +1361,6 @@ USA.
 	table*))))
 
 (define (hash-table-merge! table1 table2)
-  (guarantee hash-table? table1 'hash-table-merge!)
-  (guarantee hash-table? table2 'hash-table-merge!)
   (if (not (eq? table2 table1))
       (hash-table-fold table2
 		       (lambda (key datum ignore)
