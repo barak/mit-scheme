@@ -751,6 +751,7 @@ USA.
 	  symbol->string
 	  symbol-hash
 	  symbol<?
+	  symbol=?			;R7RS
 	  symbol>?
 	  symbol?
 	  uninterned-symbol?))

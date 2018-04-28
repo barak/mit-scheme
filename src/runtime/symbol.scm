@@ -44,6 +44,15 @@ USA.
 (define-guarantee interned-symbol "interned symbol")
 (define-guarantee uninterned-symbol "uninterned symbol")
 
+(define (symbol=? symbol1 symbol2 . symbols)
+  (guarantee symbol? symbol1 'symbol=?)
+  (guarantee symbol? symbol2 'symbol=?)
+  (and (eq? symbol1 symbol2)
+       (every (lambda (symbol)
+		(guarantee symbol? symbol 'symbol=?)
+		(eq? symbol1 symbol))
+	      symbols)))
+
 (define (string->uninterned-symbol string #!optional start end)
   ((ucode-primitive system-pair-cons) (ucode-type uninterned-symbol)
 				      (string->utf8 string start end)
@@ -60,8 +69,7 @@ USA.
        (string->utf8 string start end))))
 
 (define (symbol->string symbol)
-  (if (not (symbol? symbol))
-      (error:not-a symbol? symbol 'symbol->string))
+  (guarantee symbol? symbol 'symbol->string)
   (symbol-name symbol))
 
 (define (symbol-name symbol)
@@ -79,13 +87,13 @@ USA.
   ((ucode-primitive find-symbol) (foldcase->utf8 string)))
 
 (define (symbol-hash symbol #!optional modulus)
-  (string-hash (symbol-name symbol) modulus))
+  (string-hash (symbol->string symbol) modulus))
 
 (define (symbol<? x y)
-  (string<? (symbol-name x) (symbol-name y)))
+  (string<? (symbol->string x) (symbol->string y)))
 
 (define (symbol>? x y)
-  (string<? (symbol-name y) (symbol-name x)))
+  (string<? (symbol->string y) (symbol->string x)))
 
 (define generate-uninterned-symbol
   (let ((mutex (make-thread-mutex))
