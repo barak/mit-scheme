@@ -40,7 +40,6 @@ USA.
   (rehash-after-gc? #f read-only #t)
   (method:get #f read-only #t)
   (method:put! #f read-only #t)
-  (method:modify! #f read-only #t)
   (method:remove! #f read-only #t)
   (method:clean! #f read-only #t)
   (method:rehash! #f read-only #t)
@@ -164,23 +163,20 @@ USA.
   ((table-type-method:put! (table-type table)) table key datum))
 
 (define (hash-table-update! table key procedure #!optional get-default)
-  (guarantee hash-table? table 'hash-table-update!)
-  ((table-type-method:modify! (table-type table))
-   table
-   key
-   (if (default-object? get-default)
-       (lambda () (error:bad-range-argument key 'hash-table-update!))
-       get-default)
-   procedure))
+  (hash-table-set! table key
+		   (procedure (hash-table-ref table key get-default))))
 
 (define (hash-table-update!/default table key procedure default)
   (hash-table-update! table key procedure (lambda () default)))
 
 (define (hash-table-intern! table key generator)
-  (hash-table-update!/default table key
-    (lambda (datum)
-      (if (eq? datum default-marker) (generator) datum))
-    default-marker))
+  (let ((datum
+	 (let ((datum (hash-table-ref/default table key default-marker)))
+	   (if (eq? datum default-marker)
+	       (generator)
+	       datum))))
+    (hash-table-set! table key datum)
+    datum))
 
 (define (hash-table-delete! table key)
   (guarantee hash-table? table 'hash-table-delete!)
@@ -349,7 +345,6 @@ USA.
   (%make-table-type key-hash key=? rehash-after-gc?
 		    (make-method:get compute-hash! key=? entry-type)
 		    (make-method:put! compute-hash! key=? entry-type)
-		    (make-method:modify! compute-hash! key=? entry-type)
 		    (make-method:remove! compute-hash! key=? entry-type)
 		    (if (eq? entry-type hash-table-entry-type:strong)
 			(named-lambda (method:no-clean! table)
@@ -710,44 +705,6 @@ USA.
 		(maybe-grow-table! table)))))))
   method:put!)
 
-(define (make-method:modify! compute-hash! key=? entry-type)
-  (declare (integrate-operator compute-hash! key=? entry-type))
-  (define (method:modify! table key get-default procedure)
-    (let restart ((has-value? #f) (value #f))
-      (let ((hash (compute-hash! table key)))
-	(let loop ((p (vector-ref (table-buckets table) hash)) (q #f))
-	  (if (pair? p)
-	      (call-with-entry-key&datum entry-type (car p)
-		(lambda (key* datum barrier)
-		  (declare (integrate key* datum barrier))
-		  (if (key=? key* key)
-		      (let ((datum* (procedure datum)))
-			(without-interruption
-			  (lambda ()
-			    (set-entry-datum! entry-type (car p) datum*)))
-			(barrier)
-			datum*)
-		      (loop (cdr p) p)))
-		(lambda () (loop (cdr p) p)))
-	      ;; If there's no entry, we have to create a new one.  But calling
-	      ;; PROCEDURE potentially modifies TABLE, so we can't assume that Q
-	      ;; or the bucket are valid when it returns.  Instead, re-start the
-	      ;; loop, and if there's still no entry, we can then safely add the
-	      ;; previously computed value.
-	      (if (not has-value?)
-		  (restart #t (procedure (get-default)))
-		  (begin
-		    (without-interruption
-		      (lambda ()
-			(let ((r (cons (make-entry entry-type key value) '())))
-			  (if q
-			      (set-cdr! q r)
-			      (vector-set! (table-buckets table) hash r)))
-			(increment-table-count! table)
-			(maybe-grow-table! table)))
-		    value)))))))
-  method:modify!)
-
 (define (make-method:remove! compute-hash! key=? entry-type)
   (declare (integrate-operator compute-hash! key=? entry-type))
   (define (method:remove! table key)
@@ -768,7 +725,7 @@ USA.
 		    (loop (cdr p) p)))
 	      (lambda () (loop (cdr p) p)))))))
   method:remove!)
-
+
 (define (make-method:clean! entry-type)
   (declare (integrate-operator entry-type))
   (define (method:clean! table)
@@ -805,7 +762,7 @@ USA.
 			      (set-cdr! q p)))))))
 	    (scan-head (vector-ref buckets i)))))))
   method:clean!)
-
+
 (define (make-method:rehash! key-hash entry-type)
   (declare (integrate-operator key-hash entry-type))
   (define (method:rehash! table entries)
@@ -823,7 +780,7 @@ USA.
 		  (lambda () (decrement-table-count! table)))
 		(loop q)))))))
   method:rehash!)
-
+
 (define (make-method:fold entry-type)
   (declare (integrate-operator entry-type))
   (define (method:fold table procedure initial-value)
@@ -1204,7 +1161,7 @@ USA.
 (define-syntax define-integrableish
   (sc-macro-transformer
    (lambda (form environment)
-     environment			;ignore
+     (declare (ignore environment))
      (let ((name (caadr form))
 	   (parameters (cdadr form))
 	   (body (cddr form)))
@@ -1221,9 +1178,9 @@ USA.
 (define-integrableish (open-type-constructor entry-type)
   (declare (integrate-operator %make-hash-table-type make-table-type))
   (declare (integrate-operator make-method:get make-method:put!))
-  (declare (integrate-operator make-method:modify! make-method:remove!))
-  (declare (integrate-operator make-method:clean! make-method:rehash!))
-  (declare (integrate-operator make-method:fold make-method:copy-bucket))
+  (declare (integrate-operator make-method:remove! make-method:clean!))
+  (declare (integrate-operator make-method:rehash! make-method:fold))
+  (declare (integrate-operator make-method:copy-bucket))
   (lambda (key-hash key=? rehash-after-gc?)
     (let ((compute-hash!
 	   ((if rehash-after-gc?
@@ -1243,9 +1200,9 @@ USA.
   (declare (integrate-operator %make-hash-table-type make-table-type))
   (declare (integrate-operator compute-address-hash compute-non-address-hash))
   (declare (integrate-operator make-method:get make-method:put!))
-  (declare (integrate-operator make-method:modify! make-method:remove!))
-  (declare (integrate-operator make-method:clean! make-method:rehash!))
-  (declare (integrate-operator make-method:fold make-method:copy-bucket))
+  (declare (integrate-operator make-method:remove! make-method:clean!))
+  (declare (integrate-operator make-method:rehash! make-method:fold))
+  (declare (integrate-operator make-method:copy-bucket))
   (make-table-type key-hash key=? rehash-after-gc?
 		   (if rehash-after-gc?
 		       (compute-address-hash key-hash)
@@ -1409,7 +1366,9 @@ USA.
 	(if-found datum))))
 
 (define (hash-table/modify! table key default procedure)
-  (hash-table-update!/default table key procedure default))
+  (let ((datum (procedure (hash-table-ref/default table key default))))
+    (hash-table-set! table key datum)
+    datum))
 
 (define (hash-table-copy table)
   (guarantee hash-table? table 'hash-table-copy)

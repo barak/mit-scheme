@@ -857,10 +857,8 @@ The average time required by this operation is bounded by a constant.
 Applies @var{procedure} to the datum associated with @var{key} in
 @var{hash-table} or to the value of calling @var{get-default} if there
 is no association for @var{key}, associates the result with @var{key},
-and returns that same result.  If @var{get-default} is not supplied
+and returns an unspecified value.  If @var{get-default} is not supplied
 and there's no association for @var{key}, an error is signaled.
-
-Neither @var{procedure} nor @var{get-default} may use @var{hash-table}.
 
 The average time required by this operation is bounded by a constant.
 @end deffn
@@ -873,24 +871,6 @@ Equivalent to
 @end lisp
 @end deffn
 
-@c The reason that the procedure passed to hash-table-update!  may not
-@c even use the hash table is that, e.g., hash-table-ref may actually
-@c mutate the underlying table, because it may perform some deferred
-@c cleanup.  Specifically, if the table needs to be rehashed on GC, it
-@c is not actually rehashed when the garbage collector runs, but on
-@c the next access thereafter.  If the procedure given to
-@c hash-table-update! accesses the hash table, and a garbage
-@c collection occurs after this procedure is invoked but before the
-@c (last) access it makes, the table may be rehashed, which may cause
-@c hash-table-update! to insert the returned datum into the wrong
-@c bucket or into a dead hash table entry.  An analagous problem
-@c plagues weak and ephemeral tables; in this case, even if the table
-@c is not rehashed, accessing it after a GC may trigger a cleanup of
-@c entries whose keys or data have been garbage collected, which may
-@c trigger a resizing of the table and cause hash-table-update!  to
-@c put its datum into the wrong place.  The same considerations apply
-@c to hash-table-intern!.
-
 @deffn procedure hash-table-intern! hash-table key get-default
 @deffnx {obsolete procedure} hash-table/intern! hash-table key get-default
 @var{Get-default} must be a procedure of zero arguments.  Ensures that
@@ -898,8 +878,6 @@ Equivalent to
 associated datum.  If @var{hash-table} did not have a datum associated
 with @var{key}, @var{get-default} is called and its value is used to
 create a new association for @var{key}.
-
-The @var{get-default} procedure must not use @var{hash-table}.
 
 The average time required by this operation is bounded by a constant.
 @end deffn
