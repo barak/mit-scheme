@@ -31,59 +31,75 @@ USA.
 ;;; procedure to call, and the rest of the bundle's arguments are passed to the
 ;;; selected procedure.
 
-;;; Each bundle also carries a predicate that can be used to identify it.
-;;; Normally the predicate is shared between bundles with the same general
-;;; structure.
+;;; Each bundle also carries a type that can be used to identify it.  Normally
+;;; the type is shared between bundles with the same general structure.
 
 (declare (usual-integrations))
 
-(define (make-bundle-predicate name)
-  (letrec ((predicate
-            (lambda (object)
-              (and (bundle? object)
-                   (eq? predicate (bundle-predicate object))))))
-    (register-predicate! predicate name '<= bundle?)
-    predicate))
+(define (make-bundle-type name #!optional parent-type)
+  (let ((type
+	 (new-make-record-type name
+			       '()
+			       (if (default-object? parent-type)
+				   <bundle>
+				   (guarantee bundle-type? parent-type
+					      'make-bundle-type)))))
+    (set-record-type-applicator! type %bundle-applicator)
+    type))
 
-(define (bundle-predicate? object)
-  (and (predicate? object)
-       (predicate<= object bundle?)))
-(register-predicate! bundle-predicate? 'bundle-predicate)
+(define (%bundle-applicator bundle operator . args)
+  (apply (bundle-ref bundle operator) args))
 
-;; Defer this because predicate? will change later in the cold load.
-(defer-boot-action 'predicate-relations
-  (lambda ()
-    (set-predicate<=! bundle-predicate? predicate?)))
+(define (bundle-type? object)
+  (and (record-type? object)
+       (predicate<= (record-predicate object) bundle?)))
+(register-predicate! bundle-type? 'bundle-type '<= record-type?)
 
-(define (alist->bundle predicate alist)
-  (guarantee bundle-predicate? predicate 'alist->bundle)
-  (guarantee bundle-alist? alist 'alist->bundle)
-  (%make-bundle predicate (alist-copy alist)))
+(define-unparser-method bundle-type?
+  (simple-unparser-method 'bundle-type
+    (lambda (type)
+      (list (dispatch-tag-name type)))))
 
-(define (bundle-alist? object)
+(define (bundle-predicate type)
+  (guarantee bundle-type? type 'bundle-predicate)
+  (record-predicate type))
+
+(define (alist->bundle type alist)
+  (guarantee bundle-type? type 'alist->bundle)
+  (guarantee %bundle-alist? alist 'alist->bundle)
+  ((record-constructor type) (alist-copy alist)))
+
+(define (%bundle-alist? object)
   (and (alist? object)
        (every (lambda (p)
                 (symbol? (car p)))
               object)))
 
 (define-record-type <bundle>
-    (%make-bundle predicate alist)
+    (%unused% alist) ;change to #f after 9.3 release
     bundle?
-  (predicate bundle-predicate)
   (alist bundle-alist))
-
-(set-record-type-applicator! <bundle>
-  (lambda (bundle operator . args)
-    (apply (bundle-ref bundle operator) args)))
 
 (define-unparser-method bundle?
   (standard-unparser-method
    (lambda (bundle)
-     (predicate-name (bundle-predicate bundle)))
+     (dispatch-tag-name (bundle-type bundle)))
    (lambda (bundle port)
      (let ((handler (bundle-ref bundle 'write-self #f)))
        (if handler
 	   (handler port))))))
+
+(define-pp-describer bundle?
+  (lambda (bundle)
+    (let ((handler (bundle-ref bundle 'describe-self #f)))
+      (if handler
+	  (handler)
+	  (map (lambda (p) `(,(car p) ,(cdr p)))
+	       (bundle-alist bundle))))))
+
+(define (bundle-type bundle)
+  (guarantee bundle? bundle 'bundle-type)
+  (record-type-descriptor bundle))
 
 (define (bundle->alist bundle)
   (alist-copy (bundle-alist bundle)))
