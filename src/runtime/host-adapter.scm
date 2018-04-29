@@ -73,6 +73,7 @@ USA.
     (provide-rename env 'lambda-tag:unnamed 'scode-lambda-name:unnamed)
     (provide-rename env 'lambda-tag:let 'scode-lambda-name:let)
     (provide-rename env 'lambda-tag:fluid-let 'scode-lambda-name:fluid-let)
+    (provide-rename env 'hash 'hash-object)
 
     (if (unbound? env 'hash-table-constructor)
 	(link-variables env
