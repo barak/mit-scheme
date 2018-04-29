@@ -30,55 +30,26 @@ USA.
 
 (define-test 'simple
   (lambda ()
-    (define-bundle-interface foo? make-foo capture-foo a b c)
+    (define foo? (make-bundle-predicate 'foo))
 
-    (assert-true (bundle-interface? foo?))
-    (assert-equal (bundle-interface-element-names foo?)
-		  '(a b c))
-    (for-each (lambda (name)
-		(assert-equal (bundle-interface-element-properties foo? name)
-			      '()))
-	      (bundle-interface-element-names foo?))
+    (assert-true (bundle-predicate? foo?))
 
-    (define bundle-a (bundle-accessor foo? 'a))
-    (define bundle-b (bundle-accessor foo? 'b))
-    (define bundle-c (bundle-accessor foo? 'c))
-    (assert-error (lambda () (bundle-accessor foo 'd)))
-
-    (define (test-bundle bundle av bv cv)
-      (assert-true (foo? bundle))
-      (assert-eqv (bundle-ref bundle 'a) av)
-      (assert-eqv (bundle-ref bundle 'b) bv)
-      (assert-eqv (bundle-ref bundle 'c) cv)
-      (assert-eqv (bundle-ref bundle 'd #f) #f)
-      (assert-error (lambda () (bundle-ref foo 'd)))
-      (assert-eqv (bundle-a bundle) av)
-      (assert-eqv (bundle-b bundle) bv)
-      (assert-eqv (bundle-c bundle) cv))
-
-    (let ((a 10)
-	  (b 20)
-	  (c 40))
-      (test-bundle (make-foo a b c) a b c))
-
-    (let ((a 0)
-	  (b 1)
-	  (c 3))
-      (test-bundle (capture-foo) a b c))))
+    (let ((x 10)
+	  (y 20)
+	  (z 40))
+      (let ((b (bundle foo? x y z)))
+	(assert-true (foo? b))
+	(assert-eqv (bundle-ref b 'x) x)
+	(assert-eqv (bundle-ref b 'y) y)
+	(assert-eqv (bundle-ref b 'z) z)
+	(assert-eqv (bundle-ref b 'w #f) #f)
+	(assert-error (lambda () (bundle-ref foo 'w)))))))
 
 (define-test 'metadata-table
   (lambda ()
 
-    (define-bundle-interface metadata-table?
-      make-metadata-table
-      capture-metadata-table
-      has?
-      get
-      put!
-      intern!
-      delete!
-      get-alist
-      put-alist!)
+    (define metadata-table?
+      (make-bundle-predicate 'metadata-table))
 
     (define foo
       (let ((alist '()))
@@ -126,7 +97,14 @@ USA.
 		      (put! (car p) (cdr p)))
 		    alist*))
 
-	(capture-metadata-table)))
+	(bundle metadata-table?
+		has?
+		get
+		put!
+		intern!
+		delete!
+		get-alist
+		put-alist!)))
 
     (assert-true (metadata-table? foo))
 

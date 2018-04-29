@@ -1927,17 +1927,12 @@ USA.
   (export ()
 	  alist->bundle
 	  bundle->alist
-	  bundle-accessor
-	  bundle-constructor
-	  bundle-interface
-	  bundle-interface-element-names
-	  bundle-interface-element-properties
-	  bundle-interface-name
-	  bundle-interface?
 	  bundle-names
+	  bundle-predicate
+	  bundle-predicate?
 	  bundle-ref
 	  bundle?
-	  make-bundle-interface))
+	  make-bundle-predicate))
 
 (define-package (runtime environment)
   (files "environment")
@@ -4725,6 +4720,7 @@ USA.
 	  (and-let* $and-let*)
 	  (assert $assert)
 	  (begin0 $begin0)
+	  (bundle $bundle)
 	  (case $case)
 	  (circular-stream $circular-stream)
 	  (cond $cond)
@@ -4733,7 +4729,6 @@ USA.
 	  (cons-stream* $cons-stream*)
 	  (define $define)
 	  (define-integrable $define-integrable)
-	  (define-bundle-interface $define-bundle-interface)
 	  (define-record-type $define-record-type)
 	  (do $do)
 	  (fluid-let $fluid-let)

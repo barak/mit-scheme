@@ -239,8 +239,7 @@ USA.
    (register-predicate! procedure-arity? 'procedure-arity)
    (register-predicate! thunk? 'thunk '<= procedure?)
    (register-predicate! unary-procedure? 'unary-procedure '<= procedure?)
-   (register-predicate! unparser-method? 'unparser-method '<= procedure?)
-   (register-predicate! bundle? 'bundle '<= entity?)))
+   (register-predicate! unparser-method? 'unparser-method '<= procedure?)))
 
 (add-boot-init!
  (lambda ()

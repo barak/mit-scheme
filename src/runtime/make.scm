@@ -371,10 +371,10 @@ USA.
 	 ("random" . (runtime random-number))
 	 ("dispatch-tag" . (runtime tagged-dispatch))
 	 ("poplat" . (runtime population))
-	 ("record" . (runtime record))
-	 ("bundle" . (runtime bundle))))
+	 ("record" . (runtime record))))
       (files2
-       '(("syntax-low" . (runtime syntax low))
+       '(("bundle" . (runtime bundle))
+	 ("syntax-low" . (runtime syntax low))
 	 ("thread" . (runtime thread))
 	 ("wind" . (runtime state-space))
 	 ("prop1d" . (runtime 1d-property))
@@ -409,7 +409,6 @@ USA.
   (package-initialize '(runtime tagged-dispatch) #f #t)
   (package-initialize '(runtime population) #f #t)
   (package-initialize '(runtime record) #f #t)
-  (package-initialize '(runtime bundle) #f #t)
 
   (load-files-with-boot-inits files2)
   (package-initialize '(runtime 1d-property) #f #t)	     ;First population.

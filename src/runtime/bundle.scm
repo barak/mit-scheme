@@ -26,226 +26,76 @@ USA.
 
 ;;;; Bundles
 
-;;; A bundle is a set of named elements.  The name and metadata properties of
-;;; each element are specified by an interface.  Each metadata property consists
-;;; of a symbol identifying the property and some objects that are the property
-;;; values.  While some metadata properties will be defined and used by the
-;;; bundle implementation, any property can be specified and will be carried
-;;; along in the interface.
-;;;
-;;; It is anticipated that most bundle elements will be procedures.  For
-;;; convenience, the bundle is itself implemented as a procedure.  The first
-;;; argument to the bundle is a symbol identifying the named object to call, and
-;;; the rest of the bundle's arguments are passed to the selected procedure.
+;;; A bundle is a set of named procedures implemented as a procedure.  When
+;;; called, the first argument to the bundle is a symbol identifying the named
+;;; procedure to call, and the rest of the bundle's arguments are passed to the
+;;; selected procedure.
+
+;;; Each bundle also carries a predicate that can be used to identify it.
+;;; Normally the predicate is shared between bundles with the same general
+;;; structure.
 
 (declare (usual-integrations))
 
-(define (make-bundle-interface name elements)
-  (guarantee symbol? name 'make-bundle-interface)
-  (guarantee elements? elements 'make-bundle-interface)
-  (letrec*
-      ((predicate
-	(lambda (object)
-	  (and (bundle? object)
-	       (eq? tag (%bundle-tag object)))))
-       (tag
-	(make-bundle-interface-tag name
-				   predicate
-				   (list->vector (map element-name elements))
-				   (list->vector
-				    (map (lambda (element)
-					   (map list-copy
-						(element-properties element)))
-					 elements)))))
+(define (make-bundle-predicate name)
+  (letrec ((predicate
+            (lambda (object)
+              (and (bundle? object)
+                   (eq? predicate (bundle-predicate object))))))
+    (register-predicate! predicate name '<= bundle?)
     predicate))
 
-(define (elements? object)
-  (and (list? object)
-       (every (lambda (p)
-		(or (symbol? p)
-		    (and (pair? p)
-			 (symbol? (car p))
-			 (list? (cdr p))
-			 (every (lambda (r)
-				  (and (pair? r)
-				       (symbol? (car r))
-				       (list? (cdr r))))
-				(cdr p)))))
-	      object)
-       (no-duplicate-keys? object element-name)))
-(register-predicate! elements? 'interface-elements)
-
-(define (element-name element)
-  (if (symbol? element)
-      element
-      (car element)))
-
-(define (element-properties element)
-  (if (symbol? element)
-      '()
-      (cdr element)))
-
-(define bundle-interface-tag?)
-(define make-bundle-interface-tag)
-(add-boot-init!
- (lambda ()
-   (let ((metatag (make-dispatch-metatag 'bundle-interface)))
-     (set! bundle-interface-tag? (dispatch-tag->predicate metatag))
-     (set! make-bundle-interface-tag
-	   (dispatch-metatag-constructor metatag 'make-bundle-interface))
-     unspecific)))
-
-(define (bundle-interface? object)
+(define (bundle-predicate? object)
   (and (predicate? object)
-       (bundle-interface-tag? (predicate->dispatch-tag object))))
+       (predicate<= object bundle?)))
+(register-predicate! bundle-predicate? 'bundle-predicate)
 
-(define-integrable (tag-element-names tag)
-  (dispatch-tag-extra-ref tag 0))
+;; Defer this because predicate? will change later in the cold load.
+(defer-boot-action 'predicate-relations
+  (lambda ()
+    (set-predicate<=! bundle-predicate? predicate?)))
 
-(define-integrable (tag-element-properties tag)
-  (dispatch-tag-extra-ref tag 1))
-
-(define (bundle-interface-name interface)
-  (guarantee bundle-interface? interface 'bundle-interface-name)
-  (dispatch-tag-name (predicate->dispatch-tag interface)))
-
-(define (bundle-interface-element-names interface)
-  (guarantee bundle-interface? interface 'bundle-interface-element-names)
-  (vector->list (tag-element-names (predicate->dispatch-tag interface))))
-
-(define (bundle-interface-element-properties interface name)
-  (guarantee bundle-interface? interface 'bundle-interface-element-properties)
-  (let ((tag (predicate->dispatch-tag interface)))
-    (map list-copy
-	 (vector-ref (tag-element-properties tag)
-		     (element-index tag name #t)))))
-
-(define (element-index tag name required?)
-  (let ((index (vector-find-next-element (tag-element-names tag) name)))
-    (if (not (or index (not required?)))
-	(error "Unknown element name:" name (dispatch-tag->predicate tag)))
-    index))
-
-(define (bundle? object)
-  (and (entity? object)
-       (let ((extra (entity-extra object)))
-	 (and (vector? extra)
-	      (fix:= 2 (vector-length extra))
-	      (bundle-interface-tag? (vector-ref extra 0))))))
-
-(define (%make-bundle tag values)
-  (make-entity (lambda (self operator . args)
-		 (apply (bundle-ref self operator) args))
-	       (vector tag values)))
-
-(define-integrable (%bundle-tag bundle)
-  (vector-ref (entity-extra bundle) 0))
-
-(define-integrable (%bundle-values bundle)
-  (vector-ref (entity-extra bundle) 1))
-
-(define (bundle-interface bundle)
-  (guarantee bundle? bundle 'bundle-interface)
-  (dispatch-tag->predicate (%bundle-tag bundle)))
-
-(define (bundle-names bundle)
-  (guarantee bundle? bundle 'bundle-names)
-  (vector->list (tag-element-names (%bundle-tag bundle))))
-
-(define (bundle->alist bundle)
-  (guarantee bundle? bundle 'bundle->alist)
-  (map cons
-       (vector->list (tag-element-names (%bundle-tag bundle)))
-       (vector->list (%bundle-values bundle))))
-
-(define (bundle-ref bundle operator #!optional default)
-  (guarantee bundle? bundle 'bundle-ref)
-  (let ((index
-	 (element-index (%bundle-tag bundle)
-			operator
-			(default-object? default))))
-    (if index
-	(vector-ref (%bundle-values bundle) index)
-        default)))
-
-(define-unparser-method bundle?
-  (standard-unparser-method
-   (lambda (bundle)
-     (dispatch-tag-name (%bundle-tag bundle)))
-   #f))
-
-(define-pp-describer bundle?
-  (lambda (bundle)
-    (map (lambda (name)
-	   (list name (bundle-ref bundle name)))
-	 (bundle-names bundle))))
-
-(define (bundle-constructor interface)
-  (guarantee bundle-interface? interface 'bundle-constructor)
-  (let* ((tag (predicate->dispatch-tag interface))
-	 (n (vector-length (tag-element-names tag))))
-    (let-syntax
-	((expand-cases
-	  (sc-macro-transformer
-	   (lambda (form environment)
-	     (let ((limit (cadr form))
-		   (default (caddr form))
-		   (make-name
-		    (lambda (i)
-		      (intern (string-append "v" (number->string i))))))
-	       (let loop ((i 0) (names '()))
-		 (if (fix:< i limit)
-		     `(if (fix:= n ,i)
-			  (lambda (,@names) (%make-bundle tag (vector ,@names)))
-			  ,(loop (fix:+ i 1)
-				 (append names (list (make-name i)))))
-		     default)))))))
-      (expand-cases 16
-	(letrec
-	    ((constructor
-	      (lambda args
-		(if (not (fix:= n (length args)))
-		    (error:wrong-number-of-arguments constructor n args))
-		(%make-bundle interface (list->vector args)))))
-	  constructor)))))
-
-(define (bundle-accessor interface name)
-  (guarantee bundle-interface? interface 'bundle-accessor)
-  (let ((index (element-index (predicate->dispatch-tag interface) name #t)))
-    (lambda (bundle)
-      (guarantee interface bundle)
-      (vector-ref (%bundle-values bundle) index))))
-
-(define (alist->bundle interface alist)
-  (guarantee bundle-interface? interface 'alist->bundle)
+(define (alist->bundle predicate alist)
+  (guarantee bundle-predicate? predicate 'alist->bundle)
   (guarantee bundle-alist? alist 'alist->bundle)
-  (let* ((tag (predicate->dispatch-tag interface))
-	 (n (vector-length (tag-element-names tag))))
-    (if (not (fix:= (length alist) n))
-	(error "Bundle alist doesn't match its elements:" alist interface))
-    (let ((values (make-vector n)))
-      (for-each (lambda (p)
-		  (vector-set! values
-			       (element-index tag (car p) #t)
-			       (cdr p)))
-		alist)
-      (%make-bundle tag values))))
+  (%make-bundle predicate (alist-copy alist)))
 
 (define (bundle-alist? object)
   (and (alist? object)
        (every (lambda (p)
-		(symbol? (car p)))
-	      object)
-       (no-duplicate-keys? object car)))
-(register-predicate! bundle-alist? 'bundle-alist '<= alist?)
+                (symbol? (car p)))
+              object)))
 
-(define (alist-has-unique-keys? alist)
-  (no-duplicate-keys? alist car))
+(define-record-type <bundle>
+    (%make-bundle predicate alist)
+    bundle?
+  (predicate bundle-predicate)
+  (alist bundle-alist))
 
-(define (no-duplicate-keys? items get-key)
-  (or (null? items)
-      (and (not (any (let ((key (get-key (car items))))
-		       (lambda (item)
-			 (eq? key (get-key item))))
-		     (cdr items)))
-	   (no-duplicate-keys? (cdr items) get-key))))
+(set-record-type-applicator! <bundle>
+  (lambda (bundle operator . args)
+    (apply (bundle-ref bundle operator) args)))
+
+(define-unparser-method bundle?
+  (standard-unparser-method
+   (lambda (bundle)
+     (predicate-name (bundle-predicate bundle)))
+   (lambda (bundle port)
+     (let ((handler (bundle-ref bundle 'write-self #f)))
+       (if handler
+	   (handler port))))))
+
+(define (bundle->alist bundle)
+  (alist-copy (bundle-alist bundle)))
+
+(define (bundle-names bundle)
+  (map car (bundle-alist bundle)))
+
+(define (bundle-ref bundle operator #!optional default)
+  (let ((p (assq operator (bundle-alist bundle))))
+    (if p
+        (cdr p)
+        (begin
+          (if (default-object? default)
+              (error "Unknown bundle operator:" operator))
+          default))))

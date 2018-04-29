@@ -757,46 +757,9 @@ USA.
 			   swap!
 			   (apply scons-lambda '() body-forms)
 			   swap!)))))))))
-
-(define-syntax $define-bundle-interface
-  (sc-macro-transformer
-   (lambda (form use-env)
-     (syntax-check '(_ identifier identifier identifier
-		       * (or symbol (symbol * (symbol * expression))))
-		   form)
-     (make-interface-helper (close-syntax (cadr form) use-env)
-			    (close-syntax (caddr form) use-env)
-			    (close-syntax (cadddr form) use-env)
-			    (cddddr form)))))
 
-(define (make-interface-helper interface constructor capturer elements)
-  `(begin
-     (define ,interface
-       (make-bundle-interface
-	',(let* ((name (identifier->symbol interface))
-		 (s (symbol->string name)))
-	    (if (string-suffix? "?" s)
-		(string->symbol (string-head s (fix:- (string-length s) 1)))
-		name))
-	(list ,@(map (lambda (element)
-		       (if (symbol? element)
-			   `',element
-			   `(list ',(car element)
-				  ,@(map (lambda (p)
-					   `(list ',(car p) ,@(cdr p)))
-					 (cdr element)))))
-		     elements))))
-     (define ,constructor
-       (bundle-constructor ,interface))
-     (define-syntax ,capturer
-       (sc-macro-transformer
-	(lambda (form use-env)
-	  (syntax-check '(_) form)
-	  (list (quote-identifier ,constructor)
-		,@(map (lambda (element)
-			 `(close-syntax
-			   ',(if (symbol? element)
-				 element
-				 (car element))
-			   use-env))
-		       elements)))))))
+(define-syntax $bundle
+  (syntax-rules ()
+    ((_ predicate name ...)
+     (alist->bundle predicate
+                  (list (cons 'name name) ...)))))
