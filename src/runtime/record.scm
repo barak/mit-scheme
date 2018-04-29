@@ -85,7 +85,7 @@ USA.
 	  (named-lambda (%valid-default-init? object)
 	    (or (not object)
 		(thunk? object))))
-    unspecific))
+    (%initialize-applicator-context!)))
 
 (define (initialize-record-procedures!)
   (run-deferred-boot-actions 'record-procedures))
