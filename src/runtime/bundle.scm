@@ -65,16 +65,24 @@ USA.
   (record-predicate type))
 
 (define (alist->bundle type alist)
-  (guarantee bundle-type? type 'alist->bundle)
   (guarantee %bundle-alist? alist 'alist->bundle)
   ((record-constructor type) (alist-copy alist)))
+
+(defer-boot-action 'predicate-relations
+  (lambda ()
+    (set! alist->bundle
+	  (named-lambda (alist->bundle type alist)
+	    (guarantee bundle-type? type 'alist->bundle)
+	    (guarantee %bundle-alist? alist 'alist->bundle)
+	    ((record-constructor type) (alist-copy alist))))
+    unspecific))
 
 (define (%bundle-alist? object)
   (and (alist? object)
        (every (lambda (p)
                 (symbol? (car p)))
               object)))
-
+
 (define-record-type <bundle>
     (%unused% alist) ;change to #f after 9.3 release
     bundle?

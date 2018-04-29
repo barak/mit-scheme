@@ -36,20 +36,21 @@ USA.
 (define get-metadata-alist)
 
 (define (use-metadata-implementation! implementation)
-  (set! parameter? (implementation 'has?))
-  (set! parameter-metadata (implementation 'get))
-  (set! set-parameter-metadata! (implementation 'put!))
-  (set! get-metadata-alist (implementation 'get-alist))
+  (set! parameter? (bundle-ref implementation 'has?))
+  (set! parameter-metadata (bundle-ref implementation 'get))
+  (set! set-parameter-metadata! (bundle-ref implementation 'put!))
+  (set! get-metadata-alist (bundle-ref implementation 'get-alist))
   unspecific)
 
 ;; Use alist for cold-load.
 (use-metadata-implementation! (make-alist-metadata-table))
 
 ;; Later move metadata to hash table.
-(define (initialize-package!)
-  (let ((implementation (make-hashed-metadata-table)))
-    ((implementation 'put-alist!) (get-metadata-alist))
-    (use-metadata-implementation! implementation)))
+(add-boot-init!
+ (lambda ()
+   (let ((implementation (make-hashed-metadata-table)))
+     (implementation 'put-alist! (get-metadata-alist))
+     (use-metadata-implementation! implementation))))
 
 (define-guarantee parameter "parameter")
 

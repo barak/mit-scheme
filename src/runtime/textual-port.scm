@@ -507,22 +507,22 @@ USA.
 
 (define (port-property port name #!optional default-value)
   (guarantee symbol? name 'port-property)
-  (((port-metadata port) 'get) name default-value))
+  ((port-metadata port) 'get name default-value))
 
 (define (set-port-property! port name value)
   (guarantee symbol? name 'set-port-property!)
-  (((port-metadata port) 'put!) name value))
+  ((port-metadata port) 'put! name value))
 
 (define (intern-port-property! port name get-value)
   (guarantee symbol? name 'intern-port-property!)
-  (((port-metadata port) 'intern!) name get-value))
+  ((port-metadata port) 'intern! name get-value))
 
 (define (remove-port-property! port name)
   (guarantee symbol? name 'remove-port-property!)
-  (((port-metadata port) 'delete!) name))
+  ((port-metadata port) 'delete! name))
 
 (define (port-properties port)
-  (alist-copy (((port-metadata port) 'get-alist))))
+  (alist-copy ((port-metadata port) 'get-alist)))
 
 (define (transcribe-char char port)
   (let ((tport (textual-port-transcript port)))

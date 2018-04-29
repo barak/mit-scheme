@@ -454,9 +454,9 @@ USA.
 (define comparator-metadata)
 (define set-comparator-metadata!)
 (let ((table (make-hashed-metadata-table)))
-  (set! comparator? (table 'has?))
-  (set! comparator-metadata (table 'get))
-  (set! set-comparator-metadata! (table 'put!))
+  (set! comparator? (bundle-ref table 'has?))
+  (set! comparator-metadata (bundle-ref table 'get))
+  (set! set-comparator-metadata! (bundle-ref table 'put!))
   unspecific)
 
 (define-for-tests (define-comparator comparator name)

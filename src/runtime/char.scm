@@ -684,8 +684,8 @@ USA.
 (add-boot-init!
  (lambda ()
    (let ((table (make-alist-metadata-table)))
-     (set! get-char-codec (table 'get))
-     (set! set-char-codec! (table 'put!))
+     (set! get-char-codec (bundle-ref table 'get))
+     (set! set-char-codec! (bundle-ref table 'put!))
      unspecific)))
 
 (define (define-char-codec name codec)

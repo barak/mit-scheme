@@ -4359,8 +4359,7 @@ USA.
 	  make-general-parameter
 	  make-settable-parameter
 	  make-unsettable-parameter
-	  parameterize*)
-  (initialization (initialize-package!)))
+	  parameterize*))
 
 (define-package (runtime stream)
   (files "stream")

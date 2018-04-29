@@ -122,8 +122,8 @@ USA.
 (add-boot-init!
  (lambda ()
    (let ((table (make-alist-metadata-table)))
-     (set! compound-operator-builder (table 'get))
-     (set! define-compound-operator (table 'put!))
+     (set! compound-operator-builder (bundle-ref table 'get))
+     (set! define-compound-operator (bundle-ref table 'put!))
      unspecific)))
 
 (add-boot-init!

@@ -494,6 +494,9 @@ USA.
 
 ;;;; Metadata tables
 
+(define <metadata-table>
+  (make-bundle-type 'metadata-table))
+
 (define (make-alist-metadata-table)
   (let ((alist '()))
 
@@ -540,17 +543,8 @@ USA.
 		  (put! (car p) (cdr p)))
 		alist*))
 
-    (lambda (operator)
-      (case operator
-	((has?) has?)
-	((get) get)
-	((put!) put!)
-	((intern!) intern!)
-	((delete!) delete!)
-	((get-alist) get-alist)
-	((put-alist!) put-alist!)
-	((get-if-available) get)
-	(else (error "Unknown operator:" operator))))))
+    (bundle <metadata-table>
+	    has? get put! intern! delete! get-alist put-alist!)))
 
 (define (make-hashed-metadata-table)
   (let ((table (make-key-weak-eqv-hash-table)))
@@ -580,17 +574,8 @@ USA.
 		  (put! (car p) (cdr p)))
 		alist*))
 
-    (lambda (operator)
-      (case operator
-	((has?) has?)
-	((get) get)
-	((put!) put!)
-	((intern!) intern!)
-	((delete!) delete!)
-	((get-alist) get-alist)
-	((put-alist!) put-alist!)
-	((get-if-available) get)
-	(else (error "Unknown operator:" operator))))))
+    (bundle <metadata-table>
+	    has? get put! intern! delete! get-alist put-alist!)))
 
 ;;;; Builder for vector-like sequences
 

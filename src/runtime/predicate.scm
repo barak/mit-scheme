@@ -112,9 +112,9 @@ USA.
 (add-boot-init!
  (lambda ()
    (let ((table (make-hashed-metadata-table)))
-     (set! predicate? (table 'has?))
-     (set! get-predicate-tag (table 'get))
-     (set! set-predicate-tag! (table 'put!)))
+     (set! predicate? (bundle-ref table 'has?))
+     (set! get-predicate-tag (bundle-ref table 'get))
+     (set! set-predicate-tag! (bundle-ref table 'put!)))
    (set! predicate->dispatch-tag
 	 (named-lambda (predicate->dispatch-tag predicate)
 	   (let ((tag (get-predicate-tag predicate #f)))

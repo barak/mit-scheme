@@ -1387,9 +1387,9 @@ USA.
 (add-boot-init!
  (lambda ()
    (let ((table (make-hashed-metadata-table)))
-     (set! equality-predicate? (table 'has?))
-     (set! %equality-predicate-properties (table 'get))
-     (set! %set-equality-predicate-properties! (table 'put!)))
+     (set! equality-predicate? (bundle-ref table 'has?))
+     (set! %equality-predicate-properties (bundle-ref table 'get))
+     (set! %set-equality-predicate-properties! (bundle-ref table 'put!)))
    (set-equality-predicate-properties! eq? hash-by-identity #t)
    (set-equality-predicate-properties! eqv? hash-by-eqv #t)
    (set-equality-predicate-properties! equal? hash-by-equal #t)

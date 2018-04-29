@@ -81,6 +81,14 @@ USA.
 			(->environment '(runtime hash-table))
 			'hash-table-constructor))
 
+    (if (unbound? env 'bundle)
+	(eval '(define-syntax bundle
+		 (syntax-rules ()
+		   ((_ predicate name ...)
+		    (alist->bundle predicate
+				   (list (cons 'name name) ...)))))
+	      env))
+
     (for-each (lambda (old-name)
 		(provide-rename env old-name (symbol 'scode- old-name)))
 	      '(access-environment
