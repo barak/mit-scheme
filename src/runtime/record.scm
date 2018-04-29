@@ -85,7 +85,7 @@ USA.
 	  (named-lambda (%valid-default-init? object)
 	    (or (not object)
 		(thunk? object))))
-    (%initialize-applicator-context!)))
+    unspecific))
 
 (define (initialize-record-procedures!)
   (run-deferred-boot-actions 'record-procedures))
@@ -202,7 +202,7 @@ USA.
 (define-integrable (%set-record-type-applicator! record-type applicator)
   (%dispatch-tag-extra-set! record-type 4 applicator))
 
-(define (%initialize-applicator-context!)
+(define (initialize-applicator-context!)
   (set-fixed-objects-item! 'record-dispatch-tag %record-metatag)
   (set-fixed-objects-item! 'record-applicator-index
 			   (%dispatch-tag-extra-index 4)))
