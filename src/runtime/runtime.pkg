@@ -3729,6 +3729,7 @@ USA.
   (export () deprecated:record
 	  set-record-type-unparser-method!)
   (export ()
+	  applicable-record?
 	  condition-type:no-such-slot
 	  condition-type:slot-error
 	  condition-type:uninitialized-slot
@@ -3747,12 +3748,12 @@ USA.
 	  named-vector?
 	  new-make-record-type
 	  record-accessor
+	  record-applicator
 	  record-constructor
 	  record-copy
 	  record-keyword-constructor
 	  record-modifier
 	  record-predicate
-	  record-type-applicator
 	  record-type-default-value-by-index
 	  record-type-descriptor
 	  record-type-dispatch-tag	;can be deleted after 9.3 release

@@ -84,14 +84,17 @@ USA.
 	  (else (error:wrong-type-argument procedure "procedure" caller)))))
 
 (define (skip-entities object)
-  (if (%entity? object)
-      (skip-entities (if (%entity-is-apply-hook? object)
-			 (apply-hook-procedure object)
-			 (entity-procedure object)))
-      object))
+  (cond ((%entity? object)
+	 (skip-entities (if (%entity-is-apply-hook? object)
+			    (apply-hook-procedure object)
+			    (entity-procedure object))))
+	((applicable-record? object)
+	 (skip-entities (record-applicator object)))
+	(else
+	 object)))
 
 (define (procedure-arity procedure)
-  (let loop ((p procedure))
+  (define (loop p)
     (cond ((%primitive-procedure? p)
 	   (let ((arity ((ucode-primitive primitive-procedure-arity) p)))
 	     (if (fix:< arity 0)
@@ -110,21 +113,26 @@ USA.
 	  ((%entity? p)
 	   (if (%entity-is-apply-hook? p)
 	       (loop (apply-hook-procedure p))
-	       (let ((arity (loop (entity-procedure p))))
-		 (let ((min (car arity))
-		       (max (cdr arity)))
-		   (cond ((not max)
-			  (cons (if (fix:> min 0) (fix:- min 1) 0)
-				#f))
-			 ((fix:> max 0)
-			  (cons (fix:- min 1)
-				(fix:- max 1)))
-			 (else
-			  (error "Illegal arity for entity:"
-				 (entity-procedure p))))))))
+	       (let ((p* (entity-procedure p)))
+		 (or (%arity-1 (loop p*))
+		     (error "Illegal arity for entity:" p*)))))
+	  ((applicable-record? p)
+	   (let ((p* (record-applicator p)))
+	     (or (%arity-1 (loop p*))
+		 (error "Illegal arity for record applicator:" p*))))
 	  (else
-	   (error:not-a procedure? procedure 'procedure-arity)))))
+	   (error:not-a procedure? procedure 'procedure-arity))))
 
+  (define (%arity-1 arity)
+    (let ((min (car arity))
+	  (max (cdr arity)))
+      (and (or (not max)
+	       (fix:> max 0))
+	   (cons (if (fix:> min 0) (fix:- min 1) 0)
+		 (and max (fix:- max 1))))))
+
+  (loop procedure))
+
 ;; Here because it's needed during cold load for interpreted code.
 (define (scode-lambda-arity l)
   (cond ((object-type? (ucode-type lambda) l)

@@ -274,6 +274,7 @@ USA.
    (register-predicate! record? 'record
 			'<= %record?
 			'<= named-structure?)
+   (register-predicate! applicable-record? 'applicable-record '<= record?)
    (register-predicate! stack-address? 'stack-address)
    (register-predicate! thread-mutex? 'thread-mutex)
    (register-predicate! undefined-value? 'undefined-value)

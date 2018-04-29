@@ -136,7 +136,7 @@ USA.
 	  (and (%record? object)
 	       (or (eq? (%record-type-instance-marker type)
 			(%record-ref object 0))
-		   (let ((type* (%marker->type (%record-ref object 0))))
+		   (let ((type* (%record->type object)))
 		     (and type*
 			  (%record-type< type* type)))))))
        (type
@@ -153,6 +153,12 @@ USA.
 			  (record-predicate parent-type)
 			  record?))
     type))
+
+(define (%record->type record)
+  (let ((marker (%record-ref record 0)))
+    (cond ((record-type? marker) marker)
+	  ((%record-type-proxy? marker) (%proxy->record-type marker))
+	  (else #f))))
 
 (define (%record-type< t1 t2)
   (let ((parent (%record-type-parent t1)))
@@ -225,28 +231,30 @@ USA.
   (guarantee record-type? record-type 'record-type-parent)
   (%record-type-parent record-type))
 
-(define (record-type-applicator record-type)
-  (guarantee record-type? record-type 'record-type-applicator)
-  (%record-type-applicator record-type))
-
 (define (set-record-type-applicator! record-type applicator)
   (guarantee record-type? record-type 'set-record-type-applicator!)
-  (if applicator
-      (guarantee procedure? applicator 'set-record-type-applicator!))
+  (guarantee procedure? applicator 'set-record-type-applicator!)
   (%set-record-type-applicator! record-type applicator))
+
+(define (record-applicator record)
+  (or (%record-type-applicator (record-type-descriptor record))
+      (error:not-a applicable-record? record 'record-applicator)))
 
 (define (record? object)
   (and (%record? object)
-       (%marker->type (%record-ref object 0))))
+       (%record->type object)
+       #t))
+
+(define (applicable-record? object)
+  (and (%record? object)
+       (let ((record-type (%record->type object)))
+	 (and record-type
+	      (%record-type-applicator record-type)
+	      #t))))
 
 (define (record-type-descriptor record)
-  (or (%marker->type (%record-ref record 0))
+  (or (%record->type record)
       (error:not-a record? record 'record-type-descriptor)))
-
-(define (%marker->type marker)
-  (cond ((record-type? marker) marker)
-	((%record-type-proxy? marker) (%proxy->record-type marker))
-	(else #f)))
 
 (define (%record-type-fasdumpable? type)
   (%record-type-proxy? (%record-type-instance-marker type)))
