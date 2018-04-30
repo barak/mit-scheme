@@ -467,7 +467,7 @@ USA.
 (define (exact-nonnegative-integer->bytevector n)
   (guarantee exact-nonnegative-integer? n
 	     'exact-nonnegative-integer->bytevector)
-  (let* ((n-bytes (quotient (+ (integer-length-in-bits n) #xFF) #x100))
+  (let* ((n-bytes (quotient (+ (integer-length-in-bits n) 7) 8))
 	 (result (make-bytevector n-bytes)))
     (do ((n n (quotient n #x100))
 	 (i 0 (fix:+ i 1)))
