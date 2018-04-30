@@ -42,25 +42,25 @@ USA.
 (declare (usual-integrations))
 
 (define (hash-object object #!optional hasher)
-  ((get-operation hasher 'hash-object) object))
+  ((->hasher hasher 'hash-object) 'hash-object object))
 
 (define (object-hashed? object #!optional hasher)
-  ((get-operation hasher 'object-hashed?) object))
+  ((->hasher hasher 'object-hashed?) 'object-hashed? object))
 
 (define (unhash-object hash #!optional hasher)
-  ((get-operation hasher 'unhash-object) hash))
+  ((->hasher hasher 'unhash-object) 'unhash-object hash))
 
 (define (valid-object-hash? hash #!optional hasher)
-  ((get-operation hasher 'valid-object-hash?) hash))
+  ((->hasher hasher 'valid-object-hash?) 'valid-object-hash? hash))
 
-(define (get-operation hasher operator)
-  ((if (default-object? hasher)
-       default-object-hasher
-       hasher)
-   operator))
+(define (->hasher hasher caller)
+  (if (default-object? hasher)
+      default-object-hasher
+      (guarantee hasher? hasher caller)))
 
-(define-deferred default-object-hasher
-  (make-object-hasher 313))
+(define-deferred <object-hasher> (make-bundle-type 'object-hasher))
+(define-deferred object-hasher? (bundle-predicate <object-hasher>))
+(define-deferred default-object-hasher (make-object-hasher 313))
 
 (define (make-object-hasher #!optional initial-size)
   (let ((mutex (make-thread-mutex))
@@ -101,10 +101,5 @@ USA.
 	    (lambda ()
 	      (hash-table-exists? unhash-table hash)))))
 
-    (lambda (operator)
-      (case operator
-	((hash-object) hash-object)
-	((object-hashed?) object-hashed?)
-	((unhash-object) unhash-object)
-	((valid-object-hash?) valid-object-hash?)
-	(else (error "Unknown operator:" operator))))))
+    (bundle <object-hasher>
+	    hash-object object-hashed? unhash-object valid-object-hash?)))
