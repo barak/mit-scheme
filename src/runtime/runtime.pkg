@@ -1929,11 +1929,10 @@ USA.
 	  bundle->alist
 	  bundle-names
 	  bundle-predicate
-	  bundle-type
-	  bundle-type?
+	  bundle-predicate?
 	  bundle-ref
 	  bundle?
-	  make-bundle-type))
+	  make-bundle-predicate))
 
 (define-package (runtime environment)
   (files "environment")

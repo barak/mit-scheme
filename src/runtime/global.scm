@@ -494,8 +494,8 @@ USA.
 
 ;;;; Metadata tables
 
-(define <metadata-table>
-  (make-bundle-type 'metadata-table))
+(define metadata-table?
+  (make-bundle-predicate 'metadata-table))
 
 (define (make-alist-metadata-table)
   (let ((alist '()))
@@ -543,7 +543,7 @@ USA.
 		  (put! (car p) (cdr p)))
 		alist*))
 
-    (bundle <metadata-table>
+    (bundle metadata-table?
 	    has? get put! intern! delete! get-alist put-alist!)))
 
 (define (make-hashed-metadata-table)
@@ -574,7 +574,7 @@ USA.
 		  (put! (car p) (cdr p)))
 		alist*))
 
-    (bundle <metadata-table>
+    (bundle metadata-table?
 	    has? get put! intern! delete! get-alist put-alist!)))
 
 ;;;; Builder for vector-like sequences

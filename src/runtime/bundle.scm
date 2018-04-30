@@ -36,45 +36,45 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-bundle-type name #!optional parent-type)
+(define (make-bundle-predicate name #!optional parent-predicate)
   (let ((type
 	 (new-make-record-type name
 			       '()
-			       (if (default-object? parent-type)
+			       (if (default-object? parent-predicate)
 				   <bundle>
-				   (guarantee bundle-type? parent-type
-					      'make-bundle-type)))))
+				   (%predicate->record-type
+				    (guarantee bundle-predicate?
+					       parent-predicate
+					       'make-bundle-predicate))))))
     (set-record-type-applicator! type %bundle-applicator)
-    type))
+    (record-predicate type)))
 
 (define (%bundle-applicator bundle operator . args)
   (apply (bundle-ref bundle operator) args))
 
-(define (bundle-type? object)
-  (and (record-type? object)
-       (predicate<= (record-predicate object) bundle?)))
-(register-predicate! bundle-type? 'bundle-type '<= record-type?)
+(define-integrable (%predicate->record-type predicate)
+  (predicate->dispatch-tag predicate))
 
-(define-unparser-method bundle-type?
-  (simple-unparser-method 'bundle-type
-    (lambda (type)
-      (list (dispatch-tag-name type)))))
+(define (bundle-predicate? object)
+  (and (predicate? object)
+       (predicate<= object bundle?)))
 
-(define (bundle-predicate type)
-  (guarantee bundle-type? type 'bundle-predicate)
-  (record-predicate type))
+(defer-boot-action 'predicate-relations
+  (lambda ()
+    (register-predicate! bundle-predicate? 'bundle-predicate '<= predicate?)))
 
-(define (alist->bundle type alist)
+(define (alist->bundle predicate alist)
   (guarantee %bundle-alist? alist 'alist->bundle)
-  ((record-constructor type) (alist-copy alist)))
+  ((record-constructor (%predicate->record-type predicate)) (alist-copy alist)))
 
 (defer-boot-action 'predicate-relations
   (lambda ()
     (set! alist->bundle
-	  (named-lambda (alist->bundle type alist)
-	    (guarantee bundle-type? type 'alist->bundle)
+	  (named-lambda (alist->bundle predicate alist)
+	    (guarantee bundle-predicate? predicate 'alist->bundle)
 	    (guarantee %bundle-alist? alist 'alist->bundle)
-	    ((record-constructor type) (alist-copy alist))))
+	    ((record-constructor (%predicate->record-type predicate))
+	     (alist-copy alist))))
     unspecific))
 
 (define (%bundle-alist? object)
@@ -91,7 +91,7 @@ USA.
 (define-unparser-method bundle?
   (standard-unparser-method
    (lambda (bundle)
-     (dispatch-tag-name (bundle-type bundle)))
+     (record-type-name (record-type-descriptor bundle)))
    (lambda (bundle port)
      (let ((handler (bundle-ref bundle 'write-self #f)))
        (if handler
@@ -105,9 +105,9 @@ USA.
 	  (map (lambda (p) `(,(car p) ,(cdr p)))
 	       (bundle-alist bundle))))))
 
-(define (bundle-type bundle)
+(define (bundle-predicate bundle)
   (guarantee bundle? bundle 'bundle-type)
-  (record-type-descriptor bundle))
+  (record-predicate (record-type-descriptor bundle)))
 
 (define (bundle->alist bundle)
   (alist-copy (bundle-alist bundle)))

@@ -56,10 +56,9 @@ USA.
 (define (->hasher hasher caller)
   (if (default-object? hasher)
       default-object-hasher
-      (guarantee hasher? hasher caller)))
+      (guarantee object-hasher? hasher caller)))
 
-(define-deferred <object-hasher> (make-bundle-type 'object-hasher))
-(define-deferred object-hasher? (bundle-predicate <object-hasher>))
+(define-deferred object-hasher? (make-bundle-predicate 'object-hasher))
 (define-deferred default-object-hasher (make-object-hasher 313))
 
 (define (make-object-hasher #!optional initial-size)
@@ -101,5 +100,5 @@ USA.
 	    (lambda ()
 	      (hash-table-exists? unhash-table hash)))))
 
-    (bundle <object-hasher>
+    (bundle object-hasher?
 	    hash-object object-hashed? unhash-object valid-object-hash?)))

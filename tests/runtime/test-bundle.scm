@@ -30,14 +30,13 @@ USA.
 
 (define-test 'simple
   (lambda ()
-    (define <foo> (make-bundle-type 'foo))
-    (assert-true (bundle-type? <foo>))
-    (define foo? (bundle-predicate <foo>))
+    (define foo? (make-bundle-predicate 'foo))
+    (assert-true (bundle-predicate? foo?))
 
     (let ((x 10)
 	  (y 20)
 	  (z 40))
-      (let ((b (bundle <foo> x y z)))
+      (let ((b (bundle foo? x y z)))
 	(assert-true (foo? b))
 	(assert-eqv (bundle-ref b 'x) x)
 	(assert-eqv (bundle-ref b 'y) y)
@@ -48,11 +47,8 @@ USA.
 (define-test 'metadata-table
   (lambda ()
 
-    (define <metadata-table>
-      (make-bundle-type 'metadata-table))
-
     (define metadata-table?
-      (bundle-predicate <metadata-table>))
+      (make-bundle-predicate 'metadata-table))
 
     (define foo
       (let ((alist '()))
@@ -100,7 +96,7 @@ USA.
 		      (put! (car p) (cdr p)))
 		    alist*))
 
-	(bundle <metadata-table>
+	(bundle metadata-table?
 		has?
 		get
 		put!
