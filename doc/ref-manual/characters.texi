@@ -146,11 +146,11 @@ Returns @code{#t} if @var{object} is a character, otherwise returns
 @code{#f}.
 @end deffn
 
-@deffn {standard procedure} char=? char1 char2
-@deffnx {standard procedure} char<? char1 char2
-@deffnx {standard procedure} char>? char1 char2
-@deffnx {standard procedure} char<=? char1 char2
-@deffnx {standard procedure} char>=? char1 char2
+@deffn {standard procedure} char=? char1 char2 char3 @dots{}
+@deffnx {standard procedure} char<? char1 char2 char3 @dots{}
+@deffnx {standard procedure} char>? char1 char2 char3 @dots{}
+@deffnx {standard procedure} char<=? char1 char2 char3 @dots{}
+@deffnx {standard procedure} char>=? char1 char2 char3 @dots{}
 @cindex equivalence predicate, for characters
 @cindex ordering, of characters
 @cindex comparison, of characters
@@ -162,11 +162,11 @@ non-decreasing, or monotonically non-increasing.
 These predicates are transitive.
 @end deffn
 
-@deffn {standard procedure} char-ci=? char1 char2
-@deffnx {standard procedure} char-ci<? char1 char2
-@deffnx {standard procedure} char-ci>? char1 char2
-@deffnx {standard procedure} char-ci<=? char1 char2
-@deffnx {standard procedure} char-ci>=? char1 char2
+@deffn {char library procedure} char-ci=? char1 char2 char3 @dots{}
+@deffnx {char library procedure} char-ci<? char1 char2 char3 @dots{}
+@deffnx {char library procedure} char-ci>? char1 char2 char3 @dots{}
+@deffnx {char library procedure} char-ci<=? char1 char2 char3 @dots{}
+@deffnx {char library procedure} char-ci>=? char1 char2 char3 @dots{}
 These procedures are similar to @code{char=?} et cetera, but they
 treat upper case and lower case letters as the same.  For example,
 @code{(char-ci=? #\A #\a)} returns @code{#t}.
@@ -175,11 +175,11 @@ Specifically, these procedures behave as if @code{char-foldcase} were
 applied to their arguments before they were compared.
 @end deffn
 
-@deffn {standard procedure} char-alphabetic? char
-@deffnx {standard procedure} char-numeric? char
-@deffnx {standard procedure} char-whitespace? char
-@deffnx {standard procedure} char-upper-case? char
-@deffnx {standard procedure} char-lower-case? char
+@deffn {char library procedure} char-alphabetic? char
+@deffnx {char library procedure} char-numeric? char
+@deffnx {char library procedure} char-whitespace? char
+@deffnx {char library procedure} char-upper-case? char
+@deffnx {char library procedure} char-lower-case? char
 These procedures return @code{#t} if their arguments are alphabetic,
 numeric, whitespace, upper case, or lower case characters
 respectively, otherwise they return @code{#f}.
@@ -196,7 +196,7 @@ Returns @code{#t} if @var{char} is either alphabetic or numeric,
 otherwise it returns @code{#f}.
 @end deffn
 
-@deffn {standard procedure} digit-value char
+@deffn {char library procedure} digit-value char
 This procedure returns the numeric value (0 to 9) of its argument
 if it is a numeric digit (that is, if @code{char-numeric?} returns @code{#t}),
 or @code{#f} on any other character.
@@ -233,9 +233,9 @@ This is a very useful way to denote unusual character constants or
 @acronym{ASCII} codes.
 @end deffn
 
-@deffn {standard procedure} char-upcase char
-@deffnx {standard procedure} char-downcase char
-@deffnx {standard procedure} char-foldcase char
+@deffn {char library procedure} char-upcase char
+@deffnx {char library procedure} char-downcase char
+@deffnx {char library procedure} char-foldcase char
 @cindex uppercase, character conversion
 @cindex lowercase, character conversion
 @cindex case conversion, of character
@@ -315,7 +315,7 @@ There are 4 bucky bits, named @dfn{control}, @dfn{meta}, @dfn{super},
 and @dfn{hyper}.  On GNU/Linux systems running a graphical desktop,
 the control bit corresponds to the @key{CTRL} key; the meta bit
 corresponds to the @key{ALT} key; and the super bit corresponds to the
-``windows'' key.  On Macos, these are the @key{CONTROL}, @key{OPTION},
+``windows'' key.  On macOS, these are the @key{CONTROL}, @key{OPTION},
 and @key{COMMAND} keys respectively.
 
 Characters with bucky bits are not used much outside of graphical user

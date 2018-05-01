@@ -128,9 +128,18 @@ characters of the string are initialized to @var{char}, otherwise the
 contents of the string are unspecified.
 @end deffn
 
-@deffn {standard procedure} string char @dots{}
-Returns an immutable string composed of the arguments.  It is
-analogous to @code{list}.
+@deffn {extended standard procedure} string object @dots{}
+@deffnx procedure string* objects
+Returns an immutable string whose characters are the concatenation of
+the characters from the given objects.  Each object is converted to
+characters as if passed to the @code{display} procedure.
+
+This is an MIT/GNU Scheme extension to the standard @code{string} that
+accepts only characters as arguments.
+
+The procedure @code{string*} is identical to @code{string} but takes a
+single argument that's a list of objects, rather than multiple object
+arguments.
 @end deffn
 
 @deffn {standard procedure} string-length string
@@ -169,7 +178,7 @@ exactly the same characters in the same positions, otherwise returns
 @code{#f}.
 @end deffn
 
-@deffn {standard procedure} string-ci=? string1 string2 string @dots{}
+@deffn {char library procedure} string-ci=? string1 string2 string @dots{}
 Returns @code{#t} if, after case-folding, all the strings are the same
 length and contain the same characters in the same positions,
 otherwise returns @code{#f}.  Specifically, these procedures behave as
@@ -178,13 +187,13 @@ comparing them.
 @end deffn
 
 @deffn {standard procedure} string<? string1 string2 string @dots{}
-@deffnx {standard procedure} string-ci<? string1 string2 string @dots{}
+@deffnx {char library procedure} string-ci<? string1 string2 string @dots{}
 @deffnx {standard procedure} string>? string1 string2 string @dots{}
-@deffnx {standard procedure} string-ci>? string1 string2 string @dots{}
+@deffnx {char library procedure} string-ci>? string1 string2 string @dots{}
 @deffnx {standard procedure} string<=? string1 string2 string @dots{}
-@deffnx {standard procedure} string-ci<=? string1 string2 string @dots{}
+@deffnx {char library procedure} string-ci<=? string1 string2 string @dots{}
 @deffnx {standard procedure} string>=? string1 string2 string @dots{}
-@deffnx {standard procedure} string-ci>=? string1 string2 string @dots{}
+@deffnx {char library procedure} string-ci>=? string1 string2 string @dots{}
 These procedures return @code{#t} if their arguments are (respectively):
 monotonically increasing, monotonically decreasing,
 monotonically non-decreasing, or monotonically non-increasing.
@@ -236,10 +245,10 @@ thunk that is applied.
 @end example
 @end deffn
 
-@deffn {standard procedure} string-upcase string
-@deffnx {standard procedure} string-downcase string
+@deffn {char library procedure} string-upcase string
+@deffnx {char library procedure} string-downcase string
 @deffnx procedure string-titlecase string
-@deffnx {standard procedure} string-foldcase string
+@deffnx {char library procedure} string-foldcase string
 These procedures apply the Unicode full string uppercasing,
 lowercasing, titlecasing, and case-folding algorithms to their
 arguments and return the result.  In certain cases, the result differs
@@ -268,70 +277,6 @@ must contain at least one letter or the procedures return @code{#f}.
                        @result{} (#f    #t     #f     #f     #t)
 @end group
 @end example
-@end deffn
-
-@deffn {standard procedure} string-append string @dots{}
-@deffnx procedure string-append* strings
-Returns an immutable string whose characters are the concatenation of
-the characters in the given strings.
-
-The non-standard procedure @code{string-append*} is identical to
-@code{string-append} but takes a single argument that's a list of
-strings, rather than multiple string arguments.
-@end deffn
-
-@deffn procedure string object @dots{}
-@deffnx procedure string* objects
-Returns an immutable string whose characters are the concatenation of
-the characters from the given objects.  Each object is converted to
-characters as if passed to the @code{display} procedure.
-
-The procedure @code{string*} is identical to @code{string} but takes a
-single argument that's a list of objects, rather than multiple object
-arguments.
-@end deffn
-
-@deffn {standard procedure} string->list string [start [end]]
-@deffnx {standard procedure} list->string list
-It is an error if any element of @var{list} is not a character.
-
-The @code{string->list} procedure returns a newly allocated list of
-the characters of @var{string} between @var{start} and @var{end}.
-@code{list->string} returns an immutable string formed from the
-elements in the list @var{list}.  In both procedures, order is
-preserved.  @code{string->list} and @code{list->string} are inverses
-so far as @code{equal?} is concerned.
-@end deffn
-
-@deffn {standard procedure} string-copy! to at from [start [end]]
-It is an error if @var{at} is less than zero or greater than the
-length of @var{to}.  It is also an error if @code{(- (string-length
-@var{to}) @var{at})} is less than @code{(- @var{end} @var{start})}.
-
-Copies the characters of string @var{from} between @var{start} and
-@var{end} to string @var{to}, starting at @var{at}.  The order in
-which characters are copied is unspecified, except that if the source
-and destination overlap, copying takes place as if the source is first
-copied into a temporary string and then into the destination.  This
-can be achieved without allocating storage by making sure to copy in
-the correct direction in such circumstances.
-
-@example
-@group
-(define a "12345")
-(define b (string-copy "abcde"))
-(string-copy! b 1 a 0 2) @result{} 3
-b @result{} "a12de"%
-@end group
-@end example
-
-Implementation note: in MIT/GNU Scheme @code{string-copy!} returns the
-value @code{(+ @var{at} (- @var{end} @var{start}))}.
-@end deffn
-
-@deffn {standard procedure} string-copy string [start [end]]
-Returns a newly allocated mutable copy of the part of the given
-@var{string} between @var{start} and @var{end}.
 @end deffn
 
 @deffn {standard procedure} substring string [start [end]]
@@ -368,6 +313,60 @@ bar @result{} "byd"
 foo @result{} "abyde"
 @end group
 @end example
+@end deffn
+
+@deffn {standard procedure} string-append string @dots{}
+@deffnx procedure string-append* strings
+Returns an immutable string whose characters are the concatenation of
+the characters in the given strings.
+
+The non-standard procedure @code{string-append*} is identical to
+@code{string-append} but takes a single argument that's a list of
+strings, rather than multiple string arguments.
+@end deffn
+
+@deffn {standard procedure} string->list string [start [end]]
+@deffnx {standard procedure} list->string list
+It is an error if any element of @var{list} is not a character.
+
+The @code{string->list} procedure returns a newly allocated list of
+the characters of @var{string} between @var{start} and @var{end}.
+@code{list->string} returns an immutable string formed from the
+elements in the list @var{list}.  In both procedures, order is
+preserved.  @code{string->list} and @code{list->string} are inverses
+so far as @code{equal?} is concerned.
+@end deffn
+
+@deffn {standard procedure} string-copy string [start [end]]
+Returns a newly allocated mutable copy of the part of the given
+@var{string} between @var{start} and @var{end}.
+@end deffn
+
+@deffn {standard procedure} string-copy! to at from [start [end]]
+It is an error if @var{to} is not a mutable string or if @var{at} is
+less than zero or greater than the length of @var{to}.  It is also an
+error if @code{(- (string-length @var{to}) @var{at})} is less than
+@code{(- @var{end} @var{start})}.
+
+Copies the characters of string @var{from} between @var{start} and
+@var{end} to string @var{to}, starting at @var{at}.  The order in
+which characters are copied is unspecified, except that if the source
+and destination overlap, copying takes place as if the source is first
+copied into a temporary string and then into the destination.  This
+can be achieved without allocating storage by making sure to copy in
+the correct direction in such circumstances.
+
+@example
+@group
+(define a "12345")
+(define b (string-copy "abcde"))
+(string-copy! b 1 a 0 2) @result{} 3
+b @result{} "a12de"%
+@end group
+@end example
+
+Implementation note: in MIT/GNU Scheme @code{string-copy!} returns the
+value @code{(+ @var{at} (- @var{end} @var{start}))}.
 @end deffn
 
 @deffn {standard procedure} string-fill! string fill [start [end]]
