@@ -39,8 +39,12 @@ USA.
   (or (eq? object #f)
       (eq? object #t)))
 
-(define (boolean=? x y)
-  (if x y (not y)))
+;; R7RS says that the args to this procedure must satisfy boolean?.
+;; We relax that to allow any object.
+(define (boolean=? b1 b2 . bs)
+  (and (if b1 b2 (not b2))
+       (every (if b1 (lambda (b) b) not)
+	      bs)))
 
 (define (boolean/or . arguments)
   (let loop ((arguments arguments))
