@@ -66,7 +66,7 @@ Note that the symbol @code{true} is not equivalent to @code{#t}, and the
 symbol @code{false} is not equivalent to @code{#f}.
 @end defvr
 
-@deffn procedure boolean? object
+@deffn {standard procedure} boolean? object
 @cindex type predicate, for boolean
 Returns @code{#t} if @var{object} is either @code{#t} or @code{#f};
 otherwise returns @code{#f}.
@@ -79,7 +79,7 @@ otherwise returns @code{#f}.
 @end example
 @end deffn
 
-@deffn procedure not object
+@deffn {standard procedure} not object
 @deffnx procedure false? object
 @cindex false, predicate for
 @cindex inverse, of boolean object
@@ -98,12 +98,15 @@ different to give different connotations to the test.
 @end example
 @end deffn
 
-@deffn procedure boolean=? obj1 obj2
+@deffn {extended standard procedure} procedure boolean=? boolean1 boolean2 boolean3 @dots{}
 @cindex boolean object, equivalence predicate
 @cindex equivalence predicate, for boolean objects
 @cindex comparison, of boolean objects
-This predicate is true iff @var{obj1} and @var{obj2} are either both true
-or both false.
+This predicate is true iff the @var{boolean} args are either all true or all false.
+
+Implementation note: The standard requires this procedure's arguments
+to satisfy @code{boolean?}, but MIT/GNU Scheme allows any object to be
+an argument.
 @end deffn
 
 @deffn procedure boolean/and object @dots{}
