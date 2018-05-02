@@ -66,11 +66,7 @@ not much different to numbers within a few orders of magnitude of 1.
   unspecific)
 
 (define (flo:->string x radix)
-  (let ((inf?
-	 (lambda (x)
-	   (and (flo:> x 1.)
-		(flo:= x (flo:/ x 2.)))))
-	(x>0
+  (let ((x>0
 	 (lambda (x)
 	   (let ((p flo:significand-digits-base-2))
 	     (call-with-values (lambda () (dragon4-normalize x p))
@@ -90,20 +86,21 @@ not much different to numbers within a few orders of magnitude of 1.
 			   (display-procedure digits k radix))))))))))))
     (or (and flonum-unparser-hook
 	     (flonum-unparser-hook x radix))
-	(cond ((flo:positive? x)
-	       (if (inf? x)
-		   (string-copy "#[+inf]")
+	(cond ((flo:nan? x)
+	       (string-copy "+nan.0"))
+	      ((flo:positive? x)
+	       (if (flo:inf? x)
+		   (string-copy "+inf.0")
 		   (x>0 x)))
 	      ((flo:negative? x)
 	       (let ((x (flo:negate x)))
-		 (if (inf? x)
-		     (string-copy "#[-inf]")
+		 (if (flo:inf? x)
+		     (string-copy "-inf.0")
 		     (string-append "-" (x>0 x)))))
 	      ((flo:zero? x)
-	       ;; XXX Kludgey test for zero sign.
-	       (string-copy (if (flo:negative? (flo:atan2 x -1.)) "-0." "0.")))
+	       (string-copy (if (flo:safe-negative? x) "-0." "0.")))
 	      (else
-	       (string-copy "#[NaN]"))))))
+	       (string-copy "+nan.0"))))))
 
 (define (flonum-unparser:normal-output digits k radix)
   (let ((k+1 (+ k 1)))
