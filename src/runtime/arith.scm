@@ -925,7 +925,9 @@ USA.
        (real:= 1 x)))
 
 (define (real:rational? x)
-  (if (flonum? x) #t (rat:rational? x)))
+  (if (flonum? x)
+      (not (or (flo:nan? x) (flo:infinite? x)))
+      (rat:rational? x)))
 
 (define (real:integer? x)
   (if (flonum? x) (flo:integer? x) ((copy rat:integer?) x)))
