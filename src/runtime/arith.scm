@@ -937,6 +937,15 @@ USA.
        (or (rat:rational? x)
 	   (error:wrong-type-argument x #f 'exact?))))
 
+(define (real:finite? x)
+  (if (flonum? x) (flo:finite? x) #t))
+
+(define (real:infinite? x)
+  (if (flonum? x) (flo:infinite? x) #f))
+
+(define (real:nan? x)
+  (if (flonum? x) (flo:nan? x) #f))
+
 (define (real:zero? x)
   (if (flonum? x) (flo:zero? x) ((copy rat:zero?) x)))
 
@@ -1300,6 +1309,33 @@ USA.
 (define (rec:exact? z)
   (and (real:exact? (rec:real-part z))
        (real:exact? (rec:imag-part z))))
+
+(define (complex:finite? z)
+  (if (recnum? z)
+      ((copy rec:finite?) z)
+      ((copy real:finite?) z)))
+
+(define (rec:finite? z)
+  (and (real:finite? (rec:real-part z))
+       (real:finite? (rec:imag-part z))))
+
+(define (complex:infinite? z)
+  (if (recnum? z)
+      ((copy rec:infinite?) z)
+      ((copy real:infinite?) z)))
+
+(define (rec:infinite? z)
+  (or (real:infinite? (rec:real-part z))
+      (real:infinite? (rec:imag-part z))))
+
+(define (complex:nan? z)
+  (if (recnum? z)
+      ((copy rec:nan?) z)
+      ((copy real:nan?) z)))
+
+(define (rec:nan? z)
+  (or (real:nan? (rec:real-part z))
+      (real:nan? (rec:imag-part z))))
 
 (define (complex:real-arg name x)
   (if (recnum? x) (rec:real-arg name x) x))
