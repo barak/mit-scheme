@@ -476,6 +476,80 @@ DEFINE_PRIMITIVE ("CAST-INTEGER-TO-IEEE754-SINGLE", Prim_cast_integer_to_ieee754
   }
 }
 
+/* C99 flonum predicates */
+
+DEFINE_PRIMITIVE ("FLONUM-IS-FINITE?", Prim_flonum_is_finite_p, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (isfinite (arg_flonum (1))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-INFINITE?", Prim_flonum_is_infinite_p, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (isinf (arg_flonum (1))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-NAN?", Prim_flonum_is_nan_p, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (isnan (arg_flonum (1))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-NORMAL?", Prim_flonum_is_normal_p, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (isnormal (arg_flonum (1))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-NEGATIVE?", Prim_flonum_is_negative_p, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (signbit (arg_flonum (1))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-GREATER?", Prim_flonum_is_greater_p, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (isgreater ((arg_flonum (1)), (arg_flonum (2)))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-GREATER-OR-EQUAL?", Prim_flonum_is_greater_or_equal_p, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (isgreaterequal ((arg_flonum (1)), (arg_flonum (2)))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-LESS-OR-EQUAL?", Prim_flonum_is_less_or_equal_p, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (islessequal ((arg_flonum (1)), (arg_flonum (2)))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-LESS?", Prim_flonum_is_less_p, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (isless ((arg_flonum (1)), (arg_flonum (2)))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-LESS-OR-GREATER?", Prim_flonum_is_less_or_greater_p, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (islessgreater ((arg_flonum (1)), (arg_flonum (2)))));
+}
+
+DEFINE_PRIMITIVE ("FLONUM-IS-UNORDERED?", Prim_flonum_is_unordered_p, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  PRIMITIVE_RETURN
+    (BOOLEAN_TO_OBJECT (isunordered ((arg_flonum (1)), (arg_flonum (2)))));
+}
+
 /* Miscellaneous floating-point operations */
 
 DEFINE_PRIMITIVE ("FLONUM-COPYSIGN", Prim_flonum_copysign, 2, 2, 0)

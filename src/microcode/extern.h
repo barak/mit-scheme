@@ -271,7 +271,6 @@ extern SCHEME_OBJECT integer_negative_zero_bits (unsigned long, unsigned long);
 extern SCHEME_OBJECT integer_shift_left (SCHEME_OBJECT, unsigned long);
 extern SCHEME_OBJECT integer_shift_right (SCHEME_OBJECT, unsigned long);
 
-extern bool double_is_finite_p (double);
 extern SCHEME_OBJECT double_to_flonum (double);
 extern bool real_number_to_double_p (SCHEME_OBJECT);
 extern double real_number_to_double (SCHEME_OBJECT);

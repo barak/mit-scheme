@@ -912,11 +912,6 @@ USA.
       (let ((p flo:significand-digits-base-2))
 	(rat:* (flo:->integer (flo:denormalize f p))
 	       (rat:expt 2 (int:- e-p p)))))))
-
-(define (flo:nan? x)
-  (not (or (flo:positive? x)
-	   (flo:negative? x)
-	   (flo:zero? x))))
 
 (define (real:real? object)
   (or (flonum? object)

@@ -299,6 +299,7 @@ USA.
 	  flo:floor->exact
 	  flo:gamma
 	  flo:hypot
+	  flo:infinite?
 	  flo:j0
 	  flo:j1
 	  flo:jn
@@ -308,12 +309,20 @@ USA.
 	  flo:max
 	  flo:min
 	  flo:modulo
+	  flo:nan?
 	  flo:negate
 	  flo:negative?
 	  flo:nextafter
+	  flo:normal?
 	  flo:positive?
 	  flo:round
 	  flo:round->exact
+	  flo:safe-negative?
+	  flo:safe<
+	  flo:safe<=
+	  flo:safe<>
+	  flo:safe>
+	  flo:safe>=
 	  flo:sin
 	  flo:sinh
 	  flo:sqrt
@@ -321,6 +330,7 @@ USA.
 	  flo:tanh
 	  flo:truncate
 	  flo:truncate->exact
+	  flo:unordered?
 	  flo:vector-cons
 	  flo:vector-length
 	  flo:vector-ref
@@ -3311,7 +3321,6 @@ USA.
 	  cube
 	  exact-nonnegative-integer?
 	  exact-positive-integer?
-	  flo:nan?
 	  flo:significand-digits-base-10
 	  flo:significand-digits-base-2
 	  flonum-unparser-cutoff
