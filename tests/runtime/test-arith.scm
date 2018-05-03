@@ -28,16 +28,9 @@ USA.
 
 (declare (usual-integrations))
 
-;;; XXX The nonsense about IDENTITY-PROCEDURE here serves to fake
-;;; out bogus constant-folding which needs to be fixed in SF (and
-;;; probably LIAR too).
-
-(define (zero)
-  (identity-procedure 0.))
-
 (define (assert-nan object)
   (assert-true (flo:flonum? object))
-  (assert-false (flo:= object object)))
+  (assert-true (flo:nan? object)))
 
 (define (define-enumerated-test prefix elements procedure)
   (let ((n (vector-length elements)))
@@ -66,78 +59,60 @@ USA.
 
 (define-enumerated^2-test 'ZEROS-ARE-EQUAL (vector -0. 0 +0.) =)
 
-(if (flo:have-trap-enable/disable?)
-    (let ()
-
-      (define (nan)
-	(flo:with-exceptions-untrapped (flo:exception:invalid-operation)
-	  (lambda ()
-	    (flo:/ (zero) (zero)))))
-
-      (define (inf+)
-	(flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
-	  (lambda ()
-	    (flo:/ +1. (zero)))))
-
-      (define (inf-)
-	(flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
-	  (lambda ()
-	    (flo:/ -1. (zero)))))
-
-      (define-enumerated^2-test* 'ORDER-WITH-INFINITIES
-	(vector (inf-) -2. -1 -0.5 0 +0.5 +1 +2. (inf+))
+(define-enumerated^2-test* 'ORDER-WITH-INFINITIES
+  (vector (flo:-inf.0) -2. -1 -0.5 0 +0.5 +1 +2. (flo:+inf.0))
 	(lambda (i vi j vj)
 	  (if (< i j)
 	      (assert-true (< vi vj))
 	      (assert-false (< vi vj)))))
 
-      (let ((elements (vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))))
+(let ((elements (vector (flo:-inf.0) -2. -1 -0. 0 +0. +1 +2. (flo:+inf.0))))
 	(define-enumerated-test '!NAN<X elements
-	  (lambda (v) (assert-false (< (nan) v))))
+    (lambda (v) (assert-false (< (flo:nan.0) v))))
 	(define-enumerated-test '!X<NAN elements
-	  (lambda (v) (assert-false (< v (nan))))))
-      (let ((elements (vector -2. -1 -0. 0 +0. +1 +2.)))
+    (lambda (v) (assert-false (< v (flo:nan.0))))))
+(let ((elements (vector -2. -1 -0. 0 +0. +1 +2.)))
 
 	(define-enumerated-test 'MIN-INF-/X elements
-	  (lambda (v) (assert-= (min (inf-) v) (inf-))))
+    (lambda (v) (assert-= (min (flo:-inf.0) v) (flo:-inf.0))))
 	(define-enumerated-test 'MIN-INF+/X elements
-	  (lambda (v) (assert-= (min (inf+) v) v)))
+    (lambda (v) (assert-= (min (flo:+inf.0) v) v)))
 	(define-enumerated-test 'MIN-X/INF- elements
-	  (lambda (v) (assert-= (min v (inf-)) (inf-))))
+    (lambda (v) (assert-= (min v (flo:-inf.0)) (flo:-inf.0))))
 	(define-enumerated-test 'MIN-X/INF+ elements
-	  (lambda (v) (assert-= (min v (inf+)) v)))
+    (lambda (v) (assert-= (min v (flo:+inf.0)) v)))
 
 	(define-enumerated-test 'MAX-INF-/X elements
-	  (lambda (v) (assert-= (max (inf-) v) v)))
+    (lambda (v) (assert-= (max (flo:-inf.0) v) v)))
 	(define-enumerated-test 'MAX-INF+/X elements
-	  (lambda (v) (assert-= (max (inf+) v) (inf+))))
+    (lambda (v) (assert-= (max (flo:+inf.0) v) (flo:+inf.0))))
 	(define-enumerated-test 'MAX-X/INF- elements
-	  (lambda (v) (assert-= (max v (inf-)) v)))
+    (lambda (v) (assert-= (max v (flo:-inf.0)) v)))
 	(define-enumerated-test 'MAX-X/INF+ elements
-	  (lambda (v) (assert-= (max v (inf+)) (inf+)))))
+    (lambda (v) (assert-= (max v (flo:+inf.0)) (flo:+inf.0)))))
 
-      (let ((elements (vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))))
+(let ((elements (vector (flo:-inf.0) -2. -1 -0. 0 +0. +1 +2. (flo:+inf.0))))
 	(define-enumerated-test 'MIN-NAN/X elements
-	  (lambda (v) (assert-= (min (nan) v) v)))
+    (lambda (v) (assert-= (min (flo:nan.0) v) v)))
 	(define-enumerated-test 'MIN-X/NAN elements
-	  (lambda (v) (assert-= (min v (nan)) v)))
+    (lambda (v) (assert-= (min v (flo:nan.0)) v)))
 	(define-enumerated-test 'MAX-NAN/X elements
-	  (lambda (v) (assert-= (max (nan) v) v)))
+    (lambda (v) (assert-= (max (flo:nan.0) v) v)))
 	(define-enumerated-test 'MAX-X/NAN elements
-	  (lambda (v) (assert-= (max v (nan)) v))))
+    (lambda (v) (assert-= (max v (flo:nan.0)) v))))
 
-      (define-enumerated-test 'NAN*X
-	(vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))
-	(lambda (v) (assert-nan (* (nan) v))))
+(define-enumerated-test 'NAN*X
+  (vector (flo:-inf.0) -2. -1 -0. 0 +0. +1 +2. (flo:+inf.0))
+  (lambda (v) (assert-nan (* (flo:nan.0) v))))
 
-      (define-enumerated-test 'X*NAN
-	(vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))
-	(lambda (v) (assert-nan (* v (nan)))))
+(define-enumerated-test 'X*NAN
+  (vector (flo:-inf.0) -2. -1 -0. 0 +0. +1 +2. (flo:+inf.0))
+  (lambda (v) (assert-nan (* v (flo:nan.0)))))
 
-      (define-enumerated-test 'NAN/X
-	(vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))
-	(lambda (v) (assert-nan (/ (nan) v))))
+(define-enumerated-test 'NAN/X
+  (vector (flo:-inf.0) -2. -1 -0. 0 +0. +1 +2. (flo:+inf.0))
+  (lambda (v) (assert-nan (/ (flo:nan.0) v))))
 
-      (define-enumerated-test 'X/NAN
-	(vector (inf-) -2. -1 -0. 0 +0. +1 +2. (inf+))
-	(lambda (v) (assert-nan (/ v (nan)))))))
+(define-enumerated-test 'X/NAN
+  (vector (flo:-inf.0) -2. -1 -0. 0 +0. +1 +2. (flo:+inf.0))
+  (lambda (v) (assert-nan (/ v (flo:nan.0)))))
