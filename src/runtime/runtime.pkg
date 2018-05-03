@@ -370,6 +370,8 @@ USA.
   (files "floenv")
   (parent (runtime))
   (export ()
+	  flo:+inf.0
+	  flo:-inf.0
 	  flo:clear-exceptions!
 	  flo:default-environment
 	  flo:default-rounding-mode
@@ -387,6 +389,7 @@ USA.
 	  flo:have-trap-enable/disable?
 	  flo:ignoring-exception-traps
 	  flo:names->exceptions
+	  flo:nan.0
 	  flo:preserving-environment
 	  flo:raise-exceptions!
 	  flo:restore-exception-flags!

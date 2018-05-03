@@ -362,3 +362,34 @@ USA.
    (lambda ()
      (flo:untrap-exceptions! exceptions)
      (procedure))))
+
+(define flo:nan.0)
+(define flo:+inf.0)
+(define flo:-inf.0)
+;;; ZERO can be eliminated after 9.3 is released.  It works around
+;;; overly-aggressive constant folding in SF and LIAR.
+(let ((zero (lambda () (identity-procedure 0.))))
+  (if (flo:have-trap-enable/disable?)
+      (begin
+	(set! flo:nan.0
+	      (named-lambda (flo:nan.0)
+		(flo:with-exceptions-untrapped (flo:exception:invalid-operation)
+		  (lambda ()
+		    (flo:/ 0. (zero))))))
+	(set! flo:+inf.0
+	      (named-lambda (flo:+inf.0)
+		(flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
+		  (lambda ()
+		    (flo:/ +1. (zero))))))
+	(set! flo:-inf.0
+	      (named-lambda (flo:-inf.0)
+		(flo:with-exceptions-untrapped (flo:exception:divide-by-zero)
+		  (lambda ()
+		    (flo:/ -1. (zero))))))
+	unspecific)
+      ;; This works on macOS.  YMMV.
+      (begin
+	(set! flo:nan.0 (named-lambda (flo:nan.0) (flo:/ 0. (zero))))
+	(set! flo:+inf.0 (named-lambda (flo:+inf.0) (flo:/ +1. (zero))))
+	(set! flo:-inf.0 (named-lambda (flo:-inf.0) (flo:/ -1. (zero))))
+	unspecific)))
