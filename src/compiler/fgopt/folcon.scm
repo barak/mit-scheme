@@ -181,13 +181,13 @@ USA.
 			    (apply op operands))))))
 		  (and (not (condition? value))
 		       (let ((constant (make-constant value)))
-		  (combination/constant! combination constant)
-		  (for-each (lambda (value)
-			      (if (uni-continuation? value)
-				  (maybe-fold-lvalue!
-				   (uni-continuation/parameter value)
-				   constant)))
-			    (rvalue-values continuation))
+			 (combination/constant! combination constant)
+			 (for-each (lambda (value)
+				     (if (uni-continuation? value)
+					 (maybe-fold-lvalue!
+					  (uni-continuation/parameter value)
+					  constant)))
+				   (rvalue-values continuation))
 			 true))))))))
 
 (define (maybe-fold-lvalue! lvalue constant)

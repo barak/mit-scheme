@@ -433,7 +433,9 @@ USA.
   ctx
   (let ((string (parse-atom db (list char))))
     (or (maybe-keyword db string)
-	(make-symbol db string))))
+	(if (string=? string "nan.0")
+	    (flo:nan.0)
+	    (make-symbol db string)))))
 
 (define (maybe-keyword db string)
   (cond ((and (eq? 'suffix (db-keyword-style db))

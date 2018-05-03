@@ -34,9 +34,13 @@ USA.
 	 (end (fix:end-index end (string-length string) caller))
 	 (start (fix:start-index start end caller))
 	 (z
-	  (parse-number string start end
-			(if (default-object? radix) #f radix)
-			caller)))
+	  (cond ((string=? string "nan.0") (flo:nan.0))
+		((string=? string "+inf.0") (flo:+inf.0))
+		((string=? string "-inf.0") (flo:-inf.0))
+		(else
+		 (parse-number string start end
+			       (if (default-object? radix) #f radix)
+			       caller)))))
     (if (and (not z) (if (default-object? error?) #f error?))
 	(error:bad-range-argument string caller))
     z))

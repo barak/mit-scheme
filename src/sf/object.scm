@@ -448,8 +448,8 @@ USA.
           ;; Check that the arguments are constant.
        (every constant? operands)
        (not (condition?
-       (let ((operator (constant/value operator))
-	     (operands (map constant/value operands)))
+	     (let ((operator (constant/value operator))
+		   (operands (map constant/value operands)))
 	       (ignore-errors
 		(lambda ()
 		  (apply operator operands))))))))
