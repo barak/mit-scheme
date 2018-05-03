@@ -178,7 +178,7 @@ USA.
   value)
 
 (define-guarantee delayed-integration "delayed integration")
-
+
 ;;; VARIABLE
 ;; Done specially so we can tweak the print method.
 ;; This makes debugging an awful lot easier.
@@ -200,20 +200,20 @@ USA.
 (define-guarantee variable "variable")
 
 ;;; Expressions
-(define-simple-type access          #f                 (block environment name))
-(define-simple-type assignment      #f                 (block variable value))
-(define-simple-type combination     combination/%make  (block operator operands))
-(define-simple-type conditional     #f                 (predicate consequent alternative))
-(define-simple-type constant        #f                 (value))
-(define-simple-type declaration     #f                 (declarations expression))
-(define-simple-type delay           #f                 (expression))
-(define-simple-type disjunction     #f                 (predicate alternative))
-(define-simple-type open-block      #f                 (block variables values actions))
-(define-simple-type procedure       #f                 (block name required optional rest body))
-(define-simple-type quotation       #f                 (block expression))
-(define-simple-type sequence        sequence/%make     (actions))
-(define-simple-type the-environment #f                 (block))
-
+(define-simple-type access #f (block environment name))
+(define-simple-type assignment #f (block variable value))
+(define-simple-type combination combination/%make (block operator operands))
+(define-simple-type conditional #f (predicate consequent alternative))
+(define-simple-type constant #f (value))
+(define-simple-type declaration #f (declarations expression))
+(define-simple-type delay #f (expression))
+(define-simple-type disjunction #f (predicate alternative))
+(define-simple-type open-block #f (block variables values actions))
+(define-simple-type procedure #f (block name required optional rest body))
+(define-simple-type quotation #f (block expression))
+(define-simple-type sequence sequence/%make (actions))
+(define-simple-type the-environment #f (block))
+
 ;;; Helpers for expressions
 
 ;; The primitive predicates that only return #T or #F.
@@ -271,7 +271,7 @@ USA.
                      (procedure-arity-valid?
                       operator-value
                       (length (combination/operands expression)))))))))
-
+
 ;; These primitives have no side effects.  We consider primitives
 ;; that check their arguments *have* a side effect. (Conservative)
 (define effect-free-primitives
@@ -331,9 +331,10 @@ USA.
 
 (define (global-ref? object)
   (and (scode-access? object)
-       (expression/constant-eq? (access/environment object) system-global-environment)
+       (expression/constant-eq? (access/environment object)
+				system-global-environment)
        (access/name object)))
-
+
 ;;; Constructors that need to do work.
 
 ;; When constucting a combination, we may discover that we
@@ -437,7 +438,7 @@ USA.
 	 zero-fixnum?
 	 zero?
 	 )))
-
+
 (define (foldable-combination? operator operands)
   (and (constant? operator)
        (let ((operator-value (constant/value operator)))
@@ -445,7 +446,13 @@ USA.
               (procedure-arity-valid? operator-value (length operands))
               (memq operator-value combination/constant-folding-operators)))
           ;; Check that the arguments are constant.
-       (every constant? operands)))
+       (every constant? operands)
+       (not (condition?
+       (let ((operator (constant/value operator))
+	     (operands (map constant/value operands)))
+	       (ignore-errors
+		(lambda ()
+		  (apply operator operands))))))))
 
 ;; An operator is reducible if we can safely rewrite its argument list.
 (define (reducible-operator? operator)
@@ -506,19 +513,21 @@ USA.
                     (and expression (object/scode expression))
                     (append other-operands (list result-body))))))))
         (else
-         (combination/%make (and expression (object/scode expression)) block operator operands))))
-
+         (combination/%make (and expression (object/scode expression))
+			    block operator operands))))
+
 (define (combination/fold-constant expression operator operands)
   (let ((result (apply operator operands)))
-  (if (not (eq? sf:enable-constant-folding? #t))
-      (with-notification
-       (lambda (port)
-         (display "Folding (" port)
-         (display operator port)
-         (for-each (lambda (operand) (display " " port) (write operand port)) operands)
-         (display ") => " port)
-         (write result port))))
-  (constant/make (and expression (object/scode expression)) result)))
+    (if (not (eq? sf:enable-constant-folding? #t))
+	(with-notification
+	 (lambda (port)
+	   (display "Folding (" port)
+	   (display operator port)
+	   (for-each (lambda (operand) (display " " port) (write operand port))
+		     operands)
+	   (display ") => " port)
+	   (write result port))))
+    (constant/make (and expression (object/scode expression)) result)))
 
 (define-integrable (partition-operands operator operands)
   (let ((free-in-body (expression/free-variables (procedure/body operator))))
@@ -533,7 +542,8 @@ USA.
                  (values (reverse required-parameters) ; preserve order
                          (reverse referenced-operands)
                          (if (or (null? operands)
-                                 (variable/integrated (procedure/rest operator)))
+                                 (variable/integrated
+				  (procedure/rest operator)))
                              unreferenced-operands
                              (append operands unreferenced-operands)))
                  (error "Argument mismatch" operands)))
@@ -561,7 +571,7 @@ USA.
                             referenced-operands
                             (cons this-operand
                                   unreferenced-operands))))))))))
-
+
 ;;; Sequence
 
 ;;  Ensure that sequences are always flat.
@@ -569,7 +579,8 @@ USA.
   (define (sequence/collect-actions collected actions)
     (fold-left (lambda (reversed action)
                  (if (scode-sequence? action)
-                     (sequence/collect-actions reversed (sequence/actions action))
+                     (sequence/collect-actions reversed
+					       (sequence/actions action))
                      (cons action reversed)))
                collected
                actions))

@@ -174,9 +174,13 @@ USA.
 		      (error "fold-combination: Wrong number of arguments"
 			     op (length operands))
 		      false))
-		(let ((constant
-		       (make-constant
-			(apply op (map rvalue-constant-value operands)))))
+		(let ((value
+		       (let ((operands (map rvalue-constant-value operands)))
+			 (ignore-errors
+			  (lambda ()
+			    (apply op operands))))))
+		  (and (not (condition? value))
+		       (let ((constant (make-constant value)))
 		  (combination/constant! combination constant)
 		  (for-each (lambda (value)
 			      (if (uni-continuation? value)
@@ -184,7 +188,7 @@ USA.
 				   (uni-continuation/parameter value)
 				   constant)))
 			    (rvalue-values continuation))
-		  true))))))
+			 true))))))))
 
 (define (maybe-fold-lvalue! lvalue constant)
   (lvalue-connect!:rvalue lvalue constant)
