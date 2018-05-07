@@ -177,56 +177,10 @@ USA.
 	  thunk)
 	(thunk))))
 
-(define (file-operation-signaller)
-  (let ((signal
-	 (condition-signaller condition-type:file-operation-error
-			      '(filename verb noun reason operator operands))))
-    (lambda (continuation operator operands index verb noun reason)
-      (file-operation/use-value continuation operator operands index verb noun
-	(lambda ()
-	  (file-operation/retry continuation operator operands verb noun
-	    (lambda ()
-	      (signal continuation (list-ref operands index)
-		      verb noun reason operator operands))))))))
-
-(define (file-operation/use-value continuation operator operands index
-				  verb noun thunk)
-  (let ((continuation (continuation/next-continuation continuation)))
-    (if (continuation-restartable? continuation)
-	(with-restart 'use-value
-	    (string-append "Try to " verb " a different " noun ".")
-	    (lambda (operand)
-	      (within-continuation continuation
-		(lambda ()
-		  (apply operator
-			 (substitute-element operands index operand)))))
-	    (let ((prompt
-		   (string-append "New "
-				  noun
-				  " name (an expression to be evaluated)")))
-	      (lambda ()
-		(values (prompt-for-evaluated-expression prompt))))
-	  thunk)
-	(thunk))))
-
-(define (file-operation/retry continuation operator operands verb noun thunk)
-  (let ((continuation (continuation/next-continuation continuation)))
-    (if (continuation-restartable? continuation)
-	(with-restart 'retry
-	    (string-append "Try to " verb " the same " noun " again.")
-	    (lambda ()
-	      (within-continuation continuation
-		(lambda ()
-		  (apply operator operands))))
-	    values
-	  thunk)
-	(thunk))))
-
 (define (substitute-element list index element)
-  (let loop ((list list) (i 0))
-    (if (= i index)
-	(cons element (cdr list))
-	(cons (car list) (loop (cdr list) (+ i 1))))))
+  (receive (head tail) (split-at list index)
+    (append! head
+	     (cons element (cdr tail)))))
 
 ;;;; Continuation Parsing
 
@@ -693,8 +647,7 @@ USA.
 (define-error-handler 'out-of-file-handles
   (let ((signal
 	 (condition-signaller condition-type:out-of-file-handles
-			      '(operator operands)))
-	(signal-file-operation (file-operation-signaller)))
+			      '(operator operands))))
     (lambda (continuation)
       (let ((frame (continuation/first-subproblem continuation)))
 	(if (apply-frame? frame)
@@ -712,8 +665,9 @@ USA.
 			   operator)
 		      (eq? (ucode-primitive new-file-open-append-channel)
 			   operator))
-		  (signal-file-operation continuation operator operands 0
-					 "open" "file" "channel table full")
+		  (signal-file-operation continuation
+					 0 "open" "file" "channel table full"
+					 operator operands)
 		  (signal continuation operator operands))))))))
 
 ;++ This should identify the process, but that requires reverse lookup
@@ -758,8 +712,7 @@ USA.
 (define system-call-error-handler
   (let ((make-condition
 	 (condition-constructor condition-type:system-call-error
-				'(operator operands system-call error-type)))
-	(signal-file-operation (file-operation-signaller)))
+				'(operator operands system-call error-type))))
     (lambda (continuation error-code)
       (let ((frame (continuation/first-subproblem continuation)))
 	(if (and (apply-frame? frame)
@@ -797,9 +750,10 @@ USA.
 		       (receive (verb noun)
 			   (file-primitive-description operator)
 			 (if verb
-			     (signal-file-operation
-			      continuation operator operands 0 verb noun
-			      (error-type->string error-type))
+			     (signal-file-operation continuation 0 verb noun
+						    (error-type->string
+						     error-type)
+						    operator operands)
 			     (error (make-condition)))))
 		      (else
 		       (error (make-condition)))))))))))

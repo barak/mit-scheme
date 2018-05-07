@@ -300,7 +300,7 @@ USA.
   (if (file-exists-direct? pathname)
       pathname
       (unix/pathname->truename
-       (error:file-operation pathname "find" "file" "file does not exist"
+       (error:file-operation 0 "find" "file" "file does not exist"
 			     unix/pathname->truename (list pathname)))))
 
 (define (unix/user-homedir-pathname host)

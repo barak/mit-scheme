@@ -2116,6 +2116,7 @@ USA.
 	  write-condition-report
 	  write-restart-report)
   (export (runtime microcode-errors)
+	  signal-file-operation
 	  write-operator)
   (export (runtime rep)
 	  param:bound-restarts

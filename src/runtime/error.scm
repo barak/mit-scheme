@@ -652,56 +652,48 @@ USA.
 	   (signal-condition condition)
 	   (default-handler condition)))))))
 
-;; This is similar to condition-signaller, but error procedures
-;; created with this allow substitution of the INDEXth argument by
-;; using the USE-VALUE restart and allow retrying the operation by
-;; using the RETRY restart.  The RETRY restart will return the
-;; original irritant, while USE-VALUE will return a value prompted for.
+;;;; File operation errors
 
-(define (substitutable-value-condition-signaller
-	 type field-names default-handler
-	 index use-value-prompt use-value-message retry-message)
-  (guarantee-condition-handler default-handler
-			       'substitutable-value-condition-signaller)
-  (let ((make-condition (condition-constructor type field-names))
-	(arity (length field-names)))
-    (letrec
-	((constructor
-	  (lambda field-values
-	    (if (not (fix:= arity (length field-values)))
-		(error:wrong-number-of-arguments constructor
-						 arity
-						 field-values))
-	    (call-with-current-continuation
-	     (lambda (continuation)
-	       (let ((condition
-		      (apply make-condition
-			     (cons* continuation
-				    'bound-restarts
-				    field-values))))
-		 (with-restart 'use-value
-		     (if (string? use-value-message)
-			 use-value-message
-			 (use-value-message condition))
-		     continuation
-		     (let ((prompt
-			    (if (string? use-value-prompt)
-				use-value-prompt
-				(use-value-prompt condition))))
-		       (lambda ()
-			 (values (prompt-for-evaluated-expression prompt))))
-		   (lambda ()
-		     (with-restart 'retry
-			 (if (string? retry-message)
-			     retry-message
-			     (retry-message condition))
-			 (lambda ()
-			   (continuation (list-ref field-values index)))
-			 values
-		       (lambda ()
-			 (signal-condition condition)
-			 (default-handler condition)))))))))))
-      constructor)))
+(define (error:file-operation index verb noun reason operator operands)
+  (call-with-current-continuation
+    (lambda (continuation)
+      (signal-file-operation continuation index verb noun reason
+			     operator operands))))
+
+(define (signal-file-operation continuation index verb noun reason
+			       operator operands)
+  (with-restart 'use-value
+      (string-append "New " noun
+		     " name (an expression to be evaluated)")
+      (lambda (operand)
+	(within-continuation continuation
+	  (lambda ()
+	    (apply operator
+		   (receive (head tail) (split-at operands index)
+		     (append! head
+			      (cons operand (cdr tail))))))))
+      (let ((prompt
+	     (string-append "Try to " verb " a different " noun
+			    ".")))
+	(lambda ()
+	  (values (prompt-for-evaluated-expression prompt))))
+    (lambda ()
+      (with-restart 'retry
+	  (string-append "Try to " verb " the same " noun
+			 " again.")
+	  (lambda ()
+	    (within-continuation continuation
+	      (lambda ()
+		(apply operator operands))))
+	  values
+	(lambda ()
+	  (let ((condition
+		 (make-file-operation-error continuation 'bound-restarts
+					    (list-ref operands index)
+					    verb noun reason
+					    operator operands)))
+	    (signal-condition condition)
+	    (standard-error-handler condition)))))))
 
 ;;;; Basic Condition Types
 
@@ -743,11 +735,11 @@ USA.
 
 (define make-simple-error)
 (define make-simple-warning)
+(define make-file-operation-error)
 
 (define error:bad-range-argument)
 (define error:datum-out-of-range)
 (define error:divide-by-zero)
-(define error:file-operation)
 (define error:no-such-restart)
 (define error:derived-file)
 (define error:derived-port)
@@ -1070,32 +1062,9 @@ USA.
 		      (write-string "No such " port)
 		      (write-string noun port))))
 	      (write-string "." port)))))
-  (set! error:file-operation
-	(let ((get-verb
-	       (condition-accessor condition-type:file-operation-error 'verb))
-	      (get-noun
-	       (condition-accessor condition-type:file-operation-error 'noun)))
-	  (substitutable-value-condition-signaller
-	   condition-type:file-operation-error
-	   '(filename verb noun reason operator operands)
-	   standard-error-handler
-	   0
-	   (lambda (condition)
-	     (string-append "New "
-			    (get-noun condition)
-			    " name (an expression to be evaluated)"))
-	   (lambda (condition)
-	     (string-append "Try to "
-			    (get-verb condition)
-			    " a different "
-			    (get-noun condition)
-			    "."))
-	   (lambda (condition)
-	     (string-append "Try to "
-			    (get-verb condition)
-			    " the same "
-			    (get-noun condition)
-			    " again.")))))
+  (set! make-file-operation-error
+	(condition-constructor condition-type:file-operation-error
+			       '(filename verb noun reason operator operands)))
 
   (set! condition-type:variable-error
 	(make-condition-type 'variable-error condition-type:cell-error

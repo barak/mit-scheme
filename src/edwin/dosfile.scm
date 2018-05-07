@@ -529,7 +529,7 @@ filename suffix \".gz\"."
 					 (file-namestring pathname)
 					 " > "
 					 (->namestring temporary)))))
-	    (error:file-operation pathname
+	    (error:file-operation 0
 				  program
 				  "file"
 				  "[unknown]"
@@ -551,7 +551,7 @@ filename suffix \".gz\"."
 			      (string-append (quote-program program arguments)
 					     " > "
 					     (file-namestring pathname)))))
-	 (error:file-operation pathname
+	 (error:file-operation 1
 			       program
 			       "file"
 			       "[unknown]"

@@ -367,7 +367,7 @@ USA.
   (if (file-exists-direct? pathname)
       pathname
       (dos/pathname->truename
-       (error:file-operation pathname "find" "file" "file does not exist"
+       (error:file-operation 0 "find" "file" "file does not exist"
 			     dos/pathname->truename (list pathname)))))
 
 (define (dos/user-homedir-pathname host)

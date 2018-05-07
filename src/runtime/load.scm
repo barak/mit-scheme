@@ -313,7 +313,7 @@ USA.
 
 (define (load-failure procedure pathname . arguments)
   (apply procedure
-	 (error:file-operation pathname
+	 (error:file-operation 0
 			       "find" "file" "file does not exist"
 			       procedure
 			       (cons pathname arguments))

@@ -61,7 +61,7 @@ USA.
     ;; relative lookups, either by changing directory just before each
     ;; lookup or using relative lookup system calls.
     (if (not (file-directory? pathname))
-	(error:file-operation name "enter" "directory"
+	(error:file-operation 0 "enter" "directory"
 			      (if (file-exists?
 				   (directory-pathname-as-file pathname))
 				  "not a directory"

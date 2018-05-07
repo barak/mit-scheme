@@ -1462,10 +1462,12 @@ and would generate a message like this:
 @end example
 @end deffn
 
-@deffn procedure error:file-operation-error filename verb noun reason operator operands
+@deffn procedure error:file-operation index verb noun reason operator operands
 This procedure signals a condition of type
-@code{condition-type:file-operation-error}.  The fields of the condition
-are filled in from the corresponding arguments to the procedure.
+@code{condition-type:file-operation-error}.  The fields of the
+condition are filled in from the corresponding arguments to the
+procedure, except that the filename is taken as the @var{index}th
+element of @var{operands}.
 @end deffn
 
 @deffn {condition type} condition-type:derived-file-error filename condition

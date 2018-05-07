@@ -296,7 +296,7 @@ USA.
 	  (channel-close channel)
 	  (file-open primitive
 		     operator
-		     (error:file-operation filename "open" "file" reason
+		     (error:file-operation 0 "open" "file" reason
 					   operator (list filename))))
 	channel)))
 

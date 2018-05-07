@@ -611,7 +611,7 @@ these rules:
   (or (%find-library-file pathname)
       (if (if (default-object? required?) #t required?)
 	  (system-library-pathname
-	   (error:file-operation pathname
+	   (error:file-operation 0
 				 "find"
 				 "file"
 				 "no such file in system library path"
@@ -628,7 +628,7 @@ these rules:
 	      ((if (default-object? required?) #f required?)
 	       (system-library-directory-pathname
 		(error:file-operation
-		 pathname
+		 0
 		 "find"
 		 "directory"
 		 "no such directory in system library path"

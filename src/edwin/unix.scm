@@ -426,7 +426,7 @@ of the filename suffixes \".gz\", \".bz2\", or \".Z\"."
 					 (file-namestring pathname)
 					 " > "
 					 (->namestring temporary)))))
-	    (error:file-operation pathname
+	    (error:file-operation 0
 				  program
 				  "file"
 				  "[unknown]"
@@ -448,7 +448,7 @@ of the filename suffixes \".gz\", \".bz2\", or \".Z\"."
 			      (string-append program
 					     " > "
 					     (file-namestring pathname)))))
-	 (error:file-operation pathname
+	 (error:file-operation 1
 			       program
 			       "file"
 			       "[unknown]"
