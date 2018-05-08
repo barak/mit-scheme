@@ -2068,8 +2068,11 @@ USA.
 	  condition?
 	  continue
 	  default/invoke-condition-handler
-	  error
+	  error				;R7RS
 	  error-irritant/noise
+	  error-object-irritants	;R7RS
+	  error-object-message		;R7RS
+	  error-object?			;R7RS
 	  error:bad-range-argument
 	  error:datum-out-of-range
 	  error:derived-file
@@ -2082,6 +2085,7 @@ USA.
 	  error:wrong-number-of-arguments
 	  error:wrong-type-argument
 	  error:wrong-type-datum
+	  file-error?			;R7RS
 	  find-restart
 	  first-bound-restart
 	  format-error-message
@@ -2095,6 +2099,8 @@ USA.
 	  muffle-warning
 	  param:standard-error-hook
 	  param:standard-warning-hook
+	  raise				;R7RS
+	  raise-continuable		;R7RS
 	  restart/effector
 	  restart/get
 	  restart/interactor
@@ -2111,6 +2117,7 @@ USA.
 	  store-value
 	  use-value
 	  warn
+	  with-exception-handler	;R7RS
 	  with-restart
 	  with-simple-restart
 	  write-condition-report
@@ -3406,7 +3413,9 @@ USA.
 	  param:parser-enable-attributes?
 	  param:parser-fold-case?
 	  param:parser-keyword-style
-	  param:parser-radix)
+	  param:parser-radix
+	  read-error?			;R7RS
+	  )
   (export (runtime)
 	  define-bracketed-object-parser-method)
   (export (runtime input-port)

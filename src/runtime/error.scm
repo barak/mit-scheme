@@ -243,7 +243,10 @@ USA.
 
 (define (%condition-of-type? object type)
   (and (condition? object)
-       (memq type (%condition-type/generalizations (%condition/type object)))))
+       (%condition-has-type? object type)))
+
+(define-integrable (%condition-has-type? condition type)
+  (memq type (%condition-type/generalizations (%condition/type condition))))
 
 (define (condition-accessor type field-name)
   (guarantee-condition-type type 'condition-accessor)
@@ -585,25 +588,18 @@ USA.
 		     make-simple-warning standard-warning-handler))))
 
 (define (signal-simple datum arguments make-simple-condition default-handler)
-  (if (condition? datum)
-      (begin
-	(signal-condition datum)
-	(default-handler datum))
-      (call-with-current-continuation
-       (lambda (continuation)
-	 (let ((condition
-		(if (condition-type? datum)
-		    (make-condition datum
-				    continuation
-				    'bound-restarts
-				    arguments)
-		    (make-simple-condition continuation
-					   'bound-restarts
-					   datum
-					   arguments))))
-	   (begin
-	     (signal-condition condition)
-	     (default-handler condition)))))))
+  (let ((signal (signal-with-fallback default-handler)))
+    (cond ((condition? datum)
+	   (signal datum))
+	  ((condition-type? datum)
+	   (signal-standard* signal no-restarts
+			     (condition-constructor datum)
+			     arguments))
+	  (else
+	   (signal-standard signal no-restarts
+			    make-simple-condition
+			    datum
+			    arguments)))))
 
 (define (standard-error-handler condition)
   (let ((hook
@@ -637,20 +633,32 @@ USA.
 (define standard-warning-hook #!default)
 (define param:standard-error-hook)
 (define param:standard-warning-hook)
-
+
 (define (condition-signaller type field-names default-handler)
   (guarantee-condition-handler default-handler 'condition-signaller)
-  (let ((make-condition (condition-constructor type field-names)))
+  (let ((signal (signal-with-fallback default-handler))
+	(constructor (condition-constructor type field-names)))
     (lambda field-values
-      (call-with-current-continuation
-       (lambda (continuation)
-	 (let ((condition
-		(apply make-condition
-		       (cons* continuation
-			      'bound-restarts
-			      field-values))))
-	   (signal-condition condition)
-	   (default-handler condition)))))))
+      (signal-standard* signal no-restarts constructor field-values))))
+
+(define (signal-with-fallback default-handler)
+  (lambda (condition)
+    (signal-condition condition)
+    (default-handler condition)))
+
+(define (signal-standard signal bind-restarts constructor . args)
+  (signal-standard* signal bind-restarts constructor args))
+
+(define (signal-standard* signal bind-restarts constructor args)
+  (call-with-current-continuation
+    (lambda (continuation)
+      (bind-restarts continuation
+	(lambda ()
+	  (signal (apply constructor continuation 'bound-restarts args)))))))
+
+(define (no-restarts continuation thunk)
+  (declare (ignore continuation))
+  (thunk))
 
 ;;;; File operation errors
 
@@ -693,6 +701,53 @@ USA.
 	    (signal-condition condition)
 	    (standard-error-handler condition)))))))
 
+;;;; R7RS adapter
+
+(define (with-exception-handler handler thunk)
+  (bind-condition-handler (list condition-type:error)
+      (lambda (condition)
+	(let ((value
+	       (handler
+		(if (r7rs-tunnel? condition)
+		    (access-condition condition 'object)
+		    condition)))
+	      (restart (find-restart 'use-value condition)))
+	  (if restart
+	      (invoke-restart restart value))))
+    thunk))
+
+(define (raise object)
+  (if (condition? object)
+      (error object)
+      (error condition-type:r7rs-tunnel object)))
+
+(define (raise-continuable object)
+  (if (condition? object)
+      (error object)
+      (signal-standard (signal-with-fallback standard-error-handler)
+		       bind-raise-continuable-restarts
+		       make-r7rs-tunnel
+		       object)))
+
+(define (bind-raise-continuable-restarts continuation thunk)
+  (with-restart 'use-value
+      "Continue with a different value."
+      continuation
+      (lambda ()
+	(values (prompt-for-evaluated-expression
+		 "Value to use (an expression to evaluate)")))
+      thunk))
+
+(define (error-object-message condition)
+  (if (%condition-has-type? condition condition-type:simple-error)
+      (access-condition condition 'message)
+      (condition/report-string condition)))
+
+(define (error-object-irritants condition)
+  (if (%condition-has-type? condition condition-type:simple-error)
+      (list-copy (access-condition condition 'irritants))
+      '()))
+
 ;;;; Basic Condition Types
 
 (define condition-type:arithmetic-error)
@@ -718,6 +773,7 @@ USA.
 (define condition-type:macro-binding)
 (define condition-type:no-such-restart)
 (define condition-type:port-error)
+(define condition-type:r7rs-tunnel)
 (define condition-type:serious-condition)
 (define condition-type:simple-condition)
 (define condition-type:simple-error)
@@ -734,6 +790,10 @@ USA.
 (define make-simple-error)
 (define make-simple-warning)
 (define make-file-operation-error)
+(define make-r7rs-tunnel)
+(define error-object?)
+(define file-error?)
+(define r7rs-tunnel?)
 
 (define error:bad-range-argument)
 (define error:datum-out-of-range)
@@ -785,6 +845,16 @@ USA.
 
   (set! condition-type:error
 	(make-condition-type 'error condition-type:serious-condition '() #f))
+  (set! error-object?
+	(condition-predicate condition-type:error))
+  (set! condition-type:r7rs-tunnel
+	(make-condition-type 'r7rs-tunnel condition-type:error '(object)
+	  (lambda (condition port)
+	    (write-string "The object " port)
+	    (write (access-condition condition 'object) port)
+	    (write-string " was raised." port))))
+  (set! r7rs-tunnel?
+	(condition-predicate condition-type:r7rs-tunnel))
 
   (let ((reporter/simple-condition
 	 (lambda (condition port)
@@ -1147,6 +1217,9 @@ USA.
   (set! make-simple-warning
 	(condition-constructor condition-type:simple-warning
 			       '(message irritants)))
+  (set! make-r7rs-tunnel
+	(condition-constructor condition-type:r7rs-tunnel
+			       '(object)))
 
   (set! error:wrong-type-datum
 	(condition-signaller condition-type:wrong-type-datum

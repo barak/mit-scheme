@@ -978,6 +978,9 @@ USA.
       condition
       (write-string "Anonymous parsing error." port))))
 
+(define-deferred read-error?
+  (condition-predicate condition-type:parse-error))
+
 (define-syntax define-parse-error
   (sc-macro-transformer
    (lambda (form environment)
