@@ -663,8 +663,7 @@ USA.
 (define (signal-file-operation continuation index verb noun reason
 			       operator operands)
   (with-restart 'use-value
-      (string-append "New " noun
-		     " name (an expression to be evaluated)")
+      (string-append "Try to " verb " a different " noun ".")
       (lambda (operand)
 	(within-continuation continuation
 	  (lambda ()
@@ -673,14 +672,13 @@ USA.
 		     (append! head
 			      (cons operand (cdr tail))))))))
       (let ((prompt
-	     (string-append "Try to " verb " a different " noun
-			    ".")))
+	     (string-append "New " noun
+			    " name (an expression to be evaluated)")))
 	(lambda ()
 	  (values (prompt-for-evaluated-expression prompt))))
     (lambda ()
       (with-restart 'retry
-	  (string-append "Try to " verb " the same " noun
-			 " again.")
+	  (string-append "Try to " verb " the same " noun " again.")
 	  (lambda ()
 	    (within-continuation continuation
 	      (lambda ()
