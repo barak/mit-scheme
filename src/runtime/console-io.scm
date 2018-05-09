@@ -29,69 +29,86 @@ USA.
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (let ((input-channel (tty-input-channel))
-	(output-channel (tty-output-channel))
-	(gtype (generic-i/o-port-type 'channel 'channel)))
-    (let ((type
-	   (make-textual-port-type
-	    `((beep ,operation/beep)
-	      (char-ready? ,generic-io/char-ready?)
-	      (clear ,operation/clear)
-	      (discretionary-write-char ,operation/discretionary-write-char)
-	      (discretionary-flush-output ,generic-io/flush-output)
-	      (peek-char ,generic-io/peek-char)
-	      (read-char ,operation/read-char)
-	      (read-finish ,operation/read-finish)
-	      (unread-char ,generic-io/unread-char)
-	      (write-self ,operation/write-self)
-	      (x-size ,operation/x-size)
-	      (y-size ,operation/y-size))
-	    gtype)))
-      (let ((port
-	     (make-textual-port type
-				(make-cstate input-channel output-channel))))
-	(set-channel-port! input-channel port)
-	(set-channel-port! output-channel port)
-	(set! the-console-port port)
-	(current-input-port port)
-	(current-output-port port))))
-  (set! port/echo-input? (generic-i/o-port-accessor 0))
-  (add-event-receiver! event:before-exit save-console-input)
-  (add-event-receiver! event:after-restore reset-console))
+(define (make-binary-console-port)
+  (make-binary-port (make-channel-input-source (tty-input-channel))
+		    (make-channel-output-sink (tty-output-channel))))
 
-(define port/echo-input?)
+(define-deferred the-console-port
+  (let ((binary-port (make-binary-console-port)))
+    (make-generic-i/o-port
+     binary-port
+     (make-textual-port-type `((beep ,operation/beep)
+			       (char-ready? ,generic-io/char-ready?)
+			       (clear ,operation/clear)
+			       (discretionary-write-char
+				,operation/discretionary-write-char)
+			       (discretionary-flush-output
+				,generic-io/flush-output)
+			       (peek-char ,generic-io/peek-char)
+			       (read-char ,operation/read-char)
+			       (read-finish ,operation/read-finish)
+			       (unread-char ,generic-io/unread-char)
+			       (write-self ,operation/write-self)
+			       (x-size ,operation/x-size)
+			       (y-size ,operation/y-size))
+			     (generic-i/o-port-type 'channel 'channel))
+     (default-object)
+     (should-echo-input? binary-port))))
 
-(define (save-console-input)
-  ((ucode-primitive reload-save-string 1)
-   (generic-io/buffer-contents the-console-port)))
+(define (should-echo-input? binary-port)
+  (channel-type=file? (binary-port-input-channel binary-port)))
 
-(define (reset-console)
-  (let ((input-channel (tty-input-channel))
-	(output-channel (tty-output-channel)))
-    (set-textual-port-state! the-console-port
-			     (make-cstate input-channel output-channel))
-    (let ((contents ((ucode-primitive reload-retrieve-string 0))))
-      (if contents
-	  (generic-io/set-buffer-contents the-console-port contents)))
-    (set-channel-port! input-channel the-console-port)
-    (set-channel-port! output-channel the-console-port)))
+(define-deferred echo-input?
+  (generic-i/o-port-accessor 0))
 
-(define (make-cstate input-channel output-channel)
-  (make-gstate (make-binary-port (make-channel-input-source input-channel)
-				 (make-channel-output-sink output-channel))
-	       'text
-	       'text
-	       (default-object)
-	       (channel-type=file? input-channel)))
+(define-deferred set-echo-input!
+  (generic-i/o-port-modifier 0))
 
+(define (make-binary-error-port)
+  (make-binary-port #f
+		    (make-channel-output-sink (tty-error-channel))))
+
+(define-deferred the-error-port
+  (make-generic-i/o-port
+   (make-binary-error-port)
+   (make-textual-port-type `((beep ,operation/beep)
+			     (clear ,operation/clear)
+			     (discretionary-flush-output
+			      ,generic-io/flush-output)
+			     (write-self ,operation/write-self)
+			     (x-size ,operation/x-size)
+			     (y-size ,operation/y-size))
+			   (generic-i/o-port-type #f 'channel))))
+
 (define (console-i/o-port)
   the-console-port)
 
 (define (console-i/o-port? port)
   (eqv? port the-console-port))
 
-(define the-console-port)
+(define (console-error-port)
+  the-error-port)
+
+(add-boot-init!
+ (lambda ()
+   (current-input-port the-console-port)
+   (current-output-port the-console-port)
+   (current-error-port the-error-port)
+   (add-event-receiver! event:before-exit save-console-input)
+   (add-event-receiver! event:after-restore reset-console)))
+
+(define (save-console-input)
+  ((ucode-primitive reload-save-string 1)
+   (generic-io/buffer-contents the-console-port)))
+
+(define (reset-console)
+  (let ((binary-port (make-binary-console-port)))
+    (replace-binary-port! the-console-port binary-port)
+    (set-echo-input! the-console-port (should-echo-input? binary-port)))
+  (let ((contents ((ucode-primitive reload-retrieve-string 0))))
+    (if contents
+	(generic-io/set-buffer-contents the-console-port contents)))
+  (replace-binary-port! the-error-port (make-binary-error-port)))
 
 (define (operation/read-char port)
   (let ((char (generic-io/read-char port)))
@@ -120,7 +137,7 @@ USA.
   (output-port/discretionary-flush port))
 
 (define (operation/discretionary-write-char port char)
-  (if (and (port/echo-input? port)
+  (if (and (echo-input? port)
 	   (not (nearest-cmdl/batch-mode?)))
       (output-port/write-char port char)))
 

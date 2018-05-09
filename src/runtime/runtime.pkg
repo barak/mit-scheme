@@ -1549,7 +1549,8 @@ USA.
   (parent (runtime))
   (export ()
 	  console-i/o-port
-	  console-i/o-port?)
+	  console-i/o-port?
+	  console-error-port)
   (export (runtime emacs-interface)
 	  the-console-port)
   (initialization (initialize-package!)))
@@ -2323,6 +2324,7 @@ USA.
 	  primary-output-port-codings)
   (export (runtime console-i/o-port)
 	  generic-i/o-port-accessor
+	  generic-i/o-port-modifier
 	  generic-i/o-port-type
 	  generic-io/buffer-contents
 	  generic-io/char-ready?
