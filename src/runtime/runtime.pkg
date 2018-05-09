@@ -2335,7 +2335,8 @@ USA.
 	  generic-io/set-buffer-contents
 	  generic-io/unread-char
 	  make-generic-i/o-port
-	  make-gstate)
+	  make-gstate
+	  replace-binary-port!)
   (export (runtime file-i/o-port)
 	  generic-i/o-port->binary-port
 	  generic-i/o-port-type

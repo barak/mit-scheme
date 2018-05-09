@@ -107,8 +107,8 @@ USA.
 (define-record-type <gstate>
     (%make-gstate input-buffer output-buffer coder-name normalizer-name extra)
     gstate?
-  (input-buffer gstate-input-buffer)
-  (output-buffer gstate-output-buffer)
+  (input-buffer gstate-input-buffer set-gstate-input-buffer!)
+  (output-buffer gstate-output-buffer set-gstate-output-buffer!)
   (coder-name gstate-coder-name
 	      set-gstate-coder-name!)
   (normalizer-name gstate-normalizer-name
@@ -130,6 +130,30 @@ USA.
   (guarantee index-fixnum? index 'generic-i/o-port-modifier)
   (lambda (port object)
     (vector-set! (gstate-extra (textual-port-state port)) index object)))
+
+(define (replace-binary-port! port binary-port)
+  (let ((gstate (textual-port-state port)))
+    (set-gstate-input-buffer!
+     gstate
+     (and (binary-input-port? binary-port)
+	  (let ((buffer
+		 (make-input-buffer binary-port
+				    (gstate-coder-name gstate)
+				    (gstate-normalizer-name gstate)
+				    'replace-binary-port!)))
+
+	    (set-input-buffer-port! buffer port)
+	    buffer)))
+    (set-gstate-output-buffer!
+     gstate
+     (and (binary-output-port? binary-port)
+	  (let ((buffer
+		 (make-output-buffer binary-port
+				     (gstate-coder-name gstate)
+				     (gstate-normalizer-name gstate)
+				     'gstate-replace-binary-port!)))
+	    (set-output-buffer-port! buffer port)
+	    buffer)))))
 
 (define generic-type00)
 (define generic-type10)
