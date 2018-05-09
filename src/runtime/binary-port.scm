@@ -59,6 +59,16 @@ USA.
     (and buffer
 	 (buffer-source/sink buffer))))
 
+(define (binary-port-input-channel port)
+  (let ((buffer (port-input-buffer port)))
+    (and buffer
+	 (buffer-channel buffer))))
+
+(define (binary-port-output-channel port)
+  (let ((buffer (port-output-buffer port)))
+    (and buffer
+	 (buffer-channel buffer))))
+
 (define (binary-input-port? object)
   (and (binary-port? object)
        (port-input-buffer object)

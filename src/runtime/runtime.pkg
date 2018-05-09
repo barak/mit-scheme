@@ -2567,6 +2567,8 @@ USA.
 	  write-bytevector
 	  write-u8)
   (export (runtime)
+	  binary-port-input-channel
+	  binary-port-output-channel
 	  binary-port-sink
 	  binary-port-source
 	  input-source-channel
