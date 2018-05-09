@@ -264,7 +264,7 @@ USA.
 	  ((not return?) (run-first-thread)))))
 
 (define (console-thread)
-  (thread-mutex-owner (textual-port-thread-mutex console-i/o-port)))
+  (thread-mutex-owner (textual-port-thread-mutex (console-i/o-port))))
 
 (define (other-running-threads?)
   (thread/next (current-thread)))

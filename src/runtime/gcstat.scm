@@ -43,7 +43,7 @@ USA.
   unspecific)
 
 (define (recorder/gc-start)
-  (port/gc-start console-i/o-port)
+  (port/gc-start (console-i/o-port))
   (set! this-gc-start-uctime (get-universal-time))
   (set! this-gc-start-clock (real-time-clock))
   (set! this-gc-start (process-time-clock))
@@ -58,7 +58,7 @@ USA.
 		     space-remaining
 		     this-gc-start-uctime
 		     this-gc-start-clock end-time-clock))
-  (port/gc-finish console-i/o-port))
+  (port/gc-finish (console-i/o-port)))
 
 (define timestamp)
 (define total-gc-time)

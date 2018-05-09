@@ -599,13 +599,13 @@ USA.
 		      'gc-boot-loading?
 		      #f)
   (set! fasload-purification-queue)
-  (newline console-output-port)
-  (write-string "purifying..." console-output-port)
+  (newline (console-i/o-port))
+  (write-string "purifying..." (console-i/o-port))
   ;; First, flush whatever we can.
   (gc-clean)
   ;; Then, really purify the rest.
   (purify roots #t #f)
-  (write-string "done" console-output-port))
+  (write-string "done" (console-i/o-port)))
 
 )
 

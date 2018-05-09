@@ -31,9 +31,9 @@ USA.
 
 (define (make-bios-screen)
   ;; What is the baud rate needed for?  It's not even meaningful.
-  (let ((baud-rate (output-port/baud-rate console-output-port))
-	(x-size (output-port/x-size console-output-port))
-	(y-size (output-port/y-size console-output-port)))
+  (let ((baud-rate (output-port/baud-rate (console-i/o-port)))
+	(x-size (output-port/x-size (console-i/o-port)))
+	(y-size (output-port/y-size (console-i/o-port))))
     (make-screen (cons (fix:-1+ y-size) (fix:-1+ x-size))
 		 bios-console-beep
 		 bios-console-clear-line!

@@ -46,7 +46,7 @@ USA.
    (lambda (continuation)
      (set! root-continuation continuation)
      (repl/start (make-repl #f
-			    console-i/o-port
+			    (console-i/o-port)
 			    user-initial-environment
 			    #f
 			    `((set-default-directory
@@ -215,7 +215,7 @@ USA.
   (let ((cmdl (param:nearest-cmdl)))
     (if cmdl
 	(cmdl/port cmdl)
-	console-i/o-port)))
+	(console-i/o-port))))
 
 (define (nearest-cmdl/level)
   (let ((cmdl (param:nearest-cmdl)))

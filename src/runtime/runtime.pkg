@@ -1552,10 +1552,7 @@ USA.
 	  tty-output-channel)
   (export ()
 	  console-i/o-port
-	  console-i/o-port?
-	  console-input-port
-	  console-output-port
-	  set-console-i/o-port!)
+	  console-i/o-port?)
   (export (runtime emacs-interface)
 	  the-console-port)
   (initialization (initialize-package!)))

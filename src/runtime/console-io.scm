@@ -54,7 +54,6 @@ USA.
 	(set-channel-port! input-channel port)
 	(set-channel-port! output-channel port)
 	(set! the-console-port port)
-	(set-console-i/o-port! port)
 	(current-input-port port)
 	(current-output-port port))))
   (set! port/echo-input? (generic-i/o-port-accessor 0))
@@ -65,7 +64,7 @@ USA.
 
 (define (save-console-input)
   ((ucode-primitive reload-save-string 1)
-   (generic-io/buffer-contents console-input-port)))
+   (generic-io/buffer-contents the-console-port)))
 
 (define (reset-console)
   (let ((input-channel (tty-input-channel))
@@ -86,21 +85,13 @@ USA.
 	       (default-object)
 	       (channel-type=file? input-channel)))
 
-(define (set-console-i/o-port! port)
-  (if (not (i/o-port? port))
-      (error:wrong-type-argument port "I/O port" 'set-console-i/o-port!))
-  (set! console-i/o-port port)
-  (set! console-input-port port)
-  (set! console-output-port port)
-  unspecific)
+(define (console-i/o-port)
+  the-console-port)
 
 (define (console-i/o-port? port)
-  (eqv? port console-i/o-port))
+  (eqv? port the-console-port))
 
 (define the-console-port)
-(define console-i/o-port)
-(define console-input-port)
-(define console-output-port)
 
 (define (operation/read-char port)
   (let ((char (generic-io/read-char port)))

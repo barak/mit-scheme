@@ -48,7 +48,7 @@ USA.
   (win32-screen-write-substring! 7))
 
 ;;(define (debug . details)
-;;  (pp details console-output-port))
+;;  (pp details (console-i/o-port)))
 
 (define-structure (win32-screen-state
 		   (constructor make-win32-screen-state (handle))

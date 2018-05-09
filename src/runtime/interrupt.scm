@@ -191,7 +191,7 @@ USA.
 
 (define (signal-interrupt hook/interrupt hook/clean-input char interrupt)
   (let ((thread
-	 (thread-mutex-owner (textual-port-thread-mutex console-i/o-port))))
+	 (thread-mutex-owner (textual-port-thread-mutex (console-i/o-port)))))
     (if thread
 	(signal-thread-event thread
 	  (lambda ()

@@ -129,8 +129,8 @@ USA.
 
 (define (make-termcap-description terminal-type-name)
   (if (string-ci=? terminal-type-name "ansi.sys")
-      (let ((x-size (output-port/x-size console-output-port))
-	    (y-size (output-port/y-size console-output-port)))
+      (let ((x-size (output-port/x-size (console-i/o-port)))
+	    (y-size (output-port/y-size (console-i/o-port))))
 	(make-ansi-terminal-description x-size y-size))
       (and (implemented-primitive-procedure?
 	    (ucode-primitive termcap-initialize 1))
