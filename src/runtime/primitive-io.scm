@@ -359,6 +359,9 @@ USA.
 (define (tty-output-channel)
   (make-channel ((ucode-primitive tty-output-channel 0))))
 
+(define (tty-error-channel)
+  (make-channel ((ucode-primitive tty-error-channel 0))))
+
 (define (terminal-get-state channel)
   ((ucode-primitive terminal-get-state 1) (channel-descriptor channel)))
 

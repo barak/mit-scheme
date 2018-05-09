@@ -1547,9 +1547,6 @@ USA.
 (define-package (runtime console-i/o-port)
   (files "console-io")
   (parent (runtime))
-  (import (runtime primitive-io)
-	  tty-input-channel
-	  tty-output-channel)
   (export ()
 	  console-i/o-port
 	  console-i/o-port?)
@@ -3633,6 +3630,10 @@ USA.
 	  test-for-io-on-channel
 	  test-for-io-on-descriptor
 	  with-channel-blocking)
+  (export (runtime console-i/o-port)
+	  tty-input-channel
+	  tty-output-channel
+	  tty-error-channel)
   (export (runtime emacs-interface)
 	  channel-descriptor)
   (export (runtime load)
