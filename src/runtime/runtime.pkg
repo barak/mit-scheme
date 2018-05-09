@@ -2667,12 +2667,10 @@ USA.
 	  with-output-to-port
 	  with-trace-output-port)
   (export ()
-	  ;; Temporary definition to satisfy R7RS
-	  ;; TODO(cph): provide a proper definition
-	  (current-error-port current-output-port)
 	  close-input-port
 	  close-output-port
 	  close-port
+	  current-error-port
 	  current-input-port
 	  current-output-port
 	  i/o-port?

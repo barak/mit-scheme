@@ -763,19 +763,12 @@ USA.
 
 ;;;; Standard Ports
 
-(define current-input-port)
-(define current-output-port)
-(define notification-output-port)
-(define trace-output-port)
-(define interaction-i/o-port)
-(add-boot-init!
- (lambda ()
-   (set! current-input-port (make-port-parameter input-port?))
-   (set! current-output-port (make-port-parameter output-port?))
-   (set! notification-output-port (make-port-parameter output-port?))
-   (set! trace-output-port (make-port-parameter output-port?))
-   (set! interaction-i/o-port (make-port-parameter i/o-port?))
-   unspecific))
+(define-deferred current-input-port (make-port-parameter input-port?))
+(define-deferred current-output-port (make-port-parameter output-port?))
+(define-deferred current-error-port (make-port-parameter output-port?))
+(define-deferred notification-output-port (make-port-parameter output-port?))
+(define-deferred trace-output-port (make-port-parameter output-port?))
+(define-deferred interaction-i/o-port (make-port-parameter i/o-port?))
 
 (define (make-port-parameter predicate)
   (make-general-parameter #f
