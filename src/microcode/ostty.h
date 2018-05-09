@@ -31,6 +31,7 @@ USA.
 
 extern Tchannel OS_tty_input_channel (void);
 extern Tchannel OS_tty_output_channel (void);
+extern Tchannel OS_tty_error_channel (void);
 extern unsigned int OS_tty_x_size (void);
 extern unsigned int OS_tty_y_size (void);
 extern const char * OS_tty_command_beep (void);

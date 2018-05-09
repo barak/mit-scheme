@@ -44,6 +44,7 @@ extern void tputs (const char *, int, void (*) (char));
 
 static Tchannel input_channel;
 static Tchannel output_channel;
+static Tchannel error_channel;
 
 static int tty_x_size;
 static int tty_y_size;
@@ -63,6 +64,12 @@ Tchannel
 OS_tty_output_channel (void)
 {
   return (output_channel);
+}
+
+Tchannel
+OS_tty_error_channel (void)
+{
+  return (error_channel);
 }
 
 unsigned int
@@ -218,6 +225,8 @@ UX_initialize_tty (void)
   (CHANNEL_INTERNAL (input_channel)) = 1;
   output_channel = (OS_open_fd (STDOUT_FILENO));
   (CHANNEL_INTERNAL (output_channel)) = 1;
+  error_channel = (OS_open_fd (STDERR_FILENO));
+  (CHANNEL_INTERNAL (error_channel)) = 1;
   tty_size_synchronized_p = false;
   UX_synchronize_tty_size ();
   tty_command_beep = ALERT_STRING;
