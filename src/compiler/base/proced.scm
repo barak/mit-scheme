@@ -119,9 +119,6 @@ USA.
 	     (list (procedure-label procedure))
 	     (list type)))))))
 
-(define-integrable (unparse-label state label)
-  (unparse-string state (symbol->string label)))
-
 (define-integrable (rvalue/procedure? rvalue)
   (eq? (tagged-vector/tag rvalue) procedure-tag))
 

@@ -1062,8 +1062,8 @@ USA.
 (define (phase/lap-file-output scode port)
   (compiler-phase "LAP File Output"
     (lambda ()
-      (parameterize* (list (cons param:unparser-radix 16)
-			   (cons param:unparse-uninterned-symbols-by-name? #t))
+      (parameterize* (list (cons param:printer-radix 16)
+			   (cons param:print-uninterned-symbols-by-name? #t))
         (lambda ()
 	  (parameterize* (list (cons current-output-port port))
 	    (lambda ()

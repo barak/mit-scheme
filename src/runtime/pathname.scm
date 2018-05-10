@@ -726,4 +726,4 @@ these rules:
   (add-event-receiver! event:after-restore reset-package!))
 
 (define (initialize-parser-method!)
-  (define-bracketed-object-parser-method 'pathname pathname-parser-method))
+  (define-bracketed-reader-method 'pathname pathname-parser-method))

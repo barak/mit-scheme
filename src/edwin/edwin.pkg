@@ -113,8 +113,6 @@ USA.
   (import (runtime microcode-tables)
 	  fixed-objects-item
 	  update-fixed-objects-item!)
-  (import (runtime parser)
-	  get-param:parser-fold-case?)
   (import (runtime port)
 	  (make-port make-textual-port)
 	  (make-port-type make-textual-port-type)

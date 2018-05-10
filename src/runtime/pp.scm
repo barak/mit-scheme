@@ -308,11 +308,11 @@ USA.
 				    (output-port/x-size port))
 				1))
 		       (cons output-port port)
-		       (cons param:unparse-uninterned-symbols-by-name?
+		       (cons param:print-uninterned-symbols-by-name?
 			     (get-param:pp-uninterned-symbols-by-name?))
-		       (cons param:unparse-abbreviate-quotations?
+		       (cons param:printer-abbreviate-quotations?
 			     (or as-code?
-				 (param:unparse-abbreviate-quotations?))))
+				 (param:printer-abbreviate-quotations?))))
     (lambda ()
       (let* ((numerical-walk
 	      (if (get-param:pp-avoid-circularity?)
@@ -733,7 +733,7 @@ USA.
   (define (numerical-walk-no-auto-highlight object list-depth)
     (cond ((and (pair? object)
 		(not (named-list? object)))
-	   (let ((prefix (unparse-list/prefix-pair? object)))
+	   (let ((prefix (prefix-pair? object)))
 	     (if prefix
 		 (make-prefix-node prefix
 				   (numerical-walk (cadr object)
@@ -743,7 +743,7 @@ USA.
 	   (if (or (get-param:pp-uninterned-symbols-by-name?)
 		   (interned-symbol? object))
 	       object
-	       (walk-custom unparse-object object list-depth)))
+	       (walk-custom object list-depth)))
 	  ((pretty-printer-highlight? object)
 	   ;; (1) see note below.
 	   (let ((rest (walk-highlighted-object
@@ -757,16 +757,16 @@ USA.
 	  ((and (vector? object)
 		(not (named-vector? object)))
 	   (if (zero? (vector-length object))
-	       (walk-custom unparse-object object list-depth)
+	       (walk-custom object list-depth)
 	       (make-prefix-node "#"
 				 (walk-pair (vector->list object)
 					    list-depth))))
 	  ((primitive-procedure? object)
 	   (if (get-param:pp-primitives-by-name?)
 	       (primitive-procedure-name object)
-	       (walk-custom unparse-object object list-depth)))
+	       (walk-custom object list-depth)))
 	  (else
-	   (walk-custom unparse-object object list-depth))))
+	   (walk-custom object list-depth))))
 
   ;; We do the following test first and the test above at (1) for a
   ;; PRETTY-PRINTER-HIGHLIGHT because the highlighted object may
@@ -784,24 +784,22 @@ USA.
 	(else
 	 (numerical-walk-no-auto-highlight object list-depth))))
 
-(define (walk-custom unparser object list-depth)
+(define (walk-custom object list-depth)
   (call-with-output-string
-   (lambda (port)
-     (unparser (make-unparser-state port
-				    list-depth
-				    #t
-				    (nearest-repl/environment))
-	       object))))
+    (lambda (port)
+      (parameterize* (list (cons param:printer-list-depth-limit list-depth))
+	(lambda ()
+	  (write object port))))))
 
 (define (walk-pair pair list-depth)
-  (if (let ((limit (get-param:unparser-list-depth-limit)))
+  (if (let ((limit (get-param:printer-list-depth-limit)))
 	(and limit
 	     (>= list-depth limit)
 	     (no-highlights? pair)))
       "..."
       (let ((list-depth (+ list-depth 1)))
 	(let loop ((pair pair) (list-breadth 0))
-	  (cond ((let ((limit (get-param:unparser-list-breadth-limit)))
+	  (cond ((let ((limit (get-param:printer-list-breadth-limit)))
 		   (and limit
 			(>= list-breadth limit)
 			(no-highlights? pair)))
@@ -819,7 +817,7 @@ USA.
 			 "."
 			 (make-singleton-list-node
 			  (if (let ((limit
-				     (get-param:unparser-list-breadth-limit)))
+				     (get-param:printer-list-breadth-limit)))
 				(and limit
 				     (>= list-breadth limit)
 				     (no-highlights? pair)))
@@ -844,14 +842,14 @@ USA.
 
 (define (walk-highlighted-object object list-depth numerical-walk)
   (let ((dl (pph/depth-limit object)))
-    (parameterize* (list (cons param:unparser-list-breadth-limit
+    (parameterize* (list (cons param:printer-list-breadth-limit
 			       (let ((bl (pph/breadth-limit object)))
 				 (if (eq? bl 'default)
-				     (param:unparser-list-breadth-limit)
+				     (param:printer-list-breadth-limit)
 				     bl)))
-			 (cons param:unparser-list-depth-limit
+			 (cons param:printer-list-depth-limit
 			       (if (eq? dl 'default)
-				   (param:unparser-list-depth-limit)
+				   (param:printer-list-depth-limit)
 				   dl)))
       (lambda ()
 	(numerical-walk (pph/object object)
@@ -889,7 +887,7 @@ USA.
   (define queue (cdr half-pointer/queue))
   (define half-pointer (car half-pointer/queue))
   (cond ((pair? object)
-	 (let ((prefix (unparse-list/prefix-pair? object)))
+	 (let ((prefix (prefix-pair? object)))
 	   (if prefix
 	       (make-prefix-node
 		prefix
@@ -903,7 +901,7 @@ USA.
 	 (if (or (get-param:pp-uninterned-symbols-by-name?)
 		 (interned-symbol? object))
 	     object
-	     (walk-custom unparse-object object list-depth)))
+	     (walk-custom object list-depth)))
 	((pretty-printer-highlight? object)
 	 (let ((rest (walk-highlighted-object object list-depth)))
 	   (make-highlighted-node (+ (pph/start-string-length object)
@@ -913,7 +911,7 @@ USA.
 				  rest)))
 	((vector? object)
 	 (if (zero? (vector-length object))
-	     (walk-custom unparse-object object list-depth)
+	     (walk-custom object list-depth)
 	     (make-prefix-node
 	      "#"
 	      (walk-vector-terminating
@@ -922,14 +920,14 @@ USA.
 	((primitive-procedure? object)
 	 (if (get-param:pp-primitives-by-name?)
 	     (primitive-procedure-name object)
-	     (walk-custom unparse-object object list-depth)))
+	     (walk-custom object list-depth)))
 	(else
-	 (walk-custom unparse-object object list-depth))))
+	 (walk-custom object list-depth))))
 
 ;;; The following two procedures walk lists and vectors, respectively.
 
 (define (walk-pair-terminating pair half-pointer/queue list-depth)
-  (if (let ((limit (get-param:unparser-list-depth-limit)))
+  (if (let ((limit (get-param:printer-list-depth-limit)))
 	(and limit
 	     (>= list-depth limit)
 	     (no-highlights? pair)))
@@ -937,7 +935,7 @@ USA.
       (let ((list-depth (+ list-depth 1)))
 	(let loop ((pair pair) (list-breadth 0)
 			       (half-pointer/queue half-pointer/queue))
-	  (cond ((let ((limit (get-param:unparser-list-breadth-limit)))
+	  (cond ((let ((limit (get-param:printer-list-breadth-limit)))
 		   (and limit
 			(>= list-breadth limit)
 			(no-highlights? pair)))
@@ -979,7 +977,7 @@ USA.
 		      "."
 		      (make-singleton-list-node
 		       (if
-			(let ((limit (get-param:unparser-list-breadth-limit)))
+			(let ((limit (get-param:printer-list-breadth-limit)))
 			  (and limit
 			       (>= list-breadth limit)
 			       (no-highlights? pair)))
@@ -996,14 +994,14 @@ USA.
 			       half-pointer/queue list-depth)))))))))))))))
 
 (define (walk-vector-terminating pair half-pointer/queue list-depth)
-  (if (let ((limit (get-param:unparser-list-depth-limit)))
+  (if (let ((limit (get-param:printer-list-depth-limit)))
 	(and limit
 	     (>= list-depth limit)
 	     (no-highlights? pair)))
       "..."
       (let ((list-depth (+ list-depth 1)))
 	(let loop ((pair pair) (list-breadth 0))
-	  (cond ((let ((limit (get-param:unparser-list-breadth-limit)))
+	  (cond ((let ((limit (get-param:printer-list-breadth-limit)))
 		   (and limit
 			(>= list-breadth limit)
 			(no-highlights? pair)))

@@ -974,9 +974,10 @@ Prefix argument means do not kill the debugger buffer."
 (define-structure (unparser-literal
 		   (conc-name unparser-literal/)
 		   (print-procedure
-		    (lambda (state instance)
-		      (unparse-string state
-				      (unparser-literal/string instance))))
+		    (general-unparser-method
+		     (lambda (instance port)
+		       (write-string (unparser-literal/string instance)
+				     port))))
 		   (constructor unparser-literal/make))
   string)
 
@@ -1014,7 +1015,7 @@ Prefix argument means do not kill the debugger buffer."
        port))))
 
 (define (print-with-subexpression expression subexpression)
-  (parameterize* (list (cons param:unparse-primitives-by-name? #t))
+  (parameterize* (list (cons param:print-primitives-by-name? #t))
     (lambda ()
       (if (invalid-subexpression? subexpression)
 	  (write (unsyntax expression))
@@ -1044,7 +1045,7 @@ Prefix argument means do not kill the debugger buffer."
    port))
 
 (define (print-reduction-as-subexpression expression)
-  (parameterize* (list (cons param:unparse-primitives-by-name? #t))
+  (parameterize* (list (cons param:print-primitives-by-name? #t))
     (lambda ()
       (write-string (ref-variable subexpression-start-marker))
       (write (unsyntax expression))

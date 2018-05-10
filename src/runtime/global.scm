@@ -279,7 +279,7 @@ USA.
   ((ucode-primitive unbind-variable 2) (->environment environment) name))
 
 (define (simple-top-level-environment fold-case?)
-  (make-top-level-environment (list 'param:parser-fold-case?
+  (make-top-level-environment (list 'param:reader-fold-case?
 				    '*parser-canonicalize-symbols?*)
 			      (list (make-settable-parameter fold-case?)
 				    #!default)))

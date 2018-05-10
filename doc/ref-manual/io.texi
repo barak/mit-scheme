@@ -595,7 +595,7 @@ signalled.
 
 The optional argument @var{environment} is an MIT/GNU Scheme extension
 that is used to look up the values of control variables such as
-@code{param:parser-radix} (@pxref{reader-controls}).  If not supplied,
+@code{param:reader-radix} (@pxref{reader-controls}).  If not supplied,
 it defaults to the @acronym{REP} environment.
 @end deffn
 
@@ -848,7 +848,7 @@ environments.  The global parameters may be dynamically bound by
 local changes by shadowing the global bindings in the local
 environment and assigning new parameters to them.
 
-@deffn parameter param:parser-radix
+@deffn parameter param:reader-radix
 This parameter defines the radix used by the reader when it parses
 numbers.  This is similar to passing a radix argument to
 @code{string->number}.  The value of the parameter must be one of
@@ -858,7 +858,7 @@ the parameter is bound to any other value.
 Note that much of the number syntax is invalid for radixes other than
 @code{10}.  The reader detects cases where such invalid syntax is used
 and signals an error.  However, problems can still occur when
-@code{param:parser-radix} is bound to @code{16}, because syntax that
+@code{param:reader-radix} is bound to @code{16}, because syntax that
 normally denotes symbols can now denote numbers (e.g.@: @code{abc}).
 Because of this, it is usually undesirable to bind this parameter to
 anything other than the default.
@@ -866,7 +866,7 @@ anything other than the default.
 The default value of this parameter is @code{10}.
 @end deffn
 
-@deffn parameter param:parser-fold-case?
+@deffn parameter param:reader-fold-case?
 This parameter controls whether the parser folds the case of symbols,
 character names, and certain other syntax.  If it is bound to its
 default value of @code{#t}, symbols read by the parser are case-folded
@@ -1087,14 +1087,14 @@ performs discretionary output flushing and returns an unspecified value.
 The following parameters may be used with @code{parameterize} to
 change the behavior of the @code{write} and @code{display} procedures.
 
-@deffn parameter param:unparser-radix
+@deffn parameter param:printer-radix
 This parameter specifies the default radix used to print numbers.  Its
 value must be one of the exact integers @code{2}, @code{8}, @code{10},
 or @code{16}; the default is @code{10}.  For values other than
 @code{10}, numbers are prefixed to indicate their radix.
 @end deffn
 
-@deffn parameter param:unparser-list-breadth-limit
+@deffn parameter param:printer-list-breadth-limit
 This parameter specifies a limit on the length of the printed
 representation of a list or vector; for example, if the limit is
 @code{4}, only the first four elements of any list are printed, followed
@@ -1104,11 +1104,11 @@ limit; the default is @code{#f}.
 
 @example
 @group
-(parameterize ((param:unparser-list-breadth-limit 4))
+(parameterize ((param:printer-list-breadth-limit 4))
   (lambda ()
     (write-to-string '(a b c d))))
                                 @result{} "(a b c d)"
-(parameterize ((param:unparser-list-breadth-limit 4))
+(parameterize ((param:printer-list-breadth-limit 4))
   (lambda ()
     (write-to-string '(a b c d e))))
                                 @result{} "(a b c d ...)"
@@ -1116,7 +1116,7 @@ limit; the default is @code{#f}.
 @end example
 @end deffn
 
-@deffn parameter param:unparser-list-depth-limit
+@deffn parameter param:printer-list-depth-limit
 This parameter specifies a limit on the nesting of lists and vectors in
 the printed representation.  If lists (or vectors) are more deeply
 nested than the limit, the part of the representation that exceeds the
@@ -1126,11 +1126,11 @@ is @code{#f}.
 
 @example
 @group
-(parameterize ((param:unparser-list-depth-limit 4))
+(parameterize ((param:printer-list-depth-limit 4))
   (lambda ()
     (write-to-string '((((a))) b c d))))
                                 @result{} "((((a))) b c d)"
-(parameterize ((param:unparser-list-depth-limit 4))
+(parameterize ((param:printer-list-depth-limit 4))
   (lambda ()
     (write-to-string '(((((a)))) b c d))))
                                 @result{} "((((...))) b c d)"
@@ -1138,7 +1138,7 @@ is @code{#f}.
 @end example
 @end deffn
 
-@deffn parameter param:unparser-string-length-limit
+@deffn parameter param:printer-string-length-limit
 This parameter specifies a limit on the length of the printed
 representation of strings.  If a string's length exceeds this limit, the
 part of the printed representation for the characters exceeding the
@@ -1148,11 +1148,11 @@ is @code{#f}.
 
 @example
 @group
-(parameterize ((param:unparser-string-length-limit 4))
+(parameterize ((param:printer-string-length-limit 4))
   (lambda ()
     (write-to-string "abcd")))
                                 @result{} "\"abcd\""
-(parameterize ((param:unparser-string-length-limit 4))
+(parameterize ((param:printer-string-length-limit 4))
   (lambda ()
     (write-to-string "abcde")))
                                 @result{} "\"abcd...\""
@@ -1160,7 +1160,7 @@ is @code{#f}.
 @end example
 @end deffn
 
-@deffn parameter param:unparse-with-maximum-readability?
+@deffn parameter param:print-with-maximum-readability?
 This parameter, which takes a boolean value, tells the printer to use a
 special printed representation for objects that normally print in a form
 that cannot be recognized by @code{read}.  These objects are printed

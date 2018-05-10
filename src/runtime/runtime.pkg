@@ -3259,6 +3259,10 @@ USA.
 (define-package (runtime number)
   (files "arith" "dragon4")
   (parent (runtime))
+  (export () deprecated:number
+	  (flonum-unparser:engineering-output flonum-printer:engineering-output)
+	  (flonum-unparser:normal-output flonum-printer:normal-output)
+	  (flonum-unparser:scientific-output flonum-printer:scientific-output))
   (export ()
 	  (-1+ complex:-1+)
 	  (1+ complex:1+)
@@ -3334,10 +3338,10 @@ USA.
 	  exact-positive-integer?
 	  flo:significand-digits-base-10
 	  flo:significand-digits-base-2
+	  flonum-printer:engineering-output
+	  flonum-printer:normal-output
+	  flonum-printer:scientific-output
 	  flonum-unparser-cutoff
-	  flonum-unparser:engineering-output
-	  flonum-unparser:normal-output
-	  flonum-unparser:scientific-output
 	  gcd
 	  inexact?
 	  integer-divide-quotient
@@ -3350,7 +3354,7 @@ USA.
 	  non-positive?
 	  number->string
 	  odd?
-	  param:flonum-unparser-cutoff
+	  param:flonum-printer-cutoff
 	  quotient
 	  remainder
 	  square)
@@ -3397,30 +3401,31 @@ USA.
 	  standard-system-loader)
   (initialization (initialize-package!)))
 
-(define-package (runtime parser)
-  (files "parser")
+(define-package (runtime reader)
+  (files "reader")
   (parent (runtime))
   (export () deprecated:parser
-	  (param:parser-canonicalize-symbols? param:parser-fold-case?)
+	  (param:parser-canonicalize-symbols? param:reader-fold-case?)
 	  *parser-associate-positions?*
 	  *parser-canonicalize-symbols?*
 	  *parser-radix*)
   (export ()
-	  param:parser-associate-positions?
-	  param:parser-enable-attributes?
-	  param:parser-fold-case?
-	  param:parser-keyword-style
-	  param:parser-radix
+	  condition-type:read-error
+	  param:reader-associate-positions?
+	  param:reader-enable-attributes?
+	  param:reader-fold-case?
+	  param:reader-keyword-style
+	  param:reader-radix
 	  read-error?			;R7RS
 	  )
   (export (runtime)
-	  define-bracketed-object-parser-method)
+	  define-bracketed-reader-method)
   (export (runtime input-port)
-	  parse-object)
+	  read-top-level)
   (export (runtime swank)
-	  get-param:parser-fold-case?)
-  (export (runtime unparser)
-	  get-param:parser-fold-case?))
+	  get-param:reader-fold-case?)
+  (export (runtime printer)
+	  get-param:reader-fold-case?))
 
 (define-package (runtime file-attributes)
   (files "file-attributes")
@@ -3794,7 +3799,7 @@ USA.
   (export (runtime pathname)
 	  record-type-proxy:host
 	  record-type-proxy:pathname)
-  (export (runtime unparser)
+  (export (runtime printer)
 	  named-list-with-unparser?
 	  named-vector-with-unparser?)
   (initialization (initialize-package!)))
@@ -4823,8 +4828,8 @@ USA.
 	  increment-non-runtime!)
   (initialization (initialize-package!)))
 
-(define-package (runtime unparser)
-  (files "unpars")
+(define-package (runtime printer)
+  (files "printer")
   (parent (runtime))
   (export () deprecated:unparser
 	  *unparse-abbreviate-quotations?*
@@ -4839,34 +4844,32 @@ USA.
 	  *unparser-radix*
 	  *unparser-string-length-limit*)
   (export ()
-	  param:unparse-abbreviate-quotations?
-	  param:unparse-char-in-unicode-syntax?
-	  param:unparse-compound-procedure-names?
-	  param:unparse-primitives-by-name?
-	  param:unparse-streams?
-	  param:unparse-uninterned-symbols-by-name?
-	  param:unparse-with-datum?
-	  param:unparse-with-maximum-readability?
-	  param:unparser-list-breadth-limit
-	  param:unparser-list-depth-limit
-	  param:unparser-radix
-	  param:unparser-string-length-limit
-	  unparse-char
-	  unparse-object
-	  unparse-string
+	  param:print-char-in-unicode-syntax?
+	  param:print-compound-procedure-names?
+	  param:print-primitives-by-name?
+	  param:print-streams?
+	  param:print-uninterned-symbols-by-name?
+	  param:print-with-datum?
+	  param:print-with-maximum-readability?
+	  param:printer-abbreviate-quotations?
+	  param:printer-list-breadth-limit
+	  param:printer-list-depth-limit
+	  param:printer-radix
+	  param:printer-string-length-limit
+	  print-object
 	  user-object-type
 	  with-current-unparser-state)
   (export (runtime boot-definitions)
-	  get-param:unparse-with-maximum-readability?)
+	  get-param:print-with-maximum-readability?)
   (export (runtime global-database)
 	  (unparser-state/port context-port))
   (export (runtime output-port)
-	  unparse-object/top-level)
+	  print-top-level)
   (export (runtime pretty-printer)
-	  get-param:unparser-list-breadth-limit
-	  get-param:unparser-list-depth-limit
-	  make-unparser-state
-	  unparse-list/prefix-pair?)
+	  get-param:printer-list-breadth-limit
+	  get-param:printer-list-depth-limit
+	  prefix-pair?
+	  make-unparser-state)
   (export (runtime record)
 	  (rtd:unparser-state <context>)))
 

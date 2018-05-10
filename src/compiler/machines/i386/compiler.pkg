@@ -258,8 +258,6 @@ USA.
   (import (runtime compiler-info)
 	  make-dbg-info-vector
 	  split-inf-structure!)
-  (import (runtime unparser)
-	  param:unparse-uninterned-symbols-by-name?)
   (import (scode-optimizer build-utilities)
 	  directory-processor))
 
@@ -277,9 +275,7 @@ USA.
 	  show-fg
 	  show-fg-node
 	  show-rtl
-	  write-rtl-instructions)
-  (import (runtime unparser)
-	  param:unparse-uninterned-symbols-by-name?))
+	  write-rtl-instructions))
 
 (define-package (compiler pattern-matcher/lookup)
   (files "base/pmlook")

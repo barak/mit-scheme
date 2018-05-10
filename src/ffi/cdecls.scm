@@ -91,7 +91,7 @@ USA.
 	      (lambda (inport)
 		(let loop ()
 		  (let ((form
-			 (parameterize* (list (cons param:parser-fold-case? #f))
+			 (parameterize* (list (cons param:reader-fold-case? #f))
 			   (lambda ()
 			     (read inport)))))
 		    (if (not (eof-object? form))

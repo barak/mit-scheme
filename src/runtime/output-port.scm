@@ -53,7 +53,7 @@ USA.
   ((textual-port-operation/discretionary-flush-output port) port))
 
 (define (output-port/write-object port object environment)
-  (unparse-object/top-level object port #t environment))
+  (print-top-level object port #t environment))
 
 (define (output-port/x-size port)
   (or (let ((operation (textual-port-operation port 'x-size)))
@@ -133,7 +133,7 @@ USA.
 
 (define (display object #!optional port environment)
   (let ((port (optional-output-port port 'display)))
-    (unparse-object/top-level object port #f environment)
+    (print-top-level object port #f environment)
     (output-port/discretionary-flush port)))
 
 (define (write object #!optional port environment)

@@ -979,7 +979,7 @@ it is added to the front of the command history."
     (set-prompt-history-strings!
      'REPEAT-COMPLEX-COMMAND
      (map (lambda (command)
-	    (parameterize* (list (cons param:unparse-with-maximum-readability?
+	    (parameterize* (list (cons param:print-with-maximum-readability?
 				       #t))
 	      (lambda ()
 		(write-to-string command))))

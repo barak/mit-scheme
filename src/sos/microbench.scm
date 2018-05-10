@@ -263,7 +263,7 @@ USA.
     (let ((report
 	   (lambda (name time scale)
 	     (parameterize* (list
-			     (cons param:flonum-unparser-cutoff '(ABSOLUTE 2)))
+			     (cons param:flonum-printer-cutoff '(ABSOLUTE 2)))
 	       (lambda ()
 		 (newline)
 		 (write name)

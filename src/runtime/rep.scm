@@ -546,9 +546,9 @@ USA.
 	 (and condition
 	      (cmdl-message/strings
 	       (parameterize*
-		(list (cons param:unparser-list-depth-limit 25)
-		      (cons param:unparser-list-breadth-limit 100)
-		      (cons param:unparser-string-length-limit 500))
+		(list (cons param:printer-list-depth-limit 25)
+		      (cons param:printer-list-breadth-limit 100)
+		      (cons param:printer-string-length-limit 500))
 		(lambda ()
 		  (condition/report-string condition))))))
      (and condition

@@ -31,7 +31,7 @@
      (write-string (->namestring filename) port))
    (lambda ()
      (let ((code
-	    (parameterize ((param:parser-fold-case? #f))
+	    (parameterize ((param:reader-fold-case? #f))
 	      (ignore-errors
 	       (lambda ()
 		 (read-file filename))))))

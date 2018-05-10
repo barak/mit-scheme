@@ -559,7 +559,7 @@ USA.
 (define (generate-property-table-1 prop-name exprs)
   (let ((ucd-version (read-ucd-version-file)))
     (parameterize ((param:pp-forced-x-size 1000)
-		   (param:unparse-char-in-unicode-syntax? #t))
+		   (param:print-char-in-unicode-syntax? #t))
       (call-with-output-file (prop-table-file-name prop-name)
 	(lambda (port)
 	  (write-copyright-and-title prop-name ucd-version port)

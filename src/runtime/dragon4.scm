@@ -44,13 +44,13 @@ not much different to numbers within a few orders of magnitude of 1.
 
 (declare (usual-integrations))
 
-(define flonum-unparser-hook #f)
+(define flonum-printer-hook #f)
 (define flonum-unparser-cutoff #!default)
-(define param:flonum-unparser-cutoff)
+(define param:flonum-printer-cutoff)
 (define expt-radix)
 
 (define (initialize-dragon4!)
-  (set! param:flonum-unparser-cutoff
+  (set! param:flonum-printer-cutoff
 	(make-settable-parameter 'normal
 				 (lambda (cutoff)
 				   (guarantee-cutoff-spec cutoff)
@@ -71,7 +71,7 @@ not much different to numbers within a few orders of magnitude of 1.
 	   (let ((p flo:significand-digits-base-2))
 	     (call-with-values (lambda () (dragon4-normalize x p))
 	       (lambda (f e)
-		 (call-with-values flonum-unparser-cutoff-args
+		 (call-with-values flonum-printer-cutoff-args
 		   (lambda (cutoff-mode cutoff display-procedure)
 		     (dragon4 f e p radix cutoff-mode cutoff
 		       (lambda (u k generate)
@@ -84,8 +84,8 @@ not much different to numbers within a few orders of magnitude of 1.
 				       (cons (digit->char u radix)
 					     (generate loop)))))))
 			   (display-procedure digits k radix))))))))))))
-    (or (and flonum-unparser-hook
-	     (flonum-unparser-hook x radix))
+    (or (and flonum-printer-hook
+	     (flonum-printer-hook x radix))
 	(cond ((flo:nan? x)
 	       (string-copy "+nan.0"))
 	      ((flo:positive? x)
@@ -102,7 +102,7 @@ not much different to numbers within a few orders of magnitude of 1.
 	      (else
 	       (string-copy "+nan.0"))))))
 
-(define (flonum-unparser:normal-output digits k radix)
+(define (flonum-printer:normal-output digits k radix)
   (let ((k+1 (+ k 1)))
     (let ((k+1-l (- k+1 (string-length digits)))
 	  (n (flo:significand-digits radix)))
@@ -121,10 +121,10 @@ not much different to numbers within a few orders of magnitude of 1.
 	    (else
 	     (scientific-output digits k radix 0))))))
 
-(define (flonum-unparser:scientific-output digits k radix)
+(define (flonum-printer:scientific-output digits k radix)
   (scientific-output digits k radix 0))
 
-(define (flonum-unparser:engineering-output digits k radix)
+(define (flonum-printer:engineering-output digits k radix)
   (scientific-output digits k radix (modulo k 3)))
 
 (define (scientific-output digits k radix kr)
@@ -144,24 +144,24 @@ not much different to numbers within a few orders of magnitude of 1.
 			  "e"
 			  exponent)))))
 
-(define (flonum-unparser-cutoff-args)
+(define (flonum-printer-cutoff-args)
   (let ((cutoff
 	 (if (default-object? flonum-unparser-cutoff)
-	     (param:flonum-unparser-cutoff)
+	     (param:flonum-printer-cutoff)
 	     flonum-unparser-cutoff)))
     (cond ((eq? 'normal cutoff)
-	   (values 'normal 0 flonum-unparser:normal-output))
+	   (values 'normal 0 flonum-printer:normal-output))
 	  ((compound-cutoff-spec? cutoff)
 	   (values (car cutoff)
 		   (- (cadr cutoff))
 		   (if (null? (cddr cutoff))
-		       flonum-unparser:normal-output
+		       flonum-printer:normal-output
 		       (lookup-symbolic-display-mode
 			(caddr cutoff)))))
 	  (else
 	   (warn "illegal flonum unparser cutoff parameter"
 		 cutoff)
-	   (values 'normal 0 flonum-unparser:normal-output)))))
+	   (values 'normal 0 flonum-printer:normal-output)))))
 
 (define (cutoff-spec? cutoff)
   (or (eq? 'normal cutoff)
@@ -188,9 +188,9 @@ not much different to numbers within a few orders of magnitude of 1.
 
 (define (lookup-symbolic-display-mode mode)
   (case mode
-    ((engineering) flonum-unparser:engineering-output)
-    ((scientific) flonum-unparser:scientific-output)
-    ((normal) flonum-unparser:normal-output)
+    ((engineering) flonum-printer:engineering-output)
+    ((scientific) flonum-printer:scientific-output)
+    ((normal) flonum-printer:normal-output)
     (else mode)))
 
 (define (dragon4-normalize x precision)

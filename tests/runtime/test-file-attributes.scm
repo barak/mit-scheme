@@ -132,7 +132,7 @@ This file is part of MIT/GNU Scheme.
 				       unspecific)))
 		       (read port))))
 		(assert-false value)
-		(assert-equal (port-property port 'parser-file-attributes #f)
+		(assert-equal (port-property port 'reader-file-attributes #f)
 			      expected-properties))))
           'expression `(read ,contents)))))
    test-cases))

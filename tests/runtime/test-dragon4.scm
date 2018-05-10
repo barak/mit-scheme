@@ -32,7 +32,7 @@ USA.
   (lambda ()
     (define (try n settings . expecteds)
       (let ((got
-	     (parameterize ((param:flonum-unparser-cutoff settings))
+	     (parameterize ((param:flonum-printer-cutoff settings))
 	       (number->string (exact->inexact n)))))
 	(assert-member got expecteds)))
 

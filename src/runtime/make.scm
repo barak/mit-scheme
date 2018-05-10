@@ -522,10 +522,10 @@ USA.
    ;; Syntax
    (runtime number-parser)
    (runtime options)
-   (runtime parser)
+   (runtime reader)
    (runtime file-attributes)
    ((runtime pathname) initialize-parser-method!)
-   (runtime unparser)
+   (runtime printer)
    (runtime unsyntaxer)
    (runtime pretty-printer)
    (runtime extended-scode-eval)

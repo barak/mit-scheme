@@ -1290,7 +1290,7 @@ it has been renamed, it will not be deleted automatically.")
 	    (cond ((debugging-info/compiled-code? expression)
 		   (write-string ";unknown compiled code" port))
 		  ((not (debugging-info/undefined-expression? expression))
-		   (parameterize* (list (cons param:unparse-primitives-by-name?
+		   (parameterize* (list (cons param:print-primitives-by-name?
 					      #t))
 		     (lambda ()
 		       (write
@@ -1382,7 +1382,7 @@ it has been renamed, it will not be deleted automatically.")
 	    (subproblem/number (reduction/subproblem reduction)))
 	   port)))
     (write-string " " port)
-    (parameterize* (list (cons param:unparse-primitives-by-name? #t))
+    (parameterize* (list (cons param:print-primitives-by-name? #t))
       (lambda ()
 	(write (unsyntax (reduction/expression reduction)) port)))))
 

@@ -266,7 +266,7 @@ The following commands evaluate Scheme expressions:
 	  (let ((completions
 		 (let ((environment (evaluation-environment #f)))
 		   (obarray-completions
-		    (if (and bound-only? (get-param:parser-fold-case?))
+		    (if (and bound-only? (param:reader-fold-case?))
 			(string-downcase prefix)
 			prefix)
 		    (if bound-only?
@@ -360,7 +360,7 @@ Otherwise, it is shown in the echo area."
 			       (insert-string " . " point)
 			       (insert-string (symbol->string argl) point)))))
 		    (parameterize*
-		     (list (cons param:unparse-uninterned-symbols-by-name? #t))
+		     (list (cons param:print-uninterned-symbols-by-name? #t))
 		     (lambda ()
 		       (message procedure-name ": " argl)))))
 	      (editor-error "Expression does not evaluate to a procedure: "

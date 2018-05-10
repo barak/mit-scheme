@@ -181,7 +181,7 @@ USA.
 
 (define (read #!optional port environment)
   (declare (ignore environment))
-  (parse-object (optional-input-port port 'read)))
+  (read-top-level (optional-input-port port 'read)))
 
 (define (read-file pathname #!optional environment)
   (declare (ignore environment))

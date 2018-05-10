@@ -321,7 +321,7 @@ USA.
   (lambda (state object)
     (with-current-unparser-state state
       (lambda (port)
-	(if (get-param:unparse-with-maximum-readability?)
+	(if (get-param:print-with-maximum-readability?)
 	    (begin
 	      (write-string "#@" port)
 	      (write (hash-object object) port))

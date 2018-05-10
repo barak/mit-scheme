@@ -149,6 +149,6 @@ USA.
 	 (error "Not a tagged vector" object))))
 
 (define (tagged-vector/unparse state vector)
-  (parameterize* (list (cons param:unparser-radix 16))
+  (parameterize* (list (cons param:printer-radix 16))
     (lambda ()
       ((tagged-vector/unparser vector) state vector))))
