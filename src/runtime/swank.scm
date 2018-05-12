@@ -283,7 +283,7 @@ USA.
   (let ((value (repl-eval sexp socket)))
     (call-with-output-string
       (lambda (port)
-	(port/write-result port sexp value (hash-object value) (buffer-env))
+	(port/write-result port sexp value (hash-object value))
 	(if nl? (newline port))))))
 
 (define (for-each-sexp procedure string)

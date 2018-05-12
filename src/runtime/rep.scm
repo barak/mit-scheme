@@ -494,12 +494,17 @@ USA.
    with-repl-eval-boundary
    repl))
 
-(define (repl-write value s-expression #!optional environment repl)
-  (receive (environment repl) (optional-er environment repl 'repl-write)
-    (hook/repl-write value s-expression environment repl)))
+(define (repl-write value s-expression #!optional repl)
+  (hook/repl-write value
+		   s-expression
+		   (if (default-object? repl)
+		       (nearest-repl)
+		       (begin
+			 (guarantee repl? repl 'repl-write)
+			 repl))))
 
 (define hook/repl-write)
-(define (default/repl-write object s-expression environment repl)
+(define (default/repl-write object s-expression repl)
   (port/write-result (cmdl/port repl)
 		     s-expression
 		     object
@@ -507,8 +512,7 @@ USA.
 			  (object-pointer? object)
 			  (not (interned-symbol? object))
 			  (not (number? object))
-			  (hash-object object))
-		     environment))
+			  (hash-object object))))
 
 (define (repl-eval/write s-expression #!optional environment repl)
   (receive (environment repl) (optional-er environment repl 'repl-eval/write)
@@ -517,7 +521,6 @@ USA.
 (define (%repl-eval/write s-expression environment repl)
   (hook/repl-write (%repl-eval s-expression environment repl)
 		   s-expression
-		   environment
 		   repl))
 
 (define (optional-er environment repl caller)

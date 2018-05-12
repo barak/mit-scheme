@@ -323,18 +323,13 @@ USA.
 
 ;;;; Miscellaneous Hooks
 
-(define (port/write-result port expression value hash-number
-			   #!optional environment)
-  (let ((operation (textual-port-operation port 'write-result))
-	(environment
-	 (if (default-object? environment)
-	     (nearest-repl/environment)
-	     (guarantee environment? environment 'port/write-result))))
+(define (port/write-result port expression value hash-number)
+  (let ((operation (textual-port-operation port 'write-result)))
     (if operation
-	(operation port expression value hash-number environment)
-	(default/write-result port expression value hash-number environment))))
+	(operation port expression value hash-number)
+	(default/write-result port expression value hash-number))))
 
-(define (default/write-result port expression object hash-number environment)
+(define (default/write-result port expression object hash-number)
   expression
   (if (not (nearest-cmdl/batch-mode?))
       (with-output-port-terminal-mode port 'cooked
@@ -349,9 +344,9 @@ USA.
 		(if hash-number
 		    (begin
 		      (write-string " " port)
-		      (write hash-number port environment)))
+		      (write hash-number port)))
 		(write-string ": " port)
-		(write object port environment)))))))
+		(write object port)))))))
 
 (define write-result:undefined-value-is-special? true)
 

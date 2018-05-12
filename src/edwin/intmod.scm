@@ -904,7 +904,7 @@ If this is an error, the debugger examines the error condition."
 	   (and (not (null? windows))
 		(apply min (map window-x-size windows)))))))
 
-(define (operation/write-result port expression value hash-number environment)
+(define (operation/write-result port expression value hash-number)
   (let ((buffer (port/buffer port))
 	(other-buffer?
 	 (memq (operation/current-expression-context port expression)
@@ -915,7 +915,7 @@ If this is an error, the debugger examines the error condition."
 			  (and (ref-variable enable-transcript-buffer buffer)
 			       (transcript-buffer)))
 	(begin
-	  (default/write-result port expression value hash-number environment)
+	  (default/write-result port expression value hash-number)
 	  (if (and other-buffer? (not (mark-visible? (port/mark port))))
 	      (transcript-write value #f))))))
 

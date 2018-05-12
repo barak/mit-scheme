@@ -123,7 +123,7 @@ USA.
 
 ;;;; Miscellaneous Hooks
 
-(define (emacs/write-result port expression object hash-number environment)
+(define (emacs/write-result port expression object hash-number)
   expression
   (cond ((undefined-value? object)
 	 (transmit-signal-with-argument port #\v ""))
@@ -142,7 +142,7 @@ USA.
 	  port #\v
 	  (call-with-output-string
 	    (lambda (port)
-	      (write object port environment)))))))
+	      (write object port)))))))
 
 (define (emacs/error-decision repl condition)
   condition
