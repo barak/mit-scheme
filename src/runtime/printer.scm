@@ -139,13 +139,14 @@ USA.
 		  *unparser-string-length-limit*))
 
 (define-record-type <context>
-    (make-context port mode list-depth in-brackets?
+    (make-context port mode list-depth in-brackets? labeling
 		  list-breadth-limit list-depth-limit)
     context?
   (port context-port)
   (mode context-mode)
   (list-depth context-list-depth)
   (in-brackets? context-in-brackets?)
+  (labeling context-labeling)
   (list-breadth-limit context-list-breadth-limit)
   (list-depth-limit context-list-depth-limit))
 
@@ -154,6 +155,7 @@ USA.
 		(context-mode context)
 		(+ 1 (context-list-depth context))
 		(context-in-brackets? context)
+		(context-labeling context)
 		(context-list-breadth-limit context)
 		(context-list-depth-limit context)))
 
@@ -162,6 +164,7 @@ USA.
 		(context-mode context)
 		0
 		#t
+		(context-labeling context)
 		within-brackets:list-breadth-limit
 		within-brackets:list-depth-limit))
 
@@ -170,6 +173,9 @@ USA.
 
 (define (context-slashify? context)
   (eq? 'normal (context-mode context)))
+
+(define (datum-label object context)
+  ((context-labeling context) object))
 
 (define (context-char-set context)
   (textual-port-char-set (context-port context)))
@@ -184,38 +190,106 @@ USA.
 
 ;;;; Top Level
 
-(define (print-top-level object port slashify?)
-  (guarantee output-port? port)
+(define (print-top-level object port slashify? label-mode)
   (print-object object
 		(top-level-context port
-				   (if slashify? 'normal 'display))))
+				   (if slashify? 'normal 'display)
+				   (make-labeling-procedure object
+							    label-mode))))
 
-(define (top-level-context port mode)
+(define (top-level-context port mode labeling)
   (let ((context (initial-context)))
     (if context
 	(make-context port
 		      mode
 		      (context-list-depth context)
 		      (context-in-brackets? context)
+		      labeling
 		      (context-list-breadth-limit context)
 		      (context-list-depth-limit context))
 	(make-context port
 		      mode
 		      0
 		      #f
+		      labeling
 		      (get-param:printer-list-breadth-limit)
 		      (get-param:printer-list-depth-limit)))))
 
-(define (printer-mode? object)
-  (or (eq? 'normal object)
-      (eq? 'display object)))
+(define (make-labeling-procedure object label-mode)
+  (let ((shared-objects
+	 (case label-mode
+	   ((#f) '())
+	   ;; There's little advantage to treating circularity specially since
+	   ;; it's more expensive than finding all sharing.
+	   ((sharing circularity) (find-shared-objects object))
+	   (else (error "Unsupported datum labeling mode:" label-mode)))))
+    (if (pair? shared-objects)
+	(let ((table (make-strong-eq-hash-table))
+	      (counter 0))
+	  (for-each (lambda (object)
+		      (hash-table-set! table object 'unseen))
+		    shared-objects)
+	  (lambda (object)
+	    (let ((datum (hash-table-ref/default table object #f)))
+	      (cond ((not datum) #f)
+		    ((eq? 'unseen datum)
+		     (let ((n counter))
+		       (set! counter (fix:+ counter 1))
+		       (hash-table-set! table object n)
+		       (cons 'def n)))
+		    (else (cons 'ref datum))))))
+	(lambda (object)
+	  (declare (ignore object))
+	  #f))))
+
+(define (find-shared-objects object)
+  (let ((table (make-strong-eq-hash-table)))
 
-(define-deferred print-object
-  (standard-predicate-dispatcher 'print-object 2))
+    (define (walk object)
+      (cond ((pair? object)
+	     (if (mark! object)
+		 (begin
+		   (walk (car object))
+		   (walk (cdr object)))))
+	    ((vector? object)
+	     (if (mark! object)
+		 (vector-for-each walk object)))))
+
+    (define (mark! object)
+      (let ((value
+	     (case (hash-table-ref/default table object 'unseen)
+	       ((unseen) 'seen)
+	       ((seen) 'shared))))
+	(hash-table-set! table object value)
+	(eq? 'seen value)))
+
+    (walk object)
+    (hash-table-fold table
+		     (lambda (key datum values)
+		       (if (eq? 'shared datum)
+			   (cons key values)
+			   values))
+		     '())))
+
+(define (print-object object context)
+  (if (let ((label (datum-label object context)))
+        (or (not label)
+            (print-datum-label label context)))
+      (print-object-1 object context)))
+
+(define (print-datum-label label context)
+  (let ((def? (eq? 'def (car label))))
+    (*print-char #\# context)
+    (print-number (cdr label) context)
+    (*print-char (if def? #\= #\#) context)
+    def?))
+
+(define-deferred print-object-1
+  (standard-predicate-dispatcher 'print-object-1 2))
 
 (add-boot-init!
  (lambda ()
-   (define-predicate-dispatch-default-handler print-object
+   (define-predicate-dispatch-default-handler print-object-1
      (lambda (object context)
        ((vector-ref dispatch-table
 		    ((ucode-primitive primitive-object-type 1) object))
@@ -223,7 +297,7 @@ USA.
 	context)))
    (set! define-unparser-method
 	 (named-lambda (define-unparser-method predicate unparser)
-	   (define-predicate-dispatch-handler print-object
+	   (define-predicate-dispatch-handler print-object-1
 	     (list predicate context?)
 	     unparser)))
    (run-deferred-boot-actions 'unparser-methods)))
@@ -548,7 +622,7 @@ USA.
 	(if (fix:> end 0)
 	    (begin
 	      (*print-string "#u8(" context*)
-	      (print-object (bytevector-u8-ref bytevector 0) context*)
+	      (print-number (bytevector-u8-ref bytevector 0) context*)
 	      (let loop ((index 1))
 		(if (fix:< index end)
 		    (if (let ((limit (get-param:printer-list-breadth-limit)))
@@ -557,7 +631,7 @@ USA.
 			(*print-string " ...)" context*)
 			(begin
 			  (*print-char #\space context*)
-			  (print-object (bytevector-u8-ref bytevector index)
+			  (print-number (bytevector-u8-ref bytevector index)
 					 context*)
 			  (loop (fix:+ index 1))))))
 	      (*print-char #\) context*))
@@ -603,7 +677,12 @@ USA.
 	(kernel context*))))
 
 (define (print-tail l n context)
-  (cond ((pair? l)
+  (cond ((datum-label l context)
+	 => (lambda (label)
+	      (*print-string " . " context)
+	      (if (print-datum-label label context)
+                  (print-object-1 l context))))
+	((pair? l)
 	 (*print-char #\space context)
 	 (print-object (safe-car l) context)
 	 (if (let ((limit (context-list-breadth-limit context)))

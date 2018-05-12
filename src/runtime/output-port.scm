@@ -129,18 +129,25 @@ USA.
 	(output-port/discretionary-flush port))))
 
 (define (display object #!optional port)
-  (let ((port (optional-output-port port 'display)))
-    (print-top-level object port #f)
-    (output-port/discretionary-flush port)))
+  (%write object port #t #f 'display))
 
 (define (write object #!optional port)
-  (let ((port (optional-output-port port 'write)))
-    (print-top-level object port #t)
+  (%write object port #t 'circularity 'write))
+
+(define (write-shared object #!optional port)
+  (%write object port #t 'sharing 'write-shared))
+
+(define (write-simple object #!optional port)
+  (%write object port #t #f 'write-simple))
+
+(define (%write object port slashify? label-mode caller)
+  (let ((port (optional-output-port port caller)))
+    (print-top-level object port slashify? label-mode)
     (output-port/discretionary-flush port)))
 
 (define (write-line object #!optional port)
   (let ((port (optional-output-port port 'write-line)))
-    (print-top-level object port #t)
+    (print-top-level object port #t 'circularity)
     (output-port/write-char port #\newline)
     (output-port/discretionary-flush port)))
 

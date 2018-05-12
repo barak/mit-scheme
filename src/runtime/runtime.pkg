@@ -2795,8 +2795,6 @@ USA.
 	  (flush-output flush-output-port)
 	  write-substring)
   (export ()
-	  (write-shared write)
-	  (write-simple write)
 	  beep
 	  call-with-truncated-output-port
 	  clear
@@ -2820,6 +2818,8 @@ USA.
 	  write
 	  write-char
 	  write-line
+	  write-shared
+	  write-simple
 	  write-string
 	  write-strings-in-columns
 	  write-strings-in-paragraph)
@@ -4855,7 +4855,6 @@ USA.
 	  param:printer-list-depth-limit
 	  param:printer-radix
 	  param:printer-string-length-limit
-	  print-object
 	  user-object-type
 	  with-current-unparser-state)
   (export (runtime boot-definitions)
