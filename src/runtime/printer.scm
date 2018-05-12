@@ -139,12 +139,11 @@ USA.
 		  *unparser-string-length-limit*))
 
 (define-record-type <context>
-    (make-context port mode environment list-depth in-brackets?
+    (make-context port mode list-depth in-brackets?
 		  list-breadth-limit list-depth-limit)
     context?
   (port context-port)
   (mode context-mode)
-  (environment context-environment)
   (list-depth context-list-depth)
   (in-brackets? context-in-brackets?)
   (list-breadth-limit context-list-breadth-limit)
@@ -153,7 +152,6 @@ USA.
 (define (context-down-list context)
   (make-context (context-port context)
 		(context-mode context)
-		(context-environment context)
 		(+ 1 (context-list-depth context))
 		(context-in-brackets? context)
 		(context-list-breadth-limit context)
@@ -162,7 +160,6 @@ USA.
 (define (context-in-brackets context)
   (make-context (context-port context)
 		(context-mode context)
-		(context-environment context)
 		0
 		#t
 		within-brackets:list-breadth-limit
@@ -177,18 +174,6 @@ USA.
 (define (context-char-set context)
   (textual-port-char-set (context-port context)))
 
-(define (make-unparser-state port list-depth slashify? environment)
-  (guarantee output-port? port)
-  (guarantee environment? environment)
-  (guarantee exact-nonnegative-integer? list-depth)
-  (make-context port
-		(if slashify? 'normal 'display)
-		environment
-		list-depth
-		#f
-		(get-param:printer-list-breadth-limit)
-		(get-param:printer-list-depth-limit)))
-
 (define (with-current-unparser-state context procedure)
   (parameterize* (list (cons initial-context context))
     (lambda ()
@@ -199,32 +184,23 @@ USA.
 
 ;;;; Top Level
 
-(define (print-top-level object port slashify? environment)
+(define (print-top-level object port slashify?)
   (guarantee output-port? port)
-  (if (not (default-object? environment))
-      (guarantee environment? environment))
   (print-object object
 		(top-level-context port
-				   (if slashify? 'normal 'display)
-				   environment)))
+				   (if slashify? 'normal 'display))))
 
-(define (top-level-context port mode environment)
+(define (top-level-context port mode)
   (let ((context (initial-context)))
     (if context
 	(make-context port
 		      mode
-		      (if (default-object? environment)
-			  (context-environment context)
-			  environment)
 		      (context-list-depth context)
 		      (context-in-brackets? context)
 		      (context-list-breadth-limit context)
 		      (context-list-depth-limit context))
 	(make-context port
 		      mode
-		      (if (default-object? environment)
-			  (nearest-repl/environment)
-			  environment)
 		      0
 		      #f
 		      (get-param:printer-list-breadth-limit)

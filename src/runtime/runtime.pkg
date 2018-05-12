@@ -2812,7 +2812,6 @@ USA.
 	  output-port/line-start?
 	  output-port/synchronize-output
 	  output-port/write-char
-	  output-port/write-object
 	  output-port/write-string
 	  output-port/write-substring
 	  output-port/x-size
@@ -4868,8 +4867,7 @@ USA.
   (export (runtime pretty-printer)
 	  get-param:printer-list-breadth-limit
 	  get-param:printer-list-depth-limit
-	  prefix-pair?
-	  make-unparser-state)
+	  prefix-pair?)
   (export (runtime record)
 	  (rtd:unparser-state <context>)))
 

@@ -52,9 +52,6 @@ USA.
 (define (output-port/discretionary-flush port)
   ((textual-port-operation/discretionary-flush-output port) port))
 
-(define (output-port/write-object port object environment)
-  (print-top-level object port #t environment))
-
 (define (output-port/x-size port)
   (or (let ((operation (textual-port-operation port 'x-size)))
 	(and operation
@@ -131,19 +128,19 @@ USA.
 	       (fix:> n 0)))
 	(output-port/discretionary-flush port))))
 
-(define (display object #!optional port environment)
+(define (display object #!optional port)
   (let ((port (optional-output-port port 'display)))
-    (print-top-level object port #f environment)
+    (print-top-level object port #f)
     (output-port/discretionary-flush port)))
 
-(define (write object #!optional port environment)
+(define (write object #!optional port)
   (let ((port (optional-output-port port 'write)))
-    (output-port/write-object port object environment)
+    (print-top-level object port #t)
     (output-port/discretionary-flush port)))
 
-(define (write-line object #!optional port environment)
+(define (write-line object #!optional port)
   (let ((port (optional-output-port port 'write-line)))
-    (output-port/write-object port object environment)
+    (print-top-level object port #t)
     (output-port/write-char port #\newline)
     (output-port/discretionary-flush port)))
 
