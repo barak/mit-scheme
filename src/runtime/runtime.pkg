@@ -4858,16 +4858,12 @@ USA.
 	  param:printer-string-length-limit)
   (export (runtime boot-definitions)
 	  get-param:print-with-maximum-readability?)
-  (export (runtime global-database)
-	  (unparser-state/port context-port))
   (export (runtime output-port)
 	  print-top-level)
   (export (runtime pretty-printer)
 	  get-param:printer-list-breadth-limit
 	  get-param:printer-list-depth-limit
 	  prefix-pair?)
-  (export (runtime record)
-	  (rtd:unparser-state <context>))
   (export (runtime swank)
 	  user-object-type))
 
