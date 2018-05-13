@@ -301,14 +301,17 @@ USA.
 			  (print-object part context*))
 			(standard-print-method-parts print-method object)))))
 	  (print-method
-	   (parameterize* (list (cons initial-context context))
-	     (lambda ()
-	       (print-method object (context-port context)))))
+	   (call-print-method print-method object context))
 	  (else
 	   ((vector-ref dispatch-table
 			((ucode-primitive primitive-object-type 1) object))
 	    object
 	    context)))))
+
+(define (call-print-method print-method object context)
+  (parameterize* (list (cons initial-context context))
+    (lambda ()
+      (print-method object (context-port context)))))
 
 (define (get-print-method-parts object)
   (let ((print-method (get-print-method object)))
@@ -616,7 +619,7 @@ USA.
 (define (print-vector vector context)
   (let ((printer (named-vector-with-unparser? vector)))
     (if printer
-	(printer context vector)
+	(call-print-method printer vector context)
 	(limit-print-depth context
 	  (lambda (context*)
 	    (let ((end (vector-length vector)))
@@ -688,7 +691,7 @@ USA.
         ((and (get-param:print-streams?) (stream-pair? pair))
          (print-stream-pair pair context))
 	((named-list-with-unparser? pair)
-	 => (lambda (printer) (printer context pair)))
+	 => (lambda (printer) (call-print-method printer pair context)))
         (else
          (print-list pair context))))
 
