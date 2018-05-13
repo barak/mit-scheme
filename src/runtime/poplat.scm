@@ -32,16 +32,18 @@ USA.
 ;;; A population is a weak collection of objects.  A serial
 ;;; population is a population with a mutex to serialize its operations.
 
-(define (initialize-package!)
-  (set! population-of-populations (list population-tag (make-thread-mutex)))
-  (add-secondary-gc-daemon!/unsafe clean-all-populations!))
+(define-deferred population-of-populations
+  (list population-tag (make-thread-mutex)))
 
-(define (initialize-unparser!)
-  (unparser/set-tagged-pair-method! population-tag
-				    (standard-print-method 'population)))
+(add-boot-init!
+ (lambda ()
+   (add-secondary-gc-daemon!/unsafe clean-all-populations!)))
 
-(define bogus-false '(bogus-false))
-(define population-tag '(population))
+(define-integrable population-tag
+  '|#[population]|)
+
+(define-integrable bogus-false
+  '|#[population false]|)
 
 (define-integrable (canonicalize object)
   (if (eq? object false) bogus-false object))
@@ -67,8 +69,6 @@ USA.
 (define (clean-all-populations!)
   (clean-population! population-of-populations)
   (map-over-population! population-of-populations clean-population!))
-
-(define population-of-populations)
 
 (define (make-population)
   (let ((population (list population-tag #f)))
@@ -93,6 +93,9 @@ USA.
 (define (population? object)
   (and (pair? object)
        (eq? (car object) population-tag)))
+
+(define-print-method population?
+  (standard-print-method 'population))
 
 (define-guarantee population "population")
 

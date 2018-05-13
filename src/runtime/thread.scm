@@ -136,7 +136,7 @@ USA.
 				'#(waiting-threads owner)
 				'#(1 2)
 				(vector 2 (lambda () #f))
-				(standard-print-method 'thread-mutex)
+				#f
 				thread-mutex-tag
 				3))
   (named-structure/set-tag-description! link-tag
@@ -145,9 +145,12 @@ USA.
 				'#(prev next item)
 				'#(1 2 3)
 				(vector 3 (lambda () #f))
-				(standard-print-method 'link)
+				#f
 				link-tag
 				4)))
+
+(define-print-method link?
+  (standard-print-method 'link))
 
 (define (reset-threads!)
   (reset-threads-low!)
@@ -1158,6 +1161,9 @@ USA.
 		   (conc-name thread-mutex/))
   (waiting-threads (make-ring) read-only #t)
   (owner #f))
+
+(define-print-method thread-mutex?
+  (standard-print-method 'thread-mutex))
 
 (define-integrable (guarantee-thread-mutex mutex procedure)
   (if (not (thread-mutex? mutex))

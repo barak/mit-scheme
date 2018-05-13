@@ -416,8 +416,6 @@ USA.
   (package-initialize '(runtime thread) 'initialize-low! #t) ;First 1d-table.
   (package-initialize '(runtime event-distributor) #f #t)
   (package-initialize '(runtime global-database) #f #t)
-  (package-initialize '(runtime population) 'initialize-unparser! #t)
-  (package-initialize '(runtime 1d-property) 'initialize-unparser! #t)
   (package-initialize '(runtime gc-finalizer) #f #t)
 
   ;; Load everything else.

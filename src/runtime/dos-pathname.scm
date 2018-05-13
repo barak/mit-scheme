@@ -198,7 +198,7 @@ USA.
   (string-append (print-device (%pathname-device pathname))
 		 (print-directory (%pathname-directory pathname))
 		 (print-name (%pathname-name pathname)
-			       (%pathname-type pathname))))
+			     (%pathname-type pathname))))
 
 (define (print-device device)
   (if (or (not device) (eq? device 'unspecific))

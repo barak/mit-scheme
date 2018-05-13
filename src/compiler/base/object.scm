@@ -59,7 +59,14 @@ USA.
 			       ;; Propagate this downward at construction time
 			       ;; to avoid having to crawl upward at use time.
 			       (and parent (vector-tag-noop parent)))))
-	(unparser/set-tagged-vector-method! tag tagged-vector/unparse)
+	(define-print-method (lambda (object)
+			       (and (vector? object)
+				    (fix:> (vector-length object) 0)
+				    (eq? tag (vector-ref object 0))))
+	  (lambda (vector port)
+	    (parameterize* (list (cons param:printer-radix 16))
+	      (lambda ()
+		((tagged-vector/unparser vector) vector port)))))
 	tag))))
 
 (define (define-vector-tag-unparser tag unparser)
@@ -146,8 +153,3 @@ USA.
 	 (vector-tag-description (tagged-vector/tag object)))
 	(else
 	 (error "Not a tagged vector" object))))
-
-(define (tagged-vector/unparse state vector)
-  (parameterize* (list (cons param:printer-radix 16))
-    (lambda ()
-      ((tagged-vector/unparser vector) state vector))))

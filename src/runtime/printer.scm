@@ -413,7 +413,7 @@ USA.
 	  (if (string? name)
 	      (*print-string name context*)
 	      (print-object name context*))
-		(*print-char #\space context*)
+	  (*print-char #\space context*)
 	  (*print-hash object context*)
 	  (cond (procedure
 		 (procedure context*))

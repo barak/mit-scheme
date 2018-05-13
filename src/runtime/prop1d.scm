@@ -29,15 +29,12 @@ USA.
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (set! population-of-1d-tables (make-serial-population/unsafe))
-  (add-secondary-gc-daemon!/unsafe clean-1d-tables!))
+(define-deferred population-of-1d-tables
+  (make-serial-population/unsafe))
 
-(define (initialize-unparser!)
-  (unparser/set-tagged-pair-method! 1d-table-tag
-				    (standard-print-method '1d-table)))
-
-(define population-of-1d-tables)
+(add-boot-init!
+ (lambda ()
+   (add-secondary-gc-daemon!/unsafe clean-1d-tables!)))
 
 (define (clean-1d-tables!)
   (for-each-inhabitant population-of-1d-tables 1d-table/clean!))
@@ -56,11 +53,14 @@ USA.
   (and (pair? object)
        (eq? (car object) 1d-table-tag)))
 
-(define 1d-table-tag
-  "1D table")
+(define-integrable 1d-table-tag
+  '|#[1D table]|)
 
-(define false-key
-  "false key")
+(define-integrable false-key
+  '|#[1D table false]|)
+
+(define-print-method 1d-table?
+  (standard-print-method '1d-table))
 
 (define-integrable (weak-cons car cdr)
   (system-pair-cons (ucode-type weak-cons) car cdr))

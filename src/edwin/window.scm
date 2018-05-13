@@ -334,7 +334,12 @@ USA.
 ;;;; Inferiors
 
 (define %inferior-tag
-  "inferior")
+  '|#[(edwin window) inferior]|)
+
+(define (%inferior? object)
+  (and (vector? object)
+       (fix:= 5 (vector-length object))
+       (eq? %inferior-tag (vector-ref object 0))))
 
 (define-integrable (%make-inferior window x-start y-start redisplay-flags)
   (vector %inferior-tag window x-start y-start redisplay-flags))
@@ -363,8 +368,8 @@ USA.
 (define-integrable (set-inferior-redisplay-flags! inferior redisplay-flags)
   (vector-set! inferior 4 redisplay-flags))
 
-(unparser/set-tagged-vector-method! %inferior-tag
-  (bracketed-print-method 'INFERIOR
+(define-print-method %inferior?
+  (bracketed-print-method 'inferior
     (lambda (inferior port)
       (write-string " " port)
       (write (inferior-window inferior) port)

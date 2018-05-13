@@ -39,10 +39,6 @@ USA.
 (define pathname-map/tag "pathname-map")
 (define pathname-map/root-node cdr)
 
-(unparser/set-tagged-pair-method!
- pathname-map/tag
- (standard-print-method "PATHNAME-MAP"))
-
 (declare (integrate-operator node/make))
 
 (define (node/make)
@@ -106,6 +102,9 @@ USA.
   (named-lambda (pathname-map? object)
     (and (pair? object)
 	 (eq? (car object) pathname-map/tag))))
+
+(define-print-method pathname-map?
+  (standard-print-method 'pathname-map))
 
 (set! pathname-map/lookup
   (named-lambda (pathname-map/lookup map pathname if-found if-not)

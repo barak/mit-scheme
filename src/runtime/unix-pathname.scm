@@ -157,7 +157,7 @@ USA.
 (define (unix/pathname->namestring pathname)
   (string-append (print-directory (%pathname-directory pathname))
 		 (print-name (%pathname-name pathname)
-			       (%pathname-type pathname))))
+			     (%pathname-type pathname))))
 
 (define (print-directory directory)
   (cond ((not directory)

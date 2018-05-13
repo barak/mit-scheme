@@ -337,9 +337,13 @@ USA.
   (and (vector? object)
        (fix:= (vector-length object) 4)
        (eq? (vector-ref object 0) random-state-tag)))
+(register-predicate! random-state? 'random-state '<= vector?)
 
 (define-integrable random-state-tag
   '|#[(runtime random-number)random-state]|)
+
+(define-print-method random-state?
+  (standard-print-method 'random-state))
 
 (define-integrable (random-state-index s) (vector-ref s 1))
 (define-integrable (set-random-state-index! s x) (vector-set! s 1 x))
@@ -416,6 +420,6 @@ USA.
 				'#(index borrow vector)
 				'#(1 2 3)
 				(make-vector 3 (lambda () #f))
-				(standard-print-method 'random-state)
+				#f
 				random-state-tag
 				4)))

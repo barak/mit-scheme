@@ -1211,8 +1211,7 @@ USA.
 	  make-serial-population/unsafe
 	  add-to-population!/unsafe)
   (import (runtime gc-daemons)
-	  add-secondary-gc-daemon!/unsafe)
-  (initialization (initialize-package!)))
+	  add-secondary-gc-daemon!/unsafe))
 
 (define-package (runtime 2d-property)
   (files "prop2d")
@@ -2360,20 +2359,16 @@ USA.
 (define-package (runtime global-database)
   (files "gdatab")
   (parent (runtime))
+  (export () deprecated:global-database
+	  unparser/set-tagged-pair-method!
+	  unparser/set-tagged-vector-method!)
   (export ()
-	  add-unparser-special-object!
-	  add-unparser-special-pair!
 	  event:after-restart
 	  event:after-restore
 	  event:before-exit
-	  named-structure/get-tag-description
-	  named-structure/set-tag-description!
-	  unparse-with-brackets
-	  unparser/set-tagged-pair-method!
-	  unparser/set-tagged-vector-method!
-	  unparser/tagged-pair-method
-	  unparser/tagged-vector-method)
-  (initialization (initialize-package!)))
+	  named-structure/set-tag-description!)
+  (export (runtime record)
+	  named-structure/get-tag-description))
 
 (define-package (runtime hash)
   (files "hash")
@@ -2400,7 +2395,8 @@ USA.
   (export () deprecated:hash-table
 	  (eq-hash-table-type key-weak-eq-hash-table-type)
 	  (eqv-hash-table-type key-weak-eqv-hash-table-type)
-	  (hash-table-entry-type:key/datum-weak hash-table-entry-type:key&datum-weak)
+	  (hash-table-entry-type:key/datum-weak
+	   hash-table-entry-type:key&datum-weak)
 	  (hash-table/clean! hash-table-clean!)
 	  (hash-table/clear! hash-table-clear!)
 	  (hash-table/count hash-table-size)
@@ -3525,8 +3521,7 @@ USA.
 	  map-over-population
 	  map-over-population!
 	  population?
-	  remove-from-population!)
-  (initialization (initialize-package!)))
+	  remove-from-population!))
 
 (define-package (runtime pretty-printer)
   (files "pp")
