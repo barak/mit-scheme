@@ -916,7 +916,7 @@ USA.
 	  file-time->global-decoded-time
 	  file-time->local-decoded-time
 	  file-time->universal-time
-	  get-environment-variable
+	  get-environment-variable	;R7RS
 	  init-file-specifier->pathname
 	  os/exec-path
 	  os/executable-pathname-types
@@ -1563,14 +1563,15 @@ USA.
   (files "contin")
   (parent (runtime))
   (export ()
-	  (call/cc call-with-current-continuation)
-	  call-with-current-continuation
+	  (call/cc call-with-current-continuation) ;R7RS
+	  call-with-current-continuation ;R7RS
+	  continuation?
+	  within-continuation)
+  (export (runtime continuation-parser)
 	  continuation/block-thread-events?
 	  continuation/control-point
 	  continuation/dynamic-state
-	  continuation?
-	  make-continuation
-	  within-continuation)
+	  make-continuation)
   (export (runtime thread)
 	  %within-continuation))
 
