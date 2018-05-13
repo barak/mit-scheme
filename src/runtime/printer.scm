@@ -405,7 +405,7 @@ USA.
   (char-in-set? char (context-char-set context)))
 
 (define (*print-with-brackets name object context procedure)
-  (if (and (get-param:print-with-maximum-readability?) object)
+  (if (get-param:print-with-maximum-readability?)
       (*print-readable-hash object context)
       (begin
 	(*print-string "#[" context)
@@ -413,10 +413,8 @@ USA.
 	  (if (string? name)
 	      (*print-string name context*)
 	      (print-object name context*))
-	  (if object
-	      (begin
 		(*print-char #\space context*)
-		(*print-hash object context*)))
+	  (*print-hash object context*)
 	  (cond (procedure
 		 (procedure context*))
 		((get-param:print-with-datum?)
