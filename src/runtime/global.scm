@@ -330,7 +330,7 @@ USA.
     (else #f)))
 
 (define (undefined-value? object)
-  ;; Note: the unparser takes advantage of the fact that objects
+  ;; Note: the printer takes advantage of the fact that objects
   ;; satisfying this predicate also satisfy:
   ;; (object-type? (ucode-type constant) object)
   (or (eq? object unspecific)

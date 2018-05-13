@@ -152,14 +152,14 @@ USA.
       'wild
       (substring string start end)))
 
-;;;; Pathname Unparser
+;;;; Pathname print
 
 (define (unix/pathname->namestring pathname)
-  (string-append (unparse-directory (%pathname-directory pathname))
-		 (unparse-name (%pathname-name pathname)
+  (string-append (print-directory (%pathname-directory pathname))
+		 (print-name (%pathname-name pathname)
 			       (%pathname-type pathname))))
 
-(define (unparse-directory directory)
+(define (print-directory directory)
   (cond ((not directory)
 	 "")
 	((pair? directory)
@@ -168,27 +168,27 @@ USA.
 	  (let loop ((directory (cdr directory)))
 	    (if (not (pair? directory))
 		""
-		(string-append (unparse-directory-component (car directory))
+		(string-append (print-directory-component (car directory))
 			       "/"
 			       (loop (cdr directory)))))))
 	(else
 	 (error:illegal-pathname-component directory "directory"))))
 
-(define (unparse-directory-component component)
+(define (print-directory-component component)
   (cond ((eq? component 'up) "..")
 	((eq? component 'here) ".")
 	((string? component) component)
 	(else
 	 (error:illegal-pathname-component component "directory component"))))
 
-(define (unparse-name name type)
-  (let ((name (or (unparse-component name) ""))
-	(type (unparse-component type)))
+(define (print-name name type)
+  (let ((name (or (print-component name) ""))
+	(type (print-component type)))
     (if type
 	(string-append name "." type)
 	name)))
 
-(define (unparse-component component)
+(define (print-component component)
   (cond ((or (not component) (string? component)) component)
 	((eq? component 'wild) "*")
 	(else (error:illegal-pathname-component component "component"))))
@@ -254,7 +254,7 @@ USA.
 	 'unspecific
 	 (let ((directory (%pathname-directory pathname))
 	       (component
-		(parse-directory-component (unparse-name name type))))
+		(parse-directory-component (print-name name type))))
 	   (cond ((not (pair? directory))
 		  (list 'relative component))
 		 ((equal? component ".")
@@ -281,7 +281,7 @@ USA.
 	;; the original pathname and leave it to the caller to deal
 	;; with any problems this might cause.
 	pathname
-	(parse-name (unparse-directory-component (car (last-pair directory)))
+	(parse-name (print-directory-component (car (last-pair directory)))
 	  (lambda (name type)
 	    (%make-pathname (%pathname-host pathname)
 			    'unspecific

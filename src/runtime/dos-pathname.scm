@@ -192,20 +192,20 @@ USA.
       'wild
       (substring string start end)))
 
-;;;; Pathname Unparser
+;;;; Pathname printer
 
 (define (dos/pathname->namestring pathname)
-  (string-append (unparse-device (%pathname-device pathname))
-		 (unparse-directory (%pathname-directory pathname))
-		 (unparse-name (%pathname-name pathname)
+  (string-append (print-device (%pathname-device pathname))
+		 (print-directory (%pathname-directory pathname))
+		 (print-name (%pathname-name pathname)
 			       (%pathname-type pathname))))
 
-(define (unparse-device device)
+(define (print-device device)
   (if (or (not device) (eq? device 'unspecific))
       ""
       (string-append device ":")))
 
-(define (unparse-directory directory)
+(define (print-directory directory)
   (cond ((or (not directory) (eq? directory 'unspecific))
 	 "")
 	((pair? directory)
@@ -216,26 +216,26 @@ USA.
 	  (let loop ((directory (cdr directory)))
 	    (if (null? directory)
 		""
-		(string-append (unparse-directory-component (car directory))
+		(string-append (print-directory-component (car directory))
 			       sub-directory-delimiter-string
 			       (loop (cdr directory)))))))
 	(else
 	 (error:illegal-pathname-component directory "directory"))))
 
-(define (unparse-directory-component component)
+(define (print-directory-component component)
   (cond ((eq? component 'up) "..")
 	((string? component) component)
 	(else
 	 (error:illegal-pathname-component component "directory component"))))
 
-(define (unparse-name name type)
-  (let ((name (or (unparse-component name) ""))
-	(type (unparse-component type)))
+(define (print-name name type)
+  (let ((name (or (print-component name) ""))
+	(type (print-component type)))
     (if type
 	(string-append name "." type)
 	name)))
 
-(define (unparse-component component)
+(define (print-component component)
   (cond ((or (not component) (string? component)) component)
 	((eq? component 'wild) "*")
 	(else (error:illegal-pathname-component component "component"))))
@@ -325,7 +325,7 @@ USA.
 	 (simplify-directory
 	  (let ((directory (%pathname-directory pathname))
 		(component
-		 (parse-directory-component (unparse-name name type))))
+		 (parse-directory-component (print-name name type))))
 	    (cond ((not (pair? directory)) (list 'relative component))
 		  ((equal? component ".") directory)
 		  (else (append directory (list component))))))
@@ -347,7 +347,7 @@ USA.
 	(call-with-values
 	    (lambda ()
 	      (parse-name
-	       (unparse-directory-component (car (last-pair directory)))))
+	       (print-directory-component (car (last-pair directory)))))
 	  (lambda (name type)
 	    (%%make-pathname (%pathname-host pathname)
 			     (%pathname-device pathname)

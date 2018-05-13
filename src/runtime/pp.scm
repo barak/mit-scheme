@@ -47,7 +47,7 @@ USA.
    ;; to describe an arity dispatched procedure:
    ;;  FULL:  full bodies of procedures
    ;;  NAMED: just name if the procedure is a named lambda, like FULL if unnamed
-   ;;  SHORT: procedures appear in #[...] unparser syntax
+   ;;  SHORT: procedures appear in #[...] syntax
    (set! param:pp-arity-dispatched-procedure-style
 	 (make-settable-parameter 'full))
    (set! param:pp-auto-highlighter (make-settable-parameter #f))
@@ -284,7 +284,7 @@ USA.
   (let ((print-string
 	 (lambda (s)
 	   (if (string? s)
-	       (*unparse-string s)
+	       (*print-string s)
 	       (s (output-port))))))
     (print-string (pph/start-string pph))
     (thunk)
@@ -320,7 +320,7 @@ USA.
 		  numerical-walk))
 	     (node (numerical-walk expression list-depth)))
 	(if (positive? indentation)
-	    (*unparse-string (make-string indentation #\space)))
+	    (*print-string (make-string indentation #\space)))
 	(if as-code?
 	    (print-node node indentation list-depth)
 	    (print-non-code-node node indentation list-depth))
@@ -329,23 +329,23 @@ USA.
 (define x-size)
 (define output-port)
 
-(define-integrable (*unparse-char char)
+(define-integrable (*print-char char)
   (output-port/write-char (output-port) char))
 
-(define-integrable (*unparse-string string)
+(define-integrable (*print-string string)
   (output-port/write-string (output-port) string))
 
-(define-integrable (*unparse-open)
-  (*unparse-char #\())
+(define-integrable (*print-open)
+  (*print-char #\())
 
-(define-integrable (*unparse-close)
-  (*unparse-char #\)))
+(define-integrable (*print-close)
+  (*print-char #\)))
 
-(define-integrable (*unparse-space)
-  (*unparse-char #\space))
+(define-integrable (*print-space)
+  (*print-char #\space))
 
-(define-integrable (*unparse-newline)
-  (*unparse-char #\newline))
+(define-integrable (*print-newline)
+  (*print-char #\newline))
 
 (define (print-non-code-node node column depth)
   (parameterize* (list (cons dispatch-list '())
@@ -363,22 +363,22 @@ USA.
       (print-node node column depth))))
 
 (define (print-data-column nodes column depth)
-  (*unparse-open)
+  (*print-open)
   (print-column nodes (+ column 1) (+ depth 1))
-  (*unparse-close))
+  (*print-close))
 
 (define (print-data-table nodes column depth)
-  (*unparse-open)
+  (*print-open)
   (maybe-print-table nodes (+ column 1) (+ depth 1))
-  (*unparse-close))
+  (*print-close))
 
 (define (print-node node column depth)
   (cond ((list-node? node)
 	 (print-list-node node column depth))
 	((symbol? node)
-	 (*unparse-symbol node))
+	 (*print-symbol node))
 	((prefix-node? node)
-	 (*unparse-string (prefix-node-prefix node))
+	 (*print-string (prefix-node-prefix node))
 	 (let ((new-column
 		(+ column (string-length (prefix-node-prefix node))))
 	       (subnode (prefix-node-subnode node)))
@@ -403,7 +403,7 @@ USA.
 			  (+ column (pph/start-string-length highlight))
 			  (+ depth (pph/end-string-length highlight))))))))
 	(else
-	 (*unparse-string node))))
+	 (*print-string node))))
 
 (define (print-list-node node column depth)
   (if (and (get-param:pp-save-vertical-space?)
@@ -431,26 +431,26 @@ USA.
   (cond ((list-node? node)
 	 (print-guaranteed-list-node node))
 	((symbol? node)
-	 (*unparse-symbol node))
+	 (*print-symbol node))
 	((highlighted-node? node)
 	 (with-highlight-strings-printed (highlighted-node/highlight node)
 	   (lambda ()
 	     (print-guaranteed-node (highlighted-node/subnode node)))))
 	((prefix-node? node)
-	 (*unparse-string (prefix-node-prefix node))
+	 (*print-string (prefix-node-prefix node))
 	 (print-guaranteed-node (prefix-node-subnode node)))
 	(else
-	 (*unparse-string node))))
+	 (*print-string node))))
 
 (define (print-guaranteed-list-node node)
-  (*unparse-open)
+  (*print-open)
   (let loop ((nodes (node-subnodes node)))
     (print-guaranteed-node (car nodes))
     (if (not (null? (cdr nodes)))
 	(begin
-	  (*unparse-space)
+	  (*print-space)
 	  (loop (cdr nodes)))))
-  (*unparse-close))
+  (*print-close))
 
 (define (print-column nodes column depth)
   (let loop ((nodes nodes))
@@ -568,34 +568,34 @@ USA.
 ;;;; Printers
 
 (define (print-combination nodes column depth)
-  (*unparse-open)
+  (*print-open)
   (let ((column (+ column 1))
 	(depth (+ depth 1)))
     (cond ((null? (cdr nodes))
 	   (print-node (car nodes) column depth))
 	  ((two-on-first-line? nodes column depth)
 	   (print-guaranteed-node (car nodes))
-	   (*unparse-space)
+	   (*print-space)
 	   (print-guaranteed-column (cdr nodes)
 				    (+ column 1 (node-size (car nodes)))))
 	  (else
 	   (print-column nodes column depth))))
-  (*unparse-close))
+  (*print-close))
 
 (define dispatch-list)
 (define dispatch-default)
 (define code-dispatch-list)
 
 (define ((special-printer procedure) nodes column depth)
-  (*unparse-open)
-  (print-guaranteed-node (car nodes))	;(*unparse-symbol (car nodes))
-  (*unparse-space)
+  (*print-open)
+  (print-guaranteed-node (car nodes))	;(*print-symbol (car nodes))
+  (*print-space)
   (if (not (null? (cdr nodes)))
       (procedure (cdr nodes)
 		 (+ column 2 (node-size (car nodes)))
 		 (+ column 2)
 		 (+ depth 1)))
-  (*unparse-close))
+  (*print-close))
 
 ;;; Force the indentation to be an optimistic column.
 
@@ -651,22 +651,22 @@ USA.
 	   (print-node (car nodes) optimistic depth))
 	  ((symbol? (car nodes))
 	   ;; named let
-	   (*unparse-symbol (car nodes))
+	   (*print-symbol (car nodes))
 	   (let ((new-optimistic
 		  (+ optimistic (+ 1 (symbol-length (car nodes))))))
 	     (cond ((fits-within? (cadr nodes) new-optimistic 0)
-		    (*unparse-space)
+		    (*print-space)
 		    (print-guaranteed-node (cadr nodes))
 		    (print-body (cddr nodes)))
 		   ((and (list-node? (cadr nodes))
 			 (fits-as-column? (node-subnodes (cadr nodes))
 					  (+ new-optimistic 2)
 					  0))
-		    (*unparse-space)
-		    (*unparse-open)
+		    (*print-space)
+		    (*print-open)
 		    (print-guaranteed-column (node-subnodes (cadr nodes))
 					     (+ new-optimistic 1))
-		    (*unparse-close)
+		    (*print-close)
 		    (print-body (cddr nodes)))
 		   (else
 		    (tab-to optimistic)
@@ -721,11 +721,11 @@ USA.
 ;;; Starts a new line with the specified indentation.
 
 (define (tab-to column)
-  (*unparse-newline)
+  (*print-newline)
   (pad-with-spaces column))
 
 (define-integrable (pad-with-spaces n-spaces)
-  (*unparse-string (make-string n-spaces #\space)))
+  (*print-string (make-string n-spaces #\space)))
 
 ;;;; Numerical Walk
 
@@ -1210,7 +1210,7 @@ USA.
      (lambda (port)
        (write symbol port)))))
 
-(define (*unparse-symbol symbol)
+(define (*print-symbol symbol)
   (write symbol (output-port)))
 
 (define-structure (prefix-node

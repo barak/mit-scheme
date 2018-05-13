@@ -54,8 +54,8 @@ differences:
   appropriate boolean constant had been specified instead.
 
 * The PRINT-FUNCTION option is named PRINT-PROCEDURE.  Its argument is
-  a procedure of two arguments (the unparser state and the structure
-  instance) rather than three as in Common Lisp.
+  a procedure of two arguments (the structure instance and a textual output
+  port) rather than three as in Common Lisp.
 
 * By default, named structures are tagged with a unique object of some
   kind.  In Common Lisp, the structures are tagged with symbols, but
@@ -160,7 +160,7 @@ differences:
 			    (if print-procedure-option
 				(option/argument print-procedure-option)
 				(and type-option
-				     (default-unparser-text context)))
+				     (default-print-method context)))
 			    (if type-option
 				(option/argument type-option)
 				'record)
@@ -290,7 +290,7 @@ differences:
 (define (default-predicate-name context)
   (symbol (parser-context/name context) '?))
 
-(define (default-unparser-text context)
+(define (default-print-method context)
   `(,(absolute 'standard-print-method context)
     ',(parser-context/name context)))
 

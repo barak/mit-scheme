@@ -503,7 +503,7 @@ USA.
 (define-integrable (stack-marker-frame/repl-eval-boundary? stack-frame)
   (eq? with-repl-eval-boundary (stack-marker-frame/type stack-frame)))
 
-;;;; Unparser
+;;;; Printer
 
 (define (stack-frame->continuation stack-frame)
   (make-continuation (stack-frame->control-point stack-frame)
@@ -511,7 +511,7 @@ USA.
 		     #f))
 
 (define (stack-frame->control-point stack-frame)
-  (with-values (lambda () (unparse/stack-frame stack-frame))
+  (with-values (lambda () (print-stack-frame stack-frame))
     (lambda (element-stream next-control-point)
       (make-control-point
        (stack-frame/interrupt-mask stack-frame)
@@ -527,7 +527,7 @@ USA.
 	   element-stream)
        next-control-point))))
 
-(define (unparse/stack-frame stack-frame)
+(define (print-stack-frame stack-frame)
   (if (eq? (stack-frame/return-address stack-frame)
 	   return-address/join-stacklets)
       (values (stream) (vector-ref (stack-frame/elements stack-frame) 1))
@@ -535,7 +535,7 @@ USA.
 	  (lambda ()
 	    (let ((next (stack-frame/%next stack-frame)))
 	      (cond ((stack-frame? next)
-		     (unparse/stack-frame next))
+		     (print-stack-frame next))
 		    ((parser-state? next)
 		     (values (parser-state/element-stream next)
 			     (parser-state/next-control-point next)))
