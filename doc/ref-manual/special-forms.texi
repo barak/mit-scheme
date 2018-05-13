@@ -1549,11 +1549,11 @@ used with the @code{type-descriptor} option.
 In the usual case, where @var{expression} is not given, the @code{named}
 option causes a type descriptor and predicate to be defined for the
 structure (recall that the @code{type} option without @code{named}
-suppresses their definition), and also defines a default unparser method
+suppresses their definition), and also defines a default print method
 for the structure instances (which can be overridden by the
-@code{print-procedure} option).  If the default unparser method is not
+@code{print-procedure} option).  If the default print method is not
 wanted then the @code{print-procedure} option should be specified as
-@code{#F}.  This causes the structure to be printed in its native
+@code{#f}.  This causes the structure to be printed in its native
 representation, as a list or vector, which includes the type descriptor.
 The type descriptor is a unique object, @emph{not} a record type, that
 describes the structure instances and is additionally stored in the
@@ -1572,7 +1572,7 @@ the first element of the list.
 
 If @var{expression} is specified, it is an expression that is evaluated
 to yield a tag object.  The @var{expression} is evaluated once when the
-structure definition is evaluated (to specify the unparser method), and
+structure definition is evaluated (to specify the print method), and
 again whenever a predicate or constructor is called.  Because of this,
 @var{expression} is normally a variable reference or a constant.  The
 value yielded by @var{expression} may be any object at all.  That object
@@ -1660,8 +1660,8 @@ instead.
 
 @item
 The @code{print-function} option is named @code{print-procedure}.  Its
-argument is a procedure of two arguments (the unparser state and the
-structure instance) rather than three as in Common Lisp.
+argument is a procedure of two arguments (the structure instance and a
+textual output port) rather than three as in Common Lisp.
 
 @item
 By default, named structures are tagged with a unique object of some
