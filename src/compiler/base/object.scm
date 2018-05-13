@@ -46,10 +46,9 @@ USA.
   (let ((root-tag (%make-vector-tag false 'OBJECT false false)))
     (set-vector-tag-%unparser!
      root-tag
-     (simple-unparser-method
+     (standard-print-method
       (lambda (object)
-	(string "LIAR:" (vector-tag-name (tagged-vector/tag object))))
-      #f))
+	(string "LIAR:" (vector-tag-name (tagged-vector/tag object))))))
     (named-lambda (make-vector-tag parent name enumeration)
       (let ((tag
 	     (%make-vector-tag (or parent root-tag)

@@ -113,7 +113,7 @@ from the continuation, and then "glued" into place afterwards.
     block))
 
 (define-vector-tag-unparser block-tag
-  (simple-unparser-method "LIAR:block"
+  (standard-print-method "LIAR:block"
     (lambda (block)
       (cons (enumeration/index->name block-types (block-type block))
 	    (let ((procedure (block-procedure block)))

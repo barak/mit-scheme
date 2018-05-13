@@ -36,10 +36,9 @@ USA.
 		   (constructor %make-condition-type
 				(name field-indexes number-of-fields reporter))
 		   (print-procedure
-		    (standard-unparser-method 'condition-type
-		      (lambda (type port)
-			(write-char #\space port)
-			(write-string (%condition-type/name type) port)))))
+		    (standard-print-method 'condition-type
+		      (lambda (type)
+			(list (%condition-type/name type))))))
   (name #f read-only #t)
   generalizations
   (field-indexes #f read-only #t)
@@ -65,7 +64,7 @@ USA.
 	       (compute-field-indexes generalization field-names))
 	   (lambda (n-fields field-indexes)
 	     (%make-condition-type
-	      (cond ((string? name) (string-copy name))
+	      (cond ((string? name) (string->immutable name))
 		    ((symbol? name) (symbol->string name))
 		    ((not name) "(anonymous)")
 		    (else
@@ -158,12 +157,10 @@ USA.
 		   (constructor %%make-condition
 				(type continuation restarts field-values))
 		   (print-procedure
-		    (standard-unparser-method 'condition
-		      (lambda (condition port)
-			(write-char #\space port)
-			(write-string
-			 (%condition-type/name (%condition/type condition))
-			 port)))))
+		    (standard-print-method 'condition
+		      (lambda (condition)
+			(list (%condition-type/name
+			       (%condition/type condition)))))))
   (type #f read-only #t)
   (continuation #f read-only #t)
   (restarts #f read-only #t)
@@ -312,13 +309,12 @@ USA.
 		   (constructor %make-restart
 				(name reporter effector interactor))
 		   (print-procedure
-		    (standard-unparser-method 'restart
-		      (lambda (restart port)
-			(write-char #\space port)
+		    (standard-print-method 'restart
+		      (lambda (restart)
 			(let ((name (%restart/name restart)))
 			  (if name
-			      (write name port)
-			      (write-string "(anonymous)" port)))))))
+			      (list name)
+			      '()))))))
   (name #f read-only #t)
   (reporter #f read-only #t)
   (effector #f read-only #t)

@@ -113,7 +113,7 @@ USA.
 	   #f)))
     (if (and unparser-method
 	     (not (default-object? unparser-method)))
-	(define-unparser-method (record-predicate type) unparser-method))
+	(define-print-method (record-predicate type) unparser-method))
     type))
 
 (define (list-of-unique-symbols? object)
@@ -543,20 +543,19 @@ USA.
 
 ;;;; Printing
 
-(define-unparser-method %record?
-  (standard-unparser-method '%record #f))
+(define-print-method %record?
+  (standard-print-method '%record))
 
-(define-unparser-method record?
-  (standard-unparser-method
+(define-print-method record?
+  (standard-print-method
    (lambda (record)
      (strip-angle-brackets
-      (dispatch-tag-name (record-type-descriptor record))))
-   #f))
+      (dispatch-tag-name (record-type-descriptor record))))))
 
 (add-boot-init!
  (lambda ()
-   (define-unparser-method record-type?
-     (simple-unparser-method 'record-type
+   (define-print-method record-type?
+     (standard-print-method 'record-type
        (lambda (type)
 	 (list (dispatch-tag-name type)))))))
 
@@ -578,7 +577,7 @@ USA.
 
 ;;; For backwards compatibility:
 (define (set-record-type-unparser-method! record-type method)
-  (define-unparser-method (record-predicate record-type)
+  (define-print-method (record-predicate record-type)
     method))
 
 ;;;; Runtime support for DEFINE-STRUCTURE
@@ -596,7 +595,7 @@ USA.
 (define structure-type/length)
 (add-boot-init!
  (lambda ()
-   ;; unparser-method arg should be removed after 9.3 is released.
+   ;; unparser-method field should be removed after 9.3 is released.
    (set! rtd:structure-type
 	 (make-record-type "structure-type"
 			   '(physical-type name field-names field-indexes

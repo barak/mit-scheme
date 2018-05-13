@@ -49,8 +49,8 @@ USA.
       (guarantee-headers&body headers body 'make-http-request)
     (%make-http-request method uri version headers body)))
 
-(define-unparser-method http-request?
-  (simple-unparser-method 'http-request
+(define-print-method http-request?
+  (standard-print-method 'http-request
     (lambda (request)
       (list (http-request-method request)
 	    (uri->string (http-request-uri request))))))
@@ -72,8 +72,8 @@ USA.
       (guarantee-headers&body headers body 'make-http-response)
     (%make-http-response version status reason headers body)))
 
-(define-unparser-method http-response?
-  (simple-unparser-method 'http-response
+(define-print-method http-response?
+  (standard-print-method 'http-response
     (lambda (response)
       (list (http-response-status response)))))
 

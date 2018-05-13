@@ -217,11 +217,9 @@ USA.
 (define-structure (special-key (constructor %make-special-key)
 			       (conc-name special-key/)
 			       (print-procedure
-				(standard-unparser-method 'special-key
-				  (lambda (key port)
-				    (write-char #\space port)
-				    (write-string (special-key/name key)
-						  port)))))
+				(standard-print-method 'special-key
+				  (lambda (key)
+				    (list (special-key/name key))))))
   (symbol #f read-only #t)
   (bucky-bits #f read-only #t))
 

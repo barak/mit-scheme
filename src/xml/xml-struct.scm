@@ -427,9 +427,9 @@ USA.
 	 (let ((name (cadr form))
 	       (accessor (caddr form)))
 	   (let ((root (symbol 'XML- name)))
-	     `(define-unparser-method
+	     `(define-print-method
 	       ,(close-syntax (symbol root '?) environment)
-	       (SIMPLE-UNPARSER-METHOD ',root
+	       (standard-print-method ',root
 		 (LAMBDA (,name)
 		   (LIST (,(close-syntax accessor environment) ,name)))))))
 	 (ill-formed-syntax form)))))

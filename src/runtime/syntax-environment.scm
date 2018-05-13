@@ -84,8 +84,8 @@ USA.
   (rename senv-rename)
   (describe senv-describe))
 
-(define-unparser-method syntactic-environment?
-  (simple-unparser-method 'syntactic-environment
+(define-print-method syntactic-environment?
+  (standard-print-method 'syntactic-environment
     (lambda (senv)
       (list ((senv-get-type senv))))))
 

@@ -53,7 +53,7 @@ USA.
 		     operation/set-line-style
 		     custom-operations))
 		   (print-procedure
-		    (simple-unparser-method 'graphics-type
+		    (standard-print-method 'graphics-type
 		      (lambda (type)
 			(list (graphics-device-type/name type))))))
   (name false read-only true)

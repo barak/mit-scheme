@@ -139,7 +139,7 @@ USA.
 		   (constructor %make-registry-key (parent name handle))
 		   (predicate win32-registry/key?)
 		   (print-procedure
-		    (simple-unparser-method 'registry-key
+		    (standard-print-method 'registry-key
 		      (lambda (key)
 			(list (registry-key-name key))))))
   (name #f read-only #t)
@@ -163,7 +163,7 @@ USA.
 
 (define-structure (registry-value
 		   (print-procedure
-		    (simple-unparser-method 'registry-value
+		    (standard-print-method 'registry-value
 		      (lambda (key)
 			(list (registry-value-name key))))))
   (name #f read-only #t)

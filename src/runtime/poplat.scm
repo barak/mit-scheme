@@ -38,7 +38,7 @@ USA.
 
 (define (initialize-unparser!)
   (unparser/set-tagged-pair-method! population-tag
-				    (standard-unparser-method 'population #f)))
+				    (standard-print-method 'population)))
 
 (define bogus-false '(bogus-false))
 (define population-tag '(population))

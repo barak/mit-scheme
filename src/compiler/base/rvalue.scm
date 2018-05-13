@@ -96,7 +96,7 @@ USA.
 	  constant))))
 
 (define-vector-tag-unparser constant-tag
-  (simple-unparser-method "LIAR:constant"
+  (standard-print-method "LIAR:constant"
     (lambda (constant)
       (list (constant-value constant)))))
 
@@ -114,7 +114,7 @@ USA.
   (make-rvalue reference-tag block lvalue safe?))
 
 (define-vector-tag-unparser reference-tag
-  (simple-unparser-method "LIAR:reference"
+  (standard-print-method "LIAR:reference"
     (lambda (reference)
       (list (variable-name (reference-lvalue reference))))))
 
@@ -150,7 +150,7 @@ USA.
   (make-rvalue unassigned-test-tag block lvalue))
 
 (define-vector-tag-unparser unassigned-test-tag
-  (simple-unparser-method "LIAR:unassigned-test"
+  (standard-print-method "LIAR:unassigned-test"
     (lambda (unassigned-test)
       (list (unassigned-test-lvalue unassigned-test)))))
 

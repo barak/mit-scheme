@@ -92,8 +92,8 @@ USA.
       (thunk))
   (write-char #\] port))
 
-(define-unparser-method instance?
-  (general-unparser-method write-instance))
+(define-print-method instance?
+  write-instance)
 
 (define (instance-description instance)
   (map (lambda (slot)

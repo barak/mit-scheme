@@ -127,7 +127,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 		   (conc-name x-display/)
 		   (constructor make-x-display (name xd))
 		   (print-procedure
-		    (simple-unparser-method 'X-DISPLAY
+		    (standard-print-method 'X-DISPLAY
 		      (lambda (display)
 			(list (x-display/name display))))))
   (name #f read-only #t)

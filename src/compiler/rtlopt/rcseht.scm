@@ -47,7 +47,7 @@ USA.
 (define-structure (element
 		   (constructor %make-element)
 		   (constructor make-element (expression))
-		   (print-procedure (simple-unparser-method "LIAR:element" #f)))
+		   (print-procedure (standard-print-method "LIAR:element")))
   (expression false read-only true)
   (cost false)
   (in-memory? false)

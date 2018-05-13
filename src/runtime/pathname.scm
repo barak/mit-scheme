@@ -110,8 +110,8 @@ these rules:
 
 (define-guarantee pathname "pathname")
 
-(define-unparser-method pathname?
-  (simple-unparser-method 'pathname
+(define-print-method pathname?
+  (standard-print-method 'pathname
     (lambda (pathname)
       (list (->namestring pathname)))))
 

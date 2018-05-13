@@ -45,8 +45,8 @@ USA.
 ;; two digits representing a larger number, then RADIX is their base.
 (define %radix)
 
-(define-unparser-method alien?
-  (standard-unparser-method
+(define-print-method alien?
+  (bracketed-print-method
    'alien
    (lambda (alien port)
      (write-char #\space port)
@@ -182,7 +182,7 @@ USA.
 		   ;; To be fasdump/loadable.
 		   (type vector) (named 'alien-function)
 		   (print-procedure
-		    (standard-unparser-method 'alien-function
+		    (bracketed-print-method 'alien-function
 		     (lambda (alienf port)
 		       (write-char #\space port)
 		       (write-string (%alien-function/name alienf)

@@ -51,7 +51,7 @@ USA.
 		   (constructor make-package (name parent))
 		   (conc-name package/)
 		   (print-procedure
-		    (simple-unparser-method 'package
+		    (standard-print-method 'package
 		      (lambda (package)
 			(list (package/name package))))))
   (name #f read-only #t)
@@ -107,7 +107,7 @@ USA.
 		   (constructor %make-binding (package name value-cell new?))
 		   (conc-name binding/)
 		   (print-procedure
-		    (simple-unparser-method 'binding
+		    (standard-print-method 'binding
 		      (lambda (binding)
 			(list (binding/name binding)
 			      (package/name (binding/package binding)))))))
@@ -170,7 +170,7 @@ USA.
 		   (constructor %make-reference (package name))
 		   (conc-name reference/)
 		   (print-procedure
-		    (simple-unparser-method 'reference
+		    (standard-print-method 'reference
 		      (lambda (reference)
 			(list (reference/name reference)
 			      (package/name (reference/package reference)))))))

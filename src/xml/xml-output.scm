@@ -90,8 +90,8 @@ USA.
   (indent-attributes? ctx-indent-attributes?)
   (indent-dtd? ctx-indent-dtd?))
 
-(define-unparser-method ctx?
-  (standard-unparser-method 'xml-output-context #f))
+(define-print-method ctx?
+  (standard-print-method 'xml-output-context))
 
 (define (emit-char char ctx)
   (let ((port (ctx-port ctx)))

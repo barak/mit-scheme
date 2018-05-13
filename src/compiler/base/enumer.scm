@@ -38,7 +38,7 @@ USA.
 (define-structure (enumerand
 		   (conc-name enumerand/)
 		   (print-procedure
-		    (simple-unparser-method "LIAR:enumerand"
+		    (standard-print-method "LIAR:enumerand"
 		      (lambda (enumerand)
 			(list (enumerand/name enumerand))))))
   (enumeration false read-only true)

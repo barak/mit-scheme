@@ -968,7 +968,7 @@ USA.
 		   (safe-accessors #t)
 		   (constructor #f)
 		   (print-procedure
-		    (simple-unparser-method 'HEADER-FIELD
+		    (standard-print-method 'HEADER-FIELD
 		      (lambda (header)
 			(list (header-field-name header))))))
   (name #f read-only #t)

@@ -327,11 +327,10 @@ USA.
 (define top-level-mime-types
   '#(text image audio video application multipart message))
 
-(define-unparser-method mime-type?
-  (standard-unparser-method 'mime-type
-    (lambda (mime-type port)
-      (write-char #\space port)
-      (write-string (mime-type->string mime-type) port))))
+(define-print-method mime-type?
+  (standard-print-method 'mime-type
+    (lambda (mime-type)
+      (list (mime-type->string mime-type)))))
 
 (define interned-mime-types)
 (define unusual-interned-mime-types)

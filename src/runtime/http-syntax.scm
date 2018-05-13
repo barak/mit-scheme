@@ -234,8 +234,8 @@ USA.
 
 (define-guarantee http-header "HTTP header field")
 
-(define-unparser-method http-header?
-  (simple-unparser-method 'http-header
+(define-print-method http-header?
+  (standard-print-method 'http-header
     (lambda (header)
       (list (http-header-name header)))))
 

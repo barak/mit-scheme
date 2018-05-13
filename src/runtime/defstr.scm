@@ -291,9 +291,8 @@ differences:
   (symbol (parser-context/name context) '?))
 
 (define (default-unparser-text context)
-  `(,(absolute 'standard-unparser-method context)
-    ',(parser-context/name context)
-    #f))
+  `(,(absolute 'standard-print-method context)
+    ',(parser-context/name context)))
 
 (define (default-type-name context)
   (symbol 'rtd: (parser-context/name context)))
@@ -841,7 +840,7 @@ differences:
 	   (or (structure/record-type? structure)
 	       (structure/tagged? structure)))
       (let ((context (structure/context structure)))
-	`((define-unparser-method
+	`((define-print-method
 	    ,(close (structure/predicate structure) context)
 	    ,(close (structure/print-procedure structure) context))))
       '()))

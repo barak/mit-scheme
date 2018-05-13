@@ -33,7 +33,7 @@ USA.
 				(name major? display-name super-mode
 				      %description initialization comtabs))
 		   (print-procedure
-		    (simple-unparser-method 'MODE
+		    (standard-print-method 'MODE
 		      (lambda (mode)
 			(cons (mode-name mode)
 			      (if (mode-major? mode)

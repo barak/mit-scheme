@@ -32,7 +32,7 @@ USA.
 (define-structure (quantity
 		   (copier quantity-copy)
 		   (print-procedure
-		    (simple-unparser-method "LIAR:quantity" #f)))
+		    (standard-print-method "LIAR:quantity")))
   (number false read-only true)
   (first-register false)
   (last-register false))

@@ -33,7 +33,7 @@ USA.
 		   (conc-name display-type/)
 		   (constructor %make-display-type)
 		   (print-procedure
-		    (simple-unparser-method 'DISPLAY-TYPE
+		    (standard-print-method 'DISPLAY-TYPE
 		      (lambda (display-type)
 			(list (display-type/name display-type))))))
   (name false read-only true)

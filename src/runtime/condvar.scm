@@ -34,7 +34,7 @@ USA.
 		   (constructor %make-condition-variable
 				(name waiter-head waiter-tail))
 		   (print-procedure
-		    (simple-unparser-method 'condition-variable
+		    (standard-print-method 'condition-variable
 		      (lambda (condvar)
 			(cond ((condition-variable-name condvar) => list)
 			      (else '()))))))

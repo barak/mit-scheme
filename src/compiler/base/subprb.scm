@@ -114,7 +114,7 @@ known that the continuation need not be used.
 		   (constructor virtual-continuation/%make)
 		   (conc-name virtual-continuation/)
 		   (print-procedure
-		    (simple-unparser-method "LIAR:virtual-continuation"
+		    (standard-print-method "LIAR:virtual-continuation"
 		      (lambda (continuation)
 			(let ((type (virtual-continuation/type continuation)))
 			  (if type

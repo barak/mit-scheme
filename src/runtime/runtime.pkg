@@ -134,6 +134,10 @@ USA.
 (define-package (runtime boot-definitions)
   (files "boot")
   (parent (runtime))
+  (export () deprecated:boot-definitions
+	  (define-unparser-method define-print-method)
+	  (simple-unparser-method standard-print-method)
+	  (standard-unparser-method bracketed-print-method))
   (export ()
 	  %false->weak-false
 	  %make-record
@@ -151,16 +155,15 @@ USA.
 	  %weak-false->false
 	  %weak-false?
 	  %weak-set-car!
-	  bracketed-unparser-method
+	  bracketed-print-method
 	  bytes-per-object
 	  default-object
 	  default-object?
 	  define-pp-describer
-	  define-unparser-method
+	  define-print-method
 	  error:not-a
 	  error:not-a-list-of
 	  gc-space-status
-	  general-unparser-method
 	  guarantee
 	  guarantee-list-of
 	  interrupt-bit/after-gc
@@ -184,9 +187,7 @@ USA.
 	  set-dispatch-tag<=!
 	  set-predicate<=!
 	  simple-parser-method
-	  simple-unparser-method
-	  standard-unparser-method
-	  unparser-method?
+	  standard-print-method
 	  weak-car
 	  weak-cdr
 	  weak-cons
@@ -211,6 +212,10 @@ USA.
 	  %weak-car)
   (export (runtime predicate)
 	  set-predicate-tag!)
+  (export (runtime printer)
+	  standard-print-method-name
+	  standard-print-method-parts
+	  standard-print-method?)
   (export (runtime rep)
 	  finished-booting!)
   (export (runtime tagged-dispatch)

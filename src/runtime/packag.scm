@@ -73,8 +73,8 @@ USA.
 	 (make-record-type "package" '(parent children name environment))))
     (set! package-tag rtd)
     (for-each (lambda (p) (%record-set! p 0 rtd)) *packages*)
-    (define-unparser-method (record-predicate rtd)
-      (simple-unparser-method 'package
+    (define-print-method (record-predicate rtd)
+      (standard-print-method 'package
 	(lambda (package)
 	  (list (package/name package)))))))
 

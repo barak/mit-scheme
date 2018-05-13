@@ -117,8 +117,8 @@ USA.
   (host uri-authority-host)
   (port uri-authority-port))
 
-(define-unparser-method uri-authority?
-  (simple-unparser-method 'uri-authority
+(define-print-method uri-authority?
+  (standard-print-method 'uri-authority
     (lambda (authority)
       (list (call-with-output-string
 	      (lambda (port)
@@ -953,8 +953,8 @@ USA.
   (fragment partial-uri-fragment set-partial-uri-fragment!)
   (extra partial-uri-extra set-partial-uri-extra!))
 
-(define-unparser-method partial-uri?
-  (standard-unparser-method 'partial-uri
+(define-print-method partial-uri?
+  (bracketed-print-method 'partial-uri
     (lambda (puri port)
       (write-char #\space port)
       (write-partial-uri puri port))))

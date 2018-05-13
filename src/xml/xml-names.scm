@@ -89,8 +89,8 @@ USA.
   (qname combo-name-qname)
   (expanded combo-name-expanded))
 
-(define-unparser-method combo-name?
-  (simple-unparser-method 'XML-NAME
+(define-print-method combo-name?
+  (standard-print-method 'XML-NAME
     (lambda (name)
       (list (combo-name-qname name)))))
 

@@ -89,6 +89,15 @@ USA.
 				   (list (cons 'name name) ...)))))
 	      env))
 
+    (if (unbound? env 'standard-print-method)
+	(eval '(define (standard-print-method name #!optional get-parts)
+		 (simple-unparser-method name
+					 (if (default-object? get-parts)
+					     #f
+					     get-parts)))
+	      env))
+    (provide-rename env 'standard-unparser-method 'bracketed-print-method)
+
     (for-each (lambda (old-name)
 		(provide-rename env old-name (symbol 'scode- old-name)))
 	      '(access-environment

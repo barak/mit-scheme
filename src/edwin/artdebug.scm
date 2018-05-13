@@ -974,10 +974,9 @@ Prefix argument means do not kill the debugger buffer."
 (define-structure (unparser-literal
 		   (conc-name unparser-literal/)
 		   (print-procedure
-		    (general-unparser-method
-		     (lambda (instance port)
-		       (write-string (unparser-literal/string instance)
-				     port))))
+		    (lambda (instance port)
+		      (write-string (unparser-literal/string instance)
+				    port)))
 		   (constructor unparser-literal/make))
   string)
 

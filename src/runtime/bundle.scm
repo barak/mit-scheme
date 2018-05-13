@@ -88,14 +88,15 @@ USA.
     bundle?
   (alist bundle-alist))
 
-(define-unparser-method bundle?
-  (standard-unparser-method
-   (lambda (bundle)
-     (record-type-name (record-type-descriptor bundle)))
-   (lambda (bundle port)
-     (let ((handler (bundle-ref bundle 'write-self #f)))
-       (if handler
-	   (handler port))))))
+(define-print-method bundle?
+  (standard-print-method
+      (lambda (bundle)
+	(record-type-name (record-type-descriptor bundle)))
+    (lambda (bundle)
+      (let ((handler (bundle-ref bundle 'summarize-self #f)))
+	(if handler
+	    (handler)
+	    '())))))
 
 (define-pp-describer bundle?
   (lambda (bundle)

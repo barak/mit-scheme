@@ -364,7 +364,7 @@ USA.
   (vector-set! inferior 4 redisplay-flags))
 
 (unparser/set-tagged-vector-method! %inferior-tag
-  (standard-unparser-method 'INFERIOR
+  (bracketed-print-method 'INFERIOR
     (lambda (inferior port)
       (write-string " " port)
       (write (inferior-window inferior) port)

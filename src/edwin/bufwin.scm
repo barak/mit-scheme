@@ -501,7 +501,7 @@ USA.
 (define-structure (outline
 		   (constructor %make-outline)
 		   (print-procedure
-		    (standard-unparser-method 'OUTLINE
+		    (bracketed-print-method 'OUTLINE
 		      (lambda (outline port)
 			(write-string "index: " port)
 			(write (outline-index-length outline) port)
@@ -569,7 +569,7 @@ USA.
 (define-structure (o3
 		   (constructor %make-o3)
 		   (print-procedure
-		    (standard-unparser-method 'O3
+		    (bracketed-print-method 'O3
 		      (lambda (o3 port)
 			(write-string "index: " port)
 			(write (o3-index o3) port)

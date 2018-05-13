@@ -31,7 +31,7 @@ USA.
 (define-structure (command
 		   (constructor %make-command ())
 		   (print-procedure
-		    (simple-unparser-method 'COMMAND
+		    (standard-print-method 'COMMAND
 		      (lambda (command)
 			(list (command-name command))))))
   name
@@ -103,7 +103,7 @@ USA.
 (define-structure (variable
 		   (constructor %make-variable ())
 		   (print-procedure
-		    (simple-unparser-method 'VARIABLE
+		    (standard-print-method 'VARIABLE
 		      (lambda (variable)
 			(list (variable-name variable))))))
   name

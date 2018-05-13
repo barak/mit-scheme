@@ -303,56 +303,58 @@ USA.
 
 ;;;; Printing
 
-(define (define-unparser-method predicate unparser)
-  (defer-boot-action 'unparser-methods
+(define (define-print-method predicate print-method)
+  (defer-boot-action 'print-methods
     (lambda ()
-      (define-unparser-method predicate unparser))))
+      (define-print-method predicate print-method))))
+
+(define (standard-print-method name #!optional get-parts)
+  (%record standard-print-method-tag
+	   name
+	   (if (and get-parts (not (default-object? get-parts)))
+	       get-parts
+	       (lambda (object)
+		 (declare (ignore object))
+		 '()))))
+
+;;; Would have used normal records here but the record abstraction is defined
+;;; after this is needed.
+
+(define (standard-print-method? object)
+  (and (%record? object)
+       (fix:= 3 (%record-length object))
+       (eq? standard-print-method-tag (%record-ref object 0))))
+
+(define (standard-print-method-name spm object)
+  (let ((name (%record-ref spm 1)))
+    (if (procedure? name)
+	(name object)
+	name)))
+
+(define (standard-print-method-parts spm object)
+  ((%record-ref spm 2) object))
+
+(define-integrable standard-print-method-tag
+  '|#[standard-print-method-tag]|)
+
+(define (bracketed-print-method name printer)
+  (lambda (object port)
+    (if (get-param:print-with-maximum-readability?)
+	(begin
+	  (write-string "#@" port)
+	  (write (hash-object object) port))
+	(begin
+	  (write-string "#[" port)
+	  (display (if (procedure? name) (name object) name) port)
+	  (write-char #\space port)
+	  (write (hash-object object) port)
+	  (if printer (printer object port))
+	  (write-char #\] port)))))
 
 (define (define-pp-describer predicate describer)
   (defer-boot-action 'pp-describers
     (lambda ()
       (define-pp-describer predicate describer))))
-
-(define (unparser-method? object)
-  (and (procedure? object)
-       (procedure-arity-valid? object 2)))
-
-(define (general-unparser-method procedure)
-  (lambda (state object)
-    (with-current-unparser-state state
-      (lambda (port)
-	(if (get-param:print-with-maximum-readability?)
-	    (begin
-	      (write-string "#@" port)
-	      (write (hash-object object) port))
-	    (procedure object port))))))
-
-(define (bracketed-unparser-method procedure)
-  (general-unparser-method
-   (lambda (object port)
-     (write-string "#[" port)
-     (procedure object port)
-     (write-char #\] port))))
-
-(define (standard-unparser-method name procedure)
-  (bracketed-unparser-method
-   (lambda (object port)
-     (display (if (procedure? name)
-		  (name object)
-		  name)
-	      port)
-     (write-char #\space port)
-     (write (hash-object object) port)
-     (if procedure (procedure object port)))))
-
-(define (simple-unparser-method name get-parts)
-  (standard-unparser-method name
-    (and get-parts
-	 (lambda (object port)
-	   (for-each (lambda (object)
-		       (write-char #\space port)
-		       (write object port))
-		     (get-parts object))))))
 
 (define (simple-parser-method procedure)
   (lambda (objects lose)

@@ -92,14 +92,13 @@ USA.
 		     '<= binary-input-port?
 		     '<= binary-output-port?)
 
-(define-unparser-method binary-port?
-  (standard-unparser-method
+(define-print-method binary-port?
+  (standard-print-method
    (lambda (port)
      (cond ((binary-i/o-port? port) 'binary-i/o-port)
 	   ((binary-input-port? port) 'binary-input-port)
 	   ((binary-output-port? port) 'binary-output-port)
-	   (else 'binary-port)))
-   #f))
+	   (else 'binary-port)))))
 
 ;;;; Bytevector input ports
 

@@ -223,7 +223,7 @@ USA.
 		   (conc-name x-display/)
 		   (constructor make-x-display (name xd))
 		   (print-procedure
-		    (simple-unparser-method 'x-display
+		    (standard-print-method 'x-display
 		      (lambda (display)
 			(list (x-display/name display))))))
   (name #f read-only #t)

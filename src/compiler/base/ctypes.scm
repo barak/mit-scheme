@@ -59,7 +59,7 @@ USA.
     (make-scfg application '())))
 
 (define-vector-tag-unparser application-tag
-  (simple-unparser-method
+  (standard-print-method
    (lambda (application)
      (case (application-type application)
        ((COMBINATION) "LIAR:combination")

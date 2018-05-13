@@ -60,8 +60,8 @@ USA.
   (flush-output port-type-operation:flush-output)
   (discretionary-flush-output port-type-operation:discretionary-flush-output))
 
-(define-unparser-method textual-port-type?
-  (standard-unparser-method
+(define-print-method textual-port-type?
+  (standard-print-method
    (lambda (type)
      (if (port-type-supports-input? type)
 	(if (port-type-supports-output? type)
@@ -69,8 +69,7 @@ USA.
 	    'textual-input-port-type)
 	(if (port-type-supports-output? type)
 	    'textual-output-port-type
-	    'textual-port-type)))
-   #f))
+	    'textual-port-type)))))
 
 (define (port-type-supports-input? type)
   (port-type-operation:read-char type))
@@ -416,8 +415,8 @@ USA.
 (register-predicate! textual-i/o-port? 'textual-i/o-port
 		     '<= textual-port?)
 
-(define-unparser-method textual-port?
-  (standard-unparser-method
+(define-print-method textual-port?
+  (bracketed-print-method
    (lambda (port)
      (cond ((textual-i/o-port? port) 'textual-i/o-port)
 	   ((textual-input-port? port) 'textual-input-port)

@@ -118,7 +118,7 @@ USA.
 				    opt val)))
 
 (define-structure (gdbf
-		   (print-procedure (simple-unparser-method 'gdbf
+		   (print-procedure (standard-print-method 'gdbf
 				      (lambda (gdbf)
 					(list (gdbf-filename gdbf))))))
   descriptor

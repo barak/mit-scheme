@@ -108,7 +108,7 @@ USA.
 	 (lambda (procedure)
 	   (enumeration/index->name continuation-types
 				    (procedure-type procedure)))))
-    (simple-unparser-method
+    (standard-print-method
      (lambda (procedure)
        (if (eq? (get-type procedure) 'PROCEDURE)
 	   "LIAR:procedure"

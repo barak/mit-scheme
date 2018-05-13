@@ -173,8 +173,8 @@ USA.
   (guarantee dispatch-tag? superset 'add-dispatch-tag-superset)
   (%add-to-weak-set superset (%tag-supersets tag)))
 
-(define-unparser-method dispatch-tag?
-  (simple-unparser-method
+(define-print-method dispatch-tag?
+  (standard-print-method
    (lambda (tag)
      (if (dispatch-metatag? tag) 'dispatch-metatag 'dispatch-tag))
    (lambda (tag)

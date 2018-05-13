@@ -45,7 +45,7 @@ USA.
 (define-structure (thread-queue (constructor %make-thread-queue)
 				(conc-name %thread-queue/)
 				(print-procedure
-				 (standard-unparser-method
+				 (bracketed-print-method
 				  'thread-queue
 				  (lambda (queue port)
 				    (print-thread-queue queue port)))))

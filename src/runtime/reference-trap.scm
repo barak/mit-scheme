@@ -33,7 +33,7 @@ USA.
 		   (type vector)
 		   (named '|#[(runtime reference-trap)reference-trap]|)
 		   (print-procedure
-		    (simple-unparser-method 'reference-trap
+		    (standard-print-method 'reference-trap
 		      (lambda (trap)
 			(list (let ((kind (reference-trap-kind trap)))
 				 (or (reference-trap-kind-name kind)

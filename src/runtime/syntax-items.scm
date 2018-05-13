@@ -41,8 +41,8 @@ USA.
     var-item?
   (id var-item-id))
 
-(define-unparser-method var-item?
-  (simple-unparser-method 'var-item
+(define-print-method var-item?
+  (standard-print-method 'var-item
     (lambda (item)
       (list (var-item-id item)))))
 
@@ -83,8 +83,8 @@ USA.
   (value defn-item-value)
   (syntax? defn-item-syntax?))
 
-(define-unparser-method defn-item?
-  (simple-unparser-method 'defn-item
+(define-print-method defn-item?
+  (standard-print-method 'defn-item
     (lambda (item)
       (list (defn-item-id item)
 	    (defn-item-value item)))))

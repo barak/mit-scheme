@@ -296,7 +296,7 @@ USA.
 (define-structure (mark
 		   (constructor make-temporary-mark)
 		   (print-procedure
-		    (simple-unparser-method 'MARK
+		    (standard-print-method 'MARK
 		      (lambda (mark)
 			(list (or (mark-buffer mark)
 				  (mark-group mark))

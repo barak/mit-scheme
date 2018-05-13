@@ -35,7 +35,7 @@ USA.
 
 (define (initialize-unparser!)
   (unparser/set-tagged-pair-method! 1d-table-tag
-				    (standard-unparser-method '1d-table #f)))
+				    (standard-print-method '1d-table)))
 
 (define population-of-1d-tables)
 

@@ -443,11 +443,9 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 		   (constructor make-input-event (type operator . operands))
 		   (conc-name input-event/)
 		   (print-procedure
-		    (standard-unparser-method
-		     'input-event
-		     (lambda (event port)
-		       (write-char #\space port)
-		       (write (input-event/type event) port)))))
+		    (standard-print-method 'input-event
+		      (lambda (event)
+			(list (input-event/type event))))))
   (type #f read-only #t)
   (operator #f read-only #t)
   (operands #f read-only #t))

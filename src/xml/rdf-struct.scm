@@ -151,11 +151,10 @@ USA.
 
 (define-guarantee rdf-bnode "RDF bnode")
 
-(define-unparser-method rdf-bnode?
-  (standard-unparser-method 'RDF-BNODE
-    (lambda (bnode port)
-      (write-char #\space port)
-      (write-string (rdf-bnode-name bnode) port))))
+(define-print-method rdf-bnode?
+  (standard-print-method 'rdf-bnode
+    (lambda (bnode)
+      (list (rdf-bnode-name bnode)))))
 
 (define (make-rdf-bnode #!optional name)
   (if (default-object? name)
@@ -225,8 +224,8 @@ USA.
     (and (not (absolute-uri? type))
 	 type)))
 
-(define-unparser-method rdf-literal?
-  (standard-unparser-method 'RDF-LITERAL
+(define-print-method rdf-literal?
+  (bracketed-print-method 'RDF-LITERAL
     (lambda (literal port)
       (write-char #\space port)
       (write-rdf/nt-literal literal port))))

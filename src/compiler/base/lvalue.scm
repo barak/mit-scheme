@@ -98,7 +98,7 @@ USA.
       (variable-normal-offset variable)))
 
 (define-vector-tag-unparser variable-tag
-  (simple-unparser-method "LIAR:variable"
+  (standard-print-method "LIAR:variable"
     (lambda (variable)
       (list (variable-name variable)))))
 

@@ -44,7 +44,7 @@ USA.
     (conc-name module/)
     (constructor %make-module)
     (print-procedure
-     (simple-unparser-method 'MODULE
+     (standard-print-method 'MODULE
        (lambda (module)
 	 (list (module/load-name module))))))
   load-name

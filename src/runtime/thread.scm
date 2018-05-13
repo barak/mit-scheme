@@ -136,7 +136,7 @@ USA.
 				'#(waiting-threads owner)
 				'#(1 2)
 				(vector 2 (lambda () #f))
-				(standard-unparser-method 'thread-mutex #f)
+				(standard-print-method 'thread-mutex)
 				thread-mutex-tag
 				3))
   (named-structure/set-tag-description! link-tag
@@ -145,7 +145,7 @@ USA.
 				'#(prev next item)
 				'#(1 2 3)
 				(vector 3 (lambda () #f))
-				(standard-unparser-method 'link #f)
+				(standard-print-method 'link)
 				link-tag
 				4)))
 

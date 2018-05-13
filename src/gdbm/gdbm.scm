@@ -289,7 +289,7 @@ USA.
 
 (define-structure (gdbf (constructor make-gdbf)
 			(print-procedure
-			 (simple-unparser-method 'GDBF
+			 (standard-print-method 'GDBF
 			   (lambda (gdbf)
 			     (list (gdbf-filename gdbf))))))
   ;; Note that communicating through this malloced-per-GDBM_FILE

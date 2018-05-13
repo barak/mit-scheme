@@ -57,7 +57,7 @@ USA.
 		  (list->vector (map car transforms))
 		  (list->vector (map cdr transforms))
 		  (make-vector (length transforms) (lambda () #f))
-		  (standard-unparser-method name #f)
+		  (standard-print-method name)
 		  class
 		  object-size))
 	       class))))

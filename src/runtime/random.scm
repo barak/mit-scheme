@@ -416,6 +416,6 @@ USA.
 				'#(index borrow vector)
 				'#(1 2 3)
 				(make-vector 3 (lambda () #f))
-				(standard-unparser-method 'random-state #f)
+				(standard-print-method 'random-state)
 				random-state-tag
 				4)))

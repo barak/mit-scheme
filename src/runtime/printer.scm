@@ -246,7 +246,11 @@ USA.
   (let ((table (make-strong-eq-hash-table)))
 
     (define (walk object)
-      (cond ((pair? object)
+      (cond ((get-print-method-parts object)
+	     => (lambda (parts)
+		  (if (mark! object)
+		      (for-each walk parts))))
+	    ((pair? object)
 	     (if (mark! object)
 		 (begin
 		   (walk (car object))
@@ -283,24 +287,51 @@ USA.
     (print-number (cdr label) context)
     (*print-char (if def? #\= #\#) context)
     def?))
+
+(define (print-object-1 object context)
+  (let ((print-method (get-print-method object)))
+    (cond ((standard-print-method? print-method)
+	   (*print-with-brackets
+	    (standard-print-method-name print-method object)
+	    object
+	    context
+	    (lambda (context*)
+	      (for-each (lambda (part)
+			  (*print-char #\space context*)
+			  (print-object part context*))
+			(standard-print-method-parts print-method object)))))
+	  (print-method
+	   (parameterize* (list (cons initial-context context))
+	     (lambda ()
+	       (print-method object (context-port context)))))
+	  (else
+	   ((vector-ref dispatch-table
+			((ucode-primitive primitive-object-type 1) object))
+	    object
+	    context)))))
 
-(define-deferred print-object-1
-  (standard-predicate-dispatcher 'print-object-1 2))
+(define (get-print-method-parts object)
+  (let ((print-method (get-print-method object)))
+    (and (standard-print-method? print-method)
+	 (standard-print-method-parts print-method object))))
+
+(define-deferred get-print-method
+  (standard-predicate-dispatcher 'get-print-method 1))
 
 (add-boot-init!
  (lambda ()
-   (define-predicate-dispatch-default-handler print-object-1
-     (lambda (object context)
-       ((vector-ref dispatch-table
-		    ((ucode-primitive primitive-object-type 1) object))
-	object
-	context)))
-   (set! define-unparser-method
-	 (named-lambda (define-unparser-method predicate unparser)
-	   (define-predicate-dispatch-handler print-object-1
-	     (list predicate context?)
-	     unparser)))
-   (run-deferred-boot-actions 'unparser-methods)))
+   (set! define-print-method
+	 (named-lambda (define-print-method predicate print-method)
+	   (define-predicate-dispatch-handler get-print-method
+	     (list predicate)
+	     (lambda (object)
+	       (declare (ignore object))
+	       print-method))))
+   (define-predicate-dispatch-default-handler get-print-method
+     (lambda (object)
+       (declare (ignore object))
+       #f))
+   (run-deferred-boot-actions 'print-methods)))
 
 (define dispatch-table)
 (add-boot-init!
@@ -371,8 +402,7 @@ USA.
   (char-in-set? char (context-char-set context)))
 
 (define (*print-with-brackets name object context procedure)
-  (if (or (and (get-param:print-with-maximum-readability?) object)
-          (context-in-brackets? context))
+  (if (and (get-param:print-with-maximum-readability?) object)
       (*print-readable-hash object context)
       (begin
 	(*print-string "#[" context)
@@ -385,7 +415,6 @@ USA.
 		(*print-char #\space context*)
 		(*print-hash object context*)))
 	  (cond (procedure
-		 (*print-char #\space context*)
 		 (procedure context*))
 		((get-param:print-with-datum?)
 		 (*print-char #\space context*)
@@ -402,10 +431,12 @@ USA.
       ((non-pointer)
        (*print-with-brackets type object context
          (lambda (context*)
+	   (*print-char #\space context*)
            (*print-datum object context*))))
       (else                             ;UNDEFINED, GC-INTERNAL
        (*print-with-brackets type #f context
          (lambda (context*)
+	   (*print-char #\space context*)
            (*print-datum object context*)))))))
 
 (define (user-object-type object)
@@ -464,6 +495,7 @@ USA.
       (print-symbol-name (symbol->string symbol) context)
       (*print-with-brackets 'uninterned-symbol symbol context
         (lambda (context*)
+	  (*print-char #\space context*)
 	  (*print-string (symbol->string symbol) context*)))))
 
 (define (print-symbol symbol context)
@@ -602,7 +634,7 @@ USA.
 			      (begin
 				(*print-char #\space context*)
 				(print-object (safe-vector-ref vector index)
-						 context*)
+					      context*)
 				(loop (fix:+ index 1))))))
 		    (*print-char #\) context*))
 		  (*print-string "#()" context*))))))))
@@ -632,7 +664,7 @@ USA.
 			(begin
 			  (*print-char #\space context*)
 			  (print-number (bytevector-u8-ref bytevector index)
-					 context*)
+					context*)
 			  (loop (fix:+ index 1))))))
 	      (*print-char #\) context*))
 	    (*print-string "#u8()" context*))))))
@@ -755,6 +787,7 @@ USA.
 	     required optional rest body
 	     (and (not (eq? name scode-lambda-name:unnamed))
 		  (lambda (context*)
+		    (*print-char #\space context*)
 		    (print-object name context*))))))))
 
 (define (print-primitive-procedure procedure context)
@@ -766,7 +799,10 @@ USA.
 	  ((get-param:print-with-maximum-readability?)
 	   (*print-readable-hash procedure context))
 	  (else
-	   (*print-with-brackets 'primitive-procedure #f context print-name)))))
+	   (*print-with-brackets 'primitive-procedure #f context
+	     (lambda (context*)
+	       (*print-char #\space context*)
+	       (print-name context*)))))))
 
 (define (print-compiled-entry entry context)
   (let* ((type (compiled-entry-type entry))
@@ -782,6 +818,7 @@ USA.
 	(let ((name (and procedure? (compiled-procedure/name entry))))
 	  (receive (filename block-number)
 	      (compiled-entry/filename-and-index entry)
+	    (*print-char #\space context*)
 	    (*print-char #\( context*)
 	    (if name
 		(*print-string name context*))
@@ -810,26 +847,31 @@ USA.
 (define (print-return-address return-address context)
   (*print-with-brackets 'return-address return-address context
     (lambda (context*)
+      (*print-char #\space context*)
       (print-object (return-address/name return-address) context*))))
 
 (define (print-assignment assignment context)
   (*print-with-brackets 'assignment assignment context
     (lambda (context*)
+      (*print-char #\space context*)
       (print-object (scode-assignment-name assignment) context*))))
 
 (define (print-definition definition context)
   (*print-with-brackets 'definition definition context
     (lambda (context*)
+      (*print-char #\space context*)
       (print-object (scode-definition-name definition) context*))))
 
 (define (print-lambda lambda-object context)
   (*print-with-brackets 'lambda lambda-object context
     (lambda (context*)
+      (*print-char #\space context*)
       (print-object (scode-lambda-name lambda-object) context*))))
 
 (define (print-variable variable context)
   (*print-with-brackets 'variable variable context
     (lambda (context*)
+      (*print-char #\space context*)
       (print-object (scode-variable-name variable) context*))))
 
 (define (print-number object context)
@@ -866,7 +908,8 @@ USA.
 		      (if limit
 			  (min length limit)
 			  length))))
-               (print-flonum ((ucode-primitive floating-vector-ref) v 0)
+               (*print-char #\space context*)
+	       (print-flonum ((ucode-primitive floating-vector-ref) v 0)
 			       context*)
                (do ((i 1 (+ i 1)))
                    ((>= i limit))
@@ -884,7 +927,8 @@ USA.
   (define (named-arity-dispatched-procedure name)
     (*print-with-brackets 'arity-dispatched-procedure entity context
       (lambda (context*)
-        (*print-string name context*))))
+        (*print-char #\space context*)
+	(*print-string name context*))))
 
   (cond ((continuation? entity)
          (plain 'continuation))
@@ -905,10 +949,10 @@ USA.
   (*print-with-brackets 'promise promise context
     (if (promise-forced? promise)
 	(lambda (context*)
-	  (*print-string "(evaluated) " context*)
+	  (*print-string " (evaluated) " context*)
 	  (print-object (promise-value promise) context*))
 	(lambda (context*)
-	  (*print-string "(unevaluated)" context*)
+	  (*print-string " (unevaluated)" context*)
 	  (if (get-param:print-with-datum?)
 	      (begin
 		(*print-char #\space context*)
@@ -917,10 +961,11 @@ USA.
 (define (print-tagged-object object context)
   (*print-with-brackets 'tagged-object object context
     (lambda (context*)
+      (*print-char #\space context*)
       (print-object (let ((tag (%tagged-object-tag object)))
 		       (if (dispatch-tag? tag)
 			   (dispatch-tag-name tag)
 			   tag))
 		     context*)
-      (*print-string " " context*)
+      (*print-char #\space context*)
       (print-object (%tagged-object-datum object) context*))))

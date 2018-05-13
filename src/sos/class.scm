@@ -33,7 +33,7 @@ USA.
 			 (constructor %make-class
 				      (name direct-superclasses direct-slots))
 			 (print-procedure
-			  (simple-unparser-method 'CLASS
+			  (standard-print-method 'CLASS
 			    (lambda (class)
 			      (let ((name (class-name class)))
 				(if name
