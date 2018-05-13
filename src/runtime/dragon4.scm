@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; Floating Point Number Unparser
+;;;; Floating point number printer
 ;;; package: (runtime number)
 
 #|
@@ -159,8 +159,7 @@ not much different to numbers within a few orders of magnitude of 1.
 		       (lookup-symbolic-display-mode
 			(caddr cutoff)))))
 	  (else
-	   (warn "illegal flonum unparser cutoff parameter"
-		 cutoff)
+	   (warn "illegal flonum printer cutoff parameter" cutoff)
 	   (values 'normal 0 flonum-printer:normal-output)))))
 
 (define (cutoff-spec? cutoff)
@@ -184,7 +183,7 @@ not much different to numbers within a few orders of magnitude of 1.
 		      (and (procedure? mode)
 			   (procedure-arity-valid? mode 3))))))))
 
-(define-guarantee cutoff-spec "flonum unparser cutoff spec")
+(define-guarantee cutoff-spec "flonum printer cutoff spec")
 
 (define (lookup-symbolic-display-mode mode)
   (case mode
