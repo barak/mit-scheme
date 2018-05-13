@@ -4835,7 +4835,7 @@ USA.
 (define-package (runtime printer)
   (files "printer")
   (parent (runtime))
-  (export () deprecated:unparser
+  (export () deprecated:printer
 	  *unparse-abbreviate-quotations?*
 	  *unparse-compound-procedure-names?*
 	  *unparse-primitives-by-name?*
@@ -4846,7 +4846,8 @@ USA.
 	  *unparser-list-breadth-limit*
 	  *unparser-list-depth-limit*
 	  *unparser-radix*
-	  *unparser-string-length-limit*)
+	  *unparser-string-length-limit*
+	  with-current-unparser-state)
   (export ()
 	  param:print-char-in-unicode-syntax?
 	  param:print-compound-procedure-names?
@@ -4859,9 +4860,7 @@ USA.
 	  param:printer-list-breadth-limit
 	  param:printer-list-depth-limit
 	  param:printer-radix
-	  param:printer-string-length-limit
-	  user-object-type
-	  with-current-unparser-state)
+	  param:printer-string-length-limit)
   (export (runtime boot-definitions)
 	  get-param:print-with-maximum-readability?)
   (export (runtime global-database)
@@ -4873,7 +4872,9 @@ USA.
 	  get-param:printer-list-depth-limit
 	  prefix-pair?)
   (export (runtime record)
-	  (rtd:unparser-state <context>)))
+	  (rtd:unparser-state <context>))
+  (export (runtime swank)
+	  user-object-type))
 
 (define-package (runtime unsyntaxer)
   (files "unsyn")
