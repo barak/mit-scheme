@@ -1401,11 +1401,8 @@ defined with that symbol as its name.
 
 @deffn {structure option} print-procedure expression
 Evaluating @var{expression} must yield a procedure of two arguments,
-which is used to print instances of the structure.  The procedure is an
-@dfn{unparser method} (@pxref{Custom Output}).  If the structure
-instances are records, this option has the same effect as calling
-@code{set-record-type-unparser-method!}.
-@findex set-record-type-unparser-method!
+which is used to print instances of the structure.  The procedure is a
+@dfn{print method} (@pxref{Custom Output}).
 @end deffn
 
 @deffn {structure option} constructor [name [argument-list]]
