@@ -507,6 +507,7 @@ DEFINE_PRIMITIVE ("SCAN-LIST-FORWARD", Prim_scan_list_forward, 7, 7, 0)
 	case syntaxcode_charquote:
 	  LOSE_IF_RIGHT_END (start);
 	  MOVE_RIGHT (start);
+	  /* fall through */
 
 	case syntaxcode_word:
 	case syntaxcode_symbol:
@@ -976,6 +977,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 		      quoted = true;
 		      DONE_IF (true);
 		    }
+		  /* fall through */
 
 		case syntaxcode_word:
 		case syntaxcode_symbol:
