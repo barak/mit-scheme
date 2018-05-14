@@ -89,6 +89,10 @@ USA.
 				   (list (cons 'name name) ...)))))
 	      env))
 
+    (if (unbound? env 'define-print-method)
+	(eval '(define (define-print-method predicate print-method)
+		 unspecific)
+	      env))
     (if (unbound? env 'standard-print-method)
 	(eval '(define (standard-print-method name #!optional get-parts)
 		 (simple-unparser-method name
