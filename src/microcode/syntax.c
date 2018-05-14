@@ -521,6 +521,7 @@ DEFINE_PRIMITIVE ("SCAN-LIST-FORWARD", Prim_scan_list_forward, 7, 7, 0)
 		case syntaxcode_charquote:
 		  MOVE_RIGHT (start);
 		  LOSE_IF_RIGHT_END (start);
+		  /* fall through */
 
 		case syntaxcode_word:
 		case syntaxcode_symbol:

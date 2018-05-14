@@ -825,6 +825,7 @@ Interpret (void)
     internal_apply_val:
 
       (APPLY_FRAME_PROCEDURE ()) = GET_VAL;
+      /* fall through */
 
     case RC_INTERNAL_APPLY:
     internal_apply:

@@ -401,6 +401,7 @@ scan (void)
 		}
 	    }
 	  else if (c != '\n') break;
+	  /* fall through */
 
 	case '\n':
 	  {
