@@ -215,6 +215,16 @@ USA.
 		      (get-param:printer-list-breadth-limit)
 		      (get-param:printer-list-depth-limit)))))
 
+(define (print-for-pp object port list-depth)
+  (print-object object
+		(make-context port
+			      'normal
+			      list-depth
+			      #f
+			      (make-labeling-procedure object 'circularity)
+			      (get-param:printer-list-breadth-limit)
+			      (get-param:printer-list-depth-limit))))
+
 (define (make-labeling-procedure object label-mode)
   (let ((shared-objects
 	 (case label-mode

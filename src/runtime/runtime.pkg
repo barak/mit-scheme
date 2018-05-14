@@ -4867,7 +4867,8 @@ USA.
   (export (runtime pretty-printer)
 	  get-param:printer-list-breadth-limit
 	  get-param:printer-list-depth-limit
-	  prefix-pair?)
+	  prefix-pair?
+	  print-for-pp)
   (export (runtime swank)
 	  user-object-type))
 

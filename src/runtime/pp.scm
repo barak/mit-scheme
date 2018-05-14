@@ -787,9 +787,7 @@ USA.
 (define (walk-custom object list-depth)
   (call-with-output-string
     (lambda (port)
-      (parameterize* (list (cons param:printer-list-depth-limit list-depth))
-	(lambda ()
-	  (write object port))))))
+      (print-for-pp object port list-depth))))
 
 (define (walk-pair pair list-depth)
   (if (let ((limit (get-param:printer-list-depth-limit)))
