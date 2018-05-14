@@ -516,7 +516,7 @@ OS_jiffies_per_second (void)
 #ifdef __APPLE__
   return (CLK_TCK);
 #else
-  return (CLOCKS_PER_SEC);
+  return (UX_SC_CLK_TCK ());
 #endif
 }
 
