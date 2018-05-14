@@ -1650,6 +1650,7 @@ USA.
 	  ctime-string->decoded-time
 	  ctime-string->file-time
 	  ctime-string->universal-time
+	  current-second		;R7RS
 	  day-of-week/long-string
 	  day-of-week/short-string
 	  decoded-time->ctime-string

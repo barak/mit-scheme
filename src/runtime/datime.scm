@@ -166,6 +166,9 @@ USA.
 
 (define epoch 2208988800)
 
+(define (current-second)
+  (exact->inexact ((ucode-primitive encoded-time 0))))
+
 (define (local-decoded-time)
   (universal-time->local-decoded-time (get-universal-time)))
 
