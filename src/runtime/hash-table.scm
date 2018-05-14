@@ -1202,6 +1202,7 @@ USA.
 (define key-weak-eqv-hash-table-type)
 (define datum-weak-eqv-hash-table-type)
 (define non-pointer-hash-table-type)
+(define string-ci-hash-table-type)
 (define string-hash-table-type)
 (define strong-eq-hash-table-type)
 (define strong-eqv-hash-table-type)
@@ -1242,6 +1243,8 @@ USA.
 	   (make eqv-hash-mod eqv? #t hash-table-entry-type:datum-weak))
      (set! non-pointer-hash-table-type	;Open-coded
 	   (open-type! eq-hash-mod eq? #f hash-table-entry-type:strong))
+     (set! string-ci-hash-table-type
+	   (make string-ci-hash string-ci=? #t hash-table-entry-type:strong))
      (set! string-hash-table-type
 	   (make string-hash string=? #t hash-table-entry-type:strong))
      (set! strong-eq-hash-table-type	;Open-coded
@@ -1258,6 +1261,7 @@ USA.
 (define make-key-weak-eqv-hash-table)
 (define make-datum-weak-eqv-hash-table)
 (define make-non-pointer-hash-table)
+(define make-string-ci-hash-table)
 (define make-string-hash-table)
 (define make-strong-eq-hash-table)
 (define make-strong-eqv-hash-table)
@@ -1277,6 +1281,7 @@ USA.
      (init make-key-weak-eqv-hash-table key-weak-eqv-hash-table-type)
      (init make-datum-weak-eqv-hash-table datum-weak-eqv-hash-table-type)
      (init make-non-pointer-hash-table non-pointer-hash-table-type)
+     (init make-string-ci-hash-table string-ci-hash-table-type)
      (init make-string-hash-table string-hash-table-type)
      (init make-strong-eq-hash-table strong-eq-hash-table-type)
      (init make-strong-eqv-hash-table strong-eqv-hash-table-type))

@@ -126,79 +126,9 @@ USA.
 		      (error "Wrong value type in registry entry:"
 			     name))
 		  value))))))
-
-(define get-environment-variable)
-(define set-environment-variable!)
-(define set-environment-variable-default!)
-(define delete-environment-variable!)
-(define reset-environment-variables!)
-(let ((environment-variables '())
-      (environment-defaults '()))
 
-  ;; Kludge: since getenv returns #f for unbound,
-  ;; that can also be the marker for a deleted variable
-  (define-integrable *variable-deleted* #f)
-
-  (define (env-error proc var)
-    (error "Variable must be a string:" var proc))
-
-  (define (default-variable! var val)
-    (if (and (not (assoc var environment-variables))
-	     (not ((ucode-primitive get-environment-variable 1)
-		   (string-for-primitive var))))
-	(set! environment-variables
-	      (cons (cons var (if (procedure? val) (val) val))
-		    environment-variables)))
-    unspecific)
-
-  (set! get-environment-variable
-	(lambda (variable)
-	  (if (not (string? variable))
-	      (env-error 'get-environment-variable variable))
-	  (let ((variable (string-upcase variable)))
-	    (cond ((assoc variable environment-variables)
-		   => cdr)
-		  (else
-		   ((ucode-primitive get-environment-variable 1)
-		    (string-for-primitive variable)))))))
-
-  (set! set-environment-variable!
-	(lambda (variable value)
-	  (if (not (string? variable))
-	      (env-error 'set-environment-variable! variable))
-	  (let ((variable (string-upcase variable)))
-	    (cond ((assoc variable environment-variables)
-		   => (lambda (pair) (set-cdr! pair value)))
-		  (else
-		   (set! environment-variables
-			 (cons (cons variable value) environment-variables)))))
-	  unspecific))
-
-  (set! delete-environment-variable!
-	(lambda (variable)
-	  (if (not (string? variable))
-	      (env-error 'delete-environment-variable! variable))
-	  (set-environment-variable! variable *variable-deleted*)))
-
-  (set! reset-environment-variables!
-	(lambda ()
-	  (set! environment-variables '())
-	  (for-each (lambda (def) (default-variable! (car def) (cdr def)))
-		    environment-defaults)))
-
-  (set! set-environment-variable-default!
-	(lambda (var val)
-	  (if (not (string? var))
-	      (env-error 'set-environment-variable-default! var))
-	  (let ((var (string-upcase var)))
-	    (cond ((assoc var environment-defaults)
-		   => (lambda (pair) (set-cdr! pair val)))
-		  (else
-		   (set! environment-defaults
-			 (cons (cons var val) environment-defaults))))
-	    (default-variable! var val))))
-
-  )
+(define (os/make-env-cache)
+  (make-string-ci-hash-table))
 
 (define current-user-name)
 (define current-home-directory)

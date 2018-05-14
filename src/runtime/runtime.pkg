@@ -880,6 +880,7 @@ USA.
 
 (define-package (runtime os-primitives)
   (parent (runtime))
+  (files "os-primitives")
   (export ()
 	  copy-file
 	  current-home-directory
@@ -910,6 +911,7 @@ USA.
 	  file-time->global-decoded-time
 	  file-time->local-decoded-time
 	  file-time->universal-time
+	  get-environment-variables	;R7RS
 	  get-environment-variable	;R7RS
 	  init-file-specifier->pathname
 	  os/exec-path
@@ -2492,6 +2494,7 @@ USA.
 	  make-key-weak-eq-hash-table
 	  make-key-weak-eqv-hash-table
 	  make-non-pointer-hash-table
+	  make-string-ci-hash-table
 	  make-string-hash-table
 	  make-strong-eq-hash-table
 	  make-strong-eqv-hash-table

@@ -63,6 +63,36 @@ The result is either a string (the variable's value),\n\
   }
 }
 
+DEFINE_PRIMITIVE ("GET-ENVIRONMENT", Prim_get_environment, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  LPTCH env_block = GetEnvironmentStrings();
+  if (env_block == 0)
+    PRIMITIVE_RETURN (sharp_f);
+
+  // Variable strings are separated by NULL byte, and the block is
+  // terminated by a NULL byte.
+
+  LPTSTR scan = (LPTSTR) env_block;
+  int n = 0;
+  while ((*scan) != '\0')
+    {
+      n += 1;
+      scan += (lstrlen(scan) + 1);
+    }
+
+  SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, n, true));
+  SCHEME_OBJECT * to = (VECTOR_LOC (v, 0));
+  scan = (LPTSTR) env_block;
+  while ((*scan) != '\0')
+    {
+      (*to++) = (char_pointer_to_string (scan));
+      scan += (lstrlen(scan) + 1);
+    }
+  FreeEnvironmentStrings(env_block);
+  PRIMITIVE_RETURN (v);
+}
+
 #define VQRESULT(index, value)						\
   VECTOR_SET (result, index, (ulong_to_integer (value)))
 

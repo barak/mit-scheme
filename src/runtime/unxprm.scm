@@ -158,38 +158,6 @@ USA.
      (or access-time (file-access-time-direct filename))
      (or modification-time (file-modification-time-direct filename)))))
 
-;;;; Environment variables
-
-(define environment-variables)
-
-(define (get-environment-variable name)
-  (guarantee string? name 'get-environment-variable)
-  (let ((value (hash-table-ref/default environment-variables name 'none)))
-    (if (eq? value 'none)
-	(let ((value
-	       ((ucode-primitive get-environment-variable 1)
-		(string-for-primitive name))))
-	  (hash-table-set! environment-variables name value)
-	  value)
-	value)))
-
-(define (set-environment-variable! name value)
-  (guarantee string? name 'set-environment-variable!)
-  (if value
-      (guarantee string? value 'set-environment-variable!))
-  (hash-table-set! environment-variables name value))
-
-(define (delete-environment-variable! name)
-  (guarantee string? name 'delete-environment-variable!)
-  (hash-table-delete! environment-variables name))
-
-(define (reset-environment-variables!)
-  (hash-table-clear! environment-variables))
-
-(define (initialize-system-primitives!)
-  (set! environment-variables (make-string-hash-table))
-  (add-event-receiver! event:after-restart reset-environment-variables!))
-
 ;;;; MIME types
 
 (define (os/suffix-mime-type suffix)
@@ -338,6 +306,9 @@ USA.
        (set-thread-timer-interval! ti-outside)
        (set! ti-outside)
        unspecific))))
+
+(define (os/make-env-cache)
+  (make-string-hash-table))
 
 (define (file-line-ending pathname)
   ;; This works because the line translation is harmless when not

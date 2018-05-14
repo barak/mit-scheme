@@ -164,6 +164,21 @@ The result is either a string (the variable's value),\n\
 		      : (char_pointer_to_string (variable_value)));
   }
 }
+
+DEFINE_PRIMITIVE ("GET-ENVIRONMENT", Prim_get_environment, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  char ** scan = environ;
+  int n = 0;
+  while ((*scan++) != 0)
+    n += 1;
+  SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, n, true));
+  SCHEME_OBJECT * to = (VECTOR_LOC (v, 0));
+  scan = environ;
+  while ((*scan) != 0)
+    (*to++) = (char_pointer_to_string (*scan++));
+  PRIMITIVE_RETURN (v);
+}
 
 #define HOSTNAMESIZE 1024
 

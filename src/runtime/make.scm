@@ -494,7 +494,7 @@ USA.
    ((runtime stream) initialize-conditions!)
    ((runtime regular-sexpression) initialize-conditions!)
    ;; System dependent stuff
-   ((runtime os-primitives) initialize-system-primitives!)
+   (runtime os-primitives)
    ;; Floating-point environment -- needed by threads.
    (runtime floating-point-environment)
    ((runtime thread) initialize-high!)
