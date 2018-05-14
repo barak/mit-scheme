@@ -137,6 +137,19 @@ DEFINE_PRIMITIVE ("REAL-TIME-CLOCK", Prim_real_time_clock, 0, 0,
   PRIMITIVE_RETURN (double_to_integer (OS_real_time_clock ()));
 }
 
+DEFINE_PRIMITIVE ("CURRENT-JIFFY", Prim_current_jiffy, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  clock_t n = (OS_current_jiffy ());
+  PRIMITIVE_RETURN ((n < 0) ? SHARP_F : (intmax_to_integer (n)));
+}
+
+DEFINE_PRIMITIVE ("JIFFIES-PER-SECOND", Prim_jiffies_per_second, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN (intmax_to_integer (OS_jiffies_per_second ()));
+}
+
 DEFINE_PRIMITIVE ("PROCESS-TIMER-CLEAR", Prim_process_timer_clear, 0, 0,
   "Turn off the process timer.")
 {

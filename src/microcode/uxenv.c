@@ -498,6 +498,43 @@ OS_real_time_clock (void)
 
 #endif /* HAVE_TIMES */
 #endif /* HAVE_GETTIMEOFDAY */
+
+/* current-jiffy and jiffies-per-second */
+
+#ifdef HAVE_TIMES
+
+clock_t
+OS_current_jiffy (void)
+{
+  struct tms buffer;
+  return (UX_times (&buffer));
+}
+
+clock_t
+OS_jiffies_per_second (void)
+{
+#ifdef __APPLE__
+  return (CLK_TCK);
+#else
+  return (CLOCKS_PER_SEC);
+#endif
+}
+
+#else /* not HAVE_TIMES */
+
+clock_t
+OS_current_jiffy (void)
+{
+  return (clock ());
+}
+
+clock_t
+OS_jiffies_per_second (void)
+{
+  return (CLOCKS_PER_SEC);
+}
+
+#endif /* HAVE_TIMES */
 
 #ifdef HAVE_SETITIMER
 

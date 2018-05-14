@@ -73,5 +73,7 @@ extern void OS_real_timer_set (clock_t, clock_t);
 extern void OS_real_timer_clear (void);
 extern const char * OS_working_dir_pathname (void);
 extern void OS_set_working_dir_pathname (const char *);
+extern clock_t OS_current_jiffy (void);
+extern clock_t OS_jiffies_per_second (void);
 
 #endif /* SCM_OSENV_H */

@@ -197,6 +197,18 @@ OS_real_time_clock (void)
 {
   return ((((double) (clock ())) * 1000.0) / ((double) CLOCKS_PER_SEC));
 }
+
+clock_t
+OS_current_jiffy (void)
+{
+  return (clock ());
+}
+
+clock_t
+OS_jiffies_per_second (void)
+{
+  return (CLOCKS_PER_SEC);
+}
 
 /* The timers are all the same.
    This just provides three distinct timers.

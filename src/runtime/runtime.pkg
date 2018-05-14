@@ -4820,8 +4820,10 @@ USA.
   (files "sysclk")
   (parent (runtime))
   (export ()
+	  current-jiffy
 	  internal-time/seconds->ticks
 	  internal-time/ticks->seconds
+	  jiffies-per-second
 	  measure-interval
 	  process-time-clock
 	  real-time-clock
