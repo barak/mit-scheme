@@ -35,11 +35,11 @@ USA.
 (define (os/restore-modes-to-updated-file! pathname modes)
   (set-file-modes! pathname (fix:or modes nt-file-mode/archive)))
 
-(define (os/scheme-can-quit?)
+(define (os/scheme-can-suspend?)
   #t)
 
 (define (os/quit dir)
-  (with-real-working-directory-pathname dir %quit))
+  (with-real-working-directory-pathname dir suspend))
 
 (define (with-real-working-directory-pathname dir thunk)
   (let ((inside (->namestring (directory-pathname-as-file dir)))

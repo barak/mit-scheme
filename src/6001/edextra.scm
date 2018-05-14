@@ -387,7 +387,7 @@ option the file from the problem set will not be installed.
 (set! default-homedir-pathname (lambda () student-work-directory))
 
 (set! editor-can-exit? #f)
-(set! scheme-can-quit? #f)
+(set! scheme-can-suspend? #f)
 (set! paranoid-exit? #t)
 
 (set-variable! enable-transcript-buffer #t)

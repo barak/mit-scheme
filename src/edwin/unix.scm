@@ -643,12 +643,12 @@ option, instead taking -P <filename>."
 
 ;;;; Miscellaneous
 
-(define (os/scheme-can-quit?)
+(define (os/scheme-can-suspend?)
   (subprocess-job-control-available?))
 
 (define (os/quit dir)
   dir					; ignored
-  (%quit))
+  (suspend))
 
 (define (os/set-file-modes-writeable! pathname)
   (set-file-modes! pathname #o777))

@@ -122,8 +122,8 @@ evaluated in the specified inferior REPL buffer."
 				    (detach-thread thread)
 				    thread))))
 	(attach-buffer-interface-port! buffer port)
-	(parameterize* (list (cons param:%exit-hook inferior-repl/%exit)
-			     (cons param:quit-hook inferior-repl/quit))
+	(parameterize* (list (cons param:exit-hook inferior-repl/exit)
+			     (cons param:suspend-hook inferior-repl/suspend))
 	  (lambda ()
 	    (dynamic-wind
 	     (lambda () unspecific)
@@ -151,10 +151,10 @@ evaluated in the specified inferior REPL buffer."
      (set-working-directory-pathname!
       (buffer-default-directory (port/buffer port))))))
 
-(define (inferior-repl/%exit #!optional integer)
+(define (inferior-repl/exit #!optional integer)
   (exit-current-thread (if (default-object? integer) 0 integer)))
 
-(define (inferior-repl/quit)
+(define (inferior-repl/suspend)
   unspecific)
 
 (define (current-repl-buffer #!optional buffer)

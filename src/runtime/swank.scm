@@ -585,7 +585,7 @@ USA.
 
 (define (swank:quit-lisp socket)
   socket
-  (%exit))
+  (exit))
 
 ;;;; Some unimplemented stuff.
 

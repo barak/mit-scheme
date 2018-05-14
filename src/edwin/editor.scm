@@ -495,7 +495,7 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
   (within-continuation editor-abort reset-editor))
 
 (define (exit-scheme)
-  (within-continuation editor-abort %exit))
+  (within-continuation editor-abort exit))
 
 (define (editor-grab-display editor receiver)
   (display-type/with-display-grabbed (editor-display-type editor)

@@ -98,7 +98,7 @@ USA.
       (bind-condition-handler (list condition-type:serious-condition)
 	  (lambda (condition)
 	    condition
-	    (%exit))
+	    (exit))
 	(lambda ()
 	  (bind-condition-handler (list condition-type:warning)
 	      (lambda (condition)
@@ -108,8 +108,8 @@ USA.
 	      (if (not (disk-save (merge-pathnames "scheme_suspend"
 						   (user-homedir-pathname))
 				  true))
-		  (%exit))))))
-      (%exit)))
+		  (exit))))))
+      (exit)))
 
 (define (gc-out-of-space-handler . args)
   args

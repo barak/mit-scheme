@@ -506,10 +506,10 @@ USA.
   (files "global")
   (parent (runtime))
   (export () deprecated:miscellaneous-global
+	  (%exit exit)
+	  (quit suspend)
 	  (with-values call-with-values))
   (export ()
-	  %exit
-	  %quit
 	  (*the-non-printing-object* unspecific)
 	  <hook-list>
 	  append-hook-to-list
@@ -520,8 +520,7 @@ USA.
 	  cell-contents
 	  cell?
 	  constant-procedure
-	  default/exit
-	  default/quit
+	  emergency-exit		;R7RS
 	  environment-link-name
 	  ephemeron-broken?
 	  ephemeron-datum
@@ -530,7 +529,7 @@ USA.
 	  eq?
 	  error-procedure
 	  eval
-	  exit
+	  exit				;R7RS
 	  false-procedure
 	  fasdump
 	  for-each-interned-symbol
@@ -538,9 +537,6 @@ USA.
 	  get-interrupt-enables
 	  hook-in-list?
 	  hook-list?
-	  hook/exit
-	  hook/%exit
-	  hook/quit
 	  hook/scode-eval
 	  host-big-endian?
 	  hunk3-cons
@@ -573,14 +569,13 @@ USA.
 	  object-type
 	  object-type?
 	  pa
-	  param:%exit-hook
 	  param:exit-hook
-	  param:quit-hook
+	  param:suspend-hook
 	  pointer-type-code?
 	  primitive-procedure-arity
 	  primitive-procedure-documentation
 	  pwd
-	  quit
+	  suspend
 	  (reference-barrier identity-procedure)
 	  remove-hook-from-list
 	  run-hooks-in-list
@@ -625,8 +620,7 @@ USA.
   (export (runtime)
 	  strip-angle-brackets)
   (import (runtime thread)
-	  with-obarray-lock)
-  (initialization (initialize-package!)))
+	  with-obarray-lock))
 
 (define-package (runtime merge-sort)
   (files "msort")
@@ -3253,6 +3247,9 @@ USA.
 	  microcode-system-call-error/code->name
 	  microcode-system-call-error/name->code
 	  microcode-system-call/code->name)
+  (export (runtime miscellaneous-global)
+	  microcode-termination/code-limit
+	  microcode-termination/name->code)
   (export (runtime save/restore)
 	  read-microcode-tables!)
   (initialization (initialize-package!)))
@@ -3929,11 +3926,13 @@ USA.
 	  standard-breakpoint-hook
 	  ve
 	  with-repl-eval-boundary)
+  (export (runtime debugger)
+	  write-restarts)
   (export (runtime emacs-interface)
 	  hook/error-decision
 	  set-cmdl/port!)
-  (export (runtime debugger)
-	  write-restarts)
+  (export (runtime miscellaneous-global)
+	  root-continuation)
   (export (runtime working-directory)
 	  cmdl/set-default-directory)
   (initialization (initialize-package!)))

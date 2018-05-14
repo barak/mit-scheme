@@ -49,13 +49,9 @@ USA.
  (lambda (integer)
    integer
    (warn "EXIT has been disabled.")))
-(param:%exit-hook
- (lambda (integer)
-   integer
-   (warn "%EXIT has been disabled.")))
-(param:quit-hook
+(param:suspend-hook
  (lambda ()
-   (warn "QUIT has been disabled.")))
+   (warn "SUSPEND has been disabled.")))
 
 (let ((edwin-env (->environment '(EDWIN)))
       (student-env (->environment '(STUDENT))))

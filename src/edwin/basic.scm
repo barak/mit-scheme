@@ -315,13 +315,13 @@ For a normal exit, you should use \\[exit-recursive-edit], NOT this command."
 ;;;; Leaving Edwin
 
 ;; Set this to #F to indicate that returning from the editor has the
-;; same effect as calling %EXIT, or to prevent the editor from
+;; same effect as calling EXIT, or to prevent the editor from
 ;; returning to scheme.
 (define editor-can-exit? #t)
 
-;; Set this to #F to indicate that calling QUIT has the same effect
-;; as calling %EXIT, or to prevent the editor from suspending to the OS.
-(define scheme-can-quit?
+;; Set this to #F to indicate that calling SUSPEND has the same effect
+;; as calling EXIT, or to prevent the editor from suspending to the OS.
+(define scheme-can-suspend?
   #t)
 
 ;; Set this to #T to force the exit commands to always prompt for
@@ -334,7 +334,7 @@ With argument, saves visited file first."
   "P"
   (lambda (argument)
     (if argument (save-buffer (current-buffer) #f))
-    (if (and scheme-can-quit? (os/scheme-can-quit?))
+    (if (and scheme-can-suspend? (os/scheme-can-suspend?))
 	(quit-scheme)
 	(editor-error "Scheme cannot be suspended"))))
 

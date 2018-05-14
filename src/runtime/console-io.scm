@@ -121,8 +121,8 @@ USA.
 	  (if (let ((condition (nearest-repl/condition)))
 		(and condition
 		     (condition/error? condition)))
-	      (%exit 1)
-	      (%exit))))
+	      (exit 'eof)
+	      (exit))))
     char))
 
 (define (operation/read-finish port)

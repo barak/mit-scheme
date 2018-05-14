@@ -672,7 +672,7 @@ ADDITIONAL OPTIONS supported by this band:\n")
 	    (newline)
 	    (write-string description)
 	    (newline)))))
-  (%exit 0))
+  (exit))
 
 (define (initialize-command-line-parsers)
   (set! *command-line-parsers* '())
@@ -715,7 +715,7 @@ ADDITIONAL OPTIONS supported by this band:\n")
 			    repl)))))
     "Evaluates the argument expressions as if in the REPL.")
   (simple-command-line-parser "help" show-command-line-options #f)
-  (simple-command-line-parser "version" (lambda () (%exit 0)) #f)
+  (simple-command-line-parser "version" (lambda () (exit)) #f)
   (set-command-line-parser!
    "args" collect-args
    (command-line-option-description

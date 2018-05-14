@@ -137,7 +137,7 @@ USA.
 	 (if (nearest-cmdl/batch-mode?)
 	     (lambda (port)
 	       (newline port)
-	       (%exit 1))
+	       (exit 'gc-out-of-space))
 	     (lambda (port)
 	       port
 	       (with-gc-notification! #t gc-clean))))))))

@@ -75,32 +75,19 @@ USA.
 (define (host-big-endian?)
   host-big-endian?-saved)
 
-(define host-big-endian?-saved)
-
-(define ephemeron-type)
-
-(define (initialize-package!)
-  ;; Assumptions:
-  ;; * Word length is 32 or 64 bits.
-  ;; * Type codes are at most 8 bits.
-  ;; * Zero is a non-pointer type code.
-  (set! host-big-endian?-saved
-	(case (object-datum
-	       (vector-ref
-		(object-new-type (ucode-type vector)
-				 "\000\001\002\000\000\003\004\000")
-		1))
-	  ((#x00010200 #x0001020000030400) #t)
-	  ((#x00020100 #x0004030000020100) #f)
-	  (else (error "Unable to determine endianness of host."))))
-  (add-secondary-gc-daemon! clean-obarray)
-  (set! param:exit-hook (make-settable-parameter default/exit))
-  (set! param:%exit-hook (make-settable-parameter default/%exit))
-  (set! param:quit-hook (make-settable-parameter default/quit))
-  ;; Kludge until the next released version, to avoid a bootstrapping
-  ;; failure.
-  (set! ephemeron-type (microcode-type 'ephemeron))
-  unspecific)
+;; Assumptions:
+;; * Word length is 32 or 64 bits.
+;; * Type codes are at most 8 bits.
+;; * Zero is a non-pointer type code.
+(define-deferred host-big-endian?-saved
+  (case (object-datum
+	 (vector-ref
+	  (object-new-type (ucode-type vector)
+			   "\000\001\002\000\000\003\004\000")
+	  1))
+    ((#x00010200 #x0001020000030400) #t)
+    ((#x00020100 #x0004030000020100) #f)
+    (else (error "Unable to determine endianness of host."))))
 
 ;;;; Potpourri
 
@@ -208,54 +195,48 @@ USA.
       (if (< (real-time-clock) end)
 	  (wait-loop)))))
 
-(define hook/exit #!default)
-(define hook/%exit #!default)
-(define hook/quit #!default)
+(define (exit #!optional object)
+  ((param:exit-hook) (exit-object->code object)))
 
-(define param:exit-hook)
-(define param:%exit-hook)
-(define param:quit-hook)
-
-(define (get-exit-hook)
-  (if (default-object? hook/exit)
-      (param:exit-hook)
-      hook/exit))
-
-(define (get-%exit-hook)
-  (if (default-object? hook/%exit)
-      (param:%exit-hook)
-      hook/%exit))
-
-(define (get-quit-hook)
-  (if (default-object? hook/quit)
-      (param:quit-hook)
-      hook/quit))
-
-(define (exit #!optional integer)
-  ((get-exit-hook) (if (default-object? integer) #f integer)))
-
-(define (default/exit integer)
-  (if (prompt-for-confirmation "Kill Scheme")
-      (%exit integer)))
-
-(define (%exit #!optional integer)
-  ((get-%exit-hook) integer))
-
-(define (default/%exit #!optional integer)
+(define (default-exit code)
   (event-distributor/invoke! event:before-exit)
-  (if (or (default-object? integer)
-	  (not integer))
-      ((ucode-primitive exit 0))
-      ((ucode-primitive exit-with-value 1) integer)))
+  (within-continuation root-continuation
+    (lambda ()
+      ((ucode-primitive exit-with-value 1) code))))
 
-(define (quit)
-  ((get-quit-hook)))
+(define-deferred param:exit-hook
+  (make-settable-parameter default-exit))
 
-(define (%quit)
-  (with-absolutely-no-interrupts (ucode-primitive halt))
-  unspecific)
+(define (emergency-exit #!optional object)
+  ((ucode-primitive exit-with-value 1) (exit-object->code object)))
 
-(define default/quit %quit)
+(define (exit-object->code object)
+  (cond ((or (eq? #t object) (default-object? object))
+	 normal-termination-code)
+	((not object)
+	 abnormal-termination-code)
+	((and (exact-nonnegative-integer? object)
+	      (< object (microcode-termination/code-limit)))
+	 object)
+	((and (interned-symbol? object)
+	      (microcode-termination/name->code object)))
+	(else
+	 abnormal-termination-code)))
+
+(define-deferred normal-termination-code
+  (microcode-termination/name->code 'halt))
+
+(define-deferred abnormal-termination-code
+  (microcode-termination/name->code 'save-and-exit))
+
+(define (suspend)
+  ((param:suspend-hook)))
+
+(define (default-suspend)
+  (with-absolutely-no-interrupts (ucode-primitive halt)))
+
+(define-deferred param:suspend-hook
+  (make-settable-parameter default-suspend))
 
 (define user-initial-environment
   (*make-environment system-global-environment
@@ -416,6 +397,10 @@ USA.
 		       (else (vector-set! obarray index tail))))
 	       (find-broken-entry (vector-ref obarray index) #f)
 	       (loop index))))))))
+
+(add-boot-init!
+ (lambda ()
+   (add-secondary-gc-daemon! clean-obarray)))
 
 (define (impurify object)
   object)
@@ -678,7 +663,7 @@ USA.
   ((ucode-primitive make-ephemeron 2) (canonicalize key) (canonicalize datum)))
 
 (define (ephemeron? object)
-  (object-type? ephemeron-type object))
+  (object-type? (ucode-type ephemeron) object))
 
 (define-guarantee ephemeron "ephemeron")
 
