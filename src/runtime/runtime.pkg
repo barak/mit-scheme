@@ -4717,22 +4717,22 @@ USA.
   (parent (runtime syntax))
   (export ()
 	  (access $access)
-	  (begin $begin)
+	  (begin $begin)		;R7RS
 	  (declare $declare)
-	  (define-syntax $define-syntax)
-	  (delay $delay)
+	  (define-syntax $define-syntax) ;R7RS
+	  (delay $delay)		 ;R7RS
 	  (er-macro-transformer $er-macro-transformer)
-	  (if $if)
-	  (lambda $lambda)
-	  (let-syntax $let-syntax)
-	  (letrec-syntax $letrec-syntax)
+	  (if $if)			;R7RS
+	  (lambda $lambda)		;R7RS
+	  (let-syntax $let-syntax)	;R7RS
+	  (letrec-syntax $letrec-syntax) ;R7RS
 	  (named-lambda $named-lambda)
-	  (or $or)
-	  (quote $quote)
+	  (or $or)			;R7RS
+	  (quote $quote)		;R7RS
 	  (quote-identifier $quote-identifier)
 	  (rsc-macro-transformer $rsc-macro-transformer)
 	  (sc-macro-transformer $sc-macro-transformer)
-	  (set! $set!)
+	  (set! $set!)			;R7RS
 	  (spar-macro-transformer $spar-macro-transformer)
 	  (the-environment $the-environment))
   (export (runtime mit-macros)
@@ -4745,34 +4745,35 @@ USA.
   (files "mit-macros")
   (parent (runtime))
   (export ()
-	  (and $and)
+	  (and $and)			;R7RS
 	  (and-let* $and-let*)
 	  (assert $assert)
 	  (begin0 $begin0)
 	  (bundle $bundle)
-	  (case $case)
+	  (case $case)			;R7RS
 	  (circular-stream $circular-stream)
-	  (cond $cond)
-	  (cond-expand $cond-expand)
+	  (cond $cond)			;R7RS
+	  (cond-expand $cond-expand)	;R7RS
 	  (cons-stream $cons-stream)
 	  (cons-stream* $cons-stream*)
-	  (define $define)
+	  (define $define)		;R7RS
 	  (define-integrable $define-integrable)
 	  (define-record-type $define-record-type)
-	  (do $do)
+	  (do $do)			;R7RS
 	  (fluid-let $fluid-let)
-	  (let $let)
-	  (let* $let*)
-	  (let*-syntax $let*-syntax)
-	  (letrec $letrec)
-	  (letrec* $letrec*)
+	  (let $let)			;R7RS
+	  (let* $let*)			;R7RS
+	  (let*-syntax $let*-syntax)	;R7RS
+	  (letrec $letrec)		;R7RS
+	  (letrec* $letrec*)		;R7RS
 	  (local-declare $local-declare)
-	  (parameterize $parameterize)
-	  (quasiquote $quasiquote)
+	  (parameterize $parameterize)	;R7RS
+	  (quasiquote $quasiquote)	;R7RS
 	  (receive $receive)
-	  (unless $unless)
-	  (when $when)
-	  features))
+	  (unless $unless)		;R7RS
+	  (when $when)			;R7RS
+	  features			;R7RS
+	  ))
 
 (define-package (runtime syntax syntax-rules)
   (files "syntax-rules")
