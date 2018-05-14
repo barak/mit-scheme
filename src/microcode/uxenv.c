@@ -513,11 +513,7 @@ OS_current_jiffy (void)
 clock_t
 OS_jiffies_per_second (void)
 {
-#ifdef __APPLE__
-  return (CLK_TCK);
-#else
   return (UX_SC_CLK_TCK ());
-#endif
 }
 
 #else /* not HAVE_TIMES */
