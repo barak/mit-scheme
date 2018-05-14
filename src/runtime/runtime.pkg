@@ -4772,7 +4772,7 @@ USA.
 	  (receive $receive)
 	  (unless $unless)
 	  (when $when)
-	  get-supported-features))
+	  features))
 
 (define-package (runtime syntax syntax-rules)
   (files "syntax-rules")

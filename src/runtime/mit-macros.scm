@@ -600,7 +600,7 @@ USA.
 (define-feature 'i386 (machine? "IA-32"))
 (define-feature 'x86-64 (machine? "x86-64"))
 
-(define (get-supported-features)
+(define (features)
   (filter-map (lambda (p)
 		(and ((cdr p))
 		     (car p)))
