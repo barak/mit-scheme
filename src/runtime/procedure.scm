@@ -454,15 +454,21 @@ USA.
   ;; SELF argument.
   (make-entity default
 	       (list->vector
-		(cons (fixed-objects-item 'arity-dispatcher-tag)
+		(cons arity-dispatcher-tag
 		      dispatched-cases))))
 
 (define (arity-dispatched-procedure? object)
   (and (entity? object)
        (vector? (entity-extra object))
        (fix:< 0 (vector-length (entity-extra object)))
-       (eq? (vector-ref (entity-extra object) 0)
-	    (fixed-objects-item 'arity-dispatcher-tag))))
+       (eq? (vector-ref (entity-extra object) 0) arity-dispatcher-tag)))
+
+(define-integrable arity-dispatcher-tag
+  '|#[(microcode)arity-dispatcher-tag]|)
+
+(defer-boot-action 'fixed-objects
+  (lambda ()
+    (set-fixed-objects-item! 'arity-dispatcher-tag arity-dispatcher-tag)))
 
 (define (procedure-chains-to p1 p2)
   (let loop ((p1 p1))

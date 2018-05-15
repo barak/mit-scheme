@@ -172,9 +172,6 @@ initialize_fixed_objects_vector (void)
   STORE_FIXOBJ (GENERIC_TRAMPOLINE_REMAINDER, SHARP_F);
   STORE_FIXOBJ (GENERIC_TRAMPOLINE_MODULO, SHARP_F);
 
-  STORE_FIXOBJ (ARITY_DISPATCHER_TAG,
-		(char_pointer_to_symbol
-		 ("#[(microcode)arity-dispatcher-tag]")));
   STORE_FIXOBJ (FIXOBJ_PROXIED_RECORD_TYPES,
 		(make_vector ((FASDUMP_RECORD_MARKER_END
 			       - FASDUMP_RECORD_MARKER_START),
