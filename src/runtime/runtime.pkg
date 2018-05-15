@@ -3202,28 +3202,24 @@ USA.
 (define-package (runtime microcode-tables)
   (files "microcode-tables")
   (parent (runtime))
+  (export () deprecated:microcode-tables
+	  microcode-id/operating-system-name)
   (export ()
 	  microcode-id/compiled-code-type
 	  microcode-id/floating-epsilon
 	  microcode-id/floating-mantissa-bits
 	  microcode-id/machine-type
 	  microcode-id/operating-system
-	  microcode-id/operating-system-name
 	  microcode-id/operating-system-suffix
 	  microcode-id/operating-system-variant
-	  microcode-id/stack-type
-	  microcode-id/tty-x-size
-	  microcode-id/tty-y-size
 	  microcode-type/code-limit)
   (export (runtime)
-	  char:newline
 	  fixed-objects-accessor
 	  fixed-objects-item
 	  fixed-objects-modifier
 	  fixed-objects-updater
 	  get-microcode-version-numbers
 	  microcode-type/code->name
-	  microcode-type/code->names
 	  microcode-type/name->code
 	  set-fixed-objects-item!
 	  update-fixed-objects-item!)
@@ -3255,7 +3251,7 @@ USA.
 	  microcode-termination/code-limit
 	  microcode-termination/name->code)
   (export (runtime save/restore)
-	  read-microcode-tables!)
+	  read-microcode-identification!)
   (initialization (initialize-package!)))
 
 (define-package (runtime number)

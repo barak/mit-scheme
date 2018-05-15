@@ -447,9 +447,8 @@ USA.
 (package-initialization-sequence
  '(
    ;; Microcode interface
-   ((runtime microcode-tables) read-microcode-tables!)
+   (runtime microcode-tables)
    (runtime apply)
-   ((runtime record) initialize-applicator-context!)
    (runtime primitive-io)
    (runtime system-clock)
    ((runtime gc-finalizer) initialize-events!)

@@ -2505,14 +2505,13 @@ This section contains assorted operating-system facilities that don't
 fit into other categories.
 
 @defvr variable microcode-id/operating-system
-@defvrx variable microcode-id/operating-system-name
+@defvrx {obsolete variable} microcode-id/operating-system-name
 @code{microcode-id/operating-system} is bound to a symbol that specifies
 the type of operating system that Scheme is running under.  There are
 two possible values: @code{unix} or @code{nt}.
 
-@code{microcode-id/operating-system-name} is a string containing the
-same name as @code{microcode-id/operating-system}; the latter is created
-by interning the former as a symbol.
+The @strong{deprecated} variable @code{microcode-id/operating-system-name} is
+a string that's equivalent to @code{microcode-id/operating-system}.
 @end defvr
 
 @defvr variable microcode-id/operating-system-variant

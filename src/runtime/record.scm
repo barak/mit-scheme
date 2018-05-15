@@ -202,10 +202,11 @@ USA.
 (define-integrable (%set-record-type-applicator! record-type applicator)
   (%dispatch-tag-extra-set! record-type 4 applicator))
 
-(define (initialize-applicator-context!)
-  (set-fixed-objects-item! 'record-dispatch-tag %record-metatag)
-  (set-fixed-objects-item! 'record-applicator-index
-			   (%dispatch-tag-extra-index 4)))
+(defer-boot-action 'fixed-objects
+  (lambda ()
+    (set-fixed-objects-item! 'record-dispatch-tag %record-metatag)
+    (set-fixed-objects-item! 'record-applicator-index
+			     (%dispatch-tag-extra-index 4))))
 
 (define-integrable (%record-type-n-fields record-type)
   (vector-length (%record-type-field-names record-type)))
@@ -300,7 +301,7 @@ USA.
   (vector-set! %proxied-record-types (%record-type-proxy->index proxy) type))
 
 (define %proxied-record-types)
-(defer-boot-action 'record-procedures
+(defer-boot-action 'fixed-objects
   (lambda ()
     (set! %proxied-record-types (fixed-objects-item 'proxied-record-types))
     unspecific))

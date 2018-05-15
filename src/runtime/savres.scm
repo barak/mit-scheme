@@ -79,7 +79,7 @@ USA.
 			   (set! time-world-saved time)
 			   (if (string? id) unspecific #f)))))))
 		 ((ucode-primitive set-fixed-objects-vector!) fixed-objects))))
-	   (read-microcode-tables!)
+	   (read-microcode-identification!)
 	   (lambda ()
 	     (set! time-world-saved time)
 	     (set! time-world-restored (get-universal-time))
