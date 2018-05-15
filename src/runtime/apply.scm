@@ -33,6 +33,16 @@ USA.
 ;;;  so there is a binary (primitive) version of apply installed
 ;;;  at boot time, and this code replaces it.
 
+(add-boot-init!
+ (lambda ()
+   (set! apply
+	 (make-arity-dispatched-procedure
+	  apply-entity-procedure
+	  (lambda () (error:wrong-number-of-arguments apply '(1 . #f) '()))
+	  (lambda (f) (f))
+	  apply-2))
+   unspecific))
+
 (define (apply-2 f a0)
   (let ((fail (lambda () (error "apply: Improper argument list" a0))))
     (let-syntax
@@ -93,14 +103,3 @@ USA.
 		     args)
 		   (car args))
 	       '())))
-
-(define (initialize-package!)
-  (set! apply
-	(make-entity
-	 apply-entity-procedure
-	 (vector (fixed-objects-item 'arity-dispatcher-tag)
-		 (lambda ()
-		   (error:wrong-number-of-arguments apply '(1 . #f) '()))
-		 (lambda (f) (f))
-		 apply-2)))
-  unspecific)

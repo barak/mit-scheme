@@ -1253,8 +1253,7 @@ USA.
 
 (define-package (runtime apply)
   (files "apply")
-  (parent (runtime))
-  (initialization (initialize-package!)))
+  (parent (runtime)))
 
 (define-package (runtime character)
   (files "char")

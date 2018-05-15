@@ -148,22 +148,20 @@ USA.
 	   (let ((name (list-ref form 1))
 		 (identity (close-syntax (list-ref form 3) environment)))
 	     `(set! ,(close-syntax name environment)
-		    (make-entity
+		    (make-arity-dispatched-procedure
 		     (named-lambda (,name self . zs)
 		       self		; ignored
 		       (reduce ,(close-syntax (list-ref form 2) environment)
 			       ,identity
 			       zs))
-		     (vector
-		      (fixed-objects-item 'arity-dispatcher-tag)
-		      (named-lambda (,(symbol 'nullary- name))
-			,identity)
-		      (named-lambda (,(symbol 'unary- name) z)
-			(if (not (complex:complex? z))
-			    (error:wrong-type-argument z "number" ',name))
-			z)
-		      (named-lambda (,(symbol 'binary- name) z1 z2)
-			((ucode-primitive ,(list-ref form 4)) z1 z2))))))))))
+		     (named-lambda (,(symbol 'nullary- name))
+		       ,identity)
+		     (named-lambda (,(symbol 'unary- name) z)
+		       (if (not (complex:complex? z))
+			   (error:wrong-type-argument z "number" ',name))
+		       z)
+		     (named-lambda (,(symbol 'binary- name) z1 z2)
+		       ((ucode-primitive ,(list-ref form 4)) z1 z2)))))))))
     (commutative + complex:+ 0 &+)
     (commutative * complex:* 1 &*))
 
@@ -173,7 +171,7 @@ USA.
 	 (lambda (form environment)
 	   (let ((name (list-ref form 1)))
 	     `(set! ,(close-syntax name environment)
-		    (make-entity
+		    (make-arity-dispatched-procedure
 		     (named-lambda (,name self z1 . zs)
 		       self		; ignored
 		       (,(close-syntax (list-ref form 3) environment)
@@ -181,12 +179,10 @@ USA.
 			(reduce ,(close-syntax (list-ref form 4) environment)
 				,(close-syntax (list-ref form 5) environment)
 				zs)))
-		     (vector
-		      (fixed-objects-item 'arity-dispatcher-tag)
-		      #f
-		      ,(close-syntax (list-ref form 2) environment)
-		      (named-lambda (,(symbol 'binary- name) z1 z2)
-			((ucode-primitive ,(list-ref form 6)) z1 z2))))))))))
+		     #f
+		     ,(close-syntax (list-ref form 2) environment)
+		     (named-lambda (,(symbol 'binary- name) z1 z2)
+		       ((ucode-primitive ,(list-ref form 6)) z1 z2)))))))))
     (non-commutative - complex:negate complex:- complex:+ 0 &-)
     (non-commutative / complex:invert complex:/ complex:* 1 &/))
 
@@ -197,27 +193,25 @@ USA.
 	   (let ((name (list-ref form 1))
 		 (type (list-ref form 4)))
 	     `(set! ,(close-syntax name environment)
-		    (make-entity
+		    (make-arity-dispatched-procedure
 		     (named-lambda (,name self . zs)
 		       self		; ignored
 		       (reduce-comparator
 			,(close-syntax (list-ref form 2) environment)
 			zs ',name))
-		     (vector
-		      (fixed-objects-item 'arity-dispatcher-tag)
-		      (named-lambda (,(symbol 'nullary- name)) #t)
-		      (named-lambda (,(symbol 'unary- name) z)
-			(if (not (,(intern (string-append "complex:" type "?"))
-				  z))
-			    (error:wrong-type-argument
-			     z ,(string-append type " number") ',name))
-			#t)
-		      (named-lambda (,(symbol 'binary- name) z1 z2)
-			,(let ((p
-				`((ucode-primitive ,(list-ref form 3)) z1 z2)))
-			   (if (list-ref form 5)
-			       `(not ,p)
-			       p)))))))))))
+		     (named-lambda (,(symbol 'nullary- name)) #t)
+		     (named-lambda (,(symbol 'unary- name) z)
+		       (if (not (,(intern (string-append "complex:" type "?"))
+				 z))
+			   (error:wrong-type-argument
+			    z ,(string-append type " number") ',name))
+		       #t)
+		     (named-lambda (,(symbol 'binary- name) z1 z2)
+		       ,(let ((p
+			       `((ucode-primitive ,(list-ref form 3)) z1 z2)))
+			  (if (list-ref form 5)
+			      `(not ,p)
+			      p))))))))))
     (relational = complex:= &= "complex" #f)
     (relational < complex:< &< "real" #f)
     (relational > complex:> &> "real" #f)
@@ -231,18 +225,16 @@ USA.
 	   (let ((name (list-ref form 1))
 		 (generic-binary (close-syntax (list-ref form 2) environment)))
 	     `(set! ,(close-syntax name environment)
-		    (make-entity
+		    (make-arity-dispatched-procedure
 		     (named-lambda (,name self x . xs)
 		       self		; ignored
 		       (reduce-max/min ,generic-binary x xs ',name))
-		     (vector
-		      (fixed-objects-item 'arity-dispatcher-tag)
-		      #f
-		      (named-lambda (,(symbol 'unary- name) x)
-			(if (not (complex:real? x))
-			    (error:wrong-type-argument x "real number" ',name))
-			x)
-		      ,generic-binary))))))))
+		     #f
+		     (named-lambda (,(symbol 'unary- name) x)
+		       (if (not (complex:real? x))
+			   (error:wrong-type-argument x "real number" ',name))
+		       x)
+		     ,generic-binary)))))))
     (max/min max complex:max)
     (max/min min complex:min))
 
