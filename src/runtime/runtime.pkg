@@ -4760,6 +4760,7 @@ USA.
 	  (define-record-type $define-record-type)
 	  (do $do)			;R7RS
 	  (fluid-let $fluid-let)
+	  (guard $guard)		;R7RS
 	  (let $let)			;R7RS
 	  (let* $let*)			;R7RS
 	  (let*-syntax $let*-syntax)	;R7RS

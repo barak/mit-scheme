@@ -252,9 +252,7 @@ USA.
    (delay
      (scons-rule
 	 `((* ,cond-clause-pattern)
-	   (or (subform (ignore-if id=? else)
-			(+ any))
-	       (value #f)))
+	   ,cond-else-clause-pattern)
        (lambda (clauses else-actions)
 	 (fold-right expand-cond-clause
 		     (if else-actions
@@ -271,7 +269,15 @@ USA.
 		      (cons (value begin)
 			    (* any))))))
 
+(define cond-else-clause-pattern
+  '(or (subform (ignore-if id=? else)
+		(+ any))
+       (value #f)))
+
 (define (expand-cond-clause clause rest)
+  ((cond-clause-expander scons-if) clause rest))
+
+(define ((cond-clause-expander scons-if) clause rest)
   (let ((predicate (car clause))
 	(type (cadr clause))
 	(actions (cddr clause)))
@@ -287,7 +293,9 @@ USA.
 	   (scons-if predicate
 		     (apply scons-begin actions)
 		     rest)
-	   (scons-or predicate rest)))
+	   (let ((temp (new-identifier 'temp)))
+	     (scons-let (list (list temp predicate))
+	       (scons-if temp temp rest)))))
       (else
        (error "Unknown clause type:" type)))))
 
@@ -387,6 +395,36 @@ USA.
     ((unless condition form ...)
      (if (not condition)
 	 (begin form ...)))))
+
+(define $guard
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `((subform id
+			    (* ,cond-clause-pattern)
+			    ,cond-else-clause-pattern)
+		   (+ any))
+       (lambda (var clauses else-actions body)
+	 (let ((guard-k (new-identifier 'guard-k))
+	       (condition (new-identifier 'condition)))
+	   (scons-call 'call-with-current-continuation
+		       (scons-lambda (list guard-k)
+			 (scons-call 'with-exception-handler
+				     (scons-lambda (list condition)
+				       (scons-let (list (list var condition))
+					 (guard-handler guard-k condition clauses else-actions)))
+				     (apply scons-lambda '() body))))))))))
+
+(define (guard-handler guard-k condition clauses else-actions)
+  (if else-actions
+      (scons-call guard-k
+		  (fold-right expand-cond-clause
+			      (apply scons-begin else-actions)
+			      clauses))
+      (fold-right (cond-clause-expander
+		   (lambda (p c a)
+		     (scons-if p (scons-call guard-k c) a)))
+		  (scons-call 'raise-continuable condition)
+		  clauses)))
 
 ;;;; Quasiquote
 
