@@ -3055,6 +3055,7 @@ USA.
   (files "lambda-list")
   (parent (runtime))
   (export ()
+	  fold-r4rs-lambda-list
 	  lambda-tag:aux
 	  lambda-tag:key
 	  lambda-tag:optional
@@ -3066,6 +3067,7 @@ USA.
 	  mit-lambda-list?
 	  parse-mit-lambda-list
 	  parse-r4rs-lambda-list
+	  r4rs-lambda-list-arity
 	  r4rs-lambda-list?))
 
 (define-package (runtime srfi-1)
