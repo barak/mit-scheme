@@ -66,7 +66,7 @@ USA.
 				(lambda (var)
 				  (cons 0 (if var #f 0)))
 				bvl)))
-    (make-procedure-arity (car arity) (cdr arity))))
+    (make-procedure-arity (car arity) (cdr arity) #t)))
 
 (define (map-r4rs-lambda-list procedure bvl)
   (let loop ((bvl* bvl))
