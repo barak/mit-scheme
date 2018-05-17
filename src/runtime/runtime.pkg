@@ -4752,6 +4752,7 @@ USA.
 	  (begin0 $begin0)
 	  (bundle $bundle)
 	  (case $case)			;R7RS
+	  (case-lambda $case-lambda)	;R7RS
 	  (circular-stream $circular-stream)
 	  (cond $cond)			;R7RS
 	  (cond-expand $cond-expand)	;R7RS

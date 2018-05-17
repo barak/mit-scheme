@@ -426,6 +426,83 @@ USA.
 		  (scons-call 'raise-continuable condition)
 		  clauses)))
 
+;;; This optimizes some simple cases, but it could be better.  Among other
+;;; things it could take advantage of arity-dispatched procedures in the right
+;;; circumstances.
+
+(define $case-lambda
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `((* (subform (cons ,r4rs-lambda-list? (+ any)))))
+       (lambda (clauses)
+	 (if (pair? clauses)
+	     (let ((arities (map r4rs-lambda-list-arity (map car clauses)))
+		   (temps
+		    (map (lambda (i)
+			   (new-identifier (symbol 'p i)))
+			 (iota (length clauses)))))
+	       (scons-let (map (lambda (temp clause)
+				 (list temp
+				       (apply scons-lambda clause)))
+			       temps
+			       clauses)
+		 (let ((choices (map cons arities temps)))
+		   (if (every exact-nonnegative-integer? arities)
+		       (case-lambda-no-rest choices)
+		       (case-lambda-rest choices)))))
+	     (case-lambda-no-choices)))))))
+
+(define (case-lambda-no-rest choices)
+  (let ((choices (sort choices (lambda (c1 c2) (fix:< (car c1) (car c2))))))
+    (let ((low (apply min (map car choices)))
+	  (high (apply max (map car choices))))
+      (let ((args
+	     (map (lambda (i)
+		    (new-identifier (symbol 'a i)))
+		  (iota (fix:+ high 1)))))
+
+	(define (choose i)
+	  (let ((choice (assv i choices))
+		(args* (list-head args (fix:+ i 1))))
+	    (if choice
+		(apply scons-call (cdr choice) args*)
+		(scons-call 'error "No matching case-lambda clause:"
+			    (apply scons-call 'list args*)))))
+
+	(scons-lambda (append (list-head args (fix:+ low 1))
+			      (list #!optional)
+			      (list-tail args (fix:+ low 1)))
+	  (let loop ((i low))
+	    (if (fix:< i high)
+		(scons-if (scons-call 'default-object?
+				      (list-ref args (fix:+ i 1)))
+			  (choose i)
+			  (loop (fix:+ i 1)))
+		(choose i))))))))
+
+(define (case-lambda-rest choices)
+  (let ((args (new-identifier 'args))
+	(nargs (new-identifier 'nargs)))
+    (scons-lambda args
+      (scons-let (list (list nargs (scons-call 'length args)))
+	(let loop ((choices choices))
+	  (if (pair? choices)
+	      (scons-if (scons-call (if (procedure-arity-max (caar choices))
+					'fix:=
+					'fix:>=)
+				    nargs
+				    (procedure-arity-min (caar choices)))
+			(scons-call 'apply (cdar choices) args)
+			(loop (cdr choices)))
+	      (scons-call 'error
+			  "No matching case-lambda clause:"
+			  args)))))))
+
+(define (case-lambda-no-choices)
+  (let ((args (new-identifier 'args)))
+    (scons-lambda args
+      (scons-call 'error "No matching case-lambda clause:" args))))
+
 ;;;; Quasiquote
 
 (define-syntax $quasiquote
