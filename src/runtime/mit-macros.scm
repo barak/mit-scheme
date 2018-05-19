@@ -425,6 +425,36 @@ USA.
 		     (scons-if p (scons-call guard-k c) a)))
 		  (scons-call 'raise-continuable condition)
 		  clauses)))
+
+(define $define-values
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `(,r4rs-lambda-list? any)
+       (lambda (bvl expr)
+	 (if (and (pair? bvl)
+		  (null? (cdr bvl)))
+	     (scons-define (car bvl) expr)
+	     (let ((temp-bvl
+		    (map-r4rs-lambda-list
+		     (lambda (name)
+		       (new-identifier (symbol 'temp- name)))
+		     bvl)))
+	       (let ((names (r4rs-lambda-list-names bvl))
+		     (temps (r4rs-lambda-list-names temp-bvl)))
+		 (scons-begin
+		   (apply scons-begin
+			  (map (lambda (name)
+				 (scons-define name (unassigned-expression)))
+			       names))
+		   (scons-call 'call-with-values
+			       (scons-lambda '() expr)
+			       (apply scons-lambda
+				      temp-bvl
+				      (map* (list (unspecific-expression))
+					    (lambda (name temp)
+					      (scons-set! name temp))
+					    names
+					    temps))))))))))))
 
 ;;; This optimizes some simple cases, but it could be better.  Among other
 ;;; things it could take advantage of arity-dispatched procedures in the right

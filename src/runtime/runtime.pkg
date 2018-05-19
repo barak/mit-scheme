@@ -3069,6 +3069,7 @@ USA.
 	  parse-mit-lambda-list
 	  parse-r4rs-lambda-list
 	  r4rs-lambda-list-arity
+	  r4rs-lambda-list-names
 	  r4rs-lambda-list?))
 
 (define-package (runtime srfi-1)
@@ -4769,6 +4770,7 @@ USA.
 	  (define $define)		;R7RS
 	  (define-integrable $define-integrable)
 	  (define-record-type $define-record-type)
+	  (define-values $define-values) ;R7RS
 	  (do $do)			;R7RS
 	  (fluid-let $fluid-let)
 	  (guard $guard)		;R7RS

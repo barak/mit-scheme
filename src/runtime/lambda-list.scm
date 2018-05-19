@@ -56,6 +56,14 @@ USA.
 				bvl)))
     (values (car parsed) (cdr parsed))))
 
+(define (r4rs-lambda-list-names bvl)
+  (fold-r4rs-lambda-list cons
+			 (lambda (var)
+			   (if var
+			       (list var)
+			       '()))
+			 bvl))
+
 (define (r4rs-lambda-list-arity bvl)
   (let ((arity
 	 (fold-r4rs-lambda-list (lambda (var arity)
