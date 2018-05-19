@@ -254,7 +254,7 @@ USA.
 (define (->flonum x)
   (guarantee real? x '->flonum)
   (exact->inexact (real-part x)))
-
+
 ;;;; Exact integers
 
 (define-primitives
@@ -286,3 +286,23 @@ USA.
 		(not (int:negative? d))))
 	r
 	(int:+ r d))))
+
+;;; Fairly standard Newton's method implementation.  Cribbed from
+;;; https://www.akalin.com/computing-isqrt which has proof of correctness and
+;;; shows that this is O(lg lg n) in time.
+
+(define (exact-integer-sqrt n)
+  (guarantee exact-nonnegative-integer? n 'exact-integer-sqrt)
+  (if (int:= 0 n)
+      (values 0 0)
+      (let loop
+	  ((i
+	    (shift-left 1
+			(let ((n-bits (integer-length n)))
+			  (if (int:= 0 (remainder n-bits 2))
+			      (int:quotient n-bits 2)
+			      (int:+ (int:quotient n-bits 2) 1))))))
+	(let ((j (int:quotient (int:+ i (int:quotient n i)) 2)))
+	  (if (int:>= j i)
+	      (values i (int:- n (int:* i i)))
+	      (loop j))))))

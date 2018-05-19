@@ -237,6 +237,7 @@ USA.
   (export ()
 	  (exact-integer? int:integer?)
 	  ->flonum
+	  exact-integer-sqrt
 	  fix:*
 	  fix:+
 	  fix:-
