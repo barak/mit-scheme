@@ -129,7 +129,7 @@ USA.
 	(output-port/discretionary-flush port))))
 
 (define (display object #!optional port)
-  (%write object port #t #f 'display))
+  (%write object port #f #f 'display))
 
 (define (write object #!optional port)
   (%write object port #t 'circularity 'write))
