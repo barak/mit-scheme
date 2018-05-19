@@ -731,24 +731,28 @@ during loading are silently ignored.
 
 @noindent
 The following options allow arguments to be passed to scripts via the
-@code{command-line} procedure.
+@code{command-line-arguments} procedure.
 
-@deffn procedure command-line
+@deffn procedure command-line-arguments
 Returns a list of arguments (strings) gathered from the command-line
 by options like @code{--args} or @code{--}.
+
+Note that this was named @code{command-line} in MIT/GNU Scheme release
+9.2 and earlier, but has been renamed to avoid a conflict with
+@acronym{R7RS}.
 @end deffn
 
 @item --args @var{argument} @dots{}
 @opindex --args
 This option causes Scheme to append the @var{argument}s, up
 to (but not including) the next argument that starts with a hyphen, to
-the list returned by the @code{command-line} procedure.
+the list returned by the @code{command-line-arguments} procedure.
 
 @item -- @var{argument} @dots{}
 @opindex --
 This option causes Scheme to append the rest of the command-line
 arguments (even those starting with a hyphen) to the list returned by
-the @code{command-line} procedure.
+the @code{command-line-arguments} procedure.
 @end table
 
 @noindent

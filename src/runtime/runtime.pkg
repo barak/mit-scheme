@@ -2833,7 +2833,7 @@ USA.
   (export (runtime emacs-interface)
 	  hook/^G-interrupt
 	  hook/clean-input/flush-typeahead)
-  (export (runtime load)
+  (export (runtime command-line)
 	  generate-suspend-file?)
   (export (runtime swank)
 	  keyboard-interrupt-vector)
@@ -3144,12 +3144,13 @@ USA.
 (define-package (runtime load)
   (files "load")
   (parent (runtime))
+  (export () deprecated:load
+	  load/loading?
+	  load/suppress-loading-message?)
   (export ()
 	  (load-latest load)
 	  (load-noisily load)
-	  argument-command-line-parser
 	  built-in-object-file
-	  command-line
 	  condition-type:not-loading
 	  current-eval-unit
 	  current-load-environment
@@ -3160,21 +3161,27 @@ USA.
 	  file-loadable?
 	  load
 	  load-library-object-file
-	  load/loading?
-	  load/purification-root
 	  load/push-hook!
-	  load/suppress-loading-message?
 	  param:loading?
 	  param:suppress-loading-message?
-	  set-command-line-parser!
 	  set-load-environment!
-	  simple-command-line-parser
 	  system-library-uri
 	  system-uri
 	  with-eval-unit
 	  with-load-environment
 	  with-loader-base-uri)
-  (initialization (initialize-package!)))
+  (export (runtime)
+	  load/purification-root))
+
+(define-package (runtime command-line)
+  (files "command-line")
+  (parent (runtime))
+  (export ()
+	  argument-command-line-parser
+	  command-line
+	  command-line-arguments
+	  set-command-line-parser!
+	  simple-command-line-parser))
 
 (define-package (runtime microcode-errors)
   (files "microcode-errors")

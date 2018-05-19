@@ -89,7 +89,7 @@ USA.
   (thread-timer-interrupt-handler))
 
 ;; This switch is set by the command-line initialization code.
-(define generate-suspend-file?)
+(define generate-suspend-file? #f)
 
 (define (suspend-interrupt-handler interrupt-code interrupt-enables)
   interrupt-code interrupt-enables

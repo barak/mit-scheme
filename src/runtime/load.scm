@@ -28,35 +28,31 @@ USA.
 ;;; package: (runtime load)
 
 (declare (usual-integrations))
+
+(define *purification-root-marker*
+  '|#[PURIFICATION-ROOT]|)
 
-(define (initialize-package!)
-  (set! *purification-root-marker* (intern "#[PURIFICATION-ROOT]"))
-  (set! condition-type:not-loading
-	(make-condition-type 'not-loading condition-type:error '()
-	  "No file being loaded."))
+(define-deferred condition-type:not-loading
+  (make-condition-type 'not-loading condition-type:error '()
+    "No file being loaded."))
 
-  (set! param:after-load-hooks (make-settable-parameter '()))
-  (set! param:current-load-environment (make-settable-parameter #!default))
-  (set! param:eval-unit (make-unsettable-parameter #f))
-  (set! param:load-init-file? (make-settable-parameter #t))
-  (set! param:loading? (make-unsettable-parameter #f))
-  (set! param:suppress-loading-message? (make-settable-parameter #f))
-  (set! param:write-notifications? (make-unsettable-parameter #t))
+(define-deferred param:after-load-hooks
+  (make-settable-parameter '()))
 
-  (initialize-command-line-parsers)
-  (set! hook/process-command-line default/process-command-line)
-  (add-event-receiver! event:after-restart process-command-line))
+(define-deferred param:current-load-environment
+  (make-settable-parameter #!default))
 
-(define *purification-root-marker*)
-(define condition-type:not-loading)
+(define-deferred param:eval-unit
+  (make-unsettable-parameter #f))
 
-(define param:after-load-hooks)
-(define param:current-load-environment)
-(define param:eval-unit)
-(define param:load-init-file?)
-(define param:loading?)
-(define param:suppress-loading-message?)
-(define param:write-notifications?)
+(define-deferred param:loading?
+  (make-unsettable-parameter #f))
+
+(define-deferred param:suppress-loading-message?
+  (make-settable-parameter #f))
+
+(define-deferred param:write-notifications?
+  (make-unsettable-parameter #t))
 
 ;; Backwards compatibility:
 (define load/loading? #f)
@@ -465,267 +461,3 @@ USA.
   (if (default-object? rel-uri)
       base-uri
       (merge-uris (->relative-uri rel-uri caller) base-uri)))
-
-;;;; Command Line Parser
-
-(define (process-command-line)
-  (set! generate-suspend-file? #f)
-  (hook/process-command-line ((ucode-primitive get-unused-command-line 0))))
-
-(define *unused-command-line*)
-(define *command-line-parsers*)
-
-(define (command-line)
-  *command-line*)
-
-(define *command-line* '())
-
-(define hook/process-command-line)
-(define (default/process-command-line unused-command-line)
-  (let ((after-parsing-actions '()))
-
-    (define (process-keyword command-line unused)
-      (if (pair? command-line)
-	  (let ((keyword (car command-line)))
-	    (if (option-keyword? keyword)
-		(let ((parser (find-keyword-parser keyword)))
-		  (if parser
-		      (receive (next tail-action) (parser command-line)
-			(if tail-action
-			    (set! after-parsing-actions
-				  (cons tail-action after-parsing-actions)))
-			(process-keyword next unused))
-		      (find-next-keyword command-line unused)))
-		(begin
-		  (warn "Invalid keyword:" keyword)
-		  (find-next-keyword command-line unused))))
-	  (done unused)))
-
-    (define (find-next-keyword command-line unused)
-      (let ((unused (cons (car command-line) unused))
-	    (command-line (cdr command-line)))
-	(if (pair? command-line)
-	    (if (option-keyword? (car command-line))
-		(process-keyword command-line unused)
-		(find-next-keyword command-line unused))
-	    (done unused))))
-
-    (define (done unused)
-      (let ((unused (reverse! unused)))
-	(if (pair? unused)
-	    (warn "Unhandled command line options:" unused))
-	unused))
-
-    (if unused-command-line
-	(begin
-	  (set! *unused-command-line*)
-	  (parameterize* (list (cons param:load-init-file? #t))
-	    (lambda ()
-	      (set! *unused-command-line*
-		    (process-keyword (vector->list unused-command-line) '()))
-	      (for-each (lambda (act) (act))
-			(reverse after-parsing-actions))
-	      (if (and (param:load-init-file?)
-		       (not (nearest-cmdl/batch-mode?)))
-		  (load-init-file)))))
-	(begin
-	  (set! *unused-command-line* #f)
-	  (if (not (nearest-cmdl/batch-mode?))
-	      (load-init-file))))))
-
-(define (find-keyword-parser keyword)
-  (let ((entry (assoc (strip-leading-hyphens keyword) *command-line-parsers*)))
-    (and entry
-	 (cddr entry))))
-
-(define (option-keyword? argument)
-  (and (fix:> (string-length argument) 1)
-       (char=? #\- (string-ref argument 0))))
-
-(define (load-init-file)
-  (let ((pathname (init-file-pathname)))
-    (if pathname
-	(load pathname user-initial-environment)))
-  unspecific)
-
-(define (set-command-line-parser! keyword proc #!optional description)
-  (guarantee string? keyword 'set-command-line-parser!)
-  (let ((keyword (strip-leading-hyphens keyword))
-	(desc (if (default-object? description)
-		  ""
-		  (begin
-		    (guarantee string? description 'set-command-line-parser!)
-		    description))))
-
-    (let ((place (assoc keyword *command-line-parsers*)))
-      (if place
-	  (begin
-	    (set-car! (cdr place) desc)
-	    (set-cdr! (cdr place) proc))
-	  (begin
-	    (set! *command-line-parsers*
-		  (cons (cons* keyword desc proc)
-			*command-line-parsers*))
-	    unspecific)))))
-
-(define (strip-leading-hyphens keyword)
-  (let ((end (string-length keyword)))
-    (let loop ((start 0))
-      (cond ((and (fix:< start end)
-		  (char=? #\- (string-ref keyword start)))
-	     (loop (fix:+ start 1)))
-	    ((fix:= start 0)
-	     keyword)
-	    (else
-	     (substring keyword start end))))))
-
-(define (command-line-option-description keyword-line description-lines caller)
-  (if (pair? description-lines)
-      (if (and (null? (cdr description-lines))
-	       (not (car description-lines)))
-	  ""
-	  (begin
-	    (for-each (lambda (description-line)
-			(guarantee string? description-line caller))
-		      description-lines)
-	    (decorated-string-append "" "\n  " ""
-				     (cons keyword-line description-lines))))
-      (string-append keyword-line "\n  (No description.)")))
-
-(define (simple-command-line-parser keyword thunk . description-lines)
-  (guarantee string? keyword 'simple-command-line-parser)
-  (set-command-line-parser! keyword
-    (lambda (command-line)
-      (values (cdr command-line) thunk))
-    (command-line-option-description
-     (string-append "--" keyword)
-     description-lines
-     'simple-command-line-parser)))
-
-;; Upwards compatibility.
-(define simple-option-parser simple-command-line-parser)
-
-(define (argument-command-line-parser keyword multiple? procedure
-				      . description-lines)
-  (set-command-line-parser! keyword
-    (if multiple?
-	(lambda (command-line)
-	  (for-each-non-keyword (cdr command-line) procedure))
-	(lambda (command-line)
-	  (if (pair? (cdr command-line))
-	      (values (cddr command-line)
-		      (lambda () (procedure (cadr command-line))))
-	      (values '()
-		      (lambda ()
-			(warn "Missing argument to command-line option:"
-			      (string-append "--" keyword)))))))
-    (command-line-option-description
-     (string-append "--" keyword " ARG" (if multiple? " ..." ""))
-     description-lines
-     'argument-command-line-parser)))
-
-(define (for-each-non-keyword command-line processor)
-  (let ((end
-	 (lambda (command-line accum)
-	   (if (pair? accum)
-	       (let ((objects (reverse! accum)))
-		 (values command-line
-			 (lambda () (for-each processor objects))))
-	       (values command-line #f)))))
-    (let loop ((command-line command-line) (accum '()))
-      (if (pair? command-line)
-	  (let ((next (car command-line)))
-	    (if (option-keyword? next)
-		(end command-line accum)
-		(loop (cdr command-line) (cons next accum))))
-	  (end '() accum)))))
-
-(define (collect-args command-line)
-
-  (define-integrable (end unused args)
-    (set! *command-line* (append! *command-line* (reverse! args)))
-    (values unused #f))
-
-  (let loop ((unused (cdr command-line)) (args '()))
-    (if (pair? unused)
-	(let ((next (car unused)))
-	  (if (option-keyword? next)
-	      (end unused args)
-	      (loop (cdr unused) (cons next args))))
-	(end unused args))))
-
-(define (collect-remaining-args command-line)
-  (set! *command-line* (append! *command-line* (cdr command-line)))
-  (values '() #f))
-
-(define (show-command-line-options)
-  (write-string "
-
-ADDITIONAL OPTIONS supported by this band:\n")
-  (do ((parsers (sort *command-line-parsers*
-		      (lambda (a b) (string<? (car a) (car b))))
-		(cdr parsers)))
-      ((null? parsers))
-    (let ((description (cadar parsers)))
-      (if (not (fix:= 0 (string-length description)))
-	  (begin
-	    (newline)
-	    (write-string description)
-	    (newline)))))
-  (exit))
-
-(define (initialize-command-line-parsers)
-  (set! *command-line-parsers* '())
-  (simple-command-line-parser "no-init-file"
-    (lambda ()
-      (param:load-init-file? #f))
-    "Inhibits automatic loading of the ~/.scheme.init file.")
-  (set! generate-suspend-file? #f)
-  (simple-command-line-parser "suspend-file"
-    (lambda ()
-      (set! generate-suspend-file? #t)
-      unspecific)
-    "If specified, Scheme saves a band to ~/scheme_suspend on reception"
-    "of some signals.  This is unavailable on some operating systems."
-    "Under Unix, this is triggered by SIGUSR1 and SIGPWR, and also, if"
-    "Scheme is not running under Emacs, SIGHUP.")
-  (simple-command-line-parser "no-suspend-file"
-    (lambda ()
-      (set! generate-suspend-file? #f)
-      unspecific)
-    "Inhibits automatic saving of bands to ~/scheme_suspend.")
-  (argument-command-line-parser "load" #t
-    (lambda (arg)
-      (run-in-nearest-repl
-       (lambda (repl)
-	 (parameterize* (list (cons param:suppress-loading-message?
-				    (cmdl/batch-mode? repl)))
-	   (lambda ()
-	     (load arg (repl/environment repl)))))))
-    "Loads the argument files as if in the REPL."
-    "In batch mode, loading messages are suppressed.")
-  (argument-command-line-parser "eval" #t
-    (lambda (arg)
-      (run-in-nearest-repl
-       (lambda (repl)
-	 (let ((environment (repl/environment repl)))
-	   (repl-eval/write (read (open-input-string arg)
-				  environment)
-			    environment
-			    repl)))))
-    "Evaluates the argument expressions as if in the REPL.")
-  (simple-command-line-parser "help" show-command-line-options #f)
-  (simple-command-line-parser "version" (lambda () (exit)) #f)
-  (set-command-line-parser!
-   "args" collect-args
-   (command-line-option-description
-    "--args ARG ..."
-    '("Appends ARGs (up to the next keyword) to the list (command-line).")
-    'initialize-command-line-parsers))
-  (set-command-line-parser!
-   "" collect-remaining-args
-   (command-line-option-description
-    "-- ARG ..."
-    '("Appends all ARGs (to the end of the command-line) to the list"
-      "(command-line).")
-    'initialize-command-line-parsers)))

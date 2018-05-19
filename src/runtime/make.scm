@@ -514,6 +514,7 @@ USA.
    (runtime directory)
    (runtime working-directory)
    (runtime load)
+   (runtime command-line)
    (runtime simple-file-ops)
    (optional (runtime os-primitives) initialize-mime-types!)
    ;; Syntax
