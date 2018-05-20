@@ -426,6 +426,25 @@ USA.
 		  (scons-call 'raise-continuable condition)
 		  clauses)))
 
+(define $include
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `((+ ,string?))
+       (lambda (filenames)
+	 (apply scons-begin (read-files filenames #f)))))))
+
+(define $include-ci
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `((+ ,string?))
+       (lambda (filenames)
+	 (apply scons-begin (read-files filenames #t)))))))
+
+(define (read-files filenames fold-case?)
+  (parameterize* (list (cons param:reader-fold-case? fold-case?))
+    (lambda ()
+      (append-map read-file filenames))))
+
 (define $define-values
   (spar-transformer->runtime
    (delay

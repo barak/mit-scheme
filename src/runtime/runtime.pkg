@@ -4776,6 +4776,8 @@ USA.
 	  (do $do)			;R7RS
 	  (fluid-let $fluid-let)
 	  (guard $guard)		;R7RS
+	  (include $include)		;R7RS
+	  (include-ci $include-ci)	;R7RS
 	  (let $let)			;R7RS
 	  (let* $let*)			;R7RS
 	  (let*-syntax $let*-syntax)	;R7RS
