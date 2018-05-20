@@ -615,9 +615,12 @@ USA.
 
 (define $cond-expand
   (spar-transformer->runtime
-   (delay (scons-rule (cond-expand-pattern) generate-cond-expand))))
+   (delay
+     (scons-rule `((value id=?)
+		   (+ ,(cond-expand-clause-pattern)))
+       generate-cond-expand))))
 
-(define (cond-expand-pattern)
+(define (cond-expand-clause-pattern)
   (define clause-pattern
     (let ((clause-pattern* (lambda args (apply clause-pattern args))))
       (spar-or
@@ -634,9 +637,8 @@ USA.
 	      (spar-and (spar-push-subform-if spar-arg:id=? 'not)
 			clause-pattern*
 			(spar-match-null))))))))
-  `((value id=?)
-    (+ (subform (cons (spar ,clause-pattern)
-		      (* any))))))
+  `(subform (cons (spar ,clause-pattern)
+		  (* any))))
 
 (define (generate-cond-expand id=? clauses)
 
