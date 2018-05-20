@@ -3848,6 +3848,7 @@ USA.
   (files "rep")
   (parent (runtime))
   (export ()
+	  (interaction-environment nearest-repl/environment) ;R7RS
 	  ->environment
 	  abort->nearest
 	  abort->previous
