@@ -1051,11 +1051,8 @@ If this is an error, the debugger examines the error condition."
 
 ;;; Prompting
 
-(define (operation/prompt-for-expression port environment prompt)
-  (unsolicited-prompt port
-		      (lambda (prompt)
-			(prompt-for-expression prompt #!default environment))
-		      prompt))
+(define (operation/prompt-for-expression port prompt)
+  (unsolicited-prompt port prompt-for-expression prompt))
 
 (define (operation/prompt-for-confirmation port prompt)
   (unsolicited-prompt port prompt-for-confirmation? prompt))
@@ -1119,8 +1116,7 @@ If this is an error, the debugger examines the error condition."
 			     (remove-select-buffer-hook buffer hook))))))
 	(add-select-buffer-hook buffer hook))))
 
-(define (operation/prompt-for-command-expression port environment prompt level)
-  environment
+(define (operation/prompt-for-command-expression port prompt level)
   (parse-command-prompt port prompt)
   (read-expression port level))
 

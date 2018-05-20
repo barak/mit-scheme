@@ -442,7 +442,7 @@ USA.
     (do () (#f)
       (if (queue-empty? queue)
 	  (let ((environment (repl/environment repl)))
-	    (%repl-eval/write (hook/repl-read environment repl)
+	    (%repl-eval/write (hook/repl-read repl)
 			      environment
 			      repl))
 	  ((dequeue! queue) repl)))))
@@ -451,15 +451,16 @@ USA.
   (guarantee unary-procedure? procedure 'run-in-nearest-repl)
   (enqueue! (repl/input-queue (nearest-repl)) procedure))
 
-(define (repl-read #!optional environment repl)
-  (receive (environment repl) (optional-er environment repl 'repl-read)
-    (hook/repl-read environment repl)))
+(define (repl-read #!optional repl)
+  (hook/repl-read
+   (if (default-object? repl)
+       (nearest-repl)
+       (guarantee repl? repl 'repl-read))))
 
 (define hook/repl-read)
-(define (default/repl-read environment repl)
+(define (default/repl-read repl)
   (prompt-for-command-expression (cons 'standard (repl/prompt repl))
-				 (cmdl/port repl)
-				 environment))
+				 (cmdl/port repl)))
 
 (define (repl-eval s-expression #!optional environment repl)
   (receive (environment repl) (optional-er environment repl 'repl-eval)
@@ -527,9 +528,7 @@ USA.
   (let ((repl
 	 (if (default-object? repl)
 	     (nearest-repl)
-	     (begin
-	       (guarantee repl? repl caller)
-	       repl))))
+	     (guarantee repl? repl caller))))
     (values (if (default-object? environment)
 		(repl/environment repl)
 		(guarantee environment? environment caller))

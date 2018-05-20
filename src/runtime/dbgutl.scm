@@ -69,8 +69,7 @@ USA.
 
 (define (debug/read-eval-print-1 environment port)
   (let ((value
-	 (debug/eval (prompt-for-expression "Evaluate expression"
-					    port environment)
+	 (debug/eval (prompt-for-expression "Evaluate expression" port)
 		     environment)))
     (if (undefined-value? value)
 	(debugger-message port "No value")

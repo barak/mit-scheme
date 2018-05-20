@@ -124,7 +124,7 @@ USA.
     (call-with-input-file pathname
       (lambda (port)
 	(let loop ((value unspecific))
-	  (let ((sexp (read port environment)))
+	  (let ((sexp (read port)))
 	    (if (eof-object? sexp)
 		value
 		(loop (repl-eval sexp environment)))))))))

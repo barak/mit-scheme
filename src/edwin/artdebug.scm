@@ -1338,8 +1338,8 @@ Prefix argument means do not kill the debugger buffer."
   (newline port)
   (newline port))
 
-(define (operation/prompt-for-expression port environment prompt)
-  port environment
+(define (operation/prompt-for-expression port prompt)
+  port
   (prompt-for-expression prompt))
 
 (define (operation/prompt-for-confirmation port prompt)

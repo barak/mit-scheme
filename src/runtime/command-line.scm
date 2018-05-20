@@ -270,8 +270,7 @@ ADDITIONAL OPTIONS supported by this band:\n")
        (run-in-nearest-repl
 	(lambda (repl)
 	  (let ((environment (repl/environment repl)))
-	    (repl-eval/write (read (open-input-string arg)
-				   environment)
+	    (repl-eval/write (read (open-input-string arg))
 			     environment
 			     repl)))))
      "Evaluates the argument expressions as if in the REPL.")

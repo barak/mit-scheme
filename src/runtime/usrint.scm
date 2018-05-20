@@ -31,46 +31,37 @@ USA.
 
 ;;;; Prompting
 
-(define (prompt-for-command-expression prompt #!optional port environment)
+(define (prompt-for-command-expression prompt #!optional port)
   (let ((prompt (canonicalize-command-prompt prompt))
 	(port (optional-port port 'prompt-for-command-expression))
-	(environment
-	 (optional-environment environment 'prompt-for-command-expression))
 	(level (nearest-cmdl/level)))
     (let ((operation
 	   (textual-port-operation port 'prompt-for-command-expression)))
       (if operation
-	  (operation port environment prompt level)
+	  (operation port prompt level)
 	  (begin
 	    (guarantee textual-i/o-port? port 'prompt-for-command-expression)
 	    (write-command-prompt port prompt level)
 	    (with-input-port-terminal-mode port 'cooked
 	      (lambda ()
-		(read port environment))))))))
+		(read port))))))))
 
-(define (prompt-for-expression prompt #!optional port environment)
-  (%prompt-for-expression
-   (optional-port port 'prompt-for-expression)
-   (optional-environment environment 'prompt-for-expression)
-   prompt
-   'prompt-for-expression))
+(define (prompt-for-expression prompt #!optional port)
+  (%prompt-for-expression port prompt 'prompt-for-expression))
 
 (define (prompt-for-evaluated-expression prompt #!optional environment port)
-  (let ((environment
-	 (optional-environment environment 'prompt-for-evaluated-expression))
-	(port (optional-port port 'prompt-for-evaluated-expression)))
-    (repl-eval
-     (%prompt-for-expression port
-			     environment
-			     prompt
-			     'prompt-for-evaluated-expression)
-     environment)))
+  (repl-eval
+   (%prompt-for-expression port prompt 'prompt-for-evaluated-expression)
+   (if (default-object? environment)
+       (nearest-repl/environment)
+       (guarantee environment? environment 'prompt-for-evaluated-expression))))
 
-(define (%prompt-for-expression port environment prompt caller)
-  (let ((prompt (canonicalize-prompt prompt ": ")))
+(define (%prompt-for-expression port prompt caller)
+  (let ((port (optional-port port caller))
+	(prompt (canonicalize-prompt prompt ": ")))
     (let ((operation (textual-port-operation port 'prompt-for-expression)))
       (if operation
-	  (operation port environment prompt)
+	  (operation port prompt)
 	  (begin
 	    (guarantee textual-i/o-port? port caller)
 	    (with-output-port-terminal-mode port 'cooked
@@ -81,17 +72,12 @@ USA.
 		(flush-output-port port)))
 	    (with-input-port-terminal-mode port 'cooked
 	      (lambda ()
-		(read port environment))))))))
+		(read port))))))))
 
 (define (optional-port port caller)
   (if (default-object? port)
       (interaction-i/o-port)
       (guarantee textual-port? port caller)))
-
-(define (optional-environment environment caller)
-  (if (default-object? environment)
-      (nearest-repl/environment)
-      (guarantee environment? environment caller)))
 
 (define (prompt-for-command-char prompt #!optional port)
   (let ((prompt (canonicalize-command-prompt prompt))

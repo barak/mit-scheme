@@ -478,16 +478,18 @@ USA.
 
 (define interface-port-type
   (make-port-type
-   `((WRITE-CHAR
+   `((write-char
       ,(lambda (port char)
 	 (guarantee 8-bit-char? char)
 	 (region-insert-char! (port/state port) char)
 	 1))
-     (PROMPT-FOR-CONFIRMATION
-      ,(lambda (port prompt) port (prompt-for-confirmation? prompt)))
-     (PROMPT-FOR-EXPRESSION
-      ,(lambda (port environment prompt)
-	 port environment
+     (prompt-for-confirmation
+      ,(lambda (port prompt)
+	 (declare (ignore port))
+	 (prompt-for-confirmation? prompt)))
+     (prompt-for-expression
+      ,(lambda (port prompt)
+	 (declare (ignore port))
 	 (prompt-for-expression prompt))))
    #f))
 

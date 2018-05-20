@@ -179,12 +179,10 @@ USA.
 		  (else (eof-object)))))
 	"")))
 
-(define (read #!optional port environment)
-  (declare (ignore environment))
+(define (read #!optional port)
   (read-top-level (optional-input-port port 'read)))
 
-(define (read-file pathname #!optional environment)
-  (declare (ignore environment))
+(define (read-file pathname)
   (call-with-input-file (pathname-default-version pathname 'newest)
     (lambda (port)
       (let loop ((sexps '()))

@@ -316,13 +316,12 @@ Has no effect if evaluate-in-inferior-repl is false."
 	      ;; This sets up the correct environment in the typein buffer
 	      ;; so that completion of variables works right.
 	      (local-set-variable! scheme-environment environment buffer))
-	    options)
-     environment)))
+	    options))))
 
-(define (read-from-string string environment)
+(define (read-from-string string)
   (bind-condition-handler (list condition-type:error) evaluation-error-handler
     (lambda ()
-      (read (open-input-string string) environment))))
+      (read (open-input-string string)))))
 
 (define-major-mode prompt-for-expression scheme #f
   (mode-description (ref-mode-object minibuffer-local))
@@ -355,25 +354,21 @@ Has no effect if evaluate-in-inferior-repl is false."
 	evaluation-error-handler
       (lambda ()
 	(let loop
-	    ((expressions (read-expressions-from-region region environment))
+	    ((expressions (read-expressions-from-region region))
 	     (result unspecific))
 	  (if (null? expressions)
 	      result
 	      (loop (cdr expressions)
 		    (editor-eval buffer (car expressions) environment))))))))
 
-(define (read-expressions-from-region region #!optional environment)
-  (let ((environment
-	 (if (default-object? environment)
-	     (evaluation-environment region)
-	     environment)))
-    (call-with-input-region region
-      (lambda (port)
-	(let loop ()
-	  (let ((expression (read port environment)))
-	    (if (eof-object? expression)
-		'()
-		(cons expression (loop)))))))))
+(define (read-expressions-from-region region)
+  (call-with-input-region region
+    (lambda (port)
+      (let loop ()
+	(let ((expression (read port)))
+	  (if (eof-object? expression)
+	      '()
+	      (cons expression (loop))))))))
 
 (define (evaluation-environment #!optional buffer global-ok?)
   (let ((buffer (->buffer buffer)))

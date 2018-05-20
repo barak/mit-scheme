@@ -31,10 +31,10 @@ USA.
 
 ;;;; Prompting
 
-(define (emacs/prompt-for-command-expression port environment prompt level)
+(define (emacs/prompt-for-command-expression port prompt level)
   (transmit-modeline-string port prompt level)
   (transmit-signal port #\R)
-  (read port environment))
+  (read port))
 
 (define (emacs/prompt-for-command-char port prompt level)
   (transmit-modeline-string port prompt level)
@@ -60,9 +60,9 @@ USA.
   '(("debug> " "[Debug]")
     ("where> " "[Where]")))
 
-(define (emacs/prompt-for-expression port environment prompt)
+(define (emacs/prompt-for-expression port prompt)
   (transmit-signal-with-argument port #\i prompt)
-  (read port environment))
+  (read port))
 
 (define (emacs/prompt-for-confirmation port prompt)
   (transmit-signal-with-argument

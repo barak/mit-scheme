@@ -771,8 +771,7 @@ USA.
 		    (if invalid-expression?
 			""
 			" ($ to retry)"))
-		   port
-		   environment)))
+		   port)))
 	     (if (and (not invalid-expression?)
 		      (eq? expression '$))
 		 (debug/scode-eval (dstate/expression dstate)

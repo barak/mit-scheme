@@ -989,8 +989,7 @@ it is added to the front of the command history."
       (prompt-for-string "Redo" #f
 			 'DEFAULT-TYPE 'INSERTED-DEFAULT
 			 'HISTORY 'REPEAT-COMPLEX-COMMAND
-			 'HISTORY-INDEX (- argument 1))
-      (->environment '(EDWIN))))))
+			 'HISTORY-INDEX (- argument 1))))))
 
 ;;;; Pass-phrase Prompts
 

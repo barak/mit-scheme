@@ -122,13 +122,9 @@ USA.
   (show-environment-procedure (car (wstate/frame-list wstate)) port))
 
 (define (recursive-where wstate port)
-  (let ((environment (car (wstate/frame-list wstate))))
-    (let ((inp
-	   (prompt-for-expression "Object to evaluate and examine"
-				  port
-				  environment)))
-      (debugger-message port "New where!")
-      (debug/where (debug/eval inp environment)))))
+  (let ((inp (prompt-for-expression "Object to evaluate and examine" port)))
+    (debugger-message port "New where!")
+    (debug/where (debug/eval inp (car (wstate/frame-list wstate))))))
 
 (define (enter wstate port)
   port
