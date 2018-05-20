@@ -4396,6 +4396,7 @@ USA.
 	  default-parameter-setter
 	  parameter-converter
 	  parameter?
+	  make-forwarding-parameter
 	  make-general-parameter
 	  make-settable-parameter
 	  make-unsettable-parameter

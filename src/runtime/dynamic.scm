@@ -64,11 +64,10 @@ USA.
   (make-general-parameter initial-value
 			  (if (default-object? converter)
 			      default-parameter-converter
-			      converter)
+			      (guarantee unary-procedure? converter))
 			  default-parameter-merger
 			  default-parameter-getter
-			  (and settable?
-			       default-parameter-setter)))
+			  (and settable? default-parameter-setter)))
 
 (define (default-parameter-converter value) value)
 (define (default-parameter-merger old-value new-value) old-value new-value)
@@ -85,14 +84,6 @@ USA.
 			    getter
 			    setter))
 
-(define (copy-parameter parameter)
-  (let ((metadata (parameter-metadata parameter)))
-    (make-general-parameter-1 (metadata-value metadata)
-			      (metadata-converter metadata)
-			      (metadata-merger metadata)
-			      (metadata-getter metadata)
-			      (metadata-setter metadata))))
-
 (define (make-general-parameter-1 initial-value converter merger getter setter)
   (let* ((metadata (make-metadata initial-value converter merger getter setter))
 	 (parameter
@@ -107,15 +98,12 @@ USA.
 		(getter (get-value metadata))))))
     (set-parameter-metadata! parameter metadata)
     parameter))
-
+
 (define (parameterize* new-bindings thunk)
   (guarantee alist? new-bindings 'parameterize*)
   (let ((temp
 	 (map* bindings
-	       (lambda (p)
-		 (let ((metadata (parameter-metadata (car p))))
-		   (cons metadata
-			 (convert metadata (cdr p)))))
+	       (lambda (p) (create-binding (car p) (cdr p)))
 	       new-bindings)))
     (let ((swap!
 	   (lambda ()
@@ -123,8 +111,21 @@ USA.
 	     unspecific)))
       (shallow-fluid-bind swap! thunk swap!))))
 
+(define (create-binding parameter value)
+  (let ((metadata (parameter-metadata parameter)))
+    (if (forwarder? metadata)
+	(create-binding (forwarder-parameter metadata)
+			((forwarder-convert-to metadata) value))
+	(cons metadata (convert metadata value)))))
+
 (define (parameter-converter parameter)
-  (metadata-converter (parameter-metadata parameter)))
+  (let ((metadata (parameter-metadata parameter)))
+    (if (forwarder? metadata)
+	(let ((converter1 (forwarder-convert-to metadata))
+	      (converter2 (parameter-converter parameter)))
+	  (lambda (value)
+	    (converter2 (converter1 value))))
+	(metadata-converter metadata))))
 
 (define-record-type <metadata>
     (make-metadata value converter merger getter setter)
@@ -151,3 +152,48 @@ USA.
   ((metadata-merger metadata)
    (get-value metadata)
    ((metadata-converter metadata) value)))
+
+(define (make-forwarding-parameter parameter convert-to convert-from)
+  (guarantee parameter? parameter 'make-forwarding-parameter)
+  (guarantee unary-procedure? convert-to 'make-forwarding-parameter)
+  (guarantee unary-procedure? convert-from 'make-forwarding-parameter)
+  (make-forwarding-parameter-1 parameter convert-to convert-from))
+
+(define (make-forwarding-parameter-1 parameter convert-to convert-from)
+  (let ((parameter*
+	 (if (metadata-setter (skip-forwarders parameter))
+	     (lambda (#!optional new-value)
+	       (if (default-object? new-value)
+		   (convert-from (parameter))
+		   (parameter (convert-to new-value))))
+	     (lambda ()
+	       (convert-from (parameter))))))
+    (set-parameter-metadata! parameter*
+			     (make-forwarder parameter convert-to convert-from))
+    parameter*))
+
+(define-record-type <forwarder>
+    (make-forwarder parameter convert-to convert-from)
+    forwarder?
+  (parameter forwarder-parameter)
+  (convert-to forwarder-convert-to)
+  (convert-from forwarder-convert-from))
+
+(define (skip-forwarders parameter)
+  (let ((metadata (parameter-metadata parameter)))
+    (if (forwarder? metadata)
+	(skip-forwarders (forwarder-parameter metadata))
+	metadata)))
+
+(define (copy-parameter parameter)
+  (let ((metadata (parameter-metadata parameter)))
+    (if (forwarder? metadata)
+	(make-forwarding-parameter-1 (copy-parameter
+				      (forwarder-parameter metadata))
+				     (forwarder-convert-to metadata)
+				     (forwarder-convert-from metadata))
+	(make-general-parameter-1 (metadata-value metadata)
+				  (metadata-converter metadata)
+				  (metadata-merger metadata)
+				  (metadata-getter metadata)
+				  (metadata-setter metadata)))))
