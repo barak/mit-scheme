@@ -74,17 +74,16 @@ USA.
 
 (define (read/expand-xml-file pathname environment)
   (let ((pathname (merge-pathnames pathname)))
-    (with-eval-unit (pathname->uri pathname)
+    (with-working-directory-pathname (directory-pathname pathname)
       (lambda ()
-	(with-working-directory-pathname (directory-pathname pathname)
+	(parameterize* (list (cons current-load-pathname pathname)
+			     (cons current-load-environment environment))
 	  (lambda ()
-	    (with-load-environment environment
-	      (lambda ()
-		(fluid-let ((*sabbr-table* (make-strong-eq-hash-table)))
-		  (read-xml-file pathname
-				 `((scheme ,(pi-expander environment))
-				   (svar ,svar-expander)
-				   (sabbr ,sabbr-expander))))))))))))
+	    (fluid-let ((*sabbr-table* (make-strong-eq-hash-table)))
+	      (read-xml-file pathname
+			     `((scheme ,(pi-expander environment))
+			       (svar ,svar-expander)
+			       (sabbr ,sabbr-expander))))))))))
 
 (define (make-expansion-environment pathname)
   (let ((environment (extend-top-level-environment expander-environment)))

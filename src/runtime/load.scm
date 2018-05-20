@@ -39,11 +39,34 @@ USA.
 (define-deferred param:after-load-hooks
   (make-settable-parameter '()))
 
-(define-deferred param:current-load-environment
-  (make-settable-parameter #!default))
+(define-deferred current-load-environment
+  (make-general-parameter #!default
+			  (lambda (object)
+			    (if (default-object? object)
+				object
+				(guarantee environment? object)))
+			  default-parameter-merger
+			  (lambda (value)
+			    (if (default-object? value)
+				(nearest-repl/environment)
+				value))
+			  #f))
 
 (define-deferred param:eval-unit
-  (make-unsettable-parameter #f))
+  (make-unsettable-parameter #f
+    (lambda (value)
+      (and value
+	   (->absolute-uri value)))))
+
+(define-deferred current-load-pathname
+  (make-forwarding-parameter param:eval-unit
+    (lambda (pathname)
+      (pathname->uri (merge-pathnames pathname)))
+    (lambda (eval-unit)
+      (let ((pathname (and eval-unit (uri->pathname eval-unit #f))))
+	(if (not pathname)
+	    (error condition-type:not-loading))
+	pathname))))
 
 (define-deferred param:loading?
   (make-unsettable-parameter #f))
@@ -132,11 +155,10 @@ USA.
 (define (wrap-loader pathname loader)
   (lambda (environment purify?)
     (lambda ()
-      (with-load-environment environment
+      (parameterize* (list (cons current-load-pathname pathname)
+			   (cons current-load-environment environment))
 	(lambda ()
-	  (with-eval-unit (pathname->uri pathname)
-	    (lambda ()
-	      (loader environment purify?))))))))
+	  (loader environment purify?))))))
 
 (define (fasload pathname #!optional suppress-notifications?)
   (receive (pathname* loader notifier) (choose-fasload-method pathname)
@@ -260,38 +282,6 @@ USA.
        (write (enough-namestring pathname) port)))
     (thunk)))
 
-(define (with-eval-unit uri thunk)
-  (parameterize*
-   (list (cons param:eval-unit (->absolute-uri uri 'with-eval-unit)))
-   thunk))
-
-(define (current-eval-unit #!optional error?)
-  (let ((unit (param:eval-unit)))
-    (if (and (not unit)
-	     (if (default-object? error?) #t error?))
-	(error condition-type:not-loading))
-    unit))
-
-(define (current-load-pathname)
-  (or (uri->pathname (current-eval-unit) #f)
-      (error condition-type:not-loading)))
-
-(define (current-load-environment)
-  (let ((env (param:current-load-environment)))
-    (if (default-object? env)
-	(nearest-repl/environment)
-	env)))
-
-(define (set-load-environment! environment)
-  (guarantee environment? environment 'set-load-environment!)
-  (if (not (default-object? (param:current-load-environment)))
-      (param:current-load-environment environment)))
-
-(define (with-load-environment environment thunk)
-  (guarantee environment? environment 'with-load-environment)
-  (parameterize* (list (cons param:current-load-environment environment))
-    thunk))
-
 (define (load/push-hook! hook)
   (if (not (param:loading?)) (error condition-type:not-loading))
   (param:after-load-hooks (cons hook (param:after-load-hooks))))

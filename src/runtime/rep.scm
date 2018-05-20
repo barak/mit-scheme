@@ -792,7 +792,6 @@ USA.
 (define (ge environment)
   (let ((environment (->environment environment 'ge)))
     (set-repl/environment! (nearest-repl) environment)
-    (set-load-environment! environment)
     environment))
 
 (define (->environment object #!optional caller)
