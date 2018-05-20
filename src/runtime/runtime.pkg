@@ -4788,6 +4788,10 @@ USA.
 	  (unless $unless)		;R7RS
 	  (when $when)			;R7RS
 	  features			;R7RS
+	  )
+  (export (runtime)
+	  (define-library $define-library) ;R7RS
+	  (import $import)		;R7RS
 	  ))
 
 (define-package (runtime syntax syntax-rules)
