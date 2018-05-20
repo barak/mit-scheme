@@ -29,13 +29,13 @@ USA.
 
 (declare (usual-integrations))
 
-(define (scons-rule pattern procedure)
+(define (scons-rule patterns procedure)
   (spar-call-with-values
       (lambda (close . args)
 	(close-part close (apply procedure args)))
     (spar-subform)
     (spar-push spar-arg:close)
-    (pattern->spar pattern)))
+    (top-level-patterns->spar patterns)))
 
 (define-record-type <open-expr>
     (make-open-expr procedure)

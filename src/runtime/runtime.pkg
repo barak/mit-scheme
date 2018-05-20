@@ -4644,7 +4644,8 @@ USA.
 	  spar-subform
 	  spar-succeed
 	  spar-transform-values
-	  spar-with-mapped-senv)
+	  spar-with-mapped-senv
+	  top-level-patterns->spar)
   (export (runtime syntax)
 	  spar-arg:ctx
 	  spar-call

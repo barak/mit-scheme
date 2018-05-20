@@ -510,6 +510,8 @@ USA.
 		  (apply $call list (map loop (cdr pattern))))
 		 ('('cons * form)
 		  (apply $call cons (map loop (cdr pattern))))
+		 ('('cons* * form)
+		  (apply $call cons* (map loop (cdr pattern))))
 		 ('('call + form)
 		  (apply $call (cadr pattern) (map loop (cddr pattern))))
 		 ('('subform * form)
@@ -529,11 +531,7 @@ USA.
       (define (bad-pattern pattern)
 	(error:wrong-type-argument pattern "syntax-parser pattern" caller))
 
-      (lambda (pattern)
-	(if (not (list? pattern))
-	    (bad-pattern pattern))
-	($and (apply $and (map loop pattern))
-	      ($match-null))))))
+      loop)))
 
 (define (call-with-constructors expr? procedure)
 
@@ -576,3 +574,7 @@ USA.
 
 (define-deferred pattern->spar-expr
   (make-pattern-compiler #t 'pattern->spar-expr))
+
+(define (top-level-patterns->spar patterns)
+  (spar-and (apply spar-and (map pattern->spar patterns))
+	    (spar-match-null)))
