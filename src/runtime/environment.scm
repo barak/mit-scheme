@@ -24,7 +24,7 @@ USA.
 
 |#
 
-;;;; Microcode Environments
+;;;; Environments
 ;;; package: (runtime environment)
 
 (declare (usual-integrations))
