@@ -4634,6 +4634,7 @@ USA.
 	  spar-not
 	  spar-opt
 	  spar-or
+	  spar-pattern-fixed-point
 	  spar-push
 	  spar-push-form-if
 	  spar-push-subform

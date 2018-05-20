@@ -621,23 +621,15 @@ USA.
        generate-cond-expand))))
 
 (define (cond-expand-clause-pattern)
-  (define clause-pattern
-    (let ((clause-pattern* (lambda args (apply clause-pattern args))))
-      (spar-or
-	(spar-push-subform-if identifier? spar-arg:form)
-	(spar-subform
-	  (spar-call-with-values list
-	    (spar-or
-	      (spar-and (spar-push-subform-if spar-arg:id=? 'or)
-			(spar* clause-pattern*)
-			(spar-match-null))
-	      (spar-and (spar-push-subform-if spar-arg:id=? 'and)
-			(spar* clause-pattern*)
-			(spar-match-null))
-	      (spar-and (spar-push-subform-if spar-arg:id=? 'not)
-			clause-pattern*
-			(spar-match-null))))))))
-  `(subform (cons (spar ,clause-pattern)
+  `(subform (cons ,(spar-pattern-fixed-point
+		    (lambda (feature-requirement)
+		      `(or id
+			   (subform
+			    (or (cons (or (keep-if id=? or)
+					  (keep-if id=? and))
+				      (* ,feature-requirement))
+				(list (keep-if id=? not)
+				      ,feature-requirement))))))
 		  (* any))))
 
 (define (generate-cond-expand id=? clauses)

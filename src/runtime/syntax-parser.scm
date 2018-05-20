@@ -578,3 +578,13 @@ USA.
 (define (top-level-patterns->spar patterns)
   (spar-and (apply spar-and (map pattern->spar patterns))
 	    (spar-match-null)))
+
+(define (spar-pattern-fixed-point procedure)
+  (letrec
+      ((spar
+	(pattern->spar
+	 (procedure
+	  `(spar
+	    ,(lambda (input senv output success failure)
+	       (spar input senv output success failure)))))))
+    `(spar ,spar)))
