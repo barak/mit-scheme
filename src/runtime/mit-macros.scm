@@ -411,7 +411,8 @@ USA.
 			 (scons-call 'with-exception-handler
 				     (scons-lambda (list condition)
 				       (scons-let (list (list var condition))
-					 (guard-handler guard-k condition clauses else-actions)))
+					 (guard-handler guard-k condition
+							clauses else-actions)))
 				     (apply scons-lambda '() body))))))))))
 
 (define (guard-handler guard-k condition clauses else-actions)
@@ -696,14 +697,17 @@ USA.
   (spar-transformer->runtime
    (delay
      (scons-rule `((value id=?)
-		   (+ (subform (cons ,(feature-requirement-pattern)
-				     (* any)))))
-       generate-cond-expand))))
+		   (* (subform (cons ,(feature-requirement-pattern)
+				     (* any))))
+		   (opt (subform (cons (keep-if id=? else)
+				       (* any)))))
+       (lambda (id=? clauses)
+	 (apply scons-begin (evaluate-cond-expand id=? clauses)))))))
 
 (define (feature-requirement-pattern)
   (spar-pattern-fixed-point
    (lambda (feature-requirement)
-     `(or id
+     `(or (keep-if id!=? else)
 	  (subform
 	   (or (cons (or (keep-if id=? or)
 			 (keep-if id=? and))
@@ -713,29 +717,23 @@ USA.
 	       (list (keep-if id=? library)
 		     ,(library-name-pattern))))))))
 
-(define (generate-cond-expand id=? clauses)
+(define (evaluate-cond-expand id=? clauses)
+  (let ((clause
+	 (find (lambda (clause)
+		 (or (id=? 'else (car clause))
+		     (evaluate-feature-requirement id=? (car clause))))
+	       clauses)))
+    (if clause
+	(cdr clause)
+	'())))
 
-  (define (process-clauses clauses)
-    (cond ((not (pair? clauses))
-	   (generate '()))
-	  ((id=? 'else (caar clauses))
-	   (if (pair? (cdr clauses))
-	       (syntax-error "ELSE clause must be last:" clauses))
-	   (generate (cdar clauses)))
-	  (else
-	   (process-clause (car clauses)
-			   (lambda () (process-clauses (cdr clauses)))))))
+(define (evaluate-feature-requirement id=? feature-requirement)
 
-  (define (process-clause clause failure)
-    (eval-req (car clause)
-	      (lambda () (generate (cdr clause)))
-	      failure))
-
-  (define (eval-req req success failure)
-    (cond ((identifier? req) (if (supported-feature? req) (success) (failure)))
-	  ((id=? 'or (car req)) (eval-or (cdr req) success failure))
-	  ((id=? 'and (car req)) (eval-and (cdr req) success failure))
-	  ((id=? 'not (car req)) (eval-req (cadr req) failure success))
+  (define (eval-req req)
+    (cond ((identifier? req) (supported-feature? req))
+	  ((id=? 'or (car req)) (eval-or (cdr req)))
+	  ((id=? 'and (car req)) (eval-and (cdr req)))
+	  ((id=? 'not (car req)) (eval-req (cadr req)))
 	  (else (error "Unknown requirement:" req))))
 
   (define (supported-feature? req)
@@ -746,24 +744,17 @@ USA.
       (and p
 	   ((cdr p)))))
 
-  (define (eval-or reqs success failure)
-    (if (pair? reqs)
-	(eval-req (car reqs)
-		  success
-		  (lambda () (eval-or (cdr reqs) success failure)))
-	(failure)))
+  (define (eval-or reqs)
+    (and (pair? reqs)
+	 (or (eval-req (car reqs))
+	     (eval-or (cdr reqs)))))
 
-  (define (eval-and reqs success failure)
-    (if (pair? reqs)
-	(eval-req (car reqs)
-		  (lambda () (eval-and (cdr reqs) success failure))
-		  failure)
-	(success)))
+  (define (eval-and reqs)
+    (or (not (pair? reqs))
+	(and (eval-req (car reqs))
+	     (eval-and (cdr reqs)))))
 
-  (define (generate forms)
-    (apply scons-begin forms))
-
-  (process-clauses clauses))
+  (eval-req feature-requirement))
 
 (define (define-feature name procedure)
   (set! supported-features (cons (cons name procedure) supported-features))
