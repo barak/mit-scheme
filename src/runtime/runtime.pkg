@@ -4614,6 +4614,7 @@ USA.
 	  spar-arg:close
 	  spar-arg:form
 	  spar-arg:hist
+	  spar-arg:id!=?
 	  spar-arg:id=?
 	  spar-arg:senv
 	  spar-arg:value
