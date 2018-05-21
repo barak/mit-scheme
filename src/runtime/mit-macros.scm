@@ -631,66 +631,6 @@ USA.
      (syntax-check '(_ expression) form)
      (descend (cadr form) 0 finalize))))
 
-;;;; R7RS: libraries
-
-(define $define-library
-  (spar-transformer->runtime
-   (delay
-     (scons-rule
-	 `(,(library-name-pattern)
-	   (* ,(library-declaration-pattern)))
-       (lambda (name declarations)
-	 (scons-quote (cons name declarations))
-	 )))))
-
-(define (library-declaration-pattern)
-  (spar-pattern-fixed-point
-   (lambda (library-declaration)
-     `(subform
-       (or (cons (keep-if id=? export)
-		 (* (or id
-			(subform (ignore-if id=? rename)
-				 (cons id id)))))
-	   (cons (keep-if id=? import)
-		 (* ,(import-set-pattern)))
-	   (cons (keep-if id=? begin)
-		 (* any))
-	   (cons (or (keep-if id=? include)
-		     (keep-if id=? include-ci)
-		     (keep-if id=? include-library-declarations))
-		 (+ ,string?))
-	   (cons (keep-if id=? cond-expand)
-		 (+ (subform
-		     (cons ,(feature-requirement-pattern)
-			   (* ,library-declaration))))))))))
-
-(define $import
-  (spar-transformer->runtime
-   (delay
-     (scons-rule `((* ,(import-set-pattern)))
-       (lambda (import-sets)
-	 (scons-quote import-sets)
-	 )))))
-
-(define (import-set-pattern)
-  (spar-pattern-fixed-point
-   (lambda (import-set)
-     `(or ,(library-name-pattern)
-	  (subform
-	   (or (cons* (or (keep-if id=? only)
-			  (keep-if id=? except))
-		      ,import-set
-		      (* id))
-	       (list (keep-if id=? prefix)
-		     ,import-set
-		     id)
-	       (cons* (keep-if id=? rename)
-		      ,import-set
-		      (* (subform (cons id id))))))))))
-
-(define (library-name-pattern)
-  `(subform (* (or symbol ,exact-nonnegative-integer?))))
-
 ;;;; SRFI 0 and R7RS: cond-expand
 
 (define $cond-expand
@@ -716,6 +656,9 @@ USA.
 		     ,feature-requirement)
 	       (list (keep-if id=? library)
 		     ,(library-name-pattern))))))))
+
+(define (library-name-pattern)
+  `(subform (* (or symbol ,exact-nonnegative-integer?))))
 
 (define (evaluate-cond-expand id=? clauses)
   (let ((clause

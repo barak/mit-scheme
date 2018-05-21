@@ -4790,10 +4790,8 @@ USA.
 	  (when $when)			;R7RS
 	  features			;R7RS
 	  )
-  (export (runtime)
-	  (define-library $define-library) ;R7RS
-	  (import $import)		;R7RS
-	  ))
+  (export (runtime library parser)
+	  evaluate-cond-expand))
 
 (define-package (runtime syntax syntax-rules)
   (files "syntax-rules")
@@ -5806,3 +5804,17 @@ USA.
 	  time-world-restored)
   (export ()
 	  world-report))
+
+(define-package (runtime library parser)
+  (files "library-parser")
+  (parent (runtime))
+  (export (runtime)
+	  library-name?
+	  parse-define-library-form
+	  parse-import-form
+	  parse-import-set
+	  parsed-library-contents
+	  parsed-library-exports
+	  parsed-library-imports
+	  parsed-library-name
+	  parsed-library?))
