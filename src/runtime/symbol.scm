@@ -90,10 +90,15 @@ USA.
   (string-hash (symbol->string symbol) modulus))
 
 (define (symbol<? x y)
-  (string<? (symbol->string x) (symbol->string y)))
+  (let ((sx (symbol->string x))
+	(sy (symbol->string y)))
+    (or (string<? sx sy)
+	(and (string=? sx sy)
+	     (interned-symbol? sx)
+	     (uninterned-symbol? sy)))))
 
 (define (symbol>? x y)
-  (string<? (symbol->string y) (symbol->string x)))
+  (symbol<? y x))
 
 (define generate-uninterned-symbol
   (let ((mutex (make-thread-mutex))
