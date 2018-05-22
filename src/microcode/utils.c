@@ -488,6 +488,24 @@ arg_real_in_range (int arg_number, double lower_limit, double upper_limit)
     error_bad_range_arg (arg_number);
   return (result);
 }
+
+/* The FNV hash, short for Fowler/Noll/Vo in honor of its creators.  */
+
+uint32_t
+memory_hash (unsigned long length, const void * vp)
+{
+  const uint8_t * scan = ((const uint8_t *) vp);
+  const uint8_t * end = (scan + length);
+  uint32_t result = 2166136261U;
+  while (scan < end)
+    result = ((result * 16777619U) ^ ((uint32_t) (*scan++)));
+#if (FIXNUM_LENGTH >= 32)
+  return (result);
+#else
+  /* Shorten the result using xor-folding.  */
+  return ((result >> FIXNUM_LENGTH) ^ (result & FIXNUM_MASK));
+#endif
+}
 
 bool
 interpreter_applicable_p (SCHEME_OBJECT object)

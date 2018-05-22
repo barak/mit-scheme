@@ -315,6 +315,7 @@ extern unsigned long compute_extra_ephemeron_space (unsigned long);
 extern void guarantee_extra_ephemeron_space (unsigned long);
 
 /* Random and OS utilities */
+extern uint32_t memory_hash (unsigned long, const void *);
 extern int strcmp_ci (const char *, const char *);
 extern bool interpreter_applicable_p (SCHEME_OBJECT);
 extern void add_reload_cleanup (void (*) (void));

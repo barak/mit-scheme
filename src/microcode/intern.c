@@ -30,31 +30,13 @@ USA.
 #include "prims.h"
 #include "trap.h"
 
-/* The FNV hash, short for Fowler/Noll/Vo in honor of its creators.  */
-
-static uint32_t
-string_hash (long length, const char * string)
-{
-  const unsigned char * scan = ((const unsigned char *) string);
-  const unsigned char * end = (scan + length);
-  uint32_t result = 2166136261U;
-  while (scan < end)
-    result = ((result * 16777619U) ^ ((uint32_t) (*scan++)));
-#if (FIXNUM_LENGTH >= 32)
-  return (result);
-#else
-  /* Shorten the result using xor-folding.  */
-  return ((result >> FIXNUM_LENGTH) ^ (result & FIXNUM_MASK));
-#endif
-}
-
 static SCHEME_OBJECT *
 find_symbol_internal (unsigned long length, const char * string)
 {
   SCHEME_OBJECT obarray = (VECTOR_REF (fixed_objects, OBARRAY));
   SCHEME_OBJECT * bucket
     = (VECTOR_LOC (obarray,
-		   ((string_hash (length, string))
+		   ((memory_hash (length, string))
 		    % (VECTOR_LENGTH (obarray)))));
   while (true)
     {
@@ -96,7 +78,7 @@ replace_symbol_bucket_type (SCHEME_OBJECT symbol, unsigned int type)
   char_pointer = (STRING_POINTER (string));
   bucket
     = (VECTOR_LOC (obarray,
-                   ((string_hash (length, char_pointer))
+                   ((memory_hash (length, char_pointer))
                     % (VECTOR_LENGTH (obarray)))));
   while (true)
     {
@@ -245,7 +227,7 @@ interning symbols.")
   {
     SCHEME_OBJECT string = (ARG_REF (1));
     PRIMITIVE_RETURN
-      (ULONG_TO_FIXNUM (string_hash ((STRING_LENGTH (string)),
+      (ULONG_TO_FIXNUM (memory_hash ((STRING_LENGTH (string)),
 				     (STRING_POINTER (string)))));
   }
 }
@@ -260,7 +242,7 @@ Equivalent to (MODULO (STRING-HASH STRING) DENOMINATOR).")
   {
     SCHEME_OBJECT string = (ARG_REF (1));
     PRIMITIVE_RETURN
-      (ULONG_TO_FIXNUM ((string_hash ((STRING_LENGTH (string)),
+      (ULONG_TO_FIXNUM ((memory_hash ((STRING_LENGTH (string)),
 				      (STRING_POINTER (string))))
 			% (arg_ulong_integer (2))));
   }

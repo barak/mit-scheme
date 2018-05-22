@@ -28,6 +28,7 @@ USA.
 
 #include "scheme.h"
 #include "prims.h"
+#include "bignmint.h"
 
 static unsigned long
 arg_type (int arg)
@@ -411,4 +412,46 @@ DEFINE_PRIMITIVE ("SET-CELL-CONTENTS!", Prim_set_cell_contents, 2, 2, 0)
   object = (ARG_REF (2));
   MEMORY_SET (cell, CELL_CONTENTS, object);
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("hash-simple-object", Prim_hash_simple_object, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  SCHEME_OBJECT object = (ARG_REF (1));
+  unsigned long n_bytes;
+  const void * bytes;
+  if (GC_TYPE_NON_POINTER (object))
+    {
+      n_bytes = (sizeof (SCHEME_OBJECT));
+      bytes = (&object);
+    }
+  else if ((LEGACY_STRING_P (object)) || (BYTEVECTOR_P (object)))
+    {
+      n_bytes = (BYTEVECTOR_LENGTH (object));
+      bytes = (BYTEVECTOR_POINTER (object));
+    }
+  else if (UNICODE_STRING_P (object))
+    {
+      n_bytes = (UNICODE_STRING_BYTE_LENGTH (object));
+      bytes = (UNICODE_STRING_POINTER (object));
+    }
+  else if (SYMBOL_P (object))
+    {
+      SCHEME_OBJECT name = (MEMORY_REF (object, SYMBOL_NAME));
+      n_bytes = (BYTEVECTOR_LENGTH (name));
+      bytes = (BYTEVECTOR_POINTER (name));
+    }
+  else if (BIGNUM_P (object))
+    {
+      n_bytes = ((BIGNUM_LENGTH (object)) * (sizeof (bignum_digit_type)));
+      bytes = (BIGNUM_START_PTR (object));
+    }
+  else if (FLONUM_P (object))
+    {
+      n_bytes = ((FLOATING_VECTOR_LENGTH (object)) * (sizeof (SCHEME_OBJECT)));
+      bytes = (FLOATING_VECTOR_LOC (object, 0));
+    }
+  else
+    PRIMITIVE_RETURN (SHARP_F);
+  PRIMITIVE_RETURN (ULONG_TO_FIXNUM (memory_hash (n_bytes, bytes)));
 }
