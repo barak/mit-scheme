@@ -56,7 +56,7 @@ USA.
  * An object that points to one other object (extra indirection).
  * Used by the compiler to share objects.
  */
-#define CELL_CONTENTS 		0
+#define CELL_CONTENTS		0
 
 /* BYTEVECTOR
  * Format consists of the normal non-marked vector header
@@ -67,6 +67,10 @@ USA.
 #define BYTEVECTOR_LENGTH_INDEX	1
 #define BYTEVECTOR_LENGTH_SIZE	1
 #define BYTEVECTOR_DATA		2
+
+#define UNICODE_STRING_HEADER 0
+#define UNICODE_STRING_LENGTH_INDEX 1
+#define UNICODE_STRING_DATA 2
 
 /* COMPILED_PROCEDURE */
 #define COMP_PROCEDURE_ADDRESS	0

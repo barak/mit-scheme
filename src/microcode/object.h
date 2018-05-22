@@ -275,6 +275,26 @@ extern bool string_p (SCHEME_OBJECT);
 #define BYTEVECTOR_REF(s, i) (* (BYTEVECTOR_LOC ((s), (i))))
 #define BYTEVECTOR_SET(s, i, c) ((* (BYTEVECTOR_LOC ((s), (i)))) = (c))
 
+/* Unicode string operations */
+
+#define UNICODE_STRING_CP_LENGTH(u)					\
+  (OBJECT_DATUM (MEMORY_REF ((u), UNICODE_STRING_LENGTH_INDEX)))
+
+#define UNICODE_STRING_FLAGS(u)						\
+  (OBJECT_TYPE (MEMORY_REF ((u), UNICODE_STRING_LENGTH_INDEX)))
+
+/* This must be kept in sync with "runtime/string.scm". */
+#define UNICODE_STRING_BYTES_PER_CP(u)					\
+  ((((UNICODE_STRING_FLAGS (u)) & 0x3) == 0)				\
+   ? 3									\
+   : ((UNICODE_STRING_FLAGS (u)) & 0x3))
+
+#define UNICODE_STRING_BYTE_LENGTH(u)					\
+  ((UNICODE_STRING_CP_LENGTH (u)) * (UNICODE_STRING_BYTES_PER_CP (u)))
+
+#define UNICODE_STRING_POINTER(u)					\
+  ((uint8_t *) (MEMORY_LOC ((u), UNICODE_STRING_DATA)))
+
 /* Legacy string operations */
 
 /* Legacy strings are laid out exactly the same way as bytevectors,
