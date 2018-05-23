@@ -314,8 +314,22 @@ extern void weaken_symbol (SCHEME_OBJECT);
 extern unsigned long compute_extra_ephemeron_space (unsigned long);
 extern void guarantee_extra_ephemeron_space (unsigned long);
 
-/* Random and OS utilities */
+/* Hashing */
+
 extern uint32_t memory_hash (unsigned long, const void *);
+extern bool hashable_object_p (SCHEME_OBJECT);
+extern uint32_t hash_object (SCHEME_OBJECT);
+extern uint32_t combine_hashes (uint32_t, uint32_t);
+
+#if (FIXNUM_LENGTH >= 32)
+#  define HASH_TO_FIXNUM(hash) (ULONG_TO_FIXNUM (hash))
+#else
+  /* Shorten the result using xor-folding.  */
+#  define HASH_TO_FIXNUM(hash)						\
+  (ULONG_TO_FIXNUM (((hash) >> FIXNUM_LENGTH) ^ ((hash) & FIXNUM_MASK)));
+#endif
+
+/* Random and OS utilities */
 extern int strcmp_ci (const char *, const char *);
 extern bool interpreter_applicable_p (SCHEME_OBJECT);
 extern void add_reload_cleanup (void (*) (void));

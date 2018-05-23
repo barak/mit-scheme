@@ -227,8 +227,8 @@ interning symbols.")
   {
     SCHEME_OBJECT string = (ARG_REF (1));
     PRIMITIVE_RETURN
-      (ULONG_TO_FIXNUM (memory_hash ((STRING_LENGTH (string)),
-				     (STRING_POINTER (string)))));
+      (HASH_TO_FIXNUM (memory_hash ((STRING_LENGTH (string)),
+				    (STRING_POINTER (string)))));
   }
 }
 
@@ -242,8 +242,8 @@ Equivalent to (MODULO (STRING-HASH STRING) DENOMINATOR).")
   {
     SCHEME_OBJECT string = (ARG_REF (1));
     PRIMITIVE_RETURN
-      (ULONG_TO_FIXNUM ((memory_hash ((STRING_LENGTH (string)),
-				      (STRING_POINTER (string))))
-			% (arg_ulong_integer (2))));
+      (HASH_TO_FIXNUM ((memory_hash ((STRING_LENGTH (string)),
+				     (STRING_POINTER (string))))
+		       % (arg_ulong_integer (2))));
   }
 }

@@ -30,6 +30,7 @@ USA.
 #include "prims.h"
 #include "history.h"
 #include "syscall.h"
+#include "bignmint.h"
 
 SCHEME_OBJECT * history_register;
 unsigned long prev_restore_history_offset;
@@ -488,8 +489,9 @@ arg_real_in_range (int arg_number, double lower_limit, double upper_limit)
     error_bad_range_arg (arg_number);
   return (result);
 }
-
-/* The FNV hash, short for Fowler/Noll/Vo in honor of its creators.  */
+
+/* The 32-bit FNV-1a hash, short for Fowler/Noll/Vo in honor of its
+   creators.  */
 
 uint32_t
 memory_hash (unsigned long length, const void * vp)
@@ -498,13 +500,103 @@ memory_hash (unsigned long length, const void * vp)
   const uint8_t * end = (scan + length);
   uint32_t result = 2166136261U;
   while (scan < end)
-    result = ((result * 16777619U) ^ ((uint32_t) (*scan++)));
-#if (FIXNUM_LENGTH >= 32)
+    {
+      result ^= ((uint32_t) (*scan++));
+      result *= 16777619U;
+    }
   return (result);
-#else
-  /* Shorten the result using xor-folding.  */
-  return ((result >> FIXNUM_LENGTH) ^ (result & FIXNUM_MASK));
-#endif
+}
+
+bool
+hashable_object_p (SCHEME_OBJECT object)
+{
+  if (GC_TYPE_NON_POINTER (object))
+    return (true);
+
+  switch (OBJECT_TYPE (object))
+    {
+    case TC_BYTEVECTOR:
+    case TC_CHARACTER_STRING:
+    case TC_INTERNED_SYMBOL:
+    case TC_UNINTERNED_SYMBOL:
+    case TC_BIG_FIXNUM:
+    case TC_BIG_FLONUM:
+    case TC_RATNUM:
+    case TC_COMPLEX:
+    case TC_LIST:
+    case TC_WEAK_CONS:
+    case TC_VECTOR:
+    case TC_CELL:
+      return (true);
+    default:
+      return (false);
+    }
+}
+
+uint32_t
+hash_object (SCHEME_OBJECT object)
+{
+  if (GC_TYPE_NON_POINTER (object))
+    return (memory_hash ((sizeof (SCHEME_OBJECT)),
+			 (&object)));
+
+  switch (OBJECT_TYPE (object))
+    {
+    case TC_BYTEVECTOR:
+    case TC_CHARACTER_STRING:
+      return (memory_hash ((BYTEVECTOR_LENGTH (object)),
+			   (BYTEVECTOR_POINTER (object))));
+
+    case TC_INTERNED_SYMBOL:
+    case TC_UNINTERNED_SYMBOL:
+      {
+	SCHEME_OBJECT name = (MEMORY_REF (object, SYMBOL_NAME));
+	return (memory_hash ((BYTEVECTOR_LENGTH (name)),
+			     (BYTEVECTOR_POINTER (name))));
+      }
+
+    case TC_BIG_FIXNUM:
+      return (memory_hash (((BIGNUM_LENGTH (object))
+			    * (sizeof (bignum_digit_type))),
+			   (BIGNUM_START_PTR (object))));
+
+    case TC_BIG_FLONUM:
+      return (memory_hash (((FLOATING_VECTOR_LENGTH (object))
+			    * (sizeof (double))),
+			   (FLOATING_VECTOR_LOC (object, 0))));
+
+    case TC_RATNUM:
+    case TC_COMPLEX:
+      return (combine_hashes ((hash_object (MEMORY_REF (object, 0))),
+			      (hash_object (MEMORY_REF (object, 1)))));
+
+    case TC_LIST:
+    case TC_WEAK_CONS:
+      return (combine_hashes ((hash_object (PAIR_CAR (object))),
+			      (hash_object (PAIR_CDR (object)))));
+
+    case TC_VECTOR:
+      {
+	const SCHEME_OBJECT * scan = (VECTOR_LOC (object, 0));
+	const SCHEME_OBJECT * end = (scan + (VECTOR_LENGTH (object)));
+	uint32_t result = 0;
+	while (scan < end)
+	  result = (combine_hashes (result, (hash_object (*scan++))));
+	return result;
+      }
+
+    case TC_CELL:
+      return (hash_object (MEMORY_REF (object, 0)));
+
+    default:
+      return (0);
+    }
+}
+
+uint32_t
+combine_hashes (uint32_t hash1, uint32_t hash2)
+{
+  return ((hash1 * 31) + hash2);
 }
 
 bool

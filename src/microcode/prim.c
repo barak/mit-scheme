@@ -28,7 +28,6 @@ USA.
 
 #include "scheme.h"
 #include "prims.h"
-#include "bignmint.h"
 
 static unsigned long
 arg_type (int arg)
@@ -414,49 +413,29 @@ DEFINE_PRIMITIVE ("SET-CELL-CONTENTS!", Prim_set_cell_contents, 2, 2, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("hash-simple-object", Prim_hash_simple_object, 1, 1, 0)
+DEFINE_PRIMITIVE ("primitive-object-hash", Prim_primitive_object_hash, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   SCHEME_OBJECT object = (ARG_REF (1));
-  unsigned long n_bytes;
-  const void * bytes;
-  if (GC_TYPE_NON_POINTER (object))
-    {
-      n_bytes = (sizeof (SCHEME_OBJECT));
-      bytes = (&object);
-    }
-  else if ((LEGACY_STRING_P (object)) || (BYTEVECTOR_P (object)))
-    {
-      n_bytes = (BYTEVECTOR_LENGTH (object));
-      bytes = (BYTEVECTOR_POINTER (object));
-    }
-  else if (UNICODE_STRING_P (object))
-    {
-      n_bytes = (UNICODE_STRING_BYTE_LENGTH (object));
-      bytes = (UNICODE_STRING_POINTER (object));
-    }
-  else if (SYMBOL_P (object))
-    {
-      SCHEME_OBJECT name = (MEMORY_REF (object, SYMBOL_NAME));
-      n_bytes = (BYTEVECTOR_LENGTH (name));
-      bytes = (BYTEVECTOR_POINTER (name));
-    }
-  else if (BIGNUM_P (object))
-    {
-      n_bytes = ((BIGNUM_LENGTH (object)) * (sizeof (bignum_digit_type)));
-      bytes = (BIGNUM_START_PTR (object));
-    }
-  else if (FLONUM_P (object))
-    {
-      n_bytes = ((FLOATING_VECTOR_LENGTH (object)) * (sizeof (double)));
-      bytes = (FLOATING_VECTOR_LOC (object, 0));
-    }
-  else
-    PRIMITIVE_RETURN (SHARP_F);
-  PRIMITIVE_RETURN (ULONG_TO_FIXNUM (memory_hash (n_bytes, bytes)));
+  PRIMITIVE_RETURN
+    ((hashable_object_p (object))
+     ? (HASH_TO_FIXNUM (hash_object (object)))
+     : SHARP_F);
 }
 
-DEFINE_PRIMITIVE ("primitive-memory-hash", Prim_memory_hash, 3, 3, 0)
+DEFINE_PRIMITIVE ("primitive-object-hash-2", Prim_primitive_object_hash_2, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  SCHEME_OBJECT object1 = (ARG_REF (1));
+  SCHEME_OBJECT object2 = (ARG_REF (2));
+  PRIMITIVE_RETURN
+    (((hashable_object_p (object1)) && (hashable_object_p (object2)))
+     ? (HASH_TO_FIXNUM
+	(combine_hashes ((hash_object (object1)), (hash_object (object2)))))
+     : SHARP_F);
+}
+
+DEFINE_PRIMITIVE ("primitive-memory-hash", Prim_primitive_memory_hash, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   SCHEME_OBJECT object = (ARG_REF (1));
@@ -477,7 +456,7 @@ DEFINE_PRIMITIVE ("primitive-memory-hash", Prim_memory_hash, 3, 3, 0)
     error_bad_range_arg (3);
 
   PRIMITIVE_RETURN
-    (ULONG_TO_FIXNUM
+    (HASH_TO_FIXNUM
      (memory_hash ((end - start),
 		   (((const uint8_t *) (OBJECT_ADDRESS (object))) + start))));
 }
