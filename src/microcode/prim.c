@@ -448,10 +448,36 @@ DEFINE_PRIMITIVE ("hash-simple-object", Prim_hash_simple_object, 1, 1, 0)
     }
   else if (FLONUM_P (object))
     {
-      n_bytes = ((FLOATING_VECTOR_LENGTH (object)) * (sizeof (SCHEME_OBJECT)));
+      n_bytes = ((FLOATING_VECTOR_LENGTH (object)) * (sizeof (double)));
       bytes = (FLOATING_VECTOR_LOC (object, 0));
     }
   else
     PRIMITIVE_RETURN (SHARP_F);
   PRIMITIVE_RETURN (ULONG_TO_FIXNUM (memory_hash (n_bytes, bytes)));
+}
+
+DEFINE_PRIMITIVE ("primitive-memory-hash", Prim_memory_hash, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  SCHEME_OBJECT object = (ARG_REF (1));
+  if (!((GC_TYPE_VECTOR (object))
+	&& ((OBJECT_TYPE (MEMORY_REF (object, 0))) == TC_MANIFEST_NM_VECTOR)))
+    error_wrong_type_arg (1);
+  unsigned long nwords = (VECTOR_LENGTH (object));
+  unsigned long start = (arg_ulong_integer (2));
+  unsigned long end = (arg_ulong_integer (3));
+
+  unsigned long min_index = (sizeof (SCHEME_OBJECT));
+  unsigned long max_index = (min_index + (nwords * (sizeof (SCHEME_OBJECT))));
+
+  if (!((start >= min_index) && (start <= max_index)))
+    error_bad_range_arg (2);
+
+  if (!((end >= start) && (end <= max_index)))
+    error_bad_range_arg (3);
+
+  PRIMITIVE_RETURN
+    (ULONG_TO_FIXNUM
+     (memory_hash ((end - start),
+		   (((const uint8_t *) (OBJECT_ADDRESS (object))) + start))));
 }
