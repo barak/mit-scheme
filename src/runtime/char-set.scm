@@ -448,6 +448,10 @@ USA.
 			      (%char-set-high char-set))))
 	 char-sets))
 
+(define (char-set-hash char-set)
+  (primitive-object-hash-2 (%char-set-low char-set)
+			   (%char-set-high char-set)))
+
 (define (char-set->code-points char-set)
   (let loop ((ilist (%char-set->inversion-list char-set)) (ranges '()))
     (if (pair? ilist)

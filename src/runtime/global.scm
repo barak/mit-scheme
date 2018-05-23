@@ -70,7 +70,10 @@ USA.
   system-vector-ref
   system-vector-set!
 
-  primitive-object-ref primitive-object-set!)
+  primitive-object-ref primitive-object-set!
+  (primitive-object-hash 1)
+  (primitive-object-hash-2 2)
+  (primitive-memory-hash 3))
 
 (define (host-big-endian?)
   host-big-endian?-saved)

@@ -225,6 +225,7 @@ USA.
   (files "equals")
   (parent (runtime))
   (export ()
+	  equal-hash
 	  equal?
 	  eqv?))
 
@@ -573,6 +574,9 @@ USA.
 	  param:exit-hook
 	  param:suspend-hook
 	  pointer-type-code?
+	  primitive-memory-hash
+	  primitive-object-hash
+	  primitive-object-hash-2
 	  primitive-procedure-arity
 	  primitive-procedure-documentation
 	  pwd
@@ -1444,6 +1448,7 @@ USA.
 	  char-set->code-points
 	  char-set-difference
 	  char-set-empty?
+	  char-set-hash
 	  char-set-intersection
 	  char-set-intersection*
 	  char-set-invert
@@ -2431,7 +2436,6 @@ USA.
 	  datum-weak-eqv-hash-table-type
 	  eq-hash
 	  eq-hash-mod
-	  equal-hash
 	  equal-hash-mod
 	  equal-hash-table-type
 	  equality-predicate-hasher

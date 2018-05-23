@@ -996,69 +996,18 @@ USA.
 	n)))
 
 (define-integrable (eqv-hash-mod key modulus)
-  (int:remainder (eqv-hash key) modulus))
+  (fix:remainder (eqv-hash key) modulus))
 
 (define (eqv-hash key)
-  (cond ((%bignum? key) (%bignum->nonneg-int key))
-	((%ratnum? key) (%ratnum->nonneg-int key))
-	((flo:flonum? key) (%flonum->nonneg-int key))
-	((%recnum? key) (%recnum->nonneg-int key))
-	(else (eq-hash key))))
+  (if (or (object-type? (ucode-type bignum) key)
+	  (object-type? (ucode-type flonum) key)
+	  (object-type? (ucode-type ratnum) key)
+	  (object-type? (ucode-type recnum) key))
+      (primitive-object-hash key)
+      (eq-hash key)))
 
 (define-integrable (equal-hash-mod key modulus)
-  (int:remainder (equal-hash key) modulus))
-
-(define (equal-hash key)
-  (cond ((vector? key)
-	 (let ((length (vector-length key)))
-	   (do ((i 0 (fix:+ i 1))
-		(accum 0 (int:+ accum (equal-hash (vector-ref key i)))))
-	       ((not (fix:< i length)) accum))))
-	((pair? key) (int:+ (equal-hash (car key)) (equal-hash (cdr key))))
-	((cell? key) (equal-hash (cell-contents key)))
-	((%bignum? key) (%bignum->nonneg-int key))
-	((%ratnum? key) (%ratnum->nonneg-int key))
-	((flo:flonum? key) (%flonum->nonneg-int key))
-	((%recnum? key) (%recnum->nonneg-int key))
-	((string? key) (string-hash key))
-	((bit-string? key) (bit-string->unsigned-integer key))
-	((pathname? key) (string-hash (->namestring key)))
-	(else (eq-hash key))))
-
-(define-integrable (%bignum? object)
-  (object-type? (ucode-type big-fixnum) object))
-
-(define-integrable (%ratnum? object)
-  (object-type? (ucode-type ratnum) object))
-
-(define-integrable (%recnum? object)
-  (object-type? (ucode-type recnum) object))
-
-(define-integrable (%bignum->nonneg-int bignum)
-  (int:abs bignum))
-
-(define-integrable (%ratnum->nonneg-int ratnum)
-  (int:abs (int:+ (system-pair-car ratnum) (system-pair-cdr ratnum))))
-
-(define-integrable (%flonum->nonneg-int flonum)
-  (int:abs
-   (flo:truncate->exact
-    ((ucode-primitive flonum-denormalize 2)
-     (car ((ucode-primitive flonum-normalize 1) flonum))
-     microcode-id/floating-mantissa-bits))))
-
-(define-integrable (%recnum->nonneg-int recnum)
-  (let ((%real->nonneg-int
-	 (lambda (real)
-	   (cond ((%ratnum? real) (%ratnum->nonneg-int real))
-		 ((flo:flonum? real) (%flonum->nonneg-int real))
-		 (else (%bignum->nonneg-int real))))))
-    (int:+ (%real->nonneg-int (system-pair-car recnum))
-	   (%real->nonneg-int (system-pair-cdr recnum)))))
-
-(declare (integrate-operator int:abs))
-(define (int:abs n)
-  (if (int:negative? n) (int:negate n) n))
+  (fix:remainder (equal-hash key) modulus))
 
 ;;;; Constructing and Open-Coding Types and Constructors
 

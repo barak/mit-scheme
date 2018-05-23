@@ -2045,10 +2045,22 @@ USA.
 	      string))
 
 (define (string-hash string #!optional modulus)
-  (let ((string* (string-for-primitive (string->nfc string))))
-    (if (default-object? modulus)
-	((ucode-primitive string-hash) string*)
-	((ucode-primitive string-hash-mod) string* modulus))))
+  (if (default-object? modulus)
+      (%string-hash (string->nfc string))
+      (begin
+	(guarantee index-fixnum? modulus 'string-hash)
+	(if (fix:= 0 modulus)
+	    (error:bad-range-argument modulus 'string-hash))
+	(fix:remainder (%string-hash (string->nfc string)) modulus))))
+
+(define (%string-hash string)
+  (primitive-memory-hash string
+			 byte0-index
+			 (fix:+ byte0-index
+				;; Simplified since we know this is an immutable
+				;; string.
+				(fix:* (%ustring-cp-size string)
+				       (ustring-length string)))))
 
 (define (string-ci-hash string #!optional modulus)
   (string-hash (string-foldcase string) modulus))

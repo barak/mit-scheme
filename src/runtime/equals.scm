@@ -80,3 +80,11 @@ USA.
 	     (and (char-set? y)
 		  (char-set=? x y)))
 	    (else #f))))
+
+(define (equal-hash key)
+  (cond ((primitive-object-hash key))
+	((string? key) (string-hash key))
+	((pathname? key) (string-hash (->namestring key)))
+	((bit-string? key)
+	 (primitive-object-hash (bit-string->unsigned-integer key)))
+	(else (eq-hash key))))
