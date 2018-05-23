@@ -83,7 +83,7 @@ USA.
   (case (object-datum
 	 (vector-ref
 	  (object-new-type (ucode-type vector)
-			   "\000\001\002\000\000\003\004\000")
+			   (bytevector 0 1 2 0 0 3 4 0))
 	  1))
     ((#x00010200 #x0001020000030400) #t)
     ((#x00020100 #x0004030000020100) #f)
