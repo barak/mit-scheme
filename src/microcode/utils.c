@@ -510,9 +510,6 @@ memory_hash (unsigned long length, const void * vp)
 bool
 hashable_object_p (SCHEME_OBJECT object)
 {
-  if (GC_TYPE_NON_POINTER (object))
-    return (true);
-
   switch (OBJECT_TYPE (object))
     {
     case TC_BYTEVECTOR:
@@ -536,10 +533,6 @@ hashable_object_p (SCHEME_OBJECT object)
 uint32_t
 hash_object (SCHEME_OBJECT object)
 {
-  if (GC_TYPE_NON_POINTER (object))
-    return (memory_hash ((sizeof (SCHEME_OBJECT)),
-			 (&object)));
-
   switch (OBJECT_TYPE (object))
     {
     case TC_BYTEVECTOR:
