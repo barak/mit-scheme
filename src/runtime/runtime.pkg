@@ -851,12 +851,14 @@ USA.
 	  subvector-uniform?
 	  vector
 	  vector->list
+	  vector-any
 	  vector-append
 	  vector-binary-search
 	  vector-builder
 	  vector-copy
 	  vector-copy!
 	  vector-eighth
+	  vector-every
 	  vector-fifth
 	  vector-fill!
 	  vector-filled?

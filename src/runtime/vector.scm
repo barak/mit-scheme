@@ -200,6 +200,52 @@ USA.
 (define (for-each-vector-element vector procedure)
   (vector-for-each procedure vector))
 
+(define (vector-any procedure vector . vectors)
+  (let ((n (vector-length vector)))
+    (if (pair? vectors)
+	(let ((n
+	       (fold-left (lambda (n v)
+			    (fix:min (vector-length v) n))
+			  n
+			  vectors)))
+	  (let loop ((i 0))
+	    (if (fix:< i n)
+		(or (apply procedure
+			   (vector-ref vector i)
+			   (map (lambda (vector*)
+				  (vector-ref vector* i))
+				vectors))
+		    (loop (fix:+ i 1)))
+		#f)))
+	(let loop ((i 0))
+	  (if (fix:< i n)
+	      (or (procedure (vector-ref vector i))
+		  (loop (fix:+ i 1)))
+	      #f)))))
+
+(define (vector-every procedure vector . vectors)
+  (let ((n (vector-length vector)))
+    (if (pair? vectors)
+	(let ((n
+	       (fold-left (lambda (n v)
+			    (fix:min (vector-length v) n))
+			  n
+			  vectors)))
+	  (let loop ((i 0))
+	    (if (fix:< i n)
+		(and (apply procedure
+			    (vector-ref vector i)
+			    (map (lambda (vector*)
+				   (vector-ref vector* i))
+				 vectors))
+		     (loop (fix:+ i 1)))
+		#t)))
+	(let loop ((i 0))
+	  (if (fix:< i n)
+	      (and (procedure (vector-ref vector i))
+		   (loop (fix:+ i 1)))
+	      #t)))))
+
 (define (subvector-find-next-element vector start end item)
   (guarantee-subvector vector start end 'subvector-find-next-element)
   (let loop ((index start))
