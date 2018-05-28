@@ -1023,6 +1023,8 @@ USA.
     (set! condition-type:file-error (anonymous-error 'file-error 'filename))
     (set! condition-type:cell-error (anonymous-error 'cell-error 'location))
     (set! condition-type:thread-error (anonymous-error 'thread-error 'thread)))
+  (set! file-error?
+	(condition-predicate condition-type:file-error))
 
   (set! condition-type:derived-port-error
 	(make-condition-type 'derived-port-error condition-type:port-error
