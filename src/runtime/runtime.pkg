@@ -5816,6 +5816,7 @@ USA.
   (parent (runtime))
   (export (runtime)
 	  library-name?
+	  make-parsed-library
 	  parse-define-library-form
 	  parse-import-form
 	  parse-import-set
@@ -5824,3 +5825,16 @@ USA.
 	  parsed-library-imports
 	  parsed-library-name
 	  parsed-library?))
+
+(define-package (runtime library database)
+  (files "library-database")
+  (parent (runtime))
+  (export (runtime)
+	  library-db?
+	  make-library-db))
+
+(define-package (runtime library standard)
+  (files "library-standard")
+  (parent (runtime))
+  (export (runtime)
+	  standard-libraries))
