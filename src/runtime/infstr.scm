@@ -29,71 +29,46 @@ USA.
 
 (declare (usual-integrations))
 
-(define-structure (dbg-info-vector
-		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-info-vector]"))
-		   (predicate new-dbg-info-vector?)
-		   (conc-name dbg-info-vector/))
-  (compilation-type #f read-only #t)
-  (root-block #f read-only #t)
-  (other-blocks #f read-only #t)
-  (tl-bound #f read-only #t)
-  (tl-free #f read-only #t))
+;;; Keep in sync with "compiler/base/toplev.scm" and "compiler/base/crsend.scm".
 
 (define (dbg-info-vector? object)
-  (or (new-dbg-info-vector? object)
-      (old-dbg-info-vector? object)))
+  (and (vector? object)
+       ;; Length 6 can be removed after 9.3 release.
+       (or (fix:= 6 (vector-length object))
+	   (fix:= 7 (vector-length object)))
+       (eq? '|#[(runtime compiler-info)dbg-info-vector]|
+	    (vector-ref object 0))))
 
-(define (old-dbg-info-vector? object)
-  (and (pair? object)
-       (eq? (car object)
-	    '|#[(runtime compiler-info)dbg-info-vector-tag]|)))
+(define-integrable (dbg-info-vector/compilation-type v)
+  (vector-ref v 1))
+
+(define-integrable (dbg-info-vector/root-block v)
+  (vector-ref v 2))
+
+(define-integrable (dbg-info-vector/other-blocks v)
+  (vector-ref v 3))
+
+(define-integrable (dbg-info-vector/tl-bound v)
+  (vector-ref v 4))
+
+(define-integrable (dbg-info-vector/tl-free v)
+  (vector-ref v 5))
+
+(define-integrable (dbg-info-vector/tl-metadata v)
+  (vector-ref v 6))
 
 (define (dbg-info-vector/blocks-vector info)
-  (let ((lose
-	 (lambda ()
-	   (error:wrong-type-argument info "dbg-info-vector"
-				      'dbg-info-vector/blocks-vector))))
-    (cond ((new-dbg-info-vector? info)
-	   (vector-append (vector (dbg-info-vector/root-block info))
-			  (dbg-info-vector/other-blocks info)))
-	  ((old-dbg-info-vector? info)
-	   (let ((items (cdr info)))
-	     (cond ((vector? items) items)
-		   ((%compound-items? items) (cadr items))
-		   (else (lose)))))
-	  (else (lose)))))
+  (guarantee dbg-info-vector? info 'dbg-info-vector/blocks-vector)
+  (vector-append (vector (dbg-info-vector/root-block info))
+		 (dbg-info-vector/other-blocks info)))
 
 (define (dbg-info-vector/purification-root info)
-  (let ((lose
-	 (lambda ()
-	   (error:wrong-type-argument info "dbg-info-vector"
-				      'dbg-info-vector/purification-root))))
-    (cond ((new-dbg-info-vector? info)
-	   (dbg-info-vector/other-blocks info))
-	  ((old-dbg-info-vector? info)
-	   (let ((items (cdr info)))
-	     (cond ((vector? items) #f)
-		   ((%compound-items? items) (caddr items))
-		   (else (lose)))))
-	  (else (lose)))))
-
-(define (%compound-items? items)
-  (and (pair? items)
-       (eq? (car items) 'compiled-by-procedures)
-       (pair? (cdr items))
-       (vector? (cadr items))
-       (pair? (cddr items))
-       (vector? (caddr items))
-       (null? (cdddr items))))
+  (guarantee dbg-info-vector? info 'dbg-info-vector/purification-root)
+  (dbg-info-vector/other-blocks info))
 
 (define-structure (dbg-info
 		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-info]"))
+		   (named '|#[(runtime compiler-info)dbg-info]|)
 		   (conc-name dbg-info/))
   (expression #f read-only #t)		;dbg-expression
   (procedures #f read-only #t)		;vector of dbg-procedure
@@ -113,9 +88,7 @@ USA.
 
 (define-structure (dbg-expression
 		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-expression]"))
+		   (named '|#[(runtime compiler-info)dbg-expression]|)
 		   (conc-name dbg-expression/))
   (block #f read-only #t)		;dbg-block
   (label #f)				;dbg-label
@@ -126,9 +99,7 @@ USA.
 
 (define-structure (dbg-procedure
 		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-procedure]"))
+		   (named '|#[(runtime compiler-info)dbg-procedure]|)
 		   (constructor
 		    make-dbg-procedure
 		    (block label type name required optional rest auxiliary
@@ -156,9 +127,7 @@ USA.
 
 (define-structure (dbg-continuation
 		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-continuation]"))
+		   (named '|#[(runtime compiler-info)dbg-continuation]|)
 		   (conc-name dbg-continuation/))
   (block #f read-only #t)		;dbg-block
   (label #f)				;dbg-label
@@ -175,9 +144,7 @@ USA.
 
 (define-structure (dbg-block
 		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-block]"))
+		   (named '|#[(runtime compiler-info)dbg-block]|)
 		   (constructor
 		    make-dbg-block
 		    (type parent original-parent layout stack-link))
@@ -192,32 +159,30 @@ USA.
 
 (define-structure (dbg-variable
 		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-variable]"))
+		   (named '|#[(runtime compiler-info)dbg-variable]|)
 		   (conc-name dbg-variable/))
   (name #f read-only #t)		;symbol
   (type #f read-only #t)		;normal, cell, integrated
   value					;for integrated, the value
   )
 
-(let-syntax
-    ((dbg-block-name
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((symbol (symbol 'dbg-block-name/ (cadr form))))
-	   `(define-integrable ,symbol
-	      ',((ucode-primitive string->symbol)
-		 (string-append "#[(runtime compiler-info)"
-				(string-downcase (symbol->string symbol))
-				"]"))))))))
-  ;; Various names used in `layout' to identify things that wouldn't
-  ;; otherwise have names.
-  (dbg-block-name dynamic-link)
-  (dbg-block-name ic-parent)
-  (dbg-block-name normal-closure)
-  (dbg-block-name return-address)
-  (dbg-block-name static-link))
+;;; Various names used in `layout' to identify things that wouldn't otherwise
+;;; have names.
+
+(define-integrable dbg-block-name/dynamic-link
+  '|#[(runtime compiler-info)dynamic-link]|)
+
+(define-integrable dbg-block-name/ic-parent
+  '|#[(runtime compiler-info)ic-parent]|)
+
+(define-integrable dbg-block-name/normal-closure
+  '|#[(runtime compiler-info)normal-closure]|)
+
+(define-integrable dbg-block-name/return-address
+  '|#[(runtime compiler-info)return-address]|)
+
+(define-integrable dbg-block-name/static-link
+  '|#[(runtime compiler-info)static-link]|)
 
 (define-integrable make-dbg-label-2 cons)
 (define-integrable dbg-label/name car)
@@ -239,24 +204,18 @@ USA.
   (let ((wrapper (compiled-code-block/debugging-info block)))
     (if (debugging-wrapper? wrapper)
 	wrapper
-	(let ((wrapper (convert-old-debugging-wrapper wrapper)))
-	  (if wrapper
-	      (set-compiled-code-block/debugging-info! block wrapper))
-	  wrapper))))
+	#f)))
 
 (define (debugging-wrapper? wrapper)
   (and (vector? wrapper)
        (fix:= (vector-length wrapper) 6)
        (eq? (vector-ref wrapper 0) 'debugging-info-wrapper)
-       (or (fix:= (vector-ref wrapper 1) 1)
-	   (fix:= (vector-ref wrapper 1) 2))
+       (fix:= (vector-ref wrapper 1) 2)
        (or (and (not (vector-ref wrapper 2))
 		(not (vector-ref wrapper 3))
 		(not (vector-ref wrapper 4))
 		(dbg-info? (vector-ref wrapper 5)))
-	   (and (if (fix:= (vector-ref wrapper 1) 1)
-		    (not (vector-ref wrapper 2))
-		    (dbg-info-key? (vector-ref wrapper 2)))
+	   (and (dbg-info-key? (vector-ref wrapper 2))
 		(debug-info-pathname? (vector-ref wrapper 3))
 		(index-fixnum? (vector-ref wrapper 4))
 		(or (not (vector-ref wrapper 5))
@@ -282,50 +241,17 @@ USA.
 
 (define (set-debugging-wrapper/info! wrapper info)
   (vector-set! wrapper 5 info))
-
-(define (convert-old-debugging-wrapper wrapper)
-  (let ((make-wrapper
-	 (lambda (pathname index info)
-	   (vector 'debugging-info-wrapper 1 #f
-		   (convert-old-style-pathname pathname)
-		   index info))))
-    (cond ((dbg-info? wrapper)
-	   (make-wrapper #f #f wrapper))
-	  ((debug-info-pathname? wrapper)
-	   (make-wrapper wrapper 0 #f))
-	  ((and (pair? wrapper)
-		(debug-info-pathname? (car wrapper))
-		(dbg-info? (cdr wrapper)))
-	   (make-wrapper (car wrapper) 0 (cdr wrapper)))
-	  ((and (pair? wrapper)
-		(debug-info-pathname? (car wrapper))
-		(index-fixnum? (cdr wrapper))
-		(fix:> (cdr wrapper) 0))
-	   (make-wrapper (car wrapper) (cdr wrapper) #f))
-	  ((and (pair? wrapper)
-		(pair? (car wrapper))
-		(debug-info-pathname? (caar wrapper))
-		(index-fixnum? (cdar wrapper))
-		(fix:> (cdar wrapper) 0)
-		(dbg-info? (cdr wrapper)))
-	   (make-wrapper (caar wrapper) (cdar wrapper) (cdr wrapper)))
-	  (else #f))))
 
 (define (debugging-file-wrapper? wrapper)
   (and (vector? wrapper)
        (fix:= (vector-length wrapper) 4)
        (eq? (vector-ref wrapper 0) 'debugging-file-wrapper)
-       (or (and (fix:= (vector-ref wrapper 1) 1)
-		(not (vector-ref wrapper 2)))
-	   (and (fix:= (vector-ref wrapper 1) 2)
-		(dbg-info-key? (vector-ref wrapper 2))))
+       (fix:= (vector-ref wrapper 1) 2)
+       (dbg-info-key? (vector-ref wrapper 2))
        (let ((info (vector-ref wrapper 3)))
-	 (let ((n (vector-length info)))
-	   (and (fix:>= n 1)
-		(let loop ((i 0))
-		  (or (fix:= i n)
-		      (and (dbg-info? (vector-ref info i))
-			   (loop (fix:+ i 1))))))))))
+	 (and (vector? info)
+	      (fix:>= (vector-length info) 1)
+	      (vector-every dbg-info? info)))))
 
 (define (debugging-file-wrapper/version wrapper)
   (vector-ref wrapper 1))
@@ -339,16 +265,6 @@ USA.
 (define (canonicalize-file-wrapper wrapper)
   (cond ((debugging-file-wrapper? wrapper)
 	 wrapper)
-	((dbg-info? wrapper)
-	 (vector 'debugging-file-wrapper 1 #f (vector wrapper)))
-	((and (vector? wrapper)
-	      (let ((n (vector-length wrapper)))
-		(and (fix:>= n 1)
-		     (let loop ((i 0))
-		       (or (fix:= i n)
-			   (and (dbg-info? (vector-ref wrapper i))
-				(loop (fix:+ i 1))))))))
-	 (vector 'debugging-file-wrapper 1 #f wrapper))
 	(else #f)))
 
 (define (get-wrapped-dbg-info file-wrapper wrapper)
@@ -364,6 +280,7 @@ USA.
 (define (dbg-info-key? object)
   (or (and (bytevector? object)
 	   (fix:= (bytevector-length object) 32))
+      ;; The following can be removed after 9.3 release:
       (and ((ucode-primitive string? 1) object)
 	   (fix:= ((ucode-primitive string-length 1) object) 32))))
 

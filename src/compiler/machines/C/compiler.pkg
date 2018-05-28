@@ -246,6 +246,7 @@ USA.
 	  c-output-extension
 	  canonicalize-label-name)
   (export (compiler fg-generator)
+	  *tl-metadata*
 	  compile-recursively)
   (export (compiler rtl-generator)
 	  *ic-procedure-headers*
@@ -271,7 +272,6 @@ USA.
 	  *rtl-procedures*
 	  *rtl-graphs*)
   (import (runtime compiler-info)
-	  make-dbg-info-vector
 	  split-inf-structure!)
   (import (runtime load)
 	  fasload-object-file)

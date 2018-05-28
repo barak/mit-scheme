@@ -212,3 +212,20 @@ USA.
     (check-property block-range-checks set-block-range-checks! #t))
   (define-pre-only-declaration 'NO-RANGE-CHECKS
     (check-property block-range-checks set-block-range-checks! #f)))
+
+;;;; Metadata to be included in output
+
+(define-pre-only-declaration 'target-metadata
+  (lambda (block keyword value)
+    (declare (ignore block))
+    (if (list-of-type? value
+		       (lambda (elt)
+			 (and (pair? elt)
+			      (symbol? (car elt))
+			      (list? (cdr elt)))))
+	(begin
+	  (set! *tl-metadata*
+		(append! *tl-metadata*
+			 (list-copy value)))
+	  unspecific)
+	(warn "Ill-formed metadata declaration:" (cons keyword value)))))

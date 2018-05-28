@@ -129,17 +129,20 @@ USA.
     (if (null? others)
 	expression
 	(scode/make-comment
-	 (make-dbg-info-vector
-	  (let ((all-blocks
-		 (list->vector
-		  (cons
-		   (compiled-code-address->block expression)
-		   others))))
-	    (if compile-by-procedures?
-		(list 'COMPILED-BY-PROCEDURES
-		      all-blocks
-		      (list->vector others))
-		all-blocks)))
+	 ;; Keep in sync with "toplev.scm" and with "runtime/infstr.scm".
+	 (vector
+	  '|#[(runtime compiler-info)dbg-info-vector]|
+	  (if compile-by-procedures?
+	      'compiled-by-procedures
+	      'compiled-as-unit)
+	  (compiled-code-address->block expression)
+	  (list->vector
+	   (map (lambda (other)
+		  (vector-ref other 2))
+		others))
+	  '()
+	  '()
+	  '())
 	 expression))))
 
 (define (cross-link-end object)

@@ -91,6 +91,7 @@ USA.
     pure-function
     range-checks
     side-effect-free
+    target-metadata
     type-checks
     usual-definition
     uuo-link

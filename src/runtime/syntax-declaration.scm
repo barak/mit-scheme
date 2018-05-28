@@ -91,6 +91,12 @@ USA.
   (lambda (procedure declaration selector)
     (declare (ignore procedure selector))
     declaration))
+
+(define-declaration 'target-metadata
+  `(* (symbol * datum))
+  (lambda (procedure declaration selector)
+    (declare (ignore procedure selector))
+    declaration))
 
 (for-each
  (lambda (keyword)

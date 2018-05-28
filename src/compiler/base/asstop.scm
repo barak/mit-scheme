@@ -254,7 +254,8 @@ USA.
 				    info
 				    *code-vector*
 				    *tl-bound*
-				    *tl-free*)
+				    *tl-free*
+				    *tl-metadata*)
 			    *recursive-compilation-results*))
 		(vector 'DEBUGGING-INFO-WRAPPER
 			2
@@ -299,7 +300,7 @@ USA.
     (let ((bsm (split-inf-structure! binf bsm-path)))
       (compiler-file-output binf bif-path)
       (compiler-file-output bsm bsm-path))))
-  
+
 (define (compiler:dump-bci/bcs-files binf pathname)
   (let ((bci-path (pathname-new-type pathname "bci"))
 	(bcs-path (pathname-new-type pathname "bcs")))

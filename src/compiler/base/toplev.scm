@@ -395,6 +395,7 @@ USA.
 ;; Last used: [end]
 (define *tl-bound*)
 (define *tl-free*)
+(define *tl-metadata*)
 
 ;; First set: phase/rtl-generation
 ;; Last used: phase/lap-linearization
@@ -432,10 +433,13 @@ USA.
 		    (let ((others (recursive-compilation-results)))
 		      (if (compiled-code-address? expression)
 			  (scode/make-comment
-			   (make-dbg-info-vector
+			   ;; Keep in sync with "crsend.scm" and with
+			   ;; "runtime/infstr.scm".
+			   (vector
+			    '|#[(runtime compiler-info)dbg-info-vector]|
 			    (if compiler:compile-by-procedures?
-				'COMPILED-BY-PROCEDURES
-				'COMPILED-AS-UNIT)
+				'compiled-by-procedures
+				'compiled-as-unit)
 			    (compiled-code-address->block expression)
 			    (list->vector
 			     (map (lambda (other)
@@ -454,7 +458,14 @@ USA.
 				    *tl-free*
 				    (map (lambda (other)
 					   (vector-ref other 4))
-					 others))))
+					 others)))
+			    (delete-duplicates
+			     (append *tl-metadata*
+				     (append-map (lambda (other)
+						   (vector-ref other 5))
+						 others))
+			     (lambda (elt1 elt2)
+			       (eq? (car elt1) (car elt2)))))
 			   expression)
 			  (vector compiler:compile-by-procedures?
 				  expression
@@ -502,6 +513,7 @@ USA.
 		(*root-block*)
 		(*tl-bound*)
 		(*tl-free*)
+		(*tl-metadata*)
 		(*rtl-expression*)
 		(*rtl-procedures*)
 		(*rtl-continuations*)
@@ -541,6 +553,7 @@ USA.
   (set! *root-block*)
   (set! *tl-bound*)
   (set! *tl-free*)
+  (set! *tl-metadata*)
   (set! *rtl-expression*)
   (set! *rtl-procedures*)
   (set! *rtl-continuations*)
@@ -692,6 +705,7 @@ USA.
       (set! *lvalues* '())
       (set! *applications* '())
       (set! *parallels* '())
+      (set! *tl-metadata* '())
       (set! *root-expression* (construct-graph (last-reference *scode*)))
       (if *procedure-result?*
 	  (let ((node (expression-entry-node *root-expression*)))
