@@ -2675,6 +2675,7 @@ USA.
 	  with-output-to-port
 	  with-trace-output-port)
   (export ()
+	  call-with-port
 	  close-input-port
 	  close-output-port
 	  close-port

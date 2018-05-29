@@ -653,6 +653,11 @@ USA.
   (cond ((binary-port? port) (binary-port-metadata port))
 	((textual-port? port) (textual-port-metadata port))
 	(else (error:not-a port? port 'port-metadata))))
+
+(define (call-with-port port procedure)
+  (let ((value (procedure port)))
+    (close-port port)
+    value))
 
 ;;;; Port modes
 
