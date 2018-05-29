@@ -82,9 +82,6 @@ USA.
   (receive (required optional rest) (parse-mit-lambda-list lambda-list)
     (make-lambda* name required optional rest body)))
 
-(define (output/delay expression)
-  (make-scode-delay expression))
-
 (define (output/unassigned-test name)
   (make-scode-unassigned? name))
 

@@ -163,6 +163,7 @@ USA.
 	  define-print-method
 	  error:not-a
 	  error:not-a-list-of
+	  force				;R7RS
 	  gc-space-status
 	  guarantee
 	  guarantee-list-of
@@ -179,10 +180,15 @@ USA.
 	  interrupt-mask/gc-ok
 	  interrupt-mask/none
 	  interrupt-mask/timer-ok
+	  make-promise			;R7RS
+	  make-unforced-promise
 	  object-constant?
 	  object-pure?
 	  predicate->dispatch-tag
 	  predicate?
+	  promise-forced?
+	  promise-value
+	  promise?			;R7RS
 	  register-predicate!
 	  set-dispatch-tag<=!
 	  set-predicate<=!
@@ -806,17 +812,12 @@ USA.
 	  environment-extension-parent
 	  environment-extension-procedure
 	  environment-extension?
-	  force				;R7RS
 	  interpreter-return-address?
-	  make-promise			;R7RS
 	  make-return-address
 	  microcode-error
 	  microcode-return
 	  microcode-termination
 	  microcode-type
-	  promise-forced?
-	  promise-value
-	  promise?			;R7RS
 	  return-address/code
 	  return-address/name
 	  return-address?
@@ -824,9 +825,7 @@ USA.
 	  set-environment-extension-parent!
 	  stack-address->index
 	  stack-address-offset
-	  stack-address?)
-  (export (runtime debugging-info)
-	  promise-expression))
+	  stack-address?))
 
 (define-package (runtime vector)
   (files "vector")
@@ -4705,7 +4704,6 @@ USA.
 	  output/constant
 	  output/declaration
 	  output/definition
-	  output/delay
 	  output/disjunction
 	  output/lambda
 	  output/let
@@ -4741,7 +4739,6 @@ USA.
 	  (begin $begin)		;R7RS
 	  (declare $declare)
 	  (define-syntax $define-syntax) ;R7RS
-	  (delay $delay)		;R7RS
 	  (else $else)			;R7RS
 	  (er-macro-transformer $er-macro-transformer)
 	  (if $if)			;R7RS
@@ -4786,6 +4783,8 @@ USA.
 	  (define-integrable $define-integrable)
 	  (define-record-type $define-record-type)
 	  (define-values $define-values) ;R7RS
+	  (delay $delay)		;R7RS
+	  (delay-force $delay-force)	;R7RS
 	  (do $do)			;R7RS
 	  (fluid-let $fluid-let)
 	  (guard $guard)		;R7RS

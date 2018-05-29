@@ -158,15 +158,6 @@ USA.
        (spar-push spar-arg:ctx)
        (spar* (spar-subform spar-push-classified))
        (spar-match-null)))))
-
-(define $delay
-  (spar-classifier->runtime
-   (delay
-     (spar-call-with-values delay-item
-       (spar-subform)
-       (spar-push spar-arg:ctx)
-       (spar-subform spar-push-deferred-classified)
-       (spar-match-null)))))
 
 ;;;; Definitions
 
@@ -453,11 +444,6 @@ USA.
   (expr-item ctx
     (lambda ()
       (output/declaration (classify)))))
-
-(define (delay-item ctx classify)
-  (expr-item ctx
-    (lambda ()
-      (output/delay (compile-expr-item (classify))))))
 
 (define (if-item ctx predicate consequent alternative)
   (expr-item ctx

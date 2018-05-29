@@ -431,6 +431,59 @@ USA.
 	  (write-string "object satisfying " port)
 	  (write predicate port)))))
 
+;;;; Promises
+
+(define (promise? object)
+  (and (cell? object)
+       (object-type? (ucode-type delayed) (cell-contents object))))
+
+(define (make-promise object)
+  (if (promise? object)
+      object
+      (make-cell (system-pair-cons (ucode-type delayed) #t object))))
+
+(define (make-unforced-promise thunk)
+  ;(guarantee thunk? thunk 'make-unforced-promise)
+  (make-cell (system-pair-cons (ucode-type delayed) #f thunk)))
+
+(define (%promise-parts promise)
+  (without-interrupts
+   (lambda ()
+     (let ((p (cell-contents promise)))
+       (values (system-pair-car p)
+	       (system-pair-cdr p))))))
+
+(define (promise-forced? promise)
+  (guarantee promise? promise 'promise-forced?)
+  (system-pair-car (cell-contents promise)))
+
+(define (promise-value promise)
+  (guarantee promise? promise 'promise-value)
+  (receive (forced? value) (%promise-parts promise)
+    (if (not forced?)
+	(error "Promise not yet forced:" promise))
+    value))
+
+(define (force promise)
+  (guarantee promise? promise 'force)
+  (%force promise))
+
+(define (%force promise)
+  (receive (forced? value) (%promise-parts promise)
+    (if forced?
+	value
+	(let ((promise* (value)))
+	  (guarantee promise? promise* 'force)
+	  (without-interrupts
+	   (lambda ()
+	     (let ((p (cell-contents promise)))
+	       (if (not (system-pair-car p))
+		   (let ((p* (cell-contents promise*)))
+		     (system-pair-set-car! p (system-pair-car p*))
+		     (system-pair-set-cdr! p (system-pair-cdr p*))
+		     (set-cell-contents! promise* p))))))
+	  (%force promise)))))
+
 ;;;; Miscellany
 
 (define (object-constant? object)

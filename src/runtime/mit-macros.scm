@@ -396,6 +396,16 @@ USA.
      (if (not condition)
 	 (begin form ...)))))
 
+(define-syntax $delay-force
+  (syntax-rules ()
+    ((delay-force expression)
+     (make-unforced-promise (lambda () expression)))))
+
+(define-syntax $delay
+  (syntax-rules ()
+    ((delay expression)
+     (delay-force (make-promise expression)))))
+
 (define $guard
   (spar-transformer->runtime
    (delay

@@ -89,6 +89,18 @@ USA.
 				   (list (cons 'name name) ...)))))
 	      env))
 
+    (if (unbound? env 'delay-force)
+	(eval '(begin
+		 (define-syntax delay-force
+		   (syntax-rules ()
+		     ((delay-force expression)
+		      (make-unforced-promise (lambda () expression)))))
+		 (define-syntax delay
+		   (syntax-rules ()
+		     ((delay expression)
+		      (delay-force (make-promise expression))))))
+	      env))
+
     (if (unbound? env 'define-print-method)
 	(eval '(define (define-print-method predicate print-method)
 		 unspecific)
