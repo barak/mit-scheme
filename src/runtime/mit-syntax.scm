@@ -291,22 +291,22 @@ USA.
   (spar-classifier->runtime
    (delay
      (spar-call-with-values
-	(lambda (ctx bindings body-ctx body)
-	  (let ((frame-senv (make-internal-senv (serror-ctx-senv ctx)))
-		(ids (map car bindings)))
-	    (for-each (lambda (id)
-			(reserve-identifier id frame-senv))
-		      ids)
-	    (for-each (lambda (id item)
-			(bind-keyword id frame-senv item))
-		      ids
-		      (map (lambda (binding)
-			     ((cdr binding) frame-senv))
-			   bindings))
-	    (seq-item body-ctx (body frame-senv))))
-      (spar-subform)
-      (spar-push spar-arg:ctx)
-      (spar-subform
+	 (lambda (ctx bindings body-ctx body)
+	   (let ((frame-senv (make-internal-senv (serror-ctx-senv ctx)))
+		 (ids (map car bindings)))
+	     (for-each (lambda (id)
+			 (reserve-identifier id frame-senv))
+		       ids)
+	     (for-each (lambda (id item)
+			 (bind-keyword id frame-senv item))
+		       ids
+		       (map (lambda (binding)
+			      ((cdr binding) frame-senv))
+			    bindings))
+	     (seq-item body-ctx (body frame-senv))))
+       (spar-subform)
+       (spar-push spar-arg:ctx)
+       (spar-subform
 	 (spar-call-with-values list
 	   (spar*
 	     (spar-call-with-values cons
@@ -315,6 +315,30 @@ USA.
 			     (spar-match-null)))))
 	 (spar-match-null))
        (spar-push-body)))))
+
+;;;; Pseudo keywords
+
+(define (pseudo-keyword-classifier form senv hist)
+  (serror (serror-ctx form senv hist)
+	  "Special keyword can't be expanded:" form))
+
+(define $...
+  (classifier->runtime pseudo-keyword-classifier))
+
+(define $=>
+  (classifier->runtime pseudo-keyword-classifier))
+
+(define $_
+  (classifier->runtime pseudo-keyword-classifier))
+
+(define $else
+  (classifier->runtime pseudo-keyword-classifier))
+
+(define $unquote
+  (classifier->runtime pseudo-keyword-classifier))
+
+(define $unquote-splicing
+  (classifier->runtime pseudo-keyword-classifier))
 
 ;;;; MIT-specific syntax
 

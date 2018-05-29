@@ -4734,11 +4734,15 @@ USA.
   (files "mit-syntax")
   (parent (runtime syntax))
   (export ()
+	  (... $...)			;R7RS
+	  (=> $=>)			;R7RS
+	  (_ $_)			;R7RS
 	  (access $access)
 	  (begin $begin)		;R7RS
 	  (declare $declare)
 	  (define-syntax $define-syntax) ;R7RS
-	  (delay $delay)		 ;R7RS
+	  (delay $delay)		;R7RS
+	  (else $else)			;R7RS
 	  (er-macro-transformer $er-macro-transformer)
 	  (if $if)			;R7RS
 	  (lambda $lambda)		;R7RS
@@ -4752,7 +4756,10 @@ USA.
 	  (sc-macro-transformer $sc-macro-transformer)
 	  (set! $set!)			;R7RS
 	  (spar-macro-transformer $spar-macro-transformer)
-	  (the-environment $the-environment))
+	  (the-environment $the-environment)
+	  (unquote $unquote)		;R7RS
+	  (unquote-splicing $unquote-splicing) ;R7RS
+	  )
   (export (runtime mit-macros)
 	  keyword:define
 	  keyword:let-syntax
