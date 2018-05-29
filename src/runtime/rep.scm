@@ -799,7 +799,6 @@ USA.
     (cond ((environment? object) object)
 	  ((package? object) (package/environment object))
 	  ((procedure? object) (procedure-environment object))
-	  ((promise? object) (promise-environment object))
 	  (else
 	   (let ((package
 		  (let ((package-name

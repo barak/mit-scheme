@@ -806,19 +806,17 @@ USA.
 	  environment-extension-parent
 	  environment-extension-procedure
 	  environment-extension?
-	  force
+	  force				;R7RS
 	  interpreter-return-address?
+	  make-promise			;R7RS
 	  make-return-address
 	  microcode-error
 	  microcode-return
 	  microcode-termination
 	  microcode-type
-	  promise-environment
-	  promise-expression
 	  promise-forced?
-	  promise-non-expression?
 	  promise-value
-	  promise?
+	  promise?			;R7RS
 	  return-address/code
 	  return-address/name
 	  return-address?
@@ -826,7 +824,9 @@ USA.
 	  set-environment-extension-parent!
 	  stack-address->index
 	  stack-address-offset
-	  stack-address?))
+	  stack-address?)
+  (export (runtime debugging-info)
+	  promise-expression))
 
 (define-package (runtime vector)
   (files "vector")

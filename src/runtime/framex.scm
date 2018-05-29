@@ -133,11 +133,11 @@ USA.
     (values (make-scode-combination (ucode-primitive force 1)
 				    (list (make-evaluated-object promise)))
 	    undefined-environment
-	    (cond ((promise-forced? promise) undefined-expression)
-		  ((promise-non-expression? promise) unknown-expression)
-		  (else
-		   (validate-subexpression frame
-					   (promise-expression promise)))))))
+	    (let ((expr (promise-expression promise)))
+	      (case expr
+		((|#[(runtime microcode-data)forced]|) undefined-expression)
+		((|#[(runtime microcode-data)compiled]|) unknown-expression)
+		(else (validate-subexpression frame expr)))))))
 
 (define ((method/application-frame index) frame)
   (values (make-scode-combination

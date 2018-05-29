@@ -263,42 +263,43 @@ contains constants derived from the source program.
 (define-integrable (promise? object)
   (object-type? (ucode-type delayed) object))
 
-(define-guarantee promise "promise")
+(define (make-promise object)
+  (if (promise? object)
+      object
+      (system-pair-cons (ucode-type delayed) #t object)))
 
-(define-integrable (promise-forced? promise)
+(define-integrable (%promise-forced? promise)
   (eq? #t (system-pair-car promise)))
 
-(define-integrable (promise-non-expression? promise)
-  (eqv? 0 (system-pair-car promise)))
+(define (promise-forced? promise)
+  (guarantee promise? promise 'promise-forced?)
+  (%promise-forced? promise))
 
 (define (promise-value promise)
-  (if (not (promise-forced? promise))
-      (error "Promise not yet forced" promise))
+  (guarantee promise? promise 'promise-value)
+  (if (not (%promise-forced? promise))
+      (error "Promise not yet forced:" promise))
   (system-pair-cdr promise))
 
 (define (promise-expression promise)
-  (if (promise-forced? promise)
-      (error "Promise already forced" promise))
-  (if (promise-non-expression? promise)
-      (error "Promise has no expression" promise))
-  (system-pair-cdr promise))
-
-(define (promise-environment promise)
-  (if (promise-forced? promise)
-      (error "Promise already forced" promise))
-  (if (promise-non-expression? promise)
-      (error "Promise has no environment" promise))
-  (system-pair-car promise))
+  (without-interrupts
+   (lambda ()
+     (case (system-pair-car promise)
+       ((#t) '|#[(runtime microcode-data)forced]|)
+       ((0) '|#[(runtime microcode-data)compiled]|)
+       (else (system-pair-cdr promise))))))
 
 (define (force promise)
   (guarantee promise? promise 'force)
-  (case (system-pair-car promise)
-    ((#t)
-     (system-pair-cdr promise))
-    ((0)				;compiled promise
-     (let ((result ((system-pair-cdr promise))))
-       (system-pair-set-cdr! promise result)
-       (system-pair-set-car! promise #t)
-       result))
-    (else				;losing old style
-     ((ucode-primitive force 1) promise))))
+  (without-interrupts
+   (lambda ()
+     (case (system-pair-car promise)
+       ((#t)
+	(system-pair-cdr promise))
+       ((0)				;compiled
+	(let ((result ((system-pair-cdr promise))))
+	  (system-pair-set-cdr! promise result)
+	  (system-pair-set-car! promise #t)
+	  result))
+       (else				;interpreted
+	((ucode-primitive force 1) promise))))))
