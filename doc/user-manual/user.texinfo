@@ -246,7 +246,7 @@ installed in the customary way.  To install the @code{GDBM2}
 option:
 
 @smallexample
-(cd gdbm && make && make install)
+(cd gdbm && ./configure && make && make install)
 @end smallexample
 
 The @code{make install} command will attempt to create a subdirectory
@@ -263,10 +263,10 @@ export MITSCHEME_LIBRARY_PATH=\
 	~/mit-scheme-plugins:/usr/local/lib/mit-scheme-x86-64
 @end smallexample
 
-or including the @code{--library} option on the command line.
+or including the @code{--prepend-library} option on the command line.
 
 @smallexample
-mit-scheme --library ~/mit-scheme-plugins:/usr/local/lib/mit-scheme-svm
+mit-scheme --prepend-library ~/mit-scheme-plugins
 @end smallexample
 
 A few of the included options wrap popular Unix libraries.  To compile
@@ -282,6 +282,14 @@ for more information.
 libssl-dev (-lcrypto)
 @item GDBM2
 libgdbm-dev (-lgdbm)
+@item MCRYPT
+libmcrypt-dev (-lmcrypt)
+@item MHASH
+libmhash-dev (-lmhash)
+@item PGSQL
+libpq-dev (-lpq)
+@item X11
+libx11-dev (-lX11)
 @end table
 
 After installing the software and any options, you can delete the
@@ -3873,8 +3881,7 @@ mit-scheme --edit
 @end example
 
 @noindent
-Alternatively, you can load Edwin by giving the @option{--edwin}
-command-line option and then calling the procedure @code{edit}:
+Alternatively, you can load Edwin by calling the procedure @code{edit}:
 
 @deffn procedure edit
 @deffnx procedure edwin
