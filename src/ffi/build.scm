@@ -28,9 +28,11 @@ USA.
 ;;; package: (ffi build)
 
 (define (add-plugin name project infodir scmlibdir scmdocdir)
+  ;; For plugin postinst scripts: register.
   (update-plugin 'add name project infodir scmlibdir scmdocdir))
 
 (define (remove-plugin name project infodir scmlibdir scmdocdir)
+  ;; For plugin prerm scripts: de-register.
   (update-plugin 'remove name project infodir scmlibdir scmdocdir))
 
 (define (update-plugin operation name project infodir scmlibdir scmdocdir)
@@ -39,30 +41,68 @@ USA.
 		      (->namestring (pathname-as-directory infodir))))
 	(scmdocdir (and (not (string-null? scmdocdir))
 			(->namestring (pathname-as-directory scmdocdir)))))
-    (let ((plugins (updated-plugin-list operation name scmlibdir)))
-      (update-optiondb plugins scmlibdir)
-      (update-info-index project plugins infodir scmdocdir)
-      (update-html-index plugins scmdocdir))))
+    (if (file-exists? (string scmlibdir"optiondb.scm"))
+	;; NOT in dpkg-buildpackage's chroot
+	(let ((plugins
+	       (let ((filename (string scmlibdir"plugins.scm")))
+		 (if (file-exists? filename)
+		     (rewrite-file
+		      filename
+		      (lambda (in out)
+			(cond ((eq? operation 'add)
+			       (let ((new (cons name
+						(delete! name (read in)))))
+				 (write new out)
+				 new))
+			      ((eq? operation 'remove)
+			       (let ((new (delete! name (read in))))
+				 (write new out)
+				 new))
+			      (else
+			       (error "Unexpected plugin-list operation:"
+				      operation)))))
+		     (cond ((eq? operation 'add)
+			    (let ((new (list name)))
+			      (call-with-exclusive-output-file
+			       filename
+			       (lambda (out) (write new out)))
+			      new))
+			   ((eq? operation 'remove)
+			    (warn "plugin list not found:" filename)
+			    '())
+			   (else
+			    (error "Unexpected plugin-list operation:"
+				   operation)))))))
+	  (update-optiondb plugins scmlibdir)
+	  (update-info-index project plugins infodir scmdocdir)
+	  (update-html-index plugins scmdocdir)))))
 
-(define (updated-plugin-list operation plugin scmlibdir)
-  (let ((filename (string scmlibdir"plugins.scm")))
-    (if (file-exists? filename)	 ;i.e. NOT in dpkg-buildpackage chroot
-	(rewrite-file
-	 filename
-	 (lambda (in out)
-	   (cond ((eq? operation 'add)
-		  (let ((new (cons plugin (delete! plugin (read in)))))
-		    (write new out)
-		    new))
-		 ((eq? operation 'remove)
-		  (let ((new (delete! plugin (read in))))
-		    (write new out)
-		    new))
-		 (else
-		  (error "Unexpected plugin-list operation:" operation)))))
-	(begin
-	  (warn "plugin list not found:" filename)
-	  '()))))
+(define (delete-plugin-list)
+  ;; For the prerm script: delete the database of plugins (plugins.scm
+  ;; file in the system library directory).
+  (let ((filename (string (->namestring (system-library-directory-pathname))
+			  "plugins.scm")))
+    (if (file-exists? filename)
+	(delete-file filename))))
+
+(define (update-plugin-indices project infodir scmlibdir scmdocdir)
+  ;; For the postinst script: re-initialize the optiondb, Info and
+  ;; HTML indices using the list of currently installed plugins.  (The
+  ;; indices are presumed clobbered by the core upgrade.)
+  (let ((scmlibdir (->namestring (pathname-as-directory scmlibdir)))
+	(infodir (and (not (string-null? infodir))
+		      (->namestring (pathname-as-directory infodir))))
+	(scmdocdir (and (not (string-null? scmdocdir))
+			(->namestring (pathname-as-directory scmdocdir)))))
+    (let* ((pathname (string scmlibdir"plugins.scm"))
+	   (plugins (if (file-exists? pathname)
+			(call-with-input-file pathname read)
+			'())))
+      (if (not (null? plugins))
+	  (begin
+	    (update-optiondb plugins scmlibdir)
+	    (update-info-index project plugins infodir scmdocdir)
+	    (update-html-index plugins scmdocdir))))))
 
 (define (update-optiondb plugins scmlibdir)
   (let ((filename (string scmlibdir"optiondb.scm")))
@@ -133,7 +173,9 @@ USA.
 					"\n") out)
 
 	   ;; Write new list.
-	   (let ((names.titles (html-names.titles plugins scmhtmldir)))
+	   (let ((names.titles (sort (html-names.titles plugins scmhtmldir)
+				     (lambda (a b)
+				       (string<? (cdr a) (cdr b))))))
 	     (for-each
 	       (lambda (name.title)
 		 (write-string "<li><a href=\"" out)

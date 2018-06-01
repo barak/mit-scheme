@@ -42,4 +42,6 @@ FFI System Packaging |#
   (files "build")
   (export (ffi)
 	  add-plugin
-	  remove-plugin))
+	  remove-plugin
+	  delete-plugin-list
+	  update-plugin-indices))

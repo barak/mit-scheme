@@ -608,6 +608,15 @@ USA.
   ((environment-lookup (->environment '(ffi)) 'remove-plugin)
    name project infodir scmlibdir scmdocdir))
 
+(define (delete-plugin-list)
+  (load-option-quietly 'ffi)
+  ((environment-lookup (->environment '(ffi)) 'delete-plugin-list)))
+
+(define (update-plugin-indices project infodir scmlibdir scmdocdir)
+  (load-option-quietly 'ffi)
+  ((environment-lookup (->environment '(ffi)) 'update-plugin-indices)
+   project infodir scmlibdir scmdocdir))
+
 (define (load-option-quietly name)
   (if (not (option-loaded? name))
       (let ((kernel
