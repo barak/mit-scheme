@@ -994,7 +994,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
   (guarantee exact-positive-integer? object operator))
 
 (define-integrable (guarantee-Time object operator)
-  (guarantee exact-positive-integer? object operator))
+  (guarantee exact-nonnegative-integer? object operator))
 
 (define-integrable (guarantee-xvisual object operator)
   (if (not (and (alien? object)
