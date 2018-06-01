@@ -104,13 +104,14 @@ to a gdbm database, the connection is designated as a @dfn{reader} or
 a @dfn{writer}.  A gdbm database may be connected to at most one
 writer at a time.  However, many readers may connect to the database
 simultaneously.  Readers and writers may not connect to the database
-at the same time.
+at the same time.  (Note that these restrictions are not enforced by
+the library nor the wrapper.)
 
 Each connection is encapsulated in a Scheme @code{gdbf} structure
 which should be used by one Scheme thread at a time.  A mutex is used
 to block any thread attempting to access the database while an
-operation is in progress.
-
+operation is in progress.  No file locks are used by gdbm or the
+Scheme wrapper to ensure exclusive access by a Scheme writer.
 
 @node List
 @chapter The exported bindings.
