@@ -210,7 +210,7 @@ USA.
   (guarantee thread? thread 'thread-execution-state)
   (thread/execution-state thread))
 
-(define (create-thread root-continuation thunk)
+(define (create-thread root-continuation thunk #!optional name)
   (if (not (or (not root-continuation) (continuation? root-continuation)))
       (error:wrong-type-argument root-continuation
 				 "continuation or #f"
@@ -226,6 +226,9 @@ USA.
 	      (call-with-current-continuation
 		(lambda (continuation)
 		  (let ((thread (make-thread continuation)))
+		    (if (not (default-object? name))
+			(1d-table/put! (thread/properties thread)
+				       'name name))
 		    (%within-continuation (let ((k return)) (set! return #f) k)
 					  #t
 					  (lambda () thread)))))
