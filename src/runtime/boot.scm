@@ -220,9 +220,7 @@ USA.
       (thunk))))
 
 (define (with-limited-interrupts limit-mask procedure)
-  ((ucode-primitive with-interrupt-mask)
-   (fix:and limit-mask (get-interrupt-enables))
-   procedure))
+  ((ucode-primitive with-interrupts-reduced) limit-mask procedure))
 
 ;;;; Boot-time initializers
 
