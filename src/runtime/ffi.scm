@@ -228,7 +228,7 @@ USA.
 (define-integrable alien-function/filename %alien-function/filename)
 
 (define-integrable (alien-function/name alienf)
-  (string-tail (%alien-function/name alienf) 4)) 
+  (string-tail (%alien-function/name alienf) 4))
 
 (define (%set-alien-function/address! alienf address)
   (let ((qr (integer-divide address %radix)))
@@ -362,15 +362,18 @@ USA.
   (guarantee-alien-function alien-function 'call-alien)
   (alien-function-cache! alien-function)
   (for-each
-   (lambda (arg)
-     (if (alien-function? arg)
-	 (alien-function-cache! arg)))
-   args)
+    (lambda (arg)
+      (if (alien-function? arg)
+	  (alien-function-cache! arg)))
+    args)
   (with-thread-events-blocked
    (lambda ()
      (without-interrupts
       (lambda ()
-	(call-alien* alien-function args))))))
+	(let* ((saved (flo:environment))
+	       (value (call-alien* alien-function args)))
+	  (flo:set-environment! saved)
+	  value))))))
 
 #;(define-integrable (call-alien* alien-function args)
   (apply (ucode-primitive c-call -1) alien-function args))
