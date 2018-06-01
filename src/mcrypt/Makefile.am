@@ -71,9 +71,7 @@ mcrypt-const.scm: mcrypt-const
 @MIT_SCHEME_DEPS@
 stamp-scheme: stamp-shim $(sources) mcrypt.pkg
 	touch stamp-scheme
-	if ! echo '(load "compile.scm")' \
-	     | $(MIT_SCHEME_EXE) --prepend-library . --batch-mode; then \
-	    rm stamp-scheme; exit 1; fi
+	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
 
 CLEANFILES = mcrypt-const* mcrypt-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd

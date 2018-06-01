@@ -43,7 +43,11 @@ ${MIT_SCHEME_EXE} --prepend-library . --batch-mode <<\EOF
   (cref/generate-constructors "x11")
   )
 EOF
-SUFFIX=`echo "(display (microcode-id/operating-system-suffix))" \
+suffix=`echo "(display (microcode-id/operating-system-suffix))" \
 	| ${MIT_SCHEME_EXE} --batch-mode`
-REPORT=x11-$SUFFIX.crf
-if [ -s "$REPORT" ]; then echo "$REPORT:1: error: not empty"; exit 1; fi
+report=x11-$suffix.crf
+if [ -s "$report" ]; then
+    echo "$0: warning: $report is not empty"
+    awk "{printf \"$report:%d: %s\\n\",NR,\$0}" $report
+    exit 1
+fi

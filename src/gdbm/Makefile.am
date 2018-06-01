@@ -71,9 +71,7 @@ gdbm-const.scm: gdbm-const
 @MIT_SCHEME_DEPS@
 stamp-scheme: stamp-shim $(sources) gdbm.pkg
 	touch stamp-scheme
-	if ! echo '(load "compile.scm")' \
-	     | $(MIT_SCHEME_EXE) --prepend-library . --batch-mode; then \
-	    rm stamp-scheme; exit 1; fi
+	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
 
 CLEANFILES = gdbm-const* gdbm-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd

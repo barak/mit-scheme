@@ -4,9 +4,9 @@
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
 #     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
-#     2015, 2016, 2017, 2018 Massachusetts Institute of Technology
+#     2015, 2016, 2017 Massachusetts Institute of Technology
 #
-# This file is part of an X11-screen plugin for MIT/GNU Scheme.
+# This file is part of a PostgreSQL plugin for MIT/GNU Scheme.
 #
 # This plugin is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,35 +23,16 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-# Compile the X11-SCREEN plugin.
+# Compile the PostgreSQL option.
 
 set -e
 : ${MIT_SCHEME_EXE=mit-scheme}
-${MIT_SCHEME_EXE} --batch-mode <<\EOF
-(begin
-
-  (parameterize ((param:suppress-loading-message? #t))
-    (load-option 'CREF)
-    (load-option 'X11)
-    (load-option 'EDWIN))
-
-  (if (name->package '(EDWIN SCREEN X11-SCREEN))
-      (error "The (EDWIN SCREEN X11-SCREEN) package already exists."))
-  (let ((package-set (package-set-pathname "x11-screen")))
-    (if (not (file-modification-time<? "x11-screen.pkg" package-set))
-	(cref/generate-trivial-constructor "x11-screen" #f))
-    (construct-packages-from-file (fasload package-set)))
-
-  (compile-file "x11-screen" '() (->environment '(edwin screen x11-screen)))
-  ;;(compile-file "x11-key" '() (->environment '(edwin x-keys)))
-  ;;(compile-file "x11-com" '() (->environment '(edwin x-commands)))
-
-  (cref/generate-constructors "x11-screen")
-  )
+${MIT_SCHEME_EXE} --prepend-library . --batch-mode <<\EOF
+(load "compile.scm")
 EOF
 suffix=`echo "(display (microcode-id/operating-system-suffix))" \
 	| ${MIT_SCHEME_EXE} --batch-mode`
-report=x11-screen-$suffix.crf
+report=pgsql-$suffix.crf
 if [ -s "$report" ]; then
     echo "$0: warning: $report is not empty"
     awk "{printf \"$report:%d: %s\\n\",NR,\$0}" $report
