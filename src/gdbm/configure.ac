@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
 AC_INIT([MIT/GNU Scheme gdbm plugin],
-        [0.2],
+        [0.4],
         [bug-mit-scheme@gnu.org],
         [mit-scheme-gdbm])
 AC_CONFIG_SRCDIR([gdbm.pkg])
