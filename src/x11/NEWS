@@ -22,6 +22,12 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 02110-1301, USA.
 
+mit-scheme-x11 0.3 - Matt Birkholz, 2018-06-01
+==============================================
+
+Allow CurrentTime as a Time argument (to fix an intermittent error
+when cutting/pasting).
+
 mit-scheme-x11 0.2 - Matt Birkholz, 2017-05-23
 ==============================================
 
