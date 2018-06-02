@@ -360,8 +360,7 @@ USA.
 	   (newline port)
 	   (write (stack-frame/return-address subproblem) port)))))
 
-(define subexpression-marker
-  ((ucode-primitive string->symbol) "###"))
+(define-integrable subexpression-marker '<!>)
 
 (define (print-subproblem-environment dstate port)
   (let ((environment-list (dstate/environment-list dstate)))
