@@ -154,8 +154,8 @@ USA.
 	      (eq? (car text) declaration-tag)))))
 (register-predicate! scode-declaration? 'scode-declaration '<= scode-comment?)
 
-(define declaration-tag
-  ((ucode-primitive string->symbol) "#[declaration]"))
+(define-integrable declaration-tag
+  '|#[declaration]|)
 
 (define (scode-declaration-text declaration)
   (guarantee scode-declaration? declaration 'scode-declaration-text)
