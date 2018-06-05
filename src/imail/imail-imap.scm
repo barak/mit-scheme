@@ -741,7 +741,8 @@ USA.
 	   (set! connection-closure-thread-registration
 		 (start-standard-polling-thread
 		  connection-closure-thread-interval
-		  connection-closure-output-processor))
+		  connection-closure-output-processor
+		  'connection-closure-thread))
 	   unspecific)))))
 
 (define (connection-closure-output-processor)

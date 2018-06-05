@@ -2229,7 +2229,8 @@ WARNING: With a prefix argument, this command may take a very long
 				  (start-standard-polling-thread
 				   (* 1000 interval)
 				   (probe-folder-output-processor
-				    (weak-cons folder unspecific)))))))))))
+				    (weak-cons folder unspecific))
+				   folder)))))))))
 
 (define ((probe-folder-output-processor folder))
   (let ((folder (weak-car folder)))

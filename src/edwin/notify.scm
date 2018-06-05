@@ -181,7 +181,8 @@ which can show various things including time, load average, and mail status."
     (set! notifier-thread-registration
 	  (start-standard-polling-thread (* (ref-variable notify-interval #f)
 					    1000)
-					 notifier))
+					 notifier
+					 (cons 'notifier current-editor)))
     unspecific))
 
 (define (notifier)

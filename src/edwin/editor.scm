@@ -54,6 +54,7 @@ USA.
 		 (inferior-threads '())
 		 (recursive-edit-continuation #f)
 		 (recursive-edit-level 0))
+       (thread-put! editor-thread 'name edwin-editor)
        (editor-grab-display edwin-editor
 	 (lambda (with-editor-ungrabbed operations)
 	   (let ((message (cmdl-message/null)))
@@ -78,7 +79,9 @@ USA.
 					   thunks)
 					 (cdr thunks)))
 				((null? thunks))
-			      (create-thread root-continuation (car thunks)))
+			      (create-thread root-continuation
+				(car thunks)
+				(car thunks)))
 			    (top-level-command-reader
 			     edwin-initialization)))))))
 		 message)
@@ -580,7 +583,8 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 		 (weak-set-cdr! (car threads) #f))
 	       (loop (cdr threads) threads)))))))
 
-(define (start-standard-polling-thread interval output-processor)
+(define (start-standard-polling-thread interval output-processor
+				       #!optional name)
   (let ((holder (list #f)))
     (set-car! holder
 	      (register-inferior-thread!
@@ -593,7 +597,8 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 				     (exit-current-thread unspecific))
 				    (registration
 				     (inferior-thread-output! registration))))
-			    (sleep-current-thread interval))))))
+			    (sleep-current-thread interval)))
+			name)))
 		 (detach-thread thread)
 		 thread)
 	       output-processor))

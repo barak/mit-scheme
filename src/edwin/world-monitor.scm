@@ -51,13 +51,12 @@ it, and spawn a thread to update it after every
   (set-buffer-major-mode! buffer (ref-mode-object read-only))
   (local-set-variable! truncate-lines #t buffer)
   (let ((registration #f)
-	(report #f)
-	(thread-flags (list (cons (current-thread) "edwin"))))
+	(report #f))
 
     (define (new-report)
       (call-with-output-string
 	(lambda (port)
-	  (world-report port thread-flags))))
+	  (world-report port))))
 
     (define (sleep)
       (sleep-current-thread
@@ -80,10 +79,9 @@ it, and spawn a thread to update it after every
 		       (if registration
 			   (deregister-inferior-thread! registration))
 		       (set! registration #f)
-		       (exit-current-thread #t))))))))
-
+		       (exit-current-thread #t)))))
+	     buffer)))
       (buffer-put! buffer 'WORLD-MONITOR monitor)
-      (set! thread-flags (cons (cons monitor "monitor") thread-flags))
       (update-world-monitor! buffer (new-report))
       (set-buffer-point! buffer (buffer-start buffer))
       (set! registration

@@ -138,7 +138,8 @@ evaluated in the specified inferior REPL buffer."
 	     (lambda ()
 	       (signal-thread-event editor-thread
 		 (lambda ()
-		   (unwind-inferior-repl-buffer buffer)))))))))))
+		   (unwind-inferior-repl-buffer buffer)))))))))
+    buffer))
 
 (define (make-init-message message)
   (if message
