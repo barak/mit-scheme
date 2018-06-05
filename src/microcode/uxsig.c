@@ -873,6 +873,7 @@ interactive_interrupt_handler (SIGCONTEXT_T * scp)
 	    fprintf (stderr, "Problems reading keyboard input -- Exitting.\n");
 	    termination_eof ();
 	  }
+	  /* fall through */
 	default:
 	  if (!option_emacs_subprocess)
 	    print_interactive_help ();
@@ -1003,6 +1004,7 @@ describe_sighnd (int signo, unsigned char c)
 	    case dfl_terminate: goto describe_terminate;
 	    }
       }
+      /* fall through */
     default:
       fputs ("When typed, this character will have an unknown effect.\n",
 	     stdout);
