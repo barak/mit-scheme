@@ -29,7 +29,11 @@ USA.
 (declare (usual-integrations))
 
 (define-structure (buffer
-		   (constructor %make-buffer (%name %default-directory)))
+		   (constructor %make-buffer (%name %default-directory))
+		   (print-procedure
+		    (standard-print-method 'BUFFER
+		      (lambda (buffer)
+			(list (buffer-name buffer))))))
   %name
   group
   mark-ring
