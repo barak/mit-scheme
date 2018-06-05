@@ -496,22 +496,37 @@ USA.
      (scons-rule `((* (subform (cons ,r4rs-lambda-list? (+ any)))))
        (lambda (clauses)
 	 (if (pair? clauses)
-	     (let ((arities (map r4rs-lambda-list-arity (map car clauses)))
-		   (temps
-		    (map (lambda (i)
-			   (new-identifier (symbol 'p i)))
-			 (iota (length clauses)))))
-	       (scons-let (map (lambda (temp clause)
-				 (list temp
-				       (apply scons-lambda clause)))
-			       temps
-			       clauses)
-		 (let ((choices (map cons arities temps)))
-		   (if (every exact-nonnegative-integer? arities)
-		       (case-lambda-no-rest choices)
-		       (case-lambda-rest choices)))))
+	     (let ((clauses (case-lambda-eliminate-redundant-clauses clauses)))
+	       (if (pair? (cdr clauses))
+		   (let ((arities
+			  (map r4rs-lambda-list-arity (map car clauses)))
+			 (temps
+			  (map (lambda (i)
+				 (new-identifier (symbol 'p i)))
+			       (iota (length clauses)))))
+		     (scons-let (map (lambda (temp clause)
+				       (list temp
+					     (apply scons-lambda clause)))
+				     temps
+				     clauses)
+		       (let ((choices (map cons arities temps)))
+			 (if (every exact-nonnegative-integer? arities)
+			     (case-lambda-no-rest choices)
+			     (case-lambda-rest choices)))))
+		   (apply scons-lambda (car clauses))))
 	     (case-lambda-no-choices)))))))
 
+(define (case-lambda-eliminate-redundant-clauses clauses)
+  ;; For now just handle fixed arities.  Handling variable arities needs
+  ;; something like intervals or an inversion list, which is a lot of hair.
+  (let loop ((clauses clauses) (arities '()))
+    (if (pair? clauses)
+	(let ((arity (r4rs-lambda-list-arity (caar clauses))))
+	  (if (memv arity arities)
+	      (loop (cdr clauses) arities)
+	      (cons (car clauses) (loop (cdr clauses) (cons arity arities)))))
+	'())))
+
 (define (case-lambda-no-rest choices)
   (let ((choices (sort choices (lambda (c1 c2) (fix:< (car c1) (car c2))))))
     (let ((low (apply min (map car choices)))
@@ -519,23 +534,22 @@ USA.
       (let ((args
 	     (map (lambda (i)
 		    (new-identifier (symbol 'a i)))
-		  (iota (fix:+ high 1)))))
+		  (iota high))))
 
 	(define (choose i)
 	  (let ((choice (assv i choices))
-		(args* (list-head args (fix:+ i 1))))
+		(args* (list-head args i)))
 	    (if choice
 		(apply scons-call (cdr choice) args*)
 		(scons-call 'error "No matching case-lambda clause:"
 			    (apply scons-call 'list args*)))))
 
-	(scons-lambda (append (list-head args (fix:+ low 1))
+	(scons-lambda (append (list-head args low)
 			      (list #!optional)
-			      (list-tail args (fix:+ low 1)))
+			      (list-tail args low))
 	  (let loop ((i low))
 	    (if (fix:< i high)
-		(scons-if (scons-call 'default-object?
-				      (list-ref args (fix:+ i 1)))
+		(scons-if (scons-call 'default-object? (list-ref args i))
 			  (choose i)
 			  (loop (fix:+ i 1)))
 		(choose i))))))))
