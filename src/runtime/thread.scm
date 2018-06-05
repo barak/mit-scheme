@@ -1211,7 +1211,8 @@ USA.
   (without-interrupts
    (lambda ()
      (let ((owner (thread-mutex/owner mutex)))
-       (if (and owner (not (eq? owner (current-thread))))
+       (if (or (not owner)
+	       (not (eq? owner (current-thread))))
 	   (error "Don't own mutex:" mutex))
        (%unlock-thread-mutex mutex owner)))))
 
