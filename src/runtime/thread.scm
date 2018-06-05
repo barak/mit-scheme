@@ -102,11 +102,15 @@ USA.
 
 (define (thread-get thread property)
   (guarantee thread? thread 'thread-get)
-  (1d-table/get (thread/properties thread) property #f))
+  (without-interrupts
+   (lambda ()
+     (1d-table/get (thread/properties thread) property #f))))
 
 (define (thread-put! thread property value)
   (guarantee thread? thread 'thread-put!)
-  (1d-table/put! (thread/properties thread) property value))
+  (without-interrupts
+   (lambda ()
+     (1d-table/put! (thread/properties thread) property value))))
 
 (define thread-population)
 (define first-running-thread)
