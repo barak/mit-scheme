@@ -29,15 +29,11 @@ USA.
 
 (declare (usual-integrations))
 
-(define (world-report #!optional port thread-flags)
+(define (world-report #!optional port)
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
 	     (guarantee textual-output-port? port 'world-report)))
-	(flags (cons (cons (console-thread) "console")
-		     (if (default-object? thread-flags)
-			 '()
-			 thread-flags)))
 	(now (get-universal-time))
 	(cpu (process-time-clock)))
     (write-string "-*-Outline-*-" port)
@@ -54,7 +50,7 @@ USA.
     (write-time-interval (- now time-world-restored) port)
     (newline port)
     (memory-report port)
-    (thread-report flags port)))
+    (thread-report port)))
 
 (define (ticks->string ticks)
   (parameterize* (list (cons param:flonum-printer-cutoff '(absolute 3)))
@@ -142,7 +138,7 @@ USA.
 	      (write-char #\- port)
 	      (loop (1+ n))))))))
 
-(define (thread-report flags port)
+(define (thread-report port)
   (newline port)
   (write-string "* Threads" port)
   (newline port)
@@ -158,17 +154,11 @@ USA.
 	(write-string " CPU, " port)
 	(write-time (thread/real-time thread) port)
 	(write-string " real" port)
-	(for-each
-	  (lambda (name)
-	    (write-string ", " port)
-	    (write-string name port))
-	  (append-map! (lambda (item)
-			 (if (and (pair? item)
-				  (string? (cdr item))
-				  (eq? thread (car item)))
-			     (list (cdr item))
-			     '()))
-		       flags))
+	(let ((name (thread-get thread 'name)))
+	  (if name
+	      (begin
+		(write-char #\space port)
+		(write name port))))
 	(newline port)))
     (sort (map (lambda (t) (cons (hash-object t) t)) (threads-list))
 	  (lambda (a b) (< (car a) (car b))))))
