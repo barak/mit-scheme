@@ -284,8 +284,6 @@ libssl-dev (-lcrypto)
 libgdbm-dev (-lgdbm)
 @item MCRYPT
 libmcrypt-dev (-lmcrypt)
-@item MHASH
-libmhash-dev (-lmhash)
 @item PGSQL
 libpq-dev (-lpq)
 @item X11

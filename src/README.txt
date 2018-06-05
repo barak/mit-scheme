@@ -81,7 +81,11 @@ There are a few C/Unix FFI plugins:
 * "mcrypt" wraps libmcrypt and provides replacements for the mcrypt-*
   procedures implemented in (runtime crypto).
 
-* "mhash" wraps libmhash.
+* "pgsql" wraps libpq and provides a drop-in replacement for the
+  microcode module based package (runtime postgresql).
+
+* "x11" wraps libX11 and provides a drop-in replacement for the
+  microcode module based package (runtime x-graphics).
 
 These are miscellaneous extras:
 
