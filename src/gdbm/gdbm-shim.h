@@ -33,8 +33,8 @@ USA.
 
 typedef struct gdbm_args {
   GDBM_FILE dbf;
-  gdbm_error gdbm_errno;
-  int sys_errno;
+  gdbm_error errno_gdbm;
+  int errno_sys;
   datum key, content;
   int key_allocation, content_allocation;
 } gdbm_args;
@@ -54,4 +54,4 @@ extern int do_gdbm_nextkey (gdbm_args * args);
 extern int do_gdbm_reorganize (gdbm_args * args);
 extern void do_gdbm_sync (gdbm_args * args);
 extern int do_gdbm_setopt (gdbm_args * args, int option, int value);
-extern char * get_gdbm_version (void);
+extern const char * get_gdbm_version (void);

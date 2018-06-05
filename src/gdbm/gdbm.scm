@@ -322,8 +322,8 @@ USA.
 (define (gdbm-error gdbf msg)
   (let ((args (gdbf-args gdbf)))
     (error (string-append msg " failed:")
-	   (gdbm-strerror (C-> args "gdbm_args gdbm_errno"))
-	   (strerror (C-> args "gdbm_args sys_errno")))))
+	   (gdbm-strerror (C-> args "gdbm_args errno_gdbm"))
+	   (strerror (C-> args "gdbm_args errno_sys")))))
 
 (define (gdbf-args-put-key! args key)
   (let ((bytes (->bytes key)))

@@ -56,8 +56,8 @@ USA.
 (typedef gdbm_args
 	 (struct
 	  (dbf GDBM_FILE)
-	  (gdbm_errno int)
-	  (sys_errno int)
+	  (errno_gdbm int)
+	  (errno_sys int)
 	  (key datum)
 	  (content datum)))
 
@@ -77,10 +77,10 @@ USA.
 (extern int do_gdbm_nextkey (args (* gdbm_args)))
 (extern int do_gdbm_reorganize (args (* gdbm_args)))
 (extern void do_gdbm_sync (args (* gdbm_args)))
-(extern (* char) gdbm_strerror (errnum int))
-(extern (* char) strerror (errnum int))
+(extern (* (const char)) gdbm_strerror (errnum int))
+(extern (* (const char)) strerror (errnum int))
 (extern int do_gdbm_setopt (args (* gdbm_args)) (option int) (value int))
-(extern (* char) get_gdbm_version)
+(extern (* (const char)) get_gdbm_version)
 
 (enum (GDBM_NO_ERROR)
       (GDBM_MALLOC_ERROR)
