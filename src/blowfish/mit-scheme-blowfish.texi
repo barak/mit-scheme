@@ -79,8 +79,8 @@ decryption phase.
 
 @deffn Procedure blowfish-set-key bytes
 Generate a Blowfish key from @var{bytes}, which must be 72 bytes or
-less in length.  For text keys (strings), apply @code{md5} to the
-string, and use the digest for @var{bytes}.
+less in length.  For text keys (strings), apply @code{md5-string}
+and use the digest for @var{bytes}.
 @end deffn
 
 @deffn Procedure blowfish-ecb input output key encyrpt?
