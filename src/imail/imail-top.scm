@@ -2230,7 +2230,9 @@ WARNING: With a prefix argument, this command may take a very long
 				   (* 1000 interval)
 				   (probe-folder-output-processor
 				    (weak-cons folder unspecific))
-				   folder)))))))))
+				   (list 'probe-folder
+					 (url-presentation-name
+					  (resource-locator folder))))))))))))
 
 (define ((probe-folder-output-processor folder))
   (let ((folder (weak-car folder)))
