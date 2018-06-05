@@ -4995,8 +4995,10 @@ USA.
 	  thread-continuation
 	  thread-dead?
 	  thread-execution-state
+	  thread-get
 	  thread-mutex-owner
 	  thread-mutex?
+	  thread-put!
 	  thread-timer-interval
 	  thread?
 	  threads-list
