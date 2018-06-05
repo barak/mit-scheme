@@ -123,7 +123,9 @@ USA.
   (set! timer-records #f)
   (set! timer-interval 100)
   (reset-threads-low!)
-  (let ((first (%make-thread (make-1d-table/unsafe))))
+  (let* ((properties (make-1d-table/unsafe))
+	 (first (%make-thread properties)))
+    (1d-table/put! properties 'name 'initial)
     (set-thread/exit-value! first detached-thread-marker)
     (set-thread/root-state-point! first
 				  (current-state-point state-space:local))
