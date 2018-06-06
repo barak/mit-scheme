@@ -80,6 +80,7 @@ USA.
 			'hash-table-constructor
 			(->environment '(runtime hash-table))
 			'hash-table-constructor))
+    (provide-rename env 'hash-table/clear! 'hash-table-clear!)
 
     (if (unbound? env 'bundle)
 	(eval '(define-syntax bundle
