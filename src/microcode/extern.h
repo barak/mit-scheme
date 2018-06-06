@@ -326,7 +326,7 @@ extern uint32_t combine_hashes (uint32_t, uint32_t);
 #else
   /* Shorten the result using xor-folding.  */
 #  define HASH_TO_FIXNUM(hash)						\
-  (ULONG_TO_FIXNUM (((hash) >> FIXNUM_LENGTH) ^ ((hash) & FIXNUM_MASK)));
+  (ULONG_TO_FIXNUM (((hash) >> FIXNUM_LENGTH) ^ ((hash) & FIXNUM_MASK)))
 #endif
 
 /* Random and OS utilities */
