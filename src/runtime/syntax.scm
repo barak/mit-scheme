@@ -54,11 +54,24 @@ USA.
 	     (runtime-environment->syntactic environment))))
     (with-identifier-renaming
      (lambda ()
-       (compile-item
-	(body-item #f
-	  (map-in-order (lambda (form)
-			  (classify-form form senv (initial-hist form)))
-			forms)))))))
+       (syntax-internal forms senv)))))
+
+(define (syntax-library-forms forms env)
+  (guarantee list? forms 'syntax-library-forms)
+  (with-identifier-renaming
+   (lambda ()
+     (receive (sealed get-bound get-free) (make-sealed-senv env)
+       (let ((result (syntax-internal forms sealed)))
+	 (values result
+		 (get-bound)
+		 (get-free)))))))
+
+(define (syntax-internal forms senv)
+  (compile-item
+   (body-item #f
+     (map-in-order (lambda (form)
+		     (classify-form form senv (initial-hist form)))
+		   forms))))
 
 ;;;; Classifier
 

@@ -29,20 +29,28 @@ USA.
 
 (declare (usual-integrations))
 
-(define-deferred standard-libraries
-  (make-library-db))
+(define (add-standard-libraries library-db)
+  (for-each (lambda (p)
+	      (make-loaded-library (car p)
+				   (map (lambda (id)
+					  (make-library-export id id))
+					(cdr p))
+				   system-global-environment
+				   library-db))
+	    standard-libraries))
 
 (define (define-standard-library name exports)
-  (add-boot-init!
-   (lambda ()
-     (standard-libraries 'put!
-			 name
-			 (make-parsed-library name
-					      (map (lambda (id)
-						     (cons id id))
-						   exports)
-					      '()
-					      '())))))
+  (let ((p (assoc name standard-libraries)))
+    (if p
+	(set-cdr! p exports)
+	(begin
+	  (set! standard-libraries
+		(cons (cons name exports)
+		      standard-libraries))
+	  unspecific)))
+  name)
+
+(define standard-libraries '())
 
 (define-standard-library '(scheme base)
   '(*

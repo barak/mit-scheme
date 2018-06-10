@@ -4486,6 +4486,8 @@ USA.
 	  syntax
 	  syntax*
 	  syntax-error)
+  (export (runtime library)
+	  syntax-library-forms)
   (export (runtime syntax)
 	  biselect-cadr
 	  biselect-car
@@ -4593,6 +4595,7 @@ USA.
 	  make-internal-senv
 	  make-keyword-senv
 	  make-partial-senv
+	  make-sealed-senv
 	  reserve-identifier
 	  senv->runtime
 	  senv-top-level?))
@@ -5820,10 +5823,14 @@ USA.
   (export ()
 	  world-report))
 
+(define-package (runtime library)
+  (files)
+  (parent (runtime)))
+
 (define-package (runtime library parser)
   (files "library-parser")
-  (parent (runtime))
-  (export (runtime)
+  (parent (runtime library))
+  (export (runtime library)
 	  library-name?
 	  make-parsed-library
 	  parse-define-library-form
@@ -5837,13 +5844,49 @@ USA.
 
 (define-package (runtime library database)
   (files "library-database")
-  (parent (runtime))
-  (export (runtime)
+  (parent (runtime library))
+  (export (runtime library)
 	  library-db?
 	  make-library-db))
 
 (define-package (runtime library standard)
   (files "library-standard")
-  (parent (runtime))
-  (export (runtime)
-	  standard-libraries))
+  (parent (runtime library))
+  (export (runtime library)
+	  add-standard-libraries))
+
+(define-package (runtime library imports)
+  (files "library-imports")
+  (parent (runtime library))
+  (export (runtime library)
+	  convert-import-sets
+	  library-export-from
+	  library-export-to
+	  library-import-from
+	  library-import-from-library
+	  library-import-to
+	  make-library-export))
+
+(define-package (runtime library loader)
+  (files "library-loader")
+  (parent (runtime library))
+  (export ()
+	  environment			;R7RS
+	  )
+  (export (runtime library)
+	  compile-library
+	  compiled-library->scode
+	  compiled-library-body
+	  compiled-library-exports
+	  compiled-library-imports
+	  compiled-library-name
+	  compiled-library?
+	  converted-imports->environment
+	  library-exporter
+	  load-library
+	  loaded-library-environment
+	  loaded-library-exporter
+	  loaded-library-exports
+	  loaded-library-name
+	  loaded-library?
+	  make-loaded-library))

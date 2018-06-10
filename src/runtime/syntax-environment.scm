@@ -260,3 +260,52 @@ USA.
 	    (bound-senv ,bound-senv)))
 
 	(make-senv get-type get-runtime lookup store rename describe))))
+
+;;; Sealed syntactic environments are used for libraries.  A combination of
+;;; top-level and internal syntactic environments, they gather all of the free
+;;; references together so they can be captured by a lambda expression wrapped
+;;; around the body of the library.
+
+(define (make-sealed-senv env)
+  (guarantee environment? env 'make-sealed-senv)
+  (let ((bound '())
+	(free '()))
+
+    (define (get-type)
+      'sealed)
+
+    (define (get-runtime)
+      env)
+
+    (define (lookup identifier)
+      (cond ((or (assq identifier bound)
+		 (assq identifier free))
+	     => cdr)
+	    ((environment-lookup-macro env identifier))
+	    (else
+	     ;; Capture free runtime references:
+	     (let ((item (var-item identifier)))
+	       (set! free (cons (cons identifier item) free))
+	       item))))
+
+    (define (store identifier item)
+      (cond ((assq identifier bound)
+	     => (lambda (binding)
+		  (set-cdr! binding item)))
+	    ((assq identifier free)
+	     (error "Can't define name; already free:" identifier))
+	    (else
+	     (set! bound (cons (cons identifier item) bound))
+	     unspecific)))
+
+    (define (rename identifier)
+      identifier)
+
+    (define (describe)
+      `((bound ,bound)
+	(free ,free)
+	(env ,env)))
+
+    (values (make-senv get-type get-runtime lookup store rename describe)
+	    (lambda () (map car bound))
+	    (lambda () (map car free)))))

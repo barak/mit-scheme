@@ -30,6 +30,40 @@ USA.
 (declare (usual-integrations))
 
 (define (make-library-db)
+  (let ((compiled (make-library-table))
+	(loaded (make-library-table)))
+
+    (define (compiled? name)
+      (compiled 'has? name))
+
+    (define (get-compiled name #!optional default-value)
+      (compiled 'get name default-value))
+
+    (define (save-compiled! library)
+      (compiled 'put! (compiled-library-name library) library))
+
+    (define (require-compiled names)
+      (let ((unknown (remove compiled? names)))
+	(if (pair? unknown)
+	    (error "Can't resolve libraries:" unknown))))
+
+    (define (loaded? name)
+      (loaded 'has? name))
+
+    (define (get-loaded name #!optional default-value)
+      (loaded 'get name default-value))
+
+    (define (save-loaded! library)
+      (loaded 'put! (loaded-library-name library) library))
+
+    (bundle library-db?
+	    compiled? get-compiled save-compiled! require-compiled
+	    loaded? get-loaded save-loaded!)))
+
+(define library-db?
+  (make-bundle-predicate 'library-database))
+
+(define (make-library-table)
   (let ((table (make-equal-hash-table)))
 
     (define (has? name)
@@ -54,7 +88,7 @@ USA.
 		  (put! (car p) (cdr p)))
 		alist*))
 
-    (bundle library-db? has? get put! delete! get-alist put-alist!)))
+    (bundle library-table? has? get put! delete! get-alist put-alist!)))
 
-(define library-db?
-  (make-bundle-predicate 'library-database))
+(define library-table?
+  (make-bundle-predicate 'library-table))

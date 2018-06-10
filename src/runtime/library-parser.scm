@@ -29,37 +29,41 @@ USA.
 
 (declare (usual-integrations))
 
-(define (parse-define-library-form form)
-  (let ((result (%parse-define-library form)))
-    (and result
-	 (let loop
-	     ((decls (expand-parsed-decls (cdr result)))
-	      (exports '())
-	      (imports '())
-	      (contents '()))
-	   (if (pair? decls)
-	       (let ((decl (car decls))
-		     (decls (cdr decls)))
-		 (case (car decl)
-		   ((export)
-		    (loop decls
-			  (append (reverse (cdr decl)) exports)
-			  imports
-			  contents))
-		   ((import)
-		    (loop decls
-			  exports
-			  (append (reverse (cdr decl)) imports)
-			  contents))
-		   (else
-		    (loop decls
-			  exports
-			  imports
-			  (append (reverse (cdr decl)) contents)))))
-	       (make-parsed-library (car result)
-				    (reverse exports)
-				    (reverse imports)
-				    (reverse contents)))))))
+(define (parse-define-library-form form #!optional pathname)
+  (let ((directory
+	 (if (default-object? pathname)
+	     (working-directory-pathname)
+	     (directory-pathname pathname))))
+    (let ((result (%parse-define-library form)))
+      (and result
+	   (let loop
+	       ((decls (expand-parsed-decls (cdr result) pathname))
+		(exports '())
+		(imports '())
+		(contents '()))
+	     (if (pair? decls)
+		 (let ((decl (car decls))
+		       (decls (cdr decls)))
+		   (case (car decl)
+		     ((export)
+		      (loop decls
+			    (append (reverse (cdr decl)) exports)
+			    imports
+			    contents))
+		     ((import)
+		      (loop decls
+			    exports
+			    (append (reverse (cdr decl)) imports)
+			    contents))
+		     (else
+		      (loop decls
+			    exports
+			    imports
+			    (append (reverse (cdr decl)) contents)))))
+		 (make-parsed-library (car result)
+				      (reverse exports)
+				      (reverse imports)
+				      (reverse contents))))))))
 
 (define-record-type <parsed-library>
     (make-parsed-library name exports imports contents)
@@ -69,17 +73,26 @@ USA.
   (imports parsed-library-imports)
   (contents parsed-library-contents))
 
-(define (expand-parsed-decls parsed-decls)
+(define (expand-parsed-decls parsed-decls directory)
   (append-map (lambda (parsed-decl)
 		(case (car parsed-decl)
 		  ((include-library-declarations)
 		   (append-map (lambda (pathname)
-				 (expand-parsed-decls
-				  (get-library-declarations pathname)))
+				 (let ((pathname*
+					(merge-pathnames pathname directory)))
+				   (expand-parsed-decls
+				    (get-library-declarations pathname*)
+				    (directory-pathname pathname*))))
 			       (cdr parsed-decl)))
 		  ((cond-expand)
 		   (expand-parsed-decls
 		    (evaluate-cond-expand eq? parsed-decl)))
+		  ((include include-ci)
+		   (list
+		    (cons (car parsed-decl)
+			  (map (lambda (pathname)
+				 (merge-pathnames pathname directory))
+			       (cdr parsed-decl)))))
 		  (else
 		   (list parsed-decl))))
 	      parsed-decls))

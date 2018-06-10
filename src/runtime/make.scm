@@ -531,8 +531,6 @@ USA.
    (runtime syntax rename)
    (runtime syntax top-level)
    (runtime syntax parser)
-   ;; R7RS Libraries
-   (runtime library standard)
    ;; REP Loops
    (runtime interrupt-handler)
    (runtime gc-statistics)
