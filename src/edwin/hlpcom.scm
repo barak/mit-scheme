@@ -318,9 +318,8 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 (define (with-output-to-help-display thunk)
   (string->temporary-buffer (call-with-output-string
 			      (lambda (port)
-				(parameterize* (list (cons current-output-port
-							   port))
-					       thunk)))
+				(parameterize ((current-output-port port))
+				  (thunk))))
 			    "*Help*"
 			    '(READ-ONLY)))
 

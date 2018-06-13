@@ -303,28 +303,27 @@ USA.
 	0)))
 
 (define (pp-top-level expression port as-code? indentation list-depth)
-  (parameterize* (list (cons x-size
-			     (- (or (get-param:pp-forced-x-size)
-				    (output-port/x-size port))
-				1))
-		       (cons output-port port)
-		       (cons param:print-uninterned-symbols-by-name?
-			     (get-param:pp-uninterned-symbols-by-name?))
-		       (cons param:printer-abbreviate-quotations?
-			     (or as-code?
-				 (param:printer-abbreviate-quotations?))))
-    (lambda ()
-      (let* ((numerical-walk
-	      (if (get-param:pp-avoid-circularity?)
-		  numerical-walk-avoid-circularities
-		  numerical-walk))
-	     (node (numerical-walk expression list-depth)))
-	(if (positive? indentation)
-	    (*print-string (make-string indentation #\space)))
-	(if as-code?
-	    (print-node node indentation list-depth)
-	    (print-non-code-node node indentation list-depth))
-	(output-port/discretionary-flush port)))))
+  (parameterize ((x-size
+		  (- (or (get-param:pp-forced-x-size)
+			 (output-port/x-size port))
+		     1))
+		 (output-port port)
+		 (param:print-uninterned-symbols-by-name?
+		  (get-param:pp-uninterned-symbols-by-name?))
+		 (param:printer-abbreviate-quotations?
+		  (or as-code?
+		      (param:printer-abbreviate-quotations?))))
+    (let* ((numerical-walk
+	    (if (get-param:pp-avoid-circularity?)
+		numerical-walk-avoid-circularities
+		numerical-walk))
+	   (node (numerical-walk expression list-depth)))
+      (if (positive? indentation)
+	  (*print-string (make-string indentation #\space)))
+      (if as-code?
+	  (print-node node indentation list-depth)
+	  (print-non-code-node node indentation list-depth))
+      (output-port/discretionary-flush port))))
 
 (define x-size)
 (define output-port)
@@ -348,19 +347,17 @@ USA.
   (*print-char #\newline))
 
 (define (print-non-code-node node column depth)
-  (parameterize* (list (cons dispatch-list '())
-		       (cons dispatch-default
-			     (if (get-param:pp-lists-as-tables?)
-				 print-data-table
-				 print-data-column)))
-    (lambda ()
-      (print-node node column depth))))
+  (parameterize ((dispatch-list '())
+		 (dispatch-default
+		  (if (get-param:pp-lists-as-tables?)
+		      print-data-table
+		      print-data-column)))
+    (print-node node column depth)))
 
 (define (print-code-node node column depth)
-  (parameterize* (list (cons dispatch-list (code-dispatch-list))
-		       (cons dispatch-default print-combination))
-    (lambda ()
-      (print-node node column depth))))
+  (parameterize ((dispatch-list (code-dispatch-list))
+		 (dispatch-default print-combination))
+    (print-node node column depth)))
 
 (define (print-data-column nodes column depth)
   (*print-open)
@@ -840,20 +837,19 @@ USA.
 
 (define (walk-highlighted-object object list-depth numerical-walk)
   (let ((dl (pph/depth-limit object)))
-    (parameterize* (list (cons param:printer-list-breadth-limit
-			       (let ((bl (pph/breadth-limit object)))
-				 (if (eq? bl 'default)
-				     (param:printer-list-breadth-limit)
-				     bl)))
-			 (cons param:printer-list-depth-limit
-			       (if (eq? dl 'default)
-				   (param:printer-list-depth-limit)
-				   dl)))
-      (lambda ()
-	(numerical-walk (pph/object object)
-			(if (eq? dl 'default)
-			    list-depth
-			    0))))))
+    (parameterize ((param:printer-list-breadth-limit
+		    (let ((bl (pph/breadth-limit object)))
+		      (if (eq? bl 'default)
+			  (param:printer-list-breadth-limit)
+			  bl)))
+		   (param:printer-list-depth-limit
+		    (if (eq? dl 'default)
+			(param:printer-list-depth-limit)
+			dl)))
+      (numerical-walk (pph/object object)
+		      (if (eq? dl 'default)
+			  list-depth
+			  0)))))
 
 
 ;;;     The following are circular list/vector handing procedures.  They allow

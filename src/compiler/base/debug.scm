@@ -78,9 +78,8 @@ USA.
 (define (write-rtl-instructions rtl port)
   (write-instructions
    (lambda ()
-     (parameterize* (list (cons current-output-port port))
-       (lambda ()
-	 (for-each show-rtl-instruction rtl))))))
+     (parameterize ((current-output-port port))
+       (for-each show-rtl-instruction rtl)))))
 
 (define (dump-rtl filename)
   (write-instructions
@@ -105,16 +104,16 @@ USA.
 
 (define (write-instructions thunk)
   (fluid-let ((*show-instruction* write))
-    (parameterize* (list (cons param:printer-radix 16)
-			 (cons param:print-uninterned-symbols-by-name? #t))
-      thunk)))
+    (parameterize ((param:printer-radix 16)
+		   (param:print-uninterned-symbols-by-name? #t))
+      (thunk))))
 
 (define (pp-instructions thunk)
   (fluid-let ((*show-instruction* pretty-print))
-    (parameterize* (list (cons param:pp-primitives-by-name? #f)
-			 (cons param:printer-radix 16)
-			 (cons param:print-uninterned-symbols-by-name? #t))
-      thunk)))
+    (parameterize ((param:pp-primitives-by-name? #f)
+		   (param:printer-radix 16)
+		   (param:print-uninterned-symbols-by-name? #t))
+      (thunk))))
 
 (define *show-instruction*)
 

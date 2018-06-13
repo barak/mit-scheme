@@ -49,26 +49,25 @@ USA.
 					     indentation port)
   (let ((start-mark #f)
 	(end-mark #f))
-    (parameterize* (list (cons param:pp-no-highlights? #f))
-      (lambda ()
-	(debugger-pp
-	 (unsyntax-with-substitutions
-	  expression
-	  (list (cons subexpression
-		      (make-pretty-printer-highlight
-		       (unsyntax subexpression)
-		       (lambda (port)
-			 (set! start-mark
-			       (mark-right-inserting-copy
-				(output-port->mark port)))
-			 unspecific)
-		       (lambda (port)
-			 (set! end-mark
-			       (mark-right-inserting-copy
-				(output-port->mark port)))
-			 unspecific)))))
-	 indentation
-	 port)))
+    (parameterize ((param:pp-no-highlights? #f))
+      (debugger-pp
+       (unsyntax-with-substitutions
+	expression
+	(list (cons subexpression
+		    (make-pretty-printer-highlight
+		     (unsyntax subexpression)
+		     (lambda (port)
+		       (set! start-mark
+			     (mark-right-inserting-copy
+			      (output-port->mark port)))
+		       unspecific)
+		     (lambda (port)
+		       (set! end-mark
+			     (mark-right-inserting-copy
+			      (output-port->mark port)))
+		       unspecific)))))
+       indentation
+       port))
     (if (and start-mark end-mark)
 	(highlight-region-excluding-indentation
 	 (make-region start-mark end-mark)
@@ -702,13 +701,11 @@ USA.
 				 (max summary-minimum-columns
 				      (- columns indentation 4))
 				 (lambda (port)
-				   (parameterize*
-				       (list (cons current-output-port port))
-				     (lambda ()
-				       ((bline-type/write-summary
-					 (bline/type bline))
-					bline
-					(current-output-port))))))))
+				   (parameterize ((current-output-port port))
+				     ((bline-type/write-summary
+				       (bline/type bline))
+				      bline
+				      (current-output-port)))))))
 			   (insert-string (cdr summary) mark)
 			   (if (car summary)
 			       (insert-string " ..." mark)))
@@ -1292,13 +1289,11 @@ it has been renamed, it will not be deleted automatically.")
 	    (cond ((debugging-info/compiled-code? expression)
 		   (write-string ";unknown compiled code" port))
 		  ((not (debugging-info/undefined-expression? expression))
-		   (parameterize* (list (cons param:print-primitives-by-name?
-					      #t))
-		     (lambda ()
-		       (write
-			(unsyntax (if (invalid-subexpression? subexpression)
-				      expression
-				      subexpression))))))
+		   (parameterize ((param:print-primitives-by-name? #t))
+		     (write
+		      (unsyntax (if (invalid-subexpression? subexpression)
+				    expression
+				    subexpression)))))
 		  ((debugging-info/noise? expression)
 		   (write-string ";" port)
 		   (write-string ((debugging-info/noise expression) #f)
@@ -1384,9 +1379,8 @@ it has been renamed, it will not be deleted automatically.")
 	    (subproblem/number (reduction/subproblem reduction)))
 	   port)))
     (write-string " " port)
-    (parameterize* (list (cons param:print-primitives-by-name? #t))
-      (lambda ()
-	(write (unsyntax (reduction/expression reduction)) port)))))
+    (parameterize ((param:print-primitives-by-name? #t))
+      (write (unsyntax (reduction/expression reduction)) port))))
 
 (define (reduction/write-description bline port)
   (let ((reduction (bline/object bline)))

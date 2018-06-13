@@ -91,9 +91,8 @@ USA.
 	      (lambda (inport)
 		(let loop ()
 		  (let ((form
-			 (parameterize* (list (cons param:reader-fold-case? #f))
-			   (lambda ()
-			     (read inport)))))
+			 (parameterize ((param:reader-fold-case? #f))
+			   (read inport))))
 		    (if (not (eof-object? form))
 			(begin
 			  (include-cdecl form new-cwd twd includes)

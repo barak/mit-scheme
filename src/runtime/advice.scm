@@ -84,31 +84,30 @@ USA.
       (lambda (original-body state)
 	(call-with-current-continuation
 	 (lambda (continuation)
-	   (parameterize* (list (cons advice-continuation continuation))
-	     (lambda ()
-	       (with-restart 'use-value
-		   "Return a value from the advised procedure."
-		   continuation
-		   (lambda ()
-		     (prompt-for-evaluated-expression "Procedure value"))
+	   (parameterize ((advice-continuation continuation))
+	     (with-restart 'use-value
+		 "Return a value from the advised procedure."
+		 continuation
 		 (lambda ()
+		   (prompt-for-evaluated-expression "Procedure value"))
+	       (lambda ()
+		 (for-each (lambda (advice)
+			     (with-simple-restart 'continue
+				 "Continue with advised procedure."
+			       (lambda ()
+				 (advice procedure arguments environment))))
+			   (car state))
+		 (let ((value (scode-eval original-body environment)))
 		   (for-each (lambda (advice)
 			       (with-simple-restart 'continue
-				   "Continue with advised procedure."
+				   "Return from advised procedure."
 				 (lambda ()
-				   (advice procedure arguments environment))))
-			     (car state))
-		   (let ((value (scode-eval original-body environment)))
-		     (for-each (lambda (advice)
-				 (with-simple-restart 'continue
-				     "Return from advised procedure."
-				   (lambda ()
-				     (advice procedure
-					     arguments
-					     value
-					     environment))))
-			       (cdr state))
-		     value)))))))))))
+				   (advice procedure
+					   arguments
+					   value
+					   environment))))
+			     (cdr state))
+		   value))))))))))
 
 (define advice-continuation)
 
@@ -316,17 +315,15 @@ USA.
 ;;;; Break
 
 (define (break-entry-advice procedure arguments environment)
-  (parameterize* (list (cons the-procedure procedure)
-		       (cons the-arguments arguments))
-    (lambda ()
-      (break-rep environment "Breakpoint on entry" procedure arguments))))
+  (parameterize ((the-procedure procedure)
+		 (the-arguments arguments))
+    (break-rep environment "Breakpoint on entry" procedure arguments)))
 
 (define (break-exit-advice procedure arguments result environment)
-  (parameterize* (list (cons the-procedure procedure)
-		       (cons the-arguments arguments)
-		       (cons the-result result))
-    (lambda ()
-      (break-rep environment "Breakpoint on exit" procedure arguments result)))
+  (parameterize ((the-procedure procedure)
+		 (the-arguments arguments)
+		 (the-result result))
+    (break-rep environment "Breakpoint on exit" procedure arguments result))
   result)
 
 (define (break-rep environment message . info)

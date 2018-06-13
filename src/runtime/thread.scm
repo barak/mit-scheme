@@ -259,8 +259,8 @@ USA.
       (error:wrong-type-argument continuation
 				 "continuation"
 				 with-create-thread-continuation))
-  (parameterize* (list (cons root-continuation-default continuation))
-    thunk))
+  (parameterize ((root-continuation-default continuation))
+    (thunk)))
 
 (define (current-thread)
   (or first-running-thread

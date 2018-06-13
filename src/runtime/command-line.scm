@@ -79,14 +79,13 @@ USA.
 
     (set! *command-line-arguments* '())
     (let ((unused (or ((ucode-primitive get-unused-command-line 0)) '#())))
-      (parameterize* (list (cons param:load-init-file? #t))
-	(lambda ()
-	  (process-keyword (vector->list unused) '())
-	  (for-each (lambda (act) (act))
-		    (reverse after-parsing-actions))
-	  (if (and (param:load-init-file?)
-		   (not (nearest-cmdl/batch-mode?)))
-	      (load-init-file)))))))
+      (parameterize ((param:load-init-file? #t))
+	(process-keyword (vector->list unused) '())
+	(for-each (lambda (act) (act))
+		  (reverse after-parsing-actions))
+	(if (and (param:load-init-file?)
+		 (not (nearest-cmdl/batch-mode?)))
+	    (load-init-file))))))
 
 (define (find-keyword-parser keyword)
   (let ((entry (assoc (strip-leading-hyphens keyword) *command-line-parsers*)))
@@ -258,10 +257,9 @@ ADDITIONAL OPTIONS supported by this band:\n")
      (lambda (arg)
        (run-in-nearest-repl
 	(lambda (repl)
-	  (parameterize* (list (cons param:suppress-loading-message?
-				     (cmdl/batch-mode? repl)))
-	    (lambda ()
-	      (load arg (repl/environment repl)))))))
+	  (parameterize ((param:suppress-loading-message?
+			  (cmdl/batch-mode? repl)))
+	    (load arg (repl/environment repl))))))
      "Loads the argument files as if in the REPL."
      "In batch mode, loading messages are suppressed.")
 

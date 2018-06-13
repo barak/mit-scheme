@@ -359,10 +359,8 @@ Otherwise, it is shown in the echo area."
 			      ((symbol? argl)
 			       (insert-string " . " point)
 			       (insert-string (symbol->string argl) point)))))
-		    (parameterize*
-		     (list (cons param:print-uninterned-symbols-by-name? #t))
-		     (lambda ()
-		       (message procedure-name ": " argl)))))
+		    (parameterize ((param:print-uninterned-symbols-by-name? #t))
+		      (message procedure-name ": " argl))))
 	      (editor-error "Expression does not evaluate to a procedure: "
 			    (extract-string start end))))))))
 

@@ -56,10 +56,8 @@ USA.
 	     (merge-pathnames pathname directory-path))
 	   (let ((pathnames
 		  (let ((fnames (generate-directory-pathnames directory-path)))
-		    (parameterize*
-		     (list (cons *expand-directory-prefixes?* false))
-		     (lambda ()
-		       (map ->pathname fnames))))))
+		    (parameterize ((*expand-directory-prefixes?* false))
+		      (map ->pathname fnames)))))
 	     (if (and (eq? (pathname-name pattern) 'wild)
 		      (eq? (pathname-type pattern) 'wild))
 		 pathnames

@@ -788,33 +788,33 @@ USA.
   (current-input-port port))
 
 (define (with-input-from-port port thunk)
-  (parameterize* (list (cons current-input-port port))
-		 thunk))
+  (parameterize ((current-input-port port))
+    (thunk)))
 
 (define (set-current-output-port! port)
   (current-output-port port))
 
 (define (with-output-to-port port thunk)
-  (parameterize* (list (cons current-output-port port))
-		 thunk))
+  (parameterize ((current-output-port port))
+    (thunk)))
 
 (define (set-notification-output-port! port)
   (notification-output-port port))
 
 (define (with-notification-output-port port thunk)
-  (parameterize* (list (cons notification-output-port port))
-		 thunk))
+  (parameterize ((notification-output-port port))
+    (thunk)))
 
 (define (set-trace-output-port! port)
   (trace-output-port port))
 
 (define (with-trace-output-port port thunk)
-  (parameterize* (list (cons trace-output-port port))
-		 thunk))
+  (parameterize ((trace-output-port port))
+    (thunk)))
 
 (define (set-interaction-i/o-port! port)
   (interaction-i/o-port port))
 
 (define (with-interaction-i/o-port port thunk)
-  (parameterize* (list (cons interaction-i/o-port port))
-		 thunk))
+  (parameterize ((interaction-i/o-port port))
+    (thunk)))

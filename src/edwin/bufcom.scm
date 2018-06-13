@@ -274,8 +274,8 @@ When locked, the buffer's major mode may not be changed."
 (define (with-output-to-temporary-buffer name properties thunk)
   (call-with-output-to-temporary-buffer name properties
     (lambda (port)
-      (parameterize* (list (cons current-output-port port))
-		     thunk))))
+      (parameterize ((current-output-port port))
+	(thunk)))))
 
 (define (call-with-temporary-buffer name procedure)
   (let ((buffer))

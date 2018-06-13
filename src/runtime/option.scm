@@ -46,12 +46,11 @@ USA.
     (define (search-parent pathname)
       (call-with-values
 	  (lambda ()
-	    (parameterize* (list (cons *options* '())
-				 (cons *parent* #f)
-				 (cons param:suppress-loading-message? #t))
-	      (lambda ()
-		(load pathname (simple-top-level-environment #t))
-		(values (*options*) (*parent*)))))
+	    (parameterize ((*options* '())
+			   (*parent* #f)
+			   (param:suppress-loading-message? #t))
+	      (load pathname (simple-top-level-environment #t))
+	      (values (*options*) (*parent*))))
 	find-option))
 
     (if (memq name loaded-options)

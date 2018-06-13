@@ -186,9 +186,8 @@ USA.
 (define ((hardware-trap-noise frame) long?)
   (call-with-output-string
     (lambda (port)
-      (parameterize* (list (cons current-output-port port))
-	(lambda ()
-	  (hardware-trap-frame/describe frame long?))))))
+      (parameterize ((current-output-port port))
+	(hardware-trap-frame/describe frame long?)))))
 
 (define (method/compiled-code frame)
   (let ((get-environment

@@ -218,10 +218,8 @@ procedures are called."
 		    (lambda ()
 		      (catch-file-errors (lambda (condition) condition #f)
 			(lambda ()
-			  (parameterize*
-			   (list (cons param:suppress-loading-message? #t))
-			   (lambda ()
-			     (load pathname '(EDWIN))))))))))))
+			  (parameterize ((param:suppress-loading-message? #t))
+			    (load pathname '(EDWIN)))))))))))
 	  (if (and (procedure? database)
 		   (procedure-arity-valid? database 1))
 	      (database buffer)

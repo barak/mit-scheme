@@ -229,8 +229,8 @@ USA.
 (define ((make-with-input-from-file call) input-specifier thunk)
   (call input-specifier
     (lambda (port)
-      (parameterize* (list (cons current-input-port port))
-		     thunk))))
+      (parameterize ((current-input-port port))
+	(thunk)))))
 
 (define with-input-from-file
   (make-with-input-from-file call-with-input-file))
@@ -241,8 +241,8 @@ USA.
 (define ((make-with-output-to-file call) output-specifier thunk)
   (call output-specifier
     (lambda (port)
-      (parameterize* (list (cons current-output-port port))
-		     thunk))))
+      (parameterize ((current-output-port port))
+	(thunk)))))
 
 (define with-output-to-file
   (make-with-output-to-file call-with-output-file))

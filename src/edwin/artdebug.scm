@@ -681,9 +681,8 @@ Move to the last subproblem if the subproblem number is too high."
 			(if (or argument
 				(invalid-subexpression? sub))
 			    (pp exp)
-			    (parameterize* (list (cons param:pp-no-highlights?
-						       #f))
-			      do-hairy)))
+			    (parameterize ((param:pp-no-highlights? #f))
+			      (do-hairy))))
 		       ((debugging-info/noise? exp)
 			(message ((debugging-info/noise exp) #t)))
 		       (else
@@ -1014,20 +1013,19 @@ Prefix argument means do not kill the debugger buffer."
        port))))
 
 (define (print-with-subexpression expression subexpression)
-  (parameterize* (list (cons param:print-primitives-by-name? #t))
-    (lambda ()
-      (if (invalid-subexpression? subexpression)
-	  (write (unsyntax expression))
-	  (let ((sub (write-to-string (unsyntax subexpression))))
-	    (write (unsyntax-with-substitutions
-		    expression
-		    (list
-		     (cons subexpression
-			   (unparser-literal/make
-			    (string-append
-			     (ref-variable subexpression-start-marker)
-			     sub
-			     (ref-variable subexpression-end-marker))))))))))))
+  (parameterize ((param:print-primitives-by-name? #t))
+    (if (invalid-subexpression? subexpression)
+	(write (unsyntax expression))
+	(let ((sub (write-to-string (unsyntax subexpression))))
+	  (write (unsyntax-with-substitutions
+		  expression
+		  (list
+		   (cons subexpression
+			 (unparser-literal/make
+			  (string-append
+			   (ref-variable subexpression-start-marker)
+			   sub
+			   (ref-variable subexpression-end-marker)))))))))))
 
 (define (invalid-subexpression? subexpression)
   (or (debugging-info/undefined-expression? subexpression)
@@ -1044,11 +1042,10 @@ Prefix argument means do not kill the debugger buffer."
    port))
 
 (define (print-reduction-as-subexpression expression)
-  (parameterize* (list (cons param:print-primitives-by-name? #t))
-    (lambda ()
-      (write-string (ref-variable subexpression-start-marker))
-      (write (unsyntax expression))
-      (write-string (ref-variable subexpression-end-marker)))))
+  (parameterize ((param:print-primitives-by-name? #t))
+    (write-string (ref-variable subexpression-start-marker))
+    (write (unsyntax expression))
+    (write-string (ref-variable subexpression-end-marker))))
 
 (define (print-history-level compiled? subproblem-number reduction-id
 			     expression-thunk environment port)
@@ -1065,8 +1062,8 @@ Prefix argument means do not kill the debugger buffer."
 	 (cdr
 	  (call-with-truncated-output-string pad-width
 	    (lambda (port)
-	      (parameterize* (list (cons current-output-port port))
-			     expression-thunk))))
+	      (parameterize ((current-output-port port))
+		(expression-thunk)))))
 	 " ")
 	pad-width
 	#\-)

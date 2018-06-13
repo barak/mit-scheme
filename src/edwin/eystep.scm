@@ -61,9 +61,8 @@ USA.
   (bind-condition-handler (list condition-type:error)
       evaluation-error-handler
     (lambda ()
-      (parameterize* (list (cons current-input-port dummy-i/o-port))
-	(lambda ()
-	  (with-output-to-transcript-buffer thunk))))))
+      (parameterize ((current-input-port dummy-i/o-port))
+	(with-output-to-transcript-buffer thunk)))))
 
 ;;;; Stepper Mode
 

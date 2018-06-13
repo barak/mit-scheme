@@ -79,8 +79,7 @@ USA.
      (if (not (default-object? value))
 	 (begin
 	   (write-string " --> " port)
-	   (parameterize* (list (cons param:printer-list-depth-limit 2)
-				(cons param:printer-list-breadth-limit 10)
-				(cons param:printer-string-length-limit 30))
-	     (lambda ()
-	       (write value port))))))))
+	   (parameterize ((param:printer-list-depth-limit 2)
+			  (param:printer-list-breadth-limit 10)
+			  (param:printer-string-length-limit 30))
+	     (write value port)))))))

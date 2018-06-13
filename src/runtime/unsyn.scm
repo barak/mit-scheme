@@ -45,9 +45,8 @@ USA.
 (define (unsyntax-with-substitutions scode alist)
   (if (not (alist? alist))
       (error:wrong-type-argument alist "alist" 'unsyntax-with-substitutions))
-  (parameterize* (list (cons substitutions alist))
-    (lambda ()
-      (unsyntax scode))))
+  (parameterize ((substitutions alist))
+    (unsyntax scode)))
 
 (define-integrable (maybe-substitute object thunk)
   (let ((association (has-substitution? object)))

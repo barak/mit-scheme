@@ -32,8 +32,8 @@ USA.
 (define (with-output-to-mark mark thunk)
   (call-with-output-mark mark
     (lambda (port)
-      (parameterize* (list (cons current-output-port port))
-		     thunk))))
+      (parameterize ((current-output-port port))
+	(thunk)))))
 
 (define (call-with-output-mark mark procedure)
   (let ((port (mark->output-port mark)))

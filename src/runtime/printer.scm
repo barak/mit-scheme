@@ -181,9 +181,8 @@ USA.
   (textual-port-char-set (context-port context)))
 
 (define (with-current-unparser-state context procedure)
-  (parameterize* (list (cons initial-context context))
-    (lambda ()
-      (procedure (context-port context)))))
+  (parameterize ((initial-context context))
+    (procedure (context-port context))))
 
 (define-deferred initial-context
   (make-unsettable-parameter #f))
@@ -319,9 +318,8 @@ USA.
 	    context)))))
 
 (define (call-print-method print-method object context)
-  (parameterize* (list (cons initial-context context))
-    (lambda ()
-      (print-method object (context-port context)))))
+  (parameterize ((initial-context context))
+    (print-method object (context-port context))))
 
 (define (get-print-method-parts object)
   (let ((print-method (get-print-method object)))

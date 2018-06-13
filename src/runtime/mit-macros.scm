@@ -440,9 +440,8 @@ USA.
 	 (apply scons-begin (read-files filenames #t)))))))
 
 (define (read-files filenames fold-case?)
-  (parameterize* (list (cons param:reader-fold-case? fold-case?))
-    (lambda ()
-      (append-map read-file filenames))))
+  (parameterize ((param:reader-fold-case? fold-case?))
+    (append-map read-file filenames)))
 
 (define $define-values
   (spar-transformer->runtime

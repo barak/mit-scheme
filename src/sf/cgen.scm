@@ -247,8 +247,7 @@ USA.
 
 ;;; Debugging utility
 (define (pp-expression form #!optional port)
-  (parameterize* (list (cons param:pp-primitives-by-name? #f)
-		       (cons param:pp-uninterned-symbols-by-name? #f)
-		       (cons param:printer-abbreviate-quotations? #t))
-    (lambda ()
-      (pp (cgen/external-with-declarations form) port))))
+  (parameterize ((param:pp-primitives-by-name? #f)
+		 (param:pp-uninterned-symbols-by-name? #f)
+		 (param:printer-abbreviate-quotations? #t))
+    (pp (cgen/external-with-declarations form) port)))

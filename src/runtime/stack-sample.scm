@@ -180,10 +180,9 @@
        (let ((stack-frame (continuation/first-subproblem continuation)))
          (if (eq? stack-frame-type/compiled-return-address
                   (stack-frame/type stack-frame))
-             (parameterize*
-	      (list (cons stack-sampling-return-address
-			  (stack-frame/return-address stack-frame)))
-	      thunk)
+             (parameterize ((stack-sampling-return-address
+			     (stack-frame/return-address stack-frame)))
+	       (thunk))
              (thunk)))))))
 
 ;;;; Profile Data
@@ -397,11 +396,10 @@
 
 (define (profile-pp expression output-port)
   ;; Random parametrization.
-  (parameterize* (list (cons param:printer-list-breadth-limit 5)
-		       (cons param:printer-list-depth-limit 3)
-		       (cons param:printer-string-length-limit 40)
-		       (cons param:print-primitives-by-name? #t)
-		       (cons param:pp-save-vertical-space? #t)
-		       (cons param:pp-default-as-code? #t))
-    (lambda ()
-      (pp expression output-port))))
+  (parameterize ((param:printer-list-breadth-limit 5)
+		 (param:printer-list-depth-limit 3)
+		 (param:printer-string-length-limit 40)
+		 (param:print-primitives-by-name? #t)
+		 (param:pp-save-vertical-space? #t)
+		 (param:pp-default-as-code? #t))
+    (pp expression output-port)))

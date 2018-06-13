@@ -90,8 +90,8 @@ USA.
     (let ((x
 	   (call-with-truncated-output-string length
 	     (lambda (port)
-	       (parameterize* (list (cons current-output-port port))
-			      thunk)))))
+	       (parameterize ((current-output-port port))
+		 (thunk))))))
       (if (and (car x) (> length 4))
 	  (string-append (string-slice (cdr x) 0 (- length 4))
 			 " ...")

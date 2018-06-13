@@ -83,14 +83,12 @@ USA.
   ;; do not have enough information to determine what the
   ;; variable name was.  The original block can be used for
   ;; this, but it may as well be copied then.
-  (parameterize* (list (cons *copy-constants?*
-			     (if (default-object? copy-constants?)
-				 *default/copy-constants?*
-				 copy-constants?))
-		       (cons *object-copies*
-			     (make-object-association-table)))
-    (lambda ()
-      (copy-object exp))))
+  (parameterize ((*copy-constants?*
+		  (if (default-object? copy-constants?)
+		      *default/copy-constants?*
+		      copy-constants?))
+		 (*object-copies* (make-object-association-table)))
+    (copy-object exp)))
 
 (define (copy-object obj)
   (let ((association (object-association obj)))

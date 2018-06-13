@@ -218,12 +218,11 @@ USA.
   (make-settable-parameter '()))
 
 (define (with-directory-rewriting-rule match replace thunk)
-  (parameterize*
-   (list (cons directory-rewriting-rules
-	       (cons (cons (pathname-as-directory (merge-pathnames match))
-			   replace)
-		     (directory-rewriting-rules))))
-   thunk))
+  (parameterize ((directory-rewriting-rules
+		  (cons (cons (pathname-as-directory (merge-pathnames match))
+			      replace)
+			(directory-rewriting-rules))))
+    (thunk)))
 
 (define (add-directory-rewriting-rule! match replace)
   (let ((match (pathname-as-directory (merge-pathnames match))))

@@ -76,14 +76,13 @@ USA.
   (let ((pathname (merge-pathnames pathname)))
     (with-working-directory-pathname (directory-pathname pathname)
       (lambda ()
-	(parameterize* (list (cons current-load-pathname pathname)
-			     (cons current-load-environment environment))
-	  (lambda ()
-	    (fluid-let ((*sabbr-table* (make-strong-eq-hash-table)))
-	      (read-xml-file pathname
-			     `((scheme ,(pi-expander environment))
-			       (svar ,svar-expander)
-			       (sabbr ,sabbr-expander))))))))))
+	(parameterize ((current-load-pathname pathname)
+		       (current-load-environment environment))
+	  (fluid-let ((*sabbr-table* (make-strong-eq-hash-table)))
+	    (read-xml-file pathname
+			   `((scheme ,(pi-expander environment))
+			     (svar ,svar-expander)
+			     (sabbr ,sabbr-expander)))))))))
 
 (define (make-expansion-environment pathname)
   (let ((environment (extend-top-level-environment expander-environment)))
@@ -94,15 +93,14 @@ USA.
 
 (define ((pi-expander environment) text)
   (fluid-let ((*outputs* (cons '() '())))
-    (parameterize* (list (cons param:suppress-loading-message? #t))
-      (lambda ()
-	(let ((port (open-input-string text)))
-	  (let loop ()
-	    (let ((expression (read port)))
-	      (if (not (eof-object? expression))
-		  (begin
-		    (expander-eval expression environment)
-		    (loop))))))))
+    (parameterize ((param:suppress-loading-message? #t))
+      (let ((port (open-input-string text)))
+	(let loop ()
+	  (let ((expression (read port)))
+	    (if (not (eof-object? expression))
+		(begin
+		  (expander-eval expression environment)
+		  (loop)))))))
     (car *outputs*)))
 
 (define expander-eval eval)

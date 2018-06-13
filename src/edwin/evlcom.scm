@@ -233,10 +233,8 @@ The values are printed in the typein window."
 		 (call-with-transcript-buffer
 		  (lambda (buffer)
 		    (insert-string
-		     (parameterize*
-		      (list (cons param:print-with-maximum-readability? #t))
-		      (lambda ()
-			(write-to-string expression)))
+		     (parameterize ((param:print-with-maximum-readability? #t))
+		       (write-to-string expression))
 		     (buffer-end buffer)))))
 	     (editor-eval buffer
 			  expression
@@ -412,31 +410,28 @@ Set by Scheme evaluation code to update the mode line."
 (define (editor-eval buffer sexp environment)
   (let ((core
 	 (lambda ()
-	   (parameterize* (list (cons current-input-port dummy-i/o-port))
-	     (lambda ()
-	       (let ((value))
-		 (let ((output-string
-			(call-with-output-string
-			  (lambda (port)
-			    (parameterize* (list (cons current-output-port
-						       port))
-			      (lambda ()
-				(set! value
-				      (eval-with-history sexp environment))
-				unspecific))))))
-		   (let ((evaluation-output-receiver
-			  (ref-variable evaluation-output-receiver buffer)))
-		     (if evaluation-output-receiver
-			 (evaluation-output-receiver value output-string)
-			 (with-output-to-transcript-buffer
-			  (lambda ()
-			    (write-string output-string)
-			    (transcript-write
-			     value
-			     (and (ref-variable enable-transcript-buffer
-						buffer)
-				  (transcript-buffer))))))))
-		 value))))))
+	   (parameterize ((current-input-port dummy-i/o-port))
+	     (let ((value))
+	       (let ((output-string
+		      (call-with-output-string
+			(lambda (port)
+			  (parameterize ((current-output-port port))
+			    (set! value
+				  (eval-with-history sexp environment))
+			    unspecific)))))
+		 (let ((evaluation-output-receiver
+			(ref-variable evaluation-output-receiver buffer)))
+		   (if evaluation-output-receiver
+		       (evaluation-output-receiver value output-string)
+		       (with-output-to-transcript-buffer
+			(lambda ()
+			  (write-string output-string)
+			  (transcript-write
+			   value
+			   (and (ref-variable enable-transcript-buffer
+					      buffer)
+				(transcript-buffer))))))))
+	       value)))))
     (if (ref-variable enable-run-light? buffer)
 	(let ((run-light (ref-variable-object run-light))
 	      (outside)
@@ -481,16 +476,15 @@ Set by Scheme evaluation code to update the mode line."
 	       (let ((output-port
 		      (mark->output-port (buffer-end buffer) buffer)))
 		 (fresh-line output-port)
-		 (parameterize* (list (cons current-output-port output-port))
-				thunk))))))
+		 (parameterize ((current-output-port output-port))
+		   (thunk)))))))
       (let ((value))
 	(let ((output
 	       (call-with-output-string
 		 (lambda (port)
-		   (parameterize* (list (cons current-output-port port))
-		     (lambda ()
-		       (set! value (thunk))
-		       unspecific))))))
+		   (parameterize ((current-output-port port))
+		     (set! value (thunk))
+		     unspecific)))))
 	  (if (and (not (string-null? output))
 		   (not (ref-variable evaluation-output-receiver)))
 	      (string->temporary-buffer output "*Unsolicited-Output*" '())))
@@ -530,12 +524,11 @@ Set by Scheme evaluation code to update the mode line."
 (define (transcript-value-string value)
   (if (undefined-value? value)
       ""
-      (parameterize* (list (cons param:printer-list-depth-limit
-				 (ref-variable transcript-list-depth-limit))
-			   (cons param:printer-list-breadth-limit
-				 (ref-variable transcript-list-breadth-limit)))
-	(lambda ()
-	  (write-to-string value)))))
+      (parameterize ((param:printer-list-depth-limit
+		      (ref-variable transcript-list-depth-limit))
+		     (param:printer-list-breadth-limit
+		      (ref-variable transcript-list-breadth-limit)))
+	(write-to-string value))))
 
 (define (call-with-transcript-buffer procedure)
   (let ((buffer (transcript-buffer)))

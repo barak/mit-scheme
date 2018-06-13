@@ -294,9 +294,8 @@ Now, there is formatting stuff to be considered here, in print-pgm.sh.
 		(groups/files-to-copy groups)))))
 
 (define (load-quietly pathname environment)
-  (parameterize* (list (cons param:suppress-loading-message? #t))
-    (lambda ()
-      (load pathname environment))))
+  (parameterize ((param:suppress-loading-message? #t))
+    (load pathname environment)))
 
 (define (->string object)
   (if (string? object)

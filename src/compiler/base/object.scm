@@ -64,9 +64,8 @@ USA.
 				    (fix:> (vector-length object) 0)
 				    (eq? tag (vector-ref object 0))))
 	  (lambda (vector port)
-	    (parameterize* (list (cons param:printer-radix 16))
-	      (lambda ()
-		((tagged-vector/unparser vector) vector port)))))
+	    (parameterize ((param:printer-radix 16))
+	      ((tagged-vector/unparser vector) vector port))))
 	tag))))
 
 (define (define-vector-tag-unparser tag unparser)

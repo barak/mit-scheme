@@ -120,40 +120,40 @@ USA.
 	(pathname-defaults (param:default-pathname-defaults)))
     (let ((thunk
 	   (lambda ()
-	     (parameterize*
-	      (list (cons current-input-port #f)
-		    (cons current-output-port #f)
-		    (cons notification-output-port #f)
-		    (cons trace-output-port #f)
-		    (cons interaction-i/o-port #f)
-		    (cons working-directory-pathname
-			  (working-directory-pathname))
-		    (cons param:nearest-cmdl cmdl)
-		    (cons param:standard-error-hook #f)
-		    (cons param:standard-warning-hook #f)
-		    (cons param:standard-breakpoint-hook #f)
-		    (cons param:default-pathname-defaults pathname-defaults)
-		    (cons dynamic-handler-frames '())
-		    (cons param:bound-restarts
-			  (if (cmdl/parent cmdl) (param:bound-restarts) '())))
-	      (lambda ()
-		(fluid-let ((*default-pathname-defaults* pathname-defaults))
-		  (let loop ((message message))
-		    (loop
-		     (bind-abort-restart cmdl
-		       (lambda ()
-			 (with-interrupt-mask interrupt-mask/all
-			   (lambda (interrupt-mask)
-			     interrupt-mask
-			     (unblock-thread-events)
-			     (ignore-errors
-			      (lambda ()
-				((->cmdl-message message) cmdl)))
-			     (call-with-current-continuation
-			      (lambda (continuation)
-				(with-create-thread-continuation continuation
-				  (lambda ()
-				    ((cmdl/driver cmdl) cmdl))))))))))))))))
+	     (parameterize ((current-input-port #f)
+			    (current-output-port #f)
+			    (notification-output-port #f)
+			    (trace-output-port #f)
+			    (interaction-i/o-port #f)
+			    (working-directory-pathname
+			     (working-directory-pathname))
+			    (param:nearest-cmdl cmdl)
+			    (param:standard-error-hook #f)
+			    (param:standard-warning-hook #f)
+			    (param:standard-breakpoint-hook #f)
+			    (param:default-pathname-defaults pathname-defaults)
+			    (dynamic-handler-frames '())
+			    (param:bound-restarts
+			     (if (cmdl/parent cmdl)
+				 (param:bound-restarts)
+				 '())))
+	       (fluid-let ((*default-pathname-defaults* pathname-defaults))
+		 (let loop ((message message))
+		   (loop
+		    (bind-abort-restart cmdl
+		      (lambda ()
+			(with-interrupt-mask interrupt-mask/all
+			  (lambda (interrupt-mask)
+			    interrupt-mask
+			    (unblock-thread-events)
+			    (ignore-errors
+			     (lambda ()
+			       ((->cmdl-message message) cmdl)))
+			    (call-with-current-continuation
+			     (lambda (continuation)
+			       (with-create-thread-continuation continuation
+				 (lambda ()
+				   ((cmdl/driver cmdl) cmdl)))))))))))))))
 	  (mutex (textual-port-thread-mutex port)))
       (let ((thread (current-thread))
 	    (owner (thread-mutex-owner mutex)))
@@ -547,12 +547,10 @@ USA.
      (or message
 	 (and condition
 	      (cmdl-message/strings
-	       (parameterize*
-		(list (cons param:printer-list-depth-limit 25)
-		      (cons param:printer-list-breadth-limit 100)
-		      (cons param:printer-string-length-limit 500))
-		(lambda ()
-		  (condition/report-string condition))))))
+	       (parameterize ((param:printer-list-depth-limit 25)
+			      (param:printer-list-breadth-limit 100)
+			      (param:printer-string-length-limit 500))
+		 (condition/report-string condition)))))
      (and condition
 	  repl:allow-restart-notifications?
 	  (condition-restarts-message condition))
@@ -958,9 +956,8 @@ USA.
 	     standard-breakpoint-hook)))
     (if hook
 	(fluid-let ((standard-breakpoint-hook #!default))
-	  (parameterize* (list (cons param:standard-breakpoint-hook #f))
-	    (lambda ()
-	      (hook condition))))))
+	  (parameterize ((param:standard-breakpoint-hook #f))
+	    (hook condition)))))
   (repl/start (push-repl (breakpoint/environment condition)
 			 condition
 			 '()

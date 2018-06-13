@@ -284,9 +284,8 @@ USA.
 (define (write-expr-property tag p port)
   (write-tag tag port)
   (write-char #\space port)
-  (parameterize* (list (cons param:printer-abbreviate-quotations? #t))
-    (lambda ()
-      (write (cdr p) port))))
+  (parameterize ((param:printer-abbreviate-quotations? #t))
+    (write (cdr p) port)))
 
 (define (write-feature tag p port)
   (write-tag tag port)

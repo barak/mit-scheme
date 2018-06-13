@@ -52,8 +52,8 @@ USA.
   ((rdb:identifier-renamer (rename-db)) new-identifier))
 
 (define (with-identifier-renaming thunk)
-  (parameterize* (list (cons rename-db (initial-rename-db)))
-		 (lambda () (post-process-output (thunk)))))
+  (parameterize ((rename-db (initial-rename-db)))
+    (post-process-output (thunk))))
 
 (define-deferred rename-db
   (make-unsettable-parameter 'unbound))

@@ -334,11 +334,10 @@ USA.
       (error:wrong-type-argument effector "effector" 'with-restart))
   (if (not (or (not interactor) (procedure? interactor)))
       (error:wrong-type-argument interactor "interactor" 'with-restart))
-  (parameterize*
-   (list (cons param:bound-restarts
-	       (cons (%make-restart name reporter effector interactor)
-		     (param:bound-restarts))))
-   thunk))
+  (parameterize ((param:bound-restarts
+		  (cons (%make-restart name reporter effector interactor)
+			(param:bound-restarts))))
+    (thunk)))
 
 (define (with-simple-restart name reporter thunk)
   (call-with-current-continuation
@@ -514,10 +513,9 @@ USA.
 (define (bind-condition-handler types handler thunk)
   (guarantee-condition-types types 'bind-condition-handler)
   (guarantee-condition-handler handler 'bind-condition-handler)
-  (parameterize*
-   (list (cons dynamic-handler-frames
-	       (cons (cons types handler) (dynamic-handler-frames))))
-   thunk))
+  (parameterize ((dynamic-handler-frames
+		  (cons (cons types handler) (dynamic-handler-frames))))
+    (thunk)))
 
 (define-integrable (guarantee-condition-handler object caller)
   (guarantee unary-procedure? object caller))
@@ -548,28 +546,25 @@ USA.
       (if (let ((types (break-on-signals-types)))
 	    (and (pair? types)
 		 (intersect-generalizations? types)))
-	  (parameterize* (list (cons break-on-signals-types '()))
-	    (lambda ()
-	      (breakpoint-procedure 'inherit
-				    "BKPT entered because of BREAK-ON-SIGNALS:"
-				    condition))))
+	  (parameterize ((break-on-signals-types '()))
+	    (breakpoint-procedure 'inherit
+				  "BKPT entered because of BREAK-ON-SIGNALS:"
+				  condition)))
       (do ((frames (dynamic-handler-frames) (cdr frames)))
 	  ((not (pair? frames)))
 	(if (let ((types (caar frames)))
 	      (or (not (pair? types))
 		  (intersect-generalizations? types)))
-	    (parameterize* (list (cons dynamic-handler-frames (cdr frames)))
-	      (lambda ()
-		(hook/invoke-condition-handler (cdar frames) condition)))))
+	    (parameterize ((dynamic-handler-frames (cdr frames)))
+	      (hook/invoke-condition-handler (cdar frames) condition))))
       (do ((frames (static-handler-frames) (cdr frames)))
 	  ((not (pair? frames)))
 	(if (let ((types (caar frames)))
 	      (or (not (pair? types))
 		  (intersect-generalizations? types)))
-	    (parameterize* (list (cons dynamic-handler-frames '())
-				 (cons static-handler-frames (cdr frames)))
-	      (lambda ()
-		(hook/invoke-condition-handler (cdar frames) condition)))))
+	    (parameterize ((dynamic-handler-frames '())
+			   (static-handler-frames (cdr frames)))
+	      (hook/invoke-condition-handler (cdar frames) condition))))
       unspecific)))
 
 ;;;; Standard Condition Signallers
@@ -604,9 +599,8 @@ USA.
 	     standard-error-hook)))
     (if hook
 	(fluid-let ((standard-error-hook #!default))
-	  (parameterize* (list (cons param:standard-error-hook #f))
-	    (lambda ()
-	      (hook condition))))))
+	  (parameterize ((param:standard-error-hook #f))
+	    (hook condition)))))
   (repl/start (push-repl 'inherit condition '() "error>")))
 
 (define (standard-warning-handler condition)
@@ -616,9 +610,8 @@ USA.
 	     standard-warning-hook)))
     (if hook
 	(fluid-let ((standard-warning-hook #!default))
-	  (parameterize* (list (cons param:standard-warning-hook #f))
-	    (lambda ()
-	      (hook condition))))
+	  (parameterize ((param:standard-warning-hook #f))
+	    (hook condition)))
 	(let ((port (notification-output-port)))
 	  (fresh-line port)
 	  (write-string ";Warning: " port)
@@ -1293,20 +1286,19 @@ USA.
 	      (else (error "Unexpected value:" v)))))))
 
 (define (format-error-message message irritants port)
-  (parameterize* (list (cons param:printer-list-depth-limit 2)
-		       (cons param:printer-list-breadth-limit 5))
-    (lambda ()
-      (for-each (lambda (irritant)
-		  (if (and (pair? irritant)
-			   (eq? (car irritant) error-irritant/noise-tag))
-		      (display (cdr irritant) port)
-		      (begin
-			(write-char #\space port)
-			(write irritant port))))
-		(cons (if (string? message)
-			  (error-irritant/noise message)
-			  message)
-		      irritants)))))
+  (parameterize ((param:printer-list-depth-limit 2)
+		 (param:printer-list-breadth-limit 5))
+    (for-each (lambda (irritant)
+		(if (and (pair? irritant)
+			 (eq? (car irritant) error-irritant/noise-tag))
+		    (display (cdr irritant) port)
+		    (begin
+		      (write-char #\space port)
+		      (write irritant port))))
+	      (cons (if (string? message)
+			(error-irritant/noise message)
+			message)
+		    irritants))))
 
 (define-integrable (error-irritant/noise noise)
   (cons error-irritant/noise-tag noise))

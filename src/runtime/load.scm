@@ -155,10 +155,9 @@ USA.
 (define (wrap-loader pathname loader)
   (lambda (environment purify?)
     (lambda ()
-      (parameterize* (list (cons current-load-pathname pathname)
-			   (cons current-load-environment environment))
-	(lambda ()
-	  (loader environment purify?))))))
+      (parameterize ((current-load-pathname pathname)
+		     (current-load-environment environment))
+	(loader environment purify?)))))
 
 (define (fasload pathname #!optional suppress-notifications?)
   (receive (pathname* loader notifier) (choose-fasload-method pathname)
@@ -261,11 +260,10 @@ USA.
 		 suppress-notifications?)
 	     #f
 	     (param:write-notifications?))))
-    (parameterize* (list (cons param:write-notifications? notify?))
-      (lambda ()
-	(if notify?
-	    (notifier loader)
-	    (loader))))))
+    (parameterize ((param:write-notifications? notify?))
+      (if notify?
+	  (notifier loader)
+	  (loader)))))
 
 (define (loading-notifier pathname)
   (lambda (thunk)
@@ -289,11 +287,10 @@ USA.
 (define (handle-load-hooks thunk)
   (receive (result hooks)
       (fluid-let ((load/loading? #t))	;backwards compatibility
-	(parameterize* (list (cons param:loading? #t)
-			     (cons param:after-load-hooks '()))
-	  (lambda ()
-	    (let ((result (thunk)))
-	      (values result (reverse (param:after-load-hooks)))))))
+	(parameterize ((param:loading? #t)
+		       (param:after-load-hooks '()))
+	  (let ((result (thunk)))
+	    (values result (reverse (param:after-load-hooks))))))
     (for-each (lambda (hook) (hook)) hooks)
     result))
 

@@ -316,8 +316,8 @@ USA.
   (make-unsettable-parameter unspecific))
 
 (define (with-error-context form senv hist thunk)
-  (parameterize* (list (cons error-context (serror-ctx form senv hist)))
-		 thunk))
+  (parameterize ((error-context (serror-ctx form senv hist)))
+    (thunk)))
 
 ;;; External signaller for macros.
 (define (syntax-error message . irritants)

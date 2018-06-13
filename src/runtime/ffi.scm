@@ -621,9 +621,8 @@ USA.
   (if (not (option-loaded? name))
       (let ((kernel
 	     (lambda ()
-	       (parameterize* (list (cons param:suppress-loading-message? #t))
-		 (lambda ()
-		   (load-option name))))))
+	       (parameterize ((param:suppress-loading-message? #t))
+		 (load-option name)))))
 	(if (nearest-cmdl/batch-mode?)
 	    (kernel)
 	    (with-notification

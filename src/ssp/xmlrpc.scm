@@ -63,7 +63,6 @@ USA.
       (environment-define environment 'define-xmlrpc-method
 	(lambda (name handler)
 	  (hash-table-set! methods name handler)))
-      (parameterize* (list (cons param:suppress-loading-message? #t))
-	(lambda ()
-	  (load pathname environment))))
+      (parameterize ((param:suppress-loading-message? #t))
+	(load pathname environment)))
     (hash-table-ref/default methods name #f)))

@@ -53,9 +53,8 @@ USA.
     (thread-report port)))
 
 (define (ticks->string ticks)
-  (parameterize* (list (cons param:flonum-printer-cutoff '(absolute 3)))
-    (lambda ()
-      (number->string (internal-time/ticks->seconds ticks) 10))))
+  (parameterize ((param:flonum-printer-cutoff '(absolute 3)))
+    (number->string (internal-time/ticks->seconds ticks) 10)))
 
 (define (write-time-interval secs port)
   (let ((min/sec (integer-divide secs 60)))

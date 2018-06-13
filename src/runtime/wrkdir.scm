@@ -75,9 +75,9 @@ USA.
 (define (with-working-directory-pathname name thunk)
   (let ((pathname (new-pathname name)))
     (fluid-let ((*default-pathname-defaults* pathname))
-      (parameterize* (list (cons param:default-pathname-defaults pathname)
-			   (cons working-directory-pathname pathname))
-	thunk))))
+      (parameterize ((param:default-pathname-defaults pathname)
+		     (working-directory-pathname pathname))
+	(thunk)))))
 
 (define (new-pathname name)
   (pathname-simplify

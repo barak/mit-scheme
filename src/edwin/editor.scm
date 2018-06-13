@@ -71,19 +71,17 @@ USA.
 		      (lambda (root-continuation)
 			(set! editor-thread-root-continuation
 			      root-continuation)
-			(parameterize* (list (cons notification-output-port
-						   null-output-port))
-			  (lambda ()
-			    (do ((thunks (let ((thunks editor-initial-threads))
-					   (set! editor-initial-threads '())
-					   thunks)
-					 (cdr thunks)))
-				((null? thunks))
-			      (create-thread root-continuation
-				(car thunks)
-				(car thunks)))
-			    (top-level-command-reader
-			     edwin-initialization)))))))
+			(parameterize ((notification-output-port
+					null-output-port))
+			  (do ((thunks (let ((thunks editor-initial-threads))
+					 (set! editor-initial-threads '())
+					 thunks)
+				       (cdr thunks)))
+			      ((null? thunks))
+			    (create-thread root-continuation
+					   (car thunks)
+					   (car thunks)))
+			  (top-level-command-reader edwin-initialization))))))
 		 message)
 	       #f
 	       `((START-CHILD ,(editor-start-child-cmdl with-editor-ungrabbed))

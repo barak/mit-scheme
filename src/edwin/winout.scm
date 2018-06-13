@@ -33,8 +33,8 @@ USA.
   (with-output-to-window-point (current-window) thunk))
 
 (define (with-output-to-window-point window thunk)
-  (parameterize* (list (cons current-output-port (window-output-port window)))
-		 thunk))
+  (parameterize ((current-output-port (window-output-port window)))
+    (thunk)))
 
 (define (window-output-port window)
   (make-port window-output-port-type window))

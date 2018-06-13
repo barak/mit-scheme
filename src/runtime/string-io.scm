@@ -33,8 +33,8 @@ USA.
 
 ;; obsolete
 (define (with-input-from-string string thunk)
-  (parameterize* (list (cons current-input-port (open-input-string string)))
-		 thunk))
+  (parameterize ((current-input-port (open-input-string string)))
+    (thunk)))
 
 (define (call-with-input-string string procedure)
   (procedure (open-input-string string)))
@@ -139,15 +139,15 @@ USA.
 (define (with-output-to-string thunk)
   (call-with-output-string
     (lambda (port)
-      (parameterize* (list (cons current-output-port port))
-		     thunk))))
+      (parameterize ((current-output-port port))
+	(thunk)))))
 
 ;; deprecated
 (define (with-output-to-truncated-string limit thunk)
   (call-with-truncated-output-string limit
     (lambda (port)
-      (parameterize* (list (cons current-output-port port))
-		     thunk))))
+      (parameterize ((current-output-port port))
+	(thunk)))))
 
 (define (open-output-string)
   (make-textual-port string-output-type (make-ostate (string-builder) 0)))

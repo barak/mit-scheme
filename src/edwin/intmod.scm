@@ -122,23 +122,22 @@ evaluated in the specified inferior REPL buffer."
 				    (detach-thread thread)
 				    thread))))
 	(attach-buffer-interface-port! buffer port)
-	(parameterize* (list (cons param:exit-hook inferior-repl/exit)
-			     (cons param:suspend-hook inferior-repl/suspend))
-	  (lambda ()
-	    (dynamic-wind
-	     (lambda () unspecific)
-	     (lambda ()
-	       (repl/start (make-repl #f
-				      port
-				      environment
-				      #f
-				      `((ERROR-DECISION ,error-decision))
-				      user-initial-prompt)
-			   (make-init-message message)))
-	     (lambda ()
-	       (signal-thread-event editor-thread
-		 (lambda ()
-		   (unwind-inferior-repl-buffer buffer)))))))))
+	(parameterize ((param:exit-hook inferior-repl/exit)
+		       (param:suspend-hook inferior-repl/suspend))
+	  (dynamic-wind
+	   (lambda () unspecific)
+	   (lambda ()
+	     (repl/start (make-repl #f
+				    port
+				    environment
+				    #f
+				    `((ERROR-DECISION ,error-decision))
+				    user-initial-prompt)
+			 (make-init-message message)))
+	   (lambda ()
+	     (signal-thread-event editor-thread
+	       (lambda ()
+		 (unwind-inferior-repl-buffer buffer))))))))
     buffer))
 
 (define (make-init-message message)
@@ -732,10 +731,8 @@ If this is an error, the debugger examines the error condition."
     (lambda (mark)
       (if mark
 	  (insert-string
-	   (parameterize* (list (cons param:print-with-maximum-readability?
-				      #t))
-	     (lambda ()
-	       (write-to-string expression)))
+	   (parameterize ((param:print-with-maximum-readability? #t))
+	     (write-to-string expression))
 	   mark))))
   (let ((port (buffer-interface-port buffer #t)))
     ;;(move-mark-to! (port/mark port) (buffer-end buffer))

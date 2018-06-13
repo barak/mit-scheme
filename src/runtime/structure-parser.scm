@@ -82,10 +82,9 @@ USA.
 ;;;; Compiler
 
 (define (compile-top-level pattern caller-context env)
-  (parameterize* (list (cons name-counters (make-strong-eq-hash-table)))
-    (lambda ()
-      (optimize-result
-       (compile-pattern pattern caller-context env)))))
+  (parameterize ((name-counters (make-strong-eq-hash-table)))
+    (optimize-result
+     (compile-pattern pattern caller-context env))))
 
 (define (compile-pattern pattern caller-context env)
   (let ((pattern* (rewrite-pattern pattern)))

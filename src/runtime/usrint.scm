@@ -387,9 +387,9 @@ USA.
 	     unspecific))
 	 (lambda ()
 	   (let ((v
-		  (parameterize* (list (cons *notification-depth*
-					     (1+ (*notification-depth*))))
-		    thunk)))
+		  (parameterize ((*notification-depth*
+				  (1+ (*notification-depth*))))
+		    (thunk))))
 	     (set! done? #t)
 	     v))
 	 (lambda ()

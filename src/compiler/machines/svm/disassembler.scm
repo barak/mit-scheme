@@ -110,14 +110,13 @@ USA.
     (make-cursor block start symbol-table)))
 
 (define (write-instructions cursor)
-  (parameterize* (list (cons param:printer-radix 16))
-    (lambda ()
-      (let ((end (compiled-code-block/code-end (cursor-block cursor))))
-	(let loop ()
-	  (if (< (cursor-offset cursor) end)
-	      (begin
-		(write-instruction cursor)
-		(loop))))))))
+  (parameterize ((param:printer-radix 16))
+    (let ((end (compiled-code-block/code-end (cursor-block cursor))))
+      (let loop ()
+	(if (< (cursor-offset cursor) end)
+	    (begin
+	      (write-instruction cursor)
+	      (loop)))))))
 
 (define (write-instruction cursor)
   (write-offset cursor)
@@ -219,28 +218,27 @@ USA.
 	       #t)))))
 
 (define (write-constants cursor)
-  (parameterize* (list (cons param:printer-radix 16))
-    (lambda ()
-      (let* ((block (cursor-block cursor))
-	     (end (compiled-code-block/index->offset
-		   (system-vector-length block))))
+  (parameterize ((param:printer-radix 16))
+    (let* ((block (cursor-block cursor))
+	   (end (compiled-code-block/index->offset
+		 (system-vector-length block))))
 
-	(assert (= (cursor-offset cursor)
-		   (* (1+ (compiled-code-block/marked-start block))
-		      address-units-per-object)))
-	(let loop ()
-	  (let ((offset (cursor-offset cursor)))
-	    (if (< offset end)
-		(let ((object (system-vector-ref
-			       block (compiled-code-block/offset->index offset))))
-		  (if (object-type? (ucode-type linkage-section) object)
-		      (write-linkage-section object cursor)
-		      (begin
-			(write-offset cursor)
-			(write-constant object cursor)
-			(set-cursor-offset! cursor
-					    (+ offset address-units-per-object))))
-		  (loop)))))))))
+      (assert (= (cursor-offset cursor)
+		 (* (1+ (compiled-code-block/marked-start block))
+		    address-units-per-object)))
+      (let loop ()
+	(let ((offset (cursor-offset cursor)))
+	  (if (< offset end)
+	      (let ((object (system-vector-ref
+			     block (compiled-code-block/offset->index offset))))
+		(if (object-type? (ucode-type linkage-section) object)
+		    (write-linkage-section object cursor)
+		    (begin
+		      (write-offset cursor)
+		      (write-constant object cursor)
+		      (set-cursor-offset! cursor
+					  (+ offset address-units-per-object))))
+		(loop))))))))
 
 (define (write-constant constant cursor)
   (write-string (cdr (write-to-string constant 60)))

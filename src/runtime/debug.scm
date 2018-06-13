@@ -473,9 +473,8 @@ USA.
 	  (output-to-string
 	   50
 	   (lambda ()
-	     (parameterize* (list (cons param:print-primitives-by-name? #t))
-	       (lambda ()
-		 (write (unsyntax expression)))))))
+	     (parameterize ((param:print-primitives-by-name? #t))
+	       (write (unsyntax expression))))))
 	 ((debugging-info/noise? expression)
 	  (output-to-string
 	   50
@@ -808,12 +807,11 @@ USA.
 (define *port*)
 
 (define (command/internal dstate port)
-  (parameterize* (list (cons *dstate* dstate)
-		       (cons *port* port))
-    (lambda ()
-      (debug/read-eval-print (->environment '(runtime debugger))
-			     "the debugger"
-			     "the debugger environment"))))
+  (parameterize ((*dstate* dstate)
+		 (*port* port))
+    (debug/read-eval-print (->environment '(runtime debugger))
+			   "the debugger"
+			   "the debugger environment")))
 
 (define-command (command/frame dstate port)
   (debugger-presentation port
@@ -954,14 +952,11 @@ using the read-eval-print environment instead.")
   (string-titlecase (if reason (string-append reason "; " message) message)))
 
 (define (debugger-pp expression indentation port)
-  (parameterize* (list (cons param:printer-list-depth-limit
-			     debugger:list-depth-limit)
-		       (cons param:printer-list-breadth-limit
-			     debugger:list-breadth-limit)
-		       (cons param:printer-string-length-limit
-			     debugger:string-length-limit))
-    (lambda ()
-      (pretty-print expression port true indentation))))
+  (parameterize ((param:printer-list-depth-limit debugger:list-depth-limit)
+		 (param:printer-list-breadth-limit debugger:list-breadth-limit)
+		 (param:printer-string-length-limit
+		  debugger:string-length-limit))
+    (pretty-print expression port true indentation)))
 
 (define expression-indentation 4)
 
