@@ -102,6 +102,14 @@ USA.
 		      (delay-force (make-promise expression))))))
 	      env))
 
+    (if (unbound? env 'parameterize)
+	(eval '(define-syntax parameterize
+		 (syntax-rules ()
+		   ((parameterize ((param value) ...) form ...)
+		    (parameterize* (list (cons param value) ...)
+				   (lambda () form ...)))))
+	      env))
+
     (if (unbound? env 'define-print-method)
 	(eval '(define (define-print-method predicate print-method)
 		 unspecific)

@@ -187,24 +187,6 @@ USA.
 	     (apply scons-begin (map scons-set! ids vals))
 	     (scons-call (apply scons-lambda '() body-forms)))))))))
 
-(define $parameterize
-  (spar-transformer->runtime
-   (delay
-     (scons-rule
-	 `((subform (* (subform (list id any))))
-	   (+ any))
-       (lambda (bindings body-forms)
-	 (let ((ids (map car bindings))
-	       (vals (map cadr bindings)))
-	   (scons-call (scons-close 'parameterize*)
-		       (apply scons-call
-			      (scons-close 'list)
-			      (map (lambda (id val)
-				     (scons-call (scons-close 'cons) id val))
-				   ids
-				   vals))
-		       (apply scons-lambda '() body-forms))))))))
-
 ;;; SRFI 2: and-let*
 
 ;;; The SRFI document is a little unclear about the semantics, imposes
@@ -405,6 +387,12 @@ USA.
   (syntax-rules ()
     ((delay expression)
      (delay-force (make-promise expression)))))
+
+(define-syntax $parameterize
+  (syntax-rules ()
+    ((parameterize ((param value) ...) form ...)
+     (parameterize* (list (cons param value) ...)
+		    (lambda () form ...)))))
 
 (define $guard
   (spar-transformer->runtime
