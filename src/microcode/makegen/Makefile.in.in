@@ -193,9 +193,6 @@ macosx-starter: macosx-starter.o
 prmcrypt.so: prmcrypt.o @MODULE_LOADER@
 	$(LINK_MODULE) prmcrypt.o -lmcrypt $(MODULE_LIBS)
 
-prdb4.so: prdb4.o @MODULE_LOADER@
-	$(LINK_MODULE) prdb4.o -ldb-4 $(MODULE_LIBS)
-
 prx11.so: prx11.o x11base.o x11color.o x11graph.o x11term.o @MODULE_LOADER@
 	$(LINK_MODULE) prx11.o x11base.o x11color.o x11graph.o x11term.o \
 	  -lX11 $(MODULE_LIBS)
