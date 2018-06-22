@@ -467,7 +467,6 @@ USA.
    (runtime memoizer)
    (runtime ucd-tables)
    (runtime ucd-glue)
-   (runtime blowfish)
    (runtime predicate)
    (runtime predicate-tagging)
    (runtime predicate-dispatch)

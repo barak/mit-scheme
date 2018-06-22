@@ -58,9 +58,6 @@ typedef unsigned char cc_t;
 /* Define to 1 if you have the <assert.h> header file. */
 #define HAVE_ASSERT_H 1
 
-/* Define if you have the <blowfish.h> header file.  */
-#define HAVE_BLOWFISH_H 1
-
 /* Define if you have the <fcntl.h> header file.  */
 #define HAVE_FCNTL_H 1
 

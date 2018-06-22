@@ -6,4 +6,4 @@
   (lambda ()
     (load-package-set "blowfish")))
 
-(add-subsystem-identification! "Blowfish" '(0 2))
+(add-subsystem-identification! "Blowfish" '(1 0))

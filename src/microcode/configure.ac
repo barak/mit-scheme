@@ -130,11 +130,6 @@ AC_ARG_ENABLE([native-code],
 	[Support native compiled code if available [[yes]]]))
 : ${enable_native_code='yes'}
 
-AC_ARG_WITH([openssl],
-    AS_HELP_STRING([--with-openssl],
-	[Use OpenSSL crypto library if available [[yes]]]))
-: ${with_openssl='yes'}
-
 AC_ARG_WITH([mcrypt],
     AS_HELP_STRING([--with-mcrypt],
 	[Use mcrypt library if available [[yes]]]))
@@ -171,7 +166,6 @@ GC_HEAD_FILES="gccode.h cmpgc.h cmpintmd-config.h cmpintmd.h"
 OPTIONAL_BASES=
 OPTIONAL_SOURCES=
 OPTIONAL_OBJECTS=
-PRBFISH_LIBS=
 SCHEME_DEFS=-DMIT_SCHEME
 SCHEME_LDFLAGS=
 MODULE_BASES=
@@ -826,29 +820,6 @@ no)
     ;;
 esac
 
-dnl The OpenSSL crypto library provides support for blowfish and MD5.
-if test "${with_openssl}" != no; then
-    if test "${with_openssl}" != yes; then
-	CPPFLAGS="${CPPFLAGS} -I${with_openssl}/include"
-	LDFLAGS="${LDFLAGS} -L${with_openssl}/lib"
-    fi
-    FOUND=
-    AC_CHECK_HEADERS([openssl/blowfish.h openssl/md5.h],
-	[
-	AC_CHECK_LIB([crypto], [BF_set_key],
-	    [
-	    AC_DEFINE([HAVE_LIBCRYPTO], [1],
-		[Define to 1 if you have the `crypto' library (-lcrypto).])
-	    FOUND=yes
-	    ])
-	])
-    if test -n "${FOUND}"; then
-	MODULE_LIBS="-lcrypto ${MODULE_LIBS}"
-	MODULE_BASES="${MODULE_BASES} prbfish"
-	PRBFISH_LIBS="-lcrypto"
-    fi
-fi
-
 dnl These libraries might not be installed, so take care generating
 dnl file dependencies using "makegen/makegen.scm" when called on
 dnl "makegen/files-optional.scm".  To wit, "prmcrypt.c" must
@@ -1058,7 +1029,6 @@ AC_SUBST([M4_FLAGS])
 AC_SUBST([M4])
 AC_SUBST([OPTIONAL_SOURCES])
 AC_SUBST([OPTIONAL_OBJECTS])
-AC_SUBST([PRBFISH_LIBS])
 AC_SUBST([SCHEME_DEFS])
 AC_SUBST([SCHEME_LDFLAGS])
 AC_SUBST([MODULE_TARGETS])

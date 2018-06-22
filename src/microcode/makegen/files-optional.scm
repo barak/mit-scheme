@@ -28,7 +28,6 @@ USA.
 
 "cmpint"
 "comutl"
-"prbfish"
 "prmcrypt"
 "prpgsql"
 "pruxdld"

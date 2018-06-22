@@ -1,8 +1,7 @@
 The Blowfish option.
 
-This plugin creates a (blowfish) package, a drop-in replacement for
-the microcode module based (runtime blowfish) package.  It is built in
-the customary GNU way:
+This plugin creates a (blowfish) package.  It is built in the
+customary GNU way:
 
     ./configure [--with-openssl=directory]...
     make all check install
@@ -14,8 +13,8 @@ To use:
 
 Import-blowfish will modify the REPL's current environment by adding
 bindings linked to the plugin's exports.  They are not exported to the
-global environment because they would conflict with the exports from
-(runtime blowfish).
+global environment because they would conflict with the deprecated
+exports from (runtime blowfish).
 
 To import into a CREF package set, add this to your .pkg file:
 

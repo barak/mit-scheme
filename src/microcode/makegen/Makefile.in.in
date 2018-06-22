@@ -101,7 +101,6 @@ STD_OBJECTS = @(write-objects "files-core")@ \
 GC_HEAD_FILES = @GC_HEAD_FILES@
 OPTIONAL_SOURCES = @OPTIONAL_SOURCES@
 OPTIONAL_OBJECTS = @OPTIONAL_OBJECTS@
-PRBFISH_LIBS = @PRBFISH_LIBS@
 
 MODULE_TARGETS = @MODULE_TARGETS@
 MODULE_CFLAGS = @MODULE_CFLAGS@
@@ -190,9 +189,6 @@ extract-liarc-decls: extract-liarc-decls.o
 
 macosx-starter: macosx-starter.o
 	$(LINK) macosx-starter.o
-
-prbfish.so: prbfish.o @MODULE_LOADER@
-	$(LINK_MODULE) prbfish.o $(PRBFISH_LIBS) $(MODULE_LIBS)
 
 prmcrypt.so: prmcrypt.o @MODULE_LOADER@
 	$(LINK_MODULE) prmcrypt.o -lmcrypt $(MODULE_LIBS)

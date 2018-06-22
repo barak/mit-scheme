@@ -105,7 +105,7 @@ USA.
 (define-package (runtime blowfish)
   (files "blowfish")
   (parent (runtime))
-  (export ()
+  (export () deprecated:blowfish
 	  blowfish-available?
 	  blowfish-cbc
 	  blowfish-cfb64

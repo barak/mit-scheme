@@ -49,7 +49,6 @@ USA.
     "microcode/test-lookup"
     "runtime/test-arith"
     "runtime/test-binary-port"
-    "runtime/test-blowfish"
     "runtime/test-bundle"
     "runtime/test-bytevector"
     ("runtime/test-char" (runtime))
