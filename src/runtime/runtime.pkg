@@ -137,7 +137,8 @@ USA.
   (export () deprecated:boot-definitions
 	  (define-unparser-method define-print-method)
 	  (simple-unparser-method standard-print-method)
-	  (standard-unparser-method bracketed-print-method))
+	  (standard-unparser-method bracketed-print-method)
+	  without-interrupts)
   (export ()
 	  %false->weak-false
 	  %make-record
@@ -202,8 +203,7 @@ USA.
 	  weak-set-car!
 	  weak-set-cdr!
 	  with-absolutely-no-interrupts
-	  with-limited-interrupts
-	  without-interrupts)
+	  with-limited-interrupts)
   (export (runtime)
 	  %add-to-weak-set
 	  %make-weak-set
