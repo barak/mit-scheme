@@ -1,8 +1,7 @@
 The Mcrypt option.
 
-This plugin creates an (mcrypt) package, a drop-in replacement for the
-microcode module based mcrypt-* procedures in the (runtime crypto)
-package.  It is built in the customary GNU way:
+This plugin creates an (mcrypt) package.  It is built in the customary
+GNU way:
 
     ./configure ...
     make all check install
@@ -14,8 +13,8 @@ To use:
 
 Import-mcrypt will modify the REPL's current environment by adding
 bindings linked to the plugin's exports.  They are not exported to the
-global environment because they would conflict with the exports from
-(runtime crypto).
+global environment because they would conflict with the deprecated
+exports from (runtime crypto).
 
 To import into a CREF package set, add this to your .pkg file:
 

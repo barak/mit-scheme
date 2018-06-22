@@ -545,7 +545,6 @@ USA.
    (runtime debugger)
    ;; Misc (e.g., version)
    (runtime)
-   (runtime crypto)
    ;; Graphics.  The last type initialized is the default for
    ;; MAKE-GRAPHICS-DEVICE, only the types that are valid for the
    ;; operating system are actually loaded and initialized.

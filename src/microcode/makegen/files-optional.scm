@@ -28,7 +28,6 @@ USA.
 
 "cmpint"
 "comutl"
-"prmcrypt"
 "pruxdld"
 "pruxffi"
 "prx11"

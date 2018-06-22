@@ -130,11 +130,6 @@ AC_ARG_ENABLE([native-code],
 	[Support native compiled code if available [[yes]]]))
 : ${enable_native_code='yes'}
 
-AC_ARG_WITH([mcrypt],
-    AS_HELP_STRING([--with-mcrypt],
-	[Use mcrypt library if available [[yes]]]))
-: ${with_mcrypt='yes'}
-
 AC_ARG_WITH([termcap],
     AS_HELP_STRING([--with-termcap],
 	[Use a termcap library if available [[yes]]]))
@@ -809,34 +804,6 @@ no)
     fi
     ;;
 esac
-
-dnl These libraries might not be installed, so take care generating
-dnl file dependencies using "makegen/makegen.scm" when called on
-dnl "makegen/files-optional.scm".  To wit, "prmcrypt.c" must
-dnl conditionalize its dependencies on <mcrypt.h>, respectively, to
-dnl avoid warnings in "Makefile.deps" and its embeds.
-
-dnl The mcrypt library provides blowfish, but its CFB mode is 8 bit.
-dnl We have been using 64-bit CFB, so this isn't really compatible.
-dnl But mcrypt provides many ciphers and can be loaded in addition.
-if test "${with_mcrypt}" != no; then
-    if test "${with_mcrypt}" != yes; then
-	CPPFLAGS="${CPPFLAGS} -I${with_mcrypt}/include"
-	LDFLAGS="${LDFLAGS} -L${with_mcrypt}/lib"
-    fi
-    AC_CHECK_HEADER([mcrypt.h],
-	[
-	AC_DEFINE([HAVE_MCRYPT_H], [1],
-	    [Define to 1 if you have the <mcrypt.h> header file.])
-	AC_CHECK_LIB([mcrypt], [mcrypt_generic_init],
-	    [
-	    AC_DEFINE([HAVE_LIBMCRYPT], [1],
-		[Define to 1 if you have the `mcrypt' library (-lmcrypt).])
-	    MODULE_LIBS="-lmcrypt ${MODULE_LIBS}"
-	    MODULE_BASES="${MODULE_BASES} prmcrypt"
-	    ])
-	])
-fi
 
 dnl Add support for X if present.
 if test "${no_x}" != yes; then

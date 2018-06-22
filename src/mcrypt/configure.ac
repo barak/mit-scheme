@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
 AC_INIT([MIT/GNU Scheme mcrypt plugin],
-        [0.2],
+        [1.0],
         [bug-mit-scheme@gnu.org],
         [mit-scheme-mcrypt])
 AC_CONFIG_SRCDIR([mcrypt.pkg])

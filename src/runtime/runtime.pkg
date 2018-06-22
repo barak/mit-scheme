@@ -5233,7 +5233,7 @@ USA.
 (define-package (runtime crypto)
   (files "crypto")
   (parent (runtime))
-  (export ()
+  (export () deprecated:crypto
 	  mcrypt-algorithm-name
 	  mcrypt-algorithm-names
 	  mcrypt-available?
@@ -5253,7 +5253,8 @@ USA.
 	  mcrypt-mode-names
 	  mcrypt-open-module
 	  mcrypt-self-test
-	  mcrypt-supported-key-sizes
+	  mcrypt-supported-key-sizes)
+  (export ()
 	  md5-available?
 	  md5-bytevector
 	  md5-file
