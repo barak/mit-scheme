@@ -5177,7 +5177,7 @@ USA.
     ((load) "gdbm")
     (else))
   (parent (runtime))
-  (export ()
+  (export () deprecated:gdbm
 	  gdbm-available?
 	  gdbm-close
 	  gdbm-delete

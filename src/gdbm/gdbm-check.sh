@@ -1,9 +1,9 @@
 #!/bin/sh
 #
-# Test the GDBM2 option.
+# Test the GDBM option.
 
 set -e
 ${MIT_SCHEME_EXE} --prepend-library . <<\EOF
-(load-option 'GDBM2)
+(load-option 'GDBM)
 (load "gdbm-check" (->environment '(gdbm)))
 EOF

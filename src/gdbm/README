@@ -1,21 +1,20 @@
-The GDBM2 option.
+The GDBM option.
 
-This plugin creates a (gdbm) package, a drop-in replacement for the
-microcode module based (runtime gdbm) package.  It is built in the
-customary GNU way:
+This plugin creates a (gdbm) package.  It is built in the customary
+GNU way:
 
     ./configure ...
     make all check install
 
 To use:
 
-    (load-option 'gdbm2)
-    (import-gdbm2)
+    (load-option 'gdbm)
+    (import-gdbm)
 
-Import-gdbm2 will modify the REPL's current environment by adding
+Import-gdbm will modify the REPL's current environment by adding
 bindings linked to the plugin's exports.  They are not exported to the
-global environment because they would conflict with the exports from
-(runtime gdbm).
+global environment because they would conflict with the deprecated
+exports from (runtime gdbm).
 
 To import into a CREF package set, add this to your .pkg file:
 

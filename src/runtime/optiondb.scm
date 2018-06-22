@@ -66,7 +66,6 @@ USA.
  '((compress	(runtime compress)	#f			"cpress")
    (dosprocess	()			#f			"dosproc")
    (format	(runtime format)	(initialize-package!)	"format")
-   (gdbm	(runtime gdbm)		#f			"gdbm")
    (mime-codec	(runtime mime-codec)	#f			"mime-codec")
    (ordered-vector (runtime ordered-vector) #f			"ordvec")
    (postgresql	(runtime postgresql)	#f			"pgsql")

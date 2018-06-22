@@ -24,12 +24,12 @@ USA.
 
 |#
 
-;;;; The GDBM2 option.
+;;;; The GDBM option.
 ;;; package: (gdbm)
 
 (declare (usual-integrations))
 
-(define (import-gdbm2)
+(define (import-gdbm)
   (let ((target-environment (nearest-repl/environment))
 	(source-environment (->environment '(gdbm))))
     (for-each (lambda (name)

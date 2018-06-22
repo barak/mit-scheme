@@ -29,106 +29,70 @@ USA.
 
 (declare (usual-integrations))
 
-(define gdbm-initialized? #f)
-(define gdbf-finalizer)
+;;; Access to the gdbm library is now accomplished with the FFI
+;;; rather than a microcode module.  The bindings in this package are
+;;; linked to those in the (gdbm) package after the plugin is loaded.
+
+(define linked? #f)
 
 (define (gdbm-available?)
-  (load-library-object-file "prgdbm" #f)
-  (and (implemented-primitive-procedure? (ucode-primitive gdbm-open 4))
-       (begin
-	 (if (not gdbm-initialized?)
-	     (begin
-	       (set! gdbf-finalizer
-		     (make-gc-finalizer (ucode-primitive gdbm-close 1)
-					gdbf?
-					gdbf-descriptor
-					set-gdbf-descriptor!))
-	       (set! gdbm-initialized? #t)))
-	 #t)))
+  (and (plugin-available? "gdbm")
+       (or linked?
+	   (begin
+	     (load-option 'gdbm)
+	     (link!)
+	     #t))))
 
-;; Parameters to gdbm_open for READERS, WRITERS, and WRITERS who can
-;; create the database.
-(define gdbm_reader  0)		;A reader.
-(define gdbm_writer  1)		;A writer.
-(define gdbm_wrcreat 2)		;A writer.  Create the db if needed.
-(define gdbm_newdb   3)		;A writer.  Always create a new db.
-(define gdbm_fast    16)	;Write fast! => No fsyncs.
+(define (link!)
+  (for-each
+    (let ((runtime (->environment '(runtime gdbm)))
+	  (gdbm (->environment '(gdbm))))
+      (lambda (name)
+	(environment-link-name runtime gdbm name)))
+    names)
+  (set! linked? #t))
 
-(define (gdbm-open filename block-size flags mode)
-  (if (not (gdbm-available?))
-      (error "This Scheme system was built without gdbm support."))
-  (let ((filename (->namestring (merge-pathnames filename))))
-    (without-interruption
-     (lambda ()
-       (add-to-gc-finalizer!
-	gdbf-finalizer
-	(make-gdbf (gdbm-error ((ucode-primitive gdbm-open 4)
-				filename block-size flags mode))
-		   filename))))))
+(define names
+  '(gdbm-close
+    gdbm-delete
+    gdbm-exists?
+    gdbm-fetch
+    gdbm-firstkey
+    gdbm-nextkey
+    gdbm-open
+    gdbm-reorganize
+    gdbm-setopt
+    gdbm-store
+    gdbm-sync
+    gdbm-version
+    gdbm_cachesize
+    gdbm_fast
+    gdbm_fastmode
+    gdbm_insert
+    gdbm_newdb
+    gdbm_reader
+    gdbm_replace
+    gdbm_wrcreat
+    gdbm_writer))
 
-(define (gdbm-close gdbf)
-  (if (not (gdbf? gdbf))
-      (error:wrong-type-argument gdbf "gdbm handle" 'gdbm-close))
-  (remove-from-gc-finalizer! gdbf-finalizer gdbf))
-
-;; Parameters to gdbm_store for simple insertion or replacement in the
-;; case that the key is already in the database.
-(define gdbm_insert  0)		;Never replace old data with new.
-(define gdbm_replace 1)		;Always replace old data with new.
-
-(define (gdbm-store gdbf key datum flags)
-  (gdbm-error
-   ((ucode-primitive gdbm-store 4) (guarantee-gdbf gdbf 'gdbm-store)
-				   key datum flags)))
-
-(define (gdbm-fetch gdbf key)
-  ((ucode-primitive gdbm-fetch 2) (guarantee-gdbf gdbf 'gdbm-fetch) key))
-
-(define (gdbm-exists? gdbf key)
-  ((ucode-primitive gdbm-exists 2) (guarantee-gdbf gdbf 'gdbm-exists?) key))
-
-(define (gdbm-delete gdbf key)
-  (gdbm-error
-   ((ucode-primitive gdbm-delete 2) (guarantee-gdbf gdbf 'gdbm-delete) key)))
-
-(define (gdbm-firstkey gdbf)
-  ((ucode-primitive gdbm-firstkey 1) (guarantee-gdbf gdbf 'gdbm-firstkey)))
-
-(define (gdbm-nextkey gdbf key)
-  ((ucode-primitive gdbm-nextkey 2) (guarantee-gdbf gdbf 'gdbm-nextkey) key))
-
-(define (gdbm-reorganize gdbf)
-  (gdbm-error
-   ((ucode-primitive gdbm-reorganize 1)
-    (guarantee-gdbf gdbf 'gdbm-reorganize))))
-
-(define (gdbm-sync gdbf)
-  ((ucode-primitive gdbm-sync 1) (guarantee-gdbf gdbf 'gdbm-sync)))
-
-(define (gdbm-version)
-  ((ucode-primitive gdbm-version 0)))
-
-;; Parameters to gdbm_setopt, specifing the type of operation to perform.
-(define gdbm_cachesize 1)       ;Set the cache size.
-(define gdbm_fastmode  2)       ;Toggle fast mode.
-
-(define (gdbm-setopt gdbf opt val)
-  (gdbm-error
-   ((ucode-primitive gdbm-setopt 3) (guarantee-gdbf gdbf 'gdbm-setopt)
-				    opt val)))
-
-(define-structure (gdbf
-		   (print-procedure (standard-print-method 'gdbf
-				      (lambda (gdbf)
-					(list (gdbf-filename gdbf))))))
-  descriptor
-  (filename #f read-only #t))
-
-(define (guarantee-gdbf gdbf procedure)
-  (if (gdbf? gdbf)
-      (or (gdbf-descriptor gdbf) (error:bad-range-argument gdbf procedure))
-      (error:wrong-type-argument gdbf "gdbm handle" procedure)))
-
-(define (gdbm-error object)
-  (if (string? object) (error "gdbm error:" object))
-  object)
+(define gdbm-close)
+(define gdbm-delete)
+(define gdbm-exists?)
+(define gdbm-fetch)
+(define gdbm-firstkey)
+(define gdbm-nextkey)
+(define gdbm-open)
+(define gdbm-reorganize)
+(define gdbm-setopt)
+(define gdbm-store)
+(define gdbm-sync)
+(define gdbm-version)
+(define gdbm_cachesize)
+(define gdbm_fast)
+(define gdbm_fastmode)
+(define gdbm_insert)
+(define gdbm_newdb)
+(define gdbm_reader)
+(define gdbm_replace)
+(define gdbm_wrcreat)
+(define gdbm_writer)

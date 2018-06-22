@@ -197,9 +197,6 @@ prbfish.so: prbfish.o @MODULE_LOADER@
 prmcrypt.so: prmcrypt.o @MODULE_LOADER@
 	$(LINK_MODULE) prmcrypt.o -lmcrypt $(MODULE_LIBS)
 
-prgdbm.so: prgdbm.o @MODULE_LOADER@
-	$(LINK_MODULE) prgdbm.o -lgdbm $(MODULE_LIBS)
-
 prdb4.so: prdb4.o @MODULE_LOADER@
 	$(LINK_MODULE) prdb4.o -ldb-4 $(MODULE_LIBS)
 

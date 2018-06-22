@@ -242,7 +242,7 @@ may need super-user privileges to do the installation step.
 
 @emph{After} you have installed Scheme, you can install a few
 dynamically loadable options.  These are configured, built and
-installed in the customary way.  To install the @code{GDBM2}
+installed in the customary way.  To install the @code{gdbm}
 option:
 
 @smallexample
@@ -278,13 +278,13 @@ so.  Please see the @file{README} file in each option's subdirectory
 for more information.
 
 @table @option
-@item BLOWFISH
+@item blowfish
 libssl-dev (-lcrypto)
-@item GDBM2
+@item gdbm
 libgdbm-dev (-lgdbm)
-@item MCRYPT
+@item mcrypt
 libmcrypt-dev (-lmcrypt)
-@item PGSQL
+@item pgsql
 libpq-dev (-lpq)
 @item X11
 libx11-dev (-lX11)

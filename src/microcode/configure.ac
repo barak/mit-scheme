@@ -140,11 +140,6 @@ AC_ARG_WITH([mcrypt],
 	[Use mcrypt library if available [[yes]]]))
 : ${with_mcrypt='yes'}
 
-AC_ARG_WITH([gdbm],
-    AS_HELP_STRING([--with-gdbm],
-	[Use gdbm library if available [[yes]]]))
-: ${with_gdbm='yes'}
-
 AC_ARG_WITH([db-4],
     AS_HELP_STRING([--with-db-4],
 	[Use Berkeley DB v4 library if available [[yes]]]))
@@ -878,26 +873,6 @@ if test "${with_mcrypt}" != no; then
 		[Define to 1 if you have the `mcrypt' library (-lmcrypt).])
 	    MODULE_LIBS="-lmcrypt ${MODULE_LIBS}"
 	    MODULE_BASES="${MODULE_BASES} prmcrypt"
-	    ])
-	])
-fi
-
-dnl gdbm support
-if test "${with_gdbm}" != no; then
-    if test "${with_gdbm}" != yes; then
-	CPPFLAGS="${CPPFLAGS} -I${with_gdbm}/include"
-	LDFLAGS="${LDFLAGS} -L${with_gdbm}/lib"
-    fi
-    AC_CHECK_HEADER([gdbm.h],
-	[
-	AC_DEFINE([HAVE_GDBM_H], [1],
-	    [Define to 1 if you have the <gdbm.h> header file.])
-	AC_CHECK_LIB([gdbm], [gdbm_open],
-	    [
-	    AC_DEFINE([HAVE_LIBGDBM], [1],
-		[Define to 1 if you have the `gdbm' library (-lgdbm).])
-	    MODULE_LIBS="-lgdbm ${MODULE_LIBS}"
-	    MODULE_BASES="${MODULE_BASES} prgdbm"
 	    ])
 	])
 fi
