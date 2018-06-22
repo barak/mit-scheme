@@ -171,9 +171,7 @@ USA.
 	   (load-set-and-initialize! '("key-w32")
 				     (->environment '(edwin win32-keys))))
 	  ((unix)
-	   (load-set-and-initialize! '("xterm")
-				     (->environment '(edwin screen x-screen)))
-	   (load "key-x11" (->environment '(edwin x-keys)))))
+	   (load "xterm" (->environment '(edwin screen x-screen)))))
 
 	(load-case 'os-type
 		   '((unix . "process")
@@ -183,7 +181,6 @@ USA.
 
 	(load "mousecom" environment)
         (case (lookup 'os-type)
-	  ((unix) (load "xcom" (->environment '(edwin x-commands))))
 	  ((nt) (load "win32com" (->environment '(edwin win-commands)))))
 	;; debug depends on button1-down defined in mousecom
 	(load "debug" (->environment '(edwin debugger)))

@@ -83,7 +83,6 @@ USA.
 	      "comatch"
 	      "display"
 	      "key-w32"
-	      "key-x11"
 	      "macros"
 	      "make"
 	      "nntp"
@@ -229,10 +228,8 @@ USA.
 		"webster"
 		"wincom"
 		"winout"
-		"xcom"
 		"win32com"
-		"world-monitor"
-		"xmodef")))
+		"world-monitor")))
   (for-each sf-class
 	    '("comwin"
 	      "modwin"

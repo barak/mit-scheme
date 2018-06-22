@@ -193,6 +193,18 @@ The command \\[yank] can retrieve it from there.
   (let ((point (if (default-object? point) (current-point) point)))
     (kill-ring-save (extract-string mark point) (mark<= point mark) point)))
 
+(define (os/interprogram-cut string context)
+  ;; This dummy is re-assigned by the last display type loaded(!).  It
+  ;; needs to be a display type operation.
+  (declare (ignore string context))
+  unspecific)
+
+(define (os/interprogram-paste point)
+  ;; This dummy is re-assigned by the last display type loaded(!).  It
+  ;; needs to be a display type operation.
+  (declare (ignore point))
+  unspecific)
+
 (define (kill-ring-save string forward? context)
   (command-message-receive append-next-kill-tag
     (lambda ()
