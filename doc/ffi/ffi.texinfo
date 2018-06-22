@@ -1,8 +1,8 @@
 \input texinfo @c -*-Texinfo-*-
 @comment %**start of header
 @setfilename mit-scheme-ffi
-@set VERSION 0.2
-@set UPDATED 2011-09-19
+@set VERSION 1.0
+@set UPDATED 2018-06-10
 @settitle FFI @value{VERSION}
 @comment %**end of header
 
@@ -45,10 +45,13 @@ Documentation License.''
 @subtitle for MIT/GNU Scheme version 9.0.1
 @subtitle @value{UPDATED}
 @author by Matt Birkholz
+@end titlepage
 @page
+@iftex
+@contents
 @vskip 0pt plus 1filll
 @insertcopying
-@end titlepage
+@end iftex
 
 @ifnottex
 @node Top, Introduction, (dir), (dir)
@@ -62,7 +65,7 @@ Documentation License.''
 * C Declarations:: Declare C types and functions.
 * Alien Data:: Manipulate C data.
 * Alien Functions:: Generate callout trampolines and call them.
-* Callbacks:: Generate callback trampolines and get interrupted by them.
+* Callbacks:: Generate callback trampolines and register handlers for them.
 * Compiling and Linking:: Build and install the shim.
 * Hello World:: A short example.
 * GNU Free Documentation License::
@@ -198,9 +201,9 @@ The @strong{@code{C-call}} syntax arranges to invoke a callout
 trampoline.  Arguments to the trampoline can be integers, floats,
 strings (or bytevectors) or aliens (non-heap pointers, to C data
 structures, @pxref{Alien Data}).  If a string argument might contain
-characters larger than one byte (code points U+0080 and larger), it
-should be converted to a bytevector e.g.@: by @code{string->utf8},
-else an error could be signaled.
+non-ASCII characters (code points U+0080 and larger), it should be
+converted to a bytevector e.g.@: by @code{string->utf8}, else an error
+could be signaled.
 
 @smallexample
 (let ((alien (make-alien '|GtkWidget|)))
@@ -419,7 +422,7 @@ only the target of a pointer type.
 While the informal grammar above allows anonymous structs to be member
 types, they are useless outside a named type declaration.  The peek
 and poke (@code{C->} and @code{C->=}) syntaxes require a type name
-(e.g.  @code{"GdkEventAny"} or @code{"struct _GdkEventAny"}) before
+(e.g.@: @code{"GdkEventAny"} or @code{"struct _GdkEventAny"}) before
 any member names.
 
 @smallexample
@@ -590,23 +593,38 @@ They cannot be garbage collected.  They are ``on call'' to handle
 callbacks from the toolkit until they are explicitly de-registered.  A
 band restore automatically de-registers all callbacks.
 
-The callback procedures are executed like an interrupt handler.  They
-actually interrupt the thread executing the most recent callout,
-e.g. to @code{gtk_main}.  The thread runs with thread switching
-disabled for the duration of the callback, and can callout to the
-toolkit, which can callback again.  The (nested) callbacks and nested
-callouts all run in the same thread, and so will return in LIFO order
-as expected by the toolkit.  Note that the runtime system will not
-balk at a callback procedure that calls @code{yield-thread}, waits for
-I/O, sleeps, or otherwise causes a thread switch.  Presumably such a
-procedure has some other way of enforcing the LIFO ordering.
+Callback procedures are executed with thread preemption suspended.
+Thus Scheme will not switch to another thread, especially not one
+preempted in an earlier callback.  Such a thread could finish its
+callback and return from the later callback, not to its original
+caller.
+
+Scheme will not preempt a callback, but if the callback calls
+@code{suspend-thread} it will switch to a running thread.  If the
+callback does IO (and blocks), suspends, yields, sleeps, or grabs
+(waits for) a mutex, the runtime system will switch to another thread,
+possibly a thread that blocked for IO during an earlier callback but
+is now recently unblocked and determined to finish and return to the
+wrong caller.  Thus callback procedures should be written as if they
+were interrupt handlers.  They should be short and simple because they
+must not wait.
+
+@c Something clever with a Scheme-side model of the C stack and some
+@c thread-join operations might provide the necessary guarantee (LIFO
+@c calls/returns across threads) so that callbacks can wait (for a
+@c mutex or IO or just for the C stack to unwind enough).
+
+@c Doing that for a multi-processing world "just" requires threads to
+@c wait for (and be scheduled for) a particular processor (a
+@c particular C stack).  Such an exercise is left to the poor soul who
+@c could not figure out how to avoid the problem in the first place.
 
 The @code{outf-error} procedure is provided for debugging purposes.
 It writes one or more argument strings (and @code{write}s any
 non-strings) to the Unix ``stderr'' channel, atomically, via a machine
-primitive, bypassing the runtime's I/O buffering and thread switching.
-Thus trace messages from multiple threads will appear on stderr intact
-and uninterrupted.
+primitive, bypassing the runtime's IO buffering and thread switching.
+Thus trace messages from multiple threads will appear on stderr
+intact, uninterrupted.
 
 
 @node Compiling and Linking, Hello World, Callbacks, Top
@@ -659,6 +677,7 @@ installing a shim for the example ``Hello, World!'' program.
 The FFI also supports libraries created by GNU automake (libtool).
 The source distribution includes several simple plugins.  Each uses a
 portable Makefile.am to build and install its shared object.
+
 
 @node Hello World, GNU Free Documentation License, Compiling and Linking, Top
 @chapter Hello World
