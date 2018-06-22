@@ -1,19 +1,20 @@
 The X11 option.
 
-This plugin creates an (x11) package, a drop-in replacement for the
-microcode module based (runtime x-graphics) package.  It is built in
-the customary GNU way:
+This plugin creates an (x11) package.  It is built in the customary
+GNU way:
 
     ./configure ...
     make all check install
 
-To load:
+To use:
 
     (load-option 'x11)
+    (import-x11)
 
-Loading this plugin re-assigns the bindings in (runtime x-graphics).
-Any existing X graphics devices will stop working, and make-graphics-
-device will begin creating X11 graphics devices instead.
+Import-x11 will modify the REPL's current environment by adding
+bindings linked to the plugin's exports.  They are not exported to the
+global environment because they would conflict with the deprecated
+exports from (runtime x-graphics).
 
 To import into a CREF package set, add this to your .pkg file:
 

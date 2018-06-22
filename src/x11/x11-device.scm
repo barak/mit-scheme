@@ -48,7 +48,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (initialize-package!)
   (set! x-graphics-device-type
 	(make-graphics-device-type
-	 'X11
+	 'x11
 	 `((available? ,x-graphics/available?)
 	   (clear ,x-graphics/clear)
 	   (close ,x-graphics/close-window)
@@ -127,7 +127,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 		   (conc-name x-display/)
 		   (constructor make-x-display (name xd))
 		   (print-procedure
-		    (standard-print-method 'X-DISPLAY
+		    (standard-print-method 'x-display
 		      (lambda (display)
 			(list (x-display/name display))))))
   (name #f read-only #t)
@@ -187,7 +187,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
     (set! registration
 	  (permanently-register-io-thread-event
 	   (x-display-descriptor (x-display/xd display))
-	   'READ
+	   'read
 	   (current-thread)
 	   (lambda (mode)
 	     mode
@@ -230,11 +230,11 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (%read-and-process-event display)
   (let ((event
 	 (or (x-display-process-events (x-display/xd display) 2)
-	     (and (eq? 'READ
+	     (and (eq? 'read
 		       (test-for-io-on-descriptor
 			(x-display-descriptor (x-display/xd display))
 			#t
-			'READ))
+			'read))
 		  (x-display-process-events (x-display/xd display) 1)))))
     (if (and event (not (eq? #t event)))
 	(process-event display event))))
@@ -289,7 +289,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
     (x-graphics-reconfigure (vector-ref event 1)
 			    (vector-ref event 2)
 			    (vector-ref event 3))
-    (if (eq? 'NEVER (x-window/mapped? window))
+    (if (eq? 'never (x-window/mapped? window))
 	(set-x-window/mapped?! window #t))))
 
 (define-event-handler event-type:delete-window
@@ -310,9 +310,9 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define-event-handler event-type:visibility
   (lambda (window event)
     (case (vector-ref event 2)
-      ((0) (set-x-window/visibility! window 'UNOBSCURED))
-      ((1) (set-x-window/visibility! window 'PARTIALLY-OBSCURED))
-      ((2) (set-x-window/visibility! window 'OBSCURED)))))
+      ((0) (set-x-window/visibility! window 'unobscured))
+      ((1) (set-x-window/visibility! window 'partially-obscured))
+      ((2) (set-x-window/visibility! window 'obscured)))))
 
 (let ((mouse-event-handler
        (lambda (window event)
@@ -337,7 +337,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 			    (constructor make-x-window (xw display)))
   xw
   (display #f read-only #t)
-  (mapped? 'NEVER)
+  (mapped? 'never)
   (visibility #f)
   (user-event-mask user-event-mask:default))
 
@@ -398,7 +398,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	(lambda ()
 	  (decode-suppress-map-arg (and (not (default-object? suppress-map?))
 					suppress-map?)
-				   'MAKE-GRAPHICS-DEVICE))
+				   'make-graphics-device))
       (lambda (map? resource class)
 	(let ((xw
 	       (x-graphics-open-window
@@ -500,7 +500,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-graphics/flush device)
   (if (and x-graphics:auto-raise?
 	   (x-graphics-device/mapped? device)
-	   (not (eq? 'UNOBSCURED (x-graphics-device/visibility device))))
+	   (not (eq? 'unobscured (x-graphics-device/visibility device))))
       (x-graphics/raise-window device))
   (x-display-flush (x-graphics-device/xd device)))
 
@@ -532,7 +532,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (x-graphics/set-line-style device line-style)
   (if (not (and (exact-nonnegative-integer? line-style) (< line-style 8)))
       (error:wrong-type-argument line-style "graphics line style"
-				 'SET-LINE-STYLE))
+				 'set-line-style))
   (let ((xw (x-graphics-device/xw device)))
     (if (zero? line-style)
 	(x-graphics-set-line-style xw 0)
@@ -751,7 +751,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define (initialize-image-datatype)
   (1d-table/put!
    (graphics-type-properties x-graphics-device-type)
-   'IMAGE-TYPE
+   'image-type
    (make-image-type
     `((create ,create-x-image)
       (destroy ,x-graphics-image/destroy)

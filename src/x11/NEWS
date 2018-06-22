@@ -22,6 +22,12 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 02110-1301, USA.
 
+mit-scheme-x11 1.0 - Matt Birkholz, 2018-06-21
+==============================================
+
+Replace the prx11.so µcode module.  Add an import-x11 procedure.  The
+deprecated (runtimem x-graphics) package now autoloads this plugin.
+
 mit-scheme-x11 0.3 - Matt Birkholz, 2018-06-01
 ==============================================
 

@@ -190,10 +190,6 @@ extract-liarc-decls: extract-liarc-decls.o
 macosx-starter: macosx-starter.o
 	$(LINK) macosx-starter.o
 
-prx11.so: prx11.o x11base.o x11color.o x11graph.o x11term.o @MODULE_LOADER@
-	$(LINK_MODULE) prx11.o x11base.o x11color.o x11graph.o x11term.o \
-	  -lX11 $(MODULE_LIBS)
-
 @MODULE_RULES@
 
 tags: TAGS

@@ -805,21 +805,6 @@ no)
     ;;
 esac
 
-dnl Add support for X if present.
-if test "${no_x}" != yes; then
-    if test "x${x_includes}" != x; then
-	FOO=-I`echo ${x_includes} | sed -e "s/:/ -I/g"`
-	CPPFLAGS="${CPPFLAGS} ${FOO}"
-    fi
-    if test "x${x_libraries}" != x; then
-	FOO=-L`echo ${x_libraries} | sed -e "s/:/ -L/g"`
-	LDFLAGS="${LDFLAGS} ${FOO}"
-    fi
-    MODULE_LIBS="-lX11 ${MODULE_LIBS}"
-    MODULE_BASES="${MODULE_BASES} prx11"
-    MODULE_AUX_BASES="${MODULE_AUX_BASES} x11base x11color x11graph x11term"
-fi
-
 dnl Check for dynamic loader support.
 AC_CHECK_FUNC([dlopen],
     [],

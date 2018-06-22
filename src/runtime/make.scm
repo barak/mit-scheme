@@ -545,10 +545,6 @@ USA.
    (runtime debugger)
    ;; Misc (e.g., version)
    (runtime)
-   ;; Graphics.  The last type initialized is the default for
-   ;; MAKE-GRAPHICS-DEVICE, only the types that are valid for the
-   ;; operating system are actually loaded and initialized.
-   (optional (runtime x-graphics))
    ;; Emacs -- last because it installs hooks everywhere which must be initted.
    (runtime emacs-interface)
    ;; More debugging

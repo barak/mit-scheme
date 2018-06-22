@@ -4250,7 +4250,7 @@ USA.
     ((unix) "x11graph")
     (else))
   (parent (runtime))
-  (export ()
+  (export () deprecated:x11graph
 	  create-x-colormap
 	  create-x-image
 	  x-character-bounds/ascent
@@ -4366,8 +4366,7 @@ USA.
 	  x-visual-info/red-mask
 	  x-visual-info/screen
 	  x-visual-info/visual
-	  x-visual-info/visual-id)
-  (initialization (initialize-package!)))
+	  x-visual-info/visual-id))
 
 (define-package (runtime state-space)
   (files "wind")
