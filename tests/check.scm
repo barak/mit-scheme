@@ -82,7 +82,7 @@ USA.
     "runtime/test-thread-queue"
     "runtime/test-url"
     ("runtime/test-wttree" (runtime wt-tree))
-    ;;"ffi/test-ffi"
+    "ffi/test-ffi"
     "sos/test-genmult"
     ))
 

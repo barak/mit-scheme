@@ -560,7 +560,7 @@ USA.
    (runtime http-syntax)
    (runtime html-form-codec)
    (optional (runtime win32-registry))
-   (optional (runtime ffi))
+   (runtime ffi)
    (runtime save/restore)
    (runtime structure-parser)
    (runtime swank)
