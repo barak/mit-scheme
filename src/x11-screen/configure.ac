@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme Edwin X11 Screen plugin],
-        [0.2],
+        [1.0],
         [bug-mit-scheme@gnu.org],
         [mit-scheme-x11-screen])
 AC_CONFIG_SRCDIR([x11-screen.pkg])
@@ -47,7 +47,7 @@ os_suffix=`echo "(display (microcode-id/operating-system-suffix))" \
 
 MIT_SCHEME_PKD="x11-screen-${os_suffix}.pkd"
 
-for f in x11-screen; do	# x11-key x11-command
+for f in x11-screen x11-key x11-command; do
     MIT_SCHEME_SCMs="${MIT_SCHEME_SCMs} ${f}.scm"
     MIT_SCHEME_BCIs="${MIT_SCHEME_BCIs} ${f}.bci"
     MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}

@@ -32,35 +32,25 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 (define-package (edwin screen x11-screen)
   (files "x11-screen")
   (parent (edwin screen))
-  ;; Until the microcode module based Edwin X Screen is removed, these
-  ;; bindings are already in (edwin) and (edwin x-commands).  They
-  ;; cannot be exported again, and must be patched by
-  ;; (load-option 'x11-screen).
-  #;(export (edwin)
+  (export (edwin)
 	  edwin-variable$x-cut-to-clipboard
 	  edwin-variable$x-paste-from-clipboard
-	  os/interprogram-cut
-	  os/interprogram-paste
 	  x-root-window-size
 	  x-screen-ignore-focus-button?
 	  x-selection-timeout
 	  xterm-screen/flush!
 	  xterm-screen/grab-focus!)
-  #;(export (edwin x-commands)
+  (export (edwin x11-commands)
 	  screen-display
 	  screen-xterm
 	  xterm-screen/set-icon-name
 	  xterm-screen/set-name)
+  (import (edwin screen x-screen)
+	  x-display-type)
   (import (edwin keyboard)
 	  keyboard-peek-busy-no-hang)
   (import (edwin process)
 	  register-process-output-events)
-  (import (edwin x-keys)
-	  x-make-special-key)
-  (import (edwin x-commands)
-	  update-xterm-screen-names!)
-  ;; Import bindings that, in (edwin screen x-screen), are defined by
-  ;; a define-primitives form.
   (import (x11)
 	  x-change-property
 	  x-close-all-displays
@@ -115,10 +105,8 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	  xterm-write-cursor!
 	  xterm-write-substring!
 	  xterm-x-size
-	  xterm-y-size)
-  ;; Import bindings that, in (edwin screen x-screen), are defined by
-  ;; optimistic stabs at FFI constants.
-  (import (x11)
+	  xterm-y-size
+
 	  event-type:button-down
 	  event-type:button-up
 	  event-type:configure
@@ -140,75 +128,36 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	  event-type:property-notify
 	  number-of-event-types))
 
-#;(define-package (edwin x11-keys)
+(define-package (edwin x11-keys)
   (files "x11-key")
   (parent (edwin))
   (export (edwin screen x11-screen)
 	  x-make-special-key))
 
-#;(define-package (edwin x-commands)
-  (files "x11-com")
+(define-package (edwin x11-commands)
+  (files "x11-command")
   (parent (edwin))
-  (import (edwin)
-	  edwin-command$lower-frame
-	  edwin-command$raise-frame
-	  edwin-command$set-background-color
-	  edwin-command$set-border-color
-	  edwin-command$set-border-width
-	  edwin-command$set-cursor-color
-	  edwin-command$set-default-font
-	  edwin-command$set-font
-	  edwin-command$set-foreground-color
-	  edwin-command$set-frame-icon-name
-	  edwin-command$set-frame-name
-	  edwin-command$set-frame-position
-	  edwin-command$set-frame-size
-	  edwin-command$set-internal-border-width
-	  edwin-command$set-mouse-color
-	  edwin-command$set-mouse-shape
-	  edwin-command$show-frame-position
-	  edwin-command$show-frame-size
-	  edwin-command$x-lower-screen
-	  edwin-command$x-mouse-ignore
-	  edwin-command$x-mouse-keep-one-window
-	  edwin-command$x-mouse-select
-	  edwin-command$x-mouse-select-and-split
-	  edwin-command$x-mouse-set-mark
-	  edwin-command$x-mouse-set-point
-	  edwin-command$x-mouse-show-event
-	  edwin-command$x-raise-screen
-	  edwin-command$x-set-background-color
-	  edwin-command$x-set-border-color
-	  edwin-command$x-set-border-width
-	  edwin-command$x-set-cursor-color
-	  edwin-command$x-set-font
-	  edwin-command$x-set-foreground-color
-	  edwin-command$x-set-icon-name
-	  edwin-command$x-set-internal-border-width
-	  edwin-command$x-set-mouse-color
-	  edwin-command$x-set-mouse-shape
-	  edwin-command$x-set-position
-	  edwin-command$x-set-size
-	  edwin-command$x-set-window-name
-	  edwin-variable$frame-icon-name-format
-	  edwin-variable$frame-icon-name-length
-	  edwin-variable$x-screen-icon-name-format
-	  edwin-variable$x-screen-icon-name-length
-	  edwin-variable$x-screen-name-format
-	  edwin-variable$x-screen-name-length
-
-	  ;; Convenience exports?  Do we need non-X-specific
-	  ;; abstractions to define mouse commands?
-	  ;;x-button1-down
-	  ;;x-button1-up
-	  ;;x-button2-down
-	  ;;x-button2-up
-	  ;;x-button3-down
-	  ;;x-button3-up
-	  ;;x-button4-down
-	  ;;x-button4-up
-	  ;;x-button5-down
-	  ;;x-button5-up
-	  )
   (export (edwin screen x11-screen)
-	  update-xterm-screen-names!))
+	  update-xterm-screen-names!)
+  (import (x11)
+	  x-list-fonts
+	  x-set-default-font
+	  x-window-clear
+	  x-window-get-position
+	  x-window-get-size
+	  x-window-lower
+	  x-window-raise
+	  x-window-set-background-color
+	  x-window-set-border-color
+	  x-window-set-border-width
+	  x-window-set-cursor-color
+	  x-window-set-font
+	  x-window-set-foreground-color
+	  x-window-set-internal-border-width
+	  x-window-set-mouse-color
+	  x-window-set-mouse-shape
+	  x-window-set-position
+	  xterm-reconfigure
+	  xterm-set-size
+	  xterm-x-size
+	  xterm-y-size))

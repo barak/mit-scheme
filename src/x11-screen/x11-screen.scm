@@ -1024,9 +1024,7 @@ In either case, it is copied to the primary selection."
   #t
   boolean?)
 
-(set!
- os/interprogram-cut
- (named-lambda (os/interprogram-cut string context)
+(define (os/interprogram-cut string context)
    (if (eq? x-display-type (current-display-type))
        (let ((xterm (screen-xterm (selected-screen))))
 	 (let ((own-selection
@@ -1038,7 +1036,7 @@ In either case, it is copied to the primary selection."
 				 string))))
 	   (own-selection 'PRIMARY)
 	   (if (ref-variable x-cut-to-clipboard context)
-	       (own-selection 'CLIPBOARD)))))))
+	       (own-selection 'CLIPBOARD))))))
 
 (define (own-selection display selection window time value)
   (and (eqv? window
@@ -1208,11 +1206,9 @@ Otherwise, it is copied from the primary selection."
   #t
   boolean?)
 
-(set!
- os/interprogram-paste
- (named-lambda (os/interprogram-paste context)
+(define (os/interprogram-paste context)
    (and (eq? x-display-type (current-display-type))
-	(xterm/interprogram-paste (screen-xterm (selected-screen)) context))))
+	(xterm/interprogram-paste (screen-xterm (selected-screen)) context)))
 
 (define (xterm/interprogram-paste xterm context)
   (or (and (ref-variable x-paste-from-clipboard context)
@@ -1360,7 +1356,6 @@ Otherwise, it is copied from the primary selection."
 
 ;;;; Initialization
 
-(define x-display-type)
 (define x-display-data)
 (define x-display-events)
 (define x-display-name #f)
@@ -1388,17 +1383,6 @@ Otherwise, it is copied from the primary selection."
 
 (define (initialize-package!)
   (set! screen-list '())
-  (set! x-display-type
-	(make-display-type 'X11
-			   #t
-			   get-x-display
-			   make-xterm-screen
-			   (lambda (screen)
-			     screen	;ignore
-			     (get-xterm-input-operations))
-			   with-editor-interrupts-from-x
-			   with-x-interrupts-enabled
-			   with-x-interrupts-disabled))
   (reset-x-display!)
   (add-event-receiver! event:after-restore reset-x-display!)
   unspecific)

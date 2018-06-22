@@ -43,8 +43,8 @@ ${MIT_SCHEME_EXE} --batch-mode <<\EOF
     (construct-packages-from-file (fasload package-set)))
 
   (compile-file "x11-screen" '() (->environment '(edwin screen x11-screen)))
-  ;;(compile-file "x11-key" '() (->environment '(edwin x-keys)))
-  ;;(compile-file "x11-com" '() (->environment '(edwin x-commands)))
+  (compile-file "x11-key" '() (->environment '(edwin x11-keys)))
+  (compile-file "x11-command" '() (->environment '(edwin x11-commands)))
 
   (cref/generate-constructors "x11-screen")
   )
