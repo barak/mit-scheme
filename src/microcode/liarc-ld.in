@@ -34,6 +34,6 @@ shift
 
 SCHEME_EXE=`dirname ${0}`/scheme
 
-CMD="@CCLD@ @LDFLAGS@ @MODULE_LDFLAGS@ -o ${OUT} ${@}"
+CMD="@CCLD@ @LDFLAGS@ -o ${OUT} ${@}"
 echo "${CMD}"
 eval "${CMD}"

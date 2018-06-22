@@ -27,10 +27,6 @@
 #### Makefile for Scheme under Win32 compiled by Microsoft Visual C++.
 !include <win32.mak>
 
-#USER_PRIM_SOURCES = prmd5.c
-#USER_PRIM_OBJECTS = prmd5.obj
-#USER_LIBS = md5.lib
-
 # **** Microsoft supplies their assembler as a separate product, and
 # **** we don't currently have a copy, so use the Watcom assembler.
 # Assembler options.
@@ -469,7 +465,6 @@ utils.obj: utils.c $(SCHEME_H) $(PRIMS_H) $(HISTORY_H) \
 vector.obj: vector.c $(SCHEME_H) $(PRIMS_H)
 wind.obj: wind.c $(OBSTACK_H) $(DSTACK_H) $(OUTF_H)
 
-prmd5.obj: prmd5.c $(SCHEME_H) $(PRIMS_H)
 prosenv.obj: prosenv.c $(SCHEME_H) $(PRIMS_H) $(OSENV_H) $(OSTOP_H) $(LIMITS_H)
 prosfile.obj: prosfile.c $(SCHEME_H) $(PRIMS_H) $(OSFILE_H)
 prosfs.obj: prosfs.c $(SCHEME_H) $(PRIMS_H) $(OSFILE_H) $(OSFS_H) $(OSIO_H)

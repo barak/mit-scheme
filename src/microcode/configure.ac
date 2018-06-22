@@ -153,14 +153,6 @@ OPTIONAL_SOURCES=
 OPTIONAL_OBJECTS=
 SCHEME_DEFS=-DMIT_SCHEME
 SCHEME_LDFLAGS=
-MODULE_BASES=
-MODULE_AUX_BASES=
-MODULE_LIBS=
-MODULE_TARGETS=
-MODULE_RULES=/dev/null
-MODULE_CFLAGS=
-MODULE_LDFLAGS=
-MODULE_LOADER=
 LIARC_VARS=/dev/null
 LIARC_RULES=/dev/null
 AUX_PROGRAMS=
@@ -333,15 +325,6 @@ darwin*)
     CFLAGS="${CFLAGS} ${MACOSX_CFLAGS}"
     LDFLAGS="${LDFLAGS} ${MACOSX_CFLAGS} -Wl,-syslibroot,${MACOSX_SYSROOT}"
     LDFLAGS="${LDFLAGS} -framework CoreFoundation"
-    MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle"
-    if test "${with_module_loader}" != no; then
-      if test "${with_module_loader}" = yes; then
-	MODULE_LOADER='${SCHEME_EXE}'
-      else
-	MODULE_LOADER="${with_module_loader}"
-      fi
-      MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle_loader ${MODULE_LOADER}"
-    fi
     AUX_PROGRAMS="${AUX_PROGRAMS} macosx-starter"
     ;;
 netbsd*)
@@ -367,8 +350,6 @@ if test "${DO_GCC_TESTS}" = yes; then
     if test "${GNU_LD}" = yes; then
 	SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -export-dynamic"
     fi
-    MODULE_CFLAGS="-fPIC ${MODULE_CFLAGS}"
-    MODULE_LDFLAGS="${MODULE_LDFLAGS} -shared -fPIC"
     AC_MSG_CHECKING([for ELF binaries])
     AC_EGREP_CPP([yes],
 	[
@@ -871,26 +852,6 @@ for base in ${OPTIONAL_BASES}; do
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} ${base}.o"
 done
 
-if test "x${MODULE_BASES}" != x; then
-    MODULE_RULES=config-rules.module
-    rm -f ${MODULE_RULES}
-    for BASE in ${MODULE_BASES}; do
-	MODULE_TARGETS="${MODULE_TARGETS} ${BASE}.so"
-	MODULE_AUX_BASES="${MODULE_AUX_BASES} ${BASE}"
-    done
-    for BASE in ${MODULE_AUX_BASES}; do
-	echo >> ${MODULE_RULES}
-	echo ${BASE}.o: ${BASE}.c >> ${MODULE_RULES}
-	echo "	" '$(COMPILE_MODULE)' -c '$*.c' >> ${MODULE_RULES}
-    done
-fi
-if test "x${MODULE_TARGETS}" != x; then
-    if test ! -e ../lib/lib; then mkdir ../lib/lib; fi
-    for BASE in ${MODULE_TARGETS}; do
-	ln -sf ../../microcode/${BASE} ../lib/lib/${BASE}
-    done
-fi
-
 AC_SUBST([AS_FLAGS])
 AC_SUBST([GC_HEAD_FILES])
 AC_SUBST([M4_FLAGS])
@@ -899,11 +860,6 @@ AC_SUBST([OPTIONAL_SOURCES])
 AC_SUBST([OPTIONAL_OBJECTS])
 AC_SUBST([SCHEME_DEFS])
 AC_SUBST([SCHEME_LDFLAGS])
-AC_SUBST([MODULE_TARGETS])
-AC_SUBST_FILE([MODULE_RULES])
-AC_SUBST([MODULE_CFLAGS])
-AC_SUBST([MODULE_LDFLAGS])
-AC_SUBST([MODULE_LOADER])
 AC_SUBST_FILE([LIARC_VARS])
 AC_SUBST_FILE([LIARC_RULES])
 AC_SUBST([AUX_PROGRAMS])
@@ -921,7 +877,3 @@ rm -f makegen-cc
 echo "#!/bin/sh" > makegen-cc
 echo exec gcc -MM -MG -DMIT_SCHEME ${CPPFLAGS} '"${1}"' >> makegen-cc
 chmod +x makegen-cc
-
-if test ${MODULE_RULES} != /dev/null; then
-    rm -f ${MODULE_RULES}
-fi

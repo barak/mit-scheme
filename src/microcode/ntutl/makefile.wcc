@@ -27,9 +27,7 @@
 #### Makefile for Scheme under Win32 compiled by Watcom C/C++
 ###  This makefile is meant to be used with Watcom make.
 
-USER_PRIM_SOURCES = # prmd5.c
-USER_PRIM_OBJECTS = # prmd5.obj
-USER_LIBS = library wsock32.lib #,md5.lib
+USER_LIBS = library wsock32.lib
 
 CC = wcc386
 M4 = m4
@@ -290,8 +288,8 @@ utils.obj &
 vector.obj &
 wind.obj
 
-SOURCES = $(CORE_SOURCES) $(USER_PRIM_SOURCES)
-OBJECTS = $(CORE_OBJECTS) $(USER_PRIM_OBJECTS) usrdef.obj
+SOURCES = $(CORE_SOURCES)
+OBJECTS = $(CORE_OBJECTS) usrdef.obj
 SCHEME_LIB = $(USER_LIBS)
 
 scheme : scheme.exe .SYMBOLIC

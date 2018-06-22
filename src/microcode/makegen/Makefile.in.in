@@ -102,14 +102,6 @@ GC_HEAD_FILES = @GC_HEAD_FILES@
 OPTIONAL_SOURCES = @OPTIONAL_SOURCES@
 OPTIONAL_OBJECTS = @OPTIONAL_OBJECTS@
 
-MODULE_TARGETS = @MODULE_TARGETS@
-MODULE_CFLAGS = @MODULE_CFLAGS@
-MODULE_LDFLAGS = @MODULE_LDFLAGS@
-MODULE_LOADER = @MODULE_LOADER@
-COMPILE_MODULE = $(COMPILE) -DCOMPILE_AS_MODULE $(MODULE_CFLAGS)
-LINK_MODULE = $(LINK) $(MODULE_LDFLAGS)
-MODULE_LIBS = -lc
-
 # **** Rules for C back end (part 1, variables) ****
 
 @LIARC_VARS@
@@ -117,7 +109,7 @@ MODULE_LIBS = -lc
 # **** Program definitions ****
 
 aux_PROGRAMS = @AUX_PROGRAMS@
-aux_LIBS = $(MODULE_TARGETS)
+aux_LIBS = 
 aux_DATA = @AUX_DATA@
 EXTRA_PROGRAMS = findprim
 
@@ -189,8 +181,6 @@ extract-liarc-decls: extract-liarc-decls.o
 
 macosx-starter: macosx-starter.o
 	$(LINK) macosx-starter.o
-
-@MODULE_RULES@
 
 tags: TAGS
 TAGS:
