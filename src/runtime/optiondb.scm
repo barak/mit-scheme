@@ -68,7 +68,6 @@ USA.
    (format	(runtime format)	(initialize-package!)	"format")
    (mime-codec	(runtime mime-codec)	#f			"mime-codec")
    (ordered-vector (runtime ordered-vector) #f			"ordvec")
-   (postgresql	(runtime postgresql)	#f			"pgsql")
    (rb-tree	(runtime rb-tree)	#f			"rbtree")
    (stepper	(runtime stepper)	#f			"ystep")
    (subprocess	(runtime subprocess)	(initialize-package!)	"process")

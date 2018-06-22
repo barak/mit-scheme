@@ -5711,7 +5711,7 @@ USA.
     ((load) "pgsql")
     (else))
   (parent (runtime))
-  (export ()
+  (export () deprecated:postgresql
 	  call-with-pgsql-conn
 	  close-pgsql-conn
 	  condition-type:pgsql-connection-error

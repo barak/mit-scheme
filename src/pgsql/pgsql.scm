@@ -25,13 +25,13 @@ USA.
 |#
 
 ;;;; PostgreSQL Interface
-;;; package: (pgsql)
+;;; package: (postgresql)
 
 (declare (usual-integrations))
 
-(define (import-pgsql)
+(define (import-postgresql)
   (let ((target-environment (nearest-repl/environment))
-	(source-environment (->environment '(pgsql))))
+	(source-environment (->environment '(postgresql))))
     (for-each (lambda (name)
 		(link-variables target-environment name
 				source-environment name))

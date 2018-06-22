@@ -196,9 +196,6 @@ prmcrypt.so: prmcrypt.o @MODULE_LOADER@
 prdb4.so: prdb4.o @MODULE_LOADER@
 	$(LINK_MODULE) prdb4.o -ldb-4 $(MODULE_LIBS)
 
-prpgsql.so: prpgsql.o @MODULE_LOADER@
-	$(LINK_MODULE) prpgsql.o -lpq $(MODULE_LIBS)
-
 prx11.so: prx11.o x11base.o x11color.o x11graph.o x11term.o @MODULE_LOADER@
 	$(LINK_MODULE) prx11.o x11base.o x11color.o x11graph.o x11term.o \
 	  -lX11 $(MODULE_LIBS)

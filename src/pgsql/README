@@ -1,21 +1,20 @@
-The PGSQL option.
+The PostgreSQL option.
 
-This plugin creates a (pgsql) package, a drop-in replacement for the
-microcode module based (runtime postgresql) package.  It is built in the
-customary GNU way:
+This plugin creates a (postgresql) package.  It is built in the customary
+GNU way:
 
     ./configure ...
     make all check install
 
 To use:
 
-    (load-option 'pgsql)
-    (import-pgsql)
+    (load-option 'postgresql)
+    (import-postgresql)
 
-Import-pgsql will modify the REPL's current environment by adding
+Import-postgresql will modify the REPL's current environment by adding
 bindings linked to the plugin's exports.  They are not exported to the
-global environment because they would conflict with the exports from
-(runtime postgresql).
+global environment because they would conflict with the deprecated
+exports from (runtime postgresql).
 
 To import into a CREF package set, add this to your .pkg file:
 
@@ -23,6 +22,6 @@ To import into a CREF package set, add this to your .pkg file:
 
     (define-package (your package name)
       (parent (your package parent))
-      (import (pgsql)
+      (import (postgresql)
               call-with-pgsql-conn
               ...))

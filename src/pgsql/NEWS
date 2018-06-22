@@ -22,6 +22,13 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 02110-1301, USA.
 
+mit-scheme-pgsql 1.0 - Matt Birkholz, 2018-06-22
+================================================
+
+Replace the prpgsql µmodule.  Change the option name to "postgresql".
+Rename the import procedure "import-postgresql".  The deprecated
+(runtime postgresql) package now autoloads this plugin.
+
 mit-scheme-pgsql 0.1 - Matt Birkholz, 2017-07-02
 ================================================
 

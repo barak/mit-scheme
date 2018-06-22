@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
 AC_INIT([MIT/GNU Scheme pgsql plugin],
-        [0.1],
+        [1.0],
         [bug-mit-scheme@gnu.org],
         [mit-scheme-pgsql])
 AC_CONFIG_SRCDIR([pgsql.pkg])

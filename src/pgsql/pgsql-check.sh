@@ -5,5 +5,5 @@
 set -e
 ${MIT_SCHEME_EXE} --prepend-library . <<\EOF
 (load-option 'PGSQL)
-(load "pgsql-check" (->environment '(pgsql)))
+(load "pgsql-check" (->environment '(postgresql)))
 EOF

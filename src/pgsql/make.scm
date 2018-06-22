@@ -6,4 +6,4 @@
   (lambda ()
     (load-package-set "pgsql")))
 
-(add-subsystem-identification! "PGSQL" '(0 1))
+(add-subsystem-identification! "PostgreSQL" '(1 0))

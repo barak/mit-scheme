@@ -140,11 +140,6 @@ AC_ARG_WITH([db-4],
 	[Use Berkeley DB v4 library if available [[yes]]]))
 : ${with_db_4='yes'}
 
-AC_ARG_WITH([libpq],
-    AS_HELP_STRING([--with-libpq],
-	[Use PostgreSQL libpq library if available [[yes]]]))
-: ${with_libpq='yes'}
-
 AC_ARG_WITH([termcap],
     AS_HELP_STRING([--with-termcap],
 	[Use a termcap library if available [[yes]]]))
@@ -876,49 +871,6 @@ if test "${with_db_4}" != no; then
 	    AC_MSG_RESULT([no])
 	    ])
 	LIBS=${save_LIBS}
-	])
-fi
-
-dnl PostgreSQL support
-if test "${with_libpq}" != no; then
-    if test "${with_libpq}" != yes; then
-	libpq_inc=${with_libpq}/include
-	libpq_lib=${with_libpq}/lib
-    else
-	AC_PATH_PROG([PG_CONFIG], [pg_config])
-	if test "x${PG_CONFIG}" != x; then
-	    libpq_inc=`${PG_CONFIG} --includedir 2>/dev/null`
-	    libpq_lib=`${PG_CONFIG} --libdir 2>/dev/null`
-	else
-	    if test -d /usr/include/postgresql; then
-	       libpq_inc=/usr/include/postgresql
-	    else
-	       libpq_inc=/usr/include
-	    fi
-	    libpq_lib=/usr/lib
-	fi
-    fi
-    if test "x${libpq_inc}" != x; then
-	if test "${libpq_inc}" != /usr/include; then
-	    CPPFLAGS="${CPPFLAGS} -I${libpq_inc}"
-	fi
-    fi
-    if test "x${libpq_lib}" != x; then
-	if test "${libpq_lib}" != /usr/lib; then
-	    LDFLAGS="${LDFLAGS} -L${libpq_lib}"
-	fi
-    fi
-    AC_CHECK_HEADER([libpq-fe.h],
-	[
-	AC_DEFINE([HAVE_LIBPQ_FE_H], [1],
-	    [Define to 1 if you have the <libpq-fe.h> header file.])
-	AC_CHECK_LIB([pq], [PQconnectdb],
-	    [
-	    AC_DEFINE([HAVE_LIBPQ], [1],
-		[Define to 1 if you have the `pq' library (-lpq).])
-	    MODULE_LIBS="-lpq ${MODULE_LIBS}"
-	    MODULE_BASES="${MODULE_BASES} prpgsql"
-	    ])
 	])
 fi
 

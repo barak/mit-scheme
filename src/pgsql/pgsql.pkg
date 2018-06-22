@@ -26,7 +26,7 @@ USA.
 
 (global-definitions runtime/)
 
-(define-package (pgsql)
+(define-package (postgresql)
   (files "pgsql")
   (parent ())
   (initialization (initialize-package!))
@@ -35,8 +35,8 @@ USA.
 	  ustring-cp-size
 	  ustring?)
   (export ()
-	  import-pgsql)
-  (export (pgsql global)
+	  import-postgresql)
+  (export (postgresql global)
 	  call-with-pgsql-conn
 	  close-pgsql-conn
 	  condition-type:pgsql-connection-error
@@ -97,6 +97,6 @@ USA.
 	  poll-pgsql-conn
 	  poll-pgsql-reset))
 
-(define-package (pgsql global)
+(define-package (postgresql global)
   ;; Just to get cref to analyze whether all exports are defined.
   )
