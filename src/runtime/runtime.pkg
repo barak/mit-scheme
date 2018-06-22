@@ -3723,7 +3723,9 @@ USA.
 	  register-c-callback
 	  set-alien/ctype!
 	  add-plugin
-	  remove-plugin)
+	  remove-plugin
+	  delete-plugin-list
+	  update-plugin-indices)
   (initialization (initialize-package!)))
 
 (define-package (runtime program-copier)
