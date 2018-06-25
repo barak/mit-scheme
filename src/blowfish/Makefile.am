@@ -88,8 +88,8 @@ all_sources = $(sources) blowfish-adapter.c
 ETAGS_ARGS = $(all_sources) -r '/^([^iI].*/' $(cdecls)
 TAGS_DEPENDENCIES = $(all_sources) $(cdecls)
 
-EXTRA_DIST += $(all_sources) $(cdecls) compile.scm blowfish.pkg
-EXTRA_DIST += blowfish-check.scm blowfish-check.sh
+EXTRA_DIST += $(all_sources) $(cdecls) compile.sh compile.scm blowfish.pkg
+EXTRA_DIST += blowfish-test.scm blowfish-check.scm blowfish-check.sh
 EXTRA_DIST += make.scm optiondb.scm tags-fix.sh
 
 install-data-hook:
