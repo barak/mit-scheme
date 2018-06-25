@@ -11,10 +11,10 @@ To use:
     (load-option 'x11)
     (import-x11)
 
-Import-x11 will modify the REPL's current environment by adding
-bindings linked to the plugin's exports.  They are not exported to the
-global environment because they would conflict with the deprecated
-exports from (runtime x-graphics).
+The import-x11 procedure will modify the REPL's current environment by
+adding bindings linked to the plugin's exports, which are not exported
+to the global environment because they would conflict with the
+deprecated exports from (runtime x-graphics).
 
 To import into a CREF package set, add this to your .pkg file:
 

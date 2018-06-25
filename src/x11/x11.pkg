@@ -29,7 +29,9 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 (define-package (x11)
   (files "x11")
-  (parent ()))
+  (parent ())
+  (export ()
+	  import-x11))
 
 (define-package (x11 base)
   (files "x11-base")
