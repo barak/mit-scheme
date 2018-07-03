@@ -35,7 +35,16 @@ USA.
 (define-structure (alien (constructor %make-alien)
 			 (conc-name %alien/)
 			 (copier copy-alien)
-			 (predicate alien?))
+			 (predicate alien?)
+			 (print-procedure
+			  (bracketed-print-method
+			   'alien
+			   (lambda (alien port)
+			     (write-char #\space port)
+			     (write (%alien/ctype alien) port)
+			     (write-string " 0x" port)
+			     (write-string (alien/address-string alien)
+					   port)))))
   ;; Two fixnums.
   (high-bits 0) (low-bits 0)
   ;; A symbol or list.
@@ -44,15 +53,6 @@ USA.
 ;; Breaking a word in two produces high and low fixnums.  If they are
 ;; two digits representing a larger number, then RADIX is their base.
 (define %radix)
-
-(define-print-method alien?
-  (bracketed-print-method
-   'alien
-   (lambda (alien port)
-     (write-char #\space port)
-     (write (%alien/ctype alien) port)
-     (write-string " 0x" port)
-     (write-string (alien/address-string alien) port))))
 
 (define-integrable alien/ctype %alien/ctype)
 
