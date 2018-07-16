@@ -268,6 +268,16 @@ OS_channel_read (Tchannel channel, void * buffer, size_t nbytes)
 	if (errno == ERRNO_NONBLOCK)
 	  return (-1);
 #endif
+	/* From Emacs v25.2 src/process.c: On some OSs with ptys, when
+	   the process on one end of a pty exits, the other end gets
+	   an error reading with errno = EIO instead of getting an EOF
+	   (0 bytes read)...
+
+	   Thus, if a pty master and errno=EIO, return 0 bytes read. */
+	if (CHANNEL_TYPE (channel) == channel_type_unix_pty_master
+	    && errno == EIO)
+	  return (0);
+
 #endif /* not _ULTRIX */
 	  UX_prim_check_errno (syscall_read);
 	  continue;
