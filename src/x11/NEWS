@@ -22,6 +22,11 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 02110-1301, USA.
 
+mit-scheme-x11 1.1 - Matt Birkholz, 2018-07-12
+==============================================
+
+Actually export the import-x11 procedure to the global environment.
+
 mit-scheme-x11 1.0 - Matt Birkholz, 2018-06-21
 ==============================================
 

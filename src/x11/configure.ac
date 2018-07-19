@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
 AC_INIT([MIT/GNU Scheme x11 plugin],
-        [1.0],
+        [1.1],
         [bug-mit-scheme@gnu.org],
         [mit-scheme-x11])
 AC_CONFIG_SRCDIR([x11.pkg])
