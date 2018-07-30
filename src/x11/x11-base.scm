@@ -117,7 +117,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 (define (x-display-get-size display screen)
   (guarantee-xdisplay display 'x-display-get-size)
-  (let ((results (malloc (* 2 (c-sizeof "int")))))
+  (let ((results (malloc (* 2 (c-sizeof "int")) 'int)))
     (c-call "x_display_get_size" display screen results)
     (let ((width (c-> results "int"))
 	  (height (c-> (c-array-loc results "int" 1) "int")))
@@ -465,7 +465,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 (define (x-window-query-pointer window)
   (guarantee-xwindow window 'x-window-query-pointer)
-  (let ((result (malloc (* 5 (c-sizeof "int")))))
+  (let ((result (malloc (* 5 (c-sizeof "int")) 'int)))
     (if (zero? (C-call "x_window_query_pointer" window result))
 	(error "XQueryPointer failed:" window))
     (let ((v (make-vector 5))
@@ -727,7 +727,10 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
   ;; LIMIT is an exact non-negative integer or #F for no limit.
   ;; Returns #F or a vector of at least one string.
   (guarantee-xdisplay display 'x-list-fonts)
-  (let ((actual-count-return (malloc "int" 'int)))
+  (and limit
+       (guarantee exact-positive-integer? limit 'x-list-fonts))
+  (let ((actual-count-return (malloc (c-sizeof "int") 'int))
+	(pattern-bytes (->bytes pattern)))
 
     (define (cleanup-names! copy)
       (if (not (alien-null? copy))
@@ -736,7 +739,8 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	    (alien-null! copy))))
 
     (define (init-names! copy)
-      (c-call "x_list_fonts" copy display pattern limit actual-count-return))
+      (c-call "x_list_fonts" copy
+	      display pattern-bytes (or limit 1000000) actual-count-return))
 
     (let ((names (make-alien '(* char))))
       (add-alien-cleanup! names cleanup-names! init-names!)
@@ -751,7 +755,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 	      (let loop ((i 0))
 		(if (< i actual-count)
 		    (begin
-		      (vector-set! result i (c-peek-cstringp! scan 0))
+		      (vector-set! result i (c-peek-cstringp! scan))
 		      (loop (1+ i)))))
 	      (cleanup-alien! names)
 	      (free actual-count-return)
