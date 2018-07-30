@@ -63,9 +63,8 @@ cipher C API as implemented by libssl (OpenSSL).
 
 The cipher operates on 64 bit (8 byte) blocks of data and uses a
 variable size key.  Keys with 128 bits (16 bytes) are considered good
-for strong encryption.  Blowfish can be used in the same modes as DES
-and is currently one of the faster block ciphers.  It is quite a bit
-faster than DES, and much faster than IDEA or RC2.
+for modest encryption.  Blowfish can be used in the same modes as DES,
+is quite a bit faster than DES, and much faster than IDEA or RC2.
 
 The plugin includes a Scheme procedure to feed bytes from a binary
 input port to the library, and write the encrypted bytes to a binary

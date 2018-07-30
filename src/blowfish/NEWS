@@ -22,6 +22,11 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 02110-1301, USA.
 
+mit-scheme-blowfish 1.1 - Matt Birkholz, 2018-07-29
+===================================================
+
+Remove the boast from the ancient description in the manual.
+
 mit-scheme-blowfish 1.0 - Matt Birkholz, 2018-06-22
 ===================================================
 
