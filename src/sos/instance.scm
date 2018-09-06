@@ -331,6 +331,7 @@ USA.
 (define (instance? object)
   (and (tagged-vector? object)
        (class-tag? (tagged-vector-tag object))))
+(register-predicate! instance? 'instance '<= tagged-vector?)
 
 (define (instance-class instance)
   (dispatch-tag->class (tagged-vector-tag instance)))

@@ -44,6 +44,7 @@ USA.
 (define (tagged-vector? object)
   (and (%record? object)
        (dispatch-tag? (%record-ref object 0))))
+(register-predicate! tagged-vector? 'tagged-vector '<= %record?)
 
 (define (tagged-vector-tag vector)
   (guarantee-tagged-vector vector 'TAGGED-VECTOR-TAG)
