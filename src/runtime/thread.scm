@@ -178,7 +178,12 @@ USA.
 (define (reset-threads-high!)
   (set! io-registry (and have-select? (make-select-registry)))
   (set! io-registrations #f)
-  (set! subprocess-registrations '()))
+  (set! subprocess-registrations '())
+  (map-over-population! thread-population
+    (let ((times (get-system-times)))
+      (lambda (thread)
+	(if (thread/start-times thread)
+	    (set-thread/start-times! thread times))))))
 
 (define (make-thread continuation)
   (let ((thread (%make-thread (make-1d-table))))
