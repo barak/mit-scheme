@@ -28,7 +28,16 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 typedef unsigned long SCM;
 
-#include <malloc.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <float.h>
+#include <limits.h>
+#include <math.h>
+#include <string.h>
+#ifdef HAVE_MALLOC_H
+#  include <malloc.h>
+#endif
+
 #include <X11/Xlib.h>
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>

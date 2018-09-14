@@ -41,9 +41,12 @@ AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_INSTALL
 
+MIT_CFLAGS=
+MIT_LIBS=
+
 if test ${GCC} = yes; then
 
-    MIT_CFLAGS="-Wall -Wundef -Wpointer-arith -Winline"
+    MIT_CFLAGS="${MIT_CFLAGS} -Wall -Wundef -Wpointer-arith -Winline"
     MIT_CFLAGS="${MIT_CFLAGS} -Wstrict-prototypes -Wnested-externs"
     MIT_CFLAGS="${MIT_CFLAGS} -Wredundant-decls"
 
@@ -72,10 +75,26 @@ if test ${GCC} = yes; then
 	[AC_MSG_RESULT([no])])
 fi
 
+AC_PATH_X
 AC_CHECK_PROG([PKG_CONFIG], [pkg-config], [yes])
 
-if ! pkg-config --exists x11 2>/dev/null; then
-    AC_MSG_ERROR([X11 not found.])
+AC_CHECK_HEADERS([malloc.h])
+
+
+dnl Add support for X if present.
+if test "${no_x}" != yes; then
+    if test "x${x_includes}" != x; then
+        FOO=-I`echo ${x_includes} | sed -e "s/:/ -I/g"`
+        MIT_CFLAGS="${MIT_CFLAGS} ${FOO}"
+    elif pkg-config --exists x11 2>/dev/null; then
+        MIT_CFLAGS="${MIT_CFLAGS} `pkg-config --cflags x11`"
+    fi
+    if test "x${x_libraries}" != x; then
+        FOO=-L`echo ${x_libraries} | sed -e "s/:/ -L/g"`
+        MIT_LIBS="${MIT_LIBS} ${FOO}"
+    elif pkg-config --exists x11 2>/dev/null; then
+        MIT_LIBS="${MIT_LIBS} `pkg-config --libs x11`"
+    fi
 fi
 
 MIT_SCHEME_PROJECT=mit-scheme
@@ -116,6 +135,7 @@ MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
 ${MIT_SCHEME_PKD}: stamp-scheme"
 
 AC_SUBST([MIT_CFLAGS])
+AC_SUBST([MIT_LIBS])
 AC_SUBST([MIT_SCHEME_PROJECT])
 AC_SUBST([MIT_SCHEME_EXE])
 AC_SUBST([MIT_SCHEME_LIBDIR])

@@ -25,7 +25,6 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 /* X11 terminal for Edwin. */
 
-#include <string.h>
 #include "x11.h"
 
 struct xterm_extra

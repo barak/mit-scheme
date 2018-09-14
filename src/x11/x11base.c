@@ -25,10 +25,8 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 /* Common X11 support. */
 
-#include <stdlib.h>
-#include <string.h>
-#include <setjmp.h>
 #include "x11.h"
+#include <setjmp.h>
 #include <X11/Xmd.h>
 #include <X11/keysym.h>
 

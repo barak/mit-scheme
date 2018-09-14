@@ -45,10 +45,9 @@ scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@
 #AM_MAKEINFOHTMLFLAGS = --no-split
 
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
-AM_CFLAGS = `pkg-config --cflags x11`
-AM_CFLAGS += @MIT_CFLAGS@
+AM_CFLAGS = @MIT_CFLAGS@
 
-LIBS = `pkg-config --libs x11`
+LIBS = @MIT_LIBS@
 
 x11_shim_la_LIBADD = x11base.lo x11color.lo x11graph.lo x11term.lo
 c_sources = x11-shim.h x11.h x11base.c x11color.c x11graph.c x11term.c

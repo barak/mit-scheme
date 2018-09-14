@@ -26,10 +26,6 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 /* Simple graphics for X11 */
 
 #include "x11.h"
-#include <float.h>
-#include <limits.h>
-#include <math.h>
-#include <string.h>
 
 #define RESOURCE_NAME "schemeGraphics"
 #define RESOURCE_CLASS "SchemeGraphics"
