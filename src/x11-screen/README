@@ -3,10 +3,11 @@ The X11-SCREEN option.
 This plugin creates an (edwin screen x11-screen) package that
 registers an Edwin display type named X11, an exact replacement for
 the microcode module based X screen type.  The plugin is built in the
-customary GNU way:
+customary GNU way, except that it must be installed prior to running
+tests.
 
     ./configure ...
-    make all check install
+    make all install check
 
 To load:
 
