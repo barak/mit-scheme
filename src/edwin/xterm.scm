@@ -38,9 +38,14 @@ USA.
      (and (let ((display (get-environment-variable "DISPLAY")))
 	    (and (string? display)
 		 (not (string-null? display))))
-	  (let ((dirpath (system-library-directory-pathname "x11-screen/")))
-	    (and dirpath
-		 (file-directory? dirpath)))))
+	  (or (let ((dirpath (system-library-directory-pathname "x11-screen/")))
+		(and dirpath
+		     (file-directory? dirpath)))
+	      ;; The subsystem is on the library path (not in a subdirectory on
+	      ;; the path) when testing.
+	      (let ((filepath (system-library-pathname "x11-screen.bin" #f)))
+		(and filepath
+		     (file-loadable? filepath))))))
    (named-lambda (make-x11-screen #!optional geometry)
      (load-option-quietly 'x11-screen)
      (make-xterm-screen geometry))
