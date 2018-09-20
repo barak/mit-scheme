@@ -30,7 +30,8 @@ USA.
 (declare (usual-integrations))
 
 (define (load-option name #!optional no-error?)
-  (let ((no-error? (and (not (default-object? no-error?)) no-error?)))
+  (let ((no-error? (and (not (default-object? no-error?)) no-error?))
+	(path library-directory-path))
 
     (define (find-option options parent)
       (cond ((assq name options) => load-entry)
@@ -50,12 +51,31 @@ USA.
 			   (*parent* #f)
 			   (param:suppress-loading-message? #t))
 	      (load pathname (simple-top-level-environment #t))
-	      (values (*options*) (*parent*))))
+	      (values (*options*)
+		      (let ((parent (*parent*)))
+			(if (eq? #t parent)
+			    (next-optiondb)
+			    parent)))))
 	find-option))
+
+    (define (next-optiondb)
+      (and (pair? path)
+	   (let ((p (merge-pathnames "optiondb" (car path))))
+	     (set! path (cdr path))
+	     (if (file-loadable? p)
+		 p
+		 (next-optiondb)))))
+
+    (define (initial-load-options)
+      (or *initial-options-file*
+	  (let ((s (get-environment-variable "MITSCHEME_LOAD_OPTIONS")))
+	    (and s (confirm-pathname
+		    (merge-pathnames s (user-homedir-pathname)))))
+	  (next-optiondb)))
 
     (if (memq name loaded-options)
 	name
-	(find-option (*options*) (*parent*)))))
+	(find-option (*options*) initial-load-options))))
 
 (define (option-loaded? name)
   (not (eq? #f (memq name loaded-options))))
@@ -67,13 +87,6 @@ USA.
 (define (further-load-options place)
   (*parent* place)
   unspecific)
-
-(define (initial-load-options)
-  (or *initial-options-file*
-      (let ((s (get-environment-variable "MITSCHEME_LOAD_OPTIONS")))
-	(and s
-	     (confirm-pathname (merge-pathnames s (user-homedir-pathname)))))
-      (local-load-options)))
 
 (define (local-load-options)
   (or (library-file? "optiondb")
@@ -101,7 +114,7 @@ USA.
 
 (define (initialize-package!)
   (set! *options* (make-settable-parameter '()))
-  (set! *parent* (make-settable-parameter initial-load-options)))
+  (set! *parent* (make-settable-parameter #f)))
 
 (define (dummy-option-loader)
   unspecific)

@@ -3501,6 +3501,8 @@ USA.
   (export (runtime compiler-info)
 	  %make-host
 	  %make-pathname)
+  (export (runtime options)
+	  library-directory-path)
   (export (runtime load)
 	  library-directory-path)
   (initialization (initialize-package!)))
