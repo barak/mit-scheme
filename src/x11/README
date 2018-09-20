@@ -1,20 +1,31 @@
 The X11 option.
 
-This plugin creates an (x11) package.  It is built in the customary
-GNU way:
+This plugin creates an (x11) package.  It is built in the GNU standard
+way (below).  It expects the pkg-config command to know about x11, and
+for certain auxiliary headers to be available.  On Ubuntu this means
+the pkg-config, libx11-dev and x11proto-dev packages must be installed
+before running the configure script.
+
+The GNU standard way:
 
     ./configure ...
-    make all check install
+    make all
+    make check
+    make install
+
+The last command will attempt to create a subdirectory in the first
+directory on Scheme's library path.  If that directory is not writable
+by you, super-user privileges may be required.
 
 To use:
 
     (load-option 'x11)
     (import-x11)
 
-The import-x11 procedure will modify the REPL's current environment by
-adding bindings linked to the plugin's exports, which are not exported
-to the global environment because they would conflict with the
-deprecated exports from (runtime x-graphics).
+Import-x11 will modify the REPL's current environment by adding
+bindings linked to the plugin's exports.  They are not exported to the
+global environment because they would conflict with the deprecated
+exports from (runtime x-graphics).
 
 To import into a CREF package set, add this to your .pkg file:
 

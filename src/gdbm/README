@@ -1,10 +1,21 @@
 The GDBM option.
 
-This plugin creates a (gdbm) package.  It is built in the customary
-GNU way:
+This plugin creates a (gdbm) package.  It is built in the GNU standard
+way (below).  It expects the blowfish library header file to be
+available, but often headers are not installed with the library.  On
+Ubuntu the libgdbm-dev package must be installed before running the
+configure script.
+
+The GNU standard way:
 
     ./configure ...
-    make all check install
+    make all
+    make check
+    make install
+
+The last command will attempt to create a subdirectory in the first
+directory on Scheme's library path.  If that directory is not writable
+by you, super-user privileges may be required.
 
 To use:
 
@@ -25,3 +36,9 @@ To import into a CREF package set, add this to your .pkg file:
       (import (gdbm)
               gdbm-open
               ...))
+
+Please see the manual for API details.  An Info version should have
+been installed along with the plugin.  If you have a texlive or
+similar TeX environment installed, then HTML and PDF versions of the
+manual can be created with the GNU standard targets install-html and
+install-pdf.

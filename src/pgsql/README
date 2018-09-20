@@ -1,10 +1,20 @@
 The PostgreSQL option.
 
-This plugin creates a (postgresql) package.  It is built in the customary
-GNU way:
+This plugin creates a (postgresql) package.  It is built in the GNU
+standard way (below).  It expects the pkg-config command to know about
+libpq.  On Ubuntu this means the pkg-config and libpq-dev packages
+must be installed before running the configure script.
+
+The GNU standard way:
 
     ./configure ...
-    make all check install
+    make all
+    make check
+    make install
+
+The last command will attempt to create a subdirectory in the first
+directory on Scheme's library path.  If that directory is not writable
+by you, super-user privileges may be required.
 
 To use:
 

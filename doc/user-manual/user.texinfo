@@ -240,58 +240,25 @@ Depending on configuration options and file-system permissions, you
 may need super-user privileges to do the installation step.
 @end enumerate
 
-@emph{After} you have installed Scheme, you can install a few
-dynamically loadable options.  These are configured, built and
-installed in the customary way.  To install the @code{gdbm}
-option:
+After you have installed Scheme you will want to install several
+@dfn{plugins}.  Scheme no longer uses dynamically loaded microcode
+modules installed with Scheme.  The micromodules have been converted
+into plugins: new subsystems that use the C/FFI to dynamically load
+the same code.  Crucially at this point plugins can be built and
+installed separately.
 
-@smallexample
-(cd gdbm && ./configure && make && make install)
-@end smallexample
+To get all of the functionality previously available in version 9.2
+you will need to build and install all of the plugins included in the
+@file{src} subdirectory: blowfish, gdbm, mcrypt, pgsql, x11 and
+x11-screen.  Without the x11-screen option installed Edwin will only
+display on a terminal.
 
-The @code{make install} command will attempt to create a subdirectory
-in the first directory on the host Scheme's library path.  If that
-directory is not writable by you, super-user privileges may be
-required.
+These plugins are all configured, built and installed in the GNU
+standard way.  See the @file{README} file in each plugin's source
+directory for complete details.
 
-You can put a writable directory at the front of your host Scheme's
-library path by setting the @code{MITSCHEME_LIBRARY_PATH} environment
-variable
-
-@smallexample
-export MITSCHEME_LIBRARY_PATH=\
-	~/mit-scheme-plugins:/usr/local/lib/mit-scheme-x86-64
-@end smallexample
-
-or including the @code{--prepend-library} option on the command line.
-
-@smallexample
-mit-scheme --prepend-library ~/mit-scheme-plugins
-@end smallexample
-
-A few of the included options wrap popular Unix libraries.  To compile
-and link them you often need ``developers' packages'' installed first.
-The following table lists the included options and an example
-developers' package name (and shared library name).  The package names
-can vary quite a bit among Unix distributions; the library names less
-so.  Please see the @file{README} file in each option's subdirectory
-for more information.
-
-@table @option
-@item blowfish
-libssl-dev (-lcrypto)
-@item gdbm
-libgdbm-dev (-lgdbm)
-@item mcrypt
-libmcrypt-dev (-lmcrypt)
-@item postgresql
-libpq-dev (-lpq)
-@item X11
-libx11-dev (-lX11)
-@end table
-
-After installing the software and any options, you can delete the
-unpacked directory:
+After installing Scheme and your desired plugins, you can delete the
+source directory:
 
 @example
 cd ../..

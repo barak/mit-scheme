@@ -1,10 +1,21 @@
 The Mcrypt option.
 
-This plugin creates an (mcrypt) package.  It is built in the customary
-GNU way:
+This plugin creates an (mcrypt) package.  It is built in the GNU
+standard way (below).  It expects the mcrypt library header file to be
+available, but often headers are not installed with the library.  On
+Ubuntu the libmcrypt-dev package must be installed before running the
+configure script.
+
+The GNU standard way:
 
     ./configure ...
-    make all check install
+    make all
+    make check
+    make install
+
+The last command will attempt to create a subdirectory in the first
+directory on Scheme's library path.  If that directory is not writable
+by you, super-user privileges may be required.
 
 To use:
 

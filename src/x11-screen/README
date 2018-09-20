@@ -1,19 +1,22 @@
 The X11-SCREEN option.
 
-This plugin creates an (edwin screen x11-screen) package that
-registers an Edwin display type named X11, an exact replacement for
-the microcode module based X screen type.  The plugin is built in the
-customary GNU way, except that it must be installed prior to running
-tests.
+This option creates an (edwin screen x11-screen) package that is
+autoloaded by Edwin's X display type.  It is built in the GNU standard
+way (below).  It does not use the C/FFI but uses the X11 plugin's
+Terminal API.
+
+The GNU standard way:
 
     ./configure ...
-    make all install check
+    make all
+    make check
+    make install
 
-To load:
+The last command will attempt to create a subdirectory in the first
+directory on Scheme's library path.  If that directory is not writable
+by you, super-user privileges may be required.
 
-    (load-option 'x11-screen)
+To use:
 
-Loading this plugin re-assigns bindings in (edwin) and (edwin
-x-commands); any existing Edwin screens will stop working.  You must
-load this option before starting Edwin.  If the DISPLAY environment
-variable is set, Edwin will create X11 screens.
+This option is autoloaded by Edwin when the DISPLAY environment
+variable is set.
