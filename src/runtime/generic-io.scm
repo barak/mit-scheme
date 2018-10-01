@@ -857,7 +857,7 @@ USA.
   '(iso_8859-1:1987 iso-ir-100 iso_8859-1 latin1 l1 ibm819 cp819 csisolatin1))
 
 (define-coding-aliases 'iso-8859-1
-  '(binary text))
+  '(binary))
 
 (define-coding-aliases 'iso-8859-1
   ;; Treat US-ASCII like ISO-8859-1.
@@ -1347,6 +1347,8 @@ USA.
   #x0e58 #x0e59 #x0e5a #x0e5b #f     #f     #f     #f)
 
 ;;;; Unicode codecs
+
+(define-coding-alias 'text 'utf-8)
 
 (define-decoder 'utf-8
   (lambda (ib)
