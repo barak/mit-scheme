@@ -32,7 +32,6 @@ Description: MIT/GNU Scheme development environment
 
 Package: mit-scheme-dbg
 Section: debug
-Priority: extra
 Architecture: i386 amd64
 Multi-Arch: same
 Depends: mit-scheme (= ${binary:Version}), ${misc:Depends}
