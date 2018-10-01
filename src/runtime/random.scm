@@ -206,18 +206,18 @@ USA.
   (if (or (eq? #t state) (int:integer? state))
       ;; Use good random source if available
       (if (file-readable? "/dev/urandom")
-	  (call-with-input-file "/dev/urandom"
+	  (call-with-binary-input-file "/dev/urandom"
 	    (lambda (port)
 	      (initial-random-state
 	       (lambda (b)
 		 (let outer ()
 		   (let inner
 		       ((m #x100)
-			(n (char->integer (read-char port))))
+			(n (read-u8 port)))
 		     (cond ((< m b)
 			    (inner (* m #x100)
 				   (+ (* n #x100)
-				      (char->integer (read-char port)))))
+				      (read-u8 port))))
 			   ((< n b) n)
 			   (else (outer)))))))))
 	  (simple-random-state))
