@@ -1,6 +1,7 @@
 mit-scheme (9.2-2) UNRELEASED; urgency=medium
 
   * d/control: Deprecating priority extra as per policy 4.0.1
+  * d/control: Fix wrong Vcs-*
 
  -- Ondřej Nový <onovy@debian.org>  Mon, 01 Oct 2018 10:10:40 +0200
 
