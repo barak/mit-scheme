@@ -138,7 +138,7 @@ USA.
 			(%record-ref object 0))
 		   (let ((type* (%record->type object)))
 		     (and type*
-			  (%record-type< type* type)))))))
+			  (%record-type<= type* type)))))))
        (type
 	(%%make-record-type type-name
 			    predicate
@@ -160,11 +160,17 @@ USA.
 	  ((%record-type-proxy? marker) (%proxy->record-type marker))
 	  (else #f))))
 
-(define (%record-type< t1 t2)
-  (let ((parent (%record-type-parent t1)))
-    (and parent
-	 (or (eq? parent t2)
-	     (%record-type< parent t2)))))
+;; Temporary definition for cold load.
+(define (%record-type<= t1 t2)
+  (or (eq? t1 t2)
+      (let ((parent (%record-type-parent t1)))
+	(and parent
+	     (%record-type<= parent t2)))))
+
+(defer-boot-action 'predicate-relations
+  (lambda ()
+    (set! %record-type<= dispatch-tag<=)
+    unspecific))
 
 (define %record-metatag)
 (define record-type?)
