@@ -36,16 +36,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-bundle-predicate name #!optional parent-predicate)
-  (let ((type
-	 (new-make-record-type name
-			       '()
-			       (if (default-object? parent-predicate)
-				   <bundle>
-				   (%predicate->record-type
-				    (guarantee bundle-predicate?
-					       parent-predicate
-					       'make-bundle-predicate))))))
+(define (make-bundle-predicate name)
+  (let ((type (new-make-record-type name '() <bundle>)))
     (set-record-type-applicator! type %bundle-applicator)
     (record-predicate type)))
 
@@ -83,10 +75,14 @@ USA.
                 (symbol? (car p)))
               object)))
 
-(define-record-type <bundle>
-    (%unused% alist) ;change to #f after 9.3 release
-    bundle?
-  (alist bundle-alist))
+(define <bundle>
+  (new-make-record-type '<bundle> '(alist)))
+
+(define bundle?
+  (record-predicate <bundle>))
+
+(define bundle-alist
+  (record-accessor <bundle> 'alist))
 
 (define-print-method bundle?
   (standard-print-method
