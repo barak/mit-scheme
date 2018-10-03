@@ -37,41 +37,45 @@ USA.
     (let ((result (%parse-define-library form)))
       (and result
 	   (let loop
-	       ((decls (expand-parsed-decls (cdr result) pathname))
-		(exports '())
+	       ((decls (expand-parsed-decls (cdr result) directory))
 		(imports '())
+		(exports '())
 		(contents '()))
 	     (if (pair? decls)
 		 (let ((decl (car decls))
 		       (decls (cdr decls)))
 		   (case (car decl)
-		     ((export)
-		      (loop decls
-			    (append (reverse (cdr decl)) exports)
-			    imports
-			    contents))
 		     ((import)
 		      (loop decls
-			    exports
 			    (append (reverse (cdr decl)) imports)
+			    exports
+			    contents))
+		     ((export)
+		      (loop decls
+			    imports
+			    (append (reverse (cdr decl)) exports)
 			    contents))
 		     (else
 		      (loop decls
-			    exports
 			    imports
+			    exports
 			    (append (reverse (cdr decl)) contents)))))
 		 (make-parsed-library (car result)
-				      (reverse exports)
 				      (reverse imports)
-				      (reverse contents))))))))
+				      (reverse exports)
+				      (reverse contents)
+				      (if (default-object? pathname)
+					  #f
+					  pathname))))))))
 
 (define-record-type <parsed-library>
-    (make-parsed-library name exports imports contents)
+    (make-parsed-library name imports exports contents pathname)
     parsed-library?
   (name parsed-library-name)
-  (exports parsed-library-exports)
   (imports parsed-library-imports)
-  (contents parsed-library-contents))
+  (exports parsed-library-exports)
+  (contents parsed-library-contents)
+  (pathname parsed-library-pathname))
 
 (define (expand-parsed-decls parsed-decls directory)
   (append-map (lambda (parsed-decl)
@@ -87,11 +91,12 @@ USA.
 		  ((cond-expand)
 		   (expand-parsed-decls
 		    (evaluate-cond-expand eq? parsed-decl)))
-		  ((include include-ci)
+		  ((include)
 		   (list
 		    (cons (car parsed-decl)
-			  (map (lambda (pathname)
-				 (merge-pathnames pathname directory))
+			  (map (lambda (p)
+				 (list (merge-pathnames (car p) directory)
+				       (cadr p)))
 			       (cdr parsed-decl)))))
 		  (else
 		   (list parsed-decl))))
@@ -106,22 +111,23 @@ USA.
   (object-parser
     (encapsulate list
       (list 'define-library
-	    (object (alt (match library-name?)
+	    (object (alt (match-if library-name?)
 			 (sexp (parsing-error "library name"))))
 	    library-declarations-parser))))
 
 (define library-declarations-parser
   (list-parser
-    (* (object (alt library-declaration-parser
-		    (sexp (parsing-error "library declaration")))))))
+    (* (object library-declaration-parser))))
 
 (define library-declaration-parser
   (object-parser
     (alt export-parser
 	 import-parser
 	 include-parser
+	 include-library-declarations-parser
 	 begin-parser
-	 cond-expand-parser)))
+	 cond-expand-parser
+	 (sexp (parsing-error "library declaration")))))
 
 (define export-parser
   (object-parser
@@ -131,14 +137,12 @@ USA.
 
 (define export-spec-parser
   (object-parser
-   (alt (encapsulate (lambda (name)
-                       (cons name name))
-                     (match-if symbol?))
-        (encapsulate cons
-	  (list 'rename
-		(match-if symbol?)
-		(match-if symbol?)))
-        (sexp (parsing-error "export spec")))))
+    (encapsulate make-library-export
+      (alt (match-if symbol?)
+           (list 'rename
+		 (match-if symbol?)
+		 (match-if symbol?))
+           (sexp (parsing-error "export spec"))))))
 
 (define import-parser
   (object-parser
@@ -184,7 +188,7 @@ USA.
   (let ((pathname
          (ignore-errors
           (lambda ()
-            (merge-pathnames object)))))
+            (parse-namestring object)))))
     (if (not (pathname? pathname))
         (error "Unrecognized pathname:" object))
     (win (structure-parser-values pathname)
@@ -249,3 +253,60 @@ USA.
 		(or (interned-symbol? elt)
 		    (exact-nonnegative-integer? elt)))
 	      object)))
+
+(define (parsed-exports-from exports)
+  (map (lambda (export)
+	 (if (pair? export)
+	     (car export)
+	     export))
+       exports))
+
+(define (parsed-exports-to exports)
+  (map (lambda (export)
+	 (if (pair? export)
+	     (cdr export)
+	     export))
+       exports))
+
+(define (expand-parsed-contents contents)
+  (append-map (lambda (directive)
+		(case (car directive)
+		  ((include)
+		   (parameterize ((param:reader-fold-case? #f))
+		     (append-map read-file
+				 (cdr directive))))
+		  ((include-ci)
+		   (parameterize ((param:reader-fold-case? #t))
+		     (append-map read-file
+				 (cdr directive))))
+		  ((begin)
+		   (cdr directive))
+		  (else
+		   (error "Unknown content directive:" directive))))
+	      contents))
+
+(define (make-library-export from #!optional to)
+  (guarantee symbol? from 'make-library-export)
+  (if (default-object? to)
+      (%make-library-export from from)
+      (begin
+	(guarantee symbol? to 'make-library-export)
+	(%make-library-export from to))))
+
+(define-record-type <library-export>
+    (%make-library-export from to)
+    library-export?
+  (from library-export-from)
+  (to library-export-to))
+
+(define-print-method library-export?
+  (standard-print-method 'library-export
+    (lambda (export)
+      (list (library-export-from export)
+	    (library-export-to export)))))
+
+(define (library-export=? e1 e2)
+  (and (eq? (library-export-from e1)
+	    (library-export-from e2))
+       (eq? (library-export-to e1)
+	    (library-export-to e2))))

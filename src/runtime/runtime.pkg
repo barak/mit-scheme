@@ -5835,15 +5835,23 @@ USA.
   (files "library-parser")
   (parent (runtime library))
   (export (runtime library)
+	  expand-parsed-contents
+	  library-export-from
+	  library-export-to
+	  library-export=?
+	  library-export?
 	  library-name?
-	  make-parsed-library
+	  make-library-export
 	  parse-define-library-form
 	  parse-import-form
 	  parse-import-set
+	  parsed-exports-from
+	  parsed-exports-to
 	  parsed-library-contents
 	  parsed-library-exports
 	  parsed-library-imports
 	  parsed-library-name
+	  parsed-library-pathname
 	  parsed-library?))
 
 (define-package (runtime library database)
@@ -5864,12 +5872,9 @@ USA.
   (parent (runtime library))
   (export (runtime library)
 	  convert-import-sets
-	  library-export-from
-	  library-export-to
 	  library-import-from
 	  library-import-from-library
-	  library-import-to
-	  make-library-export))
+	  library-import-to))
 
 (define-package (runtime library loader)
   (files "library-loader")
