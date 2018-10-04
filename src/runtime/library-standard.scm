@@ -29,15 +29,34 @@ USA.
 
 (declare (usual-integrations))
 
-(define (add-standard-libraries library-db)
+(define (add-standard-libraries! db)
   (for-each (lambda (p)
-	      (make-loaded-library (car p)
-				   (map (lambda (id)
-					  (make-library-export id id))
-					(cdr p))
-				   system-global-environment
-				   library-db))
+	      (let ((name (car p))
+		    (exports (cdr p)))
+		(db 'save-metadata!
+		    (make-library-metadata name '() exports #f))
+		(db 'save-loaded!
+		    (make-loaded-library name
+					 (map (lambda (id)
+						(make-library-export id id))
+					      exports)
+					 system-global-environment))))
 	    standard-libraries))
+
+(define (check-standard-libraries!)
+  (for-each (lambda (p)
+	      (check-standard-library! (car p) (cdr p)))
+	    standard-libraries))
+
+(define (check-standard-library! name exports)
+  (let ((missing
+	 (remove (lambda (name)
+		   (memq (environment-reference-type system-global-environment
+						     name)
+			 '(normal macro)))
+		 exports)))
+    (if (pair? missing)
+	(warn "Missing definitions for library:" name missing))))
 
 (define (define-standard-library name exports)
   (let ((p (assoc name standard-libraries)))
@@ -163,9 +182,9 @@ USA.
     length
     let
     let*
-    let*-values
+    ;; let*-values
     let-syntax
-    let-values
+    ;; let-values
     letrec
     letrec*
     letrec-syntax
@@ -567,7 +586,7 @@ USA.
     negative?
     newline
     not
-    null-environment
+    ;;null-environment
     null?
     number->string
     number?
@@ -593,7 +612,7 @@ USA.
     remainder
     reverse
     round
-    scheme-report-environment
+    ;;scheme-report-environment
     set!
     set-car!
     set-cdr!

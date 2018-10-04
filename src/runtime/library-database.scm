@@ -30,8 +30,23 @@ USA.
 (declare (usual-integrations))
 
 (define (make-library-db)
-  (let ((compiled (make-library-table))
+  (let ((metadata (make-library-table))
+	(compiled (make-library-table))
 	(loaded (make-library-table)))
+
+    (define (metadata? name)
+      (metadata 'has? name))
+
+    (define (get-metadata name #!optional default-value)
+      (metadata 'get name default-value))
+
+    (define (save-metadata! library)
+      (metadata 'put! (library-metadata-name library) library))
+
+    (define (require-metadata names)
+      (let ((unknown (remove metadata? names)))
+	(if (pair? unknown)
+	    (error "Can't resolve libraries:" unknown))))
 
     (define (compiled? name)
       (compiled 'has? name))
@@ -57,6 +72,7 @@ USA.
       (loaded 'put! (loaded-library-name library) library))
 
     (bundle library-db?
+	    metadata? get-metadata save-metadata! require-metadata
 	    compiled? get-compiled save-compiled! require-compiled
 	    loaded? get-loaded save-loaded!)))
 
@@ -92,3 +108,65 @@ USA.
 
 (define library-table?
   (make-bundle-predicate 'library-table))
+
+(define-record-type <library-metadata>
+    (make-library-metadata name imports exports pathname)
+    library-metadata?
+  (name library-metadata-name)
+  ;; Parsed unexpanded import sets.
+  (imports library-metadata-imports)
+  ;; List of external symbols.
+  (exports library-metadata-exports)
+  ;; Pathname to file where library is defined.
+  ;; May be #f in special cases.
+  (pathname library-metadata-pathname))
+
+(define (parsed-library->metadata parsed db)
+  (make-library-metadata
+   (parsed-library-name parsed)
+   (expand-import-sets (parsed-library-imports parsed) db)
+   (map library-export-to (parsed-library-exports parsed))
+   (parsed-library-pathname parsed)))
+
+(define (make-loaded-library name exports environment)
+  (%make-loaded-library name
+			(map library-export-to exports)
+			(make-exporter exports environment)
+			environment))
+
+(define (make-exporter exports environment)
+  (let ((export-alist
+	 (map (lambda (export)
+		(cons (library-export-to export)
+		      (environment-safe-lookup environment
+					       (library-export-from export))))
+	      exports)))
+    (lambda (name)
+      (let ((p (assq name export-alist)))
+	(if (not p)
+	    (error "Not an exported name:" name))
+	(cdr p)))))
+
+(define-record-type <loaded-library>
+    (%make-loaded-library name exports environment exporter)
+    loaded-library?
+  (name loaded-library-name)
+  (exports loaded-library-exports)
+  (exporter loaded-library-exporter)
+  (environment loaded-library-environment))
+
+(define-record-type <compiled-library>
+    (make-compiled-library name imports exports body)
+    compiled-library?
+  (name compiled-library-name)
+  (imports compiled-library-imports)
+  (exports compiled-library-exports)
+  (body compiled-library-body))
+
+(define (compiled-library->scode library)
+  (make-scode-declaration
+   `(target-metadata
+     (library (name ,(compiled-library-name library))
+	      (imports ,(compiled-library-imports library))
+	      (exports ,(compiled-library-exports library))))
+   (make-scode-quotation (compiled-library-body library))))

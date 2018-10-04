@@ -28,14 +28,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define test-pathname
-  (current-load-pathname))
-
-(define test-directory
-  (directory-pathname test-pathname))
-
-(define-comparator library-export=?
-  'library-export=?)
+(include "test-library-data/support-code.scm")
 
 (define-test 'parse-library:empty
   (lambda ()
@@ -87,83 +80,3 @@ USA.
 				(append ex2-extra-contents ex1-contents)))
       (assert-equal (parsed-library-pathname parsed)
 		    test-pathname))))
-
-(define (convert-import import)
-  (case (car import)
-    ((only except prefix)
-     `(,(car import)
-       (library ,(cadr import))
-       ,@(cddr import)))
-    ((rename)
-     `(,(car import)
-       (library ,(cadr import))
-       ,@(map (lambda (p)
-		(cons (car p) (cadr p)))
-	      (cddr import))))
-    (else
-     `(library ,import))))
-
-(define (convert-export export)
-  (if (symbol? export)
-      (make-library-export export)
-      (make-library-export (cadr export) (caddr export))))
-
-(define (convert-content content)
-  (case (car content)
-    ((include include-ci)
-     (map (lambda (path)
-	    (list (merge-pathnames path test-directory) (car content)))
-	  (cdr content)))
-    ((begin)
-     (cdr content))
-    (else
-     (error "Unknown content:" content))))
-
-(define ex1-imports
-  '((foo mumble)
-    (only (foo bletch) make-bletch bletch? bletch-thing)
-    (prefix (foo grumble) grumble-)
-    (except (foo quux) make-quux)
-    (rename (foo quux) (make-quux create-quux))))
-
-(define ex1-exports
-  '(make-bar
-    bar?
-    bar-v1
-    bar-v2
-    (rename set-bar-v1! bar-v1!)))
-
-(define ex1-contents
-  '((include "foo-bar-1")
-    (include-ci "foo-bar-2")
-    (begin
-      (define-record-type <bar>
-	  (make-bar v1 v2)
-	  bar?
-	(v1 bar-v1 set-bar-v1!)
-	(v2 bar-v2)))))
-
-(define ex1
-  `(define-library (foo bar)
-     (import ,@ex1-imports)
-     (export ,@ex1-exports)
-     ,@ex1-contents))
-
-(define ex2-extra-imports
-  '((scheme base)))
-
-(define ex2-extra-exports
-  '(<foo> foo?))
-
-(define ex2-extra-contents
-  '((begin
-      (define-record-type <foo>
-	  (make-foo)
-	  foo?))))
-
-(define ex2
-  `(define-library (foo bar)
-     (import ,@ex1-imports)
-     (export ,@ex1-exports)
-     (include-library-declarations "test-library-data/foo-foo")
-     ,@ex1-contents))

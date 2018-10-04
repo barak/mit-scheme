@@ -254,20 +254,6 @@ USA.
 		    (exact-nonnegative-integer? elt)))
 	      object)))
 
-(define (parsed-exports-from exports)
-  (map (lambda (export)
-	 (if (pair? export)
-	     (car export)
-	     export))
-       exports))
-
-(define (parsed-exports-to exports)
-  (map (lambda (export)
-	 (if (pair? export)
-	     (cdr export)
-	     export))
-       exports))
-
 (define (expand-parsed-contents contents)
   (append-map (lambda (directive)
 		(case (car directive)

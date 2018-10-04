@@ -3174,6 +3174,8 @@ USA.
 	  system-uri
 	  with-loader-base-uri)
   (export (runtime)
+	  ;; current-library-db
+	  ;; host-library-db
 	  load/purification-root))
 
 (define-package (runtime command-line)
@@ -5845,8 +5847,6 @@ USA.
 	  parse-define-library-form
 	  parse-import-form
 	  parse-import-set
-	  parsed-exports-from
-	  parsed-exports-to
 	  parsed-library-contents
 	  parsed-library-exports
 	  parsed-library-imports
@@ -5858,23 +5858,46 @@ USA.
   (files "library-database")
   (parent (runtime library))
   (export (runtime library)
+	  compiled-library->scode
+	  compiled-library-body
+	  compiled-library-exports
+	  compiled-library-imports
+	  compiled-library-name
+	  compiled-library?
 	  library-db?
-	  make-library-db))
+	  library-metadata-exports
+	  library-metadata-imports
+	  library-metadata-name
+	  library-metadata-pathname
+	  library-metadata?
+	  loaded-library-environment
+	  loaded-library-exporter
+	  loaded-library-exports
+	  loaded-library-name
+	  make-compiled-library
+	  make-library-db
+	  make-library-metadata
+	  make-loaded-library
+	  parsed-library->metadata))
 
 (define-package (runtime library standard)
   (files "library-standard")
   (parent (runtime library))
   (export (runtime library)
-	  add-standard-libraries))
+	  add-standard-libraries!
+	  check-standard-libraries!))
 
 (define-package (runtime library imports)
   (files "library-imports")
   (parent (runtime library))
   (export (runtime library)
-	  convert-import-sets
+	  expand-import-sets
 	  library-import-from
 	  library-import-from-library
-	  library-import-to))
+	  library-import-to
+	  library-import=?
+	  library-import?
+	  make-library-import))
 
 (define-package (runtime library loader)
   (files "library-loader")
@@ -5884,18 +5907,8 @@ USA.
 	  )
   (export (runtime library)
 	  compile-library
-	  compiled-library->scode
-	  compiled-library-body
-	  compiled-library-exports
-	  compiled-library-imports
-	  compiled-library-name
-	  compiled-library?
-	  converted-imports->environment
+	  expanded-imports->environment
 	  library-exporter
-	  load-library
-	  loaded-library-environment
-	  loaded-library-exporter
-	  loaded-library-exports
-	  loaded-library-name
-	  loaded-library?
-	  make-loaded-library))
+	  load-library)
+  (export (runtime load)
+	  read-r7rs-source))
