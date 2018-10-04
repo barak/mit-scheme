@@ -34,8 +34,8 @@ USA.
   (lambda ()
     (assert-lset= library-import=?
 		  (expand-import-sets (parsed-library-imports
-				       (parse-define-library-form ex1
-								  test-pathname))
+				       (parse-define-library-form
+					ex1 test-pathname))
 				      (build-metadata-db))
 		  (list (make-library-import 'foo-mumble?
 					     'foo-mumble?
