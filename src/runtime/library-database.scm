@@ -148,7 +148,7 @@ USA.
 	(cdr p)))))
 
 (define-record-type <loaded-library>
-    (%make-loaded-library name exports environment exporter)
+    (%make-loaded-library name exports exporter environment)
     loaded-library?
   (name loaded-library-name)
   (exports loaded-library-exports)

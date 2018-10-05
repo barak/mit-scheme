@@ -58,6 +58,12 @@ USA.
     (if (pair? missing)
 	(warn "Missing definitions for library:" name missing))))
 
+(define (standard-library-names)
+  (map car standard-libraries))
+
+(define (standard-library-exports name)
+  (cdr (assoc name standard-libraries)))
+
 (define (define-standard-library name exports)
   (let ((p (assoc name standard-libraries)))
     (if p
@@ -70,7 +76,7 @@ USA.
   name)
 
 (define standard-libraries '())
-
+
 (define-standard-library '(scheme base)
   '(*
     +
@@ -310,7 +316,7 @@ USA.
     write-string
     write-u8
     zero?))
-
+
 (define-standard-library '(scheme case-lambda)
   '(case-lambda))
 
@@ -375,7 +381,7 @@ USA.
 (define-standard-library '(scheme eval)
   '(environment
     eval))
-
+
 (define-standard-library '(scheme file)
   '(call-with-input-file
        call-with-output-file
@@ -435,7 +441,7 @@ USA.
     write
     write-shared
     write-simple))
-
+
 (define-standard-library '(scheme r5rs)
   '(*
     +

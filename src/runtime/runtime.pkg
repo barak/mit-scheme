@@ -5885,7 +5885,9 @@ USA.
   (parent (runtime library))
   (export (runtime library)
 	  add-standard-libraries!
-	  check-standard-libraries!))
+	  check-standard-libraries!
+	  standard-library-exports
+	  standard-library-names))
 
 (define-package (runtime library imports)
   (files "library-imports")
