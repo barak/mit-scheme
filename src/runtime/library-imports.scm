@@ -87,9 +87,9 @@ USA.
 		(filter-map (lambda (name)
 			      (let ((filtered (filter name)))
 				(and filtered
-				     (make-library-import filtered
+				     (make-library-import library-name
 							  name
-							  library-name))))
+							  filtered))))
 			    (library-metadata-exports
 			     (library-db 'get-metadata library-name)))))
 	     ((only)
@@ -131,24 +131,28 @@ USA.
 	      (or (eq? (car names) (cadr names))
 		  (loop (cdr names)))))))
 
+(define (make-library-import from-library from #!optional to)
+  (%make-library-import from-library from
+			(if (default-object? to) from to)))
+
 (define-record-type <library-import>
-    (make-library-import to from from-library)
+    (%make-library-import from-library from to)
     library-import?
-  (to library-import-to)
+  (from-library library-import-from-library)
   (from library-import-from)
-  (from-library library-import-from-library))
+  (to library-import-to))
 
 (define-print-method library-import?
   (standard-print-method 'library-import
     (lambda (import)
-      (list (library-import-to import)
+      (list (library-import-from-library import)
 	    (library-import-from import)
-	    (library-import-from-library import)))))
+	    (library-import-to import)))))
 
 (define (library-import=? e1 e2)
-  (and (eq? (library-import-to e1)
-	    (library-import-to e2))
+  (and (equal? (library-import-from-library e1)
+	       (library-import-from-library e2))
        (eq? (library-import-from e1)
 	    (library-import-from e2))
-       (equal? (library-import-from-library e1)
-	       (library-import-from-library e2))))
+       (eq? (library-import-to e1)
+	    (library-import-to e2))))

@@ -37,39 +37,25 @@ USA.
 				       (parse-define-library-form
 					ex1 test-pathname))
 				      (build-metadata-db))
-		  (list (make-library-import 'foo-mumble?
-					     'foo-mumble?
-					     '(foo mumble))
-			(make-library-import 'make-foo-mumble
-					     'make-foo-mumble
-					     '(foo mumble))
-			(make-library-import 'foo-mumble-a
-					     'foo-mumble-a
-					     '(foo mumble))
-			(make-library-import 'foo-mumble-b
-					     'foo-mumble-b
-					     '(foo mumble))
-			(make-library-import 'grumble-foo-grumble?
+		  (list (make-library-import '(foo mumble) 'foo-mumble?)
+			(make-library-import '(foo mumble) 'make-foo-mumble)
+			(make-library-import '(foo mumble) 'foo-mumble-a)
+			(make-library-import '(foo mumble) 'foo-mumble-b)
+			(make-library-import '(foo grumble)
 					     'foo-grumble?
-					     '(foo grumble))
-			(make-library-import 'grumble-make-foo-grumble
+					     'grumble-foo-grumble?)
+			(make-library-import '(foo grumble)
 					     'make-foo-grumble
-					     '(foo grumble))
-			(make-library-import 'grumble-foo-grumble-a
+					     'grumble-make-foo-grumble)
+			(make-library-import '(foo grumble)
 					     'foo-grumble-a
-					     '(foo grumble))
-			(make-library-import 'grumble-foo-grumble-b
+					     'grumble-foo-grumble-a)
+			(make-library-import '(foo grumble)
 					     'foo-grumble-b
-					     '(foo grumble))
-			(make-library-import 'foo-quux?
-					     'foo-quux?
-					     '(foo quux))
-			(make-library-import 'foo-quux-a
-					     'foo-quux-a
-					     '(foo quux))
-			(make-library-import 'foo-quux-b
-					     'foo-quux-b
-					     '(foo quux))
-			(make-library-import 'create-foo-quux
+					     'grumble-foo-grumble-b)
+			(make-library-import '(foo quux) 'foo-quux?)
+			(make-library-import '(foo quux) 'foo-quux-a)
+			(make-library-import '(foo quux) 'foo-quux-b)
+			(make-library-import '(foo quux)
 					     'make-foo-quux
-					     '(foo quux))))))
+					     'create-foo-quux)))))
