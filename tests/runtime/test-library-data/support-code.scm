@@ -116,8 +116,7 @@ USA.
      ,@ex1-contents))
 
 (define (read-dependencies)
-  (r7rs-source-parsed-libraries
-   (read-r7rs-source dependencies-filename)))
+  (r7rs-source-libraries (read-r7rs-source dependencies-filename)))
 
 (define dependencies-filename
   (->namestring

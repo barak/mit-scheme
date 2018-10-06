@@ -5839,6 +5839,7 @@ USA.
   (export (runtime library)
 	  define-automatic-property
 	  host-library-db
+	  library-contents
 	  library-db?
 	  library-environment
 	  library-exporter
@@ -5857,6 +5858,7 @@ USA.
 	  library-import=?
 	  library-import?
 	  library-imports
+	  library-imports-environment
 	  library-name
 	  library-parsed-contents
 	  library-parsed-imports
@@ -5884,14 +5886,11 @@ USA.
 	  parse-define-library-form
 	  parse-import-form
 	  parse-import-set
-	  r7rs-source-body
-	  r7rs-source-filename
-	  r7rs-source-imports
-	  r7rs-source-parsed-libraries
+	  r7rs-source-program
+	  r7rs-source-libraries
 	  r7rs-source?
-	  read-r7rs-source)
-  (export (runtime load)
-	  read-r7rs-source))
+	  read-r7rs-source
+	  register-r7rs-source!))
 
 (define-package (runtime library standard)
   (files "library-standard")

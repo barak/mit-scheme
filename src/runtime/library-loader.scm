@@ -41,13 +41,12 @@ USA.
 		(exports ,(map library-export->list exports))))
      (make-scode-quotation contents))))
 
-(define-automatic-property 'evaluable-contents
-    '(parsed-contents imports exports db)
+(define-automatic-property 'contents
+    '(parsed-contents imports exports imports-environment)
   #f
-  (lambda (contents imports exports db)
+  (lambda (contents imports exports env)
     (receive (body bound free)
-	(syntax-library-forms (expand-contents contents)
-			      (imports->environment imports db))
+	(syntax-library-forms (expand-contents contents) env)
       (let ((exports-from (map library-export-from exports)))
 	(if (not (lset<= eq? exports-from (lset-union eq? bound free)))
 	    (warn "Library export refers to unbound identifiers:"
@@ -117,14 +116,15 @@ USA.
 	      imports)
     env))
 
-(define-automatic-property 'environment '(imports evaluable-contents db)
-  (lambda (imports contents db)
-    (declare (ignore contents))
-    (import-environments-available? imports db))
-  (lambda (imports contents db)
-    (let ((env (make-environment-from-imports imports db)))
-      (scode-eval contents env)
-      env)))
+(define-automatic-property 'imports-environment '(imports db)
+  import-environments-available?
+  make-environment-from-imports)
+
+(define-automatic-property 'environment '(imports-environment contents)
+  #f
+  (lambda (env contents)
+    (scode-eval contents env)
+    env))
 
 (define (environment . import-sets)
   (let ((parsed (map parse-import-set import-sets)))

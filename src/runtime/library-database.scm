@@ -42,11 +42,13 @@ USA.
       (if (and (library 'has? 'db)
 	       (not (eq? (library 'get 'db) this)))
 	  (error "Can't use library in multiple databases:" library))
+      (library 'put! 'db this)
       (let ((name (library 'get 'name)))
-	(if (has? name)
-	    (warn "Overwriting library:" name))
-	(library 'put! 'db this)
-	(hash-table-set! table name library)))
+	(if name
+	    (begin
+	      (if (has? name)
+		  (warn "Overwriting library:" name))
+	      (hash-table-set! table name library)))))
 
     (define (get-names)
       (hash-table-keys table))
@@ -75,6 +77,8 @@ USA.
   (make-library-db 'host))
 
 (define (make-library name . keylist)
+  (if name
+      (guarantee library-name? name 'make-library))
   (let ((alist
 	 (cons* 'library
 		(cons 'name name)
@@ -93,7 +97,7 @@ USA.
 	    (cdr p)
 	    (let ((auto (automatic-property key)))
 	      (if (not auto)
-		  (error "Unknown library property:" key))
+		  (error "Unknown property:" key))
 	      (if (not (auto-runnable? auto this))
 		  (error "Auto property not ready:" auto))
 	      (let ((value (run-auto auto this)))
@@ -102,11 +106,11 @@ USA.
 
     (define (put! key value)
       (if (automatic-property? key)
-	  (error "Can't overwrite automatic property:" key))
+	  (warn "Overwriting automatic property:" key))
       (let ((p (assq key (cdr alist))))
 	(if p
 	    (begin
-	      (warn "Overwriting library property:" key name)
+	      (warn "Overwriting property:" key)
 	      (set-cdr! p value))
 	    (set-cdr! alist (cons (cons key value) (cdr alist))))))
 
@@ -122,7 +126,9 @@ USA.
       (set-cdr! alist (del-assq! key (cdr alist))))
 
     (define (summarize-self)
-      (list name))
+      (if name
+	  (list name)
+	  '()))
 
     (define (describe-self)
       (map (lambda (p)
@@ -282,11 +288,13 @@ USA.
   (lambda (library)
     (library 'get key)))
 
+(define library-contents (library-accessor 'contents))
 (define library-environment (library-accessor 'environment))
 (define library-exporter (library-accessor 'exporter))
 (define library-exports (library-accessor 'exports))
 (define library-filename (library-accessor 'filename))
 (define library-imports (library-accessor 'imports))
+(define library-imports-environment (library-accessor 'imports-environment))
 (define library-name (library-accessor 'name))
 (define library-parsed-contents (library-accessor 'parsed-contents))
 (define library-parsed-imports (library-accessor 'parsed-imports))

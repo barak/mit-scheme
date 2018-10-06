@@ -66,6 +66,7 @@ USA.
     ("runtime/test-library-parser" (runtime library))
     ("runtime/test-library-standard" (runtime library))
     ("runtime/test-library-imports" (runtime library))
+    ("runtime/test-library-loader" (runtime library))
     "runtime/test-md5"
     "runtime/test-mime-codec"
     ("runtime/test-parametric-predicate" (runtime parametric-predicate))

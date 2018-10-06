@@ -41,7 +41,7 @@ USA.
 	(define (read-libs libs)
 	  (let ((form (read port)))
 	    (cond ((eof-object? form)
-		   (done (reverse libs) '() #f))
+		   (make-r7rs-source (reverse libs) #f))
 		  ((r7rs-library? form)
 		   (read-libs
 		    (cons (parse-define-library-form form pathname)
@@ -60,18 +60,21 @@ USA.
 		(error "Can't mix libraries and imports:" form))
 	    (if (r7rs-import? form)
 		(read-imports (cons (parse-import-form form) imports) libs)
-		(done libs
-		      (append-map cdr (reverse imports))
-		      (read-body (list form))))))
+		(make-r7rs-source
+		 libs
+		 ;; A program is simply an anonymous library.
+		 (make-library #f
+			       'parsed-imports (append-map cdr
+							   (reverse imports))
+			       'exports '()
+			       'parsed-contents (read-body (list form))
+			       'filename (->namestring pathname))))))
 
 	(define (read-body forms)
 	  (let ((form (read port)))
 	    (if (eof-object? form)
-		(reverse forms)
+		`((begin ,@(reverse forms)))
 		(read-body (cons form forms)))))
-
-	(define (done libs imports body)
-	  (make-r7rs-source libs imports body (->namestring pathname)))
 
 	(read-libs '())))))
 
@@ -84,17 +87,17 @@ USA.
        (eq? 'import (car object))))
 
 (define-record-type <r7rs-source>
-    (make-r7rs-source parsed-libraries imports body filename)
+    (make-r7rs-source libraries program)
     r7rs-source?
-  (parsed-libraries r7rs-source-parsed-libraries)
-  (imports r7rs-source-imports)
-  (body r7rs-source-body)
-  (filename r7rs-source-filename))
+  (libraries r7rs-source-libraries)
+  (program r7rs-source-program))
 
-(define-print-method r7rs-source?
-  (standard-print-method 'r7rs-source
-    (lambda (source)
-      (list (r7rs-source-filename source)))))
+(define (register-r7rs-source! source db)
+  (register-libraries! (r7rs-source-libraries source) db)
+  (let ((program (r7rs-source-program source)))
+    (if program
+	(register-library! program db))
+    program))
 
 (define (parse-define-library-form form #!optional pathname)
   (let ((directory
