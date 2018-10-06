@@ -30,18 +30,19 @@ USA.
 (declare (usual-integrations))
 
 (define (add-standard-libraries! db)
-  (for-each (lambda (p)
-	      (let ((name (car p))
-		    (exports (cdr p)))
-		(db 'save-metadata!
-		    (make-library-metadata name '() exports #f))
-		(db 'save-loaded!
-		    (make-loaded-library name
-					 (map (lambda (id)
-						(make-library-export id id))
-					      exports)
-					 system-global-environment))))
-	    standard-libraries))
+  (register-libraries! (make-standard-libraries) db))
+
+(define (make-standard-libraries)
+  (map (lambda (p)
+	 (let ((name (car p))
+	       (exports (cdr p)))
+	   (make-library name
+			 'parsed-imports '()
+			 'exports (map make-library-export exports)
+			 'parsed-contents '()
+			 'filename #f
+			 'environment system-global-environment)))
+       standard-libraries))
 
 (define (check-standard-libraries!)
   (for-each (lambda (p)

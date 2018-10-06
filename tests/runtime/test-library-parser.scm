@@ -32,51 +32,92 @@ USA.
 
 (define-test 'parse-library:empty
   (lambda ()
-    (let ((parsed
+    (let ((library
 	   (parse-define-library-form '(define-library (foo bar))
 				      test-pathname)))
-      (value-assert parsed-library?
-		    "parsed library"
-		    parsed)
-      (assert-equal (parsed-library-name parsed)
+      (value-assert library? "parsed library" library)
+      (assert-equal (library-name library)
 		    '(foo bar))
-      (assert-null (parsed-library-exports parsed))
-      (assert-null (parsed-library-imports parsed))
-      (assert-null (parsed-library-contents parsed))
-      (assert-equal (parsed-library-pathname parsed)
-		    test-pathname))))
+      (assert-null (library-parsed-imports library))
+      (assert-null (library-exports library))
+      (assert-null (library-parsed-contents library))
+      (assert-string= (library-filename library)
+		      (->namestring test-pathname)))))
 
 (define-test 'parse-library:ex1
   (lambda ()
-    (let ((parsed (parse-define-library-form ex1 test-pathname)))
-      (assert-equal (parsed-library-name parsed)
+    (let ((library (parse-define-library-form ex1 test-pathname)))
+      (assert-equal (library-name library)
 		    '(foo bar))
       (assert-lset= equal?
-		    (parsed-library-imports parsed)
+		    (library-parsed-imports library)
 		    (map convert-import ex1-imports))
       (assert-lset= library-export=?
-		    (parsed-library-exports parsed)
+		    (library-exports library)
 		    (map convert-export ex1-exports))
       (assert-list= equal?
-		    (parsed-library-contents parsed)
+		    (library-parsed-contents library)
 		    (append-map convert-content ex1-contents))
-      (assert-equal (parsed-library-pathname parsed)
-		    test-pathname))))
+      (assert-string= (library-filename library)
+		      (->namestring test-pathname)))))
 
 (define-test 'parse-library:ex2
   (lambda ()
-    (let ((parsed (parse-define-library-form ex2 test-pathname)))
-      (assert-equal (parsed-library-name parsed)
+    (let ((library (parse-define-library-form ex2 test-pathname)))
+      (assert-equal (library-name library)
 		    '(foo bar))
       (assert-lset= equal?
-		    (parsed-library-imports parsed)
+		    (library-parsed-imports library)
 		    (map convert-import (append ex1-imports ex2-extra-imports)))
       (assert-lset= library-export=?
-		    (parsed-library-exports parsed)
+		    (library-exports library)
 		    (map convert-export (append ex1-exports ex2-extra-exports)))
       (assert-list= equal?
-		    (parsed-library-contents parsed)
+		    (library-parsed-contents library)
 		    (append-map convert-content
 				(append ex2-extra-contents ex1-contents)))
-      (assert-equal (parsed-library-pathname parsed)
-		    test-pathname))))
+      (assert-string= (library-filename library)
+		      (->namestring test-pathname)))))
+
+(define-test 'read-r7rs-source:dependencies
+  (lambda ()
+    (let ((source (read-r7rs-source dependencies-filename)))
+      (let ((libraries (r7rs-source-parsed-libraries source)))
+	(assert-true (list? libraries))
+	(assert-= (length libraries) 4)
+	(assert-list= equal?
+		      (map library-name libraries)
+		      '((foo mumble)
+			(foo bletch)
+			(foo grumble)
+			(foo quux))))
+      (assert-null (r7rs-source-imports source))
+      (assert-false (r7rs-source-body source))
+      (assert-string= (r7rs-source-filename source)
+		      dependencies-filename))))
+
+(define-test 'read-r7rs-source:r7rs-example
+  (lambda ()
+    (let ((source (read-r7rs-source r7rs-example-filename)))
+      (let ((libraries (r7rs-source-parsed-libraries source)))
+	(assert-true (list? libraries))
+	(assert-= (length libraries) 2)
+	(assert-list= equal?
+		      (map library-name libraries)
+		      '((example grid)
+			(example life))))
+      (assert-equal (r7rs-source-imports source)
+		    '((library (scheme base))
+		      (only (library (example life)) life)
+		      (rename (prefix (library (example grid)) grid-)
+			      (grid-make . make-grid))))
+      (assert-equal (r7rs-source-body source)
+		    '((define grid (make-grid 24 24))
+		      (grid-set! grid 1 1 #t)
+		      (grid-set! grid 2 2 #t)
+		      (grid-set! grid 3 0 #t)
+		      (grid-set! grid 3 1 #t)
+		      (grid-set! grid 3 2 #t)
+		      (life grid 80)))
+      (assert-string= (r7rs-source-filename source)
+		      r7rs-example-filename))))

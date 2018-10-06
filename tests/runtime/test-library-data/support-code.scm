@@ -39,11 +39,11 @@ USA.
   (case (car import)
     ((only except prefix)
      `(,(car import)
-       (library ,(cadr import))
+       ,(convert-import (cadr import))
        ,@(cddr import)))
     ((rename)
      `(,(car import)
-       (library ,(cadr import))
+       ,(convert-import (cadr import))
        ,@(map (lambda (p)
 		(cons (car p) (cadr p)))
 	      (cddr import))))
@@ -58,13 +58,13 @@ USA.
 (define (convert-content content)
   (case (car content)
     ((include include-ci)
-     (map (lambda (path)
-	    (list (merge-pathnames path test-directory) (car content)))
-	  (cdr content)))
-    ((begin)
-     (cdr content))
-    (else
-     (error "Unknown content:" content))))
+     (list
+      (cons (car content)
+	    (map (lambda (path)
+		   (merge-pathnames path test-directory))
+		 (cdr content)))))
+    ((begin) (list content))
+    (else (error "Unknown content:" content))))
 
 (define ex1-imports
   '((foo mumble)
@@ -115,16 +115,16 @@ USA.
      (include-library-declarations "test-library-data/foo-foo")
      ,@ex1-contents))
 
-(define (build-metadata-db)
-  (let ((db (make-library-db)))
-    (add-standard-libraries! db)
-    (let ((path
-	   (merge-pathnames "test-library-data/dependencies.scm"
-			    test-directory)))
-      (for-each (lambda (form)
-		  (db 'save-metadata!
-		      (parsed-library->metadata
-		       (parse-define-library-form form path)
-		       db)))
-		(read-file path)))
-    db))
+(define (read-dependencies)
+  (r7rs-source-parsed-libraries
+   (read-r7rs-source dependencies-filename)))
+
+(define dependencies-filename
+  (->namestring
+   (merge-pathnames "test-library-data/dependencies.scm"
+		    test-directory)))
+
+(define r7rs-example-filename
+  (->namestring
+   (merge-pathnames "test-library-data/r7rs-example.scm"
+		    test-directory)))

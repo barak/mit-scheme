@@ -29,157 +29,81 @@ USA.
 
 (declare (usual-integrations))
 
-;; Returns one of the following:
-;; * Zero or more libraries, one or more imports, and a body.
-;; * Zero or more libraries, no imports, and no body.
-;; * #F, meaning this isn't R7RS source.
-(define (read-r7rs-source pathname)
-  (parameterize ((param:reader-fold-case? #f))
-    (call-with-input-file pathname
-      (lambda (port)
+;;;; Syntax
 
-	(define (read-libs libs)
-	  (let ((form (read port)))
-	    (cond ((eof-object? form)
-		   (make-r7rs-source (reverse libs) '() #f))
-		  ((r7rs-library? form)
-		   (read-libs
-		    (cons (parse-define-library-form form pathname)
-			  libs)))
-		  ((r7rs-import? form)
-		   (read-imports (list (parse-import-form form))
-				 (reverse libs)))
-		  ;; Not a valid R7RS file.
-		  (else #f))))
+(define-automatic-property '->scode '(name imports exports syntaxed-contents)
+  #f
+  (lambda (name imports exports contents)
+    (make-scode-declaration
+     `(target-metadata
+       (library (name ,name)
+		(imports ,(map library-import->list imports))
+		(exports ,(map library-export->list exports))))
+     (make-scode-quotation contents))))
 
-	(define (read-imports imports libs)
-	  (let ((form (read port)))
-	    (if (eof-object? form)
-		(error "EOF while reading imports"))
-	    (if (r7rs-library? form)
-		(error "Can't mix libraries and imports:" form))
-	    (if (r7rs-import? form)
-		(read-imports (cons (parse-import-form form) imports) libs)
-		(make-r7rs-source libs
-				  (append-map cdr (reverse imports))
-				  (read-body (list form))))))
+(define-automatic-property 'evaluable-contents
+    '(parsed-contents imports exports db)
+  #f
+  (lambda (contents imports exports db)
+    (receive (body bound free)
+	(syntax-library-forms (expand-contents contents)
+			      (imports->environment imports db))
+      (let ((exports-from (map library-export-from exports)))
+	(if (not (lset<= eq? exports-from (lset-union eq? bound free)))
+	    (warn "Library export refers to unbound identifiers:"
+		  (lset-difference eq?
+				   exports-from
+				   (lset-union eq? bound free)))))
+      (let ((imports-to (map library-import-to imports)))
+	(if (not (lset<= eq? free imports-to))
+	    (warn "Library has free references not provided by imports:"
+		  (lset-difference eq? free imports-to))))
+      body)))
 
-	(define (read-body forms)
-	  (let ((form (read port)))
-	    (if (eof-object? form)
-		(reverse forms)
-		(read-body (cons form forms)))))
-
-	(read-libs '())))))
-
-(define (r7rs-library? object)
-  (and (pair? object)
-       (eq? 'define-library (car object))))
-
-(define (r7rs-import? object)
-  (and (pair? object)
-       (eq? 'import (car object))))
+(define (expand-contents contents)
+  (append-map (lambda (directive)
+		(case (car directive)
+		  ((include)
+		   (parameterize ((param:reader-fold-case? #f))
+		     (append-map read-file
+				 (cdr directive))))
+		  ((include-ci)
+		   (parameterize ((param:reader-fold-case? #t))
+		     (append-map read-file
+				 (cdr directive))))
+		  ((begin)
+		   (cdr directive))
+		  (else
+		   (error "Unknown content directive:" directive))))
+	      contents))
 
-(define (make-r7rs-source libraries imports body)
+(define (imports->environment imports db)
+  (if (not (import-environments-available? imports db))
+      (error "Imported libraries unavailable:"
+	     (library-imports-from
+	      (remove import-environment-available? imports))))
+  (make-environment-from-imports imports db))
 
-  (define (save-metadata! library-db)
-    ;; TODO: adjust expansion order due to dependencies.
-    (for-each
-     (lambda (library)
-       (library-db 'save-metadata!
-		   (parsed-library->metadata library library-db)))
-     libraries))
+(define (import-environments-available? imports db)
+  (every (lambda (import)
+	   (import-environment-available? import db))
+	 imports))
 
-  (define (load library-db)
-    (for-each (lambda (library)
-		(load-library (compile-library library library-db)
-			      library-db))
-	      libraries)
-    (if (pair? imports)
-	(let ((environment*
-	       (expanded-imports->environment
-		(expand-import-sets imports library-db))))
-	  (let loop ((exprs body) (value unspecific))
-	    (if (pair? exprs)
-		(loop (cdr exprs)
-		      (eval (car exprs) environment*))
-		value)))))
+(define (import-environment-available? import db)
+  (let ((name (library-import-from-library import)))
+    (and (registered-library? name db)
+	 ((registered-library name db) 'has? 'environment))))
 
-  (bundle r7rs-source? save-metadata! load))
-
-(define r7rs-source?
-  (make-bundle-predicate 'r7rs-source))
-
-;;;; Compile
-
-(define (compile-library library db)
-  (let ((name (parsed-library-name library))
-	(imports
-	 (expand-import-sets (parsed-library-imports library)
-			     db))
-	(exports (parsed-library-exports library))
-	(contents (expand-parsed-contents (parsed-library-contents library))))
-    (db 'save-compiled!
-	(make-compiled-library name
-			       imports
-			       exports
-			       (compile-contents contents
-						 imports
-						 (map library-export-from
-						      exports)
-						 db)
-			       db))
-    name))
-
-(define (compile-contents contents imports exports-from library-db)
-  (receive (body bound free)
-      (syntax-library-forms contents
-			    (expanded-imports->environment imports
-							   library-db))
-    (if (not (lset<= eq? exports-from (lset-union eq? bound free)))
-	(warn "Library export refers to unbound identifiers:"
-	      (lset-difference eq?
-			       exports-from
-			       (lset-union eq? bound free))))
-    (let ((imports-to (map library-import-to imports)))
-      (if (not (lset<= eq? free imports-to))
-	  (warn "Library has free references not provided by imports:"
-		(lset-difference eq? free imports-to))))
-    body))
-
-;;;; Load
-
-(define (load-library library-name library-db)
-  (or (library-db 'get-loaded library-name #f)
-      (let ((compiled (library-db 'get-compiled library-name)))
-	(let ((environment
-	       (expanded-imports->environment
-		(compiled-library-imports compiled)
-		library-db)))
-	  (scode-eval (compiled-library-body compiled)
-		      environment)
-	  (let ((loaded
-		 (make-loaded-library (compiled-library-name compiled)
-				      (compiled-library-exports compiled)
-				      environment)))
-	    (library-db 'save-loaded! loaded)
-	    loaded)))))
-
-(define (library-exporter library-name library-db)
-  (loaded-library-exporter (load-library library-name library-db)))
-
-(define (environment . import-sets)
-  (expanded-imports->environment
-   (expand-import-sets (map parse-import-set import-sets))))
-
-(define (expanded-imports->environment imports library-db)
+(define (make-environment-from-imports imports db)
   (let ((env
 	 (make-root-top-level-environment (map library-import-to imports))))
     (for-each (lambda (import)
 		(let ((value
-		       (library-exporter
-			(library-import-from-library import)
-			library-db))
+		       ((library-exporter
+			 (registered-library
+			  (library-import-from-library import)
+			  db))
+			(library-import-from import)))
 		      (name (library-import-to import)))
 		  (cond ((macro-reference-trap? value)
 			 (environment-define-macro
@@ -192,3 +116,71 @@ USA.
 			 (environment-define env name value)))))
 	      imports)
     env))
+
+(define-automatic-property 'environment '(imports evaluable-contents db)
+  (lambda (imports contents db)
+    (declare (ignore contents))
+    (import-environments-available? imports db))
+  (lambda (imports contents db)
+    (let ((env (make-environment-from-imports imports db)))
+      (scode-eval contents env)
+      env)))
+
+(define (environment . import-sets)
+  (let ((parsed (map parse-import-set import-sets)))
+    (let ((unusable (remove parsed-import-expandable? parsed)))
+      (if (pair? unusable)
+	  (error "Imports not usable:" unusable)))
+    (imports->environment
+     (expand-parsed-imports parsed host-library-db)
+     host-library-db)))
+
+(define-automatic-property 'exporter '(exports environment)
+  #f
+  (lambda (exports environment)
+    (let ((export-alist
+	   (map (lambda (export)
+		  (cons (library-export-to export)
+			(environment-safe-lookup environment
+						 (library-export-from export))))
+		exports)))
+      (lambda (name)
+	(let ((p (assq name export-alist)))
+	  (if (not p)
+	      (error "Not an exported name:" name))
+	  (cdr p))))))
+
+;;;; Load
+
+#|
+(define (load db)
+  (for-each (lambda (parsed)
+	      (load-library (syntax-library parsed db)
+			    db))
+	    parsed-libraries)
+  (if (pair? imports)
+      (let ((environment*
+	     (imports->environment
+	      (expand-import-sets imports db))))
+	(let loop ((exprs body) (value unspecific))
+	  (if (pair? exprs)
+	      (loop (cdr exprs)
+		    (eval (car exprs) environment*))
+	      value)))))
+
+(define (load-library library-name db)
+  (or (db 'get-loaded library-name #f)
+      (let ((syntaxed (db 'get-syntaxed library-name)))
+	(let ((environment
+	       (imports->environment
+		(syntaxed-library-imports syntaxed)
+		db)))
+	  (scode-eval (syntaxed-library-body syntaxed)
+		      environment)
+	  (let ((loaded
+		 (make-loaded-library (syntaxed-library-name syntaxed)
+				      (syntaxed-library-exports syntaxed)
+				      environment)))
+	    (db 'save-loaded! loaded)
+	    loaded)))))
+|#

@@ -29,6 +29,73 @@ USA.
 
 (declare (usual-integrations))
 
+;; Returns one of the following:
+;; * Zero or more libraries, one or more imports, and a body.
+;; * Zero or more libraries, no imports, and no body.
+;; * #F, meaning this isn't R7RS source.
+(define (read-r7rs-source pathname)
+  (parameterize ((param:reader-fold-case? #f))
+    (call-with-input-file pathname
+      (lambda (port)
+
+	(define (read-libs libs)
+	  (let ((form (read port)))
+	    (cond ((eof-object? form)
+		   (done (reverse libs) '() #f))
+		  ((r7rs-library? form)
+		   (read-libs
+		    (cons (parse-define-library-form form pathname)
+			  libs)))
+		  ((r7rs-import? form)
+		   (read-imports (list (parse-import-form form))
+				 (reverse libs)))
+		  ;; Not a valid R7RS file.
+		  (else #f))))
+
+	(define (read-imports imports libs)
+	  (let ((form (read port)))
+	    (if (eof-object? form)
+		(error "EOF while reading imports"))
+	    (if (r7rs-library? form)
+		(error "Can't mix libraries and imports:" form))
+	    (if (r7rs-import? form)
+		(read-imports (cons (parse-import-form form) imports) libs)
+		(done libs
+		      (append-map cdr (reverse imports))
+		      (read-body (list form))))))
+
+	(define (read-body forms)
+	  (let ((form (read port)))
+	    (if (eof-object? form)
+		(reverse forms)
+		(read-body (cons form forms)))))
+
+	(define (done libs imports body)
+	  (make-r7rs-source libs imports body (->namestring pathname)))
+
+	(read-libs '())))))
+
+(define (r7rs-library? object)
+  (and (pair? object)
+       (eq? 'define-library (car object))))
+
+(define (r7rs-import? object)
+  (and (pair? object)
+       (eq? 'import (car object))))
+
+(define-record-type <r7rs-source>
+    (make-r7rs-source parsed-libraries imports body filename)
+    r7rs-source?
+  (parsed-libraries r7rs-source-parsed-libraries)
+  (imports r7rs-source-imports)
+  (body r7rs-source-body)
+  (filename r7rs-source-filename))
+
+(define-print-method r7rs-source?
+  (standard-print-method 'r7rs-source
+    (lambda (source)
+      (list (r7rs-source-filename source)))))
+
 (define (parse-define-library-form form #!optional pathname)
   (let ((directory
 	 (if (default-object? pathname)
@@ -59,23 +126,14 @@ USA.
 		      (loop decls
 			    imports
 			    exports
-			    (append (reverse (cdr decl)) contents)))))
-		 (make-parsed-library (car result)
-				      (reverse imports)
-				      (reverse exports)
-				      (reverse contents)
-				      (if (default-object? pathname)
-					  #f
-					  pathname))))))))
-
-(define-record-type <parsed-library>
-    (make-parsed-library name imports exports contents pathname)
-    parsed-library?
-  (name parsed-library-name)
-  (imports parsed-library-imports)
-  (exports parsed-library-exports)
-  (contents parsed-library-contents)
-  (pathname parsed-library-pathname))
+			    (cons decl contents)))))
+		 (make-library (car result)
+			       'parsed-imports (reverse imports)
+			       'exports (reverse exports)
+			       'parsed-contents (reverse contents)
+			       'filename (if (default-object? pathname)
+					     #f
+					     (->namestring pathname)))))))))
 
 (define (expand-parsed-decls parsed-decls directory)
   (append-map (lambda (parsed-decl)
@@ -91,12 +149,11 @@ USA.
 		  ((cond-expand)
 		   (expand-parsed-decls
 		    (evaluate-cond-expand eq? parsed-decl)))
-		  ((include)
+		  ((include include-ci)
 		   (list
 		    (cons (car parsed-decl)
 			  (map (lambda (p)
-				 (list (merge-pathnames (car p) directory)
-				       (cadr p)))
+				 (merge-pathnames p directory))
 			       (cdr parsed-decl)))))
 		  (else
 		   (list parsed-decl))))
@@ -170,11 +227,7 @@ USA.
 
 (define include-parser
   (object-parser
-   (encapsulate (lambda (keyword . pathnames)
-                  (cons 'include
-                        (map (lambda (pathname)
-			       (list pathname keyword))
-                             pathnames)))
+   (encapsulate list
      (list (alt (match include) (match include-ci))
            (* (object pathname-parser))))))
 
@@ -247,6 +300,12 @@ USA.
     (win (error (string-append "Unrecognized " description ":") object)
          lose)))
 
+(define (parsed-import-library import)
+  (case (car import)
+    ((library) (cadr import))
+    ((only except prefix rename) (parsed-import-library (cadr import)))
+    (else (error "Unrecognized import:" import))))
+
 (define (library-name? object)
   (and (list? object)
        (every (lambda (elt)
@@ -254,45 +313,8 @@ USA.
 		    (exact-nonnegative-integer? elt)))
 	      object)))
 
-(define (expand-parsed-contents contents)
-  (append-map (lambda (directive)
-		(case (car directive)
-		  ((include)
-		   (parameterize ((param:reader-fold-case? #f))
-		     (append-map read-file
-				 (cdr directive))))
-		  ((include-ci)
-		   (parameterize ((param:reader-fold-case? #t))
-		     (append-map read-file
-				 (cdr directive))))
-		  ((begin)
-		   (cdr directive))
-		  (else
-		   (error "Unknown content directive:" directive))))
-	      contents))
-
-(define (make-library-export from #!optional to)
-  (guarantee symbol? from 'make-library-export)
-  (if (default-object? to)
-      (%make-library-export from from)
-      (begin
-	(guarantee symbol? to 'make-library-export)
-	(%make-library-export from to))))
-
-(define-record-type <library-export>
-    (%make-library-export from to)
-    library-export?
-  (from library-export-from)
-  (to library-export-to))
-
-(define-print-method library-export?
-  (standard-print-method 'library-export
-    (lambda (export)
-      (list (library-export-from export)
-	    (library-export-to export)))))
-
-(define (library-export=? e1 e2)
-  (and (eq? (library-export-from e1)
-	    (library-export-from e2))
-       (eq? (library-export-to e1)
-	    (library-export-to e2))))
+(define (library-name=? n1 n2)
+  (guarantee library-name? n1 'library-name=?)
+  (guarantee library-name? n2 'library-name=?)
+  (and (= (length n1) (length n2))
+       (every eqv? n1 n2)))

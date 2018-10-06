@@ -30,32 +30,33 @@ USA.
 
 (include "test-library-data/support-code.scm")
 
-(define-test 'expand-import-sets:ex1
+(define-test 'expand-parsed-imports:ex1
   (lambda ()
-    (assert-lset= library-import=?
-		  (expand-import-sets (parsed-library-imports
-				       (parse-define-library-form
-					ex1 test-pathname))
-				      (build-metadata-db))
-		  (list (make-library-import '(foo mumble) 'foo-mumble?)
-			(make-library-import '(foo mumble) 'make-foo-mumble)
-			(make-library-import '(foo mumble) 'foo-mumble-a)
-			(make-library-import '(foo mumble) 'foo-mumble-b)
-			(make-library-import '(foo grumble)
-					     'foo-grumble?
-					     'grumble-foo-grumble?)
-			(make-library-import '(foo grumble)
-					     'make-foo-grumble
-					     'grumble-make-foo-grumble)
-			(make-library-import '(foo grumble)
-					     'foo-grumble-a
-					     'grumble-foo-grumble-a)
-			(make-library-import '(foo grumble)
-					     'foo-grumble-b
-					     'grumble-foo-grumble-b)
-			(make-library-import '(foo quux) 'foo-quux?)
-			(make-library-import '(foo quux) 'foo-quux-a)
-			(make-library-import '(foo quux) 'foo-quux-b)
-			(make-library-import '(foo quux)
-					     'make-foo-quux
-					     'create-foo-quux)))))
+    (let ((library (parse-define-library-form ex1 test-pathname))
+	  (db (make-library-db 'test)))
+      (register-library! library db)
+      (register-libraries! (read-dependencies) db)
+      (assert-lset= library-import=?
+		    (library-imports library)
+		    (list (make-library-import '(foo mumble) 'foo-mumble?)
+			  (make-library-import '(foo mumble) 'make-foo-mumble)
+			  (make-library-import '(foo mumble) 'foo-mumble-a)
+			  (make-library-import '(foo mumble) 'foo-mumble-b)
+			  (make-library-import '(foo grumble)
+					       'foo-grumble?
+					       'grumble-foo-grumble?)
+			  (make-library-import '(foo grumble)
+					       'make-foo-grumble
+					       'grumble-make-foo-grumble)
+			  (make-library-import '(foo grumble)
+					       'foo-grumble-a
+					       'grumble-foo-grumble-a)
+			  (make-library-import '(foo grumble)
+					       'foo-grumble-b
+					       'grumble-foo-grumble-b)
+			  (make-library-import '(foo quux) 'foo-quux?)
+			  (make-library-import '(foo quux) 'foo-quux-a)
+			  (make-library-import '(foo quux) 'foo-quux-b)
+			  (make-library-import '(foo quux)
+					       'make-foo-quux
+					       'create-foo-quux))))))

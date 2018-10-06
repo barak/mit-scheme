@@ -475,6 +475,7 @@ USA.
    (runtime hash)
    (runtime dynamic)
    (runtime regular-sexpression)
+   (runtime library database)
    ;; Microcode data structures
    (runtime history)
    (runtime scode)

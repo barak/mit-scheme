@@ -29,29 +29,32 @@ USA.
 
 (declare (usual-integrations))
 
-(define (expand-import-sets import-sets library-db)
-  (library-db 'require-metadata (import-sets->libraries import-sets))
+(define (parsed-imports-expandable? imports db)
+  (every (lambda (import)
+	   (parsed-import-expandable? import db))
+	 imports))
+
+(define (parsed-import-expandable? import db)
+  (let ((name (parsed-import-library import)))
+    (and (registered-library? name db)
+	 ((registered-library name db) 'has? 'exports))))
+
+(define (expand-parsed-imports imports db)
   (let ((converted-sets
-	 (map (lambda (import-set)
-		(expand-import-set import-set library-db))
-	      import-sets)))
+	 (map (lambda (import)
+		(expand-parsed-import import db))
+	      imports)))
     (let ((intersections (find-intersections converted-sets)))
       (if (pair? intersections)
 	  (error "Import sets intersect:"
 		 (unconvert-intersections intersections
 					  converted-sets
-					  import-sets))))
-    (append-map (lambda (set) set) converted-sets)))
+					  imports))))
+    (reduce-right append! '() converted-sets)))
 
-(define (import-sets->libraries import-sets)
-  (delete-duplicates (map import-set->library import-sets)
-		     equal?))
-
-(define (import-set->library import-set)
-  (case (car import-set)
-    ((library) (cadr import-set))
-    ((only except prefix rename) (import-set->library (cadr import-set)))
-    (else (error "Unrecognized import set:" import-set))))
+(define-automatic-property 'imports '(parsed-imports db)
+  parsed-imports-expandable?
+  expand-parsed-imports)
 
 (define (find-intersections converted-sets)
   (if (pair? converted-sets)
@@ -77,21 +80,19 @@ USA.
 		intersection))
 	 intersections)))
 
-;;; Returns a list of (<to-name> <from-name> <from-library>) elements.
-(define (expand-import-set import-set library-db)
+;;; Returns a list of library-import elements.
+(define (expand-parsed-import import-set db)
   (let ((converted-set
 	 (let loop ((import-set import-set) (filter (lambda (name) name)))
 	   (case (car import-set)
 	     ((library)
-	      (let ((library-name (cadr import-set)))
-		(filter-map (lambda (name)
-			      (let ((filtered (filter name)))
+	      (let ((name (cadr import-set)))
+		(filter-map (lambda (export)
+			      (let* ((to (library-export-to export))
+				     (filtered (filter to)))
 				(and filtered
-				     (make-library-import library-name
-							  name
-							  filtered))))
-			    (library-metadata-exports
-			     (library-db 'get-metadata library-name)))))
+				     (make-library-import name to filtered))))
+			    ((registered-library name db) 'get 'exports))))
 	     ((only)
 	      (loop (cadr import-set)
 		    (let ((names (cddr import-set)))
@@ -130,29 +131,3 @@ USA.
 	 (and (pair? (cdr names))
 	      (or (eq? (car names) (cadr names))
 		  (loop (cdr names)))))))
-
-(define (make-library-import from-library from #!optional to)
-  (%make-library-import from-library from
-			(if (default-object? to) from to)))
-
-(define-record-type <library-import>
-    (%make-library-import from-library from to)
-    library-import?
-  (from-library library-import-from-library)
-  (from library-import-from)
-  (to library-import-to))
-
-(define-print-method library-import?
-  (standard-print-method 'library-import
-    (lambda (import)
-      (list (library-import-from-library import)
-	    (library-import-from import)
-	    (library-import-to import)))))
-
-(define (library-import=? e1 e2)
-  (and (equal? (library-import-from-library e1)
-	       (library-import-from-library e2))
-       (eq? (library-import-from e1)
-	    (library-import-from e2))
-       (eq? (library-import-to e1)
-	    (library-import-to e2))))

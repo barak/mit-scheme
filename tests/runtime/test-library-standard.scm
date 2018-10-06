@@ -28,31 +28,34 @@ USA.
 
 (declare (usual-integrations))
 
+(include "test-library-data/support-code.scm")
+
 (define-test 'check-standard-libraries!
   (lambda ()
     (check-standard-libraries!)))
 
+(define-test 'make-standard-libraries
+  (map (lambda (library)
+	 (lambda ()
+	   (check-standard-library library)))
+       (make-standard-libraries)))
+
 (define-test 'add-standard-libraries!
-  (let ((db (make-library-db)))
+  (let ((db (make-library-db 'test)))
     (add-standard-libraries! db)
     (map (lambda (name)
-	   (lambda ()
-	     (assert-true (db 'metadata? name))
-	     (assert-false (db 'compiled? name))
-	     (assert-true (db 'loaded? name))
-	     (let ((exports (standard-library-exports name)))
-	       (let ((metadata (db 'get-metadata name)))
-		 (assert-equal (library-metadata-name metadata) name)
-		 (assert-null (library-metadata-imports metadata))
-		 (assert-lset= eq?
-			       (library-metadata-exports metadata)
-			       exports)
-		 (assert-false (library-metadata-pathname metadata)))
-	       (let ((loaded (db 'get-loaded name)))
-		 (assert-equal (loaded-library-name loaded) name)
-		 (assert-lset= eq?
-			       (loaded-library-exports loaded)
-			       exports)
-		 (assert-eqv (loaded-library-environment loaded)
-			     system-global-environment)))))
+	   (let ((library (registered-library name db)))
+	     (lambda ()
+	       (check-standard-library library))))
 	 (standard-library-names))))
+
+(define (check-standard-library library)
+  (let ((exports (standard-library-exports (library-name library))))
+    (assert-null (library-parsed-imports library))
+    (assert-lset= library-export=?
+		  (library-exports library)
+		  (map make-library-export exports))
+    (assert-null (library-parsed-contents library))
+    (assert-false (library-filename library))
+    (assert-eqv (library-environment library)
+		system-global-environment)))
