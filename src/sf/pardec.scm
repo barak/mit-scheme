@@ -36,7 +36,11 @@ USA.
   (let ((declarations (merge-usual-integrations declarations)))
     (make-declaration-set declarations
 			  (append-map (lambda (declaration)
-					(parse-declaration block declaration))
+					(if (eq? (car declaration)
+						 'target-metadata)
+					    '()
+					    (parse-declaration block
+							       declaration)))
 				      declarations))))
 
 (define (merge-usual-integrations declarations)
@@ -242,6 +246,33 @@ USA.
 		 (vector-ref remaining 2)
 		 'global)))
 	    remaining))))
+
+;;; The corresponding case for R7RS is much simpler since the imports are
+;;; explicit.
+
+(define (r7rs-usual-integrations block imports)
+  (make-declaration-set '()
+    (let ((globals (standard-library-globals imports)))
+      (let ((constructor
+	     (lambda (operation)
+	       (lambda (name value)
+		 (let ((global
+			(find (lambda (global)
+				(eq? (cdr global) name))
+			      globals)))
+		   (and global
+			(make-declaration operation
+					  (block/lookup-name block
+							     (car global)
+							     #f)
+					  value
+					  'global)))))))
+	(append (filter-map (constructor 'expand)
+			    usual-integrations/expansion-names
+			    usual-integrations/expansion-values)
+		(filter-map (constructor 'integrate)
+			    usual-integrations/constant-names
+			    usual-integrations/constant-values))))))
 
 (define (define-integration-declaration operation)
   (define-declaration operation

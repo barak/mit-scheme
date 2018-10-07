@@ -30,7 +30,7 @@ USA.
 (declare (usual-integrations))
 
 (define (make-library-db name)
-  (let ((table (make-equal-hash-table)))
+  (let loop ((table (make-equal-hash-table)))
 
     (define (has? name)
       (hash-table-exists? table name))
@@ -56,6 +56,9 @@ USA.
     (define (get-all)
       (hash-table-values table))
 
+    (define (get-copy)
+      (loop (hash-table-copy table)))
+
     (define (summarize-self)
       (list name))
 
@@ -66,12 +69,16 @@ USA.
 
     (define this
       (bundle library-db?
-	      has? get put! get-names get-all
+	      has? get put! get-names get-all get-copy
 	      summarize-self describe-self))
     this))
 
 (define library-db?
   (make-bundle-predicate 'library-database))
+
+(define (copy-library-db db)
+  (guarantee library-db? db 'copy-library-db)
+  (db 'get-copy))
 
 (define (make-library name . keylist)
   (if name
@@ -236,14 +243,14 @@ USA.
 	    (library-import-to e2))))
 
 (define (library-import->list import)
-  (list (library-import-from-library import)
-	(library-import-from import)
-	(library-import-to import)))
+  (cons* (library-import-from-library import)
+	 (library-import-from import)
+	 (if (eq? (library-import-from import) (library-import-to import))
+	     '()
+	     (list (library-import-to import)))))
 
 (define (list->library-import list)
-  (make-library-import (car list)
-		       (cadr list)
-		       (caddr list)))
+  (apply make-library-import list))
 
 (define (library-imports-from imports)
   (delete-duplicates (map library-import-from-library imports)
@@ -274,11 +281,13 @@ USA.
 	    (library-export-to e2))))
 
 (define (library-export->list export)
-  (list (library-export-from export)
-	(library-export-to export)))
+  (cons (library-export-from export)
+	(if (eq? (library-export-from export) (library-export-to export))
+	    '()
+	    (list (library-export-to export)))))
 
 (define (list->library-export list)
-  (make-library-export (car list) (cadr list)))
+  (apply make-library-export list))
 
 (define-print-method library-export?
   (standard-print-method 'library-export
@@ -309,6 +318,7 @@ USA.
   (lambda (library)
     (library 'get key)))
 
+(define library-bound-names (library-accessor 'bound-names))
 (define library-contents (library-accessor 'contents))
 (define library-environment (library-accessor 'environment))
 (define library-exporter (library-accessor 'exporter))
@@ -316,7 +326,9 @@ USA.
 (define library-filename (library-accessor 'filename))
 (define library-imports (library-accessor 'imports))
 (define library-imports-environment (library-accessor 'imports-environment))
+(define library-imports-used (library-accessor 'imports-used))
 (define library-name (library-accessor 'name))
 (define library-parsed-contents (library-accessor 'parsed-contents))
 (define library-parsed-imports (library-accessor 'parsed-imports))
+(define library-scode (library-accessor 'scode))
 (define library-syntaxed-contents (library-accessor 'syntaxed-contents))

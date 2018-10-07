@@ -31,14 +31,16 @@ USA.
 
 ;;;; Syntax
 
-(define-automatic-property 'scode '(name imports exports contents)
+(define-automatic-property 'scode
+  '(name imports-used exports bound-names contents)
   #f
-  (lambda (name imports exports contents)
+  (lambda (name imports exports bound-names contents)
     (make-scode-declaration
-     `(target-metadata
-       (library (name ,name)
-		(imports ,(map library-import->list imports))
-		(exports ,(map library-export->list exports))))
+     `((target-metadata
+	(library (name ,name)
+		 (imports ,@(map library-import->list imports))
+		 (exports ,@(map library-export->list exports))
+		 (bound-names ,@bound-names))))
      (make-scode-quotation contents))))
 
 (define (eval-r7rs-source source db)
@@ -47,7 +49,7 @@ USA.
 	(scode-eval (library-contents program)
 		    (library-environment program)))))
 
-(define-automatic-property 'contents
+(define-automatic-property '(contents bound-names imports-used)
     '(parsed-contents imports exports imports-environment)
   #f
   (lambda (contents imports exports env)
@@ -63,7 +65,11 @@ USA.
 	(if (not (lset<= eq? free imports-to))
 	    (warn "Library has free references not provided by imports:"
 		  (lset-difference eq? free imports-to))))
-      body)))
+      (values body
+	      bound
+	      (filter (lambda (import)
+			(memq (library-import-to import) free))
+		      imports)))))
 
 (define (expand-contents contents)
   (append-map (lambda (directive)

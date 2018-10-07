@@ -40,6 +40,21 @@ USA.
 (define (transform/recursive block top-level-block expression)
   (transform/top-level-1 false top-level-block block expression))
 
+(define (transform/r7rs-library imports expression)
+  (let ((block (block/make #f #f '())))
+    (for-each (lambda (import)
+		(variable/make&bind! block
+				     (if (pair? (cddr import))
+					 (caddr import)
+					 (cadr import))))
+	      imports)
+    (set-block/declarations! block (r7rs-usual-integrations block imports))
+    (values block
+	    (transform/top-level-1 'r7rs
+				   block
+				   (block/make block #t '())
+				   expression))))
+
 (define top-level?)
 (define top-level-block)
 (define root-block)
@@ -58,7 +73,8 @@ USA.
 	    (if (not top-level?)
 		(error "Open blocks allowed only at top level:" expression))
 	    (let ((declarations (scode-open-block-declarations expression)))
-	      (if (not (assq 'usual-integrations declarations))
+	      (if (not (or (eq? tl? 'r7rs)
+			   (assq 'usual-integrations declarations)))
 		  (ui-warning))
 	      (transform/open-block* expression
 				     block
@@ -67,7 +83,7 @@ USA.
 				     declarations
 				     (scode-open-block-actions expression))))
 	  (transform/expression block environment expression)))))
-
+
 (define (ui-warning)
   (for-each
    (lambda (line)

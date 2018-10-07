@@ -53,18 +53,17 @@ USA.
               (*current-block-names* '()))
     (call-with-values
         (lambda ()
-          (let ((operations (operations/make))
+          (let ((operations
+		 (declarations/bind (operations/make)
+                                    (block/declarations block)))
                 (environment (environment/make)))
             (if (open-block? expression)
                 (integrate/open-block operations environment expression)
-                (let ((operations
-                       (declarations/bind operations
-                                          (block/declarations block))))
-                  (values operations
-                          environment
-                          (integrate/expression operations
-                                                environment
-                                                expression))))))
+                (values operations
+			environment
+			(integrate/expression operations
+					      environment
+					      expression)))))
      (lambda (operations environment expression)
        (values operations environment
                (quotation/make scode

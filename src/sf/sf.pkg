@@ -39,6 +39,16 @@ USA.
   (export ()
           sf:enable-argument-deletion?
           sf:enable-constant-folding?)
+  (import (runtime)
+	  copy-library-db
+	  current-load-library-db
+	  library-scode
+	  r7rs-source-libraries
+	  r7rs-source-program
+	  r7rs-source?
+	  read-r7rs-source
+	  register-r7rs-source!
+	  standard-library-globals)
   (import (runtime microcode-tables)
 	  microcode-type/code->name))
 
@@ -67,6 +77,7 @@ USA.
   (parent (scode-optimizer))
   (export (scode-optimizer)
           transform/top-level
+	  transform/r7rs-library
           transform/recursive))
 
 (define-package (scode-optimizer integrate)
@@ -116,7 +127,8 @@ USA.
           declarations/original
           declarations/parse
           known-declaration?
-          operations->external))
+          operations->external
+	  r7rs-usual-integrations))
 
 (define-package (scode-optimizer copy)
   (files "copy")

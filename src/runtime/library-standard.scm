@@ -71,6 +71,24 @@ USA.
 (define (standard-library-exports name)
   (cdr (assoc name standard-libraries)))
 
+;; Filters the given imports to find those that are equivalent to global
+;; variables, and for each one returns a pair of the "to" identifier and the
+;; corresponding global identifier.  For now this is greatly simplified by
+;; knowing that all standard libraries use global variables, but this will need
+;; to be adapted when there are libraries that don't.
+(define (standard-library-globals import-lists)
+  (filter-map (lambda (import-list)
+		(let ((import (list->library-import import-list)))
+		  (let ((p
+			 (assoc (library-import-from-library import)
+				standard-libraries)))
+		    (and p
+			 (memq (library-import-from import)
+			       (cdr p))
+			 (cons (library-import-to import)
+			       (library-import-from import))))))
+	      import-lists))
+
 (define (define-standard-library name exports)
   (let ((p (assoc name standard-libraries)))
     (if p

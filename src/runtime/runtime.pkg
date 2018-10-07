@@ -5837,6 +5837,9 @@ USA.
 (define-package (runtime library database)
   (files "library-database")
   (parent (runtime library))
+  (export (runtime)
+	  copy-library-db
+	  library-scode)
   (export (runtime library)
 	  define-automatic-property
 	  library-contents
@@ -5880,24 +5883,25 @@ USA.
   (files "library-parser")
   (parent (runtime library))
   (export (runtime)
-	  read-r7rs-source)
+	  r7rs-source-program
+	  r7rs-source-libraries
+	  r7rs-source?
+	  read-r7rs-source
+	  register-r7rs-source!)
   (export (runtime library)
 	  library-name=?
 	  library-name?
 	  parsed-import-library
 	  parse-define-library-form
 	  parse-import-form
-	  parse-import-set
-	  r7rs-source-program
-	  r7rs-source-libraries
-	  r7rs-source?
-	  register-r7rs-source!))
+	  parse-import-set))
 
 (define-package (runtime library standard)
   (files "library-standard")
   (parent (runtime library))
   (export (runtime)
-	  host-library-db)
+	  host-library-db
+	  standard-library-globals)
   (export (runtime library)
 	  add-standard-libraries!
 	  check-standard-libraries!

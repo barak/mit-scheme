@@ -152,16 +152,6 @@ USA.
 		  (with-notification message do-it)))
 	    (do-it))))))
 
-;; If not #F, should be a string file type.  SF will pretty print
-;; the macro-expanded, but unoptimized file content to the output
-;; directory in a file with this extension.
-(define macroexpanded-pathname-type #f)
-
-;; If not #F, should be a string file type.  SF will pretty print
-;; the optimized file content to the output directory in a file
-;; with this extension.
-(define optimized-pathname-type #f)
-
 (define (sf/file->scode input-pathname output-pathname
 			environment declarations)
   (fluid-let ((sf/default-externs-pathname
@@ -172,23 +162,12 @@ USA.
 			      externs-pathname-type
 			      'newest)))
     (receive (expression externs-block externs)
-	(integrate/file input-pathname
-			(and output-pathname
-			     macroexpanded-pathname-type
-			     (pathname-new-type output-pathname
-						macroexpanded-pathname-type))
-			environment declarations)
+	(integrate/file input-pathname environment declarations)
       (if output-pathname
 	  (write-externs-file (pathname-new-type output-pathname
 						 externs-pathname-type)
 			      externs-block
 			      externs))
-      (if (and output-pathname
-	       optimized-pathname-type)
-	  (call-with-output-file
-	      (pathname-new-type output-pathname optimized-pathname-type)
-	    (lambda (port)
-	      (pp expression port))))
       expression)))
 
 (define externs-pathname-type
@@ -249,17 +228,12 @@ USA.
 
 ;;;; Optimizer Top Level
 
-(define (integrate/file file-name macroexpanded-file-name environment declarations)
+(define (integrate/file file-name environment declarations)
   (integrate/kernel
    (lambda ()
-     (let ((scode (phase:syntax (phase:read file-name)
-				environment
-				declarations)))
-       (if macroexpanded-file-name
-	   (call-with-output-file macroexpanded-file-name
-	     (lambda (port)
-	       (pp scode port))))
-       scode))))
+     (phase:syntax (phase:read file-name)
+		   environment
+		   declarations))))
 
 (define (integrate/simple preprocessor input receiver)
   (call-with-values
@@ -271,25 +245,44 @@ USA.
 	  expression))))
 
 (define (integrate/kernel get-scode)
-  (receive (operations environment expression)
-      (receive (block expression) (phase:transform (get-scode))
-	(phase:optimize block expression))
-    (phase:generate-scode operations environment expression)))
+  (let ((scode (get-scode)))
+    (if (list? scode)
+	(integrate/r7rs-libraries scode)
+	(integrate/kernel-1 (lambda () (phase:transform (get-scode)))))))
+
+(define (integrate/kernel-1 get-transformed)
+  (call-with-values
+      (lambda ()
+	(call-with-values get-transformed
+	  phase:optimize))
+    phase:generate-scode))
 
 (define (phase:read filename)
-  (in-phase "Read" (lambda () (read-file filename))))
+  (in-phase "Read"
+    (lambda ()
+      (or (read-r7rs-source filename)
+	  (read-file filename)))))
 
 (define (phase:syntax s-expressions environment declarations)
   (in-phase "Syntax"
     (lambda ()
-      (syntax* (if (null? declarations)
-		   s-expressions
-		   (cons (cons (close-syntax 'declare
-					     (runtime-environment->syntactic
-					      system-global-environment))
-			       declarations)
-			 s-expressions))
-	       environment))))
+      (if (r7rs-source? s-expressions)
+	  (let ((db (copy-library-db (current-load-library-db))))
+	    (register-r7rs-source! s-expressions db)
+	    (map library-scode
+		 (append (r7rs-source-libraries s-expressions)
+			 (let ((program (r7rs-source-program s-expressions)))
+			   (if program
+			       (list program)
+			       '())))))
+	  (syntax* (if (null? declarations)
+		       s-expressions
+		       (cons (cons (close-syntax 'declare
+						 (runtime-environment->syntactic
+						  system-global-environment))
+				   declarations)
+			     s-expressions))
+		   environment)))))
 
 (define (phase:transform scode)
   (in-phase "Transform"
@@ -297,7 +290,9 @@ USA.
       (transform/top-level scode sf/top-level-definitions))))
 
 (define (phase:optimize block expression)
-  (in-phase "Optimize" (lambda () (integrate/top-level block expression))))
+  (in-phase "Optimize"
+    (lambda ()
+      (integrate/top-level block expression))))
 
 (define (phase:generate-scode operations environment expression)
   (in-phase "Generate SCode"
@@ -305,6 +300,30 @@ USA.
       (receive (externs-block externs)
 	  (operations->external operations environment)
 	(values (cgen/external expression) externs-block externs)))))
+
+(define (integrate/r7rs-libraries libraries)
+  (values (make-scode-sequence (map integrate/r7rs-library libraries))
+	  #f
+	  '()))
+
+(define (integrate/r7rs-library library)
+  (let ((text (scode-declaration-text library))
+	(expr (scode-declaration-expression library)))
+    (make-scode-declaration
+     text
+     (make-scode-quotation
+      (receive (optimized externs-block externs)
+	  (integrate/kernel-1
+	   (lambda ()
+	     (phase:transform-r7rs (cdr (assq 'imports (cdar (cdar text))))
+				   (scode-quotation-expression expr))))
+	(declare (ignore externs-block externs))
+	optimized)))))
+
+(define (phase:transform-r7rs imports scode)
+  (in-phase "Transform"
+    (lambda ()
+      (transform/r7rs-library imports scode))))
 
 (define (in-phase name thunk)
   (if (eq? sf:noisy? 'old-style)
