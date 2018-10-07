@@ -307,18 +307,15 @@ USA.
 	  '()))
 
 (define (integrate/r7rs-library library)
-  (let ((text (scode-declaration-text library))
-	(expr (scode-declaration-expression library)))
-    (make-scode-declaration
-     text
-     (make-scode-quotation
-      (receive (optimized externs-block externs)
-	  (integrate/kernel-1
-	   (lambda ()
-	     (phase:transform-r7rs (cdr (assq 'imports (cdar (cdar text))))
-				   (scode-quotation-expression expr))))
-	(declare (ignore externs-block externs))
-	optimized)))))
+  (make-scode-library
+   (scode-library-metadata library)
+   (receive (optimized externs-block externs)
+       (integrate/kernel-1
+	(lambda ()
+	  (phase:transform-r7rs (scode-library-imports library)
+				(scode-library-contents library))))
+     (declare (ignore externs-block externs))
+     optimized)))
 
 (define (phase:transform-r7rs imports scode)
   (in-phase "Transform"

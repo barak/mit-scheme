@@ -321,6 +321,7 @@ USA.
 (define library-bound-names (library-accessor 'bound-names))
 (define library-contents (library-accessor 'contents))
 (define library-environment (library-accessor 'environment))
+(define library-eval-result (library-accessor 'eval-result))
 (define library-exporter (library-accessor 'exporter))
 (define library-exports (library-accessor 'exports))
 (define library-filename (library-accessor 'filename))

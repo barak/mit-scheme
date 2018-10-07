@@ -42,12 +42,17 @@ USA.
   (import (runtime)
 	  copy-library-db
 	  current-load-library-db
+	  library-import-to
 	  library-scode
+	  make-scode-library
 	  r7rs-source-libraries
 	  r7rs-source-program
 	  r7rs-source?
 	  read-r7rs-source
 	  register-r7rs-source!
+	  scode-library-contents
+	  scode-library-imports
+	  scode-library-metadata
 	  standard-library-globals)
   (import (runtime microcode-tables)
 	  microcode-type/code->name))

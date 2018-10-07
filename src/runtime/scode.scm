@@ -130,6 +130,17 @@ USA.
   (object-type? (ucode-type comment) object))
 (register-predicate! scode-comment? 'scode-comment)
 
+(define-print-method scode-comment?
+  (standard-print-method
+      (lambda (comment)
+	(cond ((scode-library? comment) 'scode-library)
+	      ((scode-declaration? comment) 'scode-declaration)
+	      (else 'scode-comment)))
+    (lambda (comment)
+      (if (scode-library? comment)
+	  (list (scode-library-name comment))
+	  '()))))
+
 (define (scode-comment-text comment)
   (guarantee scode-comment? comment 'scode-comment-text)
   (system-pair-cdr comment))

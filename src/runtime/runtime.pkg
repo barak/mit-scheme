@@ -5839,27 +5839,28 @@ USA.
   (parent (runtime library))
   (export (runtime)
 	  copy-library-db
+	  library-export-from
+	  library-export-to
+	  library-export=?
+	  library-export?
+	  library-import-from
+	  library-import-from-library
+	  library-import-to
+	  library-import=?
+	  library-import?
 	  library-scode)
   (export (runtime library)
 	  define-automatic-property
 	  library-contents
 	  library-db?
 	  library-environment
+	  library-eval-result
 	  library-exporter
 	  library-export->list
-	  library-export-from
-	  library-export-to
-	  library-export=?
-	  library-export?
 	  library-exports
 	  library-filename
 	  library-imports-from
 	  library-import->list
-	  library-import-from
-	  library-import-from-library
-	  library-import-to
-	  library-import=?
-	  library-import?
 	  library-imports
 	  library-imports-environment
 	  library-name
@@ -5924,4 +5925,14 @@ USA.
 	  environment			;R7RS
 	  )
   (export (runtime)
-	  eval-r7rs-source))
+	  eval-r7rs-scode-file
+	  eval-r7rs-source
+	  make-scode-library
+	  r7rs-scode-file-libraries
+	  r7rs-scode-file?
+	  scode-library-contents
+	  scode-library-exports
+	  scode-library-imports
+	  scode-library-metadata
+	  scode-library-name
+	  scode-library?))

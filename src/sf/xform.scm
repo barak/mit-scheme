@@ -43,16 +43,13 @@ USA.
 (define (transform/r7rs-library imports expression)
   (let ((block (block/make #f #f '())))
     (for-each (lambda (import)
-		(variable/make&bind! block
-				     (if (pair? (cddr import))
-					 (caddr import)
-					 (cadr import))))
+		(variable/make&bind! block (library-import-to import)))
 	      imports)
     (set-block/declarations! block (r7rs-usual-integrations block imports))
     (values block
 	    (transform/top-level-1 'r7rs
 				   block
-				   (block/make block #t '())
+				   (block/make block #f '())
 				   expression))))
 
 (define top-level?)
