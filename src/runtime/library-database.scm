@@ -97,9 +97,9 @@ USA.
 		  (error "Unknown property:" key))
 	      (if (not (auto-runnable? auto this))
 		  (error "Auto property not ready:" auto))
-	      (let ((value (run-auto auto this)))
-		(set-cdr! alist (cons (cons key value) (cdr alist)))
-		value)))))
+	      (let ((bindings (run-auto auto this)))
+		(set-cdr! alist (append bindings (cdr alist)))
+		(cdr (assq key bindings)))))))
 
     (define (put! key value)
       (if (automatic-property? key)
@@ -143,28 +143,41 @@ USA.
 ;;;; Automatic properties
 
 (define (define-automatic-property prop deps guard generator)
-  (guarantee symbol? prop 'define-automatic-property)
+  (guarantee automatic-property-key? prop 'define-automatic-property)
   (guarantee-list-of symbol? deps 'define-automatic-property)
-  (let ((p (assq prop automatic-properties))
-	(e (cons* generator guard deps)))
-    (if p
-	(set-cdr! p e)
-	(begin
-	  (set! automatic-properties
-		(cons (cons prop e)
-		      automatic-properties))
-	  unspecific))))
+  (set! automatic-properties
+	(cons (make-auto (if (symbol? prop) (list prop) prop)
+			 generator guard deps)
+	      automatic-properties))
+  unspecific)
 
-(define auto-key car)
-(define auto-generator cadr)
-(define auto-guard caddr)
-(define auto-deps cdddr)
+(define (automatic-property-key? object)
+  (or (symbol? object)
+      (and (non-empty-list? object)
+	   (every symbol? object))))
+(register-predicate! automatic-property-key? 'automatic-property-key)
 
-(define (automatic-property? prop)
-  (and (assq prop automatic-properties) #t))
+(define-integrable make-auto cons*)
+(define-integrable auto-keys car)
+(define-integrable auto-generator cadr)
+(define-integrable auto-guard caddr)
+(define-integrable auto-deps cdddr)
 
-(define (automatic-property prop)
-  (assq prop automatic-properties))
+(define-integrable (auto-key auto)
+  (car (auto-keys auto)))
+
+(define-integrable (auto-multi-valued? auto)
+  (pair? (cdr (auto-keys auto))))
+
+(define (automatic-property? key)
+  (any (lambda (auto)
+	 (memq key (auto-keys auto)))
+       automatic-properties))
+
+(define (automatic-property key)
+  (find (lambda (auto)
+	  (memq key (auto-keys auto)))
+	automatic-properties))
 
 (define automatic-properties '())
 
@@ -179,10 +192,21 @@ USA.
 		       (auto-deps auto))))))
 
 (define (run-auto auto library)
-  (apply (auto-generator auto)
-	 (map (lambda (key)
-		(library 'get key))
-	      (auto-deps auto))))
+  (let ((runner
+	 (lambda ()
+	   (apply (auto-generator auto)
+		  (map (lambda (key)
+			 (library 'get key))
+		       (auto-deps auto))))))
+    (if (auto-multi-valued? auto)
+	(receive all-values (runner)
+	  (if (not (= (length (auto-keys auto))
+		      (length all-values)))
+	      (error "Wrong number of values returned:"
+		     (auto-keys auto)
+		     all-values))
+	  (map cons (auto-keys auto) all-values))
+	(list (cons (auto-key auto) (runner))))))
 
 ;;;; Imports and exports
 
