@@ -31,7 +31,7 @@ USA.
 
 ;;;; Syntax
 
-(define-automatic-property '->scode '(name imports exports syntaxed-contents)
+(define-automatic-property 'scode '(name imports exports contents)
   #f
   (lambda (name imports exports contents)
     (make-scode-declaration
@@ -40,6 +40,12 @@ USA.
 		(imports ,(map library-import->list imports))
 		(exports ,(map library-export->list exports))))
      (make-scode-quotation contents))))
+
+(define (eval-r7rs-source source db)
+  (let ((program (register-r7rs-source! source db)))
+    (if program
+	(scode-eval (library-contents program)
+		    (library-environment program)))))
 
 (define-automatic-property 'contents
     '(parsed-contents imports exports imports-environment)

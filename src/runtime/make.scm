@@ -475,7 +475,7 @@ USA.
    (runtime hash)
    (runtime dynamic)
    (runtime regular-sexpression)
-   (runtime library database)
+   (runtime library standard)
    ;; Microcode data structures
    (runtime history)
    (runtime scode)
@@ -560,6 +560,8 @@ USA.
    (runtime structure-parser)
    (runtime swank)
    (runtime stack-sampler)
+   ;; Done very late since it will look up lots of global variables.
+   ((runtime library standard) finish-host-library-db!)
    ;; Last since it turns on runtime handling of microcode errors.
    ((runtime microcode-errors) initialize-error-hooks!)))
 

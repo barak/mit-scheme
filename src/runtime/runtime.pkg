@@ -3160,6 +3160,7 @@ USA.
 	  built-in-object-file
 	  condition-type:not-loading
 	  current-load-environment
+	  current-load-library-db
 	  current-load-pathname
 	  fasl-file?
 	  fasload
@@ -5838,7 +5839,6 @@ USA.
   (parent (runtime library))
   (export (runtime library)
 	  define-automatic-property
-	  host-library-db
 	  library-contents
 	  library-db?
 	  library-environment
@@ -5879,6 +5879,8 @@ USA.
 (define-package (runtime library parser)
   (files "library-parser")
   (parent (runtime library))
+  (export (runtime)
+	  read-r7rs-source)
   (export (runtime library)
 	  library-name=?
 	  library-name?
@@ -5889,12 +5891,13 @@ USA.
 	  r7rs-source-program
 	  r7rs-source-libraries
 	  r7rs-source?
-	  read-r7rs-source
 	  register-r7rs-source!))
 
 (define-package (runtime library standard)
   (files "library-standard")
   (parent (runtime library))
+  (export (runtime)
+	  host-library-db)
   (export (runtime library)
 	  add-standard-libraries!
 	  check-standard-libraries!
@@ -5916,5 +5919,5 @@ USA.
   (export ()
 	  environment			;R7RS
 	  )
-  (export (runtime library)
-	  imports->environment))
+  (export (runtime)
+	  eval-r7rs-source))

@@ -29,6 +29,12 @@ USA.
 
 (declare (usual-integrations))
 
+(define-deferred host-library-db
+  (make-library-db 'host))
+
+(define (finish-host-library-db!)
+  (add-standard-libraries! host-library-db))
+
 (define (add-standard-libraries! db)
   (register-libraries! (make-standard-libraries) db))
 

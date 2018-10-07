@@ -72,9 +72,6 @@ USA.
 
 (define library-db?
   (make-bundle-predicate 'library-database))
-
-(define-deferred host-library-db
-  (make-library-db 'host))
 
 (define (make-library name . keylist)
   (if name

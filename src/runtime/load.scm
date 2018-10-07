@@ -52,6 +52,9 @@ USA.
 				value))
 			  #f))
 
+(define-deferred current-load-library-db
+  (make-unsettable-parameter host-library-db))
+
 (define-deferred param:eval-unit
   (make-unsettable-parameter #f
     (lambda (value)
@@ -86,7 +89,7 @@ USA.
       load/suppress-loading-message?))
 
 (define (load pathname #!optional environment syntax-table purify?)
-  syntax-table				;ignored
+  (declare (ignore syntax-table))
   (let ((environment
 	 (if (default-object? environment)
 	     (current-load-environment)
@@ -113,7 +116,7 @@ USA.
 
 (define (file-loadable? pathname)
   (receive (pathname* loader notifier) (choose-load-method pathname)
-    loader notifier
+    (declare (ignore loader notifier))
     (if pathname* #t #f)))
 
 (define (choose-load-method pathname)
@@ -143,14 +146,17 @@ USA.
 
 (define (source-loader pathname)
   (lambda (environment purify?)
-    purify?
-    (call-with-input-file pathname
-      (lambda (port)
-	(let loop ((value unspecific))
-	  (let ((sexp (read port)))
-	    (if (eof-object? sexp)
-		value
-		(loop (repl-eval sexp environment)))))))))
+    (declare (ignore purify?))
+    (let ((source (read-r7rs-source pathname)))
+      (if source
+	  (eval-r7rs-source source (current-load-library-db))
+	  (call-with-input-file pathname
+	    (lambda (port)
+	      (let loop ((value unspecific))
+		(let ((sexp (read port)))
+		  (if (eof-object? sexp)
+		      value
+		      (loop (repl-eval sexp environment)))))))))))
 
 (define (wrap-loader pathname loader)
   (lambda (environment purify?)
