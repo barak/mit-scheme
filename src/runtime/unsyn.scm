@@ -116,7 +116,7 @@ USA.
 	((compiled-expression? object)
 	 (let ((scode (compiled-expression/scode object)))
 	   (if (eq? scode object)
-	       `(scode-quote ,object)
+	       object
 	       (unsyntax-object environment scode))))
 	(else
 	 object)))
