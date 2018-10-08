@@ -18,7 +18,7 @@
 	  foo-bletch-thing)
   (begin
     (define-record-type <foo-bletch>
-	(make-foo-bletch thing b)
+	(make-foo-bletch thing)
 	foo-bletch?
       (thing foo-bletch-thing))))
 
