@@ -40,20 +40,16 @@ USA.
           sf:enable-argument-deletion?
           sf:enable-constant-folding?)
   (import (runtime)
-	  copy-library-db
 	  current-load-library-db
 	  library-import-to
-	  library-scode
-	  make-scode-library
-	  r7rs-source-libraries
-	  r7rs-source-program
+	  map-r7rs-scode-file
+	  map-scode-library
+	  r7rs-scode-file?
 	  r7rs-source?
 	  read-r7rs-source
-	  register-r7rs-source!
-	  scode-library-contents
 	  scode-library-imports
-	  scode-library-metadata
-	  standard-library-globals)
+	  standard-library-globals
+	  syntax-r7rs-source)
   (import (runtime microcode-tables)
 	  microcode-type/code->name))
 

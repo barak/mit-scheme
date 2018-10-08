@@ -246,8 +246,8 @@ USA.
 
 (define (integrate/kernel get-scode)
   (let ((scode (get-scode)))
-    (if (list? scode)
-	(integrate/r7rs-libraries scode)
+    (if (r7rs-scode-file? scode)
+	(integrate/r7rs-scode-file scode)
 	(integrate/kernel-1 (lambda () (phase:transform (get-scode)))))))
 
 (define (integrate/kernel-1 get-transformed)
@@ -267,14 +267,7 @@ USA.
   (in-phase "Syntax"
     (lambda ()
       (if (r7rs-source? s-expressions)
-	  (let ((db (copy-library-db (current-load-library-db))))
-	    (register-r7rs-source! s-expressions db)
-	    (map library-scode
-		 (append (r7rs-source-libraries s-expressions)
-			 (let ((program (r7rs-source-program s-expressions)))
-			   (if program
-			       (list program)
-			       '())))))
+	  (syntax-r7rs-source s-expressions (current-load-library-db))
 	  (syntax* (if (null? declarations)
 		       s-expressions
 		       (cons (cons (close-syntax 'declare
@@ -301,21 +294,21 @@ USA.
 	  (operations->external operations environment)
 	(values (cgen/external expression) externs-block externs)))))
 
-(define (integrate/r7rs-libraries libraries)
-  (values (make-scode-sequence (map integrate/r7rs-library libraries))
+(define (integrate/r7rs-scode-file scode)
+  (values (map-r7rs-scode-file integrate/r7rs-library scode)
 	  #f
 	  '()))
 
 (define (integrate/r7rs-library library)
-  (make-scode-library
-   (scode-library-metadata library)
-   (receive (optimized externs-block externs)
-       (integrate/kernel-1
-	(lambda ()
-	  (phase:transform-r7rs (scode-library-imports library)
-				(scode-library-contents library))))
-     (declare (ignore externs-block externs))
-     optimized)))
+  (let ((imports (scode-library-imports library)))
+    (map-scode-library (lambda (contents)
+			 (receive (optimized externs-block externs)
+			     (integrate/kernel-1
+			      (lambda ()
+				(phase:transform-r7rs imports contents)))
+			   (declare (ignore externs-block externs))
+			   optimized))
+		       library)))
 
 (define (phase:transform-r7rs imports scode)
   (in-phase "Transform"

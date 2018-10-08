@@ -29,11 +29,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define (parsed-imports-expandable? imports db)
-  (every (lambda (import)
-	   (parsed-import-expandable? import db))
-	 imports))
-
 (define (parsed-import-expandable? import db)
   (let ((name (parsed-import-library import)))
     (and (registered-library? name db)
@@ -53,7 +48,10 @@ USA.
     (reduce-right append! '() converted-sets)))
 
 (define-automatic-property 'imports '(parsed-imports db)
-  parsed-imports-expandable?
+  (lambda (imports db)
+    (every (lambda (import)
+	     (parsed-import-expandable? import db))
+	   imports))
   expand-parsed-imports)
 
 (define (find-intersections converted-sets)

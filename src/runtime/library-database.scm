@@ -331,5 +331,4 @@ USA.
 (define library-name (library-accessor 'name))
 (define library-parsed-contents (library-accessor 'parsed-contents))
 (define library-parsed-imports (library-accessor 'parsed-imports))
-(define library-scode (library-accessor 'scode))
 (define library-syntaxed-contents (library-accessor 'syntaxed-contents))

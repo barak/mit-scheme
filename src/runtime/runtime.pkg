@@ -5848,8 +5848,7 @@ USA.
 	  library-import-from-library
 	  library-import-to
 	  library-import=?
-	  library-import?
-	  library-scode)
+	  library-import?)
   (export (runtime library)
 	  define-automatic-property
 	  library-contents
@@ -5861,6 +5860,7 @@ USA.
 	  library-exports
 	  library-filename
 	  library-imports-from
+	  library-imports-used
 	  library-import->list
 	  library-imports
 	  library-imports-environment
@@ -5916,8 +5916,23 @@ USA.
   (parent (runtime library))
   (export (runtime library)
 	  expand-parsed-imports
-	  parsed-import-expandable?
-	  parsed-imports-expandable?))
+	  parsed-import-expandable?))
+
+(define-package (runtime library scode)
+  (files "library-scode")
+  (parent (runtime library))
+  (export (runtime)
+	  map-r7rs-scode-file
+	  map-scode-library
+	  r7rs-scode-file?
+	  scode-library-imports
+	  scode-library-name
+	  scode-library?)
+  (export (runtime library)
+	  library->scode-library
+	  make-r7rs-scode-file
+	  r7rs-scode-file-libraries
+	  scode-library->library))
 
 (define-package (runtime library loader)
   (files "library-loader")
@@ -5928,12 +5943,4 @@ USA.
   (export (runtime)
 	  eval-r7rs-scode-file
 	  eval-r7rs-source
-	  make-scode-library
-	  r7rs-scode-file-libraries
-	  r7rs-scode-file?
-	  scode-library-contents
-	  scode-library-exports
-	  scode-library-imports
-	  scode-library-metadata
-	  scode-library-name
-	  scode-library?))
+	  syntax-r7rs-source))
