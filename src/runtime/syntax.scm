@@ -67,11 +67,12 @@ USA.
 		 (get-free)))))))
 
 (define (syntax-internal forms senv)
-  (compile-item
-   (body-item #f
-     (map-in-order (lambda (form)
-		     (classify-form form senv (initial-hist form)))
-		   forms))))
+  (parameterize ((top-level-senv senv))
+    (compile-item
+     (body-item #f
+       (map-in-order (lambda (form)
+		       (classify-form form senv (initial-hist form)))
+		     forms)))))
 
 ;;;; Classifier
 

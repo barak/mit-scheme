@@ -89,7 +89,8 @@ USA.
 	      imports))
 
 (define (define-standard-library name exports)
-  (let ((p (assoc name standard-libraries)))
+  (let ((p (assoc name standard-libraries))
+	(exports (extend-with-macro-deps exports)))
     (if p
 	(set-cdr! p exports)
 	(begin
@@ -100,6 +101,71 @@ USA.
   name)
 
 (define standard-libraries '())
+
+;; Make sure that the names introduced by macro expansions are also included.
+;; This is a kludge to work around our inability to address names globally.
+(define (extend-with-macro-deps names)
+  (define (scan-new to-scan new names)
+    (cond ((pair? to-scan)
+	   (let ((name (car to-scan))
+		 (rest (cdr to-scan)))
+	     (let ((p (assq name macro-dependencies)))
+	       (if p
+		   (scan-deps (cdr p) rest new names)
+		   (scan-new rest new names)))))
+	  ((pair? new)
+	   (scan-new new '() names))
+	  (else names)))
+
+  (define (scan-deps deps rest new names)
+    (if (pair? deps)
+	(let ((dep (car deps)))
+	  (if (memq dep names)
+	      (scan-deps (cdr deps) rest new names)
+	      (scan-deps (cdr deps)
+			 rest
+			 (cons dep new)
+			 (cons dep names))))
+	(scan-new rest new names)))
+
+  (scan-new names '() names))
+
+(define macro-dependencies
+  '((and if)
+    (and-let* and begin let)
+    (assert error if not)
+    (begin0 let)
+    (bundle alist->bundle cons list)
+    (case begin eq? eqv? if let or quote)
+    (case-lambda apply default-object? error fix:= fix:>= if lambda length let)
+    (circular-stream cons delay letrec)
+    (cond begin if let)
+    (cond-expand begin)
+    (cons-stream cons delay)
+    (cons-stream* cons delay)
+    (define lambda named-lambda)
+    (define-integrable begin lambda let set! shallow-fluid-bind)
+    (define-record-type define new-make-record-type quote record-accessor
+			record-constructor record-modifier record-predicate)
+    (define-values begin call-with-values define lambda set!)
+    (delay delay-force make-promise)
+    (delay-force lambda make-unforced-promise)
+    (do begin if let)
+    (guard begin call-with-current-continuation if lambda let raise-continuable
+	   with-exception-handler)
+    (include begin)
+    (include-ci begin)
+    (let declare lambda letrec letrec* named-lambda)
+    (let* let)
+    (let-syntax* let-syntax)
+    (letrec lambda let set!)
+    (letrec* begin lambda let)
+    (local-declare declare let)
+    (parameterize cons lambda list parameterize*)
+    (quasiquote append cons list list->vector quote vector)
+    (receive call-with-values lambda)
+    (unless begin if not)
+    (when begin if)))
 
 (define-standard-library '(scheme base)
   '(*

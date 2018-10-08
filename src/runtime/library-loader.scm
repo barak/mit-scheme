@@ -233,7 +233,14 @@ USA.
 		  (scode-library->library library filename))
 		(r7rs-scode-file-libraries scode)))))
     (register-libraries! libraries db)
-    (for-each library-eval-result libraries)))
+    (let loop ((libraries libraries) (result unspecific))
+      (if (pair? libraries)
+	  (loop (cdr libraries)
+		(let* ((library (car libraries))
+		       (result* (library-eval-result library)))
+		  (or (library-name library)
+		      result*)))
+	  result))))
 
 (define (scode-library->library library filename)
   (make-library (scode-library-name library)
@@ -263,38 +270,3 @@ USA.
 	  (if (not p)
 	      (error "Not an exported name:" name))
 	  (cdr p))))))
-
-;;;; Load
-
-#|
-(define (load db)
-  (for-each (lambda (parsed)
-	      (load-library (syntax-library parsed db)
-			    db))
-	    parsed-libraries)
-  (if (pair? imports)
-      (let ((environment*
-	     (imports->environment
-	      (expand-import-sets imports db))))
-	(let loop ((exprs body) (value unspecific))
-	  (if (pair? exprs)
-	      (loop (cdr exprs)
-		    (eval (car exprs) environment*))
-	      value)))))
-
-(define (load-library library-name db)
-  (or (db 'get-loaded library-name #f)
-      (let ((syntaxed (db 'get-syntaxed library-name)))
-	(let ((environment
-	       (imports->environment
-		(syntaxed-library-imports syntaxed)
-		db)))
-	  (scode-eval (syntaxed-library-body syntaxed)
-		      environment)
-	  (let ((loaded
-		 (make-loaded-library (syntaxed-library-name syntaxed)
-				      (syntaxed-library-exports syntaxed)
-				      environment)))
-	    (db 'save-loaded! loaded)
-	    loaded)))))
-|#

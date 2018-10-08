@@ -149,12 +149,14 @@ USA.
 			    form
 			    use-senv
 			    hist
-			    (runtime-environment->syntactic
-			     (if (default-object? env)
-				 system-global-environment
-				 env)))
+			    (if (default-object? env)
+				(top-level-senv)
+				(runtime-environment->syntactic env)))
 		 use-senv
 		 hist))))
+
+(define-deferred top-level-senv
+  (make-unsettable-parameter #f))
 
 (define (syntactic-keyword->item keyword environment)
   (let ((item (environment-lookup-macro environment keyword)))

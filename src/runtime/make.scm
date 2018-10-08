@@ -527,6 +527,7 @@ USA.
    (runtime unsyntaxer)
    (runtime pretty-printer)
    (runtime extended-scode-eval)
+   (runtime syntax low)
    (runtime syntax items)
    (runtime syntax rename)
    (runtime syntax top-level)

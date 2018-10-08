@@ -124,7 +124,7 @@ USA.
     (receive (pathname* loader notifier) (choose-fasload-method pathname)
       (if pathname*
 	  (values pathname*
-		  (wrap-loader pathname (fasloader->loader loader))
+		  (wrap-loader pathname (fasloader->loader pathname loader))
 		  notifier)
 	  (let ((pathname*
 		 (if (file-regular? pathname)
@@ -138,11 +138,13 @@ USA.
 			(loading-notifier pathname*))
 		(values #f #f #f)))))))
 
-(define (fasloader->loader loader)
+(define (fasloader->loader pathname loader)
   (lambda (environment purify?)
     (let ((scode (loader)))
       (if purify? (purify (load/purification-root scode)))
-      (extended-scode-eval scode environment))))
+      (if (r7rs-scode-file? scode)
+	  (eval-r7rs-scode-file scode pathname (current-load-library-db))
+	  (extended-scode-eval scode environment)))))
 
 (define (source-loader pathname)
   (lambda (environment purify?)
@@ -173,7 +175,7 @@ USA.
 
 (define (file-fasloadable? pathname)
   (receive (pathname* loader notifier) (choose-fasload-method pathname)
-    loader notifier
+    (declare (ignore loader notifier))
     (if pathname* #t #f)))
 
 (define (choose-fasload-method pathname)

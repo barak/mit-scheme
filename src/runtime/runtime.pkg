@@ -4555,7 +4555,8 @@ USA.
 	  sc-macro-transformer->keyword-item
 	  spar-classifier->keyword
 	  spar-classifier->runtime
-	  spar-macro-transformer->keyword-item))
+	  spar-macro-transformer->keyword-item
+	  top-level-senv))
 
 (define-package (runtime syntax items)
   (files "syntax-items")
