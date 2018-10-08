@@ -40,13 +40,17 @@ USA.
   (define (unbound? env name)
     (eq? 'unbound (environment-reference-type env name)))
 
+  (define (unset? env name)
+    (memq (environment-reference-type env name)
+	  '(unbound unassigned)))
+
   (define (provide-rename env old-name new-name)
-    (if (unbound? env new-name)
+    (if (unset? env new-name)
 	(eval `(define ,new-name ,old-name) env)))
 
   (let ((env (->environment '())))
 
-    (if (unbound? env 'guarantee)
+    (if (unset? env 'guarantee)
 	(eval `(define (guarantee predicate object #!optional caller)
 		 (if (predicate object)
 		     object
@@ -58,12 +62,12 @@ USA.
 					 (write predicate port))))
 		      caller)))
 	      env))
-    (if (unbound? env 'bytes-per-object)
+    (if (unset? env 'bytes-per-object)
 	(eval '(define (bytes-per-object)
 		 (vector-ref (gc-space-status) 0))
 	      env))
 
-    (if (unbound? env 'runtime-environment->syntactic)
+    (if (unset? env 'runtime-environment->syntactic)
 	(eval '(define (runtime-environment->syntactic object)
 		 object)
 	      env))
@@ -110,11 +114,11 @@ USA.
 				   (lambda () form ...)))))
 	      env))
 
-    (if (unbound? env 'define-print-method)
+    (if (unset? env 'define-print-method)
 	(eval '(define (define-print-method predicate print-method)
 		 unspecific)
 	      env))
-    (if (unbound? env 'standard-print-method)
+    (if (unset? env 'standard-print-method)
 	(eval '(define (standard-print-method name #!optional get-parts)
 		 (simple-unparser-method name
 					 (if (default-object? get-parts)
@@ -218,6 +222,15 @@ USA.
 		    (lambda (value)
 		      (set! identifier value)
 		      unspecific))))
+	      env))
+    (if (unset? env 'r7rs-source?)
+	(eval '(begin
+		 (define (r7rs-source? object)
+		   #f)
+		 (define (read-r7rs-source pathname)
+		   #f)
+		 (define (r7rs-scode-file? object)
+		   #f))
 	      env)))
 
   (let ((env (->environment '(runtime microcode-tables))))
@@ -249,19 +262,19 @@ USA.
 
   (let ((env (->environment '(runtime syntax))))
     (provide-rename env 'compile-item/expression 'compile-expr-item)
-    (if (unbound? env 'expr-item)
+    (if (unset? env 'expr-item)
 	(eval '(define (expr-item ctx compiler)
 		 (make-expression-item compiler))
 	      env))
-    (if (unbound? env 'compile-item)
+    (if (unset? env 'compile-item)
 	(eval '(define (compile-item body-item)
 		 (compile-body-items (item->list body-item)))
 	      env))
-    (if (unbound? env 'classify-form)
+    (if (unset? env 'classify-form)
 	(eval '(define (classify-form form senv #!optional hist)
 		 (classify/form form senv senv))
 	      env))
-    (if (unbound? env 'classifier->runtime)
+    (if (unset? env 'classifier->runtime)
 	(eval '(define (classifier->runtime classifier)
 		 (make-unmapped-macro-reference-trap
 		  (make-classifier-item classifier)))
