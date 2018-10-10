@@ -47,11 +47,12 @@ USA.
 ;;
 ;; (FURTHER-LOAD-OPTIONS EXPR)
 ;;   EXPR is the place to look next for the load options.  Useful objects
-;;   are STANDARD-LOAD-OPTIONS (load options supplied with the
-;;   MIT-Scheme distribution) and LOCAL-LOAD-OPTIONS (load options
-;;   supplied for every user of your architecture at your site).  If
-;;   not specified, or is #F, then this file is the last options
-;;   database that is searched.
+;;   are #T (load options supplied in the next optiondb file in the
+;;   library directory path), STANDARD-LOAD-OPTIONS (those supplied with
+;;   the MIT-Scheme distribution) and LOCAL-LOAD-OPTIONS (those supplied
+;;   for every user of your architecture at your site).  If not
+;;   specified, or is #F, then this file is the last options database
+;;   that is searched.
 
 ;; Standard load options are defined like this:
 
