@@ -653,7 +653,7 @@ USA.
 	      ;; MIT/GNU extensions:
 	      ((char=? char #\f) (emit #\page))
 	      ((char=? char #\v) (emit #\vt))
-	      ((char->digit char 3)
+	      ((char->digit char 4)
 	       => (lambda (d) (emit (read-octal-escape char d))))
 	      (else (emit char)))))
 
