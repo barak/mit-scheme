@@ -143,6 +143,30 @@ USA.
       (call-with-truncated-output-string
        max
        (lambda (port) (write object port)))))
+
+(define (edit . args)
+  (let ((env (let ((package (name->package '(edwin))))
+	       (and package (package/environment package)))))
+    (if env
+	(apply (environment-lookup env 'edit) args)
+	(begin
+	  (with-notification
+	   (lambda (port) (display "Loading Edwin" port))
+	   (lambda ()
+	     (parameterize ((param:suppress-loading-message? #t))
+	       (load-option 'edwin)
+	       (if (let ((display (get-environment-variable "DISPLAY")))
+		     (and (string? display)
+			  (not (string-null? display))))
+		   (ignore-errors (lambda () (load-option 'x11-screen)))))))
+	  (apply (environment-lookup (->environment '(edwin)) 'edit) args)))))
+
+(define edwin edit)
+
+(define (spawn-edwin . args)
+  (let ((thread (create-thread #f (lambda () (apply edwin args)))))
+    (detach-thread thread)
+    thread))
 
 (define (pa procedure)
   (guarantee procedure? procedure 'pa)

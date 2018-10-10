@@ -45,4 +45,4 @@ USA.
 		"imail-util"
 		"imap-response"
 		"imap-syntax"))
-    (cref/generate-constructors "imail" 'all)))
+    (cref/generate-constructors "imail")))

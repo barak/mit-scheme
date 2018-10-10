@@ -130,11 +130,6 @@ USA.
 		    (cons* (compiler-make-file)
 			   "base/make"
 			   names))
-		   ((string=? bundle "edwin")
-		    (cons* "make"
-			   "edwin"
-			   "rename"
-			   names))
 		   (else names)))
 	   string<?))))
 

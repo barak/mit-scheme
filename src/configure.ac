@@ -214,9 +214,7 @@ Makefile.tools
 6001/Makefile
 compiler/Makefile
 cref/Makefile
-edwin/Makefile
 ffi/Makefile
-imail/Makefile
 runtime/Makefile
 sf/Makefile
 sos/Makefile
@@ -236,7 +234,7 @@ if test x"${mit_scheme_native_code}" = xc; then
     for BN in star-parser; do
         (cd lib; rm -f ${BN}; ${LN_S} ../${BN} .)
     done
-    for BUNDLE in 6001 compiler cref edwin ffi imail sf sos ssp star-parser \
+    for BUNDLE in 6001 compiler cref ffi sf sos ssp star-parser \
 		  xdoc xml; do
     	SO=${BUNDLE}.so
 	(cd lib/lib; rm -f ${SO}; ${LN_S} ../../${BUNDLE}/${SO} .)

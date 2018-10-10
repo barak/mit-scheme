@@ -273,6 +273,9 @@ ADDITIONAL OPTIONS supported by this band:\n")
 			     repl)))))
      "Evaluates the argument expressions as if in the REPL.")
 
+   (simple-command-line-parser "edit" edit
+     "Causes Edwin to start immediately after Scheme.")
+
    (simple-command-line-parser "help" show-command-line-options #f)
 
    (simple-command-line-parser "version" (lambda () (exit)) #f)

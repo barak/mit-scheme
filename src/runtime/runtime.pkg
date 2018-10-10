@@ -528,6 +528,8 @@ USA.
 	  cell-contents
 	  cell?
 	  constant-procedure
+	  edit
+	  edwin
 	  emergency-exit		;R7RS
 	  environment-link-name
 	  ephemeron-broken?
@@ -586,6 +588,7 @@ USA.
 	  primitive-procedure-arity
 	  primitive-procedure-documentation
 	  pwd
+	  spawn-edwin
 	  suspend
 	  (reference-barrier identity-procedure)
 	  remove-hook-from-list

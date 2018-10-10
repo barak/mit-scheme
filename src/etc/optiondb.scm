@@ -83,9 +83,6 @@ USA.
 		      (lose))
 		  (finish dir pathname))))))))
 
-(define-load-option 'edwin
-  (guarded-system-loader '(edwin) "edwin"))
-
 (define-load-option 'compiler
   (lambda () (load-option 'sf))
   (guarded-system-loader '(compiler) "compiler"
@@ -98,9 +95,6 @@ USA.
 
 (define-load-option 'ffi
   (guarded-system-loader '(ffi) "ffi"))
-
-(define-load-option 'imail
-  (guarded-system-loader '(edwin imail) "imail"))
 
 (define-load-option '*parser
   (guarded-system-loader '(runtime *parser) "star-parser"))

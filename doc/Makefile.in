@@ -69,7 +69,7 @@ pdfdir = @pdfdir@
 psdir = @psdir@
 INST_TARGETS = @INST_TARGETS@
 
-SUBDIRS = ffi imail ref-manual sos user-manual
+SUBDIRS = ffi ref-manual sos user-manual
 DISTCLEAN_FILES = Makefile make-common config.log config.status
 
 all:

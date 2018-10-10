@@ -28,6 +28,8 @@ USA.
 
 (declare (usual-integrations))
 
+(load-option 'synchronous-subprocess)
+
 (define (shell command)
   (run-shell-command command 'INPUT #f 'OUTPUT #f))
 

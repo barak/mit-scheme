@@ -35,7 +35,7 @@ if test "${with_db_4}" != no; then
 	])
 fi
 
-MIT_SCHEME_PROJECT=mit-scheme-pucked
+MIT_SCHEME_PROJECT=mit-scheme
 
 # Install plugin docs in Scheme's docdir subdirectories.
 htmldir='$(datarootdir)/doc/$(MIT_SCHEME_PROJECT)/html'

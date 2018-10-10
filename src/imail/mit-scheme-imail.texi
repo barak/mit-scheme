@@ -1,6 +1,6 @@
 \input texinfo @c -*-texinfo-*-
 @comment %**start of header
-@setfilename mit-scheme-imail
+@setfilename mit-scheme-imail.info
 @set EDITION 1.9
 @set VERSION 1.19
 @set UPDATED 2011-10-14

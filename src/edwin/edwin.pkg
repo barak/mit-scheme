@@ -26,8 +26,10 @@ USA.
 
 ;;;; Edwin Packaging
 
-(global-definitions "../runtime/runtime")
-(global-definitions "../xml/xml")
+(global-definitions runtime/)
+(global-definitions xml/)
+(global-definitions blowfish/)
+(global-definitions gdbm/)
 
 (define-package (edwin)
   (files "utils"
@@ -120,16 +122,31 @@ USA.
 	  (port/output-channel output-port-channel)
 	  (port/state textual-port-state)
 	  generic-port-operation:write-substring)
+  (import (blowfish)
+	  blowfish-encrypt-port
+	  blowfish-file?
+	  read-blowfish-file-header
+	  write-blowfish-file-header)
+  (import (gdbm)
+	  gdbm-close
+	  gdbm-delete
+	  gdbm-exists?
+	  gdbm-fetch
+	  gdbm-firstkey
+	  gdbm-nextkey
+	  gdbm-open
+	  gdbm-reorganize
+	  gdbm-store
+	  gdbm_fast
+	  gdbm_replace
+	  gdbm_wrcreat)
   (export ()
 	  create-editor
 	  create-editor-args
-	  edit
-	  edwin
 	  inhibit-editor-init-file?
 	  reset-editor
 	  reset-editor-windows
-	  (save-editor-files debug-save-files)
-	  spawn-edwin)
+	  (save-editor-files debug-save-files))
   (export (edwin class-macros)
 	  class-instance-transforms))
 

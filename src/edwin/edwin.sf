@@ -25,11 +25,14 @@ USA.
 |#
 
 (load-option 'cref)
+(load-option 'xml)
+(load-option 'blowfish)
+(load-option 'gdbm)
 
 (if (not (name->package '(edwin)))
     (let ((package-set (package-set-pathname "edwin")))
       (if (not (file-exists? package-set))
-	  (cref/generate-trivial-constructor "edwin"))
+	  (cref/generate-trivial-constructor "edwin" #f))
       (construct-packages-from-file (fasload package-set))))
 
 (if (lexical-unreferenceable? (->environment '(edwin string))
@@ -84,5 +87,5 @@ USA.
 
 (load "decls")
 
-(cref/generate-constructors "edwin" 'all)
+(cref/generate-constructors "edwin")
 (sf-conditionally "edwin.ldr")

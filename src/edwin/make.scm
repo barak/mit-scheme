@@ -28,9 +28,12 @@ USA.
 
 (declare (usual-integrations))
 
+(load-option 'xml)
+(load-option 'blowfish)
+(load-option 'gdbm)
 (with-loader-base-uri (system-library-uri "edwin/")
   (lambda ()
     (load-package-set "edwin"
       `((alternate-package-loader
 	 . ,(load "edwin.bld" system-global-environment))))))
-(add-subsystem-identification! "Edwin" '(3 116))
+(add-subsystem-identification! "Edwin" '(3 117))

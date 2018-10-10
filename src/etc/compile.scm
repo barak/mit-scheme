@@ -41,7 +41,7 @@ USA.
   (with-working-directory-pathname "sos"
     (lambda ()
       (load "load")))
-  (for-each compile-dir '("xml" "win32" "edwin" "imail" "ssp" "ffi")))
+  (for-each compile-dir '("xml" "win32" "ssp" "ffi")))
 
 (define (compile-boot-dirs compile-dir)
   (compile-cref compile-dir)
@@ -122,8 +122,7 @@ USA.
 (define (c-compile)
   (in-liarc
    (lambda ()
-     (compile-all-dirs c-compile-dir)
-     (cbf-conditionally "edwin/edwin.bld"))))
+     (compile-all-dirs c-compile-dir))))
 
 (define (in-liarc thunk)
   (fluid-let ((compiler:invoke-c-compiler? #f)

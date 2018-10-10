@@ -249,9 +249,14 @@ installed separately.
 
 To get all of the functionality previously available in version 9.2
 you will need to build and install all of the plugins included in the
-@file{src} subdirectory: blowfish, gdbm, mcrypt, pgsql, x11 and
-x11-screen.  Without the x11-screen option installed Edwin will only
-display on a terminal.
+@file{src} subdirectory: blowfish, gdbm, mcrypt, pgsql, edwin, imail,
+x11 and x11-screen.  Edwin does not use the C/FFI directly, but it
+does use the blowfish and gdbm plugins.  It is now built separately,
+like a plugin, after the blowfish and gdbm plugins are installed.
+Similarly, Imail must be built after Edwin is installed, and the X11
+Screen option cannot be built until Edwin and the X11 plugin are
+installed.  And without X11 Screen, Edwin will only display on a
+terminal.
 
 These plugins are all configured, built and installed in the GNU
 standard way.  See the @file{README} file in each plugin's source
@@ -382,7 +387,6 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 Image saved on Wednesday November 25, 2015 at 3:49:35 PM
   Release 9.2.1 || Microcode 15.3 || Runtime 15.7 || SF 4.41 || LIAR/i386 4.118
-  Edwin 3.116
 @end example
 
 @noindent
@@ -728,13 +732,11 @@ arguments (even those starting with a hyphen) to the list returned by
 the @code{command-line-arguments} procedure.
 @end table
 
-@noindent
-The following option is supported only when Edwin is loaded.
-
 @table @option
 @item --edit
 @opindex --edit
-This option causes Edwin to start immediately when Scheme is started.
+This option causes Edwin to be loaded and started immediately when
+Scheme is started.
 @end table
 
 @node Custom Command-line Options

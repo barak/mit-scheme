@@ -37,8 +37,6 @@ USA.
 ;;; method for combining headers into conversation threads.
 
 (declare (usual-integrations))
-
-(load-option 'GDBM)
 
 ;;;; NNTP Connection
 
@@ -532,7 +530,8 @@ USA.
 	      (news-group:%last-article group))))
 
 (define (news-group:use-gdbm? group type)
-  (and (gdbm-available?)
+  (and (ignore-errors (lambda () (load-option 'GDBM))
+		      (lambda (condition) condition #f))
        (memq type (news-group:%use-gdbm? group))))
 
 (define (set-news-group:use-gdbm! group types)

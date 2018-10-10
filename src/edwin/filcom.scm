@@ -653,7 +653,8 @@ Prefix arg means treat the plaintext file as binary data."
     (blowfish-decrypt-file from to binary-plaintext? #f)))
 
 (define (guarantee-blowfish-available)
-  (if (not (blowfish-available?))
+  (if (not (ignore-errors (lambda () (load-option 'blowfish))
+			  (lambda (condition) condition #f)))
       (editor-error "Blowfish encryption not supported on this system.")))
 
 (define (blowfish-encrypt-file from to binary-plaintext? delete-plaintext?)

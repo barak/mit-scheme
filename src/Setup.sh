@@ -75,7 +75,7 @@ fi
 
 . etc/functions.sh
 
-INSTALLED_SUBDIRS="cref edwin ffi imail sf sos ssp star-parser xml"
+INSTALLED_SUBDIRS="cref ffi sf sos ssp star-parser xml"
 OTHER_SUBDIRS="6001 compiler runtime win32 xdoc microcode"
 
 # lib
@@ -86,9 +86,7 @@ maybe_link lib/optiondb.scm ../etc/optiondb.scm
 
 maybe_link lib/compiler ../compiler
 maybe_link lib/cref ../cref
-maybe_link lib/edwin ../edwin
 maybe_link lib/ffi ../ffi
-maybe_link lib/imail ../imail
 maybe_link lib/runtime ../runtime
 maybe_link lib/sf ../sf
 maybe_link lib/sos ../sos

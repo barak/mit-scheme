@@ -37,6 +37,5 @@ fi
 run_cmd ./microcode/scheme --batch-mode --library lib --band runtime.com <<EOF
 (begin
   (load-option (quote compiler))
-  (load-option (quote edwin))
   (disk-save "lib/all.com"))
 EOF

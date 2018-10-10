@@ -145,7 +145,6 @@ Examples of the new syntax:
 (C-callback (lambda (window event) @dots{}))
 @myresult{} 13                     @r{; A fixnum registration ID.}
 @end group
-
 @end example
 @comment The C-array-loc! example assumes 2 GdkColors are 6 words, #x18bytes.
 @comment 0x081afc78 - 0x081afc60 = 0x18
@@ -173,7 +172,7 @@ parsed declarations), @file{@i{library}-const.c} (a C program that
 prints C constants and struct offsets), and @file{@i{library}-shim.c}
 (trampoline functions adapting Scheme procedure application to C
 function call).  The @file{-const.c} program generates a
-@file{-const.scm} file, which can be syntaxed to produce a
+@file{-const.scm} file, which can be expanded into a
 @file{-const.bin} file.
 
 @smallexample
@@ -184,7 +183,7 @@ function call).  The @file{-const.c} program generates a
 The @file{-types.bin} and @file{-const.bin} files together provide
 the information needed to expand @code{C-...} syntax, and are only
 needed at syntax time.  The compiled @file{-shim.so} file is used at
-run time, dynamically loaded into the Scheme machine.  @ref{Compiling
+run time, dynamically loaded into the Scheme machine.  @xref{Compiling
 and Linking}, which describes these files in more detail, and shows
 how they might be built and installed.
 
@@ -195,7 +194,7 @@ how they might be built and installed.
 The @strong{@code{C-include}} syntax loads the @file{-types.bin} and
 @file{-const.bin} files @emph{at syntax time}.  It should appear
 at the top level of any file containing @code{C-...} syntax, or be
-evaluated in the syntax environment of such code.
+expanded in the syntax environment of such code.
 
 The @strong{@code{C-call}} syntax arranges to invoke a callout
 trampoline.  Arguments to the trampoline can be integers, floats,
@@ -242,6 +241,7 @@ accessed (if any).
 @expansion{}
 (#[primitive c-peek-int] alien 4)
 @end group
+@c (param:pp-primitives-by-name? #f) to display primitives thuswise.
 
 @group
 (C->= alien "GdkRectangle width" 0)
@@ -274,8 +274,8 @@ peeked pointer.  This avoids consing a new alien.
 @end smallexample
 
 The above syntax is understood to say ``The data at this @code{alien}
-address is a GtkWidget.  Load its @code{style} member (an alien
-address), into @code{alien} (clobbering @code{alien}'s old address).''
+address is a GtkWidget.  Load its @code{style} member into
+@code{alien} (clobbering @code{alien}'s old address).''
 
 The @strong{@code{C-enum}}, @strong{@code{C-sizeof}} and
 @strong{@code{C-offset}} syntaxes all
@@ -300,7 +300,6 @@ byte size and a byte offset respectively.
 @expansion{}
 8
 @end group
-
 @end smallexample
 
 The two element form of the @code{C-enum} syntax can be used to find
@@ -1150,5 +1149,4 @@ If your document contains nontrivial examples of program code, we
 recommend releasing these examples in parallel under your choice of
 free software license, such as the GNU General Public License,
 to permit their use in free software.
-
 @bye

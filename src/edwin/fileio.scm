@@ -40,8 +40,8 @@ filename suffix \".bf\"."
 (define ((read/write-encrypted-file? write?) group pathname)
   (and (ref-variable enable-encrypted-files group)
        (equal? "bf" (pathname-type pathname))
-       (md5-available?)
-       (blowfish-available?)
+       (ignore-errors (lambda () (load-option 'blowfish))
+		      (lambda (condition) condition #f))
        (or write? (blowfish-file? pathname))
        #t))
 

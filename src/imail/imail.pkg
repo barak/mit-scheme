@@ -26,10 +26,10 @@ USA.
 
 ;;;; IMAIL mail reader: packaging
 
-(global-definitions "../runtime/runtime")
-(global-definitions "../sos/sos")
-(global-definitions "../edwin/edwin")
-(global-definitions "../star-parser/parser")
+(global-definitions runtime/)
+(global-definitions sos/)
+(global-definitions edwin/)
+(global-definitions star-parser/parser)
 
 (define-package (edwin imail)
   (files "imail-util"

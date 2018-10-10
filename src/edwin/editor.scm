@@ -89,15 +89,6 @@ USA.
 		 ,@operations))
 	      message))))))))
 
-(define (edwin . args) (apply edit args))
-(simple-command-line-parser "edit" edit
-			    "Causes Edwin to start immediately after Scheme.")
-
-(define (spawn-edwin . args)
-  (let ((thread (create-thread #f (lambda () (apply edwin args)))))
-    (detach-thread thread)
-    thread))
-
 (define edwin-editor #f)
 (define editor-abort)
 (define current-editor)
