@@ -35,10 +35,11 @@ USA.
 
 (define (cross-assemble&link info-output-pathname)
   (phase/assemble)
-  (if info-output-pathname
-      (cross-compiler-phase/info-generation-2 info-output-pathname))
-  (cross-compiler-phase/link)
-  *result*)
+  (let ((file-wrapper
+	 (and info-output-pathname
+	      (cross-compiler-phase/info-generation-2 info-output-pathname))))
+    (cross-compiler-phase/link)
+    (values *result* file-wrapper)))
 
 (define (cross-compiler-phase/info-generation-2 pathname)
   (info-generation-2 pathname set-cc-code-block/debugging-info!))

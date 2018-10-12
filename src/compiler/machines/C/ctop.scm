@@ -211,10 +211,11 @@ USA.
 
 (define (assemble&link info-output-pathname)
   (phase/assemble info-output-pathname)
-  (if info-output-pathname
-      (phase/info-generation-2 *labels* info-output-pathname))
-  (phase/output-generation)
-  *result*)
+  (let ((file-wrapper
+	 (and info-output-pathname
+	      (phase/info-generation-2 *labels* info-output-pathname))))
+    (phase/output-generation)
+    (values *result* file-wrapper)))
 
 (define (wrap-lap entry-label some-lap)
   (set! *start-label* entry-label)
@@ -406,24 +407,22 @@ USA.
 	      (last-reference *external-labels*))))
 	(cond ((eq? pathname 'KEEP)	; for dynamic execution
 	       ;; (warn "C back end cannot keep debugging info in memory")
-	       unspecific)
+	       #f)
 	      ((eq? pathname 'RECURSIVE) ; recursive compilation
 	       (set! *recursive-compilation-results*
 		     (cons (vector *recursive-compilation-number*
 				   info
 				   #f)
 			   *recursive-compilation-results*))
-	       unspecific)
+	       #f)
 	      (else
-	       (compiler:dump-info-file
-		(let ((others (recursive-compilation-results)))
-		  (if (null? others)
-		      info
-		      (list->vector
-		       (cons info
-			     (map (lambda (other) (vector-ref other 1))
-				  others)))))
-		pathname)))))))
+	       (let ((others (recursive-compilation-results)))
+		 (if (null? others)
+		     info
+		     (list->vector
+		      (cons info
+			    (map (lambda (other) (vector-ref other 1))
+				 others)))))))))))
 
 (define (compiler:dump-bci-file binf pathname)
   (let ((bci-path (pathname-new-type pathname "bci")))

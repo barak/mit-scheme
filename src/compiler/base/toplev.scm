@@ -157,7 +157,7 @@ USA.
 		      input-pathname
 		      output-pathname
 		      (lambda ()
-			(compile-scode/internal
+			(compile-bin-file-1
 			 scode
 			 (pathname-new-type
 			  output-pathname
@@ -165,6 +165,16 @@ USA.
 			 rtl-output-port
 			 lap-output-port)))))))))))))
   unspecific)
+
+(define (compile-bin-file-1 scode info-output-pathname rtl-output-port
+			    lap-output-port)
+  (receive (result file-wrapper)
+      (compile-scode/internal scode info-output-pathname rtl-output-port
+			      lap-output-port)
+    (if file-wrapper
+	(compiler:dump-info-file file-wrapper
+				 info-output-pathname))
+    result))
 
 (define *debugging-key*)
 (define *compiler-input-pathname*)
@@ -267,7 +277,10 @@ USA.
 	      (*info-output-filename* keep-debugging-info?))
     (compile-scode/no-file/hook
      (lambda ()
-       (compile-scode/internal scode keep-debugging-info?)))))
+       (receive (result file-wrapper)
+	   (compile-scode/internal scode keep-debugging-info?)
+	 (declare (ignore file-wrapper))
+	 result)))))
 
 (define (compiler:batch-compile input #!optional output)
   (fluid-let ((compiler:batch-mode? #t))
@@ -334,15 +347,18 @@ USA.
 		       (*procedure-result?* procedure-result?))
 	     (compile-scode/recursive/hook
 	      (lambda ()
-		(compile-scode/internal
-		 scode
-		 (and *info-output-filename*
-		      (if (eq? *info-output-filename* 'KEEP)
-			  'KEEP
-			  'RECURSIVE))
-		 *rtl-output-port*
-		 *lap-output-port*
-		 bind-compiler-variables)))))))
+		(receive (result file-wrapper)
+		    (compile-scode/internal
+		     scode
+		     (and *info-output-filename*
+			  (if (eq? *info-output-filename* 'KEEP)
+			      'KEEP
+			      'RECURSIVE))
+		     *rtl-output-port*
+		     *lap-output-port*
+		     bind-compiler-variables)
+		  (declare (ignore file-wrapper))
+		  result)))))))
     (if procedure-result?
 	(let ((do-it
 	       (lambda ()
@@ -428,10 +444,10 @@ USA.
 (define (in-compiler thunk)
   (let ((run-compiler
 	 (lambda ()
-	   (let ((value
-		  (let ((expression (thunk)))
+	   (receive (scode file-marker) (thunk)
+	     (let ((result
 		    (let ((others (recursive-compilation-results)))
-		      (if (compiled-code-address? expression)
+		      (if (compiled-code-address? scode)
 			  (scode/make-comment
 			   ;; Keep in sync with "crsend.scm" and with
 			   ;; "runtime/infstr.scm".
@@ -440,7 +456,7 @@ USA.
 			    (if compiler:compile-by-procedures?
 				'compiled-by-procedures
 				'compiled-as-unit)
-			    (compiled-code-address->block expression)
+			    (compiled-code-address->block scode)
 			    (list->vector
 			     (map (lambda (other)
 				    (vector-ref other 2))
@@ -466,17 +482,17 @@ USA.
 						 others))
 			     (lambda (elt1 elt2)
 			       (eq? (car elt1) (car elt2)))))
-			   expression)
+			   scode)
 			  (vector compiler:compile-by-procedures?
-				  expression
+				  scode
 				  (map (lambda (other)
 					 (vector-ref other 2))
-				       others)))))))
-	     (if compiler:show-time-reports?
-		 (compiler-time-report "Total compilation time"
-				       *process-time*
-				       *real-time*))
-	     value))))
+				       others))))))
+	       (if compiler:show-time-reports?
+		   (compiler-time-report "Total compilation time"
+					 *process-time*
+					 *real-time*))
+	       (values result file-marker))))))
     (if compiler:preserve-data-structures?
 	(begin
 	  (compiler:reset!)
