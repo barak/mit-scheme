@@ -75,7 +75,7 @@ USA.
 				   operation)))))))
 	  (update-optiondb plugins scmlibdir)
 	  (update-info-index project plugins infodir scmdocdir)
-	  (update-html-index plugins scmdocdir)))))
+	  (update-html-index project plugins scmdocdir)))))
 
 (define (delete-plugin-list)
   ;; For the prerm script: delete the database of plugins (plugins.scm
@@ -102,7 +102,7 @@ USA.
 	  (begin
 	    (update-optiondb plugins scmlibdir)
 	    (update-info-index project plugins infodir scmdocdir)
-	    (update-html-index plugins scmdocdir))))))
+	    (update-html-index project plugins scmdocdir))))))
 
 (define (update-optiondb plugins scmlibdir)
   (let ((filename (string scmlibdir"optiondb.scm")))
@@ -157,7 +157,7 @@ USA.
 			      (substring line (fix:+ index str-len)))
 		      line))))))))))
 
-(define (update-html-index plugins scmdocdir)
+(define (update-html-index project plugins scmdocdir)
   (let* ((scmhtmldir (if (file-exists? (string scmdocdir"html/index.html"))
 			 (string scmdocdir"html/")
 			 scmdocdir))
@@ -173,18 +173,19 @@ USA.
 					"\n") out)
 
 	   ;; Write new list.
-	   (let ((names.titles (sort (html-names.titles plugins scmhtmldir)
-				     (lambda (a b)
-				       (string<? (cdr a) (cdr b))))))
+	   (let ((filenames.titles
+		  (sort (html-filenames.titles project plugins scmhtmldir)
+			(lambda (a b)
+			  (string<? (cdr a) (cdr b))))))
 	     (for-each
-	       (lambda (name.title)
+	       (lambda (filename.title)
 		 (write-string "<li><a href=\"" out)
-		 (write-string (car name.title) out)
-		 (write-string ".html\">" out)
-		 (write-string (cdr name.title) out)
+		 (write-string (car filename.title) out)
+		 (write-string "\">" out)
+		 (write-string (cdr filename.title) out)
 		 (write-string "</a></li>\n" out))
-	       names.titles)
-	     (if (null? names.titles)
+	       filenames.titles)
+	     (if (null? filenames.titles)
 		 (write-string "<i>None currently installed.</i>\n" out)))
 
 	   ;; Skip old list.
@@ -204,13 +205,23 @@ USA.
 	     (newline out))))
 	(warn "Scheme html index not found:" filename))))
 
-(define (html-names.titles plugins scmhtmldir)
-  (append-map! (lambda (plugin)
-		 (let ((filename (string scmhtmldir plugin".html")))
-		   (if (file-exists? filename)
-		       (list (cons plugin (read-html-title filename)))
-		       '())))
-	       plugins))
+(define (html-filenames.titles project plugins scmhtmldir)
+
+  (define (existing-file . strings)
+    (let ((filename (string* strings)))
+      (and (file-exists? filename)
+	   filename)))
+
+  (append-map!
+   (lambda (plugin)
+     (let ((filename
+	    (or (existing-file scmhtmldir plugin".html")
+		(existing-file scmhtmldir project"-"plugin".html")
+		(existing-file scmhtmldir project"-"plugin"/index.html"))))
+       (if filename
+	   (list (cons filename (read-html-title filename)))
+	   '())))
+   plugins))
 
 (define (read-html-title filename)
   (let ((patt (compile-regsexp '(seq "<title>"

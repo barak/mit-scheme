@@ -106,10 +106,6 @@ install-html: install-html-am
 	  echo '            "$(DESTDIR)$(scmdocdir)")' ) \
 	| $(MIT_SCHEME_EXE) --batch-mode
 
-install-info-am:
-
-uninstall-info-am:
-
 uninstall-hook:
 	( echo '(remove-plugin "gdbm" "@MIT_SCHEME_PROJECT@"'; \
 	  echo '               ""'; \

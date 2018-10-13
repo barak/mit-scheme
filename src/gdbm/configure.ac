@@ -114,6 +114,9 @@ done
 MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
 ${MIT_SCHEME_PKD}: stamp-scheme"
 
+# Install plugin docs in Scheme's docdir.
+docdir='$(datarootdir)/doc/$(MIT_SCHEME_PROJECT)'
+
 AC_SUBST([MIT_SCHEME_PROJECT])
 AC_SUBST([MIT_CFLAGS])
 AC_SUBST([MIT_SCHEME_EXE])

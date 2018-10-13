@@ -44,10 +44,6 @@ MIT_SCHEME_OS_SUFFIX=`echo "(display (microcode-id/operating-system-suffix))" \
 MIT_SCHEME_SOURCES=`./sources.sh scm`
 MIT_SCHEME_BINARIES=`./sources.sh com`
 
-# Install plugin docs in Scheme's docdir subdirectories.
-htmldir='$(datarootdir)/doc/$(MIT_SCHEME_PROJECT)/html'
-pdfdir='$(datarootdir)/doc/$(MIT_SCHEME_PROJECT)/pdf'
-
 AC_SUBST([MIT_SCHEME_PROJECT])
 AC_SUBST([MIT_SCHEME_SOURCES])
 AC_SUBST([MIT_SCHEME_BINARIES])

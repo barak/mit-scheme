@@ -37,8 +37,4 @@ fi
 
 MIT_SCHEME_PROJECT=mit-scheme
 
-# Install plugin docs in Scheme's docdir subdirectories.
-htmldir='$(datarootdir)/doc/$(MIT_SCHEME_PROJECT)/html'
-pdfdir='$(datarootdir)/doc/$(MIT_SCHEME_PROJECT)/pdf'
-
 AC_SUBST([MIT_SCHEME_PROJECT])
