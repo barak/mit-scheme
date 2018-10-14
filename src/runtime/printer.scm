@@ -542,7 +542,6 @@ USA.
 (define (print-symbol-name s context)
   (if (and (fix:> (string-length s) 0)
 	   (not (string=? s "."))
-	   (not (string-prefix? "#" s))
 	   (char-in-set? (string-ref s 0) char-set:symbol-initial)
 	   (string-every (symbol-name-no-quoting-predicate context) s)
 	   (not (case (param:reader-keyword-style)
