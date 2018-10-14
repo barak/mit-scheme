@@ -357,6 +357,7 @@ USA.
 	       (bignum ,print-number)
 	       (bytevector ,print-bytevector)
 	       (character ,print-character)
+	       (compiled-code-block ,print-compiled-code-block)
 	       (compiled-entry ,print-compiled-entry)
 	       (complex ,print-number)
 	       (constant ,print-constant)
@@ -825,7 +826,7 @@ USA.
 	     (lambda (context*)
 	       (*print-char #\space context*)
 	       (print-name context*)))))))
-
+
 (define (print-compiled-entry entry context)
   (let* ((type (compiled-entry-type entry))
          (procedure? (eq? type 'compiled-procedure))
@@ -838,7 +839,7 @@ USA.
 			    context
       (lambda (context*)
 	(let ((name (and procedure? (compiled-procedure/name entry))))
-	  (receive (filename block-number)
+	  (receive (filename block-number library)
 	      (compiled-entry/filename-and-index entry)
 	    (*print-char #\space context*)
 	    (*print-char #\( context*)
@@ -848,11 +849,7 @@ USA.
 		(begin
 		  (if name
 		      (*print-char #\space context*))
-		  (print-object (pathname-name filename) context*)
-		  (if block-number
-		      (begin
-			(*print-char #\space context*)
-			(*print-hex block-number context*)))))
+		  (print-block-info filename block-number library context*)))
 	    (*print-char #\) context*)))
 	(*print-char #\space context*)
 	(*print-hex (compiled-entry/offset entry) context*)
@@ -860,9 +857,34 @@ USA.
 	    (begin
 	      (*print-char #\space context*)
 	      (*print-datum (compiled-closure->entry entry)
-			      context*)))
+			    context*)))
 	(*print-char #\space context*)
 	(*print-datum entry context*)))))
+
+(define (print-compiled-code-block block context)
+  (*print-with-brackets 'compiled-code-block block context
+    (lambda (context*)
+      (receive (filename block-number library)
+	  (compiled-code-block/filename-and-index block)
+	(*print-char #\space context*)
+	(if filename
+	    (begin
+	      (*print-char #\( context*)
+	      (print-block-info filename block-number library context*)
+	      (*print-char #\) context*))))
+      (*print-char #\space context*)
+      (*print-datum block context*))))
+
+(define (print-block-info filename block-number library context*)
+  (print-object (pathname-name filename) context*)
+  (if block-number
+      (begin
+	(*print-char #\space context*)
+	(*print-hex block-number context*)))
+  (if library
+      (begin
+	(*print-char #\space context*)
+	(print-object library context*))))
 
 ;;;; Miscellaneous
 

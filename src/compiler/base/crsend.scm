@@ -97,10 +97,6 @@ USA.
 	      (write (enough-namestring output-file) port))
 	    (lambda ()
 	      (let ((inf (fasload input-file #t)))
-		((access SPLIT-INF-STRUCTURE! ; XXX ugh
-			 (->environment '(RUNTIME COMPILER-INFO)))
-		 inf
-		 #f)
 		(call-with-temporary-filename
 		  (lambda (temp)
 		    (fasdump inf temp #t)

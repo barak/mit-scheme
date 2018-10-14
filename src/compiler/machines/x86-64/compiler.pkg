@@ -259,8 +259,11 @@ USA.
 	  *root-expression*
 	  *rtl-procedures*
 	  *rtl-graphs*)
-  (import (runtime compiler-info)
-	  split-inf-structure!)
+  (import (runtime)
+	  map-r7rs-scode-file
+	  map-scode-library
+	  r7rs-scode-file?
+	  scode-library-name)
   (import (scode-optimizer build-utilities)
 	  directory-processor))
 

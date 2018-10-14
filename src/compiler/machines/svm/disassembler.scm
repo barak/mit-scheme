@@ -80,16 +80,19 @@ USA.
   (let ((cursor (block-cursor block symbol-table?)))
     (write-string "Disassembly of ")
     (write block)
-    (call-with-values
-	(lambda () (compiled-code-block/filename-and-index block))
-      (lambda (filename index)
-	(if filename
-	    (begin
-	      (write-string " (Block ")
-	      (write index)
-	      (write-string " in ")
-	      (write-string filename)
-	      (write-string "):\n")))))
+    (receive (filename index library)
+	(compiled-code-block/filename-and-index block)
+      (if filename
+	  (begin
+	    (write-string " (Block ")
+	    (write index)
+	    (if library
+		(begin
+		  (write-string " of library ")
+		  (write library)))
+	    (write-string " in ")
+	    (write-string filename)
+	    (write-string "):\n"))))
     (write-string "\nCode:\n")
     (write-instructions cursor)
     (write-string "\nConstants:\n")

@@ -259,8 +259,6 @@ USA.
 	  *root-expression*
 	  *rtl-procedures*
 	  *rtl-graphs*)
-  (import (runtime compiler-info)
-	  split-inf-structure!)
   (import (scode-optimizer build-utilities)
 	  directory-processor))
 

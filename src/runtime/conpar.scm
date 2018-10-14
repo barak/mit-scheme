@@ -1000,15 +1000,14 @@ USA.
 	   (write-string "within ")
 	   (let ((block (stack-frame/ref frame hardware-trap/pc-info1-index)))
 	     (write block)
-	     (call-with-values
-		 (lambda () (compiled-code-block/filename-and-index block))
-	       (lambda (filename index)
-		 index
-		 (if filename
-		     (begin
-		       (write-string " (")
-		       (write-string filename)
-		       (write-string ")")))))))
+	     (receive (filename index library)
+		 (compiled-code-block/filename-and-index block)
+	       (declare (ignore index library))
+	       (if filename
+		   (begin
+		     (write-string " (")
+		     (write-string filename)
+		     (write-string ")"))))))
 	  ((3)				; probably compiled-code
 	   (write-string " at an unknown compiled-code location."))
 	  ((4)				; builtin (i.e. hook)

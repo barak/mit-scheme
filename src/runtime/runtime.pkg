@@ -5888,14 +5888,14 @@ USA.
   (files "library-parser")
   (parent (runtime library))
   (export (runtime)
+	  library-name=?
+	  library-name?
 	  r7rs-source-program
 	  r7rs-source-libraries
 	  r7rs-source?
 	  read-r7rs-source
 	  register-r7rs-source!)
   (export (runtime library)
-	  library-name=?
-	  library-name?
 	  parsed-import-library
 	  parse-define-library-form
 	  parse-import-form

@@ -134,6 +134,11 @@ USA.
       (strip-comments (scode-comment-expression object))
       object))
 
+;; Unlike map, guarantees that procedure is called on the libraries in order.
 (define (map-r7rs-scode-file procedure scode)
   (guarantee r7rs-scode-file? scode 'map-r7rs-scode-file)
-  (make-scode-sequence (map procedure (r7rs-scode-file-libraries scode))))
+  (let loop ((libraries (r7rs-scode-file-libraries scode)) (results '()))
+    (if (pair? libraries)
+	(loop (cdr libraries)
+	      (cons (procedure (car libraries)) results))
+	(make-scode-sequence (reverse results)))))

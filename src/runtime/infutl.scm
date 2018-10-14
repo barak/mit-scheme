@@ -44,8 +44,7 @@ USA.
 	   (and file-wrapper
 		(let ((file-wrapper (canonicalize-file-wrapper file-wrapper)))
 		  (and file-wrapper
-		       (let ((info
-			      (get-wrapped-dbg-info file-wrapper wrapper)))
+		       (let ((info (get-wrapped-dbg-info file-wrapper wrapper)))
 			 (if info
 			     (memoize-debugging-info! wrapper info))
 			 info))))))))
@@ -153,9 +152,10 @@ USA.
 	(let ((pathname (debugging-wrapper/pathname wrapper)))
 	  (if pathname
 	      (values (canonicalize-debug-info-filename pathname)
-		      (debugging-wrapper/index wrapper))
-	      (values #f #f)))
-	(values #f #f))))
+		      (debugging-wrapper/index wrapper)
+		      (debugging-wrapper/library-name wrapper))
+	      (values #f #f #f)))
+	(values #f #f #f))))
 
 (define (dbg-labels/find-offset labels offset)
   (vector-binary-search labels < dbg-label/offset offset))
@@ -364,81 +364,6 @@ USA.
 	       (and scode
 		    (scode-lambda-body scode))))
 	entry)))
-
-;;; Support of BSM files
-
-(define (read-labels descriptor)
-  (cond ((debug-info-pathname? descriptor)
-	 (let ((bsm (read-bsm-file descriptor)))
-	   (and bsm ;; bsm are either vectors of pairs or vectors of vectors
-		(if (vector? bsm)
-		    (let ((first (and (not (zero? (vector-length bsm)))
-				      (vector-ref bsm 0))))
-		      (cond ((pair? first) bsm)
-			    ((vector? first) first)
-			    (else #f)))))))
-	((and (pair? descriptor)
-	      (debug-info-pathname? (car descriptor))
-	      (exact-nonnegative-integer? (cdr descriptor)))
-	 (let ((bsm (read-bsm-file (car descriptor))))
-	   (and bsm
-		(vector? bsm)
-		(< (cdr descriptor) (vector-length bsm))
-		(vector-ref bsm (cdr descriptor)))))
-	(else #f)))
-
-(define (read-bsm-file name)
-  (let ((pathname
-	 (let ((pathname
-		(canonicalize-debug-info-pathname
-		 (rewrite-directory (merge-pathnames name)))))
-	   (if (file-exists? pathname)
-	       pathname
-	       (let loop ((types '("bsm" "bcs")))
-		 (and (not (null? types))
-		      (let ((pathname
-			     (pathname-new-type pathname (car types))))
-			(if (file-exists? pathname)
-			    pathname
-			    (loop (cdr types))))))))))
-    (and pathname
-	 (if (equal? "bcs" (pathname-type pathname))
-	     (compressed-loader pathname)
-	     (fasload-loader pathname)))))
-
-;;;; Splitting of info structures
-
-(define (inf->bif/bsm inffile)
-  (let* ((infpath (merge-pathnames inffile))
-	 (bifpath (pathname-new-type infpath "bif"))
-	 (bsmpath (pathname-new-type infpath "bsm")))
-    (let ((file-info (fasload infpath)))
-      (inf-structure->bif/bsm file-info bifpath bsmpath))))
-
-(define (inf-structure->bif/bsm file-info bifpath bsmpath)
-  (let ((bifpath (merge-pathnames bifpath))
-	(bsmpath (and bsmpath (merge-pathnames bsmpath))))
-    (call-with-values (lambda () (split-inf-structure! file-info bsmpath))
-      (lambda (file-wrapper bsm)
-	(fasdump file-wrapper bifpath #t)
-	(if bsmpath (fasdump bsm bsmpath #t))))))
-
-(define (split-inf-structure! file-info bsmpath)
-  (let ((file-wrapper (canonicalize-file-wrapper file-info))
-	(bsmname (and bsmpath (->namestring bsmpath))))
-    (if (not file-wrapper)
-	(error "Unknown debugging-file format:" file-info))
-    (let ((info (debugging-file-wrapper/info file-wrapper)))
-      (let ((n (vector-length info)))
-	(let ((bsm (make-vector n)))
-	  (do ((i 0 (fix:+ i 1)))
-	      ((fix:= i n))
-	    (let ((dbg-info (vector-ref info i)))
-	      (let ((labels (dbg-info/labels/desc dbg-info)))
-		(vector-set! bsm i labels)
-		(set-dbg-info/labels/desc! dbg-info
-					   (and bsmname (cons bsmname i))))))
-	  (values file-wrapper bsm))))))
 
 ;;;; UNCOMPRESS
 ;;;  A simple extractor for compressed binary info files.

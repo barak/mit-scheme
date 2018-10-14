@@ -425,9 +425,7 @@ USA.
 				 others)))))))))))
 
 (define (compiler:dump-bci-file binf pathname)
-  (let ((bci-path (pathname-new-type pathname "bci")))
-    (split-inf-structure! binf #f)
-    (dump-compressed binf bci-path)))
+  (dump-compressed binf (pathname-new-type pathname "bci")))
 
 (define (dump-compressed object path)
   (call-with-temporary-filename

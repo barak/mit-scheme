@@ -271,8 +271,6 @@ USA.
 	  *root-expression*
 	  *rtl-procedures*
 	  *rtl-graphs*)
-  (import (runtime compiler-info)
-	  split-inf-structure!)
   (import (runtime load)
 	  fasload-object-file)
   (import (scode-optimizer build-utilities)

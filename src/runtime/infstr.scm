@@ -73,18 +73,8 @@ USA.
   (expression #f read-only #t)		;dbg-expression
   (procedures #f read-only #t)		;vector of dbg-procedure
   (continuations #f read-only #t)	;vector of dbg-continuation
-  (labels/desc #f read-only #f)		;vector of dbg-label, sorted by offset
+  (labels #f read-only #f)		;vector of dbg-label, sorted by offset
   )
-
-(define (dbg-info/labels dbg-info)
-  (let ((labels/desc (dbg-info/labels/desc dbg-info)))
-    (if (vector? labels/desc)
-	labels/desc
-	(let ((labels (read-labels labels/desc)))
-	  (and labels
-	       (begin
-		 (set-dbg-info/labels/desc! dbg-info labels)
-		 labels))))))
 
 (define-structure (dbg-expression
 		   (type vector)
@@ -202,15 +192,41 @@ USA.
 
 (define (compiled-code-block/debugging-wrapper block)
   (let ((wrapper (compiled-code-block/debugging-info block)))
-    (if (debugging-wrapper? wrapper)
-	wrapper
-	#f)))
+    (cond ((debugging-wrapper-v2? wrapper)
+	   (let ((v (vector-grow wrapper 7)))
+	     (vector-set! v 1 3)
+	     (vector-set! v 6 #f)
+	     (set-compiled-code-block/debugging-info! block v)
+	     v))
+	  ((debugging-wrapper-v3? wrapper) wrapper)
+	  (else #f))))
 
-(define (debugging-wrapper? wrapper)
+(define (debugging-wrapper-v2? wrapper)
   (and (vector? wrapper)
        (fix:= (vector-length wrapper) 6)
-       (eq? (vector-ref wrapper 0) 'debugging-info-wrapper)
-       (fix:= (vector-ref wrapper 1) 2)
+       (eqv? (vector-ref wrapper 1) 2)
+       (debugging-wrapper-common? wrapper)))
+
+(define (debugging-wrapper-v3? wrapper)
+  (and (vector? wrapper)
+       (fix:= (vector-length wrapper) 7)
+       (eqv? (vector-ref wrapper 1) 3)
+       (debugging-wrapper-common? wrapper)
+       (debugging-library-name? (vector-ref wrapper 6))))
+
+(define (debugging-library-name? object)
+  (or (not object)
+      (eq? object 'program)
+      (library-name? object)))
+
+(define (debugging-library-name=? n1 n2)
+  (or (eq? n1 n2)
+      (and (library-name? n1)
+	   (library-name? n2)
+	   (library-name=? n1 n2))))
+
+(define (debugging-wrapper-common? wrapper)
+  (and (eq? (vector-ref wrapper 0) 'debugging-info-wrapper)
        (or (and (not (vector-ref wrapper 2))
 		(not (vector-ref wrapper 3))
 		(not (vector-ref wrapper 4))
@@ -241,12 +257,36 @@ USA.
 
 (define (set-debugging-wrapper/info! wrapper info)
   (vector-set! wrapper 5 info))
+
+(define (debugging-wrapper/library-name wrapper)
+  (vector-ref wrapper 6))
 
-(define (debugging-file-wrapper? wrapper)
+(define (canonicalize-file-wrapper wrapper)
+  (cond ((debugging-file-wrapper-v2? wrapper)
+	 (let ((v (vector-grow wrapper 5)))
+	   (vector-set! v 1 3)
+	   (vector-set! v 4 #f)
+	   v))
+	((or (debugging-file-wrapper-v3? wrapper)
+	     (debugging-library-wrapper? wrapper))
+	 wrapper)
+	(else #f)))
+
+(define (debugging-file-wrapper-v2? wrapper)
   (and (vector? wrapper)
        (fix:= (vector-length wrapper) 4)
-       (eq? (vector-ref wrapper 0) 'debugging-file-wrapper)
-       (fix:= (vector-ref wrapper 1) 2)
+       (eqv? (vector-ref wrapper 1) 2)
+       (debugging-file-wrapper-common? wrapper)))
+
+(define (debugging-file-wrapper-v3? wrapper)
+  (and (vector? wrapper)
+       (fix:= (vector-length wrapper) 5)
+       (eqv? (vector-ref wrapper 1) 3)
+       (debugging-file-wrapper-common? wrapper)
+       (debugging-library-name? (vector-ref wrapper 4))))
+
+(define (debugging-file-wrapper-common? wrapper)
+  (and (eq? (vector-ref wrapper 0) 'debugging-file-wrapper)
        (dbg-info-key? (vector-ref wrapper 2))
        (let ((info (vector-ref wrapper 3)))
 	 (and (vector? info)
@@ -262,20 +302,8 @@ USA.
 (define (debugging-file-wrapper/info wrapper)
   (vector-ref wrapper 3))
 
-(define (canonicalize-file-wrapper wrapper)
-  (cond ((debugging-file-wrapper? wrapper)
-	 wrapper)
-	(else #f)))
-
-(define (get-wrapped-dbg-info file-wrapper wrapper)
-  (and (let ((k1 (debugging-wrapper/key wrapper))
-	     (k2 (debugging-file-wrapper/key file-wrapper)))
-	 (or (and k1 k2 (dbg-info-key=? k1 k2))
-	     (and (not k1) (not k2))))
-       (let ((v (debugging-file-wrapper/info file-wrapper))
-	     (index (debugging-wrapper/index wrapper)))
-	 (and (fix:< index (vector-length v))
-	      (vector-ref v index)))))
+(define (debugging-file-wrapper/library-name wrapper)
+  (vector-ref wrapper 4))
 
 (define (dbg-info-key? object)
   (or (and (bytevector? object)
@@ -284,8 +312,56 @@ USA.
       (and ((ucode-primitive string? 1) object)
 	   (fix:= ((ucode-primitive string-length 1) object) 32))))
 
-(define (dbg-info-key=? a b)
-  (equal? a b))
+(define (dbg-info-key=? k1 k2)
+  (or (and k1 k2 (equal? k1 k2))
+      (and (not k1) (not k2))))
+
+(define (debugging-library-wrapper? wrapper)
+  (and (vector? wrapper)
+       (fix:= (vector-length wrapper) 4)
+       (eq? (vector-ref wrapper 0) 'debugging-library-wrapper)
+       (eqv? (vector-ref wrapper 1) 3)
+       (dbg-info-key? (vector-ref wrapper 2))
+       (let ((info (vector-ref wrapper 3)))
+	 (and (vector? info)
+	      (fix:>= (vector-length info) 1)
+	      (vector-every debugging-file-wrapper-v3? info)))))
+
+(define (debugging-library-wrapper/version wrapper)
+  (vector-ref wrapper 1))
+
+(define (debugging-library-wrapper/key wrapper)
+  (vector-ref wrapper 2))
+
+(define (debugging-library-wrapper/file-wrappers wrapper)
+  (vector-ref wrapper 3))
+
+(define (get-wrapped-dbg-info from-file from-block)
+  (let ((lookup-by-index
+	 (lambda (from-file)
+	   (let ((v (debugging-file-wrapper/info from-file))
+		 (index (debugging-wrapper/index from-block)))
+	     (and (fix:< index (vector-length v))
+		  (vector-ref v index))))))
+    (cond ((debugging-file-wrapper-v3? from-file)
+	   (and (dbg-info-key=? (debugging-wrapper/key from-block)
+				(debugging-file-wrapper/key from-file))
+		(lookup-by-index from-file)))
+	  ((debugging-library-wrapper? from-file)
+	   (and (dbg-info-key=? (debugging-wrapper/key from-block)
+				(debugging-library-wrapper/key from-file))
+		(let ((name (debugging-wrapper/library-name from-block))
+		      (v (debugging-library-wrapper/file-wrappers from-file)))
+		  (let ((n (vector-length v)))
+		    (let loop ((i 0))
+		      (and (fix:< i n)
+			   (if (debugging-library-name=?
+				name
+				(debugging-file-wrapper/library-name
+				 (vector-ref v i)))
+			       (lookup-by-index (vector-ref v i))
+			       (loop (fix:+ i 1)))))))))
+	  (else #f))))
 
 (define (debug-info-pathname? object)
   (or (string? object)

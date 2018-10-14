@@ -168,17 +168,48 @@ USA.
 
 (define (compile-bin-file-1 scode info-output-pathname rtl-output-port
 			    lap-output-port)
-  (receive (result file-wrapper)
-      (compile-scode/internal scode info-output-pathname rtl-output-port
-			      lap-output-port)
-    (if file-wrapper
-	(compiler:dump-info-file file-wrapper
+  (receive (result wrapper)
+      (let ((do-one-expr
+	     (lambda (scode library-name)
+	       (fluid-let ((*library-name* library-name))
+		 (compile-scode/internal scode
+					 info-output-pathname
+					 rtl-output-port
+					 lap-output-port)))))
+	(if (r7rs-scode-file? scode)
+	    (let ((file-wrappers '()))
+	      (let ((result
+		     (map-r7rs-scode-file
+		      (lambda (library)
+			(let ((name
+			       (or (scode-library-name library)
+				   'program)))
+			  (map-scode-library
+			   (lambda (contents)
+			     (receive (result file-wrapper)
+				 (do-one-expr contents name)
+			       (if file-wrapper
+				   (set! file-wrappers
+					 (cons file-wrapper
+					       file-wrappers)))
+			       result))
+			   library)))
+		      scode)))
+		(values result
+			(vector 'debugging-library-wrapper
+				3
+				*debugging-key*
+				(list->vector (reverse file-wrappers))))))
+	    (do-one-expr scode #f)))
+    (if wrapper
+	(compiler:dump-info-file wrapper
 				 info-output-pathname))
     result))
 
 (define *debugging-key*)
 (define *compiler-input-pathname*)
 (define *compiler-output-pathname*)
+(define *library-name*)
 
 (define (maybe-open-file open? pathname receiver)
   (if open?
@@ -1025,21 +1056,12 @@ USA.
 (define (phase/rtl-file-output scode port)
   (compiler-phase "RTL File Output"
     (lambda ()
-      (write-string "RTL for object " port)
-      (write *recursive-compilation-number* port)
-      (newline port)
-      (pp scode port #t 4)
-      (newline port)
-      (newline port)
+      (rtl/lap-file-header "RTL" scode port)
       (write-rtl-instructions (linearize-rtl *rtl-root*
 					     *rtl-procedures*
 					     *rtl-continuations*)
 			      port)
-      (if (not (zero? *recursive-compilation-number*))
-	  (begin
-	    (write-char #\page port)
-	    (newline port)))
-      (output-port/flush-output port))))
+      (rtl/lap-file-footer port))))
 
 (define (phase/lap-generation)
   (compiler-phase "LAP Generation"
@@ -1094,38 +1116,49 @@ USA.
     (lambda ()
       (parameterize ((param:printer-radix 16)
 		     (param:print-uninterned-symbols-by-name? #t))
-	(parameterize ((current-output-port port))
-	  (write-string "LAP for object ")
-	  (write *recursive-compilation-number*)
-	  (newline)
-	  (pp scode (current-output-port) #t 4)
-	  (newline)
-	  (newline)
-	  (newline)
-	  (for-each
-	      (lambda (instruction)
-		(cond ((and (pair? instruction)
-			    (eq? (car instruction) 'LABEL))
-		       (write (cadr instruction))
-		       (write-char #\:))
-		      ((and (pair? instruction)
-			    (eq? (car instruction) 'COMMENT))
-		       (write-char #\tab)
-		       (write-string ";;")
-		       (for-each (lambda (frob)
-				   (write-string " ")
-				   (write (if (and (pair? frob)
-						   (eq? (car frob) 'RTL))
-					      (cadr frob)
-					      frob)))
-			 (cdr instruction)))
-		      (else
-		       (write-char #\tab)
-		       (write instruction)))
-		(newline))
-	    *lap*)
-	  (if (not (zero? *recursive-compilation-number*))
-	      (begin
-		(write-char #\page)
-		(newline)))
-	  (output-port/flush-output port))))))
+	(rtl/lap-file-header "LAP" scode port)
+	(for-each (lambda (instruction)
+		    (write-lap-instruction instruction port))
+		  *lap*)
+	(rtl/lap-file-footer port)))))
+
+(define (write-lap-instruction instruction port)
+  (cond ((and (pair? instruction)
+	      (eq? (car instruction) 'label))
+	 (write (cadr instruction) port)
+	 (write-char #\: port))
+	((and (pair? instruction)
+	      (eq? (car instruction) 'comment))
+	 (write-char #\tab port)
+	 (write-string ";;" port)
+	 (for-each (lambda (frob)
+		     (write-string " " port)
+		     (write (if (and (pair? frob)
+				     (eq? (car frob) 'rtl))
+				(cadr frob)
+				frob)
+			    port))
+		   (cdr instruction)))
+	(else
+	 (write-char #\tab port)
+	 (write instruction port)))
+  (newline port))
+
+(define (rtl/lap-file-header tag scode port)
+  (write-char #\page port)
+  (newline port)
+  (write-string tag port)
+  (write-string " for object " port)
+  (write *recursive-compilation-number* port)
+  (cond ((eq? *library-name* 'program)
+	 (write-string " in R7RS top level" port))
+	(*library-name*
+	 (write-string " in R7RS library " port)
+	 (write *library-name* port)))
+  (newline port)
+  (pp scode port #t 4)
+  (newline port)
+  (newline port))
+
+(define (rtl/lap-file-footer port)
+  (output-port/flush-output port))

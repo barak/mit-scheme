@@ -241,15 +241,16 @@ USA.
 		  (last-reference *dbg-continuations*)
 		  *label-bindings*
 		  (last-reference *external-labels*))))
-	    (cond ((eq? pathname 'KEEP)	; for dynamic execution
-		   (values (vector 'DEBUGGING-INFO-WRAPPER
-				   2
+	    (cond ((eq? pathname 'keep)	; for dynamic execution
+		   (values (vector 'debugging-info-wrapper
+				   3
 				   #f
 				   #f
 				   #f
-				   info)
+				   info
+				   #f)
 			   #f))
-		  ((eq? pathname 'RECURSIVE) ; recursive compilation
+		  ((eq? pathname 'recursive) ; recursive compilation
 		   (set! *recursive-compilation-results*
 			 (cons (vector *recursive-compilation-number*
 				       info
@@ -258,33 +259,36 @@ USA.
 				       *tl-free*
 				       *tl-metadata*)
 			       *recursive-compilation-results*))
-		   (values (vector 'DEBUGGING-INFO-WRAPPER
-				   2
+		   (values (vector 'debugging-info-wrapper
+				   3
 				   *debugging-key*
 				   (if (pathname? *info-output-filename*)
 				       (->namestring *info-output-filename*)
 				       *info-output-filename*)
 				   *recursive-compilation-number*
-				   #f)
+				   #f
+				   *library-name*)
 			   #f))
 		  (else
-		   (values (vector 'DEBUGGING-INFO-WRAPPER
-				   2
+		   (values (vector 'debugging-info-wrapper
+				   3
 				   *debugging-key*
 				   (if (pathname? *info-output-filename*)
 				       (->namestring *info-output-filename*)
 				       *info-output-filename*)
 				   0
-				   #f)
-			   (vector 'DEBUGGING-FILE-WRAPPER
-				   2
+				   #f
+				   *library-name*)
+			   (vector 'debugging-file-wrapper
+				   3
 				   *debugging-key*
 				   (list->vector
-				    (cons info
-					  (map (lambda (other)
-						 (vector-ref other 1))
-					       (recursive-compilation-results))
-					  )))))))
+				    (cons
+				     info
+				     (map (lambda (other)
+					    (vector-ref other 1))
+					  (recursive-compilation-results))))
+				   *library-name*)))))
 	(set-debugging-info! *code-vector* debug-info)
 	file-wrapper))))
 
@@ -298,24 +302,8 @@ USA.
 (define (compiler:dump-inf-file binf pathname)
   (compiler-file-output binf pathname))
 
-(define (compiler:dump-bif/bsm-files binf pathname)
-  (let ((bif-path (pathname-new-type pathname "bif"))
-	(bsm-path (pathname-new-type pathname "bsm")))
-    (let ((bsm (split-inf-structure! binf bsm-path)))
-      (compiler-file-output binf bif-path)
-      (compiler-file-output bsm bsm-path))))
-
-(define (compiler:dump-bci/bcs-files binf pathname)
-  (let ((bci-path (pathname-new-type pathname "bci"))
-	(bcs-path (pathname-new-type pathname "bcs")))
-    (let ((bsm (split-inf-structure! binf bcs-path)))
-      (dump-compressed binf bci-path)
-      (dump-compressed bsm bcs-path))))
-
 (define (compiler:dump-bci-file binf pathname)
-  (let ((bci-path (pathname-new-type pathname "bci")))
-    (split-inf-structure! binf #f)
-    (dump-compressed binf bci-path)))
+  (dump-compressed binf (pathname-new-type pathname "bci")))
 
 (define (dump-compressed object path)
   (call-with-temporary-filename
