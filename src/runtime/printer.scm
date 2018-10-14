@@ -881,7 +881,7 @@ USA.
       (begin
 	(*print-char #\space context*)
 	(*print-hex block-number context*)))
-  (if library
+  (if (library-name? library)
       (begin
 	(*print-char #\space context*)
 	(print-object library context*))))
