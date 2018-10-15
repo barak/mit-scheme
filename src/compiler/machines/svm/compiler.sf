@@ -26,11 +26,11 @@ USA.
 
 ;;;; Script to incrementally syntax the compiler
 
-(load-option 'CREF)
-(load-option 'SF)
+(load-option 'cref)
+(load-option 'sf)
 
 ;; Guarantee that the compiler's package structure exists.
-(if (not (name->package '(COMPILER)))
+(if (not (name->package '(compiler)))
     (let ((package-set (package-set-pathname "compiler")))
       (if (not (file-exists? package-set))
 	  (cref/generate-trivial-constructor "compiler"))
@@ -38,7 +38,7 @@ USA.
 
 ;; Guarantee that the necessary syntactic transforms and optimizers
 ;; are loaded.
-(if (lexical-unreferenceable? (->environment '(COMPILER)) 'SYNTAX-FILES!)
+(if (lexical-unreferenceable? (->environment '(compiler)) 'syntax-files!)
     ;; Assume there are no os-type-specific files or packages.
     (let* ((xref (->environment '(cross-reference)))
 	   (pmodel ((access read-package-model xref) "compiler" 'unix))
@@ -71,7 +71,7 @@ USA.
       (sf-and-load "base/switch")
       (sf-and-load "base/macros")
       (sf-and-load "machines/svm/decls")
-      (let ((environment (->environment '(COMPILER DECLARATIONS))))
+      (let ((environment (->environment '(compiler declarations))))
 	((access initialize-package! environment)))
       (sf-and-load "base/pmlook")
       (sf-and-load "base/pmpars")
@@ -82,8 +82,8 @@ USA.
       (sf-and-load "back/syerly")))
 
 ;; Resyntax any files that need it.
-((access syntax-files! (->environment '(COMPILER))))
+((access syntax-files! (->environment '(compiler))))
 (sf-conditionally "machine/make")
 
 ;; Rebuild the package constructors and cref.
-(cref/generate-constructors "compiler" 'ALL)
+(cref/generate-constructors "compiler" 'all)

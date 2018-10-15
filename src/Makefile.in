@@ -104,6 +104,9 @@ HOST_COMPILER_SETTINGS = \
 HOST_COMPILER = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) \
   --eval '(begin $(HOST_COMPILER_SETTINGS))' --load runtime/host-adapter.scm
 
+HOST_RUNTIME_ONLY = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) \
+  --band runtime.com --load runtime/host-adapter.scm
+
 .PHONY: microcode/scheme
 @IF_LIARC@microcode/scheme: all-runtime
 @IF_SVM@microcode/scheme: microcode/svm1-defns.h
@@ -149,8 +152,8 @@ lib/all.com: all-sf
 lib/all.com: lib/runtime.com
 lib/all.com: microcode/scheme
 	(echo '(begin' && \
-	 echo '  (load-option (quote COMPILER))' && \
-	 echo '  (load-option (quote SF))' && \
+	 echo '  (load-option (quote compiler))' && \
+	 echo '  (load-option (quote sf))' && \
 	 echo '  (disk-save "$@"))') \
 	| ./microcode/scheme --batch-mode --library lib --band runtime.com
 
@@ -260,7 +263,7 @@ all-compiler: compile-compiler
 syntax-compiler: syntax-sf
 	(echo '(with-working-directory-pathname "compiler"' && \
 	 echo '  (lambda () (load "compiler.sf")))') \
-	| $(HOST_COMPILER)
+	| $(HOST_RUNTIME_ONLY)
 
 .PHONY: compile-compiler
 compile-compiler: syntax-compiler
