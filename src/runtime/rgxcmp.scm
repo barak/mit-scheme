@@ -189,7 +189,8 @@ USA.
   (let ((result (make-bytevector 2)))
     (bytevector-u8-set! result 0 re-code:exact-1)
     (bytevector-u8-set! result 1
-			(char->integer (if case-fold? (char-upcase char) char)))
+			(char->integer
+			 (if case-fold? (char-sort-of-upcase char) char)))
     (make-compiled-regexp result case-fold?)))
 
 (define re-compile-string
@@ -201,7 +202,7 @@ USA.
 	    (get-byte
 	     (if case-fold?
 		 (lambda (i)
-		   (char->integer (char-upcase (string-ref string i))))
+		   (char->integer (char-sort-of-upcase (string-ref string i))))
 		 (lambda (i)
 		   (char->integer (string-ref string i))))))
 	(let ((copy!
@@ -267,6 +268,13 @@ USA.
   (byte-stream #f read-only #t)
   (translation-table #f read-only #t))
 
+;; Needed so that we stay within ISO 8859-1.
+(define (char-sort-of-upcase char)
+  (let ((c (char-upcase char)))
+    (if (fix:>= (char->integer c) #x100)
+	char
+	c)))
+
 (define re-translation-table
   (let ((normal-table (make-bytevector #x100))
 	(upcase-table (make-bytevector #x100)))
@@ -274,7 +282,8 @@ USA.
 	((not (fix:< i #x100)))
       (bytevector-u8-set! normal-table i i)
       (bytevector-u8-set! upcase-table i
-			  (char->integer (char-upcase (integer->char i)))))
+			  (char->integer
+			   (char-sort-of-upcase (integer->char i)))))
     (lambda (case-fold?)
       (if case-fold? upcase-table normal-table))))
 
