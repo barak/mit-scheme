@@ -41,6 +41,20 @@ USA.
     (eq? 'unbound (environment-reference-type env name)))
 
   (let ((env (->environment '())))
+
+    (if (unbound? env 'guarantee)
+	(eval `(define (guarantee predicate object #!optional caller)
+		 (if (predicate object)
+		     object
+		     (error:wrong-type-argument
+		      object
+		      (string-append "object satisfying "
+				     (call-with-output-string
+				       (lambda (port)
+					 (write predicate port))))
+		      caller)))
+	      env))
+
     (if (unbound? env 'bundle)
 	(eval '(define-syntax bundle
 		 (syntax-rules ()
