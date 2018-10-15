@@ -64,18 +64,6 @@ else
     IF_CROSS=\#
 fi
 
-AC_ARG_ENABLE([debug-toolchain],
-    AS_HELP_STRING([--enable-debug-toolchain],
-	[Use slow interpreted cross-compiler toolchain]))
-: ${enable_debug_toolchain=no}
-if test "x$enable_debug_toolchain" = xyes; then
-    IF_DEBUG_TOOLCHAIN=
-    IF_NOT_DEBUG_TOOLCHAIN=\#
-else
-    IF_DEBUG_TOOLCHAIN=\#
-    IF_NOT_DEBUG_TOOLCHAIN=
-fi
-
 AC_ARG_WITH([default-target],
     AS_HELP_STRING([--with-default-target],
 	[Set the default make target [[all]]]))
@@ -181,7 +169,7 @@ fi
 small_words='(= 4 (vector-ref (gc-space-status) 0))'
 if test x"${mit_scheme_native_code}" = xsvm1 \
    && ${MIT_SCHEME_EXE} --eval "(%exit (if ${small_words} 0 1))"; then \
-    TOOL_TOOLCHAIN_HEAP="--heap 10000"
+    HOST_COMPILER_HEAP="--heap 10000"
 fi
 
 AC_SUBST([DEFAULT_TARGET])
@@ -192,11 +180,9 @@ AC_SUBST([MIT_SCHEME_EXE])
 AC_SUBST([AUXDIR_NAME])
 AC_SUBST([AUXDIR])
 AC_SUBST([IF_CROSS])
-AC_SUBST([IF_DEBUG_TOOLCHAIN])
 AC_SUBST([IF_LIARC])
-AC_SUBST([IF_NOT_DEBUG_TOOLCHAIN])
 AC_SUBST([IF_SVM])
-AC_SUBST([TOOL_TOOLCHAIN_HEAP])
+AC_SUBST([HOST_COMPILER_HEAP])
 
 AC_PROG_INSTALL
 AC_PROG_LN_S
@@ -210,7 +196,6 @@ AC_CONFIG_SUBDIRS([microcode])
 
 AC_CONFIG_FILES([
 Makefile
-Makefile.tools
 6001/Makefile
 compiler/Makefile
 cref/Makefile

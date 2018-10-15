@@ -202,6 +202,39 @@ USA.
 		    'undefined-conditional-branch
 		    'undefined-scode-conditional-branch))
 
+  (if (name->package '(scode-optimizer))
+      (begin
+	(let ((env (->environment '(scode-optimizer))))
+	  (eval '(if (not (memq scode-lambda-name:unnamed
+				global-constant-objects))
+		     (begin
+		       (set! global-constant-objects
+			     (cons 'scode-lambda-name:unnamed
+				   global-constant-objects))
+		       (usual-integrations/cache!)))
+		env))
+	(let ((env (->environment '(scode-optimizer expansion))))
+	  (eval '(let ((remove-one
+			(lambda (name)
+			  (set! usual-integrations/expansion-alist
+				(del-assq! name
+					   usual-integrations/expansion-alist))
+			  #t)))
+		   (remove-one 'set-string-length!)
+		   (remove-one 'string->char-syntax)
+		   (remove-one 'string-allocate)
+		   (remove-one 'string-length)
+		   (remove-one 'string-ref)
+		   (remove-one 'string-set!)
+		   (remove-one 'string?)
+		   (remove-one 'vector-8b-ref)
+		   (remove-one 'vector-8b-set!)
+		   (set! usual-integrations/expansion-names
+			 (map car usual-integrations/expansion-alist))
+		   (set! usual-integrations/expansion-values
+			 (map cdr usual-integrations/expansion-alist)))
+		env))))
+
   (let ((env (->environment '(runtime))))
     (if (unbound? env 'select-on-bytes-per-word)
 	(eval '(define-syntax select-on-bytes-per-word

@@ -95,53 +95,14 @@ all-native: cross-target
 
 @IF_CROSS@COMPILER_SETTINGS_CROSS = (set! compiler:cross-compiling? true)
 @IF_LIARC@COMPILER_SETTINGS_LIARC = (set! compiler:invoke-c-compiler? false)
-TOOL_TOOLCHAIN_HEAP = @TOOL_TOOLCHAIN_HEAP@
+HOST_COMPILER_HEAP = @HOST_COMPILER_HEAP@
 
-TOOL_COMPILER_SETTINGS = \
+HOST_COMPILER_SETTINGS = \
 	$(COMPILER_SETTINGS_CROSS) \
 	$(COMPILER_SETTINGS_LIARC)
 
-# User can override this to use another toolchain.
-TOOLCHAIN = ./tools
-
-HOST_SCHEME = '$(MIT_SCHEME_EXE)' --batch-mode
-TOOL_COMPILER = $(TOOL_TOOLCHAIN)
-TOOL_SYNTAXER = $(HOST_SCHEME) --band $(TOOLCHAIN)/syntaxer.com
-TOOL_TOOLCHAIN = $(HOST_SCHEME) --band $(TOOLCHAIN)/compiler.com \
-  $(TOOL_TOOLCHAIN_HEAP) \
-  --eval '(begin $(TOOL_COMPILER_SETTINGS))'
-
-.PHONY: toolchain
-toolchain: $(TOOLCHAIN)/compiler.com
-
-./tools/compiler.com:
-	$(MAKE) -f Makefile.tools clean && $(MAKE) -f Makefile.tools allclean
-
-# This target toolchain crud is a kludge until the whole system can be
-# cross-compiled.
-TARGET_COMPILER_SETTINGS = \
-	$(COMPILER_SETTINGS_LIARC)
-
-TARGET_RUNTIME = ./microcode/scheme \
-	--library lib --band runtime.com --batch-mode
-TARGET_COMPILER = $(TARGET_RUNTIME) \
-	--eval '(load-option (quote COMPILER))' \
-	--eval '(begin $(TARGET_COMPILER_SETTINGS))'
-TARGET_SYNTAXER = $(TARGET_RUNTIME) \
-	--eval '(load-option (quote CREF))' \
-	--eval '(load-option (quote SF))'
-TARGET_TOOLCHAIN = $(TARGET_RUNTIME) \
-	--eval '(load-option (quote COMPILER))' \
-	--eval '(load-option (quote CREF))' \
-	--eval '(load-option (quote SF))' \
-	--eval '(begin $(TARGET_COMPILER_SETTINGS))'
-
-.PHONY: target-toolchain
-target-toolchain: all-compiler
-target-toolchain: all-cref
-target-toolchain: all-sf
-target-toolchain: cross-target
-target-toolchain: lib/runtime.com
+HOST_COMPILER = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) \
+  --eval '(begin $(HOST_COMPILER_SETTINGS))' --load runtime/host-adapter.scm
 
 .PHONY: microcode/scheme
 @IF_LIARC@microcode/scheme: all-runtime
@@ -182,16 +143,6 @@ lib/runtime.com: microcode/scheme
 	  && (echo '(disk-save "../$@")' \
 	       | ../microcode/scheme --batch-mode --library ../lib \
 	           --fasl "$${FASL}"))
-
-lib/compiler.com: all-compiler
-lib/compiler.com: all-sf
-lib/compiler.com: lib/runtime.com
-lib/compiler.com: microcode/scheme
-	(echo '(begin' && \
-	 echo '  (load-option (quote COMPILER))' && \
-	 echo '  (load-option (quote SF))' && \
-	 echo '  (disk-save "$@"))') \
-	| ./microcode/scheme --batch-mode --library lib --band runtime.com
 
 lib/all.com: all-compiler
 lib/all.com: all-sf
@@ -234,186 +185,57 @@ restore:
 	@if ! test -d saved-objects; then exit 1; fi && \
 	(cd saved-objects && pax -rw -pe -v . ../../.)
 
-### Stuff we build with the tools compiler necessarily from scratch.
-
 # This rule is for LIARC.
 .SUFFIXES: .bld .pkd .c
-.pkd.c .bld.c: toolchain
-	echo '(cbf "$<")' | $(TOOL_COMPILER)
+.pkd.c .bld.c:
+	echo '(cbf "$<")' | $(HOST_COMPILER)
 
-# Compiler (LIAR)
-
-# The subdirectories can be compiled independently and in parallel, but
-# syntaxing the compiler is too hairy right now to do without the
-# compiler.sf script(s).
-
-.PHONY: all-compiler
-all-compiler: compile-compiler
-@IF_LIARC@all-compiler: bundle-compiler
-
-.PHONY: bundle-compiler
-bundle-compiler: liarc-bundle-tools
-bundle-compiler: compile-compiler
-bundle-compiler: compiler/compiler-unx.c
-bundle-compiler: compiler/compiler-w32.c
-	(cd compiler && $(MAKE) compile-liarc-bundle)
-
-.PHONY: compile-compiler
-compile-compiler: compile-compiler-back
-compile-compiler: compile-compiler-base
-compile-compiler: compile-compiler-fggen
-compile-compiler: compile-compiler-fgopt
-compile-compiler: compile-compiler-machine
-compile-compiler: compile-compiler-rtlbase
-compile-compiler: compile-compiler-rtlgen
-compile-compiler: compile-compiler-rtlopt
-
-.PHONY: compile-compiler-back
-compile-compiler-back: toolchain
-compile-compiler-back: syntax-compiler
-	echo '(compile-directory "compiler/back")' | $(TOOL_COMPILER)
-
-.PHONY: compile-compiler-base
-compile-compiler-base: toolchain
-compile-compiler-base: syntax-compiler
-	echo '(compile-directory "compiler/base")' | $(TOOL_COMPILER)
-
-.PHONY: compile-compiler-fggen
-compile-compiler-fggen: toolchain
-compile-compiler-fggen: syntax-compiler
-	echo '(compile-directory "compiler/fggen")' | $(TOOL_COMPILER)
-
-.PHONY: compile-compiler-fgopt
-compile-compiler-fgopt: toolchain
-compile-compiler-fgopt: syntax-compiler
-	echo '(compile-directory "compiler/fgopt")' | $(TOOL_COMPILER)
-
-.PHONY: compile-compiler-machine
-compile-compiler-machine: toolchain
-compile-compiler-machine: syntax-compiler
-	echo '(compile-directory "compiler/machine")' | $(TOOL_COMPILER)
-
-.PHONY: compile-compiler-rtlbase
-compile-compiler-rtlbase: toolchain
-compile-compiler-rtlbase: syntax-compiler
-	echo '(compile-directory "compiler/rtlbase")' | $(TOOL_COMPILER)
-
-.PHONY: compile-compiler-rtlgen
-compile-compiler-rtlgen: toolchain
-compile-compiler-rtlgen: syntax-compiler
-	echo '(compile-directory "compiler/rtlgen")' | $(TOOL_COMPILER)
-
-.PHONY: compile-compiler-rtlopt
-compile-compiler-rtlopt: toolchain
-compile-compiler-rtlopt: syntax-compiler
-	echo '(compile-directory "compiler/rtlopt")' | $(TOOL_COMPILER)
-
-.PHONY: syntax-compiler
-syntax-compiler: toolchain
-@IF_SVM@syntax-compiler: compiler/machines/svm/svm1-defns.h
-syntax-compiler: syntax-sf cref-compiler
-	(echo '(with-working-directory-pathname "compiler"' && \
-	 echo '  (lambda () (load "compiler.sf")))') \
-	| $(TOOL_SYNTAXER)
-
-.PHONY: cref-compiler
-cref-compiler: compiler/compiler-unx.pkd
-
-compiler/compiler-unx.pkd: toolchain
-compiler/compiler-unx.pkd: compiler/compiler.pkg
-compiler/compiler-unx.pkd: cref-runtime
-compiler/compiler-unx.pkd: cref-sf
-	(echo '(with-working-directory-pathname "compiler"' && \
-	 echo '  (lambda ()' && \
-	 echo '    (cref/generate-trivial-constructor "compiler")))') \
-	| $(TOOL_SYNTAXER)
-
-# XXX Kludgey bogus rules for liarc.
-compiler/compiler-w32.pkd: compiler/compiler-unx.pkd
-
-# CREF
-
-.PHONY: all-cref
-all-cref: compile-cref
-@IF_LIARC@all-cref: bundle-cref
-
-.PHONY: bundle-cref
-bundle-cref: liarc-bundle-tools
-bundle-cref: compile-cref
-bundle-cref: cref/cref-unx.c
-bundle-cref: cref/cref-w32.c
-	(cd cref && $(MAKE) compile-liarc-bundle)
-
-.PHONY: compile-cref
-compile-cref: toolchain
-compile-cref: syntax-cref
-	(echo '(with-working-directory-pathname "cref"' && \
-	 echo '  (lambda () (load "cref.cbf")))') \
-	| $(TOOL_COMPILER)
-
-.PHONY: syntax-cref
-syntax-cref: toolchain
-syntax-cref: cref-cref
-	(echo '(with-working-directory-pathname "cref"' && \
-	 echo '  (lambda () (load "cref.sf")))') \
-	| $(TOOL_SYNTAXER)
-
-.PHONY: cref-cref
-cref-cref: cref/cref-unx.pkd
-
-cref/cref-unx.pkd: toolchain
-cref/cref-unx.pkd: cref-runtime
-cref/cref-unx.pkd: cref/cref.pkg
-	(echo '(with-working-directory-pathname "cref"' && \
-	 echo '  (lambda ()' && \
-	 echo '    (cref/generate-trivial-constructor "cref")))') \
-	| $(TOOL_SYNTAXER)
-
-# XXX Kludgey bogus rules for liarc.
-cref/cref-w32.pkd: cref/cref-unx.pkd
-
+################
 # Runtime
+################
 
 .PHONY: all-runtime
 all-runtime: compile-runtime
 @IF_LIARC@all-runtime: bundle-runtime
 
+.PHONY: syntax-runtime
+syntax-runtime:
+	(echo '(with-working-directory-pathname "runtime"' && \
+	 echo '  (lambda () (load "runtime.sf")))') \
+	| $(HOST_COMPILER)
+
+.PHONY: compile-runtime
+compile-runtime: syntax-runtime
+	(echo '(with-working-directory-pathname "runtime"' && \
+	 echo '  (lambda () (load "runtime.cbf")))') \
+	| $(HOST_COMPILER)
+
 .PHONY: bundle-runtime
 bundle-runtime: runtime/runtime-unx.c
 bundle-runtime: runtime/runtime-w32.c
 
-.PHONY: compile-runtime
-compile-runtime: toolchain
-compile-runtime: syntax-runtime
-	(echo '(with-working-directory-pathname "runtime"' && \
-	 echo '  (lambda () (load "runtime.cbf")))') \
-	| $(TOOL_COMPILER)
+# XXX Kludgey bogus rules for LIARC.
+#runtime/runtime-w32.pkd: runtime/runtime-unx.pkd
 
-.PHONY: compile-runtime
-syntax-runtime: toolchain
-syntax-runtime: cref-runtime
-	(echo '(with-working-directory-pathname "runtime"' && \
-	 echo '  (lambda () (load "runtime.sf")))') \
-	| $(TOOL_SYNTAXER)
-
-.PHONY: cref-runtime
-cref-runtime: runtime/runtime-unx.pkd
-
-runtime/runtime-unx.pkd: toolchain
-runtime/runtime-unx.pkd: runtime/runtime.pkg
-	(echo '(with-working-directory-pathname "runtime"' && \
-	 echo '  (lambda ()' && \
-	 echo '    (cref/generate-trivial-constructor "runtime")))') \
-	| $(TOOL_SYNTAXER)
-
-# XXX Kludgey bogus rules for liarc.
-runtime/runtime-w32.pkd: runtime/runtime-unx.pkd
-
+################
 # SF
+################
 
 .PHONY: all-sf
 all-sf: compile-sf
 @IF_LIARC@all-sf: bundle-sf
+
+.PHONY: syntax-sf
+syntax-sf:
+	(echo '(with-working-directory-pathname "sf"' && \
+	 echo '  (lambda () (load "sf.sf")))') \
+	| $(HOST_COMPILER)
+
+.PHONY: compile-sf
+compile-sf: syntax-sf
+	(echo '(with-working-directory-pathname "sf"' && \
+	 echo '  (lambda () (load "sf.cbf")))') \
+	| $(HOST_COMPILER)
 
 .PHONY: bundle-sf
 bundle-sf: liarc-bundle-tools
@@ -422,147 +244,80 @@ bundle-sf: sf/sf-unx.c
 bundle-sf: sf/sf-w32.c
 	(cd sf && $(MAKE) compile-liarc-bundle)
 
-.PHONY: compile-sf
-compile-sf: toolchain
-compile-sf: syntax-sf
-	(echo '(with-working-directory-pathname "sf"' && \
-	 echo '  (lambda () (load "sf.cbf")))') \
-	| $(TOOL_COMPILER)
-
-.PHONY: syntax-sf
-syntax-sf: toolchain
-syntax-sf: cref-sf
-	(echo '(with-working-directory-pathname "sf"' && \
-	 echo '  (lambda () (load "sf.sf")))') \
-	| $(TOOL_SYNTAXER)
-
-.PHONY: cref-sf
-cref-sf: sf/sf-unx.pkd
-
-sf/sf-unx.pkd: toolchain
-sf/sf-unx.pkd: cref-runtime
-sf/sf-unx.pkd: sf/sf.pkg
-	(echo '(with-working-directory-pathname "sf"' && \
-	 echo '  (lambda ()' && \
-	 echo '    (cref/generate-trivial-constructor "sf")))') \
-	| $(TOOL_SYNTAXER)
-
 # XXX Kludgey bogus rules for liarc.
-sf/sf-w32.pkd: sf/sf-unx.pkd
+#sf/sf-w32.pkd: sf/sf-unx.pkd
 
-### More stuff we build with tools.  We could build it with the newly
-### built compiler in the native case, but we want to avoid having to
-### do that to encourage cross-compilation.
+################
+# Compiler (LIAR)
+################
 
-# FFI
+.PHONY: all-compiler
+all-compiler: compile-compiler
+@IF_LIARC@all-compiler: bundle-compiler
 
-.PHONY: all-ffi
-all-ffi: compile-ffi
-@IF_LIARC@all-ffi: bundle-ffi
+.PHONY: syntax-compiler
+@IF_SVM@syntax-compiler: compiler/machines/svm/svm1-defns.h
+syntax-compiler: syntax-sf
+	(echo '(with-working-directory-pathname "compiler"' && \
+	 echo '  (lambda () (load "compiler.sf")))') \
+	| $(HOST_COMPILER)
 
-.PHONY: bundle-ffi
-bundle-ffi: liarc-bundle-tools
-bundle-ffi: compile-ffi
-bundle-ffi: ffi/ffi-unx.c
-bundle-ffi: ffi/ffi-w32.c
-	(cd ffi && $(MAKE) compile-liarc-bundle)
+.PHONY: compile-compiler
+compile-compiler: syntax-compiler
+	(echo '(with-working-directory-pathname "compiler"' && \
+	 echo '  (lambda () (load "compiler.cbf")))') \
+	| $(HOST_COMPILER)
 
-.PHONY: compile-ffi
-compile-ffi: toolchain
-compile-ffi: cref-ffi
-compile-ffi: syntax-cref	# XXX Urgh!  Should not be here!
-	(echo '(with-working-directory-pathname "ffi"' && \
-	 echo '  (lambda () (load "compile.scm")))') \
-	| $(TOOL_TOOLCHAIN)
+.PHONY: bundle-compiler
+bundle-compiler: liarc-bundle-tools
+bundle-compiler: compile-compiler
+bundle-compiler: compiler/compiler-unx.c
+bundle-compiler: compiler/compiler-w32.c
+	(cd compiler && $(MAKE) compile-liarc-bundle)
 
-.PHONY: cref-ffi
-cref-ffi: ffi/ffi-unx.pkd
+################
+# CREF
+################
 
-ffi/ffi-unx.pkd: toolchain
-ffi/ffi-unx.pkd: cref-runtime
-ffi/ffi-unx.pkd: ffi/ffi.pkg
-	(echo '(with-working-directory-pathname "ffi"' && \
-	 echo '  (lambda ()' && \
-	 echo '    (cref/generate-trivial-constructor "ffi")))') \
-	| $(TOOL_SYNTAXER)
+.PHONY: all-cref
+all-cref: compile-cref
+@IF_LIARC@all-cref: bundle-cref
 
-# XXX Kludgey bogus rules for liarc.
-ffi/ffi-w32.pkd: ffi/ffi-unx.pkd
+.PHONY: syntax-cref
+syntax-cref:
+	(echo '(with-working-directory-pathname "cref"' && \
+	 echo '  (lambda () (load "cref.sf")))') \
+	| $(HOST_COMPILER)
 
-# SOS
+.PHONY: compile-cref
+compile-cref: syntax-cref
+	(echo '(with-working-directory-pathname "cref"' && \
+	 echo '  (lambda () (load "cref.cbf")))') \
+	| $(HOST_COMPILER)
 
-.PHONY: all-sos
-all-sos: compile-sos
-@IF_LIARC@all-sos: bundle-sos
+.PHONY: bundle-cref
+bundle-cref: liarc-bundle-tools
+bundle-cref: compile-cref
+bundle-cref: cref/cref-unx.c
+bundle-cref: cref/cref-w32.c
+	(cd cref && $(MAKE) compile-liarc-bundle)
 
-.PHONY: bundle-sos
-bundle-sos: liarc-bundle-tools
-bundle-sos: compile-sos
-bundle-sos: sos/sos-unx.c
-bundle-sos: sos/sos-w32.c
-	(cd sos && $(MAKE) compile-liarc-bundle)
+# XXX Kludgey bogus rules for LIARC.
+#cref/cref-w32.pkd: cref/cref-unx.pkd
 
-.PHONY: compile-sos
-compile-sos: toolchain
-compile-sos: cref-sos
-	(echo '(with-working-directory-pathname "sos"' && \
-	 echo '  (lambda () (load "compile")))') \
-	| $(TOOL_TOOLCHAIN)
-
-.PHONY: cref-sos
-cref-sos: sos/sos-unx.pkd
-
-sos/sos-unx.pkd: toolchain
-sos/sos-unx.pkd: cref-runtime
-sos/sos-unx.pkd: sos/sos.pkg
-	(echo '(with-working-directory-pathname "sos"' && \
-	 echo '  (lambda ()' && \
-	 echo '    (cref/generate-trivial-constructor "sos")))') \
-	| $(TOOL_SYNTAXER)
-
-# XXX Kludgey bogus rules for liarc.
-sos/sos-w32.pkd: sos/sos-unx.pkd
-
-# SSP
-
-.PHONY: all-ssp
-all-ssp: compile-ssp
-@IF_LIARC@all-ssp: bundle-ssp
-
-.PHONY: bundle-ssp
-bundle-ssp: liarc-bundle-tools
-bundle-ssp: compile-ssp
-bundle-ssp: ssp/ssp-unx.c
-bundle-ssp: ssp/ssp-w32.c
-	(cd ssp && $(MAKE) compile-liarc-bundle)
-
-.PHONY: compile-ssp
-compile-ssp: toolchain
-compile-ssp: cref-ssp
-	(echo '(with-working-directory-pathname "ssp"' && \
-	 echo '  (lambda () (load "compile")))') \
-	| $(TOOL_TOOLCHAIN)
-
-.PHONY: cref-ssp
-cref-ssp: ssp/ssp-unx.pkd
-
-ssp/ssp-unx.pkd: toolchain
-ssp/ssp-unx.pkd: cref-runtime
-ssp/ssp-unx.pkd: cref-xml
-ssp/ssp-unx.pkd: ssp/ssp.pkg
-	(echo '(with-working-directory-pathname "ssp"' && \
-	 echo '  (lambda ()' && \
-	 echo '    (cref/generate-trivial-constructor "ssp")))') \
-	| $(TOOL_SYNTAXER)
-
-# XXX Kludgey bogus rules for liarc.
-ssp/ssp-w32.pkd: ssp/ssp-unx.pkd
-
+################
 # *PARSER
+################
 
 .PHONY: all-star-parser
 all-star-parser: compile-star-parser
 @IF_LIARC@all-star-parser: bundle-star-parser
+
+.PHONY: compile-star-parser
+compile-star-parser:
+	(echo '(with-working-directory-pathname "star-parser"' && \
+	 echo '  (lambda () (load "compile")))') \
+	| $(HOST_COMPILER)
 
 .PHONY: bundle-star-parser
 bundle-star-parser: liarc-bundle-tools
@@ -571,65 +326,120 @@ bundle-star-parser: star-parser/parser-unx.c
 bundle-star-parser: star-parser/parser-w32.c
 	(cd star-parser && $(MAKE) compile-liarc-bundle)
 
-.PHONY: compile-star-parser
-compile-star-parser: toolchain
-compile-star-parser: cref-star-parser
-	(echo '(with-working-directory-pathname "star-parser"' && \
+# XXX Kludgey bogus rules for LIARC.
+#star-parser/parser-w32.pkd: star-parser/parser-unx.pkd
+
+### More stuff we build with tools.  We could build it with the newly
+### built compiler in the native case, but we want to avoid having to
+### do that to encourage cross-compilation.
+
+################
+# FFI
+################
+
+.PHONY: all-ffi
+all-ffi: compile-ffi
+@IF_LIARC@all-ffi: bundle-ffi
+
+.PHONY: compile-ffi
+compile-ffi:
+	(echo '(with-working-directory-pathname "ffi"' && \
+	 echo '  (lambda () (load "compile.scm")))') \
+	| $(HOST_COMPILER)
+
+.PHONY: bundle-ffi
+bundle-ffi: liarc-bundle-tools
+bundle-ffi: compile-ffi
+bundle-ffi: ffi/ffi-unx.c
+bundle-ffi: ffi/ffi-w32.c
+	(cd ffi && $(MAKE) compile-liarc-bundle)
+
+# XXX Kludgey bogus rules for LIARC.
+#ffi/ffi-w32.pkd: ffi/ffi-unx.pkd
+
+################
+# SOS
+################
+
+.PHONY: all-sos
+all-sos: compile-sos
+@IF_LIARC@all-sos: bundle-sos
+
+.PHONY: compile-sos
+compile-sos:
+	(echo '(with-working-directory-pathname "sos"' && \
 	 echo '  (lambda () (load "compile")))') \
-	| $(TOOL_TOOLCHAIN)
+	| $(HOST_COMPILER)
 
-.PHONY: cref-star-parser
-cref-star-parser: star-parser/parser-unx.pkd
+.PHONY: bundle-sos
+bundle-sos: liarc-bundle-tools
+bundle-sos: compile-sos
+bundle-sos: sos/sos-unx.c
+bundle-sos: sos/sos-w32.c
+	(cd sos && $(MAKE) compile-liarc-bundle)
 
-star-parser/parser-unx.pkd: toolchain
-star-parser/parser-unx.pkd: cref-runtime
-star-parser/parser-unx.pkd: star-parser/parser.pkg
-	(echo '(with-working-directory-pathname "star-parser"' && \
-	 echo '  (lambda ()' && \
-	 echo '    (cref/generate-trivial-constructor "parser")))') \
-	| $(TOOL_SYNTAXER)
+# XXX Kludgey bogus rules for LIARC.
+#sos/sos-w32.pkd: sos/sos-unx.pkd
 
-# XXX Kludgey bogus rules for liarc.
-star-parser/parser-w32.pkd: star-parser/parser-unx.pkd
+################
+# SSP
+################
 
+.PHONY: all-ssp
+all-ssp: compile-ssp
+@IF_LIARC@all-ssp: bundle-ssp
+
+.PHONY: compile-ssp
+compile-ssp: compile-xml
+	(echo '(with-working-directory-pathname "ssp"' && \
+	 echo '  (lambda () (load "compile")))') \
+	| $(HOST_COMPILER)
+
+.PHONY: bundle-ssp
+bundle-ssp: liarc-bundle-tools
+bundle-ssp: compile-ssp
+bundle-ssp: ssp/ssp-unx.c
+bundle-ssp: ssp/ssp-w32.c
+	(cd ssp && $(MAKE) compile-liarc-bundle)
+
+# XXX Kludgey bogus rules for LIARC.
+#ssp/ssp-w32.pkd: ssp/ssp-unx.pkd
+
+################
 # Windows FFI
+################
 
 .PHONY: all-win32
 all-win32: compile-win32
 
+.PHONY: syntax-win32
+syntax-win32:
+	(echo '(with-working-directory-pathname "win32"' && \
+	 echo '  (lambda () (load "win32.sf")))') \
+	| $(HOST_COMPILER)
+
 .PHONY: compile-win32
-compile-win32: toolchain
 compile-win32: syntax-win32
 	(echo '(with-working-directory-pathname "win32"' && \
 	 echo '  (lambda () (load "win32.cbf")))') \
-	| $(TOOL_COMPILER)
-
-.PHONY: syntax-win32
-syntax-win32: toolchain
-syntax-win32: cref-win32
-	(echo '(with-working-directory-pathname "win32"' && \
-	 echo '  (lambda () (load "win32.sf")))') \
-	| $(TOOL_SYNTAXER)
-
-.PHONY: cref-win32
-cref-win32: win32/win32-unx.pkd		# XXX Er...
-
-win32/win32-unx.pkd: toolchain
-win32/win32-unx.pkd: cref-runtime
-win32/win32-unx.pkd: win32/win32.pkg
-	(echo '(with-working-directory-pathname "win32"' && \
-	 echo '  (lambda ()' && \
-	 echo '    (cref/generate-trivial-constructor "win32")))') \
-	| $(TOOL_SYNTAXER)
+	| $(HOST_COMPILER)
 
 # XXX Kludgey bogus rules for liarc.
-win32/win32-w32.pkd: win32/win32-unx.pkd
+#win32/win32-w32.pkd: win32/win32-unx.pkd
 
+################
 # XML
+################
 
 .PHONY: all-xml
 all-xml: compile-xml
 @IF_LIARC@all-xml: bundle-xml
+
+.PHONY: compile-xml
+compile-xml: compile-star-parser
+	(echo '(with-working-directory-pathname "xml"' && \
+	 echo '  (lambda () (load "compile")))') \
+	| $(HOST_COMPILER)
 
 .PHONY: bundle-xml
 bundle-xml: liarc-bundle-tools
@@ -638,30 +448,12 @@ bundle-xml: xml/xml-unx.c
 bundle-xml: xml/xml-w32.c
 	(cd xml && $(MAKE) compile-liarc-bundle)
 
-.PHONY: compile-xml
-compile-xml: toolchain
-compile-xml: cref-xml
-	(echo '(with-working-directory-pathname "xml"' && \
-	 echo '  (lambda () (load "compile")))') \
-	| $(TOOL_TOOLCHAIN)
-
-.PHONY: cref-xml
-cref-xml: xml/xml-unx.pkd
-
-xml/xml-unx.pkd: toolchain
-xml/xml-unx.pkd: cref-runtime
-xml/xml-unx.pkd: cref-sos
-xml/xml-unx.pkd: cref-star-parser
-xml/xml-unx.pkd: xml/xml.pkg
-	(echo '(with-working-directory-pathname "xml"' && \
-	 echo '  (lambda ()' && \
-	 echo '    (cref/generate-trivial-constructor "xml")))') \
-	| $(TOOL_SYNTAXER)
-
 # XXX Kludgey bogus rules for liarc.
-xml/xml-w32.pkd: xml/xml-unx.pkd
+#xml/xml-w32.pkd: xml/xml-unx.pkd
 
+################################
 ### Cross-compilation finish-up.
+################################
 
 # We split this up into two targets, cross-host and cross-target, so
 # that you can type `make cross-host' to do everything on the
@@ -694,14 +486,14 @@ cross-target: cross-host
 
 .PHONY: cross-end
 cross-end: cross-host
-	(echo '(let ((env (->environment (quote (RUNTIME)))))' && \
+	(echo '(let ((env (->environment (quote (runtime)))))' && \
 	 echo '  (load "../compiler/base/crsend" env)' && \
-	 echo '  ((access FINISH-CROSS-COMPILATION:FILES env) ".."))') \
+	 echo '  ((access finish-cross-compilation:files env) ".."))') \
 	| (cd runtime && ../microcode/scheme --batch-mode --library ../lib \
 					     --fasl make.bin)
-	(echo '(let ((env (->environment (quote (RUNTIME)))))' && \
+	(echo '(let ((env (->environment (quote (runtime)))))' && \
 	 echo '  (load "../compiler/base/crsend" env)' && \
-	 echo '  ((access FINISH-CROSS-COMPILATION:INFO-FILES env) ".."))') \
+	 echo '  ((access finish-cross-compilation:info-files env) ".."))') \
 	 | (cd runtime && ../microcode/scheme --batch-mode --library ../lib \
 					      --fasl make.com)
 
@@ -783,7 +575,6 @@ stamp_native-compile-scheme: compile-microcode
 
 
 mostlyclean clean distclean maintainer-clean c-clean:
-	$(MAKE) -f Makefile.tools clean
 	$(top_srcdir)/Clean.sh $@ $(SUBDIRS)
 
 clean-boot-root:
