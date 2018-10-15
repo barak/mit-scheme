@@ -28,12 +28,5 @@ USA.
   (sf-conditionally "object")
   (sf-directory "."))
 
-(let ((package-set (package-set-pathname "cref")))
-  (if (not (file-exists? package-set))
-      (fasdump (load "triv.pkg") package-set)))
-
-(if (file-exists? (package-set-pathname "../runtime/runtime"))
-    (begin
-      (if (not (name->package '(cross-reference)))
-	  (load "make"))
-      (cref/generate-constructors "cref" 'all)))
+(load-option 'cref)
+(cref/generate-constructors "cref" 'all)

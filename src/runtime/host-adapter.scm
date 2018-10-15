@@ -40,52 +40,7 @@ USA.
   (define (unbound? env name)
     (eq? 'unbound (environment-reference-type env name)))
 
-  (define (unset? env name)
-    (memq (environment-reference-type env name)
-	  '(unbound unassigned)))
-
-  (define (provide-rename env old-name new-name)
-    (if (unset? env new-name)
-	(eval `(define ,new-name ,old-name) env)))
-
   (let ((env (->environment '())))
-
-    (if (unset? env 'guarantee)
-	(eval `(define (guarantee predicate object #!optional caller)
-		 (if (predicate object)
-		     object
-		     (error:wrong-type-argument
-		      object
-		      (string-append "object satisfying "
-				     (call-with-output-string
-				       (lambda (port)
-					 (write predicate port))))
-		      caller)))
-	      env))
-    (if (unset? env 'bytes-per-object)
-	(eval '(define (bytes-per-object)
-		 (vector-ref (gc-space-status) 0))
-	      env))
-
-    (if (unset? env 'runtime-environment->syntactic)
-	(eval '(define (runtime-environment->syntactic object)
-		 object)
-	      env))
-
-    (provide-rename env 'random-byte-vector 'random-bytevector)
-    (provide-rename env 'string-downcase 'string-foldcase)
-    (provide-rename env 'lambda-tag:unnamed 'scode-lambda-name:unnamed)
-    (provide-rename env 'lambda-tag:let 'scode-lambda-name:let)
-    (provide-rename env 'lambda-tag:fluid-let 'scode-lambda-name:fluid-let)
-    (provide-rename env 'hash 'hash-object)
-
-    (if (unbound? env 'hash-table-constructor)
-	(link-variables env
-			'hash-table-constructor
-			(->environment '(runtime hash-table))
-			'hash-table-constructor))
-    (provide-rename env 'hash-table/clear! 'hash-table-clear!)
-
     (if (unbound? env 'bundle)
 	(eval '(define-syntax bundle
 		 (syntax-rules ()
@@ -112,142 +67,64 @@ USA.
 		   ((parameterize ((param value) ...) form ...)
 		    (parameterize* (list (cons param value) ...)
 				   (lambda () form ...)))))
-	      env))
-
-    (if (unset? env 'define-print-method)
-	(eval '(define (define-print-method predicate print-method)
-		 unspecific)
-	      env))
-    (if (unset? env 'standard-print-method)
-	(eval '(define (standard-print-method name #!optional get-parts)
-		 (simple-unparser-method name
-					 (if (default-object? get-parts)
-					     #f
-					     get-parts)))
-	      env))
-    (provide-rename env 'standard-unparser-method 'bracketed-print-method)
-
-    (for-each (lambda (old-name)
-		(provide-rename env old-name (symbol 'scode- old-name)))
-	      '(access-environment
-		access-name
-		access?
-		assignment-name
-		assignment-value
-		assignment?
-		block-declaration-text
-		block-declaration?
-		combination-operands
-		combination-operator
-		combination?
-		comment-expression
-		comment-text
-		comment?
-		conditional-alternative
-		conditional-consequent
-		conditional-predicate
-		conditional?
-		constant?
-		declaration-expression
-		declaration-text
-		declaration?
-		definition-name
-		definition-value
-		definition?
-		delay-expression
-		delay?
-		disjunction-alternative
-		disjunction-predicate
-		disjunction?
-		lambda-components
-		lambda-body
-		lambda-name
-		lambda?
-		open-block-actions
-		open-block-declarations
-		open-block-names
-		open-block?
-		quotation-expression
-		quotation?
-		sequence-actions
-		sequence?
-		the-environment?
-		unassigned?-name
-		unassigned??
-		variable-name
-		variable?))
-    (for-each (lambda (root)
-		(provide-rename env
-				(symbol 'make- root)
-				(symbol 'make-scode- root)))
-	      '(access
-		assignment
-		block-declaration
-		combination
-		comment
-		conditional
-		declaration
-		definition
-		delay
-		disjunction
-		lambda
-		open-block
-		quotation
-		sequence
-		the-environment
-		unassigned?
-		variable))
-    (provide-rename env 'set-lambda-body! 'set-scode-lambda-body!)
-    (provide-rename env
-		    'undefined-conditional-branch
-		    'undefined-scode-conditional-branch))
+	      env)))
 
   (if (name->package '(scode-optimizer))
       (begin
 	(let ((env (->environment '(scode-optimizer))))
-	  (eval '(if (not (memq scode-lambda-name:unnamed
+	  (eval '(if (not (memq 'scode-lambda-name:unnamed
 				global-constant-objects))
 		     (begin
+		       (environment-define system-global-environment
+					   'scode-lambda-name:unnamed
+					   lambda-tag:unnamed)
 		       (set! global-constant-objects
 			     (cons 'scode-lambda-name:unnamed
 				   global-constant-objects))
 		       (usual-integrations/cache!)))
 		env))
 	(let ((env (->environment '(scode-optimizer expansion))))
-	  (eval '(let ((remove-one
-			(lambda (name)
-			  (set! usual-integrations/expansion-alist
-				(del-assq! name
-					   usual-integrations/expansion-alist))
-			  #t)))
-		   (remove-one 'set-string-length!)
-		   (remove-one 'string->char-syntax)
-		   (remove-one 'string-allocate)
-		   (remove-one 'string-length)
-		   (remove-one 'string-ref)
-		   (remove-one 'string-set!)
-		   (remove-one 'string?)
-		   (remove-one 'vector-8b-ref)
-		   (remove-one 'vector-8b-set!)
-		   (set! usual-integrations/expansion-names
-			 (map car usual-integrations/expansion-alist))
-		   (set! usual-integrations/expansion-values
-			 (map cdr usual-integrations/expansion-alist)))
+	  (eval '(let ((pred
+			(let ((names
+			       '(set-string-length!
+				 string->char-syntax
+				 string-allocate
+				 string-length
+				 string-ref
+				 string-set!
+				 string?
+				 vector-8b-ref
+				 vector-8b-set!)))
+			  (lambda (p)
+			    (memq (car p) names)))))
+		   (if (any pred usual-integrations/expansion-alist)
+		       (begin
+			 (set! usual-integrations/expansion-alist
+			       (remove! pred
+					usual-integrations/expansion-alist))
+			 (set! usual-integrations/expansion-names
+			       (map car usual-integrations/expansion-alist))
+			 (set! usual-integrations/expansion-values
+			       (map cdr usual-integrations/expansion-alist)))))
 		env))))
 
   (let ((env (->environment '(runtime))))
     (if (unbound? env 'select-on-bytes-per-word)
-	(eval '(define-syntax select-on-bytes-per-word
-		 (er-macro-transformer
-		  (lambda (form rename compare)
-		    rename compare
-		    (syntax-check '(_ expression expression) form)
-		    (let ((bpo (bytes-per-object)))
-		      (case bpo
-			((4) (cadr form))
-			((8) (caddr form))
-			(else (error "Unsupported bytes-per-object:" bpo)))))))
-	      env))
+	(begin
+	  (eval '(define-syntax select-on-bytes-per-word
+		   (er-macro-transformer
+		    (lambda (form rename compare)
+		      rename compare
+		      (syntax-check '(_ expression expression) form)
+		      (let ((bpo (bytes-per-object)))
+			(case bpo
+			  ((4) (cadr form))
+			  ((8) (caddr form))
+			  (else (error "Unsupported bytes-per-object:" bpo)))))))
+		env)
+	  (eval '(define (bytes-per-object)
+		   (vector-ref (gc-space-status) 0))
+		system-global-environment)))
     (if (unbound? env 'variable-setter)
 	(eval '(define-syntax variable-setter
 		 (syntax-rules ()
@@ -255,15 +132,6 @@ USA.
 		    (lambda (value)
 		      (set! identifier value)
 		      unspecific))))
-	      env))
-    (if (unset? env 'r7rs-source?)
-	(eval '(begin
-		 (define (r7rs-source? object)
-		   #f)
-		 (define (read-r7rs-source pathname)
-		   #f)
-		 (define (r7rs-scode-file? object)
-		   #f))
 	      env)))
 
   (let ((env (->environment '(runtime microcode-tables))))
@@ -281,91 +149,4 @@ USA.
                        (error "MICROCODE-TYPE: Unknown name:" name)))
                 env)
           (link-variables system-global-environment 'microcode-type
-                          env 'microcode-type))))
-
-  (let ((env (->environment '(runtime srfi-1))))
-    (if (let ((items '(-1 -2)))
-	  (eq? items (filter negative? items)))
-	(eval '(define (filter pred lis)
-		 (let recur ((lis lis))
-		   (cond ((null-list? lis 'filter) lis)
-			 ((pred (car lis)) (cons (car lis) (recur (cdr lis))))
-			 (else (recur (cdr lis))))))
-	      env)))
-
-  (let ((env (->environment '(runtime syntax))))
-    (provide-rename env 'compile-item/expression 'compile-expr-item)
-    (if (unset? env 'expr-item)
-	(eval '(define (expr-item ctx compiler)
-		 (make-expression-item compiler))
-	      env))
-    (if (unset? env 'compile-item)
-	(eval '(define (compile-item body-item)
-		 (compile-body-items (item->list body-item)))
-	      env))
-    (if (unset? env 'classify-form)
-	(eval '(define (classify-form form senv #!optional hist)
-		 (classify/form form senv senv))
-	      env))
-    (if (unset? env 'classifier->runtime)
-	(eval '(define (classifier->runtime classifier)
-		 (make-unmapped-macro-reference-trap
-		  (make-classifier-item classifier)))
-	      env)))
-
-  (let ((env (->environment '(package))))
-    (if (eval '(not (link-description? '#(name1 (package name) name2 #f)))
-	      env)
-	(eval
-	 '(begin
-	    (define (link-description? object)
-	      (and (vector? object)
-		   (cond ((fix:= (vector-length object) 2)
-			  (and (symbol? (vector-ref object 0))
-			       (package-name? (vector-ref object 1))))
-			 ((fix:= (vector-length object) 3)
-			  (and (symbol? (vector-ref object 0))
-			       (package-name? (vector-ref object 1))
-			       (symbol? (vector-ref object 2))))
-			 ((fix:= (vector-length object) 4)
-			  (and (symbol? (vector-ref object 0))
-			       (package-name? (vector-ref object 1))
-			       (symbol? (vector-ref object 2))
-			       (or (eq? #f (vector-ref object 3))
-				   (eq? 'deprecated (vector-ref object 3)))))
-			 (else #f))))
-
-	    (define (create-links-from-description description)
-	      (let ((environment
-		     (find-package-environment
-		      (package-description/name description))))
-		(let ((bindings (package-description/exports description)))
-		  (let ((n (vector-length bindings)))
-		    (do ((i 0 (fix:+ i 1)))
-			((fix:= i n))
-		      (let ((binding (vector-ref bindings i)))
-			(link-variables (find-package-environment
-					 (vector-ref binding 1))
-					(if (fix:= (vector-length binding) 3)
-					    (vector-ref binding 2)
-					    (vector-ref binding 0))
-					environment
-					(vector-ref binding 0))))))
-		(let ((bindings (package-description/imports description)))
-		  (let ((n (vector-length bindings)))
-		    (do ((i 0 (fix:+ i 1)))
-			((fix:= i n))
-		      (let ((binding (vector-ref bindings i)))
-			(let ((source-environment
-			       (find-package-environment
-				(vector-ref binding 1)))
-			      (source-name
-			       (if (fix:>= (vector-length binding) 3)
-				   (vector-ref binding 2)
-				   (vector-ref binding 0))))
-			  (guarantee-binding source-environment source-name)
-			  (link-variables environment
-					  (vector-ref binding 0)
-					  source-environment
-					  source-name)))))))))
-	 env))))
+                          env 'microcode-type)))))
