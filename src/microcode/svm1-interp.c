@@ -704,7 +704,7 @@ push_entry (uint8_t * PC)
 }
 
 static inline SCHEME_OBJECT
-pop_object ()
+pop_object (void)
 {
   SCHEME_OBJECT * sp = ((SCHEME_OBJECT *) (WREG_REF (SVM1_REG_STACK_POINTER)));
   SCHEME_OBJECT object = (STACK_LOCATIVE_POP (sp));
