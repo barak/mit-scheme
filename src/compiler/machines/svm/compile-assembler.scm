@@ -27,6 +27,7 @@ USA.
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (let ((environment (make-top-level-environment)))
+      (load "../../base/macros" environment)
       (load "machine" environment)
       ;; Load assembler-compiler before -runtime.
       ;; It needs to create RULE-MATCHER anti-syntax.
