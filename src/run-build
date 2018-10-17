@@ -1,0 +1,5 @@
+#!/bin/bash
+set -e
+HERE=$(dirname "${0}")
+export MITSCHEME_LIBRARY_PATH=${HERE}/lib
+"${HERE}"/microcode/scheme "${@}"
