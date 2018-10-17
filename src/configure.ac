@@ -45,6 +45,11 @@ AC_ARG_ENABLE([native-code],
 	[Support native compiled code if available [[yes]]]))
 : ${enable_native_code=yes}
 
+AC_ARG_WITH([compiler-target],
+    AS_HELP_STRING([--with-compiler-target],
+	[Compiler target architecture [[same as native code]]]))
+: ${with_compiler_target=yes}
+
 AC_ARG_ENABLE([host-scheme-test],
     AS_HELP_STRING([--enable-host-scheme-test],
 	[Test for working scheme on build host [[if necessary]]]))
@@ -58,7 +63,7 @@ AC_ARG_ENABLE([cross-compiling],
     AS_HELP_STRING([--enable-cross-compiling],
 	[Cross-compile scheme, even if to the same target]))
 : ${enable_cross_compiling=no}
-if test "x$enable_cross_compiling" = xyes; then
+if test "x${enable_cross_compiling}" = xyes; then
     IF_CROSS=
 else
     IF_CROSS=\#
@@ -98,6 +103,33 @@ svm1)
     INSTALL_LIARC_BUNDLES=
     ;;
 esac
+
+AC_MSG_CHECKING([for compiler target])
+MIT_SCHEME_ARCHITECTURE([${with_compiler_target}])
+case ${mit_scheme_architecture} in
+yes)
+    mit_scheme_compiler_target=${mit_scheme_native_code}
+    ;;
+*)
+    mit_scheme_compiler_target=${mit_scheme_architecture}
+    ;;
+esac
+
+case ${mit_scheme_compiler_target} in
+none)
+    AC_MSG_RESULT([none])
+    ;;
+c)
+    AC_MSG_RESULT([yes, using portable C code])
+    ;;
+svm1)
+    AC_MSG_RESULT([yes, using portable SVM code])
+    ;;
+*)
+    AC_MSG_RESULT([yes, for ${mit_scheme_compiler_target}])
+    ;;
+esac
+
 AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
 AUXDIR='$(libdir)'/${AUXDIR_NAME}
 
@@ -168,7 +200,7 @@ fi
 # A 32bit host running LIAR/svm needs a large heap.
 small_words='(= 4 (vector-ref (gc-space-status) 0))'
 if test x"${mit_scheme_native_code}" = xsvm1 \
-   && ${MIT_SCHEME_EXE} --eval "(%exit (if ${small_words} 0 1))"; then \
+   && ${MIT_SCHEME_EXE} --eval "(%exit (if ${small_words} 0 1))" >/dev/null; then \
     HOST_COMPILER_HEAP="--heap 10000"
 fi
 
@@ -187,10 +219,10 @@ AC_SUBST([HOST_COMPILER_HEAP])
 AC_PROG_INSTALL
 AC_PROG_LN_S
 
-echo etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_native_code}"
-etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_native_code}" \
+echo etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_compiler_target}"
+etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_compiler_target}" \
   || exit $?
-compiler/configure "${mit_scheme_native_code}" || exit $?
+compiler/configure "${mit_scheme_compiler_target}" || exit $?
 
 AC_CONFIG_SUBDIRS([microcode])
 

@@ -1,11 +1,14 @@
 # MIT_SCHEME_NATIVE_CODE(SPEC, HOST_CPU)
-# ----------------------
+# --------------------------------------
 AC_DEFUN([MIT_SCHEME_NATIVE_CODE],[
 _mit_scheme_native_code_spec=$1
 _mit_scheme_native_code_host_cpu=$2
 
-case ${_mit_scheme_native_code_spec} in
-yes|YES|y|Y)
+AC_MSG_CHECKING([for native-code support])
+MIT_SCHEME_ARCHITECTURE([${_mit_scheme_native_code_spec}])
+
+case ${mit_scheme_architecture} in
+yes)
     case ${_mit_scheme_native_code_host_cpu} in
     i?86)
 	AC_CHECK_DECL([__x86_64__],
@@ -16,9 +19,8 @@ yes|YES|y|Y)
     ;;
 esac
 
-AC_MSG_CHECKING([for native-code support])
-case ${_mit_scheme_native_code_spec} in
-yes|YES|y|Y)
+case ${mit_scheme_architecture} in
+yes)
     case ${_mit_scheme_native_code_host_cpu} in
     i386)
 	mit_scheme_native_code=i386
@@ -27,27 +29,12 @@ yes|YES|y|Y)
 	mit_scheme_native_code=x86-64
 	;;
     *)
-	AC_MSG_ERROR([unable to determine native-code type])
+	AC_MSG_ERROR([unable to determine host architecture])
 	;;
     esac
     ;;
-c|C)
-    mit_scheme_native_code=c
-    ;;
-svm|svm1)
-    mit_scheme_native_code=svm1
-    ;;
-no|NO|none|NONE|n|N)
-    mit_scheme_native_code=none
-    ;;
-i?86|x86)
-    mit_scheme_native_code=i386
-    ;;
-x86-64|x86_64|amd64)
-    mit_scheme_native_code=x86-64
-    ;;
 *)
-    AC_MSG_ERROR([unknown native-code type: ${_mit_scheme_native_code_spec}])
+    mit_scheme_native_code=${mit_scheme_architecture}
     ;;
 esac
 
@@ -63,6 +50,37 @@ svm1)
     ;;
 *)
     AC_MSG_RESULT([yes, for ${mit_scheme_native_code}])
+    ;;
+esac
+])
+
+
+# MIT_SCHEME_ARCHITECTURE(SPEC)
+# -----------------------------
+AC_DEFUN([MIT_SCHEME_ARCHITECTURE],[
+_mit_scheme_architecture_spec=$1
+
+case ${_mit_scheme_architecture_spec} in
+yes|YES|y|Y)
+    mit_scheme_architecture=yes
+    ;;
+c|C)
+    mit_scheme_architecture=c
+    ;;
+svm|svm1)
+    mit_scheme_architecture=svm1
+    ;;
+no|NO|none|NONE|n|N)
+    mit_scheme_architecture=none
+    ;;
+i?86|x86)
+    mit_scheme_architecture=i386
+    ;;
+x86-64|x86_64|amd64)
+    mit_scheme_architecture=x86-64
+    ;;
+*)
+    AC_MSG_ERROR([unknown compiler architecture: ${_mit_scheme_architecture_spec}])
     ;;
 esac
 ])
