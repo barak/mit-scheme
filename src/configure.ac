@@ -82,6 +82,11 @@ fi
 : ${with_default_target=${DEFAULT_DEFAULT_TARGET}}
 DEFAULT_TARGET=${with_default_target}
 
+AC_ARG_WITH([scheme-build],
+    AS_HELP_STRING([--with-scheme-build],
+	[Use this directory for the Scheme compiler]))
+: ${with_scheme_build=default}
+
 AC_CANONICAL_HOST
 
 MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
@@ -145,9 +150,29 @@ AUXDIR='$(libdir)'/${AUXDIR_NAME}
 #   src/configure.ac
 #   src/etc/make-native.sh
 
-native_exe=mit-scheme-${mit_scheme_native_code}
-if test x"${enable_host_scheme_test}" = xno; then
-    : ${MIT_SCHEME_EXE=${native_exe}}
+if test x"${with_scheme_build}" != xdefault; then
+    AC_MSG_CHECKING([for specified MIT/GNU Scheme build])
+    case ${with_scheme_build} in
+    /*)
+        HOST_BUILD_DIR=${with_scheme_build}
+        ;;
+    *)
+        HOST_BUILD_DIR=`pwd`/${with_scheme_build}
+        ;;
+    esac
+    case ${HOST_BUILD_DIR} in
+    */)
+        ;;
+    *)
+        HOST_BUILD_DIR=${HOST_BUILD_DIR}/
+        ;;
+    esac
+    MIT_SCHEME_EXE=${HOST_BUILD_DIR}run-build
+    if "${MIT_SCHEME_EXE}" --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
+        AC_MSG_RESULT([yes, using ${MIT_SCHEME_EXE}])
+    else
+        AC_MSG_ERROR([no, unable to use ${MIT_SCHEME_EXE}])
+    fi
 else
     AC_MSG_CHECKING([for an existing MIT/GNU Scheme installation])
     # Kinda hairy logic to detect this: (1) Use MIT_SCHEME_EXE, and
@@ -157,38 +182,42 @@ else
     # it's guaranteed to have the right compiler.  (3) Try mit-scheme
     # if that fails.  (Will mit-scheme and not mit-scheme-ARCH ever be
     # the right thing?)
+    native_exe=mit-scheme-${mit_scheme_native_code}
     found_p=no
     env_p=no
-    if test x"${MIT_SCHEME_EXE}" != x; then
-	env_p=yes
-	if "${MIT_SCHEME_EXE}" --batch-mode --eval '(%exit)' >/dev/null 2>&1;
-	then
-	    found_p=yes
-	fi
+    if test x"${enable_host_scheme_test}" = xno; then
+        : ${MIT_SCHEME_EXE=${native_exe}}
+        found_p=yes
+    elif test x"${MIT_SCHEME_EXE}" != x; then
+        env_p=yes
+        if "${MIT_SCHEME_EXE}" --batch-mode --eval '(%exit)' >/dev/null 2>&1;
+        then
+            found_p=yes
+        fi
     elif "${native_exe}" --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
-	MIT_SCHEME_EXE="${native_exe}"
-	found_p=yes
+        MIT_SCHEME_EXE="${native_exe}"
+        found_p=yes
     elif mit-scheme --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
-	MIT_SCHEME_EXE=mit-scheme
-	found_p=yes
+        MIT_SCHEME_EXE=mit-scheme
+        found_p=yes
     fi
     if test x"${found_p}" = xyes; then
-	AC_MSG_RESULT([yes, using ${MIT_SCHEME_EXE}])
-	# To get some version numbers into the build log:
-	${MIT_SCHEME_EXE} --version
+        AC_MSG_RESULT([yes, using ${MIT_SCHEME_EXE}])
+        # To get some version numbers into the build log:
+        ${MIT_SCHEME_EXE} --version
     else
-	message=
-	if test x"${env_p}" = xyes; then
-	    message="the MIT_SCHEME_EXE environment variable does not run it:
+        message=
+        if test x"${env_p}" = xyes; then
+            message="the MIT_SCHEME_EXE environment variable does not run it:
 
    MIT_SCHEME_EXE=${MIT_SCHEME_EXE}"
-	else
-	    message="the following programs do not run it:
+        else
+            message="the following programs do not run it:
 
    ${native_exe}
    mit-scheme"
-	fi
-	AC_MSG_ERROR([
+        fi
+        AC_MSG_ERROR([
 This script needs an existing MIT/GNU Scheme installation to function,
 but ${message}
 
