@@ -38,7 +38,7 @@ fi
 AC_ARG_ENABLE([debugging],
     AS_HELP_STRING([--enable-debugging],
 	[Compile with debugging support [[no]]]))
-: ${enable_debugging='no'}
+: ${enable_debugging=no}
 
 AC_ARG_ENABLE([native-code],
     AS_HELP_STRING([--enable-native-code],
@@ -66,24 +66,27 @@ AC_ARG_ENABLE([cross-compiling],
 if test "x${enable_cross_compiling}" = xyes; then
     IF_CROSS=
 else
-    IF_CROSS=\#
+    IF_CROSS='#!cross-compiling: '
 fi
 
 AC_ARG_WITH([default-target],
     AS_HELP_STRING([--with-default-target],
 	[Set the default make target [[all]]]))
 if test x"${IS_NATIVE_RELEASE}" = xyes; then
-    : ${with_default_target=compile-microcode}
+    DEFAULT_DEFAULT_TARGET=compile-microcode
+elif test "x${enable_cross_compiling}" = xyes; then
+    DEFAULT_DEFAULT_TARGET=cross-host
 else
-    : ${with_default_target=all}
+    DEFAULT_DEFAULT_TARGET=all
 fi
+: ${with_default_target=${DEFAULT_DEFAULT_TARGET}}
 DEFAULT_TARGET=${with_default_target}
 
 AC_CANONICAL_HOST
 
 MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
-IF_LIARC=\#
-IF_SVM=\#
+IF_LIARC='#!LIARC: '
+IF_SVM='#!SVM: '
 case ${mit_scheme_native_code} in
 c)
     ALL_TARGET=all-liarc
@@ -105,6 +108,7 @@ svm1)
 esac
 
 AC_MSG_CHECKING([for compiler target])
+IF_SVM_COMPILER='#!SVM compiler: '
 MIT_SCHEME_ARCHITECTURE([${with_compiler_target}])
 case ${mit_scheme_architecture} in
 yes)
@@ -124,6 +128,7 @@ c)
     ;;
 svm1)
     AC_MSG_RESULT([yes, using portable SVM code])
+    IF_SVM_COMPILER=
     ;;
 *)
     AC_MSG_RESULT([yes, for ${mit_scheme_compiler_target}])
@@ -214,6 +219,7 @@ AC_SUBST([AUXDIR])
 AC_SUBST([IF_CROSS])
 AC_SUBST([IF_LIARC])
 AC_SUBST([IF_SVM])
+AC_SUBST([IF_SVM_COMPILER])
 AC_SUBST([HOST_COMPILER_HEAP])
 
 AC_PROG_INSTALL

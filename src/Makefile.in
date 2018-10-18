@@ -70,29 +70,6 @@ MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
 AUXDIR_NAME = @AUXDIR_NAME@
 AUXDIR = @AUXDIR@
 
-default-target: @DEFAULT_TARGET@
-
-all: @ALL_TARGET@
-
-check:
-	./microcode/scheme --library lib --batch-mode \
-	  --load ../tests/check.scm --eval '(%exit)'
-
-all-native: microcode/scheme
-all-native: lib/runtime.com
-all-native: lib/all.com
-all-native: all-compiler
-all-native: all-cref
-all-native: all-ffi
-all-native: all-runtime
-all-native: all-sf
-all-native: all-sos
-all-native: all-ssp
-all-native: all-star-parser
-all-native: all-win32
-all-native: all-xml
-all-native: cross-target
-
 @IF_CROSS@COMPILER_SETTINGS_CROSS = (set! compiler:cross-compiling? true)
 @IF_LIARC@COMPILER_SETTINGS_LIARC = (set! compiler:invoke-c-compiler? false)
 HOST_COMPILER_HEAP = @HOST_COMPILER_HEAP@
@@ -107,28 +84,32 @@ HOST_COMPILER = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) \
 HOST_RUNTIME_ONLY = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) \
   --band runtime.com --load runtime/host-adapter.scm
 
-.PHONY: microcode/scheme
-@IF_LIARC@microcode/scheme: all-runtime
-@IF_SVM@microcode/scheme: microcode/svm1-defns.h
-microcode/scheme:
-	(cd microcode && $(MAKE) all)
+# This rule is for LIARC.
+.SUFFIXES: .bld .pkd .c
+.pkd.c .bld.c:
+	echo '(cbf "$<")' | $(HOST_COMPILER)
 
-microcode/svm1-defns.h: compiler/machines/svm/svm1-defns.h
-	@$(top_srcdir)/etc/maybe-update-file.sh \
-	  compiler/machines/svm/svm1-defns.h \
-	  microcode/svm1-defns.h
 
-compiler/machines/svm/svm1-defns.h: \
-	  compiler/machines/svm/assembler-rules.scm \
-	  compiler/machines/svm/machine.scm \
-	  compiler/machines/svm/assembler-compiler.scm \
-	  compiler/machines/svm/assembler-runtime.scm \
-	  compiler/machines/svm/compile-assembler.scm
-	( cd compiler/machines/svm/ \
-	  && "$(MIT_SCHEME_EXE)" --batch-mode \
-	        --load ../../../runtime/host-adapter.scm \
-	        --load compile-assembler \
-		</dev/null )
+.PHONY: default-target
+default-target: @DEFAULT_TARGET@
+
+.PHONY: all
+all: @ALL_TARGET@
+
+.PHONY: all-native
+all-native: microcode/scheme
+all-native: lib/runtime.com
+all-native: lib/all.com
+all-native: all-compiler
+all-native: all-cref
+all-native: all-ffi
+all-native: all-runtime
+all-native: all-sf
+all-native: all-sos
+all-native: all-ssp
+all-native: all-star-parser
+all-native: all-win32
+all-native: all-xml
 
 # XXX This should really depend on microcode/gen-nonce and
 # microcode/extract-liarc-decls instead of microcode/scheme, but
@@ -139,198 +120,166 @@ compiler/machines/svm/svm1-defns.h: \
 .PHONY: liarc-bundle-tools
 liarc-bundle-tools: microcode/scheme
 
-lib/runtime.com: all-runtime
-lib/runtime.com: cross-target
+################
+# Microcode
+################
+
+@IF_LIARC@microcode/scheme: all-runtime
+@IF_SVM@microcode/scheme: microcode/svm1-defns.h
+microcode/scheme:
+	(cd microcode && $(MAKE) all)
+
+.PHONY: compile-microcode
+compile-microcode: microcode/scheme
+
+stamp_install-microcode: compile-microcode
+	(cd microcode; $(MAKE) install)
+	echo "done" > $@
+
+microcode/svm1-defns.h: compiler/machines/svm/svm1-defns.h
+	@$(top_srcdir)/etc/maybe-update-file.sh \
+	  compiler/machines/svm/svm1-defns.h \
+	  microcode/svm1-defns.h
+
+################
+# Bands
+################
+
 lib/runtime.com: microcode/scheme
+lib/runtime.com: all-runtime
+@IF_CROSS@lib/runtime.com: stamp_cross-finished
 	(. etc/functions.sh && get_fasl_file && cd runtime \
 	  && (echo '(disk-save "../$@")' \
 	       | ../microcode/scheme --batch-mode --library ../lib \
 	           --fasl "$${FASL}"))
 
+lib/all.com: microcode/scheme
+lib/all.com: lib/runtime.com
 lib/all.com: all-compiler
 lib/all.com: all-sf
-lib/all.com: lib/runtime.com
-lib/all.com: microcode/scheme
+lib/all.com: all-cref
+@IF_CROSS@lib/all.com: stamp_cross-finished
 	(echo '(begin' && \
 	 echo '  (load-option (quote compiler))' && \
 	 echo '  (load-option (quote sf))' && \
 	 echo '  (disk-save "$@"))') \
 	| ./microcode/scheme --batch-mode --library lib --band runtime.com
 
-.PHONY: save
-save:
-	@echo 'Saving objects...'
-	@rm -rf saved-objects && \
-	mkdir saved-objects && \
-	( \
-	  find $(SUBDIRS) -type f \
-	    \( \
-	      -name '*.bci' -o \
-	      -name '*.bin' -o \
-	      -name '*.c' -o \
-	      -name '*.com' -o \
-	      -name '*.crf' -o \
-	      -name '*.ext' -o \
-	      -name '*.fre' -o \
-	      -name '*.moc' -o \
-	      -name '*.o' -o \
-	      -name '*.pkd' -o \
-	      -name '*.so' -o \
-	      -false \
-	    \) \
-	    -print0 \
-	  | pax -rw -pe -l -v -d -0 saved-objects/. \
-	) || { rm -rf saved-objects; exit 1; }
-
-.PHONY: restore
-restore:
-	@echo 'Restoring objects...'
-	@if ! test -d saved-objects; then exit 1; fi && \
-	(cd saved-objects && pax -rw -pe -v . ../../.)
-
-# This rule is for LIARC.
-.SUFFIXES: .bld .pkd .c
-.pkd.c .bld.c:
-	echo '(cbf "$<")' | $(HOST_COMPILER)
-
 ################
 # Runtime
 ################
 
 .PHONY: all-runtime
-all-runtime: compile-runtime
+all-runtime: stamp_compile-runtime
 @IF_LIARC@all-runtime: bundle-runtime
 
-.PHONY: syntax-runtime
-syntax-runtime:
+stamp_compile-runtime:
 	(echo '(with-working-directory-pathname "runtime"' && \
-	 echo '  (lambda () (load "runtime.sf")))') \
+	 echo '  (lambda ()' && \
+	 echo '    (load "runtime.sf")' && \
+	 echo '    (load "runtime.cbf")))') \
 	| $(HOST_COMPILER)
-
-.PHONY: compile-runtime
-compile-runtime: syntax-runtime
-	(echo '(with-working-directory-pathname "runtime"' && \
-	 echo '  (lambda () (load "runtime.cbf")))') \
-	| $(HOST_COMPILER)
+	echo "done" > $@
 
 .PHONY: bundle-runtime
 bundle-runtime: runtime/runtime-unx.c
-bundle-runtime: runtime/runtime-w32.c
-
-# XXX Kludgey bogus rules for LIARC.
-#runtime/runtime-w32.pkd: runtime/runtime-unx.pkd
 
 ################
 # SF
 ################
 
 .PHONY: all-sf
-all-sf: compile-sf
+all-sf: stamp_compile-sf
 @IF_LIARC@all-sf: bundle-sf
 
-.PHONY: syntax-sf
-syntax-sf:
+stamp_compile-sf:
 	(echo '(with-working-directory-pathname "sf"' && \
-	 echo '  (lambda () (load "sf.sf")))') \
+	 echo '  (lambda () (load "sf.sf") (load "sf.cbf")))') \
 	| $(HOST_COMPILER)
-
-.PHONY: compile-sf
-compile-sf: syntax-sf
-	(echo '(with-working-directory-pathname "sf"' && \
-	 echo '  (lambda () (load "sf.cbf")))') \
-	| $(HOST_COMPILER)
+	echo "done" > $@
 
 .PHONY: bundle-sf
 bundle-sf: liarc-bundle-tools
-bundle-sf: compile-sf
+bundle-sf: stamp_compile-sf
 bundle-sf: sf/sf-unx.c
-bundle-sf: sf/sf-w32.c
 	(cd sf && $(MAKE) compile-liarc-bundle)
 
-# XXX Kludgey bogus rules for liarc.
-#sf/sf-w32.pkd: sf/sf-unx.pkd
-
-################
+#################
 # Compiler (LIAR)
-################
+#################
 
 .PHONY: all-compiler
-all-compiler: compile-compiler
+all-compiler: stamp_compile-compiler
 @IF_LIARC@all-compiler: bundle-compiler
 
-.PHONY: syntax-compiler
-@IF_SVM@syntax-compiler: compiler/machines/svm/svm1-defns.h
-syntax-compiler: syntax-sf
+stamp_syntax-compiler: stamp_compile-sf
+@IF_SVM_COMPILER@stamp_syntax-compiler: compiler/machines/svm/svm1-defns.h
 	(echo '(with-working-directory-pathname "compiler"' && \
 	 echo '  (lambda () (load "compiler.sf")))') \
 	| $(HOST_RUNTIME_ONLY)
+	echo "done" > $@
 
-.PHONY: compile-compiler
-compile-compiler: syntax-compiler
+stamp_compile-compiler: stamp_syntax-compiler
 	(echo '(with-working-directory-pathname "compiler"' && \
 	 echo '  (lambda () (load "compiler.cbf")))') \
 	| $(HOST_COMPILER)
+	echo "done" > $@
 
 .PHONY: bundle-compiler
 bundle-compiler: liarc-bundle-tools
-bundle-compiler: compile-compiler
+bundle-compiler: stamp_compile-compiler
 bundle-compiler: compiler/compiler-unx.c
-bundle-compiler: compiler/compiler-w32.c
 	(cd compiler && $(MAKE) compile-liarc-bundle)
+
+compiler/machines/svm/svm1-defns.h: \
+	  compiler/machines/svm/assembler-rules.scm \
+	  compiler/machines/svm/machine.scm \
+	  compiler/machines/svm/assembler-compiler.scm \
+	  compiler/machines/svm/assembler-runtime.scm \
+	  compiler/machines/svm/compile-assembler.scm
+	(echo '(with-working-directory-pathname "compiler/machines/svm"' && \
+	 echo '  (lambda () (load "compile-assembler")))') \
+	| $(HOST_RUNTIME_ONLY)
 
 ################
 # CREF
 ################
 
 .PHONY: all-cref
-all-cref: compile-cref
+all-cref: stamp_compile-cref
 @IF_LIARC@all-cref: bundle-cref
 
-.PHONY: syntax-cref
-syntax-cref:
+stamp_compile-cref:
 	(echo '(with-working-directory-pathname "cref"' && \
-	 echo '  (lambda () (load "cref.sf")))') \
+	 echo '  (lambda () (load "cref.sf") (load "cref.cbf")))') \
 	| $(HOST_COMPILER)
-
-.PHONY: compile-cref
-compile-cref: syntax-cref
-	(echo '(with-working-directory-pathname "cref"' && \
-	 echo '  (lambda () (load "cref.cbf")))') \
-	| $(HOST_COMPILER)
+	echo "done" > $@
 
 .PHONY: bundle-cref
 bundle-cref: liarc-bundle-tools
-bundle-cref: compile-cref
+bundle-cref: stamp_compile-cref
 bundle-cref: cref/cref-unx.c
-bundle-cref: cref/cref-w32.c
 	(cd cref && $(MAKE) compile-liarc-bundle)
-
-# XXX Kludgey bogus rules for LIARC.
-#cref/cref-w32.pkd: cref/cref-unx.pkd
 
 ################
 # *PARSER
 ################
 
 .PHONY: all-star-parser
-all-star-parser: compile-star-parser
+all-star-parser: stamp_compile-star-parser
 @IF_LIARC@all-star-parser: bundle-star-parser
 
-.PHONY: compile-star-parser
-compile-star-parser:
+stamp_compile-star-parser: stamp_compile-runtime
 	(echo '(with-working-directory-pathname "star-parser"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(HOST_COMPILER)
+	echo "done" > $@
 
 .PHONY: bundle-star-parser
 bundle-star-parser: liarc-bundle-tools
-bundle-star-parser: compile-star-parser
+bundle-star-parser: stamp_compile-star-parser
 bundle-star-parser: star-parser/parser-unx.c
-bundle-star-parser: star-parser/parser-w32.c
 	(cd star-parser && $(MAKE) compile-liarc-bundle)
-
-# XXX Kludgey bogus rules for LIARC.
-#star-parser/parser-w32.pkd: star-parser/parser-unx.pkd
 
 ### More stuff we build with tools.  We could build it with the newly
 ### built compiler in the native case, but we want to avoid having to
@@ -341,154 +290,124 @@ bundle-star-parser: star-parser/parser-w32.c
 ################
 
 .PHONY: all-ffi
-all-ffi: compile-ffi
+all-ffi: stamp_compile-ffi
 @IF_LIARC@all-ffi: bundle-ffi
 
-.PHONY: compile-ffi
-compile-ffi:
+stamp_compile-ffi: stamp_compile-runtime
 	(echo '(with-working-directory-pathname "ffi"' && \
 	 echo '  (lambda () (load "compile.scm")))') \
 	| $(HOST_COMPILER)
+	echo "done" > $@
 
 .PHONY: bundle-ffi
 bundle-ffi: liarc-bundle-tools
-bundle-ffi: compile-ffi
+bundle-ffi: stamp_compile-ffi
 bundle-ffi: ffi/ffi-unx.c
-bundle-ffi: ffi/ffi-w32.c
 	(cd ffi && $(MAKE) compile-liarc-bundle)
-
-# XXX Kludgey bogus rules for LIARC.
-#ffi/ffi-w32.pkd: ffi/ffi-unx.pkd
 
 ################
 # SOS
 ################
 
 .PHONY: all-sos
-all-sos: compile-sos
+all-sos: stamp_compile-sos
 @IF_LIARC@all-sos: bundle-sos
 
-.PHONY: compile-sos
-compile-sos:
+stamp_compile-sos: stamp_compile-runtime
 	(echo '(with-working-directory-pathname "sos"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(HOST_COMPILER)
+	echo "done" > $@
 
 .PHONY: bundle-sos
 bundle-sos: liarc-bundle-tools
-bundle-sos: compile-sos
+bundle-sos: stamp_compile-sos
 bundle-sos: sos/sos-unx.c
-bundle-sos: sos/sos-w32.c
 	(cd sos && $(MAKE) compile-liarc-bundle)
-
-# XXX Kludgey bogus rules for LIARC.
-#sos/sos-w32.pkd: sos/sos-unx.pkd
 
 ################
 # SSP
 ################
 
 .PHONY: all-ssp
-all-ssp: compile-ssp
+all-ssp: stamp_compile-ssp
 @IF_LIARC@all-ssp: bundle-ssp
 
-.PHONY: compile-ssp
-compile-ssp: compile-xml
+stamp_compile-ssp: stamp_compile-runtime stamp_compile-xml
 	(echo '(with-working-directory-pathname "ssp"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(HOST_COMPILER)
+	echo "done" > $@
 
 .PHONY: bundle-ssp
 bundle-ssp: liarc-bundle-tools
-bundle-ssp: compile-ssp
+bundle-ssp: stamp_compile-ssp
 bundle-ssp: ssp/ssp-unx.c
-bundle-ssp: ssp/ssp-w32.c
 	(cd ssp && $(MAKE) compile-liarc-bundle)
-
-# XXX Kludgey bogus rules for LIARC.
-#ssp/ssp-w32.pkd: ssp/ssp-unx.pkd
 
 ################
 # Windows FFI
 ################
 
 .PHONY: all-win32
-all-win32: compile-win32
+all-win32: stamp_compile-win32
 
-.PHONY: syntax-win32
-syntax-win32:
+stamp_compile-win32: stamp_compile-runtime
 	(echo '(with-working-directory-pathname "win32"' && \
-	 echo '  (lambda () (load "win32.sf")))') \
+	 echo '  (lambda () (load "win32.sf") (load "win32.cbf")))') \
 	| $(HOST_COMPILER)
-
-.PHONY: compile-win32
-compile-win32: syntax-win32
-	(echo '(with-working-directory-pathname "win32"' && \
-	 echo '  (lambda () (load "win32.cbf")))') \
-	| $(HOST_COMPILER)
-
-# XXX Kludgey bogus rules for liarc.
-#win32/win32-w32.pkd: win32/win32-unx.pkd
+	echo "done" > $@
 
 ################
 # XML
 ################
 
 .PHONY: all-xml
-all-xml: compile-xml
+all-xml: stamp_compile-xml
 @IF_LIARC@all-xml: bundle-xml
 
-.PHONY: compile-xml
-compile-xml: compile-star-parser
+stamp_compile-xml: stamp_compile-runtime stamp_compile-sos stamp_compile-star-parser
 	(echo '(with-working-directory-pathname "xml"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(HOST_COMPILER)
+	echo "done" > $@
 
 .PHONY: bundle-xml
 bundle-xml: liarc-bundle-tools
-bundle-xml: compile-xml
+bundle-xml: stamp_compile-xml
 bundle-xml: xml/xml-unx.c
-bundle-xml: xml/xml-w32.c
 	(cd xml && $(MAKE) compile-liarc-bundle)
 
-# XXX Kludgey bogus rules for liarc.
-#xml/xml-w32.pkd: xml/xml-unx.pkd
-
-################################
-### Cross-compilation finish-up.
-################################
+#####################
+### Cross compilation
+#####################
 
 # We split this up into two targets, cross-host and cross-target, so
 # that you can type `make cross-host' to do everything on the
-# cross-compilation host, transfer everything over, and then run `make'
-# to do the rest, since the default target depends on cross-target.
-# (Rsync should help iterating this process.)
+# cross-compilation host, transfer everything over, and then run `make
+# target' to do the rest.
 #
 # Anything that depends on running the target code should depend on
 # cross-target, and there should be a plan for obviating the need to
 # run the target code.
 
 .PHONY: cross-host
-cross-host: compile-compiler
-cross-host: compile-cref
-cross-host: compile-ffi
-cross-host: compile-runtime
-cross-host: compile-sf
-cross-host: compile-sos
-cross-host: compile-ssp
-cross-host: compile-star-parser
-cross-host: compile-win32
-cross-host: compile-xml
-cross-host: microcode/scheme
-cross-host: syntax-compiler
-cross-host: syntax-runtime
+cross-host: stamp_compile-compiler
+cross-host: stamp_compile-cref
+cross-host: stamp_compile-ffi
+cross-host: stamp_compile-runtime
+cross-host: stamp_compile-sf
+cross-host: stamp_compile-sos
+cross-host: stamp_compile-ssp
+cross-host: stamp_compile-star-parser
+cross-host: stamp_compile-win32
+cross-host: stamp_compile-xml
+	echo "done" > stamp_$@
 
 .PHONY: cross-target
-cross-target: cross-host
-@IF_CROSS@cross-target: cross-end
+cross-target: stamp_cross-finished lib/runtime.com lib/all.com
 
-.PHONY: cross-end
-cross-end: cross-host
+stamp_cross-finished: stamp_cross-host microcode/scheme
 	(echo '(let ((env (->environment (quote (runtime)))))' && \
 	 echo '  (load "../compiler/base/crsend" env)' && \
 	 echo '  ((access finish-cross-compilation:files env) ".."))') \
@@ -499,31 +418,71 @@ cross-end: cross-host
 	 echo '  ((access finish-cross-compilation:info-files env) ".."))') \
 	 | (cd runtime && ../microcode/scheme --batch-mode --library ../lib \
 					      --fasl make.com)
+	echo "done" > $@
 
-# **** Legacy serialized targets ****
+################
+# Miscellany
+################
 
-all-liarc:
-	@$(top_srcdir)/etc/c-compile.sh "$(MIT_SCHEME_EXE)" --batch-mode
-	$(MAKE) compile-liarc-bundles build-bands
+.PHONY: check
+check:
+	./microcode/scheme --library lib --batch-mode \
+	  --load ../tests/check.scm --eval '(%exit)'
 
+.PHONY: macosx-app
 macosx-app: stamp_macosx-app
 
 stamp_macosx-app: all
 	etc/macosx/make-app.sh
 	echo "done" > $@
 
-compile-microcode:
-	(cd microcode && $(MAKE) all)
+.PHONY: mostlyclean clean distclean maintainer-clean c-clean
+mostlyclean clean distclean maintainer-clean c-clean:
+	$(top_srcdir)/Clean.sh $@ $(SUBDIRS)
 
-stamp_install-microcode: compile-microcode
-	(cd microcode; $(MAKE) install)
-	echo "done" > $@
+.PHONY: clean-boot-root
+clean-boot-root:
+	rm -rf boot-root
+	rm -f stamp_*
 
+.PHONY: tags TAGS
+tags TAGS:
+	$(top_srcdir)/Tags.sh $(SUBDIRS)
+
+.PHONY: subdir-list
+subdir-list:
+	@for D in $(SUBDIRS); do echo $$D; done
+
+.PHONY: install
+install: install-standard @INSTALL_LIARC_BUNDLES@
+
+.PHONY: install-standard
+install-standard: install-auxdir-top
+	etc/make-in-subdirs.sh install $(INSTALLED_SUBDIRS)
+
+.PHONY: install-auxdir-top
+install-auxdir-top:
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
+	$(INSTALL_DATA) $(top_srcdir)/etc/optiondb.scm $(DESTDIR)$(AUXDIR)/.
+	$(INSTALL_DATA) $(top_srcdir)/etc/plugins.scm $(DESTDIR)$(AUXDIR)/.
+	$(INSTALL_DATA) lib/*.com $(DESTDIR)$(AUXDIR)/.
+
+################
+# Legacy
+################
+
+.PHONY: all-liarc
+all-liarc:
+	@$(top_srcdir)/etc/c-compile.sh "$(MIT_SCHEME_EXE)" --batch-mode
+	$(MAKE) compile-liarc-bundles build-bands
+
+.PHONY: build-bands
 build-bands:
 	@$(top_srcdir)/etc/build-bands.sh
 
 # **** Make liarc distribution from native ****
 
+.PHONY: liarc-dist
 liarc-dist:
 	@$(top_srcdir)/etc/compile-boot-compiler.sh "$(MIT_SCHEME_EXE)"
 	@$(top_srcdir)/etc/c-prepare.sh "$(MIT_SCHEME_EXE)"
@@ -555,9 +514,11 @@ stamp_liarc-compile-scheme:
 stamp_compile-liarc-bundles: stamp_liarc-compile-scheme compile-liarc-bundles
 	echo "done" > $@
 
+.PHONY: compile-liarc-bundles
 compile-liarc-bundles: compile-microcode
 	etc/make-in-subdirs.sh compile-liarc-bundle $(LIARC_BUNDLES)
 
+.PHONY: install-liarc-bundles
 install-liarc-bundles:
 	etc/make-in-subdirs.sh install-liarc-bundle $(LIARC_BUNDLES)
 
@@ -576,33 +537,37 @@ stamp_native-compile-scheme: compile-microcode
 	    --library boot-root/lib/$(AUXDIR_NAME) --band boot-compiler.com
 	echo "done" > $@
 
+##########################
+### Save/restore utilities
+##########################
 
-mostlyclean clean distclean maintainer-clean c-clean:
-	$(top_srcdir)/Clean.sh $@ $(SUBDIRS)
+.PHONY: save
+save:
+	@echo 'Saving objects...'
+	@rm -rf saved-objects && \
+	mkdir saved-objects && \
+	( \
+	  find $(SUBDIRS) -type f \
+	    \( \
+	      -name '*.bci' -o \
+	      -name '*.bin' -o \
+	      -name '*.c' -o \
+	      -name '*.com' -o \
+	      -name '*.crf' -o \
+	      -name '*.ext' -o \
+	      -name '*.fre' -o \
+	      -name '*.moc' -o \
+	      -name '*.o' -o \
+	      -name '*.pkd' -o \
+	      -name '*.so' -o \
+	      -false \
+	    \) \
+	    -print0 \
+	  | pax -rw -pe -l -v -d -0 saved-objects/. \
+	) || { rm -rf saved-objects; exit 1; }
 
-clean-boot-root:
-	rm -rf boot-root
-	rm -f stamp_*
-
-tags TAGS:
-	$(top_srcdir)/Tags.sh $(SUBDIRS)
-
-subdir-list:
-	@for D in $(SUBDIRS); do echo $$D; done
-
-install: install-standard @INSTALL_LIARC_BUNDLES@
-
-install-standard: install-auxdir-top
-	etc/make-in-subdirs.sh install $(INSTALLED_SUBDIRS)
-
-install-auxdir-top:
-	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
-	$(INSTALL_DATA) $(top_srcdir)/etc/optiondb.scm $(DESTDIR)$(AUXDIR)/.
-	$(INSTALL_DATA) $(top_srcdir)/etc/plugins.scm $(DESTDIR)$(AUXDIR)/.
-	$(INSTALL_DATA) lib/*.com $(DESTDIR)$(AUXDIR)/.
-
-.PHONY: default-target all all-native all-liarc macosx-app
-.PHONY: compile-microcode build-bands
-.PHONY: liarc-dist compile-liarc-bundles install-liarc-bundles
-.PHONY: mostlyclean clean distclean maintainer-clean c-clean clean-boot-root
-.PHONY: tags TAGS subdir-list install install-standard install-auxdir-top
+.PHONY: restore
+restore:
+	@echo 'Restoring objects...'
+	@if ! test -d saved-objects; then exit 1; fi && \
+	(cd saved-objects && pax -rw -pe -v . ../../.)
