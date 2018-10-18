@@ -137,9 +137,9 @@ AC_ARG_WITH([termcap],
 
 dnl For reasons I don't understand, it is necessary to use
 dnl quadigraphs here instead of [[ ... ]].
-AC_ARG_WITH([macosx-version],
-    AS_HELP_STRING([--with-macosx-version],
-	[MacOSX version to compile for @<:@host's version@:>@]))
+AC_ARG_WITH([macos-version],
+    AS_HELP_STRING([--with-macos-version],
+	[macOS version to compile for @<:@host's version@:>@]))
 
 AC_ARG_WITH([module-loader],
     AS_HELP_STRING([--with-module-loader],
@@ -262,68 +262,68 @@ dragonfly*)
     GNU_LD=yes
     ;;
 darwin*)
-    if test -n "${with_macosx_version}"; then
-	MACOSX=${with_macosx_version}
-	MACOSX_CFLAGS="-mmacosx-version-min=${MACOSX}"
+    if test -n "${with_macos_version}"; then
+	MACOS=${with_macos_version}
+	MACOS_CFLAGS="-mmacosx-version-min=${MACOS}"
     else
-	MACOSX=`sw_vers | ${GREP} ^ProductVersion: \
+	MACOS=`sw_vers | ${GREP} ^ProductVersion: \
 	    | ${EGREP} -o '[[0-9]+\.[0-9]+]'`
-	if test -z "${MACOSX}"; then
-	    AC_MSG_ERROR([Unable to determine MacOSX version])
+	if test -z "${MACOS}"; then
+	    AC_MSG_ERROR([Unable to determine macOS version])
 	fi
-	MACOSX_CFLAGS=
+	MACOS_CFLAGS=
     fi
-    if test "${MACOSX}" = 10.4; then
-	SDK=MacOSX${MACOSX}u
+    if test "${MACOS}" = 10.4; then
+	SDK=MacOSX${MACOS}u
     else
-	SDK=MacOSX${MACOSX}
+	SDK=MacOSX${MACOS}
     fi
-    MACOSX_SDKS=
+    MACOS_SDKS=
     for dir in /Developer/SDKs \
     	/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs
     do
 	if test -d "${dir}"; then
-	    MACOSX_SDKS=${dir}
+	    MACOS_SDKS=${dir}
 	    break
 	fi
     done
-    if test -z "${MACOSX_SDKS}"; then
+    if test -z "${MACOS_SDKS}"; then
 	AC_MSG_WARN([Can't find SDKs directory, not checking for SDK])
     else
-        MACOSX_SYSROOT=
-        for sysroot in ${MACOSX_SDKS}/${SDK}.sdk ${MACOSX_SDKS}/MacOSX.sdk; do
+        MACOS_SYSROOT=
+        for sysroot in ${MACOS_SDKS}/MacOSX.sdk ${MACOS_SDKS}/${SDK}.sdk; do
             if test -d "${sysroot}"; then
-                MACOSX_SYSROOT=${sysroot}
-                MACOSX_CFLAGS="${MACOSX_CFLAGS} -isysroot ${sysroot}"
+                MACOS_SYSROOT=${sysroot}
+                MACOS_CFLAGS="${MACOS_CFLAGS} -isysroot ${sysroot}"
                 break
             fi
         done
-        if test -z "${MACOSX_SYSROOT}"; then
-            AC_MSG_ERROR([No MacOSX SDK for version: ${MACOSX}])
+        if test -z "${MACOS_SYSROOT}"; then
+            AC_MSG_ERROR([No macOS SDK for version: ${MACOS}])
         fi
     fi
-    MACOSX_CFLAGS="${MACOSX_CFLAGS} -fconstant-cfstrings"
-    MACOSX_CFLAGS="${MACOSX_CFLAGS} -DSIGNAL_HANDLERS_CAN_USE_SCHEME_STACK"
+    MACOS_CFLAGS="${MACOS_CFLAGS} -fconstant-cfstrings"
+    MACOS_CFLAGS="${MACOS_CFLAGS} -DSIGNAL_HANDLERS_CAN_USE_SCHEME_STACK"
     dnl needed for lgamma_r:
-    MACOSX_CFLAGS="${MACOSX_CFLAGS} -D_REENTRANT"
-    AC_MSG_NOTICE([Compiling for MacOSX version ${MACOSX}])
+    MACOS_CFLAGS="${MACOS_CFLAGS} -D_REENTRANT"
+    AC_MSG_NOTICE([Compiling for macOS version ${MACOS}])
     case ${mit_scheme_native_code} in
     i386)
-	MACOSX_CFLAGS="-arch i386 ${MACOSX_CFLAGS}"
+	MACOS_CFLAGS="-arch i386 ${MACOS_CFLAGS}"
 	AS_FLAGS="-arch i386 ${AS_FLAGS}"
 	SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
     	;;
     x86-64)
-	MACOSX_CFLAGS="-arch x86_64 ${MACOSX_CFLAGS}"
+	MACOS_CFLAGS="-arch x86_64 ${MACOS_CFLAGS}"
 	AS_FLAGS="-arch x86_64 ${AS_FLAGS}"
     	;;
     esac
     if ! cc --version | grep -q clang; then
         dnl -frounding-math not supported by clang.
-        MACOSX_CFLAGS="${MACOSX_CFLAGS} -frounding-math"
+        MACOS_CFLAGS="${MACOS_CFLAGS} -frounding-math"
     fi
-    CFLAGS="${CFLAGS} ${MACOSX_CFLAGS}"
-    LDFLAGS="${LDFLAGS} ${MACOSX_CFLAGS} -Wl,-syslibroot,${MACOSX_SYSROOT}"
+    CFLAGS="${CFLAGS} ${MACOS_CFLAGS}"
+    LDFLAGS="${LDFLAGS} ${MACOS_CFLAGS} -Wl,-syslibroot,${MACOS_SYSROOT}"
     LDFLAGS="${LDFLAGS} -framework CoreFoundation"
     AUX_PROGRAMS="${AUX_PROGRAMS} macosx-starter"
     ;;
