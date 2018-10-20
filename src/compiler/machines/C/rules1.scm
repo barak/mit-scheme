@@ -53,7 +53,7 @@ USA.
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-NON-POINTER (REGISTER (? type)) (REGISTER (? datum))))
-  (let* ((datum (standard-source! datum 'SCHEME_OBJECT*))
+  (let* ((datum (standard-source! datum 'ULONG))
 	 (type (standard-source! type 'ULONG))
 	 (target (standard-target! target 'SCHEME_OBJECT)))
     (LAP ,(c:= target (c:make-object type datum)))))
