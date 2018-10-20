@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme], [9.2], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_INIT([MIT/GNU Scheme], [9.2.90], [bug-mit-scheme@gnu.org], [mit-scheme])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_CONFIG_AUX_DIR([microcode])
 AC_PROG_MAKE_SET
@@ -127,18 +127,11 @@ AUXDIR='$(libdir)'/${AUXDIR_NAME}
 if test x"${with_scheme_build}" != xdefault; then
     AC_MSG_CHECKING([for specified MIT/GNU Scheme build])
     case ${with_scheme_build} in
-    /*)
+    */)
         HOST_BUILD_DIR=${with_scheme_build}
         ;;
     *)
-        HOST_BUILD_DIR=`pwd`/${with_scheme_build}
-        ;;
-    esac
-    case ${HOST_BUILD_DIR} in
-    */)
-        ;;
-    *)
-        HOST_BUILD_DIR=${HOST_BUILD_DIR}/
+        HOST_BUILD_DIR=${with_scheme_build}/
         ;;
     esac
     MIT_SCHEME_EXE=${HOST_BUILD_DIR}run-build
