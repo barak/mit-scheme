@@ -89,7 +89,6 @@ HOST_RUNTIME_ONLY = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) \
 .pkd.c .bld.c:
 	echo '(cbf "$<")' | $(HOST_COMPILER)
 
-
 .PHONY: default-target
 default-target: @DEFAULT_TARGET@
 
@@ -249,7 +248,7 @@ compiler/machines/svm/svm1-defns.h: \
 all-cref: stamp_compile-cref
 @IF_LIARC@all-cref: bundle-cref
 
-stamp_compile-cref:
+stamp_compile-cref: stamp_compile-runtime
 	(echo '(with-working-directory-pathname "cref"' && \
 	 echo '  (lambda () (load "cref.sf") (load "cref.cbf")))') \
 	| $(HOST_COMPILER)
