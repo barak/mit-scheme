@@ -176,7 +176,7 @@ USA.
 		   (if (eq? type* 'DOUBLE)
 		       reg
 		       (reg-select reg type)))))
-    
+
     (cond ((register-is-machine-register? reg)
 	   (if (not (compatible/C*register? type (register-type reg)))
 	       (error "standard-target!: Incompatible type register" reg type))
@@ -220,7 +220,12 @@ USA.
     permanent-register-list)))
 
 (define (standard-move-to-target! src tgt)
-  (let ((src-type (register-type src)))
+  (let ((src-type (register-type src))
+	(assign
+	 (lambda (tgt src)
+	   (if (equal? tgt src)
+	       (lap)
+	       (lap ,(c:= tgt src))))))
     (cond ((not (eq? (register-type tgt) src-type))
 	   (comp-internal-error "Incompatible registers"
 				'STANDARD-MOVE-TO-TARGET!
@@ -228,11 +233,11 @@ USA.
 	  ((register-is-machine-register? tgt)
 	   (let ((src (standard-source! src
 					(machine-register-type-symbol tgt))))
-	     (LAP ,(c:= (machine-register-name tgt) src))))
+	     (assign (machine-register-name tgt) src)))
 	  ((register-is-machine-register? src)
 	   (let ((tgt (standard-target! tgt
 					(machine-register-type-symbol src))))
-	     (LAP ,(c:= tgt (machine-register-name src)))))
+	     (assign tgt (machine-register-name src))))
 	  (else
 	   (let ((reg-type
 		  (case src-type
@@ -242,8 +247,8 @@ USA.
 		     (comp-internal-error "Unknown RTL register type"
 					  'STANDARD-MOVE-TO-TARGET!
 					  src-type)))))
-	     (LAP ,(c:= (find-register! tgt reg-type)
-			(find-register! src reg-type))))))))
+	     (assign (find-register! tgt reg-type)
+		     (find-register! src reg-type)))))))
 
 ;;;; Communicate with "cout.scm"
 
@@ -510,7 +515,7 @@ USA.
 (define (define-label! label)
   (set! labels
 	(cons (vector label #f
-		      (generate-new-label-symbol "LABEL_")    
+		      (generate-new-label-symbol "LABEL_")
 		      #f #f #f #f)
 	      labels))
   unspecific)
