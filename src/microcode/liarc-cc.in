@@ -34,7 +34,7 @@ shift
 IN=${1}
 shift
 
-CMD="@CC@ @DEFS@ @SCHEME_DEFS@ @CPPFLAGS@ @CFLAGS@ @MODULE_CFLAGS@"
+CMD="@CC@ @DEFS@ @SCHEME_DEFS@ @CPPFLAGS@ @CFLAGS@"
 CMD="${CMD} ${@} -o ${OUT} -c ${IN}"
 echo "${CMD}"
 eval "${CMD}"
