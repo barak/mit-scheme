@@ -82,7 +82,7 @@ USA.
   (indentation c:line-indentation)
   (text c:line-text))
 
-(define-printer-method c:line?
+(define-print-method c:line?
   (lambda (line port)
     (c:write-line line port)))
 
