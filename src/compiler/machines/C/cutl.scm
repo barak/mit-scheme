@@ -82,6 +82,10 @@ USA.
   (indentation c:line-indentation)
   (text c:line-text))
 
+(define-printer-method c:line?
+  (lambda (line port)
+    (c:write-line line port)))
+
 (define-guarantee c:line "C line")
 
 (define (c:line . items)
@@ -145,6 +149,10 @@ USA.
     (c:%make-group lines)
     c:group?
   (lines c:group-lines))
+
+(define-print-method c:group?
+  (lambda (group port)
+    (c:write-group group port)))
 
 (define-guarantee c:group "C group")
 

@@ -1126,7 +1126,8 @@ USA.
   (cond ((and (pair? instruction)
 	      (eq? (car instruction) 'label))
 	 (write (cadr instruction) port)
-	 (write-char #\: port))
+	 (write-char #\: port)
+	 (newline port))
 	((and (pair? instruction)
 	      (eq? (car instruction) 'comment))
 	 (write-char #\tab port)
@@ -1138,11 +1139,15 @@ USA.
 				(cadr frob)
 				frob)
 			    port))
-		   (cdr instruction)))
+		   (cdr instruction))
+	 (newline port))
+	((record? instruction)
+	 ;; Handles c:line and c:group instructions.
+	 (write instruction port))
 	(else
 	 (write-char #\tab port)
-	 (write instruction port)))
-  (newline port))
+	 (write instruction port)
+	 (newline port))))
 
 (define (rtl/lap-file-header tag scode port)
   (write-char #\page port)
