@@ -130,6 +130,11 @@ AC_ARG_ENABLE([native-code],
 	[Support native compiled code if available [[yes]]]))
 : ${enable_native_code='yes'}
 
+AC_ARG_WITH([compiler-target],
+    AS_HELP_STRING([--with-compiler-target],
+	[Compiler target architecture [[same as native code]]]))
+: ${with_compiler_target=yes}
+
 AC_ARG_WITH([termcap],
     AS_HELP_STRING([--with-termcap],
 	[Use a termcap library if available [[yes]]]))
@@ -235,6 +240,7 @@ fi
 CCLD=${CC}
 
 MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
+MIT_SCHEME_COMPILER_TARGET([${with_compiler_target}])
 
 AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
 EXE_NAME=mit-scheme-${mit_scheme_native_code}
@@ -819,8 +825,6 @@ none)
     ;;
 c)
     AC_CONFIG_LINKS([cmpauxmd.c:cmpauxmd/c.c])
-    AC_CONFIG_FILES([liarc-cc], [chmod +x liarc-cc])
-    AC_CONFIG_FILES([liarc-ld], [chmod +x liarc-ld])
     OPTIONAL_BASES="${OPTIONAL_BASES} cmpauxmd unstackify compinit"
     LIARC_VARS=liarc-vars
     LIARC_RULES=liarc-rules
@@ -840,6 +844,11 @@ svm1)
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} cmpauxmd.o"
     ;;
 esac
+
+if test x"${mit_scheme_compiler_target}" = xc; then
+    AC_CONFIG_FILES([liarc-cc], [chmod +x liarc-cc])
+    AC_CONFIG_FILES([liarc-ld], [chmod +x liarc-ld])
+fi
 
 AC_CONFIG_LINKS([
     cmpintmd.h:cmpintmd/${mit_scheme_native_code}.h

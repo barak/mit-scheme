@@ -54,6 +54,38 @@ svm1)
 esac
 ])
 
+# MIT_SCHEME_COMPILER_TARGET(SPEC)
+# --------------------------------
+AC_DEFUN([MIT_SCHEME_COMPILER_TARGET],[
+_mit_scheme_compiler_target_spec=$1
+
+AC_MSG_CHECKING([for compiler target])
+MIT_SCHEME_ARCHITECTURE([${with_compiler_target}])
+
+case ${mit_scheme_architecture} in
+yes)
+    mit_scheme_compiler_target=${mit_scheme_native_code}
+    ;;
+*)
+    mit_scheme_compiler_target=${mit_scheme_architecture}
+    ;;
+esac
+
+case ${mit_scheme_compiler_target} in
+none)
+    AC_MSG_RESULT([none])
+    ;;
+c)
+    AC_MSG_RESULT([yes, using portable C code])
+    ;;
+svm1)
+    AC_MSG_RESULT([yes, using portable SVM code])
+    ;;
+*)
+    AC_MSG_RESULT([yes, for ${mit_scheme_compiler_target}])
+    ;;
+esac
+])
 
 # MIT_SCHEME_ARCHITECTURE(SPEC)
 # -----------------------------

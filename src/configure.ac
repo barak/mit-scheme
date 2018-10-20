@@ -89,56 +89,30 @@ AC_ARG_WITH([scheme-build],
 
 AC_CANONICAL_HOST
 
-MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
+ALL_TARGET=all-native
+INSTALL_COM='$(INSTALL_DATA)'
+INSTALL_LIARC_BUNDLES=
 IF_LIARC='#!LIARC: '
 IF_SVM='#!SVM: '
+
+MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
 case ${mit_scheme_native_code} in
 c)
-    ALL_TARGET=all-liarc
     INSTALL_COM=:
     INSTALL_LIARC_BUNDLES=install-liarc-bundles
     IF_LIARC=
     ;;
 svm1)
-    ALL_TARGET=all-native
-    INSTALL_COM='$(INSTALL_DATA)'
-    INSTALL_LIARC_BUNDLES=
     IF_SVM=
     ;;
-*)
-    ALL_TARGET=all-native
-    INSTALL_COM='$(INSTALL_DATA)'
-    INSTALL_LIARC_BUNDLES=
-    ;;
 esac
 
-AC_MSG_CHECKING([for compiler target])
-IF_SVM_COMPILER='#!SVM compiler: '
-MIT_SCHEME_ARCHITECTURE([${with_compiler_target}])
-case ${mit_scheme_architecture} in
-yes)
-    mit_scheme_compiler_target=${mit_scheme_native_code}
-    ;;
-*)
-    mit_scheme_compiler_target=${mit_scheme_architecture}
-    ;;
-esac
-
-case ${mit_scheme_compiler_target} in
-none)
-    AC_MSG_RESULT([none])
-    ;;
-c)
-    AC_MSG_RESULT([yes, using portable C code])
-    ;;
-svm1)
-    AC_MSG_RESULT([yes, using portable SVM code])
+MIT_SCHEME_COMPILER_TARGET([${with_compiler_target}])
+if test x"${mit_scheme_compiler_target}" = xsvm1; then
     IF_SVM_COMPILER=
-    ;;
-*)
-    AC_MSG_RESULT([yes, for ${mit_scheme_compiler_target}])
-    ;;
-esac
+else
+    IF_SVM_COMPILER='#!SVM compiler: '
+fi
 
 AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
 AUXDIR='$(libdir)'/${AUXDIR_NAME}
@@ -173,6 +147,8 @@ if test x"${with_scheme_build}" != xdefault; then
     else
         AC_MSG_ERROR([no, unable to use ${MIT_SCHEME_EXE}])
     fi
+    # To get some version numbers into the build log:
+    ${MIT_SCHEME_EXE} --version
 else
     AC_MSG_CHECKING([for an existing MIT/GNU Scheme installation])
     # Kinda hairy logic to detect this: (1) Use MIT_SCHEME_EXE, and
@@ -278,14 +254,18 @@ xml/Makefile
 ])
 AC_OUTPUT
 
-if test x"${mit_scheme_native_code}" = xc; then
+if test x"${mit_scheme_compiler_target}" = xc; then
     BN=liarc-cc
     (cd lib; rm -f ${BN}; ${LN_S} ../microcode/${BN} .)
     BN=liarc-ld
     (cd lib; rm -f ${BN}; ${LN_S} ../microcode/${BN} .)
+fi
+
+if test x"${mit_scheme_native_code}" = xc; then
     for BN in star-parser; do
         (cd lib; rm -f ${BN}; ${LN_S} ../${BN} .)
     done
+    mkdir lib/lib
     for BUNDLE in 6001 compiler cref ffi sf sos ssp star-parser \
 		  xdoc xml; do
     	SO=${BUNDLE}.so
