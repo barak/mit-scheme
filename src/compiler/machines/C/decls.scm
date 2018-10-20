@@ -60,7 +60,11 @@ USA.
 		   "machines/C"))))
     (if (null? filenames)
 	(error "Can't find source files of compiler"))
-    (set! source-filenames filenames))
+    (set! source-filenames
+	  ;; Don't process these excluded files.  It would be better to extract
+	  ;; the filenames from the package description, but that's hard to do
+	  ;; without extending the package abstraction a bit.
+	  (lset-difference string=? filenames '("base/asstop" "base/crsend"))))
   (set! source-hash (make-string-hash-table))
   (set! source-nodes
 	(map (lambda (filename)
