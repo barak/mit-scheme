@@ -359,20 +359,13 @@ push-primitive-7			; name in string table
 	unspecific)))
 
 (define (stackify/c-quotify str)
-  (let* ((len (string-length str))
-	 (res (make-string len)))
-    (do ((i 0 (1+ i)))
-	((>= i len) res)
-      (let ((c (string-ref str i)))
-	(case c
-	  ((#\*)
-	   (string-set! res i #\S))
-	  ((#\- #\/)
-	   (string-set! res i #\_))
-	  ((#\+)
-	   (string-set! res i #\P))
-	  (else
-	   (string-set! res i c)))))))
+  (string-map (lambda (c)
+		(case c
+		  ((#\*) #\S)
+		  ((#\- #\/) #\_)
+		  ((#\+) #\P)
+		  (else c)))
+	      str))
 
 (define (stackify/dump-c-enums output)
   (with-output-to-file output

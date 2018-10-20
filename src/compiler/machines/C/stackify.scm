@@ -250,7 +250,7 @@ USA.
 	(length (string-list/length sl)))
     (if (fix:< ptr (string-length current))
 	(begin
-	  (vector-8b-set! current ptr byte)
+	  (string-set! current ptr (integer->char byte))
 	  (set-string-list/pointer! sl (fix:+ ptr 1))
 	  (set-string-list/length! sl (fix:+ length 1))
 	  sl)

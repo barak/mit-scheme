@@ -435,21 +435,18 @@ USA.
 
 (define compiler:dump-info-file compiler:dump-bci-file)
 
-;; This defintion exported to compiler to handle losing C name restrictions
+;; This definition exported to compiler to handle losing C name restrictions.
 
 (define (canonicalize-label-name prefix)
   (if (string-null? prefix)
       "empty_string"
-      (let* ((str (if (char-alphabetic? (string-ref prefix 0))
-		      (string-copy prefix)
-		      (string-append "Z_" prefix)))
-	     (len (string-length str)))
-	(do ((i 0 (1+ i)))
-	    ((>= i len) str)
-	  (let ((char (string-ref str i)))
-	    (if (not (char-alphanumeric? char))
-		(string-set! str i
-			     (case char
-			       ((#\?) #\P)
-			       ((#\!) #\B)
-			       (else #\_)))))))))
+      (string-map (lambda (char)
+		    (if (char-alphanumeric? char)
+			char
+			(case char
+			  ((#\?) #\P)
+			  ((#\!) #\B)
+			  (else #\_))))
+		  (if (char-alphabetic? (string-ref prefix 0))
+		      prefix
+		      (string-append "Z_" prefix)))))

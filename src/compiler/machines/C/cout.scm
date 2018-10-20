@@ -603,31 +603,33 @@ USA.
 ;; the characters are not really characters at all.
 
 (define (C-quotify-data-string/breakup string)
-  (let ((n-bytes (vector-8b-length string))
-	(new-string
-	 (lambda ()
-	   (let ((s (make-string 66)))
-	     (string-set! s 0 #\")
-	     s))))
-    (let loop ((i 0) (s (new-string)) (j 1))
-      (if (fix:< i n-bytes)
-	  (if (fix:< j 62)
-	      (let ((b (vector-8b-ref string i)))
-		(string-set! s j #\\)
-		(string-set! s (fix:+ j 1) #\x)
-		(string-set! s (fix:+ j 2)
-			     (digit->char (fix:quotient b #x10) 16))
-		(string-set! s (fix:+ j 3)
-			     (digit->char (fix:remainder b #x10) 16))
-		(loop (fix:+ i 1) s (fix:+ j 4)))
-	      (begin
-		(string-set! s j #\")
-		(cons s (loop i (new-string) 1))))
-	  (if (fix:> j 1)
-	      (begin
-		(string-set! s j #\")
-		(list (substring s 0 (fix:+ j 1))))
-	      '())))))
+  (let ((builder (string-builder)))
+    (map (lambda (part)
+	   (builder 'reset!)
+	   (builder #\")
+	   (string-for-each
+	    (lambda (char)
+	      (let ((b (char->integer char)))
+		(builder #\\)
+		(builder #\x)
+		(builder (digit->char (fix:quotient b #x10) 16))
+		(builder (digit->char (fix:remainder b #x10) 16))))
+	    part)
+	   (builder #\")
+	   (builder 'immutable))
+	 (split-string string 64))))
+
+(define (split-string string n)
+  (let ((len (string-length string)))
+    (let loop ((start 0) (parts '()))
+      (let ((end (fix:+ start n)))
+	(if (fix:<= end len)
+	    (reverse!
+	     (cons (string-slice string start len)
+		   parts))
+	    (loop end
+		  (cons (string-slice string start end)
+			parts)))))))
 
 (define (handle-objects start-offset)
   (if *use-stackify?*
