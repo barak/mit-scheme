@@ -1175,12 +1175,29 @@ USA.
 
 (define-transcendental-unary real:exp real:exact0= 1 flo:exp)
 (define-transcendental-unary real:log real:exact1= 0 flo:log)
+(define-transcendental-unary real:expm1 real:exact0= 0 flo:expm1-guarded)
+(define-transcendental-unary real:log1p real:exact0= 0 flo:log1p-guarded)
 (define-transcendental-unary real:sin real:exact0= 0 flo:sin)
 (define-transcendental-unary real:cos real:exact0= 1 flo:cos)
 (define-transcendental-unary real:tan real:exact0= 0 flo:tan)
 (define-transcendental-unary real:asin real:exact0= 0 flo:asin)
 (define-transcendental-unary real:acos real:exact1= 0 flo:acos)
 (define-transcendental-unary real:atan real:exact0= 0 flo:atan)
+
+(define-integrable flo:log2 (flo:log 2.))
+(define-integrable flo:1-sqrt1/2 (flo:- 1. (flo:sqrt 0.5)))
+
+(declare (integrate flo:expm1-guarded))
+(define (flo:expm1-guarded x)
+  (if (flo:< (flo:abs x) flo:log2)
+      (flo:expm1 x)
+      (flo:- (flo:exp x) 1.)))
+
+(declare (integrate flo:log1p-guarded))
+(define (flo:log1p-guarded x)
+  (if (flo:< (flo:abs x) flo:1-sqrt1/2)
+      (flo:log1p x)
+      (flo:log (flo:+ 1. x))))
 
 (define (real:atan2 y x)
   (if (and (real:exact0= y)
@@ -1642,6 +1659,16 @@ USA.
 	 (make-recnum (real:log (real:negate z)) rec:pi))
 	(else
 	 ((copy real:log) z))))
+
+(define (complex:expm1 z)
+  (if (recnum? z)
+      (complex:- (complex:exp z) 1)	;XXX
+      ((copy real:expm1) z)))
+
+(define (complex:log1p z)
+  (if (recnum? z)
+      (complex:log (complex:+ z 1))	;XXX
+      ((copy real:log1p) z)))
 
 (define (complex:sin z)
   (if (recnum? z)

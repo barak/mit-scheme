@@ -116,3 +116,48 @@ USA.
 (define-enumerated-test 'X/NAN
   (vector (flo:-inf.0) -2. -1 -0. 0 +0. +1 +2. (flo:+inf.0))
   (lambda (v) (assert-nan (/ v (flo:nan.0)))))
+
+(define-enumerated-test 'log1p-exact
+  (vector
+   (cons 0 0)
+   (cons 1 (log 2))
+   (cons (- (exp 1) 1) 1.)
+   (cons (expt 2 -53) (expt 2. -53))
+   (cons (- (expt 2 -53)) (- (expt 2. -53))))
+  (lambda (v)
+    (assert-eqv (cdr v) (log1p (car v)))))
+
+(define-enumerated-test 'expm1-exact
+  (vector
+   (cons 0 0)
+   (cons (log 2) 1.)
+   (cons 1 (- (exp 1) 1))
+   (cons (expt 2 -53) (expt 2. -53))
+   (cons (- (expt 2 -53)) (- (expt 2. -53))))
+  (lambda (v)
+    (assert-eqv (cdr v) (expm1 (car v)))))
+
+(define (relerr a e)
+  (abs (/ (- a e) a)))
+
+(define-enumerated-test 'expm1-approx
+  (vector
+   (cons -0.7 -0.5034146962085905)
+   (cons (- (log 2)) -0.5)
+   (cons -0.6 -0.45118836390597356)
+   (cons 0.6 .8221188003905089)
+   (cons (log 2) 1.)
+   (cons 0.7 1.0137527074704766))
+  (lambda (v)
+    (assert->= 1e-15 (relerr (cdr v) (expm1 (car v))))))
+
+(define-enumerated-test 'log1p-approx
+  (vector
+   (cons -0.3 -.35667494393873245)
+   (cons (- (sqrt 1/2) 1) -0.34657359027997264)
+   (cons -0.25 -.2876820724517809)
+   (cons 0.25 .22314355131420976)
+   (cons (- 1 (sqrt 1/2)) 0.25688251232181475)
+   (cons 0.3 .26236426446749106))
+  (lambda (v)
+    (assert->= 1e-15 (relerr (cdr v) (log1p (car v))))))
