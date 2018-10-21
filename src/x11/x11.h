@@ -26,8 +26,6 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 #ifndef SCHEME_X11_H
 #define SCHEME_X11_H
 
-typedef unsigned long SCM;
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <float.h>
