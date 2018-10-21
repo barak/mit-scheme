@@ -91,9 +91,11 @@ if test "${no_x}" != yes; then
     fi
     if test "x${x_libraries}" != x; then
         FOO=-L`echo ${x_libraries} | sed -e "s/:/ -L/g"`
-        MIT_LIBS="${MIT_LIBS} ${FOO}"
+        MIT_LIBS="${MIT_LIBS} ${FOO} -lX11"
     elif pkg-config --exists x11 2>/dev/null; then
         MIT_LIBS="${MIT_LIBS} `pkg-config --libs x11`"
+    else
+        MIT_LIBS="${MIT_LIBS} -lX11"
     fi
 fi
 

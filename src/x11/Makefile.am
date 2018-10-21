@@ -47,12 +47,9 @@ scmlib_sub_DATA += make.scm @MIT_SCHEME_PKD@
 AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDEDIR@
 AM_CFLAGS = @MIT_CFLAGS@
 
-LIBS = @MIT_LIBS@
-LDFLAGS = @MIT_LIBS@
-
-x11_shim_la_LIBADD = x11base.lo x11color.lo x11graph.lo x11term.lo
-c_sources = x11-shim.h x11.h x11base.c x11color.c x11graph.c x11term.c
-x11_shim_la_LDFLAGS = -module -avoid-version -shared -lX11
+x11_shim_la_LIBADD = @MIT_LIBS@
+x11_shim_la_SOURCES = x11base.c x11color.c x11graph.c x11term.c x11-shim.c
+x11_shim_la_LDFLAGS = -module -avoid-version -shared
 
 noinst_PROGRAMS = x11-const
 x11_const_SOURCES = x11-const.c x11-shim.h
