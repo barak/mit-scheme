@@ -3365,6 +3365,12 @@ USA.
 	  integer-divide-quotient
 	  integer-divide-remainder
 	  lcm
+	  log-logistic
+	  log1mexp
+	  log1pexp
+	  logistic
+	  logit
+	  logit-exp
 	  max
 	  min
 	  modulo

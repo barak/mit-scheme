@@ -1972,6 +1972,50 @@ USA.
 (define (cube z)
   (complex:* z (complex:* z z)))
 
+;;; log(1 - e^x), defined only on negative x
+(define (log1mexp x)
+  (guarantee-real x 'log1mexp)
+  (guarantee-negative x 'log1mexp)
+  (if (< (- flo:log2) x)
+      (log (- (expm1 x)))
+      (log1p (- (exp x)))))
+
+;;; log(1 + e^x)
+(define (log1pexp x)
+  (guarantee-real x 'log1pexp)
+  (cond ((<= x -745) 0.)
+	((<= x -37) (exp x))
+	((<= x 18) (log1p (exp x)))
+	((<= x 33.3) (+ x (exp (- x))))
+	(else x)))
+
+;;; 1/(1 + e^{-x})
+(define (logistic x)
+  (guarantee-real x 'logistic)
+  (cond ((<= x -745) 0.)
+	((<= x -37) (exp x))
+	((<= x 745) (/ 1 (+ 1 (exp (- x)))))
+	(else 1.)))
+
+;;; log p/(1 - p)
+(define (logit p)
+  (guarantee-real p 'logit)
+  (if (not (<= 0 p 1))
+      (error:bad-range-argument p 'logit))
+  (log (/ p (- 1 p))))
+
+;;; log logistic(x) = -log (1 + e^{-x})
+(define (log-logistic x)
+  (guarantee-real x 'log-logistic)
+  (- (log1pexp (- x))))
+
+;;; log e^t/(1 - e^t) = -log (1 - e^t)/e^t = -log (e^{-t} - 1)
+(define (logit-exp t)
+  (guarantee-real t 'logit-exp)
+  (if (<= t -37)
+      t
+      (- (log (expm1 (- t))))))
+
 ;;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!.
 
 (define =)
