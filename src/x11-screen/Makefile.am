@@ -55,7 +55,7 @@ TAGS_DEPENDENCIES = $(sources)
 
 EXTRA_DIST += $(sources) compile.sh x11-screen.pkg
 EXTRA_DIST += x11-screen-check.sh x11-screen-test.scm
-EXTRA_DIST += make.scm optiondb.scm
+EXTRA_DIST += make.scm optiondb.scm compile.scm
 
 install-data-hook:
 	( echo '(add-plugin "x11-screen" "@MIT_SCHEME_PROJECT@"'; \

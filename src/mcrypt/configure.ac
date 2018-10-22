@@ -109,14 +109,16 @@ LIBS="${LIBS} ${MCRYPT_LIBS}"
 
 MIT_SCHEME_PROJECT=mit-scheme
 : ${MIT_SCHEME_EXE=mit-scheme}
-MIT_SCHEME_LIBDIR=`( echo "(display (->namestring" ;\
-		     echo "          (system-library-directory-pathname)))" ) \
-		   | ${MIT_SCHEME_EXE} --batch-mode`
-MIT_SCHEME_INCLUDEDIR=`( echo "(display (->namestring" ;\
-			 echo "          (directory-pathname" ;\
-			 echo "           (system-library-pathname" ;\
-			 echo '            "mit-scheme.h"))))' ) \
-		       | ${MIT_SCHEME_EXE} --batch-mode`
+default_libdir=`( echo "(display (->namestring" ;\
+		  echo "          (system-library-directory-pathname)))" ) \
+		| ${MIT_SCHEME_EXE} --batch-mode`
+: ${MIT_SCHEME_LIBDIR=${default_libdir}}
+default_includedir=`( echo "(display (->namestring" ;\
+                      echo "          (directory-pathname" ;\
+                      echo "           (system-library-pathname" ;\
+                      echo '            "mit-scheme.h"))))' ) \
+                    | ${MIT_SCHEME_EXE} --batch-mode`
+: ${MIT_SCHEME_INCLUDEDIR=${default_includedir}}
 
 cc_type=`echo "(display microcode-id/compiled-code-type)" \
 	 | ${MIT_SCHEME_EXE} --batch-mode`

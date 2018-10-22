@@ -156,6 +156,8 @@ fi
 
 AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
 AUXDIR='$(libdir)'/${AUXDIR_NAME}
+MIT_SCHEME_LIBDIR=${AUXDIR}/
+MIT_SCHEME_INCLUDEDIR=${AUXDIR}/
 
 # Please keep the following messages synchronized with the messages in
 # these files:
@@ -246,7 +248,6 @@ directory, which is usually \`/usr/local/lib/mit-scheme-${mit_scheme_native_code
 ])
     fi
 fi
-export MIT_SCHEME_EXE
 
 # A 32bit host running LIAR/svm needs a large heap.
 small_words='(= 4 (vector-ref (gc-space-status) 0))'
@@ -340,6 +341,11 @@ echo etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_compiler_target}"
 etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_compiler_target}" \
   || exit $?
 compiler/configure "${mit_scheme_compiler_target}" || exit $?
+
+# configure scripts for subdirs care about these
+export MIT_SCHEME_EXE
+export MIT_SCHEME_LIBDIR
+export MIT_SCHEME_INCLUDEDIR
 
 AC_CONFIG_SUBDIRS([microcode])
 if test x"${enable_blowfish}" = xyes; then
