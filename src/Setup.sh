@@ -76,6 +76,7 @@ fi
 . etc/functions.sh
 
 INSTALLED_SUBDIRS="cref ffi sf sos ssp star-parser xml"
+MODULE_SUBDIRS="blowfish edwin gdbm imail pgsql mcrypt x11 x11-screen"
 OTHER_SUBDIRS="6001 compiler runtime win32 xdoc microcode"
 
 # lib
@@ -101,4 +102,9 @@ for SUBDIR in ${INSTALLED_SUBDIRS} ${OTHER_SUBDIRS}; do
     echo "setting up ${SUBDIR}"
     maybe_link ${SUBDIR}/Setup.sh ../etc/Setup.sh
     (cd ${SUBDIR} && ./Setup.sh ${1+"$@"})
+done
+
+for SUBDIR in ${MODULE_SUBDIRS}; do
+    echo "setting up ${SUBDIR}"
+    (cd ${SUBDIR} && ./autogen.sh)
 done

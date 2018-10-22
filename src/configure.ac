@@ -87,13 +87,53 @@ AC_ARG_WITH([scheme-build],
 	[Use this directory for the Scheme compiler]))
 : ${with_scheme_build=default}
 
+# optional modules
+
+AC_ARG_ENABLE([x11],
+    AS_HELP_STRING([--enable-x11],
+	[Add support for x11 support [[yes]]]))
+: ${enable_x11=yes}
+
+AC_ARG_ENABLE([edwin],
+    AS_HELP_STRING([--enable-edwin],
+	[Add support for the Edwin edit [[yes]]]))
+: ${enable_edwin=yes}
+
+AC_ARG_ENABLE([imail],
+    AS_HELP_STRING([--enable-imail],
+	[Add support for the Imail mail reader (implies --enable-edwin) [[yes]]]))
+: ${enable_imail=yes}
+if test x"${enable_imail}" = xyes; then
+    enable_edwin=yes
+fi
+
+AC_ARG_ENABLE([blowfish],
+    AS_HELP_STRING([--enable-blowfish],
+	[Add support for the Blowfish encryption [[no]]]))
+: ${enable_blowfish=no}
+
+AC_ARG_ENABLE([gdbm],
+    AS_HELP_STRING([--enable-gdbm],
+	[Add support for the gdbm support [[no]]]))
+: ${enable_gdbm=no}
+
+AC_ARG_ENABLE([pgsql],
+    AS_HELP_STRING([--enable-pgsql],
+	[Add support for the PostgreSQL support [[no]]]))
+: ${enable_pgsql=no}
+
+AC_ARG_ENABLE([mcrypt],
+    AS_HELP_STRING([--enable-mcrypt],
+	[Add support for the mcrypt support [[no]]]))
+: ${enable_mcrypt=no}
+
 AC_CANONICAL_HOST
 
 ALL_TARGET=all-native
 INSTALL_COM='$(INSTALL_DATA)'
 INSTALL_LIARC_BUNDLES=
-IF_LIARC='#!LIARC: '
-IF_SVM='#!SVM: '
+IF_LIARC='#!liarc: '
+IF_SVM='#!svm: '
 
 MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
 case ${mit_scheme_native_code} in
@@ -111,7 +151,7 @@ MIT_SCHEME_COMPILER_TARGET([${with_compiler_target}])
 if test x"${mit_scheme_compiler_target}" = xsvm1; then
     IF_SVM_COMPILER=
 else
-    IF_SVM_COMPILER='#!SVM compiler: '
+    IF_SVM_COMPILER='#!svm compiler: '
 fi
 
 AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
@@ -126,12 +166,19 @@ AUXDIR='$(libdir)'/${AUXDIR_NAME}
 
 if test x"${with_scheme_build}" != xdefault; then
     AC_MSG_CHECKING([for specified MIT/GNU Scheme build])
-    case ${with_scheme_build} in
-    */)
-        HOST_BUILD_DIR=${with_scheme_build}
+    HOST_BUILD_DIR=${with_scheme_build}
+    case ${HOST_BUILD_DIR} in
+    /*)
         ;;
     *)
-        HOST_BUILD_DIR=${with_scheme_build}/
+        HOST_BUILD_DIR=`pwd`/${HOST_BUILD_DIR}
+        ;;
+    esac
+    case ${HOST_BUILD_DIR} in
+    */)
+        ;;
+    *)
+        HOST_BUILD_DIR=${HOST_BUILD_DIR}/
         ;;
     esac
     MIT_SCHEME_EXE=${HOST_BUILD_DIR}run-build
@@ -199,6 +246,7 @@ directory, which is usually \`/usr/local/lib/mit-scheme-${mit_scheme_native_code
 ])
     fi
 fi
+export MIT_SCHEME_EXE
 
 # A 32bit host running LIAR/svm needs a large heap.
 small_words='(= 4 (vector-ref (gc-space-status) 0))'
@@ -207,18 +255,70 @@ if test x"${mit_scheme_native_code}" = xsvm1 \
     HOST_COMPILER_HEAP="--heap 10000"
 fi
 
-AC_SUBST([DEFAULT_TARGET])
+OPTION_SUBDIRS=
+if test x"${enable_x11}" = xyes; then
+    OPTION_SUBDIRS="${OPTION_SUBDIRS} x11 x11-screen"
+    IF_X11=
+else
+    IF_X11="#!x11: "
+fi
+if test x"${enable_edwin}" = xyes; then
+    OPTION_SUBDIRS="${OPTION_SUBDIRS} edwin"
+    IF_EDWIN=
+else
+    IF_EDWIN="#!edwin: "
+fi
+if test x"${enable_imail}" = xyes; then
+    OPTION_SUBDIRS="${OPTION_SUBDIRS} imail"
+    IF_IMAIL=
+else
+    IF_IMAIL="#!imail: "
+fi
+if test x"${enable_blowfish}" = xyes; then
+    OPTION_SUBDIRS="${OPTION_SUBDIRS} blowfish"
+    IF_BLOWFISH=
+else
+    IF_BLOWFISH="#!blowfish: "
+fi
+if test x"${enable_gdbm}" = xyes; then
+    OPTION_SUBDIRS="${OPTION_SUBDIRS} gdbm"
+    IF_GDBM=
+else
+    IF_GDBM="#!gdbm: "
+fi
+if test x"${enable_mcrypt}" = xyes; then
+    OPTION_SUBDIRS="${OPTION_SUBDIRS} mcrypt"
+    IF_MCRYPT=
+else
+    IF_MCRYPT="#!mcrypt: "
+fi
+if test x"${enable_pgsql}" = xyes; then
+    OPTION_SUBDIRS="${OPTION_SUBDIRS} pgsql"
+    IF_PGSQL=
+else
+    IF_PGSQL="#!pgsql: "
+fi
+
 AC_SUBST([ALL_TARGET])
+AC_SUBST([AUXDIR])
+AC_SUBST([AUXDIR_NAME])
+AC_SUBST([DEFAULT_TARGET])
+AC_SUBST([HOST_COMPILER_HEAP])
+AC_SUBST([IF_BLOWFISH])
+AC_SUBST([IF_CROSS])
+AC_SUBST([IF_EDWIN])
+AC_SUBST([IF_GDBM])
+AC_SUBST([IF_IMAIL])
+AC_SUBST([IF_LIARC])
+AC_SUBST([IF_MCRYPT])
+AC_SUBST([IF_PGSQL])
+AC_SUBST([IF_SVM])
+AC_SUBST([IF_SVM_COMPILER])
+AC_SUBST([IF_X11])
 AC_SUBST([INSTALL_COM])
 AC_SUBST([INSTALL_LIARC_BUNDLES])
 AC_SUBST([MIT_SCHEME_EXE])
-AC_SUBST([AUXDIR_NAME])
-AC_SUBST([AUXDIR])
-AC_SUBST([IF_CROSS])
-AC_SUBST([IF_LIARC])
-AC_SUBST([IF_SVM])
-AC_SUBST([IF_SVM_COMPILER])
-AC_SUBST([HOST_COMPILER_HEAP])
+AC_SUBST([OPTION_SUBDIRS])
 
 AC_PROG_INSTALL
 AC_PROG_LN_S
@@ -229,6 +329,27 @@ etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_compiler_target}" \
 compiler/configure "${mit_scheme_compiler_target}" || exit $?
 
 AC_CONFIG_SUBDIRS([microcode])
+if test x"${enable_blowfish}" = xyes; then
+    AC_CONFIG_SUBDIRS([blowfish])
+fi
+if test x"${enable_edwin}" = xyes; then
+    AC_CONFIG_SUBDIRS([edwin])
+fi
+if test x"${enable_gdbm}" = xyes; then
+    AC_CONFIG_SUBDIRS([gdbm])
+fi
+if test x"${enable_imail}" = xyes; then
+    AC_CONFIG_SUBDIRS([imail])
+fi
+if test x"${enable_mcrypt}" = xyes; then
+    AC_CONFIG_SUBDIRS([mcrypt])
+fi
+if test x"${enable_pgsql}" = xyes; then
+    AC_CONFIG_SUBDIRS([pgsql])
+fi
+if test x"${enable_x11}" = xyes; then
+    AC_CONFIG_SUBDIRS([x11 x11-screen])
+fi
 
 AC_CONFIG_FILES([
 Makefile

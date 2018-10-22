@@ -65,6 +65,7 @@ LIARC_BUNDLES = $(LIARC_BOOT_BUNDLES) ffi sos ssp xml
 
 SUBDIRS = $(INSTALLED_SUBDIRS) 6001 win32 xdoc
 INSTALLED_SUBDIRS = microcode runtime $(LIARC_BUNDLES)
+OPTION_SUBDIRS = @OPTION_SUBDIRS@
 
 MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
 AUXDIR_NAME = @AUXDIR_NAME@
@@ -109,6 +110,9 @@ all-native: all-ssp
 all-native: all-star-parser
 all-native: all-win32
 all-native: all-xml
+@IF_X11@all-native: all-x11
+@IF_EDWIN@all-native: all-edwin
+@IF_IMAIL@all-native: all-imail
 
 # XXX This should really depend on microcode/gen-nonce and
 # microcode/extract-liarc-decls instead of microcode/scheme, but
@@ -169,16 +173,14 @@ lib/all.com: all-cref
 ################
 
 .PHONY: all-runtime
-all-runtime: stamp_compile-runtime
+all-runtime: compile-runtime
 @IF_LIARC@all-runtime: bundle-runtime
 
-stamp_compile-runtime:
+.PHONY: compile-runtime
+compile-runtime:
 	(echo '(with-working-directory-pathname "runtime"' && \
-	 echo '  (lambda ()' && \
-	 echo '    (load "runtime.sf")' && \
-	 echo '    (load "runtime.cbf")))') \
+	 echo '  (lambda () (load "runtime.sf") (load "runtime.cbf")))') \
 	| $(HOST_COMPILER)
-	echo "done" > $@
 
 .PHONY: bundle-runtime
 bundle-runtime: runtime/runtime-unx.c
@@ -188,18 +190,18 @@ bundle-runtime: runtime/runtime-unx.c
 ################
 
 .PHONY: all-sf
-all-sf: stamp_compile-sf
+all-sf: compile-sf
 @IF_LIARC@all-sf: bundle-sf
 
-stamp_compile-sf:
+.PHONY: compile-sf
+compile-sf:
 	(echo '(with-working-directory-pathname "sf"' && \
 	 echo '  (lambda () (load "sf.sf") (load "sf.cbf")))') \
 	| $(HOST_COMPILER)
-	echo "done" > $@
 
 .PHONY: bundle-sf
 bundle-sf: liarc-bundle-tools
-bundle-sf: stamp_compile-sf
+bundle-sf: compile-sf
 bundle-sf: sf/sf-unx.c
 	(cd sf && $(MAKE) compile-liarc-bundle)
 
@@ -208,25 +210,25 @@ bundle-sf: sf/sf-unx.c
 #################
 
 .PHONY: all-compiler
-all-compiler: stamp_compile-compiler
+all-compiler: compile-compiler
 @IF_LIARC@all-compiler: bundle-compiler
 
-stamp_syntax-compiler: stamp_compile-sf
-@IF_SVM_COMPILER@stamp_syntax-compiler: compiler/machines/svm/svm1-defns.h
+.PHONY: syntax-compiler
+syntax-compiler: compile-sf
+@IF_SVM_COMPILER@syntax-compiler: compiler/machines/svm/svm1-defns.h
 	(echo '(with-working-directory-pathname "compiler"' && \
 	 echo '  (lambda () (load "compiler.sf")))') \
 	| $(HOST_RUNTIME_ONLY)
-	echo "done" > $@
 
-stamp_compile-compiler: stamp_syntax-compiler
+.PHONY: compile-compiler
+compile-compiler: syntax-compiler
 	(echo '(with-working-directory-pathname "compiler"' && \
 	 echo '  (lambda () (load "compiler.cbf")))') \
 	| $(HOST_COMPILER)
-	echo "done" > $@
 
 .PHONY: bundle-compiler
 bundle-compiler: liarc-bundle-tools
-bundle-compiler: stamp_compile-compiler
+bundle-compiler: compile-compiler
 bundle-compiler: compiler/compiler-unx.c
 	(cd compiler && $(MAKE) compile-liarc-bundle)
 
@@ -245,18 +247,18 @@ compiler/machines/svm/svm1-defns.h: \
 ################
 
 .PHONY: all-cref
-all-cref: stamp_compile-cref
+all-cref: compile-cref
 @IF_LIARC@all-cref: bundle-cref
 
-stamp_compile-cref: stamp_compile-runtime
+.PHONY: compile-cref
+compile-cref: compile-runtime
 	(echo '(with-working-directory-pathname "cref"' && \
 	 echo '  (lambda () (load "cref.sf") (load "cref.cbf")))') \
 	| $(HOST_COMPILER)
-	echo "done" > $@
 
 .PHONY: bundle-cref
 bundle-cref: liarc-bundle-tools
-bundle-cref: stamp_compile-cref
+bundle-cref: compile-cref
 bundle-cref: cref/cref-unx.c
 	(cd cref && $(MAKE) compile-liarc-bundle)
 
@@ -265,18 +267,18 @@ bundle-cref: cref/cref-unx.c
 ################
 
 .PHONY: all-star-parser
-all-star-parser: stamp_compile-star-parser
+all-star-parser: compile-star-parser
 @IF_LIARC@all-star-parser: bundle-star-parser
 
-stamp_compile-star-parser: stamp_compile-runtime
+.PHONY: compile-star-parser
+compile-star-parser: compile-runtime
 	(echo '(with-working-directory-pathname "star-parser"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(HOST_COMPILER)
-	echo "done" > $@
 
 .PHONY: bundle-star-parser
 bundle-star-parser: liarc-bundle-tools
-bundle-star-parser: stamp_compile-star-parser
+bundle-star-parser: compile-star-parser
 bundle-star-parser: star-parser/parser-unx.c
 	(cd star-parser && $(MAKE) compile-liarc-bundle)
 
@@ -289,18 +291,18 @@ bundle-star-parser: star-parser/parser-unx.c
 ################
 
 .PHONY: all-ffi
-all-ffi: stamp_compile-ffi
+all-ffi: compile-ffi
 @IF_LIARC@all-ffi: bundle-ffi
 
-stamp_compile-ffi: stamp_compile-runtime
+.PHONY: compile-ffi
+compile-ffi: compile-runtime
 	(echo '(with-working-directory-pathname "ffi"' && \
 	 echo '  (lambda () (load "compile.scm")))') \
 	| $(HOST_COMPILER)
-	echo "done" > $@
 
 .PHONY: bundle-ffi
 bundle-ffi: liarc-bundle-tools
-bundle-ffi: stamp_compile-ffi
+bundle-ffi: compile-ffi
 bundle-ffi: ffi/ffi-unx.c
 	(cd ffi && $(MAKE) compile-liarc-bundle)
 
@@ -309,18 +311,18 @@ bundle-ffi: ffi/ffi-unx.c
 ################
 
 .PHONY: all-sos
-all-sos: stamp_compile-sos
+all-sos: compile-sos
 @IF_LIARC@all-sos: bundle-sos
 
-stamp_compile-sos: stamp_compile-runtime
+.PHONY: compile-sos
+compile-sos: compile-runtime
 	(echo '(with-working-directory-pathname "sos"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(HOST_COMPILER)
-	echo "done" > $@
 
 .PHONY: bundle-sos
 bundle-sos: liarc-bundle-tools
-bundle-sos: stamp_compile-sos
+bundle-sos: compile-sos
 bundle-sos: sos/sos-unx.c
 	(cd sos && $(MAKE) compile-liarc-bundle)
 
@@ -329,18 +331,18 @@ bundle-sos: sos/sos-unx.c
 ################
 
 .PHONY: all-ssp
-all-ssp: stamp_compile-ssp
+all-ssp: compile-ssp
 @IF_LIARC@all-ssp: bundle-ssp
 
-stamp_compile-ssp: stamp_compile-runtime stamp_compile-xml
+.PHONY: compile-ssp
+compile-ssp: compile-runtime compile-xml
 	(echo '(with-working-directory-pathname "ssp"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(HOST_COMPILER)
-	echo "done" > $@
 
 .PHONY: bundle-ssp
 bundle-ssp: liarc-bundle-tools
-bundle-ssp: stamp_compile-ssp
+bundle-ssp: compile-ssp
 bundle-ssp: ssp/ssp-unx.c
 	(cd ssp && $(MAKE) compile-liarc-bundle)
 
@@ -349,33 +351,68 @@ bundle-ssp: ssp/ssp-unx.c
 ################
 
 .PHONY: all-win32
-all-win32: stamp_compile-win32
+all-win32: compile-win32
 
-stamp_compile-win32: stamp_compile-runtime
+.PHONY: compile-win32
+compile-win32: compile-runtime
 	(echo '(with-working-directory-pathname "win32"' && \
 	 echo '  (lambda () (load "win32.sf") (load "win32.cbf")))') \
 	| $(HOST_COMPILER)
-	echo "done" > $@
 
 ################
 # XML
 ################
 
 .PHONY: all-xml
-all-xml: stamp_compile-xml
+all-xml: compile-xml
 @IF_LIARC@all-xml: bundle-xml
 
-stamp_compile-xml: stamp_compile-runtime stamp_compile-sos stamp_compile-star-parser
+.PHONY: compile-xml
+compile-xml: compile-runtime compile-sos compile-star-parser
 	(echo '(with-working-directory-pathname "xml"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(HOST_COMPILER)
-	echo "done" > $@
 
 .PHONY: bundle-xml
 bundle-xml: liarc-bundle-tools
-bundle-xml: stamp_compile-xml
+bundle-xml: compile-xml
 bundle-xml: xml/xml-unx.c
 	(cd xml && $(MAKE) compile-liarc-bundle)
+
+################
+# Edwin
+################
+
+.PHONY: all-edwin
+all-edwin: compile-edwin
+
+.PHONY: compile-edwin
+compile-edwin: compile-runtime
+@IF_X11@compile-edwin: compile-x11
+	(cd edwin && $(MAKE))
+
+################
+# Imail
+################
+
+.PHONY: all-imail
+all-imail: compile-imail
+
+.PHONY: compile-imail
+compile-imail: compile-runtime compile-sos compile-edwin compile-star-parser
+	(cd imail && $(MAKE))
+
+################
+# X11
+################
+
+.PHONY: all-x11
+all-x11: compile-x11
+
+.PHONY: compile-x11
+compile-x11: compile-runtime
+	(cd x11 && $(MAKE))
+	(cd x11-screen && $(MAKE))
 
 #####################
 ### Cross compilation
@@ -391,16 +428,16 @@ bundle-xml: xml/xml-unx.c
 # run the target code.
 
 .PHONY: cross-host
-cross-host: stamp_compile-compiler
-cross-host: stamp_compile-cref
-cross-host: stamp_compile-ffi
-cross-host: stamp_compile-runtime
-cross-host: stamp_compile-sf
-cross-host: stamp_compile-sos
-cross-host: stamp_compile-ssp
-cross-host: stamp_compile-star-parser
-cross-host: stamp_compile-win32
-cross-host: stamp_compile-xml
+cross-host: compile-compiler
+cross-host: compile-cref
+cross-host: compile-ffi
+cross-host: compile-runtime
+cross-host: compile-sf
+cross-host: compile-sos
+cross-host: compile-ssp
+cross-host: compile-star-parser
+cross-host: compile-win32
+cross-host: compile-xml
 	echo "done" > stamp_$@
 
 .PHONY: cross-target
@@ -429,15 +466,12 @@ check:
 	  --load ../tests/check.scm --eval '(%exit)'
 
 .PHONY: macosx-app
-macosx-app: stamp_macosx-app
-
-stamp_macosx-app: all
+macosx-app:
 	etc/macosx/make-app.sh
-	echo "done" > $@
 
 .PHONY: mostlyclean clean distclean maintainer-clean c-clean
 mostlyclean clean distclean maintainer-clean c-clean:
-	$(top_srcdir)/Clean.sh $@ $(SUBDIRS)
+	$(top_srcdir)/Clean.sh $@ $(SUBDIRS) $(OPTION_SUBDIRS)
 
 .PHONY: clean-boot-root
 clean-boot-root:
