@@ -1994,7 +1994,7 @@ USA.
   (guarantee-real x 'logistic)
   (cond ((<= x -745) 0.)
 	((<= x -37) (exp x))
-	((<= x 745) (/ 1 (+ 1 (exp (- x)))))
+	((<= x 37) (/ 1 (+ 1 (exp (- x)))))
 	(else 1.)))
 
 ;;; log p/(1 - p)
