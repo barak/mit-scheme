@@ -24,7 +24,7 @@ USA.
 
 |#
 
-(global-definitions runtime/)
+(global-definitions "../runtime/")
 
 (define-package (mcrypt)
   (files "mcrypt")

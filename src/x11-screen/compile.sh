@@ -28,26 +28,7 @@
 set -e
 : ${MIT_SCHEME_EXE=mit-scheme}
 ${MIT_SCHEME_EXE} --batch-mode <<\EOF
-(begin
-
-  (parameterize ((param:suppress-loading-message? #t))
-    (load-option 'CREF)
-    (load-option 'X11)
-    (load-option 'EDWIN))
-
-  (if (name->package '(EDWIN SCREEN X11-SCREEN))
-      (error "The (EDWIN SCREEN X11-SCREEN) package already exists."))
-  (let ((package-set (package-set-pathname "x11-screen")))
-    (if (not (file-modification-time<? "x11-screen.pkg" package-set))
-	(cref/generate-trivial-constructor "x11-screen" #f))
-    (construct-packages-from-file (fasload package-set)))
-
-  (compile-file "x11-screen" '() (->environment '(edwin screen x11-screen)))
-  (compile-file "x11-key" '() (->environment '(edwin x11-keys)))
-  (compile-file "x11-command" '() (->environment '(edwin x11-commands)))
-
-  (cref/generate-constructors "x11-screen")
-  )
+(load "compile.scm")
 EOF
 suffix=`echo "(display (microcode-id/operating-system-suffix))" \
 	| ${MIT_SCHEME_EXE} --batch-mode`

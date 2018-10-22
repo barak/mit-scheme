@@ -2,7 +2,7 @@
 
 ;;;; Compile the PGSQL option.
 
-(load-option 'CREF)
-(load-option 'FFI)
+(load-option 'cref)
+(load-option 'ffi)
 (compile-file "pgsql" '() (->environment '()))
 (cref/generate-constructors "pgsql")

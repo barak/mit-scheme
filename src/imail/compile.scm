@@ -31,6 +31,10 @@ USA.
 (load-option '*parser)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
+    (unless (load-option 'edwin #t)
+      (with-working-directory-pathname (merge-pathnames "../edwin")
+	(lambda ()
+	  (load "make"))))
     (for-each (lambda (filename)
 		(compile-file filename '() (->environment '(edwin))))
 	      '("imail-browser"

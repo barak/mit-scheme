@@ -26,10 +26,8 @@ USA.
 
 ;;;; Edwin Packaging
 
-(global-definitions runtime/)
-(global-definitions xml/)
-(global-definitions blowfish/)
-(global-definitions gdbm/)
+(global-definitions "../runtime/")
+(global-definitions "../xml/")
 
 (define-package (edwin)
   (files "utils"
@@ -122,6 +120,7 @@ USA.
 	  (port/output-channel output-port-channel)
 	  (port/state textual-port-state)
 	  generic-port-operation:write-substring)
+  #|
   (import (blowfish)
 	  blowfish-encrypt-port
 	  blowfish-file?
@@ -140,6 +139,7 @@ USA.
 	  gdbm_fast
 	  gdbm_replace
 	  gdbm_wrcreat)
+  |#
   (export ()
 	  create-editor
 	  create-editor-args

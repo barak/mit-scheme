@@ -24,14 +24,16 @@ USA.
 
 |#
 
-;;;; Edwin: System Construction
-
-(declare (usual-integrations))
-
-(load-option 'xml)
-(with-loader-base-uri (system-library-uri "edwin/")
+(load-option 'cref)
+(with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (load-package-set "edwin"
-      `((alternate-package-loader
-	 . ,(load "edwin.bld" system-global-environment))))))
-(add-subsystem-identification! "Edwin" '(3 117))
+    (unless (load-option 'edwin #t)
+      (with-working-directory-pathname (merge-pathnames "../edwin")
+	(lambda ()
+	  (load "make"))))
+    (for-each (lambda (filename)
+		(compile-file filename '() (->environment '(edwin))))
+	      '("x11-screen"
+		"x11-key"
+		"x11-command"))
+    (cref/generate-constructors "x11-screen")))

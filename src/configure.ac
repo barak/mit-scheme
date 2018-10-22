@@ -96,7 +96,7 @@ AC_ARG_ENABLE([x11],
 
 AC_ARG_ENABLE([edwin],
     AS_HELP_STRING([--enable-edwin],
-	[Add support for the Edwin edit [[yes]]]))
+	[Add support for the Edwin editor [[yes]]]))
 : ${enable_edwin=yes}
 
 AC_ARG_ENABLE([imail],
@@ -255,12 +255,18 @@ if test x"${mit_scheme_native_code}" = xsvm1 \
     HOST_COMPILER_HEAP="--heap 10000"
 fi
 
-OPTION_SUBDIRS=
-if test x"${enable_x11}" = xyes; then
-    OPTION_SUBDIRS="${OPTION_SUBDIRS} x11 x11-screen"
-    IF_X11=
+if test x"${enable_x11}" = xyes && test x"${enable_edwin}" = xyes; then
+    enable_x11_screen=yes
 else
-    IF_X11="#!x11: "
+    enable_x11_screen=no
+fi
+
+OPTION_SUBDIRS=
+if test x"${enable_blowfish}" = xyes; then
+    OPTION_SUBDIRS="${OPTION_SUBDIRS} blowfish"
+    IF_BLOWFISH=
+else
+    IF_BLOWFISH="#!blowfish: "
 fi
 if test x"${enable_edwin}" = xyes; then
     OPTION_SUBDIRS="${OPTION_SUBDIRS} edwin"
@@ -268,23 +274,17 @@ if test x"${enable_edwin}" = xyes; then
 else
     IF_EDWIN="#!edwin: "
 fi
-if test x"${enable_imail}" = xyes; then
-    OPTION_SUBDIRS="${OPTION_SUBDIRS} imail"
-    IF_IMAIL=
-else
-    IF_IMAIL="#!imail: "
-fi
-if test x"${enable_blowfish}" = xyes; then
-    OPTION_SUBDIRS="${OPTION_SUBDIRS} blowfish"
-    IF_BLOWFISH=
-else
-    IF_BLOWFISH="#!blowfish: "
-fi
 if test x"${enable_gdbm}" = xyes; then
     OPTION_SUBDIRS="${OPTION_SUBDIRS} gdbm"
     IF_GDBM=
 else
     IF_GDBM="#!gdbm: "
+fi
+if test x"${enable_imail}" = xyes; then
+    OPTION_SUBDIRS="${OPTION_SUBDIRS} imail"
+    IF_IMAIL=
+else
+    IF_IMAIL="#!imail: "
 fi
 if test x"${enable_mcrypt}" = xyes; then
     OPTION_SUBDIRS="${OPTION_SUBDIRS} mcrypt"
@@ -297,6 +297,18 @@ if test x"${enable_pgsql}" = xyes; then
     IF_PGSQL=
 else
     IF_PGSQL="#!pgsql: "
+fi
+if test x"${enable_x11}" = xyes; then
+    OPTION_SUBDIRS="${OPTION_SUBDIRS} x11"
+    IF_X11=
+else
+    IF_X11="#!x11: "
+fi
+if test x"${enable_x11_screen}" = xyes; then
+    OPTION_SUBDIRS="${OPTION_SUBDIRS} x11-screen"
+    IF_X11_SCREEN=
+else
+    IF_X11_SCREEN="#!x11-screen: "
 fi
 
 AC_SUBST([ALL_TARGET])
@@ -315,6 +327,7 @@ AC_SUBST([IF_PGSQL])
 AC_SUBST([IF_SVM])
 AC_SUBST([IF_SVM_COMPILER])
 AC_SUBST([IF_X11])
+AC_SUBST([IF_X11_SCREEN])
 AC_SUBST([INSTALL_COM])
 AC_SUBST([INSTALL_LIARC_BUNDLES])
 AC_SUBST([MIT_SCHEME_EXE])
@@ -348,7 +361,10 @@ if test x"${enable_pgsql}" = xyes; then
     AC_CONFIG_SUBDIRS([pgsql])
 fi
 if test x"${enable_x11}" = xyes; then
-    AC_CONFIG_SUBDIRS([x11 x11-screen])
+    AC_CONFIG_SUBDIRS([x11])
+fi
+if test x"${enable_x11_screen}" = xyes; then
+    AC_CONFIG_SUBDIRS([x11-screen])
 fi
 
 AC_CONFIG_FILES([

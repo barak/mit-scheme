@@ -25,7 +25,7 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 ;;;; X11 Graphics Packaging
 
-(global-definitions runtime/)
+(global-definitions "../runtime/")
 
 (define-package (x11)
   (files "x11")

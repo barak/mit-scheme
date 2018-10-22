@@ -25,9 +25,6 @@ USA.
 |#
 
 (load-option 'cref)
-(load-option 'xml)
-(load-option 'blowfish)
-(load-option 'gdbm)
 
 (if (not (name->package '(edwin)))
     (let ((package-set (package-set-pathname "edwin")))

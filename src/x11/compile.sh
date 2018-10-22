@@ -30,8 +30,8 @@ set -e
 ${MIT_SCHEME_EXE} --prepend-library . --batch-mode <<\EOF
 
 (begin
-  (load-option 'CREF)
-  (load-option 'FFI)
+  (load-option 'cref)
+  (load-option 'ffi)
 
   (let ((runtime (->environment '(runtime))))
     (compile-file "x11" '() runtime)

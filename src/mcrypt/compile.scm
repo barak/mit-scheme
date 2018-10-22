@@ -2,7 +2,7 @@
 
 ;;;; Compile the MCRYPT option.
 
-(load-option 'CREF)
-(load-option 'FFI)
-(compile-file "mcrypt" '() (->environment '(RUNTIME)))
+(load-option 'cref)
+(load-option 'ffi)
+(compile-file "mcrypt" '() (->environment '(runtime)))
 (cref/generate-constructors "mcrypt")

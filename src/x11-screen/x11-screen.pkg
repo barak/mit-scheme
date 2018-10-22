@@ -25,9 +25,9 @@ Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 
 ;;;; Edwin Packaging
 
-(global-definitions runtime/)
-(global-definitions edwin/)
-(global-definitions x11/)
+(global-definitions "../runtime/")
+(global-definitions "../edwin/")
+(global-definitions "../x11/")
 
 (define-package (edwin screen x11-screen)
   (files "x11-screen")
