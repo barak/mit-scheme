@@ -262,25 +262,36 @@ USA.
 	 (file-loadable? path))))
 
 (define (plugin-pathname name)
-  (or (libtool-pathname name)
-      (system-library-pathname
-       (pathname-new-type (string-append name"-shim") "so"))
-      (error "Could not find plugin:" name)))
+  (let ((try-name
+	 (lambda (name)
+	   (or (libtool-pathname name)
+	       (let ((path
+		      (system-library-pathname
+		       (pathname-new-type (string-append name"-shim") "so")
+		       #f)))
+		 (and (file-exists? path)
+		      path))))))
+    (or (try-name name)
+	(and (system-library-directory-pathname name)
+	     (try-name (string-append name "/" name)))
+	(error "Could not find plugin:" name))))
 
 (define (libtool-pathname name)
-  (let ((la-pathname (system-library-pathname
-		      (pathname-new-type (string-append name"-shim")
-					 "la"))))
-    (let ((dlname (libtool-dlname la-pathname))
-	  (dirname (directory-pathname la-pathname)))
+  (let ((la-pathname
+	 (system-library-pathname
+	  (pathname-new-type (string-append name"-shim") "la")
+	  #f)))
+    (and (file-exists? la-pathname)
+	 (let ((dlname (libtool-dlname la-pathname))
+	       (dirname (directory-pathname la-pathname)))
 
-      (define (existing-file name)
-	(let ((p (merge-pathnames name dirname)))
-	  (and (file-exists? p)
-	       p)))
+	   (define (existing-file name)
+	     (let ((p (merge-pathnames name dirname)))
+	       (and (file-exists? p)
+		    p)))
 
-      (or (existing-file dlname)
-	  (existing-file (string-append ".libs/"dlname))))))
+	   (or (existing-file dlname)
+	       (existing-file (string-append ".libs/"dlname)))))))
 
 (define (libtool-dlname la-pathname)
   (call-with-input-file la-pathname
