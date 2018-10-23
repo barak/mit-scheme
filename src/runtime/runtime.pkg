@@ -3299,6 +3299,7 @@ USA.
 	  (exact-rational? rat:rational?)
 	  (exact? complex:exact?)
 	  (exp complex:exp)
+	  (expm1 complex:expm1)
 	  (expt complex:expt)
 	  (finite? complex:finite?)
 	  (floor complex:floor)
@@ -3314,6 +3315,7 @@ USA.
 	  (integer-truncate complex:quotient)
 	  (integer? complex:integer?)
 	  (log complex:log)
+	  (log1p complex:log1p)
 	  (magnitude complex:magnitude)
 	  (make-polar complex:make-polar)
 	  (make-rectangular complex:make-rectangular)
@@ -3363,6 +3365,12 @@ USA.
 	  integer-divide-quotient
 	  integer-divide-remainder
 	  lcm
+	  log-logistic
+	  log1mexp
+	  log1pexp
+	  logistic
+	  logit
+	  logit-exp
 	  max
 	  min
 	  modulo
@@ -4118,6 +4126,8 @@ USA.
 	  host-address-any
 	  host-address-loopback
 	  listen-tcp-server-socket
+	  open-binary-tcp-stream-socket
+	  open-binary-unix-stream-socket
 	  open-tcp-server-socket
 	  open-tcp-stream-socket
 	  open-tcp-stream-socket-channel
@@ -4125,7 +4135,9 @@ USA.
 	  open-unix-stream-socket
 	  open-unix-stream-socket-channel
 	  os/hostname
+	  tcp-server-binary-connection-accept
 	  tcp-server-connection-accept
+	  unix-server-binary-connection-accept
 	  unix-server-connection-accept)
   (initialization (initialize-package!)))
 

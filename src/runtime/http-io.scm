@@ -149,76 +149,91 @@ USA.
 
 ;;;; Output
 
-(define (%text-mode port)
-  (port/set-coding port 'iso-8859-1)
-  (port/set-line-ending port 'crlf))
-
-(define (%binary-mode port)
-  (port/set-coding port 'binary)
-  (port/set-line-ending port 'binary))
-
 (define (write-http-request request port)
-  (%text-mode port)
-  (write-string (http-request-method request) port)
-  (write-string " " port)
+  (write-ascii (http-request-method request) port)
+  (write-u8 (char->integer #\space) port)
   (let ((uri (http-request-uri request)))
     (cond ((uri? uri)
-	   (write-uri uri port))
+	   (write-ascii (call-with-output-string
+			 (lambda (out) (write-uri uri out)))
+			port))
 	  ((uri-authority? uri)
-	   (write-uri-authority uri port))
+	   (write-ascii (call-with-output-string
+			 (lambda (out) (write-uri-authority uri out)))
+			port))
 	  ((eq? uri '*)
-	   (write-char #\* port))
+	   (write-u8 (char->integer #\*) port))
 	  (else
 	   (error "Ill-formed HTTP request:" request))))
   (if (http-request-version request)
       (begin
-	(write-string " " port)
+	(write-u8 (char->integer #\space) port)
 	(write-http-version (http-request-version request) port)
-	(newline port)
+	(write-u8 (char->integer #\return) port)
+	(write-u8 (char->integer #\linefeed) port)
 	(write-http-headers (http-request-headers request) port)
-	(%binary-mode port)
-	(write-body (http-request-body request) port))
+	(write-bytevector (http-request-body request) port))
       (begin
 	(newline port)))
   (flush-output-port port))
 
+(define (write-ascii string port)
+  (write-bytevector (string->utf8 string) port))
+
 (define (write-http-response response port)
   (if (http-response-version response)
       (begin
-	(%text-mode port)
 	(write-http-version (http-response-version response) port)
-	(write-string " " port)
-	(write (http-response-status response) port)
-	(write-string " " port)
-	(write-string (http-response-reason response) port)
+	(write-u8 (char->integer #\space) port)
+	(write-ascii (write-to-string (http-response-status response)) port)
+	(write-u8 (char->integer #\space) port)
+	(write-ascii (http-response-reason response) port)
 	(newline port)
 	(write-http-headers (http-response-headers response) port)))
-  (%binary-mode port)
-  (write-body (http-response-body response) port)
+  (write-bytevector (http-response-body response) port)
   (flush-output-port port))
-
-(define (write-body body port)
-  (let ((n (bytevector-length body)))
-    (do ((i 0 (fix:+ i 1)))
-	((not (fix:< i n)))
-      (write-char (integer->char (bytevector-u8-ref body)) port))))
 
 ;;;; Input
 
 (define (read-simple-http-request port)
-  (%text-mode port)
-  (let ((line (read-line port)))
+  (let ((line (read-ascii-line port)))
     (if (eof-object? line)
 	line
 	(make-simple-http-request
 	 (parse-line parse-simple-request line "simple HTTP request")))))
 
+(define (read-ascii-line port)
+  (with-input-port-blocking-mode port 'blocking
+    (lambda ()
+      (let ((builder (string-builder)))
+	(let loop ()
+	  (let ((byte (read-u8 port)))
+	    (cond ((eof-object? byte)
+		   (if (builder 'empty?)
+		       byte
+		       (builder)))
+		  ((fix:= 13 byte)
+		   (let ((line (builder)))
+		     (if (fix:= 10 (peek-u8 port))
+			 (read-u8 port)
+			 (warn "Invalid line ending in header line:" line))
+		     line))
+		  ((fix:= 10 byte)
+		   (let ((line (builder)))
+		     (warn "Invalid line ending in header line:" line)
+		     line))
+		  ((and (fix:<= 32 byte) (fix:<= byte 126))
+		   (builder (integer->char byte))
+		   (loop))
+		  (else
+		   (warn "Illegal character in header line:" byte (builder))
+		   (loop)))))))))
+
 (define (read-simple-http-response port)
   (make-simple-http-response (%read-all port)))
 
 (define (read-http-request port)
-  (%text-mode port)
-  (let ((line (read-line port)))
+  (let ((line (read-ascii-line port)))
     (if (eof-object? line)
 	line
 	(receive (method uri version)
@@ -233,8 +248,7 @@ USA.
 				 (car b.t))))))))
 
 (define (read-http-response request port)
-  (%text-mode port)
-  (let ((line (read-line port)))
+  (let ((line (read-ascii-line port)))
     (if (eof-object? line)
 	#f
 	(receive (version status reason)
@@ -259,14 +273,13 @@ USA.
 	   (and (not (default-object? v))
 		(assq 'chunked v)))
 	 (let ((output (open-output-bytevector))
-	       (buffer (make-string #x1000)))
+	       (buffer (make-bytevector #x1000)))
 	   (let loop ()
 	     (let ((n (%read-chunk-leader port)))
 	       (if (> n 0)
 		   (begin
 		     (%read-chunk n buffer port output)
-		     (%text-mode port)
-		     (let ((line (read-line port)))
+		     (let ((line (read-ascii-line port)))
 		       (if (not (string-null? line))
 			   (error "Missing CRLF after chunk data.")))
 		     (loop)))))
@@ -274,8 +287,7 @@ USA.
 		 (read-http-headers port))))))
 
 (define (%read-chunk-leader port)
-  (%text-mode port)
-  (let ((line (read-line port)))
+  (let ((line (read-ascii-line port)))
     (if (eof-object? line)
 	(error "Premature EOF in HTTP message body."))
     (let ((v (parse-http-chunk-leader line)))
@@ -284,16 +296,15 @@ USA.
       (car v))))
 
 (define (%read-chunk n buffer port output)
-  (%binary-mode port)
   (let ((len (bytevector-length buffer)))
     (let loop ((n n))
       (if (> n 0)
-	  (let ((m (read-string! buffer port 0 (min n len))))
+	  (let ((m (read-bytevector! buffer port 0 (min n len))))
 	    (if (= m 0)
 		(error "Premature EOF in HTTP message body."))
 	    (do ((i 0 (+ i 1)))
 		((not (< i m)))
-	      (write-u8 (char->integer (string-ref buffer i)) output))
+	      (write-u8 (bytevector-u8-ref buffer i) output))
 	    (loop (- n m)))))))
 
 (define (%read-delimited-body headers port)
@@ -302,7 +313,7 @@ USA.
 	 (list
 	  (call-with-output-bytevector
 	   (lambda (output)
-	     (%read-chunk n (make-string #x1000) port output)))))))
+	     (%read-chunk n (make-bytevector #x1000) port output)))))))
 
 (define (%read-terminal-body headers port)
   (and (let ((h (http-header 'connection headers #f)))
@@ -313,17 +324,16 @@ USA.
        (list (%read-all port))))
 
 (define (%read-all port)
-  (%binary-mode port)
   (call-with-output-bytevector
    (lambda (output)
-     (let ((buffer (make-string #x1000)))
+     (let ((buffer (make-bytevector #x1000)))
        (let loop ()
-	 (let ((n (read-string! buffer port)))
+	 (let ((n (read-bytevector! buffer port)))
 	   (if (> n 0)
 	       (begin
 		 (do ((i 0 (+ i 1)))
 		     ((not (< i n)))
-		   (write-u8 (char->integer (string-ref buffer i)) output))
+		   (write-u8 (bytevector-u8-ref buffer i) output))
 		 (loop)))))))))
 
 (define (%no-read-body)

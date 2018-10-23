@@ -116,3 +116,106 @@ USA.
 (define-enumerated-test 'X/NAN
   (vector (flo:-inf.0) -2. -1 -0. 0 +0. +1 +2. (flo:+inf.0))
   (lambda (v) (assert-nan (/ v (flo:nan.0)))))
+
+(define-enumerated-test 'log1p-exact
+  (vector
+   (cons 0 0)
+   (cons 1 (log 2))
+   (cons (- (exp 1) 1) 1.)
+   (cons (expt 2 -53) (expt 2. -53))
+   (cons (- (expt 2 -53)) (- (expt 2. -53))))
+  (lambda (v)
+    (assert-eqv (cdr v) (log1p (car v)))))
+
+(define-enumerated-test 'expm1-exact
+  (vector
+   (cons 0 0)
+   (cons (log 2) 1.)
+   (cons 1 (- (exp 1) 1))
+   (cons (expt 2 -53) (expt 2. -53))
+   (cons (- (expt 2 -53)) (- (expt 2. -53))))
+  (lambda (v)
+    (assert-eqv (cdr v) (expm1 (car v)))))
+
+(define (relerr e a)
+  (if (= e 0)
+      (if (= a 0) 0 1)
+      (abs (/ (- e a) a))))
+
+(define-enumerated-test 'expm1-approx
+  (vector
+   (cons -0.7 -0.5034146962085905)
+   (cons (- (log 2)) -0.5)
+   (cons -0.6 -0.45118836390597356)
+   (cons 0.6 .8221188003905089)
+   (cons (log 2) 1.)
+   (cons 0.7 1.0137527074704766))
+  (lambda (v)
+    (assert->= 1e-15 (relerr (cdr v) (expm1 (car v))))))
+
+(define-enumerated-test 'log1p-approx
+  (vector
+   (cons -0.3 -.35667494393873245)
+   (cons (- (sqrt 1/2) 1) -0.34657359027997264)
+   (cons -0.25 -.2876820724517809)
+   (cons 0.25 .22314355131420976)
+   (cons (- 1 (sqrt 1/2)) 0.25688251232181475)
+   (cons 0.3 .26236426446749106))
+  (lambda (v)
+    (assert->= 1e-15 (relerr (cdr v) (log1p (car v))))))
+
+(define-enumerated-test 'log1mexp
+  (vector
+   (cons -1e-17 -39.1439465808987777)
+   (cons -0.69 -0.696304297144056727)
+   (cons (- (log 2)) (- (log 2)))
+   (cons -0.70 -0.686341002808385170)
+   (cons -708 -3.30755300363840783e-308))
+  (lambda (v)
+    (assert->= 1e-15 (relerr (cdr v) (log1mexp (car v))))))
+
+(define-enumerated-test 'log1pexp
+  (vector
+   (cons -1000 0)
+   (cons -708 3.30755300363840783e-308)
+   (cons -38 3.13913279204802960e-17)
+   (cons -37 8.53304762574406580e-17)
+   (cons -36 2.31952283024356914e-16)
+   (cons 0 (log 2))
+   (cons 17 17.0000000413993746)
+   (cons 18 18.0000000152299791)
+   (cons 19 19.0000000056027964)
+   (cons 33 33.0000000000000071)
+   (cons 34 34))
+  (lambda (v)
+    (assert->= 1e-15 (relerr (cdr v) (log1pexp (car v))))))
+
+(define-enumerated-test 'logit-logistic
+  (vector
+   (vector -1 0.2689414213699951 (log 0.2689414213699951))
+   (vector 0 1/2 (log 1/2))
+   (vector +1 0.7310585786300049 (log 0.7310585786300049))
+   ;; Would like to do +/-710 but we get inexact result traps.
+   (vector +708 1 -3.307553003638408e-308)
+   (vector -708 3.307553003638408e-308 -708)
+   (vector +1000 1 0)
+   (vector -1000 0 -1000))
+  (lambda (v)
+    (let ((x (vector-ref v 0))
+          (p (vector-ref v 1))
+          (t (vector-ref v 2)))
+      (assert->= 1e-15 (relerr p (logistic x)))
+      (if (and (not (= p 0))
+               (not (= p 1)))
+          (assert->= 1e-15 (relerr x (logit p))))
+      (if (< p 1)
+          (begin
+            (assert->= 1e-15 (relerr (- 1 p) (logistic (- x))))
+            (if (< (- 1 p) 1)
+                (assert->= 1e-15 (relerr (- x) (logit (- 1 p))))))
+          (assert->= 1e-300 (logistic (- x))))
+      (assert->= 1e-15 (relerr t (log-logistic x)))
+      (if (<= x 709)
+          (assert->= 1e-15 (relerr x (logit-exp t))))
+      (if (< p 1)
+          (assert->= 1e-15 (relerr (log1p (- p)) (log-logistic (- x))))))))

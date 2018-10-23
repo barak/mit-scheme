@@ -30,13 +30,13 @@ USA.
 (declare (usual-integrations))
 
 (define (http-get uri headers)
-  (http-client-exchange "GET" uri headers ""))
+  (http-client-exchange "GET" (->uri uri) headers (bytevector)))
 
 (define (http-head uri headers)
-  (http-client-exchange "HEAD" uri headers ""))
+  (http-client-exchange "HEAD" (->uri uri) headers (bytevector)))
 
 (define (http-post uri headers body)
-  (http-client-exchange "POST" uri headers body))
+  (http-client-exchange "POST" (->uri uri) headers body))
 
 (define (http-client-exchange method uri headers body)
   (let ((request (http-client-request method uri headers body)))
@@ -47,9 +47,9 @@ USA.
 
 (define (call-with-http-client-socket uri callee)
   (let ((port
-	 (let ((authority (uri-authority uri)))
-	   (open-tcp-stream-socket (uri-authority-host authority)
-				   (or (uri-authority-port authority) 80)))))
+	 (let ((auth (uri-authority uri)))
+	   (open-binary-tcp-stream-socket (uri-authority-host auth)
+					  (or (uri-authority-port auth) 80)))))
     (let ((value (callee port)))
       (close-port port)
       value)))
