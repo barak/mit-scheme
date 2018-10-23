@@ -93,8 +93,14 @@ USA.
 (define-load-option 'cref
   (guarded-system-loader '(cross-reference) "cref"))
 
+(define-load-option 'edwin
+  (guarded-system-loader '(edwin) "edwin"))
+
 (define-load-option 'ffi
   (guarded-system-loader '(ffi) "ffi"))
+
+(define-load-option 'imail
+  (guarded-system-loader '(edwin imail) "imail"))
 
 (define-load-option '*parser
   (guarded-system-loader '(runtime *parser) "star-parser"))
@@ -113,6 +119,12 @@ USA.
 
 (define-load-option 'win32
   (guarded-system-loader '(win32) "win32"))
+
+(define-load-option 'x11
+  (guarded-system-loader '(x11) "x11"))
+
+(define-load-option 'x11-screen
+  (guarded-system-loader '(edwin screen x11-screen) "x11-screen"))
 
 (define-load-option 'xdoc
   (guarded-system-loader '(runtime ssp xdoc) "xdoc"))

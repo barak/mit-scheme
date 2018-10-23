@@ -392,7 +392,7 @@ bundle-xml: xml/xml-unx.c
 all-blowfish: compile-blowfish
 
 .PHONY: compile-blowfish
-compile-blowfish: compile-runtime
+compile-blowfish: compile-runtime compile-ffi
 	(cd blowfish && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
 
 ################
@@ -417,7 +417,7 @@ compile-edwin: compile-runtime compile-xml
 all-gdbm: compile-gdbm
 
 .PHONY: compile-gdbm
-compile-gdbm: compile-runtime
+compile-gdbm: compile-runtime compile-ffi
 	(cd gdbm && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
 
 ################
@@ -439,7 +439,7 @@ compile-imail: compile-runtime compile-sos compile-edwin compile-star-parser
 all-mcrypt: compile-mcrypt
 
 .PHONY: compile-mcrypt
-compile-mcrypt: compile-runtime
+compile-mcrypt: compile-runtime compile-ffi
 	(cd mcrypt && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
 
 ################
@@ -450,7 +450,7 @@ compile-mcrypt: compile-runtime
 all-pgsql: compile-pgsql
 
 .PHONY: compile-pgsql
-compile-pgsql: compile-runtime
+compile-pgsql: compile-runtime compile-ffi
 	(cd pgsql && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
 
 ################
@@ -461,7 +461,7 @@ compile-pgsql: compile-runtime
 all-x11: compile-x11
 
 .PHONY: compile-x11
-compile-x11: compile-runtime
+compile-x11: compile-runtime compile-ffi
 	(cd x11 && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
 
 ################

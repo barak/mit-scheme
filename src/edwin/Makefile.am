@@ -61,28 +61,11 @@ EXTRA_DIST += sources.sh compile.sh decls.scm edwin.ldr
 EXTRA_DIST += edwin.sf edwin.cbf edwin.pkg
 
 install-data-hook:
-	( echo '(add-plugin "edwin" "@MIT_SCHEME_PROJECT@"'; \
-	  echo '            ""'; \
-	  echo '            "$(DESTDIR)$(scmlibdir)"'; \
-	  echo '            "$(DESTDIR)$(scmdocdir)")' ) \
-	| $(MIT_SCHEME_EXE) --batch-mode
 
 install-html: install-html-am
-	( echo '(add-plugin "edwin" "@MIT_SCHEME_PROJECT@"'; \
-	  echo '            ""'; \
-	  echo '            "$(DESTDIR)$(scmlibdir)"'; \
-	  echo '            "$(DESTDIR)$(scmdocdir)")' ) \
-	| $(MIT_SCHEME_EXE) --batch-mode
 
 install-info-am:
 
 uninstall-info-am:
 
 uninstall-hook:
-	( echo '(remove-plugin "edwin" "@MIT_SCHEME_PROJECT@"'; \
-	  echo '               ""'; \
-	  echo '               "$(DESTDIR)$(scmlibdir)"'; \
-	  echo '               "$(DESTDIR)$(scmdocdir)")' ) \
-	| $(MIT_SCHEME_EXE) --batch-mode
-	[ -d "$(DESTDIR)$(scmlib_subdir)" ] \
-	&& rmdir "$(DESTDIR)$(scmlib_subdir)"

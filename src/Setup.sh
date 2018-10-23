@@ -87,12 +87,16 @@ maybe_link lib/optiondb.scm ../etc/optiondb.scm
 
 maybe_link lib/compiler ../compiler
 maybe_link lib/cref ../cref
+maybe_link lib/edwin ../edwin
 maybe_link lib/ffi ../ffi
+maybe_link lib/imail ../imail
 maybe_link lib/runtime ../runtime
 maybe_link lib/sf ../sf
 maybe_link lib/sos ../sos
 maybe_link lib/ssp ../ssp
 maybe_link lib/star-parser ../star-parser
+maybe_link lib/x11 ../x11
+maybe_link lib/x11-screen ../x11-screen
 maybe_link lib/xml ../xml
 
 maybe_link config.sub microcode/config.sub

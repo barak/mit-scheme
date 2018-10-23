@@ -89,22 +89,27 @@ AC_ARG_WITH([scheme-build],
 
 # optional modules
 
+AC_ARG_ENABLE([default-plugins],
+    AS_HELP_STRING([--default-plugins],
+	[Enable default plugins [[yes]]]))
+: ${enable_default_plugins=yes}
+
 AC_ARG_ENABLE([x11],
     AS_HELP_STRING([--enable-x11],
-	[Add support for x11 support [[yes]]]))
-: ${enable_x11=yes}
+	[Add support for x11 [[yes]]]))
+: ${enable_x11=${enable_default_plugins}}
 
 AC_ARG_ENABLE([edwin],
     AS_HELP_STRING([--enable-edwin],
 	[Add support for the Edwin editor [[yes]]]))
-: ${enable_edwin=yes}
+: ${enable_edwin=${enable_default_plugins}}
 
 AC_ARG_ENABLE([imail],
     AS_HELP_STRING([--enable-imail],
 	[Add support for the Imail mail reader (implies --enable-edwin) [[yes]]]))
-: ${enable_imail=yes}
-if test x"${enable_imail}" = xyes; then
-    enable_edwin=yes
+: ${enable_imail=${enable_default_plugins}}
+if test x"${enable_imail}" = xyes && test x"${enable_edwin}" = xno; then
+    enable_edwin=${enable_default_plugins}
 fi
 
 AC_ARG_ENABLE([blowfish],

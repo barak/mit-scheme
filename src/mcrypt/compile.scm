@@ -3,6 +3,10 @@
 ;;;; Compile the MCRYPT option.
 
 (load-option 'cref)
-(load-option 'ffi)
-(compile-file "mcrypt" '() (->environment '(runtime)))
-(cref/generate-constructors "mcrypt")
+(with-working-directory-pathname (directory-pathname (current-load-pathname))
+  (lambda ()
+    (with-working-directory-pathname (merge-pathnames "../ffi")
+      (lambda ()
+	(load "make")))
+    (compile-file "mcrypt" '() (->environment '(runtime)))
+    (cref/generate-constructors "mcrypt")))

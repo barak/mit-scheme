@@ -24,15 +24,20 @@ USA.
 
 |#
 
+
 (load-option 'cref)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (with-working-directory-pathname (merge-pathnames "../edwin")
+    (with-working-directory-pathname (merge-pathnames "../ffi")
       (lambda ()
 	(load "make")))
-    (for-each (lambda (filename)
-		(compile-file filename '() (->environment '(edwin))))
-	      '("x11-screen"
-		"x11-key"
-		"x11-command"))
-    (cref/generate-constructors "x11-screen")))
+    (for-each (let ((env (->environment '(runtime))))
+		(lambda (filename)
+		  (compile-file filename '() env)))
+	      '("x11"
+		"x11-base"
+		"x11-color"
+		"x11-graphics"
+		"x11-device"
+		"x11-terminal"))
+    (cref/generate-constructors "x11")))
