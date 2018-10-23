@@ -65,7 +65,6 @@ USA.
  (lambda (spec)
    (define-load-option (car spec) (apply standard-option-loader (cdr spec))))
  '((compress	(runtime compress)	#f			"cpress")
-   (dosprocess	()			#f			"dosproc")
    (format	(runtime format)	(initialize-package!)	"format")
    (mime-codec	(runtime mime-codec)	#f			"mime-codec")
    (ordered-vector (runtime ordered-vector) #f			"ordvec")
