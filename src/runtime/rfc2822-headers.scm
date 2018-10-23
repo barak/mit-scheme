@@ -152,6 +152,11 @@ USA.
 					     end)))))))
 
 (define (read-rfc2822-folded-line port)
+  (if (binary-input-port? port)
+      (read-rfc2822-folded-line* read-ascii-line peek-ascii-char port)
+      (read-rfc2822-folded-line* read-line peek-char port)))
+
+(define (read-rfc2822-folded-line* read-line peek-char port)
   (let ((line (read-line port)))
     (cond ((string-null? line)
 	   #f)
@@ -174,6 +179,38 @@ USA.
 		     (begin
 		       (write-char #\space out)
 		       (loop (read-line port)))))))))))
+
+(define (read-ascii-line port)
+  (with-input-port-blocking-mode port 'blocking
+    (lambda ()
+      (let ((builder (string-builder)))
+	(let loop ()
+	  (let ((byte (read-u8 port)))
+	    (cond ((eof-object? byte)
+		   (if (builder 'empty?)
+		       byte
+		       (builder)))
+		  ((fix:= 13 byte)
+		   (if (fix:= 10 (peek-u8 port))
+		       (read-u8 port)
+		       (parse-error port "Invalid line ending:"
+				    'read-ascii-line))
+		   (builder))
+		  ((fix:= 10 byte)
+		   (parse-error port "Invalid line ending:" 'read-ascii-line)
+		   (builder))
+		  ((and (fix:<= 32 byte) (fix:<= byte 126))
+		   (builder (integer->char byte))
+		   (loop))
+		  (else
+		   (parse-error port "Illegal character:" 'read-ascii-line)
+		   (loop)))))))))
+
+(define (peek-ascii-char port)
+  (let ((byte (peek-u8 port)))
+    (if (eof-object? byte)
+	byte
+	(integer->char byte))))
 
 (define (skip-wsp-left string start end)
   (let loop ((i start))

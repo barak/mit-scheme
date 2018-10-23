@@ -4126,6 +4126,8 @@ USA.
 	  host-address-any
 	  host-address-loopback
 	  listen-tcp-server-socket
+	  open-binary-tcp-stream-socket
+	  open-binary-unix-stream-socket
 	  open-tcp-server-socket
 	  open-tcp-stream-socket
 	  open-tcp-stream-socket-channel
@@ -4133,7 +4135,9 @@ USA.
 	  open-unix-stream-socket
 	  open-unix-stream-socket-channel
 	  os/hostname
+	  tcp-server-binary-connection-accept
 	  tcp-server-connection-accept
+	  unix-server-binary-connection-accept
 	  unix-server-connection-accept)
   (initialization (initialize-package!)))
 

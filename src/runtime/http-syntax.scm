@@ -88,14 +88,23 @@ USA.
   (every (lambda (pred) (pred object))
 	 preds))
 
+(define (->ascii string)
+  (string->utf8 string))
+
+(define (write-ascii string port)
+  (write-bytevector (->ascii string) port))
+
+(define (write-object value port)
+  (write-ascii (write-to-string value) port))
+
 (define ((sep-list-writer sep write-elt) value port)
   (if (pair? value)
-      (begin
-	  (write-elt (car value) port)
-	  (for-each (lambda (elt)
-		      (display sep port)
-		      (write-elt elt port))
-		    (cdr value)))))
+      (let ((bytes (->ascii sep)))
+	(write-elt (car value) port)
+	(for-each (lambda (elt)
+		    (write-bytevector bytes port)
+		    (write-elt elt port))
+		  (cdr value)))))
 
 (define (comma-list-writer write-elt)
   (sep-list-writer ", " write-elt))
@@ -115,7 +124,9 @@ USA.
     (if write-car
 	(write-car (car value) port))
     (if (and sep write-car write-cdr)
-	(display sep port))
+	(if (char? sep)
+	    (write-u8 (char->integer sep) port)
+	    (write-ascii sep port)))
     (if write-cdr
 	(write-cdr (cdr value) port))))
 
@@ -143,7 +154,9 @@ USA.
 		     (cadr args))))
 	    (if writer
 		(begin
-		  (if sep (display sep port))
+		  (if sep (if (char? sep)
+			      (write-u8 (char->integer sep) port)
+			      (write-ascii sep port)))
 		  (writer (vector-ref value i) port)))
 	    (loop (cddr args) (+ i 1)))))))
 
@@ -194,10 +207,10 @@ USA.
 	       (match (+ (char-set char-set:numeric))))))))
 
 (define (write-http-version version port)
-  (write-string "HTTP/" port)
-  (write (car version) port)
-  (write-string "." port)
-  (write (cdr version) port))
+  (write-ascii "HTTP/" port)
+  (write-object (car version) port)
+  (write-u8 (char->integer #\.) port)
+  (write-object (cdr version) port))
 
 (define-deferred http-version:1.0 (make-http-version 1 0))
 (define-deferred http-version:1.1 (make-http-version 1 1))
@@ -221,7 +234,7 @@ USA.
 		    (char-set char-set:numeric))))))
 
 (define (write-http-status object port)
-  (write-string (string-pad-left (number->string object) 3 #\0) port))
+  (write-ascii (string-pad-left (number->string object) 3 #\0) port))
 
 ;;;; Headers
 
@@ -245,9 +258,10 @@ USA.
     (if defn
 	(if ((hvdefn-predicate defn) value)
 	    (%make-header name
-			  (call-with-output-string
-			    (lambda (port)
-			      ((hvdefn-writer defn) value port)))
+			  (utf8->string
+			   (call-with-output-bytevector
+			     (lambda (port)
+			       ((hvdefn-writer defn) value port))))
 			  value)
 	    (begin
 	      (guarantee http-text? value 'make-http-header)
@@ -294,7 +308,7 @@ USA.
 (define-guarantee http-token "HTTP token")
 
 (define (write-http-token token port)
-  (write-string (symbol->string token) port))
+  (write-ascii (symbol->string token) port))
 
 (define (http-token-string? object)
   (and (string? object)
@@ -317,9 +331,9 @@ USA.
 (define-guarantee http-text "HTTP text")
 
 (define (write-quoted-string string port)
-  (write-char #\" port)
+  (write-u8 (char->integer #\") port)
   (%write-with-quotations string char-set:http-qdtext port)
-  (write-char #\" port))
+  (write-u8 (char->integer #\") port))
 
 (define (%write-with-quotations string unquoted port)
   (let ((n (string-length string)))
@@ -327,12 +341,12 @@ USA.
 	((not (fix:< i n)))
       (let ((char (string-ref string i)))
 	(if (not (char-in-set? char unquoted))
-	    (write-char #\\ port))
-	(write-char char port)))))
+	    (write-u8 (char->integer #\\) port))
+	(write-u8 (char->integer char) port)))))
 
 (define write-text
   (alt-writer string-is-http-token?
-	      write-string
+	      write-ascii
 	      write-quoted-string))
 
 (define (comment? string)
@@ -345,9 +359,9 @@ USA.
 	      (else (loop level)))))))
 
 (define (write-comment string port)
-  (write-char #\( port)
+  (write-u8 (char->integer #\() port)
   (%write-with-quotations string char-set:http-text port)
-  (write-char #\) port))
+  (write-u8 (char->integer #\)) port))
 
 ;;;; Header I/O
 
@@ -398,13 +412,19 @@ USA.
 	      (let ((name (http-header-name header)))
 		(let ((defn (header-value-defn name)))
 		  (if defn
-		      (write-string (hvdefn-name defn) port)
+		      (write-ascii (hvdefn-name defn) port)
 		      (write-http-token name port))))
-	      (write-string ": " port)
-	      (write-string (http-header-value header) port)
-	      (newline port))
+	      (write-u8 (char->integer #\:) port)
+	      (write-u8 (char->integer #\space) port)
+	      (let ((value (http-header-value header)))
+		(if (bytevector? value)
+		    (write-bytevector value port)
+		    (write-ascii value port)))
+	      (write-u8 (char->integer #\return) port)
+	      (write-u8 (char->integer #\linefeed) port))
 	    headers)
-  (newline port))
+  (write-u8 (char->integer #\return) port)
+  (write-u8 (char->integer #\linefeed) port))
 
 ;;;; Header element types
 
@@ -571,7 +591,7 @@ USA.
 		  exact-nonnegative-integer?))
 
 (define write-range
-  (pair-writer write #\- write))
+  (pair-writer write-object #\- write-object))
 
 (define (lp:numeric-token radix)
   (list-parser
@@ -586,7 +606,7 @@ USA.
 
 (define (write-opt-decimal n port)
   (if n
-      (write n port)))
+      (write-object n port)))
 
 (define lp:mime-type
   (list-parser
@@ -608,7 +628,10 @@ USA.
        (eqv? (decoded-time/zone value) 0)))
 
 (define (write-http-date value port)
-  (write-decoded-time-as-http value port))
+  (write-ascii (call-with-output-string
+		 (lambda (out)
+		   (write-decoded-time-as-http value out)))
+	       port))
 
 (define lp:hostport
   (list-parser
@@ -632,7 +655,7 @@ USA.
 		  (opt-predicate exact-nonnegative-integer?)))
 
 (define write-hostport
-  (pair-writer write-string
+  (pair-writer write-ascii
 	       #\:
 	       (opt-writer write)))
 
@@ -674,7 +697,7 @@ USA.
 (define write-entity-tag
   (pair-writer (lambda (weak? port)
 		 (if weak?
-		     (write-string "W/" port)))
+		     (write-ascii "W/" port)))
 	       #f
 	       write-quoted-string))
 
@@ -755,9 +778,9 @@ USA.
 		  (opt-predicate http-token-string?)))
 
 (define write-product
-  (pair-writer write-string
+  (pair-writer write-ascii
 	       #\/
-	       (opt-writer write-string)))
+	       (opt-writer write-ascii)))
 
 (define lp:product/comment-list
   (list-parser
@@ -777,9 +800,16 @@ USA.
 	(begin
 	  (write-elt (car value) port)
 	  (for-each (lambda (elt)
-		      (write-char #\space port)
+		      (write-u8 (char->integer #\space) port)
 		      (write-elt elt port))
 		    (cdr value))))))
+
+(define (write-ascii-uri value port)
+  (write-ascii (call-with-output-string (lambda (out) (write-uri value out)))
+	      port))
+
+(define (write-ascii-mime-type mime-type port)
+  (write-ascii (mime-type->string mime-type) port))
 
 ;;;; Tokenization
 
@@ -1149,10 +1179,10 @@ USA.
   (pair-predicate (alt-predicate mime-type? http-token?)
 		  accept-params?)
   (value+params-writer (alt-writer mime-type?
-				   write-mime-type
+				   write-ascii-mime-type
 				   (lambda (value port)
 				     (write-http-token value port)
-				     (write-string "/*" port)))
+				     (write-ascii "/*" port)))
 		       ";"))
 
 (define-comma-list+-header "Accept-Charset"
@@ -1233,7 +1263,7 @@ USA.
 (define-header "Max-Forwards"
   (tokenized-parser lp:decimal)
   exact-nonnegative-integer?
-  write)
+  write-object)
 
 #;
 (define-header "Proxy-Authorization"
@@ -1266,7 +1296,7 @@ USA.
   (lambda (value)
     (and (uri? value)
 	 (not (uri-fragment value))))
-  write-uri)
+  write-ascii-uri)
 
 (define-comma-list-header "TE"
   (list-parser
@@ -1299,7 +1329,7 @@ USA.
 (define-header "Age"
   (tokenized-parser lp:decimal)
   exact-nonnegative-integer?
-  write)
+  write-object)
 
 (define-header "ETag"
   (tokenized-parser lp:entity-tag)
@@ -1309,7 +1339,7 @@ USA.
 (define-header "Location"
   (direct-parser parse-absolute-uri)
   absolute-uri?
-  write-uri)
+  write-ascii-uri)
 #;
 (define-header "Proxy-Authenticate"
   (tokenized-parser
@@ -1323,7 +1353,7 @@ USA.
     (alt parser:http-date
 	 lp:decimal)))
   (alt-predicate http-date? exact-nonnegative-integer?)
-  (alt-writer http-date? write-http-date write))
+  (alt-writer http-date? write-http-date write-object))
 
 (define-header "Server"
   (tokenized-parser lp:product/comment-list)
@@ -1349,7 +1379,7 @@ USA.
 (define-comma-list-header "Allow"
   lp:token-string
   http-token-string?
-  write-string)
+  write-ascii)
 
 (define-comma-list+-header "Content-Encoding"
   lp:token
@@ -1364,7 +1394,7 @@ USA.
 (define-header "Content-Length"
   (tokenized-parser lp:decimal)
   exact-nonnegative-integer?
-  write)
+  write-object)
 
 (define-header "Content-Location"
   (direct-parser
@@ -1374,7 +1404,7 @@ USA.
   (lambda (value)
     (and (uri? value)
 	 (not (uri-fragment value))))
-  write-uri)
+  write-ascii-uri)
 
 (define-header "Content-MD5"
   (lambda (string win lose)
@@ -1387,7 +1417,7 @@ USA.
     (and (bytevector? value)
 	 (= (bytevector-length value) 16)))
   (lambda (value port)
-    (write-string (string-trim-right (encode-base64-bytes value)) port)))
+    (write-ascii (string-trim-right (encode-base64-bytes value)) port)))
 
 (define-header "Content-Range"
   (tokenized-parser
@@ -1410,7 +1440,8 @@ USA.
 		 #\space
 		 (alt-predicate range? write-range write-*)
 		 #\/
-		 (alt-predicate exact-nonnegative-integer? write write-*)))
+		 (alt-predicate exact-nonnegative-integer?
+				write-object write-*)))
 
 (define-header "Content-Type"
   (tokenized-parser
@@ -1419,7 +1450,7 @@ USA.
       (seq lp:mime-type
 	   lp:parameters))))
   (value+params-predicate mime-type?)
-  (value+params-writer write-mime-type "; "))
+  (value+params-writer write-ascii-mime-type "; "))
 
 (define-header "Expires"
   (direct-parser
@@ -1432,7 +1463,7 @@ USA.
 	      write-http-date
 	      (lambda (value port)
 		value
-		(write-string "-1" port))))
+		(write-ascii "-1" port))))
 
 (define-header "Last-Modified"
   (direct-parser parser:http-date)

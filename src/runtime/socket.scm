@@ -78,7 +78,13 @@ USA.
 (define (tcp-server-connection-accept server-socket block? peer-address)
   (connection-accept (ucode-primitive new-tcp-server-connection-accept 3)
 		     server-socket block? peer-address
-		     'tcp-server-connection-accept))
+		     make-socket-port 'tcp-server-connection-accept))
+
+(define (tcp-server-binary-connection-accept server-socket block? peer-address)
+  (connection-accept (ucode-primitive new-tcp-server-connection-accept 3)
+		     server-socket block? peer-address
+		     make-binary-socket-port
+		     'tcp-server-binary-connection-accept))
 
 (define (unix-server-connection-accept server-socket block?)
   (connection-accept (named-lambda (new-unix-server-connection-accept
@@ -87,9 +93,20 @@ USA.
 		       ((ucode-primitive new-unix-server-connection-accept 2)
 			socket pair))
 		     server-socket block? #f
-		     'unix-server-connection-accept))
+		     make-socket-port 'unix-server-connection-accept))
 
-(define (connection-accept accept! server-socket block? peer-address caller)
+(define (unix-server-binary-connection-accept server-socket block?)
+  (connection-accept (named-lambda (new-unix-server-connection-accept
+				    socket peer pair)
+		       (declare (ignore peer))
+		       ((ucode-primitive new-unix-server-connection-accept 2)
+			socket pair))
+		     server-socket block? #f
+		     make-binary-socket-port
+		     'unix-server-binary-connection-accept))
+
+(define (connection-accept accept! server-socket block? peer-address
+			   make-port caller)
   (let ((channel
 	 (with-thread-events-blocked
 	   (lambda ()
@@ -118,15 +135,29 @@ USA.
 		   (let loop () (do-test loop))
 		   (do-test (lambda () #f))))))))
     (and channel
-	 (make-socket-port channel caller))))
+	 (make-port channel caller))))
 
 (define (open-tcp-stream-socket host-name service)
   (let ((channel (open-tcp-stream-socket-channel host-name service)))
     (make-socket-port channel 'open-tcp-stream-socket)))
 
+(define (open-binary-tcp-stream-socket host-name service)
+  (let* ((channel (open-tcp-stream-socket-channel host-name service))
+	 (port (make-binary-socket-port channel
+					'open-binary-tcp-stream-socket)))
+    (set-port-property! port 'pathname (string host-name":"service))
+    port))
+
 (define (open-unix-stream-socket pathname)
   (let ((channel (open-unix-stream-socket-channel pathname)))
     (make-socket-port channel 'open-unix-stream-socket)))
+
+(define (open-binary-unix-stream-socket pathname)
+  (let* ((channel (open-unix-stream-socket-channel pathname))
+	 (port (make-binary-socket-port channel
+					'open-binary-unix-stream-socket)))
+    (set-port-property! port 'pathname (string pathname))
+    port))
 
 (define (open-tcp-stream-socket-channel host-name service)
   (let ((host
@@ -156,6 +187,11 @@ USA.
 					   caller)
 			 socket-port-type
 			 caller))
+
+(define (make-binary-socket-port channel caller)
+  (make-binary-port (make-channel-input-source channel)
+		    (make-channel-output-sink channel)
+		    caller))
 
 (define socket-port-type)
 (define (initialize-package!)
