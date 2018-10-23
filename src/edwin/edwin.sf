@@ -29,7 +29,7 @@ USA.
 (if (not (name->package '(edwin)))
     (let ((package-set (package-set-pathname "edwin")))
       (if (not (file-exists? package-set))
-	  (cref/generate-trivial-constructor "edwin" #f))
+	  (cref/generate-trivial-constructor "edwin"))
       (construct-packages-from-file (fasload package-set))))
 
 (if (lexical-unreferenceable? (->environment '(edwin string))
