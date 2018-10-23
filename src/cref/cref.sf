@@ -29,4 +29,4 @@ USA.
   (sf-directory "."))
 
 (load-option 'cref)
-(cref/generate-constructors "cref" 'all)
+(cref/generate-constructors "cref")

@@ -86,4 +86,4 @@ USA.
 (sf-conditionally "machine/make")
 
 ;; Rebuild the package constructors and cref.
-(cref/generate-constructors "compiler" 'all)
+(cref/generate-constructors "compiler")

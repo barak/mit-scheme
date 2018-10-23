@@ -24,32 +24,32 @@ USA.
 
 |#
 
-(load-option 'CREF)
+(load-option 'cref)
 
-(if (not (name->package '(WIN32)))
+(if (not (name->package '(win32)))
     (let ((package-set (package-set-pathname "win32")))
       (if (not (file-exists? package-set))
 	  (cref/generate-trivial-constructor "win32"))
       (construct-packages-from-file (fasload package-set))))
 
-(fluid-let ((sf/default-syntax-table (->environment '(WIN32))))
+(fluid-let ((sf/default-syntax-table (->environment '(win32))))
   (sf-conditionally "ffimacro")
-  (load "ffimacro.bin" '(WIN32 FFI-MACRO))
+  (load "ffimacro.bin" '(win32 ffi-macro))
 
   (sf-conditionally "winuser")
   (sf-conditionally "wingdi")
   (sf-conditionally "wt_user")
   (fluid-let ((sf/default-declarations
-	       `((INTEGRATE-EXTERNAL "winuser" "wingdi" "wt_user"))))
+	       `((integrate-external "winuser" "wingdi" "wt_user"))))
     (sf-conditionally "win_ffi")
     (sf-conditionally "graphics")
     (sf-conditionally "module"))
   (fluid-let ((sf/default-declarations
-	       `((INTEGRATE-EXTERNAL "win_ffi" "wt_user"))))
+	       `((integrate-external "win_ffi" "wt_user"))))
     (sf-conditionally "wf_user"))
   (fluid-let ((sf/default-declarations
-	       `((INTEGRATE-EXTERNAL "win_ffi"))))
+	       `((integrate-external "win_ffi"))))
     (sf-conditionally "dib"))
   (sf-directory "."))
 
-(cref/generate-constructors "win32" 'ALL)
+(cref/generate-constructors "win32")

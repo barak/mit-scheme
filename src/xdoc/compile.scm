@@ -32,4 +32,4 @@ USA.
     (for-each compile-file
 	      '("db"
 		"xdoc"))
-    (cref/generate-constructors "xdoc" 'all)))
+    (cref/generate-constructors "xdoc")))

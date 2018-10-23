@@ -50,4 +50,4 @@ USA.
 		    "rdf-struct"
 		    "rdf-nt"
 		    "turtle"))))
-    (cref/generate-constructors "xml" 'all)))
+    (cref/generate-constructors "xml")))

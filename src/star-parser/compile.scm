@@ -33,4 +33,4 @@ USA.
 	      '("matcher"
 		"parser"
 		"shared"))
-    (cref/generate-constructors "parser" 'all)))
+    (cref/generate-constructors "parser")))

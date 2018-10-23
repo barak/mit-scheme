@@ -38,4 +38,4 @@ USA.
     (compile-file "recslot")
     (compile-file "slot")
     (compile-file "tvector")
-    (cref/generate-constructors "sos" 'all)))
+    (cref/generate-constructors "sos")))

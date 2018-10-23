@@ -32,12 +32,12 @@ USA.
 (sf-conditionally "pic-read")
 (sf-conditionally "pic-ops")
 
-(fluid-let ((sf/default-syntax-table (->environment '(RUNTIME))))
+(fluid-let ((sf/default-syntax-table (->environment '(runtime))))
   (sf-conditionally "arith"))
 
-(fluid-let ((sf/default-syntax-table (->environment '(EDWIN))))
+(fluid-let ((sf/default-syntax-table (->environment '(edwin))))
   (sf-conditionally "edextra")
   (sf-conditionally "floppy"))
 
-(load-option 'CREF)
-(cref/generate-constructors "6001" 'ALL)
+(load-option 'cref)
+(cref/generate-constructors "6001")

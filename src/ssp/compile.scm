@@ -34,4 +34,4 @@ USA.
 		"mod-lisp"
 		"xhtml-expander"
 		"xmlrpc"))
-    (cref/generate-constructors "ssp" 'all)))
+    (cref/generate-constructors "ssp")))

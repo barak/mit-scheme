@@ -26,12 +26,10 @@ USA.
 
 (load-option '*parser)			;for url.scm
 (fluid-let ((sf/default-syntax-table (->environment '(runtime))))
-  (sf-conditionally "graphics")
-  (sf-conditionally "infstr")
   (sf-directory "."))
 
 ;; Guarantee that the package modeller is loaded.  load-option ensures
 ;; that when cross-syntaxing the cref `native' to the running system
 ;; is loaded.
 (load-option 'cref)
-(cref/generate-constructors "runtime" 'all)
+(cref/generate-constructors "runtime")
