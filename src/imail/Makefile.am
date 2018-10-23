@@ -93,24 +93,7 @@ TAGS_DEPENDENCIES = $(sources)
 EXTRA_DIST += $(sources) compile.sh make.scm compile.scm imail.pkg
 
 install-data-hook:
-	( echo '(add-plugin "imail" "@MIT_SCHEME_PROJECT@"'; \
-	  echo '            ""'; \
-	  echo '            "$(DESTDIR)$(scmlibdir)"'; \
-	  echo '            "$(DESTDIR)$(scmdocdir)")' ) \
-	| $(MIT_SCHEME_EXE) --batch-mode
 
 install-html: install-html-am
-	( echo '(add-plugin "imail" "@MIT_SCHEME_PROJECT@"'; \
-	  echo '            ""'; \
-	  echo '            "$(DESTDIR)$(scmlibdir)"'; \
-	  echo '            "$(DESTDIR)$(scmdocdir)")' ) \
-	| $(MIT_SCHEME_EXE) --batch-mode
 
 uninstall-hook:
-	( echo '(remove-plugin "imail" "@MIT_SCHEME_PROJECT@"'; \
-	  echo '               ""'; \
-	  echo '               "$(DESTDIR)$(scmlibdir)"'; \
-	  echo '               "$(DESTDIR)$(scmdocdir)")' ) \
-	| $(MIT_SCHEME_EXE) --batch-mode
-	[ -d "$(DESTDIR)$(scmlib_subdir)" ] \
-	&& rmdir "$(DESTDIR)$(scmlib_subdir)"
