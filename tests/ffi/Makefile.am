@@ -30,7 +30,7 @@ scmlibdir = $(libdir)/mit-scheme-@MIT_SCHEME_ARCH@
 scmlib_LTLIBRARIES = ffi-test-shim.la
 scmlib_DATA = ffi-test-types.bin ffi-test-const.bin
 
-AM_CPPFLAGS = -I../../src/lib
+AM_CPPFLAGS = -I@MIT_SCHEME_INCLUDE_DIR@
 
 ffi_test_shim_la_LIBADD = ffi-test.lo
 ffi_test_shim_la_LDFLAGS = -module -avoid-version -shared
@@ -54,3 +54,8 @@ ffi-test.bin ffi-test.bci ffi-test.com ffi-test-unx.pkd: \
 
 CLEANFILES = ffi-test-const* ffi-test-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
+MAINTAINERCLEANFILES = Makefile.in aclocal.m4 compile config.* configure
+MAINTAINERCLEANFILES += depcomp install-sh ltmain.sh missing
+
+maintainer-clean-local:
+	-rm -rf m4

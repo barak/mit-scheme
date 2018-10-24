@@ -69,11 +69,15 @@ dnl Initialize libtool
 LT_PREREQ([2.2.6])
 LT_INIT([dlopen win32-dll])
 
-MIT_SCHEME_EXE="../../src/microcode/scheme --library ../../src/lib"
+
+: ${MIT_SCHEME_EXE="../../src/run-build"}
+: ${MITSCHEME_LIBRARY_PATH="../../src/lib"}
+: ${MIT_SCHEME_INCLUDE_DIR=${MITSCHEME_LIBRARY_PATH}}
 MIT_SCHEME_ARCH=`echo "(display microcode-id/compiled-code-type)" \
 		 | ${MIT_SCHEME_EXE} --batch-mode`
 
 AC_SUBST([MIT_SCHEME_EXE])
+AC_SUBST([MIT_SCHEME_INCLUDE_DIR])
 AC_SUBST([MIT_SCHEME_ARCH])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

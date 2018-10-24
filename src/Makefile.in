@@ -158,8 +158,7 @@ lib/runtime.com: all-runtime
 @IF_CROSS@lib/runtime.com: stamp_cross-finished
 	(. etc/functions.sh && get_fasl_file && cd runtime \
 	  && (echo '(disk-save "../$@")' \
-	       | ../microcode/scheme --batch-mode --library ../lib \
-	           --fasl "$${FASL}"))
+	       | ../run-build --batch-mode --fasl "$${FASL}"))
 
 lib/all.com: microcode/scheme
 lib/all.com: lib/runtime.com
@@ -171,7 +170,7 @@ lib/all.com: all-cref
 	 echo '  (load-option (quote compiler))' && \
 	 echo '  (load-option (quote sf))' && \
 	 echo '  (disk-save "$@"))') \
-	| ./microcode/scheme --batch-mode --library lib --band runtime.com
+	| ./run-build --batch-mode --band runtime.com
 
 ################
 # Runtime
@@ -508,13 +507,11 @@ stamp_cross-finished: stamp_cross-host microcode/scheme
 	(echo '(let ((env (->environment (quote (runtime)))))' && \
 	 echo '  (load "../compiler/base/crsend" env)' && \
 	 echo '  ((access finish-cross-compilation:files env) ".."))') \
-	| (cd runtime && ../microcode/scheme --batch-mode --library ../lib \
-					     --fasl make.bin)
+	| (cd runtime && ../run-build --batch-mode --fasl make.bin)
 	(echo '(let ((env (->environment (quote (runtime)))))' && \
 	 echo '  (load "../compiler/base/crsend" env)' && \
 	 echo '  ((access finish-cross-compilation:info-files env) ".."))') \
-	 | (cd runtime && ../microcode/scheme --batch-mode --library ../lib \
-					      --fasl make.com)
+	 | (cd runtime && ../run-build --batch-mode --fasl make.com)
 	echo "done" > $@
 
 ################
@@ -523,8 +520,7 @@ stamp_cross-finished: stamp_cross-host microcode/scheme
 
 .PHONY: check
 check:
-	./microcode/scheme --library lib --batch-mode \
-	  --load ../tests/check.scm --eval '(%exit)'
+	./run-build --batch-mode --load ../tests/check.scm --eval '(%exit)'
 
 .PHONY: macosx-app
 macosx-app:

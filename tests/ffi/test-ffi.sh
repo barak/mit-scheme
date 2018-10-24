@@ -1,10 +1,10 @@
 #!/bin/sh
 
 set -e
-../../src/microcode/scheme --library .:../../src/lib --batch-mode <<EOF
+${MIT_SCHEME_EXE} --library .:${MITSCHEME_LIBRARY_PATH} --batch-mode <<EOF
 (begin
   (parameterize ((param:suppress-loading-message? #t))
-    (load-option 'FFI))
+    (load-option 'ffi))
   (compile-file "test-ffi-wrapper")
   (load "test-ffi-wrapper")
   (test-ffi))
