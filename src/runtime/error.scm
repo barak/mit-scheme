@@ -1116,7 +1116,7 @@ USA.
 	      (write-string " because: " port)
 	      (let ((reason (access-condition condition 'reason)))
 		(if reason
-		    (write-string (string-titlecase reason) port)
+		    (write-string (reason-titlecase reason) port)
 		    (begin
 		      (write-string "No such " port)
 		      (write-string noun port))))
@@ -1305,7 +1305,7 @@ USA.
 
 (define error-irritant/noise-tag
   '(error-irritant/noise))
-
+
 (define (ordinal-number-string n)
   (if (not (and (exact-nonnegative-integer? n) (< n 100)))
       (error:wrong-type-argument n "exact integer between 0 and 99"
@@ -1334,3 +1334,14 @@ USA.
 	     (primitive-procedure-name operator)
 	     operator)
 	 port))
+
+;; Not quite right: it should be using string-word-breaks to find the first
+;; word.  Unfortunately even with the breaks it's still non-trivial to discover
+;; what is a word and what isn't.  So for now we do this simple thing based on
+;; whitespace.
+(define (reason-titlecase reason)
+  (let ((index (string-find-first-index char-whitespace? reason)))
+    (if index
+	(string-append (string-titlecase (string-slice reason 0 index))
+		       (string-slice reason index))
+	(string-titlecase reason))))
