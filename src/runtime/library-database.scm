@@ -332,3 +332,13 @@ USA.
 (define library-parsed-contents (library-accessor 'parsed-contents))
 (define library-parsed-imports (library-accessor 'parsed-imports))
 (define library-syntaxed-contents (library-accessor 'syntaxed-contents))
+
+(define (library->environment-helper name)
+  (if (library? name)
+      (and (name 'has? 'environment)
+	   name)
+      (and (library-name? name)
+	   (registered-library? name host-library-db)
+	   (let ((library (registered-library name host-library-db)))
+	     (and (library 'has? 'environment)
+		  library)))))

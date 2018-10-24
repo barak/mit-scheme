@@ -127,6 +127,7 @@ USA.
 			    (interaction-i/o-port #f)
 			    (working-directory-pathname
 			     (working-directory-pathname))
+			    (current-library-db (current-library-db))
 			    (param:nearest-cmdl cmdl)
 			    (param:standard-error-hook #f)
 			    (param:standard-warning-hook #f)
@@ -791,23 +792,6 @@ USA.
   (let ((environment (->environment environment 'ge)))
     (set-repl/environment! (nearest-repl) environment)
     environment))
-
-(define (->environment object #!optional caller)
-  (let ((caller (if (default-object? caller) '->environment caller)))
-    (cond ((environment? object) object)
-	  ((package? object) (package/environment object))
-	  ((procedure? object) (procedure-environment object))
-	  (else
-	   (let ((package
-		  (let ((package-name
-			 (cond ((symbol? object) (list object))
-			       ((list? object) object)
-			       (else #f))))
-		    (and package-name
-			 (name->package package-name)))))
-	     (if (not package)
-		 (error:wrong-type-argument object "environment" caller))
-	     (package/environment package))))))
 
 (define (re #!optional index)
   (repl-eval (repl-history/read (repl/reader-history (nearest-repl))

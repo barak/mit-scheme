@@ -36,6 +36,14 @@ USA.
       (closure-ccenv? object)))
 (register-predicate! environment? 'environment)
 
+(define (->environment object #!optional caller)
+  (let ((caller (if (default-object? caller) '->environment caller)))
+    (cond ((environment? object) object)
+	  ((library->environment-helper object) => library-environment)
+	  ((name->package object) => package/environment)
+	  ((procedure? object) (procedure-environment object))
+	  (else (error:wrong-type-argument object "environment" caller)))))
+
 (define (environment-has-parent? environment)
   (cond ((system-global-environment? environment)
 	 #f)

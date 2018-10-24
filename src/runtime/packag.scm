@@ -65,6 +65,13 @@ USA.
 (define (package-name? object)
   (list-of-type? object symbol?))
 
+(define (package-name=? name1 name2)
+  (or (and (null? name1) (null? name2))
+      (and (pair? name1)
+	   (pair? name2)
+	   (eq? (car name1) (car name2))
+	   (package-name=? (cdr name1) (cdr name2)))))
+
 (define (package/reference package name)
   (lexical-reference (package/environment package) name))
 
@@ -103,19 +110,13 @@ USA.
 
 (define (find-package name #!optional error?)
   (let package-loop ((packages *packages*))
-    (if (null? packages)
-	(if error?
-	    (error "Unable to find package:" name)
-	    #f)
-	(if (let name-loop ((name1 name)
-			    (name2 (package/name (car packages))))
-	      (cond ((and (null? name1) (null? name2)) #t)
-		    ((or (null? name1) (null? name2)) #f)
-		    ((eq? (car name1) (car name2))
-		     (name-loop (cdr name1) (cdr name2)))
-		    (else #f)))
+    (if (pair? packages)
+	(if (package-name=? name (package/name (car packages)))
 	    (car packages)
-	    (package-loop (cdr packages))))))
+	    (package-loop (cdr packages)))
+	(begin
+	  (if error? (error "Unable to find package:" name))
+	  #f))))
 
 (define (name-append name package)
   (let loop ((names (package/name package)))

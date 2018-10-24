@@ -1957,6 +1957,7 @@ USA.
   (files "environment")
   (parent (runtime))
   (export ()
+	  ->environment
 	  compiled-procedure/environment
 	  environment-arguments
 	  environment-assign!
@@ -3866,7 +3867,6 @@ USA.
   (parent (runtime))
   (export ()
 	  (interaction-environment nearest-repl/environment) ;R7RS
-	  ->environment
 	  abort->nearest
 	  abort->previous
 	  abort->top-level
@@ -5852,6 +5852,13 @@ USA.
   (parent (runtime library))
   (export (runtime)
 	  copy-library-db
+	  library-bound-names
+	  library-contents
+	  library-db?
+	  library-environment
+	  library-imports-used
+	  library-imports
+	  library-name
 	  library-export-from
 	  library-export-to
 	  library-export=?
@@ -5860,27 +5867,27 @@ USA.
 	  library-import-from-library
 	  library-import-to
 	  library-import=?
-	  library-import?)
+	  library-import?
+	  library?
+	  registered-libraries
+	  registered-library
+	  registered-library?)
+  (export (runtime environment)
+	  library->environment-helper)
   (export (runtime library)
 	  define-automatic-property
 	  library-contents
-	  library-db?
-	  library-environment
 	  library-eval-result
 	  library-exporter
 	  library-export->list
 	  library-exports
 	  library-filename
 	  library-imports-from
-	  library-imports-used
 	  library-import->list
-	  library-imports
 	  library-imports-environment
-	  library-name
 	  library-parsed-contents
 	  library-parsed-imports
 	  library-syntaxed-contents
-	  library?
 	  list->library-export
 	  list->library-import
 	  make-library
@@ -5888,10 +5895,7 @@ USA.
 	  make-library-export
 	  make-library-import
 	  register-libraries!
-	  register-library!
-	  registered-libraries
-	  registered-library
-	  registered-library?))
+	  register-library!))
 
 (define-package (runtime library parser)
   (files "library-parser")
