@@ -300,7 +300,7 @@ USA.
 	  '()))
 
 (define (integrate/r7rs-library library)
-  (let ((imports (scode-library-imports library)))
+  (let ((imports (scode-library-imports-used library)))
     (map-scode-library (lambda (contents)
 			 (receive (optimized externs-block externs)
 			     (integrate/kernel-1

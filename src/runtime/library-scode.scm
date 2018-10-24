@@ -65,6 +65,9 @@ USA.
 (define (scode-library-imports library)
   (map list->library-import (scode-library-property 'imports library)))
 
+(define (scode-library-imports-used library)
+  (map list->library-import (scode-library-property 'imports-used library)))
+
 (define (scode-library-exports library)
   (map list->library-export (scode-library-property 'exports library)))
 
@@ -99,7 +102,8 @@ USA.
   (make-scode-library
    `(scode-library
      (name ,(library-name library))
-     (imports ,@(map library-import->list (library-imports-used library)))
+     (imports ,@(map library-import->list (library-imports library)))
+     (imports-used ,@(map library-import->list (library-imports-used library)))
      (exports ,@(map library-export->list (library-exports library))))
    (library-contents library)))
 
@@ -107,6 +111,7 @@ USA.
   (guarantee scode-library? library 'scode-library->library)
   (make-library (scode-library-name library)
 		'imports (scode-library-imports library)
+		'imports-used (scode-library-imports-used library)
 		'exports (scode-library-exports library)
 		'contents (scode-library-contents library)
 		'filename filename))

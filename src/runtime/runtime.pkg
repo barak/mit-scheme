@@ -5943,6 +5943,7 @@ USA.
 	  map-scode-library
 	  r7rs-scode-file?
 	  scode-library-imports
+	  scode-library-imports-used
 	  scode-library-name
 	  scode-library?)
   (export (runtime library)

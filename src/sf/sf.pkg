@@ -47,7 +47,7 @@ USA.
 	  r7rs-scode-file?
 	  r7rs-source?
 	  read-r7rs-source
-	  scode-library-imports
+	  scode-library-imports-used
 	  standard-library-globals
 	  syntax-r7rs-source)
   (import (runtime microcode-tables)
