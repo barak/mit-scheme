@@ -87,7 +87,7 @@ AC_ARG_WITH([scheme-build],
 	[Use this directory for the Scheme compiler]))
 : ${with_scheme_build=default}
 
-# optional modules
+# optional plugins
 
 AC_ARG_ENABLE([default-plugins],
     AS_HELP_STRING([--default-plugins],
@@ -97,7 +97,6 @@ AC_ARG_ENABLE([default-plugins],
 AC_ARG_ENABLE([x11],
     AS_HELP_STRING([--enable-x11],
 	[Add support for x11 [[yes]]]))
-: ${enable_x11=${enable_default_plugins}}
 
 AC_ARG_ENABLE([edwin],
     AS_HELP_STRING([--enable-edwin],
@@ -257,8 +256,17 @@ fi
 # A 32bit host running LIAR/svm needs a large heap.
 small_words='(= 4 (vector-ref (gc-space-status) 0))'
 if test x"${mit_scheme_native_code}" = xsvm1 \
-   && ${MIT_SCHEME_EXE} --eval "(%exit (if ${small_words} 0 1))" >/dev/null; then \
+	&& ${MIT_SCHEME_EXE} --eval "(%exit (if ${small_words} 0 1))" >/dev/null; then \
     HOST_COMPILER_HEAP="--heap 10000"
+fi
+
+if test x"${enable_x11}" = x && test x"${enable_default_plugins}" = xyes; then
+    AC_PATH_X
+    if test x"${no_x}" = xyes; then
+	: ${enable_x11=no}
+    else
+	: ${enable_x11=yes}
+    fi
 fi
 
 if test x"${enable_x11}" = xyes && test x"${enable_edwin}" = xyes; then
@@ -268,53 +276,77 @@ else
 fi
 
 OPTION_SUBDIRS=
+AC_MSG_CHECKING([configuring blowfish plugin])
 if test x"${enable_blowfish}" = xyes; then
     OPTION_SUBDIRS="${OPTION_SUBDIRS} blowfish"
     IF_BLOWFISH=
+    AC_MSG_RESULT([yes])
 else
     IF_BLOWFISH="#!blowfish: "
+    AC_MSG_RESULT([no])
 fi
+AC_MSG_CHECKING([configuring edwin plugin])
 if test x"${enable_edwin}" = xyes; then
     OPTION_SUBDIRS="${OPTION_SUBDIRS} edwin"
     IF_EDWIN=
+    AC_MSG_RESULT([yes])
 else
     IF_EDWIN="#!edwin: "
+    AC_MSG_RESULT([no])
 fi
+AC_MSG_CHECKING([configuring gdbm plugin])
 if test x"${enable_gdbm}" = xyes; then
     OPTION_SUBDIRS="${OPTION_SUBDIRS} gdbm"
     IF_GDBM=
+    AC_MSG_RESULT([yes])
 else
     IF_GDBM="#!gdbm: "
+    AC_MSG_RESULT([no])
 fi
+AC_MSG_CHECKING([configuring imail plugin])
 if test x"${enable_imail}" = xyes; then
     OPTION_SUBDIRS="${OPTION_SUBDIRS} imail"
     IF_IMAIL=
+    AC_MSG_RESULT([yes])
 else
     IF_IMAIL="#!imail: "
+    AC_MSG_RESULT([no])
 fi
+AC_MSG_CHECKING([configuring mcrypt plugin])
 if test x"${enable_mcrypt}" = xyes; then
     OPTION_SUBDIRS="${OPTION_SUBDIRS} mcrypt"
     IF_MCRYPT=
+    AC_MSG_RESULT([yes])
 else
     IF_MCRYPT="#!mcrypt: "
+    AC_MSG_RESULT([no])
 fi
+AC_MSG_CHECKING([configuring pgsql plugin])
 if test x"${enable_pgsql}" = xyes; then
     OPTION_SUBDIRS="${OPTION_SUBDIRS} pgsql"
     IF_PGSQL=
+    AC_MSG_RESULT([yes])
 else
     IF_PGSQL="#!pgsql: "
+    AC_MSG_RESULT([no])
 fi
+AC_MSG_CHECKING([configuring x11 plugin])
 if test x"${enable_x11}" = xyes; then
     OPTION_SUBDIRS="${OPTION_SUBDIRS} x11"
     IF_X11=
+    AC_MSG_RESULT([yes])
 else
     IF_X11="#!x11: "
+    AC_MSG_RESULT([no])
 fi
+AC_MSG_CHECKING([configuring x11-screen plugin])
 if test x"${enable_x11_screen}" = xyes; then
     OPTION_SUBDIRS="${OPTION_SUBDIRS} x11-screen"
     IF_X11_SCREEN=
+    AC_MSG_RESULT([yes])
 else
     IF_X11_SCREEN="#!x11-screen: "
+    AC_MSG_RESULT([no])
 fi
 
 AC_SUBST([ALL_TARGET])
