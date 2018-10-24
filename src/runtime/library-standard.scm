@@ -283,9 +283,9 @@ USA.
     length
     let
     let*
-    ;; let*-values
+    let*-values
     let-syntax
-    ;; let-values
+    let-values
     letrec
     letrec*
     letrec-syntax

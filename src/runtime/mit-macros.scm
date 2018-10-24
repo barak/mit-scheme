@@ -187,6 +187,66 @@ USA.
 	     (apply scons-begin (map scons-set! ids vals))
 	     (scons-call (apply scons-lambda '() body-forms)))))))))
 
+(define $let-values
+  (spar-transformer->runtime
+   (delay
+     (scons-rule
+	 `((subform (* (subform (list ,r4rs-lambda-list? any))))
+	   (+ any))
+       (lambda (bindings body-forms)
+	 (let ((body (apply scons-begin body-forms)))
+	   (case (length bindings)
+	     ((0)
+	      (scons-let '() body))
+	     ((1)
+	      (scons-cwv (car (car bindings))
+			 (scons-lambda '() (cadr (car bindings)))
+			 body))
+	     (else
+	      (let-values-multi bindings body)))))))))
+
+(define (let-values-multi bindings body)
+  (let ((temps
+	 (map (lambda (index)
+		(new-identifier (symbol 'temp- index)))
+	      (iota (length bindings))))
+	(thunks
+	 (map (lambda (binding)
+		(scons-lambda () (cadr binding)))
+	      bindings)))
+    (scons-let (map list temps thunks)
+      (let loop ((bvls (map car bindings)) (temps temps))
+	(if (pair? bvls)
+	    (scons-cwv (car bvls)
+		       (car temps)
+		       (loop (cdr bvls) (cdr temps)))
+	    body)))))
+
+(define-syntax $let*-values
+  (syntax-rules ()
+    ((let*-values () body0 body1 ...)
+     (let () body0 body1 ...))
+    ((let*-values (binding0 binding1 ...) body0 body1 ...)
+     (let-values (binding0)
+       (let*-values (binding1 ...)
+	 body0 body1 ...)))))
+
+;;; SRFI 8: receive
+
+(define $receive
+  (spar-transformer->runtime
+   (delay
+     (scons-rule `(,r4rs-lambda-list? any (+ any))
+       (lambda (bvl expr body-forms)
+	 (scons-cwv bvl
+		    (scons-lambda '() expr)
+		    (apply scons-begin body-forms)))))))
+
+(define (scons-cwv bvl thunk body)
+  (scons-call (scons-close 'call-with-values)
+	      thunk
+	      (scons-lambda bvl body)))
+
 ;;; SRFI 2: and-let*
 
 ;;; The SRFI document is a little unclear about the semantics, imposes
@@ -215,17 +275,6 @@ USA.
 		  (scons-and conjunct (apply scons-begin body-exprs)))
 		 (else
 		  conjunct))))))))
-
-;;; SRFI 8: receive
-
-(define $receive
-  (spar-transformer->runtime
-   (delay
-     (scons-rule `(,r4rs-lambda-list? any (+ any))
-       (lambda (bvl expr body-forms)
-	 (scons-call (scons-close 'call-with-values)
-		     (scons-lambda '() expr)
-		     (apply scons-lambda bvl body-forms)))))))
 
 ;;;; Conditionals
 
@@ -925,6 +974,6 @@ USA.
 
 (define-syntax $bundle
   (syntax-rules ()
-    ((_ predicate name ...)
+    (($bundle predicate name ...)
      (alist->bundle predicate
                     (list (cons 'name name) ...)))))

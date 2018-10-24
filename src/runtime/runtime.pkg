@@ -4813,8 +4813,10 @@ USA.
 	  (include $include)		;R7RS
 	  (include-ci $include-ci)	;R7RS
 	  (let $let)			;R7RS
+	  (let-values $let-values)	;R7RS
 	  (let* $let*)			;R7RS
 	  (let*-syntax $let*-syntax)	;R7RS
+	  (let*-values $let*-values)	;R7RS
 	  (letrec $letrec)		;R7RS
 	  (letrec* $letrec*)		;R7RS
 	  (local-declare $local-declare)
