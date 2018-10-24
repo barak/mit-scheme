@@ -52,9 +52,6 @@ USA.
 				value))
 			  #f))
 
-(define-deferred current-load-library-db
-  (make-unsettable-parameter host-library-db))
-
 (define-deferred param:eval-unit
   (make-unsettable-parameter #f
     (lambda (value)
@@ -143,7 +140,7 @@ USA.
     (let ((scode (loader)))
       (if purify? (purify (load/purification-root scode)))
       (if (r7rs-scode-file? scode)
-	  (eval-r7rs-scode-file scode pathname (current-load-library-db))
+	  (eval-r7rs-scode-file scode pathname (current-library-db))
 	  (extended-scode-eval scode environment)))))
 
 (define (source-loader pathname)
@@ -151,7 +148,7 @@ USA.
     (declare (ignore purify?))
     (let ((source (read-r7rs-source pathname)))
       (if source
-	  (eval-r7rs-source source (current-load-library-db))
+	  (eval-r7rs-source source (current-library-db))
 	  (call-with-input-file pathname
 	    (lambda (port)
 	      (let loop ((value unspecific))

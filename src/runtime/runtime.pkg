@@ -3163,7 +3163,6 @@ USA.
 	  built-in-object-file
 	  condition-type:not-loading
 	  current-load-environment
-	  current-load-library-db
 	  current-load-pathname
 	  fasl-file?
 	  fasload
@@ -3178,8 +3177,6 @@ USA.
 	  system-uri
 	  with-loader-base-uri)
   (export (runtime)
-	  ;; current-library-db
-	  ;; host-library-db
 	  load/purification-root))
 
 (define-package (runtime command-line)
@@ -5917,6 +5914,7 @@ USA.
   (files "library-standard")
   (parent (runtime library))
   (export (runtime)
+	  current-library-db
 	  host-library-db
 	  standard-library-globals)
   (export (runtime library)

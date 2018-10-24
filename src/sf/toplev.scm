@@ -267,7 +267,7 @@ USA.
   (in-phase "Syntax"
     (lambda ()
       (if (r7rs-source? s-expressions)
-	  (syntax-r7rs-source s-expressions (current-load-library-db))
+	  (syntax-r7rs-source s-expressions (current-library-db))
 	  (syntax* (if (null? declarations)
 		       s-expressions
 		       (cons (cons (close-syntax 'declare

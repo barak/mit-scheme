@@ -32,6 +32,11 @@ USA.
 (define-deferred host-library-db
   (make-library-db 'host))
 
+(define-deferred current-library-db
+  (make-settable-parameter host-library-db
+    (lambda (value)
+      (guarantee library-db? value))))
+
 (define (finish-host-library-db!)
   (add-standard-libraries! host-library-db))
 

@@ -40,7 +40,7 @@ USA.
           sf:enable-argument-deletion?
           sf:enable-constant-folding?)
   (import (runtime)
-	  current-load-library-db
+	  current-library-db
 	  library-import-to
 	  map-r7rs-scode-file
 	  map-scode-library
