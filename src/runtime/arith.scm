@@ -2019,8 +2019,8 @@ USA.
 ;;;      = log(1 + (d - d')/(1 + d')).
 ;;;
 ;;; By Lemma 1, |(d - d')/(1 + d')| < 2|d' - d| < 1, so the Taylor
-;;; series of log1p converges absolutely for (d - d')/(1 + d'), and
-;;; thus we have
+;;; series of log(1 + x) converges absolutely for (d - d')/(1 + d'),
+;;; and thus we have
 ;;;
 ;;;     |log(1 + (d - d')/(1 + d'))|
 ;;;      = |\sum_{n=1}^\infty ((d - d')/(1 + d'))^n/n|
@@ -2034,23 +2034,23 @@ USA.
 ;;;
 ;;; Lemma 4.  If 1/e <= 1 + x <= e, then
 ;;;
-;;;     log1p((1 + d) x) = (1 + d') log1p(x)
+;;;     log(1 + (1 + d) x) = (1 + d') log(1 + x)
 ;;;
 ;;; for |d'| < 8|d|.
 ;;;
 ;;; Proof.  Write
 ;;;
-;;;     log1p((1 + d) x)
+;;;     log(1 + (1 + d) x)
 ;;;     = log(1 + x + x*d)
 ;;;     = log((1 + x) (1 + x + x*d)/(1 + x))
 ;;;     = log(1 + x) + log((1 + x + x*d)/(1 + x))
-;;;     = log1p(x) (1 + log((1 + x + x*d)/(1 + x))/log1p(x)).
+;;;     = log(1 + x) (1 + log((1 + x + x*d)/(1 + x))/log(1 + x)).
 ;;;
 ;;; The relative error is bounded by
 ;;;
-;;;     |log((1 + x + x*d)/(1 + x))/log1p(x)|
-;;;     <= 4|x + x*d - x|/|log1p(x)|, by Lemma 3,
-;;;      = 4|x*d|/|log1p(x)|
+;;;     |log((1 + x + x*d)/(1 + x))/log(1 + x)|
+;;;     <= 4|x + x*d - x|/|log(1 + x)|, by Lemma 3,
+;;;      = 4|x*d|/|log(1 + x)|
 ;;;      < 8|d|,
 ;;;
 ;;; since in this range 0 < 1 - 1/e < x/log(1 + x) <= e - 1 < 2.  QED.
@@ -2169,12 +2169,32 @@ USA.
   ;;    log(p/(1 - p)) = -log((1 - p)/p)
   ;;      = -log(1 + (1 - p)/p - 1)
   ;;      = -log(1 + (1 - p - p)/p)
-  ;;      = -log(1 + (1 - 2p)/p)
-  ;;      = -log1p((1 - 2p)/p).
+  ;;      = -log(1 + (1 - 2p)/p).
   ;;
   ;; to get an intermediate quotient near zero.
-  (cond ((or (< p logit-boundary-lo)
-             (< logit-boundary-hi p))
+  (cond ((<= logit-boundary-lo p logit-boundary-hi)
+         ;;
+         ;; Since p = 2p/2 <= 1 <= 2*2p = 4p, the floating-point
+         ;; evaluation of 1 - 2p is exact; the only error arises from
+         ;; division and log1p.  First, note that if logistic(-1) < p <
+         ;; logistic(+1), (1 - 2p)/p lies in the bounds of Lemma 4.
+         ;;
+         ;; If division has relative error d0 and log1p has relative
+         ;; error d1, the outcome is
+         ;;
+         ;;     -(1 + d1) log(1 + (1 - 2p) (1 + d0)/p)
+         ;;     = -(1 + d1) (1 + d') log(1 + (1 - 2p)/p)
+         ;;     = -(1 + d1 + d' + d1 d') log(1 + (1 - 2p)/p).
+         ;;
+         ;; where |d'| < 8|d0| by Lemma 4.  The relative error is then
+         ;; bounded by
+         ;;
+         ;;     |d1 + d' + d1 d'|
+         ;;     <= |d1| + 8|d0| + 8|d1 d0|
+         ;;     <= 9 eps + 8 eps^2.
+         ;;
+         (- (log1p (/ (- 1 (* 2 p)) p))))
+        (else
          ;; If - has relative error d0, / has relative error d1, and
          ;; log has relative error d2, then
          ;;
@@ -2196,29 +2216,7 @@ USA.
          ;;     <= |d2| + 4|d0| + 4|d1| + 4|d2 d0| + 4|d1 d0|
          ;;     <= 9 eps + 8 eps^2.
          ;;
-         (log (/ p (- 1 p))))
-        (else
-         ;;
-         ;; Since p = 2p/2 <= 1 <= 2*2p = 4p, the floating-point
-         ;; evaluation of 1 - 2p is exact; the only error arises from
-         ;; division and log1p.  First, note that if logistic(-1) < p <
-         ;; logistic(+1), (1 - 2p)/p lies in the bounds of Lemma 4.
-         ;;
-         ;; If division has relative error d0 and log1p has relative
-         ;; error d1, the outcome is
-         ;;
-         ;;     -(1 + d1) log1p((1 - 2p)*(1 + d0)/p)
-         ;;     = -(1 + d1) (1 + d') log1p((1 - 2p)/p)
-         ;;     = -(1 + d1 + d' + d1 d') log1p((1 - 2p)/p).
-         ;;
-         ;; where |d'| < 8|d0| by Lemma 4.  The relative error is then
-         ;; bounded by
-         ;;
-         ;;     |d1 + d' + d1 d'|
-         ;;     <= |d1| + 8|d0| + 8|d1 d0|
-         ;;     <= 9 eps + 8 eps^2.
-         ;;
-         (- (log1p (/ (- 1 (* 2 p)) p))))))
+         (log (/ p (- 1 p))))))
 
 ;;; log logistic(x) = -log (1 + e^{-x})
 (define (log-logistic x)
