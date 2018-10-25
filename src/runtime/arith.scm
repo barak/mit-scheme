@@ -2175,8 +2175,8 @@ USA.
          ;;
          ;; Since p = 2p/2 <= 1 <= 2*2p = 4p, the floating-point
          ;; evaluation of 1 - 2p is exact; the only error arises from
-         ;; division and log1p.  First, note that if logistic(-1) < p <
-         ;; logistic(+1), (1 - 2p)/p lies in the bounds of Lemma 4.
+         ;; division and log1p.  First, note that if logistic(-1) <= p
+         ;; <= logistic(+1), (1 - 2p)/p lies in the bounds of Lemma 4.
          ;;
          ;; If division has relative error d0 and log1p has relative
          ;; error d1, the outcome is
