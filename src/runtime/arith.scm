@@ -2095,7 +2095,7 @@ USA.
          ;;     d' = d0 + d2 + d0 d2,
          ;;     d'' = d0 e^x/(1 + e^x) + d1 + d1 d0 e^x/(1 + e^x).
          ;;
-         ;; Note that since e^x/(1 + e^x),
+         ;; Note that since e^x/(1 + e^x) < 1,
          ;;
          ;;     |d''| <= |d0| + |d1| + |d1 d0| <= 2 eps + eps^2,
          ;;
