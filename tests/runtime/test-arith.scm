@@ -211,7 +211,7 @@ USA.
       (if (< p 1)
           (begin
             (assert->= 1e-15 (relerr (- 1 p) (logistic (- x))))
-            (if (< (- 1 p) 1)
+            (if (<= 1/2 p)
                 (assert->= 1e-15 (relerr (- x) (logit (- 1 p))))))
           (assert->= 1e-300 (logistic (- x))))
       (assert->= 1e-15 (relerr t (log-logistic x)))
