@@ -79,11 +79,11 @@ HOST_COMPILER_SETTINGS = \
 	$(COMPILER_SETTINGS_CROSS) \
 	$(COMPILER_SETTINGS_LIARC)
 
-HOST_COMPILER = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) \
+HOST_COMPILER = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) --no-init-file \
   --eval '(begin $(HOST_COMPILER_SETTINGS))' --load runtime/host-adapter.scm
 
 HOST_RUNTIME_ONLY = '$(MIT_SCHEME_EXE)' --batch-mode $(HOST_COMPILER_HEAP) \
-  --band runtime.com --load runtime/host-adapter.scm
+  --band runtime.com --no-init-file --load runtime/host-adapter.scm
 
 # This rule is for LIARC.
 .SUFFIXES: .bld .pkd .c
@@ -563,7 +563,7 @@ install-auxdir-top:
 
 .PHONY: all-liarc
 all-liarc:
-	@$(top_srcdir)/etc/c-compile.sh "$(MIT_SCHEME_EXE)" --batch-mode
+	@$(top_srcdir)/etc/c-compile.sh "$(MIT_SCHEME_EXE)" --batch-mode --no-init-file
 	$(MAKE) compile-liarc-bundles build-bands
 
 .PHONY: build-bands

@@ -188,13 +188,13 @@ if test x"${with_scheme_build}" != xdefault; then
         ;;
     esac
     MIT_SCHEME_EXE=${HOST_BUILD_DIR}run-build
-    if "${MIT_SCHEME_EXE}" --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
+    if "${MIT_SCHEME_EXE}" --batch-mode --no-init-file --eval '(%exit)' >/dev/null 2>&1; then
         AC_MSG_RESULT([yes, using ${MIT_SCHEME_EXE}])
     else
         AC_MSG_ERROR([no, unable to use ${MIT_SCHEME_EXE}])
     fi
     # To get some version numbers into the build log:
-    ${MIT_SCHEME_EXE} --version
+    ${MIT_SCHEME_EXE} --no-init-file --version
 else
     AC_MSG_CHECKING([for an existing MIT/GNU Scheme installation])
     # Kinda hairy logic to detect this: (1) Use MIT_SCHEME_EXE, and
@@ -212,21 +212,21 @@ else
         found_p=yes
     elif test x"${MIT_SCHEME_EXE}" != x; then
         env_p=yes
-        if "${MIT_SCHEME_EXE}" --batch-mode --eval '(%exit)' >/dev/null 2>&1;
+        if "${MIT_SCHEME_EXE}" --batch-mode --no-init-file --eval '(%exit)' >/dev/null 2>&1;
         then
             found_p=yes
         fi
-    elif "${native_exe}" --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
+    elif "${native_exe}" --batch-mode --no-init-file --eval '(%exit)' >/dev/null 2>&1; then
         MIT_SCHEME_EXE="${native_exe}"
         found_p=yes
-    elif mit-scheme --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
+    elif mit-scheme --batch-mode --no-init-file --eval '(%exit)' >/dev/null 2>&1; then
         MIT_SCHEME_EXE=mit-scheme
         found_p=yes
     fi
     if test x"${found_p}" = xyes; then
         AC_MSG_RESULT([yes, using ${MIT_SCHEME_EXE}])
         # To get some version numbers into the build log:
-        ${MIT_SCHEME_EXE} --version
+        ${MIT_SCHEME_EXE} --version --no-init-file
     else
         message=
         if test x"${env_p}" = xyes; then
@@ -256,7 +256,7 @@ fi
 # A 32bit host running LIAR/svm needs a large heap.
 small_words='(= 4 (vector-ref (gc-space-status) 0))'
 if test x"${mit_scheme_native_code}" = xsvm1 \
-	&& ${MIT_SCHEME_EXE} --eval "(%exit (if ${small_words} 0 1))" >/dev/null; then \
+	&& ${MIT_SCHEME_EXE} --no-init-file --eval "(%exit (if ${small_words} 0 1))" >/dev/null; then \
     HOST_COMPILER_HEAP="--heap 10000"
 fi
 
