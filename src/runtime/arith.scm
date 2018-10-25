@@ -2304,7 +2304,9 @@ USA.
          ;;     = -log(e^{-t} - 1)
          ;;       * (1 + d0 + (1 + d0) log(1 + d1)/log(e^{-t} - 1))
          ;;
-         ;; If t <= -log(1 + e), then log(e^{-t} - 1) >= 1, so
+         ;; If t <= -log(1 + e), then log(e^{-t} - 1) >= 1; similarly,
+         ;; if t >= -log(1 + 1/e), then log(e^{-t} - 1) <= -1.  Hence,
+         ;; in both cases, |log(e^{-t} - 1)| >= 1, so that
          ;;
          ;;     |d0 + (1 + d0) log(1 + d1)/log(e^{-t} - 1)|
          ;;     <= |d0| + |(1 + d0) log(1 + d1)/log(e^{-t} - 1)|
