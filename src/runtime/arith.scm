@@ -2223,12 +2223,99 @@ USA.
   (guarantee-real x 'log-logistic)
   (- (log1pexp (- x))))
 
-;;; log e^t/(1 - e^t) = -log (1 - e^t)/e^t = -log (e^{-t} - 1)
+(define logit-exp-boundary-lo           ;log logistic(-1)
+  (flo:- 0. (flo:log (flo:+ 1. (flo:exp +1.)))))
+(define logit-exp-boundary-hi           ;log logistic(+1)
+  (flo:- 0. (flo:log (flo:+ 1. (flo:exp -1.)))))
+
+;;; log e^t/(1 - e^t) = logit(e^t)
 (define (logit-exp t)
   (guarantee-real t 'logit-exp)
-  (if (<= t -37)
-      t
-      (- (log (expm1 (- t))))))
+  (cond ((<= t -37)
+         ;; e^t < eps/2, so since log(e^t)/log(1 - e^t) = t -
+         ;; log(1 - e^t), we have
+         ;;
+         ;;     |t - log(e^t/(1 - e^t))|/|log(e^t/(1 - e^t))|
+         ;;      = |log(1 - e^t)|/|t - log(1 - e^t)|.
+         ;;     <= |log(1 - e^t)|
+         ;;     <= 1/(1 - e^t)
+         ;;     <= 2|e^t|
+         ;;     <= eps.
+         ;;
+         t)
+        ((<= logit-exp-boundary-lo t logit-exp-boundary-hi)
+         ;; We can use the identity
+         ;;
+         ;;     log(e^t/(1 - e^t))
+         ;;     = -log((1 - e^t)/e^t)
+         ;;     = -log(1 + (1 - e^t)/e^t - 1)
+         ;;     = -log(1 + (1 - e^t - e^t)/e^t)
+         ;;     = -log(1 + (1 - 2 e^t)/e^t)
+         ;;
+         ;; to compute this with log1p.
+         ;;
+         ;; Since e^t = 2 e^t/2 <= 1 < 2*2 e^t = 4 e^t, 1 - 2 e^t is
+         ;; without additional error beyond that in e^t.  Further,
+         ;; |e^t/(1 - 2 e^t)| <= 2.  The intermediate division is
+         ;;
+         ;;     (1 - 2 (1 + d0) e^t) (1 + d1)/[(1 + d0) e^t]
+         ;;     = (1 - 2 e^t - 2 d0 e^t) (1 + d1)/[(1 + d0) e^t]
+         ;;     = (1 - 2 e^t) (1 - 2 d0 e^t/(1 - 2 e^t)) (1 + d1)
+         ;;         / [(1 + d0) e^t]
+         ;;     = [(1 - 2 e^t)/e^t]
+         ;;       * (1 - 2 d0 e^t/(1 - 2 e^t)) (1 + d1)/(1 + d0).
+         ;;     = [(1 - 2 e^t)/e^t]
+         ;;       * (1 + d1 - (1 + d1) 2 d0 e^t/(1 - 2 e^t))
+         ;;       / (1 + d0).
+         ;;
+         ;; By Lemma 2, the relative error d' of the intermediate division
+         ;; is bounded by
+         ;;
+         ;;     2|d0 - d1 + (1 + d1) 2 d0 e^t/(1 - 2 e^t)|
+         ;;     <= 2|d0| + 2|d1| + 2|d0 (1 + d1) e^t/(1 - 2 e^t)|
+         ;;     <= 2|d0| + 2|d1| + 4|d0 (1 + d1)|
+         ;;      = 2|d0| + 2|d1| + 4|d0 + d0 d1)|
+         ;;     <= 2|d0| + 2|d1| + 4|d0| + 4|d0 d1|
+         ;;     <= 6 eps + 4 eps^2.
+         ;;
+         ;; By Lemma 4, the relative error of using log1p is compounded
+         ;; by no more than 8|d'|, so the relative error of the result
+         ;; is bounded by
+         ;;
+         ;;     |d2| + |d'| + |d2 d'|
+         ;;     <= eps + 6 eps + 4 eps^2 + eps*(6 eps + 4 eps^2)
+         ;;      = 7 eps + 10 eps^2 + 4 eps^3.
+         ;;
+         (let ((e^t (exp t)))
+           (- (log1p (/ (- 1 (* 2 e^t)) e^t)))))
+        (else
+         ;; We use the identity
+         ;;
+         ;;     log(e^t/(1 - e^t))
+         ;;     = -log((1 - e^t)/e^t)
+         ;;     = -log(e^{-t} - 1)
+         ;;
+         ;; to compute this with expm1.
+         ;;
+         ;;     -(1 + d0) log((1 + d1) (e^{-t} - 1))
+         ;;     = -(1 + d0) [log(e^{-t} - 1) + log(1 + d1)]
+         ;;     = -[(1 + d0) log(e^{-t} - 1) + (1 + d0) log(1 + d1)]
+         ;;     = -[log(e^{-t} - 1) + d0 log(e^{-t} - 1)
+         ;;             + (1 + d0) log(1 + d1) log(e^{-t} - 1)/log(e^{-t} - 1)]
+         ;;     = -log(e^{-t} - 1)
+         ;;       * (1 + d0 + (1 + d0) log(1 + d1)/log(e^{-t} - 1))
+         ;;
+         ;; If t <= -log(1 + e), then log(e^{-t} - 1) >= 1, so
+         ;;
+         ;;     |d0 + (1 + d0) log(1 + d1)/log(e^{-t} - 1)|
+         ;;     <= |d0| + |(1 + d0) log(1 + d1)/log(e^{-t} - 1)|
+         ;;     <= |d0| + |(1 + d0) log(1 + d1)|
+         ;;     <= |d0| + |log(1 + d1)| + |d0 log(1 + d1)|
+         ;;     <= |d0| + |1/(1 - |d1|)| + |d0/(1 - d1)|
+         ;;     <= |d0| + 2|d1| + 2|d0 d1|
+         ;;     <= 3 eps + 2 eps^2.
+         ;;
+         (- (log (expm1 (- t)))))))
 
 ;;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!.
 
