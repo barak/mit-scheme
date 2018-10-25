@@ -2208,7 +2208,7 @@ USA.
          ;; have |log(p/(1 - p))| > 1.  Hence this error is bounded by
          ;;
          ;;     |d2 + (1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))|
-         ;;     <= |d2| + |(1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))|.
+         ;;     <= |d2| + |(1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))|
          ;;     <= |d2| + |(1 + d2) log((1 + d0)/(1 + d1))|
          ;;     <= |d2| + 4|(1 + d2) (d0 - d1)|, by Lemma 3,
          ;;     <= |d2| + 4|d0 - d1 + d2 d0 - d1 d0|
