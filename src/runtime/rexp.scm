@@ -224,10 +224,12 @@ USA.
 					  (string (char-upcase char))
 					  (string (char-downcase char))
 					  "]"))
-			 (re-quote-string
-			  (substring s start index))
+			 (re-quote-string (substring s start index))
 			 parts))
-	    (apply string-append (reverse! parts)))))))
+	    (apply string-append
+		   (reverse!
+		    (cons (re-quote-string (substring s start end))
+			  parts))))))))
 
 (define (case-fold-char-set c)
   (let loop ((chars (char-set-members c)) (chars* '()))
