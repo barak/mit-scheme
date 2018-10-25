@@ -188,12 +188,16 @@ USA.
    (cons 33 33.0000000000000071)
    (cons 34 34))
   (lambda (v)
-    (assert->= 1e-15 (relerr (cdr v) (log1pexp (car v))))))
+    (assert-<= (relerr (cdr v) (log1pexp (car v))) 1e-15)))
 
 (define-enumerated-test 'logit-logistic
   (vector
    (vector -1 0.2689414213699951 (log 0.2689414213699951))
+   (vector -4.000000000537333e-5 .49999 (log .49999))
+   (vector -4.000000108916879e-9 .499999999 (log .499999999))
    (vector 0 1/2 (log 1/2))
+   (vector 3.999999886872274e-9 .500000001 (log .500000001))
+   (vector 8.000042667076279e-3 .502 (log .502))
    (vector +1 0.7310585786300049 (log 0.7310585786300049))
    ;; Would like to do +/-710 but we get inexact result traps.
    (vector +708 1 -3.307553003638408e-308)
