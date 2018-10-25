@@ -151,7 +151,7 @@ USA.
    (cons (log 2) 1.)
    (cons 0.7 1.0137527074704766))
   (lambda (v)
-    (assert->= 1e-15 (relerr (cdr v) (expm1 (car v))))))
+    (assert-<= (relerr (cdr v) (expm1 (car v))) 1e-15)))
 
 (define-enumerated-test 'log1p-approx
   (vector
@@ -162,7 +162,7 @@ USA.
    (cons (- 1 (sqrt 1/2)) 0.25688251232181475)
    (cons 0.3 .26236426446749106))
   (lambda (v)
-    (assert->= 1e-15 (relerr (cdr v) (log1p (car v))))))
+    (assert-<= (relerr (cdr v) (log1p (car v))) 1e-15)))
 
 (define-enumerated-test 'log1mexp
   (vector
@@ -172,7 +172,7 @@ USA.
    (cons -0.70 -0.686341002808385170)
    (cons -708 -3.30755300363840783e-308))
   (lambda (v)
-    (assert->= 1e-15 (relerr (cdr v) (log1mexp (car v))))))
+    (assert-<= (relerr (cdr v) (log1mexp (car v))) 1e-15)))
 
 (define-enumerated-test 'log1pexp
   (vector
@@ -188,13 +188,21 @@ USA.
    (cons 33 33.0000000000000071)
    (cons 34 34))
   (lambda (v)
-    (assert->= 1e-15 (relerr (cdr v) (log1pexp (car v))))))
+    (assert-<= (relerr (cdr v) (log1pexp (car v))) 1e-15)))
 
 (define-enumerated-test 'logit-logistic
   (vector
+   (vector -1.0000001 0.2689414017088022 (log .2689414017088022))
+   (vector -0.9999999 0.26894144103118883 (log .26894144103118883))
    (vector -1 0.2689414213699951 (log 0.2689414213699951))
+   (vector -4.000000000537333e-5 .49999 (log .49999))
+   (vector -4.000000108916879e-9 .499999999 (log .499999999))
    (vector 0 1/2 (log 1/2))
+   (vector 3.999999886872274e-9 .500000001 (log .500000001))
+   (vector 8.000042667076279e-3 .502 (log .502))
+   (vector +0.9999999 0.7310585589688111 (log 0.7310585589688111))
    (vector +1 0.7310585786300049 (log 0.7310585786300049))
+   (vector +1.0000001 0.7310585982911977 (log 0.7310585982911977))
    ;; Would like to do +/-710 but we get inexact result traps.
    (vector +708 1 -3.307553003638408e-308)
    (vector -708 3.307553003638408e-308 -708)
@@ -204,18 +212,18 @@ USA.
     (let ((x (vector-ref v 0))
           (p (vector-ref v 1))
           (t (vector-ref v 2)))
-      (assert->= 1e-15 (relerr p (logistic x)))
+      (assert-<= (relerr p (logistic x)) 1e-15)
       (if (and (not (= p 0))
                (not (= p 1)))
-          (assert->= 1e-15 (relerr x (logit p))))
+          (assert-<= (relerr x (logit p)) 1e-15))
       (if (< p 1)
           (begin
-            (assert->= 1e-15 (relerr (- 1 p) (logistic (- x))))
-            (if (< (- 1 p) 1)
-                (assert->= 1e-15 (relerr (- x) (logit (- 1 p))))))
-          (assert->= 1e-300 (logistic (- x))))
-      (assert->= 1e-15 (relerr t (log-logistic x)))
+            (assert-<= (relerr (- 1 p) (logistic (- x))) 1e-15)
+            (if (<= 1/2 p)
+                (assert-<= (relerr (- x) (logit (- 1 p))) 1e-15)))
+          (assert-<= (logistic (- x)) 1e-300))
+      (assert-<= (relerr t (log-logistic x)) 1e-15)
       (if (<= x 709)
-          (assert->= 1e-15 (relerr x (logit-exp t))))
+          (assert-<= (relerr x (logit-exp t)) 1e-15))
       (if (< p 1)
-          (assert->= 1e-15 (relerr (log1p (- p)) (log-logistic (- x))))))))
+          (assert-<= (relerr (log1p (- p)) (log-logistic (- x))) 1e-15)))))
