@@ -70,7 +70,7 @@ x11-const.scm: x11-const
 	./x11-const
 
 @MIT_SCHEME_DEPS@
-stamp-scheme: stamp-shim $(sources) x11.pkg
+stamp-scheme: stamp-shim $(sources) $(cdecls:.cdecl=-const.bin) x11.pkg
 	touch stamp-scheme
 	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
 
