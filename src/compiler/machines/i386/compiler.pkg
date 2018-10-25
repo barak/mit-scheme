@@ -235,6 +235,7 @@ USA.
 	  compile-file:force?
 	  compile-file:override-usual-integrations
 	  compile-file:sf-only?
+	  compile-file:show-dependencies?
 	  compile-procedure
 	  compile-scode
 	  compiler:compiled-code-pathname-type

@@ -34,6 +34,7 @@ USA.
 (define compile-file:override-usual-integrations '())
 (define compile-file:sf-only? #f)
 (define compile-file:force? #f)
+(define compile-file:show-dependencies? #f)
 (define compiler:compile-data-files-as-expressions? #t)
 (define compile-file)
 (let ((scm-pathname (lambda (path) (pathname-new-type path "scm")))
@@ -64,21 +65,21 @@ USA.
 			     (cons input-file dependencies))))))
 	  (if (pair? reasons)
 	      (begin
-		(write-notification-line
-		 (lambda (port)
-		   (write-string "Generating " port)
-		   (write (->namestring output-file) port)
-		   (write-string " because of:" port)
-		   (for-each (lambda (reason)
-			       (write-char #\space port)
-			       (write (->namestring reason) port))
-			     reasons)))
+		(if compile-file:show-dependencies?
+		    (write-notification-line
+		     (lambda (port)
+		       (write-string "Generating " port)
+		       (write (->namestring output-file) port)
+		       (write-string " because of:" port)
+		       (for-each (lambda (reason)
+				   (write-char #\space port)
+				   (write (->namestring reason) port))
+				 reasons))))
 		(doit)))))))
 
   (set! compile-file
 	(named-lambda (compile-file file #!optional dependencies environment)
-	  (process-file (scm-pathname file)
-			(bin-pathname file)
+	  (process-file (scm-pathname file) (bin-pathname file)
 			(map ext-pathname
 			     (if (default-object? dependencies)
 				 '()
@@ -91,20 +92,18 @@ USA.
 				 (if (not (environment? environment))
 				     (error:wrong-type-argument environment
 								"environment"
-								'COMPILE-FILE))
+								'compile-file))
 				 environment)))
 			  (sf/default-declarations
-			   `((USUAL-INTEGRATIONS
+			   `((usual-integrations
 			      ,@compile-file:override-usual-integrations)
 			     ,@(let ((deps (filter ext-pathname? dependencies)))
 				 (if (null? deps)
 				     '()
-				     `((INTEGRATE-EXTERNAL ,@deps)))))))
+				     `((integrate-external ,@deps)))))))
 		(sf input-file output-file))))
 	  (if (not compile-file:sf-only?)
-	      (process-file (bin-pathname file)
-			    (com-pathname file)
-			    '()
+	      (process-file (bin-pathname file) (com-pathname file) '()
 		(lambda (input-file output-file dependencies)
 		  dependencies
 		  (fluid-let ((compiler:coalescing-constant-warnings? #f))
