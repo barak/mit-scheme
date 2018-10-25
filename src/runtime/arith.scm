@@ -2063,13 +2063,13 @@ USA.
          ;; raise inexact and underflow here.)
          0.)
 	((<= x -37)
-         ;; e^x < eps/2, so
+         ;; e^x < eps, so
          ;;
          ;;     |e^x - e^x/(1 + e^x)|/|e^x/(1 + e^x)|
          ;;     <= |1 - 1/(1 + e^x)|*|1 + e^x|
+         ;;      = |(1 + e^x - 1)/(1 + e^x)|*|1 + e^x|
          ;;      = |e^x/(1 + e^x)|*|1 + e^x|
-         ;;      = |e^x/(1 + e^x) + e^x|
-         ;;     <= |e^x + e^x|
+         ;;      = |e^x|
          ;;      < eps.
          ;;
          (exp x))
