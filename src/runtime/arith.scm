@@ -2275,15 +2275,15 @@ USA.
          ;;     <= 2|d0| + 2|d1| + 4|d0 (1 + d1)|
          ;;      = 2|d0| + 2|d1| + 4|d0 + d0 d1)|
          ;;     <= 2|d0| + 2|d1| + 4|d0| + 4|d0 d1|
-         ;;     <= 6 eps + 4 eps^2.
+         ;;     <= 8 eps + 4 eps^2.
          ;;
          ;; By Lemma 4, the relative error of using log1p is compounded
          ;; by no more than 8|d'|, so the relative error of the result
          ;; is bounded by
          ;;
          ;;     |d2| + |d'| + |d2 d'|
-         ;;     <= eps + 6 eps + 4 eps^2 + eps*(6 eps + 4 eps^2)
-         ;;      = 7 eps + 10 eps^2 + 4 eps^3.
+         ;;     <= eps + 8 eps + 4 eps^2 + eps*(6 eps + 4 eps^2)
+         ;;      = 9 eps + 10 eps^2 + 4 eps^3.
          ;;
          (let ((e^t (exp t)))
            (- (log1p (/ (- 1 (* 2 e^t)) e^t)))))
