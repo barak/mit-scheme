@@ -2232,7 +2232,7 @@ USA.
   (guarantee-real t 'logit-exp)
   (cond ((<= t -37)
          ;; e^t < eps/2, so since log(e^t/(1 - e^t)) = t - log(1 -
-         ;; e^t), we have
+         ;; e^t), and |log(1 - e^t)| < 1 < |t|, we have
          ;;
          ;;     |t - log(e^t/(1 - e^t))|/|log(e^t/(1 - e^t))|
          ;;      = |log(1 - e^t)|/|t - log(1 - e^t)|.
