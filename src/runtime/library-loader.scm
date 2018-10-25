@@ -120,7 +120,10 @@ USA.
 (define (environment . import-sets)
   (let ((parsed (map parse-import-set import-sets))
 	(db host-library-db))
-    (let ((unusable (remove parsed-import-expandable? parsed)))
+    (let ((unusable
+	   (remove (lambda (import)
+		     (parsed-import-expandable? import db))
+		   parsed)))
       (if (pair? unusable)
 	  (error "Imports not usable:" unusable)))
     (let ((imports (expand-parsed-imports parsed db)))
@@ -132,6 +135,19 @@ USA.
 	    (error "Imported libraries unavailable:"
 		   (library-imports-from unavailable))))
       (make-environment-from-imports imports db))))
+
+(define (scheme-report-environment version)
+  (if (not (eqv? version 5))
+      (error "Unsupported version:" version))
+  (environment '(scheme r5rs)))
+
+(define (null-environment version)
+  (if (not (eqv? version 5))
+      (error "Unsupported version:" version))
+  (environment '(only (scheme r5rs)
+		      ... => _ and begin case cond define define-syntax delay do
+		      else if lambda let let* let-syntax letrec letrec-syntax or
+		      quasiquote quote set! syntax-rules)))
 
 ;;;; Evaluation
 

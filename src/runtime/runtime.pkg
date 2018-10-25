@@ -5959,6 +5959,8 @@ USA.
   (parent (runtime library))
   (export ()
 	  environment			;R7RS
+	  null-environment		;R7RS
+	  scheme-report-environment	;R7RS
 	  )
   (export (runtime)
 	  eval-r7rs-scode-file

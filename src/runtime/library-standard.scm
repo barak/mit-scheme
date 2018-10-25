@@ -687,7 +687,7 @@ USA.
     negative?
     newline
     not
-    ;;null-environment
+    null-environment
     null?
     number->string
     number?
@@ -713,7 +713,7 @@ USA.
     remainder
     reverse
     round
-    ;;scheme-report-environment
+    scheme-report-environment
     set!
     set-car!
     set-cdr!
