@@ -35,17 +35,11 @@ USA.
 	 ((registered-library name db) 'has? 'exports))))
 
 (define (expand-parsed-imports imports db)
-  (let ((converted-sets
-	 (map (lambda (import)
-		(expand-parsed-import import db))
-	      imports)))
-    (let ((intersections (find-intersections converted-sets)))
-      (if (pair? intersections)
-	  (error "Import sets intersect:"
-		 (unconvert-intersections intersections
-					  converted-sets
-					  imports))))
-    (reduce-right append! '() converted-sets)))
+  (reduce-right append!
+		'()
+		(map (lambda (import)
+		       (expand-parsed-import import db))
+		     imports)))
 
 (define-automatic-property 'imports '(parsed-imports db)
   (lambda (imports db)
@@ -54,30 +48,6 @@ USA.
 	   imports))
   expand-parsed-imports)
 
-(define (find-intersections converted-sets)
-  (if (pair? converted-sets)
-      (let* ((links1 (car converted-sets))
-	     (names1 (map library-import-to links1)))
-	(append (filter-map (lambda (links2)
-			      (and (intersecting-names?
-				    names1
-				    (map library-import-to links2))
-				   (list links1 links2)))
-			    (cdr converted-sets))
-		(find-intersections (cdr converted-sets))))
-      '()))
-
-(define (intersecting-names? names1 names2)
-  (pair? (lset-intersection eq? names1 names2)))
-
-(define (unconvert-intersections intersections converted-sets imported-sets)
-  (let ((alist (map cons converted-sets imported-sets)))
-    (map (lambda (intersection)
-	   (map (lambda (converted-set)
-		  (cdr (assq converted-set alist)))
-		intersection))
-	 intersections)))
-
 ;;; Returns a list of library-import elements.
 (define (expand-parsed-import import-set db)
   (let ((converted-set

@@ -89,7 +89,8 @@ USA.
 
 (define (make-environment-from-imports imports db)
   (let ((env
-	 (make-root-top-level-environment (map library-import-to imports))))
+	 (make-root-top-level-environment
+	  (delete-duplicates (map library-import-to imports) eq?))))
     (for-each (lambda (import)
 		(let ((value
 		       ((library-exporter
@@ -98,17 +99,32 @@ USA.
 			  db))
 			(library-import-from import)))
 		      (name (library-import-to import)))
-		  (cond ((macro-reference-trap? value)
-			 (environment-define-macro
-			  env name
-			  (macro-reference-trap-transformer value)))
-			((unassigned-reference-trap? value)
-			 ;; nothing to do
-			 )
-			(else
-			 (environment-define env name value)))))
+		  (if (or (not (environment-bound? env name))
+			  (let ((value* (environment-safe-lookup env name)))
+			    (and (not (values-equivalent? value value*))
+				 (or (unassigned-reference-trap? value*)
+				     (error "Conflicting imports:"
+					    name value* value)))))
+		      (cond ((macro-reference-trap? value)
+			     (environment-define-macro
+			      env name
+			      (macro-reference-trap-transformer value)))
+			    ((unassigned-reference-trap? value)
+			     ;; nothing to do
+			     )
+			    (else
+			     (environment-define env name value))))))
 	      imports)
     env))
+
+(define (values-equivalent? v1 v2)
+  (cond ((unassigned-reference-trap? v1)
+	 (unassigned-reference-trap? v2))
+	((macro-reference-trap? v1)
+	 (and (macro-reference-trap? v2)
+	      (eqv? (macro-reference-trap-transformer v1)
+		    (macro-reference-trap-transformer v2))))
+	(else (eqv? v1 v2))))
 
 (define-automatic-property 'imports-environment '(imports db)
   (lambda (imports db)
@@ -116,7 +132,7 @@ USA.
 	     (import-environment-available? import db))
 	   imports))
   make-environment-from-imports)
-
+
 (define (environment . import-sets)
   (let ((parsed (map parse-import-set import-sets))
 	(db host-library-db))
