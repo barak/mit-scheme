@@ -759,3 +759,218 @@ USA.
     write
     write-char
     zero?))
+
+(define-standard-library '(srfi 1)
+  '(alist-cons
+    alist-copy
+    alist-delete
+    alist-delete!
+    any
+    append
+    append!
+    append-map
+    append-map!
+    append-reverse
+    append-reverse!
+    assoc
+    assq
+    assv
+    break
+    break!
+    caaaar
+    caaadr
+    caaar
+    caadar
+    caaddr
+    caadr
+    caar
+    cadaar
+    cadadr
+    cadar
+    caddar
+    cadddr
+    caddr
+    cadr
+    car
+    car+cdr
+    cdaaar
+    cdaadr
+    cdaar
+    cdadar
+    cdaddr
+    cdadr
+    cdar
+    cddaar
+    cddadr
+    cddar
+    cdddar
+    cddddr
+    cdddr
+    cddr
+    cdr
+    circular-list
+    circular-list?
+    concatenate
+    concatenate!
+    cons
+    cons*
+    count
+    delete
+    delete!
+    delete-duplicates
+    delete-duplicates!
+    dotted-list?
+    drop
+    drop-right
+    drop-right!
+    drop-while
+    eighth
+    every
+    fifth
+    filter
+    filter!
+    filter-map
+    find
+    find-tail
+    first
+    fold
+    fold-right
+    for-each
+    fourth
+    iota
+    last
+    last-pair
+    length
+    length+
+    list
+    list-copy
+    list-index
+    list-ref
+    list-tabulate
+    list=
+    lset-adjoin
+    lset-diff+intersection
+    lset-diff+intersection!
+    lset-difference
+    lset-difference!
+    lset-intersection
+    lset-intersection!
+    lset-union
+    lset-union!
+    lset-xor
+    lset-xor!
+    lset<=
+    lset=
+    make-list
+    map
+    map!
+    map-in-order
+    member
+    memq
+    memv
+    ninth
+    not-pair?
+    null-list?
+    null?
+    pair-fold
+    pair-fold-right
+    pair-for-each
+    pair?
+    partition
+    partition!
+    proper-list?
+    reduce
+    reduce-right
+    remove
+    remove!
+    reverse
+    reverse!
+    second
+    set-car!
+    set-cdr!
+    seventh
+    sixth
+    span
+    span!
+    split-at
+    split-at!
+    take
+    take!
+    take-right
+    take-while
+    take-while!
+    tenth
+    third
+    unfold
+    unfold-right
+    unzip1
+    unzip2
+    unzip3
+    unzip4
+    unzip5
+    xcons
+    zip))
+
+(define-standard-library '(srfi 2)
+  '(and-let*))
+
+(define-standard-library '(srfi 6)
+  '(get-output-string
+    open-input-string
+    open-output-string))
+
+(define-standard-library '(srfi 8)
+  '(receive))
+
+(define-standard-library '(srfi 9)
+  '(define-record-type))
+
+(define-standard-library '(srfi 23)
+  '(error))
+
+(define-standard-library '(srfi 27)
+  '(default-random-source
+    make-random-source
+    random-integer
+    random-real
+    random-source-make-integers
+    random-source-make-reals
+    random-source-make-reals
+    random-source-pseudo-randomize!
+    random-source-randomize!
+    random-source-state-ref
+    random-source-state-set!
+    random-source?))
+
+(define-standard-library '(srfi 39)
+  '(make-parameter
+    parameterize))
+
+(define-standard-library '(srfi 69)
+  '(alist->hash-table
+    hash
+    hash-by-identity
+    hash-table->alist
+    hash-table-copy
+    hash-table-delete!
+    hash-table-equivalence-function
+    hash-table-exists?
+    hash-table-fold
+    hash-table-hash-function
+    hash-table-keys
+    hash-table-merge!
+    hash-table-ref
+    hash-table-ref/default
+    hash-table-set!
+    hash-table-size
+    hash-table-update!
+    hash-table-update!/default
+    hash-table-values
+    hash-table-walk
+    hash-table?
+    make-hash-table
+    string-ci-hash
+    string-hash))
+
+(define-standard-library '(srfi 131)
+  '(define-record-type))
