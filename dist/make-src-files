@@ -57,18 +57,11 @@ notify "Configuring the distribution directory"
 run_command "${SRC_OUT}"-config "${DIST_DIR}"/src ./Setup.sh
 run_command "${DOC_OUT}"-config "${DIST_DIR}"/doc reconf
 
-for plugin in $PLUGINS; do
-    D="${DIST_DIR}"/src/$plugin
-    run_command "${OUTPUT_DIR}"/$plugin-config \
-		"${DIST_DIR}"/src/$plugin \
-		./autogen.sh
-done
-
 # Clean up after autoconf
 find "${DIST_DIR}" -type d -name autom4te.cache | xargs rm -rf
 fixup_perms "${DIST_DIR}"
 
 notify "Creating archive file"
-make_tar_file "${SRC_OUT}" "${DIST_DIR}" 
+make_tar_file "${SRC_OUT}" "${DIST_DIR}"
 
 notify_finished
