@@ -141,7 +141,7 @@ DEFINE_PRIMITIVE ("CURRENT-JIFFY", Prim_current_jiffy, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
   clock_t n = (OS_current_jiffy ());
-  PRIMITIVE_RETURN ((n < 0) ? SHARP_F : (intmax_to_integer (n)));
+  PRIMITIVE_RETURN ((n == (clock_t)-1) ? SHARP_F : (intmax_to_integer (n)));
 }
 
 DEFINE_PRIMITIVE ("JIFFIES-PER-SECOND", Prim_jiffies_per_second, 0, 0, 0)
