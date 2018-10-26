@@ -220,6 +220,7 @@ USA.
           (begin
             (assert-<= (relerr (- 1 p) (logistic (- x))) 1e-15)
             (if (<= 1/2 p)
+                ;; In this case, 1 - p is evaluated exactly.
                 (assert-<= (relerr (- x) (logit (- 1 p))) 1e-15)))
           (assert-<= (logistic (- x)) 1e-300))
       (assert-<= (relerr t (log-logistic x)) 1e-15)
@@ -227,3 +228,18 @@ USA.
           (assert-<= (relerr x (logit-exp t)) 1e-15))
       (if (< p 1)
           (assert-<= (relerr (log1p (- p)) (log-logistic (- x))) 1e-15)))))
+
+(define-enumerated-test 'expt-exact
+  (vector
+   (vector 2. -1075 "0.")
+   (vector 2. -1074 "4.9406564584124654e-324")
+   (vector 2. -1024 "5.562684646268004e-309")
+   (vector 2. -1023 "1.1125369292536007e-308")
+   (vector 2. -1022 "2.2250738585072014e-308"))
+  (lambda (v)
+    (flo:with-trapped-exceptions 0
+      (lambda ()
+        (let ((x (vector-ref v 0))
+              (y (vector-ref v 1))
+              (x^y (string->number (vector-ref v 2))))
+          (assert-eqv (expt x y) x^y))))))

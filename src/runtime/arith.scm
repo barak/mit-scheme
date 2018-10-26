@@ -1265,7 +1265,12 @@ USA.
 				      (loop x y answer)))))))))
 		 (cond ((int:positive? y) (exact-method y))
 		       ((int:negative? y)
-			(flo:/ flo:1 (exact-method (int:negate y))))
+			(if (int:< y microcode-id/floating-exponent-min)
+			    ;; The exact method cannot generate
+			    ;; subnormals because the negated exponent
+			    ;; overflows, so use the general case.
+			    (general-case x (int:->flonum y))
+			    (flo:/ flo:1 (exact-method (int:negate y)))))
 		       (else flo:1))))
 	      (else
 	       (general-case x (rat:->inexact y))))
