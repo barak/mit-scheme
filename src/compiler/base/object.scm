@@ -33,7 +33,6 @@ USA.
   (parent false read-only true)
   (name false read-only true)
   (index false read-only true)
-  (%unparser false)
   (description false)
   (method-alist '())
 
@@ -44,40 +43,30 @@ USA.
 
 (define make-vector-tag
   (let ((root-tag (%make-vector-tag false 'OBJECT false false)))
-    (set-vector-tag-%unparser!
-     root-tag
-     (standard-print-method
-      (lambda (object)
-	(string "LIAR:" (vector-tag-name (tagged-vector/tag object))))))
+    (define-print-method (lambda (object)
+			   (and (vector? object)
+				(fix:> (vector-length object) 0)
+				(eq? root-tag (vector-ref object 0))))
+      (standard-print-method
+       (lambda (object)
+	 (string "LIAR:" (vector-tag-name (tagged-vector/tag object))))))
     (named-lambda (make-vector-tag parent name enumeration)
-      (let ((tag
-	     (%make-vector-tag (or parent root-tag)
-			       name
-			       (and enumeration
-				    (enumeration/name->index enumeration
-							     name))
-			       ;; Propagate this downward at construction time
-			       ;; to avoid having to crawl upward at use time.
-			       (and parent (vector-tag-noop parent)))))
-	(define-print-method (lambda (object)
-			       (and (vector? object)
-				    (fix:> (vector-length object) 0)
-				    (eq? tag (vector-ref object 0))))
-	  (lambda (vector port)
-	    (parameterize ((param:printer-radix 16))
-	      ((tagged-vector/unparser vector) vector port))))
-	tag))))
+      (%make-vector-tag (or parent root-tag)
+			name
+			(and enumeration
+			     (enumeration/name->index enumeration
+						      name))
+			;; Propagate this downward at construction time
+			;; to avoid having to crawl upward at use time.
+			(and parent (vector-tag-noop parent))))))
 
 (define (define-vector-tag-unparser tag unparser)
-  (set-vector-tag-%unparser! tag unparser)
+  (define-print-method (lambda (object)
+			 (and (vector? object)
+			      (fix:> (vector-length object) 0)
+			      (eq? tag (vector-ref object 0))))
+    unparser)
   (vector-tag-name tag))
-
-(define (vector-tag-unparser tag)
-  (or (vector-tag-%unparser tag)
-      (let ((parent (vector-tag-parent tag)))
-	(if parent
-	    (vector-tag-unparser parent)
-	    (error "Missing unparser" tag)))))
 
 (define (vector-tag-put! tag key value)
   (let ((entry (assq key (vector-tag-method-alist tag))))
@@ -112,9 +101,6 @@ USA.
 
 (define-integrable (tagged-vector/index vector)
   (vector-tag-index (tagged-vector/tag vector)))
-
-(define-integrable (tagged-vector/unparser vector)
-  (vector-tag-unparser (tagged-vector/tag vector)))
 
 (define (tagged-vector? object)
   (and (vector? object)
