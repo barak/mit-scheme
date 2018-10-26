@@ -27,11 +27,12 @@
 make_output_dir
 
 BUILD_DIR=doc-build
+PLUGINS_WITH_DOC=(blowfish gdbm imail)
 
 build_docs ()
 {
    my_configure
-   my_make
+   my_make "${@}"
 }
 
 make_archive_dir ()
@@ -43,12 +44,20 @@ make_archive_dir ()
 notify "Building documentation"
 unpack_dist_file_to "${DIST_DIR}" "${BUILD_DIR}"
 run_command "${DOC_OUT}"-build "${BUILD_DIR}"/doc build_docs
+for PLUGIN in "${PLUGINS_WITH_DOC[@]}"; do
+    run_command "${DOC_OUT}"-build-"${PLUGIN}" "${BUILD_DIR}"/src/"${PLUGIN}" \
+	build_docs info html pdf
+done
 
 new_temp_dir "${DIST_DIR}"
 for FORMAT in html info pdf; do
     OUT=${DOC_OUT}-${FORMAT}
     notify "Making archive for ${FORMAT}"
     run_command "${OUT}" "${BUILD_DIR}"/doc make_archive_dir "${FORMAT}"
+    for PLUGIN in "${PLUGINS_WITH_DOC[@]}"; do
+        run_command "${OUT}"-"${PLUGIN}" "${BUILD_DIR}"/src/"${PLUGIN}" \
+	    make_archive_dir "${FORMAT}"
+    done
     make_tar_file "${OUT}" "${DIST_DIR}"-doc-"${FORMAT}" "${DIST_DIR}"/doc
     my_rm_rf "${DIST_DIR}"
 done
