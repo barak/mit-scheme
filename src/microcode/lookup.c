@@ -668,7 +668,7 @@ long
 unbind_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 		 SCHEME_OBJECT * value_ret)
 {
-  SCHEME_OBJECT frame;
+  SCHEME_OBJECT frame = 0;
   SCHEME_OBJECT * cell = (find_binding_cell (environment, symbol, (&frame)));
   if (GLOBAL_FRAME_P (frame))
     weaken_symbol (symbol);
