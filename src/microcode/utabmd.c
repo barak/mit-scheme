@@ -60,8 +60,10 @@ static SCHEME_OBJECT names_to_vector (unsigned long, const char **);
 #define ID_STACK_TYPE		10	/* Scheme stack type (string) */
 #define ID_MACHINE_TYPE		11	/* Machine type (string) */
 #define ID_CC_ARCH		12	/* Compiled-code support (string) */
+#define ID_FLONUM_EXP_MIN	13	/* Minimum finite (normal) exponent */
+#define ID_FLONUM_EXP_MAX	14	/* Maximum finite exponent */
 
-#define N_IDENTITY_NAMES 0x0D
+#define N_IDENTITY_NAMES 0x0F
 static const char * identity_names [] =
 {
   /* 0x00 */	"system-release-string",
@@ -76,7 +78,9 @@ static const char * identity_names [] =
   /* 0x09 */	"os-variant-string",
   /* 0x0A */	"stack-type-string",
   /* 0x0B */	"machine-type-string",
-  /* 0x0C */	"cc-arch-string"
+  /* 0x0C */	"cc-arch-string",
+  /* 0x0D */	"flonum-exponent-min",
+  /* 0x0E */	"flonum-exponent-max",
 };
 
 SCHEME_OBJECT
@@ -94,6 +98,8 @@ make_microcode_identification_vector (void)
   VECTOR_SET (v, ID_OS_VARIANT, (char_pointer_to_string (OS_Variant)));
   VECTOR_SET (v, ID_STACK_TYPE, (char_pointer_to_string ("standard")));
   VECTOR_SET (v, ID_MACHINE_TYPE, (char_pointer_to_string (MACHINE_TYPE)));
+  VECTOR_SET (v, ID_FLONUM_EXP_MIN, (LONG_TO_FIXNUM (DBL_MIN_EXP - 1)));
+  VECTOR_SET (v, ID_FLONUM_EXP_MAX, (LONG_TO_FIXNUM (DBL_MAX_EXP - 1)));
   {
     const char * name = (cc_arch_name ());
     if (name != 0)

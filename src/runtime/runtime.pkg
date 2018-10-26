@@ -3224,6 +3224,8 @@ USA.
 	  microcode-id/compiled-code-type
 	  microcode-id/floating-epsilon
 	  microcode-id/floating-mantissa-bits
+	  microcode-id/floating-exponent-max
+	  microcode-id/floating-exponent-min
 	  microcode-id/machine-type
 	  microcode-id/operating-system
 	  microcode-id/operating-system-suffix

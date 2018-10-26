@@ -180,6 +180,8 @@ USA.
 (define microcode-version-string)
 (define microcode-id/floating-mantissa-bits)
 (define microcode-id/floating-epsilon)
+(define microcode-id/floating-exponent-min)
+(define microcode-id/floating-exponent-max)
 (define microcode-id/operating-system)
 (define microcode-id/operating-system-name)
 (define microcode-id/operating-system-variant)
@@ -194,6 +196,10 @@ USA.
 	(microcode-identification-item 'flonum-mantissa-length))
   (set! microcode-id/floating-epsilon
 	(microcode-identification-item 'flonum-epsilon))
+  (set! microcode-id/floating-exponent-min
+        (microcode-identification-item 'flonum-exponent-min))
+  (set! microcode-id/floating-exponent-max
+        (microcode-identification-item 'flonum-exponent-max))
   (set! microcode-id/operating-system-name
 	(microcode-identification-item 'os-name-string))
   (set! microcode-id/operating-system
