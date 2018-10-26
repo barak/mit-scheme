@@ -46,8 +46,7 @@ shift 2
 
 build ()
 {
-    my_configure --enable-native-code="${ARCH}" \
-	--with-mcrypt=no --with-libpq=no --with-db-4=no
+    my_configure --enable-native-code="${ARCH}"
     my_make
     touch .native-release-marker
 }
