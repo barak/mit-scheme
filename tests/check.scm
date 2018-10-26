@@ -40,6 +40,7 @@ USA.
 
 (define known-tests
   '(
+    "microcode/test-chacha"
     ;++ Kludge to run the flonum cast tests interpreted and compiled --
     ;++ the compiler has a bug with negative zero.
     "microcode/test-flonum-casts"
