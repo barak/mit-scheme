@@ -93,6 +93,7 @@ USA.
 (define rec:pi/2 (flo:* 2. (flo:atan2 1. 1.)))
 (define rec:pi (flo:* 2. rec:pi/2))
 
+(define flo:radix 2)
 (define flo:epsilon)
 (define flo:log-epsilon)
 (define flo:normal-exponent-max-base-2)
