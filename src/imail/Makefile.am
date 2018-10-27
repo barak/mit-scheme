@@ -95,5 +95,10 @@ EXTRA_DIST += $(sources) compile.sh make.scm compile.scm imail.pkg
 install-data-hook:
 
 install-html: install-html-am
+	( echo '(add-plugin "imail" "@MIT_SCHEME_PROJECT@"'; \
+	  echo '            ""'; \
+	  echo '            ""'; \
+	  echo '            "$(DESTDIR)$(scmdocdir)")' ) \
+	| $(MIT_SCHEME_EXE) --batch-mode
 
 uninstall-hook:

@@ -36,52 +36,19 @@ USA.
   (update-plugin 'remove name project infodir scmlibdir scmdocdir))
 
 (define (update-plugin operation name project infodir scmlibdir scmdocdir)
-  (let ((scmlibdir (->namestring (pathname-as-directory scmlibdir)))
-	(infodir (and (not (string-null? infodir))
-		      (->namestring (pathname-as-directory infodir))))
-	(scmdocdir (and (not (string-null? scmdocdir))
-			(->namestring (pathname-as-directory scmdocdir)))))
-    (if (file-exists? (string scmlibdir"optiondb.scm"))
-	;; NOT in dpkg-buildpackage's chroot
-	(let ((plugins
-	       (let ((filename (string scmlibdir"plugins.scm")))
-		 (if (file-exists? filename)
-		     (rewrite-file
-		      filename
-		      (lambda (in out)
-			(cond ((eq? operation 'add)
-			       (let ((new (cons name
-						(delete! name (read in)))))
-				 (write new out)
-				 new))
-			      ((eq? operation 'remove)
-			       (let ((new (delete! name (read in))))
-				 (write new out)
-				 new))
-			      (else
-			       (error "Unexpected plugin-list operation:"
-				      operation)))))
-		     (cond ((eq? operation 'add)
-			    (let ((new (list name)))
-			      (call-with-exclusive-output-file
-			       filename
-			       (lambda (out) (write new out)))
-			      new))
-			   ((eq? operation 'remove)
-			    (warn "plugin list not found:" filename)
-			    '())
-			   (else
-			    (error "Unexpected plugin-list operation:"
-				   operation)))))))
-	  (update-optiondb plugins scmlibdir)
-	  (update-info-index project plugins infodir scmdocdir)
-	  (update-html-index project plugins scmdocdir)))))
+  (let ((infodir (normal-dirname infodir))
+	(scmlibdir (normal-dirname scmlibdir))
+	(scmdocdir (normal-dirname scmdocdir)))
+    (if scmlibdir
+	(update-plugin-lib operation name project scmlibdir))
+    (if scmdocdir
+	(update-plugin-doc operation name project infodir scmdocdir))))
 
 (define (delete-plugin-list)
   ;; For the prerm script: delete the database of plugins (plugins.scm
   ;; file in the system library directory).
-  (let ((filename (string (->namestring (system-library-directory-pathname))
-			  "plugins.scm")))
+  (let ((filename
+	 (merge-pathnames "plugins.scm" (system-library-directory-pathname))))
     (if (file-exists? filename)
 	(delete-file filename))))
 
@@ -89,20 +56,68 @@ USA.
   ;; For the postinst script: re-initialize the optiondb, Info and
   ;; HTML indices using the list of currently installed plugins.  (The
   ;; indices are presumed clobbered by the core upgrade.)
-  (let ((scmlibdir (->namestring (pathname-as-directory scmlibdir)))
-	(infodir (and (not (string-null? infodir))
-		      (->namestring (pathname-as-directory infodir))))
-	(scmdocdir (and (not (string-null? scmdocdir))
-			(->namestring (pathname-as-directory scmdocdir)))))
-    (let* ((pathname (string scmlibdir"plugins.scm"))
-	   (plugins (if (file-exists? pathname)
-			(call-with-input-file pathname read)
-			'())))
-      (if (not (null? plugins))
-	  (begin
-	    (update-optiondb plugins scmlibdir)
-	    (update-info-index project plugins infodir scmdocdir)
-	    (update-html-index project plugins scmdocdir))))))
+  (let ((infodir (normal-dirname infodir))
+	(scmlibdir (normal-dirname scmlibdir))
+	(scmdocdir (normal-dirname scmdocdir)))
+    (if scmlibdir
+	(update-optiondb (read-plugins-file scmlibdir)
+			 scmlibdir))
+    (if scmdocdir
+	(let ((plugins (read-plugins-file scmdocdir)))
+	  (update-info-index project plugins infodir scmdocdir)
+	  (update-html-index project plugins scmdocdir)))))
+
+(define (normal-dirname dirname)
+  (and dirname
+       (not (string-null? dirname))
+       (->namestring (pathname-as-directory dirname))))
+
+(define (update-plugin-lib operation name project scmlibdir)
+  (if (file-exists? (merge-pathnames "optiondb.scm" scmlibdir))
+      ;; NOT in dpkg-buildpackage's chroot
+      (update-optiondb plugins
+		       (update-plugins-file operation name scmlibdir)
+		       scmlibdir)))
+
+(define (update-plugin-doc operation name project infodir scmdocdir)
+  (let ((plugins (update-plugins-file operation name scmdocdir)))
+    (update-info-index project plugins infodir scmdocdir)
+    (update-html-index project plugins scmdocdir)))
+
+(define (read-plugins-file dir)
+  (let ((filename (merge-pathnames "plugins.scm" dir)))
+    (if (file-exists? filename)
+	(call-with-input-file filename read)
+	'())))
+
+(define (update-plugins-file operation name dir)
+  (let ((filename (merge-pathnames "plugins.scm" dir)))
+    (if (file-exists? filename)
+	(rewrite-file filename
+	  (lambda (in out)
+	    (case operation
+	      ((add)
+	       (let ((new (cons name (delete! name (read in)))))
+		 (write new out)
+		 new))
+	      ((remove)
+	       (let ((new (delete! name (read in))))
+		 (write new out)
+		 new))
+	      (else
+	       (error "Unexpected plugin-list operation:" operation)))))
+	(case operation
+	  ((add)
+	   (let ((new (list name)))
+	     (call-with-exclusive-output-file filename
+	       (lambda (out)
+		 (write new out)))
+	     new))
+	  ((remove)
+	   (warn "plugin list not found:" filename)
+	   '())
+	  (else
+	   (error "Unexpected plugin-list operation:" operation))))))
 
 (define (update-optiondb plugins scmlibdir)
   (let ((filename (string scmlibdir"optiondb.scm")))
@@ -123,7 +138,7 @@ USA.
 	       (write-string "\"))\n" out))
 	     (sort plugins string<?))))
 	(warn "optiondb not found:" filename))))
-
+
 (define (update-info-index project plugins infodir scmdocdir)
   (if infodir
       (let ((filename (string infodir project".info")))
@@ -141,21 +156,20 @@ USA.
 (define (write-direntry project plugin scmdocdir out)
   (let ((filename (string scmdocdir"info/"plugin".info")))
     (if (file-exists-or-compressed? filename)
-	(call-with-input-file-uncompressed
-	 filename
-	 (lambda (in)
-	   (skip-to-line "START-INFO-DIR-ENTRY" in)
-	   (transform-to-line
-	    "END-INFO-DIR-ENTRY" in out #f
-	    (let* ((str (string "("project"/"))
-		   (str-len (string-length str)))
-	      (lambda (line)
-		(let ((index (string-search-forward str line)))
-		  (if index
-		      (string (substring line 0 index)
-			      "("scmdocdir"info/"
-			      (substring line (fix:+ index str-len)))
-		      line))))))))))
+	(call-with-input-file-uncompressed filename
+	  (lambda (in)
+	    (skip-to-line "START-INFO-DIR-ENTRY" in)
+	    (transform-to-line
+	     "END-INFO-DIR-ENTRY" in out #f
+	     (let* ((str (string "("project"/"))
+		    (str-len (string-length str)))
+	       (lambda (line)
+		 (let ((index (string-search-forward str line)))
+		   (if index
+		       (string (substring line 0 index)
+			       "("scmdocdir"info/"
+			       (substring line (fix:+ index str-len)))
+		       line))))))))))
 
 (define (update-html-index project plugins scmdocdir)
   (let* ((scmhtmldir (if (file-exists? (string scmdocdir"html/index.html"))
@@ -204,7 +218,7 @@ USA.
 	     (write-string line out)
 	     (newline out))))
 	(warn "Scheme html index not found:" filename))))
-
+
 (define (html-filenames.titles project plugins scmhtmldir)
 
   (define (existing-file . strings)
@@ -269,7 +283,7 @@ USA.
 	   (string-prefix? prefix line))
        (if (eof-object? line)
 	   (error "Skipped to eof without seeing line:" prefix)))))
-
+
 (define (rewrite-file filename rewriter)
   (let ((suffix.progs (compressed? filename)))
     (if suffix.progs
@@ -319,7 +333,7 @@ USA.
 				   replacement)
 		 (rename-file replacement compressed))))
 	    value)))))))
-
+
 (define (call-with-input-file-uncompressed filename receiver)
   (let ((suffix.progs (compressed? filename)))
     (if suffix.progs

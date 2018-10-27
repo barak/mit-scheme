@@ -31,7 +31,7 @@ USA.
 ])
 
 AC_PROG_INSTALL
-if test "$(${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps)"
+if test x"$(${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps)" != x
 then
     INSTALL="${INSTALL} --preserve-timestamps"
 fi
@@ -44,34 +44,40 @@ TARGETS=
 INST_TARGETS=
 
 AC_ARG_ENABLE([html],
-	[AC_HELP_STRING([--enable-html], [generate HTML documentation])])
-if test "${enable_html}" = "no"; then
+    [AC_HELP_STRING([--enable-html],
+        [generate HTML documentation [[yes]]])])
+: ${enable_html=yes}
+if test x"${enable_html}" = xno; then
     htmldir=
-elif test "${enable_html:-yes}" != "yes"; then
-    htmldir="${enable_html}"
+elif test x"${enable_html}" != xyes; then
+    htmldir=${enable_html}
 fi
-test "${htmldir}" = "" || TARGETS="${TARGETS} \$(TARGET_ROOT)/index.html"
-test "${htmldir}" = "" || INST_TARGETS="${INST_TARGETS} install-html"
+test x"${htmldir}" = x || TARGETS="${TARGETS} \$(TARGET_ROOT)/index.html"
+test x"${htmldir}" = x || INST_TARGETS="${INST_TARGETS} install-html"
 
 AC_ARG_ENABLE([pdf],
-	[AC_HELP_STRING([--enable-pdf], [generate PDF documentation])])
-if test "${enable_pdf}" = "no"; then
+    [AC_HELP_STRING([--enable-pdf],
+	[generate PDF documentation [[yes]]])])
+: ${enable_pdf=yes}
+if test x"${enable_pdf}" = xno; then
     pdfdir=
-elif test "${enable_pdf:-yes}" != "yes"; then
-    pdfdir="${enable_pdf}"
+elif test x"${enable_pdf}" != xyes; then
+    pdfdir=${enable_pdf}
 fi
-test "${pdfdir}" = "" || TARGETS="${TARGETS} \$(TARGET_ROOT).pdf"
-test "${pdfdir}" = "" || INST_TARGETS="${INST_TARGETS} install-pdf"
+test x"${pdfdir}" = x || TARGETS="${TARGETS} \$(TARGET_ROOT).pdf"
+test x"${pdfdir}" = x || INST_TARGETS="${INST_TARGETS} install-pdf"
 
 AC_ARG_ENABLE([ps],
-	[AC_HELP_STRING([--enable-ps], [generate Postscript documentation])])
-if test "${enable_ps:-no}" = "no"; then
+    [AC_HELP_STRING([--enable-ps],
+	[generate Postscript documentation [[no]]])])
+: ${enable_pdf=no}
+if test x"${enable_ps}" = xno; then
     psdir=
-elif test "${enable_ps}" != "yes"; then
-    psdir="${enable_ps}"
+elif test x"${enable_ps}" != xyes; then
+    psdir=${enable_ps}
 fi
-test "${psdir}" = "" || TARGETS="${TARGETS} \$(TARGET_ROOT).ps"
-test "${psdir}" = "" || INST_TARGETS="${INST_TARGETS} install-ps"
+test x"${psdir}" = x || TARGETS="${TARGETS} \$(TARGET_ROOT).ps"
+test x"${psdir}" = x || INST_TARGETS="${INST_TARGETS} install-ps"
 
 AC_SUBST([PROJECT])
 AC_SUBST([TARGETS])

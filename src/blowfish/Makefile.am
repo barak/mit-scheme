@@ -96,13 +96,13 @@ install-data-hook:
 	( echo '(add-plugin "blowfish" "@MIT_SCHEME_PROJECT@"'; \
 	  echo '            ""'; \
 	  echo '            "$(DESTDIR)$(scmlibdir)"'; \
-	  echo '            "$(DESTDIR)$(scmdocdir)")' ) \
+	  echo '            "")' ) \
 	| $(MIT_SCHEME_EXE) --batch-mode
 
 install-html: install-html-am
 	( echo '(add-plugin "blowfish" "@MIT_SCHEME_PROJECT@"'; \
 	  echo '            ""'; \
-	  echo '            "$(DESTDIR)$(scmlibdir)"'; \
+	  echo '            ""'; \
 	  echo '            "$(DESTDIR)$(scmdocdir)")' ) \
 	| $(MIT_SCHEME_EXE) --batch-mode
 
