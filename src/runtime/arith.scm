@@ -2025,8 +2025,8 @@ USA.
 ;;; log(1 + e^x)
 (define (log1pexp x)
   (guarantee-real x 'log1pexp)
-  (cond ((<= x -745) 0.)
-	((<= x -37) (exp x))
+  (cond ((<= x flo:subnormal-exponent-min-base-e) 0.)
+	((<= x flo:log-epsilon) (exp x))
 	((<= x 18) (log1p (exp x)))
 	((<= x 33.3) (+ x (exp (- x))))
 	(else x)))
@@ -2100,11 +2100,11 @@ USA.
 ;;; 1/(1 + e^{-x}) = e^x/(1 + e^x)
 (define (logistic x)
   (guarantee-real x 'logistic)
-  (cond ((<= x -745)
+  (cond ((<= x flo:subnormal-exponent-min-base-e)
          ;; e^x/(1 + e^x) < e^x < smallest positive float.  (XXX Should
          ;; raise inexact and underflow here.)
          0.)
-	((<= x -37)
+	((<= x flo:log-epsilon)
          ;; e^x < eps, so
          ;;
          ;;     |e^x - e^x/(1 + e^x)|/|e^x/(1 + e^x)|
@@ -2115,7 +2115,7 @@ USA.
          ;;      < eps.
          ;;
          (exp x))
-	((<= x 37)
+	((<= x (- flo:log-epsilon))
          ;; e^{-x} > 0, so 1 + e^{-x} > 1, and 0 < 1/(1 + e^{-x}) < 1;
          ;; further, since e^{-x} < 1 + e^{-x}, we also have 0 <
          ;; e^{-x}/(1 + e^{-x}) < 1.  Thus, if exp has relative error
@@ -2151,8 +2151,8 @@ USA.
          ;;
          (/ 1 (+ 1 (exp (- x)))))
 	(else
-         ;; If x > 37, then e^{-x} < eps, so the relative error of 1
-         ;; from 1/(1 + e^{-x}) is
+         ;; If x > -log eps, then e^{-x} < eps, so the relative error
+         ;; of 1 from 1/(1 + e^{-x}) is
          ;;
          ;;     |1/(1 + e^{-x}) - 1|/|1/(1 + e^{-x})|
          ;;      = |e^{-x}/(1 + e^{-x})|/|1/(1 + e^{-x})|
@@ -2240,16 +2240,16 @@ USA.
 ;;; log e^t/(1 - e^t) = logit(e^t)
 (define (logit-exp t)
   (guarantee-real t 'logit-exp)
-  (cond ((<= t -37)
-         ;; e^t < eps/2, so since log(e^t/(1 - e^t)) = t - log(1 -
-         ;; e^t), and |log(1 - e^t)| < 1 < |t|, we have
+  (cond ((<= t flo:log-epsilon)
+         ;; e^t < eps, so since log(e^t/(1 - e^t)) = t - log(1 - e^t),
+         ;; and |log(1 - e^t)| < 1 < |t|, we have
          ;;
          ;;     |t - log(e^t/(1 - e^t))|/|log(e^t/(1 - e^t))|
          ;;      = |log(1 - e^t)|/|t - log(1 - e^t)|
          ;;     <= |log(1 - e^t)|
          ;;     <= 1/(1 - e^t)
          ;;     <= 2|e^t|
-         ;;     <= eps.
+         ;;     <= 2 eps.
          ;;
          t)
         ((<= logit-exp-boundary-lo t logit-exp-boundary-hi)
