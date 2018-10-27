@@ -245,4 +245,8 @@ USA.
         (let ((x (vector-ref v 0))
               (y (vector-ref v 1))
               (x^y (string->number (vector-ref v 2))))
-          (assert-eqv (expt x y) x^y))))))
+          (assert-eqv (expt x y) x^y)
+          ;; For all the inputs, reciprocal is exact.
+          (assert-eqv (expt (/ 1 x) (- y)) x^y)
+          (assert-eqv (expt (* 2 x) (/ y 2)) x^y)
+          (assert-eqv (expt (/ 1 (* 2 x)) (- (/ y 2))) x^y))))))

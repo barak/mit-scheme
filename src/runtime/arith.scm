@@ -1265,12 +1265,15 @@ USA.
 				      (loop x y answer)))))))))
 		 (cond ((int:positive? y) (exact-method y))
 		       ((int:negative? y)
-			(if (int:< y microcode-id/floating-exponent-min)
-			    ;; The exact method cannot generate
-			    ;; subnormals because the negated exponent
-			    ;; overflows, so use the general case.
-			    (general-case x (int:->flonum y))
-			    (flo:/ flo:1 (exact-method (int:negate y)))))
+			(if (flo:< (flo:abs x) flo:1)
+			    (flo:/ flo:1 (exact-method (int:negate y)))
+			    ;; For any base above 1 and sufficiently large
+			    ;; exponents, or for any negative exponent and
+			    ;; sufficiently large base, the division above
+			    ;; would overflow into infinite and then yield
+			    ;; 0 when it should yield a subnormal.  So use
+			    ;; the general case.
+			    (general-case x (int:->flonum y))))
 		       (else flo:1))))
 	      (else
 	       (general-case x (rat:->inexact y))))
