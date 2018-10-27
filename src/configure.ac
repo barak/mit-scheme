@@ -90,7 +90,7 @@ AC_ARG_WITH([scheme-build],
 # optional plugins
 
 AC_ARG_ENABLE([default-plugins],
-    AS_HELP_STRING([--default-plugins],
+    AS_HELP_STRING([--enable-default-plugins],
 	[Enable default plugins [[yes]]]))
 : ${enable_default_plugins=yes}
 
