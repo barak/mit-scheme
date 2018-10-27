@@ -1,3 +1,4 @@
+# autocrud
 /INSTALL
 /Makefile
 /Makefile.in
@@ -15,5 +16,6 @@
 /ltmain.sh
 /m4/
 /missing
-/stamp-scheme
 /test-driver
+
+/stamp-scheme

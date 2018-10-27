@@ -16,6 +16,6 @@
 /ltmain.sh
 /m4/
 /missing
+/test-driver
 
 /stamp-scheme
-/test-driver

@@ -20,10 +20,10 @@
 /m4/
 /missing
 /stamp-h1
+/test-driver
 
 /stamp-scheme
 /stamp-shim
-/test-driver
 /x11-const
 /x11-const.c
 /x11-const.scm

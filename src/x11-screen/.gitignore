@@ -9,6 +9,6 @@
 /configure
 /install-sh
 /missing
+/test-driver
 
 /stamp-scheme
-/test-driver
