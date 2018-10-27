@@ -2078,44 +2078,12 @@ USA.
          ;;      < eps.
          ;;
          (exp x))
-        ((< x 0)
-         ;; e^x < 1 < 1 + e^x, so e^x/(1 + e^x) < 1, so, if exp has
-         ;; relative error d0, + has relative error d1, and / has
-         ;; relative error d2, then we get
-         ;;
-         ;;     (1 + d2) (1 + d0) e^x/[(1 + (1 + d0) e^x)(1 + d1)]
-         ;;     = (1 + d0 + d2 + d0 d2) e^x/[(1 + (1 + d0) e^x)(1 + d1)]
-         ;;     = (1 + d') e^x/[(1 + (1 + d0) e^x)(1 + d1)]
-         ;;     = (1 + d') e^x/[(1 + e^x + d0 e^x)(1 + d1)]
-         ;;     = (1 + d') e^x/[1 + e^x + d0 e^x + d1 + d1 e^x + d1 d0 e^x]
-         ;;     = (1 + d') e^x/[1 + e^x + d0 e^x + d1 (1 + e^x) + d1 d0 e^x]
-         ;;     = (1 + d') e^x/[(1 + e^x)(1 + d0 e^x/(1 + e^x)
-         ;;                                 + d1
-         ;;                                 + d1 d0 e^x/(1 + e^x))]
-         ;;     = (1 + d') e^x/[(1 + e^x)(1 + d'')]
-         ;;     = [e^x/(1 + e^x)] (1 + d')/(1 + d'')
-         ;;
-         ;; where
-         ;;
-         ;;     d' = d0 + d2 + d0 d2,
-         ;;     d'' = d0 e^x/(1 + e^x) + d1 + d1 d0 e^x/(1 + e^x).
-         ;;
-         ;; Note that since e^x/(1 + e^x) < 1,
-         ;;
-         ;;     |d''| <= |d0| + |d1| + |d1 d0| <= 2 eps + eps^2,
-         ;;
-         ;; so by Lemma 2 the relative error is bounded by
-         ;;
-         ;;     2|d' - d''|
-         ;;     <= 2|d0| + 2|d2| + 2|d0 d2| + 2|d0| + 2|d1| + 2|d1 d0|
-         ;;     <= 8 eps + 4 eps^2.
-         ;;
-         (let ((e^x (exp x)))
-           (/ e^x (+ 1 e^x))))
 	((<= x 37)
-         ;; e^{-x} < 1 < 1 + e^{-x}, so 1/(1 + e^{-x}) < 1, so, if exp
-         ;; has relative error d0, + has relative error d1, and / has
-         ;; relative error d2, then we get
+         ;; e^{-x} > 0, so 1 + e^{-x} > 1, and 0 < 1/(1 + e^{-x}) < 1;
+         ;; further, since e^{-x} < 1 + e^{-x}, we also have 0 <
+         ;; e^{-x}/(1 + e^{-x}) < 1.  Thus, if exp has relative error
+         ;; d0, + has relative error d1, and / has relative error d2,
+         ;; then we get
          ;;
          ;;     (1 + d2)/[(1 + (1 + d0) e^{-x})(1 + d1)]
          ;;     = (1 + d2)/[1 + e^{-x} + d0 e^{-x}
