@@ -2101,69 +2101,69 @@ USA.
 (define (logistic x)
   (guarantee-real x 'logistic)
   (cond ((<= x flo:subnormal-exponent-min-base-e)
-         ;; e^x/(1 + e^x) < e^x < smallest positive float.  (XXX Should
-         ;; raise inexact and underflow here.)
-         0.)
+	 ;; e^x/(1 + e^x) < e^x < smallest positive float.  (XXX Should
+	 ;; raise inexact and underflow here.)
+	 0.)
 	((<= x flo:log-epsilon)
-         ;; e^x < eps, so
-         ;;
-         ;;     |e^x - e^x/(1 + e^x)|/|e^x/(1 + e^x)|
-         ;;     <= |1 - 1/(1 + e^x)|*|1 + e^x|
-         ;;      = |(1 + e^x - 1)/(1 + e^x)|*|1 + e^x|
-         ;;      = |e^x/(1 + e^x)|*|1 + e^x|
-         ;;      = |e^x|
-         ;;      < eps.
-         ;;
-         (exp x))
+	 ;; e^x < eps, so
+	 ;;
+	 ;;	|e^x - e^x/(1 + e^x)|/|e^x/(1 + e^x)|
+	 ;;	<= |1 - 1/(1 + e^x)|*|1 + e^x|
+	 ;;	 = |(1 + e^x - 1)/(1 + e^x)|*|1 + e^x|
+	 ;;	 = |e^x/(1 + e^x)|*|1 + e^x|
+	 ;;	 = |e^x|
+	 ;;	 < eps.
+	 ;;
+	 (exp x))
 	((<= x (- flo:log-epsilon))
-         ;; e^{-x} > 0, so 1 + e^{-x} > 1, and 0 < 1/(1 + e^{-x}) < 1;
-         ;; further, since e^{-x} < 1 + e^{-x}, we also have 0 <
-         ;; e^{-x}/(1 + e^{-x}) < 1.  Thus, if exp has relative error
-         ;; d0, + has relative error d1, and / has relative error d2,
-         ;; then we get
-         ;;
-         ;;     (1 + d2)/[(1 + (1 + d0) e^{-x})(1 + d1)]
-         ;;     = (1 + d2)/[1 + e^{-x} + d0 e^{-x}
-         ;;                     + d1 + d1 e^{-x} + d0 d1 e^{-x}]
-         ;;     = (1 + d2)/[(1 + e^{-x})(1 + d0 e^{-x}/(1 + e^{-x})
-         ;;                                 + d1/(1 + e^{-x})
-         ;;                                 + d0 d1 e^{-x}/(1 + e^{-x}))].
-         ;;     = (1 + d2)/[(1 + e^{-x})(1 + d')]
-         ;;     = [1/(1 + e^{-x})] (1 + d2)/(1 + d')
-         ;;
-         ;; where
-         ;;
-         ;;     d' = d0 e^{-x}/(1 + e^{-x})
-         ;;          + d1/(1 + e^{-x})
-         ;;          + d0 d1 e^{-x}/(1 + e^{-x}).
-         ;;
-         ;; By Lemma 2 this relative error is bounded by
-         ;;
-         ;;     2|d2 - d'|
-         ;;      = 2|d2 - d0 e^{-x}/(1 + e^{-x})
-         ;;             - d1/(1 + e^{-x})
-         ;;             - d0 d1 e^{-x}/(1 + e^{-x})|
-         ;;     <= 2|d2| + 2|d0 e^{-x}/(1 + e^{-x})|
-         ;;             + 2|d1/(1 + e^{-x})|
-         ;;             + 2|d0 d1 e^{-x}/(1 + e^{-x})|
-         ;;     <= 2|d2| + 2|d0| + 2|d1| + 2|d0 d1|
-         ;;     <= 6 eps + 2 eps^2.
-         ;;
-         (/ 1 (+ 1 (exp (- x)))))
+	 ;; e^{-x} > 0, so 1 + e^{-x} > 1, and 0 < 1/(1 + e^{-x}) < 1;
+	 ;; further, since e^{-x} < 1 + e^{-x}, we also have 0 <
+	 ;; e^{-x}/(1 + e^{-x}) < 1.  Thus, if exp has relative error
+	 ;; d0, + has relative error d1, and / has relative error d2,
+	 ;; then we get
+	 ;;
+	 ;;	(1 + d2)/[(1 + (1 + d0) e^{-x})(1 + d1)]
+	 ;;	= (1 + d2)/[1 + e^{-x} + d0 e^{-x}
+	 ;;			+ d1 + d1 e^{-x} + d0 d1 e^{-x}]
+	 ;;	= (1 + d2)/[(1 + e^{-x})(1 + d0 e^{-x}/(1 + e^{-x})
+	 ;;				    + d1/(1 + e^{-x})
+	 ;;				    + d0 d1 e^{-x}/(1 + e^{-x}))].
+	 ;;	= (1 + d2)/[(1 + e^{-x})(1 + d')]
+	 ;;	= [1/(1 + e^{-x})] (1 + d2)/(1 + d')
+	 ;;
+	 ;; where
+	 ;;
+	 ;;	d' = d0 e^{-x}/(1 + e^{-x})
+	 ;;	     + d1/(1 + e^{-x})
+	 ;;	     + d0 d1 e^{-x}/(1 + e^{-x}).
+	 ;;
+	 ;; By Lemma 2 this relative error is bounded by
+	 ;;
+	 ;;	2|d2 - d'|
+	 ;;	 = 2|d2 - d0 e^{-x}/(1 + e^{-x})
+	 ;;		- d1/(1 + e^{-x})
+	 ;;		- d0 d1 e^{-x}/(1 + e^{-x})|
+	 ;;	<= 2|d2| + 2|d0 e^{-x}/(1 + e^{-x})|
+	 ;;		+ 2|d1/(1 + e^{-x})|
+	 ;;		+ 2|d0 d1 e^{-x}/(1 + e^{-x})|
+	 ;;	<= 2|d2| + 2|d0| + 2|d1| + 2|d0 d1|
+	 ;;	<= 6 eps + 2 eps^2.
+	 ;;
+	 (/ 1 (+ 1 (exp (- x)))))
 	(else
-         ;; If x > -log eps, then e^{-x} < eps, so the relative error
-         ;; of 1 from 1/(1 + e^{-x}) is
-         ;;
-         ;;     |1/(1 + e^{-x}) - 1|/|1/(1 + e^{-x})|
-         ;;      = |e^{-x}/(1 + e^{-x})|/|1/(1 + e^{-x})|
-         ;;      = |e^{-x}|
-         ;;     <= eps.
-         ;;
-         1.)))
+	 ;; If x > -log eps, then e^{-x} < eps, so the relative error
+	 ;; of 1 from 1/(1 + e^{-x}) is
+	 ;;
+	 ;;	|1/(1 + e^{-x}) - 1|/|1/(1 + e^{-x})|
+	 ;;	 = |e^{-x}/(1 + e^{-x})|/|1/(1 + e^{-x})|
+	 ;;	 = |e^{-x}|
+	 ;;	<= eps.
+	 ;;
+	 1.)))
 
-(define-integrable logit-boundary-lo    ;logistic(-1)
+(define-integrable logit-boundary-lo	;logistic(-1)
   (flo:/ (flo:exp -1.) (flo:+ 1. (flo:exp -1.))))
-(define-integrable logit-boundary-hi    ;logistic(+1)
+(define-integrable logit-boundary-hi	;logistic(+1)
   (flo:/ 1. (flo:+ 1. (flo:exp -1.))))
 
 ;;; log p/(1 - p)
@@ -2175,158 +2175,158 @@ USA.
   ;; log(p/(1 - p)).  For p near 1/2, the quotient is close to 1 so we
   ;; want to use log1p with the identity
   ;;
-  ;;    log(p/(1 - p)) = -log((1 - p)/p)
-  ;;      = -log(1 + (1 - p)/p - 1)
-  ;;      = -log(1 + (1 - p - p)/p)
-  ;;      = -log(1 + (1 - 2p)/p).
+  ;;	log(p/(1 - p)) = -log((1 - p)/p)
+  ;;	  = -log(1 + (1 - p)/p - 1)
+  ;;	  = -log(1 + (1 - p - p)/p)
+  ;;	  = -log(1 + (1 - 2p)/p).
   ;;
   ;; to get an intermediate quotient near zero.
   (cond ((<= logit-boundary-lo p logit-boundary-hi)
-         ;;
-         ;; Since p = 2p/2 <= 1 <= 2*2p = 4p, the floating-point
-         ;; evaluation of 1 - 2p is exact; the only error arises from
-         ;; division and log1p.  First, note that if logistic(-1) <= p
-         ;; <= logistic(+1), (1 - 2p)/p lies in the bounds of Lemma 4.
-         ;;
-         ;; If division has relative error d0 and log1p has relative
-         ;; error d1, the outcome is
-         ;;
-         ;;     -(1 + d1) log(1 + (1 - 2p) (1 + d0)/p)
-         ;;     = -(1 + d1) (1 + d') log(1 + (1 - 2p)/p)
-         ;;     = -(1 + d1 + d' + d1 d') log(1 + (1 - 2p)/p).
-         ;;
-         ;; where |d'| < 8|d0| by Lemma 4.  The relative error is then
-         ;; bounded by
-         ;;
-         ;;     |d1 + d' + d1 d'|
-         ;;     <= |d1| + 8|d0| + 8|d1 d0|
-         ;;     <= 9 eps + 8 eps^2.
-         ;;
-         (- (log1p (/ (- 1 (* 2 p)) p))))
-        (else
-         ;; If - has relative error d0, / has relative error d1, and
-         ;; log has relative error d2, then
-         ;;
-         ;;     (1 + d2) log((1 + d0) p/[(1 - p)(1 + d1)])
-         ;;     = (1 + d2) [log(p/(1 - p)) + log((1 + d0)/(1 + d1))]
-         ;;     = log(p/(1 - p)) + d2 log(p/(1 - p))
-         ;;       + (1 + d2) log((1 + d0)/(1 + d1))
-         ;;     = log(p/(1 - p))*[1 + d2 +
-         ;;         + (1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))]
-         ;;
-         ;; Since 0 <= p < logistic(-1) or logistic(+1) < p <= 1, we
-         ;; have |log(p/(1 - p))| > 1.  Hence this error is bounded by
-         ;;
-         ;;     |d2 + (1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))|
-         ;;     <= |d2| + |(1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))|
-         ;;     <= |d2| + |(1 + d2) log((1 + d0)/(1 + d1))|
-         ;;     <= |d2| + 4|(1 + d2) (d0 - d1)|, by Lemma 3,
-         ;;     <= |d2| + 4|d0 - d1 + d2 d0 - d1 d0|
-         ;;     <= |d2| + 4|d0| + 4|d1| + 4|d2 d0| + 4|d1 d0|
-         ;;     <= 9 eps + 8 eps^2.
-         ;;
-         (log (/ p (- 1 p))))))
+	 ;;
+	 ;; Since p = 2p/2 <= 1 <= 2*2p = 4p, the floating-point
+	 ;; evaluation of 1 - 2p is exact; the only error arises from
+	 ;; division and log1p.	 First, note that if logistic(-1) <= p
+	 ;; <= logistic(+1), (1 - 2p)/p lies in the bounds of Lemma 4.
+	 ;;
+	 ;; If division has relative error d0 and log1p has relative
+	 ;; error d1, the outcome is
+	 ;;
+	 ;;	-(1 + d1) log(1 + (1 - 2p) (1 + d0)/p)
+	 ;;	= -(1 + d1) (1 + d') log(1 + (1 - 2p)/p)
+	 ;;	= -(1 + d1 + d' + d1 d') log(1 + (1 - 2p)/p).
+	 ;;
+	 ;; where |d'| < 8|d0| by Lemma 4.  The relative error is then
+	 ;; bounded by
+	 ;;
+	 ;;	|d1 + d' + d1 d'|
+	 ;;	<= |d1| + 8|d0| + 8|d1 d0|
+	 ;;	<= 9 eps + 8 eps^2.
+	 ;;
+	 (- (log1p (/ (- 1 (* 2 p)) p))))
+	(else
+	 ;; If - has relative error d0, / has relative error d1, and
+	 ;; log has relative error d2, then
+	 ;;
+	 ;;	(1 + d2) log((1 + d0) p/[(1 - p)(1 + d1)])
+	 ;;	= (1 + d2) [log(p/(1 - p)) + log((1 + d0)/(1 + d1))]
+	 ;;	= log(p/(1 - p)) + d2 log(p/(1 - p))
+	 ;;	  + (1 + d2) log((1 + d0)/(1 + d1))
+	 ;;	= log(p/(1 - p))*[1 + d2 +
+	 ;;	    + (1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))]
+	 ;;
+	 ;; Since 0 <= p < logistic(-1) or logistic(+1) < p <= 1, we
+	 ;; have |log(p/(1 - p))| > 1.	Hence this error is bounded by
+	 ;;
+	 ;;	|d2 + (1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))|
+	 ;;	<= |d2| + |(1 + d2) log((1 + d0)/(1 + d1))/log(p/(1 - p))|
+	 ;;	<= |d2| + |(1 + d2) log((1 + d0)/(1 + d1))|
+	 ;;	<= |d2| + 4|(1 + d2) (d0 - d1)|, by Lemma 3,
+	 ;;	<= |d2| + 4|d0 - d1 + d2 d0 - d1 d0|
+	 ;;	<= |d2| + 4|d0| + 4|d1| + 4|d2 d0| + 4|d1 d0|
+	 ;;	<= 9 eps + 8 eps^2.
+	 ;;
+	 (log (/ p (- 1 p))))))
 
 ;;; log logistic(x) = -log (1 + e^{-x})
 (define (log-logistic x)
   (guarantee-real x 'log-logistic)
   (- (log1pexp (- x))))
 
-(define logit-exp-boundary-lo           ;log logistic(-1)
+(define logit-exp-boundary-lo		;log logistic(-1)
   (flo:- 0. (flo:log (flo:+ 1. (flo:exp +1.)))))
-(define logit-exp-boundary-hi           ;log logistic(+1)
+(define logit-exp-boundary-hi		;log logistic(+1)
   (flo:- 0. (flo:log (flo:+ 1. (flo:exp -1.)))))
 
 ;;; log e^t/(1 - e^t) = logit(e^t)
 (define (logit-exp t)
   (guarantee-real t 'logit-exp)
   (cond ((<= t flo:log-epsilon)
-         ;; e^t < eps, so since log(e^t/(1 - e^t)) = t - log(1 - e^t),
-         ;; and |log(1 - e^t)| < 1 < |t|, we have
-         ;;
-         ;;     |t - log(e^t/(1 - e^t))|/|log(e^t/(1 - e^t))|
-         ;;      = |log(1 - e^t)|/|t - log(1 - e^t)|
-         ;;     <= |log(1 - e^t)|
-         ;;     <= 1/(1 - e^t)
-         ;;     <= 2|e^t|
-         ;;     <= 2 eps.
-         ;;
-         t)
-        ((<= logit-exp-boundary-lo t logit-exp-boundary-hi)
-         ;; We can use the identity
-         ;;
-         ;;     log(e^t/(1 - e^t))
-         ;;     = -log((1 - e^t)/e^t)
-         ;;     = -log(1 + (1 - e^t)/e^t - 1)
-         ;;     = -log(1 + (1 - e^t - e^t)/e^t)
-         ;;     = -log(1 + (1 - 2 e^t)/e^t)
-         ;;
-         ;; to compute this with log1p.
-         ;;
-         ;; Since e^t = 2 e^t/2 <= 1 < 2*2 e^t = 4 e^t, 1 - 2 e^t is
-         ;; without additional error beyond that in e^t.  Further,
-         ;; |e^t/(1 - 2 e^t)| <= 2.  The intermediate division is
-         ;;
-         ;;     (1 - 2 (1 + d0) e^t) (1 + d1)/[(1 + d0) e^t]
-         ;;     = (1 - 2 e^t - 2 d0 e^t) (1 + d1)/[(1 + d0) e^t]
-         ;;     = (1 - 2 e^t) (1 - 2 d0 e^t/(1 - 2 e^t)) (1 + d1)
-         ;;         / [(1 + d0) e^t]
-         ;;     = [(1 - 2 e^t)/e^t]
-         ;;       * (1 - 2 d0 e^t/(1 - 2 e^t)) (1 + d1)/(1 + d0)
-         ;;     = [(1 - 2 e^t)/e^t]
-         ;;       * (1 + d1 - (1 + d1) 2 d0 e^t/(1 - 2 e^t))
-         ;;       / (1 + d0).
-         ;;
-         ;; By Lemma 2, the relative error d' of the intermediate division
-         ;; is bounded by
-         ;;
-         ;;     2|d0 - d1 + (1 + d1) 2 d0 e^t/(1 - 2 e^t)|
-         ;;     <= 2|d0| + 2|d1| + 2|d0 (1 + d1) e^t/(1 - 2 e^t)|
-         ;;     <= 2|d0| + 2|d1| + 4|d0 (1 + d1)|
-         ;;      = 2|d0| + 2|d1| + 4|d0 + d0 d1)|
-         ;;     <= 2|d0| + 2|d1| + 4|d0| + 4|d0 d1|
-         ;;     <= 8 eps + 4 eps^2.
-         ;;
-         ;; By Lemma 4, the relative error of using log1p is compounded
-         ;; by no more than 8|d'|, so the relative error of the result
-         ;; is bounded by
-         ;;
-         ;;     |d2| + |d'| + |d2 d'|
-         ;;     <= eps + 8 eps + 4 eps^2 + eps*(6 eps + 4 eps^2)
-         ;;      = 9 eps + 10 eps^2 + 4 eps^3.
-         ;;
-         (let ((e^t (exp t)))
-           (- (log1p (/ (- 1 (* 2 e^t)) e^t)))))
-        (else
-         ;; We use the identity
-         ;;
-         ;;     log(e^t/(1 - e^t))
-         ;;     = -log((1 - e^t)/e^t)
-         ;;     = -log(e^{-t} - 1)
-         ;;
-         ;; to compute this with expm1.
-         ;;
-         ;;     -(1 + d0) log((1 + d1) (e^{-t} - 1))
-         ;;     = -(1 + d0) [log(e^{-t} - 1) + log(1 + d1)]
-         ;;     = -[(1 + d0) log(e^{-t} - 1) + (1 + d0) log(1 + d1)]
-         ;;     = -[log(e^{-t} - 1) + d0 log(e^{-t} - 1)
-         ;;             + (1 + d0) log(1 + d1) log(e^{-t} - 1)/log(e^{-t} - 1)]
-         ;;     = -log(e^{-t} - 1)
-         ;;       * (1 + d0 + (1 + d0) log(1 + d1)/log(e^{-t} - 1))
-         ;;
-         ;; If t <= -log(1 + e), then log(e^{-t} - 1) >= 1; similarly,
-         ;; if t >= -log(1 + 1/e), then log(e^{-t} - 1) <= -1.  Hence,
-         ;; in both cases, |log(e^{-t} - 1)| >= 1, so that
-         ;;
-         ;;     |d0 + (1 + d0) log(1 + d1)/log(e^{-t} - 1)|
-         ;;     <= |d0| + |(1 + d0) log(1 + d1)/log(e^{-t} - 1)|
-         ;;     <= |d0| + |(1 + d0) log(1 + d1)|
-         ;;     <= |d0| + |log(1 + d1)| + |d0 log(1 + d1)|
-         ;;     <= |d0| + |1/(1 - |d1|)| + |d0/(1 - d1)|
-         ;;     <= |d0| + 2|d1| + 2|d0 d1|
-         ;;     <= 3 eps + 2 eps^2.
-         ;;
-         (- (log (expm1 (- t)))))))
+	 ;; e^t < eps, so since log(e^t/(1 - e^t)) = t - log(1 - e^t),
+	 ;; and |log(1 - e^t)| < 1 < |t|, we have
+	 ;;
+	 ;;	|t - log(e^t/(1 - e^t))|/|log(e^t/(1 - e^t))|
+	 ;;	 = |log(1 - e^t)|/|t - log(1 - e^t)|
+	 ;;	<= |log(1 - e^t)|
+	 ;;	<= 1/(1 - e^t)
+	 ;;	<= 2|e^t|
+	 ;;	<= 2 eps.
+	 ;;
+	 t)
+	((<= logit-exp-boundary-lo t logit-exp-boundary-hi)
+	 ;; We can use the identity
+	 ;;
+	 ;;	log(e^t/(1 - e^t))
+	 ;;	= -log((1 - e^t)/e^t)
+	 ;;	= -log(1 + (1 - e^t)/e^t - 1)
+	 ;;	= -log(1 + (1 - e^t - e^t)/e^t)
+	 ;;	= -log(1 + (1 - 2 e^t)/e^t)
+	 ;;
+	 ;; to compute this with log1p.
+	 ;;
+	 ;; Since e^t = 2 e^t/2 <= 1 < 2*2 e^t = 4 e^t, 1 - 2 e^t is
+	 ;; without additional error beyond that in e^t.  Further,
+	 ;; |e^t/(1 - 2 e^t)| <= 2.  The intermediate division is
+	 ;;
+	 ;;	(1 - 2 (1 + d0) e^t) (1 + d1)/[(1 + d0) e^t]
+	 ;;	= (1 - 2 e^t - 2 d0 e^t) (1 + d1)/[(1 + d0) e^t]
+	 ;;	= (1 - 2 e^t) (1 - 2 d0 e^t/(1 - 2 e^t)) (1 + d1)
+	 ;;	    / [(1 + d0) e^t]
+	 ;;	= [(1 - 2 e^t)/e^t]
+	 ;;	  * (1 - 2 d0 e^t/(1 - 2 e^t)) (1 + d1)/(1 + d0)
+	 ;;	= [(1 - 2 e^t)/e^t]
+	 ;;	  * (1 + d1 - (1 + d1) 2 d0 e^t/(1 - 2 e^t))
+	 ;;	  / (1 + d0).
+	 ;;
+	 ;; By Lemma 2, the relative error d' of the intermediate division
+	 ;; is bounded by
+	 ;;
+	 ;;	2|d0 - d1 + (1 + d1) 2 d0 e^t/(1 - 2 e^t)|
+	 ;;	<= 2|d0| + 2|d1| + 2|d0 (1 + d1) e^t/(1 - 2 e^t)|
+	 ;;	<= 2|d0| + 2|d1| + 4|d0 (1 + d1)|
+	 ;;	 = 2|d0| + 2|d1| + 4|d0 + d0 d1)|
+	 ;;	<= 2|d0| + 2|d1| + 4|d0| + 4|d0 d1|
+	 ;;	<= 8 eps + 4 eps^2.
+	 ;;
+	 ;; By Lemma 4, the relative error of using log1p is compounded
+	 ;; by no more than 8|d'|, so the relative error of the result
+	 ;; is bounded by
+	 ;;
+	 ;;	|d2| + |d'| + |d2 d'|
+	 ;;	<= eps + 8 eps + 4 eps^2 + eps*(6 eps + 4 eps^2)
+	 ;;	 = 9 eps + 10 eps^2 + 4 eps^3.
+	 ;;
+	 (let ((e^t (exp t)))
+	   (- (log1p (/ (- 1 (* 2 e^t)) e^t)))))
+	(else
+	 ;; We use the identity
+	 ;;
+	 ;;	log(e^t/(1 - e^t))
+	 ;;	= -log((1 - e^t)/e^t)
+	 ;;	= -log(e^{-t} - 1)
+	 ;;
+	 ;; to compute this with expm1.
+	 ;;
+	 ;;	-(1 + d0) log((1 + d1) (e^{-t} - 1))
+	 ;;	= -(1 + d0) [log(e^{-t} - 1) + log(1 + d1)]
+	 ;;	= -[(1 + d0) log(e^{-t} - 1) + (1 + d0) log(1 + d1)]
+	 ;;	= -[log(e^{-t} - 1) + d0 log(e^{-t} - 1)
+	 ;;		+ (1 + d0) log(1 + d1) log(e^{-t} - 1)/log(e^{-t} - 1)]
+	 ;;	= -log(e^{-t} - 1)
+	 ;;	  * (1 + d0 + (1 + d0) log(1 + d1)/log(e^{-t} - 1))
+	 ;;
+	 ;; If t <= -log(1 + e), then log(e^{-t} - 1) >= 1; similarly,
+	 ;; if t >= -log(1 + 1/e), then log(e^{-t} - 1) <= -1.	Hence,
+	 ;; in both cases, |log(e^{-t} - 1)| >= 1, so that
+	 ;;
+	 ;;	|d0 + (1 + d0) log(1 + d1)/log(e^{-t} - 1)|
+	 ;;	<= |d0| + |(1 + d0) log(1 + d1)/log(e^{-t} - 1)|
+	 ;;	<= |d0| + |(1 + d0) log(1 + d1)|
+	 ;;	<= |d0| + |log(1 + d1)| + |d0 log(1 + d1)|
+	 ;;	<= |d0| + |1/(1 - |d1|)| + |d0/(1 - d1)|
+	 ;;	<= |d0| + 2|d1| + 2|d0 d1|
+	 ;;	<= 3 eps + 2 eps^2.
+	 ;;
+	 (- (log (expm1 (- t)))))))
 
 ;;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!.
 
