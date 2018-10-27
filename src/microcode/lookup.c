@@ -1205,7 +1205,11 @@ find_binding_cell (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 		   SCHEME_OBJECT * frame_ret)
 {
   if (NULL_FRAME_P (environment))
-    return (0);
+    {
+      if (frame_ret != 0)
+	(*frame_ret) = environment;
+      return (0);
+    }
   assert (ENVIRONMENT_P (environment));
   SCHEME_OBJECT frame = environment;
   while (1)
