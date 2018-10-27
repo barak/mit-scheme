@@ -29,7 +29,6 @@ USA.
 #include "scheme.h"
 #include "osscheme.h"		/* error_unimplemented_primitive -- foo */
 #include "prims.h"
-#include <errno.h>
 
 double
 arg_flonum (int arg_number)
@@ -144,10 +143,7 @@ DEFINE_PRIMITIVE ("FLONUM-NEGATIVE?", Prim_flonum_negative_p, 1, 1, 0)
 {									\
   double result;							\
   PRIMITIVE_HEADER (1);							\
-  errno = 0;								\
   result = (function (arg_flonum (1)));					\
-  if (errno != 0)							\
-    error_bad_range_arg (1);						\
   FLONUM_RESULT (result);						\
 }
 
@@ -159,10 +155,7 @@ DEFINE_PRIMITIVE ("FLONUM-NEGATIVE?", Prim_flonum_negative_p, 1, 1, 0)
   x = (arg_flonum (1));							\
   if (! (restriction))							\
     error_bad_range_arg (1);						\
-  errno = 0;								\
   result = (function (x));						\
-  if (errno != 0)							\
-    error_bad_range_arg (1);						\
   FLONUM_RESULT (result);						\
 }
 
@@ -194,12 +187,7 @@ DEFINE_PRIMITIVE ("FLONUM-LOG", Prim_flonum_log, 1, 1, 0)
   double result;
   PRIMITIVE_HEADER (1);
   x = (arg_flonum (1));
-  if (! (x >= 0))
-    error_bad_range_arg (1);
-  errno = 0;
   result = (log (x));
-  if ((errno != 0) && ((x != 0) || (errno != ERANGE)))
-    error_bad_range_arg (1);
   FLONUM_RESULT (result);
 }
 
@@ -270,7 +258,6 @@ DEFINE_PRIMITIVE ("FLONUM-LGAMMA", Prim_flonum_lgamma, 1, 1, 0)
   PRIMITIVE_HEADER (1);
 
   x = (arg_flonum (1));
-  errno = 0;
 #ifdef HAVE_LGAMMA_R
   {
     int sign;
@@ -279,8 +266,6 @@ DEFINE_PRIMITIVE ("FLONUM-LGAMMA", Prim_flonum_lgamma, 1, 1, 0)
 #else
   result = (lgamma (x));
 #endif
-  if (errno != 0)
-    error_bad_range_arg (1);
   FLONUM_RESULT (result);
 }
 
