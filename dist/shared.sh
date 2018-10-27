@@ -155,6 +155,11 @@ my_rm_rf ()
     cmd rm -rf "${@}"
 }
 
+my_ln_s ()
+{
+    cmd ln -s "${@}"
+}
+
 my_rmdir ()
 {
     cmd rmdir "${@}"
