@@ -93,6 +93,17 @@ USA.
 (define rec:pi/2 (flo:* 2. (flo:atan2 1. 1.)))
 (define rec:pi (flo:* 2. rec:pi/2))
 
+(define flo:epsilon)
+(define flo:log-epsilon)
+(define flo:normal-exponent-max-base-2)
+(define flo:normal-exponent-min-base-2)
+(define flo:normal-exponent-max-base-e)
+(define flo:normal-exponent-min-base-e)
+(define flo:normal-exponent-max-base-10)
+(define flo:normal-exponent-min-base-10)
+(define flo:subnormal-exponent-min-base-2)
+(define flo:subnormal-exponent-min-base-e)
+(define flo:subnormal-exponent-min-base-10)
 (define flo:significand-digits-base-2)
 (define flo:significand-digits-base-10)
 (define int:flonum-integer-limit)
@@ -111,6 +122,29 @@ USA.
 		  (flo:/ (int:->flonum p)
 			 (flo:/ (flo:log 10.) (flo:log 2.))))))
     (set! int:flonum-integer-limit (int:expt 2 p)))
+  (set! flo:epsilon microcode-id/floating-epsilon)
+  (set! flo:log-epsilon (flo:log flo:epsilon))
+  (set! flo:normal-exponent-max-base-2 microcode-id/floating-exponent-max)
+  (set! flo:normal-exponent-min-base-2 microcode-id/floating-exponent-min)
+  (set! flo:subnormal-exponent-min-base-2
+	(int:- flo:normal-exponent-min-base-2
+	       (int:- flo:significand-digits-base-2 1)))
+  (set! flo:normal-exponent-max-base-e
+	(flo:log (flo:expt 2. (int:->flonum flo:normal-exponent-max-base-2))))
+  (set! flo:normal-exponent-min-base-e
+	(flo:log (flo:expt 2. (int:->flonum flo:normal-exponent-min-base-2))))
+  (set! flo:subnormal-exponent-min-base-e
+	(flo:+
+	 flo:normal-exponent-min-base-e
+	 (flo:log
+	  (flo:expt 2.
+		    (flo:- 0. (int:->flonum flo:significand-digits-base-2))))))
+  (set! flo:normal-exponent-max-base-10
+	(flo:/ flo:normal-exponent-max-base-e (flo:log 10.)))
+  (set! flo:normal-exponent-min-base-10
+	(flo:/ flo:normal-exponent-min-base-e (flo:log 10.)))
+  (set! flo:subnormal-exponent-min-base-10
+	(flo:/ flo:subnormal-exponent-min-base-e (flo:log 10.)))
   unspecific)
 
 (define (initialize-package!)
