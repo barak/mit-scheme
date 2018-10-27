@@ -2029,7 +2029,7 @@ USA.
 	((<= x flo:log-epsilon) (exp x))
 	((<= x 18) (log1p (exp x)))
 	((<= x 33.3) (+ x (exp (- x))))
-	(else x)))
+	(else (exact->inexact x))))
 
 ;;; Lemma 1.  If |d'| < 1/2, then |(d' - d)/(1 + d')| <= 2|d' - d|.
 ;;;
