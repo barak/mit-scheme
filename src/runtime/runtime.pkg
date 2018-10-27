@@ -243,6 +243,8 @@ USA.
 	  (smallest-fixnum fix:smallest-value))
   (export ()
 	  (exact-integer? int:integer?)
+	  (flo:ldexp flo:denormalize)
+	  (flo:scalbn flo:denormalize)
 	  ->flonum
 	  exact-integer-sqrt
 	  fix:*

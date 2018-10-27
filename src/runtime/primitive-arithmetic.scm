@@ -200,6 +200,7 @@ USA.
   (flo:cbrt flonum-cbrt 1)
   (flo:hypot flonum-hypot 2)
   (flo:expt flonum-expt 2)
+  (flo:denormalize flonum-denormalize 2)
   (flo:lgamma flonum-lgamma 1)
   (flo:gamma flonum-gamma 1)
   (flo:erf flonum-erf 1)
