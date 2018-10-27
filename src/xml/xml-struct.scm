@@ -596,9 +596,9 @@ USA.
 
 (define (nmtokens->string nmtokens)
   (let ((builder (string-builder)))
-    (for-each (lambda (nmtokens)
+    (for-each (lambda (nmtoken)
 		(if (not (builder 'empty?))
 		    (builder #\space))
-		(builder (symbol->string (car nmtokens))))
+		(builder (symbol->string nmtoken)))
 	      nmtokens)
     (builder)))
