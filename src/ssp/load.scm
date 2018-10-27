@@ -27,7 +27,6 @@ USA.
 ;;;; SSP/XDOC loader
 
 (load-option 'xml)
-(load-option 'postgresql)
 (load-option 'mime-codec)
 (with-loader-base-uri (system-library-uri "ssp/")
   (lambda ()
