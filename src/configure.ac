@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme], [9.2.90], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_INIT([MIT/GNU Scheme], [10.1], [bug-mit-scheme@gnu.org], [mit-scheme])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_CONFIG_AUX_DIR([microcode])
 AC_PROG_MAKE_SET
@@ -90,7 +90,7 @@ AC_ARG_WITH([scheme-build],
 # optional plugins
 
 AC_ARG_ENABLE([default-plugins],
-    AS_HELP_STRING([--default-plugins],
+    AS_HELP_STRING([--enable-default-plugins],
 	[Enable default plugins [[yes]]]))
 : ${enable_default_plugins=yes}
 

@@ -47,11 +47,23 @@ shift 2
 
 OUT=${MACOSX_OUT}-${ARCH}
 ARCH_BASE=${DIST_DIR}-${ARCH}
+DMG_DIR=macos-app
+DMG_FILE=${ARCH_BASE}.dmg
 
 compile ()
 {
     my_configure --enable-native-code="${ARCH}" "${@}"
     my_make compile-microcode
+}
+
+make_dmg ()
+{
+    new_temp_dir "${DMG_DIR}"
+    local APP_DIR="MIT:GNU Scheme ${RELEASE}.app"
+    my_mv "${DIST_DIR}"/src/mit-scheme.app "${DMG_DIR}"/"${APP_DIR}"
+    my_ln_s /Applications "${DMG_DIR}"/.
+    my_rm_f "${DMG_FILE}"
+    create-dmg --volname "MIT-GNU Scheme ${RELEASE}" "${DMG_FILE}" "${DMG_DIR}"
 }
 
 notify "Compiling executable"
@@ -61,5 +73,8 @@ run_command "${OUT}"-compile "${DIST_DIR}"/src compile "${@}"
 notify "Building application bundle"
 VERSION_STRING=${RELEASE} \
     run_command "${OUT}"-buildapp "${DIST_DIR}"/src etc/macosx/make-app.sh
-my_rm_rf "${ARCH_BASE}".app
-my_mv "${DIST_DIR}"/src/mit-scheme.app "${ARCH_BASE}".app
+
+notify "Building disk image"
+run_command "${OUT}"-makedmg "${TL_DIR}" make_dmg
+
+notify_finished

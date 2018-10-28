@@ -27,29 +27,44 @@
 make_output_dir
 
 BUILD_DIR=doc-build
+PLUGINS_WITH_DOC=(blowfish gdbm imail)
+DIST_DOCDIR=${DIST_DIR}/doc
 
 build_docs ()
 {
-   my_configure
-   my_make
+    my_configure
+    my_make "${@}"
 }
 
 make_archive_dir ()
 {
-    local FORMAT=${1}
-    my_make install-"${FORMAT}" "${FORMAT}"dir="${TL_DIR}"/"${DIST_DIR}"/doc
+    my_make install-"${1}" DESTDIR="${TL_DIR}"/"${DIST_DIR}"
 }
 
 notify "Building documentation"
 unpack_dist_file_to "${DIST_DIR}" "${BUILD_DIR}"
 run_command "${DOC_OUT}"-build "${BUILD_DIR}"/doc build_docs
+for PLUGIN in "${PLUGINS_WITH_DOC[@]}"; do
+    run_command_append "${DOC_OUT}"-build "${BUILD_DIR}"/src/"${PLUGIN}" \
+	build_docs info html pdf
+done
 
 new_temp_dir "${DIST_DIR}"
 for FORMAT in html info pdf; do
-    OUT=${DOC_OUT}-${FORMAT}
+    OUT=${DOC_OUT}-archive-${FORMAT}
     notify "Making archive for ${FORMAT}"
     run_command "${OUT}" "${BUILD_DIR}"/doc make_archive_dir "${FORMAT}"
-    make_tar_file "${OUT}" "${DIST_DIR}"-doc-"${FORMAT}" "${DIST_DIR}"/doc
+    for PLUGIN in "${PLUGINS_WITH_DOC[@]}"; do
+        run_command_append "${OUT}" "${BUILD_DIR}"/src/"${PLUGIN}" \
+	    make_archive_dir "${FORMAT}"
+    done
+    my_mkdir "${DIST_DOCDIR}"
+    FROM=doc/mit-scheme
+    [[ ${FORMAT} = info ]] && FROM=info
+    my_mv "${DIST_DIR}"/usr/local/share/${FROM}/* "${DIST_DOCDIR}"/.
+    my_rm_rf "${DIST_DIR}"/usr
+    my_rm_f "${DIST_DOCDIR}"/plugins.scm
+    make_tar_file "${OUT}" "${DIST_DIR}"-doc-"${FORMAT}" "${DIST_DOCDIR}"
     my_rm_rf "${DIST_DIR}"
 done
 

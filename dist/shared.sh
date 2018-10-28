@@ -155,6 +155,11 @@ my_rm_rf ()
     cmd rm -rf "${@}"
 }
 
+my_ln_s ()
+{
+    cmd ln -s "${@}"
+}
+
 my_rmdir ()
 {
     cmd rmdir "${@}"
@@ -219,6 +224,13 @@ run_command ()
     local OUT_FILE=${1}
     shift
     run_command_helper "${@}" &> "${OUT_FILE}"
+}
+
+run_command_append ()
+{
+    local OUT_FILE=${1}
+    shift
+    run_command_helper "${@}" >> "${OUT_FILE}" 2>&1
 }
 
 run_command_helper ()
