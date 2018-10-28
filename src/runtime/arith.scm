@@ -125,7 +125,7 @@ USA.
 			 (flo:/ (flo:log 10.) (flo:log 2.))))))
     (set! int:flonum-integer-limit (int:expt 2 p)))
   (set! flo:ulp-of-one microcode-id/floating-epsilon)
-  (set! flo:error-bound (flo:/ flo:ulp-of-one 2))
+  (set! flo:error-bound (flo:/ flo:ulp-of-one 2.))
   (set! flo:log-error-bound (flo:log flo:error-bound))
   (set! flo:normal-exponent-max-base-2 microcode-id/floating-exponent-max)
   (set! flo:normal-exponent-min-base-2 microcode-id/floating-exponent-min)
