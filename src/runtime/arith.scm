@@ -94,8 +94,9 @@ USA.
 (define rec:pi (flo:* 2. rec:pi/2))
 
 (define flo:radix 2)
-(define flo:epsilon)
-(define flo:log-epsilon)
+(define flo:ulp-of-one)
+(define flo:error-bound)
+(define flo:log-error-bound)
 (define flo:normal-exponent-max-base-2)
 (define flo:normal-exponent-min-base-2)
 (define flo:normal-exponent-max-base-e)
@@ -123,8 +124,9 @@ USA.
 		  (flo:/ (int:->flonum p)
 			 (flo:/ (flo:log 10.) (flo:log 2.))))))
     (set! int:flonum-integer-limit (int:expt 2 p)))
-  (set! flo:epsilon microcode-id/floating-epsilon)
-  (set! flo:log-epsilon (flo:log flo:epsilon))
+  (set! flo:ulp-of-one microcode-id/floating-epsilon)
+  (set! flo:error-bound (flo:/ flo:ulp-of-one 2))
+  (set! flo:log-error-bound (flo:log flo:error-bound))
   (set! flo:normal-exponent-max-base-2 microcode-id/floating-exponent-max)
   (set! flo:normal-exponent-min-base-2 microcode-id/floating-exponent-min)
   (set! flo:subnormal-exponent-min-base-2
@@ -2029,7 +2031,7 @@ USA.
 (define (log1pexp x)
   (guarantee-real x 'log1pexp)
   (cond ((<= x flo:subnormal-exponent-min-base-e) 0.)
-	((<= x flo:log-epsilon) (exp x))
+	((<= x flo:log-error-bound) (exp x))
 	((<= x 18) (log1p (exp x)))
 	((<= x 33.3) (+ x (exp (- x))))
 	(else (exact->inexact x))))
@@ -2117,7 +2119,7 @@ USA.
 	 ;; e^x/(1 + e^x) < e^x < smallest positive float.  (XXX Should
 	 ;; raise inexact and underflow here.)
 	 0.)
-	((<= x flo:log-epsilon)
+	((<= x flo:log-error-bound)
 	 ;; e^x < eps, so
 	 ;;
 	 ;;	|e^x - e^x/(1 + e^x)|/|e^x/(1 + e^x)|
@@ -2128,7 +2130,7 @@ USA.
 	 ;;	 < eps.
 	 ;;
 	 (exp x))
-	((<= x (- flo:log-epsilon))
+	((<= x (- flo:log-error-bound))
 	 ;; e^{-x} > 0, so 1 + e^{-x} > 1, and 0 < 1/(1 + e^{-x}) < 1;
 	 ;; further, since e^{-x} < 1 + e^{-x}, we also have 0 <
 	 ;; e^{-x}/(1 + e^{-x}) < 1.  Thus, if exp has relative error
@@ -2374,7 +2376,7 @@ USA.
 
 (define (logit-exp t)
   (guarantee-real t 'logit-exp)
-  (cond ((<= t flo:log-epsilon)
+  (cond ((<= t flo:log-error-bound)
 	 ;; e^t < eps, so since log(e^t/(1 - e^t)) = t - log(1 - e^t),
 	 ;; and |log(1 - e^t)| < 1 < |t|, we have
 	 ;;

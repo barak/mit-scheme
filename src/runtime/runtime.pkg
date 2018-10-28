@@ -3356,8 +3356,8 @@ USA.
 	  cube
 	  exact-nonnegative-integer?
 	  exact-positive-integer?
-	  flo:epsilon
-	  flo:log-epsilon
+	  flo:error-bound
+	  flo:log-error-bound
 	  flo:normal-exponent-max-base-10
 	  flo:normal-exponent-max-base-2
 	  flo:normal-exponent-max-base-e
@@ -3370,6 +3370,7 @@ USA.
 	  flo:subnormal-exponent-min-base-10
 	  flo:subnormal-exponent-min-base-2
 	  flo:subnormal-exponent-min-base-e
+	  flo:ulp-of-one
 	  flonum-printer:engineering-output
 	  flonum-printer:normal-output
 	  flonum-printer:scientific-output
