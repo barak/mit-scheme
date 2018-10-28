@@ -236,7 +236,7 @@ Additional options may be supported by the band (and described below).\n\
 #  if SIZEOF_UNSIGNED_LONG == 8
 #    define DEFAULT_HEAP_SIZE 16384
 #  else
-#    define DEFAULT_HEAP_SIZE 4096
+#    define DEFAULT_HEAP_SIZE 3072
 #  endif
 #endif
 
