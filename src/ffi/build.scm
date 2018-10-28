@@ -73,6 +73,7 @@ USA.
        (->namestring (pathname-as-directory dirname))))
 
 (define (update-plugin-lib operation name project scmlibdir)
+  (declare (ignore project))
   (if (file-exists? (merge-pathnames "optiondb.scm" scmlibdir))
       ;; NOT in dpkg-buildpackage's chroot
       (update-optiondb plugins
