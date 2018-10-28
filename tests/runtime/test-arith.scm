@@ -232,6 +232,20 @@ USA.
       (if (< p 1)
           (assert-<= (relerr (log1p (- p)) (log-logistic (- x))) 1e-15)))))
 
+(define-enumerated-test 'logit-logistic-1/2
+  (vector
+   (vector 1e-300 4e-300)
+   (vector 1e-16 4e-16)
+   (vector .2310585786300049 1.)
+   (vector .49999999999999994 37.42994775023705))
+  (lambda (v)
+    (let ((p (vector-ref v 0))
+          (x (vector-ref v 1)))
+      (assert-<= (relerr x (logit1/2+ p)) 1e-15)
+      (assert-<= (relerr p (logistic-1/2 x)) 1e-15)
+      (assert-= (- (logit1/2+ p)) (logit1/2+ (- p)))
+      (assert-= (- (logistic-1/2 x)) (logistic-1/2 (- x))))))
+
 (define-enumerated-test 'expt-exact
   (vector
    (vector 2. -1075 "0.")

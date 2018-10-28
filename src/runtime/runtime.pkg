@@ -3383,8 +3383,10 @@ USA.
 	  log1mexp
 	  log1pexp
 	  logistic
+	  logistic-1/2
 	  logit
 	  logit-exp
+	  logit1/2+
 	  max
 	  min
 	  modulo
