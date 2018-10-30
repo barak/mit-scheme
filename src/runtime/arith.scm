@@ -2017,7 +2017,8 @@ USA.
 (define (cube z)
   (complex:* z (complex:* z z)))
 
-;;; log(1 - e^x), defined only on negative x
+;;; log(1 - e^x), defined only on negative x.  Useful for computing the
+;;; complement of a probability in log-space.
 
 (define (log1mexp x)
   (guarantee-real x 'log1mexp)
@@ -2038,8 +2039,8 @@ USA.
 
 ;;; log(e^x + e^y + ...)
 ;;;
-;;; Caller can minimize error by passing descending inputs below 0, or
-;;; ascending inputs above 1.
+;;; Caller can minimize error by passing inputs ascending from -inf to
+;;; +inf.
 
 (define (logsumexp l)
   ;; Cases:
@@ -2339,8 +2340,9 @@ USA.
 ;;; logistic-1/2.
 ;;;
 ;;; Ill-conditioned near +/-1/2.  If |p0| > 1/2 - 1/(1 + e), it may be
-;;; better to compute 1/2 + p0 or -1/2 - p0 and to use logit instead.
-;;; This implementation gives relative error bounded by 10 eps.
+;;; better to compute 1/2 +/- p0 (whichever is closer to zero) and to
+;;; use logit instead.  This implementation gives relative error
+;;; bounded by 10 eps.
 
 (define (logit1/2+ p-1/2)
   (cond ((<= (abs p-1/2) (- 1/2 (/ 1 (+ 1 (exp 1)))))
@@ -2405,7 +2407,7 @@ USA.
 	 ;;
 	 (log (/ (+ 1/2 p-1/2) (- 1/2 p-1/2))))))
 
-;;; log logistic(x) = -log (1 + e^{-x})
+;;; log logistic(x) = log (1/(1 + e^{-x})) = -log (1 + e^{-x})
 
 (define (log-logistic x)
   (guarantee-real x 'log-logistic)
@@ -2416,7 +2418,7 @@ USA.
 (define logit-exp-boundary-hi		;log logistic(+1)
   (flo:- 0. (flo:log (flo:+ 1. (flo:exp -1.)))))
 
-;;; log e^t/(1 - e^t) = logit(e^t)
+;;; logit(e^t) = log e^t/(1 - e^t)
 
 (define (logit-exp t)
   (guarantee-real t 'logit-exp)
