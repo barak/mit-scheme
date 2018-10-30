@@ -162,6 +162,8 @@ AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
 AUXDIR='$(libdir)'/${AUXDIR_NAME}
 MIT_SCHEME_LIBDIR=${AUXDIR}/
 MIT_SCHEME_INCLUDEDIR=${AUXDIR}/
+MIT_SCHEME_OS_SUFFIX=unx
+MIT_SCHEME_CC_TYPE=${mit_scheme_native_code}
 
 # Please keep the following messages synchronized with the messages in
 # these files:
@@ -217,7 +219,7 @@ else
             found_p=yes
         fi
     elif "${native_exe}" --batch-mode --no-init-file --eval '(%exit)' >/dev/null 2>&1; then
-        MIT_SCHEME_EXE="${native_exe}"
+        MIT_SCHEME_EXE=${native_exe}
         found_p=yes
     elif mit-scheme --batch-mode --no-init-file --eval '(%exit)' >/dev/null 2>&1; then
         MIT_SCHEME_EXE=mit-scheme
@@ -225,8 +227,10 @@ else
     fi
     if test x"${found_p}" = xyes; then
         AC_MSG_RESULT([yes, using ${MIT_SCHEME_EXE}])
-        # To get some version numbers into the build log:
-        ${MIT_SCHEME_EXE} --version --no-init-file
+        if test x"${enable_host_scheme_test}" != xno; then
+            # To get some version numbers into the build log:
+            ${MIT_SCHEME_EXE} --version --no-init-file
+        fi
     else
         message=
         if test x"${env_p}" = xyes; then
@@ -254,10 +258,11 @@ directory, which is usually \`/usr/local/lib/mit-scheme-${mit_scheme_native_code
 fi
 
 # A 32bit host running LIAR/svm needs a large heap.
-small_words='(= 4 (vector-ref (gc-space-status) 0))'
-if test x"${mit_scheme_native_code}" = xsvm1 \
-	&& ${MIT_SCHEME_EXE} --no-init-file --eval "(%exit (if ${small_words} 0 1))" >/dev/null; then \
-    HOST_COMPILER_HEAP="--heap 10000"
+if test x"${mit_scheme_native_code}" = xsvm1; then
+    AC_CHECK_SIZEOF([unsigned long])
+    if test ${ac_cv_sizeof_unsigned_long} -eq 4; then
+	HOST_COMPILER_HEAP="--heap 10000"
+    fi
 fi
 
 if test x"${enable_x11}" = x && test x"${enable_default_plugins}" = xyes; then
@@ -383,6 +388,8 @@ compiler/configure "${mit_scheme_compiler_target}" || exit $?
 export MIT_SCHEME_EXE
 export MIT_SCHEME_LIBDIR
 export MIT_SCHEME_INCLUDEDIR
+export MIT_SCHEME_OS_SUFFIX
+export MIT_SCHEME_CC_TYPE
 
 AC_CONFIG_SUBDIRS([microcode])
 if test x"${enable_blowfish}" = xyes; then

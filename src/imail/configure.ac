@@ -36,12 +36,15 @@ AC_PROG_INSTALL
 
 MIT_SCHEME_PROJECT=mit-scheme
 : ${MIT_SCHEME_EXE=mit-scheme}
-default_libdir=`( echo "(display (->namestring" ;\
-		  echo "          (system-library-directory-pathname)))" ) \
-		| ${MIT_SCHEME_EXE} --batch-mode`
-: ${MIT_SCHEME_LIBDIR=${default_libdir}}
-MIT_SCHEME_OS_SUFFIX=`echo "(display (microcode-id/operating-system-suffix))" \
-		      | ${MIT_SCHEME_EXE} --batch-mode`
+if test x"${MIT_SCHEME_LIBDIR}" = x; then
+    MIT_SCHEME_LIBDIR=`( echo "(display (->namestring" ;\
+			 echo "          (system-library-directory-pathname)))" ) \
+		       | ${MIT_SCHEME_EXE} --batch-mode`
+fi
+if test x"${MIT_SCHEME_OS_SUFFIX}" = x; then
+    MIT_SCHEME_OS_SUFFIX=`echo "(display (microcode-id/operating-system-suffix))" \
+                          | ${MIT_SCHEME_EXE} --batch-mode`
+fi
 
 # Install plugin docs in Scheme's docdir.
 docdir='$(datarootdir)/doc/$(MIT_SCHEME_PROJECT)'

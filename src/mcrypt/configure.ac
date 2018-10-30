@@ -109,30 +109,35 @@ LIBS="${LIBS} ${MCRYPT_LIBS}"
 
 MIT_SCHEME_PROJECT=mit-scheme
 : ${MIT_SCHEME_EXE=mit-scheme}
-default_libdir=`( echo "(display (->namestring" ;\
-		  echo "          (system-library-directory-pathname)))" ) \
-		| ${MIT_SCHEME_EXE} --batch-mode`
-: ${MIT_SCHEME_LIBDIR=${default_libdir}}
-default_includedir=`( echo "(display (->namestring" ;\
-                      echo "          (directory-pathname" ;\
-                      echo "           (system-library-pathname" ;\
-                      echo '            "mit-scheme.h"))))' ) \
-                    | ${MIT_SCHEME_EXE} --batch-mode`
-: ${MIT_SCHEME_INCLUDEDIR=${default_includedir}}
+rif test x"${MIT_SCHEME_LIBDIR}" = x; then
+    MIT_SCHEME_LIBDIR=`( echo "(display (->namestring" ;\
+			 echo "          (system-library-directory-pathname)))" ) \
+		       | ${MIT_SCHEME_EXE} --batch-mode`
+fi
+if test x"${MIT_SCHEME_INCLUDEDIR}" = x; then
+    MIT_SCHEME_INCLUDEDIR=`( echo "(display (->namestring" ;\
+                             echo "          (directory-pathname" ;\
+                             echo "           (system-library-pathname" ;\
+                             echo '            "mit-scheme.h"))))' ) \
+                           | ${MIT_SCHEME_EXE} --batch-mode`
+fi
+if test x"${MIT_SCHEME_OS_SUFFIX}" = x; then
+    MIT_SCHEME_OS_SUFFIX=`echo "(display (microcode-id/operating-system-suffix))" \
+                          | ${MIT_SCHEME_EXE} --batch-mode`
+fi
+if test x"${MIT_SCHEME_CC_TYPE}" = x; then
+    MIT_SCHEME_CC_TYPE=`echo "(display microcode-id/compiled-code-type)" \
+                        | ${MIT_SCHEME_EXE} --batch-mode`
+fi
 
-cc_type=`echo "(display microcode-id/compiled-code-type)" \
-	 | ${MIT_SCHEME_EXE} --batch-mode`
-os_suffix=`echo "(display (microcode-id/operating-system-suffix))" \
-	   | ${MIT_SCHEME_EXE} --batch-mode`
-
-MIT_SCHEME_PKD="mcrypt-${os_suffix}.pkd"
+MIT_SCHEME_PKD="mcrypt-${MIT_SCHEME_OS_SUFFIX}.pkd"
 
 for f in mcrypt; do
     MIT_SCHEME_SCMs="${MIT_SCHEME_SCMs} ${f}.scm"
     MIT_SCHEME_BCIs="${MIT_SCHEME_BCIs} ${f}.bci"
     MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
 ${f}.bci: stamp-scheme"
-    if test "$cc_type" = "c"; then
+    if test x"${MIT_SCHEME_CC_TYPE}" = xc; then
 	MIT_SCHEME_COMs="${MIT_SCHEME_COMs} ${f}.so"
 	MIT_SCHEME_CLEAN="${MIT_SCHEME_CLEAN} ${f}.c"
 	MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
