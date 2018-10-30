@@ -2042,42 +2042,43 @@ USA.
 ;;; ascending inputs above 1.
 
 (define (logsumexp l)
-  (if (pair? l)
-      (if (pair? (cdr l))
-	  (let ((m (reduce max #f l)))
-	    ;; Cases:
-	    ;;
-	    ;; 1. There is a NaN among the inputs: invalid operation;
-	    ;;    result is NaN.
-	    ;;
-	    ;; 2. The maximum is +inf, and
-	    ;;    (a) the minimum is -inf: NaN.
-	    ;;    (b) the minimum is finite: +inf.
-	    ;;
-	    ;; 3. The maximum is -inf: all inputs are -inf, so -inf.
-	    ;;
-	    ;; Most likely all the inputs are finite, so prioritize
-	    ;; that case by checking for an infinity first -- if there
-	    ;; is a NaN, the usual computation will propagate it.
-	    ;;
-	    (if (and (infinite? m)
-		     (not (= (- m) (reduce min #f l)))
-		     (not (any nan? l)))
-		m
-		;; Overflow is not possible because everything is
-		;; normalized to be below zero.  Underflow can be
-		;; safely ignored because it can't change the outcome:
-		;; even if you had 2^64 copies of the largest subnormal
-		;; in the sum, 2^64 * largest subnormal < 2^900 <<<
-		;; epsilon = 2^-53, and at least one addend in the sum
-		;; is 1.
-		(flo:with-exceptions-untrapped (flo:exception:underflow)
-		  (lambda ()
-		    (+ m
-		       (log
-			(reduce + 0 (map (lambda (x) (exp (- x m))) l))))))))
-	  (car l))
-      (flo:-inf.0)))
+  ;; Cases:
+  ;;
+  ;; 1. No inputs.  Empty sum is zero, so yield log(0) = -inf.
+  ;;
+  ;; 2. One input.  Computation is exact.  Preserve it.
+  ;;
+  ;; 3. NaN among the inputs: invalid operation; result is NaN.
+  ;;
+  ;; 2. Maximum is +inf, and
+  ;;    (a) the minimum is -inf: inf - inf = NaN.
+  ;;    (b) the minimum is finite: sum overflows, so +inf.
+  ;;
+  ;; 3. Maximum is -inf: all inputs are -inf, so -inf.
+  ;;
+  ;; Most likely all the inputs are finite, so prioritize that case by
+  ;; checking for an infinity first -- if there is a NaN, the usual
+  ;; computation will propagate it.
+  ;;
+  ;; Overflow is not possible because everything is normalized to be
+  ;; below zero.  Underflow can be safely ignored because it can't
+  ;; change the outcome: even if you had 2^64 copies of the largest
+  ;; subnormal in the sum, 2^64 * largest subnormal < 2^-900 <<<
+  ;; epsilon = 2^-53, and at least one addend in the sum is 1 since we
+  ;; compute e^{m - m} = e^0 = 1.
+  ;;
+  (let ((m (reduce max #f l)))
+    (cond ((not (pair? l)) (flo:-inf.0))
+	  ((not (pair? (cdr l))) (car l))
+	  ((and (infinite? m)
+		(not (= (- m) (reduce min #f l)))
+		(not (any nan? l)))
+	   m)
+	  (else
+	   (flo:with-exceptions-untrapped (flo:exception:underflow)
+	     (lambda ()
+	       (+ m
+		  (log (reduce + 0 (map (lambda (x) (exp (- x m))) l))))))))))
 
 ;;; Some lemmas for the bounds below.
 ;;;
