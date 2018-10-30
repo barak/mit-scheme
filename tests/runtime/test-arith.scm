@@ -192,6 +192,7 @@ USA.
 
 (define-enumerated-test 'logsumexp-values
   (vector
+   (vector (iota 1000) 999.45867514538713)
    (vector '(999 1000) 1000.3132616875182)
    (vector '(-1000 -1000) (+ -1000 (log 2)))
    (vector '(0 0) (log 2)))

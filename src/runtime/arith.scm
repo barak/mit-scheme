@@ -2064,7 +2064,18 @@ USA.
 		     (not (= (- m) (reduce min #f l)))
 		     (not (any nan? l)))
 		m
-		(+ m (log (reduce + 0 (map (lambda (x) (exp (- x m))) l))))))
+		;; Overflow is not possible because everything is
+		;; normalized to be below zero.  Underflow can be
+		;; safely ignored because it can't change the outcome:
+		;; even if you had 2^64 copies of the largest subnormal
+		;; in the sum, 2^64 * largest subnormal < 2^900 <<<
+		;; epsilon = 2^-53, and at least one addend in the sum
+		;; is 1.
+		(flo:with-exceptions-untrapped (flo:exception:underflow)
+		  (lambda ()
+		    (+ m
+		       (log
+			(reduce + 0 (map (lambda (x) (exp (- x m))) l))))))))
 	  (car l))
       (flo:-inf.0)))
 
