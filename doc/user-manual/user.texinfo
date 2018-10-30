@@ -2,7 +2,7 @@
 @comment %**start of header
 @setfilename mit-scheme-user
 @set EDITION 1.95
-@set VERSION 10.1
+@set VERSION 10.1.1
 @set UPDATED 2015-11-25
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
