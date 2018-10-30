@@ -190,6 +190,50 @@ USA.
   (lambda (v)
     (assert-<= (relerr (cdr v) (log1pexp (car v))) 1e-15)))
 
+(define-enumerated-test 'logsumexp-values
+  (vector
+   (vector '(999 1000) 1000.3132616875182)
+   (vector '(-1000 -1000) (+ -1000 (log 2)))
+   (vector '(0 0) (log 2)))
+  (lambda (v)
+    (let ((l (vector-ref v 0))
+	  (s (vector-ref v 1)))
+      (assert-<= (relerr s (logsumexp l)) 1e-15))))
+
+(define-enumerated-test 'logsumexp-edges
+  (vector
+   (vector '() (flo:-inf.0))
+   (vector '(-1000) -1000)
+   (vector '(-1000.) -1000.)
+   (vector (list (flo:-inf.0)) (flo:-inf.0))
+   (vector (list (flo:-inf.0) 1) 1.)
+   (vector (list 1 (flo:-inf.0)) 1.)
+   (vector (list (flo:+inf.0)) (flo:+inf.0))
+   (vector (list (flo:+inf.0) 1) (flo:+inf.0))
+   (vector (list 1 (flo:+inf.0)) (flo:+inf.0))
+   (vector (list (flo:-inf.0) (flo:-inf.0)) (flo:-inf.0))
+   (vector (list (flo:+inf.0) (flo:+inf.0)) (flo:+inf.0)))
+  (lambda (v)
+    (let ((l (vector-ref v 0))
+	  (s (vector-ref v 1)))
+      (assert-eqv (logsumexp l) s))))
+
+(define-enumerated-test 'logsumexp-nan
+  (vector
+   (list (flo:-inf.0) (flo:+inf.0))
+   (list (flo:+inf.0) (flo:-inf.0))
+   (list 1 (flo:-inf.0) (flo:+inf.0))
+   (list (flo:-inf.0) (flo:+inf.0) 1)
+   (list (flo:nan.0))
+   (list (flo:+inf.0) (flo:nan.0))
+   (list (flo:-inf.0) (flo:nan.0))
+   (list 1 (flo:nan.0))
+   (list (flo:nan.0) (flo:+inf.0))
+   (list (flo:nan.0) (flo:-inf.0))
+   (list (flo:nan.0) 1))
+  (lambda (l)
+    (assert-nan (flo:with-trapped-exceptions 0 (lambda () (logsumexp l))))))
+
 (define-enumerated-test 'logit-logistic
   (vector
    (vector -36.7368005696771

@@ -2036,6 +2036,38 @@ USA.
 	((<= x 33.3) (+ x (exp (- x))))
 	(else (exact->inexact x))))
 
+;;; log(e^x + e^y + ...)
+;;;
+;;; Caller can minimize error by passing descending inputs below 0, or
+;;; ascending inputs above 1.
+
+(define (logsumexp l)
+  (if (pair? l)
+      (if (pair? (cdr l))
+	  (let ((m (reduce max #f l)))
+	    ;; Cases:
+	    ;;
+	    ;; 1. There is a NaN among the inputs: invalid operation;
+	    ;;    result is NaN.
+	    ;;
+	    ;; 2. The maximum is +inf, and
+	    ;;    (a) the minimum is -inf: NaN.
+	    ;;    (b) the minimum is finite: +inf.
+	    ;;
+	    ;; 3. The maximum is -inf: all inputs are -inf, so -inf.
+	    ;;
+	    ;; Most likely all the inputs are finite, so prioritize
+	    ;; that case by checking for an infinity first -- if there
+	    ;; is a NaN, the usual computation will propagate it.
+	    ;;
+	    (if (and (infinite? m)
+		     (not (= (- m) (reduce min #f l)))
+		     (not (any nan? l)))
+		m
+		(+ m (log (reduce + 0 (map (lambda (x) (exp (- x m))) l))))))
+	  (car l))
+      (flo:-inf.0)))
+
 ;;; Some lemmas for the bounds below.
 ;;;
 ;;; Lemma 1.  If |d| < 1/2, then 1/(1 + d) <= 2.

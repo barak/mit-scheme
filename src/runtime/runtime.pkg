@@ -3388,6 +3388,7 @@ USA.
 	  logit
 	  logit-exp
 	  logit1/2+
+	  logsumexp
 	  max
 	  min
 	  modulo
