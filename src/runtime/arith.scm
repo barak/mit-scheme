@@ -2408,6 +2408,8 @@ USA.
 	 (log (/ (+ 1/2 p-1/2) (- 1/2 p-1/2))))))
 
 ;;; log logistic(x) = log (1/(1 + e^{-x})) = -log (1 + e^{-x})
+;;;
+;;; This is the log density of the logistic distribution.
 
 (define (log-logistic x)
   (guarantee-real x 'log-logistic)
@@ -2419,6 +2421,8 @@ USA.
   (flo:- 0. (flo:log (flo:+ 1. (flo:exp -1.)))))
 
 ;;; logit(e^t) = log e^t/(1 - e^t)
+;;;
+;;; Inverse of log logistic.
 
 (define (logit-exp t)
   (guarantee-real t 'logit-exp)
