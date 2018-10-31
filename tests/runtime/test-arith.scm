@@ -117,6 +117,27 @@ USA.
   (vector (flo:-inf.0) -2. -1 -0. 0 +0. +1 +2. (flo:+inf.0))
   (lambda (v) (assert-nan (/ v (flo:nan.0)))))
 
+(define-enumerated-test 'flo:ulp
+  (vector
+   (vector (flo:-inf.0) (flo:-inf.0))
+   (vector -2. (* 2 flo:ulp-of-one))
+   (vector -1. flo:ulp-of-one)
+   (vector -0. "4.9406564584124654e-324")
+   (vector 0. "4.9406564584124654e-324")
+   (vector 1. flo:ulp-of-one)
+   (vector 2. (* 2 flo:ulp-of-one))
+   (vector (flo:+inf.0) (flo:+inf.0)))
+  (lambda (v)
+    (let ((x (vector-ref v 0))
+          (u (vector-ref v 1)))
+      (flo:with-trapped-exceptions 0
+        (lambda ()
+          (let ((u
+                 (if (string? u)
+                     (string->number u)
+                     u)))
+            (assert-eqv (flo:ulp x) u)))))))
+
 (define-enumerated-test 'log1p-exact
   (vector
    (cons 0 0)

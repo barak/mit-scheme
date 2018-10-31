@@ -345,6 +345,7 @@ USA.
 	  flo:tanh
 	  flo:truncate
 	  flo:truncate->exact
+	  flo:ulp
 	  flo:unordered?
 	  flo:vector-cons
 	  flo:vector-length

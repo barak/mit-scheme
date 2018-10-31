@@ -249,6 +249,15 @@ USA.
 	   (eq? (flo:safe-negative? x)
 		(flo:safe-negative? y)))))
 
+(define (flo:ulp x)
+  ;; Measure the distance from x to the next float in the direction of
+  ;; the sign of x.
+  (if (flo:finite? x)
+      (let* ((direction (flo:copysign (flo:+inf.0) x))
+             (x* (flo:nextafter x direction)))
+        (flo:* (flo:copysign 1. x) (flo:- x* x)))
+      x))
+
 (define (int:->flonum n)
   ((ucode-primitive integer->flonum 2) n #b10))
 
