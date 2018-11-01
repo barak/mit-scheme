@@ -51,12 +51,23 @@ build ()
     touch .native-release-marker
 }
 
+clean ()
+{
+    (cd microcode && make distclean)
+    local PLUGIN
+    for PLUGIN in "${PLUGINS[@]}"; do
+        if [[ -f ${PLUGIN}/Makefile ]]; then
+            (cd "${PLUGIN}" && make mostlyclean)
+        fi
+    done
+}
+
 OUT_ROOT=${NATIVE_OUT}-${ARCH}
 
 notify "Building binaries for arch ${ARCH}"
 unpack_dist_file_to "${DIST_DIR}" "${DIST_DIR}"
 run_command "${OUT_ROOT}"-compile "${DIST_DIR}"/src build
-run_command "${OUT_ROOT}"-clean "${DIST_DIR}"/src/microcode make distclean
+run_command "${OUT_ROOT}"-clean "${DIST_DIR}"/src clean
 
 notify "Making tarball"
 fixup_perms "${DIST_DIR}"

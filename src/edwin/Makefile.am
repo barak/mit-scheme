@@ -29,9 +29,6 @@ scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)edwin
 scmdocdir = $(datarootdir)/doc/@MIT_SCHEME_PROJECT@
 
-sources =@MIT_SCHEME_SOURCES@
-binaries =@MIT_SCHEME_BINARIES@
-
 scmlib_sub_DATA = $(sources)
 scmlib_sub_DATA += $(binaries)
 scmlib_sub_DATA += loadef.scm edwin.bld

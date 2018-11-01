@@ -36,24 +36,28 @@ AC_PROG_INSTALL
 
 MIT_SCHEME_PROJECT=mit-scheme
 : ${MIT_SCHEME_EXE=mit-scheme}
-default_libdir=`( echo "(display (->namestring" ;\
-		  echo "          (system-library-directory-pathname)))" ) \
-		| ${MIT_SCHEME_EXE} --batch-mode`
-: ${MIT_SCHEME_LIBDIR=${default_libdir}}
+if test x"${MIT_SCHEME_LIBDIR}" = x; then
+    MIT_SCHEME_LIBDIR=`( echo "(display (->namestring" ;\
+			 echo "          (system-library-directory-pathname)))" ) \
+		       | ${MIT_SCHEME_EXE} --batch-mode`
+fi
+if test x"${MIT_SCHEME_OS_SUFFIX}" = x; then
+    MIT_SCHEME_OS_SUFFIX=`echo "(display (microcode-id/operating-system-suffix))" \
+                          | ${MIT_SCHEME_EXE} --batch-mode`
+fi
+if test x"${MIT_SCHEME_CC_TYPE}" = x; then
+    MIT_SCHEME_CC_TYPE=`echo "(display microcode-id/compiled-code-type)" \
+                        | ${MIT_SCHEME_EXE} --batch-mode`
+fi
 
-cc_type=`echo "(display microcode-id/compiled-code-type)" \
-	 | ${MIT_SCHEME_EXE} --batch-mode`
-os_suffix=`echo "(display (microcode-id/operating-system-suffix))" \
-	   | ${MIT_SCHEME_EXE} --batch-mode`
-
-MIT_SCHEME_PKD="x11-screen-${os_suffix}.pkd"
+MIT_SCHEME_PKD="x11-screen-${MIT_SCHEME_OS_SUFFIX}.pkd"
 
 for f in x11-screen x11-key x11-command; do
     MIT_SCHEME_SCMs="${MIT_SCHEME_SCMs} ${f}.scm"
     MIT_SCHEME_BCIs="${MIT_SCHEME_BCIs} ${f}.bci"
     MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}
 ${f}.bci: stamp-scheme"
-    if test "$cc_type" = "c"; then
+    if test x"${MIT_SCHEME_CC_TYPE}" = xc; then
 	MIT_SCHEME_COMs="${MIT_SCHEME_COMs} ${f}.so"
 	MIT_SCHEME_CLEAN="${MIT_SCHEME_CLEAN} ${f}.c"
 	MIT_SCHEME_DEPS="${MIT_SCHEME_DEPS}

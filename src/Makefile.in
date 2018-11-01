@@ -139,6 +139,11 @@ microcode/scheme:
 
 .PHONY: compile-microcode
 compile-microcode: microcode/scheme
+@IF_BLOWFISH@compile-microcode: compile-blowfish-c
+@IF_GDBM@compile-microcode: compile-gdbm-c
+@IF_MCRYPT@compile-microcode: compile-mcrypt-c
+@IF_PGSQL@compile-microcode: compile-pgsql-c
+@IF_X11@compile-microcode: compile-x11-c
 
 stamp_install-microcode: compile-microcode
 	(cd microcode; $(MAKE) install)
@@ -394,6 +399,10 @@ all-blowfish: compile-blowfish
 compile-blowfish: compile-runtime compile-ffi
 	(cd blowfish && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
 
+.PHONY: compile-blowfish-c
+compile-blowfish-c:
+	(cd blowfish && $(MAKE))
+
 ################
 # edwin
 ################
@@ -419,6 +428,10 @@ all-gdbm: compile-gdbm
 compile-gdbm: compile-runtime compile-ffi
 	(cd gdbm && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
 
+.PHONY: compile-gdbm-c
+compile-gdbm-c:
+	(cd gdbm && $(MAKE))
+
 ################
 # imail
 ################
@@ -441,6 +454,10 @@ all-mcrypt: compile-mcrypt
 compile-mcrypt: compile-runtime compile-ffi
 	(cd mcrypt && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
 
+.PHONY: compile-mcrypt-c
+compile-mcrypt-c:
+	(cd mcrypt && $(MAKE))
+
 ################
 # pgsql
 ################
@@ -452,6 +469,10 @@ all-pgsql: compile-pgsql
 compile-pgsql: compile-runtime compile-ffi
 	(cd pgsql && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
 
+.PHONY: compile-pgsql-c
+compile-pgsql-c:
+	(cd pgsql && $(MAKE))
+
 ################
 # X11
 ################
@@ -462,6 +483,10 @@ all-x11: compile-x11
 .PHONY: compile-x11
 compile-x11: compile-runtime compile-ffi
 	(cd x11 && MIT_SCHEME_EXE=$(MIT_SCHEME_EXE) $(MAKE))
+
+.PHONY: compile-x11-c
+compile-x11-c:
+	(cd x11 && $(MAKE))
 
 ################
 # X11-screen

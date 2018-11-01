@@ -2,7 +2,7 @@
 @comment %**start of header
 @setfilename mit-scheme-blowfish.info
 @include version.texi
-@set SCMVERS 10.1
+@set SCMVERS 10.1.2
 @settitle MIT/GNU Scheme Blowfish Plugin Manual
 @comment %**end of header
 
