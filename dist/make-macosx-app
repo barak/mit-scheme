@@ -64,6 +64,7 @@ make_dmg ()
     my_ln_s /Applications "${DMG_DIR}"/.
     my_rm_f "${DMG_FILE}"
     create-dmg --volname "MIT-GNU Scheme ${RELEASE}" "${DMG_FILE}" "${DMG_DIR}"
+    make_read_only "${DMG_FILE}"
 }
 
 notify "Compiling executable"
