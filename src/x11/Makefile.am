@@ -58,21 +58,29 @@ x11-shim.c: stamp-shim
 x11-const.c: stamp-shim
 x11-types.bin: stamp-shim
 stamp-shim: $(c_sources) $(cdecls)
-	touch stamp-shim
 	echo '(generate-shim "x11" "#include \"x11-shim.h\"")' \
-	| $(MIT_SCHEME_EXE) --batch-mode \
-	|| rm stamp-shim
+	    | $(MIT_SCHEME_EXE) --batch-mode
+	echo "done" > $@
 
 x11-const.bin: x11-const.scm
 	echo '(sf "x11-const")' | $(MIT_SCHEME_EXE) --batch-mode
 
-x11-const.scm: x11-const
+x11-const.scm: stamp-x11-const
 	./x11-const
 
+stamp-x11-const: stamp-shim
+	$(MAKE) x11-const
+	echo "done" > $@
+
 @MIT_SCHEME_DEPS@
-stamp-scheme: stamp-shim $(sources) $(cdecls:.cdecl=-const.bin) x11.pkg
-	touch stamp-scheme
-	if ! ./compile.sh; then rm stamp-scheme; exit 1; fi
+stamp-scheme: stamp-shim $(sources) x11-const.bin x11.pkg
+	./compile.sh
+	echo "done" > $@
+
+MOSTLYCLEANFILES = $(scmlib_LTLIBRARIES) x11-const
+
+mostlyclean-local:
+	-rm -rf .libs
 
 CLEANFILES = x11-const* x11-shim.c
 CLEANFILES += *.bin *.ext *.com *.bci *.moc *.fni *.crf *.fre *.pkd
