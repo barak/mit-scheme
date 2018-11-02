@@ -12,8 +12,8 @@ FFI System Packaging |#
   (import (runtime ffi)
 	  make-alien-function
 	  alien-function/filename)
-  (import (runtime syntax environment)
-	  syntactic-environment->environment)
+  (import (runtime syntax)
+	  senv->runtime)
   (export ()
 	  c-include
 	  load-c-includes
@@ -40,11 +40,8 @@ FFI System Packaging |#
 (define-package (ffi build)
   (parent ())
   (files "build")
-  (import (runtime pathname)
-	  library-directory-path)
   (export (ffi)
-	  compile-shim
-	  link-shim
-	  install-shim
-	  install-load-option
-	  install-html))
+	  add-plugin
+	  remove-plugin
+	  delete-plugin-list
+	  update-plugin-indices))

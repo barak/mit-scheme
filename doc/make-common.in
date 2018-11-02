@@ -1,8 +1,8 @@
 
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014
-#     Massachusetts Institute of Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
+#     2015, 2016, 2017, 2018 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -37,10 +37,14 @@ sysconfdir = @sysconfdir@
 sharedstatedir = @sharedstatedir@
 localstatedir = @localstatedir@
 libdir = @libdir@
+docdir = @docdir@
 infodir = @infodir@
 mandir = @mandir@
 includedir = @includedir@
 oldincludedir = /usr/include
+
+PACKAGE_TARNAME = @PROJECT@
+PROJECT = @PROJECT@
 
 DESTDIR =
 top_builddir = .
@@ -60,6 +64,8 @@ htmldir = @htmldir@
 pdfdir = @pdfdir@
 psdir = @psdir@
 
+INSTALL_INFO_PROG = @INSTALL_INFO_PROG@
+TARGETS = @TARGETS@
 INST_TARGETS = @INST_TARGETS@
 
 INFO_TARGET = $(TARGET_ROOT).info
@@ -70,7 +76,7 @@ PS_TARGET = $(TARGET_ROOT).ps
 
 TEX_OPTIONS = --quiet $(EXTRA_TEX_OPTIONS)
 
-all: $(INFO_TARGET) $(HTML_TARGET)/index.html $(PDF_TARGET) $(PS_TARGET)
+all: $(INFO_TARGET) $(TARGETS)
 
 $(INFO_TARGET): $(SOURCES)
 	rm -f $(INFO_TARGET)*
@@ -112,6 +118,7 @@ install: install-info-gz $(INST_TARGETS)
 install-info: $(INFO_TARGET)
 	-rm -f $(DESTDIR)$(infodir)/$(INFO_TARGET)*
 	$(INSTALL_DATA) $(INFO_TARGET)* $(DESTDIR)$(infodir)/.
+	$(INSTALL_INFO_PROG) --info-dir $(DESTDIR)$(infodir)/ $(INFO_TARGET)
 
 install-info-gz: install-info
 	gzip -v $(DESTDIR)$(infodir)/$(INFO_TARGET)*

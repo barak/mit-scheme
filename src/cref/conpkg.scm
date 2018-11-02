@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,7 +30,7 @@ USA.
 	 (integrate-external "object"))
 
 (define (construct-external-descriptions pmodel)
-  (vector 'PACKAGE-DESCRIPTIONS		;tag
+  (vector 'package-descriptions		;tag
 	  2				;version
 	  (list->vector
 	   (map cdr
@@ -47,25 +47,25 @@ USA.
 			(package-ancestry<? (car a) (car b))))))
 	  (list->vector
 	   (map package-load->external
-		(list-transform-positive (pmodel/loads pmodel)
-		  (lambda (load)
-		    (or (pair? (package-load/file-cases load))
-			(pair? (package-load/initializations load))
-			(pair? (package-load/finalizations load)))))))))
+		(filter (lambda (load)
+			  (or (pair? (package-load/file-cases load))
+			      (pair? (package-load/initializations load))
+			      (pair? (package-load/finalizations load))))
+			(pmodel/loads pmodel))))))
 
 (define (new-extension-packages pmodel)
-  (list-transform-positive (pmodel/extra-packages pmodel)
-    (lambda (package)
-      (or (there-exists? (package/links package) link/new?)
-	  (there-exists? (package/bindings package) new-internal-binding?)))))
+  (filter (lambda (package)
+	    (or (any link/new? (package/links package))
+		(any new-internal-binding? (package/bindings package))))
+	  (pmodel/extra-packages pmodel)))
 
 (define (new-internal-binding? binding)
   (and (binding/new? binding)
        (binding/internal? binding)
-       (not (there-exists? (binding/links binding)
-	      (let ((package (binding/package binding)))
-		(lambda (link)
-		  (eq? (link/owner link) package)))))))
+       (not (any (let ((package (binding/package binding)))
+		   (lambda (link)
+		     (eq? (link/owner link) package)))
+		 (binding/links binding)))))
 
 (define (package/ancestry package)
   (let loop ((parent (package/parent package))
@@ -93,18 +93,20 @@ USA.
 		      '())))
 	      (list->vector
 	       (map binding/name
-		    (list-transform-positive (package/bindings package)
-		      new-internal-binding?)))
+		    (filter new-internal-binding?
+			    (package/bindings package))))
 	      (list->vector
 	       (map (lambda (link)
 		      (let ((source (link/source link))
 			    (destination (link/destination link)))
 			(let ((sn (binding/name source))
 			      (dp (package/name (binding/package destination)))
-			      (dn (binding/name destination)))
-			  (if (eq? sn dn)
+			      (dn (binding/name destination))
+			      (d? (and (binding/deprecated? destination)
+				       'deprecated)))
+			  (if (and (not d?) (eq? sn dn))
 			      (vector sn dp)
-			      (vector sn dp dn)))))
+			      (vector sn dp dn d?)))))
 		    exports))
 	      (list->vector
 	       (map (lambda (link)
@@ -112,10 +114,12 @@ USA.
 			    (destination (link/destination link)))
 			(let ((dn (binding/name destination))
 			      (sp (package/name (binding/package source)))
-			      (sn (binding/name source)))
-			  (if (eq? dn sn)
+			      (sn (binding/name source))
+			      (d? (and (binding/deprecated? source)
+				       'deprecated)))
+			  (if (and (not d?) (eq? dn sn))
 			      (vector dn sp)
-			      (vector dn sp sn)))))
+			      (vector dn sp sn d?)))))
 		    imports))
 	      extension?))))
 

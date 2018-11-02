@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -44,7 +44,7 @@ USA.
 
   x-left y-bottom x-right y-top ;
   x-scale y-scale
-    
+
   fg-color  bg-color
   pen-valid?
   line-width line-style
@@ -117,18 +117,18 @@ USA.
 	     (hdc        (get-dc hwnd))
 	     (bitmap-dc)
 	     (bitmap))
-	
+
 	(if palette
 	    (select-palette hdc palette #f))
 	(set! bitmap-dc  (create-compatible-dc hdc))
 	(if palette
 	    (select-palette bitmap-dc palette #f))
-	(set! bitmap   
+	(set! bitmap
 	      (create-compatible-bitmap hdc (win32-device/width window)
 					(win32-device/height window)))
 	(if palette
 	    (realize-palette hdc))
-	
+
 	(set-win32-device/bitmap! window bitmap)
 	(set-win32-device/hwnd! window hwnd)
 	(set-win32-device/hdc! window bitmap-dc)
@@ -149,7 +149,7 @@ USA.
       ;; windows and closing them with the close button; the result is
       ;; the BSOD.
       0)
-     
+
      ((= msg WM_DESTROY)
       (let ((bitmap-dc (win32-device/hdc window)))
 	(if (not (eqv? 0 bitmap-dc))
@@ -182,7 +182,7 @@ USA.
 	      (realize-palette hdc)
 	      (realize-palette (win32-device/hdc window))
 	    ))
-	(bit-blt hdc 0 0 
+	(bit-blt hdc 0 0
 		 (win32-device/width window) (win32-device/height window)
 		 (win32-device/hdc window) 0 0 SRCCOPY)
 	(end-paint hwnd ps))
@@ -196,10 +196,10 @@ USA.
 	    (release-dc hwnd hdc)
 	    ))
        0)
-	    
+
      ((and (= msg WM_PALETTEISCHANGING) (win32-device/palette window))
       (default))
-	    
+
      ((and (= msg WM_QUERYNEWPALETTE) (win32-device/palette window))
       (update-palette))
 
@@ -259,17 +259,16 @@ USA.
 
     (else
       (default)))))
-	
 
 (define (make-standard-palette)
-  (define pal (make-string (+ 4 (* 4 256))))
+  (define pal (make-bytevector (+ 4 (* 4 256))))
   (define i 0)
   (define (alloc r g b f)
     (let ((base (fix:+ 4 (fix:* i 4))))
-      (vector-8b-set! pal base       r)
-      (vector-8b-set! pal (+ base 1) g)
-      (vector-8b-set! pal (+ base 2) b)
-      (vector-8b-set! pal (+ base 3) f)
+      (bytevector-u8-set! pal base       r)
+      (bytevector-u8-set! pal (+ base 1) g)
+      (bytevector-u8-set! pal (+ base 2) b)
+      (bytevector-u8-set! pal (+ base 3) f)
       (set! i (1+ i))))
 
   ;; RGB intensities scaled to look good.  Notice that 128 is in the list
@@ -290,22 +289,22 @@ USA.
 	(if (not (= r g b))
 	    (alloc (vector-ref cv r) (vector-ref cv g) (vector-ref cv b)
 		   PC_NOCOLLAPSE)))))
-  (vector-8b-set! pal 0 #x00)
-  (vector-8b-set! pal 1 #x03)
-  (vector-8b-set! pal 2 (fix:and i 255))
-  (vector-8b-set! pal 3 (fix:lsh i -8))
+  (bytevector-u8-set! pal 0 #x00)
+  (bytevector-u8-set! pal 1 #x03)
+  (bytevector-u8-set! pal 2 (fix:and i 255))
+  (bytevector-u8-set! pal 3 (fix:lsh i -8))
   (create-palette pal)
 )
 
 (define (make-grayscale-palette)
-  (define pal (make-string (+ 4 (* 4 256))))
+  (define pal (make-bytevector (+ 4 (* 4 256))))
   (define i 0)
   (define (alloc r g b f)
     (let ((base (fix:+ 4 (fix:* i 4))))
-      (vector-8b-set! pal base           r)
-      (vector-8b-set! pal (fix:+ base 1) g)
-      (vector-8b-set! pal (fix:+ base 2) b)
-      (vector-8b-set! pal (fix:+ base 3) f)
+      (bytevector-u8-set! pal base           r)
+      (bytevector-u8-set! pal (fix:+ base 1) g)
+      (bytevector-u8-set! pal (fix:+ base 2) b)
+      (bytevector-u8-set! pal (fix:+ base 3) f)
       (set! i (1+ i))))
 
   (alloc 0 0 0 0)		; Black is matched
@@ -316,23 +315,22 @@ USA.
       ((> grey 254))
     (alloc grey grey grey PC_NOCOLLAPSE))
   (alloc 255 255 255 0)		; White is matched
-  (vector-8b-set! pal 0 #x00)
-  (vector-8b-set! pal 1 #x03)
-  (vector-8b-set! pal 2 (fix:and i 255))
-  (vector-8b-set! pal 3 (fix:lsh i -8))
+  (bytevector-u8-set! pal 0 #x00)
+  (bytevector-u8-set! pal 1 #x03)
+  (bytevector-u8-set! pal 2 (fix:and i 255))
+  (bytevector-u8-set! pal 3 (fix:lsh i -8))
   (create-palette pal)
 )
 
-
 (define (make-grayscale-128-palette)
-  (define pal (make-string (+ 4 (* 4 256))))
+  (define pal (make-bytevector (+ 4 (* 4 256))))
   (define i 0)
   (define (alloc r g b f)
     (let ((base (fix:+ 4 (fix:* i 4))))
-      (vector-8b-set! pal base           r)
-      (vector-8b-set! pal (fix:+ base 1) g)
-      (vector-8b-set! pal (fix:+ base 2) b)
-      (vector-8b-set! pal (fix:+ base 3) f)
+      (bytevector-u8-set! pal base           r)
+      (bytevector-u8-set! pal (fix:+ base 1) g)
+      (bytevector-u8-set! pal (fix:+ base 2) b)
+      (bytevector-u8-set! pal (fix:+ base 3) f)
       (set! i (1+ i))))
 
   (alloc 0 0 0 0)		; Black is matched
@@ -342,10 +340,10 @@ USA.
       ((> grey 254))
     (alloc grey grey grey PC_NOCOLLAPSE))
   (alloc 255 255 255 0)		; White is matched
-  (vector-8b-set! pal 0 #x00)
-  (vector-8b-set! pal 1 #x03)
-  (vector-8b-set! pal 2 (fix:and i 255))
-  (vector-8b-set! pal 3 (fix:lsh i -8))
+  (bytevector-u8-set! pal 0 #x00)
+  (bytevector-u8-set! pal 1 #x03)
+  (bytevector-u8-set! pal 2 (fix:and i 255))
+  (bytevector-u8-set! pal 3 (fix:lsh i -8))
   (create-palette pal)
 )
 
@@ -361,25 +359,25 @@ USA.
 			 (loop (+ i 1)))))))))
 
 (define (convert-palette external)
-  (let ((s (make-string (+ 4 (* 4 256))))
+  (let ((s (make-bytevector (+ 4 (* 4 256))))
 	(n-entries (vector-length external)))
-    (vector-8b-set! s 0 #x00)
-    (vector-8b-set! s 1 #x03)
-    (vector-8b-set! s 2 (fix:and #xFF n-entries))
-    (vector-8b-set! s 3 (fix:and #xFF (fix:lsh n-entries -8)))
+    (bytevector-u8-set! s 0 #x00)
+    (bytevector-u8-set! s 1 #x03)
+    (bytevector-u8-set! s 2 (fix:and #xFF n-entries))
+    (bytevector-u8-set! s 3 (fix:and #xFF (fix:lsh n-entries -8)))
     (do ((i 0 (fix:+ i 1))
 	 (j 4 (fix:+ j 4)))
 	((fix:= i n-entries))
       (let ((elt (vector-ref external i)))
 	(let ((rgb (remainder elt #x1000000))
 	      (bits (quotient elt #x1000000)))
-	  (vector-8b-set! s j (fix:and #xFF elt))
-	  (vector-8b-set! s (fix:+ j 1) (fix:and #xFF (fix:lsh elt -8)))
-	  (vector-8b-set! s (fix:+ j 2) (fix:and #xFF (fix:lsh elt -16)))
-	  (vector-8b-set! s (fix:+ j 3)
-			  (if (or (fix:= 0 rgb) (fix:= #xFFFFFF rgb))
-			      0
-			      bits)))))
+	  (bytevector-u8-set! s j (fix:and #xFF elt))
+	  (bytevector-u8-set! s (fix:+ j 1) (fix:and #xFF (fix:lsh elt -8)))
+	  (bytevector-u8-set! s (fix:+ j 2) (fix:and #xFF (fix:lsh elt -16)))
+	  (bytevector-u8-set! s (fix:+ j 3)
+			      (if (or (fix:= 0 rgb) (fix:= #xFFFFFF rgb))
+				  0
+				  bits)))))
     (create-palette s)))
 
 (define (client-width->window-width w)
@@ -393,7 +391,7 @@ USA.
 
 (define device-protection-list)
 
-(define (win32-graphics/open descriptor->device 
+(define (win32-graphics/open descriptor->device
 			     #!optional width height palette)
   (let* ((width   (if (default-object? width)  512 width))
          (height  (if (default-object? height) 512 height))
@@ -432,7 +430,7 @@ USA.
 	 (old-pen  (select-object hdc new-pen)))
     (delete-object old-pen)
     (set-win32-device/pen-valid?! window #t)))
-  
+
 (define-integrable (win32-device/validate-pen window)
   (if (not (win32-device/pen-valid? window))
       (win32-device/select-pen window)))
@@ -470,7 +468,7 @@ USA.
   (set-win32-device/y-scale!   window
     (/ (- (win32-device/height window) 1)
       (- (win32-device/y-bottom window) (win32-device/y-top window)))))
-    
+
 (define (win32-translate-drawing-mode mode)
   (case mode				;X11 function names:
     (( 0) R2_BLACK)			;GXclear
@@ -589,7 +587,7 @@ USA.
     (text-out hdc xt yt text (string-length text))
     (win32-device/invalidate! window)
     unspecific))
-  
+
 
 (define (win32-graphics/move-cursor device x y)
   (let ((window (graphics-device/descriptor device)))
@@ -622,7 +620,7 @@ USA.
 
 (define (make-C-point-vector window vec)
   (let* ((n  (vector-length vec))
-         (s  (make-string (* 4 n))))
+         (s  (make-bytevector (* 4 n))))
     (define (loop i)
       (if (fix:< i n)
 	(begin
@@ -690,7 +688,7 @@ USA.
 	(set! h heightt)))
 
     (bit-blt hdc x1 y1 w h hdc x0 y0 SRCCOPY)
-	  
+
     (win32-device/invalidate! window)
     unspecific))
 
@@ -758,7 +756,7 @@ USA.
 	 (rgb (vector-ref spec 0) (vector-ref spec 1) (vector-ref spec 2)))
         ((and (list? spec)
 	      (= 3 (length spec))
-	      (for-all? spec dim?))
+	      (every dim? spec))
 	 (rgb (list-ref spec 0) (list-ref spec 1) (list-ref spec 2)))
 	((and (string? spec)
 	      (= 7 (string-length spec))
@@ -766,8 +764,8 @@ USA.
 	 (rgb-hex spec 2))
 	((string? spec)
 	 (let  ((pair
-		 (list-search-positive color-table
-		   (lambda (pair) (string-ci=? (car pair) spec)))))
+		 (find (lambda (pair) (string-ci=? (car pair) spec))
+		       color-table)))
 	   (if pair
 	       (cdr pair)
 	       (graphics-error "Unknown color name:" spec))))
@@ -809,7 +807,7 @@ USA.
     ("pink"         255 181 197)
     ("brown"        127  63   0)))
 
-    
+
 (define (win32-graphics/set-foreground-color device color)
   (let* ((window (graphics-device/descriptor device))
          (hdc    (win32-device/hdc window))
@@ -840,7 +838,7 @@ USA.
          (hwnd   (win32-device/hwnd window)))
     (set-window-pos hwnd 0 x y 0 0
 		    (+ SWP_NOZORDER SWP_NOSIZE SWP_NOACTIVATE))))
-      
+
 (define (win32-graphics/resize-window device w h)
   (let* ((window (graphics-device/descriptor device))
          (hwnd   (win32-device/hwnd window)))
@@ -848,7 +846,7 @@ USA.
       (client-width->window-width w)
       (client-height->window-height h)
       (+ SWP_NOZORDER SWP_NOMOVE SWP_NOACTIVATE))))
-      
+
 (define (win32-graphics/set-font device font)
   (let* ((window (graphics-device/descriptor device))
          (hdc    (win32-device/hdc window)))

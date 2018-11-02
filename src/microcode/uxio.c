@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -268,6 +268,16 @@ OS_channel_read (Tchannel channel, void * buffer, size_t nbytes)
 	if (errno == ERRNO_NONBLOCK)
 	  return (-1);
 #endif
+	/* From Emacs v25.2 src/process.c: On some OSs with ptys, when
+	   the process on one end of a pty exits, the other end gets
+	   an error reading with errno = EIO instead of getting an EOF
+	   (0 bytes read)...
+
+	   Thus, if a pty master and errno=EIO, return 0 bytes read. */
+	if (CHANNEL_TYPE (channel) == channel_type_unix_pty_master
+	    && errno == EIO)
+	  return (0);
+
 #endif /* not _ULTRIX */
 	  UX_prim_check_errno (syscall_read);
 	  continue;
@@ -539,6 +549,17 @@ OS_select_registry_length (select_registry_t registry)
 }
 
 void
+OS_select_registry_entry (select_registry_t registry,
+			  unsigned int index,
+			  int * fd_r,
+			  unsigned int * mode_r)
+{
+  struct select_registry_s * r = registry;
+  (*fd_r) = ((SR_ENTRY (r, index)) -> fd);
+  (*mode_r) = (ENCODE_MODE ((SR_ENTRY (r, index)) -> events));
+}
+
+void
 OS_select_registry_result (select_registry_t registry,
 			   unsigned int index,
 			   int * fd_r,
@@ -596,14 +617,16 @@ OS_test_select_registry (select_registry_t registry, int blockp)
   while (1)
     {
       int nfds = (safe_poll ((SR_ENTRIES (r)), (SR_N_FDS (r)), blockp));
-      if (nfds >= 0)
+      if (nfds > 0)
 	return (nfds);
-      if (errno != EINTR)
+      if (nfds < 0 && errno != EINTR)
 	error_system_call (errno, syscall_select);
       if (OS_process_any_status_change ())
 	return (SELECT_PROCESS_STATUS_CHANGE);
       if (pending_interrupts_p ())
 	return (SELECT_INTERRUPT);
+      if (nfds == 0) /* and no status-change nor interrupts pending */
+	return (0);
     }
 }
 
@@ -618,14 +641,14 @@ OS_test_select_descriptor (int fd, int blockp, unsigned int mode)
       int nfds = (safe_poll (pfds, 1, blockp));
       if (nfds > 0)
 	return (ENCODE_MODE ((pfds [0]) . revents));
-      if (nfds == 0)
-	return (0);
-      if (errno != EINTR)
+      if (nfds < 0 && errno != EINTR)
 	error_system_call (errno, syscall_select);
       if (OS_process_any_status_change ())
 	return (SELECT_PROCESS_STATUS_CHANGE);
       if (pending_interrupts_p ())
 	return (SELECT_INTERRUPT);
+      if (nfds == 0) /* and no status-change nor interrupts pending */
+	return (0);
     }
 }
 
@@ -798,14 +821,16 @@ OS_test_select_registry (select_registry_t registry, int blockp)
 			       (SR_RREADERS (r)),
 			       (SR_RWRITERS (r)),
 			       blockp));
-      if (nfds >= 0)
+      if (nfds > 0)
 	return (nfds);
-      if (errno != EINTR)
+      if (nfds < 0 && errno != EINTR)
 	error_system_call (errno, syscall_select);
       if (OS_process_any_status_change ())
 	return (SELECT_PROCESS_STATUS_CHANGE);
       if (pending_interrupts_p ())
 	return (SELECT_INTERRUPT);
+      if (nfds == 0) /* and no status-change nor interrupts pending */
+	return (0);
     }
 #else
   error_system_call (ENOSYS, syscall_select);
@@ -835,14 +860,14 @@ OS_test_select_descriptor (int fd, int blockp, unsigned int mode)
 	return
 	  (((FD_ISSET (fd, (&readable))) ? SELECT_MODE_READ : 0)
 	   | ((FD_ISSET (fd, (&writeable))) ? SELECT_MODE_WRITE : 0));
-      if (nfds == 0)
-	return (0);
-      if (errno != EINTR)
+      if (nfds < 0 && errno != EINTR)
 	error_system_call (errno, syscall_select);
       if (OS_process_any_status_change ())
 	return (SELECT_PROCESS_STATUS_CHANGE);
       if (pending_interrupts_p ())
 	return (SELECT_INTERRUPT);
+      if (nfds == 0) /* and no status-change nor interrupts pending */
+	return (0);
     }
 #else
   error_system_call (ENOSYS, syscall_select);
@@ -853,33 +878,47 @@ OS_test_select_descriptor (int fd, int blockp, unsigned int mode)
 #endif /* not HAVE_POLL */
 
 int
-OS_pause (void)
+OS_pause (bool blockp, bool ignore_status_change)
 {
-#ifdef HAVE_SIGSUSPEND
-  sigset_t old, new;
   int n;
 
-  UX_sigfillset (&new);
-  UX_sigprocmask (SIG_SETMASK, &new, &old);
-  if (OS_process_any_status_change ())
-    n = SELECT_PROCESS_STATUS_CHANGE;
-  else if (pending_interrupts_p ())
-    n = SELECT_INTERRUPT;
-  else
+  if (!blockp)
     {
-      UX_sigsuspend (&old);
-      if (OS_process_any_status_change ())
-	n = SELECT_PROCESS_STATUS_CHANGE;
-      else
-	n = SELECT_INTERRUPT;
+      if (!ignore_status_change && OS_process_any_status_change ())
+	return (SELECT_PROCESS_STATUS_CHANGE);
+      return (SELECT_INTERRUPT);
     }
-  UX_sigprocmask (SIG_SETMASK, &old, NULL);
-  return (n);
-#else
-  /* Wait-for-io must spin. */
-  return
-    ((OS_process_any_status_change ())
-     ? SELECT_PROCESS_STATUS_CHANGE
-     : SELECT_INTERRUPT);
+
+#ifdef HAVE_SIGSUSPEND
+  {
+    sigset_t old, new;
+
+    UX_sigfillset (&new);
+    UX_sigprocmask (SIG_SETMASK, &new, &old);
+    if (!ignore_status_change && OS_process_any_status_change ())
+      n = SELECT_PROCESS_STATUS_CHANGE;
+    else if ((GET_INT_CODE) != 0)
+      n = SELECT_INTERRUPT;
+    else
+      {
+	UX_sigsuspend (&old);
+	if (OS_process_any_status_change ())
+	  n = SELECT_PROCESS_STATUS_CHANGE;
+	else
+	  n = SELECT_INTERRUPT;
+      }
+    UX_sigprocmask (SIG_SETMASK, &old, NULL);
+  }
+#else /* not HAVE_SIGSUSPEND */
+  INTERRUPTABLE_EXTENT
+    (n, (((!ignore_status_change && (OS_process_any_status_change ()))
+	  || ((GET_INT_CODE) != 0))
+	 ? ((errno = EINTR), (-1))
+	 : ((UX_pause ()), (0))));
+  if (OS_process_any_status_change())
+    n = SELECT_PROCESS_STATUS_CHANGE;
+  else
+    n = SELECT_INTERRUPT;
 #endif
+  return (n);
 }

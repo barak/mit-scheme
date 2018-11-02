@@ -134,13 +134,13 @@ uniformly by specifying a handler for the generalization.
 @end table
 
 @menu
-* Condition Signalling::        
-* Error Messages::              
-* Condition Handling::          
-* Restarts::                    
-* Condition Instances::         
-* Condition Types::             
-* Taxonomy::                    
+* Condition Signalling::
+* Error Messages::
+* Condition Handling::
+* Restarts::
+* Condition Instances::
+* Condition Types::
+* Taxonomy::
 @end menu
 
 @node Condition Signalling, Error Messages, Error System, Error System
@@ -439,7 +439,6 @@ signalled it is best to actually put a breakpoint on entry to
 @deffn procedure standard-error-handler condition
 @findex error
 @findex ignore-error
-@vindex standard-error-hook
 @cindex REP loop
 Called internally by @code{error} after it calls
 @code{signal-condition}.  Normally creates a new @sc{repl} with
@@ -449,14 +448,13 @@ order to simulate the effect of calling @code{error}, code may call
 @code{standard-error-handler} if @code{signal-condition} returns.
 @end deffn
 
-@defvr variable standard-error-hook
+@defvr parameter standard-error-hook
 @findex standard-error-handler
-@cindex fluid binding
 @cindex dynamic binding
 @cindex REP loop
-This variable controls the behavior of the procedure
+This parameter controls the behavior of the procedure
 @code{standard-error-handler}, and hence @code{error}.  It is intended
-to be bound with @code{fluid-let} and is normally @code{#f}.  It may be
+to be bound with @code{parameterize} and is normally @code{#f}.  It may be
 changed to a procedure of one argument and will then be invoked (with
 @code{standard-error-hook} rebound to @code{#f}) by
 @code{standard-error-handler} just prior to starting the error
@@ -464,7 +462,6 @@ changed to a procedure of one argument and will then be invoked (with
 @end defvr
 
 @deffn procedure standard-warning-handler condition
-@vindex standard-warning-hook
 @findex signal-condition
 @findex notification-output-port
 @findex write-condition-report
@@ -484,13 +481,12 @@ In order to simulate the effect of calling @code{warn}, code may call
 however.  For that purpose an explicit restart must be provided.)
 @end deffn
 
-@defvr variable standard-warning-hook
+@defvr parameter standard-warning-hook
 @findex standard-warning-handler
-@cindex fluid binding
 @cindex dynamic binding
-This variable controls the behavior of the procedure
+This parameter controls the behavior of the procedure
 @code{standard-warning-handler}, and hence @code{warn}.  It is intended
-to be bound with @code{fluid-let} and is normally @code{#f}.  It may be
+to be bound with @code{parameterize} and is normally @code{#f}.  It may be
 changed to a procedure of one argument and will then be invoked (with
 @code{standard-warning-hook} rebound to @code{#f}) by
 @code{standard-warning-handler} in lieu of writing the warning message.
@@ -591,10 +587,10 @@ equivalent to having specified the symbol @code{bound-restarts}.
 @end itemize
 
 @menu
-* Establishing Restart Code::   
-* Invoking Standard Restart Code::  
-* Finding and Invoking General Restart Code::  
-* The Named Restart Abstraction::  
+* Establishing Restart Code::
+* Invoking Standard Restart Code::
+* Finding and Invoking General Restart Code::
+* The Named Restart Abstraction::
 @end menu
 
 @node Establishing Restart Code, Invoking Standard Restart Code, Restarts, Restarts
@@ -921,9 +917,9 @@ to provide a mechanism for continuing the computation; that mechanism is
 provided by restarts.
 
 @menu
-* Generating Operations on Conditions::  
-* Condition State::             
-* Simple Condition Instance Operations::  
+* Generating Operations on Conditions::
+* Condition State::
+* Simple Condition Instance Operations::
 @end menu
 
 @node Generating Operations on Conditions, Condition State, Condition Instances, Condition Instances
@@ -1466,10 +1462,12 @@ and would generate a message like this:
 @end example
 @end deffn
 
-@deffn procedure error:file-operation-error filename verb noun reason operator operands
+@deffn procedure error:file-operation index verb noun reason operator operands
 This procedure signals a condition of type
-@code{condition-type:file-operation-error}.  The fields of the condition
-are filled in from the corresponding arguments to the procedure.
+@code{condition-type:file-operation-error}.  The fields of the
+condition are filled in from the corresponding arguments to the
+procedure, except that the filename is taken as the @var{index}th
+element of @var{operands}.
 @end deffn
 
 @deffn {condition type} condition-type:derived-file-error filename condition

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,7 +38,7 @@ USA.
 
 (define-method create-file-folder-file (url (type <umail-folder-type>))
   type
-  (call-with-binary-output-file (pathname-url-pathname url)
+  (call-with-output-file (pathname-url-pathname url)
     (lambda (port)
       port
       unspecific)))
@@ -108,9 +108,9 @@ USA.
 			  (list->vector (reverse! messages)))))))))))))
 
 (define (read-umail-message folder from-line port delimiter?)
-  (let ((h-start (xstring-port/position port)))
+  (let ((h-start (string-port/position port)))
     (skip-past-blank-line port)
-    (let ((b-start (xstring-port/position port)))
+    (let ((b-start (string-port/position port)))
       (let ((finish
 	     (lambda (b-end line)
 	       (values
@@ -123,9 +123,9 @@ USA.
 	(let loop ()
 	  (let ((line (read-line port)))
 	    (cond ((eof-object? line)
-		   (finish (xstring-port/position port) #f))
+		   (finish (string-port/position port) #f))
 		  ((delimiter? line)
-		   (finish (- (xstring-port/position port)
+		   (finish (- (string-port/position port)
 			      (+ (string-length line) 1))
 			   line))
 		  (else
@@ -144,8 +144,10 @@ USA.
 ;;;; Write unix mail file
 
 (define-method write-file-folder ((folder <umail-folder>) pathname)
-  (call-with-binary-output-file pathname
+  (call-with-output-file pathname
     (lambda (port)
+      (port/set-coding port 'iso-8859-1)
+      (port/set-line-ending port 'newline)
       (for-each-vector-element (file-folder-messages folder)
 	(lambda (message)
 	  (write-umail-message message #t port)))
@@ -153,8 +155,10 @@ USA.
 
 (define-method append-message-to-file (message url (type <umail-folder-type>))
   type
-  (call-with-binary-append-file (pathname-url-pathname url)
+  (call-with-append-file (pathname-url-pathname url)
     (lambda (port)
+      (port/set-coding port 'iso-8859-1)
+      (port/set-line-ending port 'newline)
       (write-umail-message message #t port))))
 
 (define (write-umail-message message output-flags? port)

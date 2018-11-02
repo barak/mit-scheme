@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -63,7 +63,7 @@ USA.
 			   (status-response 500 (condition->html response))
 			   response))))
 	       port)
-	      (flush-output port))
+	      (flush-output-port port))
 	    (lambda ()
 	      (transcript-off port)
 	      (close-port port))))))
@@ -78,7 +78,7 @@ USA.
 			      (list (car p) (cdr p)))
 			    (http-message-headers message)))))
   (for-each (lambda (header)
-	      (write-string (symbol-name (car header)) port)
+	      (write-string (symbol->string (car header)) port)
 	      (newline port)
 	      (write-string (cdr header) port)
 	      (newline port))
@@ -214,7 +214,7 @@ USA.
 	  (let ((end (string-length entity)))
 	    (let loop ((start 0))
 	      (if (fix:< start end)
-		  (let ((n-read (read-substring! entity start end port)))
+		  (let ((n-read (read-string! entity port start end)))
 		    (cond ((not n-read)
 			   (loop start))
 			  ((> n-read 0)
@@ -323,7 +323,7 @@ USA.
 			  (if (default-object? value)
 			      ""
 			      (string-append "; "
-					     (symbol-name name)
+					     (symbol->string name)
 					     "="
 					     (if map-value
 						 (map-value value)
@@ -331,7 +331,7 @@ USA.
 		     (attr
 		      (lambda (name map-value)
 			(%attr name name map-value))))
-		(string-append (symbol-name name) "=" value
+		(string-append (symbol->string name) "=" value
 			       (%attr 'max-age 'expires max-age->expires)
 			       (attr 'domain #f)
 			       (attr 'path #f)
@@ -384,26 +384,35 @@ USA.
   (set-status-header response code)
   (set-content-type-header response 'text/html)
   (set-entity response
-	      (call-with-output-octets
-	       (lambda (port)
-		 (write-xml
-		  (let ((message (status-message code)))
-		    (html:html #f
-			       "\n"
-			       (html:head #f
-					  "\n"
-					  (html:title #f code " " message)
-					  "\n")
-			       "\n"
-			       (html:body #f
-					  "\n"
-					  (html:h1 #f message)
-					  "\n"
-					  extra
-					  "\n")
-			       "\n"))
-		  port)
-		 (newline port)))))
+	      (bytevector->string
+	       (call-with-output-bytevector
+		(lambda (port)
+		  (write-xml
+		   (let ((message (status-message code)))
+		     (html:html #f
+				"\n"
+				(html:head #f
+					   "\n"
+					   (html:title #f code " " message)
+					   "\n")
+				"\n"
+				(html:body #f
+					   "\n"
+					   (html:h1 #f message)
+					   "\n"
+					   extra
+					   "\n")
+				"\n"))
+		   port)
+		  (newline port))))))
+
+(define (bytevector->string bv)
+  (let* ((n (bytevector-length bv))
+	 (builder (string-builder)))
+    (do ((i 0 (fix:+ i 1)))
+	((not (fix:< i n)))
+      (builder (integer->char (bytevector-u8-ref bv i))))
+    (builder)))
 
 (define (set-status-header message code)
   (set-header message
@@ -415,7 +424,7 @@ USA.
 		  (write-string (status-message code) port)))))
 
 (define (set-content-type-header message type)
-  (set-header message 'CONTENT-TYPE (symbol-name type)))
+  (set-header message 'CONTENT-TYPE (symbol->string type)))
 
 (define (status-message code)
   (let loop ((low 0) (high (vector-length known-status-codes)))
@@ -601,8 +610,8 @@ USA.
 	(reverse! strings))))
 
 (define (http-response-header keyword datum #!optional overwrite?)
-  (guarantee-symbol keyword 'HTTP-RESPONSE-HEADER)
-  (guarantee-string datum 'HTTP-RESPONSE-HEADER)
+  (guarantee symbol? keyword 'HTTP-RESPONSE-HEADER)
+  (guarantee string? datum 'HTTP-RESPONSE-HEADER)
   (if (memq keyword '(STATUS CONTENT-LENGTH))
       (error "Illegal header keyword:" keyword))
   (if (or (eq? keyword 'CONTENT-TYPE)
@@ -617,7 +626,7 @@ USA.
   (maybe-set-entity *current-request* *current-response* entity))
 
 (define (http-status-response code . extra)
-  (guarantee-exact-nonnegative-integer code 'HTTP-STATUS-RESPONSE)
+  (guarantee exact-nonnegative-integer? code 'HTTP-STATUS-RESPONSE)
   (status-response! *current-response* code extra))
 
 ;;;; MIME stuff
@@ -625,7 +634,7 @@ USA.
 (define (file-content-type pathname)
   (or (let ((extension (pathname-type pathname)))
 	(and (string? extension)
-	     (hash-table/get mime-extensions extension #f)))
+	     (hash-table-ref/default mime-extensions extension #f)))
       (let ((t (pathname-mime-type pathname)))
 	(and t
 	     (symbol (mime-type/top-level t)
@@ -633,17 +642,17 @@ USA.
 		     (mime-type/subtype t))))))
 
 (define (get-mime-handler type)
-  (hash-table/get mime-handlers type #f))
+  (hash-table-ref/default mime-handlers type #f))
 
 (define (define-mime-handler type handle-request)
   (cond ((symbol? type)
-	 (hash-table/put! mime-handlers type handle-request))
+	 (hash-table-set! mime-handlers type handle-request))
 	((and (pair? type)
 	      (symbol? (car type))
-	      (for-all? (cdr type) string?))
-	 (hash-table/put! mime-handlers (car type) handle-request)
+	      (every string? (cdr type)))
+	 (hash-table-set! mime-handlers (car type) handle-request)
 	 (for-each (lambda (extension)
-		     (hash-table/put! mime-extensions extension (car type)))
+		     (hash-table-set! mime-extensions extension (car type)))
 		   (cdr type)))
 	(else
 	 (error:wrong-type-argument type "MIME type" 'DEFINE-MIME-HANDLER))))
@@ -697,11 +706,12 @@ USA.
 
 (define (decode-basic-auth-header string start end)
   (let ((auth
-	 (call-with-output-string
-	   (lambda (port)
-	     (let ((ctx (decode-base64:initialize port #t)))
-	       (decode-base64:update ctx string start end)
-	       (decode-base64:finalize ctx))))))
+	 (utf8->string
+	  (call-with-output-bytevector
+	    (lambda (port)
+	      (let ((ctx (decode-base64:initialize port #t)))
+		(decode-base64:update ctx string start end)
+		(decode-base64:finalize ctx)))))))
     (let ((colon (string-find-next-char auth #\:)))
       (if (not colon)
 	  (error "Malformed authorization string."))
@@ -758,11 +768,11 @@ USA.
     'handler handler))
 
 (define (define-url-bindings url . klist)
-  (guarantee-keyword-list klist 'define-url-bindings)
+  (guarantee keyword-list? klist 'define-url-bindings)
   (let* ((binding
-	  (find-matching-item url-bindings
-	    (lambda (binding)
-	      (string=? (car binding) url)))))
+	  (find (lambda (binding)
+		  (string=? (car binding) url))
+		url-bindings)))
     (if binding
 	(do ((klist klist (cddr klist)))
 	    ((not (pair? klist)))
@@ -794,7 +804,7 @@ USA.
 	(cond ((not n)
 	       (loop))
 	      ((> n 0)
-	       (write-substring buffer 0 n output)
+	       (write-string buffer output 0 n)
 	       (loop)))))))
 
 (define (for-each-file-line pathname procedure)
@@ -836,6 +846,6 @@ USA.
 			  (http-request-user-name)
 			  (http-message-post-parameters request))
 		    request-log-port)
-	(flush-output request-log-port))))
+	(flush-output-port request-log-port))))
 
 (define request-log-port #f)

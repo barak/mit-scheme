@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -73,8 +73,7 @@ USA.
   (install <method> 'METHOD)
   (install <chained-method> 'CHAINED-METHOD)
   (install <computed-method> 'COMPUTED-METHOD)
-  (install <computed-emp> 'COMPUTED-EMP)
-  (install <%record> '%RECORD))
+  (install <computed-emp> 'COMPUTED-EMP))
 
 (add-method write-instance
   (make-method (list <record>)
@@ -82,43 +81,19 @@ USA.
       (write-instance-helper (record-type-name (record-type-descriptor record))
 			     record port #f))))
 
-(add-method write-instance
-  (make-method (list <dispatch-tag>)
-    (lambda (tag port)
-      (write-instance-helper 'DISPATCH-TAG tag port
-	(lambda ()
-	  (write-char #\space port)
-	  (write (dispatch-tag-contents tag) port))))))
-
 (define (write-instance-helper name object port thunk)
   (write-string "#[" port)
   (display name port)
   (if object
       (begin
 	(write-char #\space port)
-	(write (hash object) port)))
+	(write (hash-object object) port)))
   (if thunk
       (thunk))
   (write-char #\] port))
 
-(add-generic-procedure-generator unparse-record
-  (lambda (generic tags)
-    generic
-    (and (let ((class (dispatch-tag-contents (cadr tags))))
-	   (and (class? class)
-		(subclass? class <instance>)))
-	 (lambda (state instance)
-	   (with-current-unparser-state state
-	     (lambda (port)
-	       (write-instance instance port)))))))
-
-(add-generic-procedure-generator pp-description
-  (lambda (generic tags)
-    generic
-    (and (let ((class (dispatch-tag-contents (car tags))))
-	   (and (class? class)
-		(subclass? class <instance>)))
-	 instance-description)))
+(define-print-method instance?
+  write-instance)
 
 (define (instance-description instance)
   (map (lambda (slot)
@@ -128,3 +103,6 @@ USA.
 		     (list (slot-value instance name))
 		     '()))))
        (class-slots (instance-class instance))))
+
+(define-pp-describer instance?
+  instance-description)

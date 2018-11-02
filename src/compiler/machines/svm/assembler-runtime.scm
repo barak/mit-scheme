@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -45,9 +45,9 @@ USA.
 (define rt-coding-types '())
 
 (define (make-rt-coding-type name defns)
-  (if (find-matching-item rt-coding-types
-	(lambda (rt-coding-type)
-	  (eq? (rt-coding-type-name rt-coding-type) name)))
+  (if (find (lambda (rt-coding-type)
+	      (eq? (rt-coding-type-name rt-coding-type) name))
+	    rt-coding-types)
       (error "Coding type already exists" name)
       (set! rt-coding-types
 	    (cons (%make-rt-coding-type name defns) rt-coding-types))))
@@ -115,27 +115,29 @@ USA.
   (make-strong-eq-hash-table))
 
 (define (define-symbol name type value symbol-table)
-  (hash-table/get symbol-table name (make-symbol-binding name type value)))
+  (hash-table-ref/default symbol-table
+			  name
+			  (make-symbol-binding name type value)))
 
 (define (lookup-symbol name symbol-table)
-  (hash-table/get symbol-table name #f))
+  (hash-table-ref/default symbol-table name #f))
 
 ;;;; Top level
 
 ;;(define-import instructions (compiler lap-syntaxer))
 
 (define (add-instruction! keyword assemblers)
-  (hash-table/put! instructions keyword assemblers)
+  (hash-table-set! instructions keyword assemblers)
   keyword)
 
 (define (add-instruction-assembler! keyword assembler)
-  (let ((assemblers (hash-table/get instructions keyword #f)))
+  (let ((assemblers (hash-table-ref/default instructions keyword #f)))
     (if assemblers
-	(hash-table/put! instructions keyword (cons assembler assemblers))
-	(hash-table/put! instructions keyword (list assembler)))))
+	(hash-table-set! instructions keyword (cons assembler assemblers))
+	(hash-table-set! instructions keyword (list assembler)))))
 
 (define (clear-instructions!)
-  (hash-table/clear! instructions))
+  (hash-table-clear! instructions))
 
 (define (init-assembler-instructions!)
   ;; Initialize the assembler's instruction database using the
@@ -211,14 +213,14 @@ USA.
 
 (define (fixed-instruction-width lap)
   (if (and (pair? lap) (pair? (car lap)) (null? (cdr lap)))
-      (reduce-left + 0 (map bit-string-length
-			    (lap:syntax-instruction (car lap))))
+      (fold-left + 0 (map bit-string-length
+			  (lap:syntax-instruction (car lap))))
       (error "FIXED-INSTRUCTION-WIDTH: Multiple instructions in LAP" lap)))
 
 (define (assemble-fixed-instruction width lap)
   (if (and (pair? lap) (pair? (car lap)) (null? (cdr lap)))
       (let* ((bits (lap:syntax-instruction (car lap)))
-	     (len (reduce-left + 0 (map bit-string-length bits))))
+	     (len (fold-left + 0 (map bit-string-length bits))))
 	(if (not (= len width))
 	    (error "Mis-sized fixed instruction" lap))
 	bits)
@@ -387,18 +389,18 @@ USA.
   (let ((type (rt-coding-type name))
 	(code (read-byte)))
     (let ((defn
-	    (find-matching-item (rt-coding-type-defns type)
-	     (lambda (defn)
-	       (eqv? (rt-defn-code defn) code)))))
+	    (find (lambda (defn)
+		    (eqv? (rt-defn-code defn) code))
+		  (rt-coding-type-defns type))))
       (if defn
 	  (cons (rt-defn-name defn)
 		((rt-defn-decoder defn) read-byte))
 	  (coding-error code type)))))
 
 (define (rt-coding-type name)
-  (or (find-matching-item rt-coding-types
-	(lambda (rt-coding-type)
-	  (eq? (rt-coding-type-name rt-coding-type) name)))
+  (or (find (lambda (rt-coding-type)
+	      (eq? (rt-coding-type-name rt-coding-type) name))
+	    rt-coding-types)
       (error:bad-range-argument name 'RT-CODING-TYPE)))
 
 (define condition-type:coding-error
@@ -478,9 +480,9 @@ USA.
 				   (symbol? (caddr pattern))
 				   (null? (cdddr pattern))))
 		     (lose))
-		 (if (there-exists? pvars
-		       (lambda (pv)
-			 (eq? (pvar-name pv) (pvar-name pattern))))
+		 (if (any (lambda (pv)
+			    (eq? (pvar-name pv) (pvar-name pattern)))
+			  pvars)
 		     ;; Don't add duplicate pvar.
 		     pvars
 		     (cons pattern pvars)))
@@ -595,16 +597,16 @@ USA.
   (decoder pvt-decoder))
 
 (define (lookup-pvar-type keyword)
-  (hash-table/get pvar-type-table keyword #f))
+  (hash-table-ref/default pvar-type-table keyword #f))
 
 (define (pvar-types)
-  (hash-table/datum-list pvar-type-table))
+  (hash-table-values pvar-type-table))
 
 (define pvar-type-table
   (make-strong-eq-hash-table))
 
 (define (define-pvt name abbreviation sb-type predicate encoder decoder)
-  (hash-table/put! pvar-type-table
+  (hash-table-set! pvar-type-table
 		   name
 		   (make-pvt name abbreviation sb-type
 			     predicate encoder decoder))
@@ -781,7 +783,7 @@ USA.
 		(lambda (x e)
 		  (let ((n (inexact->exact x)))
 		    (if (not (exact-nonnegative-integer? n))
-			(error "Flonum decode failed:" x))
+			(error "Flonum encode failed:" x))
 		    (values n e)))))
 	   (lambda (x)
 	     (if (and (> x 1)

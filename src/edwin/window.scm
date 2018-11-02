@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -334,7 +334,12 @@ USA.
 ;;;; Inferiors
 
 (define %inferior-tag
-  "inferior")
+  '|#[(edwin window) inferior]|)
+
+(define (%inferior? object)
+  (and (vector? object)
+       (fix:= 5 (vector-length object))
+       (eq? %inferior-tag (vector-ref object 0))))
 
 (define-integrable (%make-inferior window x-start y-start redisplay-flags)
   (vector %inferior-tag window x-start y-start redisplay-flags))
@@ -363,17 +368,18 @@ USA.
 (define-integrable (set-inferior-redisplay-flags! inferior redisplay-flags)
   (vector-set! inferior 4 redisplay-flags))
 
-(unparser/set-tagged-vector-method! %inferior-tag
-  (unparser/standard-method 'INFERIOR
-    (lambda (state inferior)
-      (unparse-object state (inferior-window inferior))
-      (unparse-string state " x,y=(")
-      (unparse-object state (inferior-x-start inferior))
-      (unparse-string state ",")
-      (unparse-object state (inferior-y-start inferior))
-      (unparse-string state ")")
+(define-print-method %inferior?
+  (bracketed-print-method 'inferior
+    (lambda (inferior port)
+      (write-string " " port)
+      (write (inferior-window inferior) port)
+      (write-string " x,y=(" port)
+      (write (inferior-x-start inferior) port)
+      (write-string "," port)
+      (write (inferior-y-start inferior) port)
+      (write-string ")" port)
       (if (inferior-needs-redisplay? inferior)
-	  (unparse-string state " needs-redisplay")))))
+	  (write-string " needs-redisplay" port)))))
 
 (define (inferior-copy inferior)
   (%make-inferior (inferior-window inferior)

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -48,7 +48,7 @@ USA.
 
 (define (debug-internal object)
   (let ((dstate (make-initial-dstate object)))
-    (with-simple-restart 'CONTINUE "Return from DEBUG."
+    (with-simple-restart 'continue "Return from DEBUG."
       (lambda ()
 	(letter-commands
 	 command-set
@@ -105,9 +105,9 @@ USA.
 	   (let ((dstate (allocate-dstate)))
 	     (set-dstate/history-state!
 	      dstate
-	      (cond (debugger:use-history? 'ALWAYS)
-		    (debugger:auto-toggle? 'ENABLED)
-		    (else 'DISABLED)))
+	      (cond (debugger:use-history? 'always)
+		    (debugger:auto-toggle? 'enabled)
+		    (else 'disabled)))
 	     (set-dstate/condition! dstate condition)
 	     (set-current-subproblem!
 	      dstate
@@ -132,7 +132,7 @@ USA.
 	  (else
 	   (error:wrong-type-argument object
 				      "condition or continuation"
-				      'DEBUG)))))
+				      'debug)))))
 
 (define (count-subproblems dstate)
   (do ((i 0 (1+ i))
@@ -162,10 +162,12 @@ USA.
   (stack-frame/reductions (dstate/subproblem dstate)))
 
 (define (initialize-package!)
+  (set! *dstate* (make-unsettable-parameter 'unbound))
+  (set! *port* (make-unsettable-parameter 'unbound))
   (set!
    command-set
    (make-command-set
-    'DEBUG-COMMANDS
+    'debug-commands
     `((#\? ,standard-help-command
 	   "help, list command letters")
       (#\A ,command/show-all-frames
@@ -227,13 +229,15 @@ USA.
 (define-syntax define-command
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '((IDENTIFIER IDENTIFIER IDENTIFIER) + EXPRESSION)
+     (if (syntax-match? '((identifier identifier identifier) + expression)
 			(cdr form))
 	 (let ((dstate (cadr (cadr form)))
 	       (port (caddr (cadr form))))
-	   `(DEFINE (,(car (cadr form)) #!OPTIONAL ,dstate ,port)
-	      (LET ((,dstate (IF (DEFAULT-OBJECT? ,dstate) *DSTATE* ,dstate))
-		    (,port (IF (DEFAULT-OBJECT? ,port) *PORT* ,port)))
+	   `(define (,(car (cadr form)) #!optional ,dstate ,port)
+	      (let ((,dstate (if (default-object? ,dstate)
+				 (*dstate*)
+				 ,dstate))
+		    (,port (if (default-object? ,port) (*port*) ,port)))
 		,@(map (let ((free (list dstate port)))
 			 (lambda (expression)
 			   (make-syntactic-closure environment free
@@ -356,8 +360,7 @@ USA.
 	   (newline port)
 	   (write (stack-frame/return-address subproblem) port)))))
 
-(define subexpression-marker
-  ((ucode-primitive string->symbol) "###"))
+(define-integrable subexpression-marker '<!>)
 
 (define (print-subproblem-environment dstate port)
   (let ((environment-list (dstate/environment-list dstate)))
@@ -410,7 +413,7 @@ USA.
       (begin
 	(newline port)
 	(let ((arguments (environment-arguments environment)))
-	  (if (eq? arguments 'UNKNOWN)
+	  (if (eq? arguments 'unknown)
 	      (show-environment-bindings environment true port)
 	      (begin
 		(write-string " applied to: " port)
@@ -470,7 +473,7 @@ USA.
 	  (output-to-string
 	   50
 	   (lambda ()
-	     (fluid-let ((*unparse-primitives-by-name?* true))
+	     (parameterize ((param:print-primitives-by-name? #t))
 	       (write (unsyntax expression))))))
 	 ((debugging-info/noise? expression)
 	  (output-to-string
@@ -766,8 +769,7 @@ USA.
 		    (if invalid-expression?
 			""
 			" ($ to retry)"))
-		   port
-		   environment)))
+		   port)))
 	     (if (and (not invalid-expression?)
 		      (eq? expression '$))
 		 (debug/scode-eval (dstate/expression dstate)
@@ -786,7 +788,7 @@ USA.
 	      (if (not thread)
 		  ((stack-frame->continuation subproblem) value)
 		  (begin
-		    (restart-thread thread 'ASK
+		    (restart-thread thread 'ask
 		      (lambda ()
 			((stack-frame->continuation subproblem) value)))
 		    (continue-from-derived-thread-error
@@ -805,9 +807,9 @@ USA.
 (define *port*)
 
 (define (command/internal dstate port)
-  (fluid-let ((*dstate* dstate)
-	      (*port* port))
-    (debug/read-eval-print (->environment '(RUNTIME DEBUGGER))
+  (parameterize ((*dstate* dstate)
+		 (*port* port))
+    (debug/read-eval-print (->environment '(runtime debugger))
 			   "the debugger"
 			   "the debugger environment")))
 
@@ -819,7 +821,7 @@ USA.
       (for-each (lambda (element)
 		  (newline port)
 		  (debugger-pp element 0 port))
-		(named-structure/description (dstate/subproblem dstate))))))
+		(pp-description (dstate/subproblem dstate))))))
 
 (define-command (command/print-frame-elements dstate port)
   (debugger-presentation
@@ -835,29 +837,29 @@ USA.
 ;;;; Low-level Side-effects
 
 (define (maybe-start-using-history! dstate port)
-  (if (eq? 'ENABLED (dstate/history-state dstate))
+  (if (eq? 'enabled (dstate/history-state dstate))
       (begin
-	(set-dstate/history-state! dstate 'NOW)
+	(set-dstate/history-state! dstate 'now)
 	(if (not (zero? (dstate/number-of-reductions dstate)))
 	    (debugger-message
 	     port
 	     "Now using information from the execution history.")))))
 
 (define (maybe-stop-using-history! dstate port)
-  (if (eq? 'NOW (dstate/history-state dstate))
+  (if (eq? 'now (dstate/history-state dstate))
       (begin
-	(set-dstate/history-state! dstate 'ENABLED)
+	(set-dstate/history-state! dstate 'enabled)
 	(if (not (zero? (dstate/number-of-reductions dstate)))
 	    (debugger-message
 	     port
 	     "Now ignoring information from the execution history.")))))
 
 (define (dstate/using-history? dstate)
-  (or (eq? 'ALWAYS (dstate/history-state dstate))
-      (eq? 'NOW (dstate/history-state dstate))))
+  (or (eq? 'always (dstate/history-state dstate))
+      (eq? 'now (dstate/history-state dstate))))
 
 (define (dstate/auto-toggle? dstate)
-  (not (eq? 'DISABLED (dstate/history-state dstate))))
+  (not (eq? 'disabled (dstate/history-state dstate))))
 
 (define (set-current-subproblem! dstate stack-frame previous-frames)
   (set-dstate/subproblem! dstate stack-frame)
@@ -917,9 +919,9 @@ USA.
   (cadr reduction))
 
 (define (wrap-around-in-reductions? reductions)
-  (or (eq? 'WRAP-AROUND reductions)
+  (or (eq? 'wrap-around reductions)
       (and (pair? reductions)
-	   (eq? 'WRAP-AROUND (cdr (last-pair reductions))))))
+	   (eq? 'wrap-around (cdr (last-pair reductions))))))
 
 (define (invalid-expression? expression)
   (or (debugging-info/undefined-expression? expression)
@@ -947,12 +949,13 @@ using the read-eval-print environment instead.")
   (debugger-failure port "There is no current environment."))
 
 (define (reason+message reason message)
-  (string-capitalize (if reason (string-append reason "; " message) message)))
+  (string-titlecase (if reason (string-append reason "; " message) message)))
 
 (define (debugger-pp expression indentation port)
-  (fluid-let ((*unparser-list-depth-limit* debugger:list-depth-limit)
-	      (*unparser-list-breadth-limit* debugger:list-breadth-limit)
-	      (*unparser-string-length-limit* debugger:string-length-limit))
+  (parameterize ((param:printer-list-depth-limit debugger:list-depth-limit)
+		 (param:printer-list-breadth-limit debugger:list-breadth-limit)
+		 (param:printer-string-length-limit
+		  debugger:string-length-limit))
     (pretty-print expression port true indentation)))
 
 (define expression-indentation 4)

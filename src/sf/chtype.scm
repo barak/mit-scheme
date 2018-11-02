@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -61,42 +61,42 @@ USA.
    (enumeration/name->enumerand enumeration
 				(enumerand/name (object/enumerand object)))))
 
-(define-method/change-type 'ACCESS
+(define-method/change-type 'access
   (lambda (expression)
     (change-type/expression (access/environment expression))))
 
-(define-method/change-type 'ASSIGNMENT
+(define-method/change-type 'assignment
   (lambda (expression)
     (change-type/expression (assignment/value expression))))
 
-(define-method/change-type 'COMBINATION
+(define-method/change-type 'combination
   (lambda (expression)
     (change-type/expression (combination/operator expression))
     (change-type/expressions (combination/operands expression))))
 
-(define-method/change-type 'CONDITIONAL
+(define-method/change-type 'conditional
   (lambda (expression)
     (change-type/expression (conditional/predicate expression))
     (change-type/expression (conditional/consequent expression))
     (change-type/expression (conditional/alternative expression))))
 
-(define-method/change-type 'CONSTANT
+(define-method/change-type 'constant
   false-procedure)
 
-(define-method/change-type 'DECLARATION
+(define-method/change-type 'declaration
   (lambda (expression)
     (change-type/expression (declaration/expression expression))))
 
-(define-method/change-type 'DELAY
+(define-method/change-type 'delay
   (lambda (expression)
     (change-type/expression (delay/expression expression))))
 
-(define-method/change-type 'DISJUNCTION
+(define-method/change-type 'disjunction
   (lambda (expression)
     (change-type/expression (disjunction/predicate expression))
     (change-type/expression (disjunction/alternative expression))))
 
-(define-method/change-type 'OPEN-BLOCK
+(define-method/change-type 'open-block
   (lambda (expression)
     (change-type/expressions (open-block/values expression))
     (for-each (lambda (action)
@@ -104,20 +104,20 @@ USA.
 		    (change-type/expression action)))
 	      (open-block/actions expression))))
 
-(define-method/change-type 'PROCEDURE
+(define-method/change-type 'procedure
   (lambda (expression)
     (change-type/expression (procedure/body expression))))
 
-(define-method/change-type 'QUOTATION
+(define-method/change-type 'quotation
   (lambda (expression)
     (change-type/expression (quotation/expression expression))))
 
-(define-method/change-type 'REFERENCE
+(define-method/change-type 'reference
   false-procedure)
 
-(define-method/change-type 'SEQUENCE
+(define-method/change-type 'sequence
   (lambda (expression)
     (change-type/expressions (sequence/actions expression))))
 
-(define-method/change-type 'THE-ENVIRONMENT
+(define-method/change-type 'the-environment
   false-procedure)

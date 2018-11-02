@@ -1,0 +1,47 @@
+The PostgreSQL option.
+
+This plugin creates a (postgresql) package.  It is built in the GNU
+standard way (below).  It expects the pkg-config command to know about
+libpq.  On Ubuntu this means the pkg-config and libpq-dev packages
+must be installed before running the configure script.
+
+The GNU standard way:
+
+    ./configure ...
+    make all
+    make check
+    make install
+
+The last command will attempt to create a subdirectory in the first
+directory on Scheme's library path.  If that directory is not writable
+by you, super-user privileges may be required.
+
+You can put a writable directory at the front of your Scheme's library
+path by setting the MITSCHEME_LIBRARY_PATH environment variable and
+creating a short optiondb file.
+
+    mkdir ~/.mit-scheme-x86-64
+    echo "(further-load-options #t)" > ~/.mit-scheme-x86-64/optiondb.scm
+    export MITSCHEME_LIBRARY_PATH=\
+	~/.mit-scheme-x86-64:/usr/local/lib/mit-scheme-x86-64
+    make install
+
+To use:
+
+    (load-option 'postgresql)
+    (import-postgresql)
+
+Import-postgresql will modify the REPL's current environment by adding
+bindings linked to the plugin's exports.  They are not exported to the
+global environment because they would conflict with the deprecated
+exports from (runtime postgresql).
+
+To import into a CREF package set, add this to your .pkg file:
+
+    (global-definitions pgsql/)
+
+    (define-package (your package name)
+      (parent (your package parent))
+      (import (postgresql)
+              call-with-pgsql-conn
+              ...))

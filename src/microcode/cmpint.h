@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -330,7 +330,7 @@ extern insn_t * trampoline_entry_addr (SCHEME_OBJECT *, unsigned long);
 /* Given the address of a trampoline entry and the code for the
    trampoline to be invoked, stores the appropriate instruction
    sequence in the trampoline.  */
-extern bool store_trampoline_insns (insn_t *, byte_t);
+extern bool store_trampoline_insns (insn_t *, uint8_t);
 
 /* Give the address of a trampoline block, returns a pointer to the
    start of the trampoline's storage area.  */
@@ -450,7 +450,6 @@ extern void declare_builtin (unsigned long, const char *);
 extern utility_proc_t comutil_return_to_interpreter;
 extern utility_proc_t comutil_operator_apply_trap;
 extern utility_proc_t comutil_operator_arity_trap;
-extern utility_proc_t comutil_operator_entity_trap;
 extern utility_proc_t comutil_operator_interpreted_trap;
 extern utility_proc_t comutil_operator_lexpr_trap;
 extern utility_proc_t comutil_operator_primitive_trap;

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -63,7 +63,7 @@ USA.
       (do ((index start (fix:+ index 1))
 	   (column column
 		   (fix:+ column
-			  (let ((char (xstring-ref string index)))
+			  (let ((char (string-ref string index)))
 			    (if (char=? char #\tab)
 				(fix:- tab-width
 				       (fix:remainder column tab-width))
@@ -77,7 +77,7 @@ USA.
 			  (string-length
 			   (vector-ref char-image-strings
 				       (char->integer
-					(xstring-ref string index)))))))
+					(string-ref string index)))))))
 	  ((fix:= index end) column))))
 
 (define default-char-image-strings/original-emacs
@@ -169,7 +169,7 @@ USA.
       (let loop ((index start) (column column))
 	(if (fix:= index end)
 	    (cons index column)
-	    (let ((char (xstring-ref string index)))
+	    (let ((char (string-ref string index)))
 	      (if (char=? char #\newline)
 		  (cons index column)
 		  (loop (fix:+ index 1)
@@ -183,7 +183,7 @@ USA.
       (let loop ((index start) (column column))
 	(if (fix:= index end)
 	    (cons index column)
-	    (let ((char (xstring-ref string index)))
+	    (let ((char (string-ref string index)))
 	      (if (char=? char #\newline)
 		  (cons index column)
 		  (loop (fix:+ index 1)
@@ -245,11 +245,11 @@ USA.
       (let loop ((index start) (c start-column))
 	(if (or (fix:= c column)
 		(fix:= index end)
-		(char=? #\newline (xstring-ref string index)))
+		(char=? #\newline (string-ref string index)))
 	    (vector index c 0)
 	    (let ((c
 		   (fix:+ c
-			  (let ((char (xstring-ref string index)))
+			  (let ((char (string-ref string index)))
 			    (if (char=? char #\tab)
 				(fix:- tab-width (fix:remainder c tab-width))
 				(string-length
@@ -261,14 +261,14 @@ USA.
       (let loop ((index start) (c start-column))
 	(if (or (fix:= c column)
 		(fix:= index end)
-		(char=? #\newline (xstring-ref string index)))
+		(char=? #\newline (string-ref string index)))
 	    (vector index c 0)
 	    (let ((c
 		   (fix:+ c
 			  (string-length
 			   (vector-ref char-image-strings
 				       (char->integer
-					(xstring-ref string index)))))))
+					(string-ref string index)))))))
 	      (if (fix:> c column)
 		  (vector index column (fix:- c column))
 		  (loop (fix:+ index 1) c)))))))
@@ -284,7 +284,7 @@ USA.
 	  (vector-set! results 0 string-index)
 	  (vector-set! results 1 image-index)
 	  (vector-set! results 2 0))
-	(let ((char (xstring-ref string string-index))
+	(let ((char (string-ref string string-index))
 	      (partial
 	       (lambda (partial)
 		 (vector-set! results 0 string-index)

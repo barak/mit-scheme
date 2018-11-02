@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -88,10 +88,10 @@ USA.
 		    (*xdoc-environment* environment)
 		    (*xdoc-root*)
 		    (*xdoc-late?*)
-		    (*xdoc-element-properties* (make-weak-eq-hash-table))
+		    (*xdoc-element-properties* (make-key-weak-eq-hash-table))
 		    (*xdoc-id-map* (make-strong-eq-hash-table))
-		    (*xdoc-inputs* (make-weak-eq-hash-table))
-		    (*xdoc-outputs* (make-weak-eq-hash-table)))
+		    (*xdoc-inputs* (make-key-weak-eq-hash-table))
+		    (*xdoc-outputs* (make-key-weak-eq-hash-table)))
 	  (let ((document (read/expand-xml-file pathname environment)))
 	    (set! *xdoc-root* (xml-document-root document))
 	    (set! *xdoc-late?* (due-date-in-past?))
@@ -100,7 +100,7 @@ USA.
 		(begin
 		  (write-xml document *trace-expansion-port*)
 		  (fresh-line *trace-expansion-port*)
-		  (flush-output *trace-expansion-port*)))
+		  (flush-output-port *trace-expansion-port*)))
 	    (procedure document)))))))
 
 (define (trace-expansion filename)
@@ -123,10 +123,10 @@ USA.
   (let ((strip!
 	 (lambda (object accessor modifier)
 	   (modifier object
-		     (delete-matching-items! (accessor object) xml-comment?))
+		     (remove! xml-comment? (accessor object)))
 	   (modifier object
-		     (delete-matching-items! (accessor object)
-		       xml-whitespace-string?)))))
+		     (remove! xml-whitespace-string?
+			      (accessor object))))))
     (strip! document xml-document-misc-1 set-xml-document-misc-1!)
     (set-xml-document-dtd! document #f)
     (strip! document xml-document-misc-2 set-xml-document-misc-2!)
@@ -215,7 +215,7 @@ USA.
 (define (save-container-props elt containers prefix count offset)
   (let ((number (+ count offset)))
     (let ((db-id (string-append prefix (number->string number))))
-      (hash-table/put! *xdoc-element-properties* elt
+      (hash-table-set! *xdoc-element-properties* elt
 		       (vector (string->symbol db-id)
 			       containers
 			       prefix
@@ -225,20 +225,20 @@ USA.
       (string-append db-id "."))))
 
 (define (save-element-props elt containers db-id)
-  (hash-table/put! *xdoc-element-properties* elt (vector db-id containers))
+  (hash-table-set! *xdoc-element-properties* elt (vector db-id containers))
   (save-xdoc-id elt)
   (cond ((xdoc-input? elt)
-	 (hash-table/put! *xdoc-inputs* elt #f))
+	 (hash-table-set! *xdoc-inputs* elt #f))
 	((xdoc-output? elt)
-	 (hash-table/put! *xdoc-outputs* elt #f))))
+	 (hash-table-set! *xdoc-outputs* elt #f))))
 
 (define (save-xdoc-id elt)
   (let ((id (id-attribute 'id elt #f)))
     (if id
 	(begin
-	  (if (hash-table/get *xdoc-id-map* id #f)
+	  (if (hash-table-ref/default *xdoc-id-map* id #f)
 	      (error "ID attribute not unique:" id))
-	  (hash-table/put! *xdoc-id-map* id elt)))))
+	  (hash-table-set! *xdoc-id-map* id elt)))))
 
 (define (xdoc-db-id elt)
   (vector-ref (%xdoc-element-properties elt) 0))
@@ -254,7 +254,7 @@ USA.
 	    (vector-ref v 4))))
 
 (define (%xdoc-element-properties elt)
-  (let ((v (hash-table/get *xdoc-element-properties* elt #f)))
+  (let ((v (hash-table-ref/default *xdoc-element-properties* elt #f)))
     (if (not v)
 	(error:wrong-type-argument elt "XDOC element"
 				   'xdoc-element-properties))
@@ -267,15 +267,15 @@ USA.
     (car containers)))
 
 (define (named-element id)
-  (or (hash-table/get *xdoc-id-map* id #f)
+  (or (hash-table-ref/default *xdoc-id-map* id #f)
       (error:bad-range-argument id 'named-element)))
 
 ;;;; I/O memoization
 
 (define (memoize-xdoc-inputs)
   (for-each (lambda (elt)
-	      (hash-table/put! *xdoc-inputs* elt (memoize-xdoc-input elt)))
-	    (hash-table/key-list *xdoc-inputs*)))
+	      (hash-table-set! *xdoc-inputs* elt (memoize-xdoc-input elt)))
+	    (hash-table-keys *xdoc-inputs*)))
 
 (define (memoize-xdoc-input elt)
   (let ((id (xdoc-db-id elt)))
@@ -292,9 +292,9 @@ USA.
 (define (memoize-xdoc-outputs)
   (for-each (lambda (elt)
 	      (receive (correctness submitter) (memoize-xdoc-output elt)
-		(hash-table/put! *xdoc-outputs* elt
+		(hash-table-set! *xdoc-outputs* elt
 				 (cons correctness submitter))))
-	    (hash-table/key-list *xdoc-outputs*)))
+	    (hash-table-keys *xdoc-outputs*)))
 
 (define (memoize-xdoc-output elt)
   (let ((id (xdoc-db-id elt)))
@@ -319,7 +319,7 @@ USA.
   (and (cdr (%current-input-status elt)) #t))
 
 (define (%current-input-status elt)
-  (or (hash-table/get *xdoc-inputs* elt #f)
+  (or (hash-table-ref/default *xdoc-inputs* elt #f)
       (error:wrong-type-argument elt
 				 "XDOC input element"
 				 'current-input-status)))
@@ -345,7 +345,7 @@ USA.
   (and (cdr (%current-output-status elt)) #t))
 
 (define (%current-output-status elt)
-  (or (hash-table/get *xdoc-outputs* elt #f)
+  (or (hash-table-ref/default *xdoc-outputs* elt #f)
       (error:wrong-type-argument elt
 				 "XDOC output element"
 				 'current-output-status)))
@@ -370,10 +370,10 @@ USA.
 	     "\n"))
 
 (define (define-html-generator name handler)
-  (hash-table/put! html-generators name handler))
+  (hash-table-set! html-generators name handler))
 
 (define (xdoc-html-generator item)
-  (hash-table/get html-generators (xdoc-element-name item) #f))
+  (hash-table-ref/default html-generators (xdoc-element-name item) #f))
 
 (define html-generators
   (make-strong-eq-hash-table))
@@ -497,10 +497,10 @@ USA.
 				      (http-request-url)))
 	       (generate-container-items
 		(if (confirming-submission? elt)
-		    (keep-matching-items (xml-element-contents elt)
-		      (lambda (item)
-			(or (xd:page-frame? item)
-			    (xd:when? item))))
+		    (filter (lambda (item)
+			      (or (xd:page-frame? item)
+				  (xd:when? item)))
+			    (xml-element-contents elt))
 		    (xml-element-contents elt))
 		(lambda (elt)
 		  (or (xd:head? elt)
@@ -707,7 +707,7 @@ USA.
 ;;;; Inputs
 
 (define (define-xdoc-input local canonicalizer generator)
-  (hash-table/put! xdoc-input-canonicalizers local canonicalizer)
+  (hash-table-set! xdoc-input-canonicalizers local canonicalizer)
   (define-html-generator local generator))
 
 (define (xdoc-active-input-status elt)
@@ -722,12 +722,12 @@ USA.
   (let ((bindings (http-request-post-parameter-bindings)))
     (let per-elt ((elt elt) (containers (xdoc-element-containers elt)))
       (let* ((id (xdoc-db-id elt))
-	     (suffix (string-append "-" (symbol-name id))))
-	(cond ((find-matching-item bindings
-		 (lambda (binding)
-		   (string-suffix? suffix (symbol-name (car binding)))))
+	     (suffix (string-append "-" (symbol->string id))))
+	(cond ((find (lambda (binding)
+		       (string-suffix? suffix (symbol->string (car binding))))
+		     bindings)
 	       => (lambda (binding)
-		    (values (let ((name (symbol-name (car binding))))
+		    (values (let ((name (symbol->string (car binding))))
 			      (substring->symbol
 			       name
 			       0
@@ -744,7 +744,7 @@ USA.
     (if (eq? local 'checkbox)
 	(if (and (not value) request) "false" value)
 	(and value
-	     ((or (hash-table/get xdoc-input-canonicalizers local #f)
+	     ((or (hash-table-ref/default xdoc-input-canonicalizers local #f)
 		  (error:wrong-type-argument elt
 					     "XDOC input element"
 					     'canonicalize-xdoc-input-value))
@@ -841,7 +841,7 @@ USA.
 ;;;; Outputs
 
 (define (define-unary-xdoc-output local checkable? expected-value procedure)
-  (hash-table/put! xdoc-output-definitions local
+  (hash-table-set! xdoc-output-definitions local
     (vector checkable?
 	    expected-value
 	    (lambda (elt)
@@ -858,7 +858,7 @@ USA.
       (find-child (nearest-container elt) #t xdoc-input?)))
 
 (define (define-n-ary-xdoc-output local checkable? expected-value procedure)
-  (hash-table/put! xdoc-output-definitions local
+  (hash-table-set! xdoc-output-definitions local
     (vector checkable?
 	    expected-value
 	    (lambda (elt)
@@ -867,14 +867,14 @@ USA.
 		(if (not (pair? sources))
 		    (error "Multiple-input test needs at least one input."))
 		(receive (vals submitter) (current-inputs-status sources)
-		  (values (if (there-exists? vals string-null?)
+		  (values (if (any string-null? vals)
 			      "unspecified"
 			      (procedure elt vals sources))
 			  submitter))))))
   (define-html-generator local (lambda (elt) elt '())))
 
 (define (define-0-ary-xdoc-output local checkable? expected-value procedure)
-  (hash-table/put! xdoc-output-definitions local
+  (hash-table-set! xdoc-output-definitions local
     (vector checkable?
 	    expected-value
 	    procedure))
@@ -898,7 +898,9 @@ USA.
     (values correctness submitter)))
 
 (define (%xdoc-output-definition elt)
-  (or (hash-table/get xdoc-output-definitions (xdoc-element-name elt) #f)
+  (or (hash-table-ref/default xdoc-output-definitions
+			      (xdoc-element-name elt)
+			      #f)
       (error:bad-range-argument elt 'xdoc-output-definition)))
 
 (define xdoc-output-definitions
@@ -954,7 +956,7 @@ USA.
     source
     (let ((expected (boolean-attribute 'expected elt #t)))
       (if (or (string=? value "true") (string=? value "false"))
-	  (if (string=? value (symbol-name expected))
+	  (if (string=? value (symbol->string expected))
 	      "correct"
 	      "incorrect")
 	  "malformed"))))
@@ -1041,7 +1043,7 @@ USA.
 (define-html-generator 'when
   (lambda (elt)
     (and ((let ((condition (symbol-attribute 'condition elt #t)))
-	    (or (hash-table/get when-conditions condition #f)
+	    (or (hash-table-ref/default when-conditions condition #f)
 		(error "Unknown <xd:when> condition:" condition)))
 	  (content-selector-source elt))
 	 (html:div (xdoc-attributes elt)
@@ -1050,7 +1052,7 @@ USA.
 			(xml-element-contents elt))))))
 
 (define (define-when-condition name procedure)
-  (hash-table/put! when-conditions name procedure))
+  (hash-table-set! when-conditions name procedure))
 
 (define when-conditions
   (make-strong-eq-hash-table))
@@ -1070,14 +1072,14 @@ USA.
 (define (descendant-outputs-submitted? elt)
   (let ((outputs (descendant-outputs elt)))
     (and (pair? outputs)
-	 (for-all? outputs output-submitted?))))
+	 (every output-submitted? outputs))))
 
 (define (confirming-submission? elt)
-  (there-exists? (descendant-outputs elt)
-    (lambda (elt)
-      (receive (request submitter) (xdoc-active-element-request elt)
-	submitter
-	(eq? request 'confirm)))))
+  (any (lambda (elt)
+	 (receive (request submitter) (xdoc-active-element-request elt)
+	   submitter
+	   (eq? request 'confirm)))
+       (descendant-outputs elt)))
 
 (define (descendant-outputs elt)
   (matching-descendants-or-self elt xdoc-output?))
@@ -1085,13 +1087,13 @@ USA.
 (define (xdoc-outputs-submitted? elt)
   (let ((outputs (descendant-outputs elt)))
     (and (pair? outputs)
-	 (for-all? outputs
-	   (lambda (elt)
-	     (let ((id (xdoc-db-id elt)))
-	       (receive (correctness submitter)
-		   (db-previously-saved-output id)
-		 correctness
-		 submitter)))))))
+	 (every (lambda (elt)
+		  (let ((id (xdoc-db-id elt)))
+		    (receive (correctness submitter)
+			(db-previously-saved-output id)
+		      correctness
+		      submitter)))
+		outputs))))
 
 (define-html-generator 'case
   (lambda (elt)
@@ -1112,11 +1114,10 @@ USA.
 	  (if (pair? choices)
 	      (let ((choice (car choices)))
 		(if (cond ((xd:choice? choice)
-			   (there-exists?
-			       (attribute-value->list
-				(find-attribute 'values choice #t))
-			     (lambda (token*)
-			       (string=? token* token))))
+			   (any (lambda (token*)
+				  (string=? token* token))
+				(attribute-value->list
+				 (find-attribute 'values choice #t))))
 			  ((xd:default? choice)
 			   (if (not (null? (cdr choices)))
 			       (error "<xd:default> must be last child:"
@@ -1153,7 +1154,7 @@ USA.
 		   container)
 		 (nearest-container elt)))))
       (let ((inputs (descendant-inputs container)))
-	(if (for-all? inputs input-submitted?)
+	(if (every input-submitted? inputs)
 	    #f
 	    (html:input
 	     (xdoc-attributes
@@ -1179,9 +1180,9 @@ USA.
 	  #f))))
 
 (define (%find-attribute name attrs)
-  (find-matching-item attrs
-    (lambda (attr)
-      (xml-name=? (xml-attribute-name attr) name))))
+  (find (lambda (attr)
+	  (xml-name=? (xml-attribute-name attr) name))
+	attrs))
 
 (define (symbol-attribute name elt error?)
   (let ((string (find-attribute name elt error?)))
@@ -1262,7 +1263,7 @@ USA.
     symbol))
 
 (define (xdoc-procedure-name? symbol)
-  (re-string-match "[A-Za-z_][0-9A-Za-z_]*" (symbol-name symbol)))
+  (re-string-match "[A-Za-z_][0-9A-Za-z_]*" (symbol->string symbol)))
 
 ;;;; Merging of attributes
 
@@ -1271,12 +1272,12 @@ USA.
 		    (preserved-attributes elt)))
 
 (define (preserved-attributes elt)
-  (keep-matching-items (xml-element-attributes elt) preserved-attribute?))
+  (filter preserved-attribute? (xml-element-attributes elt)))
 
 (define (merge-attributes attrs defaults)
-  (map* (delete-matching-items defaults
-	  (lambda (attr)
-	    (%find-attribute (xml-attribute-name attr) attrs)))
+  (map* (remove (lambda (attr)
+		  (%find-attribute (xml-attribute-name attr) attrs))
+		defaults)
 	(lambda (attr)
 	  (let ((attr*
 		 (and (merged-attribute? attr)
@@ -1337,10 +1338,10 @@ USA.
   (%find-result (%find-child elt predicate) error?))
 
 (define (%find-child elt predicate)
-  (find-matching-item (xml-element-contents elt)
-    (lambda (item)
-      (and (xml-element? item)
-	   (predicate item)))))
+  (find (lambda (item)
+	  (and (xml-element? item)
+	       (predicate item)))
+	(xml-element-contents elt)))
 
 (define (%find-result elt error?)
   (if (and (not elt) error?)
@@ -1432,7 +1433,7 @@ USA.
 (define (xdoc-content-type elt)
   (let ((local (xdoc-element-name elt)))
     (and local
-	 (or (hash-table/get xdoc-content-types local #f)
+	 (or (hash-table-ref/default xdoc-content-types local #f)
 	     (error "Unknown XDOC element name:" local)))))
 
 (define xdoc-content-types
@@ -1441,7 +1442,7 @@ USA.
 (define (xdoc-element-type elt)
   (let ((local (xdoc-element-name elt)))
     (and local
-	 (or (hash-table/get xdoc-element-types local #f)
+	 (or (hash-table-ref/default xdoc-element-types local #f)
 	     (error "Unknown XDOC element name:" local)))))
 
 (define xdoc-element-types
@@ -1474,18 +1475,18 @@ USA.
      (let ((local (cadr form))
 	   (content-type (caddr form))
 	   (elt-type (cadddr form)))
-       (let ((qname (symbol-append 'xd: local)))
+       (let ((qname (symbol 'xd: local)))
 	 `(BEGIN
 	    (DEFINE ,qname
 	      (STANDARD-XML-ELEMENT-CONSTRUCTOR ',qname XDOC-URI
 						,(eq? content-type 'empty)))
-	    (DEFINE ,(symbol-append qname '?)
+	    (DEFINE ,(symbol qname '?)
 	      (LET ((NAME (MAKE-XML-NAME ',qname XDOC-URI)))
 		(LAMBDA (OBJECT)
 		  (AND (XML-ELEMENT? OBJECT)
 		       (XML-NAME=? (XML-ELEMENT-NAME OBJECT) NAME)))))
-	    (HASH-TABLE/PUT! XDOC-CONTENT-TYPES ',local ',content-type)
-	    (HASH-TABLE/PUT! XDOC-ELEMENT-TYPES ',local ',elt-type)))))))
+	    (HASH-TABLE-SET! XDOC-CONTENT-TYPES ',local ',content-type)
+	    (HASH-TABLE-SET! XDOC-ELEMENT-TYPES ',local ',elt-type)))))))
 
 (define-element xdoc mixed top-level-container)
 (define-element head mixed internal)

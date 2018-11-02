@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,10 +40,10 @@ USA.
 	(error:allocation-failure n-words operator))))
 
 (define condition-type:allocation-failure
-  (make-condition-type 'ALLOCATION-FAILURE condition-type:error
-      '(OPERATOR N-WORDS)
+  (make-condition-type 'allocation-failure condition-type:error
+      '(operator n-words)
     (lambda (condition port)
-      (let ((operator (access-condition condition 'OPERATOR)))
+      (let ((operator (access-condition condition 'operator)))
 	(if operator
 	    (begin
 	      (write-string "The procedure " port)
@@ -51,7 +51,7 @@ USA.
 	      (write-string " is unable" port))
 	    (write-string "Unable" port)))
       (write-string " to allocate " port)
-      (write (access-condition condition 'N-WORDS) port)
+      (write (access-condition condition 'n-words) port)
       (write-string " words of storage." port))))
 
 (define error:allocation-failure
@@ -63,20 +63,8 @@ USA.
   ;; Too much of Edwin relies on fixnum-specific arithmetic for this
   ;; to be safe.  Unfortunately, this means that Edwin can't edit
   ;; files >32MB.
-  (let ((signal-failure
-	 (lambda ()
-	   (error:allocation-failure (chars->words n-chars)
-				     'ALLOCATE-BUFFER-STORAGE))))
-    (if (not (fix:fixnum? n-chars))
-	(signal-failure)
-	;; The ALLOCATE-EXTERNAL-STRING signals a bad-range-argument
-	;; if the allocation with `malloc' (or `mmap') fails.
-	(bind-condition-handler (list condition-type:bad-range-argument)
-	    (lambda (condition)
-	      condition
-	      (signal-failure))
-	  (lambda ()
-	    (allocate-external-string n-chars))))))
+  (guarantee index-fixnum? n-chars 'allocate-buffer-storage)
+  (make-string n-chars))
 
 (define-syntax chars-to-words-shift
   (sc-macro-transformer
@@ -85,7 +73,7 @@ USA.
      ;; This is written as a macro so that the shift will be a constant
      ;; in the compiled code.
      ;; It does not work when cross-compiled!
-     (let ((chars-per-word (vector-ref (gc-space-status) 0)))
+     (let ((chars-per-word (bytes-per-object)))
        (case chars-per-word
 	 ((4) -2)
 	 ((8) -3)
@@ -98,9 +86,9 @@ USA.
 
 (define (edwin-string-allocate n-chars)
   (if (not (fix:fixnum? n-chars))
-      (error:wrong-type-argument n-chars "fixnum" 'STRING-ALLOCATE))
+      (error:wrong-type-argument n-chars "fixnum" 'string-allocate))
   (if (not (fix:>= n-chars 0))
-      (error:bad-range-argument n-chars 'STRING-ALLOCATE))
+      (error:bad-range-argument n-chars 'string-allocate))
   (with-interrupt-mask interrupt-mask/none
     (lambda (mask)
       (let ((n-words			;Add two, for manifest & length.
@@ -109,7 +97,7 @@ USA.
 	    (with-interrupt-mask interrupt-mask/gc-normal
 	      (lambda (ignore)
 		ignore			; ignored
-		(guarantee-heap-available n-words 'STRING-ALLOCATE mask))))
+		(guarantee-heap-available n-words 'string-allocate mask))))
 	(let ((result ((ucode-primitive primitive-get-free 1)
 		       (ucode-type string))))
 	  ((ucode-primitive primitive-object-set! 3)
@@ -134,9 +122,6 @@ USA.
 			  target start-target)
   (cond ((not (fix:< start-source end-source))
 	 unspecific)
-	((or (external-string? source) (external-string? target))
-	 (xsubstring-move! source start-source end-source
-			   target start-target))
 	((not (eq? source target))
 	 (if (fix:< (fix:- end-source start-source) 32)
 	     (do ((scan-source start-source (fix:+ scan-source 1))
@@ -234,15 +219,15 @@ USA.
 
 (define (y-or-n? . strings)
   (define (loop)
-    (let ((char (char-upcase (read-char))))
-      (cond ((or (char=? char #\Y)
-		 (char=? char #\Space))
+    (let ((char (read-char)))
+      (cond ((or (char-ci=? char #\y)
+		 (char=? char #\space))
 	     (write-string "Yes")
-	     true)
-	    ((or (char=? char #\N)
-		 (char=? char #\Rubout))
+	     #t)
+	    ((or (char-ci=? char #\n)
+		 (char=? char #\rubout))
 	     (write-string "No")
-	     false)
+	     #f)
 	    (else
 	     (if (not (char=? char #\newline))
 		 (beep))
@@ -269,7 +254,7 @@ USA.
 
 (define (list-of-type? object predicate)
   (and (list? object)
-       (for-all? object predicate)))
+       (every predicate object)))
 
 (define (dotimes n procedure)
   (define (loop i)
@@ -286,12 +271,6 @@ USA.
 	    (loop (cdr elements) satisfied (cons (car elements) unsatisfied)))
 	(values satisfied unsatisfied))))
 
-(define make-strong-eq-hash-table
-  (strong-hash-table/constructor eq-hash-mod eq? #t))
-
-(define make-weak-equal-hash-table
-  (weak-hash-table/constructor equal-hash-mod equal? #t))
-
 (define (weak-assq item alist)
   (let loop ((alist alist))
     (and (not (null? alist))

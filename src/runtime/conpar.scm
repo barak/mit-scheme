@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -65,7 +65,7 @@ USA.
 	(history-reductions history))))
 
 (define undefined-history
-  (list 'UNDEFINED-HISTORY))
+  (list 'undefined-history))
 
 (define (stack-frame/next stack-frame)
   (let ((next (stack-frame/%next stack-frame)))
@@ -444,11 +444,11 @@ USA.
 			  marker-instance)
 			 (parser-state/block-thread-events? state)
 			 (parser-state/interrupt-mask state)))
-	      ((eq? marker-type set-interrupt-enables!)
+	      ((eq? marker-type 'set-interrupt-enables!)
 	       (continue (parser-state/dynamic-state state)
 			 (parser-state/block-thread-events? state)
 			 marker-instance))
-	      ((eq? marker-type with-thread-events-blocked)
+	      ((eq? marker-type 'with-thread-events-blocked)
 	       (continue (parser-state/dynamic-state state)
 			 marker-instance
 			 (parser-state/interrupt-mask state)))
@@ -503,7 +503,7 @@ USA.
 (define-integrable (stack-marker-frame/repl-eval-boundary? stack-frame)
   (eq? with-repl-eval-boundary (stack-marker-frame/type stack-frame)))
 
-;;;; Unparser
+;;;; Printer
 
 (define (stack-frame->continuation stack-frame)
   (make-continuation (stack-frame->control-point stack-frame)
@@ -511,13 +511,13 @@ USA.
 		     #f))
 
 (define (stack-frame->control-point stack-frame)
-  (with-values (lambda () (unparse/stack-frame stack-frame))
+  (with-values (lambda () (print-stack-frame stack-frame))
     (lambda (element-stream next-control-point)
       (make-control-point
        (stack-frame/interrupt-mask stack-frame)
        (let ((history (stack-frame/history stack-frame)))
 	 (if (eq? history undefined-history)
-	     (fixed-objects-item 'DUMMY-HISTORY)
+	     (fixed-objects-item 'dummy-history)
 	     (history-untransform history)))
        (stack-frame/previous-history-offset stack-frame)
        (stack-frame/previous-history-control-point stack-frame)
@@ -527,7 +527,7 @@ USA.
 	   element-stream)
        next-control-point))))
 
-(define (unparse/stack-frame stack-frame)
+(define (print-stack-frame stack-frame)
   (if (eq? (stack-frame/return-address stack-frame)
 	   return-address/join-stacklets)
       (values (stream) (vector-ref (stack-frame/elements stack-frame) 1))
@@ -535,7 +535,7 @@ USA.
 	  (lambda ()
 	    (let ((next (stack-frame/%next stack-frame)))
 	      (cond ((stack-frame? next)
-		     (unparse/stack-frame next))
+		     (print-stack-frame next))
 		    ((parser-state? next)
 		     (values (parser-state/element-stream next)
 			     (parser-state/next-control-point next)))
@@ -672,7 +672,7 @@ USA.
 		    length
 		    (length stream offset))))
 	     (ltail (stream-tail* stream length)))
-	(and ltail
+	(and (stream-pair? ltail)
 	     (return-address? (stream-car ltail))
 	     (verify (- paranoia-index 1)
 		     ltail
@@ -683,7 +683,7 @@ USA.
       stream
       (begin
 	(if (not (stream-pair? stream))
-	    (error:wrong-type-argument stream "stream" 'STREAM-TAIL*))
+	    (error:wrong-type-argument stream "stream" 'stream-tail*))
 	(stream-tail* (stream-cdr stream) (fix:- n 1)))))
 
 ;;;; Stack Frame Types
@@ -702,7 +702,7 @@ USA.
 
 (define (microcode-return/code->type code)
   (if (not (fix:< code (vector-length stack-frame-types)))
-      (error:bad-range-argument code 'MICROCODE-RETURN/CODE->TYPE))
+      (error:bad-range-argument code 'microcode-return/code->type))
   (vector-ref stack-frame-types code))
 
 (define (microcode-return/name->type name)
@@ -727,18 +727,18 @@ USA.
 	 stack-frame-type/interrupt-compiled-expression)
 	(else
 	 (error:bad-range-argument return-address
-				   'RETURN-ADDRESS->STACK-FRAME-TYPE))))
+				   'return-address->stack-frame-type))))
 
 (define (initialize-package!)
   (set! return-address/join-stacklets
-	(make-return-address (microcode-return 'JOIN-STACKLETS)))
+	(make-return-address (microcode-return 'join-stacklets)))
   (set! return-address/reenter-compiled-code
-	(make-return-address (microcode-return 'REENTER-COMPILED-CODE)))
+	(make-return-address (microcode-return 'reenter-compiled-code)))
   (set! stack-frame-types (make-stack-frame-types))
   (set! stack-frame-type/hardware-trap
-	(microcode-return/name->type 'HARDWARE-TRAP))
+	(microcode-return/name->type 'hardware-trap))
   (set! stack-frame-type/stack-marker
-	(microcode-return/name->type 'STACK-MARKER))
+	(microcode-return/name->type 'stack-marker))
   (set! stack-frame-type/compiled-return-address
 	(make-stack-frame-type #f #t #f length/compiled-return-address
 			       parser/standard-compiled))
@@ -793,32 +793,32 @@ USA.
       (stack-frame-type name #t #f length
 			(if (default-object? parser) parser/standard parser)))
 
-    (standard-frame 'HALT 2)
-    (standard-frame 'JOIN-STACKLETS 2)
-    (standard-frame 'NON-EXISTENT-CONTINUATION 2)
-    (standard-frame 'POP-RETURN-ERROR 2)
-    (standard-frame 'RESTORE-VALUE 2)
+    (standard-frame 'halt 2)
+    (standard-frame 'join-stacklets 2)
+    (standard-frame 'non-existent-continuation 2)
+    (standard-frame 'pop-return-error 2)
+    (standard-frame 'restore-value 2)
 
-    (standard-frame 'RESTORE-DONT-COPY-HISTORY 4 parser/restore-history)
-    (standard-frame 'RESTORE-HISTORY 4 parser/restore-history)
-    (standard-frame 'RESTORE-INTERRUPT-MASK 2 parser/restore-interrupt-mask)
-    (standard-frame 'STACK-MARKER 3 parser/stack-marker)
+    (standard-frame 'restore-dont-copy-history 4 parser/restore-history)
+    (standard-frame 'restore-history 4 parser/restore-history)
+    (standard-frame 'restore-interrupt-mask 2 parser/restore-interrupt-mask)
+    (standard-frame 'stack-marker 3 parser/stack-marker)
 
-    (standard-subproblem 'ACCESS-CONTINUE 2)
-    (standard-subproblem 'ASSIGNMENT-CONTINUE 3)
-    (standard-subproblem 'CONDITIONAL-DECIDE 3)
-    (standard-subproblem 'DEFINITION-CONTINUE 3)
-    (standard-subproblem 'DISJUNCTION-DECIDE 3)
-    (standard-subproblem 'EVAL-ERROR 3)
-    (standard-subproblem 'FORCE-SNAP-THUNK 2)
-    (standard-subproblem 'SEQUENCE-CONTINUE 3)
+    (standard-subproblem 'access-continue 2)
+    (standard-subproblem 'assignment-continue 3)
+    (standard-subproblem 'conditional-decide 3)
+    (standard-subproblem 'definition-continue 3)
+    (standard-subproblem 'disjunction-decide 3)
+    (standard-subproblem 'eval-error 3)
+    (standard-subproblem 'force-snap-thunk 2)
+    (standard-subproblem 'sequence-continue 3)
 
-    (standard-subproblem 'COMBINATION-SAVE-VALUE length/combination-save-value)
+    (standard-subproblem 'combination-save-value length/combination-save-value)
 
     (let ((length (length/application-frame 2 0)))
-      (standard-subproblem 'COMBINATION-APPLY length)
-      (non-history-subproblem 'INTERNAL-APPLY length parser/apply)
-      (non-history-subproblem 'INTERNAL-APPLY-VAL length parser/apply))
+      (standard-subproblem 'combination-apply length)
+      (non-history-subproblem 'internal-apply length parser/apply)
+      (non-history-subproblem 'internal-apply-val length parser/apply))
 
     (let ((compiler-frame
 	   (lambda (name length)
@@ -828,24 +828,24 @@ USA.
 	     (stack-frame-type name #t #t length parser/standard))))
 
       (let ((length (length/application-frame 4 0)))
-	(compiler-subproblem 'COMPILER-LOOKUP-APPLY-TRAP-RESTART length)
-	(compiler-subproblem 'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART length))
+	(compiler-subproblem 'compiler-lookup-apply-trap-restart length)
+	(compiler-subproblem 'compiler-operator-lookup-trap-restart length))
 
-      (stack-frame-type 'COMPILER-INTERRUPT-RESTART #f #t
+      (stack-frame-type 'compiler-interrupt-restart #f #t
 			length/compiler-interrupt-restart
 			parser/compiler-interrupt-restart)
 
-      (compiler-frame 'COMPILER-LINK-CACHES-RESTART 8)
-      (compiler-frame 'REENTER-COMPILED-CODE 2)
+      (compiler-frame 'compiler-link-caches-restart 8)
+      (compiler-frame 'reenter-compiled-code 2)
 
-      (compiler-subproblem 'COMPILER-ASSIGNMENT-TRAP-RESTART 5)
-      (compiler-subproblem 'COMPILER-REFERENCE-TRAP-RESTART 4)
-      (compiler-subproblem 'COMPILER-SAFE-REFERENCE-TRAP-RESTART 4)
-      (compiler-subproblem 'COMPILER-UNASSIGNED?-TRAP-RESTART 4)
+      (compiler-subproblem 'compiler-assignment-trap-restart 5)
+      (compiler-subproblem 'compiler-reference-trap-restart 4)
+      (compiler-subproblem 'compiler-safe-reference-trap-restart 4)
+      (compiler-subproblem 'compiler-unassigned?-trap-restart 4)
 
-      (compiler-subproblem 'COMPILER-ERROR-RESTART 3))
+      (compiler-subproblem 'compiler-error-restart 3))
 
-    (non-history-subproblem 'HARDWARE-TRAP length/hardware-trap)
+    (non-history-subproblem 'hardware-trap length/hardware-trap)
     types))
 
 ;;;; Hardware trap parsing
@@ -1000,15 +1000,14 @@ USA.
 	   (write-string "within ")
 	   (let ((block (stack-frame/ref frame hardware-trap/pc-info1-index)))
 	     (write block)
-	     (call-with-values
-		 (lambda () (compiled-code-block/filename-and-index block))
-	       (lambda (filename index)
-		 index
-		 (if filename
-		     (begin
-		       (write-string " (")
-		       (write-string filename)
-		       (write-string ")")))))))
+	     (receive (filename index library)
+		 (compiled-code-block/filename-and-index block)
+	       (declare (ignore index library))
+	       (if filename
+		   (begin
+		     (write-string " (")
+		     (write-string filename)
+		     (write-string ")"))))))
 	  ((3)				; probably compiled-code
 	   (write-string " at an unknown compiled-code location."))
 	  ((4)				; builtin (i.e. hook)

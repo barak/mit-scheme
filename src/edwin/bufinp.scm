@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,15 +30,18 @@ USA.
 
 (define (with-input-from-mark mark thunk #!optional receiver)
   (let ((port (make-buffer-input-port mark (group-end mark))))
-    (let ((value (with-input-from-port port thunk)))
+    (let ((value
+	   (parameterize ((current-input-port port))
+	     (thunk))))
       (if (default-object? receiver)
 	  value
 	  (receiver value (input-port/mark port))))))
 
 (define (with-input-from-region region thunk)
-  (with-input-from-port
-      (make-buffer-input-port (region-start region) (region-end region))
-    thunk))
+  (parameterize ((current-input-port
+		  (make-buffer-input-port (region-start region)
+					  (region-end region))))
+    (thunk)))
 
 (define (call-with-input-mark mark procedure)
   (procedure (make-buffer-input-port mark (group-end mark))))
@@ -57,7 +60,7 @@ USA.
 			  (mark-index start))))
 
 (define (input-port/mark port)
-  (let ((operation (port/operation port 'BUFFER-MARK)))
+  (let ((operation (textual-port-operation port 'BUFFER-MARK)))
     (if (not operation)
 	(error:bad-range-argument port 'INPUT-PORT/MARK))
     (operation port)))

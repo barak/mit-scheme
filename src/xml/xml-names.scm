@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,7 +36,7 @@ USA.
 	   name-symbol)
 	  (else
 	   (let ((uri (->absolute-uri uri 'MAKE-XML-NAME)))
-	     (guarantee-xml-qname name-symbol 'MAKE-XML-NAME)
+	     (guarantee xml-qname? name-symbol 'MAKE-XML-NAME)
 	     (if (not (case (xml-qname-prefix name-symbol)
 			((xml) (uri=? uri xml-uri))
 			((xmlns) (uri=? uri xmlns-uri))
@@ -54,12 +54,12 @@ USA.
 (define (%make-xml-name qname uri)
   (let ((uname
 	 (let ((local (xml-qname-local qname)))
-	   (hash-table/intern! (hash-table/intern! expanded-names uri
+	   (hash-table-intern! (hash-table-intern! expanded-names uri
 				 make-strong-eq-hash-table)
 	       local
 	     (lambda ()
 	       (make-expanded-name uri local (make-strong-eq-hash-table)))))))
-    (hash-table/intern! (expanded-name-combos uname) qname
+    (hash-table-intern! (expanded-name-combos uname) qname
       (lambda ()
 	(make-combo-name qname uname)))))
 
@@ -70,15 +70,13 @@ USA.
   (or (xml-name-symbol? object)
       (combo-name? object)))
 
-(define-guarantee xml-name "an XML Name")
-
 (define (xml-name-string name)
-  (symbol-name (xml-name->symbol name)))
+  (symbol->string (xml-name->symbol name)))
 
 (define (xml-name->symbol name)
   (cond ((xml-name-symbol? name) name)
 	((combo-name? name) (combo-name-qname name))
-	(else (error:not-xml-name name 'XML-NAME->SYMBOL))))
+	(else (error:not-a xml-name? name 'XML-NAME->SYMBOL))))
 
 (define (xml-name=? n1 n2)
   (if (and (combo-name? n1) (combo-name? n2))
@@ -91,11 +89,10 @@ USA.
   (qname combo-name-qname)
   (expanded combo-name-expanded))
 
-(set-record-type-unparser-method! <combo-name>
-  (standard-unparser-method 'XML-NAME
-    (lambda (name port)
-      (write-char #\space port)
-      (write (combo-name-qname name) port))))
+(define-print-method combo-name?
+  (standard-print-method 'XML-NAME
+    (lambda (name)
+      (list (combo-name-qname name)))))
 
 (define-record-type <expanded-name>
     (make-expanded-name uri local combos)
@@ -131,7 +128,7 @@ USA.
 
 (define (string-matcher matcher)
   (lambda (string #!optional start end)
-    (matcher (utf8-string->parser-buffer string start end))))
+    (matcher (string->parser-buffer string start end))))
 
 (define string-is-xml-qname? (string-matcher match:xml-qname))
 (define string-is-xml-name? (string-matcher match:xml-name))
@@ -143,10 +140,10 @@ USA.
 	(begin
 	  (if (not (string-predicate object))
 	      (error:bad-range-argument object constructor))
-	  (utf8-string->symbol object))
+	  (string->symbol object))
 	(begin
-	  (guarantee-symbol object constructor)
-	  (if (not (string-predicate (symbol-name object)))
+	  (guarantee symbol? object constructor)
+	  (if (not (string-predicate (symbol->string object)))
 	      (error:bad-range-argument object constructor))
 	  object))))
 
@@ -162,15 +159,11 @@ USA.
 (define (name-predicate string-predicate)
   (lambda (object)
     (and (symbol? object)
-	 (string-predicate (symbol-name object)))))
+	 (string-predicate (symbol->string object)))))
 
 (define xml-name-symbol? (name-predicate string-is-xml-name?))
 (define xml-nmtoken? (name-predicate string-is-xml-nmtoken?))
 (define xml-qname? (name-predicate string-is-xml-qname?))
-
-(define-guarantee xml-name-symbol "an XML name symbol")
-(define-guarantee xml-nmtoken "an XML name token")
-(define-guarantee xml-qname "an XML QName")
 
 ;;;; Namespace support
 
@@ -178,13 +171,10 @@ USA.
   (or (xml-qname? object)
       (combo-name? object)))
 
-(define-guarantee xml-namespace-conformant-name
-  "XML Namespaces conformant name")
-
 (define (xml-name-uri name)
   (cond ((xml-qname? name) (null-xml-namespace-uri))
 	((combo-name? name) (expanded-name-uri (combo-name-expanded name)))
-	(else (error:not-xml-namespace-conformant-name name 'XML-NAME-URI))))
+	(else (error:not-a xml-namespace-conformant-name? name 'XML-NAME-URI))))
 
 (define (xml-name-uri=? name uri)
   (uri=? (xml-name-uri name) uri))
@@ -194,7 +184,7 @@ USA.
    (cond ((xml-qname? name) name)
 	 ((combo-name? name) (combo-name-qname name))
 	 (else
-	  (error:not-xml-namespace-conformant-name name 'XML-NAME-PREFIX)))))
+	  (error:not-a xml-namespace-conformant-name? name 'XML-NAME-PREFIX)))))
 
 (define (null-xml-name-prefix? object)
   (eq? object '||))
@@ -208,7 +198,8 @@ USA.
 (define (xml-name-local name)
   (cond ((xml-qname? name) (%xml-qname-local name))
 	((combo-name? name) (expanded-name-local (combo-name-expanded name)))
-	(else (error:not-xml-namespace-conformant-name name 'XML-NAME-LOCAL))))
+	(else
+	 (error:not-a xml-namespace-conformant-name? name 'XML-NAME-LOCAL))))
 
 (define (xml-name-local=? name local)
   (eq? (xml-name-local name) local))
@@ -227,23 +218,23 @@ USA.
 (define xmlns-uri (->uri xmlns-uri-string))
 
 (define (xml-qname-prefix qname)
-  (guarantee-xml-qname qname 'XML-QNAME-PREFIX)
+  (guarantee xml-qname? qname 'XML-QNAME-PREFIX)
   (%xml-qname-prefix qname))
 
 (define (%xml-qname-prefix qname)
-  (let ((s (symbol-name qname)))
+  (let ((s (symbol->string qname)))
     (let ((c (string-find-next-char s #\:)))
       (if c
-	  (utf8-string->symbol (string-head s c))
+	  (string->symbol (string-head s c))
 	  (null-xml-name-prefix)))))
 
 (define (xml-qname-local qname)
-  (guarantee-xml-qname qname 'XML-QNAME-LOCAL)
+  (guarantee xml-qname? qname 'XML-QNAME-LOCAL)
   (%xml-qname-local qname))
 
 (define (%xml-qname-local qname)
-  (let ((s (symbol-name qname)))
+  (let ((s (symbol->string qname)))
     (let ((c (string-find-next-char s #\:)))
       (if c
-	  (utf8-string->symbol (string-tail s (fix:+ c 1)))
+	  (string->symbol (string-tail s (fix:+ c 1)))
 	  qname))))

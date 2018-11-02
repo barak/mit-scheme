@@ -11,8 +11,8 @@ Hanson for inclusion in MIT/GNU Scheme.
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -245,7 +245,7 @@ USA.
 ;;;; Selectors
 
 (define (take lis k)
-  (guarantee-index-fixnum k 'TAKE)
+  (guarantee index-fixnum? k 'take)
   (let recur ((lis lis) (k k))
     (if (fix:> k 0)
 	(cons (car lis)
@@ -253,7 +253,7 @@ USA.
 	'())))
 
 (define (drop lis k)
-  (guarantee-index-fixnum k 'DROP)
+  (guarantee index-fixnum? k 'drop)
   (%drop lis k))
 
 (define (%drop lis k)
@@ -263,7 +263,7 @@ USA.
 	lis)))
 
 (define (take! lis k)
-  (guarantee-index-fixnum k 'TAKE!)
+  (guarantee index-fixnum? k 'take!)
   (if (fix:> k 0)
       (begin
 	(set-cdr! (drop lis (fix:- k 1)) '())
@@ -275,14 +275,14 @@ USA.
 ;;; the end.
 
 (define (take-right lis k)
-  (guarantee-index-fixnum k 'TAKE-RIGHT)
+  (guarantee index-fixnum? k 'take-right)
   (let lp ((lag lis) (lead (%drop lis k)))
     (if (pair? lead)
 	(lp (cdr lag) (cdr lead))
 	lag)))
 
 (define (drop-right lis k)
-  (guarantee-index-fixnum k 'DROP-RIGHT)
+  (guarantee index-fixnum? k 'drop-right)
   (let recur ((lag lis) (lead (%drop lis k)))
     (if (pair? lead)
 	(cons (car lag) (recur (cdr lag) (cdr lead)))
@@ -292,7 +292,7 @@ USA.
 ;;; us stop LAG one step early, in time to smash its cdr to ().
 
 (define (drop-right! lis k)
-  (guarantee-index-fixnum k 'DROP-RIGHT!)
+  (guarantee index-fixnum? k 'drop-right!)
   (let ((lead (%drop lis k)))
     (if (pair? lead)
 	;; Standard case
@@ -306,7 +306,7 @@ USA.
 	'())))
 
 (define (split-at x k)
-  (guarantee-index-fixnum k 'SPLIT-AT)
+  (guarantee index-fixnum? k 'split-at)
   (let recur ((lis x) (k k))
     (if (fix:> k 0)
 	(receive (prefix suffix) (recur (cdr lis) (fix:- k 1))
@@ -314,7 +314,7 @@ USA.
 	(values '() lis))))
 
 (define (split-at! x k)
-  (guarantee-index-fixnum k 'SPLIT-AT!)
+  (guarantee index-fixnum? k 'split-at!)
   (if (fix:> k 0)
       (let* ((prev (%drop x (fix:- k 1)))
 	     (suffix (cdr prev)))
@@ -341,13 +341,13 @@ USA.
 
 (define (append-reverse rev-head tail)
   (let lp ((rev-head rev-head) (tail tail))
-    (if (null-list? rev-head 'APPEND-REVERSE)
+    (if (null-list? rev-head 'append-reverse)
 	tail
 	(lp (cdr rev-head) (cons (car rev-head) tail)))))
 
 (define (append-reverse! rev-head tail)
   (let lp ((rev-head rev-head) (tail tail))
-    (if (null-list? rev-head 'APPEND-REVERSE!)
+    (if (null-list? rev-head 'append-reverse!)
 	tail
 	(let ((next-rev (cdr rev-head)))
 	  (set-cdr! rev-head tail)
@@ -362,7 +362,7 @@ USA.
 (define (count pred list1 . lists)
   (if (pair? lists)
       (let lp ((list1 list1) (lists lists) (i 0))
-	(if (null-list? list1 'COUNT)
+	(if (null-list? list1 'count)
 	    i
 	    (receive (as ds) (%cars+cdrs lists)
 	      (if (null? as)
@@ -372,7 +372,12 @@ USA.
 		      (if (apply pred (car list1) as)
 			  (fix:+ i 1)
 			  i))))))
-      (count-matching-items list1 pred)))
+      (do ((items list1 (cdr items))
+	   (n 0 (if (pred (car items)) (fix:+ n 1) n)))
+	  ((not (pair? items))
+	   (if (not (null? items))
+	       (error:not-a list? list1 'count))
+	   n))))
 
 (define (zip list1 . more-lists)
   (apply map list list1 more-lists))
@@ -382,7 +387,7 @@ USA.
 
 (define (unzip2 lis)
   (let recur ((lis lis))
-    (if (null-list? lis 'UNZIP2)
+    (if (null-list? lis 'unzip2)
 	(values lis lis)
 	(let ((elt (car lis)))
 	  (receive (a b) (recur (cdr lis))
@@ -391,7 +396,7 @@ USA.
 
 (define (unzip3 lis)
   (let recur ((lis lis))
-    (if (null-list? lis 'UNZIP3)
+    (if (null-list? lis 'unzip3)
 	(values lis lis lis)
 	(let ((elt (car lis)))
 	  (receive (a b c) (recur (cdr lis))
@@ -401,7 +406,7 @@ USA.
 
 (define (unzip4 lis)
   (let recur ((lis lis))
-    (if (null-list? lis 'UNZIP4)
+    (if (null-list? lis 'unzip4)
 	(values lis lis lis lis)
 	(let ((elt (car lis)))
 	  (receive (a b c d) (recur (cdr lis))
@@ -412,7 +417,7 @@ USA.
 
 (define (unzip5 lis)
   (let recur ((lis lis))
-    (if (null-list? lis 'UNZIP5)
+    (if (null-list? lis 'unzip5)
 	(values lis lis lis lis lis)
 	(let ((elt (car lis)))
 	  (receive (a b c d e) (recur (cdr lis))
@@ -445,7 +450,7 @@ USA.
 	      ans
 	      (lp tails (apply f (append! lists (list ans)))))))
       (let lp ((lis lis1) (ans zero))
-	(if (null-list? lis 'PAIR-FOLD)
+	(if (null-list? lis 'pair-fold)
 	    ans
 	    ;; Grab the cdr now, in case F SET-CDR!s LIS.
 	    (let ((tail (cdr lis)))
@@ -460,7 +465,7 @@ USA.
 	      zero
 	      (apply f (append! lists (list (recur cdrs)))))))
       (let recur ((lis lis1))
-	(if (null-list? lis 'PAIR-FOLD-RIGHT)
+	(if (null-list? lis 'pair-fold-right)
 	    zero
 	    (f lis (recur (cdr lis)))))))
 
@@ -473,7 +478,7 @@ USA.
 		(apply proc lists)
 		(lp tails)))))
       (let lp ((lis lis1))
-	(if (not (null-list? lis 'PAIR-FOR-EACH))
+	(if (not (null-list? lis 'pair-for-each))
 	    ;; Grab the cdr now, in case PROC SET-CDR!s LIS.
 	    (let ((tail (cdr lis)))
 	      (proc lis)
@@ -484,7 +489,7 @@ USA.
 (define (map! f lis1 . lists)
   (if (pair? lists)
       (let lp ((lis1 lis1) (lists lists))
-	(if (not (null-list? lis1 'MAP!))
+	(if (not (null-list? lis1 'map!))
 	    (receive (heads tails) (%cars+cdrs/no-test lists)
 	      (set-car! lis1 (apply f (car lis1) heads))
 	      (lp (cdr lis1) tails))))
@@ -503,11 +508,24 @@ USA.
 		    (else (recur cdrs))) ; Tail call in this arm.
 	      '())))
       (let recur ((lis lis1))
-	(if (null-list? lis 'FILTER-MAP)
+	(if (null-list? lis 'filter-map)
 	    lis
 	    (let ((tail (recur (cdr lis))))
 	      (cond ((f (car lis)) => (lambda (x) (cons x tail)))
 		    (else tail)))))))
+
+;; Like filter-map, but returns first non-false value.
+(define (find-map f lis1 . lists)
+  (if (pair? lists)
+      (let iter ((lists (cons lis1 lists)))
+	(receive (cars cdrs) (%cars+cdrs lists)
+	  (and (pair? cars)
+	       (or (apply f cars)
+		   (iter cdrs)))))
+      (let iter ((lis lis1))
+	(and (not (null-list? lis 'find-map))
+	     (or (f (car lis))
+		 (iter (cdr lis)))))))
 
 ;;; Map F across lists, guaranteeing to go left-to-right.
 ;;; NOTE: Some implementations of R5RS MAP are compliant with this spec;
@@ -523,7 +541,7 @@ USA.
 		(cons x (recur cdrs)))
 	      '())))
       (let recur ((lis lis1))
-	(if (null-list? lis 'MAP-IN-ORDER)
+	(if (null-list? lis 'map-in-order)
 	    lis
 	    ;; Do head first, then tail.
 	    (let ((x (f (car lis))))
@@ -535,22 +553,11 @@ USA.
 ;;; FILTER, REMOVE, PARTITION and their destructive counterparts do not
 ;;; disorder the elements of their argument.
 
-;; This FILTER shares the longest tail of L that has no deleted elements.
-;; If Scheme had multi-continuation calls, they could be made more efficient.
-
-;; Sleazing with EQ? makes this one faster.
-
 (define (filter pred lis)
   (let recur ((lis lis))
-    (if (null-list? lis 'FILTER)
-	lis
-	(let ((head (car lis))
-	      (tail (cdr lis)))
-	  (if (pred head)
-	      (let ((new-tail (recur tail)))	; Replicate the RECUR call so
-		(if (eq? tail new-tail) lis
-		    (cons head new-tail)))
-	      (recur tail))))))			; this one can be a tail call.
+    (cond ((null-list? lis 'filter) lis)
+	  ((pred (car lis)) (cons (car lis) (recur (cdr lis))))
+	  (else (recur (cdr lis))))))
 
 ;;; This implementation of FILTER!
 ;;; - doesn't cons, and uses no stack;
@@ -563,7 +570,7 @@ USA.
 
 (define (filter! pred lis)
   (let lp ((ans lis))
-    (cond ((null-list? ans 'FILTER!) ans) ; Scan looking for
+    (cond ((null-list? ans 'filter!) ans) ; Scan looking for
 	  ((not (pred (car ans))) (lp (cdr ans)))	; first cons of result.
 
 	  ;; ANS is the eventual answer.
@@ -596,7 +603,7 @@ USA.
 
 (define (partition pred lis)
   (let recur ((lis lis))
-    (if (null-list? lis 'PARTITION)
+    (if (null-list? lis 'partition)
 	(values lis lis)
 	(let ((elt (car lis))
 	      (tail (cdr lis)))
@@ -615,7 +622,7 @@ USA.
 ;;; lists.
 
 (define (partition! pred lis)
-  (if (null-list? lis 'PARTITION!)
+  (if (null-list? lis 'partition!)
       (values lis lis)
 
       ;; This pair of loops zips down contiguous in & out runs of the
@@ -672,7 +679,7 @@ USA.
 (define (delete-duplicates lis #!optional elt=)
   (let ((elt= (if (default-object? elt=) equal? elt=)))
     (let recur ((lis lis))
-      (if (null-list? lis 'DELETE-DUPLICATES)
+      (if (null-list? lis 'delete-duplicates)
 	  lis
 	  (let* ((x (car lis))
 		 (tail (cdr lis))
@@ -682,7 +689,7 @@ USA.
 (define (delete-duplicates! lis #!optional elt=)
   (let ((elt= (if (default-object? elt=) equal? elt=)))
     (let recur ((lis lis))
-      (if (null-list? lis 'DELETE-DUPLICATES!)
+      (if (null-list? lis 'delete-duplicates!)
 	  lis
 	  (let* ((x (car lis))
 		 (tail (cdr lis))
@@ -695,13 +702,14 @@ USA.
 
 (define (find-tail pred list)
   (let lp ((list list))
-    (and (not (null-list? list 'FIND-TAIL))
-	 (if (pred (car list)) list
+    (and (not (null-list? list 'find-tail))
+	 (if (pred (car list))
+	     list
 	     (lp (cdr list))))))
 
 (define (take-while pred lis)
   (let recur ((lis lis))
-    (if (null-list? lis 'TAKE-WHILE)
+    (if (null-list? lis 'take-while)
 	'()
 	(let ((x (car lis)))
 	  (if (pred x)
@@ -710,14 +718,14 @@ USA.
 
 (define (drop-while pred lis)
   (let lp ((lis lis))
-    (if (null-list? lis 'DROP-WHILE)
+    (if (null-list? lis 'drop-while)
 	'()
 	(if (pred (car lis))
 	    (lp (cdr lis))
 	    lis))))
 
 (define (take-while! pred lis)
-  (if (or (null-list? lis 'TAKE-WHILE!)
+  (if (or (null-list? lis 'take-while!)
 	  (not (pred (car lis))))
       '()
       (begin
@@ -730,7 +738,7 @@ USA.
 
 (define (span pred lis)
   (let recur ((lis lis))
-    (if (null-list? lis 'SPAN)
+    (if (null-list? lis 'span)
 	(values '() '())
 	(let ((x (car lis)))
 	  (if (pred x)
@@ -739,11 +747,11 @@ USA.
 	      (values '() lis))))))
 
 (define (span! pred lis)
-  (if (or (null-list? lis 'SPAN!)
+  (if (or (null-list? lis 'span!)
 	  (not (pred (car lis))))
       (values '() lis)
       (let ((suffix (let lp ((prev lis) (rest (cdr lis)))
-		      (if (null-list? rest 'SPAN!)
+		      (if (null-list? rest 'span!)
 			  rest
 			  (let ((x (car rest)))
 			    (if (pred x) (lp rest (cdr rest))
@@ -770,9 +778,9 @@ USA.
 		     (or (apply pred heads)
 			 (lp next-heads next-tails))
 		     (apply pred heads))))))
-      (and (not (null-list? lis1 'ANY))
+      (and (not (null-list? lis1 'any))
 	   (let lp ((head (car lis1)) (tail (cdr lis1)))
-	     (if (null-list? tail 'ANY)
+	     (if (null-list? tail 'any)
 		 (pred head)
 		 (or (pred head)
 		     (lp (car tail) (cdr tail))))))))
@@ -787,9 +795,9 @@ USA.
 		    (and (apply pred heads)
 			 (lp next-heads next-tails))
 		    (apply pred heads))))))
-      (or (null-list? lis1 'EVERY)
+      (or (null-list? lis1 'every)
 	  (let lp ((head (car lis1)) (tail (cdr lis1)))
-	    (if (null-list? tail 'EVERY)
+	    (if (null-list? tail 'every)
 		(pred head)
 		(and (pred head)
 		     (lp (car tail) (cdr tail))))))))
@@ -802,7 +810,7 @@ USA.
 	       (if (apply pred heads) n
 		   (lp tails (fix:+ n 1))))))
       (let lp ((lis lis1) (n 0))
-	(and (not (null-list? lis 'LIST-INDEX))
+	(and (not (null-list? lis 'list-index))
 	     (if (pred (car lis))
 		 n
 		 (lp (cdr lis) (fix:+ n 1)))))))
@@ -848,7 +856,7 @@ USA.
 (define (lset-union = . lists)
   (reduce (lambda (lis ans)		; Compute ANS + LIS.
 	    (cond ((null? lis) ans)	; Don't copy any lists
-		  ((null? ans) lis) 	; if we don't have to.
+		  ((null? ans) lis)	; if we don't have to.
 		  ((eq? lis ans) ans)
 		  (else
 		   (fold (lambda (elt ans) (if (any (lambda (x) (= x elt)) ans)
@@ -876,7 +884,7 @@ USA.
 (define (lset-intersection = lis1 . lists)
   (let ((lists (delete lis1 lists eq?))) ; Throw out any LIS1 vals.
     (cond ((any (lambda (list)
-		  (null-list? list 'LSET-INTERSECTION))
+		  (null-list? list 'lset-intersection))
 		lists)
 	   '())		; Short cut
 	  ((null? lists)          lis1)		; Short cut
@@ -887,7 +895,7 @@ USA.
 (define (lset-intersection! = lis1 . lists)
   (let ((lists (delete lis1 lists eq?))) ; Throw out any LIS1 vals.
     (cond ((any (lambda (list)
-		  (null-list? list 'LSET-INTERSECTION!))
+		  (null-list? list 'lset-intersection!))
 		lists)
 	   '())		; Short cut
 	  ((null? lists)          lis1)		; Short cut
@@ -959,7 +967,7 @@ USA.
 
 (define (lset-diff+intersection = lis1 . lists)
   (cond ((every (lambda (list)
-		  (null-list? list 'LSET-DIFF+INTERSECTION))
+		  (null-list? list 'lset-diff+intersection))
 		lists)
 	 (values lis1 '()))	; Short cut
 	((memq lis1 lists)        (values '() lis1))	; Short cut
@@ -969,7 +977,7 @@ USA.
 			 lis1))))
 (define (lset-diff+intersection! = lis1 . lists)
   (cond ((every (lambda (list)
-		  (null-list? list 'LSET-DIFF+INTERSECTION!))
+		  (null-list? list 'lset-diff+intersection!))
 		lists)
 	 (values lis1 '()))	; Short cut
 	((memq lis1 lists)        (values '() lis1))	; Short cut
@@ -1048,3 +1056,11 @@ USA.
 	      (cons (caar lists) cars)
 	      (cons (cdar lists) cdrs))
 	(values (reverse! cars) (reverse! cdrs)))))
+
+;;;; Backwards compatibility
+
+(define (there-exists? items predicate)
+  (any predicate items))
+
+(define (for-all? items predicate)
+  (every predicate items))

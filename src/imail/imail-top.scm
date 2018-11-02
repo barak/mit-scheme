@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -655,9 +655,9 @@ With prefix argument N moves forward N messages with these flags."
 		flags)
       (move-relative delta
 		     (lambda (message)
-		       (there-exists? flags
-			 (lambda (flag)
-			   (message-flagged? message flag))))
+		       (any (lambda (flag)
+			      (message-flagged? message flag))
+			    flags))
 		     (string-append "message with flag"
 				    (if (= 1 (length flags)) "" "s")
 				    " "
@@ -1019,10 +1019,9 @@ With prefix argument, prompt even when point is on an attachment."
 		(map (lambda (i.m)
 		       (cons (mime-attachment-name (car i.m) #t)
 			     i.m))
-		     (list-transform-positive
-			 (buffer-mime-info (mark-buffer mark))
-		       (lambda (i.m)
-			 (predicate (car i.m))))))))
+		     (filter (lambda (i.m)
+			       (predicate (car i.m)))
+			     (buffer-mime-info (mark-buffer mark)))))))
 	  (if (pair? alist)
 	      (if (or (pair? (cdr alist)) always-prompt?)
 		  (prompt-for-alist-value
@@ -1044,9 +1043,9 @@ With prefix argument, prompt even when point is on an attachment."
 	(loop (cdr alist)
 	      (cons (cons (let ((name (caar alist)))
 			    (let loop ((name* name) (n 1))
-			      (if (there-exists? converted
-				    (lambda (entry)
-				      (string=? (car entry) name*)))
+			      (if (any (lambda (entry)
+					 (string=? (car entry) name*))
+				       converted)
 				  (loop (string-append
 					 name "<" (number->string n) ">")
 					(+ n 1))
@@ -1097,19 +1096,24 @@ With prefix argument, prompt even when point is on an attachment."
 		 (eq? type 'MESSAGE)))))
       (if (or (not (file-exists? filename))
 	      (prompt-for-yes-or-no? "File already exists; overwrite"))
-	  ((if text? call-with-output-file call-with-binary-output-file)
-	   filename
-	   (lambda (port)
-	     (call-with-mime-decoding-output-port
-	      (let ((encoding (mime-body-one-part-encoding body)))
-		(if (and (mime-type? body 'APPLICATION 'MAC-BINHEX40)
-			 (eq? encoding '7BIT))
-		    'BINHEX40
-		    encoding))
-	      port
-	      text?
-	      (lambda (port)
-		(write-mime-body body port)))))))))
+	  (call-with-output-file filename
+	    (lambda (port)
+	      (if (not text?)
+		  (begin
+		    (port/set-coding port 'binary)
+		    (port/set-line-ending port 'binary)))
+	      (call-with-mime-decoding-output-port
+	       (let ((encoding (mime-body-one-part-encoding body)))
+		 (if (and (mime-type? body 'APPLICATION 'MAC-BINHEX40)
+			  (eq? encoding '7BIT))
+		     'BINHEX40
+		     encoding))
+	       port
+	       text?
+	       (lambda (port)
+		 (with-mime-best-effort
+		  (lambda ()
+		    (write-mime-body body port)))))))))))
 
 (define (filter-mime-attachment-filename filename)
   (let ((filename
@@ -1264,9 +1268,9 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 	       `(("Resent-Bcc" ,(mail-from-string buffer)))
 	       '())
 	 ,@(map header-field->mail-header
-		(list-transform-negative (message-header-fields message)
-		  (lambda (header)
-		    (string-ci=? (header-field-name header) "sender")))))
+		(remove (lambda (header)
+			  (string-ci=? (header-field-name header) "sender"))
+			(message-header-fields message))))
        #f
        (lambda (mail-buffer)
 	 (initialize-imail-mail-buffer mail-buffer)
@@ -2069,9 +2073,9 @@ WARNING: With a prefix argument, this command may take a very long
       (and error? (error:bad-range-argument folder 'IMAIL-FOLDER->BUFFER))))
 
 (define (imail-message->buffer message error?)
-  (or (list-search-positive (buffer-list)
-	(lambda (buffer)
-	  (eq? (buffer-get buffer 'IMAIL-MESSAGE #f) message)))
+  (or (find (lambda (buffer)
+	      (eq? (buffer-get buffer 'IMAIL-MESSAGE #f) message))
+	    (buffer-list))
       (and error? (error:bad-range-argument message 'IMAIL-MESSAGE->BUFFER))))
 
 (define (associate-buffer-with-imail-buffer folder-buffer buffer)
@@ -2225,7 +2229,10 @@ WARNING: With a prefix argument, this command may take a very long
 				  (start-standard-polling-thread
 				   (* 1000 interval)
 				   (probe-folder-output-processor
-				    (weak-cons folder unspecific)))))))))))
+				    (weak-cons folder unspecific))
+				   (list 'probe-folder
+					 (url-presentation-name
+					  (resource-locator folder))))))))))))
 
 (define ((probe-folder-output-processor folder))
   (let ((folder (weak-car folder)))
@@ -2290,11 +2297,12 @@ WARNING: With a prefix argument, this command may take a very long
 	 (let ((mime-headers
 		(lambda ()
 		  (if keep-mime?
-		      (list-transform-positive headers
-			(lambda (header)
-			  (re-string-match "^\\(mime-version$\\|content-\\)"
-					   (header-field-name header)
-					   #t)))
+		      (filter (lambda (header)
+				(re-string-match
+				 "^\\(mime-version$\\|content-\\)"
+				 (header-field-name header)
+				 #t))
+			      headers)
 		      '()))))
 	   (cond ((ref-variable imail-kept-headers context)
 		  => (lambda (regexps)
@@ -2302,29 +2310,28 @@ WARNING: With a prefix argument, this command may take a very long
 			(append-map*!
 			 (mime-headers)
 			 (lambda (regexp)
-			   (list-transform-positive headers
-			     (lambda (header)
-			       (re-string-match regexp
-						(header-field-name header)
-						#t))))
+			   (filter (lambda (header)
+				     (re-string-match regexp
+						      (header-field-name header)
+						      #t))
+				   headers))
 			 regexps)
 			(lambda (a b) (eq? a b)))))
 		 ((ref-variable imail-ignored-headers context)
 		  => (lambda (regexp)
 		       (remove-duplicates!
 			(append!
-			 (list-transform-negative headers
-			   (lambda (header)
-			     (re-string-match regexp
-					      (header-field-name header)
-					      #t)))
+			 (remove (lambda (header)
+				   (re-string-match regexp
+						    (header-field-name header)
+						    #t))
+				 headers)
 			 (mime-headers))
 			(lambda (a b) (eq? a b)))))
 		 (else headers))))
 	(filter (ref-variable imail-message-filter context)))
     (if filter
-	(map (lambda (n.v)
-	       (make-header-field (car n.v) (cdr n.v)))
+	(map (lambda (n.v) (make-header-field (car n.v) (cdr n.v)))
 	     (filter (map (lambda (header)
 			    (cons (header-field-name header)
 				  (header-field-value header)))
@@ -2563,7 +2570,9 @@ WARNING: With a prefix argument, this command may take a very long
       port
       #t
       (lambda (port)
-	(write-mime-body body port))))))
+	(with-mime-best-effort
+	 (lambda ()
+	   (write-mime-body body port))))))))
 
 (define-method insert-mime-body-inline*
     (entity (body <mime-body-message>) selector context mark)
@@ -2687,7 +2696,7 @@ WARNING: With a prefix argument, this command may take a very long
 	(key (cons (mime-info-entity info) (mime-info-selector info)))
 	(inline? (mime-info-inline? info)))
     (if expansions
-	(hash-table/get expansions key inline?)
+	(hash-table-ref/default expansions key inline?)
 	inline?)))
 
 (define (set-mime-info-expanded?! info mark expanded?)
@@ -2696,10 +2705,10 @@ WARNING: With a prefix argument, this command may take a very long
     (if (if (mime-info-inline? info) expanded? (not expanded?))
 	(cond ((buffer-get buffer 'IMAIL-MIME-EXPANSIONS #f)
 	       => (lambda (expansions)
-		    (hash-table/remove! expansions key)
-		    (if (zero? (hash-table/count expansions))
+		    (hash-table-delete! expansions key)
+		    (if (zero? (hash-table-size expansions))
 			(buffer-remove! buffer 'IMAIL-MIME-EXPANSIONS)))))
-	(hash-table/put!
+	(hash-table-set!
 	 (or (buffer-get buffer 'IMAIL-MIME-EXPANSIONS #f)
 	     (let ((expansions (make-equal-hash-table)))
 	       (buffer-put! buffer 'IMAIL-MIME-EXPANSIONS expansions)

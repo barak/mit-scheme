@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -122,8 +122,8 @@ evaluated in the specified inferior REPL buffer."
 				    (detach-thread thread)
 				    thread))))
 	(attach-buffer-interface-port! buffer port)
-	(fluid-let ((%exit inferior-repl/%exit)
-		    (quit inferior-repl/quit))
+	(parameterize ((param:exit-hook inferior-repl/exit)
+		       (param:suspend-hook inferior-repl/suspend))
 	  (dynamic-wind
 	   (lambda () unspecific)
 	   (lambda ()
@@ -137,7 +137,8 @@ evaluated in the specified inferior REPL buffer."
 	   (lambda ()
 	     (signal-thread-event editor-thread
 	       (lambda ()
-		 (unwind-inferior-repl-buffer buffer))))))))))
+		 (unwind-inferior-repl-buffer buffer))))))))
+    buffer))
 
 (define (make-init-message message)
   (if message
@@ -150,10 +151,10 @@ evaluated in the specified inferior REPL buffer."
      (set-working-directory-pathname!
       (buffer-default-directory (port/buffer port))))))
 
-(define (inferior-repl/%exit #!optional integer)
+(define (inferior-repl/exit #!optional integer)
   (exit-current-thread (if (default-object? integer) 0 integer)))
 
-(define (inferior-repl/quit)
+(define (inferior-repl/suspend)
   unspecific)
 
 (define (current-repl-buffer #!optional buffer)
@@ -224,12 +225,12 @@ evaluated in the specified inferior REPL buffer."
 		   ""
 		   (string-append " [level: " (number->string level) "]")))
 	 buffer)
-	(set-run-light! buffer #f))))
-  ;; This doesn't do any output, but prods the editor to notice that
-  ;; the modeline has changed and a redisplay is needed.
-  (inferior-thread-output! (port/output-registration port))
-  (do () ((ready? port))
-    (suspend-current-thread)))
+	(set-run-light! buffer #f)
+	(inferior-thread-run-light! (port/output-registration port)))))
+  (with-thread-events-blocked
+   (lambda ()
+     (do () ((ready? port))
+       (suspend-current-thread)))))
 
 (define (end-input-wait port)
   (set-run-light! (port/buffer port) #t)
@@ -618,8 +619,10 @@ If this is an error, the debugger examines the error condition."
       (lambda ()
 	(set! cmdl (nearest-cmdl))
 	(signal-thread-event thread #f)))
-    (do () (cmdl)
-      (suspend-current-thread))
+    (with-thread-events-blocked
+     (lambda ()
+       (do () (cmdl)
+	 (suspend-current-thread))))
     cmdl))
 
 (define-command inferior-cmdl-self-insert
@@ -728,7 +731,7 @@ If this is an error, the debugger examines the error condition."
     (lambda (mark)
       (if mark
 	  (insert-string
-	   (fluid-let ((*unparse-with-maximum-readability?* #t))
+	   (parameterize ((param:print-with-maximum-readability? #t))
 	     (write-to-string expression))
 	   mark))))
   (let ((port (buffer-interface-port buffer #t)))
@@ -876,7 +879,7 @@ If this is an error, the debugger examines the error condition."
 ;;; Output operations
 
 (define (operation/write-char port char)
-  (guarantee-8-bit-char char)
+  (guarantee 8-bit-char? char)
   (enqueue-output-string! port (string char))
   1)
 
@@ -899,7 +902,7 @@ If this is an error, the debugger examines the error condition."
 	   (and (not (null? windows))
 		(apply min (map window-x-size windows)))))))
 
-(define (operation/write-result port expression value hash-number environment)
+(define (operation/write-result port expression value hash-number)
   (let ((buffer (port/buffer port))
 	(other-buffer?
 	 (memq (operation/current-expression-context port expression)
@@ -910,14 +913,14 @@ If this is an error, the debugger examines the error condition."
 			  (and (ref-variable enable-transcript-buffer buffer)
 			       (transcript-buffer)))
 	(begin
-	  (default/write-result port expression value hash-number environment)
+	  (default/write-result port expression value hash-number)
 	  (if (and other-buffer? (not (mark-visible? (port/mark port))))
 	      (transcript-write value #f))))))
 
 (define (mark-visible? mark)
-  (there-exists? (buffer-windows (mark-buffer mark))
-    (lambda (window)
-      (window-mark-visible? window mark))))
+  (any (lambda (window)
+	 (window-mark-visible? window mark))
+       (buffer-windows (mark-buffer mark))))
 
 (define (enqueue-output-string! port string)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
@@ -932,7 +935,7 @@ If this is an error, the debugger examines the error condition."
 ;;; We assume here that none of the OPERATORs passed to this procedure
 ;;; generate any output in the REPL buffer, and consequently we don't
 ;;; need to update bytes-written here.  Review of the current usage of
-;;; this procedure confirms the assumption. 
+;;; this procedure confirms the assumption.
 
 (define (enqueue-output-operation! port operator)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
@@ -992,8 +995,8 @@ If this is an error, the debugger examines the error condition."
 (define (operation/read-char port)
   (error "READ-CHAR not supported on this port:" port))
 
-(define (operation/read port parser-table)
-  parser-table
+(define (operation/read port environment)
+  (declare (ignore environment))
   (read-expression port (nearest-cmdl/level)))
 
 (define read-expression
@@ -1046,11 +1049,8 @@ If this is an error, the debugger examines the error condition."
 
 ;;; Prompting
 
-(define (operation/prompt-for-expression port environment prompt)
-  (unsolicited-prompt port
-		      (lambda (prompt)
-			(prompt-for-expression prompt #!default environment))
-		      prompt))
+(define (operation/prompt-for-expression port prompt)
+  (unsolicited-prompt port prompt-for-expression prompt))
 
 (define (operation/prompt-for-confirmation port prompt)
   (unsolicited-prompt port prompt-for-confirmation? prompt))
@@ -1097,10 +1097,12 @@ If this is an error, the debugger examines the error condition."
 			       (lambda ()
 				 (continue (procedure prompt))))))))
 		    'FORCE-RETURN))))))
-	(let loop ()
-	  (cond ((eq? value wait-value) (suspend-current-thread) (loop))
-		((eq? value abort-value) (abort->nearest))
-		(else value)))))))
+	(with-thread-events-blocked
+	 (lambda ()
+	   (let loop ()
+	     (cond ((eq? value wait-value) (suspend-current-thread) (loop))
+		   ((eq? value abort-value) (abort->nearest))
+		   (else value)))))))))
 
 (define (when-buffer-selected buffer thunk)
   (if (current-buffer? buffer)
@@ -1112,8 +1114,7 @@ If this is an error, the debugger examines the error condition."
 			     (remove-select-buffer-hook buffer hook))))))
 	(add-select-buffer-hook buffer hook))))
 
-(define (operation/prompt-for-command-expression port environment prompt level)
-  environment
+(define (operation/prompt-for-command-expression port prompt level)
   (parse-command-prompt port prompt)
   (read-expression port level))
 

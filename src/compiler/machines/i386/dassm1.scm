@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -88,16 +88,19 @@ USA.
   (let ((symbol-table (and info (dbg-info/labels info))))
     (write-string "Disassembly of ")
     (write block)
-    (call-with-values
-	(lambda () (compiled-code-block/filename-and-index block))
-      (lambda (filename index)
-	(if filename
-	    (begin
-	      (write-string " (Block ")
-	      (write index)
-	      (write-string " in ")
-	      (write-string filename)
-	      (write-string ")")))))
+    (receive (filename index library)
+	(compiled-code-block/filename-and-index block)
+      (if filename
+	  (begin
+	    (write-string " (Block ")
+	    (write index)
+	    (if library
+		(begin
+		  (write-string " of library ")
+		  (write library)))
+	    (write-string " in ")
+	    (write-string filename)
+	    (write-string ")"))))
     (write-string ":\n")
     (write-string "Code:\n\n")
     (disassembler/write-instruction-stream
@@ -117,7 +120,7 @@ USA.
   (disassembler/instructions #f start-address end-address #f))
 
 (define (disassembler/write-instruction-stream symbol-table instruction-stream)
-  (fluid-let ((*unparser-radix* 16))
+  (parameterize ((param:printer-radix 16))
     (disassembler/for-each-instruction instruction-stream
       (lambda (offset instruction comment)
 	(disassembler/write-instruction
@@ -125,8 +128,10 @@ USA.
 	 offset
 	 (lambda ()
 	   (if comment
-	       (let ((s (with-output-to-string
-			  (lambda () (display instruction)))))
+	       (let ((s
+		      (call-with-output-string
+			(lambda (port)
+			  (display instruction port)))))
 		 (if (< (string-length s) 40)
 		     (write-string (string-pad-right s 40))
 		     (write-string s))
@@ -143,7 +148,7 @@ USA.
 	    (loop (instruction-stream)))))))
 
 (define (disassembler/write-constants-block block symbol-table)
-  (fluid-let ((*unparser-radix* 16))
+  (parameterize ((param:printer-radix 16))
     (let ((end (system-vector-length block)))
       (let loop ((index (compiled-code-block/marked-start block)))
 	(cond ((not (< index end)) 'DONE)
@@ -170,7 +175,7 @@ USA.
 
 (define (write-constant block symbol-table constant)
   (write-string (cdr (write-to-string constant 60)))
-  (cond ((lambda? constant)
+  (cond ((scode-lambda? constant)
 	 (let ((expression (lambda-body constant)))
 	   (if (and (compiled-code-address? expression)
 		    (eq? (compiled-code-address->block expression) block))

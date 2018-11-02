@@ -1,0 +1,236 @@
+
+matcher.scm,2044
+(define (preprocess-matcher-expression 40,1465
+(define (preprocess-matcher-expressions 68,2434
+(define (define-matcher-preprocessor 77,2675
+(define-syntax define-*matcher-macro84,2903
+(define (define-*matcher-expander 100,3474
+(define (matcher-preprocessor 109,3793
+(define matcher-preprocessors113,3927
+(define-*matcher-expander '+116,3990
+(define-*matcher-expander '?120,4084
+(define-*matcher-expander 'COMPLETE124,4168
+(define-*matcher-expander 'TOP-LEVEL128,4268
+(define-*matcher-expander 'N*132,4372
+(define-*matcher-expander 'N*M137,4481
+(define-*matcher-expander 'ERROR142,4603
+(define-matcher-preprocessor '(149,4835
+(define-matcher-preprocessor '*157,5127
+(define-matcher-preprocessor '(164,5366
+(define-matcher-preprocessor '(174,5725
+(define-matcher-preprocessor '(180,5937
+(define-matcher-preprocessor 'CHAR-SET189,6301
+(define-matcher-preprocessor '(202,6732
+(define-matcher-preprocessor 'WITH-POINTER208,6940
+(define-matcher-preprocessor 'SEXP217,7282
+(define-syntax *matcher225,7479
+(define (generate-matcher-code 232,7689
+(define (compile-matcher-expression 244,8124
+(define (wrap-external-matcher 267,8938
+(define-syntax define-matcher272,9054
+(define (define-matcher-compiler 287,9641
+(define matcher-compilers291,9778
+(define-syntax define-atomic-matcher294,9837
+(define-atomic-matcher (char 305,10268
+(define-atomic-matcher (char-ci 308,10377
+(define-atomic-matcher (not-char 311,10492
+(define-atomic-matcher (not-char-ci 314,10609
+(define-atomic-matcher (char-set 317,10732
+(define-atomic-matcher (string 321,10868
+(define-atomic-matcher (string-ci 324,10985
+(define-atomic-matcher (end-of-input)327,11108
+(define-matcher (discard-matched)331,11211
+(define-matcher (with-pointer 337,11354
+(define-matcher (seq 343,11585
+(define-matcher (alt 358,12081
+(define-matcher (* 375,12621
+(define-matcher (n*n 389,13022
+(define (open-code-n*n 394,13196
+(define (close-code-n*n 406,13534
+(define-matcher (*n 422,14062
+(define (open-code-*n 427,14233
+(define (close-code-*n 443,14689
+
+parser.scm,1645
+(define (preprocess-parser-expression 40,1465
+(define (preprocess-parser-expressions 65,2345
+(define (define-parser-preprocessor 74,2608
+(define-syntax define-*parser-macro81,2833
+(define (define-*parser-expander 97,3402
+(define (parser-preprocessor 106,3714
+(define parser-preprocessors110,3845
+(define-*parser-expander '+113,3907
+(define-*parser-expander '?117,4000
+(define-*parser-expander 'COMPLETE121,4083
+(define-*parser-expander 'TOP-LEVEL125,4190
+(define-*parser-expander 'ERROR129,4293
+(define-*parser-expander 'ENCAPSULATE*136,4524
+(define-*parser-expander 'TRANSFORM*141,4683
+(define-parser-preprocessor '(150,4896
+(define-parser-preprocessor '*158,5184
+(define-parser-preprocessor '(165,5419
+(define-parser-preprocessor '(172,5669
+(define-parser-preprocessor 'WITH-POINTER180,5978
+(define-parser-preprocessor 'SEXP188,6322
+(define-parser-preprocessor 'DISCARD-MATCHED194,6502
+(define-parser-preprocessor 'VALUES200,6694
+(define-syntax *parser207,6863
+(define (generate-parser-code 214,7071
+(define (compile-parser-expression 226,7501
+(define (wrap-external-parser 249,8328
+(define-syntax define-parser256,8491
+(define (define-parser-compiler 271,9076
+(define parser-compilers275,9211
+(define-parser (match 278,9269
+(define-parser (noise 291,9622
+(define-parser (values 299,9853
+(define-parser (transform 307,10035
+(define-parser (map 312,10243
+(define-parser (encapsulate 317,10446
+(define (post-processed-parser 322,10655
+(define-parser (with-pointer 330,10919
+(define-parser (discard-matched)336,11146
+(define-parser (seq 342,11299
+(define-parser (alt 364,11976
+(define-parser (* 389,12672
+
+shared.scm,5126
+(define *buffer-name*)31,1081
+(define *environment*)32,1104
+(define *closing-environment*)33,1127
+(define debug:disable-optimizers? 34,1158
+(define debug:trace-optimization? 35,1196
+(define (generate-external-procedure 37,1235
+(define (run-optimizers 71,2435
+(define (strip-protection-wrappers 90,2963
+(define (check-0-args 111,3520
+(define (check-1-arg 114,3586
+(define (check-2-args 118,3702
+(define (check-n-args 121,3799
+(define (error:ill-formed-expression 127,4030
+(define (handle-complex-expression 130,4127
+(define (close 146,4599
+(define-record-type <parser-macros>151,4699
+(define (make-parser-macros 158,4917
+(define *global-parser-macros*164,5156
+(define (define-matcher-macro 169,5290
+(define (lookup-matcher-macro 172,5410
+(define (define-parser-macro 178,5631
+(define (lookup-parser-macro 181,5749
+(define (with-current-parser-macros 187,5968
+(define (current-parser-macros)192,6137
+(define (set-current-parser-macros! 195,6189
+(define (global-parser-macros)200,6344
+(define *parser-macros*203,6402
+(define (maybe-make-let 208,6488
+(define (with-value-binding 214,6631
+(define (call-with-pointer 220,6781
+(define (fetch-pointer)228,6973
+(define (backtracking-kf 231,7045
+(define (make-kf-lambda 238,7215
+(define (make-matcher-ks-lambda 241,7312
+(define (make-parser-ks-lambda 246,7454
+(define (protect 251,7617
+(define (make-kf-identifier)254,7735
+(define (make-ks-identifier)257,7794
+(define (make-ptr-identifier)260,7853
+(define (make-value-identifier)263,7912
+(define (make-loop-identifier)266,7973
+(define (generate-identifier 269,8033
+(define (internal-identifier? 285,8450
+(define internal-identifier-prefix 290,8655
+(define internal-identifier-suffix 291,8696
+(define *id-counters*)293,8738
+(define (bind-delayed-lambdas 306,9320
+(define (make-delayed-lambda 312,9549
+(define (delay-call 322,9844
+(define (delay-reference 325,9913
+(define (lambda-expression? 328,9957
+(define (optimize-by-substitution 332,10065
+(define (substitute-let-expression 371,11344
+(define (maybe-resubstitute 389,11895
+(define (compute-substitutions 396,12097
+(define (apply-substitutions 432,13192
+(define (discard-unused-loop-bindings 476,14497
+(define (discard-parameters-from-operands 493,15103
+(define (discard-parameters-from-operand 510,15751
+(define (apply-discards-to-calls 524,16284
+(define (apply-discards-to-operands 559,17396
+(define (apply-discards-to-list 579,17927
+(define (operand-copyable? 589,18224
+(define (operand-substitutable? 606,18777
+(define (operand-discardable? 615,19185
+(define (expression-may-have-side-effects? 621,19421
+(define (count-references 628,19601
+(define (optimize-pointer-usage 666,20704
+(define (optimize-pointer-usage* 669,20811
+(define (define-pointer-optimization 700,21695
+(define pointer-optimizations 710,21959
+(define (define-default-pointer-optimization 712,21995
+(define default-pointer-optimizations 722,22291
+(define (make-empty-pointers)724,22336
+(define (current-pointer? 727,22384
+(define (new-pointer 730,22482
+(define (no-pointer 733,22611
+(define (drop-pointer-refs 736,22716
+(define (canonicalize-pointer-ref 740,22865
+(define (%new-pointer 747,23070
+(define (replace-item 759,23500
+(define (%no-pointer 767,23738
+(define (%drop-pointer-refs 772,23839
+(define (%current-pointers 780,24016
+(define (%id-pointers 787,24184
+(define-pointer-optimization793,24318
+(define-pointer-optimization '(809,24868
+(define-pointer-optimization '(835,26261
+(define-pointer-optimization '(840,26376
+(define-pointer-optimization '(846,26633
+(define-pointer-optimization '(851,26835
+(define-pointer-optimization '(859,27123
+(define-default-pointer-optimization '(867,27407
+(define-default-pointer-optimization '(872,27598
+(define-default-pointer-optimization887,28164
+(define (peephole-optimize 898,28524
+(define (define-peephole-optimizer 927,29474
+(define peephole-optimizer-patterns 937,29796
+(define (predicate-not-or 939,29838
+(define-peephole-optimizer '(943,29952
+(define-peephole-optimizer '(947,30068
+(define-peephole-optimizer '(951,30192
+(define-peephole-optimizer '(957,30394
+(define-peephole-optimizer '(963,30604
+(define-peephole-optimizer '(969,30830
+(define-peephole-optimizer '(973,30976
+(define-peephole-optimizer '(980,31189
+(define-peephole-optimizer '(991,31531
+(define-peephole-optimizer '(1002,31873
+(define-peephole-optimizer '(1019,32462
+(define-peephole-optimizer '(1036,33056
+(define-peephole-optimizer '(1047,33393
+(define-peephole-optimizer '(1062,33841
+(define-peephole-optimizer '(1075,34228
+(define-peephole-optimizer '(1079,34394
+(define-peephole-optimizer '(1083,34559
+(define-peephole-optimizer '(1095,34984
+(define-peephole-optimizer '(1099,35110
+(define-peephole-optimizer '(1103,35254
+(define-peephole-optimizer '(1107,35382
+(define-peephole-optimizer '(1111,35509
+(define (optimize-group-expression 1115,35647
+(define (optimize-group-expression-1 1121,35851
+(define (flatten-subexpressions 1129,36099
+(define (flatten-expressions 1132,36203
+(define (trace-optimization 1141,36517
+(define (trace-optimizer-tl 1154,36866
+
+parser.pkg,221
+MIT/GNU Scheme is free software;10,317
+the Free Software Foundation;12,457
+the Free Software Foundation; either version 2 of the License,12,457
+the Free Software Foundation; either version 2 of the License, or 12,457
+
+load.scm,0
+
+ed-ffi.scm,0
+
+compile.scm,0

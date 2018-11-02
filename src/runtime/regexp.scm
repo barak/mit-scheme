@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,63 +29,58 @@ USA.
 
 (declare (usual-integrations))
 
-(define registers)
+(define-deferred registers (make-vector 20 #f))
 
-(define (initialize-package!)
-  (set! registers (make-vector 20 #f))
-  unspecific)
-
-(define-structure (re-registers (type-descriptor <re-registers>))
-  (vector #f read-only #t))
-
-(define (guarantee-re-registers object procedure)
-  (if (not (re-registers? object))
-      (error:wrong-type-argument object "regular-expression registers"
-				 procedure))
-  (re-registers-vector object))
-
-(define (re-match-start-index i #!optional regs)
-  (guarantee-re-register i 'RE-MATCH-START-INDEX)
-  (vector-ref (if (or (default-object? regs) (not regs))
-		  registers
-		  (guarantee-re-registers regs 'RE-MATCH-START-INDEX))
-	      i))
-
-(define (re-match-end-index i #!optional regs)
-  (guarantee-re-register i 'RE-MATCH-END-INDEX)
-  (vector-ref (if (or (default-object? regs) (not regs))
-		  registers
-		  (guarantee-re-registers regs 'RE-MATCH-START-INDEX))
-	      (fix:+ i 10)))
-
-(define (guarantee-re-register i operator)
-  (if (not (and (exact-nonnegative-integer? i) (< i 10)))
-      (error:wrong-type-argument i "regular-expression register" operator)))
+(define (re-register? object)
+  (and (index-fixnum? object)
+       (fix:< object 10)))
 
 (define (re-registers)
   (make-re-registers (vector-copy registers)))
 
 (define (set-re-registers! regs)
-  (let ((regs (guarantee-re-registers regs 'SET-RE-REGISTERS!)))
-    (do ((i 0 (fix:+ i 1)))
-	((fix:= 20 i))
-      (vector-set! registers i (vector-ref regs i)))))
+  (vector-copy! registers 0 (re-registers-vector regs)))
 
-(define (preserving-re-registers thunk)
-  (let ((registers* unspecific))
-    (dynamic-wind (lambda () (set! registers* (re-registers)) unspecific)
-		  thunk
-		  (lambda () (set-re-registers! registers*)))))
+(define-record-type <re-registers>
+    (make-re-registers vector)
+    re-registers?
+  (vector re-registers-vector))
+
+(define (re-match-start-index i #!optional regs)
+  (guarantee re-register? i 're-match-start-index)
+  (vector-ref (if (or (default-object? regs) (not regs))
+		  registers
+		  (re-registers-vector regs))
+	      i))
+
+(define (re-match-end-index i #!optional regs)
+  (guarantee re-register? i 're-match-end-index)
+  (vector-ref (if (default-object? regs)
+		  registers
+		  (re-registers-vector regs))
+	      (fix:+ i 10)))
 
 (define (re-match-extract string regs i)
   (let ((start (re-match-start-index i regs))
 	(end (re-match-end-index i regs)))
     (if (not (and start end))
-	(error:bad-range-argument i 'RE-MATCH-EXTRACT))
+	(error:bad-range-argument i 're-match-extract))
     (substring string start end)))
+
+(define (preserving-re-registers thunk)
+  (let ((registers* unspecific))
+    (dynamic-wind (lambda ()
+		    (set! registers* (re-registers))
+		    unspecific)
+		  thunk
+		  (lambda ()
+		    (set-re-registers! registers*)
+		    (set! registers*)
+		    unspecific))))
 
 (define (make-substring-operation primitive)
   (lambda (regexp string start end #!optional case-fold? syntax-table)
+    (guarantee 8-bit-string? string)
     (let ((regexp
 	   (if (compiled-regexp? regexp)
 	       regexp
@@ -130,7 +125,7 @@ USA.
 
 (define (regexp-group . alternatives)
   (let ((alternatives
-	 (list-transform-positive alternatives identity-procedure)))
+	 (filter identity-procedure alternatives)))
     (if (null? alternatives)
 	"\\(\\)"
 	(apply string-append
@@ -187,30 +182,22 @@ USA.
   (let ((chars (char-set-members char-set)))
     (if (pair? chars)
 	(if (pair? (cdr chars))
-	    (let ((ranges
-		   (push #\^ (pull #\- (pull #\] (compute-ranges chars))))))
-	      (let ((n
-		     (let loop ((ranges ranges) (n 2))
-		       (if (pair? ranges)
-			   (loop (cdr ranges)
-				 (fix:+ n (if (pair? (car ranges)) 3 1)))
-			   n))))
-		(let ((s (make-string n)))
-		  (string-set! s 0 #\[)
-		  (let loop ((ranges ranges) (i 1))
-		    (if (pair? ranges)
-			(loop (cdr ranges)
-			      (let ((range (car ranges)))
-				(if (pair? range)
-				    (begin
-				      (string-set! s i (car range))
-				      (string-set! s (fix:+ i 1) #\-)
-				      (string-set! s (fix:+ i 2) (cdr range))
-				      (fix:+ i 3))
-				    (begin
-				      (string-set! s i range)
-				      (fix:+ i 1)))))
-			(string-set! s i #\])))
-		  s)))
+	    (let ((builder (string-builder)))
+	      (builder #\[)
+	      (let loop
+		  ((ranges
+		    (push #\^ (pull #\- (pull #\] (compute-ranges chars))))))
+		(if (pair? ranges)
+		    (begin
+		      (let ((range (car ranges)))
+			(if (pair? range)
+			    (begin
+			      (builder (car range))
+			      (builder #\-)
+			      (builder (cdr range)))
+			    (builder range)))
+		      (loop (cdr ranges)))))
+	      (builder #\])
+	      (builder))
 	    (re-quote-string (string (car chars))))
 	"")))

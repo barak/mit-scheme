@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -121,10 +121,9 @@ USA.
     (cond ((eq? specification 'BOUND) (block-bound-variables block))
 	  ((eq? specification 'FREE) (block-free-variables block))
 	  ((eq? specification 'ASSIGNED)
-	   (list-transform-positive
-	       (append (block-bound-variables block)
-		       (block-free-variables block))
-	     variable-assigned?))
+	   (filter variable-assigned?
+		   (append (block-bound-variables block)
+			   (block-free-variables block))))
 	  ((eq? specification 'NONE) '())
 	  ((eq? specification 'ALL)
 	   (append (block-bound-variables block)
@@ -213,3 +212,20 @@ USA.
     (check-property block-range-checks set-block-range-checks! #t))
   (define-pre-only-declaration 'NO-RANGE-CHECKS
     (check-property block-range-checks set-block-range-checks! #f)))
+
+;;;; Metadata to be included in output
+
+(define-pre-only-declaration 'target-metadata
+  (lambda (block keyword value)
+    (declare (ignore block))
+    (if (list-of-type? value
+		       (lambda (elt)
+			 (and (pair? elt)
+			      (symbol? (car elt))
+			      (list? (cdr elt)))))
+	(begin
+	  (set! *tl-metadata*
+		(append! *tl-metadata*
+			 (list-copy value)))
+	  unspecific)
+	(warn "Ill-formed metadata declaration:" (cons keyword value)))))

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -39,7 +39,7 @@ USA.
       (check-coding-types coding-types)
       (expand-implicit-coding-types coding-types)
       (let ((explicit
-	     (keep-matching-items coding-types coding-type-explicit?)))
+	     (filter coding-type-explicit? coding-types)))
 	(check-coding-types explicit)
 	(check-code-allocations explicit)
 	(for-each (lambda (coding-type)
@@ -72,9 +72,9 @@ USA.
 	    (queue->list defns))))
 
 (define (find-coding-type name coding-types #!optional error?)
-  (or (find-matching-item coding-types
-	(lambda (type)
-	  (eq? (coding-type-name type) name)))
+  (or (find (lambda (type)
+	      (eq? (coding-type-name type) name))
+	    coding-types)
       (and (if (default-object? error?) #t error?)
 	   (error "Unknown coding-type name:" name))))
 
@@ -139,16 +139,16 @@ USA.
   ;; Check for duplicate pattern variables.
   (do ((pvars (defn-pvars defn) (cdr pvars)))
       ((not (pair? pvars)))
-    (if (there-exists? (cdr pvars)
-	  (lambda (pv)
-	    (eq? (pvar-name pv) (pvar-name (car pvars)))))
+    (if (any (lambda (pv)
+	       (eq? (pvar-name pv) (pvar-name (car pvars))))
+	     (cdr pvars))
 	(error "Duplicate pattern variable:" (car pvars))))
   ;; Check for missing or extra variable references in coding.
   (let ((pvars1 (defn-pvars defn))
 	(pvars2 (defn-coding defn)))
     (if (not (and (fix:= (length pvars1) (length pvars2))
-		  (for-all? pvars1 (lambda (pv1) (memq pv1 pvars2)))
-		  (for-all? pvars2 (lambda (pv2) (memq pv2 pvars1)))))
+		  (every (lambda (pv1) (memq pv1 pvars2)) pvars1)
+		  (every (lambda (pv2) (memq pv2 pvars1)) pvars2)))
 	(error "Pattern/coding mismatch:" pvars1 pvars2)))
   ;; Check for incorrect use of code marker.
   (if (and (defn-has-code? defn)
@@ -164,9 +164,9 @@ USA.
     ;; Compute initial references.
     (let ((find-node
 	   (lambda (coding-type)
-	     (find-matching-item nodes
-	       (lambda (node)
-		 (eq? (vector-ref node 0) coding-type))))))
+	     (find (lambda (node)
+		     (eq? (vector-ref node 0) coding-type))
+		   nodes))))
       (for-each (lambda (coding-type from)
 		  (for-each (lambda (to)
 			      (enqueue! queue (cons from (find-node to))))
@@ -195,9 +195,9 @@ USA.
 	      nodes)
     ;; Check for single root.
     (let ((roots
-	   (keep-matching-items nodes
-	     (lambda (node)
-	       (null? (vector-ref node 2))))))
+	   (filter (lambda (node)
+		     (null? (vector-ref node 2)))
+		   nodes)))
       (if (not (pair? roots))
 	  (error "No roots in coding-type graph."))
       (if (pair? (cdr roots))
@@ -259,9 +259,9 @@ USA.
       (let ((outputs
 	     (append-map (lambda (input)
 			   (let ((abbrev
-				  (find-matching-item abbrevs
-				    (lambda (abbrev)
-				      (syntax-match? (car abbrev) input)))))
+				  (find (lambda (abbrev)
+					  (syntax-match? (car abbrev) input))
+					abbrevs)))
 			     (if abbrev
 				 (begin
 				   (set! any-expansions? #t)
@@ -281,7 +281,7 @@ USA.
 	(values (reverse! true) (reverse! false)))))
 
 (define (abbrev-def? input)
-  (syntax-match? '('DEFINE-ABBREVIATION (SYMBOL * DATUM) EXPRESSION)
+  (syntax-match? '('define-abbreviation (symbol * datum) expression)
 		 input))
 
 (define (define-parser keyword pattern parser)
@@ -331,7 +331,7 @@ USA.
   (set-coding-type-defns!
    coding-type
    (map (lambda (input)
-	  (if (not (syntax-match? '('DEFINE-CODE-SEQUENCE DATUM * DATUM)
+	  (if (not (syntax-match? '('define-code-sequence datum * datum)
 				  input))
 	      (error "Illegal sequence definition:" input))
 	  (parse-code-sequence coding-type (cadr input) (cddr input)))
@@ -365,10 +365,10 @@ USA.
 		  pvars
 		  has-code?
 		  (map (lambda (item)
-			 (guarantee-symbol item #f)
-			 (or (find-matching-item pvars
-			       (lambda (pv)
-				 (eq? (pvar-name pv) item)))
+			 (guarantee symbol? item #f)
+			 (or (find (lambda (pv)
+				     (eq? (pvar-name pv) item))
+				   pvars)
 			     (error "Missing name reference:" item)))
 		       coding)))))
 
@@ -400,13 +400,12 @@ USA.
 	(assign-defn-codes type)))))
 
 (define (independent-coding-type? type coding-types)
-  (let ((implicit-types
-	 (delete-matching-items coding-types coding-type-explicit?)))
-    (for-all? (coding-type-defns type)
-      (lambda (defn)
-	(not (there-exists? (defn-pvars defn)
-	       (lambda (pv)
-		 (find-coding-type (pvar-type pv) implicit-types #f))))))))
+  (let ((implicit-types (remove coding-type-explicit? coding-types)))
+    (every (lambda (defn)
+	     (not (any (lambda (pv)
+			 (find-coding-type (pvar-type pv) implicit-types #f))
+		       (defn-pvars defn))))
+	   (coding-type-defns type))))
 
 (define (expand-coding-type to-substitute to-expand)
   (let ((type-name (coding-type-name to-substitute)))
@@ -416,9 +415,9 @@ USA.
 	 to-expand
 	 (append-map! (lambda (defn)
 			(let ((pv
-			       (find-matching-item (defn-pvars defn)
-				 (lambda (pv)
-				   (eq? (pvar-type pv) type-name)))))
+			       (find (lambda (pv)
+				       (eq? (pvar-type pv) type-name))
+				     (defn-pvars defn))))
 			  (if pv
 			      (begin
 				(set! any-changes? #t)
@@ -475,9 +474,9 @@ USA.
 	       (let ((pv (car pvars))
 		     (clash?
 		      (lambda (name)
-			(there-exists? pvars*
-			  (lambda (pv)
-			    (eq? (pvar-name pv) name)))))
+			(any (lambda (pv)
+			       (eq? (pvar-name pv) name))
+			     pvars*)))
 		     (k
 		      (lambda (pv)
 			(loop (cdr pvars) (cons pv pvars*)))))
@@ -533,8 +532,8 @@ USA.
 		    (let ((defn (car defns)))
 		      (set-defn-name!
 		       defn
-		       (delete-matching-items! (defn-name defn)
-			 deleteable-name-item?)))))
+		       (remove! deleteable-name-item?
+				(defn-name defn))))))
 	      (group-defns-by-prefix defns))
     ;; Join name items into hyphen-separated symbols.
     (for-each (lambda (defn)
@@ -563,9 +562,9 @@ USA.
 
 (define (map-key-abbrevs keyword key-abbrevs)
   (let ((key-abbrev
-	 (find-matching-item key-abbrevs
-	   (lambda (key-abbrev)
-	     (eq? (key-abbrev-keyword key-abbrev) keyword)))))
+	 (find (lambda (key-abbrev)
+		 (eq? (key-abbrev-keyword key-abbrev) keyword))
+	       key-abbrevs)))
     (if key-abbrev
 	(key-abbrev-abbreviation key-abbrev)
 	keyword)))
@@ -615,7 +614,7 @@ USA.
 					      (defn-name defn)
 					      lower-limit))
 		defns)))
-      (if (for-all? indices (lambda (i) i))
+      (if (every (lambda (i) i) indices)
 	  (loop (if (apply = indices)
 		    (let ((index (car indices)))
 		      (let ((names
@@ -651,9 +650,9 @@ USA.
       #t))
 
 (define (deleteable-name-item? item)
-  (there-exists? (pvar-types)
-    (lambda (pvt)
-      (eq? (pvt-abbreviation pvt) item))))
+  (any (lambda (pvt)
+	 (eq? (pvt-abbreviation pvt) item))
+       (pvar-types)))
 
 (define (deleteable-name-items)
   (map pvt-abbreviation (pvar-types)))
@@ -692,7 +691,7 @@ USA.
        coding-types))))
 
 (define (defn-name-length defn)
-  (string-length (symbol-name (defn-name defn))))
+  (string-length (symbol->string (defn-name defn))))
 
 (define (wrap-scheme-output title pathname generator)
   (call-with-output-file pathname
@@ -728,9 +727,9 @@ USA.
 				 #t)
 		 "_"))
 	       (long-form?
-		(there-exists? (coding-type-defns coding-type)
-		  (lambda (defn)
-		    (pair? (defn-coding defn))))))
+		(any (lambda (defn)
+		       (pair? (defn-coding defn)))
+		     (coding-type-defns coding-type))))
 	   (write-c-code-macro prefix
 			       "START_CODE"
 			       (coding-type-start-index coding-type)
@@ -791,8 +790,8 @@ USA.
 			(write-string ", " port)
 			(write-c-name (defn-name defn) #f port)
 			(write-string ")" port))
-		      (keep-matching-items (coding-type-defns coding-type)
-			defn-has-code?)
+		      (filter defn-has-code?
+			      (coding-type-defns coding-type))
 		      port))
 
 (define (write-c-opcode+decoder prefix defn port)
@@ -860,7 +859,7 @@ USA.
   (newline port))
 
 (define (name->c-string name upcase?)
-  (name-string->c-string (symbol-name name) upcase?))
+  (name-string->c-string (symbol->string name) upcase?))
 
 (define (name-string->c-string name upcase?)
   (call-with-output-string
@@ -868,7 +867,7 @@ USA.
       (write-c-name-string name upcase? port))))
 
 (define (write-c-name name upcase? port)
-  (write-c-name-string (symbol-name name) upcase? port))
+  (write-c-name-string (symbol->string name) upcase? port))
 
 (define (write-c-name-string name upcase? port)
   (let ((e (string-length name))

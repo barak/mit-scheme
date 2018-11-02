@@ -1,0 +1,379 @@
+CN	CN	b	=
+	CR	b	=
+	EB	b	=
+	EBG	b	=
+	EM	b	=
+	EX	B*	=
+	GAZ	b	=
+	L	b	=
+	LF	b	=
+	LV	b	=
+	LVT	b	=
+	PP	b	=
+	RI	b	=
+	SM	B*	=
+	T	b	=
+	V	b	=
+	XX	b	=
+	ZWJ	B*	=
+
+CR	CN	b	=
+	CR	b	=
+	EB	b	=
+	EBG	b	=
+	EM	b	=
+	EX	B*	=
+	GAZ	b	=
+	L	b	=
+	LF	NB*	=
+	LV	b	=
+	LVT	b	=
+	PP	b	=
+	RI	b	=
+	SM	B*	=
+	T	b	=
+	V	b	=
+	XX	b	=
+	ZWJ	B*	=
+
+LF	CN	b	=
+	CR	b	=
+	EB	b	=
+	EBG	b	=
+	EM	b	=
+	EX	B*	=
+	GAZ	b	=
+	L	b	=
+	LF	b	=
+	LV	b	=
+	LVT	b	=
+	PP	b	=
+	RI	b	=
+	SM	B*	=
+	T	b	=
+	V	b	=
+	XX	b	=
+	ZWJ	B*	=
+
+L	CN	b	=
+	CR	b	=
+	EB	b	=
+	EBG	b	=
+	EM	b	=
+	EX	nb	=
+	GAZ	b	=
+	L	NB*	=
+	LF	b	=
+	LV	NB*	=
+	LVT	NB*	=
+	PP	b	=
+	RI	b	=
+	SM	nb	=
+	T	b	=
+	V	NB*	=
+	XX	b	=
+	ZWJ	nb	=
+
+LV	CN	b	=
+	CR	b	=
+	EB	b	=
+	EBG	b	=
+	EM	b	=
+	EX	nb	=
+	GAZ	b	=
+	L	b	=
+	LF	b	=
+	LV	b	=
+	LVT	b	=
+	PP	b	=
+	RI	b	=
+	SM	nb	=
+	T	NB*	=
+	V	NB*	=
+	XX	b	=
+	ZWJ	nb	=
+
+V	CN	b	=
+	CR	b	=
+	EB	b	=
+	EBG	b	=
+	EM	b	=
+	EX	nb	=
+	GAZ	b	=
+	L	b	=
+	LF	b	=
+	LV	b	=
+	LVT	b	=
+	PP	b	=
+	RI	b	=
+	SM	nb	=
+	T	NB*	=
+	V	NB*	=
+	XX	b	=
+	ZWJ	nb	=
+
+LVT	CN	b	=
+	CR	b	=
+	EB	b	=
+	EBG	b	=
+	EM	b	=
+	EX	nb	=
+	GAZ	b	=
+	L	b	=
+	LF	b	=
+	LV	b	=
+	LVT	b	=
+	PP	b	=
+	RI	b	=
+	SM	nb	=
+	T	NB*	=
+	V	b	=
+	XX	b	=
+	ZWJ	nb	=
+
+T	CN	b	=
+	CR	b	=
+	EB	b	=
+	EBG	b	=
+	EM	b	=
+	EX	nb	=
+	GAZ	b	=
+	L	b	=
+	LF	b	=
+	LV	b	=
+	LVT	b	=
+	PP	b	=
+	RI	b	=
+	SM	nb	=
+	T	NB*	=
+	V	b	=
+	XX	b	=
+	ZWJ	nb	=
+
+PP	CN	b	=
+	CR	b	=
+	EB	NB*	=
+	EBG	NB*	=
+	EM	NB*	=
+	EX	nb	=
+	GAZ	NB*	=
+	L	NB*	=
+	LF	b	=
+	LV	NB*	=
+	LVT	NB*	=
+	PP	NB*	=
+	RI	NB*	=
+	SM	nb	=
+	T	NB*	=
+	V	NB*	=
+	XX	NB*	=
+	ZWJ	nb	=
+
+EB	CN	b	=
+	CR	b	=
+	EB	b	=
+	EBG	b	=
+	EM	NB*	=
+	EX	nb	EB
+	GAZ	b	=
+	L	b	=
+	LF	b	=
+	LV	b	=
+	LVT	b	=
+	PP	b	=
+	RI	b	=
+	SM	nb	=
+	T	b	=
+	V	b	=
+	XX	b	=
+	ZWJ	nb	=
+
+EBG	CN	b	=
+	CR	b	=
+	EB	b	=
+	EBG	b	=
+	EM	NB	=
+	EX	nb	EBG
+	GAZ	b	=
+	L	b	=
+	LF	b	=
+	LV	b	=
+	LVT	b	=
+	PP	b	=
+	RI	b	=
+	SM	nb	=
+	T	b	=
+	V	b	=
+	XX	b	=
+	ZWJ	nb	=
+
+ZWJ	CN	b	=
+	CR	b	=
+	EB	b	=
+	EBG	NB*	=
+	EM	b	=
+	EX	nb	=
+	GAZ	NB*	=
+	L	b	=
+	LF	b	=
+	LV	b	=
+	LVT	b	=
+	PP	b	=
+	RI	b	=
+	SM	nb	=
+	T	b	=
+	V	b	=
+	XX	b	=
+	ZWJ	nb	=
+
+RI	CN	b	=
+	CR	b	=
+	EB	b	=
+	EBG	b	=
+	EM	b	=
+	EX	nb	=
+	GAZ	b	=
+	L	b	=
+	LF	b	=
+	LV	b	=
+	LVT	b	=
+	PP	b	=
+	RI	NB*	RI2
+	SM	nb	=
+	T	b	=
+	V	b	=
+	XX	b	=
+	ZWJ	nb	=
+
+RI2	CN	b	=
+	CR	b	=
+	EB	b	=
+	EBG	b	=
+	EM	b	=
+	EX	nb	=
+	GAZ	b	=
+	L	b	=
+	LF	b	=
+	LV	b	=
+	LVT	b	=
+	PP	b	=
+	RI	b	=
+	SM	nb	=
+	T	b	=
+	V	b	=
+	XX	b	=
+	ZWJ	nb	=
+
+CR	carriage-return
+DQ	double-quote
+EB	emoji-base
+EBG	emoji-base-gaz
+EM	emoji-modifier
+EX	extend-num-let
+Extend	extend
+FO	format
+GAZ	glue-after-zwj
+HL	hebrew-letter
+KA	katakana
+LE	letter
+LF	linefeed
+MB	mid-num-let
+ML	mid-letter
+MN	mid-number
+NL	newline
+NU	numeric
+RI	regional-indicator
+SQ	single-quote
+XX	other
+ZWJ	zero-width-joiner
+
+AH	HL | LE
+MQ	MB | SQ
+
+
+sot	Extend	b	=
+	FO	b	=
+	ZWJ	b	=
+
+CR	CR	b	=
+	Extend	b	=
+	FO	b	=
+	LF	nb	=
+	NL	b	=
+	ZWJ	b	=
+
+EB	EM	nb	=
+
+EBG	EM	nb	=
+
+EX	EX	nb	=
+EX	AH	nb	=
+EX	NU	nb	=
+EX	KA	nb	=
+
+HL	SQ	nb	=
+HL	DQ	nb	HL2
+HL2	HL	nb	=
+
+LF	NL	b	=
+	CR	b	=
+	LF	b	=
+	Extend	b	=
+	FO	b	=
+	ZWJ	b	=
+
+KA	KA	nb	=
+	EX	nb	=
+
+NL	CR	b	=
+	NL	b	=
+	LF	b	=
+	Extend	b	=
+	FO	b	=
+	ZWJ	b	=
+
+NU	NU	nb	=
+NU	AH	nb	=
+NU	EX	nb	=
+
+x	Extend	nb	x
+x	FO	nb	x
+x	ZWJ	nb	x
+
+AH	AH	nb	=
+AH	EX	nb	=
+AH	NU	nb	=
+
+AH	ML	nb	AH2
+AH	MQ	nb	AH2
+AH2	AH	nb	=
+
+RI	RI	nb	RI2
+RI2	RI	b	=
+
+ZWJ	GAZ	nb	=
+	EBG	nb	=
+
+
+	CR	
+	DQ	
+	EB	
+	EBG	
+	EM	
+	EX	
+	Extend	
+	FO	
+	GAZ	
+	HL	
+	KA	
+	LE	
+	LF	
+	MB	
+	ML	
+	MN	
+	NL	
+	NU	
+	RI	
+	SQ	
+	XX	
+	ZWJ	

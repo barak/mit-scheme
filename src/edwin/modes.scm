@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,11 +33,12 @@ USA.
 				(name major? display-name super-mode
 				      %description initialization comtabs))
 		   (print-procedure
-		    (unparser/standard-method 'MODE
-		      (lambda (state mode)
-			(unparse-object state (mode-name mode))
-			(if (not (mode-major? mode))
-			    (unparse-string state " (minor)"))))))
+		    (standard-print-method 'MODE
+		      (lambda (mode)
+			(cons (mode-name mode)
+			      (if (mode-major? mode)
+				  '()
+				  (list '(minor))))))))
   (name #f read-only #t)
   major?
   display-name
@@ -51,7 +52,7 @@ USA.
   (if (not (or (not super-mode)
 	       (and major? (major-mode? super-mode))))
       (error:wrong-type-argument super-mode "major mode" 'MAKE-MODE))
-  (let ((sname (symbol-name name))
+  (let ((sname (symbol->string name))
 	(major? (if major? #t #f))
 	(super-comtabs (if super-mode (mode-comtabs super-mode) '())))
     (let ((mode (string-table-get editor-modes sname))
@@ -80,7 +81,7 @@ USA.
   (make-string-table))
 
 (define (name->mode name #!optional if-undefined)
-  (let ((sname (symbol-name name)))
+  (let ((sname (symbol->string name)))
     (or (string-table-get editor-modes sname)
 	(case (if (default-object? if-undefined) 'INTERN if-undefined)
 	  ((#F) #f)
@@ -112,7 +113,7 @@ USA.
   (let ((desc (mode-%description mode)))
     (if (description? desc)
 	desc
-	(let ((new (->doc-string (symbol-name (mode-name mode)) desc)))
+	(let ((new (->doc-string (symbol->string (mode-name mode)) desc)))
 	  (if new
 	      (set-mode-%description! mode new))
 	  new))))

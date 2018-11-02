@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -67,17 +67,18 @@ USA.
 				(set-comtab-alist! comtab alist)))
 			     (let* ((vector (make-vector 256 false))
 				    (alist
-				     (list-transform-negative alist
-				       (lambda (entry)
-					 (let ((key (car entry)))
-					   (and (char? key)
-						(< (char->integer key) 256)
-						(begin
-						  (vector-set!
-						   vector
-						   (char->integer key)
-						   (cdr entry))
-						  true)))))))
+				     (remove (lambda (entry)
+					       (let ((key (car entry)))
+						 (and (char? key)
+						      (< (char->integer key)
+							 256)
+						      (begin
+							(vector-set!
+							 vector
+							 (char->integer key)
+							 (cdr entry))
+							true))))
+					     alist)))
 			       (without-interrupts
 				(lambda ()
 				  (set-comtab-vector! comtab vector)
@@ -126,12 +127,12 @@ USA.
 
 (define (mode-name? object)
   (and (symbol? object)
-       (string-table-get editor-modes (symbol-name object))))
+       (string-table-get editor-modes (symbol->string object))))
 
 (define (list-of-comtabs? object)
   (and (not (null? object))
        (list? object)
-       (for-all? object comtab?)))
+       (every comtab? object)))
 
 (define (comtab-key? object)
   (or (key? object)

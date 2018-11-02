@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -78,7 +78,7 @@ USA.
   (if (pair? name)
       (for-each (lambda (name) (define-matcher-preprocessor name procedure))
 		name)
-      (hash-table/put! matcher-preprocessors name procedure))
+      (hash-table-set! matcher-preprocessors name procedure))
   name)
 
 (define-syntax define-*matcher-macro
@@ -86,11 +86,11 @@ USA.
    (lambda (form environment)
      (let ((r-dme (close-syntax 'DEFINE-*MATCHER-EXPANDER environment))
 	   (r-lambda (close-syntax 'LAMBDA environment)))
-       (cond ((syntax-match? '(SYMBOL EXPRESSION) (cdr form))
+       (cond ((syntax-match? '(symbol expression) (cdr form))
 	      `(,r-dme ',(cadr form)
 		       (,r-lambda ()
 				  ,(caddr form))))
-	     ((syntax-match? '((SYMBOL . MIT-BVL) + EXPRESSION) (cdr form))
+	     ((syntax-match? '((symbol . mit-bvl) + expression) (cdr form))
 	      `(,r-dme ',(car (cadr form))
 		       (,r-lambda ,(cdr (cadr form))
 				  ,@(cddr form))))
@@ -108,7 +108,7 @@ USA.
 
 (define (matcher-preprocessor name)
   (or (lookup-matcher-macro name)
-      (hash-table/get matcher-preprocessors name #f)))
+      (hash-table-ref/default matcher-preprocessors name #f)))
 
 (define matcher-preprocessors
   (make-strong-eq-hash-table))
@@ -225,7 +225,7 @@ USA.
 (define-syntax *matcher
   (sc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(EXPRESSION) (cdr form))
+     (if (syntax-match? '(expression) (cdr form))
 	 (generate-matcher-code (cadr form) environment)
 	 (ill-formed-syntax form)))))
 
@@ -245,7 +245,7 @@ USA.
   (cond ((and (pair? expression)
 	      (symbol? (car expression))
 	      (list? (cdr expression))
-	      (hash-table/get matcher-compilers (car expression) #f))
+	      (hash-table-ref/default matcher-compilers (car expression) #f))
 	 => (lambda (entry)
 	      (let ((arity (car entry))
 		    (compiler (cdr entry)))
@@ -272,7 +272,7 @@ USA.
 (define-syntax define-matcher
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '((SYMBOL . MIT-BVL) + EXPRESSION) (cdr form))
+     (if (syntax-match? '((symbol . mit-bvl) + expression) (cdr form))
 	 (let ((name (car (cadr form)))
 	       (parameters (cdr (cadr form)))
 	       (compiler-body (cddr form))
@@ -285,7 +285,7 @@ USA.
 	 (ill-formed-syntax form)))))
 
 (define (define-matcher-compiler keyword arity compiler)
-  (hash-table/put! matcher-compilers keyword (cons arity compiler))
+  (hash-table-set! matcher-compilers keyword (cons arity compiler))
   keyword)
 
 (define matcher-compilers
@@ -294,7 +294,7 @@ USA.
 (define-syntax define-atomic-matcher
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(DATUM + EXPRESSION) (cdr form))
+     (if (syntax-match? '(datum + expression) (cdr form))
 	 (let ((r-dm (close-syntax 'DEFINE-MATCHER environment))
 	       (r-wem (close-syntax 'WRAP-EXTERNAL-MATCHER environment)))
 	   `(,r-dm ,(cadr form)

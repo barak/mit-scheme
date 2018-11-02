@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -51,23 +51,24 @@ USA.
       ;; Keep only the aliases with the maximum weights.  Furthermore,
       ;; keep only one alias of a given type.
       (vector-set! entry 2
-		   (list-transform-positive alias-weights
-		     (let ((types '()))
-		       (lambda (alias-weight)
-			 (and (= (cdr alias-weight) maximum)
-			      (let ((type (register-type (car alias-weight))))
-				(and (not (memq type types))
-				     (begin (set! types (cons type types))
-					    true)))))))))))
+		   (filter (let ((types '()))
+			     (lambda (alias-weight)
+			       (and (= (cdr alias-weight) maximum)
+				    (let ((type
+					   (register-type (car alias-weight))))
+				      (and (not (memq type types))
+					   (begin (set! types (cons type types))
+						  true))))))
+			   alias-weights)))))
 
 (define (eliminate-conflicting-aliases! entries)
   (for-each (lambda (conflicting-alias)
 	      (let ((homes (cdr conflicting-alias)))
 		(let ((maximum (apply max (map cdr homes))))
 		  (let ((winner
-			 (list-search-positive homes
-			   (lambda (home)
-			     (= (cdr home) maximum)))))
+			 (find (lambda (home)
+				 (= (cdr home) maximum))
+			       homes)))
 		    (for-each
 		     (lambda (home)
 		       (if (not (eq? home winner))
@@ -94,9 +95,9 @@ USA.
 			(cons (list (car alias-weight) element) alist)))))
 	  (vector-ref entry 2))))
      entries)
-    (list-transform-negative alist
-      (lambda (alist-entry)
-	(null? (cddr alist-entry))))))
+    (remove (lambda (alist-entry)
+	      (null? (cddr alist-entry)))
+	    alist)))
 
 (define (map->weighted-entries register-map weight)
   (map (lambda (entry)
@@ -110,10 +111,10 @@ USA.
 (define (add-weighted-entries x-entries y-entries)
   (merge-entries x-entries y-entries
     (lambda (entry entries)
-      (list-search-positive entries
-	(let ((home (vector-ref entry 0)))
-	  (lambda (entry)
-	    (eqv? home (vector-ref entry 0))))))
+      (find (let ((home (vector-ref entry 0)))
+	      (lambda (entry)
+		(eqv? home (vector-ref entry 0))))
+	    entries))
     (lambda (x-entry y-entry)
       (vector (vector-ref x-entry 0)
 	      (min (vector-ref x-entry 1) (vector-ref y-entry 1))

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,7 +34,7 @@ USA.
 	  (lambda (s a)
 	    (error (string-append "Malformed " s ":") a))))
      (lambda (form environment)
-       (if (syntax-match? '(DATUM (* EXPRESSION) * DATUM) (cdr form))
+       (if (syntax-match? '(datum (* expression) * datum) (cdr form))
 	   (let ((name (cadr form))
 		 (superclasses (caddr form))
 		 (slot-arguments
@@ -158,9 +158,9 @@ USA.
 	(else (lose "class name" name))))
 
 (define (parse-constructor-option class-name lose option)
-  (cond ((syntax-match? `(SYMBOL (* SYMBOL) . ,optional?) (cdr option))
+  (cond ((syntax-match? `(symbol (* symbol) . ,optional?) (cdr option))
 	 (values (cadr option) (caddr option) (cdddr option)))
-	((syntax-match? `((* SYMBOL) . ,optional?) (cdr option))
+	((syntax-match? `((* symbol) . ,optional?) (cdr option))
 	 (values (default-constructor-name class-name)
 		 (cadr option)
 		 (cddr option)))
@@ -210,7 +210,7 @@ USA.
 			 (if (not (or (eq? 'STANDARD (cadr plist))
 				      (keyword? (cadr plist))
 				      (and (list? (cadr plist))
-					   (for-all? (cadr plist) keyword?))))
+					   (every keyword? (cadr plist)))))
 			     (lose "DEFINE property" arg)))
 		       (set-cdr! prev (cddr plist))
 		       (set! definitions
@@ -273,7 +273,7 @@ USA.
 (define-syntax define-generic
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(IDENTIFIER MIT-BVL) (cdr form))
+     (if (syntax-match? '(identifier mit-bvl) (cdr form))
 	 (call-with-values (lambda () (parse-mit-lambda-list (caddr form)))
 	   (lambda (required optional rest)
 	     `(,(close-syntax 'DEFINE environment)
@@ -292,7 +292,7 @@ USA.
 (define-syntax define-method
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(IDENTIFIER DATUM + EXPRESSION) (cdr form))
+     (if (syntax-match? '(identifier datum + expression) (cdr form))
 	 (call-with-values
 	     (lambda () (parse-specialized-lambda-list (caddr form)))
 	   (lambda (required specializers optional rest)
@@ -310,7 +310,7 @@ USA.
 (define-syntax define-computed-method
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(IDENTIFIER DATUM + EXPRESSION) (cdr form))
+     (if (syntax-match? '(identifier datum + expression) (cdr form))
 	 (call-with-values
 	     (lambda () (parse-specialized-lambda-list (caddr form)))
 	   (lambda (required specializers optional rest)
@@ -326,7 +326,7 @@ USA.
 (define-syntax define-computed-emp
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(IDENTIFIER EXPRESSION DATUM + EXPRESSION) (cdr form))
+     (if (syntax-match? '(identifier expression datum + expression) (cdr form))
 	 (call-with-values
 	     (lambda () (parse-specialized-lambda-list (cadddr form)))
 	   (lambda (required specializers optional rest)
@@ -343,7 +343,7 @@ USA.
 (define-syntax method
   (rsc-macro-transformer
    (lambda (form environment)
-     (if (syntax-match? '(DATUM + EXPRESSION) (cdr form))
+     (if (syntax-match? '(datum + expression) (cdr form))
 	 (call-with-values
 	     (lambda () (parse-specialized-lambda-list (cadr form)))
 	   (lambda (required specializers optional rest)
@@ -443,8 +443,8 @@ USA.
 				 (CALL-NEXT-METHOD)
 				 ,@body)
 			       instance-environment)))
-		  (free-variable? (car (lambda-bound l))
-				  (lambda-body l)))))
+		  (free-variable? (car (scode-lambda-bound l))
+				  (scode-lambda-body l)))))
       (values body #f)))
 
 (define free-variable?
@@ -463,43 +463,46 @@ USA.
 	 `((ACCESS
 	    ,(lambda (name expr)
 	       name
-	       (if (access-environment expr)
+	       (if (scode-access-environment expr)
 		   (illegal expr)
 		   #f)))
 	   (ASSIGNMENT
 	    ,(lambda (name expr)
-	       (or (eq? name (assignment-name expr))
-		   (do-expr name (assignment-value expr)))))
+	       (or (eq? name (scode-assignment-name expr))
+		   (do-expr name (scode-assignment-value expr)))))
 	   (COMBINATION
 	    ,(lambda (name expr)
-	       (or (do-expr name (combination-operator expr))
-		   (do-exprs name (combination-operands expr)))))
+	       (or (do-expr name (scode-combination-operator expr))
+		   (do-exprs name (scode-combination-operands expr)))))
 	   (COMMENT
 	    ,(lambda (name expr)
-	       (do-expr name (comment-expression expr))))
+	       (do-expr name (scode-comment-expression expr))))
 	   (CONDITIONAL
 	    ,(lambda (name expr)
-	       (do-exprs name (conditional-components expr list))))
+	       (or (do-expr name (scode-conditional-predicate expr))
+		   (do-expr name (scode-conditional-consequent expr))
+		   (do-expr name (scode-conditional-alternative expr)))))
 	   (DELAY
 	    ,(lambda (name expr)
-	       (do-expr name (delay-expression expr))))
+	       (do-expr name (scode-delay-expression expr))))
 	   (DISJUNCTION
 	    ,(lambda (name expr)
-	       (do-exprs name (disjunction-components expr list))))
+	       (or (do-expr name (scode-disjunction-predicate expr))
+		   (do-expr name (scode-disjunction-alternative expr)))))
 	   (DEFINITION
 	    ,(lambda (name expr)
-	       (and (not (eq? name (definition-name expr)))
-		    (do-expr name (definition-value expr)))))
+	       (and (not (eq? name (scode-definition-name expr)))
+		    (do-expr name (scode-definition-value expr)))))
 	   (LAMBDA
 	    ,(lambda (name expr)
-	       (and (not (memq name (lambda-bound expr)))
-		    (do-expr name (lambda-body expr)))))
+	       (and (not (memq name (scode-lambda-bound expr)))
+		    (do-expr name (scode-lambda-body expr)))))
 	   (SEQUENCE
 	    ,(lambda (name expr)
-	       (do-exprs name (sequence-actions expr))))
+	       (do-exprs name (scode-sequence-actions expr))))
 	   (VARIABLE
 	    ,(lambda (name expr)
-	       (eq? name (variable-name expr)))))))
+	       (eq? name (scode-variable-name expr)))))))
        (illegal (lambda (expr) (error "Illegal expression:" expr))))
     do-expr))
 

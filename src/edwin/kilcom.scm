@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -140,7 +140,7 @@ appropriate number of spaces and then one space is deleted."
     (define (perform-replacement)
       (let ((n (- (mark-column m2) (mark-column m1))))
 	(delete-string m1 m2)
-	(insert-string (make-string n #\Space) m2)))
+	(insert-string (make-string n #\space) m2)))
     (if at-point?
 	(let ((start (mark-right-inserting m1)))
 	  (perform-replacement)
@@ -192,6 +192,18 @@ The command \\[yank] can retrieve it from there.
 (define (copy-string mark #!optional point)
   (let ((point (if (default-object? point) (current-point) point)))
     (kill-ring-save (extract-string mark point) (mark<= point mark) point)))
+
+(define (os/interprogram-cut string context)
+  ;; This dummy is re-assigned by the last display type loaded(!).  It
+  ;; needs to be a display type operation.
+  (declare (ignore string context))
+  unspecific)
+
+(define (os/interprogram-paste point)
+  ;; This dummy is re-assigned by the last display type loaded(!).  It
+  ;; needs to be a display type operation.
+  (declare (ignore point))
+  unspecific)
 
 (define (kill-ring-save string forward? context)
   (command-message-receive append-next-kill-tag

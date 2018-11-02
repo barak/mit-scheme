@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,34 +29,26 @@ USA.
 
 (declare (usual-integrations))
 
-(define (string->number string #!optional radix error?)
-  (if (not (string? string))
-      (error:wrong-type-argument string "string" 'STRING->NUMBER))
-  (parse-number string 0 (string-length string) radix error? 'STRING->NUMBER))
-
-(define (substring->number string start end #!optional radix error?)
-  (if (not (string? string))
-      (error:wrong-type-argument string "string" 'SUBSTRING->NUMBER))
-  (if (not (index-fixnum? start))
-      (error:wrong-type-argument start "string index" 'SUBSTRING->NUMBER))
-  (if (not (index-fixnum? end))
-      (error:wrong-type-argument end "string index" 'SUBSTRING->NUMBER))
-  (if (not (fix:<= end (string-length string)))
-      (error:bad-range-argument end 'SUBSTRING->NUMBER))
-  (if (not (fix:<= start end))
-      (error:bad-range-argument start 'SUBSTRING->NUMBER))
-  (parse-number string start end radix error? 'SUBSTRING->NUMBER))
-
-(define (parse-number string start end radix error? caller)
-  (let ((z
-	 (parse-number-1 string start end
-			 (if (default-object? radix) #f radix)
-			 caller)))
+(define (string->number string #!optional radix error? start end)
+  (let* ((caller 'string->number)
+	 (end (fix:end-index end (string-length string) caller))
+	 (start (fix:start-index start end caller))
+	 (z
+	  (cond ((string=? string "nan.0") (flo:nan.0))
+		((string=? string "+inf.0") (flo:+inf.0))
+		((string=? string "-inf.0") (flo:-inf.0))
+		(else
+		 (parse-number string start end
+			       (if (default-object? radix) #f radix)
+			       caller)))))
     (if (and (not z) (if (default-object? error?) #f error?))
 	(error:bad-range-argument string caller))
     z))
 
-(define (parse-number-1 string start end default-radix name)
+(define (substring->number string start end #!optional radix error?)
+  (string->number string radix error? start end))
+
+(define (parse-number string start end default-radix name)
   (if (not (or (eq? #f default-radix) (eq? 2 default-radix)
 	       (eq? 8 default-radix) (eq? 10 default-radix)
 	       (eq? 16 default-radix)))
@@ -83,9 +75,9 @@ USA.
 			      ((or (char=? #\x char) (char=? #\X char))
 			       (do-radix 16))
 			      ((or (char=? #\e char) (char=? #\E char))
-			       (do-exactness 'EXACT))
+			       (do-exactness 'exact))
 			      ((or (char=? #\i char) (char=? #\I char))
-			       (do-exactness 'INEXACT))
+			       (do-exactness 'inexact))
 			      (else #f))))))
 	     (parse-top-level string start end exactness
 			      (or radix default-radix))))))
@@ -101,7 +93,7 @@ USA.
 	       ((char=? #\. char)
 		(and (or (not radix) (fix:= 10 radix))
 		     (parse-decimal-1 string start end
-				      (or exactness 'IMPLICIT-INEXACT) #f)))
+				      (or exactness 'implicit-inexact) #f)))
 	       ((char->digit char (or radix 10))
 		=> (lambda (digit)
 		     (parse-integer string start end digit
@@ -120,7 +112,7 @@ USA.
 	       ((char=? #\. char)
 		(and (fix:= 10 radix)
 		     (parse-decimal-1 string start end
-				      (or exactness 'IMPLICIT-INEXACT) sign)))
+				      (or exactness 'implicit-inexact) sign)))
 	       ((i? char)
 		(and (fix:= start end)
 		     (make-rectangular 0 (if (eq? #\- sign) -1 1))))
@@ -143,13 +135,13 @@ USA.
 					     integer 0 exactness sign)
 			    (parse-decimal-2 string start+1 end
 					     integer 0
-					     (or exactness 'IMPLICIT-INEXACT)
+					     (or exactness 'implicit-inexact)
 					     sign))))
 		  ((exponent-marker? char)
 		   (and (fix:= radix 10)
 			(parse-exponent-1 string start+1 end
 					  integer 0
-					  (or exactness 'IMPLICIT-INEXACT)
+					  (or exactness 'implicit-inexact)
 					  sign)))
 		  (else
 		   (parse-complex string start end
@@ -170,7 +162,7 @@ USA.
 		      (integer (* integer radix) (* integer radix)))
 		     ((not (and (fix:< start end)
 				(char=? #\# (string-ref string start))))
-		      (k start integer (or exactness 'IMPLICIT-INEXACT) #t))))
+		      (k start integer (or exactness 'implicit-inexact) #t))))
 		(else
 		 (k start integer exactness #f))))
 	(k start integer exactness #f))))
@@ -271,7 +263,7 @@ USA.
   (if (fix:< start end)
       (let ((char (string-ref string start))
 	    (start+1 (fix:+ start 1))
-	    (exactness (if (eq? 'IMPLICIT-INEXACT exactness) #f exactness)))
+	    (exactness (if (eq? 'implicit-inexact exactness) #f exactness)))
 	(cond ((sign? char)
 	       (let ((imaginary
 		      (parse-top-level string start end exactness radix)))
@@ -346,7 +338,7 @@ USA.
 		     (* (apply-sign sign integer)
 			(expt 10 exponent))))
 
-  (if (or (eq? 'INEXACT exactness) (eq? 'IMPLICIT-INEXACT exactness))
+  (if (or (eq? 'inexact exactness) (eq? 'implicit-inexact exactness))
       (let ((abs-exponent (if (< exponent 0) (- exponent) exponent))
 	    (powers-of-10 exact-flonum-powers-of-10))
 	(define-integrable (finish-flonum x power-of-10)
@@ -384,7 +376,7 @@ USA.
       number))
 
 (define (apply-exactness exactness number)
-  (if (or (eq? 'INEXACT exactness) (eq? 'IMPLICIT-INEXACT exactness))
+  (if (or (eq? 'inexact exactness) (eq? 'implicit-inexact exactness))
       (exact->inexact number)
       number))
 

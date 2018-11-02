@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,7 +33,7 @@ USA.
 	 (http-post uri
 		    `(,@(if (default-object? headers) '() headers)
 		      ,(make-http-header 'CONTENT-TYPE "text/xml"))
-		    (xml->octets (->request request 'XML-RPC)))))
+		    (xml->bytevector (->request request 'XML-RPC)))))
     (if (not (= 200 (http-response-status response)))
 	(error "HTTP error:" (http-response-reason response)))
     (xml-rpc:parse-response (read-xml (http-message-body-port response)))))
@@ -81,12 +81,25 @@ USA.
     (let ((elt (xml-document-root document)))
       (require (xml-name=? (xml-element-name elt) '|methodCall|))
       (values (let ((s (content-string (named-child '|methodName| elt))))
-		(require (re-string-match "\\`[a-zA-Z0-9_.:/]+\\'" s))
-		(utf8-string->symbol s))
+		(require (valid-method-name? s))
+		(string->symbol s))
 	      (let ((elt (%named-child 'params elt)))
 		(if elt
 		    (parse-params elt)
 		    '()))))))
+
+(define (valid-method-name? string)
+  (and (fix:> 0 (string-length string))
+       (string-every (char-set-predicate char-set:method-name) string)))
+
+(define char-set:method-name
+  (char-set-union (ascii-range->char-set (char->integer #\a)
+					 (fix:+ (char->integer #\z) 1))
+		  (ascii-range->char-set (char->integer #\A)
+					 (fix:+ (char->integer #\Z) 1))
+		  (ascii-range->char-set (char->integer #\0)
+					 (fix:+ (char->integer #\9) 1))
+		  (char-set #\_ #\. #\: #\/)))
 
 (define (xml-rpc:parse-response document)
   (fluid-let ((*document* document)
@@ -186,10 +199,10 @@ USA.
     child))
 
 (define (%named-child name elt)
-  (find-matching-item (xml-element-contents elt)
-    (lambda (item)
-      (and (xml-element? item)
-	   (xml-name=? (xml-element-name item) name)))))
+  (find (lambda (item)
+	  (and (xml-element? item)
+	       (xml-name=? (xml-element-name item) name)))
+	(xml-element-contents elt)))
 
 (define (single-child elt)
   (let ((children (all-children elt)))
@@ -237,7 +250,7 @@ USA.
      (content-string elt))
     ((base64)
      (safe-call (lambda (string)
-		  (call-with-output-string
+		  (call-with-output-bytevector
 		    (lambda (port)
 		      (call-with-decode-base64-output-port port #f
 			(lambda (port)
@@ -248,7 +261,7 @@ USA.
 	  (named-children 'value (single-named-child 'data elt))))
     ((struct)
      (map (lambda (elt)
-	    (cons (utf8-string->symbol
+	    (cons (string->symbol
 		   (content-string (named-child 'name elt)))
 		  (decode-value (named-child 'value elt))))
 	  (named-children 'member elt)))
@@ -291,7 +304,7 @@ USA.
 	   ((string? object)
 	    (encode-string object))
 	   ((symbol? object)
-	    (encode-string (symbol->utf8-string object)))
+	    (encode-string (symbol->string object)))
 	   ((decoded-time? object)
 	    (rpc-elt:date-time (decoded-time->xml-rpc-iso8601-string object)))
 	   ((and (pair? object)
@@ -302,7 +315,7 @@ USA.
 	    (rpc-elt:struct
 	     (map (lambda (item)
 		    (rpc-elt:member
-		     (rpc-elt:name (symbol->utf8-string (car item)))
+		     (rpc-elt:name (symbol->string (car item)))
 		     (encode-value (cdr item))))
 		  (cdr object))))
 	   ((list? object)
@@ -313,14 +326,13 @@ USA.
 				       'encode-value))))))
 
 (define (encode-string string)
-  (if (and (utf8-string-valid? string)
-	   (string-of-xml-chars? string))
+  (if (string-of-xml-chars? string)
       string
       (rpc-elt:base64
        (call-with-output-string
 	 (lambda (port)
 	   (let ((context (encode-base64:initialize port #f)))
-	     (encode-base64:update context string 0 (string-length string))
+	     (encode-base64:update context (string->utf8 string))
 	     (encode-base64:finalize context)))))))
 
 (define *xml-rpc:encode-value-handler* #f)

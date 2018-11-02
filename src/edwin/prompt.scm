@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -45,7 +45,7 @@ USA.
     (set! typein-saved-windows '())
     (set! map-name/internal->external identity-procedure)
     (set! map-name/external->internal identity-procedure)
-    (set! prompt-histories (make-weak-eq-hash-table))
+    (set! prompt-histories (make-key-weak-eq-hash-table))
     unspecific))
 
 (define (make-typein-buffer-name depth)
@@ -353,7 +353,7 @@ USA.
 				      (options/seen option-structure)))
 	     (if (not (let ((predicate (cadr entry)))
 			(if (pair? predicate)
-			    (there-exists? predicate (lambda (p) (p arg)))
+			    (any (lambda (p) (p arg)) predicate)
 			    (predicate arg))))
 		 (error "Not a valid option argument:" arg))
 	     ((cddr entry) option-structure arg)
@@ -453,9 +453,9 @@ USA.
   (if (not (or (not name) (symbol? name)))
       (error:wrong-type-argument name "symbol" 'NAME->HISTORY))
   (let ((name (or name 'MINIBUFFER-DEFAULT)))
-    (or (hash-table/get prompt-histories name #f)
+    (or (hash-table-ref/default prompt-histories name #f)
 	(let ((history (list 'PROMPT-HISTORY)))
-	  (hash-table/put! prompt-histories name history)
+	  (hash-table-set! prompt-histories name history)
 	  history))))
 
 (define (prompt-history-strings name)
@@ -730,15 +730,16 @@ a repetition of this command will exit."
 		(let ((try-suffix
 		       (lambda (suffix if-not-found)
 			 (let ((completions
-				(list-transform-positive completions
-				  (let ((prefix (string-append string suffix)))
-				    (if (case-insensitive-completion?)
-					(lambda (completion)
-					  (string-prefix-ci? prefix
-							     completion))
-					(lambda (completion)
-					  (string-prefix? prefix
-							  completion)))))))
+				(filter (let ((prefix
+					       (string-append string suffix)))
+					  (if (case-insensitive-completion?)
+					      (lambda (completion)
+						(string-prefix-ci? prefix
+								   completion))
+					      (lambda (completion)
+						(string-prefix? prefix
+								completion))))
+					completions)))
 			   (cond ((null? completions)
 				  (if-not-found))
 				 ((null? (cdr completions))
@@ -849,12 +850,12 @@ a repetition of this command will exit."
 	 (prompt-for-typein (string-append prompt ": ") #f
 	   (lambda ()
 	     (let ((input (with-editor-interrupts-disabled keyboard-read)))
-	       (if (and (char? input) (char-ascii? input))
+	       (if (ascii-char? input)
 		   (set-typein-string! (key-name input) #t))
 	       (if (input-event? input)
 		   (abort-typein-edit input)
 		   input))))))
-    (if (not (and (char? input) (char-ascii? input)))
+    (if (not (ascii-char? input))
 	(editor-error "Not an ASCII character:" input))
     input))
 
@@ -978,7 +979,7 @@ it is added to the front of the command history."
     (set-prompt-history-strings!
      'REPEAT-COMPLEX-COMMAND
      (map (lambda (command)
-	    (fluid-let ((*unparse-with-maximum-readability?* #t))
+	    (parameterize ((param:print-with-maximum-readability? #t))
 	      (write-to-string command)))
 	  (command-history-list)))
     (execute-command-history-entry
@@ -986,8 +987,7 @@ it is added to the front of the command history."
       (prompt-for-string "Redo" #f
 			 'DEFAULT-TYPE 'INSERTED-DEFAULT
 			 'HISTORY 'REPEAT-COMPLEX-COMMAND
-			 'HISTORY-INDEX (- argument 1))
-      (->environment '(EDWIN))))))
+			 'HISTORY-INDEX (- argument 1))))))
 
 ;;;; Pass-phrase Prompts
 
@@ -1023,7 +1023,7 @@ it is added to the front of the command history."
 				     (set! phrase (string-head phrase length))
 				     (string-fill! phrase* #\NUL)
 				     (set! phrase* #f)))))
-			    ((and (char? input) (char-ascii? input))
+			    ((ascii-char? input)
 			     (set! phrase* phrase)
 			     (set! phrase
 				   (string-append phrase (string input)))
@@ -1057,7 +1057,7 @@ Set this to zero if you don't want pass-phrase retention."
 
 (define (call-with-stored-pass-phrase key receiver)
   (let ((retention-time (ref-variable pass-phrase-retention-time #f)))
-    (let ((entry (hash-table/get stored-pass-phrases key #f)))
+    (let ((entry (hash-table-ref/default stored-pass-phrases key #f)))
       (if entry
 	  (begin
 	    (without-interrupts
@@ -1069,7 +1069,7 @@ Set this to zero if you don't want pass-phrase retention."
 	   (string-append "Pass phrase for " key)
 	   (lambda (pass-phrase)
 	     (if (> retention-time 0)
-		 (hash-table/put!
+		 (hash-table-set!
 		  stored-pass-phrases
 		  key
 		  (let ((entry
@@ -1079,7 +1079,7 @@ Set this to zero if you don't want pass-phrase retention."
 	     (receiver pass-phrase)))))))
 
 (define (delete-stored-pass-phrase key)
-  (hash-table/remove! stored-pass-phrases key))
+  (hash-table-delete! stored-pass-phrases key))
 
 (define (set-up-pass-phrase-timer! entry key retention-time)
   ;; A race condition can occur when the timer event is re-registered.
@@ -1094,9 +1094,9 @@ Set this to zero if you don't want pass-phrase retention."
 	(lambda ()
 	  (without-interrupts
 	   (lambda ()
-	     (let ((entry (hash-table/get stored-pass-phrases key #f)))
+	     (let ((entry (hash-table-ref/default stored-pass-phrases key #f)))
 	       (if (and entry (eq? (vector-ref entry 2) id))
-		   (hash-table/remove! stored-pass-phrases key))))))))))
+		   (hash-table-delete! stored-pass-phrases key))))))))))
 
 (define stored-pass-phrases
   (make-string-hash-table))

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,25 +27,27 @@ USA.
 ;;;; MIME support
 
 (declare (usual-integrations))
-
+
 (define (make-decoding-port-type update finalize)
-  (make-port-type
-   `((WRITE-CHAR
+  (make-textual-port-type
+   `((write-char
       ,(lambda (port char)
-	 (guarantee-8-bit-char char)
-	 (update (port/state port) (string char) 0 1)
+	 (update (textual-port-state port) (string char) 0 1)
 	 1))
-     (WRITE-SUBSTRING
+     (write-substring
       ,(lambda (port string start end)
 	 (if (string? string)
 	     (begin
-	       (update (port/state port) string start end)
+	       (update (textual-port-state port) string start end)
 	       (fix:- end start))
 	     (generic-port-operation:write-substring port string start end))))
-     (CLOSE-OUTPUT
+     (close-output
       ,(lambda (port)
-	 (finalize (port/state port)))))
+	 (finalize (textual-port-state port)))))
    #f))
+
+(define condition-type:decode-mime
+  (make-condition-type 'decode-mime condition-type:simple-error '() #f))
 
 ;;;; Encode quoted-printable
 
@@ -70,19 +72,22 @@ USA.
   (pending-output #f))
 
 (define (encode-quoted-printable:finalize context)
-  (encode-qp-pending-lwsp context #f 'INPUT-END)
+  (encode-qp-pending-lwsp context #f 'input-end)
   (write-qp-pending-output context #t))
 
-(define (encode-quoted-printable:update context string start end)
-  (if (qp-encoding-context/text? context)
-      (let loop ((start start))
-	(let ((i (substring-find-next-char string start end #\newline)))
-	  (if i
-	      (begin
-		(encode-qp context string start i 'LINE-END)
-		(loop (fix:+ i 1)))
-	      (encode-qp context string start end 'PARTIAL))))
-      (encode-qp context string start end 'PARTIAL)))
+(define (encode-quoted-printable:update context string #!optional start end)
+  (let* ((caller 'encode-quoted-printable:update)
+	 (end (fix:end-index end (string-length string) caller))
+	 (start (fix:start-index start end caller)))
+    (if (qp-encoding-context/text? context)
+	(let loop ((start start))
+	  (let ((i (string-find-next-char string #\newline start end)))
+	    (if i
+		(begin
+		  (encode-qp context string start i 'line-end)
+		  (loop (fix:+ i 1)))
+		(encode-qp context string start end 'partial))))
+	(encode-qp context string start end 'partial))))
 
 (define (encode-qp context string start end type)
   (encode-qp-pending-lwsp context (fix:< start end) type)
@@ -91,11 +96,11 @@ USA.
 	   (let ((char (string-ref string start))
 		 (start (fix:+ start 1)))
 	     (cond ((not (char-lwsp? char))
-		    (if (char-set-member? char-set:qp-encoded char)
+		    (if (char-in-set? char char-set:qp-encoded)
 			(write-qp-encoded context char)
 			(write-qp-clear context char))
 		    (loop start))
-		   ((and (eq? type 'PARTIAL)
+		   ((and (eq? type 'partial)
 			 (not (fix:< start end)))
 		    (set-qp-encoding-context/pending-lwsp! context char))
 		   (else
@@ -103,7 +108,7 @@ USA.
 			(write-qp-clear context char)
 			(write-qp-encoded context char))
 		    (loop start)))))
-	  ((eq? type 'LINE-END)
+	  ((eq? type 'line-end)
 	   (write-qp-hard-break context)))))
 
 (define (encode-qp-pending-lwsp context packet-not-empty? type)
@@ -112,7 +117,7 @@ USA.
 	(cond (packet-not-empty?
 	       (set-qp-encoding-context/pending-lwsp! context #f)
 	       (write-qp-clear context pending))
-	      ((not (eq? type 'PARTIAL))
+	      ((not (eq? type 'partial))
 	       (set-qp-encoding-context/pending-lwsp! context #f)
 	       (write-qp-encoded context pending))))))
 
@@ -135,8 +140,8 @@ USA.
   (let ((port (qp-encoding-context/port context))
 	(column (qp-encoding-context/column context))
 	(d (char->integer char)))
-    (let ((c1 (hex-digit->char (fix:lsh d -4)))
-	  (c2 (hex-digit->char (fix:and d #x0F))))
+    (let ((c1 (digit->char (fix:lsh d -4) 16))
+	  (c2 (digit->char (fix:and d #x0F) 16)))
       (if (fix:= column 73)
 	  (set-qp-encoding-context/pending-output! context (string #\= c1 c2))
 	  (begin
@@ -204,18 +209,21 @@ USA.
   (pending #f))
 
 (define (decode-quoted-printable:finalize context)
-  (decode-qp context "" 0 0 'INPUT-END))
+  (decode-qp context "" 0 0 'input-end))
 
-(define (decode-quoted-printable:update context string start end)
-  (let loop ((start start))
-    (let ((i (substring-find-next-char string start end #\newline)))
-      (if i
-	  (begin
-	    (decode-qp context
-		       string start (skip-lwsp-backwards string start i)
-		       'LINE-END)
-	    (loop (fix:+ i 1)))
-	  (decode-qp context string start end 'PARTIAL)))))
+(define (decode-quoted-printable:update context string #!optional start end)
+  (let* ((caller 'decode-quoted-printable:update)
+	 (end (fix:end-index end (string-length string) caller))
+	 (start (fix:start-index start end caller)))
+    (let loop ((start start))
+      (let ((i (string-find-next-char string #\newline start end)))
+	(if i
+	    (begin
+	      (decode-qp context
+			 string start (skip-lwsp-backwards string start i)
+			 'line-end)
+	      (loop (fix:+ i 1)))
+	    (decode-qp context string start end 'partial))))))
 
 (define (call-with-decode-quoted-printable-output-port port text? generator)
   (let ((port (make-decode-quoted-printable-port port text?)))
@@ -224,8 +232,8 @@ USA.
       v)))
 
 (define (make-decode-quoted-printable-port port text?)
-  (make-port decode-quoted-printable-port-type
-	     (decode-quoted-printable:initialize port text?)))
+  (make-textual-port decode-quoted-printable-port-type
+		     (decode-quoted-printable:initialize port text?)))
 
 (define decode-quoted-printable-port-type
   (make-decoding-port-type decode-quoted-printable:update
@@ -237,17 +245,17 @@ USA.
 
     (define (loop start)
       (let ((i
-	     (substring-find-next-char-in-set string start end*
-					      char-set:qp-encoded)))
+	     (string-find-next-char-in-set string char-set:qp-encoded
+					   start end*)))
 	(if i
 	    (begin
-	      (write-substring string start i port)
+	      (write-string string port start i)
 	      (if (char=? (string-ref string i) #\=)
 		  (handle-equals (fix:+ i 1))
 		  ;; RFC 2045 recommends dropping illegal encoded char.
 		  (loop (fix:+ i 1))))
 	    (begin
-	      (write-substring string start end* port)
+	      (write-string string port start end*)
 	      (finish)))))
 
     (define (handle-equals start)
@@ -259,7 +267,7 @@ USA.
 	  (begin
 	    (if (fix:< start end*)
 		(let ((char (string-ref string start)))
-		  (if (char-hex-digit? char)
+		  (if (char->digit char 16)
 		      (set-qp-decoding-context/pending! context char)
 		      ;; Illegal: RFC 2045 recommends leaving as is.
 		      (begin
@@ -271,16 +279,16 @@ USA.
     (define (finish)
       (let ((pending (qp-decoding-context/pending context)))
 	(set-qp-decoding-context/pending! context #f)
-	(cond ((eq? type 'PARTIAL)
+	(cond ((eq? type 'partial)
 	       (set-qp-decoding-context/pending!
 		context
 		(decode-qp-pending-string pending string end* end)))
 	      ((not pending)
-	       (if (eq? type 'LINE-END)
+	       (if (eq? type 'line-end)
 		   ;; Hard line break.
 		   (newline port)))
 	      ((eqv? pending #\=)
-	       (if (eq? type 'LINE-END)
+	       (if (eq? type 'line-end)
 		   unspecific		; Soft line break.
 		   ;; Illegal: RFC 2045 recommends leaving as is.
 		   (write-char #\= port)))
@@ -313,12 +321,7 @@ USA.
 (define (decode-qp-pending-string pending string start end)
   (if (fix:< start end)
       (if pending
-	  (let ((s
-		 (make-string
-		  (fix:+ (string-length pending) (fix:- end start)))))
-	    (substring-move! string start end
-			     s (string-move! pending s 0))
-	    s)
+	  (string-append pending (substring string start end))
 	  (substring string start end))
       pending))
 
@@ -342,8 +345,8 @@ USA.
 (define (decode-qp-hex context c1 c2 start)
   (let ((port (qp-decoding-context/port context)))
     (let ((char
-	   (let ((d1 (char->hex-digit c1))
-		 (d2 (char->hex-digit c2)))
+	   (let ((d1 (char->digit c1 16))
+		 (d2 (char->digit c2 16)))
 	     (and (fix:< d1 #x10)
 		  (fix:< d2 #x10)
 		  (integer->char (fix:or (fix:lsh d1 4) d2))))))
@@ -357,33 +360,6 @@ USA.
 	    (write-char #\= port)
 	    (write-char c1 port)
 	    (fix:- start 1))))))
-
-(define-integrable (char-hex-digit? char)
-  (fix:< (char->hex-digit char) #x10))
-
-(define-integrable (char->hex-digit char)
-  (vector-8b-ref hex-char-table (char->integer char)))
-
-(define-integrable (hex-digit->char digit)
-  (string-ref hex-digit-table digit))
-
-(define hex-char-table)
-(define hex-digit-table)
-(let ((char-table (make-string 256 (integer->char #xff)))
-      (digit-table (make-string 16)))
-  (define (do-range low high value)
-    (do-char low value)
-    (if (fix:< low high)
-	(do-range (fix:+ low 1) high (fix:+ value 1))))
-  (define (do-char code value)
-    (vector-8b-set! char-table code value)
-    (vector-8b-set! digit-table value code))
-  (do-range (char->integer #\0) (char->integer #\9) 0)
-  (do-range (char->integer #\a) (char->integer #\f) 10)
-  (do-range (char->integer #\A) (char->integer #\F) 10)
-  (set! hex-char-table char-table)
-  (set! hex-digit-table digit-table)
-  unspecific)
 
 ;;;; Encode BASE64
 
@@ -392,31 +368,39 @@ USA.
 		   (constructor encode-base64:initialize (port text?)))
   (port #f read-only #t)
   (text? #f read-only #t)
-  (buffer (make-string 48) read-only #t)
+  (buffer (make-bytevector 48) read-only #t)
   (index 0))
 
 (define (encode-base64:finalize context)
   (write-base64-line context))
 
-(define (encode-base64:update context string start end)
-  (if (base64-encoding-context/text? context)
-      (let loop ((start start))
-	(let ((index (substring-find-next-char string start end #\newline)))
-	  (if index
-	      (begin
-		(encode-base64 context string start index)
-		(encode-base64 context "\r\n" 0 2)
-		(loop (fix:+ index 1)))
-	      (encode-base64 context string start end))))
-      (encode-base64 context string start end)))
+(define (encode-base64:update context bytes #!optional start end)
+  (let* ((caller 'encode-base64:update)
+	 (end (fix:end-index end (bytevector-length bytes) caller))
+	 (start (fix:start-index start end caller)))
+    (if (base64-encoding-context/text? context)
+	(let loop ((start start))
+	  (let ((index
+		 (let find-newline ((index start))
+		   (and (fix:< index end)
+			(if (fix:= cp:newline (bytevector-u8-ref bytes index))
+			    index
+			    (find-newline (fix:+ index 1)))))))
+	    (if index
+		(begin
+		  (encode-base64 context bytes start index)
+		  (encode-base64 context bv:crlf 0 2)
+		  (loop (fix:+ index 1)))
+		(encode-base64 context bytes start end))))
+	(encode-base64 context bytes start end))))
 
-(define (encode-base64 context string start end)
+(define (encode-base64 context bytes start end)
   (let ((buffer (base64-encoding-context/buffer context)))
     (let loop ((start start))
       (if (fix:< start end)
 	  (let ((i (base64-encoding-context/index context)))
 	    (let ((start* (fix:min end (fix:+ start (fix:- 48 i)))))
-	      (let ((i (substring-move! string start start* buffer i)))
+	      (let ((i (bytevector-copy! buffer i bytes start start*)))
 		(set-base64-encoding-context/index! context i)
 		(if (fix:= i 48)
 		    (write-base64-line context)))
@@ -430,28 +414,27 @@ USA.
 	(begin
 	  (let ((write-digit
 		 (lambda (d)
-		   (write-char (string-ref base64-digit-table (fix:and #x3F d))
-			       port))))
+		   (write-char (base64:digit->char (fix:and #x3F d)) port))))
 	    (let loop ((start 0))
 	      (let ((n (fix:- end start)))
 		(cond ((fix:>= n 3)
-		       (let ((d1 (vector-8b-ref buffer start))
-			     (d2 (vector-8b-ref buffer (fix:+ start 1)))
-			     (d3 (vector-8b-ref buffer (fix:+ start 2))))
+		       (let ((d1 (bytevector-u8-ref buffer start))
+			     (d2 (bytevector-u8-ref buffer (fix:+ start 1)))
+			     (d3 (bytevector-u8-ref buffer (fix:+ start 2))))
 			 (write-digit (fix:lsh d1 -2))
 			 (write-digit (fix:or (fix:lsh d1 4) (fix:lsh d2 -4)))
 			 (write-digit (fix:or (fix:lsh d2 2) (fix:lsh d3 -6)))
 			 (write-digit d3))
 		       (loop (fix:+ start 3)))
 		      ((fix:= n 2)
-		       (let ((d1 (vector-8b-ref buffer start))
-			     (d2 (vector-8b-ref buffer (fix:+ start 1))))
+		       (let ((d1 (bytevector-u8-ref buffer start))
+			     (d2 (bytevector-u8-ref buffer (fix:+ start 1))))
 			 (write-digit (fix:lsh d1 -2))
 			 (write-digit (fix:or (fix:lsh d1 4) (fix:lsh d2 -4)))
 			 (write-digit (fix:lsh d2 2)))
 		       (write-char #\= port))
 		      ((fix:= n 1)
-		       (let ((d1 (vector-8b-ref buffer start)))
+		       (let ((d1 (bytevector-u8-ref buffer start)))
 			 (write-digit (fix:lsh d1 -2))
 			 (write-digit (fix:lsh d1 4)))
 		       (write-char #\= port)
@@ -472,51 +455,52 @@ USA.
   ;; character, and stop decoding there.  This works around problem
   ;; that arises when mail-processing agents randomly glue text on the
   ;; end of a MIME message.
-  (input-state 'LINE-START)
-  (output-buffer (make-string 3) read-only #t)
+  (input-state 'line-start)
+  (output-buffer (make-bytevector 3) read-only #t)
   (pending-return? #f))
 
 (define (decode-base64:finalize context)
   (if (fix:> (base64-decoding-context/input-index context) 0)
       (error:decode-base64 "BASE64 input length is not a multiple of 4."))
   (if (base64-decoding-context/pending-return? context)
-      (write-char #\return (base64-decoding-context/port context))))
+      (write-u8 cp:return (base64-decoding-context/port context))))
 
-(define (decode-base64:update context string start end)
-  (if (not (eq? 'FINISHED (base64-decoding-context/input-state context)))
-      (let ((buffer (base64-decoding-context/input-buffer context)))
-	(let loop
-	    ((start start)
-	     (index (base64-decoding-context/input-index context))
-	     (state (base64-decoding-context/input-state context)))
-	  (let ((done
-		 (lambda (state)
-		   (set-base64-decoding-context/input-index! context index)
-		   (set-base64-decoding-context/input-state! context state))))
-	    (if (fix:< start end)
-		(let* ((char (string-ref string start))
-		       (continue
-			(lambda (index)
-			  (loop (fix:+ start 1)
-				index
-				(if (char=? char #\newline)
-				    'LINE-START
-				    'IN-LINE)))))
-		  (if (or (char=? char #\=)
-			  (fix:< (vector-8b-ref base64-char-table
-						(char->integer char))
-				 #x40))
-		      (begin
-			(string-set! buffer index char)
-			(if (fix:< index 3)
-			    (continue (fix:+ index 1))
-			    (begin
-			      (decode-base64-quantum context)
-			      (continue 0))))
-		      (if (eq? state 'LINE-START)
-			  (done 'FINISHED)
-			  (continue index))))
-		(done state)))))))
+(define (decode-base64:update context string #!optional start end)
+  (let* ((caller 'decode-base64:update)
+	 (end (fix:end-index end (string-length string) caller))
+	 (start (fix:start-index start end caller)))
+    (if (not (eq? 'finished (base64-decoding-context/input-state context)))
+	(let ((buffer (base64-decoding-context/input-buffer context)))
+	  (let loop
+	      ((start start)
+	       (index (base64-decoding-context/input-index context))
+	       (state (base64-decoding-context/input-state context)))
+	    (let ((done
+		   (lambda (state)
+		     (set-base64-decoding-context/input-index! context index)
+		     (set-base64-decoding-context/input-state! context state))))
+	      (if (fix:< start end)
+		  (let* ((char (string-ref string start))
+			 (continue
+			  (lambda (index)
+			    (loop (fix:+ start 1)
+				  index
+				  (if (char=? char #\newline)
+				      'line-start
+				      'in-line)))))
+		    (if (or (char=? char #\=)
+			    (fix:< (base64:char->digit char) #x40))
+			(begin
+			  (string-set! buffer index char)
+			  (if (fix:< index 3)
+			      (continue (fix:+ index 1))
+			      (begin
+				(decode-base64-quantum context)
+				(continue 0))))
+			(if (eq? state 'line-start)
+			    (done 'finished)
+			    (continue index))))
+		  (done state))))))))
 
 (define (call-with-decode-base64-output-port port text? generator)
   (let ((port (make-decode-base64-port port text?)))
@@ -525,7 +509,8 @@ USA.
       v)))
 
 (define (make-decode-base64-port port text?)
-  (make-port decode-base64-port-type (decode-base64:initialize port text?)))
+  (make-textual-port decode-base64-port-type
+		     (decode-base64:initialize port text?)))
 
 (define decode-base64-port-type
   (make-decoding-port-type decode-base64:update decode-base64:finalize))
@@ -540,23 +525,23 @@ USA.
 	      ((index 0)
 	       (pending? (base64-decoding-context/pending-return? context)))
 	    (if (fix:< index n)
-		(let ((char (string-ref output index)))
+		(let ((u8 (bytevector-u8-ref output index)))
 		  (if pending?
-		      (if (char=? char #\linefeed)
+		      (if (fix:= cp:newline u8)
 			  (begin
-			    (newline port)
+			    (write-u8 u8 port)
 			    (loop (fix:+ index 1) #f))
 			  (begin
-			    (write-char #\return port)
+			    (write-u8 cp:return port)
 			    (loop index #f)))
-		      (if (char=? char #\return)
+		      (if (fix:= cp:return u8)
 			  (loop (fix:+ index 1) #t)
 			  (begin
-			    (write-char char port)
+			    (write-u8 u8 port)
 			    (loop (fix:+ index 1) #f)))))
 		(set-base64-decoding-context/pending-return?! context
 							      pending?)))
-	  (write-substring output 0 n port)))))
+	  (write-bytevector output port 0 n)))))
 
 (define (decode-base64-quantum-1 input output)
   (let ((d1 (decode-base64-char input 0))
@@ -567,57 +552,78 @@ USA.
 				(fix:lsh d2 12))
 			 (fix:+ (fix:lsh (decode-base64-char input 2) 6)
 				(decode-base64-char input 3)))))
-	     (vector-8b-set! output 0 (fix:lsh n -16))
-	     (vector-8b-set! output 1 (fix:and #xFF (fix:lsh n -8)))
-	     (vector-8b-set! output 2 (fix:and #xFF n))
+	     (bytevector-u8-set! output 0 (fix:lsh n -16))
+	     (bytevector-u8-set! output 1 (fix:and #xFF (fix:lsh n -8)))
+	     (bytevector-u8-set! output 2 (fix:and #xFF n))
 	     3))
 	  ((not (char=? (string-ref input 2) #\=))
 	   (let ((n
 		  (fix:+ (fix:+ (fix:lsh d1 10) (fix:lsh d2 4))
 			 (fix:lsh (decode-base64-char input 2) -2))))
-	     (vector-8b-set! output 0 (fix:lsh n -8))
-	     (vector-8b-set! output 1 (fix:and #xFF n)))
+	     (bytevector-u8-set! output 0 (fix:lsh n -8))
+	     (bytevector-u8-set! output 1 (fix:and #xFF n)))
 	   2)
 	  (else
-	   (vector-8b-set! output 0 (fix:+ (fix:lsh d1 2) (fix:lsh d2 -4)))
+	   (bytevector-u8-set! output 0 (fix:+ (fix:lsh d1 2) (fix:lsh d2 -4)))
 	   1))))
 
 (define (decode-base64-char input index)
-  (let ((digit (vector-8b-ref base64-char-table (vector-8b-ref input index))))
+  (let ((digit (base64:char->digit (string-ref input index))))
     (if (fix:> digit #x40)
 	(error:decode-base64 "Misplaced #\\= in BASE64 input."))
     digit))
 
-(define base64-char-table)
-(define base64-digit-table)
-(let ((char-table (make-string 256 (integer->char #xff)))
-      (digit-table (make-string 64)))
+(define (base64:char->digit char)
+  (let ((cp (char->integer char)))
+    (if (fix:< cp #x80)
+	(bytevector-u8-ref base64:char->digit-table cp)
+	#xFF)))
+
+(define (base64:digit->char digit)
+  (string-ref base64:digit->char-table digit))
+
+(define base64:char->digit-table)
+(define base64:digit->char-table)
+(let ((char-table (make-bytevector #x80 #xFF))
+      (digit-table (make-string #x40)))
+
   (define (do-range low high value)
     (do-char low value)
     (if (fix:< low high)
 	(do-range (fix:+ low 1) high (fix:+ value 1))))
+
   (define (do-char code value)
-    (vector-8b-set! char-table code value)
-    (vector-8b-set! digit-table value code))
+    (bytevector-u8-set! char-table code value)
+    (string-set! digit-table value (integer->char code)))
+
   (do-range (char->integer #\A) (char->integer #\Z) 0)
   (do-range (char->integer #\a) (char->integer #\z) 26)
   (do-range (char->integer #\0) (char->integer #\9) 52)
   (do-char (char->integer #\+) 62)
   (do-char (char->integer #\/) 63)
-  (set! base64-char-table char-table)
-  (set! base64-digit-table digit-table)
+  (set! base64:char->digit-table char-table)
+  (set! base64:digit->char-table digit-table)
   unspecific)
 
 (define condition-type:decode-base64
-  (make-condition-type 'DECODE-BASE64 condition-type:simple-error '() #f))
+  (make-condition-type 'decode-base64 condition-type:decode-mime '() #f))
 
 (define error:decode-base64
   (let ((signal
 	 (condition-signaller condition-type:decode-base64
-			      '(MESSAGE IRRITANTS)
+			      '(message irritants)
 			      standard-error-handler)))
     (lambda (message . irritants)
       (signal message irritants))))
+
+(define-integrable cp:newline (char->integer #\newline))
+(define-integrable cp:return (char->integer #\return))
+
+(define bv:crlf
+  (let ((bv (make-bytevector 2)))
+    (bytevector-u8-set! bv 0 cp:return)
+    (bytevector-u8-set! bv 1 cp:newline)
+    bv))
 
 ;;;; Decode BinHex 4.0
 
@@ -625,11 +631,11 @@ USA.
 		   (conc-name binhex40-decoding-context/)
 		   (constructor make-binhex40-decoding-context (port)))
   (port #f read-only #t)
-  (state 'SEEKING-COMMENT)
+  (state 'seeking-comment)
   (line-buffer "")
   (input-buffer (make-string 4) read-only #t)
   (input-index 0)
-  (output-buffer (make-string 3) read-only #t))
+  (output-buffer (make-bytevector 3) read-only #t))
 
 (define (decode-binhex40:initialize port text?)
   text?					;ignored
@@ -637,26 +643,29 @@ USA.
    (make-binhex40-run-length-decoding-port
     (make-binhex40-deconstructing-port port))))
 
-(define (decode-binhex40:update context string start end)
-  (let ((state (binhex40-decoding-context/state context)))
-    (case (binhex40-decoding-context/state context)
-      ((SEEKING-COMMENT)
-       (decode-binhex40-seeking-comment context string start end))
-      ((DECODING)
-       (decode-binhex40-decoding context string start end))
-      ((IGNORING)
-       unspecific)
-      (else
-       (error "Illegal decoder state:" state)))))
+(define (decode-binhex40:update context string #!optional start end)
+  (let* ((caller 'decode-binhex40:update)
+	 (end (fix:end-index end (string-length string) caller))
+	 (start (fix:start-index start end caller)))
+    (let ((state (binhex40-decoding-context/state context)))
+      (case (binhex40-decoding-context/state context)
+	((seeking-comment)
+	 (decode-binhex40-seeking-comment context string start end))
+	((decoding)
+	 (decode-binhex40-decoding context string start end))
+	((ignoring)
+	 unspecific)
+	(else
+	 (error "Illegal decoder state:" state))))))
 
 (define (decode-binhex40:finalize context)
   (let ((state (binhex40-decoding-context/state context)))
     (case (binhex40-decoding-context/state context)
-      ((SEEKING-COMMENT)
-       (error "Missing BinHex 4.0 initial comment line."))
-      ((DECODING)
-       (error "Missing BinHex 4.0 terminating character."))
-      ((IGNORING)
+      ((seeking-comment)
+       (error:decode-binhex40 "Missing BinHex 4.0 initial comment line."))
+      ((decoding)
+       (error:decode-binhex40 "Missing BinHex 4.0 terminating character."))
+      ((ignoring)
        (close-output-port (binhex40-decoding-context/port context)))
       (else
        (error "Illegal decoder state:" state)))))
@@ -668,29 +677,44 @@ USA.
       v)))
 
 (define (make-decode-binhex40-port port text?)
-  (make-port decode-binhex40-port-type
-	     (decode-binhex40:initialize port text?)))
+  (make-textual-port decode-binhex40-port-type
+		     (decode-binhex40:initialize port text?)))
 
 (define decode-binhex40-port-type
   (make-decoding-port-type decode-binhex40:update decode-binhex40:finalize))
+
+(define condition-type:decode-binhex40
+  (make-condition-type 'decode-binhex40 condition-type:decode-mime '() #f))
+
+(define error:decode-binhex40
+  (let ((signal
+	 (condition-signaller condition-type:decode-binhex40
+			      '(message irritants)
+			      standard-error-handler)))
+    (lambda (message . irritants)
+      (signal message irritants))))
 
 (define (decode-binhex40-seeking-comment context string start end)
   (let loop
       ((s
 	(string-append (binhex40-decoding-context/line-buffer context)
 		       (substring string start end))))
-    (let ((regs (re-string-match binhex40-header-regexp s)))
-      (if regs
+    (let ((result (regsexp-match-string binhex40-header-regexp s)))
+      (if result
 	  (begin
-	    (set-binhex40-decoding-context/state! context 'DECODING)
+	    (set-binhex40-decoding-context/state! context 'decoding)
 	    (set-binhex40-decoding-context/line-buffer! context #f)
-	    (decode-binhex40:update context s
-				    (re-match-end-index 0 regs)
-				    (string-length s)))
+	    (decode-binhex40:update context s (cadr result)))
 	  (set-binhex40-decoding-context/line-buffer! context s)))))
 
 (define binhex40-header-regexp
-  "[\r\n\t ]*(This file must be converted with BinHex.*[\r\n][\r\n\t ]*:")
+  (compile-regsexp
+   '(seq (* (char-in "\r\n\t "))
+	 "(This file must be converted with BinHex"
+	 (* (any-char))
+	 (char-in "\r\n")
+	 (* (char-in "\r\n\t "))
+	 ":")))
 
 (define (decode-binhex40-decoding context string start end)
   (let ((buffer (binhex40-decoding-context/input-buffer context)))
@@ -705,10 +729,8 @@ USA.
 		       (begin
 			 (string-set! buffer index char)
 			 (decode-binhex40-quantum context)))
-		   (set-binhex40-decoding-context/state! context 'IGNORING))
-		  ((fix:< (vector-8b-ref binhex40-char-table
-					 (char->integer char))
-			  #x40)
+		   (set-binhex40-decoding-context/state! context 'ignoring))
+		  ((fix:< (binhex40:char->digit char) #x40)
 		   (string-set! buffer index char)
 		   (if (fix:< index 3)
 		       (loop start (fix:+ index 1))
@@ -723,22 +745,23 @@ USA.
   (let ((input (binhex40-decoding-context/input-buffer context))
 	(output (binhex40-decoding-context/output-buffer context))
 	(port (binhex40-decoding-context/port context)))
-    (write-substring output 0
-		     (decode-binhex40-quantum-1 input output)
-		     port)))
+    (write-bytevector output
+		      0
+		      (decode-binhex40-quantum-1 input output)
+		      port)))
 
 (define (decode-binhex40-quantum-1 input output)
   (let ((d1 (decode-binhex40-char input 0))
 	(d2 (decode-binhex40-char input 1)))
     (cond ((char=? (string-ref input 2) #\:)
-	   (vector-8b-set! output 0 (fix:+ (fix:lsh d1 2) (fix:lsh d2 -4)))
+	   (bytevector-u8-set! output 0 (fix:+ (fix:lsh d1 2) (fix:lsh d2 -4)))
 	   1)
 	  ((char=? (string-ref input 3) #\:)
 	   (let ((n
 		  (fix:+ (fix:+ (fix:lsh d1 10) (fix:lsh d2 4))
 			 (fix:lsh (decode-binhex40-char input 2) -2))))
-	     (vector-8b-set! output 0 (fix:lsh n -8))
-	     (vector-8b-set! output 1 (fix:and #xFF n)))
+	     (bytevector-u8-set! output 0 (fix:lsh n -8))
+	     (bytevector-u8-set! output 1 (fix:and #xFF n)))
 	   2)
 	  (else
 	   (let ((n
@@ -746,202 +769,177 @@ USA.
 				(fix:lsh d2 12))
 			 (fix:+ (fix:lsh (decode-binhex40-char input 2) 6)
 				(decode-binhex40-char input 3)))))
-	     (vector-8b-set! output 0 (fix:lsh n -16))
-	     (vector-8b-set! output 1 (fix:and #xFF (fix:lsh n -8)))
-	     (vector-8b-set! output 2 (fix:and #xFF n))
+	     (bytevector-u8-set! output 0 (fix:lsh n -16))
+	     (bytevector-u8-set! output 1 (fix:and #xFF (fix:lsh n -8)))
+	     (bytevector-u8-set! output 2 (fix:and #xFF n))
 	     3)))))
 
 (define (decode-binhex40-char input index)
-  (let ((digit
-	 (vector-8b-ref binhex40-char-table (vector-8b-ref input index))))
-    (if (fix:> digit #x40)
-	(error "Illegal character in BinHex 4.0 input stream:"
-	       (string-ref input index)))
+  (let ((digit (binhex40:char->digit (string-ref input index))))
+    (if (fix:>= digit #x40)
+	(error:decode-binhex40 "Illegal character in BinHex 4.0 input stream:"
+			       (string-ref input index)))
     digit))
 
-(define binhex40-digit-table
+(define (binhex40:char->digit char)
+  (let ((cp (char->integer char)))
+    (if (fix:< cp #x80)
+	(bytevector-u8-ref binhex40:char->digit-table cp)
+	#xFF)))
+
+(define binhex40:digit->char-table
   "!\"#$%&\'()*+,-012345689@ABCDEFGHIJKLMNPQRSTUVXYZ[`abcdefhijklmpqr")
 
-(define binhex40-char-table
-  (make-string 256 (integer->char #xff)))
-
-(do ((code 0 (fix:+ code 1)))
-    ((fix:= code 64))
-  (vector-8b-set! binhex40-char-table
-		  (vector-8b-ref binhex40-digit-table code)
-		  code))
+(define-deferred binhex40:char->digit-table
+  (let ((table (make-bytevector #x80 #xFF)))
+    (do ((digit 0 (fix:+ digit 1)))
+	((not (fix:< digit #x40)))
+      (bytevector-u8-set! table
+			  (char->integer
+			   (string-ref binhex40:digit->char-table digit))
+			  digit))
+    table))
 
 ;;;; BinHex 4.0 run-length decoding
 
 (define (make-binhex40-run-length-decoding-port port)
-  (make-port binhex40-run-length-decoding-port-type
-	     (make-binhex40-rld-state port)))
+  (make-binary-port #f (make-binhex-run-length-decoding-sink port)))
 
-(define binhex40-run-length-decoding-port-type
-  (make-port-type
-   `((WRITE-CHAR
-      ,(lambda (port char)
-	 (guarantee-8-bit-char char)
-	 (let ((state (port/state port)))
-	   (let ((port (binhex40-rld-state/port state))
-		 (char* (binhex40-rld-state/char state)))
-	     (cond ((binhex40-rld-state/marker-seen? state)
-		    (let ((n (char->integer char)))
-		      (cond ((fix:= n 0)
-			     (if char* (write-char char* port))
-			     (set-binhex40-rld-state/char!
-			      state binhex40-rld-marker))
-			    (char*
-			     (do ((i 0 (fix:+ i 1)))
-				 ((fix:= i n))
-			       (write-char char* port))
-			     (set-binhex40-rld-state/char! state #f))))
-		    (set-binhex40-rld-state/marker-seen?! state #f))
-		   ((char=? char binhex40-rld-marker)
-		    (set-binhex40-rld-state/marker-seen?! state #t))
-		   (else
-		    (if char* (write-char char* port))
-		    (set-binhex40-rld-state/char! state char)))))
-	 1))
-     (CLOSE-OUTPUT
-      ,(lambda (port)
-	 (let ((state (port/state port)))
-	   (let ((port (binhex40-rld-state/port state))
-		 (char* (binhex40-rld-state/char state)))
-	     (if char*
-		 (begin
-		   (write-char char* port)
-		   (set-binhex40-rld-state/char! state #f)))
-	     (if (binhex40-rld-state/marker-seen? state)
-		 (begin
-		   (write-char binhex40-rld-marker port)
-		   (set-binhex40-rld-state/marker-seen?! state #f)))
-	     (close-output-port port))))))
-   #f))
+(define (make-binhex-run-length-decoding-sink port)
+  (let ((marker #x90)
+	(marker-seen? #f)
+	(byte* #f))
 
-(define-structure (binhex40-rld-state
-		   (conc-name binhex40-rld-state/)
-		   (constructor make-binhex40-rld-state (port)))
-  (port #f read-only #t)
-  (char #f)
-  (marker-seen? #f))
+    (define (write-bytes bytes start end)
+      (do ((i start (fix:+ i 1)))
+	  ((not (fix:< i end)))
+	(write-byte (bytevector-u8-ref bytes i))))
 
-(define-integrable binhex40-rld-marker
-  (integer->char #x90))
+    (define (write-byte byte)
+      (cond (marker-seen?
+	     (cond ((fix:= byte 0)
+		    (if byte* (write-u8 byte* port))
+		    (set! byte* marker))
+		   (byte*
+		    (do ((i 0 (fix:+ i 1)))
+			((not (fix:< i byte)))
+		      (write-u8 byte* port))
+		    (set! byte* #f)))
+	     (set! marker-seen? #f))
+	    ((fix:= byte marker)
+	     (set! marker-seen? #t))
+	    (else
+	     (if byte* (write-u8 byte* port))
+	     (set! byte* byte)))
+      unspecific)
+
+    (define (close)
+      (if byte*
+	  (begin
+	    (write-u8 byte* port)
+	    (set! byte* #f)))
+      (if marker-seen?
+	  (begin
+	    (write-u8 marker port)
+	    (set! marker-seen? #f)))
+      (close-output-port port))
+
+    (make-non-channel-output-sink write-bytes close)))
 
 ;;;; BinHex 4.0 deconstruction
 
 (define (make-binhex40-deconstructing-port port)
-  (make-port binhex40-deconstructing-port-type
-	     (make-binhex40-decon port)))
+  (make-binary-port #f (make-binhex40-deconstructing-sink port)))
 
-(define binhex40-deconstructing-port-type
-  (make-port-type
-   `((WRITE-CHAR
-      ,(lambda (port char)
-	 (guarantee-8-bit-char char)
-	 (case (binhex40-decon/state (port/state port))
-	   ((READING-HEADER) (binhex40-decon-reading-header port char))
-	   ((COPYING-DATA) (binhex40-decon-copying-data port char))
-	   ((SKIPPING-TAIL) (binhex40-decon-skipping-tail port))
-	   ((FINISHED) unspecific)
-	   (else (error "Illegal state in BinHex 4.0 deconstructor.")))
-	 1))
-     (CLOSE-OUTPUT
-      ,(lambda (port)
-	 (if (not (eq? (binhex40-decon/state (port/state port)) 'FINISHED))
-	     (error "Premature EOF in BinHex 4.0 stream.")))))
-   #f))
+(define (make-binhex40-deconstructing-sink port)
+  (let ((state 'reading-header)
+	(header-length)
+	(header #f)
+	(index 0)
+	(data-length))
 
-(define (binhex40-decon-reading-header port char)
-  (let ((state (port/state port)))
-    (let ((index (binhex40-decon/index state)))
-      (if (fix:= index 0)
+    (define (write-bytes bytes start end)
+      (do ((i start (fix:+ i 1)))
+	  ((not (fix:< i end)))
+	(case state
+	  ((reading-header) (reading-header (bytevector-u8-ref bytes i)))
+	  ((copying-data) (copying-data (bytevector-u8-ref bytes i)))
+	  ((skipping-tail) (skipping-tail)))))
+
+    (define (reading-header byte)
+      (cond ((= index 0)
+	     (set! header-length (+ 22 byte))
+	     (set! header (make-bytevector header-length))
+	     (set! index 1))
+	    ((< index header-length)
+	     (bytevector-u8-set! header index byte)
+	     (set! index (+ index 1)))
+	    (else
+	     (set! data-length (read-data-length (fix:- header-length 10)))
+	     (set! index 0)
+	     (set! state 'copying-data))))
+
+    (define (copying-data byte)
+      (if (< index data-length)
 	  (begin
-	    (set-binhex40-decon/header!
-	     state (make-string (fix:+ 22 (char->integer char))))
-	    (set-binhex40-decon/index! state 1))
-	  (let ((header (binhex40-decon/header state)))
-	    (string-set! header index char)
-	    (let ((index (fix:+ index 1)))
-	      (if (fix:< index (string-length header))
-		  (set-binhex40-decon/index! state index)
-		  (begin
-		    (set-binhex40-decon/data-length!
-		     state
-		     (binhex40-4byte header (fix:- (string-length header) 10)))
-		    (set-binhex40-decon/index! state 0)
-		    (set-binhex40-decon/state! state 'COPYING-DATA)))))))))
-
-(define (binhex40-decon-copying-data port char)
-  (let ((state (port/state port)))
-    (write-char char (binhex40-decon/port state))
-    (let ((index (+ (binhex40-decon/index state) 1)))
-      (if (< index (binhex40-decon/data-length state))
-	  (set-binhex40-decon/index! state index)
+	    (write-u8 byte port)
+	    (set! index (+ index 1)))
 	  (begin
-	    (set-binhex40-decon/index! state 0)
-	    (set-binhex40-decon/data-length!
-	     state
-	     (+ (let ((header (binhex40-decon/header state)))
-		  (binhex40-4byte header (fix:- (string-length header) 6)))
-		4))
-	    (set-binhex40-decon/state! state 'SKIPPING-TAIL))))))
+	    (set! index 0)
+	    (set! data-length (+ (read-data-length (fix:- header-length 6)) 4))
+	    (set! state 'skipping-tail))))
 
-(define (binhex40-decon-skipping-tail port)
-  (let ((state (port/state port)))
-    (let ((index (+ (binhex40-decon/index state) 1)))
-      (set-binhex40-decon/index! state index)
-      (if (>= index (binhex40-decon/data-length state))
-	  (set-binhex40-decon/state! state 'FINISHED)))))
+    (define (skipping-tail)
+      (if (< index data-length)
+	  (set! index (+ index 1))
+	  (set! state 'finished)))
 
-(define-structure (binhex40-decon (conc-name binhex40-decon/)
-				  (constructor make-binhex40-decon (port)))
-  (port #f read-only #t)
-  (state 'READING-HEADER)
-  (header #f)
-  (index 0)
-  (data-length))
+    (define (read-data-length index)
+      (+ (* (bytevector-u8-ref header index) #x1000000)
+	 (* (bytevector-u8-ref header (+ index 1)) #x10000)
+	 (* (bytevector-u8-ref header (+ index 2)) #x100)
+	 (bytevector-u8-ref header (+ index 3))))
 
-(define (binhex40-4byte string index)
-  (+ (* (vector-8b-ref string index) #x1000000)
-     (* (vector-8b-ref string (fix:+ index 1)) #x10000)
-     (* (vector-8b-ref string (fix:+ index 2)) #x100)
-     (vector-8b-ref string (fix:+ index 3))))
+    (define (close)
+      (close-output-port port))
+
+    (make-non-channel-output-sink write-bytes close)))
 
 ;;;; Decode uuencode
 
 (define (decode-uue:initialize port text?)
   text?
-  (let ((state 'BEGIN)
-	(line-buffer (make-line-buffer 256))
-	(output-buffer (make-string 3)))
+  (let ((state 'begin)
+	(builder (string-builder))
+	(output-buffer (make-bytevector 3)))
 
     (define (update string start end)
-      (if (and (not (eq? state 'FINISHED))
+      (if (and (not (eq? state 'finished))
 	       (fix:< start end))
-	  (let ((nl (substring-find-next-char string start end #\newline)))
+	  (let ((nl (string-find-next-char string #\newline start end)))
 	    (if nl
 		(begin
-		  (add-to-line-buffer string start nl line-buffer)
-		  (process-line (line-buffer-contents line-buffer))
+		  (builder (string-slice string start nl))
+		  (let ((line (builder 'immutable)))
+		    (builder 'reset!)
+		    (process-line line))
 		  (update string (fix:+ nl 1) end))
-		(add-to-line-buffer string start end line-buffer)))))
+		(builder (string-slice string start end))))))
 
     (define (process-line line)
       (if (not (fix:> (string-length line) 0))
-	  (error "Empty line not allowed."))
+	  (error:decode-uue "Empty line not allowed."))
       (case state
-	((BEGIN) (process-begin-line line))
-	((NORMAL) (process-normal-line line))
-	((ZERO) (process-zero-line line))
-	((END) (process-end-line line))
+	((begin) (process-begin-line line))
+	((normal) (process-normal-line line))
+	((zero) (process-zero-line line))
+	((end) (process-end-line line))
 	(else (error "Illegal state in uuencode decoder:" state))))
 
     (define (process-begin-line line)
-      (if (not (re-string-match "^begin +[0-7]+ +.+$" line))
-	  (error "Malformed \"begin\" line:" line))
-      (set! state 'NORMAL))
+      (if (not (regsexp-match-string decode-uue:begin-line-regsexp line))
+	  (error:decode-uue "Malformed \"begin\" line:" line))
+      (set! state 'normal))
 
     (define (process-normal-line line)
       (let ((n (uudecode-char (string-ref line 0))))
@@ -949,38 +947,41 @@ USA.
 		      (fix:<= n 45)
 		      (fix:>= (fix:- (string-length line) 1)
 			      (fix:* (fix:quotient (fix:+ n 2) 3) 4))))
-	    (error "Malformed line length:" n))
+	    (error:decode-uue "Malformed line length:" n))
 	(let per-quantum ((i 0) (start 1))
 	  (if (fix:< i n)
 	      (let ((i* (fix:+ i 3)))
 		(uudecode-quantum line start output-buffer)
 		(if (fix:<= i* n)
 		    (begin
-		      (write-string output-buffer port)
+		      (write-bytevector output-buffer port)
 		      (per-quantum i* (fix:+ start 4)))
-		    (write-substring output-buffer 0 (fix:- n i) port)))))
-	(cond ((fix:= n 0) (set! state 'END))
-	      ((fix:< n 45) (set! state 'ZERO)))))
+		    (write-bytevector output-buffer port 0 (fix:- n i))))))
+	(cond ((fix:= n 0) (set! state 'end))
+	      ((fix:< n 45) (set! state 'zero)))))
 
     (define (process-zero-line line)
       (let ((n (uudecode-char (string-ref line 0))))
 	(if (not (fix:= n 0))
-	    (error "Expected zero-length line:" n)))
-      (set! state 'END))
+	    (error:decode-uue "Expected zero-length line:" n)))
+      (set! state 'end))
 
     (define (process-end-line line)
       (if (not (string=? line "end"))
-	  (error "Malformed \"end\" line:" line))
-      (set! state 'FINISHED))
+	  (error:decode-uue "Malformed \"end\" line:" line))
+      (set! state 'finished))
 
     (define (finalize)
-      (if (not (eq? state 'FINISHED))
-	  (error "Can't finalize unfinished decoding.")))
+      (if (not (eq? state 'finished))
+	  (error:decode-uue "Can't finalize unfinished decoding.")))
 
     (make-uudecode-ctx update finalize)))
 
-(define (decode-uue:update context string start end)
-  ((uudecode-ctx-update context) string start end))
+(define (decode-uue:update context string #!optional start end)
+  (let* ((caller 'decode-uu3:update)
+	 (end (fix:end-index end (string-length string) caller))
+	 (start (fix:start-index start end caller)))
+    ((uudecode-ctx-update context) string start end)))
 
 (define (decode-uue:finalize context)
   ((uudecode-ctx-finalize context)))
@@ -991,54 +992,36 @@ USA.
   (update uudecode-ctx-update)
   (finalize uudecode-ctx-finalize))
 
-(define (make-line-buffer n-max)
-  (let ((s (make-string n-max)))
-    (set-string-length! s 0)
-    (cons n-max s)))
-
-(define (add-to-line-buffer string start end line-buffer)
-  (let ((s (cdr line-buffer)))
-    (let ((n (string-length s)))
-      (let ((n-max (string-maximum-length s))
-	    (m (fix:+ n (fix:- end start))))
-	(if (fix:< n-max m)
-	    (let loop ((n-max (fix:* n-max 2)))
-	      (if (fix:< n-max m)
-		  (loop (fix:* n-max 2))
-		  (let ((s* (make-string n-max)))
-		    (substring-move! s 0 n s* 0)
-		    (set-string-length! s* m)
-		    (set-cdr! line-buffer s*))))
-	    (set-string-length! s m)))
-      (substring-move! string start end (cdr line-buffer) n))))
-
-(define (line-buffer-contents line-buffer)
-  (let ((contents (cdr line-buffer))
-	(s (make-string (car line-buffer))))
-    (set-string-length! s 0)
-    (set-cdr! line-buffer s)
-    contents))
-
 (define (uudecode-quantum string start buffer)
   (let ((n0 (uudecode-char (string-ref string start)))
 	(n1 (uudecode-char (string-ref string (fix:+ start 1))))
 	(n2 (uudecode-char (string-ref string (fix:+ start 2))))
 	(n3 (uudecode-char (string-ref string (fix:+ start 3)))))
-    (vector-8b-set! buffer 0
-		    (fix:or (fix:lsh n0 2)
-			    (fix:lsh n1 -4)))
-    (vector-8b-set! buffer 1
-		    (fix:or (fix:lsh (fix:and n1 #x0F) 4)
-			    (fix:lsh n2 -2)))
-    (vector-8b-set! buffer 2
-		    (fix:or (fix:lsh (fix:and n2 #x03) 6)
-			    n3))))
+    (bytevector-u8-set! buffer 0
+			(fix:or (fix:lsh n0 2)
+				(fix:lsh n1 -4)))
+    (bytevector-u8-set! buffer 1
+			(fix:or (fix:lsh (fix:and n1 #x0F) 4)
+				(fix:lsh n2 -2)))
+    (bytevector-u8-set! buffer 2
+			(fix:or (fix:lsh (fix:and n2 #x03) 6)
+				n3))))
 
 (define (uudecode-char char)
   (let ((n (char->integer char)))
     (if (not (and (fix:>= n #x20) (fix:< n #x80)))
 	(error "Illegal uuencode char:" char))
     (fix:and (fix:- n #x20) #x3F)))
+
+(define decode-uue:begin-line-regsexp
+  (compile-regsexp
+   '(seq (line-start)
+	 "begin"
+	 (+ #\space)
+	 (+ (char-in (48 . 56)))
+	 (+ #\space)
+	 (+ (any-char))
+	 (line-end))))
 
 (define (call-with-decode-uue-output-port port text? generator)
   (let ((port (make-decode-uue-port port text?)))
@@ -1047,7 +1030,18 @@ USA.
       v)))
 
 (define (make-decode-uue-port port text?)
-  (make-port decode-uue-port-type (decode-uue:initialize port text?)))
+  (make-textual-port decode-uue-port-type (decode-uue:initialize port text?)))
 
 (define decode-uue-port-type
   (make-decoding-port-type decode-uue:update decode-uue:finalize))
+
+(define condition-type:decode-uue
+  (make-condition-type 'decode-uue condition-type:decode-mime '() #f))
+
+(define error:decode-uue
+  (let ((signal
+	 (condition-signaller condition-type:decode-uue
+			      '(message irritants)
+			      standard-error-handler)))
+    (lambda (message . irritants)
+      (signal message irritants))))

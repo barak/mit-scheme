@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -97,8 +97,8 @@ USA.
 		    (add-pblock-to-classes! pblock-classes bblock)))
 	      (rgraph-bblocks rgraph))
     (let ((singleton? (lambda (x) (null? (cdr x)))))
-      (append! (list-transform-negative (cdr sblock-classes) singleton?)
-	       (list-transform-negative (cdr pblock-classes) singleton?)))))
+      (append! (remove singleton? (cdr sblock-classes))
+	       (remove singleton? (cdr pblock-classes))))))
 
 (define (add-sblock-to-classes! classes sblock)
   (let ((next (snode-next sblock)))
@@ -134,22 +134,22 @@ USA.
   (let ((classes '())
 	(class-member?
 	 (lambda (class suffix)
-	   (list-search-positive class
-	     (lambda (suffix*)
-	       (and (eq? (car suffix) (car suffix*))
-		    (eq? (cdr suffix) (cdr suffix*))))))))
+	   (find (lambda (suffix*)
+		   (and (eq? (car suffix) (car suffix*))
+			(eq? (cdr suffix) (cdr suffix*))))
+		 class))))
     (for-each (lambda (entry)
 		(let ((class
-		       (list-search-positive classes
-			 (lambda (class)
-			   (class-member? class (car entry))))))
+		       (find (lambda (class)
+			       (class-member? class (car entry)))
+			     classes)))
 		  (if class
 		      (if (not (class-member? class (cdr entry)))
 			  (set-cdr! class (cons (cdr entry) (cdr class))))
 		      (let ((class
-			     (list-search-positive classes
-			       (lambda (class)
-				 (class-member? class (cdr entry))))))
+			     (find (lambda (class)
+				     (class-member? class (cdr entry)))
+				   classes)))
 			(if class
 			    (set-cdr! class (cons (car entry) (cdr class)))
 			    (set! classes
@@ -225,7 +225,7 @@ USA.
 		       (if adjustment
 			   (cons adjustment adjustments)
 			   adjustments)))
-		  (if (for-all? e (lambda (b) (eqv? (car b) (cdr b))))
+		  (if (every (lambda (b) (eqv? (car b) (cdr b))) e)
 		      (loop (cdr rx) (cdr ry)
 			    (car rx) (car ry)
 			    e adjustments)

@@ -1,13 +1,12 @@
 #| -*-Scheme-*- |#
 
-;;;; Compile the Blowfish wrapper.
+;;;; Compile the BLOWFISH option.
 
-(load-option 'CREF)
-(load-option 'FFI)
+(load-option 'cref)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (with-system-library-directories
-	'("./")
+    (with-working-directory-pathname (merge-pathnames "../ffi")
       (lambda ()
-	(compile-file "blowfish" '() (->environment '(RUNTIME)))))
-    (cref/generate-constructors "blowfish" 'ALL)))
+	(load "make")))
+    (compile-file "blowfish" '() (->environment '(runtime)))
+    (cref/generate-constructors "blowfish")))

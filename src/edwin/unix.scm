@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -192,11 +192,11 @@ Includes the new backup.  Must be > 0."
 
 (define (os/newest-backup pathname)
   (or (os/newest-numeric-backup pathname)
-      (find-matching-item
-          (os/directory-list-completions
-           (directory-namestring pathname)
-           (string-append (file-namestring pathname) "~"))
-        os/backup-filename?)))
+      (find
+       os/backup-filename?
+       (os/directory-list-completions
+	(directory-namestring pathname)
+	(string-append (file-namestring pathname) "~")))))
 
 (define (os/buffer-backup-pathname truename buffer)
   (call-with-values
@@ -317,9 +317,9 @@ Includes the new backup.  Must be > 0."
 
 (define (os/completion-ignore-filename? filename)
   (and (not (file-test-no-errors file-directory? filename))
-       (there-exists? (ref-variable completion-ignored-extensions)
-         (lambda (extension)
-	   (string-suffix? extension filename)))))
+       (any (lambda (extension)
+	      (string-suffix? extension filename))
+	    (ref-variable completion-ignored-extensions))))
 
 (define (os/completion-ignored-extensions)
   (append (list ".bin" ".com" ".ext" ".so"
@@ -336,10 +336,10 @@ Includes the new backup.  Must be > 0."
   (os/completion-ignored-extensions)
   (lambda (extensions)
     (and (list? extensions)
-	 (for-all? extensions
-	   (lambda (extension)
-	     (and (string? extension)
-		  (not (string-null? extension))))))))
+	 (every (lambda (extension)
+		  (and (string? extension)
+		       (not (string-null? extension))))
+		extensions))))
 
 (define (os/init-file-name) "~/.edwin")
 (define (os/abbrev-file-name) "~/.abbrev_defs")
@@ -426,7 +426,7 @@ of the filename suffixes \".gz\", \".bz2\", or \".Z\"."
 					 (file-namestring pathname)
 					 " > "
 					 (->namestring temporary)))))
-	    (error:file-operation pathname
+	    (error:file-operation 0
 				  program
 				  "file"
 				  "[unknown]"
@@ -448,7 +448,7 @@ of the filename suffixes \".gz\", \".bz2\", or \".Z\"."
 			      (string-append program
 					     " > "
 					     (file-namestring pathname)))))
-	 (error:file-operation pathname
+	 (error:file-operation 1
 			       program
 			       "file"
 			       "[unknown]"
@@ -636,18 +636,19 @@ option, instead taking -P <filename>."
 		 (list "-p"
 		       (call-with-input-file (cadr password)
 			 (lambda (port)
-			   (read-string (char-set #\newline) port))))))
+			   (read-delimited-string (char-set #\newline)
+						  port))))))
 	       (else
 		(error "Illegal password:" password))))))
 
 ;;;; Miscellaneous
 
-(define (os/scheme-can-quit?)
+(define (os/scheme-can-suspend?)
   (subprocess-job-control-available?))
 
 (define (os/quit dir)
   dir					; ignored
-  (%quit))
+  (suspend))
 
 (define (os/set-file-modes-writeable! pathname)
   (set-file-modes! pathname #o777))
@@ -656,9 +657,8 @@ option, instead taking -P <filename>."
   set-file-modes!)
 
 (define (os/rmail-spool-directory)
-  (or (list-search-positive
-	  '("/var/spool/mail/" "/var/mail/" "/usr/spool/mail/" "/usr/mail/")
-	file-directory?)
+  (or (find file-directory?
+	    '("/var/spool/mail/" "/var/mail/" "/usr/spool/mail/" "/usr/mail/"))
       "/usr/spool/mail/"))
 
 (define (os/rmail-primary-inbox-list system-mailboxes)
@@ -666,9 +666,8 @@ option, instead taking -P <filename>."
 
 (define (os/sendmail-program)
   (or (os/find-program "sendmail" #f (ref-variable exec-path) #f)
-      (find-matching-item
-	  '("/usr/sbin/sendmail" "/usr/lib/sendmail" "/usr/ucblib/sendmail")
-	file-executable?)
+      (find file-executable?
+	    '("/usr/sbin/sendmail" "/usr/lib/sendmail" "/usr/ucblib/sendmail"))
       "fakemail"))
 
 (define (os/newsrc-file-name server)

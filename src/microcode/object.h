@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,9 +43,6 @@ typedef unsigned long SCHEME_OBJECT;
 #define SIZEOF_SCHEME_OBJECT SIZEOF_UNSIGNED_LONG
 #define OBJECT_LENGTH ((unsigned int) (CHAR_BIT * SIZEOF_UNSIGNED_LONG))
 
-/* A convenience definition since "unsigned char" is so verbose.  */
-typedef unsigned char byte_t;
-
 #if (TYPE_CODE_LENGTH == 6U)
 #  define N_TYPE_CODES (0x40)
 #  if (SIZEOF_UNSIGNED_LONG == 4) /* 32 bit word versions */
@@ -178,11 +175,14 @@ extern SCHEME_OBJECT * memory_base;
 #define FLONUM_P(object) ((OBJECT_TYPE (object)) == TC_BIG_FLONUM)
 #define COMPLEX_P(object) ((OBJECT_TYPE (object)) == TC_COMPLEX)
 #define CHARACTER_P(object) ((OBJECT_TYPE (object)) == TC_CHARACTER)
-#define STRING_P(object) ((OBJECT_TYPE (object)) == TC_CHARACTER_STRING)
+#define BYTEVECTOR_P(object) ((OBJECT_TYPE (object)) == TC_BYTEVECTOR)
+#define LEGACY_STRING_P(object) ((OBJECT_TYPE (object)) == TC_CHARACTER_STRING)
+#define UNICODE_STRING_P(object) ((OBJECT_TYPE (object)) == TC_UNICODE_STRING)
 #define BIT_STRING_P(object) ((OBJECT_TYPE (object)) == TC_BIT_STRING)
 #define CELL_P(object) ((OBJECT_TYPE (object)) == TC_CELL)
 #define PAIR_P(object) ((OBJECT_TYPE (object)) == TC_LIST)
 #define WEAK_PAIR_P(object) ((OBJECT_TYPE (object)) == TC_WEAK_CONS)
+#define TAGGED_OBJECT_P(object) ((OBJECT_TYPE (object)) == TC_TAGGED_OBJECT)
 #define VECTOR_P(object) ((OBJECT_TYPE (object)) == TC_VECTOR)
 #define RECORD_P(object) ((OBJECT_TYPE (object)) == TC_RECORD)
 #define BOOLEAN_P(object) (((object) == SHARP_T) || ((object) == SHARP_F))
@@ -194,6 +194,9 @@ extern SCHEME_OBJECT * memory_base;
 #define BROKEN_HEART_P(object) ((OBJECT_TYPE (object)) == TC_BROKEN_HEART)
 #define RETURN_CODE_P(object) ((OBJECT_TYPE (object)) == TC_RETURN_CODE)
 #define EPHEMERON_P(object) ((OBJECT_TYPE (object)) == TC_EPHEMERON)
+
+#define STRING_P string_p
+extern bool string_p (SCHEME_OBJECT);
 
 #define NON_MARKED_VECTOR_P(object)					\
   ((OBJECT_TYPE (object)) == TC_NON_MARKED_VECTOR)
@@ -253,38 +256,72 @@ extern SCHEME_OBJECT * memory_base;
 #define VECTOR_REF(v, i) (MEMORY_REF ((v), ((i) + 1)))
 #define VECTOR_SET(v, i, object) MEMORY_SET ((v), ((i) + 1), (object))
 
-/* String Operations */
+/* Bytevector operations */
 
-/* Add 1 byte to length to account for '\0' at end of string.
-   Add 1 word to length to account for string header word. */
+/* Add 1 word to length to account for string header word. */
+#define BYTEVECTOR_LENGTH_TO_GC_LENGTH(n_chars)                         \
+  ((BYTES_TO_WORDS (n_chars)) + BYTEVECTOR_LENGTH_SIZE)
+
+#define BYTEVECTOR_DATA_LENGTH(v) ((VECTOR_LENGTH (v)) - BYTEVECTOR_LENGTH_SIZE)
+
+#define BYTEVECTOR_LENGTH(v)                                            \
+  (OBJECT_DATUM (MEMORY_REF ((v), BYTEVECTOR_LENGTH_INDEX)))
+
+#define SET_BYTEVECTOR_LENGTH(v, n_bytes)                               \
+  MEMORY_SET ((v), BYTEVECTOR_LENGTH_INDEX, (MAKE_OBJECT (0, (n_bytes))))
+
+#define BYTEVECTOR_POINTER(v) ((uint8_t *) (MEMORY_LOC ((v), BYTEVECTOR_DATA)))
+#define BYTEVECTOR_LOC(v, i) ((BYTEVECTOR_POINTER (v)) + (i))
+#define BYTEVECTOR_REF(s, i) (* (BYTEVECTOR_LOC ((s), (i))))
+#define BYTEVECTOR_SET(s, i, c) ((* (BYTEVECTOR_LOC ((s), (i)))) = (c))
+
+/* Unicode string operations */
+
+#define UNICODE_STRING_CP_LENGTH(u)					\
+  (OBJECT_DATUM (MEMORY_REF ((u), UNICODE_STRING_LENGTH_INDEX)))
+
+#define UNICODE_STRING_FLAGS(u)						\
+  (OBJECT_TYPE (MEMORY_REF ((u), UNICODE_STRING_LENGTH_INDEX)))
+
+/* This must be kept in sync with "runtime/string.scm". */
+#define UNICODE_STRING_BYTES_PER_CP(u)					\
+  ((((UNICODE_STRING_FLAGS (u)) & 0x3) == 0)				\
+   ? 3									\
+   : ((UNICODE_STRING_FLAGS (u)) & 0x3))
+
+#define UNICODE_STRING_BYTE_LENGTH(u)					\
+  ((UNICODE_STRING_CP_LENGTH (u)) * (UNICODE_STRING_BYTES_PER_CP (u)))
+
+#define UNICODE_STRING_POINTER(u)					\
+  ((uint8_t *) (MEMORY_LOC ((u), UNICODE_STRING_DATA)))
+
+/* Legacy string operations */
+
+/* Legacy strings are laid out exactly the same way as bytevectors,
+   except that they have a zero byte at the end that isn't included in
+   the string's length. */
+
 #define STRING_LENGTH_TO_GC_LENGTH(n_chars)				\
-  ((BYTES_TO_WORDS ((n_chars) + 1)) + 1)
+  (BYTEVECTOR_LENGTH_TO_GC_LENGTH ((n_chars) + 1))
+#define STRING_LENGTH BYTEVECTOR_LENGTH
 
-#define STRING_LENGTH(s)						\
-  (OBJECT_DATUM (MEMORY_REF ((s), STRING_LENGTH_INDEX)))
-
-#define SET_STRING_LENGTH(s, n_chars) do				\
-{									\
-  MEMORY_SET ((s),							\
-	      STRING_LENGTH_INDEX,					\
-	      (MAKE_OBJECT (0, (n_chars))));				\
-  STRING_SET ((s), (n_chars), '\0');					\
+#define SET_STRING_LENGTH(s, n_chars) do                                \
+{                                                                       \
+  SET_BYTEVECTOR_LENGTH((s), (n_chars));                                \
+  STRING_SET ((s), (n_chars), '\0');                                    \
 } while (0)
 
 /* Subtract 1 to account for the fact that we maintain a '\0'
    at the end of the string. */
-#define MAXIMUM_STRING_LENGTH(s)					\
-  ((((VECTOR_LENGTH (s)) - 1) * (sizeof (SCHEME_OBJECT))) - 1)
+#define MAXIMUM_STRING_LENGTH(s)                                        \
+  (((BYTEVECTOR_DATA_LENGTH (s)) * (sizeof (SCHEME_OBJECT))) - 1)
 
 #define SET_MAXIMUM_STRING_LENGTH(s, n_chars)				\
   (SET_VECTOR_LENGTH ((s), (STRING_LENGTH_TO_GC_LENGTH (n_chars))))
 
-#define STRING_LOC(s, i)						\
-  (((unsigned char *) (MEMORY_LOC (s, STRING_CHARS))) + (i))
-
-#define STRING_POINTER(s) ((char *) (MEMORY_LOC (s, STRING_CHARS)))
-#define STRING_BYTE_PTR(s) ((byte_t *) (MEMORY_LOC (s, STRING_CHARS)))
-
+#define STRING_BYTE_PTR BYTEVECTOR_POINTER
+#define STRING_POINTER(s) ((char *) (STRING_BYTE_PTR (s)))
+#define STRING_LOC(s, i) (((unsigned char *) (STRING_BYTE_PTR (s))) + (i))
 #define STRING_REF(s, i) (* (STRING_LOC ((s), (i))))
 #define STRING_SET(s, i, c) ((* (STRING_LOC ((s), (i)))) = (c))
 
@@ -295,8 +332,8 @@ extern SCHEME_OBJECT * memory_base;
 #define BITS_LENGTH 4
 #define MIT_ASCII_LENGTH 25
 
-#define CHAR_BITS_META 		0x1
-#define CHAR_BITS_CONTROL 	0x2
+#define CHAR_BITS_META		0x1
+#define CHAR_BITS_CONTROL	0x2
 #define CHAR_BITS_SUPER		0x4
 #define CHAR_BITS_HYPER		0x8
 
@@ -355,6 +392,8 @@ extern SCHEME_OBJECT * memory_base;
 #define ULONG_TO_FIXNUM(n) (MAKE_OBJECT (TC_FIXNUM, (n)))
 #define FIXNUM_TO_ULONG_P(fixnum) (((OBJECT_DATUM (fixnum)) & SIGN_MASK) == 0)
 #define FIXNUM_TO_ULONG(fixnum) (OBJECT_DATUM (fixnum))
+
+#define FIXNUM_ZERO (ULONG_TO_FIXNUM (0))
 
 #define FIXNUM_TO_DOUBLE(fixnum) ((double) (FIXNUM_TO_LONG (fixnum)))
 
@@ -480,14 +519,18 @@ extern SCHEME_OBJECT * memory_base;
    7 #!default
    8 #!aux
    9 '()
+   10 weak #f
+   ...
+   0x100 -> 0x1FF reserved for fasdumpable records
  */
 
-#define SHARP_F			MAKE_OBJECT (TC_NULL, 0)
+#define SHARP_F			MAKE_OBJECT (TC_FALSE, 0)
 #define SHARP_T			MAKE_OBJECT (TC_CONSTANT, 0)
 #define UNSPECIFIC		MAKE_OBJECT (TC_CONSTANT, 1)
 #define DEFAULT_OBJECT		MAKE_OBJECT (TC_CONSTANT, 7)
 #define EMPTY_LIST		MAKE_OBJECT (TC_CONSTANT, 9)
-#define FIXNUM_ZERO		MAKE_OBJECT (TC_FIXNUM, 0)
+#define FASDUMP_RECORD_MARKER_START 0x100
+#define FASDUMP_RECORD_MARKER_END 0x200
 #define BROKEN_HEART_ZERO	MAKE_OBJECT (TC_BROKEN_HEART, 0)
 
 /* Last immediate reference trap. */

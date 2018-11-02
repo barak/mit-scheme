@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -106,9 +106,6 @@ insert it into the floppy drive.")
 	      ((DOS NT)
 	       "
 Again, use the File Manager to format the floppy.")
-	      ((OS/2)
-	       "
-Again, use the Drive object to format the floppy.")
 	      (else "")))
 	   (append-string
 	    "
@@ -508,13 +505,12 @@ otherwise answer \"no\" to leave these files on your floppy.
 		(make-file-record
 		 (file-namestring pathname)
 		 (* (quotient (file-modification-time pathname) 60) 60)))
-	      (list-transform-negative (directory-read student-work-directory)
-		file-directory?)))
+	      (remove file-directory? (directory-read student-work-directory))))
 	(valid-dos-record?
 	 (lambda (record)
 	   (valid-dos-filename? (file-record/name record)))))
     (append-string "done")
-    (let ((non-dos (list-transform-negative result valid-dos-record?)))
+    (let ((non-dos (remove valid-dos-record? result)))
       (if (null? non-dos)
 	  result
 	  (begin
@@ -552,7 +548,7 @@ M-x rename-file, or use the `r' command in Dired.")
 		  (append-string
 		   "
 ----------------------------------------------------------------------")
-		  (list-transform-positive result valid-dos-record?))))))))
+		  (filter valid-dos-record? result))))))))
 
 (define-command describe-dos-filenames
   "Describe the format of DOS filenames."
@@ -622,7 +618,7 @@ M-x rename-file, or use the `r' command in Dired.")
 	  (if (= start end)
 	      '()
 	      (let ((eol
-		     (or (substring-find-next-char string start end #\newline)
+		     (or (string-find-next-char string #\newline start end)
 			 end)))
 		(with-values
 		    (lambda ()
@@ -900,22 +896,22 @@ M-x rename-file, or use the `r' command in Dired.")
 	    (valid-name?
 	     (lambda (end)
 	       (and (<= 1 end 8)
-		    (not (substring-find-next-char-in-set filename 0 end
-							  invalid-chars))
+		    (not (string-find-next-char-in-set filename invalid-chars
+						       0 end))
 		    (not
-		     (there-exists? '("clock$" "con" "aux" "com1" "com2"
-					       "com3" "com4" "lpt1" "lpt2"
-					       "lpt3" "nul" "prn")
-		       (lambda (name)
-			 (substring=? filename 0 end
-				      name 0 (string-length name)))))))))
+		     (any (lambda (name)
+			    (substring=? filename 0 end
+					 name 0 (string-length name)))
+			  '("clock$" "con" "aux" "com1" "com2"
+			    "com3" "com4" "lpt1" "lpt2"
+			    "lpt3" "nul" "prn")))))))
 	(let ((dot (string-find-next-char filename #\.)))
 	  (if (not dot)
 	      (valid-name? end)
 	      (and (valid-name? dot)
 		   (<= 2 (- end dot) 4)
-		   (not (substring-find-next-char-in-set filename (+ dot 1) end
-							 invalid-chars)))))))))
+		   (not (string-find-next-char-in-set filename invalid-chars
+						      (+ dot 1) end)))))))))
 
 
 (define dos-filename-description

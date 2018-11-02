@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -107,10 +107,11 @@ extern void set_ulong_register (unsigned int, unsigned long);
    extern bool Lookup_Debug;
    extern bool GC_Debug;
    extern bool Upgrade_Debug;
-   extern bool Trace_On_Error;
    extern bool Dump_Debug;
+   extern bool Trace_On_Error;
    extern bool Per_File;
    extern bool Bignum_Debug;
+   extern bool Print_Errors;
 
    extern bool verify_heap (void);
    extern void Pop_Return_Break_Point (void);
@@ -136,6 +137,7 @@ extern void set_ulong_register (unsigned int, unsigned long);
 #  define Dump_Debug 0
 #  define Per_File 0
 #  define Bignum_Debug 0
+#  define Print_Errors 0
 #endif
 
 extern SCHEME_OBJECT * Free;
@@ -174,6 +176,7 @@ extern const char * Abort_Names [];
 extern const char * Error_Names [];
 extern const char * Term_Names [];
 extern const char * term_messages [];
+extern const char * term_halt_messages [];
 extern const char * fixed_objects_names [];
 
 extern bool trapping;
@@ -268,7 +271,6 @@ extern SCHEME_OBJECT integer_negative_zero_bits (unsigned long, unsigned long);
 extern SCHEME_OBJECT integer_shift_left (SCHEME_OBJECT, unsigned long);
 extern SCHEME_OBJECT integer_shift_right (SCHEME_OBJECT, unsigned long);
 
-extern bool double_is_finite_p (double);
 extern SCHEME_OBJECT double_to_flonum (double);
 extern bool real_number_to_double_p (SCHEME_OBJECT);
 extern double real_number_to_double (SCHEME_OBJECT);
@@ -288,12 +290,17 @@ extern SCHEME_OBJECT allocate_non_marked_vector
 extern SCHEME_OBJECT allocate_marked_vector
   (unsigned int, unsigned long, bool);
 extern SCHEME_OBJECT make_vector (unsigned long, SCHEME_OBJECT, bool);
+extern SCHEME_OBJECT record_applicator (SCHEME_OBJECT);
 extern SCHEME_OBJECT allocate_string (unsigned long);
 extern SCHEME_OBJECT allocate_string_no_gc (unsigned long);
 extern SCHEME_OBJECT memory_to_string (unsigned long, const void *);
 extern SCHEME_OBJECT memory_to_string_no_gc (unsigned long, const void *);
 extern SCHEME_OBJECT char_pointer_to_string (const char *);
 extern SCHEME_OBJECT char_pointer_to_string_no_gc (const char *);
+extern unsigned char * string_to_char_pointer (SCHEME_OBJECT, unsigned long *);
+extern uint8_t * arg_bytevector (int, unsigned long *);
+extern SCHEME_OBJECT allocate_bytevector (unsigned long);
+extern SCHEME_OBJECT memory_to_bytevector (unsigned long, const void *);
 extern SCHEME_OBJECT allocate_bit_string (unsigned long);
 extern const char * arg_symbol (int);
 extern const char * arg_interned_symbol (int);
@@ -306,6 +313,21 @@ extern void strengthen_symbol (SCHEME_OBJECT);
 extern void weaken_symbol (SCHEME_OBJECT);
 extern unsigned long compute_extra_ephemeron_space (unsigned long);
 extern void guarantee_extra_ephemeron_space (unsigned long);
+
+/* Hashing */
+
+extern uint32_t memory_hash (unsigned long, const void *);
+extern bool hashable_object_p (SCHEME_OBJECT);
+extern uint32_t hash_object (SCHEME_OBJECT);
+extern uint32_t combine_hashes (uint32_t, uint32_t);
+
+#if (FIXNUM_LENGTH >= 32)
+#  define HASH_TO_FIXNUM(hash) (ULONG_TO_FIXNUM (hash))
+#else
+  /* Shorten the result using xor-folding.  */
+#  define HASH_TO_FIXNUM(hash)						\
+  (ULONG_TO_FIXNUM (((hash) >> FIXNUM_LENGTH) ^ ((hash) & FIXNUM_MASK)))
+#endif
 
 /* Random and OS utilities */
 extern int strcmp_ci (const char *, const char *);
@@ -364,7 +386,7 @@ extern void preserve_interrupt_mask (void);
 extern void canonicalize_primitive_context (void);
 extern void back_out_of_primitive (void);
 
-extern void Interpret (int pop_return_p);
+extern void Interpret (void);
 extern void Do_Micro_Error (long, bool);
 extern void Stack_Death (void) NORETURN;
 extern SCHEME_OBJECT * control_point_start (SCHEME_OBJECT);

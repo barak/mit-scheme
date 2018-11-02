@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -24,25 +24,23 @@ USA.
 
 |#
 
-;;;; Test the Blowfish wrapper.
+;;;; Test the BLOWFISH option.
 
-(if (not (blowfish-available?))
-    (warn "blowfish wrapper not found")
-    (let ((sample "Some text to encrypt and decrypt."))
-      (call-with-binary-output-file "test"
-	(lambda (output)
-	  (call-with-input-string sample
-	    (lambda (input)
-	      (blowfish-encrypt-port input output "secret"
-				     (write-blowfish-file-header output)
-				     #t)))))
-      (let ((read-back
-	     (call-with-binary-input-file "test"
-	       (lambda (input)
-		 (call-with-output-string
-		  (lambda (output)
-		    (blowfish-encrypt-port input output "secret"
-					   (read-blowfish-file-header input)
-					   #f)))))))
-	(if (not (string=? sample read-back))
-	    (error "sample did not decrypt correctly")))))
+(let ((sample (string->utf8 "Some text to encrypt and decrypt.")))
+  (call-with-binary-output-file "test"
+    (lambda (output)
+      (blowfish-encrypt-port (open-input-bytevector sample)
+			     output
+			     (string->utf8 "secret")
+			     (write-blowfish-file-header output)
+			     #t)))
+  (let ((read-back
+	 (call-with-binary-input-file "test"
+	   (lambda (input)
+	     (call-with-output-bytevector
+	      (lambda (output)
+		(blowfish-encrypt-port input output (string->utf8 "secret")
+				       (read-blowfish-file-header input)
+				       #f)))))))
+    (if (not (bytevector=? sample read-back))
+	(error "sample did not decrypt correctly"))))

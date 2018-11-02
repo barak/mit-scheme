@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -290,11 +290,42 @@ OS_listen_tcp_server_socket (Tchannel channel)
     (syscall_listen,
      (UX_listen ((CHANNEL_DESCRIPTOR (channel)), SOCKET_LISTEN_BACKLOG)));
 }
-
+
+#ifdef HAVE_UNIX_SOCKETS
 Tchannel
-OS_server_connection_accept (Tchannel channel,
-			     void * peer_host,
-			     unsigned int * peer_port)
+OS_create_unix_server_socket (const char * filename)
+{
+  int s;
+  Tchannel channel;
+
+  transaction_begin ();
+  STD_FD_SYSTEM_CALL
+    (syscall_socket, s, (UX_socket (AF_UNIX, SOCK_STREAM, 0)));
+  MAKE_CHANNEL (s, channel_type_unix_server_socket, channel =);
+  OS_channel_close_on_abort (channel);
+  {
+    struct sockaddr_un address;
+    memset((&address), 0, (sizeof (address)));
+    (address . sun_family) = AF_UNIX;
+    strncpy ((address . sun_path), filename, (sizeof (address . sun_path)));
+    STD_VOID_SYSTEM_CALL
+      (syscall_bind,
+       (UX_bind ((CHANNEL_DESCRIPTOR (channel)),
+		 ((struct sockaddr *) (&address)),
+		 (sizeof (struct sockaddr_un)))));
+    STD_VOID_SYSTEM_CALL
+      (syscall_listen,
+       (UX_listen ((CHANNEL_DESCRIPTOR (channel)), SOCKET_LISTEN_BACKLOG)));
+  }
+  transaction_commit ();
+  return (channel);
+}
+#endif /* HAVE_UNIX_SOCKETS */
+
+Tchannel
+OS_tcp_server_connection_accept (Tchannel channel,
+				 void * peer_host,
+				 unsigned int * peer_port)
 {
   static struct sockaddr_in address;
   socklen_t address_length = (sizeof (struct sockaddr_in));
@@ -327,4 +358,29 @@ OS_server_connection_accept (Tchannel channel,
   MAKE_CHANNEL (s, channel_type_tcp_stream_socket, return);
 }
 
-#endif /* not HAVE_SOCKETS */
+#ifdef HAVE_UNIX_SOCKETS
+Tchannel
+OS_unix_server_connection_accept (Tchannel channel)
+{
+  int s;
+  while (1)
+    {
+      s = (UX_accept ((CHANNEL_DESCRIPTOR (channel)), NULL, NULL));
+      if (s >= 0)
+	break;
+#ifdef EAGAIN
+      if (errno == EAGAIN)
+	return (NO_CHANNEL);
+#endif
+#ifdef EWOULDBLOCK
+      if (errno == EWOULDBLOCK)
+	return (NO_CHANNEL);
+#endif
+      UX_prim_check_fd_errno (syscall_accept);
+    }
+  UX_out_of_files_p = false;
+  MAKE_CHANNEL (s, channel_type_unix_stream_socket, return);
+}
+#endif /* HAVE_UNIX_SOCKETS */
+
+#endif /* HAVE_SOCKETS */

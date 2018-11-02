@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,13 +30,13 @@ USA.
 (declare (usual-integrations))
 
 (define (http-get uri headers)
-  (http-client-exchange "GET" uri headers ""))
+  (http-client-exchange "GET" (->uri uri) headers (bytevector)))
 
 (define (http-head uri headers)
-  (http-client-exchange "HEAD" uri headers ""))
+  (http-client-exchange "HEAD" (->uri uri) headers (bytevector)))
 
 (define (http-post uri headers body)
-  (http-client-exchange "POST" uri headers body))
+  (http-client-exchange "POST" (->uri uri) headers body))
 
 (define (http-client-exchange method uri headers body)
   (let ((request (http-client-request method uri headers body)))
@@ -47,15 +47,15 @@ USA.
 
 (define (call-with-http-client-socket uri callee)
   (let ((port
-	 (let ((authority (uri-authority uri)))
-	   (open-tcp-stream-socket (uri-authority-host authority)
-				   (or (uri-authority-port authority) 80)))))
+	 (let ((auth (uri-authority uri)))
+	   (open-binary-tcp-stream-socket (uri-authority-host auth)
+					  (or (uri-authority-port auth) 80)))))
     (let ((value (callee port)))
       (close-port port)
       value)))
 
 (define (http-client-request method uri headers body)
-  (guarantee-absolute-uri uri)
+  (guarantee absolute-uri? uri)
   (make-http-request method
 		     (make-uri #f
 			       #f
@@ -108,38 +108,38 @@ USA.
 		(cons (car headers) (loop (cdr headers))))
 	    '())))
 
-    (list (add 'ACCEPT
+    (list (add 'accept
 	       (lambda ()
-		 `((,(make-mime-type 'APPLICATION 'XHTML+XML))
-		   (,(make-mime-type 'TEXT 'XHTML) (Q . "0.9"))
-		   (,(make-mime-type 'TEXT 'PLAIN) (Q . "0.5"))
-		   (TEXT (Q . "0.1")))))
-	  (add 'ACCEPT-CHARSET (lambda () '((US-ASCII) (ISO-8859-1) (UTF-8))))
-	  (add 'ACCEPT-ENCODING (lambda () '((IDENTITY))))
-	  (add 'ACCEPT-LANGUAGE (lambda () `((EN-US) (EN (Q . "0.9")))))
-	  (modify 'CONNECTION
+		 `((,(make-mime-type 'application 'xhtml+xml))
+		   (,(make-mime-type 'text 'xhtml) (q . "0.9"))
+		   (,(make-mime-type 'text 'plain) (q . "0.5"))
+		   (text (q . "0.1")))))
+	  (add 'accept-charset (lambda () '((us-ascii) (iso-8859-1) (utf-8))))
+	  (add 'accept-encoding (lambda () '((identity))))
+	  (add 'accept-language (lambda () `((en-us) (en (q . "0.9")))))
+	  (modify 'connection
 		  (lambda (value change no-change)
-		    (if (memq 'TE value)
+		    (if (memq 'te value)
 			(no-change)
-			(change (cons 'TE value))))
+			(change (cons 'te value))))
 		  '())
-	  (add 'DATE
+	  (add 'date
 	       (lambda ()
 		 (universal-time->global-decoded-time (get-universal-time))))
 	  (lambda (method uri headers)
 	    method
-	    (if (http-header 'HOST headers #f)
+	    (if (http-header 'host headers #f)
 		headers
 		(cons (make-http-header
-		       'HOST
+		       'host
 		       (let ((authority (uri-authority uri)))
 			 (cons (uri-authority-host authority)
 			       (uri-authority-port authority))))
 		      headers)))
-	  (modify 'TE
+	  (modify 'te
 		  (lambda (value change no-change)
-		    (if (assq 'TRAILERS value)
+		    (if (assq 'trailers value)
 			(no-change)
-			(change (cons (list 'TRAILERS) value))))
+			(change (cons (list 'trailers) value))))
 		  '())
-	  (add 'USER-AGENT (lambda () default-http-user-agent)))))
+	  (add 'user-agent (lambda () default-http-user-agent)))))

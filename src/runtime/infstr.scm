@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,93 +29,56 @@ USA.
 
 (declare (usual-integrations))
 
-(define-structure (dbg-info-vector
-		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-info-vector]"))
-		   (predicate new-dbg-info-vector?)
-		   (conc-name dbg-info-vector/))
-  (compilation-type #f read-only #t)
-  (root-block #f read-only #t)
-  (other-blocks #f read-only #t)
-  (tl-bound #f read-only #t)
-  (tl-free #f read-only #t))
+;;; Keep in sync with "compiler/base/toplev.scm" and "compiler/base/crsend.scm".
 
 (define (dbg-info-vector? object)
-  (or (new-dbg-info-vector? object)
-      (old-dbg-info-vector? object)))
+  (and (vector? object)
+       ;; Length 6 can be removed after 9.3 release.
+       (or (fix:= 6 (vector-length object))
+	   (fix:= 7 (vector-length object)))
+       (eq? '|#[(runtime compiler-info)dbg-info-vector]|
+	    (vector-ref object 0))))
 
-(define (old-dbg-info-vector? object)
-  (and (pair? object)
-       (eq? (car object)
-	    '|#[(runtime compiler-info)dbg-info-vector-tag]|)))
+(define-integrable (dbg-info-vector/compilation-type v)
+  (vector-ref v 1))
+
+(define-integrable (dbg-info-vector/root-block v)
+  (vector-ref v 2))
+
+(define-integrable (dbg-info-vector/other-blocks v)
+  (vector-ref v 3))
+
+(define-integrable (dbg-info-vector/tl-bound v)
+  (vector-ref v 4))
+
+(define-integrable (dbg-info-vector/tl-free v)
+  (vector-ref v 5))
+
+(define-integrable (dbg-info-vector/tl-metadata v)
+  (vector-ref v 6))
 
 (define (dbg-info-vector/blocks-vector info)
-  (let ((lose
-	 (lambda ()
-	   (error:wrong-type-argument info "dbg-info-vector"
-				      'DBG-INFO-VECTOR/BLOCKS-VECTOR))))
-    (cond ((new-dbg-info-vector? info)
-	   (vector-append (vector (dbg-info-vector/root-block info))
-			  (dbg-info-vector/other-blocks info)))
-	  ((old-dbg-info-vector? info)
-	   (let ((items (cdr info)))
-	     (cond ((vector? items) items)
-		   ((%compound-items? items) (cadr items))
-		   (else (lose)))))
-	  (else (lose)))))
+  (guarantee dbg-info-vector? info 'dbg-info-vector/blocks-vector)
+  (vector-append (vector (dbg-info-vector/root-block info))
+		 (dbg-info-vector/other-blocks info)))
 
 (define (dbg-info-vector/purification-root info)
-  (let ((lose
-	 (lambda ()
-	   (error:wrong-type-argument info "dbg-info-vector"
-				      'DBG-INFO-VECTOR/PURIFICATION-ROOT))))
-    (cond ((new-dbg-info-vector? info)
-	   (dbg-info-vector/other-blocks info))
-	  ((old-dbg-info-vector? info)
-	   (let ((items (cdr info)))
-	     (cond ((vector? items) #f)
-		   ((%compound-items? items) (caddr items))
-		   (else (lose)))))
-	  (else (lose)))))
-
-(define (%compound-items? items)
-  (and (pair? items)
-       (eq? (car items) 'COMPILED-BY-PROCEDURES)
-       (pair? (cdr items))
-       (vector? (cadr items))
-       (pair? (cddr items))
-       (vector? (caddr items))
-       (null? (cdddr items))))
+  (guarantee dbg-info-vector? info 'dbg-info-vector/purification-root)
+  (dbg-info-vector/other-blocks info))
 
 (define-structure (dbg-info
 		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-info]"))
+		   (named '|#[(runtime compiler-info)dbg-info]|)
 		   (conc-name dbg-info/))
   (expression #f read-only #t)		;dbg-expression
   (procedures #f read-only #t)		;vector of dbg-procedure
   (continuations #f read-only #t)	;vector of dbg-continuation
-  (labels/desc #f read-only #f)		;vector of dbg-label, sorted by offset
+  (labels #f read-only #f)		;vector of dbg-label, sorted by offset
   )
-
-(define (dbg-info/labels dbg-info)
-  (let ((labels/desc (dbg-info/labels/desc dbg-info)))
-    (if (vector? labels/desc)
-	labels/desc
-	(let ((labels (read-labels labels/desc)))
-	  (and labels
-	       (begin
-		 (set-dbg-info/labels/desc! dbg-info labels)
-		 labels))))))
 
 (define-structure (dbg-expression
 		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-expression]"))
+		   (named '|#[(runtime compiler-info)dbg-expression]|)
 		   (conc-name dbg-expression/))
   (block #f read-only #t)		;dbg-block
   (label #f)				;dbg-label
@@ -126,9 +89,7 @@ USA.
 
 (define-structure (dbg-procedure
 		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-procedure]"))
+		   (named '|#[(runtime compiler-info)dbg-procedure]|)
 		   (constructor
 		    make-dbg-procedure
 		    (block label type name required optional rest auxiliary
@@ -156,9 +117,7 @@ USA.
 
 (define-structure (dbg-continuation
 		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-continuation]"))
+		   (named '|#[(runtime compiler-info)dbg-continuation]|)
 		   (conc-name dbg-continuation/))
   (block #f read-only #t)		;dbg-block
   (label #f)				;dbg-label
@@ -175,9 +134,7 @@ USA.
 
 (define-structure (dbg-block
 		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-block]"))
+		   (named '|#[(runtime compiler-info)dbg-block]|)
 		   (constructor
 		    make-dbg-block
 		    (type parent original-parent layout stack-link))
@@ -192,32 +149,30 @@ USA.
 
 (define-structure (dbg-variable
 		   (type vector)
-		   (named
-		    ((ucode-primitive string->symbol)
-		     "#[(runtime compiler-info)dbg-variable]"))
+		   (named '|#[(runtime compiler-info)dbg-variable]|)
 		   (conc-name dbg-variable/))
   (name #f read-only #t)		;symbol
   (type #f read-only #t)		;normal, cell, integrated
   value					;for integrated, the value
   )
 
-(let-syntax
-    ((dbg-block-name
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((symbol (symbol-append 'DBG-BLOCK-NAME/ (cadr form))))
-	   `(DEFINE-INTEGRABLE ,symbol
-	      ',((ucode-primitive string->symbol)
-		 (string-append "#[(runtime compiler-info)"
-				(string-downcase (symbol-name symbol))
-				"]"))))))))
-  ;; Various names used in `layout' to identify things that wouldn't
-  ;; otherwise have names.
-  (dbg-block-name dynamic-link)
-  (dbg-block-name ic-parent)
-  (dbg-block-name normal-closure)
-  (dbg-block-name return-address)
-  (dbg-block-name static-link))
+;;; Various names used in `layout' to identify things that wouldn't otherwise
+;;; have names.
+
+(define-integrable dbg-block-name/dynamic-link
+  '|#[(runtime compiler-info)dynamic-link]|)
+
+(define-integrable dbg-block-name/ic-parent
+  '|#[(runtime compiler-info)ic-parent]|)
+
+(define-integrable dbg-block-name/normal-closure
+  '|#[(runtime compiler-info)normal-closure]|)
+
+(define-integrable dbg-block-name/return-address
+  '|#[(runtime compiler-info)return-address]|)
+
+(define-integrable dbg-block-name/static-link
+  '|#[(runtime compiler-info)static-link]|)
 
 (define-integrable make-dbg-label-2 cons)
 (define-integrable dbg-label/name car)
@@ -237,26 +192,46 @@ USA.
 
 (define (compiled-code-block/debugging-wrapper block)
   (let ((wrapper (compiled-code-block/debugging-info block)))
-    (if (debugging-wrapper? wrapper)
-	wrapper
-	(let ((wrapper (convert-old-debugging-wrapper wrapper)))
-	  (if wrapper
-	      (set-compiled-code-block/debugging-info! block wrapper))
-	  wrapper))))
+    (cond ((debugging-wrapper-v2? wrapper)
+	   (let ((v (vector-grow wrapper 7)))
+	     (vector-set! v 1 3)
+	     (vector-set! v 6 #f)
+	     (set-compiled-code-block/debugging-info! block v)
+	     v))
+	  ((debugging-wrapper-v3? wrapper) wrapper)
+	  (else #f))))
 
-(define (debugging-wrapper? wrapper)
+(define (debugging-wrapper-v2? wrapper)
   (and (vector? wrapper)
        (fix:= (vector-length wrapper) 6)
-       (eq? (vector-ref wrapper 0) 'DEBUGGING-INFO-WRAPPER)
-       (or (fix:= (vector-ref wrapper 1) 1)
-	   (fix:= (vector-ref wrapper 1) 2))
+       (eqv? (vector-ref wrapper 1) 2)
+       (debugging-wrapper-common? wrapper)))
+
+(define (debugging-wrapper-v3? wrapper)
+  (and (vector? wrapper)
+       (fix:= (vector-length wrapper) 7)
+       (eqv? (vector-ref wrapper 1) 3)
+       (debugging-wrapper-common? wrapper)
+       (debugging-library-name? (vector-ref wrapper 6))))
+
+(define (debugging-library-name? object)
+  (or (not object)
+      (eq? object 'program)
+      (library-name? object)))
+
+(define (debugging-library-name=? n1 n2)
+  (or (eq? n1 n2)
+      (and (library-name? n1)
+	   (library-name? n2)
+	   (library-name=? n1 n2))))
+
+(define (debugging-wrapper-common? wrapper)
+  (and (eq? (vector-ref wrapper 0) 'debugging-info-wrapper)
        (or (and (not (vector-ref wrapper 2))
 		(not (vector-ref wrapper 3))
 		(not (vector-ref wrapper 4))
 		(dbg-info? (vector-ref wrapper 5)))
-	   (and (if (fix:= (vector-ref wrapper 1) 1)
-		    (not (vector-ref wrapper 2))
-		    (dbg-info-key? (vector-ref wrapper 2)))
+	   (and (dbg-info-key? (vector-ref wrapper 2))
 		(debug-info-pathname? (vector-ref wrapper 3))
 		(index-fixnum? (vector-ref wrapper 4))
 		(or (not (vector-ref wrapper 5))
@@ -269,7 +244,7 @@ USA.
   (vector-ref wrapper 2))
 
 (define (debugging-wrapper/pathname wrapper)
-  (vector-ref wrapper 3))
+  (convert-old-style-pathname (vector-ref wrapper 3)))
 
 (define (set-debugging-wrapper/pathname! wrapper pathname)
   (vector-set! wrapper 3 pathname))
@@ -283,47 +258,40 @@ USA.
 (define (set-debugging-wrapper/info! wrapper info)
   (vector-set! wrapper 5 info))
 
-(define (convert-old-debugging-wrapper wrapper)
-  (let ((make-wrapper
-	 (lambda (pathname index info)
-	   (vector 'DEBUGGING-INFO-WRAPPER 1 #f pathname index info))))
-    (cond ((dbg-info? wrapper)
-	   (make-wrapper #f #f wrapper))
-	  ((debug-info-pathname? wrapper)
-	   (make-wrapper wrapper 0 #f))
-	  ((and (pair? wrapper)
-		(debug-info-pathname? (car wrapper))
-		(dbg-info? (cdr wrapper)))
-	   (make-wrapper (car wrapper) 0 (cdr wrapper)))
-	  ((and (pair? wrapper)
-		(debug-info-pathname? (car wrapper))
-		(index-fixnum? (cdr wrapper))
-		(fix:> (cdr wrapper) 0))
-	   (make-wrapper (car wrapper) (cdr wrapper) #f))
-	  ((and (pair? wrapper)
-		(pair? (car wrapper))
-		(debug-info-pathname? (caar wrapper))
-		(index-fixnum? (cdar wrapper))
-		(fix:> (cdar wrapper) 0)
-		(dbg-info? (cdr wrapper)))
-	   (make-wrapper (caar wrapper) (cdar wrapper) (cdr wrapper)))
-	  (else #f))))
+(define (debugging-wrapper/library-name wrapper)
+  (vector-ref wrapper 6))
 
-(define (debugging-file-wrapper? wrapper)
+(define (canonicalize-file-wrapper wrapper)
+  (cond ((debugging-file-wrapper-v2? wrapper)
+	 (let ((v (vector-grow wrapper 5)))
+	   (vector-set! v 1 3)
+	   (vector-set! v 4 #f)
+	   v))
+	((or (debugging-file-wrapper-v3? wrapper)
+	     (debugging-library-wrapper? wrapper))
+	 wrapper)
+	(else #f)))
+
+(define (debugging-file-wrapper-v2? wrapper)
   (and (vector? wrapper)
        (fix:= (vector-length wrapper) 4)
-       (eq? (vector-ref wrapper 0) 'DEBUGGING-FILE-WRAPPER)
-       (or (and (fix:= (vector-ref wrapper 1) 1)
-		(not (vector-ref wrapper 2)))
-	   (and (fix:= (vector-ref wrapper 1) 2)
-		(dbg-info-key? (vector-ref wrapper 2))))
+       (eqv? (vector-ref wrapper 1) 2)
+       (debugging-file-wrapper-common? wrapper)))
+
+(define (debugging-file-wrapper-v3? wrapper)
+  (and (vector? wrapper)
+       (fix:= (vector-length wrapper) 5)
+       (eqv? (vector-ref wrapper 1) 3)
+       (debugging-file-wrapper-common? wrapper)
+       (debugging-library-name? (vector-ref wrapper 4))))
+
+(define (debugging-file-wrapper-common? wrapper)
+  (and (eq? (vector-ref wrapper 0) 'debugging-file-wrapper)
+       (dbg-info-key? (vector-ref wrapper 2))
        (let ((info (vector-ref wrapper 3)))
-	 (let ((n (vector-length info)))
-	   (and (fix:>= n 1)
-		(let loop ((i 0))
-		  (or (fix:= i n)
-		      (and (dbg-info? (vector-ref info i))
-			   (loop (fix:+ i 1))))))))))
+	 (and (vector? info)
+	      (fix:>= (vector-length info) 1)
+	      (vector-every dbg-info? info)))))
 
 (define (debugging-file-wrapper/version wrapper)
   (vector-ref wrapper 1))
@@ -334,38 +302,91 @@ USA.
 (define (debugging-file-wrapper/info wrapper)
   (vector-ref wrapper 3))
 
-(define (canonicalize-file-wrapper wrapper)
-  (cond ((debugging-file-wrapper? wrapper)
-	 wrapper)
-	((dbg-info? wrapper)
-	 (vector 'DEBUGGING-FILE-WRAPPER 1 #f (vector wrapper)))
-	((and (vector? wrapper)
-	      (let ((n (vector-length wrapper)))
-		(and (fix:>= n 1)
-		     (let loop ((i 0))
-		       (or (fix:= i n)
-			   (and (dbg-info? (vector-ref wrapper i))
-				(loop (fix:+ i 1))))))))
-	 (vector 'DEBUGGING-FILE-WRAPPER 1 #f wrapper))
-	(else #f)))
-
-(define (get-wrapped-dbg-info file-wrapper wrapper)
-  (and (let ((k1 (debugging-wrapper/key wrapper))
-	     (k2 (debugging-file-wrapper/key file-wrapper)))
-	 (or (and k1 k2 (dbg-info-key=? k1 k2))
-	     (and (not k1) (not k2))))
-       (let ((v (debugging-file-wrapper/info file-wrapper))
-	     (index (debugging-wrapper/index wrapper)))
-	 (and (fix:< index (vector-length v))
-	      (vector-ref v index)))))
+(define (debugging-file-wrapper/library-name wrapper)
+  (vector-ref wrapper 4))
 
 (define (dbg-info-key? object)
-  (and (string? object)
-       (fix:= (string-length object) 32)))
+  (or (and (bytevector? object)
+	   (fix:= (bytevector-length object) 32))
+      ;; The following can be removed after 9.3 release:
+      (and ((ucode-primitive string? 1) object)
+	   (fix:= ((ucode-primitive string-length 1) object) 32))))
 
-(define (dbg-info-key=? a b)
-  (string=? a b))
+(define (dbg-info-key=? k1 k2)
+  (or (and k1 k2 (equal? k1 k2))
+      (and (not k1) (not k2))))
+
+(define (debugging-library-wrapper? wrapper)
+  (and (vector? wrapper)
+       (fix:= (vector-length wrapper) 4)
+       (eq? (vector-ref wrapper 0) 'debugging-library-wrapper)
+       (eqv? (vector-ref wrapper 1) 3)
+       (dbg-info-key? (vector-ref wrapper 2))
+       (let ((info (vector-ref wrapper 3)))
+	 (and (vector? info)
+	      (fix:>= (vector-length info) 1)
+	      (vector-every debugging-file-wrapper-v3? info)))))
 
+(define (debugging-library-wrapper/version wrapper)
+  (vector-ref wrapper 1))
+
+(define (debugging-library-wrapper/key wrapper)
+  (vector-ref wrapper 2))
+
+(define (debugging-library-wrapper/file-wrappers wrapper)
+  (vector-ref wrapper 3))
+
+(define (get-wrapped-dbg-info from-file from-block)
+  (let ((lookup-by-index
+	 (lambda (from-file)
+	   (let ((v (debugging-file-wrapper/info from-file))
+		 (index (debugging-wrapper/index from-block)))
+	     (and (fix:< index (vector-length v))
+		  (vector-ref v index))))))
+    (cond ((debugging-file-wrapper-v3? from-file)
+	   (and (dbg-info-key=? (debugging-wrapper/key from-block)
+				(debugging-file-wrapper/key from-file))
+		(lookup-by-index from-file)))
+	  ((debugging-library-wrapper? from-file)
+	   (and (dbg-info-key=? (debugging-wrapper/key from-block)
+				(debugging-library-wrapper/key from-file))
+		(let ((name (debugging-wrapper/library-name from-block))
+		      (v (debugging-library-wrapper/file-wrappers from-file)))
+		  (let ((n (vector-length v)))
+		    (let loop ((i 0))
+		      (and (fix:< i n)
+			   (if (debugging-library-name=?
+				name
+				(debugging-file-wrapper/library-name
+				 (vector-ref v i)))
+			       (lookup-by-index (vector-ref v i))
+			       (loop (fix:+ i 1)))))))))
+	  (else #f))))
+
 (define (debug-info-pathname? object)
-  (or (pathname? object)
-      (string? object)))
+  (or (string? object)
+      (old-style-pathname? object)))
+
+;; This can be removed after the 9.3 release.
+(define (old-style-pathname? object)
+  (and (vector? object)
+       (fix:= 7 (vector-length object))
+       (eq? '|#[(runtime pathname)pathname]| (vector-ref object 0))))
+
+;; This can be removed after the 9.3 release.
+(define (convert-old-style-pathname object)
+  (if (old-style-pathname? object)
+      (%make-pathname (let ((host (vector-ref object 1)))
+			(if (and (vector? host)
+				 (fix:= 3 (vector-length host))
+				 (eq? '|#[(runtime pathname)host]|
+				      (vector-ref host 0)))
+			    (%make-host (vector-ref host 1)
+					(vector-ref host 2))
+			    host))
+		      (vector-ref object 2)
+		      (vector-ref object 3)
+		      (vector-ref object 4)
+		      (vector-ref object 5)
+		      (vector-ref object 6))
+      object))

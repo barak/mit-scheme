@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,6 +31,7 @@ reference:
   Stephen Adams, Implemeting Sets Efficiently in a Functional
      Language, CSTR 92-10, Department of Electronics and Computer
      Science, University of Southampton, 1992.
+  <http://groups.csail.mit.edu/mac/users/adams/BB/>
 
 The data structure was originally introduced in
 
@@ -38,19 +39,25 @@ The data structure was originally introduced in
      balance', Proceedings of the fourth ACM Symposium on Theory of
      Computing, pp. 137--142, 1972.
 
-The balance parameters, Delta and Gamma, proposed by Nievergelt and
-Reingold were irrational, making the balance condition complicated to
-express exactly.  In his paper, Adams used a different definition of a
-node's weight, which introduced more complicated edge cases, and used
-Delta = 4 and Gamma = 1, which do not preserve balance for deletion.
-This implementation formerly used Delta = 5 and Gamma = 1, which was
-also buggy.
+The algorithm proposed by Nievergelt & Reingold requires the ratio of
+sizes of the two subtrees of each node to be bounded by an irrational
+factor, which is slow to evaluate in integer arithmetic.  Adams
+proposed a simpler balance condition involvig only a single integer
+multiplication, but it turns out to be wrong, as explained in
 
-Yoichi Hirai and Kazuhiko Yamamoto proposed, in `Balance Conditions on
-Weight-Balanced Trees' (to appear in the Journal of Functional
-Programming), Nievergelt and Reingold's definition of a node's weight,
-with Delta = 3 and Gamma = 2, based on analysis of the algorithms and
-parameters assisted by Coq.  This is what we use here now.
+   Yoichi Hirai and Kazuhiko Yamamoto, `Balancing weight-balanced
+     trees', Journal of Functional Programming 21(3), pp. 287--307,
+     2011.
+   <https://yoichihirai.com/bst.pdf>
+
+We previously used Hirai & Yamamoto's proposed parameters, but there is
+a much simpler balancing condition, with much simpler analysis, which
+we adopt here, described in
+
+  Salvador Roura, `A new method for balancing binary search trees',
+     Automata, Languages, and Programming, Orejas, F., Spirakis, P.,
+     & van Leeuwen, J. (eds), Lecture Notes in Computer Science 2076,
+     pp. 469--480, Springer, 2001.
 
 |#
 
@@ -66,38 +73,37 @@ parameters assisted by Coq.  This is what we use here now.
 ;;;  relation.
 
 (define-structure
-  (tree-type
-   (conc-name tree-type/)
-   (constructor %make-tree-type))
-  (key<?       #F read-only true)
-  (alist->tree #F read-only true)
-  (add         #F read-only true)
-  (insert!     #F read-only true)
-  (delete      #F read-only true)
-  (delete!     #F read-only true)
-  (member?     #F read-only true)
-  (lookup      #F read-only true)
-  ;;;min        ; ?  also delmin, max, delmax, delmin!, delmax!
-  (split-lt    #F read-only true)
-  (split-gt    #F read-only true)
-  (union       #F read-only true)
-  (union-merge #F read-only true)
-  (intersection #F read-only true)
-  (difference  #F read-only true)
-  (subset?     #F read-only true)
-  (rank        #F read-only true)
-)
+    (tree-type
+     (conc-name tree-type/)
+     (constructor %make-tree-type))
+  (key<?       #f read-only #t)
+  (alist->tree #f read-only #t)
+  (add         #f read-only #t)
+  (insert!     #f read-only #t)
+  (delete      #f read-only #t)
+  (delete!     #f read-only #t)
+  (member?     #f read-only #t)
+  (lookup      #f read-only #t)
+  ;;min        ; ?  also delmin, max, delmax, delmin!, delmax!
+  (split-lt    #f read-only #t)
+  (split-gt    #f read-only #t)
+  (union       #f read-only #t)
+  (union-merge #f read-only #t)
+  (intersection #f read-only #t)
+  (difference  #f read-only #t)
+  (subset?     #f read-only #t)
+  (rank        #f read-only #t))
 
 ;;;  Tree representation
 ;;;
 ;;;  WT-TREE is a wrapper for trees of nodes
 ;;;
 (define-structure
-  (wt-tree
-   (conc-name tree/)
-   (constructor %make-wt-tree))
-  (type  #F read-only true)
-  (root  #F read-only false))
+    (wt-tree
+     (conc-name tree/)
+     (constructor %make-wt-tree))
+  (type #f read-only #t)
+  (root #f read-only #f))
 
 ;;;  Nodes are the thing from which the real trees are built.
 
@@ -115,7 +121,16 @@ parameters assisted by Coq.  This is what we use here now.
   (if (empty? node) 0  (node/w node)))
 
 (define-integrable (node/weight node)
-  (+ 1 (node/size node)))
+  (node/size node))
+
+(define-integrable (log2< a b)
+  (and (fix:< a b) (fix:< (fix:lsh (fix:and a b) 1) b)))
+
+(define-integrable (overweight? a b)
+  (log2< a (fix:lsh b -1)))
+
+(define-integrable (single? a b)
+  (not (log2< b a)))
 
 (define-integrable (node/singleton k v) (make-node k v empty empty 1))
 
@@ -157,24 +172,21 @@ parameters assisted by Coq.  This is what we use here now.
 		  (n-join a.k a.v x y1)
 		  (n-join c.k c.v y2 z)))))))
 
-(define-integrable wt-tree-delta 3)
-(define-integrable wt-tree-gamma 2)
-
 (define (t-join k v l r)
   (let ((l.w (node/weight l))
 	(r.w (node/weight r)))
-    (cond ((> r.w (* wt-tree-delta l.w))
+    (cond ((overweight? l.w r.w)
 	   ;; right is too big
 	   (let ((r.l.w (node/weight (node/l r)))
 		 (r.r.w (node/weight (node/r r))))
-	     (if (< r.l.w (* wt-tree-gamma r.r.w))
+	     (if (single? r.l.w r.r.w)
 		 (single-l k v l r)
 		 (double-l k v l r))))
-	  ((> l.w (* wt-tree-delta r.w))
+	  ((overweight? r.w l.w)
 	   ;; left is too big
 	   (let ((l.l.w (node/weight (node/l l)))
 		 (l.r.w (node/weight (node/r l))))
-	     (if (< l.r.w (* wt-tree-gamma l.l.w))
+	     (if (single? l.r.w l.l.w)
 		 (single-r k v l r)
 		 (double-r k v l r))))
 	  (else (n-join k v l r)))))
@@ -299,11 +311,11 @@ parameters assisted by Coq.  This is what we use here now.
 	  (else
 	   (let ((w1  (node/weight l))
 		 (w2  (node/weight r)))
-	     (cond ((< (* wt-tree-delta w1) w2)
+	     (cond ((overweight? w1 w2)
 		    (with-n-node r
 				 (lambda (k2 v2 l2 r2)
 				   (t-join k2 v2 (node/concat3 k v l l2) r2))))
-		   ((< (* wt-tree-delta w2) w1)
+		   ((overweight? w2 w1)
 		    (with-n-node l
 				 (lambda (k1 v1 l1 r1)
 				   (t-join k1 v1 l1 (node/concat3 k v r1 r)))))
@@ -656,8 +668,8 @@ parameters assisted by Coq.  This is what we use here now.
       (or (empty? node)
 	  (let ((l (node/l node)) (r (node/r node)))
 	    (let ((lw (node/weight l)) (rw (node/weight r)))
-	      (and (<= lw (* wt-tree-delta rw))
-		   (<= rw (* wt-tree-delta lw))
+	      (and (not (overweight? lw rw))
+		   (not (overweight? rw lw))
 		   (balanced? l)
 		   (balanced? r))))))
     (define (ordered? node not-too-low? not-too-high?)

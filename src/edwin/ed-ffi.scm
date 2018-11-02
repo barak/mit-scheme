@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -69,7 +69,6 @@ USA.
     ("debuge"	(edwin))
     ("diff"	(edwin diff))
     ("dired"	(edwin dired))
-    ("diros2"	(edwin dired))
     ("dirunx"	(edwin dired))
     ("dirw32"	(edwin dired))
     ("display"	(edwin display-type))
@@ -97,7 +96,6 @@ USA.
     ("iserch"	(edwin incremental-search))
     ("javamode"	(edwin))
     ("key-w32"	(edwin win32-keys))
-    ("key-x11"	(edwin x-keys))
     ("keymap"	(edwin command-summary))
     ("keyparse"	(edwin keyparser))
     ("kilcom"	(edwin))
@@ -123,9 +121,6 @@ USA.
     ("notify"	(edwin))
     ("nvector"	(edwin))
     ("occur"	(edwin occurrence))
-    ("os2"	(edwin))
-    ("os2com"	(edwin os2-commands))
-    ("os2term"	(edwin screen os2-screen))
     ("outline"	(edwin))
     ("paredit"	(edwin paredit))
     ("pasmod"	(edwin))
@@ -140,7 +135,6 @@ USA.
     ("regcom"	(edwin register-command))
     ("regexp"	(edwin regular-expression))
     ("regops"	(edwin))
-    ("rename"	())
     ("replaz"	(edwin))
     ("rfc822"	(edwin rfc822))
     ("ring"	(edwin))
@@ -189,8 +183,5 @@ USA.
     ("wincom"	(edwin))
     ("window"	(edwin window))
     ("winout"	(edwin window-output-port))
-    ("winren"	(edwin))
-    ("xcom"	(edwin x-commands))
     ("xform"	(edwin class-macros transform-instance-variables))
-    ("xmodef"	(edwin))
     ("xterm"	(edwin screen x-screen))))

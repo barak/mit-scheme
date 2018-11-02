@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -46,30 +46,30 @@ USA.
   (highlight-region (make-region start end) (default-face)))
 
 (define (debugger-pp-highlight-subexpression expression subexpression
- 					     indentation port)
+					     indentation port)
   (let ((start-mark #f)
- 	(end-mark #f))
-    (fluid-let ((*pp-no-highlights?* #f))
+	(end-mark #f))
+    (parameterize ((param:pp-no-highlights? #f))
       (debugger-pp
        (unsyntax-with-substitutions
- 	expression
- 	(list (cons subexpression
- 		    (make-pretty-printer-highlight
- 		     (unsyntax subexpression)
- 		     (lambda (port)
- 		       (set! start-mark
- 			     (mark-right-inserting-copy
- 			      (output-port->mark port)))
- 		       unspecific)
- 		     (lambda (port)
- 		       (set! end-mark
- 			     (mark-right-inserting-copy
- 			      (output-port->mark port)))
- 		       unspecific)))))
+	expression
+	(list (cons subexpression
+		    (make-pretty-printer-highlight
+		     (unsyntax subexpression)
+		     (lambda (port)
+		       (set! start-mark
+			     (mark-right-inserting-copy
+			      (output-port->mark port)))
+		       unspecific)
+		     (lambda (port)
+		       (set! end-mark
+			     (mark-right-inserting-copy
+			      (output-port->mark port)))
+		       unspecific)))))
        indentation
        port))
     (if (and start-mark end-mark)
- 	(highlight-region-excluding-indentation
+	(highlight-region-excluding-indentation
 	 (make-region start-mark end-mark)
 	 (highlight-face)))
     (if start-mark (mark-temporary! start-mark))
@@ -135,20 +135,16 @@ USA.
 	  (let ((prefix (browser/name browser)))
 	    (let loop ((index 1))
 	      (let ((name
-		     (string-append
-		      (if (1d-table/get (browser/properties browser)
-					'VISIBLE-SUB-BUFFERS?
-					#f)
-			  ""
-			  " ")
-		      prefix
-		      "-"
-		      (number->string index))))
+		     (string-append " "
+				    prefix
+				    "-"
+				    (number->string index))))
 		(if (find-buffer name)
 		    (loop (+ index 1))
 		    name)))))))
     (if initializer
 	(initializer buffer))
+    (enable-group-undo! (buffer-group buffer))
     (add-browser-buffer! browser buffer)
     buffer))
 
@@ -481,16 +477,18 @@ USA.
 
 (define interface-port-type
   (make-port-type
-   `((WRITE-CHAR
+   `((write-char
       ,(lambda (port char)
-	 (guarantee-8-bit-char char)
+	 (guarantee 8-bit-char? char)
 	 (region-insert-char! (port/state port) char)
 	 1))
-     (PROMPT-FOR-CONFIRMATION
-      ,(lambda (port prompt) port (prompt-for-confirmation? prompt)))
-     (PROMPT-FOR-EXPRESSION
-      ,(lambda (port environment prompt)
-	 port environment
+     (prompt-for-confirmation
+      ,(lambda (port prompt)
+	 (declare (ignore port))
+	 (prompt-for-confirmation? prompt)))
+     (prompt-for-expression
+      ,(lambda (port prompt)
+	 (declare (ignore port))
 	 (prompt-for-expression prompt))))
    #f))
 
@@ -515,10 +513,10 @@ USA.
   (let ((environment (bline/evaluation-environment bline)))
     (bline/attached-buffer bline 'ENVIRONMENT-BROWSER
       (lambda ()
-	(or (list-search-positive (buffer-list)
-	      (lambda (buffer)
-		(let ((browser (buffer-get buffer 'BROWSER)))
-		  (and browser (eq? environment (browser/object browser))))))
+	(or (find (lambda (buffer)
+		    (let ((browser (buffer-get buffer 'BROWSER)))
+		      (and browser (eq? environment (browser/object browser)))))
+		  (buffer-list))
 	    (environment-browser-buffer environment))))))
 
 (define (bline/attached-buffer bline type make-buffer)
@@ -699,14 +697,15 @@ USA.
 				    (bline/depth bline)))))
 			 (insert-horizontal-space indentation mark)
 			 (let ((summary
-				(with-output-to-truncated-string
-				    (max summary-minimum-columns
-					 (- columns indentation 4))
-				  (lambda ()
-				    ((bline-type/write-summary
-				      (bline/type bline))
-				     bline
-				     (current-output-port))))))
+				(call-with-truncated-output-string
+				 (max summary-minimum-columns
+				      (- columns indentation 4))
+				 (lambda (port)
+				   (parameterize ((current-output-port port))
+				     ((bline-type/write-summary
+				       (bline/type bline))
+				      bline
+				      (current-output-port)))))))
 			   (insert-string (cdr summary) mark)
 			   (if (car summary)
 			       (insert-string " ..." mark)))
@@ -869,6 +868,15 @@ to get more information in a short window, for example, when using
 a fixed size terminal."
   #F
   boolean?)
+
+;;; These bindings are included only because they are exported by the
+;;; alternate debugger, artdebug, which also lives in this package.
+;;; They appear to CREF to be needed yet not bound.
+
+(define edwin-variable$debugger-expand-reductions?)
+(define edwin-variable$debugger-open-markers?)
+(define edwin-variable$debugger-split-window?)
+(define edwin-variable$debugger-verbose-mode?)
 
 ;;;; Predicates
 
@@ -1052,10 +1060,10 @@ The buffer below shows the current subproblem or reduction.
       buffer)))
 
 (define (find-debugger-buffers)
-  (list-transform-positive (buffer-list)
-    (let ((debugger-mode (ref-mode-object continuation-browser)))
-      (lambda (buffer)
-	(eq? (buffer-major-mode buffer) debugger-mode)))))
+  (filter (let ((debugger-mode (ref-mode-object continuation-browser)))
+	    (lambda (buffer)
+	      (eq? (buffer-major-mode buffer) debugger-mode)))
+	  (buffer-list)))
 
 ;;;; Continuation Browser Mode
 
@@ -1281,7 +1289,7 @@ it has been renamed, it will not be deleted automatically.")
 	    (cond ((debugging-info/compiled-code? expression)
 		   (write-string ";unknown compiled code" port))
 		  ((not (debugging-info/undefined-expression? expression))
-		   (fluid-let ((*unparse-primitives-by-name?* #t))
+		   (parameterize ((param:print-primitives-by-name? #t))
 		     (write
 		      (unsyntax (if (invalid-subexpression? subexpression)
 				    expression
@@ -1371,7 +1379,7 @@ it has been renamed, it will not be deleted automatically.")
 	    (subproblem/number (reduction/subproblem reduction)))
 	   port)))
     (write-string " " port)
-    (fluid-let ((*unparse-primitives-by-name?* #t))
+    (parameterize ((param:print-primitives-by-name? #t))
       (write (unsyntax (reduction/expression reduction)) port))))
 
 (define (reduction/write-description bline port)
@@ -1573,16 +1581,13 @@ once it has been renamed, it will not be deleted automatically.")
 	    (else
 	     (let ((separator " = "))
 	       (write-string separator port)
-	       (let ((indentation 
+	       (let ((indentation
 		      (+ (string-length name1)
 			 (string-length separator))))
 		 (write-string (string-tail
-				(with-output-to-string
+				(call-with-output-string
 				  (lambda ()
-				    (pretty-print value
-						  (current-output-port)
-						  #t
-						  indentation)))
+				    (pretty-print value port #t indentation)))
 				indentation)
 			       port))))))
     (debugger-newline port)))

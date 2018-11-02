@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -74,14 +74,14 @@ USA.
 
 (define (state/reset!)
   (register-tables/reset! *register-tables*)
-  (set! *hash-table* (make-hash-table))
+  (set! *hash-table* (make-rcse-ht))
   (set! *stack-offset* 0)
   (set! *stack-reference-quantities* '())
   unspecific)
 
 (define (state/get)
   (make-state (register-tables/copy *register-tables*)
-	      (hash-table-copy *hash-table*)
+	      (rcse-ht-copy *hash-table*)
 	      *stack-offset*
 	      (map (lambda (entry)
 		     (cons (car entry) (quantity-copy (cdr entry))))
@@ -92,7 +92,10 @@ USA.
     (let ((rtl (rinst-rtl rinst)))
       ((if (eq? (rtl:expression-type rtl) 'ASSIGN)
 	   cse/assign
-	   (let ((method (hash-table/get cse-methods (rtl:expression-type rtl) #f)))
+	   (let ((method
+		  (hash-table-ref/default cse-methods
+					  (rtl:expression-type rtl)
+					  #f)))
 	     (if (not method)
 		 (error "Missing CSE method" (rtl:expression-type rtl)))
 	     method))
@@ -131,11 +134,10 @@ USA.
   (walk-bblock bblock))
 
 (define (define-cse-method type method)
-  (hash-table/put! cse-methods type method)
+  (hash-table-set! cse-methods type method)
   type)
 
 (define cse-methods (make-strong-eq-hash-table))
-
 
 (define (cse/assign statement)
   (expression-replace! rtl:assign-expression rtl:set-assign-expression!
@@ -202,7 +204,7 @@ USA.
   (let ((hash (expression-hash address)))
     (let ((memory-invalidate!
 	   (lambda ()
-	     (hash-table-delete! hash (hash-table-lookup hash address)))))
+	     (rcse-ht-delete! hash (rcse-ht-lookup hash address)))))
       (if volatile?
 	  (memory-invalidate!)
 	  (assignment-memory-insertion address
@@ -227,11 +229,10 @@ USA.
 		       (rtl:address-register address))))
 		   ((expression-address-varies? address)
 		    (lambda ()
-		      (hash-table-delete-class! element-in-memory?)))
+		      (rcse-ht-delete-class! element-in-memory?)))
 		   (else
 		    (lambda ()
-		      (hash-table-delete! hash
-					  (hash-table-lookup hash address))
+		      (rcse-ht-delete! hash (rcse-ht-lookup hash address))
 		      (varying-address-invalidate!))))))
 	(if (or volatile? volatile?*)
 	    (memory-invalidate!)

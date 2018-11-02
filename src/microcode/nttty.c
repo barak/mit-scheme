@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,8 +33,7 @@ USA.
 
 /* Standard Input and Output */
 
-static Tchannel input_channel;
-static Tchannel output_channel;
+static Tchannel tty_channel;
 
 HANDLE master_tty_window = 0;
 
@@ -47,13 +46,19 @@ static char * tty_command_clear;
 Tchannel
 OS_tty_input_channel (void)
 {
-  return (input_channel);
+  return (tty_channel);
 }
 
 Tchannel
 OS_tty_output_channel (void)
 {
-  return (output_channel);
+  return (tty_channel);
+}
+
+Tchannel
+OS_tty_error_channel (void)
+{
+  return (tty_channel);
 }
 
 unsigned int
@@ -85,9 +90,8 @@ OS_tty_command_clear (void)
 void
 NT_initialize_tty (void)
 {
-  input_channel = (NT_open_handle (master_tty_window));
-  (CHANNEL_INTERNAL (input_channel)) = 1;
-  output_channel = input_channel;
+  tty_channel = (NT_open_handle (master_tty_window));
+  (CHANNEL_INTERNAL (tty_channel)) = 1;
   Screen_GetSize (master_tty_window, (&tty_y_size), (&tty_x_size));
   tty_command_beep = ALERT_STRING;
   tty_command_clear = "\014";

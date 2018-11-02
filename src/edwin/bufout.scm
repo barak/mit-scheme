@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,7 +32,8 @@ USA.
 (define (with-output-to-mark mark thunk)
   (call-with-output-mark mark
     (lambda (port)
-      (with-output-to-port port thunk))))
+      (parameterize ((current-output-port port))
+	(thunk)))))
 
 (define (call-with-output-mark mark procedure)
   (let ((port (mark->output-port mark)))
@@ -73,7 +74,7 @@ USA.
   (write (port/mark port) output))
 
 (define (operation/write-char port char)
-  (guarantee-8-bit-char char)
+  (guarantee 8-bit-char? char)
   (region-insert-char! (port/mark port) char)
   1)
 

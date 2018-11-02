@@ -17,8 +17,6 @@ Programming Languages
 
 * MIT/GNU Scheme FFI: (mit-scheme-ffi).
                                 Foreign Function Interface
-* MIT/GNU Scheme IMAIL: (mit-scheme-imail).
-                                IMAP/MIME email reader
 * MIT/GNU Scheme Reference: (mit-scheme-ref).
                                 Reference Manual
 * MIT/GNU Scheme SOS: (mit-scheme-sos).

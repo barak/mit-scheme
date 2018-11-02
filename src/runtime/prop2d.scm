@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -25,7 +25,7 @@ USA.
 |#
 
 ;;;; Two Dimensional Property Tables
-;;; package: (runtime 2D-property)
+;;; package: (runtime 2d-property)
 
 (declare (usual-integrations))
 
@@ -37,9 +37,9 @@ USA.
 
 (define system-properties)
 
-(define (2D-put! x y value)
-  (let ((x-hash (object-hash x))
-	(y-hash (object-hash y)))
+(define (2d-put! x y value)
+  (let ((x-hash (hash-object x))
+	(y-hash (hash-object y)))
     (let ((bucket (assq x-hash system-properties)))
       (if bucket
 	  (let ((entry (assq y-hash (cdr bucket))))
@@ -54,25 +54,25 @@ USA.
 				  '()))
 		      system-properties))))))
 
-(define (2D-get x y)
-  (let ((bucket (assq (object-hash x) system-properties)))
+(define (2d-get x y)
+  (let ((bucket (assq (hash-object x) system-properties)))
     (and bucket
-	 (let ((entry (assq (object-hash y) (cdr bucket))))
+	 (let ((entry (assq (hash-object y) (cdr bucket))))
 	   (and entry
 		(cdr entry))))))
 
 ;;; Returns TRUE iff an entry was removed.
 ;;; Removes the bucket if the entry removed was the only entry.
 
-(define (2D-remove! x y)
-  (let ((bucket (assq (object-hash x) system-properties)))
+(define (2d-remove! x y)
+  (let ((bucket (assq (hash-object x) system-properties)))
     (and bucket
 	 (begin (set-cdr! bucket
-			  (del-assq! (object-hash y)
+			  (del-assq! (hash-object y)
 				     (cdr bucket)))
 		(if (null? (cdr bucket))
 		    (set! system-properties
-			  (del-assq! (object-hash x)
+			  (del-assq! (hash-object x)
 				     system-properties)))
 		true))))
 
@@ -83,36 +83,36 @@ USA.
   (set! system-properties (delete-invalid-hash-numbers! system-properties)))
 
 (define (filter-bucket! bucket)
-  (or (not (valid-hash-number? (car bucket)))
+  (or (not (valid-object-hash? (car bucket)))
       (begin (set-cdr! bucket (delete-invalid-y! (cdr bucket)))
 	     (null? (cdr bucket)))))
 
 (define (filter-entry! entry)
-  (not (valid-hash-number? (car entry))))
+  (not (valid-object-hash? (car entry))))
 
 (define delete-invalid-hash-numbers!)
 (define delete-invalid-y!)
 
-(define (2D-get-alist-x x)
-  (let ((bucket (assq (object-hash x) system-properties)))
+(define (2d-get-alist-x x)
+  (let ((bucket (assq (hash-object x) system-properties)))
     (if bucket
 	(let loop ((rest (cdr bucket)))
 	  (cond ((null? rest) '())
-		((valid-hash-number? (caar rest))
-		 (cons (cons (object-unhash (caar rest))
+		((valid-object-hash? (caar rest))
+		 (cons (cons (unhash-object (caar rest))
 			     (cdar rest))
 		       (loop (cdr rest))))
 		(else (loop (cdr rest)))))
 	'())))
 
-(define (2D-get-alist-y y)
-  (let ((y-hash (object-hash y)))
+(define (2d-get-alist-y y)
+  (let ((y-hash (hash-object y)))
     (let loop ((rest system-properties))
       (cond ((null? rest) '())
-	    ((valid-hash-number? (caar rest))
+	    ((valid-object-hash? (caar rest))
 	     (let ((entry (assq y-hash (cdar rest))))
 	       (if entry
-		   (cons (cons (object-unhash (caar rest))
+		   (cons (cons (unhash-object (caar rest))
 			       (cdr entry))
 			 (loop (cdr rest)))
 		   (loop (cdr rest)))))

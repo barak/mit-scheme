@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,9 +37,9 @@ USA.
 		 (let ((parent (loop prefix)))
 		   (and parent
 			(get-subkey parent name
-				    (eq? 'CREATE-IF-NEEDED mode))))
-		 (get-root-key name 'WIN32-REGISTRY/OPEN-KEY))))))
-    (if (and (not key) (eq? 'MUST-EXIST mode))
+				    (eq? 'create-if-needed mode))))
+		 (get-root-key name 'win32-registry/open-key))))))
+    (if (and (not key) (eq? 'must-exist mode))
 	(error "Unable to open registry key:" name))
     key))
 
@@ -67,20 +67,20 @@ USA.
 	     key))))
 
 (define (win32-registry/add-subkey parent name)
-  (guarantee-registry-key parent 'WIN32-REGISTRY/ADD-SUBKEY)
+  (guarantee-registry-key parent 'win32-registry/add-subkey)
   (get-subkey parent name #t))
 
 (define (win32-registry/delete-subkey parent name)
-  (guarantee-registry-key parent 'WIN32-REGISTRY/DELETE-SUBKEY)
+  (guarantee-registry-key parent 'win32-registry/delete-subkey)
   (win32-delete-registry-key (guarantee-handle parent) name)
   (delete-subkey! parent name))
 
 (define (win32-registry/key-name key)
-  (guarantee-registry-key key 'WIN32-REGISTRY/KEY-NAME)
+  (guarantee-registry-key key 'win32-registry/key-name)
   (registry-key-name key))
 
 (define (win32-registry/key-full-name key)
-  (guarantee-registry-key key 'WIN32-REGISTRY/KEY-FULL-NAME)
+  (guarantee-registry-key key 'win32-registry/key-full-name)
   (if (registry-key-parent key)
       (string-append (win32-registry/key-name (registry-key-parent key))
 		     "\\"
@@ -88,44 +88,45 @@ USA.
       (registry-key-name key)))
 
 (define (win32-registry/key-parent key)
-  (guarantee-registry-key key 'WIN32-REGISTRY/KEY-PARENT)
+  (guarantee-registry-key key 'win32-registry/key-parent)
   (registry-key-parent key))
 
 (define (win32-registry/subkeys key)
-  (guarantee-registry-key key 'WIN32-REGISTRY/SUBKEYS)
+  (guarantee-registry-key key 'win32-registry/subkeys)
   (guarantee-subkeys key)
   (map (lambda (k.n) (guarantee-subkey key k.n))
        (registry-key-subkeys key)))
 
 (define (win32-registry/subkey key name)
-  (guarantee-registry-key key 'WIN32-REGISTRY/SUBKEY)
+  (guarantee-registry-key key 'win32-registry/subkey)
   (find-subkey key name))
 
 (define (win32-registry/value-names key)
-  (guarantee-registry-key key 'WIN32-REGISTRY/VALUE-NAMES)
+  (guarantee-registry-key key 'win32-registry/value-names)
   (guarantee-values key)
   (map registry-value-name (registry-key-values key)))
 
 (define (win32-registry/get-value key name)
-  (guarantee-registry-key key 'WIN32-REGISTRY/GET-VALUE)
+  (guarantee-registry-key key 'win32-registry/get-value)
   (let ((data (win32-query-registry-value (guarantee-handle key) name)))
     (if data
 	(values (number->value-type (car data)) (cdr data))
 	(values #f #f))))
 
 (define (win32-registry/set-value key name type data)
-  (guarantee-registry-key key 'WIN32-REGISTRY/SET-VALUE)
+  (guarantee-registry-key key 'win32-registry/set-value)
   (win32-set-registry-value (guarantee-handle key) name
 			    (value-type->number type) data)
   (add-value! key name type))
 
 (define (win32-registry/delete-value key name)
-  (guarantee-registry-key key 'WIN32-REGISTRY/DELETE-VALUE)
+  (guarantee-registry-key key 'win32-registry/delete-value)
   (win32-delete-registry-value (guarantee-handle key) name)
   (delete-value! key name))
 
 (define (win32/expand-environment-strings string)
-  (let ((result (make-string (win32-expand-environment-strings string ""))))
+  (let ((result
+	 (make-legacy-string (win32-expand-environment-strings string ""))))
     (win32-expand-environment-strings string result)
     (let ((nul (string-find-next-char result #\nul)))
       (if nul
@@ -138,22 +139,21 @@ USA.
 		   (constructor %make-registry-key (parent name handle))
 		   (predicate win32-registry/key?)
 		   (print-procedure
-		    (standard-unparser-method 'REGISTRY-KEY
-		      (lambda (key port)
-			(write-char #\space port)
-			(write (registry-key-name key) port)))))
+		    (standard-print-method 'registry-key
+		      (lambda (key)
+			(list (registry-key-name key))))))
   (name #f read-only #t)
   (parent #f read-only #t)
   (handle #f)
-  (subkeys 'UNKNOWN)
-  (values 'UNKNOWN))
+  (subkeys 'unknown)
+  (values 'unknown))
 
 (define (guarantee-registry-key object procedure)
   (if (not (win32-registry/key? object))
       (error:wrong-type-argument object "registry key" procedure)))
 
 (define (guarantee-handle key)
-  (if (eq? 'DELETED (registry-key-handle key))
+  (if (eq? 'deleted (registry-key-handle key))
       (error "Registry key has been deleted:" key))
   (or (registry-key-handle key)
       (begin
@@ -163,10 +163,9 @@ USA.
 
 (define-structure (registry-value
 		   (print-procedure
-		    (standard-unparser-method 'REGISTRY-VALUE
-		      (lambda (key port)
-			(write-char #\space port)
-			(write (registry-value-name key) port)))))
+		    (standard-print-method 'registry-value
+		      (lambda (key)
+			(list (registry-value-name key))))))
   (name #f read-only #t)
   (type #f))
 
@@ -182,7 +181,7 @@ USA.
 	#f)))
 
 (define (guarantee-subkeys key)
-  (if (eq? 'UNKNOWN (registry-key-subkeys key))
+  (if (eq? 'unknown (registry-key-subkeys key))
       (set-registry-key-subkeys! key
 				 (map (lambda (key)
 					(%weak-cons key
@@ -203,7 +202,7 @@ USA.
 	key)))
 
 (define (add-subkey! parent name key)
-  (if (not (eq? 'UNKNOWN (registry-key-subkeys parent)))
+  (if (not (eq? 'unknown (registry-key-subkeys parent)))
       (let loop ((subkeys (registry-key-subkeys parent)))
 	(if (pair? subkeys)
 	    (if (not (string-ci=? name (%weak-cdr (car subkeys))))
@@ -213,7 +212,7 @@ USA.
 	     (cons (%weak-cons key name) (registry-key-subkeys parent)))))))
 
 (define (delete-subkey! parent name)
-  (if (not (eq? 'UNKNOWN (registry-key-subkeys parent)))
+  (if (not (eq? 'unknown (registry-key-subkeys parent)))
       (let loop ((subkeys (registry-key-subkeys parent)) (prev #f))
 	(if (pair? subkeys)
 	    (if (string-ci=? name (%weak-cdr (car subkeys)))
@@ -223,7 +222,7 @@ USA.
 		     (if key
 			 (begin
 			   (close-registry-handle key)
-			   (set-registry-key-handle! key 'DELETED))))
+			   (set-registry-key-handle! key 'deleted))))
 		   (if prev
 		       (set-cdr! prev (cdr subkeys))
 		       (set-registry-key-subkeys! parent (cdr subkeys)))))
@@ -232,7 +231,7 @@ USA.
 ;;;; Value Manipulation
 
 (define (guarantee-values key)
-  (if (eq? 'UNKNOWN (registry-key-values key))
+  (if (eq? 'unknown (registry-key-values key))
       (set-registry-key-values! key (generate-values key))))
 
 (define (generate-values key)
@@ -254,7 +253,7 @@ USA.
 	#f)))
 
 (define (add-value! key name type)
-  (if (not (eq? 'UNKNOWN (registry-key-values key)))
+  (if (not (eq? 'unknown (registry-key-values key)))
       (let loop ((vs (registry-key-values key)))
 	(if (pair? vs)
 	    (if (string-ci=? name (registry-value-name (car vs)))
@@ -266,7 +265,7 @@ USA.
 		   (registry-key-values key)))))))
 
 (define (delete-value! key name)
-  (if (not (eq? 'UNKNOWN (registry-key-values key)))
+  (if (not (eq? 'unknown (registry-key-values key)))
       (let loop ((vs (registry-key-values key)) (prev #f))
 	(if (pair? vs)
 	    (if (string-ci=? name (registry-value-name (car vs)))
@@ -317,7 +316,7 @@ USA.
 	(map (lambda (n.h)
 	       (%make-registry-key #f (car n.h) (cdr n.h)))
 	     (win32-predefined-registry-keys)))
-  (set! open-handles-list (list 'OPEN-HANDLES-LIST))
+  (set! open-handles-list (list 'open-handles-list))
   (add-gc-daemon! close-lost-open-keys-daemon))
 
 (define (close-lost-open-keys-daemon)
@@ -357,20 +356,20 @@ USA.
 
 ;;; Value types:
 (define value-types
-  '#((REG_NONE)				; No value type
-     (REG_SZ)				; Unicode null-terminated string
-     (REG_EXPAND_SZ)			; Unicode null-terminated
+  '#((reg_none)				; No value type
+     (reg_sz)				; Unicode null-terminated string
+     (reg_expand_sz)			; Unicode null-terminated
 					; string (with environment
 					; variable references)
-     (REG_BINARY)			; Free form binary
-     (REG_DWORD REG_DWORD_LITTLE_ENDIAN) ; 32-bit number
-     (REG_DWORD_BIG_ENDIAN)		; 32-bit number
-     (REG_LINK)				; Symbolic Link (unicode)
-     (REG_MULTI_SZ)			; Multiple Unicode strings
-     (REG_RESOURCE_LIST)		; Resource list in the resource map
-     (REG_FULL_RESOURCE_DESCRIPTOR)	; Resource list in the
+     (reg_binary)			; Free form binary
+     (reg_dword reg_dword_little_endian) ; 32-bit number
+     (reg_dword_big_endian)		; 32-bit number
+     (reg_link)				; Symbolic Link (unicode)
+     (reg_multi_sz)			; Multiple Unicode strings
+     (reg_resource_list)		; Resource list in the resource map
+     (reg_full_resource_descriptor)	; Resource list in the
 					; hardware description
-     (REG_RESOURCE_REQUIREMENTS_LIST)
+     (reg_resource_requirements_list)
      ))
 
 (define (number->value-type n)
@@ -399,7 +398,7 @@ USA.
 (define (burst-string string delimiter)
   (let ((end (string-length string)))
     (let loop ((start 0) (result '()))
-      (let ((index (substring-find-next-char string start end delimiter)))
+      (let ((index (string-find-next-char string delimiter start end)))
 	(if index
 	    (loop (fix:+ index 1)
 		  (cons (substring string start index) result))
@@ -418,7 +417,7 @@ USA.
   (let* ((handle (guarantee-handle key))
 	 (buffer-length
 	  (vector-ref (win32-query-info-registry-key handle) length-index))
-	 (buffer (make-string buffer-length)))
+	 (buffer (make-legacy-string buffer-length)))
     (let loop ((index 0) (vs '()))
       (let ((v (enumerator handle index buffer)))
 	(if v

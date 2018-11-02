@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -66,10 +66,10 @@ Includes the new backup.  Must be > 0."
 	  (list-copy dos/backup-suffixes))
   (lambda (extensions)
     (and (list? extensions)
-	 (for-all? extensions
-	   (lambda (extension)
-	     (and (string? extension)
-		  (not (string-null? extension))))))))
+	 (every (lambda (extension)
+		  (and (string? extension)
+		       (not (string-null? extension))))
+		extensions))))
 
 ;;;; Filename I/O
 
@@ -113,7 +113,7 @@ Includes the new backup.  Must be > 0."
     (let loop ((result '()))
       (let ((name (directory-channel-read channel)))
 	(if name
-	    (loop (cons (begin (string-downcase! name) name) result))
+	    (loop (cons (string-downcase name) result))
 	    (begin
 	      (directory-channel-close channel)
 	      result))))))
@@ -123,7 +123,7 @@ Includes the new backup.  Must be > 0."
     (let loop ((result '()))
       (let ((name (directory-channel-read-matching channel prefix)))
 	(if name
-	    (loop (cons (begin (string-downcase! name) name) result))
+	    (loop (cons (string-downcase name) result))
 	    (begin
 	      (directory-channel-close channel)
 	      result))))))
@@ -287,9 +287,9 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
   "$TMP\\edwin.bak")
 
 (define (os/backup-filename? filename)
-  (or (there-exists? dos/backup-suffixes
-	(lambda (suffix)
-	  (string-suffix? suffix filename)))
+  (or (any (lambda (suffix)
+	     (string-suffix? suffix filename))
+	   dos/backup-suffixes)
       (let ((type (pathname-type filename)))
 	(and (string? type)
 	     (or (string-ci=? "bak" type)
@@ -371,7 +371,7 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
 	  (string-set!
 	   copy i
 	   (let ((char (string-ref name i)))
-	     (if (char-set-member? valid-chars char)
+	     (if (char-in-set? char valid-chars)
 		 char
 		 #\_))))
 	copy))))
@@ -382,7 +382,7 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
 	  (let loop ((chars (string->list (buffer-name buffer))))
 	    (cond ((null? chars)
 		   '())
-		  ((char-set-member? valid-chars (car chars))
+		  ((char-in-set? (car chars) valid-chars)
 		   (cons (car chars) (loop (cdr chars))))
 		  (else
 		   (loop (cdr chars))))))))
@@ -422,9 +422,9 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
   (or (os/backup-filename? filename)
       (os/auto-save-filename? filename)
       (and (not (file-directory? filename))
-	   (there-exists? (ref-variable completion-ignored-extensions)
-   	     (lambda (extension)
-	       (string-suffix? extension filename))))))
+	   (any (lambda (extension)
+		  (string-suffix? extension filename))
+		(ref-variable completion-ignored-extensions)))))
 
 (define (os/init-file-name) "~/edwin.ini")
 (define (os/abbrev-file-name) "~/abbrevs.scm")
@@ -529,7 +529,7 @@ filename suffix \".gz\"."
 					 (file-namestring pathname)
 					 " > "
 					 (->namestring temporary)))))
-	    (error:file-operation pathname
+	    (error:file-operation 0
 				  program
 				  "file"
 				  "[unknown]"
@@ -551,7 +551,7 @@ filename suffix \".gz\"."
 			      (string-append (quote-program program arguments)
 					     " > "
 					     (file-namestring pathname)))))
-	 (error:file-operation pathname
+	 (error:file-operation 1
 			       program
 			       "file"
 			       "[unknown]"

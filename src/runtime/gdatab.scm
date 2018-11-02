@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,56 +28,27 @@ USA.
 ;;; package: (runtime global-database)
 
 (declare (usual-integrations))
-
-(define (initialize-package!)
-  (set! event:after-restore (make-event-distributor))
-  (set! event:after-restart (make-event-distributor))
-  (set! event:before-exit (make-event-distributor))
-  (set! tagged-pair-methods (make-1d-table))
-  (set! tagged-vector-methods (make-1d-table))
-  (set! named-structure-descriptions (make-1d-table))
-  unspecific)
 
-(define event:after-restore)
-(define event:after-restart)
-(define event:before-exit)
-(define tagged-pair-methods)
-(define tagged-vector-methods)
-(define named-structure-descriptions)
-
-(define (unparser/tagged-pair-method tag)
-  (1d-table/get tagged-pair-methods tag #f))
+(define-deferred event:after-restore (make-event-distributor))
+(define-deferred event:after-restart (make-event-distributor))
+(define-deferred event:before-exit (make-event-distributor))
+(define-deferred named-structure-descriptions (make-1d-table))
 
 (define (unparser/set-tagged-pair-method! tag method)
-  (1d-table/put! tagged-pair-methods tag method))
-
-(define (unparser/tagged-vector-method tag)
-  (1d-table/get tagged-vector-methods tag #f))
+  (define-print-method (lambda (object)
+			 (and (pair? object)
+			      (eq? tag (car object))))
+    method))
 
 (define (unparser/set-tagged-vector-method! tag method)
-  (1d-table/put! tagged-vector-methods tag method))
+  (define-print-method (lambda (object)
+			 (and (vector? object)
+			      (fix:> (vector-length object) 0)
+			      (eq? tag (vector-ref object 0))))
+    method))
 
 (define (named-structure/get-tag-description tag)
   (1d-table/get named-structure-descriptions tag #f))
 
 (define (named-structure/set-tag-description! tag description)
   (1d-table/put! named-structure-descriptions tag description))
-
-;;; Support for old-style methods
-
-(define (add-unparser-special-pair! tag method)
-  (unparser/set-tagged-pair-method! tag (convert-old-method method)))
-
-(define (add-unparser-special-object! tag method)
-  (unparser/set-tagged-vector-method! tag (convert-old-method method)))
-
-(define (unparse-with-brackets thunk)
-  (write-string "#[")
-  (thunk)
-  (write-char #\]))
-
-(define (convert-old-method method)
-  (lambda (state object)
-    (with-output-to-port (unparser-state/port state)
-      (lambda ()
-	(method object)))))

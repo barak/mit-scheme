@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,10 +30,7 @@ USA.
 #include "prims.h"
 #include "history.h"
 #include "syscall.h"
-
-#ifdef __OS2__
-  extern void OS2_handle_attention_interrupt (void);
-#endif
+#include "bignmint.h"
 
 SCHEME_OBJECT * history_register;
 unsigned long prev_restore_history_offset;
@@ -107,8 +104,8 @@ initialize_interrupt_mask_vector (void)
   return (v);
 }
 
-/* setup_interrupt is called from the Interrupt macro to do all of the
-   setup for calling the user's interrupt routines. */
+/* setup_interrupt is called from the SIGNAL_INTERRUPT macro to do all
+   of the setup for calling the user's interrupt routines. */
 
 void
 setup_interrupt (unsigned long masked_interrupts)
@@ -120,13 +117,6 @@ setup_interrupt (unsigned long masked_interrupts)
   unsigned long interrupt_mask;
   SCHEME_OBJECT interrupt_handler;
 
-#ifdef __OS2__
-  if ((1UL << interrupt_number) == INT_Global_1)
-    {
-      OS2_handle_attention_interrupt ();
-      abort_to_interpreter (PRIM_POP_RETURN);
-    }
-#endif
   if (!VECTOR_P (fixed_objects))
     {
       outf_fatal ("\nInvalid fixed-objects vector");
@@ -500,6 +490,108 @@ arg_real_in_range (int arg_number, double lower_limit, double upper_limit)
   return (result);
 }
 
+/* The 32-bit FNV-1a hash, short for Fowler/Noll/Vo in honor of its
+   creators.  */
+
+uint32_t
+memory_hash (unsigned long length, const void * vp)
+{
+  const uint8_t * scan = ((const uint8_t *) vp);
+  const uint8_t * end = (scan + length);
+  uint32_t result = 2166136261U;
+  while (scan < end)
+    {
+      result ^= ((uint32_t) (*scan++));
+      result *= 16777619U;
+    }
+  return (result);
+}
+
+bool
+hashable_object_p (SCHEME_OBJECT object)
+{
+  switch (OBJECT_TYPE (object))
+    {
+    case TC_BYTEVECTOR:
+    case TC_CHARACTER_STRING:
+    case TC_INTERNED_SYMBOL:
+    case TC_UNINTERNED_SYMBOL:
+    case TC_BIG_FIXNUM:
+    case TC_BIG_FLONUM:
+    case TC_RATNUM:
+    case TC_COMPLEX:
+    case TC_LIST:
+    case TC_WEAK_CONS:
+    case TC_VECTOR:
+    case TC_CELL:
+      return (true);
+    default:
+      return (false);
+    }
+}
+
+uint32_t
+hash_object (SCHEME_OBJECT object)
+{
+  switch (OBJECT_TYPE (object))
+    {
+    case TC_BYTEVECTOR:
+    case TC_CHARACTER_STRING:
+      return (memory_hash ((BYTEVECTOR_LENGTH (object)),
+			   (BYTEVECTOR_POINTER (object))));
+
+    case TC_INTERNED_SYMBOL:
+    case TC_UNINTERNED_SYMBOL:
+      {
+	SCHEME_OBJECT name = (MEMORY_REF (object, SYMBOL_NAME));
+	return (memory_hash ((BYTEVECTOR_LENGTH (name)),
+			     (BYTEVECTOR_POINTER (name))));
+      }
+
+    case TC_BIG_FIXNUM:
+      return (memory_hash (((BIGNUM_LENGTH (object))
+			    * (sizeof (bignum_digit_type))),
+			   (BIGNUM_START_PTR (object))));
+
+    case TC_BIG_FLONUM:
+      return (memory_hash (((FLOATING_VECTOR_LENGTH (object))
+			    * (sizeof (double))),
+			   (FLOATING_VECTOR_LOC (object, 0))));
+
+    case TC_RATNUM:
+    case TC_COMPLEX:
+      return (combine_hashes ((hash_object (MEMORY_REF (object, 0))),
+			      (hash_object (MEMORY_REF (object, 1)))));
+
+    case TC_LIST:
+    case TC_WEAK_CONS:
+      return (combine_hashes ((hash_object (PAIR_CAR (object))),
+			      (hash_object (PAIR_CDR (object)))));
+
+    case TC_VECTOR:
+      {
+	const SCHEME_OBJECT * scan = (VECTOR_LOC (object, 0));
+	const SCHEME_OBJECT * end = (scan + (VECTOR_LENGTH (object)));
+	uint32_t result = 0;
+	while (scan < end)
+	  result = (combine_hashes (result, (hash_object (*scan++))));
+	return result;
+      }
+
+    case TC_CELL:
+      return (hash_object (MEMORY_REF (object, 0)));
+
+    default:
+      return (0);
+    }
+}
+
+uint32_t
+combine_hashes (uint32_t hash1, uint32_t hash2)
+{
+  return ((hash1 * 31) + hash2);
+}
+
 bool
 interpreter_applicable_p (SCHEME_OBJECT object)
 {
@@ -517,6 +609,16 @@ interpreter_applicable_p (SCHEME_OBJECT object)
 	object = (MEMORY_REF (object, ENTITY_OPERATOR));
 	goto tail_recurse;
       }
+
+    case TC_RECORD:
+      {
+	SCHEME_OBJECT applicator = record_applicator(object);
+	if (applicator == SHARP_F)
+	  return (false);
+	object = applicator;
+	goto tail_recurse;
+      }
+
 #ifdef CC_SUPPORT_P
     case TC_COMPILED_ENTRY:
       {
@@ -548,25 +650,37 @@ Do_Micro_Error (long error_code, bool from_pop_return_p)
   SCHEME_OBJECT handler = SHARP_F;
 
 #ifdef ENABLE_DEBUGGING_TOOLS
-  err_print (error_code, ERROR_OUTPUT);
-  if ((GET_RC == RC_INTERNAL_APPLY)
-      || (GET_RC == RC_INTERNAL_APPLY_VAL))
+  if (Print_Errors)
     {
-      SCHEME_OBJECT * sp = (STACK_LOC (CONTINUATION_SIZE));
-      Print_Expression ((sp[STACK_ENV_FUNCTION]), "Procedure was");
+      err_print (error_code, ERROR_OUTPUT);
+      if ((GET_RC == RC_INTERNAL_APPLY)
+	  || (GET_RC == RC_INTERNAL_APPLY_VAL))
+	{
+	  Print_Expression (STACK_REF(CONTINUATION_SIZE + STACK_ENV_FUNCTION),
+			    "Procedure");
+	  outf_error ("\n");
+	  {
+	    int i, nargs = (APPLY_FRAME_HEADER_N_ARGS
+			    (STACK_REF(CONTINUATION_SIZE + STACK_ENV_HEADER)));
+	    for (i = 0; i < nargs; i += 1)
+	      {
+		outf_error ("Argument %d: ", i+1);
+		Print_Expression ((STACK_REF(CONTINUATION_SIZE
+					     + STACK_ENV_FIRST_ARG + i)), "");
+		outf_error ("\n");
+	      }
+	  }
+	}
+      else
+	{
+	  Print_Expression (GET_EXP, "Expression");
+	  outf_error ("\n");
+	  Print_Expression (GET_ENV, "Environment");
+	  outf_error ("\n");
+	}
+      Print_Return ("Return code");
       outf_error ("\n");
-      outf_error ("# of arguments: %lu\n",
-		  (APPLY_FRAME_HEADER_N_ARGS (sp[STACK_ENV_HEADER])));
     }
-  else
-    {
-      Print_Expression (GET_EXP, "Expression was");
-      outf_error ("\n");
-      Print_Expression (GET_ENV, "Environment was");
-      outf_error ("\n");
-    }
-  Print_Return ("Return code");
-  outf_error ("\n");
 #endif
 
   if (Trace_On_Error)
@@ -779,7 +893,7 @@ copy_history (SCHEME_OBJECT hist_obj)
 {
   unsigned long space_left, vert_type, rib_type;
   SCHEME_OBJECT new_hunk, * last_hunk, * hist_ptr, * orig_hist, temp;
-  SCHEME_OBJECT * orig_rib, * source_rib, * rib_slot;
+  SCHEME_OBJECT * orig_rib, * source_rib, * rib_slot, * free;
 
   assert (HUNK3_P (hist_obj));
 
@@ -792,6 +906,7 @@ copy_history (SCHEME_OBJECT hist_obj)
   orig_hist = (OBJECT_ADDRESS (hist_obj));
   hist_ptr = orig_hist;
   last_hunk = (heap_end - 3);
+  free = Free;
 
   do
     {
@@ -800,14 +915,14 @@ copy_history (SCHEME_OBJECT hist_obj)
 	return (SHARP_F);
       space_left -= 3;
 
-      new_hunk = (MAKE_POINTER_OBJECT (vert_type, Free));
+      new_hunk = (MAKE_POINTER_OBJECT (vert_type, free));
       (last_hunk[HIST_NEXT_SUBPROBLEM]) = new_hunk;
 
-      (Free[HIST_PREV_SUBPROBLEM])
+      (free[HIST_PREV_SUBPROBLEM])
 	= (MAKE_POINTER_OBJECT ((OBJECT_TYPE (hist_ptr[HIST_PREV_SUBPROBLEM])),
 				last_hunk));
-      last_hunk = Free;
-      Free += 3;
+      last_hunk = free;
+      free += 3;
 
       /* Copy the rib. */
       temp = (hist_ptr[HIST_RIB]);
@@ -823,11 +938,11 @@ copy_history (SCHEME_OBJECT hist_obj)
 	    return (SHARP_F);
 	  space_left -= 3;
 
-	  (*rib_slot) = (MAKE_POINTER_OBJECT (rib_type, Free));
-	  (Free[RIB_EXP]) = (source_rib[RIB_EXP]);
-	  (Free[RIB_ENV]) = (source_rib[RIB_ENV]);
-	  rib_slot = (Free + RIB_NEXT_REDUCTION);
-	  Free += 3;
+	  (*rib_slot) = (MAKE_POINTER_OBJECT (rib_type, free));
+	  (free[RIB_EXP]) = (source_rib[RIB_EXP]);
+	  (free[RIB_ENV]) = (source_rib[RIB_ENV]);
+	  rib_slot = (free + RIB_NEXT_REDUCTION);
+	  free += 3;
 	  temp = (source_rib[RIB_NEXT_REDUCTION]);
 	  rib_type = (OBJECT_TYPE (temp));
 	  source_rib = (OBJECT_ADDRESS (temp));
@@ -848,6 +963,7 @@ copy_history (SCHEME_OBJECT hist_obj)
 	      (MAKE_POINTER_OBJECT
 	       ((OBJECT_TYPE (hist_ptr[HIST_PREV_SUBPROBLEM])),
 		last_hunk)));
+  Free = free;
   return (new_hunk);
 }
 

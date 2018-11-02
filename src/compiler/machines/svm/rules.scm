@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -81,7 +81,14 @@ USA.
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (MACHINE-CONSTANT (? n)))
+  (QUALIFIER (load-immediate-operand? n))
   (inst:load-immediate (word-target target) n))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (MACHINE-CONSTANT (? n)))
+  (QUALIFIER (not (load-immediate-operand? n)))
+  (load-constant (word-target target) n))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -228,9 +235,12 @@ USA.
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CHAR->ASCII (CONSTANT (? char))))
-  (QUALIFIER (and (char? char) (char-ascii? char)))
   (inst:load-immediate (word-target target)
-		       (object-datum char)))
+		       (char->signed-8-bit-immediate char)))
+
+(define (char->signed-8-bit-immediate character)
+  (let ((ascii (char->integer character)))
+    (if (< ascii 128) ascii (- ascii 256))))
 
 (define-rule predicate
   (TYPE-TEST (REGISTER (? source)) (? type))
@@ -536,6 +546,7 @@ USA.
 			 (REGISTER (? source1))
 			 (OBJECT->FLOAT (CONSTANT (? value)))
 			 (? overflow?)))
+  (QUALIFIER (flo:flonum? value))
   (let ((source1 (float-source source1))
 	(temp (float-temporary)))
     (LAP ,@(inst:load-immediate temp value)
@@ -589,9 +600,7 @@ USA.
   (let ((checks (get-exit-interrupt-checks)))
     (LAP ,@(clear-map!)
 	 ,@(if (null? checks) '() (inst:interrupt-test-continuation))
-	 ,@(inst:load 'WORD rref:word-0 (ea:stack-pop))
-	 ,@(inst:object-address rref:word-0 rref:word-0)
-	 ,@(inst:jump (ea:indirect rref:word-0)))))
+	 ,@(inst:pop-return))))
 
 (define-rule statement
   (INVOCATION:APPLY (? frame-size) (? continuation))
@@ -714,7 +723,7 @@ USA.
 	  frame-size continuation
 	  (expect-no-exit-interrupt-checks)
 	  (%primitive-invocation
-	   ,(close-syntax (symbol-append 'TRAP: name) environment)))))))
+	   ,(close-syntax (symbol 'TRAP: name) environment)))))))
 
 (define (%primitive-invocation make-trap)
   (LAP ,@(clear-map!)
@@ -1399,7 +1408,7 @@ USA.
   (CONS-POINTER (? type) (REGISTER (? datum register-known-value)))
   (QUALIFIER
    (and (rtl:object->datum? datum)
-	(rtl:constant-non-pointer? (rtl:object->datum-expression datum))))
+	(rtl:immediate-datum? (rtl:object->datum-expression datum))))
   (rtl:make-cons-non-pointer
    type
    (rtl:make-machine-constant
@@ -1412,12 +1421,14 @@ USA.
 
 (define-rule rewriting
   (OBJECT->DATUM (REGISTER (? source register-known-value)))
-  (QUALIFIER (rtl:constant-non-pointer? source))
+  (QUALIFIER (rtl:immediate-datum? source))
   (rtl:make-machine-constant (object-datum (rtl:constant-value source))))
 
-(define (rtl:constant-non-pointer? expression)
+(define (rtl:immediate-datum? expression)
   (and (rtl:constant? expression)
-       (object-non-pointer? (rtl:constant-value expression))))
+       (object-non-pointer? (rtl:constant-value expression))
+	(immediate-integer? (object-datum
+			     (rtl:constant-value expression)))))
 
 ;;; These rules are losers because there's no abstract way to cons a
 ;;; statement or a predicate without also getting some CFG structure.
@@ -1483,17 +1494,17 @@ USA.
 
 (define-rule rewriting
   (OBJECT->FIXNUM (REGISTER (? source register-known-value)))
-  (QUALIFIER (rtl:constant-fixnum? source))
+  (QUALIFIER (rtl:immediate-fixnum? source))
   (rtl:make-object->fixnum source))
 
 (define-rule rewriting
   (OBJECT->FIXNUM (CONSTANT (? value)))
-  (QUALIFIER (fix:fixnum? value))
+  (QUALIFIER (immediate-integer? value))
   (rtl:make-machine-constant value))
 
-(define (rtl:constant-fixnum? expression)
+(define (rtl:immediate-fixnum? expression)
   (and (rtl:constant? expression)
-       (fix:fixnum? (rtl:constant-value expression))
+       (immediate-integer? (rtl:constant-value expression))
        (rtl:constant-value expression)))
 
 ;;;; Flonum rewriting.
@@ -1642,7 +1653,7 @@ USA.
 ;; known!
 
 (define (rtl:simple-subexpressions? expr)
-  (for-all? (cdr expr)
-    (lambda (sub)
-      (or (rtl:machine-constant? sub)
-	  (rtl:register? sub)))))
+  (every (lambda (sub)
+	   (or (rtl:machine-constant? sub)
+	       (rtl:register? sub)))
+	 (cdr expr)))

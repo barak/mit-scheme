@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -66,7 +66,7 @@ USA.
 	    (set-register-expression! (rtl:register-number expression)
 				      expression)
 	    (mention-registers! expression))
-	(let ((element* (hash-table-insert! hash expression false)))
+	(let ((element* (rcse-ht-insert! hash expression false)))
 	  (set-element-in-memory?! element* in-memory?)
 	  (element-first-value element*)))))
 
@@ -129,10 +129,10 @@ USA.
 	  (cond ((integer? object) (inexact->exact object))
 		((symbol? object) (symbol-hash object))
 		((string? object) (string-hash object))
-		(else (hash object))))))
+		(else (hash-object object))))))
 
     (let ((hash (loop expression)))
-      (receiver (modulo hash (hash-table-size))
+      (receiver (modulo hash (rcse-ht-size))
 		do-not-record?
 		hash-arg-in-memory?))))
 
@@ -150,7 +150,7 @@ USA.
   ;; Returns false if no such element exists or if EXPRESSION is
   ;; VOLATILE?.
   (and (not volatile?)
-       (let ((element (hash-table-lookup hash expression)))
+       (let ((element (rcse-ht-lookup hash expression)))
 	 (and element
 	      (let ((element* (element-first-value element)))
 		(if (eq? element element*)
@@ -202,18 +202,18 @@ USA.
 		     (set-register-next-equivalent! last register)
 		     (set-register-previous-equivalent! register last))))
 	    (set-quantity-last-register! quantity register)))))
-  (set-element-in-memory?! (hash-table-insert! (expression-hash expression)
-					       expression
-					       (element->class element))
+  (set-element-in-memory?! (rcse-ht-insert! (expression-hash expression)
+					    expression
+					    (element->class element))
 			   false))
 
 (define (insert-stack-destination! expression element)
   (let ((quantity (get-element-quantity element)))
     (if quantity
 	(set-stack-reference-quantity! expression quantity)))
-  (set-element-in-memory?! (hash-table-insert! (expression-hash expression)
-					       expression
-					       (element->class element))
+  (set-element-in-memory?! (rcse-ht-insert! (expression-hash expression)
+					    expression
+					    (element->class element))
 			   false))
 
 (define (get-element-quantity element)
@@ -230,11 +230,11 @@ USA.
 (define (insert-memory-destination! expression element hash)
   (let ((class (element->class element)))
     (mention-registers! expression)
-    ;; Optimization: if class and hash are both false, hash-table-insert!
+    ;; Optimization: if class and hash are both false, rcse-ht-insert!
     ;; makes an element which is not connected to the rest of the table.
     ;; In that case, there is no need to make an element at all.
     (if (or class hash)
-	(set-element-in-memory?! (hash-table-insert! hash expression class)
+	(set-element-in-memory?! (rcse-ht-insert! hash expression class)
 				 true))))
 
 (define (mention-registers! expression)
@@ -251,7 +251,7 @@ USA.
 	(and (not (negative? in-table))
 	     (not (= in-table (register-tick register)))))
       (let ((expression (register-expression register)))
-	(hash-table-delete-class!
+	(rcse-ht-delete-class!
 	 (lambda (element)
 	   (let ((expression* (element-expression element)))
 	     (and (not (rtl:register? expression*))
@@ -261,12 +261,12 @@ USA.
 ;;;; Invalidation
 
 (define (non-object-invalidate!)
-  (hash-table-delete-class!
+  (rcse-ht-delete-class!
    (lambda (element)
      (not (rtl:object-valued-expression? (element-expression element))))))
 
 (define (varying-address-invalidate!)
-  (hash-table-delete-class!
+  (rcse-ht-delete-class!
    (lambda (element)
      (and (element-in-memory? element)
 	  (expression-address-varies? (element-expression element))))))
@@ -276,7 +276,7 @@ USA.
   ;; expression.
   (if (rtl:register? expression)
       (register-expression-invalidate! expression)
-      (hash-table-delete-class!
+      (rcse-ht-delete-class!
        (lambda (element)
 	 (expression-refers-to? (element-expression element) expression)))))
 
@@ -291,7 +291,7 @@ USA.
     ;; immediately.
     (if (interpreter-stack-pointer? expression)
 	(mention-registers! expression)
-	(hash-table-delete! hash (hash-table-lookup hash expression)))))
+	(rcse-ht-delete! hash (rcse-ht-lookup hash expression)))))
 
 (define (register-invalidate! register)
   (let ((next (register-next-equivalent register))

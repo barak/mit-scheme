@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -96,9 +96,9 @@ USA.
 	  constant))))
 
 (define-vector-tag-unparser constant-tag
-  (standard-unparser (symbol->string 'CONSTANT)
-    (lambda (state constant)
-      (unparse-object state (constant-value constant)))))
+  (standard-print-method "LIAR:constant"
+    (lambda (constant)
+      (list (constant-value constant)))))
 
 (define-integrable (rvalue/constant? rvalue)
   (eq? (tagged-vector/tag rvalue) constant-tag))
@@ -114,9 +114,9 @@ USA.
   (make-rvalue reference-tag block lvalue safe?))
 
 (define-vector-tag-unparser reference-tag
-  (standard-unparser (symbol->string 'REFERENCE)
-    (lambda (state reference)
-      (unparse-object state (variable-name (reference-lvalue reference))))))
+  (standard-print-method "LIAR:reference"
+    (lambda (reference)
+      (list (variable-name (reference-lvalue reference))))))
 
 (define-integrable (rvalue/reference? rvalue)
   (eq? (tagged-vector/tag rvalue) reference-tag))
@@ -150,9 +150,9 @@ USA.
   (make-rvalue unassigned-test-tag block lvalue))
 
 (define-vector-tag-unparser unassigned-test-tag
-  (standard-unparser (symbol->string 'UNASSIGNED-TEST)
-    (lambda (state unassigned-test)
-      (unparse-object state (unassigned-test-lvalue unassigned-test)))))
+  (standard-print-method "LIAR:unassigned-test"
+    (lambda (unassigned-test)
+      (list (unassigned-test-lvalue unassigned-test)))))
 
 (define-integrable (rvalue/unassigned-test? rvalue)
   (eq? (tagged-vector/tag rvalue) unassigned-test-tag))

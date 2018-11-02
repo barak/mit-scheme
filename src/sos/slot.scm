@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -71,16 +71,16 @@ USA.
 (add-generic-procedure-generator %record-slot-index
   (lambda (generic tags)
     generic
-    (and (class? (dispatch-tag-contents (car tags)))
+    (and (class-tag? (car tags))
 	 (lambda (instance name)
-	   (let ((slot (class-slot (object-class instance) name #f)))
+	   (let ((slot (class-slot (instance-class instance) name #f)))
 	     (and slot
 		  (slot-index slot)))))))
 
 (add-generic-procedure-generator %record-slot-names
   (lambda (generic tags)
     generic
-    (and (class? (dispatch-tag-contents (car tags)))
+    (and (class-tag? (car tags))
 	 (lambda (instance)
 	   (map slot-name (class-slots (object-class instance)))))))
 
@@ -183,9 +183,9 @@ USA.
 	 (for-each
 	  (lambda (x)
 	    (let ((names
-		   (or (list-search-positive interacting-options
-			 (lambda (names)
-			   (memq (car x) names)))
+		   (or (find (lambda (names)
+			       (memq (car x) names))
+			     interacting-options)
 		       (list (car x)))))
 	      (let ((entry
 		     (let loop ((names names))

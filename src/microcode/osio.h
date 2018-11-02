@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,15 +38,16 @@ enum channel_type
   channel_type_unix_fifo,
   channel_type_terminal,
   channel_type_unix_pty_master,
+  channel_type_unix_server_socket,
   channel_type_unix_stream_socket,
   channel_type_tcp_stream_socket,
   channel_type_tcp_server_socket,
   channel_type_directory,
   channel_type_unix_character_device,
   channel_type_unix_block_device,
-  channel_type_os2_console,
-  channel_type_os2_unnamed_pipe,
-  channel_type_os2_named_pipe,
+  channel_type_unused_1,
+  channel_type_unused_2,
+  channel_type_unused_3,
   channel_type_win32_anonymous_pipe,
   channel_type_win32_named_pipe
 };
@@ -109,6 +110,6 @@ extern int OS_test_select_registry
   (select_registry_t registry, int blockp);
 extern int OS_test_select_descriptor
   (int fd, int blockp, unsigned int mode);
-extern int OS_pause (void);
+extern int OS_pause (bool blockp, bool ignore_status_change);
 
 #endif /* SCM_OSIO_H */

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,27 +30,28 @@ USA.
 
 (define (generate/common kernel)
   (lambda (filename #!optional os-type)
-    (let ((do-type
-	   (let ((pathname (merge-pathnames filename)))
-	     (lambda (os-type)
-	       (let ((pmodel (read-package-model pathname os-type)))
-		 (let ((changes? (read-file-analyses! pmodel os-type)))
-		   (resolve-references! pmodel)
-		   (kernel pathname pmodel changes? os-type)))))))
-      (cond ((default-object? os-type) (do-type microcode-id/operating-system))
-	    ((eq? os-type 'ALL) (for-each do-type os-types))
-	    ((memq os-type os-types) (do-type os-type))
-	    (else (error:bad-range-argument os-type #f))))))
+    (for-each-os-type os-type
+      (let ((pathname (merge-pathnames filename)))
+	(lambda (os-type)
+	  (let ((pmodel (read-package-model pathname os-type)))
+	    (let ((changes? (read-file-analyses! pmodel os-type)))
+	      (resolve-references! pmodel)
+	      (kernel pathname pmodel changes? os-type))))))))
 
-(define (cref/generate-trivial-constructor filename)
-  (let ((pathname (merge-pathnames filename)))
-    (for-each (lambda (os-type)
-		(write-external-descriptions
-		 pathname
-		 (read-package-model pathname os-type)
-		 #f
-		 os-type))
-	      os-types)))
+(define (cref/generate-trivial-constructor filename #!optional os-type)
+  (for-each-os-type os-type
+    (let ((pathname (merge-pathnames filename)))
+      (lambda (os-type)
+	(write-external-descriptions pathname
+				     (read-package-model pathname os-type)
+				     #f
+				     os-type)))))
+
+(define (for-each-os-type os-type procedure)
+  (cond ((default-object? os-type) (procedure microcode-id/operating-system))
+	((eq? os-type 'all) (for-each procedure os-types))
+	((memq os-type os-types) (procedure os-type))
+	(else (error:bad-range-argument os-type #f))))
 
 (define (cref/package-files filename os-type)
   (append-map package/files
@@ -63,7 +64,7 @@ USA.
 		   (read-package-model filename os-type))))))
 
 (define os-types
-  '(NT OS/2 UNIX))
+  '(nt unix))
 
 (define cref/generate-cref
   (generate/common

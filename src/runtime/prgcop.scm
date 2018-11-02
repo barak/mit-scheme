@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,22 +33,24 @@ USA.
   (object-new-type primitive-object-new-type 2))
 
 (define (initialize-package!)
+  (set! *copy-constants?* (make-unsettable-parameter 'unbound))
+  (set! *object-copies* (make-unsettable-parameter 'unbound))
   (set! copier/scode-walker
 	(make-scode-walker
 	 copy-constant
-	 `((ACCESS ,(%copy-pair (ucode-type ACCESS)))
-	   (ASSIGNMENT ,(%copy-triple (ucode-type ASSIGNMENT)))
-	   (COMBINATION ,copy-COMBINATION-object)
-	   (COMMENT ,copy-COMMENT-object)
-	   (CONDITIONAL ,(%copy-triple (ucode-type CONDITIONAL)))
-	   (DEFINITION ,(%copy-pair (ucode-type DEFINITION)))
-	   (DELAY ,(%copy-pair (ucode-type DELAY)))
-	   (DISJUNCTION ,(%copy-pair (ucode-type DISJUNCTION)))
-	   (LAMBDA ,copy-LAMBDA-object)
-	   (QUOTATION ,(%copy-pair (ucode-type QUOTATION)))
-	   (SEQUENCE ,copy-SEQUENCE-object)
-	   (THE-ENVIRONMENT ,copy-constant)
-	   (VARIABLE ,copy-VARIABLE-object))))
+	 `((access ,(%copy-pair (ucode-type access)))
+	   (assignment ,(%copy-triple (ucode-type assignment)))
+	   (combination ,copy-combination-object)
+	   (comment ,copy-comment-object)
+	   (conditional ,(%copy-triple (ucode-type conditional)))
+	   (definition ,(%copy-pair (ucode-type definition)))
+	   (delay ,(%copy-pair (ucode-type delay)))
+	   (disjunction ,(%copy-pair (ucode-type disjunction)))
+	   (lambda ,copy-lambda-object)
+	   (quotation ,(%copy-pair (ucode-type quotation)))
+	   (sequence ,copy-sequence-object)
+	   (the-environment ,copy-constant)
+	   (variable ,copy-variable-object))))
   unspecific)
 
 ;;;; Top level
@@ -61,13 +63,13 @@ USA.
 (define copier/scode-walker)
 
 (define-integrable (make-object-association-table)
-  (list '*OBJECT-COPIES*))
+  (list '*object-copies*))
 
 (define-integrable (object-association object)
-  (assq object (cdr *object-copies*)))
+  (assq object (cdr (*object-copies*))))
 
 (define (add-association! object other)
-  (let* ((table *object-copies*)
+  (let* ((table (*object-copies*))
 	 (place (assq object (cdr table))))
     (cond ((not place)
 	   (set-cdr! table (cons (cons object other) (cdr table))))
@@ -81,12 +83,11 @@ USA.
   ;; do not have enough information to determine what the
   ;; variable name was.  The original block can be used for
   ;; this, but it may as well be copied then.
-  (fluid-let ((*copy-constants?*
-	       (if (default-object? copy-constants?)
-		   *default/copy-constants?*
-		   copy-constants?))
-	      (*object-copies*
-	       (make-object-association-table)))
+  (parameterize ((*copy-constants?*
+		  (if (default-object? copy-constants?)
+		      *default/copy-constants?*
+		      copy-constants?))
+		 (*object-copies* (make-object-association-table)))
     (copy-object exp)))
 
 (define (copy-object obj)
@@ -100,7 +101,7 @@ USA.
 	 (%copy-compiled-code-address obj))
 	((compiled-code-block? obj)
 	 (%copy-compiled-code-block obj))
-	((not *copy-constants?*)
+	((not (*copy-constants?*))
 	 obj)
 	(else
 	 (%copy-constant obj))))
@@ -111,12 +112,12 @@ USA.
 	     (boolean? obj)
 	     (null? obj)
 	     (char? obj)
-	     (object-type? (ucode-type REFERENCE-TRAP) obj))
+	     (object-type? (ucode-type reference-trap) obj))
 	 obj)
 	((pair? obj)
-	 (%%copy-pair (ucode-type PAIR) obj))
+	 (%%copy-pair (ucode-type pair) obj))
 	((vector? obj)
-	 (%%copy-vector (ucode-type VECTOR) obj))
+	 (%%copy-vector (ucode-type vector) obj))
 	((string? obj)
 	 (let ((copy (string-copy obj)))
 	   (add-association! obj copy)
@@ -132,7 +133,7 @@ USA.
 (define (%copy-compiled-code-address obj)
   (let ((new-block (copy-compiled-code-block
 		    (compiled-code-address->block obj))))
-    (atomically
+    (with-absolutely-no-interrupts
      (lambda ()
        (object-new-type
 	(object-type obj)
@@ -146,7 +147,7 @@ USA.
 	(%copy-compiled-code-block obj))))
 
 (define (%copy-compiled-code-block obj)
-  (let* ((new (vector-copy (object-new-type (ucode-type VECTOR) obj)))
+  (let* ((new (vector-copy (object-new-type (ucode-type vector) obj)))
 	 (typed (object-new-type (ucode-type compiled-code-block) new))
 	 (len (vector-length new)))
     ((ucode-primitive declare-compiled-code-block 1) typed)
@@ -155,9 +156,6 @@ USA.
 	((not (fix:< i len)))
       (vector-set! new i (copy-object (vector-ref new i))))
     typed))
-
-(define-integrable (atomically thunk)
-  (with-absolutely-no-interrupts thunk))
 
 (define ((%copy-pair type) obj)
   (%%copy-pair type obj))
@@ -210,14 +208,14 @@ USA.
   (let ((association (object-association vec)))
     (if association
 	(cdr association)
-	(%%copy-vector (ucode-type VECTOR) vec))))
+	(%%copy-vector (ucode-type vector) vec))))
 
 (define ((%copy-vector type) obj)
   (%%copy-vector type obj))
 
 (define (%%copy-vector type obj)
   (let* ((new (vector-copy
-	       (object-new-type (ucode-type VECTOR) obj)))
+	       (object-new-type (ucode-type vector) obj)))
 	 (typed (object-new-type type new))
 	 (len (vector-length new)))
     (add-association! obj typed)
@@ -226,17 +224,17 @@ USA.
       (vector-set! new i (copy-object (vector-ref new i))))
     typed))
 
-(define (copy-SEQUENCE-object obj)
-  (if (object-type? (ucode-type SEQUENCE) obj)
-      (%%copy-pair (ucode-type SEQUENCE) obj)
-      (error "copy-SEQUENCE-object: Unknown type" obj)))
+(define (copy-sequence-object obj)
+  (if (object-type? (ucode-type sequence) obj)
+      (%%copy-pair (ucode-type sequence) obj)
+      (error "copy-sequence-object: Unknown type" obj)))
 
-(define (copy-COMBINATION-object obj)
-  (make-combination
-   (copy-object (combination-operator obj))
-   (map copy-object (combination-operands obj))))
+(define (copy-combination-object obj)
+  (make-scode-combination
+   (copy-object (scode-combination-operator obj))
+   (map copy-object (scode-combination-operands obj))))
 
-(define (copy-LAMBDA-object obj)
+(define (copy-lambda-object obj)
   (cond ((object-type? (ucode-type lambda) obj)
 	 (%%copy-pair (ucode-type lambda) obj))
 	((object-type? (ucode-type extended-lambda) obj)
@@ -244,21 +242,21 @@ USA.
 	((object-type? (ucode-type lexpr) obj)
 	 (%%copy-pair (ucode-type lexpr) obj))
 	(else
-	 (error "COPY-LAMBDA-object: Unknown type" obj))))
+	 (error "copy-lambda-object: Unknown type" obj))))
 
-(define (copy-VARIABLE-object obj)
-  (let ((var (make-variable (variable-name obj))))
+(define (copy-variable-object obj)
+  (let ((var (make-scode-variable (scode-variable-name obj))))
     (add-association! obj var)
     var))
 
-(define (copy-COMMENT-object obj)
-  (let ((the-text (comment-text obj)))
+(define (copy-comment-object obj)
+  (let ((the-text (scode-comment-text obj)))
     (if (not (dbg-info-vector? the-text))
-	(%%copy-pair (ucode-type COMMENT) obj)
+	(%%copy-pair (ucode-type comment) obj)
 	(let ((the-car (system-pair-car obj))
 	      (the-cdr (system-pair-cdr obj)))
 	  (let* ((new (cons the-car the-cdr))
-		 (typed (object-new-type (ucode-type COMMENT) new)))
+		 (typed (object-new-type (ucode-type comment) new)))
 	    (add-association! obj typed)
 	    (let ((text-copy (copy-dbg-info-vector the-text)))
 	      (set-car! new (if (eq? the-car the-text)
@@ -274,7 +272,7 @@ USA.
     (cond (association
 	   (cdr association))
 	  ((vector? obj)
-	   (%%copy-vector (ucode-type VECTOR) obj))
+	   (%%copy-vector (ucode-type vector) obj))
 	  ((pair? obj)
 	   ;; Guarantee that top-level vectors are copied.
 	   (for-each (lambda (element)

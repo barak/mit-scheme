@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,20 +38,43 @@ USA.
 		 (not (memq (car object) seen))
 		 (loop (cdr object) (cons (car object) seen)))))))
 
-(define-guarantee r4rs-lambda-list "R4RS lambda list")
+(define (fold-r4rs-lambda-list procedure initial bvl)
+  (let loop ((bvl* bvl))
+    (cond ((and (pair? bvl*) (identifier? (car bvl*)))
+	   (procedure (car bvl*) (loop (cdr bvl*))))
+	  ((null? bvl*) (initial #f))
+	  ((identifier? bvl*) (initial bvl*))
+	  (else (error:not-a r4rs-lambda-list? bvl)))))
 
 (define (parse-r4rs-lambda-list bvl)
-  (let loop ((bvl* bvl) (required '()))
-    (cond ((and (pair? bvl*)
-		(identifier? (car bvl*)))
-	   (loop (cdr bvl*)
-		 (cons (car bvl*) required)))
-	  ((null? bvl*)
-	   (values (reverse! required) #f))
-	  ((identifier? bvl*)
-	   (values (reverse! required) bvl*))
-	  (else
-	   (error:not-r4rs-lambda-list bvl)))))
+  (let ((parsed
+	 (fold-r4rs-lambda-list (lambda (var parsed)
+				  (cons (cons var (car parsed))
+					(cdr parsed)))
+				(lambda (var)
+				  (cons '() var))
+				bvl)))
+    (values (car parsed) (cdr parsed))))
+
+(define (r4rs-lambda-list-names bvl)
+  (fold-r4rs-lambda-list cons
+			 (lambda (var)
+			   (if var
+			       (list var)
+			       '()))
+			 bvl))
+
+(define (r4rs-lambda-list-arity bvl)
+  (let ((arity
+	 (fold-r4rs-lambda-list (lambda (var arity)
+				  (declare (ignore var))
+				  (cons (fix:+ 1 (car arity))
+					(and (cdr arity)
+					     (fix:+ 1 (cdr arity)))))
+				(lambda (var)
+				  (cons 0 (if var #f 0)))
+				bvl)))
+    (make-procedure-arity (car arity) (cdr arity) #t)))
 
 (define (map-r4rs-lambda-list procedure bvl)
   (let loop ((bvl* bvl))
@@ -64,7 +87,7 @@ USA.
 	  ((identifier? bvl*)
 	   (procedure bvl*))
 	  (else
-	   (error:not-r4rs-lambda-list bvl)))))
+	   (error:not-a r4rs-lambda-list? bvl)))))
 
 (define (mit-lambda-list? object)
   (letrec
@@ -118,8 +141,6 @@ USA.
 		   (k (cons (car object) seen)))))))
     (parse-required object '())))
 
-(define-guarantee mit-lambda-list "MIT/GNU Scheme lambda list")
-
 (define lambda-tag:optional (object-new-type (ucode-type constant) 3))
 (define lambda-tag:rest (object-new-type (ucode-type constant) 4))
 (define lambda-tag:key (object-new-type (ucode-type constant) 5))
@@ -136,13 +157,12 @@ USA.
       ;; This should be fixed some day.
 
       ;; From lambda.scm
-      (eq? object lambda-tag:internal-lambda)
-      (eq? object lambda-tag:internal-lexpr)
+      (eq? object scode-lambda-name:internal-lambda)
 
       ;; From syntax-output.scm
-      (eq? object lambda-tag:fluid-let)
-      (eq? object lambda-tag:let)
-      (eq? object lambda-tag:unnamed)
+      (eq? object scode-lambda-name:fluid-let)
+      (eq? object scode-lambda-name:let)
+      (eq? object scode-lambda-name:unnamed)
       ))
 
 (define (parse-mit-lambda-list lambda-list)
@@ -188,7 +208,7 @@ USA.
 	(values required optional rest)))
 
     (define (bad-lambda-list pattern)
-      (error:not-mit-lambda-list pattern 'PARSE-MIT-LAMBDA-LIST))
+      (error:not-a mit-lambda-list? pattern 'parse-mit-lambda-list))
 
     (parse-parameters required lambda-list)))
 
@@ -206,11 +226,11 @@ USA.
 
 ;;; Aux is almost always the empty list.
 (define (make-lambda-list required optional rest aux)
-  (guarantee-list-of-unique-symbols required)
-  (guarantee-list-of-unique-symbols optional)
+  (guarantee list-of-unique-symbols? required)
+  (guarantee list-of-unique-symbols? optional)
   (if rest
-      (guarantee-symbol rest))
-  (guarantee-list-of-unique-symbols aux)
+      (guarantee symbol? rest))
+  (guarantee list-of-unique-symbols? aux)
   (let ((rest-aux-tail (if (not rest)
 			   (if (null? aux)
 			       '()

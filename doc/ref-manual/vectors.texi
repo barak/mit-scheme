@@ -59,10 +59,10 @@ The @dfn{valid indexes} of a subvector are the exact integers between
 @var{start} inclusive and @var{end} exclusive.
 
 @menu
-* Construction of Vectors::     
-* Selecting Vector Components::  
-* Cutting Vectors::             
-* Modifying Vectors::           
+* Construction of Vectors::
+* Selecting Vector Components::
+* Cutting Vectors::
+* Modifying Vectors::
 @end menu
 
 @node Construction of Vectors, Selecting Vector Components, Vectors, Vectors
@@ -99,6 +99,24 @@ Returns a newly allocated vector initialized to the elements of
 
 @example
 (list->vector '(dididit dah))           @result{}  #(dididit dah)
+@end example
+@end deffn
+
+@deffn {standard procedure} string->vector string [start [end]]
+@deffnx {standard procedure} vector->string vector [start [end]]
+It is an error if any element of @var{vector} is not a character.
+
+The @code{vector->string} procedure returns a newly allocated string
+of the objects contained in the elements of @var{vector} between
+@var{start} and @var{end}.  The @code{string->vector} procedure
+returns a newly created vector initialized to the elements of the
+string @var{string} between @var{start} and @var{end}.
+
+In both procedures, order is preserved.
+
+@example
+(string->vector "ABC")                  @result{}  #(#\A #\B #\C)
+(vector->string #(#\1 #\2 #\3)          @result{}  "123"
 @end example
 @end deffn
 

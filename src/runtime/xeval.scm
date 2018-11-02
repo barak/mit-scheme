@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -45,12 +45,9 @@ USA.
 	     (hook/extended-scode-eval
 	      (cond ((null? bound-names)
 		     expression)
-		    ((or (definition? expression)
-			 (and (open-block? expression)
-			      (open-block-components expression
-				(lambda (names declarations body)
-				  declarations body
-				  (pair? names)))))
+		    ((or (scode-definition? expression)
+			 (and (scode-open-block? expression)
+			      (pair? (scode-open-block-names expression))))
 		     (error
 		      "Can't perform definition in compiled-code environment:"
 		      (unsyntax expression)))
@@ -73,9 +70,9 @@ USA.
 			(make-root-top-level-environment))))))))
 
 (define (difference items items*)
-  (list-transform-negative items
-    (lambda (item)
-      (memq item items*))))
+  (remove (lambda (item)
+	    (memq item items*))
+	  items))
 
 (define (environment-that-binds environment name)
   (let loop ((environment environment))
@@ -100,42 +97,44 @@ USA.
   (set! rewrite-walker
 	(make-scode-walker
 	 rewrite/constant
-	 `((ACCESS ,rewrite/access)
-	   (ASSIGNMENT ,rewrite/assignment)
-	   (COMBINATION ,rewrite/combination)
-	   (COMMENT ,rewrite/comment)
-	   (CONDITIONAL ,rewrite/conditional)
-	   (DELAY ,rewrite/delay)
-	   (DISJUNCTION ,rewrite/disjunction)
-	   (LAMBDA ,rewrite/lambda)
-	   (SEQUENCE ,rewrite/sequence)
-	   (THE-ENVIRONMENT ,rewrite/the-environment)
-	   (UNASSIGNED? ,rewrite/unassigned?)
-	   (VARIABLE ,rewrite/variable))))
+	 `((access ,rewrite/access)
+	   (assignment ,rewrite/assignment)
+	   (combination ,rewrite/combination)
+	   (comment ,rewrite/comment)
+	   (conditional ,rewrite/conditional)
+	   (delay ,rewrite/delay)
+	   (disjunction ,rewrite/disjunction)
+	   (lambda ,rewrite/lambda)
+	   (sequence ,rewrite/sequence)
+	   (the-environment ,rewrite/the-environment)
+	   (unassigned? ,rewrite/unassigned?)
+	   (variable ,rewrite/variable))))
   (set! hook/extended-scode-eval default/extended-scode-eval)
   unspecific)
 
 (define (rewrite/variable expression environment bound-names)
-  (let ((name (variable-name expression)))
+  (let ((name (scode-variable-name expression)))
     (if (memq name bound-names)
 	(ccenv-lookup environment name)
 	expression)))
 
 (define (rewrite/unassigned? expression environment bound-names)
-  (let ((name (unassigned?-name expression)))
+  (let ((name (scode-unassigned?-name expression)))
     (if (memq name bound-names)
-	(make-combination (make-absolute-reference 'UNASSIGNED-REFERENCE-TRAP?)
-			  (list (ccenv-lookup environment name)))
+	(make-scode-combination
+	 (make-scode-absolute-reference 'unassigned-reference-trap?)
+	 (list (ccenv-lookup environment name)))
 	expression)))
 
 (define (ccenv-lookup environment name)
-  (make-combination (make-absolute-reference 'ENVIRONMENT-LOOKUP)
-		    (list (environment-that-binds environment name) name)))
+  (make-scode-combination (make-scode-absolute-reference 'environment-lookup)
+			  (list (environment-that-binds environment name)
+				name)))
 
 (define (rewrite/assignment expression environment bound-names)
-  (let ((name (assignment-name expression))
+  (let ((name (scode-assignment-name expression))
 	(value
-	 (rewrite/expression (assignment-value expression)
+	 (rewrite/expression (scode-assignment-value expression)
 			     environment
 			     bound-names)))
     (if (memq name bound-names)
@@ -144,9 +143,10 @@ USA.
 	      (error
 	       "Cannot perform assignment to this compiled-code variable:"
 	       name))
-	  (make-combination (make-absolute-reference 'ENVIRONMENT-ASSIGN!)
-			    (list environment name value)))
-	(make-assignment name value))))
+	  (make-scode-combination
+	   (make-scode-absolute-reference 'environment-assign!)
+	   (list environment name value)))
+	(make-scode-assignment name value))))
 
 (define (rewrite/lambda expression environment bound-names)
   (lambda-components* expression
@@ -156,60 +156,63 @@ USA.
        (rewrite/expression body
 			   environment
 			   (difference bound-names
-				       (lambda-bound expression)))))))
+				       (scode-lambda-bound expression)))))))
 
 (define (rewrite/the-environment expression environment bound-names)
   expression environment bound-names
   (error "Can't take (the-environment) of compiled-code environment"))
 
 (define (rewrite/access expression environment bound-names)
-  (make-access (rewrite/expression (access-environment expression)
-				   environment
-				   bound-names)
-	       (access-name expression)))
+  (make-scode-access (rewrite/expression (scode-access-environment expression)
+					 environment
+					 bound-names)
+		     (scode-access-name expression)))
 
 (define (rewrite/combination expression environment bound-names)
-  (make-combination (rewrite/expression (combination-operator expression)
-					environment
-					bound-names)
-		    (rewrite/expressions (combination-operands expression)
-					 environment
-					 bound-names)))
+  (make-scode-combination
+   (rewrite/expression (scode-combination-operator expression)
+		       environment
+		       bound-names)
+   (rewrite/expressions (scode-combination-operands expression)
+			environment
+			bound-names)))
 
 (define (rewrite/comment expression environment bound-names)
-  (make-comment (comment-text expression)
-		(rewrite/expression (comment-expression expression)
-				    environment
-				    bound-names)))
+  (make-scode-comment (scode-comment-text expression)
+		      (rewrite/expression (scode-comment-expression expression)
+					  environment
+					  bound-names)))
 
 (define (rewrite/conditional expression environment bound-names)
-  (make-conditional (rewrite/expression (conditional-predicate expression)
-					environment
-					bound-names)
-		    (rewrite/expression (conditional-consequent expression)
-					environment
-					bound-names)
-		    (rewrite/expression (conditional-alternative expression)
-					environment
-					bound-names)))
+  (make-scode-conditional
+   (rewrite/expression (scode-conditional-predicate expression)
+		       environment
+		       bound-names)
+   (rewrite/expression (scode-conditional-consequent expression)
+		       environment
+		       bound-names)
+   (rewrite/expression (scode-conditional-alternative expression)
+		       environment
+		       bound-names)))
 
 (define (rewrite/delay expression environment bound-names)
-  (make-delay (rewrite/expression (delay-expression expression)
-				  environment
-				  bound-names)))
-
-(define (rewrite/disjunction expression environment bound-names)
-  (make-disjunction (rewrite/expression (disjunction-predicate expression)
-					environment
-					bound-names)
-		    (rewrite/expression (disjunction-alternative expression)
+  (make-scode-delay (rewrite/expression (scode-delay-expression expression)
 					environment
 					bound-names)))
 
+(define (rewrite/disjunction expression environment bound-names)
+  (make-scode-disjunction
+   (rewrite/expression (scode-disjunction-predicate expression)
+		       environment
+		       bound-names)
+   (rewrite/expression (scode-disjunction-alternative expression)
+		       environment
+		       bound-names)))
+
 (define (rewrite/sequence expression environment bound-names)
-  (make-sequence (rewrite/expressions (sequence-actions expression)
-				      environment
-				      bound-names)))
+  (make-scode-sequence (rewrite/expressions (scode-sequence-actions expression)
+					    environment
+					    bound-names)))
 
 (define (rewrite/constant expression environment bound-names)
   environment bound-names

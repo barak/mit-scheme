@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -353,6 +353,9 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
 #ifdef PC_VALUE_MASK
   pc &= PC_VALUE_MASK;
 #endif
+#ifdef CC_IS_SVM
+  pc = svm_export_instruction_pointer (pc);
+#endif
 
   /* Choose new SP and encode location data.  */
   switch (classify_pc (pc, (&block_addr), (&index)))
@@ -366,8 +369,15 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
     case pcl_heap:
     case pcl_constant:
 #ifdef CC_SUPPORT_P
+
+#  ifdef CC_IS_SVM
+      new_sp = stack_pointer;
+      /* Free already set by svm_export_instruction_pointer. */
+#  else
       new_sp = ((SCHEME_OBJECT *) (SIGCONTEXT_SCHSP (scp)));
       Free = ((SCHEME_OBJECT *) (SIGCONTEXT_RFREE (scp)));
+#  endif
+
       SET_RECOVERY_INFO
 	(STATE_COMPILED_CODE,
 	 (MAKE_CC_BLOCK (block_addr)),
@@ -391,6 +401,20 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
 #endif
 
     case pcl_unknown:
+      if (((OBJECT_TYPE (primitive)) == TC_PRIMITIVE)
+	  && (ADDRESS_IN_STACK_P (stack_pointer)) && (ALIGNED_P (stack_pointer))
+	  && (ADDRESS_IN_HEAP_P (Free)) && (ALIGNED_P (Free)))
+	{
+#ifdef ENABLE_DEBUGGING_TOOLS
+	  if (GC_Debug == true)
+	    /* Note where this presumption is employed. */
+	    outf_error_line (";Warning: trap at 0x%lx assumed a primitive", pc);
+#endif
+	  new_sp = stack_pointer;
+	  SET_RECOVERY_INFO
+	    (STATE_PRIMITIVE, primitive, (ULONG_TO_FIXNUM (GET_LEXPR_ACTUALS)));
+	  break;
+	}
       new_sp = 0;
       SET_RECOVERY_INFO
 	(STATE_UNKNOWN,
@@ -409,8 +433,10 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
 	&& (ALIGNED_P (Free))))
     {
 #ifdef ENABLE_DEBUGGING_TOOLS
-      outf_error ("Resetting bogus Free in continue_from_trap.\n");
-      outf_flush_error ();
+      if (GC_Debug == true)
+	outf_error_line ((new_sp == 0)
+			 ? ";Warning: bogus stack_pointer in continue_from_trap"
+			 : ";Warning: bogus Free in continue_from_trap");
 #endif
       Free = heap_alloc_limit;
     }

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -41,7 +41,7 @@ USA.
   (with-working-directory-pathname "sos"
     (lambda ()
       (load "load")))
-  (for-each compile-dir '("xml" "win32" "edwin" "imail" "ssp" "ffi")))
+  (for-each compile-dir '("xml" "win32" "ssp" "ffi")))
 
 (define (compile-boot-dirs compile-dir)
   (compile-cref compile-dir)
@@ -62,7 +62,9 @@ USA.
 	    (load (pathname-new-type name "sf"))
 	    (echo-cref-output name)
 	    (load (pathname-new-type name "cbf")))
-	  (load "compile")))))
+	  (load "compile"))))
+  ;; Run secondary GC daemons and whatnot.
+  (gc-clean))
 
 (define (echo-cref-output name)
   (let ((cref-output-file (pathname-new-type (package-set-pathname name) "crf")))
@@ -120,8 +122,7 @@ USA.
 (define (c-compile)
   (in-liarc
    (lambda ()
-     (compile-all-dirs c-compile-dir)
-     (cbf-conditionally "edwin/edwin.bld"))))
+     (compile-all-dirs c-compile-dir))))
 
 (define (in-liarc thunk)
   (fluid-let ((compiler:invoke-c-compiler? #f)
@@ -145,8 +146,7 @@ USA.
 	       (lambda (os)
 		 (cbf-conditionally (string-append root "-" os ".pkd")))))
 	  (compile-pkg "unx")
-	  (compile-pkg "w32")
-	  (compile-pkg "os2"))))))
+	  (compile-pkg "w32"))))))
 
 (define (cbf-conditionally pathname)
   (let ((input (pathname-default-type pathname "bin")))

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,7 +37,7 @@ USA.
      (call-with-destructured-c-include-form
       form
       (lambda (library)
-	(let ((ienv (syntactic-environment->environment usage-env)))
+	(let ((ienv (senv->runtime usage-env)))
 	  (if (and (environment-bound? ienv 'C-INCLUDES)
 		   (environment-assigned? ienv 'C-INCLUDES))
 	      (let ((value (environment-lookup ienv 'C-INCLUDES))
@@ -66,22 +66,20 @@ USA.
 	 (receiver (cadr form)))))
 
 (define (load-c-includes library)
-  (let ((lib (system-library-pathname (string-append library "-shim.so"))))
-    (let ((includes (fasload
-		     (pathname-new-name (pathname-new-type lib "bin")
-					(string-append library "-types"))
-		     (not c-include-noisily?)))
-	  (comment (fasload
-		    (pathname-new-name (pathname-new-type lib "bin")
-				       (string-append library "-const"))
-		    (not c-include-noisily?))))
+  (let ((includes (fasload (system-library-pathname
+			    (string-append library "-types.bin"))
+			   (not c-include-noisily?)))
+	(comment (fasload
+		  (system-library-pathname
+		   (string-append library "-const.bin"))
+		  (not c-include-noisily?))))
       (let ((enums.struct-values
-	     (if (comment? comment) (comment-expression comment)
+	     (if (scode-comment? comment) (scode-comment-expression comment)
 		 (error:wrong-type-datum comment "a fasl comment"))))
 	(warn-new-cdecls includes)
 	(set-c-includes/enum-values! includes (car enums.struct-values))
 	(set-c-includes/struct-values! includes (cadr enums.struct-values))
-	includes))))
+	includes)))
 
 (define (warn-new-cdecls includes)
   (for-each
@@ -505,8 +503,8 @@ USA.
 
 (define (find-c-includes env)
   ;; Returns the c-includes structure bound to 'C-INCLUDES in ENV.
-  (guarantee-syntactic-environment env 'find-c-includes)
-  (let ((ienv (syntactic-environment->environment env)))
+  (guarantee syntactic-environment? env 'find-c-includes)
+  (let ((ienv (senv->runtime env)))
     (if (and (environment-bound? ienv 'C-INCLUDES)
 	     (environment-assigned? ienv 'C-INCLUDES))
 	(let ((includes (environment-lookup ienv 'C-INCLUDES)))

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,17 +38,21 @@ USA.
      (let ((name (cadr form))
 	   (prefix (caddr form))
 	   (suffixes (cdddr form)))
-       `(BEGIN
+       `(begin
 	  ,@(let loop ((n 0) (suffixes suffixes))
 	      (if (pair? suffixes)
-		  (cons `(DEFINE-INTEGRABLE
-			   ,(symbol-append prefix (car suffixes))
+		  (cons `(define-integrable
+			   ,(symbol prefix (car suffixes))
 			   ,n)
 			(loop (+ n 1) (cdr suffixes)))
 		  '()))
-	  (DEFINE ,name
-	    (VECTOR ,@(map (lambda (suffix) `',suffix) suffixes))))))))
+	  (define ,name
+	    (vector ,@(map (lambda (suffix) `',suffix) suffixes))))))))
 
+(define (re-code-name byte)
+  (and (fix:< byte (vector-length re-codes))
+       (vector-ref re-codes byte)))
+
 (define-enumeration re-codes re-code:
 
   ;; Zero bytes may appear in the compiled regular expression.
@@ -88,7 +92,7 @@ USA.
 
   ;; Matches any one character except for newline.
   any-char
-
+
   ;; Matches any one char belonging to specified set. First following
   ;; byte is # bitmap bytes.  Then come bytes for a bit-map saying
   ;; which chars are in.  Bits in each byte are ordered low-bit-first.
@@ -130,8 +134,7 @@ USA.
   syntax-spec
 
   ;; Matches any character whose syntax differs from the specified.
-  not-syntax-spec
-  )
+  not-syntax-spec)
 
 ;;;; Cache
 
@@ -146,165 +149,98 @@ USA.
 	((null? items))
       (set-car! items (cons (cons #f #f) #f)))
     (set-cdr! (last-pair items) items)
-    (cons 'CACHE items)))
+    (cons* 'cache (make-thread-mutex) items)))
+
+(define-integrable (with-cache-locked cache thunk)
+  (with-thread-mutex-lock (cadr cache)
+    (lambda ()
+      (without-interruption thunk))))
 
 (define (cache-result cache procedure key1 key2)
-  (let* ((tail (cdr cache))
-	 (head (cdr tail)))
-    (let loop ((items head) (prev tail))
-      (let ((item (car items)))
-	(cond ((and (eq? key1 (caar item))
-		    (eq? key2 (cdar item)))
-	       (cond ((eq? tail items)
-		      (set-cdr! cache prev))
-		     ((not (eq? head items))
-		      (without-interrupts
-		       (lambda ()
-			 (set-cdr! prev (cdr items))
-			 (set-cdr! items head)
-			 (set-cdr! tail items)))))
-	       (cdr item))
-	      ((eq? tail items)
-	       (let ((result (procedure key1 key2)))
-		 (without-interrupts
-		  (lambda ()
-		    (set-car! (car item) key1)
-		    (set-cdr! (car item) key2)
-		    (set-cdr! item result)
-		    (set-cdr! cache prev)))
-		 result))
-	      (else
-	       (loop (cdr items) items)))))))
+  (with-cache-locked cache
+    (lambda ()
+      (let* ((tail (cddr cache))
+	     (head (cdr tail)))
+	(let loop ((items head) (prev tail))
+	  (let ((item (car items)))
+	    (cond ((and (eq? key1 (caar item))
+			(eq? key2 (cdar item)))
+		   (cond ((eq? tail items)
+			  (set-cdr! (cdr cache) prev))
+			 ((not (eq? head items))
+			  (set-cdr! prev (cdr items))
+			  (set-cdr! items head)
+			  (set-cdr! tail items)))
+		   (cdr item))
+		  ((eq? tail items)
+		   (let ((result (procedure key1 key2)))
+		     (set-car! (car item) key1)
+		     (set-cdr! (car item) key2)
+		     (set-cdr! item result)
+		     (set-cdr! (cdr cache) prev)
+		     result))
+		  (else
+		   (loop (cdr items) items)))))))))
 
 ;;;; String Compiler
 
 (define (re-compile-char char case-fold?)
-  (let ((result (string-allocate 2)))
-    (vector-8b-set! result 0 re-code:exact-1)
-    (string-set! result 1 (if case-fold? (char-upcase char) char))
+  (guarantee 8-bit-char? char 're-compile-char)
+  (let ((result (make-bytevector 2)))
+    (bytevector-u8-set! result 0 re-code:exact-1)
+    (bytevector-u8-set! result 1
+			(char->integer
+			 (if case-fold? (char-sort-of-upcase char) char)))
     (make-compiled-regexp result case-fold?)))
 
 (define re-compile-string
   (cached-procedure 16
     (lambda (string case-fold?)
-      (let ((string (if case-fold? (string-upcase string) string)))
-	(let ((n (string-length string)))
-	  (if (fix:zero? n)
-	      (make-compiled-regexp string case-fold?)
-	      (let ((result
-		     (string-allocate
-		      (let ((qr (integer-divide n 255)))
-			(fix:+ (fix:* 257 (integer-divide-quotient qr))
-			       (let ((r (integer-divide-remainder qr)))
-				 (cond ((fix:zero? r) 0)
-				       ((fix:= 1 r) 2)
-				       (else (fix:+ r 2)))))))))
-		(let loop ((n n) (i 0) (p 0))
-		  (cond ((fix:= n 1)
-			 (vector-8b-set! result p re-code:exact-1)
-			 (vector-8b-set! result
-					 (fix:1+ p)
-					 (vector-8b-ref string i))
-			 (make-compiled-regexp result case-fold?))
-			((fix:< n 256)
-			 (vector-8b-set! result p re-code:exact-n)
-			 (vector-8b-set! result (fix:1+ p) n)
-			 (substring-move! string i (fix:+ i n)
-					  result (fix:+ p 2))
-			 (make-compiled-regexp result case-fold?))
-			(else
-			 (vector-8b-set! result p re-code:exact-n)
-			 (vector-8b-set! result (fix:1+ p) 255)
-			 (let ((j (fix:+ i 255)))
-			   (substring-move! string i j result (fix:+ p 2))
-			   (loop (fix:- n 255) j (fix:+ p 257)))))))))))))
+      (guarantee 8-bit-string? string 're-compile-string)
+      (let ((end (string-length string))
+	    (builder (bytevector-builder))
+	    (get-byte
+	     (if case-fold?
+		 (lambda (i)
+		   (char->integer (char-sort-of-upcase (string-ref string i))))
+		 (lambda (i)
+		   (char->integer (string-ref string i))))))
+	(let ((copy!
+	       (lambda (start end)
+		 (do ((i start (fix:+ i 1)))
+		     ((not (fix:< i end)))
+		   (builder (get-byte i))))))
+	  (let loop ((start 0))
+	    (if (fix:< start end)
+		(let ((n (fix:- end start)))
+		  (if (fix:< n #x100)
+		      (if (fix:= n 1)
+			  (begin
+			    (builder re-code:exact-1)
+			    (builder (get-byte start)))
+			  (begin
+			    (builder re-code:exact-n)
+			    (builder n)
+			    (copy! start end)))
+		      (begin
+			(builder re-code:exact-n)
+			(builder #xFF)
+			(let ((start* (fix:+ start #xFF)))
+			  (copy! start start*)
+			  (loop start*))))))))
+	(make-compiled-regexp (builder) case-fold?)))))
 
 (define char-set:re-special
   (char-set #\[ #\] #\* #\. #\\ #\? #\+ #\^ #\$))
 
 (define (re-quote-string string)
-  (let ((end (string-length string)))
-    (let ((n
-	   (let loop ((start 0) (n 0))
-	     (let ((index
-		    (substring-find-next-char-in-set string start end
-						     char-set:re-special)))
-	       (if index
-		   (loop (1+ index) (1+ n))
-		   n)))))
-      (if (zero? n)
-	  string
-	  (let ((result (string-allocate (+ end n))))
-	    (let loop ((start 0) (i 0))
-	      (let ((index
-		     (substring-find-next-char-in-set string start end
-						      char-set:re-special)))
-		(if index
-		    (begin
-		      (substring-move! string start index result i)
-		      (let ((i (+ i (- index start))))
-			(string-set! result i #\\)
-			(string-set! result
-				     (1+ i)
-				     (string-ref string index))
-			(loop (1+ index) (+ i 2))))
-		    (substring-move! string start end result i))))
-	    result)))))
-
-;;;; Char-Set Compiler
-
-;;; Special characters:
-;;; #\] must appear as first character.
-;;; #\- must appear as first or last character, or it may appear
-;;;     immediately after a range.
-;;; #\^ must appear anywhere except as the first character in the set.
-
-(define (re-compile-char-set pattern negate?)
-  (receive (scalar-values negate?*)
-      (re-char-pattern->scalar-values pattern)
-    (let ((char-set (scalar-values->char-set scalar-values)))
-      (if (if negate? (not negate?*) negate?*)
-	  (char-set-invert char-set)
-	  char-set))))
-
-(define (re-char-pattern->scalar-values pattern)
-  (define (loop pattern scalar-values)
-    (if (pair? pattern)
-	(if (and (pair? (cdr pattern))
-		 (char=? (cadr pattern) #\-)
-		 (pair? (cddr pattern)))
-	    (loop (cdddr pattern)
-		  (cons (cons (char->integer (car pattern))
-			      (fix:+ (char->integer (caddr pattern)) 1))
-			scalar-values))
-	    (loop (cdr pattern)
-		  (cons (char->integer (car pattern))
-			scalar-values)))
-	scalar-values))
-
-  (let ((pattern (string->list pattern)))
-    (if (and (pair? pattern)
-	     (char=? (car pattern) #\^))
-	(values (loop (cdr pattern) '()) #t)
-	(values (loop pattern '()) #f))))
-
-;;;; Translation Tables
-
-(define re-translation-table
-  (let ((normal-table (make-string 256)))
-    (let loop ((n 0))
-      (if (< n 256)
-	  (begin
-	    (vector-8b-set! normal-table n n)
-	    (loop (1+ n)))))
-    (let ((upcase-table (string-copy normal-table)))
-      (let loop ((n #x61))
-	(if (< n #x7B)
-	    (begin
-	      (vector-8b-set! upcase-table n (- n #x20))
-	      (loop (1+ n)))))
-      (lambda (case-fold?)
-	(if case-fold? upcase-table normal-table)))))
+  (let ((builder (string-builder)))
+    (string-for-each (lambda (char)
+		       (if (char-in-set? char char-set:re-special)
+			   (builder #\\))
+		       (builder char))
+		     string)
+    (builder)))
 
 ;;;; Pattern Compiler
 
@@ -315,15 +251,15 @@ USA.
   re-number-of-registers)
 
 (define condition-type:re-compile-pattern
-  (make-condition-type 'RE-COMPILE-PATTERN condition-type:error
-      '(MESSAGE)
+  (make-condition-type 're-compile-pattern condition-type:error
+      '(compilation-context message)
     (lambda (condition port)
       (write-string "Error compiling regular expression: " port)
-      (write-string (access-condition condition 'MESSAGE) port))))
+      (write-string (access-condition condition 'message) port))))
 
 (define compilation-error
   (condition-signaller condition-type:re-compile-pattern
-		       '(MESSAGE)
+		       '(compilation-context message)
 		       standard-error-handler))
 
 (define-structure (compiled-regexp
@@ -332,115 +268,137 @@ USA.
   (byte-stream #f read-only #t)
   (translation-table #f read-only #t))
 
-(define (make-compiled-regexp byte-stream case-fold?)
-  (%make-compiled-regexp byte-stream (re-translation-table case-fold?)))
+;; Needed so that we stay within ISO 8859-1.
+(define (char-sort-of-upcase char)
+  (let ((c (char-upcase char)))
+    (if (fix:>= (char->integer c) #x100)
+	char
+	c)))
 
-(define input-list)
-(define current-byte)
-(define translation-table)
-(define output-head)
-(define output-tail)
-(define output-length)
-(define stack)
+(define re-translation-table
+  (let ((normal-table (make-bytevector #x100))
+	(upcase-table (make-bytevector #x100)))
+    (do ((i 0 (fix:+ i 1)))
+	((not (fix:< i #x100)))
+      (bytevector-u8-set! normal-table i i)
+      (bytevector-u8-set! upcase-table i
+			  (char->integer
+			   (char-sort-of-upcase (integer->char i)))))
+    (lambda (case-fold?)
+      (if case-fold? upcase-table normal-table))))
+
+(define (make-compiled-regexp bytes case-fold?)
+  (%make-compiled-regexp bytes (re-translation-table case-fold?)))
 
-(define fixup-jump)
-(define register-number)
-(define begin-alternative)
-(define pending-exact)
-(define last-start)
+(define-structure (rgxcmpctx (conc-name #f))
+  input-list
+  current-byte
+  translation-table
+  output-head
+  output-tail
+  output-length
+  stack
+
+  fixup-jump
+  register-number
+  begin-alternative
+  pending-exact
+  last-start)
 
 (define re-compile-pattern
   (cached-procedure 16
     (lambda (pattern case-fold?)
-      (let ((output (list 'OUTPUT)))
-	(fluid-let ((input-list (map char->ascii (string->list pattern)))
-		    (current-byte)
-		    (translation-table (re-translation-table case-fold?))
-		    (output-head output)
-		    (output-tail output)
-		    (output-length 0)
-		    (stack '())
-		    (fixup-jump #f)
-		    (register-number 1)
-		    (begin-alternative)
-		    (pending-exact #f)
-		    (last-start #f))
-	  (set! begin-alternative (output-pointer))
-	  (let loop ()
-	    (if (input-end?)
-		(begin
-		  (if fixup-jump
-		      (store-jump! fixup-jump re-code:jump (output-position)))
-		  (if (not (stack-empty?))
-		      (compilation-error "Unmatched \\("))
-		  (make-compiled-regexp
-		   (list->string (map ascii->char (cdr output-head)))
-		   case-fold?))
-		(begin
-		  (compile-pattern-char)
-		  (loop)))))))))
+      (guarantee 8-bit-string? pattern 're-compile-pattern)
+      (let* ((output (list 'output))
+	     (ctx (make-rgxcmpctx (map char->integer (string->list pattern))
+				  #f	;current-byte
+				  (re-translation-table case-fold?)
+				  output ;output-head
+				  output ;output-tail
+				  0	 ;output-length
+				  '()	 ;stack
+				  #f	 ;fixup-jump
+				  1	 ;register-number
+				  #f	 ;begin-alternative
+				  #f	 ;pending-exact
+				  #f	 ;last-start
+				  )))
+	(set-begin-alternative! ctx (output-pointer ctx))
+	(let loop ()
+	  (if (input-end? ctx)
+	      (begin
+		(if (fixup-jump ctx)
+		    (store-jump! (fixup-jump ctx)
+				 re-code:jump (output-position ctx)))
+		(if (not (stack-empty? ctx))
+		    (compilation-error ctx "Unmatched \\("))
+		(make-compiled-regexp
+		 (list->bytevector (cdr (output-head ctx)))
+		 case-fold?))
+	      (begin
+		(compile-pattern-char ctx)
+		(loop))))))))
 
 ;;;; Input
 
-(define-integrable (input-end?)
-  (null? input-list))
+(define-integrable (input-end? ctx)
+  (null? (input-list ctx)))
 
-(define-integrable (input-end+1?)
-  (null? (cdr input-list)))
+(define-integrable (input-end+1? ctx)
+  (null? (cdr (input-list ctx))))
 
-(define-integrable (input-peek)
-  (vector-8b-ref translation-table (car input-list)))
+(define-integrable (input-peek ctx)
+  (bytevector-u8-ref (translation-table ctx) (car (input-list ctx))))
 
-(define-integrable (input-peek+1)
-  (vector-8b-ref translation-table (cadr input-list)))
+(define-integrable (input-peek+1 ctx)
+  (bytevector-u8-ref (translation-table ctx) (cadr (input-list ctx))))
 
-(define-integrable (input-discard!)
-  (set! input-list (cdr input-list))
-  unspecific)
+(define-integrable (input-discard! ctx)
+  (set-input-list! ctx (cdr (input-list ctx))))
 
-(define-integrable (input!)
-  (set! current-byte (input-peek))
-  (input-discard!))
+(define-integrable (input! ctx)
+  (set-current-byte! ctx (input-peek ctx))
+  (input-discard! ctx))
 
-(define-integrable (input-raw!)
-  (set! current-byte (car input-list))
-  (input-discard!))
+(define-integrable (input-raw! ctx)
+  (set-current-byte! ctx (car (input-list ctx)))
+  (input-discard! ctx))
 
-(define-integrable (input-peek-1)
-  current-byte)
+(define-integrable (input-peek-1 ctx)
+  (current-byte ctx))
 
-(define-integrable (input-read!)
-  (if (input-end?)
-      (premature-end)
-      (let ((char (input-peek)))
-	(input-discard!)
+(define-integrable (input-read! ctx)
+  (if (input-end? ctx)
+      (premature-end ctx)
+      (let ((char (input-peek ctx)))
+	(input-discard! ctx)
 	char)))
 
 (define (input-match? byte . chars)
-  (memv (ascii->char byte) chars))
+  (memv (integer->char byte) chars))
 
 ;;;; Output
 
-(define-integrable (output! byte)
+(define-integrable (output! ctx byte)
   (let ((tail (list byte)))
-    (set-cdr! output-tail tail)
-    (set! output-tail tail))
-  (set! output-length (fix:1+ output-length))
+    (set-cdr! (output-tail ctx) tail)
+    (set-output-tail! ctx tail))
+  (set-output-length! ctx (fix:1+ (output-length ctx)))
   unspecific)
 
-(define-integrable (output-re-code! code)
-  (set! pending-exact #f)
-  (output! code))
+(define-integrable (output-re-code! ctx code)
+  (set-pending-exact! ctx #f)
+  (output! ctx code))
 
-(define-integrable (output-start! code)
-  (set! last-start (output-pointer))
-  (output-re-code! code))
+(define-integrable (output-start! ctx code)
+  (set-last-start! ctx (output-pointer ctx))
+  (output-re-code! ctx code))
 
-(define-integrable (output-position)
-  output-length)
+(define-integrable (output-position ctx)
+  (output-length ctx))
 
-(define-integrable (output-pointer)
-  (cons output-length output-tail))
+(define-integrable (output-pointer ctx)
+  (cons (output-length ctx) (output-tail ctx)))
 
 (define-integrable (pointer-position pointer)
   (car pointer))
@@ -461,12 +419,12 @@ USA.
 	(set-car! (cddr p) high)
 	unspecific))))
 
-(define (insert-jump! from opcode to)
+(define (insert-jump! ctx from opcode to)
   (compute-jump (pointer-position from) to
     (lambda (low high)
       (set-cdr! (cdr from)
 		(cons* opcode low high (cddr from)))
-      (set! output-length (fix:+ output-length 3))
+      (set-output-length! ctx (fix:+ (output-length ctx) 3))
       unspecific)))
 
 (define (compute-jump from to receiver)
@@ -479,106 +437,106 @@ USA.
 
 ;;;; Stack
 
-(define-integrable (stack-empty?)
-  (null? stack))
+(define-integrable (stack-empty? ctx)
+  (null? (stack ctx)))
 
-(define-integrable (stack-full?)
-  (not (fix:< (stack-length) stack-maximum-length)))
+(define-integrable (stack-full? ctx)
+  (not (fix:< (stack-length ctx) stack-maximum-length)))
 
-(define-integrable (stack-length)
-  (length stack))
+(define-integrable (stack-length ctx)
+  (length (stack ctx)))
 
-(define (stack-push! . args)
-  (set! stack (cons args stack))
+(define (stack-push! ctx . args)
+  (set-stack! ctx (cons args (stack ctx)))
   unspecific)
 
-(define (stack-pop! receiver)
-  (let ((frame (car stack)))
-    (set! stack (cdr stack))
+(define (stack-pop! ctx receiver)
+  (let ((frame (car (stack ctx))))
+    (set-stack! ctx (cdr (stack ctx)))
     (apply receiver frame)))
 
-(define-integrable (stack-ref-register-number i)
-  (caddr (list-ref stack i)))
+(define-integrable (stack-ref-register-number ctx i)
+  (caddr (list-ref (stack ctx) i)))
 
 (define (ascii->syntax-entry ascii)
-  ((ucode-primitive string->syntax-entry) (char->string (ascii->char ascii))))
+  ((ucode-primitive string->syntax-entry) (char->string (integer->char ascii))))
 
 ;;;; Pattern Dispatch
 
-(define-integrable (compile-pattern-char)
-  (input!)
-  ((vector-ref pattern-chars (input-peek-1))))
+(define-integrable (compile-pattern-char ctx)
+  (input! ctx)
+  ((vector-ref pattern-chars (input-peek-1 ctx)) ctx))
 
-(define (premature-end)
-  (compilation-error "Premature end of regular expression"))
+(define (premature-end ctx)
+  (compilation-error ctx "Premature end of regular expression"))
 
-(define (normal-char)
-  (if (if (input-end?)
-	  (not pending-exact)
-	  (input-match? (input-peek) #\* #\+ #\? #\^))
+(define (normal-char ctx)
+  (if (if (input-end? ctx)
+	  (not (pending-exact ctx))
+	  (input-match? (input-peek ctx) #\* #\+ #\? #\^))
       (begin
-	(output-start! re-code:exact-1)
-	(output! (input-peek-1)))
+	(output-start! ctx re-code:exact-1)
+	(output! ctx (input-peek-1 ctx)))
       (begin
-	(if (or (not pending-exact)
-		(fix:= (pointer-ref pending-exact) #x7F))
+	(if (or (not (pending-exact ctx))
+		(fix:= (pointer-ref (pending-exact ctx)) #x7F))
 	    (begin
-	      (set! last-start (output-pointer))
-	      (output! re-code:exact-n)
-	      (set! pending-exact (output-pointer))
-	      (output! 0)))
-	(output! (input-peek-1))
-	(pointer-operate! pending-exact 1+))))
+	      (set-last-start! ctx (output-pointer ctx))
+	      (output! ctx re-code:exact-n)
+	      (set-pending-exact! ctx (output-pointer ctx))
+	      (output! ctx 0)))
+	(output! ctx (input-peek-1 ctx))
+	(pointer-operate! (pending-exact ctx) 1+))))
 
 (define (define-pattern-char char procedure)
-  (vector-set! pattern-chars (char->ascii char) procedure)
+  (vector-set! pattern-chars (char->integer char) procedure)
   unspecific)
 
 (define pattern-chars
-  (make-vector 256 normal-char))
+  (make-vector #x100 normal-char))
 
 (define-pattern-char #\\
-  (lambda ()
-    (if (input-end?)
-	(premature-end)
+  (lambda (ctx)
+    (if (input-end? ctx)
+	(premature-end ctx)
 	(begin
-	  (input-raw!)
-	  ((vector-ref backslash-chars (input-peek-1)))))))
+	  (input-raw! ctx)
+	  ((vector-ref backslash-chars (input-peek-1 ctx)) ctx)))))
 
 (define (define-backslash-char char procedure)
-  (vector-set! backslash-chars (char->ascii char) procedure)
+  (vector-set! backslash-chars (char->integer char) procedure)
   unspecific)
 
 (define backslash-chars
-  (make-vector 256 normal-char))
+  (make-vector #x100 normal-char))
 
 (define-pattern-char #\$
   ;; $ means succeed if at end of line, but only in special contexts.
   ;; If randomly in the middle of a pattern, it is a normal character.
-  (lambda ()
-    (if (or (input-end?)
-	    (input-end+1?)
-	    (and (input-match? (input-peek) #\\)
-		 (input-match? (input-peek+1) #\) #\|)))
-	(output-re-code! re-code:line-end)
-	(normal-char))))
+  (lambda (ctx)
+    (if (or (input-end? ctx)
+	    (input-end+1? ctx)
+	    (and (input-match? (input-peek ctx) #\\)
+		 (input-match? (input-peek+1 ctx) #\) #\|)))
+	(output-re-code! ctx re-code:line-end)
+	(normal-char ctx))))
 
 (define-pattern-char #\^
   ;; ^ means succeed if at beginning of line, but only if no preceding
   ;; pattern.
-  (lambda ()
-    (if (not last-start)
-	(output-re-code! re-code:line-start)
-	(normal-char))))
+  (lambda (ctx)
+    (if (not (last-start ctx))
+	(output-re-code! ctx re-code:line-start)
+	(normal-char ctx))))
 
 (define-pattern-char #\.
-  (lambda ()
-    (output-start! re-code:any-char)))
+  (lambda (ctx)
+    (output-start! ctx re-code:any-char)))
 
 (define (define-trivial-backslash-char char code)
   (define-backslash-char char
-    (lambda ()
-      (output-re-code! code))))
+    (lambda (ctx)
+      (output-re-code! ctx code))))
 
 (define-trivial-backslash-char #\< re-code:word-start)
 (define-trivial-backslash-char #\> re-code:word-end)
@@ -589,68 +547,70 @@ USA.
 
 (define (define-starter-backslash-char char code)
   (define-backslash-char char
-    (lambda ()
-      (output-start! code))))
+    (lambda (ctx)
+      (output-start! ctx code))))
 
 (define-starter-backslash-char #\w re-code:word-char)
 (define-starter-backslash-char #\W re-code:not-word-char)
 
 (define-backslash-char #\s
-  (lambda ()
-    (output-start! re-code:syntax-spec)
-    (output! (ascii->syntax-entry (input-read!)))))
+  (lambda (ctx)
+    (output-start! ctx re-code:syntax-spec)
+    (output! ctx (ascii->syntax-entry (input-read! ctx)))))
 
 (define-backslash-char #\S
-  (lambda ()
-    (output-start! re-code:not-syntax-spec)
-    (output! (ascii->syntax-entry (input-read!)))))
+  (lambda (ctx)
+    (output-start! ctx re-code:not-syntax-spec)
+    (output! ctx (ascii->syntax-entry (input-read! ctx)))))
 
 ;;;; Repeaters
 
 (define (define-repeater-char char zero? many?)
   (define-pattern-char char
     ;; If there is no previous pattern, char not special.
-    (lambda ()
-      (if (not last-start)
-	  (normal-char)
-	  (repeater-loop zero? many?)))))
+    (lambda (ctx)
+      (if (not (last-start ctx))
+	  (normal-char ctx)
+	  (repeater-loop ctx zero? many?)))))
 
-(define (repeater-loop zero? many?)
+(define (repeater-loop ctx zero? many?)
   ;; If there is a sequence of repetition chars, collapse it down to
   ;; equivalent to just one.
-  (cond ((input-end?)
-	 (repeater-finish zero? many?))
-	((input-match? (input-peek) #\*)
-	 (input-discard!)
-	 (repeater-loop zero? many?))
-	((input-match? (input-peek) #\+)
-	 (input-discard!)
-	 (repeater-loop #f many?))
-	((input-match? (input-peek) #\?)
-	 (input-discard!)
-	 (repeater-loop zero? #f))
+  (cond ((input-end? ctx)
+	 (repeater-finish ctx zero? many?))
+	((input-match? (input-peek ctx) #\*)
+	 (input-discard! ctx)
+	 (repeater-loop ctx zero? many?))
+	((input-match? (input-peek ctx) #\+)
+	 (input-discard! ctx)
+	 (repeater-loop ctx #f many?))
+	((input-match? (input-peek ctx) #\?)
+	 (input-discard! ctx)
+	 (repeater-loop ctx zero? #f))
 	(else
-	 (repeater-finish zero? many?))))
+	 (repeater-finish ctx zero? many?))))
 
-(define (repeater-finish zero? many?)
+(define (repeater-finish ctx zero? many?)
   (if many?
       ;; More than one repetition allowed: put in a backward jump at
       ;; the end.
-      (compute-jump (output-position)
-		    (fix:- (pointer-position last-start) 3)
+      (compute-jump (output-position ctx)
+		    (fix:- (pointer-position (last-start ctx)) 3)
 	(lambda (low high)
-	  (output-re-code! re-code:maybe-finalize-jump)
-	  (output! low)
-	  (output! high))))
-  (insert-jump! last-start
+	  (output-re-code! ctx re-code:maybe-finalize-jump)
+	  (output! ctx low)
+	  (output! ctx high))))
+  (insert-jump! ctx
+		(last-start ctx)
 		re-code:on-failure-jump
-		(fix:+ (output-position) 3))
+		(fix:+ (output-position ctx) 3))
   (if (not zero?)
       ;; At least one repetition required: insert before the loop a
       ;; skip over the initial on-failure-jump instruction.
-      (insert-jump! last-start
+      (insert-jump! ctx
+		    (last-start ctx)
 		    re-code:dummy-failure-jump
-		    (fix:+ (pointer-position last-start) 6))))
+		    (fix:+ (pointer-position (last-start ctx)) 6))))
 
 (define-repeater-char #\* #t #t)
 (define-repeater-char #\+ #f #t)
@@ -659,187 +619,209 @@ USA.
 ;;;; Character Sets
 
 (define-pattern-char #\[
-  (lambda ()
-    (if (input-end?)
-	(premature-end))
+  (lambda (ctx)
+    (if (input-end? ctx)
+	(premature-end ctx))
     (let ((invert?
-	   (and (input-match? (input-peek) #\^)
-		(begin (input-discard!) #t)))
-	  (charset (make-string 32 (ascii->char 0))))
-      (if (input-end?)
-	  (premature-end))
+	   (and (input-match? (input-peek ctx) #\^)
+		(begin (input-discard! ctx) #t)))
+	  (bitmap (make-bytevector #x20 0)))
+      (if (input-end? ctx)
+	  (premature-end ctx))
       (let loop
 	  ((chars
-	    (if (input-match? (input-peek) #\])
+	    (if (input-match? (input-peek ctx) #\])
 		(begin
-		  (input-discard!)
+		  (input-discard! ctx)
 		  (list (char->integer #\])))
 		'())))
-	(if (input-end?)
-	    (premature-end))
-	(let ((char (input-read!)))
+	(if (input-end? ctx)
+	    (premature-end ctx))
+	(let ((char (input-read! ctx)))
 	  (if (input-match? char #\])
-	      (begin
-		(for-each
-		 (lambda (char)
-		   ((ucode-primitive re-char-set-adjoin!) charset
-							  (char->ascii char)))
-		 (char-set-members
-		  (re-compile-char-set
-		   (list->string (map ascii->char (reverse! chars)))
-		   #f))))
+	      (let ((charset
+		     (re-compile-char-set
+		      (list->string (map integer->char (reverse! chars)))
+		      #f)))
+		(do ((i 0 (fix:+ i 1)))
+		    ((not (fix:< i #x100)))
+		  (if (code-point-in-char-set? i charset)
+		      ((ucode-primitive re-char-set-adjoin!) bitmap i))))
 	      (loop (cons char chars)))))
-      (output-start! (if invert? re-code:not-char-set re-code:char-set))
-      ;; Discard any bitmap bytes that are all 0 at the end of
-      ;; the map.  Decrement the map-length byte too.
-      (let loop ((n 31))
-	(cond ((not (fix:= 0 (vector-8b-ref charset n)))
-	       (output! (fix:+ n 1))
-	       (let loop ((i 0))
-		 (output! (vector-8b-ref charset i))
-		 (if (fix:< i n)
-		     (loop (fix:+ i 1)))))
-	      ((fix:= 0 n)
-	       (output! 0))
-	      (else
-	       (loop (fix:- n 1))))))))
+      (output-start! ctx (if invert? re-code:not-char-set re-code:char-set))
+      (let ((end
+	     ;; Discard any bitmap bytes that are all 0 at the end of the map.
+	     (let loop ((i #x20))
+	       (if (and (fix:> i 0)
+			(fix:= 0 (bytevector-u8-ref bitmap (fix:- i 1))))
+		   (loop (fix:- i 1))
+		   i))))
+	(output! ctx end)
+	(do ((i 0 (fix:+ i 1)))
+	    ((not (fix:< i end)))
+	  (output! ctx (bytevector-u8-ref bitmap i)))))))
 
 ;;;; Alternative Groups
 
 (define-backslash-char #\(
-  (lambda ()
-    (if (stack-full?)
-	(compilation-error "Nesting too deep"))
-    (if (fix:< register-number re-number-of-registers)
+  (lambda (ctx)
+    (if (stack-full? ctx)
+	(compilation-error ctx "Nesting too deep"))
+    (if (fix:< (register-number ctx) re-number-of-registers)
 	(begin
-	  (output-re-code! re-code:start-memory)
-	  (output! register-number)))
-    (stack-push! (output-pointer)
-		 fixup-jump
-		 register-number
-		 begin-alternative)
-    (set! last-start #f)
-    (set! fixup-jump #f)
-    (set! register-number (fix:1+ register-number))
-    (set! begin-alternative (output-pointer))
+	  (output-re-code! ctx re-code:start-memory)
+	  (output! ctx (register-number ctx))))
+    (stack-push! ctx
+		 (output-pointer ctx)
+		 (fixup-jump ctx)
+		 (register-number ctx)
+		 (begin-alternative ctx))
+    (set-last-start! ctx #f)
+    (set-fixup-jump! ctx #f)
+    (set-register-number! ctx (fix:1+ (register-number ctx)))
+    (set-begin-alternative! ctx (output-pointer ctx))
     unspecific))
 
 (define-backslash-char #\)
-  (lambda ()
-    (if (stack-empty?)
-	(compilation-error "Unmatched close paren"))
-    (if fixup-jump
-	(store-jump! fixup-jump re-code:jump (output-position)))
+  (lambda (ctx)
+    (if (stack-empty? ctx)
+	(compilation-error ctx "Unmatched close paren"))
+    (if (fixup-jump ctx)
+	(store-jump! (fixup-jump ctx) re-code:jump (output-position ctx)))
     (stack-pop!
+     ctx
      (lambda (op fj rn bg)
-       (set! last-start op)
-       (set! fixup-jump fj)
-       (set! begin-alternative bg)
+       (set-last-start! ctx op)
+       (set-fixup-jump! ctx fj)
+       (set-begin-alternative! ctx bg)
        (if (fix:< rn re-number-of-registers)
 	   (begin
-	     (output-re-code! re-code:stop-memory)
-	     (output! rn)))))))
+	     (output-re-code! ctx re-code:stop-memory)
+	     (output! ctx rn)))))))
 
 (define-backslash-char #\|
-  (lambda ()
-    (insert-jump! begin-alternative
+  (lambda (ctx)
+    (insert-jump! ctx
+		  (begin-alternative ctx)
 		  re-code:on-failure-jump
-		  (fix:+ (output-position) 6))
-    (if fixup-jump
-	(store-jump! fixup-jump re-code:jump (output-position)))
-    (set! fixup-jump (output-pointer))
-    (output! re-code:unused)
-    (output! re-code:unused)
-    (output! re-code:unused)
-    (set! pending-exact #f)
-    (set! last-start #f)
-    (set! begin-alternative (output-pointer))
+		  (fix:+ (output-position ctx) 6))
+    (if (fixup-jump ctx)
+	(store-jump! (fixup-jump ctx) re-code:jump (output-position ctx)))
+    (set-fixup-jump! ctx (output-pointer ctx))
+    (output! ctx re-code:unused)
+    (output! ctx re-code:unused)
+    (output! ctx re-code:unused)
+    (set-pending-exact! ctx #f)
+    (set-last-start! ctx #f)
+    (set-begin-alternative! ctx (output-pointer ctx))
     unspecific))
 
 (define (define-digit-char digit)
   (let ((char (digit->char digit)))
     (define-backslash-char char
-      (lambda ()
-	(if (fix:< digit register-number)
-	    (let ((n (stack-length)))
+      (lambda (ctx)
+	(if (fix:< digit (register-number ctx))
+	    (let ((n (stack-length ctx)))
 	      (let search-stack ((i 0))
 		(cond ((not (fix:< i n))
-		       (output-start! re-code:duplicate)
-		       (output! digit))
-		      ((fix:= (stack-ref-register-number i) digit)
-		       (normal-char))
+		       (output-start! ctx re-code:duplicate)
+		       (output! ctx digit))
+		      ((fix:= (stack-ref-register-number ctx i) digit)
+		       (normal-char ctx))
 		      (else
 		       (search-stack (fix:1+ i))))))
-	    (normal-char))))))
+	    (normal-char ctx))))))
 
 (for-each define-digit-char '(1 2 3 4 5 6 7 8 9))
 
 ;;;; Compiled Pattern Disassembler
 
-(define (re-disassemble-pattern compiled-pattern)
-  (let* ((bytes (compiled-regexp/byte-stream compiled-pattern))
-	 (n (string-length bytes)))
-    (let loop ((i 0))
-      (newline)
-      (write i)
-      (write-string " (")
-      (if (< i n)
-	  (case (let ((re-code-name
-		       (vector-ref re-codes (vector-8b-ref bytes i))))
-		  (write re-code-name)
-		  re-code-name)
-	    ((UNUSED LINE-START LINE-END ANY-CHAR BUFFER-START BUFFER-END
-	      WORD-CHAR NOT-WORD-CHAR WORD-START WORD-END WORD-BOUND
-	      NOT-WORD-BOUND)
-	     (write-string ")")
-	     (loop (1+ i)))
-	    ((EXACT-1)
-	     (write-string " ")
-	     (let ((end (+ i 2)))
-	       (write (substring bytes (1+ i) end))
-	       (write-string ")")
-	       (loop end)))
-	    ((EXACT-N)
-	     (write-string " ")
-	     (let ((start (+ i 2))
-		   (n (vector-8b-ref bytes (1+ i))))
-	       (let ((end (+ start n)))
-		 (write (substring bytes start end))
-		 (write-string ")")
-		 (loop end))))
-	    ((JUMP ON-FAILURE-JUMP MAYBE-FINALIZE-JUMP DUMMY-FAILURE-JUMP)
-	     (write-string " ")
-	     (let ((end (+ i 3))
-		   (offset
-		    (+ (* 256 (vector-8b-ref bytes (+ i 2)))
-		       (vector-8b-ref bytes (1+ i)))))
-	       (write (+ end (if (< offset #x8000) offset (- offset #x10000))))
-	       (write-string ")")
-	       (loop end)))
-	    ((CHAR-SET NOT-CHAR-SET)
-	     (let ((end (+ (+ i 2) (vector-8b-ref bytes (1+ i)))))
-	       (let spit ((i (+ i 2)))
-		 (if (< i end)
-		     (begin
-		       (write-string " ")
-		       (let ((n (vector-8b-ref bytes i)))
-			 (if (< n 16) (write-char #\0))
-			 (write-string (number->string n 16)))
-		       (spit (1+ i)))
-		     (begin
-		       (write-string ")")
-		       (loop i))))))
-	    ((START-MEMORY STOP-MEMORY DUPLICATE)
-	     (write-string " ")
-	     (write (vector-8b-ref bytes (1+ i)))
-	     (write-string ")")
-	     (loop (+ i 2)))
-	    ((SYNTAX-SPEC NOT-SYNTAX-SPEC)
-	     (write-string " ")
-	     (write (string-ref " .w_()'\"$\\/<>"
-				(vector-8b-ref bytes (1+ i))))
-	     (write-string ")")
-	     (loop (+ i 2))))
-	  (begin
-	    (write 'end)
-	    (write-string ")"))))))
+(define (re-disassemble-pattern compiled-pattern #!optional output)
+  (let ((output (if (default-object? output) (current-output-port) output))
+	(input
+	 (open-input-bytevector
+	  (compiled-regexp/byte-stream compiled-pattern))))
+
+    (define (get-byte)
+      (let ((byte (read-u8 input)))
+	(if (eof-object? byte)
+	    (error "Premature pattern end."))
+	byte))
+
+    (define (write-hex-byte byte)
+      (write-char (digit->char (fix:lsh byte -4) 16) output)
+      (write-char (digit->char (fix:and byte #x0F) 16) output))
+
+    (define (loop address)
+      (write address output)
+      (write-char #\space output)
+      (let ((byte (read-u8 input)))
+	(if (eof-object? byte)
+	    (begin
+	      (write-string "(end)" output)
+	      (newline output))
+	    (let ((address (fix:+ address 1))
+		  (name (re-code-name byte)))
+	      (write-char #\( output)
+	      (write (or name 'unknown) output)
+	      (let ((consumed
+		     (if name
+			 (known-code address name)
+			 (begin
+			   (write-string " #x" output)
+			   (write-hex-byte byte)
+			   0))))
+		(write-char #\) output)
+		(newline output)
+		(loop (fix:+ address consumed)))))))
+
+    (define (known-code address name)
+      (case name
+	((unused line-start line-end any-char buffer-start buffer-end
+		 word-char not-word-char word-start word-end word-bound
+		 not-word-bound)
+	 0)
+	((exact-1)
+	 (write-char #\space output)
+	 (write (string (integer->char (get-byte))) output)
+	 1)
+	((exact-n)
+	 (write-char #\space output)
+	 (let ((n (get-byte))
+	       (sbuilder (string-builder)))
+	   (do ((i 0 (fix:+ i 1)))
+	       ((not (fix:< i 1)))
+	     (sbuilder (integer->char (get-byte))))
+	   (write (sbuilder) output)
+	   (fix:+ 1 n)))
+	((jump on-failure-jump maybe-finalize-jump dummy-failure-jump)
+	 (write-char #\space output)
+	 (write (fix:+ (fix:+ address 2)
+		       (let* ((b1 (get-byte))
+			      (b2 (get-byte))
+			      (offset (fix:or b1 (fix:lsh b2 8))))
+			 (if (fix:< offset #x8000)
+			     offset
+			     (fix:- offset #x10000))))
+		output)
+	 2)
+	((char-set not-char-set)
+	 (let ((n (get-byte)))
+	   (do ((i 0 (fix:+ i 1)))
+	       ((not (fix:< i n)))
+	     (write-char #\space output)
+	     (write-hex-byte (get-byte)))
+	   (fix:+ 1 n)))
+	((start-memory stop-memory duplicate)
+	 (write-char #\space output)
+	 (write (get-byte) output)
+	 1)
+	((syntax-spec not-syntax-spec)
+	 (write-char #\space output)
+	 (write (string-ref " .w_()'\"$\\/<>" (get-byte))
+		output)
+	 1)
+	(else
+	 (error "Unknown code name:" name))))
+
+    (loop 0)))

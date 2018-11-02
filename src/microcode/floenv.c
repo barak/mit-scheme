@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -66,8 +66,8 @@ cache_float_environment (void)
   if (0 != (fegetenv (&scheme_fenv)))
     error_external_return ();
   scheme_fenv_p = true;
-  /* Work around glibc lossage: fesetenv has the side effect of masking
-     all exception traps on amd64.  */
+  /* Work around pre-2014-04 glibc lossage: fegetenv has the side
+     effect of masking all exception traps on amd64.  */
 #  ifdef HAVE_FESETENV
   if (0 != (fesetenv (&scheme_fenv)))
     error_external_return ();
@@ -538,5 +538,25 @@ DEFINE_PRIMITIVE ("TRAP-FLOAT-EXCEPTIONS", Prim_trap_float_exceptions, 1, 1, 0)
 #else
   error_unimplemented_primitive ();
   PRIMITIVE_RETURN (UNSPECIFIC);
+#endif
+}
+
+DEFINE_PRIMITIVE ("HAVE-FLOAT-ENVIRONMENT?", Prim_have_float_environment, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+#ifdef HAVE_FENV_H
+  PRIMITIVE_RETURN (SHARP_T);
+#else
+  PRIMITIVE_RETURN (SHARP_F);
+#endif
+}
+
+DEFINE_PRIMITIVE ("HAVE-FLOAT-TRAP-ENABLE/DISABLE?", Prim_have_float_trap_enable_disable, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+#if ((defined (HAVE_FEENABLEEXCEPT)) && (defined (HAVE_FEDISABLEEXCEPT)))
+  PRIMITIVE_RETURN (SHARP_T);
+#else
+  PRIMITIVE_RETURN (SHARP_F);
 #endif
 }

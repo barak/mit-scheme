@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,7 +43,7 @@ USA.
 	(check-element root 'xdoc)))))
 
 (define (check-element elt local)
-  (let ((v (hash-table/get element-checkers local #f)))
+  (let ((v (hash-table-ref/default element-checkers local #f)))
     (if (not v)
 	(error "Missing element definition:" local))
     (let ((valid-attrs? (vector-ref v 0))
@@ -92,7 +92,7 @@ USA.
     (if (and (memq type '(element mixed))
 	     (not valid-local?))
 	(error "Must supply a name predicate with this content type:" type))
-    (hash-table/put! element-checkers
+    (hash-table-set! element-checkers
 		     local
 		     (vector valid-attrs? type valid-local? procedure))))
 
@@ -369,14 +369,14 @@ USA.
 (define vx:idrefs
   (vx:tester "ID references"
     (lambda (string)
-      (for-all? (burst-string string char-set:whitespace #t)
-	string-is-xml-name?))))
+      (every string-is-xml-name?
+	     (burst-string string char-set:whitespace #t)))))
 
 (define vx:nmtokens
   (vx:tester "XML tokens"
     (lambda (string)
-      (for-all? (burst-string string char-set:whitespace #t)
-	string-is-xml-nmtoken?))))
+      (every string-is-xml-nmtoken?
+	     (burst-string string char-set:whitespace #t)))))
 
 (define vx:boolean
   (vx:tester "true or false"

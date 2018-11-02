@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -46,7 +46,7 @@ USA.
 #  include "ntio.h"
 #endif
 
-#if defined(__WIN32__) || defined(__OS2__)
+#if defined(__WIN32__)
 #  define DOS_LIKE_FILENAMES
 #endif
 
@@ -91,6 +91,7 @@ static const char * option_raw_band;
 static const char * option_raw_heap;
 static const char * option_raw_constant;
 static const char * option_raw_stack;
+static const char * option_raw_prepend;
 
 /* Command-line arguments */
 int option_saved_argc;
@@ -119,6 +120,26 @@ unsigned long option_heap_size;
 unsigned long option_constant_size;
 unsigned long option_stack_size;
 
+#ifndef LIBRARY_PATH_VARIABLE
+#  define LIBRARY_PATH_VARIABLE "MITSCHEME_LIBRARY_PATH"
+#endif
+
+#ifndef DEFAULT_LIBRARY_PATH
+#  ifdef DOS_LIKE_FILENAMES
+#    define DEFAULT_LIBRARY_PATH "c:\\local\\mit-scheme"
+#  else
+#    define DEFAULT_LIBRARY_PATH "/usr/local/lib/mit-scheme"
+#  endif
+#endif
+
+#ifndef BAND_VARIABLE
+#  define BAND_VARIABLE "MITSCHEME_BAND"
+#endif
+
+#ifndef DEFAULT_STD_BAND
+#  define DEFAULT_STD_BAND "all.com"
+#endif
+
 void
 print_help (void)
 {
@@ -133,14 +154,14 @@ for the band.\n\
   list of directories that is searched to find various library files,\n\
   such as bands.  If this option is not given, the value of the\n\
   environment variable MITSCHEME_LIBRARY_PATH is used; if that isn't\n\
-  defined, \"/usr/local/lib/mit-scheme\" is used.\n\
+  defined, \"%s\" is used.\n\
 \n\
 --band FILENAME\n\
   Specifies the initial band to be loaded.  Searches for FILENAME in\n\
   the working directory and the library directories, returning the\n\
   full pathname of the first readable file of that name.  If this\n\
   option isn't given, the filename is the value of the environment\n\
-  variable MITSCHEME_BAND, or if that isn't defined, \"runtime.com\"; in\n\
+  variable MITSCHEME_BAND, or if that isn't defined, \"%s\"; in\n\
   these cases the library directories are searched, but not the\n\
   working directory.\n\
 \n\
@@ -201,37 +222,21 @@ for the band.\n\
 "
 #endif /* __APPLE__ */
 "\n\
+--prepend-library DIRNAME\n\
+  Adds DIRNAME to the front of the library search path.  This option\n\
+  takes one value and can be specified once.\n\
+\n\
 Please report bugs to %s.\n\
 \n\
 Additional options may be supported by the band (and described below).\n\
-\n", PACKAGE_BUGREPORT);
+\n", DEFAULT_LIBRARY_PATH, DEFAULT_STD_BAND, PACKAGE_BUGREPORT);
 }
 
-#ifndef LIBRARY_PATH_VARIABLE
-#  define LIBRARY_PATH_VARIABLE "MITSCHEME_LIBRARY_PATH"
-#endif
-
-#ifndef DEFAULT_LIBRARY_PATH
-#  ifdef DOS_LIKE_FILENAMES
-#    define DEFAULT_LIBRARY_PATH "c:\\local\\mit-scheme"
-#  else
-#    define DEFAULT_LIBRARY_PATH "/usr/local/lib/mit-scheme"
-#  endif
-#endif
-
-#ifndef BAND_VARIABLE
-#  define BAND_VARIABLE "MITSCHEME_BAND"
-#endif
-
-#ifndef DEFAULT_STD_BAND
-#  define DEFAULT_STD_BAND "all.com"
-#endif
-
 #ifndef DEFAULT_HEAP_SIZE
 #  if SIZEOF_UNSIGNED_LONG == 8
 #    define DEFAULT_HEAP_SIZE 16384
 #  else
-#    define DEFAULT_HEAP_SIZE 4096
+#    define DEFAULT_HEAP_SIZE 3072
 #  endif
 #endif
 
@@ -248,7 +253,7 @@ Additional options may be supported by the band (and described below).\n\
 #endif
 
 #ifndef DEFAULT_STACK_SIZE
-#  define DEFAULT_STACK_SIZE 128
+#  define DEFAULT_STACK_SIZE 1024
 #endif
 
 #ifndef STACK_SIZE_VARIABLE
@@ -302,11 +307,10 @@ string_copy_limited (const char * s, const char * e)
   unsigned int n_chars = (e - s);
   char * result = (OS_malloc (n_chars + 1));
   strncpy (result, s, n_chars);
+  result[n_chars] = '\0';
   return (result);
 }
 
-#ifdef __APPLE__
-
 static bool
 must_quote_char_p (int c)
 {
@@ -347,8 +351,6 @@ quote_string (const char * s)
   (*scan_out) = '\0';
   return result;
 }
-
-#endif /* __APPLE__ */
 
 static unsigned int
 strlen_after_unquoting (const char * s)
@@ -498,6 +500,7 @@ parse_standard_options (int argc, const char ** argv)
 #endif
   option_argument ("nocore", false, (&option_disable_core_dump));
   option_argument ("option-summary", false, (&option_summary));
+  option_argument ("prepend-library", true, (&option_raw_prepend));
   option_argument ("quiet", false, (&option_batch_mode));
   option_argument ("silent", false, (&option_batch_mode));
   option_argument ("stack", true, (&option_raw_stack));
@@ -679,8 +682,6 @@ free_parsed_path (const char ** path)
   xfree (path);
 }
 
-#ifdef __APPLE__
-
 static char *
 add_to_library_path (const char * new_dir, const char * library_path)
 {
@@ -694,8 +695,6 @@ add_to_library_path (const char * new_dir, const char * library_path)
   xfree (quoted_dir);
   return (result);
 }
-
-#endif /* __APPLE__ */
 
 const char *
 search_for_library_file (const char * filename)
@@ -912,9 +911,11 @@ read_command_line_options (int argc, const char ** argv)
   bool band_sizes_valid = false;
   unsigned long band_constant_size = 0;
   unsigned long band_heap_size = 0;
+  const char * library_path;
   const char * default_library_path = DEFAULT_LIBRARY_PATH;
 
   parse_standard_options (argc, argv);
+
   if (option_library_path != 0)
     free_parsed_path (option_library_path);
 #ifdef __APPLE__
@@ -926,11 +927,16 @@ read_command_line_options (int argc, const char ** argv)
       xfree (main_bundle_path);
     }
 #endif
-  option_library_path
-    = (parse_path_string
-       (standard_string_option (option_raw_library,
-				LIBRARY_PATH_VARIABLE,
-				default_library_path)));
+  library_path = standard_string_option (option_raw_library,
+					 LIBRARY_PATH_VARIABLE,
+					 default_library_path);
+  if (option_raw_prepend != NULL)
+    {
+      const char * new_path;
+      new_path = add_to_library_path (option_raw_prepend, library_path);
+      library_path = new_path;
+    }
+  option_library_path = parse_path_string (library_path);
 
   if (option_band_file != 0)
     {

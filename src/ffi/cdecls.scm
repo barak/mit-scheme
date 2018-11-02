@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -59,7 +59,7 @@ USA.
   ;; Toplevel entry point for the generator.
   ;; Returns a new C-INCLUDES structure.
   (let ((includes (make-c-includes library))
-	(cwd (if load/loading?
+	(cwd (if (param:loading?)
 		 (directory-pathname (current-load-pathname))
 		 (working-directory-pathname))))
     (fluid-let ((c-include-noisily? #t))
@@ -90,7 +90,9 @@ USA.
 	    (call-with-input-file namestring
 	      (lambda (inport)
 		(let loop ()
-		  (let ((form (parse-object inport read-environment)))
+		  (let ((form
+			 (parameterize ((param:reader-fold-case? #f))
+			   (read inport))))
 		    (if (not (eof-object? form))
 			(begin
 			  (include-cdecl form new-cwd twd includes)
@@ -110,9 +112,6 @@ USA.
       (cond ((fix:> count 100) (error "Could not simplify:" pathname))
 	    ((pathname=? again simpler) again)
 	    (else (loop again (fix:1+ count)))))))
-
-(define read-environment
-  (make-top-level-environment '(*PARSER-CANONICALIZE-SYMBOLS?*) '(#f)))
 
 (define (include-cdecl form cwd twd includes)
   ;; Add a top-level C declaration to INCLUDES.  If it is an
@@ -250,7 +249,7 @@ USA.
   ;; munge the correct alist in INCLUDES.
   (if (not (and (pair? rest) (symbol? (car rest))
 		(list? (cdr rest))))
-      (cerror form "malformed "(symbol-name (car form))" declaration"))
+      (cerror form "malformed " (symbol->string (car form)) " declaration"))
   (let* ((name (car rest))
 	 (params (cdr rest))
 	 (others (if (eq? 'EXTERN (car form))
@@ -261,7 +260,7 @@ USA.
 		      (alien-function/filename (cdr entry))))
     (let ((new (cons name
 		     (make-alien-function
-		      (symbol-name name)
+		      (symbol->string name)
 		      (c-includes/library includes)
 		      (valid-ctype rettype includes)
 		      (valid-params params includes)
@@ -285,7 +284,7 @@ USA.
 		(null? (cddr form))))
       (cerror form "malformed parameter declaration"))
   (if (string-find-next-char-in-set
-       (symbol-name (car form)) char-set:not-c-symbol)
+       (symbol->string (car form)) char-set:not-c-symbol)
       (cerror form "invalid parameter name"))
   (let ((name (car form))
 	(ctype (valid-ctype (cadr form) includes)))

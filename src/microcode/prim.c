@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -147,24 +147,142 @@ Return the object whose representation is INTEGER.")
    In particular, they are not gc-safe: You can screw yourself royally
    by using them.  */
 
-/* (PRIMITIVE-OBJECT-REF OBJECT INDEX)
-   Fetches the index'ed slot in object.
-   Performs no type checking on object.  */
-
-DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-REF", Prim_prim_obj_ref, 2, 2, 0)
+static SCHEME_OBJECT *
+arg_address (int n)
 {
-  PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN (MEMORY_REF ((ARG_REF (1)), (arg_nonnegative_integer (2))));
+  SCHEME_OBJECT object = (ARG_REF (n));
+  if ((gc_ptr_type (object)) != GC_POINTER_NORMAL)
+    error_wrong_type_arg (n);
+  return (OBJECT_ADDRESS (object));
 }
 
-/* (PRIMITIVE-OBJECT-SET! OBJECT INDEX VALUE)
-   Stores value in the index'ed slot in object.
-   Performs no type checking on object.  */
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-REF", Prim_prim_obj_ref, 2, 2,
+  "(OBJECT INDEX)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+Fetches the object at offset INDEX in OBJECT.")
+{
+  PRIMITIVE_HEADER (2);
+  SCHEME_OBJECT * address = (arg_address (1));
+  unsigned long index = (arg_ulong_integer (2));
+  PRIMITIVE_RETURN (address[index]);
+}
 
-DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET!", Prim_prim_obj_set, 3, 3, 0)
+DEFINE_PRIMITIVE ("PRIMITIVE-TYPE-REF", Prim_prim_type_ref, 2, 2,
+  "(OBJECT INDEX)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+Fetches the type of the object at offset INDEX in OBJECT.")
+{
+  PRIMITIVE_HEADER (2);
+  SCHEME_OBJECT * address = (arg_address (1));
+  unsigned long index = (arg_ulong_integer (2));
+  PRIMITIVE_RETURN (ulong_to_integer (OBJECT_TYPE (address[index])));
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-DATUM-REF", Prim_prim_datum_ref, 2, 2,
+  "(OBJECT INDEX)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+Fetches the datum of the object at offset INDEX in OBJECT.")
+{
+  PRIMITIVE_HEADER (2);
+  SCHEME_OBJECT * address = (arg_address (1));
+  unsigned long index = (arg_ulong_integer (2));
+  PRIMITIVE_RETURN (ulong_to_integer (OBJECT_DATUM (address[index])));
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET!", Prim_prim_obj_set, 3, 3,
+"(OBJECT INDEX VALUE)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+VALUE may be any object.\n\
+Stores VALUE at offset INDEX in OBJECT.")
 {
   PRIMITIVE_HEADER (3);
-  MEMORY_SET ((ARG_REF (1)), (arg_nonnegative_integer (2)), (ARG_REF (3)));
+  MEMORY_SET ((ARG_REF (1)), (arg_ulong_integer (2)), (ARG_REF (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-TYPE-SET!", Prim_prim_type_set, 3, 3,
+"(OBJECT INDEX TYPE)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+TYPE must be a type code.\n\
+Sets the type of the object at offset INDEX in OBJECT to TYPE.")
+{
+  PRIMITIVE_HEADER (3);
+  SCHEME_OBJECT * address = (arg_address (1));
+  unsigned long index = (arg_ulong_integer (2));
+  unsigned long type = (arg_type (3));
+  (address[index]) = (OBJECT_NEW_TYPE (type, (address[index])));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-DATUM-SET!", Prim_prim_datum_set, 3, 3,
+"(OBJECT INDEX DATUM)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+DATUM must be a datum value.\n\
+Sets the datum of the object at offset INDEX in OBJECT to DATUM.")
+{
+  PRIMITIVE_HEADER (3);
+  SCHEME_OBJECT * address = (arg_address (1));
+  unsigned long index = (arg_ulong_integer (2));
+  unsigned long datum = (arg_datum (3));
+  (address[index]) = (OBJECT_NEW_DATUM ((address[index]), datum));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-BYTE-REF", Prim_prim_byte_ref, 2, 2,
+  "(OBJECT INDEX)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+Fetches the 8-bit unsigned integer at offset INDEX in OBJECT.")
+{
+  PRIMITIVE_HEADER (2);
+  uint8_t * ptr = ((uint8_t *) (OBJECT_ADDRESS (ARG_REF (1))));
+  unsigned long index = (arg_ulong_integer (2));
+  PRIMITIVE_RETURN (ulong_to_integer (ptr[index]));
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-BYTE-SET!", Prim_prim_byte_set, 3, 3,
+"(OBJECT INDEX VALUE)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+VALUE must be an 8-bit unsigned integer.\n\
+Stores VALUE at offset INDEX in OBJECT.")
+{
+  PRIMITIVE_HEADER (3);
+  uint8_t * ptr = ((uint8_t *) (OBJECT_ADDRESS (ARG_REF (1))));
+  unsigned long index = (arg_ulong_integer (2));
+  (ptr[index]) = (arg_ulong_index_integer (3, 0x100));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-U16-REF", Prim_prim_u16_ref, 2, 2,
+  "(OBJECT INDEX)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+Fetches the 16-bit unsigned integer at offset INDEX in OBJECT.")
+{
+  PRIMITIVE_HEADER (2);
+  uint16_t * ptr = ((uint16_t *) (OBJECT_ADDRESS (ARG_REF (1))));
+  unsigned long index = (arg_ulong_integer (2));
+  PRIMITIVE_RETURN (ulong_to_integer (ptr[index]));
+}
+
+DEFINE_PRIMITIVE ("PRIMITIVE-U16-SET!", Prim_prim_u16_set, 3, 3,
+"(OBJECT INDEX VALUE)\n\
+OBJECT must be a pointer type.\n\
+INDEX must be an unsigned integer.\n\
+VALUE must be a 16-bit unsigned integer.\n\
+Stores VALUE at offset INDEX in OBJECT.")
+{
+  PRIMITIVE_HEADER (3);
+  uint16_t * ptr = ((uint16_t *) (OBJECT_ADDRESS (ARG_REF (1))));
+  unsigned long index = (arg_ulong_integer (2));
+  (ptr[index]) = (arg_ulong_index_integer (3, 0x10000));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -293,4 +411,52 @@ DEFINE_PRIMITIVE ("SET-CELL-CONTENTS!", Prim_set_cell_contents, 2, 2, 0)
   object = (ARG_REF (2));
   MEMORY_SET (cell, CELL_CONTENTS, object);
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("primitive-object-hash", Prim_primitive_object_hash, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  SCHEME_OBJECT object = (ARG_REF (1));
+  PRIMITIVE_RETURN
+    ((hashable_object_p (object))
+     ? (HASH_TO_FIXNUM (hash_object (object)))
+     : SHARP_F);
+}
+
+DEFINE_PRIMITIVE ("primitive-object-hash-2", Prim_primitive_object_hash_2, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  SCHEME_OBJECT object1 = (ARG_REF (1));
+  SCHEME_OBJECT object2 = (ARG_REF (2));
+  PRIMITIVE_RETURN
+    (((hashable_object_p (object1)) && (hashable_object_p (object2)))
+     ? (HASH_TO_FIXNUM
+	(combine_hashes ((hash_object (object1)), (hash_object (object2)))))
+     : SHARP_F);
+}
+
+DEFINE_PRIMITIVE ("primitive-memory-hash", Prim_primitive_memory_hash, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  SCHEME_OBJECT object = (ARG_REF (1));
+  if (!((GC_TYPE_VECTOR (object))
+	&& ((OBJECT_TYPE (MEMORY_REF (object, 0))) == TC_MANIFEST_NM_VECTOR)))
+    error_wrong_type_arg (1);
+  unsigned long nwords = (VECTOR_LENGTH (object));
+  unsigned long start = (arg_ulong_integer (2));
+  unsigned long end = (arg_ulong_integer (3));
+
+  unsigned long min_index = (sizeof (SCHEME_OBJECT));
+  unsigned long max_index = (min_index + (nwords * (sizeof (SCHEME_OBJECT))));
+
+  if (!((start >= min_index) && (start <= max_index)))
+    error_bad_range_arg (2);
+
+  if (!((end >= start) && (end <= max_index)))
+    error_bad_range_arg (3);
+
+  PRIMITIVE_RETURN
+    (HASH_TO_FIXNUM
+     (memory_hash ((end - start),
+		   (((const uint8_t *) (OBJECT_ADDRESS (object))) + start))));
 }

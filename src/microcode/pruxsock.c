@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,14 +32,6 @@ USA.
 /* This obtains the HAVE_SOCKETS definition.  */
 #ifdef __unix__
 #  include "ux.h"
-#endif
-
-/* Under OS/2, socket support is the default but can be disabled.  */
-#ifdef __OS2__
-#  ifndef DISABLE_SOCKET_SUPPORT
-#    define HAVE_SOCKETS 1
-#    define HAVE_UNIX_SOCKETS 1
-#  endif
 #endif
 
 /* Under Win32, socket support is the default but can be disabled.  */
@@ -75,13 +67,24 @@ arg_client_socket (unsigned int arg)
 }
 
 static Tchannel
-arg_server_socket (unsigned int arg)
+arg_tcp_server_socket (unsigned int arg)
 {
   Tchannel server_socket = (arg_nonnegative_integer (arg));
   if ((OS_channel_type (server_socket)) != channel_type_tcp_server_socket)
     error_bad_range_arg (arg);
   return (server_socket);
 }
+
+#ifdef HAVE_UNIX_SOCKETS
+static Tchannel
+arg_unix_server_socket (unsigned int arg)
+{
+  Tchannel server_socket = (arg_nonnegative_integer (arg));
+  if ((OS_channel_type (server_socket)) != channel_type_unix_server_socket)
+    error_bad_range_arg (arg);
+  return (server_socket);
+}
+#endif /* HAVE_UNIX_SOCKETS */
 
 #else /* not HAVE_SOCKETS */
 
@@ -298,12 +301,30 @@ DEFINE_PRIMITIVE ("CREATE-TCP-SERVER-SOCKET", Prim_create_tcp_server_socket, 0, 
     });
 }
 
+DEFINE_PRIMITIVE ("CREATE-UNIX-SERVER-SOCKET", Prim_create_unix_server_socket, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (2, WEAK_PAIR_P);
+#ifdef HAVE_UNIX_SOCKETS
+  {
+    Tchannel channel = OS_create_unix_server_socket (STRING_ARG (1));
+    if (channel == NO_CHANNEL)
+      PRIMITIVE_RETURN (SHARP_F);
+    SET_PAIR_CDR ((ARG_REF (2)), (long_to_integer (channel)));
+    PRIMITIVE_RETURN (SHARP_T);
+  }
+#else
+  signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);
+  PRIMITIVE_RETURN (UNSPECIFIC);
+#endif
+}
+
 DEFINE_PRIMITIVE ("BIND-TCP-SERVER-SOCKET", Prim_bind_tcp_server_socket, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   SOCKET_CODE
     ({
-      OS_bind_tcp_server_socket ((arg_server_socket (1)),
+      OS_bind_tcp_server_socket ((arg_tcp_server_socket (1)),
 				 (arg_host (2)),
 				 (arg_nonnegative_integer (3)));
       PRIMITIVE_RETURN (UNSPECIFIC);
@@ -315,7 +336,7 @@ DEFINE_PRIMITIVE ("LISTEN-TCP-SERVER-SOCKET", Prim_listen_tcp_server_socket, 1, 
   PRIMITIVE_HEADER (1);
   SOCKET_CODE
     ({
-      OS_listen_tcp_server_socket (arg_server_socket (1));
+      OS_listen_tcp_server_socket (arg_tcp_server_socket (1));
       PRIMITIVE_RETURN (UNSPECIFIC);
     });
 }
@@ -332,13 +353,38 @@ It is filled with the peer's address if given.")
   CHECK_ARG (3, WEAK_PAIR_P);
   SOCKET_CODE
     ({
-      Tchannel server_socket = (arg_server_socket (1));
+      Tchannel server_socket = (arg_tcp_server_socket (1));
       void * peer_host = (((ARG_REF (2)) == SHARP_F) ? 0 : (arg_host (2)));
       Tchannel connection =
-	(OS_server_connection_accept (server_socket, peer_host, 0));
+	(OS_tcp_server_connection_accept (server_socket, peer_host, 0));
       if (connection == NO_CHANNEL)
 	PRIMITIVE_RETURN (SHARP_F);
       SET_PAIR_CDR ((ARG_REF (3)), (long_to_integer (connection)));
       PRIMITIVE_RETURN (SHARP_T);
     });
+}
+
+DEFINE_PRIMITIVE ("NEW-UNIX-SERVER-CONNECTION-ACCEPT",
+		  Prim_new_unix_server_connection_accept, 2, 2,
+  "Poll SERVER-SOCKET for a connection.\n\
+If a connection is available, it is opened and #T is returned;\n\
+the opened socket is stored in the cdr of WEAK-PAIR.\n\
+Otherwise, if SERVER-SOCKET is non-blocking, returns #F.")
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (2, WEAK_PAIR_P);
+#ifdef HAVE_UNIX_SOCKETS
+  {
+    Tchannel server_socket = (arg_unix_server_socket (1));
+    Tchannel connection =
+      (OS_unix_server_connection_accept (server_socket));
+    if (connection == NO_CHANNEL)
+      PRIMITIVE_RETURN (SHARP_F);
+    SET_PAIR_CDR ((ARG_REF (2)), (long_to_integer (connection)));
+    PRIMITIVE_RETURN (SHARP_T);
+  }
+#else
+  signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);
+  PRIMITIVE_RETURN (UNSPECIFIC);
+#endif
 }

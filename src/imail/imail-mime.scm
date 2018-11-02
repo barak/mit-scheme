@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 Copyright (C) 2005, 2006, 2007, 2008 Taylor R. Campbell
 
 This file is part of MIT/GNU Scheme.
@@ -34,7 +34,7 @@ USA.
 ;;; Any kind of object can be a MIME entity, provided that it
 ;;; implements MIME-ENTITY-BODY-STRUCTURE.  A default method is
 ;;; provided if it instead implements MIME-ENTITY-HEADER-FIELDS and
-;;; either MIME-ENTITY-BODY-SUBSTRING or WRITE-ENTITY-MIME-BODY, which
+;;; either MIME-ENTITY-BODY-SUBSTRING or WRITE-MIME-ENTITY-BODY, which
 ;;; yield the literal text of the entity's body without decoding or
 ;;; interpretation.  MIME-ENTITY-BODY-STRUCTURE should return a
 ;;; <MIME-BODY> instance.
@@ -66,7 +66,7 @@ USA.
 (define-method write-mime-entity-body (mime-entity port)
   (guarantee-mime-entity mime-entity 'WRITE-MIME-ENTITY-BODY)
   (receive (string start end) (mime-entity-body-substring mime-entity)
-    (write-substring string start end port)))
+    (write-string string port start end)))
 
 ;;;; MIME Bodies
 
@@ -96,7 +96,7 @@ USA.
 
 (define-method write-mime-body ((body <mime-body>) port)
   (receive (string start end) (mime-body-substring body)
-    (write-substring string start end port)))
+    (write-string string port start end)))
 
 (define (mime-body-type-string body)
   (string-append (symbol->string (mime-body-type body))
@@ -298,9 +298,9 @@ USA.
 (define mime:media-parsers '())
 
 (define (define-mime-media-parser type subtype parser)
-  (guarantee-interned-symbol type 'DEFINE-MIME-MEDIA-PARSER)
+  (guarantee interned-symbol? type 'DEFINE-MIME-MEDIA-PARSER)
   (if subtype
-      (guarantee-interned-symbol subtype 'DEFINE-MIME-MEDIA-PARSER))
+      (guarantee interned-symbol? subtype 'DEFINE-MIME-MEDIA-PARSER))
   (guarantee-procedure-of-arity
    parser
    (length '(HEADER-FIELDS STRING START END TYPE SUBTYPE PARAMETERS))
@@ -370,7 +370,7 @@ USA.
      (mime:get-content-description header-fields)
      (mime:get-content-transfer-encoding header-fields)
      (- end start)
-     (ignore-errors (lambda () (md5-substring string start end))
+     (ignore-errors (lambda () (md5-string string start end))
                     (lambda (condition) condition #f))
      (mime:get-content-disposition header-fields)
      (mime:get-content-language header-fields))))
@@ -391,7 +391,7 @@ USA.
      (mime:get-content-transfer-encoding header-fields)
      (- end start)
      (substring-n-newlines string start end)
-     (ignore-errors (lambda () (md5-substring string start end))
+     (ignore-errors (lambda () (md5-string string start end))
                     (lambda (condition) condition #f))
      (mime:get-content-disposition header-fields)
      (mime:get-content-language header-fields))))
@@ -418,7 +418,7 @@ USA.
         body
         (- end start)
         (substring-n-newlines string start end)
-        (ignore-errors (lambda () (md5-substring string start end))
+        (ignore-errors (lambda () (md5-string string start end))
                        (lambda (condition) condition #f))
         (mime:get-content-disposition header-fields)
         (mime:get-content-language header-fields))))))
@@ -563,7 +563,9 @@ USA.
            (lambda (output-port)
              (call-with-mime-decoding-output-port encoding output-port #t
                (lambda (output-port)
-                 (write-substring string start end output-port)))))))))
+                 (with-mime-best-effort
+                  (lambda ()
+                    (write-string string output-port start end)))))))))))
 
 (define (mime:get-boundary parameters)
   (let ((parameter (assq 'BOUNDARY parameters)))
@@ -704,7 +706,8 @@ USA.
         #f)))
 
 (define (mime:get-content-language header-fields)
-  ;++ implement
+  ;;++ implement
+  (declare (ignore header-fields))
   #f)
 
 ;;;; Extended RFC 822 Tokenizer
@@ -750,10 +753,9 @@ USA.
 (define-structure (mime-encoding
                    (conc-name mime-encoding/)
                    (print-procedure
-                    (standard-unparser-method 'MIME-ENCODING
-                      (lambda (encoding output-port)
-                        (write-char #\space output-port)
-                        (write (mime-encoding/name encoding) output-port))))
+                    (standard-print-method 'MIME-ENCODING
+                      (lambda (encoding)
+                        (list (mime-encoding/name encoding)))))
                    (constructor %make-mime-encoding))
   (name                          #f read-only #t)
   (identity?                     #f read-only #t)
@@ -763,7 +765,6 @@ USA.
   (decoder-initializer           #f read-only #t)
   (decoder-finalizer             #f read-only #t)
   (decoder-updater               #f read-only #t)
-  (decoding-port-maker           #f read-only #t)
   (caller-with-decoding-port     #f read-only #t))
 
 (define-guarantee mime-encoding "MIME codec")
@@ -774,18 +775,18 @@ USA.
 (define (define-mime-encoding name
           encode:initialize encode:finalize encode:update
           decode:initialize decode:finalize decode:update
-          make-port call-with-port)
-  (hash-table/put!
+	  call-with-port)
+  (hash-table-set!
    mime-encodings
    name
    (%make-mime-encoding name #f
                         encode:initialize encode:finalize encode:update
                         decode:initialize decode:finalize decode:update
-                        make-port call-with-port))
+                        call-with-port))
   name)
-
+
 (define (define-identity-mime-encoding name)
-  (hash-table/put! mime-encodings
+  (hash-table-set! mime-encodings
                    name
                    (%make-mime-encoding name #t
                                         (lambda (port text?) text? port)
@@ -794,24 +795,23 @@ USA.
                                         (lambda (port text?) text? port)
                                         output-port/flush-output
                                         output-port/write-string
-                                        (lambda (port text?) text? port)
                                         (lambda (port text? generator)
                                           text?
                                           (generator port)))))
 
 (define (known-mime-encoding? name)
-  (and (hash-table/get mime-encodings name #f)
+  (and (hash-table-ref/default mime-encodings name #f)
        #t))
 
 (define (named-mime-encoding name)
-  (or (hash-table/get mime-encodings name #f)
+  (or (hash-table-ref/default mime-encodings name #f)
       (let ((encoding (make-unknown-mime-encoding name)))
-        (hash-table/put! mime-encodings name encoding)
+        (hash-table-set! mime-encodings name encoding)
         encoding)))
 
 (define (make-unknown-mime-encoding name)
   (let ((lose (lambda args args (error "Unknown MIME encoding name:" name))))
-    (%make-mime-encoding name #f lose lose lose lose lose lose lose lose)))
+    (%make-mime-encoding name #f lose lose lose lose lose lose lose)))
 
 (define (call-with-mime-decoding-output-port encoding port text? generator)
   ((mime-encoding/caller-with-decoding-port
@@ -822,6 +822,15 @@ USA.
                                    'CALL-WITH-MIME-DECODING-OUTPUT-PORT)
           encoding)))
    port text? generator))
+
+(define (with-mime-best-effort thunk)
+  (call-with-current-continuation
+   (lambda (exit)
+     (bind-condition-handler (list condition-type:decode-mime)
+         (lambda (condition)
+           condition
+           (exit unspecific))
+       thunk))))
 
 (define-identity-mime-encoding '7BIT)
 (define-identity-mime-encoding '8BIT)
@@ -838,8 +847,19 @@ USA.
   decode-quoted-printable:initialize
   decode-quoted-printable:finalize
   decode-quoted-printable:update
-  make-decode-quoted-printable-port
   call-with-decode-quoted-printable-output-port)
+
+(define (make-decode-base64-port* textual-port text?)
+  (make-decode-base64-port (textual->binary-port textual-port 'iso-8859-1)
+			   text?))
+
+(define (call-with-decode-base64-port* textual-port text? procedure)
+  (let ((binary-port (textual->binary-port textual-port 'iso-8859-1)))
+    (let ((decoding-port (make-decode-base64-port binary-port text?)))
+      (let ((value (procedure decoding-port)))
+	(close-port decoding-port)
+	(flush-output-port binary-port)
+	value))))
 
 (define-mime-encoding 'BASE64
   encode-base64:initialize
@@ -848,13 +868,19 @@ USA.
   decode-base64:initialize
   decode-base64:finalize
   decode-base64:update
-  make-decode-base64-port
-  call-with-decode-base64-output-port)
+  call-with-decode-base64-port*)
+
+(define (call-with-decode-binhex40-port* textual-port text? procedure)
+  (let ((binary-port (textual->binary-port textual-port 'iso-8859-1)))
+    (let ((decoding-port (make-decode-binhex40-port binary-port text?)))
+      (let ((value (procedure decoding-port)))
+	(close-port decoding-port)
+	(flush-output-port binary-port)
+	value))))
 
 (define-mime-encoding 'BINHEX40
   #f #f #f                              ;No BinHex encoder.
   decode-binhex40:initialize
   decode-binhex40:finalize
   decode-binhex40:update
-  make-decode-binhex40-port
-  call-with-decode-binhex40-output-port)
+  call-with-decode-binhex40-port*)

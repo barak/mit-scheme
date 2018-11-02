@@ -7,8 +7,8 @@ License as distributed with Emacs (press C-h C-c for details).
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -84,7 +84,7 @@ USA.
 	  unspecific))))
 
 (define (serve socket)
-  (with-simple-restart 'DISCONNECT "Close connection."
+  (with-simple-restart 'disconnect "Close connection."
     (lambda ()
       (with-keyboard-interrupt-handler
        (lambda ()
@@ -95,7 +95,7 @@ USA.
 	(new-handler
 	 (lambda (char)
 	   char
-	   (with-simple-restart 'CONTINUE "Continue from interrupt."
+	   (with-simple-restart 'continue "Continue from interrupt."
 	     (lambda ()
 	       (error "Keyboard Interrupt.")))))
 	(old-handler))
@@ -111,13 +111,13 @@ USA.
 	  unspecific))))
 
 (define (disconnect)
-  (invoke-restart (find-restart 'DISCONNECT)))
+  (invoke-restart (find-restart 'disconnect)))
 
 (define (main-loop socket)
   (do () (#f)
-    (with-simple-restart 'ABORT "Return to SLIME top-level."
+    (with-simple-restart 'abort "Return to SLIME top-level."
       (lambda ()
-	(fluid-let ((*top-level-restart* (find-restart 'ABORT)))
+	(parameterize ((*top-level-restart* (find-restart 'abort)))
 	  (process-one-message socket 0))))))
 
 (define *top-level-restart*)
@@ -129,13 +129,13 @@ USA.
   (set-repl/environment! (nearest-repl) environment))
 
 (define (top-level-abort)
-  (invoke-restart *top-level-restart*))
+  (invoke-restart (*top-level-restart*)))
 
 (define (bound-restarts-for-emacs)
   (let loop ((restarts (bound-restarts)))
     (if (pair? restarts)
 	(cons (car restarts)
-	      (if (eq? (car restarts) *top-level-restart*)
+	      (if (eq? (car restarts) (*top-level-restart*))
 		  '()
 		  (loop (cdr restarts))))
 	'())))
@@ -144,22 +144,17 @@ USA.
   (dispatch (decode-message socket (read-packet socket)) socket level))
 
 (define (read-packet in)
-  (define (read-string! buffer in)
-    (let loop ((i 0))
-      (if (< i (string-length buffer))
-	  (let ((n (read-substring! buffer i (string-length buffer) in)))
-	    ;; (assert (exact-nonnegative-integer? n))
-	    ;; (assert (<= n (- (string-length buffer) i)))
-	    (if (zero? n)		;EOF
-		(disconnect))
-	    (loop (+ i n))))))
-  (let ((buffer
-	 (make-string
+  (if (eof-object? (peek-char in))
+      (disconnect))
+  (let* ((end
 	  (let ((buffer (make-string 6)))
 	    (read-string! buffer in)
-	    (string->number buffer 16 #t)))))
-    (read-string! buffer in)
-    buffer))
+	    (string->number buffer 16 #t)))
+	 (buffer (make-string end)))
+    (let loop ((start 0))
+      (if (< start end)
+	  (loop (+ start (read-string! buffer in start end)))
+	  buffer))))
 
 (define (decode-message socket packet)
   (bind-condition-handler (list condition-type:serious-condition)
@@ -180,7 +175,7 @@ USA.
 	(error "Expression length exceeds 24 bits:" s))
     (write-string (string-pad-left s 6 #\0) out))
   (write-string packet out)
-  (flush-output out))
+  (flush-output-port out))
 
 (define (dispatch message socket level)
   (let ((p
@@ -223,8 +218,8 @@ USA.
 (define *index*)
 
 (define (emacs-rex socket sexp pstring id)
-  (fluid-let ((*buffer-pstring* pstring)
-	      (*index* id))
+  (parameterize ((*buffer-pstring* pstring)
+		 (*index* id))
     (eval (cons* (car sexp) socket (map quote-special (cdr sexp)))
 	  swank-env)))
 
@@ -234,16 +229,17 @@ USA.
   (the-environment))
 
 (define (buffer-env)
-  (pstring->env *buffer-pstring*))
+  (pstring->env (*buffer-pstring*)))
 
 (define (pstring->env pstring)
   (cond ((or (not (string? pstring))
-	     (not (string? *buffer-pstring*))
-	     (string-ci=? *buffer-pstring* "COMMON-LISP-USER"))
+	     (let ((buffer-pstring (*buffer-pstring*)))
+	       (or (not (string? buffer-pstring))
+		   (string-ci=? buffer-pstring "COMMON-LISP-USER"))))
 	 (get-current-environment))
 	((string-prefix? anonymous-package-prefix pstring)
 	 (let ((object
-		(object-unhash
+		(unhash-object
 		 (string->number (string-tail pstring
 					      (string-length
 					       anonymous-package-prefix))
@@ -259,7 +255,7 @@ USA.
   (let ((package (environment->package env)))
     (if package
 	(write-to-string (package/name package))
-	(string anonymous-package-prefix (object-hash env)))))
+	(string anonymous-package-prefix (hash-object env)))))
 
 (define anonymous-package-prefix
   "environment-")
@@ -279,13 +275,13 @@ USA.
 						    #t)
 				 :repl-result)
 		 socket)
-  'NIL)
+  'nil)
 
 (define (interactive-eval sexp socket nl?)
   (let ((value (repl-eval sexp socket)))
     (call-with-output-string
       (lambda (port)
-	(port/write-result port sexp value (object-hash value) (buffer-env))
+	(port/write-result port sexp value (hash-object value))
 	(if nl? (newline port))))))
 
 (define (for-each-sexp procedure string)
@@ -300,31 +296,35 @@ USA.
 (define (repl-eval sexp socket)
   (with-output-to-repl socket
     (lambda ()
-      (with-repl-eval-boundary 'SWANK
+      (with-repl-eval-boundary 'swank
 	(lambda ()
 	  (eval sexp (buffer-env)))))))
 
 (define (with-output-to-repl socket thunk)
-  (let ((p (make-port repl-port-type socket)))
+  (let ((p (make-textual-port repl-port-type socket)))
     (dynamic-wind
 	(lambda () unspecific)
-	(lambda () (with-output-to-port p thunk))
-	(lambda () (flush-output p)))))
+	(lambda () (parameterize ((current-output-port p)) (thunk)))
+	(lambda () (flush-output-port p)))))
 
 (define repl-port-type)
 (define (initialize-package!)
+  (set! *top-level-restart* (make-unsettable-parameter unspecific))
+  (set! *sldb-state* (make-unsettable-parameter #f))
+  (set! *index* (make-unsettable-parameter unspecific))
+  (set! *buffer-pstring* (make-unsettable-parameter unspecific))
   (set! repl-port-type
-	(make-port-type
-	 `((WRITE-CHAR
+	(make-textual-port-type
+	 `((write-char
 	    ,(lambda (port char)
 	       (write-message `(:write-string ,(string char))
-			      (port/state port))
+			      (textual-port-state port))
 	       1))
-	   (WRITE-SUBSTRING
+	   (write-substring
 	    ,(lambda (port string start end)
 	       (if (< start end)
 		   (write-message `(:write-string ,(substring string start end))
-				  (port/state port)))
+				  (textual-port-state port)))
 	       (- end start))))
 	 #f))
   unspecific)
@@ -342,7 +342,9 @@ USA.
     (call-compiler
      (lambda ()
        (let ((env (buffer-env)))
-	 (scode-eval (compile-scode (syntax `(begin ,@sexps) env) #t)
+	 (scode-eval ((environment-lookup #f 'compile-scode)
+		      (syntax `(begin ,@sexps) env)
+		      #t)
 		     env))))))
 
 (define (snarf-string string)
@@ -360,14 +362,14 @@ USA.
 	run-time gc-time
 	(set! time real-time)
 	unspecific))
-    (list 'NIL (string (internal-time/ticks->seconds time)))))
+    (list 'nil (string (internal-time/ticks->seconds time)))))
 
 (define (swank:compile-file-for-emacs socket file load?)
   (call-compiler
    (lambda ()
      (with-output-to-repl socket
        (lambda ()
-	 (compile-file file)))))
+	 ((environment-lookup #f 'compile-file) file)))))
   (if (elisp-true? load?)
       (swank:load-file socket
 		       (pathname-new-type file "com"))))
@@ -379,11 +381,12 @@ USA.
 
 (define (swank:disassemble-symbol socket string)
   socket
-  (with-output-to-string
-    (lambda ()
-      (compiler:disassemble
-       (eval (read-from-string string)
-	     (buffer-env))))))
+  (call-with-output-string
+    (lambda (port)
+      (parameterize ((current-output-port port))
+	((environment-lookup #f 'compiler:disassemble)
+	 (eval (read-from-string string)
+	       (buffer-env)))))))
 
 ;;;; Directory Functions
 (define (swank:default-directory socket)
@@ -403,13 +406,18 @@ USA.
 	 (type (environment-reference-type env symbol))
 	 (binding (if (eq? type 'normal) (environment-lookup env symbol) #f))
 	 (binding-type (if binding (get-object-type-name binding) #f))
-	 (params (if (and binding (procedure? binding)) (procedure-parameters symbol env) #f)))
+	 (params
+	  (if (and binding (procedure? binding))
+	      (procedure-parameters symbol env)
+	      #f)))
     (string-append
-     (format #f "~a in package ~a~a of type ~a.~%~%" (string-upcase (symbol->string symbol))
+     (format #f "~a in package ~a~a of type ~a.~%~%"
+	     (string-upcase (symbol->string symbol))
 	     package
 	     (if (and binding
 		      (procedure? binding))
-		 (format #f " [originally defined in package ~a]" (env->pstring (procedure-environment binding)))
+		 (format #f " [originally defined in package ~a]"
+			 (env->pstring (procedure-environment binding)))
 		 "")
 	     (if binding-type binding-type type))
      (if binding
@@ -419,7 +427,8 @@ USA.
 	 (format #f "~%Signature: ~a.~%~%" params)
 	 "")
      (if binding
-	 (format #f "It is:~%~%~a~%" (with-output-to-string (lambda () (pp binding))))
+	 (format #f "It is:~%~%~a~%"
+		 (call-with-output-string (lambda (port) (pp binding port))))
 	 ""))))
 
 (define (swank:describe-function socket function)
@@ -451,7 +460,6 @@ USA.
 	((symbol? obj) "symbol")
 	((weak-pair? obj) "weak-pair")
 	((record-type? obj) "record-type")
-	((wide-string? obj) "wide-string")
 	(else (user-object-type obj))))
 
 ;;;; Miscellaneous
@@ -470,10 +478,11 @@ USA.
 
 (define (swank:swank-macroexpand-all socket string)
   socket
-  (with-output-to-string
-    (lambda ()
+  (call-with-output-string
+    (lambda (port)
       (pp (syntax (read-from-string string)
-		  (buffer-env))))))
+		  (buffer-env))
+	  port))))
 
 (define swank:swank-macroexpand-1 swank:swank-macroexpand-all)
 (define swank:swank-macroexpand swank:swank-macroexpand-all)
@@ -482,11 +491,13 @@ USA.
   socket
   (let ((v (ignore-errors
 	    (lambda ()
-	      (with-output-to-string
-		(lambda ()
-		  (carefully-pa
-		   (eval (read-from-string name) (pstring->env pstring)))))))))
-    (if (condition? v) 'NIL v)))
+	      (call-with-output-string
+		(lambda (port)
+		  (parameterize ((current-output-port port))
+		    (carefully-pa
+		     (eval (read-from-string name)
+			   (pstring->env pstring))))))))))
+    (if (condition? v) 'nil v)))
 
 (define (carefully-pa o)
   (cond ((arity-dispatched-procedure? o)
@@ -532,8 +543,13 @@ USA.
 		   (let ((binding (environment-lookup env symbol)))
 		     (if (and binding
 			      (procedure? binding))
-			 (cons symbol (read-from-string (string-trim (with-output-to-string
-								       (lambda () (pa binding))))))
+			 (cons symbol
+			       (read-from-string
+				(string-trim
+				 (call-with-output-string
+				   (lambda (port)
+				     (parameterize ((current-output-port port))
+				       (pa binding)))))))
 			 #f))
 		   (let ((extra (assq symbol swank-extra-documentation)))
 		     (if extra
@@ -564,18 +580,18 @@ USA.
 
 (define (swank:quit-lisp socket)
   socket
-  (%exit))
+  (exit))
 
 ;;;; Some unimplemented stuff.
 
 (define (swank:buffer-first-change socket filename)
   socket filename
-  'NIL)
+  'nil)
 
 ;; M-. is beyond my capabilities.
 (define (swank:find-definitions-for-emacs socket name)
   socket name
-  'NIL)
+  'nil)
 
 #|
 ;;; List of names obtained by grepping through "slime.el" and
@@ -645,23 +661,23 @@ swank:xref
   condition
   restarts)
 
-(define *sldb-state* #f)
+(define *sldb-state*)
 
 (define (invoke-sldb socket level condition)
-  (fluid-let ((*sldb-state*
-	       (make-sldb-state condition (bound-restarts-for-emacs))))
+  (parameterize ((*sldb-state*
+		  (make-sldb-state condition (bound-restarts-for-emacs))))
     (dynamic-wind
-	(lambda () #f)
-	(lambda ()
-	  (write-message `(:debug 0 ,level ,@(sldb-info *sldb-state* 0 20))
-			 socket)
-	  (sldb-loop level socket))
-	(lambda ()
-	  (write-message `(:debug-return 0 ,(- level 1) 'NIL) socket)))))
+     (lambda () #f)
+     (lambda ()
+       (write-message `(:debug 0 ,level ,@(sldb-info (*sldb-state*) 0 20))
+		      socket)
+       (sldb-loop level socket))
+     (lambda ()
+       (write-message `(:debug-return 0 ,(- level 1) 'nil) socket)))))
 
 (define (sldb-loop level socket)
   (write-message `(:debug-activate 0 ,level) socket)
-  (with-simple-restart 'ABORT (string "Return to SLDB level " level ".")
+  (with-simple-restart 'abort (string "Return to SLDB level " level ".")
     (lambda ()
       (process-one-message socket level)))
   (sldb-loop level socket))
@@ -671,16 +687,16 @@ swank:xref
 	(rs (sldb-state.restarts state)))
     (list (list (condition/report-string c)
 		(string "  [" (condition-type/name (condition/type c)) "]")
-		'NIL)
+		'nil)
 	  (sldb-restarts rs)
 	  (sldb-backtrace c start end)
 	  ;;'((0 "dummy frame"))
-	  (list *index*))))
+	  (list (*index*)))))
 
 (define (sldb-restarts restarts)
   (map (lambda (r)
 	 (list (symbol->string (restart/name r))
-	       (with-string-output-port
+	       (call-with-output-string
 		(lambda (p) (write-restart-report r p)))))
        restarts))
 
@@ -690,24 +706,24 @@ swank:xref
 
 (define (swank:sldb-abort socket . args)
   socket args
-  (abort (sldb-state.restarts *sldb-state*)))
+  (abort (sldb-state.restarts (*sldb-state*))))
 
 (define (swank:sldb-continue socket . args)
   socket args
-  (continue (sldb-state.restarts *sldb-state*)))
+  (continue (sldb-state.restarts (*sldb-state*))))
 
 (define (swank:invoke-nth-restart-for-emacs socket sldb-level n)
   sldb-level
-  (write-message `(:return (:abort "NIL") ,*index*) socket)
-  (invoke-restart (list-ref (sldb-state.restarts *sldb-state*) n)))
+  (write-message `(:return (:abort "NIL") ,(*index*)) socket)
+  (invoke-restart (list-ref (sldb-state.restarts (*sldb-state*)) n)))
 
 (define (swank:debugger-info-for-emacs socket from to)
   socket
-  (sldb-info *sldb-state* from to))
+  (sldb-info (*sldb-state*) from to))
 
 (define (swank:backtrace socket from to)
   socket
-  (sldb-backtrace (sldb-state.condition *sldb-state*) from to))
+  (sldb-backtrace (sldb-state.condition (*sldb-state*)) from to))
 
 (define (sldb-backtrace condition from to)
   (sldb-backtrace-aux (condition/continuation condition) from to))
@@ -749,7 +765,7 @@ swank:xref
     (cond ((debugging-info/compiled-code? expression)
 	   (write-string ";unknown compiled code" port))
 	  ((not (debugging-info/undefined-expression? expression))
-	   (fluid-let ((*unparse-primitives-by-name?* #t))
+	   (parameterize ((param:print-primitives-by-name? #t))
 	     (write
 	      (unsyntax
 	       (if (or (debugging-info/undefined-expression? subexpression)
@@ -801,7 +817,7 @@ swank:xref
 (define (sldb-get-frame index)
   (stream-ref (continuation->frames
 	       (condition/continuation
-		(sldb-state.condition *sldb-state*)))
+		(sldb-state.condition (*sldb-state*))))
 	      index))
 
 (define (frame-var-value frame var)
@@ -824,15 +840,15 @@ swank:xref
 
 (define (all-completions prefix environment)
   (let ((prefix
-	 (if (environment-lookup environment '*PARSER-CANONICALIZE-SYMBOLS?*)
+	 (if (get-param:reader-fold-case?)
 	     (string-downcase prefix)
 	     prefix))
 	(completions '()))
     (for-each-interned-symbol
      (lambda (symbol)
-       (if (and (string-prefix? prefix (symbol-name symbol))
+       (if (and (string-prefix? prefix (symbol->string symbol))
 		(environment-bound? environment symbol))
-	   (set! completions (cons (symbol-name symbol) completions)))
+	   (set! completions (cons (symbol->string symbol) completions)))
        unspecific))
     completions))
 
@@ -854,13 +870,12 @@ swank:xref
     (map (lambda (symbol)
 	   `((:designator ,(string symbol " " pstring))
 	     ,@(case (environment-reference-type env symbol)
-		 ((UNBOUND) '())
-		 ((UNASSIGNED) `((:variable nil)))
-		 ((MACRO) `((:macro nil)))
+		 ((unbound) '())
+		 ((unassigned) `((:variable nil)))
+		 ((macro) `((:macro nil)))
 		 (else
 		  (let ((v (environment-lookup env symbol)))
-		    `((,(cond ((generic-procedure? v) ':generic-function)
-			      ((procedure? v) ':function)
+		    `((,(cond ((procedure? v) ':function)
 			      (else ':variable))
 		       ,v)))))))
 	 (apropos-list text env #t))))
@@ -909,8 +924,8 @@ swank:xref
 			     0 500)))
 
 (define (assign-index o parts)
-  (let ((i (hash-table/count parts)))
-    (hash-table/put! parts i o)
+  (let ((i (hash-table-size parts)))
+    (hash-table-set! parts i o)
     i))
 
 (define (prepare-range parts content from to)
@@ -938,7 +953,8 @@ swank:xref
 
 (define (swank:inspect-nth-part socket index)
   socket
-  (inspect-object (hash-table/get (istate-parts istate) index 'no-such-part)))
+  (inspect-object
+   (hash-table-ref/default (istate-parts istate) index 'no-such-part)))
 
 (define (swank:quit-inspector socket)
   socket
@@ -949,14 +965,14 @@ swank:xref
   (cond ((istate-previous istate)
 	 (set! istate (istate-previous istate))
 	 (istate->elisp istate))
-	(else 'NIL)))
+	(else 'nil)))
 
 (define (swank:inspector-next socket)
   socket
   (cond ((istate-next istate)
 	 (set! istate (istate-next istate))
 	 (istate->elisp istate))
-	(else 'NIL)))
+	(else 'nil)))
 
 (define (swank:inspector-range socket from to)
   socket
@@ -965,7 +981,7 @@ swank:xref
 		 from to))
 
 (define (iline label value)
-  `(LINE ,label ,value))
+  `(line ,label ,value))
 
 (define (inspect o)
   (cond ((environment? o) (inspect-environment o))
@@ -1052,9 +1068,11 @@ swank:xref
 			       (lambda () (procedure-environment o))))))
 	(else
 	 (stream (iline "block" (compiled-entry/block o))
-		 (with-output-to-string
-		   (lambda ()
-		     (compiler:disassemble o)))))))
+		 (call-with-output-string
+		   (lambda (port)
+		     (parameterize ((current-output-port port))
+		       ((environment-lookup #f 'compiler:disassemble)
+			o))))))))
 
 (define (inspect-code-block block)
   (let loop ((i (compiled-code-block/constants-start block)))
@@ -1063,9 +1081,11 @@ swank:xref
 		     (loop (+ i compiled-code-block/bytes-per-object)))
 	(stream (iline "debuginfo" (compiled-code-block/debugging-info block))
 		(iline "env" (compiled-code-block/environment block))
-		(with-output-to-string
-		  (lambda ()
-		    (compiler:disassemble block)))))))
+		(call-with-output-string
+		  (lambda (port)
+		    (parameterize ((current-output-port port))
+		      ((environment-lookup #f 'compiler:disassemble)
+		       block))))))))
 
 (define (inspect-scode o)
   (stream (pprint-to-string o)))
@@ -1075,9 +1095,10 @@ swank:xref
        scode-predicates))
 
 (define scode-predicates
-  (list access? assignment? combination? comment?
-	conditional? definition? delay? disjunction? lambda?
-	quotation? sequence? the-environment? variable?))
+  (list scode-access? scode-assignment? scode-combination? scode-comment?
+	scode-conditional? scode-definition? scode-delay? scode-disjunction?
+	scode-lambda? scode-quotation? scode-sequence? scode-the-environment?
+	scode-variable?))
 
 (define (inspect-system-pair o)
   (stream (iline "car" (system-pair-car o))
@@ -1085,7 +1106,7 @@ swank:xref
 
 ;;;; Auxilary functions
 
-(define (elisp-false? o) (or (null? o) (eq? o 'NIL)))
+(define (elisp-false? o) (or (null? o) (eq? o 'nil)))
 (define (elisp-true? o) (not (elisp-false? o)))
 
 (define (->line o)
@@ -1100,9 +1121,9 @@ swank:xref
 (define (pprint-to-string o)
   (call-with-output-string
     (lambda (p)
-      (fluid-let ((*unparser-list-breadth-limit* 10)
-		  (*unparser-list-depth-limit* 4)
-		  (*unparser-string-length-limit* 100))
+      (parameterize ((param:printer-list-breadth-limit 10)
+		     (param:printer-list-depth-limit 4)
+		     (param:printer-string-length-limit 100))
 	(pp o p)))))
 
 ;; quote keywords, t and nil

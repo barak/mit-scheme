@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -74,17 +74,15 @@ USA.
 
 (define (read/expand-xml-file pathname environment)
   (let ((pathname (merge-pathnames pathname)))
-    (with-eval-unit (pathname->uri pathname)
+    (with-working-directory-pathname (directory-pathname pathname)
       (lambda ()
-	(with-working-directory-pathname (directory-pathname pathname)
-	  (lambda ()
-	    (with-load-environment environment
-	      (lambda ()
-		(fluid-let ((*sabbr-table* (make-strong-eq-hash-table)))
-		  (read-xml-file pathname
-				 `((scheme ,(pi-expander environment))
-				   (svar ,svar-expander)
-				   (sabbr ,sabbr-expander))))))))))))
+	(parameterize ((current-load-pathname pathname)
+		       (current-load-environment environment))
+	  (fluid-let ((*sabbr-table* (make-strong-eq-hash-table)))
+	    (read-xml-file pathname
+			   `((scheme ,(pi-expander environment))
+			     (svar ,svar-expander)
+			     (sabbr ,sabbr-expander)))))))))
 
 (define (make-expansion-environment pathname)
   (let ((environment (extend-top-level-environment expander-environment)))
@@ -94,15 +92,15 @@ USA.
     environment))
 
 (define ((pi-expander environment) text)
-  (fluid-let ((*outputs* (cons '() '()))
-	      (load/suppress-loading-message? #t))
-    (let ((port (open-input-string text)))
-      (let loop ()
-	(let ((expression (read port)))
-	  (if (not (eof-object? expression))
-	      (begin
-		(expander-eval expression environment)
-		(loop))))))
+  (fluid-let ((*outputs* (cons '() '())))
+    (parameterize ((param:suppress-loading-message? #t))
+      (let ((port (open-input-string text)))
+	(let loop ()
+	  (let ((expression (read port)))
+	    (if (not (eof-object? expression))
+		(begin
+		  (expander-eval expression environment)
+		  (loop)))))))
     (car *outputs*)))
 
 (define expander-eval eval)
@@ -114,10 +112,10 @@ USA.
   (get-sabbr (intern (string-trim text))))
 
 (define (define-sabbr name expansion)
-  (hash-table/put! *sabbr-table* name (flatten expansion)))
+  (hash-table-set! *sabbr-table* name (flatten expansion)))
 
 (define (get-sabbr name)
-  (let ((expansion (hash-table/get *sabbr-table* name 'NO-EXPANSION)))
+  (let ((expansion (hash-table-ref/default *sabbr-table* name 'NO-EXPANSION)))
     (if (eq? expansion 'NO-EXPANSION)
 	(error "Invalid sabbr name:" name))
     expansion))

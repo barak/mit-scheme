@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,8 +38,10 @@ USA.
 
 (define-method create-file-folder-file (url (type <rmail-folder-type>))
   type
-  (call-with-binary-output-file (pathname-url-pathname url)
+  (call-with-output-file (pathname-url-pathname url)
     (lambda (port)
+      (port/set-coding port 'iso-8859-1)
+      (port/set-line-ending port 'newline)
       (write-rmail-file-header (make-rmail-folder-header-fields '()) port))))
 
 ;;;; Folder
@@ -188,7 +190,7 @@ USA.
 			(cons "seen" (reverse! flags)))))))))
 
 (define (read-rmail-alternate-headers port)
-  (let ((start (xstring-port/position port)))
+  (let ((start (string-port/position port)))
     (make-file-external-ref
      start
      (let* ((separator rmail-message:headers-separator)
@@ -197,7 +199,7 @@ USA.
        (let loop ()
 	 (let ((char (read-required-char port)))
 	   (cond ((char=? char #\newline)
-		  (let ((end (- (xstring-port/position port) 1)))
+		  (let ((end (- (string-port/position port) 1)))
 		    (if (not (string=? separator (read-required-line port)))
 			(error "Missing RMAIL headers-separator string:" port))
 		    end))
@@ -205,7 +207,7 @@ USA.
 		  (let ((line (read-required-line port)))
 		    (if (substring=? line 0 (string-length line)
 				     separator 1 sl)
-			(- (xstring-port/position port)
+			(- (string-port/position port)
 			   (+ (string-length line) 1))
 			(loop))))
 		 (else
@@ -213,15 +215,15 @@ USA.
 		  (loop)))))))))
 
 (define (read-rmail-displayed-headers port)
-  (let ((start (xstring-port/position port)))
+  (let ((start (string-port/position port)))
     (skip-past-blank-line port)
-    (make-file-external-ref start (- (xstring-port/position port) 1))))
+    (make-file-external-ref start (- (string-port/position port) 1))))
 
 (define (read-rmail-body port)
-  (let ((start (xstring-port/position port)))
+  (let ((start (string-port/position port)))
     (input-port/discard-chars port rmail-message:end-char-set)
     (input-port/discard-char port)
-    (make-file-external-ref start (- (xstring-port/position port) 1))))
+    (make-file-external-ref start (- (string-port/position port) 1))))
 
 (define (rmail-internal-time folder ref)
   (let ((v
@@ -233,8 +235,10 @@ USA.
 ;;;; Write RMAIL file
 
 (define-method write-file-folder ((folder <rmail-folder>) pathname)
-  (call-with-binary-output-file pathname
+  (call-with-output-file pathname
     (lambda (port)
+      (port/set-coding port 'iso-8859-1)
+      (port/set-line-ending port 'newline)
       (write-rmail-file-header (rmail-folder-header-fields folder) port)
       (for-each-vector-element (file-folder-messages folder)
 	(lambda (message)
@@ -243,8 +247,10 @@ USA.
 
 (define-method append-message-to-file (message url (type <rmail-folder-type>))
   type
-  (call-with-binary-append-file (pathname-url-pathname url)
+  (call-with-append-file (pathname-url-pathname url)
     (lambda (port)
+      (port/set-coding port 'iso-8859-1)
+      (port/set-line-ending port 'newline)
       (write-rmail-message message port))))
 
 (define (write-rmail-file-header header-fields port)
@@ -361,7 +367,7 @@ USA.
 	 (read-required-line port)))))
 
 (define (read-to-eom port)
-  (let ((string (read-string rmail-message:end-char-set port)))
+  (let ((string (read-delimited-string rmail-message:end-char-set port)))
     (if (or (eof-object? string)
 	    (eof-object? (read-char port)))
 	(error "EOF while reading RMAIL message body:" port))

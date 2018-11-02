@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -57,7 +57,7 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(DATUM DATUM DATUM) (cdr form))
+     (if (syntax-match? '(datum datum datum) (cdr form))
 	 (let ((version (cadr form))
 	       (public-id (caddr form))
 	       (system-id (cadddr form)))
@@ -134,34 +134,34 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(SYMBOL SYMBOL ? 'EMPTY) (cdr form))
+     (if (syntax-match? '(symbol symbol ? 'empty) (cdr form))
 	 (let ((name (cadr form))
 	       (context (caddr form))
 	       (empty? (pair? (cdddr form))))
 	   `(BEGIN
-	      (DEFINE ,(symbol-append 'HTML: name)
+	      (DEFINE ,(symbol 'HTML: name)
 		(STANDARD-XML-ELEMENT-CONSTRUCTOR ',name HTML-URI ,empty?))
-	      (DEFINE ,(symbol-append 'HTML: name '?)
+	      (DEFINE ,(symbol 'HTML: name '?)
 		(STANDARD-XML-ELEMENT-PREDICATE ',name HTML-URI))
 	      (DEFINE-HTML-ELEMENT-CONTEXT ',name ',context)))
 	 (ill-formed-syntax form)))))
 
 (define (define-html-element-context qname context)
-  (hash-table/put! element-context-map
+  (hash-table-set! element-context-map
 		   (make-xml-name qname html-uri)
 		   context)
   qname)
 
 (define (html-element-context elt)
   (guarantee-html-element elt 'HTML-ELEMENT-CONTEXT)
-  (hash-table/get element-context-map (xml-element-name elt) #f))
+  (hash-table-ref/default element-context-map (xml-element-name elt) #f))
 
 (define (html-element-name-context name)
   (guarantee-html-element-name name 'HTML-ELEMENT-NAME-CONTEXT)
-  (hash-table/get element-context-map name #f))
+  (hash-table-ref/default element-context-map name #f))
 
 (define (html-element-names)
-  (hash-table/key-list element-context-map))
+  (hash-table-keys element-context-map))
 
 (define element-context-map
   (make-strong-eq-hash-table))
@@ -279,10 +279,10 @@ USA.
 	     'content value))
 
 (define (html:style-attr . keyword-list)
-  (guarantee-keyword-list keyword-list 'HTML:STYLE-ATTR)
+  (guarantee keyword-list? keyword-list 'HTML:STYLE-ATTR)
   (if (pair? keyword-list)
       (let loop ((bindings keyword-list))
-	(string-append (symbol-name (car bindings))
+	(string-append (symbol->string (car bindings))
 		       ": "
 		       (cadr bindings)
 		       (if (pair? (cddr bindings))

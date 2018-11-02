@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -686,8 +686,7 @@ USA.
      `(BEGIN
 	,@(let loop ((names (cddr form)) (index (cadr form)))
 	    (if (pair? names)
-		(cons `(DEFINE-INTEGRABLE
-			 ,(symbol-append 'CODE:COMPILER-
+		(cons `(DEFINE-INTEGRABLE ,(symbol 'CODE:COMPILER-
 					 (car names))
 			 ,index)
 		      (loop (cdr names) (+ index 1)))
@@ -727,7 +726,7 @@ USA.
 	,@(let loop ((names (cddr form)) (index (cadr form)))
 	    (if (pair? names)
 		(cons `(DEFINE-INTEGRABLE
-			   ,(symbol-append 'ENTRY:COMPILER- (car names))
+			   ,(symbol 'ENTRY:COMPILER- (car names))
 			 (BYTE-OFFSET-REFERENCE REGNUM:REGS-POINTER ,index))
 		      (loop (cdr names) (+ index 8)))
 		'()))))))

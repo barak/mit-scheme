@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -123,10 +123,10 @@ USA.
 (define (optimize-expression expression)
   (let loop
       ((identities
-	(list-transform-positive identities
-	  (let ((type (rtl:expression-type expression)))
-	    (lambda (identity)
-	      (eq? type (car (cadr identity))))))))
+	(filter (let ((type (rtl:expression-type expression)))
+		  (lambda (identity)
+		    (eq? type (car (cadr identity)))))
+		identities)))
     (cond ((null? identities)
 	   expression)
 	  ((let ((identity (car identities)))
@@ -233,23 +233,26 @@ USA.
        (set-register-value! register false)))))
 
 (for-each (lambda (type)
-	    (define-general-method type (lambda (statement) statement unspecific)))
-	  '(CLOSURE-HEADER
-	    CONTINUATION-ENTRY
-	    CONTINUATION-HEADER
-	    IC-PROCEDURE-HEADER
-	    INVOCATION:APPLY
-	    INVOCATION:COMPUTED-JUMP
-	    INVOCATION:COMPUTED-LEXPR
-	    INVOCATION:JUMP
-	    INVOCATION:LEXPR
-	    INVOCATION:PRIMITIVE
-	    INVOCATION:UUO-LINK
-	    INVOCATION:GLOBAL-LINK
-	    OPEN-PROCEDURE-HEADER
-	    OVERFLOW-TEST
-	    POP-RETURN
-	    PROCEDURE-HEADER))
+	    (define-general-method type
+	      (lambda (statement)
+		(declare (ignore statement))
+		unspecific)))
+	  '(closure-header
+	    continuation-entry
+	    continuation-header
+	    ic-procedure-header
+	    invocation:apply
+	    invocation:computed-jump
+	    invocation:computed-lexpr
+	    invocation:jump
+	    invocation:lexpr
+	    invocation:primitive
+	    invocation:uuo-link
+	    invocation:global-link
+	    open-procedure-header
+	    overflow-test
+	    pop-return
+	    procedure-header))
 
 (define (define-one-arg-method type get set)
   (define-general-method type

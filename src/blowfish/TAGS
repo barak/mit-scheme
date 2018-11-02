@@ -1,0 +1,71 @@
+
+blowfish-test.scm,1103
+(define (define-bf-test 29,1029
+(define (define-variable-key-test 33,1135
+(define-variable-key-test 1 54,1910
+(define-variable-key-test 2 55,1984
+(define-variable-key-test 3 56,2058
+(define-variable-key-test 4 57,2132
+(define-variable-key-test 5 58,2206
+(define-variable-key-test 6 59,2280
+(define-variable-key-test 7 60,2354
+(define-variable-key-test 8 61,2428
+(define-variable-key-test 9 62,2502
+(define-variable-key-test 10 63,2576
+(define-variable-key-test 11 64,2651
+(define-variable-key-test 12 65,2726
+(define-variable-key-test 13 66,2801
+(define-variable-key-test 14 67,2876
+(define-variable-key-test 15 68,2951
+(define-variable-key-test 16 69,3026
+(define-variable-key-test 17 70,3101
+(define-variable-key-test 18 71,3176
+(define-variable-key-test 19 72,3251
+(define-variable-key-test 20 73,3326
+(define-variable-key-test 21 74,3401
+(define-variable-key-test 22 75,3476
+(define-variable-key-test 23 76,3551
+(define-variable-key-test 24 77,3626
+(define (define-cbc-test 197,9160
+(define-cbc-test 8219,10037
+(define-cbc-test 16222,10105
+(define-cbc-test 24226,10220
+
+blowfish.scm,854
+(define (import-blowfish)32,1090
+(define (blowfish-set-key 51,1572
+(define (blowfish-ecb 60,1899
+(define (blowfish-cbc 66,2147
+(define (blowfish-cfb64 78,2662
+(define (blowfish-ofb64 97,3411
+(define (bf-de/encrypt 116,4126
+(define (guarantee-8byte-arg 119,4221
+(define (guarantee-8Xbyte-arg 126,4412
+(define (guarantee-bfkey 133,4629
+(define (guarantee-init-vector 139,4845
+(define (guarantee-init-index 146,5065
+(define (guarantee-subbytevector 153,5295
+(define (blowfish-encrypt-port 162,5662
+(define (compute-blowfish-init-vector)185,6457
+(define (write-blowfish-file-header 197,6795
+(define (read-blowfish-file-header 203,7000
+(define (try-read-blowfish-file-header 212,7324
+(define (%safe-read-bytevector 225,7762
+(define (blowfish-file? 232,7921
+(define blowfish-file-header-v1235,8028
+(define blowfish-file-header-v2238,8103
+
+optiondb.scm,35
+(define-load-option 'BLOWFISH3,20
+
+blowfish.pkg,221
+MIT/GNU Scheme is free software;10,317
+the Free Software Foundation;12,457
+the Free Software Foundation; either version 2 of the License,12,457
+the Free Software Foundation; either version 2 of the License, or 12,457
+
+make.scm,0
+
+compile.scm,0
+
+blowfish-check.scm,0

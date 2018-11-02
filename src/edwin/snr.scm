@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -398,10 +398,10 @@ Only one News reader may be open per server; if a previous News reader
 ;;;; News-Server Buffer
 
 (define (find-news-server-buffer server)
-  (list-search-positive (buffer-list)
-    (lambda (buffer)
-      (and (news-server-buffer? buffer)
-	   (string-ci=? (news-server-buffer:server buffer) server)))))
+  (find (lambda (buffer)
+	  (and (news-server-buffer? buffer)
+	       (string-ci=? (news-server-buffer:server buffer) server)))
+	(buffer-list)))
 
 (define (make-news-server-buffer server)
   (create-news-buffer (news-buffer-name server "subscribed-groups")
@@ -2249,8 +2249,8 @@ This command has no effect if the variable
 		(update-subsequent-news-header-lines (buffer-start buffer))
 		(buffer-put! buffer 'NEWS-THREADS
 			     (list->vector
-			      (list-transform-negative threads
-				news-thread:all-articles-deleted?)))
+			      (remove news-thread:all-articles-deleted?
+				      threads)))
 		(if (and on-header?
 			 (not (region-get (current-point) 'NEWS-HEADER #f)))
 		    (let ((ls
@@ -2838,11 +2838,11 @@ While composing the reply, use \\[mail-yank-original] to yank the
 	   select-buffer-other-window)))))
 
 (define (merge-header-alists x y)
-  (append (list-transform-negative x
-	    (lambda (entry)
-	      (list-search-positive y
-		(lambda (entry*)
-		  (string-ci=? (car entry) (car entry*))))))
+  (append (remove (lambda (entry)
+		    (find (lambda (entry*)
+			    (string-ci=? (car entry) (car entry*)))
+			  y))
+		  x)
 	  y))
 
 (define (news-article-buffer:rfc822-reply-headers article-buffer)
@@ -3276,7 +3276,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
        (>= (length entry) 2)
        (string? (car entry))
        (boolean? (cadr entry))
-       (for-all? (cddr entry) range?)))
+       (every range? (cddr entry))))
 
 (define ((convert-groups-init-file-entry-type-1 connection) entry)
   (make-news-group-1 connection (car entry) (cadr entry) #f (cddr entry)
@@ -3288,7 +3288,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
        (string? (car entry))
        (boolean? (cadr entry))
        (valid-group-server-info? (caddr entry))
-       (for-all? (cdddr entry) range?)))
+       (every range? (cdddr entry))))
 
 (define ((convert-groups-init-file-entry-type-2 connection) entry)
   (make-news-group-1 connection
@@ -3305,8 +3305,8 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
        (string? (vector-ref entry 0))
        (boolean? (vector-ref entry 1))
        (valid-group-server-info? (vector-ref entry 2))
-       (for-all? (vector-ref entry 3) range?)
-       (for-all? (vector-ref entry 4) range?)))
+       (every range? (vector-ref entry 3))
+       (every range? (vector-ref entry 4))))
 
 (define ((convert-groups-init-file-entry-type-3 connection) entry)
   (make-news-group-1 connection
@@ -3323,9 +3323,9 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
        (string? (vector-ref entry 0))
        (boolean? (vector-ref entry 1))
        (valid-group-server-info? (vector-ref entry 2))
-       (for-all? (vector-ref entry 3) range?)
-       (for-all? (vector-ref entry 4) range?)
-       (for-all? (vector-ref entry 5) range?)))
+       (every range? (vector-ref entry 3))
+       (every range? (vector-ref entry 4))
+       (every range? (vector-ref entry 5))))
 
 (define ((convert-groups-init-file-entry-type-4 connection) entry)
   (make-news-group-1 connection
@@ -3366,7 +3366,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 	#f
 	(let ((table (make-string-hash-table (length entries))))
 	  (for-each (lambda (entry)
-		      (hash-table/put! table (car entry) (cadr entry)))
+		      (hash-table-set! table (car entry) (cadr entry)))
 		    entries)
 	  table))))
 
@@ -3385,7 +3385,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 		   (* (ref-variable news-group-ignored-subject-retention #f)
 		      86400))))
 	   (and (or (news-group:ignored-subjects-modified? group)
-		    (there-exists? entries (lambda (entry) (< (cdr entry) t))))
+		    (any (lambda (entry) (< (cdr entry) t)) entries))
 		(begin
 		  (write-init-file (ignored-subjects-file-pathname group)
 				   buffer
@@ -3394,7 +3394,7 @@ C-c C-q  mail-fill-yanked-message (fill what was yanked)."
 				     (cond ((null? entries)
 					    result)
 					   ((< (cdar entries) t)
-					    (hash-table/remove! table
+					    (hash-table-delete! table
 								(caar entries))
 					    (loop (cdr entries) result))
 					   (else
@@ -4154,8 +4154,8 @@ With prefix arg, replaces the file with the list information."
        (if (or (command-argument-multiplier-only? argument)
 	       (ref-variable news-group-show-seen-headers buffer))
 	   threads
-	   (list-transform-negative threads
-	     news-thread:all-articles-deleted?))))))
+	   (remove news-thread:all-articles-deleted?
+		   threads))))))
 
 (define (news-group:get-headers group argument buffer)
   (let ((connection (news-group:connection group))
@@ -4499,9 +4499,9 @@ With prefix arg, replaces the file with the list information."
 (define (news-header:ignore?! header table t)
   (let ((subject (canonicalize-subject (news-header:subject header))))
     (and (not (fix:= 0 (string-length subject)))
-	 (hash-table/get table subject #f)
+	 (hash-table-ref/default table subject #f)
 	 (let ((group (news-header:group header)))
-	   (hash-table/put! table subject t)
+	   (hash-table-set! table subject t)
 	   (news-group:ignored-subjects-modified! group)
 	   (news-group:process-cross-posts header
 					   (ignore-subject-marker subject t))
@@ -4513,7 +4513,7 @@ With prefix arg, replaces the file with the list information."
     (and table
 	 (let ((subject (canonicalize-subject (news-header:subject header))))
 	   (and (not (fix:= 0 (string-length subject)))
-		(hash-table/get table subject #f))))))
+		(hash-table-ref/default table subject #f))))))
 
 (define (news-group:article-ignored! header buffer)
   (let ((subject (canonicalize-subject (news-header:subject header))))
@@ -4527,7 +4527,7 @@ With prefix arg, replaces the file with the list information."
 
 (define ((ignore-subject-marker subject t) group number)
   number
-  (hash-table/put! (news-group:get-ignored-subjects group #t) subject t)
+  (hash-table-set! (news-group:get-ignored-subjects group #t) subject t)
   (news-group:ignored-subjects-modified! group))
 
 (define (news-group:article-not-ignored! header buffer)
@@ -4538,9 +4538,9 @@ With prefix arg, replaces the file with the list information."
 	       (lambda (group number)
 		 number
 		 (let ((table (news-group:get-ignored-subjects group #f)))
-		   (if (and table (hash-table/get table subject #f))
+		   (if (and table (hash-table-ref/default table subject #f))
 		       (begin
-			 (hash-table/remove! table subject)
+			 (hash-table-delete! table subject)
 			 (news-group:ignored-subjects-modified! group)))))))
 	  (process-header (news-header:group header)
 			  (news-header:number header))

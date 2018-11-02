@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -54,8 +54,8 @@ USA.
   ;; `lexical-unassigned?' with a known block for its first argument
   ;; and a known symbol for its second.  Unfortunately, doing this
   ;; optimally introduces feedback in this analysis.
-  (if (there-exists? (rvalue-values (application-operator application))
-		     (lambda (value) (not (rvalue/procedure? value))))
+  (if (any (lambda (value) (not (rvalue/procedure? value)))
+	   (rvalue-values (application-operator application)))
       (application-arguments-passed-out! application)))
 
 (define (check-application application)

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -130,9 +130,9 @@ static const char * channel_type_names [] =
   "directory",
   "unix-character-device",
   "unix-block-device",
-  "os/2-console",
-  "os/2-unnamed-pipe",
-  "os/2-named-pipe",
+  "unknown",
+  "unknown",
+  "unknown",
   "win32-anonymous-pipe",
   "win32-named-pipe"
 };
@@ -332,7 +332,7 @@ DEFINE_PRIMITIVE ("TEST-SELECT-REGISTRY", Prim_test_selreg, 4, 4, 0)
     if ((VECTOR_LENGTH (vmode)) < rl)
       error_bad_range_arg (4);
     result = ((rl == 0)
-	      ? (blockp ? (OS_pause ()) : SELECT_INTERRUPT)
+	      ? (OS_pause (blockp, 0))
 	      : (OS_test_select_registry (r, blockp)));
     if (result > 0)
       {

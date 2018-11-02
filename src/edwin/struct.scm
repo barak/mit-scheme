@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -73,10 +73,10 @@ USA.
 		   (named)
 		   (constructor %make-group (buffer)))
   ;; The microcode file "edwin.h" depends on this structure being a
-  ;; named vector, and knows the indexes of the fields TEXT-DESCRIPTOR,
+  ;; named vector, and knows the indexes of the fields TEXT,
   ;; GAP-START, GAP-LENGTH, GAP-END, START-MARK, END-MARK, and
   ;; MODIFIED?.
-  text-descriptor
+  text
   (gap-start 0)
   (gap-length 0)
   (gap-end 0)
@@ -96,8 +96,7 @@ USA.
   buffer
   (shrink-length 0)
   (text-properties #f)
-  (%hash-number #f)
-  %text)
+  (%hash-number #f))
 
 (define-integrable group-point group-%point)
 
@@ -113,17 +112,8 @@ USA.
     (set-group-%point! group (make-permanent-mark group 0 #t))
     group))
 
-(define (set-group-text! group text)
-  (without-interrupts
-   (lambda ()
-     (set-group-%text! group text)
-     (set-group-text-descriptor! group (external-string-descriptor text)))))
-
-(define-integrable (group-text group)
-  (group-%text group))
-
 (define (group-length group)
-  (fix:- (xstring-length (group-text group)) (group-gap-length group)))
+  (fix:- (string-length (group-text group)) (group-gap-length group)))
 
 (define-integrable (group-start-index group)
   (mark-index (group-start-mark group)))
@@ -202,7 +192,7 @@ USA.
 
 (define (group-hash-number group)
   (or (group-%hash-number group)
-      (let ((n (object-hash group)))
+      (let ((n (hash-object group)))
 	(set-group-%hash-number! group n)
 	n)))
 
@@ -306,17 +296,14 @@ USA.
 (define-structure (mark
 		   (constructor make-temporary-mark)
 		   (print-procedure
-		    (unparser/standard-method 'MARK
-		      (lambda (state mark)
-			(unparse-object state
-					(or (mark-buffer mark)
-					    (mark-group mark)))
-			(unparse-string state " ")
-			(unparse-object state (mark-index mark))
-			(unparse-string state
-					(if (mark-left-inserting? mark)
-					    " left"
-					    " right"))))))
+		    (standard-print-method 'MARK
+		      (lambda (mark)
+			(list (or (mark-buffer mark)
+				  (mark-group mark))
+			      (mark-index mark)
+			      (if (mark-left-inserting? mark)
+				  'left
+				  'right))))))
   ;; The microcode file "edwin.h" depends on the definition of this
   ;; structure.
   (group #f read-only #t)

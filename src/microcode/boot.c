@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -44,12 +44,6 @@ extern SCHEME_OBJECT make_microcode_identification_vector (void);
 #  define HOOK_ENTER_INTERPRETER win32_enter_interpreter
 #endif
 
-#ifdef __OS2__
-   extern void OS2_initialize_early (void);
-   extern void OS2_enter_interpreter (void (*) (void));
-#  define HOOK_ENTER_INTERPRETER OS2_enter_interpreter
-#endif
-
 #ifndef HOOK_ENTER_INTERPRETER
 #  define HOOK_ENTER_INTERPRETER(func) func ()
 #endif
@@ -65,6 +59,7 @@ struct obstack ffi_obstack;
 void * initial_C_stack_pointer;
 static char * reload_saved_string;
 static unsigned int reload_saved_string_length;
+static bool reload_saved_legacy_p;
 
 void *
 obstack_chunk_alloc (size_t size)
@@ -84,7 +79,7 @@ obstack_chunk_alloc (size_t size)
 /* Declare the outermost critical section. */
 DECLARE_CRITICAL_SECTION ();
 
-#define BLOCKS_TO_BYTES(n) ((n) * 1024)
+#define BLOCKS_TO_WORDS(n) ((n) * 1024)
 
 /* Exit is done in a different way on some operating systems (eg. VMS)  */
 
@@ -105,9 +100,6 @@ main_name (int argc, const char ** argv)
 #ifdef PREALLOCATE_HEAP_MEMORY
   PREALLOCATE_HEAP_MEMORY ();
 #endif
-#ifdef __OS2__
-  OS2_initialize_early ();
-#endif
   obstack_init (&scratch_obstack);
   obstack_init (&ffi_obstack);
   dstack_initialize ();
@@ -116,9 +108,9 @@ main_name (int argc, const char ** argv)
   reload_saved_string_length = 0;
   read_command_line_options (argc, argv);
 
-  setup_memory ((BLOCKS_TO_BYTES (option_heap_size)),
-		(BLOCKS_TO_BYTES (option_stack_size)),
-		(BLOCKS_TO_BYTES (option_constant_size)));
+  setup_memory ((BLOCKS_TO_WORDS (option_heap_size)),
+		(BLOCKS_TO_WORDS (option_stack_size)),
+		(BLOCKS_TO_WORDS (option_constant_size)));
 
   initialize_primitives ();
   compiler_initialize (option_fasl_file != 0);
@@ -207,7 +199,7 @@ start_scheme (void)
 static void
 Do_Enter_Interpreter (void)
 {
-  Interpret (0);
+  Interpret ();
   outf_fatal ("\nThe interpreter returned to top level!\n");
   Microcode_Termination (TERM_EXIT);
 }
@@ -223,7 +215,7 @@ Enter_Interpreter (void)
 SCHEME_OBJECT
 Re_Enter_Interpreter (void)
 {
-  Interpret (0);
+  Interpret ();
   return (GET_VAL);
 }
 
@@ -300,21 +292,16 @@ DEFINE_PRIMITIVE ("RELOAD-SAVE-STRING", Prim_reload_save_string, 1, 1, 0)
   if ((ARG_REF (1)) != SHARP_F)
     {
       CHECK_ARG (1, STRING_P);
-      {
-	unsigned int length = (STRING_LENGTH (ARG_REF (1)));
-	if (length > 0)
-	  {
-	    reload_saved_string = (OS_malloc (length));
-	    reload_saved_string_length = length;
-	    {
-	      char * scan = (STRING_POINTER (ARG_REF (1)));
-	      char * end = (scan + length);
-	      char * scan_result = reload_saved_string;
-	      while (scan < end)
-		(*scan_result++) = (*scan++);
-	    }
-	  }
-      }
+      SCHEME_OBJECT string = (ARG_REF (1));
+      unsigned int length = (STRING_LENGTH (string));
+      if (length > 0)
+        {
+          reload_saved_legacy_p = (LEGACY_STRING_P (string));
+          reload_saved_string = (OS_malloc (length));
+          reload_saved_string_length = length;
+
+          memcpy (reload_saved_string, (STRING_POINTER (string)), length);
+        }
     }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -324,14 +311,15 @@ DEFINE_PRIMITIVE ("RELOAD-RETRIEVE-STRING", Prim_reload_retrieve_string, 0, 0, 0
   PRIMITIVE_HEADER (0);
   if (reload_saved_string == 0)
     PRIMITIVE_RETURN (SHARP_F);
-  {
-    SCHEME_OBJECT result =
-      (memory_to_string (reload_saved_string_length,
-			 ((unsigned char *) reload_saved_string)));
-    free (reload_saved_string);
-    reload_saved_string = 0;
-    PRIMITIVE_RETURN (result);
-  }
+
+  SCHEME_OBJECT result = reload_saved_legacy_p
+    ? (memory_to_string (reload_saved_string_length,
+                         ((unsigned char *) reload_saved_string)))
+    : (memory_to_bytevector (reload_saved_string_length,
+                             ((unsigned char *) reload_saved_string)));
+  free (reload_saved_string);
+  reload_saved_string = 0;
+  PRIMITIVE_RETURN (result);
 }
 
 DEFINE_PRIMITIVE ("BATCH-MODE?", Prim_batch_mode_p, 0, 0, 0)

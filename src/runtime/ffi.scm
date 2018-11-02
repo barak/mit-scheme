@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -35,7 +35,16 @@ USA.
 (define-structure (alien (constructor %make-alien)
 			 (conc-name %alien/)
 			 (copier copy-alien)
-			 (predicate alien?))
+			 (predicate alien?)
+			 (print-procedure
+			  (bracketed-print-method
+			   'alien
+			   (lambda (alien port)
+			     (write-char #\space port)
+			     (write (%alien/ctype alien) port)
+			     (write-string " 0x" port)
+			     (write-string (alien/address-string alien)
+					   port)))))
   ;; Two fixnums.
   (high-bits 0) (low-bits 0)
   ;; A symbol or list.
@@ -44,15 +53,6 @@ USA.
 ;; Breaking a word in two produces high and low fixnums.  If they are
 ;; two digits representing a larger number, then RADIX is their base.
 (define %radix)
-
-(set-record-type-unparser-method! rtd:alien
-  (standard-unparser-method
-   'alien
-   (lambda (alien port)
-     (write-char #\space port)
-     (write (%alien/ctype alien) port)
-     (write-string " 0x" port)
-     (write-string (alien/address-string alien) port))))
 
 (define-integrable alien/ctype %alien/ctype)
 
@@ -162,7 +162,7 @@ USA.
   (call-with-current-continuation
    (lambda (continuation)
      (with-restart
-      'USE-VALUE			;name
+      'use-value			;name
       "Continue with an alien."		;reporter
       continuation			;effector
       (lambda ()			;interactor
@@ -182,7 +182,7 @@ USA.
 		   ;; To be fasdump/loadable.
 		   (type vector) (named 'alien-function)
 		   (print-procedure
-		    (standard-unparser-method 'ALIEN-FUNCTION
+		    (bracketed-print-method 'alien-function
 		     (lambda (alienf port)
 		       (write-char #\space port)
 		       (write-string (%alien-function/name alienf)
@@ -200,7 +200,7 @@ USA.
   ;; Caseful symbol or list, e.g. (* |GtkWidget|).
   return-type
 
-  ;; Alist of parameter names * types, e.g. ((widget (* |GtkWidget|))...)
+  ;; Alist of parameter names * types, e.g. ((widget . (* |GtkWidget|))...)
   parameters
 
   ;; Filename from which the EXTERN declaration was read.
@@ -228,7 +228,7 @@ USA.
 (define-integrable alien-function/filename %alien-function/filename)
 
 (define-integrable (alien-function/name alienf)
-  (string-tail (%alien-function/name alienf) 4)) 
+  (string-tail (%alien-function/name alienf) 4))
 
 (define (%set-alien-function/address! alienf address)
   (let ((qr (integer-divide address %radix)))
@@ -245,9 +245,7 @@ USA.
       unspecific
       (let* ((library (%alien-function/library afunc))
 	     (name (%alien-function/name afunc))
-	     (pathname (system-library-pathname
-			(pathname-new-type (string-append library"-shim")
-					   "so")))
+	     (pathname (plugin-pathname library))
 	     (handle (or (find-dld-handle
 			  (lambda (h)
 			    (pathname=? pathname (dld-handle-pathname h))))
@@ -257,6 +255,60 @@ USA.
 	    (%set-alien-function/address! afunc address)
 	    (error:bad-range-argument afunc 'alien-function-cache!))
 	(set-%alien-function/band-id! afunc band-id))))
+
+(define (plugin-available? name)
+  (let ((path (ignore-errors (lambda () (plugin-pathname name)))))
+    (and (pathname? path)
+	 (file-loadable? path))))
+
+(define (plugin-pathname name)
+  (let ((try-name
+	 (lambda (name)
+	   (or (libtool-pathname name)
+	       (let ((path
+		      (system-library-pathname
+		       (pathname-new-type (string-append name"-shim") "so")
+		       #f)))
+		 (and (file-exists? path)
+		      path))))))
+    (or (try-name name)
+	(and (system-library-directory-pathname name)
+	     (try-name (string-append name "/" name)))
+	(error "Could not find plugin:" name))))
+
+(define (libtool-pathname name)
+  (let ((la-pathname
+	 (system-library-pathname
+	  (pathname-new-type (string-append name"-shim") "la")
+	  #f)))
+    (and (file-exists? la-pathname)
+	 (let ((dlname (libtool-dlname la-pathname))
+	       (dirname (directory-pathname la-pathname)))
+
+	   (define (existing-file name)
+	     (let ((p (merge-pathnames name dirname)))
+	       (and (file-exists? p)
+		    p)))
+
+	   (or (existing-file dlname)
+	       (existing-file (string-append ".libs/"dlname)))))))
+
+(define (libtool-dlname la-pathname)
+  (call-with-input-file la-pathname
+    (lambda (in)
+      (let loop ()
+	(let ((line (read-line in)))
+	  (cond ((eof-object? line)
+		 (error "Could not find dlname setting:" la-pathname))
+		((string-prefix? "dlname='" line)
+		 (let* ((start 8)
+			(end (string-length line))
+			(close (string-find-next-char line #\' start end)))
+		   (if close
+		       (substring line start close)
+		       (error "No closing delimiter in dlname setting:"
+			      line la-pathname))))
+		(else (loop))))))))
 
 (define-integrable (c-peek-cstring alien)
   ((ucode-primitive c-peek-cstring 2) alien 0))
@@ -270,6 +322,9 @@ USA.
 (define-integrable (c-peek-cstringp! alien)
   ((ucode-primitive c-peek-cstringp! 2) alien 0))
 
+(define-integrable (c-peek-csubstring alien start end)
+  ((ucode-primitive c-peek-csubstring 3) alien start (- end start)))
+
 (define-integrable (c-peek-bytes alien offset count buffer start)
   ((ucode-primitive c-peek-bytes 5) alien offset count buffer start))
 
@@ -282,17 +337,26 @@ USA.
   ((ucode-primitive c-poke-pointer! 3) dest 0 alien))
 
 (define (c-poke-string alien string)
-  ;; Copy STRING to the bytes at the ALIEN address.
-  (guarantee-string string 'C-POKE-STRING)
+  ;; Copy STRING and a terminating null byte to the bytes at the ALIEN address.
+  (guarantee-bytes string 'c-poke-string)
   ((ucode-primitive c-poke-string 3) alien 0 string))
 
 (define (c-poke-string! alien string)
-  ;; Like c-poke-string, but increments ALIEN by the null-terminated
-  ;; STRING length.
-  (guarantee-string string 'C-POKE-STRING)
+  ;; Like c-poke-string, but increments ALIEN past the terminating null byte.
+  (guarantee-bytes string 'c-poke-string!)
   ((ucode-primitive c-poke-string! 3) alien 0 string))
 
-(define-integrable (c-poke-bytes alien offset count buffer start)
+(define (guarantee-bytes bytes caller)
+  (if (not (or (string? bytes)
+	       (bytevector? bytes)))
+      (error:wrong-type-argument bytes "a string or bytevector" caller))
+  bytes)
+
+(define (c-poke-bytes alien offset count buffer start)
+  ;; Like c-poke-string, but does not add a terminating null byte, copying only
+  ;; COUNT bytes from BUFFER and starting at START.  START+COUNT-1 must be a
+  ;; valid index into BUFFER.
+  (guarantee-bytes buffer 'c-poke-bytes)
   ((ucode-primitive c-poke-bytes 5) alien offset count buffer start))
 
 (define (c-enum-name value enum-name constants)
@@ -309,25 +373,32 @@ USA.
   (guarantee-alien-function alien-function 'call-alien)
   (alien-function-cache! alien-function)
   (for-each
-   (lambda (arg)
-     (if (alien-function? arg)
-	 (alien-function-cache! arg)))
-   args)
-  (without-interrupts
+    (lambda (arg)
+      (if (alien-function? arg)
+	  (alien-function-cache! arg)))
+    args)
+  (with-thread-events-blocked
    (lambda ()
-     (call-alien* alien-function args))))
+     (without-interrupts
+      (lambda ()
+	(let* ((saved (flo:environment))
+	       (value (call-alien* alien-function args)))
+	  (flo:set-environment! saved)
+	  value))))))
 
+#;(define-integrable (call-alien* alien-function args)
+  (apply (ucode-primitive c-call -1) alien-function args))
+
+;; Use this definition to maintain a callout/back stack.
 (define (call-alien* alien-function args)
   (let ((old-top calloutback-stack))
-    (%if-tracing
-     (outf-error ";"(tindent)"=> "alien-function" "args"\n")
-     (set! calloutback-stack (cons (cons* alien-function args) old-top)))
+    (%trace (tindent)"=> "alien-function" "args)
+    (set! calloutback-stack (cons (cons alien-function args) old-top))
     (let ((value (apply (ucode-primitive c-call -1) alien-function args)))
-      (%if-tracing
-       (%assert (eq? old-top (cdr calloutback-stack))
-		"call-alien: freak stack "calloutback-stack"\n")
-       (set! calloutback-stack old-top)
-       (outf-error ";"(tindent)"<= "value"\n"))
+      (%assert (eq? old-top (cdr calloutback-stack))
+	       "call-alien: freak stack" calloutback-stack)
+      (set! calloutback-stack old-top)
+      (%trace (tindent)"<= "value)
       value)))
 
 
@@ -335,25 +406,32 @@ USA.
 
 ;; Weak alist of: ( malloc alien X copy for c-free )...
 (define malloced-aliens '())
+(define malloced-aliens-mutex)
 
 (define (free-malloced-aliens)
-  (let loop ((aliens malloced-aliens)
-	     (prev #f))
-    (if (pair? aliens)
-	(if (weak-pair/car? (car aliens))
-	    (loop (cdr aliens) aliens)
-	    (let ((copy (weak-cdr (car aliens)))
-		  (next (cdr aliens)))
-	      (if prev
-		  (set-cdr! prev next)
-		  (set! malloced-aliens next))
-	      (if (not (alien-null? copy))
-		  (begin
-		    ((ucode-primitive c-free 1) copy)
-		    (alien-null! copy)))
-	      (loop next prev))))))
+  (with-thread-mutex-try-lock
+   malloced-aliens-mutex
+   (lambda ()
+     (let loop ((aliens malloced-aliens)
+		(prev #f))
+       (if (pair? aliens)
+	   (if (weak-pair/car? (car aliens))
+	       (loop (cdr aliens) aliens)
+	       (let ((copy (weak-cdr (car aliens)))
+		     (next (cdr aliens)))
+		 (if prev
+		     (set-cdr! prev next)
+		     (set! malloced-aliens next))
+		 (if (not (alien-null? copy))
+		     (begin
+		       ((ucode-primitive c-free 1) copy)
+		       (alien-null! copy)))
+		 (loop next prev))))))
+   (lambda ()
+     unspecific)))
 
 (define (reset-malloced-aliens!)
+  (set! malloced-aliens-mutex (make-thread-mutex))
   (let loop ((aliens malloced-aliens))
     (if (pair? aliens)
 	(let ((alien (weak-car (car aliens)))
@@ -368,7 +446,7 @@ USA.
   (let ((alien (make-alien ctype)))
     (let ((copy (make-alien ctype)))
       (let ((entry (weak-cons alien copy)))
-	(without-interrupts
+	(with-thread-mutex-lock malloced-aliens-mutex
 	 (lambda ()
 	   (set! malloced-aliens (cons entry malloced-aliens)))))
       (init copy)
@@ -388,7 +466,7 @@ USA.
 	(if (not weak)
 	    (warn "Cannot free an alien that was not malloced:" alien)
 	    (let ((copy (weak-cdr weak)))
-	      (without-interrupts
+	      (with-thread-mutex-lock malloced-aliens-mutex
 	       (lambda ()
 		 (if (not (alien-null? alien))
 		     (begin
@@ -410,16 +488,18 @@ USA.
 ;;; Callback support
 
 (define registered-callbacks)
+(define registered-callbacks-mutex)
 (define first-free-id)
 
 (define (reset-callbacks!)
   (set! registered-callbacks (make-vector 100 #f))
+  (set! registered-callbacks-mutex (make-thread-mutex))
   (set! first-free-id 1))
 
 (define (register-c-callback procedure)
   (if (not (procedure? procedure))
       (error:wrong-type-argument procedure "a procedure" 'register-c-callback))
-  (without-interrupts
+  (with-thread-mutex-lock registered-callbacks-mutex
    (lambda ()
      (let ((id first-free-id))
        (set! first-free-id (next-free-id (1+ id)))
@@ -439,22 +519,21 @@ USA.
 	    (else (next-id (1+ id)))))))
 
 (define (de-register-c-callback id)
-  (vector-set! registered-callbacks id #f)
-  ;; Uncomment to recycle ids.
-  ;;(if (< id first-free-id)
-  ;;    (set! first-free-id id))
-  )
+  (with-thread-mutex-lock registered-callbacks-mutex
+   (lambda ()
+     (vector-set! registered-callbacks id #f)
+     (if (< id first-free-id)
+	 (set! first-free-id id)))))
 
 (define (normalize-aliens! args)
   ;; Any vectors among ARGS are assumed to be freshly-consed aliens
   ;; without their record-type.  Fix them.
-  (let ((tag (record-type-dispatch-tag rtd:alien)))
-    (let loop ((args args))
-      (if (null? args)
-	  unspecific
-	  (let ((arg (car args)))
-	    (if (%record? arg) (%record-set! arg 0 tag))
-	    (loop (cdr args)))))))
+  (let loop ((args args))
+    (if (null? args)
+	unspecific
+	(let ((arg (car args)))
+	  (if (%record? arg) (%record-set! arg 0 rtd:alien))
+	  (loop (cdr args))))))
 
 (define (callback-handler id args)
   ;; Installed in the fixed-objects-vector, this procedure is called
@@ -467,46 +546,47 @@ USA.
     (if (not procedure)
 	(error:bad-range-argument id 'apply-callback))
     (normalize-aliens! args)
-    (let ((old-top calloutback-stack))
-      (%if-tracing
-       (outf-error ";"(tindent)"=>> "procedure" "args"\n")
-       (set! calloutback-stack (cons (cons procedure args) old-top)))
-      (let ((value (apply-callback-proc procedure args)))
-	(%if-tracing
-	 (%assert (and (pair? calloutback-stack)
-		       (eq? old-top (cdr calloutback-stack)))
-		  "callback-handler: freak stack "calloutback-stack"\n")
-	 (set! calloutback-stack old-top)
-	 (outf-error ";"(tindent)"<<= "value"\n"))
-	value))))
+    (callback-handler* procedure args)))
+
+#;(define-integrable (callback-handler* procedure args)
+  (apply-callback-proc procedure args))
+
+;; Use this definition to maintain a callout/back stack.
+(define (callback-handler* procedure args)
+  (let ((old-top calloutback-stack))
+    (%trace (tindent)"=>> "procedure" "args)
+    (set! calloutback-stack (cons (cons procedure args) old-top))
+    (let ((value (apply-callback-proc procedure args)))
+      (%assert (and (pair? calloutback-stack)
+		    (eq? old-top (cdr calloutback-stack)))
+	       "callback-handler: freak stack" calloutback-stack)
+      (set! calloutback-stack old-top)
+      (%trace (tindent)"<<= "value)
+      value)))
 
 (define (apply-callback-proc procedure args)
   (call-with-current-continuation
    (lambda (return)
-     (with-restart
-      'USE-VALUE			;name
-      "Return a value from the callback." ;reporter
-      return				;effector
-      (lambda ()			;interactor
-	(values (prompt-for-evaluated-expression
-		 "Value to return from callback")))
-      (lambda ()			;thunk
-	(let ((done? #f))
-	  (if (not done?)
-	      (begin
-		(set! done? #t)
-		(apply procedure args))
-	      (let loop ()
-		(error "Cannot return from a callback more than once.")
-		(loop)))))))))
+     (parameterize ((param:standard-error-hook
+		     (named-lambda (callback-error-handler condition)
+		       (let ((continuation return))
+			 (set! return #f)
+			 (outf-error ";error in callback: "condition"\n")
+			 (continuation 0)))))
+       (let* ((value (apply procedure args))
+	      (continuation return))
+	 (set! return #f)
+	 (if continuation
+	     (continuation value)
+	     (error "Cannot return from a callback multiple times.")))))))
 
 ;;; For callback debugging:
 
 (define (outf-error . objects)
   ((ucode-primitive outf-error 1)
-   (apply string-append
-	  (map (lambda (o) (if (string? o) o (write-to-string o)))
-	       objects))))
+   (string-append*
+    (map (lambda (o) (if (string? o) o (write-to-string o)))
+	 objects))))
 
 (define (registered-callback-count)
   (let* ((vector registered-callbacks)
@@ -526,52 +606,50 @@ USA.
 ;;; Build support, autoloaded
 
 (define (generate-shim library #!optional prefix)
-  (load-ffi-quietly)
+  (load-option-quietly 'ffi)
   ((environment-lookup (->environment '(ffi)) 'c-generate) library prefix))
 
-(define (compile-shim)
-  (load-ffi-quietly)
-  ((environment-lookup (->environment '(ffi)) 'compile-shim)))
+(define (add-plugin name project infodir scmlibdir scmdocdir)
+  (load-option-quietly 'ffi)
+  ((environment-lookup (->environment '(ffi)) 'add-plugin)
+   name project infodir scmlibdir scmdocdir))
 
-(define (link-shim)
-  (load-ffi-quietly)
-  ((environment-lookup (->environment '(ffi)) 'link-shim)))
+(define (remove-plugin name project infodir scmlibdir scmdocdir)
+  (load-option-quietly 'ffi)
+  ((environment-lookup (->environment '(ffi)) 'remove-plugin)
+   name project infodir scmlibdir scmdocdir))
 
-(define (install-shim destdir library)
-  (load-ffi-quietly)
-  ((environment-lookup (->environment '(ffi)) 'install-shim) destdir library))
+(define (delete-plugin-list)
+  (load-option-quietly 'ffi)
+  ((environment-lookup (->environment '(ffi)) 'delete-plugin-list)))
 
-(define (install-load-option destdir name #!optional directory)
-  (load-ffi-quietly)
-  ((environment-lookup (->environment '(ffi)) 'install-load-option)
-   destdir name directory))
+(define (update-plugin-indices project infodir scmlibdir scmdocdir)
+  (load-option-quietly 'ffi)
+  ((environment-lookup (->environment '(ffi)) 'update-plugin-indices)
+   project infodir scmlibdir scmdocdir))
 
-(define (install-html destdir title)
-  (load-ffi-quietly)
-  ((environment-lookup (->environment '(ffi)) 'install-html) destdir title))
-
-(define (load-ffi-quietly)
-  (if (not (name->package '(FFI)))
-      (let ((kernel (lambda ()
-		      (fluid-let ((load/suppress-loading-message? #t))
-			(load-option 'FFI)))))
+(define (load-option-quietly name)
+  (if (not (option-loaded? name))
+      (let ((kernel
+	     (lambda ()
+	       (parameterize ((param:suppress-loading-message? #t))
+		 (load-option name)))))
 	(if (nearest-cmdl/batch-mode?)
 	    (kernel)
-	    (with-notification (lambda (port)
-				 (write-string "Loading FFI option" port))
-			       kernel)))))
+	    (with-notification
+	     (lambda (port)
+	       (write-string "Loading " port)
+	       (write-string (string-upcase (symbol->string name)) port)
+	       (write-string " option" port))
+	     kernel)))))
 
-
 (define calloutback-stack '())
-
-(define %trace? #f)
 
 (define (reset-package!)
   (reset-alien-functions!)
   (reset-malloced-aliens!)
   (reset-callbacks!)
   (set! %radix (if (fix:fixnum? #x100000000) #x100000000 #x10000))
-  (set! %trace? #f)
   (set! calloutback-stack '()))
 
 (define (initialize-package!)
@@ -581,23 +659,32 @@ USA.
   (add-gc-daemon! free-malloced-aliens)
   unspecific)
 
-(define-syntax %if-tracing
+#;(define-syntax %assert
   (syntax-rules ()
-    ((_ BODY ...)
-     (if %trace?
-	 (begin BODY ...)))))
+    ((_ test . msg)
+     #f)))
 
 (define-syntax %assert
   (syntax-rules ()
-    ((_ TEST MSG ...)
-     (if (not TEST)
-	 (error "Failed assert:" MSG ...)))))
+    ((_ test . msg)
+     (if (not test)
+	 (error . msg)))))
+
+;; Use this definition to avoid frequently checking %trace?.
+#;(define-syntax %trace
+  (syntax-rules ()
+    ((_ . msg)
+     #f)))
+
+(define %trace? #f)
 
 (define-syntax %trace
   (syntax-rules ()
-    ((_ MSG ...)
-     (if %trace?
-	 (outf-error MSG ...)))))
+    ((_ . msg)
+     (if %trace? (%outf-error . msg)))))
 
 (define (tindent)
   (make-string (* 2 (length calloutback-stack)) #\space))
+
+(define (%outf-error . msg)
+  (apply outf-error `("; ",@msg"\n")))

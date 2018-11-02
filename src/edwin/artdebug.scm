@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -662,7 +662,7 @@ Move to the last subproblem if the subproblem number is too high."
 	       (pp (lambda (obj)
 		     (fresh-line port)
 		     (pp obj port #t))))
-		     
+
 	   (if (dstate/reduction-number dstate)
 	       (pp (reduction-expression (dstate/reduction dstate)))
 	       (let ((exp (dstate/expression dstate))
@@ -681,7 +681,7 @@ Move to the last subproblem if the subproblem number is too high."
 			(if (or argument
 				(invalid-subexpression? sub))
 			    (pp exp)
-			    (fluid-let ((*pp-no-highlights?* #f))
+			    (parameterize ((param:pp-no-highlights? #f))
 			      (do-hairy))))
 		       ((debugging-info/noise? exp)
 			(message ((debugging-info/noise exp) #t)))
@@ -888,9 +888,9 @@ Prefix argument means do not kill the debugger buffer."
 
 (define (continuation-browser-abort restarts)
   (let ((restart
-	 (list-search-positive restarts
-	   (lambda (restart)
-	     (eq? (restart/name restart) 'abort)))))
+	 (find (lambda (restart)
+		 (eq? (restart/name restart) 'abort))
+	       restarts)))
     (if (not restart)
 	(editor-error "Can't find an abort restart")
 	(fluid-let ((hook/invoke-restart
@@ -973,9 +973,9 @@ Prefix argument means do not kill the debugger buffer."
 (define-structure (unparser-literal
 		   (conc-name unparser-literal/)
 		   (print-procedure
-		    (lambda (state instance)
-		      (unparse-string state
-				      (unparser-literal/string instance))))
+		    (lambda (instance port)
+		      (write-string (unparser-literal/string instance)
+				    port)))
 		   (constructor unparser-literal/make))
   string)
 
@@ -1013,7 +1013,7 @@ Prefix argument means do not kill the debugger buffer."
        port))))
 
 (define (print-with-subexpression expression subexpression)
-  (fluid-let ((*unparse-primitives-by-name?* #t))
+  (parameterize ((param:print-primitives-by-name? #t))
     (if (invalid-subexpression? subexpression)
 	(write (unsyntax expression))
 	(let ((sub (write-to-string (unsyntax subexpression))))
@@ -1042,7 +1042,7 @@ Prefix argument means do not kill the debugger buffer."
    port))
 
 (define (print-reduction-as-subexpression expression)
-  (fluid-let ((*unparse-primitives-by-name?* #t))
+  (parameterize ((param:print-primitives-by-name? #t))
     (write-string (ref-variable subexpression-start-marker))
     (write (unsyntax expression))
     (write-string (ref-variable subexpression-end-marker))))
@@ -1059,7 +1059,11 @@ Prefix argument means do not kill the debugger buffer."
       (write-string
        (string-pad-right
 	(string-append
-	 (cdr (with-output-to-truncated-string pad-width expression-thunk))
+	 (cdr
+	  (call-with-truncated-output-string pad-width
+	    (lambda (port)
+	      (parameterize ((current-output-port port))
+		(expression-thunk)))))
 	 " ")
 	pad-width
 	#\-)
@@ -1298,7 +1302,7 @@ Prefix argument means do not kill the debugger buffer."
       value)))
 
 (define (operation/write-char port char)
-  (guarantee-8-bit-char char)
+  (guarantee 8-bit-char? char)
   (region-insert-char! (port/state port) char))
 
 (define (operation/write-substring port string start end)
@@ -1331,8 +1335,8 @@ Prefix argument means do not kill the debugger buffer."
   (newline port)
   (newline port))
 
-(define (operation/prompt-for-expression port environment prompt)
-  port environment
+(define (operation/prompt-for-expression port prompt)
+  port
   (prompt-for-expression prompt))
 
 (define (operation/prompt-for-confirmation port prompt)

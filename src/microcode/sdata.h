@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -56,22 +56,21 @@ USA.
  * An object that points to one other object (extra indirection).
  * Used by the compiler to share objects.
  */
-#define CELL_CONTENTS 		0
+#define CELL_CONTENTS		0
 
-/* CHARACTER
- * Not currently used.  Intended ultimately to complete the abstraction
- * of strings.  This will probably be removed eventually.
+/* BYTEVECTOR
+ * Format consists of the normal non-marked vector header
+ * (BYTEVECTOR_HEADER) followed by the number of bytes in the vector
+ * (with type-code 0), followed by the bytes themselves.
  */
+#define BYTEVECTOR_HEADER	0
+#define BYTEVECTOR_LENGTH_INDEX	1
+#define BYTEVECTOR_LENGTH_SIZE	1
+#define BYTEVECTOR_DATA		2
 
-/* CHARACTER_STRING
- * Synonym for 8B_VECTOR.  Used to store strings of characters.  Format
- * consists of the normal non-marked vector header (STRING_HEADER)
- * followed by the number of characters in the string (as a FIXNUM),
- * followed by the characters themselves.
- */
-#define STRING_HEADER		0
-#define STRING_LENGTH_INDEX	1
-#define STRING_CHARS		2
+#define UNICODE_STRING_HEADER 0
+#define UNICODE_STRING_LENGTH_INDEX 1
+#define UNICODE_STRING_DATA 2
 
 /* COMPILED_PROCEDURE */
 #define COMP_PROCEDURE_ADDRESS	0
@@ -124,12 +123,9 @@ USA.
  * call) or a incremental (run-time) DEFINE (known as an 'auxilliary'
  * binding).
  * When an environment frame is created, it only contains lambda
- * bindings.  If incremental defines are performed in it or its
- * children, it acquires an extension which contains a list of the
- * auxiliary bindings.  Some of these bindings are fictitious in that
- * their only purpose is to make the real bindings (if and when they
- * occur) become automatically dangerous.  Bindings become dangerous
- * when they are shadowed by incremental bindings in children frames.
+ * bindings.  If incremental defines are performed in it, it acquires
+ * an extension which contains a list of the auxiliary bindings.
+ *
  * Besides the lambda bindings, an environment frame contains a
  * pointer to the procedure which created it.  It is through this
  * procedure that the parent frame is found.

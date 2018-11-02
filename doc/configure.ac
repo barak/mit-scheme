@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme documentation],
-	[9.2],
+	[10.1.2],
 	[bug-mit-scheme@gnu.org],
 	[mit-scheme-doc])
 AC_CONFIG_SRCDIR([ref-manual/scheme.texinfo])
@@ -9,8 +9,8 @@ AC_CONFIG_SRCDIR([ref-manual/scheme.texinfo])
 AC_COPYRIGHT(
 [Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,58 +31,62 @@ USA.
 ])
 
 AC_PROG_INSTALL
-AC_PROG_LN_S
-AC_PROG_MAKE_SET
-if test "$(${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps)"
+if test x"$(${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps)" != x
 then
     INSTALL="${INSTALL} --preserve-timestamps"
 fi
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
+AC_CHECK_PROG([INSTALL_INFO_PROG], [install-info], [install-info], [true])
 
+PROJECT=mit-scheme
+TARGETS=
 INST_TARGETS=
 
 AC_ARG_ENABLE([html],
-	[AC_HELP_STRING([--enable-html], [generate HTML documentation])])
-if test "${enable_html:-yes}" = "yes"; then
-    htmldir="${libdir}/mit-scheme/doc"
-elif test "${enable_html}" = "no"; then
+    [AC_HELP_STRING([--enable-html],
+        [generate HTML documentation [[yes]]])])
+: ${enable_html=yes}
+if test x"${enable_html}" = xno; then
     htmldir=
-else
-    htmldir="${enable_html}"
+elif test x"${enable_html}" != xyes; then
+    htmldir=${enable_html}
 fi
-test "${htmldir}" = "" || INST_TARGETS="${INST_TARGETS} install-html"
-AC_SUBST([htmldir])
+test x"${htmldir}" = x || TARGETS="${TARGETS} \$(TARGET_ROOT)/index.html"
+test x"${htmldir}" = x || INST_TARGETS="${INST_TARGETS} install-html"
 
 AC_ARG_ENABLE([pdf],
-	[AC_HELP_STRING([--enable-pdf], [generate PDF documentation])])
-if test "${enable_pdf:-yes}" = "yes"; then
-    pdfdir="${libdir}/mit-scheme/doc"
-elif test "${enable_pdf}" = "no"; then
+    [AC_HELP_STRING([--enable-pdf],
+	[generate PDF documentation [[yes]]])])
+: ${enable_pdf=yes}
+if test x"${enable_pdf}" = xno; then
     pdfdir=
-else
-    pdfdir="${enable_pdf}"
+elif test x"${enable_pdf}" != xyes; then
+    pdfdir=${enable_pdf}
 fi
-test "${pdfdir}" = "" || INST_TARGETS="${INST_TARGETS} install-pdf"
-AC_SUBST([pdfdir])
+test x"${pdfdir}" = x || TARGETS="${TARGETS} \$(TARGET_ROOT).pdf"
+test x"${pdfdir}" = x || INST_TARGETS="${INST_TARGETS} install-pdf"
 
 AC_ARG_ENABLE([ps],
-	[AC_HELP_STRING([--enable-ps], [generate Postscript documentation])])
-if test "${enable_ps:-yes}" = "yes"; then
-    psdir="${libdir}/mit-scheme/doc"
-elif test "${enable_ps}" = "no"; then
+    [AC_HELP_STRING([--enable-ps],
+	[generate Postscript documentation [[no]]])])
+: ${enable_pdf=no}
+if test x"${enable_ps}" = xno; then
     psdir=
-else
-    psdir="${enable_ps}"
+elif test x"${enable_ps}" != xyes; then
+    psdir=${enable_ps}
 fi
-test "${psdir}" = "" || INST_TARGETS="${INST_TARGETS} install-ps"
-AC_SUBST([psdir])
+test x"${psdir}" = x || TARGETS="${TARGETS} \$(TARGET_ROOT).ps"
+test x"${psdir}" = x || INST_TARGETS="${INST_TARGETS} install-ps"
 
+AC_SUBST([PROJECT])
+AC_SUBST([TARGETS])
 AC_SUBST([INST_TARGETS])
 
 AC_CONFIG_FILES([
 	Makefile
 	make-common
 	ffi/Makefile
-	imail/Makefile
 	ref-manual/Makefile
 	sos/Makefile
 	user-manual/Makefile])

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,8 +38,8 @@ USA.
    (lambda (self . zs)
      self				; ignored
      (reduce-comparator = zs 'make-=-operator))
-   (lambda () #T)
-   (lambda (z) z #T)
+   (lambda () #t)
+   (lambda (z) z #t)
    (lambda (z1 z2) (= z1 z2))))
 
 ;;(define (make-<-operator <)
@@ -51,8 +51,8 @@ USA.
    (lambda (self . zs)
      self				; ignored
      (reduce-comparator comparator zs name))
-   (lambda () #T)
-   (lambda (z) z #T)
+   (lambda () #t)
+   (lambda (z) z #t)
    comparator))
 
 (define (make-<-operator <)
@@ -76,7 +76,7 @@ USA.
    (lambda (self x . xs)
      self				;ignored
      (reduce-max/min max/min x xs 'make-max/min-operator))
-   #F
+   #f
    (lambda (x) x)
    max/min))
 
@@ -90,7 +90,7 @@ USA.
   (make-arity-dispatched-procedure
    (lambda (self z1 #!optional z2)	; required for arity
      (error "ATAN operator: should never get to this case" self z1 z2))
-   #F
+   #f
    atan1
    atan2))
 
@@ -121,7 +121,7 @@ USA.
      self				; ignored
      (binary-invert-op z1
 		       (reduce accumulate-op identity zs)))
-   #F					; no nullary case
+   #f					; no nullary case
    unary-invert-op
    binary-invert-op))
 

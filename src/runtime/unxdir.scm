@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,7 +29,11 @@ USA.
 
 (declare (usual-integrations))
 
-(define *expand-directory-prefixes?* true)
+(define *expand-directory-prefixes?*)
+
+(define (initialize-package!)
+  (set! *expand-directory-prefixes?* (make-unsettable-parameter #t))
+  unspecific)
 
 (define (directory-read pattern #!optional sort?)
   (if (if (default-object? sort?) true sort?)
@@ -43,8 +47,8 @@ USA.
 	       (make-pathname (pathname-host pattern)
 			      (pathname-device pattern)
 			      (pathname-directory pattern)
-			      'WILD
-			      'WILD
+			      'wild
+			      'wild
 			      (pathname-version pattern))
 	       pattern))))
     (let ((directory-path (directory-pathname pattern)))
@@ -52,17 +56,17 @@ USA.
 	     (merge-pathnames pathname directory-path))
 	   (let ((pathnames
 		  (let ((fnames (generate-directory-pathnames directory-path)))
-		    (fluid-let ((*expand-directory-prefixes?* false))
+		    (parameterize ((*expand-directory-prefixes?* false))
 		      (map ->pathname fnames)))))
-	     (if (and (eq? (pathname-name pattern) 'WILD)
-		      (eq? (pathname-type pattern) 'WILD))
+	     (if (and (eq? (pathname-name pattern) 'wild)
+		      (eq? (pathname-type pattern) 'wild))
 		 pathnames
-		 (list-transform-positive pathnames
-		   (lambda (instance)
-		     (and (match-component (pathname-name pattern)
-					   (pathname-name instance))
-			  (match-component (pathname-type pattern)
-					   (pathname-type instance)))))))))))
+		 (filter (lambda (instance)
+			   (and (match-component (pathname-name pattern)
+						 (pathname-name instance))
+				(match-component (pathname-type pattern)
+						 (pathname-type instance))))
+			 pathnames)))))))
 
 (define (generate-directory-pathnames pathname)
   (let ((channel (directory-channel-open (->namestring pathname))))
@@ -75,8 +79,8 @@ USA.
 	      result))))))
 
 (define (match-component pattern instance)
-  (or (eq? pattern 'WILD)
-      (eq? pattern #F)
+  (or (eq? pattern 'wild)
+      (eq? pattern #f)
       (equal? pattern instance)))
 
 (define (pathname<? x y)

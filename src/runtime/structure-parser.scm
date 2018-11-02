@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,8 +32,8 @@ USA.
 (define-syntax object-parser
   (sc-macro-transformer
    (lambda (form env)
-     (if (syntax-match? '(FORM) (cdr form))
-	 (compile-top-level (cadr form) 'OBJECT env)
+     (if (syntax-match? '(form) (cdr form))
+	 (compile-top-level (cadr form) 'object env)
 	 (ill-formed-syntax form)))))
 
 (define (apply-object-parser parser object)
@@ -47,8 +47,8 @@ USA.
 (define-syntax list-parser
   (sc-macro-transformer
    (lambda (form env)
-     (if (syntax-match? '(* FORM) (cdr form))
-	 (compile-top-level `(SEQ ,@(cdr form)) 'LIST env)
+     (if (syntax-match? '(* form) (cdr form))
+	 (compile-top-level `(seq ,@(cdr form)) 'list env)
 	 (ill-formed-syntax form)))))
 
 (define (apply-list-parser parser items)
@@ -63,8 +63,8 @@ USA.
 (define-syntax vector-parser
   (sc-macro-transformer
    (lambda (form env)
-     (if (syntax-match? '(* FORM) (cdr form))
-	 (compile-top-level `(SEQ ,@(cdr form)) 'VECTOR env)
+     (if (syntax-match? '(* form) (cdr form))
+	 (compile-top-level `(seq ,@(cdr form)) 'vector env)
 	 (ill-formed-syntax form)))))
 
 (define (apply-vector-parser parser vector #!optional start end)
@@ -82,7 +82,7 @@ USA.
 ;;;; Compiler
 
 (define (compile-top-level pattern caller-context env)
-  (fluid-let ((name-counters (make-strong-eq-hash-table)))
+  (parameterize ((name-counters (make-strong-eq-hash-table)))
     (optimize-result
      (compile-pattern pattern caller-context env))))
 
@@ -108,25 +108,25 @@ USA.
 	       (call-generic))
 	      ((eq? callee-context caller-context)
 	       (call-specific))
-	      ((eq? callee-context 'OBJECT)
-	       ((get-context-method 'CALL-OBJECT-METHOD caller-context)
+	      ((eq? callee-context 'object)
+	       ((get-context-method 'call-object-method caller-context)
 		(call-specific)))
 	      (else
 	       (call-generic)))))))
 
 (define (rewrite-pattern pattern)
   (cond ((identifier? pattern)
-	 (rewrite-pattern `(SEXP ,pattern)))
+	 (rewrite-pattern `(sexp ,pattern)))
 	((or (char? pattern)
 	     (string? pattern)
 	     (number? pattern)
 	     (boolean? pattern)
 	     (null? pattern))
-	 (rewrite-pattern `(QUOTE ,pattern)))
-	((syntax-match? '('+ * FORM) pattern)
-	 (rewrite-pattern `(SEQ ,@(cdr pattern) (* ,@(cdr pattern)))))
-	((syntax-match? '('? * FORM) pattern)
-	 (rewrite-pattern `(ALT (SEQ ,@(cdr pattern)) (VALUES))))
+	 (rewrite-pattern `(quote ,pattern)))
+	((syntax-match? '('+ * form) pattern)
+	 (rewrite-pattern `(seq ,@(cdr pattern) (* ,@(cdr pattern)))))
+	((syntax-match? '('? * form) pattern)
+	 (rewrite-pattern `(alt (seq ,@(cdr pattern)) (values))))
 	(else pattern)))
 
 (define (get-pattern-compiler name caller-context)
@@ -135,8 +135,8 @@ USA.
 	       (let ((callee-context (pc-context pc)))
 		 (or (list? callee-context)
 		     (eq? callee-context caller-context)
-		     (eq? callee-context 'OBJECT)
-		     (eq? callee-context 'ANY)))))
+		     (eq? callee-context 'object)
+		     (eq? callee-context 'any)))))
 	pattern-compilers))
 
 (define (define-pattern-compiler template context compiler)
@@ -193,44 +193,44 @@ USA.
 
 ;;;; Object context
 
-(define-pattern-compiler '(MATCH-ANY) 'OBJECT
+(define-pattern-compiler '(match-any) 'object
   (lambda (pattern env)
     pattern env
     (make-object-parser
      (lambda (item win lose)
        `(,win ,(single-val item) ,lose)))))
 
-(define-pattern-compiler '(MATCH-IF EXPRESSION) 'OBJECT
+(define-pattern-compiler '(match-if expression) 'object
   (lambda (pattern env)
     (make-object-parser
      (lambda (item win lose)
-       `(IF (,(close-syntax (cadr pattern) env) ,item)
+       `(if (,(close-syntax (cadr pattern) env) ,item)
 	    (,win ,(single-val item) ,lose)
 	    (,lose))))))
 
-(define-pattern-compiler '(NOISE-IF EXPRESSION) 'OBJECT
+(define-pattern-compiler '(noise-if expression) 'object
   (lambda (pattern env)
     (make-object-parser
      (lambda (item win lose)
-       `(IF (,(close-syntax (cadr pattern) env) ,item)
+       `(if (,(close-syntax (cadr pattern) env) ,item)
 	    (,win ,(null-vals) ,lose)
 	    (,lose))))))
 
-(define-pattern-compiler '(MATCH DATUM) 'OBJECT
+(define-pattern-compiler '(match datum) 'object
   (lambda (pattern env)
     env
     (make-object-parser
      (lambda (item win lose)
-       `(IF (,(equality-predicate (cadr pattern)) ,item ',(cadr pattern))
+       `(if (,(equality-predicate (cadr pattern)) ,item ',(cadr pattern))
 	    (,win ,(single-val item) ,lose)
 	    (,lose))))))
 
-(define-pattern-compiler '(QUOTE DATUM) 'OBJECT
+(define-pattern-compiler '(quote datum) 'object
   (lambda (pattern env)
     env
     (make-object-parser
      (lambda (item win lose)
-       `(IF (,(equality-predicate (cadr pattern)) ,item ',(cadr pattern))
+       `(if (,(equality-predicate (cadr pattern)) ,item ',(cadr pattern))
 	    (,win ,(null-vals) ,lose)
 	    (,lose))))))
 
@@ -239,18 +239,18 @@ USA.
 	     (char? datum)
 	     (boolean? datum)
 	     (null? datum))
-	 'EQ?)
-	((number? datum) 'EQV?)
-	(else 'EQUAL?)))
+	 'eq?)
+	((number? datum) 'eqv?)
+	(else 'equal?)))
 
-(define-context-method 'VALUES 'OBJECT
+(define-context-method 'values 'object
   (lambda (vals)
     (make-object-parser
      (lambda (item win lose)
        item
        `(,win ,vals ,lose)))))
 
-(define-context-method 'ALT 'OBJECT
+(define-context-method 'alt 'object
   (lambda (make-body)
     (make-object-parser
      (lambda (item win lose)
@@ -258,7 +258,7 @@ USA.
 		    `(,callee ,item ,win ,lose))
 		  lose)))))
 
-(define-context-method 'TRANSFORM-VALS 'OBJECT
+(define-context-method 'transform-vals 'object
   (lambda (callee transform)
     (make-object-parser
      (lambda (item win lose)
@@ -271,17 +271,17 @@ USA.
 				  `(,win ,vals ,lose)))))
 		 ,lose)))))
 
-(define-pattern-compiler '(CONS FORM FORM) 'OBJECT
+(define-pattern-compiler '(cons form form) 'object
   (lambda (pattern env)
     (make-object-parser
      (lambda (item win lose)
-       `(IF (PAIR? ,item)
-	    (,(compile-pattern (cadr pattern) 'OBJECT env)
-	     (CAR ,item)
+       `(if (pair? ,item)
+	    (,(compile-pattern (cadr pattern) 'object env)
+	     (car ,item)
 	     ,(make-object-winner
 	       (lambda (vals lose)
-		 `(,(compile-pattern (caddr pattern) 'OBJECT env)
-		   (CDR ,item)
+		 `(,(compile-pattern (caddr pattern) 'object env)
+		   (cdr ,item)
 		   ,(make-object-winner
 		     (lambda (vals* lose)
 		       `(,win ,(join-vals vals vals*)
@@ -290,11 +290,11 @@ USA.
 	     ,lose)
 	    (,lose))))))
 
-(define-pattern-compiler '(LIST * FORM) 'OBJECT
+(define-pattern-compiler '(list * form) 'object
   (lambda (pattern env)
     (make-object-parser
      (lambda (item win lose)
-       `(,(compile-pattern `(SEQ ,@(cdr pattern) (END)) 'LIST env)
+       `(,(compile-pattern `(seq ,@(cdr pattern) (end)) 'list env)
 	 ,item
 	 ,(make-list-winner
 	   (lambda (items vals lose)
@@ -302,15 +302,15 @@ USA.
 	     `(,win ,vals ,lose)))
 	 ,lose)))))
 
-(define-pattern-compiler '(VECTOR * FORM) 'OBJECT
+(define-pattern-compiler '(vector * form) 'object
   (lambda (pattern env)
     (make-object-parser
      (lambda (item win lose)
-       `(IF (VECTOR? ,item)
-	    (,(compile-pattern `(SEQ ,@(cdr pattern) (END)) 'VECTOR env)
+       `(if (vector? ,item)
+	    (,(compile-pattern `(seq ,@(cdr pattern) (end)) 'vector env)
 	     ,item
 	     0
-	     (VECTOR-LENGTH ,item)
+	     (vector-length ,item)
 	     ,(make-vector-winner
 	       (lambda (start vals lose)
 		 start
@@ -320,22 +320,22 @@ USA.
 
 ;;;; Generic patterns
 
-(define-pattern-compiler '(SEXP EXPRESSION) 'ANY
+(define-pattern-compiler '(sexp expression) 'any
   (lambda (pattern context env)
     context
     (close-syntax (cadr pattern) env)))
 
-(define-pattern-compiler '(VALUES * EXPRESSION) 'ANY
+(define-pattern-compiler '(values * expression) 'any
   (lambda (pattern context env)
-    ((get-context-method 'VALUES context)
+    ((get-context-method 'values context)
      (apply join-vals
 	    (map (lambda (expr)
 		   (single-val (close-syntax expr env)))
 		 (cdr pattern))))))
 
-(define-pattern-compiler '(ALT * FORM) 'ANY
+(define-pattern-compiler '(alt * form) 'any
   (lambda (pattern context env)
-    ((get-context-method 'ALT context)
+    ((get-context-method 'alt context)
      (lambda (make-call lose)
        (let loop ((patterns (cdr pattern)))
 	 (if (pair? patterns)
@@ -343,15 +343,15 @@ USA.
 			(make-loser (loop (cdr patterns))))
 	     `(,lose)))))))
 
-(define-pattern-compiler '(* * FORM) '(LIST VECTOR)
+(define-pattern-compiler '(* * form) '(list vector)
   (lambda (pattern context env)
     ((get-context-method '* context)
      (lambda (location lose make-call make-termination)
-       (make-loop `((LOCATION ,location)
-		    (VALS ,(null-vals))
-		    (LOSE ,lose))
+       (make-loop `((location ,location)
+		    (vals ,(null-vals))
+		    (lose ,lose))
 	 (lambda (loop location vals lose)
-	   (make-call (compile-pattern `(SEQ ,@(cdr pattern)) context env)
+	   (make-call (compile-pattern `(seq ,@(cdr pattern)) context env)
 		      location
 		      (lambda (location vals* lose)
 			`(,loop ,location
@@ -359,7 +359,7 @@ USA.
 				,lose))
 		      (make-loser (make-termination location vals lose)))))))))
 
-(define-pattern-compiler '(SEQ * FORM) '(LIST VECTOR)
+(define-pattern-compiler '(seq * form) '(list vector)
   (lambda (pattern context env)
     (let ((callees
 	   (map (lambda (pattern)
@@ -368,7 +368,7 @@ USA.
       (if (and (pair? callees)
 	       (null? (cdr callees)))
 	  (car callees)
-	  ((get-context-method 'SEQ context)
+	  ((get-context-method 'seq context)
 	   (lambda (location lose make-recursion make-termination)
 	     (if (pair? callees)
 		 (let loop
@@ -388,27 +388,27 @@ USA.
 		       (make-termination location vals lose)))
 		 (make-termination location (null-vals) lose))))))))
 
-(define-pattern-compiler '(NOISE FORM) 'ANY
+(define-pattern-compiler '(noise form) 'any
   (lambda (pattern context env)
-    ((get-context-method 'TRANSFORM-VALS context)
+    ((get-context-method 'transform-vals context)
      (compile-pattern (cadr pattern) context env)
      (lambda (vals lose make-win)
        vals
        (make-win (null-vals) lose)))))
 
-(define-pattern-compiler '(MAP EXPRESSION FORM) 'ANY
+(define-pattern-compiler '(map expression form) 'any
   (lambda (pattern context env)
-    ((get-context-method 'TRANSFORM-VALS context)
+    ((get-context-method 'transform-vals context)
      (compile-pattern (caddr pattern) context env)
      (lambda (vals lose make-win)
-       (make-win `(MAP-STRUCTURE-PARSER-VALUES
+       (make-win `(map-structure-parser-values
 		   ,(close-syntax (cadr pattern) env)
 		   ,vals)
 		 lose)))))
 
-(define-pattern-compiler '(ENCAPSULATE EXPRESSION FORM) 'ANY
+(define-pattern-compiler '(encapsulate expression form) 'any
   (lambda (pattern context env)
-    ((get-context-method 'TRANSFORM-VALS context)
+    ((get-context-method 'transform-vals context)
      (compile-pattern (caddr pattern) context env)
      (lambda (vals lose make-win)
        (make-win (single-val
@@ -416,69 +416,69 @@ USA.
 			    vals))
 		 lose)))))
 
-(define-pattern-compiler '(QUALIFY EXPRESSION FORM) 'ANY
+(define-pattern-compiler '(qualify expression form) 'any
   (lambda (pattern context env)
-    ((get-context-method 'TRANSFORM-VALS context)
+    ((get-context-method 'transform-vals context)
      (compile-pattern (caddr pattern) context env)
      (lambda (vals lose make-win)
-       `(IF ,(call-out (close-syntax (cadr pattern) env)
+       `(if ,(call-out (close-syntax (cadr pattern) env)
 		       vals)
 	    ,(make-win vals lose)
 	    (,lose))))))
 
-(define-pattern-compiler '(DISQUALIFY EXPRESSION FORM) 'ANY
+(define-pattern-compiler '(disqualify expression form) 'any
   (lambda (pattern context env)
-    ((get-context-method 'TRANSFORM-VALS context)
+    ((get-context-method 'transform-vals context)
      (compile-pattern (caddr pattern) context env)
      (lambda (vals lose make-win)
-       `(IF (NOT ,(call-out (close-syntax (cadr pattern) env)
+       `(if (not ,(call-out (close-syntax (cadr pattern) env)
 			    vals))
 	    ,(make-win vals lose)
 	    (,lose))))))
 
-(define-pattern-compiler '(TRANSFORM EXPRESSION FORM) 'ANY
+(define-pattern-compiler '(transform expression form) 'any
   (lambda (pattern context env)
-    ((get-context-method 'TRANSFORM-VALS context)
+    ((get-context-method 'transform-vals context)
      (compile-pattern (caddr pattern) context env)
      (lambda (vals lose make-win)
-       (make-let `((VALS
+       (make-let `((vals
 		    ,(call-out (close-syntax (cadr pattern) env)
 			       vals)))
 	 (lambda (vals)
-	   `(IF ,vals
-		,(make-win `(LIST->STRUCTURE-PARSER-VALUES ,vals)
+	   `(if ,vals
+		,(make-win `(list->structure-parser-values ,vals)
 			   lose)
 		(,lose))))))))
 
-(define-pattern-compiler '(OBJECT FORM) '(LIST VECTOR)
+(define-pattern-compiler '(object form) '(list vector)
   (lambda (pattern context env)
-    ((get-context-method 'CALL-OBJECT-METHOD context)
-     (compile-pattern (cadr pattern) 'OBJECT env))))
+    ((get-context-method 'call-object-method context)
+     (compile-pattern (cadr pattern) 'object env))))
 
 ;;;; List context
 
-(define-pattern-compiler '(END) 'LIST
+(define-pattern-compiler '(end) 'list
   (lambda (pattern env)
     pattern env
     (make-list-parser
      (lambda (items win lose)
-       `(IF (NULL? ,items)
+       `(if (null? ,items)
 	    (,win ,items ,(null-vals) ,lose)
 	    (,lose))))))
 
-(define-context-method 'CALL-OBJECT-METHOD 'LIST
+(define-context-method 'call-object-method 'list
   (lambda (callee)
     (make-list-parser
      (lambda (items win lose)
-       `(IF (PAIR? ,items)
-	    (,callee (CAR ,items)
+       `(if (pair? ,items)
+	    (,callee (car ,items)
 		     ,(make-object-winner
 		       (lambda (vals lose)
-			 `(,win (CDR ,items) ,vals ,lose)))
+			 `(,win (cdr ,items) ,vals ,lose)))
 		     ,lose)
 	    (,lose))))))
 
-(define-context-method 'SEQ 'LIST
+(define-context-method 'seq 'list
   (lambda (make-body)
     (make-list-parser
      (lambda (items win lose)
@@ -491,13 +491,13 @@ USA.
 		  (lambda (items vals lose)
 		    `(,win ,items ,vals ,lose)))))))
 
-(define-context-method 'VALUES 'LIST
+(define-context-method 'values 'list
   (lambda (vals)
     (make-list-parser
      (lambda (items win lose)
        `(,win ,items ,vals ,lose)))))
 
-(define-context-method 'ALT 'LIST
+(define-context-method 'alt 'list
   (lambda (make-body)
     (make-list-parser
      (lambda (items win lose)
@@ -505,7 +505,7 @@ USA.
 		    `(,callee ,items ,win ,lose))
 		  lose)))))
 
-(define-context-method '* 'LIST
+(define-context-method '* 'list
   (lambda (make-body)
     (make-list-parser
      (lambda (items win lose)
@@ -518,7 +518,7 @@ USA.
 		  (lambda (items vals lose)
 		    `(,win ,items ,vals ,lose)))))))
 
-(define-context-method 'TRANSFORM-VALS 'LIST
+(define-context-method 'transform-vals 'list
   (lambda (callee transform)
     (make-list-parser
      (lambda (items win lose)
@@ -533,29 +533,29 @@ USA.
 
 ;;;; Vector context
 
-(define-pattern-compiler '(END) 'VECTOR
+(define-pattern-compiler '(end) 'vector
   (lambda (pattern env)
     pattern env
     (make-vector-parser
      (lambda (vector start end win lose)
        vector
-       `(IF (FIX:= ,start ,end)
+       `(if (fix:= ,start ,end)
 	    (,win ,end ,(null-vals) ,lose)
 	    (,lose))))))
 
-(define-context-method 'CALL-OBJECT-METHOD 'VECTOR
+(define-context-method 'call-object-method 'vector
   (lambda (callee)
     (make-vector-parser
      (lambda (vector start end win lose)
-       `(IF (FIX:< ,start ,end)
-	    (,callee (VECTOR-REF ,vector ,start)
+       `(if (fix:< ,start ,end)
+	    (,callee (vector-ref ,vector ,start)
 		     ,(make-object-winner
 		       (lambda (vals lose)
-			 `(,win (FIX:+ ,start 1) ,vals ,lose)))
+			 `(,win (fix:+ ,start 1) ,vals ,lose)))
 		     ,lose)
 	    (,lose))))))
 
-(define-context-method 'SEQ 'VECTOR
+(define-context-method 'seq 'vector
   (lambda (make-body)
     (make-vector-parser
      (lambda (vector start end win lose)
@@ -568,14 +568,14 @@ USA.
 		  (lambda (start vals lose)
 		    `(,win ,start ,vals ,lose)))))))
 
-(define-context-method 'VALUES 'VECTOR
+(define-context-method 'values 'vector
   (lambda (vals)
     (make-vector-parser
      (lambda (vector start end win lose)
        vector end
        `(,win ,start ,vals ,lose)))))
 
-(define-context-method 'ALT 'VECTOR
+(define-context-method 'alt 'vector
   (lambda (make-body)
     (make-vector-parser
      (lambda (vector start end win lose)
@@ -583,7 +583,7 @@ USA.
 		    `(,callee ,vector ,start ,end ,win ,lose))
 		  lose)))))
 
-(define-context-method '* 'VECTOR
+(define-context-method '* 'vector
   (lambda (make-body)
     (make-vector-parser
      (lambda (vector start end win lose)
@@ -598,7 +598,7 @@ USA.
 		  (lambda (start vals lose)
 		    `(,win ,start ,vals ,lose)))))))
 
-(define-context-method 'TRANSFORM-VALS 'VECTOR
+(define-context-method 'transform-vals 'vector
   (lambda (callee transform)
     (make-vector-parser
      (lambda (vector start end win lose)
@@ -615,12 +615,12 @@ USA.
 
 (define (join-vals . valss)
   (reduce-right (lambda (vals1 vals2)
-		  `(CONS ,vals1 ,vals2))
+		  `(cons ,vals1 ,vals2))
 		(null-vals)
 		valss))
 
 (define (single-val val)
-  `(CONS ',single-val-marker ,val))
+  `(cons ',single-val-marker ,val))
 
 (define (null-vals)
   ''())
@@ -641,9 +641,9 @@ USA.
 		     (loop (cdr vals*)
 			   tail))))
 	  (else
-	   (error:not-structure-parser-values
-	    vals
-	    'STRUCTURE-PARSER-VALUES->LIST)))))
+	   (error:not-a structure-parser-values?
+			vals
+			'structure-parser-values->list)))))
 
 (define (list->structure-parser-values items)
   (map (lambda (item)
@@ -664,8 +664,8 @@ USA.
 	       (cons (loop (car vals*))
 		     (loop (cdr vals*)))))
 	  (else
-	   (error:not-structure-parser-values vals
-					      'MAP-STRUCTURE-PARSER-VALUES)))))
+	   (error:not-a structure-parser-values? vals
+			'map-structure-parser-values)))))
 
 (define (structure-parser-values? object)
   (let loop ((object object))
@@ -674,8 +674,6 @@ USA.
 	     (or (eq? (car object) single-val-marker)
 		 (and (loop (car object))
 		      (loop (cdr object))))))))
-
-(define-guarantee structure-parser-values "object-parser values")
 
 (define (structure-parser-values-length vals)
   (let loop ((vals* vals))
@@ -687,12 +685,12 @@ USA.
 	       (+ (loop (car vals*))
 		  (loop (cdr vals*)))))
 	  (else
-	   (error:not-structure-parser-values
-	    vals
-	    'STRUCTURE-PARSER-VALUES-LENGTH)))))
+	   (error:not-a structure-parser-values?
+			vals
+			'structure-parser-values-length)))))
 
 (define (structure-parser-values-ref vals index)
-  (let ((caller 'STRUCTURE-PARSER-VALUES-REF))
+  (let ((caller 'structure-parser-values-ref))
 
     (define (loop vals* i stack)
       (cond ((null? vals*)
@@ -704,7 +702,7 @@ USA.
 		     (cdr vals*))
 		 (push vals* i stack)))
 	    (else
-	     (error:not-structure-parser-values vals caller))))
+	     (error:not-a structure-parser-values? vals caller))))
 
     (define (push vals* i stack)
       (loop (car vals*)
@@ -723,33 +721,33 @@ USA.
 ;;;; Helpers for code generation
 
 (define (make-object-parser make-body)
-  (make-lambda '(ITEM WIN LOSE) make-body))
+  (make-lambda '(item win lose) make-body))
 
 (define (make-object-winner make-body)
-  (make-lambda '(VALS LOSE) make-body))
+  (make-lambda '(vals lose) make-body))
 
 (define (make-list-parser make-body)
-  (make-lambda '(ITEMS WIN LOSE) make-body))
+  (make-lambda '(items win lose) make-body))
 
 (define (make-list-winner make-body)
-  (make-lambda '(ITEMS VALS LOSE) make-body))
+  (make-lambda '(items vals lose) make-body))
 
 (define (make-vector-parser make-body)
-  (make-lambda '(VECTOR START END WIN LOSE) make-body))
+  (make-lambda '(vector start end win lose) make-body))
 
 (define (make-vector-winner make-body)
-  (make-lambda '(START VALS LOSE) make-body))
+  (make-lambda '(start vals lose) make-body))
 
 (define (make-loser body)
   (make-lambda '() (lambda () body)))
 
 (define (call-out procedure vals)
-  `(APPLY ,procedure (STRUCTURE-PARSER-VALUES->LIST ,vals)))
+  `(apply ,procedure (structure-parser-values->list ,vals)))
 
 (define (make-lambda names make-body)
   (call-with-new-names names
     (lambda names
-      `(LAMBDA ,names
+      `(lambda ,names
 	 ,(apply make-body names)))))
 
 (define (make-let bindings make-body)
@@ -757,16 +755,16 @@ USA.
 	(args (map cadr bindings)))
     (call-with-new-names names
       (lambda names
-	`((LAMBDA ,names
+	`((lambda ,names
 	    ,(apply make-body names))
 	  ,@args)))))
 
 (define (make-loop bindings make-body)
   (let ((names (map car bindings))
 	(inits (map cadr bindings)))
-    (call-with-new-names (cons 'LOOP names)
+    (call-with-new-names (cons 'loop names)
       (lambda names
-	`(LET ,(car names)
+	`(let ,(car names)
 	   ,(map (lambda (name init)
 		   `(,name ,init))
 		 (cdr names)
@@ -776,12 +774,17 @@ USA.
 (define (call-with-new-names names procedure)
   (apply procedure
 	 (map (lambda (name)
-		(let ((n (hash-table-ref/default name-counters name 0)))
-		  (hash-table-set! name-counters name (+ n 1))
+		(let* ((t (name-counters))
+		       (n (hash-table-ref/default t name 0)))
+		  (hash-table-set! t name (+ n 1))
 		  (symbol name '. n)))
 	      names)))
 
 (define name-counters)
+
+(define (initialize-package!)
+  (set! name-counters (make-unsettable-parameter unspecific))
+  unspecific)
 
 ;;;; Optimizer
 
@@ -805,7 +808,7 @@ USA.
 	     rewrite-loop
 	     (lambda (expr loop)
 	       (let ((expr (rewrite-form expr loop)))
-		 (if (syntax-match? '('LAMBDA (* SYMBOL) EXPRESSION)
+		 (if (syntax-match? '('lambda (* symbol) expression)
 				    (car expr))
 		     (optimize-let (cadar expr)
 				   (cdr expr)
@@ -834,20 +837,20 @@ USA.
 		    (substitute (map cdr to-substitute) body)
 		    body))))
 	  (if (pair? to-keep)
-	      `((LAMBDA ,(map cadr to-keep) ,new-body)
+	      `((lambda ,(map cadr to-keep) ,new-body)
 		,@(map cddr to-keep))
 	      new-body))))))
 
 (define (substitutable? expr)
   (or (symbol? expr)
       (number? expr)
-      (syntax-match? `('CAR ,substitutable?) expr)
-      (syntax-match? `('CDR ,substitutable?) expr)
-      (syntax-match? `('VECTOR-LENGTH ,substitutable?) expr)
-      (syntax-match? `('FIX:+ ,substitutable? ,substitutable?) expr)
-      (syntax-match? `('FIX:< ,substitutable? ,substitutable?) expr)
-      (syntax-match? `('FIX:= ,substitutable? ,substitutable?) expr)
-      (syntax-match? `('VECTOR-REF ,substitutable? ,substitutable?) expr)))
+      (syntax-match? `('car ,substitutable?) expr)
+      (syntax-match? `('cdr ,substitutable?) expr)
+      (syntax-match? `('vector-length ,substitutable?) expr)
+      (syntax-match? `('fix:+ ,substitutable? ,substitutable?) expr)
+      (syntax-match? `('fix:< ,substitutable? ,substitutable?) expr)
+      (syntax-match? `('fix:= ,substitutable? ,substitutable?) expr)
+      (syntax-match? `('vector-ref ,substitutable? ,substitutable?) expr)))
 
 (define (count-refs-in name expr)
   (walk-expr expr
@@ -885,7 +888,7 @@ USA.
 	     (lambda (expr loop)
 	       (let ((names (cadr expr))
 		     (body (loop (caddr expr))))
-		 `(LAMBDA ,names
+		 `(lambda ,names
 		    ,@(filter (lambda (name)
 				(= (count-refs-in name body) 0))
 			      names)
@@ -923,30 +926,30 @@ USA.
 
 (define peephole-optimizers '())
 
-(define-peephole-optimizer `('CONS EXPRESSION EXPRESSION)
+(define-peephole-optimizer `('cons expression expression)
   (lambda (expr win lose)
     (cond ((equal? (cadr expr) (null-vals)) (win (caddr expr)))
 	  ((equal? (caddr expr) (null-vals)) (win (cadr expr)))
 	  (else (lose)))))
 
-(define-peephole-optimizer `('FIX:+ ,fix:fixnum? ,fix:fixnum?)
+(define-peephole-optimizer `('fix:+ ,fix:fixnum? ,fix:fixnum?)
   (lambda (expr win lose)
     lose
     (win (fix:+ (cadr expr) (caddr expr)))))
 
-(define-peephole-optimizer `('FIX:+ ('FIX:+ EXPRESSION ,fix:fixnum?)
+(define-peephole-optimizer `('fix:+ ('fix:+ expression ,fix:fixnum?)
 				    ,fix:fixnum?)
   (lambda (expr win lose)
     lose
-    (win `(FIX:+ ,(cadr (cadr expr))
+    (win `(fix:+ ,(cadr (cadr expr))
 		 ,(fix:+ (caddr (cadr expr)) (caddr expr))))))
 
-(define-peephole-optimizer `('FIX:< ,fix:fixnum? ,fix:fixnum?)
+(define-peephole-optimizer `('fix:< ,fix:fixnum? ,fix:fixnum?)
   (lambda (expr win lose)
     lose
     (win (fix:< (cadr expr) (caddr expr)))))
 
-(define-peephole-optimizer `('FIX:< ('FIX:+ EXPRESSION ,fix:fixnum?)
+(define-peephole-optimizer `('fix:< ('fix:+ expression ,fix:fixnum?)
 				    ,fix:fixnum?)
   (lambda (expr win lose)
     lose
@@ -954,48 +957,48 @@ USA.
 	  (a (caddr (cadr expr)))
 	  (b (caddr expr)))
       (if (fix:<= a b)
-	  (win `(FIX:< ,base ,(fix:- b a)))
+	  (win `(fix:< ,base ,(fix:- b a)))
 	  ;; We know that BASE is >= 0.
-	  (win '#F)))))
+	  (win '#f)))))
 
-(define-peephole-optimizer '('IF #F EXPRESSION EXPRESSION)
+(define-peephole-optimizer '('if #f expression expression)
   (lambda (expr win lose)
     lose
     (win (cadddr expr))))
 
-(define-peephole-optimizer '('IF #T EXPRESSION EXPRESSION)
+(define-peephole-optimizer '('if #t expression expression)
   (lambda (expr win lose)
     lose
     (win (caddr expr))))
 
-(define-peephole-optimizer '('IF EXPRESSION
-				 ('IF EXPRESSION EXPRESSION EXPRESSION)
-				 EXPRESSION)
+(define-peephole-optimizer '('if expression
+				 ('if expression expression expression)
+				 expression)
   (lambda (expr win lose)
     (if (equal? (cadddr (caddr expr))
 		(cadddr expr))
-	(win `(IF (AND ,(cadr expr)
+	(win `(if (and ,(cadr expr)
 		       ,(cadr (caddr expr)))
 		  ,(caddr (caddr expr))
 		  ,(cadddr expr)))
 	(lose))))
 
-(define-peephole-optimizer '('AND * EXPRESSION)
+(define-peephole-optimizer '('and * expression)
   (lambda (expr win lose)
     (cond ((null? (cdr expr))
-	   (win '#T))
+	   (win '#t))
 	  ((null? (cddr expr))
 	   (win (cadr expr)))
-	  ((memq '#T (cdr expr))
-	   (win (delq '#T (cdr expr))))
-	  ((memq '#F (cdr expr))
-	   (win '#F))
+	  ((memq '#t (cdr expr))
+	   (win (delq '#t (cdr expr))))
+	  ((memq '#f (cdr expr))
+	   (win '#f))
 	  ((any (lambda (expr)
-		  (syntax-match? '('AND * EXPRESSION) expr))
+		  (syntax-match? '('and * expression) expr))
 		(cdr expr))
-	   (win `(AND
+	   (win `(and
 		  ,@(append-map (lambda (expr)
-				  (if (syntax-match? '('AND * EXPRESSION) expr)
+				  (if (syntax-match? '('and * expression) expr)
 				      (cdr expr)
 				      (list expr)))
 				(cdr expr)))))
@@ -1005,16 +1008,16 @@ USA.
 		   if-constant if-quote if-reference
 		   if-lambda if-loop if-form)
   (let loop ((expr expr))
-    (cond ((syntax-match? '('LAMBDA (* SYMBOL) EXPRESSION) expr)
+    (cond ((syntax-match? '('lambda (* symbol) expression) expr)
 	   (if-lambda expr loop))
-	  ((syntax-match? '('LET SYMBOL (* (SYMBOL EXPRESSION)) EXPRESSION)
+	  ((syntax-match? '('let symbol (* (symbol expression)) expression)
 			  expr)
 	   (if-loop expr loop))
-	  ((syntax-match? '('QUOTE EXPRESSION) expr)
+	  ((syntax-match? '('quote expression) expr)
 	   (if-quote expr))
-	  ((syntax-match? '(+ EXPRESSION) expr)
+	  ((syntax-match? '(+ expression) expr)
 	   (if-form expr loop))
-	  ((syntax-match? 'IDENTIFIER expr)
+	  ((syntax-match? 'identifier expr)
 	   (if-reference expr))
 	  (else
 	   (if-constant expr)))))
@@ -1029,11 +1032,11 @@ USA.
   expr)
 
 (define (rewrite-lambda expr loop)
-  `(LAMBDA ,(cadr expr)
+  `(lambda ,(cadr expr)
      ,(loop (caddr expr))))
 
 (define (rewrite-loop expr loop)
-  `(LET ,(cadr expr)
+  `(let ,(cadr expr)
      ,(map (lambda (binding)
 	     (list (car binding)
 		   (loop (cadr binding))))

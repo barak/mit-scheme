@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -64,30 +64,30 @@ USA.
 			  (begin (set! alist (delq! entry alist))
 				 (cdr entry))
 			  default)))))
-	     (let ((comment-handler (lookup 'COMMENT default))
-		   (combination-handler (lookup 'COMBINATION default))
-		   (lambda-handler (lookup 'LAMBDA default))
-		   (sequence-handler (lookup 'SEQUENCE default)))
-	       (%make-scode-walker (lookup 'ACCESS default)
-				   (lookup 'ASSIGNMENT default)
+	     (let ((comment-handler (lookup 'comment default))
+		   (combination-handler (lookup 'combination default))
+		   (lambda-handler (lookup 'lambda default))
+		   (sequence-handler (lookup 'sequence default)))
+	       (%make-scode-walker (lookup 'access default)
+				   (lookup 'assignment default)
 				   combination-handler
 				   comment-handler
-				   (lookup 'CONDITIONAL default)
+				   (lookup 'conditional default)
 				   default
-				   (lookup 'DECLARATION comment-handler)
-				   (lookup 'DEFINITION default)
-				   (lookup 'DELAY default)
-				   (lookup 'DISJUNCTION default)
-				   (lookup 'ERROR-COMBINATION
+				   (lookup 'declaration comment-handler)
+				   (lookup 'definition default)
+				   (lookup 'delay default)
+				   (lookup 'disjunction default)
+				   (lookup 'error-combination
 					   combination-handler)
-				   (lookup 'EXTENDED-LAMBDA lambda-handler)
+				   (lookup 'extended-lambda lambda-handler)
 				   lambda-handler
-				   (lookup 'OPEN-BLOCK sequence-handler)
-				   (lookup 'QUOTATION default)
+				   (lookup 'open-block sequence-handler)
+				   (lookup 'quotation default)
 				   sequence-handler
-				   (lookup 'THE-ENVIRONMENT default)
-				   (lookup 'UNASSIGNED? combination-handler)
-				   (lookup 'VARIABLE default))))))
+				   (lookup 'the-environment default)
+				   (lookup 'unassigned? combination-handler)
+				   (lookup 'variable default))))))
       (if (not (null? alist))
 	  (error "MAKE-SCODE-WALKER: Unrecognized alist items" alist))
       result)))
@@ -109,43 +109,44 @@ USA.
 			(if (pair? (car entry))
 			    (for-each kernel (car entry))
 			    (kernel (car entry)))))
-		    `((ACCESS ,walk/access)
-		      (ASSIGNMENT ,walk/assignment)
-		      (COMBINATION ,walk/combination)
-		      (COMMENT ,walk/comment)
-		      (CONDITIONAL ,walk/conditional)
-		      (DEFINITION ,walk/definition)
-		      (DELAY ,walk/delay)
-		      (DISJUNCTION ,walk/disjunction)
-		      (EXTENDED-LAMBDA ,walk/extended-lambda)
-		      ((LAMBDA LEXPR) ,walk/lambda)
-		      (QUOTATION ,walk/quotation)
-		      (SEQUENCE ,walk/sequence)
-		      (THE-ENVIRONMENT ,walk/the-environment)
-		      (VARIABLE ,walk/variable)))
+		    `((access ,walk/access)
+		      (assignment ,walk/assignment)
+		      (combination ,walk/combination)
+		      (comment ,walk/comment)
+		      (conditional ,walk/conditional)
+		      (definition ,walk/definition)
+		      (delay ,walk/delay)
+		      (disjunction ,walk/disjunction)
+		      (extended-lambda ,walk/extended-lambda)
+		      ((lambda lexpr) ,walk/lambda)
+		      (quotation ,walk/quotation)
+		      (sequence ,walk/sequence)
+		      (the-environment ,walk/the-environment)
+		      (variable ,walk/variable)))
 	  table)))
 
 (define (walk/combination walker expression)
-  (let ((operator (combination-operator expression)))
+  (let ((operator (scode-combination-operator expression)))
     (cond ((and (or (eq? operator (ucode-primitive lexical-unassigned?))
-		    (absolute-reference-to? operator 'LEXICAL-UNASSIGNED?))
-		(let ((operands (combination-operands expression)))
-		  (and (the-environment? (car operands))
+		    (scode-absolute-reference-to? operator
+						  'lexical-unassigned?))
+		(let ((operands (scode-combination-operands expression)))
+		  (and (scode-the-environment? (car operands))
 		       (symbol? (cadr operands)))))
 	   (scode-walker/unassigned? walker))
 	  ((or (eq? operator (ucode-primitive error-procedure))
-	       (absolute-reference-to? operator 'ERROR-PROCEDURE))
+	       (scode-absolute-reference-to? operator 'error-procedure))
 	   (scode-walker/error-combination walker))
 	  (else
 	   (scode-walker/combination walker)))))
 
 (define (walk/comment walker expression)
-  (if (declaration? expression)
+  (if (scode-declaration? expression)
       (scode-walker/declaration walker)
       (scode-walker/comment walker)))
 
 (define (walk/sequence walker expression)
-  (if (open-block? expression)
+  (if (scode-open-block? expression)
       (scode-walker/open-block walker)
       (scode-walker/sequence walker)))
 

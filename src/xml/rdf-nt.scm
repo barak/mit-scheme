@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -120,7 +120,7 @@ USA.
   (*parser (map intern (match match-language))))
 
 (define (parse-string b)
-  (let ((port (open-utf8-output-string)))
+  (let ((port (open-output-string)))
 
     (define (loop)
       (let ((p (get-parser-buffer-pointer b)))
@@ -131,7 +131,7 @@ USA.
 		    (loop)))
 	      (call-with-parser-buffer-tail b p
 		(lambda (string start end)
-		  (write-substring string start end port))))))
+		  (write-string string port start end))))))
       (let ((char
 	     (let ((p (get-parser-buffer-pointer b)))
 	       (and (match-parser-buffer-char b #\\)
@@ -147,8 +147,8 @@ USA.
 			   (integer->char
 			    (call-with-parser-buffer-tail b p
 			      (lambda (string start end)
-				(substring->number string (+ start 2) end
-						   16 #t)))))
+				(string->number string 16 #t (+ start 2)
+						end)))))
 			  (else #f))))))
 	(if char
 	    (begin
@@ -225,10 +225,10 @@ USA.
 	((rdf-literal-language literal)
 	 => (lambda (lang)
 	      (write-string "@" port)
-	      (write-string (symbol-name lang) port)))))
+	      (write-string (symbol->string lang) port)))))
 
 (define (write-rdf/nt-literal-text text port)
-  (let ((text (open-utf8-input-string text)))
+  (let ((text (open-input-string text)))
     (write-string "\"" port)
     (let loop ()
       (let ((char (read-char text)))
@@ -239,7 +239,7 @@ USA.
     (write-string "\"" port)))
 
 (define (write-literal-char char port)
-  (if (char-set-member? char-set:unescaped char)
+  (if (char-in-set? char char-set:unescaped)
       (write-char char port)
       (begin
 	(write-char #\\ port)

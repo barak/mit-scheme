@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,76 +29,49 @@ USA.
 
 (declare (usual-integrations))
 
-(define blowfish-set-key (ucode-primitive blowfish-set-key 1))
-(define blowfish-ecb (ucode-primitive blowfish-ecb 4))
-(define blowfish-cbc (ucode-primitive blowfish-cbc-v2 5))
-(define blowfish-cfb64 (ucode-primitive blowfish-cfb64-substring-v2 9))
-(define blowfish-ofb64 (ucode-primitive blowfish-ofb64-substring 8))
+;;; Access to blowfish functions is now accomplished with the FFI
+;;; rather than a microcode module.  The bindings in this package are
+;;; linked to those in the (blowfish) package after the plugin is
+;;; loaded.
+
+(define linked? #f)
 
 (define (blowfish-available?)
-  (load-library-object-file "prbfish" #f)
-  (implemented-primitive-procedure? blowfish-cfb64))
+  (and (plugin-available? "blowfish")
+       (or linked?
+	   (begin
+	     (load-option 'blowfish)
+	     (link!)
+	     #t))))
 
-(define (blowfish-encrypt-port input output key init-vector encrypt?)
-  ;; Assumes that INPUT is in blocking mode.
-  (let ((key (blowfish-set-key key))
-	(input-buffer (make-string 4096))
-	(output-buffer (make-string 4096)))
-    (dynamic-wind
-     (lambda ()
-       unspecific)
-     (lambda ()
-       (let loop ((m 0))
-	 (let ((n (input-port/read-string! input input-buffer)))
-	   (if (not (fix:= 0 n))
-	       (let ((m
-		      (blowfish-cfb64 input-buffer 0 n output-buffer 0
-				      key init-vector m encrypt?)))
-		 (write-substring output-buffer 0 n output)
-		 (loop m))))))
-     (lambda ()
-       (string-fill! input-buffer #\NUL)
-       (string-fill! output-buffer #\NUL)))))
+(define (link!)
+  (for-each
+    (let ((runtime (->environment '(runtime blowfish)))
+	  (blowfish (->environment '(blowfish))))
+      (lambda (name)
+	(environment-link-name runtime blowfish name)))
+    names)
+  (set! linked? #t))
 
-(define (compute-blowfish-init-vector)
-  ;; This init vector includes a timestamp with a resolution of
-  ;; milliseconds, plus 20 random bits.  This should make it very
-  ;; difficult to generate two identical vectors.
-  (let ((iv (make-string 8)))
-    (do ((i 0 (fix:+ i 1))
-	 (t (+ (* (+ (* (get-universal-time) 1000)
-		     (remainder (real-time-clock) 1000))
-		  #x100000)
-	       (random #x100000))
-	    (quotient t #x100)))
-	((fix:= 8 i))
-      (vector-8b-set! iv i (remainder t #x100)))
-    iv))
+(define names
+  '(blowfish-cbc
+    blowfish-cfb64
+    blowfish-ecb
+    blowfish-encrypt-port
+    blowfish-file?
+    blowfish-ofb64
+    blowfish-set-key
+    compute-blowfish-init-vector
+    read-blowfish-file-header
+    write-blowfish-file-header))
 
-(define (write-blowfish-file-header port)
-  (write-string blowfish-file-header-v2 port)
-  (newline port)
-  (let ((init-vector (compute-blowfish-init-vector)))
-    (write-string init-vector port)
-    init-vector))
-
-(define (read-blowfish-file-header port)
-  (let ((line (read-line port)))
-    (cond ((string=? blowfish-file-header-v1 line)
-	   (make-string 8 #\NUL))
-	  ((string=? blowfish-file-header-v2 line)
-	   (let ((init-vector (make-string 8)))
-	     (if (not (= 8 (read-substring! init-vector 0 8 port)))
-		 (error "Short read while getting init-vector:" port))
-	     init-vector))
-	  (else
-	   (error:bad-range-argument port 'READ-BLOWFISH-FILE-HEADER)))))
-
-(define (blowfish-file? pathname)
-  (let ((line (call-with-binary-input-file pathname read-line)))
-    (and (not (eof-object? line))
-	 (or (string=? line blowfish-file-header-v1)
-	     (string=? line blowfish-file-header-v2)))))
-
-(define blowfish-file-header-v1 "Blowfish, 16 rounds")
-(define blowfish-file-header-v2 "Blowfish, 16 rounds, version 2")
+(define blowfish-cbc)
+(define blowfish-cfb64)
+(define blowfish-ecb)
+(define blowfish-encrypt-port)
+(define blowfish-file?)
+(define blowfish-ofb64)
+(define blowfish-set-key)
+(define compute-blowfish-init-vector)
+(define read-blowfish-file-header)
+(define write-blowfish-file-header)

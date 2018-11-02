@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,10 +36,9 @@ USA.
 		   (constructor %make-condition-type
 				(name field-indexes number-of-fields reporter))
 		   (print-procedure
-		    (standard-unparser-method 'CONDITION-TYPE
-		      (lambda (type port)
-			(write-char #\space port)
-			(write-string (%condition-type/name type) port)))))
+		    (standard-print-method 'condition-type
+		      (lambda (type)
+			(list (%condition-type/name type))))))
   (name #f read-only #t)
   generalizations
   (field-indexes #f read-only #t)
@@ -57,20 +56,20 @@ USA.
 
 (define (make-condition-type name generalization field-names reporter)
   (if generalization
-      (guarantee-condition-type generalization 'MAKE-CONDITION-TYPE))
-  (guarantee-list-of-unique-symbols field-names 'MAKE-CONDITION-TYPE)
+      (guarantee-condition-type generalization 'make-condition-type))
+  (guarantee list-of-unique-symbols? field-names 'make-condition-type)
   (let ((type
 	 (call-with-values
 	     (lambda ()
 	       (compute-field-indexes generalization field-names))
 	   (lambda (n-fields field-indexes)
 	     (%make-condition-type
-	      (cond ((string? name) (string-copy name))
-		    ((symbol? name) (symbol->utf8-string name))
+	      (cond ((string? name) (string->immutable name))
+		    ((symbol? name) (symbol->string name))
 		    ((not name) "(anonymous)")
 		    (else
 		     (error:wrong-type-argument name "condition-type name"
-						'MAKE-CONDITION-TYPE)))
+						'make-condition-type)))
 	      field-indexes
 	      n-fields
 	      (cond ((string? reporter)
@@ -89,7 +88,7 @@ USA.
 		    (else
 		     (error:wrong-type-argument reporter
 						"condition-type reporter"
-						'MAKE-CONDITION-TYPE))))))))
+						'make-condition-type))))))))
     (set-%condition-type/generalizations!
      type
      (cons type
@@ -130,19 +129,19 @@ USA.
     (cdr association)))
 
 (define (condition-type/name type)
-  (guarantee-condition-type type 'CONDITION-TYPE/NAME)
+  (guarantee-condition-type type 'condition-type/name)
   (%condition-type/name type))
 
 (define (condition-type/field-names type)
-  (guarantee-condition-type type 'CONDITION-TYPE/FIELD-NAMES)
+  (guarantee-condition-type type 'condition-type/field-names)
   (map car (%condition-type/field-indexes type)))
 
 (define (condition-type/generalizations type)
-  (guarantee-condition-type type 'CONDITION-TYPE/GENERALIZATIONS)
+  (guarantee-condition-type type 'condition-type/generalizations)
   (list-copy (cdr (%condition-type/generalizations type))))
 
 (define (condition-type/properties type)
-  (guarantee-condition-type type 'CONDITION-TYPE/PROPERTIES)
+  (guarantee-condition-type type 'condition-type/properties)
   (%condition-type/properties type))
 
 (define (condition-type/put! type key datum)
@@ -158,12 +157,10 @@ USA.
 		   (constructor %%make-condition
 				(type continuation restarts field-values))
 		   (print-procedure
-		    (standard-unparser-method 'CONDITION
-		      (lambda (condition port)
-			(write-char #\space port)
-			(write-string
-			 (%condition-type/name (%condition/type condition))
-			 port)))))
+		    (standard-print-method 'condition
+		      (lambda (condition)
+			(list (%condition-type/name
+			       (%condition/type condition)))))))
   (type #f read-only #t)
   (continuation #f read-only #t)
   (restarts #f read-only #t)
@@ -177,55 +174,56 @@ USA.
 		    (make-vector (%condition-type/number-of-fields type) #f)))
 
 (define (make-condition type continuation restarts field-alist)
-  (guarantee-condition-type type 'MAKE-CONDITION)
-  (guarantee-continuation continuation 'MAKE-CONDITION)
-  (guarantee-unique-keyword-list field-alist 'MAKE-CONDITION)
+  (guarantee-condition-type type 'make-condition)
+  (guarantee continuation? continuation 'make-condition)
+  (guarantee unique-keyword-list? field-alist 'make-condition)
   (let ((condition
 	 (%make-condition type
 			  continuation
-			  (%restarts-argument restarts 'MAKE-CONDITION))))
+			  (%restarts-argument restarts 'make-condition))))
     (let ((field-values (%condition/field-values condition)))
       (do ((alist field-alist (cddr alist)))
 	  ((not (pair? alist)))
 	(vector-set! field-values
 		     (%condition-type/field-index type (car alist)
-						  'MAKE-CONDITION)
+						  'make-condition)
 		     (cadr alist))))
     condition))
 
-(define (condition-constructor type field-names)
-  (guarantee-condition-type type 'CONDITION-CONSTRUCTOR)
-  (guarantee-list-of-unique-symbols field-names 'CONDITION-CONSTRUCTOR)
-  (let ((indexes
-	 (map (lambda (field-name)
-		(%condition-type/field-index type field-name
-					     'CONDITION-CONSTRUCTOR))
-	      field-names)))
-    (letrec
-	((constructor
-	  (lambda (continuation restarts . field-values)
-	    (guarantee-continuation continuation constructor)
-	    (let ((condition
-		   (%make-condition type
-				    continuation
-				    (%restarts-argument restarts
-							constructor))))
-	      (let ((values (%condition/field-values condition)))
-		(do ((i indexes (cdr i))
-		     (v field-values (cdr v)))
-		    ((not (and (pair? i) (pair? v)))
-		     (if (or (pair? i) (pair? v))
-			 (error:wrong-number-of-arguments
-			  constructor
-			  (fix:+ (length indexes) 2)
-			  (cons* continuation restarts field-values))))
-		  (vector-set! values (car i) (car v))))
-	      condition))))
-      constructor)))
+(define (condition-constructor type #!optional field-names)
+  (let ((caller 'condition-constructor))
+    (guarantee-condition-type type caller)
+    (let ((indexes
+	   (map (lambda (field-name)
+		  (%condition-type/field-index type field-name caller))
+		(if (default-object? field-names)
+		    (condition-type/field-names type)
+		    (guarantee list-of-unique-symbols? field-names caller)))))
+      (letrec
+	  ((constructor
+	    (lambda (continuation restarts . field-values)
+	      (guarantee continuation? continuation constructor)
+	      (let ((condition
+		     (%make-condition type
+				      continuation
+				      (%restarts-argument restarts
+							  constructor))))
+		(let ((values (%condition/field-values condition)))
+		  (do ((i indexes (cdr i))
+		       (v field-values (cdr v)))
+		      ((not (and (pair? i) (pair? v)))
+		       (if (or (pair? i) (pair? v))
+			   (error:wrong-number-of-arguments
+			    constructor
+			    (fix:+ (length indexes) 2)
+			    (cons* continuation restarts field-values))))
+		    (vector-set! values (car i) (car v))))
+		condition))))
+	constructor))))
 
 (define-integrable (%restarts-argument restarts operator)
-  (cond ((eq? 'BOUND-RESTARTS restarts)
-	 *bound-restarts*)
+  (cond ((eq? 'bound-restarts restarts)
+	 (param:bound-restarts))
 	((condition? restarts)
 	 (%condition/restarts restarts))
 	(else
@@ -233,51 +231,54 @@ USA.
 	 (list-copy restarts))))
 
 (define (condition-of-type? object type)
-  (guarantee-condition-type type 'CONDITION-OF-TYPE?)
+  (guarantee-condition-type type 'condition-of-type?)
   (%condition-of-type? object type))
 
 (define (condition-predicate type)
-  (guarantee-condition-type type 'CONDITION-PREDICATE)
+  (guarantee-condition-type type 'condition-predicate)
   (lambda (object) (%condition-of-type? object type)))
 
 (define (%condition-of-type? object type)
   (and (condition? object)
-       (memq type (%condition-type/generalizations (%condition/type object)))))
+       (%condition-has-type? object type)))
+
+(define-integrable (%condition-has-type? condition type)
+  (memq type (%condition-type/generalizations (%condition/type condition))))
 
 (define (condition-accessor type field-name)
-  (guarantee-condition-type type 'CONDITION-ACCESSOR)
-  (guarantee-symbol field-name 'CONDITION-ACCESSOR)
+  (guarantee-condition-type type 'condition-accessor)
+  (guarantee symbol? field-name 'condition-accessor)
   (let ((predicate (condition-predicate type))
 	(index
 	 (%condition-type/field-index type
 				      field-name
-				      'CONDITION-ACCESSOR)))
+				      'condition-accessor)))
     (lambda (condition)
       (if (not (predicate condition))
 	  (error:wrong-type-argument condition
 				     (string-append "condition of type "
 						    (write-to-string type))
-				     'CONDITION-ACCESSOR))
+				     'condition-accessor))
       (vector-ref (%condition/field-values condition) index))))
 
 (define (access-condition condition field-name)
-  (guarantee-condition condition 'ACCESS-CONDITION)
+  (guarantee-condition condition 'access-condition)
   ((condition-accessor (%condition/type condition) field-name) condition))
 
 (define (condition/type condition)
-  (guarantee-condition condition 'CONDITION/TYPE)
+  (guarantee-condition condition 'condition/type)
   (%condition/type condition))
 
 (define (condition/continuation condition)
-  (guarantee-condition condition 'CONDITION/CONTINUATION)
+  (guarantee-condition condition 'condition/continuation)
   (%condition/continuation condition))
 
 (define (condition/restarts condition)
-  (guarantee-condition condition 'CONDITION/RESTARTS)
+  (guarantee-condition condition 'condition/restarts)
   (list-copy (%condition/restarts condition)))
 
 (define (condition/properties condition)
-  (guarantee-condition condition 'CONDITION/PROPERTIES)
+  (guarantee-condition condition 'condition/properties)
   (%condition/properties condition))
 
 (define (condition/put! condition key datum)
@@ -287,8 +288,8 @@ USA.
   (1d-table/get (condition/properties condition) key #f))
 
 (define (write-condition-report condition port)
-  (guarantee-condition condition 'WRITE-CONDITION-REPORT)
-  (guarantee-output-port port 'WRITE-CONDITION-REPORT)
+  (guarantee-condition condition 'write-condition-report)
+  (guarantee textual-output-port? port 'write-condition-report)
   (let ((reporter (%condition-type/reporter (%condition/type condition))))
     (if (%condition/error? condition)
 	(ignore-errors (lambda () (reporter condition port)))
@@ -301,20 +302,19 @@ USA.
 
 ;;;; Restarts
 
-(define *bound-restarts* '())
+(define param:bound-restarts)
 
 (define-structure (restart
 		   (conc-name %restart/)
 		   (constructor %make-restart
 				(name reporter effector interactor))
 		   (print-procedure
-		    (standard-unparser-method 'RESTART
-		      (lambda (restart port)
-			(write-char #\space port)
+		    (standard-print-method 'restart
+		      (lambda (restart)
 			(let ((name (%restart/name restart)))
 			  (if name
-			      (write name port)
-			      (write-string "(anonymous)" port)))))))
+			      (list name)
+			      '()))))))
   (name #f read-only #t)
   (reporter #f read-only #t)
   (effector #f read-only #t)
@@ -327,16 +327,16 @@ USA.
   (guarantee-list-of-type object restart? "list of restarts" caller))
 
 (define (with-restart name reporter effector interactor thunk)
-  (if name (guarantee-symbol name 'WITH-RESTART))
+  (if name (guarantee symbol? name 'with-restart))
   (if (not (or (string? reporter) (procedure-of-arity? reporter 1)))
-      (error:wrong-type-argument reporter "reporter" 'WITH-RESTART))
+      (error:wrong-type-argument reporter "reporter" 'with-restart))
   (if (not (procedure? effector))
-      (error:wrong-type-argument effector "effector" 'WITH-RESTART))
+      (error:wrong-type-argument effector "effector" 'with-restart))
   (if (not (or (not interactor) (procedure? interactor)))
-      (error:wrong-type-argument interactor "interactor" 'WITH-RESTART))
-  (fluid-let ((*bound-restarts*
-	       (cons (%make-restart name reporter effector interactor)
-		     *bound-restarts*)))
+      (error:wrong-type-argument interactor "interactor" 'with-restart))
+  (parameterize ((param:bound-restarts
+		  (cons (%make-restart name reporter effector interactor)
+			(param:bound-restarts))))
     (thunk)))
 
 (define (with-simple-restart name reporter thunk)
@@ -346,50 +346,50 @@ USA.
        thunk))))
 
 (define (restart/name restart)
-  (guarantee-restart restart 'RESTART/NAME)
+  (guarantee-restart restart 'restart/name)
   (%restart/name restart))
 
 (define (write-restart-report restart port)
-  (guarantee-restart restart 'WRITE-RESTART-REPORT)
-  (guarantee-output-port port 'WRITE-RESTART-REPORT)
+  (guarantee-restart restart 'write-restart-report)
+  (guarantee textual-output-port? port 'write-restart-report)
   (let ((reporter (%restart/reporter restart)))
     (if (string? reporter)
 	(write-string reporter port)
 	(reporter port))))
 
 (define (restart/effector restart)
-  (guarantee-restart restart 'RESTART/EFFECTOR)
+  (guarantee-restart restart 'restart/effector)
   (%restart/effector restart))
 
 (define (restart/interactor restart)
-  (guarantee-restart restart 'RESTART/INTERACTOR)
+  (guarantee-restart restart 'restart/interactor)
   (%restart/interactor restart))
 
 (define (restart/properties restart)
-  (guarantee-restart restart 'RESTART/PROPERTIES)
+  (guarantee-restart restart 'restart/properties)
   (%restart/properties restart))
 
 (define (restart/get restart key)
-  (if (eq? key 'INTERACTIVE)
+  (if (eq? key 'interactive)
       (restart/interactor restart)
       (1d-table/get (restart/properties restart) key #f)))
 
 (define (restart/put! restart key datum)
-  (if (eq? key 'INTERACTIVE)
+  (if (eq? key 'interactive)
       (set-%restart/interactor! restart datum)
       (1d-table/put! (restart/properties restart) key datum)))
 
 (define (bind-restart name reporter effector receiver)
   (with-restart name reporter effector #f
     (lambda ()
-      (receiver (car *bound-restarts*)))))
+      (receiver (car (param:bound-restarts))))))
 
 (define (invoke-restart restart . arguments)
-  (guarantee-restart restart 'INVOKE-RESTART)
+  (guarantee-restart restart 'invoke-restart)
   (hook/invoke-restart (%restart/effector restart) arguments))
 
 (define (invoke-restart-interactively restart #!optional condition)
-  (guarantee-restart restart 'INVOKE-RESTART-INTERACTIVELY)
+  (guarantee-restart restart 'invoke-restart-interactively)
   (let ((effector (%restart/effector restart))
 	(arguments
 	 (let ((interactor (%restart/interactor restart)))
@@ -400,7 +400,7 @@ USA.
     (let ((thread (and condition (condition/other-thread condition))))
       (if thread
 	  (begin
-	    (restart-thread thread 'ASK
+	    (restart-thread thread 'ask
 	      (lambda ()
 		(hook/invoke-restart effector arguments)))
 	    (continue-from-derived-thread-error condition))
@@ -408,29 +408,29 @@ USA.
 
 (define (condition/other-thread condition)
   (and (condition/derived-thread? condition)
-       (let ((thread (access-condition condition 'THREAD)))
+       (let ((thread (access-condition condition 'thread)))
 	 (and (not (eq? thread (current-thread)))
 	      thread))))
 
 (define (continue-from-derived-thread-error condition)
   (let loop ((restarts (bound-restarts)))
     (if (pair? restarts)
-	(if (and (eq? 'CONTINUE (restart/name (car restarts)))
+	(if (and (eq? 'continue (restart/name (car restarts)))
 		 (eq? condition
-		      (restart/get (car restarts) 'ASSOCIATED-CONDITION)))
+		      (restart/get (car restarts) 'associated-condition)))
 	    (invoke-restart (car restarts))
 	    (loop (cdr restarts))))))
 
 (define hook/invoke-restart)
 
 (define (bound-restarts)
-  (let loop ((restarts *bound-restarts*))
+  (let loop ((restarts (param:bound-restarts)))
     (if (pair? restarts)
 	(cons (car restarts) (loop (cdr restarts)))
 	'())))
 
 (define (first-bound-restart)
-  (let ((restarts *bound-restarts*))
+  (let ((restarts (param:bound-restarts)))
     (if (not (pair? restarts))
 	(error:no-such-restart #f))
     (car restarts)))
@@ -443,53 +443,53 @@ USA.
 	     (loop (cdr restarts))))))
 
 (define (find-restart name #!optional restarts)
-  (guarantee-symbol name 'FIND-RESTART)
-  (%find-restart name (restarts-default restarts 'FIND-RESTART)))
+  (guarantee symbol? name 'find-restart)
+  (%find-restart name (restarts-default restarts 'find-restart)))
 
 (define (abort #!optional restarts)
-  (let ((restart (%find-restart 'ABORT (restarts-default restarts 'ABORT))))
+  (let ((restart (%find-restart 'abort (restarts-default restarts 'abort))))
     (if (not restart)
-	(error:no-such-restart 'ABORT))
+	(error:no-such-restart 'abort))
     ((%restart/effector restart))))
 
 (define (continue #!optional restarts)
   (let ((restart
-	 (%find-restart 'CONTINUE (restarts-default restarts 'CONTINUE))))
+	 (%find-restart 'continue (restarts-default restarts 'continue))))
     (if restart
 	((%restart/effector restart)))))
 
 (define (muffle-warning #!optional restarts)
   (let ((restart
-	 (%find-restart 'MUFFLE-WARNING
-			(restarts-default restarts 'MUFFLE-WARNING))))
+	 (%find-restart 'muffle-warning
+			(restarts-default restarts 'muffle-warning))))
     (if (not restart)
-	(error:no-such-restart 'MUFFLE-WARNING))
+	(error:no-such-restart 'muffle-warning))
     ((%restart/effector restart))))
 
 (define (retry #!optional restarts)
   (let ((restart
-	 (%find-restart 'RETRY (restarts-default restarts 'RETRY))))
+	 (%find-restart 'retry (restarts-default restarts 'retry))))
     (if restart
 	((%restart/effector restart)))))
 
 (define (store-value datum #!optional restarts)
   (let ((restart
-	 (%find-restart 'STORE-VALUE
-			(restarts-default restarts 'STORE-VALUE))))
+	 (%find-restart 'store-value
+			(restarts-default restarts 'store-value))))
     (if restart
 	((%restart/effector restart) datum))))
 
 (define (use-value datum #!optional restarts)
   (let ((restart
-	 (%find-restart 'USE-VALUE
-			(restarts-default restarts 'USE-VALUE))))
+	 (%find-restart 'use-value
+			(restarts-default restarts 'use-value))))
     (if restart
 	((%restart/effector restart) datum))))
 
 (define (restarts-default restarts name)
   (cond ((or (default-object? restarts)
-	     (eq? 'BOUND-RESTARTS restarts))
-	 *bound-restarts*)
+	     (eq? 'bound-restarts restarts))
+	 (param:bound-restarts))
 	((condition? restarts)
 	 (%condition/restarts restarts))
 	(else
@@ -498,30 +498,31 @@ USA.
 
 ;;;; Condition Signalling and Handling
 
-(define static-handler-frames '())
-(define dynamic-handler-frames '())
-(define break-on-signals-types '())
+(define static-handler-frames)
+(define dynamic-handler-frames)
+(define break-on-signals-types)
 
 (define (bind-default-condition-handler types handler)
-  (guarantee-condition-types types 'BIND-DEFAULT-CONDITION-HANDLER)
-  (guarantee-condition-handler handler 'BIND-DEFAULT-CONDITION-HANDLER)
-  (set! static-handler-frames
-	(cons (cons types handler) static-handler-frames))
+  (guarantee-condition-types types 'bind-default-condition-handler)
+  (guarantee-condition-handler handler 'bind-default-condition-handler)
+  (static-handler-frames
+   (cons (cons types handler)
+	 (static-handler-frames)))
   unspecific)
 
 (define (bind-condition-handler types handler thunk)
-  (guarantee-condition-types types 'BIND-CONDITION-HANDLER)
-  (guarantee-condition-handler handler 'BIND-CONDITION-HANDLER)
-  (fluid-let ((dynamic-handler-frames
-	       (cons (cons types handler) dynamic-handler-frames)))
+  (guarantee-condition-types types 'bind-condition-handler)
+  (guarantee-condition-handler handler 'bind-condition-handler)
+  (parameterize ((dynamic-handler-frames
+		  (cons (cons types handler) (dynamic-handler-frames))))
     (thunk)))
 
 (define-integrable (guarantee-condition-handler object caller)
-  (guarantee-procedure-of-arity object 1 caller))
+  (guarantee unary-procedure? object caller))
 
 (define (break-on-signals types)
-  (guarantee-condition-types types 'BREAK-ON-SIGNALS)
-  (set! break-on-signals-types types)
+  (guarantee-condition-types types 'break-on-signals)
+  (break-on-signals-types types)
   unspecific)
 
 (define hook/invoke-condition-handler)
@@ -530,7 +531,7 @@ USA.
   (handler condition))
 
 (define (signal-condition condition)
-  (guarantee-condition condition 'SIGNAL-CONDITION)
+  (guarantee-condition condition 'signal-condition)
   (let ((generalizations
 	 (%condition-type/generalizations (%condition/type condition))))
     (let ((intersect-generalizations?
@@ -542,27 +543,27 @@ USA.
 			 (inner (cdr generalizations)))
 		     (and (pair? types)
 			  (outer (car types) (cdr types)))))))))
-      (if (let ((types break-on-signals-types))
+      (if (let ((types (break-on-signals-types)))
 	    (and (pair? types)
 		 (intersect-generalizations? types)))
-	  (fluid-let ((break-on-signals-types '()))
-	    (breakpoint-procedure 'INHERIT
+	  (parameterize ((break-on-signals-types '()))
+	    (breakpoint-procedure 'inherit
 				  "BKPT entered because of BREAK-ON-SIGNALS:"
 				  condition)))
-      (do ((frames dynamic-handler-frames (cdr frames)))
+      (do ((frames (dynamic-handler-frames) (cdr frames)))
 	  ((not (pair? frames)))
 	(if (let ((types (caar frames)))
 	      (or (not (pair? types))
 		  (intersect-generalizations? types)))
-	    (fluid-let ((dynamic-handler-frames (cdr frames)))
+	    (parameterize ((dynamic-handler-frames (cdr frames)))
 	      (hook/invoke-condition-handler (cdar frames) condition))))
-      (do ((frames static-handler-frames (cdr frames)))
+      (do ((frames (static-handler-frames) (cdr frames)))
 	  ((not (pair? frames)))
 	(if (let ((types (caar frames)))
 	      (or (not (pair? types))
 		  (intersect-generalizations? types)))
-	    (fluid-let ((static-handler-frames (cdr frames))
-			(dynamic-handler-frames '()))
+	    (parameterize ((dynamic-handler-frames '())
+			   (static-handler-frames (cdr frames)))
 	      (hook/invoke-condition-handler (cdar frames) condition))))
       unspecific)))
 
@@ -572,117 +573,169 @@ USA.
   (signal-simple datum arguments make-simple-error standard-error-handler))
 
 (define (warn datum . arguments)
-  (with-simple-restart 'MUFFLE-WARNING "Ignore warning."
+  (with-simple-restart 'muffle-warning "Ignore warning."
     (lambda ()
       (signal-simple datum arguments
 		     make-simple-warning standard-warning-handler))))
 
 (define (signal-simple datum arguments make-simple-condition default-handler)
-  (if (condition? datum)
-      (begin
-	(signal-condition datum)
-	(default-handler datum))
-      (call-with-current-continuation
-       (lambda (continuation)
-	 (let ((condition
-		(if (condition-type? datum)
-		    (make-condition datum
-				    continuation
-				    'BOUND-RESTARTS
-				    arguments)
-		    (make-simple-condition continuation
-					   'BOUND-RESTARTS
-					   datum
-					   arguments))))
-	   (begin
-	     (signal-condition condition)
-	     (default-handler condition)))))))
+  (let ((signal (signal-with-fallback default-handler)))
+    (cond ((condition? datum)
+	   (signal datum))
+	  ((condition-type? datum)
+	   (signal-standard* signal no-restarts
+			     (condition-constructor datum)
+			     arguments))
+	  (else
+	   (signal-standard signal no-restarts
+			    make-simple-condition
+			    datum
+			    arguments)))))
 
 (define (standard-error-handler condition)
-  (let ((hook standard-error-hook))
+  (let ((hook
+	 (if (default-object? standard-error-hook)
+	     (param:standard-error-hook)
+	     standard-error-hook)))
     (if hook
-	(fluid-let ((standard-error-hook #f))
-	  (hook condition))))
-  (repl/start (push-repl 'INHERIT condition '() "error>")))
+	(fluid-let ((standard-error-hook #!default))
+	  (parameterize ((param:standard-error-hook #f))
+	    (hook condition)))))
+  (repl/start (push-repl 'inherit condition '() "error>")))
 
 (define (standard-warning-handler condition)
-  (let ((hook standard-warning-hook))
+  (let ((hook
+	 (if (default-object? standard-warning-hook)
+	     (param:standard-warning-hook)
+	     standard-warning-hook)))
     (if hook
-	(fluid-let ((standard-warning-hook #f))
-	  (hook condition))
+	(fluid-let ((standard-warning-hook #!default))
+	  (parameterize ((param:standard-warning-hook #f))
+	    (hook condition)))
 	(let ((port (notification-output-port)))
 	  (fresh-line port)
 	  (write-string ";Warning: " port)
 	  (write-condition-report condition port)
 	  (newline port)))))
 
-(define standard-error-hook #f)
-(define standard-warning-hook #f)
-
-(define (condition-signaller type field-names default-handler)
-  (guarantee-condition-handler default-handler 'CONDITION-SIGNALLER)
-  (let ((make-condition (condition-constructor type field-names)))
-    (lambda field-values
-      (call-with-current-continuation
-       (lambda (continuation)
-	 (let ((condition
-		(apply make-condition
-		       (cons* continuation
-			      'BOUND-RESTARTS
-			      field-values))))
-	   (signal-condition condition)
-	   (default-handler condition)))))))
+(define standard-error-hook #!default)
+(define standard-warning-hook #!default)
+(define param:standard-error-hook)
+(define param:standard-warning-hook)
 
-;; This is similar to condition-signaller, but error procedures
-;; created with this allow substitution of the INDEXth argument by
-;; using the USE-VALUE restart and allow retrying the operation by
-;; using the RETRY restart.  The RETRY restart will return the
-;; original irritant, while USE-VALUE will return a value prompted for.
+(define (condition-signaller type field-names default-handler)
+  (guarantee-condition-handler default-handler 'condition-signaller)
+  (let ((signal (signal-with-fallback default-handler))
+	(constructor (condition-constructor type field-names)))
+    (lambda field-values
+      (signal-standard* signal no-restarts constructor field-values))))
 
-(define (substitutable-value-condition-signaller
-	 type field-names default-handler
-	 index use-value-prompt use-value-message retry-message)
-  (guarantee-condition-handler default-handler
-			       'SUBSTITUTABLE-VALUE-CONDITION-SIGNALLER)
-  (let ((make-condition (condition-constructor type field-names))
-	(arity (length field-names)))
-    (letrec
-	((constructor
-	  (lambda field-values
-	    (if (not (fix:= arity (length field-values)))
-		(error:wrong-number-of-arguments constructor
-						 arity
-						 field-values))
-	    (call-with-current-continuation
-	     (lambda (continuation)
-	       (let ((condition
-		      (apply make-condition
-			     (cons* continuation
-				    'BOUND-RESTARTS
-				    field-values))))
-		 (with-restart 'USE-VALUE
-		     (if (string? use-value-message)
-			 use-value-message
-			 (use-value-message condition))
-		     continuation
-		     (let ((prompt
-			    (if (string? use-value-prompt)
-				use-value-prompt
-				(use-value-prompt condition))))
-		       (lambda ()
-			 (values (prompt-for-evaluated-expression prompt))))
-		   (lambda ()
-		     (with-restart 'RETRY
-			 (if (string? retry-message)
-			     retry-message
-			     (retry-message condition))
-			 (lambda ()
-			   (continuation (list-ref field-values index)))
-			 values
-		       (lambda ()
-			 (signal-condition condition)
-			 (default-handler condition)))))))))))
-      constructor)))
+(define (signal-with-fallback default-handler)
+  (lambda (condition)
+    (signal-condition condition)
+    (default-handler condition)))
+
+(define (signal-standard signal bind-restarts constructor . args)
+  (signal-standard* signal bind-restarts constructor args))
+
+(define (signal-standard* signal bind-restarts constructor args)
+  (call-with-current-continuation
+    (lambda (continuation)
+      (bind-restarts continuation
+	(lambda ()
+	  (signal (apply constructor continuation 'bound-restarts args)))))))
+
+(define (no-restarts continuation thunk)
+  (declare (ignore continuation))
+  (thunk))
+
+;;;; File operation errors
+
+(define (error:file-operation index verb noun reason operator operands)
+  (call-with-current-continuation
+    (lambda (continuation)
+      (signal-file-operation continuation index verb noun reason
+			     operator operands))))
+
+(define (signal-file-operation continuation index verb noun reason
+			       operator operands)
+  (with-restart 'use-value
+      (string-append "Try to " verb " a different " noun ".")
+      (lambda (operand)
+	(within-continuation continuation
+	  (lambda ()
+	    (apply operator
+		   (receive (head tail) (split-at operands index)
+		     (append! head
+			      (cons operand (cdr tail))))))))
+      (let ((prompt
+	     (string-append "New " noun
+			    " name (an expression to be evaluated)")))
+	(lambda ()
+	  (values (prompt-for-evaluated-expression prompt))))
+    (lambda ()
+      (with-restart 'retry
+	  (string-append "Try to " verb " the same " noun " again.")
+	  (lambda ()
+	    (within-continuation continuation
+	      (lambda ()
+		(apply operator operands))))
+	  values
+	(lambda ()
+	  (let ((condition
+		 (make-file-operation-error continuation 'bound-restarts
+					    (list-ref operands index)
+					    verb noun reason
+					    operator operands)))
+	    (signal-condition condition)
+	    (standard-error-handler condition)))))))
+
+;;;; R7RS adapter
+
+(define (with-exception-handler handler thunk)
+  (bind-condition-handler (list condition-type:error)
+      (lambda (condition)
+	(let ((value
+	       (handler
+		(if (r7rs-tunnel? condition)
+		    (access-condition condition 'object)
+		    condition)))
+	      (restart (find-restart 'use-value condition)))
+	  (if restart
+	      (invoke-restart restart value))))
+    thunk))
+
+(define (raise object)
+  (if (condition? object)
+      (error object)
+      (error condition-type:r7rs-tunnel object)))
+
+(define (raise-continuable object)
+  (if (condition? object)
+      (error object)
+      (signal-standard (signal-with-fallback standard-error-handler)
+		       bind-raise-continuable-restarts
+		       make-r7rs-tunnel
+		       object)))
+
+(define (bind-raise-continuable-restarts continuation thunk)
+  (with-restart 'use-value
+      "Continue with a different value."
+      continuation
+      (lambda ()
+	(values (prompt-for-evaluated-expression
+		 "Value to use (an expression to evaluate)")))
+      thunk))
+
+(define (error-object-message condition)
+  (if (%condition-has-type? condition condition-type:simple-error)
+      (access-condition condition 'message)
+      (condition/report-string condition)))
+
+(define (error-object-irritants condition)
+  (if (%condition-has-type? condition condition-type:simple-error)
+      (list-copy (access-condition condition 'irritants))
+      '()))
 
 ;;;; Basic Condition Types
 
@@ -708,8 +761,8 @@ USA.
 (define condition-type:invalid-floating-point-operation)
 (define condition-type:macro-binding)
 (define condition-type:no-such-restart)
-(define condition-type:not-8-bit-char)
 (define condition-type:port-error)
+(define condition-type:r7rs-tunnel)
 (define condition-type:serious-condition)
 (define condition-type:simple-condition)
 (define condition-type:simple-error)
@@ -725,18 +778,21 @@ USA.
 
 (define make-simple-error)
 (define make-simple-warning)
+(define make-file-operation-error)
+(define make-r7rs-tunnel)
+(define error-object?)
+(define file-error?)
+(define r7rs-tunnel?)
 
 (define error:bad-range-argument)
 (define error:datum-out-of-range)
 (define error:divide-by-zero)
-(define error:file-operation)
 (define error:no-such-restart)
 (define error:derived-file)
 (define error:derived-port)
 (define error:derived-thread)
 (define error:illegal-pathname-component)
 (define error:macro-binding)
-(define error:not-8-bit-char)
 (define error:unassigned-variable)
 (define error:unbound-variable)
 (define error:wrong-number-of-arguments)
@@ -746,11 +802,11 @@ USA.
 (define condition/derived-thread?)
 
 (define (condition-type/error? type)
-  (guarantee-condition-type type 'CONDITION-TYPE/ERROR?)
+  (guarantee-condition-type type 'condition-type/error?)
   (%condition-type/error? type))
 
 (define (condition/error? condition)
-  (guarantee-condition condition 'CONDITION/ERROR?)
+  (guarantee-condition condition 'condition/error?)
   (%condition/error? condition))
 
 (define-integrable (%condition/error? condition)
@@ -760,65 +816,80 @@ USA.
   (memq condition-type:error (%condition-type/generalizations type)))
 
 (define (initialize-package!)
+  (set! param:bound-restarts (make-unsettable-parameter '()))
+  (set! static-handler-frames (make-settable-parameter '()))
+  (set! dynamic-handler-frames (make-unsettable-parameter '()))
+  (set! break-on-signals-types (make-settable-parameter '()))
+  (set! param:standard-error-hook (make-settable-parameter #f))
+  (set! param:standard-warning-hook (make-settable-parameter #f))
   (set! hook/invoke-condition-handler default/invoke-condition-handler)
   ;; No eta conversion for bootstrapping and efficiency reasons.
   (set! hook/invoke-restart
 	(lambda (effector arguments)
 	  (apply effector arguments)))
   (set! condition-type:serious-condition
-	(make-condition-type 'SERIOUS-CONDITION #f '() #f))
+	(make-condition-type 'serious-condition #f '() #f))
   (set! condition-type:warning
-	(make-condition-type 'WARNING #f '() #f))
+	(make-condition-type 'warning #f '() #f))
 
   (set! condition-type:error
-	(make-condition-type 'ERROR condition-type:serious-condition '() #f))
+	(make-condition-type 'error condition-type:serious-condition '() #f))
+  (set! error-object?
+	(condition-predicate condition-type:error))
+  (set! condition-type:r7rs-tunnel
+	(make-condition-type 'r7rs-tunnel condition-type:error '(object)
+	  (lambda (condition port)
+	    (write-string "The object " port)
+	    (write (access-condition condition 'object) port)
+	    (write-string " was raised." port))))
+  (set! r7rs-tunnel?
+	(condition-predicate condition-type:r7rs-tunnel))
 
   (let ((reporter/simple-condition
 	 (lambda (condition port)
-	   (format-error-message (access-condition condition 'MESSAGE)
-				 (access-condition condition 'IRRITANTS)
+	   (format-error-message (access-condition condition 'message)
+				 (access-condition condition 'irritants)
 				 port))))
     (set! condition-type:simple-condition
-	  (make-condition-type 'SIMPLE-CONDITION #f '(MESSAGE IRRITANTS)
+	  (make-condition-type 'simple-condition #f '(message irritants)
 	    reporter/simple-condition))
     (set! condition-type:simple-error
-	  (make-condition-type 'SIMPLE-ERROR condition-type:error
-	      '(MESSAGE IRRITANTS)
+	  (make-condition-type 'simple-error condition-type:error
+	      '(message irritants)
 	    reporter/simple-condition))
     (set! condition-type:simple-warning
-	  (make-condition-type 'SIMPLE-WARNING condition-type:warning
-	      '(MESSAGE IRRITANTS)
+	  (make-condition-type 'simple-warning condition-type:warning
+	      '(message irritants)
 	    reporter/simple-condition)))
 
   (set! condition-type:illegal-datum
-	(make-condition-type 'ILLEGAL-DATUM condition-type:error '(DATUM)
+	(make-condition-type 'illegal-datum condition-type:error '(datum)
 	  (lambda (condition port)
 	    (write-string "The object " port)
-	    (write (access-condition condition 'DATUM) port)
+	    (write (access-condition condition 'datum) port)
 	    (write-string " has been found in an inappropriate context."
 			  port))))
 
   (set! condition-type:datum-out-of-range
-	(make-condition-type 'DATUM-OUT-OF-RANGE condition-type:illegal-datum
+	(make-condition-type 'datum-out-of-range condition-type:illegal-datum
 	    '()
 	  (lambda (condition port)
 	    (write-string "The object " port)
-	    (write (access-condition condition 'DATUM) port)
+	    (write (access-condition condition 'datum) port)
 	    (write-string " is not in the correct range." port))))
 
   (let ((write-type-description
 	 (let ((char-set:vowels
 		(char-set #\a #\e #\i #\o #\u #\A #\E #\I #\O #\U)))
 	   (lambda (condition port)
-	     (let ((type (access-condition condition 'TYPE)))
+	     (let ((type (access-condition condition 'type)))
 	       (if (string? type)
 		   (begin
 		     (if (not (or (string-null? type)
 				  (string-prefix-ci? "a " type)
 				  (string-prefix-ci? "an " type)))
 			 (write-string
-			  (if (char-set-member? char-set:vowels
-						(string-ref type 0))
+			  (if (char-in-set? (string-ref type 0) char-set:vowels)
 			      "an "
 			      "a ")
 			  port))
@@ -826,8 +897,8 @@ USA.
 		   (write-string "the correct type" port))))))
 	(write-operand-description
 	 (lambda (condition port)
-	   (let ((operator (access-condition condition 'OPERATOR))
-		 (operand (access-condition condition 'OPERAND)))
+	   (let ((operator (access-condition condition 'operator))
+		 (operand (access-condition condition 'operand)))
 	     (if (or (symbol? operator)
 		     (procedure? operator))
 		 (begin
@@ -846,39 +917,39 @@ USA.
 		   (write-operator operator port)
 		   (write-string "," port)))))))
     (set! condition-type:wrong-type-datum
-	  (make-condition-type 'WRONG-TYPE-DATUM condition-type:illegal-datum
-	      '(TYPE)
+	  (make-condition-type 'wrong-type-datum condition-type:illegal-datum
+	      '(type)
 	    (lambda (condition port)
 	      (write-string "The object " port)
-	      (write (access-condition condition 'DATUM) port)
+	      (write (access-condition condition 'datum) port)
 	      (write-string " is not " port)
 	      (write-type-description condition port)
 	      (write-string "." port))))
     (set! condition-type:wrong-type-argument
-	  (make-condition-type 'WRONG-TYPE-ARGUMENT
+	  (make-condition-type 'wrong-type-argument
 	      condition-type:wrong-type-datum
-	      '(OPERATOR OPERAND)
+	      '(operator operand)
 	    (lambda (condition port)
 	      (write-string "The object " port)
-	      (write (access-condition condition 'DATUM) port)
+	      (write (access-condition condition 'datum) port)
 	      (write-operand-description condition port)
 	      (write-string " is not " port)
 	      (write-type-description condition port)
 	      (write-string "." port))))
     (set! condition-type:bad-range-argument
-	  (make-condition-type 'BAD-RANGE-ARGUMENT
+	  (make-condition-type 'bad-range-argument
 	      condition-type:datum-out-of-range
-	      '(OPERATOR OPERAND)
+	      '(operator operand)
 	    (lambda (condition port)
 	      (write-string "The object " port)
-	      (write (access-condition condition 'DATUM) port)
+	      (write (access-condition condition 'datum) port)
 	      (write-operand-description condition port)
 	      (write-string " is not in the correct range." port)))))
 
   (set! condition-type:wrong-number-of-arguments
-	(make-condition-type 'WRONG-NUMBER-OF-ARGUMENTS
+	(make-condition-type 'wrong-number-of-arguments
 	    condition-type:wrong-type-datum
-	    '(OPERANDS)
+	    '(operands)
 	  (lambda (condition port)
 	    (let ((pluralize-argument
 		   (lambda (number)
@@ -886,13 +957,13 @@ USA.
 		      (if (= number 1) " argument" " arguments")
 		      port))))
 	      (write-string "The procedure " port)
-	      (write-operator (access-condition condition 'DATUM) port)
+	      (write-operator (access-condition condition 'datum) port)
 	      (write-string " has been called with " port)
-	      (let ((count (length (access-condition condition 'OPERANDS))))
+	      (let ((count (length (access-condition condition 'operands))))
 		(write count port)
 		(pluralize-argument count))
 	      (write-string "; it requires " port)
-	      (let ((arity (access-condition condition 'TYPE)))
+	      (let ((arity (access-condition condition 'type)))
 		(let ((arity-min (procedure-arity-min arity))
 		      (arity-max (procedure-arity-max arity)))
 		  (cond ((eqv? arity-min arity-max)
@@ -912,25 +983,25 @@ USA.
 	      (write-char #\. port)))))
 
   (set! condition-type:illegal-pathname-component
-	(make-condition-type 'ILLEGAL-PATHNAME-COMPONENT
+	(make-condition-type 'illegal-pathname-component
 	    condition-type:wrong-type-datum '()
 	  (lambda (condition port)
 	    (write-string "The object " port)
-	    (write (access-condition condition 'DATUM) port)
+	    (write (access-condition condition 'datum) port)
 	    (write-string " is not a valid pathname " port)
-	    (write-string (access-condition condition 'TYPE) port)
+	    (write-string (access-condition condition 'type) port)
 	    (write-string "." port))))
 
   (set! condition-type:control-error
-	(make-condition-type 'CONTROL-ERROR condition-type:error '()
+	(make-condition-type 'control-error condition-type:error '()
 	  "Control error."))
 
   (set! condition-type:no-such-restart
-	(make-condition-type 'NO-SUCH-RESTART condition-type:control-error
-	    '(NAME)
+	(make-condition-type 'no-such-restart condition-type:control-error
+	    '(name)
 	  (lambda (condition port)
 	    (write-string "The restart named " port)
-	    (write (access-condition condition 'NAME) port)
+	    (write (access-condition condition 'name) port)
 	    (write-string " is not bound." port))))
 
   (let ((anonymous-error
@@ -941,273 +1012,249 @@ USA.
 	       (write-string "Anonymous error associated with " port)
 	       (write (access-condition condition field-name) port)
 	       (write-string "." port))))))
-    (set! condition-type:port-error (anonymous-error 'PORT-ERROR 'PORT))
-    (set! condition-type:file-error (anonymous-error 'FILE-ERROR 'FILENAME))
-    (set! condition-type:cell-error (anonymous-error 'CELL-ERROR 'LOCATION))
-    (set! condition-type:thread-error (anonymous-error 'THREAD-ERROR 'THREAD)))
+    (set! condition-type:port-error (anonymous-error 'port-error 'port))
+    (set! condition-type:file-error (anonymous-error 'file-error 'filename))
+    (set! condition-type:cell-error (anonymous-error 'cell-error 'location))
+    (set! condition-type:thread-error (anonymous-error 'thread-error 'thread)))
+  (set! file-error?
+	(condition-predicate condition-type:file-error))
 
   (set! condition-type:derived-port-error
-	(make-condition-type 'DERIVED-PORT-ERROR condition-type:port-error
-	    '(CONDITION)
+	(make-condition-type 'derived-port-error condition-type:port-error
+	    '(condition)
 	  (lambda (condition port)
 	    (write-string "The port " port)
-	    (write (access-condition condition 'PORT) port)
-	    (write-string " signalled an error:" port)
+	    (write (access-condition condition 'port) port)
+	    (write-string " signalled an error " port)
+	    (write (access-condition condition 'condition) port)
+	    (write-string ":" port)
 	    (newline port)
-	    (write-condition-report (access-condition condition 'CONDITION)
+	    (write-condition-report (access-condition condition 'condition)
 				    port))))
   (set! error:derived-port
 	(let ((make-condition
 	       (condition-constructor condition-type:derived-port-error
-				      '(PORT CONDITION))))
+				      '(port condition))))
 	  (lambda (port condition)
-	    (guarantee-condition condition 'ERROR:DERIVED-PORT)
+	    (guarantee-condition condition 'error:derived-port)
 	    (error (make-condition (%condition/continuation condition)
 				   (%condition/restarts condition)
 				   port
 				   condition)))))
 
   (set! condition-type:derived-file-error
-	(make-condition-type 'DERIVED-FILE-ERROR condition-type:file-error
-	    '(CONDITION)
+	(make-condition-type 'derived-file-error condition-type:file-error
+	    '(condition)
 	  (lambda (condition port)
 	    (write-string "The file " port)
-	    (write (access-condition condition 'FILENAME) port)
-	    (write-string " signalled an error:" port)
+	    (write (access-condition condition 'filename) port)
+	    (write-string " signalled an error " port)
+	    (write (access-condition condition 'condition) port)
+	    (write-string ":" port)
 	    (newline port)
-	    (write-condition-report (access-condition condition 'CONDITION)
+	    (write-condition-report (access-condition condition 'condition)
 				    port))))
   (set! error:derived-file
 	(let ((make-condition
 	       (condition-constructor condition-type:derived-file-error
-				      '(FILENAME CONDITION))))
+				      '(filename condition))))
 	  (lambda (filename condition)
-	    (guarantee-condition condition 'ERROR:DERIVED-FILE)
+	    (guarantee-condition condition 'error:derived-file)
 	    (error (make-condition (%condition/continuation condition)
 				   (%condition/restarts condition)
 				   filename
 				   condition)))))
 
   (set! condition-type:derived-thread-error
-	(make-condition-type 'DERIVED-THREAD-ERROR condition-type:thread-error
-	    '(CONDITION)
+	(make-condition-type 'derived-thread-error condition-type:thread-error
+	    '(condition)
 	  (lambda (condition port)
 	    (write-string "The thread " port)
-	    (write (access-condition condition 'THREAD) port)
+	    (write (access-condition condition 'thread) port)
 	    (write-string " signalled " port)
-	    (let ((condition (access-condition condition 'CONDITION)))
+	    (let ((condition (access-condition condition 'condition)))
 	      (write-string (if (condition/error? condition)
-				"an error"
-				"a condition")
+				"an error "
+				"a condition ")
 			    port)
+	      (write condition port)
 	      (write-string ":" port)
 	      (newline port)
 	      (write-condition-report condition port)))))
   (set! error:derived-thread
 	(let ((make-condition
 	       (condition-constructor condition-type:derived-thread-error
-				      '(THREAD CONDITION))))
+				      '(thread condition))))
 	  (lambda (thread condition)
-	    (guarantee-condition condition 'ERROR:DERIVED-THREAD)
+	    (guarantee-condition condition 'error:derived-thread)
 	    (let ((condition
 		   (make-condition (%condition/continuation condition)
 				   (%condition/restarts condition)
 				   thread
 				   condition)))
-	      (with-simple-restart 'CONTINUE "Continue from error."
+	      (with-simple-restart 'continue "Continue from error."
 		(lambda ()
 		  (restart/put! (first-bound-restart)
-				'ASSOCIATED-CONDITION
+				'associated-condition
 				condition)
 		  (error condition)))))))
   (set! condition/derived-thread?
 	(condition-predicate condition-type:derived-thread-error))
 
   (set! condition-type:file-operation-error
-	(make-condition-type 'FILE-OPERATION-ERROR condition-type:file-error
-	    '(VERB NOUN REASON OPERATOR OPERANDS)
+	(make-condition-type 'file-operation-error condition-type:file-error
+	    '(verb noun reason operator operands)
 	  (lambda (condition port)
-	    (let ((noun (access-condition condition 'NOUN)))
+	    (let ((noun (access-condition condition 'noun)))
 	      (write-string "Unable to " port)
-	      (write-string (access-condition condition 'VERB) port)
+	      (write-string (access-condition condition 'verb) port)
 	      (write-string " " port)
 	      (write-string noun port)
 	      (write-string " " port)
-	      (write (->namestring (access-condition condition 'FILENAME))
+	      (write (->namestring (access-condition condition 'filename))
 		     port)
 	      (write-string " because: " port)
-	      (let ((reason (access-condition condition 'REASON)))
+	      (let ((reason (access-condition condition 'reason)))
 		(if reason
-		    (write-string (string-capitalize reason) port)
+		    (write-string (reason-titlecase reason) port)
 		    (begin
 		      (write-string "No such " port)
 		      (write-string noun port))))
 	      (write-string "." port)))))
-  (set! error:file-operation
-	(let ((get-verb
-	       (condition-accessor condition-type:file-operation-error 'VERB))
-	      (get-noun
-	       (condition-accessor condition-type:file-operation-error 'NOUN)))
-	  (substitutable-value-condition-signaller
-	   condition-type:file-operation-error
-	   '(FILENAME VERB NOUN REASON OPERATOR OPERANDS)
-	   standard-error-handler
-	   0
-	   (lambda (condition)
-	     (string-append "New "
-			    (get-noun condition)
-			    " name (an expression to be evaluated)"))
-	   (lambda (condition)
-	     (string-append "Try to "
-			    (get-verb condition)
-			    " a different "
-			    (get-noun condition)
-			    "."))
-	   (lambda (condition)
-	     (string-append "Try to "
-			    (get-verb condition)
-			    " the same "
-			    (get-noun condition)
-			    " again.")))))
+  (set! make-file-operation-error
+	(condition-constructor condition-type:file-operation-error
+			       '(filename verb noun reason operator operands)))
 
   (set! condition-type:variable-error
-	(make-condition-type 'VARIABLE-ERROR condition-type:cell-error
-	    '(ENVIRONMENT)
+	(make-condition-type 'variable-error condition-type:cell-error
+	    '(environment)
 	  (lambda (condition port)
 	    (write-string "Anonymous error associated with variable " port)
-	    (write (access-condition condition 'LOCATION) port)
+	    (write (access-condition condition 'location) port)
 	    (write-string "." port))))
 
   (set! condition-type:unbound-variable
-	(make-condition-type 'UNBOUND-VARIABLE condition-type:variable-error
+	(make-condition-type 'unbound-variable condition-type:variable-error
 	    '()
 	  (lambda (condition port)
 	    (write-string "Unbound variable: " port)
-	    (write (access-condition condition 'LOCATION) port))))
+	    (write (access-condition condition 'location) port))))
 
   (set! condition-type:unassigned-variable
-	(make-condition-type 'UNASSIGNED-VARIABLE condition-type:variable-error
+	(make-condition-type 'unassigned-variable condition-type:variable-error
 	    '()
 	  (lambda (condition port)
 	    (write-string "Unassigned variable: " port)
-	    (write (access-condition condition 'LOCATION) port))))
+	    (write (access-condition condition 'location) port))))
 
   (set! condition-type:macro-binding
-	(make-condition-type 'MACRO-BINDING condition-type:variable-error '()
+	(make-condition-type 'macro-binding condition-type:variable-error '()
 	  (lambda (condition port)
 	    (write-string "Variable reference to a syntactic keyword: " port)
-	    (write (access-condition condition 'LOCATION) port))))
+	    (write (access-condition condition 'location) port))))
 
   (let ((arithmetic-error-report
 	 (lambda (description)
 	   (lambda (condition port)
 	     (write-string description port)
-	     (let ((operator (access-condition condition 'OPERATOR)))
+	     (let ((operator (access-condition condition 'operator)))
 	       (if operator
 		   (begin
 		     (write-string " signalled by " port)
 		     (write-operator operator port)
 		     (write-string "." port))))))))
     (set! condition-type:arithmetic-error
-	  (make-condition-type 'ARITHMETIC-ERROR condition-type:error
-	      '(OPERATOR OPERANDS)
+	  (make-condition-type 'arithmetic-error condition-type:error
+	      '(operator operands)
 	    (arithmetic-error-report "Anonymous arithmetic error")))
     (set! condition-type:divide-by-zero
-	  (make-condition-type 'DIVIDE-BY-ZERO condition-type:arithmetic-error
+	  (make-condition-type 'divide-by-zero condition-type:arithmetic-error
 	      '()
 	    (arithmetic-error-report "Division by zero")))
     (set! condition-type:integer-divide-by-zero
-	  (make-condition-type 'INTEGER-DIVIDE-BY-ZERO
+	  (make-condition-type 'integer-divide-by-zero
 	      condition-type:divide-by-zero
 	      '()
 	    (arithmetic-error-report "Integer division by zero")))
     (set! condition-type:floating-point-divide-by-zero
-	  (make-condition-type 'FLOATING-POINT-DIVIDE-BY-ZERO
+	  (make-condition-type 'floating-point-divide-by-zero
 	      condition-type:divide-by-zero
 	      '()
 	    (arithmetic-error-report "Floating-point division by zero")))
     (set! condition-type:inexact-floating-point-result
-	  (make-condition-type 'INEXACT-FLOATING-POINT-RESULT
+	  (make-condition-type 'inexact-floating-point-result
 	      condition-type:arithmetic-error
 	      '()
 	    (arithmetic-error-report "Inexact floating-point result")))
     (set! condition-type:invalid-floating-point-operation
-	  (make-condition-type 'INVALID-FLOATING-POINT-OPERATION
+	  (make-condition-type 'invalid-floating-point-operation
 	      condition-type:arithmetic-error
 	      '()
 	    (arithmetic-error-report "Invalid floating-point operation")))
     (set! condition-type:floating-point-overflow
-	  (make-condition-type 'FLOATING-POINT-OVERFLOW
+	  (make-condition-type 'floating-point-overflow
 	      condition-type:arithmetic-error
 	      '()
 	    (arithmetic-error-report "Floating-point overflow")))
     (set! condition-type:floating-point-underflow
-	  (make-condition-type 'FLOATING-POINT-UNDERFLOW
+	  (make-condition-type 'floating-point-underflow
 	      condition-type:arithmetic-error
 	      '()
 	    (arithmetic-error-report "Floating-point underflow"))))
 
-  (set! condition-type:not-8-bit-char
-	(make-condition-type 'NOT-8-BIT-CHAR condition-type:error '(CHAR)
-	  (lambda (condition port)
-	    (write-string "Character too large for 8-bit string: " port)
-	    (write (access-condition condition 'CHAR) port)
-	    (newline port))))
-
   (set! make-simple-error
 	(condition-constructor condition-type:simple-error
-			       '(MESSAGE IRRITANTS)))
+			       '(message irritants)))
   (set! make-simple-warning
 	(condition-constructor condition-type:simple-warning
-			       '(MESSAGE IRRITANTS)))
+			       '(message irritants)))
+  (set! make-r7rs-tunnel
+	(condition-constructor condition-type:r7rs-tunnel
+			       '(object)))
 
   (set! error:wrong-type-datum
 	(condition-signaller condition-type:wrong-type-datum
-			     '(DATUM TYPE)
+			     '(datum type)
 			     standard-error-handler))
   (set! error:datum-out-of-range
 	(condition-signaller condition-type:datum-out-of-range
-			     '(DATUM)
+			     '(datum)
 			     standard-error-handler))
   (set! error:wrong-type-argument
 	(condition-signaller condition-type:wrong-type-argument
-			     '(DATUM TYPE OPERATOR)
+			     '(datum type operator)
 			     standard-error-handler))
   (set! error:bad-range-argument
 	(condition-signaller condition-type:bad-range-argument
-			     '(DATUM OPERATOR)
+			     '(datum operator)
 			     standard-error-handler))
   (set! error:wrong-number-of-arguments
 	(condition-signaller condition-type:wrong-number-of-arguments
-			     '(DATUM TYPE OPERANDS)
+			     '(datum type operands)
 			     standard-error-handler))
   (set! error:illegal-pathname-component
 	(condition-signaller condition-type:illegal-pathname-component
-			     '(DATUM TYPE)
+			     '(datum type)
 			     standard-error-handler))
   (set! error:divide-by-zero
 	(condition-signaller condition-type:divide-by-zero
-			     '(OPERATOR OPERANDS)
+			     '(operator operands)
 			     standard-error-handler))
   (set! error:no-such-restart
 	(condition-signaller condition-type:no-such-restart
-			     '(NAME)
+			     '(name)
 			     standard-error-handler))
   (set! error:unassigned-variable
 	(condition-signaller condition-type:unassigned-variable
-			     '(ENVIRONMENT LOCATION)
+			     '(environment location)
 			     standard-error-handler))
   (set! error:unbound-variable
 	(condition-signaller condition-type:unbound-variable
-			     '(ENVIRONMENT LOCATION)
+			     '(environment location)
 			     standard-error-handler))
   (set! error:macro-binding
 	(condition-signaller condition-type:macro-binding
-			     '(ENVIRONMENT LOCATION)
-			     standard-error-handler))
-  (set! error:not-8-bit-char
-	(condition-signaller condition-type:not-8-bit-char
-			     '(CHAR)
+			     '(environment location)
 			     standard-error-handler))
   unspecific)
 
@@ -1227,7 +1274,7 @@ USA.
 	       (else
 		(error:wrong-type-argument map-error
 					   "map-error procedure"
-					   'IGNORE-ERRORS)))
+					   'ignore-errors)))
        thunk))))
 
 (define warn-errors?
@@ -1239,8 +1286,8 @@ USA.
 	      (else (error "Unexpected value:" v)))))))
 
 (define (format-error-message message irritants port)
-  (fluid-let ((*unparser-list-depth-limit* 2)
-	      (*unparser-list-breadth-limit* 5))
+  (parameterize ((param:printer-list-depth-limit 2)
+		 (param:printer-list-breadth-limit 5))
     (for-each (lambda (irritant)
 		(if (and (pair? irritant)
 			 (eq? (car irritant) error-irritant/noise-tag))
@@ -1258,11 +1305,11 @@ USA.
 
 (define error-irritant/noise-tag
   '(error-irritant/noise))
-
+
 (define (ordinal-number-string n)
   (if (not (and (exact-nonnegative-integer? n) (< n 100)))
       (error:wrong-type-argument n "exact integer between 0 and 99"
-				 'ORDINAL-NUMBER-STRING))
+				 'ordinal-number-string))
   (let ((ones-names
 	 #("zeroth" "first" "second" "third" "fourth" "fifth" "sixth"
 		    "seventh" "eighth" "ninth"))
@@ -1287,3 +1334,14 @@ USA.
 	     (primitive-procedure-name operator)
 	     operator)
 	 port))
+
+;; Not quite right: it should be using string-word-breaks to find the first
+;; word.  Unfortunately even with the breaks it's still non-trivial to discover
+;; what is a word and what isn't.  So for now we do this simple thing based on
+;; whitespace.
+(define (reason-titlecase reason)
+  (let ((index (string-find-first-index char-whitespace? reason)))
+    (if index
+	(string-append (string-titlecase (string-slice reason 0 index))
+		       (string-slice reason index))
+	(string-titlecase reason))))

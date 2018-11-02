@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -137,6 +137,8 @@ static long assign_variable_end
   (SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT *, int);
 static long assign_variable_cache
   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT *, int);
+static SCHEME_OBJECT * extend_environment
+  (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT);
 static long guarantee_extension_space
   (SCHEME_OBJECT);
 static long allocate_frame_extension
@@ -486,8 +488,6 @@ define_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 	  && ((get_trap_kind (*shadowed_cell)) == TRAP_COMPILER_CACHED))
 	 ? (GET_TRAP_CACHE (*shadowed_cell))
 	 : SHARP_F);
-    unsigned long length = (GET_EXTENDED_FRAME_LENGTH (environment));
-    SCHEME_OBJECT pair;
 
     /* Make sure there is enough space available to move any
        references that need moving.  */
@@ -498,17 +498,25 @@ define_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 	  : 0));
 
     /* Create the binding.  */
-    pair = (cons (symbol, (MAP_TO_UNASSIGNED (value))));
-    ((GET_EXTENDED_FRAME_BINDINGS (environment)) [length]) = pair;
-    SET_EXTENDED_FRAME_LENGTH (environment, (length + 1));
+    SCHEME_OBJECT * cell = (extend_environment (environment, symbol, value));
 
     /* Move any references that need moving.  */
     return
       ((old_cache != SHARP_F)
-       ? (update_cache_references
-	  (old_cache, (PAIR_CDR_LOC (pair)), environment, symbol))
+       ? (update_cache_references (old_cache, cell, environment, symbol))
        : PRIM_DONE);
   }
+}
+
+static SCHEME_OBJECT *
+extend_environment (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
+		    SCHEME_OBJECT value)
+{
+  SCHEME_OBJECT pair = (cons (symbol, (MAP_TO_UNASSIGNED (value))));
+  unsigned long length = (GET_EXTENDED_FRAME_LENGTH (environment));
+  ((GET_EXTENDED_FRAME_BINDINGS (environment)) [length]) = pair;
+  SET_EXTENDED_FRAME_LENGTH (environment, (length + 1));
+  return (PAIR_CDR_LOC (pair));
 }
 
 static long
@@ -660,7 +668,7 @@ long
 unbind_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 		 SCHEME_OBJECT * value_ret)
 {
-  SCHEME_OBJECT frame;
+  SCHEME_OBJECT frame = 0;
   SCHEME_OBJECT * cell = (find_binding_cell (environment, symbol, (&frame)));
   if (GLOBAL_FRAME_P (frame))
     weaken_symbol (symbol);
@@ -915,13 +923,14 @@ add_cache_reference (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 {
   SCHEME_OBJECT frame = 0;
   SCHEME_OBJECT * cell = (find_binding_cell (environment, symbol, (&frame)));
-  SCHEME_OBJECT dummy_cell = UNBOUND_OBJECT;
   if (cell == 0)
-    /* There's no binding for the variable, and we don't have access
-       to the global environment.  The compiled code needs a cache, so
-       we'll install one, but it won't be attached to any environment
-       structure.  */
-    cell = (&dummy_cell);
+    {
+      /* There's no binding for the variable, and we don't have access
+	 to the global environment.  The compiled code needs a cache, so
+	 we'll install one that's attached to the outermost frame.  */
+      DIE_IF_ERROR (guarantee_extension_space (frame));
+      cell = (extend_environment (frame, symbol, UNBOUND_OBJECT));
+    }
   else if (GLOBAL_FRAME_P (frame))
     strengthen_symbol (symbol);
   /* This procedure must complete to keep the data structures
@@ -1195,11 +1204,22 @@ static SCHEME_OBJECT *
 find_binding_cell (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 		   SCHEME_OBJECT * frame_ret)
 {
+  if (NULL_FRAME_P (environment))
+    {
+      if (frame_ret != 0)
+	(*frame_ret) = environment;
+      return (0);
+    }
+  assert (ENVIRONMENT_P (environment));
   SCHEME_OBJECT frame = environment;
   while (1)
     {
       SCHEME_OBJECT * cell = (scan_frame (frame, symbol, 0));
-      if ((cell != 0) || (!PROCEDURE_FRAME_P (frame)))
+      if ((cell != 0)
+	  /* This is safe because if 'frame' was the global frame then
+	     'cell' would be non-null.  Therefore 'frame' must be a
+	     procedure frame.  */
+	  || (!ENVIRONMENT_P (GET_FRAME_PARENT (frame))))
 	{
 	  if (frame_ret != 0)
 	    (*frame_ret) = frame;
@@ -1233,10 +1253,8 @@ scan_frame (SCHEME_OBJECT frame, SCHEME_OBJECT symbol, int find_unbound_p)
 	(scan_procedure_bindings ((GET_FRAME_PROCEDURE (frame)),
 				  frame, symbol, find_unbound_p));
     }
-  else if (GLOBAL_FRAME_P (frame))
-    return (SYMBOL_GLOBAL_VALUE_CELL (symbol));
-  else
-    return (0);
+  assert (GLOBAL_FRAME_P (frame));
+  return (SYMBOL_GLOBAL_VALUE_CELL (symbol));
 }
 
 static SCHEME_OBJECT *

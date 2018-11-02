@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -42,15 +42,15 @@ USA.
 
 (define-guarantee rfc2822-header "RFC 2822 header field")
 
-(set-record-type-unparser-method! <rfc2822-header>
-  (simple-unparser-method 'rfc2822-header
+(define-print-method rfc2822-header?
+  (standard-print-method 'rfc2822-header
     (lambda (header)
       (list (rfc2822-header-name header)))))
 
 (define (header-name? object)
   (and (interned-symbol? object)
        (not (eq? object '||))
-       (string-in-char-set? (symbol-name object) char-set:rfc2822-name)))
+       (string-in-char-set? (symbol->string object) char-set:rfc2822-name)))
 
 (define-guarantee header-name "RFC 2822 header-field name")
 
@@ -64,24 +64,18 @@ USA.
   (let ((end (string-length string)))
     (let loop ((i 0))
       (if (fix:< i end)
-	  (and (char-set-member? char-set (string-ref string i))
+	  (and (char-in-set? (string-ref string i) char-set)
 	       (loop (fix:+ i 1)))
 	  #t))))
 
-(define (guarantee-rfc2822-headers object #!optional caller)
-  (guarantee-list-of-type object
-			  rfc2822-header?
-			  "list of RFC 2822 header fields"
-			  caller))
-
 (define (first-rfc2822-header name headers)
-  (guarantee-rfc2822-headers headers 'FIRST-RFC2822-HEADER)
+  (guarantee-list-of rfc2822-header? headers 'first-rfc2822-header)
   (find (lambda (header)
 	  (eq? (rfc2822-header-name header) name))
 	headers))
 
 (define (all-rfc2822-headers name headers)
-  (guarantee-rfc2822-headers headers 'ALL-RFC2822-HEADERS)
+  (guarantee-list-of rfc2822-header? headers 'all-rfc2822-headers)
   (filter (lambda (header)
 	    (eq? (rfc2822-header-name header) name))
 	  headers))
@@ -94,7 +88,7 @@ USA.
       (write-rfc2822-headers headers port))))
 
 (define (write-rfc2822-headers headers port)
-  (guarantee-rfc2822-headers headers 'WRITE-RFC2822-HEADERS)
+  (guarantee-list-of rfc2822-header? headers 'write-rfc2822-headers)
   (for-each (lambda (header)
               (write-header header port))
             headers)
@@ -109,7 +103,7 @@ USA.
   (newline port))
 
 (define (write-name name port)
-  (let* ((name (symbol-name name))
+  (let* ((name (symbol->string name))
          (end (string-length name)))
     (if (char-alphabetic? (string-ref name 0))
 	(letrec
@@ -158,31 +152,65 @@ USA.
 					     end)))))))
 
 (define (read-rfc2822-folded-line port)
+  (if (binary-input-port? port)
+      (read-rfc2822-folded-line* read-ascii-line peek-ascii-char port)
+      (read-rfc2822-folded-line* read-line peek-char port)))
+
+(define (read-rfc2822-folded-line* read-line peek-char port)
   (let ((line (read-line port)))
     (cond ((string-null? line)
 	   #f)
 	  ((char-wsp? (string-ref line 0))
 	   (parse-error port
 			"Unmatched continuation line:"
-			'READ-RFC2822-FOLDED-LINE))
+			'read-rfc2822-folded-line))
 	  (else
 	   (call-with-output-string
 	     (lambda (out)
 	       (let loop ((line line))
 		 (let ((end (skip-wsp-right line 0 (string-length line))))
-		   (write-substring line
-				    (skip-wsp-left line 0 end)
-				    end
-				    out))
+		   (write-string line out (skip-wsp-left line 0 end) end))
 		 (if (let ((char (peek-char port)))
 		       (if (eof-object? char)
 			   (parse-error port
 					"Premature EOF:"
-					'READ-RFC2822-FOLDED-LINE))
+					'read-rfc2822-folded-line))
 		       (char-wsp? char))
 		     (begin
 		       (write-char #\space out)
 		       (loop (read-line port)))))))))))
+
+(define (read-ascii-line port)
+  (with-input-port-blocking-mode port 'blocking
+    (lambda ()
+      (let ((builder (string-builder)))
+	(let loop ()
+	  (let ((byte (read-u8 port)))
+	    (cond ((eof-object? byte)
+		   (if (builder 'empty?)
+		       byte
+		       (builder)))
+		  ((fix:= 13 byte)
+		   (if (fix:= 10 (peek-u8 port))
+		       (read-u8 port)
+		       (parse-error port "Invalid line ending:"
+				    'read-ascii-line))
+		   (builder))
+		  ((fix:= 10 byte)
+		   (parse-error port "Invalid line ending:" 'read-ascii-line)
+		   (builder))
+		  ((and (fix:<= 32 byte) (fix:<= byte 126))
+		   (builder (integer->char byte))
+		   (loop))
+		  (else
+		   (parse-error port "Illegal character:" 'read-ascii-line)
+		   (loop)))))))))
+
+(define (peek-ascii-char port)
+  (let ((byte (peek-u8 port)))
+    (if (eof-object? byte)
+	byte
+	(integer->char byte))))
 
 (define (skip-wsp-left string start end)
   (let loop ((i start))
@@ -210,10 +238,10 @@ USA.
 		 (if quote?
 		     (string-append "\"" s "\"")
 		     s)))
-	      ((char-set-member? char-set:rfc2822-qtext char)
+	      ((char-in-set? char char-set:rfc2822-qtext)
 	       (write-char char output)
 	       (loop quote?))
-	      ((char-set-member? char-set:rfc2822-text char)
+	      ((char-in-set? char char-set:rfc2822-text)
 	       (write-char #\\ output)
 	       (write-char char output)
 	       (loop #t))
@@ -262,18 +290,18 @@ USA.
 	(char-set-difference char-set:rfc2822-text
 			     (char-set #\tab #\space #\delete #\\ #\")))
   (set! condition-type:rfc2822-parse-error
-	(make-condition-type 'RFC2822-PARSE-ERROR
+	(make-condition-type 'rfc2822-parse-error
 	    condition-type:port-error
-	    '(MESSAGE IRRITANTS)
+	    '(message irritants)
 	  (lambda (condition port)
 	    (write-string "Error while parsing RFC 2822 headers: " port)
-	    (format-error-message (access-condition condition 'MESSAGE)
-				  (access-condition condition 'IRRITANTS)
+	    (format-error-message (access-condition condition 'message)
+				  (access-condition condition 'irritants)
 				  port))))
   (set! parse-error
 	(let ((signal
 	       (condition-signaller condition-type:rfc2822-parse-error
-				    '(PORT MESSAGE IRRITANTS)
+				    '(port message irritants)
 				    standard-error-handler)))
 	  (lambda (port message . irritants)
 	    (signal port message irritants))))

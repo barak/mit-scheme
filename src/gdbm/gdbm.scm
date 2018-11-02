@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -24,18 +24,64 @@ USA.
 
 |#
 
-;;;; GDBM wrapper
+;;;; The GDBM option.
 ;;; package: (gdbm)
 
 (declare (usual-integrations))
 
+(define (import-gdbm)
+  (let ((target-environment (nearest-repl/environment))
+	(source-environment (->environment '(gdbm))))
+    (for-each (lambda (name)
+		(link-variables target-environment name
+				source-environment name))
+	      '(gdbm-close
+		gdbm-delete
+		gdbm-exists?
+		gdbm-fetch
+		gdbm-firstkey
+		gdbm-nextkey
+		gdbm-open
+		gdbm-reorganize
+		gdbm-setopt
+		gdbm-store
+		gdbm-sync
+		gdbm-version
+		gdbm_cachesize
+		gdbm_fast
+		;;gdbm_fastmode obsolete
+		gdbm_insert
+		gdbm_newdb
+		gdbm_reader
+		gdbm_replace
+		gdbm_wrcreat
+		gdbm_writer))))
+
 (C-include "gdbm")
 
-(define (gdbm-available?)
-  (let ((path (ignore-errors (lambda ()
-			       (system-library-pathname "gdbm-shim.so")))))
-    (and (pathname? path)
-	 (file-loadable? path))))
+(define-integrable (every-loop proc ref string start end)
+  (let loop ((i start))
+    (if (fix:< i end)
+	(and (proc (ref string i))
+	     (loop (fix:+ i 1)))
+	#t)))
+
+(define (->bytes string)
+  ;; NOT necessarily null terminated
+  (if (and (or (bytevector? string)
+	       (and (ustring? string)
+		    (fix:= 1 (ustring-cp-size string))))
+	   (let ((end (string-length string)))
+	     (every-loop (lambda (cp) (fix:< cp #x80))
+			 cp1-ref string 0 end)))
+      string
+      (string->utf8 string)))
+
+(declare (integrate-operator bytes-length))
+(define (bytes-length bytes)
+  (if (bytevector? bytes)
+      (bytevector-length bytes)
+      (string-length bytes)))
 
 ;; Parameters to gdbm_open for READERS, WRITERS, and WRITERS who can
 ;; create the database.
@@ -46,18 +92,18 @@ USA.
 (define GDBM_FAST   (C-enum "GDBM_FAST"))	;Write fast! => No fsyncs.
 
 (define (gdbm-open filename block-size flags mode)
-  (guarantee-integer block-size 'GDBM-OPEN)
-  (guarantee-integer mode 'GDBM-OPEN)
+  (guarantee integer? block-size 'GDBM-OPEN)
+  (guarantee integer? mode 'GDBM-OPEN)
   (let ((args (make-alien '|gdbm_args|))
-	(flagsnum (guarantee-gdbm-open-flags flags)))
+	(flagsnum (guarantee-gdbm-open-flags flags))
+	(filename (->namestring (merge-pathnames filename))))
     (let ((gdbf (make-gdbf args (make-thread-mutex) filename)))
-      (if (not (gdbm-available?))
-	  (error "GDBM support is not installed."))
       (add-open-gdbf-cleanup gdbf)
       (with-gdbf-locked
        gdbf
        (lambda ()
-	 (C-call "do_gdbm_open" args filename block-size flagsnum mode)
+	 (C-call "do_gdbm_open"
+		 args (string->utf8 filename) block-size flagsnum mode)
 	 (if (alien-null? args)
 	     (error "gdbm_open failed: malloc failed")
 	     (if (alien-null? (C-> args "gdbm_args dbf"))
@@ -197,11 +243,11 @@ USA.
      (C-call "do_gdbm_sync" args))))
 
 (define (gdbm-strerror errno)
-  (guarantee-fixnum errno 'GDBM-STRERROR)
+  (guarantee fixnum? errno 'GDBM-STRERROR)
   (c-peek-cstring (C-call "gdbm_strerror" (make-alien '(* char)) errno)))
 
 (define (strerror errno)
-  (guarantee-fixnum errno 'STRERROR)
+  (guarantee fixnum? errno 'STRERROR)
   (c-peek-cstring (C-call "strerror" (make-alien '(* char)) errno)))
 
 ;; Parameters to gdbm_setopt, specifing the type of operation to perform.
@@ -225,7 +271,7 @@ USA.
 		       (else (error:wrong-type-argument val "SYNCMODE boolean"
 							'GDBM-SETOPT))))
 		((= optnum GDBM_CACHESIZE)
-		 (guarantee-integer val 'GDBM-SETOPT)
+		 (guarantee integer? val 'GDBM-SETOPT)
 		 val))))
     (with-gdbf-locked-open
      gdbf 'GDBM-SETOPT
@@ -237,16 +283,15 @@ USA.
   (c-peek-cstring (C-call "get_gdbm_version" (make-alien '(* char)))))
 
 (define (guarantee-nonnull-string obj procedure)
-  (if (or (not (string? obj)) (string-null? obj))
+  (guarantee string? obj procedure)
+  (if (string-null? obj)
       (error:wrong-type-argument obj "non-null string" procedure)))
 
 (define-structure (gdbf (constructor make-gdbf)
 			(print-procedure
-			 (standard-unparser-method
-			  'GDBF
-			  (lambda (gdbf port)
-			    (write-char #\space port)
-			    (write (gdbf-filename gdbf) port)))))
+			 (standard-print-method 'GDBF
+			   (lambda (gdbf)
+			     (list (gdbf-filename gdbf))))))
   ;; Note that communicating through this malloced-per-GDBM_FILE
   ;; helper struct assumes there are no callbacks possible during gdbm
   ;; operations (via which this procedure could be called multiple
@@ -263,73 +308,81 @@ USA.
       (error:wrong-type-argument gdbf "gdbm handle" procedure)))
 
 (define-integrable (with-gdbf-locked gdbf thunk)
-  (with-thread-mutex-locked (gdbf-mutex gdbf) thunk))
+  (with-thread-mutex-lock (gdbf-mutex gdbf) thunk))
 
 (define (with-gdbf-locked-open gdbf operator receiver)
-  (with-thread-mutex-locked
+  (with-thread-mutex-lock
    (gdbf-mutex gdbf)
    (lambda ()
      (let ((args (gdbf-args gdbf)))
        (if (alien-null? args)
-	   (error (string-append (symbol-name operator) " failed: closed")))
+	   (error (string-append (symbol->string operator) " failed: closed")))
        (receiver args)))))
 
 (define (gdbm-error gdbf msg)
   (let ((args (gdbf-args gdbf)))
     (error (string-append msg " failed:")
-	   (gdbm-strerror (C-> args "gdbm_args gdbm_errno"))
-	   (strerror (C-> args "gdbm_args sys_errno")))))
+	   (gdbm-strerror (C-> args "gdbm_args errno_gdbm"))
+	   (strerror (C-> args "gdbm_args errno_sys")))))
 
 (define (gdbf-args-put-key! args key)
-  (let ((size (string-length key))
-	(dptr (make-alien '(* char))))
-    (if (< size 1)
-	(error "empty key:" key))
-    (C-call "alloc_gdbm_key" dptr args size)
-    (if (alien-null? dptr)
-	(error "gdbf-args-put-key!: malloc failed" key))
-    (c-poke-bytes dptr 0 size key 0)))
+  (let ((bytes (->bytes key)))
+    (let ((size (bytes-length bytes))
+	  (dptr (make-alien '(* char))))
+      (if (< size 1)
+	  (error "empty key:" key))
+      (C-call "alloc_gdbm_key" dptr args size)
+      (if (alien-null? dptr)
+	  (error "gdbf-args-put-key!: malloc failed" key))
+      (c-poke-bytes dptr 0 size bytes 0))))
 
 (define (gdbf-args-put-content! args content)
-  (let ((size (string-length content))
-	(dptr (make-alien '(* char))))
-    (if (< size 1)
-	(error "empty content:" content))
-    (C-call "alloc_gdbm_content" dptr args size)
-    (if (alien-null? dptr)
-	(error "gdbf-args-put-content!: malloc failed" size))
-    (c-poke-bytes dptr 0 size content 0)))
+  (let ((bytes (->bytes content)))
+    (let ((size (bytes-length bytes))
+	  (dptr (make-alien '(* char))))
+      (if (< size 1)
+	  (error "empty content:" content))
+      (C-call "alloc_gdbm_content" dptr args size)
+      (if (alien-null? dptr)
+	  (error "gdbf-args-put-content!: malloc failed" size))
+      (c-poke-bytes dptr 0 size bytes 0))))
 
 (define (gdbf-args-get-key args)
   (let ((data (C-> args "gdbm_args key dptr")))
     (if (alien-null? data)
 	#f
 	(let* ((size (C-> args "gdbm_args key dsize"))
-	       (string (string-allocate size)))
-	  (c-peek-bytes data 0 size string 0)
-	  string))))
+	       (bytes ((ucode-primitive c-peek-csubstring 3) data 0 size)))
+	  (if (string? bytes)
+	      bytes
+	      (let ((s (utf8->string bytes)))
+		(outf-error ";got a utf8 key: "s"\n")
+		s))))))
 
 (define (gdbf-args-get-content args)
   (let ((data (C-> args "gdbm_args content dptr")))
     (if (alien-null? data)
 	#f
 	(let* ((size (C-> args "gdbm_args content dsize"))
-	       (string (string-allocate size)))
-	  (c-peek-bytes data 0 size string 0)
-	  string))))
+	       (bytes ((ucode-primitive c-peek-csubstring 3) data 0 size)))
+	  (if (string? bytes)
+	      bytes
+	      (let ((s (utf8->string bytes)))
+		(outf-error ";got utf8 content: "s"\n")
+		s))))))
 
 (define open-gdbfs '())
 (define open-gdbfs-mutex)
 
 (define (add-open-gdbf-cleanup gdbf)
-  (with-thread-mutex-locked
+  (with-thread-mutex-lock
    open-gdbfs-mutex
    (lambda ()
      (set! open-gdbfs (cons (weak-cons gdbf (gdbf-args gdbf))
 			    open-gdbfs)))))
 
 (define (remove-open-gdbf-cleanup gdbf)
-  (with-thread-mutex-locked
+  (with-thread-mutex-lock
    open-gdbfs-mutex
    (lambda ()
      (let ((entry (weak-assq gdbf open-gdbfs)))
@@ -345,23 +398,27 @@ USA.
 	      (loop (cdr alist)))))))
 
 (define (cleanup-open-gdbfs)
-  (if (not (thread-mutex-owner open-gdbfs-mutex))
-      (let loop ((entries open-gdbfs)
-		 (prev #f))
-	(if (pair? entries)
-	    (let ((entry (car entries))
-		  (next (cdr entries)))
-	      (if (weak-pair/car? entry)
-		  (loop next entries)
-		  (let ((args (weak-cdr entry)))
-		    (if prev
-			(set-cdr! prev next)
-			(set! open-gdbfs next))
-		    (if (not (alien-null? args))
-			(begin
-			  (C-call "do_gdbm_close" args)
-			  (alien-null! args)))
-		    (loop next prev))))))))
+  (with-thread-mutex-try-lock
+   open-gdbfs-mutex
+   (lambda ()
+     (let loop ((entries open-gdbfs)
+		(prev #f))
+       (if (pair? entries)
+	   (let ((entry (car entries))
+		 (next (cdr entries)))
+	     (if (weak-pair/car? entry)
+		 (loop next entries)
+		 (let ((args (weak-cdr entry)))
+		   (if prev
+		       (set-cdr! prev next)
+		       (set! open-gdbfs next))
+		   (if (not (alien-null? args))
+		       (begin
+			 (C-call "do_gdbm_close" args)
+			 (alien-null! args)))
+		   (loop next prev)))))))
+   (lambda ()
+     unspecific)))
 
 (define (reset-open-gdbfs)
   (for-each (lambda (weak) (alien-null! (weak-cdr weak))) open-gdbfs)

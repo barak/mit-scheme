@@ -2,8 +2,8 @@
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014
-#     Massachusetts Institute of Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
+#     2015, 2016, 2017, 2018 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -28,7 +28,7 @@ set -e
 
 FASTP=no
 NATIVE_CODE=
-for ARG in "${@}"; do
+for ARG in ${1+"$@"}; do
     case ${ARG} in
     --help|--help=*|--version)
 	FASTP=yes
@@ -40,7 +40,7 @@ for ARG in "${@}"; do
 done
 
 if [ ${FASTP} = yes ]; then
-    exec ./configure "${@}"
+    exec ./configure ${1+"$@"}
 fi
 
 : ${MIT_SCHEME_EXE:=mit-scheme-c}
@@ -79,7 +79,7 @@ EOF
 
 test_exp='(begin (write microcode-id/compiled-code-type) (%exit 0))'
 scheme_failure=
-cc_type=`"${MIT_SCHEME_EXE}" --batch-mode --eval "${test_exp}" 2>/dev/null` \
+cc_type=`"${MIT_SCHEME_EXE}" --batch-mode --no-init-file --eval "${test_exp}" 2>/dev/null` \
   || scheme_failure=yes
 
 if [ yes = "${scheme_failure}" ]; then
@@ -112,5 +112,5 @@ EOF
 
 run_make stamp_install-native-boot-compiler c-clean distclean
 
-run_configure "${@}"
+run_configure ${1+"$@"}
 run_make stamp_native-compile-scheme build-bands clean-boot-root

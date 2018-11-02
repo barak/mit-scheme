@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,7 +32,7 @@ USA.
 (define (directory-processor input-type output-type process-file)
   (let ((directory-read
 	 (let ((input-pattern
-		(make-pathname #f #f #f 'WILD input-type 'NEWEST)))
+		(make-pathname #f #f #f 'wild input-type 'newest)))
 	   (lambda (directory)
 	     (directory-read
 	      (merge-pathnames
@@ -65,25 +65,6 @@ USA.
    (lambda () "bin")
    (lambda (pathname output-directory)
      (sf pathname output-directory))))
-
-(define compile-directory
-  (directory-processor
-   "bin"
-   (lambda ()
-     (compiler:compiled-code-pathname-type))
-   (lambda (pathname output-directory)
-     (compile-bin-file pathname output-directory))))
-
-(define sf-directory?)
-(define compile-directory?)
-(let ((show-pathname
-       (lambda (pathname output-directory)
-	 output-directory
-	 (newline)
-	 (write-string "Process file: ")
-	 (write-string (enough-namestring pathname)))))
-  (set! sf-directory? (directory-processor "scm" "bin" show-pathname))
-  (set! compile-directory? (directory-processor "bin" "com" show-pathname)))
 
 (define (sf-conditionally filename #!optional echo-up-to-date?)
   (let ((kernel

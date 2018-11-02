@@ -3,7 +3,8 @@
 ### Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ###     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
 ###     2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013,
-###     2014 Massachusetts Institute of Technology
+###     2014, 2015, 2016, 2017, 2018 Massachusetts Institute of
+###     Technology
 ###
 ### This file is part of MIT/GNU Scheme.
 ###
@@ -23,7 +24,7 @@
 ### 02110-1301, USA.
 
 ### AMD x86-64 assembly language part of the compiled code interface.
-### See cmpint.txt, cmpint.c, cmpint-mc68k.h, and cmpgc.h for more
+### See cmpint.txt, cmpint.c, cmpintmd/x86-64*, and cmpgc.h for more
 ### documentation.
 ###
 ### This m4 source expands into either Unix (gas) source or PC
@@ -37,56 +38,55 @@
 ###
 ###	1) All registers and stack locations hold a C long object.
 ###
-###	2) The C compiler divides registers into three groups:
+###	2) The AMD64 Unix ABI divides registers into three groups:
+###
 ###	- Linkage registers, used for procedure calls and global
 ###	references.  On AMD64 Unix ABI: %rbp, %rsp.
-###	- super temporaries, not preserved accross procedure calls and
+###
+###	- super temporaries, not preserved across procedure calls and
 ###	always usable. On AMD64 Unix ABI: everything but what is
 ###	listed below.
+###
 ###	- preserved registers saved by the callee if they are written.
 ###	On AMD64 Unix ABI: %rbp, %rbx, %r12-%r15, MXCSR, x87 control
 ###	word.
 ###
-###	3) Arguments, if passed on a stack, are popped by the caller
-###	or by the procedure return instruction (as on the VAX).  Thus
-###	most "leaf" procedures need not worry about them.  On x86-64,
-###	arguments beyond the sixth are passed on the stack; the first
-###	through sixth are passed in %rdi, %rsi, %rdx, %rcx, %r8, or
-###	%r9.  (Non-integer arguments are passed in other ways.)
+###	3) Arguments beyond the sixth are passed on the stack; the
+###	first through sixth are passed in %rdi, %rsi, %rdx, %rcx, %r8,
+###	or %r9.  (Non-integer arguments are passed in other ways.)
 ###
-###	4) There is a hardware or software maintained stack for
-###	control.  The procedure calling sequence may leave return
-###	addresses in registers, but they must be saved somewhere for
-###	nested calls and recursive procedures.  On x86-64: saved on
-###	the stack by the CALL instruction.
+###	4) The C function calling sequence saves a return address on
+###	the stack using the CALL instruction.
 ###
-###	5) C procedures return long values in a super temporary
-###	register.  Two word structures are returned in super temporary
-###	registers as well in the AMD64 Unix ABI: %rax and %rdi.
+###	5) One and two word structures are returned in %rax and %rdi.
 ###
-###	6) Floating point registers are not preserved by this
-###	interface.  The interface is only called from the Scheme
-###	interpreter, which does not use floating point data.  Thus
-###	although the calling convention would require us to preserve
-###	them, they contain garbage.
+###	6) Floating point arguments are passed in the floating point
+###	registers.  The ABI requires callees to preserve these UNLESS
+###	it is known that no caller could be using them, which is the
+###	case here.  The only C functions calling compiled Scheme are
+###	in the interpreter which does not do floating point.
 ###
 ### Compiled Scheme code uses the following register convention:
+###
 ###	- %rsp contains the Scheme stack pointer, not the C stack
 ###	pointer.
+###
 ###	- %rsi contains a pointer to the Scheme interpreter's "register"
 ###	block.  This block contains the compiler's copy of MemTop,
 ###	the interpreter's registers (val, env, exp, etc.),
 ###	temporary locations for compiled code, and the addresses
 ###	of various hooks defined in this file.
+###
 ###	- %rdi contains the Scheme free pointer.
+###
 ###	- %rbp contains the Scheme datum mask.
 ###	The dynamic link (when needed) is in Registers[REGBLOCK_COMPILER_TEMP]
 ###	Values are returned in Registers[REGBLOCK_VAL]
 ###	[TRC 20091025: Later, we ought to use machine registers for
 ###	these.]
 ###
-###	All other registers are available to the compiler.  A
-###	caller-saves convention is used, so the registers need not be
+###	All other registers are available to the compiler.  A caller-
+###	saves convention is used, so the registers need not be
 ###	preserved by subprocedures.
 
 ### The following m4 macros can be defined to change how this file is
@@ -104,16 +104,14 @@
 ### SUPPRESS_LEADING_UNDERSCORE
 ###	If defined, external symbol names are generated as written;
 ###	otherwise, they have an underscore prepended to them.
-### WCC386
-###	Should be defined when using Watcom assembler.
+###
 ### WCC386R
 ###	Should be defined when using Watcom assembler and generating
 ###	code to use the Watcom register-based argument conventions.
+###
 ### TYPE_CODE_LENGTH
 ###	Normally defined to be 6.  Don't change this unless you know
 ###	what you're doing.
-### VALGRIND_MODE
-###	If defined, modify code to make it work with valgrind.
 
 ####	Utility macros and definitions
 
@@ -122,7 +120,6 @@ ifdef(`WIN32',
       `define(IF_WIN32,`')')
 
 IF_WIN32(`define(DASM,1)')
-ifdef(`WCC386R',`define(WCC386,1)')
 
 ifdef(`DASM',
       `define(IFDASM,`$1')',
@@ -315,14 +312,6 @@ define(REGBLOCK_VAL,16)
 define(REGBLOCK_COMPILER_TEMP,32)
 define(REGBLOCK_DLINK,REGBLOCK_COMPILER_TEMP)
 
-# Define the floating-point processor control word.  Always set
-# round-to-even and double precision.  Under Win32, mask all
-# exceptions.  Under unix and OS/2, mask only the inexact result
-# exception.
-ifdef(`WIN32',
-      `define(FP_CONTROL_WORD,HEX(023f))',
-      `define(FP_CONTROL_WORD,HEX(0220))')
-
 define(regs,REG(rsi))
 define(rfree,REG(rdi))
 define(rmask,REG(rbp))
@@ -355,24 +344,6 @@ define_double(flonum_one,1.0)
 
 DECLARE_CODE_SEGMENT()
 declare_alignment(2)
-
-define_c_label(x86_64_interface_initialize)
-	OP(push,q)	REG(rbp)
-	OP(mov,q)	TW(REG(rsp),REG(rbp))
-	OP(sub,q)	TW(IMM(8),REG(rsp))
-	stmxcsr		IND(REG(rsp))
-	# Clear 7 (invalid operation mask)
-	#       8 (denormalized operand mask)
-	#       9 (zero-divide exception mask)
-	#       10 (overflow exception mask)
-	#       11 (underflow exception mask)
-	#       15 (flush-to-zero (if set, gives non-IEEE semantics))
-	OP(and,l)	TW(IMM(HEX(ffff707f)),IND(REG(rsp)))
-	# Set   12 (precision exception mask)
-	OP(or,l)	TW(IMM(HEX(1000)),IND(REG(rsp)))
-	ldmxcsr		IND(REG(rsp))
-	leave
-	ret
 
 # Call a function (rdi) with an argument (rsi) and a stack pointer and
 # frame pointer from inside C.  When it returns, restore the original
@@ -502,11 +473,14 @@ ifdef(`WIN32',						# Register block = %rsi
 `	OP(lea,q)	TW(ABS(EVR(Registers)),regs)')
 	OP(mov,q)	TW(ABS(EVR(Free)),rfree)	# Free pointer = %rdi
 	OP(mov,q)	TW(QOF(REGBLOCK_VAL(),regs),REG(rax)) # Value/dynamic link
-	OP(mov,q)	TW(IMM(ADDRESS_MASK),rmask)	# = %rbp
 	# Restore the C stack pointer, which we zeroed back in
 	# scheme_to_interface, for within_c_stack.
+	# Restore the C frame pointer too; the interface may have called
+	# Re_Enter_Interpreter which probably clobbered both.
 	OP(mov,q)	TW(REG(rsp),ABS(EVR(C_Stack_Pointer)))
 	OP(mov,q)	TW(ABS(EVR(stack_pointer)),REG(rsp))
+	OP(mov,q)	TW(REG(rbp),ABS(EVR(C_Frame_Pointer)))
+	OP(mov,q)	TW(IMM(ADDRESS_MASK),rmask)	# = %rbp
 	OP(mov,q)	TW(REG(rax),REG(rcx))		# Preserve if used
 	OP(and,q)	TW(rmask,REG(rcx))		# Restore potential dynamic link
 	OP(mov,q)	TW(REG(rcx),QOF(REGBLOCK_DLINK(),regs))
@@ -1002,22 +976,22 @@ define_c_label(x87_trap_exceptions)
 
 define_c_label(x87_read_control_word)
 	enter		IMM(4),IMM(0)
-	fnstcw		IND(REG(esp))
-	OP(mov,w)	TW(IND(REG(esp)),REG(ax))
+	fnstcw		IND(REG(rsp))
+	OP(mov,w)	TW(IND(REG(rsp)),REG(ax))
 	leave
 	ret
 
 define_c_label(x87_write_control_word)
 	enter		IMM(4),IMM(0)
 	OP(mov,w)	TW(REG(di),IND(REG(rsp)))
-	fldcw		IND(REG(esp))
+	fldcw		IND(REG(rsp))
 	leave
 	ret
 
 define_c_label(x87_read_status_word)
 	enter		IMM(4),IMM(0)
-	fnstsw		IND(REG(esp))
-	OP(mov,w)	TW(IND(REG(esp)),REG(ax))
+	fnstsw		IND(REG(rsp))
+	OP(mov,w)	TW(IND(REG(rsp)),REG(ax))
 	leave
 	ret
 
@@ -1025,7 +999,7 @@ define_c_label(x87_read_environment)
 	fnstenv		IND(REG(rdi))
 	# fnstenv masks all exceptions (go figure), so we must load
 	# the control word back in order to undo that.
-	fldcw		IND(REG(eax))
+	fldcw		IND(REG(rdi))
 	ret
 
 define_c_label(x87_write_environment)

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,11 +30,12 @@ USA.
 (declare (usual-integrations))
 
 (define (file-modes filename)
-  ((ucode-primitive file-modes 1) (->namestring (merge-pathnames filename))))
+  ((ucode-primitive file-modes 1)
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define-integrable (set-file-modes! filename modes)
   ((ucode-primitive set-file-modes! 2)
-   (->namestring (merge-pathnames filename))
+   (string-for-primitive (->namestring (merge-pathnames filename)))
    modes))
 
 (define unix/file-access file-access)	;upwards compatability
@@ -53,8 +54,7 @@ USA.
 	 (if (or (default-object? transformer) (not transformer))
 	     identity-procedure
 	     (begin
-	       (guarantee-procedure-of-arity transformer 1
-					     'TEMPORARY-FILE-PATHNAME)
+	       (guarantee unary-procedure? transformer 'temporary-file-pathname)
 	       transformer))))
     (let loop ((ext 0))
       (let ((pathname
@@ -98,11 +98,11 @@ USA.
 
 (define (file-attributes-direct filename)
   ((ucode-primitive file-attributes 1)
-   (->namestring (merge-pathnames filename))))
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define (file-attributes-indirect filename)
   ((ucode-primitive file-attributes-indirect 1)
-   (->namestring (merge-pathnames filename))))
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define file-attributes
   file-attributes-direct)
@@ -125,73 +125,44 @@ USA.
 (define (file-length filename)
   (let ((attrs (file-attributes-direct filename)))
     (if (not attrs)
-	(error:bad-range-argument filename 'FILE-LENGTH))
+	(error:bad-range-argument filename 'file-length))
     (file-attributes/length attrs)))
 
 (define (file-modification-time-direct filename)
   ((ucode-primitive file-mod-time 1)
-   (->namestring (merge-pathnames filename))))
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define (file-modification-time-indirect filename)
   ((ucode-primitive file-mod-time-indirect 1)
-   (->namestring (merge-pathnames filename))))
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define file-modification-time
   file-modification-time-indirect)
 
 (define (file-access-time-direct filename)
   ((ucode-primitive file-access-time 1)
-   (->namestring (merge-pathnames filename))))
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define (file-access-time-indirect filename)
   ((ucode-primitive file-access-time-indirect 1)
-   (->namestring (merge-pathnames filename))))
+   (string-for-primitive (->namestring (merge-pathnames filename)))))
 
 (define file-access-time
   file-access-time-indirect)
 
 (define (set-file-times! filename access-time modification-time)
-  (let ((filename (->namestring (merge-pathnames filename))))
+  (let ((filename
+	 (string-for-primitive (->namestring (merge-pathnames filename)))))
     ((ucode-primitive set-file-times! 3)
      filename
      (or access-time (file-access-time-direct filename))
      (or modification-time (file-modification-time-direct filename)))))
 
-;;;; Environment variables
-
-(define environment-variables)
-
-(define (get-environment-variable name)
-  (guarantee-string name 'GET-ENVIRONMENT-VARIABLE)
-  (let ((value (hash-table/get environment-variables name 'NONE)))
-    (if (eq? value 'NONE)
-	(let ((value ((ucode-primitive get-environment-variable 1) name)))
-	  (hash-table/put! environment-variables name value)
-	  value)
-	value)))
-
-(define (set-environment-variable! name value)
-  (guarantee-string name 'SET-ENVIRONMENT-VARIABLE!)
-  (if value
-      (guarantee-string value 'SET-ENVIRONMENT-VARIABLE!))
-  (hash-table/put! environment-variables name value))
-
-(define (delete-environment-variable! name)
-  (guarantee-string name 'DELETE-ENVIRONMENT-VARIABLE!)
-  (hash-table/remove! environment-variables name))
-
-(define (reset-environment-variables!)
-  (hash-table/clear! environment-variables))
-
-(define (initialize-system-primitives!)
-  (set! environment-variables (make-string-hash-table))
-  (add-event-receiver! event:after-restart reset-environment-variables!))
-
 ;;;; MIME types
 
 (define (os/suffix-mime-type suffix)
   (import-mime-types)
-  (hash-table/get mime-types suffix #f))
+  (hash-table-ref/default mime-types suffix #f))
 
 (define (initialize-mime-types!)
   (set! mime-types (make-string-hash-table))
@@ -214,13 +185,13 @@ USA.
 	    changed?))
       (with-thread-events-blocked
 	(lambda ()
-	  (hash-table/clear! mime-types)
+	  (hash-table-clear! mime-types)
 	  (for-each-vector-element mime.types-files
 	    (lambda (p)
 	      (for-each (lambda (entry)
 			  (let ((type (car entry)))
 			    (for-each (lambda (suffix)
-					(hash-table/put! mime-types
+					(hash-table-set! mime-types
 							 suffix
 							 type))
 				      (cdr entry))))
@@ -263,7 +234,7 @@ USA.
 
 (define (parse-mime.types-line line)
   (if (and (fix:> (string-length line) 0)
-	   (char=? (string-ref line 0) #\#))
+	   (char=? #\# (string-ref line 0)))
       #f
       (let ((parts (burst-string line char-set:whitespace #t)))
 	(and (pair? parts)
@@ -317,7 +288,8 @@ USA.
       (number->string gid 10)))
 
 (define (unix/system string)
-  (let ((wd-inside (->namestring (working-directory-pathname)))
+  (let ((wd-inside
+	 (string-for-primitive (->namestring (working-directory-pathname))))
 	(wd-outside)
 	(ti-outside))
     (dynamic-wind
@@ -327,13 +299,16 @@ USA.
        (set! ti-outside (thread-timer-interval))
        (set-thread-timer-interval! #f))
      (lambda ()
-       ((ucode-primitive system 1) string))
+       ((ucode-primitive system 1) (string-for-primitive string)))
      (lambda ()
        ((ucode-primitive set-working-directory-pathname! 1) wd-outside)
        (set! wd-outside)
        (set-thread-timer-interval! ti-outside)
        (set! ti-outside)
        unspecific))))
+
+(define (os/make-env-cache)
+  (make-string-hash-table))
 
 (define (file-line-ending pathname)
   ;; This works because the line translation is harmless when not
@@ -342,22 +317,23 @@ USA.
   ;; Linux kernel), and ISO9660 can be either DOS or unix format.
   (let ((type
 	 ((ucode-primitive file-system-type 1)
-	  (->namestring
-	   (let loop ((pathname (merge-pathnames pathname)))
-	     (if (file-exists? pathname)
-		 pathname
-		 (loop (directory-pathname-as-file
-			(directory-pathname pathname)))))))))
+	  (string-for-primitive
+	   (->namestring
+	    (let loop ((pathname (merge-pathnames pathname)))
+	      (if (file-exists? pathname)
+		  pathname
+		  (loop (directory-pathname-as-file
+			 (directory-pathname pathname))))))))))
     (if (or (string-ci=? "fat" type)
 	    (string-ci=? "hpfs" type)
 	    (string-ci=? "iso9660" type)
 	    (string-ci=? "ntfs" type)
 	    (string-ci=? "smb" type))
-	'CRLF
-	'LF)))
+	'crlf
+	'lf)))
 
 (define (default-line-ending)
-  'LF)
+  'lf)
 
 (define (copy-file from to)
   (let ((input-filename (->namestring (merge-pathnames from)))
@@ -374,7 +350,7 @@ USA.
 	       (buffer-length 8192))
 	   (if (zero? source-length)
 	       0
-	       (let* ((buffer (make-string buffer-length))
+	       (let* ((buffer (make-bytevector buffer-length))
 		      (transfer
 		       (lambda (length)
 			 (let ((n-read
@@ -405,7 +381,7 @@ USA.
     (set-file-modes! output-filename (file-modes input-filename))))
 
 (define (init-file-specifier->pathname specifier)
-  (guarantee-init-file-specifier specifier 'INIT-FILE-SPECIFIER->PATHNAME)
+  (guarantee init-file-specifier? specifier 'init-file-specifier->pathname)
   (merge-pathnames (apply string-append
 			  (cons ".mit-scheme"
 				(append-map (lambda (string) (list "/" string))
@@ -417,7 +393,7 @@ USA.
 (define (os/make-subprocess filename arguments environment working-directory
 			    ctty stdin stdout stderr)
   ((ucode-primitive ux-make-subprocess 8)
-   filename arguments environment working-directory
+   (string-for-primitive filename) arguments environment working-directory
    ctty stdin stdout stderr))
 
 (define (os/find-program program default-directory #!optional exec-path error?)
@@ -465,18 +441,18 @@ USA.
 
 (define (os/parse-path-string string)
   (let ((end (string-length string))
-	(substring
+	(extract
 	 (lambda (string start end)
 	   (pathname-as-directory (substring string start end)))))
     (let loop ((start 0))
       (if (< start end)
-	  (let ((index (substring-find-next-char string start end #\:)))
+	  (let ((index (string-find-next-char string #\: start end)))
 	    (if index
 		(cons (if (= index start)
 			  #f
-			  (substring string start index))
+			  (extract string start index))
 		      (loop (+ index 1)))
-		(list (substring string start end))))
+		(list (extract string start end))))
 	  '()))))
 
 (define (os/shell-file-name)

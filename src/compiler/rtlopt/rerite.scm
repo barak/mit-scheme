@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -105,8 +105,9 @@ USA.
   (or (if (rtl:assign? rtl)
 	  (pattern-lookup (rewriting-rules/assignment rules) rtl)
 	  (let ((entries
-		 (hash-table/get (rewriting-rules/statement rules)
-				 (rtl:expression-type rtl) #f)))
+		 (hash-table-ref/default (rewriting-rules/statement rules)
+					 (rtl:expression-type rtl)
+					 #f)))
 	    (and entries
 		 (pattern-lookup entries rtl))))
       (pattern-lookup (rewriting-rules/generic rules) rtl)))
@@ -115,8 +116,9 @@ USA.
   (or (if (rtl:register? expression)
 	  (pattern-lookup (rewriting-rules/register rules) expression)
 	  (let ((entries
-		 (hash-table/get (rewriting-rules/expression rules)
-				 (rtl:expression-type expression) #f)))
+		 (hash-table-ref/default (rewriting-rules/expression rules)
+					 (rtl:expression-type expression)
+					 #f)))
 	    (and entries
 		 (pattern-lookup entries expression))))
       (pattern-lookup (rewriting-rules/generic rules) expression)))
@@ -133,12 +135,16 @@ USA.
 		rules
 		(cons matcher (rewriting-rules/register rules))))
 	      ((memq keyword rtl:expression-types)
-	       (hash-table/modify! (rewriting-rules/expression rules) keyword '()
-				   (lambda (rules) (cons matcher rules))))
+	       (hash-table-update!/default (rewriting-rules/expression rules)
+					   keyword
+					   (lambda (rules) (cons matcher rules))
+					   '()))
 	      ((or (memq keyword rtl:statement-types)
 		   (memq keyword rtl:predicate-types))
-	       (hash-table/modify! (rewriting-rules/statement rules) keyword '()
-				   (lambda (rules) (cons matcher rules))))
+	       (hash-table-update!/default (rewriting-rules/statement rules)
+					   keyword
+					   (lambda (rules) (cons matcher rules))
+					   '()))
 	      (else
 	       (error "illegal RTL type" keyword))))
       (set-rewriting-rules/generic! rules

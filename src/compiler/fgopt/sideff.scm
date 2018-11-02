@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -51,9 +51,7 @@ USA.
 	   (let* ((operator (application-operator (car apps)))
 		  (nconsts
 		   (eq-set-union
-		    (list-transform-positive
-			(rvalue-values operator)
-		      rvalue/constant?)
+		    (filter rvalue/constant? (rvalue-values operator))
 		    constants)))
 	     (loop (cdr apps)
 		   (if (or (not (rvalue-passed-in? operator))
@@ -66,16 +64,16 @@ USA.
 			(reference-lvalue operator)
 			nconsts))
 		   (eq-set-union
-		    (list-transform-positive
-			(rvalue-values operator)
-		      #|
-		      ;; This is unnecessary as long as we treat continuations
-		      ;; specially and treat cwcc as an unknown procedure.
-		      (lambda (val)
-			(and (rvalue/procedure? val)
-			     (not (procedure-continuation? val))))
-		      |#
-		      rvalue/procedure?)
+		    (filter
+		     #|
+		     ;; This is unnecessary as long as we treat continuations
+		     ;; specially and treat cwcc as an unknown procedure.
+		     (lambda (val)
+		       (and (rvalue/procedure? val)
+			    (not (procedure-continuation? val))))
+		     |#
+		     rvalue/procedure?
+		     (rvalue-values operator))
 		    procedures)))))))
 
 (define-export (clear-call-graph! procedures)
@@ -121,8 +119,7 @@ USA.
 ;; IMPORTANT: This assumes that the call graph has been computed.
 
 (define-export (side-effect-analysis procs&conts applications)
-  (let ((procedures
-	 (list-transform-negative procs&conts procedure-continuation?)))
+  (let ((procedures (remove procedure-continuation? procs&conts)))
     (if (not compiler:analyze-side-effects?)
 	(for-each (lambda (proc)
 		    (set-procedure-side-effects!
@@ -139,29 +136,24 @@ USA.
 		 (analyze-combination! item)
 		 (analyze-procedure! item)))
 	   (append procedures
-		   (list-transform-positive
-			applications
-		      application/combination?)))))))
+		   (filter application/combination? applications)))))))
 
 (define (setup-side-effects! procedure)
   (let ((assigned-vars
 	 (let ((block (procedure-block procedure)))
-	   (list-transform-positive
-	       (block-free-variables block)
-	     (lambda (variable)
-	       (there-exists?
-		(variable-assignments variable)
-		(lambda (assignment)
-		  (eq? (reference-context/block
-			(assignment-context assignment))
-		       block)))))))
+	   (filter (lambda (variable)
+		     (any (lambda (assignment)
+			    (eq? (reference-context/block
+				  (assignment-context assignment))
+				 block))
+			  (variable-assignments variable)))
+		   (block-free-variables block))))
 	(arbitrary-callees
-	 (list-transform-negative
-	     (car (procedure-initial-callees procedure))
-	   (lambda (object)
-	     (if (lvalue/variable? object)
-		 (variable/side-effect-free? object)
-		 (constant/side-effect-free? object))))))
+	 (remove (lambda (object)
+		   (if (lvalue/variable? object)
+		       (variable/side-effect-free? object)
+		       (constant/side-effect-free? object)))
+		 (car (procedure-initial-callees procedure)))))
     (set-procedure-side-effects!
      procedure
      `(,@(if (null? assigned-vars)
@@ -190,13 +182,13 @@ USA.
 (define (process-derived-assignments! procedure variables effects)
   (let* ((block (procedure-block procedure))
 	 (modified-variables
-	  (list-transform-negative
-	      variables
-	    (lambda (var)
-	      ;; The theoretical closing limit of this variable would be give
-	      ;; a more precise bound, but we don't have that information.
-	      (and (not (variable-closed-over? var))
-		   (block-ancestor-or-self? (variable-block var) block))))))
+	  (remove (lambda (var)
+		    ;; The theoretical closing limit of this variable would be
+		    ;; give a more precise bound, but we don't have that
+		    ;; information.
+		    (and (not (variable-closed-over? var))
+			 (block-ancestor-or-self? (variable-block var) block)))
+		  variables)))
     (if (null? modified-variables)
 	effects
 	(let ((place (assq 'DERIVED-ASSIGNMENT effects)))
@@ -318,13 +310,13 @@ USA.
 
   (define (check value op-vals)
     (if (and value
-	     (for-all? op-vals
-		       (lambda (proc)
-			 (and (rvalue/procedure? proc)
-			      (eq? value
-				   (procedure/simplified-value
-				    proc
-				    (application-block app)))))))
+	     (every (lambda (proc)
+		      (and (rvalue/procedure? proc)
+			   (eq? value
+				(procedure/simplified-value
+				 proc
+				 (application-block app)))))
+		    op-vals))
 	(simplify-combination! value)))
 
   (define (check-operators operator)
@@ -340,10 +332,10 @@ USA.
        (let ((operator (application-operator app))
 	     (cont (combination/continuation app)))
 	 (and (not (rvalue-passed-in? operator))
-	      (for-all? (rvalue-values operator)
-			(lambda (proc)
-			  (and (rvalue/procedure? proc)
-			       (null? (procedure-side-effects proc)))))
+	      (every (lambda (proc)
+		       (and (rvalue/procedure? proc)
+			    (null? (procedure-side-effects proc))))
+		     (rvalue-values operator))
 	      (cond ((rvalue/procedure? cont)
 		     (if (eq? (continuation/type cont)
 			      continuation-type/effect)

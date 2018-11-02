@@ -2,8 +2,8 @@
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014
-#     Massachusetts Institute of Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014,
+#     2015, 2016, 2017, 2018 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -27,7 +27,7 @@ set -e
 . etc/functions.sh
 
 FASTP=no
-for ARG in "${@}"; do
+for ARG in ${1+"$@"}; do
     case ${ARG} in
     --help|--help=*|--version)
 	FASTP=yes
@@ -36,7 +36,7 @@ for ARG in "${@}"; do
 done
 
 if [ ${FASTP} = yes ]; then
-    exec ./configure "${@}"
+    exec ./configure ${1+"$@"}
 fi
 
 if [ ! -f runtime/runtime-unx.c ]; then
@@ -52,8 +52,8 @@ EOF
 fi
 
 run_configure --prefix=`pwd`/boot-root --enable-native-code=c \
-    --disable-host-scheme-test
+    --disable-host-scheme-test --without-x
 run_make stamp_install-liarc-boot-compiler c-clean distclean
 
-run_configure --enable-native-code=c --disable-host-scheme-test "${@}"
+run_configure --enable-native-code=c --disable-host-scheme-test ${1+"$@"}
 run_make stamp_compile-liarc-bundles build-bands clean-boot-root

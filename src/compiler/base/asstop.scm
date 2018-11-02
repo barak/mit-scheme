@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -77,10 +77,11 @@ USA.
 
 (define (assemble&link info-output-pathname)
   (phase/assemble)
-  (if info-output-pathname
-      (phase/info-generation-2 info-output-pathname))
-  (phase/link)
-  *result*)
+  (let ((file-wrapper
+	 (and info-output-pathname
+	      (phase/info-generation-2 info-output-pathname))))
+    (phase/link)
+    (values *result* file-wrapper)))
 
 (define (wrap-lap entry-label some-lap)
   (LAP ,@(if *procedure-result?*
@@ -209,8 +210,8 @@ USA.
 			    (vector-ref linking-info 2)))))
 		 (label->address *entry-label*)))
        (for-each (lambda (entry)
-		   (set-lambda-body! (car entry)
-				     (label->address (cdr entry))))
+		   (scode/set-lambda-body! (car entry)
+					   (label->address (cdr entry))))
 		 *ic-procedure-headers*))
      ((ucode-primitive declare-compiled-code-block 1) *code-vector*)
      (if (not compiler:preserve-data-structures?)
@@ -232,52 +233,64 @@ USA.
 (define (info-generation-2 pathname set-debugging-info!)
   (compiler-phase "Debugging Information Generation"
     (lambda ()
-      (set-debugging-info!
-       *code-vector*
-       (let ((info
-	      (info-generation-phase-3
-	       (last-reference *dbg-expression*)
-	       (last-reference *dbg-procedures*)
-	       (last-reference *dbg-continuations*)
-	       *label-bindings*
-	       (last-reference *external-labels*))))
-	 (cond ((eq? pathname 'KEEP)	; for dynamic execution
-		(vector 'DEBUGGING-INFO-WRAPPER
-			2
-			#f
-			#f
-			#f
-			info))
-	       ((eq? pathname 'RECURSIVE) ; recursive compilation
-		(set! *recursive-compilation-results*
-		      (cons (vector *recursive-compilation-number*
-				    info
-				    *code-vector*
-				    *tl-bound*
-				    *tl-free*)
-			    *recursive-compilation-results*))
-		(vector 'DEBUGGING-INFO-WRAPPER
-			2
-			*debugging-key*
-			*info-output-filename*
-			*recursive-compilation-number*
-			#f))
-	       (else
-		(compiler:dump-info-file
-		 (vector 'DEBUGGING-FILE-WRAPPER
-			 2
-			 *debugging-key*
-			 (list->vector
-			  (cons info
-				(map (lambda (other) (vector-ref other 1))
-				     (recursive-compilation-results)))))
-		 pathname)
-		(vector 'DEBUGGING-INFO-WRAPPER
-			2
-			*debugging-key*
-			*info-output-filename*
-			0
-			#f))))))))
+      (receive (debug-info file-wrapper)
+	  (let ((info
+		 (info-generation-phase-3
+		  (last-reference *dbg-expression*)
+		  (last-reference *dbg-procedures*)
+		  (last-reference *dbg-continuations*)
+		  *label-bindings*
+		  (last-reference *external-labels*))))
+	    (cond ((eq? pathname 'keep)	; for dynamic execution
+		   (values (vector 'debugging-info-wrapper
+				   3
+				   #f
+				   #f
+				   #f
+				   info
+				   #f)
+			   #f))
+		  ((eq? pathname 'recursive) ; recursive compilation
+		   (set! *recursive-compilation-results*
+			 (cons (vector *recursive-compilation-number*
+				       info
+				       *code-vector*
+				       *tl-bound*
+				       *tl-free*
+				       *tl-metadata*)
+			       *recursive-compilation-results*))
+		   (values (vector 'debugging-info-wrapper
+				   3
+				   *debugging-key*
+				   (if (pathname? *info-output-filename*)
+				       (->namestring *info-output-filename*)
+				       *info-output-filename*)
+				   *recursive-compilation-number*
+				   #f
+				   *library-name*)
+			   #f))
+		  (else
+		   (values (vector 'debugging-info-wrapper
+				   3
+				   *debugging-key*
+				   (if (pathname? *info-output-filename*)
+				       (->namestring *info-output-filename*)
+				       *info-output-filename*)
+				   0
+				   #f
+				   *library-name*)
+			   (vector 'debugging-file-wrapper
+				   3
+				   *debugging-key*
+				   (list->vector
+				    (cons
+				     info
+				     (map (lambda (other)
+					    (vector-ref other 1))
+					  (recursive-compilation-results))))
+				   *library-name*)))))
+	(set-debugging-info! *code-vector* debug-info)
+	file-wrapper))))
 
 (define (recursive-compilation-results)
   (sort *recursive-compilation-results*
@@ -289,24 +302,8 @@ USA.
 (define (compiler:dump-inf-file binf pathname)
   (compiler-file-output binf pathname))
 
-(define (compiler:dump-bif/bsm-files binf pathname)
-  (let ((bif-path (pathname-new-type pathname "bif"))
-	(bsm-path (pathname-new-type pathname "bsm")))
-    (let ((bsm (split-inf-structure! binf bsm-path)))
-      (compiler-file-output binf bif-path)
-      (compiler-file-output bsm bsm-path))))
-  
-(define (compiler:dump-bci/bcs-files binf pathname)
-  (let ((bci-path (pathname-new-type pathname "bci"))
-	(bcs-path (pathname-new-type pathname "bcs")))
-    (let ((bsm (split-inf-structure! binf bcs-path)))
-      (dump-compressed binf bci-path)
-      (dump-compressed bsm bcs-path))))
-
 (define (compiler:dump-bci-file binf pathname)
-  (let ((bci-path (pathname-new-type pathname "bci")))
-    (split-inf-structure! binf #f)
-    (dump-compressed binf bci-path)))
+  (dump-compressed binf (pathname-new-type pathname "bci")))
 
 (define (dump-compressed object path)
   (call-with-temporary-filename
@@ -367,9 +364,7 @@ USA.
      (set! *block-label* (generate-label))
      (set! *external-labels* '())
      (set! *ic-procedure-headers* '())
-     (phase/assemble)
-     (phase/link)
-     *result*)))
+     (assemble&link #f))))
 
 (define (canonicalize-label-name name)
   ;; The Scheme assembler allows any Scheme symbol as a label

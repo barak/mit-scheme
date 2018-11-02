@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,17 +32,17 @@ USA.
 (declare (usual-integrations))
 
 
-(define-integrable int32-offset-ref   
+(define-integrable int32-offset-ref
           (ucode-primitive int32-offset-ref 2))
-(define-integrable int32-offset-set!  
+(define-integrable int32-offset-set!
           (ucode-primitive int32-offset-set! 3))
-(define-integrable uint32-offset-ref  
+(define-integrable uint32-offset-ref
           (ucode-primitive uint32-offset-ref 2))
-(define-integrable uint32-offset-set! 
+(define-integrable uint32-offset-set!
           (ucode-primitive uint32-offset-set! 3))
 
-(define-integrable byte-offset-ref  vector-8b-ref)	    
-(define-integrable byte-offset-set! vector-8b-set!)	    
+(define-integrable byte-offset-ref  bytevector-u8-ref)
+(define-integrable byte-offset-set! bytevector-u8-set!)
 
 (define-integrable (loword dword)  (modulo dword 65536))
 (define-integrable (hiword dword)  (integer-floor dword 65536))
@@ -72,7 +72,7 @@ USA.
 (define-integrable (set-rect/bottom! r v) (int32-offset-set! (rect/mem r) 12 v))
 
 (define (make-rect left top right bottom)
-  (define r (%make-rect (make-string 16)))
+  (define r (%make-rect (make-bytevector 16)))
   (set-rect/left!   r left)
   (set-rect/top!    r top)
   (set-rect/right!  r right)
@@ -134,7 +134,7 @@ USA.
   (byte-offset-set! (paintstruct/mem r) 28 (bool->int v)))
 
 (define (make-paintstruct)
-  (define r (%make-paintstruct (make-string 64)))
+  (define r (%make-paintstruct (make-bytevector 64)))
   r)
 
 (define-windows-type paintstruct
@@ -161,4 +161,3 @@ USA.
   (pp-field 'f-restore paintstruct/f-restore)
   (pp-field 'f-inc-update paintstruct/f-inc-update)
 )
-

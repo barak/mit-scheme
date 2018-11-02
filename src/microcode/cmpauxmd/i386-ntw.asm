@@ -3,7 +3,8 @@
 ;;; Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ;;;     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
 ;;;     2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013,
-;;;     2014 Massachusetts Institute of Technology
+;;;     2014, 2015, 2016, 2017, 2018 Massachusetts Institute of
+;;;     Technology
 ;;;
 ;;; This file is part of MIT/GNU Scheme.
 ;;;
@@ -22,7 +23,7 @@
 ;;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 ;;; 02110-1301, USA.
 ;;; Intel IA-32 assembly language part of the compiled code interface.
-;;; See cmpint.txt, cmpint.c, cmpint-mc68k.h, and cmpgc.h for more
+;;; See cmpint.txt, cmpint.c, cmpintmd/i386*, and cmpgc.h for more
 ;;; documentation.
 ;;;
 ;;; This m4 source expands into either Unix (gas) source or PC
@@ -123,10 +124,6 @@
 ; `__cdecl' or `__syscall' expand differently.  References to the
 ; former type of name are marked with `EFR', while references to the
 ; latter are marked with `EPFR'.
-; Define the floating-point processor control word.  Always set
-; round-to-even and double precision.  Under Win32, mask all
-; exceptions.  Under unix and OS/2, mask only the inexact result
-; exception.
 .586p
 .model flat
 	.data
@@ -167,18 +164,8 @@ _i386_interface_initialize:
 	cmp	ecx,edx
 	jne	i386_initialize_no_fp
 	inc	eax			; 387 available
-	sub	esp,4
-	fclex
-	fnstcw		word ptr -2[ebp]
-	and	word ptr -2[ebp],0f0e0H
-	or	word ptr -2[ebp],0023fH
-	fldcw		word ptr -2[ebp]
 i386_initialize_no_fp:
 	mov	dword ptr _i387_presence,eax
-; FIXME: Some IA-32 systems have SSE support, and since the microcode
-; might use SSE instructions, we need to determine, using CPUID,
-; whether the CPU supports SSE instructions, so that we can save and
-; restore the SSE MXCSR in the floating-point environment.
 	mov	dword ptr _sse_presence,0
 ; Do a bunch of hair to determine if we need to do cache synchronization.
 ; See if the CPUID instruction is supported.
@@ -221,26 +208,33 @@ i386_initialize_no_fp:
 	cmp	eax,000000001H
 	jl		done_setting_up_cpuid
 ; Detect "GenuineIntel".
-;	OP(cmp,l)	TW(IMM(HEX(756e6547)),REG(ebx))
-;	jne		not_intel_cpu
-;	OP(cmp,l)	TW(IMM(HEX(49656e69)),REG(edx))
-;	jne		not_intel_cpu
-;	OP(cmp,l)	TW(IMM(HEX(6c65746e)),REG(ecx))
-;	jne		not_intel_cpu
+	cmp	ebx,0756e6547H
+	jne		not_intel_cpu
+	cmp	edx,049656e69H
+	jne		not_intel_cpu
+	cmp	ecx,06c65746eH
+	jne		not_intel_cpu
+; Some IA-32 systems have SSE support, and since the microcode might
+; use SSE instructions, we need to determine, using CPUID, whether the
+; CPU supports SSE instructions, so that we can save and restore the
+; SSE MXCSR in the floating-point environment.
+	mov	eax,001H
+	cpuid
+	and	edx,002000000H
+	cmp	edx,00H
+	je		no_sse
+	mov	dword ptr _sse_presence,000000001H
+no_sse:
 ; For CPU families 4 (486), 5 (Pentium), or 6 (Pentium Pro, Pentium
 ; II, Pentium III), don't use CPUID synchronization.
-;	OP(mov,l)	TW(IMM(HEX(01)),REG(eax))
-;	cpuid
 ;	OP(shr,l)	TW(IMM(HEX(08)),REG(eax))
 ;	OP(and,l)	TW(IMM(HEX(0000000F)),REG(eax))
 ;	OP(cmp,l)	TW(IMM(HEX(4)),REG(eax))
 ;	jl		done_setting_up_cpuid
 ;	OP(cmp,l)	TW(IMM(HEX(6)),REG(eax))
 ;	jg		done_setting_up_cpuid
-;
-;	jmp		cpuid_not_needed
-;
-;not_intel_cpu:
+	jmp		done_setting_up_cpuid
+not_intel_cpu:
 ; Detect "AuthenticAMD".
 	cmp	ebx,068747541H
 	jne		not_amd_cpu
@@ -398,11 +392,14 @@ _interface_to_scheme:
 interface_to_scheme_proceed:
 	mov	edi,_Free		; Free pointer = %edi
 	mov	eax,dword ptr 8[esi] ; Value/dynamic link
-	mov	ebp,67108863	; = %ebp
 	; Restore the C stack pointer, which we zeroed back in
 	; scheme_to_interface, for within_c_stack.
+	; Restore the C frame pointer too; the interface may have called
+	; Re_Enter_Interpreter which probably clobbered both.
 	mov	_C_Stack_Pointer,esp
 	mov	esp,_stack_pointer
+	mov	_C_Frame_Pointer,ebp
+	mov	ebp,67108863	; = %ebp
 	mov	ecx,eax		; Preserve if used
 	and	ecx,ebp		; Restore potential dynamic link
 	mov	dword ptr 16[esi],ecx
@@ -875,7 +872,7 @@ asm_generic_negative_:
 	fstsw	ax
 	fstp	st(0)
 	sahf
-	jb	asm_generic_return_sharp_t
+	ja	asm_generic_return_sharp_t
 	jmp	asm_generic_return_sharp_f
 asm_generic_negative_fix:
 	mov	eax,edx
@@ -904,7 +901,7 @@ asm_generic_positive_:
 	fstsw	ax
 	fstp	st(0)
 	sahf
-	ja	asm_generic_return_sharp_t
+	jb	asm_generic_return_sharp_t
 	jmp	asm_generic_return_sharp_f
 asm_generic_positive_fix:
 	mov	eax,edx

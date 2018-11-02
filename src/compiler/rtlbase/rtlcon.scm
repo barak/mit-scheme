@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -226,7 +226,7 @@ USA.
   (expression-simplify expression scfg*pcfg->pcfg! receiver))
 
 (define-export (expression-simplify-for-pseudo-assignment expression receiver)
-  (let ((entry (hash-table/get expression-methods (car expression) #f)))
+  (let ((entry (hash-table-ref/default expression-methods (car expression) #f)))
     (if entry
 	(apply entry receiver scfg*scfg->scfg! (cdr expression))
 	(receiver expression))))
@@ -234,7 +234,7 @@ USA.
 (define (expression-simplify expression scfg-append! receiver)
   (if (rtl:register? expression)
       (receiver expression)
-      (let ((entry (hash-table/get expression-methods (car expression) #f)))
+      (let ((entry (hash-table-ref/default expression-methods (car expression) #f)))
 	(if entry
 	    (apply entry
 		   (lambda (expression)
@@ -409,7 +409,7 @@ USA.
      (receiver pseudo))))
 
 (define (define-expression-method name method)
-  (hash-table/put! expression-methods name method)
+  (hash-table-set! expression-methods name method)
   name)
 
 (define expression-methods
@@ -433,7 +433,7 @@ USA.
 (define-expression-method 'ADDRESS
   (address-method
    (lambda (receiver scfg-append!)
-     scfg-append!			;ignore
+     (declare (ignore scfg-append!))
      (lambda (address offset granularity)
        (receiver
 	(case granularity
@@ -548,8 +548,9 @@ USA.
 	    (lambda (type)
 	      (if use-pre/post-increment?
 		  (assign-to-temporary
-		   (rtl:make-offset-address free
-					    (rtl:make-machine-constant (- nelements)))
+		   (rtl:make-offset-address
+		    free
+		    (rtl:make-machine-constant (- nelements)))
 		   scfg-append!
 		   (lambda (temporary)
 		     (receiver (rtl:make-cons-pointer type temporary))))
@@ -600,11 +601,11 @@ USA.
 	(begin
 	  (set! reg-list available-machine-registers)
 	  (set! value
-		(length (list-transform-positive reg-list
-			  (lambda (reg)
-			    (value-class/ancestor-or-self?
-			     (machine-register-value-class reg)
-			     value-class=word)))))
+		(length (filter (lambda (reg)
+				  (value-class/ancestor-or-self?
+				   (machine-register-value-class reg)
+				   value-class=word))
+				reg-list)))
 	  value)))))
 
 (define-expression-method 'TYPED-CONS:PROCEDURE

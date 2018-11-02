@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -72,12 +72,12 @@ USA.
    (lambda (form environment)
      (let ((enumeration-name (cadr form))
            (enumerand-names (caddr form)))
-       `(BEGIN
-          (DEFINE ,enumeration-name
-            (ENUMERATION/MAKE ',enumerand-names))
+       `(begin
+          (define ,enumeration-name
+            (enumeration/make ',enumerand-names))
           ,@(map (lambda (enumerand-name)
-                   `(DEFINE ,(symbol-append enumerand-name '/ENUMERAND)
-                      (ENUMERATION/NAME->ENUMERAND
+                   `(define ,(symbol enumerand-name '/enumerand)
+                      (enumeration/name->enumerand
                        ,(close-syntax enumeration-name environment)
                        ',enumerand-name)))
                  enumerand-names))))))
@@ -117,19 +117,19 @@ USA.
      (let ((name (second form))
            (constructor-name (third form))  ;; symbol or #F
            (slots (fourth form)))
-       `(BEGIN
-          (DEFINE-STRUCTURE
+       `(begin
+          (define-structure
               (,name
-               (TYPE VECTOR)
-               (NAMED
-                ,(close-syntax (symbol-append name '/ENUMERAND) environment))
-               (TYPE-DESCRIPTOR ,(symbol-append 'RTD: name))
-               (CONC-NAME ,(symbol-append name '/))
-               (CONSTRUCTOR ,(or constructor-name
-                                 (symbol-append name '/MAKE))))
+               (type vector)
+               (named
+                ,(close-syntax (symbol name '/enumerand) environment))
+               (type-descriptor ,(symbol 'rtd: name))
+               (conc-name ,(symbol name '/))
+               (constructor ,(or constructor-name
+                                 (symbol name '/make))))
             (scode #f read-only #t)
             ,@slots)
-         (DEFINE-GUARANTEE ,name ,(symbol->string name)))))))
+         (define-guarantee ,name ,(symbol->string name)))))))
 
 ;;; These accessors apply to all the record types.
 (define-integrable (object/enumerand object)
@@ -172,13 +172,13 @@ USA.
                    (named delayed-integration/enumerand)
                    (conc-name delayed-integration/)
                    (constructor delayed-integration/make (operations value)))
-  (state 'NOT-INTEGRATED)
+  (state 'not-integrated)
   (environment #f)
   operations
   value)
 
 (define-guarantee delayed-integration "delayed integration")
-
+
 ;;; VARIABLE
 ;; Done specially so we can tweak the print method.
 ;; This makes debugging an awful lot easier.
@@ -190,11 +190,9 @@ USA.
                    (conc-name variable/)
                    (constructor variable/make (block name flags))
                    (print-procedure
-                    (standard-unparser-method
-                     'variable
-                     (lambda (var port)
-                       (write-string " " port)
-                       (write (variable/name var) port)))))
+                    (standard-print-method 'variable
+		      (lambda (var)
+			(list (variable/name var))))))
   block
   name
   flags)
@@ -202,20 +200,20 @@ USA.
 (define-guarantee variable "variable")
 
 ;;; Expressions
-(define-simple-type access          #f                 (block environment name))
-(define-simple-type assignment      #f                 (block variable value))
-(define-simple-type combination     combination/%make  (block operator operands))
-(define-simple-type conditional     #f                 (predicate consequent alternative))
-(define-simple-type constant        #f                 (value))
-(define-simple-type declaration     #f                 (declarations expression))
-(define-simple-type delay           #f                 (expression))
-(define-simple-type disjunction     #f                 (predicate alternative))
-(define-simple-type open-block      #f                 (block variables values actions))
-(define-simple-type procedure       #f                 (block name required optional rest body))
-(define-simple-type quotation       #f                 (block expression))
-(define-simple-type sequence        sequence/%make     (actions))
-(define-simple-type the-environment #f                 (block))
-
+(define-simple-type access #f (block environment name))
+(define-simple-type assignment #f (block variable value))
+(define-simple-type combination combination/%make (block operator operands))
+(define-simple-type conditional #f (predicate consequent alternative))
+(define-simple-type constant #f (value))
+(define-simple-type declaration #f (declarations expression))
+(define-simple-type delay #f (expression))
+(define-simple-type disjunction #f (predicate alternative))
+(define-simple-type open-block #f (block variables values actions))
+(define-simple-type procedure #f (block name required optional rest body))
+(define-simple-type quotation #f (block expression))
+(define-simple-type sequence sequence/%make (actions))
+(define-simple-type the-environment #f (block))
+
 ;;; Helpers for expressions
 
 ;; The primitive predicates that only return #T or #F.
@@ -223,50 +221,49 @@ USA.
   (map (lambda (name)
          (make-primitive-procedure name #t))
        '(
-         %RECORD?
+         %record?
          &<
          &=
          &>
-         BIT-STRING?
-         CELL?
-         CHAR-ASCII?
-         CHAR?
-         EQ?
-         EQUAL-FIXNUM?
-         FIXNUM?
-         FLONUM-EQUAL?
-         FLONUM-GREATER?
-         FLONUM-LESS?
-         FLONUM-NEGATIVE?
-         FLONUM-POSITIVE?
-         FLONUM-ZERO?
-         FLONUM?
-         GREATER-THAN-FIXNUM?
-         INDEX-FIXNUM?
-         INTEGER-EQUAL?
-         INTEGER-GREATER?
-         INTEGER-LESS?
-         INTEGER-NEGATIVE?
-         INTEGER-POSITIVE?
-         INTEGER-ZERO?
-         LESS-THAN-FIXNUM?
-         NEGATIVE-FIXNUM?
-         NEGATIVE?
-         NOT
-         NULL?
-         OBJECT-TYPE?
-         PAIR?
-         POSITIVE-FIXNUM?
-         POSITIVE?
-         STRING?
-         VECTOR?
-         ZERO-FIXNUM?
-         ZERO?
+         bit-string?
+         cell?
+         char?
+         eq?
+         equal-fixnum?
+         fixnum?
+         flonum-equal?
+         flonum-greater?
+         flonum-less?
+         flonum-negative?
+         flonum-positive?
+         flonum-zero?
+         flonum?
+         greater-than-fixnum?
+         index-fixnum?
+         integer-equal?
+         integer-greater?
+         integer-less?
+         integer-negative?
+         integer-positive?
+         integer-zero?
+         less-than-fixnum?
+         negative-fixnum?
+         negative?
+         not
+         null?
+         object-type?
+         pair?
+         positive-fixnum?
+         positive?
+         string?
+         vector?
+         zero-fixnum?
+         zero?
          )))
 
 ;; True if expression is a call to one of the primitive-boolean-predicates.
 (define (expression/call-to-boolean-predicate? expression)
-  (and (combination? expression)
+  (and (scode-combination? expression)
        (let ((operator (combination/operator expression)))
          (and (constant? operator)
               (let ((operator-value (constant/value operator)))
@@ -274,32 +271,32 @@ USA.
                      (procedure-arity-valid?
                       operator-value
                       (length (combination/operands expression)))))))))
-
+
 ;; These primitives have no side effects.  We consider primitives
 ;; that check their arguments *have* a side effect. (Conservative)
 (define effect-free-primitives
   (map (lambda (name)
          (make-primitive-procedure name #t))
        '(
-         %RECORD?
-         BIT-STRING?
-         CELL?
-         CHAR?
-         EQ?
-         FIXNUM?
-         FLONUM?
-         NOT
-         NULL?
-         OBJECT-TYPE
-         OBJECT-TYPE?
-         PAIR?
-         STRING?
-         VECTOR?
+         %record?
+         bit-string?
+         cell?
+         char?
+         eq?
+         fixnum?
+         flonum?
+         not
+         null?
+         object-type
+         object-type?
+         pair?
+         string?
+         vector?
          )))
 
 ;; True if expression is a call to one of the effect-free-primitives.
 (define (expression/call-to-effect-free-primitive? expression)
-  (and (combination? expression)
+  (and (scode-combination? expression)
        (let ((operator (combination/operator expression)))
          (and (constant? operator)
               (let ((operator-value (constant/value operator)))
@@ -311,7 +308,7 @@ USA.
 ;; True if expression is a call to NOT.
 ;; Used in conditional simplification.
 (define (expression/call-to-not? expression)
-  (and (combination? expression)
+  (and (scode-combination? expression)
        (let ((operator (combination/operator expression)))
          (and (constant? operator)
               (let ((operator-value (constant/value operator)))
@@ -322,7 +319,7 @@ USA.
 
 (define (expression/constant-eq? expression value)
   (cond ((constant? expression) (eq? (constant/value expression) value))
-        ((declaration? expression)
+        ((scode-declaration? expression)
          (expression/constant-eq? (declaration/expression expression) value))
         (else #f)))
 
@@ -333,10 +330,11 @@ USA.
                name))
 
 (define (global-ref? object)
-  (and (access? object)
-       (expression/constant-eq? (access/environment object) system-global-environment)
+  (and (scode-access? object)
+       (expression/constant-eq? (access/environment object)
+				system-global-environment)
        (access/name object)))
-
+
 ;;; Constructors that need to do work.
 
 ;; When constucting a combination, we may discover that we
@@ -360,90 +358,87 @@ USA.
 	 &/
 	 -1+
 	 1+
-	 ASCII->CHAR
-	 CELL?
-	 CHAR->ASCII
-	 CHAR->INTEGER
-	 CHAR-ASCII?
-	 CHAR-BITS
-	 CHAR-CODE
-	 CHAR-DOWNCASE
-	 CHAR-UPCASE
-	 COMPILED-CODE-ADDRESS->BLOCK
-	 COMPILED-CODE-ADDRESS->OFFSET
-	 DIVIDE-FIXNUM
-	 EQ?
-	 EQUAL-FIXNUM?
-	 FIXNUM-AND
-	 FIXNUM-ANDC
-	 FIXNUM-LSH
-	 FIXNUM-NOT
-	 FIXNUM-OR
-	 FIXNUM-QUOTIENT
-	 FIXNUM-REMAINDER
-	 FIXNUM-XOR
-	 FLONUM-ABS
-	 FLONUM-ACOS
-	 FLONUM-ADD
-	 FLONUM-ASIN
-	 FLONUM-ATAN
-	 FLONUM-ATAN2
-	 FLONUM-CEILING
-	 FLONUM-CEILING->EXACT
-	 FLONUM-COS
-	 FLONUM-DIVIDE
-	 FLONUM-EQUAL?
-	 FLONUM-EXP
-	 FLONUM-EXPT
-	 FLONUM-FLOOR
-	 FLONUM-FLOOR->EXACT
-	 FLONUM-GREATER?
-	 FLONUM-LESS?
-	 FLONUM-LOG
-	 FLONUM-MULTIPLY
-	 FLONUM-NEGATE
-	 FLONUM-NEGATIVE?
-	 FLONUM-POSITIVE?
-	 FLONUM-ROUND
-	 FLONUM-ROUND->EXACT
-	 FLONUM-SIN
-	 FLONUM-SQRT
-	 FLONUM-SUBTRACT
-	 FLONUM-TAN
-	 FLONUM-TRUNCATE
-	 FLONUM-TRUNCATE->EXACT
-	 FLONUM-ZERO?
-	 GCD-FIXNUM
-	 GREATER-THAN-FIXNUM?
-	 INDEX-FIXNUM?
-	 INTEGER->CHAR
-	 LESS-THAN-FIXNUM?
-	 MAKE-CHAR
-	 MAKE-NON-POINTER-OBJECT
-	 MINUS-FIXNUM
-	 MINUS-ONE-PLUS-FIXNUM
-	 MULTIPLY-FIXNUM
-	 NEGATIVE-FIXNUM?
-	 NEGATIVE?
-	 NOT
-	 NULL?
-	 OBJECT-TYPE
-	 OBJECT-TYPE?
-	 ONE-PLUS-FIXNUM
-	 PAIR?
-	 PLUS-FIXNUM
-	 POSITIVE-FIXNUM?
-	 POSITIVE?
-	 PRIMITIVE-PROCEDURE-ARITY
+	 cell?
+	 char->integer
+	 char-bits
+	 char-code
+	 char-downcase
+	 char-upcase
+	 compiled-code-address->block
+	 compiled-code-address->offset
+	 divide-fixnum
+	 eq?
+	 equal-fixnum?
+	 fixnum-and
+	 fixnum-andc
+	 fixnum-lsh
+	 fixnum-not
+	 fixnum-or
+	 fixnum-quotient
+	 fixnum-remainder
+	 fixnum-xor
+	 flonum-abs
+	 flonum-acos
+	 flonum-add
+	 flonum-asin
+	 flonum-atan
+	 flonum-atan2
+	 flonum-ceiling
+	 flonum-ceiling->exact
+	 flonum-cos
+	 flonum-divide
+	 flonum-equal?
+	 flonum-exp
+	 flonum-expt
+	 flonum-floor
+	 flonum-floor->exact
+	 flonum-greater?
+	 flonum-less?
+	 flonum-log
+	 flonum-multiply
+	 flonum-negate
+	 flonum-negative?
+	 flonum-positive?
+	 flonum-round
+	 flonum-round->exact
+	 flonum-sin
+	 flonum-sqrt
+	 flonum-subtract
+	 flonum-tan
+	 flonum-truncate
+	 flonum-truncate->exact
+	 flonum-zero?
+	 gcd-fixnum
+	 greater-than-fixnum?
+	 index-fixnum?
+	 integer->char
+	 less-than-fixnum?
+	 make-char
+	 make-non-pointer-object
+	 minus-fixnum
+	 minus-one-plus-fixnum
+	 multiply-fixnum
+	 negative-fixnum?
+	 negative?
+	 not
+	 null?
+	 object-type
+	 object-type?
+	 one-plus-fixnum
+	 pair?
+	 plus-fixnum
+	 positive-fixnum?
+	 positive?
+	 primitive-procedure-arity
 	 ;; STRING->SYMBOL is a special case.  Strings can
 	 ;; be side-effected, but it is useful to be able to
 	 ;; constant fold this primitive anyway.
-	 STRING->SYMBOL
-	 STRING-LENGTH
-	 ZERO-FIXNUM?
-	 ZERO?
+	 string->symbol
+	 string-length
+	 zero-fixnum?
+	 zero?
 	 )))
-
+
 (define (foldable-combination? operator operands)
   (and (constant? operator)
        (let ((operator-value (constant/value operator)))
@@ -451,7 +446,13 @@ USA.
               (procedure-arity-valid? operator-value (length operands))
               (memq operator-value combination/constant-folding-operators)))
           ;; Check that the arguments are constant.
-       (for-all? operands constant?)))
+       (every constant? operands)
+       (not (condition?
+	     (let ((operator (constant/value operator))
+		   (operands (map constant/value operands)))
+	       (ignore-errors
+		(lambda ()
+		  (apply operator operands))))))))
 
 ;; An operator is reducible if we can safely rewrite its argument list.
 (define (reducible-operator? operator)
@@ -461,11 +462,11 @@ USA.
        (block/safe? (procedure/block operator))
        ;; if there are declarations we don't understand, we
        ;; should leave things alone.
-       (for-all? (declarations/original
-                  (block/declarations (procedure/block operator)))
-                 declarations/known?)
+       (every declarations/known?
+	      (declarations/original
+	       (block/declarations (procedure/block operator))))
        ;; Unintegrated optionals are tricky and rare.  Punt.
-       (for-all? (procedure/optional operator) variable/integrated)
+       (every variable/integrated (procedure/optional operator))
        ;; Unintegrated rest arguments are tricky and rare.  Punt.
        (let ((rest-arg (procedure/rest operator)))
          (or (not rest-arg) (variable/integrated rest-arg)))))
@@ -512,19 +513,21 @@ USA.
                     (and expression (object/scode expression))
                     (append other-operands (list result-body))))))))
         (else
-         (combination/%make (and expression (object/scode expression)) block operator operands))))
-
+         (combination/%make (and expression (object/scode expression))
+			    block operator operands))))
+
 (define (combination/fold-constant expression operator operands)
   (let ((result (apply operator operands)))
-  (if (not (eq? sf:enable-constant-folding? #t))
-      (with-notification
-       (lambda (port)
-         (display "Folding (" port)
-         (display operator port)
-         (for-each (lambda (operand) (display " " port) (write operand port)) operands)
-         (display ") => " port)
-         (write result port))))
-  (constant/make (and expression (object/scode expression)) result)))
+    (if (not (eq? sf:enable-constant-folding? #t))
+	(with-notification
+	 (lambda (port)
+	   (display "Folding (" port)
+	   (display operator port)
+	   (for-each (lambda (operand) (display " " port) (write operand port))
+		     operands)
+	   (display ") => " port)
+	   (write result port))))
+    (constant/make (and expression (object/scode expression)) result)))
 
 (define-integrable (partition-operands operator operands)
   (let ((free-in-body (expression/free-variables (procedure/body operator))))
@@ -539,7 +542,8 @@ USA.
                  (values (reverse required-parameters) ; preserve order
                          (reverse referenced-operands)
                          (if (or (null? operands)
-                                 (variable/integrated (procedure/rest operator)))
+                                 (variable/integrated
+				  (procedure/rest operator)))
                              unreferenced-operands
                              (append operands unreferenced-operands)))
                  (error "Argument mismatch" operands)))
@@ -567,15 +571,16 @@ USA.
                             referenced-operands
                             (cons this-operand
                                   unreferenced-operands))))))))))
-
+
 ;;; Sequence
 
 ;;  Ensure that sequences are always flat.
 (define (sequence/make scode actions)
   (define (sequence/collect-actions collected actions)
     (fold-left (lambda (reversed action)
-                 (if (sequence? action)
-                     (sequence/collect-actions reversed (sequence/actions action))
+                 (if (scode-sequence? action)
+                     (sequence/collect-actions reversed
+					       (sequence/actions action))
                      (cons action reversed)))
                collected
                actions))
@@ -601,11 +606,9 @@ USA.
                    (conc-name reference/)
                    (constructor reference/make)
                    (print-procedure
-                    (standard-unparser-method
-                     'reference
-                     (lambda (ref port)
-                       (write-string " to " port)
-                       (write (variable/name (reference/variable ref)) port)))))
+                    (standard-print-method 'reference
+		      (lambda (ref)
+			(list (variable/name (reference/variable ref)))))))
   (scode #f read-only #t)
   block
   variable)
@@ -621,20 +624,20 @@ USA.
      (let ((name (cadr form))
            (tester (caddr form))
            (setter (cadddr form)))
-       `(BEGIN
-          (DEFINE (,tester VARIABLE)
-            (MEMQ ',name (VARIABLE/FLAGS VARIABLE)))
-          (DEFINE (,setter VARIABLE)
-            (IF (NOT (MEMQ ',name (VARIABLE/FLAGS VARIABLE)))
-                (SET-VARIABLE/FLAGS!
-                 VARIABLE
-                 (CONS ',name (VARIABLE/FLAGS VARIABLE))))))))))
+       `(begin
+          (define (,tester variable)
+            (memq ',name (variable/flags variable)))
+          (define (,setter variable)
+            (if (not (memq ',name (variable/flags variable)))
+                (set-variable/flags!
+                 variable
+                 (cons ',name (variable/flags variable))))))))))
 
-(define-flag SIDE-EFFECTED variable/side-effected variable/side-effect!)
-(define-flag REFERENCED    variable/referenced    variable/reference!)
-(define-flag INTEGRATED    variable/integrated    variable/integrated!)
-(define-flag MAY-IGNORE    variable/may-ignore?   variable/may-ignore!)
-(define-flag MUST-IGNORE   variable/must-ignore?  variable/must-ignore!)
+(define-flag side-effected variable/side-effected variable/side-effect!)
+(define-flag referenced    variable/referenced    variable/reference!)
+(define-flag integrated    variable/integrated    variable/integrated!)
+(define-flag may-ignore    variable/may-ignore?   variable/may-ignore!)
+(define-flag must-ignore   variable/must-ignore?  variable/must-ignore!)
 
 (define open-block/value-marker
   ;; This must be an interned object because we will fasdump it and

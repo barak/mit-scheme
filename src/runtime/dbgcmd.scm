@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -78,7 +78,7 @@ USA.
 	       (let loop ()
 		 (let ((entry
 			(assv (char-upcase
-			       (prompt-for-command-char (cons 'STANDARD prompt)
+			       (prompt-for-command-char (cons 'standard prompt)
 							port))
 			      (cdr command-set))))
 		   (if entry
@@ -120,7 +120,7 @@ USA.
 (define (debug/read-eval-print environment from to)
   (leaving-command-loop
    (lambda ()
-     (with-simple-restart 'CONTINUE
+     (with-simple-restart 'continue
 	 (lambda (port)
 	   (write-string "Return to " port)
 	   (write-string from port)

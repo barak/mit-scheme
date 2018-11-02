@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -110,8 +110,9 @@ bool ephemeron_request_hard_p;
    bool Upgrade_Debug = false;
    bool Dump_Debug = false;
    bool Trace_On_Error = false;
-   bool Bignum_Debug = false;
    bool Per_File = false;
+   bool Bignum_Debug = false;
+   bool Print_Errors = true;
    unsigned int debug_slotno = 0;
    unsigned int debug_nslots = 0;
    unsigned int local_slotno = 0;
@@ -135,4 +136,5 @@ const char * Abort_Names [] = ABORT_NAME_TABLE;		/* in const.h */
 const char * Error_Names [] = ERROR_NAME_TABLE;		/* in errors.h */
 const char * Term_Names [] = TERM_NAME_TABLE;		/* in errors.h */
 const char * term_messages [] = TERM_MESSAGE_TABLE;	/* in errors.h */
+const char * term_halt_messages [] = TERM_HALT_MESSAGE_TABLE; /* in errors.h */
 const char * fixed_objects_names [] = FIXED_OBJECTS_NAMES; /* in fixobj.h */

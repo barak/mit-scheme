@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,7 +28,6 @@ USA.
 
 (global-definitions "../runtime/runtime")
 (global-definitions "../sf/sf")
-(global-definitions "../cref/cref")
 
 (define-package (compiler)
   (files "base/switch"
@@ -102,81 +101,71 @@ USA.
 	  ucode-primitive
 	  ucode-type)
   (import ()
-	  (scode/access-components access-components)
-	  (scode/access-environment access-environment)
-	  (scode/access-name access-name)
-	  (scode/access? access?)
-	  (scode/assignment-components assignment-components)
-	  (scode/assignment-name assignment-name)
-	  (scode/assignment-value assignment-value)
-	  (scode/assignment? assignment?)
-	  (scode/combination-components combination-components)
-	  (scode/combination-operands combination-operands)
-	  (scode/combination-operator combination-operator)
-	  (scode/combination? combination?)
-	  (scode/comment-components comment-components)
-	  (scode/comment-expression comment-expression)
-	  (scode/comment-text comment-text)
-	  (scode/comment? comment?)
-	  (scode/conditional-alternative conditional-alternative)
-	  (scode/conditional-components conditional-components)
-	  (scode/conditional-consequent conditional-consequent)
-	  (scode/conditional-predicate conditional-predicate)
-	  (scode/conditional? conditional?)
+	  (scode/access-environment scode-access-environment)
+	  (scode/access-name scode-access-name)
+	  (scode/access? scode-access?)
+	  (scode/assignment-name scode-assignment-name)
+	  (scode/assignment-value scode-assignment-value)
+	  (scode/assignment? scode-assignment?)
+	  (scode/combination-operands scode-combination-operands)
+	  (scode/combination-operator scode-combination-operator)
+	  (scode/combination? scode-combination?)
+	  (scode/comment-expression scode-comment-expression)
+	  (scode/comment-text scode-comment-text)
+	  (scode/comment? scode-comment?)
+	  (scode/conditional-alternative scode-conditional-alternative)
+	  (scode/conditional-consequent scode-conditional-consequent)
+	  (scode/conditional-predicate scode-conditional-predicate)
+	  (scode/conditional? scode-conditional?)
 	  (scode/constant? scode-constant?)
-	  (scode/declaration-components declaration-components)
-	  (scode/declaration-expression declaration-expression)
-	  (scode/declaration-text declaration-text)
-	  (scode/declaration? declaration?)
-	  (scode/definition-components definition-components)
-	  (scode/definition-name definition-name)
-	  (scode/definition-value definition-value)
-	  (scode/definition? definition?)
-	  (scode/delay-components delay-components)
-	  (scode/delay-expression delay-expression)
-	  (scode/delay? delay?)
-	  (scode/disjunction-alternative disjunction-alternative)
-	  (scode/disjunction-components disjunction-components)
-	  (scode/disjunction-predicate disjunction-predicate)
-	  (scode/disjunction? disjunction?)
-	  (scode/lambda-components lambda-components)
-	  (scode/lambda? lambda?)
-	  (scode/make-access make-access)
-	  (scode/make-assignment make-assignment)
-	  (scode/make-combination make-combination)
-	  (scode/make-comment make-comment)
-	  (scode/make-conditional make-conditional)
-	  (scode/make-declaration make-declaration)
-	  (scode/make-definition make-definition)
-	  (scode/make-delay make-delay)
-	  (scode/make-disjunction make-disjunction)
-	  (scode/make-lambda make-lambda)
-	  (scode/make-open-block make-open-block)
-	  (scode/make-quotation make-quotation)
-	  (scode/make-sequence make-sequence)
-	  (scode/make-the-environment make-the-environment)
-	  (scode/make-unassigned? make-unassigned?)
-	  (scode/make-variable make-variable)
-	  (scode/open-block-components open-block-components)
-	  (scode/open-block? open-block?)
+	  (scode/declaration-expression scode-declaration-expression)
+	  (scode/declaration-text scode-declaration-text)
+	  (scode/declaration? scode-declaration?)
+	  (scode/definition-name scode-definition-name)
+	  (scode/definition-value scode-definition-value)
+	  (scode/definition? scode-definition?)
+	  (scode/delay-expression scode-delay-expression)
+	  (scode/delay? scode-delay?)
+	  (scode/disjunction-alternative scode-disjunction-alternative)
+	  (scode/disjunction-predicate scode-disjunction-predicate)
+	  (scode/disjunction? scode-disjunction?)
+	  (scode/lambda-components scode-lambda-components)
+	  (scode/lambda-body scode-lambda-body)
+	  (scode/lambda-name scode-lambda-name)
+	  (scode/lambda? scode-lambda?)
+	  (scode/make-access make-scode-access)
+	  (scode/make-assignment make-scode-assignment)
+	  (scode/make-combination make-scode-combination)
+	  (scode/make-comment make-scode-comment)
+	  (scode/make-conditional make-scode-conditional)
+	  (scode/make-declaration make-scode-declaration)
+	  (scode/make-definition make-scode-definition)
+	  (scode/make-delay make-scode-delay)
+	  (scode/make-disjunction make-scode-disjunction)
+	  (scode/make-lambda make-scode-lambda)
+	  (scode/make-open-block make-scode-open-block)
+	  (scode/make-quotation make-scode-quotation)
+	  (scode/make-sequence make-scode-sequence)
+	  (scode/make-the-environment make-scode-the-environment)
+	  (scode/make-unassigned? make-scode-unassigned?)
+	  (scode/make-variable make-scode-variable)
+	  (scode/open-block-actions scode-open-block-actions)
+	  (scode/open-block-declarations scode-open-block-declarations)
+	  (scode/open-block-names scode-open-block-names)
+	  (scode/open-block? scode-open-block?)
 	  (scode/primitive-procedure? primitive-procedure?)
 	  (scode/procedure? procedure?)
-	  (scode/quotation-expression quotation-expression)
-	  (scode/quotation? quotation?)
-	  (scode/sequence-actions sequence-actions)
-	  (scode/sequence-components sequence-components)
-	  (scode/sequence-immediate-first sequence-immediate-first)
-	  (scode/sequence-immediate-second sequence-immediate-second)
-	  (scode/sequence-first sequence-first)
-	  (scode/sequence-second sequence-second)
-	  (scode/sequence? sequence?)
+	  (scode/quotation-expression scode-quotation-expression)
+	  (scode/quotation? scode-quotation?)
+	  (scode/sequence-actions scode-sequence-actions)
+	  (scode/sequence? scode-sequence?)
+	  (scode/set-lambda-body! set-scode-lambda-body!)
 	  (scode/symbol? symbol?)
-	  (scode/the-environment? the-environment?)
-	  (scode/unassigned?-name unassigned?-name)
-	  (scode/unassigned?? unassigned??)
-	  (scode/variable-components variable-components)
-	  (scode/variable-name variable-name)
-	  (scode/variable? variable?)))
+	  (scode/the-environment? scode-the-environment?)
+	  (scode/unassigned?-name scode-unassigned?-name)
+	  (scode/unassigned?? scode-unassigned??)
+	  (scode/variable-name scode-variable-name)
+	  (scode/variable? scode-variable?)))
 
 (define-package (compiler reference-contexts)
   (files "base/refctx")
@@ -230,13 +219,6 @@ USA.
 	  syntax-files!)
   (import (scode-optimizer top-level)
 	  sf/internal)
-  (import (cross-reference)
-	  os-types
-	  read-package-model
-	  pmodel/pathname
-	  pmodel/packages
-	  package/name
-	  package/files)
   (initialization (initialize-package!)))
 
 (define-package (compiler top-level)
@@ -247,11 +229,13 @@ USA.
   (export ()
 	  cbf
 	  cf
+	  compile-directory
 	  compile-bin-file
 	  compile-file
 	  compile-file:force?
 	  compile-file:override-usual-integrations
 	  compile-file:sf-only?
+	  compile-file:show-dependencies?
 	  compile-procedure
 	  compile-scode
 	  compiler:compiled-code-pathname-type
@@ -260,6 +244,7 @@ USA.
   (export (compiler)
 	  canonicalize-label-name)
   (export (compiler fg-generator)
+	  *tl-metadata*
 	  compile-recursively)
   (export (compiler rtl-generator)
 	  *ic-procedure-headers*
@@ -275,11 +260,13 @@ USA.
 	  *root-expression*
 	  *rtl-procedures*
 	  *rtl-graphs*)
-  (import (runtime compiler-info)
-	  make-dbg-info-vector
-	  split-inf-structure!)
-  (import (runtime unparser)
-	  *unparse-uninterned-symbols-by-name?*))
+  (import (runtime)
+	  map-r7rs-scode-file
+	  map-scode-library
+	  r7rs-scode-file?
+	  scode-library-name)
+  (import (scode-optimizer build-utilities)
+	  directory-processor))
 
 (define-package (compiler debug)
   (files "base/debug")
@@ -295,11 +282,7 @@ USA.
 	  show-fg
 	  show-fg-node
 	  show-rtl
-	  write-rtl-instructions)
-  (import (runtime pretty-printer)
-	  *pp-primitives-by-name*)
-  (import (runtime unparser)
-	  *unparse-uninterned-symbols-by-name?*))
+	  write-rtl-instructions))
 
 (define-package (compiler pattern-matcher/lookup)
   (files "base/pmlook")

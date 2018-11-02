@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,7 +37,7 @@ USA.
 
 ((ucode-primitive local-assignment)
  #f ;global environment
- 'DEFINE-MULTIPLE
+ 'define-multiple
  (lambda (env names values)
    (if (or (not (vector? names))
 	   (not (vector? values))
@@ -71,7 +71,7 @@ USA.
 
 (let ((environment-for-package
        (*make-environment system-global-environment
-			  (vector lambda-tag:unnamed))))
+			  (vector scode-lambda-name:unnamed))))
 
 (define-integrable + (ucode-primitive integer-add))
 (define-integrable - (ucode-primitive integer-subtract))
@@ -175,15 +175,15 @@ USA.
 	   (and package
 		(let ((env (package/environment package)))
 		  (if (not procedure-name)
-		      (if (lexical-unreferenceable? env 'INITIALIZE-PACKAGE!)
-			  (lambda () ((access run-boot-inits! boot-defs) env))
-			  (lexical-reference env 'INITIALIZE-PACKAGE!))
+		      (if (lexical-unreferenceable? env 'initialize-package!)
+			  ((access get-boot-init-runner boot-defs) env)
+			  (lexical-reference env 'initialize-package!))
 		      (and (not (lexical-unreferenceable? env procedure-name))
 			   (lexical-reference env procedure-name))))))
 	 => (lambda (procedure)
 	      (print-name "initialize:")
 	      (if (not (or (not procedure-name)
-			   (eq? procedure-name 'INITIALIZE-PACKAGE!)))
+			   (eq? procedure-name 'initialize-package!)))
 		  (begin
 		    (tty-write-string " [")
 		    (tty-write-string (system-pair-car procedure-name))
@@ -206,7 +206,7 @@ USA.
   (do ((specs specs (cdr specs)))
       ((not (pair? specs)) unspecific)
     (let ((spec (car specs)))
-      (cond ((eq? (car spec) 'OPTIONAL)
+      (cond ((eq? (car spec) 'optional)
 	     (package-initialize (cadr spec)
 				 (and (pair? (cddr spec))
 				      (caddr spec))
@@ -309,105 +309,121 @@ USA.
   (intern os-name-string))
 
 (define newline-string
-  (if (eq? 'UNIX os-name)
+  (if (eq? 'unix os-name)
       "\n"
       "\r\n"))
 
 ;; Construct the package structure.
 ;; Lotta hair here to load the package code before its package is built.
 (eval (file->object "packag" #t #t) environment-for-package)
-((lexical-reference environment-for-package 'INITIALIZE-PACKAGE!))
+((lexical-reference environment-for-package 'initialize-package!))
 (let ((export
        (lambda (name)
 	 (link-variables system-global-environment name
 			 environment-for-package name))))
-  (export '*ALLOW-PACKAGE-REDEFINITION?*)
-  (export 'CONSTRUCT-PACKAGES-FROM-FILE)
-  (export 'ENVIRONMENT->PACKAGE)
-  (export 'FIND-PACKAGE)
-  (export 'LOAD-PACKAGE-SET)
-  (export 'LOAD-PACKAGES-FROM-FILE)
-  (export 'NAME->PACKAGE)
-  (export 'PACKAGE-SET-PATHNAME)
-  (export 'PACKAGE/ADD-CHILD!)
-  (export 'PACKAGE/CHILDREN)
-  (export 'PACKAGE/ENVIRONMENT)
-  (export 'PACKAGE/NAME)
-  (export 'PACKAGE/PARENT)
-  (export 'PACKAGE/REFERENCE)
-  (export 'PACKAGE?))
-(package/add-child! (find-package '()) 'PACKAGE environment-for-package)
+  (export '*allow-package-redefinition?*)
+  (export 'construct-packages-from-file)
+  (export 'environment->package)
+  (export 'find-package)
+  (export 'load-package-set)
+  (export 'load-packages-from-file)
+  (export 'name->package)
+  (export 'package-set-pathname)
+  (export 'package/add-child!)
+  (export 'package/children)
+  (export 'package/environment)
+  (export 'package/name)
+  (export 'package/parent)
+  (export 'package/reference)
+  (export 'package?))
+(package/add-child! (find-package '()) 'package environment-for-package)
 
 (define packages-file
   (let ((name
 	 (string-append "runtime-"
-			(cond ((eq? os-name 'NT) "w32")
-			      ((eq? os-name 'OS/2) "os2")
-			      ((eq? os-name 'UNIX) "unx")
+			(cond ((eq? os-name 'nt) "w32")
+			      ((eq? os-name 'unix) "unx")
 			      (else "unk"))
 			".pkd")))
     (or (initialize-c-compiled-block (string-append runtime-prefix name))
 	(fasload name #f))))
 
-((lexical-reference environment-for-package 'CONSTRUCT-PACKAGES-FROM-FILE)
+((lexical-reference environment-for-package 'construct-packages-from-file)
  packages-file)
 
 ;;; Global databases.  Load, then initialize.
 (define boot-defs)
-(let ((files1
-       '(("gcdemn" . (RUNTIME GC-DAEMONS))
-	 ("gc" . (RUNTIME GARBAGE-COLLECTOR))
-	 ("boot" . (RUNTIME BOOT-DEFINITIONS))
-	 ("queue" . (RUNTIME SIMPLE-QUEUE))
-	 ("equals" . (RUNTIME EQUALITY))
-	 ("list" . (RUNTIME LIST))
-	 ("symbol" . (RUNTIME SYMBOL))
-	 ("uproc" . (RUNTIME PROCEDURE))
-	 ("fixart" . (RUNTIME FIXNUM-ARITHMETIC))
-	 ("random" . (RUNTIME RANDOM-NUMBER))
-	 ("gentag" . (RUNTIME GENERIC-PROCEDURE))
-	 ("poplat" . (RUNTIME POPULATION))
-	 ("record" . (RUNTIME RECORD))))
+(let ((files0
+       '(("gcdemn" . (runtime gc-daemons))
+	 ("gc" . (runtime garbage-collector))
+	 ("boot" . (runtime boot-definitions))
+	 ("queue" . (runtime simple-queue))
+	 ("equals" . (runtime equality))
+	 ("list" . (runtime list))
+	 ("primitive-arithmetic" . (runtime primitive-arithmetic))
+	 ("srfi-1" . (runtime srfi-1))
+	 ("thread-low" . (runtime thread))
+	 ("vector" . (runtime vector))))
+      (files1
+       '(("string" . (runtime string))
+	 ("symbol" . (runtime symbol))
+	 ("procedure" . (runtime procedure))
+	 ("random" . (runtime random-number))
+	 ("dispatch-tag" . (runtime tagged-dispatch))
+	 ("poplat" . (runtime population))
+	 ("record" . (runtime record))))
       (files2
-       '(("syntax-items" . (RUNTIME SYNTAX ITEMS))
-	 ("syntax-transforms" . (RUNTIME SYNTAX TRANSFORMS))
-	 ("prop1d" . (RUNTIME 1D-PROPERTY))
-	 ("events" . (RUNTIME EVENT-DISTRIBUTOR))
-	 ("gdatab" . (RUNTIME GLOBAL-DATABASE))
-	 ("gcfinal" . (RUNTIME GC-FINALIZER))
-	 ("string" . (RUNTIME STRING))))
+       '(("bundle" . (runtime bundle))
+	 ("syntax-low" . (runtime syntax low))
+	 ("thread" . (runtime thread))
+	 ("wind" . (runtime state-space))
+	 ("prop1d" . (runtime 1d-property))
+	 ("events" . (runtime event-distributor))
+	 ("gdatab" . (runtime global-database))
+	 ("gcfinal" . (runtime gc-finalizer))))
       (load-files
        (lambda (files)
 	 (do ((files files (cdr files)))
 	     ((null? files))
 	   (eval (file->object (car (car files)) #t #t)
-		 (package-reference (cdr (car files))))))))
-  (load-files files1)
-  (package-initialize '(RUNTIME GC-DAEMONS) #f #t)
-  (package-initialize '(RUNTIME GARBAGE-COLLECTOR) #f #t)
-  (package-initialize '(RUNTIME RANDOM-NUMBER) #f #t)
-  (package-initialize '(RUNTIME GENERIC-PROCEDURE) 'INITIALIZE-TAG-CONSTANTS!
-		      #t)
-  (package-initialize '(RUNTIME POPULATION) #f #t)
-  (package-initialize '(RUNTIME RECORD) 'INITIALIZE-RECORD-TYPE-TYPE! #t)
-  (load-files files2)
-  (package-initialize '(RUNTIME 1D-PROPERTY) #f #t)
-  (package-initialize '(RUNTIME EVENT-DISTRIBUTOR) #f #t)
-  (package-initialize '(RUNTIME GLOBAL-DATABASE) #f #t)
-  (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-UNPARSER! #t)
-  (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-UNPARSER! #t)
-  (package-initialize '(RUNTIME GC-FINALIZER) #f #t)
-  (package-initialize '(RUNTIME STRING) #f #t)
+		 (package-reference (cdr (car files)))))))
+      (load-files-with-boot-inits
+       (lambda (files)
+	 (do ((files files (cdr files)))
+	     ((null? files))
+	   ((access init-boot-inits! boot-defs))
+	   (let ((environment (package-reference (cdr (car files)))))
+	     (eval (file->object (car (car files)) #t #t)
+		   environment)
+	     ((access save-boot-inits! boot-defs) environment))))))
+
+  (load-files files0)
 
   (set! boot-defs
-	(package/environment (name->package '(RUNTIME BOOT-DEFINITIONS))))
+	(package/environment (name->package '(runtime boot-definitions))))
+
+  (load-files-with-boot-inits files1)
+  (package-initialize '(runtime gc-daemons) #f #t)
+  (package-initialize '(runtime garbage-collector) #f #t)
+  (package-initialize '(runtime random-number) #f #t)
+  (package-initialize '(runtime tagged-dispatch) #f #t)
+  (package-initialize '(runtime population) #f #t)
+  (package-initialize '(runtime record) #f #t)
+
+  (load-files-with-boot-inits files2)
+  (package-initialize '(runtime 1d-property) #f #t)	     ;First population.
+  (package-initialize '(runtime state-space) #f #t)
+  (package-initialize '(runtime thread) 'initialize-low! #t) ;First 1d-table.
+  (package-initialize '(runtime event-distributor) #f #t)
+  (package-initialize '(runtime global-database) #f #t)
+  (package-initialize '(runtime gc-finalizer) #f #t)
 
   ;; Load everything else.
-  ((lexical-reference environment-for-package 'LOAD-PACKAGES-FROM-FILE)
+  ((lexical-reference environment-for-package 'load-packages-from-file)
    packages-file
-   `((SORT-TYPE . MERGE-SORT)
-     (OS-TYPE . ,os-name)
-     (OPTIONS . NO-LOAD))
+   `((sort-type . merge-sort)
+     (os-type . ,os-name)
+     (options . no-load))
    (let ((file-member?
 	  (lambda (filename files)
 	    (let loop ((files files))
@@ -417,6 +433,7 @@ USA.
      (lambda (filename environment)
        (if (not (or (string=? filename "make")
 		    (string=? filename "packag")
+		    (file-member? filename files0)
 		    (file-member? filename files1)
 		    (file-member? filename files2)))
 	   (begin
@@ -430,159 +447,165 @@ USA.
 (package-initialization-sequence
  '(
    ;; Microcode interface
-   ((RUNTIME MICROCODE-TABLES) READ-MICROCODE-TABLES!)
-   (RUNTIME STATE-SPACE)
-   (RUNTIME APPLY)
-   (RUNTIME HASH)			; First GC daemon!
-   (RUNTIME PRIMITIVE-IO)
-   (RUNTIME SYSTEM-CLOCK)
-   ((RUNTIME GC-FINALIZER) INITIALIZE-EVENTS!)
+   (runtime microcode-tables)
+   (runtime apply)
+   (runtime primitive-io)
+   (runtime system-clock)
+   ((runtime gc-finalizer) initialize-events!)
    ;; Basic data structures
-   (RUNTIME NUMBER)
-   ((RUNTIME NUMBER) INITIALIZE-DRAGON4!)
-   (RUNTIME MISCELLANEOUS-GLOBAL)
-   (RUNTIME CHARACTER)
-   (RUNTIME CHARACTER-SET)
-   (RUNTIME GENSYM)
-   (RUNTIME STREAM)
-   (RUNTIME 2D-PROPERTY)
-   (RUNTIME HASH-TABLE)
-   (RUNTIME REGULAR-SEXPRESSION)
+   (runtime number)
+   ((runtime number) initialize-dragon4!)
+   (runtime miscellaneous-global)
+   (runtime character)
+   (runtime bytevector)
+   (runtime character-set)
+   (runtime lambda-abstraction)
+   (runtime string)
+   (runtime stream)
+   (runtime 2d-property)
+   (runtime hash-table)
+   (runtime memoizer)
+   (runtime ucd-tables)
+   (runtime ucd-glue)
+   (runtime predicate)
+   (runtime predicate-tagging)
+   (runtime predicate-dispatch)
+   (runtime compound-predicate)
+   (runtime parametric-predicate)
+   (runtime hash)
+   (runtime dynamic)
+   (runtime regular-sexpression)
+   (runtime library standard)
    ;; Microcode data structures
-   (RUNTIME HISTORY)
-   (RUNTIME LAMBDA-ABSTRACTION)
-   (RUNTIME SCODE)
-   (RUNTIME SCODE-COMBINATOR)
-   (RUNTIME SCODE-WALKER)
-   (RUNTIME CONTINUATION-PARSER)
-   (RUNTIME PROGRAM-COPIER)
-   ;; Generic Procedures
-   ((RUNTIME GENERIC-PROCEDURE EQHT) INITIALIZE-ADDRESS-HASHING!)
-   ((RUNTIME GENERIC-PROCEDURE) INITIALIZE-GENERIC-PROCEDURES!)
-   ((RUNTIME GENERIC-PROCEDURE MULTIPLEXER) INITIALIZE-MULTIPLEXER!)
-   ((RUNTIME TAGGED-VECTOR) INITIALIZE-TAGGED-VECTOR!)
-   ((RUNTIME RECORD-SLOT-ACCESS) INITIALIZE-RECORD-SLOT-ACCESS!)
-   ((RUNTIME RECORD) INITIALIZE-RECORD-PROCEDURES!)
-   ((PACKAGE) FINALIZE-PACKAGE-RECORD-TYPE!)
-   ((RUNTIME RANDOM-NUMBER) FINALIZE-RANDOM-STATE-TYPE!)
+   (runtime history)
+   (runtime scode)
+   (runtime scode-walker)
+   (runtime continuation-parser)
+   (runtime program-copier)
+   ;; Finish records
+   ((runtime record) initialize-record-procedures!)
+   ((package) finalize-package-record-type!)
+   ((runtime random-number) finalize-random-state-type!)
    ;; Condition System
-   (RUNTIME ERROR-HANDLER)
-   (RUNTIME MICROCODE-ERRORS)
-   ((RUNTIME GENERIC-PROCEDURE) INITIALIZE-CONDITIONS!)
-   ((RUNTIME GENERIC-PROCEDURE MULTIPLEXER) INITIALIZE-CONDITIONS!)
-   ((RUNTIME RECORD-SLOT-ACCESS) INITIALIZE-CONDITIONS!)
-   ((RUNTIME STREAM) INITIALIZE-CONDITIONS!)
-   ((RUNTIME REGULAR-SEXPRESSION) INITIALIZE-CONDITIONS!)
+   (runtime error-handler)
+   (runtime microcode-errors)
+   ((runtime record) initialize-conditions!)
+   ((runtime stream) initialize-conditions!)
+   ((runtime regular-sexpression) initialize-conditions!)
    ;; System dependent stuff
-   ((RUNTIME OS-PRIMITIVES) INITIALIZE-SYSTEM-PRIMITIVES!)
+   (runtime os-primitives)
    ;; Floating-point environment -- needed by threads.
-   (RUNTIME FLOATING-POINT-ENVIRONMENT)
-   ;; Threads
-   (RUNTIME THREAD)
+   (runtime floating-point-environment)
+   ((runtime thread) initialize-high!)
    ;; I/O
-   (RUNTIME OUTPUT-PORT)
-   (RUNTIME GENERIC-I/O-PORT)
-   (RUNTIME FILE-I/O-PORT)
-   (RUNTIME CONSOLE-I/O-PORT)
-   (RUNTIME SOCKET)
-   (RUNTIME TRANSCRIPT)
-   (RUNTIME STRING-I/O-PORT)
-   (RUNTIME USER-INTERFACE)
+   (runtime port)
+   (runtime output-port)
+   (runtime generic-i/o-port)
+   (runtime file-i/o-port)
+   (runtime console-i/o-port)
+   (runtime socket)
+   (runtime string-i/o-port)
+   (runtime user-interface)
    ;; These MUST be done before (RUNTIME PATHNAME)
    ;; Typically only one of them is loaded.
-   (RUNTIME PATHNAME UNIX)
-   (RUNTIME PATHNAME DOS)
-   (RUNTIME PATHNAME)
-   (RUNTIME WORKING-DIRECTORY)
-   (RUNTIME LOAD)
-   (RUNTIME SIMPLE-FILE-OPS)
-   (OPTIONAL (RUNTIME OS-PRIMITIVES) INITIALIZE-MIME-TYPES!)
+   (runtime pathname unix)
+   (runtime pathname dos)
+   (runtime pathname)
+   (runtime directory)
+   (runtime working-directory)
+   (runtime load)
+   (runtime command-line)
+   (runtime simple-file-ops)
+   (optional (runtime os-primitives) initialize-mime-types!)
    ;; Syntax
-   (RUNTIME KEYWORD)
-   (RUNTIME NUMBER-PARSER)
-   (RUNTIME PARSER)
-   (RUNTIME PARSER FILE-ATTRIBUTES)
-   ((RUNTIME PATHNAME) INITIALIZE-PARSER-METHOD!)
-   (RUNTIME UNPARSER)
-   (RUNTIME UNSYNTAXER)
-   (RUNTIME PRETTY-PRINTER)
-   (RUNTIME EXTENDED-SCODE-EVAL)
-   (RUNTIME SYNTAX DEFINITIONS)
+   (runtime number-parser)
+   (runtime options)
+   (runtime reader)
+   (runtime file-attributes)
+   ((runtime pathname) initialize-parser-method!)
+   (runtime printer)
+   (runtime unsyntaxer)
+   (runtime pretty-printer)
+   (runtime extended-scode-eval)
+   (runtime syntax low)
+   (runtime syntax items)
+   (runtime syntax rename)
+   (runtime syntax top-level)
+   (runtime syntax parser)
    ;; REP Loops
-   (RUNTIME INTERRUPT-HANDLER)
-   (RUNTIME GC-STATISTICS)
-   (RUNTIME REP)
+   (runtime interrupt-handler)
+   (runtime gc-statistics)
+   (runtime gc-notification)
+   (runtime rep)
    ;; Debugging
-   (RUNTIME COMPILER-INFO)
-   (RUNTIME ADVICE)
-   (RUNTIME DEBUGGER-COMMAND-LOOP)
-   (RUNTIME DEBUGGER-UTILITIES)
-   (RUNTIME ENVIRONMENT-INSPECTOR)
-   (RUNTIME DEBUGGING-INFO)
-   (RUNTIME DEBUGGER)
+   (runtime compiler-info)
+   (runtime advice)
+   (runtime debugger-command-loop)
+   (runtime debugger-utilities)
+   (runtime environment-inspector)
+   (runtime debugging-info)
+   (runtime debugger)
    ;; Misc (e.g., version)
-   (RUNTIME)
-   (RUNTIME CRYPTO)
-   ;; Graphics.  The last type initialized is the default for
-   ;; MAKE-GRAPHICS-DEVICE, only the types that are valid for the
-   ;; operating system are actually loaded and initialized.
-   (OPTIONAL (RUNTIME STARBASE-GRAPHICS))
-   (OPTIONAL (RUNTIME X-GRAPHICS))
-   (OPTIONAL (RUNTIME OS2-GRAPHICS))
+   (runtime)
    ;; Emacs -- last because it installs hooks everywhere which must be initted.
-   (RUNTIME EMACS-INTERFACE)
+   (runtime emacs-interface)
    ;; More debugging
-   (OPTIONAL (RUNTIME CONTINUATION-PARSER) INITIALIZE-SPECIAL-FRAMES!)
-   (RUNTIME URI)
-   (RUNTIME RFC2822-HEADERS)
-   (RUNTIME HTTP-SYNTAX)
-   (RUNTIME HTTP-CLIENT)
-   (RUNTIME HTML-FORM-CODEC)
-   (OPTIONAL (RUNTIME WIN32-REGISTRY))
-   (OPTIONAL (RUNTIME FFI))
-   (RUNTIME SWANK)
-   (RUNTIME STACK-SAMPLER)))
+   (optional (runtime continuation-parser) initialize-special-frames!)
+   (runtime uri)
+   (runtime rfc2822-headers)
+   (runtime http-syntax)
+   (runtime html-form-codec)
+   (optional (runtime win32-registry))
+   (runtime ffi)
+   (runtime save/restore)
+   (runtime structure-parser)
+   (runtime swank)
+   (runtime stack-sampler)
+   ;; Done very late since it will look up lots of global variables.
+   ((runtime library standard) finish-host-library-db!)
+   ;; Last since it turns on runtime handling of microcode errors.
+   ((runtime microcode-errors) initialize-error-hooks!)))
 
 (let ((obj (file->object "site" #t #f)))
   (if obj
       (eval obj system-global-environment)))
 
-(link-variables (->environment '(RUNTIME ENVIRONMENT)) 'PACKAGE-NAME-TAG
-		(->environment '(PACKAGE)) 'PACKAGE-NAME-TAG)
+(link-variables (->environment '(runtime environment)) 'package-name-tag
+		(->environment '(package)) 'package-name-tag)
 
 (let ((roots
        (list->vector
-	((lexical-reference (->environment '(RUNTIME COMPILER-INFO))
-			    'WITH-DIRECTORY-REWRITING-RULE)
+	((lexical-reference (->environment '(runtime compiler-info))
+			    'with-directory-rewriting-rule)
 	 (working-directory-pathname)
 	 (pathname-as-directory "runtime")
 	 (lambda ()
 	   (let ((fasload/update-debugging-info!
-		  (lexical-reference (->environment '(RUNTIME COMPILER-INFO))
-				     'FASLOAD/UPDATE-DEBUGGING-INFO!))
+		  (lexical-reference (->environment '(runtime compiler-info))
+				     'fasload/update-debugging-info!))
 		 (load/purification-root
-		  (lexical-reference (->environment '(RUNTIME LOAD))
-				     'LOAD/PURIFICATION-ROOT)))
+		  (lexical-reference (->environment '(runtime load))
+				     'load/purification-root)))
 	     (map (lambda (entry)
 		    (let ((object (cdr entry)))
 		      (fasload/update-debugging-info! object (car entry))
 		      (load/purification-root object)))
 		  fasload-purification-queue)))))))
-  (lexical-assignment (->environment '(RUNTIME GARBAGE-COLLECTOR))
-		      'GC-BOOT-LOADING?
+  (lexical-assignment (->environment '(runtime garbage-collector))
+		      'gc-boot-loading?
 		      #f)
   (set! fasload-purification-queue)
-  (newline console-output-port)
-  (write-string "purifying..." console-output-port)
+  (newline (console-i/o-port))
+  (write-string "purifying..." (console-i/o-port))
   ;; First, flush whatever we can.
   (gc-clean)
   ;; Then, really purify the rest.
   (purify roots #t #f)
-  (write-string "done" console-output-port))
+  (write-string "done" (console-i/o-port)))
 
 )
 
-(package/add-child! (find-package '()) 'USER user-initial-environment)
+(package/add-child! (find-package '()) 'user user-initial-environment)
 ;; Might be better to do this sooner, to trap on floating-point
 ;; mistakes earlier in the cold load.
 (flo:set-environment! (flo:default-environment))

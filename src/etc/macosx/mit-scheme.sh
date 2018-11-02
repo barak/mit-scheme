@@ -1,2 +1,2 @@
 #!/bin/bash
-exec /Applications/MIT\:GNU\ Scheme.app/Contents/Resources/mit-scheme "${@}"
+exec /Applications/MIT\:GNU\ Scheme.app/Contents/Resources/mit-scheme ${1+"$@"}

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -26,10 +26,11 @@ USA.
 
 ;;;; Script to incrementally syntax the compiler
 
-(load-option 'CREF)
+(load-option 'cref)
+(load-option 'sf)
 
 ;; Guarantee that the compiler's package structure exists.
-(if (not (name->package '(COMPILER)))
+(if (not (name->package '(compiler)))
     (let ((package-set (package-set-pathname "compiler")))
       (if (not (file-exists? package-set))
 	  (cref/generate-trivial-constructor "compiler"))
@@ -37,7 +38,7 @@ USA.
 
 ;; Guarantee that the necessary syntactic transforms and optimizers
 ;; are loaded.
-(if (lexical-unreferenceable? (->environment '(COMPILER)) 'SYNTAX-FILES!)
+(if (lexical-unreferenceable? (->environment '(compiler)) 'syntax-files!)
     (let ((sf-and-load
 	   (lambda (files package)
 	     (fluid-let ((sf/default-syntax-table (->environment package)))
@@ -45,36 +46,36 @@ USA.
 	     (for-each (lambda (file)
 			 (load (string-append file ".bin") package))
 		       files))))
-      (load-option 'HASH-TABLE)
+      (load-option 'hash-table)
       (fresh-line)
       (newline)
       (write-string "---- Loading compile-time files ----")
       (newline)
-      (sf-and-load '("base/switch") '(COMPILER))
-      (sf-and-load '("base/macros") '(COMPILER MACROS))
-      (sf-and-load '("machines/x86-64/decls") '(COMPILER DECLARATIONS))
-      (let ((environment (->environment '(COMPILER DECLARATIONS))))
+      (sf-and-load '("base/switch") '(compiler))
+      (sf-and-load '("base/macros") '(compiler macros))
+      (sf-and-load '("machines/x86-64/decls") '(compiler declarations))
+      (let ((environment (->environment '(compiler declarations))))
 	(set! (access source-file-expression environment) "*.scm")
 	((access initialize-package! environment)))
-      (sf-and-load '("base/pmlook") '(COMPILER PATTERN-MATCHER/LOOKUP))
-      (sf-and-load '("base/pmpars") '(COMPILER PATTERN-MATCHER/PARSER))
-      (sf-and-load '("machines/x86-64/machin") '(COMPILER))
+      (sf-and-load '("base/pmlook") '(compiler pattern-matcher/lookup))
+      (sf-and-load '("base/pmpars") '(compiler pattern-matcher/parser))
+      (sf-and-load '("machines/x86-64/machin") '(compiler))
       (fluid-let ((sf/default-declarations
 		   '((integrate-external "insseq")
 		     (integrate-external "machin")
 		     (usual-definition (set expt)))))
-	(sf-and-load '("machines/x86-64/assmd") '(COMPILER ASSEMBLER)))
-      (sf-and-load '("back/syntax") '(COMPILER LAP-SYNTAXER))
+	(sf-and-load '("machines/x86-64/assmd") '(compiler assembler)))
+      (sf-and-load '("back/syntax") '(compiler lap-syntaxer))
       (sf-and-load '("machines/x86-64/coerce"
 		     "back/asmmac"
 		     "machines/x86-64/insmac")
-		   '(COMPILER LAP-SYNTAXER))
-      (sf-and-load '("base/scode") '(COMPILER))
-      (sf-and-load '("base/pmerly") '(COMPILER PATTERN-MATCHER/EARLY))
-      (sf-and-load '("back/syerly") '(COMPILER LAP-SYNTAXER))))
+		   '(compiler lap-syntaxer))
+      (sf-and-load '("base/scode") '(compiler))
+      (sf-and-load '("base/pmerly") '(compiler pattern-matcher/early))
+      (sf-and-load '("back/syerly") '(compiler lap-syntaxer))))
 
 ;; Resyntax any files that need it.
-((access syntax-files! (->environment '(COMPILER))))
+((access syntax-files! (->environment '(compiler))))
 
 ;; Rebuild the package constructors and cref.
-(cref/generate-constructors "compiler" 'ALL)
+(cref/generate-constructors "compiler")

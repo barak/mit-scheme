@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -69,14 +69,14 @@ USA.
 
 (define (step-form expression environment)
   ;; start a new evaluation
-  (step-start (make-ynode #f 'TOP ynode-exp:top-level)
+  (step-start (make-ynode #f 'top ynode-exp:top-level)
 	      (lambda () (eval expression environment))
 	      (if (stepper-compiled?) 0 6)
 	      (if (stepper-compiled?) 1 5)))
 
 (define (step-proceed)
   ;; proceed from breakpoint
-  (step-start (make-ynode #f 'PROCEED ynode-exp:proceed)
+  (step-start (make-ynode #f 'proceed ynode-exp:proceed)
 	      (lambda () (continue))
 	      (if (stepper-compiled?) 0 4)
 	      (if (stepper-compiled?) 5 7)))
@@ -124,15 +124,15 @@ USA.
   (step-over-1 state))
 
 (define (step-until-visibly state)
-  (set-stepper-step-until?! state 'ANIMATE)
+  (set-stepper-step-until?! state 'animate)
   (step-over-1 state))
 
 (define (step-over-1 state)
-  (if (not (eq? (car (stepper-last-event state)) 'CALL))
+  (if (not (eq? (car (stepper-last-event state)) 'call))
       (error "Last event was not a call:" (stepper-last-event state)))
   (set-stepper-step-over! state (stack-top state))
   (new-ynode-type! (stack-top state)
-		   (if (stepper-step-until? state) 'EVAL 'STEP-OVER))
+		   (if (stepper-step-until? state) 'eval 'step-over))
   (raw-step state))
 
 (define (raw-step state)
@@ -171,12 +171,12 @@ USA.
 	(hunk3-cons
 	 (lambda (expr env)
 	   (hook-record state
-			(list 'EVAL (map-reference-trap (lambda () expr)) env))
+			(list 'eval (map-reference-trap (lambda () expr)) env))
 	   (process-eval state (map-reference-trap (lambda () expr)))
 	   (primitive-eval-step expr env hooks))
 	 (lambda (proc . args)
 	   (hook-record state
-			(list 'APPLY
+			(list 'apply
 			      proc
 			      (map (lambda (arg)
 				     (map-reference-trap (lambda () arg)))
@@ -185,7 +185,7 @@ USA.
 	   (primitive-apply-step proc args hooks))
 	 (lambda (value)
 	   (hook-record state
-			(list 'RETURN (map-reference-trap (lambda () value))))
+			(list 'return (map-reference-trap (lambda () value))))
 	   (process-return state (map-reference-trap (lambda () value)))
 	   (primitive-return-step value hooks)))))
     hooks))
@@ -199,7 +199,7 @@ USA.
 	       ((system-hunk3-cxr0 (stepper-hooks state)) expr env)
 	       (begin
 		 (set! skip-evals (- skip-evals 1))
-		 (hook-record state (list 'EVAL expr env))
+		 (hook-record state (list 'eval expr env))
 		 (primitive-eval-step expr env hooks))))
 	 #f
 	 (lambda (result)
@@ -207,7 +207,7 @@ USA.
 	       ((system-hunk3-cxr2 (stepper-hooks state)) result)
 	       (begin
 		 (set! skip-returns (- skip-returns 1))
-		 (hook-record state (list 'RESULT result))
+		 (hook-record state (list 'result result))
 		 (primitive-return-step result hooks)))))))
     hooks))
 
@@ -233,11 +233,11 @@ USA.
 			  (stack-top state))
 		     (if (and (stepper-step-over state)
 			      (not (stepper-step-until? state)))
-			 'STEPPED-OVER
-			 'EVAL)
+			 'stepped-over
+			 'eval)
 		     exp)))
     (stack-push! state node)
-    (set-stepper-last-event! state `(CALL ,node))
+    (set-stepper-last-event! state `(call ,node))
     (maybe-redisplay state)))
 
 (define (process-apply state proc)
@@ -249,7 +249,7 @@ USA.
       (maybe-end-step-over state))
   (let ((node
 	 (let ((node (stack-top state)))
-	   (if (eq? (ynode-type node) 'PROCEED)
+	   (if (eq? (ynode-type node) 'proceed)
 	       (ynode-splice-under node)
 	       (begin
 		 (stack-pop! state)
@@ -257,12 +257,12 @@ USA.
     (new-ynode-result! node result)
     (if (stack-empty? state)
 	(set-stepper-finished! state node))
-    (set-stepper-last-event! state `(RETURN ,node))
+    (set-stepper-last-event! state `(return ,node))
     (maybe-redisplay state)))
 
 (define (maybe-redisplay state)
   (if (stepper-step-over state)
-      (if (eq? (stepper-step-until? state) 'ANIMATE)
+      (if (eq? (stepper-step-until? state) 'animate)
 	  (step-output state #t))
       (call-with-current-continuation
        (lambda (k)
@@ -280,11 +280,11 @@ USA.
 
 (define (reduction? f1 f2)
   ;; Args are SCode expressions.  True if F2 is a reduction of F1.
-  (cond ((conditional? f2)
-	 (or (eq? f1 (conditional-consequent f2))
-	     (eq? f1 (conditional-alternative f2))))
-	((sequence? f2)
-	 (eq? f1 (car (last-pair (sequence-actions f2)))))
+  (cond ((scode-conditional? f2)
+	 (or (eq? f1 (scode-conditional-consequent f2))
+	     (eq? f1 (scode-conditional-alternative f2))))
+	((scode-sequence? f2)
+	 (eq? f1 (car (last-pair (scode-sequence-actions f2)))))
 	(else #f)))
 
 ;;;; Stepper nodes
@@ -300,8 +300,8 @@ USA.
   (result #f)
   (redisplay-flags #f read-only #t))
 
-(define ynode-exp:top-level (list 'STEPPER-TOP-LEVEL))
-(define ynode-exp:proceed   (list 'STEPPER-PROCEED))
+(define ynode-exp:top-level (list 'stepper-top-level))
+(define ynode-exp:proceed   (list 'stepper-proceed))
 
 (define (ynode-exp-special node)
   (let ((exp (ynode-exp node)))
@@ -309,9 +309,9 @@ USA.
 	     (eq? ynode-exp:proceed exp))
 	 (car exp))))
 
-(define ynode-result:waiting (list 'WAITING))
-(define ynode-result:reduced (list 'REDUCED))
-(define ynode-result:unknown (list 'UNKNOWN))
+(define ynode-result:waiting (list 'waiting))
+(define ynode-result:reduced (list 'reduced))
+(define ynode-result:unknown (list 'unknown))
 
 (define (ynode-result-special node)
   (let ((result (ynode-result node)))
@@ -368,7 +368,7 @@ USA.
 (define (ynode-splice-under node)
   (let ((children (ynode-children node)))
     (set-ynode-children! node '())
-    (let ((new-node (make-ynode node 'EVAL ynode-result:unknown)))
+    (let ((new-node (make-ynode node 'eval ynode-result:unknown)))
       (set-ynode-children! new-node children)
       (for-each (lambda (c) (set-ynode-parent! c new-node)) children)
       (let loop ((node new-node))
@@ -404,7 +404,7 @@ USA.
 
 (define (ynode-hidden-children? node)
   ;; used to control drawing of arrow
-  (and (eq? (ynode-type node) 'STEP-OVER)
+  (and (eq? (ynode-type node) 'step-over)
        (not (null? (ynode-children node)))))
 
 (define (ynode-needs-redisplay! ynode)
@@ -429,16 +429,16 @@ USA.
   (ynode-needs-redisplay! ynode))
 
 (define (ynode-expand! node)
-  (new-ynode-type! node 'EVAL)
+  (new-ynode-type! node 'eval)
   (for-each (lambda (dependent)
-	      (if (eq? (ynode-type dependent) 'STEPPED-OVER)
-		  (new-ynode-type! dependent 'STEP-OVER)))
+	      (if (eq? (ynode-type dependent) 'stepped-over)
+		  (new-ynode-type! dependent 'step-over)))
 	    (ynode-dependents node)))
 
 (define (ynode-contract! node)
-  (new-ynode-type! node 'STEP-OVER)
+  (new-ynode-type! node 'step-over)
   (for-each (lambda (dependent)
-	      (new-ynode-type! dependent 'STEPPED-OVER))
+	      (new-ynode-type! dependent 'stepped-over))
 	    (ynode-reductions node)))
 
 ;;;; Miscellaneous

@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -68,7 +68,7 @@ USA.
 					(vector-ref remote-link 0)))
 			  unspecific)
 			remote-links))
-	    
+
 	  (with-values prepare-constants-block
 	    (or process-constants-block
 		(lambda (constants-code environment-label free-ref-label
@@ -118,9 +118,9 @@ USA.
     (let ((next (edge-next-node edge)))
       (if (and next (not (node-marked? next)))
 	  (let ((previous (node-previous-edges next)))
-	    (cond ((for-all? previous
-		     (lambda (edge)
-		       (memq edge (rgraph-entry-edges rgraph))))
+	    (cond ((every (lambda (edge)
+			    (memq edge (rgraph-entry-edges rgraph)))
+			  previous)
 		   ;; Assumption: no action needed to clear existing
 		   ;; register map at this point.
 		   (loop next (empty-register-map)))
@@ -139,9 +139,7 @@ USA.
 			  (or (assq next *pending-bblocks*)
 			      (let ((entry
 				     (cons next
-					   (list-transform-positive
-					       previous
-					     edge-left-node))))
+					   (filter edge-left-node previous))))
 				(set! *pending-bblocks*
 				      (cons entry
 					    *pending-bblocks*))
@@ -194,9 +192,7 @@ USA.
 		   (loop)))))))
 
 (define (adjust-maps-at-merge! bblock)
-  (let ((edges
-	 (list-transform-positive (node-previous-edges bblock)
-	   edge-left-node)))
+  (let ((edges (filter edge-left-node (node-previous-edges bblock))))
     (let ((maps
 	   (map
 	    (let ((live-registers (bblock-live-at-entry bblock)))

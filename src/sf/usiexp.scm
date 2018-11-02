@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -46,7 +46,7 @@ USA.
 		      (let ((variable (variable/make&bind! block name)))
 			(procedure/make
 			 #f
-			 block lambda-tag:let (list variable) '() #f
+			 block scode-lambda-name:let (list variable) '() #f
 			 (make-body block
 				    (reference/make #f block variable)))))
 		    (list operand)))
@@ -350,17 +350,17 @@ USA.
        block
        (procedure/make
 	#f
-	block lambda-tag:let variables '() #f
+	block scode-lambda-name:let variables '() #f
 	(let ((block (block/make block #t '())))
-	  (let ((variable (variable/make&bind! block 'RECEIVER)))
+	  (let ((variable (variable/make&bind! block 'receiver)))
 	    (procedure/make
-	     #f block lambda-tag:unnamed (list variable) '() #f
+	     #f block scode-lambda-name:unnamed (list variable) '() #f
 	     (declaration/make
 	      #f
 	      ;; The receiver is used only once, and all its operand
 	      ;; expressions are effect-free, so integrating here is
 	      ;; safe.
-	      (declarations/parse block '((INTEGRATE-OPERATOR RECEIVER)))
+	      (declarations/parse block '((integrate-operator receiver)))
 	      (combination/make #f
 				block
 				(reference/make #f block variable)
@@ -383,17 +383,17 @@ USA.
 ;;;; General CAR/CDR Encodings
 
 (define (call-to-car? expression)
-  (and (combination? expression)
+  (and (scode-combination? expression)
        (constant-eq? (combination/operator expression) (ucode-primitive car))
        (length=? (combination/operands expression) 1)))
 
 (define (call-to-cdr? expression)
-  (and (combination? expression)
+  (and (scode-combination? expression)
        (constant-eq? (combination/operator expression) (ucode-primitive cdr))
        (length=? (combination/operands expression) 1)))
 
 (define (call-to-general-car-cdr? expression)
-  (and (combination? expression)
+  (and (scode-combination? expression)
        (constant-eq? (combination/operator expression)
 		     (ucode-primitive general-car-cdr))
        (length=? (combination/operands expression) 2)
@@ -557,6 +557,13 @@ USA.
 			operands)
       #f))
 
+(define (make-bytevector-expansion expr operands block)
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (make-combination expr block (ucode-primitive allocate-bytevector 1)
+			operands)
+      #f))
+
 (define (not-expansion expr operands block)
   (if (and (pair? operands)
 	   (null? (cdr operands)))
@@ -634,7 +641,7 @@ USA.
 	   (null? (cdr operands)))
       (make-combination expr block (ucode-primitive eq?)
 			(list (car operands)
-			      (constant/make #f (default-object))))
+			      (constant/make #f #!default)))
       #f))
 
 (define (make-disjunction expr . clauses)
@@ -749,8 +756,7 @@ USA.
 	    int:integer?
 	    intern
 	    list
-	    make-string
-	    make-vector-8b
+	    make-bytevector
 	    ;; modulo	; Compiler does not currently open-code it.
 	    negative?
 	    not
@@ -834,8 +840,7 @@ USA.
 	   exact-integer?-expansion
 	   intern-expansion
 	   list-expansion
-	   make-string-expansion
-	   make-string-expansion
+	   make-bytevector-expansion
 	   ;; modulo-expansion
 	   negative?-expansion
 	   not-expansion
@@ -855,7 +860,7 @@ USA.
 	   zero?-expansion)
 	  (map (lambda (p)
 		 (make-primitive-expander
-		  (make-primitive-procedure (cadr p))))
+		  (apply make-primitive-procedure (cdr p))))
 	       global-primitives)))
 
 (define usual-integrations/expansion-alist
@@ -884,4 +889,4 @@ USA.
 
 ;;; Kludge for EXPAND-OPERATOR declaration.
 (define expander-evaluation-environment
-  (->environment '(SCODE-OPTIMIZER EXPANSION)))
+  (->environment '(scode-optimizer expansion)))

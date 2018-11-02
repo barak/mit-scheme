@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -73,8 +73,8 @@ parameters in registers.
 (define (parameter-analysis procedure)
   (fluid-let ((*inlined-procedures* '()))
     (let ((interesting-parameters
-	   (list-transform-positive (procedure-required procedure)
-	     interesting-variable?)))
+	   (filter interesting-variable?
+		   (procedure-required procedure))))
       (if interesting-parameters
 	  (let ((registerizable-parameters
 		 (with-new-node-marks
@@ -114,7 +114,7 @@ parameters in registers.
 		  (order-parallel!
 		   node
 		   (let ((subproblems (parallel-subproblems node)))
-		     (if (for-all? subproblems subproblem-simple?)
+		     (if (every subproblem-simple? subproblems)
 			 false
 			 (complex-parallel-constraints
 			  subproblems
@@ -214,13 +214,13 @@ parameters in registers.
 	 (interesting-variable? lvalue)
 	 (list lvalue)))
    (map->eq-set (lambda (rvalue) (reference-lvalue rvalue))
-		(list-transform-positive rvalues
-		  (lambda (rvalue)
-		    (and (rvalue/reference? rvalue)
-			 (let ((lvalue (reference-lvalue rvalue)))
-			   (and lvalue
-				(lvalue/variable? lvalue)
-				(interesting-variable? lvalue)))))))))
+		(filter (lambda (rvalue)
+			  (and (rvalue/reference? rvalue)
+			       (let ((lvalue (reference-lvalue rvalue)))
+				 (and lvalue
+				      (lvalue/variable? lvalue)
+				      (interesting-variable? lvalue)))))
+			rvalues))))
 
 (define (complex-parallel-constraints subproblems vars-referenced-later)
   (with-values (lambda () (discriminate-items subproblems subproblem-simple?))
@@ -229,9 +229,9 @@ parameters in registers.
 	     (lambda (subproblems)
 	       (discriminate-items subproblems
 		 (lambda (subproblem)
-		   (there-exists? (subproblem-free-variables subproblem)
-		     (lambda (var)
-		       (memq var vars-referenced-later)))))))
+		   (any (lambda (var)
+			  (memq var vars-referenced-later))
+			(subproblem-free-variables subproblem))))))
 	    (constraint-graph (make-constraint-graph)))
 	(with-values (lambda () (discriminate-by-bad-vars simple))
 	  (lambda (good-simples bad-simples)
@@ -256,10 +256,10 @@ parameters in registers.
 
 (define (bad-free-variables procedure)
   (append-map block-variables-nontransitively-free
-	      (list-transform-negative
-		  (cdr (linearize-block-tree (procedure-block procedure)))
-		(lambda (block)
-		  (memq (block-procedure block) *inlined-procedures*)))))
+	      (remove (lambda (block)
+			(memq (block-procedure block) *inlined-procedures*))
+		      (cdr (linearize-block-tree
+			    (procedure-block procedure))))))
 
 ;;; Since the order of this linearization is not important we could
 ;;; make this routine more efficient. I'm not sure that it is worth
@@ -277,7 +277,7 @@ parameters in registers.
   ;;; variables that will be in cells are eliminated from
   ;;; being put in registers because I couldn't figure out
   ;;; how to get the right code generated for them. Oh well,
-  ;;; sigh! 
+  ;;; sigh!
   (not (or (variable-assigned? variable)
 	   (variable-stack-overwrite-target? variable)
 	   (variable/continuation-variable? variable)

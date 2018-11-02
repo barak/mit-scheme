@@ -39,15 +39,15 @@ A means to determine the operating system Scheme is running under.
 @end itemize
 
 @menu
-* Pathnames::                   
-* Working Directory::           
-* File Manipulation::           
-* Directory Reader::            
-* Date and Time::               
-* Machine Time::                
-* Subprocesses::                
-* TCP Sockets::                 
-* Miscellaneous OS Facilities::  
+* Pathnames::
+* Working Directory::
+* File Manipulation::
+* Directory Reader::
+* Date and Time::
+* Machine Time::
+* Subprocesses::
+* TCP Sockets::
+* Miscellaneous OS Facilities::
 @end menu
 
 @node Pathnames, Working Directory, Operating-System Interface, Operating-System Interface
@@ -105,10 +105,10 @@ pathnames.  Pathnames for other operating systems have different
 external representations.
 
 @menu
-* Filenames and Pathnames::     
-* Components of Pathnames::     
-* Operations on Pathnames::     
-* Miscellaneous Pathnames::     
+* Filenames and Pathnames::
+* Components of Pathnames::
+* Operations on Pathnames::
+* Miscellaneous Pathnames::
 @end menu
 
 @node Filenames and Pathnames, Components of Pathnames, Pathnames, Pathnames
@@ -154,7 +154,7 @@ a host object or @code{#f}, and @var{defaults} must be a pathname.
 @var{Host} specifies the syntax used to parse the string.  If @var{host}
 is not given or @code{#f}, the host component from @var{defaults} is
 used instead; if @var{defaults} is not given, the host component from
-@code{*default-pathname-defaults*} is used.
+@code{param:default-pathname-defaults} is used.
 @end deffn
 
 @deffn procedure ->namestring pathname
@@ -495,7 +495,7 @@ otherwise returns @code{#f}.
 @cindex defaulting, of pathname
 Returns a pathname whose components are obtained by combining those of
 @var{pathname} and @var{defaults}.  @var{Defaults} defaults to the value
-of @code{*default-pathname-defaults*} and @var{default-version} defaults
+of @code{param:default-pathname-defaults} and @var{default-version} defaults
 to @code{newest}.
 
 The pathnames are combined by components: if @var{pathname} has a
@@ -541,13 +541,19 @@ nothing, or just a directory, the name, type and version will come over
 from @var{defaults} together.
 @end deffn
 
-@defvr variable *default-pathname-defaults*
+@defvr parameter param:default-pathname-defaults
 @cindex defaulting, of pathname
-This is the default pathname-defaults pathname; if any pathname
-primitive that needs a set of defaults is not given one, it uses this
-one.  @code{set-working-directory-pathname!} sets this variable to a new
-value, computed by merging the new working directory with the variable's
-old value.
+The value of this parameter (@pxref{Parameters}) is the default
+pathname-defaults pathname; if any pathname primitive that needs a set
+of defaults is not given one, it uses this one.  Modifying the
+@code{working-directory-pathname} parameter also changes this
+parameter to the same value, computed by merging the new working
+directory with the parameter's old value.
+@end defvr
+
+@defvr variable *default-pathname-defaults*
+This variable is @strong{deprecated}; use
+@code{param:default-pathname-defaults} instead.
 @end defvr
 
 @deffn procedure pathname-default pathname device directory name type version
@@ -581,10 +587,11 @@ represents just the @var{host}, @var{device}, and @var{directory}
 components; and @code{host-namestring} returns a string for just the
 @var{host} portion.
 
-@code{enough-namestring} takes another argument, @var{defaults}.
-It returns an abbreviated namestring that is just sufficient to identify
+@code{enough-namestring} takes another argument, @var{defaults}.  It
+returns an abbreviated namestring that is just sufficient to identify
 the file named by @var{pathname} when considered relative to the
-@var{defaults} (which defaults to @code{*default-pathname-defaults*}).
+@var{defaults} (which defaults to the value of
+@code{param:default-pathname-defaults}).
 
 @example
 @group
@@ -609,10 +616,11 @@ These procedures return a pathname corresponding to a subset of the
 The result of @code{directory-pathname} is a pathname containing the
 @var{host}, @var{device} and @var{directory} components of @var{pathname}.
 
-@code{enough-pathname} takes another argument, @var{defaults}.
-It returns an abbreviated pathname that is just sufficient to identify
+@code{enough-pathname} takes another argument, @var{defaults}.  It
+returns an abbreviated pathname that is just sufficient to identify
 the file named by @var{pathname} when considered relative to the
-@var{defaults} (which defaults to @code{*default-pathname-defaults*}).
+@var{defaults} (which defaults to the value of
+@code{param:default-pathname-defaults}).
 
 These procedures are similar to @code{file-namestring},
 @code{directory-namestring} and @code{enough-namestring}, but they
@@ -787,28 +795,36 @@ procedure.  Each @acronym{REP} loop has its own working directory, and
 inferior @acronym{REP} loops initialize their working directory from the
 value in effect in their superior at the time they are created.
 
-@deffn procedure working-directory-pathname
-@deffnx procedure pwd
+@deffn parameter working-directory-pathname
+@deffnx parameter pwd
 Returns the current working directory as a pathname that has no name,
 type, or version components, just host, device, and directory
 components.  @code{pwd} is an alias for
 @code{working-directory-pathname}; the long name is intended for
 programs and the short name for interactive use.
+
+This parameter may be called with an argument to set its value, in
+which case it also modifies the value of
+@code{param:default-pathname-defaults} by merging the new working
+directory into it.
 @end deffn
 
 @deffn procedure set-working-directory-pathname! filename
 @deffnx procedure cd filename
 @findex ->pathname
 @findex pathname-as-directory
+This procedure is @strong{deprecated}; instead call
+@code{working-directory-pathname} with an argument.
+
 Makes @var{filename} the current working directory and returns the new
 current working directory as a pathname.  @var{Filename} is coerced to a
 pathname using @code{pathname-as-directory}.  @code{cd} is an alias for
 @code{set-working-directory-pathname!}; the long name is intended for
 programs and the short name for interactive use.
 
-Additionally, @code{set-working-directory-pathname!} modifies the value
-of@* @code{*default-pathname-defaults*} by merging the new working
-directory into it.
+Additionally, @code{set-working-directory-pathname!} modifies the
+value of @code{param:default-pathname-defaults} by merging the new
+working directory into it.
 
 When this procedure is executed in the top-level @acronym{REP} loop, it
 changes the working directory of the running Scheme executable.
@@ -840,16 +856,16 @@ directory, before changing the working directory.
 @end deffn
 
 @deffn procedure with-working-directory-pathname filename thunk
-This procedure temporarily rebinds the current working directory to
-@var{filename}, invokes @var{thunk} (a procedure of no arguments), then
-restores the previous working directory and returns the value yielded by
-@var{thunk}.  @var{Filename} is coerced to a pathname using
+This procedure is @strong{deprecated}; instead bind
+@code{working-directory-pathname} using @code{parameterize}.
+
+This procedure dynamically binds the current working directory to
+@var{filename} and returns the value of @var{thunk} (a procedure of no
+arguments).  @var{Filename} is coerced to a pathname using
 @code{pathname-as-directory}.  In addition to binding the working
-directory, @code{with-working-directory-pathname} also binds the
-variable @code{*default-pathname-defaults*}, merging the old value of
-that variable with the new working directory pathname.  Both bindings
-are performed in exactly the same way as dynamic binding of a variable
-(@pxref{Dynamic Binding}).
+directory, @code{with-working-directory-pathname} also dynamically
+binds the @code{param:default-pathname-defaults} parameter, merging
+the old value with the new working directory pathname.
 @end deffn
 
 @node File Manipulation, Directory Reader, Working Directory, Operating-System Interface
@@ -992,7 +1008,7 @@ Under Windows, the following directories on the system drive:
 
 @item
 Under Windows, the current directory, as specified by
-@code{*default-pathname-defaults*}.
+@code{param:default-pathname-defaults}.
 @end itemize
 @end deffn
 
@@ -1348,11 +1364,11 @@ Within this section, argument variables named @var{universal-time},
 respectively required to be of the corresponding format.
 
 @menu
-* Universal Time::              
-* Decoded Time::                
-* File Time::                   
-* Time-Format Conversion::      
-* External Representation of Time::  
+* Universal Time::
+* Decoded Time::
+* File Time::
+* Time-Format Conversion::
+* External Representation of Time::
 @end menu
 
 @node Universal Time, Decoded Time, Date and Time, Date and Time
@@ -2032,9 +2048,9 @@ it, execute
 once before calling it.
 
 @menu
-* Subprocess Procedures::       
-* Subprocess Conditions::       
-* Subprocess Options::          
+* Subprocess Procedures::
+* Subprocess Conditions::
+* Subprocess Options::
 @end menu
 
 @node Subprocess Procedures, Subprocess Conditions, Subprocesses, Subprocesses
@@ -2054,7 +2070,7 @@ a command shell for interpretation; how the shell is chosen is detailed
 below.
 
 The @var{option}s are a sequence of keyword/value pairs that specify
-optional behavior.  See below for more information about options.
+optional behavior.  @xref{Subprocess Options}.
 
 @code{run-shell-command} waits until the subprocess completes its
 execution and returns the exit code from the subprocess.  If the
@@ -2069,7 +2085,7 @@ a pathname to a specific program.  @var{Arguments} must be a list of
 strings; each string is a single command-line argument to the program.
 
 The @var{option}s are a sequence of keyword/value pairs that specify
-optional behavior.  See below for more information about options.
+optional behavior.  @xref{Subprocess Options}.
 
 @code{run-synchronous-subprocess} waits until the subprocess completes
 its execution and returns the exit code from the subprocess.  If the
@@ -2489,14 +2505,13 @@ This section contains assorted operating-system facilities that don't
 fit into other categories.
 
 @defvr variable microcode-id/operating-system
-@defvrx variable microcode-id/operating-system-name
+@defvrx {obsolete variable} microcode-id/operating-system-name
 @code{microcode-id/operating-system} is bound to a symbol that specifies
 the type of operating system that Scheme is running under.  There are
 two possible values: @code{unix} or @code{nt}.
 
-@code{microcode-id/operating-system-name} is a string containing the
-same name as @code{microcode-id/operating-system}; the latter is created
-by interning the former as a symbol.
+The @strong{deprecated} variable @code{microcode-id/operating-system-name} is
+a string that's equivalent to @code{microcode-id/operating-system}.
 @end defvr
 
 @defvr variable microcode-id/operating-system-variant

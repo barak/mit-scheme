@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -53,10 +53,9 @@ USA.
 		     operation/set-line-style
 		     custom-operations))
 		   (print-procedure
-		    (standard-unparser-method 'GRAPHICS-TYPE
-		      (lambda (type port)
-			(write-char #\space port)
-			(write (graphics-device-type/name type) port)))))
+		    (standard-print-method 'graphics-type
+		      (lambda (type)
+			(list (graphics-device-type/name type))))))
   (name false read-only true)
   (operation/available? false read-only true)
   (operation/clear false read-only true)
@@ -201,15 +200,14 @@ USA.
 	    ((graphics-device? object)
 	     (test-type (graphics-device/type object)))
 	    ((not object)
-	     (or (list-search-positive graphics-types
-		   graphics-device-type/available?)
+	     (or (find graphics-device-type/available? graphics-types)
 		 (and error?
 		      (error "No graphics types supported."))))
 	    (else
 	     (let ((type
-		    (list-search-positive graphics-types
-		      (lambda (type)
-			(eq? object (graphics-device-type/name type))))))
+		    (find (lambda (type)
+			    (eq? object (graphics-device-type/name type)))
+			  graphics-types)))
 	       (if type
 		   (test-type type)
 		   (and error?
@@ -219,17 +217,17 @@ USA.
   (graphics-type type #f))
 
 (define (enumerate-graphics-types)
-  (list-transform-positive graphics-types graphics-device-type/available?))
+  (filter graphics-device-type/available? graphics-types))
 
 (define (graphics-device-type/available? type)
   ((graphics-device-type/operation/available? type)))
 
 (define (graphics-type-name type)
-  (guarantee-graphics-type type 'GRAPHICS-TYPE-NAME)
+  (guarantee-graphics-type type 'graphics-type-name)
   (graphics-device-type/name type))
 
 (define (graphics-type-properties type)
-  (guarantee-graphics-type type 'GRAPHICS-TYPE-PROPERTIES)
+  (guarantee-graphics-type type 'graphics-type-properties)
   (graphics-device-type/properties type))
 
 (define (guarantee-graphics-type type name)
@@ -259,12 +257,12 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      (let ((name (cadr form)))
-       `(DEFINE-INTEGRABLE
-	  (,(symbol-append 'GRAPHICS-DEVICE/OPERATION/ name) DEVICE)
-	  (,(close-syntax (symbol-append 'GRAPHICS-DEVICE-TYPE/OPERATION/
+       `(define-integrable
+	  (,(symbol 'graphics-device/operation/ name) device)
+	  (,(close-syntax (symbol 'graphics-device-type/operation/
 					 name)
 			  environment)
-	   (GRAPHICS-DEVICE/TYPE DEVICE)))))))
+	   (graphics-device/type device)))))))
 
 (define-graphics-operation clear)
 (define-graphics-operation close)
@@ -420,7 +418,7 @@ USA.
 	(let ((type (graphics-type object error?)))
 	  (and type
 	       (or (1d-table/get (graphics-type-properties type)
-				 'IMAGE-TYPE
+				 'image-type
 				 #f)
 		   (and error?
 			(error "Graphics type has no associated image type:"

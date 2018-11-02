@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -35,6 +35,10 @@ USA.
 (define (initialize-package!)
   (set! entry-advice-population (make-population))
   (set! exit-advice-population (make-population))
+  (set! advice-continuation (make-unsettable-parameter #f))
+  (set! the-arguments (make-unsettable-parameter #f))
+  (set! the-procedure (make-unsettable-parameter #f))
+  (set! the-result (make-unsettable-parameter #f))
   unspecific)
 
 (define the-arguments)
@@ -42,13 +46,13 @@ USA.
 (define the-result)
 
 (define (*args*)
-  (list-copy the-arguments))
+  (list-copy (the-arguments)))
 
 (define (*proc*)
-  the-procedure)
+  (the-procedure))
 
 (define (*result*)
-  the-result)
+  (the-result))
 
 (define (get-advice procedure)
   (lambda-advice (procedure-lambda procedure)))
@@ -58,15 +62,15 @@ USA.
     (lambda (original-body state)
       original-body
       (if (not (pair? state))
-	  (error:bad-range-argument *lambda 'LAMBDA-ADVICE))
+	  (error:bad-range-argument *lambda 'lambda-advice))
       (values (car state) (cdr state)))))
 
 (define (make-advice-hook)
   ;; This inserts the actual procedure in a constant list.
-  (make-combination
-   (make-combination (ucode-primitive car)
+  (make-scode-combination
+   (make-scode-combination (ucode-primitive car)
 		     (list (list hook/advised-procedure-wrapper)))
-   (list (make-the-environment))))
+   (list (make-scode-the-environment))))
 
 (define (hook/advised-procedure-wrapper environment)
   (advised-procedure-wrapper environment))
@@ -80,22 +84,22 @@ USA.
       (lambda (original-body state)
 	(call-with-current-continuation
 	 (lambda (continuation)
-	   (fluid-let ((advice-continuation continuation))
-	     (with-restart 'USE-VALUE
+	   (parameterize ((advice-continuation continuation))
+	     (with-restart 'use-value
 		 "Return a value from the advised procedure."
 		 continuation
 		 (lambda ()
 		   (prompt-for-evaluated-expression "Procedure value"))
 	       (lambda ()
 		 (for-each (lambda (advice)
-			     (with-simple-restart 'CONTINUE
+			     (with-simple-restart 'continue
 				 "Continue with advised procedure."
 			       (lambda ()
 				 (advice procedure arguments environment))))
 			   (car state))
 		 (let ((value (scode-eval original-body environment)))
 		   (for-each (lambda (advice)
-			       (with-simple-restart 'CONTINUE
+			       (with-simple-restart 'continue
 				   "Return from advised procedure."
 				 (lambda ()
 				   (advice procedure
@@ -105,7 +109,7 @@ USA.
 			     (cdr state))
 		   value))))))))))
 
-(define advice-continuation #f)
+(define advice-continuation)
 
 ;;;; Advisers
 
@@ -254,9 +258,9 @@ USA.
 	(write-truncated
 	 (lambda (object width)
 	   (let ((output (write-to-string object width)))
+	     (write-string (cdr output) port)
 	     (if (car output)
-		 (substring-fill! (cdr output) (- width 3) width #\.))
-	     (write-string (cdr output) port)))))
+		 (write-string "..." port))))))
     (if (default-object? result)
 	(write-string "[Entering " port)
 	(begin
@@ -311,14 +315,14 @@ USA.
 ;;;; Break
 
 (define (break-entry-advice procedure arguments environment)
-  (fluid-let ((the-procedure procedure)
-	      (the-arguments arguments))
+  (parameterize ((the-procedure procedure)
+		 (the-arguments arguments))
     (break-rep environment "Breakpoint on entry" procedure arguments)))
 
 (define (break-exit-advice procedure arguments result environment)
-  (fluid-let ((the-procedure procedure)
-	      (the-arguments arguments)
-	      (the-result result))
+  (parameterize ((the-procedure procedure)
+		 (the-arguments arguments)
+		 (the-result result))
     (break-rep environment "Breakpoint on exit" procedure arguments result))
   result)
 
@@ -328,7 +332,7 @@ USA.
 				      (apply trace-display port info)))
 				   message)
 	      environment
-	      advice-continuation))
+	      (advice-continuation)))
 
 (define (break-entry procedure)
   (advise-entry procedure break-entry-advice))

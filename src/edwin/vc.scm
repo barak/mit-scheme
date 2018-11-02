@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -573,11 +573,11 @@ merge in the changes into your working copy."
 	    (vc-start-entry
 	     buffer
 	     "Enter a change comment for the marked files."
-	     (if (there-exists? files
-		   (lambda (file)
-		     (let ((master (file-vc-master (car file) #f)))
-		       (and master
-			    (eq? (vc-backend-next-action master) 'CHECKIN)))))
+	     (if (any (lambda (file)
+			(let ((master (file-vc-master (car file) #f)))
+			  (and master
+			       (eq? (vc-backend-next-action master) 'CHECKIN))))
+		      files)
 		 #f
 		 "")
 	     (lambda (comment)
@@ -921,11 +921,11 @@ Normally shows only locked files; prefix arg says to show all files."
     buffer))
 
 (define (get-vc-dired-buffer directory)
-  (or (list-search-positive (buffer-list)
-	(lambda (buffer)
-	  (let ((spec (buffer-get buffer 'VC-DIRECTORY-SPEC #f)))
-	    (and spec
-		 (pathname=? (car spec) directory)))))
+  (or (find (lambda (buffer)
+	      (let ((spec (buffer-get buffer 'VC-DIRECTORY-SPEC #f)))
+		(and spec
+		     (pathname=? (car spec) directory))))
+	    (buffer-list))
       (new-buffer (pathname->buffer-name directory))))
 
 (define (fill-vc-dired-buffer! buffer directory all-files?)

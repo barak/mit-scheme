@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -121,9 +121,9 @@ Reads the new name in the echo area."
 (define (kill-buffer-interactive buffer)
   (if (not (other-buffer buffer)) (editor-error "Only one buffer"))
   (save-buffer-changes buffer)
-  (if (for-all? (ref-variable kill-buffer-query-procedures buffer)
-	(lambda (procedure)
-	  (procedure buffer)))
+  (if (every (lambda (procedure)
+	       (procedure buffer))
+	     (ref-variable kill-buffer-query-procedures buffer))
       (kill-buffer buffer)
       (message "Buffer not killed.")))
 
@@ -148,7 +148,7 @@ Reads the new name in the echo area."
 Each procedure is called with one argument, the buffer being killed.
 If any procedure returns #f, the buffer is not killed."
   (list kill-buffer-query-modified kill-buffer-query-process)
-  (lambda (object) (and (list? object) (for-all? object procedure?))))
+  (lambda (object) (and (list? object) (every procedure? object))))
 
 (define-command kill-some-buffers
   "For each buffer, ask whether to kill it."
@@ -274,7 +274,8 @@ When locked, the buffer's major mode may not be changed."
 (define (with-output-to-temporary-buffer name properties thunk)
   (call-with-output-to-temporary-buffer name properties
     (lambda (port)
-      (with-output-to-port port thunk))))
+      (parameterize ((current-output-port port))
+	(thunk)))))
 
 (define (call-with-temporary-buffer name procedure)
   (let ((buffer))

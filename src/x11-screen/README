@@ -1,0 +1,32 @@
+The X11-SCREEN option.
+
+This option creates an (edwin screen x11-screen) package that is
+autoloaded by Edwin's X display type.  It is built in the GNU standard
+way (below).  It does not use the C/FFI but uses the X11 plugin's
+Terminal API.
+
+The GNU standard way:
+
+    ./configure ...
+    make all
+    make check
+    make install
+
+The last command will attempt to create a subdirectory in the first
+directory on Scheme's library path.  If that directory is not writable
+by you, super-user privileges may be required.
+
+You can put a writable directory at the front of your Scheme's library
+path by setting the MITSCHEME_LIBRARY_PATH environment variable and
+creating a short optiondb file.
+
+    mkdir ~/.mit-scheme-x86-64
+    echo "(further-load-options #t)" > ~/.mit-scheme-x86-64/optiondb.scm
+    export MITSCHEME_LIBRARY_PATH=\
+	~/.mit-scheme-x86-64:/usr/local/lib/mit-scheme-x86-64
+    make install
+
+To use:
+
+This option is autoloaded by Edwin when the DISPLAY environment
+variable is set.

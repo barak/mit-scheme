@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -47,50 +47,47 @@ USA.
 ;;
 ;; (FURTHER-LOAD-OPTIONS EXPR)
 ;;   EXPR is the place to look next for the load options.  Useful objects
-;;   are STANDARD-LOAD-OPTIONS (load options supplied with the
-;;   MIT-Scheme distribution) and LOCAL-LOAD-OPTIONS (load options
-;;   supplied for every user of your architecture at your site).  If
-;;   not specified, or is #F, then this file is the last options
-;;   database that is searched.
+;;   are #T (load options supplied in the next optiondb file in the
+;;   library directory path), STANDARD-LOAD-OPTIONS (those supplied with
+;;   the MIT-Scheme distribution) and LOCAL-LOAD-OPTIONS (those supplied
+;;   for every user of your architecture at your site).  If not
+;;   specified, or is #F, then this file is the last options database
+;;   that is searched.
 
 ;; Standard load options are defined like this:
 
-(define-load-option 'ARITHMETIC-INTERFACE
-  (standard-option-loader '(RUNTIME NUMBER INTERFACE) #F "numint"))
+(define-load-option 'arithmetic-interface
+  (standard-option-loader '(runtime number interface) #f "numint"))
 
 ;; We can use programming to make the definitions less noisy and tedious:
 
 (for-each
  (lambda (spec)
    (define-load-option (car spec) (apply standard-option-loader (cdr spec))))
- '((COMPRESS	(RUNTIME COMPRESS)	#F			"cpress")
-   (DOSPROCESS	()			#F			"dosproc")
-   (FORMAT	(RUNTIME FORMAT)	(INITIALIZE-PACKAGE!)	"format")
-   (GDBM	(RUNTIME GDBM)		#F			"gdbm")
-   (KRYPT	(RUNTIME KRYPT)		#F			"krypt")
-   (MIME-CODEC	(RUNTIME MIME-CODEC)	#F			"mime-codec")
-   (ORDERED-VECTOR (RUNTIME ORDERED-VECTOR) #F			"ordvec")
-   (POSTGRESQL	(RUNTIME POSTGRESQL)	#F			"pgsql")
-   (RB-TREE	(RUNTIME RB-TREE)	#F			"rbtree")
-   (STEPPER	(RUNTIME STEPPER)	#F			"ystep")
-   (SUBPROCESS	(RUNTIME SUBPROCESS)	(INITIALIZE-PACKAGE!)	"process")
-   (SYNCHRONOUS-SUBPROCESS (RUNTIME SYNCHRONOUS-SUBPROCESS) #F	"syncproc")
-   (WT-TREE	(RUNTIME WT-TREE)	#F			"wttree")
+ '((compress	(runtime compress)	#f			"cpress")
+   (format	(runtime format)	(initialize-package!)	"format")
+   (mime-codec	(runtime mime-codec)	#f			"mime-codec")
+   (ordered-vector (runtime ordered-vector) #f			"ordvec")
+   (rb-tree	(runtime rb-tree)	#f			"rbtree")
+   (stepper	(runtime stepper)	#f			"ystep")
+   (subprocess	(runtime subprocess)	(initialize-package!)	"process")
+   (synchronous-subprocess (runtime synchronous-subprocess) #f	"syncproc")
+   (wt-tree	(runtime wt-tree)	#f			"wttree")
    ))
 
-(define-load-option 'REGULAR-EXPRESSION
-  (standard-option-loader '(RUNTIME REGULAR-EXPRESSION-COMPILER)
-			  #F
+(define-load-option 'regular-expression
+  (standard-option-loader '(runtime regular-expression-compiler)
+			  #f
 			  "rgxcmp")
-  (standard-option-loader '(RUNTIME CHAR-SYNTAX)
-			  '(INITIALIZE-PACKAGE!)
+  (standard-option-loader '(runtime char-syntax)
+			  '(initialize-package!)
 			  "chrsyn")
-  (standard-option-loader '(RUNTIME REGULAR-EXPRESSION)
-			  '(INITIALIZE-PACKAGE!)
+  (standard-option-loader '(runtime regular-expression)
+			  #f
 			  "regexp")
-  (standard-option-loader '(RUNTIME REXP)
-			  #F
+  (standard-option-loader '(runtime rexp)
+			  #f
 			  "rexp"))
 
 ;; HASH-TABLE is now always loaded.
-(define-load-option 'HASH-TABLE dummy-option-loader)
+(define-load-option 'hash-table dummy-option-loader)

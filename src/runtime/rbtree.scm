@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -76,28 +76,28 @@ USA.
 ;;; permit code to be used for either symmetry:
 
 (define-integrable (b->d left?)
-  (if left? 'LEFT 'RIGHT))
+  (if left? 'left 'right))
 
 (define-integrable (-d d)
-  (if (eq? 'LEFT d) 'RIGHT 'LEFT))
+  (if (eq? 'left d) 'right 'left))
 
 (define-integrable (get-link+ p d)
-  (if (eq? 'LEFT d)
+  (if (eq? 'left d)
       (node-left p)
       (node-right p)))
 
 (define-integrable (set-link+! p d l)
-  (if (eq? 'LEFT d)
+  (if (eq? 'left d)
       (set-node-left! p l)
       (set-node-right! p l)))
 
 (define-integrable (get-link- p d)
-  (if (eq? 'RIGHT d)
+  (if (eq? 'right d)
       (node-left p)
       (node-right p)))
 
 (define-integrable (set-link-! p d l)
-  (if (eq? 'RIGHT d)
+  (if (eq? 'right d)
       (set-node-left! p l)
       (set-node-right! p l)))
 
@@ -122,38 +122,38 @@ USA.
   (rotate+! tree x (-d d)))
 
 (define (rb-tree/insert! tree key datum)
-  (guarantee-rb-tree tree 'RB-TREE/INSERT!)
+  (guarantee-rb-tree tree 'rb-tree/insert!)
   (let ((key=? (tree-key=? tree))
 	(key<? (tree-key<? tree)))
     (let loop ((x (tree-root tree)) (y #f) (d #f))
       (cond ((not x)
 	     (let ((z (make-node key datum)))
-	       (without-interrupts
+	       (without-interruption
 		(lambda ()
 		  (set-node-up! z y)
 		  (cond ((not y) (set-tree-root! tree z))
-			((eq? 'LEFT d) (set-node-left! y z))
+			((eq? 'left d) (set-node-left! y z))
 			(else (set-node-right! y z)))
-		  (set-node-color! z 'RED)
+		  (set-node-color! z 'red)
 		  (insert-fixup! tree z)))))
 	    ((key=? key (node-key x)) (set-node-datum! x datum))
-	    ((key<? key (node-key x)) (loop (node-left x) x 'LEFT))
-	    (else (loop (node-right x) x 'RIGHT))))))
+	    ((key<? key (node-key x)) (loop (node-left x) x 'left))
+	    (else (loop (node-right x) x 'right))))))
 
 (define (insert-fixup! tree x)
   ;; Assumptions: X is red, and the only possible violation of the
   ;; tree properties is that (NODE-UP X) is also red.
   (let loop ((x x))
     (let ((u (node-up x)))
-      (if (and u (eq? 'RED (node-color u)))
+      (if (and u (eq? 'red (node-color u)))
 	  (let ((d (b->d (eq? u (node-left (node-up u))))))
 	    (let ((y (get-link- (node-up u) d)))
-	      (if (and y (eq? 'RED (node-color y)))
+	      (if (and y (eq? 'red (node-color y)))
 		  ;; case 1
 		  (begin
-		    (set-node-color! u 'BLACK)
-		    (set-node-color! y 'BLACK)
-		    (set-node-color! (node-up u) 'RED)
+		    (set-node-color! u 'black)
+		    (set-node-color! y 'black)
+		    (set-node-color! (node-up u) 'red)
 		    (loop (node-up u)))
 		  (let ((x
 			 (if (eq? x (get-link- u d))
@@ -164,10 +164,10 @@ USA.
 			     x)))
 		    ;; case 3
 		    (let ((u (node-up x)))
-		      (set-node-color! u 'BLACK)
-		      (set-node-color! (node-up u) 'RED)
+		      (set-node-color! u 'black)
+		      (set-node-color! (node-up u) 'red)
 		      (rotate-! tree (node-up u) d)))))))))
-  (set-node-color! (tree-root tree) 'BLACK))
+  (set-node-color! (tree-root tree) 'black))
 
 (define (alist->rb-tree alist key=? key<?)
   ;; Is there a more efficient way to do this?
@@ -176,15 +176,9 @@ USA.
 	((null? alist))
       (rb-tree/insert! tree (caar alist) (cdar alist)))
     tree))
-
-(define-integrable (without-interrupts thunk)
-  (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
-    (thunk)
-    (set-interrupt-enables! interrupt-mask)
-    unspecific))
 
 (define (rb-tree/delete! tree key)
-  (guarantee-rb-tree tree 'RB-TREE/DELETE!)
+  (guarantee-rb-tree tree 'rb-tree/delete!)
   (let ((key=? (tree-key=? tree))
 	(key<? (tree-key<? tree)))
     (let loop ((x (tree-root tree)))
@@ -194,7 +188,7 @@ USA.
 	    (else (loop (node-right x)))))))
 
 (define (delete-node! tree z)
-  (without-interrupts
+  (without-interruption
    (lambda ()
      (let ((z
 	    (if (and (node-left z) (node-right z))
@@ -209,52 +203,52 @@ USA.
 	 (cond ((not u) (set-tree-root! tree x))
 	       ((eq? z (node-left u)) (set-node-left! u x))
 	       (else (set-node-right! u x)))
-	 (if (eq? 'BLACK (node-color z))
+	 (if (eq? 'black (node-color z))
 	     (delete-fixup! tree x u)))))))
 
 (define (delete-fixup! tree x u)
   (let loop ((x x) (u u))
     (if (or (not u)
-	    (and x (eq? 'RED (node-color x))))
-	(if x (set-node-color! x 'BLACK))
+	    (and x (eq? 'red (node-color x))))
+	(if x (set-node-color! x 'black))
 	(let ((d (b->d (eq? x (node-left u)))))
 	  (let ((w
 		 (let ((w (get-link- u d)))
-		   (if (eq? 'RED (node-color w))
+		   (if (eq? 'red (node-color w))
 		       ;; case 1
 		       (begin
-			 (set-node-color! w 'BLACK)
-			 (set-node-color! u 'RED)
+			 (set-node-color! w 'black)
+			 (set-node-color! u 'red)
 			 (rotate+! tree u d)
 			 (get-link- u d))
 		       w)))
 		(case-4
 		 (lambda (w)
 		   (set-node-color! w (node-color u))
-		   (set-node-color! u 'BLACK)
-		   (set-node-color! (get-link- w d) 'BLACK)
+		   (set-node-color! u 'black)
+		   (set-node-color! (get-link- w d) 'black)
 		   (rotate+! tree u d)
-		   (set-node-color! (tree-root tree) 'BLACK))))
+		   (set-node-color! (tree-root tree) 'black))))
 	    (if (let ((n- (get-link- w d)))
 		  (and n-
-		       (eq? 'RED (node-color n-))))
+		       (eq? 'red (node-color n-))))
 		(case-4 w)
 		(let ((n+ (get-link+ w d)))
 		  (if (or (not n+)
-			  (eq? 'BLACK (node-color n+)))
+			  (eq? 'black (node-color n+)))
 		      ;; case 2
 		      (begin
-			(set-node-color! w 'RED)
+			(set-node-color! w 'red)
 			(loop u (node-up u)))
 		      ;; case 3
 		      (begin
-			(set-node-color! n+ 'BLACK)
-			(set-node-color! w 'RED)
+			(set-node-color! n+ 'black)
+			(set-node-color! w 'red)
 			(rotate-! tree w d)
 			(case-4 (get-link- u d)))))))))))
 
 (define (rb-tree/lookup tree key default)
-  (guarantee-rb-tree tree 'RB-TREE/LOOKUP)
+  (guarantee-rb-tree tree 'rb-tree/lookup)
   (let ((key=? (tree-key=? tree))
 	(key<? (tree-key<? tree)))
     (let loop ((x (tree-root tree)))
@@ -264,7 +258,7 @@ USA.
 	    (else (loop (node-right x)))))))
 
 (define (rb-tree/copy tree)
-  (guarantee-rb-tree tree 'RB-TREE/COPY)
+  (guarantee-rb-tree tree 'rb-tree/copy)
   (let ((result (make-rb-tree (tree-key=? tree) (tree-key<? tree))))
     (set-tree-root!
      result
@@ -279,26 +273,26 @@ USA.
     result))
 
 (define (rb-tree/height tree)
-  (guarantee-rb-tree tree 'RB-TREE/HEIGHT)
+  (guarantee-rb-tree tree 'rb-tree/height)
   (let loop ((node (tree-root tree)))
     (if node
 	(+ 1 (max (loop (node-left node)) (loop (node-right node))))
 	0)))
 
 (define (rb-tree/size tree)
-  (guarantee-rb-tree tree 'RB-TREE/SIZE)
+  (guarantee-rb-tree tree 'rb-tree/size)
   (let loop ((node (tree-root tree)))
     (if node
 	(+ 1 (loop (node-left node)) (loop (node-right node)))
 	0)))
 
 (define (rb-tree/empty? tree)
-  (guarantee-rb-tree tree 'RB-TREE/EMPTY?)
+  (guarantee-rb-tree tree 'rb-tree/empty?)
   (not (tree-root tree)))
 
 (define (rb-tree/equal? x y datum=?)
-  (guarantee-rb-tree x 'RB-TREE/EQUAL?)
-  (guarantee-rb-tree y 'RB-TREE/EQUAL?)
+  (guarantee-rb-tree x 'rb-tree/equal?)
+  (guarantee-rb-tree y 'rb-tree/equal?)
   (let ((key=? (tree-key=? x)))
     (and (eq? key=? (tree-key=? y))
 	 (let loop ((nx (min-node x)) (ny (min-node y)))
@@ -310,7 +304,7 @@ USA.
 		    (loop (next-node nx) (next-node ny))))))))
 
 (define (rb-tree->alist tree)
-  (guarantee-rb-tree tree 'RB-TREE->ALIST)
+  (guarantee-rb-tree tree 'rb-tree->alist)
   (let ((node (min-node tree)))
     (if node
 	(let ((result (list (cons (node-key node) (node-datum node)))))
@@ -323,7 +317,7 @@ USA.
 	'())))
 
 (define (rb-tree/key-list tree)
-  (guarantee-rb-tree tree 'RB-TREE/KEY-LIST)
+  (guarantee-rb-tree tree 'rb-tree/key-list)
   (let ((node (min-node tree)))
     (if node
 	(let ((result (list (node-key node))))
@@ -336,7 +330,7 @@ USA.
 	'())))
 
 (define (rb-tree/datum-list tree)
-  (guarantee-rb-tree tree 'RB-TREE/DATUM-LIST)
+  (guarantee-rb-tree tree 'rb-tree/datum-list)
   (let ((node (min-node tree)))
     (if node
 	(let ((result (list (node-datum node))))
@@ -349,27 +343,27 @@ USA.
 	'())))
 
 (define (rb-tree/min tree default)
-  (guarantee-rb-tree tree 'RB-TREE/MIN)
+  (guarantee-rb-tree tree 'rb-tree/min)
   (let ((node (min-node tree)))
     (if node
 	(node-key node)
 	default)))
 
 (define (rb-tree/min-datum tree default)
-  (guarantee-rb-tree tree 'RB-TREE/MIN-DATUM)
+  (guarantee-rb-tree tree 'rb-tree/min-datum)
   (let ((node (min-node tree)))
     (if node
 	(node-datum node)
 	default)))
 
 (define (rb-tree/min-pair tree)
-  (guarantee-rb-tree tree 'RB-TREE/MIN-PAIR)
+  (guarantee-rb-tree tree 'rb-tree/min-pair)
   (let ((node (min-node tree)))
     (and node
 	 (node-pair node))))
 
 (define (rb-tree/delete-min! tree default)
-  (guarantee-rb-tree tree 'RB-TREE/DELETE-MIN!)
+  (guarantee-rb-tree tree 'rb-tree/delete-min!)
   (let ((node (min-node tree)))
     (if node
 	(let ((key (node-key node)))
@@ -378,7 +372,7 @@ USA.
 	default)))
 
 (define (rb-tree/delete-min-datum! tree default)
-  (guarantee-rb-tree tree 'RB-TREE/DELETE-MIN-DATUM!)
+  (guarantee-rb-tree tree 'rb-tree/delete-min-datum!)
   (let ((node (min-node tree)))
     (if node
 	(let ((datum (node-datum node)))
@@ -387,7 +381,7 @@ USA.
 	default)))
 
 (define (rb-tree/delete-min-pair! tree)
-  (guarantee-rb-tree tree 'RB-TREE/DELETE-MIN-PAIR!)
+  (guarantee-rb-tree tree 'rb-tree/delete-min-pair!)
   (let ((node (min-node tree)))
     (and node
 	 (let ((pair (node-pair node)))
@@ -395,27 +389,27 @@ USA.
 	   pair))))
 
 (define (rb-tree/max tree default)
-  (guarantee-rb-tree tree 'RB-TREE/MAX)
+  (guarantee-rb-tree tree 'rb-tree/max)
   (let ((node (max-node tree)))
     (if node
 	(node-key node)
 	default)))
 
 (define (rb-tree/max-datum tree default)
-  (guarantee-rb-tree tree 'RB-TREE/MAX-DATUM)
+  (guarantee-rb-tree tree 'rb-tree/max-datum)
   (let ((node (max-node tree)))
     (if node
 	(node-datum node)
 	default)))
 
 (define (rb-tree/max-pair tree)
-  (guarantee-rb-tree tree 'RB-TREE/MAX-PAIR)
+  (guarantee-rb-tree tree 'rb-tree/max-pair)
   (let ((node (max-node tree)))
     (and node
 	 (node-pair node))))
 
 (define (rb-tree/delete-max! tree default)
-  (guarantee-rb-tree tree 'RB-TREE/DELETE-MAX!)
+  (guarantee-rb-tree tree 'rb-tree/delete-max!)
   (let ((node (max-node tree)))
     (if node
 	(let ((key (node-key node)))
@@ -424,7 +418,7 @@ USA.
 	default)))
 
 (define (rb-tree/delete-max-datum! tree default)
-  (guarantee-rb-tree tree 'RB-TREE/DELETE-MAX-DATUM!)
+  (guarantee-rb-tree tree 'rb-tree/delete-max-datum!)
   (let ((node (max-node tree)))
     (if node
 	(let ((datum (node-datum node)))
@@ -433,7 +427,7 @@ USA.
 	default)))
 
 (define (rb-tree/delete-max-pair! tree)
-  (guarantee-rb-tree tree 'RB-TREE/DELETE-MAX-PAIR!)
+  (guarantee-rb-tree tree 'rb-tree/delete-max-pair!)
   (let ((node (max-node tree)))
     (and node
 	 (let ((pair (node-pair node)))

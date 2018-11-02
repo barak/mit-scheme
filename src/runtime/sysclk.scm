@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -35,7 +35,11 @@ USA.
 
 (define (reset-system-clock!)
   (set! offset-time (process-time-clock))
-  (set! non-runtime 0))
+  (set! non-runtime 0)
+  unspecific)
+
+(define current-jiffy (ucode-primitive current-jiffy 0))
+(define jiffies-per-second (ucode-primitive jiffies-per-second 0))
 
 (define offset-time)
 (define non-runtime)
@@ -53,7 +57,8 @@ USA.
   (process->system-time (- (process-time-clock) non-runtime)))
 
 (define (increment-non-runtime! ticks)
-  (set! non-runtime (+ non-runtime ticks)))
+  (set! non-runtime (+ non-runtime ticks))
+  unspecific)
 
 (define (measure-interval runtime? thunk)
   (let ((start (process-time-clock)))

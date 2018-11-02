@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
-    Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016,
+    2017, 2018 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -104,22 +104,20 @@ USA.
     procedure))
 
 (define-vector-tag-unparser procedure-tag
-  (lambda (state procedure)
-    ((let ((type
-	    (enumeration/index->name continuation-types
-				     (procedure-type procedure))))
-       (if (eq? type 'PROCEDURE)
-	   (standard-unparser (symbol->string 'PROCEDURE)
-	     (lambda (state procedure)
-	       (unparse-label state (procedure-label procedure))))
-	   (standard-unparser (symbol->string (procedure-label procedure))
-	     (lambda (state procedure)
-	       procedure
-	       (unparse-object state type)))))
-     state procedure)))
-
-(define-integrable (unparse-label state label)
-  (unparse-string state (symbol->string label)))
+  (let ((get-type
+	 (lambda (procedure)
+	   (enumeration/index->name continuation-types
+				    (procedure-type procedure)))))
+    (standard-print-method
+     (lambda (procedure)
+       (if (eq? (get-type procedure) 'PROCEDURE)
+	   "LIAR:procedure"
+	   (string "LIAR:" (procedure-label procedure))))
+     (lambda (procedure)
+       (let ((type (get-type procedure)))
+	 (if (eq? type 'PROCEDURE)
+	     (list (procedure-label procedure))
+	     (list type)))))))
 
 (define-integrable (rvalue/procedure? rvalue)
   (eq? (tagged-vector/tag rvalue) procedure-tag))
