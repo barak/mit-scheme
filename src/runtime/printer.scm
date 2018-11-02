@@ -373,7 +373,6 @@ USA.
 	       (positive-fixnum ,print-number)
 	       (primitive ,print-primitive-procedure)
 	       (procedure ,print-compound-procedure)
-	       (promise ,print-promise)
 	       (ratnum ,print-number)
 	       (record ,print-record)
 	       (return-address ,print-return-address)
@@ -987,19 +986,6 @@ USA.
         ((get-param:print-with-maximum-readability?)
          (*print-readable-hash entity context))
         (else (plain 'entity))))
-
-(define (print-promise promise context)
-  (*print-with-brackets 'promise promise context
-    (if (promise-forced? promise)
-	(lambda (context*)
-	  (*print-string " (evaluated) " context*)
-	  (print-object (promise-value promise) context*))
-	(lambda (context*)
-	  (*print-string " (unevaluated)" context*)
-	  (if (get-param:print-with-datum?)
-	      (begin
-		(*print-char #\space context*)
-		(*print-datum promise context*)))))))
 
 (define (print-tagged-object object context)
   (*print-with-brackets 'tagged-object object context
